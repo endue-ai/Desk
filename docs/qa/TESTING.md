@@ -8,13 +8,14 @@ catch; until then they are marked "not yet".
 
 | Layer | What it checks | Tool and location | When | Status |
 | --- | --- | --- | --- | --- |
-| Static | fmt, clippy `-D warnings`, biome, tsc strict, actionlint; spec lint and licences later | `just check` | every PR (`ci`) | active (spec lint: not yet) |
+| Static | fmt, clippy `-D warnings`, biome, tsc strict, actionlint, spec lint (Ajv strict compile of every schema, spectral for the OpenAPI) | `just check` | every PR (`ci`) | active |
+| Codegen drift | `just codegen` reproduces the committed generated files | job `codegen-check` | every PR | active |
 | Unit | functions and modules | `cargo test`, vitest (`*.test.ts`), `node --test` for `scripts/` | every PR (`ci`) | active |
 | Acceptance validity | tests a PR adds or changes fail on the base commit | `scripts/red-on-base.sh`, job `red-on-base` | every PR except `kind:refactor` | active |
 | Scope | changed files inside the issue Scope; As-is → To-be table complete | `scripts/scope-check.mjs`, workflow `scope-check` | every PR | active |
 | Security | cargo deny, cargo audit, pnpm audit, gitleaks | workflow `security`, `deny.toml` | every PR, main, weekly | active |
 | Review | table vs diff, contract, tests verify behaviour, permissions, 400-line rule | workflow `review` (needs `ANTHROPIC_API_KEY`) | code PRs | active when the key is set |
-| Contract | `specs/*/vectors` pass on both Rust and TS; brain conformance against brain-echo | `crates/desk-brain/tests/conformance.rs`, `packages/bridge` tests | every PR | not yet |
+| Contract | `specs/*/vectors` judged the same by Rust (`jsonschema`) and TS (Ajv); valid vectors round-trip through generated types; WIT is a bridge subset | `crates/desk-bridge/tests/{contract,wit}.rs`, `crates/desk-brain/tests/contract.rs`, `packages/bridge/src/contract.test.ts` | every PR | active (brain conformance against brain-echo: not yet) |
 | Integration (Rust) | permission engine, plugin host lifecycle, VM lifecycle, session leases | `crates/*/tests` | every PR (VM: main and nightly) | not yet |
 | Runtime (web) | 2D compositor rendering, surfaces, input routing, layout restore, opening snapshots | Playwright + browser bridge stub, `packages/runtime/e2e` | PR on Linux; main and nightly on 3 OSes | not yet |
 | App e2e | first run, plugin install, permission prompts, layouts, updater | WebdriverIO + tauri-driver, `e2e/specs` (Linux, Windows) | after merge, `e2e/` or `plugins/` PRs, nightly | not yet |
@@ -29,7 +30,7 @@ catch; until then they are marked "not yet".
 | `packages/**`, `apps/**/src`, `plugins/**` | `ci` (biome, tsc, vitest), `red-on-base` (new `*.test.ts`), `security` |
 | `scripts/**` | `ci` (biome, `node --test`) |
 | `.github/workflows/**` | `ci` (actionlint) |
-| `specs/**` | `ci`; codegen drift and contract tests: not yet |
+| `specs/**` | `ci` (spec lint, contract tests), `codegen-check`; run `just codegen` and commit the generated files |
 | `docs/**`, `*.md` | `ci`, `scope-check`; `review` skips them |
 | any PR | `scope-check`, `labeler` |
 
