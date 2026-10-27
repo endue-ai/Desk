@@ -10,6 +10,7 @@ import {
   place,
   saveLayout,
 } from "./layout";
+import { PluginHost, type PluginHostOptions } from "./plugins";
 import { SurfaceHost, type SurfaceSpec } from "./surfaces";
 import { applyTheme } from "./theme";
 
@@ -22,12 +23,21 @@ export interface RuntimeOptions {
   /** Where the layout is saved; defaults to an in-memory store. */
   storage?: LayoutStorage;
   platform?: Platform;
+  /** Mount the core's UI plugins; without it the desk shows only what callers open. */
+  plugins?: PluginHostOptions;
+}
+
+export interface RuntimePlugins {
+  /** Resolves once the installed plugins are mounted (or the list could not be read). */
+  readonly ready: Promise<void>;
+  mounted(): string[];
 }
 
 export interface Runtime {
   /** Resolves once the bridge answered and the status line shows the result. */
   readonly ready: Promise<void>;
   readonly shortcuts: ShortcutRouter;
+  readonly plugins: RuntimePlugins | undefined;
   openSurface(spec: SurfaceSpec): void;
   closeSurface(id: string): void;
   moveSurface(id: string, cell: Cell): void;
@@ -97,17 +107,43 @@ export function createRuntime(options: RuntimeOptions): Runtime {
     () => showStatus(`desk cannot reach the core · bridge: ${bridge.adapterName}`),
   );
 
+  const openSurface = (spec: SurfaceSpec) => {
+    surfaces.open(spec);
+    commit(place(layout, spec.id));
+  };
+  const closeSurface = (id: string) => {
+    surfaces.close(id);
+    if (shortcuts.focused === id) shortcuts.focus(null);
+  };
+
+  let pluginHost: PluginHost | undefined;
+  let plugins: RuntimePlugins | undefined;
+  if (options.plugins) {
+    const host = new PluginHost(
+      {
+        bridge,
+        win,
+        open: openSurface,
+        close: closeSurface,
+        reload: (id, src) => surfaces.reload(id, src),
+        frame: (id) => surfaces.frame(id),
+      },
+      options.plugins,
+    );
+    pluginHost = host;
+    plugins = {
+      // A desk without plugin:manage still works; it just shows no plugins.
+      ready: ready.then(() => host.start()).catch(() => {}),
+      mounted: () => host.mounted(),
+    };
+  }
+
   return {
     ready,
     shortcuts,
-    openSurface(spec) {
-      surfaces.open(spec);
-      commit(place(layout, spec.id));
-    },
-    closeSurface(id) {
-      surfaces.close(id);
-      if (shortcuts.focused === id) shortcuts.focus(null);
-    },
+    plugins,
+    openSurface,
+    closeSurface,
     moveSurface(id, cell) {
       commit(move(layout, id, cell));
     },
@@ -118,6 +154,7 @@ export function createRuntime(options: RuntimeOptions): Runtime {
     layout: () => structuredClone(layout),
     status: () => statusLine.textContent ?? "",
     dispose() {
+      pluginHost?.stop();
       win.removeEventListener("keydown", onKey);
       for (const id of surfaces.ids()) surfaces.close(id);
       root.replaceChildren();
