@@ -1,0 +1,21 @@
+# Rust
+/target/
+
+# Node
+node_modules/
+dist/
+coverage/
+.vite/
+*.tsbuildinfo
+
+# Test output
+test-results/
+playwright-report/
+
+# Local
+.DS_Store
+*.log
+.env
+.env.*
+.claude/worktrees/
+.claude/settings.local.json
