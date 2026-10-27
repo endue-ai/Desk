@@ -1,0 +1,11 @@
+{
+  "name": "@endue-ai/bridge",
+  "version": "0.0.0",
+  "private": true,
+  "description": "TypeScript client for the Desk bridge plus adapters (tauri, browser stub), typed from specs/bridge.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  }
+}

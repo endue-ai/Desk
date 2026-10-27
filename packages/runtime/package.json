@@ -1,0 +1,11 @@
+{
+  "name": "@endue-ai/runtime",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Shell and window manager: compositor (3D/2D), surfaces (sandboxed iframes), input, layout and theme.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "name": "@endue-ai/create-plugin",
+  "version": "0.0.0",
+  "private": true,
+  "description": "pnpm create @endue-ai/plugin scaffolder. Planned for the plugin stage.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  }
+}
