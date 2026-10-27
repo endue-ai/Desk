@@ -23,7 +23,9 @@ check:
     pnpm exec biome ci .
     pnpm exec tsc -p tsconfig.json
     @if command -v actionlint >/dev/null; then actionlint; else echo "actionlint not installed: skipped here, CI runs it"; fi
+    node scripts/spec-lint.mjs
+    pnpm exec spectral lint specs/brain/v0/openapi.yaml --fail-severity=warn --quiet
 
-# Generate Rust and TypeScript types from specs/
+# Generate Rust and TypeScript types from specs/ (deterministic; CI checks for drift)
 codegen:
-    @echo "not yet: codegen arrives with specs v0"
+    node scripts/codegen.mjs

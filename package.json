@@ -8,8 +8,17 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.6.3",
+    "@stoplight/spectral-cli": "6.17.0",
     "@types/node": "^22.20.5",
+    "ajv": "8.20.0",
     "typescript": "7.0.2",
-    "vitest": "5.0.5"
+    "vitest": "5.0.5",
+    "yaml": "2.9.1"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": []
+  },
+  "scarfSettings": {
+    "enabled": false
   }
 }
