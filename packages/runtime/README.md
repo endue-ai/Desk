@@ -12,7 +12,8 @@ Layer: Web runtime (see `docs/architecture.md`). Plain TypeScript and DOM (ADR 0
   `status()`, `shortcuts`, `plugins` (`ready`, `mounted()`), `dispose()`.
 - `PluginHost` (used when `plugins: { url }` is given): mounts enabled UI plugins from `plugin.list`,
   relays their batched calls with the plugin as caller, reloads one surface on `plugin.changed`
-  (updated) and keeps the plugin's state; ADR 0012.
+  (updated) and keeps the plugin's state; honours `placement: "overlay"`; `plugins.command(id, name,
+  args)` sends a plugin a command; ADR 0012.
 - `ShortcutRouter`, `comboOf`: "Mod+K" style bindings, focused surface first, then global.
 - Layout: `defaultLayout`, `loadLayout`, `saveLayout`, `place`, `move`, `remove`.
 - Clock: `realClock`, `ManualClock` (inject in tests), `tween`.

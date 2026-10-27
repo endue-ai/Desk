@@ -4,13 +4,15 @@ import type { BridgeEvent, BridgeRequest, BridgeResponse } from "@endue-ai/bridg
 export type PluginMessage =
   | { type: "desk:hello" }
   | { type: "desk:calls"; calls: BridgeRequest[] }
-  | { type: "desk:state"; state: unknown };
+  | { type: "desk:state"; state: unknown }
+  | { type: "desk:close" };
 
 /** Messages the runtime sends to a plugin frame. */
 export type HostMessage =
   | { type: "desk:init"; pluginId: string; state: unknown }
   | { type: "desk:results"; results: Array<{ id: number; response: BridgeResponse }> }
-  | { type: "desk:event"; event: BridgeEvent };
+  | { type: "desk:event"; event: BridgeEvent }
+  | { type: "desk:command"; name: string; args?: unknown };
 
 /** How the SDK talks to its host: postMessage in a frame, memory in tests. */
 export interface Transport {
@@ -18,7 +20,7 @@ export interface Transport {
   listen(handler: (message: HostMessage) => void): () => void;
 }
 
-const HOST_TYPES = new Set(["desk:init", "desk:results", "desk:event"]);
+const HOST_TYPES = new Set(["desk:init", "desk:results", "desk:event", "desk:command"]);
 
 /** The frame transport: messages go to the parent window and only the parent is heard. */
 export function windowTransport(win: Window = window): Transport {

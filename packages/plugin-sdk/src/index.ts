@@ -12,8 +12,10 @@ export {
   connect,
   defineUiPlugin,
   type PluginBridge,
+  type PluginCommands,
   type PluginContext,
   type PluginState,
+  type PluginSurface,
   type UiPlugin,
 } from "./sdk";
 
