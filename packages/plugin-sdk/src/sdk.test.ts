@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { BridgeCallError, connect, type HostMessage, type PluginMessage, type Transport } from "./index";
+import {
+  BridgeCallError,
+  connect,
+  type HostMessage,
+  type PluginMessage,
+  type Transport,
+} from "./index";
 
 function fakeHost() {
   const sent: PluginMessage[] = [];
@@ -68,7 +74,9 @@ describe("bridge calls", () => {
     const id = batch.calls[0]?.id ?? 0;
     host.reply({
       type: "desk:results",
-      results: [{ id, response: { id, ok: false, error: { code: "not_found", message: "no grant g9" } } }],
+      results: [
+        { id, response: { id, ok: false, error: { code: "not_found", message: "no grant g9" } } },
+      ],
     });
     await expect(call).rejects.toBeInstanceOf(BridgeCallError);
     await expect(call).rejects.toMatchObject({ code: "not_found" });
@@ -85,12 +93,18 @@ describe("state and events", () => {
     const off = ctx.bridge.onEvent((event) => seen.push(event.event));
     host.reply({
       type: "desk:event",
-      event: { event: "plugin.changed", data: { plugin: "example.b", change: "updated", revision: 2 } },
+      event: {
+        event: "plugin.changed",
+        data: { plugin: "example.b", change: "updated", revision: 2 },
+      },
     });
     off();
     host.reply({
       type: "desk:event",
-      event: { event: "plugin.changed", data: { plugin: "example.b", change: "updated", revision: 3 } },
+      event: {
+        event: "plugin.changed",
+        data: { plugin: "example.b", change: "updated", revision: 3 },
+      },
     });
     expect(seen).toEqual(["plugin.changed"]);
   });

@@ -56,7 +56,10 @@ describe("createTestHost", () => {
       },
       host.transport,
     );
-    host.emit({ event: "plugin.changed", data: { plugin: "example.a", change: "disabled", revision: 1 } });
+    host.emit({
+      event: "plugin.changed",
+      data: { plugin: "example.a", change: "disabled", revision: 1 },
+    });
     expect(seen).toEqual(["plugin.changed"]);
   });
 });
