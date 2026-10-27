@@ -1,0 +1,129 @@
+//! Contract: the bridge and plugin vectors are judged by the JSON Schemas exactly as their folders say,
+//! and every valid vector round-trips through the generated Rust types unchanged.
+
+use std::fs;
+use std::path::{Path, PathBuf};
+
+use desk_bridge::{
+    BridgeEvent, BridgeRequest, BridgeResponse, PermQueryResult, Permission, PluginManifest,
+};
+use serde::Serialize;
+use serde::de::DeserializeOwned;
+use serde_json::{Value, json};
+
+fn specs() -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("../../specs")
+}
+
+fn read_json(path: &Path) -> Value {
+    let text = fs::read_to_string(path).unwrap_or_else(|e| panic!("{}: {e}", path.display()));
+    serde_json::from_str(&text).unwrap_or_else(|e| panic!("{}: {e}", path.display()))
+}
+
+fn schemas(folder: &str) -> Vec<Value> {
+    let mut paths: Vec<PathBuf> = fs::read_dir(specs().join(folder))
+        .unwrap()
+        .map(|entry| entry.unwrap().path())
+        .filter(|path| path.to_string_lossy().ends_with(".schema.json"))
+        .collect();
+    paths.sort();
+    paths.iter().map(|path| read_json(path)).collect()
+}
+
+struct Vector {
+    file: String,
+    valid: bool,
+    target: String,
+    instance: Value,
+}
+
+fn vectors(spec: &str) -> Vec<Vector> {
+    let mut out = Vec::new();
+    for (kind, valid) in [("valid", true), ("invalid", false)] {
+        let dir = specs().join(spec).join("v0/vectors").join(kind);
+        let mut paths: Vec<PathBuf> = fs::read_dir(&dir)
+            .unwrap()
+            .map(|entry| entry.unwrap().path())
+            .collect();
+        paths.sort();
+        for path in paths {
+            let mut doc = read_json(&path);
+            out.push(Vector {
+                file: format!("{spec}/{kind}/{}", path.file_name().unwrap().to_string_lossy()),
+                valid,
+                target: doc["target"].as_str().unwrap().to_owned(),
+                instance: doc["instance"].take(),
+            });
+        }
+    }
+    out
+}
+
+/// Validate every vector of `spec` against `docs`; returns the files judged differently.
+fn judge(docs: &[Value], spec: &str) -> Vec<String> {
+    let registry = jsonschema::Registry::new()
+        .extend(docs.iter().map(|doc| (doc["$id"].as_str().unwrap().to_owned(), doc.clone())))
+        .unwrap()
+        .prepare()
+        .unwrap();
+    let uri_of = |target: &str| {
+        docs.iter()
+            .find(|doc| doc["$defs"].get(target).is_some())
+            .map(|doc| format!("{}#/$defs/{target}", doc["$id"].as_str().unwrap()))
+            .unwrap_or_else(|| panic!("no definition named {target}"))
+    };
+    let mut wrong = Vec::new();
+    for vector in vectors(spec) {
+        let validator = jsonschema::options()
+            .with_registry(&registry)
+            .should_validate_formats(false)
+            .build(&json!({ "$ref": uri_of(&vector.target) }))
+            .unwrap();
+        if validator.is_valid(&vector.instance) != vector.valid {
+            wrong.push(vector.file);
+        }
+    }
+    wrong
+}
+
+#[test]
+fn bridge_vectors_are_judged_as_their_folder_says() {
+    let mut docs = schemas("plugin/v0");
+    docs.extend(schemas("bridge/v0"));
+    assert_eq!(judge(&docs, "bridge"), Vec::<String>::new());
+}
+
+#[test]
+fn plugin_vectors_are_judged_as_their_folder_says() {
+    assert_eq!(judge(&schemas("plugin/v0"), "plugin"), Vec::<String>::new());
+}
+
+fn roundtrip<T: DeserializeOwned + Serialize>(vector: &Vector) {
+    let typed: T = serde_json::from_value(vector.instance.clone())
+        .unwrap_or_else(|e| panic!("{} does not deserialize: {e}", vector.file));
+    let back = serde_json::to_value(&typed).unwrap();
+    assert_eq!(back, vector.instance, "{} changed in a round trip", vector.file);
+}
+
+#[test]
+fn valid_vectors_roundtrip_through_generated_types() {
+    for spec in ["bridge", "plugin"] {
+        for vector in vectors(spec).iter().filter(|v| v.valid) {
+            match vector.target.as_str() {
+                "BridgeRequest" => roundtrip::<BridgeRequest>(vector),
+                "BridgeResponse" => roundtrip::<BridgeResponse>(vector),
+                "BridgeEvent" => roundtrip::<BridgeEvent>(vector),
+                "PermQueryResult" => roundtrip::<PermQueryResult>(vector),
+                "PluginManifest" => roundtrip::<PluginManifest>(vector),
+                "Permission" => roundtrip::<Permission>(vector),
+                other => panic!("{}: no Rust type mapped for {other}", vector.file),
+            }
+        }
+    }
+}
+
+#[test]
+fn generated_types_reject_a_request_without_scope() {
+    let request = json!({ "id": 1, "method": "fs.read", "params": { "path": "~/a.txt" } });
+    assert!(serde_json::from_value::<BridgeRequest>(request).is_err());
+}
