@@ -53,7 +53,15 @@ importers:
 
   packages/create-plugin: {}
 
-  packages/plugin-sdk: {}
+  packages/plugin-sdk:
+    dependencies:
+      '@endue-ai/bridge':
+        specifier: workspace:*
+        version: link:../bridge
+    devDependencies:
+      vite:
+        specifier: 8.3.5
+        version: 8.3.5(@types/node@22.20.5)(yaml@2.9.1)
 
   packages/runtime:
     dependencies:

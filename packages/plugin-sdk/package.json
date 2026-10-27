@@ -6,6 +6,16 @@
   "license": "Apache-2.0",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./testing": "./src/testing/index.ts"
+  },
+  "scripts": {
+    "build": "vite build"
+  },
+  "dependencies": {
+    "@endue-ai/bridge": "workspace:*"
+  },
+  "devDependencies": {
+    "vite": "8.3.5"
   }
 }
