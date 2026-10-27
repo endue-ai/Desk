@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { comboOf, ShortcutRouter } from "./input";
 
-const key = (k: string, mods: Partial<Record<"meta" | "ctrl" | "alt" | "shift", boolean>> = {}) => ({
+const key = (
+  k: string,
+  mods: Partial<Record<"meta" | "ctrl" | "alt" | "shift", boolean>> = {},
+) => ({
   key: k,
   metaKey: mods.meta ?? false,
   ctrlKey: mods.ctrl ?? false,

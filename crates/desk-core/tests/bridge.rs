@@ -9,7 +9,10 @@ use desk_core::{Core, Roots};
 use serde_json::{Value, json};
 
 fn temp_home() -> PathBuf {
-    let nanos = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos();
+    let nanos = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_nanos();
     let dir = std::env::temp_dir().join(format!("desk-core-{}-{nanos}", std::process::id()));
     fs::create_dir_all(dir.join("Documents/notes")).unwrap();
     fs::write(dir.join("Documents/hello.md"), "# Hello").unwrap();
@@ -54,7 +57,10 @@ fn fs_read_returns_the_file_through_a_granted_scope() {
         request(json!({ "id": 1, "method": "fs.read",
             "params": { "path": "~/Documents/hello.md", "scope": fs_read(&["~/Documents/**"]) } })),
     );
-    assert_eq!(result(response), json!({ "content": "# Hello", "encoding": "utf8" }));
+    assert_eq!(
+        result(response),
+        json!({ "content": "# Hello", "encoding": "utf8" })
+    );
 }
 
 #[test]
@@ -66,7 +72,10 @@ fn fs_read_can_return_base64() {
             "params": { "path": "~/Documents/notes/a.txt", "encoding": "base64",
                         "scope": fs_read(&["~/Documents/**"]) } })),
     );
-    assert_eq!(result(response), json!({ "content": "YWJj", "encoding": "base64" }));
+    assert_eq!(
+        result(response),
+        json!({ "content": "YWJj", "encoding": "base64" })
+    );
 }
 
 #[test]
@@ -97,7 +106,10 @@ fn a_call_without_a_grant_is_denied_and_names_the_permission() {
             "params": { "path": "~/Documents/hello.md", "scope": scope } })),
     ));
     assert_eq!(error.code, ErrorCode::PermissionDenied);
-    assert_eq!(serde_json::to_value(error.permission).unwrap(), fs_read(&["~/Documents/**"]));
+    assert_eq!(
+        serde_json::to_value(error.permission).unwrap(),
+        fs_read(&["~/Documents/**"])
+    );
 }
 
 #[test]
@@ -119,5 +131,8 @@ fn perm_query_lists_the_callers_grants() {
         request(json!({ "id": 7, "method": "perm.query", "params": {} })),
     ));
     assert_eq!(grants["grants"].as_array().unwrap().len(), 1);
-    assert_eq!(grants["grants"][0]["permission"], fs_read(&["~/Documents/**"]));
+    assert_eq!(
+        grants["grants"][0]["permission"],
+        fs_read(&["~/Documents/**"])
+    );
 }

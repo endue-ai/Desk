@@ -28,7 +28,12 @@ describe("layout", () => {
     expect(loadLayout(storage)).toEqual(defaultLayout());
     storage.setItem("desk.layout", JSON.stringify({ version: 99, columns: 3, rows: 2, cells: {} }));
     expect(loadLayout(storage)).toEqual(defaultLayout());
-    const outside = { version: 1, columns: 3, rows: 2, cells: { a: { col: 4, row: 1, colSpan: 1, rowSpan: 1 } } };
+    const outside = {
+      version: 1,
+      columns: 3,
+      rows: 2,
+      cells: { a: { col: 4, row: 1, colSpan: 1, rowSpan: 1 } },
+    };
     storage.setItem("desk.layout", JSON.stringify(outside));
     expect(loadLayout(storage)).toEqual(defaultLayout());
   });

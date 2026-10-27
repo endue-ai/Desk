@@ -37,7 +37,11 @@ fn dropped_subscribers_are_pruned() {
     let bus = EventBus::new();
     let kept = bus.subscribe();
     drop(bus.subscribe());
-    assert_eq!(bus.publish(changed("~/a.md")), 1, "delivered to the live subscriber only");
+    assert_eq!(
+        bus.publish(changed("~/a.md")),
+        1,
+        "delivered to the live subscriber only"
+    );
     assert_eq!(bus.subscriber_count(), 1);
     assert!(kept.try_recv().is_ok());
 }

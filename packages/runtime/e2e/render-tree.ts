@@ -20,7 +20,9 @@ export async function renderTree(page: Page): Promise<string> {
         if (value !== null) node[name] = value;
       }
       node.box = [rect.x, rect.y, rect.width, rect.height].map(Math.round);
-      node.style = Object.fromEntries(styles.map((name) => [name, computed.getPropertyValue(name)]));
+      node.style = Object.fromEntries(
+        styles.map((name) => [name, computed.getPropertyValue(name)]),
+      );
       const text = [...el.childNodes]
         .filter((child) => child.nodeType === Node.TEXT_NODE)
         .map((child) => child.textContent?.trim() ?? "")

@@ -17,7 +17,11 @@ export default defineConfig({
   projects: [
     {
       name: "webkit",
-      use: { ...devices["Desktop Safari"], viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1 },
+      use: {
+        ...devices["Desktop Safari"],
+        viewport: { width: 1280, height: 800 },
+        deviceScaleFactor: 1,
+      },
     },
   ],
   webServer: {

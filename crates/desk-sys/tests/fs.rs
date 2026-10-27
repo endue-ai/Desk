@@ -8,7 +8,10 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use desk_sys::fs::{EntryKind, list, read};
 
 fn temp_dir() -> PathBuf {
-    let nanos = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos();
+    let nanos = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_nanos();
     let dir = std::env::temp_dir().join(format!("desk-sys-{}-{nanos}", std::process::id()));
     fs::create_dir_all(dir.join("sub")).unwrap();
     fs::write(dir.join("b.txt"), "hello").unwrap();
@@ -26,7 +29,10 @@ fn read_returns_the_bytes() {
 #[test]
 fn read_reports_missing_files() {
     let dir = temp_dir();
-    assert_eq!(read(&dir.join("missing")).unwrap_err().kind(), ErrorKind::NotFound);
+    assert_eq!(
+        read(&dir.join("missing")).unwrap_err().kind(),
+        ErrorKind::NotFound
+    );
 }
 
 #[test]
