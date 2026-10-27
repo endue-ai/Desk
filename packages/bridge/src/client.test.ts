@@ -68,4 +68,36 @@ describe("tauriAdapter", () => {
       { command: "bridge_call", args: { request: { id: 1, method: "perm.query", params: {} } } },
     ]);
   });
+
+  it("passes the caller on when a call names one", async () => {
+    const calls: unknown[] = [];
+    const adapter = tauriAdapter(async (_command, args) => {
+      calls.push(args);
+      return { id: 1, ok: true, result: { grants: [] } } satisfies BridgeResponse;
+    });
+    await new BridgeClient(adapter).call("perm.query", {}, { caller: "example.hello-ui" });
+    expect(calls).toEqual([
+      {
+        request: { id: 1, method: "perm.query", params: {} },
+        caller: "example.hello-ui",
+      },
+    ]);
+  });
+});
+
+describe("callers", () => {
+  it("reach the adapter, and forward() keeps the plugin's own request", async () => {
+    const stub = browserStub({ "perm.query": () => ({ grants: [] }) });
+    const client = new BridgeClient(stub);
+    await client.call("perm.query", {}, { caller: "example.a" });
+    const response = await client.forward(
+      { id: 41, method: "perm.query", params: {} },
+      "example.b",
+    );
+    expect(response).toEqual({ id: 41, ok: true, result: { grants: [] } });
+    expect(stub.log.map((entry) => [entry.caller, entry.request.id])).toEqual([
+      ["example.a", 1],
+      ["example.b", 41],
+    ]);
+  });
 });
