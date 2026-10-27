@@ -1,0 +1,3 @@
+{
+  "$comment": "Performance budgets. Baselines are first measurements; nightly fails when a value regresses past allowedRegression. Record with: just perf-opening record"
+}

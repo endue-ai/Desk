@@ -12,4 +12,5 @@ App-level tests that drive the packaged desktop app.
 Runtime (web) tests live next to the runtime in `packages/runtime/e2e`; unit tests live next to the source.
 See `docs/qa/` for which change runs which layer.
 
-Status: folder only.
+Status: `perf/budgets.json` holds the opening frame-time baseline (`just perf-opening`); the rest are
+folders only.
