@@ -7,7 +7,11 @@ all-features = true
 [advisories]
 version = 2
 yanked = "deny"
-ignore = []
+ignore = [
+  # Unmaintained, not vulnerable. Pulled in by glib-macros and gtk3-macros, the Linux GTK stack under
+  # Tauri's WebKitGTK webview. Remove when Tauri moves off gtk3-rs.
+  { id = "RUSTSEC-2024-0370", reason = "transitive via Tauri's Linux GTK stack; no maintained alternative yet" },
+]
 
 [licenses]
 version = 2
