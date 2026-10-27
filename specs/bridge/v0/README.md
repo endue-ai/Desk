@@ -2,7 +2,7 @@
 
 The calls the web runtime (and every plugin through it) makes into the Rust core. JSON Schema 2020-12,
 one file per namespace: `bridge.schema.json` (envelope, errors, shared types), `fs`, `proc`, `net`, `plugins`,
-`audio`, `ui` and `perm`. v0 may break on any minor release (ADR 0004).
+`store`, `brain`, `audio`, `ui` and `perm`. v0 may break on any minor release (ADR 0004).
 
 ## Envelope
 
@@ -80,6 +80,13 @@ store needs no scope.
 
 **store.set** writes one JSON value (64 KiB at most) under a key in the caller's namespace. Values
 survive restarts.
+
+**brain.say** sends what the person typed to the brain in the desk's session and returns a local
+`turnId` at once. The answer arrives as `brain.turn` events with that id: `started`, `delta` (more text),
+`completed`. When the brain is unreachable the turn waits: `offline` carries the sentence to show, the
+core keeps retrying, and `online` marks the reconnection before the answer continues. `error` ends a
+turn that failed, for example on a desk that became read-only because another desk took the
+session's lease. It needs `brain:converse`; each turn's events go only to the caller that said it.
 
 **perm.revoke** gives a grant back. People can revoke any grant at any time; callers learn about it from
 `perm.changed`.

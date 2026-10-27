@@ -10,7 +10,8 @@ export type Permission =
   | AudioCapturePermission
   | UiSurfacePermission
   | UiNotifyPermission
-  | PluginManagePermission;
+  | PluginManagePermission
+  | BrainConversePermission;
 
 /** Read files, list folders and watch for changes under the given paths. */
 export interface FsReadPermission {
@@ -62,6 +63,11 @@ export interface UiNotifyPermission {
 /** List installed plugins, turn them on and off, and receive plugin.changed events. */
 export interface PluginManagePermission {
   permission: "plugin:manage";
+}
+
+/** Talk to the brain in the desk's session with brain.say, and receive brain.turn events. */
+export interface BrainConversePermission {
+  permission: "brain:converse";
 }
 
 /** An absolute path, or one rooted at ~ or at ${plugin}, ${workspace} or ${home}, with forward slashes. * matches within a segment and ** across segments. */
@@ -166,6 +172,40 @@ export interface AudioWakeData {
   atMs: number;
 }
 
+/** Say something to the brain in the desk's current session. */
+export interface BrainSayRequest {
+  id: RequestId;
+  method: "brain.say";
+  params: BrainSayParams;
+}
+
+/** Parameters of brain.say. */
+export interface BrainSayParams {
+  text: string;
+  scope: BrainConversePermission;
+}
+
+/** Result of brain.say: the answer arrives as brain.turn events with this id. */
+export interface BrainSayResult {
+  turnId: string;
+}
+
+/** Progress of a brain.say turn. */
+export interface BrainTurnEvent {
+  event: "brain.turn";
+  data: BrainTurnData;
+}
+
+/** Payload of brain.turn. delta carries answer text; error and offline carry a sentence for people. */
+export interface BrainTurnData {
+  turnId: string;
+  kind: BrainTurnKind;
+  text?: string;
+}
+
+/** started, delta (more text), completed; error (the turn failed, for example read-only after a takeover); offline (the brain is unreachable, the turn waits) and online (it resumed). */
+export type BrainTurnKind = "started" | "delta" | "completed" | "error" | "offline" | "online";
+
 /** Chosen by the caller, unique among its requests in flight. The response repeats it. */
 export type RequestId = number;
 
@@ -197,7 +237,8 @@ export type BridgeRequest =
   | PluginListRequest
   | PluginSetEnabledRequest
   | StoreGetRequest
-  | StoreSetRequest;
+  | StoreSetRequest
+  | BrainSayRequest;
 
 /** The answer to one request: a result, or an error. */
 export type BridgeResponse = BridgeSuccess | BridgeFailure;
@@ -244,7 +285,8 @@ export type BridgeEvent =
   | ProcExitEvent
   | AudioWakeEvent
   | PermChangedEvent
-  | PluginChangedEvent;
+  | PluginChangedEvent
+  | BrainTurnEvent;
 
 /** Read a whole file. */
 export interface FsReadRequest {
@@ -774,6 +816,7 @@ export interface BridgeMethodMap {
   "plugin.setEnabled": { params: PluginSetEnabledParams; result: PluginSetEnabledResult };
   "store.get": { params: StoreGetParams; result: StoreGetResult };
   "store.set": { params: StoreSetParams; result: StoreSetResult };
+  "brain.say": { params: BrainSayParams; result: BrainSayResult };
 }
 
 /** A bridge method name. */
@@ -802,4 +845,5 @@ export const BRIDGE_METHODS = [
   "plugin.setEnabled",
   "store.get",
   "store.set",
+  "brain.say",
 ] as const satisfies readonly BridgeMethod[];

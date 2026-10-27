@@ -14,7 +14,8 @@
         { "$ref": "#/$defs/AudioCapturePermission" },
         { "$ref": "#/$defs/UiSurfacePermission" },
         { "$ref": "#/$defs/UiNotifyPermission" },
-        { "$ref": "#/$defs/PluginManagePermission" }
+        { "$ref": "#/$defs/PluginManagePermission" },
+        { "$ref": "#/$defs/BrainConversePermission" }
       ]
     },
     "FsReadPermission": {
@@ -117,6 +118,15 @@
       "type": "object",
       "properties": {
         "permission": { "const": "plugin:manage" }
+      },
+      "required": ["permission"],
+      "additionalProperties": false
+    },
+    "BrainConversePermission": {
+      "description": "Talk to the brain in the desk's session with brain.say, and receive brain.turn events.",
+      "type": "object",
+      "properties": {
+        "permission": { "const": "brain:converse" }
       },
       "required": ["permission"],
       "additionalProperties": false

@@ -18,6 +18,7 @@ pub enum Permission {
     UiSurface(UiSurfacePermission),
     UiNotify(UiNotifyPermission),
     PluginManage(PluginManagePermission),
+    BrainConverse(BrainConversePermission),
 }
 
 /// Read files, list folders and watch for changes under the given paths.
@@ -88,6 +89,13 @@ pub struct UiNotifyPermission {
 #[serde(deny_unknown_fields)]
 pub struct PluginManagePermission {
     pub permission: PluginManagePermissionPermission,
+}
+
+/// Talk to the brain in the desk's session with brain.say, and receive brain.turn events.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct BrainConversePermission {
+    pub permission: BrainConversePermissionPermission,
 }
 
 /// An absolute path, or one rooted at ~ or at ${plugin}, ${workspace} or ${home}, with forward slashes. * matches within a segment and ** across segments.
@@ -249,6 +257,67 @@ pub struct AudioWakeData {
     pub at_ms: u64,
 }
 
+/// Say something to the brain in the desk's current session.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct BrainSayRequest {
+    pub id: RequestId,
+    pub method: BrainSayRequestMethod,
+    pub params: BrainSayParams,
+}
+
+/// Parameters of brain.say.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct BrainSayParams {
+    pub text: String,
+    pub scope: BrainConversePermission,
+}
+
+/// Result of brain.say: the answer arrives as brain.turn events with this id.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct BrainSayResult {
+    #[serde(rename = "turnId")]
+    pub turn_id: String,
+}
+
+/// Progress of a brain.say turn.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct BrainTurnEvent {
+    pub event: BrainTurnEventEvent,
+    pub data: BrainTurnData,
+}
+
+/// Payload of brain.turn. delta carries answer text; error and offline carry a sentence for people.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct BrainTurnData {
+    #[serde(rename = "turnId")]
+    pub turn_id: String,
+    pub kind: BrainTurnKind,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub text: Option<String>,
+}
+
+/// started, delta (more text), completed; error (the turn failed, for example read-only after a takeover); offline (the brain is unreachable, the turn waits) and online (it resumed).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum BrainTurnKind {
+    #[serde(rename = "started")]
+    Started,
+    #[serde(rename = "delta")]
+    Delta,
+    #[serde(rename = "completed")]
+    Completed,
+    #[serde(rename = "error")]
+    Error,
+    #[serde(rename = "offline")]
+    Offline,
+    #[serde(rename = "online")]
+    Online,
+}
+
 /// Chosen by the caller, unique among its requests in flight. The response repeats it.
 pub type RequestId = u64;
 
@@ -289,6 +358,7 @@ pub enum BridgeRequest {
     PluginSetEnabled(PluginSetEnabledRequest),
     StoreGet(StoreGetRequest),
     StoreSet(StoreSetRequest),
+    BrainSay(BrainSayRequest),
 }
 
 /// The answer to one request: a result, or an error.
@@ -362,6 +432,7 @@ pub enum BridgeEvent {
     AudioWake(AudioWakeEvent),
     PermChanged(PermChangedEvent),
     PluginChanged(PluginChangedEvent),
+    BrainTurn(BrainTurnEvent),
 }
 
 /// Read a whole file.
@@ -1214,6 +1285,14 @@ pub enum PluginManagePermissionPermission {
     PluginManage,
 }
 
+/// The `permission` of [`BrainConversePermission`]: always `"brain:converse"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum BrainConversePermissionPermission {
+    #[default]
+    #[serde(rename = "brain:converse")]
+    BrainConverse,
+}
+
 /// The `method` of [`AudioCaptureStartRequest`]: always `"audio.capture.start"`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub enum AudioCaptureStartRequestMethod {
@@ -1236,6 +1315,22 @@ pub enum AudioWakeEventEvent {
     #[default]
     #[serde(rename = "audio.wake")]
     AudioWake,
+}
+
+/// The `method` of [`BrainSayRequest`]: always `"brain.say"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum BrainSayRequestMethod {
+    #[default]
+    #[serde(rename = "brain.say")]
+    BrainSay,
+}
+
+/// The `event` of [`BrainTurnEvent`]: always `"brain.turn"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum BrainTurnEventEvent {
+    #[default]
+    #[serde(rename = "brain.turn")]
+    BrainTurn,
 }
 
 /// The `method` of [`FsReadRequest`]: always `"fs.read"`.
@@ -1483,6 +1578,10 @@ pub const SCHEMAS: &[(&str, &str)] = &[
     (
         "https://endue.ai/specs/bridge/v0/audio.schema.json",
         include_str!("../../../specs/bridge/v0/audio.schema.json"),
+    ),
+    (
+        "https://endue.ai/specs/bridge/v0/brain.schema.json",
+        include_str!("../../../specs/bridge/v0/brain.schema.json"),
     ),
     (
         "https://endue.ai/specs/bridge/v0/bridge.schema.json",

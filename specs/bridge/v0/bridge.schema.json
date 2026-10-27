@@ -43,7 +43,8 @@
         { "$ref": "plugins.schema.json#/$defs/PluginListRequest" },
         { "$ref": "plugins.schema.json#/$defs/PluginSetEnabledRequest" },
         { "$ref": "store.schema.json#/$defs/StoreGetRequest" },
-        { "$ref": "store.schema.json#/$defs/StoreSetRequest" }
+        { "$ref": "store.schema.json#/$defs/StoreSetRequest" },
+        { "$ref": "brain.schema.json#/$defs/BrainSayRequest" }
       ]
     },
     "BridgeResponse": {
@@ -106,7 +107,8 @@
         { "$ref": "proc.schema.json#/$defs/ProcExitEvent" },
         { "$ref": "audio.schema.json#/$defs/AudioWakeEvent" },
         { "$ref": "perm.schema.json#/$defs/PermChangedEvent" },
-        { "$ref": "plugins.schema.json#/$defs/PluginChangedEvent" }
+        { "$ref": "plugins.schema.json#/$defs/PluginChangedEvent" },
+        { "$ref": "brain.schema.json#/$defs/BrainTurnEvent" }
       ]
     }
   }
