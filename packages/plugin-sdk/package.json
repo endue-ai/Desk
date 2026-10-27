@@ -1,0 +1,11 @@
+{
+  "name": "@endue-ai/plugin-sdk",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Everything a plugin author imports: plugin definitions, the bridge client and a test harness.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  }
+}
