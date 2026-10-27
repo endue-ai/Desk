@@ -26,6 +26,7 @@ permissions, and every bridge call carries the one that covers it.
 | `audio:capture` | `wakeWord` | `audio.capture.start`, `audio.capture.stop`, `audio.wake` events |
 | `ui:surface` | none | `ui.surface.open`, `ui.surface.close` |
 | `ui:notify` | none | `ui.notify` |
+| `plugin:manage` | none | `plugin.list`, `plugin.setEnabled`, `plugin.changed` events |
 
 Paths are absolute or rooted at `~`, `${plugin}`, `${workspace}` or `${home}`, with `*` within a segment
 and `**` across segments. Hosts are names with an optional port, or `*.domain` for subdomains. Commands

@@ -1,0 +1,12 @@
+{
+  "target": "BridgeEvent",
+  "description": "renamed is not a plugin change",
+  "instance": {
+    "event": "plugin.changed",
+    "data": {
+      "plugin": "example.hello-ui",
+      "change": "renamed",
+      "revision": 1
+    }
+  }
+}

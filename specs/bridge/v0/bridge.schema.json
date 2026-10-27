@@ -39,7 +39,9 @@
         { "$ref": "ui.schema.json#/$defs/UiNotifyRequest" },
         { "$ref": "perm.schema.json#/$defs/PermRequestRequest" },
         { "$ref": "perm.schema.json#/$defs/PermQueryRequest" },
-        { "$ref": "perm.schema.json#/$defs/PermRevokeRequest" }
+        { "$ref": "perm.schema.json#/$defs/PermRevokeRequest" },
+        { "$ref": "plugins.schema.json#/$defs/PluginListRequest" },
+        { "$ref": "plugins.schema.json#/$defs/PluginSetEnabledRequest" }
       ]
     },
     "BridgeResponse": {
@@ -101,7 +103,8 @@
         { "$ref": "proc.schema.json#/$defs/ProcOutputEvent" },
         { "$ref": "proc.schema.json#/$defs/ProcExitEvent" },
         { "$ref": "audio.schema.json#/$defs/AudioWakeEvent" },
-        { "$ref": "perm.schema.json#/$defs/PermChangedEvent" }
+        { "$ref": "perm.schema.json#/$defs/PermChangedEvent" },
+        { "$ref": "plugins.schema.json#/$defs/PluginChangedEvent" }
       ]
     }
   }

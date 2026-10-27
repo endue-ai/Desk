@@ -1,0 +1,12 @@
+{
+  "target": "BridgeEvent",
+  "description": "a plugin's files changed on disk",
+  "instance": {
+    "event": "plugin.changed",
+    "data": {
+      "plugin": "example.hello-ui",
+      "change": "updated",
+      "revision": 3
+    }
+  }
+}
