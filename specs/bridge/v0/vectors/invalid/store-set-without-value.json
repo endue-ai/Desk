@@ -1,0 +1,11 @@
+{
+  "target": "BridgeRequest",
+  "description": "store.set needs a value",
+  "instance": {
+    "id": 13,
+    "method": "store.set",
+    "params": {
+      "key": "first-run"
+    }
+  }
+}

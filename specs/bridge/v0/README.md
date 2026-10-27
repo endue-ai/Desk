@@ -74,6 +74,13 @@ it is enabled and built in, its file revision and its manifest. It needs `plugin
 its surfaces when `plugin.changed` arrives. It needs `plugin:manage`. `plugin.changed` events (installed,
 updated, removed, enabled, disabled) go to callers that hold `plugin:manage`.
 
+**store.get** reads a value the caller stored earlier; `value` is absent for a key that was never
+set. Every caller (the runtime and each plugin) has its own namespace in desk-core storage, so the
+store needs no scope.
+
+**store.set** writes one JSON value (64 KiB at most) under a key in the caller's namespace. Values
+survive restarts.
+
 **perm.revoke** gives a grant back. People can revoke any grant at any time; callers learn about it from
 `perm.changed`.
 

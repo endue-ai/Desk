@@ -41,7 +41,9 @@
         { "$ref": "perm.schema.json#/$defs/PermQueryRequest" },
         { "$ref": "perm.schema.json#/$defs/PermRevokeRequest" },
         { "$ref": "plugins.schema.json#/$defs/PluginListRequest" },
-        { "$ref": "plugins.schema.json#/$defs/PluginSetEnabledRequest" }
+        { "$ref": "plugins.schema.json#/$defs/PluginSetEnabledRequest" },
+        { "$ref": "store.schema.json#/$defs/StoreGetRequest" },
+        { "$ref": "store.schema.json#/$defs/StoreSetRequest" }
       ]
     },
     "BridgeResponse": {
