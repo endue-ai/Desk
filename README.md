@@ -7,7 +7,7 @@ feature above that, the built-in ones included, is a plugin you can replace whil
 Like Emacs: the core keeps only primitives (files, processes, network, audio, windows), and everything
 else is code you can change without restarting.
 
-> Status: pre-alpha skeleton. There is no app to run yet.
+> Status: pre-alpha. `just dev` opens an empty 2D desk with a status line; plugins come next.
 
 <!-- Screenshot: added with the first-run scene. -->
 
@@ -19,7 +19,9 @@ just check && just test
 just dev
 ```
 
-You need Rust (the version is pinned in `rust-toolchain.toml`), Node 22+, pnpm and `just`.
+You need Rust (the version is pinned in `rust-toolchain.toml`), Node 22+, pnpm, `just` and the
+Tauri prerequisites for your OS. Run `pnpm --filter @endue-ai/runtime exec playwright install webkit`
+once for the runtime tests.
 
 ## Privacy
 

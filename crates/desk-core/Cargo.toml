@@ -8,5 +8,12 @@ license.workspace = true
 repository.workspace = true
 publish.workspace = true
 
+[dependencies]
+base64.workspace = true
+desk-bridge.workspace = true
+desk-sys = { workspace = true, features = ["fs"] }
+serde.workspace = true
+serde_json.workspace = true
+
 [lints]
 workspace = true

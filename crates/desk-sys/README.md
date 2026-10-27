@@ -1,15 +1,20 @@
 # desk-sys
 
-Primitives: fs (notify), proc (portable-pty), net and audio (cpal, wake word), each behind a cargo feature.
+Primitives: fs (notify), proc (portable-pty), net and audio (cpal, wake word), each behind a cargo
+feature. No permission checks: desk-core authorizes every call first.
 
-Layer: Tauri shell (see `docs/architecture.md`). Status: empty shell, no behaviour yet.
+Layer: Tauri shell (see `docs/architecture.md`). Status: `fs` only.
 
-## Public API
+## Features and public API
 
-- `NAME`: the crate name. Nothing else yet.
+- `fs`: `fs::read(path) -> Vec<u8>`, `fs::list(path) -> Vec<Entry>` (sorted by name; `EntryKind`
+  file, dir or symlink; size for files).
+- `NAME`: the crate name.
 
 ## Testing
 
 ```bash
-cargo test -p desk-sys
+cargo test -p desk-sys --all-features
 ```
+
+`tests/fs.rs` needs the `fs` feature (declared with `required-features`).

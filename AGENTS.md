@@ -24,11 +24,12 @@ English summary is `docs/architecture.md`.
 
 ```bash
 just dev     # run the desktop app
-just test    # unit tests (Rust and TypeScript)
+just test    # unit, contract and runtime e2e tests (test-unit + test-e2e)
 just check   # formatting, lints and types; must be green before every push
 ```
 
-`just codegen` regenerates the Rust and TypeScript types from `specs/`.
+`just codegen` regenerates the Rust and TypeScript types from `specs/`. `just test-unit` skips the browser
+tests; `just check-app` lints the Tauri app crate, which the default commands leave out.
 
 ## Rules
 

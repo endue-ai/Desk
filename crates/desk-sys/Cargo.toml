@@ -8,5 +8,13 @@ license.workspace = true
 repository.workspace = true
 publish.workspace = true
 
+[features]
+## File primitives: read and list.
+fs = []
+
+[[test]]
+name = "fs"
+required-features = ["fs"]
+
 [lints]
 workspace = true

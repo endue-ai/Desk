@@ -32,8 +32,9 @@ function rustfmt(source) {
 }
 
 function biome(source, path) {
-  const bin = join(ROOT, "node_modules/.bin/biome");
-  return execFileSync(bin, ["format", `--stdin-file-path=${path}`], {
+  // Run biome's JS launcher through node: node_modules/.bin shims are not executable on Windows.
+  const launcher = join(ROOT, "node_modules/@biomejs/biome/bin/biome");
+  return execFileSync(process.execPath, [launcher, "format", `--stdin-file-path=${path}`], {
     input: source,
     encoding: "utf8",
     cwd: ROOT,

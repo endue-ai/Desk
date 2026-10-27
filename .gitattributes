@@ -1,0 +1,7 @@
+# LF everywhere, so formatters and generated-file checks agree on every OS (Windows CI included).
+* text=auto eol=lf
+
+*.png binary
+*.ico binary
+*.icns binary
+*.svg text eol=lf
