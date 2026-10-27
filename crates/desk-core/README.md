@@ -8,7 +8,7 @@ Layer: Rust core (see `docs/architecture.md`).
 ## Public API
 
 - `Core::new(Roots { home })`, `Core::handle(caller, BridgeRequest) -> BridgeResponse`: serves
-  `fs.read`, `fs.list`, `perm.*` and `plugin.*`; every other method answers `unsupported` for now.
+  `fs.read`, `fs.list`, `perm.*`, `plugin.*` and `store.*`; every other method answers `unsupported` for now.
   `Core::grant`, `Core::events`, `Core::with_prompter`.
 - Plugins: `with_plugin_store(path)`, `install_plugin(dir, built_in)`, `install_plugins_in(parent,
   built_in)`, `plugins()`, `plugin_file(id, path)`, `watch_plugins()` (hot reload, `PluginWatcher`).
@@ -18,6 +18,8 @@ Layer: Rust core (see `docs/architecture.md`).
 - `PermissionEngine`: deny by default; `grant`, `revoke`, `grants`, `authorize(caller, scope, target)`.
   A call passes when its scope covers the target (path, command, host) and a grant covers the scope.
   Paths are normalised lexically; a `..` that leaves its root is denied.
+- Store: `with_store_file(path)`; `store.get`/`store.set` keep one JSON value (64 KiB max) per caller
+  and key, in each caller's own namespace.
 - `EventBus`: `subscribe`, `publish`, `subscriber_count`.
 - `Prompter` / `RefuseAll`: who answers `perm.request` (refuses until the prompt UI exists).
 

@@ -22,8 +22,12 @@ pub fn run() {
             protocol::serve(ctx.app_handle(), &request)
         })
         .setup(|app| {
-            let store = app.path().app_data_dir()?.join("plugins.json");
-            let core = Arc::new(Core::new(Roots { home: home_dir() }).with_plugin_store(store));
+            let data = app.path().app_data_dir()?;
+            let core = Arc::new(
+                Core::new(Roots { home: home_dir() })
+                    .with_plugin_store(data.join("plugins.json"))
+                    .with_store_file(data.join("store.json")),
+            );
             // The runtime mounts plugins, so it may list and toggle them.
             core.grant(
                 RUNTIME_CALLER,

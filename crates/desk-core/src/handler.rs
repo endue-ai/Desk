@@ -19,6 +19,7 @@ use crate::events::EventBus;
 use crate::paths::normalize;
 use crate::perm::{Denied, PermissionEngine, Target, covers};
 use crate::plugins::PluginRegistry;
+use crate::store::Store;
 
 /// Where root tokens in bridge paths point.
 #[derive(Debug, Clone)]
@@ -50,6 +51,7 @@ pub struct Core {
     events: EventBus,
     prompter: Box<dyn Prompter>,
     pub(crate) plugins: Mutex<PluginRegistry>,
+    pub(crate) store: Mutex<Store>,
 }
 
 impl Core {
@@ -60,6 +62,7 @@ impl Core {
             events: EventBus::new(),
             prompter: Box::new(RefuseAll),
             plugins: Mutex::new(PluginRegistry::new(None)),
+            store: Mutex::new(Store::new(None)),
         }
     }
 
@@ -152,6 +155,8 @@ impl Core {
             }
             R::PluginList(r) => (r.id, self.plugin_list(caller, r.params)),
             R::PluginSetEnabled(r) => (r.id, self.plugin_set_enabled(caller, r.params)),
+            R::StoreGet(r) => (r.id, self.store_get(caller, r.params)),
+            R::StoreSet(r) => (r.id, self.store_set(caller, r.params)),
             R::FsWrite(r) => (r.id, unsupported("fs.write")),
             R::FsWatch(r) => (r.id, unsupported("fs.watch")),
             R::ProcSpawn(r) => (r.id, unsupported("proc.spawn")),
