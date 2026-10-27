@@ -11,11 +11,11 @@ use std::sync::mpsc::Receiver;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use common::{Echo, free_port};
+use desk_brain_endue::HttpBrain;
 use desk_bridge::{
     BrainConversePermission, BrainTurnData, BrainTurnKind, BridgeEvent, BridgeRequest,
     BridgeResponse, ErrorCode, Permission,
 };
-use desk_brain_endue::HttpBrain;
 use desk_core::{BrainOptions, Core, OFFLINE_LINE, READ_ONLY_LINE, Roots};
 use serde_json::json;
 
@@ -133,7 +133,10 @@ fn the_echo_tool_round_trip_runs_inside_the_core() {
     let events = core.events().subscribe();
     let turn = say(&core, "tool: ping");
     let data = until(&events, &turn, BrainTurnKind::Completed);
-    assert_eq!(answer(&data), "Let me ask the echo tool. The echo tool said: ping");
+    assert_eq!(
+        answer(&data),
+        "Let me ask the echo tool. The echo tool said: ping"
+    );
     let completed = kinds(&data)
         .into_iter()
         .filter(|k| *k == BrainTurnKind::Completed)
@@ -150,7 +153,9 @@ fn an_unreachable_brain_gets_the_offline_line_and_the_turn_resumes() {
     let offline = until(&events, &turn, BrainTurnKind::Offline);
     assert_eq!(
         offline.last().and_then(|d| d.text.as_deref()),
-        Some("I can't reach endue right now. Check your connection, and I'll pick up where we left off.")
+        Some(
+            "I can't reach endue right now. Check your connection, and I'll pick up where we left off."
+        )
     );
     assert_eq!(OFFLINE_LINE, offline[0].text.as_deref().unwrap());
 
@@ -174,7 +179,10 @@ fn a_desk_whose_session_was_taken_over_is_read_only() {
     let turn = say(&a, "still there?");
     let data = until(&on_a, &turn, BrainTurnKind::Error);
     assert_eq!(data.last().map(|d| d.kind), Some(BrainTurnKind::Error));
-    assert_eq!(data.last().and_then(|d| d.text.as_deref()), Some(READ_ONLY_LINE));
+    assert_eq!(
+        data.last().and_then(|d| d.text.as_deref()),
+        Some(READ_ONLY_LINE)
+    );
 
     let on_b = b.events().subscribe();
     let turn = say(&b, "hello from b");

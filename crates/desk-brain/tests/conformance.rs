@@ -3,143 +3,21 @@
 //! request vectors are accepted or refused as their folders say, and the HTTP client from
 //! desk-brain-endue holds a whole conversation with it.
 
-use std::io::{BufRead, BufReader};
+mod support;
+
+use std::fs;
 use std::net::TcpListener;
-use std::path::{Path, PathBuf};
-use std::process::{Child, Command, Stdio};
+use std::thread;
 use std::time::Duration;
-use std::{fs, thread};
 
 use desk_brain::{
-    BRAIN_SCHEMA_JSON, Brain, BrainErrorCode, BrainFailure, ClientInfo, CreateSessionRequest,
-    LeaseAcquireRequest, LeaseHolder, TextPart, TurnEvent, TurnRequest, UserMessage,
+    Brain, BrainErrorCode, BrainFailure, ClientInfo, CreateSessionRequest, LeaseAcquireRequest,
+    LeaseHolder, TextPart, TurnEvent, TurnRequest, UserMessage,
 };
 use desk_brain_endue::HttpBrain;
-use desk_brain_endue::http::{Endpoint, send};
-use serde_json::{Value, json};
-
-/// brain-echo on a free port, with no pause between events and one lease second lasting 20 ms.
-struct Echo {
-    child: Child,
-    url: String,
-}
-
-impl Echo {
-    fn start() -> Self {
-        let server = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/brain-echo/server.mjs");
-        let mut child = Command::new("node")
-            .arg(server)
-            .args(["--port", "0"])
-            .env("BRAIN_ECHO_DELAY_MS", "0")
-            .env("BRAIN_ECHO_SECOND_MS", "20")
-            .stdout(Stdio::piped())
-            .spawn()
-            .expect("node runs examples/brain-echo (Node 22 or later)");
-        let mut line = String::new();
-        BufReader::new(child.stdout.take().unwrap())
-            .read_line(&mut line)
-            .unwrap();
-        let url = line
-            .split_whitespace()
-            .find(|word| word.starts_with("http://"))
-            .unwrap_or_else(|| panic!("brain-echo printed no URL: {line:?}"))
-            .to_owned();
-        Self { child, url }
-    }
-}
-
-impl Drop for Echo {
-    fn drop(&mut self) {
-        let _ = self.child.kill();
-        let _ = self.child.wait();
-    }
-}
-
-/// Raw HTTP against the server, so the bodies are checked as they are on the wire.
-struct Wire(Endpoint);
-
-impl Wire {
-    fn new(echo: &Echo) -> Self {
-        Self(Endpoint::parse(&echo.url).unwrap())
-    }
-
-    fn call(&self, method: &str, path: &str, body: Option<Value>) -> (u16, Value) {
-        let response = send(&self.0, None, method, path, body.as_ref()).unwrap();
-        (response.status, response.json().unwrap())
-    }
-
-    fn stream(&self, path: &str, body: Value) -> Vec<Value> {
-        let response = send(&self.0, None, "POST", path, Some(&body)).unwrap();
-        assert_eq!(response.status, 200, "POST {path}");
-        assert!(response.is_event_stream(), "POST {path} is not text/event-stream");
-        response
-            .events()
-            .map(|data| serde_json::from_str(&data.unwrap()).unwrap())
-            .collect()
-    }
-
-    fn session(&self) -> String {
-        let (_, session) = self.call("POST", "/sessions", Some(vector("valid/create-session-request.json")));
-        session["id"].as_str().unwrap().to_owned()
-    }
-
-    fn acquire(&self, session: &str, desk: &str, ttl: u64) -> String {
-        let body = json!({ "holder": { "deskId": desk }, "ttlSeconds": ttl });
-        let (status, lease) = self.call("POST", &format!("/sessions/{session}/lease"), Some(body));
-        assert_eq!(status, 200, "{lease}");
-        lease["leaseId"].as_str().unwrap().to_owned()
-    }
-}
-
-fn vectors_dir() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR")).join("../../specs/brain/v0/vectors")
-}
-
-/// A vector file: { target, description, instance }.
-fn vector_doc(file: &str) -> Value {
-    serde_json::from_str(&fs::read_to_string(vectors_dir().join(file)).unwrap()).unwrap()
-}
-
-fn vector(file: &str) -> Value {
-    vector_doc(file)["instance"].take()
-}
-
-fn said(text: &str, lease: &str) -> Value {
-    json!({ "leaseId": lease, "message": { "role": "user", "content": [{ "type": "text", "text": text }] } })
-}
-
-/// The contract's component schemas, with formats checked.
-struct Contract {
-    id: String,
-    registry: jsonschema::Registry,
-}
-
-impl Contract {
-    fn new() -> Self {
-        let schema: Value = serde_json::from_str(BRAIN_SCHEMA_JSON).unwrap();
-        let id = schema["$id"].as_str().unwrap().to_owned();
-        let registry = jsonschema::Registry::new().add(&id, schema).unwrap().prepare().unwrap();
-        Self { id, registry }
-    }
-
-    fn check(&self, target: &str, value: &Value) {
-        let validator = jsonschema::options()
-            .with_registry(&self.registry)
-            .should_validate_formats(true)
-            .build(&json!({ "$ref": format!("{}#/$defs/{target}", self.id) }))
-            .unwrap();
-        let errors: Vec<String> = validator.iter_errors(value).map(|e| e.to_string()).collect();
-        assert!(errors.is_empty(), "{target} {value}: {errors:?}");
-    }
-}
-
-fn kinds(events: &[Value]) -> Vec<&str> {
-    events.iter().map(|e| e["type"].as_str().unwrap()).collect()
-}
-
-fn text(events: &[Value]) -> String {
-    events.iter().filter_map(|e| e["text"].as_str()).collect()
-}
+use desk_brain_endue::http::send;
+use serde_json::json;
+use support::{Contract, Echo, Wire, kinds, said, text, vector, vector_doc, vectors_dir};
 
 #[test]
 fn a_whole_conversation_conforms_to_the_contract() {
@@ -147,7 +25,11 @@ fn a_whole_conversation_conforms_to_the_contract() {
     let wire = Wire::new(&echo);
     let contract = Contract::new();
 
-    let (status, session) = wire.call("POST", "/sessions", Some(vector("valid/create-session-request.json")));
+    let (status, session) = wire.call(
+        "POST",
+        "/sessions",
+        Some(vector("valid/create-session-request.json")),
+    );
     assert_eq!(status, 201);
     contract.check("Session", &session);
     let id = session["id"].as_str().unwrap();
@@ -176,11 +58,17 @@ fn a_whole_conversation_conforms_to_the_contract() {
     assert_eq!(text(&events), "hello");
 
     // The echo tool's round trip: the turn stops at tool_call and finishes after the result.
-    let events = wire.stream(&format!("/sessions/{id}/turns"), said("tool: ping", lease_id));
+    let events = wire.stream(
+        &format!("/sessions/{id}/turns"),
+        said("tool: ping", lease_id),
+    );
     for event in &events {
         contract.check("TurnEvent", event);
     }
-    let call = events.iter().find(|e| e["type"] == "tool.call").expect("a tool.call event");
+    let call = events
+        .iter()
+        .find(|e| e["type"] == "tool.call")
+        .expect("a tool.call event");
     assert_eq!(call["call"]["name"], "echo");
     assert_eq!(call["call"]["arguments"], json!({ "text": "ping" }));
     assert_eq!(events.last().unwrap()["stopReason"], "tool_call");
@@ -189,7 +77,10 @@ fn a_whole_conversation_conforms_to_the_contract() {
     result["callId"] = call["call"]["callId"].clone();
     result["output"] = call["call"]["arguments"].clone();
     let turn_id = call["turnId"].as_str().unwrap();
-    let rest = wire.stream(&format!("/sessions/{id}/turns/{turn_id}/tool-results"), result);
+    let rest = wire.stream(
+        &format!("/sessions/{id}/turns/{turn_id}/tool-results"),
+        result,
+    );
     for event in &rest {
         contract.check("TurnEvent", event);
     }
@@ -222,7 +113,10 @@ fn request_vectors_are_accepted_or_refused_as_their_folder_says() {
             // Each vector gets a fresh session, its own lease and a waiting tool call.
             let session = wire.session();
             let lease = wire.acquire(&session, "desk-z", 60);
-            let events = wire.stream(&format!("/sessions/{session}/turns"), said("tool: x", &lease));
+            let events = wire.stream(
+                &format!("/sessions/{session}/turns"),
+                said("tool: x", &lease),
+            );
             let call = &events.iter().find(|e| e["type"] == "tool.call").unwrap();
             if body.get("leaseId").is_some() {
                 body["leaseId"] = json!(lease);
@@ -235,7 +129,10 @@ fn request_vectors_are_accepted_or_refused_as_their_folder_says() {
                 "LeaseAcquireRequest" => format!("/sessions/{session}/lease"),
                 "TurnRequest" => format!("/sessions/{session}/turns"),
                 "ToolResultRequest" => {
-                    format!("/sessions/{session}/turns/{}/tool-results", call["turnId"].as_str().unwrap())
+                    format!(
+                        "/sessions/{session}/turns/{}/tool-results",
+                        call["turnId"].as_str().unwrap()
+                    )
                 }
                 _ => continue,
             };
@@ -270,13 +167,24 @@ fn lease_conflicts_answer_with_the_contract_codes() {
     assert_eq!(error["code"], "lease_held");
     assert_eq!(error["holder"]["deskId"], "desk-a");
 
-    let (status, lease) =
-        wire.call("POST", &format!("/sessions/{session}/lease"), Some(vector("valid/lease-acquire-takeover.json")));
+    let (status, lease) = wire.call(
+        "POST",
+        &format!("/sessions/{session}/lease"),
+        Some(vector("valid/lease-acquire-takeover.json")),
+    );
     assert_eq!(status, 200);
     assert_eq!(lease["holder"]["deskId"], "desk-b");
-    let (status, error) = wire.call("PUT", &format!("/sessions/{session}/lease/{a}"), Some(json!({})));
+    let (status, error) = wire.call(
+        "PUT",
+        &format!("/sessions/{session}/lease/{a}"),
+        Some(json!({})),
+    );
     assert_eq!((status, error["code"].as_str()), (409, Some("lease_lost")));
-    let (status, error) = wire.call("POST", &format!("/sessions/{session}/turns"), Some(said("hi", &a)));
+    let (status, error) = wire.call(
+        "POST",
+        &format!("/sessions/{session}/turns"),
+        Some(said("hi", &a)),
+    );
     assert_eq!((status, error["code"].as_str()), (409, Some("lease_lost")));
     contract.check("BrainError", &error);
 
@@ -284,9 +192,20 @@ fn lease_conflicts_answer_with_the_contract_codes() {
     let other = wire.session();
     let short = wire.acquire(&other, "desk-a", 5);
     thread::sleep(Duration::from_millis(250));
-    let (status, error) = wire.call("PUT", &format!("/sessions/{other}/lease/{short}"), Some(json!({})));
-    assert_eq!((status, error["code"].as_str()), (409, Some("lease_expired")));
-    assert_eq!(wire.call("GET", &format!("/sessions/{other}/lease"), None).0, 404);
+    let (status, error) = wire.call(
+        "PUT",
+        &format!("/sessions/{other}/lease/{short}"),
+        Some(json!({})),
+    );
+    assert_eq!(
+        (status, error["code"].as_str()),
+        (409, Some("lease_expired"))
+    );
+    assert_eq!(
+        wire.call("GET", &format!("/sessions/{other}/lease"), None)
+            .0,
+        404
+    );
     wire.acquire(&other, "desk-c", 60);
 }
 
@@ -294,18 +213,41 @@ fn lease_conflicts_answer_with_the_contract_codes() {
 fn the_http_client_holds_a_conversation() {
     let echo = Echo::start();
     let brain = HttpBrain::new(&echo.url).unwrap();
-    let client = ClientInfo { name: "conformance".to_owned(), version: "0".to_owned() };
-    let session = brain.create_session(&CreateSessionRequest { title: None, client: client.clone() }).unwrap();
-    let holder = |desk: &str| LeaseHolder { desk_id: desk.to_owned(), name: None };
-    let acquire = |desk: &str| LeaseAcquireRequest { holder: holder(desk), ttl_seconds: 60, takeover: None };
-    let lease = brain.acquire_lease(&session.id, &acquire("desk-a")).unwrap();
-    assert_eq!(brain.get_session(&session.id).unwrap().lease, Some(lease.clone()));
+    let client = ClientInfo {
+        name: "conformance".to_owned(),
+        version: "0".to_owned(),
+    };
+    let session = brain
+        .create_session(&CreateSessionRequest {
+            title: None,
+            client: client.clone(),
+        })
+        .unwrap();
+    let holder = |desk: &str| LeaseHolder {
+        desk_id: desk.to_owned(),
+        name: None,
+    };
+    let acquire = |desk: &str| LeaseAcquireRequest {
+        holder: holder(desk),
+        ttl_seconds: 60,
+        takeover: None,
+    };
+    let lease = brain
+        .acquire_lease(&session.id, &acquire("desk-a"))
+        .unwrap();
+    assert_eq!(
+        brain.get_session(&session.id).unwrap().lease,
+        Some(lease.clone())
+    );
 
     let request = TurnRequest {
         lease_id: lease.lease_id.clone(),
         message: UserMessage {
             role: Default::default(),
-            content: vec![TextPart { r#type: Default::default(), text: "hello there".to_owned() }],
+            content: vec![TextPart {
+                r#type: Default::default(),
+                text: "hello there".to_owned(),
+            }],
         },
     };
     let mut answer = String::new();
@@ -322,13 +264,22 @@ fn the_http_client_holds_a_conversation() {
     assert!(matches!(last, Some(TurnEvent::TurnCompleted(_))));
 
     match brain.acquire_lease(&session.id, &acquire("desk-b")) {
-        Err(BrainFailure::Refused { status: 409, error }) => assert_eq!(error.code, BrainErrorCode::LeaseHeld),
+        Err(BrainFailure::Refused { status: 409, error }) => {
+            assert_eq!(error.code, BrainErrorCode::LeaseHeld)
+        }
         other => panic!("expected lease_held, got {other:?}"),
     }
-    let closed = TcpListener::bind("127.0.0.1:0").unwrap().local_addr().unwrap().port();
+    let closed = TcpListener::bind("127.0.0.1:0")
+        .unwrap()
+        .local_addr()
+        .unwrap()
+        .port();
     let nobody = HttpBrain::new(&format!("http://127.0.0.1:{closed}/v0")).unwrap();
     assert!(matches!(
-        nobody.create_session(&CreateSessionRequest { title: None, client }),
+        nobody.create_session(&CreateSessionRequest {
+            title: None,
+            client
+        }),
         Err(BrainFailure::Unreachable(_))
     ));
 }

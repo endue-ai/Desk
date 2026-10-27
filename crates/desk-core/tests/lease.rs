@@ -51,7 +51,9 @@ fn acquiring_makes_this_desk_the_writer() {
 
     let mut b = desk(&brain, "desk-b");
     match b.acquire(&s, false) {
-        Err(LeaseError::ReadOnly { holder: Some(holder) }) => assert_eq!(holder.desk_id, "desk-a"),
+        Err(LeaseError::ReadOnly {
+            holder: Some(holder),
+        }) => assert_eq!(holder.desk_id, "desk-a"),
         other => panic!("expected read-only, got {other:?}"),
     }
     assert!(b.is_read_only());
