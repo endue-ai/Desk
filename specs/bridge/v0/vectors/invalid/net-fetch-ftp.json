@@ -8,9 +8,7 @@
       "url": "ftp://example.com/file",
       "scope": {
         "permission": "net:fetch",
-        "hosts": [
-          "example.com"
-        ]
+        "hosts": ["example.com"]
       }
     }
   }

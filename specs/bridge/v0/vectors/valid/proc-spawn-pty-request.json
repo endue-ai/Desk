@@ -6,9 +6,7 @@
     "method": "proc.spawn",
     "params": {
       "command": "zsh",
-      "args": [
-        "-l"
-      ],
+      "args": ["-l"],
       "cwd": "~/",
       "env": {
         "TERM": "xterm-256color"
@@ -19,9 +17,7 @@
       },
       "scope": {
         "permission": "proc:spawn",
-        "commands": [
-          "zsh"
-        ],
+        "commands": ["zsh"],
         "pty": true
       }
     }

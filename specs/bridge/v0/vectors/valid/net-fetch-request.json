@@ -14,9 +14,7 @@
       "timeoutMs": 10000,
       "scope": {
         "permission": "net:fetch",
-        "hosts": [
-          "api.example.com"
-        ]
+        "hosts": ["api.example.com"]
       }
     }
   }

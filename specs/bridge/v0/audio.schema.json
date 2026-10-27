@@ -20,7 +20,12 @@
       "type": "object",
       "properties": {
         "wakeWord": { "description": "Listen for the wake word.", "type": "boolean" },
-        "sampleRate": { "description": "Samples per second.", "type": "integer", "minimum": 8000, "maximum": 48000 },
+        "sampleRate": {
+          "description": "Samples per second.",
+          "type": "integer",
+          "minimum": 8000,
+          "maximum": 48000
+        },
         "scope": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/AudioCapturePermission" }
       },
       "required": ["scope"],
@@ -77,9 +82,17 @@
       "type": "object",
       "properties": {
         "captureId": { "type": "string", "minLength": 1 },
-        "word": { "description": "The wake word that was heard.", "type": "string", "minLength": 1 },
+        "word": {
+          "description": "The wake word that was heard.",
+          "type": "string",
+          "minLength": 1
+        },
         "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
-        "atMs": { "description": "Milliseconds since the capture started.", "type": "integer", "minimum": 0 }
+        "atMs": {
+          "description": "Milliseconds since the capture started.",
+          "type": "integer",
+          "minimum": 0
+        }
       },
       "required": ["captureId", "word", "confidence", "atMs"],
       "additionalProperties": false

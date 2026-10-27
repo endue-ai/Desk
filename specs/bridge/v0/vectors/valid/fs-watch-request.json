@@ -9,9 +9,7 @@
       "recursive": true,
       "scope": {
         "permission": "fs:read",
-        "paths": [
-          "~/Documents/**"
-        ]
+        "paths": ["~/Documents/**"]
       }
     }
   }

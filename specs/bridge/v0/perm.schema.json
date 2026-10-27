@@ -20,7 +20,11 @@
       "type": "object",
       "properties": {
         "permission": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/Permission" },
-        "reason": { "description": "Shown to the person in the prompt.", "type": "string", "minLength": 1 }
+        "reason": {
+          "description": "Shown to the person in the prompt.",
+          "type": "string",
+          "minLength": 1
+        }
       },
       "required": ["permission", "reason"],
       "additionalProperties": false
@@ -95,8 +99,16 @@
       "properties": {
         "grantId": { "type": "string", "minLength": 1 },
         "permission": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/Permission" },
-        "grantedAt": { "description": "RFC 3339 timestamp.", "type": "string", "format": "date-time" },
-        "expiresAt": { "description": "RFC 3339 timestamp; absent means until revoked.", "type": "string", "format": "date-time" }
+        "grantedAt": {
+          "description": "RFC 3339 timestamp.",
+          "type": "string",
+          "format": "date-time"
+        },
+        "expiresAt": {
+          "description": "RFC 3339 timestamp; absent means until revoked.",
+          "type": "string",
+          "format": "date-time"
+        }
       },
       "required": ["grantId", "permission", "grantedAt"],
       "additionalProperties": false

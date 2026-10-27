@@ -10,9 +10,7 @@
       "force": true,
       "scope": {
         "permission": "fs:write",
-        "paths": [
-          "~/**"
-        ]
+        "paths": ["~/**"]
       }
     }
   }

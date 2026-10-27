@@ -103,7 +103,11 @@
       "description": "One folder entry.",
       "type": "object",
       "properties": {
-        "name": { "description": "File name without the folder.", "type": "string", "minLength": 1 },
+        "name": {
+          "description": "File name without the folder.",
+          "type": "string",
+          "minLength": 1
+        },
         "kind": { "$ref": "#/$defs/EntryKind" },
         "size": { "description": "Size in bytes, for files.", "type": "integer", "minimum": 0 }
       },
@@ -141,7 +145,11 @@
       "description": "Result of fs.watch.",
       "type": "object",
       "properties": {
-        "watchId": { "description": "Names the watch in fs.changed events.", "type": "string", "minLength": 1 }
+        "watchId": {
+          "description": "Names the watch in fs.changed events.",
+          "type": "string",
+          "minLength": 1
+        }
       },
       "required": ["watchId"],
       "additionalProperties": false

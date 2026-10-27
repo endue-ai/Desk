@@ -9,9 +9,7 @@
       "message": "net:fetch api.example.com is not granted",
       "permission": {
         "permission": "net:fetch",
-        "hosts": [
-          "api.example.com"
-        ]
+        "hosts": ["api.example.com"]
       }
     }
   }

@@ -8,9 +8,7 @@
       "command": "git status",
       "scope": {
         "permission": "proc:spawn",
-        "commands": [
-          "git"
-        ]
+        "commands": ["git"]
       }
     }
   }

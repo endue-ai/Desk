@@ -8,9 +8,7 @@
       "path": "~/Documents/notes.md",
       "scope": {
         "permission": "net:fetch",
-        "hosts": [
-          "example.com"
-        ]
+        "hosts": ["example.com"]
       }
     }
   }

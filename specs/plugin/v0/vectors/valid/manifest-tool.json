@@ -9,9 +9,7 @@
     "permissions": [
       {
         "permission": "proc:spawn",
-        "commands": [
-          "node"
-        ]
+        "commands": ["node"]
       }
     ]
   }

@@ -13,9 +13,7 @@
       },
       {
         "permission": "fs:read",
-        "paths": [
-          "${plugin}/**"
-        ]
+        "paths": ["${plugin}/**"]
       }
     ],
     "surfaces": [

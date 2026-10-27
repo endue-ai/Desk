@@ -14,7 +14,10 @@
         "version": { "$ref": "#/$defs/Version" },
         "kind": { "$ref": "#/$defs/PluginKind" },
         "entry": { "$ref": "#/$defs/EntryPath" },
-        "description": { "description": "One sentence about what the plugin does.", "type": "string" },
+        "description": {
+          "description": "One sentence about what the plugin does.",
+          "type": "string"
+        },
         "permissions": {
           "description": "Everything the plugin may ask for. Each one is still granted by the person at first use.",
           "type": "array",

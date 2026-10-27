@@ -19,7 +19,11 @@
       "description": "Parameters of net.fetch.",
       "type": "object",
       "properties": {
-        "url": { "description": "An http or https URL whose host the scope covers.", "type": "string", "pattern": "^https?://" },
+        "url": {
+          "description": "An http or https URL whose host the scope covers.",
+          "type": "string",
+          "pattern": "^https?://"
+        },
         "method": { "$ref": "#/$defs/HttpMethod" },
         "headers": { "type": "object", "additionalProperties": { "type": "string" } },
         "body": { "type": "string" },

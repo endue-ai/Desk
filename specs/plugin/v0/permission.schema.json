@@ -57,7 +57,10 @@
           "items": { "$ref": "#/$defs/Command" },
           "minItems": 1
         },
-        "pty": { "description": "Whether the programs may run in a pseudo-terminal.", "type": "boolean" }
+        "pty": {
+          "description": "Whether the programs may run in a pseudo-terminal.",
+          "type": "boolean"
+        }
       },
       "required": ["permission", "commands"],
       "additionalProperties": false
@@ -82,7 +85,10 @@
       "type": "object",
       "properties": {
         "permission": { "const": "audio:capture" },
-        "wakeWord": { "description": "Whether wake-word events may be delivered.", "type": "boolean" }
+        "wakeWord": {
+          "description": "Whether wake-word events may be delivered.",
+          "type": "boolean"
+        }
       },
       "required": ["permission"],
       "additionalProperties": false

@@ -20,7 +20,11 @@
       "type": "object",
       "properties": {
         "command": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/Command" },
-        "args": { "description": "Arguments, passed without a shell.", "type": "array", "items": { "type": "string" } },
+        "args": {
+          "description": "Arguments, passed without a shell.",
+          "type": "array",
+          "items": { "type": "string" }
+        },
         "cwd": { "$ref": "bridge.schema.json#/$defs/Path" },
         "env": {
           "description": "Extra environment variables.",
@@ -47,7 +51,11 @@
       "description": "Result of proc.spawn.",
       "type": "object",
       "properties": {
-        "procId": { "description": "Names the process in later calls and events.", "type": "string", "minLength": 1 },
+        "procId": {
+          "description": "Names the process in later calls and events.",
+          "type": "string",
+          "minLength": 1
+        },
         "pid": { "description": "The OS process id, when known.", "type": "integer", "minimum": 0 }
       },
       "required": ["procId"],

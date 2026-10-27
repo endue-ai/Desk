@@ -19,7 +19,11 @@
       "description": "Parameters of ui.surface.open.",
       "type": "object",
       "properties": {
-        "surface": { "description": "A surface id from the manifest.", "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+        "surface": {
+          "description": "A surface id from the manifest.",
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*$"
+        },
         "placement": { "$ref": "../../plugin/v0/plugin.schema.json#/$defs/SurfacePlacement" },
         "title": { "type": "string" },
         "scope": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/UiSurfacePermission" }

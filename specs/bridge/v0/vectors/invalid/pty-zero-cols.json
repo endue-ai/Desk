@@ -12,9 +12,7 @@
       },
       "scope": {
         "permission": "proc:spawn",
-        "commands": [
-          "zsh"
-        ]
+        "commands": ["zsh"]
       }
     }
   }

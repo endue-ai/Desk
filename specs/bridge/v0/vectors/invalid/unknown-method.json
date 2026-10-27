@@ -8,9 +8,7 @@
       "path": "~/Documents/notes.md",
       "scope": {
         "permission": "fs:read",
-        "paths": [
-          "~/Documents/**"
-        ]
+        "paths": ["~/Documents/**"]
       }
     }
   }

@@ -7,9 +7,7 @@
     "params": {
       "permission": {
         "permission": "net:fetch",
-        "hosts": [
-          "*.example.com"
-        ]
+        "hosts": ["*.example.com"]
       },
       "reason": "Sync your items."
     }

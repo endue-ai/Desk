@@ -7,9 +7,7 @@
         "grantId": "g1",
         "permission": {
           "permission": "fs:read",
-          "paths": [
-            "~/Documents/**"
-          ]
+          "paths": ["~/Documents/**"]
         },
         "grantedAt": "2026-10-27T09:00:00Z"
       },

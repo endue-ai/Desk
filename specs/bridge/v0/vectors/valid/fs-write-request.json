@@ -11,9 +11,7 @@
       "createDirs": true,
       "scope": {
         "permission": "fs:write",
-        "paths": [
-          "${plugin}/data/**"
-        ]
+        "paths": ["${plugin}/data/**"]
       }
     }
   }
