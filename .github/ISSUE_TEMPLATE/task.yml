@@ -1,0 +1,47 @@
+name: Task
+description: A requirement for the AI work cycle. You write one field; the planner fills the contract.
+title: "task: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Write the requirement in plain words: what should be true when this is done, and where the design
+        lives. Then run `/plan-task <issue number>`; the planner fills the contract below and adds `ai:ready`.
+
+  - type: textarea
+    id: requirement
+    attributes:
+      label: Requirement
+      description: The outcome you want, the done criteria, and what is out of scope.
+    validations:
+      required: true
+
+  - type: markdown
+    attributes:
+      value: |
+        ## Contract (filled by the planner)
+        Leave the fields below empty. scope-check reads **Scope**; the author AI works only inside it.
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      description: Allowed path globs, one per line as a bullet (for example `- \`crates/desk-core/**\``).
+
+  - type: textarea
+    id: acceptance-tests
+    attributes:
+      label: Acceptance tests
+      description: Test files and names that prove the requirement. Each one must fail on the base commit.
+
+  - type: textarea
+    id: spec-change
+    attributes:
+      label: Spec change
+      description: "yes or no, and what changes in specs/."
+
+  - type: textarea
+    id: assumptions
+    attributes:
+      label: Assumptions
+      description: Decisions the planner made instead of asking. Reject the PR with one line to overturn one.
