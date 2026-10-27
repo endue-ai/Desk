@@ -7,7 +7,7 @@ feature above that, the built-in ones included, is a plugin you can replace whil
 Like Emacs: the core keeps only primitives (files, processes, network, audio, windows), and everything
 else is code you can change without restarting.
 
-> Status: pre-alpha skeleton. There is no app to run yet.
+> Status: pre-alpha skeleton. There is no app to run yet. (scope-check verification edit)
 
 <!-- Screenshot: added with the first-run scene. -->
 
