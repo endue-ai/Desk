@@ -5,6 +5,7 @@ Eris, the secretary. Built-in UI plugin in the community folder format.
 | Path | Purpose |
 | --- | --- |
 | `ui/index.html`, `ui/main.js` | The Eris surface: one status pose (idle, listening, thinking, done, heads-up, oops); the `state` command switches it |
+| `ui/talk.js` | Talking to her (`brain:converse`): the typed line rises into her centre, the answer streams back as soul text under her (thinking while it streams), the offline line while the brain is unreachable (ADR 0014) |
 | `ui/soul-text.js` | Soul text: per-character timing from word start times (900 ms in, 35 ms apart, 1.6 s out with seeded 0–450 ms jitter), wisp, solemn and reduced styles, `wordsFromText` when there are no voice timestamps |
 | `ui/orb.js` | The orb: core of light, body and Dysnomia, assembled on a timeline (full, quick 1.2 s, reduced) |
 | `ui/timeline.js` | Paused Web Animations positioned from an injected clock (ADR 0013) |
