@@ -1,5 +1,8 @@
 # endue Desk
 
+English · [日本語](docs/i18n/ja/README.md) · [中文](docs/i18n/zh/README.md) ·
+[Français](docs/i18n/fr/README.md) · [Deutsch](docs/i18n/de/README.md) · [한국어](docs/i18n/ko/README.md)
+
 One app that is one OS.
 
 **No fixed screens.** Desk is a Tauri shell and a small Rust core with a web runtime on top, and every
@@ -7,7 +10,7 @@ feature above that, the built-in ones included, is a plugin you can replace whil
 Like Emacs: the core keeps only primitives (files, processes, network, audio, windows), and everything
 else is code you can change without restarting.
 
-> Status: pre-alpha. `just dev` opens an empty 2D desk with a status line; plugins come next.
+> Status: pre-alpha. `just dev` opens the desk with Eris and the first run; start `just brain-echo` first and she answers what you type (an echo for now).
 
 <!-- Screenshot: added with the first-run scene. -->
 

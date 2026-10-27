@@ -15,7 +15,7 @@ English summary is `docs/architecture.md`.
 | `examples/` | The smallest working examples; each one runs with one command |
 | `specs/` | Language-neutral contracts (bridge, brain, plugin, wit): the single source of truth for types |
 | `e2e/` | App-level tests (tauri-driver), install smoke tests and performance budgets |
-| `docs/` | Architecture, ADRs and guides; `docs/ko/` holds the Korean design documents |
+| `docs/` | Architecture, ADRs and guides; `docs/ko/` holds the Korean design documents, `docs/i18n/` the translations |
 | `brand/` | endue and Eris brand assets. Not Apache-2.0: see `brand/LICENSE` |
 | `scripts/` | Scripts that `justfile` recipes call |
 | `.github/` | Workflows, issue and PR templates, CODEOWNERS |
@@ -80,5 +80,10 @@ Budgets per issue: 3 CI failures, 2 review rounds, 24 hours. Past any of them, s
 ## Conventions
 
 - Language: code, comments, commits and English documents are in English.
+- Translations: user-facing documents (`README.md`, `CONTRIBUTING.md`, `SECURITY.md`, `TRADEMARK.md`,
+  `docs/architecture.md`, `docs/plugins/authoring.md`) ship in ja, zh, fr, de and ko under
+  `docs/i18n/<lang>/`. English is the source: a PR that changes one updates all five translations, and
+  `scripts/docs-i18n.test.mjs` fails otherwise. `docs/ko/` holds the Korean design sources, not
+  translations.
 - Commits: Conventional Commits with a DCO sign-off (`git commit -s`), author taken from git config.
 - Branches: one branch per task; never push directly to `main`.

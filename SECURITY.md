@@ -1,5 +1,9 @@
 # Security policy
 
+English · [日本語](docs/i18n/ja/SECURITY.md) · [中文](docs/i18n/zh/SECURITY.md) ·
+[Français](docs/i18n/fr/SECURITY.md) · [Deutsch](docs/i18n/de/SECURITY.md) ·
+[한국어](docs/i18n/ko/SECURITY.md)
+
 ## Reporting a vulnerability
 
 Please do not open a public issue. Report privately, either way:
