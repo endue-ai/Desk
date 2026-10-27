@@ -1,0 +1,44 @@
+name: plugin-validate
+
+on:
+  pull_request:
+    paths:
+      - "plugins/**"
+      - "examples/**"
+  push:
+    branches: [main]
+    paths:
+      - "plugins/**"
+      - "examples/**"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: plugin-validate-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  plugin-validate:
+    name: plugin-validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install Rust toolchain (rust-toolchain.toml)
+        run: rustup toolchain install
+
+      - uses: Swatinem/rust-cache@v2
+
+      - run: cargo build -p desk-cli --locked
+
+      - name: desk plugin validate, for every folder with a plugin.json
+        run: |
+          status=0
+          for manifest in plugins/*/plugin.json examples/*/plugin.json; do
+            [ -f "$manifest" ] || continue
+            dir="$(dirname "$manifest")"
+            if ./target/debug/desk plugin validate "$dir"; then :; else status=1; fi
+          done
+          exit "$status"
