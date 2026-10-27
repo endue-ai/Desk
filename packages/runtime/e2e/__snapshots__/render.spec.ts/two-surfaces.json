@@ -1,0 +1,175 @@
+{
+  "tag": "div",
+  "id": "desk",
+  "class": "desk",
+  "box": [
+    0,
+    0,
+    1280,
+    800
+  ],
+  "style": {
+    "display": "grid",
+    "background-color": "rgb(20, 20, 22)",
+    "color": "rgb(242, 240, 245)",
+    "border-top-color": "rgb(242, 240, 245)",
+    "opacity": "1"
+  },
+  "children": [
+    {
+      "tag": "main",
+      "class": "desk-compositor",
+      "box": [
+        0,
+        0,
+        1280,
+        772
+      ],
+      "style": {
+        "display": "grid",
+        "background-color": "rgba(0, 0, 0, 0)",
+        "color": "rgb(242, 240, 245)",
+        "border-top-color": "rgb(242, 240, 245)",
+        "opacity": "1"
+      },
+      "children": [
+        {
+          "tag": "section",
+          "class": "desk-surface",
+          "data-surface": "notes",
+          "tabindex": "-1",
+          "box": [
+            12,
+            12,
+            411,
+            368
+          ],
+          "style": {
+            "display": "grid",
+            "background-color": "rgb(30, 29, 33)",
+            "color": "rgb(242, 240, 245)",
+            "border-top-color": "rgb(51, 49, 54)",
+            "opacity": "1"
+          },
+          "children": [
+            {
+              "tag": "header",
+              "class": "desk-surface-title",
+              "box": [
+                13,
+                13,
+                409,
+                28
+              ],
+              "style": {
+                "display": "block",
+                "background-color": "rgba(0, 0, 0, 0)",
+                "color": "rgb(176, 173, 183)",
+                "border-top-color": "rgb(176, 173, 183)",
+                "opacity": "1"
+              },
+              "text": "Notes"
+            },
+            {
+              "tag": "iframe",
+              "class": "desk-surface-frame",
+              "sandbox": "allow-scripts",
+              "title": "Notes",
+              "box": [
+                13,
+                41,
+                409,
+                338
+              ],
+              "style": {
+                "display": "block",
+                "background-color": "rgba(0, 0, 0, 0)",
+                "color": "rgb(242, 240, 245)",
+                "border-top-color": "rgb(242, 240, 245)",
+                "opacity": "1"
+              }
+            }
+          ]
+        },
+        {
+          "tag": "section",
+          "class": "desk-surface",
+          "data-surface": "terminal",
+          "tabindex": "-1",
+          "box": [
+            435,
+            12,
+            833,
+            748
+          ],
+          "style": {
+            "display": "grid",
+            "background-color": "rgb(30, 29, 33)",
+            "color": "rgb(242, 240, 245)",
+            "border-top-color": "rgb(51, 49, 54)",
+            "opacity": "1"
+          },
+          "children": [
+            {
+              "tag": "header",
+              "class": "desk-surface-title",
+              "box": [
+                436,
+                13,
+                831,
+                28
+              ],
+              "style": {
+                "display": "block",
+                "background-color": "rgba(0, 0, 0, 0)",
+                "color": "rgb(176, 173, 183)",
+                "border-top-color": "rgb(176, 173, 183)",
+                "opacity": "1"
+              },
+              "text": "Terminal"
+            },
+            {
+              "tag": "iframe",
+              "class": "desk-surface-frame",
+              "sandbox": "allow-scripts",
+              "title": "Terminal",
+              "box": [
+                436,
+                41,
+                831,
+                718
+              ],
+              "style": {
+                "display": "block",
+                "background-color": "rgba(0, 0, 0, 0)",
+                "color": "rgb(242, 240, 245)",
+                "border-top-color": "rgb(242, 240, 245)",
+                "opacity": "1"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "footer",
+      "class": "desk-status",
+      "role": "status",
+      "aria-live": "polite",
+      "box": [
+        0,
+        772,
+        1280,
+        28
+      ],
+      "style": {
+        "display": "block",
+        "background-color": "rgba(0, 0, 0, 0)",
+        "color": "rgb(176, 173, 183)",
+        "border-top-color": "rgb(51, 49, 54)",
+        "opacity": "1"
+      },
+      "text": "desk ready · bridge: browser"
+    }
+  ]
+}

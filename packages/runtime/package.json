@@ -6,6 +6,18 @@
   "license": "Apache-2.0",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./desk.css": "./src/desk.css"
+  },
+  "scripts": {
+    "e2e": "playwright test"
+  },
+  "dependencies": {
+    "@endue-ai/bridge": "workspace:*",
+    "@endue-ai/ui": "workspace:*"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.64.1",
+    "vite": "8.3.5"
   }
 }

@@ -1,0 +1,74 @@
+/* The 2D desk. Every size is fixed in CSS so render snapshots do not depend on fonts. */
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: var(--desk-background, #141416);
+}
+
+.desk,
+.desk * {
+  box-sizing: border-box;
+}
+
+.desk {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) 28px;
+  background: var(--desk-background);
+  color: var(--desk-text);
+  font: 13px/27px -apple-system, "SUIT", "Inter", system-ui, sans-serif;
+}
+
+.desk-compositor {
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+  min-height: 0;
+}
+
+.desk-surface {
+  display: grid;
+  grid-template-rows: 28px minmax(0, 1fr);
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--desk-card);
+  border: 1px solid var(--desk-border);
+  border-radius: 10px;
+  outline: none;
+}
+
+.desk-surface:focus,
+.desk-surface:focus-within {
+  border-color: var(--desk-accent);
+}
+
+.desk-surface-title {
+  height: 28px;
+  padding: 0 12px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--desk-text-muted);
+  border-bottom: 1px solid var(--desk-border);
+}
+
+.desk-surface-frame {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: transparent;
+}
+
+.desk-status {
+  height: 28px;
+  padding: 0 12px;
+  overflow: hidden;
+  white-space: nowrap;
+  color: var(--desk-text-muted);
+  border-top: 1px solid var(--desk-border);
+}

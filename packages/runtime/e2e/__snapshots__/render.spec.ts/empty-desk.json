@@ -1,0 +1,57 @@
+{
+  "tag": "div",
+  "id": "desk",
+  "class": "desk",
+  "box": [
+    0,
+    0,
+    1280,
+    800
+  ],
+  "style": {
+    "display": "grid",
+    "background-color": "rgb(20, 20, 22)",
+    "color": "rgb(242, 240, 245)",
+    "border-top-color": "rgb(242, 240, 245)",
+    "opacity": "1"
+  },
+  "children": [
+    {
+      "tag": "main",
+      "class": "desk-compositor",
+      "box": [
+        0,
+        0,
+        1280,
+        772
+      ],
+      "style": {
+        "display": "grid",
+        "background-color": "rgba(0, 0, 0, 0)",
+        "color": "rgb(242, 240, 245)",
+        "border-top-color": "rgb(242, 240, 245)",
+        "opacity": "1"
+      }
+    },
+    {
+      "tag": "footer",
+      "class": "desk-status",
+      "role": "status",
+      "aria-live": "polite",
+      "box": [
+        0,
+        772,
+        1280,
+        28
+      ],
+      "style": {
+        "display": "block",
+        "background-color": "rgba(0, 0, 0, 0)",
+        "color": "rgb(176, 173, 183)",
+        "border-top-color": "rgb(51, 49, 54)",
+        "opacity": "1"
+      },
+      "text": "desk ready · bridge: browser"
+    }
+  ]
+}
