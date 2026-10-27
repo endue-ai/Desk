@@ -4,12 +4,7 @@ import Ajv2020 from "ajv/dist/2020.js";
 import { describe, expect, expectTypeOf, it } from "vitest";
 import type { TurnEvent } from "./brain.generated";
 import { brainSchema } from "./brain.generated";
-import type {
-  BridgeMethodMap,
-  BridgeRequest,
-  FsReadResult,
-  PluginManifest,
-} from "./generated";
+import type { BridgeMethodMap, BridgeRequest, FsReadResult, PluginManifest } from "./generated";
 
 type Schema = { $id: string; $defs: Record<string, unknown> };
 type Vector = { file: string; valid: boolean; target: string; instance: unknown };

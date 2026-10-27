@@ -69,7 +69,11 @@ fn roundtrip<T: DeserializeOwned + Serialize>(vector: &Vector) {
     let typed: T = serde_json::from_value(vector.instance.clone())
         .unwrap_or_else(|e| panic!("{} does not deserialize: {e}", vector.file));
     let back = serde_json::to_value(&typed).unwrap();
-    assert_eq!(back, vector.instance, "{} changed in a round trip", vector.file);
+    assert_eq!(
+        back, vector.instance,
+        "{} changed in a round trip",
+        vector.file
+    );
 }
 
 #[test]

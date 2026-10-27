@@ -49,7 +49,10 @@ fn vectors(spec: &str) -> Vec<Vector> {
         for path in paths {
             let mut doc = read_json(&path);
             out.push(Vector {
-                file: format!("{spec}/{kind}/{}", path.file_name().unwrap().to_string_lossy()),
+                file: format!(
+                    "{spec}/{kind}/{}",
+                    path.file_name().unwrap().to_string_lossy()
+                ),
                 valid,
                 target: doc["target"].as_str().unwrap().to_owned(),
                 instance: doc["instance"].take(),
@@ -62,7 +65,10 @@ fn vectors(spec: &str) -> Vec<Vector> {
 /// Validate every vector of `spec` against `docs`; returns the files judged differently.
 fn judge(docs: &[Value], spec: &str) -> Vec<String> {
     let registry = jsonschema::Registry::new()
-        .extend(docs.iter().map(|doc| (doc["$id"].as_str().unwrap().to_owned(), doc.clone())))
+        .extend(
+            docs.iter()
+                .map(|doc| (doc["$id"].as_str().unwrap().to_owned(), doc.clone())),
+        )
         .unwrap()
         .prepare()
         .unwrap();
@@ -102,7 +108,11 @@ fn roundtrip<T: DeserializeOwned + Serialize>(vector: &Vector) {
     let typed: T = serde_json::from_value(vector.instance.clone())
         .unwrap_or_else(|e| panic!("{} does not deserialize: {e}", vector.file));
     let back = serde_json::to_value(&typed).unwrap();
-    assert_eq!(back, vector.instance, "{} changed in a round trip", vector.file);
+    assert_eq!(
+        back, vector.instance,
+        "{} changed in a round trip",
+        vector.file
+    );
 }
 
 #[test]

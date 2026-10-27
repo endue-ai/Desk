@@ -24,7 +24,12 @@ describe("codegen", () => {
   it("emits a Rust type and a TypeScript type for every bridge request", () => {
     const rust = first["crates/desk-bridge/src/generated.rs"];
     const ts = first["packages/bridge/src/generated.ts"];
-    for (const name of ["FsReadRequest", "ProcSpawnRequest", "NetFetchRequest", "PermRevokeRequest"]) {
+    for (const name of [
+      "FsReadRequest",
+      "ProcSpawnRequest",
+      "NetFetchRequest",
+      "PermRevokeRequest",
+    ]) {
       assert.match(rust, new RegExp(`pub struct ${name} \\{`), `${name} in Rust`);
       assert.match(ts, new RegExp(`export interface ${name} \\{`), `${name} in TypeScript`);
     }
