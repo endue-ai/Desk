@@ -1,0 +1,142 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://endue.ai/specs/bridge/v0/perm.schema.json",
+  "title": "Desk bridge v0: perm",
+  "description": "Permissions: request, query and revoke grants. These calls need no scope: asking is always allowed, and the person decides.",
+  "$defs": {
+    "PermRequestRequest": {
+      "description": "Ask the person for a permission. Resolves when they answer.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "perm.request" },
+        "params": { "$ref": "#/$defs/PermRequestParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "PermRequestParams": {
+      "description": "Parameters of perm.request.",
+      "type": "object",
+      "properties": {
+        "permission": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/Permission" },
+        "reason": {
+          "description": "Shown to the person in the prompt.",
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": ["permission", "reason"],
+      "additionalProperties": false
+    },
+    "PermRequestResult": {
+      "description": "Result of perm.request. A refusal is a result, not an error.",
+      "type": "object",
+      "properties": {
+        "granted": { "type": "boolean" },
+        "grant": { "$ref": "#/$defs/Grant" }
+      },
+      "required": ["granted"],
+      "additionalProperties": false
+    },
+    "PermQueryRequest": {
+      "description": "List the caller's current grants.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "perm.query" },
+        "params": { "$ref": "#/$defs/PermQueryParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "PermQueryParams": {
+      "description": "Parameters of perm.query. With permission, only grants that cover it are returned.",
+      "type": "object",
+      "properties": {
+        "permission": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/Permission" }
+      },
+      "additionalProperties": false
+    },
+    "PermQueryResult": {
+      "description": "Result of perm.query.",
+      "type": "object",
+      "properties": {
+        "grants": { "type": "array", "items": { "$ref": "#/$defs/Grant" } }
+      },
+      "required": ["grants"],
+      "additionalProperties": false
+    },
+    "PermRevokeRequest": {
+      "description": "Give a grant back. The person can also revoke any grant at any time.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "perm.revoke" },
+        "params": { "$ref": "#/$defs/PermRevokeParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "PermRevokeParams": {
+      "description": "Parameters of perm.revoke.",
+      "type": "object",
+      "properties": {
+        "grantId": { "type": "string", "minLength": 1 }
+      },
+      "required": ["grantId"],
+      "additionalProperties": false
+    },
+    "PermRevokeResult": {
+      "description": "Result of perm.revoke.",
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "Grant": {
+      "description": "A permission the person granted to the caller.",
+      "type": "object",
+      "properties": {
+        "grantId": { "type": "string", "minLength": 1 },
+        "permission": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/Permission" },
+        "grantedAt": {
+          "description": "RFC 3339 timestamp.",
+          "type": "string",
+          "format": "date-time"
+        },
+        "expiresAt": {
+          "description": "RFC 3339 timestamp; absent means until revoked.",
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["grantId", "permission", "grantedAt"],
+      "additionalProperties": false
+    },
+    "PermChangedEvent": {
+      "description": "One of the caller's grants changed.",
+      "type": "object",
+      "properties": {
+        "event": { "const": "perm.changed" },
+        "data": { "$ref": "#/$defs/PermChangedData" }
+      },
+      "required": ["event", "data"],
+      "additionalProperties": false
+    },
+    "PermChangedData": {
+      "description": "Payload of perm.changed.",
+      "type": "object",
+      "properties": {
+        "grantId": { "type": "string", "minLength": 1 },
+        "change": { "$ref": "#/$defs/GrantChange" }
+      },
+      "required": ["grantId", "change"],
+      "additionalProperties": false
+    },
+    "GrantChange": {
+      "description": "What happened to the grant.",
+      "type": "string",
+      "enum": ["granted", "revoked", "expired"]
+    }
+  }
+}

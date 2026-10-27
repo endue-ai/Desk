@@ -1,0 +1,9 @@
+{
+  "target": "TurnEvent",
+  "description": "the turn waits for a tool result",
+  "instance": {
+    "type": "turn.completed",
+    "turnId": "t1",
+    "stopReason": "tool_call"
+  }
+}

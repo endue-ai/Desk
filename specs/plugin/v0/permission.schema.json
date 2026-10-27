@@ -1,0 +1,132 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://endue.ai/specs/plugin/v0/permission.schema.json",
+  "title": "Desk permission vocabulary v0",
+  "description": "Every primitive a plugin or agent can reach, and the scope each one is limited to. Everything not granted is denied.",
+  "$defs": {
+    "Permission": {
+      "description": "One permission with its scope. Plugin manifests declare these; bridge calls carry the one that covers them.",
+      "oneOf": [
+        { "$ref": "#/$defs/FsReadPermission" },
+        { "$ref": "#/$defs/FsWritePermission" },
+        { "$ref": "#/$defs/ProcSpawnPermission" },
+        { "$ref": "#/$defs/NetFetchPermission" },
+        { "$ref": "#/$defs/AudioCapturePermission" },
+        { "$ref": "#/$defs/UiSurfacePermission" },
+        { "$ref": "#/$defs/UiNotifyPermission" }
+      ]
+    },
+    "FsReadPermission": {
+      "description": "Read files, list folders and watch for changes under the given paths.",
+      "type": "object",
+      "properties": {
+        "permission": { "const": "fs:read" },
+        "paths": {
+          "description": "Path patterns the permission covers.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/PathPattern" },
+          "minItems": 1
+        }
+      },
+      "required": ["permission", "paths"],
+      "additionalProperties": false
+    },
+    "FsWritePermission": {
+      "description": "Create, overwrite and delete files under the given paths.",
+      "type": "object",
+      "properties": {
+        "permission": { "const": "fs:write" },
+        "paths": {
+          "description": "Path patterns the permission covers.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/PathPattern" },
+          "minItems": 1
+        }
+      },
+      "required": ["permission", "paths"],
+      "additionalProperties": false
+    },
+    "ProcSpawnPermission": {
+      "description": "Start, write to and stop the listed programs, optionally in a PTY.",
+      "type": "object",
+      "properties": {
+        "permission": { "const": "proc:spawn" },
+        "commands": {
+          "description": "Program names or absolute paths, without arguments.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/Command" },
+          "minItems": 1
+        },
+        "pty": {
+          "description": "Whether the programs may run in a pseudo-terminal.",
+          "type": "boolean"
+        }
+      },
+      "required": ["permission", "commands"],
+      "additionalProperties": false
+    },
+    "NetFetchPermission": {
+      "description": "Make HTTP(S) requests to the listed hosts.",
+      "type": "object",
+      "properties": {
+        "permission": { "const": "net:fetch" },
+        "hosts": {
+          "description": "Host patterns the permission covers.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/HostPattern" },
+          "minItems": 1
+        }
+      },
+      "required": ["permission", "hosts"],
+      "additionalProperties": false
+    },
+    "AudioCapturePermission": {
+      "description": "Capture microphone audio, and optionally listen for the wake word.",
+      "type": "object",
+      "properties": {
+        "permission": { "const": "audio:capture" },
+        "wakeWord": {
+          "description": "Whether wake-word events may be delivered.",
+          "type": "boolean"
+        }
+      },
+      "required": ["permission"],
+      "additionalProperties": false
+    },
+    "UiSurfacePermission": {
+      "description": "Open and close the surfaces the plugin manifest declares.",
+      "type": "object",
+      "properties": {
+        "permission": { "const": "ui:surface" }
+      },
+      "required": ["permission"],
+      "additionalProperties": false
+    },
+    "UiNotifyPermission": {
+      "description": "Show notifications.",
+      "type": "object",
+      "properties": {
+        "permission": { "const": "ui:notify" }
+      },
+      "required": ["permission"],
+      "additionalProperties": false
+    },
+    "PathPattern": {
+      "description": "An absolute path, or one rooted at ~ or at ${plugin}, ${workspace} or ${home}, with forward slashes. * matches within a segment and ** across segments.",
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(/|~(/|$)|[A-Za-z]:/|\\$\\{(plugin|workspace|home)\\}(/|$))[^\\\\]*$"
+    },
+    "HostPattern": {
+      "description": "A host name, optionally with a port, or *. followed by a domain to cover its subdomains.",
+      "type": "string",
+      "pattern": "^(\\*\\.)?[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*(:[0-9]{1,5})?$"
+    },
+    "Command": {
+      "description": "A program name looked up on PATH, or an absolute path. No arguments and no whitespace.",
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[^\\s]+$"
+    }
+  }
+}

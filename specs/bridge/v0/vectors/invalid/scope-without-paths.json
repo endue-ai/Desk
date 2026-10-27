@@ -1,0 +1,15 @@
+{
+  "target": "BridgeRequest",
+  "description": "a scope covers at least one path",
+  "instance": {
+    "id": 1,
+    "method": "fs.list",
+    "params": {
+      "path": "~/",
+      "scope": {
+        "permission": "fs:read",
+        "paths": []
+      }
+    }
+  }
+}

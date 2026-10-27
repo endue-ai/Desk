@@ -1,0 +1,102 @@
+/// Host interface for Desk logic plugins (Wasm components).
+///
+/// A subset of the Desk bridge (specs/bridge/v0): every function here is one bridge method, named
+/// `<interface>.<function>` there. Calls carry no scope argument; the host attaches the plugin's
+/// granted permission from its manifest, and anything not granted fails with permission-denied.
+package desk:host@0.0.0;
+
+interface types {
+  /// Mirrors ErrorCode in specs/bridge/v0/bridge.schema.json.
+  enum error-code {
+    permission-denied,
+    invalid-params,
+    not-found,
+    already-exists,
+    io-error,
+    timeout,
+    cancelled,
+    unsupported,
+    internal,
+  }
+
+  record error {
+    code: error-code,
+    message: string,
+  }
+}
+
+interface fs {
+  use types.{error};
+
+  enum entry-kind {
+    file,
+    dir,
+    symlink,
+  }
+
+  record dir-entry {
+    name: string,
+    kind: entry-kind,
+    size: option<u64>,
+  }
+
+  /// bridge: fs.read
+  read: func(path: string) -> result<list<u8>, error>;
+
+  /// bridge: fs.list (`list` is a WIT keyword, hence the % escape)
+  %list: func(path: string) -> result<list<dir-entry>, error>;
+}
+
+interface net {
+  use types.{error};
+
+  record request {
+    url: string,
+    method: string,
+    headers: list<tuple<string, string>>,
+    body: option<list<u8>>,
+    timeout-ms: option<u32>,
+  }
+
+  record response {
+    status: u16,
+    headers: list<tuple<string, string>>,
+    body: list<u8>,
+  }
+
+  /// bridge: net.fetch
+  fetch: func(req: request) -> result<response, error>;
+}
+
+interface ui {
+  use types.{error};
+
+  enum notify-level {
+    info,
+    success,
+    warning,
+    error,
+  }
+
+  /// bridge: ui.notify
+  notify: func(title: string, body: option<string>, level: notify-level) -> result<_, error>;
+}
+
+interface perm {
+  record grant {
+    grant-id: string,
+    /// The permission as JSON, in the vocabulary of specs/plugin/v0/permission.schema.json.
+    permission: string,
+  }
+
+  /// bridge: perm.query
+  query: func() -> list<grant>;
+}
+
+/// What a logic plugin may import.
+world plugin {
+  import fs;
+  import net;
+  import ui;
+  import perm;
+}

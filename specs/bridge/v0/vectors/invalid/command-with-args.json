@@ -1,0 +1,15 @@
+{
+  "target": "BridgeRequest",
+  "description": "command is a program, arguments go in args",
+  "instance": {
+    "id": 1,
+    "method": "proc.spawn",
+    "params": {
+      "command": "git status",
+      "scope": {
+        "permission": "proc:spawn",
+        "commands": ["git"]
+      }
+    }
+  }
+}

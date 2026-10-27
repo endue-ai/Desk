@@ -1,0 +1,16 @@
+{
+  "target": "PluginManifest",
+  "description": "only UI plugins declare surfaces",
+  "instance": {
+    "id": "example.hello-wasm",
+    "version": "0.1.0",
+    "kind": "logic",
+    "entry": "logic/plugin.wasm",
+    "surfaces": [
+      {
+        "id": "main",
+        "placement": "center"
+      }
+    ]
+  }
+}

@@ -1,0 +1,108 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://endue.ai/specs/bridge/v0/ui.schema.json",
+  "title": "Desk bridge v0: ui",
+  "description": "Surfaces and notifications. Scoped by ui:surface and ui:notify.",
+  "$defs": {
+    "UiSurfaceOpenRequest": {
+      "description": "Open one of the surfaces the caller's manifest declares.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "ui.surface.open" },
+        "params": { "$ref": "#/$defs/UiSurfaceOpenParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "UiSurfaceOpenParams": {
+      "description": "Parameters of ui.surface.open.",
+      "type": "object",
+      "properties": {
+        "surface": {
+          "description": "A surface id from the manifest.",
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*$"
+        },
+        "placement": { "$ref": "../../plugin/v0/plugin.schema.json#/$defs/SurfacePlacement" },
+        "title": { "type": "string" },
+        "scope": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/UiSurfacePermission" }
+      },
+      "required": ["surface", "scope"],
+      "additionalProperties": false
+    },
+    "UiSurfaceOpenResult": {
+      "description": "Result of ui.surface.open.",
+      "type": "object",
+      "properties": {
+        "handle": { "description": "Names the open surface.", "type": "string", "minLength": 1 }
+      },
+      "required": ["handle"],
+      "additionalProperties": false
+    },
+    "UiSurfaceCloseRequest": {
+      "description": "Close a surface the caller opened.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "ui.surface.close" },
+        "params": { "$ref": "#/$defs/UiSurfaceCloseParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "UiSurfaceCloseParams": {
+      "description": "Parameters of ui.surface.close.",
+      "type": "object",
+      "properties": {
+        "handle": { "type": "string", "minLength": 1 },
+        "scope": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/UiSurfacePermission" }
+      },
+      "required": ["handle", "scope"],
+      "additionalProperties": false
+    },
+    "UiSurfaceCloseResult": {
+      "description": "Result of ui.surface.close.",
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "UiNotifyRequest": {
+      "description": "Show a notification.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "ui.notify" },
+        "params": { "$ref": "#/$defs/UiNotifyParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "UiNotifyParams": {
+      "description": "Parameters of ui.notify.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "minLength": 1 },
+        "body": { "type": "string" },
+        "level": { "$ref": "#/$defs/NotifyLevel" },
+        "scope": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/UiNotifyPermission" }
+      },
+      "required": ["title", "scope"],
+      "additionalProperties": false
+    },
+    "NotifyLevel": {
+      "description": "How a notification is presented; info by default.",
+      "type": "string",
+      "enum": ["info", "success", "warning", "error"]
+    },
+    "UiNotifyResult": {
+      "description": "Result of ui.notify.",
+      "type": "object",
+      "properties": {
+        "notificationId": { "type": "string", "minLength": 1 }
+      },
+      "required": ["notificationId"],
+      "additionalProperties": false
+    }
+  }
+}

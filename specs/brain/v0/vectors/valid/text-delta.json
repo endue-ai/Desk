@@ -1,0 +1,9 @@
+{
+  "target": "TurnEvent",
+  "description": "streamed answer text",
+  "instance": {
+    "type": "text.delta",
+    "turnId": "t1",
+    "text": "Hel"
+  }
+}

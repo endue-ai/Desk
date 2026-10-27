@@ -1,0 +1,10 @@
+{
+  "target": "LeaseAcquireRequest",
+  "description": "leases last at least 5 seconds",
+  "instance": {
+    "holder": {
+      "deskId": "desk-a"
+    },
+    "ttlSeconds": 1
+  }
+}

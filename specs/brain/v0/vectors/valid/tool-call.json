@@ -1,0 +1,15 @@
+{
+  "target": "TurnEvent",
+  "description": "the brain asks Desk to run a tool",
+  "instance": {
+    "type": "tool.call",
+    "turnId": "t1",
+    "call": {
+      "callId": "c1",
+      "name": "echo",
+      "arguments": {
+        "text": "hello"
+      }
+    }
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "target": "PluginManifest",
+  "description": "kind is ui, logic or tool",
+  "instance": {
+    "id": "example.theme",
+    "version": "0.1.0",
+    "kind": "theme",
+    "entry": "theme.css"
+  }
+}

@@ -54,6 +54,38 @@ jobs:
 
       - run: just test
 
+  codegen-check:
+    name: codegen-check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install Rust toolchain (rust-toolchain.toml, for rustfmt)
+        run: rustup toolchain install
+
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: just
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: just codegen
+
+      - name: Generated files match the specs
+        run: |
+          if ! git diff --exit-code; then
+            echo "::error::Generated files are out of date. Run 'just codegen' and commit the result."
+            exit 1
+          fi
+
   red-on-base:
     name: red-on-base
     if: github.event_name == 'pull_request'

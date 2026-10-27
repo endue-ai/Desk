@@ -1,0 +1,11 @@
+{
+  "target": "TurnRequest",
+  "description": "a message has at least one part",
+  "instance": {
+    "leaseId": "l1",
+    "message": {
+      "role": "user",
+      "content": []
+    }
+  }
+}

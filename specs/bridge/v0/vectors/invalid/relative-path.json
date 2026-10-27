@@ -1,0 +1,15 @@
+{
+  "target": "BridgeRequest",
+  "description": "paths must be absolute or rooted",
+  "instance": {
+    "id": 1,
+    "method": "fs.read",
+    "params": {
+      "path": "notes.md",
+      "scope": {
+        "permission": "fs:read",
+        "paths": ["~/Documents/**"]
+      }
+    }
+  }
+}

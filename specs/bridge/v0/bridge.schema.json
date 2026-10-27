@@ -1,0 +1,108 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://endue.ai/specs/bridge/v0/bridge.schema.json",
+  "title": "Desk bridge v0: envelope",
+  "description": "Messages between the web runtime and the Rust core. Requests carry their permission scope; anything not granted is denied.",
+  "$defs": {
+    "RequestId": {
+      "description": "Chosen by the caller, unique among its requests in flight. The response repeats it.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "Path": {
+      "description": "An absolute path, or one rooted at ~ or at ${plugin}, ${workspace} or ${home}, with forward slashes.",
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(/|~(/|$)|[A-Za-z]:/|\\$\\{(plugin|workspace|home)\\}(/|$))[^\\\\]*$"
+    },
+    "Encoding": {
+      "description": "How binary-safe string content is encoded.",
+      "type": "string",
+      "enum": ["utf8", "base64"]
+    },
+    "BridgeRequest": {
+      "description": "Any bridge call. The method field selects the params shape.",
+      "oneOf": [
+        { "$ref": "fs.schema.json#/$defs/FsReadRequest" },
+        { "$ref": "fs.schema.json#/$defs/FsWriteRequest" },
+        { "$ref": "fs.schema.json#/$defs/FsListRequest" },
+        { "$ref": "fs.schema.json#/$defs/FsWatchRequest" },
+        { "$ref": "proc.schema.json#/$defs/ProcSpawnRequest" },
+        { "$ref": "proc.schema.json#/$defs/ProcWriteRequest" },
+        { "$ref": "proc.schema.json#/$defs/ProcResizeRequest" },
+        { "$ref": "proc.schema.json#/$defs/ProcKillRequest" },
+        { "$ref": "net.schema.json#/$defs/NetFetchRequest" },
+        { "$ref": "audio.schema.json#/$defs/AudioCaptureStartRequest" },
+        { "$ref": "audio.schema.json#/$defs/AudioCaptureStopRequest" },
+        { "$ref": "ui.schema.json#/$defs/UiSurfaceOpenRequest" },
+        { "$ref": "ui.schema.json#/$defs/UiSurfaceCloseRequest" },
+        { "$ref": "ui.schema.json#/$defs/UiNotifyRequest" },
+        { "$ref": "perm.schema.json#/$defs/PermRequestRequest" },
+        { "$ref": "perm.schema.json#/$defs/PermQueryRequest" },
+        { "$ref": "perm.schema.json#/$defs/PermRevokeRequest" }
+      ]
+    },
+    "BridgeResponse": {
+      "description": "The answer to one request: a result, or an error.",
+      "oneOf": [{ "$ref": "#/$defs/BridgeSuccess" }, { "$ref": "#/$defs/BridgeFailure" }]
+    },
+    "BridgeSuccess": {
+      "description": "The call succeeded. result has the shape of the method's Result type.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "#/$defs/RequestId" },
+        "ok": { "const": true },
+        "result": { "description": "The method's result." }
+      },
+      "required": ["id", "ok", "result"],
+      "additionalProperties": false
+    },
+    "BridgeFailure": {
+      "description": "The call failed or was denied.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "#/$defs/RequestId" },
+        "ok": { "const": false },
+        "error": { "$ref": "#/$defs/BridgeError" }
+      },
+      "required": ["id", "ok", "error"],
+      "additionalProperties": false
+    },
+    "BridgeError": {
+      "description": "Why a call failed. permission_denied names the permission that was missing.",
+      "type": "object",
+      "properties": {
+        "code": { "$ref": "#/$defs/ErrorCode" },
+        "message": { "description": "For people; never parse it.", "type": "string" },
+        "permission": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/Permission" }
+      },
+      "required": ["code", "message"],
+      "additionalProperties": false
+    },
+    "ErrorCode": {
+      "description": "Machine-readable failure reason.",
+      "type": "string",
+      "enum": [
+        "permission_denied",
+        "invalid_params",
+        "not_found",
+        "already_exists",
+        "io_error",
+        "timeout",
+        "cancelled",
+        "unsupported",
+        "internal"
+      ]
+    },
+    "BridgeEvent": {
+      "description": "Something the core reports without being asked: file changes, process output, wake words, permission changes.",
+      "oneOf": [
+        { "$ref": "fs.schema.json#/$defs/FsChangedEvent" },
+        { "$ref": "proc.schema.json#/$defs/ProcOutputEvent" },
+        { "$ref": "proc.schema.json#/$defs/ProcExitEvent" },
+        { "$ref": "audio.schema.json#/$defs/AudioWakeEvent" },
+        { "$ref": "perm.schema.json#/$defs/PermChangedEvent" }
+      ]
+    }
+  }
+}

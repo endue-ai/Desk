@@ -1,0 +1,27 @@
+{
+  "target": "PluginManifest",
+  "description": "a UI plugin with a surface and permissions",
+  "instance": {
+    "id": "endue.sidebar",
+    "name": "Sidebar",
+    "version": "0.1.0",
+    "kind": "ui",
+    "entry": "ui/index.html",
+    "permissions": [
+      {
+        "permission": "ui:surface"
+      },
+      {
+        "permission": "fs:read",
+        "paths": ["${plugin}/**"]
+      }
+    ],
+    "surfaces": [
+      {
+        "id": "main",
+        "title": "Sidebar",
+        "placement": "left"
+      }
+    ]
+  }
+}

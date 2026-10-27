@@ -1,4 +1,77 @@
-# specs/bridge/v0
+# Desk bridge v0
 
-Desk bridge contract: JSON Schema and one page per method (fs, proc, net, audio, ui, perm). Every call is
-denied by default and carries its permission scope. Empty until specs v0.
+The calls the web runtime (and every plugin through it) makes into the Rust core. JSON Schema 2020-12,
+one file per namespace: `bridge.schema.json` (envelope, errors, shared types), `fs`, `proc`, `net`,
+`audio`, `ui` and `perm`. v0 may break on any minor release (ADR 0004).
+
+## Envelope
+
+A request is `{ id, method, params }`; its response is `{ id, ok: true, result }` or
+`{ id, ok: false, error }`; unprompted messages are `{ event, data }`. `result` has the shape of the
+method's `*Result` definition.
+
+## Deny by default
+
+Every call except `perm.*` carries its permission scope in `params.scope`, using the vocabulary in
+`specs/plugin/v0/permission.schema.json`. The core runs a call only when the caller holds a grant that
+covers the scope and the scope covers the call (the path, command or host). Otherwise the answer is
+`permission_denied`, with the missing permission in `error.permission`. Scopes are never widened
+implicitly: asking is `perm.request`, and the person decides.
+
+## Methods
+
+**fs.read** reads a whole file and returns its content as UTF-8 text or base64. The path must be inside
+an `fs:read` scope. Missing files are `not_found`; folders are `invalid_params`.
+
+**fs.write** creates or overwrites a file with the given content and returns the bytes written. It needs
+an `fs:write` scope; with `createDirs` it also creates missing parent folders inside the same scope.
+
+**fs.list** returns the entries of one folder with their kind and, for files, their size. It is not
+recursive. It needs an `fs:read` scope.
+
+**fs.watch** starts reporting changes under a path as `fs.changed` events, recursively when asked, and
+returns a `watchId`. Watches end when the caller unloads or its grant is revoked. It needs `fs:read`.
+
+**proc.spawn** starts a program with arguments (no shell), an optional working folder and extra
+environment, and returns a `procId`. With `pty` it runs in a pseudo-terminal of that size and the scope
+must allow `pty`. Output arrives as `proc.output` events and the end as `proc.exit`.
+
+**proc.write** writes data to the process's stdin, or to its PTY. It needs the same `proc:spawn` scope
+the process was started with.
+
+**proc.resize** changes the PTY size of a process started with `pty`; other processes answer
+`unsupported`.
+
+**proc.kill** sends a portable signal (`term` by default; `kill`, `int`, `hup`). The process still
+reports `proc.exit` when it ends.
+
+**net.fetch** makes one HTTP or HTTPS request to a host inside a `net:fetch` scope, follows no redirects
+to hosts outside it, and returns status, headers and the whole body. Non-2xx statuses are results, not
+errors; a missed `timeoutMs` is `timeout`.
+
+**audio.capture.start** opens the microphone under an `audio:capture` scope and returns a `captureId`.
+With `wakeWord` (allowed by the scope) the core listens for the wake word and sends `audio.wake` events;
+audio itself never leaves the core through the bridge in v0.
+
+**audio.capture.stop** closes a capture. Stopping a capture that already ended is not an error.
+
+**ui.surface.open** opens one of the surfaces the caller's manifest declares, optionally at a placement
+and with a title, and returns a handle. It needs `ui:surface`.
+
+**ui.surface.close** closes a surface the caller opened.
+
+**ui.notify** shows a notification with a title, an optional body and a level. It needs `ui:notify`.
+
+**perm.request** asks the person for a permission, showing the reason, and resolves when they answer.
+A refusal is `granted: false`, not an error. It needs no scope.
+
+**perm.query** lists the caller's grants, optionally only those covering a given permission.
+
+**perm.revoke** gives a grant back. People can revoke any grant at any time; callers learn about it from
+`perm.changed`.
+
+## Vectors
+
+`vectors/valid` and `vectors/invalid` hold `{ target, description, instance }` files. Rust
+(`crates/desk-bridge/tests/contract.rs`) and TypeScript (`packages/bridge/src/contract.test.ts`) must
+judge each one as its folder says.
