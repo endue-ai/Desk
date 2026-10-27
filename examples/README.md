@@ -10,4 +10,4 @@ AI agents both start by copying from here.
 | `plugin-hello-mcp/` | The smallest tool plugin (MCP, inside the VM) |
 | `brain-echo/` | The smallest implementation of `specs/brain`, for tests and learning |
 
-Status: folders only.
+Status: `plugin-hello-ui` runs with `just dev`; the others are folders only.

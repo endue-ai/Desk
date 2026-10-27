@@ -1,0 +1,96 @@
+> 本文为中文译文，内容以[英文原版](../../../plugins/authoring.md)为准。
+
+# 编写 Desk 插件
+
+Desk 插件就是一个目录。内置功能使用完全相同的格式，因此 Desk 自身能在屏幕上做的任何事，你的插件也都能做到。本文介绍 UI 插件（v0）；逻辑（Wasm）插件和工具（MCP）插件将在之后推出。
+
+## 从示例开始
+
+```bash
+cp -R examples/plugin-hello-ui ../my-plugin      # then change the id in plugin.json
+cargo run -p desk-cli -- plugin validate ../my-plugin
+```
+
+如果想在开发插件的同时在 Desk 上看到它，请将你的目录作为开发插件来运行 Desk：
+
+```bash
+DESK_DEV_PLUGINS=$PWD/../my-plugin just dev
+```
+
+保存目录中的任意文件后，只有你的插件界面会在一秒内重新加载。Desk 的其余部分以及插件的状态都保持原样。
+
+## 目录
+
+| 路径 | 是否必需 | 用途 |
+| --- | --- | --- |
+| `plugin.json` | 是 | 清单：id、version、kind、entry、permissions、surfaces |
+| `ui/index.html` | 是（即 `entry`） | Desk 加载到沙箱框架中的页面 |
+| `ui/*.js`、`ui/*.css` | 否 | 你的代码和样式，相对于入口加载 |
+| `README.md` | 建议 | 插件的作用、申请哪些权限以及原因 |
+
+清单遵循 `specs/plugin/v0/plugin.schema.json`：
+
+```json
+{
+  "id": "example.my-plugin",
+  "version": "0.1.0",
+  "kind": "ui",
+  "entry": "ui/index.html",
+  "permissions": [{ "permission": "fs:read", "paths": ["~/Documents/**"] }],
+  "surfaces": [{ "id": "main", "title": "My plugin", "placement": "center" }]
+}
+```
+
+id 使用小写的反向域名格式（`example.my-plugin`）。入口须位于目录之内。
+
+## SDK
+
+在入口页面中通过 import map 导入 SDK；Desk 在 `/_desk/plugin-sdk.js` 提供它：
+
+```html
+<script type="importmap">
+  { "imports": { "@endue-ai/plugin-sdk": "/_desk/plugin-sdk.js" } }
+</script>
+<script type="module" src="./main.js"></script>
+```
+
+```js
+import { defineUiPlugin } from "@endue-ai/plugin-sdk";
+
+defineUiPlugin({
+  async mount({ pluginId, bridge, state }) {
+    const saved = state.get() ?? { count: 0 };   // survives reloads of this surface
+    state.set({ count: saved.count + 1 });
+    const { grants } = await bridge.call("perm.query", {});
+    bridge.onEvent((event) => console.log(event.event));
+  },
+});
+```
+
+`bridge.call(method, params)` 用于调用核心。在同一个 tick 内发出的调用会合并成一条消息发送。被拒绝的调用会以 `BridgeCallError` 被 reject，其 `code` 例如为 `permission_denied`。
+
+## 权限
+
+你的框架运行在只允许脚本的沙箱中：不能访问 Desk 的页面，不能进行顶层导航，不能使用表单或弹出窗口，也不能自行建立网络连接。每项能力都要经过桥接层，除 `perm.*` 之外的每次桥接调用都携带它所需的权限范围（`params.scope`）。只有当用户授予了覆盖该范围的权限时，核心才会响应。
+
+1. 在 `plugin.json` 的 `permissions` 中声明所有可能申请的内容。
+2. 在需要的那一刻再申请：`bridge.call("perm.request", { permission, reason })`。
+3. 每次调用都传入相应的范围，并尽可能缩小。
+
+词汇表（`fs:read`、`fs:write`、`proc:spawn`、`net:fetch`、`audio:capture`、`ui:surface`、`ui:notify`、`plugin:manage`）见 `specs/plugin/v0/README.md`。
+
+## 测试
+
+`@endue-ai/plugin-sdk/testing` 无需浏览器即可运行你的插件，并以模拟的桥接层作为对端：
+
+```ts
+import { defineUiPlugin } from "@endue-ai/plugin-sdk";
+import { createTestHost } from "@endue-ai/plugin-sdk/testing";
+
+const host = createTestHost({ pluginId: "example.my-plugin", handlers: { "perm.query": () => ({ grants: [] }) } });
+await defineUiPlugin(myPlugin, host.transport);
+await host.settle();
+// host.calls, host.state, host.emit(event)
+```
+
+发布之前，必须通过 `desk plugin validate <folder>`；CI 会对 `plugins/` 和 `examples/` 中的每个目录运行该命令。

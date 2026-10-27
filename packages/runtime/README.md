@@ -7,9 +7,12 @@ Layer: Web runtime (see `docs/architecture.md`). Plain TypeScript and DOM (ADR 0
 
 ## Public API
 
-- `createRuntime({ root, bridge, clock?, storage?, platform? })` mounts the desk and returns a
-  `Runtime`: `ready`, `openSurface`, `closeSurface`, `moveSurface`, `focusSurface`, `layout()`,
-  `status()`, `shortcuts`, `dispose()`.
+- `createRuntime({ root, bridge, clock?, storage?, platform?, plugins? })` mounts the desk and returns
+  a `Runtime`: `ready`, `openSurface`, `closeSurface`, `moveSurface`, `focusSurface`, `layout()`,
+  `status()`, `shortcuts`, `plugins` (`ready`, `mounted()`), `dispose()`.
+- `PluginHost` (used when `plugins: { url }` is given): mounts enabled UI plugins from `plugin.list`,
+  relays their batched calls with the plugin as caller, reloads one surface on `plugin.changed`
+  (updated) and keeps the plugin's state; ADR 0012.
 - `ShortcutRouter`, `comboOf`: "Mod+K" style bindings, focused surface first, then global.
 - Layout: `defaultLayout`, `loadLayout`, `saveLayout`, `place`, `move`, `remove`.
 - Clock: `realClock`, `ManualClock` (inject in tests), `tween`.
@@ -24,6 +27,7 @@ pnpm --filter @endue-ai/runtime exec playwright install webkit   # once
 just test-e2e                                                # Playwright on the browser stub
 ```
 
-`e2e/` uses a fixture page with the browser bridge stub and a manual clock. Render snapshots are
+`e2e/` uses fixture pages with the browser bridge stub and a manual clock (`plugins.html` adds two UI
+plugins served by the fixture's Vite config). Render snapshots are
 serialised render trees (ADR 0011); update them with
 `pnpm --filter @endue-ai/runtime exec playwright test --update-snapshots` and review the JSON diff.
