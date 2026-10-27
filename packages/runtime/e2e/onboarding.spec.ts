@@ -94,7 +94,9 @@ test.describe("branches", () => {
     await expect(frame.locator("#live")).toContainText("That's fine. Type to me instead.");
     await expect(frame.getByLabel("Type your name")).toBeVisible();
     const requests = await page.evaluate(() =>
-      window.__desk.stub.log.filter((e) => e.request.method === "perm.request").map((e) => e.caller),
+      window.__desk.stub.log
+        .filter((e) => e.request.method === "perm.request")
+        .map((e) => e.caller),
     );
     expect(requests).toEqual(["endue.onboarding"]);
   });
@@ -116,7 +118,9 @@ test.describe("branches", () => {
       const frame = await open(page);
       await submitName(page, frame, "Ada");
       await untilScene(page, frame, "sign-in");
-      await frame.getByRole("button", { name: "Sign in with endue ID" }).click();
+      const signIn = frame.getByRole("button", { name: "Sign in with endue ID" });
+      for (let i = 0; i < 40 && !(await signIn.isVisible()); i++) await page.clock.runFor(250);
+      await signIn.click();
       await frame.getByRole("button", { name: choice }).click();
       await page.clock.runFor(500);
       await expect(frame.locator("#live")).toContainText(line);

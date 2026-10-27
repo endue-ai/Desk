@@ -9,7 +9,11 @@ describe("soul text timing (docs/ko/first-run-scenario.md, prototype LINES)", ()
   });
 
   it("shows a cap letter at `cap` and grows the rest of the word from `at`", () => {
-    const { glyphs } = layoutLine({ index: 2, words: [{ t: "Endue's", cap: 7800, at: 8050 }], out: 11000 });
+    const { glyphs } = layoutLine({
+      index: 2,
+      words: [{ t: "Endue's", cap: 7800, at: 8050 }],
+      out: 11000,
+    });
     expect(glyphs.map((g) => g.inAt)).toEqual([7800, 8050, 8085, 8120, 8155, 8190, 8225]);
     expect(glyphs[0]?.gold).toBe(true);
     expect(glyphs[1]?.gold).toBe(false);

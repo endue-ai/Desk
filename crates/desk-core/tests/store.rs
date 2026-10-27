@@ -1,6 +1,6 @@
 //! store.get and store.set: a JSON value per caller and key, kept in desk-core storage.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use desk_bridge::{BridgeRequest, BridgeResponse, ErrorCode};
@@ -17,11 +17,11 @@ fn temp_file() -> PathBuf {
         .join("store.json")
 }
 
-fn core(store: &PathBuf) -> Core {
+fn core(store: &Path) -> Core {
     Core::new(Roots {
         home: std::env::temp_dir(),
     })
-    .with_store_file(store.clone())
+    .with_store_file(store.to_path_buf())
 }
 
 fn call(core: &Core, caller: &str, request: Value) -> Result<Value, ErrorCode> {
@@ -77,7 +77,10 @@ fn values_survive_a_new_core_over_the_same_file() {
 #[test]
 fn a_missing_key_has_no_value() {
     let file = temp_file();
-    assert_eq!(get(&core(&file), "endue.onboarding", "never-set"), json!({}));
+    assert_eq!(
+        get(&core(&file), "endue.onboarding", "never-set"),
+        json!({})
+    );
 }
 
 #[test]

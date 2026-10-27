@@ -19,7 +19,9 @@ export async function frameTree(frame: Frame): Promise<string> {
         const value = el.getAttribute(name);
         if (value !== null) node[name] = value;
       }
-      node.style = Object.fromEntries(styles.map((name) => [name, computed.getPropertyValue(name)]));
+      node.style = Object.fromEntries(
+        styles.map((name) => [name, computed.getPropertyValue(name)]),
+      );
       const text = [...el.childNodes]
         .filter((child) => child.nodeType === Node.TEXT_NODE)
         .map((child) => child.textContent ?? "")
