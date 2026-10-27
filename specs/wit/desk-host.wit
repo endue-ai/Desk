@@ -43,8 +43,8 @@ interface fs {
   /// bridge: fs.read
   read: func(path: string) -> result<list<u8>, error>;
 
-  /// bridge: fs.list
-  list: func(path: string) -> result<list<dir-entry>, error>;
+  /// bridge: fs.list (`list` is a WIT keyword, hence the % escape)
+  %list: func(path: string) -> result<list<dir-entry>, error>;
 }
 
 interface net {
