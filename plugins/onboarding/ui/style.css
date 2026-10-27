@@ -1,0 +1,150 @@
+/* Layout and controls ported from docs/reference/eris-opening-prototype.html. The centre stays empty:
+   Eris speaks below the orb, controls arrive one at a time below that. */
+
+:root {
+  --bg: #141416;
+  --card: #1e1d21;
+  --fg: #f2f0f5;
+  --muted: #b0adb7;
+  --primary: #b6a3f5;
+}
+
+html,
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: "Inter", "SUIT Variable", "SUIT", -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo",
+    sans-serif;
+}
+
+#root {
+  position: relative;
+  min-height: 100vh;
+  box-sizing: border-box;
+  padding: 64px 16px 80px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+#skip {
+  position: absolute;
+  top: 20px;
+  right: 24px;
+}
+
+#stage {
+  position: relative;
+  width: 100%;
+  max-width: 960px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.user-rise {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 168px;
+  text-align: center;
+  font-size: 32px;
+  font-weight: 400;
+  color: var(--fg);
+  pointer-events: none;
+}
+
+#formslot {
+  min-height: 96px;
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.name-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 8px;
+}
+
+label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+input {
+  width: 240px;
+  height: 40px;
+  box-sizing: border-box;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: 1px solid #837991;
+  background: var(--card);
+  color: var(--fg);
+  font-family: inherit;
+  font-size: 16px;
+}
+
+input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 1px var(--primary);
+}
+
+#formslot p {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.stub {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.stub p {
+  width: 100%;
+  text-align: center;
+}
+
+.btn {
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: 1px solid #837991;
+  background: transparent;
+  color: var(--fg);
+  font-family: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.btn.quiet {
+  color: var(--muted);
+}
+
+.btn.primary {
+  height: 40px;
+  padding: 0 16px;
+  border: none;
+  background: var(--primary);
+  color: #1e1833;
+  font-weight: 500;
+}
+
+button:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}

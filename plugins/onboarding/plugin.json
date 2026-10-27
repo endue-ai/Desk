@@ -1,0 +1,10 @@
+{
+  "id": "endue.onboarding",
+  "name": "Welcome",
+  "version": "0.1.0",
+  "kind": "ui",
+  "entry": "ui/index.html",
+  "description": "The first run: Eris arrives, says hello, asks for the microphone and your name, and signs you in.",
+  "permissions": [{ "permission": "audio:capture" }],
+  "surfaces": [{ "id": "main", "title": "Welcome", "placement": "overlay" }]
+}
