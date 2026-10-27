@@ -610,6 +610,7 @@ version = "0.0.0"
 dependencies = [
  "desk-bridge",
  "desk-core",
+ "serde_json",
  "tauri",
  "tauri-build",
 ]

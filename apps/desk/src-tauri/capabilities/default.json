@@ -1,7 +1,12 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "The main window may call the bridge and report readiness. Nothing else: every primitive goes through bridge_call and the core's permission engine.",
+  "description": "The main window may call the bridge, report readiness and hear core events (bridge://event). Nothing else: every primitive goes through bridge_call and the core permission engine.",
   "windows": ["main"],
-  "permissions": ["allow-bridge-call", "allow-desk-ready"]
+  "permissions": [
+    "allow-bridge-call",
+    "allow-desk-ready",
+    "core:event:allow-listen",
+    "core:event:allow-unlisten"
+  ]
 }
