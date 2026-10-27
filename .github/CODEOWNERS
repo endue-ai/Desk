@@ -1,0 +1,7 @@
+# Maintainers own everything by default.
+*                     @endue-team
+
+# Only maintainers change these, and changes here are never auto-merged.
+/.github/workflows/   @endue-team
+/specs/               @endue-team
+/brand/               @endue-team
