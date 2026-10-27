@@ -2,7 +2,14 @@
 //   ?plugins=onboarding (default) | eris | both    which plugins plugin.list returns
 //   ?mic=grant (default) | deny                    how perm.request answers
 //   ?name=<name>                                   a finished first run, as the core would remember it
-import { BridgeClient, browserStub, type PluginInfo, type PluginManifest } from "@endue-ai/bridge";
+//   ?brain=echo (default) | offline                how brain.say answers: like brain-echo, or offline
+import {
+  type BrainTurnKind,
+  BridgeClient,
+  browserStub,
+  type PluginInfo,
+  type PluginManifest,
+} from "@endue-ai/bridge";
 import "../../src/desk.css";
 import { createRuntime, ManualClock } from "../../src/index";
 
@@ -23,6 +30,7 @@ const eris = plugin({
   version: "0.1.0",
   kind: "ui",
   entry: "ui/index.html",
+  permissions: [{ permission: "brain:converse" }],
   surfaces: [{ id: "main", title: "Eris", placement: "right" }],
 });
 const onboarding = plugin({
@@ -41,6 +49,34 @@ const name = query.get("name");
 if (name) store["first-run"] = { done: true, name };
 window.__deskStore = store;
 
+const OFFLINE =
+  "I can't reach endue right now. Check your connection, and I'll pick up where we left off.";
+let turns = 0;
+
+/** Answer like brain-echo on the page clock: started at 50 ms, a word every 50 ms, then completed. */
+function brainSay(text: string): { turnId: string } {
+  turns += 1;
+  const turnId = `t${turns}`;
+  const turn = (at: number, kind: BrainTurnKind, said?: string) =>
+    setTimeout(
+      () =>
+        stub.emit({
+          event: "brain.turn",
+          data: { turnId, kind, ...(said === undefined ? {} : { text: said }) },
+        }),
+      at,
+    );
+  if (query.get("brain") === "offline") {
+    turn(10, "offline", OFFLINE);
+  } else {
+    const words = text.match(/\S+\s*/g) ?? [];
+    turn(50, "started");
+    for (const [i, word] of words.entries()) turn(100 + i * 50, "delta", word);
+    turn(100 + words.length * 50, "completed");
+  }
+  return { turnId };
+}
+
 const clock = new ManualClock();
 const stub = browserStub({
   "perm.query": () => ({ grants: [] }),
@@ -51,6 +87,7 @@ const stub = browserStub({
     store[key] = value;
     return {};
   },
+  "brain.say": ({ text }) => brainSay(text),
 });
 const runtime = createRuntime({
   root,

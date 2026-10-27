@@ -608,6 +608,7 @@ dependencies = [
 name = "desk-app"
 version = "0.0.0"
 dependencies = [
+ "desk-brain-endue",
  "desk-bridge",
  "desk-core",
  "serde_json",

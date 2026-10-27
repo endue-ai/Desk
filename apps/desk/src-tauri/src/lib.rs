@@ -6,12 +6,16 @@ mod protocol;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
+use desk_brain_endue::HttpBrain;
 use desk_bridge::{Permission, PluginManagePermission};
-use desk_core::{Core, PluginWatcher, Roots};
+use desk_core::{BrainOptions, Core, PluginWatcher, Roots};
 use tauri::{Emitter, Manager};
 
 /// The caller id of the web runtime itself. Plugins call under their own ids.
 pub const RUNTIME_CALLER: &str = "desk";
+
+/// Where the brain lives unless `DESK_BRAIN_URL` says otherwise: examples/brain-echo (`just brain-echo`).
+pub const DEFAULT_BRAIN_URL: &str = "http://127.0.0.1:8787/v0";
 
 /// Keeps the hot-reload watcher alive for the life of the app.
 struct Watching(#[allow(dead_code)] Mutex<Option<PluginWatcher>>);
@@ -23,11 +27,22 @@ pub fn run() {
         })
         .setup(|app| {
             let data = app.path().app_data_dir()?;
-            let core = Arc::new(
-                Core::new(Roots { home: home_dir() })
-                    .with_plugin_store(data.join("plugins.json"))
-                    .with_store_file(data.join("store.json")),
-            );
+            let mut core = Core::new(Roots { home: home_dir() })
+                .with_plugin_store(data.join("plugins.json"))
+                .with_store_file(data.join("store.json"));
+            let url =
+                std::env::var("DESK_BRAIN_URL").unwrap_or_else(|_| DEFAULT_BRAIN_URL.to_owned());
+            match HttpBrain::new(&url) {
+                Ok(brain) => {
+                    let options = BrainOptions {
+                        state_file: Some(data.join("brain.json")),
+                        ..BrainOptions::default()
+                    };
+                    core = core.with_brain(Arc::new(brain), options);
+                }
+                Err(why) => eprintln!("endue Desk: no brain ({why}); brain.say is unavailable"),
+            }
+            let core = Arc::new(core);
             // The runtime mounts plugins, so it may list and toggle them.
             core.grant(
                 RUNTIME_CALLER,

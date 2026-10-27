@@ -6,9 +6,15 @@ body {
 }
 
 #root {
+  position: relative;
   display: grid;
-  place-items: center;
+  grid-template-rows: 1fr auto auto;
+  justify-items: center;
+  align-items: center;
   height: 100vh;
+  padding: 0 16px 16px;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 #pose {
@@ -19,4 +25,65 @@ body {
 #pose img {
   width: 120px;
   height: 120px;
+}
+
+/* The answer under Eris: soul text at panel size. */
+#answer.cap {
+  height: auto;
+  min-height: 96px;
+  font-size: 22px;
+}
+
+#answer .wrap {
+  position: static;
+}
+
+.say {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  margin-top: 12px;
+}
+
+.say input {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid #3a3840;
+  border-radius: 8px;
+  background: #26252a;
+  color: #f2f0f5;
+  font: inherit;
+}
+
+.say input:focus-visible {
+  outline: 2px solid #e8c98a;
+  outline-offset: 1px;
+}
+
+.send {
+  padding: 8px 14px;
+  border: 0;
+  border-radius: 8px;
+  background: #f2f0f5;
+  color: #1e1d21;
+  font: inherit;
+  font-weight: 600;
+}
+
+.send:disabled {
+  opacity: 0.45;
+}
+
+/* The person's words on their way into Eris's centre. */
+.user-rise {
+  position: absolute;
+  left: 50%;
+  max-width: 90%;
+  color: #f2f0f5;
+  font-size: 16px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
 }

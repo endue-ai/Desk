@@ -1,4 +1,12 @@
-import type { BridgeClient, BridgeEvent, BridgeRequest, PluginInfo } from "@endue-ai/bridge";
+import type {
+  BrainSayResult,
+  BrainTurnEvent,
+  BridgeClient,
+  BridgeEvent,
+  BridgeRequest,
+  BridgeResponse,
+  PluginInfo,
+} from "@endue-ai/bridge";
 import type { SurfaceSpec } from "./surfaces";
 
 export interface PluginHostOptions {
@@ -23,6 +31,8 @@ type PluginMessage =
   | { type: "desk:close" };
 
 const MANAGE = { permission: "plugin:manage" } as const;
+/** How many unclaimed turns keep their early events. */
+const EARLY_TURNS = 32;
 
 /**
  * Mounts UI plugins on surfaces and carries their bridge calls. Plugins are told apart by the
@@ -33,6 +43,10 @@ export class PluginHost {
   readonly #options: PluginHostOptions;
   readonly #mounted = new Map<string, PluginInfo>();
   readonly #state = new Map<string, unknown>();
+  /** brain.turn id -> the plugin whose brain.say started it. */
+  readonly #turns = new Map<string, string>();
+  /** brain.turn events that arrived before the brain.say answer that names their turn. */
+  readonly #early = new Map<string, BrainTurnEvent[]>();
   #offEvents: (() => void) | undefined;
 
   constructor(deps: PluginHostDeps, options: PluginHostOptions) {
@@ -86,6 +100,10 @@ export class PluginHost {
   }
 
   #onEvent(event: BridgeEvent): void {
+    if (event.event === "brain.turn") {
+      this.#turn(event);
+      return;
+    }
     if (event.event !== "plugin.changed") return;
     this.#broadcast(event);
     const { plugin, change, revision } = event.data;
@@ -120,6 +138,32 @@ export class PluginHost {
     }
   }
 
+  /** A turn's events go only to the plugin that said it; other plugins never see them. */
+  #turn(event: BrainTurnEvent): void {
+    const { turnId, kind } = event.data;
+    const owner = this.#turns.get(turnId);
+    if (owner === undefined) {
+      const early = this.#early.get(turnId) ?? [];
+      early.push(event);
+      this.#early.set(turnId, early);
+      const oldest = this.#early.keys().next().value;
+      if (this.#early.size > EARLY_TURNS && oldest !== undefined) this.#early.delete(oldest);
+      return;
+    }
+    this.#post(owner, { type: "desk:event", event });
+    if (kind === "completed" || kind === "error") this.#turns.delete(turnId);
+  }
+
+  /** A brain.say answer names its turn: deliver what came early, and route the rest. */
+  #claim(request: BridgeRequest, response: BridgeResponse, owner: string): void {
+    if (request.method !== "brain.say" || !response.ok) return;
+    const { turnId } = response.result as BrainSayResult;
+    this.#turns.set(turnId, owner);
+    const early = this.#early.get(turnId) ?? [];
+    this.#early.delete(turnId);
+    for (const event of early) this.#turn(event);
+  }
+
   #post(id: string, message: unknown): void {
     this.#deps.frame(id)?.postMessage(message, "*");
   }
@@ -142,10 +186,15 @@ export class PluginHost {
       case "desk:calls":
         void Promise.all(
           message.calls.map(async (request) => ({
-            id: request.id,
+            request,
             response: await this.#deps.bridge.forward(request, id),
           })),
-        ).then((results) => this.#post(id, { type: "desk:results", results }));
+        ).then((answers) => {
+          const results = answers.map(({ request, response }) => ({ id: request.id, response }));
+          this.#post(id, { type: "desk:results", results });
+          // After the results, so a plugin learns its turn id before the turn's first event.
+          for (const { request, response } of answers) this.#claim(request, response, id);
+        });
         break;
     }
   };

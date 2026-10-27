@@ -6,14 +6,22 @@
     <script type="importmap">
       { "imports": { "@endue-ai/plugin-sdk": "/_desk/plugin-sdk.js" } }
     </script>
+    <link rel="stylesheet" href="./soul-text.css" />
     <link rel="stylesheet" href="./style.css" />
   </head>
   <body>
     <main id="root">
+      <div id="live" class="sr-only" aria-live="polite"></div>
       <figure id="pose" data-state="idle">
         <img src="./assets/state-idle.svg" alt="" />
         <figcaption id="label" role="status" aria-live="polite">Eris is idle</figcaption>
       </figure>
+      <div id="answer" class="cap"></div>
+      <form id="say" class="say">
+        <label for="say-text" class="sr-only">Talk to Eris</label>
+        <input id="say-text" type="text" autocomplete="off" maxlength="8000" placeholder="Say something to Eris" />
+        <button type="submit" class="send">Send</button>
+      </form>
     </main>
     <script type="module" src="./main.js"></script>
   </body>
