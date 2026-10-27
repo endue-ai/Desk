@@ -1,5 +1,7 @@
 name: ci
 
+# Linux runs everything; macOS and Windows run check and unit tests; the Tauri app is built on all
+# three only when the shell or the primitives change. The final `ci` job is the required check.
 on:
   pull_request:
   push:
@@ -16,29 +18,42 @@ env:
   ACTIONLINT_VERSION: 1.7.12
 
 jobs:
-  ci:
-    name: ci
+  changes:
+    name: changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      app: ${{ steps.filter.outputs.app }}
+    steps:
+      - uses: actions/checkout@v7
+      - id: filter
+        uses: dorny/paths-filter@v4
+        with:
+          filters: |
+            app:
+              - "apps/desk/src-tauri/**"
+              - "crates/desk-sys/**"
+
+  check-linux:
+    name: check (linux)
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
-
       - uses: pnpm/action-setup@v6
-
       - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: pnpm
-
       - name: Install Rust toolchain (rust-toolchain.toml)
         run: rustup toolchain install
-
       - uses: Swatinem/rust-cache@v2
-
       - uses: taiki-e/install-action@v2
         with:
           tool: just
-
       - name: Install actionlint
         run: |
           base="https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}"
@@ -47,12 +62,108 @@ jobs:
           curl -fsSL "$base/actionlint_${ACTIONLINT_VERSION}_checksums.txt" | grep " $tarball\$" | sha256sum -c -
           tar -xzf "$tarball" actionlint
           sudo mv actionlint /usr/local/bin/
-
       - run: pnpm install --frozen-lockfile
-
       - run: just check
+      - run: just test-unit
 
-      - run: just test
+  runtime-e2e:
+    name: runtime-e2e
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: just
+      - run: pnpm install --frozen-lockfile
+      - name: Install WebKit
+        run: pnpm --filter @endue-ai/runtime exec playwright install --with-deps webkit
+      - run: just test-e2e
+      - if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report
+          path: packages/runtime/test-results
+          retention-days: 7
+
+  check-macos:
+    name: check (macos)
+    runs-on: macos-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install Rust toolchain (rust-toolchain.toml)
+        run: rustup toolchain install
+      - uses: Swatinem/rust-cache@v2
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: just
+      - run: pnpm install --frozen-lockfile
+      - run: just check
+      - run: just test-unit
+
+  check-windows:
+    name: check (windows)
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install Rust toolchain (rust-toolchain.toml)
+        run: rustup toolchain install
+      - uses: Swatinem/rust-cache@v2
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: just
+      - run: pnpm install --frozen-lockfile
+      - run: just check
+      - run: just test-unit
+
+  app-build:
+    name: app-build (${{ matrix.os }})
+    needs: changes
+    if: needs.changes.outputs.app == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install Rust toolchain (rust-toolchain.toml)
+        run: rustup toolchain install
+      - uses: Swatinem/rust-cache@v2
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: just
+      - name: Install the WebKitGTK SDK
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
+      - run: pnpm install --frozen-lockfile
+      - run: just check-app
+      - run: just build-app
 
   codegen-check:
     name: codegen-check
@@ -126,3 +237,28 @@ jobs:
           script="$RUNNER_TEMP/red-on-base.sh"
           git show "$BASE:scripts/red-on-base.sh" > "$script" 2>/dev/null || git show "$HEAD:scripts/red-on-base.sh" > "$script"
           bash "$script" "$BASE" "$HEAD"
+
+  ci:
+    name: ci
+    if: always()
+    needs:
+      - changes
+      - check-linux
+      - runtime-e2e
+      - check-macos
+      - check-windows
+      - app-build
+      - codegen-check
+      - red-on-base
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Every gate passed or was skipped on purpose
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: |
+          echo "$RESULTS" | jq -r 'to_entries[] | "\(.key): \(.value.result)"'
+          if echo "$RESULTS" | jq -e 'to_entries | any(.value.result == "failure" or .value.result == "cancelled")' >/dev/null; then
+            echo "::error::A gate failed or was cancelled."
+            exit 1
+          fi
