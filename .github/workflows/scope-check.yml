@@ -1,0 +1,44 @@
+name: scope-check
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened, labeled, unlabeled]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: scope-check-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  scope-check:
+    name: scope-check
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # Check out the base commit so a PR cannot change the gate that judges it.
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - name: Check changed files against the issue Scope and the As-is/To-be table
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          script=scripts/scope-check.mjs
+          if [ ! -f "$script" ]; then
+            # Bootstrapping: the PR that introduces the gate brings the first version of it.
+            git fetch --no-tags origin "+refs/pull/${PR}/head:refs/remotes/pr/head"
+            script="$RUNNER_TEMP/scope-check.mjs"
+            git show "$HEAD:scripts/scope-check.mjs" > "$script"
+          fi
+          node "$script"
