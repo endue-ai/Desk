@@ -127,7 +127,11 @@ fn files_are_served_by_id_and_path_and_escapes_are_refused() {
         b"<p>hello</p>"
     );
     assert!(registry.file("example.hello", "../secret.txt").is_err());
-    assert!(registry.file("example.hello", "ui/../../secret.txt").is_err());
+    assert!(
+        registry
+            .file("example.hello", "ui/../../secret.txt")
+            .is_err()
+    );
     assert!(registry.file("example.missing", "ui/index.html").is_err());
 }
 
