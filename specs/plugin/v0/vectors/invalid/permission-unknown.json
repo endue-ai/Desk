@@ -1,0 +1,10 @@
+{
+  "target": "Permission",
+  "description": "fs:delete is not in the vocabulary",
+  "instance": {
+    "permission": "fs:delete",
+    "paths": [
+      "~/**"
+    ]
+  }
+}

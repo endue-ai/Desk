@@ -1,0 +1,23 @@
+{
+  "target": "BridgeRequest",
+  "description": "net.fetch POST with headers and a timeout",
+  "instance": {
+    "id": 5,
+    "method": "net.fetch",
+    "params": {
+      "url": "https://api.example.com/v1/items",
+      "method": "POST",
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": "{\"name\":\"a\"}",
+      "timeoutMs": 10000,
+      "scope": {
+        "permission": "net:fetch",
+        "hosts": [
+          "api.example.com"
+        ]
+      }
+    }
+  }
+}

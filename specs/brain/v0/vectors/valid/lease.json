@@ -1,0 +1,14 @@
+{
+  "target": "Lease",
+  "description": "a lease in force",
+  "instance": {
+    "leaseId": "l2",
+    "sessionId": "s1",
+    "holder": {
+      "deskId": "desk-b"
+    },
+    "acquiredAt": "2026-10-27T09:05:00Z",
+    "expiresAt": "2026-10-27T09:06:00Z",
+    "ttlSeconds": 60
+  }
+}

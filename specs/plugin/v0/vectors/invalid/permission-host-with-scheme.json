@@ -1,0 +1,10 @@
+{
+  "target": "Permission",
+  "description": "hosts are host names, not URLs",
+  "instance": {
+    "permission": "net:fetch",
+    "hosts": [
+      "https://example.com"
+    ]
+  }
+}

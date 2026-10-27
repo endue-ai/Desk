@@ -1,0 +1,17 @@
+{
+  "target": "BridgeRequest",
+  "description": "net.fetch is http(s) only",
+  "instance": {
+    "id": 1,
+    "method": "net.fetch",
+    "params": {
+      "url": "ftp://example.com/file",
+      "scope": {
+        "permission": "net:fetch",
+        "hosts": [
+          "example.com"
+        ]
+      }
+    }
+  }
+}

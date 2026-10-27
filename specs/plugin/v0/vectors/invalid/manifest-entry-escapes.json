@@ -1,0 +1,10 @@
+{
+  "target": "PluginManifest",
+  "description": "entry may not leave the plugin folder",
+  "instance": {
+    "id": "example.evil",
+    "version": "0.1.0",
+    "kind": "ui",
+    "entry": "../evil/index.html"
+  }
+}

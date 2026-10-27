@@ -1,0 +1,17 @@
+{
+  "target": "BridgeRequest",
+  "description": "fs.read inside a granted folder",
+  "instance": {
+    "id": 1,
+    "method": "fs.read",
+    "params": {
+      "path": "~/Documents/notes.md",
+      "scope": {
+        "permission": "fs:read",
+        "paths": [
+          "~/Documents/**"
+        ]
+      }
+    }
+  }
+}

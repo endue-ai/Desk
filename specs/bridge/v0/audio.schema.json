@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://endue.ai/specs/bridge/v0/audio.schema.json",
+  "title": "Desk bridge v0: audio",
+  "description": "Microphone capture and wake-word events. Scoped by audio:capture.",
+  "$defs": {
+    "AudioCaptureStartRequest": {
+      "description": "Start capturing the microphone. With wakeWord, audio.wake events arrive when the wake word is heard.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "audio.capture.start" },
+        "params": { "$ref": "#/$defs/AudioCaptureStartParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "AudioCaptureStartParams": {
+      "description": "Parameters of audio.capture.start.",
+      "type": "object",
+      "properties": {
+        "wakeWord": { "description": "Listen for the wake word.", "type": "boolean" },
+        "sampleRate": { "description": "Samples per second.", "type": "integer", "minimum": 8000, "maximum": 48000 },
+        "scope": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/AudioCapturePermission" }
+      },
+      "required": ["scope"],
+      "additionalProperties": false
+    },
+    "AudioCaptureStartResult": {
+      "description": "Result of audio.capture.start.",
+      "type": "object",
+      "properties": {
+        "captureId": { "type": "string", "minLength": 1 }
+      },
+      "required": ["captureId"],
+      "additionalProperties": false
+    },
+    "AudioCaptureStopRequest": {
+      "description": "Stop a capture.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "audio.capture.stop" },
+        "params": { "$ref": "#/$defs/AudioCaptureStopParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "AudioCaptureStopParams": {
+      "description": "Parameters of audio.capture.stop.",
+      "type": "object",
+      "properties": {
+        "captureId": { "type": "string", "minLength": 1 },
+        "scope": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/AudioCapturePermission" }
+      },
+      "required": ["captureId", "scope"],
+      "additionalProperties": false
+    },
+    "AudioCaptureStopResult": {
+      "description": "Result of audio.capture.stop.",
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "AudioWakeEvent": {
+      "description": "The wake word was heard.",
+      "type": "object",
+      "properties": {
+        "event": { "const": "audio.wake" },
+        "data": { "$ref": "#/$defs/AudioWakeData" }
+      },
+      "required": ["event", "data"],
+      "additionalProperties": false
+    },
+    "AudioWakeData": {
+      "description": "Payload of audio.wake.",
+      "type": "object",
+      "properties": {
+        "captureId": { "type": "string", "minLength": 1 },
+        "word": { "description": "The wake word that was heard.", "type": "string", "minLength": 1 },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "atMs": { "description": "Milliseconds since the capture started.", "type": "integer", "minimum": 0 }
+      },
+      "required": ["captureId", "word", "confidence", "atMs"],
+      "additionalProperties": false
+    }
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "target": "Permission",
+  "description": "subdomains with a port",
+  "instance": {
+    "permission": "net:fetch",
+    "hosts": [
+      "*.example.com:8443",
+      "localhost:8787"
+    ]
+  }
+}

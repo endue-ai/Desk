@@ -1,0 +1,8 @@
+{
+  "target": "TurnEvent",
+  "description": "turn.paused is not an event",
+  "instance": {
+    "type": "turn.paused",
+    "turnId": "t1"
+  }
+}

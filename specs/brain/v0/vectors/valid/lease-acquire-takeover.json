@@ -1,0 +1,12 @@
+{
+  "target": "LeaseAcquireRequest",
+  "description": "another Desk takes the session over",
+  "instance": {
+    "holder": {
+      "deskId": "desk-b",
+      "name": "Laptop"
+    },
+    "ttlSeconds": 60,
+    "takeover": true
+  }
+}

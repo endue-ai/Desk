@@ -1,0 +1,8 @@
+{
+  "target": "Permission",
+  "description": "microphone with the wake word",
+  "instance": {
+    "permission": "audio:capture",
+    "wakeWord": true
+  }
+}

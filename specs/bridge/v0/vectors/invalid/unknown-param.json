@@ -1,0 +1,19 @@
+{
+  "target": "BridgeRequest",
+  "description": "unknown params are rejected",
+  "instance": {
+    "id": 1,
+    "method": "fs.write",
+    "params": {
+      "path": "~/a.txt",
+      "content": "x",
+      "force": true,
+      "scope": {
+        "permission": "fs:write",
+        "paths": [
+          "~/**"
+        ]
+      }
+    }
+  }
+}

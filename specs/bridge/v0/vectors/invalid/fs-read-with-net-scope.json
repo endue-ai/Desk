@@ -1,0 +1,17 @@
+{
+  "target": "BridgeRequest",
+  "description": "fs.read needs an fs:read scope",
+  "instance": {
+    "id": 1,
+    "method": "fs.read",
+    "params": {
+      "path": "~/Documents/notes.md",
+      "scope": {
+        "permission": "net:fetch",
+        "hosts": [
+          "example.com"
+        ]
+      }
+    }
+  }
+}

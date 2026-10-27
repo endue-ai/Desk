@@ -1,0 +1,16 @@
+{
+  "target": "TurnRequest",
+  "description": "Desk only sends user messages",
+  "instance": {
+    "leaseId": "l1",
+    "message": {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "text",
+          "text": "hi"
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "target": "BridgeResponse",
+  "description": "permission_denied names the missing permission",
+  "instance": {
+    "id": 5,
+    "ok": false,
+    "error": {
+      "code": "permission_denied",
+      "message": "net:fetch api.example.com is not granted",
+      "permission": {
+        "permission": "net:fetch",
+        "hosts": [
+          "api.example.com"
+        ]
+      }
+    }
+  }
+}

@@ -1,0 +1,443 @@
+openapi: 3.1.0
+info:
+  title: Desk brain API
+  version: 0.0.0
+  summary: Sessions, streamed turns, tool round trips and session leases.
+  description: >-
+    The contract between Desk and a brain. The local brain adapter, endue AI and examples/brain-echo
+    implement the same API. A session is written by exactly one Desk at a time: the holder of its lease.
+    Opening the session on another Desk takes the lease over, and the previous holder becomes read-only.
+  contact:
+    name: Team endue
+    email: team@endue.ai
+    url: https://endue.ai
+  license:
+    name: Apache-2.0
+    identifier: Apache-2.0
+servers:
+  - url: "http://localhost:{port}/v0"
+    description: A local brain or examples/brain-echo. Cloud brains are configured by base URL.
+    variables:
+      port:
+        default: "8787"
+security:
+  - bearerAuth: []
+tags:
+  - name: sessions
+    description: Create and read sessions.
+  - name: turns
+    description: Send messages and receive streamed answers, including tool calls.
+  - name: leases
+    description: Decide which Desk may write to a session.
+paths:
+  /sessions:
+    post:
+      operationId: createSession
+      tags: [sessions]
+      summary: Create a session
+      description: Creates an empty session. The caller acquires a lease before sending turns.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSessionRequest"
+      responses:
+        "201":
+          description: The new session.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Session"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+  /sessions/{sessionId}:
+    parameters:
+      - $ref: "#/components/parameters/SessionId"
+    get:
+      operationId: getSession
+      tags: [sessions]
+      summary: Read a session
+      description: Returns the session with its current lease, if any.
+      responses:
+        "200":
+          description: The session.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Session"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /sessions/{sessionId}/turns:
+    parameters:
+      - $ref: "#/components/parameters/SessionId"
+    post:
+      operationId: createTurn
+      tags: [turns]
+      summary: Send a message
+      description: >-
+        Sends one user message and streams the answer as Server-Sent Events. Each event's data is one
+        TurnEvent as JSON. The stream ends after turn.completed or turn.error. A turn.completed with
+        stopReason tool_call waits for submitToolResult.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TurnRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/TurnStream"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/LeaseConflict"
+  /sessions/{sessionId}/turns/{turnId}/tool-results:
+    parameters:
+      - $ref: "#/components/parameters/SessionId"
+      - $ref: "#/components/parameters/TurnId"
+    post:
+      operationId: submitToolResult
+      tags: [turns]
+      summary: Return a tool result
+      description: Sends the result of a tool.call event and streams the rest of the turn.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ToolResultRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/TurnStream"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/LeaseConflict"
+  /sessions/{sessionId}/lease:
+    parameters:
+      - $ref: "#/components/parameters/SessionId"
+    get:
+      operationId: getLease
+      tags: [leases]
+      summary: Read the current lease
+      description: Returns the lease that is in force, or 404 when the session has none or it expired.
+      responses:
+        "200":
+          description: The current lease.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Lease"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    post:
+      operationId: acquireLease
+      tags: [leases]
+      summary: Acquire the lease
+      description: >-
+        Acquires the session's lease for ttlSeconds. If another Desk holds it, the call fails with
+        lease_held unless takeover is true; a takeover ends the other lease at once.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LeaseAcquireRequest"
+      responses:
+        "200":
+          description: The new lease.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Lease"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/LeaseConflict"
+  /sessions/{sessionId}/lease/{leaseId}:
+    parameters:
+      - $ref: "#/components/parameters/SessionId"
+      - $ref: "#/components/parameters/LeaseId"
+    put:
+      operationId: renewLease
+      tags: [leases]
+      summary: Renew the lease
+      description: >-
+        Extends a lease the caller holds. Fails with lease_lost after a takeover and with lease_expired
+        once expiresAt has passed; the caller is then read-only until it acquires again.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LeaseRenewRequest"
+      responses:
+        "200":
+          description: The renewed lease.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Lease"
+        "409":
+          $ref: "#/components/responses/LeaseConflict"
+    delete:
+      operationId: releaseLease
+      tags: [leases]
+      summary: Release the lease
+      description: Gives the lease up so another Desk can acquire it without a takeover.
+      responses:
+        "204":
+          description: Released.
+        "409":
+          $ref: "#/components/responses/LeaseConflict"
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: An endue ID token for endue AI. Local brains may accept any token.
+  parameters:
+    SessionId:
+      name: sessionId
+      in: path
+      required: true
+      description: The session id.
+      schema:
+        type: string
+        minLength: 1
+    TurnId:
+      name: turnId
+      in: path
+      required: true
+      description: The turn id from turn.started.
+      schema:
+        type: string
+        minLength: 1
+    LeaseId:
+      name: leaseId
+      in: path
+      required: true
+      description: The lease id from acquireLease.
+      schema:
+        type: string
+        minLength: 1
+  responses:
+    TurnStream:
+      description: A stream of TurnEvent objects, one per SSE data line.
+      content:
+        text/event-stream:
+          schema:
+            $ref: "#/components/schemas/TurnEvent"
+    BadRequest:
+      description: The request does not match the schema.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/BrainError"
+    NotFound:
+      description: No such session, turn or lease.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/BrainError"
+    LeaseConflict:
+      description: The caller does not hold the lease (lease_held, lease_lost or lease_expired).
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/BrainError"
+  schemas:
+    Session:
+      description: A conversation and its state.
+      type: object
+      properties:
+        id: { type: string, minLength: 1 }
+        title: { type: string }
+        status: { $ref: "#/components/schemas/SessionStatus" }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        lease: { $ref: "#/components/schemas/Lease" }
+      required: [id, status, createdAt, updatedAt]
+      additionalProperties: false
+    SessionStatus:
+      description: Whether the session accepts turns.
+      type: string
+      enum: [active, closed]
+    CreateSessionRequest:
+      description: Body of createSession.
+      type: object
+      properties:
+        title: { type: string }
+        client: { $ref: "#/components/schemas/ClientInfo" }
+      required: [client]
+      additionalProperties: false
+    ClientInfo:
+      description: The Desk build that talks to the brain.
+      type: object
+      properties:
+        name: { type: string, minLength: 1 }
+        version: { type: string, minLength: 1 }
+      required: [name, version]
+      additionalProperties: false
+    TurnRequest:
+      description: Body of createTurn. Only the lease holder may send turns.
+      type: object
+      properties:
+        leaseId: { type: string, minLength: 1 }
+        message: { $ref: "#/components/schemas/UserMessage" }
+      required: [leaseId, message]
+      additionalProperties: false
+    UserMessage:
+      description: What the person said or typed.
+      type: object
+      properties:
+        role: { const: user }
+        content:
+          type: array
+          items: { $ref: "#/components/schemas/TextPart" }
+          minItems: 1
+      required: [role, content]
+      additionalProperties: false
+    TextPart:
+      description: A piece of text.
+      type: object
+      properties:
+        type: { const: text }
+        text: { type: string }
+      required: [type, text]
+      additionalProperties: false
+    TurnEvent:
+      description: One event in a turn stream.
+      oneOf:
+        - $ref: "#/components/schemas/TurnStartedEvent"
+        - $ref: "#/components/schemas/TextDeltaEvent"
+        - $ref: "#/components/schemas/ToolCallEvent"
+        - $ref: "#/components/schemas/TurnCompletedEvent"
+        - $ref: "#/components/schemas/TurnErrorEvent"
+    TurnStartedEvent:
+      description: The brain started answering.
+      type: object
+      properties:
+        type: { const: turn.started }
+        turnId: { type: string, minLength: 1 }
+      required: [type, turnId]
+      additionalProperties: false
+    TextDeltaEvent:
+      description: More answer text, to be appended.
+      type: object
+      properties:
+        type: { const: text.delta }
+        turnId: { type: string, minLength: 1 }
+        text: { type: string }
+      required: [type, turnId, text]
+      additionalProperties: false
+    ToolCallEvent:
+      description: The brain wants Desk to run a tool and send the result with submitToolResult.
+      type: object
+      properties:
+        type: { const: tool.call }
+        turnId: { type: string, minLength: 1 }
+        call: { $ref: "#/components/schemas/ToolCall" }
+      required: [type, turnId, call]
+      additionalProperties: false
+    ToolCall:
+      description: One tool invocation.
+      type: object
+      properties:
+        callId: { type: string, minLength: 1 }
+        name: { type: string, minLength: 1 }
+        arguments:
+          description: Tool arguments as a JSON object.
+          type: object
+      required: [callId, name, arguments]
+      additionalProperties: false
+    TurnCompletedEvent:
+      description: The turn ended.
+      type: object
+      properties:
+        type: { const: turn.completed }
+        turnId: { type: string, minLength: 1 }
+        stopReason: { $ref: "#/components/schemas/StopReason" }
+      required: [type, turnId, stopReason]
+      additionalProperties: false
+    StopReason:
+      description: Why the turn ended. tool_call means it continues after submitToolResult.
+      type: string
+      enum: [end_turn, tool_call, max_tokens, cancelled]
+    TurnErrorEvent:
+      description: The turn failed.
+      type: object
+      properties:
+        type: { const: turn.error }
+        turnId: { type: string, minLength: 1 }
+        error: { $ref: "#/components/schemas/BrainError" }
+      required: [type, error]
+      additionalProperties: false
+    ToolResultRequest:
+      description: Body of submitToolResult.
+      type: object
+      properties:
+        leaseId: { type: string, minLength: 1 }
+        callId: { type: string, minLength: 1 }
+        output:
+          description: The tool's output as any JSON value.
+        isError: { type: boolean }
+      required: [leaseId, callId, output]
+      additionalProperties: false
+    Lease:
+      description: The right to write to a session until expiresAt.
+      type: object
+      properties:
+        leaseId: { type: string, minLength: 1 }
+        sessionId: { type: string, minLength: 1 }
+        holder: { $ref: "#/components/schemas/LeaseHolder" }
+        acquiredAt: { type: string, format: date-time }
+        expiresAt: { type: string, format: date-time }
+        ttlSeconds: { type: integer, minimum: 5, maximum: 3600 }
+      required: [leaseId, sessionId, holder, acquiredAt, expiresAt, ttlSeconds]
+      additionalProperties: false
+    LeaseHolder:
+      description: The Desk that holds a lease.
+      type: object
+      properties:
+        deskId: { type: string, minLength: 1 }
+        name: { type: string }
+      required: [deskId]
+      additionalProperties: false
+    LeaseAcquireRequest:
+      description: Body of acquireLease.
+      type: object
+      properties:
+        holder: { $ref: "#/components/schemas/LeaseHolder" }
+        ttlSeconds: { type: integer, minimum: 5, maximum: 3600 }
+        takeover: { type: boolean }
+      required: [holder, ttlSeconds]
+      additionalProperties: false
+    LeaseRenewRequest:
+      description: Body of renewLease. Without ttlSeconds the lease keeps its ttl.
+      type: object
+      properties:
+        ttlSeconds: { type: integer, minimum: 5, maximum: 3600 }
+      additionalProperties: false
+    BrainError:
+      description: Why a call failed. lease_held carries the current holder.
+      type: object
+      properties:
+        code: { $ref: "#/components/schemas/BrainErrorCode" }
+        message: { type: string }
+        holder: { $ref: "#/components/schemas/LeaseHolder" }
+      required: [code, message]
+      additionalProperties: false
+    BrainErrorCode:
+      description: Machine-readable failure reason.
+      type: string
+      enum:
+        - invalid_request
+        - unauthorized
+        - not_found
+        - lease_held
+        - lease_lost
+        - lease_expired
+        - rate_limited
+        - internal

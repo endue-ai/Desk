@@ -14,4 +14,6 @@ Spec first: change a file here, run `just codegen`, then implement. Generated fi
 start with a GENERATED header. Each spec keeps valid and invalid examples in `vectors/` that both the Rust
 and TypeScript sides must agree on.
 
-Status: empty until specs v0.
+Status: v0. Any minor release may break v0 (ADR 0004). `just check` lints the specs and
+`just codegen` regenerates `crates/desk-bridge/src/generated.rs`, `crates/desk-brain/src/generated.rs`,
+`packages/bridge/src/generated.ts` and `packages/bridge/src/brain.generated.ts`.

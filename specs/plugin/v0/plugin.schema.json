@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://endue.ai/specs/plugin/v0/plugin.schema.json",
+  "title": "plugin.json v0",
+  "description": "The manifest every plugin folder carries, built-in and community plugins alike.",
+  "$ref": "#/$defs/PluginManifest",
+  "$defs": {
+    "PluginManifest": {
+      "description": "A plugin manifest (plugin.json).",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "#/$defs/PluginId" },
+        "name": { "description": "Display name.", "type": "string", "minLength": 1 },
+        "version": { "$ref": "#/$defs/Version" },
+        "kind": { "$ref": "#/$defs/PluginKind" },
+        "entry": { "$ref": "#/$defs/EntryPath" },
+        "description": { "description": "One sentence about what the plugin does.", "type": "string" },
+        "permissions": {
+          "description": "Everything the plugin may ask for. Each one is still granted by the person at first use.",
+          "type": "array",
+          "items": { "$ref": "permission.schema.json#/$defs/Permission" }
+        },
+        "surfaces": {
+          "description": "Surfaces a UI plugin can open. Only UI plugins declare surfaces.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/Surface" }
+        }
+      },
+      "required": ["id", "version", "kind", "entry"],
+      "additionalProperties": false,
+      "if": { "properties": { "kind": { "not": { "const": "ui" } } } },
+      "then": { "properties": { "surfaces": { "type": "array", "maxItems": 0 } } }
+    },
+    "PluginId": {
+      "description": "Reverse-domain style id with at least one dot, lowercase, for example endue.eris or example.hello-ui.",
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*(\\.[a-z][a-z0-9-]*)+$",
+      "maxLength": 128
+    },
+    "Version": {
+      "description": "Semantic version, for example 0.1.0 or 1.2.3-beta.1.",
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?(\\+[0-9A-Za-z.-]+)?$"
+    },
+    "PluginKind": {
+      "description": "ui runs in a sandboxed iframe, logic in a Wasm instance, tool as an MCP server inside the VM.",
+      "type": "string",
+      "enum": ["ui", "logic", "tool"]
+    },
+    "EntryPath": {
+      "description": "Path to the entry file, relative to the plugin folder, without .. segments.",
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!/)(?!.*(^|/)\\.\\.(/|$))[^\\\\]+$"
+    },
+    "Surface": {
+      "description": "A surface a UI plugin can open on the desk.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "description": "Unique within the plugin.",
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*$"
+        },
+        "title": { "description": "Shown where the surface needs a label.", "type": "string" },
+        "placement": { "$ref": "#/$defs/SurfacePlacement" }
+      },
+      "required": ["id", "placement"],
+      "additionalProperties": false
+    },
+    "SurfacePlacement": {
+      "description": "Where the compositor puts the surface.",
+      "type": "string",
+      "enum": ["center", "left", "right", "bottom", "overlay", "floating"]
+    }
+  }
+}

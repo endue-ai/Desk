@@ -1,0 +1,21 @@
+{
+  "target": "BridgeRequest",
+  "description": "a PTY has at least one column",
+  "instance": {
+    "id": 1,
+    "method": "proc.spawn",
+    "params": {
+      "command": "zsh",
+      "pty": {
+        "cols": 0,
+        "rows": 24
+      },
+      "scope": {
+        "permission": "proc:spawn",
+        "commands": [
+          "zsh"
+        ]
+      }
+    }
+  }
+}
