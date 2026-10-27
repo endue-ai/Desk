@@ -1,0 +1,10 @@
+{
+  "id": "endue.sidebar",
+  "name": "Plugins",
+  "version": "0.1.0",
+  "kind": "ui",
+  "entry": "ui/index.html",
+  "description": "Lists the installed plugins and turns them on and off.",
+  "permissions": [{ "permission": "plugin:manage" }],
+  "surfaces": [{ "id": "main", "title": "Plugins", "placement": "left" }]
+}

@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Hello UI</title>
+    <!-- Desk serves the SDK at /_desk/plugin-sdk.js; the import map lets plugins import it by name. -->
+    <script type="importmap">
+      { "imports": { "@endue-ai/plugin-sdk": "/_desk/plugin-sdk.js" } }
+    </script>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <h1>Hello from a plugin</h1>
+    <p data-testid="revision"></p>
+    <p data-testid="bridge">bridge: waiting</p>
+    <p>
+      <button type="button">Count</button>
+      <span data-testid="count">0</span>
+    </p>
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

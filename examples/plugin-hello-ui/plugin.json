@@ -1,0 +1,9 @@
+{
+  "id": "example.hello-ui",
+  "name": "Hello UI",
+  "version": "0.1.0",
+  "kind": "ui",
+  "entry": "ui/index.html",
+  "description": "The smallest UI plugin: a counter that survives reloads and one bridge call.",
+  "surfaces": [{ "id": "main", "title": "Hello", "placement": "center" }]
+}
