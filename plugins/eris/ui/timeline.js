@@ -1,10 +1,9 @@
 // A timeline on an injected clock. Every Web Animation added here is paused and positioned from the
 // clock on each frame, so a fake clock (tests) freezes and steps the whole scene exactly.
 
-/** The browser's clock: performance.now and requestAnimationFrame. Tests replace both. */
+/** The browser's clock: requestAnimationFrame, whose frame times tests replace. */
 export function browserClock() {
   return {
-    now: () => performance.now(),
     frame: (callback) => requestAnimationFrame(callback),
   };
 }
@@ -12,18 +11,24 @@ export function browserClock() {
 export class Timeline {
   #clock;
   #origin;
+  #frame = null;
   #animations = [];
   #cues = [];
 
-  constructor(clock = browserClock(), origin = clock.now()) {
+  /**
+   * The timeline starts at its first frame (or at `origin`, in the clock's time) and its time is the
+   * time of the latest frame. Frame times fall on the clock's frame grid; `now()` read at load or in an
+   * event handler would carry however long loading or input took, and shift the whole scene.
+   */
+  constructor(clock = browserClock(), origin = null) {
     this.#clock = clock;
     this.#origin = origin;
-    this.#tick();
+    clock.frame((at) => this.#tick(at));
   }
 
-  /** Milliseconds since the timeline started. */
+  /** Milliseconds since the timeline started, as of the latest frame; 0 until its first frame. */
   get time() {
-    return this.#clock.now() - this.#origin;
+    return this.#frame === null ? 0 : this.#frame - this.#origin;
   }
 
   /** Take over an animation: it stops running on its own and follows this timeline. */
@@ -47,10 +52,12 @@ export class Timeline {
     this.#cues = [];
   }
 
-  #tick() {
+  #tick(at) {
+    this.#origin ??= at;
+    this.#frame = at;
     const now = this.time;
     while (this.#cues.length > 0 && this.#cues[0].ms <= now) this.#cues.shift().fn(now);
     for (const animation of this.#animations) animation.currentTime = Math.max(0, now);
-    this.#clock.frame(() => this.#tick());
+    this.#clock.frame((next) => this.#tick(next));
   }
 }

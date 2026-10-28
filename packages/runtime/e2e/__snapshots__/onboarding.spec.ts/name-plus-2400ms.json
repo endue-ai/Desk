@@ -205,7 +205,7 @@
                 "display": "block",
                 "visibility": "visible",
                 "opacity": "1",
-                "transform": "matrix(1, 0, 0, 1, 0, -1.411658)",
+                "transform": "matrix(1, 0, 0, 1, 0, -1.37923)",
                 "filter": "none",
                 "color": "rgb(242, 240, 245)"
               },
@@ -230,7 +230,7 @@
                         "visibility": "visible",
                         "opacity": "1",
                         "transform": "matrix(1, 0, 0, 1, 0, 0)",
-                        "filter": "brightness(0.807634)",
+                        "filter": "brightness(0.806774)",
                         "color": "rgb(242, 240, 245)"
                       }
                     }
@@ -269,7 +269,7 @@
                     "display": "inline",
                     "visibility": "visible",
                     "opacity": "1",
-                    "transform": "matrix(1, 0, 0, 1, 0, -6.157866)",
+                    "transform": "matrix(1, 0, 0, 1, 0, -6.075122)",
                     "filter": "none",
                     "color": "rgb(242, 240, 245)"
                   }
@@ -413,8 +413,8 @@
                             "display": "block",
                             "visibility": "visible",
                             "opacity": "1",
-                            "transform": "matrix(1, 0, 0, 1, 0, 0.000025)",
-                            "filter": "blur(0.000043px)",
+                            "transform": "matrix(1, 0, 0, 1, 0, 0)",
+                            "filter": "blur(0px)",
                             "color": "rgb(242, 240, 245)"
                           },
                           "text": "t"
@@ -426,8 +426,8 @@
                             "display": "block",
                             "visibility": "visible",
                             "opacity": "1",
-                            "transform": "matrix(1.000037, 0, 0, 1.000037, 0, 0.00244)",
-                            "filter": "blur(0.00427px)",
+                            "transform": "matrix(1.000029, 0, 0, 1.000029, 0, 0.001957)",
+                            "filter": "blur(0.003425px)",
                             "color": "rgb(242, 240, 245)"
                           },
                           "text": "o"
@@ -453,8 +453,8 @@
                             "display": "block",
                             "visibility": "visible",
                             "opacity": "1",
-                            "transform": "matrix(1.000405, 0, 0, 1.000405, 0, 0.027007)",
-                            "filter": "blur(0.047262px)",
+                            "transform": "matrix(1.000378, 0, 0, 1.000378, 0, 0.02518)",
+                            "filter": "blur(0.044065px)",
                             "color": "rgb(242, 240, 245)"
                           },
                           "text": "m"
@@ -466,8 +466,8 @@
                             "display": "block",
                             "visibility": "visible",
                             "opacity": "1",
-                            "transform": "matrix(1.000693, 0, 0, 1.000693, 0, 0.046212)",
-                            "filter": "blur(0.08087px)",
+                            "transform": "matrix(1.000656, 0, 0, 1.000656, 0, 0.043712)",
+                            "filter": "blur(0.076497px)",
                             "color": "rgb(242, 240, 245)"
                           },
                           "text": "e"
@@ -479,8 +479,8 @@
                             "display": "block",
                             "visibility": "visible",
                             "opacity": "1",
-                            "transform": "matrix(1.001076, 0, 0, 1.001076, 0, 0.07172)",
-                            "filter": "blur(0.125511px)",
+                            "transform": "matrix(1.001027, 0, 0, 1.001027, 0, 0.068461)",
+                            "filter": "blur(0.119806px)",
                             "color": "rgb(242, 240, 245)"
                           },
                           "text": "e"
@@ -492,8 +492,8 @@
                             "display": "block",
                             "visibility": "visible",
                             "opacity": "1",
-                            "transform": "matrix(1.001566, 0, 0, 1.001566, 0, 0.104381)",
-                            "filter": "blur(0.182666px)",
+                            "transform": "matrix(1.001504, 0, 0, 1.001504, 0, 0.100256)",
+                            "filter": "blur(0.175447px)",
                             "color": "rgb(242, 240, 245)"
                           },
                           "text": "t"
@@ -519,8 +519,8 @@
                             "display": "block",
                             "visibility": "visible",
                             "opacity": "1",
-                            "transform": "matrix(1.003051, 0, 0, 1.003051, 0, 0.203432)",
-                            "filter": "blur(0.356007px)",
+                            "transform": "matrix(1.002955, 0, 0, 1.002955, 0, 0.196998)",
+                            "filter": "blur(0.344746px)",
                             "color": "rgb(242, 240, 245)"
                           },
                           "text": "y"
@@ -532,8 +532,8 @@
                             "display": "block",
                             "visibility": "visible",
                             "opacity": "1",
-                            "transform": "matrix(1.003993, 0, 0, 1.003993, 0, 0.2662)",
-                            "filter": "blur(0.465849px)",
+                            "transform": "matrix(1.003876, 0, 0, 1.003876, 0, 0.258408)",
+                            "filter": "blur(0.452214px)",
                             "color": "rgb(242, 240, 245)"
                           },
                           "text": "o"
@@ -545,8 +545,8 @@
                             "display": "block",
                             "visibility": "visible",
                             "opacity": "1",
-                            "transform": "matrix(1.005129, 0, 0, 1.005129, 0, 0.341958)",
-                            "filter": "blur(0.598427px)",
+                            "transform": "matrix(1.004989, 0, 0, 1.004989, 0, 0.332572)",
+                            "filter": "blur(0.582002px)",
                             "color": "rgb(242, 240, 245)"
                           },
                           "text": "u"
@@ -558,8 +558,8 @@
                             "display": "block",
                             "visibility": "visible",
                             "opacity": "1",
-                            "transform": "matrix(1.006496, 0, 0, 1.006496, 0, 0.433064)",
-                            "filter": "blur(0.757863px)",
+                            "transform": "matrix(1.006327, 0, 0, 1.006327, 0, 0.421787)",
+                            "filter": "blur(0.738127px)",
                             "color": "rgb(242, 240, 245)"
                           },
                           "text": ","
@@ -585,8 +585,8 @@
                             "display": "block",
                             "visibility": "visible",
                             "opacity": "1",
-                            "transform": "matrix(1.015847, 0, 0, 1.015847, 0, 1.056492)",
-                            "filter": "blur(1.848862px)",
+                            "transform": "matrix(1.015477, 0, 0, 1.015477, 0, 1.031783)",
+                            "filter": "blur(1.80562px)",
                             "color": "rgb(242, 240, 245)"
                           },
                           "text": "A"
@@ -598,8 +598,8 @@
                             "display": "block",
                             "visibility": "visible",
                             "opacity": "1",
-                            "transform": "matrix(1.01949, 0, 0, 1.01949, 0, 1.29935)",
-                            "filter": "blur(2.273862px)",
+                            "transform": "matrix(1.019034, 0, 0, 1.019034, 0, 1.268958)",
+                            "filter": "blur(2.220676px)",
                             "color": "rgb(242, 240, 245)"
                           },
                           "text": "d"
@@ -611,8 +611,8 @@
                             "display": "block",
                             "visibility": "visible",
                             "opacity": "1",
-                            "transform": "matrix(1.024, 0, 0, 1.024, 0, 1.599986)",
-                            "filter": "blur(2.799976px)",
+                            "transform": "matrix(1.023433, 0, 0, 1.023433, 0, 1.562174)",
+                            "filter": "blur(2.733804px)",
                             "color": "rgb(242, 240, 245)"
                           },
                           "text": "a"
@@ -624,8 +624,8 @@
                             "display": "block",
                             "visibility": "visible",
                             "opacity": "1",
-                            "transform": "matrix(1.029652, 0, 0, 1.029652, 0, 1.976788)",
-                            "filter": "blur(3.459379px)",
+                            "transform": "matrix(1.028937, 0, 0, 1.028937, 0, 1.929134)",
+                            "filter": "blur(3.375985px)",
                             "color": "rgb(242, 240, 245)"
                           },
                           "text": "."

@@ -23,8 +23,8 @@ look and still freeze it?
 
 ## Considered Options
 
-* Web Animations created paused, positioned every frame from a clock (`requestAnimationFrame`,
-  `performance.now`); tests replace that clock with Playwright's fake clock
+* Web Animations created paused, positioned every frame from a clock (`requestAnimationFrame`
+  frame times); tests replace that clock with Playwright's fake clock
 * CSS animations, with tests waiting real time
 * Hand-written interpolation in JS
 
@@ -33,7 +33,10 @@ look and still freeze it?
 Chosen option: "paused Web Animations on an injected clock" (`plugins/eris/ui/timeline.js`). Each
 glyph and orb part gets `element.animate(keyframes, { delay, duration, easing })` with the
 prototype's values, is paused, and is positioned from the timeline's clock on every frame. Scene cues
-run on the same timeline. In tests, Playwright's fake clock (installed for every frame, sandboxed
+run on the same timeline. The timeline starts at its first frame and its time is the latest frame's
+time, never `performance.now()`: under the fake clock `now()` keeps the real milliseconds between
+installing and pausing the clock, and in an event handler it would also depend on when the input
+arrived, so either would shift the scene by a millisecond from run to run. In tests, Playwright's fake clock (installed for every frame, sandboxed
 ones included) pauses time; `clock.runFor(ms)` steps it exactly.
 
 Bridge answers (a permission prompt, for example) only choose branches; when the next line starts is
