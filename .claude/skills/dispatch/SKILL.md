@@ -11,7 +11,7 @@ caps how many tasks to start now: $ARGUMENTS. You finish when every startable ta
 
 ## Steps
 
-1. `just lanes status`, then `just lanes next` (or `node scripts/lanes.mjs next --max <max-new>`). The
+1. `just lanes status`, then `just lanes next` (or `just lanes next --max <max-new>`). The
    output lists the issues to start and why the others wait (lane held, blocker open, cap reached).
 2. For each issue to start, in the order given:
    1. `just task-start <N>`. It claims the issue (`ai:in-progress`) and prints the worktree path. If it
