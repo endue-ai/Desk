@@ -31,12 +31,17 @@ export class Timeline {
     return this.#frame === null ? 0 : this.#frame - this.#origin;
   }
 
-  /** Take over an animation: it stops running on its own and follows this timeline. */
+  /**
+   * Take over an animation: its effect moves to an animation without a document timeline, which never
+   * advances on its own. (`pause()` is not enough: WebKit settles a pending pause on a later rendering
+   * frame against the real document timeline, which shifts endless loops by real milliseconds.)
+   */
   add(animation) {
-    animation.pause();
-    animation.currentTime = Math.max(0, this.time);
-    this.#animations.push(animation);
-    return animation;
+    const held = new Animation(animation.effect, null);
+    animation.cancel();
+    held.currentTime = Math.max(0, this.time);
+    this.#animations.push(held);
+    return held;
   }
 
   /** Run `fn` on the first frame at or after `ms`. Cues at the same time run in the order added. */
