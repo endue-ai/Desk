@@ -63,8 +63,8 @@ perf-opening mode="check":
     {{ if mode == "record" { "PERF_RECORD=1 " } else { "" } }}pnpm --filter @endue-ai/runtime exec playwright test --config playwright.perf.config.ts
 
 # Parallel tasks (ADR 0015): show lanes, or pick the ready issues that can start now ("next")
-lanes command="status":
-    node scripts/lanes.mjs {{command}}
+lanes *args="status":
+    node scripts/lanes.mjs {{args}}
 
 # Claim an ai:ready issue and start it in .claude/worktrees/ai-<issue> on ai/<issue>-<slug>
 task-start issue:
