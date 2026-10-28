@@ -9,15 +9,32 @@ repository.workspace = true
 publish.workspace = true
 
 [features]
-## File primitives: read, list and watch.
+## File primitives: read, write, list and watch.
 fs = ["dep:notify"]
+## Processes: spawn with pipes or in a pseudo-terminal, write, resize, signal.
+proc = ["dep:portable-pty", "dep:nix"]
+## One HTTP(S) request at a time, no redirects followed.
+net = ["dep:ureq"]
 
 [dependencies]
 notify = { workspace = true, optional = true }
+portable-pty = { workspace = true, optional = true }
+ureq = { workspace = true, optional = true }
+
+[target.'cfg(unix)'.dependencies]
+nix = { workspace = true, optional = true }
 
 [[test]]
 name = "fs"
 required-features = ["fs"]
+
+[[test]]
+name = "proc"
+required-features = ["proc"]
+
+[[test]]
+name = "net"
+required-features = ["net"]
 
 [lints]
 workspace = true

@@ -8,9 +8,12 @@ Layer: Rust core (see `docs/architecture.md`).
 ## Public API
 
 - `Core::new(Roots { home })`, `Core::handle(caller, BridgeRequest) -> BridgeResponse`: serves
-  `fs.*`, `perm.*`, `plugin.*`, `store.*` and `brain.say`; other methods answer `unsupported` for now.
-  `grant`, `revoke`, `grants_of`, `events`. Work a caller starts (watches) ends when its grant is
-  revoked or the plugin is turned off.
+  `fs.*`, `proc.*`, `net.fetch`, `perm.*`, `plugin.*`, `store.*` and `brain.say`; other methods
+  answer `unsupported` for now. `grant`, `revoke`, `grants_of`, `events`. Work a caller starts
+  (watches, processes) ends when its grant is revoked or the plugin is turned off.
+- Processes: `proc.output` splits text only at whole characters (base64 otherwise), `proc.exit` comes
+  last; later calls need a scope that still covers the command. `net.fetch` follows redirects only
+  to hosts inside the scope and returns the others as results.
 - Files: paths are normalised lexically, then no component below the literal part of the grant may be
   a symbolic link. `fs.write` (with `createDirs` only inside the scope), `fs.watch` (`fs.changed`
   with bridge paths, bursts coalesced).

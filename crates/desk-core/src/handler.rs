@@ -13,6 +13,7 @@ use desk_sys::fs as sysfs;
 use serde::Serialize;
 
 use crate::conversation::Conversation;
+use crate::core_proc::{Procs, lock};
 use crate::events::EventBus;
 use crate::paths::normalize;
 use crate::perm::{Denied, PermissionEngine};
@@ -44,6 +45,7 @@ pub struct Core {
     /// Only built-in plugins run: other plugins are listed but get no permissions.
     pub(crate) safe_mode: bool,
     pub(crate) watches: Mutex<Table<sysfs::Watch>>,
+    pub(crate) procs: Procs,
 }
 
 impl Core {
@@ -59,6 +61,7 @@ impl Core {
             conversation: None,
             safe_mode: false,
             watches: Mutex::new(Table::new("w")),
+            procs: Arc::new(Mutex::new(Table::new("p"))),
         }
     }
 
@@ -102,11 +105,11 @@ impl Core {
             R::StoreGet(r) => (r.id, self.store_get(caller, r.params)),
             R::StoreSet(r) => (r.id, self.store_set(caller, r.params)),
             R::BrainSay(r) => (r.id, self.brain_say(caller, r.params)),
-            R::ProcSpawn(r) => (r.id, unsupported("proc.spawn")),
-            R::ProcWrite(r) => (r.id, unsupported("proc.write")),
-            R::ProcResize(r) => (r.id, unsupported("proc.resize")),
-            R::ProcKill(r) => (r.id, unsupported("proc.kill")),
-            R::NetFetch(r) => (r.id, unsupported("net.fetch")),
+            R::ProcSpawn(r) => (r.id, self.proc_spawn(caller, r.params)),
+            R::ProcWrite(r) => (r.id, self.proc_write(caller, r.params)),
+            R::ProcResize(r) => (r.id, self.proc_resize(caller, r.params)),
+            R::ProcKill(r) => (r.id, self.proc_kill(caller, r.params)),
+            R::NetFetch(r) => (r.id, self.net_fetch(caller, r.params)),
             R::AudioCaptureStart(r) => (r.id, unsupported("audio.capture.start")),
             R::AudioCaptureStop(r) => (r.id, unsupported("audio.capture.stop")),
             R::UiSurfaceOpen(r) => (r.id, unsupported("ui.surface.open")),
@@ -151,11 +154,18 @@ impl Core {
     /// End the work a revoked grant allowed.
     pub(crate) fn release_grant(&self, grant_id: &str) {
         drop(self.watches().drain_where(|e| e.grant == grant_id));
+        drop(lock(&self.procs).drain_where(|e| e.grant == grant_id));
     }
 
     /// End the work a plugin started, when it is turned off.
     pub(crate) fn release_caller(&self, caller: &str) {
         drop(self.watches().drain_where(|e| e.caller == caller));
+        drop(lock(&self.procs).drain_where(|e| e.caller == caller));
+    }
+
+    /// The home folder, where processes start unless asked otherwise.
+    pub(crate) fn home(&self) -> PathBuf {
+        self.roots.home.clone()
     }
 }
 

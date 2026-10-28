@@ -42,6 +42,19 @@ impl<T> Table<T> {
         );
     }
 
+    /// `caller`'s entry `id`. Another caller's id is as good as missing.
+    pub fn get_mut(&mut self, caller: &str, id: &str) -> Option<&mut T> {
+        self.entries
+            .get_mut(id)
+            .filter(|entry| entry.caller == caller)
+            .map(|entry| &mut entry.value)
+    }
+
+    /// Remove an entry whatever its owner (the work ended on its own).
+    pub fn forget(&mut self, id: &str) -> Option<T> {
+        self.entries.remove(id).map(|entry| entry.value)
+    }
+
     /// Remove every entry `ends` picks, and hand them back to be stopped.
     pub fn drain_where(&mut self, ends: impl Fn(&Entry<T>) -> bool) -> Vec<T> {
         let ids: Vec<String> = self
