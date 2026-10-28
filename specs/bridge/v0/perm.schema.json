@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://endue.ai/specs/bridge/v0/perm.schema.json",
   "title": "Desk bridge v0: perm",
-  "description": "Permissions: request, query and revoke grants. These calls need no scope: asking is always allowed, and the person decides.",
+  "description": "Permissions: request, query and revoke grants, and the prompter's side of a request. Asking and looking at one's own grants need no scope; the person decides. Seeing other callers' grants and answering prompts need perm:manage.",
   "$defs": {
     "PermRequestRequest": {
       "description": "Ask the person for a permission. Resolves when they answer.",
@@ -24,10 +24,16 @@
           "description": "Shown to the person in the prompt.",
           "type": "string",
           "minLength": 1
-        }
+        },
+        "duration": { "$ref": "#/$defs/GrantDuration" }
       },
       "required": ["permission", "reason"],
       "additionalProperties": false
+    },
+    "GrantDuration": {
+      "description": "How long a grant lasts. once: the next call it allows, then it expires. session: until Desk quits. always: kept on disk across restarts. Every grant lasts until revoked at the latest. perm.request defaults to session.",
+      "type": "string",
+      "enum": ["once", "session", "always"]
     },
     "PermRequestResult": {
       "description": "Result of perm.request. A refusal is a result, not an error.",
@@ -79,10 +85,13 @@
       "additionalProperties": false
     },
     "PermRevokeParams": {
-      "description": "Parameters of perm.revoke.",
+      "description": "Parameters of perm.revoke. Without scope only the caller's own grants; with perm:manage any caller's.",
       "type": "object",
       "properties": {
-        "grantId": { "type": "string", "minLength": 1 }
+        "grantId": { "type": "string", "minLength": 1 },
+        "scope": {
+          "$ref": "../../plugin/v0/permission.schema.json#/$defs/PermManagePermission"
+        }
       },
       "required": ["grantId"],
       "additionalProperties": false
@@ -99,18 +108,115 @@
       "properties": {
         "grantId": { "type": "string", "minLength": 1 },
         "permission": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/Permission" },
+        "duration": { "$ref": "#/$defs/GrantDuration" },
         "grantedAt": {
           "description": "RFC 3339 timestamp.",
           "type": "string",
           "format": "date-time"
         },
         "expiresAt": {
-          "description": "RFC 3339 timestamp; absent means until revoked.",
+          "description": "RFC 3339 timestamp; absent means for as long as the duration allows.",
           "type": "string",
           "format": "date-time"
         }
       },
-      "required": ["grantId", "permission", "grantedAt"],
+      "required": ["grantId", "permission", "duration", "grantedAt"],
+      "additionalProperties": false
+    },
+    "PermListRequest": {
+      "description": "List every caller's grants, for the person's permissions view.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "perm.list" },
+        "params": { "$ref": "#/$defs/PermListParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "PermListParams": {
+      "description": "Parameters of perm.list. With caller, only that caller's grants are returned.",
+      "type": "object",
+      "properties": {
+        "caller": { "$ref": "bridge.schema.json#/$defs/CallerId" },
+        "scope": {
+          "$ref": "../../plugin/v0/permission.schema.json#/$defs/PermManagePermission"
+        }
+      },
+      "required": ["scope"],
+      "additionalProperties": false
+    },
+    "PermListResult": {
+      "description": "Result of perm.list, oldest grant first.",
+      "type": "object",
+      "properties": {
+        "grants": { "type": "array", "items": { "$ref": "#/$defs/CallerGrant" } }
+      },
+      "required": ["grants"],
+      "additionalProperties": false
+    },
+    "CallerGrant": {
+      "description": "A grant together with the caller that holds it.",
+      "type": "object",
+      "properties": {
+        "caller": { "$ref": "bridge.schema.json#/$defs/CallerId" },
+        "grant": { "$ref": "#/$defs/Grant" }
+      },
+      "required": ["caller", "grant"],
+      "additionalProperties": false
+    },
+    "PermAnswerRequest": {
+      "description": "The prompter answers a perm.prompt with the person's decision.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "perm.answer" },
+        "params": { "$ref": "#/$defs/PermAnswerParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "PermAnswerParams": {
+      "description": "Parameters of perm.answer. duration is what the person chose; absent keeps the one asked for.",
+      "type": "object",
+      "properties": {
+        "promptId": { "type": "string", "minLength": 1 },
+        "granted": { "type": "boolean" },
+        "duration": { "$ref": "#/$defs/GrantDuration" },
+        "scope": {
+          "$ref": "../../plugin/v0/permission.schema.json#/$defs/PermManagePermission"
+        }
+      },
+      "required": ["promptId", "granted", "scope"],
+      "additionalProperties": false
+    },
+    "PermAnswerResult": {
+      "description": "Result of perm.answer.",
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "PermPromptEvent": {
+      "description": "A caller asked for a permission and the person has to decide. Sent to callers that hold perm:manage.",
+      "type": "object",
+      "properties": {
+        "event": { "const": "perm.prompt" },
+        "data": { "$ref": "#/$defs/PermPromptData" }
+      },
+      "required": ["event", "data"],
+      "additionalProperties": false
+    },
+    "PermPromptData": {
+      "description": "Payload of perm.prompt: who asks, for what, why and for how long.",
+      "type": "object",
+      "properties": {
+        "promptId": { "type": "string", "minLength": 1 },
+        "caller": { "$ref": "bridge.schema.json#/$defs/CallerId" },
+        "permission": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/Permission" },
+        "reason": { "description": "The caller's reason, to show as it is.", "type": "string" },
+        "duration": { "$ref": "#/$defs/GrantDuration" }
+      },
+      "required": ["promptId", "caller", "permission", "reason", "duration"],
       "additionalProperties": false
     },
     "PermChangedEvent": {
