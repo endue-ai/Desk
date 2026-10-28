@@ -10,6 +10,8 @@ and `src/` mounts the runtime and connects the bridge.
 | `src-tauri/src/prompt.rs` | Permission prompts as native dialogs (ADR 0016) |
 | `src-tauri/src/frames.rs` | Frames (`main`, `frame-<n>`) and per-frame event delivery (ADR 0018) |
 | `src-tauri/src/lifecycle.rs` | The core outlives its frames: Dock on macOS, tray elsewhere (ADR 0019) |
+| `src-tauri/src/updates.rs` | Release builds (feature `updater`) offer updates after start (ADR 0021) |
+| `src-tauri/Info.plist`, `Entitlements.plist` | What macOS must be told: microphone, virtualization (`docs/os-permissions.md`) |
 | `src-tauri/capabilities/` | Frames (`main`, `frame-*`) may call exactly those commands |
 | `src-tauri/tauri.conf.json` | Window, strict CSP, bundle; identifier `ai.endue.desk` |
 | `src-tauri/icons/` | Placeholder icons generated from a flat accent square |

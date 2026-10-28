@@ -43,7 +43,7 @@ check:
 # Lint the Tauri app crate (needs the platform webview SDK)
 check-app: build-sdk
     pnpm --filter @endue-ai/desk-app build
-    cargo clippy -p desk-app --all-targets -- -D warnings
+    cargo clippy -p desk-app --all-targets --all-features -- -D warnings
 
 # Build the Tauri app binary
 build-app: build-sdk
@@ -57,6 +57,14 @@ codegen:
 # Check the OS declarations the app's features need (Info.plist, entitlements, Linux packages)
 os-declarations:
     node scripts/os-declarations.mjs
+
+# Release builds only: the tauri.conf.json additions (updater key and endpoint, signing), as JSON
+release-config:
+    @node scripts/release-config.mjs
+
+# Release only: name the signed bundles of every build and write latest.json (ADR 0021)
+release-assets version input="artifacts" output="release" repo="endue-ai/Desk":
+    node scripts/release-assets.mjs --version {{version}} --repo {{repo}} --in {{input}} --out {{output}}
 
 # Bundle the plugin SDK that the app serves to plugin frames
 build-sdk:

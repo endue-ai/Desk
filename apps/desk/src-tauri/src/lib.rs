@@ -5,6 +5,7 @@ mod frames;
 mod lifecycle;
 mod prompt;
 mod protocol;
+mod updates;
 
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
@@ -26,7 +27,7 @@ pub const DEFAULT_BRAIN_URL: &str = "http://127.0.0.1:8787/v0";
 struct Watching(#[allow(dead_code)] Mutex<Option<PluginWatcher>>);
 
 pub fn run() {
-    tauri::Builder::default()
+    updates::plugin(tauri::Builder::default())
         .plugin(tauri_plugin_dialog::init())
         .register_uri_scheme_protocol(protocol::SCHEME, |ctx, request| {
             protocol::serve(ctx.app_handle(), &request)
@@ -92,6 +93,7 @@ pub fn run() {
                 })?;
             app.manage(core);
             lifecycle::install(app);
+            updates::check_later(app.handle());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![

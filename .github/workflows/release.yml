@@ -1,0 +1,222 @@
+name: release
+
+# A v* tag (made when a person merges the release PR) builds Desk on three OSes, signs and notarizes
+# it in the `signing` environment, smoke-tests the signed installers on clean runners, and publishes
+# the GitHub Release with the updater manifest in the `stable` environment (ADR 0021). Nothing here
+# runs on pull requests, and AI tokens can reach neither environment. Settings: docs/release.md.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  preflight:
+    name: preflight
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: just
+      - id: version
+        name: The tag matches the app's version
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          version="${TAG#v}"
+          app="$(node -p 'require("./apps/desk/src-tauri/tauri.conf.json").version')"
+          if [[ "$version" != "$app" ]]; then
+            echo "::error::Tag $TAG does not match tauri.conf.json version $app."
+            exit 1
+          fi
+          echo "version=$version" | tee -a "$GITHUB_OUTPUT"
+      - run: just os-declarations
+
+  build:
+    name: build (${{ matrix.target }})
+    needs: preflight
+    environment: signing
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            target: aarch64-apple-darwin
+          - os: macos-latest
+            target: x86_64-apple-darwin
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+          # The oldest supported Ubuntu, so the AppImage and the .deb run on older glibc too.
+          - os: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install Rust toolchain (rust-toolchain.toml) and the target
+        shell: bash
+        env:
+          TARGET: ${{ matrix.target }}
+        run: |
+          rustup toolchain install
+          rustup target add "$TARGET"
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: release-${{ matrix.target }}
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: just
+      - name: Install the WebKitGTK and ALSA SDKs
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev libasound2-dev
+      - name: Install trusted-signing-cli (Windows signing)
+        if: runner.os == 'Windows'
+        run: cargo install trusted-signing-cli --locked
+      - run: pnpm install --frozen-lockfile
+      - name: Write the release configuration
+        shell: bash
+        env:
+          DESK_UPDATER_PUBKEY: ${{ vars.DESK_UPDATER_PUBKEY }}
+          REPO: ${{ github.repository }}
+          AZURE_SIGNING_ENDPOINT: ${{ vars.AZURE_SIGNING_ENDPOINT }}
+          AZURE_SIGNING_ACCOUNT: ${{ vars.AZURE_SIGNING_ACCOUNT }}
+          AZURE_SIGNING_PROFILE: ${{ vars.AZURE_SIGNING_PROFILE }}
+        run: just release-config > "$RUNNER_TEMP/release.conf.json"
+      - name: Write the App Store Connect key (notarization)
+        if: runner.os == 'macOS'
+        env:
+          APPLE_API_KEY_P8: ${{ secrets.APPLE_API_KEY_P8 }}
+        run: |
+          key="$RUNNER_TEMP/AuthKey.p8"
+          printf '%s' "$APPLE_API_KEY_P8" > "$key"
+          echo "APPLE_API_KEY_PATH=$key" >> "$GITHUB_ENV"
+      # The Tauri CLI signs with these: the updater key on every OS, the Developer ID certificate
+      # and notarization on macOS, the sign command from the release configuration on Windows.
+      - name: Build, sign and notarize
+        shell: bash
+        env:
+          TARGET: ${{ matrix.target }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ vars.APPLE_SIGNING_IDENTITY }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+        run: |
+          pnpm --filter @endue-ai/desk-app tauri build --target "$TARGET" --features updater \
+            --config "$RUNNER_TEMP/release.conf.json"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: desk-${{ matrix.target }}
+          # The .app folder loses its permissions in an artifact; the signed .app.tar.gz carries it.
+          path: |
+            target/${{ matrix.target }}/release/bundle/
+            !target/${{ matrix.target }}/release/bundle/macos/*.app/**
+          if-no-files-found: error
+          retention-days: 14
+
+  smoke:
+    name: smoke (${{ matrix.target }})
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            launch: true
+          # Intel builds are checked for their signature; arm runners do not launch them.
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            launch: false
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            launch: true
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            launch: true
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          name: desk-${{ matrix.target }}
+          path: bundle
+      - name: Signature, notarization and launch (macOS)
+        if: runner.os == 'macOS'
+        env:
+          LAUNCH: ${{ matrix.launch }}
+        run: |
+          tar -xzf bundle/macos/*.app.tar.gz -C "$RUNNER_TEMP"
+          app="$RUNNER_TEMP/endue Desk.app"
+          e2e/smoke/verify-signature.sh "$app"
+          if [[ "$LAUNCH" == "true" ]]; then e2e/smoke/launch.sh "$app/Contents/MacOS/endue-desk"; fi
+      - name: Signature, install and launch (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $setup = (Get-ChildItem bundle/nsis/*-setup.exe).FullName
+          $msi = (Get-ChildItem bundle/msi/*.msi).FullName
+          ./e2e/smoke/verify-signature.ps1 $setup $msi
+          ./e2e/smoke/launch.ps1 -Setup $setup
+      - name: Install and launch (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb ./bundle/deb/*.deb
+          e2e/smoke/launch.sh /usr/bin/endue-desk
+
+  publish:
+    name: publish
+    needs: [preflight, smoke]
+    environment: stable
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: just
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: desk-*
+          path: artifacts
+      - name: Name the assets and write latest.json
+        env:
+          VERSION: ${{ needs.preflight.outputs.version }}
+          REPO: ${{ github.repository }}
+        run: just release-assets "$VERSION" artifacts release "$REPO"
+      - name: Publish the GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: gh release create "$TAG" release/* --verify-tag --title "endue Desk $TAG" --generate-notes

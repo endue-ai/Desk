@@ -12,3 +12,8 @@ Scripts that `justfile` recipes call (codegen, sign, release). Run them through 
 `os-declarations.mjs` checks that the app tells each OS what its features need: the macOS microphone
 sentence and entitlements (microphone, virtualization) and ALSA for Linux packages
 (`just os-declarations`, run by the release workflow; see `docs/os-permissions.md`).
+
+`release-config.mjs` and `release-assets.mjs` belong to `.github/workflows/release.yml`: the first prints
+what a release build adds to `tauri.conf.json` (updater key and endpoint, Windows signing), the second
+names the signed bundles and writes `latest.json` (`just release-config`, `just release-assets`;
+ADR 0021, `docs/release.md`).

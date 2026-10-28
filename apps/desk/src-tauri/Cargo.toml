@@ -15,6 +15,11 @@ name = "desk_app"
 name = "endue-desk"
 path = "src/main.rs"
 
+[features]
+## Release builds: check for updates at start (ADR 0021). The release workflow turns this on together
+## with the updater's public key and endpoint (plugins.updater in --config).
+updater = ["dep:tauri-plugin-updater"]
+
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 
@@ -26,6 +31,7 @@ desk-sys = { workspace = true, features = ["microphone"] }
 serde_json.workspace = true
 tauri = { version = "2", features = ["tray-icon"] }
 tauri-plugin-dialog = "2"
+tauri-plugin-updater = { version = "2", optional = true }
 
 [lints]
 workspace = true
