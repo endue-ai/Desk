@@ -71,7 +71,10 @@ fn a_malformed_stream_is_a_protocol_failure() {
     let (session, lease) = open(&brain, "desk-a");
 
     let (result, events) = turn(&brain, &session, &lease, "hi");
-    assert!(matches!(result, Err(BrainFailure::Protocol(_))), "{result:?}");
+    assert!(
+        matches!(result, Err(BrainFailure::Protocol(_))),
+        "{result:?}"
+    );
     assert!(!kinds(&events).contains(&"turn.completed"));
 }
 
@@ -93,7 +96,10 @@ fn a_stream_that_stops_early_is_unreachable() {
 #[test]
 fn a_failed_follow_up_keeps_the_last_tool_result_open() {
     let ollama = FakeOllama::start(vec![
-        Reply::Stream(vec![calls(&[("echo", json!({ "text": "a" }))]), done("stop")]),
+        Reply::Stream(vec![
+            calls(&[("echo", json!({ "text": "a" }))]),
+            done("stop"),
+        ]),
         Reply::Error(500, r#"{"error":"out of memory"}"#.to_owned()),
         Reply::Stream(vec![say("Done."), done("stop")]),
     ]);

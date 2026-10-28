@@ -67,7 +67,11 @@ fn read_request(stream: &TcpStream) -> (String, Value) {
     let mut reader = BufReader::new(stream);
     let mut line = String::new();
     reader.read_line(&mut line).unwrap();
-    let path = line.split_whitespace().nth(1).unwrap_or_default().to_owned();
+    let path = line
+        .split_whitespace()
+        .nth(1)
+        .unwrap_or_default()
+        .to_owned();
     let mut length = 0;
     loop {
         line.clear();

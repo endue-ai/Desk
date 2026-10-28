@@ -114,7 +114,13 @@ fn lease_conflicts_answer_with_the_contract_codes() {
 
     now.fetch_add(30_000, Ordering::SeqCst);
     let renewed = brain
-        .renew_lease(&session, &b.lease_id, &LeaseRenewRequest { ttl_seconds: Some(5) })
+        .renew_lease(
+            &session,
+            &b.lease_id,
+            &LeaseRenewRequest {
+                ttl_seconds: Some(5),
+            },
+        )
         .unwrap();
     assert_eq!(renewed.ttl_seconds, 5);
     assert_eq!(renewed.expires_at, "2026-10-27T08:00:35.000Z");
@@ -123,14 +129,20 @@ fn lease_conflicts_answer_with_the_contract_codes() {
         refused(brain.renew_lease(&session, &b.lease_id, &renew)),
         (409, "lease_expired".to_owned())
     );
-    assert_eq!(refused(brain.get_lease(&session)), (404, "not_found".to_owned()));
+    assert_eq!(
+        refused(brain.get_lease(&session)),
+        (404, "not_found".to_owned())
+    );
     assert_eq!(brain.get_session(&session).unwrap().lease, None);
 
     let c = brain
         .acquire_lease(&session, &acquire("desk-c", 60, false))
         .unwrap();
     brain.release_lease(&session, &c.lease_id).unwrap();
-    assert_eq!(refused(brain.get_lease(&session)), (404, "not_found".to_owned()));
+    assert_eq!(
+        refused(brain.get_lease(&session)),
+        (404, "not_found".to_owned())
+    );
 }
 
 #[test]
@@ -155,8 +167,13 @@ fn bad_requests_are_invalid_and_unknown_sessions_not_found() {
         refused(brain.acquire_lease(&other, &acquire("desk-a", 3601, false))),
         invalid
     );
-    let short = LeaseRenewRequest { ttl_seconds: Some(2) };
-    assert_eq!(refused(brain.renew_lease(&session, &lease, &short)), invalid);
+    let short = LeaseRenewRequest {
+        ttl_seconds: Some(2),
+    };
+    assert_eq!(
+        refused(brain.renew_lease(&session, &lease, &short)),
+        invalid
+    );
     let no_desk = desk_brain::LeaseAcquireRequest {
         holder: LeaseHolder {
             desk_id: String::new(),
@@ -178,8 +195,5 @@ fn bad_requests_are_invalid_and_unknown_sessions_not_found() {
         refused(brain.create_turn(&session, &empty, &mut |_| {})),
         invalid
     );
-    assert_eq!(
-        refused(turn(&brain, "nope", &lease, "hi").0),
-        not_found
-    );
+    assert_eq!(refused(turn(&brain, "nope", &lease, "hi").0), not_found);
 }

@@ -38,7 +38,10 @@ fn a_turn_streams_the_model_text_as_contract_events() {
     assert_eq!(path, "/api/chat");
     assert_eq!(body["model"], MODEL);
     assert_eq!(body["stream"], true);
-    assert_eq!(body["messages"], json!([{ "role": "user", "content": "hi" }]));
+    assert_eq!(
+        body["messages"],
+        json!([{ "role": "user", "content": "hi" }])
+    );
 }
 
 #[test]
@@ -56,7 +59,10 @@ fn the_next_turn_carries_the_conversation() {
     let (result, events) = turn(&brain, &session, &lease, "again");
     result.unwrap();
     assert_eq!(text(&events), "Still here");
-    assert_ne!(events[0]["turnId"], first[0]["turnId"], "every turn has its own id");
+    assert_ne!(
+        events[0]["turnId"], first[0]["turnId"],
+        "every turn has its own id"
+    );
 
     assert_eq!(
         ollama.requests()[1].1["messages"],
@@ -104,7 +110,14 @@ fn tool_calls_stop_the_turn_and_their_results_go_back_to_the_model() {
     let wrong = submit(&brain, &session, &turn_id, &lease, "call-x", json!(1));
     assert_eq!(refused(wrong.0), (404, "not_found".to_owned()));
 
-    let (result, events) = submit(&brain, &session, &turn_id, &lease, &first, json!({ "text": "a" }));
+    let (result, events) = submit(
+        &brain,
+        &session,
+        &turn_id,
+        &lease,
+        &first,
+        json!({ "text": "a" }),
+    );
     result.unwrap();
     assert_eq!(kinds(&events), ["tool.call", "turn.completed"]);
     assert_eq!(events[0]["turnId"], turn_id.as_str());
@@ -113,7 +126,11 @@ fn tool_calls_stop_the_turn_and_their_results_go_back_to_the_model() {
     assert_eq!(events[1]["stopReason"], "tool_call");
     let second = events[0]["call"]["callId"].as_str().unwrap().to_owned();
     assert_ne!(first, second);
-    assert_eq!(ollama.requests().len(), 1, "no request until every result is in");
+    assert_eq!(
+        ollama.requests().len(),
+        1,
+        "no request until every result is in"
+    );
 
     let (result, events) = submit(&brain, &session, &turn_id, &lease, &second, json!("12:00"));
     result.unwrap();
