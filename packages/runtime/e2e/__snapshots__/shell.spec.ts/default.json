@@ -1215,61 +1215,6 @@
           {
            "tag": "button",
            "class": "run-chip",
-           "aria-label": "Kai · Compare flights",
-           "style": {
-            "background": "rgb(30, 29, 33)",
-            "border": "solid rgb(51, 49, 54)"
-           },
-           "children": [
-            {
-             "tag": "span",
-             "class": "run-avatar",
-             "style": {
-              "background": "rgb(48, 40, 62)",
-              "color": "rgb(228, 215, 255)"
-             },
-             "text": "K"
-            },
-            {
-             "tag": "span",
-             "class": "run-title",
-             "style": {
-              "color": "rgb(242, 240, 245)"
-             },
-             "text": "Compare flights"
-            },
-            {
-             "tag": "span",
-             "class": "run-time",
-             "style": {
-              "color": "rgb(176, 173, 183)"
-             },
-             "text": "1:06"
-            },
-            {
-             "tag": "span",
-             "class": "run-progress",
-             "children": [
-              {
-               "tag": "span",
-               "class": "run-bar",
-               "style": {
-                "background": "rgb(182, 163, 245)",
-                "color": "rgb(242, 240, 245)"
-               }
-              }
-             ]
-            }
-           ]
-          }
-         ]
-        },
-        {
-         "tag": "li",
-         "children": [
-          {
-           "tag": "button",
-           "class": "run-chip",
            "aria-label": "Mira · Sort the inbox",
            "style": {
             "background": "rgb(30, 29, 33)",
@@ -1300,6 +1245,61 @@
               "color": "rgb(176, 173, 183)"
              },
              "text": "4:13"
+            },
+            {
+             "tag": "span",
+             "class": "run-progress",
+             "children": [
+              {
+               "tag": "span",
+               "class": "run-bar",
+               "style": {
+                "background": "rgb(182, 163, 245)",
+                "color": "rgb(242, 240, 245)"
+               }
+              }
+             ]
+            }
+           ]
+          }
+         ]
+        },
+        {
+         "tag": "li",
+         "children": [
+          {
+           "tag": "button",
+           "class": "run-chip",
+           "aria-label": "Kai · Compare flights",
+           "style": {
+            "background": "rgb(30, 29, 33)",
+            "border": "solid rgb(51, 49, 54)"
+           },
+           "children": [
+            {
+             "tag": "span",
+             "class": "run-avatar",
+             "style": {
+              "background": "rgb(48, 40, 62)",
+              "color": "rgb(228, 215, 255)"
+             },
+             "text": "K"
+            },
+            {
+             "tag": "span",
+             "class": "run-title",
+             "style": {
+              "color": "rgb(242, 240, 245)"
+             },
+             "text": "Compare flights"
+            },
+            {
+             "tag": "span",
+             "class": "run-time",
+             "style": {
+              "color": "rgb(176, 173, 183)"
+             },
+             "text": "1:06"
             },
             {
              "tag": "span",

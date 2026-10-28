@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-// brain-echo: the smallest brain. Serves specs/brain/v0/openapi.yaml under /v0 with Node's standard
-// library only; the answers come from brain.mjs (sessions, turns, leases) and directory.mjs (spaces,
-// agents and their cards, A2A tasks).
+// brain-echo: the smallest brain. Serves specs/brain/v0/openapi.yaml with Node's standard library
+// only: the brain under /v0, answered by brain.mjs (sessions, turns, leases), and endue AI's API
+// gateway paths at the root (/api/v1/...), answered by directory.mjs (agents and spaces).
 //
 //   node examples/brain-echo/server.mjs [--port 8787]     --port 0 picks a free port
 //
@@ -10,7 +10,7 @@
 import { createServer } from "node:http";
 import { pathToFileURL } from "node:url";
 import { BrainError, EchoBrain, scaledClock } from "./brain.mjs";
-import { getAgentCard, listA2ATasks, listAgents, listSpaces } from "./directory.mjs";
+import { listAgents, listSpaceAgents, listSpaces } from "./directory.mjs";
 
 const PREFIX = "/v0";
 const MAX_BODY = 1024 * 1024;
@@ -34,16 +34,20 @@ const ROUTES = [
     (b, [s, l], body) => [200, b.renewLease(s, l, body)],
   ],
   ["DELETE", /^\/sessions\/([^/]+)\/lease\/([^/]+)$/, (b, [s, l]) => [204, b.releaseLease(s, l)]],
-  ["GET", /^\/agents$/, (_b, _params, _body, query) => [200, listAgents(query)]],
-  ["GET", /^\/agents\/([^/]+)\/card$/, (_b, [a]) => [200, getAgentCard(a)]],
-  ["GET", /^\/spaces$/, () => [200, listSpaces()]],
-  ["GET", /^\/a2a\/tasks$/, (_b, _params, _body, query) => [200, listA2ATasks(query)]],
+];
+
+// The API gateway's paths, at the root as endue AI serves them; same handler shape.
+const GATEWAY = [
+  ["GET", /^\/api\/v1\/agents$/, (_b, _params, _body, query) => [200, listAgents(query)]],
+  ["GET", /^\/api\/v1\/spaces$/, () => [200, listSpaces()]],
+  ["GET", /^\/api\/v1\/spaces\/([^/]+)\/agents$/, (_b, [s]) => [200, listSpaceAgents(s)]],
 ];
 
 function route(method, path) {
-  if (!path.startsWith(`${PREFIX}/`)) return undefined;
-  const rest = path.slice(PREFIX.length);
-  for (const [m, pattern, handler] of ROUTES) {
+  const [routes, rest] = path.startsWith(`${PREFIX}/`)
+    ? [ROUTES, path.slice(PREFIX.length)]
+    : [GATEWAY, path];
+  for (const [m, pattern, handler] of routes) {
     const match = m === method && pattern.exec(rest);
     if (match) return { handler, params: match.slice(1).map(decodeURIComponent) };
   }

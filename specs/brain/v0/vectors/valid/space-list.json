@@ -1,25 +1,25 @@
 {
   "target": "SpaceList",
-  "description": "two spaces",
-  "instance": {
-    "items": [
-      {
-        "id": "sp_home",
-        "key": "home",
-        "name": "Home",
-        "type": "workspace",
-        "createdAt": "2026-10-01T09:00:00Z",
-        "updatedAt": "2026-10-01T09:00:00Z"
-      },
-      {
-        "id": "sp_studio",
-        "key": "studio",
-        "name": "Studio",
-        "description": "Client work",
-        "type": "chat",
-        "createdAt": "2026-10-01T09:00:00Z",
-        "updatedAt": "2026-10-01T09:00:00Z"
-      }
-    ]
-  }
+  "description": "the gateway answers spaces as a plain array",
+  "instance": [
+    {
+      "id": "sp_home",
+      "key": "home",
+      "name": "Home",
+      "type": "workspace",
+      "status": "active",
+      "front_agent_id": "ag_01JBZ8Q4MR0000000000000001",
+      "created_at": "2026-10-01T09:00:00.000Z",
+      "updated_at": "2026-10-01T09:00:00.000Z"
+    },
+    {
+      "id": "sp_studio",
+      "key": "studio",
+      "name": "Studio",
+      "description": "Client work",
+      "type": "chat",
+      "created_at": "2026-10-01T09:00:00.000Z",
+      "updated_at": "2026-10-01T09:00:00.000Z"
+    }
+  ]
 }

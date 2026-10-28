@@ -50,6 +50,15 @@ impl Endpoint {
     pub fn url(&self) -> String {
         format!("http://{}:{}{}", self.host, self.port, self.prefix)
     }
+
+    /// The same host and port without the path: `http://127.0.0.1:8787/v0` gives
+    /// `http://127.0.0.1:8787`.
+    pub fn origin(&self) -> Self {
+        Self {
+            prefix: String::new(),
+            ..self.clone()
+        }
+    }
 }
 
 /// A response whose body has not been read yet.
@@ -267,6 +276,8 @@ mod tests {
         );
         assert!(Endpoint::parse("https://endue.ai/v0").is_err());
         assert!(Endpoint::parse("ftp://x").is_err());
+        let brain = Endpoint::parse("http://127.0.0.1:8787/v0").unwrap();
+        assert_eq!(brain.origin().url(), "http://127.0.0.1:8787");
     }
 
     #[test]

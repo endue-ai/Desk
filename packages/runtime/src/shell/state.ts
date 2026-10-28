@@ -1,5 +1,5 @@
 /** The shell's state in one store, plus the sample desk the prototype starts with. */
-import type { A2ATask, Agent, AgentCard, Space } from "@endue-ai/bridge";
+import type { Agent, Space } from "@endue-ai/bridge";
 import type { BrainStatus } from "../bridge/types";
 import type { DensityName } from "../eris/mesh";
 import type { SoulStyle } from "../eris/soul";
@@ -7,6 +7,18 @@ import type { ErisState } from "../eris/states";
 import type { Session } from "../modes/model";
 import type { DesktopIndex, Mode, SurfacePlacement } from "../modes/types";
 import type { Lang } from "./copy";
+
+/** Work an agent is doing. Local sample data: the gateway has no source for it yet. */
+export interface Task {
+  id: string;
+  /** The agent's id (as the gateway lists it). */
+  agent: string;
+  title: string;
+  /** Clock time the task started (negative: before the shell did). */
+  startedAt: number;
+  progress: number;
+  running: boolean;
+}
 
 export interface DrawerItem {
   id: string;
@@ -29,16 +41,15 @@ export interface DeskState {
   desktop: DesktopIndex;
   session: Session;
   modesOpen: boolean;
-  /** The agent directory (specs/brain/v0), loaded through the bridge. */
+  /** Agents and spaces from endue AI's API gateway (specs/brain/v0), loaded through the bridge. */
   spaces: Space[];
   spaceId: string;
-  /** Every agent the person owns, for names; `spaceAgents` orders the current space's. */
+  /** Every agent the person owns; `spaceAgents` lists the current space's, in the gateway's order. */
   agents: Agent[];
   spaceAgents: string[];
   agentId: string | null;
-  cards: Record<string, AgentCard | "missing">;
-  /** A2A tasks: working ones run in the bottom right and light the agent's dot. */
-  tasks: A2ATask[];
+  /** Running tasks show in the bottom right and light their agent's dot. */
+  tasks: Task[];
   directory: "loading" | "ready" | "offline";
   drawer: DrawerItem[];
   attention: { id: string; text: string }[];
@@ -94,6 +105,36 @@ export class Store {
 }
 
 const HOUR = 3_600_000;
+const agent = (n: number) => `ag_01JBZ8Q4MR00000000000000${String(n).padStart(2, "0")}`;
+
+function sampleTasks(): Task[] {
+  return [
+    {
+      id: "t-inbox",
+      agent: agent(1),
+      title: "Sort the inbox",
+      startedAt: -(4 * 60_000 + 12_000),
+      progress: 0.62,
+      running: true,
+    },
+    {
+      id: "t-flights",
+      agent: agent(4),
+      title: "Compare flights",
+      startedAt: -65_000,
+      progress: 0.25,
+      running: true,
+    },
+    {
+      id: "t-notes",
+      agent: agent(2),
+      title: "Tidy meeting notes",
+      startedAt: 0,
+      progress: 0,
+      running: false,
+    },
+  ];
+}
 
 export function sampleState(modes: Mode[], lang: Lang): DeskState {
   return {
@@ -110,8 +151,7 @@ export function sampleState(modes: Mode[], lang: Lang): DeskState {
     agents: [],
     spaceAgents: [],
     agentId: null,
-    cards: {},
-    tasks: [],
+    tasks: sampleTasks(),
     directory: "loading",
     drawer: [
       { id: "file-brief", kind: "file", name: "brief.pdf", at: -3 * HOUR },

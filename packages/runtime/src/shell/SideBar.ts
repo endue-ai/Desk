@@ -1,7 +1,7 @@
 /**
- * The agent bar (system layer, left): the current space's agents from the agent directory above, the
- * spaces below. An agent with a working A2A task carries the working dot; an inactive one waits at
- * the edge, dashed and dimmed. Past six agents, the last place opens the rest in a popover.
+ * The agent bar (system layer, left): the current space's agents above and the spaces below, as endue
+ * AI's API gateway lists them. An agent with a running task carries the working dot; an inactive one
+ * waits at the edge, dashed and dimmed. Past six agents, the last place opens the rest in a popover.
  */
 import type { Agent } from "@endue-ai/bridge";
 import { presenceOf, selectAgent, selectSpace, spaceAgents } from "../system/agents";

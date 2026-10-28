@@ -36,8 +36,6 @@ export interface DeskOptions {
   reducedMotion?: boolean;
   /** "Mod" is ⌘ on mac and Ctrl elsewhere; detected from the browser unless given. */
   platform?: Platform;
-  /** Wall-clock time at clock 0, for "started 4 minutes ago" (default: now). */
-  epoch?: number;
 }
 
 export interface Desk {
@@ -45,9 +43,9 @@ export interface Desk {
   ticker: Ticker;
   eris: ErisHandle;
   keys: Keymap;
-  /** Resolves once the saved desk, the key bindings and the agent directory are loaded. */
+  /** Resolves once the saved desk, the key bindings, and the agents and spaces are loaded. */
   ready: Promise<void>;
-  /** Read the agent directory again. */
+  /** Read agents and spaces again. */
   refresh(): Promise<void>;
   dispose(): void;
 }
@@ -67,7 +65,6 @@ type Saved = Partial<Pick<DeskState, (typeof SAVED)[number]>>;
 export function mountDesk(options: DeskOptions): Desk {
   const clock = options.clock ?? realClock();
   const ticker = new Ticker(clock);
-  const epoch = options.epoch ?? Date.now();
   const store = new Store(sampleState(options.modes ?? sampleModes(), options.lang ?? "ko"));
   const media =
     typeof matchMedia === "function" ? matchMedia("(prefers-reduced-motion: reduce)") : null;
@@ -89,7 +86,6 @@ export function mountDesk(options: DeskOptions): Desk {
     ticker,
     tr: (key, vars) => t(store.get().lang, key, vars),
     reduced,
-    wall: () => epoch + ticker.now(),
     platform,
     keys,
     eris: { say: (text, words) => pending.say(text, words), setState: (s) => pending.setState(s) },

@@ -82,8 +82,8 @@ test.describe("the system layer", () => {
   });
 });
 
-test.describe("the agent bar reads the agent directory", () => {
-  test("lists the space's agents with their A2A presence", async ({ page }) => {
+test.describe("the agent bar reads endue AI's API gateway", () => {
+  test("lists the space's agents with their presence", async ({ page }) => {
     const avatars = page.locator(".sidebar [data-agent]");
     await expect(avatars).toHaveCount(3);
     await expect(avatars.nth(0)).toHaveAttribute("data-agent", id(1));
@@ -110,19 +110,26 @@ test.describe("the agent bar reads the agent directory", () => {
     await expect(page.locator(`[data-agent="${id(5)}"]`)).toHaveAttribute("data-presence", "idle");
   });
 
-  test("follows the directory: a new working A2A task lights the agent's dot", async ({ page }) => {
-    await expect(page.locator(`[data-agent="${id(2)}"]`)).toHaveAttribute("data-presence", "idle");
+  test("follows the gateway: an agent removed from the space leaves the bar", async ({ page }) => {
+    await expect(page.locator(`.sidebar [data-agent="${id(2)}"]`)).toHaveCount(1);
     await page.evaluate(async () => {
       const { desk, bridge } = window.__shell;
-      const task = bridge.fake.directory.tasks.find((t) => t.goal === "Tidy meeting notes");
-      if (task) task.status = "working";
+      const theo = bridge.fake.directory.spaceAgents.find((a) => a.agent_id.endsWith("02"));
+      if (theo) theo.status = "removed";
       await desk.refresh();
     });
-    await expect(page.locator(`[data-agent="${id(2)}"]`)).toHaveAttribute(
-      "data-presence",
-      "working",
-    );
-    await expect(page.locator(".run-chip")).toHaveCount(3);
+    await expect(page.locator(`.sidebar [data-agent="${id(2)}"]`)).toHaveCount(0);
+    await expect(page.locator(".sidebar [data-agent]")).toHaveCount(2);
+  });
+
+  test("archived and deleted agents are not listed", async ({ page }) => {
+    await page.evaluate(async () => {
+      const { desk, bridge } = window.__shell;
+      const juno = bridge.fake.directory.agents.find((a) => a.name === "Juno");
+      if (juno) juno.status = "archived";
+      await desk.refresh();
+    });
+    await expect(page.locator(`.sidebar [data-agent="${id(3)}"]`)).toHaveCount(0);
   });
 
   test("past six agents, the last place opens the rest", async ({ page }) => {
@@ -131,15 +138,18 @@ test.describe("the agent bar reads the agent directory", () => {
       const [first] = bridge.fake.directory.agents;
       if (!first) return;
       for (const [n, name] of ["Ada", "Bo", "Cy", "Dee", "Eve"].entries()) {
-        const createdAt = "2026-09-01T09:00:00.000Z";
-        const agent = {
-          ...first.agent,
-          id: `ag_extra_${n}`,
-          name,
-          slug: name.toLowerCase(),
-          createdAt,
-        };
-        bridge.fake.directory.agents.push({ agent, spaceId: "sp_home" });
+        const created_at = "2026-09-01T09:00:00.000Z";
+        const agent = { ...first, id: `ag_extra_${n}`, name, slug: name.toLowerCase(), created_at };
+        bridge.fake.directory.agents.push(agent);
+        bridge.fake.directory.spaceAgents.push({
+          id: `spa_extra_${n}`,
+          space_id: "sp_home",
+          agent_id: agent.id,
+          is_front: false,
+          status: "active",
+          created_at,
+          updated_at: created_at,
+        });
       }
       await desk.refresh();
     });
@@ -157,7 +167,7 @@ test.describe("the agent bar reads the agent directory", () => {
     await expect(page.locator('[data-surface="agent:ag_extra_4"]')).toBeVisible();
   });
 
-  test("an agent's screen shows its A2A card and the tasks it is doing", async ({ page }) => {
+  test("an agent's screen shows what the gateway says about it and its tasks", async ({ page }) => {
     await page.click(`.sidebar [data-agent="${id(1)}"]`);
     const screen = page.locator(`[data-surface="agent:${id(1)}"]`);
     await expect(screen).toBeVisible();
@@ -165,11 +175,7 @@ test.describe("the agent bar reads the agent directory", () => {
     await expect(screen.locator(".agent-desc")).toHaveText(
       "Keeps the inbox and the calendar in order.",
     );
-    await expect(screen.locator(".skill > span:first-child")).toHaveText([
-      "Sort the inbox",
-      "Plan the day",
-    ]);
-    await expect(screen.locator(".agent-caps .tag")).toHaveText(["동시에 2개", "스트리밍"]);
+    await expect(screen.locator(".agent-caps .tag")).toHaveText(["이 스페이스의 창구"]);
     await expect(screen.locator(".task-list .pop-row")).toHaveText(["Sort the inbox진행 중 · 62%"]);
   });
 

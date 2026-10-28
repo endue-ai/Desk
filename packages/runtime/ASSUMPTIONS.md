@@ -70,12 +70,13 @@ cheap to change.
     the mode switcher, the desktop switcher and the agent bar (ADR 0015). The desktop switcher went in
     too: it moves between a mode's slots and is not part of any one of them.
 30. **Night hides the rail** (`modes/sample/night/layout/desktop.json`), to show what a mode may change.
-31. **The agent list comes from specs/brain/v0** (ADR 0016), mirroring endue AI's `AgentGetResponse`, A2A
-    card and task, and `UserSpaceGetResponse` in camelCase. Working = a `working` A2A task targets the
-    agent; waiting at the edge = `inactive`; archived agents are hidden. `personalColor` is not painted
-    (tokens only). Only the first 100 agents and tasks are read.
-32. **Running chips and the rail's task list** now come from A2A tasks too (goal, `insertedAt`, `progress`),
-    newest first as the contract lists them. A task without `progress` shows no bar.
+31. **The agent list follows endue AI's API gateway** (ADR 0016): `/api/v1/agents` for the person's agents,
+    `/api/v1/spaces` for spaces, `/api/v1/spaces/{id}/agents` for who takes part in a space, mirrored
+    as they are in specs/brain/v0. Inactive agents wait at the edge; archived and deleted agents, and
+    agents removed from the space, are hidden. `personal_color` and `avatar_url` are not painted
+    (tokens and initials only). Up to 10 pages of 50 agents are read.
+32. **Working dots and running chips stay local sample data.** The gateway has no "working now" signal;
+    space-service's `/work-runs` is the likely source later.
 33. **More than six agents:** five show, the sixth place is "+N" and opens the rest in a popover.
 34. **⌘N opens a surface on the desk** (a window inside the desk, not a second OS window). It starts with
     a launcher pane and cascades from the middle. ⌘D splits right, ⇧⌘D down, ⌘W closes a pane (the last

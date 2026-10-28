@@ -240,160 +240,60 @@ pub enum AgentStatus {
     Inactive,
     #[serde(rename = "archived")]
     Archived,
+    #[serde(rename = "deleted")]
+    Deleted,
 }
 
-/// An agent the caller owns: endue AI's AgentGetResponse with camelCase names (owner_user_id is ownerUserId, personal_color is personalColor, created_at is createdAt).
+/// One agent as endue AI's API gateway lists it (agent service AgentGetResponse), names as they are on the wire. The gateway may add fields; clients ignore what they do not know.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
 pub struct Agent {
     pub id: String,
-    pub name: String,
     /// A handle made from the name when the agent was created; it never changes.
     pub slug: String,
+    pub name: String,
     pub status: AgentStatus,
-    #[serde(
-        rename = "ownerUserId",
-        default,
-        skip_serializing_if = "Option::is_none"
-    )]
-    pub owner_user_id: Option<String>,
     /// ISO 3166-2 region the agent runs in.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub region: Option<String>,
-    /// The agent's own colour as hex, for telling agents apart in a conversation.
-    #[serde(
-        rename = "personalColor",
-        default,
-        skip_serializing_if = "Option::is_none"
-    )]
+    /// The agent's own colour as hex. Desk paints only with its tokens.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub personal_color: Option<String>,
-    #[serde(rename = "createdAt")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub avatar_url: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    /// Whether the agent is public on endue.live.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub live_enabled: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub source_catalog: Option<SourceCatalog>,
+    /// When the person pinned the agent; null when not pinned, absent when unknown.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pinned_at: Option<serde_json::Value>,
     pub created_at: String,
-    #[serde(rename = "updatedAt")]
     pub updated_at: String,
+}
+
+/// The catalog agent this agent was made from.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct SourceCatalog {
+    pub catalog_agent_id: String,
+    pub version: String,
 }
 
 /// Where a page sits in the whole list.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
 pub struct Pagination {
     pub total: u64,
     pub page: u64,
     pub limit: u64,
-    #[serde(rename = "hasNextPage")]
     pub has_next_page: bool,
 }
 
 /// One page of listAgents.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
 pub struct AgentList {
     pub items: Vec<Agent>,
-    pub pagination: Pagination,
-}
-
-/// An agent's A2A card: endue AI's A2ACardSummary plus the card's enabled flag. Other agents read it to decide what to hand over.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct AgentCard {
-    #[serde(rename = "agentId")]
-    pub agent_id: String,
-    pub name: String,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub description: Option<String>,
-    /// Whether the agent accepts A2A tasks.
-    pub enabled: bool,
-    pub skills: Vec<AgentSkill>,
-    pub capabilities: AgentCapabilities,
-}
-
-/// One thing an agent can do for other agents.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct AgentSkill {
-    pub id: String,
-    pub name: String,
-    pub description: String,
-    /// What the skill takes, such as text or file.
-    #[serde(rename = "inputModes")]
-    pub input_modes: Vec<String>,
-}
-
-/// How an agent takes A2A tasks.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct AgentCapabilities {
-    pub streaming: bool,
-    #[serde(rename = "maxConcurrentTasks")]
-    pub max_concurrent_tasks: u64,
-}
-
-/// submitted, then working, then completed; working may pause at input_required until the source agent answers; any open task may end as failed or canceled.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum A2ATaskStatus {
-    #[serde(rename = "submitted")]
-    Submitted,
-    #[serde(rename = "working")]
-    Working,
-    #[serde(rename = "input_required")]
-    InputRequired,
-    #[serde(rename = "completed")]
-    Completed,
-    #[serde(rename = "failed")]
-    Failed,
-    #[serde(rename = "canceled")]
-    Canceled,
-}
-
-/// A task one agent handed to another: endue AI's A2ATask with camelCase names, plus progress.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct A2ATask {
-    /// endue AI ids are a2a_ followed by a ULID.
-    pub id: String,
-    /// Groups the tasks of one hand-over conversation.
-    #[serde(rename = "contextId", default, skip_serializing_if = "Option::is_none")]
-    pub context_id: Option<String>,
-    #[serde(rename = "sourceAgentId")]
-    pub source_agent_id: String,
-    #[serde(rename = "targetAgentId")]
-    pub target_agent_id: String,
-    pub status: A2ATaskStatus,
-    /// The request that started the task.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub goal: Option<String>,
-    /// The task's artifacts once completed.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub result: Option<serde_json::Map<String, serde_json::Value>>,
-    /// Why the task failed or was canceled.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub error: Option<String>,
-    /// The target agent's session for this task.
-    #[serde(rename = "sessionId", default, skip_serializing_if = "Option::is_none")]
-    pub session_id: Option<String>,
-    /// How many hand-overs led here (1 for a direct request).
-    pub depth: u64,
-    #[serde(rename = "maxDepth")]
-    pub max_depth: u64,
-    #[serde(rename = "messageCount")]
-    pub message_count: u64,
-    /// How far the task is, from 0 to 1, when the brain knows (a Desk addition).
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub progress: Option<f64>,
-    /// Anything else the brain keeps with the task.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub metadata: Option<serde_json::Map<String, serde_json::Value>>,
-    #[serde(rename = "insertedAt")]
-    pub inserted_at: String,
-    #[serde(rename = "updatedAt")]
-    pub updated_at: String,
-}
-
-/// One page of listA2ATasks.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct A2ATaskList {
-    pub items: Vec<A2ATask>,
     pub pagination: Pagination,
 }
 
@@ -406,9 +306,8 @@ pub enum SpaceType {
     Workspace,
 }
 
-/// A space the caller can open, endue AI's UserSpaceGetResponse with camelCase names.
+/// One space as endue AI's API gateway lists it (space service SpaceGetResponse).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
 pub struct Space {
     pub id: String,
     /// Short unique handle.
@@ -417,17 +316,73 @@ pub struct Space {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
     pub r#type: SpaceType,
-    #[serde(rename = "createdAt")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub goal: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub status: Option<SpaceStatus>,
+    /// The agent that answers the person in this space.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub front_agent_id: Option<String>,
     pub created_at: String,
-    #[serde(rename = "updatedAt")]
     pub updated_at: String,
 }
 
-/// The answer of listSpaces.
+/// Whether a space is in use.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum SpaceStatus {
+    #[serde(rename = "active")]
+    Active,
+    #[serde(rename = "archived")]
+    Archived,
+    #[serde(rename = "deleted")]
+    Deleted,
+}
+
+/// The answer of listSpaces, a plain array.
+pub type SpaceList = Vec<Space>;
+
+/// Whether an agent still takes part in the space.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum SpaceAgentStatus {
+    #[serde(rename = "active")]
+    Active,
+    #[serde(rename = "removed")]
+    Removed,
+}
+
+/// An agent's part in a space (space service SpaceAgentView).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct SpaceList {
-    pub items: Vec<Space>,
+pub struct SpaceAgent {
+    pub id: String,
+    pub space_id: String,
+    pub agent_id: String,
+    /// generalist, analyst, writer, reviewer or the person's own.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub role_key: Option<String>,
+    /// Whether this agent answers the person in the space (one per space).
+    pub is_front: bool,
+    /// admin or participant.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub permission: Option<String>,
+    pub status: SpaceAgentStatus,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+/// The gateway envelope's request details.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ResponseMeta {
+    pub request_id: String,
+    pub timestamp: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub duration: Option<f64>,
+}
+
+/// The answer of listSpaceAgents, in the gateway's data and meta envelope.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct SpaceAgentList {
+    pub data: Vec<SpaceAgent>,
+    pub meta: ResponseMeta,
 }
 
 /// Machine-readable failure reason.
@@ -948,18 +903,15 @@ pub const BRAIN_SCHEMA_JSON: &str = r##"{
       "enum": [
         "active",
         "inactive",
-        "archived"
+        "archived",
+        "deleted"
       ]
     },
     "Agent": {
-      "description": "An agent the caller owns: endue AI's AgentGetResponse with camelCase names (owner_user_id is ownerUserId, personal_color is personalColor, created_at is createdAt).",
+      "description": "One agent as endue AI's API gateway lists it (agent service AgentGetResponse), names as they are on the wire. The gateway may add fields; clients ignore what they do not know.",
       "type": "object",
       "properties": {
         "id": {
-          "type": "string",
-          "minLength": 1
-        },
-        "name": {
           "type": "string",
           "minLength": 1
         },
@@ -968,39 +920,72 @@ pub const BRAIN_SCHEMA_JSON: &str = r##"{
           "type": "string",
           "minLength": 1
         },
-        "status": {
-          "$ref": "#/$defs/AgentStatus"
-        },
-        "ownerUserId": {
+        "name": {
           "type": "string",
           "minLength": 1
+        },
+        "status": {
+          "$ref": "#/$defs/AgentStatus"
         },
         "region": {
           "description": "ISO 3166-2 region the agent runs in.",
           "type": "string"
         },
-        "personalColor": {
-          "description": "The agent's own colour as hex, for telling agents apart in a conversation.",
+        "personal_color": {
+          "description": "The agent's own colour as hex. Desk paints only with its tokens.",
           "type": "string"
         },
-        "createdAt": {
+        "avatar_url": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "live_enabled": {
+          "description": "Whether the agent is public on endue.live.",
+          "type": "boolean"
+        },
+        "source_catalog": {
+          "$ref": "#/$defs/SourceCatalog"
+        },
+        "pinned_at": {
+          "description": "When the person pinned the agent; null when not pinned, absent when unknown."
+        },
+        "created_at": {
           "type": "string",
           "format": "date-time"
         },
-        "updatedAt": {
+        "updated_at": {
           "type": "string",
           "format": "date-time"
         }
       },
       "required": [
         "id",
-        "name",
         "slug",
+        "name",
         "status",
-        "createdAt",
-        "updatedAt"
-      ],
-      "additionalProperties": false
+        "created_at",
+        "updated_at"
+      ]
+    },
+    "SourceCatalog": {
+      "description": "The catalog agent this agent was made from.",
+      "type": "object",
+      "properties": {
+        "catalog_agent_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "catalog_agent_id",
+        "version"
+      ]
     },
     "Pagination": {
       "description": "Where a page sits in the whole list.",
@@ -1018,7 +1003,7 @@ pub const BRAIN_SCHEMA_JSON: &str = r##"{
           "type": "integer",
           "minimum": 1
         },
-        "hasNextPage": {
+        "has_next_page": {
           "type": "boolean"
         }
       },
@@ -1026,9 +1011,8 @@ pub const BRAIN_SCHEMA_JSON: &str = r##"{
         "total",
         "page",
         "limit",
-        "hasNextPage"
-      ],
-      "additionalProperties": false
+        "has_next_page"
+      ]
     },
     "AgentList": {
       "description": "One page of listAgents.",
@@ -1047,213 +1031,7 @@ pub const BRAIN_SCHEMA_JSON: &str = r##"{
       "required": [
         "items",
         "pagination"
-      ],
-      "additionalProperties": false
-    },
-    "AgentCard": {
-      "description": "An agent's A2A card: endue AI's A2ACardSummary plus the card's enabled flag. Other agents read it to decide what to hand over.",
-      "type": "object",
-      "properties": {
-        "agentId": {
-          "type": "string",
-          "minLength": 1
-        },
-        "name": {
-          "type": "string",
-          "minLength": 1
-        },
-        "description": {
-          "type": "string"
-        },
-        "enabled": {
-          "description": "Whether the agent accepts A2A tasks.",
-          "type": "boolean"
-        },
-        "skills": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/AgentSkill"
-          }
-        },
-        "capabilities": {
-          "$ref": "#/$defs/AgentCapabilities"
-        }
-      },
-      "required": [
-        "agentId",
-        "name",
-        "enabled",
-        "skills",
-        "capabilities"
-      ],
-      "additionalProperties": false
-    },
-    "AgentSkill": {
-      "description": "One thing an agent can do for other agents.",
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string",
-          "minLength": 1
-        },
-        "name": {
-          "type": "string",
-          "minLength": 1
-        },
-        "description": {
-          "type": "string"
-        },
-        "inputModes": {
-          "description": "What the skill takes, such as text or file.",
-          "type": "array",
-          "items": {
-            "type": "string",
-            "minLength": 1
-          }
-        }
-      },
-      "required": [
-        "id",
-        "name",
-        "description",
-        "inputModes"
-      ],
-      "additionalProperties": false
-    },
-    "AgentCapabilities": {
-      "description": "How an agent takes A2A tasks.",
-      "type": "object",
-      "properties": {
-        "streaming": {
-          "type": "boolean"
-        },
-        "maxConcurrentTasks": {
-          "type": "integer",
-          "minimum": 1
-        }
-      },
-      "required": [
-        "streaming",
-        "maxConcurrentTasks"
-      ],
-      "additionalProperties": false
-    },
-    "A2ATaskStatus": {
-      "description": "submitted, then working, then completed; working may pause at input_required until the source agent answers; any open task may end as failed or canceled.",
-      "type": "string",
-      "enum": [
-        "submitted",
-        "working",
-        "input_required",
-        "completed",
-        "failed",
-        "canceled"
       ]
-    },
-    "A2ATask": {
-      "description": "A task one agent handed to another: endue AI's A2ATask with camelCase names, plus progress.",
-      "type": "object",
-      "properties": {
-        "id": {
-          "description": "endue AI ids are a2a_ followed by a ULID.",
-          "type": "string",
-          "minLength": 1
-        },
-        "contextId": {
-          "description": "Groups the tasks of one hand-over conversation.",
-          "type": "string"
-        },
-        "sourceAgentId": {
-          "type": "string",
-          "minLength": 1
-        },
-        "targetAgentId": {
-          "type": "string",
-          "minLength": 1
-        },
-        "status": {
-          "$ref": "#/$defs/A2ATaskStatus"
-        },
-        "goal": {
-          "description": "The request that started the task.",
-          "type": "string"
-        },
-        "result": {
-          "description": "The task's artifacts once completed.",
-          "type": "object"
-        },
-        "error": {
-          "description": "Why the task failed or was canceled.",
-          "type": "string"
-        },
-        "sessionId": {
-          "description": "The target agent's session for this task.",
-          "type": "string"
-        },
-        "depth": {
-          "description": "How many hand-overs led here (1 for a direct request).",
-          "type": "integer",
-          "minimum": 1
-        },
-        "maxDepth": {
-          "type": "integer",
-          "minimum": 1
-        },
-        "messageCount": {
-          "type": "integer",
-          "minimum": 0
-        },
-        "progress": {
-          "description": "How far the task is, from 0 to 1, when the brain knows (a Desk addition).",
-          "type": "number",
-          "minimum": 0,
-          "maximum": 1
-        },
-        "metadata": {
-          "description": "Anything else the brain keeps with the task.",
-          "type": "object"
-        },
-        "insertedAt": {
-          "type": "string",
-          "format": "date-time"
-        },
-        "updatedAt": {
-          "type": "string",
-          "format": "date-time"
-        }
-      },
-      "required": [
-        "id",
-        "sourceAgentId",
-        "targetAgentId",
-        "status",
-        "depth",
-        "maxDepth",
-        "messageCount",
-        "insertedAt",
-        "updatedAt"
-      ],
-      "additionalProperties": false
-    },
-    "A2ATaskList": {
-      "description": "One page of listA2ATasks.",
-      "type": "object",
-      "properties": {
-        "items": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/A2ATask"
-          }
-        },
-        "pagination": {
-          "$ref": "#/$defs/Pagination"
-        }
-      },
-      "required": [
-        "items",
-        "pagination"
-      ],
-      "additionalProperties": false
     },
     "SpaceType": {
       "description": "A chat space or a workspace.",
@@ -1264,7 +1042,7 @@ pub const BRAIN_SCHEMA_JSON: &str = r##"{
       ]
     },
     "Space": {
-      "description": "A space the caller can open, endue AI's UserSpaceGetResponse with camelCase names.",
+      "description": "One space as endue AI's API gateway lists it (space service SpaceGetResponse).",
       "type": "object",
       "properties": {
         "id": {
@@ -1286,11 +1064,21 @@ pub const BRAIN_SCHEMA_JSON: &str = r##"{
         "type": {
           "$ref": "#/$defs/SpaceType"
         },
-        "createdAt": {
+        "goal": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/SpaceStatus"
+        },
+        "front_agent_id": {
+          "description": "The agent that answers the person in this space.",
+          "type": "string"
+        },
+        "created_at": {
           "type": "string",
           "format": "date-time"
         },
-        "updatedAt": {
+        "updated_at": {
           "type": "string",
           "format": "date-time"
         }
@@ -1300,26 +1088,122 @@ pub const BRAIN_SCHEMA_JSON: &str = r##"{
         "key",
         "name",
         "type",
-        "createdAt",
-        "updatedAt"
-      ],
-      "additionalProperties": false
+        "created_at",
+        "updated_at"
+      ]
+    },
+    "SpaceStatus": {
+      "description": "Whether a space is in use.",
+      "type": "string",
+      "enum": [
+        "active",
+        "archived",
+        "deleted"
+      ]
     },
     "SpaceList": {
-      "description": "The answer of listSpaces.",
+      "description": "The answer of listSpaces, a plain array.",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Space"
+      }
+    },
+    "SpaceAgentStatus": {
+      "description": "Whether an agent still takes part in the space.",
+      "type": "string",
+      "enum": [
+        "active",
+        "removed"
+      ]
+    },
+    "SpaceAgent": {
+      "description": "An agent's part in a space (space service SpaceAgentView).",
       "type": "object",
       "properties": {
-        "items": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/Space"
-          }
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "space_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "agent_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "role_key": {
+          "description": "generalist, analyst, writer, reviewer or the person's own.",
+          "type": "string"
+        },
+        "is_front": {
+          "description": "Whether this agent answers the person in the space (one per space).",
+          "type": "boolean"
+        },
+        "permission": {
+          "description": "admin or participant.",
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/SpaceAgentStatus"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
         }
       },
       "required": [
-        "items"
-      ],
-      "additionalProperties": false
+        "id",
+        "space_id",
+        "agent_id",
+        "is_front",
+        "status",
+        "created_at",
+        "updated_at"
+      ]
+    },
+    "ResponseMeta": {
+      "description": "The gateway envelope's request details.",
+      "type": "object",
+      "properties": {
+        "request_id": {
+          "type": "string"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "duration": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "request_id",
+        "timestamp"
+      ]
+    },
+    "SpaceAgentList": {
+      "description": "The answer of listSpaceAgents, in the gateway's data and meta envelope.",
+      "type": "object",
+      "properties": {
+        "data": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SpaceAgent"
+          }
+        },
+        "meta": {
+          "$ref": "#/$defs/ResponseMeta"
+        }
+      },
+      "required": [
+        "data",
+        "meta"
+      ]
     },
     "BrainErrorCode": {
       "description": "Machine-readable failure reason.",

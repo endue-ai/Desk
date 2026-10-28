@@ -7,9 +7,9 @@ pub mod http;
 use std::io;
 
 use desk_brain::{
-    A2ATaskList, AgentCard, AgentList, AgentQuery, Brain, BrainError, BrainFailure,
-    CreateSessionRequest, Lease, LeaseAcquireRequest, LeaseRenewRequest, Session, SpaceList,
-    TaskQuery, ToolResultRequest, TurnEvent, TurnRequest,
+    AgentList, AgentQuery, Brain, BrainError, BrainErrorCode, BrainFailure, CreateSessionRequest,
+    Lease, LeaseAcquireRequest, LeaseRenewRequest, Session, SpaceAgentList, SpaceList,
+    ToolResultRequest, TurnEvent, TurnRequest,
 };
 use serde::Serialize;
 use serde::de::DeserializeOwned;
@@ -17,19 +17,34 @@ use serde_json::Value;
 
 use crate::http::{Endpoint, Response, send};
 
-/// The brain at a base URL such as `http://127.0.0.1:8787/v0`.
+/// The brain at a base URL such as `http://127.0.0.1:8787/v0`, and endue AI's API gateway for the
+/// agent directory (`/api/v1/...`), by default at the base URL's origin.
 #[derive(Debug, Clone)]
 pub struct HttpBrain {
     endpoint: Endpoint,
+    gateway: Endpoint,
     token: Option<String>,
 }
 
 impl HttpBrain {
     pub fn new(base_url: &str) -> Result<Self, String> {
+        let endpoint = Endpoint::parse(base_url)?;
         Ok(Self {
-            endpoint: Endpoint::parse(base_url)?,
+            gateway: endpoint.origin(),
+            endpoint,
             token: None,
         })
+    }
+
+    /// Reach the API gateway at `url` (such as `https://platform.endue.ai`) instead of the base
+    /// URL's origin.
+    pub fn with_gateway(mut self, url: &str) -> Result<Self, String> {
+        self.gateway = Endpoint::parse(url)?;
+        Ok(self)
+    }
+
+    pub fn gateway_url(&self) -> String {
+        self.gateway.url()
     }
 
     /// Send `token` as a bearer token (an endue ID token for endue AI).
@@ -48,8 +63,18 @@ impl HttpBrain {
         path: &str,
         body: Option<&Value>,
     ) -> Result<Response, BrainFailure> {
+        self.exchange_at(&self.endpoint, method, path, body)
+    }
+
+    fn exchange_at(
+        &self,
+        endpoint: &Endpoint,
+        method: &str,
+        path: &str,
+        body: Option<&Value>,
+    ) -> Result<Response, BrainFailure> {
         let response =
-            send(&self.endpoint, self.token.as_deref(), method, path, body).map_err(unreachable)?;
+            send(endpoint, self.token.as_deref(), method, path, body).map_err(unreachable)?;
         if response.status < 300 {
             return Ok(response);
         }
@@ -57,6 +82,15 @@ impl HttpBrain {
         let body = response.json().map_err(unreachable)?;
         match serde_json::from_value::<BrainError>(body.clone()) {
             Ok(error) => Err(BrainFailure::Refused { status, error }),
+            // The gateway answers a missing or expired token with its own error body.
+            Err(_) if status == 401 => Err(BrainFailure::Refused {
+                status,
+                error: BrainError {
+                    code: BrainErrorCode::Unauthorized,
+                    message: body.to_string(),
+                    holder: None,
+                },
+            }),
             Err(_) => Err(BrainFailure::Protocol(format!(
                 "{method} {path} answered {status} with {body}"
             ))),
@@ -69,9 +103,24 @@ impl HttpBrain {
         path: &str,
         body: Option<&impl Serialize>,
     ) -> Result<T, BrainFailure> {
+        self.call_at(&self.endpoint, method, path, body)
+    }
+
+    /// GET a gateway path, with the same bearer token.
+    fn gateway_get<T: DeserializeOwned>(&self, path: &str) -> Result<T, BrainFailure> {
+        self.call_at(&self.gateway, "GET", path, NO_BODY)
+    }
+
+    fn call_at<T: DeserializeOwned>(
+        &self,
+        endpoint: &Endpoint,
+        method: &str,
+        path: &str,
+        body: Option<&impl Serialize>,
+    ) -> Result<T, BrainFailure> {
         let body = body.map(to_json).transpose()?;
         let value = self
-            .exchange(method, path, body.as_ref())?
+            .exchange_at(endpoint, method, path, body.as_ref())?
             .json()
             .map_err(unreachable)?;
         serde_json::from_value(value.clone())
@@ -128,52 +177,17 @@ fn segment(id: &str) -> String {
         .collect()
 }
 
-/// A path with a query string. Absent parameters are left out, values are percent-encoded like
-/// path segments, and enums are spelled by their contract names (`input_required`).
-struct WithQuery {
-    path: String,
-    separator: char,
-}
-
-impl WithQuery {
-    fn new(path: &str) -> Self {
-        Self {
-            path: path.to_owned(),
-            separator: '?',
-        }
+/// `/api/v1/agents` with the page asked for; absent parameters are left out.
+fn agents_path(query: &AgentQuery) -> String {
+    let params: Vec<String> = [("page", query.page), ("limit", query.limit)]
+        .into_iter()
+        .filter_map(|(name, value)| value.map(|value| format!("{name}={value}")))
+        .collect();
+    if params.is_empty() {
+        "/api/v1/agents".to_owned()
+    } else {
+        format!("/api/v1/agents?{}", params.join("&"))
     }
-
-    fn param(mut self, name: &str, value: Option<impl Serialize>) -> Result<Self, BrainFailure> {
-        let Some(value) = value else {
-            return Ok(self);
-        };
-        let value = match to_json(&value)? {
-            Value::String(text) => text,
-            other => other.to_string(),
-        };
-        self.path.push(self.separator);
-        self.path.push_str(&format!("{name}={}", segment(&value)));
-        self.separator = '&';
-        Ok(self)
-    }
-}
-
-fn agents_path(query: &AgentQuery) -> Result<String, BrainFailure> {
-    Ok(WithQuery::new("/agents")
-        .param("spaceId", query.space_id.as_deref())?
-        .param("status", query.status)?
-        .param("page", query.page)?
-        .param("limit", query.limit)?
-        .path)
-}
-
-fn tasks_path(query: &TaskQuery) -> Result<String, BrainFailure> {
-    Ok(WithQuery::new("/a2a/tasks")
-        .param("targetAgentId", query.target_agent_id.as_deref())?
-        .param("status", query.status)?
-        .param("page", query.page)?
-        .param("limit", query.limit)?
-        .path)
 }
 
 const NO_BODY: Option<&()> = None;
@@ -255,55 +269,49 @@ impl Brain for HttpBrain {
     }
 
     fn list_agents(&self, query: &AgentQuery) -> Result<AgentList, BrainFailure> {
-        self.call("GET", &agents_path(query)?, NO_BODY)
-    }
-
-    fn get_agent_card(&self, agent_id: &str) -> Result<AgentCard, BrainFailure> {
-        let path = format!("/agents/{}/card", segment(agent_id));
-        self.call("GET", &path, NO_BODY)
+        self.gateway_get(&agents_path(query))
     }
 
     fn list_spaces(&self) -> Result<SpaceList, BrainFailure> {
-        self.call("GET", "/spaces", NO_BODY)
+        self.gateway_get("/api/v1/spaces")
     }
 
-    fn list_a2a_tasks(&self, query: &TaskQuery) -> Result<A2ATaskList, BrainFailure> {
-        self.call("GET", &tasks_path(query)?, NO_BODY)
+    fn list_space_agents(&self, space_id: &str) -> Result<SpaceAgentList, BrainFailure> {
+        self.gateway_get(&format!("/api/v1/spaces/{}/agents", segment(space_id)))
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use desk_brain::{A2ATaskStatus, AgentStatus};
-
     use super::*;
 
     #[test]
     fn query_strings_leave_absent_parameters_out() {
-        assert_eq!(agents_path(&AgentQuery::default()).unwrap(), "/agents");
-        assert_eq!(tasks_path(&TaskQuery::default()).unwrap(), "/a2a/tasks");
-        let agents = AgentQuery {
-            status: Some(AgentStatus::Inactive),
+        assert_eq!(agents_path(&AgentQuery::default()), "/api/v1/agents");
+        let second = AgentQuery {
             page: Some(2),
+            limit: Some(50),
+        };
+        assert_eq!(agents_path(&second), "/api/v1/agents?page=2&limit=50");
+        let limit = AgentQuery {
+            limit: Some(5),
             ..AgentQuery::default()
         };
-        assert_eq!(
-            agents_path(&agents).unwrap(),
-            "/agents?status=inactive&page=2"
-        );
+        assert_eq!(agents_path(&limit), "/api/v1/agents?limit=5");
     }
 
     #[test]
-    fn query_values_are_encoded_and_enums_spelled_as_the_contract_does() {
-        let tasks = TaskQuery {
-            target_agent_id: Some("ag 1&page=9".to_owned()),
-            status: Some(A2ATaskStatus::InputRequired),
-            page: None,
-            limit: Some(5),
-        };
-        assert_eq!(
-            tasks_path(&tasks).unwrap(),
-            "/a2a/tasks?targetAgentId=ag%201%26page%3D9&status=input_required&limit=5"
+    fn the_gateway_defaults_to_the_brain_origin() {
+        let brain = HttpBrain::new("http://127.0.0.1:8787/v0").unwrap();
+        assert_eq!(brain.gateway_url(), "http://127.0.0.1:8787");
+        let brain = brain.with_gateway("http://gateway:9000").unwrap();
+        assert_eq!(brain.gateway_url(), "http://gateway:9000");
+        assert_eq!(brain.base_url(), "http://127.0.0.1:8787/v0");
+        assert!(
+            HttpBrain::new("http://b/v0")
+                .unwrap()
+                .with_gateway("ftp://x")
+                .is_err()
         );
     }
 }

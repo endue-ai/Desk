@@ -1,5 +1,4 @@
 /** Right status rail: seven icon buttons with a dot and a count, a tooltip on hover, a popover on click. */
-import { agentName, isOpen } from "../system/agents";
 import { layoutOf } from "./actions";
 import type { ShellCtx } from "./context";
 import { type Child, h, listen, render } from "./dom";
@@ -16,8 +15,8 @@ interface Item {
 
 function items(ctx: ShellCtx, s: DeskState): Item[] {
   const b = s.brain;
-  const open = s.tasks.filter(isOpen);
-  const running = open.filter((t) => t.status === "working").length;
+  const open = s.tasks;
+  const running = open.filter((t) => t.running).length;
   const waiting = open.length - running;
   const sees = [...s.sees.folders, s.sees.calendar, s.sees.mail, s.sees.mic].filter(Boolean).length;
   return [
@@ -117,21 +116,13 @@ function body(ctx: ShellCtx, id: RailId, s: DeskState): Child[] {
         ),
       ];
     case "tasks":
-      return s.tasks
-        .filter(isOpen)
-        .map((t) =>
-          row(
-            h("span", { class: `dot ${t.status === "working" ? "dot-active" : "dot-idle"}` }),
-            h("span", { class: "pop-text" }, t.goal ?? agentName(s, t.targetAgentId)),
-            muted(
-              t.status === "working"
-                ? t.progress === undefined
-                  ? ctx.tr("statusWorking")
-                  : `${Math.round(t.progress * 100)}%`
-                : ctx.tr(t.status === "input_required" ? "statusInputRequired" : "statusSubmitted"),
-            ),
-          ),
-        );
+      return s.tasks.map((t) =>
+        row(
+          h("span", { class: `dot ${t.running ? "dot-active" : "dot-idle"}` }),
+          h("span", { class: "pop-text" }, t.title),
+          muted(t.running ? `${Math.round(t.progress * 100)}%` : ctx.tr("statusSubmitted")),
+        ),
+      );
     case "attention":
       return s.attention.map((a) => row(h("span", { class: "dot dot-attention" }), a.text));
     case "desks":

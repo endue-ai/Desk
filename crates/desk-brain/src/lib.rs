@@ -43,29 +43,12 @@ impl fmt::Display for BrainFailure {
 
 impl std::error::Error for BrainFailure {}
 
-/// The query of `list_agents`; `None` leaves a parameter out, so the brain's default applies.
+/// The page `list_agents` asks for; `None` leaves a parameter out, so the gateway's default applies.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct AgentQuery {
-    /// Only agents in this space.
-    pub space_id: Option<String>,
-    /// Only agents with this status.
-    pub status: Option<AgentStatus>,
-    /// The page to read, from 1 (default 1).
+    /// The page to read, from 1 (default 1; the gateway reads anything lower as 1).
     pub page: Option<u64>,
-    /// Items per page, 1 to 100 (default 20).
-    pub limit: Option<u64>,
-}
-
-/// The query of `list_a2a_tasks`; `None` leaves a parameter out, so the brain's default applies.
-#[derive(Debug, Clone, Default, PartialEq)]
-pub struct TaskQuery {
-    /// Only tasks this agent is doing.
-    pub target_agent_id: Option<String>,
-    /// Only tasks with this status.
-    pub status: Option<A2ATaskStatus>,
-    /// The page to read, from 1 (default 1).
-    pub page: Option<u64>,
-    /// Items per page, 1 to 100 (default 20).
+    /// Items per page (default 20; the gateway lowers anything over 50 to 50).
     pub limit: Option<u64>,
 }
 
@@ -111,15 +94,13 @@ pub trait Brain: Send + Sync {
 
     fn release_lease(&self, session_id: &str, lease_id: &str) -> Result<(), BrainFailure>;
 
-    /// One page of the caller's agents, newest first; a brain without agents answers an empty page.
+    /// One page of the caller's agents (endue AI's API gateway, `GET /api/v1/agents`).
     fn list_agents(&self, query: &AgentQuery) -> Result<AgentList, BrainFailure>;
 
-    /// An agent's A2A card; `Refused` with status 404 for an unknown agent.
-    fn get_agent_card(&self, agent_id: &str) -> Result<AgentCard, BrainFailure>;
-
-    /// Every space the caller can open.
+    /// The caller's active spaces (`GET /api/v1/spaces`).
     fn list_spaces(&self) -> Result<SpaceList, BrainFailure>;
 
-    /// One page of the tasks agents handed to each other, newest first.
-    fn list_a2a_tasks(&self, query: &TaskQuery) -> Result<A2ATaskList, BrainFailure>;
+    /// Which agents take part in a space; `Refused` with status 404 for an unknown space
+    /// (`GET /api/v1/spaces/{spaceId}/agents`).
+    fn list_space_agents(&self, space_id: &str) -> Result<SpaceAgentList, BrainFailure>;
 }

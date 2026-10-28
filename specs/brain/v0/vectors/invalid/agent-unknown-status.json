@@ -1,14 +1,16 @@
 {
   "target": "Agent",
-  "description": "status is active, inactive or archived",
+  "description": "status is active, inactive, archived or deleted",
   "instance": {
     "id": "ag_01JBZ8Q4MR0000000000000001",
-    "name": "Mira",
     "slug": "mira",
+    "name": "Mira",
     "status": "paused",
-    "ownerUserId": "u_01JBZ8Q4MR0000000000000000",
-    "personalColor": "#9683D3",
-    "createdAt": "2026-10-01T09:00:00Z",
-    "updatedAt": "2026-10-27T09:00:00Z"
+    "personal_color": "#9683D3",
+    "description": "Keeps the inbox and the calendar in order.",
+    "live_enabled": false,
+    "pinned_at": null,
+    "created_at": "2026-10-06T09:00:00.000Z",
+    "updated_at": "2026-10-27T09:00:00.000Z"
   }
 }

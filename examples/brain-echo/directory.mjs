@@ -1,9 +1,9 @@
-// brain-echo's agent directory, as specs/brain/v0/openapi.yaml describes it: two spaces, five agents
-// with their A2A cards and four tasks the agents handed to each other. The data is fixed (timestamps
-// included), so every answer is the same; server.mjs only carries it over HTTP.
+// brain-echo's agent directory, shaped like endue AI's API gateway as specs/brain/v0/openapi.yaml
+// describes it: GET /api/v1/agents, /api/v1/spaces and /api/v1/spaces/{spaceId}/agents, with the
+// gateway's snake_case names. Two spaces and five agents, fixed (timestamps included), so every
+// answer is the same; server.mjs serves these at its root, beside the brain under /v0.
 import { BrainError } from "./brain.mjs";
 
-const OWNER = "u_01JBZ8Q4MR0000000000000000";
 const HOME = "sp_home";
 const STUDIO = "sp_studio";
 const MIRA = "ag_01JBZ8Q4MR0000000000000001";
@@ -11,9 +11,9 @@ const THEO = "ag_01JBZ8Q4MR0000000000000002";
 const JUNO = "ag_01JBZ8Q4MR0000000000000003";
 const KAI = "ag_01JBZ8Q4MR0000000000000004";
 const LENA = "ag_01JBZ8Q4MR0000000000000005";
-
-const AGENT_STATUSES = ["active", "inactive", "archived"];
-const TASK_STATUSES = ["submitted", "working", "input_required", "completed", "failed", "canceled"];
+const OPENED = "2026-10-01T09:00:00.000Z";
+// The gateway stamps each answer; brain-echo stamps them all alike so answers stay the same.
+const META = { request_id: "req_brain_echo", timestamp: "2026-10-28T09:00:00.000Z" };
 
 const SPACES = [
   {
@@ -21,8 +21,10 @@ const SPACES = [
     key: "home",
     name: "Home",
     type: "workspace",
-    createdAt: "2026-10-01T09:00:00Z",
-    updatedAt: "2026-10-01T09:00:00Z",
+    status: "active",
+    front_agent_id: MIRA,
+    created_at: OPENED,
+    updated_at: OPENED,
   },
   {
     id: STUDIO,
@@ -30,280 +32,125 @@ const SPACES = [
     name: "Studio",
     description: "Client work",
     type: "workspace",
-    createdAt: "2026-10-01T09:00:00Z",
-    updatedAt: "2026-10-01T09:00:00Z",
+    status: "active",
+    front_agent_id: KAI,
+    created_at: OPENED,
+    updated_at: OPENED,
   },
 ];
 
-const skill = (id, name, description, inputModes = ["text"]) => ({
+const agent = (id, name, status, personal_color, description, created_at, updated_at) => ({
   id,
+  slug: name.toLowerCase(),
   name,
+  status,
+  personal_color,
   description,
-  inputModes,
+  live_enabled: false,
+  pinned_at: null,
+  created_at,
+  updated_at,
 });
 
-// Each agent with the space it works in and its A2A card; the Agent schema carries neither. Mira
-// is the newest, so lists come out as Mira, Theo, Juno, Kai, Lena.
+// Newest first, as the gateway lists them: Mira is the newest.
 const AGENTS = [
   {
-    space: HOME,
-    agent: {
-      id: MIRA,
-      name: "Mira",
-      slug: "mira",
-      status: "active",
-      ownerUserId: OWNER,
-      personalColor: "#9683D3",
-      createdAt: "2026-10-06T09:00:00Z",
-      updatedAt: "2026-10-27T09:00:00Z",
-    },
-    card: {
-      description: "Keeps the inbox and the calendar in order.",
-      enabled: true,
-      skills: [
-        skill("inbox.sort", "Sort the inbox", "Files, answers or flags each new mail."),
-        skill("calendar.plan", "Plan the day", "Finds time for meetings and moves the overlaps."),
-      ],
-      capabilities: { streaming: true, maxConcurrentTasks: 2 },
-    },
+    ...agent(
+      MIRA,
+      "Mira",
+      "active",
+      "#9683D3",
+      "Keeps the inbox and the calendar in order.",
+      "2026-10-06T09:00:00.000Z",
+      "2026-10-27T09:00:00.000Z",
+    ),
+    pinned_at: "2026-10-20T09:00:00.000Z",
   },
-  {
-    space: HOME,
-    agent: {
-      id: THEO,
-      name: "Theo",
-      slug: "theo",
-      status: "active",
-      ownerUserId: OWNER,
-      personalColor: "#6FA8DC",
-      createdAt: "2026-10-05T09:00:00Z",
-      updatedAt: "2026-10-26T09:00:00Z",
-    },
-    card: {
-      description: "Takes notes and keeps them tidy.",
-      enabled: true,
-      skills: [
-        skill(
-          "notes.tidy",
-          "Tidy meeting notes",
-          "Turns rough notes into decisions and next steps.",
-          ["text", "file"],
-        ),
-      ],
-      capabilities: { streaming: true, maxConcurrentTasks: 1 },
-    },
-  },
-  {
-    space: HOME,
-    agent: {
-      id: JUNO,
-      name: "Juno",
-      slug: "juno",
-      status: "inactive",
-      ownerUserId: OWNER,
-      personalColor: "#E0A458",
-      createdAt: "2026-10-04T09:00:00Z",
-      updatedAt: "2026-10-04T09:00:00Z",
-    },
-    card: {
-      description: "Files receipts and pays the bills.",
-      enabled: false,
-      skills: [
-        skill("receipts.file", "File receipts", "Reads receipts and files them by month.", [
-          "text",
-          "file",
-        ]),
-      ],
-      capabilities: { streaming: false, maxConcurrentTasks: 1 },
-    },
-  },
-  {
-    space: STUDIO,
-    agent: {
-      id: KAI,
-      name: "Kai",
-      slug: "kai",
-      status: "active",
-      ownerUserId: OWNER,
-      personalColor: "#5FB49C",
-      createdAt: "2026-10-03T09:00:00Z",
-      updatedAt: "2026-10-25T09:00:00Z",
-    },
-    card: {
-      description: "Plans trips.",
-      enabled: true,
-      skills: [
-        skill("flights.compare", "Compare flights", "Compares flights by price, time and stops."),
-        skill("hotels.find", "Find a hotel", "Finds hotels close to where the trip goes."),
-      ],
-      capabilities: { streaming: true, maxConcurrentTasks: 3 },
-    },
-  },
-  {
-    space: STUDIO,
-    agent: {
-      id: LENA,
-      name: "Lena",
-      slug: "lena",
-      status: "active",
-      ownerUserId: OWNER,
-      personalColor: "#D9779A",
-      createdAt: "2026-10-02T09:00:00Z",
-      updatedAt: "2026-10-24T09:00:00Z",
-    },
-    card: {
-      description: "Writes briefs and copy for clients.",
-      enabled: true,
-      skills: [
-        skill("brief.draft", "Draft the brief", "Drafts a brief from notes and references.", [
-          "text",
-          "file",
-        ]),
-      ],
-      capabilities: { streaming: true, maxConcurrentTasks: 2 },
-    },
-  },
+  agent(
+    THEO,
+    "Theo",
+    "active",
+    "#6FA8DC",
+    "Takes notes and keeps them tidy.",
+    "2026-10-05T09:00:00.000Z",
+    "2026-10-26T09:00:00.000Z",
+  ),
+  agent(
+    JUNO,
+    "Juno",
+    "inactive",
+    "#E0A458",
+    "Files receipts and pays the bills.",
+    "2026-10-04T09:00:00.000Z",
+    "2026-10-04T09:00:00.000Z",
+  ),
+  agent(
+    KAI,
+    "Kai",
+    "active",
+    "#5FB49C",
+    "Plans trips.",
+    "2026-10-03T09:00:00.000Z",
+    "2026-10-25T09:00:00.000Z",
+  ),
+  agent(
+    LENA,
+    "Lena",
+    "active",
+    "#D9779A",
+    "Writes briefs and copy for clients.",
+    "2026-10-02T09:00:00.000Z",
+    "2026-10-24T09:00:00.000Z",
+  ),
 ];
 
-const TASKS = [
-  {
-    id: "a2a_01JBZ8Q4MR0000000000000001",
-    contextId: "ctx-inbox",
-    sourceAgentId: THEO,
-    targetAgentId: MIRA,
-    status: "working",
-    goal: "Sort the inbox",
-    depth: 1,
-    maxDepth: 3,
-    messageCount: 4,
-    progress: 0.62,
-    insertedAt: "2026-10-28T08:55:48Z",
-    updatedAt: "2026-10-28T08:59:00Z",
-  },
-  {
-    id: "a2a_01JBZ8Q4MR0000000000000002",
-    contextId: "ctx-trip",
-    sourceAgentId: MIRA,
-    targetAgentId: KAI,
-    status: "working",
-    goal: "Compare flights",
-    depth: 1,
-    maxDepth: 3,
-    messageCount: 2,
-    progress: 0.25,
-    insertedAt: "2026-10-28T08:58:55Z",
-    updatedAt: "2026-10-28T08:59:30Z",
-  },
-  {
-    id: "a2a_01JBZ8Q4MR0000000000000003",
-    contextId: "ctx-notes",
-    sourceAgentId: MIRA,
-    targetAgentId: THEO,
-    status: "submitted",
-    goal: "Tidy meeting notes",
-    depth: 1,
-    maxDepth: 3,
-    messageCount: 1,
-    insertedAt: "2026-10-28T08:59:40Z",
-    updatedAt: "2026-10-28T08:59:40Z",
-  },
-  {
-    id: "a2a_01JBZ8Q4MR0000000000000004",
-    contextId: "ctx-brief",
-    sourceAgentId: KAI,
-    targetAgentId: LENA,
-    status: "completed",
-    goal: "Draft the brief",
-    result: { artifacts: [{ name: "brief.pdf" }] },
-    depth: 1,
-    maxDepth: 3,
-    messageCount: 3,
-    progress: 1,
-    insertedAt: "2026-10-28T08:12:00Z",
-    updatedAt: "2026-10-28T08:41:00Z",
-  },
+const member = (space_id, agent_id, role_key, is_front) => ({
+  id: `spa_${space_id.slice(3)}_${agent_id.slice(-2)}`,
+  space_id,
+  agent_id,
+  role_key,
+  is_front,
+  permission: is_front ? "admin" : "participant",
+  status: "active",
+  created_at: OPENED,
+  updated_at: OPENED,
+});
+
+// One row per agent in its space; the front agent answers the person there.
+const MEMBERS = [
+  member(HOME, MIRA, "generalist", true),
+  member(HOME, THEO, "writer", false),
+  member(HOME, JUNO, "analyst", false),
+  member(STUDIO, KAI, "generalist", true),
+  member(STUDIO, LENA, "writer", false),
 ];
 
-const invalid = (message) => new BrainError(400, "invalid_request", message);
-
-/** A query parameter given at most once: its value, or null when it is absent. */
-function single(query, name) {
-  const values = query.getAll(name);
-  if (values.length > 1) throw invalid(`${name} is given ${values.length} times.`);
-  return values[0] ?? null;
+/** A whole-number parameter, or `fallback` when it is absent or not a number. */
+function whole(query, name, fallback) {
+  const value = Number.parseInt(query.get(name) ?? "", 10);
+  return Number.isNaN(value) ? fallback : value;
 }
 
-/** An id filter: absent, or not empty. */
-function filter(query, name) {
-  const value = single(query, name);
-  if (value === "") throw invalid(`${name} is empty; leave it out to keep everything.`);
-  return value;
-}
-
-/** One of `allowed`, or null when the parameter is absent. */
-function oneOf(query, name, allowed) {
-  const value = single(query, name);
-  if (value !== null && !allowed.includes(value))
-    throw invalid(`${name} is one of ${allowed.join(", ")}, not "${value}".`);
-  return value;
-}
-
-/** A whole number from 1 (up to `max`), or `fallback` when the parameter is absent. */
-function whole(query, name, fallback, max = Number.POSITIVE_INFINITY) {
-  const raw = single(query, name);
-  if (raw === null) return fallback;
-  const value = /^\d+$/.test(raw) ? Number(raw) : Number.NaN;
-  if (!Number.isSafeInteger(value) || value < 1 || value > max) {
-    const range = max === Number.POSITIVE_INFINITY ? "from 1" : `from 1 to ${max}`;
-    throw invalid(`${name} is a whole number ${range}, not "${raw}".`);
-  }
-  return value;
-}
-
-/** One page of `items`, newest first by their `at` timestamp, as the query asks. */
-function onePage(items, at, query) {
-  const page = whole(query, "page", 1);
-  const limit = whole(query, "limit", 20, 100);
-  const newest = items.toSorted((a, b) => Date.parse(b[at]) - Date.parse(a[at]));
+/** GET /api/v1/agents: like the agent service, page is at least 1 and limit is 1 to 50. */
+export function listAgents(query) {
+  const page = Math.max(1, whole(query, "page", 1));
+  const limit = Math.min(50, Math.max(1, whole(query, "limit", 20)));
+  const newest = AGENTS.toSorted((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));
   const start = (page - 1) * limit;
   return {
     items: newest.slice(start, start + limit),
-    pagination: { total: newest.length, page, limit, hasNextPage: start + limit < newest.length },
+    pagination: { total: newest.length, page, limit, has_next_page: start + limit < newest.length },
   };
 }
 
-/** listSpaces: every space. */
+/** GET /api/v1/spaces: every active space, as a plain array. */
 export function listSpaces() {
-  return { items: SPACES };
+  return SPACES;
 }
 
-/** listAgents: the agents in spaceId with status, when given. `query` is a URLSearchParams. */
-export function listAgents(query) {
-  const spaceId = filter(query, "spaceId");
-  const status = oneOf(query, "status", AGENT_STATUSES);
-  const kept = AGENTS.filter(
-    (entry) =>
-      (spaceId === null || entry.space === spaceId) &&
-      (status === null || entry.agent.status === status),
-  ).map((entry) => entry.agent);
-  return onePage(kept, "createdAt", query);
-}
-
-/** getAgentCard: an agent's A2A card; not_found for an agent nobody has. */
-export function getAgentCard(agentId) {
-  const entry = AGENTS.find((e) => e.agent.id === agentId);
-  if (!entry) throw new BrainError(404, "not_found", `There is no agent ${agentId}.`);
-  return { agentId, name: entry.agent.name, ...entry.card };
-}
-
-/** listA2ATasks: the tasks targetAgentId is doing with status, when given. */
-export function listA2ATasks(query) {
-  const target = filter(query, "targetAgentId");
-  const status = oneOf(query, "status", TASK_STATUSES);
-  const kept = TASKS.filter(
-    (task) =>
-      (target === null || task.targetAgentId === target) &&
-      (status === null || task.status === status),
-  );
-  return onePage(kept, "insertedAt", query);
+/** GET /api/v1/spaces/{spaceId}/agents: the space's agents in the data and meta envelope. */
+export function listSpaceAgents(spaceId) {
+  if (!SPACES.some((space) => space.id === spaceId))
+    throw new BrainError(404, "not_found", `There is no space ${spaceId}.`);
+  return { data: MEMBERS.filter((m) => m.space_id === spaceId), meta: META };
 }

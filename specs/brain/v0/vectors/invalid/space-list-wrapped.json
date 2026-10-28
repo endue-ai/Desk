@@ -1,0 +1,7 @@
+{
+  "target": "SpaceList",
+  "description": "the gateway answers a plain array, not an object",
+  "instance": {
+    "items": []
+  }
+}

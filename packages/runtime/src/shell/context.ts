@@ -10,8 +10,6 @@ export interface ShellCtx extends Ctx {
   ticker: Ticker;
   tr(key: CopyKey, vars?: Record<string, string | number>): string;
   reduced(): boolean;
-  /** Wall-clock milliseconds now: the epoch the shell started at plus the clock's time. */
-  wall(): number;
   platform: Platform;
   /** Command bindings (system layer). */
   keys: Keymap;

@@ -1,5 +1,5 @@
 /**
- * Bottom right: what is happening now. One chip per working A2A task: the agent doing it, the goal,
+ * Bottom right: what is happening now. One chip per running task: the agent doing it, the title,
  * the time since it started and its progress. Nothing at all when nothing runs.
  */
 import { agentName, selectAgent } from "../system/agents";
@@ -19,12 +19,12 @@ export function mountRunning(root: HTMLElement, ctx: ShellCtx): () => void {
   root.append(el);
   const draw = () => {
     const s = ctx.store.get();
-    const tasks = s.tasks.filter((t) => t.status === "working");
+    const tasks = s.tasks.filter((t) => t.running);
     el.hidden = tasks.length === 0;
     render(el, () =>
       tasks.map((t) => {
-        const who = agentName(s, t.targetAgentId);
-        const title = t.goal ?? ctx.tr("statusWorking");
+        const who = agentName(s, t.agent);
+        const title = t.title;
         return h(
           "li",
           {},
@@ -36,14 +36,14 @@ export function mountRunning(root: HTMLElement, ctx: ShellCtx): () => void {
               "data-key": `run-${t.id}`,
               "data-task": t.id,
               "aria-label": `${who} · ${title}`,
-              onClick: () => selectAgent(ctx, t.targetAgentId),
+              onClick: () => selectAgent(ctx, t.agent),
             },
             h("span", { class: "run-avatar", "aria-hidden": "true" }, initial(who)),
             h("span", { class: "run-title" }, title),
             h(
               "span",
-              { class: "run-time", "data-started": Date.parse(t.insertedAt) },
-              elapsed(ctx.wall() - Date.parse(t.insertedAt)),
+              { class: "run-time", "data-started": t.startedAt },
+              elapsed(ctx.ticker.now() - t.startedAt),
             ),
             t.progress === undefined
               ? null
@@ -65,7 +65,7 @@ export function mountRunning(root: HTMLElement, ctx: ShellCtx): () => void {
   const offs = [
     ctx.store.watch((s) => [s.tasks, s.agents], draw),
     ctx.ticker.add(() => {
-      const now = ctx.wall();
+      const now = ctx.ticker.now();
       const sec = Math.floor(now / 1000);
       if (sec === second) return;
       second = sec;

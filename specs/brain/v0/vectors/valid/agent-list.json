@@ -1,32 +1,37 @@
 {
   "target": "AgentList",
-  "description": "the first page of a space's agents",
+  "description": "a page of agents as the gateway lists them",
   "instance": {
     "items": [
       {
         "id": "ag_01JBZ8Q4MR0000000000000001",
-        "name": "Mira",
         "slug": "mira",
+        "name": "Mira",
         "status": "active",
-        "ownerUserId": "u_01JBZ8Q4MR0000000000000000",
-        "personalColor": "#9683D3",
-        "createdAt": "2026-10-01T09:00:00Z",
-        "updatedAt": "2026-10-27T09:00:00Z"
+        "personal_color": "#9683D3",
+        "description": "Keeps the inbox and the calendar in order.",
+        "live_enabled": false,
+        "created_at": "2026-10-06T09:00:00.000Z",
+        "updated_at": "2026-10-27T09:00:00.000Z"
       },
       {
         "id": "ag_01JBZ8Q4MR0000000000000003",
-        "name": "Juno",
         "slug": "juno",
+        "name": "Juno",
         "status": "inactive",
-        "createdAt": "2026-10-02T09:00:00Z",
-        "updatedAt": "2026-10-02T09:00:00Z"
+        "source_catalog": {
+          "catalog_agent_id": "cat_receipts",
+          "version": "1.2.0"
+        },
+        "created_at": "2026-10-04T09:00:00.000Z",
+        "updated_at": "2026-10-04T09:00:00.000Z"
       }
     ],
     "pagination": {
       "total": 2,
       "page": 1,
       "limit": 20,
-      "hasNextPage": false
+      "has_next_page": false
     }
   }
 }

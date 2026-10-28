@@ -1,6 +1,6 @@
 /**
  * Views: what a pane can show. Each has a title for the title bar and a body that may keep itself
- * up to date (the agent screen follows its A2A card and tasks; the shortcut list follows the keymap).
+ * up to date (the agent screen follows the agents, the space and the tasks; the shortcut list follows the keymap).
  */
 import type { ShellCtx } from "../shell/context";
 import { h } from "../shell/dom";
@@ -79,7 +79,7 @@ export function viewOf(ctx: ShellCtx, view: string): View {
   if (view.startsWith("agent:")) {
     const id = view.slice(6);
     const name = s.agents.find((a) => a.id === id)?.name ?? id;
-    const goal = s.tasks.find((t) => t.targetAgentId === id && t.status === "working")?.goal ?? "";
+    const goal = s.tasks.find((t) => t.agent === id && t.running)?.title ?? "";
     return {
       icon: "user",
       title: ctx.tr("agentScreen", { name }),

@@ -1,200 +1,118 @@
 /**
- * The browser stub's agent directory: the same people as examples/brain-echo, answering listAgents,
- * getAgentCard, listSpaces and listA2ATasks the way specs/brain/v0 says (filters, pages, 404).
+ * The browser stub's agents and spaces: the same people as examples/brain-echo, answering listAgents,
+ * listSpaces and listSpaceAgents the way endue AI's API gateway does (specs/brain/v0).
  */
-import type { A2ATask, A2ATaskList, Agent, AgentCard, AgentList, Space } from "@endue-ai/bridge";
-import type { AgentQuery, TaskQuery } from "./types";
+import type {
+  Agent,
+  AgentList,
+  Space,
+  SpaceAgent,
+  SpaceAgentList,
+  SpaceList,
+} from "@endue-ai/bridge";
+import type { AgentQuery } from "./types";
 
 export interface Directory {
   spaces: Space[];
-  /** Agents with the space each one is in. */
-  agents: { agent: Agent; spaceId: string }[];
-  cards: AgentCard[];
-  tasks: A2ATask[];
+  agents: Agent[];
+  spaceAgents: SpaceAgent[];
 }
 
-const OWNER = "u_01JBZ8Q4MR0000000000000000";
 export const agentId = (n: number) => `ag_01JBZ8Q4MR00000000000000${String(n).padStart(2, "0")}`;
-const taskId = (n: number) => `a2a_01JBZ8Q4MR00000000000000${String(n).padStart(2, "0")}`;
 
-/** Sample directory; timestamps are relative to `epoch` so elapsed times are fixed in tests. */
-export function sampleDirectory(epoch: number): Directory {
-  const at = (msBefore: number) => new Date(epoch - msBefore).toISOString();
-  const created = "2026-10-01T09:00:00.000Z";
-  const space = (id: string, key: string, name: string, description?: string): Space => ({
-    id,
-    key,
-    name,
-    ...(description ? { description } : {}),
-    type: "workspace",
-    createdAt: created,
-    updatedAt: created,
-  });
+const CREATED = "2026-10-01T09:00:00.000Z";
+
+export function sampleDirectory(): Directory {
   // Mira is the newest, so newest-first lists read Mira, Theo, Juno, Kai, Lena (as brain-echo).
-  const agent = (n: number, name: string, status: Agent["status"]): Agent => {
+  const agent = (n: number, name: string, status: Agent["status"], description: string): Agent => {
     const at = `2026-10-0${7 - n}T09:00:00.000Z`;
     return {
       id: agentId(n),
-      name,
       slug: name.toLowerCase(),
+      name,
       status,
-      ownerUserId: OWNER,
-      createdAt: at,
-      updatedAt: at,
+      description,
+      created_at: at,
+      updated_at: at,
     };
   };
-  const card = (
-    n: number,
-    description: string,
-    enabled: boolean,
-    maxConcurrentTasks: number,
-    skills: [string, string, string, string[]?][],
-  ): AgentCard => ({
-    agentId: agentId(n),
-    name: ["Mira", "Theo", "Juno", "Kai", "Lena"][n - 1] ?? "",
-    description,
-    enabled,
-    skills: skills.map(([id, name, what, modes]) => ({
-      id,
-      name,
-      description: what,
-      inputModes: modes ?? ["text"],
-    })),
-    capabilities: { streaming: n !== 3, maxConcurrentTasks },
+  const space = (id: string, name: string, front: number, description?: string): Space => ({
+    id,
+    key: id.replace(/^sp_/, ""),
+    name,
+    ...(description ? { description } : {}),
+    type: "workspace",
+    status: "active",
+    front_agent_id: agentId(front),
+    created_at: CREATED,
+    updated_at: CREATED,
   });
-  const task = (
-    n: number,
-    from: number,
-    to: number,
-    status: A2ATask["status"],
-    goal: string,
-    startedMsAgo: number,
-    progress?: number,
-  ): A2ATask => ({
-    id: taskId(n),
-    sourceAgentId: agentId(from),
-    targetAgentId: agentId(to),
-    status,
-    goal,
-    depth: 1,
-    maxDepth: 3,
-    messageCount: 2,
-    ...(progress === undefined ? {} : { progress }),
-    insertedAt: at(startedMsAgo),
-    updatedAt: at(0),
+  const member = (spaceId: string, n: number, front = false): SpaceAgent => ({
+    id: `spa_${spaceId}_${n}`,
+    space_id: spaceId,
+    agent_id: agentId(n),
+    role_key: "generalist",
+    is_front: front,
+    permission: front ? "admin" : "participant",
+    status: "active",
+    created_at: CREATED,
+    updated_at: CREATED,
   });
   return {
-    spaces: [
-      space("sp_home", "home", "Home"),
-      space("sp_studio", "studio", "Studio", "Client work"),
-    ],
+    spaces: [space("sp_home", "Home", 1), space("sp_studio", "Studio", 4, "Client work")],
     agents: [
-      { agent: agent(1, "Mira", "active"), spaceId: "sp_home" },
-      { agent: agent(2, "Theo", "active"), spaceId: "sp_home" },
-      { agent: agent(3, "Juno", "inactive"), spaceId: "sp_home" },
-      { agent: agent(4, "Kai", "active"), spaceId: "sp_studio" },
-      { agent: agent(5, "Lena", "active"), spaceId: "sp_studio" },
+      agent(1, "Mira", "active", "Keeps the inbox and the calendar in order."),
+      agent(2, "Theo", "active", "Takes notes and keeps them tidy."),
+      agent(3, "Juno", "inactive", "Files receipts and pays the bills."),
+      agent(4, "Kai", "active", "Plans trips."),
+      agent(5, "Lena", "active", "Writes briefs and copy for clients."),
     ],
-    cards: [
-      card(1, "Keeps the inbox and the calendar in order.", true, 2, [
-        ["inbox.sort", "Sort the inbox", "Files, answers or flags each new mail."],
-        ["calendar.plan", "Plan the day", "Finds time for meetings and moves the overlaps."],
-      ]),
-      card(2, "Takes notes and keeps them tidy.", true, 1, [
-        [
-          "notes.tidy",
-          "Tidy meeting notes",
-          "Turns rough notes into decisions and next steps.",
-          ["text", "file"],
-        ],
-      ]),
-      card(3, "Files receipts and pays the bills.", false, 1, [
-        [
-          "receipts.file",
-          "File receipts",
-          "Reads receipts and files them by month.",
-          ["text", "file"],
-        ],
-      ]),
-      card(4, "Plans trips.", true, 3, [
-        ["flights.compare", "Compare flights", "Compares flights by price, time and stops."],
-        ["hotels.find", "Find a hotel", "Finds hotels close to where the trip goes."],
-      ]),
-      card(5, "Writes briefs and copy for clients.", true, 2, [
-        [
-          "brief.draft",
-          "Draft the brief",
-          "Drafts a brief from notes and references.",
-          ["text", "file"],
-        ],
-      ]),
-    ],
-    tasks: [
-      task(1, 2, 1, "working", "Sort the inbox", 4 * 60_000 + 12_000, 0.62),
-      task(2, 1, 4, "working", "Compare flights", 65_000, 0.25),
-      task(3, 1, 2, "submitted", "Tidy meeting notes", 30_000),
-      task(4, 4, 5, "completed", "Draft the brief", 3_600_000),
+    spaceAgents: [
+      member("sp_home", 1, true),
+      member("sp_home", 2),
+      member("sp_home", 3),
+      member("sp_studio", 4, true),
+      member("sp_studio", 5),
     ],
   };
 }
 
-/** Contract error, shaped like BrainError. */
+/** Error with the HTTP status the gateway would answer. */
 export class DirectoryError extends Error {
   constructor(
     readonly status: number,
-    readonly code: "invalid_request" | "not_found",
+    readonly code: "not_found",
     message: string,
   ) {
     super(message);
   }
 }
 
-function page<T>(items: T[], query: { page?: number; limit?: number }) {
-  const p = query.page ?? 1;
-  const limit = query.limit ?? 20;
-  if (!Number.isInteger(p) || p < 1 || !Number.isInteger(limit) || limit < 1 || limit > 100) {
-    throw new DirectoryError(400, "invalid_request", "page starts at 1 and limit is 1 to 100.");
-  }
+/** Newest first, as agent-service lists; the gateway lowers a limit over 50 and a page under 1. */
+export function listAgents(d: Directory, query: AgentQuery = {}): AgentList {
+  const limit = Math.min(50, Math.max(1, Math.floor(query.limit ?? 20)));
+  const page = Math.max(1, Math.floor(query.page ?? 1));
+  const all = d.agents
+    .map((agent, i) => ({ agent, i, t: Date.parse(agent.created_at) }))
+    .sort((a, b) => b.t - a.t || a.i - b.i)
+    .map((x) => x.agent);
   return {
-    items: items.slice((p - 1) * limit, p * limit),
-    pagination: { total: items.length, page: p, limit, hasNextPage: p * limit < items.length },
+    items: all.slice((page - 1) * limit, page * limit),
+    pagination: { total: all.length, page, limit, has_next_page: page * limit < all.length },
   };
 }
 
-/** Newest first, as the contract lists; ties keep their order. */
-const newest = <T>(items: T[], at: (item: T) => string) =>
-  items
-    .map((item, i) => ({ item, i, t: Date.parse(at(item)) }))
-    .sort((a, b) => b.t - a.t || a.i - b.i)
-    .map((x) => x.item);
-
-export function listAgents(d: Directory, query: AgentQuery = {}): AgentList {
-  return page(
-    newest(
-      d.agents
-        .filter((a) => query.spaceId === undefined || a.spaceId === query.spaceId)
-        .filter((a) => query.status === undefined || a.agent.status === query.status)
-        .map((a) => a.agent),
-      (a) => a.createdAt,
-    ),
-    query,
-  );
+/** Active spaces only, as a plain array. */
+export function listSpaces(d: Directory): SpaceList {
+  return d.spaces.filter((sp) => (sp.status ?? "active") === "active");
 }
 
-export function agentCard(d: Directory, id: string): AgentCard {
-  const card = d.cards.find((c) => c.agentId === id);
-  if (!card) throw new DirectoryError(404, "not_found", `No agent ${id}.`);
-  return card;
-}
-
-export function listTasks(d: Directory, query: TaskQuery = {}): A2ATaskList {
-  return page(
-    newest(
-      d.tasks
-        .filter((t) => query.targetAgentId === undefined || t.targetAgentId === query.targetAgentId)
-        .filter((t) => query.status === undefined || t.status === query.status),
-      (t) => t.insertedAt,
-    ),
-    query,
-  );
+export function listSpaceAgents(d: Directory, spaceId: string, now: string): SpaceAgentList {
+  if (!d.spaces.some((sp) => sp.id === spaceId)) {
+    throw new DirectoryError(404, "not_found", `No space ${spaceId}.`);
+  }
+  return {
+    data: d.spaceAgents.filter((a) => a.space_id === spaceId),
+    meta: { request_id: "stub", timestamp: now },
+  };
 }
