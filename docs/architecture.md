@@ -1,5 +1,8 @@
 # endue Desk architecture
 
+English · [日本語](i18n/ja/architecture.md) · [中文](i18n/zh/architecture.md) ·
+[Français](i18n/fr/architecture.md) · [Deutsch](i18n/de/architecture.md) · [한국어](i18n/ko/architecture.md)
+
 This is the English summary of the design. The source of truth is `docs/ko/desk-structure.md`; decisions
 that are hard to reverse are in `docs/adr/`.
 

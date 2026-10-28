@@ -1,5 +1,9 @@
 # Contributing to endue Desk
 
+English · [日本語](docs/i18n/ja/CONTRIBUTING.md) · [中文](docs/i18n/zh/CONTRIBUTING.md) ·
+[Français](docs/i18n/fr/CONTRIBUTING.md) · [Deutsch](docs/i18n/de/CONTRIBUTING.md) ·
+[한국어](docs/i18n/ko/CONTRIBUTING.md)
+
 Thank you for helping. Start with `AGENTS.md`: it has the repository map, the commands and the rules
 that people and AI agents share.
 

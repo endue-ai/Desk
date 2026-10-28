@@ -1,5 +1,9 @@
 # Trademark policy
 
+English · [日本語](docs/i18n/ja/TRADEMARK.md) · [中文](docs/i18n/zh/TRADEMARK.md) ·
+[Français](docs/i18n/fr/TRADEMARK.md) · [Deutsch](docs/i18n/de/TRADEMARK.md) ·
+[한국어](docs/i18n/ko/TRADEMARK.md)
+
 The code in this repository is open source under Apache-2.0. The names and marks are not. Apache-2.0
 (section 6) grants no rights to use trade names, trademarks or logos.
 
