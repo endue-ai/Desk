@@ -1,0 +1,14 @@
+{
+  "target": "BridgeRequest",
+  "description": "perm.list of one caller's grants under perm:manage",
+  "instance": {
+    "id": 42,
+    "method": "perm.list",
+    "params": {
+      "caller": "endue.eris",
+      "scope": {
+        "permission": "perm:manage"
+      }
+    }
+  }
+}

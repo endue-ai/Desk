@@ -1,0 +1,14 @@
+{
+  "target": "BridgeRequest",
+  "description": "cmd.invoke needs cmd:invoke",
+  "instance": {
+    "id": 54,
+    "method": "cmd.invoke",
+    "params": {
+      "id": "eris.say",
+      "args": {
+        "text": "hi"
+      }
+    }
+  }
+}

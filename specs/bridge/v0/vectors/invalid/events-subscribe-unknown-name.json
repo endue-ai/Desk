@@ -1,0 +1,15 @@
+{
+  "target": "BridgeRequest",
+  "description": "proc.output cannot be subscribed to",
+  "instance": {
+    "id": 62,
+    "method": "events.subscribe",
+    "params": {
+      "names": ["proc.output"],
+      "scope": {
+        "permission": "events:subscribe",
+        "names": ["cmd.changed"]
+      }
+    }
+  }
+}

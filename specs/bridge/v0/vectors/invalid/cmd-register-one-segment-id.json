@@ -1,0 +1,12 @@
+{
+  "target": "BridgeRequest",
+  "description": "command ids have at least two segments",
+  "instance": {
+    "id": 50,
+    "method": "cmd.register",
+    "params": {
+      "id": "say",
+      "title": "Say"
+    }
+  }
+}
