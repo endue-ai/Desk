@@ -60,7 +60,7 @@ Desk übernimmt diese Form und benennt die Teile so, wie es ein Betriebssystem t
 | Fenstermanager | Fenstermanager | Frames · Windows | 3D-Canvas-Compositor |
 | Shell | Terminal-Shell | M-x | Eris · Befehlspalette |
 | Apps | Anwendungen | Pakete (Elisp) | Plugins (UI · Wasm · MCP) |
-| Boot-Konfiguration | init | init.el | Modi (Plugin-Set + Einstellungen) |
+| Boot-Konfiguration | init | init.el | `init.yaml` (Modus + Plugins + Einstellungen) |
 | Paketmanager | apt · brew | package.el · MELPA | Marktplatz |
 | Verhalten überschreiben | keine | Advice · Hooks | Event-Hooks · Befehls-Overrides |
 | Konten | Benutzerkonten | keine | endue ID |
