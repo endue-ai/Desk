@@ -3,8 +3,9 @@
 .bottom { position: absolute; inset: auto 0 0; pointer-events: none; }
 .bottom > * { pointer-events: auto; }
 
-.drawer { position: absolute; left: var(--space-6); bottom: var(--space-5); z-index: var(--z-float); }
-.drawer-button { background: var(--card); border-color: var(--border); }
+/* No z-index on .drawer: its panel must rise above the system layer's agent bar. */
+.drawer { position: absolute; left: var(--space-6); bottom: var(--space-5); }
+.drawer-button { z-index: var(--z-float); background: var(--card); border-color: var(--border); }
 .drawer-panel {
   position: absolute;
   bottom: 48px;

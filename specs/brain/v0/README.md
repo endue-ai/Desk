@@ -8,6 +8,9 @@ and `examples/brain-echo` implement it; `crates/desk-brain-*` are its clients.
 | Sessions | `createSession`, `getSession` |
 | Turns | `createTurn` and `submitToolResult` stream `TurnEvent`s over Server-Sent Events |
 | Leases | `acquireLease`, `renewLease`, `releaseLease`, `getLease` |
+| Agents | `listAgents` (by space, status, page), `getAgentCard` (the agent's A2A card) |
+| Spaces | `listSpaces` |
+| A2A | `listA2ATasks` (by target agent, status, page) |
 
 ## Turns and tools
 
@@ -22,6 +25,23 @@ renewed before `expiresAt`. Another Desk opening the session acquires with `take
 lease ends at once, and the old holder's next write or renew fails with `lease_lost`, so it becomes
 read-only. Without `takeover`, acquiring a held lease fails with `lease_held` and names the holder.
 After `expiresAt` the lease is gone (`lease_expired`) and anyone may acquire.
+
+## Agent directory
+
+The agent operations mirror endue AI's own API so endue AI can serve them by renaming fields
+(snake_case there, camelCase here). Lists are newest first and paged like endue AI's
+`PaginatedList` (`items` and `pagination`).
+
+| Here | endue AI |
+| --- | --- |
+| `Agent` | `AgentGetResponse` (`/platform/v1/agents`) |
+| `AgentCard` | `A2ACardSummary` plus `A2ACard.enabled` |
+| `A2ATask`, `A2ATaskStatus` | `A2ATask`, `A2ATaskStatus` (`progress` is a Desk addition) |
+| `Space` | `UserSpaceGetResponse` (`/platform/v1/spaces`) |
+| `listAgents?spaceId=` | agents that entered the space (`space.agent.entered`) |
+
+Desk shows an agent as working while a task it was handed is `working`, and as waiting while the
+agent is `inactive`. Archived agents are not shown.
 
 ## Rules
 

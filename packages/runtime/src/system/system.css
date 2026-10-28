@@ -1,0 +1,95 @@
+/*
+ * The two layers. Neither forms a stacking context: system parts sit at --z-system, mode parts at
+ * --z-float, surfaces in their own context at 0, popovers above all. Layers let clicks through;
+ * only their parts take the pointer.
+ */
+
+.layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.modes,
+.desktops,
+.float-bar,
+.eris,
+.popover,
+.scrim,
+.bottom > * {
+  pointer-events: auto;
+}
+
+.layer-system .modes,
+.layer-system .desktops,
+.layer-system .sidebar {
+  z-index: var(--z-system);
+}
+
+.surfaces {
+  z-index: 0;
+}
+
+/* Agent bar extras: more agents than fit, and a directory that could not be read. */
+
+.avatar-more {
+  background: var(--muted);
+  color: var(--foreground);
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+.bar-offline {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  color: var(--warning-text);
+}
+
+.agents-popover {
+  position: absolute;
+  left: 92px;
+  display: grid;
+  gap: 2px;
+  width: 220px;
+  padding: var(--space-1);
+}
+
+.agents-popover-item {
+  gap: var(--space-2);
+}
+
+.kbd {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  height: 20px;
+  padding: 0 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--muted);
+  color: var(--foreground);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  line-height: 1;
+}
+
+.composer-option {
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.composer-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pop-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

@@ -1,5 +1,8 @@
-/** Bottom right: what is happening now. One chip per running task; nothing at all when nothing runs. */
-import { openSurface } from "./actions";
+/**
+ * Bottom right: what is happening now. One chip per working A2A task: the agent doing it, the goal,
+ * the time since it started and its progress. Nothing at all when nothing runs.
+ */
+import { agentName, selectAgent } from "../system/agents";
 import type { ShellCtx } from "./context";
 import { h, render } from "./dom";
 import { initial } from "./state";
@@ -14,20 +17,15 @@ export function elapsed(ms: number): string {
 export function mountRunning(root: HTMLElement, ctx: ShellCtx): () => void {
   const el = h("ul", { class: "running", "aria-label": ctx.tr("running") });
   root.append(el);
-  const names = () =>
-    new Map(
-      ctx.store
-        .get()
-        .spaces.flatMap((sp) => sp.agents)
-        .map((a) => [a.id, a.name]),
-    );
   const draw = () => {
-    const tasks = ctx.store.get().tasks.filter((t) => t.running);
+    const s = ctx.store.get();
+    const tasks = s.tasks.filter((t) => t.status === "working");
     el.hidden = tasks.length === 0;
-    const who = names();
     render(el, () =>
-      tasks.map((t) =>
-        h(
+      tasks.map((t) => {
+        const who = agentName(s, t.targetAgentId);
+        const title = t.goal ?? ctx.tr("statusWorking");
+        return h(
           "li",
           {},
           h(
@@ -37,35 +35,37 @@ export function mountRunning(root: HTMLElement, ctx: ShellCtx): () => void {
               type: "button",
               "data-key": `run-${t.id}`,
               "data-task": t.id,
-              "aria-label": `${who.get(t.agent) ?? t.agent} · ${t.title}`,
-              onClick: () => t.surface && openSurface(ctx, t.surface),
+              "aria-label": `${who} · ${title}`,
+              onClick: () => selectAgent(ctx, t.targetAgentId),
             },
+            h("span", { class: "run-avatar", "aria-hidden": "true" }, initial(who)),
+            h("span", { class: "run-title" }, title),
             h(
               "span",
-              { class: "run-avatar", "aria-hidden": "true" },
-              initial(who.get(t.agent) ?? t.agent),
+              { class: "run-time", "data-started": Date.parse(t.insertedAt) },
+              elapsed(ctx.wall() - Date.parse(t.insertedAt)),
             ),
-            h("span", { class: "run-title" }, t.title),
-            h(
-              "span",
-              { class: "run-time", "data-started": t.startedAt },
-              elapsed(ctx.ticker.now() - t.startedAt),
-            ),
-            h(
-              "span",
-              { class: "run-progress", "aria-hidden": "true" },
-              h("span", { class: "run-bar", style: { width: `${Math.round(t.progress * 100)}%` } }),
-            ),
+            t.progress === undefined
+              ? null
+              : h(
+                  "span",
+                  { class: "run-progress", "aria-hidden": "true" },
+                  h("span", {
+                    class: "run-bar",
+                    style: { width: `${Math.round(t.progress * 100)}%` },
+                  }),
+                ),
           ),
-        ),
-      ),
+        );
+      }),
     );
   };
   draw();
   let second = -1;
   const offs = [
-    ctx.store.watch((s) => [s.tasks, s.spaces], draw),
-    ctx.ticker.add((now) => {
+    ctx.store.watch((s) => [s.tasks, s.agents], draw),
+    ctx.ticker.add(() => {
+      const now = ctx.wall();
       const sec = Math.floor(now / 1000);
       if (sec === second) return;
       second = sec;

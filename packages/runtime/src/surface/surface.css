@@ -6,6 +6,8 @@
   position: absolute;
   display: grid;
   grid-template-rows: 40px minmax(0, 1fr);
+  /* One column the width of the surface: a long title never pushes the tools out. */
+  grid-template-columns: minmax(0, 1fr);
   overflow: hidden;
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);

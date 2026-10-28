@@ -1,22 +1,26 @@
 /**
- * The desk shell. The centre stays empty: every part floats at an edge. Tab order follows the DOM:
- * modes → desktops → left bar → Eris → rail → bottom → surfaces.
+ * The desk shell in two layers. The system layer holds the desk's own controls at fixed places (mode
+ * switcher, desktops, agent bar); the mode layer holds what a mode lays out (Eris, the rail, the
+ * bottom edge, surfaces). The centre stays empty. Tab order follows the DOM:
+ * modes → desktops → agent bar → Eris → rail → bottom → surfaces.
  */
 import type { ShellBridge } from "../bridge/types";
 import { type Clock, realClock } from "../clock";
 import { type ErisHandle, mountEris } from "../eris/Eris";
+import type { Platform } from "../input";
 import { sampleModes } from "../modes/load";
 import type { Mode } from "../modes/types";
 import { mountSurfaces } from "../surface/Surface";
+import { loadDirectory } from "../system/agents";
+import { detectPlatform, Keymap } from "../system/keys";
+import { mountSystemLayer } from "../system/layer";
+import { mountKeyRouter } from "../system/router";
 import { layoutOf } from "./actions";
 import { mountBottom } from "./Bottom";
 import type { ShellCtx } from "./context";
 import { type Lang, t } from "./copy";
-import { mountDesktops } from "./Desktops";
 import { h, listen } from "./dom";
-import { mountModes } from "./Modes";
 import { mountRail } from "./Rail";
-import { mountSideBar } from "./SideBar";
 import { type DeskState, Store, sampleState } from "./state";
 import { Ticker } from "./ticker";
 
@@ -30,14 +34,21 @@ export interface DeskOptions {
   persist?: boolean;
   /** Override prefers-reduced-motion (tests). */
   reducedMotion?: boolean;
+  /** "Mod" is ⌘ on mac and Ctrl elsewhere; detected from the browser unless given. */
+  platform?: Platform;
+  /** Wall-clock time at clock 0, for "started 4 minutes ago" (default: now). */
+  epoch?: number;
 }
 
 export interface Desk {
   store: Store;
   ticker: Ticker;
   eris: ErisHandle;
-  /** Resolves once the saved desk is restored. */
+  keys: Keymap;
+  /** Resolves once the saved desk, the key bindings and the agent directory are loaded. */
   ready: Promise<void>;
+  /** Read the agent directory again. */
+  refresh(): Promise<void>;
   dispose(): void;
 }
 
@@ -56,10 +67,13 @@ type Saved = Partial<Pick<DeskState, (typeof SAVED)[number]>>;
 export function mountDesk(options: DeskOptions): Desk {
   const clock = options.clock ?? realClock();
   const ticker = new Ticker(clock);
+  const epoch = options.epoch ?? Date.now();
   const store = new Store(sampleState(options.modes ?? sampleModes(), options.lang ?? "ko"));
   const media =
     typeof matchMedia === "function" ? matchMedia("(prefers-reduced-motion: reduce)") : null;
   const reduced = () => options.reducedMotion ?? media?.matches ?? false;
+  const platform = options.platform ?? detectPlatform();
+  const keys = new Keymap(platform);
   const root = options.root;
   root.classList.add("shell");
   root.replaceChildren();
@@ -75,33 +89,30 @@ export function mountDesk(options: DeskOptions): Desk {
     ticker,
     tr: (key, vars) => t(store.get().lang, key, vars),
     reduced,
+    wall: () => epoch + ticker.now(),
+    platform,
+    keys,
     eris: { say: (text, words) => pending.say(text, words), setState: (s) => pending.setState(s) },
   };
 
   const glow = h("div", { class: "shell-glow", "aria-hidden": "true" });
+  const modeLayer = h("div", { class: "layer layer-mode", "data-layer": "mode" });
   root.append(glow);
-  const parts = [mountModes(root, ctx), mountDesktops(root, ctx), mountSideBar(root, ctx)];
-  const eris = mountEris(root, ctx, () => layoutOf(store.get()).eris);
+  const parts = [mountSystemLayer(root, ctx)];
+  root.append(modeLayer);
+  const eris = mountEris(modeLayer, ctx, () => layoutOf(store.get()).eris);
   pending.say = eris.say;
   pending.setState = eris.setState;
-  parts.push(mountRail(root, ctx), mountBottom(root, ctx), mountSurfaces(root, ctx));
+  parts.push(mountRail(modeLayer, ctx), mountBottom(modeLayer, ctx), mountSurfaces(modeLayer, ctx));
 
   const html = document.documentElement;
   const applyTheme = (theme: DeskState["theme"]) => {
     html.dataset.theme = theme;
   };
   applyTheme(store.get().theme);
-  const closeAll = () =>
-    store.set((s) => ({
-      popover: null,
-      dialog: null,
-      composer: s.composer.open ? { open: false, text: "", selected: 0 } : s.composer,
-    }));
   const offs = [
     store.watch((s) => s.theme, applyTheme),
-    listen(window, "keydown", (e) => {
-      if ((e as KeyboardEvent).key === "Escape") closeAll();
-    }),
+    mountKeyRouter(ctx),
     listen(document, "pointerdown", (e) => {
       const target = e.target as Element | null;
       if (!target?.closest(".popover, .dialog, [aria-expanded], .composer")) {
@@ -111,14 +122,18 @@ export function mountDesk(options: DeskOptions): Desk {
   ];
 
   const persist = options.persist ?? true;
-  const ready = (async () => {
+  const restore = async () => {
     if (!persist) return;
-    const saved = await options.bridge.storage.get<Saved>("desk");
+    const [saved, bindings] = await Promise.all([
+      options.bridge.storage.get<Saved>("desk"),
+      options.bridge.storage.get<unknown>("keybindings"),
+    ]);
     if (saved)
       store.set((s) => ({
         ...saved,
         eris: { ...s.eris, ...saved.eris, state: "idle", saying: "" },
       }));
+    if (bindings) keys.load(bindings);
     offs.push(
       store.watch(
         (s) => ({
@@ -127,20 +142,26 @@ export function mountDesk(options: DeskOptions): Desk {
         }),
         (value) => void options.bridge.storage.set("desk", value),
       ),
+      keys.onChange(() => void options.bridge.storage.set("keybindings", keys.overrides())),
     );
-  })();
+  };
+  const refresh = () => loadDirectory(ctx);
+  const ready = restore().then(refresh);
 
   return {
     store,
     ticker,
     eris,
+    keys,
     ready,
+    refresh,
     dispose() {
       for (const off of offs) off();
       for (const off of parts) off();
       eris.dispose();
       ticker.dispose();
       glow.remove();
+      modeLayer.remove();
       root.classList.remove("shell");
     },
   };

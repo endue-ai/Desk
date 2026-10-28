@@ -67,6 +67,12 @@ describe("modes", () => {
     expect(get("studio").roles.roles[0]?.agent).toBeNull();
   });
 
+  test("a mode may hide the rail for every desktop: Night does", () => {
+    for (const d of [1, 2, 3, 4] as const)
+      expect(savedLayout(get("night"), base, d).rail.visible).toBe(false);
+    expect(savedLayout(get("morning"), base, 1).rail.visible).toBe(true);
+  });
+
   test("switching modes sends surfaces the next mode does not place to the drawer", () => {
     const sent = leftBehind(get("morning"), get("deep-work"), base, {});
     expect(sent.map((s) => s.id)).toEqual(["calendar", "tomorrow"]);

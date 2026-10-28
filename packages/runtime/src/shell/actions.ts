@@ -2,7 +2,6 @@
 import type { ShellBridge } from "../bridge/types";
 import {
   copyMode,
-  EMPTY_DESKTOP,
   effectiveLayout,
   isDirty,
   leftBehind,
@@ -51,10 +50,6 @@ export function moveSurface(ctx: Ctx, id: string, rect: Partial<SurfacePlacement
   }));
 }
 
-export function focusSurface(ctx: Ctx, id: string | null): void {
-  if (ctx.store.get().focused !== id) ctx.store.set({ focused: id });
-}
-
 export function closeSurface(ctx: Ctx, id: string): void {
   edit(ctx, (l) => ({ ...l, surfaces: l.surfaces.filter((p) => p.id !== id) }));
 }
@@ -86,7 +81,8 @@ export function defaultPlacement(id: string): SurfacePlacement {
   if (id === "tomorrow") return { ...base, plugin: "endue.eris", x: 1000, y: 220, w: 320, h: 360 };
   if (id === "notes") return { ...base, plugin: "endue.notes", x: 140, y: 260, w: 380, h: 300 };
   if (id.startsWith("agent:"))
-    return { ...base, plugin: "endue.agent", x: 520, y: 300, w: 400, h: 300 };
+    return { ...base, plugin: "endue.agent", x: 520, y: 260, w: 400, h: 340 };
+  if (id === "keys") return { ...base, plugin: "endue.keys", x: 480, y: 200, w: 480, h: 440 };
   if (id.startsWith("recent:"))
     return { ...base, plugin: "endue.eris", x: 980, y: 300, w: 320, h: 240 };
   return { ...base, plugin: "endue.files", x: 980, y: 320, w: 320, h: 240 };
@@ -99,6 +95,7 @@ export function openSurface(ctx: Ctx, id: string, placement?: SurfacePlacement):
   }
   ctx.store.set((st) => ({
     focused: id,
+    pane: null,
     drawer: st.drawer.filter((d) => d.placement?.id !== id),
   }));
 }
@@ -173,25 +170,13 @@ export function revert(ctx: Ctx): void {
 }
 
 export function setDesktop(ctx: Ctx, desktop: DesktopIndex): void {
-  ctx.store.set({ desktop, focused: null });
+  ctx.store.set({ desktop, focused: null, pane: null });
 }
 
 export function moveEris(ctx: Ctx, pos: { x: number; y: number } | null): void {
   edit(ctx, (l) => ({ ...l, eris: pos }));
 }
 
-export function selectAgent(ctx: Ctx, id: string): void {
-  ctx.store.set({ agentId: id });
-  openSurface(ctx, `agent:${id}`);
-}
-
-export function selectSpace(ctx: Ctx, id: string): void {
-  const space = ctx.store.get().spaces.find((sp) => sp.id === id);
-  ctx.store.set({ spaceId: id, agentId: space?.agents[0]?.id ?? null });
-}
-
 export function desktopIsEmpty(s: DeskState, d: DesktopIndex): boolean {
   return layoutOf(s, d).surfaces.length === 0;
 }
-
-export { EMPTY_DESKTOP };

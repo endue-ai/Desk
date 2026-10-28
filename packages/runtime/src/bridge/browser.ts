@@ -1,3 +1,4 @@
+import { agentCard, type Directory, listAgents, listTasks, sampleDirectory } from "./directory";
 import type { AudioLevels, Bands, BrainReply, BrainStatus, ShellBridge, WordTime } from "./types";
 
 /** A recorded band envelope: one nine-band frame every `frameMs`. */
@@ -14,6 +15,8 @@ export interface BrowserBridgeOptions {
   /** What `perm.request` answers; default: grant everything. */
   grant?: (scope: string) => boolean;
   brain?: BrainStatus;
+  /** Wall-clock time the sample directory's timestamps are relative to (default: now). */
+  epoch?: number;
 }
 
 /** The stub plus the knobs tests and the dev page turn. */
@@ -23,6 +26,8 @@ export interface BrowserBridge extends ShellBridge {
     play(source: keyof AudioLevels, envelope: Envelope, at?: number): void;
     stop(source?: keyof AudioLevels): void;
     requests: string[];
+    /** The agent directory behind agents, spaces and a2a; tests edit it in place. */
+    directory: Directory;
   };
 }
 
@@ -63,6 +68,9 @@ export function browserBridge(options: BrowserBridgeOptions): BrowserBridge {
   const playing: Partial<Record<keyof AudioLevels, { envelope: Envelope; at: number }>> = {};
   const requests: string[] = [];
   let brain: BrainStatus = options.brain ?? { mode: "local", model: "llama-3.2-3b" };
+  const directory = sampleDirectory(options.epoch ?? Date.now());
+  // Answers are copies, as if they came over the wire.
+  const wire = <T>(value: T): Promise<T> => Promise.resolve(structuredClone(value));
 
   const level = (source: keyof AudioLevels): Bands => {
     const p = playing[source];
@@ -101,7 +109,18 @@ export function browserBridge(options: BrowserBridgeOptions): BrowserBridge {
         return { text: reply, words: wordTimes(reply) };
       },
     },
+    agents: {
+      list: async (query) => wire(listAgents(directory, query)),
+      card: async (id) => wire(agentCard(directory, id)),
+    },
+    spaces: {
+      list: async () => wire({ items: directory.spaces }),
+    },
+    a2a: {
+      tasks: async (query) => wire(listTasks(directory, query)),
+    },
     fake: {
+      directory,
       play(source, envelope, at) {
         playing[source] = { envelope, at: at ?? options.now() };
       },

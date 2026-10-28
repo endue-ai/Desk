@@ -1,16 +1,24 @@
+import type { ErisState } from "../eris/states";
+import type { Platform } from "../input";
+import type { Keymap } from "../system/keys";
 import type { Ctx } from "./actions";
 import type { CopyKey } from "./copy";
 import type { Ticker } from "./ticker";
 
-/** What every shell part gets: the store and bridge, the frame loop, copy and motion settings. */
+/** What every shell part gets: the store and bridge, the frame loop, copy, keys and motion settings. */
 export interface ShellCtx extends Ctx {
   ticker: Ticker;
   tr(key: CopyKey, vars?: Record<string, string | number>): string;
   reduced(): boolean;
+  /** Wall-clock milliseconds now: the epoch the shell started at plus the clock's time. */
+  wall(): number;
+  platform: Platform;
+  /** Command bindings (system layer). */
+  keys: Keymap;
   /** Eris's controls for parts that make her react (the composer, the rail). */
   eris: {
     say(text: string, words?: { word: string; at: number }[]): void;
-    setState(state: import("../eris/states").ErisState): void;
+    setState(state: ErisState): void;
   };
 }
 

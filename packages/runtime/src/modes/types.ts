@@ -27,7 +27,28 @@ export interface SurfacePlacement {
   w: number;
   h: number;
   pinned: boolean;
+  /** How the surface is split into panes. Absent: one pane showing the view named by `id`. */
+  panes?: PaneNode;
 }
+
+/** One pane: shows a view ("calendar", "notes", "agent:<id>", "launcher", ...). */
+export interface PaneLeaf {
+  kind: "view";
+  id: string;
+  view: string;
+}
+
+/** Two panes side by side ("row") or stacked ("column"); `ratio` is the first one's share. */
+export interface PaneSplit {
+  kind: "split";
+  id: string;
+  dir: "row" | "column";
+  ratio: number;
+  a: PaneNode;
+  b: PaneNode;
+}
+
+export type PaneNode = PaneLeaf | PaneSplit;
 
 export interface DesktopLayout {
   surfaces: SurfacePlacement[];

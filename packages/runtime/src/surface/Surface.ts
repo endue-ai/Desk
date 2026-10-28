@@ -2,80 +2,25 @@
  * Surfaces: windows on the desk. Card face, 1 px border, no shadow; Eris's own carry the lavender
  * border and a badge. Drag the title bar to move, the corner to resize; both save to the session layout.
  */
+
 import type { SurfacePlacement } from "../modes/types";
-import {
-  closeSurface,
-  focusSurface,
-  layoutOf,
-  moveSurface,
-  stash,
-  togglePin,
-} from "../shell/actions";
+import { closeSurface, layoutOf, moveSurface, stash, togglePin } from "../shell/actions";
 import type { ShellCtx } from "../shell/context";
-import { h, listen } from "../shell/dom";
+import { h, listen, render } from "../shell/dom";
 import { draggable } from "../shell/drag";
 import { icon } from "../shell/icons";
+import { focusPane, splitPane } from "../shell/windows";
+import { format } from "../system/keys";
 import { clampRect, fromScreen, type Rect, toScreen } from "./geometry";
-import { calendarBody } from "./samples/calendar";
-import { notesBody } from "./samples/notes";
-import { tomorrowBody } from "./samples/tomorrow";
+import { renderPanes } from "./PaneView";
+import { findLeaf, leaves, panesOf } from "./tree";
+import { type Mounted, viewOf } from "./views";
 
-interface Content {
-  icon: string;
-  title: string;
-  sub: string;
-  byEris: boolean;
-  body: () => HTMLElement;
-}
-
-function contentOf(ctx: ShellCtx, id: string): Content {
+/** The pane whose view the title bar names: the focused one, else the first. */
+function activeLeaf(ctx: ShellCtx, p: SurfacePlacement) {
   const s = ctx.store.get();
-  if (id === "calendar")
-    return {
-      icon: "calendar",
-      title: ctx.tr("surfaceCalendar"),
-      sub: ctx.tr("thisWeek"),
-      byEris: false,
-      body: () => calendarBody(ctx),
-    };
-  if (id === "tomorrow")
-    return {
-      icon: "list",
-      title: ctx.tr("surfaceTomorrow"),
-      sub: ctx.tr("forTomorrow"),
-      byEris: true,
-      body: () => tomorrowBody(ctx),
-    };
-  if (id === "notes")
-    return {
-      icon: "note",
-      title: ctx.tr("surfaceNotes"),
-      sub: ctx.tr("notesHint"),
-      byEris: false,
-      body: () => notesBody(ctx),
-    };
-  if (id.startsWith("agent:")) {
-    const agent = s.spaces.flatMap((sp) => sp.agents).find((a) => `agent:${a.id}` === id);
-    const name = agent?.name ?? id.slice(6);
-    const task = s.tasks.find((t) => t.agent === agent?.id);
-    return {
-      icon: "user",
-      title: ctx.tr("agentScreen", { name }),
-      sub: task?.title ?? "",
-      byEris: false,
-      body: () =>
-        h("div", { class: "list-body" }, h("p", { class: "list-row" }, task?.title ?? name)),
-    };
-  }
-  const name = id.replace(/^(file|recent):/, "");
-  const item = s.drawer.find((d) => d.id === name);
-  return {
-    icon: id.startsWith("recent:") ? "sparkle" : "file",
-    title: item?.name ?? name.replace(/^recent-/, ""),
-    sub: id.startsWith("recent:") ? ctx.tr("recent") : ctx.tr("file"),
-    byEris: id.startsWith("recent:"),
-    body: () => h("div", { class: "list-body" }, h("p", { class: "list-row" }, name)),
-  };
+  const tree = panesOf(p);
+  return (s.focused === p.id && s.pane ? findLeaf(tree, s.pane) : undefined) ?? leaves(tree)[0];
 }
 
 function tool(label: string, name: string, run: () => void, pressed?: boolean) {
@@ -96,14 +41,32 @@ function tool(label: string, name: string, run: () => void, pressed?: boolean) {
   );
 }
 
+interface Entry {
+  el: HTMLElement;
+  title: HTMLElement;
+  body: HTMLElement;
+  /** Rebuild the whole surface when this changes (pinned, language). */
+  key: string;
+  /** Rebuild only the panes when this changes. */
+  panesKey: string;
+  panes: Mounted;
+  /** Refresh the key hints in the tools' labels (the keymap changed). */
+  relabel: () => void;
+  off: () => void;
+}
+
 export function mountSurfaces(root: HTMLElement, ctx: ShellCtx): () => void {
   const layer = h("div", { class: "surfaces" });
   root.append(layer);
-  const live = new Map<string, { el: HTMLElement; off: () => void; key: string }>();
+  const live = new Map<string, Entry>();
   const size = () => ({
     vw: root.clientWidth || window.innerWidth,
     vh: root.clientHeight || window.innerHeight,
   });
+  const hint = (label: string, command: string) => {
+    const key = ctx.keys.bindingsOf(command)[0];
+    return key ? `${label} (${format(key, ctx.platform)})` : label;
+  };
 
   const place = (el: HTMLElement, r: Rect) => {
     el.style.left = `${r.x}px`;
@@ -112,23 +75,59 @@ export function mountSurfaces(root: HTMLElement, ctx: ShellCtx): () => void {
     el.style.height = `${r.h}px`;
   };
 
-  const build = (p: SurfacePlacement) => {
-    const c = contentOf(ctx, p.id);
-    const title = h(
+  /** Title bar text for the active pane: icon, name, the view's own line and Eris's badge. */
+  const drawTitle = (entry: Entry, p: SurfacePlacement) => {
+    const leaf = activeLeaf(ctx, p);
+    const view = viewOf(ctx, leaf?.view ?? p.id);
+    render(entry.title, () => [
+      icon(view.icon, 16),
+      h("span", { class: "surface-name" }, view.title),
+      view.sub ? h("span", { class: "surface-sub" }, view.sub) : null,
+      view.byEris ? h("span", { class: "eris-badge" }, ctx.tr("madeByEris")) : null,
+    ]);
+    entry.el.setAttribute("aria-label", view.title);
+  };
+
+  const build = (p: SurfacePlacement): Entry => {
+    const title = h("span", { class: "surface-heading" });
+    const split = (dir: "row" | "column") => () => {
+      focusPane(ctx, p.id, activeLeaf(ctx, p)?.id);
+      splitPane(ctx, dir);
+    };
+    const splitRight = tool(
+      hint(ctx.tr("splitRight"), "pane.splitRight"),
+      "split-right",
+      split("row"),
+    );
+    const splitDown = tool(
+      hint(ctx.tr("splitDown"), "pane.splitDown"),
+      "split-down",
+      split("column"),
+    );
+    const relabel = () => {
+      for (const [button, label, command] of [
+        [splitRight, ctx.tr("splitRight"), "pane.splitRight"],
+        [splitDown, ctx.tr("splitDown"), "pane.splitDown"],
+      ] as const) {
+        button.setAttribute("aria-label", hint(label, command));
+        button.title = hint(label, command);
+      }
+    };
+    const bar = h(
       "header",
       { class: "surface-title" },
-      icon(c.icon, 16),
-      h("span", { class: "surface-name" }, c.title),
-      c.sub ? h("span", { class: "surface-sub" }, c.sub) : null,
-      c.byEris ? h("span", { class: "eris-badge" }, ctx.tr("madeByEris")) : null,
+      title,
       h(
         "span",
         { class: "surface-tools" },
+        splitRight,
+        splitDown,
         tool(ctx.tr(p.pinned ? "unpin" : "pin"), "pin", () => togglePin(ctx, p.id), p.pinned),
         tool(ctx.tr("stash"), "drawer", () => stash(ctx, p.id)),
         tool(ctx.tr("close"), "close", () => closeSurface(ctx, p.id)),
       ),
     );
+    const body = h("div", { class: "surface-body" });
     const grip = h("span", {
       class: "surface-resize",
       "aria-hidden": "true",
@@ -137,14 +136,13 @@ export function mountSurfaces(root: HTMLElement, ctx: ShellCtx): () => void {
     const el = h(
       "section",
       {
-        class: `surface${c.byEris ? " is-eris" : ""}${p.pinned ? " is-pinned" : ""}`,
+        class: `surface${p.pinned ? " is-pinned" : ""}`,
         "data-surface": p.id,
         role: "region",
-        "aria-label": c.title,
         tabindex: "-1",
       },
-      title,
-      h("div", { class: "surface-body" }, c.body()),
+      bar,
+      body,
       grip,
     );
     let start: Rect = { x: 0, y: 0, w: 0, h: 0 };
@@ -157,10 +155,16 @@ export function mountSurfaces(root: HTMLElement, ctx: ShellCtx): () => void {
       const { vw, vh } = size();
       moveSurface(ctx, p.id, fromScreen(r, vw, vh));
     };
+    /** Focus follows the pointer or keyboard into a pane. */
+    const focusFrom = (target: EventTarget | null) => {
+      const pane = (target as Element | null)?.closest?.("[data-pane]")?.getAttribute("data-pane");
+      const s = ctx.store.get();
+      focusPane(ctx, p.id, pane ?? (s.focused === p.id ? (s.pane ?? undefined) : undefined));
+    };
     const offs = [
-      listen(el, "pointerdown", () => focusSurface(ctx, p.id)),
-      listen(el, "focusin", () => focusSurface(ctx, p.id)),
-      draggable(title, {
+      listen(el, "pointerdown", (e) => focusFrom(e.target)),
+      listen(el, "focusin", (e) => focusFrom(e.target)),
+      draggable(bar, {
         accept: (e) => !(e.target as Element).closest("button") && !p.pinned,
         start: begin,
         move: (dx, dy) => {
@@ -184,12 +188,20 @@ export function mountSurfaces(root: HTMLElement, ctx: ShellCtx): () => void {
         },
       }),
     ];
-    return {
+    const entry: Entry = {
       el,
+      title,
+      body,
+      key: "",
+      panesKey: "",
+      panes: { el: body },
+      relabel,
       off: () => {
         for (const off of offs) off();
+        entry.panes.off?.();
       },
     };
+    return entry;
   };
 
   const draw = () => {
@@ -212,10 +224,28 @@ export function mountSurfaces(root: HTMLElement, ctx: ShellCtx): () => void {
         entry = undefined;
       }
       if (!entry) {
-        entry = { ...build(p), key };
+        entry = build(p);
+        entry.key = key;
         live.set(p.id, entry);
         layer.append(entry.el);
       }
+      const panesKey = JSON.stringify(panesOf(p));
+      if (entry.panesKey !== panesKey) {
+        entry.panes.off?.();
+        entry.panes = renderPanes(ctx, p);
+        entry.body.replaceChildren(entry.panes.el);
+        entry.panesKey = panesKey;
+      }
+      const all = leaves(panesOf(p));
+      const active = s.focused === p.id ? activeLeaf(ctx, p)?.id : undefined;
+      for (const pane of entry.body.querySelectorAll<HTMLElement>("[data-pane]")) {
+        pane.classList.toggle("is-active", pane.dataset.pane === active && all.length > 1);
+      }
+      entry.el.classList.toggle(
+        "is-eris",
+        all.every((l) => viewOf(ctx, l.view).byEris),
+      );
+      drawTitle(entry, p);
       place(entry.el, toScreen(p, vw, vh));
       entry.el.style.zIndex = String(p.id === s.focused ? 100 : p.pinned ? 50 + i : 1 + i);
       entry.el.classList.toggle("is-focused", p.id === s.focused);
@@ -223,7 +253,14 @@ export function mountSurfaces(root: HTMLElement, ctx: ShellCtx): () => void {
   };
   draw();
   const offs = [
-    ctx.store.watch((s) => [layoutOf(s), s.focused, s.lang, s.desktop], draw),
+    ctx.store.watch(
+      (s) => [layoutOf(s), s.focused, s.pane, s.lang, s.desktop, s.agents, s.tasks, s.drawer],
+      draw,
+    ),
+    // A new key only changes the tools' hints; rebuilding would remount every view.
+    ctx.keys.onChange(() => {
+      for (const entry of live.values()) entry.relabel();
+    }),
     listen(window, "resize", draw),
   ];
   return () => {

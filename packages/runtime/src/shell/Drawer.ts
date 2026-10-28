@@ -1,5 +1,5 @@
 /** Bottom left: the drawer. Put-away surfaces, dropped files, and Eris's temporary screens ("recent"). */
-import { raise } from "./actions";
+import { layoutOf, raise } from "./actions";
 import type { ShellCtx } from "./context";
 import { h, render } from "./dom";
 import { icon } from "./icons";
@@ -72,6 +72,7 @@ export function mountDrawer(root: HTMLElement, ctx: ShellCtx): () => void {
   };
   const draw = () => {
     const s = ctx.store.get();
+    el.hidden = !layoutOf(s).drawer.visible;
     const items = visible();
     const label = ctx.tr("drawer", { n: items.length });
     render(button, () => [
@@ -105,7 +106,10 @@ export function mountDrawer(root: HTMLElement, ctx: ShellCtx): () => void {
     );
   };
   draw();
-  const off = ctx.store.watch((s) => [s.drawer, s.popover === "drawer", s.lang], draw);
+  const off = ctx.store.watch(
+    (s) => [s.drawer, s.popover === "drawer", s.lang, layoutOf(s).drawer],
+    draw,
+  );
   return () => {
     off();
     el.remove();

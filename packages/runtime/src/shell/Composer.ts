@@ -2,8 +2,10 @@
  * Bottom centre: the line you talk on. A 2 px line with a hint until focused, then a 48 px input that
  * doubles as the command palette. A sent line rises into the middle of the screen and is absorbed.
  */
+
 import { clamp01, cubicBezier, easeOutExpo } from "../ease";
-import { type Command, commands, match } from "./commands";
+import { type Command, deskCommands, match } from "../system/commands";
+import { format } from "../system/keys";
 import type { ShellCtx } from "./context";
 import { h, listen, render } from "./dom";
 
@@ -56,10 +58,16 @@ export function mountComposer(root: HTMLElement, ctx: ShellCtx): () => void {
   };
   field.style.height = "2px";
 
-  const choices = (text: string): { label: string; run: () => void }[] => {
-    found = match(commands(ctx, ctx.store.get()), text);
+  const choices = (text: string): { label: string; key?: string; run: () => void }[] => {
+    found = match(deskCommands(ctx), text);
     if (!text.trim()) return [];
-    return [...found, { label: ctx.tr("sayTo", { x: text.trim() }), run: () => void send(text) }];
+    return [
+      ...found.map((c) => {
+        const key = ctx.keys.bindingsOf(c.id)[0];
+        return { label: c.label, run: c.run, ...(key ? { key: format(key, ctx.platform) } : {}) };
+      }),
+      { label: ctx.tr("sayTo", { x: text.trim() }), run: () => void send(text) },
+    ];
   };
 
   const drawList = () => {
@@ -86,7 +94,8 @@ export function mountComposer(root: HTMLElement, ctx: ShellCtx): () => void {
               execute(o.run);
             },
           },
-          o.label,
+          h("span", { class: "composer-label" }, o.label),
+          o.key ? h("kbd", { class: "kbd" }, o.key) : null,
         ),
       ),
     );
@@ -106,12 +115,16 @@ export function mountComposer(root: HTMLElement, ctx: ShellCtx): () => void {
 
   /** The sent line floats up from the input and dissolves into the centre: soul text in reverse. */
   const send = async (text: string) => {
+    // The line rises over the whole desk, so it lives on the shell, not inside the bottom edge.
+    const host = (root.closest(".shell") as HTMLElement | null) ?? document.body;
+    const frame = host.getBoundingClientRect();
     const rect = field.getBoundingClientRect();
     const ghost = h("div", { class: "absorb", "aria-hidden": "true" }, text);
-    ghost.style.left = `${rect.left + rect.width / 2}px`;
-    ghost.style.top = `${rect.top + rect.height / 2}px`;
-    root.append(ghost);
-    const rise = window.innerHeight / 2 - (rect.top + rect.height / 2);
+    const y = rect.top + rect.height / 2 - frame.top;
+    ghost.style.left = `${rect.left + rect.width / 2 - frame.left}px`;
+    ghost.style.top = `${y}px`;
+    host.append(ghost);
+    const rise = frame.height / 2 - y;
     void ctx.ticker
       .animate(ctx.reduced() ? 200 : ABSORB_MS, ctx.reduced() ? (t) => t : absorbEase, (t) => {
         const move = ctx.reduced() ? 0 : t;
@@ -128,7 +141,12 @@ export function mountComposer(root: HTMLElement, ctx: ShellCtx): () => void {
   const offs = [
     ctx.store.watch(
       (s) => s.composer.open,
-      (open) => void fold(open),
+      (open) => {
+        void fold(open);
+        // Closed from anywhere (Escape, a command): leave nothing half-typed behind.
+        if (!open && input.value) input.value = "";
+        if (!open && document.activeElement === input) input.blur();
+      },
     ),
     ctx.store.watch((s) => [s.composer, s.modes, s.lang, s.spaceId], drawList),
     listen(input, "focus", () =>
@@ -160,11 +178,7 @@ export function mountComposer(root: HTMLElement, ctx: ShellCtx): () => void {
     }),
     listen(window, "keydown", (e) => {
       const k = e as KeyboardEvent;
-      if ((k.metaKey || k.ctrlKey) && k.key.toLowerCase() === "k") {
-        k.preventDefault();
-        input.focus();
-        return;
-      }
+      if (ctx.keys.recording || k.defaultPrevented) return;
       const active = document.activeElement;
       const typing = active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement;
       const free = !active || active === document.body || active.classList.contains("shell");

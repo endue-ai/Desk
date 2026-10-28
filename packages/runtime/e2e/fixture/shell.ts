@@ -18,11 +18,15 @@ const storage = params.has("persist")
       getItem: (k: string) => memory.get(k) ?? null,
       setItem: (k: string, v: string) => void memory.set(k, v),
     };
-const bridge = browserBridge({ now: () => clock.now(), storage });
+// A fixed wall clock and platform, so "4:12 ago" and "⌘N" read the same on every machine.
+const epoch = Date.parse("2026-10-28T09:00:00.000Z");
+const bridge = browserBridge({ now: () => clock.now(), storage, epoch });
 const desk = mountDesk({
   root,
   bridge,
   clock,
+  epoch,
+  platform: "mac",
   lang: params.get("lang") === "en" ? "en" : "ko",
   reducedMotion: params.has("reduced") ? true : undefined,
 });

@@ -1,4 +1,6 @@
 /** Right status rail: seven icon buttons with a dot and a count, a tooltip on hover, a popover on click. */
+import { agentName, isOpen } from "../system/agents";
+import { layoutOf } from "./actions";
 import type { ShellCtx } from "./context";
 import { type Child, h, listen, render } from "./dom";
 import { icon } from "./icons";
@@ -14,8 +16,9 @@ interface Item {
 
 function items(ctx: ShellCtx, s: DeskState): Item[] {
   const b = s.brain;
-  const running = s.tasks.filter((t) => t.running).length;
-  const waiting = s.tasks.length - running;
+  const open = s.tasks.filter(isOpen);
+  const running = open.filter((t) => t.status === "working").length;
+  const waiting = open.length - running;
   const sees = [...s.sees.folders, s.sees.calendar, s.sees.mail, s.sees.mic].filter(Boolean).length;
   return [
     b.mode === "local"
@@ -33,7 +36,7 @@ function items(ctx: ShellCtx, s: DeskState): Item[] {
       id: "tasks",
       icon: "tasks",
       label: ctx.tr("tasks", { r: running, w: waiting }),
-      count: s.tasks.length,
+      count: open.length,
     },
     {
       id: "attention",
@@ -114,13 +117,21 @@ function body(ctx: ShellCtx, id: RailId, s: DeskState): Child[] {
         ),
       ];
     case "tasks":
-      return s.tasks.map((t) =>
-        row(
-          h("span", { class: `dot ${t.running ? "dot-active" : "dot-idle"}` }),
-          t.title,
-          muted(t.running ? `${Math.round(t.progress * 100)}%` : ctx.tr("taskWaiting")),
-        ),
-      );
+      return s.tasks
+        .filter(isOpen)
+        .map((t) =>
+          row(
+            h("span", { class: `dot ${t.status === "working" ? "dot-active" : "dot-idle"}` }),
+            h("span", { class: "pop-text" }, t.goal ?? agentName(s, t.targetAgentId)),
+            muted(
+              t.status === "working"
+                ? t.progress === undefined
+                  ? ctx.tr("statusWorking")
+                  : `${Math.round(t.progress * 100)}%`
+                : ctx.tr(t.status === "input_required" ? "statusInputRequired" : "statusSubmitted"),
+            ),
+          ),
+        );
     case "attention":
       return s.attention.map((a) => row(h("span", { class: "dot dot-attention" }), a.text));
     case "desks":
@@ -184,6 +195,10 @@ export function mountRail(root: HTMLElement, ctx: ShellCtx): () => void {
 
   const draw = () => {
     const s = ctx.store.get();
+    const visible = layoutOf(s).rail.visible;
+    el.hidden = !visible;
+    pop.hidden = !visible;
+    if (!visible) tooltip.hidden = true;
     const list = items(ctx, s);
     render(el, () =>
       list.map((item) =>
@@ -234,7 +249,18 @@ export function mountRail(root: HTMLElement, ctx: ShellCtx): () => void {
     (e.target as Element | null)?.closest<HTMLElement>("[data-rail]") ?? null;
   const offs = [
     ctx.store.watch(
-      (s) => [s.brain, s.tasks, s.attention, s.desks, s.vm, s.listening, s.sees, s.popover, s.lang],
+      (s) => [
+        s.brain,
+        s.tasks,
+        s.attention,
+        s.desks,
+        s.vm,
+        s.listening,
+        s.sees,
+        s.popover,
+        s.lang,
+        layoutOf(s).rail,
+      ],
       draw,
     ),
     listen(el, "pointerover", (e) => showTip(target(e))),

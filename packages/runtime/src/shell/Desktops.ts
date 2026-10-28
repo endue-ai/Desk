@@ -1,8 +1,10 @@
 /** Top right: desktops 1–4 of the current mode, each with a 2×2 map of where its surfaces sit. */
+
 import { DESKTOPS, type DesktopIndex } from "../modes/types";
+import { format } from "../system/keys";
 import { desktopIsEmpty, layoutOf, setDesktop } from "./actions";
 import { REFERENCE, type ShellCtx } from "./context";
-import { h, listen, render } from "./dom";
+import { h, render } from "./dom";
 import { icon } from "./icons";
 
 function quadrants(ctx: ShellCtx, d: DesktopIndex): boolean[] {
@@ -24,7 +26,8 @@ export function mountDesktops(root: HTMLElement, ctx: ShellCtx): () => void {
     render(el, () => [
       ...DESKTOPS.map((d) => {
         const empty = desktopIsEmpty(s, d);
-        const label = ctx.tr(empty ? "desktopEmpty" : "desktop", { n: d });
+        const key = ctx.keys.bindingsOf(`desktop.${d}`)[0];
+        const label = `${ctx.tr(empty ? "desktopEmpty" : "desktop", { n: d })}${key ? ` (${format(key, ctx.platform)})` : ""}`;
         return h(
           "button",
           {
@@ -33,8 +36,8 @@ export function mountDesktops(root: HTMLElement, ctx: ShellCtx): () => void {
             "data-key": `desktop-${d}`,
             "data-desktop": d,
             "aria-pressed": String(d === s.desktop),
-            "aria-label": `${label} (⌃${d})`,
-            title: `${label} (⌃${d})`,
+            "aria-label": label,
+            title: label,
             onClick: () => setDesktop(ctx, d),
           },
           h("span", { class: "desktop-number" }, d),
@@ -63,15 +66,7 @@ export function mountDesktops(root: HTMLElement, ctx: ShellCtx): () => void {
   draw();
   const offs = [
     ctx.store.watch((s) => [s.desktop, s.modeId, s.session, s.modes, s.lang], draw),
-    listen(window, "keydown", (e) => {
-      const k = e as KeyboardEvent;
-      if (!k.ctrlKey || k.metaKey || k.altKey) return;
-      const n = Number(k.key);
-      if (n >= 1 && n <= 4) {
-        k.preventDefault();
-        setDesktop(ctx, n as DesktopIndex);
-      }
-    }),
+    ctx.keys.onChange(draw),
   ];
   return () => {
     for (const off of offs) off();

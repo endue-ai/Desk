@@ -158,6 +158,8 @@
 
   --z-float: 20;
   --z-float-top: 30;
+  /* The system layer (mode switcher, desktops, agent bar) sits above everything a mode lays out. */
+  --z-system: 30;
   --z-modal-scrim: 1059;
   --z-modal: 1060;
   --z-popover: 1070;

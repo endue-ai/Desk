@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // brain-echo: the smallest brain. Serves specs/brain/v0/openapi.yaml under /v0 with Node's standard
-// library only; the answers come from brain.mjs.
+// library only; the answers come from brain.mjs (sessions, turns, leases) and directory.mjs (spaces,
+// agents and their cards, A2A tasks).
 //
 //   node examples/brain-echo/server.mjs [--port 8787]     --port 0 picks a free port
 //
@@ -9,11 +10,13 @@
 import { createServer } from "node:http";
 import { pathToFileURL } from "node:url";
 import { BrainError, EchoBrain, scaledClock } from "./brain.mjs";
+import { getAgentCard, listA2ATasks, listAgents, listSpaces } from "./directory.mjs";
 
 const PREFIX = "/v0";
 const MAX_BODY = 1024 * 1024;
 
-// [method, path pattern, handler(brain, params, body) -> [status, body] or ["stream", events]]
+// [method, path pattern, handler(brain, params, body, query) -> [status, body] or ["stream", events]]
+// where query is the URL's URLSearchParams.
 const ROUTES = [
   ["POST", /^\/sessions$/, (b, _params, body) => [201, b.createSession(body)]],
   ["GET", /^\/sessions\/([^/]+)$/, (b, [s]) => [200, b.getSession(s)]],
@@ -31,6 +34,10 @@ const ROUTES = [
     (b, [s, l], body) => [200, b.renewLease(s, l, body)],
   ],
   ["DELETE", /^\/sessions\/([^/]+)\/lease\/([^/]+)$/, (b, [s, l]) => [204, b.releaseLease(s, l)]],
+  ["GET", /^\/agents$/, (_b, _params, _body, query) => [200, listAgents(query)]],
+  ["GET", /^\/agents\/([^/]+)\/card$/, (_b, [a]) => [200, getAgentCard(a)]],
+  ["GET", /^\/spaces$/, () => [200, listSpaces()]],
+  ["GET", /^\/a2a\/tasks$/, (_b, _params, _body, query) => [200, listA2ATasks(query)]],
 ];
 
 function route(method, path) {
@@ -78,11 +85,12 @@ async function stream(response, events, delayMs) {
 
 async function handle(brain, request, response, delayMs) {
   try {
-    const path = new URL(request.url ?? "/", "http://brain-echo").pathname;
+    const url = new URL(request.url ?? "/", "http://brain-echo");
+    const path = url.pathname;
     const found = route(request.method, path);
     if (!found) throw new BrainError(404, "not_found", `Nothing at ${request.method} ${path}.`);
     const body = await readJson(request);
-    const [status, result] = found.handler(brain, found.params, body);
+    const [status, result] = found.handler(brain, found.params, body, url.searchParams);
     if (status === "stream") await stream(response, result, delayMs);
     else sendJson(response, status, result);
   } catch (error) {

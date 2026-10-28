@@ -20,5 +20,5 @@ with the real endue AI.
 
 ```bash
 cargo test -p desk-brain-endue
-cargo test -p desk-brain --test conformance   # against examples/brain-echo
+cargo test -p desk-brain --test conformance --test directory   # against examples/brain-echo
 ```

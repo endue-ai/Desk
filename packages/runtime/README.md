@@ -6,11 +6,14 @@ desktops, the left bar, Eris, the status rail, the bottom edge, surfaces). Plain
 
 ## Public API
 
-- `mountDesk({ root, bridge, clock?, lang?, modes?, persist?, reducedMotion? })` mounts the shell and
-  returns `{ store, ticker, eris: { say, setState }, ready, dispose }`. Styles: `src/shell/styles.ts`;
+- `mountDesk({ root, bridge, clock?, lang?, modes?, persist?, reducedMotion?, platform?, epoch? })`
+  mounts the shell in two layers (system layer, ADR 0015; mode layer) and returns
+  `{ store, ticker, eris, keys, ready, refresh, dispose }`. Styles: `src/shell/styles.ts`;
   tokens: `@endue-ai/runtime/tokens.css` (the only file with literal colours).
-- `ShellBridge` (`storage.get/set`, `perm.request`, `audio.levels()`, `brain.status/use/say`) and
-  `browserBridge({ now, storage?, grant? })`, the stub with fake audio envelopes (`fake.play`).
+- `ShellBridge` (`storage`, `perm`, `audio`, `brain`, and the agent directory `agents`, `spaces`,
+  `a2a` of specs/brain/v0, ADR 0016); `browserBridge({ now, storage?, grant?, epoch? })` is the stub.
+- System: `system/commands.ts` (every command, also the palette), `system/keys.ts` (`Keymap`: defaults,
+  rebinding, saved overrides), `surface/tree.ts` (panes: split, close, resize).
 - Eris: `eris/mesh.ts` (deterministic mesh, three densities), `eris/voice.ts` (nine bands → nine rings),
   `eris/soul.ts` (soul text timing). Modes: folders in `src/modes/sample/`, layering in `modes/model.ts`.
 - Compositor: `createRuntime`, `PluginHost` (ADR 0012, 0014), `ShortcutRouter`, layout helpers,
