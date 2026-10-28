@@ -6,7 +6,7 @@
 //   node scripts/docs-i18n.mjs        (exit 1 and a list of problems when something is missing)
 
 import { existsSync, readFileSync } from "node:fs";
-import { dirname, join, relative, resolve } from "node:path";
+import { dirname, join, posix, relative, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 export const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -22,9 +22,12 @@ export const DOCS = [
   "docs/plugins/authoring.md",
 ];
 
-/** Where the `lang` translation of `doc` lives: docs/i18n/<lang>/ plus its path below docs/. */
+/**
+ * Where the `lang` translation of `doc` lives: docs/i18n/<lang>/ plus its path below docs/. A
+ * repository path with forward slashes on every OS, as in the messages.
+ */
 export function translationPath(doc, lang) {
-  return join("docs/i18n", lang, doc.replace(/^docs\//, ""));
+  return posix.join("docs/i18n", lang, doc.replace(/^docs\//, ""));
 }
 
 /** Relative markdown link targets in `text`, without anchors. */
