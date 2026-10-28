@@ -32,12 +32,16 @@ look and still freeze it?
 
 Chosen option: "paused Web Animations on an injected clock" (`plugins/eris/ui/timeline.js`). Each
 glyph and orb part gets `element.animate(keyframes, { delay, duration, easing })` with the
-prototype's values, is paused, and is positioned from the timeline's clock on every frame. Scene cues
-run on the same timeline. The timeline starts at its first frame and its time is the latest frame's
-time, never `performance.now()`: under the fake clock `now()` keeps the real milliseconds between
-installing and pausing the clock, and in an event handler it would also depend on when the input
-arrived, so either would shift the scene by a millisecond from run to run. In tests, Playwright's fake clock (installed for every frame, sandboxed
-ones included) pauses time; `clock.runFor(ms)` steps it exactly.
+prototype's values; its effect then moves to an animation with no document timeline, which is
+positioned from the timeline's clock on every frame. A plain `pause()` is not enough: WebKit settles a
+pending pause on a later rendering frame against the real document timeline, which shifted the endless
+idle loops by real milliseconds on busy CI machines. Scene cues run on the same timeline.
+
+The timeline starts at its first frame and its time is the latest frame's time, never
+`performance.now()`: under the fake clock `now()` keeps the real milliseconds between installing and
+pausing the clock, and in an event handler it would also depend on when the input arrived, so either
+would shift the scene by a millisecond from run to run. In tests, Playwright's fake clock (installed
+for every frame, sandboxed ones included) pauses time; `clock.runFor(ms)` steps it exactly.
 
 Bridge answers (a permission prompt, for example) only choose branches; when the next line starts is
 decided by script times, so asynchronous replies cannot shift a snapshot.
