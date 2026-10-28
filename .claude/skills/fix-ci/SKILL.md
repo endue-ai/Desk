@@ -22,6 +22,13 @@ The argument is the PR number: $ARGUMENTS. You fix the cause of failing checks o
 5. `just check && just test`, then commit (`fix: ...` or `test: ...`, `git commit -s`) and push.
 6. `gh pr checks <PR> --watch`. Report what failed, why, and what changed.
 
+## Removed from the merge queue
+
+A PR that passed on its own can fail in the merge queue, where it runs on top of `main` and the PRs
+ahead of it. Find the failed `merge_group` run (`gh run list --event merge_group --workflow ci`), read
+its log, then `git merge origin/main` on the branch, reproduce and fix. It counts against the budget
+like any other failed `ci` run. Ask a person to re-add the PR to the queue; never add it yourself.
+
 ## Rules
 
 - Stay inside the issue's Scope.

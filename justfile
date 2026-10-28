@@ -61,3 +61,15 @@ build-sdk:
 # Measure the opening frame time (pass "record" to make it the new baseline in e2e/perf/budgets.json)
 perf-opening mode="check":
     {{ if mode == "record" { "PERF_RECORD=1 " } else { "" } }}pnpm --filter @endue-ai/runtime exec playwright test --config playwright.perf.config.ts
+
+# Parallel tasks (ADR 0015): show lanes, or pick the ready issues that can start now ("next")
+lanes command="status":
+    node scripts/lanes.mjs {{command}}
+
+# Claim an ai:ready issue and start it in .claude/worktrees/ai-<issue> on ai/<issue>-<slug>
+task-start issue:
+    branch="$(node scripts/lanes.mjs claim {{issue}})" && scripts/worktree.sh start {{issue}} "$branch"
+
+# Remove task worktrees whose PR merged and that hold no uncommitted work
+task-gc:
+    scripts/worktree.sh gc
