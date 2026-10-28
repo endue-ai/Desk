@@ -1,5 +1,6 @@
 import type { BridgeClient } from "@endue-ai/bridge";
 import { type Clock, realClock, tween } from "./clock";
+import { Edges, takesCell } from "./edges";
 import { type Platform, ShortcutRouter } from "./input";
 import {
   type Cell,
@@ -52,7 +53,7 @@ export interface Runtime {
 
 const FADE_MS = 240;
 
-/** Mount the 2D desk: a compositor grid of sandboxed surfaces and a status line. */
+/** Mount the 2D desk: a compositor grid of sandboxed surfaces, edge bars and a status line. */
 export function createRuntime(options: RuntimeOptions): Runtime {
   const { root, bridge } = options;
   const clock = options.clock ?? realClock();
@@ -75,7 +76,7 @@ export function createRuntime(options: RuntimeOptions): Runtime {
 
   let layout = loadLayout(storage);
   const shortcuts = new ShortcutRouter({ platform: options.platform ?? "other" });
-  const surfaces = new SurfaceHost(compositor, (id) => shortcuts.focus(id));
+  const surfaces = new SurfaceHost(compositor, (id) => shortcuts.focus(id), new Edges(compositor));
 
   const applyGrid = () => {
     compositor.style.gridTemplateColumns = `repeat(${layout.columns}, minmax(0, 1fr))`;
@@ -111,8 +112,8 @@ export function createRuntime(options: RuntimeOptions): Runtime {
 
   const openSurface = (spec: SurfaceSpec) => {
     surfaces.open(spec);
-    // Overlays cover the desk; only grid surfaces take a cell.
-    if (spec.placement !== "overlay") commit(place(layout, spec.id));
+    // Overlays cover the desk and edge surfaces sit around it; only grid surfaces take a cell.
+    if (takesCell(spec.placement)) commit(place(layout, spec.id));
   };
   const closeSurface = (id: string) => {
     surfaces.close(id);
