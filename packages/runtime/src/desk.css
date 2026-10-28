@@ -72,3 +72,19 @@ body {
   color: var(--desk-text-muted);
   border-top: 1px solid var(--desk-border);
 }
+
+/* An overlay surface (the first run) covers the whole desk, status line included. */
+.desk-surface--overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: block;
+  border: 0;
+  border-radius: 0;
+  background: var(--desk-background);
+}
+
+.desk-surface--overlay:focus,
+.desk-surface--overlay:focus-within {
+  border-color: transparent;
+}

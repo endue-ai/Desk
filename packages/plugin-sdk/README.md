@@ -7,7 +7,8 @@ Layer: Plugins (see `docs/architecture.md`). Guide: `docs/plugins/authoring.md`.
 ## Public API
 
 - `defineUiPlugin({ mount(ctx) })`: connect to the runtime, then mount. `ctx` has `pluginId`,
-  `bridge` (`call`, `onEvent`) and `state` (`get`, `set`; kept by the runtime across reloads).
+  `bridge` (`call`, `onEvent`), `state` (`get`, `set`; kept by the runtime across reloads), `surface`
+  (`close()` for the rest of the session) and `commands` (`on(name, handler)` for runtime commands).
 - `connect(transport?)`: the same without `mount`.
 - `windowTransport()`: the frame transport (parent `postMessage`); `Transport`, `PluginMessage`,
   `HostMessage` describe the protocol.

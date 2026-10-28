@@ -2,12 +2,14 @@
 pub const NAME: &str = env!("CARGO_PKG_NAME");
 
 mod core_plugins;
+mod core_store;
 mod events;
 mod handler;
 mod manifest;
 mod paths;
 mod perm;
 mod plugins;
+mod store;
 mod time;
 mod watch;
 

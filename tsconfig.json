@@ -1,9 +1,14 @@
 {
   "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": false
+  },
   "include": [
     "packages/*/src",
     "packages/*/e2e",
     "packages/*/*.config.ts",
+    "plugins/*/tests",
     "apps/*/src",
     "apps/*/*.config.ts",
     "vitest.config.ts"

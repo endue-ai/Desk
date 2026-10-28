@@ -26,6 +26,8 @@ export interface TestHost {
   readonly batches: number;
   /** The last state the plugin saved. */
   readonly state: unknown;
+  /** Whether the plugin closed its surface. */
+  readonly closed: boolean;
   /** Deliver a bridge event to the plugin. */
   emit(event: BridgeEvent): void;
   /** Wait until every call the plugin made has been answered. */
@@ -40,6 +42,7 @@ export function createTestHost(options: TestHostOptions): TestHost {
   let handler: ((message: HostMessage) => void) | undefined;
   let state = options.state;
   let batches = 0;
+  let closed = false;
 
   const toPlugin = (message: HostMessage) => queueMicrotask(() => handler?.(message));
 
@@ -49,6 +52,8 @@ export function createTestHost(options: TestHostOptions): TestHost {
         toPlugin({ type: "desk:init", pluginId: options.pluginId, state });
       } else if (message.type === "desk:state") {
         state = message.state;
+      } else if (message.type === "desk:close") {
+        closed = true;
       } else {
         batches++;
         calls.push(...message.calls);
@@ -75,6 +80,9 @@ export function createTestHost(options: TestHostOptions): TestHost {
     calls,
     get batches() {
       return batches;
+    },
+    get closed() {
+      return closed;
     },
     get state() {
       return state;

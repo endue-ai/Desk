@@ -1,0 +1,22 @@
+body {
+  margin: 0;
+  background: #1e1d21;
+  color: #b0adb7;
+  font: 13px/1.5 -apple-system, "SUIT", "Inter", system-ui, sans-serif;
+}
+
+#root {
+  display: grid;
+  place-items: center;
+  height: 100vh;
+}
+
+#pose {
+  margin: 0;
+  text-align: center;
+}
+
+#pose img {
+  width: 120px;
+  height: 120px;
+}

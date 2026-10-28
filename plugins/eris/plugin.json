@@ -1,0 +1,9 @@
+{
+  "id": "endue.eris",
+  "name": "Eris",
+  "version": "0.1.0",
+  "kind": "ui",
+  "entry": "ui/index.html",
+  "description": "Eris, the secretary: her status poses, and the soul text and orb other plugins reuse.",
+  "surfaces": [{ "id": "main", "title": "Eris", "placement": "right" }]
+}

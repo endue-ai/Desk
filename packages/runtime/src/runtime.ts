@@ -31,6 +31,8 @@ export interface RuntimePlugins {
   /** Resolves once the installed plugins are mounted (or the list could not be read). */
   readonly ready: Promise<void>;
   mounted(): string[];
+  /** Send a command to a mounted plugin, for example `command("endue.eris", "state", "thinking")`. */
+  command(id: string, name: string, args?: unknown): void;
 }
 
 export interface Runtime {
@@ -109,7 +111,8 @@ export function createRuntime(options: RuntimeOptions): Runtime {
 
   const openSurface = (spec: SurfaceSpec) => {
     surfaces.open(spec);
-    commit(place(layout, spec.id));
+    // Overlays cover the desk; only grid surfaces take a cell.
+    if (spec.placement !== "overlay") commit(place(layout, spec.id));
   };
   const closeSurface = (id: string) => {
     surfaces.close(id);
@@ -135,6 +138,7 @@ export function createRuntime(options: RuntimeOptions): Runtime {
       // A desk without plugin:manage still works; it just shows no plugins.
       ready: ready.then(() => host.start()).catch(() => {}),
       mounted: () => host.mounted(),
+      command: (id, name, args) => host.command(id, name, args),
     };
   }
 

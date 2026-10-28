@@ -53,3 +53,7 @@ codegen:
 # Bundle the plugin SDK that the app serves to plugin frames
 build-sdk:
     pnpm --filter @endue-ai/plugin-sdk build
+
+# Measure the opening frame time (pass "record" to make it the new baseline in e2e/perf/budgets.json)
+perf-opening mode="check":
+    {{ if mode == "record" { "PERF_RECORD=1 " } else { "" } }}pnpm --filter @endue-ai/runtime exec playwright test --config playwright.perf.config.ts

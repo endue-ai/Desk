@@ -195,7 +195,9 @@ export type BridgeRequest =
   | PermQueryRequest
   | PermRevokeRequest
   | PluginListRequest
-  | PluginSetEnabledRequest;
+  | PluginSetEnabledRequest
+  | StoreGetRequest
+  | StoreSetRequest;
 
 /** The answer to one request: a result, or an error. */
 export type BridgeResponse = BridgeSuccess | BridgeFailure;
@@ -650,6 +652,44 @@ export interface ProcExitData {
   signal?: Signal;
 }
 
+/** A key in the caller's own namespace. */
+export type StoreKey = string;
+
+/** Read one of the caller's values. */
+export interface StoreGetRequest {
+  id: RequestId;
+  method: "store.get";
+  params: StoreGetParams;
+}
+
+/** Parameters of store.get. */
+export interface StoreGetParams {
+  key: StoreKey;
+}
+
+/** Result of store.get. value is absent when the key was never set. */
+export interface StoreGetResult {
+  /** Any JSON value. */
+  value?: unknown;
+}
+
+/** Write one of the caller's values (64 KiB of JSON at most). */
+export interface StoreSetRequest {
+  id: RequestId;
+  method: "store.set";
+  params: StoreSetParams;
+}
+
+/** Parameters of store.set. */
+export interface StoreSetParams {
+  key: StoreKey;
+  /** Any JSON value. */
+  value: unknown;
+}
+
+/** Result of store.set. */
+export type StoreSetResult = Record<string, never>;
+
 /** Open one of the surfaces the caller's manifest declares. */
 export interface UiSurfaceOpenRequest {
   id: RequestId;
@@ -732,6 +772,8 @@ export interface BridgeMethodMap {
   "perm.revoke": { params: PermRevokeParams; result: PermRevokeResult };
   "plugin.list": { params: PluginListParams; result: PluginListResult };
   "plugin.setEnabled": { params: PluginSetEnabledParams; result: PluginSetEnabledResult };
+  "store.get": { params: StoreGetParams; result: StoreGetResult };
+  "store.set": { params: StoreSetParams; result: StoreSetResult };
 }
 
 /** A bridge method name. */
@@ -758,4 +800,6 @@ export const BRIDGE_METHODS = [
   "perm.revoke",
   "plugin.list",
   "plugin.setEnabled",
+  "store.get",
+  "store.set",
 ] as const satisfies readonly BridgeMethod[];

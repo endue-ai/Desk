@@ -21,10 +21,23 @@ export interface PluginState {
   set(value: unknown): void;
 }
 
+/** The plugin's own surface. */
+export interface PluginSurface {
+  /** Remove the surface for the rest of this session (a finished first run, for example). */
+  close(): void;
+}
+
+/** Commands the runtime sends this plugin, by name. */
+export interface PluginCommands {
+  on(name: string, handler: (args: unknown) => void): () => void;
+}
+
 export interface PluginContext {
   pluginId: string;
   bridge: PluginBridge;
   state: PluginState;
+  surface: PluginSurface;
+  commands: PluginCommands;
 }
 
 export interface UiPlugin {
@@ -42,6 +55,7 @@ export function connect(transport: Transport = windowTransport()): Promise<Plugi
   return new Promise((resolve) => {
     const pending = new Map<number, Pending>();
     const listeners = new Set<(event: BridgeEvent) => void>();
+    const commands = new Map<string, Set<(args: unknown) => void>>();
     let queue: BridgeRequest[] = [];
     let nextId = 1;
     let state: unknown;
@@ -82,6 +96,17 @@ export function connect(transport: Transport = windowTransport()): Promise<Plugi
           transport.send({ type: "desk:state", state: value });
         },
       },
+      surface: {
+        close: () => transport.send({ type: "desk:close" }),
+      },
+      commands: {
+        on: (name, handler) => {
+          const handlers = commands.get(name) ?? new Set();
+          handlers.add(handler);
+          commands.set(name, handlers);
+          return () => handlers.delete(handler);
+        },
+      },
     });
 
     transport.listen((message: HostMessage) => {
@@ -95,6 +120,9 @@ export function connect(transport: Transport = windowTransport()): Promise<Plugi
           break;
         case "desk:event":
           for (const listener of listeners) listener(message.event);
+          break;
+        case "desk:command":
+          for (const handler of commands.get(message.name) ?? []) handler(message.args);
           break;
       }
     });

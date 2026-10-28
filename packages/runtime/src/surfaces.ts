@@ -7,6 +7,8 @@ export interface SurfaceSpec {
   /** A URL to load, or inline HTML in `srcdoc`. */
   src?: string;
   srcdoc?: string;
+  /** `overlay` covers the whole desk without a title bar; everything else sits on the grid. */
+  placement?: string;
 }
 
 /**
@@ -27,8 +29,9 @@ export class SurfaceHost {
     const existing = this.#surfaces.get(spec.id);
     if (existing) return existing;
     const doc = this.#container.ownerDocument;
+    const overlay = spec.placement === "overlay";
     const section = doc.createElement("section");
-    section.className = "desk-surface";
+    section.className = overlay ? "desk-surface desk-surface--overlay" : "desk-surface";
     section.dataset.surface = spec.id;
     section.tabIndex = -1;
     section.addEventListener("focusin", () => this.#onFocus(spec.id));
@@ -44,7 +47,8 @@ export class SurfaceHost {
     if (spec.srcdoc !== undefined) frame.srcdoc = spec.srcdoc;
     else if (spec.src !== undefined) frame.src = spec.src;
 
-    section.append(title, frame);
+    if (overlay) section.append(frame);
+    else section.append(title, frame);
     this.#container.append(section);
     this.#surfaces.set(spec.id, section);
     return section;

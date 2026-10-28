@@ -19,7 +19,8 @@ export interface PluginHostDeps {
 type PluginMessage =
   | { type: "desk:hello" }
   | { type: "desk:calls"; calls: BridgeRequest[] }
-  | { type: "desk:state"; state: unknown };
+  | { type: "desk:state"; state: unknown }
+  | { type: "desk:close" };
 
 const MANAGE = { permission: "plugin:manage" } as const;
 
@@ -49,6 +50,11 @@ export class PluginHost {
     return [...this.#mounted.keys()];
   }
 
+  /** Deliver a command to a mounted plugin (`ctx.commands.on(name, handler)` in the SDK). */
+  command(id: string, name: string, args?: unknown): void {
+    if (this.#mounted.has(id)) this.#post(id, { type: "desk:command", name, args });
+  }
+
   stop(): void {
     this.#deps.win.removeEventListener("message", this.#onMessage);
     this.#offEvents?.();
@@ -70,6 +76,7 @@ export class PluginHost {
       id: info.id,
       title: surface?.title ?? manifest.name ?? info.id,
       src: this.#options.url(info.id, manifest.entry, info.revision),
+      ...(surface?.placement ? { placement: surface.placement } : {}),
     });
   }
 
@@ -127,6 +134,10 @@ export class PluginHost {
         break;
       case "desk:state":
         this.#state.set(id, message.state);
+        break;
+      case "desk:close":
+        // The plugin is done with its surface for this session (the first run, for example).
+        this.#unmount(id);
         break;
       case "desk:calls":
         void Promise.all(

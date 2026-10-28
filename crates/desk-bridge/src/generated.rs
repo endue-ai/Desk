@@ -287,6 +287,8 @@ pub enum BridgeRequest {
     PermRevoke(PermRevokeRequest),
     PluginList(PluginListRequest),
     PluginSetEnabled(PluginSetEnabledRequest),
+    StoreGet(StoreGetRequest),
+    StoreSet(StoreSetRequest),
 }
 
 /// The answer to one request: a result, or an error.
@@ -1003,6 +1005,57 @@ pub struct ProcExitData {
     pub signal: Option<Signal>,
 }
 
+/// A key in the caller's own namespace.
+pub type StoreKey = String;
+
+/// Read one of the caller's values.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct StoreGetRequest {
+    pub id: RequestId,
+    pub method: StoreGetRequestMethod,
+    pub params: StoreGetParams,
+}
+
+/// Parameters of store.get.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct StoreGetParams {
+    pub key: StoreKey,
+}
+
+/// Result of store.get. value is absent when the key was never set.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct StoreGetResult {
+    /// Any JSON value.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub value: Option<serde_json::Value>,
+}
+
+/// Write one of the caller's values (64 KiB of JSON at most).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct StoreSetRequest {
+    pub id: RequestId,
+    pub method: StoreSetRequestMethod,
+    pub params: StoreSetParams,
+}
+
+/// Parameters of store.set.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct StoreSetParams {
+    pub key: StoreKey,
+    /// Any JSON value.
+    pub value: serde_json::Value,
+}
+
+/// Result of store.set.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct StoreSetResult {}
+
 /// Open one of the surfaces the caller's manifest declares.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -1337,6 +1390,22 @@ pub enum ProcExitEventEvent {
     ProcExit,
 }
 
+/// The `method` of [`StoreGetRequest`]: always `"store.get"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum StoreGetRequestMethod {
+    #[default]
+    #[serde(rename = "store.get")]
+    StoreGet,
+}
+
+/// The `method` of [`StoreSetRequest`]: always `"store.set"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum StoreSetRequestMethod {
+    #[default]
+    #[serde(rename = "store.set")]
+    StoreSet,
+}
+
 /// The `method` of [`UiSurfaceOpenRequest`]: always `"ui.surface.open"`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub enum UiSurfaceOpenRequestMethod {
@@ -1438,6 +1507,10 @@ pub const SCHEMAS: &[(&str, &str)] = &[
     (
         "https://endue.ai/specs/bridge/v0/proc.schema.json",
         include_str!("../../../specs/bridge/v0/proc.schema.json"),
+    ),
+    (
+        "https://endue.ai/specs/bridge/v0/store.schema.json",
+        include_str!("../../../specs/bridge/v0/store.schema.json"),
     ),
     (
         "https://endue.ai/specs/bridge/v0/ui.schema.json",

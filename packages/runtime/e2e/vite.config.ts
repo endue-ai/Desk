@@ -10,6 +10,8 @@ const repo = here("../../../");
 const plugins: Record<string, string> = {
   "example.hello-ui": join(repo, "examples/plugin-hello-ui"),
   "test.counter": here("./fixture/plugins/test-counter"),
+  "endue.eris": join(repo, "plugins/eris"),
+  "endue.onboarding": join(repo, "plugins/onboarding"),
 };
 const sdk = join(repo, "packages/plugin-sdk/src/index.ts");
 const types: Record<string, string> = {

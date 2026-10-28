@@ -1,0 +1,13 @@
+{
+  "$comment": "Performance budgets. Baselines are first measurements; nightly fails when a value regresses past allowedRegression. Record with: just perf-opening record",
+  "openingFrameTime": {
+    "p50Ms": 17,
+    "p95Ms": 18,
+    "frames": 600,
+    "windowMs": 10000,
+    "engine": "WebKit (Playwright)",
+    "platform": "darwin-arm64",
+    "recorded": "2026-10-28",
+    "allowedRegression": 0.25
+  }
+}

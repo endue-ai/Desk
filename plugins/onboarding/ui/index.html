@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Welcome</title>
+    <!-- The SDK from Desk, and Eris's soul text and orb from the Eris plugin's folder. -->
+    <script type="importmap">
+      {
+        "imports": {
+          "@endue-ai/plugin-sdk": "/_desk/plugin-sdk.js",
+          "eris/": "../../endue.eris/ui/"
+        }
+      }
+    </script>
+    <link rel="stylesheet" href="../../endue.eris/ui/soul-text.css" />
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <div id="root">
+      <div id="skip" hidden><button type="button" class="btn quiet" tabindex="0">Skip intro</button></div>
+      <div id="live" class="sr-only" aria-live="polite"></div>
+      <div id="stage">
+        <div id="sphere" class="sphere"></div>
+        <div id="cap" class="cap"></div>
+        <div id="formslot"></div>
+      </div>
+    </div>
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>
