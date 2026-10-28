@@ -1,7 +1,7 @@
 # desk-core
 
-Kernel of endue Desk: the permission engine, the event bus, the plugin registry, storage, the brain
-conversation with its session store and lease client, and the bridge request handler.
+Kernel of endue Desk: the permission engine, the event bus, the plugin registry, storage, init.yaml
+and its sync, the brain conversation with its session store and lease client, and the bridge handler.
 
 Layer: Rust core (see `docs/architecture.md`).
 
@@ -23,6 +23,11 @@ Layer: Rust core (see `docs/architecture.md`).
 - `LeaseClient`: `acquire(session, takeover)`, `renew`, `release`, `ensure`, `is_read_only`.
   `SessionStore`: the desk id, its session and the recent transcript in one JSON file.
 - `EventBus`: `subscribe`, `publish`; clones share subscribers.
+- init.yaml (ADR 0016): `with_init_file(path)` writes `INIT_TEMPLATE` when there is none; `init()`,
+  `init_problem()` (a broken file leaves the defaults in force). `plugins.disabled` holds plugins off.
+- Sync: `with_sync(remote, state_file)`, `sync_init()` (`UpToDate`, `Pushed`, `Pulled`, `Conflict`:
+  endue's copy goes to `init.remote.yaml`), `resolve_init(Keep)`. `SyncRemote` is endue's side;
+  `MockRemote` stands in for it until endue serves sync.
 
 ## Testing
 
@@ -30,5 +35,6 @@ Layer: Rust core (see `docs/architecture.md`).
 cargo test -p desk-core
 ```
 
-Integration tests in `tests/`: permissions, events, bridge, plugins, store, `lease.rs` (acquire,
-release, expiry, takeover) and `conversation.rs`; the last two start `examples/brain-echo` (needs Node).
+Integration tests in `tests/`: permissions, events, bridge, plugins, store, `init.rs`, `sync.rs` (two
+desks through one `MockRemote`), `lease.rs` (acquire, release, expiry, takeover) and `conversation.rs`;
+the last two start `examples/brain-echo` (needs Node).
