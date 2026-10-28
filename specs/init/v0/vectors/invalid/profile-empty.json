@@ -1,0 +1,7 @@
+{
+  "target": "InitDocument",
+  "description": "a profile has a name",
+  "instance": {
+    "profile": ""
+  }
+}

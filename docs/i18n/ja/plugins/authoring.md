@@ -79,6 +79,40 @@ defineUiPlugin({
 
 語彙（`fs:read`、`fs:write`、`proc:spawn`、`net:fetch`、`audio:capture`、`ui:surface`、`ui:notify`、`plugin:manage`）は `specs/plugin/v0/README.md` にあります。
 
+## コントリビューション
+
+プラグインは `plugin.json` の `contributes` で、コードなしにデスクの既定ポリシーへ追加できます（ADR
+0017）。パレットに並びキーで実行されるコマンド、キーバインド、表示ルール、開けるファイル、テーマ、既定値付きの
+設定、プロファイルです。コマンド、設定、テーマの ID はプラグインの ID で始めます。
+
+```json
+"contributes": {
+  "commands": [{ "id": "example.my-plugin.new", "title": "New note" }],
+  "keys": [{ "key": "Mod+Shift+N", "command": "example.my-plugin.new" }],
+  "display": [{ "match": { "plugin": "example.my-plugin" }, "area": "right", "size": { "pixels": 360 } }],
+  "files": [{ "pattern": "*.md", "plugin": "example.my-plugin" }],
+  "settings": { "example.my-plugin.folder": { "kind": "string", "default": "~/notes" } }
+}
+```
+
+自分のコマンドには `ctx.commands.on` で答え、デスクにある任意のコマンドは `ctx.commands.run` で実行します。
+
+```js
+defineUiPlugin({
+  mount(ctx) {
+    ctx.commands.on("example.my-plugin.new", async () => "note-1");      // the answer
+    ctx.commands.on("desk.files.visit", ({ buffer, path }) => { /* fs.read it, show it */ });
+    ctx.commands.on("desk.files.save", ({ buffer, path }) => { /* fs.write it */ });
+    document.querySelector("button").onclick = () => ctx.commands.run("desk.theme.toggle");
+  },
+});
+```
+
+ファイルを開くプラグインは `desk.files.visit`、`desk.files.save`、`desk.files.revert` に答え、未保存の変更を
+`desk.buffers.update { id, modified: true }` で知らせます。テーマはフレームに `--desk-*` の CSS プロパティと
+`ctx.theme` として届きます。フレーム内で押したキーの組み合わせは、`preventDefault()` を呼ばない限りデスクの
+キーマップに届きます。既定ポリシーとそれぞれが決めることは `plugins/README.md` にあります。
+
 ## テスト
 
 `@endue-ai/plugin-sdk/testing` を使うと、ブラウザーを使わずに、モックのブリッジを相手にプラグインを実行できます。

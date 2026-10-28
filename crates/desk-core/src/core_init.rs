@@ -66,7 +66,7 @@ impl Core {
             .map(|(key, value)| (key.clone(), value.clone()))
             .collect();
         json(InitGetResult {
-            profile: init.mode.clone(),
+            profile: init.profile.clone(),
             settings,
             problem: file.problem().map(str::to_owned),
         })

@@ -261,14 +261,14 @@ export type SurfacePlacement = "center" | "left" | "right" | "bottom" | "overlay
 export interface InitDocument {
   /** The format version. Default 0. Desk refuses a file with a version newer than it reads. */
   version?: number;
-  mode?: InitMode;
+  profile?: InitProfile;
   plugins?: InitPlugins;
   settings?: InitSettings;
   sync?: InitSync;
 }
 
-/** The mode to start in: a set of plugins plus their settings. Default "default". */
-export type InitMode = string;
+/** The profile to start in: a set of plugins plus their settings (ADR 0017). Default "default". */
+export type InitProfile = string;
 
 /** Which plugins start how. */
 export interface InitPlugins {

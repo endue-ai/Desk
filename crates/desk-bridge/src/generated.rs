@@ -404,7 +404,7 @@ pub struct InitDocument {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub version: Option<u64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub mode: Option<InitMode>,
+    pub profile: Option<InitProfile>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub plugins: Option<InitPlugins>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -413,8 +413,8 @@ pub struct InitDocument {
     pub sync: Option<InitSync>,
 }
 
-/// The mode to start in: a set of plugins plus their settings. Default "default".
-pub type InitMode = String;
+/// The profile to start in: a set of plugins plus their settings (ADR 0017). Default "default".
+pub type InitProfile = String;
 
 /// Which plugins start how.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

@@ -60,7 +60,7 @@ Desk übernimmt diese Form und benennt die Teile so, wie es ein Betriebssystem t
 | Fenstermanager | Fenstermanager | Frames · Windows | 3D-Canvas-Compositor |
 | Shell | Terminal-Shell | M-x | Eris · Befehlspalette |
 | Apps | Anwendungen | Pakete (Elisp) | Plugins (UI · Wasm · MCP) |
-| Boot-Konfiguration | init | init.el | `init.yaml` (Modus + Plugins + Einstellungen) |
+| Boot-Konfiguration | init | init.el | `init.yaml` (Profil + Plugins + Einstellungen) |
 | Paketmanager | apt · brew | package.el · MELPA | Marktplatz |
 | Verhalten überschreiben | keine | Advice · Hooks | Event-Hooks · Befehls-Overrides |
 | Konten | Benutzerkonten | keine | endue ID |
@@ -69,8 +69,9 @@ Daraus folgen sechs Prinzipien:
 
 1. **Kleiner Kern.** Der Rust-Kern enthält Primitive (fs, proc, net, audio, ui), keine Funktionen.
 2. **Eingebaute Funktionen sind Plugins.** Eris, die Seitenleiste, die Werkzeugleiste und der
-   Moduswechsel nutzen dieselbe API wie Community-Plugins. So hat die API keine Lücken, und selbst
-   eingebaute Funktionen lassen sich ersetzen.
+   Profilwechsel nutzen dieselbe API wie Community-Plugins. So hat die API keine Lücken, und selbst
+   eingebaute Funktionen lassen sich ersetzen. Auch die Standardrichtlinien des Desks (wo Oberflächen
+   erscheinen, Tasten, Dateien, Themes, Benachrichtigungen) sind reine Daten-Plugins `desk.*` (ADR 0017).
 3. **Alles ist ein Befehl.** Klicks, Sprache, Tastenkürzel und Agenten rufen dieselben Befehle auf. Was
    ein Mensch tun kann, können auch Eris und Agenten.
 4. **Ändern im laufenden Betrieb.** Das Speichern eines Plugins lädt es neu; der Plugin-Zustand liegt im
@@ -101,7 +102,7 @@ automatischen Update; für Entwickler bedeutet er zusätzlich Kompilieren, Signi
 | --- | --- | --- | --- |
 | Sofort | das geänderte Plugin (iframe, Wasm-Instanz oder MCP-Prozess) | unter 1 s | andere Oberflächen, laufende Arbeit, Sprach-Standby |
 | Neustart | die Web-Runtime (Neuladen des Fensters) | etwa 2 s | der Rust-Kern, MCP-Tools, laufende CLIs |
-| Rebuild | die ganze App (Neustart nach einem automatischen Update) | Downloadzeit + einige Sekunden | gespeicherter Zustand, Modi, installierte Plugins |
+| Rebuild | die ganze App (Neustart nach einem automatischen Update) | Downloadzeit + einige Sekunden | gespeicherter Zustand, Profile, installierte Plugins |
 
 Die Entwicklung nutzt dieselben drei Stufen: Plugin-Ordner laden beim Speichern neu, die Web-Runtime
 nutzt Vite HMR, und der Rust-Kern wird mit `cargo watch` neu gebaut.

@@ -26,7 +26,7 @@ const INIT_SCHEMA_ID: &str = "https://endue.ai/specs/init/v0/init.schema.json";
 #[derive(Debug, Clone, PartialEq)]
 pub struct Init {
     pub version: u64,
-    pub mode: String,
+    pub profile: String,
     pub plugins: PluginSetup,
     pub settings: BTreeMap<String, Value>,
     pub sync: SyncSetup,
@@ -48,7 +48,7 @@ impl Default for Init {
     fn default() -> Self {
         Self::from(InitDocument {
             version: None,
-            mode: None,
+            profile: None,
             plugins: None,
             settings: None,
             sync: None,
@@ -60,7 +60,7 @@ impl From<InitDocument> for Init {
     fn from(document: InitDocument) -> Self {
         Self {
             version: document.version.unwrap_or(INIT_VERSION),
-            mode: document.mode.unwrap_or_else(|| "default".to_owned()),
+            profile: document.profile.unwrap_or_else(|| "default".to_owned()),
             plugins: PluginSetup {
                 disabled: document
                     .plugins
@@ -77,7 +77,7 @@ impl From<InitDocument> for Init {
 
 impl Init {
     /// Parse init.yaml and check it against `specs/init/v0`. An empty file, or one with only
-    /// comments, is the defaults. Problems name where they are, for example `init.yaml/mode: ...`.
+    /// comments, is the defaults. Problems name where they are, for example `init.yaml/profile: ...`.
     pub fn parse(text: &str) -> Result<Self, String> {
         let value = yaml_serde::from_str::<Option<Value>>(text)
             .map_err(|e| e.to_string())?
@@ -260,10 +260,10 @@ mod tests {
     #[test]
     fn reads_keys_and_leaves_the_rest_at_their_defaults() {
         let init = Init::parse(
-            "mode: focus\nplugins: { disabled: [endue.sidebar] }\nsettings:\n  eris.voice: true\n",
+            "profile: focus\nplugins: { disabled: [endue.sidebar] }\nsettings:\n  eris.voice: true\n",
         )
         .unwrap();
-        assert_eq!(init.mode, "focus");
+        assert_eq!(init.profile, "focus");
         assert_eq!(init.plugins.disabled, ["endue.sidebar"]);
         assert_eq!(init.setting("eris.voice"), Some(&json!(true)));
         assert!(!init.sync.enabled);
@@ -272,13 +272,13 @@ mod tests {
     #[test]
     fn refuses_files_it_cannot_read() {
         assert!(Init::parse("version: 1\n").unwrap_err().contains("newer"));
-        assert!(Init::parse("mode: [\n").unwrap_err().contains("line"));
-        assert!(Init::parse("- mode\n").is_err());
+        assert!(Init::parse("profile: [\n").unwrap_err().contains("line"));
+        assert!(Init::parse("- profile\n").is_err());
     }
 
     #[test]
     fn refuses_what_the_spec_refuses_and_says_where() {
-        let unknown = Init::parse("mode: focus\ntheme: dark\n").unwrap_err();
+        let unknown = Init::parse("profile: focus\ntheme: dark\n").unwrap_err();
         assert!(unknown.contains("theme"), "{unknown}");
         let id = Init::parse("plugins: { disabled: [Sidebar] }\n").unwrap_err();
         assert!(id.starts_with("init.yaml/plugins/disabled/0: "), "{id}");
@@ -293,7 +293,7 @@ mod tests {
                 .unwrap()
                 .is_default()
         );
-        assert!(!Init::parse("mode: focus\n").unwrap().is_default());
+        assert!(!Init::parse("profile: focus\n").unwrap().is_default());
     }
 
     #[test]

@@ -60,7 +60,7 @@ tourne. Desk adopte la même forme et nomme ses parties comme le ferait un syst�
 | Gestionnaire de fenêtres | gestionnaire de fenêtres | frames · windows | compositeur de canevas 3D |
 | Shell | shell de terminal | M-x | Eris · palette de commandes |
 | Applications | applications | paquets (Elisp) | plugins (UI · Wasm · MCP) |
-| Configuration de démarrage | init | init.el | `init.yaml` (mode + plugins + réglages) |
+| Configuration de démarrage | init | init.el | `init.yaml` (profil + plugins + réglages) |
 | Gestionnaire de paquets | apt · brew | package.el · MELPA | place de marché |
 | Surcharge de comportement | aucune | advice · hooks | hooks d'événements · surcharges de commandes |
 | Comptes | comptes utilisateur | aucun | endue ID |
@@ -70,8 +70,10 @@ Six principes en découlent :
 1. **Un cœur minimal.** Le cœur Rust contient des primitives (fs, proc, net, audio, ui), pas des
    fonctionnalités.
 2. **Les éléments intégrés sont des plugins.** Eris, la barre latérale, la barre d'outils et le changement de
-   mode utilisent la même API que les plugins de la communauté : l'API n'a donc pas de trous, et même les
-   éléments intégrés peuvent être remplacés.
+   profil utilisent la même API que les plugins de la communauté : l'API n'a donc pas de trous, et même les
+   éléments intégrés peuvent être remplacés. Les politiques par défaut du bureau (placement des surfaces,
+   touches, fichiers, thèmes, notifications) sont elles aussi des plugins `desk.*` faits de données
+   seulement (ADR 0017).
 3. **Tout est commande.** Les clics, la voix, les raccourcis et les agents appellent les mêmes commandes. Tout
    ce qu'une personne peut faire, Eris et les agents peuvent le faire aussi.
 4. **Modifier à chaud.** Enregistrer un plugin le recharge ; l'état du plugin vit dans le stockage du cœur et
@@ -103,7 +105,7 @@ signature et la notarisation.
 | --- | --- | --- | --- |
 | Instantané | le plugin modifié (iframe, instance Wasm ou processus MCP) | moins de 1 s | les autres surfaces, le travail en cours, la veille vocale |
 | Redémarrage | le runtime web (rechargement de la fenêtre) | environ 2 s | le cœur Rust, les outils MCP, les CLI en cours d'exécution |
-| Recompilation | toute l'app (relance après une mise à jour automatique) | temps de téléchargement + quelques secondes | l'état enregistré, les modes, les plugins installés |
+| Recompilation | toute l'app (relance après une mise à jour automatique) | temps de téléchargement + quelques secondes | l'état enregistré, les profils, les plugins installés |
 
 Le développement suit les trois mêmes étapes : les dossiers de plugins se rechargent à l'enregistrement, le
 runtime web utilise le HMR de Vite, et le cœur Rust se recompile avec `cargo watch`.
