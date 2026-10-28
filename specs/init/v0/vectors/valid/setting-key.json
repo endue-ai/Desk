@@ -1,0 +1,5 @@
+{
+  "target": "InitSettingKey",
+  "description": "a setting key on its own",
+  "instance": "motion.reduce"
+}

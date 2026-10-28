@@ -1,5 +1,5 @@
-//! init.yaml: written from the template when missing, read at start, never overwritten when broken,
-//! and the plugins it disables start disabled.
+//! init.yaml (specs/init/v0): written from the template when missing, read at start, checked against
+//! the spec, never overwritten when broken, and the plugins it disables start disabled.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -50,6 +50,32 @@ fn a_missing_init_yaml_is_written_from_the_template() {
     assert_eq!(fs::read_to_string(&path).unwrap(), INIT_TEMPLATE);
     assert_eq!(core.init(), Init::default());
     assert_eq!(core.init_problem(), None);
+}
+
+#[test]
+fn the_template_is_the_spec_template_and_holds_the_defaults() {
+    let vector = fs::read_to_string(
+        Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../specs/init/v0/vectors/valid/template.json"),
+    )
+    .unwrap();
+    let vector: Value = serde_json::from_str(&vector).unwrap();
+    let parsed: Value = yaml_serde::from_str(INIT_TEMPLATE).unwrap();
+    assert_eq!(parsed, vector["instance"]);
+    assert_eq!(Init::parse(INIT_TEMPLATE), Ok(Init::default()));
+}
+
+#[test]
+fn an_init_yaml_outside_the_spec_is_refused_with_where() {
+    let path = temp_dir("outside").join("init.yaml");
+    fs::write(&path, "mode: focus\nplugins:\n  disabled: [Sidebar]\n").unwrap();
+    let core = core(&path);
+    assert_eq!(core.init(), Init::default());
+    let problem = core.init_problem().expect("the problem is reported");
+    assert!(
+        problem.starts_with("init.yaml/plugins/disabled/0: "),
+        "{problem}"
+    );
 }
 
 #[test]

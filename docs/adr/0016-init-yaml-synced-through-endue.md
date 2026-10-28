@@ -36,18 +36,23 @@ Chosen option: "`~/.desk/init.yaml`, synced as a whole file", because YAML takes
 under home is where people look for it (like `~/.emacs.d/init.el`), and whole-file sync keeps the
 person's comments and layout as they wrote them.
 
+* Spec first: `specs/init/v0` holds the schema, the template Desk writes and the sync rules, with
+  vectors that Rust and TypeScript judge alike. `just codegen` generates `InitDocument` and friends;
+  the core parses the YAML, checks it against the embedded schema and reads it into those types.
 * File: `~/.desk/init.yaml`, or the file `DESK_INIT` names. A missing file is written from the
-  template. A file that does not parse is never overwritten: the defaults (or the last setup that
-  parsed) stay in force, and the reason is reported.
+  template. A file that does not parse or match the schema is never overwritten: the defaults (or the
+  last setup that matched) stay in force, and the problem is reported with where it is.
 * Format v0: `version`, `mode`, `plugins.disabled`, `settings` (key to any JSON value) and
-  `sync.enabled`. Unknown keys are ignored, so an older desk reads a newer file; a higher `version` is
-  refused. Plugins in `plugins.disabled` start disabled without changing their persisted flag.
+  `sync.enabled`. Unknown keys are refused, so typos surface; new keys come with a new `version`,
+  which an older desk refuses. Plugins in `plugins.disabled` start disabled without changing their
+  persisted flag.
 * Sync compares three versions: the file, endue's copy (with a revision) and the base, the last
   version both agreed on (revision and digest, in `sync.json` in the data folder). The side that
   changed since the base wins. When both changed, nothing is overwritten: endue's copy is saved as
   `init.remote.yaml` and `resolve_init(Keep::Local | Keep::Remote)` settles it. A desk that never
-  synced and holds only the defaults takes endue's copy. A file that does not parse is neither pushed
-  nor pulled. A push names its base revision, and a push from a stale base becomes a conflict.
+  synced and holds only the defaults takes endue's copy. A file that does not match the schema is
+  neither pushed nor pulled, so a copy from a newer desk stays on endue until this desk is updated.
+  A push names its base revision, and a push from a stale base becomes a conflict.
 * Until endue serves sync, `MockRemote` keeps "endue's" copy in `sync-mock.json` in the data folder.
   The app syncs once at start, before plugins install.
 
@@ -56,6 +61,8 @@ person's comments and layout as they wrote them.
 * Good, because init.yaml is plain text: people diff it, comment it and keep it with their dotfiles.
 * Good, because the sync rules and the conflict path are tested now (`crates/desk-core/tests/sync.rs`).
 * Good, because the endue client only has to implement `SyncRemote`: pull, and push with a base.
+* Good, because the format is a contract: the runtime gets the same types, and `desk` tooling can
+  check a file against the same schema.
 * Bad, because the unit is the whole file: edits to different keys on two desks conflict, not merge.
 * Bad, because nothing calls `resolve_init` yet; a UI or bridge method comes later (spec first).
 * Bad, because plugins cannot read `settings` yet; that also needs a bridge method.

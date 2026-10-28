@@ -23,8 +23,8 @@ Layer: Rust core (see `docs/architecture.md`).
 - `LeaseClient`: `acquire(session, takeover)`, `renew`, `release`, `ensure`, `is_read_only`.
   `SessionStore`: the desk id, its session and the recent transcript in one JSON file.
 - `EventBus`: `subscribe`, `publish`; clones share subscribers.
-- init.yaml (ADR 0016): `with_init_file(path)` writes `INIT_TEMPLATE` when there is none; `init()`,
-  `init_problem()` (a broken file leaves the defaults in force). `plugins.disabled` holds plugins off.
+- init.yaml (`specs/init/v0`, ADR 0016): `with_init_file(path)` writes `INIT_TEMPLATE` when there is
+  none; `init()`; `init_problem()` (a file outside the spec leaves the defaults in force).
 - Sync: `with_sync(remote, state_file)`, `sync_init()` (`UpToDate`, `Pushed`, `Pulled`, `Conflict`:
   endue's copy goes to `init.remote.yaml`), `resolve_init(Keep)`. `SyncRemote` is endue's side;
   `MockRemote` stands in for it until endue serves sync.

@@ -1,61 +1,44 @@
-//! init.yaml: a person's own setup, read at every start the way Emacs reads init.el. The file is
-//! theirs to edit. The core writes the template when there is none, and otherwise replaces the file
-//! only when sync pulls a newer copy from endue.
+//! init.yaml: a person's own setup, read at every start the way Emacs reads init.el. The format is
+//! `specs/init/v0`: the YAML is parsed, checked against the spec's schema and read into the generated
+//! `InitDocument`. The file is theirs to edit. The core writes the template when there is none, and
+//! otherwise replaces the file only when sync pulls a newer copy from endue.
 
 use std::collections::BTreeMap;
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
+use std::sync::OnceLock;
 
-use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use desk_bridge::InitDocument;
+use serde_json::{Value, json};
+
+use crate::manifest::schema_registry;
 
 /// The init.yaml format this core reads.
-pub const INIT_VERSION: u32 = 0;
+pub const INIT_VERSION: u64 = 0;
 
-/// A new init.yaml: the defaults, with a comment on every key.
-pub const INIT_TEMPLATE: &str = "\
-# endue Desk init file. Desk reads it at every start, like Emacs reads init.el.
-# If it does not parse, Desk starts with the defaults and says why.
-version: 0
+/// A new init.yaml: the defaults, with a comment on every key (`specs/init/v0/init.template.yaml`).
+pub const INIT_TEMPLATE: &str = include_str!("../../../specs/init/v0/init.template.yaml");
 
-# The mode to start in: a set of plugins plus their settings.
-mode: default
+const INIT_SCHEMA_ID: &str = "https://endue.ai/specs/init/v0/init.schema.json";
 
-plugins:
-  # Plugin ids to keep off at start, built-in plugins included. Example: [endue.sidebar]
-  disabled: []
-
-# Settings by key, for the core and plugins. Example:
-#   eris.voice: true
-settings: {}
-
-# Keep this file the same on every desk you use, through your endue account.
-sync:
-  enabled: false
-";
-
-/// The setup init.yaml describes. Keys it leaves out keep their defaults; unknown keys are ignored,
-/// so a desk can read a file that a newer desk wrote.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(default)]
+/// The setup init.yaml describes, with every key it leaves out at its default.
+#[derive(Debug, Clone, PartialEq)]
 pub struct Init {
-    pub version: u32,
+    pub version: u64,
     pub mode: String,
     pub plugins: PluginSetup,
     pub settings: BTreeMap<String, Value>,
     pub sync: SyncSetup,
 }
 
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
-#[serde(default)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct PluginSetup {
     /// Plugin ids that start disabled.
     pub disabled: Vec<String>,
 }
 
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
-#[serde(default)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct SyncSetup {
     /// Sync init.yaml through endue.
     pub enabled: bool,
@@ -63,29 +46,60 @@ pub struct SyncSetup {
 
 impl Default for Init {
     fn default() -> Self {
+        Self::from(InitDocument {
+            version: None,
+            mode: None,
+            plugins: None,
+            settings: None,
+            sync: None,
+        })
+    }
+}
+
+impl From<InitDocument> for Init {
+    fn from(document: InitDocument) -> Self {
         Self {
-            version: INIT_VERSION,
-            mode: "default".to_owned(),
-            plugins: PluginSetup::default(),
-            settings: BTreeMap::new(),
-            sync: SyncSetup::default(),
+            version: document.version.unwrap_or(INIT_VERSION),
+            mode: document.mode.unwrap_or_else(|| "default".to_owned()),
+            plugins: PluginSetup {
+                disabled: document
+                    .plugins
+                    .and_then(|plugins| plugins.disabled)
+                    .unwrap_or_default(),
+            },
+            settings: document.settings.unwrap_or_default(),
+            sync: SyncSetup {
+                enabled: document.sync.and_then(|sync| sync.enabled).unwrap_or(false),
+            },
         }
     }
 }
 
 impl Init {
-    /// Parse init.yaml. An empty file, or one with only comments, is the defaults.
+    /// Parse init.yaml and check it against `specs/init/v0`. An empty file, or one with only
+    /// comments, is the defaults. Problems name where they are, for example `init.yaml/mode: ...`.
     pub fn parse(text: &str) -> Result<Self, String> {
-        let init = yaml_serde::from_str::<Option<Self>>(text)
+        let value = yaml_serde::from_str::<Option<Value>>(text)
             .map_err(|e| e.to_string())?
-            .unwrap_or_default();
-        if init.version > INIT_VERSION {
+            .filter(|value| !value.is_null())
+            .unwrap_or_else(|| json!({}));
+        if let Some(version) = value.get("version").and_then(Value::as_u64)
+            && version > INIT_VERSION
+        {
             return Err(format!(
-                "version {} is newer than this Desk reads ({INIT_VERSION}); update Desk",
-                init.version
+                "version {version} is newer than this Desk reads ({INIT_VERSION}); update Desk"
             ));
         }
-        Ok(init)
+        let problems: Vec<String> = validator()
+            .iter_errors(&value)
+            .map(|error| format!("init.yaml{}: {error}", error.instance_path()))
+            .collect();
+        if !problems.is_empty() {
+            return Err(problems.join("; "));
+        }
+        serde_json::from_value::<InitDocument>(value)
+            .map(Self::from)
+            .map_err(|e| format!("init.yaml: does not match the init type: {e}"))
     }
 
     pub fn setting(&self, key: &str) -> Option<&Value> {
@@ -100,6 +114,17 @@ impl Init {
             ..self.clone()
         } == Self::default()
     }
+}
+
+fn validator() -> &'static jsonschema::Validator {
+    static VALIDATOR: OnceLock<jsonschema::Validator> = OnceLock::new();
+    VALIDATOR.get_or_init(|| {
+        jsonschema::options()
+            .with_registry(schema_registry())
+            .should_validate_formats(false)
+            .build(&json!({ "$ref": INIT_SCHEMA_ID }))
+            .expect("the init schema compiles")
+    })
 }
 
 /// init.yaml on disk, or in memory only, and the setup in force.
@@ -235,7 +260,7 @@ mod tests {
     #[test]
     fn reads_keys_and_leaves_the_rest_at_their_defaults() {
         let init = Init::parse(
-            "mode: focus\nplugins: { disabled: [endue.sidebar] }\nsettings:\n  eris.voice: true\nfuture: 1\n",
+            "mode: focus\nplugins: { disabled: [endue.sidebar] }\nsettings:\n  eris.voice: true\n",
         )
         .unwrap();
         assert_eq!(init.mode, "focus");
@@ -248,7 +273,17 @@ mod tests {
     fn refuses_files_it_cannot_read() {
         assert!(Init::parse("version: 1\n").unwrap_err().contains("newer"));
         assert!(Init::parse("mode: [\n").unwrap_err().contains("line"));
-        assert!(Init::parse("plugins: { disabled: yes please }\n").is_err());
+        assert!(Init::parse("- mode\n").is_err());
+    }
+
+    #[test]
+    fn refuses_what_the_spec_refuses_and_says_where() {
+        let unknown = Init::parse("mode: focus\ntheme: dark\n").unwrap_err();
+        assert!(unknown.contains("theme"), "{unknown}");
+        let id = Init::parse("plugins: { disabled: [Sidebar] }\n").unwrap_err();
+        assert!(id.starts_with("init.yaml/plugins/disabled/0: "), "{id}");
+        let flag = Init::parse("sync: { enabled: yes }\n").unwrap_err();
+        assert!(flag.starts_with("init.yaml/sync/enabled: "), "{flag}");
     }
 
     #[test]
