@@ -52,3 +52,47 @@ fn list_returns_entries_sorted_with_kind_and_size() {
         ]
     );
 }
+
+#[test]
+fn write_creates_and_overwrites() {
+    let dir = temp_dir();
+    let file = dir.join("new.txt");
+    assert_eq!(desk_sys::fs::write(&file, b"one").unwrap(), 3);
+    assert_eq!(desk_sys::fs::write(&file, b"two!").unwrap(), 4);
+    assert_eq!(read(&file).unwrap(), b"two!");
+    let missing = desk_sys::fs::write(&dir.join("no/such/dir.txt"), b"x").unwrap_err();
+    assert_eq!(missing.kind(), ErrorKind::NotFound);
+}
+
+#[test]
+fn watch_changes_reports_created_modified_and_removed() {
+    use desk_sys::fs::{ChangeKind, watch_changes};
+    use std::sync::mpsc;
+    use std::time::Duration;
+
+    let dir = temp_dir();
+    let (sender, receiver) = mpsc::channel();
+    let _watch = watch_changes(&dir, false, move |change| {
+        let _ = sender.send(change);
+    })
+    .unwrap();
+    let file = dir.join("watched.txt");
+    let seen = |kind: ChangeKind| {
+        let deadline = std::time::Instant::now() + Duration::from_secs(5);
+        while std::time::Instant::now() < deadline {
+            if let Ok(change) = receiver.recv_timeout(Duration::from_millis(100))
+                && change.kind == kind
+                && change.path.file_name() == file.file_name()
+            {
+                return true;
+            }
+        }
+        false
+    };
+    fs::write(&file, "a").unwrap();
+    assert!(seen(ChangeKind::Created), "created");
+    fs::write(&file, "ab").unwrap();
+    assert!(seen(ChangeKind::Modified), "modified");
+    fs::remove_file(&file).unwrap();
+    assert!(seen(ChangeKind::Removed), "removed");
+}

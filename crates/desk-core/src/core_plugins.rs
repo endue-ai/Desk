@@ -108,6 +108,7 @@ impl Core {
         let change = if params.enabled {
             PluginChange::Enabled
         } else {
+            self.release_caller(&info.id);
             PluginChange::Disabled
         };
         self.plugin_changed(&info.id, change, info.revision);

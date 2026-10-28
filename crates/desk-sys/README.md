@@ -7,8 +7,10 @@ Layer: Tauri shell (see `docs/architecture.md`). Status: `fs` only.
 
 ## Features and public API
 
-- `fs`: `fs::read(path) -> Vec<u8>`, `fs::list(path) -> Vec<Entry>` (sorted by name; `EntryKind`
-  file, dir or symlink; size for files).
+- `fs`: `fs::read(path) -> Vec<u8>`, `fs::write(path, bytes) -> u64`, `fs::list(path) -> Vec<Entry>`
+  (sorted by name; `EntryKind` file, dir or symlink; size for files), `fs::watch_changes(path,
+  recursive, on_change)` (`Change { path, kind }`: created, modified or removed; a rename is a removal
+  and a creation) and `fs::watch(path, on_path)`; dropping the `Watch` stops it.
 - `NAME`: the crate name.
 
 ## Testing

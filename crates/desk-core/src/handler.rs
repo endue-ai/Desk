@@ -2,13 +2,12 @@
 //! permission engine first; methods the core does not serve yet answer `unsupported`.
 
 use std::io;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::{Arc, Mutex, MutexGuard};
 
-use base64::Engine as _;
 use desk_bridge::{
-    BridgeError, BridgeFailure, BridgeRequest, BridgeResponse, BridgeSuccess, DirEntry, Encoding,
-    EntryKind, ErrorCode, False, FsListResult, FsReadResult, Permission, RequestId, True,
+    BridgeError, BridgeFailure, BridgeRequest, BridgeResponse, BridgeSuccess, ErrorCode, False,
+    Permission, RequestId, True,
 };
 use desk_sys::fs as sysfs;
 use serde::Serialize;
@@ -16,9 +15,10 @@ use serde::Serialize;
 use crate::conversation::Conversation;
 use crate::events::EventBus;
 use crate::paths::normalize;
-use crate::perm::{Denied, PermissionEngine, Target};
+use crate::perm::{Denied, PermissionEngine};
 use crate::plugins::PluginRegistry;
 use crate::prompt::{Prompter, RefuseAll};
+use crate::resources::Table;
 use crate::store::Store;
 
 /// Where root tokens in bridge paths point.
@@ -43,6 +43,7 @@ pub struct Core {
     pub(crate) conversation: Option<Arc<Conversation>>,
     /// Only built-in plugins run: other plugins are listed but get no permissions.
     pub(crate) safe_mode: bool,
+    pub(crate) watches: Mutex<Table<sysfs::Watch>>,
 }
 
 impl Core {
@@ -57,6 +58,7 @@ impl Core {
             store: Mutex::new(Store::new(None)),
             conversation: None,
             safe_mode: false,
+            watches: Mutex::new(Table::new("w")),
         }
     }
 
@@ -88,20 +90,10 @@ impl Core {
     fn dispatch(&self, caller: &str, request: BridgeRequest) -> (RequestId, Answer) {
         use BridgeRequest as R;
         match request {
-            R::FsRead(r) => {
-                let scope = Permission::FsRead(r.params.scope);
-                let answer = self
-                    .authorize(caller, &scope, &r.params.path)
-                    .and_then(|path| read(&path, r.params.encoding.unwrap_or(Encoding::Utf8)));
-                (r.id, answer)
-            }
-            R::FsList(r) => {
-                let scope = Permission::FsRead(r.params.scope);
-                let answer = self
-                    .authorize(caller, &scope, &r.params.path)
-                    .and_then(|path| list(&path));
-                (r.id, answer)
-            }
+            R::FsRead(r) => (r.id, self.fs_read(caller, r.params)),
+            R::FsList(r) => (r.id, self.fs_list(caller, r.params)),
+            R::FsWrite(r) => (r.id, self.fs_write(caller, r.params)),
+            R::FsWatch(r) => (r.id, self.fs_watch(caller, r.params)),
             R::PermQuery(r) => (r.id, self.perm_query(caller, r.params)),
             R::PermRequest(r) => (r.id, self.perm_request(caller, r.params)),
             R::PermRevoke(r) => (r.id, self.perm_revoke(caller, r.params)),
@@ -110,8 +102,6 @@ impl Core {
             R::StoreGet(r) => (r.id, self.store_get(caller, r.params)),
             R::StoreSet(r) => (r.id, self.store_set(caller, r.params)),
             R::BrainSay(r) => (r.id, self.brain_say(caller, r.params)),
-            R::FsWrite(r) => (r.id, unsupported("fs.write")),
-            R::FsWatch(r) => (r.id, unsupported("fs.watch")),
             R::ProcSpawn(r) => (r.id, unsupported("proc.spawn")),
             R::ProcWrite(r) => (r.id, unsupported("proc.write")),
             R::ProcResize(r) => (r.id, unsupported("proc.resize")),
@@ -125,20 +115,7 @@ impl Core {
         }
     }
 
-    /// Check the scope against the caller's grants, then map the bridge path onto the file system.
-    fn authorize(
-        &self,
-        caller: &str,
-        scope: &Permission,
-        path: &str,
-    ) -> Result<PathBuf, BridgeError> {
-        self.permissions()
-            .authorize(caller, scope, &Target::Path(path))
-            .map_err(denied)?;
-        self.resolve(path)
-    }
-
-    fn resolve(&self, path: &str) -> Result<PathBuf, BridgeError> {
+    pub(crate) fn resolve(&self, path: &str) -> Result<PathBuf, BridgeError> {
         let normalized = normalize(path).ok_or_else(|| {
             error(
                 ErrorCode::InvalidParams,
@@ -172,38 +149,14 @@ impl Core {
     }
 
     /// End the work a revoked grant allowed.
-    pub(crate) fn release_grant(&self, _grant_id: &str) {}
-}
+    pub(crate) fn release_grant(&self, grant_id: &str) {
+        drop(self.watches().drain_where(|e| e.grant == grant_id));
+    }
 
-fn read(path: &Path, encoding: Encoding) -> Answer {
-    let bytes = sysfs::read(path).map_err(io_error)?;
-    let content = match encoding {
-        Encoding::Utf8 => String::from_utf8(bytes).map_err(|_| {
-            error(
-                ErrorCode::InvalidParams,
-                "the file is not UTF-8; read it as base64".to_owned(),
-            )
-        })?,
-        Encoding::Base64 => base64::engine::general_purpose::STANDARD.encode(bytes),
-    };
-    json(FsReadResult { content, encoding })
-}
-
-fn list(path: &Path) -> Answer {
-    let entries = sysfs::list(path)
-        .map_err(io_error)?
-        .into_iter()
-        .map(|entry| DirEntry {
-            name: entry.name,
-            kind: match entry.kind {
-                sysfs::EntryKind::File => EntryKind::File,
-                sysfs::EntryKind::Dir => EntryKind::Dir,
-                sysfs::EntryKind::Symlink => EntryKind::Symlink,
-            },
-            size: entry.size,
-        })
-        .collect();
-    json(FsListResult { entries })
+    /// End the work a plugin started, when it is turned off.
+    pub(crate) fn release_caller(&self, caller: &str) {
+        drop(self.watches().drain_where(|e| e.caller == caller));
+    }
 }
 
 pub(crate) fn json(value: impl Serialize) -> Answer {
@@ -233,7 +186,7 @@ fn unsupported(method: &str) -> Answer {
     ))
 }
 
-fn io_error(err: io::Error) -> BridgeError {
+pub(crate) fn io_error(err: io::Error) -> BridgeError {
     let code = match err.kind() {
         io::ErrorKind::NotFound => ErrorCode::NotFound,
         io::ErrorKind::IsADirectory
