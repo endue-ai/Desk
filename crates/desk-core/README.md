@@ -1,27 +1,28 @@
 # desk-core
 
-Kernel of endue Desk: the permission engine, the event bus, the plugin registry and the bridge request
-handler. Storage beyond plugin flags and the session lease client come later.
+Kernel of endue Desk: the permission engine, the event bus, the plugin registry, storage, the brain
+conversation with its session store and lease client, and the bridge request handler.
 
 Layer: Rust core (see `docs/architecture.md`).
 
 ## Public API
 
 - `Core::new(Roots { home })`, `Core::handle(caller, BridgeRequest) -> BridgeResponse`: serves
-  `fs.read`, `fs.list`, `perm.*`, `plugin.*` and `store.*`; every other method answers `unsupported` for now.
-  `Core::grant`, `Core::events`, `Core::with_prompter`.
+  `fs.read`, `fs.list`, `perm.*`, `plugin.*`, `store.*` and `brain.say`; other methods answer
+  `unsupported` for now. `Core::grant`, `Core::events`, `Core::with_prompter`.
 - Plugins: `with_plugin_store(path)`, `install_plugin(dir, built_in)`, `install_plugins_in(parent,
-  built_in)`, `plugins()`, `plugin_file(id, path)`, `watch_plugins()` (hot reload, `PluginWatcher`).
-  Built-in plugins get the permissions their manifest declares.
-- `PluginRegistry`: validation status, revisions, enabled flags persisted in a JSON store, file
-  serving that refuses paths leaving the plugin folder. `validate_dir(dir)`: the manifest check.
-- `PermissionEngine`: deny by default; `grant`, `revoke`, `grants`, `authorize(caller, scope, target)`.
-  A call passes when its scope covers the target (path, command, host) and a grant covers the scope.
-  Paths are normalised lexically; a `..` that leaves its root is denied.
-- Store: `with_store_file(path)`; `store.get`/`store.set` keep one JSON value (64 KiB max) per caller
-  and key, in each caller's own namespace.
-- `EventBus`: `subscribe`, `publish`, `subscriber_count`.
-- `Prompter` / `RefuseAll`: who answers `perm.request` (refuses until the prompt UI exists).
+  built_in)`, `plugins()`, `plugin_file(id, path)`, `watch_plugins()` (hot reload). Built-in plugins
+  get the permissions their manifest declares. `validate_dir(dir)`: the manifest check.
+- `PermissionEngine`: deny by default; a call passes when its scope covers the target (path, command,
+  host) and a grant covers the scope. Paths are normalised lexically.
+- Store: `with_store_file(path)`; one JSON value (64 KiB max) per caller and key.
+- Brain: `with_brain(brain, BrainOptions)`, `open_session(id)` (takes the lease over),
+  `brain_session()`. `brain.say` streams `brain.turn` events; an unreachable brain gets
+  `OFFLINE_LINE` and the turn resumes on reconnection; a desk that lost its lease answers
+  `READ_ONLY_LINE`. The echo tool runs inside the core.
+- `LeaseClient`: `acquire(session, takeover)`, `renew`, `release`, `ensure`, `is_read_only`.
+  `SessionStore`: the desk id, its session and the recent transcript in one JSON file.
+- `EventBus`: `subscribe`, `publish`; clones share subscribers.
 
 ## Testing
 
@@ -29,4 +30,5 @@ Layer: Rust core (see `docs/architecture.md`).
 cargo test -p desk-core
 ```
 
-Integration tests: `tests/permissions.rs`, `tests/events.rs`, `tests/bridge.rs`, `tests/plugins.rs`.
+Integration tests in `tests/`: permissions, events, bridge, plugins, store, `lease.rs` (acquire,
+release, expiry, takeover) and `conversation.rs`; the last two start `examples/brain-echo` (needs Node).

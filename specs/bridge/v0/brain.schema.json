@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://endue.ai/specs/bridge/v0/brain.schema.json",
+  "title": "Desk bridge v0: brain",
+  "description": "Talk to the brain through the core: the core holds the session, its lease and the brain client, and streams the answer back as brain.turn events. Scoped by brain:converse.",
+  "$defs": {
+    "BrainSayRequest": {
+      "description": "Say something to the brain in the desk's current session.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "brain.say" },
+        "params": { "$ref": "#/$defs/BrainSayParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "BrainSayParams": {
+      "description": "Parameters of brain.say.",
+      "type": "object",
+      "properties": {
+        "text": { "type": "string", "minLength": 1, "maxLength": 8000 },
+        "scope": {
+          "$ref": "../../plugin/v0/permission.schema.json#/$defs/BrainConversePermission"
+        }
+      },
+      "required": ["text", "scope"],
+      "additionalProperties": false
+    },
+    "BrainSayResult": {
+      "description": "Result of brain.say: the answer arrives as brain.turn events with this id.",
+      "type": "object",
+      "properties": {
+        "turnId": { "type": "string", "minLength": 1 }
+      },
+      "required": ["turnId"],
+      "additionalProperties": false
+    },
+    "BrainTurnEvent": {
+      "description": "Progress of a brain.say turn.",
+      "type": "object",
+      "properties": {
+        "event": { "const": "brain.turn" },
+        "data": { "$ref": "#/$defs/BrainTurnData" }
+      },
+      "required": ["event", "data"],
+      "additionalProperties": false
+    },
+    "BrainTurnData": {
+      "description": "Payload of brain.turn. delta carries answer text; error and offline carry a sentence for people.",
+      "type": "object",
+      "properties": {
+        "turnId": { "type": "string", "minLength": 1 },
+        "kind": { "$ref": "#/$defs/BrainTurnKind" },
+        "text": { "type": "string" }
+      },
+      "required": ["turnId", "kind"],
+      "additionalProperties": false
+    },
+    "BrainTurnKind": {
+      "description": "started, delta (more text), completed; error (the turn failed, for example read-only after a takeover); offline (the brain is unreachable, the turn waits) and online (it resumed).",
+      "type": "string",
+      "enum": ["started", "delta", "completed", "error", "offline", "online"]
+    }
+  }
+}

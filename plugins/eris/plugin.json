@@ -4,6 +4,7 @@
   "version": "0.1.0",
   "kind": "ui",
   "entry": "ui/index.html",
-  "description": "Eris, the secretary: her status poses, and the soul text and orb other plugins reuse.",
+  "description": "Eris, the secretary: her status poses, a conversation typed to her, and the soul text and orb other plugins reuse.",
+  "permissions": [{ "permission": "brain:converse" }],
   "surfaces": [{ "id": "main", "title": "Eris", "placement": "right" }]
 }

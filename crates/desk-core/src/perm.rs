@@ -112,6 +112,7 @@ pub fn covers(grant: &Permission, scope: &Permission) -> bool {
         (Permission::UiSurface(_), Permission::UiSurface(_)) => true,
         (Permission::UiNotify(_), Permission::UiNotify(_)) => true,
         (Permission::PluginManage(_), Permission::PluginManage(_)) => true,
+        (Permission::BrainConverse(_), Permission::BrainConverse(_)) => true,
         _ => false,
     }
 }
@@ -130,7 +131,8 @@ fn scope_allows(scope: &Permission, target: &Target<'_>) -> bool {
             Permission::AudioCapture(_)
             | Permission::UiSurface(_)
             | Permission::UiNotify(_)
-            | Permission::PluginManage(_),
+            | Permission::PluginManage(_)
+            | Permission::BrainConverse(_),
             Target::None,
         ) => true,
         _ => false,

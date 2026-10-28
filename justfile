@@ -13,6 +13,10 @@ dev:
     DESK_DEV_PLUGINS="{{justfile_directory()}}/examples/plugin-hello-ui" \
     pnpm --filter @endue-ai/desk-app tauri dev
 
+# Run examples/brain-echo, the smallest brain, where the app looks by default (http://127.0.0.1:8787/v0)
+brain-echo port="8787":
+    node examples/brain-echo/server.mjs --port {{port}}
+
 # All tests: unit and runtime e2e
 test: test-unit test-e2e
 

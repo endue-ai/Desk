@@ -1,0 +1,12 @@
+{
+  "target": "BridgeEvent",
+  "description": "more answer text",
+  "instance": {
+    "event": "brain.turn",
+    "data": {
+      "turnId": "t1",
+      "kind": "delta",
+      "text": "Hel"
+    }
+  }
+}

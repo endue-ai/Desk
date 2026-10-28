@@ -1,0 +1,11 @@
+{
+  "target": "BridgeEvent",
+  "description": "paused is not a turn kind",
+  "instance": {
+    "event": "brain.turn",
+    "data": {
+      "turnId": "t1",
+      "kind": "paused"
+    }
+  }
+}

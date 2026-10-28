@@ -19,6 +19,7 @@ path = "src/main.rs"
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
+desk-brain-endue.workspace = true
 desk-bridge.workspace = true
 desk-core.workspace = true
 serde_json.workspace = true

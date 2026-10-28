@@ -3,7 +3,7 @@
 
 use std::io;
 use std::path::{Path, PathBuf};
-use std::sync::{Mutex, MutexGuard};
+use std::sync::{Arc, Mutex, MutexGuard};
 
 use base64::Engine as _;
 use desk_bridge::{
@@ -15,6 +15,7 @@ use desk_bridge::{
 use desk_sys::fs as sysfs;
 use serde::Serialize;
 
+use crate::conversation::Conversation;
 use crate::events::EventBus;
 use crate::paths::normalize;
 use crate::perm::{Denied, PermissionEngine, Target, covers};
@@ -52,6 +53,7 @@ pub struct Core {
     prompter: Box<dyn Prompter>,
     pub(crate) plugins: Mutex<PluginRegistry>,
     pub(crate) store: Mutex<Store>,
+    pub(crate) conversation: Option<Arc<Conversation>>,
 }
 
 impl Core {
@@ -63,6 +65,7 @@ impl Core {
             prompter: Box::new(RefuseAll),
             plugins: Mutex::new(PluginRegistry::new(None)),
             store: Mutex::new(Store::new(None)),
+            conversation: None,
         }
     }
 
@@ -157,6 +160,7 @@ impl Core {
             R::PluginSetEnabled(r) => (r.id, self.plugin_set_enabled(caller, r.params)),
             R::StoreGet(r) => (r.id, self.store_get(caller, r.params)),
             R::StoreSet(r) => (r.id, self.store_set(caller, r.params)),
+            R::BrainSay(r) => (r.id, self.brain_say(caller, r.params)),
             R::FsWrite(r) => (r.id, unsupported("fs.write")),
             R::FsWatch(r) => (r.id, unsupported("fs.watch")),
             R::ProcSpawn(r) => (r.id, unsupported("proc.spawn")),

@@ -608,6 +608,7 @@ dependencies = [
 name = "desk-app"
 version = "0.0.0"
 dependencies = [
+ "desk-brain-endue",
  "desk-bridge",
  "desk-core",
  "serde_json",
@@ -619,6 +620,7 @@ dependencies = [
 name = "desk-brain"
 version = "0.0.0"
 dependencies = [
+ "desk-brain-endue",
  "jsonschema",
  "serde",
  "serde_json",
@@ -627,6 +629,11 @@ dependencies = [
 [[package]]
 name = "desk-brain-endue"
 version = "0.0.0"
+dependencies = [
+ "desk-brain",
+ "serde",
+ "serde_json",
+]
 
 [[package]]
 name = "desk-brain-local"
@@ -655,6 +662,8 @@ name = "desk-core"
 version = "0.0.0"
 dependencies = [
  "base64 0.22.1",
+ "desk-brain",
+ "desk-brain-endue",
  "desk-bridge",
  "desk-sys",
  "jsonschema",

@@ -1,13 +1,14 @@
-//! The event bus: bridge events fan out to every live subscriber.
+//! The event bus: bridge events fan out to every live subscriber. Clones share the same subscribers,
+//! so work on other threads (brain turns) can publish.
 
-use std::sync::Mutex;
 use std::sync::mpsc::{self, Receiver, Sender};
+use std::sync::{Arc, Mutex};
 
 use desk_bridge::BridgeEvent;
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct EventBus {
-    subscribers: Mutex<Vec<Sender<BridgeEvent>>>,
+    subscribers: Arc<Mutex<Vec<Sender<BridgeEvent>>>>,
 }
 
 impl EventBus {
