@@ -1,0 +1,71 @@
+{
+  "id": "desk.keys",
+  "name": "Keys",
+  "version": "0.1.0",
+  "kind": "policy",
+  "description": "The default keymap: which key runs which command. Mod is Command on macOS and Control elsewhere.",
+  "contributes": {
+    "keys": [
+      {
+        "key": "Mod+K",
+        "command": "desk.palette.open"
+      },
+      {
+        "key": "Mod+Shift+P",
+        "command": "desk.palette.open"
+      },
+      {
+        "key": "Escape",
+        "command": "desk.keys.quit"
+      },
+      {
+        "key": "Mod+/",
+        "command": "desk.keys.list"
+      },
+      {
+        "key": "Mod+B",
+        "command": "desk.buffers.switch"
+      },
+      {
+        "key": "Mod+W",
+        "command": "desk.buffers.close"
+      },
+      {
+        "key": "Mod+Alt+ArrowRight",
+        "command": "desk.buffers.next"
+      },
+      {
+        "key": "Mod+Alt+ArrowLeft",
+        "command": "desk.buffers.previous"
+      },
+      {
+        "key": "Mod+O",
+        "command": "desk.files.open"
+      },
+      {
+        "key": "Mod+S",
+        "command": "desk.files.save"
+      },
+      {
+        "key": "Mod+Shift+O",
+        "command": "desk.files.recent"
+      },
+      {
+        "key": "Mod+Shift+L",
+        "command": "desk.theme.toggle"
+      },
+      {
+        "key": "Mod+Shift+N",
+        "command": "desk.notify.history"
+      },
+      {
+        "key": "Mod+Shift+D",
+        "command": "desk.notify.dnd"
+      },
+      {
+        "key": "Mod+Shift+M",
+        "command": "desk.profiles.switch"
+      }
+    ]
+  }
+}

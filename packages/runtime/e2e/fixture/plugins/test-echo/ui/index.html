@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>test echo</title>
+    <script type="importmap">
+      { "imports": { "@endue-ai/plugin-sdk": "/_desk/plugin-sdk.js" } }
+    </script>
+    <style>
+      body { margin: 0; padding: 8px; background: var(--desk-card); color: var(--desk-text); }
+    </style>
+  </head>
+  <body>
+    <!-- A test-only plugin: it answers test.echo.say, runs desk commands and shows the theme. -->
+    <p data-testid="scheme">none</p>
+    <button type="button" data-testid="toggle">Toggle theme</button>
+    <button type="button" data-testid="notify">Notify</button>
+    <input data-testid="field" aria-label="Field" />
+    <p data-testid="out"></p>
+    <script type="module">
+      import { defineUiPlugin } from "@endue-ai/plugin-sdk";
+
+      defineUiPlugin({
+        mount(ctx) {
+          const $ = (id) => document.querySelector(`[data-testid=${id}]`);
+          const show = (theme) => ($("scheme").textContent = theme?.scheme ?? "none");
+          show(ctx.theme.get());
+          ctx.theme.on(show);
+          ctx.commands.on("test.echo.say", (args) => ({ said: args, by: ctx.pluginId }));
+          $("toggle").addEventListener("click", async () => {
+            $("out").textContent = String(await ctx.commands.run("desk.theme.toggle"));
+          });
+          $("notify").addEventListener("click", () =>
+            ctx.bridge.call("ui.notify", {
+              title: "Hello from echo",
+              body: "It works.",
+              level: "success",
+              scope: { permission: "ui:notify" },
+            }),
+          );
+        },
+      });
+    </script>
+  </body>
+</html>

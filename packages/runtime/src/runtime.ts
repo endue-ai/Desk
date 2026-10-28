@@ -12,11 +12,16 @@ import {
   place,
   saveLayout,
 } from "./layout";
+import type { Notice, NoticeInput } from "./notify";
 import { PluginHost, type PluginHostOptions } from "./plugins";
+import type { DeskContext } from "./policies/context";
+import { installKeys } from "./policies/keys";
+import { installNotify } from "./policies/notify";
+import { installTheme } from "./policies/theme";
 import type { PolicySet } from "./policy";
 import type { Settings } from "./settings";
 import { SurfaceHost, type SurfaceSpec } from "./surfaces";
-import { applyTheme } from "./theme";
+import { applyTheme, type ThemeState } from "./theme";
 
 export interface RuntimeOptions {
   /** The element the desk takes over. */
@@ -50,6 +55,10 @@ export interface Runtime {
   readonly settings: Settings;
   /** The policies the enabled plugins contribute, as collected last. */
   policy(): PolicySet;
+  /** Show a notice in the status line, as desk.notify says; it goes to the history too. */
+  notify(input: NoticeInput): Notice;
+  /** The theme in force. */
+  theme(): ThemeState;
   openSurface(spec: SurfaceSpec): void;
   closeSurface(id: string): void;
   moveSurface(id: string, cell: Cell): void;
@@ -72,6 +81,7 @@ export function createRuntime(options: RuntimeOptions): Runtime {
 
   root.classList.add("desk");
   root.replaceChildren();
+  // The built-in tokens until desk.theme applies the theme in force.
   applyTheme(root);
 
   const compositor = doc.createElement("main");
@@ -87,11 +97,6 @@ export function createRuntime(options: RuntimeOptions): Runtime {
   const hub = new PolicyHub();
   const { commands } = hub;
   const shortcuts = new ShortcutRouter({ platform: options.platform ?? "other" });
-  commands.define("desk.commands.list", {
-    title: "List commands",
-    owner: "desk",
-    run: () => commands.list().map((command) => ({ ...command, keys: [] })),
-  });
   const surfaces = new SurfaceHost(compositor, (id) => shortcuts.focus(id));
 
   const applyGrid = () => {
@@ -114,9 +119,37 @@ export function createRuntime(options: RuntimeOptions): Runtime {
   };
   win.addEventListener("keydown", onKey);
 
+  // Built before the policies so they can share messages with plugins and ask them things.
+  let pluginHost: PluginHost | undefined;
+  const ctx: DeskContext = {
+    hub,
+    root,
+    win,
+    clock,
+    bridge,
+    shortcuts,
+    surfaces,
+    share: (message) => pluginHost?.share(message),
+    request: (plugin, command, args) =>
+      pluginHost
+        ? pluginHost.request(plugin, command, args)
+        : Promise.reject(new Error(`${plugin} is not running`)),
+  };
+  const theme = installTheme(ctx);
+  const keys = installKeys(ctx);
+  const notify = installNotify(ctx, statusLine);
+  keys.onQuit(() => notify.notifications.dismiss());
+  commands.define("desk.commands.list", {
+    title: "List commands",
+    owner: "desk",
+    run: () =>
+      commands.list().map((command) => ({ ...command, keys: keys.keymap.keysFor(command.id) })),
+  });
+
   const showStatus = (text: string) => {
-    statusLine.textContent = text;
-    void tween(clock, { from: 0, to: 1, durationMs: FADE_MS }, (value) => {
+    notify.setBase(text);
+    const durationMs = theme.state().reducedMotion ? 0 : FADE_MS;
+    void tween(clock, { from: 0, to: 1, durationMs }, (value) => {
       statusLine.style.opacity = String(Math.round(value * 1000) / 1000);
     });
   };
@@ -139,7 +172,6 @@ export function createRuntime(options: RuntimeOptions): Runtime {
     if (shortcuts.focused === id) shortcuts.focus(null);
   };
 
-  let pluginHost: PluginHost | undefined;
   let plugins: RuntimePlugins | undefined;
   if (options.plugins) {
     const host = new PluginHost(
@@ -177,6 +209,8 @@ export function createRuntime(options: RuntimeOptions): Runtime {
     commands,
     settings: hub.settings,
     policy: () => hub.policy,
+    notify: (input) => notify.notify(input),
+    theme: () => theme.state(),
     openSurface,
     closeSurface,
     moveSurface(id, cell) {
@@ -187,8 +221,9 @@ export function createRuntime(options: RuntimeOptions): Runtime {
       if (id) surfaces.get(id)?.focus();
     },
     layout: () => structuredClone(layout),
-    status: () => statusLine.textContent ?? "",
+    status: () => notify.text(),
     dispose() {
+      for (const policy of [notify, keys, theme]) policy.dispose();
       pluginHost?.stop();
       win.removeEventListener("keydown", onKey);
       for (const id of surfaces.ids()) surfaces.close(id);

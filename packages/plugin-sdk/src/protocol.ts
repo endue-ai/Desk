@@ -99,7 +99,6 @@ export function windowTransport(win: Window = window): Transport {
       root.dataset.scheme = theme.scheme;
       root.dataset.contrast = theme.contrast;
       root.dataset.motion = theme.reducedMotion ? "reduce" : "full";
-      root.style.colorScheme = theme.scheme;
     },
   };
 }

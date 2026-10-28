@@ -74,6 +74,7 @@ export class PluginHost {
     { plugin: string; resolve(v: unknown): void; reject(e: unknown): void }
   >();
   #nextCall = 1;
+  readonly #shared = new Map<string, unknown>();
   #offEvents: (() => void) | undefined;
 
   constructor(deps: PluginHostDeps, options: PluginHostOptions) {
@@ -109,8 +110,9 @@ export class PluginHost {
     });
   }
 
-  /** Send every mounted plugin the same message, like a theme change. */
-  broadcast(message: unknown): void {
+  /** Keep a message for every plugin, like the theme: sent now, and after each plugin's init. */
+  share(message: { type: string; [field: string]: unknown }): void {
+    this.#shared.set(message.type, message);
     for (const id of this.#mounted.keys()) this.#post(id, message);
   }
 
@@ -227,6 +229,7 @@ export class PluginHost {
     switch (message?.type) {
       case "desk:hello":
         this.#post(id, { type: "desk:init", pluginId: id, state: this.#state.get(id) });
+        for (const shared of this.#shared.values()) this.#post(id, shared);
         break;
       case "desk:state":
         this.#state.set(id, message.state);

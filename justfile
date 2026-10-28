@@ -30,6 +30,11 @@ test-unit:
 test-e2e:
     pnpm --filter @endue-ai/runtime exec playwright test
 
+# The runtime tests in WebKit on Linux, inside the Playwright image, one run at a time on this machine
+# (args go to playwright: `just test-e2e-docker e2e/policies.spec.ts`; E2E_UPDATE=1 writes snapshots)
+test-e2e-docker *args:
+    scripts/e2e-docker.sh {{args}}
+
 # Static checks: formatting, lints, types, workflows and specs (the Tauri app has its own recipe)
 check:
     cargo fmt --all -- --check
