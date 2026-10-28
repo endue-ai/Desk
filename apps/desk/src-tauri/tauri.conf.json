@@ -37,6 +37,19 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "macOS": {
+      "entitlements": "Entitlements.plist",
+      "infoPlist": "Info.plist",
+      "hardenedRuntime": true
+    },
+    "linux": {
+      "deb": {
+        "depends": ["libasound2t64 | libasound2"]
+      },
+      "rpm": {
+        "depends": ["alsa-lib"]
+      }
+    }
   }
 }

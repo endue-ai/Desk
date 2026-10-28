@@ -8,3 +8,7 @@ Scripts that `justfile` recipes call (codegen, sign, release). Run them through 
 `lanes.mjs` decides which Task issues may run in parallel (`just lanes`, `just task-start`), and
 `worktree.sh` gives each task its own worktree (ADR 0015). `sync-rulesets.sh` applies
 `.github/rulesets/*.json`; maintainers run it by hand, like `sync-labels.sh`.
+
+`os-declarations.mjs` checks that the app tells each OS what its features need: the macOS microphone
+sentence and entitlements (microphone, virtualization) and ALSA for Linux packages
+(`just os-declarations`, run by the release workflow; see `docs/os-permissions.md`).

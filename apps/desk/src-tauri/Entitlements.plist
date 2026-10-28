@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Signed into the app with the hardened runtime. Each entry names the feature that needs it. -->
+<plist version="1.0">
+<dict>
+	<!-- The microphone: audio.capture.start in desk-core (ADR 0020). -->
+	<key>com.apple.security.device.audio-input</key>
+	<true/>
+	<!-- Virtualization.framework: the light VM that runs MCP tool plugins (desk-vm, ADR 0002). -->
+	<key>com.apple.security.virtualization</key>
+	<true/>
+</dict>
+</plist>

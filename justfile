@@ -54,6 +54,10 @@ build-app: build-sdk
 codegen:
     node scripts/codegen.mjs
 
+# Check the OS declarations the app's features need (Info.plist, entitlements, Linux packages)
+os-declarations:
+    node scripts/os-declarations.mjs
+
 # Bundle the plugin SDK that the app serves to plugin frames
 build-sdk:
     pnpm --filter @endue-ai/plugin-sdk build
