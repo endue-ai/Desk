@@ -45,6 +45,10 @@ interface fs {
 
   /// bridge: fs.list (`list` is a WIT keyword, hence the % escape)
   %list: func(path: string) -> result<list<dir-entry>, error>;
+
+  /// bridge: fs.write. Creates or overwrites the file and returns the bytes written; with
+  /// `create-dirs` it also creates missing parent folders.
+  write: func(path: string, contents: list<u8>, create-dirs: bool) -> result<u64, error>;
 }
 
 interface net {
@@ -93,10 +97,28 @@ interface perm {
   query: func() -> list<grant>;
 }
 
-/// What a logic plugin may import.
+interface store {
+  use types.{error};
+
+  /// bridge: store.get. The value is JSON text; none when the key was never set.
+  get: func(key: string) -> result<option<string>, error>;
+
+  /// bridge: store.set. The value is JSON text, 64 KiB at most. Values outlive the instance: a
+  /// reloaded plugin reads what the one before it wrote.
+  set: func(key: string, value: string) -> result<_, error>;
+}
+
+/// What a logic plugin may import, and what it exports.
 world plugin {
+  use types.{error};
+
   import fs;
   import net;
   import ui;
   import perm;
+  import store;
+
+  /// Called after the plugin is loaded and after every reload. Not a bridge method: the host calls
+  /// it, so it is a world function rather than an interface.
+  export start: func() -> result<_, error>;
 }
