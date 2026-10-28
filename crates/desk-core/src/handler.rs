@@ -163,6 +163,12 @@ impl Core {
         drop(lock(&self.procs).drain_where(|e| e.caller == caller));
     }
 
+    /// The app is quitting: stop every watch and process, whoever started it.
+    pub fn shutdown(&self) {
+        drop(self.watches().drain_where(|_| true));
+        drop(lock(&self.procs).drain_where(|_| true));
+    }
+
     /// The home folder, where processes start unless asked otherwise.
     pub(crate) fn home(&self) -> PathBuf {
         self.roots.home.clone()

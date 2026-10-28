@@ -12,8 +12,14 @@ fn main() {
 
     // Declaring the app's commands makes Tauri generate one permission per command, so the
     // capability can allow exactly these and nothing else.
-    let manifest =
-        tauri_build::AppManifest::new().commands(&["bridge_call", "desk_boot", "desk_ready"]);
+    let manifest = tauri_build::AppManifest::new().commands(&[
+        "bridge_call",
+        "desk_boot",
+        "desk_ready",
+        "frame_open",
+        "frame_close",
+        "frame_list",
+    ]);
     tauri_build::try_build(tauri_build::Attributes::new().app_manifest(manifest))
         .expect("tauri build script");
 }

@@ -1,6 +1,8 @@
 //! The Tauri shell: windows, the webview and the plugin URL scheme. Everything else lives in desk-core.
 
 mod commands;
+mod frames;
+mod lifecycle;
 mod prompt;
 mod protocol;
 
@@ -10,9 +12,10 @@ use std::sync::{Arc, Mutex};
 use desk_brain_endue::HttpBrain;
 use desk_bridge::{Permission, PluginManagePermission};
 use desk_core::{BrainOptions, Core, LaunchGuard, PluginWatcher, RUNTIME_CALLER, Roots};
-use tauri::{Emitter, Manager};
+use tauri::Manager;
 
 use crate::commands::boot::Boot;
+use crate::frames::Routing;
 use crate::prompt::NativePrompter;
 
 /// Where the brain lives unless `DESK_BRAIN_URL` says otherwise: examples/brain-echo (`just brain-echo`).
@@ -69,26 +72,33 @@ pub fn run() {
             let watcher = core.watch_plugins().ok();
             app.manage(Watching(Mutex::new(watcher)));
 
-            // Core events reach the runtime as Tauri events; the runtime routes them to plugins.
+            // Core events reach each frame's runtime as Tauri events (per frame, ADR 0018); the
+            // runtime routes them on to its plugins.
+            app.manage(Routing::new());
             let events = core.events().subscribe();
             let handle = app.handle().clone();
             std::thread::Builder::new()
                 .name("desk-events".to_owned())
                 .spawn(move || {
                     for event in events {
-                        let _ = handle.emit("bridge://event", event);
+                        handle.state::<Routing>().deliver(&handle, &event);
                     }
                 })?;
             app.manage(core);
+            lifecycle::install(app);
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
             commands::bridge::bridge_call,
             commands::boot::desk_boot,
-            commands::ready::desk_ready
+            commands::ready::desk_ready,
+            commands::frames::frame_open,
+            commands::frames::frame_close,
+            commands::frames::frame_list
         ])
-        .run(tauri::generate_context!())
-        .expect("endue Desk failed to start");
+        .build(tauri::generate_context!())
+        .expect("endue Desk failed to start")
+        .run(lifecycle::on_run_event);
 }
 
 /// `--safe-mode` on the command line, or `DESK_SAFE_MODE=1`.

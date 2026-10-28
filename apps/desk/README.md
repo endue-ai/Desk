@@ -5,10 +5,12 @@ and `src/` mounts the runtime and connects the bridge.
 
 | Path | What it does |
 | --- | --- |
-| `src/main.ts` | Mounts `@endue-ai/runtime` with the tauri bridge adapter, then reports `desk_ready` |
-| `src-tauri/src/commands/` | `bridge_call` (to `Core::handle`, off the main thread), `desk_boot` (safe mode or not) and `desk_ready` (logs the status line, marks the launch finished) |
+| `src/main.ts` | Mounts `@endue-ai/runtime` in each frame with the tauri bridge adapter (its own events and layout; `Mod+Shift+N` opens a frame), then reports `desk_ready` |
+| `src-tauri/src/commands/` | `bridge_call` (to `Core::handle`, off the main thread), `desk_boot` (safe mode or not), `desk_ready` (logs the status line, marks the launch finished), `frame_open`, `frame_close`, `frame_list` |
 | `src-tauri/src/prompt.rs` | Permission prompts as native dialogs (ADR 0016) |
-| `src-tauri/capabilities/` | The main window may call exactly those commands |
+| `src-tauri/src/frames.rs` | Frames (`main`, `frame-<n>`) and per-frame event delivery (ADR 0018) |
+| `src-tauri/src/lifecycle.rs` | The core outlives its frames: Dock on macOS, tray elsewhere (ADR 0019) |
+| `src-tauri/capabilities/` | Frames (`main`, `frame-*`) may call exactly those commands |
 | `src-tauri/tauri.conf.json` | Window, strict CSP, bundle; identifier `ai.endue.desk` |
 | `src-tauri/icons/` | Placeholder icons generated from a flat accent square |
 

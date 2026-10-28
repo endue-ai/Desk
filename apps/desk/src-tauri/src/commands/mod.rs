@@ -2,4 +2,5 @@
 
 pub mod boot;
 pub mod bridge;
+pub mod frames;
 pub mod ready;
