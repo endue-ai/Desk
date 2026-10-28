@@ -20,6 +20,7 @@ import { installDisplay } from "./policies/display";
 import { installFiles } from "./policies/files";
 import { installKeys } from "./policies/keys";
 import { installNotify } from "./policies/notify";
+import { installSession } from "./policies/session";
 import { installTheme } from "./policies/theme";
 import type { PolicySet } from "./policy";
 import type { Settings } from "./settings";
@@ -115,10 +116,13 @@ export function createRuntime(options: RuntimeOptions): Runtime {
       if (cell) surfaces.position(id, cell);
     }
   };
+  // Set once desk.session is installed: a new layout is worth keeping.
+  let onLayout: () => void = () => {};
   const commit = (next: Layout) => {
     layout = next;
     saveLayout(storage, layout);
     applyGrid();
+    onLayout();
   };
   applyGrid();
 
@@ -160,8 +164,21 @@ export function createRuntime(options: RuntimeOptions): Runtime {
     focused: () => shortcuts.focused,
   });
   const buffers = installBuffers(ctx, { focus: focusSurface });
-  onSurfaceFocus = (id) => buffers.focused(id);
   const files = installFiles(ctx, buffers, (input) => notify.notify(input));
+  const session = installSession(ctx, buffers, {
+    layout: () => structuredClone(layout),
+    setLayout: (next) => commit(next),
+    focus: focusSurface,
+    focused: () => shortcuts.focused,
+    notices: () => notify.notifications.history(),
+    restoreNotices: (notices) => notify.notifications.restore(notices),
+  });
+  notify.notifications.onPush(() => session.changed());
+  onLayout = () => session.changed();
+  onSurfaceFocus = (id) => {
+    buffers.focused(id);
+    session.changed();
+  };
   keys.onQuit(() => notify.notifications.dismiss());
   keys.onQuit(() => {
     if (commands.has("desk.palette.cancel"))
@@ -212,6 +229,8 @@ export function createRuntime(options: RuntimeOptions): Runtime {
   }
 
   let plugins: RuntimePlugins | undefined;
+  // Without plugins there is no desk.session to restore; saving may start at once.
+  if (!options.plugins) void ready.then(() => session.restore());
   if (options.plugins) {
     const host = new PluginHost(
       {
@@ -235,7 +254,10 @@ export function createRuntime(options: RuntimeOptions): Runtime {
     pluginHost = host;
     plugins = {
       // A desk without plugin:manage still works; it just shows no plugins.
-      ready: ready.then(() => host.start()).catch(() => {}),
+      ready: ready
+        .then(() => host.start())
+        .then(() => session.restore())
+        .catch(() => {}),
       mounted: () => host.mounted(),
       command: (id, name, args) => host.command(id, name, args),
     };
@@ -259,7 +281,9 @@ export function createRuntime(options: RuntimeOptions): Runtime {
     layout: () => structuredClone(layout),
     status: () => notify.text(),
     dispose() {
-      for (const policy of [files, buffers, display, notify, keys, theme]) policy.dispose();
+      for (const policy of [session, files, buffers, display, notify, keys, theme]) {
+        policy.dispose();
+      }
       pluginHost?.stop();
       win.removeEventListener("keydown", onKey);
       for (const id of surfaces.ids()) surfaces.close(id);
