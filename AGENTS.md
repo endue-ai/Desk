@@ -71,11 +71,26 @@ read the same files and follow the steps.
   (`.claude/skills/plan-task/SKILL.md`).
 - `run-task <issue>`: implement an `ai:ready` issue on `ai/<issue>-<slug>`, tests red first, and open the
   PR (`.claude/skills/run-task/SKILL.md`).
+- `dispatch [max]`: start every `ai:ready` issue whose lane is free, each in its own worktree with its own
+  author agent (`.claude/skills/dispatch/SKILL.md`).
 - `fix-ci <pr>`: fix a PR's failing checks on its branch, within budget (`.claude/skills/fix-ci/SKILL.md`).
 - `add-adr <title>`: add the next MADR page to `docs/adr/` (`.claude/skills/add-adr/SKILL.md`).
 
 Budgets per issue: 3 CI failures, 2 review rounds, 24 hours. Past any of them, stop and label
 `ai:needs-human`. Which tests run for which change: `docs/qa/TESTING.md`.
+
+## Parallel work
+
+Several agents work at once on one trunk (ADR 0015).
+
+- A task's Scope is its lane. `just lanes` shows what is in flight and what can start; a task waits
+  while its Scope overlaps one in flight, and at most four run at once.
+- One task, one worktree: `just task-start <issue>` claims the issue (`ai:in-progress`) and creates
+  `.claude/worktrees/ai-<issue>` on `ai/<issue>-<slug>`. Never work in the main checkout or in another
+  task's worktree. `just task-gc` removes merged ones.
+- Don't rebase because `main` moved; the merge queue tests each PR on top of it. Update a branch only
+  for a conflict, a failing gate or a queue ejection, and never rerun CI to turn it green.
+- People approve PRs and add them to the merge queue. Agents never merge or enqueue.
 
 ## Conventions
 
@@ -86,4 +101,4 @@ Budgets per issue: 3 CI failures, 2 review rounds, 24 hours. Past any of them, s
   `scripts/docs-i18n.test.mjs` fails otherwise. `docs/ko/` holds the Korean design sources, not
   translations.
 - Commits: Conventional Commits with a DCO sign-off (`git commit -s`), author taken from git config.
-- Branches: one branch per task; never push directly to `main`.
+- Branches: one branch per task, `ai/<issue>-<slug>`; `main` changes only through the merge queue.

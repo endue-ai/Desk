@@ -38,6 +38,7 @@ catch; until then they are marked "not yet".
 | `plugins/**`, `examples/**` | `ci` (biome for plugin JS; `examples/brain-echo` is covered by the Rust conformance and lease tests), `plugin-validate` |
 | `docs/**`, `*.md` | `ci`, `scope-check`; `review` skips them |
 | any PR | `scope-check`, `labeler`; the required `ci` check is the aggregate of every `ci` job above |
+| in the merge queue | `ci` again on the PR combined with `main` and the PRs ahead of it (no `red-on-base`); `scope-check` reports success (ADR 0015) |
 
 ## Rules
 
