@@ -11,19 +11,25 @@
     </style>
   </head>
   <body>
-    <!-- A test-only plugin: it answers test.echo.say, runs desk commands and shows the theme. -->
+    <!-- A test-only plugin: it answers test.echo.say, runs desk commands, shows the theme, and opens
+         *.txt files for desk.files (its "file" is the text in the field). -->
     <p data-testid="scheme">none</p>
     <button type="button" data-testid="toggle">Toggle theme</button>
     <button type="button" data-testid="notify">Notify</button>
     <input data-testid="field" aria-label="Field" />
     <p data-testid="out"></p>
+    <p data-testid="file"></p>
+    <p data-testid="log"></p>
     <script type="module">
       import { defineUiPlugin } from "@endue-ai/plugin-sdk";
 
       defineUiPlugin({
         mount(ctx) {
           const $ = (id) => document.querySelector(`[data-testid=${id}]`);
+          const log = (line) => ($("log").textContent += `${line};`);
           const show = (theme) => ($("scheme").textContent = theme?.scheme ?? "none");
+          const files = new Map();
+          let current = null;
           show(ctx.theme.get());
           ctx.theme.on(show);
           ctx.commands.on("test.echo.say", (args) => ({ said: args, by: ctx.pluginId }));
@@ -38,6 +44,42 @@
               scope: { permission: "ui:notify" },
             }),
           );
+          const open = (buffer) => {
+            current = buffer;
+            $("file").textContent = `${buffer}: ${files.get(buffer).path}`;
+            $("field").value = files.get(buffer).text;
+          };
+          $("field").addEventListener("input", () => {
+            if (!current) return;
+            files.get(current).text = $("field").value;
+            void ctx.commands.run("desk.buffers.update", { id: current, modified: true });
+          });
+          ctx.commands.on("desk.files.visit", ({ buffer, path }) => {
+            files.set(buffer, { path, text: `text of ${path}` });
+            log(`visit ${path}`);
+            open(buffer);
+          });
+          ctx.commands.on("desk.files.save", async ({ buffer, path }) => {
+            await ctx.bridge.call("fs.write", {
+              path,
+              content: files.get(buffer).text,
+              scope: { permission: "fs:write", paths: ["~/**"] },
+            });
+            log(`save ${path}`);
+          });
+          ctx.commands.on("desk.files.revert", ({ buffer, path }) => {
+            files.get(buffer).text = `text of ${path}`;
+            log(`revert ${path}`);
+            if (current === buffer) open(buffer);
+          });
+          ctx.commands.on("desk.buffers.show", ({ buffer }) => {
+            log(`show ${buffer}`);
+            open(buffer);
+          });
+          ctx.commands.on("desk.buffers.closed", ({ buffer }) => {
+            files.delete(buffer);
+            log(`closed ${buffer}`);
+          });
         },
       });
     </script>

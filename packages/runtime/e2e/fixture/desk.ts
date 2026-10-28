@@ -4,6 +4,7 @@
 //   ?init={"desk.theme.scheme":"light"}  init.yaml settings    ?off=desk.keys,desk.theme  disabled
 //   ?platform=mac                        the keymap's platform  ?profile=focus             start profile
 //   ?rules=[{"match":{...},"area":...}]  display rules test.echo contributes
+//   ?store={"session":{...}}             what the core's store holds for the runtime at start
 import { BridgeClient, browserStub, type PluginInfo, type PluginManifest } from "@endue-ai/bridge";
 import "../../src/desk.css";
 import { createRuntime, ManualClock } from "../../src/index";
@@ -19,11 +20,12 @@ const echo: PluginManifest = {
   version: "0.1.0",
   kind: "ui",
   entry: "ui/index.html",
-  permissions: [{ permission: "ui:notify" }],
+  permissions: [{ permission: "ui:notify" }, { permission: "fs:write", paths: ["~/**"] }],
   surfaces: [{ id: "main", title: "Echo", placement: "center" }],
   contributes: {
     commands: [{ id: "test.echo.say", title: "Say it back" }],
     display: JSON.parse(params.get("rules") ?? "[]"),
+    files: [{ pattern: "*.txt", plugin: "test.echo" }],
   },
 };
 const counter: PluginManifest = {
@@ -47,6 +49,9 @@ const plugins: PluginInfo[] = [
 }));
 
 let notices = 0;
+// The core's store (per caller) and the files plugins wrote, kept in memory for the tests.
+const store: Record<string, unknown> = JSON.parse(params.get("store") ?? "{}");
+const written: Array<{ path: string; content: string }> = [];
 const clock = new ManualClock();
 const stub = browserStub({
   "perm.query": () => ({ grants: [] }),
@@ -62,6 +67,15 @@ const stub = browserStub({
       }),
     );
     return { plugin: structuredClone(info) };
+  },
+  "store.get": ({ key }) => (key in store ? { value: structuredClone(store[key]) } : {}),
+  "store.set": ({ key, value }) => {
+    store[key] = structuredClone(value);
+    return {};
+  },
+  "fs.write": ({ path, content }) => {
+    written.push({ path, content });
+    return { bytesWritten: content.length };
   },
   "init.get": () => ({
     profile: params.get("profile") ?? "default",
@@ -95,3 +109,5 @@ const runtime = createRuntime({
 });
 
 window.__desk = { clock, runtime, stub, commands: [] };
+window.__deskStore = store;
+window.__deskWritten = written;

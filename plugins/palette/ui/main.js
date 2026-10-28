@@ -24,6 +24,11 @@ defineUiPlugin({
 
     const render = () => {
       shown = filter(input.value, mode?.entries ?? [], mode?.kind === "commands" ? history : []);
+      // A pick that takes free text offers what was typed as its first answer.
+      const typed = input.value.trim();
+      if (mode?.free && typed && !shown.some((entry) => entry.id === typed)) {
+        shown = [{ id: typed, label: `Use “${typed}”`, detail: "typed" }, ...shown];
+      }
       selected = Math.min(selected, Math.max(0, shown.length - 1));
       list.replaceChildren(
         ...shown.map((entry, index) => {
@@ -139,6 +144,7 @@ defineUiPlugin({
             kind: "pick",
             title: args?.title ?? "Pick one",
             placeholder: args?.placeholder ?? "",
+            free: args?.free === true,
             entries: items.map((item) => ({
               id: String(item.id),
               label: item.label ?? String(item.id),

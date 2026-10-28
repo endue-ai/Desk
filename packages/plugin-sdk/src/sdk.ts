@@ -92,9 +92,20 @@ type Pending = {
   reject: (e: unknown) => void;
 };
 
-/** Say hello to the host and resolve once it answers with the plugin id and saved state. */
+/** Called by defineUiPlugin once `mount` has finished, so commands that came early get answered. */
+const mountedHooks = new WeakMap<PluginContext, () => void>();
+const usedByDefine = new WeakSet<PluginContext>();
+
+/**
+ * Say hello to the host and resolve once it answers with the plugin id and saved state. Commands
+ * that arrive before their handler is registered wait until the plugin has mounted.
+ */
 export function connect(transport: Transport = windowTransport()): Promise<PluginContext> {
   return new Promise((resolve) => {
+    let markMounted: () => void = () => {};
+    const mounted = new Promise<void>((done) => {
+      markMounted = done;
+    });
     const pending = new Map<number, Pending>();
     const listeners = new Set<(event: BridgeEvent) => void>();
     const commands = new Map<string, Set<(args: unknown) => unknown>>();
@@ -110,6 +121,7 @@ export function connect(transport: Transport = windowTransport()): Promise<Plugi
     let theme: ThemeState | undefined;
 
     const answer = async (name: string, call: number | undefined, args: unknown) => {
+      if (!commands.get(name)?.size) await mounted;
       const handlers = [...(commands.get(name) ?? [])];
       let outcome: CommandOutcome;
       try {
@@ -195,6 +207,11 @@ export function connect(transport: Transport = windowTransport()): Promise<Plugi
         case "desk:init":
           state = message.state;
           ctx = ctxFor(message.pluginId);
+          mountedHooks.set(ctx, markMounted);
+          // Without defineUiPlugin, handlers registered right after connect() count as mounted.
+          setTimeout(() => {
+            if (!usedByDefine.has(ctx)) markMounted();
+          }, 0);
           resolve(ctx);
           break;
         case "desk:results":
@@ -236,6 +253,11 @@ export async function defineUiPlugin(
   transport: Transport = windowTransport(),
 ): Promise<PluginContext> {
   const ctx = await connect(transport);
-  await plugin.mount(ctx);
+  usedByDefine.add(ctx);
+  try {
+    await plugin.mount(ctx);
+  } finally {
+    mountedHooks.get(ctx)?.();
+  }
   return ctx;
 }

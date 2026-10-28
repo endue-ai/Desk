@@ -20,6 +20,12 @@ export interface DeskContext {
   share(message: { type: string; [field: string]: unknown }): void;
   /** Ask a running plugin and wait for its answer; rejects when it is not running. */
   request(plugin: string, command: string, args?: unknown): Promise<unknown>;
+  /** Whether a plugin's surface is mounted now. */
+  mounted(plugin: string): boolean;
+  /** Resolves once a mounted plugin has connected; rejects if it stops first or none is mounted. */
+  whenReady(plugin: string): Promise<void>;
+  /** Take a plugin's surface away for the rest of this session. */
+  unmount(plugin: string): void;
 }
 
 /** A policy module, installed once; dispose undoes what it bound. */

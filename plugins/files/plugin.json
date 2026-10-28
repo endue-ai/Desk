@@ -1,0 +1,22 @@
+{
+  "id": "desk.files",
+  "name": "Files",
+  "version": "0.1.0",
+  "kind": "policy",
+  "description": "Which plugin opens which file, recent files, saving, and what happens when a file changes on disk.",
+  "contributes": {
+    "settings": {
+      "desk.files.recent-max": {
+        "kind": "integer",
+        "default": 20,
+        "description": "How many recent files to remember."
+      },
+      "desk.files.on-change": {
+        "kind": "string",
+        "default": "reload",
+        "choices": ["reload", "ask", "ignore"],
+        "description": "A file changed on disk: reload it when it has no unsaved changes (and ask when it has), always ask, or do nothing."
+      }
+    }
+  }
+}

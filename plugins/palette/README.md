@@ -7,7 +7,7 @@ overlay that shows itself when asked. It uses only the public SDK: `ctx.commands
 | Command | What it does |
 | --- | --- |
 | `desk.palette.open` | Lists every command the desk has now with its keys; typing filters, Enter runs |
-| `desk.palette.pick` | `{ title, items: [{ id, label, detail }] }`: answers the picked id, or fails `cancelled` |
+| `desk.palette.pick` | `{ title, items: [{ id, label, detail }], free }`: answers the picked id (with `free`, also what was typed), or fails `cancelled` |
 | `desk.palette.cancel` | Closes it; a pick in progress fails `cancelled` (Escape, `desk.keys.quit`) |
 
 Run history (most recent first, `desk.palette.history` long, 50 by default) is kept with `store.set`, so

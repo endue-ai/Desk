@@ -5,6 +5,7 @@ import type {
   BridgeEvent,
   BridgeRequest,
   BridgeResponse,
+  FsWatchResult,
   PluginInfo,
 } from "@endue-ai/bridge";
 import { CommandError } from "./commands";
@@ -68,6 +69,8 @@ export class PluginHost {
   readonly #turns = new Map<string, string>();
   /** brain.turn events that arrived before the brain.say answer that names their turn. */
   readonly #early = new Map<string, BrainTurnEvent[]>();
+  /** fs.watch id -> the plugin that started the watch; its fs.changed events go there only. */
+  readonly #watches = new Map<string, string>();
   /** Commands delivered to plugins that wait for their reply, by call id. */
   readonly #pending = new Map<
     number,
@@ -75,6 +78,9 @@ export class PluginHost {
   >();
   #nextCall = 1;
   readonly #shared = new Map<string, unknown>();
+  /** Plugins that said hello since they mounted, and callers waiting for one that has not yet. */
+  readonly #greeted = new Set<string>();
+  readonly #waiting = new Map<string, Array<{ resolve(): void; reject(e: unknown): void }>>();
   #offEvents: (() => void) | undefined;
 
   constructor(deps: PluginHostDeps, options: PluginHostOptions) {
@@ -108,6 +114,21 @@ export class PluginHost {
       this.#pending.set(call, { plugin: id, resolve, reject });
       this.#post(id, { type: "desk:command", name, args, call });
     });
+  }
+
+  /** Resolves once a mounted plugin has connected (said hello); rejects if it stops first. */
+  whenReady(id: string): Promise<void> {
+    if (this.#greeted.has(id)) return Promise.resolve();
+    return new Promise((resolve, reject) => {
+      const waiting = this.#waiting.get(id) ?? [];
+      waiting.push({ resolve, reject });
+      this.#waiting.set(id, waiting);
+    });
+  }
+
+  /** Take a plugin's surface away for the rest of this session, as `desk:close` does. */
+  unmount(id: string): void {
+    this.#unmount(id);
   }
 
   /** Keep a message for every plugin, like the theme: sent now, and after each plugin's init. */
@@ -144,6 +165,12 @@ export class PluginHost {
 
   #unmount(id: string): void {
     if (!this.#mounted.delete(id)) return;
+    this.#greeted.delete(id);
+    for (const waiter of this.#waiting.get(id) ?? []) {
+      waiter.reject(new CommandError("cancelled", `${id} stopped`));
+    }
+    this.#waiting.delete(id);
+    for (const [watch, owner] of this.#watches) if (owner === id) this.#watches.delete(watch);
     for (const [call, pending] of this.#pending) {
       if (pending.plugin !== id) continue;
       this.#pending.delete(call);
@@ -155,6 +182,11 @@ export class PluginHost {
   #onEvent(event: BridgeEvent): void {
     if (event.event === "brain.turn") {
       this.#turn(event);
+      return;
+    }
+    if (event.event === "fs.changed") {
+      const owner = this.#watches.get(event.data.watchId);
+      if (owner) this.#post(owner, { type: "desk:event", event });
       return;
     }
     if (event.event !== "plugin.changed") return;
@@ -210,6 +242,10 @@ export class PluginHost {
 
   /** A brain.say answer names its turn: deliver what came early, and route the rest. */
   #claim(request: BridgeRequest, response: BridgeResponse, owner: string): void {
+    if (request.method === "fs.watch" && response.ok) {
+      this.#watches.set((response.result as FsWatchResult).watchId, owner);
+      return;
+    }
     if (request.method !== "brain.say" || !response.ok) return;
     const { turnId } = response.result as BrainSayResult;
     this.#turns.set(turnId, owner);
@@ -230,6 +266,9 @@ export class PluginHost {
       case "desk:hello":
         this.#post(id, { type: "desk:init", pluginId: id, state: this.#state.get(id) });
         for (const shared of this.#shared.values()) this.#post(id, shared);
+        this.#greeted.add(id);
+        for (const waiter of this.#waiting.get(id) ?? []) waiter.resolve();
+        this.#waiting.delete(id);
         break;
       case "desk:state":
         this.#state.set(id, message.state);

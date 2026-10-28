@@ -14,8 +14,10 @@ import {
 } from "./layout";
 import type { Notice, NoticeInput } from "./notify";
 import { PluginHost, type PluginHostOptions } from "./plugins";
+import { installBuffers } from "./policies/buffers";
 import type { DeskContext } from "./policies/context";
 import { installDisplay } from "./policies/display";
+import { installFiles } from "./policies/files";
 import { installKeys } from "./policies/keys";
 import { installNotify } from "./policies/notify";
 import { installTheme } from "./policies/theme";
@@ -98,7 +100,12 @@ export function createRuntime(options: RuntimeOptions): Runtime {
   const hub = new PolicyHub();
   const { commands } = hub;
   const shortcuts = new ShortcutRouter({ platform: options.platform ?? "other" });
-  const surfaces = new SurfaceHost(compositor, (id) => shortcuts.focus(id));
+  // Set once desk.buffers is installed: the surface in use decides the buffer in use.
+  let onSurfaceFocus: (id: string) => void = () => {};
+  const surfaces = new SurfaceHost(compositor, (id) => {
+    shortcuts.focus(id);
+    onSurfaceFocus(id);
+  });
 
   const applyGrid = () => {
     compositor.style.gridTemplateColumns = `repeat(${layout.columns}, minmax(0, 1fr))`;
@@ -135,6 +142,10 @@ export function createRuntime(options: RuntimeOptions): Runtime {
       pluginHost
         ? pluginHost.request(plugin, command, args)
         : Promise.reject(new Error(`${plugin} is not running`)),
+    mounted: (plugin) => pluginHost?.mounted().includes(plugin) ?? false,
+    whenReady: (plugin) =>
+      pluginHost ? pluginHost.whenReady(plugin) : Promise.reject(new Error("no plugin host")),
+    unmount: (plugin) => (pluginHost ? pluginHost.unmount(plugin) : closeSurface(plugin)),
   };
   const theme = installTheme(ctx);
   const keys = installKeys(ctx);
@@ -148,6 +159,9 @@ export function createRuntime(options: RuntimeOptions): Runtime {
     visible: () => surfaces.ids().filter((id) => surfaces.visible(id)),
     focused: () => shortcuts.focused,
   });
+  const buffers = installBuffers(ctx, { focus: focusSurface });
+  onSurfaceFocus = (id) => buffers.focused(id);
+  const files = installFiles(ctx, buffers, (input) => notify.notify(input));
   keys.onQuit(() => notify.notifications.dismiss());
   keys.onQuit(() => {
     if (commands.has("desk.palette.cancel"))
@@ -171,7 +185,7 @@ export function createRuntime(options: RuntimeOptions): Runtime {
 
   const ready = bridge.call("perm.query", {}).then(
     async () => {
-      await hub.readInit(bridge);
+      await Promise.all([hub.readInit(bridge), files.load()]);
       showStatus(`desk ready · bridge: ${bridge.adapterName}`);
     },
     () => showStatus(`desk cannot reach the core · bridge: ${bridge.adapterName}`),
@@ -186,12 +200,16 @@ export function createRuntime(options: RuntimeOptions): Runtime {
       commit(place(layout, spec.id, { colSpan: decision.columns, rowSpan: decision.rows }));
     }
     display.sizeEdge(section, decision);
+    if ((decision.area === "center" || decision.area === "floating") && !spec.hidden) {
+      buffers.surfaceOpened(spec.id, spec.title);
+    }
     if (decision.focus && !spec.hidden) focusSurface(spec.id);
   };
-  const closeSurface = (id: string) => {
+  function closeSurface(id: string) {
     surfaces.close(id);
+    buffers.surfaceClosed(id);
     if (shortcuts.focused === id) shortcuts.focus(null);
-  };
+  }
 
   let plugins: RuntimePlugins | undefined;
   if (options.plugins) {
@@ -241,7 +259,7 @@ export function createRuntime(options: RuntimeOptions): Runtime {
     layout: () => structuredClone(layout),
     status: () => notify.text(),
     dispose() {
-      for (const policy of [display, notify, keys, theme]) policy.dispose();
+      for (const policy of [files, buffers, display, notify, keys, theme]) policy.dispose();
       pluginHost?.stop();
       win.removeEventListener("keydown", onKey);
       for (const id of surfaces.ids()) surfaces.close(id);

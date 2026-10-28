@@ -1,4 +1,4 @@
-//! desk-sys fs primitives (feature `fs`): read bytes and list a folder.
+//! desk-sys fs primitives (feature `fs`): read and write bytes, list a folder.
 
 use std::fs;
 use std::io::ErrorKind;
@@ -57,4 +57,23 @@ fn list_returns_entries_sorted_with_kind_and_size() {
             ("sub".to_owned(), EntryKind::Dir, None),
         ]
     );
+}
+
+#[test]
+fn write_replaces_a_file_and_creates_folders_when_asked() {
+    let dir = temp_dir();
+    assert_eq!(
+        desk_sys::fs::write(&dir.join("b.txt"), b"bye", false).unwrap(),
+        3
+    );
+    assert_eq!(read(&dir.join("b.txt")).unwrap(), b"bye");
+    let nested = dir.join("new/deeper/c.txt");
+    assert_eq!(
+        desk_sys::fs::write(&nested, b"c", false)
+            .unwrap_err()
+            .kind(),
+        ErrorKind::NotFound
+    );
+    desk_sys::fs::write(&nested, b"c", true).unwrap();
+    assert_eq!(read(&nested).unwrap(), b"c");
 }

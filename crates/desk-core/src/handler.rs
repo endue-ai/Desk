@@ -17,6 +17,7 @@ use desk_sys::fs as sysfs;
 use serde::Serialize;
 
 use crate::conversation::Conversation;
+use crate::core_fs::Watches;
 use crate::events::EventBus;
 use crate::init::InitFile;
 use crate::paths::normalize;
@@ -60,6 +61,7 @@ pub struct Core {
     pub(crate) init: Mutex<InitFile>,
     pub(crate) sync: Option<Syncer>,
     pub(crate) notifications: AtomicU64,
+    pub(crate) watches: Mutex<Watches>,
 }
 
 impl Core {
@@ -75,6 +77,7 @@ impl Core {
             init: Mutex::new(InitFile::memory()),
             sync: None,
             notifications: AtomicU64::new(0),
+            watches: Mutex::new(Watches::default()),
         }
     }
 
@@ -156,6 +159,7 @@ impl Core {
             R::PermRevoke(r) => {
                 let answer = if self.permissions().revoke(caller, &r.params.grant_id) {
                     self.changed(&r.params.grant_id, GrantChange::Revoked);
+                    self.prune_watches(caller);
                     json(PermRevokeResult {})
                 } else {
                     Err(error(
@@ -172,8 +176,8 @@ impl Core {
             R::BrainSay(r) => (r.id, self.brain_say(caller, r.params)),
             R::InitGet(r) => (r.id, self.init_get(caller)),
             R::UiNotify(r) => (r.id, self.notify(caller, r.params)),
-            R::FsWrite(r) => (r.id, unsupported("fs.write")),
-            R::FsWatch(r) => (r.id, unsupported("fs.watch")),
+            R::FsWrite(r) => (r.id, self.fs_write(caller, r.params)),
+            R::FsWatch(r) => (r.id, self.fs_watch(caller, r.params)),
             R::ProcSpawn(r) => (r.id, unsupported("proc.spawn")),
             R::ProcWrite(r) => (r.id, unsupported("proc.write")),
             R::ProcResize(r) => (r.id, unsupported("proc.resize")),
@@ -187,7 +191,7 @@ impl Core {
     }
 
     /// Check the scope against the caller's grants, then map the bridge path onto the file system.
-    fn authorize(
+    pub(crate) fn authorize(
         &self,
         caller: &str,
         scope: &Permission,
@@ -302,7 +306,7 @@ fn unsupported(method: &str) -> Answer {
     ))
 }
 
-fn io_error(err: io::Error) -> BridgeError {
+pub(crate) fn io_error(err: io::Error) -> BridgeError {
     let code = match err.kind() {
         io::ErrorKind::NotFound => ErrorCode::NotFound,
         io::ErrorKind::IsADirectory
