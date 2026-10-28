@@ -2,8 +2,10 @@ name: ci
 
 # Linux runs everything; macOS and Windows run check and unit tests; the Tauri app is built on all
 # three only when the shell or the primitives change. The final `ci` job is the required check.
+# The merge queue runs it again on each PR combined with main and the PRs ahead of it (ADR 0015).
 on:
   pull_request:
+  merge_group:
   push:
     branches: [main]
 
@@ -22,20 +24,24 @@ jobs:
     name: changes
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    permissions:
-      contents: read
-      pull-requests: read
     outputs:
       app: ${{ steps.filter.outputs.app }}
     steps:
       - uses: actions/checkout@v7
-      - id: filter
-        uses: dorny/paths-filter@v4
         with:
-          filters: |
-            app:
-              - "apps/desk/src-tauri/**"
-              - "crates/desk-sys/**"
+          fetch-depth: 0
+      - id: filter
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before }}
+        run: |
+          # Diff against the PR base, the queue base or the previous main; an unknown base builds the app.
+          if git cat-file -e "${BASE}^{commit}" 2>/dev/null; then
+            files="$(git diff --name-only "$BASE" HEAD)"
+          else
+            files="apps/desk/src-tauri/"
+          fi
+          if grep -qE '^(apps/desk/src-tauri/|crates/desk-sys/)' <<<"$files"; then app=true; else app=false; fi
+          echo "app=$app" | tee -a "$GITHUB_OUTPUT"
 
   check-linux:
     name: check (linux)
