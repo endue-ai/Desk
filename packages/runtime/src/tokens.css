@@ -1,0 +1,174 @@
+/*
+ * endue design tokens for the desk shell. The only file with literal colours: every other stylesheet
+ * and every canvas reads these variables. Dark is the default; <html data-theme="light"> switches.
+ */
+
+:root,
+[data-theme="dark"] {
+  color-scheme: dark;
+  --background: #141416;
+  --card: #1e1d21;
+  --muted: #242127;
+  --popover: #2b2731;
+  --accent: #37313f;
+  --border: #333136;
+  --input: #837991;
+  --ring: #b6a3f5;
+  --foreground: #f2f0f5;
+  --muted-foreground: #b0adb7;
+  --primary: #b6a3f5;
+  --primary-hover: #c8b9ff;
+  --primary-foreground: #1e1833;
+  --primary-text: #b6a3f5;
+  --primary-subtle: rgba(182, 163, 245, 0.08);
+  --primary-soft: rgba(182, 163, 245, 0.12);
+  --primary-border: rgba(182, 163, 245, 0.34);
+  --secondary: #30283e;
+  --secondary-foreground: #e4d7ff;
+  --success: #4caf50;
+  --success-text: #5dbe5f;
+  --success-soft: rgba(76, 175, 80, 0.12);
+  --warning: #ff9800;
+  --warning-text: #ff9800;
+  --warning-soft: rgba(255, 152, 0, 0.12);
+  --info: #5b9bf5;
+  --info-text: #6cadff;
+  --info-soft: rgba(91, 155, 245, 0.12);
+  --destructive: oklch(0.704 0.191 22.216);
+  --destructive-text: #ff8484;
+  --status-active: #5fd0be;
+  --status-autonomous: #e0a458;
+  --status-attention: #e0738a;
+  --status-attention-text: #fa8aa1;
+  --status-attention-soft: rgba(224, 115, 138, 0.14);
+  --on-air: #ff3b5c;
+  --tooltip: #403a49;
+  --tooltip-foreground: #f2f0f5;
+  --overlay-scrim: rgba(0, 0, 0, 0.6);
+  --chart-1: #9683d3;
+  --chart-2: #00ae75;
+  --chart-3: #ca8000;
+  --chart-4: oklch(0.65 0.24 305);
+  --chart-5: #f74a5d;
+  --chart-6: #009fac;
+  /* Status dots need no outline on dark; light outlines them (status colours are under 3:1 on white). */
+  --dot-outline: transparent;
+  --desk-glow: rgba(182, 163, 245, 0.07);
+  --desk-glow-end: rgba(182, 163, 245, 0);
+}
+
+[data-theme="light"] {
+  color-scheme: light;
+  --background: #faf9fc;
+  --card: #ffffff;
+  --muted: #f2eff6;
+  --popover: #ffffff;
+  --accent: #eae4f2;
+  --border: #ddd6e5;
+  --input: #897f95;
+  --ring: #6b4f9e;
+  --foreground: #1e1833;
+  --muted-foreground: #675f70;
+  --primary-text: #6b4f9e;
+  --primary-subtle: rgba(182, 163, 245, 0.06);
+  --primary-border: rgba(182, 163, 245, 0.3);
+  --secondary: #eae4f2;
+  --secondary-foreground: #1e1833;
+  --success: oklch(0.595 0.17 163);
+  --success-text: #006c44;
+  --warning: oklch(0.75 0.17 70);
+  --warning-text: #925000;
+  --info: oklch(0.65 0.15 245);
+  --info-text: #005fa3;
+  --destructive: oklch(0.577 0.245 27.325);
+  --destructive-text: #b80012;
+  --tooltip: #1e1833;
+  --overlay-scrim: rgba(20, 16, 30, 0.4);
+  /* Light values the spec does not give: the dark ones fail 4.5:1 and 3:1 on white (see ASSUMPTIONS.md). */
+  --status-attention-text: #b23a55;
+  --dot-outline: #897f95;
+}
+
+/* Eris, in both themes. */
+:root {
+  --persona-eris: #e8c98a;
+  --persona-eris-soft: #f5ead2;
+  --persona-eris-ink: #2b2417;
+  --persona-eris-frost: #e9edf4;
+  --persona-eris-shade: #a7b1c3;
+  --persona-eris-moon: #4a4458;
+  /* Values the mesh recipe names (gold face, dimmed gold, Dysnomia, highlights). */
+  --persona-eris-gold-light: #f5e2b4;
+  --persona-eris-gold-deep: #d4a85f;
+  --persona-eris-gold-dim-light: #d9c79f;
+  --persona-eris-gold-dim-deep: #a88a58;
+  --persona-eris-moon-dark: #2c2836;
+  --persona-eris-moon-lit: #8f87a8;
+  --persona-eris-white: #ffffff;
+  --persona-eris-glow: rgba(233, 237, 244, 0.35);
+}
+
+/* Type, space, radius, shadow, motion, layers. */
+:root {
+  --font-primary:
+    "Inter", "SUIT Variable", "SUIT", -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+  --text-2xs: 11px;
+  --text-xs: 12px;
+  --text-sm: 14px;
+  --text-base: 16px;
+  --text-lg: 18px;
+  --text-xl: 20px;
+  --text-2xl: 24px;
+  --text-3xl: 32px;
+  --text-4xl: 40px;
+  --leading-heading: 1.2;
+  --tracking-heading: -0.02em;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  --control-xs: 28px;
+  --control-sm: 32px;
+  --control-md: 40px;
+  --control-lg: 48px;
+
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-full: 9999px;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.45);
+  --shadow-lg: 0 20px 48px rgba(0, 0, 0, 0.55);
+
+  --motion-fast: 150ms;
+  --motion-base: 220ms;
+  --motion-slow: 400ms;
+  --motion-theme: 350ms;
+  --ease-out-expo: cubic-bezier(0.22, 1, 0.36, 1);
+
+  --z-float: 20;
+  --z-float-top: 30;
+  --z-modal-scrim: 1059;
+  --z-modal: 1060;
+  --z-popover: 1070;
+  --z-tooltip: 1080;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-fast: 0ms;
+    --motion-base: 0ms;
+    --motion-slow: 0ms;
+    --motion-theme: 0ms;
+  }
+}

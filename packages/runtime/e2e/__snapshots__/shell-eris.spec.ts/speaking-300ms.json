@@ -1,0 +1,346 @@
+{
+ "tag": "div",
+ "class": "eris",
+ "role": "img",
+ "aria-label": "Eris: Good morning to you.",
+ "data-state": "idle",
+ "box": [
+  656,
+  40,
+  128,
+  138
+ ],
+ "children": [
+  {
+   "tag": "span",
+   "class": "eris-ring",
+   "style": {
+    "color": "rgb(242, 240, 245)",
+    "border": "dashed rgb(131, 121, 145)",
+    "opacity": "0",
+    "transform": "matrix(1, 0, 0, 1, -74, -74)"
+   }
+  },
+  {
+   "tag": "div",
+   "class": "eris-body",
+   "style": {
+    "transform": "matrix(1, 0, 0, 1, 0, 1.85)"
+   },
+   "children": [
+    {
+     "tag": "span",
+     "class": "eris-halo",
+     "hidden": "",
+     "style": {
+      "display": "none",
+      "color": "rgb(242, 240, 245)"
+     }
+    },
+    {
+     "tag": "canvas",
+     "class": "eris-mesh",
+     "data-mesh": "faces=527 back=249 dots=182 h=d92e847d",
+     "data-rings": "3.61 4.90 6.00 3.22 1.20 1.63 2.21 3.00 4.07",
+     "data-voice": "speaking",
+     "style": {
+      "color": "rgb(242, 240, 245)"
+     }
+    },
+    {
+     "tag": "span",
+     "class": "eris-core",
+     "style": {
+      "color": "rgb(242, 240, 245)",
+      "opacity": "0.984",
+      "transform": "matrix(1.054, 0, 0, 1.054, -24, -24)"
+     }
+    },
+    {
+     "tag": "span",
+     "class": "eris-tail eris-tail-1",
+     "hidden": "",
+     "style": {
+      "display": "none",
+      "background": "rgb(167, 177, 195)",
+      "color": "rgb(242, 240, 245)",
+      "opacity": "0.5"
+     }
+    },
+    {
+     "tag": "span",
+     "class": "eris-tail eris-tail-2",
+     "hidden": "",
+     "style": {
+      "display": "none",
+      "background": "rgb(167, 177, 195)",
+      "color": "rgb(242, 240, 245)",
+      "opacity": "0.3"
+     }
+    },
+    {
+     "tag": "span",
+     "class": "eris-moon-box",
+     "style": {
+      "transform": "matrix(1, 0, 0, 1, -9, -10.63)"
+     },
+     "children": [
+      {
+       "tag": "canvas",
+       "class": "eris-moon",
+       "style": {
+        "color": "rgb(242, 240, 245)"
+       }
+      },
+      {
+       "tag": "span",
+       "class": "eris-spark",
+       "hidden": "",
+       "style": {
+        "display": "none",
+        "background": "rgb(232, 201, 138)",
+        "color": "rgb(242, 240, 245)"
+       }
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "tag": "div",
+   "class": "soul",
+   "box": [
+    480,
+    190,
+    480,
+    32
+   ],
+   "style": {
+    "transform": "matrix(1, 0, 0, 1, -240, 0)"
+   },
+   "children": [
+    {
+     "tag": "p",
+     "class": "soul-line soul-wisp",
+     "style": {
+      "color": "rgb(242, 240, 245)",
+      "letterSpacing": "-0.2px"
+     },
+     "children": [
+      {
+       "tag": "span",
+       "class": "soul-word",
+       "children": [
+        {
+         "tag": "span",
+         "class": "soul-glyph",
+         "style": {
+          "color": "rgb(242, 240, 245)",
+          "opacity": "0.32",
+          "transform": "matrix(1.082, 0, 0, 1.082, 0, 5.44)",
+          "filter": "blur(9.51px)"
+         },
+         "text": "G"
+        },
+        {
+         "tag": "span",
+         "class": "soul-glyph",
+         "style": {
+          "color": "rgb(242, 240, 245)",
+          "opacity": "0.18",
+          "transform": "matrix(1.098, 0, 0, 1.098, 0, 6.56)",
+          "filter": "blur(11.48px)"
+         },
+         "text": "o"
+        },
+        {
+         "tag": "span",
+         "class": "soul-glyph",
+         "style": {
+          "color": "rgb(242, 240, 245)",
+          "opacity": "0.04",
+          "transform": "matrix(1.115, 0, 0, 1.115, 0, 7.69)",
+          "filter": "blur(13.45px)"
+         },
+         "text": "o"
+        },
+        {
+         "tag": "span",
+         "class": "soul-glyph",
+         "style": {
+          "color": "rgb(242, 240, 245)",
+          "opacity": "0",
+          "transform": "matrix(1.12, 0, 0, 1.12, 0, 8)",
+          "filter": "blur(14px)"
+         },
+         "text": "d"
+        }
+       ]
+      },
+      {
+       "tag": "span",
+       "class": "soul-word",
+       "children": [
+        {
+         "tag": "span",
+         "class": "soul-glyph",
+         "style": {
+          "color": "rgb(242, 240, 245)",
+          "opacity": "0",
+          "transform": "matrix(1.12, 0, 0, 1.12, 0, 8)",
+          "filter": "blur(14px)"
+         },
+         "text": "m"
+        },
+        {
+         "tag": "span",
+         "class": "soul-glyph",
+         "style": {
+          "color": "rgb(242, 240, 245)",
+          "opacity": "0",
+          "transform": "matrix(1.12, 0, 0, 1.12, 0, 8)",
+          "filter": "blur(14px)"
+         },
+         "text": "o"
+        },
+        {
+         "tag": "span",
+         "class": "soul-glyph",
+         "style": {
+          "color": "rgb(242, 240, 245)",
+          "opacity": "0",
+          "transform": "matrix(1.12, 0, 0, 1.12, 0, 8)",
+          "filter": "blur(14px)"
+         },
+         "text": "r"
+        },
+        {
+         "tag": "span",
+         "class": "soul-glyph",
+         "style": {
+          "color": "rgb(242, 240, 245)",
+          "opacity": "0",
+          "transform": "matrix(1.12, 0, 0, 1.12, 0, 8)",
+          "filter": "blur(14px)"
+         },
+         "text": "n"
+        },
+        {
+         "tag": "span",
+         "class": "soul-glyph",
+         "style": {
+          "color": "rgb(242, 240, 245)",
+          "opacity": "0",
+          "transform": "matrix(1.12, 0, 0, 1.12, 0, 8)",
+          "filter": "blur(14px)"
+         },
+         "text": "i"
+        },
+        {
+         "tag": "span",
+         "class": "soul-glyph",
+         "style": {
+          "color": "rgb(242, 240, 245)",
+          "opacity": "0",
+          "transform": "matrix(1.12, 0, 0, 1.12, 0, 8)",
+          "filter": "blur(14px)"
+         },
+         "text": "n"
+        },
+        {
+         "tag": "span",
+         "class": "soul-glyph",
+         "style": {
+          "color": "rgb(242, 240, 245)",
+          "opacity": "0",
+          "transform": "matrix(1.12, 0, 0, 1.12, 0, 8)",
+          "filter": "blur(14px)"
+         },
+         "text": "g"
+        }
+       ]
+      },
+      {
+       "tag": "span",
+       "class": "soul-word",
+       "children": [
+        {
+         "tag": "span",
+         "class": "soul-glyph",
+         "style": {
+          "color": "rgb(242, 240, 245)",
+          "opacity": "0",
+          "transform": "matrix(1.12, 0, 0, 1.12, 0, 8)",
+          "filter": "blur(14px)"
+         },
+         "text": "t"
+        },
+        {
+         "tag": "span",
+         "class": "soul-glyph",
+         "style": {
+          "color": "rgb(242, 240, 245)",
+          "opacity": "0",
+          "transform": "matrix(1.12, 0, 0, 1.12, 0, 8)",
+          "filter": "blur(14px)"
+         },
+         "text": "o"
+        }
+       ]
+      },
+      {
+       "tag": "span",
+       "class": "soul-word",
+       "children": [
+        {
+         "tag": "span",
+         "class": "soul-glyph",
+         "style": {
+          "color": "rgb(242, 240, 245)",
+          "opacity": "0",
+          "transform": "matrix(1.12, 0, 0, 1.12, 0, 8)",
+          "filter": "blur(14px)"
+         },
+         "text": "y"
+        },
+        {
+         "tag": "span",
+         "class": "soul-glyph",
+         "style": {
+          "color": "rgb(242, 240, 245)",
+          "opacity": "0",
+          "transform": "matrix(1.12, 0, 0, 1.12, 0, 8)",
+          "filter": "blur(14px)"
+         },
+         "text": "o"
+        },
+        {
+         "tag": "span",
+         "class": "soul-glyph",
+         "style": {
+          "color": "rgb(242, 240, 245)",
+          "opacity": "0",
+          "transform": "matrix(1.12, 0, 0, 1.12, 0, 8)",
+          "filter": "blur(14px)"
+         },
+         "text": "u"
+        },
+        {
+         "tag": "span",
+         "class": "soul-glyph",
+         "style": {
+          "color": "rgb(242, 240, 245)",
+          "opacity": "0",
+          "transform": "matrix(1.12, 0, 0, 1.12, 0, 8)",
+          "filter": "blur(14px)"
+         },
+         "text": "."
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

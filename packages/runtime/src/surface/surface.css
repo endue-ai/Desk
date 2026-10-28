@@ -1,0 +1,109 @@
+/* Surfaces and the sample contents. */
+
+.surfaces { position: absolute; inset: 0; pointer-events: none; }
+
+.surface {
+  position: absolute;
+  display: grid;
+  grid-template-rows: 40px minmax(0, 1fr);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--card);
+  pointer-events: auto;
+  outline: none;
+}
+.surface.is-eris { border-color: var(--primary-border); }
+.surface.is-focused { border-color: var(--input); }
+.surface.is-eris.is-focused { border-color: var(--primary-text); }
+.surface.is-dragging { user-select: none; }
+
+.surface-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: 40px;
+  padding: 0 var(--space-2) 0 var(--space-3);
+  border-bottom: 1px solid var(--border);
+  color: var(--foreground);
+  cursor: grab;
+  touch-action: none;
+  white-space: nowrap;
+}
+.surface.is-pinned .surface-title { cursor: default; }
+.surface-name { font-size: var(--text-sm); font-weight: 500; }
+.surface-sub { overflow: hidden; color: var(--muted-foreground); font-size: var(--text-xs); text-overflow: ellipsis; }
+.eris-badge {
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-full);
+  background: var(--primary-soft);
+  color: var(--primary-text);
+  font-size: var(--text-2xs);
+  font-weight: 600;
+  line-height: 18px;
+}
+.surface-tools { display: flex; gap: 2px; margin-left: auto; }
+.tool { width: 24px; height: 24px; border-radius: var(--radius-sm); color: var(--muted-foreground); }
+.tool:hover { color: var(--foreground); }
+.tool[aria-pressed="true"] { color: var(--primary-text); }
+
+.surface-body { min-height: 0; overflow: auto; }
+.surface-resize {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 16px;
+  height: 16px;
+  cursor: nwse-resize;
+  touch-action: none;
+  background: linear-gradient(135deg, transparent 50%, var(--input) 50%, var(--input) 58%, transparent 58%, transparent 72%, var(--input) 72%, var(--input) 80%, transparent 80%);
+}
+
+.cal { display: grid; grid-template-rows: 28px minmax(0, 1fr); height: 100%; font-size: var(--text-xs); }
+.cal-head,
+.cal-grid { display: grid; grid-template-columns: 32px repeat(5, minmax(0, 1fr)); }
+.cal-head { align-items: center; border-bottom: 1px solid var(--border); color: var(--muted-foreground); }
+.cal-day { padding-left: var(--space-2); font-weight: 600; }
+.cal-grid { min-height: 0; }
+.cal-hours { display: grid; grid-template-rows: repeat(8, 1fr); color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
+.cal-hour { padding: 2px var(--space-1) 0; text-align: right; }
+.cal-col {
+  position: relative;
+  border-left: 1px solid var(--border);
+  background: repeating-linear-gradient(to bottom, transparent 0, transparent calc(12.5% - 1px), var(--border) calc(12.5% - 1px), var(--border) 12.5%);
+}
+.cal-event {
+  position: absolute;
+  left: 3px;
+  right: 3px;
+  display: grid;
+  align-content: start;
+  padding: 2px var(--space-1);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--muted);
+}
+.cal-event.is-overlap { border-color: var(--status-attention); background: var(--status-attention-soft); }
+.cal-event.is-lane-0 { right: calc(50% + 1px); }
+.cal-event.is-lane-1 { left: calc(50% + 1px); }
+.cal-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cal-flag { color: var(--status-attention-text); font-size: var(--text-2xs); font-weight: 600; }
+
+.list-body { margin: 0; padding: var(--space-2) var(--space-3); list-style: none; }
+.list-row { display: flex; gap: var(--space-3); margin: 0; padding: var(--space-2) 0; border-bottom: 1px solid var(--border); }
+.list-index { color: var(--primary-text); font-variant-numeric: tabular-nums; }
+
+.notes-body {
+  width: 100%;
+  height: 100%;
+  padding: var(--space-3);
+  border: 0;
+  resize: none;
+  background: transparent;
+  color: var(--foreground);
+  font: inherit;
+  font-size: var(--text-base);
+  line-height: 1.5;
+}
+.notes-body:focus-visible { outline-offset: -2px; }

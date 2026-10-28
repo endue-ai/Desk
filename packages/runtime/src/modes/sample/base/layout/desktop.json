@@ -1,0 +1,10 @@
+{
+  "surfaces": [],
+  "eris": null,
+  "rail": {
+    "visible": true
+  },
+  "drawer": {
+    "visible": true
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "scope": {
+    "folders": ["~/Documents"],
+    "calendar": true,
+    "mail": false,
+    "mic": "wake-word"
+  },
+  "manner": {
+    "interrupt": "all",
+    "voice": true,
+    "greeting": "Studio is open."
+  }
+}

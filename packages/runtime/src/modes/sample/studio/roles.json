@@ -1,0 +1,8 @@
+{
+  "roles": [
+    {
+      "role": "scheduler",
+      "agent": null
+    }
+  ]
+}

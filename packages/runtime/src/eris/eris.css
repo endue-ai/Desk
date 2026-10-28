@@ -1,0 +1,111 @@
+/* Eris: body, core, halo, Dysnomia, drag ring and soul text. */
+
+.eris {
+  position: absolute;
+  z-index: var(--z-float);
+  width: 128px;
+  height: 138px;
+  touch-action: none;
+  cursor: grab;
+  border-radius: var(--radius-lg);
+}
+
+.eris-ring {
+  position: absolute;
+  left: 50%;
+  top: 67px;
+  width: 148px;
+  height: 148px;
+  border: 1px dashed var(--input);
+  border-radius: var(--radius-full);
+  opacity: 0;
+  transform: translate(-50%, -50%);
+  transition: opacity var(--motion-fast) ease;
+  pointer-events: none;
+}
+.eris:hover .eris-ring,
+.eris:focus-visible .eris-ring { opacity: 1; }
+
+.eris-body { position: absolute; inset: 0; }
+.eris-mesh { position: absolute; inset: 0; width: 128px; height: 138px; }
+
+.eris-core {
+  position: absolute;
+  left: 50%;
+  top: 67px;
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-full);
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--persona-eris-white) 78%, transparent) 0%,
+    color-mix(in srgb, var(--persona-eris-frost) 30%, transparent) 35%,
+    transparent 70%
+  );
+  pointer-events: none;
+}
+
+.eris-halo {
+  position: absolute;
+  left: 50%;
+  top: 67px;
+  width: 123px;
+  height: 123px;
+  border-radius: var(--radius-full);
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--persona-eris) 28%, transparent) 0%,
+    transparent 70%
+  );
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.eris-moon-box { position: absolute; width: 18px; height: 18px; }
+.eris-moon { width: 18px; height: 18px; }
+.eris-spark {
+  position: absolute;
+  right: -6px;
+  top: 2px;
+  width: 2.6px;
+  height: 2.6px;
+  border-radius: var(--radius-full);
+  background: var(--persona-eris);
+}
+.eris-tail {
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  border-radius: var(--radius-full);
+  background: var(--persona-eris-shade);
+}
+.eris-tail-1 { left: 32%; top: 28%; opacity: 0.5; }
+.eris-tail-2 { left: 42%; top: 36%; opacity: 0.3; }
+
+.soul {
+  position: absolute;
+  left: 50%;
+  top: 150px;
+  width: 480px;
+  height: 32px;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+.soul-line {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  color: var(--foreground);
+  font-size: var(--text-xl);
+  font-weight: 400;
+  line-height: 32px;
+  letter-spacing: -0.01em;
+  text-align: center;
+  white-space: nowrap;
+  text-shadow: 0 0 16px var(--persona-eris-glow);
+}
+.soul-solemn { text-transform: uppercase; letter-spacing: 0.01em; }
+.soul-word { display: inline-block; white-space: nowrap; }
+.soul-glyph { display: inline-block; white-space: pre; }
+.soul-glyph.is-eris { color: var(--persona-eris); }
+.soul-glyph.is-user { text-shadow: none; }

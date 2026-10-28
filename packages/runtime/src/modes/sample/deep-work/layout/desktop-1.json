@@ -1,0 +1,17 @@
+{
+  "surfaces": [
+    {
+      "id": "notes",
+      "plugin": "endue.notes",
+      "x": 140,
+      "y": 220,
+      "w": 420,
+      "h": 420,
+      "pinned": false
+    }
+  ],
+  "eris": {
+    "x": 1180,
+    "y": 96
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "id": "studio",
+  "name": "Studio",
+  "icon": "palette",
+  "author": "me",
+  "version": "1.0.0",
+  "extends": "base",
+  "copiedFrom": {
+    "author": "jin",
+    "id": "studio",
+    "version": "2.1.0"
+  }
+}

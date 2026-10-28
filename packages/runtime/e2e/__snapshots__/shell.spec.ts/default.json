@@ -1,0 +1,1340 @@
+{
+ "tag": "div",
+ "class": "shell",
+ "style": {
+  "background": "rgb(20, 20, 22)"
+ },
+ "children": [
+  {
+   "tag": "div",
+   "class": "shell-glow",
+   "style": {
+    "color": "rgb(242, 240, 245)"
+   }
+  },
+  {
+   "tag": "nav",
+   "class": "modes",
+   "aria-label": "모드",
+   "children": [
+    {
+     "tag": "div",
+     "class": "modes-row",
+     "children": [
+      {
+       "tag": "div",
+       "class": "modes-current",
+       "children": [
+        {
+         "tag": "button",
+         "class": "mode-chip is-current",
+         "aria-label": "Morning",
+         "aria-pressed": "true",
+         "aria-expanded": "false",
+         "data-mode": "morning",
+         "style": {
+          "background": "rgba(182, 163, 245, 0.12)",
+          "border": "solid rgb(182, 163, 245)"
+         },
+         "children": [
+          {
+           "tag": "svg",
+           "icon": "sunrise"
+          },
+          {
+           "tag": "span",
+           "class": "mode-name",
+           "style": {
+            "color": "rgb(242, 240, 245)"
+           },
+           "text": "Morning"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "tag": "div",
+       "class": "modes-more",
+       "style": {
+        "opacity": "0",
+        "maxWidth": "0px"
+       },
+       "children": [
+        {
+         "tag": "button",
+         "class": "mode-chip",
+         "aria-label": "Deep work",
+         "aria-pressed": "false",
+         "data-mode": "deep-work",
+         "style": {
+          "background": "rgb(30, 29, 33)",
+          "border": "solid rgb(51, 49, 54)"
+         },
+         "children": [
+          {
+           "tag": "svg",
+           "icon": "target"
+          },
+          {
+           "tag": "span",
+           "class": "mode-name",
+           "style": {
+            "color": "rgb(242, 240, 245)"
+           },
+           "text": "Deep work"
+          }
+         ]
+        },
+        {
+         "tag": "button",
+         "class": "mode-chip",
+         "aria-label": "Review",
+         "aria-pressed": "false",
+         "data-mode": "review",
+         "style": {
+          "background": "rgb(30, 29, 33)",
+          "border": "solid rgb(51, 49, 54)"
+         },
+         "children": [
+          {
+           "tag": "svg",
+           "icon": "review"
+          },
+          {
+           "tag": "span",
+           "class": "mode-name",
+           "style": {
+            "color": "rgb(242, 240, 245)"
+           },
+           "text": "Review"
+          }
+         ]
+        },
+        {
+         "tag": "button",
+         "class": "mode-chip",
+         "aria-label": "Studio · jin 님의 모드",
+         "aria-pressed": "false",
+         "data-mode": "studio",
+         "style": {
+          "background": "rgb(30, 29, 33)",
+          "border": "solid rgb(51, 49, 54)"
+         },
+         "children": [
+          {
+           "tag": "svg",
+           "icon": "palette"
+          },
+          {
+           "tag": "span",
+           "class": "mode-name",
+           "style": {
+            "color": "rgb(242, 240, 245)"
+           },
+           "text": "Studio"
+          },
+          {
+           "tag": "span",
+           "class": "mode-copied",
+           "style": {
+            "color": "rgb(176, 173, 183)"
+           },
+           "text": "jin",
+           "children": [
+            {
+             "tag": "svg",
+             "icon": "copy"
+            }
+           ]
+          }
+         ]
+        },
+        {
+         "tag": "button",
+         "class": "mode-chip",
+         "aria-label": "Night",
+         "aria-pressed": "false",
+         "data-mode": "night",
+         "style": {
+          "background": "rgb(30, 29, 33)",
+          "border": "solid rgb(51, 49, 54)"
+         },
+         "children": [
+          {
+           "tag": "svg",
+           "icon": "moon"
+          },
+          {
+           "tag": "span",
+           "class": "mode-name",
+           "style": {
+            "color": "rgb(242, 240, 245)"
+           },
+           "text": "Night"
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "tag": "button",
+     "class": "add-button mode-add",
+     "aria-label": "새 모드",
+     "box": [
+      24,
+      64,
+      32,
+      32
+     ],
+     "style": {
+      "border": "dashed rgb(131, 121, 145)"
+     },
+     "children": [
+      {
+       "tag": "svg",
+       "icon": "plus"
+      }
+     ]
+    },
+    {
+     "tag": "div",
+     "class": "modes-menu-slot",
+     "style": {
+      "color": "rgb(242, 240, 245)"
+     }
+    }
+   ]
+  },
+  {
+   "tag": "div",
+   "class": "dialog-slot",
+   "style": {
+    "color": "rgb(242, 240, 245)"
+   }
+  },
+  {
+   "tag": "nav",
+   "class": "desktops",
+   "aria-label": "데스크톱",
+   "children": [
+    {
+     "tag": "button",
+     "class": "desktop-button is-active",
+     "aria-label": "데스크톱 1 · 비어 있음 (⌃1)",
+     "aria-pressed": "true",
+     "data-desktop": "1",
+     "box": [
+      1176,
+      24,
+      44,
+      32
+     ],
+     "style": {
+      "background": "rgba(182, 163, 245, 0.12)",
+      "border": "solid rgb(182, 163, 245)"
+     },
+     "children": [
+      {
+       "tag": "span",
+       "class": "desktop-number",
+       "style": {
+        "color": "rgb(242, 240, 245)"
+       },
+       "text": "1"
+      },
+      {
+       "tag": "span",
+       "class": "mini-grid",
+       "children": [
+        {
+         "tag": "span",
+         "class": "mini-dot",
+         "style": {
+          "color": "rgb(242, 240, 245)",
+          "border": "solid rgb(242, 240, 245)"
+         }
+        },
+        {
+         "tag": "span",
+         "class": "mini-dot",
+         "style": {
+          "color": "rgb(242, 240, 245)",
+          "border": "solid rgb(242, 240, 245)"
+         }
+        },
+        {
+         "tag": "span",
+         "class": "mini-dot",
+         "style": {
+          "color": "rgb(242, 240, 245)",
+          "border": "solid rgb(242, 240, 245)"
+         }
+        },
+        {
+         "tag": "span",
+         "class": "mini-dot",
+         "style": {
+          "color": "rgb(242, 240, 245)",
+          "border": "solid rgb(242, 240, 245)"
+         }
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "tag": "button",
+     "class": "desktop-button",
+     "aria-label": "데스크톱 2 (⌃2)",
+     "aria-pressed": "false",
+     "data-desktop": "2",
+     "box": [
+      1228,
+      24,
+      44,
+      32
+     ],
+     "style": {
+      "border": "solid rgb(51, 49, 54)"
+     },
+     "children": [
+      {
+       "tag": "span",
+       "class": "desktop-number",
+       "style": {
+        "color": "rgb(176, 173, 183)"
+       },
+       "text": "2"
+      },
+      {
+       "tag": "span",
+       "class": "mini-grid",
+       "children": [
+        {
+         "tag": "span",
+         "class": "mini-dot is-on",
+         "style": {
+          "background": "rgb(176, 173, 183)",
+          "color": "rgb(176, 173, 183)",
+          "border": "solid rgb(176, 173, 183)"
+         }
+        },
+        {
+         "tag": "span",
+         "class": "mini-dot is-on",
+         "style": {
+          "background": "rgb(176, 173, 183)",
+          "color": "rgb(176, 173, 183)",
+          "border": "solid rgb(176, 173, 183)"
+         }
+        },
+        {
+         "tag": "span",
+         "class": "mini-dot",
+         "style": {
+          "color": "rgb(176, 173, 183)",
+          "border": "solid rgb(176, 173, 183)"
+         }
+        },
+        {
+         "tag": "span",
+         "class": "mini-dot",
+         "style": {
+          "color": "rgb(176, 173, 183)",
+          "border": "solid rgb(176, 173, 183)"
+         }
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "tag": "button",
+     "class": "desktop-button",
+     "aria-label": "데스크톱 3 (⌃3)",
+     "aria-pressed": "false",
+     "data-desktop": "3",
+     "box": [
+      1280,
+      24,
+      44,
+      32
+     ],
+     "style": {
+      "border": "solid rgb(51, 49, 54)"
+     },
+     "children": [
+      {
+       "tag": "span",
+       "class": "desktop-number",
+       "style": {
+        "color": "rgb(176, 173, 183)"
+       },
+       "text": "3"
+      },
+      {
+       "tag": "span",
+       "class": "mini-grid",
+       "children": [
+        {
+         "tag": "span",
+         "class": "mini-dot is-on",
+         "style": {
+          "background": "rgb(176, 173, 183)",
+          "color": "rgb(176, 173, 183)",
+          "border": "solid rgb(176, 173, 183)"
+         }
+        },
+        {
+         "tag": "span",
+         "class": "mini-dot",
+         "style": {
+          "color": "rgb(176, 173, 183)",
+          "border": "solid rgb(176, 173, 183)"
+         }
+        },
+        {
+         "tag": "span",
+         "class": "mini-dot",
+         "style": {
+          "color": "rgb(176, 173, 183)",
+          "border": "solid rgb(176, 173, 183)"
+         }
+        },
+        {
+         "tag": "span",
+         "class": "mini-dot",
+         "style": {
+          "color": "rgb(176, 173, 183)",
+          "border": "solid rgb(176, 173, 183)"
+         }
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "tag": "button",
+     "class": "desktop-button",
+     "aria-label": "데스크톱 4 · 비어 있음 (⌃4)",
+     "aria-pressed": "false",
+     "data-desktop": "4",
+     "box": [
+      1332,
+      24,
+      44,
+      32
+     ],
+     "style": {
+      "border": "solid rgb(51, 49, 54)"
+     },
+     "children": [
+      {
+       "tag": "span",
+       "class": "desktop-number",
+       "style": {
+        "color": "rgb(176, 173, 183)"
+       },
+       "text": "4"
+      },
+      {
+       "tag": "span",
+       "class": "mini-grid",
+       "children": [
+        {
+         "tag": "span",
+         "class": "mini-dot",
+         "style": {
+          "color": "rgb(176, 173, 183)",
+          "border": "solid rgb(176, 173, 183)"
+         }
+        },
+        {
+         "tag": "span",
+         "class": "mini-dot",
+         "style": {
+          "color": "rgb(176, 173, 183)",
+          "border": "solid rgb(176, 173, 183)"
+         }
+        },
+        {
+         "tag": "span",
+         "class": "mini-dot",
+         "style": {
+          "color": "rgb(176, 173, 183)",
+          "border": "solid rgb(176, 173, 183)"
+         }
+        },
+        {
+         "tag": "span",
+         "class": "mini-dot",
+         "style": {
+          "color": "rgb(176, 173, 183)",
+          "border": "solid rgb(176, 173, 183)"
+         }
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "tag": "button",
+     "class": "add-button desktop-add",
+     "aria-label": "데스크톱 추가",
+     "box": [
+      1384,
+      24,
+      32,
+      32
+     ],
+     "style": {
+      "border": "dashed rgb(131, 121, 145)"
+     },
+     "children": [
+      {
+       "tag": "svg",
+       "icon": "plus"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "tag": "aside",
+   "class": "sidebar float-bar",
+   "aria-label": "에이전트 · 스페이스",
+   "box": [
+    24,
+    277,
+    56,
+    347
+   ],
+   "style": {
+    "background": "rgb(30, 29, 33)",
+    "border": "solid rgb(51, 49, 54)",
+    "transform": "matrix(1, 0, 0, 1, 0, -173.5)"
+   },
+   "children": [
+    {
+     "tag": "div",
+     "class": "rail-label",
+     "style": {
+      "color": "rgb(176, 173, 183)"
+     },
+     "text": "에이전트"
+    },
+    {
+     "tag": "div",
+     "class": "bar-group",
+     "role": "group",
+     "aria-label": "에이전트",
+     "children": [
+      {
+       "tag": "button",
+       "class": "avatar is-selected",
+       "aria-label": "Mira · 일하는 중",
+       "aria-pressed": "true",
+       "box": [
+        34,
+        314,
+        36,
+        36
+       ],
+       "style": {
+        "background": "rgb(48, 40, 62)",
+        "border": "solid rgb(182, 163, 245)"
+       },
+       "children": [
+        {
+         "tag": "span",
+         "style": {
+          "color": "rgb(242, 240, 245)"
+         },
+         "text": "M"
+        },
+        {
+         "tag": "span",
+         "class": "dot dot-active avatar-dot",
+         "style": {
+          "background": "rgb(95, 208, 190)",
+          "color": "rgb(242, 240, 245)",
+          "border": "solid rgb(30, 29, 33)"
+         }
+        }
+       ]
+      },
+      {
+       "tag": "button",
+       "class": "avatar",
+       "aria-label": "Theo",
+       "aria-pressed": "false",
+       "box": [
+        34,
+        358,
+        36,
+        36
+       ],
+       "style": {
+        "background": "rgb(48, 40, 62)",
+        "border": "solid rgba(0, 0, 0, 0)"
+       },
+       "children": [
+        {
+         "tag": "span",
+         "style": {
+          "color": "rgb(242, 240, 245)"
+         },
+         "text": "T"
+        }
+       ]
+      },
+      {
+       "tag": "button",
+       "class": "avatar is-waiting",
+       "aria-label": "Juno · 대기 중",
+       "aria-pressed": "false",
+       "box": [
+        34,
+        402,
+        36,
+        36
+       ],
+       "style": {
+        "background": "rgb(48, 40, 62)",
+        "border": "dashed rgb(131, 121, 145)",
+        "opacity": "0.5"
+       },
+       "children": [
+        {
+         "tag": "span",
+         "style": {
+          "color": "rgb(242, 240, 245)"
+         },
+         "text": "J"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "tag": "div",
+     "class": "bar-divider",
+     "role": "separator",
+     "style": {
+      "background": "rgb(51, 49, 54)",
+      "color": "rgb(242, 240, 245)"
+     }
+    },
+    {
+     "tag": "div",
+     "class": "rail-label",
+     "style": {
+      "color": "rgb(176, 173, 183)"
+     },
+     "text": "스페이스"
+    },
+    {
+     "tag": "div",
+     "class": "bar-group",
+     "role": "group",
+     "aria-label": "스페이스",
+     "children": [
+      {
+       "tag": "button",
+       "class": "space is-selected",
+       "aria-label": "Home",
+       "aria-pressed": "true",
+       "box": [
+        34,
+        487,
+        36,
+        36
+       ],
+       "style": {
+        "background": "rgba(182, 163, 245, 0.12)",
+        "border": "solid rgb(182, 163, 245)"
+       },
+       "children": [
+        {
+         "tag": "span",
+         "style": {
+          "color": "rgb(242, 240, 245)"
+         },
+         "text": "H"
+        }
+       ]
+      },
+      {
+       "tag": "button",
+       "class": "space",
+       "aria-label": "Studio",
+       "aria-pressed": "false",
+       "box": [
+        34,
+        531,
+        36,
+        36
+       ],
+       "style": {
+        "background": "rgb(48, 40, 62)",
+        "border": "solid rgba(0, 0, 0, 0)"
+       },
+       "children": [
+        {
+         "tag": "span",
+         "style": {
+          "color": "rgb(242, 240, 245)"
+         },
+         "text": "S"
+        }
+       ]
+      },
+      {
+       "tag": "button",
+       "class": "add-button space-add",
+       "aria-label": "스페이스 추가",
+       "box": [
+        34,
+        575,
+        36,
+        36
+       ],
+       "style": {
+        "border": "dashed rgb(131, 121, 145)"
+       },
+       "children": [
+        {
+         "tag": "svg",
+         "icon": "plus"
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "tag": "div",
+   "class": "eris",
+   "role": "img",
+   "aria-label": "Eris",
+   "data-state": "idle",
+   "box": [
+    656,
+    40,
+    128,
+    138
+   ],
+   "children": [
+    {
+     "tag": "span",
+     "class": "eris-ring",
+     "style": {
+      "color": "rgb(242, 240, 245)",
+      "border": "dashed rgb(131, 121, 145)",
+      "opacity": "0",
+      "transform": "matrix(1, 0, 0, 1, -74, -74)"
+     }
+    },
+    {
+     "tag": "div",
+     "class": "eris-body",
+     "style": {
+      "transform": "matrix(1, 0, 0, 1, 0, 5.2)"
+     },
+     "children": [
+      {
+       "tag": "span",
+       "class": "eris-halo",
+       "hidden": "",
+       "style": {
+        "display": "none",
+        "color": "rgb(242, 240, 245)"
+       }
+      },
+      {
+       "tag": "canvas",
+       "class": "eris-mesh",
+       "data-mesh": "faces=529 back=250 dots=182 h=9ba92b03",
+       "data-rings": "0.45 0.34 0.24 0.16 0.09 0.04 0.01 0.00 0.01",
+       "data-voice": "idle",
+       "style": {
+        "color": "rgb(242, 240, 245)"
+       }
+      },
+      {
+       "tag": "span",
+       "class": "eris-core",
+       "style": {
+        "color": "rgb(242, 240, 245)",
+        "opacity": "0.845",
+        "transform": "matrix(1, 0, 0, 1, -24, -24)"
+       }
+      },
+      {
+       "tag": "span",
+       "class": "eris-tail eris-tail-1",
+       "hidden": "",
+       "style": {
+        "display": "none",
+        "background": "rgb(167, 177, 195)",
+        "color": "rgb(242, 240, 245)",
+        "opacity": "0.5"
+       }
+      },
+      {
+       "tag": "span",
+       "class": "eris-tail eris-tail-2",
+       "hidden": "",
+       "style": {
+        "display": "none",
+        "background": "rgb(167, 177, 195)",
+        "color": "rgb(242, 240, 245)",
+        "opacity": "0.3"
+       }
+      },
+      {
+       "tag": "span",
+       "class": "eris-moon-box",
+       "style": {
+        "transform": "matrix(1, 0, 0, 1, -9, -12.94)"
+       },
+       "children": [
+        {
+         "tag": "canvas",
+         "class": "eris-moon",
+         "style": {
+          "color": "rgb(242, 240, 245)"
+         }
+        },
+        {
+         "tag": "span",
+         "class": "eris-spark",
+         "hidden": "",
+         "style": {
+          "display": "none",
+          "background": "rgb(232, 201, 138)",
+          "color": "rgb(242, 240, 245)"
+         }
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "tag": "div",
+     "class": "soul",
+     "box": [
+      480,
+      190,
+      480,
+      32
+     ],
+     "style": {
+      "color": "rgb(242, 240, 245)",
+      "transform": "matrix(1, 0, 0, 1, -240, 0)"
+     }
+    }
+   ]
+  },
+  {
+   "tag": "div",
+   "class": "sr-only soul-live",
+   "aria-live": "polite",
+   "style": {
+    "color": "rgb(242, 240, 245)"
+   }
+  },
+  {
+   "tag": "aside",
+   "class": "rail float-bar",
+   "aria-label": "Status",
+   "box": [
+    1360,
+    289,
+    56,
+    322
+   ],
+   "style": {
+    "background": "rgb(30, 29, 33)",
+    "border": "solid rgb(51, 49, 54)",
+    "transform": "matrix(1, 0, 0, 1, 0, -161)"
+   },
+   "children": [
+    {
+     "tag": "button",
+     "class": "icon-button rail-button",
+     "aria-label": "두뇌 · 로컬 · llama-3.2-3b",
+     "aria-expanded": "false",
+     "data-rail": "brain",
+     "box": [
+      1368,
+      298,
+      40,
+      40
+     ],
+     "style": {
+      "border": "solid rgba(0, 0, 0, 0)"
+     },
+     "children": [
+      {
+       "tag": "svg",
+       "icon": "brain"
+      },
+      {
+       "tag": "span",
+       "class": "dot dot-success rail-dot",
+       "style": {
+        "background": "rgb(76, 175, 80)",
+        "color": "rgb(242, 240, 245)"
+       }
+      }
+     ]
+    },
+    {
+     "tag": "button",
+     "class": "icon-button rail-button",
+     "aria-label": "보는 것 · 3",
+     "aria-expanded": "false",
+     "data-rail": "sees",
+     "box": [
+      1368,
+      342,
+      40,
+      40
+     ],
+     "style": {
+      "border": "solid rgba(0, 0, 0, 0)"
+     },
+     "children": [
+      {
+       "tag": "svg",
+       "icon": "eye"
+      }
+     ]
+    },
+    {
+     "tag": "button",
+     "class": "icon-button rail-button",
+     "aria-label": "작업 · 진행 2 · 대기 1",
+     "aria-expanded": "false",
+     "data-rail": "tasks",
+     "box": [
+      1368,
+      386,
+      40,
+      40
+     ],
+     "style": {
+      "border": "solid rgba(0, 0, 0, 0)"
+     },
+     "children": [
+      {
+       "tag": "svg",
+       "icon": "tasks"
+      },
+      {
+       "tag": "span",
+       "class": "badge rail-badge",
+       "style": {
+        "background": "rgb(36, 33, 39)",
+        "color": "rgb(242, 240, 245)",
+        "border": "solid rgb(51, 49, 54)"
+       },
+       "text": "3"
+      }
+     ]
+    },
+    {
+     "tag": "button",
+     "class": "icon-button rail-button",
+     "aria-label": "확인 필요 · 2",
+     "aria-expanded": "false",
+     "data-rail": "attention",
+     "box": [
+      1368,
+      430,
+      40,
+      40
+     ],
+     "style": {
+      "border": "solid rgba(0, 0, 0, 0)"
+     },
+     "children": [
+      {
+       "tag": "svg",
+       "icon": "bell"
+      },
+      {
+       "tag": "span",
+       "class": "dot dot-attention rail-dot",
+       "style": {
+        "background": "rgb(224, 115, 138)",
+        "color": "rgb(242, 240, 245)"
+       }
+      },
+      {
+       "tag": "span",
+       "class": "badge rail-badge",
+       "style": {
+        "background": "rgb(36, 33, 39)",
+        "color": "rgb(242, 240, 245)",
+        "border": "solid rgb(51, 49, 54)"
+       },
+       "text": "2"
+      }
+     ]
+    },
+    {
+     "tag": "button",
+     "class": "icon-button rail-button",
+     "aria-label": "다른 데스크 · 1",
+     "aria-expanded": "false",
+     "data-rail": "desks",
+     "box": [
+      1368,
+      474,
+      40,
+      40
+     ],
+     "style": {
+      "border": "solid rgba(0, 0, 0, 0)"
+     },
+     "children": [
+      {
+       "tag": "svg",
+       "icon": "link"
+      }
+     ]
+    },
+    {
+     "tag": "button",
+     "class": "icon-button rail-button",
+     "aria-label": "도구 격리 · 쉬는 중",
+     "aria-expanded": "false",
+     "data-rail": "vm",
+     "box": [
+      1368,
+      518,
+      40,
+      40
+     ],
+     "style": {
+      "border": "solid rgba(0, 0, 0, 0)"
+     },
+     "children": [
+      {
+       "tag": "svg",
+       "icon": "box"
+      }
+     ]
+    },
+    {
+     "tag": "button",
+     "class": "icon-button rail-button",
+     "aria-label": "듣기 · Hey Eris 듣는 중",
+     "aria-pressed": "true",
+     "data-rail": "listen",
+     "box": [
+      1368,
+      562,
+      40,
+      40
+     ],
+     "style": {
+      "border": "solid rgba(0, 0, 0, 0)"
+     },
+     "children": [
+      {
+       "tag": "svg",
+       "icon": "mic"
+      },
+      {
+       "tag": "span",
+       "class": "dot dot-active rail-dot",
+       "style": {
+        "background": "rgb(95, 208, 190)",
+        "color": "rgb(242, 240, 245)"
+       }
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "tag": "div",
+   "class": "tooltip",
+   "role": "tooltip",
+   "hidden": "",
+   "style": {
+    "display": "none",
+    "background": "rgb(64, 58, 73)",
+    "color": "rgb(242, 240, 245)"
+   }
+  },
+  {
+   "tag": "div",
+   "class": "rail-popover-slot",
+   "style": {
+    "color": "rgb(242, 240, 245)"
+   }
+  },
+  {
+   "tag": "footer",
+   "class": "bottom",
+   "children": [
+    {
+     "tag": "div",
+     "class": "drawer",
+     "children": [
+      {
+       "tag": "div",
+       "class": "drawer-slot",
+       "style": {
+        "color": "rgb(242, 240, 245)"
+       }
+      },
+      {
+       "tag": "button",
+       "class": "icon-button drawer-button",
+       "aria-label": "서랍 · 3",
+       "aria-expanded": "false",
+       "box": [
+        24,
+        840,
+        40,
+        40
+       ],
+       "style": {
+        "background": "rgb(30, 29, 33)",
+        "border": "solid rgb(51, 49, 54)"
+       },
+       "children": [
+        {
+         "tag": "svg",
+         "icon": "drawer"
+        },
+        {
+         "tag": "span",
+         "class": "badge",
+         "style": {
+          "background": "rgb(36, 33, 39)",
+          "color": "rgb(242, 240, 245)",
+          "border": "solid rgb(51, 49, 54)"
+         },
+         "text": "3"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "tag": "div",
+     "class": "composer",
+     "style": {
+      "transform": "matrix(1, 0, 0, 1, -280, 0)"
+     },
+     "children": [
+      {
+       "tag": "ul",
+       "class": "popover composer-list",
+       "role": "listbox",
+       "hidden": "",
+       "style": {
+        "display": "none",
+        "background": "rgb(43, 39, 49)",
+        "color": "rgb(242, 240, 245)",
+        "border": "solid rgb(51, 49, 54)"
+       }
+      },
+      {
+       "tag": "label",
+       "class": "composer-hint",
+       "style": {
+        "color": "rgb(176, 173, 183)"
+       },
+       "text": "Hey Eris 라고 말하거나 ⌘K"
+      },
+      {
+       "tag": "div",
+       "class": "composer-field",
+       "box": [
+        440,
+        878,
+        560,
+        2
+       ],
+       "style": {
+        "background": "rgb(51, 49, 54)",
+        "height": "2px"
+       },
+       "children": [
+        {
+         "tag": "input",
+         "class": "composer-input",
+         "role": "combobox",
+         "aria-label": "Eris 에게 말하기",
+         "aria-expanded": "false",
+         "style": {
+          "color": "rgb(242, 240, 245)"
+         },
+         "value": ""
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "tag": "ul",
+     "class": "running",
+     "aria-label": "지금 벌어지는 일",
+     "children": [
+      {
+       "tag": "li",
+       "children": [
+        {
+         "tag": "button",
+         "class": "run-chip",
+         "aria-label": "Mira · Sort the inbox",
+         "style": {
+          "background": "rgb(30, 29, 33)",
+          "border": "solid rgb(51, 49, 54)"
+         },
+         "children": [
+          {
+           "tag": "span",
+           "class": "run-avatar",
+           "style": {
+            "background": "rgb(48, 40, 62)",
+            "color": "rgb(228, 215, 255)"
+           },
+           "text": "M"
+          },
+          {
+           "tag": "span",
+           "class": "run-title",
+           "style": {
+            "color": "rgb(242, 240, 245)"
+           },
+           "text": "Sort the inbox"
+          },
+          {
+           "tag": "span",
+           "class": "run-time",
+           "style": {
+            "color": "rgb(176, 173, 183)"
+           },
+           "text": "4:13"
+          },
+          {
+           "tag": "span",
+           "class": "run-progress",
+           "children": [
+            {
+             "tag": "span",
+             "class": "run-bar",
+             "style": {
+              "background": "rgb(182, 163, 245)",
+              "color": "rgb(242, 240, 245)"
+             }
+            }
+           ]
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "tag": "li",
+       "children": [
+        {
+         "tag": "button",
+         "class": "run-chip",
+         "aria-label": "Kai · Compare flights",
+         "style": {
+          "background": "rgb(30, 29, 33)",
+          "border": "solid rgb(51, 49, 54)"
+         },
+         "children": [
+          {
+           "tag": "span",
+           "class": "run-avatar",
+           "style": {
+            "background": "rgb(48, 40, 62)",
+            "color": "rgb(228, 215, 255)"
+           },
+           "text": "K"
+          },
+          {
+           "tag": "span",
+           "class": "run-title",
+           "style": {
+            "color": "rgb(242, 240, 245)"
+           },
+           "text": "Compare flights"
+          },
+          {
+           "tag": "span",
+           "class": "run-time",
+           "style": {
+            "color": "rgb(176, 173, 183)"
+           },
+           "text": "1:06"
+          },
+          {
+           "tag": "span",
+           "class": "run-progress",
+           "children": [
+            {
+             "tag": "span",
+             "class": "run-bar",
+             "style": {
+              "background": "rgb(182, 163, 245)",
+              "color": "rgb(242, 240, 245)"
+             }
+            }
+           ]
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "tag": "div",
+   "class": "drop-zone",
+   "hidden": "",
+   "style": {
+    "display": "none",
+    "background": "rgba(182, 163, 245, 0.08)",
+    "border": "dashed rgba(182, 163, 245, 0.34)"
+   },
+   "children": [
+    {
+     "tag": "svg",
+     "icon": "sparkle"
+    },
+    {
+     "tag": "span",
+     "style": {
+      "color": "rgb(182, 163, 245)"
+     },
+     "text": "Eris 에게 건네기"
+    }
+   ]
+  },
+  {
+   "tag": "div",
+   "class": "surfaces",
+   "style": {
+    "color": "rgb(242, 240, 245)"
+   }
+  }
+ ]
+}

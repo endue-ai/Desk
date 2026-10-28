@@ -7,9 +7,11 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./desk.css": "./src/desk.css"
+    "./desk.css": "./src/desk.css",
+    "./tokens.css": "./src/tokens.css"
   },
   "scripts": {
+    "dev": "vite --config dev/vite.config.ts",
     "e2e": "playwright test"
   },
   "dependencies": {

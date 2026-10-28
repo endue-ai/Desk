@@ -1,0 +1,22 @@
+{
+  "surfaces": [
+    {
+      "id": "calendar",
+      "plugin": "endue.calendar",
+      "x": 120,
+      "y": 240,
+      "w": 560,
+      "h": 400,
+      "pinned": false
+    },
+    {
+      "id": "tomorrow",
+      "plugin": "endue.eris",
+      "x": 1000,
+      "y": 220,
+      "w": 320,
+      "h": 360,
+      "pinned": false
+    }
+  ]
+}

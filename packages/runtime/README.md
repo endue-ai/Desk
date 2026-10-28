@@ -1,35 +1,36 @@
 # @endue-ai/runtime
 
-Shell and window manager: the 2D compositor, sandboxed surfaces, input routing, layout and theme.
-No 3D yet.
-
-Layer: Web runtime (see `docs/architecture.md`). Plain TypeScript and DOM (ADR 0010).
+The desk in the webview: the 2D compositor and plugin host, and the shell UI around them (modes,
+desktops, the left bar, Eris, the status rail, the bottom edge, surfaces). Plain TypeScript and DOM
+(ADR 0010); every animation runs on an injected clock (ADR 0013).
 
 ## Public API
 
-- `createRuntime({ root, bridge, clock?, storage?, platform?, plugins? })` mounts the desk and returns
-  a `Runtime`: `ready`, `openSurface`, `closeSurface`, `moveSurface`, `focusSurface`, `layout()`,
-  `status()`, `shortcuts`, `plugins` (`ready`, `mounted()`), `dispose()`.
-- `PluginHost` (used when `plugins: { url }` is given): mounts enabled UI plugins from `plugin.list`,
-  relays their batched calls with the plugin as caller, reloads one surface on `plugin.changed`
-  (updated) and keeps the plugin's state; honours `placement: "overlay"`; `plugins.command(id, name,
-  args)` sends a plugin a command; ADR 0012. `brain.turn` events go only to the plugin whose
-  `brain.say` started the turn (events that arrive before the answer wait for it); ADR 0014.
-- `ShortcutRouter`, `comboOf`: "Mod+K" style bindings, focused surface first, then global.
-- Layout: `defaultLayout`, `loadLayout`, `saveLayout`, `place`, `move`, `remove`.
-- Clock: `realClock`, `ManualClock` (inject in tests), `tween`.
-- `SurfaceHost`: iframes with `sandbox="allow-scripts"` only. `applyTheme`.
-- `@endue-ai/runtime/desk.css`: the desk stylesheet.
+- `mountDesk({ root, bridge, clock?, lang?, modes?, persist?, reducedMotion? })` mounts the shell and
+  returns `{ store, ticker, eris: { say, setState }, ready, dispose }`. Styles: `src/shell/styles.ts`;
+  tokens: `@endue-ai/runtime/tokens.css` (the only file with literal colours).
+- `ShellBridge` (`storage.get/set`, `perm.request`, `audio.levels()`, `brain.status/use/say`) and
+  `browserBridge({ now, storage?, grant? })`, the stub with fake audio envelopes (`fake.play`).
+- Eris: `eris/mesh.ts` (deterministic mesh, three densities), `eris/voice.ts` (nine bands → nine rings),
+  `eris/soul.ts` (soul text timing). Modes: folders in `src/modes/sample/`, layering in `modes/model.ts`.
+- Compositor: `createRuntime`, `PluginHost` (ADR 0012, 0014), `ShortcutRouter`, layout helpers,
+  `realClock`, `ManualClock`, `tween`, `SurfaceHost`, `applyTheme`, `@endue-ai/runtime/desk.css`.
+
+## Run
+
+```bash
+pnpm dev        # the shell on the browser stub at http://127.0.0.1:5173 (Shift+U / Shift+E: sound rings)
+```
 
 ## Testing
 
 ```bash
-pnpm exec vitest run packages/runtime                        # unit
-pnpm --filter @endue-ai/runtime exec playwright install webkit   # once
-just test-e2e                                                # Playwright on the browser stub
+pnpm exec vitest run packages/runtime                          # unit: mesh, voice, soul, modes, tokens
+pnpm --filter @endue-ai/runtime exec playwright install webkit # once
+just test-e2e                                                  # Playwright on the browser stub
 ```
 
-`e2e/` uses fixture pages with the browser bridge stub and a manual clock (`plugins.html` adds two UI
-plugins served by the fixture's Vite config). Render snapshots are
-serialised render trees (ADR 0011); update them with
-`pnpm --filter @endue-ai/runtime exec playwright test --update-snapshots` and review the JSON diff.
+Snapshots are render trees (ADR 0011) at fixed clock times; the Eris canvas adds a frame digest and
+its ring profile. Update with `pnpm --filter @endue-ai/runtime exec playwright test --update-snapshots`
+and review the JSON diff. Shell fixture: `e2e/fixture/shell.html` (`?lang=en`, `?persist=1`, `?reduced=1`).
+Shell decisions not in the brief: `ASSUMPTIONS.md`.

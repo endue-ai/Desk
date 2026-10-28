@@ -1,0 +1,8 @@
+{
+  "id": "base",
+  "name": "Base",
+  "icon": "sparkle",
+  "author": "endue",
+  "version": "1.0.0",
+  "extends": null
+}
