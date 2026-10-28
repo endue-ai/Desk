@@ -9,7 +9,8 @@ export type Permission =
   | NetFetchPermission
   | AudioCapturePermission
   | UiSurfacePermission
-  | UiNotifyPermission;
+  | UiNotifyPermission
+  | PluginManagePermission;
 
 /** Read files, list folders and watch for changes under the given paths. */
 export interface FsReadPermission {
@@ -56,6 +57,11 @@ export interface UiSurfacePermission {
 /** Show notifications. */
 export interface UiNotifyPermission {
   permission: "ui:notify";
+}
+
+/** List installed plugins, turn them on and off, and receive plugin.changed events. */
+export interface PluginManagePermission {
+  permission: "plugin:manage";
 }
 
 /** An absolute path, or one rooted at ~ or at ${plugin}, ${workspace} or ${home}, with forward slashes. * matches within a segment and ** across segments. */
@@ -187,7 +193,9 @@ export type BridgeRequest =
   | UiNotifyRequest
   | PermRequestRequest
   | PermQueryRequest
-  | PermRevokeRequest;
+  | PermRevokeRequest
+  | PluginListRequest
+  | PluginSetEnabledRequest;
 
 /** The answer to one request: a result, or an error. */
 export type BridgeResponse = BridgeSuccess | BridgeFailure;
@@ -233,7 +241,8 @@ export type BridgeEvent =
   | ProcOutputEvent
   | ProcExitEvent
   | AudioWakeEvent
-  | PermChangedEvent;
+  | PermChangedEvent
+  | PluginChangedEvent;
 
 /** Read a whole file. */
 export interface FsReadRequest {
@@ -454,6 +463,75 @@ export interface PermChangedData {
 /** What happened to the grant. */
 export type GrantChange = "granted" | "revoked" | "expired";
 
+/** List every installed plugin with its state. */
+export interface PluginListRequest {
+  id: RequestId;
+  method: "plugin.list";
+  params: PluginListParams;
+}
+
+/** Parameters of plugin.list. */
+export interface PluginListParams {
+  scope: PluginManagePermission;
+}
+
+/** Result of plugin.list, in install order. */
+export interface PluginListResult {
+  plugins: PluginInfo[];
+}
+
+/** One installed plugin. A failed plugin has no manifest it can run with and says why. */
+export interface PluginInfo {
+  id: PluginId;
+  status: PluginStatus;
+  enabled: boolean;
+  /** Shipped with Desk. */
+  builtIn: boolean;
+  /** Increases every time the plugin's files change. */
+  revision: number;
+  manifest?: PluginManifest;
+  /** Why the plugin failed, for people. */
+  error?: string;
+}
+
+/** ready: the manifest is valid and the entry exists; failed: it cannot run. */
+export type PluginStatus = "ready" | "failed";
+
+/** Turn a plugin on or off. The choice is remembered. */
+export interface PluginSetEnabledRequest {
+  id: RequestId;
+  method: "plugin.setEnabled";
+  params: PluginSetEnabledParams;
+}
+
+/** Parameters of plugin.setEnabled. */
+export interface PluginSetEnabledParams {
+  plugin: PluginId;
+  enabled: boolean;
+  scope: PluginManagePermission;
+}
+
+/** Result of plugin.setEnabled: the plugin after the change. */
+export interface PluginSetEnabledResult {
+  plugin: PluginInfo;
+}
+
+/** A plugin was installed, updated on disk, removed, enabled or disabled. */
+export interface PluginChangedEvent {
+  event: "plugin.changed";
+  data: PluginChangedData;
+}
+
+/** Payload of plugin.changed. */
+export interface PluginChangedData {
+  plugin: PluginId;
+  change: PluginChange;
+  revision: number;
+}
+
+/** What happened to the plugin. */
+export type PluginChange = "installed" | "updated" | "removed" | "enabled" | "disabled";
+
 /** Start a program. Output arrives as proc.output events, the end as proc.exit. */
 export interface ProcSpawnRequest {
   id: RequestId;
@@ -652,6 +730,8 @@ export interface BridgeMethodMap {
   "perm.request": { params: PermRequestParams; result: PermRequestResult };
   "perm.query": { params: PermQueryParams; result: PermQueryResult };
   "perm.revoke": { params: PermRevokeParams; result: PermRevokeResult };
+  "plugin.list": { params: PluginListParams; result: PluginListResult };
+  "plugin.setEnabled": { params: PluginSetEnabledParams; result: PluginSetEnabledResult };
 }
 
 /** A bridge method name. */
@@ -676,4 +756,6 @@ export const BRIDGE_METHODS = [
   "perm.request",
   "perm.query",
   "perm.revoke",
+  "plugin.list",
+  "plugin.setEnabled",
 ] as const satisfies readonly BridgeMethod[];

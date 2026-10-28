@@ -51,3 +51,34 @@ pub fn list(path: &Path) -> io::Result<Vec<Entry>> {
     entries.sort_by(|a, b| a.name.cmp(&b.name));
     Ok(entries)
 }
+
+/// A running watch. Dropping it stops the watch.
+pub struct Watch {
+    _watcher: notify::RecommendedWatcher,
+}
+
+/// Call `on_change` with each changed path under `path` (recursive) until the `Watch` is dropped.
+/// Events are not debounced here; callers coalesce them.
+pub fn watch(
+    path: &Path,
+    on_change: impl Fn(std::path::PathBuf) + Send + 'static,
+) -> io::Result<Watch> {
+    use notify::{EventKind, RecursiveMode, Watcher as _};
+    let mut watcher = notify::recommended_watcher(move |event: notify::Result<notify::Event>| {
+        if let Ok(event) = event
+            && matches!(
+                event.kind,
+                EventKind::Create(_) | EventKind::Modify(_) | EventKind::Remove(_)
+            )
+        {
+            for path in event.paths {
+                on_change(path);
+            }
+        }
+    })
+    .map_err(io::Error::other)?;
+    watcher
+        .watch(path, RecursiveMode::Recursive)
+        .map_err(io::Error::other)?;
+    Ok(Watch { _watcher: watcher })
+}

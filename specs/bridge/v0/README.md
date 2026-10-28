@@ -1,7 +1,7 @@
 # Desk bridge v0
 
 The calls the web runtime (and every plugin through it) makes into the Rust core. JSON Schema 2020-12,
-one file per namespace: `bridge.schema.json` (envelope, errors, shared types), `fs`, `proc`, `net`,
+one file per namespace: `bridge.schema.json` (envelope, errors, shared types), `fs`, `proc`, `net`, `plugins`,
 `audio`, `ui` and `perm`. v0 may break on any minor release (ADR 0004).
 
 ## Envelope
@@ -66,6 +66,13 @@ and with a title, and returns a handle. It needs `ui:surface`.
 A refusal is `granted: false`, not an error. It needs no scope.
 
 **perm.query** lists the caller's grants, optionally only those covering a given permission.
+
+**plugin.list** returns every installed plugin with its status (`ready` or `failed` with a reason), whether
+it is enabled and built in, its file revision and its manifest. It needs `plugin:manage`.
+
+**plugin.setEnabled** turns a plugin on or off and remembers the choice; the runtime mounts or unmounts
+its surfaces when `plugin.changed` arrives. It needs `plugin:manage`. `plugin.changed` events (installed,
+updated, removed, enabled, disabled) go to callers that hold `plugin:manage`.
 
 **perm.revoke** gives a grant back. People can revoke any grant at any time; callers learn about it from
 `perm.changed`.

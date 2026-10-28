@@ -136,3 +136,65 @@ fn perm_query_lists_the_callers_grants() {
         fs_read(&["~/Documents/**"])
     );
 }
+
+fn install_hello(core: &Core, home: &std::path::Path) {
+    let dir = home.join("plugins/hello");
+    fs::create_dir_all(dir.join("ui")).unwrap();
+    fs::write(dir.join("ui/index.html"), "<p>hello</p>").unwrap();
+    fs::write(
+        dir.join("plugin.json"),
+        r#"{ "id": "example.hello", "version": "0.1.0", "kind": "ui", "entry": "ui/index.html" }"#,
+    )
+    .unwrap();
+    core.install_plugin(&dir, false);
+}
+
+#[test]
+fn plugin_methods_need_plugin_manage() {
+    let home = temp_home();
+    let core = Core::new(Roots { home: home.clone() });
+    install_hello(&core, &home);
+    let error = failure(core.handle(
+        "desk",
+        request(json!({ "id": 8, "method": "plugin.list",
+            "params": { "scope": { "permission": "plugin:manage" } } })),
+    ));
+    assert_eq!(error.code, ErrorCode::PermissionDenied);
+}
+
+#[test]
+fn plugin_list_and_set_enabled_go_through_the_registry() {
+    let home = temp_home();
+    let core = Core::new(Roots { home: home.clone() });
+    install_hello(&core, &home);
+    core.grant(
+        "desk",
+        serde_json::from_value(json!({ "permission": "plugin:manage" })).unwrap(),
+    );
+    let events = core.events().subscribe();
+    let scope = json!({ "permission": "plugin:manage" });
+
+    let listed = result(core.handle(
+        "desk",
+        request(json!({ "id": 9, "method": "plugin.list", "params": { "scope": scope } })),
+    ));
+    assert_eq!(listed["plugins"][0]["id"], "example.hello");
+    assert_eq!(listed["plugins"][0]["status"], "ready");
+
+    let changed = result(core.handle(
+        "desk",
+        request(json!({ "id": 10, "method": "plugin.setEnabled",
+            "params": { "plugin": "example.hello", "enabled": false, "scope": scope } })),
+    ));
+    assert_eq!(changed["plugin"]["enabled"], false);
+    let event = serde_json::to_value(events.try_recv().unwrap()).unwrap();
+    assert_eq!(event["event"], "plugin.changed");
+    assert_eq!(event["data"]["change"], "disabled");
+
+    let missing = failure(core.handle(
+        "desk",
+        request(json!({ "id": 11, "method": "plugin.setEnabled",
+            "params": { "plugin": "example.missing", "enabled": true, "scope": scope } })),
+    ));
+    assert_eq!(missing.code, ErrorCode::NotFound);
+}

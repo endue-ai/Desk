@@ -11,6 +11,7 @@ export {
   type BridgeAdapter,
   BridgeCallError,
   BridgeClient,
+  type CallOptions,
   type ParamsOf,
   type ResultOf,
 } from "./client";

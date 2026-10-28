@@ -17,6 +17,7 @@ pub enum Permission {
     AudioCapture(AudioCapturePermission),
     UiSurface(UiSurfacePermission),
     UiNotify(UiNotifyPermission),
+    PluginManage(PluginManagePermission),
 }
 
 /// Read files, list folders and watch for changes under the given paths.
@@ -80,6 +81,13 @@ pub struct UiSurfacePermission {
 #[serde(deny_unknown_fields)]
 pub struct UiNotifyPermission {
     pub permission: UiNotifyPermissionPermission,
+}
+
+/// List installed plugins, turn them on and off, and receive plugin.changed events.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PluginManagePermission {
+    pub permission: PluginManagePermissionPermission,
 }
 
 /// An absolute path, or one rooted at ~ or at ${plugin}, ${workspace} or ${home}, with forward slashes. * matches within a segment and ** across segments.
@@ -277,6 +285,8 @@ pub enum BridgeRequest {
     PermRequest(PermRequestRequest),
     PermQuery(PermQueryRequest),
     PermRevoke(PermRevokeRequest),
+    PluginList(PluginListRequest),
+    PluginSetEnabled(PluginSetEnabledRequest),
 }
 
 /// The answer to one request: a result, or an error.
@@ -349,6 +359,7 @@ pub enum BridgeEvent {
     ProcExit(ProcExitEvent),
     AudioWake(AudioWakeEvent),
     PermChanged(PermChangedEvent),
+    PluginChanged(PluginChangedEvent),
 }
 
 /// Read a whole file.
@@ -699,6 +710,114 @@ pub enum GrantChange {
     Expired,
 }
 
+/// List every installed plugin with its state.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PluginListRequest {
+    pub id: RequestId,
+    pub method: PluginListRequestMethod,
+    pub params: PluginListParams,
+}
+
+/// Parameters of plugin.list.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PluginListParams {
+    pub scope: PluginManagePermission,
+}
+
+/// Result of plugin.list, in install order.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PluginListResult {
+    pub plugins: Vec<PluginInfo>,
+}
+
+/// One installed plugin. A failed plugin has no manifest it can run with and says why.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PluginInfo {
+    pub id: PluginId,
+    pub status: PluginStatus,
+    pub enabled: bool,
+    /// Shipped with Desk.
+    #[serde(rename = "builtIn")]
+    pub built_in: bool,
+    /// Increases every time the plugin's files change.
+    pub revision: u64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub manifest: Option<PluginManifest>,
+    /// Why the plugin failed, for people.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
+}
+
+/// ready: the manifest is valid and the entry exists; failed: it cannot run.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum PluginStatus {
+    #[serde(rename = "ready")]
+    Ready,
+    #[serde(rename = "failed")]
+    Failed,
+}
+
+/// Turn a plugin on or off. The choice is remembered.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PluginSetEnabledRequest {
+    pub id: RequestId,
+    pub method: PluginSetEnabledRequestMethod,
+    pub params: PluginSetEnabledParams,
+}
+
+/// Parameters of plugin.setEnabled.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PluginSetEnabledParams {
+    pub plugin: PluginId,
+    pub enabled: bool,
+    pub scope: PluginManagePermission,
+}
+
+/// Result of plugin.setEnabled: the plugin after the change.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PluginSetEnabledResult {
+    pub plugin: PluginInfo,
+}
+
+/// A plugin was installed, updated on disk, removed, enabled or disabled.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PluginChangedEvent {
+    pub event: PluginChangedEventEvent,
+    pub data: PluginChangedData,
+}
+
+/// Payload of plugin.changed.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PluginChangedData {
+    pub plugin: PluginId,
+    pub change: PluginChange,
+    pub revision: u64,
+}
+
+/// What happened to the plugin.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum PluginChange {
+    #[serde(rename = "installed")]
+    Installed,
+    #[serde(rename = "updated")]
+    Updated,
+    #[serde(rename = "removed")]
+    Removed,
+    #[serde(rename = "enabled")]
+    Enabled,
+    #[serde(rename = "disabled")]
+    Disabled,
+}
+
 /// Start a program. Output arrives as proc.output events, the end as proc.exit.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -1034,6 +1153,14 @@ pub enum UiNotifyPermissionPermission {
     UiNotify,
 }
 
+/// The `permission` of [`PluginManagePermission`]: always `"plugin:manage"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum PluginManagePermissionPermission {
+    #[default]
+    #[serde(rename = "plugin:manage")]
+    PluginManage,
+}
+
 /// The `method` of [`AudioCaptureStartRequest`]: always `"audio.capture.start"`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub enum AudioCaptureStartRequestMethod {
@@ -1136,6 +1263,30 @@ pub enum PermChangedEventEvent {
     #[default]
     #[serde(rename = "perm.changed")]
     PermChanged,
+}
+
+/// The `method` of [`PluginListRequest`]: always `"plugin.list"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum PluginListRequestMethod {
+    #[default]
+    #[serde(rename = "plugin.list")]
+    PluginList,
+}
+
+/// The `method` of [`PluginSetEnabledRequest`]: always `"plugin.setEnabled"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum PluginSetEnabledRequestMethod {
+    #[default]
+    #[serde(rename = "plugin.setEnabled")]
+    PluginSetEnabled,
+}
+
+/// The `event` of [`PluginChangedEvent`]: always `"plugin.changed"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum PluginChangedEventEvent {
+    #[default]
+    #[serde(rename = "plugin.changed")]
+    PluginChanged,
 }
 
 /// The `method` of [`ProcSpawnRequest`]: always `"proc.spawn"`.
@@ -1279,6 +1430,10 @@ pub const SCHEMAS: &[(&str, &str)] = &[
     (
         "https://endue.ai/specs/bridge/v0/perm.schema.json",
         include_str!("../../../specs/bridge/v0/perm.schema.json"),
+    ),
+    (
+        "https://endue.ai/specs/bridge/v0/plugins.schema.json",
+        include_str!("../../../specs/bridge/v0/plugins.schema.json"),
     ),
     (
         "https://endue.ai/specs/bridge/v0/proc.schema.json",

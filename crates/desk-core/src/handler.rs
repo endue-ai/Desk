@@ -18,6 +18,7 @@ use serde::Serialize;
 use crate::events::EventBus;
 use crate::paths::normalize;
 use crate::perm::{Denied, PermissionEngine, Target, covers};
+use crate::plugins::PluginRegistry;
 
 /// Where root tokens in bridge paths point.
 #[derive(Debug, Clone)]
@@ -41,13 +42,14 @@ impl Prompter for RefuseAll {
     }
 }
 
-type Answer = Result<serde_json::Value, BridgeError>;
+pub(crate) type Answer = Result<serde_json::Value, BridgeError>;
 
 pub struct Core {
     roots: Roots,
     permissions: Mutex<PermissionEngine>,
     events: EventBus,
     prompter: Box<dyn Prompter>,
+    pub(crate) plugins: Mutex<PluginRegistry>,
 }
 
 impl Core {
@@ -57,6 +59,7 @@ impl Core {
             permissions: Mutex::new(PermissionEngine::new()),
             events: EventBus::new(),
             prompter: Box::new(RefuseAll),
+            plugins: Mutex::new(PluginRegistry::new(None)),
         }
     }
 
@@ -147,6 +150,8 @@ impl Core {
                 };
                 (r.id, answer)
             }
+            R::PluginList(r) => (r.id, self.plugin_list(caller, r.params)),
+            R::PluginSetEnabled(r) => (r.id, self.plugin_set_enabled(caller, r.params)),
             R::FsWrite(r) => (r.id, unsupported("fs.write")),
             R::FsWatch(r) => (r.id, unsupported("fs.watch")),
             R::ProcSpawn(r) => (r.id, unsupported("proc.spawn")),
@@ -202,7 +207,7 @@ impl Core {
             .fold(base, |p, s| p.join(s)))
     }
 
-    fn permissions(&self) -> MutexGuard<'_, PermissionEngine> {
+    pub(crate) fn permissions(&self) -> MutexGuard<'_, PermissionEngine> {
         self.permissions
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
@@ -251,11 +256,11 @@ fn list(path: &Path) -> Answer {
     json(FsListResult { entries })
 }
 
-fn json(value: impl Serialize) -> Answer {
+pub(crate) fn json(value: impl Serialize) -> Answer {
     serde_json::to_value(value).map_err(|e| error(ErrorCode::Internal, e.to_string()))
 }
 
-fn error(code: ErrorCode, message: String) -> BridgeError {
+pub(crate) fn error(code: ErrorCode, message: String) -> BridgeError {
     BridgeError {
         code,
         message,
@@ -263,7 +268,7 @@ fn error(code: ErrorCode, message: String) -> BridgeError {
     }
 }
 
-fn denied(denied: Denied) -> BridgeError {
+pub(crate) fn denied(denied: Denied) -> BridgeError {
     BridgeError {
         code: ErrorCode::PermissionDenied,
         message: denied.reason,

@@ -1,0 +1,41 @@
+{
+  "target": "PluginListResult",
+  "description": "a ready plugin and a failed one",
+  "instance": {
+    "plugins": [
+      {
+        "id": "endue.sidebar",
+        "status": "ready",
+        "enabled": true,
+        "builtIn": true,
+        "revision": 1,
+        "manifest": {
+          "id": "endue.sidebar",
+          "version": "0.1.0",
+          "kind": "ui",
+          "entry": "ui/index.html",
+          "permissions": [
+            {
+              "permission": "plugin:manage"
+            }
+          ],
+          "surfaces": [
+            {
+              "id": "main",
+              "title": "Plugins",
+              "placement": "left"
+            }
+          ]
+        }
+      },
+      {
+        "id": "example.broken",
+        "status": "failed",
+        "enabled": false,
+        "builtIn": false,
+        "revision": 0,
+        "error": "plugin.json: entry ui/index.html does not exist"
+      }
+    ]
+  }
+}

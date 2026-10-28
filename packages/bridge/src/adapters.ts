@@ -19,7 +19,11 @@ export type Listen = (
 export function tauriAdapter(invoke: Invoke, listen?: Listen): BridgeAdapter {
   return {
     name: "tauri",
-    call: async (request) => (await invoke("bridge_call", { request })) as BridgeResponse,
+    call: async (request, caller) =>
+      (await invoke(
+        "bridge_call",
+        caller === undefined ? { request } : { request, caller },
+      )) as BridgeResponse,
     onEvent: (listener) => {
       if (!listen) return () => {};
       let unlisten: (() => void) | undefined;
@@ -48,14 +52,18 @@ export interface BrowserStub extends BridgeAdapter {
   emit(event: BridgeEvent): void;
   /** Every request received, in order. */
   readonly calls: readonly BridgeRequest[];
+  /** Every request with the caller it was made for (undefined: the runtime itself). */
+  readonly log: ReadonlyArray<{ caller: string | undefined; request: BridgeRequest }>;
 }
 
 export function browserStub(handlers: StubHandlers): BrowserStub {
   const listeners = new Set<(event: BridgeEvent) => void>();
   const calls: BridgeRequest[] = [];
+  const log: Array<{ caller: string | undefined; request: BridgeRequest }> = [];
   return {
     name: "browser",
     calls,
+    log,
     emit: (event) => {
       for (const listener of listeners) listener(event);
     },
@@ -63,8 +71,9 @@ export function browserStub(handlers: StubHandlers): BrowserStub {
       listeners.add(listener);
       return () => listeners.delete(listener);
     },
-    call: async (request) => {
+    call: async (request, caller) => {
       calls.push(request);
+      log.push({ caller, request });
       const handler = handlers[request.method] as
         | ((params: unknown) => unknown | Promise<unknown>)
         | undefined;

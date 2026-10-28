@@ -6,8 +6,11 @@ set shell := ["bash", "-euo", "pipefail", "-c"]
 default:
     @just --list
 
-# Run the desktop app in development mode (Vite HMR for the runtime, rebuild for Rust)
+# Run the desktop app in development mode: built-in plugins from plugins/, plugin-hello-ui as a
+# dev plugin; saving a plugin file reloads only that plugin's surface
 dev:
+    DESK_PLUGIN_DIRS="{{justfile_directory()}}/plugins" \
+    DESK_DEV_PLUGINS="{{justfile_directory()}}/examples/plugin-hello-ui" \
     pnpm --filter @endue-ai/desk-app tauri dev
 
 # All tests: unit and runtime e2e
@@ -34,15 +37,19 @@ check:
     pnpm exec spectral lint specs/brain/v0/openapi.yaml --fail-severity=warn --quiet
 
 # Lint the Tauri app crate (needs the platform webview SDK)
-check-app:
+check-app: build-sdk
     pnpm --filter @endue-ai/desk-app build
     cargo clippy -p desk-app --all-targets -- -D warnings
 
 # Build the Tauri app binary
-build-app:
+build-app: build-sdk
     pnpm --filter @endue-ai/desk-app build
     cargo build -p desk-app
 
 # Generate Rust and TypeScript types from specs/ (deterministic; CI checks for drift)
 codegen:
     node scripts/codegen.mjs
+
+# Bundle the plugin SDK that the app serves to plugin frames
+build-sdk:
+    pnpm --filter @endue-ai/plugin-sdk build

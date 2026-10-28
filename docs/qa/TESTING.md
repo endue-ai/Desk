@@ -16,8 +16,9 @@ catch; until then they are marked "not yet".
 | Security | cargo deny, cargo audit, pnpm audit, gitleaks | workflow `security`, `deny.toml` | every PR, main, weekly | active |
 | Review | table vs diff, contract, tests verify behaviour, permissions, 400-line rule | workflow `review` (needs `ANTHROPIC_API_KEY`) | code PRs | active when the key is set |
 | Contract | `specs/*/vectors` judged the same by Rust (`jsonschema`) and TS (Ajv); valid vectors round-trip through generated types; WIT is a bridge subset | `crates/desk-bridge/tests/{contract,wit}.rs`, `crates/desk-brain/tests/contract.rs`, `packages/bridge/src/contract.test.ts` | every PR | active (brain conformance against brain-echo: not yet) |
-| Integration (Rust) | permission engine (deny by default, grant, revoke, path scope), event bus, `Core::handle`, fs primitives; later plugin host, VM, leases | `crates/*/tests` | every PR (VM: main and nightly) | active (plugin host, VM, leases: not yet) |
-| Runtime (web) | 2D compositor render trees (ADR 0011), layout restore after reload, shortcut routing; later opening scene | Playwright (WebKit) + browser bridge stub, `packages/runtime/e2e`, `just test-e2e` | every PR on Linux (`runtime-e2e`) | active |
+| Integration (Rust) | permission engine (deny by default, grant, revoke, path scope), event bus, `Core::handle`, fs primitives, plugin registry (install, crash isolation, persisted flags, file serving, hot reload), `desk plugin validate`; later Wasm host, VM, leases | `crates/*/tests` | every PR (VM: main and nightly) | active (Wasm host, VM, leases: not yet) |
+| Runtime (web) | 2D compositor render trees (ADR 0011), layout restore after reload, shortcut routing, UI plugins (mount, bridge round trip, isolated hot reload with state, enable/disable); later opening scene | Playwright (WebKit) + browser bridge stub, `packages/runtime/e2e`, `just test-e2e` | every PR on Linux (`runtime-e2e`) | active |
+| Plugin validation | every `plugin.json` in `plugins/` and `examples/` matches specs/plugin v0 and its entry exists | `desk plugin validate`, workflow `plugin-validate` | PRs touching `plugins/**` or `examples/**`, and main | active |
 | App build | the Tauri app compiles and passes clippy on Linux, macOS and Windows | `just check-app`, `just build-app`, job `app-build` | PRs touching `apps/desk/src-tauri/**` or `crates/desk-sys/**`, and main | active |
 | App e2e | first run, plugin install, permission prompts, layouts, updater | WebdriverIO + tauri-driver, `e2e/specs` (Linux, Windows) | after merge, `e2e/` or `plugins/` PRs, nightly | not yet |
 | Install smoke | install, launch, ready log, signature check, quit | `e2e/smoke` | every canary, beta and stable build | not yet |
@@ -33,6 +34,7 @@ catch; until then they are marked "not yet".
 | `scripts/**` | `ci` (biome, `node --test`) |
 | `.github/workflows/**` | `ci` (actionlint) |
 | `specs/**` | `ci` (spec lint, contract tests), `codegen-check`; run `just codegen` and commit the generated files |
+| `plugins/**`, `examples/**` | `ci` (biome for plugin JS), `plugin-validate` |
 | `docs/**`, `*.md` | `ci`, `scope-check`; `review` skips them |
 | any PR | `scope-check`, `labeler`; the required `ci` check is the aggregate of every `ci` job above |
 

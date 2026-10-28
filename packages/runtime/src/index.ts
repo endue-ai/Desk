@@ -12,7 +12,8 @@ export {
   remove,
   saveLayout,
 } from "./layout";
-export { createRuntime, type Runtime, type RuntimeOptions } from "./runtime";
+export { PluginHost, type PluginHostDeps, type PluginHostOptions } from "./plugins";
+export { createRuntime, type Runtime, type RuntimeOptions, type RuntimePlugins } from "./runtime";
 export { SurfaceHost, type SurfaceSpec } from "./surfaces";
 export { applyTheme } from "./theme";
 

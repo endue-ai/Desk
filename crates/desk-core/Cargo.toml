@@ -12,6 +12,7 @@ publish.workspace = true
 base64.workspace = true
 desk-bridge.workspace = true
 desk-sys = { workspace = true, features = ["fs"] }
+jsonschema.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 

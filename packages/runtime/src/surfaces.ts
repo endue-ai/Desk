@@ -55,6 +55,17 @@ export class SurfaceHost {
     this.#surfaces.delete(id);
   }
 
+  /** Load a new URL in one surface's frame; nothing else on the desk changes. */
+  reload(id: string, src: string): void {
+    const frame = this.#surfaces.get(id)?.querySelector("iframe");
+    if (frame) frame.src = src;
+  }
+
+  /** The window inside a surface's frame, to tell plugin messages apart. */
+  frame(id: string): Window | null {
+    return this.#surfaces.get(id)?.querySelector("iframe")?.contentWindow ?? null;
+  }
+
   get(id: string): HTMLElement | undefined {
     return this.#surfaces.get(id);
   }

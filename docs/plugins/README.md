@@ -1,3 +1,5 @@
 # docs/plugins
 
-Plugin author guides. Empty for now.
+Plugin author guides.
+
+- [authoring.md](authoring.md): write, run, test and validate a UI plugin.

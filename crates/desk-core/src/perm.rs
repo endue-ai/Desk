@@ -111,6 +111,7 @@ pub fn covers(grant: &Permission, scope: &Permission) -> bool {
         }
         (Permission::UiSurface(_), Permission::UiSurface(_)) => true,
         (Permission::UiNotify(_), Permission::UiNotify(_)) => true,
+        (Permission::PluginManage(_), Permission::PluginManage(_)) => true,
         _ => false,
     }
 }
@@ -126,7 +127,10 @@ fn scope_allows(scope: &Permission, target: &Target<'_>) -> bool {
             s.hosts.iter().any(|h| host_match(h, host))
         }
         (
-            Permission::AudioCapture(_) | Permission::UiSurface(_) | Permission::UiNotify(_),
+            Permission::AudioCapture(_)
+            | Permission::UiSurface(_)
+            | Permission::UiNotify(_)
+            | Permission::PluginManage(_),
             Target::None,
         ) => true,
         _ => false,

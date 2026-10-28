@@ -1,0 +1,13 @@
+{
+  "target": "BridgeRequest",
+  "description": "plugin.list with its scope",
+  "instance": {
+    "id": 9,
+    "method": "plugin.list",
+    "params": {
+      "scope": {
+        "permission": "plugin:manage"
+      }
+    }
+  }
+}

@@ -1,0 +1,28 @@
+body {
+  margin: 0;
+  padding: 8px 12px;
+  background: #1e1d21;
+  color: #f2f0f5;
+  font: 13px/1.6 -apple-system, "SUIT", "Inter", system-ui, sans-serif;
+}
+
+ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+li {
+  padding: 4px 0;
+  border-bottom: 1px solid #333136;
+}
+
+small,
+p {
+  display: block;
+  color: #b0adb7;
+}
+
+input {
+  accent-color: #b6a3f5;
+}

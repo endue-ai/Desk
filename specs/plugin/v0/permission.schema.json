@@ -13,7 +13,8 @@
         { "$ref": "#/$defs/NetFetchPermission" },
         { "$ref": "#/$defs/AudioCapturePermission" },
         { "$ref": "#/$defs/UiSurfacePermission" },
-        { "$ref": "#/$defs/UiNotifyPermission" }
+        { "$ref": "#/$defs/UiNotifyPermission" },
+        { "$ref": "#/$defs/PluginManagePermission" }
       ]
     },
     "FsReadPermission": {
@@ -107,6 +108,15 @@
       "type": "object",
       "properties": {
         "permission": { "const": "ui:notify" }
+      },
+      "required": ["permission"],
+      "additionalProperties": false
+    },
+    "PluginManagePermission": {
+      "description": "List installed plugins, turn them on and off, and receive plugin.changed events.",
+      "type": "object",
+      "properties": {
+        "permission": { "const": "plugin:manage" }
       },
       "required": ["permission"],
       "additionalProperties": false

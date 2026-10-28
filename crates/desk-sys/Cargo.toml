@@ -9,8 +9,11 @@ repository.workspace = true
 publish.workspace = true
 
 [features]
-## File primitives: read and list.
-fs = []
+## File primitives: read, list and watch.
+fs = ["dep:notify"]
+
+[dependencies]
+notify = { workspace = true, optional = true }
 
 [[test]]
 name = "fs"

@@ -5,7 +5,8 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use desk_bridge::{
-    BridgeEvent, BridgeRequest, BridgeResponse, PermQueryResult, Permission, PluginManifest,
+    BridgeEvent, BridgeRequest, BridgeResponse, PermQueryResult, Permission, PluginListResult,
+    PluginManifest,
 };
 use serde::Serialize;
 use serde::de::DeserializeOwned;
@@ -124,6 +125,7 @@ fn valid_vectors_roundtrip_through_generated_types() {
                 "BridgeResponse" => roundtrip::<BridgeResponse>(vector),
                 "BridgeEvent" => roundtrip::<BridgeEvent>(vector),
                 "PermQueryResult" => roundtrip::<PermQueryResult>(vector),
+                "PluginListResult" => roundtrip::<PluginListResult>(vector),
                 "PluginManifest" => roundtrip::<PluginManifest>(vector),
                 "Permission" => roundtrip::<Permission>(vector),
                 other => panic!("{}: no Rust type mapped for {other}", vector.file),
