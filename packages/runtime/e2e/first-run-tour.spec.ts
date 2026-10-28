@@ -2,6 +2,7 @@ import { expect, type Frame, type Page, test } from "@playwright/test";
 import {
   answer,
   open,
+  run,
   scene,
   signIn,
   stored,
@@ -26,7 +27,7 @@ test.describe("first run, scenes 6-10", () => {
   test("the whole tour after Skip intro, with the calendar connected", async ({ page }) => {
     test.setTimeout(120_000);
     const frame = await open(page);
-    await page.clock.runFor(1200);
+    await run(page, 1200);
     await frame.getByRole("button", { name: "Skip intro" }).click();
     await signIn(page, frame, "Success");
 
@@ -39,7 +40,7 @@ test.describe("first run, scenes 6-10", () => {
     await expect(frame.locator("#frame .desktops span")).toHaveText(["1", "2", "3"]);
     await calendar.click();
     await expect(calendar).toHaveAttribute("aria-pressed", "true");
-    await page.clock.runFor(1000);
+    await run(page, 1000);
     await expect(frame.locator('#frame .toolbar [data-source="calendar"]')).toHaveText("Calendar");
     await frame.getByRole("button", { name: "Done" }).click();
     await untilSaid(page, frame, "That's all I'll look at. You can change it anytime.");
@@ -71,7 +72,7 @@ test.describe("first run, scenes 6-10", () => {
     await untilScene(page, frame, "layout");
     await answer(page, frame, "Name this layout", "Morning.");
     await untilSaid(page, frame, 'Saved. Say "Morning" and it comes back.');
-    await page.clock.runFor(1500);
+    await run(page, 1500);
     await expect(frame.locator("#frame .dock .saved")).toHaveText("Morning");
     expect(await stored(page, "layouts")).toEqual({
       endue: [{ name: "Morning", screen: "tomorrow", text: "What's on tomorrow?" }],
@@ -83,7 +84,7 @@ test.describe("first run, scenes 6-10", () => {
     await untilSaid(page, frame, 'Say "Hey Eris" anytime.');
     for (let i = 0; i < 40; i++) {
       if ((await stored(page, "first-run"))?.done) break;
-      await page.clock.runFor(500);
+      await run(page, 500);
     }
     expect(await stored(page, "first-run")).toMatchObject({
       done: true,
@@ -91,7 +92,7 @@ test.describe("first run, scenes 6-10", () => {
       connections: ["calendar"],
       skipped: true,
     });
-    await page.clock.runFor(1500);
+    await run(page, 1500);
     await expect(page.locator('[data-surface="endue.onboarding"]')).toHaveCount(0);
   });
 
@@ -124,7 +125,7 @@ test.describe("first run, scenes 6-10", () => {
     const frame = await open(page, "?resume=task&name=Ada");
     await untilScene(page, frame, "task");
     await answer(page, frame, "Type a task", "find a quiet hour");
-    await page.clock.runFor(3000);
+    await run(page, 3000);
     await expect(frame.locator("#canvas .answer h2")).toHaveText("find a quiet hour");
     await expect(frame.locator("#canvas .answer .body")).toHaveText("find a quiet hour");
     const said = await page.evaluate(() =>
@@ -138,7 +139,7 @@ test.describe("first run, scenes 6-10", () => {
   test("the first screen, 3.5 s after the task", async ({ page }) => {
     const frame = await open(page, "?resume=task&name=Ada&connect=calendar");
     await pickTask(page, frame, "What's on tomorrow?");
-    await page.clock.runFor(3500);
+    await run(page, 3500);
     expect(await frameTree(frame)).toMatchSnapshot("first-screen-plus-3500ms.json");
   });
 

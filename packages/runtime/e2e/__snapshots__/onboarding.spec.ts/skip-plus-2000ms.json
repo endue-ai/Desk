@@ -162,7 +162,7 @@
                 "display": "block",
                 "visibility": "visible",
                 "opacity": "1",
-                "transform": "matrix(1, 0, 0, 1, 0, -1.342641)",
+                "transform": "matrix(1, 0, 0, 1, 0, -1.306558)",
                 "filter": "none",
                 "color": "rgb(242, 240, 245)"
               },
@@ -187,7 +187,7 @@
                         "visibility": "visible",
                         "opacity": "1",
                         "transform": "matrix(1, 0, 0, 1, 0, 0)",
-                        "filter": "brightness(0.881997)",
+                        "filter": "brightness(0.885408)",
                         "color": "rgb(242, 240, 245)"
                       }
                     }
@@ -226,7 +226,7 @@
                     "display": "inline",
                     "visibility": "visible",
                     "opacity": "1",
-                    "transform": "matrix(1, 0, 0, 1, 0, -1.569724)",
+                    "transform": "matrix(1, 0, 0, 1, 0, -1.622644)",
                     "filter": "none",
                     "color": "rgb(242, 240, 245)"
                   }

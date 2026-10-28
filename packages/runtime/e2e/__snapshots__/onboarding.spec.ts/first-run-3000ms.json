@@ -286,9 +286,9 @@
                               "style": {
                                 "display": "inline-block",
                                 "visibility": "visible",
-                                "opacity": "0.96764",
-                                "transform": "matrix(0.9987, -0.003384, 0.003384, 0.9987, -0.38832, -1.100241)",
-                                "filter": "blur(0.3236px)",
+                                "opacity": "0.962147",
+                                "transform": "matrix(0.998478, -0.003958, 0.003958, 0.998478, -0.454234, -1.286996)",
+                                "filter": "blur(0.378528px)",
                                 "color": "rgb(242, 240, 245)"
                               },
                               "text": "3"
@@ -342,12 +342,68 @@
                               "style": {
                                 "display": "inline-block",
                                 "visibility": "visible",
-                                "opacity": "0.999266",
-                                "transform": "matrix(0.999971, -0.000038, 0.000038, 0.999971, 0.008806, -0.022015)",
-                                "filter": "blur(0.007338px)",
+                                "opacity": "0.998411",
+                                "transform": "matrix(0.999936, -0.000083, 0.000083, 0.999936, 0.019074, -0.047684)",
+                                "filter": "blur(0.015895px)",
                                 "color": "rgb(242, 240, 245)"
                               },
                               "text": "2"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "tag": "div",
+                  "class": "wrap",
+                  "aria-hidden": "true",
+                  "style": {
+                    "display": "flex",
+                    "visibility": "visible",
+                    "opacity": "1",
+                    "transform": "none",
+                    "filter": "none",
+                    "color": "rgb(242, 240, 245)"
+                  },
+                  "children": [
+                    {
+                      "tag": "div",
+                      "class": "line",
+                      "style": {
+                        "display": "block",
+                        "visibility": "visible",
+                        "opacity": "1",
+                        "transform": "none",
+                        "filter": "none",
+                        "color": "rgb(242, 240, 245)"
+                      },
+                      "children": [
+                        {
+                          "tag": "span",
+                          "class": "word",
+                          "style": {
+                            "display": "inline",
+                            "visibility": "visible",
+                            "opacity": "1",
+                            "transform": "none",
+                            "filter": "none",
+                            "color": "rgb(242, 240, 245)"
+                          },
+                          "children": [
+                            {
+                              "tag": "span",
+                              "class": "ch",
+                              "style": {
+                                "display": "inline-block",
+                                "visibility": "visible",
+                                "opacity": "0.052172",
+                                "transform": "matrix(1.116244, 0, 0, 1.116244, 0, 7.749576)",
+                                "filter": "blur(13.561758px)",
+                                "color": "rgb(242, 240, 245)"
+                              },
+                              "text": "1"
                             }
                           ]
                         }
