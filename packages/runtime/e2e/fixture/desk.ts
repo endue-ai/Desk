@@ -3,6 +3,7 @@
 // test UI plugin, on the browser bridge stub. Never shipped.
 //   ?init={"desk.theme.scheme":"light"}  init.yaml settings    ?off=desk.keys,desk.theme  disabled
 //   ?platform=mac                        the keymap's platform  ?profile=focus             start profile
+//   ?rules=[{"match":{...},"area":...}]  display rules test.echo contributes
 import { BridgeClient, browserStub, type PluginInfo, type PluginManifest } from "@endue-ai/bridge";
 import "../../src/desk.css";
 import { createRuntime, ManualClock } from "../../src/index";
@@ -20,11 +21,22 @@ const echo: PluginManifest = {
   entry: "ui/index.html",
   permissions: [{ permission: "ui:notify" }],
   surfaces: [{ id: "main", title: "Echo", placement: "center" }],
-  contributes: { commands: [{ id: "test.echo.say", title: "Say it back" }] },
+  contributes: {
+    commands: [{ id: "test.echo.say", title: "Say it back" }],
+    display: JSON.parse(params.get("rules") ?? "[]"),
+  },
+};
+const counter: PluginManifest = {
+  id: "test.counter",
+  version: "0.1.0",
+  kind: "ui",
+  entry: "ui/index.html",
+  surfaces: [{ id: "main", title: "Counter", placement: "center" }],
 };
 const plugins: PluginInfo[] = [
   ...Object.values(manifests).filter((m) => m.id.startsWith("desk.")),
   echo,
+  counter,
 ].map((manifest) => ({
   id: manifest.id,
   status: "ready",

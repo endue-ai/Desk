@@ -1,0 +1,66 @@
+{
+  "id": "desk.display",
+  "name": "Display",
+  "version": "0.1.0",
+  "kind": "policy",
+  "description": "Where new surfaces go, how big they are, and whether they take the focus.",
+  "contributes": {
+    "display": [
+      {
+        "match": {
+          "placement": "overlay"
+        },
+        "area": "overlay",
+        "focus": true
+      },
+      {
+        "match": {
+          "placement": "left"
+        },
+        "area": "left",
+        "size": {
+          "pixels": 240
+        }
+      },
+      {
+        "match": {
+          "placement": "right"
+        },
+        "area": "right",
+        "size": {
+          "pixels": 320
+        }
+      },
+      {
+        "match": {
+          "placement": "bottom"
+        },
+        "area": "bottom",
+        "size": {
+          "pixels": 72
+        }
+      },
+      {
+        "match": {
+          "placement": "floating"
+        },
+        "area": "floating",
+        "size": {
+          "columns": 1,
+          "rows": 1
+        },
+        "focus": true
+      },
+      {
+        "match": {},
+        "area": "center",
+        "size": {
+          "columns": 1,
+          "rows": 1
+        },
+        "reuse": true,
+        "focus": false
+      }
+    ]
+  }
+}

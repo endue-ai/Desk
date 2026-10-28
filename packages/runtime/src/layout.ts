@@ -38,22 +38,30 @@ export function loadLayout(storage: LayoutStorage): Layout {
   }
 }
 
-/** Put `id` in the first free 1×1 cell, row by row. A placed surface keeps its cell. */
-export function place(layout: Layout, id: string): Layout {
+/**
+ * Put `id` in the first free region of `size` cells (1×1 by default), row by row. A placed surface
+ * keeps its cell. A size larger than the grid is cut to fit; with no free region it takes the top left.
+ */
+export function place(
+  layout: Layout,
+  id: string,
+  size: { colSpan?: number; rowSpan?: number } = {},
+): Layout {
   if (layout.cells[id]) return layout;
-  for (let row = 1; row <= layout.rows; row++) {
-    for (let col = 1; col <= layout.columns; col++) {
-      if (!Object.values(layout.cells).some((cell) => covers(cell, col, row))) {
-        return {
-          ...layout,
-          cells: { ...layout.cells, [id]: { col, row, colSpan: 1, rowSpan: 1 } },
-        };
+  const colSpan = Math.min(Math.max(1, size.colSpan ?? 1), layout.columns);
+  const rowSpan = Math.min(Math.max(1, size.rowSpan ?? 1), layout.rows);
+  const taken = Object.values(layout.cells);
+  for (let row = 1; row + rowSpan - 1 <= layout.rows; row++) {
+    for (let col = 1; col + colSpan - 1 <= layout.columns; col++) {
+      const region = { col, row, colSpan, rowSpan };
+      if (!taken.some((cell) => overlaps(cell, region))) {
+        return { ...layout, cells: { ...layout.cells, [id]: region } };
       }
     }
   }
   return {
     ...layout,
-    cells: { ...layout.cells, [id]: { col: 1, row: 1, colSpan: 1, rowSpan: 1 } },
+    cells: { ...layout.cells, [id]: { col: 1, row: 1, colSpan, rowSpan } },
   };
 }
 
@@ -68,12 +76,12 @@ export function remove(layout: Layout, id: string): Layout {
   return { ...layout, cells };
 }
 
-function covers(cell: Cell, col: number, row: number): boolean {
+function overlaps(a: Cell, b: Cell): boolean {
   return (
-    col >= cell.col &&
-    col < cell.col + cell.colSpan &&
-    row >= cell.row &&
-    row < cell.row + cell.rowSpan
+    a.col < b.col + b.colSpan &&
+    b.col < a.col + a.colSpan &&
+    a.row < b.row + b.rowSpan &&
+    b.row < a.row + a.rowSpan
   );
 }
 

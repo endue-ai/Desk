@@ -1,0 +1,42 @@
+{
+  "id": "desk.palette",
+  "name": "Palette",
+  "version": "0.1.0",
+  "kind": "ui",
+  "entry": "ui/index.html",
+  "description": "The command palette and the place where commands ask to pick one of many (M-x and the minibuffer).",
+  "surfaces": [
+    {
+      "id": "main",
+      "title": "Palette",
+      "placement": "overlay",
+      "hidden": true
+    }
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "id": "desk.palette.open",
+        "title": "Run a command",
+        "keywords": ["m-x", "commands", "palette"]
+      },
+      {
+        "id": "desk.palette.pick",
+        "title": "Pick one of many",
+        "keywords": ["completing-read", "choose"]
+      },
+      {
+        "id": "desk.palette.cancel",
+        "title": "Close the palette",
+        "keywords": ["cancel", "quit"]
+      }
+    ],
+    "settings": {
+      "desk.palette.history": {
+        "kind": "integer",
+        "default": 50,
+        "description": "How many commands the palette remembers, most recent first."
+      }
+    }
+  }
+}

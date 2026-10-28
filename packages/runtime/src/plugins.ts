@@ -137,7 +137,7 @@ export class PluginHost {
       id: info.id,
       title: surface?.title ?? manifest.name ?? info.id,
       src: this.#options.url(info.id, manifest.entry ?? "", info.revision),
-      ...(surface?.placement ? { placement: surface.placement } : {}),
+      ...(surface ? { surface: surface.id, placement: surface.placement } : {}),
       ...(surface?.hidden ? { hidden: true } : {}),
     });
   }
@@ -252,7 +252,11 @@ export class PluginHost {
         if (!pending || pending.plugin !== id) break;
         this.#pending.delete(message.call);
         if (message.ok) pending.resolve(message.result);
-        else pending.reject(new CommandError("failed", message.error?.message ?? "failed"));
+        else {
+          const code = message.error?.code;
+          const known = code === "cancelled" || code === "unknown_command" ? code : "failed";
+          pending.reject(new CommandError(known, message.error?.message ?? "failed"));
+        }
         break;
       }
       case "desk:calls":

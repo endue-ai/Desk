@@ -15,6 +15,7 @@ import {
 import type { Notice, NoticeInput } from "./notify";
 import { PluginHost, type PluginHostOptions } from "./plugins";
 import type { DeskContext } from "./policies/context";
+import { installDisplay } from "./policies/display";
 import { installKeys } from "./policies/keys";
 import { installNotify } from "./policies/notify";
 import { installTheme } from "./policies/theme";
@@ -138,7 +139,21 @@ export function createRuntime(options: RuntimeOptions): Runtime {
   const theme = installTheme(ctx);
   const keys = installKeys(ctx);
   const notify = installNotify(ctx, statusLine);
+  const focusSurface = (id: string | null) => {
+    shortcuts.focus(id);
+    if (id) surfaces.get(id)?.focus();
+  };
+  const display = installDisplay(ctx, {
+    focus: focusSurface,
+    visible: () => surfaces.ids().filter((id) => surfaces.visible(id)),
+    focused: () => shortcuts.focused,
+  });
   keys.onQuit(() => notify.notifications.dismiss());
+  keys.onQuit(() => {
+    if (commands.has("desk.palette.cancel"))
+      void commands.run("desk.palette.cancel").catch(() => {});
+  });
+  defineSettingsCommands(hub);
   commands.define("desk.commands.list", {
     title: "List commands",
     owner: "desk",
@@ -163,9 +178,15 @@ export function createRuntime(options: RuntimeOptions): Runtime {
   );
 
   const openSurface = (spec: SurfaceSpec) => {
-    surfaces.open(spec);
-    // Overlays cover the desk; only grid surfaces take a cell.
-    if (spec.placement !== "overlay") commit(place(layout, spec.id));
+    const decision = display.decide(spec);
+    const section = surfaces.open({ ...spec, placement: decision.area });
+    // Overlays cover the desk and edge surfaces sit around it; only grid surfaces take cells.
+    const onEdge = section.parentElement?.classList.contains("desk-edge") ?? false;
+    if (decision.area !== "overlay" && !onEdge) {
+      commit(place(layout, spec.id, { colSpan: decision.columns, rowSpan: decision.rows }));
+    }
+    display.sizeEdge(section, decision);
+    if (decision.focus && !spec.hidden) focusSurface(spec.id);
   };
   const closeSurface = (id: string) => {
     surfaces.close(id);
@@ -216,20 +237,47 @@ export function createRuntime(options: RuntimeOptions): Runtime {
     moveSurface(id, cell) {
       commit(move(layout, id, cell));
     },
-    focusSurface(id) {
-      shortcuts.focus(id);
-      if (id) surfaces.get(id)?.focus();
-    },
+    focusSurface,
     layout: () => structuredClone(layout),
     status: () => notify.text(),
     dispose() {
-      for (const policy of [notify, keys, theme]) policy.dispose();
+      for (const policy of [display, notify, keys, theme]) policy.dispose();
       pluginHost?.stop();
       win.removeEventListener("keydown", onKey);
       for (const id of surfaces.ids()) surfaces.close(id);
       root.replaceChildren();
     },
   };
+}
+
+/**
+ * Settings for plugins: a plugin reads and changes only its own keys (`<id>.*`), in the layers the
+ * runtime keeps; the person (keys, the palette) reaches every key.
+ */
+function defineSettingsCommands(hub: PolicyHub): void {
+  const { commands, settings } = hub;
+  const mine = (caller: string | undefined, key: string) =>
+    caller === undefined || key.startsWith(`${caller}.`);
+  commands.define("desk.settings.get", {
+    title: "Show settings",
+    keywords: ["settings", "preferences"],
+    owner: "desk",
+    run: (_args, { caller }) =>
+      Object.fromEntries(Object.entries(settings.all()).filter(([key]) => mine(caller, key))),
+  });
+  commands.define("desk.settings.set", {
+    title: "Change a setting until Desk quits",
+    keywords: ["settings", "preferences"],
+    owner: "desk",
+    run: (args, { caller }) => {
+      const { key, value } = (args ?? {}) as { key?: string; value?: unknown };
+      if (typeof key !== "string" || !mine(caller, key))
+        throw new Error(`${caller ?? "the person"} may not set ${key}`);
+      if (value === undefined) settings.reset(key);
+      else settings.set(key, value);
+      return settings.get(key);
+    },
+  });
 }
 
 function memoryStorage(): LayoutStorage {
