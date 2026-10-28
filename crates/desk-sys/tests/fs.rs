@@ -3,16 +3,22 @@
 use std::fs;
 use std::io::ErrorKind;
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicU32, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use desk_sys::fs::{EntryKind, list, read};
+
+/// Tests run in parallel threads, and on macOS two of them can read the same nanosecond: the counter
+/// keeps their folders apart, so one test never rewrites a file another is listing.
+static NEXT: AtomicU32 = AtomicU32::new(0);
 
 fn temp_dir() -> PathBuf {
     let nanos = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap()
         .as_nanos();
-    let dir = std::env::temp_dir().join(format!("desk-sys-{}-{nanos}", std::process::id()));
+    let n = NEXT.fetch_add(1, Ordering::Relaxed);
+    let dir = std::env::temp_dir().join(format!("desk-sys-{}-{nanos}-{n}", std::process::id()));
     fs::create_dir_all(dir.join("sub")).unwrap();
     fs::write(dir.join("b.txt"), "hello").unwrap();
     fs::write(dir.join("a.bin"), [0u8, 1, 2]).unwrap();
