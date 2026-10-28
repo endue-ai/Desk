@@ -15,7 +15,8 @@ issue body, nothing else. Do not write code, create branches or open PRs.
    and a filled Scope (say so and exit).
 2. Read `AGENTS.md`, the design sections the Requirement names in `docs/ko/desk-structure.md`, and the code
    and specs the change will touch. Check open issues with `ai:ready` for files they also touch: if two
-   issues touch the same files, add "Blocked by #M" to the Assumptions so they run in order.
+   issues touch the same files, add "Blocked by #M" to the Assumptions so they run in order. Tasks in
+   flight need nothing: `just lanes` holds a task back while its Scope overlaps one (ADR 0015).
 3. Draft the contract:
    - **Scope**: the smallest set of path globs that holds every file the author will need, one bullet per
      glob in backticks, for example `` - `crates/desk-core/**` ``. Include tests, generated files, docs,

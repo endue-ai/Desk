@@ -3,5 +3,8 @@
 
 # Only maintainers change these, and changes here are never auto-merged.
 /.github/workflows/   @endue-team
+/.github/rulesets/    @endue-team
+/AGENTS.md            @endue-team
+/.claude/             @endue-team
 /specs/               @endue-team
 /brand/               @endue-team

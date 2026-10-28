@@ -18,9 +18,10 @@ checks are green, or when a budget runs out. You never merge.
 
 ## Steps
 
-1. Branch from the latest main: `git fetch origin && git switch -c ai/<N>-<slug> origin/main`, where
-   `<slug>` is two to four words of the title in kebab-case. Use a git worktree per issue when another
-   task is in progress.
+1. Work in the task's own worktree, never in the main checkout. If `.claude/worktrees/ai-<N>` exists
+   (the dispatcher started it), work there. Otherwise run `just task-start <N>`: it claims the issue
+   (`ai:in-progress`), refuses when the issue's lane is taken, and creates the worktree on
+   `ai/<N>-<slug>` from `origin/main`. Push the branch as soon as it has its first commit.
 2. If the contract says Spec change: yes, edit `specs/` first, run `just codegen`, update the vectors, and
    commit that alone (`feat(specs): ...`).
 3. Write the acceptance tests from the contract and run them: they must fail for the right reason (the
@@ -55,3 +56,8 @@ tried, and run `gh issue edit <N> --add-label ai:needs-human` (and the same on t
 - Never weaken a gate: do not skip, delete or loosen tests, lints, CI jobs or `scope-check`.
 - No secrets, no new network endpoints, no widened permissions or capabilities unless the contract says so.
 - Files stay under 400 lines; generated files are exempt.
+- Other agents work in parallel (ADR 0015). Do not rebase or merge `main` just because it moved: the
+  merge queue tests the PR on top of it. Update the branch (`git merge origin/main`) only for a
+  conflict, a failing gate or a queue ejection. In a conflicting `Cargo.lock` or `pnpm-lock.yaml`, take
+  main's version and regenerate (`cargo check`, `pnpm install`); never merge lockfile lines by hand.
+- Never merge a PR or add it to the merge queue; a person does that after approving.

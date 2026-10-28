@@ -17,10 +17,12 @@ use serde::Serialize;
 
 use crate::conversation::Conversation;
 use crate::events::EventBus;
+use crate::init::InitFile;
 use crate::paths::normalize;
 use crate::perm::{Denied, PermissionEngine, Target, covers};
 use crate::plugins::PluginRegistry;
 use crate::store::Store;
+use crate::sync::Syncer;
 
 /// Where root tokens in bridge paths point.
 #[derive(Debug, Clone)]
@@ -54,6 +56,8 @@ pub struct Core {
     pub(crate) plugins: Mutex<PluginRegistry>,
     pub(crate) store: Mutex<Store>,
     pub(crate) conversation: Option<Arc<Conversation>>,
+    pub(crate) init: Mutex<InitFile>,
+    pub(crate) sync: Option<Syncer>,
 }
 
 impl Core {
@@ -66,6 +70,8 @@ impl Core {
             plugins: Mutex::new(PluginRegistry::new(None)),
             store: Mutex::new(Store::new(None)),
             conversation: None,
+            init: Mutex::new(InitFile::memory()),
+            sync: None,
         }
     }
 

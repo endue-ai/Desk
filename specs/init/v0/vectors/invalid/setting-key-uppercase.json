@@ -1,0 +1,9 @@
+{
+  "target": "InitDocument",
+  "description": "setting keys are lowercase",
+  "instance": {
+    "settings": {
+      "Eris.Voice": true
+    }
+  }
+}

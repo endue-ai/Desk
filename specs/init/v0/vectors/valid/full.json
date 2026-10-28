@@ -1,0 +1,24 @@
+{
+  "target": "InitDocument",
+  "description": "a setup that uses every key",
+  "instance": {
+    "version": 0,
+    "mode": "focus",
+    "plugins": {
+      "disabled": ["endue.sidebar", "example.hello-ui"]
+    },
+    "settings": {
+      "eris.voice": true,
+      "motion.reduce": false,
+      "captions.linger-seconds": 4,
+      "theme": "dark",
+      "eris.wake-words": ["eris", "hey eris"],
+      "layout.left": {
+        "width": 280
+      }
+    },
+    "sync": {
+      "enabled": true
+    }
+  }
+}

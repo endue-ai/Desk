@@ -1,4 +1,5 @@
 import { defineConfig, devices } from "@playwright/test";
+import { baseURL, webServer } from "./e2e/port";
 
 // Performance runs: real time, one worker, WebKit. `just perf-opening` records; nightly will check.
 export default defineConfig({
@@ -7,7 +8,7 @@ export default defineConfig({
   workers: 1,
   retries: 0,
   reporter: "list",
-  use: { baseURL: "http://127.0.0.1:4173" },
+  use: { baseURL },
   projects: [
     {
       name: "webkit",
@@ -18,9 +19,5 @@ export default defineConfig({
       },
     },
   ],
-  webServer: {
-    command: "pnpm exec vite --config e2e/vite.config.ts",
-    url: "http://127.0.0.1:4173",
-    reuseExistingServer: !process.env.CI,
-  },
+  webServer,
 });

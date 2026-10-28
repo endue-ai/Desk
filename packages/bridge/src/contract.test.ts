@@ -2,9 +2,16 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import Ajv2020 from "ajv/dist/2020.js";
 import { describe, expect, expectTypeOf, it } from "vitest";
+import { parse } from "yaml";
 import type { TurnEvent } from "./brain.generated";
 import { brainSchema } from "./brain.generated";
-import type { BridgeMethodMap, BridgeRequest, FsReadResult, PluginManifest } from "./generated";
+import type {
+  BridgeMethodMap,
+  BridgeRequest,
+  FsReadResult,
+  InitDocument,
+  PluginManifest,
+} from "./generated";
 
 type Schema = { $id: string; $defs: Record<string, unknown> };
 type Vector = { file: string; valid: boolean; target: string; instance: unknown };
@@ -46,6 +53,7 @@ function validatorFor(docs: Schema[]) {
 const sets: Record<string, Schema[]> = {
   bridge: [...schemas("plugin/v0"), ...schemas("bridge/v0")],
   plugin: schemas("plugin/v0"),
+  init: [...schemas("plugin/v0"), ...schemas("init/v0")],
   brain: [brainSchema as Schema],
 };
 
@@ -79,6 +87,23 @@ describe("generated types agree with the schemas", () => {
       surfaces: [{ id: "main", placement: "center" }],
     } satisfies PluginManifest;
     expect(bridge("PluginManifest")(manifest)).toBe(true);
+  });
+
+  it("a typed init document is valid", () => {
+    const init = {
+      mode: "focus",
+      plugins: { disabled: ["endue.sidebar"] },
+      settings: { "eris.voice": true },
+      sync: { enabled: true },
+    } satisfies InitDocument;
+    expect(validatorFor(sets.init ?? [])("InitDocument")(init)).toBe(true);
+  });
+
+  it("the init.yaml template parses to the template vector", () => {
+    const template = parse(readFileSync(join(specs, "init/v0/init.template.yaml"), "utf8"));
+    const vector = readJson(join(specs, "init/v0/vectors/valid/template.json")) as Vector;
+    expect(template).toEqual(vector.instance);
+    expect(parse("# only a comment\n")).toBeNull();
   });
 
   it("a typed turn event is valid", () => {

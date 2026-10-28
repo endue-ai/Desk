@@ -1,4 +1,5 @@
 import { defineConfig, devices } from "@playwright/test";
+import { baseURL, webServer } from "./e2e/port";
 
 const ci = Boolean(process.env.CI);
 
@@ -11,7 +12,7 @@ export default defineConfig({
   retries: ci ? 2 : 0,
   reporter: ci ? [["github"], ["list"]] : "list",
   use: {
-    baseURL: "http://127.0.0.1:4173",
+    baseURL,
     trace: "retain-on-failure",
   },
   projects: [
@@ -24,9 +25,5 @@ export default defineConfig({
       },
     },
   ],
-  webServer: {
-    command: "pnpm exec vite --config e2e/vite.config.ts",
-    url: "http://127.0.0.1:4173",
-    reuseExistingServer: !ci,
-  },
+  webServer,
 });

@@ -60,7 +60,7 @@ tourne. Desk adopte la même forme et nomme ses parties comme le ferait un syst�
 | Gestionnaire de fenêtres | gestionnaire de fenêtres | frames · windows | compositeur de canevas 3D |
 | Shell | shell de terminal | M-x | Eris · palette de commandes |
 | Applications | applications | paquets (Elisp) | plugins (UI · Wasm · MCP) |
-| Configuration de démarrage | init | init.el | modes (ensemble de plugins + réglages) |
+| Configuration de démarrage | init | init.el | `init.yaml` (mode + plugins + réglages) |
 | Gestionnaire de paquets | apt · brew | package.el · MELPA | place de marché |
 | Surcharge de comportement | aucune | advice · hooks | hooks d'événements · surcharges de commandes |
 | Comptes | comptes utilisateur | aucun | endue ID |

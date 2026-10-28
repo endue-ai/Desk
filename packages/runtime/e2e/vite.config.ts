@@ -59,7 +59,8 @@ export default defineConfig({
   plugins: [pluginFiles()],
   server: {
     host: "127.0.0.1",
-    port: 4173,
+    // Set by the Playwright configs (e2e/port.ts); 4173 when the fixture is served by hand.
+    port: Number(process.env.DESK_E2E_PORT ?? 4173),
     strictPort: true,
     cors: { origin: "*" },
     fs: { allow: [repo] },

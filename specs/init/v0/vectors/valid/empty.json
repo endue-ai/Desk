@@ -1,0 +1,5 @@
+{
+  "target": "InitDocument",
+  "description": "an empty file: every key takes its default",
+  "instance": {}
+}

@@ -23,9 +23,12 @@ impl Core {
     }
 
     /// Install the plugin in `dir`. Built-in plugins get the permissions their manifest declares;
-    /// others ask with perm.request like anyone else.
+    /// others ask with perm.request like anyone else. Plugins init.yaml disables start disabled.
     pub fn install_plugin(&self, dir: &Path, built_in: bool) -> PluginInfo {
-        let info = self.registry().install(dir, built_in);
+        let mut info = self.registry().install(dir, built_in);
+        if self.init_disables(&info.id) {
+            info = self.registry().hold_off(&info.id).unwrap_or(info);
+        }
         if built_in && info.status == PluginStatus::Ready {
             let permissions = info
                 .manifest
