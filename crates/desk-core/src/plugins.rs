@@ -1,7 +1,8 @@
 //! The plugin registry: installed plugin folders, their validation status, revisions and the
-//! enabled flags, which are persisted in a small JSON store.
+//! enabled flags, which are persisted in a small JSON store. init.yaml can hold plugins off at
+//! start without touching the persisted flags.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
@@ -32,6 +33,8 @@ pub struct PluginRegistry {
     entries: Vec<Entry>,
     store_path: Option<PathBuf>,
     store: Store,
+    /// Held off for this run by init.yaml, until set_enabled says otherwise.
+    held_off: BTreeSet<String>,
 }
 
 impl PluginRegistry {
@@ -46,6 +49,7 @@ impl PluginRegistry {
             entries: Vec::new(),
             store_path: store,
             store: loaded,
+            held_off: BTreeSet::new(),
         }
     }
 
@@ -97,8 +101,17 @@ impl PluginRegistry {
 
     pub fn set_enabled(&mut self, id: &str, enabled: bool) -> Option<PluginInfo> {
         let index = self.entries.iter().position(|e| e.id == id)?;
+        self.held_off.remove(id);
         self.store.enabled.insert(id.to_owned(), enabled);
         self.save();
+        Some(self.info(index))
+    }
+
+    /// Keep a plugin disabled for this run without changing its persisted flag (init.yaml's
+    /// `plugins.disabled`). A later set_enabled overrides it.
+    pub fn hold_off(&mut self, id: &str) -> Option<PluginInfo> {
+        let index = self.entries.iter().position(|e| e.id == id)?;
+        self.held_off.insert(id.to_owned());
         Some(self.info(index))
     }
 
@@ -143,7 +156,8 @@ impl PluginRegistry {
             } else {
                 PluginStatus::Failed
             },
-            enabled: self.store.enabled.get(&entry.id).copied().unwrap_or(true),
+            enabled: !self.held_off.contains(&entry.id)
+                && self.store.enabled.get(&entry.id).copied().unwrap_or(true),
             built_in: entry.built_in,
             revision: entry.revision,
             manifest: entry.manifest.clone(),

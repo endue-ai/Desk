@@ -13,7 +13,7 @@ English summary is `docs/architecture.md`.
 | `packages/` | TypeScript workspace, scope `@endue-ai/`: runtime, bridge, plugin-sdk, ui, create-plugin |
 | `plugins/` | Built-in features written as plugins, in the same format as community plugins |
 | `examples/` | The smallest working examples; each one runs with one command |
-| `specs/` | Language-neutral contracts (bridge, brain, plugin, wit): the single source of truth for types |
+| `specs/` | Language-neutral contracts (bridge, brain, plugin, init, wit): the single source of truth for types |
 | `e2e/` | App-level tests (tauri-driver), install smoke tests and performance budgets |
 | `docs/` | Architecture, ADRs and guides; `docs/ko/` holds the Korean design documents, `docs/i18n/` the translations |
 | `brand/` | endue and Eris brand assets. Not Apache-2.0: see `brand/LICENSE` |

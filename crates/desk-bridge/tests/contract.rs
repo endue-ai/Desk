@@ -1,12 +1,12 @@
-//! Contract: the bridge and plugin vectors are judged by the JSON Schemas exactly as their folders say,
-//! and every valid vector round-trips through the generated Rust types unchanged.
+//! Contract: the bridge, plugin and init vectors are judged by the JSON Schemas exactly as their folders
+//! say, and every valid vector round-trips through the generated Rust types unchanged.
 
 use std::fs;
 use std::path::{Path, PathBuf};
 
 use desk_bridge::{
-    BridgeEvent, BridgeRequest, BridgeResponse, PermQueryResult, Permission, PluginListResult,
-    PluginManifest, StoreGetResult,
+    BridgeEvent, BridgeRequest, BridgeResponse, InitDocument, InitSettingKey, PermQueryResult,
+    Permission, PluginListResult, PluginManifest, StoreGetResult,
 };
 use serde::Serialize;
 use serde::de::DeserializeOwned;
@@ -105,6 +105,13 @@ fn plugin_vectors_are_judged_as_their_folder_says() {
     assert_eq!(judge(&schemas("plugin/v0"), "plugin"), Vec::<String>::new());
 }
 
+#[test]
+fn init_vectors_are_judged_as_their_folder_says() {
+    let mut docs = schemas("plugin/v0");
+    docs.extend(schemas("init/v0"));
+    assert_eq!(judge(&docs, "init"), Vec::<String>::new());
+}
+
 fn roundtrip<T: DeserializeOwned + Serialize>(vector: &Vector) {
     let typed: T = serde_json::from_value(vector.instance.clone())
         .unwrap_or_else(|e| panic!("{} does not deserialize: {e}", vector.file));
@@ -118,7 +125,7 @@ fn roundtrip<T: DeserializeOwned + Serialize>(vector: &Vector) {
 
 #[test]
 fn valid_vectors_roundtrip_through_generated_types() {
-    for spec in ["bridge", "plugin"] {
+    for spec in ["bridge", "plugin", "init"] {
         for vector in vectors(spec).iter().filter(|v| v.valid) {
             match vector.target.as_str() {
                 "BridgeRequest" => roundtrip::<BridgeRequest>(vector),
@@ -129,10 +136,18 @@ fn valid_vectors_roundtrip_through_generated_types() {
                 "StoreGetResult" => roundtrip::<StoreGetResult>(vector),
                 "PluginManifest" => roundtrip::<PluginManifest>(vector),
                 "Permission" => roundtrip::<Permission>(vector),
+                "InitDocument" => roundtrip::<InitDocument>(vector),
+                "InitSettingKey" => roundtrip::<InitSettingKey>(vector),
                 other => panic!("{}: no Rust type mapped for {other}", vector.file),
             }
         }
     }
+}
+
+#[test]
+fn generated_init_types_refuse_unknown_keys() {
+    assert!(serde_json::from_value::<InitDocument>(json!({ "theme": "dark" })).is_err());
+    assert!(serde_json::from_value::<InitDocument>(json!({ "sync": { "on": true } })).is_err());
 }
 
 #[test]

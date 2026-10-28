@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://endue.ai/specs/init/v0/init.schema.json",
+  "title": "init.yaml v0",
+  "description": "A person's own setup, which Desk reads at every start like Emacs reads init.el. The file is YAML; this schema describes the data it holds once parsed. An empty file is the empty object.",
+  "$ref": "#/$defs/InitDocument",
+  "$defs": {
+    "InitDocument": {
+      "description": "The whole of init.yaml. Every key is optional; a missing key takes its default.",
+      "type": "object",
+      "properties": {
+        "version": {
+          "description": "The format version. Default 0. Desk refuses a file with a version newer than it reads.",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 0
+        },
+        "mode": { "$ref": "#/$defs/InitMode" },
+        "plugins": { "$ref": "#/$defs/InitPlugins" },
+        "settings": { "$ref": "#/$defs/InitSettings" },
+        "sync": { "$ref": "#/$defs/InitSync" }
+      },
+      "additionalProperties": false
+    },
+    "InitMode": {
+      "description": "The mode to start in: a set of plugins plus their settings. Default \"default\".",
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$"
+    },
+    "InitPlugins": {
+      "description": "Which plugins start how.",
+      "type": "object",
+      "properties": {
+        "disabled": {
+          "description": "Plugin ids that start disabled, built-in plugins included. Default none. The person can still turn one on while Desk runs; the list applies again at the next start.",
+          "type": "array",
+          "items": { "$ref": "../../plugin/v0/plugin.schema.json#/$defs/PluginId" },
+          "uniqueItems": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "InitSettings": {
+      "description": "Settings by key, for the core and plugins. Values are any YAML value that JSON can hold. Default none.",
+      "type": "object",
+      "propertyNames": { "$ref": "#/$defs/InitSettingKey" },
+      "additionalProperties": {}
+    },
+    "InitSettingKey": {
+      "description": "A setting key: lowercase, dotted by owner, for example eris.voice or motion.reduce.",
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9._-]{0,127}$"
+    },
+    "InitSync": {
+      "description": "Syncing init.yaml through the person's endue account.",
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "description": "Keep this file the same on every desk the person uses. Default false.",
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

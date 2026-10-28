@@ -1,0 +1,5 @@
+{
+  "target": "InitDocument",
+  "description": "the file holds a mapping, not a list",
+  "instance": ["mode", "focus"]
+}

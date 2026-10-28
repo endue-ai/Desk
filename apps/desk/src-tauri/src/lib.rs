@@ -8,7 +8,7 @@ use std::sync::{Arc, Mutex};
 
 use desk_brain_endue::HttpBrain;
 use desk_bridge::{Permission, PluginManagePermission};
-use desk_core::{BrainOptions, Core, PluginWatcher, Roots};
+use desk_core::{BrainOptions, Core, MockRemote, PluginWatcher, Roots, SyncError, SyncOutcome};
 use tauri::{Emitter, Manager};
 
 /// The caller id of the web runtime itself. Plugins call under their own ids.
@@ -16,6 +16,9 @@ pub const RUNTIME_CALLER: &str = "desk";
 
 /// Where the brain lives unless `DESK_BRAIN_URL` says otherwise: examples/brain-echo (`just brain-echo`).
 pub const DEFAULT_BRAIN_URL: &str = "http://127.0.0.1:8787/v0";
+
+/// Where init.yaml lives under home unless `DESK_INIT` names another file, like `~/.emacs.d/init.el`.
+pub const INIT_FILE: &str = ".desk/init.yaml";
 
 /// Keeps the hot-reload watcher alive for the life of the app.
 struct Watching(#[allow(dead_code)] Mutex<Option<PluginWatcher>>);
@@ -27,9 +30,23 @@ pub fn run() {
         })
         .setup(|app| {
             let data = app.path().app_data_dir()?;
-            let mut core = Core::new(Roots { home: home_dir() })
+            let home = home_dir();
+            let init = std::env::var_os("DESK_INIT")
+                .map(PathBuf::from)
+                .unwrap_or_else(|| home.join(INIT_FILE));
+            // endue does not serve sync yet: until it does, a stand-in keeps endue's copy of
+            // init.yaml in the data folder.
+            let remote = MockRemote::with_file(data.join("sync-mock.json"));
+            let mut core = Core::new(Roots { home })
+                .with_init_file(init)
+                .with_sync(Arc::new(remote), Some(data.join("sync.json")))
                 .with_plugin_store(data.join("plugins.json"))
                 .with_store_file(data.join("store.json"));
+            if let Some(problem) = core.init_problem() {
+                eprintln!("endue Desk: init.yaml is not in force ({problem}); using the defaults");
+            }
+            // Before plugins install, so a setup pulled from another desk applies from this start.
+            sync_init(&core);
             let url =
                 std::env::var("DESK_BRAIN_URL").unwrap_or_else(|_| DEFAULT_BRAIN_URL.to_owned());
             match HttpBrain::new(&url) {
@@ -78,6 +95,22 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("endue Desk failed to start");
+}
+
+fn sync_init(core: &Core) {
+    match core.sync_init() {
+        Ok(SyncOutcome::Conflict { revision }) => {
+            let copy = core.init_remote_copy().unwrap_or_default();
+            eprintln!(
+                "endue Desk: init.yaml changed here and on endue (revision {revision}); \
+                 endue's copy is in {}",
+                copy.display()
+            );
+        }
+        Ok(outcome) => eprintln!("endue Desk: init.yaml sync: {outcome:?}"),
+        Err(SyncError::Off) => {}
+        Err(why) => eprintln!("endue Desk: init.yaml not synced ({why})"),
+    }
 }
 
 /// Folders from a PATH-style environment variable (`:` on Unix, `;` on Windows).
