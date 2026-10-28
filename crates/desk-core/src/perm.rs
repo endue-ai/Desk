@@ -1,7 +1,7 @@
 //! The permission engine: everything is denied unless a grant covers the call's scope and the scope
 //! covers the call's target.
 
-use desk_bridge::{Grant, Permission};
+use desk_bridge::{Grant, GrantDuration, Permission};
 
 use crate::paths::{glob_match, host_covers, host_match, normalize, pattern_covers};
 use crate::time::rfc3339_now;
@@ -35,12 +35,14 @@ impl PermissionEngine {
         Self::default()
     }
 
-    /// Record that the person granted `permission` to `caller`.
+    /// Record that the person granted `permission` to `caller`. Grants live in memory, so they last
+    /// for the session.
     pub fn grant(&mut self, caller: &str, permission: Permission) -> Grant {
         self.next_id += 1;
         let grant = Grant {
             grant_id: format!("g{}", self.next_id),
             permission,
+            duration: GrantDuration::Session,
             granted_at: rfc3339_now(),
             expires_at: None,
         };
