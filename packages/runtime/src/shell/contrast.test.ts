@@ -1,5 +1,6 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, test } from "vitest";
 import { contrast, over, parseColor, readTokens } from "./contrast";
 
@@ -77,7 +78,8 @@ test("oklch parses to the expected sRGB", () => {
 });
 
 test("only tokens.css holds literal colours", () => {
-  const root = new URL("..", import.meta.url).pathname;
+  // fileURLToPath, not .pathname: on Windows the latter is "/D:/..." and joins into "D:\\D:\\...".
+  const root = fileURLToPath(new URL("..", import.meta.url));
   const offenders: string[] = [];
   const walk = (dir: string) => {
     for (const name of readdirSync(dir)) {
