@@ -20,6 +20,7 @@ desk-brain-endue = { path = "crates/desk-brain-endue" }
 desk-core = { path = "crates/desk-core" }
 desk-sys = { path = "crates/desk-sys" }
 base64 = "0.23"
+cpal = "0.18"
 nix = { version = "0.31", default-features = false, features = ["signal"] }
 notify = { version = "8", default-features = false, features = ["macos_fsevent"] }
 portable-pty = "0.9"

@@ -12,6 +12,7 @@ use std::sync::{Arc, Mutex};
 use desk_brain_endue::HttpBrain;
 use desk_bridge::{Permission, PluginManagePermission};
 use desk_core::{BrainOptions, Core, LaunchGuard, PluginWatcher, RUNTIME_CALLER, Roots};
+use desk_sys::audio::{NoWakeWord, SystemMicrophone, WakeDetector};
 use tauri::Manager;
 
 use crate::commands::boot::Boot;
@@ -42,7 +43,12 @@ pub fn run() {
                 .with_safe_mode(safe.is_some())
                 .with_prompter(NativePrompter::new(app.handle().clone()))
                 .with_plugin_store(data.join("plugins.json"))
-                .with_store_file(data.join("store.json"));
+                .with_store_file(data.join("store.json"))
+                // No wake-word engine yet (ADR 0020): captures open the microphone, audio.wake waits.
+                .with_audio(
+                    Arc::new(SystemMicrophone),
+                    Arc::new(|| Box::new(NoWakeWord) as Box<dyn WakeDetector>),
+                );
             let url =
                 std::env::var("DESK_BRAIN_URL").unwrap_or_else(|_| DEFAULT_BRAIN_URL.to_owned());
             match HttpBrain::new(&url) {

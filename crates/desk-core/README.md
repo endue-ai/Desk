@@ -6,9 +6,9 @@ the bridge request handler. Layer: Rust core (see `docs/architecture.md`).
 ## Public API
 
 - `Core::new(Roots { home })`, `Core::handle(caller, BridgeRequest) -> BridgeResponse`: serves
-  `fs.*`, `proc.*`, `net.fetch`, `perm.*`, `plugin.*`, `store.*` and `brain.say`; other methods
-  answer `unsupported` for now. `grant`, `revoke`, `grants_of`, `events`, `shutdown`. Work a caller
-  starts (watches, processes) ends when its grant is revoked or the plugin is turned off.
+  `fs.*`, `proc.*`, `net.fetch`, `audio.*`, `perm.*`, `plugin.*`, `store.*` and `brain.say`; `ui.*`
+  answers `unsupported` for now. `grant`, `revoke`, `grants_of`, `events`, `shutdown`. Work a caller
+  starts (watches, processes, captures) ends when its grant is revoked or the plugin is turned off.
 - Files: paths are normalised lexically, then no component below the literal part of the grant may be
   a symbolic link. `fs.write` (`createDirs` only inside the scope), `fs.watch` (coalesced).
 - Processes: `proc.output` splits text only at whole characters (base64 otherwise), `proc.exit` comes
@@ -23,6 +23,7 @@ the bridge request handler. Layer: Rust core (see `docs/architecture.md`).
 - `PermissionEngine`: deny by default; a call passes when its scope covers the target and a grant
   covers the scope. Store: `with_store_file(path)`; one JSON value (64 KiB max) per caller and key.
 - Frames (ADR 0018): `FrameRouter` sends owned events to the frame whose call started the work.
+- Audio (ADR 0020): `with_audio(microphone, detector_factory)`; `audio.wake` at most once per 1.5 s.
 - Brain: `with_brain(brain, BrainOptions)`, `open_session(id)`, `brain_session()`. `brain.say` streams
   `brain.turn` events; offline turns get `OFFLINE_LINE` and resume; a desk that lost its lease answers
   `READ_ONLY_LINE`. `LeaseClient`, `SessionStore`. `EventBus`: `subscribe`, `publish`.
@@ -33,5 +34,5 @@ the bridge request handler. Layer: Rust core (see `docs/architecture.md`).
 cargo test -p desk-core
 ```
 
-Integration tests in `tests/`, among them prompt, safe_mode, files, procs, net and route; `lease.rs`
-and `conversation.rs` start `examples/brain-echo` (needs Node).
+Integration tests in `tests/`, among them prompt, safe_mode, files, procs, net, audio and route;
+`lease.rs` and `conversation.rs` start `examples/brain-echo` (needs Node).

@@ -15,8 +15,13 @@ fs = ["dep:notify"]
 proc = ["dep:portable-pty", "dep:nix"]
 ## One HTTP(S) request at a time, no redirects followed.
 net = ["dep:ureq"]
+## Captures and the wake-word interface, without a device.
+audio = []
+## The system microphone through cpal (Linux builds need the ALSA headers, libasound2-dev).
+microphone = ["audio", "dep:cpal"]
 
 [dependencies]
+cpal = { workspace = true, optional = true }
 notify = { workspace = true, optional = true }
 portable-pty = { workspace = true, optional = true }
 ureq = { workspace = true, optional = true }
@@ -35,6 +40,10 @@ required-features = ["proc"]
 [[test]]
 name = "net"
 required-features = ["net"]
+
+[[test]]
+name = "audio"
+required-features = ["audio"]
 
 [lints]
 workspace = true

@@ -50,6 +50,14 @@ impl<T> Table<T> {
             .map(|entry| &mut entry.value)
     }
 
+    /// Remove `caller`'s entry `id`. Another caller's id is left alone.
+    pub fn remove(&mut self, caller: &str, id: &str) -> Option<T> {
+        if self.entries.get(id)?.caller != caller {
+            return None;
+        }
+        self.entries.remove(id).map(|entry| entry.value)
+    }
+
     /// Remove an entry whatever its owner (the work ended on its own).
     pub fn forget(&mut self, id: &str) -> Option<T> {
         self.entries.remove(id).map(|entry| entry.value)

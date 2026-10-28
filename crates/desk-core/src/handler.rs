@@ -13,6 +13,7 @@ use desk_sys::fs as sysfs;
 use serde::Serialize;
 
 use crate::conversation::Conversation;
+use crate::core_audio::Audio;
 use crate::core_proc::{Procs, lock};
 use crate::events::EventBus;
 use crate::paths::normalize;
@@ -46,6 +47,8 @@ pub struct Core {
     pub(crate) safe_mode: bool,
     pub(crate) watches: Mutex<Table<sysfs::Watch>>,
     pub(crate) procs: Procs,
+    pub(crate) audio: Option<Audio>,
+    pub(crate) captures: Mutex<Table<desk_sys::audio::Capture>>,
 }
 
 impl Core {
@@ -62,6 +65,8 @@ impl Core {
             safe_mode: false,
             watches: Mutex::new(Table::new("w")),
             procs: Arc::new(Mutex::new(Table::new("p"))),
+            audio: None,
+            captures: Mutex::new(Table::new("c")),
         }
     }
 
@@ -110,8 +115,8 @@ impl Core {
             R::ProcResize(r) => (r.id, self.proc_resize(caller, r.params)),
             R::ProcKill(r) => (r.id, self.proc_kill(caller, r.params)),
             R::NetFetch(r) => (r.id, self.net_fetch(caller, r.params)),
-            R::AudioCaptureStart(r) => (r.id, unsupported("audio.capture.start")),
-            R::AudioCaptureStop(r) => (r.id, unsupported("audio.capture.stop")),
+            R::AudioCaptureStart(r) => (r.id, self.audio_capture_start(caller, r.params)),
+            R::AudioCaptureStop(r) => (r.id, self.audio_capture_stop(caller, r.params)),
             R::UiSurfaceOpen(r) => (r.id, unsupported("ui.surface.open")),
             R::UiSurfaceClose(r) => (r.id, unsupported("ui.surface.close")),
             R::UiNotify(r) => (r.id, unsupported("ui.notify")),
@@ -155,18 +160,21 @@ impl Core {
     pub(crate) fn release_grant(&self, grant_id: &str) {
         drop(self.watches().drain_where(|e| e.grant == grant_id));
         drop(lock(&self.procs).drain_where(|e| e.grant == grant_id));
+        drop(lock(&self.captures).drain_where(|e| e.grant == grant_id));
     }
 
     /// End the work a plugin started, when it is turned off.
     pub(crate) fn release_caller(&self, caller: &str) {
         drop(self.watches().drain_where(|e| e.caller == caller));
         drop(lock(&self.procs).drain_where(|e| e.caller == caller));
+        drop(lock(&self.captures).drain_where(|e| e.caller == caller));
     }
 
     /// The app is quitting: stop every watch and process, whoever started it.
     pub fn shutdown(&self) {
         drop(self.watches().drain_where(|_| true));
         drop(lock(&self.procs).drain_where(|_| true));
+        drop(lock(&self.captures).drain_where(|_| true));
     }
 
     /// The home folder, where processes start unless asked otherwise.

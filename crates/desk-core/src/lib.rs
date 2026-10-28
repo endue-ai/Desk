@@ -3,6 +3,7 @@
 pub const NAME: &str = env!("CARGO_PKG_NAME");
 
 mod conversation;
+mod core_audio;
 mod core_brain;
 mod core_fs;
 mod core_net;
@@ -28,6 +29,7 @@ mod time;
 mod watch;
 
 pub use conversation::{BrainOptions, FAILED_LINE, OFFLINE_LINE, READ_ONLY_LINE};
+pub use core_audio::DetectorFactory;
 pub use events::EventBus;
 pub use handler::{Core, Roots};
 pub use launch::{LaunchGuard, SafeReason, UNREADY_LIMIT};

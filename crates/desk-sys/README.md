@@ -3,7 +3,7 @@
 Primitives: fs (notify), proc (portable-pty), net and audio (cpal, wake word), each behind a cargo
 feature. No permission checks: desk-core authorizes every call first.
 
-Layer: Tauri shell (see `docs/architecture.md`). Status: `fs`, `proc` and `net`.
+Layer: Tauri shell (see `docs/architecture.md`). Status: `fs`, `proc`, `net`, `audio`, `microphone`.
 
 ## Features and public API
 
@@ -17,6 +17,9 @@ Layer: Tauri shell (see `docs/architecture.md`). Status: `fs`, `proc` and `net`.
   running `Process` kills it.
 - `net`: `net::fetch(&Request) -> Response` (ureq with rustls): one request, redirects returned not
   followed, bodies up to `MAX_BODY`; `NetError::Timeout` for a missed `timeout`.
+- `audio`: `Microphone::open(rate, on_frames) -> Capture` (mono samples and their rate; dropping the
+  `Capture` closes it), `WakeDetector::feed -> Option<Detection>`, `NoWakeWord` (ADR 0020).
+  `microphone` adds `SystemMicrophone` (cpal; Linux builds need `libasound2-dev`).
 - `NAME`: the crate name.
 
 ## Testing
@@ -25,5 +28,5 @@ Layer: Tauri shell (see `docs/architecture.md`). Status: `fs`, `proc` and `net`.
 cargo test -p desk-sys --all-features
 ```
 
-`tests/fs.rs`, `tests/proc.rs` (Unix) and `tests/net.rs` (a local server) need their features
-(declared with `required-features`).
+`tests/fs.rs`, `tests/proc.rs` (Unix), `tests/net.rs` (a local server) and `tests/audio.rs` need
+their features (declared with `required-features`).
