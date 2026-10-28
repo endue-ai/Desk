@@ -41,6 +41,8 @@ pub struct Core {
     pub(crate) plugins: Mutex<PluginRegistry>,
     pub(crate) store: Mutex<Store>,
     pub(crate) conversation: Option<Arc<Conversation>>,
+    /// Only built-in plugins run: other plugins are listed but get no permissions.
+    pub(crate) safe_mode: bool,
 }
 
 impl Core {
@@ -54,6 +56,7 @@ impl Core {
             plugins: Mutex::new(PluginRegistry::new(None)),
             store: Mutex::new(Store::new(None)),
             conversation: None,
+            safe_mode: false,
         }
     }
 

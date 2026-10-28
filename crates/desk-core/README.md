@@ -16,6 +16,8 @@ Layer: Rust core (see `docs/architecture.md`).
 - Plugins: `with_plugin_store(path)`, `install_plugin(dir, built_in)`, `install_plugins_in(parent,
   built_in)`, `plugins()`, `plugin_file(id, path)`, `watch_plugins()` (hot reload). Built-in plugins
   get the permissions their manifest declares. `validate_dir(dir)`: the manifest check.
+  `with_safe_mode(true)`: other plugins stay listed but get no permissions. `LaunchGuard`: launches
+  that never reached ready lead to safe mode (`SafeReason`), ADR 0017.
 - `PermissionEngine`: deny by default; a call passes when its scope covers the target (path, command,
   host) and a grant covers the scope. Paths are normalised lexically.
 - Store: `with_store_file(path)`; one JSON value (64 KiB max) per caller and key.

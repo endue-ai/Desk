@@ -25,6 +25,12 @@ export interface RuntimeOptions {
   platform?: Platform;
   /** Mount the core's UI plugins; without it the desk shows only what callers open. */
   plugins?: PluginHostOptions;
+  /**
+   * Set when the desk started in safe mode, with the words for the status line ("safe mode (the
+   * last 2 launches did not finish)"). Only built-in plugins are mounted and the layout is not
+   * loaded or saved.
+   */
+  safeMode?: string;
 }
 
 export interface RuntimePlugins {
@@ -56,7 +62,9 @@ const FADE_MS = 240;
 export function createRuntime(options: RuntimeOptions): Runtime {
   const { root, bridge } = options;
   const clock = options.clock ?? realClock();
-  const storage = options.storage ?? memoryStorage();
+  const safeMode = options.safeMode;
+  // Safe mode starts from the default layout and leaves the saved one alone.
+  const storage = safeMode || !options.storage ? memoryStorage() : options.storage;
   const doc = root.ownerDocument;
   const win = doc.defaultView ?? window;
 
@@ -104,8 +112,9 @@ export function createRuntime(options: RuntimeOptions): Runtime {
     });
   };
 
+  const safeNote = safeMode ? ` · ${safeMode}: only built-in plugins run` : "";
   const ready = bridge.call("perm.query", {}).then(
-    () => showStatus(`desk ready · bridge: ${bridge.adapterName}`),
+    () => showStatus(`desk ready · bridge: ${bridge.adapterName}${safeNote}`),
     () => showStatus(`desk cannot reach the core · bridge: ${bridge.adapterName}`),
   );
 
@@ -131,7 +140,7 @@ export function createRuntime(options: RuntimeOptions): Runtime {
         reload: (id, src) => surfaces.reload(id, src),
         frame: (id) => surfaces.frame(id),
       },
-      options.plugins,
+      safeMode ? { ...options.plugins, safe: true } : options.plugins,
     );
     pluginHost = host;
     plugins = {

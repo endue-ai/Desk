@@ -7,7 +7,9 @@ Layer: Web runtime (see `docs/architecture.md`). Plain TypeScript and DOM (ADR 0
 
 ## Public API
 
-- `createRuntime({ root, bridge, clock?, storage?, platform?, plugins? })` mounts the desk and returns
+- `createRuntime({ root, bridge, clock?, storage?, platform?, plugins?, safeMode? })` mounts the desk
+  (in safe mode: built-in plugins only, whatever their flag, and the layout is neither loaded nor
+  saved; ADR 0017) and returns
   a `Runtime`: `ready`, `openSurface`, `closeSurface`, `moveSurface`, `focusSurface`, `layout()`,
   `status()`, `shortcuts`, `plugins` (`ready`, `mounted()`), `dispose()`.
 - `PluginHost` (used when `plugins: { url }` is given): mounts enabled UI plugins from `plugin.list`,

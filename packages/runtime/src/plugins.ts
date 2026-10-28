@@ -12,6 +12,11 @@ import type { SurfaceSpec } from "./surfaces";
 export interface PluginHostOptions {
   /** The URL of a plugin file: desk-plugin:// in the app, a dev-server path in tests. */
   url(id: string, path: string, revision: number): string;
+  /**
+   * Safe mode (ADR 0017): built-in plugins are mounted whatever their enabled flag, so the plugin
+   * list is always there to fix things with, and no other plugin is mounted.
+   */
+  safe?: boolean;
 }
 
 /** What the host needs from the runtime. */
@@ -80,9 +85,14 @@ export class PluginHost {
     return plugins;
   }
 
+  #mounts(info: PluginInfo): boolean {
+    if (info.status !== "ready" || info.manifest?.kind !== "ui") return false;
+    return this.#options.safe ? info.builtIn : info.enabled;
+  }
+
   #mount(info: PluginInfo): void {
     const manifest = info.manifest;
-    if (info.status !== "ready" || !info.enabled || manifest?.kind !== "ui") return;
+    if (!manifest || !this.#mounts(info)) return;
     if (this.#mounted.has(info.id)) return;
     const surface = manifest.surfaces?.[0];
     this.#mounted.set(info.id, info);
@@ -117,6 +127,9 @@ export class PluginHost {
         }
         break;
       case "disabled":
+        // In safe mode the flag is remembered for the next normal start; built-ins stay up.
+        if (!this.#options.safe) this.#unmount(plugin);
+        break;
       case "removed":
         this.#unmount(plugin);
         break;

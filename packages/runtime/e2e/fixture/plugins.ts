@@ -6,11 +6,14 @@ import { createRuntime, ManualClock } from "../../src/index";
 const root = document.getElementById("desk");
 if (!root) throw new Error("no #desk element");
 
-const info = (id: string, title: string): PluginInfo => ({
+// plugins.html?safe starts in safe mode, with the counter built in and both plugins switched off.
+const safe = new URLSearchParams(location.search).has("safe");
+
+const info = (id: string, title: string, builtIn = false): PluginInfo => ({
   id,
   status: "ready",
-  enabled: true,
-  builtIn: false,
+  enabled: !safe,
+  builtIn,
   revision: 1,
   manifest: {
     id,
@@ -25,7 +28,7 @@ const clock = new ManualClock();
 const stub = browserStub({
   "perm.query": () => ({ grants: [] }),
   "plugin.list": () => ({
-    plugins: [info("example.hello-ui", "Hello"), info("test.counter", "Counter")],
+    plugins: [info("example.hello-ui", "Hello"), info("test.counter", "Counter", safe)],
   }),
 });
 const runtime = createRuntime({
@@ -35,6 +38,7 @@ const runtime = createRuntime({
   storage: window.localStorage,
   platform: "other",
   plugins: { url: (id, path, revision) => `/plugins/${id}/${path}?v=${revision}` },
+  ...(safe ? { safeMode: "safe mode" } : {}),
 });
 
 window.__desk = { clock, runtime, stub, commands: [] };

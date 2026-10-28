@@ -103,14 +103,15 @@ impl Core {
     }
 
     /// The name to show when `caller` may ask for `permission`, or `None` when the request is
-    /// refused without a prompt: unknown callers, plugins that are off or broken, and anything
-    /// beyond what the plugin's manifest declares.
+    /// refused without a prompt: unknown callers, plugins that are off or broken (or not built in,
+    /// in safe mode), and anything beyond what the plugin's manifest declares.
     fn askable(&self, caller: &str, permission: &Permission) -> Option<String> {
         if caller == RUNTIME_CALLER {
             return Some("endue Desk".to_owned());
         }
         let info = self.plugins().into_iter().find(|p| p.id == caller)?;
-        if info.status != PluginStatus::Ready || !info.enabled {
+        if info.status != PluginStatus::Ready || !info.enabled || (self.safe_mode && !info.built_in)
+        {
             return None;
         }
         let manifest = info.manifest?;

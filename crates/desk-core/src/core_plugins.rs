@@ -22,6 +22,17 @@ impl Core {
         self
     }
 
+    /// Safe mode: built-in plugins run as usual; other plugins stay listed, and their enabled flags
+    /// can still be changed for the next normal start, but they get no permissions (ADR 0017).
+    pub fn with_safe_mode(mut self, safe: bool) -> Self {
+        self.safe_mode = safe;
+        self
+    }
+
+    pub fn safe_mode(&self) -> bool {
+        self.safe_mode
+    }
+
     /// Install the plugin in `dir`. Built-in plugins get the permissions their manifest declares;
     /// others ask with perm.request like anyone else.
     pub fn install_plugin(&self, dir: &Path, built_in: bool) -> PluginInfo {

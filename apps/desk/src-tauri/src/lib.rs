@@ -9,9 +9,10 @@ use std::sync::{Arc, Mutex};
 
 use desk_brain_endue::HttpBrain;
 use desk_bridge::{Permission, PluginManagePermission};
-use desk_core::{BrainOptions, Core, PluginWatcher, RUNTIME_CALLER, Roots};
+use desk_core::{BrainOptions, Core, LaunchGuard, PluginWatcher, RUNTIME_CALLER, Roots};
 use tauri::{Emitter, Manager};
 
+use crate::commands::boot::Boot;
 use crate::prompt::NativePrompter;
 
 /// Where the brain lives unless `DESK_BRAIN_URL` says otherwise: examples/brain-echo (`just brain-echo`).
@@ -28,7 +29,14 @@ pub fn run() {
         })
         .setup(|app| {
             let data = app.path().app_data_dir()?;
+            let guard = LaunchGuard::new(data.join("launch.json"));
+            let safe = guard.begin(safe_mode_asked());
+            if let Some(reason) = safe {
+                eprintln!("endue Desk: {}", reason.describe());
+            }
+            app.manage(Boot { guard, safe });
             let mut core = Core::new(Roots { home: home_dir() })
+                .with_safe_mode(safe.is_some())
                 .with_prompter(NativePrompter::new(app.handle().clone()))
                 .with_plugin_store(data.join("plugins.json"))
                 .with_store_file(data.join("store.json"));
@@ -76,10 +84,17 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             commands::bridge::bridge_call,
+            commands::boot::desk_boot,
             commands::ready::desk_ready
         ])
         .run(tauri::generate_context!())
         .expect("endue Desk failed to start");
+}
+
+/// `--safe-mode` on the command line, or `DESK_SAFE_MODE=1`.
+fn safe_mode_asked() -> bool {
+    std::env::args().any(|arg| arg == "--safe-mode")
+        || std::env::var("DESK_SAFE_MODE").is_ok_and(|value| value == "1")
 }
 
 /// Folders from a PATH-style environment variable (`:` on Unix, `;` on Windows).

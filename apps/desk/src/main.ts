@@ -14,12 +14,14 @@ const pluginBase = navigator.userAgent.includes("Windows")
   ? "http://desk-plugin.localhost"
   : "desk-plugin://localhost";
 
+const boot = await invoke<{ safeMode: string | null }>("desk_boot");
 const bridge = new BridgeClient(tauriAdapter((command, args) => invoke(command, args), listen));
 const runtime = createRuntime({
   root,
   bridge,
   clock: realClock(),
   storage: window.localStorage,
+  ...(boot.safeMode ? { safeMode: boot.safeMode } : {}),
   platform: navigator.userAgent.includes("Macintosh") ? "mac" : "other",
   plugins: { url: (id, path, revision) => `${pluginBase}/${id}/${path}?v=${revision}` },
 });
