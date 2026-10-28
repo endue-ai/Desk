@@ -1,0 +1,18 @@
+# endue Desk init file. Desk reads it at every start, like Emacs reads init.el.
+# The format is specs/init/v0. If the file does not parse, Desk starts with the defaults and says why.
+version: 0
+
+# The mode to start in: a set of plugins plus their settings.
+mode: default
+
+plugins:
+  # Plugin ids to keep off at start, built-in plugins included. Example: [endue.sidebar]
+  disabled: []
+
+# Settings by key, for the core and plugins. Example:
+#   eris.voice: true
+settings: {}
+
+# Keep this file the same on every desk you use, through your endue account.
+sync:
+  enabled: false

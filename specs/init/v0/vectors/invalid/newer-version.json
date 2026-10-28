@@ -1,0 +1,7 @@
+{
+  "target": "InitDocument",
+  "description": "a version newer than v0",
+  "instance": {
+    "version": 1
+  }
+}

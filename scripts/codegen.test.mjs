@@ -34,4 +34,14 @@ describe("codegen", () => {
       assert.match(ts, new RegExp(`export interface ${name} \\{`), `${name} in TypeScript`);
     }
   });
+
+  it("emits the init.yaml types from specs/init/v0", () => {
+    const rust = first["crates/desk-bridge/src/generated.rs"];
+    const ts = first["packages/bridge/src/generated.ts"];
+    for (const name of ["InitDocument", "InitPlugins", "InitSync"]) {
+      assert.match(rust, new RegExp(`pub struct ${name} \\{`), `${name} in Rust`);
+      assert.match(ts, new RegExp(`export interface ${name} \\{`), `${name} in TypeScript`);
+    }
+    assert.match(rust, /"https:\/\/endue\.ai\/specs\/init\/v0\/init\.schema\.json"/);
+  });
 });

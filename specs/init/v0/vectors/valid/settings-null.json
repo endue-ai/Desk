@@ -1,0 +1,9 @@
+{
+  "target": "InitDocument",
+  "description": "a setting may hold null",
+  "instance": {
+    "settings": {
+      "eris.voice": null
+    }
+  }
+}

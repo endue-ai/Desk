@@ -56,7 +56,7 @@ Emacs 在小型 C 核心之上用 Elisp 运行几乎所有功能，而且可以�
 | 窗口管理器 | 窗口管理器 | frame · window | 3D 画布合成器 |
 | Shell | 终端 shell | M-x | Eris · 命令面板 |
 | 应用 | 应用程序 | 包（Elisp） | 插件（UI · Wasm · MCP） |
-| 启动配置 | init | init.el | 模式（插件集 + 设置） |
+| 启动配置 | init | init.el | `init.yaml`（模式 + 插件 + 设置） |
 | 包管理器 | apt · brew | package.el · MELPA | 插件市场 |
 | 行为覆盖 | 无 | advice · hook | 事件钩子 · 命令覆盖 |
 | 账户 | 用户账户 | 无 | endue ID |

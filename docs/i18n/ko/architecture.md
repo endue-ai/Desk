@@ -59,7 +59,7 @@ Emacs는 작은 C 코어 위에서 거의 모든 것을 Elisp로 실행하며, �
 | 창 관리자 | 창 관리자 | 프레임 · 창 | 3D 캔버스 컴포지터 |
 | 셸 | 터미널 셸 | M-x | Eris · 명령 팔레트 |
 | 앱 | 애플리케이션 | 패키지 (Elisp) | 플러그인 (UI · Wasm · MCP) |
-| 부트 설정 | init | init.el | 모드 (플러그인 세트 + 설정) |
+| 부트 설정 | init | init.el | `init.yaml` (모드 + 플러그인 + 설정) |
 | 패키지 관리자 | apt · brew | package.el · MELPA | 마켓플레이스 |
 | 동작 재정의 | 없음 | advice · hook | 이벤트 훅 · 명령 재정의 |
 | 계정 | 사용자 계정 | 없음 | endue ID |

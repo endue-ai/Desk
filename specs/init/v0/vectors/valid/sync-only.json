@@ -1,0 +1,9 @@
+{
+  "target": "InitDocument",
+  "description": "a new desk that only turns sync on, to take its setup from endue",
+  "instance": {
+    "sync": {
+      "enabled": true
+    }
+  }
+}

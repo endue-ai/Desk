@@ -50,8 +50,13 @@ export function brainBundle(openapi) {
 /** Every spec document, keyed by spec name. */
 export function loadAll(root = ROOT) {
   return {
-    bridge: [...loadSchemas(root, "plugin/v0"), ...loadSchemas(root, "bridge/v0")],
+    bridge: [
+      ...loadSchemas(root, "plugin/v0"),
+      ...loadSchemas(root, "init/v0"),
+      ...loadSchemas(root, "bridge/v0"),
+    ],
     plugin: loadSchemas(root, "plugin/v0"),
+    init: [...loadSchemas(root, "plugin/v0"), ...loadSchemas(root, "init/v0")],
     brain: [loadBrain(root).bundle],
   };
 }

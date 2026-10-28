@@ -61,7 +61,7 @@ takes the same shape and names the parts the way an operating system would.
 | Window manager | window manager | frames · windows | 3D canvas compositor |
 | Shell | terminal shell | M-x | Eris · command palette |
 | Apps | applications | packages (Elisp) | plugins (UI · Wasm · MCP) |
-| Boot config | init | init.el | modes (plugin set + settings) |
+| Boot config | init | init.el | `init.yaml` (mode + plugins + settings) |
 | Package manager | apt · brew | package.el · MELPA | marketplace |
 | Behaviour override | none | advice · hooks | event hooks · command overrides |
 | Accounts | user accounts | none | endue ID |
