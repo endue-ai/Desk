@@ -1,6 +1,7 @@
 //! The Tauri shell: windows, the webview and the plugin URL scheme. Everything else lives in desk-core.
 
 mod commands;
+mod prompt;
 mod protocol;
 
 use std::path::PathBuf;
@@ -8,11 +9,10 @@ use std::sync::{Arc, Mutex};
 
 use desk_brain_endue::HttpBrain;
 use desk_bridge::{Permission, PluginManagePermission};
-use desk_core::{BrainOptions, Core, PluginWatcher, Roots};
+use desk_core::{BrainOptions, Core, PluginWatcher, RUNTIME_CALLER, Roots};
 use tauri::{Emitter, Manager};
 
-/// The caller id of the web runtime itself. Plugins call under their own ids.
-pub const RUNTIME_CALLER: &str = "desk";
+use crate::prompt::NativePrompter;
 
 /// Where the brain lives unless `DESK_BRAIN_URL` says otherwise: examples/brain-echo (`just brain-echo`).
 pub const DEFAULT_BRAIN_URL: &str = "http://127.0.0.1:8787/v0";
@@ -22,12 +22,14 @@ struct Watching(#[allow(dead_code)] Mutex<Option<PluginWatcher>>);
 
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
         .register_uri_scheme_protocol(protocol::SCHEME, |ctx, request| {
             protocol::serve(ctx.app_handle(), &request)
         })
         .setup(|app| {
             let data = app.path().app_data_dir()?;
             let mut core = Core::new(Roots { home: home_dir() })
+                .with_prompter(NativePrompter::new(app.handle().clone()))
                 .with_plugin_store(data.join("plugins.json"))
                 .with_store_file(data.join("store.json"));
             let url =

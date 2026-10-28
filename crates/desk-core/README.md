@@ -9,7 +9,10 @@ Layer: Rust core (see `docs/architecture.md`).
 
 - `Core::new(Roots { home })`, `Core::handle(caller, BridgeRequest) -> BridgeResponse`: serves
   `fs.read`, `fs.list`, `perm.*`, `plugin.*`, `store.*` and `brain.say`; other methods answer
-  `unsupported` for now. `Core::grant`, `Core::events`, `Core::with_prompter`.
+  `unsupported` for now. `Core::grant`, `Core::revoke`, `Core::grants_of`, `Core::events`.
+- Prompts: `with_prompter(impl Prompter)` shows `perm.request` as a `Prompt` (name, core-written
+  `describe` summary, cleaned reason), one at a time, only within the caller's manifest, never again
+  after a refusal of the same or more. `RefuseAll` (the default) refuses everything.
 - Plugins: `with_plugin_store(path)`, `install_plugin(dir, built_in)`, `install_plugins_in(parent,
   built_in)`, `plugins()`, `plugin_file(id, path)`, `watch_plugins()` (hot reload). Built-in plugins
   get the permissions their manifest declares. `validate_dir(dir)`: the manifest check.

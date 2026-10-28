@@ -7,10 +7,8 @@ use std::sync::{Arc, Mutex, MutexGuard};
 
 use base64::Engine as _;
 use desk_bridge::{
-    BridgeError, BridgeEvent, BridgeFailure, BridgeRequest, BridgeResponse, BridgeSuccess,
-    DirEntry, Encoding, EntryKind, ErrorCode, False, FsListResult, FsReadResult, Grant,
-    GrantChange, PermChangedData, PermChangedEvent, PermQueryResult, PermRequestResult,
-    PermRevokeResult, Permission, RequestId, True,
+    BridgeError, BridgeFailure, BridgeRequest, BridgeResponse, BridgeSuccess, DirEntry, Encoding,
+    EntryKind, ErrorCode, False, FsListResult, FsReadResult, Permission, RequestId, True,
 };
 use desk_sys::fs as sysfs;
 use serde::Serialize;
@@ -18,8 +16,9 @@ use serde::Serialize;
 use crate::conversation::Conversation;
 use crate::events::EventBus;
 use crate::paths::normalize;
-use crate::perm::{Denied, PermissionEngine, Target, covers};
+use crate::perm::{Denied, PermissionEngine, Target};
 use crate::plugins::PluginRegistry;
+use crate::prompt::{Prompter, RefuseAll};
 use crate::store::Store;
 
 /// Where root tokens in bridge paths point.
@@ -29,28 +28,16 @@ pub struct Roots {
     pub home: PathBuf,
 }
 
-/// Asks the person whether to grant a permission. Desk's prompt UI implements this.
-pub trait Prompter: Send + Sync {
-    fn ask(&self, caller: &str, permission: &Permission, reason: &str) -> bool;
-}
-
-/// The prompter used until a prompt UI exists: it refuses everything.
-#[derive(Debug, Default)]
-pub struct RefuseAll;
-
-impl Prompter for RefuseAll {
-    fn ask(&self, _caller: &str, _permission: &Permission, _reason: &str) -> bool {
-        false
-    }
-}
-
 pub(crate) type Answer = Result<serde_json::Value, BridgeError>;
 
 pub struct Core {
     roots: Roots,
     permissions: Mutex<PermissionEngine>,
     events: EventBus,
-    prompter: Box<dyn Prompter>,
+    pub(crate) prompter: Box<dyn Prompter>,
+    /// What the person refused this session, per caller. Its lock is held while a prompt is
+    /// open: the person answers one question at a time.
+    pub(crate) refusals: Mutex<Vec<(String, Permission)>>,
     pub(crate) plugins: Mutex<PluginRegistry>,
     pub(crate) store: Mutex<Store>,
     pub(crate) conversation: Option<Arc<Conversation>>,
@@ -63,6 +50,7 @@ impl Core {
             permissions: Mutex::new(PermissionEngine::new()),
             events: EventBus::new(),
             prompter: Box::new(RefuseAll),
+            refusals: Mutex::new(Vec::new()),
             plugins: Mutex::new(PluginRegistry::new(None)),
             store: Mutex::new(Store::new(None)),
             conversation: None,
@@ -76,13 +64,6 @@ impl Core {
 
     pub fn events(&self) -> &EventBus {
         &self.events
-    }
-
-    /// Grant directly, as the person would through a prompt.
-    pub fn grant(&self, caller: &str, permission: Permission) -> Grant {
-        let grant = self.permissions().grant(caller, permission);
-        self.changed(&grant.grant_id, GrantChange::Granted);
-        grant
     }
 
     pub fn handle(&self, caller: &str, request: BridgeRequest) -> BridgeResponse {
@@ -118,44 +99,9 @@ impl Core {
                     .and_then(|path| list(&path));
                 (r.id, answer)
             }
-            R::PermQuery(r) => {
-                let mut grants = self.permissions().grants(caller);
-                if let Some(filter) = &r.params.permission {
-                    grants.retain(|grant| covers(&grant.permission, filter));
-                }
-                (r.id, json(PermQueryResult { grants }))
-            }
-            R::PermRequest(r) => {
-                let params = r.params;
-                let answer = if self
-                    .prompter
-                    .ask(caller, &params.permission, &params.reason)
-                {
-                    let grant = self.grant(caller, params.permission);
-                    json(PermRequestResult {
-                        granted: true,
-                        grant: Some(grant),
-                    })
-                } else {
-                    json(PermRequestResult {
-                        granted: false,
-                        grant: None,
-                    })
-                };
-                (r.id, answer)
-            }
-            R::PermRevoke(r) => {
-                let answer = if self.permissions().revoke(caller, &r.params.grant_id) {
-                    self.changed(&r.params.grant_id, GrantChange::Revoked);
-                    json(PermRevokeResult {})
-                } else {
-                    Err(error(
-                        ErrorCode::NotFound,
-                        format!("no grant {}", r.params.grant_id),
-                    ))
-                };
-                (r.id, answer)
-            }
+            R::PermQuery(r) => (r.id, self.perm_query(caller, r.params)),
+            R::PermRequest(r) => (r.id, self.perm_request(caller, r.params)),
+            R::PermRevoke(r) => (r.id, self.perm_revoke(caller, r.params)),
             R::PluginList(r) => (r.id, self.plugin_list(caller, r.params)),
             R::PluginSetEnabled(r) => (r.id, self.plugin_set_enabled(caller, r.params)),
             R::StoreGet(r) => (r.id, self.store_get(caller, r.params)),
@@ -222,16 +168,8 @@ impl Core {
             .unwrap_or_else(|poisoned| poisoned.into_inner())
     }
 
-    fn changed(&self, grant_id: &str, change: GrantChange) {
-        self.events
-            .publish(BridgeEvent::PermChanged(PermChangedEvent {
-                event: Default::default(),
-                data: PermChangedData {
-                    grant_id: grant_id.to_owned(),
-                    change,
-                },
-            }));
-    }
+    /// End the work a revoked grant allowed.
+    pub(crate) fn release_grant(&self, _grant_id: &str) {}
 }
 
 fn read(path: &Path, encoding: Encoding) -> Answer {

@@ -117,8 +117,8 @@ fn methods_the_core_does_not_serve_yet_are_unsupported() {
     let core = Core::new(Roots { home: temp_home() });
     let error = failure(core.handle(
         "desk",
-        request(json!({ "id": 6, "method": "net.fetch",
-            "params": { "url": "https://example.com", "scope": { "permission": "net:fetch", "hosts": ["example.com"] } } })),
+        request(json!({ "id": 6, "method": "ui.notify",
+            "params": { "title": "Hi", "scope": { "permission": "ui:notify" } } })),
     ));
     assert_eq!(error.code, ErrorCode::Unsupported);
 }

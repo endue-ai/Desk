@@ -6,7 +6,8 @@ and `src/` mounts the runtime and connects the bridge.
 | Path | What it does |
 | --- | --- |
 | `src/main.ts` | Mounts `@endue-ai/runtime` with the tauri bridge adapter, then reports `desk_ready` |
-| `src-tauri/src/commands/` | `bridge_call` (to `Core::handle`) and `desk_ready` (logs the status line) |
+| `src-tauri/src/commands/` | `bridge_call` (to `Core::handle`, off the main thread) and `desk_ready` (logs the status line) |
+| `src-tauri/src/prompt.rs` | Permission prompts as native dialogs (ADR 0016) |
 | `src-tauri/capabilities/` | The main window may call exactly those two commands |
 | `src-tauri/tauri.conf.json` | Window, strict CSP, bundle; identifier `ai.endue.desk` |
 | `src-tauri/icons/` | Placeholder icons generated from a flat accent square |

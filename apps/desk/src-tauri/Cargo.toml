@@ -24,6 +24,7 @@ desk-bridge.workspace = true
 desk-core.workspace = true
 serde_json.workspace = true
 tauri = { version = "2", features = [] }
+tauri-plugin-dialog = "2"
 
 [lints]
 workspace = true
