@@ -103,6 +103,29 @@
       },
       "required": ["notificationId"],
       "additionalProperties": false
+    },
+    "UiNotifiedEvent": {
+      "description": "A caller's ui.notify passed its permission check; the runtime shows it as its notify policy says.",
+      "type": "object",
+      "properties": {
+        "event": { "const": "ui.notified" },
+        "data": { "$ref": "#/$defs/UiNotifiedData" }
+      },
+      "required": ["event", "data"],
+      "additionalProperties": false
+    },
+    "UiNotifiedData": {
+      "description": "Payload of ui.notified.",
+      "type": "object",
+      "properties": {
+        "notificationId": { "type": "string", "minLength": 1 },
+        "caller": { "description": "The plugin that asked.", "type": "string", "minLength": 1 },
+        "title": { "type": "string", "minLength": 1 },
+        "body": { "type": "string" },
+        "level": { "$ref": "#/$defs/NotifyLevel" }
+      },
+      "required": ["notificationId", "caller", "title", "level"],
+      "additionalProperties": false
     }
   }
 }

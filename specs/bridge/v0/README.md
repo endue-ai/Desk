@@ -2,7 +2,7 @@
 
 The calls the web runtime (and every plugin through it) makes into the Rust core. JSON Schema 2020-12,
 one file per namespace: `bridge.schema.json` (envelope, errors, shared types), `fs`, `proc`, `net`, `plugins`,
-`store`, `brain`, `audio`, `ui` and `perm`. v0 may break on any minor release (ADR 0004).
+`store`, `init`, `brain`, `audio`, `ui` and `perm`. v0 may break on any minor release (ADR 0004).
 
 ## Envelope
 
@@ -60,7 +60,9 @@ and with a title, and returns a handle. It needs `ui:surface`.
 
 **ui.surface.close** closes a surface the caller opened.
 
-**ui.notify** shows a notification with a title, an optional body and a level. It needs `ui:notify`.
+**ui.notify** shows a notification with a title, an optional body and a level, and returns its id. It
+needs `ui:notify`. The core sends the runtime a `ui.notified` event naming the caller; how long it
+stays, whether do-not-disturb holds it back and how much history is kept is the runtime's notify policy.
 
 **perm.request** asks the person for a permission, showing the reason, and resolves when they answer.
 A refusal is `granted: false`, not an error. It needs no scope.
@@ -80,6 +82,10 @@ store needs no scope.
 
 **store.set** writes one JSON value (64 KiB at most) under a key in the caller's namespace. Values
 survive restarts.
+
+**init.get** returns the setup in force from init.yaml: the profile to start in, and the settings whose
+key starts with the caller's id and a dot (`desk.` for the runtime itself). When the file is not in
+force, `problem` says why. Like the store, it needs no scope: callers see only their own settings.
 
 **brain.say** sends what the person typed to the brain in the desk's session and returns a local
 `turnId` at once. The answer arrives as `brain.turn` events with that id: `started`, `delta` (more text),

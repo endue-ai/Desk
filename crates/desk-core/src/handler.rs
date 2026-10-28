@@ -3,6 +3,7 @@
 
 use std::io;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::AtomicU64;
 use std::sync::{Arc, Mutex, MutexGuard};
 
 use base64::Engine as _;
@@ -58,6 +59,7 @@ pub struct Core {
     pub(crate) conversation: Option<Arc<Conversation>>,
     pub(crate) init: Mutex<InitFile>,
     pub(crate) sync: Option<Syncer>,
+    pub(crate) notifications: AtomicU64,
 }
 
 impl Core {
@@ -72,6 +74,7 @@ impl Core {
             conversation: None,
             init: Mutex::new(InitFile::memory()),
             sync: None,
+            notifications: AtomicU64::new(0),
         }
     }
 
@@ -167,6 +170,8 @@ impl Core {
             R::StoreGet(r) => (r.id, self.store_get(caller, r.params)),
             R::StoreSet(r) => (r.id, self.store_set(caller, r.params)),
             R::BrainSay(r) => (r.id, self.brain_say(caller, r.params)),
+            R::InitGet(r) => (r.id, self.init_get(caller)),
+            R::UiNotify(r) => (r.id, self.notify(caller, r.params)),
             R::FsWrite(r) => (r.id, unsupported("fs.write")),
             R::FsWatch(r) => (r.id, unsupported("fs.watch")),
             R::ProcSpawn(r) => (r.id, unsupported("proc.spawn")),
@@ -178,7 +183,6 @@ impl Core {
             R::AudioCaptureStop(r) => (r.id, unsupported("audio.capture.stop")),
             R::UiSurfaceOpen(r) => (r.id, unsupported("ui.surface.open")),
             R::UiSurfaceClose(r) => (r.id, unsupported("ui.surface.close")),
-            R::UiNotify(r) => (r.id, unsupported("ui.notify")),
         }
     }
 

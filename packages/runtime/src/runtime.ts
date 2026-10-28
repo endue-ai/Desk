@@ -1,5 +1,7 @@
 import type { BridgeClient } from "@endue-ai/bridge";
 import { type Clock, realClock, tween } from "./clock";
+import type { Commands } from "./commands";
+import { PolicyHub } from "./hub";
 import { type Platform, ShortcutRouter } from "./input";
 import {
   type Cell,
@@ -11,6 +13,8 @@ import {
   saveLayout,
 } from "./layout";
 import { PluginHost, type PluginHostOptions } from "./plugins";
+import type { PolicySet } from "./policy";
+import type { Settings } from "./settings";
 import { SurfaceHost, type SurfaceSpec } from "./surfaces";
 import { applyTheme } from "./theme";
 
@@ -40,6 +44,12 @@ export interface Runtime {
   readonly ready: Promise<void>;
   readonly shortcuts: ShortcutRouter;
   readonly plugins: RuntimePlugins | undefined;
+  /** Every command the desk can run: keys, the palette and plugins call these ids. */
+  readonly commands: Commands;
+  /** Settings in layers: plugin defaults, init.yaml, the active profile, this session. */
+  readonly settings: Settings;
+  /** The policies the enabled plugins contribute, as collected last. */
+  policy(): PolicySet;
   openSurface(spec: SurfaceSpec): void;
   closeSurface(id: string): void;
   moveSurface(id: string, cell: Cell): void;
@@ -74,7 +84,14 @@ export function createRuntime(options: RuntimeOptions): Runtime {
   root.append(compositor, statusLine);
 
   let layout = loadLayout(storage);
+  const hub = new PolicyHub();
+  const { commands } = hub;
   const shortcuts = new ShortcutRouter({ platform: options.platform ?? "other" });
+  commands.define("desk.commands.list", {
+    title: "List commands",
+    owner: "desk",
+    run: () => commands.list().map((command) => ({ ...command, keys: [] })),
+  });
   const surfaces = new SurfaceHost(compositor, (id) => shortcuts.focus(id));
 
   const applyGrid = () => {
@@ -105,7 +122,10 @@ export function createRuntime(options: RuntimeOptions): Runtime {
   };
 
   const ready = bridge.call("perm.query", {}).then(
-    () => showStatus(`desk ready · bridge: ${bridge.adapterName}`),
+    async () => {
+      await hub.readInit(bridge);
+      showStatus(`desk ready · bridge: ${bridge.adapterName}`);
+    },
     () => showStatus(`desk cannot reach the core · bridge: ${bridge.adapterName}`),
   );
 
@@ -130,9 +150,17 @@ export function createRuntime(options: RuntimeOptions): Runtime {
         close: closeSurface,
         reload: (id, src) => surfaces.reload(id, src),
         frame: (id) => surfaces.frame(id),
+        show: (id, visible) => surfaces.show(id, visible),
+        run: (name, args, caller) => commands.run(name, args, { caller }),
+        key: (id, key) => {
+          shortcuts.focus(id);
+          shortcuts.handle(key);
+        },
+        listed: (all) => hub.apply(all),
       },
       options.plugins,
     );
+    hub.setDeliver((plugin, command, args) => host.request(plugin, command, args));
     pluginHost = host;
     plugins = {
       // A desk without plugin:manage still works; it just shows no plugins.
@@ -146,6 +174,9 @@ export function createRuntime(options: RuntimeOptions): Runtime {
     ready,
     shortcuts,
     plugins,
+    commands,
+    settings: hub.settings,
+    policy: () => hub.policy,
     openSurface,
     closeSurface,
     moveSurface(id, cell) {

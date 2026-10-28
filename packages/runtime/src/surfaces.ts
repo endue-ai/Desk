@@ -9,6 +9,8 @@ export interface SurfaceSpec {
   srcdoc?: string;
   /** `overlay` covers the whole desk without a title bar; everything else sits on the grid. */
   placement?: string;
+  /** Mounted but not shown until `show` (a palette waits for its command). */
+  hidden?: boolean;
 }
 
 /**
@@ -32,8 +34,10 @@ export class SurfaceHost {
     const overlay = spec.placement === "overlay";
     const section = doc.createElement("section");
     section.className = overlay ? "desk-surface desk-surface--overlay" : "desk-surface";
+    if (spec.hidden) section.classList.add("desk-surface--transient");
     section.dataset.surface = spec.id;
     section.tabIndex = -1;
+    section.hidden = spec.hidden === true;
     section.addEventListener("focusin", () => this.#onFocus(spec.id));
 
     const title = doc.createElement("header");
@@ -63,6 +67,19 @@ export class SurfaceHost {
   reload(id: string, src: string): void {
     const frame = this.#surfaces.get(id)?.querySelector("iframe");
     if (frame) frame.src = src;
+  }
+
+  /** Show or hide a surface without unloading it; a shown surface takes the keyboard focus. */
+  show(id: string, visible: boolean): void {
+    const section = this.#surfaces.get(id);
+    if (!section) return;
+    section.hidden = !visible;
+    if (visible) section.querySelector("iframe")?.focus();
+  }
+
+  visible(id: string): boolean {
+    const section = this.#surfaces.get(id);
+    return section !== undefined && !section.hidden;
   }
 
   /** The window inside a surface's frame, to tell plugin messages apart. */

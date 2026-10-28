@@ -7,7 +7,13 @@ import {
   type ParamsOf,
   type ResultOf,
 } from "@endue-ai/bridge";
-import { type HostMessage, type Transport, windowTransport } from "./protocol";
+import {
+  type CommandOutcome,
+  type HostMessage,
+  type ThemeState,
+  type Transport,
+  windowTransport,
+} from "./protocol";
 
 /** The bridge as a plugin sees it: calls are checked against the plugin's own grants. */
 export interface PluginBridge {
@@ -25,11 +31,46 @@ export interface PluginState {
 export interface PluginSurface {
   /** Remove the surface for the rest of this session (a finished first run, for example). */
   close(): void;
+  /** Show a surface the manifest declares `hidden`; it takes the keyboard focus. */
+  show(): void;
+  hide(): void;
 }
 
-/** Commands the runtime sends this plugin, by name. */
+/** A command the desk can run now, as `ctx.commands.list()` returns it. */
+export interface CommandInfo {
+  id: string;
+  title: string;
+  keywords: string[];
+  owner: string;
+  /** The keys bound to it, as people read them. */
+  keys: string[];
+}
+
+/** A command that failed: unknown_command, failed or cancelled. */
+export class CommandFailed extends Error {
+  readonly code: string;
+
+  constructor(name: string, code: string, message: string) {
+    super(`${name}: ${code}: ${message}`);
+    this.name = "CommandFailed";
+    this.code = code;
+  }
+}
+
+/**
+ * Commands, both ways (ADR 0017): `on` answers the commands this plugin contributes (what the
+ * handler returns is the answer), `run` runs any command the desk has, as keys and the palette do.
+ */
 export interface PluginCommands {
-  on(name: string, handler: (args: unknown) => void): () => void;
+  on(name: string, handler: (args: unknown) => unknown): () => void;
+  run<T = unknown>(name: string, args?: unknown): Promise<T>;
+  list(): Promise<CommandInfo[]>;
+}
+
+/** The desk's theme, also applied to this frame as --desk-* custom properties. */
+export interface PluginTheme {
+  get(): ThemeState | undefined;
+  on(listener: (theme: ThemeState) => void): () => void;
 }
 
 export interface PluginContext {
@@ -38,6 +79,7 @@ export interface PluginContext {
   state: PluginState;
   surface: PluginSurface;
   commands: PluginCommands;
+  theme: PluginTheme;
 }
 
 export interface UiPlugin {
@@ -55,10 +97,32 @@ export function connect(transport: Transport = windowTransport()): Promise<Plugi
   return new Promise((resolve) => {
     const pending = new Map<number, Pending>();
     const listeners = new Set<(event: BridgeEvent) => void>();
-    const commands = new Map<string, Set<(args: unknown) => void>>();
+    const commands = new Map<string, Set<(args: unknown) => unknown>>();
+    const runs = new Map<
+      number,
+      { name: string; resolve(v: unknown): void; reject(e: unknown): void }
+    >();
+    const themeListeners = new Set<(theme: ThemeState) => void>();
     let queue: BridgeRequest[] = [];
     let nextId = 1;
+    let nextRun = 1;
     let state: unknown;
+    let theme: ThemeState | undefined;
+
+    const answer = async (name: string, call: number | undefined, args: unknown) => {
+      const handlers = [...(commands.get(name) ?? [])];
+      let outcome: CommandOutcome;
+      try {
+        if (handlers.length === 0) throw new CommandFailed(name, "unknown_command", "no handler");
+        const results = await Promise.all(handlers.map((handler) => handler(args)));
+        outcome = { call: call ?? 0, ok: true, result: results[0] };
+      } catch (error) {
+        const code = error instanceof CommandFailed ? error.code : "failed";
+        const message = error instanceof Error ? error.message : String(error);
+        outcome = { call: call ?? 0, ok: false, error: { code, message } };
+      }
+      if (call !== undefined) transport.send({ type: "desk:reply", ...outcome });
+    };
 
     const flush = () => {
       const calls = queue;
@@ -98,6 +162,8 @@ export function connect(transport: Transport = windowTransport()): Promise<Plugi
       },
       surface: {
         close: () => transport.send({ type: "desk:close" }),
+        show: () => transport.send({ type: "desk:visible", visible: true }),
+        hide: () => transport.send({ type: "desk:visible", visible: false }),
       },
       commands: {
         on: (name, handler) => {
@@ -106,14 +172,30 @@ export function connect(transport: Transport = windowTransport()): Promise<Plugi
           commands.set(name, handlers);
           return () => handlers.delete(handler);
         },
+        run: <T>(name: string, args?: unknown) =>
+          new Promise<T>((res, reject) => {
+            const call = nextRun++;
+            runs.set(call, { name, resolve: res as (v: unknown) => void, reject });
+            transport.send({ type: "desk:run", call, name, args });
+          }),
+        list: () => ctx.commands.run<CommandInfo[]>("desk.commands.list"),
+      },
+      theme: {
+        get: () => theme,
+        on: (listener) => {
+          themeListeners.add(listener);
+          return () => themeListeners.delete(listener);
+        },
       },
     });
+    let ctx: PluginContext;
 
     transport.listen((message: HostMessage) => {
       switch (message.type) {
         case "desk:init":
           state = message.state;
-          resolve(ctxFor(message.pluginId));
+          ctx = ctxFor(message.pluginId);
+          resolve(ctx);
           break;
         case "desk:results":
           for (const { id, response } of message.results) settle(id, response);
@@ -122,10 +204,28 @@ export function connect(transport: Transport = windowTransport()): Promise<Plugi
           for (const listener of listeners) listener(message.event);
           break;
         case "desk:command":
-          for (const handler of commands.get(message.name) ?? []) handler(message.args);
+          void answer(message.name, message.call, message.args);
+          break;
+        case "desk:ran": {
+          const run = runs.get(message.call);
+          if (!run) break;
+          runs.delete(message.call);
+          if (message.ok) run.resolve(message.result);
+          else {
+            const { code = "failed", message: text = "" } = message.error ?? {};
+            run.reject(new CommandFailed(run.name, code, text));
+          }
+          break;
+        }
+        case "desk:theme":
+          theme = message.theme;
+          transport.theme?.(message.theme);
+          for (const listener of themeListeners) listener(message.theme);
           break;
       }
     });
+    // Chords pressed inside the frame still reach the desk's keymap.
+    transport.keys?.((key) => transport.send({ type: "desk:key", key }));
     transport.send({ type: "desk:hello" });
   });
 }

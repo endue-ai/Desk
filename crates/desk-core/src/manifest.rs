@@ -35,7 +35,8 @@ fn validator() -> &'static jsonschema::Validator {
     })
 }
 
-/// Validate the plugin folder `dir`: plugin.json must match the schema and its entry must exist.
+/// Validate the plugin folder `dir`: plugin.json must match the schema and its entry, when it has one
+/// (policy plugins have none), must exist.
 /// Returns every problem found, each prefixed with where it is.
 pub fn validate_dir(dir: &Path) -> Result<PluginManifest, Vec<String>> {
     let text = fs::read_to_string(dir.join("plugin.json"))
@@ -54,12 +55,12 @@ pub fn validate_dir(dir: &Path) -> Result<PluginManifest, Vec<String>> {
             "plugin.json: does not match the manifest type: {e}"
         )]
     })?;
-    match inside(dir, &manifest.entry) {
-        Some(entry) if entry.is_file() => Ok(manifest),
-        _ => Err(vec![format!(
-            "plugin.json: entry {} does not exist",
-            manifest.entry
-        )]),
+    let Some(entry) = manifest.entry.as_deref() else {
+        return Ok(manifest);
+    };
+    match inside(dir, entry) {
+        Some(file) if file.is_file() => Ok(manifest),
+        _ => Err(vec![format!("plugin.json: entry {entry} does not exist")]),
     }
 }
 

@@ -7,8 +7,19 @@ export type {
   ResultOf,
 } from "@endue-ai/bridge";
 export { BridgeCallError } from "@endue-ai/bridge";
-export { type HostMessage, type PluginMessage, type Transport, windowTransport } from "./protocol";
 export {
+  type CommandOutcome,
+  type HostMessage,
+  isDeskKey,
+  type KeyPress,
+  type PluginMessage,
+  type ThemeState,
+  type Transport,
+  windowTransport,
+} from "./protocol";
+export {
+  CommandFailed,
+  type CommandInfo,
   connect,
   defineUiPlugin,
   type PluginBridge,
@@ -16,6 +27,7 @@ export {
   type PluginContext,
   type PluginState,
   type PluginSurface,
+  type PluginTheme,
   type UiPlugin,
 } from "./sdk";
 

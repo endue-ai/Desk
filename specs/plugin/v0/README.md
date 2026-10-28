@@ -2,7 +2,8 @@
 
 `plugin.schema.json` is the `plugin.json` manifest every plugin folder carries, built-in and community
 plugins alike. `permission.schema.json` is the permission vocabulary: plugin manifests declare these
-permissions, and every bridge call carries the one that covers it.
+permissions, and every bridge call carries the one that covers it. `contributes.schema.json` is what a
+plugin adds to the desk's policies as data (ADR 0017).
 
 ## Manifest
 
@@ -10,10 +11,27 @@ permissions, and every bridge call carries the one that covers it.
 | --- | --- |
 | `id` | Reverse-domain id with a dot, lowercase: `endue.eris`, `example.hello-ui` |
 | `version` | Semantic version |
-| `kind` | `ui` (sandboxed iframe), `logic` (Wasm), `tool` (MCP inside the VM) |
-| `entry` | Entry file relative to the plugin folder, never outside it |
+| `kind` | `ui` (sandboxed iframe), `logic` (Wasm), `tool` (MCP inside the VM), `policy` (data only) |
+| `entry` | Entry file relative to the plugin folder, never outside it; a `policy` plugin has none |
 | `permissions` | Everything the plugin may ask for; each is granted by the person at first use |
-| `surfaces` | Surfaces a UI plugin can open, with a placement; other kinds declare none |
+| `surfaces` | Surfaces a UI plugin can open, with a placement (`hidden` until it shows itself); other kinds declare none |
+| `contributes` | Commands, keys, display rules, file openers, themes, settings and profiles; required for `policy` |
+
+## Contributions
+
+Every enabled plugin may contribute; a `policy` plugin does nothing else. The runtime layers them in this
+order, each layer over the one before: the built-in `desk.*` policy plugins, the other plugins in
+`plugin.list` order, `init.yaml` settings, the active profile, then changes made while Desk runs.
+
+| Section | Like (Emacs) | A later layer |
+| --- | --- | --- |
+| `commands` | `defun` + `interactive` | adds commands; ids start with the plugin id |
+| `keys` | `global-map` | rebinds a key; `"command": ""` unbinds it |
+| `display` | `display-buffer-alist` | is asked first; the first matching rule decides |
+| `files` | `auto-mode-alist` | is asked first; the first matching pattern decides |
+| `themes` | `load-theme`, `defface` | adds themes; the one for the scheme and contrast in force applies |
+| `settings` | `defcustom` | declares its own keys (they start with the plugin id) with defaults |
+| `profiles` | `init.el` | adds profiles; a profile with the same id replaces the earlier one |
 
 ## Permission vocabulary
 

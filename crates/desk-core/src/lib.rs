@@ -7,6 +7,7 @@ mod core_brain;
 mod core_init;
 mod core_plugins;
 mod core_store;
+mod core_ui;
 mod events;
 mod handler;
 mod init;

@@ -88,3 +88,12 @@ body {
 .desk-surface--overlay:focus-within {
   border-color: transparent;
 }
+
+.desk-surface[hidden] {
+  display: none;
+}
+
+/* A surface that shows itself on demand (the palette) lets the desk show through around it. */
+.desk-surface--transient {
+  background: transparent;
+}

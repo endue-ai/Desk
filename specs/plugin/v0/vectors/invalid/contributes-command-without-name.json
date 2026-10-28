@@ -1,0 +1,12 @@
+{
+  "target": "PluginContributes",
+  "description": "a command id needs a name after the plugin id",
+  "instance": {
+    "commands": [
+      {
+        "id": "desk.palette",
+        "title": "Palette"
+      }
+    ]
+  }
+}

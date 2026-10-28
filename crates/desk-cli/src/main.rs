@@ -34,6 +34,7 @@ fn validate(dir: &Path) -> ExitCode {
                 PluginKind::Ui => "ui",
                 PluginKind::Logic => "logic",
                 PluginKind::Tool => "tool",
+                PluginKind::Policy => "policy",
             };
             println!("ok {} {} ({kind} plugin)", manifest.id, manifest.version);
             ExitCode::SUCCESS

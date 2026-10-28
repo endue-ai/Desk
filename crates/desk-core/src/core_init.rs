@@ -4,7 +4,9 @@
 use std::path::PathBuf;
 use std::sync::{Arc, MutexGuard};
 
-use crate::handler::Core;
+use desk_bridge::InitGetResult;
+
+use crate::handler::{Answer, Core, json};
 use crate::init::{Init, InitFile};
 use crate::sync::{Keep, SyncError, SyncOutcome, SyncRemote, Syncer, lock};
 
@@ -50,6 +52,24 @@ impl Core {
     /// The remote copy of init.yaml, saved next to it after a conflict.
     pub fn init_remote_copy(&self) -> Option<PathBuf> {
         self.init_file().remote_copy_path()
+    }
+
+    /// init.get: the profile to start in and the caller's own settings (keys under `<caller>.`).
+    pub(crate) fn init_get(&self, caller: &str) -> Answer {
+        let file = self.init_file();
+        let init = file.init();
+        let prefix = format!("{caller}.");
+        let settings = init
+            .settings
+            .iter()
+            .filter(|(key, _)| key.starts_with(&prefix))
+            .map(|(key, value)| (key.clone(), value.clone()))
+            .collect();
+        json(InitGetResult {
+            profile: init.mode.clone(),
+            settings,
+            problem: file.problem().map(str::to_owned),
+        })
     }
 
     pub(crate) fn init_disables(&self, plugin: &str) -> bool {

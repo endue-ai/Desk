@@ -7,6 +7,8 @@ import type {
   BridgeResponse,
   PluginInfo,
 } from "@endue-ai/bridge";
+import { CommandError } from "./commands";
+import type { KeyLike } from "./input";
 import type { SurfaceSpec } from "./surfaces";
 
 export interface PluginHostOptions {
@@ -22,13 +24,32 @@ export interface PluginHostDeps {
   close(id: string): void;
   reload(id: string, src: string): void;
   frame(id: string): Window | null;
+  /** Show or hide a plugin's surface (a palette shows itself when asked). */
+  show?(id: string, visible: boolean): void;
+  /** Run a command for a plugin (ctx.commands.run). */
+  run?(name: string, args: unknown, caller: string): Promise<unknown>;
+  /** A key pressed inside a plugin's frame, for the desk's keymap. */
+  key?(id: string, key: KeyLike): void;
+  /** The installed plugins, each time they are listed (at start and after every plugin.changed). */
+  listed?(plugins: PluginInfo[]): void;
 }
+
+type Reply = {
+  call: number;
+  ok: boolean;
+  result?: unknown;
+  error?: { code: string; message: string };
+};
 
 type PluginMessage =
   | { type: "desk:hello" }
   | { type: "desk:calls"; calls: BridgeRequest[] }
   | { type: "desk:state"; state: unknown }
-  | { type: "desk:close" };
+  | { type: "desk:close" }
+  | { type: "desk:visible"; visible: boolean }
+  | { type: "desk:run"; call: number; name: string; args?: unknown }
+  | ({ type: "desk:reply" } & Reply)
+  | { type: "desk:key"; key: KeyLike };
 
 const MANAGE = { permission: "plugin:manage" } as const;
 /** How many unclaimed turns keep their early events. */
@@ -47,6 +68,12 @@ export class PluginHost {
   readonly #turns = new Map<string, string>();
   /** brain.turn events that arrived before the brain.say answer that names their turn. */
   readonly #early = new Map<string, BrainTurnEvent[]>();
+  /** Commands delivered to plugins that wait for their reply, by call id. */
+  readonly #pending = new Map<
+    number,
+    { plugin: string; resolve(v: unknown): void; reject(e: unknown): void }
+  >();
+  #nextCall = 1;
   #offEvents: (() => void) | undefined;
 
   constructor(deps: PluginHostDeps, options: PluginHostOptions) {
@@ -57,7 +84,9 @@ export class PluginHost {
   async start(): Promise<void> {
     this.#deps.win.addEventListener("message", this.#onMessage);
     this.#offEvents = this.#deps.bridge.onEvent((event) => this.#onEvent(event));
-    for (const info of await this.#list()) this.#mount(info);
+    const all = await this.#list();
+    this.#deps.listed?.(all);
+    for (const info of all) this.#mount(info);
   }
 
   mounted(): string[] {
@@ -67,6 +96,22 @@ export class PluginHost {
   /** Deliver a command to a mounted plugin (`ctx.commands.on(name, handler)` in the SDK). */
   command(id: string, name: string, args?: unknown): void {
     if (this.#mounted.has(id)) this.#post(id, { type: "desk:command", name, args });
+  }
+
+  /** Deliver a command and wait for the plugin's answer (what its handler returned). */
+  request(id: string, name: string, args?: unknown): Promise<unknown> {
+    if (!this.#mounted.has(id))
+      return Promise.reject(new CommandError("unknown_command", `${id} is not running`));
+    const call = this.#nextCall++;
+    return new Promise((resolve, reject) => {
+      this.#pending.set(call, { plugin: id, resolve, reject });
+      this.#post(id, { type: "desk:command", name, args, call });
+    });
+  }
+
+  /** Send every mounted plugin the same message, like a theme change. */
+  broadcast(message: unknown): void {
+    for (const id of this.#mounted.keys()) this.#post(id, message);
   }
 
   stop(): void {
@@ -89,13 +134,19 @@ export class PluginHost {
     this.#deps.open({
       id: info.id,
       title: surface?.title ?? manifest.name ?? info.id,
-      src: this.#options.url(info.id, manifest.entry, info.revision),
+      src: this.#options.url(info.id, manifest.entry ?? "", info.revision),
       ...(surface?.placement ? { placement: surface.placement } : {}),
+      ...(surface?.hidden ? { hidden: true } : {}),
     });
   }
 
   #unmount(id: string): void {
     if (!this.#mounted.delete(id)) return;
+    for (const [call, pending] of this.#pending) {
+      if (pending.plugin !== id) continue;
+      this.#pending.delete(call);
+      pending.reject(new CommandError("cancelled", `${id} stopped before it answered`));
+    }
     this.#deps.close(id);
   }
 
@@ -106,11 +157,12 @@ export class PluginHost {
     }
     if (event.event !== "plugin.changed") return;
     this.#broadcast(event);
+    if (this.#deps.listed) void this.#list().then((all) => this.#deps.listed?.(all));
     const { plugin, change, revision } = event.data;
     const info = this.#mounted.get(plugin);
     switch (change) {
       case "updated":
-        if (info?.manifest) {
+        if (info?.manifest?.entry) {
           const next = { ...info, revision };
           this.#mounted.set(plugin, next);
           this.#deps.reload(plugin, this.#options.url(plugin, info.manifest.entry, revision));
@@ -183,6 +235,23 @@ export class PluginHost {
         // The plugin is done with its surface for this session (the first run, for example).
         this.#unmount(id);
         break;
+      case "desk:visible":
+        this.#deps.show?.(id, message.visible === true);
+        break;
+      case "desk:key":
+        this.#deps.key?.(id, message.key);
+        break;
+      case "desk:run":
+        void this.#runFor(id, message.call, message.name, message.args);
+        break;
+      case "desk:reply": {
+        const pending = this.#pending.get(message.call);
+        if (!pending || pending.plugin !== id) break;
+        this.#pending.delete(message.call);
+        if (message.ok) pending.resolve(message.result);
+        else pending.reject(new CommandError("failed", message.error?.message ?? "failed"));
+        break;
+      }
       case "desk:calls":
         void Promise.all(
           message.calls.map(async (request) => ({
@@ -198,4 +267,16 @@ export class PluginHost {
         break;
     }
   };
+
+  async #runFor(id: string, call: number, name: string, args: unknown): Promise<void> {
+    try {
+      if (!this.#deps.run) throw new CommandError("unknown_command", `no command ${name}`);
+      const result = await this.#deps.run(name, args, id);
+      this.#post(id, { type: "desk:ran", call, ok: true, result });
+    } catch (error) {
+      const code = error instanceof CommandError ? error.code : "failed";
+      const text = error instanceof Error ? error.message : String(error);
+      this.#post(id, { type: "desk:ran", call, ok: false, error: { code, message: text } });
+    }
+  }
 }

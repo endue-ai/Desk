@@ -44,6 +44,7 @@
         { "$ref": "plugins.schema.json#/$defs/PluginSetEnabledRequest" },
         { "$ref": "store.schema.json#/$defs/StoreGetRequest" },
         { "$ref": "store.schema.json#/$defs/StoreSetRequest" },
+        { "$ref": "init.schema.json#/$defs/InitGetRequest" },
         { "$ref": "brain.schema.json#/$defs/BrainSayRequest" }
       ]
     },
@@ -100,7 +101,7 @@
       ]
     },
     "BridgeEvent": {
-      "description": "Something the core reports without being asked: file changes, process output, wake words, permission changes.",
+      "description": "Something the core reports without being asked: file changes, process output, wake words, permission changes, notifications.",
       "oneOf": [
         { "$ref": "fs.schema.json#/$defs/FsChangedEvent" },
         { "$ref": "proc.schema.json#/$defs/ProcOutputEvent" },
@@ -108,6 +109,7 @@
         { "$ref": "audio.schema.json#/$defs/AudioWakeEvent" },
         { "$ref": "perm.schema.json#/$defs/PermChangedEvent" },
         { "$ref": "plugins.schema.json#/$defs/PluginChangedEvent" },
+        { "$ref": "ui.schema.json#/$defs/UiNotifiedEvent" },
         { "$ref": "brain.schema.json#/$defs/BrainTurnEvent" }
       ]
     }
