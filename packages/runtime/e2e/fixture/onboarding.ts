@@ -2,6 +2,7 @@
 //   ?plugins=onboarding (default) | eris | both    which plugins plugin.list returns
 //   ?mic=grant (default) | deny                    how perm.request answers
 //   ?name=<name>                                   a finished first run, as the core would remember it
+//   ?resume=<scene>                                an interrupted first run (with ?name, ?connect=a,b)
 //   ?brain=echo (default) | offline                how brain.say answers: like brain-echo, or offline
 import {
   type BrainTurnKind,
@@ -35,10 +36,10 @@ const eris = plugin({
 });
 const onboarding = plugin({
   id: "endue.onboarding",
-  version: "0.1.0",
+  version: "0.2.0",
   kind: "ui",
   entry: "ui/index.html",
-  permissions: [{ permission: "audio:capture" }],
+  permissions: [{ permission: "audio:capture" }, { permission: "brain:converse" }],
   surfaces: [{ id: "main", title: "Welcome", placement: "overlay" }],
 });
 const which = query.get("plugins") ?? "onboarding";
@@ -46,7 +47,19 @@ const plugins = which === "eris" ? [eris] : which === "both" ? [eris, onboarding
 
 const store: Record<string, unknown> = {};
 const name = query.get("name");
-if (name) store["first-run"] = { done: true, name };
+const resume = query.get("resume");
+if (resume) {
+  store["first-run"] = {
+    done: false,
+    scene: resume,
+    name,
+    listening: false,
+    micAsked: true,
+    connections: query.get("connect")?.split(",") ?? [],
+    skipped: false,
+    region: true,
+  };
+} else if (name) store["first-run"] = { done: true, name };
 window.__deskStore = store;
 
 const OFFLINE =

@@ -12,6 +12,44 @@
   "children": [
     {
       "tag": "div",
+      "id": "space",
+      "aria-hidden": "true",
+      "style": {
+        "display": "block",
+        "visibility": "visible",
+        "opacity": "1",
+        "transform": "none",
+        "filter": "none",
+        "color": "rgb(242, 240, 245)"
+      }
+    },
+    {
+      "tag": "div",
+      "id": "frame",
+      "aria-hidden": "true",
+      "style": {
+        "display": "block",
+        "visibility": "visible",
+        "opacity": "1",
+        "transform": "none",
+        "filter": "none",
+        "color": "rgb(176, 173, 183)"
+      }
+    },
+    {
+      "tag": "div",
+      "id": "canvas",
+      "style": {
+        "display": "flex",
+        "visibility": "visible",
+        "opacity": "1",
+        "transform": "none",
+        "filter": "none",
+        "color": "rgb(242, 240, 245)"
+      }
+    },
+    {
+      "tag": "div",
       "id": "skip",
       "style": {
         "display": "block",
@@ -135,7 +173,7 @@
                     "display": "block",
                     "visibility": "visible",
                     "opacity": "1",
-                    "transform": "none",
+                    "transform": "matrix(0.987688, -0.156434, 0.156434, 0.987688, 0, 0)",
                     "filter": "none",
                     "color": "rgb(242, 240, 245)"
                   }
@@ -171,6 +209,18 @@
             {
               "tag": "div",
               "class": "flash",
+              "style": {
+                "display": "block",
+                "visibility": "visible",
+                "opacity": "0",
+                "transform": "none",
+                "filter": "none",
+                "color": "rgb(242, 240, 245)"
+              }
+            },
+            {
+              "tag": "div",
+              "class": "glint",
               "style": {
                 "display": "block",
                 "visibility": "visible",
@@ -331,6 +381,18 @@
           }
         }
       ]
+    },
+    {
+      "tag": "div",
+      "id": "edge",
+      "style": {
+        "display": "flex",
+        "visibility": "visible",
+        "opacity": "1",
+        "transform": "none",
+        "filter": "none",
+        "color": "rgb(242, 240, 245)"
+      }
     }
   ]
 }
