@@ -1,0 +1,392 @@
+{
+  "tag": "div",
+  "id": "desk",
+  "class": "desk",
+  "box": [
+    0,
+    0,
+    1280,
+    800
+  ],
+  "style": {
+    "display": "grid",
+    "background-color": "rgb(20, 20, 22)",
+    "color": "rgb(242, 240, 245)",
+    "border-top-color": "rgb(242, 240, 245)",
+    "opacity": "1"
+  },
+  "children": [
+    {
+      "tag": "aside",
+      "class": "desk-edge desk-edge--left",
+      "box": [
+        0,
+        0,
+        240,
+        772
+      ],
+      "style": {
+        "display": "flex",
+        "background-color": "rgba(0, 0, 0, 0)",
+        "color": "rgb(242, 240, 245)",
+        "border-top-color": "rgb(242, 240, 245)",
+        "opacity": "1"
+      },
+      "children": [
+        {
+          "tag": "section",
+          "class": "desk-surface desk-surface--edge",
+          "data-surface": "endue.sidebar",
+          "tabindex": "-1",
+          "box": [
+            12,
+            12,
+            228,
+            748
+          ],
+          "style": {
+            "display": "grid",
+            "background-color": "rgb(30, 29, 33)",
+            "color": "rgb(242, 240, 245)",
+            "border-top-color": "rgb(51, 49, 54)",
+            "opacity": "1"
+          },
+          "children": [
+            {
+              "tag": "iframe",
+              "class": "desk-surface-frame",
+              "sandbox": "allow-scripts",
+              "title": "Plugins",
+              "box": [
+                13,
+                13,
+                226,
+                746
+              ],
+              "style": {
+                "display": "block",
+                "background-color": "rgba(0, 0, 0, 0)",
+                "color": "rgb(242, 240, 245)",
+                "border-top-color": "rgb(242, 240, 245)",
+                "opacity": "1"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "main",
+      "class": "desk-compositor",
+      "box": [
+        240,
+        0,
+        720,
+        700
+      ],
+      "style": {
+        "display": "grid",
+        "background-color": "rgba(0, 0, 0, 0)",
+        "color": "rgb(242, 240, 245)",
+        "border-top-color": "rgb(242, 240, 245)",
+        "opacity": "1"
+      },
+      "children": [
+        {
+          "tag": "section",
+          "class": "desk-surface",
+          "data-surface": "example.hello-ui",
+          "tabindex": "-1",
+          "box": [
+            252,
+            12,
+            224,
+            332
+          ],
+          "style": {
+            "display": "grid",
+            "background-color": "rgb(30, 29, 33)",
+            "color": "rgb(242, 240, 245)",
+            "border-top-color": "rgb(51, 49, 54)",
+            "opacity": "1"
+          },
+          "children": [
+            {
+              "tag": "header",
+              "class": "desk-surface-title",
+              "box": [
+                253,
+                13,
+                222,
+                28
+              ],
+              "style": {
+                "display": "block",
+                "background-color": "rgba(0, 0, 0, 0)",
+                "color": "rgb(176, 173, 183)",
+                "border-top-color": "rgb(176, 173, 183)",
+                "opacity": "1"
+              },
+              "text": "Hello"
+            },
+            {
+              "tag": "iframe",
+              "class": "desk-surface-frame",
+              "sandbox": "allow-scripts",
+              "title": "Hello",
+              "box": [
+                253,
+                41,
+                222,
+                302
+              ],
+              "style": {
+                "display": "block",
+                "background-color": "rgba(0, 0, 0, 0)",
+                "color": "rgb(242, 240, 245)",
+                "border-top-color": "rgb(242, 240, 245)",
+                "opacity": "1"
+              }
+            }
+          ]
+        },
+        {
+          "tag": "section",
+          "class": "desk-surface",
+          "data-surface": "test.counter",
+          "tabindex": "-1",
+          "box": [
+            488,
+            12,
+            224,
+            332
+          ],
+          "style": {
+            "display": "grid",
+            "background-color": "rgb(30, 29, 33)",
+            "color": "rgb(242, 240, 245)",
+            "border-top-color": "rgb(51, 49, 54)",
+            "opacity": "1"
+          },
+          "children": [
+            {
+              "tag": "header",
+              "class": "desk-surface-title",
+              "box": [
+                489,
+                13,
+                222,
+                28
+              ],
+              "style": {
+                "display": "block",
+                "background-color": "rgba(0, 0, 0, 0)",
+                "color": "rgb(176, 173, 183)",
+                "border-top-color": "rgb(176, 173, 183)",
+                "opacity": "1"
+              },
+              "text": "Counter"
+            },
+            {
+              "tag": "iframe",
+              "class": "desk-surface-frame",
+              "sandbox": "allow-scripts",
+              "title": "Counter",
+              "box": [
+                489,
+                41,
+                222,
+                302
+              ],
+              "style": {
+                "display": "block",
+                "background-color": "rgba(0, 0, 0, 0)",
+                "color": "rgb(242, 240, 245)",
+                "border-top-color": "rgb(242, 240, 245)",
+                "opacity": "1"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "aside",
+      "class": "desk-edge desk-edge--right",
+      "box": [
+        960,
+        0,
+        320,
+        772
+      ],
+      "style": {
+        "display": "flex",
+        "background-color": "rgba(0, 0, 0, 0)",
+        "color": "rgb(242, 240, 245)",
+        "border-top-color": "rgb(242, 240, 245)",
+        "opacity": "1"
+      },
+      "children": [
+        {
+          "tag": "section",
+          "class": "desk-surface desk-surface--edge",
+          "data-surface": "endue.eris",
+          "tabindex": "-1",
+          "box": [
+            960,
+            12,
+            308,
+            368
+          ],
+          "style": {
+            "display": "grid",
+            "background-color": "rgb(30, 29, 33)",
+            "color": "rgb(242, 240, 245)",
+            "border-top-color": "rgb(51, 49, 54)",
+            "opacity": "1"
+          },
+          "children": [
+            {
+              "tag": "iframe",
+              "class": "desk-surface-frame",
+              "sandbox": "allow-scripts",
+              "title": "Eris",
+              "box": [
+                961,
+                13,
+                306,
+                366
+              ],
+              "style": {
+                "display": "block",
+                "background-color": "rgba(0, 0, 0, 0)",
+                "color": "rgb(242, 240, 245)",
+                "border-top-color": "rgb(242, 240, 245)",
+                "opacity": "1"
+              }
+            }
+          ]
+        },
+        {
+          "tag": "section",
+          "class": "desk-surface desk-surface--edge",
+          "data-surface": "endue.toolbar",
+          "tabindex": "-1",
+          "box": [
+            960,
+            392,
+            308,
+            368
+          ],
+          "style": {
+            "display": "grid",
+            "background-color": "rgb(30, 29, 33)",
+            "color": "rgb(242, 240, 245)",
+            "border-top-color": "rgb(51, 49, 54)",
+            "opacity": "1"
+          },
+          "children": [
+            {
+              "tag": "iframe",
+              "class": "desk-surface-frame",
+              "sandbox": "allow-scripts",
+              "title": "Status",
+              "box": [
+                961,
+                393,
+                306,
+                366
+              ],
+              "style": {
+                "display": "block",
+                "background-color": "rgba(0, 0, 0, 0)",
+                "color": "rgb(242, 240, 245)",
+                "border-top-color": "rgb(242, 240, 245)",
+                "opacity": "1"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "aside",
+      "class": "desk-edge desk-edge--bottom",
+      "box": [
+        240,
+        700,
+        720,
+        72
+      ],
+      "style": {
+        "display": "flex",
+        "background-color": "rgba(0, 0, 0, 0)",
+        "color": "rgb(242, 240, 245)",
+        "border-top-color": "rgb(242, 240, 245)",
+        "opacity": "1"
+      },
+      "children": [
+        {
+          "tag": "section",
+          "class": "desk-surface desk-surface--edge",
+          "data-surface": "endue.dock",
+          "tabindex": "-1",
+          "box": [
+            252,
+            700,
+            696,
+            60
+          ],
+          "style": {
+            "display": "grid",
+            "background-color": "rgb(30, 29, 33)",
+            "color": "rgb(242, 240, 245)",
+            "border-top-color": "rgb(51, 49, 54)",
+            "opacity": "1"
+          },
+          "children": [
+            {
+              "tag": "iframe",
+              "class": "desk-surface-frame",
+              "sandbox": "allow-scripts",
+              "title": "Dock",
+              "box": [
+                253,
+                701,
+                694,
+                58
+              ],
+              "style": {
+                "display": "block",
+                "background-color": "rgba(0, 0, 0, 0)",
+                "color": "rgb(242, 240, 245)",
+                "border-top-color": "rgb(242, 240, 245)",
+                "opacity": "1"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "footer",
+      "class": "desk-status",
+      "role": "status",
+      "aria-live": "polite",
+      "box": [
+        0,
+        772,
+        1280,
+        28
+      ],
+      "style": {
+        "display": "block",
+        "background-color": "rgba(0, 0, 0, 0)",
+        "color": "rgb(176, 173, 183)",
+        "border-top-color": "rgb(51, 49, 54)",
+        "opacity": "1"
+      },
+      "text": "desk ready · bridge: browser"
+    }
+  ]
+}

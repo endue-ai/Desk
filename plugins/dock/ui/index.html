@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Dock</title>
+    <script type="importmap">
+      { "imports": { "@endue-ai/plugin-sdk": "/_desk/plugin-sdk.js" } }
+    </script>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <main id="root">
+      <div id="tiles" role="toolbar" aria-label="Dock"></div>
+      <p id="empty" hidden>Nothing here yet.</p>
+      <p id="status" class="sr-only" role="status" aria-live="polite"></p>
+    </main>
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

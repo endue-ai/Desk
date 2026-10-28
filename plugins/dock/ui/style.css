@@ -1,0 +1,82 @@
+body {
+  margin: 0;
+  background: #1e1d21;
+  color: #f2f0f5;
+  font: 13px/1.4 -apple-system, "SUIT", "Inter", system-ui, sans-serif;
+}
+
+#root {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  padding: 0 8px;
+  box-sizing: border-box;
+  overflow-x: auto;
+}
+
+#tiles {
+  display: flex;
+  gap: 8px;
+}
+
+#empty {
+  margin: 0;
+  color: #b0adb7;
+}
+
+.tile {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 12px 0 4px;
+  border: 1px solid #333136;
+  border-radius: 8px;
+  background: #26252a;
+  color: inherit;
+  font: inherit;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.tile:hover {
+  border-color: #4a4750;
+}
+
+.tile:focus-visible {
+  outline: 2px solid #b6a3f5;
+  outline-offset: 2px;
+}
+
+.initial {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  background: #333136;
+  font-weight: 600;
+}
+
+/* Open on the desk. */
+.tile[aria-pressed="true"] .initial {
+  background: #b6a3f5;
+  color: #141416;
+}
+
+/* Failed: still listed, so people see why it is missing. */
+.tile.unavailable {
+  border-style: dashed;
+  color: #b0adb7;
+  cursor: default;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

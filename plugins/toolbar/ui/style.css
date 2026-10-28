@@ -1,0 +1,106 @@
+body {
+  margin: 0;
+  background: #1e1d21;
+  color: #f2f0f5;
+  font: 13px/1.5 -apple-system, "SUIT", "Inter", system-ui, sans-serif;
+}
+
+#root {
+  padding: 8px 12px;
+}
+
+h1 {
+  margin: 0 0 4px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #b0adb7;
+}
+
+h2 {
+  margin: 0;
+  font: inherit;
+}
+
+ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.drawer {
+  border-bottom: 1px solid #333136;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.head:focus-visible {
+  outline: 2px solid #b6a3f5;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.title {
+  flex: 1;
+  font-weight: 600;
+}
+
+.summary {
+  color: #b0adb7;
+}
+
+/* Something needs a look: a dot before the summary. */
+.head.warning .summary::before {
+  content: "";
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: #f2b880;
+}
+
+.chevron {
+  color: #b0adb7;
+  transition: transform 120ms;
+}
+
+.head[aria-expanded="true"] .chevron {
+  transform: rotate(90deg);
+}
+
+.body {
+  padding: 0 0 8px;
+}
+
+.body p {
+  margin: 0 0 6px;
+  color: #b0adb7;
+}
+
+.rows li {
+  display: grid;
+  padding: 4px 0;
+}
+
+.detail {
+  color: #b0adb7;
+  overflow-wrap: anywhere;
+}
+
+.rows li.warning .detail {
+  color: #f2b880;
+}
