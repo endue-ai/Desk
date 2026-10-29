@@ -100,7 +100,10 @@ fn ping_round_trips() {
 
     let out = server.desk(&["--json", "ping"]);
     assert_eq!(out.status.code(), Some(0));
-    let line = ok(&server.last(), json!({ "profile": "default", "settings": {} }));
+    let line = ok(
+        &server.last(),
+        json!({ "profile": "default", "settings": {} }),
+    );
     assert_eq!(stdout(&out), format!("{line}\n"));
 }
 
@@ -160,7 +163,11 @@ fn a_bridge_error_exits_1_and_names_the_code() {
     let server = Server::start(move |r| vec![failure(r)]);
     let out = server.desk(&["cmd", "list"]);
     assert_eq!(out.status.code(), Some(1));
-    assert!(stderr(&out).contains("permission_denied"), "{}", stderr(&out));
+    assert!(
+        stderr(&out).contains("permission_denied"),
+        "{}",
+        stderr(&out)
+    );
     assert_eq!(stdout(&out), "");
 
     let out = server.desk(&["cmd", "list", "--json"]);
@@ -188,11 +195,25 @@ fn cmd_run_waits_for_its_own_cmd_answered() {
                 "id": "eris.say", "change": "registered", "provider": "endue.eris"
             } })
             .to_string(),
-            answered("i-9", "eris.say", json!({ "ok": true, "result": "not mine" })),
-            answered("i-1", "desk.theme.toggle", json!({ "ok": true, "result": "dark" })),
+            answered(
+                "i-9",
+                "eris.say",
+                json!({ "ok": true, "result": "not mine" }),
+            ),
+            answered(
+                "i-1",
+                "desk.theme.toggle",
+                json!({ "ok": true, "result": "dark" }),
+            ),
         ]
     });
-    let out = server.desk(&["cmd", "run", "desk.theme.toggle", "--args", r#"{"to":"dark"}"#]);
+    let out = server.desk(&[
+        "cmd",
+        "run",
+        "desk.theme.toggle",
+        "--args",
+        r#"{"to":"dark"}"#,
+    ]);
     assert_eq!(out.status.code(), Some(0), "{}", stderr(&out));
     assert_eq!(stdout(&out), "\"dark\"\n");
     let request = server.last();
@@ -206,7 +227,11 @@ fn cmd_run_waits_for_its_own_cmd_answered() {
 
     let out = server.desk(&["--json", "cmd", "run", "desk.theme.toggle"]);
     assert_eq!(out.status.code(), Some(0), "{}", stderr(&out));
-    let line = answered("i-1", "desk.theme.toggle", json!({ "ok": true, "result": "dark" }));
+    let line = answered(
+        "i-1",
+        "desk.theme.toggle",
+        json!({ "ok": true, "result": "dark" }),
+    );
     assert_eq!(stdout(&out), format!("{line}\n"));
     assert!(server.last()["params"].get("args").is_none());
 }
@@ -254,7 +279,10 @@ fn plugin_and_perm_commands_send_their_manage_scopes() {
     let perm_manage = json!({ "permission": "perm:manage" });
 
     let out = server.desk(&["plugin", "disable", "x"]);
-    assert_eq!((out.status.code(), stdout(&out).as_str()), (Some(0), "ok\n"));
+    assert_eq!(
+        (out.status.code(), stdout(&out).as_str()),
+        (Some(0), "ok\n")
+    );
     assert_eq!(server.last()["method"], "plugin.setEnabled");
     assert_eq!(
         server.last()["params"],
@@ -262,7 +290,10 @@ fn plugin_and_perm_commands_send_their_manage_scopes() {
     );
 
     let out = server.desk(&["plugin", "enable", "x"]);
-    assert_eq!((out.status.code(), stdout(&out).as_str()), (Some(0), "ok\n"));
+    assert_eq!(
+        (out.status.code(), stdout(&out).as_str()),
+        (Some(0), "ok\n")
+    );
     assert_eq!(server.last()["params"]["enabled"], true);
 
     let out = server.desk(&["plugin", "list"]);
@@ -278,10 +309,16 @@ fn plugin_and_perm_commands_send_their_manage_scopes() {
     assert_eq!(out.status.code(), Some(0), "{}", stderr(&out));
     assert_eq!(server.last()["method"], "perm.list");
     assert_eq!(server.last()["params"], json!({ "scope": perm_manage }));
-    assert_eq!(stdout(&out), "g3\tcli\t{\"permission\":\"plugin:manage\"}\n");
+    assert_eq!(
+        stdout(&out),
+        "g3\tcli\t{\"permission\":\"plugin:manage\"}\n"
+    );
 
     let out = server.desk(&["perm", "revoke", "g3"]);
-    assert_eq!((out.status.code(), stdout(&out).as_str()), (Some(0), "ok\n"));
+    assert_eq!(
+        (out.status.code(), stdout(&out).as_str()),
+        (Some(0), "ok\n")
+    );
     assert_eq!(server.last()["method"], "perm.revoke");
     assert_eq!(
         server.last()["params"],
@@ -319,6 +356,10 @@ fn new_usage_errors_exit_2() {
     ] {
         let out = desk_at(&path, args);
         assert_eq!(out.status.code(), Some(2), "{args:?}: {}", stderr(&out));
-        assert!(stderr(&out).contains("usage: desk"), "{args:?}: {}", stderr(&out));
+        assert!(
+            stderr(&out).contains("usage: desk"),
+            "{args:?}: {}",
+            stderr(&out)
+        );
     }
 }

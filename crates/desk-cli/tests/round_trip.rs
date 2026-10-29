@@ -47,7 +47,8 @@ fn the_binary_runs_a_command_through_the_socket_and_the_core() {
     std::thread::spawn(move || {
         for event in events {
             if let BridgeEvent::CmdInvoked(invoked) = event {
-                let answer = json!({ "invocationId": invoked.data.invocation_id, "result": "dark" });
+                let answer =
+                    json!({ "invocationId": invoked.data.invocation_id, "result": "dark" });
                 call(&provider, "desk", "cmd.answer", answer);
             }
         }

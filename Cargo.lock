@@ -873,6 +873,7 @@ dependencies = [
  "desk-brain-endue",
  "desk-bridge",
  "desk-core",
+ "desk-ipc",
  "serde_json",
  "tauri",
  "tauri-build",
@@ -923,6 +924,8 @@ version = "0.0.0"
 dependencies = [
  "desk-bridge",
  "desk-core",
+ "desk-ipc",
+ "serde_json",
 ]
 
 [[package]]
@@ -938,6 +941,16 @@ dependencies = [
  "serde",
  "serde_json",
  "yaml_serde",
+]
+
+[[package]]
+name = "desk-ipc"
+version = "0.0.0"
+dependencies = [
+ "desk-bridge",
+ "desk-core",
+ "dirs",
+ "serde_json",
 ]
 
 [[package]]
