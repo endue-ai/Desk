@@ -38,6 +38,7 @@ export class Keymap {
   readonly #commands: Commands;
   #bindings: Binding[] = [];
   #unbind: Array<() => void> = [];
+  readonly #listeners = new Set<() => void>();
 
   constructor(router: ShortcutRouter, commands: Commands) {
     this.#router = router;
@@ -53,6 +54,13 @@ export class Keymap {
         void this.#commands.run(binding.command, binding.args).catch(() => {});
       }),
     );
+    for (const listener of [...this.#listeners]) listener();
+  }
+
+  /** Hear every new set of bindings. */
+  onChange(listener: () => void): () => void {
+    this.#listeners.add(listener);
+    return () => this.#listeners.delete(listener);
   }
 
   bindings(): Binding[] {
