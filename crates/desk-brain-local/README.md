@@ -14,8 +14,6 @@ Layer: Rust core (see `docs/architecture.md`). Contract: `specs/brain/v0`.
   `tools` offered to the model, in Ollama's format (`with_base_url`, `with_tools`).
 - `Brain` methods: turns stream `turn.started`, `text.delta`, `tool.call` and `turn.completed`.
   Tool calls go out one at a time; once every result is in, they go back to the model.
-- The agent directory is empty: `list_agents`, `list_spaces` and `list_a2a_tasks` answer empty pages
-  (page from 1, limit 1 to 100, else `invalid_request`), `get_agent_card` answers 404 `not_found`.
 - Leases follow `examples/brain-echo`: `lease_held`, `lease_lost` after a takeover, `lease_expired`.
 - Failures: no connection or a stream cut short → `Unreachable`; an error status or `{"error"}` →
   `Refused` (404 `not_found`, 400 `invalid_request`, otherwise `internal`); a line that is not
