@@ -20,11 +20,12 @@ alles andere lässt sich im laufenden Betrieb ändern.
  │ Plugins      UI (iframe) · logic (Wasm) · tools (MCP, in a VM) │  instant
  ├────────────────────────────────────────────────────────────────┤
  │ Web runtime  compositor (3D/2D) · surfaces · input · layout    │  restart
+ │              · UI plugin host · desk shell (until ADR 0026)    │
  ├────────────────────────────────────────────────────────────────┤
- │ Desk bridge  specs/bridge → TS client · Rust traits            │  rebuild
+ │ Desk bridge  specs/bridge → TS client · Rust types             │  rebuild
  ├────────────────────────────────────────────────────────────────┤
- │ Rust core    permissions · event bus · storage · plugin host   │  rebuild
- │              · VM · brain clients                              │
+ │ Rust core    permissions · event bus · storage                 │  rebuild
+ │              · logic plugin host (Wasm) · VM · brain clients   │
  ├────────────────────────────────────────────────────────────────┤
  │ Tauri shell  windows · webviews · primitives (fs, proc, net,   │  rebuild
  │              audio)                                            │
@@ -41,9 +42,9 @@ endue AI liegt außerhalb des Geräts. Alles andere läuft auf dem Computer des 
 | --- | --- |
 | endue AI (Cloud) | außerhalb des Repositorys; hier liegen nur `specs/brain` und `crates/desk-brain-endue` |
 | Plugins | `plugins/` · `packages/plugin-sdk` · `specs/plugin` · `specs/wit` · `examples/` |
-| Web-Runtime | `packages/runtime` · `packages/ui` |
-| Desk-Bridge | `specs/bridge` · `packages/bridge` · `crates/desk-bridge` |
-| Rust-Kern | `crates/desk-core` · `crates/desk-plugin-host` · `crates/desk-vm` · `crates/desk-brain*` |
+| Web-Runtime | `packages/runtime`: der Compositor, der Host für UI-Plugins (ADR 0012) und, bis ADR 0026 entschieden ist, die Desk-Shell (ADR 0025) · `packages/ui` |
+| Desk-Bridge | `specs/bridge` · `packages/bridge` · `crates/desk-bridge` (aus `specs/bridge` und `specs/plugin` generierte Typen) |
+| Rust-Kern | `crates/desk-core` · `crates/desk-plugin-host`, der Logik-Plugins auf Wasmtime ausführt (ADR 0019) · `crates/desk-vm` · `crates/desk-brain*` |
 | Tauri-Shell | `apps/desk/src-tauri` · `crates/desk-sys` |
 | OS | `apps/desk/src-tauri/capabilities` · Release-Workflow (Signierung, Notarisierung) |
 
@@ -72,6 +73,11 @@ Daraus folgen sechs Prinzipien:
    Profilwechsel nutzen dieselbe API wie Community-Plugins. So hat die API keine Lücken, und selbst
    eingebaute Funktionen lassen sich ersetzen. Auch die Standardrichtlinien des Desks (wo Oberflächen
    erscheinen, Tasten, Dateien, Themes, Benachrichtigungen) sind reine Daten-Plugins `desk.*` (ADR 0017).
+   Die Desk-Shell (`mountDesk`) ist es noch nicht: Sie ist Code in `packages/runtime` (ADR 0025), bis die
+   noch vorgeschlagene ADR 0026 entscheidet, wohin sie gehört. Bis dahin gibt es Eris zweimal, als
+   `plugins/eris` und in der Shell (ADR 0027), und ebenso die Ränder des Desks: die Plugins Dock,
+   Werkzeugleiste und Seitenleiste auf der einen Seite, den unteren Rand, die Statusleiste und die
+   Agentenleiste der Shell auf der anderen (ADR 0028).
 3. **Alles ist ein Befehl.** Klicks, Sprache, Tastenkürzel und Agenten rufen dieselben Befehle auf. Was
    ein Mensch tun kann, können auch Eris und Agenten.
 4. **Ändern im laufenden Betrieb.** Das Speichern eines Plugins lädt es neu; der Plugin-Zustand liegt im

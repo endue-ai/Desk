@@ -21,11 +21,12 @@ can be changed while the app is running.
  │ Plugins      UI (iframe) · logic (Wasm) · tools (MCP, in a VM) │  instant
  ├────────────────────────────────────────────────────────────────┤
  │ Web runtime  compositor (3D/2D) · surfaces · input · layout    │  restart
+ │              · UI plugin host · desk shell (until ADR 0026)    │
  ├────────────────────────────────────────────────────────────────┤
- │ Desk bridge  specs/bridge → TS client · Rust traits            │  rebuild
+ │ Desk bridge  specs/bridge → TS client · Rust types             │  rebuild
  ├────────────────────────────────────────────────────────────────┤
- │ Rust core    permissions · event bus · storage · plugin host   │  rebuild
- │              · VM · brain clients                              │
+ │ Rust core    permissions · event bus · storage                 │  rebuild
+ │              · logic plugin host (Wasm) · VM · brain clients   │
  ├────────────────────────────────────────────────────────────────┤
  │ Tauri shell  windows · webviews · primitives (fs, proc, net,   │  rebuild
  │              audio)                                            │
@@ -42,9 +43,9 @@ device. Everything else runs on the user's computer.
 | --- | --- |
 | endue AI (cloud) | outside the repository; only `specs/brain` and `crates/desk-brain-endue` live here |
 | Plugins | `plugins/` · `packages/plugin-sdk` · `specs/plugin` · `specs/wit` · `examples/` |
-| Web runtime | `packages/runtime` · `packages/ui` |
-| Desk bridge | `specs/bridge` · `packages/bridge` · `crates/desk-bridge` |
-| Rust core | `crates/desk-core` · `crates/desk-plugin-host` · `crates/desk-vm` · `crates/desk-brain*` |
+| Web runtime | `packages/runtime`: the compositor, the UI plugin host (ADR 0012) and, until ADR 0026 is decided, the desk shell (ADR 0025) · `packages/ui` |
+| Desk bridge | `specs/bridge` · `packages/bridge` · `crates/desk-bridge` (types generated from `specs/bridge` and `specs/plugin`) |
+| Rust core | `crates/desk-core` · `crates/desk-plugin-host`, which runs logic plugins on Wasmtime (ADR 0019) · `crates/desk-vm` · `crates/desk-brain*` |
 | Tauri shell | `apps/desk/src-tauri` · `crates/desk-sys` |
 | OS | `apps/desk/src-tauri/capabilities` · release workflow (signing, notarisation) |
 
@@ -72,7 +73,10 @@ Six principles follow from this:
 2. **Built-ins are plugins.** Eris, the sidebar, the toolbar and profile switching use the same API as
    community plugins, so the API has no holes and even built-ins can be replaced. The desk's default
    policies (where surfaces go, keys, files, themes, notifications) are data-only `desk.*` plugins too
-   (ADR 0017).
+   (ADR 0017). The desk shell (`mountDesk`) is not there yet: it is code in `packages/runtime` (ADR 0025)
+   until ADR 0026, still proposed, decides where it lives. Until then Eris exists twice, as `plugins/eris`
+   and in the shell (ADR 0027), and so do the desk's edges, as the dock, toolbar and sidebar plugins and
+   the shell's bottom edge, rail and agent bar (ADR 0028).
 3. **Everything is a command.** Clicks, voice, shortcuts and agents call the same commands. Whatever a
    person can do, Eris and agents can do too.
 4. **Change it while it runs.** Saving a plugin reloads it; plugin state lives in core storage and

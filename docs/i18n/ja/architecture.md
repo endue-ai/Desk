@@ -17,11 +17,12 @@ Desk はひとつのアプリとして作られたひとつの OS です。Tauri
  │ Plugins      UI (iframe) · logic (Wasm) · tools (MCP, in a VM) │  instant
  ├────────────────────────────────────────────────────────────────┤
  │ Web runtime  compositor (3D/2D) · surfaces · input · layout    │  restart
+ │              · UI plugin host · desk shell (until ADR 0026)    │
  ├────────────────────────────────────────────────────────────────┤
- │ Desk bridge  specs/bridge → TS client · Rust traits            │  rebuild
+ │ Desk bridge  specs/bridge → TS client · Rust types             │  rebuild
  ├────────────────────────────────────────────────────────────────┤
- │ Rust core    permissions · event bus · storage · plugin host   │  rebuild
- │              · VM · brain clients                              │
+ │ Rust core    permissions · event bus · storage                 │  rebuild
+ │              · logic plugin host (Wasm) · VM · brain clients   │
  ├────────────────────────────────────────────────────────────────┤
  │ Tauri shell  windows · webviews · primitives (fs, proc, net,   │  rebuild
  │              audio)                                            │
@@ -37,9 +38,9 @@ Desk はひとつのアプリとして作られたひとつの OS です。Tauri
 | --- | --- |
 | endue AI（クラウド） | リポジトリの外。このリポジトリにあるのは `specs/brain` と `crates/desk-brain-endue` だけです |
 | プラグイン | `plugins/` · `packages/plugin-sdk` · `specs/plugin` · `specs/wit` · `examples/` |
-| Web ランタイム | `packages/runtime` · `packages/ui` |
-| Desk ブリッジ | `specs/bridge` · `packages/bridge` · `crates/desk-bridge` |
-| Rust コア | `crates/desk-core` · `crates/desk-plugin-host` · `crates/desk-vm` · `crates/desk-brain*` |
+| Web ランタイム | `packages/runtime`：コンポジター、UI プラグインのホスト（ADR 0012）、そして ADR 0026 が決まるまではデスクシェル（ADR 0025） · `packages/ui` |
+| Desk ブリッジ | `specs/bridge` · `packages/bridge` · `crates/desk-bridge`（`specs/bridge` と `specs/plugin` から生成した型） |
+| Rust コア | `crates/desk-core` · `crates/desk-plugin-host`（ロジックプラグインを Wasmtime で実行、ADR 0019） · `crates/desk-vm` · `crates/desk-brain*` |
 | Tauri シェル | `apps/desk/src-tauri` · `crates/desk-sys` |
 | OS | `apps/desk/src-tauri/capabilities` · リリースワークフロー（署名、公証） |
 
@@ -63,7 +64,7 @@ Emacs は小さな C コアの上でほぼすべてを Elisp で動かしてお�
 ここから 6 つの原則が導かれます。
 
 1. **小さなコア。** Rust コアが持つのは機能ではなく、プリミティブ（fs、proc、net、audio、ui）です。
-2. **組み込み機能もプラグイン。** Eris、サイドバー、ツールバー、プロファイル切り替えは、コミュニティのプラグインと同じ API を使います。そのため API に抜けがなく、組み込み機能でさえ置き換えられます。デスクの既定ポリシー（画面の置き場所、キー、ファイル、テーマ、通知）も、データだけの `desk.*` プラグインです（ADR 0017）。
+2. **組み込み機能もプラグイン。** Eris、サイドバー、ツールバー、プロファイル切り替えは、コミュニティのプラグインと同じ API を使います。そのため API に抜けがなく、組み込み機能でさえ置き換えられます。デスクの既定ポリシー（画面の置き場所、キー、ファイル、テーマ、通知）も、データだけの `desk.*` プラグインです（ADR 0017）。ただしデスクシェル（`mountDesk`）はまだプラグインではありません。シェルは `packages/runtime` の中のコードで（ADR 0025）、どこに置くかはまだ提案中の ADR 0026 が決めます。それまで Eris は `plugins/eris` とシェルの中に一つずつあり（ADR 0027）、デスクの端も、ドック・ツールバー・サイドバーのプラグインと、シェルの下端・レール・エージェントバーの二通りがあります（ADR 0028）。
 3. **すべてはコマンド。** クリック、音声、ショートカット、エージェントは同じコマンドを呼び出します。人ができることは、Eris やエージェントにもできます。
 4. **実行中に変更する。** プラグインを保存するとリロードされます。プラグインの状態はコアのストレージにあり、入れ替えても失われません。
 5. **何にでもフックできる。** どのコマンドにも前後にフックを付けられ、Emacs の advice のように丸ごと置き換えることもできます。
