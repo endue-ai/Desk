@@ -5,14 +5,9 @@
 //   ?platform=mac                        the keymap's platform  ?profile=focus             start profile
 //   ?rules=[{"match":{...},"area":...}]  display rules test.echo contributes
 //   ?store={"session":{...}}             what the core's store holds for the runtime at start
-import {
-  BridgeClient,
-  browserStub,
-  type PluginInfo,
-  type PluginManifest,
-  stubCommands,
-} from "@endue-ai/bridge";
+import type { PluginManifest } from "@endue-ai/bridge";
 import "../../src/desk.css";
+import { browserCore, memoryStore } from "../../src/bridge/core";
 import { createRuntime, ManualClock } from "../../src/index";
 
 const params = new URLSearchParams(location.search);
@@ -45,78 +40,51 @@ const counter: PluginManifest = {
   entry: "ui/index.html",
   surfaces: [{ id: "main", title: "Counter", placement: "center" }],
 };
-const plugins: PluginInfo[] = [
-  ...Object.values(manifests).filter((m) => m.id.startsWith("desk.")),
-  echo,
-  counter,
-].map((manifest) => ({
-  id: manifest.id,
-  status: "ready",
-  enabled: !off.has(manifest.id),
-  builtIn: manifest.id.startsWith("desk."),
-  revision: 1,
-  manifest,
-}));
-
 let notices = 0;
 // The core's store (per caller) and the files plugins wrote, kept in memory for the tests.
 const store: Record<string, unknown> = JSON.parse(params.get("store") ?? "{}");
 const written: Array<{ path: string; content: string }> = [];
 const clock = new ManualClock();
-// The core's command registry (cmd.*), as the stub keeps it.
-const registry = stubCommands((event) => stub.emit(event));
-const stub = browserStub({
-  ...registry.handlers,
-  "perm.query": () => ({ grants: [] }),
-  "plugin.list": () => ({ plugins: structuredClone(plugins) }),
-  "plugin.setEnabled": ({ plugin, enabled }) => {
-    const info = plugins.find((p) => p.id === plugin);
-    if (!info) throw new Error(`no plugin ${plugin}`);
-    info.enabled = enabled;
-    // The core drops a plugin's commands when it is turned off.
-    if (!enabled) registry.drop(plugin);
-    queueMicrotask(() =>
-      stub.emit({
-        event: "plugin.changed",
-        data: { plugin, change: enabled ? "enabled" : "disabled", revision: info.revision },
-      }),
-    );
-    return { plugin: structuredClone(info) };
-  },
-  "store.get": ({ key }) => (key in store ? { value: structuredClone(store[key]) } : {}),
-  "store.set": ({ key, value }) => {
-    store[key] = structuredClone(value);
-    return {};
-  },
-  "fs.write": ({ path, content }) => {
-    written.push({ path, content });
-    return { bytesWritten: content.length };
-  },
-  "init.get": () => ({
+const { client, stub } = browserCore({
+  // The bare desk: every desk.* policy but the shell's own.
+  manifests: [
+    ...Object.values(manifests).filter((m) => m.id.startsWith("desk.") && m.id !== "desk.shell"),
+    echo,
+    counter,
+  ],
+  off,
+  store: memoryStore(store),
+  init: {
     profile: params.get("profile") ?? "default",
     settings: JSON.parse(params.get("init") ?? "{}"),
-  }),
-  // The core's ui.notify: an id, and the ui.notified event the runtime shows.
-  "ui.notify": ({ title, body, level }) => {
-    const notificationId = `n-${++notices}`;
-    queueMicrotask(() =>
-      stub.emit({
-        event: "ui.notified",
-        data: {
-          notificationId,
-          caller: "test.echo",
-          title,
-          level: level ?? "info",
-          ...(body ? { body } : {}),
-        },
-      }),
-    );
-    return { notificationId };
+  },
+  handlers: {
+    "fs.write": ({ path, content }) => {
+      written.push({ path, content });
+      return { bytesWritten: content.length };
+    },
+    // The core's ui.notify: an id, and the ui.notified event the runtime shows.
+    "ui.notify": ({ title, body, level }) => {
+      const notificationId = `n-${++notices}`;
+      queueMicrotask(() =>
+        stub.emit({
+          event: "ui.notified",
+          data: {
+            notificationId,
+            caller: "test.echo",
+            title,
+            level: level ?? "info",
+            ...(body ? { body } : {}),
+          },
+        }),
+      );
+      return { notificationId };
+    },
   },
 });
 const runtime = createRuntime({
   root: document.getElementById("desk") as HTMLElement,
-  bridge: new BridgeClient(stub),
+  bridge: client,
   clock,
   storage: window.localStorage,
   platform: params.get("platform") === "mac" ? "mac" : "other",

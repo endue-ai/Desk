@@ -15,6 +15,10 @@ const KEEP_ON = new Set(["desk.profiles", "desk.palette", "desk.keys"]);
 export interface ProfilesPolicy extends Installed {
   /** The profile in force, or undefined before the first is applied. */
   active(): string | undefined;
+  /** Contributed profiles, then saved ones; a saved profile replaces a contributed one of its id. */
+  list(): ProfileContribution[];
+  /** Hear every switch and save (the shell's profile switcher listens). */
+  onChange(listener: () => void): () => void;
   /** Read the saved profiles and apply init.yaml's (once, after the plugins are listed). */
   start(): Promise<void>;
 }
@@ -28,6 +32,10 @@ export function installProfiles(
   const offs = disposer();
   let saved: ProfileContribution[] = [];
   let active: string | undefined;
+  const listeners = new Set<() => void>();
+  const changed = () => {
+    for (const listener of [...listeners]) listener();
+  };
 
   /** Contributed profiles, then saved ones; a saved profile replaces a contributed one of its id. */
   const all = (): ProfileContribution[] => {
@@ -56,6 +64,7 @@ export function installProfiles(
     for (const plugin of profile.plugins?.disabled ?? []) {
       if (installed.get(plugin) === true && !KEEP_ON.has(plugin)) await setEnabled(plugin, false);
     }
+    changed();
     return id;
   };
 
@@ -97,7 +106,8 @@ export function installProfiles(
     "desk.profiles.save",
     "Save this setup as a profile",
     async (args) => {
-      const { id: given, name } = (args ?? {}) as { id?: string; name?: string };
+      // `settings` and `plugins` save that profile as given (a copy of another) instead of this setup.
+      const { id: given, name, ...rest } = (args ?? {}) as Partial<ProfileContribution>;
       const id = given ?? (await pick("Save this setup as", true));
       if (!id) return null;
       if (!/^[a-z0-9][a-z0-9._-]{0,63}$/.test(id))
@@ -106,15 +116,22 @@ export function installProfiles(
       const profile: ProfileContribution = {
         id,
         name: name ?? all().find((p) => p.id === id)?.name ?? id,
-        plugins: {
+        plugins: rest.plugins ?? {
           enabled: plugins.filter((p) => p.enabled).map((p) => p.id),
           disabled: plugins.filter((p) => !p.enabled).map((p) => p.id),
         },
-        settings: { ...settings.layer("profile"), ...settings.layer("session") },
+        settings: rest.settings ?? { ...settings.layer("profile"), ...settings.layer("session") },
       };
       saved = [...saved.filter((p) => p.id !== id), profile];
       await bridge.call("store.set", { key: PROFILES_KEY, value: saved });
-      active = id;
+      // A copy is saved beside the profile in force; saving this setup makes it the one in force,
+      // and its changes move from the session into the profile (the values in force stay the same).
+      if (!rest.settings) {
+        active = id;
+        settings.setLayer("profile", profile.settings ?? {});
+        settings.setLayer("session", {});
+      }
+      changed();
       notify({ caller: "desk", title: `Saved profile ${profile.name}`, level: "success" });
       return profile;
     },
@@ -123,11 +140,17 @@ export function installProfiles(
 
   return {
     active: () => active,
+    list: all,
+    onChange: (listener) => {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
     start: async () => {
       if (!hub.enabled("desk.profiles")) return;
       const stored = await bridge.call("store.get", { key: PROFILES_KEY }).catch(() => ({}));
       const value = (stored as { value?: unknown }).value;
       if (Array.isArray(value)) saved = value as ProfileContribution[];
+      changed();
       const start = hub.startProfile;
       if (all().some((p) => p.id === start)) await apply(start, true);
       else

@@ -141,6 +141,129 @@ export interface BrainError {
   holder?: LeaseHolder;
 }
 
+/** Whether an agent takes work. Desk shows inactive agents waiting at the edge. */
+export type AgentStatus = "active" | "inactive" | "archived";
+
+/** An agent the caller owns: endue AI's AgentGetResponse with camelCase names (owner_user_id is ownerUserId, personal_color is personalColor, created_at is createdAt). */
+export interface Agent {
+  id: string;
+  name: string;
+  /** A handle made from the name when the agent was created; it never changes. */
+  slug: string;
+  status: AgentStatus;
+  ownerUserId?: string;
+  /** ISO 3166-2 region the agent runs in. */
+  region?: string;
+  /** The agent's own colour as hex, for telling agents apart in a conversation. */
+  personalColor?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Where a page sits in the whole list. */
+export interface Pagination {
+  total: number;
+  page: number;
+  limit: number;
+  hasNextPage: boolean;
+}
+
+/** One page of listAgents. */
+export interface AgentList {
+  items: Agent[];
+  pagination: Pagination;
+}
+
+/** An agent's A2A card: endue AI's A2ACardSummary plus the card's enabled flag. Other agents read it to decide what to hand over. */
+export interface AgentCard {
+  agentId: string;
+  name: string;
+  description?: string;
+  /** Whether the agent accepts A2A tasks. */
+  enabled: boolean;
+  skills: AgentSkill[];
+  capabilities: AgentCapabilities;
+}
+
+/** One thing an agent can do for other agents. */
+export interface AgentSkill {
+  id: string;
+  name: string;
+  description: string;
+  /** What the skill takes, such as text or file. */
+  inputModes: string[];
+}
+
+/** How an agent takes A2A tasks. */
+export interface AgentCapabilities {
+  streaming: boolean;
+  maxConcurrentTasks: number;
+}
+
+/** submitted, then working, then completed; working may pause at input_required until the source agent answers; any open task may end as failed or canceled. */
+export type A2ATaskStatus =
+  | "submitted"
+  | "working"
+  | "input_required"
+  | "completed"
+  | "failed"
+  | "canceled";
+
+/** A task one agent handed to another: endue AI's A2ATask with camelCase names, plus progress. */
+export interface A2ATask {
+  /** endue AI ids are a2a_ followed by a ULID. */
+  id: string;
+  /** Groups the tasks of one hand-over conversation. */
+  contextId?: string;
+  sourceAgentId: string;
+  targetAgentId: string;
+  status: A2ATaskStatus;
+  /** The request that started the task. */
+  goal?: string;
+  /** The task's artifacts once completed. */
+  result?: Record<string, unknown>;
+  /** Why the task failed or was canceled. */
+  error?: string;
+  /** The target agent's session for this task. */
+  sessionId?: string;
+  /** How many hand-overs led here (1 for a direct request). */
+  depth: number;
+  maxDepth: number;
+  messageCount: number;
+  /** How far the task is, from 0 to 1, when the brain knows (a Desk addition). */
+  progress?: number;
+  /** Anything else the brain keeps with the task. */
+  metadata?: Record<string, unknown>;
+  insertedAt: string;
+  updatedAt: string;
+}
+
+/** One page of listA2ATasks. */
+export interface A2ATaskList {
+  items: A2ATask[];
+  pagination: Pagination;
+}
+
+/** A chat space or a workspace. */
+export type SpaceType = "chat" | "workspace";
+
+/** A space the caller can open, endue AI's UserSpaceGetResponse with camelCase names. */
+export interface Space {
+  id: string;
+  /** Short unique handle. */
+  key: string;
+  name: string;
+  description?: string;
+  type: SpaceType;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** The answer of listSpaces. */
+export interface SpaceList {
+  items: Space[];
+}
+
 /** Machine-readable failure reason. */
 export type BrainErrorCode =
   | "invalid_request"
@@ -517,6 +640,335 @@ export const brainSchema = {
         },
       },
       required: ["code", "message"],
+      additionalProperties: false,
+    },
+    AgentStatus: {
+      description: "Whether an agent takes work. Desk shows inactive agents waiting at the edge.",
+      type: "string",
+      enum: ["active", "inactive", "archived"],
+    },
+    Agent: {
+      description:
+        "An agent the caller owns: endue AI's AgentGetResponse with camelCase names (owner_user_id is ownerUserId, personal_color is personalColor, created_at is createdAt).",
+      type: "object",
+      properties: {
+        id: {
+          type: "string",
+          minLength: 1,
+        },
+        name: {
+          type: "string",
+          minLength: 1,
+        },
+        slug: {
+          description: "A handle made from the name when the agent was created; it never changes.",
+          type: "string",
+          minLength: 1,
+        },
+        status: {
+          $ref: "#/$defs/AgentStatus",
+        },
+        ownerUserId: {
+          type: "string",
+          minLength: 1,
+        },
+        region: {
+          description: "ISO 3166-2 region the agent runs in.",
+          type: "string",
+        },
+        personalColor: {
+          description: "The agent's own colour as hex, for telling agents apart in a conversation.",
+          type: "string",
+        },
+        createdAt: {
+          type: "string",
+          format: "date-time",
+        },
+        updatedAt: {
+          type: "string",
+          format: "date-time",
+        },
+      },
+      required: ["id", "name", "slug", "status", "createdAt", "updatedAt"],
+      additionalProperties: false,
+    },
+    Pagination: {
+      description: "Where a page sits in the whole list.",
+      type: "object",
+      properties: {
+        total: {
+          type: "integer",
+          minimum: 0,
+        },
+        page: {
+          type: "integer",
+          minimum: 1,
+        },
+        limit: {
+          type: "integer",
+          minimum: 1,
+        },
+        hasNextPage: {
+          type: "boolean",
+        },
+      },
+      required: ["total", "page", "limit", "hasNextPage"],
+      additionalProperties: false,
+    },
+    AgentList: {
+      description: "One page of listAgents.",
+      type: "object",
+      properties: {
+        items: {
+          type: "array",
+          items: {
+            $ref: "#/$defs/Agent",
+          },
+        },
+        pagination: {
+          $ref: "#/$defs/Pagination",
+        },
+      },
+      required: ["items", "pagination"],
+      additionalProperties: false,
+    },
+    AgentCard: {
+      description:
+        "An agent's A2A card: endue AI's A2ACardSummary plus the card's enabled flag. Other agents read it to decide what to hand over.",
+      type: "object",
+      properties: {
+        agentId: {
+          type: "string",
+          minLength: 1,
+        },
+        name: {
+          type: "string",
+          minLength: 1,
+        },
+        description: {
+          type: "string",
+        },
+        enabled: {
+          description: "Whether the agent accepts A2A tasks.",
+          type: "boolean",
+        },
+        skills: {
+          type: "array",
+          items: {
+            $ref: "#/$defs/AgentSkill",
+          },
+        },
+        capabilities: {
+          $ref: "#/$defs/AgentCapabilities",
+        },
+      },
+      required: ["agentId", "name", "enabled", "skills", "capabilities"],
+      additionalProperties: false,
+    },
+    AgentSkill: {
+      description: "One thing an agent can do for other agents.",
+      type: "object",
+      properties: {
+        id: {
+          type: "string",
+          minLength: 1,
+        },
+        name: {
+          type: "string",
+          minLength: 1,
+        },
+        description: {
+          type: "string",
+        },
+        inputModes: {
+          description: "What the skill takes, such as text or file.",
+          type: "array",
+          items: {
+            type: "string",
+            minLength: 1,
+          },
+        },
+      },
+      required: ["id", "name", "description", "inputModes"],
+      additionalProperties: false,
+    },
+    AgentCapabilities: {
+      description: "How an agent takes A2A tasks.",
+      type: "object",
+      properties: {
+        streaming: {
+          type: "boolean",
+        },
+        maxConcurrentTasks: {
+          type: "integer",
+          minimum: 1,
+        },
+      },
+      required: ["streaming", "maxConcurrentTasks"],
+      additionalProperties: false,
+    },
+    A2ATaskStatus: {
+      description:
+        "submitted, then working, then completed; working may pause at input_required until the source agent answers; any open task may end as failed or canceled.",
+      type: "string",
+      enum: ["submitted", "working", "input_required", "completed", "failed", "canceled"],
+    },
+    A2ATask: {
+      description:
+        "A task one agent handed to another: endue AI's A2ATask with camelCase names, plus progress.",
+      type: "object",
+      properties: {
+        id: {
+          description: "endue AI ids are a2a_ followed by a ULID.",
+          type: "string",
+          minLength: 1,
+        },
+        contextId: {
+          description: "Groups the tasks of one hand-over conversation.",
+          type: "string",
+        },
+        sourceAgentId: {
+          type: "string",
+          minLength: 1,
+        },
+        targetAgentId: {
+          type: "string",
+          minLength: 1,
+        },
+        status: {
+          $ref: "#/$defs/A2ATaskStatus",
+        },
+        goal: {
+          description: "The request that started the task.",
+          type: "string",
+        },
+        result: {
+          description: "The task's artifacts once completed.",
+          type: "object",
+        },
+        error: {
+          description: "Why the task failed or was canceled.",
+          type: "string",
+        },
+        sessionId: {
+          description: "The target agent's session for this task.",
+          type: "string",
+        },
+        depth: {
+          description: "How many hand-overs led here (1 for a direct request).",
+          type: "integer",
+          minimum: 1,
+        },
+        maxDepth: {
+          type: "integer",
+          minimum: 1,
+        },
+        messageCount: {
+          type: "integer",
+          minimum: 0,
+        },
+        progress: {
+          description: "How far the task is, from 0 to 1, when the brain knows (a Desk addition).",
+          type: "number",
+          minimum: 0,
+          maximum: 1,
+        },
+        metadata: {
+          description: "Anything else the brain keeps with the task.",
+          type: "object",
+        },
+        insertedAt: {
+          type: "string",
+          format: "date-time",
+        },
+        updatedAt: {
+          type: "string",
+          format: "date-time",
+        },
+      },
+      required: [
+        "id",
+        "sourceAgentId",
+        "targetAgentId",
+        "status",
+        "depth",
+        "maxDepth",
+        "messageCount",
+        "insertedAt",
+        "updatedAt",
+      ],
+      additionalProperties: false,
+    },
+    A2ATaskList: {
+      description: "One page of listA2ATasks.",
+      type: "object",
+      properties: {
+        items: {
+          type: "array",
+          items: {
+            $ref: "#/$defs/A2ATask",
+          },
+        },
+        pagination: {
+          $ref: "#/$defs/Pagination",
+        },
+      },
+      required: ["items", "pagination"],
+      additionalProperties: false,
+    },
+    SpaceType: {
+      description: "A chat space or a workspace.",
+      type: "string",
+      enum: ["chat", "workspace"],
+    },
+    Space: {
+      description:
+        "A space the caller can open, endue AI's UserSpaceGetResponse with camelCase names.",
+      type: "object",
+      properties: {
+        id: {
+          type: "string",
+          minLength: 1,
+        },
+        key: {
+          description: "Short unique handle.",
+          type: "string",
+          minLength: 1,
+        },
+        name: {
+          type: "string",
+          minLength: 1,
+        },
+        description: {
+          type: "string",
+        },
+        type: {
+          $ref: "#/$defs/SpaceType",
+        },
+        createdAt: {
+          type: "string",
+          format: "date-time",
+        },
+        updatedAt: {
+          type: "string",
+          format: "date-time",
+        },
+      },
+      required: ["id", "key", "name", "type", "createdAt", "updatedAt"],
+      additionalProperties: false,
+    },
+    SpaceList: {
+      description: "The answer of listSpaces.",
+      type: "object",
+      properties: {
+        items: {
+          type: "array",
+          items: {
+            $ref: "#/$defs/Space",
+          },
+        },
+      },
+      required: ["items"],
       additionalProperties: false,
     },
     BrainErrorCode: {

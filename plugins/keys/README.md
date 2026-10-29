@@ -15,11 +15,16 @@ elsewhere; a binding's `mac` key replaces `key` on macOS.
 | `Mod+Shift+L` | `desk.theme.toggle` |
 | `Mod+Shift+N`, `Mod+Shift+D` | `desk.notify.history`, `desk.notify.dnd` |
 | `Mod+Shift+M` | `desk.profiles.switch` |
+| `Mod+N`, `Mod+D`, `Mod+Alt+D` | `desk.display.new-surface`, `split-right`, `split-down` (the shell's panes) |
+| `Mod+]`, `Mod+[` (with `Control+Tab`) | `desk.display.focus-next`, `focus-previous` (surfaces and panes) |
+| `Control+1` to `Control+4` | `desk.shell.desktop-1` to `desktop-4` |
 
 Other plugins add bindings in their own `contributes.keys`; a later layer's binding of the same key
 wins, and `"command": ""` takes a key away. Keys pressed inside a plugin's frame reach the keymap too
 when they hold Command, Control or Alt, or are Escape, unless the plugin handled them. A key whose
-command is off (its policy plugin is disabled) does nothing and passes on.
+command is off (its policy plugin is disabled) does nothing and passes on. The person's own bindings
+are the last layer: the setting `desk.keys.bindings` (init.yaml, or the shell's rebinding screen, whose
+changes desk.session keeps).
 
 The runtime side is `packages/runtime/src/keymap.ts` and `src/policies/keys.ts`.
 

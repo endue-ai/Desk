@@ -1,0 +1,802 @@
+{
+ "tag": "section",
+ "class": "surface is-focused",
+ "role": "region",
+ "aria-label": "Tomorrow",
+ "data-surface": "window-1",
+ "box": [
+  480,
+  240,
+  480,
+  320
+ ],
+ "style": {
+  "background": "rgb(30, 29, 33)",
+  "border": "solid rgb(131, 121, 145)"
+ },
+ "children": [
+  {
+   "tag": "header",
+   "class": "surface-title",
+   "children": [
+    {
+     "tag": "span",
+     "class": "surface-heading",
+     "children": [
+      {
+       "tag": "svg",
+       "icon": "list"
+      },
+      {
+       "tag": "span",
+       "class": "surface-name",
+       "style": {
+        "color": "rgb(242, 240, 245)"
+       },
+       "text": "Tomorrow"
+      },
+      {
+       "tag": "span",
+       "class": "surface-sub",
+       "style": {
+        "color": "rgb(176, 173, 183)"
+       },
+       "text": "내일 할 일"
+      },
+      {
+       "tag": "span",
+       "class": "eris-badge",
+       "style": {
+        "background": "rgba(182, 163, 245, 0.12)",
+        "color": "rgb(182, 163, 245)"
+       },
+       "text": "Eris 가 만듦"
+      }
+     ]
+    },
+    {
+     "tag": "span",
+     "class": "surface-tools",
+     "children": [
+      {
+       "tag": "button",
+       "class": "icon-button tool",
+       "aria-label": "오른쪽으로 나누기 (⌘D)",
+       "box": [
+        823,
+        249,
+        24,
+        24
+       ],
+       "style": {
+        "border": "solid rgba(0, 0, 0, 0)"
+       },
+       "children": [
+        {
+         "tag": "svg",
+         "icon": "split-right"
+        }
+       ]
+      },
+      {
+       "tag": "button",
+       "class": "icon-button tool",
+       "aria-label": "아래로 나누기 (⌥⌘D)",
+       "box": [
+        849,
+        249,
+        24,
+        24
+       ],
+       "style": {
+        "border": "solid rgba(0, 0, 0, 0)"
+       },
+       "children": [
+        {
+         "tag": "svg",
+         "icon": "split-down"
+        }
+       ]
+      },
+      {
+       "tag": "button",
+       "class": "icon-button tool",
+       "aria-label": "고정",
+       "aria-pressed": "false",
+       "box": [
+        875,
+        249,
+        24,
+        24
+       ],
+       "style": {
+        "border": "solid rgba(0, 0, 0, 0)"
+       },
+       "children": [
+        {
+         "tag": "svg",
+         "icon": "pin"
+        }
+       ]
+      },
+      {
+       "tag": "button",
+       "class": "icon-button tool",
+       "aria-label": "서랍에 넣기",
+       "box": [
+        901,
+        249,
+        24,
+        24
+       ],
+       "style": {
+        "border": "solid rgba(0, 0, 0, 0)"
+       },
+       "children": [
+        {
+         "tag": "svg",
+         "icon": "drawer"
+        }
+       ]
+      },
+      {
+       "tag": "button",
+       "class": "icon-button tool",
+       "aria-label": "닫기",
+       "box": [
+        927,
+        249,
+        24,
+        24
+       ],
+       "style": {
+        "border": "solid rgba(0, 0, 0, 0)"
+       },
+       "children": [
+        {
+         "tag": "svg",
+         "icon": "close"
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "tag": "div",
+   "class": "surface-body",
+   "children": [
+    {
+     "tag": "div",
+     "class": "panes is-split",
+     "children": [
+      {
+       "tag": "div",
+       "class": "split split-row",
+       "children": [
+        {
+         "tag": "div",
+         "class": "split-a",
+         "children": [
+          {
+           "tag": "div",
+           "class": "pane",
+           "role": "group",
+           "aria-label": "메모",
+           "children": [
+            {
+             "tag": "div",
+             "class": "pane-head",
+             "children": [
+              {
+               "tag": "svg",
+               "icon": "note"
+              },
+              {
+               "tag": "span",
+               "class": "pane-name",
+               "style": {
+                "color": "rgb(176, 173, 183)"
+               },
+               "text": "메모"
+              },
+              {
+               "tag": "button",
+               "class": "icon-button tool pane-close",
+               "aria-label": "칸 닫기 · 메모",
+               "box": [
+                696,
+                285,
+                20,
+                20
+               ],
+               "style": {
+                "border": "solid rgba(0, 0, 0, 0)"
+               },
+               "children": [
+                {
+                 "tag": "svg",
+                 "icon": "close"
+                }
+               ]
+              }
+             ]
+            },
+            {
+             "tag": "div",
+             "class": "pane-body",
+             "children": [
+              {
+               "tag": "textarea",
+               "class": "notes-body",
+               "aria-label": "메모",
+               "style": {
+                "color": "rgb(242, 240, 245)"
+               },
+               "text": "프로필 이름은 짧게.\n표면은 가장자리에.",
+               "value": "프로필 이름은 짧게.\n표면은 가장자리에."
+              }
+             ]
+            }
+           ]
+          }
+         ]
+        },
+        {
+         "tag": "div",
+         "class": "divider",
+         "role": "separator",
+         "aria-label": "오른쪽으로 나누기",
+         "style": {
+          "background": "rgb(51, 49, 54)",
+          "color": "rgb(242, 240, 245)"
+         }
+        },
+        {
+         "tag": "div",
+         "class": "split-b",
+         "children": [
+          {
+           "tag": "div",
+           "class": "split split-column",
+           "children": [
+            {
+             "tag": "div",
+             "class": "split-a",
+             "children": [
+              {
+               "tag": "div",
+               "class": "pane",
+               "role": "group",
+               "aria-label": "캘린더",
+               "children": [
+                {
+                 "tag": "div",
+                 "class": "pane-head",
+                 "children": [
+                  {
+                   "tag": "svg",
+                   "icon": "calendar"
+                  },
+                  {
+                   "tag": "span",
+                   "class": "pane-name",
+                   "style": {
+                    "color": "rgb(176, 173, 183)"
+                   },
+                   "text": "캘린더"
+                  },
+                  {
+                   "tag": "button",
+                   "class": "icon-button tool pane-close",
+                   "aria-label": "칸 닫기 · 캘린더",
+                   "box": [
+                    935,
+                    285,
+                    20,
+                    20
+                   ],
+                   "style": {
+                    "border": "solid rgba(0, 0, 0, 0)"
+                   },
+                   "children": [
+                    {
+                     "tag": "svg",
+                     "icon": "close"
+                    }
+                   ]
+                  }
+                 ]
+                },
+                {
+                 "tag": "div",
+                 "class": "pane-body",
+                 "children": [
+                  {
+                   "tag": "div",
+                   "class": "cal",
+                   "children": [
+                    {
+                     "tag": "div",
+                     "class": "cal-head",
+                     "children": [
+                      {
+                       "tag": "span",
+                       "style": {
+                        "color": "rgb(176, 173, 183)"
+                       }
+                      },
+                      {
+                       "tag": "span",
+                       "class": "cal-day",
+                       "style": {
+                        "color": "rgb(176, 173, 183)"
+                       },
+                       "text": "월"
+                      },
+                      {
+                       "tag": "span",
+                       "class": "cal-day",
+                       "style": {
+                        "color": "rgb(176, 173, 183)"
+                       },
+                       "text": "화"
+                      },
+                      {
+                       "tag": "span",
+                       "class": "cal-day",
+                       "style": {
+                        "color": "rgb(176, 173, 183)"
+                       },
+                       "text": "수"
+                      },
+                      {
+                       "tag": "span",
+                       "class": "cal-day",
+                       "style": {
+                        "color": "rgb(176, 173, 183)"
+                       },
+                       "text": "목"
+                      },
+                      {
+                       "tag": "span",
+                       "class": "cal-day",
+                       "style": {
+                        "color": "rgb(176, 173, 183)"
+                       },
+                       "text": "금"
+                      }
+                     ]
+                    },
+                    {
+                     "tag": "div",
+                     "class": "cal-grid",
+                     "children": [
+                      {
+                       "tag": "div",
+                       "class": "cal-hours",
+                       "children": [
+                        {
+                         "tag": "span",
+                         "class": "cal-hour",
+                         "style": {
+                          "color": "rgb(176, 173, 183)"
+                         },
+                         "text": "9"
+                        },
+                        {
+                         "tag": "span",
+                         "class": "cal-hour",
+                         "style": {
+                          "color": "rgb(176, 173, 183)"
+                         },
+                         "text": "10"
+                        },
+                        {
+                         "tag": "span",
+                         "class": "cal-hour",
+                         "style": {
+                          "color": "rgb(176, 173, 183)"
+                         },
+                         "text": "11"
+                        },
+                        {
+                         "tag": "span",
+                         "class": "cal-hour",
+                         "style": {
+                          "color": "rgb(176, 173, 183)"
+                         },
+                         "text": "12"
+                        },
+                        {
+                         "tag": "span",
+                         "class": "cal-hour",
+                         "style": {
+                          "color": "rgb(176, 173, 183)"
+                         },
+                         "text": "13"
+                        },
+                        {
+                         "tag": "span",
+                         "class": "cal-hour",
+                         "style": {
+                          "color": "rgb(176, 173, 183)"
+                         },
+                         "text": "14"
+                        },
+                        {
+                         "tag": "span",
+                         "class": "cal-hour",
+                         "style": {
+                          "color": "rgb(176, 173, 183)"
+                         },
+                         "text": "15"
+                        },
+                        {
+                         "tag": "span",
+                         "class": "cal-hour",
+                         "style": {
+                          "color": "rgb(176, 173, 183)"
+                         },
+                         "text": "16"
+                        }
+                       ]
+                      },
+                      {
+                       "tag": "div",
+                       "class": "cal-col",
+                       "role": "list",
+                       "aria-label": "월",
+                       "children": [
+                        {
+                         "tag": "div",
+                         "class": "cal-event",
+                         "role": "listitem",
+                         "style": {
+                          "background": "rgb(36, 33, 39)",
+                          "border": "solid rgb(51, 49, 54)"
+                         },
+                         "children": [
+                          {
+                           "tag": "span",
+                           "class": "cal-title",
+                           "style": {
+                            "color": "rgb(242, 240, 245)"
+                           },
+                           "text": "Standup"
+                          }
+                         ]
+                        }
+                       ]
+                      },
+                      {
+                       "tag": "div",
+                       "class": "cal-col",
+                       "role": "list",
+                       "aria-label": "화",
+                       "children": [
+                        {
+                         "tag": "div",
+                         "class": "cal-event",
+                         "role": "listitem",
+                         "style": {
+                          "background": "rgb(36, 33, 39)",
+                          "border": "solid rgb(51, 49, 54)"
+                         },
+                         "children": [
+                          {
+                           "tag": "span",
+                           "class": "cal-title",
+                           "style": {
+                            "color": "rgb(242, 240, 245)"
+                           },
+                           "text": "Design review"
+                          }
+                         ]
+                        }
+                       ]
+                      },
+                      {
+                       "tag": "div",
+                       "class": "cal-col",
+                       "role": "list",
+                       "aria-label": "수",
+                       "children": [
+                        {
+                         "tag": "div",
+                         "class": "cal-event is-overlap is-lane-0",
+                         "role": "listitem",
+                         "style": {
+                          "background": "rgba(224, 115, 138, 0.14)",
+                          "border": "solid rgb(224, 115, 138)"
+                         },
+                         "children": [
+                          {
+                           "tag": "span",
+                           "class": "cal-title",
+                           "style": {
+                            "color": "rgb(242, 240, 245)"
+                           },
+                           "text": "Client call"
+                          },
+                          {
+                           "tag": "span",
+                           "class": "cal-flag",
+                           "style": {
+                            "color": "rgb(250, 138, 161)"
+                           },
+                           "text": "겹침"
+                          }
+                         ]
+                        },
+                        {
+                         "tag": "div",
+                         "class": "cal-event is-overlap is-lane-1",
+                         "role": "listitem",
+                         "style": {
+                          "background": "rgba(224, 115, 138, 0.14)",
+                          "border": "solid rgb(224, 115, 138)"
+                         },
+                         "children": [
+                          {
+                           "tag": "span",
+                           "class": "cal-title",
+                           "style": {
+                            "color": "rgb(242, 240, 245)"
+                           },
+                           "text": "Budget sync"
+                          },
+                          {
+                           "tag": "span",
+                           "class": "cal-flag",
+                           "style": {
+                            "color": "rgb(250, 138, 161)"
+                           },
+                           "text": "겹침"
+                          }
+                         ]
+                        }
+                       ]
+                      },
+                      {
+                       "tag": "div",
+                       "class": "cal-col",
+                       "role": "list",
+                       "aria-label": "목",
+                       "children": [
+                        {
+                         "tag": "div",
+                         "class": "cal-event",
+                         "role": "listitem",
+                         "style": {
+                          "background": "rgb(36, 33, 39)",
+                          "border": "solid rgb(51, 49, 54)"
+                         },
+                         "children": [
+                          {
+                           "tag": "span",
+                           "class": "cal-title",
+                           "style": {
+                            "color": "rgb(242, 240, 245)"
+                           },
+                           "text": "1:1 Theo"
+                          }
+                         ]
+                        }
+                       ]
+                      },
+                      {
+                       "tag": "div",
+                       "class": "cal-col",
+                       "role": "list",
+                       "aria-label": "금",
+                       "children": [
+                        {
+                         "tag": "div",
+                         "class": "cal-event",
+                         "role": "listitem",
+                         "style": {
+                          "background": "rgb(36, 33, 39)",
+                          "border": "solid rgb(51, 49, 54)"
+                         },
+                         "children": [
+                          {
+                           "tag": "span",
+                           "class": "cal-title",
+                           "style": {
+                            "color": "rgb(242, 240, 245)"
+                           },
+                           "text": "Focus"
+                          }
+                         ]
+                        }
+                       ]
+                      }
+                     ]
+                    }
+                   ]
+                  }
+                 ]
+                }
+               ]
+              }
+             ]
+            },
+            {
+             "tag": "div",
+             "class": "divider",
+             "role": "separator",
+             "aria-label": "아래로 나누기",
+             "style": {
+              "background": "rgb(51, 49, 54)",
+              "color": "rgb(242, 240, 245)"
+             }
+            },
+            {
+             "tag": "div",
+             "class": "split-b",
+             "children": [
+              {
+               "tag": "div",
+               "class": "pane is-eris is-active",
+               "role": "group",
+               "aria-label": "Tomorrow",
+               "children": [
+                {
+                 "tag": "div",
+                 "class": "pane-head",
+                 "children": [
+                  {
+                   "tag": "svg",
+                   "icon": "list"
+                  },
+                  {
+                   "tag": "span",
+                   "class": "pane-name",
+                   "style": {
+                    "color": "rgb(242, 240, 245)"
+                   },
+                   "text": "Tomorrow"
+                  },
+                  {
+                   "tag": "button",
+                   "class": "icon-button tool pane-close",
+                   "aria-label": "칸 닫기 · Tomorrow",
+                   "box": [
+                    935,
+                    425,
+                    20,
+                    20
+                   ],
+                   "style": {
+                    "border": "solid rgba(0, 0, 0, 0)"
+                   },
+                   "children": [
+                    {
+                     "tag": "svg",
+                     "icon": "close"
+                    }
+                   ]
+                  }
+                 ]
+                },
+                {
+                 "tag": "div",
+                 "class": "pane-body",
+                 "children": [
+                  {
+                   "tag": "ol",
+                   "class": "list-body",
+                   "children": [
+                    {
+                     "tag": "li",
+                     "class": "list-row",
+                     "children": [
+                      {
+                       "tag": "span",
+                       "class": "list-index",
+                       "style": {
+                        "color": "rgb(182, 163, 245)"
+                       },
+                       "text": "1"
+                      },
+                      {
+                       "tag": "span",
+                       "style": {
+                        "color": "rgb(242, 240, 245)"
+                       },
+                       "text": "09:30 스탠드업 준비"
+                      }
+                     ]
+                    },
+                    {
+                     "tag": "li",
+                     "class": "list-row",
+                     "children": [
+                      {
+                       "tag": "span",
+                       "class": "list-index",
+                       "style": {
+                        "color": "rgb(182, 163, 245)"
+                       },
+                       "text": "2"
+                      },
+                      {
+                       "tag": "span",
+                       "style": {
+                        "color": "rgb(242, 240, 245)"
+                       },
+                       "text": "Theo 에게 회의록 보내기"
+                      }
+                     ]
+                    },
+                    {
+                     "tag": "li",
+                     "class": "list-row",
+                     "children": [
+                      {
+                       "tag": "span",
+                       "class": "list-index",
+                       "style": {
+                        "color": "rgb(182, 163, 245)"
+                       },
+                       "text": "3"
+                      },
+                      {
+                       "tag": "span",
+                       "style": {
+                        "color": "rgb(242, 240, 245)"
+                       },
+                       "text": "항공권 두 개 중 고르기"
+                      }
+                     ]
+                    },
+                    {
+                     "tag": "li",
+                     "class": "list-row",
+                     "children": [
+                      {
+                       "tag": "span",
+                       "class": "list-index",
+                       "style": {
+                        "color": "rgb(182, 163, 245)"
+                       },
+                       "text": "4"
+                      },
+                      {
+                       "tag": "span",
+                       "style": {
+                        "color": "rgb(242, 240, 245)"
+                       },
+                       "text": "14:00 겹치는 일정 정하기"
+                      }
+                     ]
+                    }
+                   ]
+                  }
+                 ]
+                }
+               ]
+              }
+             ]
+            }
+           ]
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "tag": "span",
+   "class": "surface-resize",
+   "style": {
+    "color": "rgb(242, 240, 245)"
+   }
+  }
+ ]
+}

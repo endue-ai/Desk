@@ -1,0 +1,394 @@
+{
+  "id": "desk.shell",
+  "name": "Shell",
+  "version": "0.1.0",
+  "kind": "policy",
+  "description": "The desk shell's own policy: what a profile lays out on desktops 1-4, Eris's mesh and soul text, the shell's colours on top of desk.theme, and the sample profiles.",
+  "contributes": {
+    "settings": {
+      "desk.shell.mode": {
+        "kind": "object",
+        "default": {
+          "icon": "sparkle",
+          "author": "endue",
+          "version": "1.0.0",
+          "eris": {
+            "scope": {
+              "folders": ["~/Documents"],
+              "calendar": true,
+              "mail": false,
+              "mic": "wake-word"
+            },
+            "manner": {
+              "interrupt": "attention-only",
+              "voice": true,
+              "greeting": "Good morning."
+            }
+          },
+          "triggers": {
+            "manual": true
+          }
+        },
+        "description": "What a profile lays out: its icon, author and version, the layout every desktop starts from and each desktop's own, Eris's scope and manner, its roles and triggers. A profile's value layers over this one."
+      },
+      "desk.shell.layouts": {
+        "kind": "object",
+        "default": {},
+        "description": "Desktops moved since the profile was saved, by desktop number. Saving the profile keeps them; reverting drops them."
+      },
+      "desk.shell.density": {
+        "kind": "string",
+        "default": "balanced",
+        "choices": ["airy", "balanced", "dense"],
+        "description": "How fine Eris's mesh is."
+      },
+      "desk.shell.soul": {
+        "kind": "string",
+        "default": "wisp",
+        "choices": ["wisp", "solemn"],
+        "description": "How Eris's soul text moves."
+      }
+    },
+    "themes": [
+      {
+        "id": "desk.shell.dark",
+        "name": "endue shell, dark",
+        "scheme": "dark",
+        "tokens": {
+          "hover": "#37313f",
+          "input": "#837991",
+          "muted": "#242127",
+          "scrim": "rgba(0, 0, 0, 0.6)",
+          "popover": "#2b2731",
+          "primary": "#b6a3f5",
+          "primaryBorder": "rgba(182, 163, 245, 0.34)",
+          "primaryForeground": "#1e1833",
+          "primaryHover": "#c8b9ff",
+          "primarySoft": "rgba(182, 163, 245, 0.12)",
+          "primarySubtle": "rgba(182, 163, 245, 0.08)",
+          "secondary": "#30283e",
+          "secondaryForeground": "#e4d7ff",
+          "statusActive": "#5fd0be",
+          "statusAttention": "#e0738a",
+          "statusAttentionSoft": "rgba(224, 115, 138, 0.14)",
+          "statusAttentionText": "#fa8aa1",
+          "successFill": "#4caf50",
+          "infoFill": "#5b9bf5",
+          "warningFill": "#ff9800",
+          "tooltip": "#403a49",
+          "tooltipText": "#f2f0f5",
+          "dotOutline": "transparent",
+          "glow": "rgba(182, 163, 245, 0.07)",
+          "glowEnd": "rgba(182, 163, 245, 0)",
+          "shadowSm": "0 1px 2px rgba(0, 0, 0, 0.4)",
+          "shadowMd": "0 8px 24px rgba(0, 0, 0, 0.45)",
+          "shadowLg": "0 20px 48px rgba(0, 0, 0, 0.55)",
+          "eris": "#e8c98a",
+          "erisFrost": "#e9edf4",
+          "erisShade": "#a7b1c3",
+          "erisGoldLight": "#f5e2b4",
+          "erisGoldDeep": "#d4a85f",
+          "erisGoldDimLight": "#d9c79f",
+          "erisGoldDimDeep": "#a88a58",
+          "erisMoonDark": "#2c2836",
+          "erisMoonLit": "#8f87a8",
+          "erisWhite": "#ffffff",
+          "erisGlow": "rgba(233, 237, 244, 0.35)"
+        }
+      },
+      {
+        "id": "desk.shell.light",
+        "name": "endue shell, light",
+        "scheme": "light",
+        "tokens": {
+          "hover": "#eae4f2",
+          "input": "#897f95",
+          "muted": "#f2eff6",
+          "scrim": "rgba(20, 16, 30, 0.4)",
+          "popover": "#ffffff",
+          "primary": "#b6a3f5",
+          "primaryBorder": "rgba(182, 163, 245, 0.3)",
+          "primaryForeground": "#1e1833",
+          "primaryHover": "#c8b9ff",
+          "primarySoft": "rgba(182, 163, 245, 0.12)",
+          "primarySubtle": "rgba(182, 163, 245, 0.06)",
+          "secondary": "#eae4f2",
+          "secondaryForeground": "#1e1833",
+          "statusActive": "#5fd0be",
+          "statusAttention": "#e0738a",
+          "statusAttentionSoft": "rgba(224, 115, 138, 0.14)",
+          "statusAttentionText": "#b23a55",
+          "successFill": "oklch(0.595 0.17 163)",
+          "infoFill": "oklch(0.65 0.15 245)",
+          "warningFill": "oklch(0.75 0.17 70)",
+          "tooltip": "#1e1833",
+          "tooltipText": "#f2f0f5",
+          "dotOutline": "#897f95",
+          "glow": "rgba(182, 163, 245, 0.07)",
+          "glowEnd": "rgba(182, 163, 245, 0)",
+          "shadowSm": "0 1px 2px rgba(0, 0, 0, 0.4)",
+          "shadowMd": "0 8px 24px rgba(0, 0, 0, 0.45)",
+          "shadowLg": "0 20px 48px rgba(0, 0, 0, 0.55)",
+          "eris": "#e8c98a",
+          "erisFrost": "#e9edf4",
+          "erisShade": "#a7b1c3",
+          "erisGoldLight": "#f5e2b4",
+          "erisGoldDeep": "#d4a85f",
+          "erisGoldDimLight": "#d9c79f",
+          "erisGoldDimDeep": "#a88a58",
+          "erisMoonDark": "#2c2836",
+          "erisMoonLit": "#8f87a8",
+          "erisWhite": "#ffffff",
+          "erisGlow": "rgba(233, 237, 244, 0.35)"
+        }
+      }
+    ],
+    "profiles": [
+      {
+        "id": "morning",
+        "name": "Morning",
+        "plugins": {
+          "disabled": ["endue.dock", "endue.sidebar", "endue.toolbar"]
+        },
+        "settings": {
+          "desk.shell.mode": {
+            "icon": "sunrise",
+            "author": "me",
+            "desktops": {
+              "2": {
+                "surfaces": [
+                  {
+                    "id": "calendar",
+                    "plugin": "endue.calendar",
+                    "x": 120,
+                    "y": 240,
+                    "w": 560,
+                    "h": 400,
+                    "pinned": false
+                  },
+                  {
+                    "id": "tomorrow",
+                    "plugin": "endue.eris",
+                    "x": 1000,
+                    "y": 220,
+                    "w": 320,
+                    "h": 360,
+                    "pinned": false
+                  }
+                ]
+              },
+              "3": {
+                "surfaces": [
+                  {
+                    "id": "notes",
+                    "plugin": "endue.notes",
+                    "x": 140,
+                    "y": 260,
+                    "w": 380,
+                    "h": 300,
+                    "pinned": false
+                  }
+                ]
+              }
+            },
+            "roles": [
+              {
+                "role": "scheduler",
+                "agent": "mira"
+              }
+            ],
+            "triggers": {
+              "manual": true,
+              "time": "07:00-10:00"
+            }
+          }
+        }
+      },
+      {
+        "id": "deep-work",
+        "name": "Deep work",
+        "plugins": {
+          "disabled": ["endue.dock", "endue.sidebar", "endue.toolbar"]
+        },
+        "settings": {
+          "desk.shell.mode": {
+            "icon": "target",
+            "author": "me",
+            "desktops": {
+              "1": {
+                "surfaces": [
+                  {
+                    "id": "notes",
+                    "plugin": "endue.notes",
+                    "x": 140,
+                    "y": 220,
+                    "w": 420,
+                    "h": 420,
+                    "pinned": false
+                  }
+                ],
+                "eris": {
+                  "x": 1180,
+                  "y": 96
+                }
+              }
+            },
+            "roles": [
+              {
+                "role": "scheduler",
+                "agent": "mira"
+              }
+            ],
+            "eris": {
+              "scope": {
+                "folders": ["~/Projects"],
+                "calendar": false,
+                "mail": false,
+                "mic": "off"
+              },
+              "manner": {
+                "interrupt": "none",
+                "voice": false,
+                "greeting": "Focus time."
+              }
+            },
+            "triggers": {
+              "manual": true,
+              "calendar": "focus"
+            }
+          }
+        }
+      },
+      {
+        "id": "review",
+        "name": "Review",
+        "plugins": {
+          "disabled": ["endue.dock", "endue.sidebar", "endue.toolbar"]
+        },
+        "settings": {
+          "desk.shell.mode": {
+            "icon": "review",
+            "author": "me",
+            "desktops": {
+              "1": {
+                "surfaces": [
+                  {
+                    "id": "calendar",
+                    "plugin": "endue.calendar",
+                    "x": 120,
+                    "y": 260,
+                    "w": 520,
+                    "h": 380,
+                    "pinned": false
+                  },
+                  {
+                    "id": "tomorrow",
+                    "plugin": "endue.eris",
+                    "x": 980,
+                    "y": 240,
+                    "w": 320,
+                    "h": 360,
+                    "pinned": false
+                  }
+                ]
+              }
+            },
+            "roles": [
+              {
+                "role": "reviewer",
+                "agent": "theo"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "studio",
+        "name": "Studio",
+        "plugins": {
+          "disabled": ["endue.dock", "endue.sidebar", "endue.toolbar"]
+        },
+        "settings": {
+          "desk.shell.mode": {
+            "icon": "palette",
+            "author": "me",
+            "copiedFrom": {
+              "author": "jin",
+              "id": "studio",
+              "version": "2.1.0"
+            },
+            "desktops": {
+              "1": {
+                "surfaces": [
+                  {
+                    "id": "notes",
+                    "plugin": "endue.notes",
+                    "x": 1000,
+                    "y": 240,
+                    "w": 340,
+                    "h": 320,
+                    "pinned": false
+                  }
+                ]
+              }
+            },
+            "roles": [
+              {
+                "role": "scheduler",
+                "agent": null
+              }
+            ],
+            "eris": {
+              "scope": {
+                "folders": ["~/Documents"],
+                "calendar": true,
+                "mail": false,
+                "mic": "wake-word"
+              },
+              "manner": {
+                "interrupt": "all",
+                "voice": true,
+                "greeting": "Studio is open."
+              }
+            }
+          }
+        }
+      },
+      {
+        "id": "night",
+        "name": "Night",
+        "plugins": {
+          "disabled": ["endue.dock", "endue.sidebar", "endue.toolbar"]
+        },
+        "settings": {
+          "desk.shell.mode": {
+            "icon": "moon",
+            "author": "me",
+            "desktop": {
+              "rail": {
+                "visible": false
+              }
+            },
+            "eris": {
+              "scope": {
+                "folders": [],
+                "calendar": false,
+                "mail": false,
+                "mic": "off"
+              },
+              "manner": {
+                "interrupt": "none",
+                "voice": false,
+                "greeting": "Good night."
+              }
+            },
+            "triggers": {
+              "manual": true,
+              "time": "22:00-06:00"
+            }
+          }
+        }
+      }
+    ]
+  }
+}

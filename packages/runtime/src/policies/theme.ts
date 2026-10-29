@@ -13,8 +13,9 @@ export interface ThemePolicy extends Installed {
   state(): ThemeState;
 }
 
-export function installTheme(ctx: DeskContext): ThemePolicy {
-  const { hub, root, win } = ctx;
+/** `target` takes the tokens and data-scheme: the desk's root unless a host gives its own. */
+export function installTheme(ctx: DeskContext, target: HTMLElement = ctx.root): ThemePolicy {
+  const { hub, win } = ctx;
   const { settings, commands } = hub;
   const media = mediaPreferences(win);
   const offs = disposer();
@@ -27,7 +28,7 @@ export function installTheme(ctx: DeskContext): ThemePolicy {
 
   const apply = () => {
     state = resolveTheme(hub.policy.themes, read(), media.read());
-    applyThemeState(root, state);
+    applyThemeState(target, state);
     const { scheme, contrast, reducedMotion, variables } = state;
     ctx.share({ type: "desk:theme", theme: { scheme, contrast, reducedMotion, variables } });
   };

@@ -43,6 +43,32 @@ impl fmt::Display for BrainFailure {
 
 impl std::error::Error for BrainFailure {}
 
+/// The query of `list_agents`; `None` leaves a parameter out, so the brain's default applies.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct AgentQuery {
+    /// Only agents in this space.
+    pub space_id: Option<String>,
+    /// Only agents with this status.
+    pub status: Option<AgentStatus>,
+    /// The page to read, from 1 (default 1).
+    pub page: Option<u64>,
+    /// Items per page, 1 to 100 (default 20).
+    pub limit: Option<u64>,
+}
+
+/// The query of `list_a2a_tasks`; `None` leaves a parameter out, so the brain's default applies.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct TaskQuery {
+    /// Only tasks this agent is doing.
+    pub target_agent_id: Option<String>,
+    /// Only tasks with this status.
+    pub status: Option<A2ATaskStatus>,
+    /// The page to read, from 1 (default 1).
+    pub page: Option<u64>,
+    /// Items per page, 1 to 100 (default 20).
+    pub limit: Option<u64>,
+}
+
 /// A brain, as Desk sees it. Calls block until the brain answers; turn streams hand each event to
 /// `on_event` as it arrives and return once the stream has ended.
 pub trait Brain: Send + Sync {
@@ -84,4 +110,120 @@ pub trait Brain: Send + Sync {
     ) -> Result<Lease, BrainFailure>;
 
     fn release_lease(&self, session_id: &str, lease_id: &str) -> Result<(), BrainFailure>;
+
+    // The agent directory. The defaults are a brain without one (desk-brain-local): empty pages,
+    // no spaces, and every agent unknown.
+
+    /// One page of the caller's agents, newest first; a brain without agents answers an empty page.
+    fn list_agents(&self, query: &AgentQuery) -> Result<AgentList, BrainFailure> {
+        Ok(AgentList {
+            items: Vec::new(),
+            pagination: empty_page(query.page, query.limit),
+        })
+    }
+
+    /// An agent's A2A card; `Refused` with status 404 for an unknown agent.
+    fn get_agent_card(&self, agent_id: &str) -> Result<AgentCard, BrainFailure> {
+        Err(BrainFailure::Refused {
+            status: 404,
+            error: BrainError {
+                code: BrainErrorCode::NotFound,
+                message: format!("There is no agent {agent_id}."),
+                holder: None,
+            },
+        })
+    }
+
+    /// Every space the caller can open.
+    fn list_spaces(&self) -> Result<SpaceList, BrainFailure> {
+        Ok(SpaceList { items: Vec::new() })
+    }
+
+    /// One page of the tasks agents handed to each other, newest first.
+    fn list_a2a_tasks(&self, query: &TaskQuery) -> Result<A2ATaskList, BrainFailure> {
+        Ok(A2ATaskList {
+            items: Vec::new(),
+            pagination: empty_page(query.page, query.limit),
+        })
+    }
+}
+
+/// The pagination of an empty page, with the contract's defaults: page 1, 20 items per page.
+fn empty_page(page: Option<u64>, limit: Option<u64>) -> Pagination {
+    Pagination {
+        total: 0,
+        page: page.unwrap_or(1),
+        limit: limit.unwrap_or(20),
+        has_next_page: false,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A brain that implements only the conversation, as desk-brain-local does.
+    struct NoDirectory;
+
+    impl Brain for NoDirectory {
+        fn create_session(&self, _: &CreateSessionRequest) -> Result<Session, BrainFailure> {
+            unreachable!()
+        }
+        fn get_session(&self, _: &str) -> Result<Session, BrainFailure> {
+            unreachable!()
+        }
+        fn create_turn(
+            &self,
+            _: &str,
+            _: &TurnRequest,
+            _: &mut dyn FnMut(TurnEvent),
+        ) -> Result<(), BrainFailure> {
+            unreachable!()
+        }
+        fn submit_tool_result(
+            &self,
+            _: &str,
+            _: &str,
+            _: &ToolResultRequest,
+            _: &mut dyn FnMut(TurnEvent),
+        ) -> Result<(), BrainFailure> {
+            unreachable!()
+        }
+        fn get_lease(&self, _: &str) -> Result<Lease, BrainFailure> {
+            unreachable!()
+        }
+        fn acquire_lease(&self, _: &str, _: &LeaseAcquireRequest) -> Result<Lease, BrainFailure> {
+            unreachable!()
+        }
+        fn renew_lease(
+            &self,
+            _: &str,
+            _: &str,
+            _: &LeaseRenewRequest,
+        ) -> Result<Lease, BrainFailure> {
+            unreachable!()
+        }
+        fn release_lease(&self, _: &str, _: &str) -> Result<(), BrainFailure> {
+            unreachable!()
+        }
+    }
+
+    #[test]
+    fn a_brain_without_a_directory_answers_empty_pages_and_no_cards() {
+        let brain = NoDirectory;
+        let agents = brain.list_agents(&AgentQuery::default()).unwrap();
+        assert!(agents.items.is_empty());
+        assert_eq!(agents.pagination, empty_page(Some(1), Some(20)));
+        let query = TaskQuery {
+            page: Some(3),
+            limit: Some(5),
+            ..TaskQuery::default()
+        };
+        let tasks = brain.list_a2a_tasks(&query).unwrap();
+        assert!(tasks.items.is_empty());
+        assert_eq!((tasks.pagination.page, tasks.pagination.limit), (3, 5));
+        assert!(brain.list_spaces().unwrap().items.is_empty());
+        let missing = brain.get_agent_card("mira").unwrap_err();
+        assert_eq!(missing.code(), Some(BrainErrorCode::NotFound));
+    }
 }

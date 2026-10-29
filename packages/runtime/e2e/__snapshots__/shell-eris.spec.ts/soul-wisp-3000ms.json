@@ -1,0 +1,323 @@
+{
+ "tag": "div",
+ "class": "soul",
+ "box": [
+  480,
+  190,
+  480,
+  32
+ ],
+ "style": {
+  "transform": "matrix(1, 0, 0, 1, -240, 0)"
+ },
+ "children": [
+  {
+   "tag": "p",
+   "class": "soul-line soul-wisp",
+   "style": {
+    "color": "rgb(242, 240, 245)",
+    "letterSpacing": "-0.2px"
+   },
+   "children": [
+    {
+     "tag": "span",
+     "class": "soul-word",
+     "children": [
+      {
+       "tag": "span",
+       "class": "soul-glyph",
+       "style": {
+        "color": "rgb(242, 240, 245)"
+       },
+       "text": "G"
+      },
+      {
+       "tag": "span",
+       "class": "soul-glyph",
+       "style": {
+        "color": "rgb(242, 240, 245)"
+       },
+       "text": "o"
+      },
+      {
+       "tag": "span",
+       "class": "soul-glyph",
+       "style": {
+        "color": "rgb(242, 240, 245)"
+       },
+       "text": "o"
+      },
+      {
+       "tag": "span",
+       "class": "soul-glyph",
+       "style": {
+        "color": "rgb(242, 240, 245)"
+       },
+       "text": "d"
+      }
+     ]
+    },
+    {
+     "tag": "span",
+     "class": "soul-word",
+     "children": [
+      {
+       "tag": "span",
+       "class": "soul-glyph",
+       "style": {
+        "color": "rgb(242, 240, 245)"
+       },
+       "text": "m"
+      },
+      {
+       "tag": "span",
+       "class": "soul-glyph",
+       "style": {
+        "color": "rgb(242, 240, 245)"
+       },
+       "text": "o"
+      },
+      {
+       "tag": "span",
+       "class": "soul-glyph",
+       "style": {
+        "color": "rgb(242, 240, 245)"
+       },
+       "text": "r"
+      },
+      {
+       "tag": "span",
+       "class": "soul-glyph",
+       "style": {
+        "color": "rgb(242, 240, 245)"
+       },
+       "text": "n"
+      },
+      {
+       "tag": "span",
+       "class": "soul-glyph",
+       "style": {
+        "color": "rgb(242, 240, 245)"
+       },
+       "text": "i"
+      },
+      {
+       "tag": "span",
+       "class": "soul-glyph",
+       "style": {
+        "color": "rgb(242, 240, 245)"
+       },
+       "text": "n"
+      },
+      {
+       "tag": "span",
+       "class": "soul-glyph",
+       "style": {
+        "color": "rgb(242, 240, 245)"
+       },
+       "text": "g"
+      },
+      {
+       "tag": "span",
+       "class": "soul-glyph",
+       "style": {
+        "color": "rgb(242, 240, 245)"
+       },
+       "text": "."
+      }
+     ]
+    },
+    {
+     "tag": "span",
+     "class": "soul-word",
+     "children": [
+      {
+       "tag": "span",
+       "class": "soul-glyph is-eris",
+       "style": {
+        "color": "rgb(232, 201, 138)"
+       },
+       "text": "E"
+      },
+      {
+       "tag": "span",
+       "class": "soul-glyph is-eris",
+       "style": {
+        "color": "rgb(232, 201, 138)"
+       },
+       "text": "r"
+      },
+      {
+       "tag": "span",
+       "class": "soul-glyph is-eris",
+       "style": {
+        "color": "rgb(232, 201, 138)"
+       },
+       "text": "i"
+      },
+      {
+       "tag": "span",
+       "class": "soul-glyph is-eris",
+       "style": {
+        "color": "rgb(232, 201, 138)"
+       },
+       "text": "s"
+      }
+     ]
+    },
+    {
+     "tag": "span",
+     "class": "soul-word",
+     "children": [
+      {
+       "tag": "span",
+       "class": "soul-glyph",
+       "style": {
+        "color": "rgb(242, 240, 245)"
+       },
+       "text": "h"
+      },
+      {
+       "tag": "span",
+       "class": "soul-glyph",
+       "style": {
+        "color": "rgb(242, 240, 245)"
+       },
+       "text": "a"
+      },
+      {
+       "tag": "span",
+       "class": "soul-glyph",
+       "style": {
+        "color": "rgb(242, 240, 245)"
+       },
+       "text": "s"
+      }
+     ]
+    },
+    {
+     "tag": "span",
+     "class": "soul-word",
+     "children": [
+      {
+       "tag": "span",
+       "class": "soul-glyph",
+       "style": {
+        "color": "rgb(242, 240, 245)"
+       },
+       "text": "y"
+      },
+      {
+       "tag": "span",
+       "class": "soul-glyph",
+       "style": {
+        "color": "rgb(242, 240, 245)"
+       },
+       "text": "o"
+      },
+      {
+       "tag": "span",
+       "class": "soul-glyph",
+       "style": {
+        "color": "rgb(242, 240, 245)"
+       },
+       "text": "u"
+      },
+      {
+       "tag": "span",
+       "class": "soul-glyph",
+       "style": {
+        "color": "rgb(242, 240, 245)"
+       },
+       "text": "r"
+      }
+     ]
+    },
+    {
+     "tag": "span",
+     "class": "soul-word",
+     "children": [
+      {
+       "tag": "span",
+       "class": "soul-glyph",
+       "style": {
+        "color": "rgb(242, 240, 245)"
+       },
+       "text": "d"
+      },
+      {
+       "tag": "span",
+       "class": "soul-glyph",
+       "style": {
+        "color": "rgb(242, 240, 245)"
+       },
+       "text": "a"
+      },
+      {
+       "tag": "span",
+       "class": "soul-glyph",
+       "style": {
+        "color": "rgb(242, 240, 245)"
+       },
+       "text": "y"
+      }
+     ]
+    },
+    {
+     "tag": "span",
+     "class": "soul-word",
+     "children": [
+      {
+       "tag": "span",
+       "class": "soul-glyph",
+       "style": {
+        "color": "rgb(242, 240, 245)"
+       },
+       "text": "r"
+      },
+      {
+       "tag": "span",
+       "class": "soul-glyph",
+       "style": {
+        "color": "rgb(242, 240, 245)"
+       },
+       "text": "e"
+      },
+      {
+       "tag": "span",
+       "class": "soul-glyph",
+       "style": {
+        "color": "rgb(242, 240, 245)"
+       },
+       "text": "a"
+      },
+      {
+       "tag": "span",
+       "class": "soul-glyph",
+       "style": {
+        "color": "rgb(242, 240, 245)"
+       },
+       "text": "d"
+      },
+      {
+       "tag": "span",
+       "class": "soul-glyph",
+       "style": {
+        "color": "rgb(242, 240, 245)"
+       },
+       "text": "y"
+      },
+      {
+       "tag": "span",
+       "class": "soul-glyph",
+       "style": {
+        "color": "rgb(242, 240, 245)"
+       },
+       "text": "."
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

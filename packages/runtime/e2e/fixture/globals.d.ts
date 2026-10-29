@@ -1,5 +1,7 @@
 import type { BrowserStub, PluginInfo } from "@endue-ai/bridge";
+import type { BrowserBridge, Envelope } from "../../src/bridge/browser";
 import type { ManualClock, Runtime } from "../../src/index";
+import type { Desk } from "../../src/shell/Desk";
 
 declare global {
   interface Window {
@@ -7,6 +9,14 @@ declare global {
     __desk: { clock: ManualClock; runtime: Runtime; stub: BrowserStub; commands: string[] };
     /** The onboarding fixture's in-memory store.get/store.set backing. */
     __deskStore: Record<string, unknown>;
+    /** The shell fixture's handle (shell.html). */
+    __shell: {
+      desk: Desk;
+      clock: ManualClock;
+      bridge: BrowserBridge;
+      step(ms: number): void;
+      envelopes: { user: Envelope; eris: Envelope };
+    };
     /** The desk fixture's fs.write calls, in order. */
     __deskWritten: Array<{ path: string; content: string }>;
     /** The edges fixture's plugin.list, to change before emitting plugin.changed. */

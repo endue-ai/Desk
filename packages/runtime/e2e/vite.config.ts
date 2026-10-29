@@ -27,7 +27,8 @@ const types: Record<string, string> = {
   ".svg": "image/svg+xml",
 };
 
-function pluginFiles(): Plugin {
+/** Serve plugin files and the SDK as the core does over desk-plugin:// (the dev page uses it too). */
+export function pluginFiles(): Plugin {
   return {
     name: "desk-plugin-files",
     configureServer(server) {

@@ -1,9 +1,11 @@
-import type { BridgeClient } from "@endue-ai/bridge";
+import type { BridgeClient, ProfileContribution } from "@endue-ai/bridge";
+import type { Buffers } from "./buffers";
 import { type Clock, realClock, tween } from "./clock";
 import type { Commands } from "./commands";
 import { Edges, takesCell } from "./edges";
 import { PolicyHub } from "./hub";
 import { type Platform, ShortcutRouter } from "./input";
+import type { Keymap } from "./keymap";
 import {
   type Cell,
   type Layout,
@@ -19,15 +21,16 @@ import { installBuffers } from "./policies/buffers";
 import type { DeskContext } from "./policies/context";
 import { installDisplay } from "./policies/display";
 import { installFiles } from "./policies/files";
-import { installKeys } from "./policies/keys";
+import { installKeys, PERSONAL_KEYS } from "./policies/keys";
 import { installNotify } from "./policies/notify";
 import { installProfiles } from "./policies/profiles";
-import { installSession } from "./policies/session";
+import { installSession, type SessionPart } from "./policies/session";
 import { installTheme } from "./policies/theme";
 import type { PolicySet } from "./policy";
 import type { Settings } from "./settings";
 import { SurfaceHost, type SurfaceSpec } from "./surfaces";
 import { applyTheme, type ThemeState } from "./theme";
+import { connectViews, type HostViews, type ViewRouting } from "./views";
 
 export interface RuntimeOptions {
   /** The element the desk takes over. */
@@ -40,6 +43,18 @@ export interface RuntimeOptions {
   platform?: Platform;
   /** Mount the core's UI plugins; without it the desk shows only what callers open. */
   plugins?: PluginHostOptions;
+  /** Where the theme's tokens and data-scheme go; `root` unless a host (the shell) wraps the desk. */
+  themeRoot?: HTMLElement;
+  /** Views a host draws itself (the shell's panes): focus cycling and buffers reach them too. */
+  views?: HostViews;
+}
+
+export interface RuntimeProfiles {
+  /** The profile in force, once one is. */
+  active(): string | undefined;
+  list(): ProfileContribution[];
+  /** Hear every switch and save. */
+  onChange(listener: () => void): () => void;
 }
 
 export interface RuntimePlugins {
@@ -59,6 +74,15 @@ export interface Runtime {
   readonly commands: Commands;
   /** Settings in layers: plugin defaults, init.yaml, the active profile, this session. */
   readonly settings: Settings;
+  /** The keymap in force (desk.keys), the person's layer included. */
+  readonly keymap: Keymap;
+  /** The buffer list (desk.buffers): plugin surfaces, their buffers and a host's views. */
+  readonly buffers: Buffers;
+  readonly profiles: RuntimeProfiles;
+  /** Run when the person quits what is in progress (desk.keys.quit, Escape by default). */
+  onQuit(handler: () => void): () => void;
+  /** Keep a host's state in the session record (desk.session); returns a function that drops it. */
+  keep(name: string, part: SessionPart): () => void;
   /** The policies the enabled plugins contribute, as collected last. */
   policy(): PolicySet;
   /** Show a notice in the status line, as desk.notify says; it goes to the history too. */
@@ -87,8 +111,8 @@ export function createRuntime(options: RuntimeOptions): Runtime {
 
   root.classList.add("desk");
   root.replaceChildren();
-  // The built-in tokens until desk.theme applies the theme in force.
-  applyTheme(root);
+  // The built-in tokens until desk.theme applies the theme in force, where it will apply it.
+  applyTheme(options.themeRoot ?? root);
 
   const compositor = doc.createElement("main");
   compositor.className = "desk-compositor";
@@ -155,21 +179,38 @@ export function createRuntime(options: RuntimeOptions): Runtime {
     mounted: (plugin) => pluginHost?.mounted().includes(plugin) ?? false,
     whenReady: (plugin) =>
       pluginHost ? pluginHost.whenReady(plugin) : Promise.reject(new Error("no plugin host")),
-    unmount: (plugin) => (pluginHost ? pluginHost.unmount(plugin) : closeSurface(plugin)),
+    unmount: (plugin) => {
+      if (routing.owns(plugin)) views?.close(plugin);
+      else if (pluginHost) pluginHost.unmount(plugin);
+      else closeSurface(plugin);
+    },
   };
-  const theme = installTheme(ctx);
+  const theme = installTheme(ctx, options.themeRoot);
   const keys = installKeys(ctx);
   const notify = installNotify(ctx, statusLine);
   const focusSurface = (id: string | null) => {
     shortcuts.focus(id);
     if (id) surfaces.get(id)?.focus();
   };
+  const { views } = options;
+  // Set once desk.buffers is installed: which ids are the host's views.
+  let routing: ViewRouting = { owns: () => false, dispose: () => {} };
+  const focusAny = (id: string | null) => {
+    if (id && routing.owns(id)) {
+      focusSurface(null);
+      views?.focus(id);
+    } else focusSurface(id);
+  };
   const display = installDisplay(ctx, {
-    focus: focusSurface,
-    visible: () => surfaces.ids().filter((id) => surfaces.visible(id)),
-    focused: () => shortcuts.focused,
+    focus: focusAny,
+    visible: () => [
+      ...(views?.ids() ?? []),
+      ...surfaces.ids().filter((id) => surfaces.visible(id)),
+    ],
+    focused: () => shortcuts.focused ?? views?.focused() ?? null,
   });
-  const buffers = installBuffers(ctx, { focus: focusSurface });
+  const buffers = installBuffers(ctx, { focus: focusAny });
+  routing = connectViews(views, buffers);
   const files = installFiles(ctx, buffers, (input) => notify.notify(input));
   const session = installSession(ctx, buffers, {
     layout: () => structuredClone(layout),
@@ -186,6 +227,15 @@ export function createRuntime(options: RuntimeOptions): Runtime {
     buffers.focused(id);
     session.changed();
   };
+  const { settings } = hub;
+  // The person's key bindings come back with the session.
+  session.keep("keys", {
+    save: () => settings.layer("session")[PERSONAL_KEYS] ?? null,
+    restore: (value) => {
+      if (Array.isArray(value)) settings.set(PERSONAL_KEYS, value);
+    },
+    onChange: (listener) => settings.onChange((keys) => keys.includes(PERSONAL_KEYS) && listener()),
+  });
   keys.onQuit(() => notify.notifications.dismiss());
   keys.onQuit(() => {
     if (commands.has("desk.palette.cancel"))
@@ -270,6 +320,15 @@ export function createRuntime(options: RuntimeOptions): Runtime {
     plugins,
     commands,
     settings: hub.settings,
+    keymap: keys.keymap,
+    buffers: buffers.buffers,
+    profiles: {
+      active: () => profiles.active(),
+      list: () => profiles.list(),
+      onChange: (listener) => profiles.onChange(listener),
+    },
+    onQuit: (handler) => keys.onQuit(handler),
+    keep: (name, part) => session.keep(name, part),
     policy: () => hub.policy,
     notify: (input) => notify.notify(input),
     theme: () => theme.state(),
@@ -282,6 +341,7 @@ export function createRuntime(options: RuntimeOptions): Runtime {
     layout: () => structuredClone(layout),
     status: () => notify.text(),
     dispose() {
+      routing.dispose();
       for (const policy of [profiles, session, files, buffers, display, notify, keys, theme]) {
         policy.dispose();
       }

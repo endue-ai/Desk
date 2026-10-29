@@ -17,6 +17,12 @@ describe("comboOf", () => {
     expect(comboOf(key("k", { meta: true, shift: true }))).toBe("Meta+Shift+K");
     expect(comboOf(key("Escape"))).toBe("Escape");
   });
+
+  it("names a letter by its key when Alt is held, as macOS's Option composes another character", () => {
+    expect(comboOf({ ...key("∂", { meta: true, alt: true }), code: "KeyD" })).toBe("Meta+Alt+D");
+    expect(comboOf({ ...key("¡", { alt: true }), code: "Digit1" })).toBe("Alt+1");
+    expect(comboOf({ ...key("é", {}), code: "KeyE" })).toBe("É");
+  });
 });
 
 describe("ShortcutRouter", () => {
