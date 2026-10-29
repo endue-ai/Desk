@@ -1,7 +1,15 @@
 //! File primitives. No permission checks happen here: desk-core authorizes every call first.
 
-use std::io;
+use std::ffi::{OsStr, OsString};
+use std::fs::{OpenOptions, Permissions};
+use std::io::{self, Write as _};
 use std::path::Path;
+use std::sync::atomic::{AtomicU64, Ordering};
+
+use crate::{Error, ErrorCode};
+
+mod watch;
+pub use watch::{Change, Changed, Watch, WatchOptions, watch, watch_debounced};
 
 /// What a folder entry is. Symlinks are reported as such, never followed.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -52,33 +60,81 @@ pub fn list(path: &Path) -> io::Result<Vec<Entry>> {
     Ok(entries)
 }
 
-/// A running watch. Dropping it stops the watch.
-pub struct Watch {
-    _watcher: notify::RecommendedWatcher,
+/// How `write` treats the folders above the file.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct WriteOptions {
+    /// Create missing parent folders instead of failing with `not_found`.
+    pub create_dirs: bool,
 }
 
-/// Call `on_change` with each changed path under `path` (recursive) until the `Watch` is dropped.
-/// Events are not debounced here; callers coalesce them.
-pub fn watch(
-    path: &Path,
-    on_change: impl Fn(std::path::PathBuf) + Send + 'static,
-) -> io::Result<Watch> {
-    use notify::{EventKind, RecursiveMode, Watcher as _};
-    let mut watcher = notify::recommended_watcher(move |event: notify::Result<notify::Event>| {
-        if let Ok(event) = event
-            && matches!(
-                event.kind,
-                EventKind::Create(_) | EventKind::Modify(_) | EventKind::Remove(_)
-            )
-        {
-            for path in event.paths {
-                on_change(path);
-            }
-        }
-    })
-    .map_err(io::Error::other)?;
-    watcher
-        .watch(path, RecursiveMode::Recursive)
-        .map_err(io::Error::other)?;
-    Ok(Watch { _watcher: watcher })
+/// Replace `path` with `content` atomically and return the bytes written. The bytes go to a temp file
+/// in the same folder, are flushed to disk, and the temp file is renamed over the target, so a reader
+/// sees the old content or the new, never a mix. An existing file keeps its permissions. A folder or
+/// a symlink at `path` is refused (`invalid_params`): writing through a link could leave the path
+/// desk-core checked.
+pub fn write(path: &Path, content: &[u8], options: WriteOptions) -> Result<u64, Error> {
+    let shown = path.display();
+    let invalid = |why: &str| Error::new(ErrorCode::InvalidParams, format!("{shown}: {why}"));
+    let Some(name) = path.file_name() else {
+        return Err(invalid("not a file path"));
+    };
+    let permissions = match std::fs::symlink_metadata(path) {
+        Ok(meta) if meta.file_type().is_symlink() => return Err(invalid("is a symlink")),
+        Ok(meta) if meta.is_dir() => return Err(invalid("is a folder")),
+        Ok(meta) => Some(meta.permissions()),
+        Err(err) if err.kind() == io::ErrorKind::NotFound => None,
+        Err(err) => return Err(Error::io(&err, shown)),
+    };
+    let parent = match path.parent() {
+        Some(parent) if !parent.as_os_str().is_empty() => parent,
+        _ => Path::new("."),
+    };
+    if options.create_dirs {
+        std::fs::create_dir_all(parent).map_err(|err| Error::io(&err, parent.display()))?;
+    }
+    match std::fs::metadata(parent) {
+        Ok(meta) if meta.is_dir() => {}
+        Ok(_) => return Err(invalid("the parent is not a folder")),
+        Err(err) => return Err(Error::io(&err, parent.display())),
+    }
+
+    let temp = parent.join(temp_name(name));
+    let result =
+        write_temp(&temp, content, permissions).and_then(|()| std::fs::rename(&temp, path));
+    if let Err(err) = result {
+        let _ = std::fs::remove_file(&temp);
+        return Err(Error::io(&err, shown));
+    }
+    sync_dir(parent);
+    Ok(content.len() as u64)
 }
+
+fn write_temp(temp: &Path, content: &[u8], permissions: Option<Permissions>) -> io::Result<()> {
+    let mut file = OpenOptions::new().write(true).create_new(true).open(temp)?;
+    file.write_all(content)?;
+    if let Some(permissions) = permissions {
+        file.set_permissions(permissions)?;
+    }
+    file.sync_all()
+}
+
+/// `.<name>.desk-<pid>-<n>.tmp` beside the target: hidden, and unique within this process.
+fn temp_name(name: &OsStr) -> OsString {
+    static NEXT: AtomicU64 = AtomicU64::new(0);
+    let n = NEXT.fetch_add(1, Ordering::Relaxed);
+    let mut temp = OsString::from(".");
+    temp.push(name);
+    temp.push(format!(".desk-{}-{n}.tmp", std::process::id()));
+    temp
+}
+
+/// Make the rename itself durable. Best effort: some file systems refuse to sync a folder.
+#[cfg(unix)]
+fn sync_dir(dir: &Path) {
+    if let Ok(dir) = std::fs::File::open(dir) {
+        let _ = dir.sync_all();
+    }
+}
+
+#[cfg(not(unix))]
+fn sync_dir(_dir: &Path) {}
