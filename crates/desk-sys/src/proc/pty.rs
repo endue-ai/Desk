@@ -208,14 +208,22 @@ mod child {
     impl Handle {
         /// Windows has no signals: each one terminates the process. The killer holds the process
         /// handle, so the id cannot be reused under it.
+        ///
+        /// portable-pty 0.9's `WinChildKiller::kill` reads `TerminateProcess` the wrong way round: it
+        /// returns `Err(last OS error)` when the call succeeds (a stale error such as "The handle is
+        /// invalid") and `Ok(())` when it fails. Its result is read here as it really is.
         pub(super) fn kill(&self, _signal: Signal) -> Result<(), Error> {
             if self.exited.load(Ordering::SeqCst) {
                 return Ok(());
             }
             let result = self.killer.lock().unwrap_or_else(|e| e.into_inner()).kill();
             match result {
-                Err(_) if self.exited.load(Ordering::SeqCst) => Ok(()),
-                other => other.map_err(|err| Error::io(&err, "kill")),
+                Err(_) => Ok(()),
+                Ok(()) if self.exited.load(Ordering::SeqCst) => Ok(()),
+                Ok(()) => Err(Error::io(
+                    &std::io::Error::other("TerminateProcess failed"),
+                    "kill",
+                )),
             }
         }
     }
