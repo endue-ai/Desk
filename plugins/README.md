@@ -25,10 +25,13 @@ no code, only what they contribute in `plugin.json`. Turn one off and another pl
 | `notify/` (`desk.notify`) | the echo area, `*Messages*` | How long notifications stay by level, do not disturb, history |
 | `theme/` (`desk.theme`) | `load-theme`, `defface` | Light or dark, following the OS, high contrast, reduced motion |
 | `profiles/` (`desk.profiles`) | `init.el` | Profiles: a plugin set plus settings, switched and saved (formerly `modes/`) |
+| `shell/` (`desk.shell`) | a frame's parameters | What a profile lays out in the shell (desktops 1–4), Eris's mesh and soul, the shell's colours, the sample profiles |
 
 Every plugin folder holds `plugin.json`, `README.md`, and as needed `ui/`, `logic/`, `tool/` and `tests/`.
 
-Status: `sidebar`, `eris`, `onboarding`, `toolbar`, `dock` and the nine `desk.*` policies work. The
+Status: `sidebar`, `eris`, `onboarding`, `toolbar`, `dock` and the ten `desk.*` policies work. With the
+shell (`mountDesk`, ADR 0025), the agent bar, the rail and the bottom edge hold the places of `sidebar`,
+`toolbar` and `dock`, and the shell's profiles turn those three off. The
 runtime puts `left`, `right` and `bottom` surfaces on the desk's edges, as `desk.display` says. The first
 run still draws its own frame of the toolbar, dock, profiles and left bar inside its overlay.
 `just dev` installs every folder here that has a `plugin.json` as a built-in plugin.

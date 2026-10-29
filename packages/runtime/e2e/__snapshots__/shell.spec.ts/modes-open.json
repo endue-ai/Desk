@@ -1,0 +1,195 @@
+{
+ "tag": "nav",
+ "class": "modes",
+ "aria-label": "프로필",
+ "children": [
+  {
+   "tag": "div",
+   "class": "modes-row",
+   "children": [
+    {
+     "tag": "div",
+     "class": "modes-current",
+     "children": [
+      {
+       "tag": "button",
+       "class": "mode-chip is-current",
+       "aria-label": "Morning",
+       "aria-pressed": "true",
+       "aria-expanded": "false",
+       "data-mode": "morning",
+       "style": {
+        "background": "rgba(182, 163, 245, 0.12)",
+        "border": "solid rgb(182, 163, 245)"
+       },
+       "children": [
+        {
+         "tag": "svg",
+         "icon": "sunrise"
+        },
+        {
+         "tag": "span",
+         "class": "mode-name",
+         "style": {
+          "color": "rgb(242, 240, 245)"
+         },
+         "text": "Morning"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "tag": "div",
+     "class": "modes-more",
+     "style": {
+      "maxWidth": "720px"
+     },
+     "children": [
+      {
+       "tag": "button",
+       "class": "mode-chip",
+       "aria-label": "Deep work",
+       "aria-pressed": "false",
+       "data-mode": "deep-work",
+       "style": {
+        "background": "rgb(30, 29, 33)",
+        "border": "solid rgb(51, 49, 54)"
+       },
+       "children": [
+        {
+         "tag": "svg",
+         "icon": "target"
+        },
+        {
+         "tag": "span",
+         "class": "mode-name",
+         "style": {
+          "color": "rgb(242, 240, 245)"
+         },
+         "text": "Deep work"
+        }
+       ]
+      },
+      {
+       "tag": "button",
+       "class": "mode-chip",
+       "aria-label": "Review",
+       "aria-pressed": "false",
+       "data-mode": "review",
+       "style": {
+        "background": "rgb(30, 29, 33)",
+        "border": "solid rgb(51, 49, 54)"
+       },
+       "children": [
+        {
+         "tag": "svg",
+         "icon": "review"
+        },
+        {
+         "tag": "span",
+         "class": "mode-name",
+         "style": {
+          "color": "rgb(242, 240, 245)"
+         },
+         "text": "Review"
+        }
+       ]
+      },
+      {
+       "tag": "button",
+       "class": "mode-chip",
+       "aria-label": "Studio · jin 님의 프로필",
+       "aria-pressed": "false",
+       "data-mode": "studio",
+       "style": {
+        "background": "rgb(30, 29, 33)",
+        "border": "solid rgb(51, 49, 54)"
+       },
+       "children": [
+        {
+         "tag": "svg",
+         "icon": "palette"
+        },
+        {
+         "tag": "span",
+         "class": "mode-name",
+         "style": {
+          "color": "rgb(242, 240, 245)"
+         },
+         "text": "Studio"
+        },
+        {
+         "tag": "span",
+         "class": "mode-copied",
+         "style": {
+          "color": "rgb(176, 173, 183)"
+         },
+         "text": "jin",
+         "children": [
+          {
+           "tag": "svg",
+           "icon": "copy"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "tag": "button",
+       "class": "mode-chip",
+       "aria-label": "Night",
+       "aria-pressed": "false",
+       "data-mode": "night",
+       "style": {
+        "background": "rgb(30, 29, 33)",
+        "border": "solid rgb(51, 49, 54)"
+       },
+       "children": [
+        {
+         "tag": "svg",
+         "icon": "moon"
+        },
+        {
+         "tag": "span",
+         "class": "mode-name",
+         "style": {
+          "color": "rgb(242, 240, 245)"
+         },
+         "text": "Night"
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "tag": "button",
+   "class": "add-button mode-add",
+   "aria-label": "새 프로필",
+   "box": [
+    24,
+    64,
+    32,
+    32
+   ],
+   "style": {
+    "border": "dashed rgb(131, 121, 145)"
+   },
+   "children": [
+    {
+     "tag": "svg",
+     "icon": "plus"
+    }
+   ]
+  },
+  {
+   "tag": "div",
+   "class": "modes-menu-slot",
+   "style": {
+    "color": "rgb(242, 240, 245)"
+   }
+  }
+ ]
+}

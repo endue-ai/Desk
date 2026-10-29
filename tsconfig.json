@@ -7,6 +7,7 @@
   "include": [
     "packages/*/src",
     "packages/*/e2e",
+    "packages/*/dev",
     "packages/*/*.config.ts",
     "plugins/*/tests",
     "apps/*/src",

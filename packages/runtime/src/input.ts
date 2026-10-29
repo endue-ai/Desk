@@ -1,6 +1,8 @@
 /** Keyboard shortcut routing: the focused surface's keymap first, then the global keymap. */
 export interface KeyLike {
   key: string;
+  /** The physical key (KeyD, Digit1), when the event has it. */
+  code?: string;
   metaKey: boolean;
   ctrlKey: boolean;
   altKey: boolean;
@@ -9,6 +11,12 @@ export interface KeyLike {
 
 export type Platform = "mac" | "other";
 
+/** Guess the platform from the browser; tests pass it explicitly. */
+export function detectPlatform(): Platform {
+  const nav = typeof navigator === "undefined" ? undefined : navigator;
+  return /Mac|iPhone|iPad/.test(nav?.platform ?? nav?.userAgent ?? "") ? "mac" : "other";
+}
+
 const MODIFIERS = ["Meta", "Control", "Alt", "Shift"] as const;
 const MODIFIER_KEYS = new Set<string>([...MODIFIERS, "OS"]);
 
@@ -16,11 +24,15 @@ const MODIFIER_KEYS = new Set<string>([...MODIFIERS, "OS"]);
 export function comboOf(event: KeyLike): string {
   const held = [event.metaKey, event.ctrlKey, event.altKey, event.shiftKey];
   const mods = MODIFIERS.filter((_, i) => held[i]);
-  return [...mods, keyName(event.key)].join("+");
+  return [...mods, keyName(event)].join("+");
 }
 
-function keyName(key: string): string {
-  return key.length === 1 ? key.toUpperCase() : key;
+function keyName(event: KeyLike): string {
+  // macOS composes Option+letter into another character (⌥D is ∂): with Alt held, a letter or
+  // digit key is named by the key itself, so Mod+Alt+D means the same key on every platform.
+  const physical = event.altKey ? /^(?:Key([A-Z])|Digit([0-9]))$/.exec(event.code ?? "") : null;
+  if (physical) return physical[1] ?? physical[2] ?? event.key;
+  return event.key.length === 1 ? event.key.toUpperCase() : event.key;
 }
 
 const ALIASES: Record<string, string> = { Ctrl: "Control", Cmd: "Meta", Option: "Alt" };

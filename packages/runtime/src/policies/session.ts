@@ -1,7 +1,8 @@
 /**
  * desk.session (desktop.el, savehist): keep the desk as it was across restarts. The layout, the
- * files open in buffers, the surface in use and the notification history are kept with store.set
- * whenever they change, and put back after the plugins have mounted.
+ * files open in buffers, the surface in use, the notification history and the parts a host keeps
+ * (the person's key bindings, the shell's desktops) are kept with store.set whenever they change,
+ * and put back after the plugins have mounted.
  */
 import { type Layout, loadLayout } from "../layout";
 import type { Notice } from "../notify";
@@ -19,6 +20,16 @@ export interface SavedSession {
   files: Array<{ path: string; plugin: string }>;
   focused: string | null;
   notices: Notice[];
+  /** What each part kept, by part name. */
+  parts?: Record<string, unknown>;
+}
+
+/** A piece of state kept in the session record beside the desk's own. */
+export interface SessionPart {
+  save(): unknown;
+  restore(value: unknown): void;
+  /** Hear when the part changed, so the session is saved soon. */
+  onChange(listener: () => void): () => void;
 }
 
 export interface SessionActions {
@@ -36,6 +47,8 @@ export interface SessionPolicy extends Installed {
   /** Put the saved session back (once, after the plugins mounted), if desk.session says so. */
   restore(): Promise<void>;
   save(): Promise<void>;
+  /** Keep a part in the record; its saved value comes back on restore. Returns a function that drops it. */
+  keep(name: string, part: SessionPart): () => void;
 }
 
 export function installSession(
@@ -49,6 +62,7 @@ export function installSession(
   let timer: number | undefined;
   // Saving waits until the saved session was read, so a fresh start never overwrites it.
   let restored = false;
+  const parts = new Map<string, SessionPart>();
 
   const on = () => hub.enabled("desk.session");
   const snapshot = (): SavedSession => ({
@@ -61,6 +75,7 @@ export function installSession(
       .reverse(),
     focused: actions.focused(),
     notices: settings.get("desk.session.save-history", true) ? actions.notices().reverse() : [],
+    parts: Object.fromEntries([...parts].map(([name, part]) => [name, part.save()])),
   });
 
   const save = async () => {
@@ -91,6 +106,9 @@ export function installSession(
         await commands.run("desk.files.open", file).catch(() => {});
       }
       if (saved.focused && surfaces.get(saved.focused)) actions.focus(saved.focused);
+      for (const [name, part] of parts) {
+        if (saved.parts && name in saved.parts) part.restore(saved.parts[name]);
+      }
     }
     restored = true;
   };
@@ -116,5 +134,14 @@ export function installSession(
     await bridge.call("store.set", { key: SESSION_KEY, value: null });
   });
 
-  return { changed, restore, save, dispose: offs.dispose };
+  const keep = (name: string, part: SessionPart) => {
+    parts.set(name, part);
+    const off = part.onChange(changed);
+    return () => {
+      off();
+      if (parts.get(name) === part) parts.delete(name);
+    };
+  };
+
+  return { changed, restore, save, keep, dispose: offs.dispose };
 }

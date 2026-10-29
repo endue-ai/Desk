@@ -6,8 +6,8 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use desk_brain::{
-    BRAIN_SCHEMA_JSON, BrainError, CreateSessionRequest, Lease, LeaseAcquireRequest, Session,
-    ToolResultRequest, TurnEvent, TurnRequest,
+    A2ATaskList, AgentCard, AgentList, BRAIN_SCHEMA_JSON, BrainError, CreateSessionRequest, Lease,
+    LeaseAcquireRequest, Session, SpaceList, ToolResultRequest, TurnEvent, TurnRequest,
 };
 use serde::Serialize;
 use serde::de::DeserializeOwned;
@@ -88,6 +88,10 @@ fn valid_vectors_roundtrip_through_generated_types() {
             "Lease" => roundtrip::<Lease>(vector),
             "LeaseAcquireRequest" => roundtrip::<LeaseAcquireRequest>(vector),
             "BrainError" => roundtrip::<BrainError>(vector),
+            "AgentList" => roundtrip::<AgentList>(vector),
+            "AgentCard" => roundtrip::<AgentCard>(vector),
+            "A2ATaskList" => roundtrip::<A2ATaskList>(vector),
+            "SpaceList" => roundtrip::<SpaceList>(vector),
             other => panic!("{}: no Rust type mapped for {other}", vector.file),
         }
     }

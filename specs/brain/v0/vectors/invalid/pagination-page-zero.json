@@ -1,0 +1,10 @@
+{
+  "target": "Pagination",
+  "description": "pages count from 1",
+  "instance": {
+    "total": 0,
+    "page": 0,
+    "limit": 20,
+    "hasNextPage": false
+  }
+}

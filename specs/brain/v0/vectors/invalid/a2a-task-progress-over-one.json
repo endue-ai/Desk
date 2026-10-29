@@ -1,0 +1,16 @@
+{
+  "target": "A2ATask",
+  "description": "progress runs from 0 to 1",
+  "instance": {
+    "id": "a2a_1",
+    "sourceAgentId": "ag_a",
+    "targetAgentId": "ag_b",
+    "status": "working",
+    "depth": 1,
+    "maxDepth": 3,
+    "messageCount": 0,
+    "progress": 62,
+    "insertedAt": "2026-10-28T09:00:00Z",
+    "updatedAt": "2026-10-28T09:00:00Z"
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "target": "AgentCard",
+  "description": "an A2A card with one skill",
+  "instance": {
+    "agentId": "ag_01JBZ8Q4MR0000000000000001",
+    "name": "Mira",
+    "description": "Keeps the inbox and the calendar in order.",
+    "enabled": true,
+    "skills": [
+      {
+        "id": "inbox.sort",
+        "name": "Sort the inbox",
+        "description": "Files, answers or flags each new mail.",
+        "inputModes": ["text"]
+      }
+    ],
+    "capabilities": {
+      "streaming": true,
+      "maxConcurrentTasks": 2
+    }
+  }
+}

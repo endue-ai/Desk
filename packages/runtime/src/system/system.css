@@ -1,0 +1,132 @@
+/*
+ * The two layers. Neither forms a stacking context: system parts sit at --z-system, mode parts at
+ * --z-float, surfaces in their own context at 0, popovers above all. Layers let clicks through;
+ * only their parts take the pointer.
+ */
+
+.layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.modes,
+.desktops,
+.float-bar,
+.eris,
+.popover,
+.scrim,
+.bottom > * {
+  pointer-events: auto;
+}
+
+.layer-system .modes,
+.layer-system .desktops,
+.layer-system .sidebar {
+  z-index: var(--z-system);
+}
+
+.surfaces {
+  z-index: 0;
+}
+
+/* The runtime under the mode layer: plugin surfaces and the status line, blocking nothing else. */
+.layer-desk.desk {
+  position: absolute;
+  inset: 0;
+  background: transparent;
+  pointer-events: none;
+}
+
+.layer-desk .desk-surface,
+.layer-desk .desk-edge {
+  pointer-events: auto;
+}
+
+/* The status line is the echo area: one quiet line at the top, above Eris, between the profiles and
+   the desktops. Centred by its margins, not a transform: a translate of -50% would be half the
+   text's width, which differs with the fonts installed (render trees, ADR 0011). */
+.layer-desk .desk-status {
+  position: absolute;
+  top: var(--space-2);
+  right: 0;
+  left: 0;
+  width: max-content;
+  max-width: 480px;
+  height: var(--control-xs);
+  margin: 0 auto;
+  padding: 0 var(--space-3);
+  border: 0;
+  font-size: var(--text-xs);
+  line-height: var(--control-xs);
+}
+
+/* The palette (an overlay plugin) comes over the whole shell, the system layer included. */
+.layer-desk .desk-surface--overlay {
+  position: fixed;
+  z-index: var(--z-modal);
+}
+
+/* Agent bar extras: more agents than fit, and a directory that could not be read. */
+
+.avatar-more {
+  background: var(--desk-muted);
+  color: var(--desk-text);
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+.bar-offline {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  color: var(--desk-warning);
+}
+
+.agents-popover {
+  position: absolute;
+  left: 92px;
+  display: grid;
+  gap: 2px;
+  width: 220px;
+  padding: var(--space-1);
+}
+
+.agents-popover-item {
+  gap: var(--space-2);
+}
+
+.kbd {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  height: 20px;
+  padding: 0 6px;
+  border: 1px solid var(--desk-border);
+  border-radius: var(--radius-sm);
+  background: var(--desk-muted);
+  color: var(--desk-text);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  line-height: 1;
+}
+
+.composer-option {
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.composer-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pop-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

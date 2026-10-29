@@ -1,0 +1,123 @@
+{
+ "tag": "div",
+ "class": "eris",
+ "role": "img",
+ "aria-label": "Eris",
+ "data-state": "done",
+ "box": [
+  656,
+  40,
+  128,
+  138
+ ],
+ "children": [
+  {
+   "tag": "span",
+   "class": "eris-ring",
+   "style": {
+    "color": "rgb(242, 240, 245)",
+    "border": "dashed rgb(131, 121, 145)",
+    "opacity": "0",
+    "transform": "matrix(1, 0, 0, 1, -74, -74)"
+   }
+  },
+  {
+   "tag": "div",
+   "class": "eris-body",
+   "style": {
+    "transform": "matrix(1, 0, 0, 1, 0, 5.2)"
+   },
+   "children": [
+    {
+     "tag": "span",
+     "class": "eris-halo",
+     "style": {
+      "color": "rgb(242, 240, 245)",
+      "transform": "matrix(1, 0, 0, 1, -61.5, -61.5)"
+     }
+    },
+    {
+     "tag": "canvas",
+     "class": "eris-mesh",
+     "data-mesh": "faces=529 back=248 dots=182 h=d5ea523e",
+     "data-rings": "1.35 1.23 1.11 0.98 0.84 0.71 0.59 0.47 0.36",
+     "data-voice": "idle",
+     "style": {
+      "color": "rgb(242, 240, 245)"
+     }
+    },
+    {
+     "tag": "span",
+     "class": "eris-core",
+     "style": {
+      "color": "rgb(242, 240, 245)",
+      "opacity": "0.593",
+      "transform": "matrix(1, 0, 0, 1, -24, -24)"
+     }
+    },
+    {
+     "tag": "span",
+     "class": "eris-tail eris-tail-1",
+     "hidden": "",
+     "style": {
+      "display": "none",
+      "background": "rgb(167, 177, 195)",
+      "color": "rgb(242, 240, 245)",
+      "opacity": "0.5"
+     }
+    },
+    {
+     "tag": "span",
+     "class": "eris-tail eris-tail-2",
+     "hidden": "",
+     "style": {
+      "display": "none",
+      "background": "rgb(167, 177, 195)",
+      "color": "rgb(242, 240, 245)",
+      "opacity": "0.3"
+     }
+    },
+    {
+     "tag": "span",
+     "class": "eris-moon-box",
+     "style": {
+      "transform": "matrix(1, 0, 0, 1, -9, -10.37)"
+     },
+     "children": [
+      {
+       "tag": "canvas",
+       "class": "eris-moon",
+       "style": {
+        "color": "rgb(242, 240, 245)"
+       }
+      },
+      {
+       "tag": "span",
+       "class": "eris-spark",
+       "hidden": "",
+       "style": {
+        "display": "none",
+        "background": "rgb(232, 201, 138)",
+        "color": "rgb(242, 240, 245)"
+       }
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "tag": "div",
+   "class": "soul",
+   "box": [
+    480,
+    190,
+    480,
+    32
+   ],
+   "style": {
+    "color": "rgb(242, 240, 245)",
+    "transform": "matrix(1, 0, 0, 1, -240, 0)"
+   }
+  }
+ ]
+}

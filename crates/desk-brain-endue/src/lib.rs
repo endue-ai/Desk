@@ -7,8 +7,9 @@ pub mod http;
 use std::io;
 
 use desk_brain::{
-    Brain, BrainError, BrainFailure, CreateSessionRequest, Lease, LeaseAcquireRequest,
-    LeaseRenewRequest, Session, ToolResultRequest, TurnEvent, TurnRequest,
+    A2ATaskList, AgentCard, AgentList, AgentQuery, Brain, BrainError, BrainFailure,
+    CreateSessionRequest, Lease, LeaseAcquireRequest, LeaseRenewRequest, Session, SpaceList,
+    TaskQuery, ToolResultRequest, TurnEvent, TurnRequest,
 };
 use serde::Serialize;
 use serde::de::DeserializeOwned;
@@ -127,6 +128,54 @@ fn segment(id: &str) -> String {
         .collect()
 }
 
+/// A path with a query string. Absent parameters are left out, values are percent-encoded like
+/// path segments, and enums are spelled by their contract names (`input_required`).
+struct WithQuery {
+    path: String,
+    separator: char,
+}
+
+impl WithQuery {
+    fn new(path: &str) -> Self {
+        Self {
+            path: path.to_owned(),
+            separator: '?',
+        }
+    }
+
+    fn param(mut self, name: &str, value: Option<impl Serialize>) -> Result<Self, BrainFailure> {
+        let Some(value) = value else {
+            return Ok(self);
+        };
+        let value = match to_json(&value)? {
+            Value::String(text) => text,
+            other => other.to_string(),
+        };
+        self.path.push(self.separator);
+        self.path.push_str(&format!("{name}={}", segment(&value)));
+        self.separator = '&';
+        Ok(self)
+    }
+}
+
+fn agents_path(query: &AgentQuery) -> Result<String, BrainFailure> {
+    Ok(WithQuery::new("/agents")
+        .param("spaceId", query.space_id.as_deref())?
+        .param("status", query.status)?
+        .param("page", query.page)?
+        .param("limit", query.limit)?
+        .path)
+}
+
+fn tasks_path(query: &TaskQuery) -> Result<String, BrainFailure> {
+    Ok(WithQuery::new("/a2a/tasks")
+        .param("targetAgentId", query.target_agent_id.as_deref())?
+        .param("status", query.status)?
+        .param("page", query.page)?
+        .param("limit", query.limit)?
+        .path)
+}
+
 const NO_BODY: Option<&()> = None;
 
 impl Brain for HttpBrain {
@@ -203,5 +252,58 @@ impl Brain for HttpBrain {
         );
         self.exchange("DELETE", &path, None)
             .and_then(|response| response.json().map(drop).map_err(unreachable))
+    }
+
+    fn list_agents(&self, query: &AgentQuery) -> Result<AgentList, BrainFailure> {
+        self.call("GET", &agents_path(query)?, NO_BODY)
+    }
+
+    fn get_agent_card(&self, agent_id: &str) -> Result<AgentCard, BrainFailure> {
+        let path = format!("/agents/{}/card", segment(agent_id));
+        self.call("GET", &path, NO_BODY)
+    }
+
+    fn list_spaces(&self) -> Result<SpaceList, BrainFailure> {
+        self.call("GET", "/spaces", NO_BODY)
+    }
+
+    fn list_a2a_tasks(&self, query: &TaskQuery) -> Result<A2ATaskList, BrainFailure> {
+        self.call("GET", &tasks_path(query)?, NO_BODY)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use desk_brain::{A2ATaskStatus, AgentStatus};
+
+    use super::*;
+
+    #[test]
+    fn query_strings_leave_absent_parameters_out() {
+        assert_eq!(agents_path(&AgentQuery::default()).unwrap(), "/agents");
+        assert_eq!(tasks_path(&TaskQuery::default()).unwrap(), "/a2a/tasks");
+        let agents = AgentQuery {
+            status: Some(AgentStatus::Inactive),
+            page: Some(2),
+            ..AgentQuery::default()
+        };
+        assert_eq!(
+            agents_path(&agents).unwrap(),
+            "/agents?status=inactive&page=2"
+        );
+    }
+
+    #[test]
+    fn query_values_are_encoded_and_enums_spelled_as_the_contract_does() {
+        let tasks = TaskQuery {
+            target_agent_id: Some("ag 1&page=9".to_owned()),
+            status: Some(A2ATaskStatus::InputRequired),
+            page: None,
+            limit: Some(5),
+        };
+        assert_eq!(
+            tasks_path(&tasks).unwrap(),
+            "/a2a/tasks?targetAgentId=ag%201%26page%3D9&status=input_required&limit=5"
+        );
     }
 }
