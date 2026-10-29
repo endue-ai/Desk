@@ -51,18 +51,20 @@ export type StubHandlers = {
   ) => ResultOf<M> | Promise<ResultOf<M>>;
 };
 
-/** Throw this from a stub handler to answer with a specific error code, as the core would. */
+/** Throw this from a stub handler to answer with a specific error code (and missing permission). */
 export class StubError extends Error {
   readonly code: ErrorCode;
+  readonly permission: Permission | undefined;
 
-  constructor(code: ErrorCode, message: string) {
+  constructor(code: ErrorCode, message: string, permission?: Permission) {
     super(message);
     this.name = "StubError";
     this.code = code;
+    this.permission = permission;
   }
 }
 
-/** A stub adapter: configured methods answer, everything else is denied as the core would. */
+/** A stub adapter: configured methods answer; a method nobody serves is `unsupported`. */
 export interface BrowserStub extends BridgeAdapter {
   /** Deliver an event to the listeners, as the core would. */
   emit(event: BridgeEvent): void;
@@ -94,26 +96,20 @@ export function browserStub(handlers: StubHandlers): BrowserStub {
         | ((params: unknown, caller: string | undefined) => unknown | Promise<unknown>)
         | undefined;
       if (!handler) {
-        const scope = (request.params as { scope?: Permission }).scope;
-        return {
-          id: request.id,
-          ok: false,
-          error: {
-            code: "permission_denied",
-            message: `${request.method} is not allowed in the browser stub`,
-            ...(scope ? { permission: scope } : {}),
-          },
-        };
+        const message = `${request.method} is not served by the browser stub`;
+        return { id: request.id, ok: false, error: { code: "unsupported", message } };
       }
       try {
         return { id: request.id, ok: true, result: await handler(request.params, caller) };
       } catch (error) {
+        const permission = error instanceof StubError ? error.permission : undefined;
         return {
           id: request.id,
           ok: false,
           error: {
             code: error instanceof StubError ? error.code : "internal",
             message: error instanceof Error ? error.message : String(error),
+            ...(permission ? { permission } : {}),
           },
         };
       }
