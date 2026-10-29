@@ -1,0 +1,16 @@
+{
+  "target": "BridgeEvent",
+  "description": "the prompter is asked to show a request",
+  "instance": {
+    "event": "perm.prompt",
+    "data": {
+      "promptId": "p1",
+      "caller": "endue.onboarding",
+      "permission": {
+        "permission": "audio:capture"
+      },
+      "reason": "Eris listens when you talk to her.",
+      "duration": "session"
+    }
+  }
+}

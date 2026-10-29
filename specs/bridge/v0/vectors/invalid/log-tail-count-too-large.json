@@ -1,0 +1,14 @@
+{
+  "target": "BridgeRequest",
+  "description": "log.tail returns at most 1000 entries",
+  "instance": {
+    "id": 61,
+    "method": "log.tail",
+    "params": {
+      "count": 5000,
+      "scope": {
+        "permission": "log:read"
+      }
+    }
+  }
+}
