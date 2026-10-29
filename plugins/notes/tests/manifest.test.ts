@@ -49,7 +49,9 @@ describe("plugin.json", () => {
   });
 
   it("the desk's opener rule picks notes for .md and .txt and nobody for .html", () => {
-    const rules = manifest().contributes?.files ?? [];
+    // Layered as the runtime does (packages/runtime/src/policy.ts): each rule carries its owner.
+    const owner = "endue.notes";
+    const rules = (manifest().contributes?.files ?? []).map((rule) => ({ ...rule, owner }));
     expect(opener(rules, "~/Notes/a.md")).toBe("endue.notes");
     expect(opener(rules, "~/x.txt")).toBe("endue.notes");
     expect(opener(rules, "~/a.html")).toBeUndefined();

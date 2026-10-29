@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { disk, mount, NOTES_READ, NOTES_WRITE, note } from "./harness";
+import { disk, type Handlers, mount, NOTES_READ, NOTES_WRITE, note } from "./harness";
 
 const A = note("~/Notes/a.md");
 const B = note("~/Notes/b.txt");
@@ -41,6 +41,33 @@ describe("the desk's file requests", () => {
     app.edit("# A\nagain\n");
     await settle();
     expect(view.notes.at(-1)).toMatchObject({ text: "# A\nagain\n", modified: true });
+    expect(ran("desk.buffers.update")).toEqual([
+      { id: A.buffer, modified: true },
+      { id: A.buffer, modified: true },
+    ]);
+  });
+
+  it("text typed while a save is written stays unsaved", async () => {
+    const files = { [A.path]: "# A\n" };
+    let typing = () => {};
+    const handlers: Handlers = {
+      ...disk(files),
+      "fs.write": ({ path, content }) => {
+        typing();
+        files[path] = content;
+        return { bytesWritten: content.length };
+      },
+    };
+    const { host, view, app, ran, settle } = await mount({ handlers });
+    await host.command("desk.files.visit", A);
+    app.edit("one\n");
+    typing = () => app.edit("one, two\n");
+
+    await host.command("desk.files.save", A);
+    await settle();
+    expect(files[A.path]).toBe("one\n");
+    expect(view.notes.at(-1)).toMatchObject({ text: "one, two\n", modified: true });
+    // The desk cleared its mark after the save; it hears once more that the note is unsaved.
     expect(ran("desk.buffers.update")).toEqual([
       { id: A.buffer, modified: true },
       { id: A.buffer, modified: true },
