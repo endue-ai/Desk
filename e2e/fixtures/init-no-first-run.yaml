@@ -1,0 +1,14 @@
+# e2e fixture for the plugins and session specs: specs/init/v0's template with the first run held
+# off, so no onboarding overlay covers the desk. A plugin init.yaml disables starts disabled; nothing
+# is seeded in the store.
+version: 0
+
+profile: default
+
+plugins:
+  disabled: [endue.onboarding]
+
+settings: {}
+
+sync:
+  enabled: false
