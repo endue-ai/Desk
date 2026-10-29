@@ -13,7 +13,10 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use desk_plugin_host::{Limits, LogicHost};
 use serde_json::{Value, json};
 
-pub use mock::{Answer, Call, Line, MockHost, Note};
+// Each test binary uses some of these, so most binaries leave some unused.
+#[allow(unused_imports)]
+pub use mock::{Answer, Call, Line, MockHost, Note, level_name};
+#[allow(unused_imports)]
 pub use wat::{Exports, component, exports, failing, fine, on_command, on_event};
 
 /// examples/plugin-hello-wasm, with its committed component.
