@@ -91,4 +91,16 @@ describe("the stub's subscriptions", () => {
     core.drop("example.b");
     expect(core.audience(changed())).toEqual([]);
   });
+
+  it("a revoked events:subscribe grant ends the subscriptions it covered", async () => {
+    const { client, core, changed, settle } = setup({ grants: { "example.a": [COMMANDS, BOTH] } });
+    await client.call("events.subscribe", { names: ["cmd.changed"], scope: COMMANDS }, A);
+    await client.call("events.subscribe", { names: ["log.entry"], scope: BOTH }, A);
+    await client.call("cmd.register", { id: "example.b.go", title: "Go" }, B);
+    await settle();
+    await client.call("perm.revoke", { grantId: "g-1" }, A);
+    expect(core.audience(changed())).toEqual(["example.a"]);
+    await client.call("perm.revoke", { grantId: "g-2" }, A);
+    expect(core.audience(changed())).toEqual([]);
+  });
 });

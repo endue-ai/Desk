@@ -162,8 +162,13 @@ export function stubCommands(
   };
   const take = (grantId: string, change: GrantChange) => {
     const index = grants.findIndex((g) => g.grant.grantId === grantId);
-    grants.splice(index, 1);
+    const [gone] = grants.splice(index, 1);
     changed(grantId, change);
+    // Revoking an events:subscribe grant ends the subscriptions no other grant still covers.
+    if (change !== "revoked" || gone?.grant.permission.permission !== "events:subscribe") return;
+    for (const [id, { caller, names }] of subscriptions)
+      if (caller === gone.caller && !holds(caller, { permission: "events:subscribe", names }))
+        subscriptions.delete(id);
   };
   /** A plugin caller's scoped call goes through when a grant covers the scope and the scope covers
    * what the call touches (`fits`); a `once` grant is used up. */
