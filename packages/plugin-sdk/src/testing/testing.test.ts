@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { defineUiPlugin } from "../index";
+import { BridgeCallError, defineUiPlugin } from "../index";
 import { createTestHost } from "./index";
 
 describe("createTestHost", () => {
@@ -27,22 +27,47 @@ describe("createTestHost", () => {
     expect(host.batches).toBe(1);
   });
 
-  it("denies methods without a handler, as the core would", async () => {
+  it("answers unsupported for a method nobody serves", async () => {
     const host = createTestHost({ pluginId: "example.hello-ui" });
-    let code: unknown;
+    let failure: unknown;
     await defineUiPlugin(
       {
         async mount(ctx) {
           await ctx.bridge
             .call("plugin.list", { scope: { permission: "plugin:manage" } })
-            .catch((error: { code?: string }) => {
-              code = error.code;
+            .catch((error: unknown) => {
+              failure = error;
             });
         },
       },
       host.transport,
     );
-    expect(code).toBe("permission_denied");
+    expect(failure).toBeInstanceOf(BridgeCallError);
+    expect(failure).toMatchObject({ code: "unsupported", permission: undefined });
+  });
+
+  it("refuses a method the test names", async () => {
+    const host = createTestHost({
+      pluginId: "example.hello-ui",
+      grants: [{ permission: "ui:surface" }],
+      refuse: { "ui.surface.open": "unsupported" },
+    });
+    const ctx = await defineUiPlugin({ mount() {} }, host.transport);
+    await expect(ctx.surface.open("main")).rejects.toMatchObject({ code: "unsupported" });
+    expect(host.surfaces).toEqual([]);
+  });
+
+  it("lets the test act as the desk or another caller", async () => {
+    const host = createTestHost({
+      pluginId: "example.hello-ui",
+      grants: [{ permission: "ui:notify" }],
+    });
+    await defineUiPlugin({ mount() {} }, host.transport);
+    await host.call("log.write", { level: "info", message: "hi" }, "example.b");
+    expect(host.logged).toMatchObject([{ channel: "example.b", message: "hi" }]);
+    await expect(host.call("perm.query", {})).resolves.toEqual({ grants: [] });
+    expect(host.grants).toMatchObject([{ permission: { permission: "ui:notify" } }]);
+    expect(host.calls).toEqual([]);
   });
 
   it("delivers events the test emits", async () => {

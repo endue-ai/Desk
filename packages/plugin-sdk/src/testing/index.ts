@@ -3,10 +3,20 @@
 import {
   BridgeClient,
   type BridgeEvent,
+  type BridgeMethod,
   type BridgeRequest,
   browserStub,
   type CmdAnsweredData,
+  type ErrorCode,
+  type Grant,
+  type LogEntry,
+  type ParamsOf,
+  type Permission,
+  type PermPromptData,
+  type ResultOf,
+  StubError,
   type StubHandlers,
+  type StubSurface,
   stubCommands,
 } from "@endue-ai/bridge";
 import type { HostMessage, KeyPress, PluginMessage, ThemeState, Transport } from "../protocol";
@@ -15,13 +25,29 @@ export interface TestHostOptions {
   pluginId: string;
   /** State the runtime hands the plugin at init, as after a reload. */
   state?: unknown;
-  /** Bridge methods that answer; everything else is denied, as the core would. */
+  /**
+   * Bridge methods answered your way, ahead of the stub's copy of the core (cmd.*, perm.*,
+   * settings.*, log.*, events.*, ui.surface.*); they check no grants. Any other method is
+   * `unsupported`.
+   */
   handlers?: StubHandlers;
   /**
    * Commands the desk provides in the registry (cmd.*), which the plugin may run with
    * ctx.commands.run; ids nobody registered are unknown_command, as in the core.
    */
   commands?: Record<string, (args: unknown) => unknown>;
+  /** Settings at start: a bare key is the plugin's own, `owner/key` another caller's. */
+  settings?: Record<string, unknown>;
+  /** The plugin's grants at start. */
+  grants?: Permission[];
+  /** Other callers' grants at start: a prompter holding perm:manage, owners to list, ... */
+  callers?: Record<string, Permission[]>;
+  /** The person's answer to perm.request when no caller holds perm:manage; granted by default. */
+  prompt?: (data: PermPromptData) => boolean;
+  /** The core's clock, for log entries and grants. */
+  now?: () => string;
+  /** Methods that fail with the given code whoever serves them. */
+  refuse?: Partial<Record<BridgeMethod, ErrorCode>>;
 }
 
 export interface TestHost {
@@ -41,7 +67,21 @@ export interface TestHost {
   readonly ran: ReadonlyArray<{ name: string; args: unknown }>;
   /** Every key the plugin passed on to the desk. */
   readonly keys: readonly KeyPress[];
-  /** Deliver a bridge event to the plugin. */
+  /** Every setting: the plugin's own by key, other callers' as `owner/key`. */
+  readonly settings: Record<string, unknown>;
+  /** The plugin's grants, oldest first. */
+  readonly grants: readonly Grant[];
+  /** Every log entry, whoever wrote it, oldest first. */
+  readonly logged: readonly LogEntry[];
+  /** The surfaces the plugin has open (ui.surface.open). */
+  readonly surfaces: readonly StubSurface[];
+  /** Call the bridge as the desk, or as `caller`: how a test makes other callers act. */
+  call<M extends BridgeMethod>(
+    method: M,
+    params: ParamsOf<M>,
+    caller?: string,
+  ): Promise<ResultOf<M>>;
+  /** Deliver a bridge event to the plugin, whoever it is for. */
   emit(event: BridgeEvent): void;
   /** Send the plugin a request by name (desk.files.visit, say) and resolve with its answer. */
   command(name: string, args?: unknown): Promise<unknown>;
@@ -56,21 +96,35 @@ export interface TestHost {
 export function createTestHost(options: TestHostOptions): TestHost {
   const me = options.pluginId;
   const answers = new Map<string, (data: CmdAnsweredData) => void>();
-  // Route the registry's events as the runtime does: to the provider, and to the caller.
-  const registry = stubCommands((event: BridgeEvent) => {
-    if (event.event === "cmd.invoked") {
-      const provider = registry.providerOf(event.data.id);
-      if (provider === me) toPlugin({ type: "desk:event", event });
-      else if (provider === "desk") void answerForDesk(event.data);
-    } else if (event.event === "cmd.answered") {
-      if (event.data.caller === me) toPlugin({ type: "desk:event", event });
-      else answers.get(event.data.invocationId)?.(event.data);
-    }
+  const settings = Object.entries(options.settings ?? {}).map(([name, value]) => {
+    const [owner, key] = name.includes("/") ? name.split("/", 2) : [me, name];
+    return { owner: owner ?? me, key: key ?? name, value };
   });
-  const stub = browserStub({ ...registry.handlers, ...options.handlers });
+  const grants = { ...options.callers, [me]: options.grants ?? [] };
+  // Route the core's events as the runtime does: to the plugins the core names, and the desk's own.
+  const registry = stubCommands(
+    (event: BridgeEvent) => {
+      if (registry.audience(event).includes(me)) toPlugin({ type: "desk:event", event });
+      if (event.event === "cmd.invoked" && registry.providerOf(event.data.id) === "desk")
+        void answerForDesk(event.data);
+      else if (event.event === "cmd.answered" && event.data.caller === "desk")
+        answers.get(event.data.invocationId)?.(event.data);
+    },
+    { grants, settings, prompt: options.prompt, now: options.now },
+  );
+  const refused = Object.fromEntries(
+    Object.entries(options.refuse ?? {}).map(([method, code]) => [
+      method,
+      (params: { scope?: Permission }) => {
+        const scope = code === "permission_denied" ? params.scope : undefined;
+        throw new StubError(code, `${method} is refused by the test`, scope);
+      },
+    ]),
+  ) as StubHandlers;
+  const stub = browserStub({ ...registry.handlers, ...options.handlers, ...refused });
   const bridge = new BridgeClient(stub);
   for (const id of Object.keys(options.commands ?? {})) {
-    void registry.handlers["cmd.register"]?.({ id, title: id }, undefined);
+    void registry.handlers["cmd.register"]({ id, title: id }, undefined);
   }
   const answerForDesk = async (data: { invocationId: string; id: string; args?: unknown }) => {
     const { invocationId } = data;
@@ -179,6 +233,22 @@ export function createTestHost(options: TestHostOptions): TestHost {
     get state() {
       return state;
     },
+    get settings() {
+      const all = registry.state().settings;
+      return Object.fromEntries(
+        all.map((s) => [s.owner === me ? s.key : `${s.owner}/${s.key}`, s.value]),
+      );
+    },
+    get grants() {
+      return registry.state().grants.flatMap((g) => (g.caller === me ? [g.grant] : []));
+    },
+    get logged() {
+      return registry.state().log;
+    },
+    get surfaces() {
+      return registry.state().surfaces.filter((s) => s.caller === me);
+    },
+    call: (method, params, caller) => bridge.call(method, params, caller ? { caller } : {}),
     emit: (event) => handler?.({ type: "desk:event", event }),
     settle: async () => {
       while (inFlight.size > 0) await Promise.all(inFlight);

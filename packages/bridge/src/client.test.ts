@@ -15,11 +15,12 @@ describe("BridgeClient", () => {
     });
   });
 
-  it("rejects with a BridgeCallError that carries the code and the missing permission", async () => {
+  it("rejects with unsupported when no handler serves the method", async () => {
     const client = new BridgeClient(browserStub({}));
-    const call = client.call("fs.read", { path: "~/notes.md", scope });
-    await expect(call).rejects.toBeInstanceOf(BridgeCallError);
-    await expect(call).rejects.toMatchObject({ code: "permission_denied", permission: scope });
+    const failure = await client.call("fs.read", { path: "~/notes.md", scope }).catch((e) => e);
+    expect(failure).toBeInstanceOf(BridgeCallError);
+    expect(failure).toMatchObject({ code: "unsupported", permission: undefined });
+    expect(failure.message).toMatch(/fs\.read is not served by the browser stub/);
   });
 
   it("gives every request a new id", async () => {

@@ -10,8 +10,18 @@ Layer: Desk bridge (see `docs/architecture.md`).
 - `BridgeClient`: `call(method, params)` resolves to the method's result type and rejects with a
   `BridgeCallError` (`code`, `permission`) when the core says no. `onEvent(listener)`.
 - `tauriAdapter(invoke, listen?)`: the app adapter; requests go to the `bridge_call` command.
-- `browserStub(handlers)`: answers the configured methods and denies the rest; `emit` sends events.
-  Used by Playwright tests and plain-browser development.
+- `browserStub(handlers)`: answers the methods it is given and any other with `unsupported`, never a
+  silent success; `emit` sends events; a handler throws `StubError(code, message, permission?)`.
+  Used by unit tests, Playwright tests and plain-browser development.
+- `stubCommands(emit, { grants?, settings?, prompt?, now? })`: the core's rules, per caller, in memory.
+  Its `handlers` serve `cmd.*`, `perm.*` (request, query, revoke, list, answer), `settings.*`, `log.*`,
+  `events.*` and `ui.surface.*`. A plugin's scoped call needs a covering grant, else
+  `permission_denied`; the runtime (`desk`) is trusted and `cmd.list`/`cmd.invoke` check no grants.
+  `perm.prompt` goes to `perm:manage` holders and the first `perm.answer` decides; without one,
+  `prompt` does (granted by default). `once` grants expire after the call they allow.
+  `audience(event)` names the plugins the core would deliver an event to; `drop(caller)` ends its
+  commands, surfaces, subscriptions and prompts; `state()` shows what it holds. `fs.*`, `proc.*`,
+  `net.*`, `audio.*`, `plugin.*`, `store.*`, `init.get`, `brain.say` and `ui.notify` are not served.
 - Every generated type: `BridgeRequest`, `BridgeEvent`, `Permission`, `PluginManifest`, `InitDocument`,
   `TurnEvent`, `Lease`, ...; `BridgeMethodMap`, `BridgeMethod`, `BRIDGE_METHODS`; `brainSchema`.
 
@@ -24,4 +34,4 @@ pnpm exec vitest run packages/bridge
 ```
 
 `src/contract.test.ts` checks the shared vectors with Ajv and the init.yaml template;
-`src/client.test.ts` covers the client and both adapters.
+`src/client.test.ts` covers the client and both adapters; `src/stub-*.test.ts` one method group each.

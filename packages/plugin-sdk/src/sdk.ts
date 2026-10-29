@@ -8,6 +8,15 @@ import {
   type ResultOf,
 } from "@endue-ai/bridge";
 import { commandsFor, type PluginCommands } from "./commands";
+import {
+  contextFor,
+  type PluginEvents,
+  type PluginLog,
+  type PluginPerm,
+  type PluginSettings,
+  SURFACE,
+  type SurfaceOptions,
+} from "./context";
 import { type HostMessage, type ThemeState, type Transport, windowTransport } from "./protocol";
 
 /** The bridge as a plugin sees it: calls are checked against the plugin's own grants. */
@@ -22,10 +31,15 @@ export interface PluginState {
   set(value: unknown): void;
 }
 
-/** The plugin's own surface. */
+/** The plugin's own surface, and the other surfaces its manifest declares (ui.surface.*). */
 export interface PluginSurface {
-  /** Remove the surface for the rest of this session (a finished first run, for example). */
-  close(): void;
+  /** Open a surface the manifest declares (needs `ui:surface`); resolves with its handle. */
+  open(surface: string, options?: SurfaceOptions): Promise<string>;
+  /**
+   * Close the surface `open` returned; without a handle, remove this frame's own surface for the
+   * rest of this session (a finished first run, for example).
+   */
+  close(handle?: string): Promise<void>;
   /** Show a surface the manifest declares `hidden`; it takes the keyboard focus. */
   show(): void;
   hide(): void;
@@ -44,6 +58,10 @@ export interface PluginContext {
   surface: PluginSurface;
   commands: PluginCommands;
   theme: PluginTheme;
+  settings: PluginSettings;
+  log: PluginLog;
+  events: PluginEvents;
+  perm: PluginPerm;
 }
 
 export interface UiPlugin {
@@ -107,30 +125,38 @@ export function connect(transport: Transport = windowTransport()): Promise<Plugi
     };
     const commands = commandsFor(bridge as Parameters<typeof commandsFor>[0], mounted);
 
-    const ctxFor = (pluginId: string): PluginContext => ({
-      pluginId,
-      bridge,
-      state: {
-        get: <T>() => state as T | undefined,
-        set: (value) => {
-          state = value;
-          transport.send({ type: "desk:state", state: value });
+    const ctxFor = (pluginId: string): PluginContext => {
+      const { open, ...groups } = contextFor(bridge, pluginId);
+      return {
+        pluginId,
+        bridge,
+        state: {
+          get: <T>() => state as T | undefined,
+          set: (value) => {
+            state = value;
+            transport.send({ type: "desk:state", state: value });
+          },
         },
-      },
-      surface: {
-        close: () => transport.send({ type: "desk:close" }),
-        show: () => transport.send({ type: "desk:visible", visible: true }),
-        hide: () => transport.send({ type: "desk:visible", visible: false }),
-      },
-      commands: commands.api,
-      theme: {
-        get: () => theme,
-        on: (listener) => {
-          themeListeners.add(listener);
-          return () => themeListeners.delete(listener);
+        surface: {
+          open,
+          close: async (handle) => {
+            if (handle === undefined) transport.send({ type: "desk:close" });
+            else await bridge.call("ui.surface.close", { handle, scope: SURFACE });
+          },
+          show: () => transport.send({ type: "desk:visible", visible: true }),
+          hide: () => transport.send({ type: "desk:visible", visible: false }),
         },
-      },
-    });
+        commands: commands.api,
+        theme: {
+          get: () => theme,
+          on: (listener) => {
+            themeListeners.add(listener);
+            return () => themeListeners.delete(listener);
+          },
+        },
+        ...groups,
+      };
+    };
     let ctx: PluginContext;
 
     transport.listen((message: HostMessage) => {

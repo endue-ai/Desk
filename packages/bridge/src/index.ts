@@ -17,6 +17,12 @@ export {
   type ResultOf,
 } from "./client";
 export * from "./generated";
-export { type StubCommands, stubCommands } from "./stub-commands";
+export {
+  type StubCommands,
+  type StubOptions,
+  type StubState,
+  type StubSurface,
+  stubCommands,
+} from "./stub-commands";
 
 export const NAME = "@endue-ai/bridge";
