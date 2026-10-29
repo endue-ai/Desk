@@ -1,0 +1,66 @@
+name: e2e
+
+# App e2e (WebdriverIO + tauri-driver on the bundled app) and the install smoke (the .deb installed,
+# launched and quit), on Linux under Xvfb. macOS has no tauri-driver (ADR 0006); Windows comes later.
+# Not a required check: `ci` stays the required aggregate, and a path-filtered workflow cannot be
+# required (ADR 0015). No Playwright here (ADR 0018).
+on:
+  push:
+    branches: [main]
+  pull_request:
+    paths:
+      - "e2e/**"
+      - "plugins/**"
+      - ".github/workflows/e2e.yml"
+  schedule:
+    - cron: "41 17 * * *" # 02:41 KST
+
+permissions:
+  contents: read
+
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  app-e2e:
+    name: app-e2e
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      # WebKitGTK on a runner without a GPU.
+      WEBKIT_DISABLE_DMABUF_RENDERER: "1"
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install Rust toolchain (rust-toolchain.toml)
+        run: rustup toolchain install
+      - uses: Swatinem/rust-cache@v2
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: just
+      - name: Install the WebKitGTK SDK, its WebDriver and Xvfb
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev webkit2gtk-driver xvfb
+      - uses: taiki-e/cache-cargo-install-action@v2
+        with:
+          tool: tauri-driver@2.1.0
+      - run: pnpm install --frozen-lockfile
+      - run: just bundle-app
+      - name: App e2e
+        run: xvfb-run -a --server-args="-screen 0 1280x800x24" just test-app-e2e
+      - name: Install smoke
+        # Reports even when a spec failed; skipped only when the run was cancelled.
+        if: ${{ !cancelled() }}
+        run: xvfb-run -a --server-args="-screen 0 1280x800x24" just smoke
+      - if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: app-e2e-results
+          path: e2e/test-results
+          retention-days: 7
