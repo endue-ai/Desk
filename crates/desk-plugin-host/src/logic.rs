@@ -6,6 +6,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use desk_bridge::PluginManifest;
+use serde_json::Value;
 use wasmtime::component::{Component, HasSelf, Linker};
 use wasmtime::{Config, Engine, Store, Trap};
 
@@ -25,7 +26,8 @@ pub enum PluginError {
     Manifest(String),
     /// The entry is not a Wasm component Wasmtime can compile.
     Compile(String),
-    /// The component imports something the host does not provide, or does not export `start`.
+    /// The component imports something the host does not provide, or lacks one of the world's
+    /// exports (`start`, `on-command`, `on-event`).
     Link(String),
     /// A call ran past the time limit.
     TimeLimit,
@@ -33,7 +35,7 @@ pub enum PluginError {
     MemoryLimit,
     /// The instance trapped.
     Trap(String),
-    /// `start` returned an error of its own; the instance is still usable.
+    /// An export returned an error of its own; the instance is still usable.
     Guest(Error),
     /// The instance trapped or ran out of limits before; reload the plugin to run it again.
     Crashed(String),
@@ -117,24 +119,34 @@ impl LogicHost {
 
     /// Call the plugin's `start` export.
     pub fn start(&mut self, id: &str) -> Result<(), PluginError> {
-        let ticks = self.limits.ticks();
-        let installed = self.installed_mut(id)?;
-        let Run::Ready { store, plugin } = &mut installed.run else {
-            let Run::Crashed(why) = &installed.run else {
-                unreachable!()
-            };
-            return Err(PluginError::Crashed(why.clone()));
+        self.call(id, |plugin, store| plugin.call_start(store))
+    }
+
+    /// Deliver one invocation of a command the plugin provides to its `on-command` export, which
+    /// answers through `cmd.answer`. `args` reach the guest as JSON text, `{}` when they are null.
+    /// Which invocations are the plugin's own is the caller's to decide.
+    pub fn deliver_command(
+        &mut self,
+        id: &str,
+        invocation_id: &str,
+        command_id: &str,
+        args: &Value,
+    ) -> Result<(), PluginError> {
+        let args = if args.is_null() {
+            "{}".to_owned()
+        } else {
+            args.to_string()
         };
-        store.set_epoch_deadline(ticks);
-        match plugin.call_start(&mut **store) {
-            Ok(Ok(())) => Ok(()),
-            Ok(Err(error)) => Err(PluginError::Guest(error)),
-            Err(trap) => {
-                let error = stopped(&trap, store, PluginError::Trap);
-                installed.run = Run::Crashed(error.to_string());
-                Err(error)
-            }
-        }
+        self.call(id, |plugin, store| {
+            plugin.call_on_command(store, invocation_id, command_id, &args)
+        })
+    }
+
+    /// Deliver one event to the plugin's `on-event` export; `data` reaches the guest as JSON text.
+    /// Which events the plugin hears is the caller's to decide.
+    pub fn deliver_event(&mut self, id: &str, name: &str, data: &Value) -> Result<(), PluginError> {
+        let data = data.to_string();
+        self.call(id, |plugin, store| plugin.call_on_event(store, name, &data))
     }
 
     /// Read the plugin's folder again, build a new instance from the new bytes and start it. The old
@@ -167,6 +179,31 @@ impl LogicHost {
     /// The installed plugins' ids, sorted.
     pub fn installed(&self) -> Vec<String> {
         self.plugins.keys().cloned().collect()
+    }
+
+    /// Call one export under the time limit. An error the guest returns leaves the instance
+    /// usable; a trap or a limit marks the plugin crashed until it is reloaded.
+    fn call(
+        &mut self,
+        id: &str,
+        export: impl FnOnce(&Plugin, &mut Store<State>) -> wasmtime::Result<Result<(), Error>>,
+    ) -> Result<(), PluginError> {
+        let ticks = self.limits.ticks();
+        let installed = self.installed_mut(id)?;
+        let (store, plugin) = match &mut installed.run {
+            Run::Ready { store, plugin } => (store, plugin),
+            Run::Crashed(why) => return Err(PluginError::Crashed(why.clone())),
+        };
+        store.set_epoch_deadline(ticks);
+        match export(plugin, store) {
+            Ok(Ok(())) => Ok(()),
+            Ok(Err(error)) => Err(PluginError::Guest(error)),
+            Err(trap) => {
+                let error = stopped(&trap, store, PluginError::Trap);
+                installed.run = Run::Crashed(error.to_string());
+                Err(error)
+            }
+        }
     }
 
     fn installed_mut(&mut self, id: &str) -> Result<&mut Installed, PluginError> {

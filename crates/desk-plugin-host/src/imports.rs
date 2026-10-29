@@ -1,11 +1,15 @@
-//! One plugin's imports: each checks that the manifest declares the permission it needs, then
-//! calls the `Host` as that plugin.
+//! One plugin's imports: each checks that the manifest declares the permission it needs and that
+//! JSON text is JSON, then calls the `Host` as that plugin.
 
 use std::sync::Arc;
 
 use desk_bridge::{Permission, PluginManifest};
+use serde_json::Value;
 
-use crate::bindings::{DirEntry, Error, ErrorCode, Grant, NotifyLevel, Request, Response};
+use crate::bindings::{Command, CommandInfo, Decision, DirEntry, Duration, Error, ErrorCode};
+use crate::bindings::{
+    Failure, Grant, LogEntry, LogLevel, NotifyLevel, Request, Response, Setting,
+};
 use crate::host::Host;
 
 /// The permissions `desk:host` imports need. The imports are the closed set here, not the
@@ -16,6 +20,10 @@ enum Needs {
     FsWrite,
     NetFetch,
     UiNotify,
+    CmdInvoke,
+    EventsSubscribe,
+    SettingsRead,
+    LogRead,
 }
 
 impl Needs {
@@ -25,6 +33,10 @@ impl Needs {
             Self::FsWrite => "fs:write",
             Self::NetFetch => "net:fetch",
             Self::UiNotify => "ui:notify",
+            Self::CmdInvoke => "cmd:invoke",
+            Self::EventsSubscribe => "events:subscribe",
+            Self::SettingsRead => "settings:read",
+            Self::LogRead => "log:read",
         }
     }
 
@@ -34,6 +46,10 @@ impl Needs {
             Self::FsWrite => matches!(permission, Permission::FsWrite(_)),
             Self::NetFetch => matches!(permission, Permission::NetFetch(_)),
             Self::UiNotify => matches!(permission, Permission::UiNotify(_)),
+            Self::CmdInvoke => matches!(permission, Permission::CmdInvoke(_)),
+            Self::EventsSubscribe => matches!(permission, Permission::EventsSubscribe(_)),
+            Self::SettingsRead => matches!(permission, Permission::SettingsRead(_)),
+            Self::LogRead => matches!(permission, Permission::LogRead(_)),
         }
     }
 }
@@ -95,6 +111,18 @@ impl Imports {
         self.host.perm_query(&self.plugin)
     }
 
+    /// Needs no permission: asking is how a plugin gets one. `permission` must be JSON text.
+    pub fn perm_request(
+        &self,
+        permission: &str,
+        reason: &str,
+        duration: Option<Duration>,
+    ) -> Result<Decision, Error> {
+        let permission = json("perm.request", "permission", permission)?;
+        self.host
+            .perm_request(&self.plugin, permission, reason, duration)
+    }
+
     /// Needs no permission: every plugin has its own namespace. The value comes back as JSON text.
     pub fn store_get(&self, key: &str) -> Result<Option<String>, Error> {
         let value = self.host.store_get(&self.plugin, key)?;
@@ -103,11 +131,106 @@ impl Imports {
 
     /// Needs no permission. `value` must be JSON text.
     pub fn store_set(&self, key: &str, value: &str) -> Result<(), Error> {
-        let value = serde_json::from_str(value).map_err(|e| Error {
-            code: ErrorCode::InvalidParams,
-            message: format!("store.set takes JSON text: {e}"),
-        })?;
+        let value = json("store.set", "value", value)?;
         self.host.store_set(&self.plugin, key, value)
+    }
+
+    /// Needs no permission: the plugin becomes the provider. `args_schema` must be JSON text.
+    pub fn cmd_register(&self, command: Command) -> Result<(), Error> {
+        if let Some(schema) = &command.args_schema {
+            json("cmd.register", "args-schema", schema)?;
+        }
+        self.host.cmd_register(&self.plugin, command)
+    }
+
+    /// Needs no permission: only the plugin's own commands.
+    pub fn cmd_unregister(&self, id: &str) -> Result<(), Error> {
+        self.host.cmd_unregister(&self.plugin, id)
+    }
+
+    pub fn cmd_list(&self) -> Result<Vec<CommandInfo>, Error> {
+        self.needs("cmd.list", Needs::CmdInvoke)?;
+        self.host.cmd_list(&self.plugin)
+    }
+
+    /// `args` must be JSON text. Returns the invocation id.
+    pub fn cmd_invoke(&self, id: &str, args: Option<&str>) -> Result<String, Error> {
+        self.needs("cmd.invoke", Needs::CmdInvoke)?;
+        let args = args
+            .map(|args| json("cmd.invoke", "args", args))
+            .transpose()?;
+        self.host.cmd_invoke(&self.plugin, id, args)
+    }
+
+    /// Needs no permission: only invocations of the plugin's own commands. An `ok` outcome must be
+    /// JSON text.
+    pub fn cmd_answer(
+        &self,
+        invocation_id: &str,
+        outcome: Result<&str, Failure>,
+    ) -> Result<(), Error> {
+        let outcome = match outcome {
+            Ok(result) => Ok(json("cmd.answer", "result", result)?),
+            Err(failure) => Err(failure),
+        };
+        self.host.cmd_answer(&self.plugin, invocation_id, outcome)
+    }
+
+    /// Returns the subscription id.
+    pub fn events_subscribe(&self, names: &[String]) -> Result<String, Error> {
+        self.needs("events.subscribe", Needs::EventsSubscribe)?;
+        self.host.events_subscribe(&self.plugin, names)
+    }
+
+    /// Needs no permission: only the plugin's own subscriptions.
+    pub fn events_unsubscribe(&self, subscription_id: &str) -> Result<(), Error> {
+        self.host.events_unsubscribe(&self.plugin, subscription_id)
+    }
+
+    /// The plugin's own setting needs no permission; another `owner`'s needs `settings:read`. The
+    /// value comes back as JSON text.
+    pub fn settings_get(&self, key: &str, owner: Option<&str>) -> Result<Option<String>, Error> {
+        if owner.is_some_and(|owner| owner != self.plugin) {
+            self.needs("settings.get", Needs::SettingsRead)?;
+        }
+        let value = self.host.settings_get(&self.plugin, key, owner)?;
+        Ok(value.map(|value| value.to_string()))
+    }
+
+    /// Needs no permission: only the plugin's own settings. `value` must be JSON text.
+    pub fn settings_set(&self, key: &str, value: &str) -> Result<(), Error> {
+        let value = json("settings.set", "value", value)?;
+        self.host.settings_set(&self.plugin, key, value)
+    }
+
+    /// The plugin's own settings need no permission; `others` needs `settings:read`.
+    pub fn settings_list(&self, others: bool) -> Result<Vec<Setting>, Error> {
+        if others {
+            self.needs("settings.list", Needs::SettingsRead)?;
+        }
+        self.host.settings_list(&self.plugin, others)
+    }
+
+    /// Needs no permission: the plugin's own channel. `fields` must be JSON text.
+    pub fn log_write(
+        &self,
+        level: LogLevel,
+        message: &str,
+        fields: Option<&str>,
+    ) -> Result<(), Error> {
+        let fields = fields
+            .map(|fields| json("log.write", "fields", fields))
+            .transpose()?;
+        self.host.log_write(&self.plugin, level, message, fields)
+    }
+
+    pub fn log_tail(
+        &self,
+        channel: Option<&str>,
+        count: Option<u32>,
+    ) -> Result<Vec<LogEntry>, Error> {
+        self.needs("log.tail", Needs::LogRead)?;
+        self.host.log_tail(&self.plugin, channel, count)
     }
 
     /// Refuse before the host sees the call when the manifest never asked for the permission.
@@ -124,4 +247,12 @@ impl Imports {
             ),
         })
     }
+}
+
+/// Parse JSON text that crossed the WIT, or answer invalid-params before the host sees the call.
+fn json(method: &str, what: &str, text: &str) -> Result<Value, Error> {
+    serde_json::from_str(text).map_err(|e| Error {
+        code: ErrorCode::InvalidParams,
+        message: format!("{method} takes {what} as JSON text: {e}"),
+    })
 }
