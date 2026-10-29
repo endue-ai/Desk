@@ -14,13 +14,15 @@ use serde_json::{Value, json};
 
 /// One call that reached the host: the plugin, the bridge method and its main argument.
 pub type Call = (String, String, String);
+/// One notification: the plugin, the title, the body and the level.
+pub type Note = (String, String, Option<String>, NotifyLevel);
 
 #[derive(Default)]
 pub struct MockHost {
     files: Mutex<BTreeMap<String, Vec<u8>>>,
     refused: Mutex<BTreeSet<String>>,
     calls: Mutex<Vec<Call>>,
-    notes: Mutex<Vec<(String, String, Option<String>, NotifyLevel)>>,
+    notes: Mutex<Vec<Note>>,
     store: Mutex<BTreeMap<(String, String), Value>>,
 }
 
@@ -47,7 +49,7 @@ impl MockHost {
         self.calls.lock().unwrap().clone()
     }
 
-    pub fn notes(&self) -> Vec<(String, String, Option<String>, NotifyLevel)> {
+    pub fn notes(&self) -> Vec<Note> {
         self.notes.lock().unwrap().clone()
     }
 
@@ -216,7 +218,7 @@ pub fn component(body: &str, data: &str) -> Vec<u8> {
   (type $error (record (field "code" $code-out) (field "message" string)))
   (export $error-out "error" (type $error))
   (func $start (result (result (error $error-out)))
-    (canon lift (core func $i "start") (memory $i "memory")))
+    (canon lift (core func $i "start") (memory (core memory $i "memory"))))
   (export "start" (func $start)))"#
     );
     wat::parse_str(wat).expect("the test component is valid WAT")
