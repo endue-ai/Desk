@@ -31,7 +31,7 @@ mod unix {
     use std::path::PathBuf;
     use std::sync::Arc;
     use std::sync::atomic::{AtomicU64, Ordering};
-    use std::time::Duration;
+    use std::time::{Duration, Instant};
 
     use desk_bridge::{BridgeEvent, BridgeRequest, BridgeResponse, Permission};
     use desk_core::{Core, Roots};
@@ -233,6 +233,35 @@ mod unix {
         let answer = conn.line();
         assert_eq!(answer["id"], 6, "an empty line gets nothing: {answer}");
         assert_eq!(answer["ok"], true);
+    }
+
+    #[test]
+    fn a_client_that_stops_reading_is_dropped_and_the_desk_runs_on() {
+        let (core, _listener, path) = serve();
+        let mut slow = Conn::open(&path);
+        slow.ping(1);
+        // Far more than the socket buffer and the 1000-line queue hold.
+        let published = 20_000;
+        for _ in 0..published {
+            core.grant("desk", permission(json!({ "permission": "plugin:manage" })));
+        }
+        // Once its queue is full the desk hangs up, and writing fails. Empty lines get no answer.
+        let deadline = Instant::now() + Duration::from_secs(10);
+        while slow.writer.write_all(b"\n").is_ok() {
+            assert!(Instant::now() < deadline, "the slow client was not dropped");
+            std::thread::sleep(Duration::from_millis(10));
+        }
+        let mut received = 0;
+        loop {
+            let mut line = String::new();
+            match slow.reader.read_line(&mut line) {
+                Ok(0) => break,
+                Ok(_) => received += 1,
+                Err(e) => panic!("the slow client was not dropped: {e} after {received} lines"),
+            }
+        }
+        assert!(received < published, "dropped after {received} lines");
+        Conn::open(&path).ping(2);
     }
 
     #[test]
