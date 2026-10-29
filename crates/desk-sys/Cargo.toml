@@ -8,16 +8,39 @@ license.workspace = true
 repository.workspace = true
 publish.workspace = true
 
+# Dependencies used only here are declared here; they move to [workspace.dependencies] when a second
+# crate needs them.
+
 [features]
-## File primitives: read, list and watch.
+## File primitives: read, list, atomic write and watch.
 fs = ["dep:notify"]
+## Processes: spawn without a shell, in pipes or a PTY, write, resize, signals.
+proc = ["dep:portable-pty", "dep:shared_child", "dep:nix"]
+## HTTP(S) fetch over rustls, with a host allowlist checked on every redirect.
+net = ["dep:ureq", "dep:url"]
 
 [dependencies]
+desk-bridge.workspace = true
 notify = { workspace = true, optional = true }
+portable-pty = { version = "0.9", optional = true }
+shared_child = { version = "1.1", optional = true }
+ureq = { version = "3.1", optional = true, default-features = false, features = ["rustls", "platform-verifier"] }
+url = { version = "2.5", optional = true }
+
+[target.'cfg(unix)'.dependencies]
+nix = { version = "0.28", optional = true, default-features = false, features = ["signal"] }
 
 [[test]]
 name = "fs"
 required-features = ["fs"]
+
+[[test]]
+name = "proc"
+required-features = ["proc"]
+
+[[test]]
+name = "net"
+required-features = ["net"]
 
 [lints]
 workspace = true
