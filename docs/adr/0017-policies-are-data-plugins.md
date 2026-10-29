@@ -65,5 +65,7 @@ without running anything, and replaced by turning one plugin off and another on.
 ## More Information
 
 `specs/plugin/v0/contributes.schema.json`, `specs/bridge/v0/init.schema.json`,
-`packages/runtime/src/{commands,policy,settings}.ts`, `plugins/desk-*`. Design:
+`packages/runtime/src/{commands,policy,settings}.ts`, `packages/runtime/src/policies/`, and the
+plugins `display`, `keys`, `palette`, `buffers`, `files`, `session`, `notify`, `theme` and `profiles`
+in `plugins/`. Design:
 `docs/ko/desk-structure.md`, "Emacs 처럼, 하나의 OS 처럼".

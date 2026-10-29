@@ -20,6 +20,7 @@ import { installDisplay } from "./policies/display";
 import { installFiles } from "./policies/files";
 import { installKeys } from "./policies/keys";
 import { installNotify } from "./policies/notify";
+import { installProfiles } from "./policies/profiles";
 import { installSession } from "./policies/session";
 import { installTheme } from "./policies/theme";
 import type { PolicySet } from "./policy";
@@ -173,6 +174,7 @@ export function createRuntime(options: RuntimeOptions): Runtime {
     notices: () => notify.notifications.history(),
     restoreNotices: (notices) => notify.notifications.restore(notices),
   });
+  const profiles = installProfiles(ctx, (input) => notify.notify(input));
   notify.notifications.onPush(() => session.changed());
   onLayout = () => session.changed();
   onSurfaceFocus = (id) => {
@@ -256,6 +258,7 @@ export function createRuntime(options: RuntimeOptions): Runtime {
       // A desk without plugin:manage still works; it just shows no plugins.
       ready: ready
         .then(() => host.start())
+        .then(() => profiles.start())
         .then(() => session.restore())
         .catch(() => {}),
       mounted: () => host.mounted(),
@@ -281,7 +284,7 @@ export function createRuntime(options: RuntimeOptions): Runtime {
     layout: () => structuredClone(layout),
     status: () => notify.text(),
     dispose() {
-      for (const policy of [session, files, buffers, display, notify, keys, theme]) {
+      for (const policy of [profiles, session, files, buffers, display, notify, keys, theme]) {
         policy.dispose();
       }
       pluginHost?.stop();

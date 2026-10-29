@@ -17,7 +17,7 @@ the file Desk writes when there is none. Decision: ADR 0016.
 | Key | Type | Default | Meaning |
 | --- | --- | --- | --- |
 | `version` | `0` | `0` | Format version; a newer one is refused with "update Desk" |
-| `mode` | mode name | `default` | The mode to start in |
+| `profile` | profile name | `default` | The profile to start in (desk.profiles; ADR 0017) |
 | `plugins.disabled` | plugin ids | `[]` | Plugins that start disabled, built-ins included; turning one on while Desk runs lasts until the next start |
 | `settings` | key → any value | `{}` | Settings for the core and plugins; keys are lowercase and dotted by owner (`eris.voice`) |
 | `sync.enabled` | boolean | `false` | Keep this file the same on every desk, through endue |

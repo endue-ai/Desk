@@ -90,7 +90,7 @@ fn init_get_hands_each_caller_only_its_own_settings() {
     let init = dir.join("init.yaml");
     fs::write(
         &init,
-        "mode: focus\nsettings:\n  desk.theme.scheme: light\n  desk.notify.dnd: true\n  \
+        "profile: focus\nsettings:\n  desk.theme.scheme: light\n  desk.notify.dnd: true\n  \
          endue.eris.voice: false\n  desktop.other: 1\n",
     )
     .unwrap();
@@ -122,7 +122,7 @@ fn init_get_hands_each_caller_only_its_own_settings() {
 fn init_get_says_why_a_broken_init_yaml_is_not_in_force() {
     let dir = temp_dir("broken");
     let init = dir.join("init.yaml");
-    fs::write(&init, "mode: [not, a, name]\n").unwrap();
+    fs::write(&init, "profile: [not, a, name]\n").unwrap();
     let core = core().with_init_file(init);
     let result = call(
         &core,

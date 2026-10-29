@@ -1,35 +1,32 @@
 # @endue-ai/runtime
 
-Shell and window manager: the 2D compositor, sandboxed surfaces, input routing, layout and theme.
-No 3D yet.
-
-Layer: Web runtime (see `docs/architecture.md`). Plain TypeScript and DOM (ADR 0010).
+Shell and window manager: the 2D compositor, sandboxed surfaces, input, layout and theme, and the
+mechanisms the desk's default policies drive (ADR 0017). No 3D yet. Plain TypeScript and DOM (ADR 0010).
 
 ## Public API
 
-- `createRuntime({ root, bridge, clock?, storage?, platform?, plugins? })` mounts the desk and returns
-  a `Runtime`: `ready`, `openSurface`, `closeSurface`, `moveSurface`, `focusSurface`, `layout()`,
-  `status()`, `shortcuts`, `plugins` (`ready`, `mounted()`), `dispose()`.
-- `PluginHost` (used when `plugins: { url }` is given): mounts enabled UI plugins from `plugin.list`,
-  relays their batched calls with the plugin as caller, reloads one surface on `plugin.changed`
-  (updated) and keeps the plugin's state; honours `placement: "overlay"`; `plugins.command(id, name,
-  args)` sends a plugin a command; ADR 0012. `brain.turn` events go only to the plugin whose
-  `brain.say` started the turn (events that arrive before the answer wait for it); ADR 0014.
-- `ShortcutRouter`, `comboOf`: "Mod+K" style bindings, focused surface first, then global.
-- Layout: `defaultLayout`, `loadLayout`, `saveLayout`, `place`, `move`, `remove`.
-- Clock: `realClock`, `ManualClock` (inject in tests), `tween`.
-- `SurfaceHost`: iframes with `sandbox="allow-scripts"` only. `applyTheme`.
-- `@endue-ai/runtime/desk.css`: the desk stylesheet.
+- `createRuntime({ root, bridge, clock?, storage?, platform?, plugins? })` returns a `Runtime`:
+  `ready`, `openSurface`, `closeSurface`, `moveSurface`, `focusSurface`, `layout()`, `status()`,
+  `shortcuts`, `commands`, `settings`, `policy()`, `notify(notice)`, `theme()`, `plugins`, `dispose()`.
+- `PluginHost`: mounts enabled UI plugins (hidden ones stay hidden until they show themselves), relays
+  their calls as their own caller, reloads one surface on `plugin.changed`, carries commands both ways
+  and keys from frames, shares the theme, and routes `brain.turn` and `fs.changed` events only to the
+  plugin that started them (ADR 0012, 0014).
+- Policies: `collect(plugins)` layers every enabled plugin's `contributes`; `Commands` (built-ins exist
+  while their policy plugin is on), layered `Settings`, `resolveKeymap`/`Keymap`, `decide` (display
+  rules), `resolveTheme`, `Notifications`, `Buffers`. `src/policies/*` applies one desk.* policy each:
+  theme, keys, notify, display, buffers, files, session, profiles.
+- `ShortcutRouter`, `comboOf`, `canonical`, `formatCombo`; layout `place` (with a size), `move`, `remove`;
+  clock `realClock`, `ManualClock`, `tween`; `SurfaceHost`; `applyTheme`; `desk.css`.
 
 ## Testing
 
 ```bash
-pnpm exec vitest run packages/runtime                        # unit
-pnpm --filter @endue-ai/runtime exec playwright install webkit   # once
-just test-e2e                                                # Playwright on the browser stub
+pnpm exec vitest run packages/runtime        # unit
+just test-e2e-docker                         # Playwright in WebKit, in Docker, one run at a time
 ```
 
-`e2e/` uses fixture pages with the browser bridge stub and a manual clock (`plugins.html` adds two UI
-plugins served by the fixture's Vite config). Render snapshots are
-serialised render trees (ADR 0011); update them with
-`pnpm --filter @endue-ai/runtime exec playwright test --update-snapshots` and review the JSON diff.
+`e2e/` uses fixture pages on the browser bridge stub and a manual clock. `desk.html` runs the real
+`plugins/*/plugin.json` of the desk.* policies with a test plugin (`fixture/plugins/test-echo`), and
+takes `?init=`, `?off=`, `?platform=`, `?profile=`, `?rules=` and `?store=`. Render snapshots are
+serialised render trees (ADR 0011); `E2E_UPDATE=1 just test-e2e-docker` rewrites them; review the diff.

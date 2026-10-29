@@ -2,7 +2,7 @@
   "target": "InitDocument",
   "description": "keys outside the format are refused, so typos surface",
   "instance": {
-    "mode": "focus",
+    "profile": "focus",
     "theme": "dark"
   }
 }

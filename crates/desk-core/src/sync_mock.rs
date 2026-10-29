@@ -119,10 +119,13 @@ mod tests {
             .join(format!("desk-sync-mock-{}", std::process::id()))
             .join("remote.json");
         MockRemote::with_file(file.clone())
-            .push(None, "mode: a\n")
+            .push(None, "profile: a\n")
             .unwrap();
         let again = MockRemote::with_file(file.clone());
-        assert_eq!(again.copy().map(|s| s.text).as_deref(), Some("mode: a\n"));
+        assert_eq!(
+            again.copy().map(|s| s.text).as_deref(),
+            Some("profile: a\n")
+        );
         let _ = fs::remove_dir_all(file.parent().unwrap());
     }
 }
