@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
-import { missing, PAGES, render, ROOT, write } from "./spec-docs.mjs";
+import { missing, PAGES, ROOT, render, write } from "./spec-docs.mjs";
 
 const SCRIPT = fileURLToPath(new URL("./spec-docs.mjs", import.meta.url));
 const temp = (prefix) => mkdtempSync(join(tmpdir(), prefix));
@@ -186,11 +186,16 @@ describe("spec-docs on the real specs", () => {
   });
 
   it("renders every plugin manifest field", () => {
-    const schema = JSON.parse(readFileSync(join(ROOT, "specs/plugin/v0/plugin.schema.json"), "utf8"));
+    const schema = JSON.parse(
+      readFileSync(join(ROOT, "specs/plugin/v0/plugin.schema.json"), "utf8"),
+    );
     const manifest = schema.$defs.PluginManifest;
     for (const field of Object.keys(manifest.properties)) {
       const required = manifest.required.includes(field) ? "yes" : "no";
-      assert.match(pages["manifest.md"], new RegExp(`\\| \`${field}\` \\| [^|]+ \\| ${required} \\|`));
+      assert.match(
+        pages["manifest.md"],
+        new RegExp(`\\| \`${field}\` \\| [^|]+ \\| ${required} \\|`),
+      );
     }
   });
 
@@ -217,7 +222,9 @@ describe("spec-docs on a fixture", () => {
 
   it("renders a small fixture exactly", () => {
     const echo = section(pages["bridge.md"], "`demo.echo`");
-    assert.ok(echo.includes("**demo.echo** answers with the same text. A missed deadline is\n`timeout`."));
+    assert.ok(
+      echo.includes("**demo.echo** answers with the same text. A missed deadline is\n`timeout`."),
+    );
     assert.ok(echo.includes("**Permission:** `demo:use`, carried in `params.scope`."));
     assert.ok(echo.includes("| `text` | string | yes | What to echo. |"));
     assert.ok(echo.includes("| `times` | integer, at least 1 | no | How often. |"));
@@ -242,7 +249,9 @@ describe("spec-docs on a fixture", () => {
     assert.ok(use.includes("**Covers:** `demo.echo`, `demo.tick` events"));
 
     assert.ok(pages["manifest.md"].includes("| `id` | string | yes | The plugin id. |"));
-    assert.ok(pages["manifest.md"].includes("| `kind` | [PluginKind](#pluginkind) | no | How it runs. |"));
+    assert.ok(
+      pages["manifest.md"].includes("| `kind` | [PluginKind](#pluginkind) | no | How it runs. |"),
+    );
     const ping2 = section(pages["brain.md"], "`ping`");
     assert.ok(ping2.includes("`GET /ping`") && ping2.includes("| `503` | Asleep. |"));
     for (const page of PAGES) assert.match(pages[page], /^---\ntitle: .+\n/);

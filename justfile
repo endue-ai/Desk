@@ -55,6 +55,10 @@ build-app: build-sdk
 codegen:
     node scripts/codegen.mjs
 
+# Render the API reference from specs/ into a folder (the docs site builds it; never committed)
+docs-api out:
+    node scripts/spec-docs.mjs {{out}}
+
 # Bundle the plugin SDK that the app serves to plugin frames
 build-sdk:
     pnpm --filter @endue-ai/plugin-sdk build
