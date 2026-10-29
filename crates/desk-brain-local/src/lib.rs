@@ -3,6 +3,7 @@
 //! the caller chooses; every turn streams the events of `specs/brain/v0`.
 pub const NAME: &str = env!("CARGO_PKG_NAME");
 
+mod directory;
 mod events;
 mod http;
 mod ollama;
@@ -16,8 +17,9 @@ use std::path::{Path, PathBuf};
 use std::sync::{Mutex, MutexGuard};
 
 use desk_brain::{
-    Brain, BrainFailure, CreateSessionRequest, Lease, LeaseAcquireRequest, LeaseRenewRequest,
-    Session, StopReason, ToolCall, ToolResultRequest, TurnEvent, TurnRequest,
+    A2ATaskList, AgentCard, AgentList, AgentQuery, Brain, BrainFailure, CreateSessionRequest,
+    Lease, LeaseAcquireRequest, LeaseRenewRequest, Session, SpaceList, StopReason, TaskQuery,
+    ToolCall, ToolResultRequest, TurnEvent, TurnRequest,
 };
 use serde_json::Value;
 
@@ -363,6 +365,22 @@ impl Brain for LocalBrain {
 
     fn release_lease(&self, session_id: &str, lease_id: &str) -> Result<(), BrainFailure> {
         self.change(|state, now| state.session_mut(session_id)?.release(lease_id, now))
+    }
+
+    fn list_agents(&self, query: &AgentQuery) -> Result<AgentList, BrainFailure> {
+        directory::agents(query)
+    }
+
+    fn get_agent_card(&self, agent_id: &str) -> Result<AgentCard, BrainFailure> {
+        directory::agent_card(agent_id)
+    }
+
+    fn list_spaces(&self) -> Result<SpaceList, BrainFailure> {
+        directory::spaces()
+    }
+
+    fn list_a2a_tasks(&self, query: &TaskQuery) -> Result<A2ATaskList, BrainFailure> {
+        directory::tasks(query)
     }
 }
 
