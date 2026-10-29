@@ -767,8 +767,7 @@
        "role": "status",
        "aria-live": "polite",
        "style": {
-        "color": "rgb(176, 173, 183)",
-        "transform": "matrix(1, 0, 0, 1, -85.820313, 0)"
+        "color": "rgb(176, 173, 183)"
        },
        "text": "desk ready · bridge: browser"
       }

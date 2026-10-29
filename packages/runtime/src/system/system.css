@@ -44,18 +44,21 @@
 }
 
 /* The status line is the echo area: one quiet line at the top, above Eris, between the profiles and
-   the desktops. */
+   the desktops. Centred by its margins, not a transform: a translate of -50% would be half the
+   text's width, which differs with the fonts installed (render trees, ADR 0011). */
 .layer-desk .desk-status {
   position: absolute;
   top: var(--space-2);
-  left: 50%;
+  right: 0;
+  left: 0;
+  width: max-content;
   max-width: 480px;
   height: var(--control-xs);
+  margin: 0 auto;
   padding: 0 var(--space-3);
   border: 0;
   font-size: var(--text-xs);
   line-height: var(--control-xs);
-  transform: translateX(-50%);
 }
 
 /* The palette (an overlay plugin) comes over the whole shell, the system layer included. */
