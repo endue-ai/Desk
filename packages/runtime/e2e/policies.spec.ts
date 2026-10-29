@@ -77,16 +77,19 @@ test.describe("desk.keys", () => {
     expect(ids).toContain("desk.keys.quit");
   });
 
-  test("plugins list commands with their keys, and answer their own", async ({ page }) => {
+  test("one registry: the desk's built-ins and plugins' commands, with their keys", async ({
+    page,
+  }) => {
     await open(page);
     const listed = await page.evaluate(() =>
-      window.__desk.runtime.commands.run("desk.commands.list"),
+      window.__desk.runtime.commands.list().map((c) => [c.id, c.provider]),
     );
-    expect(listed).toContainEqual(
-      expect.objectContaining({ id: "desk.theme.toggle", keys: ["Ctrl+Shift+L"] }),
-    );
-    expect(listed).toContainEqual(
-      expect.objectContaining({ id: "test.echo.say", owner: "test.echo" }),
+    expect(listed).toContainEqual(["desk.theme.toggle", "desk"]);
+    expect(listed).toContainEqual(["test.echo.say", "test.echo"]);
+    expect(listed).toContainEqual(["desk.palette.open", "desk.palette"]);
+    const keys = await page.evaluate(() => window.__desk.runtime.commands.run("desk.keys.list"));
+    expect(keys).toContainEqual(
+      expect.objectContaining({ key: "Ctrl+Shift+L", command: "desk.theme.toggle" }),
     );
     const said = await page.evaluate(() =>
       window.__desk.runtime.commands.run("test.echo.say", { text: "hi" }),

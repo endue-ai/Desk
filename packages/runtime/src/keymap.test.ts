@@ -1,3 +1,4 @@
+import { BridgeClient, type BridgeEvent, browserStub, stubCommands } from "@endue-ai/bridge";
 import { describe, expect, it } from "vitest";
 import { Commands } from "./commands";
 import { canonical, formatCombo, ShortcutRouter } from "./input";
@@ -48,7 +49,9 @@ describe("resolveKeymap", () => {
 describe("Keymap", () => {
   it("runs the bound command and lets keys of commands that are off pass on", async () => {
     const router = new ShortcutRouter({ platform: "mac" });
-    const commands = new Commands();
+    const registry = stubCommands((event: BridgeEvent) => stub.emit(event));
+    const stub = browserStub({ ...registry.handlers });
+    const commands = new Commands(new BridgeClient(stub));
     const ran: unknown[] = [];
     commands.define("desk.palette.open", {
       title: "Open",
@@ -56,12 +59,15 @@ describe("Keymap", () => {
       run: (args) => ran.push(args),
     });
     const keymap = new Keymap(router, commands);
-    keymap.apply([{ key: "Mod+K", command: "desk.palette.open", args: 1, owner: "desk.keys" }]);
+    keymap.apply([
+      { key: "Mod+K", command: "desk.palette.open", args: { n: 1 }, owner: "desk.keys" },
+    ]);
+    await commands.settled();
     expect(router.handle(press("k", { meta: true }))).toBe(false);
-    commands.setActive(new Set(["desk.palette"]));
+    commands.setActive(["desk.palette"]);
+    await commands.settled();
     expect(router.handle(press("k", { meta: true }))).toBe(true);
-    await Promise.resolve();
-    expect(ran).toEqual([1]);
+    await expect.poll(() => ran).toEqual([{ n: 1 }]);
     expect(keymap.keysFor("desk.palette.open")).toEqual(["⌘K"]);
     keymap.apply([]);
     expect(router.handle(press("k", { meta: true }))).toBe(false);

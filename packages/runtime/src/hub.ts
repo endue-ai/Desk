@@ -7,17 +7,17 @@ import { Commands } from "./commands";
 import { collect, emptyPolicy, type PolicySet } from "./policy";
 import { Settings } from "./settings";
 
-/** Hands a plugin one of its commands and resolves with its answer. */
-export type Deliver = (plugin: string, command: string, args: unknown) => Promise<unknown>;
-
 export class PolicyHub {
-  readonly commands = new Commands();
+  readonly commands: Commands;
   readonly settings = new Settings();
   #policy: PolicySet = emptyPolicy();
   #plugins: PluginInfo[] = [];
   #profile = "default";
-  #deliver: Deliver = () => Promise.reject(new Error("no plugin host"));
   readonly #listeners = new Set<(policy: PolicySet) => void>();
+
+  constructor(bridge: BridgeClient) {
+    this.commands = new Commands(bridge);
+  }
 
   get policy(): PolicySet {
     return this.#policy;
@@ -32,20 +32,12 @@ export class PolicyHub {
     return this.#profile;
   }
 
-  setDeliver(deliver: Deliver): void {
-    this.#deliver = deliver;
-  }
-
   /** Collect the policies of the plugins as listed now, and tell every module. */
   apply(plugins: readonly PluginInfo[]): void {
     this.#plugins = [...plugins];
     this.#policy = collect(plugins);
-    const ui = new Set(plugins.filter((p) => p.manifest?.kind === "ui").map((p) => p.id));
-    this.commands.setActive(new Set(["desk", ...this.#policy.plugins]));
-    this.commands.setPluginCommands(
-      this.#policy.commands.filter((command) => ui.has(command.owner)),
-      (plugin, command, args) => this.#deliver(plugin, command, args),
-    );
+    // Plugins register their own commands (the plugin host does it for what a manifest declares).
+    this.commands.setActive(this.#policy.plugins);
     const defaults = Object.fromEntries(
       Object.entries(this.#policy.settings).map(([key, { owner: _owner, ...setting }]) => [
         key,

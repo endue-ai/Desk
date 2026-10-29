@@ -14,6 +14,8 @@ pub enum Target<'a> {
     Path(&'a str),
     Command(&'a str),
     Host(&'a str),
+    /// A command id in the command registry (cmd.invoke).
+    CommandId(&'a str),
 }
 
 /// A denied call: the scope that was missing and why.
@@ -115,8 +117,32 @@ pub fn covers(grant: &Permission, scope: &Permission) -> bool {
         (Permission::UiNotify(_), Permission::UiNotify(_)) => true,
         (Permission::PluginManage(_), Permission::PluginManage(_)) => true,
         (Permission::BrainConverse(_), Permission::BrainConverse(_)) => true,
+        (Permission::CmdInvoke(g), Permission::CmdInvoke(s)) => {
+            s.ids.iter().all(|a| g.ids.iter().any(|p| star_match(p, a)))
+        }
         _ => false,
     }
+}
+
+/// `*` in `pattern` matches any run of characters, dots included; everything else is literal. A `*`
+/// in `text` is literal too, so a grant of `desk.*` covers a scope of `desk.theme.*`.
+pub fn star_match(pattern: &str, text: &str) -> bool {
+    let parts: Vec<&str> = pattern.split('*').collect();
+    let (first, last) = (parts[0], parts[parts.len() - 1]);
+    if parts.len() == 1 {
+        return pattern == text;
+    }
+    if !text.starts_with(first) || text.len() < first.len() + last.len() || !text.ends_with(last) {
+        return false;
+    }
+    let mut rest = &text[first.len()..text.len() - last.len()];
+    for part in &parts[1..parts.len() - 1] {
+        match rest.find(part) {
+            Some(at) => rest = &rest[at + part.len()..],
+            None => return false,
+        }
+    }
+    true
 }
 
 fn scope_allows(scope: &Permission, target: &Target<'_>) -> bool {
@@ -129,6 +155,11 @@ fn scope_allows(scope: &Permission, target: &Target<'_>) -> bool {
         (Permission::NetFetch(s), Target::Host(host)) => {
             s.hosts.iter().any(|h| host_match(h, host))
         }
+        (Permission::CmdInvoke(s), Target::CommandId(id)) => {
+            s.ids.iter().any(|p| star_match(p, id))
+        }
+        // cmd.list: the scope only narrows what is listed.
+        (Permission::CmdInvoke(_), Target::None) => true,
         (
             Permission::AudioCapture(_)
             | Permission::UiSurface(_)

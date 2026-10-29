@@ -5,7 +5,13 @@
 //   ?platform=mac                        the keymap's platform  ?profile=focus             start profile
 //   ?rules=[{"match":{...},"area":...}]  display rules test.echo contributes
 //   ?store={"session":{...}}             what the core's store holds for the runtime at start
-import { BridgeClient, browserStub, type PluginInfo, type PluginManifest } from "@endue-ai/bridge";
+import {
+  BridgeClient,
+  browserStub,
+  type PluginInfo,
+  type PluginManifest,
+  stubCommands,
+} from "@endue-ai/bridge";
 import "../../src/desk.css";
 import { createRuntime, ManualClock } from "../../src/index";
 
@@ -20,7 +26,11 @@ const echo: PluginManifest = {
   version: "0.1.0",
   kind: "ui",
   entry: "ui/index.html",
-  permissions: [{ permission: "ui:notify" }, { permission: "fs:write", paths: ["~/**"] }],
+  permissions: [
+    { permission: "ui:notify" },
+    { permission: "fs:write", paths: ["~/**"] },
+    { permission: "cmd:invoke", ids: ["desk.*"] },
+  ],
   surfaces: [{ id: "main", title: "Echo", placement: "center" }],
   contributes: {
     commands: [{ id: "test.echo.say", title: "Say it back" }],
@@ -53,13 +63,18 @@ let notices = 0;
 const store: Record<string, unknown> = JSON.parse(params.get("store") ?? "{}");
 const written: Array<{ path: string; content: string }> = [];
 const clock = new ManualClock();
+// The core's command registry (cmd.*), as the stub keeps it.
+const registry = stubCommands((event) => stub.emit(event));
 const stub = browserStub({
+  ...registry.handlers,
   "perm.query": () => ({ grants: [] }),
   "plugin.list": () => ({ plugins: structuredClone(plugins) }),
   "plugin.setEnabled": ({ plugin, enabled }) => {
     const info = plugins.find((p) => p.id === plugin);
     if (!info) throw new Error(`no plugin ${plugin}`);
     info.enabled = enabled;
+    // The core drops a plugin's commands when it is turned off.
+    if (!enabled) registry.drop(plugin);
     queueMicrotask(() =>
       stub.emit({
         event: "plugin.changed",

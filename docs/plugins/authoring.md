@@ -106,7 +106,9 @@ settings with their defaults, and profiles. Commands, settings and themes start 
 }
 ```
 
-Answer your commands with `ctx.commands.on`, and run any command the desk has with `ctx.commands.run`:
+Answer your commands with `ctx.commands.on`, and run any command the desk has with `ctx.commands.run`.
+Both go through the core's command registry (`cmd.*`); running a command you do not provide needs a
+`cmd:invoke` permission covering its id, such as `{ "permission": "cmd:invoke", "ids": ["desk.theme.*"] }`:
 
 ```js
 defineUiPlugin({

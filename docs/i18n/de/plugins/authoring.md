@@ -110,7 +110,9 @@ Einstellungen und Themes beginnen mit der Plugin-ID.
 ```
 
 Beantworten Sie Ihre Befehle mit `ctx.commands.on`, und führen Sie jeden Befehl des Desks mit
-`ctx.commands.run` aus:
+`ctx.commands.run` aus. Beides läuft über das Befehlsregister des Kerns (`cmd.*`); einen Befehl, den Sie
+nicht selbst anbieten, auszuführen, braucht eine `cmd:invoke`-Berechtigung, die seine ID abdeckt, etwa
+`{ "permission": "cmd:invoke", "ids": ["desk.theme.*"] }`:
 
 ```js
 defineUiPlugin({

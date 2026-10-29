@@ -1,0 +1,16 @@
+{
+  "target": "BridgeRequest",
+  "description": "an answer is a result or an error, not both",
+  "instance": {
+    "id": 12,
+    "method": "cmd.answer",
+    "params": {
+      "invocationId": "i-3",
+      "result": 1,
+      "error": {
+        "code": "failed",
+        "message": "x"
+      }
+    }
+  }
+}

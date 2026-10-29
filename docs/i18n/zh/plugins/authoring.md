@@ -95,7 +95,9 @@ defineUiPlugin({
 }
 ```
 
-用 `ctx.commands.on` 回答自己的命令，用 `ctx.commands.run` 运行桌面上的任何命令：
+用 `ctx.commands.on` 回答自己的命令，用 `ctx.commands.run` 运行桌面上的任何命令。两者都经过核心的命令
+注册表（`cmd.*`）；运行不是自己提供的命令，需要覆盖其 ID 的 `cmd:invoke` 权限，例如
+`{ "permission": "cmd:invoke", "ids": ["desk.theme.*"] }`：
 
 ```js
 defineUiPlugin({

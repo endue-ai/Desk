@@ -4,6 +4,7 @@ pub const NAME: &str = env!("CARGO_PKG_NAME");
 
 mod conversation;
 mod core_brain;
+mod core_cmd;
 mod core_fs;
 mod core_init;
 mod core_plugins;

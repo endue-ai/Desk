@@ -1,6 +1,5 @@
 import type { PluginContributes, PluginInfo } from "@endue-ai/bridge";
 import { describe, expect, it } from "vitest";
-import { CommandError, Commands } from "./commands";
 import { collect, globMatch, layers } from "./policy";
 import { Settings } from "./settings";
 
@@ -116,57 +115,6 @@ describe("globMatch", () => {
     expect(globMatch("*.md", "notes.md")).toBe(true);
     expect(globMatch("*.md", "notes.mdx")).toBe(false);
     expect(globMatch("a.b", "aXb")).toBe(false);
-  });
-});
-
-describe("Commands", () => {
-  it("runs a built-in only while its owner is on", async () => {
-    const commands = new Commands();
-    commands.define("desk.buffers.next", { title: "Next", owner: "desk.buffers", run: () => 1 });
-    commands.define("desk.commands.list", { title: "List", owner: "desk", run: () => 2 });
-    expect(commands.list().map((c) => c.id)).toEqual(["desk.commands.list"]);
-    await expect(commands.run("desk.buffers.next")).rejects.toMatchObject({
-      code: "unknown_command",
-    });
-    commands.setActive(new Set(["desk.buffers"]));
-    expect(await commands.run("desk.buffers.next")).toBe(1);
-    expect(await commands.run("desk.commands.list")).toBe(2);
-  });
-
-  it("delivers plugin commands to their owner with the caller and reports every run", async () => {
-    const commands = new Commands();
-    const delivered: unknown[] = [];
-    commands.setPluginCommands(
-      [{ id: "example.notes.new", title: "New note", owner: "example.notes" }],
-      async (owner, id, args) => {
-        delivered.push([owner, id, args]);
-        return "note-1";
-      },
-    );
-    commands.setActive(new Set(["example.notes"]));
-    const runs: unknown[] = [];
-    commands.onRun((run) => runs.push(run));
-    expect(await commands.run("example.notes.new", { title: "a" }, { caller: "endue.eris" })).toBe(
-      "note-1",
-    );
-    expect(delivered).toEqual([["example.notes", "example.notes.new", { title: "a" }]]);
-    expect(runs).toEqual([
-      { id: "example.notes.new", args: { title: "a" }, caller: "endue.eris", ok: true },
-    ]);
-  });
-
-  it("wraps a failing handler in a CommandError", async () => {
-    const commands = new Commands();
-    commands.define("desk.files.save", {
-      title: "Save",
-      owner: "desk",
-      run: () => {
-        throw new Error("disk full");
-      },
-    });
-    const failure = await commands.run("desk.files.save").catch((e: unknown) => e);
-    expect(failure).toBeInstanceOf(CommandError);
-    expect(failure).toMatchObject({ code: "failed", message: "desk.files.save: disk full" });
   });
 });
 

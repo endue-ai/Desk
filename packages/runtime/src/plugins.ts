@@ -10,6 +10,7 @@ import type {
 } from "@endue-ai/bridge";
 import { CommandError } from "./commands";
 import type { KeyLike } from "./input";
+import { PluginCommands } from "./plugin-commands";
 import type { SurfaceSpec } from "./surfaces";
 
 export interface PluginHostOptions {
@@ -27,8 +28,6 @@ export interface PluginHostDeps {
   frame(id: string): Window | null;
   /** Show or hide a plugin's surface (a palette shows itself when asked). */
   show?(id: string, visible: boolean): void;
-  /** Run a command for a plugin (ctx.commands.run). */
-  run?(name: string, args: unknown, caller: string): Promise<unknown>;
   /** A key pressed inside a plugin's frame, for the desk's keymap. */
   key?(id: string, key: KeyLike): void;
   /** The installed plugins, each time they are listed (at start and after every plugin.changed). */
@@ -48,7 +47,6 @@ type PluginMessage =
   | { type: "desk:state"; state: unknown }
   | { type: "desk:close" }
   | { type: "desk:visible"; visible: boolean }
-  | { type: "desk:run"; call: number; name: string; args?: unknown }
   | ({ type: "desk:reply" } & Reply)
   | { type: "desk:key"; key: KeyLike };
 
@@ -81,11 +79,13 @@ export class PluginHost {
   /** Plugins that said hello since they mounted, and callers waiting for one that has not yet. */
   readonly #greeted = new Set<string>();
   readonly #waiting = new Map<string, Array<{ resolve(): void; reject(e: unknown): void }>>();
+  readonly #commands: PluginCommands;
   #offEvents: (() => void) | undefined;
 
   constructor(deps: PluginHostDeps, options: PluginHostOptions) {
     this.#deps = deps;
     this.#options = options;
+    this.#commands = new PluginCommands(deps.bridge);
   }
 
   async start(): Promise<void> {
@@ -100,12 +100,15 @@ export class PluginHost {
     return [...this.#mounted.keys()];
   }
 
-  /** Deliver a command to a mounted plugin (`ctx.commands.on(name, handler)` in the SDK). */
+  /** Send a mounted plugin a message by name (`ctx.commands.on(name, handler)` in the SDK). */
   command(id: string, name: string, args?: unknown): void {
     if (this.#mounted.has(id)) this.#post(id, { type: "desk:command", name, args });
   }
 
-  /** Deliver a command and wait for the plugin's answer (what its handler returned). */
+  /**
+   * Ask one plugin something and wait for its answer, like desk.files.visit. These requests are not
+   * registry commands: only the desk sends them, to the one plugin they are about.
+   */
   request(id: string, name: string, args?: unknown): Promise<unknown> {
     if (!this.#mounted.has(id))
       return Promise.reject(new CommandError("unknown_command", `${id} is not running`));
@@ -161,6 +164,7 @@ export class PluginHost {
       ...(surface ? { surface: surface.id, placement: surface.placement } : {}),
       ...(surface?.hidden ? { hidden: true } : {}),
     });
+    this.#commands.mounted(info);
   }
 
   #unmount(id: string): void {
@@ -170,6 +174,7 @@ export class PluginHost {
       waiter.reject(new CommandError("cancelled", `${id} stopped`));
     }
     this.#waiting.delete(id);
+    this.#commands.unmounted(id);
     for (const [watch, owner] of this.#watches) if (owner === id) this.#watches.delete(watch);
     for (const [call, pending] of this.#pending) {
       if (pending.plugin !== id) continue;
@@ -187,6 +192,12 @@ export class PluginHost {
     if (event.event === "fs.changed") {
       const owner = this.#watches.get(event.data.watchId);
       if (owner) this.#post(owner, { type: "desk:event", event });
+      return;
+    }
+    if (event.event === "cmd.invoked" || event.event === "cmd.answered") {
+      // The provider hears its invocations; a caller hears its answers. The desk's own go nowhere.
+      const plugin = this.#commands.route(event);
+      if (plugin && this.#mounted.has(plugin)) this.#post(plugin, { type: "desk:event", event });
       return;
     }
     if (event.event !== "plugin.changed") return;
@@ -242,6 +253,7 @@ export class PluginHost {
 
   /** A brain.say answer names its turn: deliver what came early, and route the rest. */
   #claim(request: BridgeRequest, response: BridgeResponse, owner: string): void {
+    this.#commands.observe(request, response, owner);
     if (request.method === "fs.watch" && response.ok) {
       this.#watches.set((response.result as FsWatchResult).watchId, owner);
       return;
@@ -283,9 +295,6 @@ export class PluginHost {
       case "desk:key":
         this.#deps.key?.(id, message.key);
         break;
-      case "desk:run":
-        void this.#runFor(id, message.call, message.name, message.args);
-        break;
       case "desk:reply": {
         const pending = this.#pending.get(message.call);
         if (!pending || pending.plugin !== id) break;
@@ -313,16 +322,4 @@ export class PluginHost {
         break;
     }
   };
-
-  async #runFor(id: string, call: number, name: string, args: unknown): Promise<void> {
-    try {
-      if (!this.#deps.run) throw new CommandError("unknown_command", `no command ${name}`);
-      const result = await this.#deps.run(name, args, id);
-      this.#post(id, { type: "desk:ran", call, ok: true, result });
-    } catch (error) {
-      const code = error instanceof CommandError ? error.code : "failed";
-      const text = error instanceof Error ? error.message : String(error);
-      this.#post(id, { type: "desk:ran", call, ok: false, error: { code, message: text } });
-    }
-  }
 }

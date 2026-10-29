@@ -475,6 +475,7 @@ export type BridgeRequest =
   | CmdUnregisterRequest
   | CmdListRequest
   | CmdInvokeRequest
+  | CmdAnswerRequest
   | SettingsGetRequest
   | SettingsSetRequest
   | SettingsListRequest
@@ -534,6 +535,7 @@ export type BridgeEvent =
   | BrainTurnEvent
   | CmdChangedEvent
   | CmdInvokedEvent
+  | CmdAnsweredEvent
   | SettingsChangedEvent
   | LogEntryEvent;
 
@@ -544,6 +546,8 @@ export interface CommandInfo {
   title: string;
   /** One or two sentences for people. */
   description?: string;
+  /** More words the palette matches. */
+  keywords?: string[];
   /** JSON Schema (2020-12) for the args of cmd.invoke; absent means the command takes none. */
   argsSchema?: Record<string, unknown>;
   /** A context expression the runtime evaluates to offer the command; absent means always. */
@@ -563,6 +567,8 @@ export interface CmdRegisterParams {
   id: CommandId;
   title: string;
   description?: string;
+  /** More words the palette matches. */
+  keywords?: string[];
   /** JSON Schema (2020-12) for the args of cmd.invoke. */
   argsSchema?: Record<string, unknown>;
   /** A context expression, as keybindings use; absent means always available. */
@@ -618,10 +624,38 @@ export interface CmdInvokeParams {
   scope: CmdInvokePermission;
 }
 
-/** Result of cmd.invoke: the provider receives a cmd.invoked event with this id. */
+/** Result of cmd.invoke: the provider receives a cmd.invoked event with this id, and its answer reaches the caller as cmd.answered. */
 export interface CmdInvokeResult {
   invocationId: string;
 }
+
+/** Answer one invocation of a command the caller provides: its result, or why it failed. */
+export interface CmdAnswerRequest {
+  id: RequestId;
+  method: "cmd.answer";
+  params: CmdAnswerParams;
+}
+
+/** Parameters of cmd.answer: a result, or an error, not both. */
+export interface CmdAnswerParams {
+  invocationId: string;
+  /** What the command returns. Any JSON value. */
+  result?: unknown;
+  error?: CommandFailure;
+}
+
+/** Result of cmd.answer. */
+export type CmdAnswerResult = Record<string, never>;
+
+/** Why an invocation failed. */
+export interface CommandFailure {
+  code: CommandFailureCode;
+  /** For people; never parse it. */
+  message: string;
+}
+
+/** failed: the command ran and failed; cancelled: the person or the provider gave up (a pick dismissed, a provider that stopped). */
+export type CommandFailureCode = "failed" | "cancelled";
 
 /** A command was registered, updated or unregistered. Sent to callers subscribed to cmd.changed. */
 export interface CmdChangedEvent {
@@ -651,6 +685,23 @@ export interface CmdInvokedData {
   id: CommandId;
   args?: Record<string, unknown>;
   caller: CallerId;
+}
+
+/** A command's provider answered an invocation. Sent to the caller that invoked it. */
+export interface CmdAnsweredEvent {
+  event: "cmd.answered";
+  data: CmdAnsweredData;
+}
+
+/** Payload of cmd.answered: the invocation, who invoked it, and the answer. */
+export interface CmdAnsweredData {
+  invocationId: string;
+  id: CommandId;
+  caller: CallerId;
+  ok: boolean;
+  /** What the command returned, when ok. Any JSON value. */
+  result?: unknown;
+  error?: CommandFailure;
 }
 
 /** Start receiving the named events about every caller. */
@@ -1450,6 +1501,7 @@ export interface BridgeMethodMap {
   "cmd.unregister": { params: CmdUnregisterParams; result: CmdUnregisterResult };
   "cmd.list": { params: CmdListParams; result: CmdListResult };
   "cmd.invoke": { params: CmdInvokeParams; result: CmdInvokeResult };
+  "cmd.answer": { params: CmdAnswerParams; result: CmdAnswerResult };
   "settings.get": { params: SettingsGetParams; result: SettingsGetResult };
   "settings.set": { params: SettingsSetParams; result: SettingsSetResult };
   "settings.list": { params: SettingsListParams; result: SettingsListResult };
@@ -1493,6 +1545,7 @@ export const BRIDGE_METHODS = [
   "cmd.unregister",
   "cmd.list",
   "cmd.invoke",
+  "cmd.answer",
   "settings.get",
   "settings.set",
   "settings.list",

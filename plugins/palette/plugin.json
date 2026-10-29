@@ -5,6 +5,12 @@
   "kind": "ui",
   "entry": "ui/index.html",
   "description": "The command palette and the place where commands ask to pick one of many (M-x and the minibuffer).",
+  "permissions": [
+    {
+      "permission": "cmd:invoke",
+      "ids": ["*"]
+    }
+  ],
   "surfaces": [
     {
       "id": "main",

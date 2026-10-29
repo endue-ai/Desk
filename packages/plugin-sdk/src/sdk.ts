@@ -7,13 +7,8 @@ import {
   type ParamsOf,
   type ResultOf,
 } from "@endue-ai/bridge";
-import {
-  type CommandOutcome,
-  type HostMessage,
-  type ThemeState,
-  type Transport,
-  windowTransport,
-} from "./protocol";
+import { commandsFor, type PluginCommands } from "./commands";
+import { type HostMessage, type ThemeState, type Transport, windowTransport } from "./protocol";
 
 /** The bridge as a plugin sees it: calls are checked against the plugin's own grants. */
 export interface PluginBridge {
@@ -34,37 +29,6 @@ export interface PluginSurface {
   /** Show a surface the manifest declares `hidden`; it takes the keyboard focus. */
   show(): void;
   hide(): void;
-}
-
-/** A command the desk can run now, as `ctx.commands.list()` returns it. */
-export interface CommandInfo {
-  id: string;
-  title: string;
-  keywords: string[];
-  owner: string;
-  /** The keys bound to it, as people read them. */
-  keys: string[];
-}
-
-/** A command that failed: unknown_command, failed or cancelled. */
-export class CommandFailed extends Error {
-  readonly code: string;
-
-  constructor(name: string, code: string, message: string) {
-    super(`${name}: ${code}: ${message}`);
-    this.name = "CommandFailed";
-    this.code = code;
-  }
-}
-
-/**
- * Commands, both ways (ADR 0017): `on` answers the commands this plugin contributes (what the
- * handler returns is the answer), `run` runs any command the desk has, as keys and the palette do.
- */
-export interface PluginCommands {
-  on(name: string, handler: (args: unknown) => unknown): () => void;
-  run<T = unknown>(name: string, args?: unknown): Promise<T>;
-  list(): Promise<CommandInfo[]>;
 }
 
 /** The desk's theme, also applied to this frame as --desk-* custom properties. */
@@ -108,33 +72,11 @@ export function connect(transport: Transport = windowTransport()): Promise<Plugi
     });
     const pending = new Map<number, Pending>();
     const listeners = new Set<(event: BridgeEvent) => void>();
-    const commands = new Map<string, Set<(args: unknown) => unknown>>();
-    const runs = new Map<
-      number,
-      { name: string; resolve(v: unknown): void; reject(e: unknown): void }
-    >();
     const themeListeners = new Set<(theme: ThemeState) => void>();
     let queue: BridgeRequest[] = [];
     let nextId = 1;
-    let nextRun = 1;
     let state: unknown;
     let theme: ThemeState | undefined;
-
-    const answer = async (name: string, call: number | undefined, args: unknown) => {
-      if (!commands.get(name)?.size) await mounted;
-      const handlers = [...(commands.get(name) ?? [])];
-      let outcome: CommandOutcome;
-      try {
-        if (handlers.length === 0) throw new CommandFailed(name, "unknown_command", "no handler");
-        const results = await Promise.all(handlers.map((handler) => handler(args)));
-        outcome = { call: call ?? 0, ok: true, result: results[0] };
-      } catch (error) {
-        const code = error instanceof CommandFailed ? error.code : "failed";
-        const message = error instanceof Error ? error.message : String(error);
-        outcome = { call: call ?? 0, ok: false, error: { code, message } };
-      }
-      if (call !== undefined) transport.send({ type: "desk:reply", ...outcome });
-    };
 
     const flush = () => {
       const calls = queue;
@@ -149,22 +91,25 @@ export function connect(transport: Transport = windowTransport()): Promise<Plugi
       else call.reject(new BridgeCallError(call.method, response.error));
     };
 
+    const bridge: PluginBridge = {
+      call: <M extends BridgeMethod>(method: M, params: ParamsOf<M>) =>
+        new Promise<ResultOf<M>>((res, reject) => {
+          const id = nextId++;
+          pending.set(id, { method, resolve: res as (v: unknown) => void, reject });
+          // Calls made in the same tick leave together in one postMessage.
+          if (queue.length === 0) queueMicrotask(flush);
+          queue.push({ id, method, params } as BridgeRequest);
+        }),
+      onEvent: (listener) => {
+        listeners.add(listener);
+        return () => listeners.delete(listener);
+      },
+    };
+    const commands = commandsFor(bridge as Parameters<typeof commandsFor>[0], mounted);
+
     const ctxFor = (pluginId: string): PluginContext => ({
       pluginId,
-      bridge: {
-        call: <M extends BridgeMethod>(method: M, params: ParamsOf<M>) =>
-          new Promise<ResultOf<M>>((res, reject) => {
-            const id = nextId++;
-            pending.set(id, { method, resolve: res as (v: unknown) => void, reject });
-            // Calls made in the same tick leave together in one postMessage.
-            if (queue.length === 0) queueMicrotask(flush);
-            queue.push({ id, method, params } as BridgeRequest);
-          }),
-        onEvent: (listener) => {
-          listeners.add(listener);
-          return () => listeners.delete(listener);
-        },
-      },
+      bridge,
       state: {
         get: <T>() => state as T | undefined,
         set: (value) => {
@@ -177,21 +122,7 @@ export function connect(transport: Transport = windowTransport()): Promise<Plugi
         show: () => transport.send({ type: "desk:visible", visible: true }),
         hide: () => transport.send({ type: "desk:visible", visible: false }),
       },
-      commands: {
-        on: (name, handler) => {
-          const handlers = commands.get(name) ?? new Set();
-          handlers.add(handler);
-          commands.set(name, handlers);
-          return () => handlers.delete(handler);
-        },
-        run: <T>(name: string, args?: unknown) =>
-          new Promise<T>((res, reject) => {
-            const call = nextRun++;
-            runs.set(call, { name, resolve: res as (v: unknown) => void, reject });
-            transport.send({ type: "desk:run", call, name, args });
-          }),
-        list: () => ctx.commands.run<CommandInfo[]>("desk.commands.list"),
-      },
+      commands: commands.api,
       theme: {
         get: () => theme,
         on: (listener) => {
@@ -218,20 +149,14 @@ export function connect(transport: Transport = windowTransport()): Promise<Plugi
           for (const { id, response } of message.results) settle(id, response);
           break;
         case "desk:event":
+          commands.event(message.event);
           for (const listener of listeners) listener(message.event);
           break;
-        case "desk:command":
-          void answer(message.name, message.call, message.args);
-          break;
-        case "desk:ran": {
-          const run = runs.get(message.call);
-          if (!run) break;
-          runs.delete(message.call);
-          if (message.ok) run.resolve(message.result);
-          else {
-            const { code = "failed", message: text = "" } = message.error ?? {};
-            run.reject(new CommandFailed(run.name, code, text));
-          }
+        case "desk:command": {
+          const { name, args, call } = message;
+          void commands.request(name, args).then((outcome) => {
+            if (call !== undefined) transport.send({ type: "desk:reply", call, ...outcome });
+          });
           break;
         }
         case "desk:theme":

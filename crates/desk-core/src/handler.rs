@@ -17,6 +17,7 @@ use desk_sys::fs as sysfs;
 use serde::Serialize;
 
 use crate::conversation::Conversation;
+use crate::core_cmd::Commands;
 use crate::core_fs::Watches;
 use crate::events::EventBus;
 use crate::init::InitFile;
@@ -62,6 +63,7 @@ pub struct Core {
     pub(crate) sync: Option<Syncer>,
     pub(crate) notifications: AtomicU64,
     pub(crate) watches: Mutex<Watches>,
+    pub(crate) commands: Mutex<Commands>,
 }
 
 impl Core {
@@ -78,6 +80,7 @@ impl Core {
             sync: None,
             notifications: AtomicU64::new(0),
             watches: Mutex::new(Watches::default()),
+            commands: Mutex::new(Commands::default()),
         }
     }
 
@@ -200,10 +203,11 @@ impl Core {
             R::UiSurfaceClose(r) => (r.id, unsupported("ui.surface.close")),
             R::PermList(r) => (r.id, unsupported("perm.list")),
             R::PermAnswer(r) => (r.id, unsupported("perm.answer")),
-            R::CmdRegister(r) => (r.id, unsupported("cmd.register")),
-            R::CmdUnregister(r) => (r.id, unsupported("cmd.unregister")),
-            R::CmdList(r) => (r.id, unsupported("cmd.list")),
-            R::CmdInvoke(r) => (r.id, unsupported("cmd.invoke")),
+            R::CmdRegister(r) => (r.id, self.cmd_register(caller, r.params)),
+            R::CmdUnregister(r) => (r.id, self.cmd_unregister(caller, r.params)),
+            R::CmdList(r) => (r.id, self.cmd_list(caller, r.params)),
+            R::CmdInvoke(r) => (r.id, self.cmd_invoke(caller, r.params)),
+            R::CmdAnswer(r) => (r.id, self.cmd_answer(caller, r.params)),
             R::SettingsGet(r) => (r.id, unsupported("settings.get")),
             R::SettingsSet(r) => (r.id, unsupported("settings.set")),
             R::SettingsList(r) => (r.id, unsupported("settings.list")),

@@ -58,6 +58,7 @@
         { "$ref": "cmd.schema.json#/$defs/CmdUnregisterRequest" },
         { "$ref": "cmd.schema.json#/$defs/CmdListRequest" },
         { "$ref": "cmd.schema.json#/$defs/CmdInvokeRequest" },
+        { "$ref": "cmd.schema.json#/$defs/CmdAnswerRequest" },
         { "$ref": "settings.schema.json#/$defs/SettingsGetRequest" },
         { "$ref": "settings.schema.json#/$defs/SettingsSetRequest" },
         { "$ref": "settings.schema.json#/$defs/SettingsListRequest" },
@@ -133,6 +134,7 @@
         { "$ref": "brain.schema.json#/$defs/BrainTurnEvent" },
         { "$ref": "cmd.schema.json#/$defs/CmdChangedEvent" },
         { "$ref": "cmd.schema.json#/$defs/CmdInvokedEvent" },
+        { "$ref": "cmd.schema.json#/$defs/CmdAnsweredEvent" },
         { "$ref": "settings.schema.json#/$defs/SettingsChangedEvent" },
         { "$ref": "log.schema.json#/$defs/LogEntryEvent" }
       ]

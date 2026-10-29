@@ -104,7 +104,8 @@ defineUiPlugin({
 ```
 
 자기 커맨드에는 `ctx.commands.on` 으로 답하고, 데스크에 있는 어떤 커맨드든 `ctx.commands.run` 으로
-실행합니다.
+실행합니다. 둘 다 코어의 커맨드 레지스트리(`cmd.*`)를 거칩니다. 자기가 제공하지 않는 커맨드를 실행하려면
+그 id 를 덮는 `cmd:invoke` 권한이 있어야 합니다. 예: `{ "permission": "cmd:invoke", "ids": ["desk.theme.*"] }`.
 
 ```js
 defineUiPlugin({

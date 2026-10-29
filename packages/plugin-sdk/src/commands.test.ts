@@ -3,44 +3,49 @@ import { CommandFailed, defineUiPlugin, isDeskKey } from "./index";
 import { createTestHost } from "./testing/index";
 
 describe("commands", () => {
-  it("answers a delivered command with what its handler returns", async () => {
+  it("answers a request the desk sends with what the handler returns", async () => {
     const host = createTestHost({ pluginId: "desk.palette" });
     await defineUiPlugin(
       {
         mount(ctx) {
-          ctx.commands.on("desk.palette.pick", async (args) => {
-            const { items } = args as { items: string[] };
-            return items[1];
-          });
+          ctx.commands.on("desk.files.visit", async (args) => (args as { path: string }).path);
         },
       },
       host.transport,
     );
-    expect(await host.command("desk.palette.pick", { items: ["a", "b"] })).toBe("b");
-    await expect(host.command("desk.palette.nothing")).rejects.toThrow(/unknown_command/);
+    expect(await host.command("desk.files.visit", { path: "~/a.md" })).toBe("~/a.md");
+    await expect(host.command("desk.files.nothing")).rejects.toThrow(/unknown_command/);
   });
 
-  it("runs desk commands and lists them", async () => {
+  it("answers its own registered commands through the registry (cmd.invoked, cmd.answer)", async () => {
+    const host = createTestHost({ pluginId: "desk.palette" });
+    const ctx = await defineUiPlugin(
+      {
+        mount(ctx) {
+          ctx.commands.on("desk.palette.pick", (args) => (args as { items: string[] }).items[1]);
+        },
+      },
+      host.transport,
+    );
+    await ctx.bridge.call("cmd.register", { id: "desk.palette.pick", title: "Pick one" });
+    expect(await host.invoke("desk.palette.pick", { items: ["a", "b"] })).toBe("b");
+    expect(host.calls.map((c) => c.method)).toEqual(["cmd.register", "cmd.answer"]);
+  });
+
+  it("runs and lists the registry's commands (cmd.invoke, cmd.list)", async () => {
     const host = createTestHost({
       pluginId: "endue.eris",
-      commands: {
-        "desk.theme.toggle": () => "light",
-        "desk.commands.list": () => [
-          { id: "desk.theme.toggle", title: "Toggle", keywords: [], owner: "desk.theme", keys: [] },
-        ],
-      },
+      commands: { "desk.theme.toggle": () => "light" },
     });
     const ctx = await defineUiPlugin({ mount() {} }, host.transport);
     expect(await ctx.commands.run("desk.theme.toggle")).toBe("light");
-    expect((await ctx.commands.list()).map((c) => c.id)).toEqual(["desk.theme.toggle"]);
+    expect(await ctx.commands.list()).toEqual([
+      { id: "desk.theme.toggle", title: "desk.theme.toggle", keywords: [], provider: "desk" },
+    ]);
     const failure = await ctx.commands.run("desk.nope.run").catch((e: unknown) => e);
     expect(failure).toBeInstanceOf(CommandFailed);
     expect(failure).toMatchObject({ code: "unknown_command" });
-    expect(host.ran.map((r) => r.name)).toEqual([
-      "desk.theme.toggle",
-      "desk.commands.list",
-      "desk.nope.run",
-    ]);
+    expect(host.ran.map((r) => r.name)).toEqual(["desk.theme.toggle", "desk.nope.run"]);
   });
 });
 

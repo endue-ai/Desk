@@ -99,7 +99,7 @@ export function createRuntime(options: RuntimeOptions): Runtime {
   root.append(compositor, statusLine);
 
   let layout = loadLayout(storage);
-  const hub = new PolicyHub();
+  const hub = new PolicyHub(bridge);
   const { commands } = hub;
   const shortcuts = new ShortcutRouter({ platform: options.platform ?? "other" });
   // Set once desk.buffers is installed: the surface in use decides the buffer in use.
@@ -186,13 +186,6 @@ export function createRuntime(options: RuntimeOptions): Runtime {
     if (commands.has("desk.palette.cancel"))
       void commands.run("desk.palette.cancel").catch(() => {});
   });
-  defineSettingsCommands(hub);
-  commands.define("desk.commands.list", {
-    title: "List commands",
-    owner: "desk",
-    run: () =>
-      commands.list().map((command) => ({ ...command, keys: keys.keymap.keysFor(command.id) })),
-  });
 
   const showStatus = (text: string) => {
     notify.setBase(text);
@@ -243,7 +236,6 @@ export function createRuntime(options: RuntimeOptions): Runtime {
         reload: (id, src) => surfaces.reload(id, src),
         frame: (id) => surfaces.frame(id),
         show: (id, visible) => surfaces.show(id, visible),
-        run: (name, args, caller) => commands.run(name, args, { caller }),
         key: (id, key) => {
           shortcuts.focus(id);
           shortcuts.handle(key);
@@ -252,14 +244,16 @@ export function createRuntime(options: RuntimeOptions): Runtime {
       },
       options.plugins,
     );
-    hub.setDeliver((plugin, command, args) => host.request(plugin, command, args));
     pluginHost = host;
     plugins = {
       // A desk without plugin:manage still works; it just shows no plugins.
       ready: ready
         .then(() => host.start())
+        // The desk's built-ins are in the registry before profiles and the session run them.
+        .then(() => commands.settled())
         .then(() => profiles.start())
         .then(() => session.restore())
+        .then(() => commands.settled())
         .catch(() => {}),
       mounted: () => host.mounted(),
       command: (id, name, args) => host.command(id, name, args),
@@ -288,41 +282,12 @@ export function createRuntime(options: RuntimeOptions): Runtime {
         policy.dispose();
       }
       pluginHost?.stop();
+      commands.dispose();
       win.removeEventListener("keydown", onKey);
       for (const id of surfaces.ids()) surfaces.close(id);
       root.replaceChildren();
     },
   };
-}
-
-/**
- * Settings for plugins: a plugin reads and changes only its own keys (`<id>.*`), in the layers the
- * runtime keeps; the person (keys, the palette) reaches every key.
- */
-function defineSettingsCommands(hub: PolicyHub): void {
-  const { commands, settings } = hub;
-  const mine = (caller: string | undefined, key: string) =>
-    caller === undefined || key.startsWith(`${caller}.`);
-  commands.define("desk.settings.get", {
-    title: "Show settings",
-    keywords: ["settings", "preferences"],
-    owner: "desk",
-    run: (_args, { caller }) =>
-      Object.fromEntries(Object.entries(settings.all()).filter(([key]) => mine(caller, key))),
-  });
-  commands.define("desk.settings.set", {
-    title: "Change a setting until Desk quits",
-    keywords: ["settings", "preferences"],
-    owner: "desk",
-    run: (args, { caller }) => {
-      const { key, value } = (args ?? {}) as { key?: string; value?: unknown };
-      if (typeof key !== "string" || !mine(caller, key))
-        throw new Error(`${caller ?? "the person"} may not set ${key}`);
-      if (value === undefined) settings.reset(key);
-      else settings.set(key, value);
-      return settings.get(key);
-    },
-  });
 }
 
 function memoryStorage(): LayoutStorage {

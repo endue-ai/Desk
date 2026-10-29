@@ -108,7 +108,9 @@ des profils. Les commandes, réglages et thèmes commencent par l'id du plugin.
 ```
 
 Répondez à vos commandes avec `ctx.commands.on`, et lancez n'importe quelle commande du bureau avec
-`ctx.commands.run` :
+`ctx.commands.run`. Les deux passent par le registre de commandes du cœur (`cmd.*`) ; lancer une commande
+que vous ne fournissez pas demande une permission `cmd:invoke` qui couvre son id, par exemple
+`{ "permission": "cmd:invoke", "ids": ["desk.theme.*"] }` :
 
 ```js
 defineUiPlugin({

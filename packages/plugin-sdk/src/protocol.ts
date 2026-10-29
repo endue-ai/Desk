@@ -9,7 +9,7 @@ export interface KeyPress {
   shiftKey: boolean;
 }
 
-/** How a command went: its result, or why it failed. */
+/** How a request the desk sent went: its result, or why it failed. */
 export interface CommandOutcome {
   call: number;
   ok: boolean;
@@ -24,7 +24,6 @@ export type PluginMessage =
   | { type: "desk:state"; state: unknown }
   | { type: "desk:close" }
   | { type: "desk:visible"; visible: boolean }
-  | { type: "desk:run"; call: number; name: string; args?: unknown }
   | ({ type: "desk:reply" } & CommandOutcome)
   | { type: "desk:key"; key: KeyPress };
 
@@ -34,7 +33,6 @@ export type HostMessage =
   | { type: "desk:results"; results: Array<{ id: number; response: BridgeResponse }> }
   | { type: "desk:event"; event: BridgeEvent }
   | { type: "desk:command"; name: string; args?: unknown; call?: number }
-  | ({ type: "desk:ran" } & CommandOutcome)
   | { type: "desk:theme"; theme: ThemeState };
 
 /** The theme in force: its tokens as CSS custom properties, and what the person asked for. */
@@ -65,7 +63,6 @@ const HOST_TYPES = new Set([
   "desk:results",
   "desk:event",
   "desk:command",
-  "desk:ran",
   "desk:theme",
 ]);
 

@@ -708,6 +708,7 @@ pub enum BridgeRequest {
     CmdUnregister(CmdUnregisterRequest),
     CmdList(CmdListRequest),
     CmdInvoke(CmdInvokeRequest),
+    CmdAnswer(CmdAnswerRequest),
     SettingsGet(SettingsGetRequest),
     SettingsSet(SettingsSetRequest),
     SettingsList(SettingsListRequest),
@@ -793,6 +794,7 @@ pub enum BridgeEvent {
     BrainTurn(BrainTurnEvent),
     CmdChanged(CmdChangedEvent),
     CmdInvoked(CmdInvokedEvent),
+    CmdAnswered(CmdAnsweredEvent),
     SettingsChanged(SettingsChangedEvent),
     LogEntry(LogEntryEvent),
 }
@@ -807,6 +809,9 @@ pub struct CommandInfo {
     /// One or two sentences for people.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
+    /// More words the palette matches.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub keywords: Option<Vec<String>>,
     /// JSON Schema (2020-12) for the args of cmd.invoke; absent means the command takes none.
     #[serde(
         rename = "argsSchema",
@@ -837,6 +842,9 @@ pub struct CmdRegisterParams {
     pub title: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
+    /// More words the palette matches.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub keywords: Option<Vec<String>>,
     /// JSON Schema (2020-12) for the args of cmd.invoke.
     #[serde(
         rename = "argsSchema",
@@ -917,12 +925,57 @@ pub struct CmdInvokeParams {
     pub scope: CmdInvokePermission,
 }
 
-/// Result of cmd.invoke: the provider receives a cmd.invoked event with this id.
+/// Result of cmd.invoke: the provider receives a cmd.invoked event with this id, and its answer reaches the caller as cmd.answered.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct CmdInvokeResult {
     #[serde(rename = "invocationId")]
     pub invocation_id: String,
+}
+
+/// Answer one invocation of a command the caller provides: its result, or why it failed.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CmdAnswerRequest {
+    pub id: RequestId,
+    pub method: CmdAnswerRequestMethod,
+    pub params: CmdAnswerParams,
+}
+
+/// Parameters of cmd.answer: a result, or an error, not both.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CmdAnswerParams {
+    #[serde(rename = "invocationId")]
+    pub invocation_id: String,
+    /// What the command returns. Any JSON value.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub result: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub error: Option<CommandFailure>,
+}
+
+/// Result of cmd.answer.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CmdAnswerResult {}
+
+/// Why an invocation failed.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CommandFailure {
+    pub code: CommandFailureCode,
+    /// For people; never parse it.
+    pub message: String,
+}
+
+/// failed: the command ran and failed; cancelled: the person or the provider gave up (a pick dismissed, a provider that stopped).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum CommandFailureCode {
+    #[serde(rename = "failed")]
+    Failed,
+    #[serde(rename = "cancelled")]
+    Cancelled,
 }
 
 /// A command was registered, updated or unregistered. Sent to callers subscribed to cmd.changed.
@@ -971,6 +1024,30 @@ pub struct CmdInvokedData {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub args: Option<serde_json::Map<String, serde_json::Value>>,
     pub caller: CallerId,
+}
+
+/// A command's provider answered an invocation. Sent to the caller that invoked it.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CmdAnsweredEvent {
+    pub event: CmdAnsweredEventEvent,
+    pub data: CmdAnsweredData,
+}
+
+/// Payload of cmd.answered: the invocation, who invoked it, and the answer.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CmdAnsweredData {
+    #[serde(rename = "invocationId")]
+    pub invocation_id: String,
+    pub id: CommandId,
+    pub caller: CallerId,
+    pub ok: bool,
+    /// What the command returned, when ok. Any JSON value.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub result: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub error: Option<CommandFailure>,
 }
 
 /// Start receiving the named events about every caller.
@@ -2327,6 +2404,14 @@ pub enum CmdInvokeRequestMethod {
     CmdInvoke,
 }
 
+/// The `method` of [`CmdAnswerRequest`]: always `"cmd.answer"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum CmdAnswerRequestMethod {
+    #[default]
+    #[serde(rename = "cmd.answer")]
+    CmdAnswer,
+}
+
 /// The `event` of [`CmdChangedEvent`]: always `"cmd.changed"`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub enum CmdChangedEventEvent {
@@ -2341,6 +2426,14 @@ pub enum CmdInvokedEventEvent {
     #[default]
     #[serde(rename = "cmd.invoked")]
     CmdInvoked,
+}
+
+/// The `event` of [`CmdAnsweredEvent`]: always `"cmd.answered"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum CmdAnsweredEventEvent {
+    #[default]
+    #[serde(rename = "cmd.answered")]
+    CmdAnswered,
 }
 
 /// The `method` of [`EventsSubscribeRequest`]: always `"events.subscribe"`.

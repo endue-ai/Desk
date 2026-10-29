@@ -12,10 +12,12 @@ mechanisms the desk's default policies drive (ADR 0017). No 3D yet. Plain TypeSc
   their calls as their own caller, reloads one surface on `plugin.changed`, carries commands both ways
   and keys from frames, shares the theme, and routes `brain.turn` and `fs.changed` events only to the
   plugin that started them (ADR 0012, 0014).
-- Policies: `collect(plugins)` layers every enabled plugin's `contributes`; `Commands` (built-ins exist
-  while their policy plugin is on), layered `Settings`, `resolveKeymap`/`Keymap`, `decide` (display
-  rules), `resolveTheme`, `Notifications`, `Buffers`. `src/policies/*` applies one desk.* policy each:
-  theme, keys, notify, display, buffers, files, session, profiles.
+- Policies: `collect(plugins)` layers every enabled plugin's `contributes`; `Commands`, the desk's side of
+  the core's registry (built-ins registered as `desk` while their policy plugin is on, everything run
+  with `cmd.invoke`; the host registers manifest commands and routes `cmd.invoked`/`cmd.answered`);
+  layered `Settings`, `Keymap`, `decide` (display rules), `resolveTheme`, `Notifications`, `Buffers`.
+  `src/policies/*` applies one desk.* policy each: theme, keys, notify, display, buffers, files,
+  session, profiles. ADR 0017.
 - `ShortcutRouter`, `comboOf`, `canonical`, `formatCombo`; layout `place` (with a size), `move`, `remove`;
   clock `realClock`, `ManualClock`, `tween`; `SurfaceHost`; `applyTheme`; `desk.css`.
 

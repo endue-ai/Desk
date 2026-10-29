@@ -1,5 +1,6 @@
 // desk.palette: the command palette (M-x) and the place commands ask the person to pick one of many
-// (completing-read). It runs commands with ctx.commands.run, exactly as any plugin could.
+// (completing-read). It lists and runs the core's command registry (cmd.list, cmd.invoke) under its
+// cmd:invoke grant, exactly as any plugin could; its own commands come to it as cmd.invoked.
 import { CommandFailed, defineUiPlugin } from "@endue-ai/plugin-sdk";
 import { filter, remember } from "./match.js";
 
@@ -121,9 +122,13 @@ defineUiPlugin({
     });
 
     ctx.commands.on("desk.palette.open", async (args) => {
-      const settings = await ctx.commands.run("desk.settings.get").catch(() => ({}));
-      max = settings["desk.palette.history"] ?? max;
-      const commands = await ctx.commands.list();
+      const [commands, bindings, init] = await Promise.all([
+        ctx.commands.list(),
+        ctx.commands.run("desk.keys.list").catch(() => []),
+        ctx.bridge.call("init.get", {}).catch(() => ({ settings: {} })),
+      ]);
+      max = init.settings["desk.palette.history"] ?? max;
+      const keysOf = (id) => bindings.filter((b) => b.command === id).map((b) => b.key);
       show({
         kind: "commands",
         title: "Run a command",
@@ -131,7 +136,7 @@ defineUiPlugin({
         query: args?.query ?? "",
         entries: commands
           .filter((c) => !OWN.has(c.id))
-          .map((c) => ({ id: c.id, label: c.title, keywords: c.keywords, keys: c.keys })),
+          .map((c) => ({ id: c.id, label: c.title, keywords: c.keywords, keys: keysOf(c.id) })),
       });
     });
 
