@@ -51,6 +51,26 @@ build-app: build-sdk
     pnpm --filter @endue-ai/desk-app build
     cargo build -p desk-app
 
+# The release build the app e2e and the install smoke drive: target/release/endue-desk and
+# the Linux .deb in target/release/bundle/deb/ (Linux only)
+bundle-app: (_not-macos "bundle-app" "builds the Linux .deb only; the e2e workflow runs it on Linux")
+    pnpm --filter @endue-ai/desk-app tauri build --bundles deb
+
+# App e2e: WebdriverIO + tauri-driver on the bundled app (`just bundle-app` first), one app and
+# fresh HOME per spec file, under a display (`xvfb-run`); arguments pass to wdio. Linux (ADR 0006)
+test-app-e2e *args: (_not-macos "test-app-e2e" "tauri-driver does not run on macOS (ADR 0006); the e2e workflow runs it on Linux")
+    pnpm exec wdio run e2e/wdio.conf.ts {{args}}
+
+# Install smoke: build and install the .deb (apt, sudo), launch it with a temp HOME, wait 60 s for
+# the ready line, quit it with SIGTERM. Linux, under a display
+smoke: (_not-macos "smoke" "the install smoke covers the Linux .deb only; the e2e workflow runs it on Linux")
+    e2e/smoke/install-and-launch.sh
+
+# Refuse with one line and exit 2 on macOS, where the recipe's tools do not run
+[no-exit-message]
+_not-macos recipe reason:
+    @if [ "$(uname -s)" = Darwin ]; then echo "{{recipe}}: {{reason}}" >&2; exit 2; fi
+
 # Generate Rust and TypeScript types from specs/ (deterministic; CI checks for drift)
 codegen:
     node scripts/codegen.mjs
