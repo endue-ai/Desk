@@ -1,6 +1,6 @@
 # endue Desk 요구사항
 
-2026-10-29 · Team endue
+2026-10-30 · Team endue
 
 > 프로덕션 수준의 오픈소스 뼈대가 갖춰야 할 것을 층마다 번호를 붙여 적은 문서입니다. 구조는 `desk-structure.md` 가, 첫 실행은 `first-run-scenario.md` 가, 셸 UI 는 이슈 #21 이 맡습니다. 이 문서는 그 사이의 빈 곳, 곧 *무엇이 있어야 뼈대가 완성인가* 를 채웁니다. 요구사항 한 줄이 Task 이슈 하나의 요구사항 칸이 됩니다. 코드와 어긋나면 이 문서를 고치고, 되돌리기 어려운 갈림길은 ADR 로 남깁니다.
 
@@ -54,7 +54,7 @@ Emacs 에서 *작은 코어 + 모든 것은 커맨드 + 실행 중에 고친다*
 
 ## 요구사항
 
-표의 *현재* 는 `main` 기준(있음 · 일부 · 없음)이고, *단계* 는 아래 §단계의 번호입니다.
+표의 *현재* 는 `main` 의 `99ee07d`(2026-10-29) 기준(있음 · 일부 · 없음, 그 상태로 옮긴 PR 을 괄호에)이고, *단계* 는 아래 §단계의 번호입니다.
 
 ### Rust 코어 (CORE)
 
@@ -62,21 +62,21 @@ Emacs 에서 *작은 코어 + 모든 것은 커맨드 + 실행 중에 고친다*
 
 | ID | 요구사항 | 현재 | 단계 |
 | --- | --- | --- | --- |
-| CORE-01 | 브리지 v0 메서드를 전부 처리한다. `fs.write` · `fs.watch` · `proc.*` · `net.fetch` · `audio.capture.*` · `ui.*` 가 `unsupported` 가 아니다 | 일부 (22 중 10) | 1 |
+| CORE-01 | 브리지 v0 메서드를 전부 처리한다. `fs.write` · `fs.watch` · `proc.*` · `net.fetch` · `audio.capture.*` · `ui.*` 가 `unsupported` 가 아니다 | 일부 (37 중 18 이 통째로 `unsupported`: proc ×4 · `net.fetch` · `audio.capture` ×2 · `ui.surface` ×2 · `perm.list` · `perm.answer` · settings ×3 · log ×2 · events ×2. `perm.request` once · always 와 남의 grant `perm.revoke` 는 일부. #43 · #55) | 1 |
 | CORE-02 | grant 는 디스크에 남아 재시작 뒤 유지된다. 기간은 한 번 · 이번 세션 · 항상 중 하나. 호출자(런타임 · 플러그인 · 에이전트 · CLI)마다 따로 갖고, 사람이 언제든 목록을 보고 회수하며 `perm.changed` 로 알린다 | 일부 (메모리) | 1 |
-| CORE-03 | 프롬프트 정책: 같은 요청을 반복해 묻지 않는다. 광역 권한(임의 `proc` · `net *`)은 경고 문구를 붙인다. 에이전트가 낸 요청은 에이전트 이름과 이유를 보인다. 사람이 정한 승인 정책(항상 묻기 · 세션 · 자동)을 따른다 | 없음 | 1 |
-| CORE-04 | 커맨드 레지스트리: id(reverse-domain) · 설명 · 인자 JSON Schema · 제공자 · 가용 조건(`when`). 등록 · 조회 · 호출은 브리지 `cmd.*` 로. 클릭 · 키 · 팔레트 · Eris · 에이전트 · CLI 가 같은 경로로 부르고, 호출마다 호출자가 기록된다 | 없음 (런타임→플러그인 단방향만) | 1 |
+| CORE-03 | 프롬프트 정책: 같은 요청을 반복해 묻지 않는다. 광역 권한(임의 `proc` · `net *`)은 경고 문구를 붙인다. 에이전트가 낸 요청은 에이전트 이름과 이유를 보인다. 사람이 정한 승인 정책(항상 묻기 · 세션 · 자동)을 따른다 | 일부 (#69: 광역 권한 경고 문구, 호출자 · 이유 · 기간을 보이는 프롬프트 창. 코어의 반복 질문 막기 · 승인 정책은 없음) | 1 |
+| CORE-04 | 커맨드 레지스트리: id(reverse-domain) · 설명 · 인자 JSON Schema · 제공자 · 가용 조건(`when`). 등록 · 조회 · 호출은 브리지 `cmd.*` 로. 클릭 · 키 · 팔레트 · Eris · 에이전트 · CLI 가 같은 경로로 부르고, 호출마다 호출자가 기록된다 | 있음 (#55: 코어의 `cmd.*`, 인자 스키마 검사 · 호출자 기록. `when` 은 기록만 하고 아직 평가하지 않음) | 1 |
 | CORE-05 | 훅과 advice: 커맨드마다 before · after · around 훅과 override. 순서와 소유자가 보이고, 플러그인이 내려가면 같이 풀린다. 남의 커맨드에 걸려면 `cmd:advise` 권한 | 없음 | 2 |
 | CORE-06 | 이벤트 버스를 브리지로 연다. 코어 이벤트(perm · plugin · mode · agent · fs.changed …)를 구독 권한을 가진 호출자에게 호출자별로 거른다 | 일부 (내부 버스) | 1 |
 | CORE-07 | 저장소: 호출자별 네임스페이스(있음) + 용량 상한 · 키 목록 · 삭제 · 내보내기. 플러그인을 지울 때 데이터를 남길지 묻는다. 스키마 버전과 마이그레이션 훅 | 일부 | 1 |
 | CORE-08 | 플러그인 수명: 설치(폴더 · 마켓 · URL) · 갱신 · 제거 · 켜기 · 끄기 · 리비전 · 핫리로드 · 크래시 격리(하나가 죽어도 데스크는 산다) · 실패 이유 보고 | 일부 (폴더 · 핫리로드) | 1 · 2 |
 | CORE-09 | 안전 모드와 이등분: `--safe` 는 시스템 플러그인만 켠다. 연속 크래시 3회면 안전 모드를 제안한다. 플러그인 이등분으로 범인을 찾는다 | 없음 | 1 · 2 |
-| CORE-10 | 로직 플러그인 호스트: Wasmtime 컴포넌트. WIT `desk:host` 가 브리지 전체를 덮는다. 메모리 · CPU · 시간 상한, 핫리로드, 권한은 매니페스트에서 | 없음 (WIT 는 4개 인터페이스) | 2 |
+| CORE-10 | 로직 플러그인 호스트: Wasmtime 컴포넌트. WIT `desk:host` 가 브리지 전체를 덮는다. 메모리 · CPU · 시간 상한, 핫리로드, 권한은 매니페스트에서 | 일부 (#68: Wasmtime 컴포넌트 · 메모리 · 시간 상한 · 리로드 · 매니페스트 권한. WIT `desk:host` 는 fs · net · ui.notify · perm.query · store 만) | 2 |
 | CORE-11 | 도구 플러그인 감독: MCP 프로세스의 시작 · 헬스 · 재시작 · 중지, stdio 와 HTTP 전송, 도구 목록 캐시, 호출마다 권한 검사(폴더 · 호스트). VM 안 실행(ADR 0002)과 VM 없는 기기의 "격리 없음" 모드 | 없음 | 2 |
 | CORE-12 | VM: 부팅 · vsock · 허락한 폴더만 virtiofs · 유휴 정지 · 이미지 갱신 · 부팅 시간 예산 | 없음 | 2 · 4 |
 | CORE-13 | 두뇌 세션을 에이전트마다 하나씩 갖는다. 임대 · 전사 · 오프라인 재개는 세션마다 | 일부 (데스크에 하나) | 3 |
 | CORE-14 | 도구 라우팅: 두뇌의 `tool.call` 을 로컬 도구 플러그인 또는 커맨드로 보내고, 권한 검사와 승인을 거쳐 `tool.result` 로 돌려준다 | 일부 (echo 도구 내장) | 3 |
-| CORE-15 | 로컬 두뇌 어댑터(Ollama · llama.cpp)가 `specs/brain` 적합성을 통과한다. 두뇌는 설정에서 고르고 오프라인 대체가 된다 | 없음 | 3 |
+| CORE-15 | 로컬 두뇌 어댑터(Ollama · llama.cpp)가 `specs/brain` 적합성을 통과한다. 두뇌는 설정에서 고르고 오프라인 대체가 된다 | 일부 (#42: Ollama. llama.cpp · 설정에서 고르기 · 오프라인 대체는 없음) | 3 |
 | CORE-16 | 로그: 구조화(시각 · 호출자 · 레벨 · 메시지), 플러그인별 채널, 파일 순환, `log.*` 브리지로 읽기, 비밀 마스킹 | 없음 | 1 |
 | CORE-17 | 데이터 배치: OS 관례 디렉터리(config · data · cache · logs). 설정은 텍스트 파일(SY-02). 전체 내보내기 · 가져오기 | 일부 | 1 |
 | CORE-18 | `desk-core` 는 Tauri 없이 다른 셸(브라우저 스텁 · CLI · 테스트)에서 재사용된다 | 있음 | 1 |
@@ -87,9 +87,9 @@ Tauri 셸과 `desk-sys` 는 드라이버입니다. 검사는 하지 않고 코�
 
 | ID | 요구사항 | 현재 | 단계 |
 | --- | --- | --- | --- |
-| SYS-01 | fs: 원자적 write · notify 기반 watch(디바운스) · 심볼릭 링크와 권한 오류의 오류 코드 | 일부 (read · list) | 1 |
-| SYS-02 | proc: 셸 없는 spawn · PTY(portable-pty) · stdin/stdout/stderr 스트림 · 신호 · 환경 · cwd · 좀비 회수 | 없음 | 1 |
-| SYS-03 | net: 호스트 allowlist · 범위 밖 리다이렉트 금지 · 타임아웃 · OS 프록시 존중. 스트리밍 바디는 뒤에 | 없음 | 1 |
+| SYS-01 | fs: 원자적 write · notify 기반 watch(디바운스) · 심볼릭 링크와 권한 오류의 오류 코드 | 있음 (#63: 원자적 write · 디바운스 watch · 오류 코드. #55: 코어의 `fs.write` · `fs.watch`) | 1 |
+| SYS-02 | proc: 셸 없는 spawn · PTY(portable-pty) · stdin/stdout/stderr 스트림 · 신호 · 환경 · cwd · 좀비 회수 | 일부 (#63: desk-sys `proc`, 셸 없는 spawn · PTY · 스트림 · 신호 · 환경 · cwd · 회수. 코어는 아직 `unsupported`) | 1 |
+| SYS-03 | net: 호스트 allowlist · 범위 밖 리다이렉트 금지 · 타임아웃 · OS 프록시 존중. 스트리밍 바디는 뒤에 | 일부 (#63: desk-sys `net`, 호스트 allowlist · 리다이렉트 검사 · 타임아웃 · 프록시는 환경 변수. 코어는 아직 `unsupported`) | 1 |
 | SYS-04 | audio: cpal 캡처 · 장치 선택 · 온디바이스 호출어 · 오디오는 브리지로 나가지 않는다(v0) | 없음 | 3 |
 | SYS-05 | ui 원시: 네이티브 알림 · 파일/폴더 선택 창 · 외부 링크 열기 · 클립보드(1) · 다중 창 · 전체 화면 · 항상 위 · 트레이 · 전역 단축키(4) | 없음 | 1 · 4 |
 | SYS-06 | 토큰과 비밀은 OS 키체인(Keychain · Credential Manager · libsecret)에만 | 없음 | 3 |
@@ -104,14 +104,14 @@ Tauri 셸과 `desk-sys` 는 드라이버입니다. 검사는 하지 않고 코�
 
 | ID | 요구사항 | 현재 | 단계 |
 | --- | --- | --- | --- |
-| BR-01 | 네임스페이스 추가: `cmd`(register · unregister · list · invoke · advise) · `settings` · `log` · `dialog` · `clipboard` · `shell.open`(1), `mode` · `events`(1), `agent` · `sync`(3). 각각 권한 어휘를 같이 더한다 | 없음 | 1 · 3 |
-| BR-02 | 매니페스트 `contributes`: commands · keybindings(`when`) · settings(JSON Schema) · surfaces(있음) · menus · themes · tools · locales · walkthroughs | 일부 (surfaces) | 1 |
+| BR-01 | 네임스페이스 추가: `cmd`(register · unregister · list · invoke · advise) · `settings` · `log` · `dialog` · `clipboard` · `shell.open`(1), `mode` · `events`(1), `agent` · `sync`(3). 각각 권한 어휘를 같이 더한다 | 일부 (#43: `cmd` · `settings` · `log` · `events`. advise · `dialog` · `clipboard` · `shell.open` · `mode` · `agent` · `sync` 는 없음) | 1 · 3 |
+| BR-02 | 매니페스트 `contributes`: commands · keybindings(`when`) · settings(JSON Schema) · surfaces(있음) · menus · themes · tools · locales · walkthroughs | 일부 (#55: commands · keys · display · files · themes · settings · profiles, surfaces. menus · tools · locales · walkthroughs · 키의 `when` 은 없음) | 1 |
 | BR-03 | `activation`: onStartup · onCommand · onSurface · onEvent · onMode. 안 쓰는 플러그인은 뜨지 않는다 | 없음 (켜져 있으면 모두 마운트) | 1 |
 | BR-04 | `engines.desk` 범위와 `dependencies`(다른 플러그인 id@range). validate 가 둘 다 검사한다 | 없음 | 2 |
-| BR-05 | kind 추가: `theme`(토큰만) · `pack`(플러그인 묶음 + 설정 = 모드 템플릿) · `agent`(AG-01). `provides` 로 역할(`role:palette` · `role:settings-ui` …)을 선언하고 설정에서 역할의 제공자를 고른다 | 없음 | 2 |
-| BR-06 | 권한 어휘 확장: `cmd:invoke`(ids glob) · `cmd:advise` · `clipboard:read` · `clipboard:write` · `dialog` · `shell:open` · `settings:read`(남의 키) · `events:subscribe`(1), `agent:*`(3) | 없음 | 1 · 3 |
+| BR-05 | kind 추가: `theme`(토큰만) · `pack`(플러그인 묶음 + 설정 = 모드 템플릿) · `agent`(AG-01). `provides` 로 역할(`role:palette` · `role:settings-ui` …)을 선언하고 설정에서 역할의 제공자를 고른다 | 일부 (#55: kind `policy`. `theme` · `pack` · `agent` · `provides` 는 없음) | 2 |
+| BR-06 | 권한 어휘 확장: `cmd:invoke`(ids glob) · `cmd:advise` · `clipboard:read` · `clipboard:write` · `dialog` · `shell:open` · `settings:read`(남의 키) · `events:subscribe`(1), `agent:*`(3) | 일부 (#43: `cmd:invoke` · `cmd:advise` · `settings:read` · `log:read` · `events:subscribe` · `perm:manage`. clipboard · dialog · shell · agent 권한은 없음) | 1 · 3 |
 | BR-07 | 브라우저 어댑터 동등성: `browserStub` 이 모든 메서드를 알고, 브라우저 빌드가 Tauri 없이 데스크를 띄운다(메모리 fs · 가짜 proc) | 일부 | 1 |
-| BR-08 | 벡터와 codegen 유지. 메서드 · 이벤트 · 권한 · 매니페스트 레퍼런스를 명세에서 생성해 문서 사이트에 올린다 | 일부 (codegen) | 1 |
+| BR-08 | 벡터와 codegen 유지. 메서드 · 이벤트 · 권한 · 매니페스트 레퍼런스를 명세에서 생성해 문서 사이트에 올린다 | 일부 (codegen · #71: `just docs-api` 가 명세에서 레퍼런스를 생성. 사이트 게시는 없음) | 1 |
 | BR-09 | v1 경로: `deprecated` 표시 · 호환 표 · 제거 한 버전 전 경고(ADR 0004) | 없음 | 2 |
 
 ### 웹 런타임 (RT)
@@ -120,21 +120,21 @@ Tauri 셸과 `desk-sys` 는 드라이버입니다. 검사는 하지 않고 코�
 
 | ID | 요구사항 | 현재 | 단계 |
 | --- | --- | --- | --- |
-| RT-01 | 셸 UI(#21): 모드 · 데스크톱 1–4 · 에이전트/스페이스 바 · Eris · 상태 레일 · 아래 가장자리 · 모드가 못 옮기는 시스템 레이어 · ⌘N · 분할 · 키 재바인딩 | 진행 중 | 1 |
-| RT-02 | 표면 모델: pane 트리(분할 · 탭 · 플로팅 · 오버레이) · 포커스 링 · 표면 간 드래그 · 크기 제약 · 데스크톱 간 이동 · 이름 붙인 레이아웃 저장 · 복원 | 일부 (placement 6종 · 레이아웃 저장) | 1 |
-| RT-03 | 커맨드 팔레트: 모든 커맨드를 이름 · 설명 · 키로 검색, 최근 · 빈도 정렬, 인자 입력(completing-read), 플러그인이 공급자(파일 · 설정 · 플러그인 …)를 더한다 | 없음 | 1 |
-| RT-04 | 키맵 계층: 전역 < 모드 < 표면 < 플러그인-로컬. `when` 문맥식(포커스 표면 · 모드 · 플랫폼 · 설정) · 키 시퀀스(prefix) · 충돌 표시 · 사용자 바인딩은 텍스트 파일 | 일부 (표면→전역 두 단계) | 1 |
+| RT-01 | 셸 UI(#21): 모드 · 데스크톱 1–4 · 에이전트/스페이스 바 · Eris · 상태 레일 · 아래 가장자리 · 모드가 못 옮기는 시스템 레이어 · ⌘N · 분할 · 키 재바인딩 | 일부 (#70: 전부 런타임에 있고 `pnpm dev` 의 브라우저 스텁 위에서 돎. Tauri 앱은 아직 `createRuntime` 만 띄움) | 1 |
+| RT-02 | 표면 모델: pane 트리(분할 · 탭 · 플로팅 · 오버레이) · 포커스 링 · 표면 간 드래그 · 크기 제약 · 데스크톱 간 이동 · 이름 붙인 레이아웃 저장 · 복원 | 일부 (placement 6종 · 레이아웃 저장 · #55 desk.session 복원 · #70 칸 분할 · 셸의 떠 있는 창 · 데스크톱 1–4. 탭 · 표면 간 드래그는 없음) | 1 |
+| RT-03 | 커맨드 팔레트: 모든 커맨드를 이름 · 설명 · 키로 검색, 최근 · 빈도 정렬, 인자 입력(completing-read), 플러그인이 공급자(파일 · 설정 · 플러그인 …)를 더한다 | 일부 (#55 `desk.palette`: 이름 · 키 검색, 최근 실행 순, `desk.palette.pick`(completing-read). 플러그인 공급자는 없음) | 1 |
+| RT-04 | 키맵 계층: 전역 < 모드 < 표면 < 플러그인-로컬. `when` 문맥식(포커스 표면 · 모드 · 플랫폼 · 설정) · 키 시퀀스(prefix) · 충돌 표시 · 사용자 바인딩은 텍스트 파일 | 일부 (#55 `desk.keys`: 계층 · 프레임 안의 키 · #70 재바인딩 `desk.keys.bindings`. `when` · prefix · 텍스트 파일은 없음) | 1 |
 | RT-05 | 키 힌트: prefix 뒤 멈추면 다음 키 목록, 팔레트와 메뉴에 현재 키 표시 | 없음 | 2 |
 | RT-06 | describe: 키 · 커맨드 · 플러그인 · 권한 · 설정 아무거나 "이게 뭐야" — 문서 · 제공자 · 현재 바인딩 · 최근 호출 | 없음 | 2 |
-| RT-07 | 모드: 플러그인 집합 + 설정 + 레이아웃 + 키맵. 전환은 커맨드, 저장은 텍스트 파일, 기본값은 pack 에서 온다. 모드 안의 변경은 그 모드에만 남는다 | 없음 (빈 폴더) | 1 |
+| RT-07 | 모드: 플러그인 집합 + 설정 + 레이아웃 + 키맵. 전환은 커맨드, 저장은 텍스트 파일, 기본값은 pack 에서 온다. 모드 안의 변경은 그 모드에만 남는다 | 일부 (#55 `desk.profiles`: 플러그인 집합 + 설정, 전환은 커맨드 · #70 `desk.shell.mode` 레이아웃. 텍스트 파일 저장 · pack 은 없음) | 1 |
 | RT-08 | 설정 UI: 스키마에서 생성, 검색, 범위 표시, 즉시 적용, "파일로 열기" | 없음 | 1 |
-| RT-09 | 테마: 토큰 기반 밝음 · 어두움 · 고대비, 시스템 따라가기, 테마 플러그인, iframe 에 CSS 변수로 주입 | 일부 (토큰 6개) | 1 · 2 |
-| RT-10 | 알림 센터: `ui.notify` 수신 · 레벨 · 행동 버튼 · 기록 · 방해 금지 | 없음 | 1 |
+| RT-09 | 테마: 토큰 기반 밝음 · 어두움 · 고대비, 시스템 따라가기, 테마 플러그인, iframe 에 CSS 변수로 주입 | 있음 (#55 `desk.theme`: 밝음 · 어두움 · 고대비 · 시스템 따라가기 · 테마 기여 · 프레임에 `--desk-*`. #72 `tokens.css`) | 1 · 2 |
+| RT-10 | 알림 센터: `ui.notify` 수신 · 레벨 · 행동 버튼 · 기록 · 방해 금지 | 일부 (#55 `desk.notify`: 상태 줄 · 레벨 · 방해 금지 · 기록. 행동 버튼은 없음) | 1 |
 | RT-11 | 입력 라우팅: 키보드 · 포인터 · 음성 · 에이전트가 같은 커맨드 큐로. IME · 포커스 트랩 · 표면 간 탭 이동 | 일부 | 1 |
 | RT-12 | 접근성: 키보드만으로 전부, 스크린 리더(이름 · aria-live), 동작 줄이기, 글자 배율, 양쪽 테마 대비 테스트 | 일부 | 1 |
 | RT-13 | 국제화: 런타임과 시스템 플러그인 문자열 번들(en · ko · ja · zh · fr · de), 플러그인 `locales`, 날짜 · 숫자 로케일 | 없음 | 2 |
 | RT-14 | 플러그인 호스트: 활성화 이벤트 · 표면별 오류 경계(죽은 표면만 "다시 열기") · 메모리 압박 때 안 보이는 표면 내리기 · 메시지 묶음 | 일부 | 1 |
-| RT-15 | 오프라인: 두뇌 연결 상태가 레일에 보이고, 로컬 커맨드는 모두 그대로 동작한다 | 일부 (offline 문장) | 1 |
+| RT-15 | 오프라인: 두뇌 연결 상태가 레일에 보이고, 로컬 커맨드는 모두 그대로 동작한다 | 일부 (offline 문장 · #70 레일의 두뇌 상태, 브라우저 스텁 위) | 1 |
 | RT-16 | 성능 예산: 두 번째 실행 1.2초 · 입력→화면 16ms · 유휴 메모리 상한 · 표면 100개. 첫 릴리스 측정값을 기준으로 고정 | 일부 (opening 만) | 1 · 4 |
 | RT-17 | 3D 컴포지터(Three.js): 2D 와 같은 렌더 트리, WebGL 없으면 2D, 동작 줄이기 존중 | 없음 | 4 |
 | RT-18 | 다중 창: 표면을 OS 창으로 떼어 낸다 | 없음 | 4 |
@@ -148,33 +148,33 @@ Tauri 셸과 `desk-sys` 는 드라이버입니다. 검사는 하지 않고 코�
 | PKG-02 | `desk` CLI: `dev` · `plugin new` · `plugin validate` · `plugin pack` · `plugin publish` · `cmd list` · `cmd run` · `perm list` · `perm revoke` · `log tail` · `doctor` · `brain ping` · `state export` · `state import`. AI 와 스크립트의 손 | 일부 (validate) | 1 · 2 |
 | PKG-03 | 로컬 IPC: 실행 중 데스크와 CLI 사이 유닉스 소켓 / named pipe. 같은 사용자만, 봉투는 브리지 그대로, 권한은 CLI 호출자로 | 없음 | 1 |
 | PKG-04 | `@endue-ai/plugin-sdk`: UI(있음) + 로직(WIT 바인딩 · Rust/TS 템플릿) + 도구(MCP 매니페스트 헬퍼) + `commands.register` · `keybindings` · `settings` · `i18n.t` · `theme.tokens` + 테스트 하네스 확장 | 일부 | 1 · 2 |
-| PKG-05 | `@endue-ai/ui`: 토큰(있음) + CSS 시트 + 프레임워크 없는 웹 컴포넌트 소수(button · input · list · dialog · menu · toast). iframe 안에서 import map 으로 쓴다 | 일부 | 1 |
+| PKG-05 | `@endue-ai/ui`: 토큰(있음) + CSS 시트 + 프레임워크 없는 웹 컴포넌트 소수(button · input · list · dialog · menu · toast). iframe 안에서 import map 으로 쓴다 | 있음 (#72: `tokens.css` · desk-button · input · list · dialog · menu · toast, import map 으로) | 1 |
 | PKG-06 | `@endue-ai/bridge`: tauri · browser 어댑터(있음) + 소켓 어댑터, 메서드 메타(문서 · 권한) 노출 | 일부 | 1 |
-| PKG-07 | `@endue-ai/create-plugin`: `pnpm create @endue-ai/plugin` — ui · logic(rust · ts) · tool(ts · python) · theme · pack 템플릿, 테스트와 validate 포함 | 없음 | 2 |
+| PKG-07 | `@endue-ai/create-plugin`: `pnpm create @endue-ai/plugin` — ui · logic(rust · ts) · tool(ts · python) · theme · pack 템플릿, 테스트와 validate 포함 | 일부 (#34: ui 템플릿만) | 2 |
 | PKG-08 | `@endue-ai/runtime` 은 앱과 함께(ADR 0003) 배포되고, 브라우저 진입점을 따로 갖는다 | 일부 | 1 |
 
 ### 시스템 플러그인 (SYSP)
 
-데스크가 돌려면 역할마다 제공자가 하나 있어야 합니다. endue 가 싣는 기본 제공자가 아래 목록이고, 전부 커뮤니티 플러그인과 같은 형식이며 `provides` 역할(BR-05)로 갈아끼울 수 있습니다.
+데스크가 돌려면 역할마다 제공자가 하나 있어야 합니다. endue 가 싣는 기본 제공자가 아래 목록이고, 전부 커뮤니티 플러그인과 같은 형식이며 `provides` 역할(BR-05)로 갈아끼울 수 있습니다. 다만 지금 셸의 Eris · 에이전트 바 · 레일 · 아래 가장자리는 런타임 코드입니다(ADR 0026 · 0027 · 0028, 제안).
 
 | 플러그인 | 역할 | 기여 | 현재 | 단계 |
 | --- | --- | --- | --- | --- |
-| `eris` | 비서. 소울 텍스트 · 구체 · 대화 · 모든 커맨드 호출(AG-10) | `brain:converse` · 커맨드 `eris.*` | 있음 | 1 |
-| `agents`(옛 `sidebar`) | 왼쪽 바: 에이전트 · 스페이스 | `agent:*` · 표면 left | 일부 (플러그인 목록 토글) | 1 |
-| `rail`(옛 `toolbar`) | 오른쪽 상태 레일: 연결 · 두뇌 · 작업 | 표면 right | 없음 | 1 |
-| `dock` | 저장한 레이아웃 · 실행 중 작업 | 표면 bottom | 없음 | 1 |
-| `modes` | 모드 전환 · 저장 · pack 적용 (RT-07) | `mode.*` · 커맨드 `mode.*` | 없음 | 1 |
-| `onboarding` | 첫 실행 장면 1–10 · walkthrough | `audio:capture` · 표면 overlay | 일부 (장면 1–5) | 1 |
-| `palette` | 커맨드 팔레트 (RT-03) · 역할 `role:palette` | `cmd:invoke *` · 표면 overlay | 없음 | 1 |
+| `eris` | 비서. 소울 텍스트 · 구체 · 대화 · 모든 커맨드 호출(AG-10) | `brain:converse` · 커맨드 `eris.*` | 있음 (셸에도 따로 하나, #70 · ADR 0027) | 1 |
+| `agents`(옛 `sidebar`) | 왼쪽 바: 에이전트 · 스페이스 | `agent:*` · 표면 left | 일부 (`plugins/sidebar` 는 플러그인 목록 토글 · #70 셸의 에이전트 바, 런타임 코드 · ADR 0028) | 1 |
+| `rail`(옛 `toolbar`) | 오른쪽 상태 레일: 연결 · 두뇌 · 작업 | 표면 right | 일부 (#35 `plugins/toolbar` 의 서랍 · #70 셸의 레일, 런타임 코드 · ADR 0028) | 1 |
+| `dock` | 저장한 레이아웃 · 실행 중 작업 | 표면 bottom | 일부 (#35 `plugins/dock` 의 플러그인 타일 · #70 셸의 아래 가장자리, 런타임 코드 · ADR 0028) | 1 |
+| `modes` | 모드 전환 · 저장 · pack 적용 (RT-07) | `mode.*` · 커맨드 `mode.*` | 일부 (#55 `desk.profiles` · #70 `desk.shell.mode`. pack 적용은 없음) | 1 |
+| `onboarding` | 첫 실행 장면 1–10 · walkthrough | `audio:capture` · 표면 overlay | 일부 (#41: 장면 1–10. walkthrough 는 없음) | 1 |
+| `palette` | 커맨드 팔레트 (RT-03) · 역할 `role:palette` | `cmd:invoke *` · 표면 overlay | 일부 (#55 `desk.palette`. 역할 `role:palette` 은 없음) | 1 |
 | `settings` | 설정 UI (RT-08) · 역할 `role:settings-ui` | `settings:read` · 표면 center | 없음 | 1 |
-| `keybindings` | 키 편집 · 충돌 · 키 힌트 (RT-04 · 05) | 키맵 파일 쓰기 | 없음 | 1 · 2 |
+| `keybindings` | 키 편집 · 충돌 · 키 힌트 (RT-04 · 05) | 키맵 파일 쓰기 | 일부 (#55 `desk.keys` · #70 재바인딩 화면, 런타임 코드. 키 힌트 · 키맵 파일은 없음) | 1 · 2 |
 | `plugins` | 설치됨 · 마켓 · 업데이트 · 권한 보기 · 안전 모드 | `plugin:manage` · 마켓 | 없음 | 1 · 2 |
-| `permissions` | 모든 grant 목록 · 회수 · `perm.request` 의 사람 쪽 창 · 역할 `role:prompter` | `perm.*` | 없음 (프롬프터는 코어 트레이트) | 1 |
-| `notifications` | 알림 센터 (RT-10) · 역할 `role:notifier` | `ui.notify` 수신 | 없음 | 1 |
+| `permissions` | 모든 grant 목록 · 회수 · `perm.request` 의 사람 쪽 창 · 역할 `role:prompter` | `perm.*` | 일부 (#69 `endue.permissions`: grant 목록 · 회수 · 프롬프트 창. 코어는 `perm.list` · `perm.answer` 가 아직 `unsupported`) | 1 |
+| `notifications` | 알림 센터 (RT-10) · 역할 `role:notifier` | `ui.notify` 수신 | 일부 (#55 `desk.notify`: 상태 줄 · 레벨 · 방해 금지 · 기록. 역할 `role:notifier` 는 없음) | 1 |
 | `messages` | `*Messages*`: 로그 · 오류 · 최근 커맨드 | `log.*` | 없음 | 1 |
-| `theme-endue` | 기본 테마 밝음 · 어두움 | kind `theme` | 일부 (토큰) | 1 |
+| `theme-endue` | 기본 테마 밝음 · 어두움 | kind `theme` | 있음 (#55 `desk.theme`: 밝음 · 어두움 · 고대비. kind `theme` 대신 `contributes.themes`) | 1 |
 | `help` | describe (RT-06) · 단축키 치트시트 · walkthrough 목록 | `cmd.list` · 키맵 읽기 | 없음 | 2 |
-| `files` | 허락한 폴더 보기(dired): 열기 · 드래그 · 감시 | `fs:read` · `dialog` | 없음 | 2 |
+| `files` | 허락한 폴더 보기(dired): 열기 · 드래그 · 감시 | `fs:read` · `dialog` | 일부 (#55 `desk.files`: 여는 규칙 · 최근 · 저장 · 되돌리기 · 디스크 변경. 폴더 보기는 없음) | 2 |
 | `terminal` | PTY 표면(term) | `proc:spawn` pty | 없음 | 2 |
 | `scratch` | 빈 텍스트 표면, 저장 안 해도 남음 | store | 없음 | 2 |
 | `account` | endue ID 로그인 · 상태 · 동기화 (SYNC) | `sync.*` | 없음 | 3 |
@@ -215,7 +215,7 @@ Tauri 셸과 `desk-sys` 는 드라이버입니다. 검사는 하지 않고 코�
 | ID | 요구사항 | 현재 | 단계 |
 | --- | --- | --- | --- |
 | AG-01 | `specs/agent/v0`: id · 이름 · 색 · 목소리 · 두뇌(endue AI 또는 로컬) · 도구 목록 · 권한 · 표면. kind `agent` 플러그인이 같은 정의를 담는다 | 없음 | 3 |
-| AG-02 | 출처: 로그인 뒤 endue AI 의 에이전트 디렉터리가 데스크에 나타난다(#21 의 brain 명세 확장) + 로컬 정의(agent 플러그인) | 없음 | 3 |
+| AG-02 | 출처: 로그인 뒤 endue AI 의 에이전트 디렉터리가 데스크에 나타난다(#21 의 brain 명세 확장) + 로컬 정의(agent 플러그인) | 일부 (#70: `specs/brain/v0` 의 에이전트 디렉터리(ADR 0024) · 셸의 에이전트 바, 브라우저 스텁 위. 로컬 정의는 없음) | 3 |
 | AG-03 | 에이전트는 호출자다: 커맨드와 브리지를 자기 이름으로 부르고, grant 는 사람과 같은 엔진이 따로 관리하며, 프롬프트에 에이전트 이름이 보인다 | 없음 | 3 |
 | AG-04 | 승인: 되돌리기 어려운 도구(허락 폴더 밖 `fs.write` · `proc` · `net` 쓰기)는 승인 정책(항상 묻기 · 세션 · 자동)을 사용자가 에이전트마다 정한다 | 없음 | 3 |
 | AG-05 | 상태와 기록: idle · working · waiting · error 가 바에 보이고, 무엇을 불렀고 무엇을 바꿨는지가 활동 기록 표면에 남는다. 되돌릴 수 있는 것은 되돌린다 | 없음 | 3 |
@@ -240,8 +240,8 @@ Tauri 셸과 `desk-sys` 는 드라이버입니다. 검사는 하지 않고 코�
 
 | ID | 요구사항 | 현재 | 단계 |
 | --- | --- | --- | --- |
-| SET-01 | 코어 · 런타임 · 플러그인이 `contributes.settings` JSON Schema 로 선언: 기본값 · 설명 · enum · 범위(user · mode · machine) | 없음 | 1 |
-| SET-02 | 우선순위: 기본 < 사용자 < 모드 < 기기(machine 은 동기화되지 않음) | 없음 | 1 |
+| SET-01 | 코어 · 런타임 · 플러그인이 `contributes.settings` JSON Schema 로 선언: 기본값 · 설명 · enum · 범위(user · mode · machine) | 일부 (#55 `contributes.settings`: 종류 · 기본값 · 설명 · choices. 범위(user · mode · machine)는 없음) | 1 |
+| SET-02 | 우선순위: 기본 < 사용자 < 모드 < 기기(machine 은 동기화되지 않음) | 일부 (#55: 기본 < init.yaml < 프로필 < 실행 중 변경, 런타임 안에서. machine 은 없음) | 1 |
 | SET-03 | `settings.get` · `set` · `onChange` 브리지. 플러그인은 자기 키만 쓰고, 남의 키는 `settings:read` 로 읽는다 | 없음 | 1 |
 | SET-04 | 검증과 마이그레이션: 잘못된 값은 기본값 + 경고, 키 이름 변경은 `renamed` 로 자동 이전 | 없음 | 1 |
 
@@ -252,12 +252,12 @@ CI · 테스트 층 · 릴리스 파이프라인은 `desk-structure.md` 가 정�
 | ID | 요구사항 | 현재 | 단계 |
 | --- | --- | --- | --- |
 | DX-01 | `git clone` 뒤 `just dev` 까지 15분. `desk doctor` 가 빠진 의존성을 알려 준다 | 일부 | 1 |
-| DX-02 | `just dev-web`: Tauri 없이 브라우저에서 데스크를 띄운다(BR-07) | 없음 | 1 |
-| DX-03 | 문서 사이트에 명세에서 생성한 API 레퍼런스(BR-08)와 플러그인 가이드 로직 · 도구 편 | 일부 (UI 편) | 1 · 2 |
-| DX-04 | 예제 완성: hello-ui(있음) · hello-wasm · hello-mcp · hello-theme · hello-pack · brain-echo(있음). 전부 한 명령 | 일부 | 2 |
+| DX-02 | `just dev-web`: Tauri 없이 브라우저에서 데스크를 띄운다(BR-07) | 일부 (#70: `pnpm dev` 가 브라우저 스텁 위에 셸을 띄움. `just dev-web` 은 없음) | 1 |
+| DX-03 | 문서 사이트에 명세에서 생성한 API 레퍼런스(BR-08)와 플러그인 가이드 로직 · 도구 편 | 일부 (UI 편 · #71: 명세에서 생성한 API 레퍼런스, `just docs-api`) | 1 · 2 |
+| DX-04 | 예제 완성: hello-ui(있음) · hello-wasm · hello-mcp · hello-theme · hello-pack · brain-echo(있음). 전부 한 명령 | 일부 (hello-ui · brain-echo · #68 hello-wasm. hello-mcp · hello-theme · hello-pack 은 없음) | 2 |
 | DX-05 | 플러그인 테스트 하네스: 로직 · 도구 플러그인, 커맨드 · 키 · 설정 모의, 렌더 트리 스냅샷 | 일부 (UI 만) | 2 |
 | OPS-01 | 3 OS 서명 · 공증 · updater · 설치 스모크 | 일부 | 1 |
-| OPS-02 | 위협 모델 문서: 플러그인 · 에이전트 · 마켓 · 동기화의 경계와 가정. SECURITY.md 에서 링크 | 없음 | 1 |
+| OPS-02 | 위협 모델 문서: 플러그인 · 에이전트 · 마켓 · 동기화의 경계와 가정. SECURITY.md 에서 링크 | 있음 (#71: `docs/security/threat-model.md`, SECURITY.md 에서 링크) | 1 |
 | OPS-03 | SBOM 과 라이선스 검사(cargo deny 있음) + 플러그인 라이선스 필드 | 일부 | 2 |
 | OPS-04 | 텔레메트리 없음. 크래시는 opt-in(ADR 0007). `desk doctor --bundle` 진단 묶음은 사용자가 직접 보낸다 | 일부 | 1 |
 
@@ -274,28 +274,39 @@ CI · 테스트 층 · 릴리스 파이프라인은 `desk-structure.md` 가 정�
 
 ## 진행 상황
 
-위 표의 *현재* 열은 2026-10-28 `main` 기준입니다. 그 뒤로 움직인 요구사항과 그 이슈 · PR 입니다. 이슈가 닫히면 해당 행의 *현재* 를 고칩니다.
+위 표의 *현재* 열은 `main` 의 `99ee07d`(2026-10-29) 기준입니다. 이 문서를 처음 쓴 2026-10-28 뒤로 움직인 요구사항과 그 이슈 · PR, 그리고 진행 중인 작업입니다. 이슈가 닫히면 해당 행의 *현재* 를 고칩니다.
 
-| 요구사항 | 이슈 · PR | 상태 (2026-10-29) |
+| 요구사항 | 이슈 · PR | 상태 (2026-10-30) |
 | --- | --- | --- |
 | SY-02 · SY-04 (`init.yaml` 과 동기화 규칙) | #30 · #31 | 머지 |
-| BR-01 · BR-06 의 `cmd` · `settings` · `log` · `events` 명세, CORE-02 · CORE-03 의 `perm` 명세 | #36 · #43 | 머지 (구현은 `unsupported`) |
-| CORE-04 커맨드 레지스트리, BR-02 `contributes`, SET-01~04 계층 설정, BR-05 `policy` 종류 | #49 · #55 (정책 플러그인 스택) | 진행 중 |
-| SYSP `palette` · `keybindings` · `notifications` · `theme-endue` · `files`, RT-03 · RT-04 · RT-09 · RT-10 | #50 · #51 · #52 (`desk.palette` · `desk.keys` · `desk.notify` · `desk.theme` · `desk.files` · `desk.buffers` · `desk.display`) | 진행 중, #55 로 합쳐짐 |
-| RT-07 모드, SYSP `modes` | #54 (`desk.profiles`, 모드를 프로필로 이름 바꿈) | 진행 중, #55 로 합쳐짐 |
-| RT-02 표면 세션 복원 | #53 (`desk.session`) | 진행 중, #55 로 합쳐짐 |
-| RT-01 셸 UI | #21 · #22 | 진행 중, 정책 스택 위로 다시 맞춤 |
-| SYS-01 ~ SYS-03 | #37 · #63 | 진행 중 |
-| CORE-10 · DX-04 (hello-wasm) | #39 | 진행 중 |
-| CORE-15 | #38 · #42 | 머지 큐 |
-| PKG-07 (`create-plugin`, UI 템플릿) | #33 · #34 | 머지 큐 |
-| SYSP `rail` · `dock` | #32 · #35 | 진행 중 |
-| SYSP `onboarding` 장면 6–10 | #40 · #41 | 머지 큐 |
-| PKG-05 | 레인 L6 (이슈 생성 중) | 진행 중 |
-| OPS-02 · BR-08 | 레인 L7 (이슈 생성 중) | 진행 중 |
-| SYSP `permissions` | 레인 L4 (이슈 생성 중) | 진행 중 |
+| BR-01 · BR-06 의 `cmd` · `settings` · `log` · `events` 명세, CORE-02 · CORE-03 의 `perm` 명세 | #36 · #43 | 머지 (새로 더한 것 중 구현된 건 `cmd.*` 뿐, #55) |
+| CORE-04 커맨드 레지스트리, BR-02 `contributes`, SET-01~04 계층 설정, BR-05 `policy` 종류 | #49 · #55 (정책 플러그인 스택) | 머지 |
+| SYSP `palette` · `keybindings` · `notifications` · `theme-endue` · `files`, RT-03 · RT-04 · RT-09 · RT-10 | #50 · #51 · #52 (`desk.palette` · `desk.keys` · `desk.notify` · `desk.theme` · `desk.files` · `desk.buffers` · `desk.display`) | 머지 (#55 로 합쳐짐) |
+| RT-07 모드, SYSP `modes` | #54 (`desk.profiles`, 모드를 프로필로 이름 바꿈) | 머지 (#55 로 합쳐짐) |
+| RT-02 표면 세션 복원 | #53 (`desk.session`) | 머지 (#55 로 합쳐짐) |
+| RT-01 셸 UI | #21 · #70 | 머지 (정책 스택 위, ADR 0023 · 0025) |
+| SYS-01 ~ SYS-03 | #37 · #63 | 머지 (desk-sys. 코어의 `proc` · `net` 은 #77) |
+| CORE-10 · DX-04 (hello-wasm) | #39 · #68 | 머지 (ADR 0019) |
+| CORE-15 (로컬 두뇌, Ollama) | #38 · #42 | 머지 |
+| PKG-07 (`create-plugin`, UI 템플릿) | #33 · #34 | 머지 |
+| SYSP `rail` · `dock` | #32 · #35 | 머지 |
+| SYSP `onboarding` 장면 6–10 | #40 · #41 | 머지 |
+| PKG-05 (`tokens.css` 와 custom element) | #72 | 머지 (ADR 0022) |
+| OPS-02 · BR-08 | #71 | 머지 |
+| SYSP `permissions` | #69 | 머지 |
+| 이 문서 | #67 | 머지 |
+| CORE-02 · CORE-03 · CORE-06 (`perm.*` · `events.*` 를 코어가 처리, grant 가 재시작 뒤에도 남음) | #73 | 진행 중 |
+| RT-01 · AG-02 (Tauri 앱이 셸을 띄우고, 에이전트 디렉터리 · 두뇌 상태가 브리지로) | #74 | 진행 중 |
+| 약속 2 · SYSP `eris` · `agents` · `rail` · `dock` (ADR 0026 · 0027 · 0028 초안, 설계 문서를 `main` 에 맞춤) | #75 | 진행 중 |
+| CORE-10 · DX-04 (WIT 가 브리지 전체를 덮고, hello-wasm 이 커맨드를 제공) | #76 | 진행 중 |
+| CORE-01 · SYS-02 · SYS-03 (코어가 `proc.*` · `net.fetch` · `ui.surface.*` 를 처리) | #77 | 진행 중 |
+| BASE `notes` (파일을 여는 첫 플러그인) | #78 | 진행 중 |
+| PKG-04 · PKG-06 · BR-07 (SDK 와 브라우저 스텁이 브리지 v0 전부) | #79 | 진행 중 |
+| PKG-02 · PKG-03 (`desk` CLI 가 로컬 소켓으로 실행 중 데스크에) | #80 | 진행 중 |
+| SET-03 · CORE-16 (코어가 `settings.*` · `log.*` 를 처리) | #81 | 진행 중 |
+| OPS-01 (앱 e2e 와 설치 스모크) | #82 | 진행 중 |
 
-모드는 정책 스택(#54)에서 프로필로 이름이 바뀝니다. 이 문서의 RT-07 · SYSP `modes` 는 그 뒤로 프로필을 뜻합니다.
+모드는 정책 스택(#54, #55 로 머지)에서 프로필로 이름이 바뀌었습니다. 이 문서의 RT-07 · SYSP `modes` 는 프로필을 뜻합니다.
 
 ## 결정이 필요한 것
 
@@ -303,13 +314,13 @@ ADR 후보입니다. 추천은 적되 결정은 ADR 에서 합니다.
 
 | 질문 | 추천 | 왜 |
 | --- | --- | --- |
-| 커맨드 레지스트리의 자리 | 코어. 실행은 제공자(런타임 · 플러그인)에게 위임 | CLI 와 에이전트가 런타임 없이도 목록을 보고 부른다. Emacs 의 obarray 처럼 하나 |
-| `contributes` · `activation` 어휘 | VS Code 어휘를 빌리되 Desk 에 없는 것(languages · debuggers)은 빼고 `tools` · `agents` 를 더함 | 저자가 아는 모양. 문서와 도구를 옮겨 쓴다 |
-| 설정 파일 형식 | YAML. `init.yaml` 이 이미 YAML 이고(#31), 모드 · 키맵 · 레이아웃도 같은 형식 | 형식은 하나. 주석이 살고, 검증은 `specs/init` 방식(스키마 + 벡터) 그대로 |
+| 커맨드 레지스트리의 자리 | 코어. 실행은 제공자(런타임 · 플러그인)에게 위임. 결정됨 (#55, ADR 0017) | CLI 와 에이전트가 런타임 없이도 목록을 보고 부른다. Emacs 의 obarray 처럼 하나 |
+| `contributes` · `activation` 어휘 | VS Code 어휘를 빌리되 Desk 에 없는 것(languages · debuggers)은 빼고 `tools` · `agents` 를 더함. `contributes` 는 결정됨 (#55, ADR 0017), `activation` 은 아직 열림 | 저자가 아는 모양. 문서와 도구를 옮겨 쓴다 |
+| 설정 파일 형식 | YAML. `init.yaml` 이 이미 YAML 이고(#31), 모드 · 키맵 · 레이아웃도 같은 형식. 결정됨 (#31, ADR 0016) | 형식은 하나. 주석이 살고, 검증은 `specs/init` 방식(스키마 + 벡터) 그대로 |
 | 키맵 `when` 식 | VS Code 식 불리언 식(`focusedSurface == 'x' && !mode.locked`) | 익숙하고 파서가 작다 |
-| 시스템 플러그인 교체 | `provides` 역할 슬롯 + 설정에서 제공자 선택 | Emacs 의 `completing-read-function` 교체와 같다. 역할 하나에 제공자 하나 |
+| 시스템 플러그인 교체 | `provides` 역할 슬롯 + 설정에서 제공자 선택. 셸의 부분이 어디로 갈지는 ADR 0026 (제안) | Emacs 의 `completing-read-function` 교체와 같다. 역할 하나에 제공자 하나 |
 | 마켓 인덱스 호스팅 | 공개 git 레포 + 정적 호스팅 | 서버 없이 돌고, PR 이 곧 심사 기록이다 |
-| 로컬 IPC | 유닉스 소켓 / named pipe 위에 브리지 봉투 그대로 | 어댑터 하나 더 쓰면 끝. 권한 모델이 그대로 적용된다 |
+| 로컬 IPC | 유닉스 소켓 / named pipe 위에 브리지 봉투 그대로. #80 이 정함 (ADR 0030 예정) | 어댑터 하나 더 쓰면 끝. 권한 모델이 그대로 적용된다 |
 | 에이전트 정의의 자리 | `specs/agent/v0` 를 따로 두고 `specs/brain` 은 디렉터리 조회만 | 에이전트는 두뇌 없이도(로컬) 정의된다 |
 | 동기화 전송 | `specs/sync/v0` 로 계약을 긋고 endue AI 가 구현 | 계약만 공개하면 다른 백엔드도 가능하다 |
 | 로직 플러그인의 JS | QuickJS-in-Wasm 템플릿을 SDK 가 제공 | Wasm 생태계가 작아 JS 저자를 받아야 한다 |
