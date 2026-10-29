@@ -35,3 +35,9 @@ permission model (a plugin or agent reaching a primitive without permission is a
 
 Out of scope: third-party plugins, and services outside this repository (report those to endue at the
 same address).
+
+## Threat model
+
+[docs/security/threat-model.md](docs/security/threat-model.md) lists what Desk protects, the attackers it
+considers and, for each trust boundary, the mitigation on `main` today or the gap and the issue that
+closes it.
