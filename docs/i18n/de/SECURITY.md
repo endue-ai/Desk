@@ -36,3 +36,9 @@ ist das eine Sicherheitslücke).
 
 Nicht im Geltungsbereich: Plugins von Drittanbietern sowie Dienste außerhalb dieses Repositorys (diese
 bitte unter derselben Adresse an endue melden).
+
+## Bedrohungsmodell
+
+[docs/security/threat-model.md](../../security/threat-model.md) (auf Englisch) beschreibt, was Desk schützt,
+welche Angreifer berücksichtigt werden und für jede Vertrauensgrenze die Schutzmaßnahme, die heute auf
+`main` besteht, oder die verbleibende Lücke mit dem Issue, das sie schließt.
