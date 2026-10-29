@@ -2,7 +2,7 @@
 
 use std::io::{self, Write as _};
 use std::path::Path;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use std::thread;
 
 use portable_pty::{CommandBuilder, MasterPty, native_pty_system};
@@ -12,8 +12,9 @@ use super::{PtySize, Signal, SpawnOptions, Stream};
 use crate::{Error, ErrorCode};
 
 pub(super) struct Pty {
-    master: Mutex<Box<dyn MasterPty + Send>>,
-    writer: Mutex<Box<dyn io::Write + Send>>,
+    /// None once the program has exited on Windows, where the console is then closed.
+    master: Arc<Mutex<Option<Box<dyn MasterPty + Send>>>>,
+    writer: Arc<Mutex<Box<dyn io::Write + Send>>>,
     child: child::Handle,
 }
 
@@ -43,8 +44,8 @@ pub(super) fn spawn(
     let pid = child.process_id();
     let (handle, wait) = child::own(child)?;
     let pty = Pty {
-        master: Mutex::new(pair.master),
-        writer: Mutex::new(Box::new(io::sink())),
+        master: Arc::new(Mutex::new(None)),
+        writer: Arc::new(Mutex::new(Box::new(io::sink()))),
         child: handle,
     };
     // From here on, dropping `pty` on an error would leave the child running: kill it first.
@@ -52,23 +53,34 @@ pub(super) fn spawn(
         let _ = pty.kill(Signal::Kill);
         err
     };
-    let master = pty.master.lock().unwrap_or_else(|e| e.into_inner());
-    let reader = master
+    let reader = pair
+        .master
         .try_clone_reader()
         .map_err(|err| failed(pty_error(err, "read the PTY")))?;
-    let writer = master
+    let writer = pair
+        .master
         .take_writer()
         .map_err(|err| failed(pty_error(err, "write the PTY")))?;
-    drop(master);
+    *pty.master.lock().unwrap_or_else(|e| e.into_inner()) = Some(pair.master);
     *pty.writer.lock().unwrap_or_else(|e| e.into_inner()) = writer;
+    #[cfg(windows)]
+    let reader = super::conpty::Handshake::new(reader, Arc::clone(&pty.writer));
 
     let sender = events::start(1, on_event).map_err(|err| failed(Error::io(&err, "events")))?;
     events::read(reader, Stream::Pty, sender.clone())
         .map_err(|err| failed(Error::io(&err, "events")))?;
+    let console = Arc::clone(&pty.master);
     thread::Builder::new()
         .name("desk-proc-wait".to_owned())
         .spawn(move || {
-            let _ = sender.send(Message::Exited(wait()));
+            let exit = wait();
+            // A Windows console outlives its program: closing it sends the last frame and ends the
+            // output. On unix the output ends once the program and its children let go of the PTY.
+            if cfg!(windows) {
+                let master = console.lock().unwrap_or_else(|e| e.into_inner()).take();
+                drop(master);
+            }
+            let _ = sender.send(Message::Exited(exit));
         })
         .map_err(|err| failed(Error::io(&err, "events")))?;
     Ok((pid, pty))
@@ -83,8 +95,12 @@ impl Pty {
             .map_err(|err| Error::io(&err, "the PTY"))
     }
 
+    /// After the program has exited there is nothing left to resize; that is not an error.
     pub(super) fn resize(&self, size: PtySize) -> Result<(), Error> {
         let master = self.master.lock().unwrap_or_else(|e| e.into_inner());
+        let Some(master) = master.as_ref() else {
+            return Ok(());
+        };
         master
             .resize(pty_size(size))
             .map_err(|err| pty_error(err, "resize the PTY"))

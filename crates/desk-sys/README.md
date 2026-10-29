@@ -17,7 +17,8 @@ Layer: Tauri shell (see `docs/architecture.md`). Status: fs, proc and net; audio
 - `proc`: `spawn(&SpawnOptions { program, args, cwd, env, pty }, on_event) -> Process`, no shell,
   program looked up on PATH. `on_event` gets `Event::Output { stream, data }` (stdout, stderr or
   pty) and then `Event::Exit(Exit { code, signal })`, always last. `Process::write`, `resize` (PTY
-  only), `kill(Signal::{Term, Kill, Int, Hup})`; children are always reaped, and drop kills.
+  only), `kill(Signal::{Term, Kill, Int, Hup})`; children are always reaped, and drop kills. On
+  Windows the PTY answers ConPTY's startup cursor query (`ESC[6n`) and closes the console on exit.
 - `net`: `fetch(&Request { url, method, headers, body, timeout, allowed_hosts }) -> Response
   { status, headers, body }` over rustls with the OS trust store. Every URL, redirects included,
   must match `allowed_hosts` (`host_allowed`) before it is connected to, or the call is

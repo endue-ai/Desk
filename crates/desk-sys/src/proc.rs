@@ -7,6 +7,8 @@ use std::path::{Path, PathBuf};
 
 use crate::{Error, ErrorCode};
 
+#[cfg(any(windows, test))]
+mod conpty;
 mod events;
 mod pipe;
 mod program;
