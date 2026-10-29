@@ -7,3 +7,5 @@ pub use error::{Error, ErrorCode};
 
 #[cfg(feature = "fs")]
 pub mod fs;
+#[cfg(feature = "proc")]
+pub mod proc;

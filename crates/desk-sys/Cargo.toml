@@ -15,7 +15,7 @@ publish.workspace = true
 ## File primitives: read, list, atomic write and watch.
 fs = ["dep:notify"]
 ## Processes: spawn without a shell, in pipes or a PTY, write, resize, signals.
-proc = ["dep:portable-pty", "dep:shared_child", "dep:nix"]
+proc = ["dep:portable-pty", "dep:shared_child", "dep:libc"]
 ## HTTP(S) fetch over rustls, with a host allowlist checked on every redirect.
 net = ["dep:ureq", "dep:url"]
 
@@ -23,12 +23,12 @@ net = ["dep:ureq", "dep:url"]
 desk-bridge.workspace = true
 notify = { workspace = true, optional = true }
 portable-pty = { version = "0.9", optional = true }
-shared_child = { version = "1.1", optional = true }
+shared_child = { version = "1.1", optional = true, default-features = false }
 ureq = { version = "3.1", optional = true, default-features = false, features = ["rustls", "platform-verifier"] }
 url = { version = "2.5", optional = true }
 
 [target.'cfg(unix)'.dependencies]
-nix = { version = "0.28", optional = true, default-features = false, features = ["signal"] }
+libc = { version = "0.2", optional = true }
 
 [[test]]
 name = "fs"
