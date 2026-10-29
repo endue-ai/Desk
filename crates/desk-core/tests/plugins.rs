@@ -59,7 +59,10 @@ fn a_valid_plugin_is_installed_and_listed() {
     assert_eq!(info.status, PluginStatus::Ready);
     assert_eq!(info.id, "example.hello");
     assert!(info.enabled, "new plugins start enabled");
-    assert_eq!(info.manifest.unwrap().entry, "ui/index.html");
+    assert_eq!(
+        info.manifest.unwrap().entry.as_deref(),
+        Some("ui/index.html")
+    );
     assert_eq!(registry.list().len(), 1);
 }
 

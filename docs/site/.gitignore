@@ -1,0 +1,2 @@
+# The API reference, rendered from specs/ by `just docs-api` when the site builds (README.md).
+/src/content/docs/reference/api/

@@ -73,7 +73,7 @@ fn copy(remote: &MockRemote) -> String {
 #[test]
 fn sync_stays_off_until_init_yaml_turns_it_on() {
     let remote = MockRemote::new();
-    let desk = Desk::new("off", &remote, "mode: focus\n");
+    let desk = Desk::new("off", &remote, "profile: focus\n");
     assert_eq!(desk.sync(), Err(SyncError::Off));
     assert_eq!(remote.copy(), None);
 
@@ -82,14 +82,14 @@ fn sync_stays_off_until_init_yaml_turns_it_on() {
     });
     assert_eq!(no_remote.sync_init(), Err(SyncError::Off));
 
-    desk.edit(&format!("mode: focus\n{ON}"));
+    desk.edit(&format!("profile: focus\n{ON}"));
     assert_eq!(desk.sync(), Ok(SyncOutcome::Pushed { revision: 1 }));
 }
 
 #[test]
 fn a_new_desk_takes_the_setup_another_desk_pushed() {
     let remote = MockRemote::new();
-    let first = Desk::new("first", &remote, &format!("mode: focus\n{ON}"));
+    let first = Desk::new("first", &remote, &format!("profile: focus\n{ON}"));
     assert_eq!(first.sync(), Ok(SyncOutcome::Pushed { revision: 1 }));
     assert_eq!(copy(&remote), first.text());
 
@@ -97,7 +97,7 @@ fn a_new_desk_takes_the_setup_another_desk_pushed() {
     assert_eq!(second.sync(), Ok(SyncOutcome::Pulled { revision: 1 }));
     assert_eq!(second.text(), first.text());
     assert_eq!(
-        second.core.init().mode,
+        second.core.init().profile,
         "focus",
         "the pulled setup is in force"
     );
@@ -109,27 +109,27 @@ fn a_new_desk_takes_the_setup_another_desk_pushed() {
 #[test]
 fn an_edit_on_one_desk_reaches_the_other() {
     let remote = MockRemote::new();
-    let first = Desk::new("edit-a", &remote, &format!("mode: focus\n{ON}"));
+    let first = Desk::new("edit-a", &remote, &format!("profile: focus\n{ON}"));
     first.sync().unwrap();
     let second = Desk::new("edit-b", &remote, ON);
     second.sync().unwrap();
 
-    first.edit(&format!("mode: write\n{ON}"));
+    first.edit(&format!("profile: write\n{ON}"));
     assert_eq!(first.sync(), Ok(SyncOutcome::Pushed { revision: 2 }));
     assert_eq!(second.sync(), Ok(SyncOutcome::Pulled { revision: 2 }));
-    assert_eq!(second.core.init().mode, "write");
+    assert_eq!(second.core.init().profile, "write");
 }
 
 #[test]
 fn edits_on_both_desks_conflict_and_neither_is_lost() {
     let remote = MockRemote::new();
-    let first = Desk::new("both-a", &remote, &format!("mode: focus\n{ON}"));
+    let first = Desk::new("both-a", &remote, &format!("profile: focus\n{ON}"));
     first.sync().unwrap();
     let second = Desk::new("both-b", &remote, ON);
     second.sync().unwrap();
 
-    let theirs = format!("mode: write\n{ON}");
-    let mine = format!("mode: read\n{ON}");
+    let theirs = format!("profile: write\n{ON}");
+    let mine = format!("profile: read\n{ON}");
     first.edit(&theirs);
     first.sync().unwrap();
     second.edit(&mine);
@@ -152,27 +152,27 @@ fn edits_on_both_desks_conflict_and_neither_is_lost() {
 #[test]
 fn a_conflict_can_keep_endues_copy() {
     let remote = MockRemote::new();
-    let first = Desk::new("keep-a", &remote, &format!("mode: focus\n{ON}"));
+    let first = Desk::new("keep-a", &remote, &format!("profile: focus\n{ON}"));
     first.sync().unwrap();
-    let second = Desk::new("keep-b", &remote, &format!("mode: read\n{ON}"));
+    let second = Desk::new("keep-b", &remote, &format!("profile: read\n{ON}"));
     assert_eq!(second.sync(), Ok(SyncOutcome::Conflict { revision: 1 }));
     assert_eq!(
         second.core.resolve_init(Keep::Remote),
         Ok(SyncOutcome::Pulled { revision: 1 })
     );
     assert_eq!(second.text(), first.text());
-    assert_eq!(second.core.init().mode, "focus");
+    assert_eq!(second.core.init().profile, "focus");
 }
 
 #[test]
 fn offline_changes_nothing_and_the_next_sync_catches_up() {
     let remote = MockRemote::new();
-    let desk = Desk::new("offline", &remote, &format!("mode: focus\n{ON}"));
+    let desk = Desk::new("offline", &remote, &format!("profile: focus\n{ON}"));
     desk.sync().unwrap();
     remote.set_offline(true);
-    desk.edit(&format!("mode: write\n{ON}"));
+    desk.edit(&format!("profile: write\n{ON}"));
     assert!(matches!(desk.sync(), Err(SyncError::Unreachable(_))));
-    assert_eq!(copy(&remote), format!("mode: focus\n{ON}"));
+    assert_eq!(copy(&remote), format!("profile: focus\n{ON}"));
 
     remote.set_offline(false);
     assert_eq!(desk.sync(), Ok(SyncOutcome::Pushed { revision: 2 }));
@@ -181,27 +181,27 @@ fn offline_changes_nothing_and_the_next_sync_catches_up() {
 #[test]
 fn a_broken_file_is_not_pushed_and_a_broken_copy_is_not_pulled() {
     let remote = MockRemote::new();
-    let desk = Desk::new("broken", &remote, &format!("mode: focus\n{ON}"));
+    let desk = Desk::new("broken", &remote, &format!("profile: focus\n{ON}"));
     desk.sync().unwrap();
 
-    desk.edit(&format!("mode: [\n{ON}"));
+    desk.edit(&format!("profile: [\n{ON}"));
     assert!(matches!(desk.sync(), Err(SyncError::InvalidLocal(_))));
     assert_eq!(remote.copy().unwrap().revision, 1);
 
-    desk.edit(&format!("mode: focus\n{ON}"));
+    desk.edit(&format!("profile: focus\n{ON}"));
     remote.push(Some(1), "plugins: 3\n").unwrap();
     assert!(matches!(desk.sync(), Err(SyncError::InvalidRemote(_))));
-    assert_eq!(desk.text(), format!("mode: focus\n{ON}"));
+    assert_eq!(desk.text(), format!("profile: focus\n{ON}"));
 }
 
 #[test]
 fn the_last_agreed_version_survives_a_restart() {
     let remote = MockRemote::new();
-    let first = Desk::new("restart-a", &remote, &format!("mode: focus\n{ON}"));
+    let first = Desk::new("restart-a", &remote, &format!("profile: focus\n{ON}"));
     first.sync().unwrap();
     let second = Desk::new("restart-b", &remote, ON);
     second.sync().unwrap();
-    second.edit(&format!("mode: write\n{ON}"));
+    second.edit(&format!("profile: write\n{ON}"));
     second.sync().unwrap();
 
     let restarted = Desk::open(&first.dir, &remote);

@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>@endue-ai/ui demo</title>
+    <!-- Build first (pnpm --filter @endue-ai/ui build), then open this file in a browser. Classic
+         scripts, because browsers refuse module scripts over file://. -->
+    <link rel="stylesheet" href="../dist/tokens.css" />
+    <link rel="stylesheet" href="./demo.css" />
+    <script src="../dist/ui.iife.js"></script>
+    <script src="./demo.js" defer></script>
+  </head>
+  <body>
+    <main>
+      <h1>@endue-ai/ui</h1>
+      <p class="muted">
+        Six elements that read only the <code>--desk-*</code> custom properties from
+        <code>tokens.css</code>. Try them with the keyboard: Tab, the arrows, Enter, Space, Escape.
+      </p>
+      <p id="missing" hidden>
+        <code>dist/</code> is missing. Run <code>pnpm --filter @endue-ai/ui build</code>, then reload.
+      </p>
+
+      <section aria-labelledby="h-button">
+        <h2 id="h-button">desk-button</h2>
+        <div class="row">
+          <desk-button variant="primary" id="save">Save</desk-button>
+          <desk-button>Cancel</desk-button>
+          <desk-button disabled>Disabled</desk-button>
+        </div>
+      </section>
+
+      <section aria-labelledby="h-input">
+        <h2 id="h-input">desk-input</h2>
+        <div class="row">
+          <desk-input label="File name" placeholder="Untitled"></desk-input>
+          <desk-input label="Search" type="search" placeholder="Files, commands"></desk-input>
+          <desk-input label="Locked" value="read only" disabled></desk-input>
+        </div>
+      </section>
+
+      <section aria-labelledby="h-list">
+        <h2 id="h-list">desk-list</h2>
+        <desk-list label="Recent files" id="files">
+          <div>notes.md</div>
+          <div>plan.md</div>
+          <div>budget.csv</div>
+        </desk-list>
+        <p class="muted" id="picked">Nothing selected.</p>
+      </section>
+
+      <section aria-labelledby="h-menu">
+        <h2 id="h-menu">desk-menu</h2>
+        <desk-button id="more">File actions</desk-button>
+        <desk-menu label="File actions" id="menu">
+          <div>Rename</div>
+          <div>Duplicate</div>
+          <div role="separator"></div>
+          <div>Delete</div>
+        </desk-menu>
+      </section>
+
+      <section aria-labelledby="h-dialog">
+        <h2 id="h-dialog">desk-dialog</h2>
+        <desk-button id="open-dialog">Rename…</desk-button>
+        <desk-dialog label="Rename the file" id="dialog">
+          <h3>Rename the file</h3>
+          <desk-input label="New name" id="new-name"></desk-input>
+          <div class="actions">
+            <desk-button id="dialog-cancel">Cancel</desk-button>
+            <desk-button variant="primary" id="dialog-ok">Rename</desk-button>
+          </div>
+        </desk-dialog>
+      </section>
+
+      <section aria-labelledby="h-toast">
+        <h2 id="h-toast">desk-toast</h2>
+        <div class="row">
+          <desk-button id="toast-info">Show a message</desk-button>
+          <desk-button id="toast-error">Show an error</desk-button>
+        </div>
+        <desk-toast id="toast"></desk-toast>
+      </section>
+
+      <section aria-labelledby="h-theme">
+        <h2 id="h-theme">a theme</h2>
+        <p class="muted">A theme only redefines the custom properties; the elements follow.</p>
+        <desk-button id="theme">Swap the accent</desk-button>
+      </section>
+    </main>
+  </body>
+</html>

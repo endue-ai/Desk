@@ -1,0 +1,12 @@
+{
+  "target": "PluginContributes",
+  "description": "setting kinds are JSON types",
+  "instance": {
+    "settings": {
+      "desk.notify.dnd": {
+        "kind": "flag",
+        "default": false
+      }
+    }
+  }
+}

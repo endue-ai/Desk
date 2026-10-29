@@ -1,0 +1,23 @@
+{
+  "target": "PluginManifest",
+  "description": "a policy plugin: data only, no entry",
+  "instance": {
+    "id": "desk.keys",
+    "name": "Keys",
+    "version": "0.1.0",
+    "kind": "policy",
+    "description": "The default keymap.",
+    "contributes": {
+      "keys": [
+        {
+          "key": "Mod+K",
+          "command": "desk.palette.open"
+        },
+        {
+          "key": "Escape",
+          "command": "desk.cancel.run"
+        }
+      ]
+    }
+  }
+}

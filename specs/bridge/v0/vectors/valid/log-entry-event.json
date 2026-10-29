@@ -1,0 +1,16 @@
+{
+  "target": "BridgeEvent",
+  "description": "a new log entry from desk-core",
+  "instance": {
+    "event": "log.entry",
+    "data": {
+      "at": "2026-10-29T09:00:00Z",
+      "channel": "core",
+      "level": "error",
+      "message": "The plugin endue.dock failed to load.",
+      "fields": {
+        "plugin": "endue.dock"
+      }
+    }
+  }
+}

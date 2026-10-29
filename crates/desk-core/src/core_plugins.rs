@@ -100,6 +100,8 @@ impl Core {
         let change = if params.enabled {
             PluginChange::Enabled
         } else {
+            // A plugin that stops provides no commands.
+            self.drop_provider(&info.id);
             PluginChange::Disabled
         };
         self.plugin_changed(&info.id, change, info.revision);

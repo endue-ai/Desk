@@ -638,6 +638,12 @@ dependencies = [
 [[package]]
 name = "desk-brain-local"
 version = "0.0.0"
+dependencies = [
+ "desk-brain",
+ "jsonschema",
+ "serde",
+ "serde_json",
+]
 
 [[package]]
 name = "desk-bridge"

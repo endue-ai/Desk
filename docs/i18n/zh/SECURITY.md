@@ -31,3 +31,7 @@ Desk 尚处于 1.0 之前。只有各渠道（stable、beta、canary）的最新
 范围内：桌面应用、Rust crate、TypeScript 包、内置插件，以及桥接层权限模型（插件或智能体未经授权访问原语即属于漏洞）。
 
 范围外：第三方插件，以及本仓库之外的服务（这些问题请发送到同一地址，报告给 endue）。
+
+## 威胁模型
+
+[docs/security/threat-model.md](../../security/threat-model.md)（英文）列出了 Desk 保护的资产、考虑的攻击者，以及每个信任边界上当前 `main` 已有的防护措施，或尚存的缺口和负责解决它的 issue。

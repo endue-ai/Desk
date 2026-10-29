@@ -32,6 +32,8 @@ like any other failed `ci` run. Ask a person to re-add the PR to the queue; neve
 ## Rules
 
 - Stay inside the issue's Scope.
+- Reproduce e2e failures with `just test-e2e [playwright args]` only; on macOS it runs the same Linux
+  WebKit as the `runtime-e2e` job. Never run Playwright directly (ADR 0018).
 - Fix causes, never symptoms: do not skip, delete, retry-loop or loosen tests, lints or gates. A flaky
   test is reported (label `quarantine` plus an issue), not silenced.
 - If the failure is outside the PR (runner outage, a broken main), say so and stop; it does not count

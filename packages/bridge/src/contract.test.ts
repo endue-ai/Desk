@@ -91,7 +91,7 @@ describe("generated types agree with the schemas", () => {
 
   it("a typed init document is valid", () => {
     const init = {
-      mode: "focus",
+      profile: "focus",
       plugins: { disabled: ["endue.sidebar"] },
       settings: { "eris.voice": true },
       sync: { enabled: true },

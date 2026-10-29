@@ -15,15 +15,15 @@
           "minimum": 0,
           "maximum": 0
         },
-        "mode": { "$ref": "#/$defs/InitMode" },
+        "profile": { "$ref": "#/$defs/InitProfile" },
         "plugins": { "$ref": "#/$defs/InitPlugins" },
         "settings": { "$ref": "#/$defs/InitSettings" },
         "sync": { "$ref": "#/$defs/InitSync" }
       },
       "additionalProperties": false
     },
-    "InitMode": {
-      "description": "The mode to start in: a set of plugins plus their settings. Default \"default\".",
+    "InitProfile": {
+      "description": "The profile to start in: a set of plugins plus their settings (ADR 0017). Default \"default\".",
       "type": "string",
       "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$"
     },

@@ -4,6 +4,7 @@ import type {
   BridgeMethod,
   BridgeRequest,
   BridgeResponse,
+  ErrorCode,
   Permission,
 } from "./generated";
 
@@ -42,9 +43,24 @@ export function tauriAdapter(invoke: Invoke, listen?: Listen): BridgeAdapter {
   };
 }
 
+/** Stub answers by method. `caller` is the plugin a call is made for (undefined: the runtime). */
 export type StubHandlers = {
-  [M in BridgeMethod]?: (params: ParamsOf<M>) => ResultOf<M> | Promise<ResultOf<M>>;
+  [M in BridgeMethod]?: (
+    params: ParamsOf<M>,
+    caller: string | undefined,
+  ) => ResultOf<M> | Promise<ResultOf<M>>;
 };
+
+/** Throw this from a stub handler to answer with a specific error code, as the core would. */
+export class StubError extends Error {
+  readonly code: ErrorCode;
+
+  constructor(code: ErrorCode, message: string) {
+    super(message);
+    this.name = "StubError";
+    this.code = code;
+  }
+}
 
 /** A stub adapter: configured methods answer, everything else is denied as the core would. */
 export interface BrowserStub extends BridgeAdapter {
@@ -75,7 +91,7 @@ export function browserStub(handlers: StubHandlers): BrowserStub {
       calls.push(request);
       log.push({ caller, request });
       const handler = handlers[request.method] as
-        | ((params: unknown) => unknown | Promise<unknown>)
+        | ((params: unknown, caller: string | undefined) => unknown | Promise<unknown>)
         | undefined;
       if (!handler) {
         const scope = (request.params as { scope?: Permission }).scope;
@@ -90,13 +106,13 @@ export function browserStub(handlers: StubHandlers): BrowserStub {
         };
       }
       try {
-        return { id: request.id, ok: true, result: await handler(request.params) };
+        return { id: request.id, ok: true, result: await handler(request.params, caller) };
       } catch (error) {
         return {
           id: request.id,
           ok: false,
           error: {
-            code: "internal",
+            code: error instanceof StubError ? error.code : "internal",
             message: error instanceof Error ? error.message : String(error),
           },
         };

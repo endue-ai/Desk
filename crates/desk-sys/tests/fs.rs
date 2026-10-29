@@ -319,3 +319,22 @@ fn watch_changes_reports_each_event_with_its_kind() {
     }
     assert!(created && removed, "created: {created}, removed: {removed}");
 }
+
+#[test]
+fn write_replaces_a_file_and_creates_folders_when_asked() {
+    let dir = temp_dir();
+    assert_eq!(
+        desk_sys::fs::write(&dir.join("b.txt"), b"bye", false).unwrap(),
+        3
+    );
+    assert_eq!(read(&dir.join("b.txt")).unwrap(), b"bye");
+    let nested = dir.join("new/deeper/c.txt");
+    assert_eq!(
+        desk_sys::fs::write(&nested, b"c", false)
+            .unwrap_err()
+            .kind(),
+        ErrorKind::NotFound
+    );
+    desk_sys::fs::write(&nested, b"c", true).unwrap();
+    assert_eq!(read(&nested).unwrap(), b"c");
+}
