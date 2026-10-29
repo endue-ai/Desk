@@ -19,11 +19,12 @@ Desk는 하나의 앱으로 만든 하나의 OS입니다. Tauri 셸과 작은 Ru
  │ Plugins      UI (iframe) · logic (Wasm) · tools (MCP, in a VM) │  instant
  ├────────────────────────────────────────────────────────────────┤
  │ Web runtime  compositor (3D/2D) · surfaces · input · layout    │  restart
+ │              · UI plugin host · desk shell (until ADR 0026)    │
  ├────────────────────────────────────────────────────────────────┤
- │ Desk bridge  specs/bridge → TS client · Rust traits            │  rebuild
+ │ Desk bridge  specs/bridge → TS client · Rust types             │  rebuild
  ├────────────────────────────────────────────────────────────────┤
- │ Rust core    permissions · event bus · storage · plugin host   │  rebuild
- │              · VM · brain clients                              │
+ │ Rust core    permissions · event bus · storage                 │  rebuild
+ │              · logic plugin host (Wasm) · VM · brain clients   │
  ├────────────────────────────────────────────────────────────────┤
  │ Tauri shell  windows · webviews · primitives (fs, proc, net,   │  rebuild
  │              audio)                                            │
@@ -40,9 +41,9 @@ Desk는 하나의 앱으로 만든 하나의 OS입니다. Tauri 셸과 작은 Ru
 | --- | --- |
 | endue AI (클라우드) | 저장소 밖에 있습니다. 이 저장소에는 `specs/brain`과 `crates/desk-brain-endue`만 있습니다 |
 | 플러그인 | `plugins/` · `packages/plugin-sdk` · `specs/plugin` · `specs/wit` · `examples/` |
-| 웹 런타임 | `packages/runtime` · `packages/ui` |
-| Desk 브리지 | `specs/bridge` · `packages/bridge` · `crates/desk-bridge` |
-| Rust 코어 | `crates/desk-core` · `crates/desk-plugin-host` · `crates/desk-vm` · `crates/desk-brain*` |
+| 웹 런타임 | `packages/runtime`: 컴포지터, UI 플러그인 호스트(ADR 0012), 그리고 ADR 0026이 정해질 때까지 데스크 셸(ADR 0025) · `packages/ui` |
+| Desk 브리지 | `specs/bridge` · `packages/bridge` · `crates/desk-bridge` (`specs/bridge`와 `specs/plugin`에서 생성한 타입) |
+| Rust 코어 | `crates/desk-core` · `crates/desk-plugin-host`(로직 플러그인을 Wasmtime에서 실행, ADR 0019) · `crates/desk-vm` · `crates/desk-brain*` |
 | Tauri 셸 | `apps/desk/src-tauri` · `crates/desk-sys` |
 | OS | `apps/desk/src-tauri/capabilities` · 릴리스 워크플로 (서명, 공증) |
 
@@ -69,7 +70,10 @@ Emacs는 작은 C 코어 위에서 거의 모든 것을 Elisp로 실행하며, �
 1. **작은 코어.** Rust 코어는 기능이 아니라 프리미티브(fs, proc, net, audio, ui)를 담습니다.
 2. **내장 기능도 플러그인입니다.** Eris, 사이드바, 툴바, 프로필 전환은 커뮤니티 플러그인과 같은 API를 쓰므로,
    API에 빈틈이 없고 내장 기능조차 교체할 수 있습니다. 데스크의 기본 정책(화면을 둘 곳, 키, 파일, 테마, 알림)도
-   데이터만 가진 `desk.*` 플러그인입니다(ADR 0017).
+   데이터만 가진 `desk.*` 플러그인입니다(ADR 0017). 데스크 셸(`mountDesk`)은 아직 아닙니다. 셸은 `packages/runtime`
+   안의 코드이고(ADR 0025), 어디에 둘지는 아직 제안 상태인 ADR 0026이 정합니다. 그때까지 Eris는 `plugins/eris`와
+   셸 안에 하나씩 두 번 있고(ADR 0027), 데스크의 가장자리도 독 · 툴바 · 사이드바 플러그인과 셸의 아래 가장자리 ·
+   레일 · 에이전트 바로 두 번 있습니다(ADR 0028).
 3. **모든 것은 명령입니다.** 클릭, 음성, 단축키, 에이전트가 모두 같은 명령을 호출합니다. 사람이 할 수 있는
    일은 Eris와 에이전트도 할 수 있습니다.
 4. **실행 중에 바꿉니다.** 플러그인을 저장하면 다시 로드됩니다. 플러그인 상태는 코어 스토리지에 있으므로

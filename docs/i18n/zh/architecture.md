@@ -18,11 +18,12 @@ Desk 是以一个应用构建的一个操作系统：Tauri 外壳和小型 Rust 
  │ Plugins      UI (iframe) · logic (Wasm) · tools (MCP, in a VM) │  instant
  ├────────────────────────────────────────────────────────────────┤
  │ Web runtime  compositor (3D/2D) · surfaces · input · layout    │  restart
+ │              · UI plugin host · desk shell (until ADR 0026)    │
  ├────────────────────────────────────────────────────────────────┤
- │ Desk bridge  specs/bridge → TS client · Rust traits            │  rebuild
+ │ Desk bridge  specs/bridge → TS client · Rust types             │  rebuild
  ├────────────────────────────────────────────────────────────────┤
- │ Rust core    permissions · event bus · storage · plugin host   │  rebuild
- │              · VM · brain clients                              │
+ │ Rust core    permissions · event bus · storage                 │  rebuild
+ │              · logic plugin host (Wasm) · VM · brain clients   │
  ├────────────────────────────────────────────────────────────────┤
  │ Tauri shell  windows · webviews · primitives (fs, proc, net,   │  rebuild
  │              audio)                                            │
@@ -38,9 +39,9 @@ Desk 是以一个应用构建的一个操作系统：Tauri 外壳和小型 Rust 
 | --- | --- |
 | endue AI（云端） | 位于仓库之外；本仓库中只有 `specs/brain` 和 `crates/desk-brain-endue` |
 | 插件 | `plugins/` · `packages/plugin-sdk` · `specs/plugin` · `specs/wit` · `examples/` |
-| Web 运行时 | `packages/runtime` · `packages/ui` |
-| Desk 桥接层 | `specs/bridge` · `packages/bridge` · `crates/desk-bridge` |
-| Rust 核心 | `crates/desk-core` · `crates/desk-plugin-host` · `crates/desk-vm` · `crates/desk-brain*` |
+| Web 运行时 | `packages/runtime`：合成器、UI 插件宿主（ADR 0012），以及在 ADR 0026 决定之前的桌面外壳（ADR 0025） · `packages/ui` |
+| Desk 桥接层 | `specs/bridge` · `packages/bridge` · `crates/desk-bridge`（由 `specs/bridge` 和 `specs/plugin` 生成的类型） |
+| Rust 核心 | `crates/desk-core` · `crates/desk-plugin-host`（在 Wasmtime 上运行逻辑插件，ADR 0019） · `crates/desk-vm` · `crates/desk-brain*` |
 | Tauri 外壳 | `apps/desk/src-tauri` · `crates/desk-sys` |
 | 操作系统 | `apps/desk/src-tauri/capabilities` · 发布工作流（签名、公证） |
 
@@ -66,7 +67,9 @@ Emacs 在小型 C 核心之上用 Elisp 运行几乎所有功能，而且可以�
 1. **小核心。** Rust 核心承载的是原语（fs、proc、net、audio、ui），而不是功能。
 2. **内置即插件。** Eris、侧边栏、工具栏和配置档切换使用与社区插件相同的 API，因此 API 没有缺口，
    连内置功能也能被替换。桌面的默认策略（界面放在哪里、按键、文件、主题、通知）也是只含数据的 `desk.*`
-   插件（ADR 0017）。
+   插件（ADR 0017）。桌面外壳（`mountDesk`）还不是插件：它目前是 `packages/runtime` 里的代码（ADR 0025），
+   放在哪里由仍处于提议阶段的 ADR 0026 决定。在此之前，Eris 有两份，`plugins/eris` 和外壳里各一份（ADR 0027）；
+   桌面的边缘也有两套：程序坞、工具栏和侧边栏插件，以及外壳的底边、状态栏和智能体栏（ADR 0028）。
 3. **一切皆命令。** 点击、语音、快捷键和智能体调用的是同一套命令。人能做的，Eris 和智能体也都能做。
 4. **运行时即可修改。** 保存插件就会重新加载它；插件状态保存在核心存储中，替换后依然保留。
 5. **处处可挂钩。** 任何命令都可以在执行前后挂上钩子，或被直接替换，就像 Emacs 的 advice。
