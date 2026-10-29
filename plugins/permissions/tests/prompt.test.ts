@@ -101,6 +101,9 @@ describe("the prompt", () => {
       permission: "Show notifications",
       waiting: 1,
     });
+    expect(view.statuses.at(-1)).toBe(
+      "Allowed Notes: Read files (Once). Next: Notes asks for permission.",
+    );
     await app.answer("refuse");
     await settle();
     expect(view.prompts.at(-1)).toMatchObject({
@@ -133,7 +136,9 @@ describe("the prompt", () => {
     const { app, view, settle } = await prompted(handlers, ask("p1"), ask("p2"));
     await app.answer("session");
     await settle();
-    expect(view.statuses.at(-1)).toBe("Could not answer Notes: internal.");
+    expect(view.statuses.at(-1)).toBe(
+      "Could not answer Notes: internal. Next: Notes asks for permission.",
+    );
     expect(view.prompts.at(-1)).toMatchObject({ promptId: "p2", waiting: 0 });
   });
 

@@ -1,0 +1,18 @@
+{
+  "id": "endue.permissions",
+  "name": "Permissions",
+  "version": "0.1.0",
+  "kind": "ui",
+  "entry": "ui/index.html",
+  "description": "Lists every caller's grants and revokes them, and asks the person when a caller requests a permission.",
+  "permissions": [
+    { "permission": "perm:manage" },
+    { "permission": "events:subscribe", "names": ["perm.changed"] },
+    { "permission": "ui:surface" },
+    { "permission": "plugin:manage" }
+  ],
+  "surfaces": [
+    { "id": "main", "title": "Permissions", "placement": "right" },
+    { "id": "prompt", "title": "Permission request", "placement": "overlay" }
+  ]
+}
