@@ -3,11 +3,27 @@ export type {
   BridgeMethod,
   BridgeRequest,
   BridgeResponse,
+  EventName,
+  Grant,
+  GrantDuration,
+  LogEntry,
+  LogLevel,
   ParamsOf,
+  Permission,
+  PermRequestResult,
   ResultOf,
+  Setting,
+  SurfacePlacement,
 } from "@endue-ai/bridge";
 export { BridgeCallError } from "@endue-ai/bridge";
 export { CommandFailed, type CommandInfo, type PluginCommands } from "./commands";
+export type {
+  PluginEvents,
+  PluginLog,
+  PluginPerm,
+  PluginSettings,
+  SurfaceOptions,
+} from "./context";
 export {
   type CommandOutcome,
   type HostMessage,
