@@ -89,14 +89,21 @@ test("plan starts non-overlapping tasks in issue order and waits on the rest", (
   );
 });
 
-test("plan honours open blockers, missing Scopes and the in-flight cap", () => {
-  const busy = Array.from({ length: MAX_IN_FLIGHT }, (_, i) =>
-    task(100 + i, [`crates/desk-x${i}/**`]),
-  );
-  const capped = plan({ ready: [task(1, ["docs/**"])], inFlight: busy, openIssues: new Set() });
-  assert.deepEqual(capped.start, []);
-  assert.match(capped.waiting[0].reason, /max 4/);
+test("fifteen tasks may be in flight at once", () => {
+  assert.equal(MAX_IN_FLIGHT, 15);
+  const busy = (count) =>
+    Array.from({ length: count }, (_, i) => task(100 + i, [`crates/desk-x${i}/**`]));
+  const ready = [task(1, ["docs/**"])];
 
+  const room = plan({ ready, inFlight: busy(14), openIssues: new Set() });
+  assert.deepEqual(room.start, [1], "the fifteenth task starts");
+
+  const capped = plan({ ready, inFlight: busy(15), openIssues: new Set() });
+  assert.deepEqual(capped.start, []);
+  assert.match(capped.waiting[0].reason, /15 tasks in flight \(max 15\)/);
+});
+
+test("plan honours open blockers and missing Scopes", () => {
   const result = plan({
     ready: [task(2, ["docs/a/**"], [9]), task(3, ["docs/b/**"], [8]), task(4, [])],
     inFlight: [],

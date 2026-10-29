@@ -26,12 +26,11 @@ Layer: Web runtime (see `docs/architecture.md`). Plain TypeScript and DOM (ADR 0
 ## Testing
 
 ```bash
-pnpm exec vitest run packages/runtime                        # unit
-pnpm --filter @endue-ai/runtime exec playwright install webkit   # once
-just test-e2e                                                # Playwright on the browser stub
+pnpm exec vitest run packages/runtime    # unit
+just test-e2e                            # Playwright on the browser stub (macOS: Linux container)
 ```
 
 `e2e/` uses fixture pages with the browser bridge stub and a manual clock (`plugins.html` adds two UI
 plugins served by the fixture's Vite config). Render snapshots are
-serialised render trees (ADR 0011); update them with
-`pnpm --filter @endue-ai/runtime exec playwright test --update-snapshots` and review the JSON diff.
+serialised render trees (ADR 0011); update them with `just test-e2e --update-snapshots` and review
+the JSON diff. Playwright never runs directly: the configs refuse native WebKit on macOS (ADR 0018).
