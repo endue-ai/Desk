@@ -299,3 +299,38 @@ fn a_perm_manage_holder_revokes_another_callers_grant() {
     }
     assert_eq!(ids(&query(&core, CALENDAR)), vec![json!(calendar)]);
 }
+
+#[test]
+fn a_once_grant_covers_the_whole_of_one_call_and_nothing_after_it() {
+    let home = home("grants-once-call");
+    let core = Core::new(roots(&home)).with_prompter(SayYes);
+    let write = json!({ "permission": "fs:write", "paths": ["~/Documents/**"] });
+    request(&core, NOTES, write.clone(), "once");
+    let written = call(
+        &core,
+        NOTES,
+        "fs.write",
+        json!({ "path": "~/Documents/new/a.md", "content": "a", "createDirs": true,
+                "scope": write }),
+    );
+    assert_eq!(
+        written.unwrap(),
+        json!({ "bytesWritten": 1 }),
+        "one check per call"
+    );
+    assert!(query(&core, NOTES).is_empty());
+
+    request(&core, NOTES, notes_read(), "once");
+    let watched = call(
+        &core,
+        NOTES,
+        "fs.watch",
+        json!({ "path": "~/Documents", "scope": notes_read() }),
+    );
+    assert!(watched.unwrap()["watchId"].is_string());
+    assert_eq!(
+        core.watch_count(),
+        0,
+        "a watch lasts only while a grant covers it"
+    );
+}

@@ -224,3 +224,28 @@ fn when_the_last_holder_loses_perm_manage_the_prompter_decides() {
     assert_eq!(late.unwrap_err().code, ErrorCode::NotFound);
     assert!(query(&core, NOTES).is_empty());
 }
+
+#[test]
+fn a_prompt_nothing_can_route_goes_to_the_prompter() {
+    // The app forwards plain events and has no router yet: a holder could never hear the prompt.
+    let home = home("prompt-unrouted");
+    let core = Core::new(roots(&home)).with_prompter(SayYes);
+    grant(&core, "endue.permissions", manage());
+    let plain = core.events().subscribe();
+    let granted = ask(&core, NOTES, Some("once")).unwrap();
+    assert_eq!(granted["grant"]["duration"], "once");
+    let names: Vec<Value> = plain
+        .try_iter()
+        .map(|e| serde_json::to_value(e).unwrap()["event"].clone())
+        .collect();
+    assert!(!names.contains(&json!("perm.prompt")), "{names:?}");
+
+    let refusing = Core::new(roots(&home));
+    grant(&refusing, "desk", manage());
+    drop(refusing.events().subscribe_addressed());
+    assert_eq!(
+        ask(&refusing, NOTES, None).unwrap(),
+        json!({ "granted": false }),
+        "a router that went away routes nothing"
+    );
+}
