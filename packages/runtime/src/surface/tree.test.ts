@@ -1,16 +1,6 @@
 import { describe, expect, test } from "vitest";
 import type { PaneNode } from "../modes/types";
-import {
-  close,
-  cycle,
-  LAUNCHER,
-  leaves,
-  nextPaneId,
-  panesOf,
-  setRatio,
-  setView,
-  split,
-} from "./tree";
+import { close, LAUNCHER, leaves, nextPaneId, panesOf, setRatio, setView, split } from "./tree";
 
 const one: PaneNode = { kind: "view", id: "p1", view: "calendar" };
 
@@ -54,13 +44,5 @@ describe("the pane tree", () => {
     expect(setRatio(a, "s2", 0.99)).toMatchObject({ ratio: 0.85 });
     expect(setRatio(a, "s2", 0)).toMatchObject({ ratio: 0.15 });
     expect(setRatio(a, "s2", 0.3333)).toMatchObject({ ratio: 0.333 });
-  });
-
-  test("focus cycles through panes in reading order and wraps", () => {
-    const a = split(split(one, "p1", "row").node, "p2", "column").node;
-    expect(cycle(a, "p1", 1)).toBe("p2");
-    expect(cycle(a, "p3", 1)).toBe("p1");
-    expect(cycle(a, "p1", -1)).toBe("p3");
-    expect(cycle(a, null, 1)).toBe("p2");
   });
 });

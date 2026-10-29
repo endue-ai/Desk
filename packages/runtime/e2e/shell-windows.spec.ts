@@ -31,7 +31,7 @@ test.describe("surfaces as windows", () => {
     await expect(page.locator('[data-surface="window-2"]')).toBeVisible();
   });
 
-  test("⌘D splits right and ⇧⌘D splits down; the new pane takes focus", async ({ page }) => {
+  test("⌘D splits right and ⌥⌘D splits down; the new pane takes focus", async ({ page }) => {
     await newSurfaceWith(page, "notes");
     await page.keyboard.press("Meta+d");
     await expect(panes(page)).toHaveCount(2);
@@ -42,7 +42,7 @@ test.describe("surfaces as windows", () => {
       "launcher",
     );
     await surface(page).locator('[data-pane="p2"] [data-view="calendar"]').click();
-    await page.keyboard.press("Meta+Shift+d");
+    await page.keyboard.press("Meta+Alt+d");
     await expect(panes(page)).toHaveCount(3);
     await expect(surface(page).locator(".split-column")).toHaveCount(1);
     await expect(surface(page).locator(".pane-head")).toHaveCount(3);
@@ -115,44 +115,62 @@ test.describe("surfaces as windows", () => {
 
 test.describe("command bindings", () => {
   async function openKeys(page: Page) {
-    await page.keyboard.press("Meta+k");
-    await page.keyboard.type("단축키");
-    await page.keyboard.press("Enter");
+    await page.keyboard.type("shortcuts");
+    await page.getByRole("option", { name: /설정 · 단축키/ }).click();
     await expect(page.locator('[data-surface="keys"]')).toBeVisible();
   }
   const row = (page: Page, command: string) => page.locator(`.key-row[data-command="${command}"]`);
 
   test("the palette shows each command's key", async ({ page }) => {
     await openShell(page);
+    await page.keyboard.type("surface");
+    const option = page.getByRole("option", { name: /표면 · 새 표면/ });
+    await expect(option.locator("kbd")).toHaveText("⌘N");
+  });
+
+  test("⌘K opens the desk's palette over the shell, with the shell's commands", async ({
+    page,
+  }) => {
+    await openShell(page);
+    const palette = page.locator('[data-surface="desk.palette"]');
+    await expect
+      .poll(() =>
+        page.evaluate(() => window.__shell.desk.runtime.commands.has("desk.palette.open")),
+      )
+      .toBe(true);
     await page.keyboard.press("Meta+k");
-    await page.keyboard.type("새 표면");
-    await expect(page.getByRole("option").first()).toContainText("표면 · 새 표면");
-    await expect(page.getByRole("option").first().locator("kbd")).toHaveText("⌘N");
+    await expect(palette).toBeVisible();
+    const frame = page.frameLocator('[data-surface="desk.palette"] iframe');
+    await expect(frame.getByTestId("query")).toBeFocused();
+    await page.keyboard.type("split");
+    await expect(frame.getByRole("option").first()).toContainText("나누기");
+    await page.keyboard.press("Escape");
+    await expect(palette).toBeHidden();
   });
 
   test("record a new key, use it, and a taken key moves", async ({ page }) => {
     await openShell(page);
     await openKeys(page);
-    await expect(row(page, "window.new").locator("kbd")).toHaveText("⌘N");
-    await row(page, "window.new")
+    await expect(row(page, "desk.display.new-surface").locator("kbd")).toHaveText("⌘N");
+    await row(page, "desk.display.new-surface")
       .getByRole("button", { name: /바꾸기/ })
       .click();
-    await expect(row(page, "window.new").getByRole("button", { pressed: true })).toHaveText(
-      "키를 누르세요 · Esc 취소",
-    );
+    await expect(
+      row(page, "desk.display.new-surface").getByRole("button", { pressed: true }),
+    ).toHaveText("키를 누르세요 · Esc 취소");
     await page.keyboard.press("Meta+Shift+n");
-    await expect(row(page, "window.new").locator("kbd")).toHaveText("⇧⌘N");
+    await expect(row(page, "desk.display.new-surface").locator("kbd")).toHaveText("⇧⌘N");
     await page.keyboard.press("Meta+n");
     await expect(page.locator('[data-surface="window-1"]')).toHaveCount(0);
     await page.keyboard.press("Meta+Shift+n");
     await expect(page.locator('[data-surface="window-1"]')).toBeVisible();
 
-    await row(page, "desktop.2")
+    await row(page, "desk.shell.desktop-2")
       .getByRole("button", { name: /바꾸기/ })
       .click();
     await page.keyboard.press("Meta+d");
     await expect(page.locator(".keys-note")).toHaveText("표면 · 오른쪽으로 나누기 에서 옮겼습니다");
-    await expect(row(page, "pane.splitRight")).toContainText("없음");
+    await expect(row(page, "desk.display.split-right")).toContainText("없음");
     await page.keyboard.press("Meta+d");
     await expect(page.locator('[data-desktop="2"]')).toHaveAttribute("aria-pressed", "true");
     await expect(page.locator('[data-desktop="2"]')).toHaveAttribute(
@@ -161,30 +179,30 @@ test.describe("command bindings", () => {
     );
   });
 
-  test("Esc cancels a recording; defaults come back", async ({ page }) => {
+  test("Esc cancels a recording; the plugins' keys come back", async ({ page }) => {
     await openShell(page);
     await openKeys(page);
-    await row(page, "pane.close")
+    await row(page, "desk.buffers.close")
       .getByRole("button", { name: /바꾸기/ })
       .click();
     await page.keyboard.press("Escape");
-    await expect(row(page, "pane.close").locator("kbd")).toHaveText("⌘W");
+    await expect(row(page, "desk.buffers.close").locator("kbd")).toHaveText("⌘W");
     await expect(page.locator('[data-surface="keys"]')).toBeVisible();
-    await row(page, "pane.close")
+    await row(page, "desk.buffers.close")
       .getByRole("button", { name: /바꾸기/ })
       .click();
     await page.keyboard.press("Meta+e");
-    await expect(row(page, "pane.close").locator("kbd")).toHaveText("⌘E");
-    await row(page, "pane.close")
+    await expect(row(page, "desk.buffers.close").locator("kbd")).toHaveText("⌘E");
+    await row(page, "desk.buffers.close")
       .getByRole("button", { name: /기본값/ })
       .click();
-    await expect(row(page, "pane.close").locator("kbd")).toHaveText("⌘W");
-    await row(page, "window.new")
+    await expect(row(page, "desk.buffers.close").locator("kbd")).toHaveText("⌘W");
+    await row(page, "desk.display.new-surface")
       .getByRole("button", { name: /바꾸기/ })
       .click();
     await page.keyboard.press("Meta+j");
     await page.getByRole("button", { name: "모두 기본값으로" }).click();
-    await expect(row(page, "window.new").locator("kbd")).toHaveText("⌘N");
+    await expect(row(page, "desk.display.new-surface").locator("kbd")).toHaveText("⌘N");
   });
 
   test("bindings are saved", async ({ page }) => {
@@ -192,11 +210,12 @@ test.describe("command bindings", () => {
     await page.evaluate(() => localStorage.clear());
     await openShell(page, "?persist=1");
     await openKeys(page);
-    await row(page, "window.new")
+    await row(page, "desk.display.new-surface")
       .getByRole("button", { name: /바꾸기/ })
       .click();
     await page.keyboard.press("Meta+Shift+n");
-    await page.waitForTimeout(50);
+    // desk.session saves 250 ms after a change.
+    await page.waitForTimeout(400);
     await openShell(page, "?persist=1");
     await page.keyboard.press("Meta+Shift+n");
     await expect(page.locator('[data-surface="window-1"]')).toBeVisible();

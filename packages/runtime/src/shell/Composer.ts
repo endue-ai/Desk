@@ -3,9 +3,9 @@
  * doubles as the command palette. A sent line rises into the middle of the screen and is absorbed.
  */
 
+import type { CommandInfo } from "../commands";
 import { clamp01, cubicBezier, easeOutExpo } from "../ease";
-import { type Command, deskCommands, match } from "../system/commands";
-import { format } from "../system/keys";
+import { match } from "./commands";
 import type { ShellCtx } from "./context";
 import { h, listen, render } from "./dom";
 
@@ -42,7 +42,7 @@ export function mountComposer(root: HTMLElement, ctx: ShellCtx): () => void {
   root.append(el);
   let height = 2;
   let animation = 0;
-  let found: Command[] = [];
+  let found: CommandInfo[] = [];
 
   const fold = (open: boolean) => {
     const id = ++animation;
@@ -59,12 +59,13 @@ export function mountComposer(root: HTMLElement, ctx: ShellCtx): () => void {
   field.style.height = "2px";
 
   const choices = (text: string): { label: string; key?: string; run: () => void }[] => {
-    found = match(deskCommands(ctx), text);
+    found = match(ctx.runtime.commands.list(), text);
     if (!text.trim()) return [];
     return [
       ...found.map((c) => {
-        const key = ctx.keys.bindingsOf(c.id)[0];
-        return { label: c.label, run: c.run, ...(key ? { key: format(key, ctx.platform) } : {}) };
+        const key = ctx.keyOf(c.id);
+        const run = () => void ctx.runtime.commands.run(c.id).catch(() => {});
+        return { label: c.title, run, ...(key ? { key } : {}) };
       }),
       { label: ctx.tr("sayTo", { x: text.trim() }), run: () => void send(text) },
     ];
@@ -178,7 +179,7 @@ export function mountComposer(root: HTMLElement, ctx: ShellCtx): () => void {
     }),
     listen(window, "keydown", (e) => {
       const k = e as KeyboardEvent;
-      if (ctx.keys.recording || k.defaultPrevented) return;
+      if (k.defaultPrevented) return;
       const active = document.activeElement;
       const typing = active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement;
       const free = !active || active === document.body || active.classList.contains("shell");

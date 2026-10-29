@@ -1,8 +1,0 @@
-{
-  "id": "night",
-  "name": "Night",
-  "icon": "moon",
-  "author": "me",
-  "version": "1.0.0",
-  "extends": "base"
-}

@@ -98,7 +98,7 @@ export function frameModel(input: FrameInput): FrameModel {
   return goldOutline ? { tris, dots, goldOutline } : { tris, dots };
 }
 
-/** Colours read from tokens.css once per mount. */
+/** Colours read from the theme tokens (--desk-eris-*) once per mount and again per theme. */
 export interface Palette {
   frost: string;
   gold: string;

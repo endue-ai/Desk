@@ -70,25 +70,3 @@ export function contrast(fg: RGBA, bg: RGBA): number {
   const b = luminance(bg);
   return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
 }
-
-/** Read `--name: value;` declarations per theme block from tokens.css. */
-export function readTokens(css: string): {
-  dark: Record<string, string>;
-  light: Record<string, string>;
-} {
-  const block = (selector: RegExp) => {
-    const out: Record<string, string> = {};
-    for (const match of css.matchAll(new RegExp(`${selector.source}\\s*\\{([^}]*)\\}`, "g"))) {
-      for (const decl of (match[1] ?? "").matchAll(/--([\w-]+):\s*([^;]+);/g)) {
-        out[decl[1] ?? ""] = (decl[2] ?? "").trim();
-      }
-    }
-    return out;
-  };
-  const dark = block(/:root,\s*\[data-theme="dark"\]/);
-  const shared = block(/:root/);
-  return {
-    dark: { ...shared, ...dark },
-    light: { ...shared, ...dark, ...block(/\[data-theme="light"\]/) },
-  };
-}

@@ -1,7 +1,7 @@
 /**
- * A mode is a recipe for one way of using the desk: which plugins, where things sit on desktops 1–4,
- * what Eris may see and how she behaves. It never holds content, and it can only narrow permissions.
- * On disk it is a folder like a plugin's: modes/<id>/{mode.json, layout/, plugins.json, ...}.
+ * A profile as the shell sees it: where things sit on desktops 1–4, what Eris may see and how she
+ * behaves. It never holds content. desk.profiles keeps it (a plugin set plus settings, the shell's
+ * part in `desk.shell.mode`; `profiles.ts` reads it), so the types still say "mode".
  */
 
 export type DesktopIndex = 1 | 2 | 3 | 4;
@@ -58,11 +58,6 @@ export interface DesktopLayout {
   drawer: { visible: boolean };
 }
 
-export interface ModePlugins {
-  enabled: string[];
-  settings: Record<string, Record<string, unknown>>;
-}
-
 export interface ModeRoles {
   /** Copied modes arrive with `agent: null`; the user binds an agent when installing. */
   roles: { role: string; agent: string | null }[];
@@ -81,11 +76,12 @@ export interface ModeTriggers {
 
 export interface Mode {
   manifest: ModeManifest;
-  /** layout/desktop.json, the mode-wide default every desktop starts from. */
+  /** It lays the desk out (`desk.shell.mode`), rather than leaving the base (desk.profiles' own). */
+  lays: boolean;
+  /** The layout every desktop starts from. */
   desktop?: Partial<DesktopLayout>;
-  /** layout/desktop-N.json, per-desktop overrides. */
+  /** Each desktop's own, over that. */
   desktops: Partial<Record<DesktopIndex, Partial<DesktopLayout>>>;
-  plugins: ModePlugins;
   roles: ModeRoles;
   eris: ModeEris;
   triggers: ModeTriggers;

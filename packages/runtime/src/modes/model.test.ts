@@ -1,37 +1,33 @@
+import { readFileSync } from "node:fs";
+import type { PluginManifest, ProfileContribution } from "@endue-ai/bridge";
 import { describe, expect, test } from "vitest";
-import { modesFromFiles } from "./load";
-import {
-  copyMode,
-  effectiveLayout,
-  isDirty,
-  leftBehind,
-  saveAsNew,
-  savedLayout,
-  saveInto,
-  uniqueId,
-  validateMode,
-} from "./model";
+import { effectiveLayout, isDirty, leftBehind, savedLayout, uniqueId } from "./model";
+import { baseMode, LAYOUTS, MODE, profileMode, recipeOf } from "./profiles";
 import type { Mode } from "./types";
 
-const files = import.meta.glob("./sample/**/*.json", { eager: true });
-const modes = modesFromFiles(files);
-const get = (id: string) => modes.find((m) => m.manifest.id === id) as Mode;
-const base = get("base");
+// The sample profiles as desk.shell contributes them (plugins/shell/plugin.json).
+const shell = JSON.parse(
+  readFileSync(new URL("../../../../plugins/shell/plugin.json", import.meta.url), "utf8"),
+) as PluginManifest;
+const base = baseMode(shell.contributes?.settings?.[MODE]?.default);
+const profiles = shell.contributes?.profiles ?? [];
+const get = (id: string) =>
+  profileMode(profiles.find((p) => p.id === id) as ProfileContribution, base);
 
-describe("modes", () => {
-  test("the samples are base plus Morning, Deep work, Review, Studio and Night, all valid", () => {
-    expect(modes.map((m) => m.manifest.name)).toEqual([
-      "Base",
+describe("profiles as the shell lays them out", () => {
+  test("the samples are Morning, Deep work, Review, Studio and Night, over the base", () => {
+    expect(profiles.map((p) => p.name)).toEqual([
       "Morning",
       "Deep work",
       "Review",
       "Studio",
       "Night",
     ]);
-    for (const m of modes) expect(validateMode(m, modes)).toEqual([]);
+    expect(base.manifest).toMatchObject({ id: "base", extends: null, author: "endue" });
+    for (const p of profiles) expect(get(p.id).manifest.extends).toBe("base");
   });
 
-  test("layers: base, then the mode, then the desktop file, then the session", () => {
+  test("layers: the base, then the profile, then the desktop's own, then the session", () => {
     const morning = get("morning");
     expect(savedLayout(morning, base, 1).surfaces).toEqual([]);
     expect(savedLayout(morning, base, 2).surfaces.map((s) => s.id)).toEqual([
@@ -43,37 +39,58 @@ describe("modes", () => {
     expect(effectiveLayout(morning, base, 2, { 2: moved }).eris).toEqual({ x: 10, y: 10 });
   });
 
-  test("a session change makes the mode dirty until saved into it", () => {
+  test("fields a profile leaves out come from the base", () => {
+    expect(get("morning").eris).toEqual(base.eris);
+    expect(get("morning").manifest.version).toBe("1.0.0");
+    expect(get("studio").manifest.copiedFrom).toEqual({
+      author: "jin",
+      id: "studio",
+      version: "2.1.0",
+    });
+    expect(get("studio").roles.roles[0]?.agent).toBeNull();
+  });
+
+  test("a session change makes the profile dirty until saved into it", () => {
     const morning = get("morning");
     const session = { 1: { ...savedLayout(morning, base, 1), eris: { x: 1, y: 2 } } };
     expect(isDirty(morning, base, {})).toBe(false);
     expect(isDirty(morning, base, session)).toBe(true);
-    const saved = saveInto(morning, session);
+    // desk.profiles.save keeps the profile's recipe and the moved desktops in one profile.
+    const saved = profileMode(
+      {
+        id: "morning",
+        name: "Morning",
+        settings: { [MODE]: recipeOf(morning), [LAYOUTS]: session },
+      },
+      base,
+    );
     expect(isDirty(saved, base, session)).toBe(false);
-    expect(saved.manifest.version).toBe("1.1.0");
+    expect(savedLayout(saved, base, 1).eris).toEqual({ x: 1, y: 2 });
   });
 
-  test("save as new keeps every desktop as it is now, under a new id", () => {
+  test("a recipe lays the same desk out again", () => {
     const morning = get("morning");
-    const fresh = saveAsNew(morning, base, {}, "Morning", "me", ["morning"]);
-    expect(fresh.manifest).toMatchObject({ id: "morning-2", name: "Morning", extends: "base" });
-    expect(savedLayout(fresh, base, 2).surfaces.map((s) => s.id)).toEqual(["calendar", "tomorrow"]);
+    const again = profileMode(
+      { id: "morning-2", name: "Morning", settings: { [MODE]: recipeOf(morning) } },
+      base,
+    );
+    for (const d of [1, 2, 3, 4] as const)
+      expect(savedLayout(again, base, d)).toEqual(savedLayout(morning, base, d));
   });
 
-  test("copying empties agent bindings and remembers the author", () => {
-    const copy = copyMode(get("morning"), "jin", ["morning"]);
-    expect(copy.roles.roles.every((r) => r.agent === null)).toBe(true);
-    expect(copy.manifest.copiedFrom).toEqual({ author: "me", id: "morning", version: "1.0.0" });
-    expect(get("studio").roles.roles[0]?.agent).toBeNull();
+  test("a profile without a recipe (desk.profiles' own) lays out the base", () => {
+    const focus: Mode = profileMode({ id: "focus", name: "Focus" }, base);
+    expect(focus.manifest.icon).toBe(base.manifest.icon);
+    expect(savedLayout(focus, base, 2).surfaces).toEqual([]);
   });
 
-  test("a mode may hide the rail for every desktop: Night does", () => {
+  test("a profile may hide the rail for every desktop: Night does", () => {
     for (const d of [1, 2, 3, 4] as const)
       expect(savedLayout(get("night"), base, d).rail.visible).toBe(false);
     expect(savedLayout(get("morning"), base, 1).rail.visible).toBe(true);
   });
 
-  test("switching modes sends surfaces the next mode does not place to the drawer", () => {
+  test("switching profiles sends surfaces the next one does not place to the drawer", () => {
     const sent = leftBehind(get("morning"), get("deep-work"), base, {});
     expect(sent.map((s) => s.id)).toEqual(["calendar", "tomorrow"]);
   });
@@ -81,13 +98,5 @@ describe("modes", () => {
   test("ids are slugs and unique", () => {
     expect(uniqueId("Deep work", ["deep-work"])).toBe("deep-work-2");
     expect(uniqueId("집중", [])).toBe("mode");
-  });
-
-  test("a mode can only extend base", () => {
-    const bad = {
-      ...get("night"),
-      manifest: { ...get("night").manifest, extends: "morning" as "base" },
-    };
-    expect(validateMode(bad, modes)).toContain('extends must be "base" or null');
   });
 });

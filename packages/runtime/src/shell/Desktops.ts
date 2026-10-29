@@ -1,7 +1,6 @@
 /** Top right: desktops 1–4 of the current mode, each with a 2×2 map of where its surfaces sit. */
 
 import { DESKTOPS, type DesktopIndex } from "../modes/types";
-import { format } from "../system/keys";
 import { desktopIsEmpty, layoutOf, setDesktop } from "./actions";
 import { REFERENCE, type ShellCtx } from "./context";
 import { h, render } from "./dom";
@@ -26,8 +25,8 @@ export function mountDesktops(root: HTMLElement, ctx: ShellCtx): () => void {
     render(el, () => [
       ...DESKTOPS.map((d) => {
         const empty = desktopIsEmpty(s, d);
-        const key = ctx.keys.bindingsOf(`desktop.${d}`)[0];
-        const label = `${ctx.tr(empty ? "desktopEmpty" : "desktop", { n: d })}${key ? ` (${format(key, ctx.platform)})` : ""}`;
+        const key = ctx.keyOf(`desk.shell.desktop-${d}`);
+        const label = `${ctx.tr(empty ? "desktopEmpty" : "desktop", { n: d })}${key ? ` (${key})` : ""}`;
         return h(
           "button",
           {
@@ -66,7 +65,7 @@ export function mountDesktops(root: HTMLElement, ctx: ShellCtx): () => void {
   draw();
   const offs = [
     ctx.store.watch((s) => [s.desktop, s.modeId, s.session, s.modes, s.lang], draw),
-    ctx.keys.onChange(draw),
+    ctx.runtime.keymap.onChange(draw),
   ];
   return () => {
     for (const off of offs) off();

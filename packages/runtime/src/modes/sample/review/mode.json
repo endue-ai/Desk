@@ -1,8 +1,0 @@
-{
-  "id": "review",
-  "name": "Review",
-  "icon": "review",
-  "author": "me",
-  "version": "1.0.0",
-  "extends": "base"
-}

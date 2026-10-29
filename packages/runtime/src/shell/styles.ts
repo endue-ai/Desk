@@ -1,5 +1,5 @@
-// The shell's stylesheets in cascade order: tokens first, then the parts.
-import "../tokens.css";
+// The shell's stylesheets in cascade order: the scale first, then the parts.
+import "./scale.css";
 import "./shell.css";
 import "./chrome.css";
 import "./bottom.css";

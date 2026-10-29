@@ -1,7 +1,7 @@
 {
  "tag": "nav",
  "class": "modes",
- "aria-label": "모드",
+ "aria-label": "프로필",
  "children": [
   {
    "tag": "div",
@@ -99,7 +99,7 @@
       {
        "tag": "button",
        "class": "mode-chip",
-       "aria-label": "Studio · jin 님의 모드",
+       "aria-label": "Studio · jin 님의 프로필",
        "aria-pressed": "false",
        "data-mode": "studio",
        "style": {
@@ -167,7 +167,7 @@
   {
    "tag": "button",
    "class": "add-button mode-add",
-   "aria-label": "새 모드",
+   "aria-label": "새 프로필",
    "box": [
     24,
     64,

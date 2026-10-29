@@ -8,7 +8,7 @@ export function notesBody(ctx: ShellCtx): HTMLElement {
     "textarea",
     { class: "notes-body", "aria-label": ctx.tr("surfaceNotes"), spellcheck: "false" },
     ko
-      ? "모드 이름은 짧게.\n표면은 가장자리에."
-      : "Keep mode names short.\nSurfaces live at the edges.",
+      ? "프로필 이름은 짧게.\n표면은 가장자리에."
+      : "Keep profile names short.\nSurfaces live at the edges.",
   );
 }

@@ -1,26 +1,29 @@
-/** Everything the shell can do to the desk, as functions over the store. */
+/** Everything the shell can do to the desk, as functions over the store and the runtime. */
 import type { ShellBridge } from "../bridge/types";
+import { effectiveLayout, isDirty, leftBehind, uniqueId } from "../modes/model";
+import { LAYOUTS, MODE, recipeOf } from "../modes/profiles";
 import {
-  copyMode,
-  effectiveLayout,
-  isDirty,
-  leftBehind,
-  saveAsNew,
-  saveInto,
-} from "../modes/model";
-import type { DesktopIndex, DesktopLayout, Mode, SurfacePlacement } from "../modes/types";
+  DESKTOPS,
+  type DesktopIndex,
+  type DesktopLayout,
+  type Mode,
+  type SurfacePlacement,
+} from "../modes/types";
+import type { Runtime } from "../runtime";
 import type { DeskState, Store } from "./state";
 
 export interface Ctx {
   store: Store;
   bridge: ShellBridge;
+  /** The desk under the shell: commands, settings, profiles. */
+  runtime: Runtime;
   now(): number;
 }
 
 export const AUTHOR = "me";
 
 export function modeOf(s: DeskState, id = s.modeId): Mode {
-  return s.modes.find((m) => m.manifest.id === id) ?? (s.modes[1] as Mode);
+  return s.modes.find((m) => m.manifest.id === id) ?? ((s.modes[1] ?? s.modes[0]) as Mode);
 }
 
 export function baseOf(s: DeskState): Mode | undefined {
@@ -109,15 +112,29 @@ export function raise(ctx: Ctx, itemId: string): void {
   openSurface(ctx, id, item.placement);
 }
 
-/** Switch modes. Surfaces the next mode does not place go to the drawer instead of closing. */
+/** Switch profiles through desk.profiles; `switched` below follows whoever switched. */
 export function switchMode(ctx: Ctx, id: string): void {
   const s = ctx.store.get();
   if (id === s.modeId || !s.modes.some((m) => m.manifest.id === id)) return;
-  const sent = leftBehind(modeOf(s), modeOf(s, id), baseOf(s), s.session);
+  ctx.store.set({ popover: null });
+  void ctx.runtime.commands.run("desk.profiles.switch", { id }).catch(() => {});
+}
+
+/**
+ * Another profile is in force. Surfaces the next one does not place go to the drawer instead of
+ * closing, and the desktops moved under the last one are dropped.
+ */
+export function switched(ctx: Ctx, modes: Mode[], id: string): void {
+  const s = ctx.store.get();
+  const next = { ...s, modes };
+  const from = s.modes.find((m) => m.manifest.id === s.modeId);
+  const sent =
+    id === s.modeId || !from ? [] : leftBehind(from, modeOf(next, id), baseOf(next), s.session);
+  if (id !== s.modeId) ctx.runtime.settings.reset(LAYOUTS);
   ctx.store.set({
+    modes,
     modeId: id,
-    session: {},
-    popover: null,
+    session: sessionOf(ctx),
     drawer: [
       ...sent.map((p) => ({
         id: `surface-${p.id}`,
@@ -131,41 +148,46 @@ export function switchMode(ctx: Ctx, id: string): void {
   });
 }
 
-export function saveIntoMode(ctx: Ctx): void {
-  ctx.store.set((s) => ({
-    modes: s.modes.map((m) => (m.manifest.id === s.modeId ? saveInto(m, s.session) : m)),
-    session: {},
-    popover: null,
-  }));
+/** The desktops moved since the profile was saved: the session layer of desk.shell.layouts. */
+export function sessionOf(ctx: Ctx): DeskState["session"] {
+  const value = ctx.runtime.settings.layer("session")[LAYOUTS];
+  return value && typeof value === "object" ? structuredClone(value as DeskState["session"]) : {};
 }
 
+/** "Save to this profile": desk.profiles keeps the moved desktops in it, one version on. */
+export function saveIntoMode(ctx: Ctx): void {
+  const s = ctx.store.get();
+  const mode = modeOf(s);
+  const [major = "1", minor = "0"] = mode.manifest.version.split(".");
+  ctx.runtime.settings.set(MODE, { ...recipeOf(mode), version: `${major}.${Number(minor) + 1}.0` });
+  ctx.store.set({ popover: null });
+  void ctx.runtime.commands
+    .run("desk.profiles.save", { id: s.modeId, name: mode.manifest.name })
+    .catch(() => {});
+}
+
+/** "Save as a new profile": the desk as it is now, under a new name. Only the name is asked. */
 export function saveAsNewMode(ctx: Ctx, name: string): void {
   const s = ctx.store.get();
-  const taken = s.modes.map((m) => m.manifest.id);
-  const mode = saveAsNew(modeOf(s), baseOf(s), s.session, name.trim(), AUTHOR, taken);
-  ctx.store.set({
-    modes: [...s.modes, mode],
-    modeId: mode.manifest.id,
-    session: {},
-    dialog: null,
-    popover: null,
-  });
+  const mode = modeOf(s);
+  const id = uniqueId(
+    name.trim(),
+    s.modes.map((m) => m.manifest.id),
+  );
+  // Every desktop as laid out now, written by this person; nothing left to the mode it came from.
+  const { copiedFrom: _from, desktop: _desktop, ...recipe } = recipeOf(mode);
+  const desktops = Object.fromEntries(
+    DESKTOPS.map((d) => [d, effectiveLayout(mode, baseOf(s), d, s.session)]),
+  );
+  ctx.runtime.settings.set(MODE, { ...recipe, author: AUTHOR, version: "1.0.0", desktops });
+  ctx.runtime.settings.reset(LAYOUTS);
+  ctx.store.set({ dialog: null, popover: null });
+  void ctx.runtime.commands.run("desk.profiles.save", { id, name: name.trim() }).catch(() => {});
 }
 
-export function copyFrom(ctx: Ctx, mode: Mode): void {
-  ctx.store.set((s) => ({
-    modes: [
-      ...s.modes,
-      copyMode(
-        mode,
-        AUTHOR,
-        s.modes.map((m) => m.manifest.id),
-      ),
-    ],
-  }));
-}
-
+/** Put the moved desktops back as the profile saved them. */
 export function revert(ctx: Ctx): void {
+  ctx.runtime.settings.reset(LAYOUTS);
   ctx.store.set({ session: {}, popover: null });
 }
 

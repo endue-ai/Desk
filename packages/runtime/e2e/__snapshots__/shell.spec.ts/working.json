@@ -19,7 +19,7 @@
     {
      "tag": "nav",
      "class": "modes",
-     "aria-label": "모드",
+     "aria-label": "프로필",
      "children": [
       {
        "tag": "div",
@@ -118,7 +118,7 @@
           {
            "tag": "button",
            "class": "mode-chip",
-           "aria-label": "Studio · jin 님의 모드",
+           "aria-label": "Studio · jin 님의 프로필",
            "aria-pressed": "false",
            "data-mode": "studio",
            "style": {
@@ -186,7 +186,7 @@
       {
        "tag": "button",
        "class": "add-button mode-add",
-       "aria-label": "새 모드",
+       "aria-label": "새 프로필",
        "box": [
         24,
         64,
@@ -733,6 +733,47 @@
    "tag": "div",
    "class": "layer layer-mode",
    "children": [
+    {
+     "tag": "div",
+     "class": "layer-desk desk",
+     "children": [
+      {
+       "tag": "main",
+       "class": "desk-compositor",
+       "children": [
+        {
+         "tag": "section",
+         "class": "desk-surface desk-surface--overlay desk-surface--transient",
+         "hidden": "",
+         "data-surface": "desk.palette",
+         "style": {
+          "display": "none"
+         },
+         "children": [
+          {
+           "tag": "iframe",
+           "class": "desk-surface-frame",
+           "style": {
+            "color": "rgb(242, 240, 245)"
+           }
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "tag": "footer",
+       "class": "desk-status",
+       "role": "status",
+       "aria-live": "polite",
+       "style": {
+        "color": "rgb(176, 173, 183)",
+        "transform": "matrix(1, 0, 0, 1, -85.820313, 0)"
+       },
+       "text": "desk ready · bridge: browser"
+      }
+     ]
+    },
     {
      "tag": "div",
      "class": "eris",
@@ -1291,7 +1332,7 @@
          "style": {
           "color": "rgb(176, 173, 183)"
          },
-         "text": "Hey Eris 라고 말하거나 ⌘K"
+         "text": "Hey Eris 라고 말하거나 바로 입력하세요"
         },
         {
          "tag": "div",
@@ -1542,7 +1583,7 @@
             {
              "tag": "button",
              "class": "icon-button tool",
-             "aria-label": "아래로 나누기 (⇧⌘D)",
+             "aria-label": "아래로 나누기 (⌥⌘D)",
              "box": [
               569,
               249,
@@ -2046,7 +2087,7 @@
             {
              "tag": "button",
              "class": "icon-button tool",
-             "aria-label": "아래로 나누기 (⇧⌘D)",
+             "aria-label": "아래로 나누기 (⌥⌘D)",
              "box": [
               1209,
               229,

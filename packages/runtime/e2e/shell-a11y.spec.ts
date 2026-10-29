@@ -43,7 +43,10 @@ test.describe("at 1440×900", () => {
   for (const theme of ["dark", "light"] as const) {
     test(`every visible text is at least 4.5:1 in the ${theme} theme`, async ({ page }) => {
       await openShell(page);
-      await page.evaluate((t) => window.__shell.desk.store.set({ theme: t, desktop: 2 }), theme);
+      await page.evaluate((t) => {
+        window.__shell.desk.runtime.settings.set("desk.theme.scheme", t);
+        window.__shell.desk.store.set({ desktop: 2 });
+      }, theme);
       for (const popover of [null, "tasks", "drawer"] as const) {
         await page.evaluate((p) => window.__shell.desk.store.set({ popover: p }), popover);
         await step(page, 100);

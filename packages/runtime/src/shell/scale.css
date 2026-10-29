@@ -1,0 +1,75 @@
+/*
+ * The shell's scale: type, space, radius, motion and layers. Colours are not here: they are theme
+ * tokens (desk.theme, with the shell's own from plugins/shell), read as --desk-* custom properties.
+ */
+
+:root {
+  color-scheme: dark;
+}
+
+[data-scheme="light"] {
+  color-scheme: light;
+}
+
+/* Type, space, radius, motion, layers. */
+:root {
+  --font-primary:
+    "Inter", "SUIT Variable", "SUIT", -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+  --text-2xs: 11px;
+  --text-xs: 12px;
+  --text-sm: 14px;
+  --text-base: 16px;
+  --text-lg: 18px;
+  --text-xl: 20px;
+  --text-2xl: 24px;
+  --text-3xl: 32px;
+  --text-4xl: 40px;
+  --leading-heading: 1.2;
+  --tracking-heading: -0.02em;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  --control-xs: 28px;
+  --control-sm: 32px;
+  --control-md: 40px;
+  --control-lg: 48px;
+
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-full: 9999px;
+
+
+  --motion-fast: 150ms;
+  --motion-base: 220ms;
+  --motion-slow: 400ms;
+  --motion-theme: 350ms;
+  --ease-out-expo: cubic-bezier(0.22, 1, 0.36, 1);
+
+  --z-float: 20;
+  --z-float-top: 30;
+  /* The system layer (mode switcher, desktops, agent bar) sits above everything a mode lays out. */
+  --z-system: 30;
+  --z-modal-scrim: 1059;
+  --z-modal: 1060;
+  --z-popover: 1070;
+  --z-tooltip: 1080;
+}
+
+/* desk.theme sets data-motion from desk.theme.motion (or the OS when it says "system"). */
+[data-motion="reduce"] {
+  --motion-fast: 0ms;
+  --motion-base: 0ms;
+  --motion-slow: 0ms;
+  --motion-theme: 0ms;
+}

@@ -18,7 +18,7 @@ export function step(page: Page, ms: number): Promise<void> {
 export function primaryFills(page: Page): Promise<number> {
   return page.evaluate(() => {
     const probe = document.createElement("span");
-    probe.style.background = "var(--primary)";
+    probe.style.background = "var(--desk-primary)";
     document.body.append(probe);
     const primary = getComputedStyle(probe).backgroundColor;
     probe.remove();

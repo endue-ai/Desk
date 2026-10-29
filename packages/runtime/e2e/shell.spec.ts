@@ -29,7 +29,7 @@ test.describe("the desk shell", () => {
     expect(await shellTree(page)).toMatchSnapshot("default.json");
   });
 
-  test("modes unfold on hover and fold away again", async ({ page }) => {
+  test("profiles that lay the desk out unfold on hover and fold away again", async ({ page }) => {
     await page.hover(".mode-chip.is-current");
     await step(page, 400);
     await expect(page.locator(".modes-more .mode-chip")).toHaveCount(4);
@@ -41,15 +41,20 @@ test.describe("the desk shell", () => {
     await expect(page.locator(".modes-more")).toHaveCSS("max-width", "0px");
   });
 
-  test("+ saves the desk as it is as a new mode, asking only for a name", async ({ page }) => {
+  test("+ saves the desk as it is as a new profile, asking only for a name", async ({ page }) => {
     await page.click(".mode-add");
     const dialog = page.getByRole("dialog", { name: "지금 이대로 저장" });
     await expect(dialog.locator("input")).toHaveCount(1);
     await expect(dialog.locator("input")).toBeFocused();
     expect(await primaryFills(page)).toBe(1);
+    await page.keyboard.type("Quiet");
+    await page.keyboard.press("Enter");
+    await expect(page.locator(".mode-chip.is-current")).toHaveAttribute("data-mode", "quiet");
+    // A name desk.profiles already has gets a number.
+    await page.click(".mode-add");
     await page.keyboard.type("Focus");
     await page.keyboard.press("Enter");
-    await expect(page.locator(".mode-chip.is-current")).toHaveAttribute("data-mode", "focus");
+    await expect(page.locator(".mode-chip.is-current")).toHaveAttribute("data-mode", "focus-2");
   });
 
   test("a changed layout shows the dot and offers save, save as new, revert", async ({ page }) => {
@@ -68,8 +73,8 @@ test.describe("the desk shell", () => {
     await expect(dot).toBeVisible();
     await page.click(".mode-chip.is-current");
     await expect(page.getByRole("menuitem")).toHaveText([
-      "이 모드에 저장",
-      "새 모드로",
+      "이 프로필에 저장",
+      "새 프로필로",
       "되돌리기",
     ]);
     await page.getByRole("menuitem", { name: "되돌리기" }).click();
@@ -77,16 +82,16 @@ test.describe("the desk shell", () => {
     await expect(page.locator('[data-surface="calendar"]')).toHaveCSS("left", "120px");
     await dragBy(100);
     await page.click(".mode-chip.is-current");
-    await page.getByRole("menuitem", { name: "이 모드에 저장" }).click();
+    await page.getByRole("menuitem", { name: "이 프로필에 저장" }).click();
     await expect(dot).toHaveCount(0);
     await expect(page.locator('[data-surface="calendar"]')).toHaveCSS("left", "220px");
     await dragBy(40);
     await page.click(".mode-chip.is-current");
-    await page.getByRole("menuitem", { name: "새 모드로" }).click();
+    await page.getByRole("menuitem", { name: "새 프로필로" }).click();
     await expect(page.getByRole("dialog", { name: "지금 이대로 저장" })).toBeVisible();
   });
 
-  test("switching modes sends surfaces the new mode lacks to the drawer", async ({ page }) => {
+  test("switching profiles sends surfaces the new one lacks to the drawer", async ({ page }) => {
     await page.click('[data-desktop="2"]');
     await page.hover(".mode-chip.is-current");
     await step(page, 400);
@@ -142,22 +147,20 @@ test.describe("the desk shell", () => {
     await expect(page.locator(".drawer-button .badge")).toHaveText("2");
   });
 
-  test("⌘K opens the line, commands run with Enter, a message rises and is absorbed", async ({
+  test("typing opens the line, commands run with Enter, a message rises and is absorbed", async ({
     page,
   }) => {
     await expect(page.locator(".composer-field")).toHaveCSS("height", "2px");
-    await page.keyboard.press("Meta+k");
+    await page.keyboard.type("calendar");
     await step(page, 220);
     await expect(page.locator(".composer-field")).toHaveCSS("height", "48px");
-    await page.keyboard.type("calendar");
+    await expect(page.locator(".composer-input")).toHaveValue("calendar");
     await expect(page.getByRole("option").first()).toHaveText("열기 · 캘린더");
     await page.keyboard.press("Enter");
     await expect(page.locator('[data-surface="calendar"]')).toBeVisible();
-    await page.keyboard.press("Meta+k");
     await page.keyboard.type("night");
     await page.keyboard.press("Enter");
     await expect(page.locator(".mode-chip.is-current")).toHaveAttribute("data-mode", "night");
-    await page.keyboard.press("Meta+k");
     await page.keyboard.type("hello there");
     await expect(page.getByRole("option").last()).toHaveText("Eris 에게 말하기 · hello there");
     await page.keyboard.press("Enter");
@@ -174,7 +177,7 @@ test.describe("the desk shell", () => {
     await expect(page.locator(".soul-live")).toHaveText(
       'I\'ll look into "hello there" and tell you.',
     );
-    await page.keyboard.press("Meta+k");
+    await page.keyboard.type("x");
     await page.keyboard.press("Escape");
     await step(page, 220);
     await expect(page.locator(".composer-field")).toHaveCSS("height", "2px");
@@ -216,15 +219,18 @@ test.describe("the desk shell", () => {
   });
 
   test("the light theme", async ({ page }) => {
-    await page.evaluate(() => window.__shell.desk.store.set({ theme: "light", desktop: 2 }));
+    await page.evaluate(() => {
+      window.__shell.desk.runtime.settings.set("desk.theme.scheme", "light");
+      window.__shell.desk.store.set({ desktop: 2 });
+    });
     await step(page, 1000);
-    await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+    await expect(page.locator("html")).toHaveAttribute("data-scheme", "light");
     expect(await primaryFills(page)).toBeLessThanOrEqual(1);
     expect(await shellTree(page)).toMatchSnapshot("light.json");
   });
 });
 
-test("Eris drags anywhere on screen and the place is kept in the mode", async ({ page }) => {
+test("Eris drags anywhere on screen and the place is kept in the profile", async ({ page }) => {
   await openShell(page, "?persist=1");
   await page.evaluate(() => localStorage.clear());
   await openShell(page, "?persist=1");
@@ -246,7 +252,8 @@ test("Eris drags anywhere on screen and the place is kept in the mode", async ({
   await step(page, 16);
   await expect(eris).toHaveCSS("left", "0px");
   await expect(eris).toHaveCSS("top", `${900 - 138}px`);
-  await page.waitForTimeout(50);
+  // desk.session saves 250 ms after a change.
+  await page.waitForTimeout(400);
   await openShell(page, "?persist=1");
   await step(page, 16);
   await expect(eris).toHaveCSS("top", `${900 - 138}px`);

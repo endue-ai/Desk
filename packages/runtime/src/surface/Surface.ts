@@ -10,7 +10,6 @@ import { h, listen, render } from "../shell/dom";
 import { draggable } from "../shell/drag";
 import { icon } from "../shell/icons";
 import { focusPane, splitPane } from "../shell/windows";
-import { format } from "../system/keys";
 import { clampRect, fromScreen, type Rect, toScreen } from "./geometry";
 import { renderPanes } from "./PaneView";
 import { findLeaf, leaves, panesOf } from "./tree";
@@ -64,8 +63,8 @@ export function mountSurfaces(root: HTMLElement, ctx: ShellCtx): () => void {
     vh: root.clientHeight || window.innerHeight,
   });
   const hint = (label: string, command: string) => {
-    const key = ctx.keys.bindingsOf(command)[0];
-    return key ? `${label} (${format(key, ctx.platform)})` : label;
+    const key = ctx.keyOf(command);
+    return key ? `${label} (${key})` : label;
   };
 
   const place = (el: HTMLElement, r: Rect) => {
@@ -95,19 +94,19 @@ export function mountSurfaces(root: HTMLElement, ctx: ShellCtx): () => void {
       splitPane(ctx, dir);
     };
     const splitRight = tool(
-      hint(ctx.tr("splitRight"), "pane.splitRight"),
+      hint(ctx.tr("splitRight"), "desk.display.split-right"),
       "split-right",
       split("row"),
     );
     const splitDown = tool(
-      hint(ctx.tr("splitDown"), "pane.splitDown"),
+      hint(ctx.tr("splitDown"), "desk.display.split-down"),
       "split-down",
       split("column"),
     );
     const relabel = () => {
       for (const [button, label, command] of [
-        [splitRight, ctx.tr("splitRight"), "pane.splitRight"],
-        [splitDown, ctx.tr("splitDown"), "pane.splitDown"],
+        [splitRight, ctx.tr("splitRight"), "desk.display.split-right"],
+        [splitDown, ctx.tr("splitDown"), "desk.display.split-down"],
       ] as const) {
         button.setAttribute("aria-label", hint(label, command));
         button.title = hint(label, command);
@@ -258,7 +257,7 @@ export function mountSurfaces(root: HTMLElement, ctx: ShellCtx): () => void {
       draw,
     ),
     // A new key only changes the tools' hints; rebuilding would remount every view.
-    ctx.keys.onChange(() => {
+    ctx.runtime.keymap.onChange(() => {
       for (const entry of live.values()) entry.relabel();
     }),
     listen(window, "resize", draw),

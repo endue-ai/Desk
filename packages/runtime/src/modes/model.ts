@@ -22,16 +22,6 @@ function layer(a: DesktopLayout, b: Partial<DesktopLayout> | undefined): Desktop
   };
 }
 
-export function validateMode(mode: Mode, all: Mode[]): string[] {
-  const problems: string[] = [];
-  const parent = mode.manifest.extends;
-  if (parent !== null && parent !== "base") problems.push(`extends must be "base" or null`);
-  if (mode.manifest.id === "base" && parent !== null) problems.push("base extends nothing");
-  if (all.filter((m) => m.manifest.id === mode.manifest.id).length > 1)
-    problems.push("duplicate id");
-  return problems;
-}
-
 /** The saved layout of one desktop: base, then the mode, then its desktop file. */
 export function savedLayout(
   mode: Mode,
@@ -66,63 +56,6 @@ export function isDirty(mode: Mode, base: Mode | undefined, session: Session): b
   });
 }
 
-/** "Save to this mode": write every changed desktop into the mode's desktop files. */
-export function saveInto(mode: Mode, session: Session): Mode {
-  const desktops = { ...mode.desktops };
-  for (const d of DESKTOPS) {
-    const s = session[d];
-    if (s) desktops[d] = structuredClone(s);
-  }
-  return {
-    ...mode,
-    desktops,
-    manifest: { ...mode.manifest, version: bump(mode.manifest.version) },
-  };
-}
-
-/** "Save as a new mode": the desk as it is now, under a new name. Only the name is asked. */
-export function saveAsNew(
-  mode: Mode,
-  base: Mode | undefined,
-  session: Session,
-  name: string,
-  author: string,
-  taken: string[],
-): Mode {
-  const desktops: Mode["desktops"] = {};
-  for (const d of DESKTOPS) desktops[d] = structuredClone(effectiveLayout(mode, base, d, session));
-  return {
-    ...structuredClone(mode),
-    desktop: undefined,
-    desktops,
-    manifest: {
-      id: uniqueId(name, taken),
-      name,
-      icon: mode.manifest.icon,
-      author,
-      version: "1.0.0",
-      extends: "base",
-    },
-  };
-}
-
-/** Copy someone else's mode: keep the recipe, empty the agent bindings, remember where it came from. */
-export function copyMode(mode: Mode, author: string, taken: string[]): Mode {
-  const copy = structuredClone(mode);
-  copy.roles = { roles: copy.roles.roles.map((r) => ({ role: r.role, agent: null })) };
-  copy.manifest = {
-    ...copy.manifest,
-    id: uniqueId(mode.manifest.name, taken),
-    author,
-    copiedFrom: {
-      author: mode.manifest.author,
-      id: mode.manifest.id,
-      version: mode.manifest.version,
-    },
-  };
-  return copy;
-}
-
 /** Surfaces open now that the next mode does not place anywhere: they go to the drawer, not away. */
 export function leftBehind(
   from: Mode,
@@ -149,9 +82,4 @@ export function uniqueId(name: string, taken: string[]): string {
   let id = slug;
   for (let i = 2; taken.includes(id); i++) id = `${slug}-${i}`;
   return id;
-}
-
-function bump(version: string): string {
-  const [major = "1", minor = "0"] = version.split(".");
-  return `${major}.${Number(minor) + 1}.0`;
 }

@@ -18,10 +18,10 @@ const DEFAULT_TOP = 40;
 
 function palette(): Palette {
   const css = getComputedStyle(document.documentElement);
-  const v = (name: string) => css.getPropertyValue(`--persona-eris-${name}`).trim();
+  const v = (name: string) => css.getPropertyValue(`--desk-eris-${name}`).trim();
   return {
     frost: v("frost"),
-    gold: css.getPropertyValue("--persona-eris").trim(),
+    gold: css.getPropertyValue("--desk-eris").trim(),
     goldLight: v("gold-light"),
     goldDeep: v("gold-deep"),
     goldDimLight: v("gold-dim-light"),
@@ -167,13 +167,12 @@ export function mountEris(
   let start = { x: 0, y: 0 };
   const offs = [
     ctx.ticker.add(frame),
-    ctx.store.watch(
-      (s) => s.theme,
-      () => {
-        colors = palette();
-        paintMoonNow();
-      },
-    ),
+    // desk.theme applies a new theme before this hears the settings change.
+    ctx.runtime.settings.onChange((keys) => {
+      if (!keys.some((key) => key.startsWith("desk.theme."))) return;
+      colors = palette();
+      paintMoonNow();
+    }),
     draggable(el, {
       start: () => {
         start = position();

@@ -130,7 +130,8 @@ export function mountModes(root: HTMLElement, ctx: ShellCtx): () => void {
     render(currentSlot, () => [chip(ctx, current, true, changed)]);
     render(others, () =>
       s.modes
-        .filter((m) => m.manifest.id !== "base" && m.manifest.id !== current.manifest.id)
+        // Profiles that only set settings (desk.profiles' own) are the palette's (⇧⌘M) to switch to.
+        .filter((m) => m.lays && m.manifest.id !== "base" && m.manifest.id !== current.manifest.id)
         .map((m) => chip(ctx, m, false, false)),
     );
     others.inert = !s.modesOpen;

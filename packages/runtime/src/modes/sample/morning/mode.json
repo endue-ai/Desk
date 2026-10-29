@@ -1,8 +1,0 @@
-{
-  "id": "morning",
-  "name": "Morning",
-  "icon": "sunrise",
-  "author": "me",
-  "version": "1.0.0",
-  "extends": "base"
-}

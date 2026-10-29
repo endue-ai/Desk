@@ -1,5 +1,5 @@
 /**
- * The pane tree inside a surface: split a pane right or down, close one, cycle focus, resize a split.
+ * The pane tree inside a surface: split a pane right or down, close one, resize a split.
  * Pure functions over plain data, so layouts stay JSON and every change is easy to test.
  */
 import type { PaneLeaf, PaneNode, PaneSplit, SurfacePlacement } from "../modes/types";
@@ -76,14 +76,4 @@ export function setRatio(node: PaneNode, splitId: string, ratio: number): PaneNo
   return map(node, (n) =>
     n.kind === "split" && n.id === splitId ? { ...n, ratio: clamped } : undefined,
   );
-}
-
-/** The pane `step` places after `id` in reading order, wrapping around. */
-export function cycle(node: PaneNode, id: string | null, step: 1 | -1): string {
-  const all = leaves(node);
-  const at = Math.max(
-    0,
-    all.findIndex((l) => l.id === id),
-  );
-  return all[(at + step + all.length) % all.length]?.id ?? all[0]?.id ?? "p1";
 }

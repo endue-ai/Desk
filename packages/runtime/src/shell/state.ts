@@ -1,10 +1,14 @@
-/** The shell's state in one store, plus the sample desk the prototype starts with. */
+/**
+ * The shell's state in one store, plus the sample desk the prototype starts with. Profiles, the
+ * moved desktops and Eris's settings mirror the runtime's (link.ts); the theme is desk.theme's.
+ */
 import type { A2ATask, Agent, AgentCard, Space } from "@endue-ai/bridge";
 import type { BrainStatus } from "../bridge/types";
 import type { DensityName } from "../eris/mesh";
 import type { SoulStyle } from "../eris/soul";
 import type { ErisState } from "../eris/states";
 import type { Session } from "../modes/model";
+import { baseMode } from "../modes/profiles";
 import type { DesktopIndex, Mode, SurfacePlacement } from "../modes/types";
 import type { Lang } from "./copy";
 
@@ -21,10 +25,10 @@ export type RailId = "brain" | "sees" | "tasks" | "attention" | "desks" | "vm" |
 export type Popover = RailId | "drawer" | "mode-menu" | "agents-more" | null;
 
 export interface DeskState {
-  theme: "dark" | "light";
   lang: Lang;
-  reducedMotion: boolean;
+  /** The profiles as the shell lays them out (base first), from desk.profiles. */
   modes: Mode[];
+  /** The profile in force. */
   modeId: string;
   desktop: DesktopIndex;
   session: Session;
@@ -95,13 +99,12 @@ export class Store {
 
 const HOUR = 3_600_000;
 
-export function sampleState(modes: Mode[], lang: Lang): DeskState {
+export function sampleState(lang: Lang): DeskState {
   return {
-    theme: "dark",
     lang,
-    reducedMotion: false,
-    modes,
-    modeId: "morning",
+    // The base until desk.profiles lists the profiles.
+    modes: [baseMode(undefined)],
+    modeId: "default",
     desktop: 1,
     session: {},
     modesOpen: false,

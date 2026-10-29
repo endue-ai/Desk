@@ -1,20 +1,20 @@
 import type { ErisState } from "../eris/states";
 import type { Platform } from "../input";
-import type { Keymap } from "../system/keys";
 import type { Ctx } from "./actions";
 import type { CopyKey } from "./copy";
 import type { Ticker } from "./ticker";
 
-/** What every shell part gets: the store and bridge, the frame loop, copy, keys and motion settings. */
+/** What every shell part gets: the store, the bridges, the runtime, the frame loop, copy and keys. */
 export interface ShellCtx extends Ctx {
   ticker: Ticker;
   tr(key: CopyKey, vars?: Record<string, string | number>): string;
+  /** Reduced motion, as desk.theme says. */
   reduced(): boolean;
   /** Wall-clock milliseconds now: the epoch the shell started at plus the clock's time. */
   wall(): number;
   platform: Platform;
-  /** Command bindings (system layer). */
-  keys: Keymap;
+  /** The first key bound to a command, as people read it on this platform. */
+  keyOf(command: string): string | undefined;
   /** Eris's controls for parts that make her react (the composer, the rail). */
   eris: {
     say(text: string, words?: { word: string; at: number }[]): void;

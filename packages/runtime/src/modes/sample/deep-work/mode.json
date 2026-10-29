@@ -1,8 +1,0 @@
-{
-  "id": "deep-work",
-  "name": "Deep work",
-  "icon": "target",
-  "author": "me",
-  "version": "1.0.0",
-  "extends": "base"
-}

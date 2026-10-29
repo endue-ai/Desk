@@ -5,7 +5,6 @@
 import type { PaneSplit, SurfacePlacement } from "../modes/types";
 import {
   close,
-  cycle,
   findLeaf,
   LAUNCHER,
   leaves,
@@ -29,6 +28,8 @@ export function focusPane(ctx: Ctx, surface: string, pane?: string): void {
   const all = leaves(panesOf(p));
   const target = all.find((l) => l.id === pane) ?? all[0];
   const s = ctx.store.get();
+  // A pane in use: the runtime's own surfaces give the focus up.
+  if (ctx.runtime.shortcuts.focused) ctx.runtime.focusSurface(null);
   if (s.focused !== surface || s.pane !== (target?.id ?? null)) {
     ctx.store.set({ focused: surface, pane: target?.id ?? null });
   }
@@ -75,12 +76,14 @@ export function splitPane(ctx: Ctx, dir: PaneSplit["dir"]): void {
   focusPane(ctx, p.id, added);
 }
 
-/** Close the focused pane; the last pane closes its surface. */
-export function closePane(ctx: Ctx): void {
-  const p = focusedPlacement(ctx);
+/** Close a pane (the focused one unless named); the last pane closes its surface. */
+export function closePane(ctx: Ctx, surface?: string, pane?: string): void {
+  const p = surface
+    ? layoutOf(ctx.store.get()).surfaces.find((q) => q.id === surface)
+    : focusedPlacement(ctx);
   if (!p) return;
   const tree = panesOf(p);
-  const target = ctx.store.get().pane ?? leaves(tree)[0]?.id ?? "p1";
+  const target = pane ?? ctx.store.get().pane ?? leaves(tree)[0]?.id ?? "p1";
   const next = close(tree, target);
   if (!next) {
     closeSurface(ctx, p.id);
@@ -89,12 +92,6 @@ export function closePane(ctx: Ctx): void {
   }
   update(ctx, p.id, (q) => ({ ...q, panes: next }));
   focusPane(ctx, p.id, leaves(next)[0]?.id);
-}
-
-export function cyclePane(ctx: Ctx, step: 1 | -1): void {
-  const p = focusedPlacement(ctx);
-  if (!p) return;
-  focusPane(ctx, p.id, cycle(panesOf(p), ctx.store.get().pane, step));
 }
 
 export function showInPane(ctx: Ctx, surface: string, pane: string, view: string): void {
