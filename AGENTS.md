@@ -91,6 +91,12 @@ Several agents work at once on one trunk (ADR 0015).
 - Don't rebase because `main` moved; the merge queue tests each PR on top of it. Update a branch only
   for a conflict, a failing gate or a queue ejection, and never rerun CI to turn it green.
 - People approve PRs and add them to the merge queue. Agents never merge or enqueue.
+- Playwright runs only through `just test-e2e` (and `just perf-opening`, which only people run on
+  macOS). Never call `playwright test` or write a one-off Playwright config or script. On macOS the
+  runner uses a Linux container and at most two e2e runs share a machine: dozens of native WebKit
+  processes crashed WindowServer and ended the login session for every agent (ADR 0018).
+- If `curl`, `gh` or `git` fail with "Could not resolve host" while the network is up, run
+  `just doctor`. When it reports an ended login session, stop and tell the person; retrying won't help.
 
 ## Conventions
 

@@ -1,0 +1,15 @@
+{
+  "target": "PermQueryResult",
+  "description": "every grant carries its duration",
+  "instance": {
+    "grants": [
+      {
+        "grantId": "g1",
+        "permission": {
+          "permission": "ui:notify"
+        },
+        "grantedAt": "2026-10-29T09:00:00Z"
+      }
+    ]
+  }
+}

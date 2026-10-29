@@ -20,7 +20,8 @@ just dev
 ```
 
 你需要 Rust（版本固定在 `rust-toolchain.toml` 中）、Node 22+、pnpm、`just`，以及你所用操作系统对应的
-Tauri 前置依赖。为了运行运行时测试，需执行一次 `pnpm --filter @endue-ai/runtime exec playwright install webkit`。
+Tauri 前置依赖。在 macOS 上运行时测试在 Linux 容器中运行，因此还需要 Docker Desktop；在 Linux 和 Windows 上，需执行一次
+`pnpm --filter @endue-ai/runtime exec playwright install webkit`。请用 `just test-e2e` 运行测试，不要直接调用 Playwright。
 
 ## 隐私
 

@@ -29,4 +29,5 @@ no code, only what they contribute in `plugin.json`. Turn one off and another pl
 Every plugin folder holds `plugin.json`, `README.md`, and as needed `ui/`, `logic/`, `tool/` and `tests/`.
 
 Status: `sidebar`, `eris`, `onboarding` and the nine `desk.*` policies work; `toolbar` and `dock` are
-folders only. `just dev` installs every folder here that has a `plugin.json` as a built-in plugin.
+folders only (the first run draws its own frame of the toolbar, dock, profiles and left bar until they
+exist). `just dev` installs every folder here that has a `plugin.json` as a built-in plugin.

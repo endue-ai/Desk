@@ -1,0 +1,12 @@
+{
+  "target": "BridgeRequest",
+  "description": "fatal is not a log level",
+  "instance": {
+    "id": 59,
+    "method": "log.write",
+    "params": {
+      "level": "fatal",
+      "message": "Out of memory."
+    }
+  }
+}

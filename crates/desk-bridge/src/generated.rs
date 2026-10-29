@@ -33,7 +33,7 @@ pub struct PluginContributes {
     pub profiles: Option<Vec<ProfileContribution>>,
 }
 
-/// A command id: the owner's plugin id and one or more names, for example desk.palette.open.
+/// A command id: lowercase and dotted, with at least two segments, for example eris.say or desk.palette.open. Unique across callers (bridge cmd.*); a plugin's contributed commands start with its own id.
 pub type CommandId = String;
 
 /// A command the palette lists and keys can run.
@@ -154,8 +154,8 @@ pub struct ThemeContribution {
     pub tokens: BTreeMap<String, String>,
 }
 
-/// A setting key, as in init.yaml: lowercase and dotted by owner (desk.notify.dnd).
-pub type SettingKey = String;
+/// A setting's full name, as in init.yaml: the owner's id and its key, dotted (desk.notify.dnd).
+pub type SettingName = String;
 
 /// The JSON type a setting's value has.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -229,6 +229,12 @@ pub enum Permission {
     UiNotify(UiNotifyPermission),
     PluginManage(PluginManagePermission),
     BrainConverse(BrainConversePermission),
+    CmdInvoke(CmdInvokePermission),
+    CmdAdvise(CmdAdvisePermission),
+    SettingsRead(SettingsReadPermission),
+    LogRead(LogReadPermission),
+    EventsSubscribe(EventsSubscribePermission),
+    PermManage(PermManagePermission),
 }
 
 /// Read files, list folders and watch for changes under the given paths.
@@ -308,6 +314,54 @@ pub struct BrainConversePermission {
     pub permission: BrainConversePermissionPermission,
 }
 
+/// Invoke and list the commands whose ids the patterns cover, whoever provides them.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CmdInvokePermission {
+    pub permission: CmdInvokePermissionPermission,
+    /// Command id patterns the permission covers.
+    pub ids: Vec<CommandPattern>,
+}
+
+/// Hook into or override commands other callers provide. Reserved for command hooks: no v0 method uses it yet.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CmdAdvisePermission {
+    pub permission: CmdAdvisePermissionPermission,
+}
+
+/// Read other callers' settings that the patterns cover, and receive their settings.changed events.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SettingsReadPermission {
+    pub permission: SettingsReadPermissionPermission,
+    /// Setting patterns the permission covers.
+    pub keys: Vec<SettingPattern>,
+}
+
+/// Read every log channel with log.tail, and receive log.entry events.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct LogReadPermission {
+    pub permission: LogReadPermissionPermission,
+}
+
+/// Subscribe with events.subscribe to the named core events about every caller.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct EventsSubscribePermission {
+    pub permission: EventsSubscribePermissionPermission,
+    /// Event names the permission covers.
+    pub names: Vec<EventName>,
+}
+
+/// See and revoke every caller's grants, and act as the prompter: receive perm.prompt events and answer them with perm.answer.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PermManagePermission {
+    pub permission: PermManagePermissionPermission,
+}
+
 /// An absolute path, or one rooted at ~ or at ${plugin}, ${workspace} or ${home}, with forward slashes. * matches within a segment and ** across segments.
 pub type PathPattern = String;
 
@@ -316,6 +370,29 @@ pub type HostPattern = String;
 
 /// A program name looked up on PATH, or an absolute path. No arguments and no whitespace.
 pub type Command = String;
+
+/// A command id, or a pattern in which * matches any run of characters, dots included: * covers every command, eris.* every command under eris.
+pub type CommandPattern = String;
+
+/// owner/key: a caller id and a setting key, where * matches any run of characters within its part. endue.eris/voice is one setting; endue.eris/* covers every Eris setting.
+pub type SettingPattern = String;
+
+/// A core event that events.subscribe can ask for.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum EventName {
+    #[serde(rename = "plugin.changed")]
+    PluginChanged,
+    #[serde(rename = "perm.changed")]
+    PermChanged,
+    #[serde(rename = "cmd.changed")]
+    CmdChanged,
+    #[serde(rename = "cmd.invoked")]
+    CmdInvoked,
+    #[serde(rename = "settings.changed")]
+    SettingsChanged,
+    #[serde(rename = "log.entry")]
+    LogEntry,
+}
 
 /// A plugin manifest (plugin.json).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -586,6 +663,9 @@ pub type RequestId = u64;
 /// An absolute path, or one rooted at ~ or at ${plugin}, ${workspace} or ${home}, with forward slashes.
 pub type Path = String;
 
+/// Who makes calls: a plugin id such as endue.eris, or a name of the desk's own such as desk (the web runtime). core names desk-core itself.
+pub type CallerId = String;
+
 /// How binary-safe string content is encoded.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Encoding {
@@ -616,12 +696,25 @@ pub enum BridgeRequest {
     PermRequest(PermRequestRequest),
     PermQuery(PermQueryRequest),
     PermRevoke(PermRevokeRequest),
+    PermList(PermListRequest),
+    PermAnswer(PermAnswerRequest),
     PluginList(PluginListRequest),
     PluginSetEnabled(PluginSetEnabledRequest),
     StoreGet(StoreGetRequest),
     StoreSet(StoreSetRequest),
     InitGet(InitGetRequest),
     BrainSay(BrainSayRequest),
+    CmdRegister(CmdRegisterRequest),
+    CmdUnregister(CmdUnregisterRequest),
+    CmdList(CmdListRequest),
+    CmdInvoke(CmdInvokeRequest),
+    SettingsGet(SettingsGetRequest),
+    SettingsSet(SettingsSetRequest),
+    SettingsList(SettingsListRequest),
+    LogWrite(LogWriteRequest),
+    LogTail(LogTailRequest),
+    EventsSubscribe(EventsSubscribeRequest),
+    EventsUnsubscribe(EventsUnsubscribeRequest),
 }
 
 /// The answer to one request: a result, or an error.
@@ -685,7 +778,7 @@ pub enum ErrorCode {
     Internal,
 }
 
-/// Something the core reports without being asked: file changes, process output, wake words, permission changes, notifications.
+/// Something the core reports without being asked: file changes, process output, wake words, permission changes, notifications, commands, settings and log entries.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum BridgeEvent {
@@ -694,10 +787,238 @@ pub enum BridgeEvent {
     ProcExit(ProcExitEvent),
     AudioWake(AudioWakeEvent),
     PermChanged(PermChangedEvent),
+    PermPrompt(PermPromptEvent),
     PluginChanged(PluginChangedEvent),
     UiNotified(UiNotifiedEvent),
     BrainTurn(BrainTurnEvent),
+    CmdChanged(CmdChangedEvent),
+    CmdInvoked(CmdInvokedEvent),
+    SettingsChanged(SettingsChangedEvent),
+    LogEntry(LogEntryEvent),
 }
+
+/// A registered command as cmd.list returns it.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CommandInfo {
+    pub id: CommandId,
+    /// Shown in the palette and menus.
+    pub title: String,
+    /// One or two sentences for people.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    /// JSON Schema (2020-12) for the args of cmd.invoke; absent means the command takes none.
+    #[serde(
+        rename = "argsSchema",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub args_schema: Option<serde_json::Map<String, serde_json::Value>>,
+    /// A context expression the runtime evaluates to offer the command; absent means always.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub when: Option<String>,
+    pub provider: CallerId,
+}
+
+/// Register one of the caller's commands, or update it.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CmdRegisterRequest {
+    pub id: RequestId,
+    pub method: CmdRegisterRequestMethod,
+    pub params: CmdRegisterParams,
+}
+
+/// Parameters of cmd.register. The caller becomes the command's provider.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CmdRegisterParams {
+    pub id: CommandId,
+    pub title: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    /// JSON Schema (2020-12) for the args of cmd.invoke.
+    #[serde(
+        rename = "argsSchema",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub args_schema: Option<serde_json::Map<String, serde_json::Value>>,
+    /// A context expression, as keybindings use; absent means always available.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub when: Option<String>,
+}
+
+/// Result of cmd.register.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CmdRegisterResult {}
+
+/// Remove one of the caller's commands.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CmdUnregisterRequest {
+    pub id: RequestId,
+    pub method: CmdUnregisterRequestMethod,
+    pub params: CmdUnregisterParams,
+}
+
+/// Parameters of cmd.unregister.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CmdUnregisterParams {
+    pub id: CommandId,
+}
+
+/// Result of cmd.unregister.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CmdUnregisterResult {}
+
+/// List the registered commands the scope covers.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CmdListRequest {
+    pub id: RequestId,
+    pub method: CmdListRequestMethod,
+    pub params: CmdListParams,
+}
+
+/// Parameters of cmd.list.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CmdListParams {
+    pub scope: CmdInvokePermission,
+}
+
+/// Result of cmd.list, in registration order.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CmdListResult {
+    pub commands: Vec<CommandInfo>,
+}
+
+/// Invoke a command, whoever provides it. The core records the caller.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CmdInvokeRequest {
+    pub id: RequestId,
+    pub method: CmdInvokeRequestMethod,
+    pub params: CmdInvokeParams,
+}
+
+/// Parameters of cmd.invoke. args must match the command's argsSchema.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CmdInvokeParams {
+    pub id: CommandId,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub args: Option<serde_json::Map<String, serde_json::Value>>,
+    pub scope: CmdInvokePermission,
+}
+
+/// Result of cmd.invoke: the provider receives a cmd.invoked event with this id.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CmdInvokeResult {
+    #[serde(rename = "invocationId")]
+    pub invocation_id: String,
+}
+
+/// A command was registered, updated or unregistered. Sent to callers subscribed to cmd.changed.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CmdChangedEvent {
+    pub event: CmdChangedEventEvent,
+    pub data: CmdChangedData,
+}
+
+/// Payload of cmd.changed.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CmdChangedData {
+    pub id: CommandId,
+    pub change: CommandChange,
+    pub provider: CallerId,
+}
+
+/// What happened to the command.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum CommandChange {
+    #[serde(rename = "registered")]
+    Registered,
+    #[serde(rename = "updated")]
+    Updated,
+    #[serde(rename = "unregistered")]
+    Unregistered,
+}
+
+/// A command was invoked. Sent to its provider, which runs it, and to callers subscribed to cmd.invoked.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CmdInvokedEvent {
+    pub event: CmdInvokedEventEvent,
+    pub data: CmdInvokedData,
+}
+
+/// Payload of cmd.invoked: which command, with what, and who asked.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CmdInvokedData {
+    #[serde(rename = "invocationId")]
+    pub invocation_id: String,
+    pub id: CommandId,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub args: Option<serde_json::Map<String, serde_json::Value>>,
+    pub caller: CallerId,
+}
+
+/// Start receiving the named events about every caller.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct EventsSubscribeRequest {
+    pub id: RequestId,
+    pub method: EventsSubscribeRequestMethod,
+    pub params: EventsSubscribeParams,
+}
+
+/// Parameters of events.subscribe. The scope must cover every name.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct EventsSubscribeParams {
+    pub names: Vec<EventName>,
+    pub scope: EventsSubscribePermission,
+}
+
+/// Result of events.subscribe.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct EventsSubscribeResult {
+    #[serde(rename = "subscriptionId")]
+    pub subscription_id: String,
+}
+
+/// Stop one of the caller's subscriptions.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct EventsUnsubscribeRequest {
+    pub id: RequestId,
+    pub method: EventsUnsubscribeRequestMethod,
+    pub params: EventsUnsubscribeParams,
+}
+
+/// Parameters of events.unsubscribe.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct EventsUnsubscribeParams {
+    #[serde(rename = "subscriptionId")]
+    pub subscription_id: String,
+}
+
+/// Result of events.unsubscribe.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct EventsUnsubscribeResult {}
 
 /// Read a whole file.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -896,6 +1217,93 @@ pub struct InitGetResult {
     pub problem: Option<String>,
 }
 
+/// How much an entry matters.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum LogLevel {
+    #[serde(rename = "debug")]
+    Debug,
+    #[serde(rename = "info")]
+    Info,
+    #[serde(rename = "warn")]
+    Warn,
+    #[serde(rename = "error")]
+    Error,
+}
+
+/// One log entry. channel is the caller that wrote it, or core for desk-core.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct LogEntry {
+    /// RFC 3339 timestamp, set by the core.
+    pub at: String,
+    pub channel: CallerId,
+    pub level: LogLevel,
+    pub message: String,
+    /// Structured detail, any JSON object.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fields: Option<serde_json::Map<String, serde_json::Value>>,
+}
+
+/// Write an entry to the caller's own channel.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct LogWriteRequest {
+    pub id: RequestId,
+    pub method: LogWriteRequestMethod,
+    pub params: LogWriteParams,
+}
+
+/// Parameters of log.write.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct LogWriteParams {
+    pub level: LogLevel,
+    pub message: String,
+    /// Structured detail, any JSON object.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fields: Option<serde_json::Map<String, serde_json::Value>>,
+}
+
+/// Result of log.write.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct LogWriteResult {}
+
+/// Read the latest entries of one channel, or of every channel.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct LogTailRequest {
+    pub id: RequestId,
+    pub method: LogTailRequestMethod,
+    pub params: LogTailParams,
+}
+
+/// Parameters of log.tail. Without channel, every channel merged in time order; count defaults to 100.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct LogTailParams {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub channel: Option<CallerId>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub count: Option<u64>,
+    pub scope: LogReadPermission,
+}
+
+/// Result of log.tail, oldest entry first.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct LogTailResult {
+    pub entries: Vec<LogEntry>,
+}
+
+/// A new log entry. Sent to callers subscribed to log.entry that hold log:read.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct LogEntryEvent {
+    pub event: LogEntryEventEvent,
+    pub data: LogEntry,
+}
+
 /// Make one HTTP(S) request and return the whole response.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -974,6 +1382,19 @@ pub struct PermRequestParams {
     pub permission: Permission,
     /// Shown to the person in the prompt.
     pub reason: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub duration: Option<GrantDuration>,
+}
+
+/// How long a grant lasts. once: the next call it allows, then it expires. session: until Desk quits. always: kept on disk across restarts. Every grant lasts until revoked at the latest. perm.request defaults to session.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum GrantDuration {
+    #[serde(rename = "once")]
+    Once,
+    #[serde(rename = "session")]
+    Session,
+    #[serde(rename = "always")]
+    Always,
 }
 
 /// Result of perm.request. A refusal is a result, not an error.
@@ -1018,12 +1439,14 @@ pub struct PermRevokeRequest {
     pub params: PermRevokeParams,
 }
 
-/// Parameters of perm.revoke.
+/// Parameters of perm.revoke. Without scope only the caller's own grants; with perm:manage any caller's.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct PermRevokeParams {
     #[serde(rename = "grantId")]
     pub grant_id: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub scope: Option<PermManagePermission>,
 }
 
 /// Result of perm.revoke.
@@ -1038,12 +1461,93 @@ pub struct Grant {
     #[serde(rename = "grantId")]
     pub grant_id: String,
     pub permission: Permission,
+    pub duration: GrantDuration,
     /// RFC 3339 timestamp.
     #[serde(rename = "grantedAt")]
     pub granted_at: String,
-    /// RFC 3339 timestamp; absent means until revoked.
+    /// RFC 3339 timestamp; absent means for as long as the duration allows.
     #[serde(rename = "expiresAt", default, skip_serializing_if = "Option::is_none")]
     pub expires_at: Option<String>,
+}
+
+/// List every caller's grants, for the person's permissions view.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PermListRequest {
+    pub id: RequestId,
+    pub method: PermListRequestMethod,
+    pub params: PermListParams,
+}
+
+/// Parameters of perm.list. With caller, only that caller's grants are returned.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PermListParams {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub caller: Option<CallerId>,
+    pub scope: PermManagePermission,
+}
+
+/// Result of perm.list, oldest grant first.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PermListResult {
+    pub grants: Vec<CallerGrant>,
+}
+
+/// A grant together with the caller that holds it.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CallerGrant {
+    pub caller: CallerId,
+    pub grant: Grant,
+}
+
+/// The prompter answers a perm.prompt with the person's decision.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PermAnswerRequest {
+    pub id: RequestId,
+    pub method: PermAnswerRequestMethod,
+    pub params: PermAnswerParams,
+}
+
+/// Parameters of perm.answer. duration is what the person chose; absent keeps the one asked for.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PermAnswerParams {
+    #[serde(rename = "promptId")]
+    pub prompt_id: String,
+    pub granted: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub duration: Option<GrantDuration>,
+    pub scope: PermManagePermission,
+}
+
+/// Result of perm.answer.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PermAnswerResult {}
+
+/// A caller asked for a permission and the person has to decide. Sent to callers that hold perm:manage.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PermPromptEvent {
+    pub event: PermPromptEventEvent,
+    pub data: PermPromptData,
+}
+
+/// Payload of perm.prompt: who asks, for what, why and for how long.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PermPromptData {
+    #[serde(rename = "promptId")]
+    pub prompt_id: String,
+    pub caller: CallerId,
+    pub permission: Permission,
+    /// The caller's reason, to show as it is.
+    pub reason: String,
+    pub duration: GrantDuration,
 }
 
 /// One of the caller's grants changed.
@@ -1367,6 +1871,103 @@ pub struct ProcExitData {
     pub signal: Option<Signal>,
 }
 
+/// A key in its owner's namespace, lowercase and dotted: voice, motion.reduce.
+pub type SettingKey = String;
+
+/// One setting with its owner.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Setting {
+    pub owner: CallerId,
+    pub key: SettingKey,
+    /// Any JSON value.
+    pub value: serde_json::Value,
+}
+
+/// Read one setting: the caller's own, or another caller's under settings:read.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SettingsGetRequest {
+    pub id: RequestId,
+    pub method: SettingsGetRequestMethod,
+    pub params: SettingsGetParams,
+}
+
+/// Parameters of settings.get. owner defaults to the caller; another owner needs a scope that covers owner/key.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SettingsGetParams {
+    pub key: SettingKey,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub owner: Option<CallerId>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub scope: Option<SettingsReadPermission>,
+}
+
+/// Result of settings.get. value is absent when the key was never set.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SettingsGetResult {
+    /// Any JSON value.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub value: Option<serde_json::Value>,
+}
+
+/// Write one of the caller's own settings (64 KiB of JSON at most).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SettingsSetRequest {
+    pub id: RequestId,
+    pub method: SettingsSetRequestMethod,
+    pub params: SettingsSetParams,
+}
+
+/// Parameters of settings.set.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SettingsSetParams {
+    pub key: SettingKey,
+    /// Any JSON value.
+    pub value: serde_json::Value,
+}
+
+/// Result of settings.set.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SettingsSetResult {}
+
+/// List settings: the caller's own, or every setting a settings:read scope covers.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SettingsListRequest {
+    pub id: RequestId,
+    pub method: SettingsListRequestMethod,
+    pub params: SettingsListParams,
+}
+
+/// Parameters of settings.list. Without scope, the caller's own settings; with one, every setting it covers, whoever owns it.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SettingsListParams {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub scope: Option<SettingsReadPermission>,
+}
+
+/// Result of settings.list, by owner and then key.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SettingsListResult {
+    pub settings: Vec<Setting>,
+}
+
+/// A setting changed. Sent to its owner, and to callers subscribed to settings.changed whose settings:read grant covers it.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SettingsChangedEvent {
+    pub event: SettingsChangedEventEvent,
+    pub data: Setting,
+}
+
 /// A key in the caller's own namespace.
 pub type StoreKey = String;
 
@@ -1606,6 +2207,54 @@ pub enum BrainConversePermissionPermission {
     BrainConverse,
 }
 
+/// The `permission` of [`CmdInvokePermission`]: always `"cmd:invoke"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum CmdInvokePermissionPermission {
+    #[default]
+    #[serde(rename = "cmd:invoke")]
+    CmdInvoke,
+}
+
+/// The `permission` of [`CmdAdvisePermission`]: always `"cmd:advise"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum CmdAdvisePermissionPermission {
+    #[default]
+    #[serde(rename = "cmd:advise")]
+    CmdAdvise,
+}
+
+/// The `permission` of [`SettingsReadPermission`]: always `"settings:read"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum SettingsReadPermissionPermission {
+    #[default]
+    #[serde(rename = "settings:read")]
+    SettingsRead,
+}
+
+/// The `permission` of [`LogReadPermission`]: always `"log:read"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum LogReadPermissionPermission {
+    #[default]
+    #[serde(rename = "log:read")]
+    LogRead,
+}
+
+/// The `permission` of [`EventsSubscribePermission`]: always `"events:subscribe"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum EventsSubscribePermissionPermission {
+    #[default]
+    #[serde(rename = "events:subscribe")]
+    EventsSubscribe,
+}
+
+/// The `permission` of [`PermManagePermission`]: always `"perm:manage"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum PermManagePermissionPermission {
+    #[default]
+    #[serde(rename = "perm:manage")]
+    PermManage,
+}
+
 /// The `method` of [`AudioCaptureStartRequest`]: always `"audio.capture.start"`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub enum AudioCaptureStartRequestMethod {
@@ -1644,6 +2293,70 @@ pub enum BrainTurnEventEvent {
     #[default]
     #[serde(rename = "brain.turn")]
     BrainTurn,
+}
+
+/// The `method` of [`CmdRegisterRequest`]: always `"cmd.register"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum CmdRegisterRequestMethod {
+    #[default]
+    #[serde(rename = "cmd.register")]
+    CmdRegister,
+}
+
+/// The `method` of [`CmdUnregisterRequest`]: always `"cmd.unregister"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum CmdUnregisterRequestMethod {
+    #[default]
+    #[serde(rename = "cmd.unregister")]
+    CmdUnregister,
+}
+
+/// The `method` of [`CmdListRequest`]: always `"cmd.list"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum CmdListRequestMethod {
+    #[default]
+    #[serde(rename = "cmd.list")]
+    CmdList,
+}
+
+/// The `method` of [`CmdInvokeRequest`]: always `"cmd.invoke"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum CmdInvokeRequestMethod {
+    #[default]
+    #[serde(rename = "cmd.invoke")]
+    CmdInvoke,
+}
+
+/// The `event` of [`CmdChangedEvent`]: always `"cmd.changed"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum CmdChangedEventEvent {
+    #[default]
+    #[serde(rename = "cmd.changed")]
+    CmdChanged,
+}
+
+/// The `event` of [`CmdInvokedEvent`]: always `"cmd.invoked"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum CmdInvokedEventEvent {
+    #[default]
+    #[serde(rename = "cmd.invoked")]
+    CmdInvoked,
+}
+
+/// The `method` of [`EventsSubscribeRequest`]: always `"events.subscribe"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum EventsSubscribeRequestMethod {
+    #[default]
+    #[serde(rename = "events.subscribe")]
+    EventsSubscribe,
+}
+
+/// The `method` of [`EventsUnsubscribeRequest`]: always `"events.unsubscribe"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum EventsUnsubscribeRequestMethod {
+    #[default]
+    #[serde(rename = "events.unsubscribe")]
+    EventsUnsubscribe,
 }
 
 /// The `method` of [`FsReadRequest`]: always `"fs.read"`.
@@ -1694,6 +2407,30 @@ pub enum InitGetRequestMethod {
     InitGet,
 }
 
+/// The `method` of [`LogWriteRequest`]: always `"log.write"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum LogWriteRequestMethod {
+    #[default]
+    #[serde(rename = "log.write")]
+    LogWrite,
+}
+
+/// The `method` of [`LogTailRequest`]: always `"log.tail"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum LogTailRequestMethod {
+    #[default]
+    #[serde(rename = "log.tail")]
+    LogTail,
+}
+
+/// The `event` of [`LogEntryEvent`]: always `"log.entry"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum LogEntryEventEvent {
+    #[default]
+    #[serde(rename = "log.entry")]
+    LogEntry,
+}
+
 /// The `method` of [`NetFetchRequest`]: always `"net.fetch"`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub enum NetFetchRequestMethod {
@@ -1724,6 +2461,30 @@ pub enum PermRevokeRequestMethod {
     #[default]
     #[serde(rename = "perm.revoke")]
     PermRevoke,
+}
+
+/// The `method` of [`PermListRequest`]: always `"perm.list"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum PermListRequestMethod {
+    #[default]
+    #[serde(rename = "perm.list")]
+    PermList,
+}
+
+/// The `method` of [`PermAnswerRequest`]: always `"perm.answer"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum PermAnswerRequestMethod {
+    #[default]
+    #[serde(rename = "perm.answer")]
+    PermAnswer,
+}
+
+/// The `event` of [`PermPromptEvent`]: always `"perm.prompt"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum PermPromptEventEvent {
+    #[default]
+    #[serde(rename = "perm.prompt")]
+    PermPrompt,
 }
 
 /// The `event` of [`PermChangedEvent`]: always `"perm.changed"`.
@@ -1804,6 +2565,38 @@ pub enum ProcExitEventEvent {
     #[default]
     #[serde(rename = "proc.exit")]
     ProcExit,
+}
+
+/// The `method` of [`SettingsGetRequest`]: always `"settings.get"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum SettingsGetRequestMethod {
+    #[default]
+    #[serde(rename = "settings.get")]
+    SettingsGet,
+}
+
+/// The `method` of [`SettingsSetRequest`]: always `"settings.set"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum SettingsSetRequestMethod {
+    #[default]
+    #[serde(rename = "settings.set")]
+    SettingsSet,
+}
+
+/// The `method` of [`SettingsListRequest`]: always `"settings.list"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum SettingsListRequestMethod {
+    #[default]
+    #[serde(rename = "settings.list")]
+    SettingsList,
+}
+
+/// The `event` of [`SettingsChangedEvent`]: always `"settings.changed"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum SettingsChangedEventEvent {
+    #[default]
+    #[serde(rename = "settings.changed")]
+    SettingsChanged,
 }
 
 /// The `method` of [`StoreGetRequest`]: always `"store.get"`.
@@ -1925,12 +2718,24 @@ pub const SCHEMAS: &[(&str, &str)] = &[
         include_str!("../../../specs/bridge/v0/bridge.schema.json"),
     ),
     (
+        "https://endue.ai/specs/bridge/v0/cmd.schema.json",
+        include_str!("../../../specs/bridge/v0/cmd.schema.json"),
+    ),
+    (
+        "https://endue.ai/specs/bridge/v0/events.schema.json",
+        include_str!("../../../specs/bridge/v0/events.schema.json"),
+    ),
+    (
         "https://endue.ai/specs/bridge/v0/fs.schema.json",
         include_str!("../../../specs/bridge/v0/fs.schema.json"),
     ),
     (
         "https://endue.ai/specs/bridge/v0/init.schema.json",
         include_str!("../../../specs/bridge/v0/init.schema.json"),
+    ),
+    (
+        "https://endue.ai/specs/bridge/v0/log.schema.json",
+        include_str!("../../../specs/bridge/v0/log.schema.json"),
     ),
     (
         "https://endue.ai/specs/bridge/v0/net.schema.json",
@@ -1947,6 +2752,10 @@ pub const SCHEMAS: &[(&str, &str)] = &[
     (
         "https://endue.ai/specs/bridge/v0/proc.schema.json",
         include_str!("../../../specs/bridge/v0/proc.schema.json"),
+    ),
+    (
+        "https://endue.ai/specs/bridge/v0/settings.schema.json",
+        include_str!("../../../specs/bridge/v0/settings.schema.json"),
     ),
     (
         "https://endue.ai/specs/bridge/v0/store.schema.json",

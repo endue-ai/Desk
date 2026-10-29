@@ -1,0 +1,11 @@
+{
+  "target": "BridgeRequest",
+  "description": "setting keys are lowercase",
+  "instance": {
+    "id": 56,
+    "method": "settings.get",
+    "params": {
+      "key": "Voice"
+    }
+  }
+}

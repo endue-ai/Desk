@@ -10,8 +10,8 @@ use base64::Engine as _;
 use desk_bridge::{
     BridgeError, BridgeEvent, BridgeFailure, BridgeRequest, BridgeResponse, BridgeSuccess,
     DirEntry, Encoding, EntryKind, ErrorCode, False, FsListResult, FsReadResult, Grant,
-    GrantChange, PermChangedData, PermChangedEvent, PermQueryResult, PermRequestResult,
-    PermRevokeResult, Permission, RequestId, True,
+    GrantChange, GrantDuration, PermChangedData, PermChangedEvent, PermQueryResult,
+    PermRequestResult, PermRevokeResult, Permission, RequestId, True,
 };
 use desk_sys::fs as sysfs;
 use serde::Serialize;
@@ -137,6 +137,14 @@ impl Core {
                 }
                 (r.id, json(PermQueryResult { grants }))
             }
+            R::PermRequest(r)
+                if matches!(
+                    r.params.duration,
+                    Some(GrantDuration::Once | GrantDuration::Always)
+                ) =>
+            {
+                (r.id, unsupported("perm.request once or always"))
+            }
             R::PermRequest(r) => {
                 let params = r.params;
                 let answer = if self
@@ -155,6 +163,9 @@ impl Core {
                     })
                 };
                 (r.id, answer)
+            }
+            R::PermRevoke(r) if r.params.scope.is_some() => {
+                (r.id, unsupported("perm.revoke of another caller's grant"))
             }
             R::PermRevoke(r) => {
                 let answer = if self.permissions().revoke(caller, &r.params.grant_id) {
@@ -187,6 +198,19 @@ impl Core {
             R::AudioCaptureStop(r) => (r.id, unsupported("audio.capture.stop")),
             R::UiSurfaceOpen(r) => (r.id, unsupported("ui.surface.open")),
             R::UiSurfaceClose(r) => (r.id, unsupported("ui.surface.close")),
+            R::PermList(r) => (r.id, unsupported("perm.list")),
+            R::PermAnswer(r) => (r.id, unsupported("perm.answer")),
+            R::CmdRegister(r) => (r.id, unsupported("cmd.register")),
+            R::CmdUnregister(r) => (r.id, unsupported("cmd.unregister")),
+            R::CmdList(r) => (r.id, unsupported("cmd.list")),
+            R::CmdInvoke(r) => (r.id, unsupported("cmd.invoke")),
+            R::SettingsGet(r) => (r.id, unsupported("settings.get")),
+            R::SettingsSet(r) => (r.id, unsupported("settings.set")),
+            R::SettingsList(r) => (r.id, unsupported("settings.list")),
+            R::LogWrite(r) => (r.id, unsupported("log.write")),
+            R::LogTail(r) => (r.id, unsupported("log.tail")),
+            R::EventsSubscribe(r) => (r.id, unsupported("events.subscribe")),
+            R::EventsUnsubscribe(r) => (r.id, unsupported("events.unsubscribe")),
         }
     }
 

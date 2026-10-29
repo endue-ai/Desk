@@ -2,7 +2,8 @@
 
 The calls the web runtime (and every plugin through it) makes into the Rust core. JSON Schema 2020-12,
 one file per namespace: `bridge.schema.json` (envelope, errors, shared types), `fs`, `proc`, `net`, `plugins`,
-`store`, `init`, `brain`, `audio`, `ui` and `perm`. v0 may break on any minor release (ADR 0004).
+`store`, `init`, `brain`, `audio`, `ui`, `perm`, `cmd`, `settings`, `log` and `events`. v0 may break on any
+minor release (ADR 0004).
 
 ## Envelope
 
@@ -12,11 +13,26 @@ method's `*Result` definition.
 
 ## Deny by default
 
-Every call except `perm.*` carries its permission scope in `params.scope`, using the vocabulary in
-`specs/plugin/v0/permission.schema.json`. The core runs a call only when the caller holds a grant that
-covers the scope and the scope covers the call (the path, command or host). Otherwise the answer is
-`permission_denied`, with the missing permission in `error.permission`. Scopes are never widened
-implicitly: asking is `perm.request`, and the person decides.
+Every call that reaches beyond the caller's own data carries its permission scope in `params.scope`, using
+the vocabulary in `specs/plugin/v0/permission.schema.json`. The core runs a call only when the caller holds
+a grant that covers the scope and the scope covers the call (the path, command, host, command id, setting
+or event). Otherwise the answer is `permission_denied`, with the missing permission in `error.permission`.
+Scopes are never widened implicitly: asking is `perm.request`, and the person decides.
+
+Calls that touch only the caller's own data need no scope: `perm.request`, `perm.query`, `perm.revoke` of
+its own grants, `store.*`, `cmd.register`, `cmd.unregister`, `settings.set`, `settings.get` and
+`settings.list` of its own keys, `log.write` and `events.unsubscribe`.
+
+## Callers and events
+
+Every call is made by a caller: a plugin under its plugin id, the web runtime as `desk`. The core keeps
+grants, store values, commands, settings and log channels per caller; `core` names desk-core itself.
+
+An event about the caller's own work reaches it without asking: `fs.changed` for its watches, `proc.*` for
+its processes, `audio.wake` for its captures, `brain.turn` for its turns, `perm.changed` for its grants,
+`cmd.invoked` for the commands it provides and `settings.changed` for its own keys. `plugin.changed` goes
+to holders of `plugin:manage` and `perm.prompt` to holders of `perm:manage`. Everything else about other
+callers arrives only through `events.subscribe`.
 
 ## Methods
 
@@ -65,9 +81,21 @@ needs `ui:notify`. The core sends the runtime a `ui.notified` event naming the c
 stays, whether do-not-disturb holds it back and how much history is kept is the runtime's notify policy.
 
 **perm.request** asks the person for a permission, showing the reason, and resolves when they answer.
-A refusal is `granted: false`, not an error. It needs no scope.
+`duration` says how long the grant should last: `once` (the next call it allows, then it expires),
+`session` (until Desk quits, the default) or `always` (kept on disk across restarts). The person may
+choose another duration, and the grant carries the one they chose. A refusal is `granted: false`, not an
+error. It needs no scope.
 
 **perm.query** lists the caller's grants, optionally only those covering a given permission.
+
+**perm.list** lists every caller's grants with the caller that holds each, optionally for one caller, for
+the person's permissions view. It needs `perm:manage`.
+
+**perm.answer** is the prompter's half of `perm.request`. Callers that hold `perm:manage` receive a
+`perm.prompt` event for each request (who asks, for what, why and for how long) and show it to the person;
+the first `perm.answer` for a `promptId` decides, with `granted` and optionally the `duration` the person
+chose. Answering a prompt that is already decided or withdrawn is `not_found`. Without such a caller the
+core's own prompt decides.
 
 **plugin.list** returns every installed plugin with its status (`ready` or `failed` with a reason), whether
 it is enabled and built in, its file revision and its manifest. It needs `plugin:manage`.
@@ -95,7 +123,48 @@ turn that failed, for example on a desk that became read-only because another de
 session's lease. It needs `brain:converse`; each turn's events go only to the caller that said it.
 
 **perm.revoke** gives a grant back. People can revoke any grant at any time; callers learn about it from
-`perm.changed`.
+`perm.changed`. With a `perm:manage` scope it revokes another caller's grant, for the person's
+permissions view.
+
+**cmd.register** adds one of the caller's commands to the registry, or updates it: an id, a title, an
+optional description, a JSON Schema for its arguments and a `when` context expression that the runtime
+evaluates to offer it (palette, keys). The caller becomes the provider. Ids are unique: an id another
+caller provides is `already_exists`. Commands end when their provider unloads. It needs no scope.
+
+**cmd.unregister** removes one of the caller's commands; an id it does not provide is `not_found`.
+
+**cmd.list** returns the registered commands the `cmd:invoke` scope covers, with their providers, in
+registration order. `cmd.changed` events (registered, updated, unregistered) go to subscribers.
+
+**cmd.invoke** runs a command, whoever provides it, under a `cmd:invoke` scope whose ids cover it. `args`
+must match the command's argument schema (`invalid_params` otherwise). It returns an `invocationId` at
+once; the provider receives `cmd.invoked` with the id, the args and the caller, which the core records,
+and runs the command. Clicks, keys, the palette, Eris, agents and the CLI all invoke the same way.
+
+**settings.get** reads one setting. Keys belong to the caller that sets them, like the store; `owner`
+names another caller, which needs a `settings:read` scope covering `owner/key`. `value` is absent for a
+key that was never set.
+
+**settings.set** writes one of the caller's own settings (64 KiB of JSON at most). Values survive
+restarts, and `settings.changed` tells the owner and subscribers whose `settings:read` grant covers it.
+
+**settings.list** returns the caller's own settings, or with a `settings:read` scope every setting it
+covers, whoever owns it, each with its owner.
+
+**log.write** adds an entry (level, message and structured `fields`) to the caller's own channel. The core
+stamps the time. It needs no scope.
+
+**log.tail** returns the latest entries, oldest first: of one channel, or of every channel merged in time
+order. `count` is 100 by default and 1000 at most. It needs `log:read`.
+
+**events.subscribe** starts delivering named events about every caller, not only the caller's own:
+`plugin.changed`, `perm.changed`, `cmd.changed`, `cmd.invoked`, `settings.changed` and `log.entry`. The
+`events:subscribe` scope must cover every name, and data permissions still apply: `settings.changed` only
+for keys a `settings:read` grant covers, `log.entry` only with `log:read`. It returns a `subscriptionId`;
+a caller gets each event once however many subscriptions name it. Subscriptions end when the caller
+unloads or the grant is revoked.
+
+**events.unsubscribe** ends one of the caller's subscriptions; an unknown id is `not_found`.
 
 ## Vectors
 

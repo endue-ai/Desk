@@ -15,6 +15,12 @@
       "minLength": 1,
       "pattern": "^(/|~(/|$)|[A-Za-z]:/|\\$\\{(plugin|workspace|home)\\}(/|$))[^\\\\]*$"
     },
+    "CallerId": {
+      "description": "Who makes calls: a plugin id such as endue.eris, or a name of the desk's own such as desk (the web runtime). core names desk-core itself.",
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*(\\.[a-z][a-z0-9-]*)*$",
+      "maxLength": 128
+    },
     "Encoding": {
       "description": "How binary-safe string content is encoded.",
       "type": "string",
@@ -40,12 +46,25 @@
         { "$ref": "perm.schema.json#/$defs/PermRequestRequest" },
         { "$ref": "perm.schema.json#/$defs/PermQueryRequest" },
         { "$ref": "perm.schema.json#/$defs/PermRevokeRequest" },
+        { "$ref": "perm.schema.json#/$defs/PermListRequest" },
+        { "$ref": "perm.schema.json#/$defs/PermAnswerRequest" },
         { "$ref": "plugins.schema.json#/$defs/PluginListRequest" },
         { "$ref": "plugins.schema.json#/$defs/PluginSetEnabledRequest" },
         { "$ref": "store.schema.json#/$defs/StoreGetRequest" },
         { "$ref": "store.schema.json#/$defs/StoreSetRequest" },
         { "$ref": "init.schema.json#/$defs/InitGetRequest" },
-        { "$ref": "brain.schema.json#/$defs/BrainSayRequest" }
+        { "$ref": "brain.schema.json#/$defs/BrainSayRequest" },
+        { "$ref": "cmd.schema.json#/$defs/CmdRegisterRequest" },
+        { "$ref": "cmd.schema.json#/$defs/CmdUnregisterRequest" },
+        { "$ref": "cmd.schema.json#/$defs/CmdListRequest" },
+        { "$ref": "cmd.schema.json#/$defs/CmdInvokeRequest" },
+        { "$ref": "settings.schema.json#/$defs/SettingsGetRequest" },
+        { "$ref": "settings.schema.json#/$defs/SettingsSetRequest" },
+        { "$ref": "settings.schema.json#/$defs/SettingsListRequest" },
+        { "$ref": "log.schema.json#/$defs/LogWriteRequest" },
+        { "$ref": "log.schema.json#/$defs/LogTailRequest" },
+        { "$ref": "events.schema.json#/$defs/EventsSubscribeRequest" },
+        { "$ref": "events.schema.json#/$defs/EventsUnsubscribeRequest" }
       ]
     },
     "BridgeResponse": {
@@ -101,16 +120,21 @@
       ]
     },
     "BridgeEvent": {
-      "description": "Something the core reports without being asked: file changes, process output, wake words, permission changes, notifications.",
+      "description": "Something the core reports without being asked: file changes, process output, wake words, permission changes, notifications, commands, settings and log entries.",
       "oneOf": [
         { "$ref": "fs.schema.json#/$defs/FsChangedEvent" },
         { "$ref": "proc.schema.json#/$defs/ProcOutputEvent" },
         { "$ref": "proc.schema.json#/$defs/ProcExitEvent" },
         { "$ref": "audio.schema.json#/$defs/AudioWakeEvent" },
         { "$ref": "perm.schema.json#/$defs/PermChangedEvent" },
+        { "$ref": "perm.schema.json#/$defs/PermPromptEvent" },
         { "$ref": "plugins.schema.json#/$defs/PluginChangedEvent" },
         { "$ref": "ui.schema.json#/$defs/UiNotifiedEvent" },
-        { "$ref": "brain.schema.json#/$defs/BrainTurnEvent" }
+        { "$ref": "brain.schema.json#/$defs/BrainTurnEvent" },
+        { "$ref": "cmd.schema.json#/$defs/CmdChangedEvent" },
+        { "$ref": "cmd.schema.json#/$defs/CmdInvokedEvent" },
+        { "$ref": "settings.schema.json#/$defs/SettingsChangedEvent" },
+        { "$ref": "log.schema.json#/$defs/LogEntryEvent" }
       ]
     }
   }

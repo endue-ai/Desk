@@ -36,7 +36,7 @@
         "settings": {
           "description": "Settings the plugin reads, by key, with their defaults. Keys start with the plugin id.",
           "type": "object",
-          "propertyNames": { "$ref": "#/$defs/SettingKey" },
+          "propertyNames": { "$ref": "#/$defs/SettingName" },
           "additionalProperties": { "$ref": "#/$defs/SettingContribution" }
         },
         "profiles": {
@@ -48,10 +48,10 @@
       "additionalProperties": false
     },
     "CommandId": {
-      "description": "A command id: the owner's plugin id and one or more names, for example desk.palette.open.",
+      "description": "A command id: lowercase and dotted, with at least two segments, for example eris.say or desk.palette.open. Unique across callers (bridge cmd.*); a plugin's contributed commands start with its own id.",
       "type": "string",
-      "pattern": "^[a-z][a-z0-9-]*(\\.[a-z][a-z0-9-]*){2,}$",
-      "maxLength": 160
+      "pattern": "^[a-z][a-z0-9-]*(\\.[a-z][a-z0-9-]*)+$",
+      "maxLength": 128
     },
     "CommandContribution": {
       "description": "A command the palette lists and keys can run.",
@@ -77,8 +77,8 @@
     "KeyCommand": {
       "description": "The command a key runs, or the empty string to take the key away from an earlier layer.",
       "type": "string",
-      "pattern": "^$|^[a-z][a-z0-9-]*(\\.[a-z][a-z0-9-]*){2,}$",
-      "maxLength": 160
+      "pattern": "^$|^[a-z][a-z0-9-]*(\\.[a-z][a-z0-9-]*)+$",
+      "maxLength": 128
     },
     "KeyBinding": {
       "description": "One key bound to one command.",
@@ -196,8 +196,8 @@
       "required": ["id", "name", "scheme", "tokens"],
       "additionalProperties": false
     },
-    "SettingKey": {
-      "description": "A setting key, as in init.yaml: lowercase and dotted by owner (desk.notify.dnd).",
+    "SettingName": {
+      "description": "A setting's full name, as in init.yaml: the owner's id and its key, dotted (desk.notify.dnd).",
       "type": "string",
       "pattern": "^[a-z0-9][a-z0-9._-]{0,127}$"
     },
@@ -255,7 +255,7 @@
         "settings": {
           "description": "Settings in force while the profile is, over init.yaml's.",
           "type": "object",
-          "propertyNames": { "$ref": "#/$defs/SettingKey" },
+          "propertyNames": { "$ref": "#/$defs/SettingName" },
           "additionalProperties": {}
         }
       },

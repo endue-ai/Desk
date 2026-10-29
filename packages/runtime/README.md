@@ -22,11 +22,13 @@ mechanisms the desk's default policies drive (ADR 0017). No 3D yet. Plain TypeSc
 ## Testing
 
 ```bash
-pnpm exec vitest run packages/runtime        # unit
-just test-e2e-docker                         # Playwright in WebKit, in Docker, one run at a time
+pnpm exec vitest run packages/runtime    # unit
+just test-e2e                            # Playwright on the browser stub (macOS: Linux container)
 ```
 
-`e2e/` uses fixture pages on the browser bridge stub and a manual clock. `desk.html` runs the real
-`plugins/*/plugin.json` of the desk.* policies with a test plugin (`fixture/plugins/test-echo`), and
-takes `?init=`, `?off=`, `?platform=`, `?profile=`, `?rules=` and `?store=`. Render snapshots are
-serialised render trees (ADR 0011); `E2E_UPDATE=1 just test-e2e-docker` rewrites them; review the diff.
+`e2e/` uses fixture pages with the browser bridge stub and a manual clock (`plugins.html` adds two UI
+plugins served by the fixture's Vite config; `desk.html` runs the real `plugins/*/plugin.json` of the
+desk.* policies with a test plugin, and takes `?init=`, `?off=`, `?platform=`, `?profile=`, `?rules=` and
+`?store=`). Render snapshots are serialised render trees (ADR 0011); update them with
+`just test-e2e --update-snapshots` and review the JSON diff. Playwright never runs directly: the configs
+refuse native WebKit on macOS (ADR 0018).

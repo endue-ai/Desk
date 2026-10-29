@@ -3,9 +3,12 @@
 
 const EASE = "cubic-bezier(.2,.7,.2,1)";
 
-// Assembly timings (ms). `quick` is the second-run version, done in 1.2 s.
+// Assembly timings (ms). `quick` is the second-run version, done in 1.2 s. `arrival` is the end of the
+// first run's scene 1: the core forms where the beam lands, the body settles as the polygons lock in,
+// and Dysnomia slides in after the gold face.
 const FULL = { core: [200, 1600], body: [600, 1700], moon: [2200, 900], idleAt: 2400 };
 const QUICK = { core: [0, 600], body: [200, 900], moon: [700, 500], idleAt: 1200 };
+const ARRIVAL = { core: [400, 1600], body: [1500, 1300], moon: [2500, 600], idleAt: 3000 };
 
 function el(doc, tag, className) {
   const node = doc.createElement(tag);
@@ -15,12 +18,12 @@ function el(doc, tag, className) {
 
 /**
  * Build the orb into `container` and add its animations to `timeline`, starting at `at`.
- * Options: assets (folder URL of the SVGs), quick, reduced, assembled (start finished).
+ * Options: assets (folder URL of the SVGs), quick, arrival, reduced, assembled (start finished).
  */
 export function buildOrb(doc, timeline, container, options = {}) {
-  const { assets = "./assets", quick = false, reduced = false, assembled = false } = options;
-  const at = assembled ? -10000 : (options.at ?? 0);
-  const plan = quick ? QUICK : FULL;
+  const { assets = "./assets", quick = false, arrival = false, reduced = false } = options;
+  const at = options.assembled ? -10000 : (options.at ?? 0);
+  const plan = quick ? QUICK : arrival ? ARRIVAL : FULL;
   container.replaceChildren();
 
   const float = el(doc, "div", "float");
@@ -97,6 +100,20 @@ export function buildOrb(doc, timeline, container, options = {}) {
     );
   }
   flash.style.opacity = "0";
+  const glint = el(doc, "div", "glint");
+  container.append(glint);
+  glint.style.opacity = "0";
+
+  // "forwards", not "both": a later animation filling backwards would undo the assembly before it starts.
+  const once = (node, frames, from, duration, easing = EASE) =>
+    timeline.add(
+      node.animate(frames, {
+        delay: from,
+        duration: reduced ? 0 : duration,
+        easing,
+        fill: "forwards",
+      }),
+    );
 
   return {
     /** The core leans in while Eris listens (the prototype's .listening, 600 ms). */
@@ -113,6 +130,29 @@ export function buildOrb(doc, timeline, container, options = {}) {
           fill: "forwards",
         }),
       );
+    },
+    /** While she speaks she slowly turns her gold face towards the person (scene 2). */
+    turn(from, duration) {
+      once(
+        body,
+        [{ transform: "none" }, { transform: "rotate(-9deg)" }],
+        from,
+        duration,
+        "ease-in-out",
+      );
+    },
+    /** "Small, I know.": the whole orb shrinks a little and comes back. */
+    shrink(from) {
+      const frames = [{ transform: "none" }, { transform: "scale(0.94)" }, { transform: "none" }];
+      once(container, frames, from, 900, "ease-in-out");
+    },
+    /** Heads-up: the gold face lifts off the rim and glows; `on = false` settles it back. */
+    headsUp(from, on = true) {
+      const lift = [
+        { opacity: 0, transform: "none" },
+        { opacity: 1, transform: "translate(10px, -10px)" },
+      ];
+      once(glint, on ? lift : [...lift].reverse(), from, 500);
     },
     /** The core lights up once as words are absorbed. */
     flash(from) {
