@@ -44,7 +44,7 @@ Chosen option: "one trunk with lanes, task worktrees and a merge queue".
   checkout path and never reused, so parallel runs stay apart.
 * **Merge queue.** The `main` ruleset (`.github/rulesets/main.json`, applied by
   `scripts/sync-rulesets.sh`) requires `ci` and `scope-check`, squash only, linear history, and a merge
-  queue (ALLGREEN, groups of up to four), with no bypass actors. Branches no longer need to be up to
+  queue (ALLGREEN, groups of up to 15), with no bypass actors. Branches no longer need to be up to
   date: the queue tests each PR on top of `main` and the PRs ahead of it. `ci` runs again there;
   `scope-check` reports success, since Scope was judged on the PR.
 * **No rebase for its own sake.** Agents update a branch only for a conflict, a failing gate or a
