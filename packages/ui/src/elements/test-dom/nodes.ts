@@ -1,75 +1,13 @@
-// A small DOM for the element tests, so they run in Node without a browser or a new dependency:
-// elements, attributes, shadow roots, slots, events with bubbling and shadow retargeting, focus and
-// custom elements. It is not a browser; people check the demo page in one. Import it before the
-// elements: it installs itself on `globalThis`.
+// Nodes, elements, shadow roots and the document of the test DOM, with events that bubble and
+// retarget through shadow roots, focus, and custom element callbacks.
+import { FakeEvent, FakeFocusEvent } from "./events";
 
 type Listener = (event: FakeEvent) => void;
-type Init = { bubbles?: boolean; cancelable?: boolean; composed?: boolean };
 
-class FakeEvent {
-  readonly type: string;
-  readonly bubbles: boolean;
-  readonly cancelable: boolean;
-  readonly composed: boolean;
-  target: FakeNode | null = null;
-  currentTarget: FakeNode | null = null;
-  relatedTarget: FakeNode | null = null;
-  defaultPrevented = false;
-  stopped = false;
-  stoppedNow = false;
-  path: FakeNode[] = [];
+/** Where focus is, for the whole test DOM. */
+export const focus: { element: FakeElement | null } = { element: null };
 
-  constructor(type: string, init: Init = {}) {
-    this.type = type;
-    this.bubbles = init.bubbles ?? false;
-    this.cancelable = init.cancelable ?? false;
-    this.composed = init.composed ?? false;
-  }
-
-  preventDefault(): void {
-    if (this.cancelable) this.defaultPrevented = true;
-  }
-
-  stopPropagation(): void {
-    this.stopped = true;
-  }
-
-  stopImmediatePropagation(): void {
-    this.stopped = true;
-    this.stoppedNow = true;
-  }
-
-  composedPath(): FakeNode[] {
-    return [...this.path];
-  }
-}
-
-class FakeCustomEvent extends FakeEvent {
-  readonly detail: unknown;
-  constructor(type: string, init: Init & { detail?: unknown } = {}) {
-    super(type, init);
-    this.detail = init.detail ?? null;
-  }
-}
-
-class FakeKeyboardEvent extends FakeEvent {
-  readonly key: string;
-  readonly shiftKey: boolean;
-  constructor(type: string, init: Init & { key?: string; shiftKey?: boolean } = {}) {
-    super(type, init);
-    this.key = init.key ?? "";
-    this.shiftKey = init.shiftKey ?? false;
-  }
-}
-
-class FakeFocusEvent extends FakeEvent {
-  constructor(type: string, init: Init & { relatedTarget?: FakeNode | null } = {}) {
-    super(type, init);
-    this.relatedTarget = init.relatedTarget ?? null;
-  }
-}
-
-class FakeNode {
+export class FakeNode {
   parentNode: FakeNode | null = null;
   readonly childNodes: FakeNode[] = [];
   readonly #listeners = new Map<string, Listener[]>();
@@ -115,7 +53,7 @@ class FakeNode {
     parent.childNodes.splice(parent.childNodes.indexOf(this), 1);
     this.parentNode = null;
     if (wasConnected) {
-      if (doc.focused && hosts(this, doc.focused)) doc.focused = null;
+      if (focus.element && hosts(this, focus.element)) focus.element = null;
       react(this, "disconnectedCallback");
     }
     parent.childrenChanged();
@@ -190,7 +128,7 @@ class FakeText extends FakeNode {
 
 const NATIVE_FOCUSABLE = new Set(["button", "input", "select", "textarea"]);
 
-class FakeElement extends FakeNode {
+export class FakeElement extends FakeNode {
   readonly localName: string;
   shadowRoot: FakeShadowRoot | null = null;
   style: Record<string, string> = {};
@@ -280,12 +218,12 @@ class FakeElement extends FakeNode {
     if (this.shadowRoot?.delegatesFocus) {
       [...descendants(this.shadowRoot)].find(focusable)?.focus();
     } else if (focusable(this)) {
-      doc.moveFocus(this);
+      moveFocus(this);
     }
   }
 
   blur(): void {
-    if (doc.focused === this) doc.moveFocus(null);
+    if (focus.element === this) moveFocus(null);
   }
 
   click(): void {
@@ -332,7 +270,7 @@ class FakeInput extends FakeElement {
   }
 }
 
-class FakeShadowRoot extends FakeNode {
+export class FakeShadowRoot extends FakeNode {
   constructor(
     readonly host: FakeElement,
     readonly delegatesFocus: boolean,
@@ -345,47 +283,19 @@ class FakeShadowRoot extends FakeNode {
   }
 }
 
-class FakeRegistry {
-  readonly #byName = new Map<string, new () => FakeElement>();
-  readonly #byClass = new Map<unknown, string>();
-
-  define(name: string, element: new () => FakeElement): void {
-    if (this.#byName.has(name) || this.#byClass.has(element)) {
-      throw new Error(`"${name}" has already been defined`);
-    }
-    this.#byName.set(name, element);
-    this.#byClass.set(element, name);
-  }
-
-  get(name: string): (new () => FakeElement) | undefined {
-    return this.#byName.get(name);
-  }
-
-  nameOf(element: unknown): string | undefined {
-    return this.#byClass.get(element);
-  }
-}
-
-const registry = new FakeRegistry();
-
-class FakeHTMLElement extends FakeElement {
-  constructor() {
-    const name = registry.nameOf(new.target);
-    if (!name) throw new TypeError("Illegal constructor");
-    super(name);
-  }
-}
-
-class FakeDocument extends FakeNode {
+export class FakeDocument extends FakeNode {
   readonly body = new FakeElement("body");
-  focused: FakeElement | null = null;
+
+  constructor(readonly lookup: (name: string) => (new () => FakeElement) | undefined) {
+    super();
+  }
 
   get activeElement(): FakeElement | null {
     return activeIn(this) ?? this.body;
   }
 
   createElement(name: string): FakeElement {
-    const element = registry.get(name);
+    const element = this.lookup(name);
     if (element) return new element();
     return name === "input" ? new FakeInput() : new FakeElement(name);
   }
@@ -393,24 +303,25 @@ class FakeDocument extends FakeNode {
   createTextNode(data: string): FakeText {
     return new FakeText(data);
   }
+}
 
-  moveFocus(next: FakeElement | null): void {
-    const previous = this.focused;
-    if (previous === next) return;
-    this.focused = next;
-    previous?.dispatchEvent(new FakeFocusEvent("blur", { composed: true, relatedTarget: next }));
-    previous?.dispatchEvent(
-      new FakeFocusEvent("focusout", { bubbles: true, composed: true, relatedTarget: next }),
-    );
-    next?.dispatchEvent(new FakeFocusEvent("focus", { composed: true, relatedTarget: previous }));
-    next?.dispatchEvent(
-      new FakeFocusEvent("focusin", { bubbles: true, composed: true, relatedTarget: previous }),
-    );
-  }
+/** Move focus, firing blur, focusout, focus and focusin as a browser does. */
+export function moveFocus(next: FakeElement | null): void {
+  const previous = focus.element;
+  if (previous === next) return;
+  focus.element = next;
+  previous?.dispatchEvent(new FakeFocusEvent("blur", { composed: true, relatedTarget: next }));
+  previous?.dispatchEvent(
+    new FakeFocusEvent("focusout", { bubbles: true, composed: true, relatedTarget: next }),
+  );
+  next?.dispatchEvent(new FakeFocusEvent("focus", { composed: true, relatedTarget: previous }));
+  next?.dispatchEvent(
+    new FakeFocusEvent("focusin", { bubbles: true, composed: true, relatedTarget: previous }),
+  );
 }
 
 /** Every node under `root` in tree order, without entering shadow roots. */
-function* descendants(root: FakeNode): Generator<FakeElement> {
+export function* descendants(root: FakeNode): Generator<FakeElement> {
   for (const node of root.childNodes) {
     if (node instanceof FakeElement) yield node;
     yield* descendants(node);
@@ -437,7 +348,7 @@ function retarget(node: FakeNode, listener: FakeNode): FakeNode {
 }
 
 function activeIn(root: FakeNode): FakeElement | null {
-  const focused = doc.focused;
+  const focused = focus.element;
   if (!focused || !hosts(root, focused)) return null;
   const active = retarget(focused, root);
   return active instanceof FakeElement && active.getRootNode() === root ? active : null;
@@ -461,61 +372,6 @@ function react(root: FakeNode, callback: "connectedCallback" | "disconnectedCall
     if (node instanceof FakeElement && node.shadowRoot) collect(node.shadowRoot);
   };
   collect(root);
-  for (const element of elements) (element as { [callback]?: () => void })[callback]?.();
-}
-
-const doc = new FakeDocument();
-doc.append(doc.body);
-
-Object.assign(globalThis, {
-  document: doc,
-  customElements: registry,
-  HTMLElement: FakeHTMLElement,
-  Event: FakeEvent,
-  CustomEvent: FakeCustomEvent,
-  KeyboardEvent: FakeKeyboardEvent,
-  FocusEvent: FakeFocusEvent,
-});
-
-/** Empty the page and drop focus, for a fresh start in each test. */
-export function reset(): void {
-  doc.body.replaceChildren();
-  doc.focused = null;
-}
-
-/** The element that has focus, inside shadow roots too (`document.activeElement` stops at hosts). */
-export function focused(): Element | null {
-  return doc.focused as unknown as Element | null;
-}
-
-/** Press a key where focus is: keydown, then keyup. Returns whether keydown was prevented. */
-export function press(key: string, init: { shiftKey?: boolean } = {}): boolean {
-  const target = doc.focused ?? doc.body;
-  const options = { bubbles: true, cancelable: true, composed: true, key, ...init };
-  const down = new FakeKeyboardEvent("keydown", options);
-  target.dispatchEvent(down);
-  target.dispatchEvent(new FakeKeyboardEvent("keyup", options));
-  return down.defaultPrevented;
-}
-
-/** Fire a pointer event that is not a click (`pointerdown`, `pointerenter`, `pointerleave`). */
-export function pointer(target: Node, type: string): void {
-  const bubbles = type === "pointerdown";
-  (target as unknown as FakeNode).dispatchEvent(
-    new FakeEvent(type, { bubbles, composed: bubbles }),
-  );
-}
-
-/** The first element called `localName` under `root`, shadow root or not. */
-export function query(root: Node | null, localName: string): HTMLElement {
-  const found =
-    root && [...descendants(root as unknown as FakeNode)].find((el) => el.localName === localName);
-  if (!found) throw new Error(`no <${localName}> found`);
-  return found as unknown as HTMLElement;
-}
-
-/** Give an element the box `getBoundingClientRect` reports. */
-export function place(element: Element, rect: Partial<FakeElement["rect"]>): void {
-  const fake = element as unknown as FakeElement;
-  fake.rect = { ...fake.rect, ...rect };
+  for (const element of elements)
+    (element as unknown as Record<typeof callback, (() => void) | undefined>)[callback]?.();
 }
