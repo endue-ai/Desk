@@ -4,6 +4,8 @@ import type { Cell } from "./layout";
 export interface SurfaceSpec {
   id: string;
   title: string;
+  /** The surface's id in its plugin's manifest; display rules can match on it. */
+  surface?: string;
   /** A URL to load, or inline HTML in `srcdoc`. */
   src?: string;
   srcdoc?: string;

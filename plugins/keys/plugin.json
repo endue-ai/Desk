@@ -39,6 +39,14 @@
         "command": "desk.buffers.previous"
       },
       {
+        "key": "Control+Tab",
+        "command": "desk.display.focus-next"
+      },
+      {
+        "key": "Control+Shift+Tab",
+        "command": "desk.display.focus-previous"
+      },
+      {
         "key": "Mod+O",
         "command": "desk.files.open"
       },

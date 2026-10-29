@@ -61,7 +61,12 @@ export function installNotify(ctx: DeskContext, statusLine: HTMLElement): Notify
     }),
   );
 
-  const define = (id: string, title: string, run: () => unknown, keywords: string[] = []) =>
+  const define = (
+    id: string,
+    title: string,
+    run: (args: unknown) => unknown,
+    keywords: string[] = [],
+  ) =>
     offs.add(
       commands.define(id, {
         title,
@@ -84,15 +89,13 @@ export function installNotify(ctx: DeskContext, statusLine: HTMLElement): Notify
   define(
     "desk.notify.history",
     "Show past notifications",
-    async () => {
+    (args) => {
       const history = notifications.history();
-      if (commands.has("desk.palette.pick")) {
-        await commands
-          .run("desk.palette.pick", {
-            title: "Notifications",
-            items: history.map((n) => ({ id: n.id, label: noticeText(n), detail: n.caller })),
-          })
-          .catch(() => {});
+      // The palette shows them (when it is on); the answer does not wait for the person.
+      const show = (args as { show?: boolean } | undefined)?.show !== false;
+      if (show && commands.has("desk.palette.pick")) {
+        const items = history.map((n) => ({ id: n.id, label: noticeText(n), detail: n.caller }));
+        void commands.run("desk.palette.pick", { title: "Notifications", items }).catch(() => {});
       }
       return history;
     },
