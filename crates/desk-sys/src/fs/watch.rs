@@ -1,5 +1,5 @@
-//! Watching paths with notify: the raw watch (every event, callers coalesce) and the debounced one
-//! (one batch of changed paths per quiet period).
+//! Watching paths with notify: the raw watches (every event, callers coalesce) and the debounced
+//! one (one batch of changed paths per quiet period).
 
 use std::collections::BTreeMap;
 use std::io;
@@ -11,12 +11,10 @@ use std::time::{Duration, Instant};
 use notify::event::{ModifyKind, RenameMode};
 use notify::{EventKind, RecursiveMode, Watcher as _};
 
-use crate::{Error, ErrorCode};
-
 /// A batch never waits longer than this many quiet periods, even while events keep coming.
 const MAX_WAIT_PERIODS: u32 = 10;
 
-/// What happened to a path during one batch (bridge `FsChange`).
+/// What happened to a path (bridge `FsChange`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Change {
     Created,
@@ -79,22 +77,33 @@ enum Message {
 /// Call `on_change` with each changed path under `path` (recursive) until the `Watch` is dropped.
 /// Events are not debounced here; callers coalesce them. `watch_debounced` reports batches.
 pub fn watch(path: &Path, on_change: impl Fn(PathBuf) + Send + 'static) -> io::Result<Watch> {
+    watch_changes(path, true, move |path, _change| on_change(path))
+}
+
+/// Call `on_change` with each changed path and what the event says happened to it, under `path`
+/// (and its sub-folders when `recursive`), until the `Watch` is dropped. Not debounced: one file
+/// write can arrive as several events.
+pub fn watch_changes(
+    path: &Path,
+    recursive: bool,
+    on_change: impl Fn(PathBuf, Change) + Send + 'static,
+) -> io::Result<Watch> {
     let mut watcher = notify::recommended_watcher(move |event: notify::Result<notify::Event>| {
-        if let Ok(event) = event
-            && matches!(
-                event.kind,
-                EventKind::Create(_) | EventKind::Modify(_) | EventKind::Remove(_)
-            )
-        {
-            for path in event.paths {
-                on_change(path);
-            }
+        let Ok(event) = event else { return };
+        let change = match event.kind {
+            EventKind::Create(_) => Change::Created,
+            EventKind::Modify(_) => Change::Modified,
+            EventKind::Remove(_) => Change::Removed,
+            _ => return,
+        };
+        for path in event.paths {
+            on_change(path, change);
         }
     })
-    .map_err(io::Error::other)?;
+    .map_err(|err| watch_error(err, path))?;
     watcher
-        .watch(path, RecursiveMode::Recursive)
-        .map_err(io::Error::other)?;
+        .watch(path, mode(recursive))
+        .map_err(|err| watch_error(err, path))?;
     Ok(Watch {
         watcher: Some(watcher),
         debouncer: None,
@@ -109,10 +118,10 @@ pub fn watch_debounced(
     path: &Path,
     options: WatchOptions,
     on_changes: impl FnMut(Vec<Changed>) + Send + 'static,
-) -> Result<Watch, Error> {
+) -> io::Result<Watch> {
     let real = path
         .canonicalize()
-        .map_err(|err| Error::io(&err, path.display()))?;
+        .map_err(|err| io::Error::new(err.kind(), format!("{}: {err}", path.display())))?;
     let (sender, receiver) = mpsc::channel();
     let events = sender.clone();
     let mut watcher = notify::recommended_watcher(move |event: notify::Result<notify::Event>| {
@@ -121,13 +130,8 @@ pub fn watch_debounced(
         }
     })
     .map_err(|err| watch_error(err, path))?;
-    let mode = if options.recursive {
-        RecursiveMode::Recursive
-    } else {
-        RecursiveMode::NonRecursive
-    };
     watcher
-        .watch(&real, mode)
+        .watch(&real, mode(options.recursive))
         .map_err(|err| watch_error(err, path))?;
     let roots = Roots {
         given: path.to_path_buf(),
@@ -135,12 +139,19 @@ pub fn watch_debounced(
     };
     let thread = thread::Builder::new()
         .name("desk-fs-watch".to_owned())
-        .spawn(move || debounce(&receiver, options.debounce, &roots, on_changes))
-        .map_err(|err| Error::io(&err, path.display()))?;
+        .spawn(move || debounce(&receiver, options.debounce, &roots, on_changes))?;
     Ok(Watch {
         watcher: Some(watcher),
         debouncer: Some((sender, thread)),
     })
+}
+
+fn mode(recursive: bool) -> RecursiveMode {
+    if recursive {
+        RecursiveMode::Recursive
+    } else {
+        RecursiveMode::NonRecursive
+    }
 }
 
 /// The watched path as the caller gave it, and as the OS reports it.
@@ -228,13 +239,15 @@ fn flush(pending: &mut BTreeMap<PathBuf, bool>, roots: &Roots) -> Vec<Changed> {
         .collect()
 }
 
-fn watch_error(err: notify::Error, path: &Path) -> Error {
-    let shown = path.display();
-    let code = match &err.kind {
-        notify::ErrorKind::Io(io) => return Error::io(io, shown),
-        notify::ErrorKind::PathNotFound | notify::ErrorKind::WatchNotFound => ErrorCode::NotFound,
-        notify::ErrorKind::InvalidConfig(_) => ErrorCode::InvalidParams,
-        notify::ErrorKind::MaxFilesWatch | notify::ErrorKind::Generic(_) => ErrorCode::IoError,
+/// notify's errors as `io::Error`s whose kind maps to the bridge code (`desk_sys::Error::from`).
+fn watch_error(err: notify::Error, path: &Path) -> io::Error {
+    let kind = match &err.kind {
+        notify::ErrorKind::Io(io) => io.kind(),
+        notify::ErrorKind::PathNotFound | notify::ErrorKind::WatchNotFound => {
+            io::ErrorKind::NotFound
+        }
+        notify::ErrorKind::InvalidConfig(_) => io::ErrorKind::InvalidInput,
+        notify::ErrorKind::MaxFilesWatch | notify::ErrorKind::Generic(_) => io::ErrorKind::Other,
     };
-    Error::new(code, format!("{shown}: {err}"))
+    io::Error::new(kind, format!("{}: {err}", path.display()))
 }

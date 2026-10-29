@@ -1,4 +1,5 @@
 //! File primitives. No permission checks happen here: desk-core authorizes every call first.
+//! Errors are `io::Error`s whose kind carries the bridge code: `desk_sys::Error::from` maps them.
 
 use std::ffi::{OsStr, OsString};
 use std::fs::{OpenOptions, Permissions};
@@ -6,10 +7,8 @@ use std::io::{self, Write as _};
 use std::path::Path;
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use crate::{Error, ErrorCode};
-
 mod watch;
-pub use watch::{Change, Changed, Watch, WatchOptions, watch, watch_debounced};
+pub use watch::{Change, Changed, Watch, WatchOptions, watch, watch_changes, watch_debounced};
 
 /// What a folder entry is. Symlinks are reported as such, never followed.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -60,42 +59,44 @@ pub fn list(path: &Path) -> io::Result<Vec<Entry>> {
     Ok(entries)
 }
 
-/// How `write` treats the folders above the file.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
-pub struct WriteOptions {
-    /// Create missing parent folders instead of failing with `not_found`.
-    pub create_dirs: bool,
-}
-
-/// Replace `path` with `content` atomically and return the bytes written. The bytes go to a temp file
-/// in the same folder, are flushed to disk, and the temp file is renamed over the target, so a reader
-/// sees the old content or the new, never a mix. An existing file keeps its permissions. A folder or
-/// a symlink at `path` is refused (`invalid_params`): writing through a link could leave the path
-/// desk-core checked.
-pub fn write(path: &Path, content: &[u8], options: WriteOptions) -> Result<u64, Error> {
-    let shown = path.display();
-    let invalid = |why: &str| Error::new(ErrorCode::InvalidParams, format!("{shown}: {why}"));
+/// Replace `path` with `content` atomically and return the bytes written; `create_dirs` creates
+/// missing parent folders instead of failing with `NotFound`. The bytes go to a temp file in the same
+/// folder, are flushed to disk, and the temp file is renamed over the target, so a reader sees the old
+/// content or the new, never a mix. An existing file keeps its permissions. A folder or a symlink at
+/// `path` is refused (`IsADirectory`, `InvalidInput`: `invalid_params`), since writing through a link
+/// could leave the path desk-core checked.
+pub fn write(path: &Path, content: &[u8], create_dirs: bool) -> io::Result<u64> {
+    let refuse = |kind, why: &str| io::Error::new(kind, format!("{}: {why}", path.display()));
     let Some(name) = path.file_name() else {
-        return Err(invalid("not a file path"));
+        return Err(refuse(io::ErrorKind::InvalidInput, "not a file path"));
     };
     let permissions = match std::fs::symlink_metadata(path) {
-        Ok(meta) if meta.file_type().is_symlink() => return Err(invalid("is a symlink")),
-        Ok(meta) if meta.is_dir() => return Err(invalid("is a folder")),
+        Ok(meta) if meta.file_type().is_symlink() => {
+            return Err(refuse(io::ErrorKind::InvalidInput, "is a symlink"));
+        }
+        Ok(meta) if meta.is_dir() => {
+            return Err(refuse(io::ErrorKind::IsADirectory, "is a folder"));
+        }
         Ok(meta) => Some(meta.permissions()),
         Err(err) if err.kind() == io::ErrorKind::NotFound => None,
-        Err(err) => return Err(Error::io(&err, shown)),
+        Err(err) => return Err(with_path(err, path)),
     };
     let parent = match path.parent() {
         Some(parent) if !parent.as_os_str().is_empty() => parent,
         _ => Path::new("."),
     };
-    if options.create_dirs {
-        std::fs::create_dir_all(parent).map_err(|err| Error::io(&err, parent.display()))?;
+    if create_dirs {
+        std::fs::create_dir_all(parent).map_err(|err| with_path(err, parent))?;
     }
     match std::fs::metadata(parent) {
         Ok(meta) if meta.is_dir() => {}
-        Ok(_) => return Err(invalid("the parent is not a folder")),
-        Err(err) => return Err(Error::io(&err, parent.display())),
+        Ok(_) => {
+            return Err(refuse(
+                io::ErrorKind::NotADirectory,
+                "the parent is not a folder",
+            ));
+        }
+        Err(err) => return Err(with_path(err, parent)),
     }
 
     let temp = parent.join(temp_name(name));
@@ -103,7 +104,7 @@ pub fn write(path: &Path, content: &[u8], options: WriteOptions) -> Result<u64, 
         write_temp(&temp, content, permissions).and_then(|()| std::fs::rename(&temp, path));
     if let Err(err) = result {
         let _ = std::fs::remove_file(&temp);
-        return Err(Error::io(&err, shown));
+        return Err(with_path(err, path));
     }
     sync_dir(parent);
     Ok(content.len() as u64)
@@ -138,3 +139,8 @@ fn sync_dir(dir: &Path) {
 
 #[cfg(not(unix))]
 fn sync_dir(_dir: &Path) {}
+
+/// Name the path in an OS error's message, keeping its kind.
+fn with_path(err: io::Error, path: &Path) -> io::Error {
+    io::Error::new(err.kind(), format!("{}: {err}", path.display()))
+}
