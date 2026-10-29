@@ -7,27 +7,25 @@ Layer: Rust core (see `docs/architecture.md`).
 
 ## Public API
 
-- `Core::new(Roots { home })`, `Core::handle(caller, BridgeRequest) -> BridgeResponse`: serves
-  `fs.read`, `fs.list`, `perm.*`, `plugin.*`, `store.*` and `brain.say`; other methods answer
-  `unsupported` for now. `Core::grant`, `Core::events`, `Core::with_prompter`.
-- Plugins: `with_plugin_store(path)`, `install_plugin(dir, built_in)`, `install_plugins_in(parent,
-  built_in)`, `plugins()`, `plugin_file(id, path)`, `watch_plugins()` (hot reload). Built-in plugins
-  get the permissions their manifest declares. `validate_dir(dir)`: the manifest check.
-- `PermissionEngine`: deny by default; a call passes when its scope covers the target (path, command,
-  host) and a grant covers the scope. Paths are normalised lexically.
+- `Core::new(Roots { home })`, `Core::handle(caller, BridgeRequest) -> BridgeResponse`: serves `fs.*`,
+  `perm.*`, `events.*`, `plugin.*`, `store.*`, `cmd.*`, `ui.notify`, `init.get` and `brain.say`; other
+  methods answer `unsupported` for now. Hosts call it off their UI thread: `perm.request` waits.
+- Permissions: `Core::grant` (session), `with_grant_file(path)` (`always` grants on disk, ADR 0029),
+  `with_prompter` (decides when no `perm:manage` holder can be prompted; `RefuseAll` by default).
+  `perm.request` becomes a `perm.prompt` to the `perm:manage` holders; the first `perm.answer` decides.
+  `PermissionEngine`: deny by default; a call passes when its scope covers the target and a grant covers
+  the scope; a lasting grant is used before a `once` grant, which the call spends.
+- `EventBus`: `subscribe` (every event), `subscribe_addressed` (`Delivery { to, event }`, for routers),
+  `publish`, `publish_to`. `events.subscribe` adds named events about every caller;
+  `subscription_count()`, `watch_count()`.
+- Plugins: `with_plugin_store(path)`, `install_plugin(dir, built_in)`, `install_plugins_in`, `plugins()`,
+  `plugin_file(id, path)`, `watch_plugins()`. A plugin turned off takes its commands, waiting requests
+  and subscriptions with it. `validate_dir(dir)`: the manifest check.
 - Store: `with_store_file(path)`; one JSON value (64 KiB max) per caller and key.
-- Brain: `with_brain(brain, BrainOptions)`, `open_session(id)` (takes the lease over),
-  `brain_session()`. `brain.say` streams `brain.turn` events; an unreachable brain gets
-  `OFFLINE_LINE` and the turn resumes on reconnection; a desk that lost its lease answers
-  `READ_ONLY_LINE`. The echo tool runs inside the core.
-- `LeaseClient`: `acquire(session, takeover)`, `renew`, `release`, `ensure`, `is_read_only`.
-  `SessionStore`: the desk id, its session and the recent transcript in one JSON file.
-- `EventBus`: `subscribe`, `publish`; clones share subscribers.
-- init.yaml (`specs/init/v0`, ADR 0016): `with_init_file(path)` writes `INIT_TEMPLATE` when there is
-  none; `init()`; `init_problem()` (a file outside the spec leaves the defaults in force).
-- Sync: `with_sync(remote, state_file)`, `sync_init()` (`UpToDate`, `Pushed`, `Pulled`, `Conflict`:
-  endue's copy goes to `init.remote.yaml`), `resolve_init(Keep)`. `SyncRemote` is endue's side;
-  `MockRemote` stands in for it until endue serves sync.
+- Brain: `with_brain(brain, BrainOptions)`, `open_session(id)`, `brain_session()`; `brain.say` streams
+  `brain.turn` events (`OFFLINE_LINE`, `READ_ONLY_LINE`). `LeaseClient`, `SessionStore`.
+- init.yaml (ADR 0016): `with_init_file(path)`, `init()`, `init_problem()`; sync: `with_sync(remote,
+  state_file)`, `sync_init()`, `resolve_init(Keep)`; `MockRemote` stands in for endue.
 
 ## Testing
 
@@ -35,6 +33,6 @@ Layer: Rust core (see `docs/architecture.md`).
 cargo test -p desk-core
 ```
 
-Integration tests in `tests/`: permissions, events, bridge, plugins, store, `init.rs`, `sync.rs` (two
-desks through one `MockRemote`), `lease.rs` (acquire, release, expiry, takeover) and `conversation.rs`;
-the last two start `examples/brain-echo` (needs Node).
+Integration tests in `tests/`: permissions, events, bridge, plugins, store, cmd, fs, init, sync, lease
+and conversation (the last two start `examples/brain-echo`; needs Node); `grants_store.rs`,
+`prompts.rs` and `events_bridge.rs` cover grants on disk, prompts and subscriptions.
