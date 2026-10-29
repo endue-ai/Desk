@@ -21,8 +21,9 @@ just dev
 ```
 
 Rust(버전은 `rust-toolchain.toml`에 고정되어 있습니다), Node 22+, pnpm, `just`, 그리고 사용하는 OS에 맞는
-Tauri 사전 요구 사항이 필요합니다. 런타임 테스트를 위해 `pnpm --filter @endue-ai/runtime exec playwright install webkit`을
-한 번 실행합니다.
+Tauri 사전 요구 사항이 필요합니다. macOS에서는 런타임 테스트가 Linux 컨테이너에서 돌기 때문에 Docker Desktop도
+필요합니다. Linux와 Windows에서는 `pnpm --filter @endue-ai/runtime exec playwright install webkit`을 한 번
+실행합니다. 테스트는 Playwright를 직접 부르지 말고 `just test-e2e`로 실행합니다.
 
 ## 개인정보
 

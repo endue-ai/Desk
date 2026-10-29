@@ -15,6 +15,7 @@ checks are green, or when a budget runs out. You never merge.
    otherwise stop and tell the person to run `/plan-task <N>`.
 2. Read `AGENTS.md` and every file named in the contract. Read whole files.
 3. Check the budget (see below). If it is already spent, stop.
+4. `just doctor`. If it reports an ended login session, stop and tell the person what it printed.
 
 ## Steps
 
@@ -27,6 +28,8 @@ checks are green, or when a budget runs out. You never merge.
 3. Write the acceptance tests from the contract and run them: they must fail for the right reason (the
    behaviour is missing, not a typo). Commit them alone: `test: add acceptance tests for #<N> (red)`.
 4. Implement until `just check && just test` are green. Small commits, Conventional Commits, `git commit -s`.
+   Run e2e tests only through `just test-e2e [playwright args]`, for example
+   `just test-e2e e2e/eris.spec.ts` or `just test-e2e --update-snapshots` (ADR 0018).
 5. Update what the change makes stale: generated files (`just codegen`), READMEs (40 lines max), docs,
    `docs/qa/TESTING.md`. For every decision that is hard to reverse, draft an ADR with `/add-adr`.
 6. Check the Scope locally before pushing: write the PR body to a temp file, then
@@ -56,6 +59,10 @@ tried, and run `gh issue edit <N> --add-label ai:needs-human` (and the same on t
 - Never weaken a gate: do not skip, delete or loosen tests, lints, CI jobs or `scope-check`.
 - No secrets, no new network endpoints, no widened permissions or capabilities unless the contract says so.
 - Files stay under 400 lines; generated files are exempt.
+- Never run Playwright directly (`playwright test`, `npx playwright`, a one-off config or a script
+  that imports it), never set `DESK_E2E_NATIVE`, never run `just perf-opening`: native WebKit on
+  macOS crashed WindowServer for every agent on the machine (ADR 0018). If `just test-e2e` waits for a
+  slot, let it wait.
 - Other agents work in parallel (ADR 0015). Do not rebase or merge `main` just because it moved: the
   merge queue tests the PR on top of it. Update the branch (`git merge origin/main`) only for a
   conflict, a failing gate or a queue ejection. In a conflicting `Cargo.lock` or `pnpm-lock.yaml`, take
