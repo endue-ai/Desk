@@ -1,29 +1,28 @@
-//! `desk`: the command line for people and AI agents. Exit codes: 0 ok, 1 check failed, 2 usage.
+//! `desk`: the command line for people and AI agents. Exit codes: 0 ok, 1 check or call failed, 2
+//! usage. `plugin validate` works offline; the other subcommands reach a running desk over its socket.
+
+mod args;
+mod remote;
 
 use std::path::Path;
 use std::process::ExitCode;
 
 use desk_bridge::PluginKind;
 
-const USAGE: &str = "usage: desk plugin validate <dir>";
+use crate::args::{Action, USAGE};
 
 fn main() -> ExitCode {
-    let args: Vec<String> = std::env::args().skip(1).collect();
-    match args
-        .iter()
-        .map(String::as_str)
-        .collect::<Vec<_>>()
-        .as_slice()
-    {
-        ["plugin", "validate", dir] => validate(Path::new(dir)),
-        ["--help" | "-h" | "help"] => {
+    let Some(args) = args::parse(std::env::args().skip(1).collect()) else {
+        eprintln!("{USAGE}");
+        return ExitCode::from(2);
+    };
+    match args.action {
+        Action::Help => {
             println!("{USAGE}");
             ExitCode::SUCCESS
         }
-        _ => {
-            eprintln!("{USAGE}");
-            ExitCode::from(2)
-        }
+        Action::Validate(dir) => validate(&dir),
+        Action::Remote(remote) => remote::run(remote, args.json),
     }
 }
 

@@ -2,6 +2,7 @@
 
 mod commands;
 mod protocol;
+mod socket;
 
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
@@ -94,6 +95,9 @@ pub fn run() {
                         let _ = handle.emit("bridge://event", event);
                     }
                 })?;
+            // The desk CLI reaches the core over a same-user socket as `cli`, and hears every core
+            // event too (ADR 0030).
+            app.manage(socket::serve(&core));
             app.manage(core);
             Ok(())
         })
