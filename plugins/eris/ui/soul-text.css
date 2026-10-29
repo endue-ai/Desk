@@ -131,3 +131,15 @@
     font-size: 26px;
   }
 }
+
+/* The gold face, lifted for a heads-up. Placed over the gold face of eris-balanced.svg at 360x388. */
+.sphere .glint {
+  position: absolute;
+  left: 262px;
+  top: 88px;
+  width: 36px;
+  height: 40px;
+  clip-path: polygon(92.5% 94.5%, 35.6% 8.3%, 8.1% 37.5%);
+  background: linear-gradient(135deg, #f5e2b4, #d4a85f);
+  pointer-events: none;
+}
