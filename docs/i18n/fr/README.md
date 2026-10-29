@@ -22,8 +22,10 @@ just dev
 ```
 
 Il vous faut Rust (la version est fixée dans `rust-toolchain.toml`), Node 22+, pnpm, `just` et les
-prérequis Tauri pour votre OS. Lancez `pnpm --filter @endue-ai/runtime exec playwright install webkit`
-une fois pour les tests du runtime.
+prérequis Tauri pour votre OS. Sous macOS, les tests du runtime tournent dans un conteneur Linux : il
+vous faut aussi Docker Desktop. Sous Linux et Windows, lancez
+`pnpm --filter @endue-ai/runtime exec playwright install webkit` une fois. Lancez les tests avec
+`just test-e2e`, jamais avec Playwright directement.
 
 ## Confidentialité
 
