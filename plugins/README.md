@@ -7,8 +7,8 @@ there were two formats, the API would have holes.
 | --- | --- |
 | `eris/` | The secretary (assets are under the `brand/` licence) |
 | `sidebar/` | Left bar: agents and spaces |
-| `toolbar/` | Right status panel: the drawer list |
-| `dock/` | Bottom dock |
+| `toolbar/` | Right status panel: the drawer list (plugins, access) |
+| `dock/` | Bottom dock: open and put away the plugins that open on the desk |
 | `onboarding/` | First-run scenario |
 
 The desk's default policies (ADR 0017), each a `desk.*` plugin. All but the palette are `policy` plugins:
@@ -28,6 +28,7 @@ no code, only what they contribute in `plugin.json`. Turn one off and another pl
 
 Every plugin folder holds `plugin.json`, `README.md`, and as needed `ui/`, `logic/`, `tool/` and `tests/`.
 
-Status: `sidebar`, `eris`, `onboarding` and the nine `desk.*` policies work; `toolbar` and `dock` are
-folders only (the first run draws its own frame of the toolbar, dock, profiles and left bar until they
-exist). `just dev` installs every folder here that has a `plugin.json` as a built-in plugin.
+Status: `sidebar`, `eris`, `onboarding`, `toolbar`, `dock` and the nine `desk.*` policies work. The
+runtime puts `left`, `right` and `bottom` surfaces on the desk's edges, as `desk.display` says. The first
+run still draws its own frame of the toolbar, dock, profiles and left bar inside its overlay.
+`just dev` installs every folder here that has a `plugin.json` as a built-in plugin.

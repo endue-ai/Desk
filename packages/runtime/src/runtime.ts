@@ -1,6 +1,7 @@
 import type { BridgeClient } from "@endue-ai/bridge";
 import { type Clock, realClock, tween } from "./clock";
 import type { Commands } from "./commands";
+import { Edges, takesCell } from "./edges";
 import { PolicyHub } from "./hub";
 import { type Platform, ShortcutRouter } from "./input";
 import {
@@ -76,7 +77,7 @@ export interface Runtime {
 
 const FADE_MS = 240;
 
-/** Mount the 2D desk: a compositor grid of sandboxed surfaces and a status line. */
+/** Mount the 2D desk: a compositor grid of sandboxed surfaces, edge bars and a status line. */
 export function createRuntime(options: RuntimeOptions): Runtime {
   const { root, bridge } = options;
   const clock = options.clock ?? realClock();
@@ -104,10 +105,14 @@ export function createRuntime(options: RuntimeOptions): Runtime {
   const shortcuts = new ShortcutRouter({ platform: options.platform ?? "other" });
   // Set once desk.buffers is installed: the surface in use decides the buffer in use.
   let onSurfaceFocus: (id: string) => void = () => {};
-  const surfaces = new SurfaceHost(compositor, (id) => {
-    shortcuts.focus(id);
-    onSurfaceFocus(id);
-  });
+  const surfaces = new SurfaceHost(
+    compositor,
+    (id) => {
+      shortcuts.focus(id);
+      onSurfaceFocus(id);
+    },
+    new Edges(compositor),
+  );
 
   const applyGrid = () => {
     compositor.style.gridTemplateColumns = `repeat(${layout.columns}, minmax(0, 1fr))`;
@@ -207,8 +212,7 @@ export function createRuntime(options: RuntimeOptions): Runtime {
     const decision = display.decide(spec);
     const section = surfaces.open({ ...spec, placement: decision.area });
     // Overlays cover the desk and edge surfaces sit around it; only grid surfaces take cells.
-    const onEdge = section.parentElement?.classList.contains("desk-edge") ?? false;
-    if (decision.area !== "overlay" && !onEdge) {
+    if (takesCell(decision.area)) {
       commit(place(layout, spec.id, { colSpan: decision.columns, rowSpan: decision.rows }));
     }
     display.sizeEdge(section, decision);

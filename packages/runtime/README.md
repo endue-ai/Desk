@@ -20,6 +20,8 @@ mechanisms the desk's default policies drive (ADR 0017). No 3D yet. Plain TypeSc
   session, profiles. ADR 0017.
 - `ShortcutRouter`, `comboOf`, `canonical`, `formatCombo`; layout `place` (with a size), `move`, `remove`;
   clock `realClock`, `ManualClock`, `tween`; `SurfaceHost`; `applyTheme`; `desk.css`.
+- Edges: `left`, `right` and `bottom` surfaces sit in bars around the grid (240, 320 and 72 px unless
+  a display rule says otherwise, shared in mount order), without a title bar or a grid cell.
 
 ## Testing
 

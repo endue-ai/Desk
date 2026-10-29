@@ -14,6 +14,9 @@ const plugins: Record<string, string> = {
   "desk.palette": join(repo, "plugins/palette"),
   "endue.eris": join(repo, "plugins/eris"),
   "endue.onboarding": join(repo, "plugins/onboarding"),
+  "endue.sidebar": join(repo, "plugins/sidebar"),
+  "endue.toolbar": join(repo, "plugins/toolbar"),
+  "endue.dock": join(repo, "plugins/dock"),
 };
 const sdk = join(repo, "packages/plugin-sdk/src/index.ts");
 const types: Record<string, string> = {
