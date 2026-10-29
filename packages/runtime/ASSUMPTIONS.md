@@ -67,10 +67,10 @@ cheap to change.
 ## System layer, agent directory, windows and key bindings
 
 29. **"Core layer" is named the system layer.** "Core" already means the Rust core (`desk-core`). It holds
-    the mode switcher, the desktop switcher and the agent bar (ADR 0015). The desktop switcher went in
+    the mode switcher, the desktop switcher and the agent bar (ADR 0019). The desktop switcher went in
     too: it moves between a mode's slots and is not part of any one of them.
 30. **Night hides the rail** (`modes/sample/night/layout/desktop.json`), to show what a mode may change.
-31. **The agent list comes from specs/brain/v0** (ADR 0016), mirroring endue AI's `AgentGetResponse`, A2A
+31. **The agent list comes from specs/brain/v0** (ADR 0020), mirroring endue AI's `AgentGetResponse`, A2A
     card and task, and `UserSpaceGetResponse` in camelCase. Working = a `working` A2A task targets the
     agent; waiting at the edge = `inactive`; archived agents are hidden. `personalColor` is not painted
     (tokens only). Only the first 100 agents and tasks are read.
