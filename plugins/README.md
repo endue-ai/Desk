@@ -15,5 +15,6 @@ there were two formats, the API would have holes.
 Every plugin folder holds `plugin.json`, `README.md`, and as needed `ui/`, `logic/`, `tool/` and `tests/`.
 
 Status: `sidebar`, `eris`, `onboarding`, `toolbar` and `dock` are working UI plugins; `modes` is a folder
-only. The runtime puts `left`, `right` and `bottom` surfaces on the desk's edges.
+only. The runtime puts `left`, `right` and `bottom` surfaces on the desk's edges. The first run still
+draws its own frame of the toolbar, dock, modes and left bar inside its overlay.
 `just dev` installs every folder here that has a `plugin.json` as a built-in plugin.

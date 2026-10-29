@@ -1,0 +1,11 @@
+{
+  "target": "BridgeRequest",
+  "description": "cmd.register needs a title",
+  "instance": {
+    "id": 51,
+    "method": "cmd.register",
+    "params": {
+      "id": "eris.say"
+    }
+  }
+}

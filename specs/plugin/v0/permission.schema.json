@@ -15,7 +15,13 @@
         { "$ref": "#/$defs/UiSurfacePermission" },
         { "$ref": "#/$defs/UiNotifyPermission" },
         { "$ref": "#/$defs/PluginManagePermission" },
-        { "$ref": "#/$defs/BrainConversePermission" }
+        { "$ref": "#/$defs/BrainConversePermission" },
+        { "$ref": "#/$defs/CmdInvokePermission" },
+        { "$ref": "#/$defs/CmdAdvisePermission" },
+        { "$ref": "#/$defs/SettingsReadPermission" },
+        { "$ref": "#/$defs/LogReadPermission" },
+        { "$ref": "#/$defs/EventsSubscribePermission" },
+        { "$ref": "#/$defs/PermManagePermission" }
       ]
     },
     "FsReadPermission": {
@@ -131,6 +137,78 @@
       "required": ["permission"],
       "additionalProperties": false
     },
+    "CmdInvokePermission": {
+      "description": "Invoke and list the commands whose ids the patterns cover, whoever provides them.",
+      "type": "object",
+      "properties": {
+        "permission": { "const": "cmd:invoke" },
+        "ids": {
+          "description": "Command id patterns the permission covers.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/CommandPattern" },
+          "minItems": 1
+        }
+      },
+      "required": ["permission", "ids"],
+      "additionalProperties": false
+    },
+    "CmdAdvisePermission": {
+      "description": "Hook into or override commands other callers provide. Reserved for command hooks: no v0 method uses it yet.",
+      "type": "object",
+      "properties": {
+        "permission": { "const": "cmd:advise" }
+      },
+      "required": ["permission"],
+      "additionalProperties": false
+    },
+    "SettingsReadPermission": {
+      "description": "Read other callers' settings that the patterns cover, and receive their settings.changed events.",
+      "type": "object",
+      "properties": {
+        "permission": { "const": "settings:read" },
+        "keys": {
+          "description": "Setting patterns the permission covers.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/SettingPattern" },
+          "minItems": 1
+        }
+      },
+      "required": ["permission", "keys"],
+      "additionalProperties": false
+    },
+    "LogReadPermission": {
+      "description": "Read every log channel with log.tail, and receive log.entry events.",
+      "type": "object",
+      "properties": {
+        "permission": { "const": "log:read" }
+      },
+      "required": ["permission"],
+      "additionalProperties": false
+    },
+    "EventsSubscribePermission": {
+      "description": "Subscribe with events.subscribe to the named core events about every caller.",
+      "type": "object",
+      "properties": {
+        "permission": { "const": "events:subscribe" },
+        "names": {
+          "description": "Event names the permission covers.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/EventName" },
+          "minItems": 1
+        }
+      },
+      "required": ["permission", "names"],
+      "additionalProperties": false
+    },
+    "PermManagePermission": {
+      "description": "See and revoke every caller's grants, and act as the prompter: receive perm.prompt events and answer them with perm.answer.",
+      "type": "object",
+      "properties": {
+        "permission": { "const": "perm:manage" }
+      },
+      "required": ["permission"],
+      "additionalProperties": false
+    },
     "PathPattern": {
       "description": "An absolute path, or one rooted at ~ or at ${plugin}, ${workspace} or ${home}, with forward slashes. * matches within a segment and ** across segments.",
       "type": "string",
@@ -147,6 +225,30 @@
       "type": "string",
       "minLength": 1,
       "pattern": "^[^\\s]+$"
+    },
+    "CommandPattern": {
+      "description": "A command id, or a pattern in which * matches any run of characters, dots included: * covers every command, eris.* every command under eris.",
+      "type": "string",
+      "maxLength": 128,
+      "pattern": "^[a-z0-9*-]+(\\.[a-z0-9*-]+)*$"
+    },
+    "SettingPattern": {
+      "description": "owner/key: a caller id and a setting key, where * matches any run of characters within its part. endue.eris/voice is one setting; endue.eris/* covers every Eris setting.",
+      "type": "string",
+      "maxLength": 256,
+      "pattern": "^[a-z0-9*][a-z0-9.*-]*/[a-z0-9*][a-z0-9._*-]*$"
+    },
+    "EventName": {
+      "description": "A core event that events.subscribe can ask for.",
+      "type": "string",
+      "enum": [
+        "plugin.changed",
+        "perm.changed",
+        "cmd.changed",
+        "cmd.invoked",
+        "settings.changed",
+        "log.entry"
+      ]
     }
   }
 }

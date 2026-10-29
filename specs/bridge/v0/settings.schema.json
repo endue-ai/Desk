@@ -1,0 +1,123 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://endue.ai/specs/bridge/v0/settings.schema.json",
+  "title": "Desk bridge v0: settings",
+  "description": "Settings the person can see and change, kept per caller like the store: every key belongs to the caller that set it. A caller reads and writes its own keys without a scope; reading other callers' keys needs settings:read.",
+  "$defs": {
+    "SettingKey": {
+      "description": "A key in its owner's namespace, lowercase and dotted: voice, motion.reduce.",
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9._-]{0,127}$"
+    },
+    "Setting": {
+      "description": "One setting with its owner.",
+      "type": "object",
+      "properties": {
+        "owner": { "$ref": "bridge.schema.json#/$defs/CallerId" },
+        "key": { "$ref": "#/$defs/SettingKey" },
+        "value": { "description": "Any JSON value." }
+      },
+      "required": ["owner", "key", "value"],
+      "additionalProperties": false
+    },
+    "SettingsGetRequest": {
+      "description": "Read one setting: the caller's own, or another caller's under settings:read.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "settings.get" },
+        "params": { "$ref": "#/$defs/SettingsGetParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "SettingsGetParams": {
+      "description": "Parameters of settings.get. owner defaults to the caller; another owner needs a scope that covers owner/key.",
+      "type": "object",
+      "properties": {
+        "key": { "$ref": "#/$defs/SettingKey" },
+        "owner": { "$ref": "bridge.schema.json#/$defs/CallerId" },
+        "scope": {
+          "$ref": "../../plugin/v0/permission.schema.json#/$defs/SettingsReadPermission"
+        }
+      },
+      "required": ["key"],
+      "additionalProperties": false
+    },
+    "SettingsGetResult": {
+      "description": "Result of settings.get. value is absent when the key was never set.",
+      "type": "object",
+      "properties": {
+        "value": { "description": "Any JSON value." }
+      },
+      "additionalProperties": false
+    },
+    "SettingsSetRequest": {
+      "description": "Write one of the caller's own settings (64 KiB of JSON at most).",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "settings.set" },
+        "params": { "$ref": "#/$defs/SettingsSetParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "SettingsSetParams": {
+      "description": "Parameters of settings.set.",
+      "type": "object",
+      "properties": {
+        "key": { "$ref": "#/$defs/SettingKey" },
+        "value": { "description": "Any JSON value." }
+      },
+      "required": ["key", "value"],
+      "additionalProperties": false
+    },
+    "SettingsSetResult": {
+      "description": "Result of settings.set.",
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "SettingsListRequest": {
+      "description": "List settings: the caller's own, or every setting a settings:read scope covers.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "settings.list" },
+        "params": { "$ref": "#/$defs/SettingsListParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "SettingsListParams": {
+      "description": "Parameters of settings.list. Without scope, the caller's own settings; with one, every setting it covers, whoever owns it.",
+      "type": "object",
+      "properties": {
+        "scope": {
+          "$ref": "../../plugin/v0/permission.schema.json#/$defs/SettingsReadPermission"
+        }
+      },
+      "additionalProperties": false
+    },
+    "SettingsListResult": {
+      "description": "Result of settings.list, by owner and then key.",
+      "type": "object",
+      "properties": {
+        "settings": { "type": "array", "items": { "$ref": "#/$defs/Setting" } }
+      },
+      "required": ["settings"],
+      "additionalProperties": false
+    },
+    "SettingsChangedEvent": {
+      "description": "A setting changed. Sent to its owner, and to callers subscribed to settings.changed whose settings:read grant covers it.",
+      "type": "object",
+      "properties": {
+        "event": { "const": "settings.changed" },
+        "data": { "$ref": "#/$defs/Setting" }
+      },
+      "required": ["event", "data"],
+      "additionalProperties": false
+    }
+  }
+}

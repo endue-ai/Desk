@@ -1,0 +1,15 @@
+{
+  "target": "BridgeRequest",
+  "description": "events.subscribe names at least one event",
+  "instance": {
+    "id": 63,
+    "method": "events.subscribe",
+    "params": {
+      "names": [],
+      "scope": {
+        "permission": "events:subscribe",
+        "names": ["cmd.changed"]
+      }
+    }
+  }
+}

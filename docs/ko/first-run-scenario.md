@@ -2,7 +2,7 @@
 
 2026-10-27 · Team endue
 
-> 첫 실행(onboarding) 플러그인의 요구사항 원문입니다. 장면 1–4 의 움직이는 참고본은 `docs/reference/eris-opening-prototype.html` (브라우저에서 바로 열림), Eris 자산은 `brand/eris/` 에 있습니다.
+> 첫 실행(onboarding) 플러그인의 요구사항 원문입니다. 장면 1–10 은 `plugins/onboarding` 이 구현합니다. 장면 1–4 의 움직이는 참고본은 `docs/reference/eris-opening-prototype.html` (브라우저에서 바로 열림), Eris 자산은 `brand/eris/` 에 있습니다.
 
 ## 개요
 
@@ -142,15 +142,15 @@ Eris 가 처음으로 말합니다. 한 줄씩 소울 텍스트로 나타났다 
 
 ## 장면 7. 에이전트 합류 (2:00–2:40)
 
-endue 가 만든 에이전트들이 왼쪽 플로팅 바에 하나씩 꽂히며 먼저 말을 겁니다. 궤도 연출 없이 화면 깊은 곳에서 날아와 바의 자기 자리에 맞물립니다. 아래 이름과 역할은 랜딩의 예시를 빌렸고, 실제 기본 에이전트 구성은 정해야 합니다.
+endue 가 만든 에이전트들이 왼쪽 플로팅 바에 하나씩 꽂히며 먼저 말을 겁니다. 궤도 연출 없이 화면 깊은 곳에서 날아와 바의 자기 자리에 맞물립니다. Desk 에 기본으로 들어가는 에이전트는 Tin(일상 동반자, 계획·검토) · Seed(리서치) · Muse(글쓰기) 셋이고(endue.ai), 처음 설정된 에이전트인 Tin 이 먼저 말합니다.
 
 | # | 누가 | 대사 (EN) | 한국어 참고 | 연출 |
 | --- | --- | --- | --- | --- |
 | 1 | Eris | I don't work alone. Let me bring in the team. | 저 혼자 일하지 않아요. 팀을 부를게요. |  |
-| 2 | Iris | Iris here. Two of tomorrow's meetings overlap. Want me to sort it out? | Iris 예요. 내일 회의 두 개가 겹쳐요. 정리해 드릴까요? | 캘린더를 연결했을 때. 내용은 실제 일정에 따라 바뀜 |
-| 2' | Iris | Iris here. Connect a calendar and I'll keep it tidy. | Iris 예요. 캘린더를 연결하면 깔끔하게 챙길게요. | 연결하지 않았을 때 |
-| 3 | Atlas | Atlas. Give me a question you keep putting off. | Atlas 예요. 미뤄 둔 질문 하나 주세요. |  |
-| 4 | Eris | Two more are waiting. You can meet them later. | 두 명이 더 기다려요. 나중에 만나도 돼요. | 나머지는 바에 흐린 원으로만 자리 잡음 |
+| 2 | Tin | Tin here. Two of tomorrow's meetings overlap. Want me to sort it out? | Tin 이에요. 내일 회의 두 개가 겹쳐요. 정리해 드릴까요? | 캘린더를 연결했을 때. 내용은 실제 일정에 따라 바뀜 |
+| 2' | Tin | Tin here. Connect a calendar and I'll keep it tidy. | Tin 이에요. 캘린더를 연결하면 깔끔하게 챙길게요. | 연결하지 않았을 때 |
+| 3 | Seed | Seed. Give me a question you keep putting off. | Seed 예요. 미뤄 둔 질문 하나 주세요. |  |
+| 4 | Eris | One more is waiting. You can meet Muse later. | 한 명이 더 기다려요. Muse 는 나중에 만나도 돼요. | Muse 는 바에 흐린 원으로만 자리 잡음 |
 
 - 에이전트마다 한 줄만 말합니다. 각자 자기 색으로, 자기 원 옆에 24px 소울 텍스트를 뛄웁니다.
 - 사용자가 "Later" 라고 하면 Eris 가 "They'll wait at the edge."(가장자리에서 기다릴 거예요.)라고 하고 다음 장면으로 갑니다.
@@ -199,6 +199,7 @@ endue 가 만든 에이전트들이 왼쪽 플로팅 바에 하나씩 꽂히며 
 | 8초 침묵 | Still there? You can type, too. | 한 번만 말하고 입력창을 띄움. 다시 재촉하지 않음 |
 | Skip intro | Fine. I'll be brief. | 장면 1–2를 건너뛰고 구체가 조립된 상태로 시작해 장면 5 로그인으로. 마이크·이름은 첫 대화 때 물음 |
 | 로그인 실패 | Sign-in didn't go through. The link may have expired. Open it again? | 장면 5 4c. 세 번 실패하면 도움말 링크를 함께 보여 줌 |
+| 서비스 지역 밖 | endue isn't open in your region yet. It's US only for now. / Your desk still works here, so let's set it up. | 서비스 지역은 미국. 장면 5 에서 endue ID 가 지역 밖이라고 답하면 두 문장으로 알리고 로그인 없이 장면 6 으로. endue 의 에이전트가 합류하는 장면 7 은 건너뜀 |
 | 오프라인 | I can't reach endue right now. Check your connection, and I'll pick up where we left off. | 연결이 돌아오면 그 장면부터 이어서 진행 |
 | 도중에 앱 종료 | Where were we? Right, your desk. | 다음 실행 때 도착 연출 없이 끊긴 장면부터 |
 | 동작 줄이기 설정 | (대사 동일) | 워프와 시공간 펼침을 생략하고 구체는 페이드인, 소울 텍스트는 단순 페이드 |
@@ -229,12 +230,17 @@ endue 가 만든 에이전트들이 왼쪽 플로팅 바에 하나씩 꽂히며 
 - 사용자를 깎아내리는 농담, 이모지, 느낌표 남발
 - 화면 가운데에 Eris 의 말이나 선택지를 놓는 것
 
+## 결정 (2026-10-28)
+
+- '소울 느낌'은 영혼처럼 흩어지는 wisp 입니다.
+- 빛에서 나오는 캐릭터는 Eris 이고, Tin 은 처음 설정된 에이전트로 장면 7 에서 가장 먼저 합류해 말합니다.
+- Desk 에 기본으로 들어가는 endue 에이전트는 Tin · Muse · Seed 입니다(endue.ai).
+- Eris 의 목소리는 여성입니다. 지금은 운영체제 음성 합성의 여성 영어 음성으로 말하고, 소울 텍스트는 대본 시각(없으면 글자 수 비례)을 따릅니다.
+- 시작 크레딧과 요금제 안내는 첫 실행에서 뺍니다.
+- 서비스 지역은 미국입니다. 지역 밖이면 장면 5 에서 안내합니다(분기와 예외 참고).
+
 ## 열린 질문
 
-- [ ] '소울 느낌'은 영혼처럼 흩어지는 wisp 와 다크소울류의 묵직한 solemn 중 어느 쪽인가요?
-- [ ] 기존 구상에서 빛에서 나오던 Tin 은 첫 실행에서 빠지나요, 카메오로 남나요? 디자인 시스템은 Tin 을 처음 만나는 순간의 마스코트로 정해 두었습니다.
-- [ ] Desk 에 기본으로 들어가는 endue 에이전트는 누구인가요? 장면 7의 Iris·Atlas 는 랜딩 예시를 빌렸습니다.
-- [ ] Eris 의 목소리(성별, 톤, 속도)와 단어 타임스탬프를 주는 TTS 는 무엇으로 할까요?
-- [ ] 시작 크레딧이나 요금제 안내를 첫 실행 어디에 둘까요, 아니면 뺄까요?
-- [ ] 동작 줄이기 사용자에게 3D 카메라 이동(워프, 시공간 펼침)을 어디까지 줄일까요?
-- [ ] 서비스 지역이 아닌 곳에서 실행했을 때는 어느 장면에서 어떻게 안내할까요?
+- [ ] 단어 타임스탬프를 주는 TTS 는 무엇으로 할까요? 음성의 톤과 속도도 그때 정합니다.
+- [ ] Tin · Muse · Seed 의 페르소나 색(디자인 시스템 토큰)은 무엇인가요? 지금은 임시 색입니다.
+- [ ] 동작 줄이기 사용자에게 3D 카메라 이동(워프, 시공간 펼침)을 어디까지 줄일까요? 지금은 둘 다 빼고 구체만 페이드인합니다.
