@@ -41,3 +41,14 @@ fn install_needs_a_logic_plugin_with_its_entry_inside_the_folder() {
     let module = PluginDir::logic("test.install", json!([]), &core_module);
     assert!(matches!(install(&module), Err(PluginError::Compile(_))));
 }
+
+#[test]
+fn a_logic_plugin_without_an_entry_is_a_manifest_error() {
+    let dir =
+        PluginDir::manifest(json!({ "id": "test.install", "version": "0.1.0", "kind": "logic" }));
+    dir.write("plugin.wasm", &fine());
+    let Err(PluginError::Manifest(message)) = install(&dir) else {
+        panic!("a logic plugin without an entry installed");
+    };
+    assert!(message.contains("names no entry"), "{message}");
+}

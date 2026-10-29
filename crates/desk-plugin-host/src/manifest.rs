@@ -20,12 +20,15 @@ pub(crate) fn read(dir: &Path) -> Result<(PluginManifest, Vec<u8>), PluginError>
             manifest.id
         )));
     }
-    let entry = inside(dir, &manifest.entry).ok_or_else(|| {
-        PluginError::Manifest(format!("entry {} leaves the plugin folder", manifest.entry))
-    })?;
-    let bytes = fs::read(&entry).map_err(|e| {
-        PluginError::Manifest(format!("entry {} cannot be read: {e}", manifest.entry))
-    })?;
+    // The schema requires `entry` for every kind but policy, so a logic plugin without one is broken.
+    let name = manifest
+        .entry
+        .as_deref()
+        .ok_or_else(|| PluginError::Manifest(format!("{} names no entry", manifest.id)))?;
+    let entry = inside(dir, name)
+        .ok_or_else(|| PluginError::Manifest(format!("entry {name} leaves the plugin folder")))?;
+    let bytes = fs::read(&entry)
+        .map_err(|e| PluginError::Manifest(format!("entry {name} cannot be read: {e}")))?;
     Ok((manifest, bytes))
 }
 
