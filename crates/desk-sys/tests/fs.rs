@@ -308,13 +308,13 @@ fn watch_changes_reports_each_event_with_its_kind() {
     std::thread::sleep(Duration::from_millis(200));
     fs::write(dir.join("c.txt"), "new").unwrap();
     fs::remove_file(dir.join("a.bin")).unwrap();
-    let real = dir.canonicalize().unwrap();
+    // Under the folder as given, whatever form the OS reports (macOS /private/var, Windows \\?\).
     let (mut created, mut removed) = (false, false);
     let deadline = Instant::now() + Duration::from_secs(10);
     while !(created && removed) && Instant::now() < deadline {
         if let Ok((path, change)) = receiver.recv_timeout(Duration::from_millis(100)) {
-            created |= path == real.join("c.txt") && change == Change::Created;
-            removed |= path == real.join("a.bin") && change == Change::Removed;
+            created |= path == dir.join("c.txt") && change == Change::Created;
+            removed |= path == dir.join("a.bin") && change == Change::Removed;
         }
     }
     assert!(created && removed, "created: {created}, removed: {removed}");

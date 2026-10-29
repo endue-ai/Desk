@@ -82,12 +82,15 @@ pub fn watch(path: &Path, on_change: impl Fn(PathBuf) + Send + 'static) -> io::R
 
 /// Call `on_change` with each changed path and what the event says happened to it, under `path`
 /// (and its sub-folders when `recursive`), until the `Watch` is dropped. Not debounced: one file
-/// write can arrive as several events.
+/// write can arrive as several events. Paths are reported under `path` as given, as by
+/// `watch_debounced`.
 pub fn watch_changes(
     path: &Path,
     recursive: bool,
     on_change: impl Fn(PathBuf, Change) + Send + 'static,
 ) -> io::Result<Watch> {
+    let roots = Roots::of(path)?;
+    let real = roots.real.clone();
     let mut watcher = notify::recommended_watcher(move |event: notify::Result<notify::Event>| {
         let Ok(event) = event else { return };
         let change = match event.kind {
@@ -97,12 +100,12 @@ pub fn watch_changes(
             _ => return,
         };
         for path in event.paths {
-            on_change(path, change);
+            on_change(roots.shown(&path), change);
         }
     })
     .map_err(|err| watch_error(err, path))?;
     watcher
-        .watch(path, mode(recursive))
+        .watch(&real, mode(recursive))
         .map_err(|err| watch_error(err, path))?;
     Ok(Watch {
         watcher: Some(watcher),
@@ -119,9 +122,7 @@ pub fn watch_debounced(
     options: WatchOptions,
     on_changes: impl FnMut(Vec<Changed>) + Send + 'static,
 ) -> io::Result<Watch> {
-    let real = path
-        .canonicalize()
-        .map_err(|err| io::Error::new(err.kind(), format!("{}: {err}", path.display())))?;
+    let roots = Roots::of(path)?;
     let (sender, receiver) = mpsc::channel();
     let events = sender.clone();
     let mut watcher = notify::recommended_watcher(move |event: notify::Result<notify::Event>| {
@@ -131,12 +132,8 @@ pub fn watch_debounced(
     })
     .map_err(|err| watch_error(err, path))?;
     watcher
-        .watch(&real, mode(options.recursive))
+        .watch(&roots.real, mode(options.recursive))
         .map_err(|err| watch_error(err, path))?;
-    let roots = Roots {
-        given: path.to_path_buf(),
-        real,
-    };
     let thread = thread::Builder::new()
         .name("desk-fs-watch".to_owned())
         .spawn(move || debounce(&receiver, options.debounce, &roots, on_changes))?;
@@ -161,6 +158,18 @@ struct Roots {
 }
 
 impl Roots {
+    /// Resolving the path first also makes a missing one `NotFound` on every OS (notify's Windows
+    /// backend reports it as a generic error).
+    fn of(path: &Path) -> io::Result<Self> {
+        let real = path
+            .canonicalize()
+            .map_err(|err| io::Error::new(err.kind(), format!("{}: {err}", path.display())))?;
+        Ok(Self {
+            given: path.to_path_buf(),
+            real,
+        })
+    }
+
     fn shown(&self, path: &Path) -> PathBuf {
         match path.strip_prefix(&self.real) {
             Ok(rest) if rest.as_os_str().is_empty() => self.given.clone(),
