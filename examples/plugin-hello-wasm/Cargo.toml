@@ -1,0 +1,24 @@
+[package]
+name = "plugin-hello-wasm"
+description = "The smallest logic plugin: reads one file from its folder and shows it as a notification."
+version = "0.1.0"
+edition = "2024"
+license = "Apache-2.0"
+publish = false
+
+[lib]
+name = "hello"
+crate-type = ["cdylib"]
+
+[dependencies]
+wit-bindgen = "0.63"
+
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
+
+# Its own workspace: the repository's workspace builds for the desk, this one for Wasm.
+[workspace]
