@@ -11,7 +11,8 @@ Layer: Rust core (see `docs/architecture.md`).
 - `Brain`: `create_session`, `get_session`, `create_turn` and `submit_tool_result` (turn streams hand
   each `TurnEvent` to a callback), `get_lease`, `acquire_lease`, `renew_lease`, `release_lease`; the
   agent directory: `list_agents(&AgentQuery)`, `get_agent_card`, `list_spaces`,
-  `list_a2a_tasks(&TaskQuery)`.
+  `list_a2a_tasks(&TaskQuery)`. The directory has defaults for a brain without one (desk-brain-local):
+  empty pages, no spaces, and 404 `not_found` for every agent card.
 - `AgentQuery`, `TaskQuery`: the filters and page of the two lists; `None` leaves a parameter out.
 - `BrainFailure`: `Refused { status, error }` (the brain said no: lease conflicts among them),
   `Unreachable` (no connection, or the stream broke), `Protocol` (an answer outside the contract).
