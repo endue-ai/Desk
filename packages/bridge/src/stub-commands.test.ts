@@ -67,4 +67,32 @@ describe("stubCommands", () => {
     });
     expect((await client.call("cmd.list", { scope })).commands).toEqual([]);
   });
+
+  it("audience routes cmd.invoked to the provider and cmd.answered to the caller", async () => {
+    const { client, commands, events, settle } = setup();
+    await client.call(
+      "cmd.register",
+      { id: "example.notes.new", title: "New" },
+      { caller: "example.notes" },
+    );
+    await client.call("cmd.register", { id: "desk.theme.toggle", title: "Toggle" });
+    const { invocationId } = await client.call(
+      "cmd.invoke",
+      { id: "example.notes.new", scope },
+      { caller: "endue.eris" },
+    );
+    await client.call("cmd.answer", { invocationId, result: 1 }, { caller: "example.notes" });
+    const own = await client.call("cmd.invoke", { id: "desk.theme.toggle", scope });
+    await client.call("cmd.answer", { invocationId: own.invocationId });
+    await settle();
+    const routed = events
+      .filter((e) => e.event === "cmd.invoked" || e.event === "cmd.answered")
+      .map((e) => [e.event, commands.audience(e)]);
+    expect(routed).toEqual([
+      ["cmd.invoked", ["example.notes"]],
+      ["cmd.answered", ["endue.eris"]],
+      ["cmd.invoked", []],
+      ["cmd.answered", []],
+    ]);
+  });
 });
