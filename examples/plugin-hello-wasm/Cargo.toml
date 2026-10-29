@@ -1,6 +1,6 @@
 [package]
 name = "plugin-hello-wasm"
-description = "The smallest logic plugin: reads one file from its folder and shows it as a notification."
+description = "The smallest logic plugin: provides one command, and shows one file from its folder as a notification."
 version = "0.1.0"
 edition = "2024"
 license = "Apache-2.0"
@@ -11,6 +11,7 @@ name = "hello"
 crate-type = ["cdylib"]
 
 [dependencies]
+serde_json = "1"
 wit-bindgen = "0.63"
 
 [profile.release]
