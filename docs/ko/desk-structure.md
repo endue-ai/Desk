@@ -1,6 +1,6 @@
 # endue Desk 구조
 
-2026-10-27 · Team endue
+2026-10-30 · Team endue
 
 > 이 문서가 Desk 설계의 단일 진실입니다. 코드와 어긋나면 ADR 로 결정을 남기고 이 문서를 고칩니다. 영어 요약은 `docs/architecture.md`, 되돌리기 어려운 결정은 `docs/adr/` 에 있습니다.
 
@@ -17,10 +17,13 @@ Desk 는 Tauri 셸과 작은 Rust 코어 위에 웹 런타임을 얹고, 그 위
  │ 플러그인   UI(iframe) · 로직(Wasm) · 도구(MCP, 가벼운 VM 안)     │  즉시
  ├───────────────────────────────────────────────────────────────┤
  │ 웹 런타임  compositor(3D/2D) · surfaces · input · layout · theme │  재시작
+ │            · UI 플러그인 호스트 · 데스크 셸 (ADR 0026 까지)      │
  ├───────────────────────────────────────────────────────────────┤
- │ Desk 브리지  specs/bridge → TS 클라이언트 · Rust 트레이트         │  재빌드
+ │ Desk 브리지  specs/bridge · specs/plugin 에서 생성된 타입        │  재빌드
+ │              (TS 클라이언트 · Rust 타입)                         │
  ├───────────────────────────────────────────────────────────────┤
- │ Rust 코어  권한 · 이벤트 버스 · 저장소 · 플러그인 호스트 · VM · 두뇌 │  재빌드
+ │ Rust 코어  권한 · 이벤트 버스 · 저장소 · VM · 두뇌               │  재빌드
+ │            · 로직(Wasm) 플러그인 호스트                          │
  ├───────────────────────────────────────────────────────────────┤
  │ Tauri 셸   창 · 웹뷰 · 원시 기능(fs · proc · net · audio)        │  재빌드
  ├───────────────────────────────────────────────────────────────┤
@@ -48,7 +51,7 @@ Emacs 는 작은 C 코어 위에서 거의 모든 기능이 Elisp 로 돌고, �
 | 계정 | 사용자 계정 | 없음 | endue ID |
 
 1. 코어는 작게. Rust 코어에는 기능이 아니라 원시 기능(fs · proc · net · audio · ui)만 넣습니다.
-2. 기본 기능도 플러그인. Eris, 왼쪽 바, 툴바, 프로필 전환도 사용자와 같은 API 로 만듭니다. 그래야 API 에 빠진 구멍이 없고, 기본 기능까지 갈아끼울 수 있습니다. 화면 배치 · 키 · 파일 · 테마 · 알림 같은 기본 정책도 데이터만 가진 `desk.*` 플러그인입니다 (ADR 0017).
+2. 기본 기능도 플러그인. Eris, 왼쪽 바, 툴바, 프로필 전환도 사용자와 같은 API 로 만듭니다. 그래야 API 에 빠진 구멍이 없고, 기본 기능까지 갈아끼울 수 있습니다. 화면 배치 · 키 · 파일 · 테마 · 알림 같은 기본 정책도 데이터만 가진 `desk.*` 플러그인입니다 (ADR 0017). 데스크 셸은 아직 아닙니다. 셸(`packages/runtime` 의 `src/shell · surface · system · modes · eris`, ADR 0025)은 ADR 0026(제안)이 자리를 정할 때까지 런타임 안의 코드이고, 그동안 Eris 는 `plugins/eris` 와 셸에 두 번 있으며(ADR 0027), 가장자리도 `plugins/{dock,toolbar,sidebar}` 와 셸의 아래 가장자리 · 레일 · 에이전트 바로 겹칩니다(ADR 0028).
 3. 모든 것은 커맨드. 클릭, 음성, 단축키, 에이전트가 같은 커맨드를 부릅니다. 사용자가 할 수 있는 일은 Eris 와 에이전트도 할 수 있습니다.
 4. 실행 중에 고친다. 저장하면 바로 반영되고, 플러그인 상태는 코어 저장소에 남아 교체 뒤에도 이어집니다.
 5. 끼어들 수 있다. 어떤 커맨드든 앞뒤에 훅을 걸거나 통째로 덮어쓸 수 있습니다. Emacs 의 advice 와 같습니다.
@@ -115,74 +118,85 @@ desk/
 ├── biome.json                # TS 린트 · 포맷 (한 도구)
 ├── .editorconfig
 ├── .github/
-│   ├── workflows/            # 열세 개. 아래 "GitHub 와 오픈소스 뼈대" 절 참고 (PR 에서 도는 건 여섯)
+│   ├── workflows/            # 열세 개. 아래 "GitHub 와 오픈소스 뼈대" 절 참고 (PR 에서 도는 건 여섯). main 에는 지금 여섯
 │   ├── ISSUE_TEMPLATE/
 │   ├── PULL_REQUEST_TEMPLATE.md
 │   └── CODEOWNERS
 │
 ├── specs/                    # 열림/닫힘의 경계. 언어 중립 계약, 단일 진실
-│   ├── bridge/v0/            # Desk 브리지: JSON Schema + 메서드 문서 (fs · proc · net · audio · ui · perm)
-│   ├── brain/v0/             # 두뇌 API: openapi.yaml (세션 · 턴 · 스트리밍 · 임대)
-│   ├── plugin/v0/            # plugin.json 매니페스트 스키마 · 권한 어휘
+│   ├── bridge/v0/            # Desk 브리지: JSON Schema + 메서드 문서 (fs · proc · net · audio · ui · perm · plugin · store · brain · init · cmd · settings · log · events)
+│   ├── brain/v0/             # 두뇌 API: openapi.yaml (세션 · 턴 · 스트리밍 · 임대 · 에이전트 디렉터리, ADR 0024)
+│   ├── init/v0/              # init.yaml 스키마 · 템플릿 · 동기화 규칙 (ADR 0016)
+│   ├── plugin/v0/            # plugin.json 매니페스트 스키마 · 권한 어휘 · contributes (ADR 0017)
 │   └── wit/                  # 로직 플러그인의 Wasm 호스트 인터페이스 (desk:host)
 │
 ├── crates/                   # Rust. 접두사 desk-
-│   ├── desk-core/            # 커널: 권한 엔진 · 이벤트 버스 · 저장소 · 플러그인 레지스트리 · 세션 임대 클라이언트
-│   ├── desk-sys/             # 원시 기능: fs(notify) · proc(portable-pty) · net · audio(cpal, 호출어). feature 로 분리
-│   ├── desk-bridge/          # 브리지 Rust 측: 트레이트 + specs 에서 생성된 타입
-│   ├── desk-plugin-host/     # Wasmtime 호스트 + MCP 감독 (MCP 는 desk-vm 안에서)
-│   ├── desk-vm/              # 가벼운 Linux VM: 부팅 · vsock · 허락한 폴더만 virtiofs (macOS Virtualization.framework · Windows WSL2 · Linux KVM)
+│   ├── desk-core/            # 커널: 권한 엔진 · 이벤트 버스 · 저장소 · 플러그인 레지스트리 · 커맨드 레지스트리(cmd.*, ADR 0017) · init.yaml · 두뇌 대화와 세션 임대 클라이언트(ADR 0014) · 브리지 핸들러
+│   ├── desk-sys/             # 원시 기능: fs(notify, 원자적 쓰기) · proc(portable-pty) · net(rustls, 호스트 allowlist) (#63). feature 로 분리. audio(cpal, 호출어)는 계획
+│   ├── desk-bridge/          # 브리지 Rust 측: specs/bridge · specs/plugin 에서 생성된 타입만 (src/generated.rs)
+│   ├── desk-plugin-host/     # 로직 플러그인의 Wasmtime 호스트 LogicHost: 설치 · 시작 · 리로드, 메모리 · 시간 상한 (ADR 0019, #68). WIT desk:host 는 fs · net · ui.notify · perm.query · store 만 (#76 이 넓힘). MCP 감독은 아직 없음
+│   ├── desk-vm/              # 가벼운 Linux VM: 부팅 · vsock · 허락한 폴더만 virtiofs (macOS Virtualization.framework · Windows WSL2 · Linux KVM). 빈 crate, 계획
 │   ├── desk-brain/           # 두뇌 트레이트 + 생성된 클라이언트 타입
-│   ├── desk-brain-local/     # 로컬 두뇌 어댑터 (Ollama · llama.cpp)
+│   ├── desk-brain-local/     # 로컬 두뇌 어댑터: Ollama (#42). llama.cpp 는 계획
 │   ├── desk-brain-endue/     # endue AI 클라이언트 (공개 명세 기준)
-│   └── desk-cli/             # `desk` CLI: dev · plugin validate · brain ping. AI 가 쓰는 손
+│   └── desk-cli/             # `desk` CLI: plugin validate. dev · brain ping 은 계획. AI 가 쓰는 손
 │
 ├── packages/                 # TypeScript. 스코프 @endue-ai/
-│   ├── runtime/              # 셸 · 창 관리자: compositor(3D/2D) · surfaces(iframe) · input · layout · theme
-│   ├── bridge/               # 브리지 TS 클라이언트 + 어댑터 (tauri · browser 스텁)
+│   ├── runtime/              # 창 관리자: compositor(2D. 3D 는 계획) · surfaces(iframe) · input · layout · theme · 기본 정책의 메커니즘 (ADR 0017)
+│   │                         # UI 플러그인 호스트 PluginHost (src/plugins.ts): 마운트 · plugin.changed 에 리로드 · 커맨드 양방향 (ADR 0012)
+│   │                         # 데스크 셸 mountDesk (src/shell · surface · system · modes · eris, ADR 0025): ADR 0026 이 정할 때까지 여기.
+│   │                         # Eris 는 plugins/eris 와 두 번 (ADR 0027), 가장자리도 두 번 (ADR 0028)
+│   ├── bridge/               # 브리지 TS 클라이언트 + 생성된 타입 + 어댑터 (tauri · browser 스텁)
 │   ├── plugin-sdk/           # 플러그인 저자가 import 하는 전부
-│   ├── ui/                   # 디자인 토큰 + 공용 컴포넌트 (endue 디자인 시스템과 동기)
-│   └── create-plugin/        # `pnpm create @endue-ai/plugin` 스캐폴더 (2단계 때)
+│   ├── ui/                   # 디자인 토큰 · tokens.css · 프레임워크 없는 custom element 여섯 (ADR 0022, #72)
+│   └── create-plugin/        # `pnpm create @endue-ai/plugin` 스캐폴더 (UI 템플릿, #34)
 │
 ├── apps/
 │   └── desk/                 # Tauri 2 앱. 얇은 어댑터만
 │       ├── src-tauri/        # main.rs · lib.rs · commands/ (브리지 → desk-core) · capabilities/ · tauri.conf.json · icons/
-│       ├── src/              # 부트스트랩: runtime 마운트 · bridge(tauri) 연결 · 플러그인 로드
+│       ├── src/              # 부트스트랩: runtime 마운트 · bridge(tauri) 연결 · 플러그인 로드. 셸(mountDesk)은 아직 아님 (#74)
 │       └── index.html
 │
 ├── plugins/                  # endue 기본 기능. 커뮤니티 플러그인과 같은 형식
-│   ├── eris/                 # 비서 (assets 는 brand/ 라이선스)
-│   ├── sidebar/              # 왼쪽 바 (에이전트 · 스페이스)
-│   ├── toolbar/              # 오른쪽 상태 패널 (서랍 목록)
-│   ├── dock/                 # 아래 독
+│   ├── eris/                 # 비서: 자세 · 구체 · 대화 · 소울 텍스트 (assets 는 brand/ 라이선스). 셸에도 따로 하나 (ADR 0027)
+│   ├── sidebar/              # 왼쪽 가장자리: 설치한 플러그인 켜고 끄기. 셸의 에이전트 바와 같은 자리 (ADR 0028)
+│   ├── toolbar/              # 오른쪽 상태 패널 (서랍 목록). 셸의 레일과 같은 자리 (ADR 0028)
+│   ├── dock/                 # 아래 독 (플러그인 타일). 셸의 아래 가장자리와 같은 자리 (ADR 0028)
+│   ├── permissions/          # grant 목록 · 회수 · 프롬프트 창 (endue.permissions, #69)
 │   ├── profiles/             # 프로필 전환 · 저장 (desk.profiles, 예전 이름 modes)
+│   ├── shell/                # 데스크 셸의 정책 desk.shell: 샘플 프로필 · 설정 · 색 (ADR 0025). 셸의 코드는 packages/runtime
 │   ├── display/ · keys/ · palette/ · buffers/ · files/ · session/ · notify/ · theme/
 │   │                         # 기본 정책 desk.* (ADR 0017)
-│   └── onboarding/           # 첫 실행 시나리오
+│   └── onboarding/           # 첫 실행 시나리오 (장면 1–10, #41)
 │       └── (각 플러그인: plugin.json · README.md · ui/ · logic/ · tool/ · tests/)
 │
 ├── examples/                 # 한 명령으로 도는 최소 예제
 │   ├── plugin-hello-ui/
-│   ├── plugin-hello-wasm/
-│   ├── plugin-hello-mcp/
+│   ├── plugin-hello-wasm/    # Rust wasm32-wasip2 컴포넌트, 빌드한 결과도 커밋 (#68)
+│   ├── plugin-hello-mcp/     # README 만, 계획
 │   └── brain-echo/           # 두뇌 명세의 최소 구현. 테스트와 AI 학습용
 │
-├── e2e/                      # 앱 단위 테스트 (tauri-driver)
+├── e2e/                      # 앱 단위 테스트 (tauri-driver, 계획 #82). 지금은 README · perf/budgets.json
 │
 ├── docs/                     # 마크다운이 진실, 사이트는 빌드 산출물
 │   ├── architecture.md
 │   ├── adr/                  # 0001-tauri-over-electron.md … 되돌리기 어려운 결정마다 하나
+│   ├── ko/                   # 한국어 설계 원본: 이 문서 · desk-requirements.md · first-run-scenario.md
+│   ├── i18n/                 # 사용자용 문서의 ja · zh · fr · de · ko 번역
 │   ├── plugins/              # 플러그인 저자 가이드
 │   ├── brain/                # 두뇌 어댑터 작성 가이드
-│   └── site/                 # 문서 사이트 설정 (Starlight)
+│   ├── qa/                   # TESTING.md: 어떤 변경에 어떤 테스트
+│   ├── reference/            # 원천 자료 (Eris opening 프로토타입)
+│   ├── security/             # 위협 모델 (#71)
+│   └── site/                 # 문서 사이트 설정 (Starlight, 계획). API 레퍼런스는 빌드 때 specs/ 에서 생성 (#71)
 │
 ├── brand/                    # Apache 아님. 별도 LICENSE
 │   ├── LICENSE
-│   ├── logo/
-│   ├── tin/
+│   ├── logo/                 # 계획
+│   ├── tin/                  # 계획
 │   └── eris/
 │
-└── scripts/                  # justfile 이 부르는 스크립트 (codegen · sign · release)
+└── scripts/                  # justfile 이 부르는 스크립트 (codegen · scope-check · lanes · docs-i18n · spec-docs. sign · release 는 계획)
 ```
 
 구조도의 층과 폴더
@@ -191,9 +205,9 @@ desk/
 | --- | --- |
 | endue AI (클라우드) | 저장소 밖. `specs/brain` 과 `crates/desk-brain-endue` 만 여기 |
 | 플러그인 | `plugins/` · `packages/plugin-sdk` · `specs/plugin` · `specs/wit` · `examples/` |
-| 웹 런타임 | `packages/runtime` · `packages/ui` |
-| Desk 브리지 | `specs/bridge` · `packages/bridge` · `crates/desk-bridge` |
-| Rust 코어 | `crates/desk-core` · `crates/desk-plugin-host` · `crates/desk-vm · crates/desk-brain*` |
+| 웹 런타임 | `packages/runtime` (컴포지터, UI 플러그인 호스트 ADR 0012, ADR 0026 이 정할 때까지 데스크 셸 ADR 0025) · `packages/ui` |
+| Desk 브리지 | `specs/bridge` · `packages/bridge` · `crates/desk-bridge` (`specs/bridge` · `specs/plugin` 에서 생성된 타입) |
+| Rust 코어 | `crates/desk-core` · `crates/desk-plugin-host` (로직 플러그인, Wasmtime, ADR 0019) · `crates/desk-vm` · `crates/desk-brain*` |
 | Tauri 셸 | `apps/desk/src-tauri` · `crates/desk-sys` |
 | 운영체제 | `apps/desk/src-tauri/capabilities` · `.github/workflows/release.yml` (서명 · 공증) |
 
@@ -398,17 +412,36 @@ AI 를 위한 준비물
 
 ## 결정
 
-MCP 도구는 가벼운 VM 으로 격리하고, 나머지는 데스크톱 오픈소스의 관례를 따릅니다.
+MCP 도구는 가벼운 VM 으로 격리하고, 나머지는 데스크톱 오픈소스의 관례를 따릅니다. 결정마다 `docs/adr/` 에 한 장이 있고, 0026 · 0027 · 0028 은 아직 제안입니다(사람이 정함).
 
-| 질문 | 결정 | 따른 관례 |
-| --- | --- | --- |
-| MCP 도구 격리 | 가벼운 Linux VM 하나에서 실행. 허락한 폴더만 virtiofs 로 넣고, 통신은 vsock, 쉬면 VM 째로 멈춤. VM 을 못 띄우는 기기는 설치 때 "격리 없음"을 고지하고 사용자 권한으로 | Claude Cowork · Docker Desktop (macOS Virtualization.framework · Windows WSL2 · Linux KVM) |
-| 웹 런타임 번들 배포 | 앱과 함께. 따로 배포하지 않음. 플러그인만 따로 갱신 | VS Code · Electron 앱 일반 |
-| 플러그인 API 하위 호환 | v0 는 마이너마다 깨질 수 있음을 명시. v1 부터 직전 메이저를 6개월 지원하고, 제거 한 버전 전에 경고 | semver · VS Code 확장 API |
-| 마켓 심사 · 서명 | 자동 검증(매니페스트 · 권한 · 정적 스캔) + 게시 때 마켓이 서명. proc · net 광역 권한만 수동 심사 | VS Code Marketplace · Obsidian 커뮤니티 플러그인 |
-| macOS 앱 e2e | 런타임 Playwright + 설치 스모크 + stable 전 10분 수동. tauri-driver 가 macOS 를 지원하면 전환 | Tauri 프로젝트 일반 |
-| 크래시 리포트 | Sentry, opt-in, 기본은 꺼짐. 서명별 신규 크래시가 beta 승격 조건에 들어감 | Tauri 앱 일반 |
-| 자동 병합 범위 | 봇 PR(의존성 패치 · 마이너)만. 작업 PR 은 사람이 승인 |  |
+| 질문 | 결정 | 따른 관례 | ADR |
+| --- | --- | --- | --- |
+| 앱 셸 | Tauri 2. 앱이 작고 Rust 코어가 같은 프로세스에서 돎. 위험은 OS 마다 다른 웹뷰 | Tauri 앱 일반 | 0001 |
+| MCP 도구 격리 | 가벼운 Linux VM 하나에서 실행. 허락한 폴더만 virtiofs 로 넣고, 통신은 vsock, 쉬면 VM 째로 멈춤. VM 을 못 띄우는 기기는 설치 때 "격리 없음"을 고지하고 사용자 권한으로 | Claude Cowork · Docker Desktop (macOS Virtualization.framework · Windows WSL2 · Linux KVM) | 0002 |
+| 웹 런타임 번들 배포 | 앱과 함께. 따로 배포하지 않음. 플러그인만 따로 갱신 | VS Code · Electron 앱 일반 | 0003 |
+| 플러그인 API 하위 호환 | v0 는 마이너마다 깨질 수 있음을 명시. v1 부터 직전 메이저를 6개월 지원하고, 제거 한 버전 전에 경고 | semver · VS Code 확장 API | 0004 |
+| 마켓 심사 · 서명 | 자동 검증(매니페스트 · 권한 · 정적 스캔) + 게시 때 마켓이 서명. proc · net 광역 권한만 수동 심사 | VS Code Marketplace · Obsidian 커뮤니티 플러그인 | 0005 |
+| macOS 앱 e2e | 런타임 Playwright + 설치 스모크 + stable 전 10분 수동. tauri-driver 가 macOS 를 지원하면 전환 | Tauri 프로젝트 일반 | 0006 |
+| 크래시 리포트 | Sentry, opt-in, 기본은 꺼짐. 서명별 신규 크래시가 beta 승격 조건에 들어감 | Tauri 앱 일반 | 0007 |
+| 자동 병합 범위 | 봇 PR(의존성 패치 · 마이너)만. 작업 PR 은 사람이 승인 |  | 0008 |
+| 명세에서 타입 | `specs/` 에서 Rust · TS 타입을 자체 생성기로 만들고 커밋. 모르는 스키마 모양은 실패 |  | 0009 |
+| 웹 런타임의 UI 프레임워크 | 없음. 평범한 TypeScript 와 DOM. 플러그인은 자기 프레임 안에서 자유 |  | 0010 |
+| 런타임 스냅샷 | 픽셀이 아니라 직렬화한 렌더 트리 |  | 0011 |
+| UI 플러그인 로드 | `desk-plugin` 스킴 · `sandbox="allow-scripts"` iframe · import map 의 SDK. 런타임이 프레임으로 호출자를 가림 |  | 0012 |
+| 플러그인 애니메이션 | 주입된 시계에 맞춘 멈춘 Web Animations |  | 0013 |
+| 두뇌 대화의 자리 | 코어가 세션 · 임대 · 전사를 갖고, 플러그인은 `brain.say` 와 `brain.turn` 으로만 |  | 0014 |
+| 여러 AI 의 병렬 작업 | 한 trunk · Scope 레인 · 작업마다 worktree · 머지 큐 |  | 0015 |
+| 사람의 설정 | `~/.desk/init.yaml`, endue 로 파일째 3-way 동기화 | Emacs `init.el` | 0016 |
+| 기본 정책 | 데이터만 가진 `policy` 플러그인 `desk.*`, 정해진 순서로 겹침. 커맨드 레지스트리는 코어 하나(`cmd.*`) | Emacs `window.el` · `bindings.el` · `init.el` | 0017 |
+| 로컬 e2e | macOS 에서는 Linux 컨테이너 안에서, 기계당 두 개까지 |  | 0018 |
+| 로직 플러그인 | Wasmtime 위 `desk:host` 컴포넌트, 빈 WASI 0.2. 플러그인마다 store 와 메모리 · 시간 상한 |  | 0019 |
+| `@endue-ai/ui` 컴포넌트 | 프레임워크 없는 custom element, 테마 토큰만 읽음 |  | 0022 |
+| 프로필이 못 바꾸는 것 | 시스템 레이어: 프로필 전환 · 데스크톱 전환 · 에이전트 바 |  | 0023 |
+| 에이전트 목록의 출처 | `specs/brain/v0` 에 에이전트 · 스페이스 · A2A 작업 | endue AI 의 모델을 그대로 | 0024 |
+| 셸과 정책 | 셸이 런타임을 띄우고 그 커맨드 · 키 · 프로필 · 테마 · 세션을 씀 |  | 0025 |
+| 셸의 자리 | 제안: `plugins/` 로 한 부분씩, API 가 생기는 대로. 창과 칸은 런타임에 남음 |  | 0026 (제안) |
+| Eris 하나 | 제안: `plugins/eris` 가 남고 셸의 Eris 가 그리로 합쳐짐 |  | 0027 (제안) |
+| 데스크 가장자리 | 제안: `plugins/{dock,toolbar,sidebar}` 가 남고 셸의 레일 · 아래 가장자리 · 에이전트 바를 받아들임 |  | 0028 (제안) |
 
 ## 열린 질문
 
