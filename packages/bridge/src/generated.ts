@@ -11,7 +11,13 @@ export type Permission =
   | UiSurfacePermission
   | UiNotifyPermission
   | PluginManagePermission
-  | BrainConversePermission;
+  | BrainConversePermission
+  | CmdInvokePermission
+  | CmdAdvisePermission
+  | SettingsReadPermission
+  | LogReadPermission
+  | EventsSubscribePermission
+  | PermManagePermission;
 
 /** Read files, list folders and watch for changes under the given paths. */
 export interface FsReadPermission {
@@ -70,6 +76,42 @@ export interface BrainConversePermission {
   permission: "brain:converse";
 }
 
+/** Invoke and list the commands whose ids the patterns cover, whoever provides them. */
+export interface CmdInvokePermission {
+  permission: "cmd:invoke";
+  /** Command id patterns the permission covers. */
+  ids: CommandPattern[];
+}
+
+/** Hook into or override commands other callers provide. Reserved for command hooks: no v0 method uses it yet. */
+export interface CmdAdvisePermission {
+  permission: "cmd:advise";
+}
+
+/** Read other callers' settings that the patterns cover, and receive their settings.changed events. */
+export interface SettingsReadPermission {
+  permission: "settings:read";
+  /** Setting patterns the permission covers. */
+  keys: SettingPattern[];
+}
+
+/** Read every log channel with log.tail, and receive log.entry events. */
+export interface LogReadPermission {
+  permission: "log:read";
+}
+
+/** Subscribe with events.subscribe to the named core events about every caller. */
+export interface EventsSubscribePermission {
+  permission: "events:subscribe";
+  /** Event names the permission covers. */
+  names: EventName[];
+}
+
+/** See and revoke every caller's grants, and act as the prompter: receive perm.prompt events and answer them with perm.answer. */
+export interface PermManagePermission {
+  permission: "perm:manage";
+}
+
 /** An absolute path, or one rooted at ~ or at ${plugin}, ${workspace} or ${home}, with forward slashes. * matches within a segment and ** across segments. */
 export type PathPattern = string;
 
@@ -78,6 +120,21 @@ export type HostPattern = string;
 
 /** A program name looked up on PATH, or an absolute path. No arguments and no whitespace. */
 export type Command = string;
+
+/** A command id, or a pattern in which * matches any run of characters, dots included: * covers every command, eris.* every command under eris. */
+export type CommandPattern = string;
+
+/** owner/key: a caller id and a setting key, where * matches any run of characters within its part. endue.eris/voice is one setting; endue.eris/* covers every Eris setting. */
+export type SettingPattern = string;
+
+/** A core event that events.subscribe can ask for. */
+export type EventName =
+  | "plugin.changed"
+  | "perm.changed"
+  | "cmd.changed"
+  | "cmd.invoked"
+  | "settings.changed"
+  | "log.entry";
 
 /** A plugin manifest (plugin.json). */
 export interface PluginManifest {
@@ -243,6 +300,9 @@ export type RequestId = number;
 /** An absolute path, or one rooted at ~ or at ${plugin}, ${workspace} or ${home}, with forward slashes. */
 export type Path = string;
 
+/** Who makes calls: a plugin id such as endue.eris, or a name of the desk's own such as desk (the web runtime). core names desk-core itself. */
+export type CallerId = string;
+
 /** How binary-safe string content is encoded. */
 export type Encoding = "utf8" | "base64";
 
@@ -265,11 +325,24 @@ export type BridgeRequest =
   | PermRequestRequest
   | PermQueryRequest
   | PermRevokeRequest
+  | PermListRequest
+  | PermAnswerRequest
   | PluginListRequest
   | PluginSetEnabledRequest
   | StoreGetRequest
   | StoreSetRequest
-  | BrainSayRequest;
+  | BrainSayRequest
+  | CmdRegisterRequest
+  | CmdUnregisterRequest
+  | CmdListRequest
+  | CmdInvokeRequest
+  | SettingsGetRequest
+  | SettingsSetRequest
+  | SettingsListRequest
+  | LogWriteRequest
+  | LogTailRequest
+  | EventsSubscribeRequest
+  | EventsUnsubscribeRequest;
 
 /** The answer to one request: a result, or an error. */
 export type BridgeResponse = BridgeSuccess | BridgeFailure;
@@ -309,15 +382,172 @@ export type ErrorCode =
   | "unsupported"
   | "internal";
 
-/** Something the core reports without being asked: file changes, process output, wake words, permission changes. */
+/** Something the core reports without being asked: file changes, process output, wake words, permission changes, commands, settings and log entries. */
 export type BridgeEvent =
   | FsChangedEvent
   | ProcOutputEvent
   | ProcExitEvent
   | AudioWakeEvent
   | PermChangedEvent
+  | PermPromptEvent
   | PluginChangedEvent
-  | BrainTurnEvent;
+  | BrainTurnEvent
+  | CmdChangedEvent
+  | CmdInvokedEvent
+  | SettingsChangedEvent
+  | LogEntryEvent;
+
+/** A command id: lowercase and dotted, with at least two segments, for example eris.say or endue.palette.open. Unique across callers. */
+export type CommandId = string;
+
+/** A registered command as cmd.list returns it. */
+export interface CommandInfo {
+  id: CommandId;
+  /** Shown in the palette and menus. */
+  title: string;
+  /** One or two sentences for people. */
+  description?: string;
+  /** JSON Schema (2020-12) for the args of cmd.invoke; absent means the command takes none. */
+  argsSchema?: Record<string, unknown>;
+  /** A context expression the runtime evaluates to offer the command; absent means always. */
+  when?: string;
+  provider: CallerId;
+}
+
+/** Register one of the caller's commands, or update it. */
+export interface CmdRegisterRequest {
+  id: RequestId;
+  method: "cmd.register";
+  params: CmdRegisterParams;
+}
+
+/** Parameters of cmd.register. The caller becomes the command's provider. */
+export interface CmdRegisterParams {
+  id: CommandId;
+  title: string;
+  description?: string;
+  /** JSON Schema (2020-12) for the args of cmd.invoke. */
+  argsSchema?: Record<string, unknown>;
+  /** A context expression, as keybindings use; absent means always available. */
+  when?: string;
+}
+
+/** Result of cmd.register. */
+export type CmdRegisterResult = Record<string, never>;
+
+/** Remove one of the caller's commands. */
+export interface CmdUnregisterRequest {
+  id: RequestId;
+  method: "cmd.unregister";
+  params: CmdUnregisterParams;
+}
+
+/** Parameters of cmd.unregister. */
+export interface CmdUnregisterParams {
+  id: CommandId;
+}
+
+/** Result of cmd.unregister. */
+export type CmdUnregisterResult = Record<string, never>;
+
+/** List the registered commands the scope covers. */
+export interface CmdListRequest {
+  id: RequestId;
+  method: "cmd.list";
+  params: CmdListParams;
+}
+
+/** Parameters of cmd.list. */
+export interface CmdListParams {
+  scope: CmdInvokePermission;
+}
+
+/** Result of cmd.list, in registration order. */
+export interface CmdListResult {
+  commands: CommandInfo[];
+}
+
+/** Invoke a command, whoever provides it. The core records the caller. */
+export interface CmdInvokeRequest {
+  id: RequestId;
+  method: "cmd.invoke";
+  params: CmdInvokeParams;
+}
+
+/** Parameters of cmd.invoke. args must match the command's argsSchema. */
+export interface CmdInvokeParams {
+  id: CommandId;
+  args?: Record<string, unknown>;
+  scope: CmdInvokePermission;
+}
+
+/** Result of cmd.invoke: the provider receives a cmd.invoked event with this id. */
+export interface CmdInvokeResult {
+  invocationId: string;
+}
+
+/** A command was registered, updated or unregistered. Sent to callers subscribed to cmd.changed. */
+export interface CmdChangedEvent {
+  event: "cmd.changed";
+  data: CmdChangedData;
+}
+
+/** Payload of cmd.changed. */
+export interface CmdChangedData {
+  id: CommandId;
+  change: CommandChange;
+  provider: CallerId;
+}
+
+/** What happened to the command. */
+export type CommandChange = "registered" | "updated" | "unregistered";
+
+/** A command was invoked. Sent to its provider, which runs it, and to callers subscribed to cmd.invoked. */
+export interface CmdInvokedEvent {
+  event: "cmd.invoked";
+  data: CmdInvokedData;
+}
+
+/** Payload of cmd.invoked: which command, with what, and who asked. */
+export interface CmdInvokedData {
+  invocationId: string;
+  id: CommandId;
+  args?: Record<string, unknown>;
+  caller: CallerId;
+}
+
+/** Start receiving the named events about every caller. */
+export interface EventsSubscribeRequest {
+  id: RequestId;
+  method: "events.subscribe";
+  params: EventsSubscribeParams;
+}
+
+/** Parameters of events.subscribe. The scope must cover every name. */
+export interface EventsSubscribeParams {
+  names: EventName[];
+  scope: EventsSubscribePermission;
+}
+
+/** Result of events.subscribe. */
+export interface EventsSubscribeResult {
+  subscriptionId: string;
+}
+
+/** Stop one of the caller's subscriptions. */
+export interface EventsUnsubscribeRequest {
+  id: RequestId;
+  method: "events.unsubscribe";
+  params: EventsUnsubscribeParams;
+}
+
+/** Parameters of events.unsubscribe. */
+export interface EventsUnsubscribeParams {
+  subscriptionId: string;
+}
+
+/** Result of events.unsubscribe. */
+export type EventsUnsubscribeResult = Record<string, never>;
 
 /** Read a whole file. */
 export interface FsReadRequest {
@@ -431,6 +661,63 @@ export interface FsChangedData {
 /** What happened to the path. */
 export type FsChange = "created" | "modified" | "removed";
 
+/** How much an entry matters. */
+export type LogLevel = "debug" | "info" | "warn" | "error";
+
+/** One log entry. channel is the caller that wrote it, or core for desk-core. */
+export interface LogEntry {
+  /** RFC 3339 timestamp, set by the core. */
+  at: string;
+  channel: CallerId;
+  level: LogLevel;
+  message: string;
+  /** Structured detail, any JSON object. */
+  fields?: Record<string, unknown>;
+}
+
+/** Write an entry to the caller's own channel. */
+export interface LogWriteRequest {
+  id: RequestId;
+  method: "log.write";
+  params: LogWriteParams;
+}
+
+/** Parameters of log.write. */
+export interface LogWriteParams {
+  level: LogLevel;
+  message: string;
+  /** Structured detail, any JSON object. */
+  fields?: Record<string, unknown>;
+}
+
+/** Result of log.write. */
+export type LogWriteResult = Record<string, never>;
+
+/** Read the latest entries of one channel, or of every channel. */
+export interface LogTailRequest {
+  id: RequestId;
+  method: "log.tail";
+  params: LogTailParams;
+}
+
+/** Parameters of log.tail. Without channel, every channel merged in time order; count defaults to 100. */
+export interface LogTailParams {
+  channel?: CallerId;
+  count?: number;
+  scope: LogReadPermission;
+}
+
+/** Result of log.tail, oldest entry first. */
+export interface LogTailResult {
+  entries: LogEntry[];
+}
+
+/** A new log entry. Sent to callers subscribed to log.entry that hold log:read. */
+export interface LogEntryEvent {
+  event: "log.entry";
+  data: LogEntry;
+}
+
 /** Make one HTTP(S) request and return the whole response. */
 export interface NetFetchRequest {
   id: RequestId;
@@ -473,7 +760,11 @@ export interface PermRequestParams {
   permission: Permission;
   /** Shown to the person in the prompt. */
   reason: string;
+  duration?: GrantDuration;
 }
+
+/** How long a grant lasts. once: the next call it allows, then it expires. session: until Desk quits. always: kept on disk across restarts. Every grant lasts until revoked at the latest. perm.request defaults to session. */
+export type GrantDuration = "once" | "session" | "always";
 
 /** Result of perm.request. A refusal is a result, not an error. */
 export interface PermRequestResult {
@@ -505,9 +796,10 @@ export interface PermRevokeRequest {
   params: PermRevokeParams;
 }
 
-/** Parameters of perm.revoke. */
+/** Parameters of perm.revoke. Without scope only the caller's own grants; with perm:manage any caller's. */
 export interface PermRevokeParams {
   grantId: string;
+  scope?: PermManagePermission;
 }
 
 /** Result of perm.revoke. */
@@ -517,10 +809,69 @@ export type PermRevokeResult = Record<string, never>;
 export interface Grant {
   grantId: string;
   permission: Permission;
+  duration: GrantDuration;
   /** RFC 3339 timestamp. */
   grantedAt: string;
-  /** RFC 3339 timestamp; absent means until revoked. */
+  /** RFC 3339 timestamp; absent means for as long as the duration allows. */
   expiresAt?: string;
+}
+
+/** List every caller's grants, for the person's permissions view. */
+export interface PermListRequest {
+  id: RequestId;
+  method: "perm.list";
+  params: PermListParams;
+}
+
+/** Parameters of perm.list. With caller, only that caller's grants are returned. */
+export interface PermListParams {
+  caller?: CallerId;
+  scope: PermManagePermission;
+}
+
+/** Result of perm.list, oldest grant first. */
+export interface PermListResult {
+  grants: CallerGrant[];
+}
+
+/** A grant together with the caller that holds it. */
+export interface CallerGrant {
+  caller: CallerId;
+  grant: Grant;
+}
+
+/** The prompter answers a perm.prompt with the person's decision. */
+export interface PermAnswerRequest {
+  id: RequestId;
+  method: "perm.answer";
+  params: PermAnswerParams;
+}
+
+/** Parameters of perm.answer. duration is what the person chose; absent keeps the one asked for. */
+export interface PermAnswerParams {
+  promptId: string;
+  granted: boolean;
+  duration?: GrantDuration;
+  scope: PermManagePermission;
+}
+
+/** Result of perm.answer. */
+export type PermAnswerResult = Record<string, never>;
+
+/** A caller asked for a permission and the person has to decide. Sent to callers that hold perm:manage. */
+export interface PermPromptEvent {
+  event: "perm.prompt";
+  data: PermPromptData;
+}
+
+/** Payload of perm.prompt: who asks, for what, why and for how long. */
+export interface PermPromptData {
+  promptId: string;
+  caller: CallerId;
+  permission: Permission;
+  /** The caller's reason, to show as it is. */
+  reason: string;
+  duration: GrantDuration;
 }
 
 /** One of the caller's grants changed. */
@@ -725,6 +1076,77 @@ export interface ProcExitData {
   signal?: Signal;
 }
 
+/** A key in its owner's namespace, lowercase and dotted: voice, motion.reduce. */
+export type SettingKey = string;
+
+/** One setting with its owner. */
+export interface Setting {
+  owner: CallerId;
+  key: SettingKey;
+  /** Any JSON value. */
+  value: unknown;
+}
+
+/** Read one setting: the caller's own, or another caller's under settings:read. */
+export interface SettingsGetRequest {
+  id: RequestId;
+  method: "settings.get";
+  params: SettingsGetParams;
+}
+
+/** Parameters of settings.get. owner defaults to the caller; another owner needs a scope that covers owner/key. */
+export interface SettingsGetParams {
+  key: SettingKey;
+  owner?: CallerId;
+  scope?: SettingsReadPermission;
+}
+
+/** Result of settings.get. value is absent when the key was never set. */
+export interface SettingsGetResult {
+  /** Any JSON value. */
+  value?: unknown;
+}
+
+/** Write one of the caller's own settings (64 KiB of JSON at most). */
+export interface SettingsSetRequest {
+  id: RequestId;
+  method: "settings.set";
+  params: SettingsSetParams;
+}
+
+/** Parameters of settings.set. */
+export interface SettingsSetParams {
+  key: SettingKey;
+  /** Any JSON value. */
+  value: unknown;
+}
+
+/** Result of settings.set. */
+export type SettingsSetResult = Record<string, never>;
+
+/** List settings: the caller's own, or every setting a settings:read scope covers. */
+export interface SettingsListRequest {
+  id: RequestId;
+  method: "settings.list";
+  params: SettingsListParams;
+}
+
+/** Parameters of settings.list. Without scope, the caller's own settings; with one, every setting it covers, whoever owns it. */
+export interface SettingsListParams {
+  scope?: SettingsReadPermission;
+}
+
+/** Result of settings.list, by owner and then key. */
+export interface SettingsListResult {
+  settings: Setting[];
+}
+
+/** A setting changed. Sent to its owner, and to callers subscribed to settings.changed whose settings:read grant covers it. */
+export interface SettingsChangedEvent {
+  event: "settings.changed";
+  data: Setting;
+}
+
 /** A key in the caller's own namespace. */
 export type StoreKey = string;
 
@@ -843,11 +1265,24 @@ export interface BridgeMethodMap {
   "perm.request": { params: PermRequestParams; result: PermRequestResult };
   "perm.query": { params: PermQueryParams; result: PermQueryResult };
   "perm.revoke": { params: PermRevokeParams; result: PermRevokeResult };
+  "perm.list": { params: PermListParams; result: PermListResult };
+  "perm.answer": { params: PermAnswerParams; result: PermAnswerResult };
   "plugin.list": { params: PluginListParams; result: PluginListResult };
   "plugin.setEnabled": { params: PluginSetEnabledParams; result: PluginSetEnabledResult };
   "store.get": { params: StoreGetParams; result: StoreGetResult };
   "store.set": { params: StoreSetParams; result: StoreSetResult };
   "brain.say": { params: BrainSayParams; result: BrainSayResult };
+  "cmd.register": { params: CmdRegisterParams; result: CmdRegisterResult };
+  "cmd.unregister": { params: CmdUnregisterParams; result: CmdUnregisterResult };
+  "cmd.list": { params: CmdListParams; result: CmdListResult };
+  "cmd.invoke": { params: CmdInvokeParams; result: CmdInvokeResult };
+  "settings.get": { params: SettingsGetParams; result: SettingsGetResult };
+  "settings.set": { params: SettingsSetParams; result: SettingsSetResult };
+  "settings.list": { params: SettingsListParams; result: SettingsListResult };
+  "log.write": { params: LogWriteParams; result: LogWriteResult };
+  "log.tail": { params: LogTailParams; result: LogTailResult };
+  "events.subscribe": { params: EventsSubscribeParams; result: EventsSubscribeResult };
+  "events.unsubscribe": { params: EventsUnsubscribeParams; result: EventsUnsubscribeResult };
 }
 
 /** A bridge method name. */
@@ -872,9 +1307,22 @@ export const BRIDGE_METHODS = [
   "perm.request",
   "perm.query",
   "perm.revoke",
+  "perm.list",
+  "perm.answer",
   "plugin.list",
   "plugin.setEnabled",
   "store.get",
   "store.set",
   "brain.say",
+  "cmd.register",
+  "cmd.unregister",
+  "cmd.list",
+  "cmd.invoke",
+  "settings.get",
+  "settings.set",
+  "settings.list",
+  "log.write",
+  "log.tail",
+  "events.subscribe",
+  "events.unsubscribe",
 ] as const satisfies readonly BridgeMethod[];

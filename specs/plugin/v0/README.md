@@ -28,9 +28,21 @@ permissions, and every bridge call carries the one that covers it.
 | `ui:notify` | none | `ui.notify` |
 | `plugin:manage` | none | `plugin.list`, `plugin.setEnabled`, `plugin.changed` events |
 | `brain:converse` | none | `brain.say`, `brain.turn` events for the caller's own turns |
+| `cmd:invoke` | `ids` | `cmd.invoke`, `cmd.list` of the commands the ids cover |
+| `cmd:advise` | none | Hooks on other callers' commands; reserved, no v0 method uses it |
+| `settings:read` | `keys` | `settings.get` and `settings.list` of other callers' keys, their `settings.changed` events |
+| `log:read` | none | `log.tail`, `log.entry` events |
+| `events:subscribe` | `names` | `events.subscribe` to the named events about every caller |
+| `perm:manage` | none | `perm.list`, `perm.answer`, `perm.revoke` of any grant, `perm.prompt` events |
 
 Paths are absolute or rooted at `~`, `${plugin}`, `${workspace}` or `${home}`, with `*` within a segment
 and `**` across segments. Hosts are names with an optional port, or `*.domain` for subdomains. Commands
 are program names or absolute paths, without arguments.
+
+Command ids are lowercase and dotted (`eris.say`); in `ids`, `*` matches any run of characters, dots
+included, so `*` covers every command and `eris.*` every command under `eris.`. Setting keys are
+`owner/key` (`endue.eris/voice`), with `*` matching within one part: `endue.eris/*`, `*/*`. Event names
+are the six that `events.subscribe` accepts: `plugin.changed`, `perm.changed`, `cmd.changed`,
+`cmd.invoked`, `settings.changed` and `log.entry`.
 
 `vectors/` holds valid and invalid manifests and permissions for the contract tests.

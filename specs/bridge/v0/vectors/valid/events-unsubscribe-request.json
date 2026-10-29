@@ -1,0 +1,11 @@
+{
+  "target": "BridgeRequest",
+  "description": "events.unsubscribe ends one subscription",
+  "instance": {
+    "id": 41,
+    "method": "events.unsubscribe",
+    "params": {
+      "subscriptionId": "s1"
+    }
+  }
+}

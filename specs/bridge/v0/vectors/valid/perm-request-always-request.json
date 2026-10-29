@@ -1,0 +1,15 @@
+{
+  "target": "BridgeRequest",
+  "description": "perm.request asks to keep the grant across restarts",
+  "instance": {
+    "id": 44,
+    "method": "perm.request",
+    "params": {
+      "permission": {
+        "permission": "audio:capture"
+      },
+      "reason": "Eris listens when you talk to her.",
+      "duration": "always"
+    }
+  }
+}
