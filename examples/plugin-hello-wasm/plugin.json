@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "kind": "logic",
   "entry": "build/wasm32-wasip2/release/hello.wasm",
-  "description": "The smallest logic plugin: reads hello.txt from its folder and shows it as a notification.",
+  "description": "The smallest logic plugin: provides one command, and shows hello.txt from its folder as a notification.",
   "permissions": [
     { "permission": "fs:read", "paths": ["${plugin}/hello.txt"] },
     { "permission": "ui:notify" }
