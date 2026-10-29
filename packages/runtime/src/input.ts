@@ -23,7 +23,60 @@ function keyName(key: string): string {
   return key.length === 1 ? key.toUpperCase() : key;
 }
 
-type Handler = () => void;
+const ALIASES: Record<string, string> = { Ctrl: "Control", Cmd: "Meta", Option: "Alt" };
+/** Modifiers, each followed by +, then the key (which may itself be +). */
+const COMBO = /^((?:(?:Mod|Meta|Control|Ctrl|Cmd|Alt|Option|Shift)\+)*)(.+)$/;
+
+function split(combo: string): { mods: string[]; key: string } {
+  const match = COMBO.exec(combo.trim());
+  return {
+    mods: (match?.[1] ?? "").split("+").filter(Boolean),
+    key: match?.[2] ?? combo,
+  };
+}
+
+/** "Mod+Shift+k" → "Meta+Shift+K" on macOS, "Control+Shift+K" elsewhere. */
+export function canonical(combo: string, platform: Platform): string {
+  const { mods: names, key } = split(combo);
+  const mods = new Set(
+    names.map((name) =>
+      name === "Mod" ? (platform === "mac" ? "Meta" : "Control") : (ALIASES[name] ?? name),
+    ),
+  );
+  return comboOf({
+    key,
+    metaKey: mods.has("Meta"),
+    ctrlKey: mods.has("Control"),
+    altKey: mods.has("Alt"),
+    shiftKey: mods.has("Shift"),
+  });
+}
+
+const MAC_SYMBOLS: Record<string, string> = {
+  Meta: "⌘",
+  Control: "⌃",
+  Alt: "⌥",
+  Shift: "⇧",
+  Escape: "Esc",
+  ArrowUp: "↑",
+  ArrowDown: "↓",
+  ArrowLeft: "←",
+  ArrowRight: "→",
+  Enter: "↩",
+};
+
+/** How a canonical combo reads: "⇧⌘K" on macOS, "Ctrl+Shift+K" elsewhere. */
+export function formatCombo(combo: string, platform: Platform): string {
+  const { mods, key } = split(combo);
+  if (platform !== "mac")
+    return [...mods.map((m) => (m === "Control" ? "Ctrl" : m)), key].join("+");
+  const order = ["Control", "Alt", "Shift", "Meta"];
+  const symbols = order.filter((m) => mods.includes(m)).map((m) => MAC_SYMBOLS[m]);
+  return [...symbols, MAC_SYMBOLS[key] ?? key].join("");
+}
+
+/** A handler returns false when it did nothing, so the key goes on as if unbound. */
+type Handler = () => unknown;
 
 export class ShortcutRouter {
   readonly #platform: Platform;
@@ -33,6 +86,10 @@ export class ShortcutRouter {
 
   constructor(options: { platform: Platform }) {
     this.#platform = options.platform;
+  }
+
+  get platform(): Platform {
+    return this.#platform;
   }
 
   /** Bind a combo such as "Mod+K" (Mod is Meta on macOS, Control elsewhere). Returns an unbind. */
@@ -61,8 +118,7 @@ export class ShortcutRouter {
       (this.#focused ? this.#surfaces.get(this.#focused)?.get(combo) : undefined) ??
       this.#global.get(combo);
     if (!handler) return false;
-    handler();
-    return true;
+    return handler() !== false;
   }
 
   #surfaceMap(surface: string): Map<string, Handler> {
@@ -75,19 +131,6 @@ export class ShortcutRouter {
   }
 
   #canonical(combo: string): string {
-    const parts = combo.split("+").map((part) => part.trim());
-    const key = parts.pop() ?? "";
-    const mods = new Set(
-      parts.map((part) =>
-        part === "Mod" ? (this.#platform === "mac" ? "Meta" : "Control") : part,
-      ),
-    );
-    return comboOf({
-      key,
-      metaKey: mods.has("Meta"),
-      ctrlKey: mods.has("Control") || mods.has("Ctrl"),
-      altKey: mods.has("Alt"),
-      shiftKey: mods.has("Shift"),
-    });
+    return canonical(combo, this.#platform);
   }
 }

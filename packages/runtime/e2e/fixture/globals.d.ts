@@ -1,4 +1,4 @@
-import type { BrowserStub } from "@endue-ai/bridge";
+import type { BrowserStub, PluginInfo } from "@endue-ai/bridge";
 import type { ManualClock, Runtime } from "../../src/index";
 
 declare global {
@@ -7,5 +7,9 @@ declare global {
     __desk: { clock: ManualClock; runtime: Runtime; stub: BrowserStub; commands: string[] };
     /** The onboarding fixture's in-memory store.get/store.set backing. */
     __deskStore: Record<string, unknown>;
+    /** The desk fixture's fs.write calls, in order. */
+    __deskWritten: Array<{ path: string; content: string }>;
+    /** The edges fixture's plugin.list, to change before emitting plugin.changed. */
+    __deskPlugins: PluginInfo[];
   }
 }

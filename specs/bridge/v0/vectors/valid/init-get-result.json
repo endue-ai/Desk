@@ -1,0 +1,11 @@
+{
+  "target": "InitGetResult",
+  "description": "the runtime sees its desk. settings and the profile to start in",
+  "instance": {
+    "profile": "default",
+    "settings": {
+      "desk.theme.scheme": "dark",
+      "desk.notify.dnd": false
+    }
+  }
+}

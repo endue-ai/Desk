@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Permissions</title>
+    <script type="importmap">
+      { "imports": { "@endue-ai/plugin-sdk": "/_desk/plugin-sdk.js" } }
+    </script>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <main id="grants" aria-labelledby="grants-title">
+      <h1 id="grants-title" tabindex="-1">Permissions</h1>
+      <p id="grants-summary"></p>
+      <div id="grants-groups"></div>
+    </main>
+    <section
+      id="prompt"
+      role="alertdialog"
+      aria-modal="true"
+      aria-labelledby="prompt-title"
+      aria-describedby="prompt-body"
+      hidden
+    >
+      <h1 id="prompt-title"></h1>
+      <div id="prompt-body">
+        <p id="prompt-who" class="kind"></p>
+        <p id="prompt-what"></p>
+        <div id="prompt-warning"></div>
+        <p id="prompt-why"></p>
+        <p id="prompt-asked"></p>
+      </div>
+      <div class="actions">
+        <button type="button" data-answer="once">Allow once</button>
+        <button type="button" data-answer="session">Allow this session</button>
+        <button type="button" data-answer="always">Always allow</button>
+        <button type="button" data-answer="refuse">Don't allow</button>
+      </div>
+      <p id="prompt-waiting"></p>
+    </section>
+    <p id="status" role="status"></p>
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

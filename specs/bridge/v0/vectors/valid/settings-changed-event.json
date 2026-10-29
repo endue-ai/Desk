@@ -1,0 +1,12 @@
+{
+  "target": "BridgeEvent",
+  "description": "a setting changed, with its owner",
+  "instance": {
+    "event": "settings.changed",
+    "data": {
+      "owner": "endue.eris",
+      "key": "voice",
+      "value": false
+    }
+  }
+}

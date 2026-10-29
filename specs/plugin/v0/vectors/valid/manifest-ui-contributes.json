@@ -1,0 +1,34 @@
+{
+  "target": "PluginManifest",
+  "description": "a UI plugin with a hidden overlay that contributes commands and keys",
+  "instance": {
+    "id": "desk.palette",
+    "version": "0.1.0",
+    "kind": "ui",
+    "entry": "ui/index.html",
+    "surfaces": [
+      {
+        "id": "main",
+        "title": "Palette",
+        "placement": "overlay",
+        "hidden": true
+      }
+    ],
+    "contributes": {
+      "commands": [
+        {
+          "id": "desk.palette.open",
+          "title": "Open the command palette",
+          "keywords": ["m-x", "commands"]
+        }
+      ],
+      "keys": [
+        {
+          "key": "Mod+Shift+P",
+          "mac": "Meta+Shift+P",
+          "command": "desk.palette.open"
+        }
+      ]
+    }
+  }
+}

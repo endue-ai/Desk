@@ -7,6 +7,8 @@
   --fg: #f2f0f5;
   --muted: #b0adb7;
   --primary: #b6a3f5;
+  --line: #333136;
+  --eris: #e8c98a;
 }
 
 html,
@@ -38,11 +40,90 @@ body {
 
 #stage {
   position: relative;
+  z-index: 2;
   width: 100%;
   max-width: 960px;
   display: flex;
   flex-direction: column;
   align-items: center;
+  transform-origin: 50% 0;
+}
+
+/* Scene 1: starlight, the count, the floor, the beam and the polygons. */
+#space {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  perspective: 640px;
+  perspective-origin: 50% 40%;
+}
+
+.star {
+  position: absolute;
+  left: 50%;
+  top: 42%;
+  width: 120px;
+  height: 2px;
+  transform-origin: 0 50%;
+  background: linear-gradient(90deg, rgba(233, 237, 244, 0), rgba(233, 237, 244, 0.9));
+}
+
+.floor {
+  position: absolute;
+  left: -100%;
+  right: -100%;
+  top: 74%;
+  height: 160%;
+  transform-origin: 50% 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80'%3E%3Cpath d='M0 .75H80M.75 0V80' stroke='%23e9edf4' stroke-opacity='.22' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
+  background-size: 80px 80px;
+  mask-image: radial-gradient(ellipse 30% 40% at 50% 0%, #000 10%, transparent 70%);
+}
+
+.sphere .count {
+  position: absolute;
+  inset: 0;
+  font-size: 72px;
+  font-weight: 400;
+}
+
+.sphere .count .wrap {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sphere .beam {
+  position: absolute;
+  left: 178px;
+  top: -812px;
+  width: 4px;
+  height: 1000px;
+  transform-origin: 50% 0;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.9));
+}
+
+.shard {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  background: rgba(233, 237, 244, 0.36);
+  pointer-events: none;
+}
+
+.shard.loose {
+  z-index: 3;
+  clip-path: polygon(50% 0%, 100% 100%, 0% 85%);
+}
+
+.shard.gold {
+  width: 36px;
+  height: 40px;
+  clip-path: polygon(92.5% 94.5%, 35.6% 8.3%, 8.1% 37.5%);
+  background: linear-gradient(135deg, #f5e2b4, #d4a85f);
 }
 
 .user-rise {
@@ -66,7 +147,7 @@ body {
   gap: 8px;
 }
 
-.name-form {
+.ask-form {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
@@ -117,6 +198,10 @@ input:focus {
 .stub p {
   width: 100%;
   text-align: center;
+}
+
+#formslot p.help {
+  color: var(--fg);
 }
 
 .btn {

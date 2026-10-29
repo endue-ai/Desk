@@ -3,7 +3,7 @@
 // same file; a task starts only when its lane is free. Node 22, no dependencies; reads GitHub via `gh`.
 //
 //   node scripts/lanes.mjs status            in-flight tasks, their branches and Scopes
-//   node scripts/lanes.mjs next [--max N]    ai:ready issues that can start now (default: fill to 4)
+//   node scripts/lanes.mjs next [--max N]    ai:ready issues that can start now (default: fill to 15)
 //   node scripts/lanes.mjs claim <issue>     check the lane, then label the issue ai:in-progress
 //   node scripts/lanes.mjs release <issue>   drop ai:in-progress from an abandoned task
 
@@ -11,8 +11,8 @@ import { execFileSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
 import { globToRegExp, parseLinkedIssue, parseScope } from "./scope-check.mjs";
 
-/** Parallel tasks at once; more than this outruns human review (ADR 0015). */
-export const MAX_IN_FLIGHT = 4;
+/** Parallel tasks at once (ADR 0015); each one still ends in a PR a person approves. */
+export const MAX_IN_FLIGHT = 15;
 
 /**
  * Files every task may list without taking a lane. Conflicts in them are resolved mechanically: the

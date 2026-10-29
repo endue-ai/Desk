@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://endue.ai/specs/bridge/v0/init.schema.json",
+  "title": "Desk bridge v0: init",
+  "description": "The person's setup from init.yaml, as the caller may see it. Callers see only their own settings, so these calls need no scope.",
+  "$defs": {
+    "InitGetRequest": {
+      "description": "Read the setup in force.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "init.get" },
+        "params": { "$ref": "#/$defs/InitGetParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "InitGetParams": {
+      "description": "Parameters of init.get.",
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "InitGetResult": {
+      "description": "Result of init.get.",
+      "type": "object",
+      "properties": {
+        "profile": {
+          "description": "The profile to start in.",
+          "$ref": "../../plugin/v0/contributes.schema.json#/$defs/ProfileId"
+        },
+        "settings": {
+          "description": "The settings whose key starts with the caller's id and a dot (desk. for the runtime).",
+          "type": "object",
+          "additionalProperties": {}
+        },
+        "problem": {
+          "description": "Why init.yaml is not in force, for people. The defaults (or the last setup that matched) are in force instead.",
+          "type": "string"
+        }
+      },
+      "required": ["profile", "settings"],
+      "additionalProperties": false
+    }
+  }
+}

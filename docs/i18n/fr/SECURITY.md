@@ -37,3 +37,9 @@ vulnérabilité).
 
 Hors périmètre : les plugins tiers et les services extérieurs à ce dépôt (signalez-les à endue à la même
 adresse).
+
+## Modèle de menace
+
+[docs/security/threat-model.md](../../security/threat-model.md) (en anglais) décrit ce que Desk protège, les
+attaquants pris en compte et, pour chaque frontière de confiance, la protection en place sur `main`
+aujourd'hui ou la lacune qui reste, avec le ticket qui la comble.

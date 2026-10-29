@@ -2,8 +2,8 @@
 # The format is specs/init/v0. If the file does not parse, Desk starts with the defaults and says why.
 version: 0
 
-# The mode to start in: a set of plugins plus their settings.
-mode: default
+# The profile to start in: a set of plugins plus their settings.
+profile: default
 
 plugins:
   # Plugin ids to keep off at start, built-in plugins included. Example: [endue.sidebar]

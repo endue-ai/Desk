@@ -1,0 +1,10 @@
+{
+  "id": "endue.dock",
+  "name": "Dock",
+  "version": "0.1.0",
+  "kind": "ui",
+  "entry": "ui/index.html",
+  "description": "The bottom dock: the plugins that open on the desk, to open and put away.",
+  "permissions": [{ "permission": "plugin:manage" }],
+  "surfaces": [{ "id": "main", "title": "Dock", "placement": "bottom" }]
+}
