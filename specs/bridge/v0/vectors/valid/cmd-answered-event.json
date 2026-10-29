@@ -1,0 +1,17 @@
+{
+  "target": "BridgeEvent",
+  "description": "the invoker hears that the person cancelled a pick",
+  "instance": {
+    "event": "cmd.answered",
+    "data": {
+      "invocationId": "i-3",
+      "id": "desk.palette.pick",
+      "caller": "desk",
+      "ok": false,
+      "error": {
+        "code": "cancelled",
+        "message": "nothing was picked"
+      }
+    }
+  }
+}

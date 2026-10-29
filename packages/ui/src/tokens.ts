@@ -10,8 +10,10 @@ export const tokens = {
 
 export type ThemeTokens = { readonly [K in keyof typeof tokens]: string };
 
-/** The tokens as CSS custom properties: `textMuted` → `--desk-text-muted`. */
-export function cssVariables(theme: ThemeTokens = tokens): Record<string, string> {
+/** The tokens as CSS custom properties: `textMuted` → `--desk-text-muted`. Themes may add tokens. */
+export function cssVariables(
+  theme: Readonly<Record<string, string>> = tokens,
+): Record<string, string> {
   return Object.fromEntries(
     Object.entries(theme).map(([name, value]) => [
       `--desk-${name.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`)}`,

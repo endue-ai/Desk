@@ -5,6 +5,8 @@ import type { Cell } from "./layout";
 export interface SurfaceSpec {
   id: string;
   title: string;
+  /** The surface's id in its plugin's manifest; display rules can match on it. */
+  surface?: string;
   /** A URL to load, or inline HTML in `srcdoc`. */
   src?: string;
   srcdoc?: string;
@@ -13,6 +15,8 @@ export interface SurfaceSpec {
    * have no title bar. Everything else sits on the grid.
    */
   placement?: string;
+  /** Mounted but not shown until `show` (a palette waits for its command). */
+  hidden?: boolean;
 }
 
 /**
@@ -45,8 +49,10 @@ export class SurfaceHost {
       : edge
         ? "desk-surface desk-surface--edge"
         : "desk-surface";
+    if (spec.hidden) section.classList.add("desk-surface--transient");
     section.dataset.surface = spec.id;
     section.tabIndex = -1;
+    section.hidden = spec.hidden === true;
     section.addEventListener("focusin", () => this.#onFocus(spec.id));
 
     const title = doc.createElement("header");
@@ -77,6 +83,19 @@ export class SurfaceHost {
   reload(id: string, src: string): void {
     const frame = this.#surfaces.get(id)?.querySelector("iframe");
     if (frame) frame.src = src;
+  }
+
+  /** Show or hide a surface without unloading it; a shown surface takes the keyboard focus. */
+  show(id: string, visible: boolean): void {
+    const section = this.#surfaces.get(id);
+    if (!section) return;
+    section.hidden = !visible;
+    if (visible) section.querySelector("iframe")?.focus();
+  }
+
+  visible(id: string): boolean {
+    const section = this.#surfaces.get(id);
+    return section !== undefined && !section.hidden;
   }
 
   /** The window inside a surface's frame, to tell plugin messages apart. */

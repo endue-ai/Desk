@@ -2,21 +2,33 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://endue.ai/specs/bridge/v0/cmd.schema.json",
   "title": "Desk bridge v0: cmd",
-  "description": "The command registry. Clicks, keys, the palette, Eris, agents and the CLI all invoke commands through it. Callers register and unregister their own commands without a scope; listing and invoking need cmd:invoke.",
+  "description": "The command registry, kept by the core. Clicks, keys, the palette, Eris, agents and the CLI all invoke commands through it, and the desk's built-in commands are registered in it like any other (ADR 0017). Callers register, unregister and answer their own commands without a scope; listing and invoking need cmd:invoke.",
   "$defs": {
-    "CommandId": {
-      "description": "A command id: lowercase and dotted, with at least two segments, for example eris.say or endue.palette.open. Unique across callers.",
-      "type": "string",
-      "pattern": "^[a-z][a-z0-9-]*(\\.[a-z][a-z0-9-]*)+$",
-      "maxLength": 128
-    },
     "CommandInfo": {
       "description": "A registered command as cmd.list returns it.",
       "type": "object",
       "properties": {
-        "id": { "$ref": "#/$defs/CommandId" },
-        "title": { "description": "Shown in the palette and menus.", "type": "string" },
-        "description": { "description": "One or two sentences for people.", "type": "string" },
+        "id": {
+          "$ref": "../../plugin/v0/contributes.schema.json#/$defs/CommandId"
+        },
+        "title": {
+          "description": "Shown in the palette and menus.",
+          "type": "string"
+        },
+        "description": {
+          "description": "One or two sentences for people.",
+          "type": "string"
+        },
+        "keywords": {
+          "description": "More words the palette matches.",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "maxItems": 32
+        },
         "argsSchema": {
           "description": "JSON Schema (2020-12) for the args of cmd.invoke; absent means the command takes none.",
           "type": "object"
@@ -25,7 +37,9 @@
           "description": "A context expression the runtime evaluates to offer the command; absent means always.",
           "type": "string"
         },
-        "provider": { "$ref": "bridge.schema.json#/$defs/CallerId" }
+        "provider": {
+          "$ref": "bridge.schema.json#/$defs/CallerId"
+        }
       },
       "required": ["id", "title", "provider"],
       "additionalProperties": false
@@ -34,9 +48,15 @@
       "description": "Register one of the caller's commands, or update it.",
       "type": "object",
       "properties": {
-        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
-        "method": { "const": "cmd.register" },
-        "params": { "$ref": "#/$defs/CmdRegisterParams" }
+        "id": {
+          "$ref": "bridge.schema.json#/$defs/RequestId"
+        },
+        "method": {
+          "const": "cmd.register"
+        },
+        "params": {
+          "$ref": "#/$defs/CmdRegisterParams"
+        }
       },
       "required": ["id", "method", "params"],
       "additionalProperties": false
@@ -45,9 +65,28 @@
       "description": "Parameters of cmd.register. The caller becomes the command's provider.",
       "type": "object",
       "properties": {
-        "id": { "$ref": "#/$defs/CommandId" },
-        "title": { "type": "string", "minLength": 1, "maxLength": 128 },
-        "description": { "type": "string", "maxLength": 1000 },
+        "id": {
+          "$ref": "../../plugin/v0/contributes.schema.json#/$defs/CommandId"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 1000
+        },
+        "keywords": {
+          "description": "More words the palette matches.",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "maxItems": 32
+        },
         "argsSchema": {
           "description": "JSON Schema (2020-12) for the args of cmd.invoke.",
           "type": "object"
@@ -72,9 +111,15 @@
       "description": "Remove one of the caller's commands.",
       "type": "object",
       "properties": {
-        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
-        "method": { "const": "cmd.unregister" },
-        "params": { "$ref": "#/$defs/CmdUnregisterParams" }
+        "id": {
+          "$ref": "bridge.schema.json#/$defs/RequestId"
+        },
+        "method": {
+          "const": "cmd.unregister"
+        },
+        "params": {
+          "$ref": "#/$defs/CmdUnregisterParams"
+        }
       },
       "required": ["id", "method", "params"],
       "additionalProperties": false
@@ -83,7 +128,9 @@
       "description": "Parameters of cmd.unregister.",
       "type": "object",
       "properties": {
-        "id": { "$ref": "#/$defs/CommandId" }
+        "id": {
+          "$ref": "../../plugin/v0/contributes.schema.json#/$defs/CommandId"
+        }
       },
       "required": ["id"],
       "additionalProperties": false
@@ -98,9 +145,15 @@
       "description": "List the registered commands the scope covers.",
       "type": "object",
       "properties": {
-        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
-        "method": { "const": "cmd.list" },
-        "params": { "$ref": "#/$defs/CmdListParams" }
+        "id": {
+          "$ref": "bridge.schema.json#/$defs/RequestId"
+        },
+        "method": {
+          "const": "cmd.list"
+        },
+        "params": {
+          "$ref": "#/$defs/CmdListParams"
+        }
       },
       "required": ["id", "method", "params"],
       "additionalProperties": false
@@ -109,7 +162,9 @@
       "description": "Parameters of cmd.list.",
       "type": "object",
       "properties": {
-        "scope": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/CmdInvokePermission" }
+        "scope": {
+          "$ref": "../../plugin/v0/permission.schema.json#/$defs/CmdInvokePermission"
+        }
       },
       "required": ["scope"],
       "additionalProperties": false
@@ -118,7 +173,12 @@
       "description": "Result of cmd.list, in registration order.",
       "type": "object",
       "properties": {
-        "commands": { "type": "array", "items": { "$ref": "#/$defs/CommandInfo" } }
+        "commands": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CommandInfo"
+          }
+        }
       },
       "required": ["commands"],
       "additionalProperties": false
@@ -127,9 +187,15 @@
       "description": "Invoke a command, whoever provides it. The core records the caller.",
       "type": "object",
       "properties": {
-        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
-        "method": { "const": "cmd.invoke" },
-        "params": { "$ref": "#/$defs/CmdInvokeParams" }
+        "id": {
+          "$ref": "bridge.schema.json#/$defs/RequestId"
+        },
+        "method": {
+          "const": "cmd.invoke"
+        },
+        "params": {
+          "$ref": "#/$defs/CmdInvokeParams"
+        }
       },
       "required": ["id", "method", "params"],
       "additionalProperties": false
@@ -138,28 +204,109 @@
       "description": "Parameters of cmd.invoke. args must match the command's argsSchema.",
       "type": "object",
       "properties": {
-        "id": { "$ref": "#/$defs/CommandId" },
-        "args": { "type": "object" },
-        "scope": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/CmdInvokePermission" }
+        "id": {
+          "$ref": "../../plugin/v0/contributes.schema.json#/$defs/CommandId"
+        },
+        "args": {
+          "type": "object"
+        },
+        "scope": {
+          "$ref": "../../plugin/v0/permission.schema.json#/$defs/CmdInvokePermission"
+        }
       },
       "required": ["id", "scope"],
       "additionalProperties": false
     },
     "CmdInvokeResult": {
-      "description": "Result of cmd.invoke: the provider receives a cmd.invoked event with this id.",
+      "description": "Result of cmd.invoke: the provider receives a cmd.invoked event with this id, and its answer reaches the caller as cmd.answered.",
       "type": "object",
       "properties": {
-        "invocationId": { "type": "string", "minLength": 1 }
+        "invocationId": {
+          "type": "string",
+          "minLength": 1
+        }
       },
       "required": ["invocationId"],
       "additionalProperties": false
+    },
+    "CmdAnswerRequest": {
+      "description": "Answer one invocation of a command the caller provides: its result, or why it failed.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "bridge.schema.json#/$defs/RequestId"
+        },
+        "method": {
+          "const": "cmd.answer"
+        },
+        "params": {
+          "$ref": "#/$defs/CmdAnswerParams"
+        }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "CmdAnswerParams": {
+      "description": "Parameters of cmd.answer: a result, or an error, not both.",
+      "type": "object",
+      "properties": {
+        "invocationId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "result": {
+          "description": "What the command returns. Any JSON value."
+        },
+        "error": {
+          "$ref": "#/$defs/CommandFailure"
+        }
+      },
+      "required": ["invocationId"],
+      "additionalProperties": false,
+      "not": {
+        "properties": {
+          "result": true,
+          "error": true
+        },
+        "required": ["result", "error"]
+      }
+    },
+    "CmdAnswerResult": {
+      "description": "Result of cmd.answer.",
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "CommandFailure": {
+      "description": "Why an invocation failed.",
+      "type": "object",
+      "properties": {
+        "code": {
+          "$ref": "#/$defs/CommandFailureCode"
+        },
+        "message": {
+          "description": "For people; never parse it.",
+          "type": "string"
+        }
+      },
+      "required": ["code", "message"],
+      "additionalProperties": false
+    },
+    "CommandFailureCode": {
+      "description": "failed: the command ran and failed; cancelled: the person or the provider gave up (a pick dismissed, a provider that stopped).",
+      "type": "string",
+      "enum": ["failed", "cancelled"]
     },
     "CmdChangedEvent": {
       "description": "A command was registered, updated or unregistered. Sent to callers subscribed to cmd.changed.",
       "type": "object",
       "properties": {
-        "event": { "const": "cmd.changed" },
-        "data": { "$ref": "#/$defs/CmdChangedData" }
+        "event": {
+          "const": "cmd.changed"
+        },
+        "data": {
+          "$ref": "#/$defs/CmdChangedData"
+        }
       },
       "required": ["event", "data"],
       "additionalProperties": false
@@ -168,9 +315,15 @@
       "description": "Payload of cmd.changed.",
       "type": "object",
       "properties": {
-        "id": { "$ref": "#/$defs/CommandId" },
-        "change": { "$ref": "#/$defs/CommandChange" },
-        "provider": { "$ref": "bridge.schema.json#/$defs/CallerId" }
+        "id": {
+          "$ref": "../../plugin/v0/contributes.schema.json#/$defs/CommandId"
+        },
+        "change": {
+          "$ref": "#/$defs/CommandChange"
+        },
+        "provider": {
+          "$ref": "bridge.schema.json#/$defs/CallerId"
+        }
       },
       "required": ["id", "change", "provider"],
       "additionalProperties": false
@@ -184,8 +337,12 @@
       "description": "A command was invoked. Sent to its provider, which runs it, and to callers subscribed to cmd.invoked.",
       "type": "object",
       "properties": {
-        "event": { "const": "cmd.invoked" },
-        "data": { "$ref": "#/$defs/CmdInvokedData" }
+        "event": {
+          "const": "cmd.invoked"
+        },
+        "data": {
+          "$ref": "#/$defs/CmdInvokedData"
+        }
       },
       "required": ["event", "data"],
       "additionalProperties": false
@@ -194,12 +351,62 @@
       "description": "Payload of cmd.invoked: which command, with what, and who asked.",
       "type": "object",
       "properties": {
-        "invocationId": { "type": "string", "minLength": 1 },
-        "id": { "$ref": "#/$defs/CommandId" },
-        "args": { "type": "object" },
-        "caller": { "$ref": "bridge.schema.json#/$defs/CallerId" }
+        "invocationId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "id": {
+          "$ref": "../../plugin/v0/contributes.schema.json#/$defs/CommandId"
+        },
+        "args": {
+          "type": "object"
+        },
+        "caller": {
+          "$ref": "bridge.schema.json#/$defs/CallerId"
+        }
       },
       "required": ["invocationId", "id", "caller"],
+      "additionalProperties": false
+    },
+    "CmdAnsweredEvent": {
+      "description": "A command's provider answered an invocation. Sent to the caller that invoked it.",
+      "type": "object",
+      "properties": {
+        "event": {
+          "const": "cmd.answered"
+        },
+        "data": {
+          "$ref": "#/$defs/CmdAnsweredData"
+        }
+      },
+      "required": ["event", "data"],
+      "additionalProperties": false
+    },
+    "CmdAnsweredData": {
+      "description": "Payload of cmd.answered: the invocation, who invoked it, and the answer.",
+      "type": "object",
+      "properties": {
+        "invocationId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "id": {
+          "$ref": "../../plugin/v0/contributes.schema.json#/$defs/CommandId"
+        },
+        "caller": {
+          "$ref": "bridge.schema.json#/$defs/CallerId"
+        },
+        "ok": {
+          "type": "boolean"
+        },
+        "result": {
+          "description": "What the command returned, when ok. Any JSON value."
+        },
+        "error": {
+          "$ref": "#/$defs/CommandFailure"
+        }
+      },
+      "required": ["invocationId", "id", "caller", "ok"],
       "additionalProperties": false
     }
   }

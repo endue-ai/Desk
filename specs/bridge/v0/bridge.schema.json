@@ -52,11 +52,13 @@
         { "$ref": "plugins.schema.json#/$defs/PluginSetEnabledRequest" },
         { "$ref": "store.schema.json#/$defs/StoreGetRequest" },
         { "$ref": "store.schema.json#/$defs/StoreSetRequest" },
+        { "$ref": "init.schema.json#/$defs/InitGetRequest" },
         { "$ref": "brain.schema.json#/$defs/BrainSayRequest" },
         { "$ref": "cmd.schema.json#/$defs/CmdRegisterRequest" },
         { "$ref": "cmd.schema.json#/$defs/CmdUnregisterRequest" },
         { "$ref": "cmd.schema.json#/$defs/CmdListRequest" },
         { "$ref": "cmd.schema.json#/$defs/CmdInvokeRequest" },
+        { "$ref": "cmd.schema.json#/$defs/CmdAnswerRequest" },
         { "$ref": "settings.schema.json#/$defs/SettingsGetRequest" },
         { "$ref": "settings.schema.json#/$defs/SettingsSetRequest" },
         { "$ref": "settings.schema.json#/$defs/SettingsListRequest" },
@@ -119,7 +121,7 @@
       ]
     },
     "BridgeEvent": {
-      "description": "Something the core reports without being asked: file changes, process output, wake words, permission changes, commands, settings and log entries.",
+      "description": "Something the core reports without being asked: file changes, process output, wake words, permission changes, notifications, commands, settings and log entries.",
       "oneOf": [
         { "$ref": "fs.schema.json#/$defs/FsChangedEvent" },
         { "$ref": "proc.schema.json#/$defs/ProcOutputEvent" },
@@ -128,9 +130,11 @@
         { "$ref": "perm.schema.json#/$defs/PermChangedEvent" },
         { "$ref": "perm.schema.json#/$defs/PermPromptEvent" },
         { "$ref": "plugins.schema.json#/$defs/PluginChangedEvent" },
+        { "$ref": "ui.schema.json#/$defs/UiNotifiedEvent" },
         { "$ref": "brain.schema.json#/$defs/BrainTurnEvent" },
         { "$ref": "cmd.schema.json#/$defs/CmdChangedEvent" },
         { "$ref": "cmd.schema.json#/$defs/CmdInvokedEvent" },
+        { "$ref": "cmd.schema.json#/$defs/CmdAnsweredEvent" },
         { "$ref": "settings.schema.json#/$defs/SettingsChangedEvent" },
         { "$ref": "log.schema.json#/$defs/LogEntryEvent" }
       ]

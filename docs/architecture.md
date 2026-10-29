@@ -61,7 +61,7 @@ takes the same shape and names the parts the way an operating system would.
 | Window manager | window manager | frames · windows | 3D canvas compositor |
 | Shell | terminal shell | M-x | Eris · command palette |
 | Apps | applications | packages (Elisp) | plugins (UI · Wasm · MCP) |
-| Boot config | init | init.el | `init.yaml` (mode + plugins + settings) |
+| Boot config | init | init.el | `init.yaml` (profile + plugins + settings) |
 | Package manager | apt · brew | package.el · MELPA | marketplace |
 | Behaviour override | none | advice · hooks | event hooks · command overrides |
 | Accounts | user accounts | none | endue ID |
@@ -69,8 +69,10 @@ takes the same shape and names the parts the way an operating system would.
 Six principles follow from this:
 
 1. **Small core.** The Rust core holds primitives (fs, proc, net, audio, ui), not features.
-2. **Built-ins are plugins.** Eris, the sidebar, the toolbar and mode switching use the same API as
-   community plugins, so the API has no holes and even built-ins can be replaced.
+2. **Built-ins are plugins.** Eris, the sidebar, the toolbar and profile switching use the same API as
+   community plugins, so the API has no holes and even built-ins can be replaced. The desk's default
+   policies (where surfaces go, keys, files, themes, notifications) are data-only `desk.*` plugins too
+   (ADR 0017).
 3. **Everything is a command.** Clicks, voice, shortcuts and agents call the same commands. Whatever a
    person can do, Eris and agents can do too.
 4. **Change it while it runs.** Saving a plugin reloads it; plugin state lives in core storage and
@@ -101,7 +103,7 @@ developers it also means compiling, signing and notarising.
 | --- | --- | --- | --- |
 | Instant | the changed plugin (iframe, Wasm instance or MCP process) | under 1 s | other surfaces, running work, voice standby |
 | Restart | the web runtime (window reload) | about 2 s | the Rust core, MCP tools, running CLIs |
-| Rebuild | the whole app (relaunch after an automatic update) | download time + a few seconds | saved state, modes, installed plugins |
+| Rebuild | the whole app (relaunch after an automatic update) | download time + a few seconds | saved state, profiles, installed plugins |
 
 Development uses the same three steps: plugin folders reload on save, the web runtime uses Vite HMR, and
 the Rust core rebuilds with `cargo watch`.

@@ -10,6 +10,8 @@ const repo = here("../../../");
 const plugins: Record<string, string> = {
   "example.hello-ui": join(repo, "examples/plugin-hello-ui"),
   "test.counter": here("./fixture/plugins/test-counter"),
+  "test.echo": here("./fixture/plugins/test-echo"),
+  "desk.palette": join(repo, "plugins/palette"),
   "endue.eris": join(repo, "plugins/eris"),
   "endue.onboarding": join(repo, "plugins/onboarding"),
   "endue.sidebar": join(repo, "plugins/sidebar"),
@@ -68,5 +70,7 @@ export default defineConfig({
     cors: { origin: "*" },
     fs: { allow: [repo] },
   },
+  // Only the fixture pages: test plugins import the SDK through their import map, not node_modules.
+  optimizeDeps: { entries: ["*.html"] },
   logLevel: "warn",
 });

@@ -130,3 +130,12 @@ body {
   flex: 1 1 0;
   grid-template-rows: minmax(0, 1fr);
 }
+
+.desk-surface[hidden] {
+  display: none;
+}
+
+/* A surface that shows itself on demand (the palette) lets the desk show through around it. */
+.desk-surface--transient {
+  background: transparent;
+}

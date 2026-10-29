@@ -11,8 +11,11 @@ const readJson = (path: string): unknown => JSON.parse(readFileSync(path, "utf8"
 
 function manifestValidator() {
   const ajv = new Ajv2020({ strict: true, allErrors: true, validateFormats: false });
-  ajv.addSchema(readJson(join(pluginSpec, "permission.schema.json")) as object);
-  ajv.addSchema(readJson(join(pluginSpec, "plugin.schema.json")) as object);
+  for (const name of readdirSync(pluginSpec)
+    .filter((n) => n.endsWith(".schema.json"))
+    .sort()) {
+    ajv.addSchema(readJson(join(pluginSpec, name)) as object);
+  }
   const validate = ajv.getSchema("https://endue.ai/specs/plugin/v0/plugin.schema.json");
   if (!validate) throw new Error("cannot compile plugin.schema.json");
   return validate;
@@ -45,6 +48,18 @@ describe("renderPlugin", () => {
     });
   });
 
+  it("writes a manifest that can grow commands and keys under its own id (ADR 0017)", () => {
+    const files = renderPlugin({ id: "example.my-plugin", name: "My plugin" });
+    const manifest = {
+      ...manifestOf(files),
+      contributes: {
+        commands: [{ id: "example.my-plugin.hello", title: "Say hello" }],
+        keys: [{ key: "Mod+Shift+H", command: "example.my-plugin.hello" }],
+      },
+    };
+    expect(validate(manifest)).toBe(true);
+  });
+
   it("keeps a description when one is given", () => {
     const files = renderPlugin({ id: "example.notes", name: "Notes", description: "Notes." });
     const manifest = manifestOf(files);
@@ -55,7 +70,7 @@ describe("renderPlugin", () => {
   it("lays out the same files as examples/plugin-hello-ui", () => {
     const files = renderPlugin({ id: "example.my-plugin", name: "My plugin" });
     expect(Object.keys(files).sort()).toEqual(filesUnder(join(root, "examples/plugin-hello-ui")));
-    expect(files).toHaveProperty(manifestOf(files).entry);
+    expect(files).toHaveProperty(manifestOf(files).entry ?? "ui/index.html");
   });
 
   it("loads the SDK through the import map Desk serves", () => {

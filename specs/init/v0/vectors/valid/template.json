@@ -3,7 +3,7 @@
   "description": "the template Desk writes when there is no init.yaml",
   "instance": {
     "version": 0,
-    "mode": "default",
+    "profile": "default",
     "plugins": {
       "disabled": []
     },

@@ -7,7 +7,7 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
 use desk_brain_endue::HttpBrain;
-use desk_bridge::{Permission, PluginManagePermission};
+use desk_bridge::{CmdInvokePermission, Permission, PluginManagePermission};
 use desk_core::{BrainOptions, Core, MockRemote, PluginWatcher, Roots, SyncError, SyncOutcome};
 use tauri::{Emitter, Manager};
 
@@ -65,6 +65,14 @@ pub fn run() {
                 RUNTIME_CALLER,
                 Permission::PluginManage(PluginManagePermission {
                     permission: Default::default(),
+                }),
+            );
+            // Keys run commands for the person, whoever provides them (ADR 0017).
+            core.grant(
+                RUNTIME_CALLER,
+                Permission::CmdInvoke(CmdInvokePermission {
+                    permission: Default::default(),
+                    ids: vec!["*".to_owned()],
                 }),
             );
             for dir in env_paths("DESK_PLUGIN_DIRS") {

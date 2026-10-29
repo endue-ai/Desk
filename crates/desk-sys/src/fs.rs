@@ -25,6 +25,16 @@ pub fn read(path: &Path) -> io::Result<Vec<u8>> {
     std::fs::read(path)
 }
 
+/// Create or replace a whole file, creating missing parent folders when asked. Returns the bytes
+/// written.
+pub fn write(path: &Path, content: &[u8], create_dirs: bool) -> io::Result<u64> {
+    if create_dirs && let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+    std::fs::write(path, content)?;
+    Ok(content.len() as u64)
+}
+
 /// List one folder, sorted by name. Not recursive.
 pub fn list(path: &Path) -> io::Result<Vec<Entry>> {
     let mut entries = Vec::new();
@@ -57,28 +67,49 @@ pub struct Watch {
     _watcher: notify::RecommendedWatcher,
 }
 
+/// What happened to a watched path.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Change {
+    Created,
+    Modified,
+    Removed,
+}
+
 /// Call `on_change` with each changed path under `path` (recursive) until the `Watch` is dropped.
 /// Events are not debounced here; callers coalesce them.
 pub fn watch(
     path: &Path,
     on_change: impl Fn(std::path::PathBuf) + Send + 'static,
 ) -> io::Result<Watch> {
+    watch_changes(path, true, move |path, _change| on_change(path))
+}
+
+/// Call `on_change` with each changed path and what happened to it, under `path` (and its
+/// sub-folders when `recursive`), until the `Watch` is dropped. Not debounced.
+pub fn watch_changes(
+    path: &Path,
+    recursive: bool,
+    on_change: impl Fn(std::path::PathBuf, Change) + Send + 'static,
+) -> io::Result<Watch> {
     use notify::{EventKind, RecursiveMode, Watcher as _};
     let mut watcher = notify::recommended_watcher(move |event: notify::Result<notify::Event>| {
-        if let Ok(event) = event
-            && matches!(
-                event.kind,
-                EventKind::Create(_) | EventKind::Modify(_) | EventKind::Remove(_)
-            )
-        {
-            for path in event.paths {
-                on_change(path);
-            }
+        let Ok(event) = event else { return };
+        let change = match event.kind {
+            EventKind::Create(_) => Change::Created,
+            EventKind::Modify(_) => Change::Modified,
+            EventKind::Remove(_) => Change::Removed,
+            _ => return,
+        };
+        for path in event.paths {
+            on_change(path, change);
         }
     })
     .map_err(io::Error::other)?;
-    watcher
-        .watch(path, RecursiveMode::Recursive)
-        .map_err(io::Error::other)?;
+    let mode = if recursive {
+        RecursiveMode::Recursive
+    } else {
+        RecursiveMode::NonRecursive
+    };
+    watcher.watch(path, mode).map_err(io::Error::other)?;
     Ok(Watch { _watcher: watcher })
 }

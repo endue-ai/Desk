@@ -1,0 +1,12 @@
+{
+  "target": "PluginContributes",
+  "description": "Hyper is not a modifier",
+  "instance": {
+    "keys": [
+      {
+        "key": "Hyper+K",
+        "command": "desk.palette.open"
+      }
+    ]
+  }
+}
