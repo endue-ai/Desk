@@ -90,6 +90,42 @@ answers only when the person has granted a permission that covers that scope.
 The vocabulary (`fs:read`, `fs:write`, `proc:spawn`, `net:fetch`, `audio:capture`, `ui:surface`,
 `ui:notify`, `plugin:manage`) is in `specs/plugin/v0/README.md`.
 
+## Contributions
+
+A plugin can add to the desk's default policies without code, in `plugin.json` `contributes` (ADR
+0017): commands the palette lists and keys run, key bindings, display rules, the files it opens, themes,
+settings with their defaults, and profiles. Commands, settings and themes start with your plugin id.
+
+```json
+"contributes": {
+  "commands": [{ "id": "example.my-plugin.new", "title": "New note" }],
+  "keys": [{ "key": "Mod+Shift+N", "command": "example.my-plugin.new" }],
+  "display": [{ "match": { "plugin": "example.my-plugin" }, "area": "right", "size": { "pixels": 360 } }],
+  "files": [{ "pattern": "*.md", "plugin": "example.my-plugin" }],
+  "settings": { "example.my-plugin.folder": { "kind": "string", "default": "~/notes" } }
+}
+```
+
+Answer your commands with `ctx.commands.on`, and run any command the desk has with `ctx.commands.run`.
+Both go through the core's command registry (`cmd.*`); running a command you do not provide needs a
+`cmd:invoke` permission covering its id, such as `{ "permission": "cmd:invoke", "ids": ["desk.theme.*"] }`:
+
+```js
+defineUiPlugin({
+  mount(ctx) {
+    ctx.commands.on("example.my-plugin.new", async () => "note-1");      // the answer
+    ctx.commands.on("desk.files.visit", ({ buffer, path }) => { /* fs.read it, show it */ });
+    ctx.commands.on("desk.files.save", ({ buffer, path }) => { /* fs.write it */ });
+    document.querySelector("button").onclick = () => ctx.commands.run("desk.theme.toggle");
+  },
+});
+```
+
+A file opener answers `desk.files.visit`, `desk.files.save` and `desk.files.revert`, and marks unsaved
+work with `desk.buffers.update { id, modified: true }`. The theme reaches your frame as `--desk-*` CSS
+properties and `ctx.theme`. Key chords pressed in your frame reach the desk's keymap unless you call
+`preventDefault()`. The defaults, and what each one decides, are listed in `plugins/README.md`.
+
 ## Testing
 
 `@endue-ai/plugin-sdk/testing` runs your plugin without a browser, against a mock bridge:

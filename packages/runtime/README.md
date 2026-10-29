@@ -1,29 +1,27 @@
 # @endue-ai/runtime
 
-The desk in the webview: the 2D compositor and plugin host, and the shell UI around them (modes,
-desktops, the left bar, Eris, the status rail, the bottom edge, surfaces). Plain TypeScript and DOM
-(ADR 0010); every animation runs on an injected clock (ADR 0013).
+Shell and window manager: the 2D compositor, sandboxed surfaces, input, layout and theme, and the
+mechanisms the desk's default policies drive (ADR 0017). No 3D yet. Plain TypeScript and DOM (ADR 0010).
 
 ## Public API
 
-- `mountDesk({ root, bridge, clock?, lang?, modes?, persist?, reducedMotion?, platform?, epoch? })`
-  mounts the shell in two layers (system layer, ADR 0023; mode layer) and returns
-  `{ store, ticker, eris, keys, ready, refresh, dispose }`. Styles: `src/shell/styles.ts`;
-  tokens: `@endue-ai/runtime/tokens.css` (the only file with literal colours).
-- `ShellBridge` (`storage`, `perm`, `audio`, `brain`, and the agent directory `agents`, `spaces`,
-  `a2a` of specs/brain/v0, ADR 0024); `browserBridge({ now, storage?, grant?, epoch? })` is the stub.
-- System: `system/commands.ts` (every command, also the palette), `system/keys.ts` (`Keymap`: defaults,
-  rebinding, saved overrides), `surface/tree.ts` (panes: split, close, resize).
-- Eris: `eris/mesh.ts` (deterministic mesh, three densities), `eris/voice.ts` (nine bands → nine rings),
-  `eris/soul.ts` (soul text timing). Modes: folders in `src/modes/sample/`, layering in `modes/model.ts`.
-- Compositor: `createRuntime`, `PluginHost` (ADR 0012, 0014), `ShortcutRouter`, layout helpers,
-  `realClock`, `ManualClock`, `tween`, `SurfaceHost`, `applyTheme`, `@endue-ai/runtime/desk.css`.
-
-## Run
-
-```bash
-pnpm dev        # the shell on the browser stub at http://127.0.0.1:5173 (Shift+U / Shift+E: sound rings)
-```
+- `createRuntime({ root, bridge, clock?, storage?, platform?, plugins? })` returns a `Runtime`:
+  `ready`, `openSurface`, `closeSurface`, `moveSurface`, `focusSurface`, `layout()`, `status()`,
+  `shortcuts`, `commands`, `settings`, `policy()`, `notify(notice)`, `theme()`, `plugins`, `dispose()`.
+- `PluginHost`: mounts enabled UI plugins (hidden ones stay hidden until they show themselves), relays
+  their calls as their own caller, reloads one surface on `plugin.changed`, carries commands both ways
+  and keys from frames, shares the theme, and routes `brain.turn` and `fs.changed` events only to the
+  plugin that started them (ADR 0012, 0014).
+- Policies: `collect(plugins)` layers every enabled plugin's `contributes`; `Commands`, the desk's side of
+  the core's registry (built-ins registered as `desk` while their policy plugin is on, everything run
+  with `cmd.invoke`; the host registers manifest commands and routes `cmd.invoked`/`cmd.answered`);
+  layered `Settings`, `Keymap`, `decide` (display rules), `resolveTheme`, `Notifications`, `Buffers`.
+  `src/policies/*` applies one desk.* policy each: theme, keys, notify, display, buffers, files,
+  session, profiles. ADR 0017.
+- `ShortcutRouter`, `comboOf`, `canonical`, `formatCombo`; layout `place` (with a size), `move`, `remove`;
+  clock `realClock`, `ManualClock`, `tween`; `SurfaceHost`; `applyTheme`; `desk.css`.
+- Edges: `left`, `right` and `bottom` surfaces sit in bars around the grid (240, 320 and 72 px unless
+  a display rule says otherwise, shared in mount order), without a title bar or a grid cell.
 
 ## Testing
 
@@ -32,8 +30,9 @@ pnpm exec vitest run packages/runtime    # unit: mesh, voice, soul, modes, token
 just test-e2e                            # Playwright on the browser stub (macOS: Linux container)
 ```
 
-Snapshots are render trees (ADR 0011) at fixed clock times; the Eris canvas adds a frame digest and
-its ring profile. Update with `just test-e2e --update-snapshots` and review the JSON diff. Playwright
-never runs directly: the configs refuse native WebKit on macOS (ADR 0018). Shell fixture:
-`e2e/fixture/shell.html` (`?lang=en`, `?persist=1`, `?reduced=1`). Shell decisions not in the brief:
-`ASSUMPTIONS.md`.
+`e2e/` uses fixture pages with the browser bridge stub and a manual clock (`plugins.html` adds two UI
+plugins served by the fixture's Vite config; `desk.html` runs the real `plugins/*/plugin.json` of the
+desk.* policies with a test plugin, and takes `?init=`, `?off=`, `?platform=`, `?profile=`, `?rules=` and
+`?store=`). Render snapshots are serialised render trees (ADR 0011); update them with
+`just test-e2e --update-snapshots` and review the JSON diff. Playwright never runs directly: the configs
+refuse native WebKit on macOS (ADR 0018).

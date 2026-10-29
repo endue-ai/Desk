@@ -2,8 +2,8 @@
 
 The calls the web runtime (and every plugin through it) makes into the Rust core. JSON Schema 2020-12,
 one file per namespace: `bridge.schema.json` (envelope, errors, shared types), `fs`, `proc`, `net`, `plugins`,
-`store`, `brain`, `audio`, `ui`, `perm`, `cmd`, `settings`, `log` and `events`. v0 may break on any minor
-release (ADR 0004).
+`store`, `init`, `brain`, `audio`, `ui`, `perm`, `cmd`, `settings`, `log` and `events`. v0 may break on any
+minor release (ADR 0004).
 
 ## Envelope
 
@@ -20,8 +20,8 @@ or event). Otherwise the answer is `permission_denied`, with the missing permiss
 Scopes are never widened implicitly: asking is `perm.request`, and the person decides.
 
 Calls that touch only the caller's own data need no scope: `perm.request`, `perm.query`, `perm.revoke` of
-its own grants, `store.*`, `cmd.register`, `cmd.unregister`, `settings.set`, `settings.get` and
-`settings.list` of its own keys, `log.write` and `events.unsubscribe`.
+its own grants, `store.*`, `init.get`, `cmd.register`, `cmd.unregister`, `cmd.answer`, `settings.set`,
+`settings.get` and `settings.list` of its own keys, `log.write` and `events.unsubscribe`.
 
 ## Callers and events
 
@@ -30,8 +30,9 @@ grants, store values, commands, settings and log channels per caller; `core` nam
 
 An event about the caller's own work reaches it without asking: `fs.changed` for its watches, `proc.*` for
 its processes, `audio.wake` for its captures, `brain.turn` for its turns, `perm.changed` for its grants,
-`cmd.invoked` for the commands it provides and `settings.changed` for its own keys. `plugin.changed` goes
-to holders of `plugin:manage` and `perm.prompt` to holders of `perm:manage`. Everything else about other
+`cmd.invoked` for the commands it provides, `cmd.answered` for the commands it invoked and
+`settings.changed` for its own keys. `plugin.changed` goes to holders of `plugin:manage`, `perm.prompt` to
+holders of `perm:manage` and `ui.notified` to the runtime, which shows it. Everything else about other
 callers arrives only through `events.subscribe`.
 
 ## Methods
@@ -76,7 +77,9 @@ and with a title, and returns a handle. It needs `ui:surface`.
 
 **ui.surface.close** closes a surface the caller opened.
 
-**ui.notify** shows a notification with a title, an optional body and a level. It needs `ui:notify`.
+**ui.notify** shows a notification with a title, an optional body and a level, and returns its id. It
+needs `ui:notify`. The core sends the runtime a `ui.notified` event naming the caller; how long it
+stays, whether do-not-disturb holds it back and how much history is kept is the runtime's notify policy.
 
 **perm.request** asks the person for a permission, showing the reason, and resolves when they answer.
 `duration` says how long the grant should last: `once` (the next call it allows, then it expires),
@@ -109,6 +112,10 @@ store needs no scope.
 **store.set** writes one JSON value (64 KiB at most) under a key in the caller's namespace. Values
 survive restarts.
 
+**init.get** returns the setup in force from init.yaml: the profile to start in, and the settings whose
+key starts with the caller's id and a dot (`desk.` for the runtime itself). When the file is not in
+force, `problem` says why. Like the store, it needs no scope: callers see only their own settings.
+
 **brain.say** sends what the person typed to the brain in the desk's session and returns a local
 `turnId` at once. The answer arrives as `brain.turn` events with that id: `started`, `delta` (more text),
 `completed`. When the brain is unreachable the turn waits: `offline` carries the sentence to show, the
@@ -121,9 +128,12 @@ session's lease. It needs `brain:converse`; each turn's events go only to the ca
 permissions view.
 
 **cmd.register** adds one of the caller's commands to the registry, or updates it: an id, a title, an
-optional description, a JSON Schema for its arguments and a `when` context expression that the runtime
-evaluates to offer it (palette, keys). The caller becomes the provider. Ids are unique: an id another
-caller provides is `already_exists`. Commands end when their provider unloads. It needs no scope.
+optional description, keywords the palette matches, a JSON Schema for its arguments and a `when` context
+expression that the runtime evaluates to offer it (palette, keys). The caller becomes the provider. Ids
+are unique: an id another caller provides is `already_exists`. Commands end when their provider unloads
+or its plugin is turned off. It needs no scope. The desk's own commands are registered here too, by the
+runtime as `desk`, and the commands a manifest declares (`contributes.commands`) by the runtime for that
+plugin when it mounts (ADR 0017).
 
 **cmd.unregister** removes one of the caller's commands; an id it does not provide is `not_found`.
 
@@ -133,7 +143,13 @@ registration order. `cmd.changed` events (registered, updated, unregistered) go 
 **cmd.invoke** runs a command, whoever provides it, under a `cmd:invoke` scope whose ids cover it. `args`
 must match the command's argument schema (`invalid_params` otherwise). It returns an `invocationId` at
 once; the provider receives `cmd.invoked` with the id, the args and the caller, which the core records,
-and runs the command. Clicks, keys, the palette, Eris, agents and the CLI all invoke the same way.
+runs the command and answers with `cmd.answer`; the caller hears the answer as `cmd.answered`. Clicks,
+keys, the palette, Eris, agents and the CLI all invoke the same way.
+
+**cmd.answer** answers one invocation of a command the caller provides: a `result` (any JSON value) or an
+`error` (`failed`, or `cancelled` when the person or the provider gave up), not both. An invocation is
+answered once; another caller's is `not_found`. A provider that stops leaves its waiting invocations
+answered `cancelled`. It needs no scope.
 
 **settings.get** reads one setting. Keys belong to the caller that sets them, like the store; `owner`
 names another caller, which needs a `settings:read` scope covering `owner/key`. `value` is absent for a

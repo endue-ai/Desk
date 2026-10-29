@@ -1,0 +1,26 @@
+{
+  "id": "desk.session",
+  "name": "Session",
+  "version": "0.1.0",
+  "kind": "policy",
+  "description": "Puts the desk back as it was at the last quit: the layout, open files, the surface in use, and the notification history.",
+  "contributes": {
+    "settings": {
+      "desk.session.restore": {
+        "kind": "boolean",
+        "default": true,
+        "description": "Put the last session back at start."
+      },
+      "desk.session.save": {
+        "kind": "boolean",
+        "default": true,
+        "description": "Keep the session as it changes."
+      },
+      "desk.session.save-history": {
+        "kind": "boolean",
+        "default": true,
+        "description": "Keep the notification history across restarts."
+      }
+    }
+  }
+}

@@ -1,0 +1,266 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://endue.ai/specs/plugin/v0/contributes.schema.json",
+  "title": "plugin.json v0: contributes",
+  "description": "What a plugin adds to the desk's policies as data: commands, keys, display rules, file openers, themes, settings and profiles. The runtime layers every enabled plugin's contributions: the built-in desk.* policy plugins first, then the others, then init.yaml, then the active profile (ADR 0017).",
+  "$defs": {
+    "PluginContributes": {
+      "description": "A plugin's contributions. Every list is optional; the runtime ignores commands, settings and themes outside the plugin's own id.",
+      "type": "object",
+      "properties": {
+        "commands": {
+          "description": "Commands the plugin answers (ctx.commands.on in the SDK). Their ids start with the plugin id.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/CommandContribution" }
+        },
+        "keys": {
+          "description": "Key bindings, like a keymap. A later layer's binding of the same key wins.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/KeyBinding" }
+        },
+        "display": {
+          "description": "Where new surfaces go, like display-buffer-alist. Later layers are asked first; the first rule that matches decides.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/DisplayRule" }
+        },
+        "files": {
+          "description": "Which plugin opens which files, like auto-mode-alist. Later layers are asked first.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/FileOpener" }
+        },
+        "themes": {
+          "description": "Themes: one token set for a scheme and a contrast.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/ThemeContribution" }
+        },
+        "settings": {
+          "description": "Settings the plugin reads, by key, with their defaults. Keys start with the plugin id.",
+          "type": "object",
+          "propertyNames": { "$ref": "#/$defs/SettingName" },
+          "additionalProperties": { "$ref": "#/$defs/SettingContribution" }
+        },
+        "profiles": {
+          "description": "Profiles: a plugin set plus settings, like an init file.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/ProfileContribution" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "CommandId": {
+      "description": "A command id: lowercase and dotted, with at least two segments, for example eris.say or desk.palette.open. Unique across callers (bridge cmd.*); a plugin's contributed commands start with its own id.",
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*(\\.[a-z][a-z0-9-]*)+$",
+      "maxLength": 128
+    },
+    "CommandContribution": {
+      "description": "A command the palette lists and keys can run.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "#/$defs/CommandId" },
+        "title": { "description": "Shown in the palette.", "type": "string", "minLength": 1 },
+        "keywords": {
+          "description": "More words the palette matches.",
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        }
+      },
+      "required": ["id", "title"],
+      "additionalProperties": false
+    },
+    "KeyCombo": {
+      "description": "Modifiers and one key joined with +, for example Mod+K, Mod+Shift+], Escape. Mod is Meta on macOS and Control elsewhere.",
+      "type": "string",
+      "pattern": "^((Mod|Meta|Control|Ctrl|Alt|Shift)\\+)*([^+\\s]+|\\+)$",
+      "maxLength": 64
+    },
+    "KeyCommand": {
+      "description": "The command a key runs, or the empty string to take the key away from an earlier layer.",
+      "type": "string",
+      "pattern": "^$|^[a-z][a-z0-9-]*(\\.[a-z][a-z0-9-]*)+$",
+      "maxLength": 128
+    },
+    "KeyBinding": {
+      "description": "One key bound to one command.",
+      "type": "object",
+      "properties": {
+        "key": { "$ref": "#/$defs/KeyCombo" },
+        "mac": {
+          "description": "The key on macOS, when it differs from key.",
+          "$ref": "#/$defs/KeyCombo"
+        },
+        "command": { "$ref": "#/$defs/KeyCommand" },
+        "args": { "description": "Passed to the command. Any JSON value." }
+      },
+      "required": ["key", "command"],
+      "additionalProperties": false
+    },
+    "DisplayRule": {
+      "description": "A condition and where a matching surface goes.",
+      "type": "object",
+      "properties": {
+        "match": { "$ref": "#/$defs/DisplayMatch" },
+        "area": { "$ref": "plugin.schema.json#/$defs/SurfacePlacement" },
+        "size": { "$ref": "#/$defs/DisplaySize" },
+        "reuse": {
+          "description": "Show a surface that is already open instead of opening it again. Default true.",
+          "type": "boolean"
+        },
+        "focus": {
+          "description": "Move the keyboard focus to the surface when it opens. Default false.",
+          "type": "boolean"
+        }
+      },
+      "required": ["match", "area"],
+      "additionalProperties": false
+    },
+    "DisplayMatch": {
+      "description": "Which surfaces a rule is for. Every field given must match; an empty match matches every surface.",
+      "type": "object",
+      "properties": {
+        "plugin": {
+          "description": "A plugin id, with * for any run of characters (endue.*).",
+          "type": "string",
+          "pattern": "^[a-z0-9*][a-z0-9.*-]*$"
+        },
+        "surface": {
+          "description": "A surface id from the plugin's manifest.",
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*$"
+        },
+        "placement": { "$ref": "plugin.schema.json#/$defs/SurfacePlacement" }
+      },
+      "additionalProperties": false
+    },
+    "DisplaySize": {
+      "description": "How big the surface is: grid cells on the grid, pixels on an edge.",
+      "type": "object",
+      "properties": {
+        "columns": { "type": "integer", "minimum": 1, "maximum": 12 },
+        "rows": { "type": "integer", "minimum": 1, "maximum": 12 },
+        "pixels": {
+          "description": "The edge's width (left, right) or height (bottom).",
+          "type": "integer",
+          "minimum": 48,
+          "maximum": 1200
+        }
+      },
+      "additionalProperties": false
+    },
+    "FileOpener": {
+      "description": "Files matching pattern open in plugin.",
+      "type": "object",
+      "properties": {
+        "pattern": {
+          "description": "A glob on the file name (*.md), or on the whole path when it has a slash.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "plugin": { "$ref": "plugin.schema.json#/$defs/PluginId" }
+      },
+      "required": ["pattern", "plugin"],
+      "additionalProperties": false
+    },
+    "ThemeId": {
+      "description": "A theme id: the owner's plugin id and a name, for example desk.theme.dark.",
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*(\\.[a-z][a-z0-9-]*){2,}$",
+      "maxLength": 160
+    },
+    "ThemeScheme": {
+      "description": "Light or dark.",
+      "type": "string",
+      "enum": ["light", "dark"]
+    },
+    "ThemeContrast": {
+      "description": "Normal or high contrast.",
+      "type": "string",
+      "enum": ["normal", "high"]
+    },
+    "ThemeContribution": {
+      "description": "One token set. The runtime picks the theme for the scheme and contrast in force.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "#/$defs/ThemeId" },
+        "name": { "type": "string", "minLength": 1 },
+        "scheme": { "$ref": "#/$defs/ThemeScheme" },
+        "contrast": { "$ref": "#/$defs/ThemeContrast" },
+        "tokens": {
+          "description": "Token name (camelCase, as in @endue-ai/ui) to CSS colour.",
+          "type": "object",
+          "propertyNames": { "type": "string", "pattern": "^[a-z][a-zA-Z0-9]*$" },
+          "additionalProperties": { "type": "string", "minLength": 1 }
+        }
+      },
+      "required": ["id", "name", "scheme", "tokens"],
+      "additionalProperties": false
+    },
+    "SettingName": {
+      "description": "A setting's full name, as in init.yaml: the owner's id and its key, dotted (desk.notify.dnd).",
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9._-]{0,127}$"
+    },
+    "SettingKind": {
+      "description": "The JSON type a setting's value has.",
+      "type": "string",
+      "enum": ["boolean", "integer", "number", "string", "array", "object"]
+    },
+    "SettingContribution": {
+      "description": "A setting and its default. init.yaml and profiles set other values.",
+      "type": "object",
+      "properties": {
+        "kind": { "$ref": "#/$defs/SettingKind" },
+        "default": { "description": "The value until a later layer sets one. Any JSON value." },
+        "description": { "type": "string" },
+        "choices": {
+          "description": "The values a string setting may take.",
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "required": ["kind", "default"],
+      "additionalProperties": false
+    },
+    "ProfileId": {
+      "description": "A profile name, as init.yaml names the one to start in.",
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$"
+    },
+    "ProfilePlugins": {
+      "description": "Which plugins a profile turns on and off. Plugins it names neither way keep their state.",
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "array",
+          "items": { "$ref": "plugin.schema.json#/$defs/PluginId" },
+          "uniqueItems": true
+        },
+        "disabled": {
+          "type": "array",
+          "items": { "$ref": "plugin.schema.json#/$defs/PluginId" },
+          "uniqueItems": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "ProfileContribution": {
+      "description": "A plugin set plus settings, switched as one.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "#/$defs/ProfileId" },
+        "name": { "type": "string", "minLength": 1 },
+        "description": { "type": "string" },
+        "plugins": { "$ref": "#/$defs/ProfilePlugins" },
+        "settings": {
+          "description": "Settings in force while the profile is, over init.yaml's.",
+          "type": "object",
+          "propertyNames": { "$ref": "#/$defs/SettingName" },
+          "additionalProperties": {}
+        }
+      },
+      "required": ["id", "name"],
+      "additionalProperties": false
+    }
+  }
+}

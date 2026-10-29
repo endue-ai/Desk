@@ -1,0 +1,46 @@
+{
+  "id": "desk.notify",
+  "name": "Notifications",
+  "version": "0.1.0",
+  "kind": "policy",
+  "description": "How long notifications stay by level, do not disturb, and how much history is kept.",
+  "contributes": {
+    "settings": {
+      "desk.notify.info-ms": {
+        "kind": "integer",
+        "default": 4000,
+        "description": "How long an info notification stays, in ms."
+      },
+      "desk.notify.success-ms": {
+        "kind": "integer",
+        "default": 4000,
+        "description": "How long a success notification stays, in ms."
+      },
+      "desk.notify.warning-ms": {
+        "kind": "integer",
+        "default": 8000,
+        "description": "How long a warning stays, in ms."
+      },
+      "desk.notify.error-ms": {
+        "kind": "integer",
+        "default": 0,
+        "description": "How long an error stays, in ms; 0 keeps it until it is dismissed."
+      },
+      "desk.notify.dnd": {
+        "kind": "boolean",
+        "default": false,
+        "description": "Do not disturb: hold notifications back."
+      },
+      "desk.notify.dnd-allows": {
+        "kind": "array",
+        "default": ["error"],
+        "description": "Levels that still show during do not disturb."
+      },
+      "desk.notify.history": {
+        "kind": "integer",
+        "default": 200,
+        "description": "How many past notifications to keep."
+      }
+    }
+  }
+}

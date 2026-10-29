@@ -1,4 +1,4 @@
-import type { BrowserStub } from "@endue-ai/bridge";
+import type { BrowserStub, PluginInfo } from "@endue-ai/bridge";
 import type { BrowserBridge, Envelope } from "../../src/bridge/browser";
 import type { ManualClock, Runtime } from "../../src/index";
 import type { Desk } from "../../src/shell/Desk";
@@ -17,5 +17,9 @@ declare global {
       step(ms: number): void;
       envelopes: { user: Envelope; eris: Envelope };
     };
+    /** The desk fixture's fs.write calls, in order. */
+    __deskWritten: Array<{ path: string; content: string }>;
+    /** The edges fixture's plugin.list, to change before emitting plugin.changed. */
+    __deskPlugins: PluginInfo[];
   }
 }

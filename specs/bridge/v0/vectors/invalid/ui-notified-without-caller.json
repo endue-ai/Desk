@@ -1,0 +1,12 @@
+{
+  "target": "BridgeEvent",
+  "description": "ui.notified names the caller",
+  "instance": {
+    "event": "ui.notified",
+    "data": {
+      "notificationId": "n-1",
+      "title": "Build finished",
+      "level": "info"
+    }
+  }
+}

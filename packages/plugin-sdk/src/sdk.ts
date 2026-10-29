@@ -7,7 +7,8 @@ import {
   type ParamsOf,
   type ResultOf,
 } from "@endue-ai/bridge";
-import { type HostMessage, type Transport, windowTransport } from "./protocol";
+import { commandsFor, type PluginCommands } from "./commands";
+import { type HostMessage, type ThemeState, type Transport, windowTransport } from "./protocol";
 
 /** The bridge as a plugin sees it: calls are checked against the plugin's own grants. */
 export interface PluginBridge {
@@ -25,11 +26,15 @@ export interface PluginState {
 export interface PluginSurface {
   /** Remove the surface for the rest of this session (a finished first run, for example). */
   close(): void;
+  /** Show a surface the manifest declares `hidden`; it takes the keyboard focus. */
+  show(): void;
+  hide(): void;
 }
 
-/** Commands the runtime sends this plugin, by name. */
-export interface PluginCommands {
-  on(name: string, handler: (args: unknown) => void): () => void;
+/** The desk's theme, also applied to this frame as --desk-* custom properties. */
+export interface PluginTheme {
+  get(): ThemeState | undefined;
+  on(listener: (theme: ThemeState) => void): () => void;
 }
 
 export interface PluginContext {
@@ -38,6 +43,7 @@ export interface PluginContext {
   state: PluginState;
   surface: PluginSurface;
   commands: PluginCommands;
+  theme: PluginTheme;
 }
 
 export interface UiPlugin {
@@ -50,15 +56,27 @@ type Pending = {
   reject: (e: unknown) => void;
 };
 
-/** Say hello to the host and resolve once it answers with the plugin id and saved state. */
+/** Called by defineUiPlugin once `mount` has finished, so commands that came early get answered. */
+const mountedHooks = new WeakMap<PluginContext, () => void>();
+const usedByDefine = new WeakSet<PluginContext>();
+
+/**
+ * Say hello to the host and resolve once it answers with the plugin id and saved state. Commands
+ * that arrive before their handler is registered wait until the plugin has mounted.
+ */
 export function connect(transport: Transport = windowTransport()): Promise<PluginContext> {
   return new Promise((resolve) => {
+    let markMounted: () => void = () => {};
+    const mounted = new Promise<void>((done) => {
+      markMounted = done;
+    });
     const pending = new Map<number, Pending>();
     const listeners = new Set<(event: BridgeEvent) => void>();
-    const commands = new Map<string, Set<(args: unknown) => void>>();
+    const themeListeners = new Set<(theme: ThemeState) => void>();
     let queue: BridgeRequest[] = [];
     let nextId = 1;
     let state: unknown;
+    let theme: ThemeState | undefined;
 
     const flush = () => {
       const calls = queue;
@@ -73,22 +91,25 @@ export function connect(transport: Transport = windowTransport()): Promise<Plugi
       else call.reject(new BridgeCallError(call.method, response.error));
     };
 
+    const bridge: PluginBridge = {
+      call: <M extends BridgeMethod>(method: M, params: ParamsOf<M>) =>
+        new Promise<ResultOf<M>>((res, reject) => {
+          const id = nextId++;
+          pending.set(id, { method, resolve: res as (v: unknown) => void, reject });
+          // Calls made in the same tick leave together in one postMessage.
+          if (queue.length === 0) queueMicrotask(flush);
+          queue.push({ id, method, params } as BridgeRequest);
+        }),
+      onEvent: (listener) => {
+        listeners.add(listener);
+        return () => listeners.delete(listener);
+      },
+    };
+    const commands = commandsFor(bridge as Parameters<typeof commandsFor>[0], mounted);
+
     const ctxFor = (pluginId: string): PluginContext => ({
       pluginId,
-      bridge: {
-        call: <M extends BridgeMethod>(method: M, params: ParamsOf<M>) =>
-          new Promise<ResultOf<M>>((res, reject) => {
-            const id = nextId++;
-            pending.set(id, { method, resolve: res as (v: unknown) => void, reject });
-            // Calls made in the same tick leave together in one postMessage.
-            if (queue.length === 0) queueMicrotask(flush);
-            queue.push({ id, method, params } as BridgeRequest);
-          }),
-        onEvent: (listener) => {
-          listeners.add(listener);
-          return () => listeners.delete(listener);
-        },
-      },
+      bridge,
       state: {
         get: <T>() => state as T | undefined,
         set: (value) => {
@@ -98,34 +119,55 @@ export function connect(transport: Transport = windowTransport()): Promise<Plugi
       },
       surface: {
         close: () => transport.send({ type: "desk:close" }),
+        show: () => transport.send({ type: "desk:visible", visible: true }),
+        hide: () => transport.send({ type: "desk:visible", visible: false }),
       },
-      commands: {
-        on: (name, handler) => {
-          const handlers = commands.get(name) ?? new Set();
-          handlers.add(handler);
-          commands.set(name, handlers);
-          return () => handlers.delete(handler);
+      commands: commands.api,
+      theme: {
+        get: () => theme,
+        on: (listener) => {
+          themeListeners.add(listener);
+          return () => themeListeners.delete(listener);
         },
       },
     });
+    let ctx: PluginContext;
 
     transport.listen((message: HostMessage) => {
       switch (message.type) {
         case "desk:init":
           state = message.state;
-          resolve(ctxFor(message.pluginId));
+          ctx = ctxFor(message.pluginId);
+          mountedHooks.set(ctx, markMounted);
+          // Without defineUiPlugin, handlers registered right after connect() count as mounted.
+          setTimeout(() => {
+            if (!usedByDefine.has(ctx)) markMounted();
+          }, 0);
+          resolve(ctx);
           break;
         case "desk:results":
           for (const { id, response } of message.results) settle(id, response);
           break;
         case "desk:event":
+          commands.event(message.event);
           for (const listener of listeners) listener(message.event);
           break;
-        case "desk:command":
-          for (const handler of commands.get(message.name) ?? []) handler(message.args);
+        case "desk:command": {
+          const { name, args, call } = message;
+          void commands.request(name, args).then((outcome) => {
+            if (call !== undefined) transport.send({ type: "desk:reply", call, ...outcome });
+          });
+          break;
+        }
+        case "desk:theme":
+          theme = message.theme;
+          transport.theme?.(message.theme);
+          for (const listener of themeListeners) listener(message.theme);
           break;
       }
     });
+    // Chords pressed inside the frame still reach the desk's keymap.
+    transport.keys?.((key) => transport.send({ type: "desk:key", key }));
     transport.send({ type: "desk:hello" });
   });
 }
@@ -136,6 +178,11 @@ export async function defineUiPlugin(
   transport: Transport = windowTransport(),
 ): Promise<PluginContext> {
   const ctx = await connect(transport);
-  await plugin.mount(ctx);
+  usedByDefine.add(ctx);
+  try {
+    await plugin.mount(ctx);
+  } finally {
+    mountedHooks.get(ctx)?.();
+  }
   return ctx;
 }

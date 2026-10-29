@@ -68,7 +68,7 @@ fn the_template_is_the_spec_template_and_holds_the_defaults() {
 #[test]
 fn an_init_yaml_outside_the_spec_is_refused_with_where() {
     let path = temp_dir("outside").join("init.yaml");
-    fs::write(&path, "mode: focus\nplugins:\n  disabled: [Sidebar]\n").unwrap();
+    fs::write(&path, "profile: focus\nplugins:\n  disabled: [Sidebar]\n").unwrap();
     let core = core(&path);
     assert_eq!(core.init(), Init::default());
     let problem = core.init_problem().expect("the problem is reported");
@@ -81,10 +81,10 @@ fn an_init_yaml_outside_the_spec_is_refused_with_where() {
 #[test]
 fn an_existing_init_yaml_is_read_and_left_as_it_is() {
     let path = temp_dir("existing").join("init.yaml");
-    let text = "# mine\nmode: focus\nsettings:\n  eris.voice: true\n";
+    let text = "# mine\nprofile: focus\nsettings:\n  eris.voice: true\n";
     fs::write(&path, text).unwrap();
     let core = core(&path);
-    assert_eq!(core.init().mode, "focus");
+    assert_eq!(core.init().profile, "focus");
     assert_eq!(core.init().setting("eris.voice"), Some(&json!(true)));
     assert_eq!(fs::read_to_string(&path).unwrap(), text);
 }
@@ -92,12 +92,12 @@ fn an_existing_init_yaml_is_read_and_left_as_it_is() {
 #[test]
 fn a_broken_init_yaml_starts_with_the_defaults_and_is_not_overwritten() {
     let path = temp_dir("broken").join("init.yaml");
-    fs::write(&path, "mode: [\n").unwrap();
+    fs::write(&path, "profile: [\n").unwrap();
     let core = core(&path);
     assert_eq!(core.init(), Init::default());
     let problem = core.init_problem().expect("the problem is reported");
     assert!(problem.contains("line"), "names where: {problem}");
-    assert_eq!(fs::read_to_string(&path).unwrap(), "mode: [\n");
+    assert_eq!(fs::read_to_string(&path).unwrap(), "profile: [\n");
 }
 
 #[test]

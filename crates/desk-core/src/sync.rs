@@ -310,44 +310,44 @@ mod tests {
 
     #[test]
     fn the_side_that_changed_wins() {
-        let was = "mode: a\n";
+        let was = "profile: a\n";
         assert_eq!(
             decide(&base(1, was), was, snapshot(1, was)),
             Step::Agree(snapshot(1, was).unwrap())
         );
         assert_eq!(
-            decide(&base(1, was), "mode: b\n", snapshot(1, was)),
+            decide(&base(1, was), "profile: b\n", snapshot(1, was)),
             Step::Push(Some(1))
         );
         assert_eq!(
-            decide(&base(1, was), was, snapshot(2, "mode: c\n")),
-            Step::Pull(snapshot(2, "mode: c\n").unwrap())
+            decide(&base(1, was), was, snapshot(2, "profile: c\n")),
+            Step::Pull(snapshot(2, "profile: c\n").unwrap())
         );
         assert_eq!(
-            decide(&base(1, was), "mode: b\n", snapshot(2, "mode: c\n")),
-            Step::Conflict(snapshot(2, "mode: c\n").unwrap())
+            decide(&base(1, was), "profile: b\n", snapshot(2, "profile: c\n")),
+            Step::Conflict(snapshot(2, "profile: c\n").unwrap())
         );
         assert_eq!(
-            decide(&base(1, was), "mode: b\n", snapshot(2, "mode: b\n")),
-            Step::Agree(snapshot(2, "mode: b\n").unwrap())
+            decide(&base(1, was), "profile: b\n", snapshot(2, "profile: b\n")),
+            Step::Agree(snapshot(2, "profile: b\n").unwrap())
         );
     }
 
     #[test]
     fn a_first_sync_uploads_or_takes_the_copy_only_over_defaults() {
         let never = Base::default();
-        assert_eq!(decide(&never, "mode: a\n", None), Step::Push(None));
+        assert_eq!(decide(&never, "profile: a\n", None), Step::Push(None));
         assert_eq!(
             decide(
                 &never,
                 "sync: { enabled: true }\n",
-                snapshot(4, "mode: c\n")
+                snapshot(4, "profile: c\n")
             ),
-            Step::Pull(snapshot(4, "mode: c\n").unwrap())
+            Step::Pull(snapshot(4, "profile: c\n").unwrap())
         );
         assert_eq!(
-            decide(&never, "mode: a\n", snapshot(4, "mode: c\n")),
-            Step::Conflict(snapshot(4, "mode: c\n").unwrap())
+            decide(&never, "profile: a\n", snapshot(4, "profile: c\n")),
+            Step::Conflict(snapshot(4, "profile: c\n").unwrap())
         );
     }
 

@@ -1,0 +1,95 @@
+{
+  "id": "desk.theme",
+  "name": "Theme",
+  "version": "0.1.0",
+  "kind": "policy",
+  "description": "Light and dark themes, high contrast, and reduced motion, or whatever the system prefers.",
+  "contributes": {
+    "themes": [
+      {
+        "id": "desk.theme.dark",
+        "name": "endue dark",
+        "scheme": "dark",
+        "contrast": "normal",
+        "tokens": {
+          "background": "#141416",
+          "card": "#1e1d21",
+          "border": "#333136",
+          "text": "#f2f0f5",
+          "textMuted": "#b0adb7",
+          "accent": "#b6a3f5",
+          "success": "#5dbe5f",
+          "warning": "#ff9800",
+          "danger": "#ff8484",
+          "info": "#6cadff"
+        }
+      },
+      {
+        "id": "desk.theme.light",
+        "name": "endue light",
+        "scheme": "light",
+        "contrast": "normal",
+        "tokens": {
+          "background": "#faf9fc",
+          "card": "#ffffff",
+          "border": "#ddd6e5",
+          "text": "#1e1833",
+          "textMuted": "#675f70",
+          "accent": "#6b4f9e",
+          "success": "#006c44",
+          "warning": "#925000",
+          "danger": "#b80012",
+          "info": "#005fa3"
+        }
+      },
+      {
+        "id": "desk.theme.dark-contrast",
+        "name": "endue dark, high contrast",
+        "scheme": "dark",
+        "contrast": "high",
+        "tokens": {
+          "background": "#000000",
+          "card": "#0b0b0d",
+          "border": "#8a8591",
+          "text": "#ffffff",
+          "textMuted": "#e2dfe8",
+          "accent": "#d2c6ff"
+        }
+      },
+      {
+        "id": "desk.theme.light-contrast",
+        "name": "endue light, high contrast",
+        "scheme": "light",
+        "contrast": "high",
+        "tokens": {
+          "background": "#ffffff",
+          "card": "#ffffff",
+          "border": "#4f4858",
+          "text": "#000000",
+          "textMuted": "#2e2836",
+          "accent": "#4a2f80"
+        }
+      }
+    ],
+    "settings": {
+      "desk.theme.scheme": {
+        "kind": "string",
+        "default": "dark",
+        "choices": ["system", "light", "dark"],
+        "description": "Light or dark; system follows the OS."
+      },
+      "desk.theme.contrast": {
+        "kind": "string",
+        "default": "system",
+        "choices": ["system", "normal", "high"],
+        "description": "High contrast; system follows the OS."
+      },
+      "desk.theme.motion": {
+        "kind": "string",
+        "default": "system",
+        "choices": ["system", "reduce", "full"],
+        "description": "Reduced motion; system follows the OS."
+      }
+    }
+  }
+}

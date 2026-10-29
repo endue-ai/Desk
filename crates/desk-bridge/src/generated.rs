@@ -6,6 +6,216 @@
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
+/// A plugin's contributions. Every list is optional; the runtime ignores commands, settings and themes outside the plugin's own id.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PluginContributes {
+    /// Commands the plugin answers (ctx.commands.on in the SDK). Their ids start with the plugin id.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub commands: Option<Vec<CommandContribution>>,
+    /// Key bindings, like a keymap. A later layer's binding of the same key wins.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub keys: Option<Vec<KeyBinding>>,
+    /// Where new surfaces go, like display-buffer-alist. Later layers are asked first; the first rule that matches decides.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub display: Option<Vec<DisplayRule>>,
+    /// Which plugin opens which files, like auto-mode-alist. Later layers are asked first.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub files: Option<Vec<FileOpener>>,
+    /// Themes: one token set for a scheme and a contrast.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub themes: Option<Vec<ThemeContribution>>,
+    /// Settings the plugin reads, by key, with their defaults. Keys start with the plugin id.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub settings: Option<BTreeMap<String, SettingContribution>>,
+    /// Profiles: a plugin set plus settings, like an init file.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub profiles: Option<Vec<ProfileContribution>>,
+}
+
+/// A command id: lowercase and dotted, with at least two segments, for example eris.say or desk.palette.open. Unique across callers (bridge cmd.*); a plugin's contributed commands start with its own id.
+pub type CommandId = String;
+
+/// A command the palette lists and keys can run.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CommandContribution {
+    pub id: CommandId,
+    /// Shown in the palette.
+    pub title: String,
+    /// More words the palette matches.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub keywords: Option<Vec<String>>,
+}
+
+/// Modifiers and one key joined with +, for example Mod+K, Mod+Shift+], Escape. Mod is Meta on macOS and Control elsewhere.
+pub type KeyCombo = String;
+
+/// The command a key runs, or the empty string to take the key away from an earlier layer.
+pub type KeyCommand = String;
+
+/// One key bound to one command.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct KeyBinding {
+    pub key: KeyCombo,
+    /// The key on macOS, when it differs from key.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub mac: Option<KeyCombo>,
+    pub command: KeyCommand,
+    /// Passed to the command. Any JSON value.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub args: Option<serde_json::Value>,
+}
+
+/// A condition and where a matching surface goes.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DisplayRule {
+    pub r#match: DisplayMatch,
+    pub area: SurfacePlacement,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub size: Option<DisplaySize>,
+    /// Show a surface that is already open instead of opening it again. Default true.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reuse: Option<bool>,
+    /// Move the keyboard focus to the surface when it opens. Default false.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub focus: Option<bool>,
+}
+
+/// Which surfaces a rule is for. Every field given must match; an empty match matches every surface.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DisplayMatch {
+    /// A plugin id, with * for any run of characters (endue.*).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub plugin: Option<String>,
+    /// A surface id from the plugin's manifest.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub surface: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub placement: Option<SurfacePlacement>,
+}
+
+/// How big the surface is: grid cells on the grid, pixels on an edge.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DisplaySize {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub columns: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub rows: Option<u64>,
+    /// The edge's width (left, right) or height (bottom).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pixels: Option<u64>,
+}
+
+/// Files matching pattern open in plugin.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct FileOpener {
+    /// A glob on the file name (*.md), or on the whole path when it has a slash.
+    pub pattern: String,
+    pub plugin: PluginId,
+}
+
+/// A theme id: the owner's plugin id and a name, for example desk.theme.dark.
+pub type ThemeId = String;
+
+/// Light or dark.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum ThemeScheme {
+    #[serde(rename = "light")]
+    Light,
+    #[serde(rename = "dark")]
+    Dark,
+}
+
+/// Normal or high contrast.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum ThemeContrast {
+    #[serde(rename = "normal")]
+    Normal,
+    #[serde(rename = "high")]
+    High,
+}
+
+/// One token set. The runtime picks the theme for the scheme and contrast in force.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ThemeContribution {
+    pub id: ThemeId,
+    pub name: String,
+    pub scheme: ThemeScheme,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub contrast: Option<ThemeContrast>,
+    /// Token name (camelCase, as in @endue-ai/ui) to CSS colour.
+    pub tokens: BTreeMap<String, String>,
+}
+
+/// A setting's full name, as in init.yaml: the owner's id and its key, dotted (desk.notify.dnd).
+pub type SettingName = String;
+
+/// The JSON type a setting's value has.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum SettingKind {
+    #[serde(rename = "boolean")]
+    Boolean,
+    #[serde(rename = "integer")]
+    Integer,
+    #[serde(rename = "number")]
+    Number,
+    #[serde(rename = "string")]
+    String,
+    #[serde(rename = "array")]
+    Array,
+    #[serde(rename = "object")]
+    Object,
+}
+
+/// A setting and its default. init.yaml and profiles set other values.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SettingContribution {
+    pub kind: SettingKind,
+    /// The value until a later layer sets one. Any JSON value.
+    pub default: serde_json::Value,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    /// The values a string setting may take.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub choices: Option<Vec<String>>,
+}
+
+/// A profile name, as init.yaml names the one to start in.
+pub type ProfileId = String;
+
+/// Which plugins a profile turns on and off. Plugins it names neither way keep their state.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ProfilePlugins {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub enabled: Option<Vec<PluginId>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub disabled: Option<Vec<PluginId>>,
+}
+
+/// A plugin set plus settings, switched as one.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ProfileContribution {
+    pub id: ProfileId,
+    pub name: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub plugins: Option<ProfilePlugins>,
+    /// Settings in force while the profile is, over init.yaml's.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub settings: Option<BTreeMap<String, serde_json::Value>>,
+}
+
 /// One permission with its scope. Plugin manifests declare these; bridge calls carry the one that covers them.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
@@ -194,7 +404,8 @@ pub struct PluginManifest {
     pub name: Option<String>,
     pub version: Version,
     pub kind: PluginKind,
-    pub entry: EntryPath,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub entry: Option<EntryPath>,
     /// One sentence about what the plugin does.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
@@ -204,6 +415,8 @@ pub struct PluginManifest {
     /// Surfaces a UI plugin can open. Only UI plugins declare surfaces.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub surfaces: Option<Vec<Surface>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub contributes: Option<PluginContributes>,
 }
 
 /// Reverse-domain style id with at least one dot, lowercase, for example endue.eris or example.hello-ui.
@@ -212,7 +425,7 @@ pub type PluginId = String;
 /// Semantic version, for example 0.1.0 or 1.2.3-beta.1.
 pub type Version = String;
 
-/// ui runs in a sandboxed iframe, logic in a Wasm instance, tool as an MCP server inside the VM.
+/// ui runs in a sandboxed iframe, logic in a Wasm instance, tool as an MCP server inside the VM. policy runs no code: it only contributes data (ADR 0017).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum PluginKind {
     #[serde(rename = "ui")]
@@ -221,6 +434,8 @@ pub enum PluginKind {
     Logic,
     #[serde(rename = "tool")]
     Tool,
+    #[serde(rename = "policy")]
+    Policy,
 }
 
 /// Path to the entry file, relative to the plugin folder, without .. segments.
@@ -236,6 +451,9 @@ pub struct Surface {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub title: Option<String>,
     pub placement: SurfacePlacement,
+    /// Mounted but not shown until the plugin shows it, like a palette. Default false.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hidden: Option<bool>,
 }
 
 /// Where the compositor puts the surface.
@@ -263,7 +481,7 @@ pub struct InitDocument {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub version: Option<u64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub mode: Option<InitMode>,
+    pub profile: Option<InitProfile>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub plugins: Option<InitPlugins>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -272,8 +490,8 @@ pub struct InitDocument {
     pub sync: Option<InitSync>,
 }
 
-/// The mode to start in: a set of plugins plus their settings. Default "default".
-pub type InitMode = String;
+/// The profile to start in: a set of plugins plus their settings (ADR 0017). Default "default".
+pub type InitProfile = String;
 
 /// Which plugins start how.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -484,11 +702,13 @@ pub enum BridgeRequest {
     PluginSetEnabled(PluginSetEnabledRequest),
     StoreGet(StoreGetRequest),
     StoreSet(StoreSetRequest),
+    InitGet(InitGetRequest),
     BrainSay(BrainSayRequest),
     CmdRegister(CmdRegisterRequest),
     CmdUnregister(CmdUnregisterRequest),
     CmdList(CmdListRequest),
     CmdInvoke(CmdInvokeRequest),
+    CmdAnswer(CmdAnswerRequest),
     SettingsGet(SettingsGetRequest),
     SettingsSet(SettingsSetRequest),
     SettingsList(SettingsListRequest),
@@ -559,7 +779,7 @@ pub enum ErrorCode {
     Internal,
 }
 
-/// Something the core reports without being asked: file changes, process output, wake words, permission changes, commands, settings and log entries.
+/// Something the core reports without being asked: file changes, process output, wake words, permission changes, notifications, commands, settings and log entries.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum BridgeEvent {
@@ -570,15 +790,14 @@ pub enum BridgeEvent {
     PermChanged(PermChangedEvent),
     PermPrompt(PermPromptEvent),
     PluginChanged(PluginChangedEvent),
+    UiNotified(UiNotifiedEvent),
     BrainTurn(BrainTurnEvent),
     CmdChanged(CmdChangedEvent),
     CmdInvoked(CmdInvokedEvent),
+    CmdAnswered(CmdAnsweredEvent),
     SettingsChanged(SettingsChangedEvent),
     LogEntry(LogEntryEvent),
 }
-
-/// A command id: lowercase and dotted, with at least two segments, for example eris.say or endue.palette.open. Unique across callers.
-pub type CommandId = String;
 
 /// A registered command as cmd.list returns it.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -590,6 +809,9 @@ pub struct CommandInfo {
     /// One or two sentences for people.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
+    /// More words the palette matches.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub keywords: Option<Vec<String>>,
     /// JSON Schema (2020-12) for the args of cmd.invoke; absent means the command takes none.
     #[serde(
         rename = "argsSchema",
@@ -620,6 +842,9 @@ pub struct CmdRegisterParams {
     pub title: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
+    /// More words the palette matches.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub keywords: Option<Vec<String>>,
     /// JSON Schema (2020-12) for the args of cmd.invoke.
     #[serde(
         rename = "argsSchema",
@@ -700,12 +925,57 @@ pub struct CmdInvokeParams {
     pub scope: CmdInvokePermission,
 }
 
-/// Result of cmd.invoke: the provider receives a cmd.invoked event with this id.
+/// Result of cmd.invoke: the provider receives a cmd.invoked event with this id, and its answer reaches the caller as cmd.answered.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct CmdInvokeResult {
     #[serde(rename = "invocationId")]
     pub invocation_id: String,
+}
+
+/// Answer one invocation of a command the caller provides: its result, or why it failed.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CmdAnswerRequest {
+    pub id: RequestId,
+    pub method: CmdAnswerRequestMethod,
+    pub params: CmdAnswerParams,
+}
+
+/// Parameters of cmd.answer: a result, or an error, not both.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CmdAnswerParams {
+    #[serde(rename = "invocationId")]
+    pub invocation_id: String,
+    /// What the command returns. Any JSON value.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub result: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub error: Option<CommandFailure>,
+}
+
+/// Result of cmd.answer.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CmdAnswerResult {}
+
+/// Why an invocation failed.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CommandFailure {
+    pub code: CommandFailureCode,
+    /// For people; never parse it.
+    pub message: String,
+}
+
+/// failed: the command ran and failed; cancelled: the person or the provider gave up (a pick dismissed, a provider that stopped).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum CommandFailureCode {
+    #[serde(rename = "failed")]
+    Failed,
+    #[serde(rename = "cancelled")]
+    Cancelled,
 }
 
 /// A command was registered, updated or unregistered. Sent to callers subscribed to cmd.changed.
@@ -754,6 +1024,30 @@ pub struct CmdInvokedData {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub args: Option<serde_json::Map<String, serde_json::Value>>,
     pub caller: CallerId,
+}
+
+/// A command's provider answered an invocation. Sent to the caller that invoked it.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CmdAnsweredEvent {
+    pub event: CmdAnsweredEventEvent,
+    pub data: CmdAnsweredData,
+}
+
+/// Payload of cmd.answered: the invocation, who invoked it, and the answer.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CmdAnsweredData {
+    #[serde(rename = "invocationId")]
+    pub invocation_id: String,
+    pub id: CommandId,
+    pub caller: CallerId,
+    pub ok: bool,
+    /// What the command returned, when ok. Any JSON value.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub result: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub error: Option<CommandFailure>,
 }
 
 /// Start receiving the named events about every caller.
@@ -971,6 +1265,33 @@ pub enum FsChange {
     Modified,
     #[serde(rename = "removed")]
     Removed,
+}
+
+/// Read the setup in force.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct InitGetRequest {
+    pub id: RequestId,
+    pub method: InitGetRequestMethod,
+    pub params: InitGetParams,
+}
+
+/// Parameters of init.get.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct InitGetParams {}
+
+/// Result of init.get.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct InitGetResult {
+    /// The profile to start in.
+    pub profile: ProfileId,
+    /// The settings whose key starts with the caller's id and a dot (desk. for the runtime).
+    pub settings: BTreeMap<String, serde_json::Value>,
+    /// Why init.yaml is not in force, for people. The defaults (or the last setup that matched) are in force instead.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub problem: Option<String>,
 }
 
 /// How much an entry matters.
@@ -1869,6 +2190,28 @@ pub struct UiNotifyResult {
     pub notification_id: String,
 }
 
+/// A caller's ui.notify passed its permission check; the runtime shows it as its notify policy says.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct UiNotifiedEvent {
+    pub event: UiNotifiedEventEvent,
+    pub data: UiNotifiedData,
+}
+
+/// Payload of ui.notified.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct UiNotifiedData {
+    #[serde(rename = "notificationId")]
+    pub notification_id: String,
+    /// The plugin that asked.
+    pub caller: String,
+    pub title: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub body: Option<String>,
+    pub level: NotifyLevel,
+}
+
 /// The `permission` of [`FsReadPermission`]: always `"fs:read"`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub enum FsReadPermissionPermission {
@@ -2061,6 +2404,14 @@ pub enum CmdInvokeRequestMethod {
     CmdInvoke,
 }
 
+/// The `method` of [`CmdAnswerRequest`]: always `"cmd.answer"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum CmdAnswerRequestMethod {
+    #[default]
+    #[serde(rename = "cmd.answer")]
+    CmdAnswer,
+}
+
 /// The `event` of [`CmdChangedEvent`]: always `"cmd.changed"`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub enum CmdChangedEventEvent {
@@ -2075,6 +2426,14 @@ pub enum CmdInvokedEventEvent {
     #[default]
     #[serde(rename = "cmd.invoked")]
     CmdInvoked,
+}
+
+/// The `event` of [`CmdAnsweredEvent`]: always `"cmd.answered"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum CmdAnsweredEventEvent {
+    #[default]
+    #[serde(rename = "cmd.answered")]
+    CmdAnswered,
 }
 
 /// The `method` of [`EventsSubscribeRequest`]: always `"events.subscribe"`.
@@ -2131,6 +2490,14 @@ pub enum FsChangedEventEvent {
     #[default]
     #[serde(rename = "fs.changed")]
     FsChanged,
+}
+
+/// The `method` of [`InitGetRequest`]: always `"init.get"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum InitGetRequestMethod {
+    #[default]
+    #[serde(rename = "init.get")]
+    InitGet,
 }
 
 /// The `method` of [`LogWriteRequest`]: always `"log.write"`.
@@ -2365,6 +2732,14 @@ pub enum UiNotifyRequestMethod {
     UiNotify,
 }
 
+/// The `event` of [`UiNotifiedEvent`]: always `"ui.notified"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum UiNotifiedEventEvent {
+    #[default]
+    #[serde(rename = "ui.notified")]
+    UiNotified,
+}
+
 /// The JSON value `true`, as a type.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub struct True;
@@ -2408,6 +2783,10 @@ impl<'de> Deserialize<'de> for False {
 /// Every bridge, plugin and init JSON Schema document as `($id, json)`, for validation at run time.
 pub const SCHEMAS: &[(&str, &str)] = &[
     (
+        "https://endue.ai/specs/plugin/v0/contributes.schema.json",
+        include_str!("../../../specs/plugin/v0/contributes.schema.json"),
+    ),
+    (
         "https://endue.ai/specs/plugin/v0/permission.schema.json",
         include_str!("../../../specs/plugin/v0/permission.schema.json"),
     ),
@@ -2442,6 +2821,10 @@ pub const SCHEMAS: &[(&str, &str)] = &[
     (
         "https://endue.ai/specs/bridge/v0/fs.schema.json",
         include_str!("../../../specs/bridge/v0/fs.schema.json"),
+    ),
+    (
+        "https://endue.ai/specs/bridge/v0/init.schema.json",
+        include_str!("../../../specs/bridge/v0/init.schema.json"),
     ),
     (
         "https://endue.ai/specs/bridge/v0/log.schema.json",

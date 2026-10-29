@@ -87,6 +87,42 @@ defineUiPlugin({
 어휘(`fs:read`, `fs:write`, `proc:spawn`, `net:fetch`, `audio:capture`, `ui:surface`,
 `ui:notify`, `plugin:manage`)는 `specs/plugin/v0/README.md`에 있습니다.
 
+## 기여 항목
+
+플러그인은 `plugin.json` 의 `contributes` 로 코드 없이 데스크의 기본 정책에 더할 수 있습니다(ADR 0017).
+팔레트에 나오고 키로 실행되는 커맨드, 키 바인딩, 배치 규칙, 그 플러그인이 여는 파일, 테마, 기본값이 있는
+설정, 프로필입니다. 커맨드, 설정, 테마의 id 는 플러그인 id 로 시작합니다.
+
+```json
+"contributes": {
+  "commands": [{ "id": "example.my-plugin.new", "title": "New note" }],
+  "keys": [{ "key": "Mod+Shift+N", "command": "example.my-plugin.new" }],
+  "display": [{ "match": { "plugin": "example.my-plugin" }, "area": "right", "size": { "pixels": 360 } }],
+  "files": [{ "pattern": "*.md", "plugin": "example.my-plugin" }],
+  "settings": { "example.my-plugin.folder": { "kind": "string", "default": "~/notes" } }
+}
+```
+
+자기 커맨드에는 `ctx.commands.on` 으로 답하고, 데스크에 있는 어떤 커맨드든 `ctx.commands.run` 으로
+실행합니다. 둘 다 코어의 커맨드 레지스트리(`cmd.*`)를 거칩니다. 자기가 제공하지 않는 커맨드를 실행하려면
+그 id 를 덮는 `cmd:invoke` 권한이 있어야 합니다. 예: `{ "permission": "cmd:invoke", "ids": ["desk.theme.*"] }`.
+
+```js
+defineUiPlugin({
+  mount(ctx) {
+    ctx.commands.on("example.my-plugin.new", async () => "note-1");      // the answer
+    ctx.commands.on("desk.files.visit", ({ buffer, path }) => { /* fs.read it, show it */ });
+    ctx.commands.on("desk.files.save", ({ buffer, path }) => { /* fs.write it */ });
+    document.querySelector("button").onclick = () => ctx.commands.run("desk.theme.toggle");
+  },
+});
+```
+
+파일을 여는 플러그인은 `desk.files.visit`, `desk.files.save`, `desk.files.revert` 에 답하고, 저장하지 않은
+변경은 `desk.buffers.update { id, modified: true }` 로 알립니다. 테마는 프레임에 `--desk-*` CSS 속성과
+`ctx.theme` 으로 전달됩니다. 프레임 안에서 누른 키 조합은 `preventDefault()` 를 부르지 않는 한 데스크의
+키맵에 전달됩니다. 기본 정책과 각각이 정하는 것은 `plugins/README.md` 에 있습니다.
+
 ## 테스트
 
 `@endue-ai/plugin-sdk/testing`을 쓰면 브라우저 없이 모의 브리지를 상대로 플러그인을 실행할 수 있습니다.

@@ -27,12 +27,28 @@
           "description": "Surfaces a UI plugin can open. Only UI plugins declare surfaces.",
           "type": "array",
           "items": { "$ref": "#/$defs/Surface" }
-        }
+        },
+        "contributes": { "$ref": "contributes.schema.json#/$defs/PluginContributes" }
       },
-      "required": ["id", "version", "kind", "entry"],
+      "required": ["id", "version", "kind"],
       "additionalProperties": false,
-      "if": { "properties": { "kind": { "not": { "const": "ui" } } } },
-      "then": { "properties": { "surfaces": { "type": "array", "maxItems": 0 } } }
+      "allOf": [
+        {
+          "if": { "properties": { "kind": { "not": { "const": "ui" } } } },
+          "then": { "properties": { "surfaces": { "type": "array", "maxItems": 0 } } }
+        },
+        {
+          "if": { "properties": { "kind": { "not": { "const": "policy" } } } },
+          "then": { "properties": { "entry": true }, "required": ["entry"] }
+        },
+        {
+          "if": { "properties": { "kind": { "const": "policy" } } },
+          "then": {
+            "properties": { "entry": false, "contributes": true },
+            "required": ["contributes"]
+          }
+        }
+      ]
     },
     "PluginId": {
       "description": "Reverse-domain style id with at least one dot, lowercase, for example endue.eris or example.hello-ui.",
@@ -46,9 +62,9 @@
       "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?(\\+[0-9A-Za-z.-]+)?$"
     },
     "PluginKind": {
-      "description": "ui runs in a sandboxed iframe, logic in a Wasm instance, tool as an MCP server inside the VM.",
+      "description": "ui runs in a sandboxed iframe, logic in a Wasm instance, tool as an MCP server inside the VM. policy runs no code: it only contributes data (ADR 0017).",
       "type": "string",
-      "enum": ["ui", "logic", "tool"]
+      "enum": ["ui", "logic", "tool", "policy"]
     },
     "EntryPath": {
       "description": "Path to the entry file, relative to the plugin folder, without .. segments.",
@@ -66,7 +82,11 @@
           "pattern": "^[a-z][a-z0-9-]*$"
         },
         "title": { "description": "Shown where the surface needs a label.", "type": "string" },
-        "placement": { "$ref": "#/$defs/SurfacePlacement" }
+        "placement": { "$ref": "#/$defs/SurfacePlacement" },
+        "hidden": {
+          "description": "Mounted but not shown until the plugin shows it, like a palette. Default false.",
+          "type": "boolean"
+        }
       },
       "required": ["id", "placement"],
       "additionalProperties": false

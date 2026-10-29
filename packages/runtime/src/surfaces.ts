@@ -1,14 +1,22 @@
+import { type Edges, edgeOf } from "./edges";
 import type { Cell } from "./layout";
 
 /** A surface to show: a sandboxed iframe with a title. */
 export interface SurfaceSpec {
   id: string;
   title: string;
+  /** The surface's id in its plugin's manifest; display rules can match on it. */
+  surface?: string;
   /** A URL to load, or inline HTML in `srcdoc`. */
   src?: string;
   srcdoc?: string;
-  /** `overlay` covers the whole desk without a title bar; everything else sits on the grid. */
+  /**
+   * `overlay` covers the whole desk; `left`, `right` and `bottom` sit on that edge of the desk. Both
+   * have no title bar. Everything else sits on the grid.
+   */
   placement?: string;
+  /** Mounted but not shown until `show` (a palette waits for its command). */
+  hidden?: boolean;
 }
 
 /**
@@ -19,10 +27,13 @@ export class SurfaceHost {
   readonly #container: HTMLElement;
   readonly #surfaces = new Map<string, HTMLElement>();
   readonly #onFocus: (id: string) => void;
+  readonly #edges: Edges | undefined;
 
-  constructor(container: HTMLElement, onFocus: (id: string) => void) {
+  /** Without `edges`, edge surfaces sit in `container` like the rest. */
+  constructor(container: HTMLElement, onFocus: (id: string) => void, edges?: Edges) {
     this.#container = container;
     this.#onFocus = onFocus;
+    this.#edges = edges;
   }
 
   open(spec: SurfaceSpec): HTMLElement {
@@ -30,10 +41,18 @@ export class SurfaceHost {
     if (existing) return existing;
     const doc = this.#container.ownerDocument;
     const overlay = spec.placement === "overlay";
+    const edges = this.#edges;
+    const edge = edges ? edgeOf(spec.placement) : undefined;
     const section = doc.createElement("section");
-    section.className = overlay ? "desk-surface desk-surface--overlay" : "desk-surface";
+    section.className = overlay
+      ? "desk-surface desk-surface--overlay"
+      : edge
+        ? "desk-surface desk-surface--edge"
+        : "desk-surface";
+    if (spec.hidden) section.classList.add("desk-surface--transient");
     section.dataset.surface = spec.id;
     section.tabIndex = -1;
+    section.hidden = spec.hidden === true;
     section.addEventListener("focusin", () => this.#onFocus(spec.id));
 
     const title = doc.createElement("header");
@@ -47,9 +66,9 @@ export class SurfaceHost {
     if (spec.srcdoc !== undefined) frame.srcdoc = spec.srcdoc;
     else if (spec.src !== undefined) frame.src = spec.src;
 
-    if (overlay) section.append(frame);
+    if (overlay || edge) section.append(frame);
     else section.append(title, frame);
-    this.#container.append(section);
+    (edges && edge ? edges.bar(edge) : this.#container).append(section);
     this.#surfaces.set(spec.id, section);
     return section;
   }
@@ -57,12 +76,26 @@ export class SurfaceHost {
   close(id: string): void {
     this.#surfaces.get(id)?.remove();
     this.#surfaces.delete(id);
+    this.#edges?.prune();
   }
 
   /** Load a new URL in one surface's frame; nothing else on the desk changes. */
   reload(id: string, src: string): void {
     const frame = this.#surfaces.get(id)?.querySelector("iframe");
     if (frame) frame.src = src;
+  }
+
+  /** Show or hide a surface without unloading it; a shown surface takes the keyboard focus. */
+  show(id: string, visible: boolean): void {
+    const section = this.#surfaces.get(id);
+    if (!section) return;
+    section.hidden = !visible;
+    if (visible) section.querySelector("iframe")?.focus();
+  }
+
+  visible(id: string): boolean {
+    const section = this.#surfaces.get(id);
+    return section !== undefined && !section.hidden;
   }
 
   /** The window inside a surface's frame, to tell plugin messages apart. */

@@ -1,0 +1,29 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { describe, expect, it } from "vitest";
+import type { PluginManifest } from "../../../packages/bridge/src/index";
+import { resolveKeymap } from "../../../packages/runtime/src/keymap";
+
+const manifest = JSON.parse(
+  readFileSync(join(import.meta.dirname, "../plugin.json"), "utf8"),
+) as PluginManifest;
+const keys = (manifest.contributes?.keys ?? []).map((key) => ({ ...key, owner: manifest.id }));
+
+describe("the default keymap", () => {
+  it("binds each key once, to a desk.* command", () => {
+    const combos = keys.map((key) => key.key);
+    expect(new Set(combos).size).toBe(combos.length);
+    for (const key of keys) expect(key.command).toMatch(/^desk\.[a-z]+\.[a-z-]+$/);
+  });
+
+  it("opens the palette with Mod+K and quits with Escape, on every platform", () => {
+    for (const [platform, combo] of [
+      ["mac", "Meta+K"],
+      ["other", "Control+K"],
+    ] as const) {
+      const map = new Map(resolveKeymap(keys, platform).map((b) => [b.combo, b.command]));
+      expect(map.get(combo)).toBe("desk.palette.open");
+      expect(map.get("Escape")).toBe("desk.keys.quit");
+    }
+  });
+});
