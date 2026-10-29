@@ -7,11 +7,11 @@ desktops, the left bar, Eris, the status rail, the bottom edge, surfaces). Plain
 ## Public API
 
 - `mountDesk({ root, bridge, clock?, lang?, modes?, persist?, reducedMotion?, platform?, epoch? })`
-  mounts the shell in two layers (system layer, ADR 0019; mode layer) and returns
+  mounts the shell in two layers (system layer, ADR 0023; mode layer) and returns
   `{ store, ticker, eris, keys, ready, refresh, dispose }`. Styles: `src/shell/styles.ts`;
   tokens: `@endue-ai/runtime/tokens.css` (the only file with literal colours).
 - `ShellBridge` (`storage`, `perm`, `audio`, `brain`, and the agent directory `agents`, `spaces`,
-  `a2a` of specs/brain/v0, ADR 0020); `browserBridge({ now, storage?, grant?, epoch? })` is the stub.
+  `a2a` of specs/brain/v0, ADR 0024); `browserBridge({ now, storage?, grant?, epoch? })` is the stub.
 - System: `system/commands.ts` (every command, also the palette), `system/keys.ts` (`Keymap`: defaults,
   rebinding, saved overrides), `surface/tree.ts` (panes: split, close, resize).
 - Eris: `eris/mesh.ts` (deterministic mesh, three densities), `eris/voice.ts` (nine bands → nine rings),
