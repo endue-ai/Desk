@@ -15,7 +15,10 @@ fn hello_wasm_logs_each_event_it_receives() {
     assert!(host.lines().is_empty(), "{:?}", host.lines());
 
     let changed = json!({ "owner": ID, "key": "greeting", "value": "Hi" });
-    assert_eq!(logic.deliver_event(ID, "settings.changed", &changed), Ok(()));
+    assert_eq!(
+        logic.deliver_event(ID, "settings.changed", &changed),
+        Ok(())
+    );
     let lines = host.lines();
     assert_eq!(lines.len(), 1, "{lines:?}");
     let (plugin, level, message, fields) = &lines[0];

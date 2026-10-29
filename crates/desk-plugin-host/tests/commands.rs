@@ -50,7 +50,11 @@ fn hello_wasm_answers_an_invocation_and_logs_one_line_per_call() {
     assert_eq!(answers.len(), 2, "{answers:?}");
     assert_eq!(
         answers[1],
-        (ID.to_owned(), "inv-2".to_owned(), Ok(json!("Hello, Grace!")))
+        (
+            ID.to_owned(),
+            "inv-2".to_owned(),
+            Ok(json!("Hello, Grace!"))
+        )
     );
     let lines = host.lines();
     assert_eq!(lines.len(), 2, "{lines:?}");

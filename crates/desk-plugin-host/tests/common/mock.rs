@@ -92,7 +92,10 @@ impl MockHost {
 
     /// A fresh id for an invocation or a subscription.
     fn fresh(&self, prefix: &str) -> String {
-        format!("{prefix}-{}", self.next_id.fetch_add(1, Ordering::Relaxed) + 1)
+        format!(
+            "{prefix}-{}",
+            self.next_id.fetch_add(1, Ordering::Relaxed) + 1
+        )
     }
 }
 
@@ -182,7 +185,11 @@ impl Host for MockHost {
             Duration::Session => "session",
             Duration::Always => "always",
         };
-        self.call(plugin, "perm.request", &format!("{name} {duration}: {reason}"))?;
+        self.call(
+            plugin,
+            "perm.request",
+            &format!("{name} {duration}: {reason}"),
+        )?;
         let grant = Grant {
             grant_id: self.fresh("g"),
             permission: permission.to_string(),
@@ -207,7 +214,10 @@ impl Host for MockHost {
 
     fn cmd_register(&self, plugin: &str, command: Command) -> Result<(), Error> {
         self.call(plugin, "cmd.register", &command.id)?;
-        self.registered.lock().unwrap().push((plugin.into(), command));
+        self.registered
+            .lock()
+            .unwrap()
+            .push((plugin.into(), command));
         Ok(())
     }
 

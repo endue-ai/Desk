@@ -92,7 +92,9 @@ fn every_import_reaches_the_host_as_the_plugin() {
     let subscription = imports.events_subscribe(&["cmd.changed".into()]).unwrap();
     imports.events_unsubscribe(&subscription).unwrap();
     assert_eq!(
-        imports.settings_get("theme", Some("example.other")).unwrap(),
+        imports
+            .settings_get("theme", Some("example.other"))
+            .unwrap(),
         None
     );
     imports.settings_set("theme", r#""dark""#).unwrap();

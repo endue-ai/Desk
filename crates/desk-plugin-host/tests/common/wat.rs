@@ -48,11 +48,11 @@ pub fn exports(exports: Exports) -> Vec<u8> {
     (param "invocation-id" string) (param "command-id" string) (param "args-json" string)
     (result (result (error $error-out)))
     (canon lift (core func $i "on-command") (memory (core memory $i "memory"))
-      (realloc (func $i "realloc"))))
+      (realloc (core func $i "realloc"))))
   (func $on-event (param "name" string) (param "data-json" string)
     (result (result (error $error-out)))
     (canon lift (core func $i "on-event") (memory (core memory $i "memory"))
-      (realloc (func $i "realloc"))))
+      (realloc (core func $i "realloc"))))
   (export "start" (func $start))
   (export "on-command" (func $on-command))
   (export "on-event" (func $on-event)))"#
