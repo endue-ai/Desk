@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Notes</title>
+    <script type="importmap">
+      { "imports": { "@endue-ai/plugin-sdk": "/_desk/plugin-sdk.js" } }
+    </script>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <main aria-labelledby="note-name">
+      <h1 id="note-name">No note open</h1>
+      <p id="note-detail">
+        <span id="note-path"></span>
+        <span id="note-mark" hidden><span aria-hidden="true">● </span>Unsaved changes</span>
+      </p>
+      <textarea
+        id="note-text"
+        aria-labelledby="note-name"
+        aria-describedby="note-detail"
+        spellcheck="false"
+        hidden
+      ></textarea>
+    </main>
+    <p id="status" role="status"></p>
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>
