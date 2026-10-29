@@ -48,6 +48,18 @@ describe("renderPlugin", () => {
     });
   });
 
+  it("writes a manifest that can grow commands and keys under its own id (ADR 0017)", () => {
+    const files = renderPlugin({ id: "example.my-plugin", name: "My plugin" });
+    const manifest = {
+      ...manifestOf(files),
+      contributes: {
+        commands: [{ id: "example.my-plugin.hello", title: "Say hello" }],
+        keys: [{ key: "Mod+Shift+H", command: "example.my-plugin.hello" }],
+      },
+    };
+    expect(validate(manifest)).toBe(true);
+  });
+
   it("keeps a description when one is given", () => {
     const files = renderPlugin({ id: "example.notes", name: "Notes", description: "Notes." });
     const manifest = manifestOf(files);
