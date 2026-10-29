@@ -7,13 +7,14 @@ there were two formats, the API would have holes.
 | --- | --- |
 | `eris/` | The secretary (assets are under the `brand/` licence) |
 | `sidebar/` | Left bar: agents and spaces |
-| `toolbar/` | Right status panel: the drawer list |
-| `dock/` | Bottom dock |
+| `toolbar/` | Right status panel: the drawer list (plugins, access) |
+| `dock/` | Bottom dock: open and put away the plugins that open on the desk |
 | `modes/` | Switch and save modes |
 | `onboarding/` | First-run scenario |
 
 Every plugin folder holds `plugin.json`, `README.md`, and as needed `ui/`, `logic/`, `tool/` and `tests/`.
 
-Status: `sidebar`, `eris` and `onboarding` are working UI plugins; the others are folders only (the
-first run draws its own frame of the toolbar, dock, modes and left bar until they exist).
+Status: `sidebar`, `eris`, `onboarding`, `toolbar` and `dock` are working UI plugins; `modes` is a folder
+only. The runtime puts `left`, `right` and `bottom` surfaces on the desk's edges. The first run still
+draws its own frame of the toolbar, dock, modes and left bar inside its overlay.
 `just dev` installs every folder here that has a `plugin.json` as a built-in plugin.

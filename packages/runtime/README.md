@@ -12,13 +12,15 @@ Layer: Web runtime (see `docs/architecture.md`). Plain TypeScript and DOM (ADR 0
   `status()`, `shortcuts`, `plugins` (`ready`, `mounted()`), `dispose()`.
 - `PluginHost` (used when `plugins: { url }` is given): mounts enabled UI plugins from `plugin.list`,
   relays their batched calls with the plugin as caller, reloads one surface on `plugin.changed`
-  (updated) and keeps the plugin's state; honours `placement: "overlay"`; `plugins.command(id, name,
+  (updated) and keeps the plugin's state; honours `placement: "overlay"` and the edges; `plugins.command(id, name,
   args)` sends a plugin a command; ADR 0012. `brain.turn` events go only to the plugin whose
   `brain.say` started the turn (events that arrive before the answer wait for it); ADR 0014.
 - `ShortcutRouter`, `comboOf`: "Mod+K" style bindings, focused surface first, then global.
 - Layout: `defaultLayout`, `loadLayout`, `saveLayout`, `place`, `move`, `remove`.
 - Clock: `realClock`, `ManualClock` (inject in tests), `tween`.
 - `SurfaceHost`: iframes with `sandbox="allow-scripts"` only. `applyTheme`.
+- Edges: `left`, `right` and `bottom` surfaces sit in bars around the grid (240, 320 and 72 px, shared
+  in mount order), without a title bar or a grid cell; a bar exists only while it holds a surface.
 - `@endue-ai/runtime/desk.css`: the desk stylesheet.
 
 ## Testing
