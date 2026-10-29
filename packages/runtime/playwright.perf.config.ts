@@ -1,13 +1,18 @@
 import { defineConfig, devices } from "@playwright/test";
+import { e2eGuard } from "../../scripts/e2e/guard.mjs";
+import { baseURL, webServer } from "./e2e/port";
 
 // Performance runs: real time, one worker, WebKit. `just perf-opening` records; nightly will check.
+// On macOS only a person runs it, with the machine's e2e slots to itself (ADR 0018).
+const guard = e2eGuard();
+
 export default defineConfig({
   testDir: "e2e/perf",
   testMatch: "*.perf.ts",
   workers: 1,
   retries: 0,
   reporter: "list",
-  use: { baseURL: "http://127.0.0.1:4173" },
+  use: { baseURL, ...guard.use },
   projects: [
     {
       name: "webkit",
@@ -18,9 +23,5 @@ export default defineConfig({
       },
     },
   ],
-  webServer: {
-    command: "pnpm exec vite --config e2e/vite.config.ts",
-    url: "http://127.0.0.1:4173",
-    reuseExistingServer: !process.env.CI,
-  },
+  webServer,
 });

@@ -18,7 +18,7 @@ just check && just test
 just dev
 ```
 
-Rust（バージョンは `rust-toolchain.toml` で固定されています）、Node 22 以上、pnpm、`just`、およびお使いの OS 向けの Tauri の前提条件が必要です。ランタイムのテストのために、`pnpm --filter @endue-ai/runtime exec playwright install webkit` を一度実行してください。
+Rust（バージョンは `rust-toolchain.toml` で固定されています）、Node 22 以上、pnpm、`just`、およびお使いの OS 向けの Tauri の前提条件が必要です。macOS ではランタイムのテストが Linux コンテナで動くため、Docker Desktop も必要です。Linux と Windows では `pnpm --filter @endue-ai/runtime exec playwright install webkit` を一度実行してください。テストは Playwright を直接使わず、`just test-e2e` で実行します。
 
 ## プライバシー
 

@@ -22,9 +22,18 @@ The argument is the PR number: $ARGUMENTS. You fix the cause of failing checks o
 5. `just check && just test`, then commit (`fix: ...` or `test: ...`, `git commit -s`) and push.
 6. `gh pr checks <PR> --watch`. Report what failed, why, and what changed.
 
+## Removed from the merge queue
+
+A PR that passed on its own can fail in the merge queue, where it runs on top of `main` and the PRs
+ahead of it. Find the failed `merge_group` run (`gh run list --event merge_group --workflow ci`), read
+its log, then `git merge origin/main` on the branch, reproduce and fix. It counts against the budget
+like any other failed `ci` run. Ask a person to re-add the PR to the queue; never add it yourself.
+
 ## Rules
 
 - Stay inside the issue's Scope.
+- Reproduce e2e failures with `just test-e2e [playwright args]` only; on macOS it runs the same Linux
+  WebKit as the `runtime-e2e` job. Never run Playwright directly (ADR 0018).
 - Fix causes, never symptoms: do not skip, delete, retry-loop or loosen tests, lints or gates. A flaky
   test is reported (label `quarantine` plus an issue), not silenced.
 - If the failure is outside the PR (runner outage, a broken main), say so and stop; it does not count

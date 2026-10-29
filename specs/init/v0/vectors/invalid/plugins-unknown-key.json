@@ -1,0 +1,9 @@
+{
+  "target": "InitDocument",
+  "description": "plugins has only disabled",
+  "instance": {
+    "plugins": {
+      "enabled": ["endue.sidebar"]
+    }
+  }
+}

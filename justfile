@@ -26,9 +26,10 @@ test-unit:
     pnpm exec vitest run
     node --test scripts/*.test.mjs
 
-# Runtime tests in WebKit on the browser bridge stub (once: pnpm --filter @endue-ai/runtime exec playwright install webkit)
-test-e2e:
-    pnpm --filter @endue-ai/runtime exec playwright test
+# Runtime tests in WebKit on the browser bridge stub; Playwright arguments pass through (`just test-e2e
+# --update-snapshots`). macOS runs them in a Linux container, two runs per machine at most (ADR 0018)
+test-e2e *args:
+    node scripts/e2e.mjs test {{args}}
 
 # Static checks: formatting, lints, types, workflows and specs (the Tauri app has its own recipe)
 check:
@@ -58,6 +59,24 @@ codegen:
 build-sdk:
     pnpm --filter @endue-ai/plugin-sdk build
 
-# Measure the opening frame time (pass "record" to make it the new baseline in e2e/perf/budgets.json)
+# Measure the opening frame time (pass "record" to make it the new baseline in e2e/perf/budgets.json).
+# Native WebKit with the machine to itself; on macOS for people only (ADR 0018)
 perf-opening mode="check":
-    {{ if mode == "record" { "PERF_RECORD=1 " } else { "" } }}pnpm --filter @endue-ai/runtime exec playwright test --config playwright.perf.config.ts
+    node scripts/e2e.mjs perf {{mode}}
+
+# Check that this session still has its macOS login session (a WindowServer crash ends it; ADR 0018)
+doctor:
+    node scripts/doctor.mjs
+
+# Parallel tasks (ADR 0015): show lanes, or pick the ready issues that can start now ("next")
+lanes *args="status":
+    node scripts/lanes.mjs {{args}}
+
+# Claim an ai:ready issue and start it in .claude/worktrees/ai-<issue> on ai/<issue>-<slug>
+task-start issue:
+    node scripts/doctor.mjs
+    branch="$(node scripts/lanes.mjs claim {{issue}})" && scripts/worktree.sh start {{issue}} "$branch"
+
+# Remove task worktrees whose PR merged and that hold no uncommitted work
+task-gc:
+    scripts/worktree.sh gc

@@ -28,12 +28,12 @@ pnpm dev        # the shell on the browser stub at http://127.0.0.1:5173 (Shift+
 ## Testing
 
 ```bash
-pnpm exec vitest run packages/runtime                          # unit: mesh, voice, soul, modes, tokens
-pnpm --filter @endue-ai/runtime exec playwright install webkit # once
-just test-e2e                                                  # Playwright on the browser stub
+pnpm exec vitest run packages/runtime    # unit: mesh, voice, soul, modes, tokens
+just test-e2e                            # Playwright on the browser stub (macOS: Linux container)
 ```
 
 Snapshots are render trees (ADR 0011) at fixed clock times; the Eris canvas adds a frame digest and
-its ring profile. Update with `pnpm --filter @endue-ai/runtime exec playwright test --update-snapshots`
-and review the JSON diff. Shell fixture: `e2e/fixture/shell.html` (`?lang=en`, `?persist=1`, `?reduced=1`).
-Shell decisions not in the brief: `ASSUMPTIONS.md`.
+its ring profile. Update with `just test-e2e --update-snapshots` and review the JSON diff. Playwright
+never runs directly: the configs refuse native WebKit on macOS (ADR 0018). Shell fixture:
+`e2e/fixture/shell.html` (`?lang=en`, `?persist=1`, `?reduced=1`). Shell decisions not in the brief:
+`ASSUMPTIONS.md`.
