@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://endue.ai/specs/bridge/v0/log.schema.json",
+  "title": "Desk bridge v0: log",
+  "description": "The desk's log, one channel per caller. A caller writes to its own channel without a scope; reading the log needs log:read.",
+  "$defs": {
+    "LogLevel": {
+      "description": "How much an entry matters.",
+      "type": "string",
+      "enum": ["debug", "info", "warn", "error"]
+    },
+    "LogEntry": {
+      "description": "One log entry. channel is the caller that wrote it, or core for desk-core.",
+      "type": "object",
+      "properties": {
+        "at": {
+          "description": "RFC 3339 timestamp, set by the core.",
+          "type": "string",
+          "format": "date-time"
+        },
+        "channel": { "$ref": "bridge.schema.json#/$defs/CallerId" },
+        "level": { "$ref": "#/$defs/LogLevel" },
+        "message": { "type": "string" },
+        "fields": { "description": "Structured detail, any JSON object.", "type": "object" }
+      },
+      "required": ["at", "channel", "level", "message"],
+      "additionalProperties": false
+    },
+    "LogWriteRequest": {
+      "description": "Write an entry to the caller's own channel.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "log.write" },
+        "params": { "$ref": "#/$defs/LogWriteParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "LogWriteParams": {
+      "description": "Parameters of log.write.",
+      "type": "object",
+      "properties": {
+        "level": { "$ref": "#/$defs/LogLevel" },
+        "message": { "type": "string", "minLength": 1, "maxLength": 8000 },
+        "fields": { "description": "Structured detail, any JSON object.", "type": "object" }
+      },
+      "required": ["level", "message"],
+      "additionalProperties": false
+    },
+    "LogWriteResult": {
+      "description": "Result of log.write.",
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "LogTailRequest": {
+      "description": "Read the latest entries of one channel, or of every channel.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "log.tail" },
+        "params": { "$ref": "#/$defs/LogTailParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "LogTailParams": {
+      "description": "Parameters of log.tail. Without channel, every channel merged in time order; count defaults to 100.",
+      "type": "object",
+      "properties": {
+        "channel": { "$ref": "bridge.schema.json#/$defs/CallerId" },
+        "count": { "type": "integer", "minimum": 1, "maximum": 1000 },
+        "scope": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/LogReadPermission" }
+      },
+      "required": ["scope"],
+      "additionalProperties": false
+    },
+    "LogTailResult": {
+      "description": "Result of log.tail, oldest entry first.",
+      "type": "object",
+      "properties": {
+        "entries": { "type": "array", "items": { "$ref": "#/$defs/LogEntry" } }
+      },
+      "required": ["entries"],
+      "additionalProperties": false
+    },
+    "LogEntryEvent": {
+      "description": "A new log entry. Sent to callers subscribed to log.entry that hold log:read.",
+      "type": "object",
+      "properties": {
+        "event": { "const": "log.entry" },
+        "data": { "$ref": "#/$defs/LogEntry" }
+      },
+      "required": ["event", "data"],
+      "additionalProperties": false
+    }
+  }
+}

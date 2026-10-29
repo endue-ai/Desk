@@ -1,0 +1,8 @@
+{
+  "target": "Permission",
+  "description": "proc.output is not a subscribable event",
+  "instance": {
+    "permission": "events:subscribe",
+    "names": ["proc.output"]
+  }
+}

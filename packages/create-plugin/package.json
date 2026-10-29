@@ -2,10 +2,23 @@
   "name": "@endue-ai/create-plugin",
   "version": "0.0.0",
   "private": true,
-  "description": "pnpm create @endue-ai/plugin scaffolder. Planned for the plugin stage.",
+  "description": "pnpm create @endue-ai/plugin: scaffold a Desk UI plugin folder that passes desk plugin validate.",
   "license": "Apache-2.0",
   "type": "module",
   "exports": {
     ".": "./src/index.ts"
+  },
+  "bin": {
+    "create-plugin": "./dist/create-plugin.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "vite build"
+  },
+  "devDependencies": {
+    "@endue-ai/bridge": "workspace:*",
+    "vite": "8.3.5"
   }
 }

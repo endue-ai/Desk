@@ -1,0 +1,11 @@
+{
+  "target": "BridgeRequest",
+  "description": "command ids are lowercase",
+  "instance": {
+    "id": 52,
+    "method": "cmd.unregister",
+    "params": {
+      "id": "Eris.Say"
+    }
+  }
+}

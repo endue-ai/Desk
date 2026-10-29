@@ -1,0 +1,12 @@
+{
+  "target": "BridgeRequest",
+  "description": "settings.set writes one of the caller's own keys",
+  "instance": {
+    "id": 36,
+    "method": "settings.set",
+    "params": {
+      "key": "motion.reduce",
+      "value": true
+    }
+  }
+}

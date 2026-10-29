@@ -14,5 +14,6 @@ there were two formats, the API would have holes.
 
 Every plugin folder holds `plugin.json`, `README.md`, and as needed `ui/`, `logic/`, `tool/` and `tests/`.
 
-Status: `sidebar`, `eris` and `onboarding` are working UI plugins; the others are folders only.
+Status: `sidebar`, `eris` and `onboarding` are working UI plugins; the others are folders only (the
+first run draws its own frame of the toolbar, dock, modes and left bar until they exist).
 `just dev` installs every folder here that has a `plugin.json` as a built-in plugin.
