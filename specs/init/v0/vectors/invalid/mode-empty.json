@@ -1,7 +1,0 @@
-{
-  "target": "InitDocument",
-  "description": "a mode has a name",
-  "instance": {
-    "mode": ""
-  }
-}

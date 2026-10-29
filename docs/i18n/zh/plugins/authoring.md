@@ -79,6 +79,40 @@ defineUiPlugin({
 
 词汇表（`fs:read`、`fs:write`、`proc:spawn`、`net:fetch`、`audio:capture`、`ui:surface`、`ui:notify`、`plugin:manage`）见 `specs/plugin/v0/README.md`。
 
+## 贡献项
+
+插件可以在 `plugin.json` 的 `contributes` 中，不写代码就为桌面的默认策略添加内容（ADR 0017）：命令面板
+列出、按键运行的命令，按键绑定，显示规则，它能打开的文件，主题，带默认值的设置，以及配置档。命令、设置和
+主题的 ID 以插件 ID 开头。
+
+```json
+"contributes": {
+  "commands": [{ "id": "example.my-plugin.new", "title": "New note" }],
+  "keys": [{ "key": "Mod+Shift+N", "command": "example.my-plugin.new" }],
+  "display": [{ "match": { "plugin": "example.my-plugin" }, "area": "right", "size": { "pixels": 360 } }],
+  "files": [{ "pattern": "*.md", "plugin": "example.my-plugin" }],
+  "settings": { "example.my-plugin.folder": { "kind": "string", "default": "~/notes" } }
+}
+```
+
+用 `ctx.commands.on` 回答自己的命令，用 `ctx.commands.run` 运行桌面上的任何命令：
+
+```js
+defineUiPlugin({
+  mount(ctx) {
+    ctx.commands.on("example.my-plugin.new", async () => "note-1");      // the answer
+    ctx.commands.on("desk.files.visit", ({ buffer, path }) => { /* fs.read it, show it */ });
+    ctx.commands.on("desk.files.save", ({ buffer, path }) => { /* fs.write it */ });
+    document.querySelector("button").onclick = () => ctx.commands.run("desk.theme.toggle");
+  },
+});
+```
+
+打开文件的插件回答 `desk.files.visit`、`desk.files.save` 和 `desk.files.revert`，并用
+`desk.buffers.update { id, modified: true }` 标记未保存的修改。主题以 `--desk-*` CSS 属性和 `ctx.theme`
+传到你的框架。在框架里按下的组合键会传到桌面的按键映射，除非你调用了 `preventDefault()`。默认策略及其各自
+决定的内容见 `plugins/README.md`。
+
 ## 测试
 
 `@endue-ai/plugin-sdk/testing` 无需浏览器即可运行你的插件，并以模拟的桥接层作为对端：

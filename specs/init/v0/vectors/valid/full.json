@@ -3,7 +3,7 @@
   "description": "a setup that uses every key",
   "instance": {
     "version": 0,
-    "mode": "focus",
+    "profile": "focus",
     "plugins": {
       "disabled": ["endue.sidebar", "example.hello-ui"]
     },

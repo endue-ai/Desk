@@ -90,6 +90,43 @@ passe par le pont, et chaque appel au pont, sauf `perm.*`, porte la portée de p
 Le vocabulaire (`fs:read`, `fs:write`, `proc:spawn`, `net:fetch`, `audio:capture`, `ui:surface`,
 `ui:notify`, `plugin:manage`) se trouve dans `specs/plugin/v0/README.md`.
 
+## Contributions
+
+Un plugin peut compléter les politiques par défaut du bureau sans code, dans `contributes` de
+`plugin.json` (ADR 0017) : des commandes que la palette liste et que des touches lancent, des raccourcis,
+des règles d'affichage, les fichiers qu'il ouvre, des thèmes, des réglages avec leur valeur par défaut et
+des profils. Les commandes, réglages et thèmes commencent par l'id du plugin.
+
+```json
+"contributes": {
+  "commands": [{ "id": "example.my-plugin.new", "title": "New note" }],
+  "keys": [{ "key": "Mod+Shift+N", "command": "example.my-plugin.new" }],
+  "display": [{ "match": { "plugin": "example.my-plugin" }, "area": "right", "size": { "pixels": 360 } }],
+  "files": [{ "pattern": "*.md", "plugin": "example.my-plugin" }],
+  "settings": { "example.my-plugin.folder": { "kind": "string", "default": "~/notes" } }
+}
+```
+
+Répondez à vos commandes avec `ctx.commands.on`, et lancez n'importe quelle commande du bureau avec
+`ctx.commands.run` :
+
+```js
+defineUiPlugin({
+  mount(ctx) {
+    ctx.commands.on("example.my-plugin.new", async () => "note-1");      // the answer
+    ctx.commands.on("desk.files.visit", ({ buffer, path }) => { /* fs.read it, show it */ });
+    ctx.commands.on("desk.files.save", ({ buffer, path }) => { /* fs.write it */ });
+    document.querySelector("button").onclick = () => ctx.commands.run("desk.theme.toggle");
+  },
+});
+```
+
+Un plugin qui ouvre des fichiers répond à `desk.files.visit`, `desk.files.save` et `desk.files.revert`,
+et signale le travail non enregistré avec `desk.buffers.update { id, modified: true }`. Le thème arrive
+dans votre cadre sous forme de propriétés CSS `--desk-*` et de `ctx.theme`. Les combinaisons de touches
+pressées dans votre cadre atteignent le keymap du bureau, sauf si vous appelez `preventDefault()`. Les
+politiques par défaut, et ce que chacune décide, sont listées dans `plugins/README.md`.
+
 ## Tests
 
 `@endue-ai/plugin-sdk/testing` exécute votre plugin sans navigateur, avec un pont simulé :

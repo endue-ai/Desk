@@ -48,6 +48,7 @@ export class Notifications {
   #until = Number.POSITIVE_INFINITY;
   #cancel: (() => void) | undefined;
   #nextId = 1;
+  readonly #listeners = new Set<(notice: Notice) => void>();
 
   constructor(clock: Clock, render: (notice: Notice | null) => void) {
     this.#clock = clock;
@@ -89,7 +90,14 @@ export class Notifications {
     this.#history.push(notice);
     this.#trim();
     if (!held) this.#show(notice);
+    for (const listener of this.#listeners) listener(notice);
     return notice;
+  }
+
+  /** Hear every notice that arrives, shown or held. */
+  onPush(listener: (notice: Notice) => void): () => void {
+    this.#listeners.add(listener);
+    return () => this.#listeners.delete(listener);
   }
 
   /** The notice showing now, or null. */
@@ -112,6 +120,12 @@ export class Notifications {
 
   clear(): void {
     this.#history = [];
+  }
+
+  /** Put back a history kept from an earlier session (oldest first), before anything new. */
+  restore(notices: readonly Notice[]): void {
+    this.#history = [...notices.map((notice) => ({ ...notice, at: 0 })), ...this.#history];
+    this.#trim();
   }
 
   dispose(): void {
