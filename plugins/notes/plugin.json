@@ -1,0 +1,20 @@
+{
+  "id": "endue.notes",
+  "name": "Notes",
+  "version": "0.1.0",
+  "kind": "ui",
+  "entry": "ui/index.html",
+  "description": "Opens Markdown and text files in a plain text area, saves and reloads them, and follows changes on disk.",
+  "permissions": [
+    { "permission": "fs:read", "paths": ["${home}/Notes/**"] },
+    { "permission": "fs:write", "paths": ["${home}/Notes/**"] },
+    { "permission": "cmd:invoke", "ids": ["desk.files.changed", "desk.buffers.update"] }
+  ],
+  "surfaces": [{ "id": "main", "title": "Notes", "placement": "center" }],
+  "contributes": {
+    "files": [
+      { "pattern": "*.md", "plugin": "endue.notes" },
+      { "pattern": "*.txt", "plugin": "endue.notes" }
+    ]
+  }
+}
