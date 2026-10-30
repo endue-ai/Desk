@@ -104,10 +104,30 @@ pub(crate) fn row(item: &Item) -> Result<Row> {
         body: text("body"),
         status: text("status"),
         unread: value.get("unread").and_then(Value::as_bool),
-        json: value.to_string(),
+        json: canonical(value.clone()).to_string(),
         utc,
         key,
     })
+}
+
+/// `value` with every object's keys in sorted order, so stored items and the objects `where`
+/// compares them with have one text whatever order they were written in (serde_json keeps the
+/// written order when its `preserve_order` feature is on, as it is in the app build).
+pub(crate) fn canonical(value: Value) -> Value {
+    match value {
+        Value::Object(map) => {
+            let mut entries: Vec<(String, Value)> = map.into_iter().collect();
+            entries.sort_by(|a, b| a.0.cmp(&b.0));
+            Value::Object(
+                entries
+                    .into_iter()
+                    .map(|(k, v)| (k, canonical(v)))
+                    .collect(),
+            )
+        }
+        Value::Array(values) => Value::Array(values.into_iter().map(canonical).collect()),
+        other => other,
+    }
 }
 
 /// The item a row's `json` holds.

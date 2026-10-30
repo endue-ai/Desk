@@ -212,6 +212,7 @@ fn where_ops_cover_eq_ne_lt_lte_gt_gte_in_contains_and_exists() {
     let index = open("query-where");
     let t = &day(30);
     let with = |id: &str, title: &str, extra: Value| task_with(D, id, title, t, extra);
+    let nested = json!({ "z": 1, "a": { "y": 2, "b": [3] } });
     let p2 = json!({ "priority": 2, "status": "done", "raw": { "labels": ["work"] } });
     index
         .upsert(&[
@@ -230,7 +231,7 @@ fn where_ops_cover_eq_ne_lt_lte_gt_gte_in_contains_and_exists() {
             with(
                 "p4",
                 "Someday",
-                json!({ "priority": 4, "status": "cancelled" }),
+                json!({ "priority": 4, "status": "cancelled", "raw": nested }),
             ),
             event(D, "e1", "Late", t, "2026-10-30T08:00:00+09:00"),
             event(D, "e2", "Midnight", t, "2026-10-30T00:00:00Z"),
@@ -262,7 +263,12 @@ fn where_ops_cover_eq_ne_lt_lte_gt_gte_in_contains_and_exists() {
     let any_priority = json!([{ "field": "priority", "op": "exists" }]);
     assert_eq!(where_ids(&index, "task", any_priority), "p1 p2 p3 p4");
     assert_eq!(tasks("priority", "exists", json!(false)), "p0");
-    assert_eq!(tasks("raw", "exists", json!(true)), "p0 p1 p2 p3");
+    assert_eq!(tasks("raw", "exists", json!(true)), "p0 p1 p2 p3 p4");
+    assert_eq!(tasks("raw.labels", "exists", json!(false)), "p4");
+    // Objects compare as JSON, whatever order their keys were written in.
+    let same = json!({ "a": { "b": [3], "y": 2 }, "z": 1 });
+    assert_eq!(tasks("raw", "eq", same.clone()), "p4");
+    assert_eq!(tasks("raw", "ne", same), "p0 p1 p2 p3");
     let both = json!([
         { "field": "status", "op": "eq", "value": "open" },
         { "field": "priority", "op": "lte", "value": 2 },

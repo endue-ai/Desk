@@ -191,7 +191,8 @@ mod tests {
         let index: Arc<dyn ItemIndex> = Arc::new(Index::open(dir.join("index.sqlite")).unwrap());
         let item = serde_json::from_value(serde_json::json!({
             "id": "t1", "source": { "connector": "desk.fixtures", "instance": "default" },
-            "kind": "task", "title": "Pay rent", "updatedAt": "2026-10-30T09:00:00Z", "status": "open",
+            "kind": "task", "title": "Pay rent", "status": "open",
+            "updatedAt": "2026-10-30T09:00:00Z",
         }))
         .unwrap();
         index.upsert(&[item]).unwrap();

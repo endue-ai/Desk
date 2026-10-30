@@ -5,6 +5,7 @@ use desk_bridge::{ConditionOp, ItemCondition, ItemQuery};
 use rusqlite::types::Value as Sql3;
 use serde_json::Value;
 
+use crate::columns::canonical;
 use crate::error::{Error, Result};
 use crate::fields::{Field, resolve};
 use crate::scope::push_kinds;
@@ -165,7 +166,7 @@ fn equal(sql: &mut Sql, field: &Field, name: &str, value: &Value, same: bool) ->
             .push(&expr)
             .push(is)
             .push("json(")
-            .bind(value.to_string())
+            .bind(json_text(value))
             .push(")"),
         _ => sql.push(&expr).push(is).bind(operand(field, name, value)?),
     };
@@ -195,10 +196,9 @@ fn contains(sql: &mut Sql, field: &Field, value: &Value) {
     sql.push(path).push("') e WHERE ");
     match value {
         Value::Null => sql.push("e.type = 'null'"),
-        Value::Array(_) | Value::Object(_) => sql
-            .push("e.value = json(")
-            .bind(value.to_string())
-            .push(")"),
+        Value::Array(_) | Value::Object(_) => {
+            sql.push("e.value = json(").bind(json_text(value)).push(")")
+        }
         scalar => sql.push("e.value = ").bind(scalar_of(scalar)),
     };
     sql.push(")");
@@ -226,6 +226,11 @@ fn operand(field: &Field, name: &str, value: &Value) -> Result<Sql3> {
             }),
         _ => Ok(scalar_of(value)),
     }
+}
+
+/// An object or an array as the index stores it: keys sorted.
+fn json_text(value: &Value) -> String {
+    canonical(value.clone()).to_string()
 }
 
 /// A JSON scalar as SQLite holds it (`json_extract` reads true as 1).
