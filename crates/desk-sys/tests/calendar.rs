@@ -112,7 +112,12 @@ fn the_fake_source_lists_calendars_and_the_events_inside_a_range() {
         ]);
 
     let calendars = source.calendars().unwrap();
-    assert_eq!(calendars, three_calendars());
+    assert_eq!(
+        ids(&calendars, |c| &c.title),
+        ["Home", "Trips", "Work"],
+        "ordered by title"
+    );
+    assert!(calendars.iter().all(|c| three_calendars().contains(c)));
 
     let events = source
         .events("2026-11-02T00:00:00+09:00", "2026-11-03T00:00:00+09:00")
@@ -296,9 +301,7 @@ fn on_macos_the_os_source_lists_real_calendars_when_access_is_granted() {
         | Authorization::Denied
         | Authorization::Restricted
         | Authorization::WriteOnly => {
-            eprintln!(
-                "calendar access is {status:?}; grant it in System Settings to read calendars"
-            );
+            eprintln!("calendar access is {status:?}: nothing is read until it is FullAccess");
         }
         Authorization::FullAccess => {
             let calendars = source.calendars().expect("calendars");
