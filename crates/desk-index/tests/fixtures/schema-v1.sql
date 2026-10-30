@@ -23,7 +23,12 @@ CREATE TABLE items (
   published_at_utc INTEGER,
   UNIQUE (connector, instance, id)
 );
-CREATE INDEX items_kind_updated ON items (kind, updated_at_utc);
+-- Scanned backwards, this is the default order: newest first, ties by id, connector, instance.
+CREATE INDEX items_kind_updated ON items (
+  kind, updated_at_utc, id DESC, connector DESC, instance DESC
+);
+CREATE INDEX items_kind_start ON items (kind, start_utc);
+CREATE INDEX items_kind_due ON items (kind, due_utc);
 CREATE INDEX items_source_updated ON items (connector, instance, updated_at_utc);
 CREATE VIRTUAL TABLE items_fts USING fts5 (
   title, body, content = 'items', content_rowid = 'seq', tokenize = 'unicode61 remove_diacritics 2'

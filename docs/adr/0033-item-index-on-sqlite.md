@@ -41,10 +41,11 @@ thousand items; inside `desk-core` the kernel would carry a database. The core h
 * **Schema 1.** `items` is keyed by `(connector, instance, id)` and holds the envelope, the whole
   item as `json`, `status` and `unread`, and epoch-second `*_utc` columns for `updatedAt`,
   `createdAt`, `start`, `end`, `due`, `receivedAt` and `publishedAt`, filled on upsert; `where` and
-  `sort` on those fields use them. Other paths go through `json_extract`. Indexes:
-  `(kind, updated_at_utc)` and `(connector, instance, updated_at_utc)`. An explicit
-  `seq INTEGER PRIMARY KEY` is the row id the FTS5 table (title and body, `unicode61`, kept by
-  triggers) points at, because SQLite may renumber implicit row ids on `VACUUM`.
+  `sort` on those fields use them. Other paths go through `json_extract`. Indexes: `kind` with
+  `updated_at_utc`, `start_utc` and `due_utc` each, and `(connector, instance, updated_at_utc)`
+  for sources and retention. An explicit `seq INTEGER PRIMARY KEY` is the row id the FTS5 table
+  (title and body, `unicode61`, kept by triggers) points at, because SQLite may renumber implicit
+  row ids on `VACUUM`.
 * **Versions.** `PRAGMA user_version` holds the schema version; migrations run forward, one
   transaction per step, and a file a newer desk wrote is refused as `unsupported`, never rewritten.
   `rebuild()` recreates the full-text table and reindexes; the items stay.
