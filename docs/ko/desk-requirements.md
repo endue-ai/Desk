@@ -174,7 +174,7 @@ Tauri 셸과 `desk-sys` 는 드라이버입니다. 검사는 하지 않고 코�
 | `messages` | `*Messages*`: 로그 · 오류 · 최근 커맨드 | `log.*` | 없음 | 1 |
 | `theme-endue` | 기본 테마 밝음 · 어두움 | kind `theme` | 있음 (#55 `desk.theme`: 밝음 · 어두움 · 고대비. kind `theme` 대신 `contributes.themes`) | 1 |
 | `help` | describe (RT-06) · 단축키 치트시트 · walkthrough 목록 | `cmd.list` · 키맵 읽기 | 없음 | 2 |
-| `files` | 허락한 폴더 보기(dired): 열기 · 드래그 · 감시 | `fs:read` · `dialog` | 일부 (#55 `desk.files`: 여는 규칙 · 최근 · 저장 · 되돌리기 · 디스크 변경. 폴더 보기는 없음) | 2 |
+| `files` | 허락한 폴더 보기(dired): 열기 · 드래그 · 감시 | `fs:read` · `dialog` | 일부 (#55 `desk.files`: 여는 규칙 · 최근 · 저장 · 되돌리기 · 디스크 변경. 폴더 보기는 `endue.explorer`, `plugins/explorer`: 트리 · 열기 · 감시 · 드래그 내보내기 · 새 파일. 쓰기 작업과 `dialog` 는 없음, `explorer-requirements.md`) | 2 |
 | `terminal` | PTY 표면(term) | `proc:spawn` pty | 없음 | 2 |
 | `scratch` | 빈 텍스트 표면, 저장 안 해도 남음 | store | 없음 | 2 |
 | `account` | endue ID 로그인 · 상태 · 동기화 (SYNC) | `sync.*` | 없음 | 3 |
