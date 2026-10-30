@@ -90,7 +90,8 @@ diesen Bereich abdeckt.
 3. Bei jedem Aufruf den passenden Bereich mitgeben, so eng wie möglich.
 
 Das Vokabular (`fs:read`, `fs:write`, `proc:spawn`, `net:fetch`, `audio:capture`, `ui:surface`,
-`ui:notify`, `plugin:manage`) steht in `specs/plugin/v0/README.md`.
+`ui:notify`, `plugin:manage`, `brain:converse`, `cmd:invoke`, `cmd:advise`, `settings:read`, `log:read`,
+`events:subscribe`, `perm:manage`) steht in `specs/plugin/v0/README.md`.
 
 ## Beiträge
 

@@ -85,7 +85,8 @@ defineUiPlugin({
 3. 호출할 때마다 그에 맞는 범위를 최대한 좁게 넘깁니다.
 
 어휘(`fs:read`, `fs:write`, `proc:spawn`, `net:fetch`, `audio:capture`, `ui:surface`,
-`ui:notify`, `plugin:manage`)는 `specs/plugin/v0/README.md`에 있습니다.
+`ui:notify`, `plugin:manage`, `brain:converse`, `cmd:invoke`, `cmd:advise`, `settings:read`, `log:read`,
+`events:subscribe`, `perm:manage`)는 `specs/plugin/v0/README.md`에 있습니다.
 
 ## 기여 항목
 

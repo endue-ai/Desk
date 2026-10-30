@@ -88,7 +88,8 @@ passe par le pont, et chaque appel au pont, sauf `perm.*`, porte la portée de p
 3. Passez la portée correspondante avec chaque appel, aussi étroite que possible.
 
 Le vocabulaire (`fs:read`, `fs:write`, `proc:spawn`, `net:fetch`, `audio:capture`, `ui:surface`,
-`ui:notify`, `plugin:manage`) se trouve dans `specs/plugin/v0/README.md`.
+`ui:notify`, `plugin:manage`, `brain:converse`, `cmd:invoke`, `cmd:advise`, `settings:read`, `log:read`,
+`events:subscribe`, `perm:manage`) se trouve dans `specs/plugin/v0/README.md`.
 
 ## Contributions
 
