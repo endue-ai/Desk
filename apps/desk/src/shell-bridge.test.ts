@@ -1,9 +1,9 @@
 import {
+  type BrainStatusResult,
+  type BrainTurnKind,
   type BridgeAdapter,
   BridgeClient,
   type BridgeEvent,
-  type BrainStatusResult,
-  type BrainTurnKind,
   browserStub,
   type StubHandlers,
 } from "@endue-ai/bridge";
@@ -102,6 +102,21 @@ describe("the shell bridge over the core", () => {
     expect(answer).not.toHaveProperty("words");
     expect(calls()).toEqual([{ method: "brain.say", params: { text: "hello?", scope: SCOPE } }]);
     expect(listening()).toBe(0);
+  });
+
+  test("brain.say keeps its turn's events that arrive before the call answers", async () => {
+    let emit: (event: BridgeEvent) => void = () => undefined;
+    const { stub, bridge } = setup({
+      // The core's events and its answer travel apart: the whole turn can come first.
+      "brain.say": () => {
+        for (const kind of ["started", "delta", "completed"] as const)
+          emit(turn("t7", kind, kind === "delta" ? "early" : undefined));
+        emit(turn("t6", "delta", "an older turn"));
+        return { turnId: "t7" };
+      },
+    });
+    emit = (event) => stub.emit(event);
+    await expect(bridge.brain.say("hello?")).resolves.toEqual({ text: "early" });
   });
 
   test("brain.say waits through offline and answers the error sentence when the turn fails", async () => {
