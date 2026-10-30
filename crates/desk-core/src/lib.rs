@@ -10,6 +10,7 @@ mod core_fs;
 mod core_init;
 mod core_perm;
 mod core_plugins;
+mod core_proc;
 mod core_prompts;
 mod core_store;
 mod core_ui;

@@ -14,7 +14,8 @@
       "**/*.json",
       "!brand",
       "!docs",
-      "!**/__snapshots__"
+      "!**/__snapshots__",
+      "!**/ui/vendor"
     ]
   },
   "formatter": {

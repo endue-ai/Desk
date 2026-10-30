@@ -12,6 +12,8 @@ TypeScript and DOM (ADR 0010); every animation runs on an injected clock (ADR 00
   `notify(notice)`, `theme()`, `onQuit`, `keep(name, part)`, `plugins`, `dispose()`.
 - `PluginHost`: mounts enabled UI plugins, relays their calls as their own caller, reloads a surface on
   `plugin.changed`, carries commands both ways and keys from frames, shares the theme (ADR 0012, 0014).
+  `Owners` (`owners.ts`) sends brain turns, fs watches and processes only to the plugin whose call
+  started them, holding events that arrive before the call's answer.
 - Policies: `collect(plugins)`, `Commands` (the core's registry), layered `Settings`, `Keymap` (the
   person's layer `desk.keys.bindings` last; `rebind.ts` edits it), `decide`, `resolveTheme`,
   `Notifications`, `Buffers`; `src/policies/*` applies one desk.* policy each. `HostViews` (`views.ts`):

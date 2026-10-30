@@ -1,0 +1,128 @@
+{
+  "id": "endue.terminal",
+  "name": "Terminal",
+  "version": "0.1.0",
+  "kind": "ui",
+  "entry": "ui/index.html",
+  "description": "The person's shell in a pseudo-terminal the core runs: several terminals on one surface, with the desk's theme, keys and buffers.",
+  "permissions": [
+    {
+      "permission": "proc:spawn",
+      "commands": ["zsh", "bash", "fish", "sh", "pwsh", "powershell", "cmd"],
+      "pty": true
+    },
+    { "permission": "ui:notify" },
+    {
+      "permission": "cmd:invoke",
+      "ids": ["desk.buffers.open", "desk.buffers.update", "desk.buffers.close"]
+    }
+  ],
+  "surfaces": [{ "id": "main", "title": "Terminal", "placement": "center" }],
+  "contributes": {
+    "commands": [
+      { "id": "endue.terminal.new", "title": "New terminal", "keywords": ["shell", "console"] },
+      { "id": "endue.terminal.focus", "title": "Focus the terminal", "keywords": ["shell"] },
+      { "id": "endue.terminal.close", "title": "Close the terminal", "keywords": ["exit"] },
+      { "id": "endue.terminal.next", "title": "Next terminal" },
+      { "id": "endue.terminal.previous", "title": "Previous terminal" },
+      { "id": "endue.terminal.clear", "title": "Clear the terminal", "keywords": ["cls"] },
+      {
+        "id": "endue.terminal.interrupt",
+        "title": "Interrupt the terminal's program",
+        "keywords": ["sigint", "ctrl-c", "stop"]
+      },
+      {
+        "id": "endue.terminal.restart",
+        "title": "Start the terminal's shell again",
+        "keywords": ["relaunch", "respawn"]
+      },
+      {
+        "id": "endue.terminal.run",
+        "title": "Run a program in a new terminal",
+        "keywords": ["exec", "spawn", "command"]
+      }
+    ],
+    "keys": [
+      { "key": "Control+`", "command": "endue.terminal.focus" },
+      { "key": "Mod+Shift+T", "command": "endue.terminal.new" }
+    ],
+    "display": [
+      {
+        "match": { "plugin": "endue.terminal" },
+        "area": "center",
+        "size": { "columns": 1, "rows": 1 },
+        "focus": true
+      }
+    ],
+    "settings": {
+      "endue.terminal.shell": {
+        "kind": "string",
+        "default": "",
+        "description": "The program a new terminal runs: a name on PATH or a path. Empty: zsh, bash or sh on macOS and Linux (whichever is there first), pwsh, powershell or cmd on Windows. A program outside the plugin's grants is asked for once."
+      },
+      "endue.terminal.args": {
+        "kind": "array",
+        "default": [],
+        "description": "Arguments for the shell, after its own."
+      },
+      "endue.terminal.login": {
+        "kind": "string",
+        "default": "auto",
+        "choices": ["auto", "yes", "no"],
+        "description": "Start zsh, bash, fish and sh as login shells (-l). auto: yes on macOS, no elsewhere."
+      },
+      "endue.terminal.cwd": {
+        "kind": "string",
+        "default": "~",
+        "description": "Where a new terminal starts: a rooted path (~, /, ${home})."
+      },
+      "endue.terminal.env": {
+        "kind": "object",
+        "default": {},
+        "description": "Extra environment variables for every terminal, over TERM, COLORTERM and TERM_PROGRAM."
+      },
+      "endue.terminal.scrollback": {
+        "kind": "integer",
+        "default": 10000,
+        "description": "Lines kept above the screen, per terminal (0 to 100000)."
+      },
+      "endue.terminal.font-family": {
+        "kind": "string",
+        "default": "",
+        "description": "The terminal's font. Empty: the platform's monospace font."
+      },
+      "endue.terminal.font-size": {
+        "kind": "integer",
+        "default": 13,
+        "description": "The font size in pixels (8 to 40)."
+      },
+      "endue.terminal.cursor-style": {
+        "kind": "string",
+        "default": "block",
+        "choices": ["block", "underline", "bar"],
+        "description": "The cursor's shape."
+      },
+      "endue.terminal.cursor-blink": {
+        "kind": "boolean",
+        "default": true,
+        "description": "Whether the cursor blinks. Reduced motion stops it either way."
+      },
+      "endue.terminal.bell": {
+        "kind": "string",
+        "default": "notify",
+        "choices": ["notify", "none"],
+        "description": "What the terminal bell does: a desk notification, or nothing."
+      },
+      "endue.terminal.copy-on-select": {
+        "kind": "boolean",
+        "default": false,
+        "description": "Copy text as soon as it is selected."
+      },
+      "endue.terminal.keys-to-desk": {
+        "kind": "array",
+        "default": [],
+        "description": "Chords the terminal hands to the desk instead of the shell, over the desk's own (its palette, buffer, window and desktop keys), like Control+Q."
+      }
+    }
+  }
+}

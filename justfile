@@ -83,6 +83,11 @@ docs-api out:
 build-sdk:
     pnpm --filter @endue-ai/plugin-sdk build
 
+# Copy the terminal plugin's emulator (xterm.js and its addons) from the pinned npm packages into
+# plugins/terminal/ui/vendor; scripts/vendor-xterm.test.mjs checks the copy matches (ADR 0033)
+vendor-terminal:
+    node scripts/vendor-xterm.mjs
+
 # Measure the opening frame time (pass "record" to make it the new baseline in e2e/perf/budgets.json).
 # Native WebKit with the machine to itself; on macOS for people only (ADR 0018)
 perf-opening mode="check":

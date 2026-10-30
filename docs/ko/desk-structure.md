@@ -163,6 +163,7 @@ desk/
 │   ├── toolbar/              # 오른쪽 상태 패널 (서랍 목록). 셸의 레일과 같은 자리 (ADR 0028)
 │   ├── dock/                 # 아래 독 (플러그인 타일). 셸의 아래 가장자리와 같은 자리 (ADR 0028)
 │   ├── permissions/          # grant 목록 · 회수 · 프롬프트 창 (endue.permissions, #69)
+│   ├── terminal/             # 터미널: 사용자의 셸을 코어의 PTY 에서, xterm.js 는 폴더 안에 (endue.terminal, ADR 0033)
 │   ├── profiles/             # 프로필 전환 · 저장 (desk.profiles, 예전 이름 modes)
 │   ├── shell/                # 데스크 셸의 정책 desk.shell: 샘플 프로필 · 설정 · 색 (ADR 0025). 셸의 코드는 packages/runtime
 │   ├── display/ · keys/ · palette/ · buffers/ · files/ · session/ · notify/ · theme/
@@ -181,7 +182,7 @@ desk/
 ├── docs/                     # 마크다운이 진실, 사이트는 빌드 산출물
 │   ├── architecture.md
 │   ├── adr/                  # 0001-tauri-over-electron.md … 되돌리기 어려운 결정마다 하나
-│   ├── ko/                   # 한국어 설계 원본: 이 문서 · desk-requirements.md · first-run-scenario.md
+│   ├── ko/                   # 한국어 설계 원본: 이 문서 · desk-requirements.md · terminal-requirements.md · first-run-scenario.md
 │   ├── i18n/                 # 사용자용 문서의 ja · zh · fr · de · ko 번역
 │   ├── plugins/              # 플러그인 저자 가이드
 │   ├── brain/                # 두뇌 어댑터 작성 가이드

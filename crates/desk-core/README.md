@@ -8,8 +8,13 @@ Layer: Rust core (see `docs/architecture.md`).
 ## Public API
 
 - `Core::new(Roots { home })`, `Core::handle(caller, BridgeRequest) -> BridgeResponse`: serves `fs.*`,
-  `perm.*`, `events.*`, `plugin.*`, `store.*`, `cmd.*`, `ui.notify`, `init.get` and `brain.say`; other
-  methods answer `unsupported` for now. Hosts call it off their UI thread: `perm.request` waits.
+  `proc.*`, `perm.*`, `events.*`, `plugin.*`, `store.*`, `cmd.*`, `ui.notify`, `init.get` and `brain.say`;
+  other methods answer `unsupported` for now. Hosts call it off their UI thread: `perm.request` waits.
+- Processes (`core_proc.rs`): `proc.spawn` passes the permission engine for its command (a PTY only
+  under a scope and a grant that allow `pty`), starts in the home folder unless `cwd` says where, and
+  reports `proc.output` (UTF-8 split at whole characters, else base64) and `proc.exit` to its caller.
+  Later calls need the owner and a scope covering the command; another caller's id is `not_found`. A
+  plugin turned off or a revoked grant ends the processes it covered. `process_count()`.
 - Permissions: `Core::grant` (session), `with_grant_file(path)` (`always` grants on disk, ADR 0029),
   `with_prompter` (decides when no `perm:manage` holder can be prompted; `RefuseAll` by default).
   `perm.request` becomes a `perm.prompt` to the `perm:manage` holders; the first `perm.answer` decides.
@@ -33,6 +38,6 @@ Layer: Rust core (see `docs/architecture.md`).
 cargo test -p desk-core
 ```
 
-Integration tests in `tests/`: permissions, events, bridge, plugins, store, cmd, fs, init, sync, lease
-and conversation (the last two start `examples/brain-echo`; needs Node); `grants_store.rs`,
+Integration tests in `tests/`: permissions, events, bridge, plugins, store, cmd, fs, proc (the child is
+the test binary itself), init, sync, lease and conversation (the last two start `examples/brain-echo`; needs Node); `grants_store.rs`,
 `prompts.rs` and `events_bridge.rs` cover grants on disk, prompts and subscriptions.

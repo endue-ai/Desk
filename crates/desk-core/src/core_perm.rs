@@ -143,11 +143,12 @@ impl Core {
         json(PermListResult { grants })
     }
 
-    /// A grant of `caller`'s went (revoked, spent): the watches and subscriptions no grant covers
-    /// any more end, and prompts that nobody can answer any more go to the Prompter.
+    /// A grant of `caller`'s went (revoked, spent): the watches, subscriptions and processes no
+    /// grant covers any more end, and prompts that nobody can answer any more go to the Prompter.
     pub(crate) fn lost_grant(&self, caller: &str) {
         self.prune_watches(caller);
         self.prune_subscriptions(caller);
+        self.prune_processes(caller);
         self.settle_unheard();
     }
 
