@@ -11,11 +11,11 @@ use desk_bridge::{
     CmdChangedData, CmdChangedEvent, CmdInvokeParams, CmdInvokeResult, CmdInvokedData,
     CmdInvokedEvent, CmdListParams, CmdListResult, CmdRegisterParams, CmdRegisterResult,
     CmdUnregisterParams, CmdUnregisterResult, CommandChange, CommandFailure, CommandFailureCode,
-    CommandInfo, ErrorCode, Permission,
+    CommandInfo, ErrorCode, EventName, Permission,
 };
 use serde_json::Value;
 
-use crate::handler::{Answer, Core, denied, error, json};
+use crate::handler::{Answer, Core, error, json};
 use crate::manifest::schema_registry;
 use crate::perm::{Target, star_match};
 
@@ -84,9 +84,7 @@ impl Core {
 
     pub(crate) fn cmd_list(&self, caller: &str, params: CmdListParams) -> Answer {
         let scope = Permission::CmdInvoke(params.scope.clone());
-        self.permissions()
-            .authorize(caller, &scope, &Target::None)
-            .map_err(denied)?;
+        self.check(caller, &scope, &Target::None)?;
         let commands = self.commands();
         let listed = commands
             .order
@@ -100,9 +98,7 @@ impl Core {
 
     pub(crate) fn cmd_invoke(&self, caller: &str, params: CmdInvokeParams) -> Answer {
         let scope = Permission::CmdInvoke(params.scope);
-        self.permissions()
-            .authorize(caller, &scope, &Target::CommandId(&params.id))
-            .map_err(denied)?;
+        self.check(caller, &scope, &Target::CommandId(&params.id))?;
         let info = self
             .commands()
             .by_id
@@ -126,8 +122,10 @@ impl Core {
             );
             invocation_id
         };
-        self.events()
-            .publish(BridgeEvent::CmdInvoked(CmdInvokedEvent {
+        let to = self.recipients(EventName::CmdInvoked, vec![info.provider]);
+        self.events().publish_to(
+            to,
+            BridgeEvent::CmdInvoked(CmdInvokedEvent {
                 event: Default::default(),
                 data: CmdInvokedData {
                     invocation_id: invocation_id.clone(),
@@ -135,7 +133,8 @@ impl Core {
                     args: params.args,
                     caller: caller.to_owned(),
                 },
-            }));
+            }),
+        );
         json(CmdInvokeResult { invocation_id })
     }
 
@@ -228,16 +227,20 @@ impl Core {
             }));
     }
 
+    /// `cmd.changed` for the provider and the callers subscribed to it.
     fn cmd_changed(&self, id: &str, change: CommandChange, provider: &str) {
-        self.events()
-            .publish(BridgeEvent::CmdChanged(CmdChangedEvent {
+        let to = self.recipients(EventName::CmdChanged, vec![provider.to_owned()]);
+        self.events().publish_to(
+            to,
+            BridgeEvent::CmdChanged(CmdChangedEvent {
                 event: Default::default(),
                 data: CmdChangedData {
                     id: id.to_owned(),
                     change,
                     provider: provider.to_owned(),
                 },
-            }));
+            }),
+        );
     }
 
     fn commands(&self) -> MutexGuard<'_, Commands> {

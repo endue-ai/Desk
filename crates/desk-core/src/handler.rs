@@ -1,5 +1,5 @@
 //! `Core::handle`: one bridge request in, one bridge response out. Every primitive call passes the
-//! permission engine first; methods the core does not serve yet answer `unsupported`.
+//! permission engine first (`Core::check`); methods the core does not serve yet answer `unsupported`.
 
 use std::io;
 use std::path::{Path, PathBuf};
@@ -8,21 +8,22 @@ use std::sync::{Arc, Mutex, MutexGuard};
 
 use base64::Engine as _;
 use desk_bridge::{
-    BridgeError, BridgeEvent, BridgeFailure, BridgeRequest, BridgeResponse, BridgeSuccess,
-    DirEntry, Encoding, EntryKind, ErrorCode, False, FsListResult, FsReadResult, Grant,
-    GrantChange, GrantDuration, PermChangedData, PermChangedEvent, PermQueryResult,
-    PermRequestResult, PermRevokeResult, Permission, RequestId, True,
+    BridgeError, BridgeFailure, BridgeRequest, BridgeResponse, BridgeSuccess, DirEntry, Encoding,
+    EntryKind, ErrorCode, False, FsListResult, FsReadResult, Permission, RequestId, True,
 };
 use desk_sys::fs as sysfs;
 use serde::Serialize;
 
 use crate::conversation::Conversation;
 use crate::core_cmd::Commands;
+use crate::core_events::Subscriptions;
 use crate::core_fs::Watches;
+use crate::core_perm::{Prompter, RefuseAll};
+use crate::core_prompts::Prompts;
 use crate::events::EventBus;
 use crate::init::InitFile;
 use crate::paths::normalize;
-use crate::perm::{Denied, PermissionEngine, Target, covers};
+use crate::perm::{Denied, PermissionEngine, Target};
 use crate::plugins::PluginRegistry;
 use crate::store::Store;
 use crate::sync::Syncer;
@@ -34,28 +35,15 @@ pub struct Roots {
     pub home: PathBuf,
 }
 
-/// Asks the person whether to grant a permission. Desk's prompt UI implements this.
-pub trait Prompter: Send + Sync {
-    fn ask(&self, caller: &str, permission: &Permission, reason: &str) -> bool;
-}
-
-/// The prompter used until a prompt UI exists: it refuses everything.
-#[derive(Debug, Default)]
-pub struct RefuseAll;
-
-impl Prompter for RefuseAll {
-    fn ask(&self, _caller: &str, _permission: &Permission, _reason: &str) -> bool {
-        false
-    }
-}
-
 pub(crate) type Answer = Result<serde_json::Value, BridgeError>;
 
 pub struct Core {
     roots: Roots,
     permissions: Mutex<PermissionEngine>,
     events: EventBus,
-    prompter: Box<dyn Prompter>,
+    pub(crate) prompter: Box<dyn Prompter>,
+    pub(crate) prompts: Mutex<Prompts>,
+    pub(crate) subscriptions: Mutex<Subscriptions>,
     pub(crate) plugins: Mutex<PluginRegistry>,
     pub(crate) store: Mutex<Store>,
     pub(crate) conversation: Option<Arc<Conversation>>,
@@ -73,6 +61,8 @@ impl Core {
             permissions: Mutex::new(PermissionEngine::new()),
             events: EventBus::new(),
             prompter: Box::new(RefuseAll),
+            prompts: Mutex::new(Prompts::default()),
+            subscriptions: Mutex::new(Subscriptions::default()),
             plugins: Mutex::new(PluginRegistry::new(None)),
             store: Mutex::new(Store::new(None)),
             conversation: None,
@@ -91,13 +81,6 @@ impl Core {
 
     pub fn events(&self) -> &EventBus {
         &self.events
-    }
-
-    /// Grant directly, as the person would through a prompt.
-    pub fn grant(&self, caller: &str, permission: Permission) -> Grant {
-        let grant = self.permissions().grant(caller, permission);
-        self.changed(&grant.grant_id, GrantChange::Granted);
-        grant
     }
 
     pub fn handle(&self, caller: &str, request: BridgeRequest) -> BridgeResponse {
@@ -133,56 +116,11 @@ impl Core {
                     .and_then(|path| list(&path));
                 (r.id, answer)
             }
-            R::PermQuery(r) => {
-                let mut grants = self.permissions().grants(caller);
-                if let Some(filter) = &r.params.permission {
-                    grants.retain(|grant| covers(&grant.permission, filter));
-                }
-                (r.id, json(PermQueryResult { grants }))
-            }
-            R::PermRequest(r)
-                if matches!(
-                    r.params.duration,
-                    Some(GrantDuration::Once | GrantDuration::Always)
-                ) =>
-            {
-                (r.id, unsupported("perm.request once or always"))
-            }
-            R::PermRequest(r) => {
-                let params = r.params;
-                let answer = if self
-                    .prompter
-                    .ask(caller, &params.permission, &params.reason)
-                {
-                    let grant = self.grant(caller, params.permission);
-                    json(PermRequestResult {
-                        granted: true,
-                        grant: Some(grant),
-                    })
-                } else {
-                    json(PermRequestResult {
-                        granted: false,
-                        grant: None,
-                    })
-                };
-                (r.id, answer)
-            }
-            R::PermRevoke(r) if r.params.scope.is_some() => {
-                (r.id, unsupported("perm.revoke of another caller's grant"))
-            }
-            R::PermRevoke(r) => {
-                let answer = if self.permissions().revoke(caller, &r.params.grant_id) {
-                    self.changed(&r.params.grant_id, GrantChange::Revoked);
-                    self.prune_watches(caller);
-                    json(PermRevokeResult {})
-                } else {
-                    Err(error(
-                        ErrorCode::NotFound,
-                        format!("no grant {}", r.params.grant_id),
-                    ))
-                };
-                (r.id, answer)
-            }
+            R::PermQuery(r) => (r.id, self.perm_query(caller, r.params)),
+            R::PermRequest(r) => (r.id, self.perm_request(caller, r.params)),
+            R::PermRevoke(r) => (r.id, self.perm_revoke(caller, r.params)),
+            R::PermList(r) => (r.id, self.perm_list(caller, r.params)),
+            R::PermAnswer(r) => (r.id, self.perm_answer(caller, r.params)),
             R::PluginList(r) => (r.id, self.plugin_list(caller, r.params)),
             R::PluginSetEnabled(r) => (r.id, self.plugin_set_enabled(caller, r.params)),
             R::StoreGet(r) => (r.id, self.store_get(caller, r.params)),
@@ -201,8 +139,6 @@ impl Core {
             R::AudioCaptureStop(r) => (r.id, unsupported("audio.capture.stop")),
             R::UiSurfaceOpen(r) => (r.id, unsupported("ui.surface.open")),
             R::UiSurfaceClose(r) => (r.id, unsupported("ui.surface.close")),
-            R::PermList(r) => (r.id, unsupported("perm.list")),
-            R::PermAnswer(r) => (r.id, unsupported("perm.answer")),
             R::CmdRegister(r) => (r.id, self.cmd_register(caller, r.params)),
             R::CmdUnregister(r) => (r.id, self.cmd_unregister(caller, r.params)),
             R::CmdList(r) => (r.id, self.cmd_list(caller, r.params)),
@@ -213,8 +149,8 @@ impl Core {
             R::SettingsList(r) => (r.id, unsupported("settings.list")),
             R::LogWrite(r) => (r.id, unsupported("log.write")),
             R::LogTail(r) => (r.id, unsupported("log.tail")),
-            R::EventsSubscribe(r) => (r.id, unsupported("events.subscribe")),
-            R::EventsUnsubscribe(r) => (r.id, unsupported("events.unsubscribe")),
+            R::EventsSubscribe(r) => (r.id, self.events_subscribe(caller, r.params)),
+            R::EventsUnsubscribe(r) => (r.id, self.events_unsubscribe(caller, r.params)),
         }
     }
 
@@ -225,9 +161,7 @@ impl Core {
         scope: &Permission,
         path: &str,
     ) -> Result<PathBuf, BridgeError> {
-        self.permissions()
-            .authorize(caller, scope, &Target::Path(path))
-            .map_err(denied)?;
+        self.check(caller, scope, &Target::Path(path))?;
         self.resolve(path)
     }
 
@@ -262,17 +196,6 @@ impl Core {
         self.permissions
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
-    }
-
-    fn changed(&self, grant_id: &str, change: GrantChange) {
-        self.events
-            .publish(BridgeEvent::PermChanged(PermChangedEvent {
-                event: Default::default(),
-                data: PermChangedData {
-                    grant_id: grant_id.to_owned(),
-                    change,
-                },
-            }));
     }
 }
 
