@@ -3,13 +3,18 @@
 import { basename, resolve } from "node:path";
 import { parseArgs } from "node:util";
 import { checkId, defaultId, defaultName } from "./names";
-import { renderPlugin } from "./template";
+import { renderPlugin, type TemplateKind } from "./template";
 import { writePlugin } from "./write";
 
-export const USAGE = `usage: create-plugin <folder> [--id <id>] [--name <name>] [--description <text>]
+const KINDS: readonly TemplateKind[] = ["ui", "connector"];
 
-Creates a Desk UI plugin in <folder>, which must be missing or empty.
+export const USAGE = `usage: create-plugin <folder> [--kind ui|connector] [--id <id>] [--name <name>]
+                     [--description <text>]
 
+Creates a Desk plugin in <folder>, which must be missing or empty: a UI plugin, or with
+--kind connector a Wasm connector in Rust.
+
+  --kind <kind>         ui (default) or connector
   --id <id>             manifest id, lowercase reverse-domain (default: local.<folder>)
   --name <name>         display name (default: the folder name as words)
   --description <text>  one sentence about what the plugin does`;
@@ -38,6 +43,9 @@ export async function main(argv: readonly string[], io: Io): Promise<number> {
   if (folder === undefined) return usageError(io, "missing <folder>");
   if (extra.length > 0) return usageError(io, `unexpected argument ${extra.join(" ")}`);
 
+  const kind = (values.kind ?? "ui") as TemplateKind;
+  if (!KINDS.includes(kind)) return usageError(io, `kind ${kind} is not ui or connector`);
+
   const dir = resolve(io.cwd, folder);
   const id = values.id ?? defaultId(basename(dir));
   const idProblem = checkId(id);
@@ -46,7 +54,7 @@ export async function main(argv: readonly string[], io: Io): Promise<number> {
   if (name.trim() === "") return usageError(io, "name is empty");
 
   try {
-    await writePlugin(dir, renderPlugin({ id, name, description: values.description }));
+    await writePlugin(dir, renderPlugin({ id, name, description: values.description, kind }));
   } catch (error) {
     io.err(`create-plugin: ${(error as Error).message}`);
     return 1;
@@ -54,9 +62,17 @@ export async function main(argv: readonly string[], io: Io): Promise<number> {
 
   io.out(`Created ${id} in ${dir}`);
   io.out("");
-  io.out("Next, from the Desk repository:");
-  io.out(`  cargo run -p desk-cli -- plugin validate ${shellQuote(dir)}`);
-  io.out(`  DESK_DEV_PLUGINS=${shellQuote(dir)} just dev`);
+  if (kind === "connector") {
+    io.out("Next, build the component:");
+    io.out("  rustup target add wasm32-wasip2");
+    io.out(`  cd ${shellQuote(dir)} && cargo build --release`);
+    io.out("Then, from the Desk repository:");
+    io.out(`  cargo run -p desk-cli -- plugin validate ${shellQuote(dir)}`);
+  } else {
+    io.out("Next, from the Desk repository:");
+    io.out(`  cargo run -p desk-cli -- plugin validate ${shellQuote(dir)}`);
+    io.out(`  DESK_DEV_PLUGINS=${shellQuote(dir)} just dev`);
+  }
   if (values.id === undefined) {
     io.out("");
     io.out(`Change the id in plugin.json to a reverse-domain id you own before you publish.`);
@@ -70,6 +86,7 @@ function parse(argv: readonly string[]) {
     allowPositionals: true,
     strict: true,
     options: {
+      kind: { type: "string" },
       id: { type: "string" },
       name: { type: "string" },
       description: { type: "string" },
