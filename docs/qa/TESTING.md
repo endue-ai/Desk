@@ -46,6 +46,8 @@ catch; until then they are marked "not yet".
 - Tests live next to the source. Acceptance tests for a task go in `crates/<crate>/tests/` or `*.test.ts`
   so red-on-base can run them on the base commit; inline Rust tests are reported but not checked there.
 - Animations run on an injected clock and randomness takes a seed. Snapshots are taken at fixed times.
+- Timing tests choose their own quiet periods, wide enough for a loaded runner, instead of relying on
+  defaults (`watch_coalesces_a_burst_into_one_batch` debounces for 1 s, not the default 100 ms).
 - Test hooks (`desk.test.*`) exist only behind the `test-hooks` feature, never in release builds.
 - Playwright runs only through `just test-e2e` and `just perf-opening` (ADR 0018). On macOS the
   runtime e2e runs in a Linux container, at most two e2e runs share a machine, and native WebKit is
