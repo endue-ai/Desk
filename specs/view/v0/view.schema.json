@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://endue.ai/specs/view/v0/view.schema.json",
   "title": "Desk view v0",
-  "description": "A view: a surface that shows items, written as data instead of code, so it is validated at install and shared without review (ADR 0032). The person's views live as YAML in ~/.desk/views/<id>.yaml; on the wire a view is JSON of the same shape.",
+  "description": "A view: a surface that shows items, written as data instead of code, so it is validated at install and shared without review (ADR 0032). The person's views live as YAML files in ~/.desk/views, one per view and named by its id (desk.today.yaml); on the wire a view is JSON of the same shape.",
   "$defs": {
     "View": {
       "description": "One view file.",
@@ -22,7 +22,7 @@
           "additionalProperties": { "$ref": "#/$defs/ViewRequirement" }
         },
         "params": {
-          "description": "Values the person sets when the view opens, by name. Templates read them as {params.<name>}.",
+          "description": "Values the person sets when the view opens, by name. Templates read them by name: {params.days}.",
           "type": "object",
           "propertyNames": { "$ref": "#/$defs/ParamName" },
           "additionalProperties": { "$ref": "#/$defs/ViewParam" }
@@ -231,7 +231,7 @@
       ]
     },
     "Template": {
-      "description": "Text in which {path} is a field of the item in scope (or params.<name>), and {path|time}, {path|date}, {path|relative} or {path|number} formats it. {{ and }} are literal braces. There is no expression language in v0.",
+      "description": "Text in which {path} is a field of the item in scope (or a param: {params.days}), and {path|time}, {path|date}, {path|relative} or {path|number} formats it. {{ and }} are literal braces. There is no expression language in v0.",
       "type": "string",
       "maxLength": 1000,
       "pattern": "^(\\{\\{|\\}\\}|[^{}]|\\{[A-Za-z_][A-Za-z0-9_]*(\\.[A-Za-z0-9_-]+)*(\\|(time|date|relative|number))?\\})*$"

@@ -1005,7 +1005,7 @@ pub struct View {
     /// The sources the view needs, by name. Bindings name them as $name; the person picks an instance for each when the view opens.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub requires: Option<BTreeMap<String, ViewRequirement>>,
-    /// Values the person sets when the view opens, by name. Templates read them as {params.<name>}.
+    /// Values the person sets when the view opens, by name. Templates read them by name: {params.days}.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub params: Option<BTreeMap<String, ViewParam>>,
     pub layout: ViewNode,
@@ -1214,7 +1214,7 @@ pub struct ViewComponent {
     pub text: Option<Template>,
 }
 
-/// Text in which {path} is a field of the item in scope (or params.<name>), and {path|time}, {path|date}, {path|relative} or {path|number} formats it. {{ and }} are literal braces. There is no expression language in v0.
+/// Text in which {path} is a field of the item in scope (or a param: {params.days}), and {path|time}, {path|date}, {path|relative} or {path|number} formats it. {{ and }} are literal braces. There is no expression language in v0.
 pub type Template = String;
 
 /// One field of an item as a component shows it.

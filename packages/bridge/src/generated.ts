@@ -656,7 +656,7 @@ export interface View {
   description?: string;
   /** The sources the view needs, by name. Bindings name them as $name; the person picks an instance for each when the view opens. */
   requires?: Record<string, ViewRequirement>;
-  /** Values the person sets when the view opens, by name. Templates read them as {params.<name>}. */
+  /** Values the person sets when the view opens, by name. Templates read them by name: {params.days}. */
   params?: Record<string, ViewParam>;
   layout: ViewNode;
   provenance?: ViewProvenance;
@@ -769,7 +769,7 @@ export interface ViewComponent {
   text?: Template;
 }
 
-/** Text in which {path} is a field of the item in scope (or params.<name>), and {path|time}, {path|date}, {path|relative} or {path|number} formats it. {{ and }} are literal braces. There is no expression language in v0. */
+/** Text in which {path} is a field of the item in scope (or a param: {params.days}), and {path|time}, {path|date}, {path|relative} or {path|number} formats it. {{ and }} are literal braces. There is no expression language in v0. */
 export type Template = string;
 
 /** One field of an item as a component shows it. */

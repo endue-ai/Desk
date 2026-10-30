@@ -1,17 +1,21 @@
 #!/usr/bin/env node
 // spec-docs: render the API reference from specs/ into a folder: every bridge method (params, result,
 // errors, the permission that covers it), every event, the permission vocabulary, the plugin manifest
-// fields and the brain endpoints. The docs site builds it and it is never committed, so specs that
-// change in open PRs never drift from it (docs/site/README.md). Node 22, the repository's yaml only.
+// fields, the brain endpoints and every item, view and connector type. The docs site builds it and it is
+// never committed, so specs in open PRs never drift from it (docs/site/README.md). Node 22, yaml only.
 //   node scripts/spec-docs.mjs <out> [--root <dir with specs/>]      (just docs-api <out>)
 
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { loadBrain, loadSchemas } from "./codegen/load.mjs";
+import { loadBrain, loadDefs, PLUGIN_FOLDERS } from "./codegen/load.mjs";
 
 export const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-export const PAGES = ["index.md", "bridge.md", "permissions.md", "manifest.md", "brain.md"];
+/** Specs whose page lists every type they define: [title, folder]; the page is the title, lowercase. */
+const TYPED = Object.entries({ Items: "item/v0", Views: "view/v0", Connectors: "connector/v0" });
+const slug = (title) => title.toLowerCase();
+const BASE = ["index.md", "bridge.md", "permissions.md", "manifest.md", "brain.md"];
+export const PAGES = [...BASE, ...TYPED.map(([title]) => `${slug(title)}.md`)];
 
 const read = (path) => (existsSync(path) ? readFileSync(path, "utf8") : "");
 const refName = (ref) => ref.split("/").pop();
@@ -22,18 +26,8 @@ const constOf = (schema) => schema?.properties?.permission?.const;
 const table = (head, rows) =>
   [head, head.map(() => "---"), ...rows].map((row) => `| ${row.join(" | ")} |`).join("\n");
 
-/** The plugin, init and bridge schemas, with every definition indexed by name and folder. */
-function loadSpecs(root) {
-  const defs = new Map();
-  const docs = {};
-  for (const folder of ["plugin/v0", "init/v0", "bridge/v0"]) {
-    docs[folder] = existsSync(join(root, "specs", folder)) ? loadSchemas(root, folder) : [];
-    for (const doc of docs[folder])
-      for (const [name, schema] of Object.entries(doc.$defs ?? {}))
-        defs.set(name, { name, schema, folder, doc });
-  }
-  return { defs, docs };
-}
+/** The plugin, item, view, connector, init and bridge schemas, every definition by name and folder. */
+const loadSpecs = (root) => loadDefs(root, [...PLUGIN_FOLDERS, "init/v0", "bridge/v0"]);
 
 /** Blocks of a spec README keyed by what starts them: `**name**` paragraphs and `## Heading` parts. */
 function blocks(text, split, start) {
@@ -270,6 +264,14 @@ function renderManifest(specs) {
   return page("Plugin manifest", "Every plugin.json field, from specs/plugin/v0.", body);
 }
 
+/** A spec's page: its schemas' descriptions, then every type it defines, in file order. */
+function renderTyped(specs, title, folder) {
+  const names = specs.docs[folder].flatMap((doc) => Object.keys(doc.$defs ?? {}));
+  const intro = specs.docs[folder].flatMap((doc) => [doc.description ?? "", ""]);
+  const ctx = { defs: specs.defs, link: (name) => names.includes(name) };
+  return page(title, `Every type of specs/${folder}.`, [...intro, ...typesSection(names, ctx)]);
+}
+
 function renderBrain(root) {
   const { openapi, bundle } = loadBrain(root);
   const entries = Object.entries(bundle.$defs ?? {});
@@ -284,11 +286,10 @@ function renderBrain(root) {
   const body = [openapi.info?.description ?? "", ""];
   for (const server of openapi.servers ?? [])
     body.push(`Server: ${code(server.url)}. ${server.description ?? ""}`, "");
-  for (const [name, auth] of Object.entries(parts.securitySchemes ?? {}))
-    body.push(
-      `Authentication ${code(name)}: ${auth.scheme ?? auth.type}. ${auth.description ?? ""}`,
-      "",
-    );
+  for (const [name, auth] of Object.entries(parts.securitySchemes ?? {})) {
+    const how = `${auth.scheme ?? auth.type}. ${auth.description ?? ""}`;
+    body.push(`Authentication ${code(name)}: ${how}`, "");
+  }
   const tags = new Map((openapi.tags ?? []).map((t) => [t.name, { ...t, ops: [] }]));
   for (const [path, item] of Object.entries(openapi.paths ?? {})) {
     for (const verb of ["get", "put", "post", "patch", "delete"].filter((v) => item[v])) {
@@ -329,23 +330,22 @@ const INDEX = [
   ["[Permissions](permissions/)", "`specs/plugin/v0`", "The vocabulary and what each covers"],
   ["[Plugin manifest](manifest/)", "`specs/plugin/v0`", "Every `plugin.json` field"],
   ["[Brain API](brain/)", "`specs/brain/v0/openapi.yaml`", "Endpoints, responses and schemas"],
+  ...TYPED.map(([t, f]) => [`[${t}](${slug(t)}/)`, code(`specs/${f}`), "Every type it defines"]),
 ];
+const NOTE =
+  "Rendered from `specs/` by `just docs-api <out>`. v0 may break on any minor release (ADR 0004).";
 
 /** The pages for the specs under `root`, by file name. */
 export function render(root = ROOT) {
   const specs = loadSpecs(root);
-  const index = [
-    "Rendered from `specs/` by `just docs-api <out>`. v0 may break on any minor release (ADR 0004).",
-    "",
-    table(["Page", "Spec", "What it holds"], INDEX),
-    "",
-  ];
+  const index = [NOTE, "", table(["Page", "Spec", "What it holds"], INDEX), ""];
   return {
     "index.md": page("API reference", "Desk's contracts, rendered from specs/.", index),
     "bridge.md": renderBridge(root, specs),
     "permissions.md": renderPermissions(root, specs),
     "manifest.md": renderManifest(specs),
     "brain.md": renderBrain(root),
+    ...Object.fromEntries(TYPED.map(([t, f]) => [`${slug(t)}.md`, renderTyped(specs, t, f)])),
   };
 }
 

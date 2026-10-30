@@ -1,5 +1,5 @@
 // Load the specs: JSON Schema documents, the OpenAPI brain spec (as a JSON Schema bundle) and vectors.
-import { readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parse } from "yaml";
@@ -66,6 +66,19 @@ export function loadAll(root = ROOT) {
     init,
     brain: [loadBrain(root).bundle],
   };
+}
+
+/** The documents of each folder that exists under root/specs, and every definition by name and folder. */
+export function loadDefs(root, folders) {
+  const defs = new Map();
+  const docs = {};
+  for (const folder of folders) {
+    docs[folder] = existsSync(join(root, "specs", folder)) ? loadSchemas(root, folder) : [];
+    for (const doc of docs[folder])
+      for (const [name, schema] of Object.entries(doc.$defs ?? {}))
+        defs.set(name, { name, schema, folder, doc });
+  }
+  return { defs, docs };
 }
 
 /** Map each definition name to the URI that names it. Names must be unique within a set. */
