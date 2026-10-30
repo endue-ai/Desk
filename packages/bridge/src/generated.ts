@@ -1074,7 +1074,20 @@ export type BridgeRequest =
   | LogWriteRequest
   | LogTailRequest
   | EventsSubscribeRequest
-  | EventsUnsubscribeRequest;
+  | EventsUnsubscribeRequest
+  | DataQueryRequest
+  | DataGetRequest
+  | DataSubscribeRequest
+  | DataUnsubscribeRequest
+  | ConnectorListRequest
+  | ConnectorConnectRequest
+  | ConnectorDisconnectRequest
+  | ConnectorSyncNowRequest
+  | ViewListRequest
+  | ViewGetRequest
+  | ViewSaveRequest
+  | ViewRemoveRequest
+  | CatalogGetRequest;
 
 /** The answer to one request: a result, or an error. */
 export type BridgeResponse = BridgeSuccess | BridgeFailure;
@@ -1114,7 +1127,7 @@ export type ErrorCode =
   | "unsupported"
   | "internal";
 
-/** Something the core reports without being asked: file changes, process output, wake words, permission changes, notifications, commands, settings and log entries. */
+/** Something the core reports without being asked: file changes, process output, wake words, permission changes, notifications, commands, settings, log entries, and changes to items, connectors and views. */
 export type BridgeEvent =
   | FsChangedEvent
   | ProcOutputEvent
@@ -1129,7 +1142,43 @@ export type BridgeEvent =
   | CmdInvokedEvent
   | CmdAnsweredEvent
   | SettingsChangedEvent
-  | LogEntryEvent;
+  | LogEntryEvent
+  | DataChangedEvent
+  | ConnectorChangedEvent
+  | ViewChangedEvent;
+
+/** Describe what the caller can bind, show and run. */
+export interface CatalogGetRequest {
+  id: RequestId;
+  method: "catalog.get";
+  params: CatalogGetParams;
+}
+
+/** Parameters of catalog.get: none. */
+export type CatalogGetParams = Record<string, never>;
+
+/** Result of catalog.get. */
+export interface CatalogGetResult {
+  /** The view components the desk renders. */
+  components: ComponentType[];
+  /** The connectors with at least one instance, by id, with only the kinds the caller's data:read grants cover. */
+  connectors: CatalogConnector[];
+  /** The registered commands the caller's cmd:invoke grants cover, in registration order. */
+  commands: CommandInfo[];
+}
+
+/** A connected connector: its instances and the kinds of item it brings in. */
+export interface CatalogConnector {
+  id: PluginId;
+  instances: InstanceId[];
+  kinds: CatalogKind[];
+}
+
+/** One kind of item a connector brings in, and the fields its items have, which bindings, sorts and templates can name. */
+export interface CatalogKind {
+  kind: ItemKind;
+  fields: FieldPath[];
+}
 
 /** A registered command as cmd.list returns it. */
 export interface CommandInfo {
@@ -1294,6 +1343,186 @@ export interface CmdAnsweredData {
   /** What the command returned, when ok. Any JSON value. */
   result?: unknown;
   error?: CommandFailure;
+}
+
+/** An installed connector as connector.list returns it: its instances and the kinds of item it brings in. */
+export interface ConnectorInfo {
+  id: PluginId;
+  instances: ConnectorInstance[];
+  resources: ConnectorResource[];
+}
+
+/** List the installed connectors and their instances. */
+export interface ConnectorListRequest {
+  id: RequestId;
+  method: "connector.list";
+  params: ConnectorListParams;
+}
+
+/** Parameters of connector.list. */
+export interface ConnectorListParams {
+  scope: ConnectorManagePermission;
+}
+
+/** Result of connector.list, by connector id. */
+export interface ConnectorListResult {
+  connectors: ConnectorInfo[];
+}
+
+/** Add an instance of an installed connector. */
+export interface ConnectorConnectRequest {
+  id: RequestId;
+  method: "connector.connect";
+  params: ConnectorConnectParams;
+}
+
+/** Parameters of connector.connect. instance is default when absent; settings follow the connector's instanceSettings, and the secret ones go to the OS keychain. */
+export interface ConnectorConnectParams {
+  connector: PluginId;
+  instance?: InstanceId;
+  /** The name the person gives it: Work calendar. */
+  title?: string;
+  /** Values of the connector's instance settings, by name. */
+  settings?: Record<string, unknown>;
+  scope: ConnectorManagePermission;
+}
+
+/** Result of connector.connect: the new instance's id. */
+export interface ConnectorConnectResult {
+  instance: InstanceId;
+}
+
+/** Remove an instance, and the items it brought in. */
+export interface ConnectorDisconnectRequest {
+  id: RequestId;
+  method: "connector.disconnect";
+  params: ConnectorDisconnectParams;
+}
+
+/** Parameters of connector.disconnect. */
+export interface ConnectorDisconnectParams {
+  connector: PluginId;
+  instance: InstanceId;
+  scope: ConnectorManagePermission;
+}
+
+/** Result of connector.disconnect. */
+export type ConnectorDisconnectResult = Record<string, never>;
+
+/** Sync one instance now, without waiting for its interval. */
+export interface ConnectorSyncNowRequest {
+  id: RequestId;
+  method: "connector.sync";
+  params: ConnectorSyncNowParams;
+}
+
+/** Parameters of connector.sync. */
+export interface ConnectorSyncNowParams {
+  connector: PluginId;
+  instance: InstanceId;
+  scope: ConnectorManagePermission;
+}
+
+/** Result of connector.sync: the sync started; its progress arrives as connector.changed. */
+export interface ConnectorSyncNowResult {
+  started: true;
+}
+
+/** An instance was connected, changed status or was disconnected. Sent to callers that hold connector:manage. */
+export interface ConnectorChangedEvent {
+  event: "connector.changed";
+  data: ConnectorChangedData;
+}
+
+/** Payload of connector.changed. status is the instance's status after the change; a disconnected instance has none. */
+export interface ConnectorChangedData {
+  connector: PluginId;
+  instance: InstanceId;
+  change: ConnectorChange;
+  status?: ConnectorStatus;
+}
+
+/** What happened to the instance: connected (new), updated (its status changed) or disconnected (gone, with its items). */
+export type ConnectorChange = "connected" | "updated" | "disconnected";
+
+/** Read one page of the items a query matches. */
+export interface DataQueryRequest {
+  id: RequestId;
+  method: "data.query";
+  params: DataQueryParams;
+}
+
+/** Parameters of data.query. Items the scope does not cover are left out, not refused. */
+export interface DataQueryParams {
+  query: ItemQuery;
+  scope: DataReadPermission;
+}
+
+/** Result of data.query: one page, with the cursor of the next while there is one. */
+export type DataQueryResult = ItemPage;
+
+/** Read one item by its source and id. */
+export interface DataGetRequest {
+  id: RequestId;
+  method: "data.get";
+  params: DataGetParams;
+}
+
+/** Parameters of data.get. */
+export interface DataGetParams {
+  source: ItemSource;
+  id: ItemId;
+  scope: DataReadPermission;
+}
+
+/** Result of data.get. item is absent when the index has none, or the scope does not cover it. */
+export interface DataGetResult {
+  item?: Item;
+}
+
+/** Start receiving data.changed for the items a query matches. */
+export interface DataSubscribeRequest {
+  id: RequestId;
+  method: "data.subscribe";
+  params: DataSubscribeParams;
+}
+
+/** Parameters of data.subscribe. The query's kinds, sources, text and where conditions select the items; its sort, cursor and limit do not apply. */
+export interface DataSubscribeParams {
+  query: ItemQuery;
+  scope: DataReadPermission;
+}
+
+/** Result of data.subscribe. */
+export interface DataSubscribeResult {
+  subscriptionId: string;
+}
+
+/** Stop one of the caller's data subscriptions. */
+export interface DataUnsubscribeRequest {
+  id: RequestId;
+  method: "data.unsubscribe";
+  params: DataUnsubscribeParams;
+}
+
+/** Parameters of data.unsubscribe. */
+export interface DataUnsubscribeParams {
+  subscriptionId: string;
+}
+
+/** Result of data.unsubscribe. */
+export type DataUnsubscribeResult = Record<string, never>;
+
+/** Items a data subscription matches changed. Sent to the caller that subscribed. */
+export interface DataChangedEvent {
+  event: "data.changed";
+  data: DataChangedData;
+}
+
+/** Payload of data.changed: the subscription, and what changed in order. An item that stops matching the query arrives as removed. */
+export interface DataChangedData {
+  subscriptionId: string;
+  changes: ItemChange[];
 }
 
 /** Start receiving the named events about every caller. */
@@ -2062,6 +2291,96 @@ export interface UiNotifiedData {
   level: NotifyLevel;
 }
 
+/** A view as view.list returns it. */
+export interface ViewSummary {
+  id: ViewId;
+  version: Version;
+  title: Template;
+  description?: string;
+}
+
+/** List the person's views. */
+export interface ViewListRequest {
+  id: RequestId;
+  method: "view.list";
+  params: ViewListParams;
+}
+
+/** Parameters of view.list. */
+export interface ViewListParams {
+  scope: ViewManagePermission;
+}
+
+/** Result of view.list, by view id. */
+export interface ViewListResult {
+  views: ViewSummary[];
+}
+
+/** Read one view whole. */
+export interface ViewGetRequest {
+  id: RequestId;
+  method: "view.get";
+  params: ViewGetParams;
+}
+
+/** Parameters of view.get. */
+export interface ViewGetParams {
+  id: ViewId;
+  scope: ViewManagePermission;
+}
+
+/** Result of view.get. */
+export interface ViewGetResult {
+  view: View;
+}
+
+/** Save a view, new or replacing the one with its id. */
+export interface ViewSaveRequest {
+  id: RequestId;
+  method: "view.save";
+  params: ViewSaveParams;
+}
+
+/** Parameters of view.save. The view must pass specs/view/v0 and its names must resolve. */
+export interface ViewSaveParams {
+  view: View;
+  scope: ViewManagePermission;
+}
+
+/** Result of view.save. */
+export type ViewSaveResult = Record<string, never>;
+
+/** Remove one of the person's views. */
+export interface ViewRemoveRequest {
+  id: RequestId;
+  method: "view.remove";
+  params: ViewRemoveParams;
+}
+
+/** Parameters of view.remove. */
+export interface ViewRemoveParams {
+  id: ViewId;
+  scope: ViewManagePermission;
+}
+
+/** Result of view.remove. */
+export type ViewRemoveResult = Record<string, never>;
+
+/** A view was saved or removed. Sent to callers that hold view:manage. */
+export interface ViewChangedEvent {
+  event: "view.changed";
+  data: ViewChangedData;
+}
+
+/** Payload of view.changed. */
+export interface ViewChangedData {
+  id: ViewId;
+  change: ViewChange;
+}
+
+/** What happened to the view. */
+export type ViewChange = "saved" | "removed";
+
 /** Params and result of each bridge method. */
 export interface BridgeMethodMap {
   "fs.read": { params: FsReadParams; result: FsReadResult };
@@ -2101,6 +2420,19 @@ export interface BridgeMethodMap {
   "log.tail": { params: LogTailParams; result: LogTailResult };
   "events.subscribe": { params: EventsSubscribeParams; result: EventsSubscribeResult };
   "events.unsubscribe": { params: EventsUnsubscribeParams; result: EventsUnsubscribeResult };
+  "data.query": { params: DataQueryParams; result: DataQueryResult };
+  "data.get": { params: DataGetParams; result: DataGetResult };
+  "data.subscribe": { params: DataSubscribeParams; result: DataSubscribeResult };
+  "data.unsubscribe": { params: DataUnsubscribeParams; result: DataUnsubscribeResult };
+  "connector.list": { params: ConnectorListParams; result: ConnectorListResult };
+  "connector.connect": { params: ConnectorConnectParams; result: ConnectorConnectResult };
+  "connector.disconnect": { params: ConnectorDisconnectParams; result: ConnectorDisconnectResult };
+  "connector.sync": { params: ConnectorSyncNowParams; result: ConnectorSyncNowResult };
+  "view.list": { params: ViewListParams; result: ViewListResult };
+  "view.get": { params: ViewGetParams; result: ViewGetResult };
+  "view.save": { params: ViewSaveParams; result: ViewSaveResult };
+  "view.remove": { params: ViewRemoveParams; result: ViewRemoveResult };
+  "catalog.get": { params: CatalogGetParams; result: CatalogGetResult };
 }
 
 /** A bridge method name. */
@@ -2145,4 +2477,17 @@ export const BRIDGE_METHODS = [
   "log.tail",
   "events.subscribe",
   "events.unsubscribe",
+  "data.query",
+  "data.get",
+  "data.subscribe",
+  "data.unsubscribe",
+  "connector.list",
+  "connector.connect",
+  "connector.disconnect",
+  "connector.sync",
+  "view.list",
+  "view.get",
+  "view.save",
+  "view.remove",
+  "catalog.get",
 ] as const satisfies readonly BridgeMethod[];

@@ -1,0 +1,12 @@
+{
+  "target": "BridgeRequest",
+  "description": "connector.connect needs connector:manage",
+  "instance": {
+    "id": 52,
+    "method": "connector.connect",
+    "params": {
+      "connector": "desk.fixtures",
+      "instance": "work"
+    }
+  }
+}

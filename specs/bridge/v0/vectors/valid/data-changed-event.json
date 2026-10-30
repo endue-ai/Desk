@@ -1,0 +1,37 @@
+{
+  "target": "BridgeEvent",
+  "description": "data.changed: one task upserted and one removed for a subscription",
+  "instance": {
+    "event": "data.changed",
+    "data": {
+      "subscriptionId": "dsub-1",
+      "changes": [
+        {
+          "change": "upserted",
+          "item": {
+            "id": "task-report",
+            "source": {
+              "connector": "desk.fixtures",
+              "instance": "default"
+            },
+            "kind": "task",
+            "title": "Send the weekly report",
+            "updatedAt": "2026-10-30T08:40:00+09:00",
+            "status": "open",
+            "due": "2026-10-30T17:00:00+09:00",
+            "priority": 1,
+            "project": "Work"
+          }
+        },
+        {
+          "change": "removed",
+          "source": {
+            "connector": "desk.fixtures",
+            "instance": "default"
+          },
+          "id": "task-invoice"
+        }
+      ]
+    }
+  }
+}
