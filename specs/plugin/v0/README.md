@@ -11,11 +11,13 @@ plugin adds to the desk's policies as data (ADR 0017).
 | --- | --- |
 | `id` | Reverse-domain id with a dot, lowercase: `endue.eris`, `example.hello-ui` |
 | `version` | Semantic version |
-| `kind` | `ui` (sandboxed iframe), `logic` (Wasm), `tool` (MCP inside the VM), `policy` (data only) |
-| `entry` | Entry file relative to the plugin folder, never outside it; a `policy` plugin has none |
+| `kind` | `ui` (sandboxed iframe), `logic` (Wasm), `tool` (MCP inside the VM), `policy` (data only), `connector` (items in, actions as commands; Wasm or MCP), `view` (data only) |
+| `entry` | Entry file relative to the plugin folder, never outside it; `policy` and `view` plugins have none |
 | `permissions` | Everything the plugin may ask for; each is granted by the person at first use |
 | `surfaces` | Surfaces a UI plugin can open, with a placement (`hidden` until it shows itself); other kinds declare none |
 | `contributes` | Commands, keys, display rules, file openers, themes, settings and profiles; required for `policy` |
+| `view`, `views` | A `view` plugin's one view inline (`specs/view/v0`), or its view files (`.yaml`, `.yml`, `.json`); exactly one of the two |
+| `connector` | A `connector` plugin's connector block (`specs/connector/v0`); required for that kind, refused for others |
 
 ## Contributions
 
@@ -52,6 +54,9 @@ order, each layer over the one before: the built-in `desk.*` policy plugins, the
 | `log:read` | none | `log.tail`, `log.entry` events |
 | `events:subscribe` | `names` | `events.subscribe` to the named events about every caller |
 | `perm:manage` | none | `perm.list`, `perm.answer`, `perm.revoke` of any grant, `perm.prompt` events |
+| `data:read` | `kinds`, `sources` | Items of the index through `data.*` (served from #103 on); absent `kinds` or `sources` mean all |
+| `connector:manage` | none | Connector instances through `connector.*`: list, connect, disconnect, pause, sync (from #103 on) |
+| `view:manage` | none | The person's views through `view.*`: list, open, save, remove (from #103 on) |
 
 Paths are absolute or rooted at `~`, `${plugin}`, `${workspace}` or `${home}`, with `*` within a segment
 and `**` across segments. Hosts are names with an optional port, or `*.domain` for subdomains. Commands
@@ -61,6 +66,8 @@ Command ids are lowercase and dotted (`eris.say`); in `ids`, `*` matches any run
 included, so `*` covers every command and `eris.*` every command under `eris.`. Setting keys are
 `owner/key` (`endue.eris/voice`), with `*` matching within one part: `endue.eris/*`, `*/*`. Event names
 are the six that `events.subscribe` accepts: `plugin.changed`, `perm.changed`, `cmd.changed`,
-`cmd.invoked`, `settings.changed` and `log.entry`.
+`cmd.invoked`, `settings.changed` and `log.entry`. Item kinds are the nine of `specs/item/v0`; sources
+are connector plugin ids, with `*` matching like command ids (`endue.*`). There is no `data:write`:
+changes go through the connectors' commands (ADR 0032).
 
 `vectors/` holds valid and invalid manifests and permissions for the contract tests.

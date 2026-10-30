@@ -1,13 +1,15 @@
-//! Contract: the bridge, plugin and init vectors are judged by the JSON Schemas exactly as their folders
-//! say, and every valid vector round-trips through the generated Rust types unchanged.
+//! Contract: the bridge, plugin, item, view, connector and init vectors are judged by the JSON Schemas
+//! (and, for views and manifests, the rules the schemas cannot say) exactly as their folders say, and
+//! every valid vector round-trips through the generated Rust types unchanged.
 
 use std::fs;
 use std::path::{Path, PathBuf};
 
 use desk_bridge::{
-    BridgeEvent, BridgeRequest, BridgeResponse, InitDocument, InitGetResult, InitSettingKey,
-    PermQueryResult, Permission, PluginContributes, PluginListResult, PluginManifest,
-    StoreGetResult,
+    BridgeEvent, BridgeRequest, BridgeResponse, ConnectorInstance, ConnectorManifest,
+    ConnectorStatus, ConnectorSyncResult, InitDocument, InitGetResult, InitSettingKey, Item,
+    ItemChange, ItemPage, ItemQuery, PermQueryResult, Permission, PluginContributes,
+    PluginListResult, PluginManifest, StoreGetResult, View, manifest_problems, view_problems,
 };
 use serde::Serialize;
 use serde::de::DeserializeOwned;
@@ -20,6 +22,14 @@ fn specs() -> PathBuf {
 fn read_json(path: &Path) -> Value {
     let text = fs::read_to_string(path).unwrap_or_else(|e| panic!("{}: {e}", path.display()));
     serde_json::from_str(&text).unwrap_or_else(|e| panic!("{}: {e}", path.display()))
+}
+
+/// The plugin manifest and the specs it references, which reference it back: one set of documents.
+fn plugin_schemas() -> Vec<Value> {
+    ["plugin/v0", "item/v0", "view/v0", "connector/v0"]
+        .iter()
+        .flat_map(|folder| schemas(folder))
+        .collect()
 }
 
 fn schemas(folder: &str) -> Vec<Value> {
@@ -64,6 +74,17 @@ fn vectors(spec: &str) -> Vec<Vector> {
     out
 }
 
+/// The rules a schema cannot say: the names a view or a manifest uses must resolve inside it.
+fn names_resolve(target: &str, instance: &Value) -> bool {
+    match target {
+        "View" => serde_json::from_value::<View>(instance.clone())
+            .is_ok_and(|view| view_problems(&view).is_empty()),
+        "PluginManifest" => serde_json::from_value::<PluginManifest>(instance.clone())
+            .is_ok_and(|manifest| manifest_problems(&manifest).is_empty()),
+        _ => true,
+    }
+}
+
 /// Validate every vector of `spec` against `docs`; returns the files judged differently.
 fn judge(docs: &[Value], spec: &str) -> Vec<String> {
     let registry = jsonschema::Registry::new()
@@ -87,7 +108,9 @@ fn judge(docs: &[Value], spec: &str) -> Vec<String> {
             .should_validate_formats(false)
             .build(&json!({ "$ref": uri_of(&vector.target) }))
             .unwrap();
-        if validator.is_valid(&vector.instance) != vector.valid {
+        let valid =
+            validator.is_valid(&vector.instance) && names_resolve(&vector.target, &vector.instance);
+        if valid != vector.valid {
             wrong.push(vector.file);
         }
     }
@@ -96,21 +119,81 @@ fn judge(docs: &[Value], spec: &str) -> Vec<String> {
 
 #[test]
 fn bridge_vectors_are_judged_as_their_folder_says() {
-    let mut docs = schemas("plugin/v0");
+    let mut docs = plugin_schemas();
     docs.extend(schemas("bridge/v0"));
     assert_eq!(judge(&docs, "bridge"), Vec::<String>::new());
 }
 
 #[test]
 fn plugin_vectors_are_judged_as_their_folder_says() {
-    assert_eq!(judge(&schemas("plugin/v0"), "plugin"), Vec::<String>::new());
+    assert_eq!(judge(&plugin_schemas(), "plugin"), Vec::<String>::new());
 }
 
 #[test]
 fn init_vectors_are_judged_as_their_folder_says() {
-    let mut docs = schemas("plugin/v0");
+    let mut docs = plugin_schemas();
     docs.extend(schemas("init/v0"));
     assert_eq!(judge(&docs, "init"), Vec::<String>::new());
+}
+
+#[test]
+fn item_view_and_connector_vectors_are_judged_as_their_folders_say() {
+    let docs = plugin_schemas();
+    for spec in ["item", "view", "connector"] {
+        let all = vectors(spec);
+        let valid = all.iter().filter(|v| v.valid).count();
+        assert!(
+            valid >= 5 && all.len() - valid >= 5,
+            "{spec}: too few vectors"
+        );
+        assert_eq!(judge(&docs, spec), Vec::<String>::new(), "{spec}");
+        for vector in all.iter().filter(|v| v.valid) {
+            match vector.target.as_str() {
+                "Item" => roundtrip::<Item>(vector),
+                "ItemQuery" => roundtrip::<ItemQuery>(vector),
+                "ItemPage" => roundtrip::<ItemPage>(vector),
+                "ItemChange" => roundtrip::<ItemChange>(vector),
+                "View" => roundtrip::<View>(vector),
+                "ConnectorManifest" => roundtrip::<ConnectorManifest>(vector),
+                "ConnectorInstance" => roundtrip::<ConnectorInstance>(vector),
+                "ConnectorStatus" => roundtrip::<ConnectorStatus>(vector),
+                "ConnectorSyncResult" => roundtrip::<ConnectorSyncResult>(vector),
+                other => panic!("{}: no Rust type mapped for {other}", vector.file),
+            }
+        }
+    }
+}
+
+#[test]
+fn the_rules_beyond_the_schemas_name_what_does_not_resolve() {
+    let view: View = serde_json::from_value(json!({
+        "id": "example.mail", "version": "0.1.0", "title": "Last {params.days} days",
+        "requires": { "calendar": { "kinds": ["event"] } },
+        "layout": { "type": "list", "binding": { "sources": ["$calendar", "$mail"] } }
+    }))
+    .unwrap();
+    assert_eq!(
+        view_problems(&view),
+        [
+            "/layout/binding/sources/1: $mail is not one of the view's requires",
+            "/title: {params.days} reads a param the view does not declare",
+        ]
+    );
+    let manifest: PluginManifest = serde_json::from_value(json!({
+        "id": "example.tasks", "version": "0.1.0", "kind": "connector", "entry": "c.wasm",
+        "contributes": { "commands": [{ "id": "example.tasks.done", "title": "Done" }] },
+        "connector": {
+            "binding": "wasm", "auth": { "kind": "none" }, "sync": { "mode": "pull" },
+            "resources": [
+                { "kind": "task", "actions": ["example.tasks.done", "example.tasks.move"] }
+            ]
+        }
+    }))
+    .unwrap();
+    assert_eq!(
+        manifest_problems(&manifest),
+        ["/connector/resources/0/actions/1: example.tasks.move is not in contributes.commands"]
+    );
 }
 
 fn roundtrip<T: DeserializeOwned + Serialize>(vector: &Vector) {

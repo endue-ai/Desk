@@ -1,0 +1,15 @@
+{
+  "target": "Item",
+  "description": "every item names its source",
+  "instance": {
+    "id": "x-1042",
+    "kind": "task",
+    "title": "Send the quarterly numbers",
+    "updatedAt": "2026-10-30T07:00:00Z",
+    "createdAt": "2026-10-28T18:30:00Z",
+    "status": "open",
+    "due": "2026-10-31T17:00:00+09:00",
+    "priority": 1,
+    "project": "Finance"
+  }
+}

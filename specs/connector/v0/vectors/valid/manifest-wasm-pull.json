@@ -1,0 +1,30 @@
+{
+  "target": "ConnectorManifest",
+  "description": "a local folder connector: a Wasm component, no sign-in, pulled every five minutes",
+  "instance": {
+    "binding": "wasm",
+    "auth": {
+      "kind": "none"
+    },
+    "resources": [
+      {
+        "kind": "note"
+      },
+      {
+        "kind": "file",
+        "live": true
+      }
+    ],
+    "sync": {
+      "mode": "pull",
+      "intervalSeconds": 300
+    },
+    "instanceSettings": {
+      "folder": {
+        "kind": "string",
+        "title": "Folder",
+        "required": true
+      }
+    }
+  }
+}

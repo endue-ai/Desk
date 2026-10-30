@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // just codegen: specs/ → Rust and TypeScript types. Deterministic: same specs, same bytes.
-//   bridge + plugin + init schemas → crates/desk-bridge/src/generated.rs, packages/bridge/src/generated.ts
+//   bridge, plugin, item, view, connector and init schemas → crates/desk-bridge/src/generated.rs and
+//                           packages/bridge/src/generated.ts
 //   brain openapi.yaml      → crates/desk-brain/src/generated.rs,  packages/bridge/src/brain.generated.ts
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
@@ -47,7 +48,8 @@ function schemaIncludes(docs) {
     return `    (${JSON.stringify(doc.$id)}, include_str!("../../../${file}")),`;
   });
   return [
-    "/// Every bridge, plugin and init JSON Schema document as `($id, json)`, for validation at run time.",
+    "/// Every plugin, item, view, connector, init and bridge JSON Schema document as `($id, json)`, for",
+    "/// validation at run time.",
     "pub const SCHEMAS: &[(&str, &str)] = &[",
     ...rows,
     "];",
@@ -62,7 +64,9 @@ export function generate(root = ROOT) {
   const brain = buildModel(specs.brain);
   const bundle = specs.brain[0];
   const bundleJson = JSON.stringify(bundle, null, 2);
-  const fromBridge = header("specs/bridge/v0, specs/plugin/v0 and specs/init/v0");
+  const fromBridge = header(
+    "specs/bridge/v0, specs/plugin/v0, specs/item/v0, specs/view/v0, specs/connector/v0 and specs/init/v0",
+  );
   const fromBrain = header("specs/brain/v0/openapi.yaml");
   return {
     "crates/desk-bridge/src/generated.rs": rustfmt(

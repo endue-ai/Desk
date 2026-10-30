@@ -1,5 +1,5 @@
 // Load the specs: JSON Schema documents, the OpenAPI brain spec (as a JSON Schema bundle) and vectors.
-import { readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parse } from "yaml";
@@ -47,18 +47,38 @@ export function brainBundle(openapi) {
   };
 }
 
-/** Every spec document, keyed by spec name. */
+/**
+ * The plugin manifest and the integration specs it references (permissions name item kinds, view
+ * plugins carry views, connector plugins their connector block), which reference it back: one set.
+ */
+export const PLUGIN_FOLDERS = ["plugin/v0", "item/v0", "view/v0", "connector/v0"];
+
+/** Every spec document, keyed by spec name: each set holds what its vectors need to resolve. */
 export function loadAll(root = ROOT) {
+  const plugin = PLUGIN_FOLDERS.flatMap((folder) => loadSchemas(root, folder));
+  const init = [...plugin, ...loadSchemas(root, "init/v0")];
   return {
-    bridge: [
-      ...loadSchemas(root, "plugin/v0"),
-      ...loadSchemas(root, "init/v0"),
-      ...loadSchemas(root, "bridge/v0"),
-    ],
-    plugin: loadSchemas(root, "plugin/v0"),
-    init: [...loadSchemas(root, "plugin/v0"), ...loadSchemas(root, "init/v0")],
+    bridge: [...init, ...loadSchemas(root, "bridge/v0")],
+    plugin,
+    item: plugin,
+    view: plugin,
+    connector: plugin,
+    init,
     brain: [loadBrain(root).bundle],
   };
+}
+
+/** Each folder's documents (none when it is missing), and every definition by name and folder. */
+export function loadDefs(root, folders) {
+  const defs = new Map();
+  const docs = {};
+  for (const folder of folders) {
+    docs[folder] = existsSync(join(root, "specs", folder)) ? loadSchemas(root, folder) : [];
+    for (const doc of docs[folder])
+      for (const [name, schema] of Object.entries(doc.$defs ?? {}))
+        defs.set(name, { name, schema, folder, doc });
+  }
+  return { defs, docs };
 }
 
 /** Map each definition name to the URI that names it. Names must be unique within a set. */

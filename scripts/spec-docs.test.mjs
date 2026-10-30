@@ -209,6 +209,31 @@ describe("spec-docs on the real specs", () => {
     assert.match(turn, /\| `409` \|/);
   });
 
+  it("renders every definition of the item, view and connector specs on their pages", () => {
+    const folders = {
+      "items.md": "item/v0",
+      "views.md": "view/v0",
+      "connectors.md": "connector/v0",
+    };
+    for (const [page, folder] of Object.entries(folders)) {
+      const dir = join(ROOT, "specs", folder);
+      for (const file of readdirSync(dir).filter((n) => n.endsWith(".schema.json"))) {
+        const { $defs } = JSON.parse(readFileSync(join(dir, file), "utf8"));
+        for (const name of Object.keys($defs)) section(pages[page], name);
+      }
+    }
+    assert.match(
+      section(pages["items.md"], "ItemQuery"),
+      /\| `limit` \| integer, 1 to 500 \| no \|/,
+    );
+    assert.match(
+      section(pages["views.md"], "View"),
+      /\| `layout` \| \[ViewNode\]\(#viewnode\) \| yes \|/,
+    );
+    assert.match(section(pages["connectors.md"], "ConnectorStatus"), /\| `state` \|/);
+    assert.match(pages["index.md"], /\[Items\]\(items\/\)/);
+  });
+
   it("names nothing missing from its own output", () => {
     const out = temp("spec-docs-out-");
     write(ROOT, out);
