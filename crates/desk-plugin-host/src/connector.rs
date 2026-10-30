@@ -152,8 +152,8 @@ impl ConnectorHost {
         })
     }
 
-    /// Drop the connector and its instance. Its instances stay in its store, so installing it
-    /// again brings them back. Returns whether it was installed.
+    /// Drop the connector and its Wasm store. Its instances stay in its plugin store, so
+    /// installing it again brings them back. Returns whether it was installed.
     pub fn remove(&self, id: &str) -> bool {
         lock(&self.shared.plugins).remove(id).is_some()
     }
@@ -342,6 +342,12 @@ impl ConnectorHost {
         *lock(&self.scheduler) = Some(scheduler);
     }
 }
+
+// The desk shares one host between its threads, the scheduler's among them.
+const _: fn() = || {
+    fn shared<T: Send + Sync>() {}
+    shared::<ConnectorHost>();
+};
 
 impl Drop for ConnectorHost {
     fn drop(&mut self) {

@@ -173,7 +173,10 @@ mod tests {
 
     #[test]
     fn the_host_stamps_the_source_and_merges_the_details() {
-        let item = item_of(note(r#"{"path":"/notes/a.md"}"#, Some(r#"{"n":1}"#)), &source());
+        let item = item_of(
+            note(r#"{"path":"/notes/a.md"}"#, Some(r#"{"n":1}"#)),
+            &source(),
+        );
         let item = serde_json::to_value(item.unwrap()).unwrap();
         assert_eq!(item["source"]["instance"], "notes");
         assert_eq!(item["path"], "/notes/a.md");
@@ -183,7 +186,10 @@ mod tests {
     #[test]
     fn an_item_that_does_not_fit_is_invalid_params_naming_it() {
         let wrong = [
-            note(r#"{"source":{"connector":"other.app","instance":"x"}}"#, None),
+            note(
+                r#"{"source":{"connector":"other.app","instance":"x"}}"#,
+                None,
+            ),
             note("[]", None),
             note("{", None),
             note(r#"{"colour":"red"}"#, None),
@@ -217,7 +223,10 @@ mod tests {
         assert_eq!(query(None).unwrap(), (50, vec![ItemKind::Note]));
         assert_eq!(query(Some(500)).unwrap().0, 500);
         for limit in [0, 501] {
-            assert_eq!(query(Some(limit)).unwrap_err().code, ErrorCode::InvalidParams);
+            assert_eq!(
+                query(Some(limit)).unwrap_err().code,
+                ErrorCode::InvalidParams
+            );
         }
     }
 }
