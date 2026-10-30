@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Git</title>
+    <script type="importmap">
+      { "imports": { "@endue-ai/plugin-sdk": "/_desk/plugin-sdk.js" } }
+    </script>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <header>
+      <h1 id="repo">No repository</h1>
+      <p id="head">
+        <span id="branch"></span>
+        <span id="upstream"></span>
+        <span id="counts"></span>
+        <span id="busy" role="img" aria-label="Working" hidden>…</span>
+      </p>
+    </header>
+    <main>
+      <div id="view" role="tree" aria-label="Git status" tabindex="0"></div>
+      <form id="commit" hidden aria-labelledby="commit-title">
+        <h2 id="commit-title">Commit</h2>
+        <p id="commit-summary"></p>
+        <textarea
+          id="commit-message"
+          aria-label="Commit message"
+          rows="8"
+          placeholder="Summary line, a blank line, then the body"
+          spellcheck="true"
+        ></textarea>
+        <p class="options">
+          <label><input type="checkbox" id="commit-amend" /> Amend the last commit</label>
+          <label><input type="checkbox" id="commit-signoff" /> Sign off (DCO)</label>
+        </p>
+        <p class="hint">Mod+Enter commits · Escape cancels</p>
+      </form>
+    </main>
+    <footer>
+      <p id="hints"></p>
+      <p id="status" role="status"></p>
+    </footer>
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>
