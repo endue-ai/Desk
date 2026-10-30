@@ -1,6 +1,6 @@
 //! The fs side of `Core` beyond reading: fs.write, and fs.watch with its `fs.changed` events. A
 //! watch reports paths in the caller's own terms (under the path it asked for) and ends when the
-//! caller's grant no longer covers it.
+//! caller's grants no longer cover it (after a revoke, or the call that spent a once grant).
 
 use std::collections::BTreeMap;
 use std::path::Path;
@@ -13,9 +13,9 @@ use desk_bridge::{
 };
 use desk_sys::fs as sysfs;
 
-use crate::handler::{Answer, Core, error, io_error, json};
+use crate::handler::{Answer, Core, denied, error, io_error, json};
 use crate::paths::normalize;
-use crate::perm::Target;
+use crate::perm::{Denied, Target, scope_allows};
 
 struct WatchEntry {
     caller: String,
@@ -37,9 +37,18 @@ impl Core {
         let path = self.authorize(caller, &scope, &params.path)?;
         let create_dirs = params.create_dirs.unwrap_or(false);
         if create_dirs && let Some((parent, _)) = params.path.rsplit_once('/') {
-            // Folders it creates must be inside the scope too.
-            if !parent.is_empty() && !parent.ends_with(':') && parent != "~" {
-                self.authorize(caller, &scope, parent)?;
+            // Folders it creates must be inside the scope too. The grant was checked above, once:
+            // a second check would find a once grant already spent.
+            let target = Target::Path(parent);
+            if !parent.is_empty()
+                && !parent.ends_with(':')
+                && parent != "~"
+                && !scope_allows(&scope, &target)
+            {
+                return Err(denied(Denied {
+                    reason: format!("the scope does not cover {target:?}"),
+                    permission: scope,
+                }));
             }
         }
         let bytes = match params.encoding.unwrap_or(Encoding::Utf8) {
@@ -92,10 +101,13 @@ impl Core {
                 _watch: watch,
             },
         );
+        drop(watches);
+        // One started under a once grant ends with the call that spent it.
+        self.prune_watches(caller);
         json(FsWatchResult { watch_id })
     }
 
-    /// Stop the caller's watches that its grants no longer cover (after a revoke).
+    /// Stop the caller's watches that its grants no longer cover.
     pub(crate) fn prune_watches(&self, caller: &str) {
         let keep: Vec<String> = {
             let watches = self.watches();

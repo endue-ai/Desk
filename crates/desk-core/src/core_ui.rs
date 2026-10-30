@@ -9,15 +9,13 @@ use desk_bridge::{
     UiNotifyResult,
 };
 
-use crate::handler::{Answer, Core, denied, json};
+use crate::handler::{Answer, Core, json};
 use crate::perm::Target;
 
 impl Core {
     pub(crate) fn notify(&self, caller: &str, params: UiNotifyParams) -> Answer {
         let scope = Permission::UiNotify(params.scope);
-        self.permissions()
-            .authorize(caller, &scope, &Target::None)
-            .map_err(denied)?;
+        self.check(caller, &scope, &Target::None)?;
         let n = self.notifications.fetch_add(1, Ordering::Relaxed) + 1;
         let notification_id = format!("n-{n}");
         self.events()
