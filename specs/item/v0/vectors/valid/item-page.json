@@ -1,0 +1,84 @@
+{
+  "target": "ItemPage",
+  "description": "a page with a note, a file, a person, a feed entry and a metric, and the cursor of the next page",
+  "instance": {
+    "items": [
+      {
+        "id": "notes/inbox.md",
+        "source": {
+          "connector": "endue.folder",
+          "instance": "notes"
+        },
+        "kind": "note",
+        "title": "Inbox",
+        "updatedAt": "2026-10-29T22:10:00+09:00",
+        "body": "- call the bank",
+        "path": "notes/inbox.md"
+      },
+      {
+        "id": "a91f",
+        "source": {
+          "connector": "endue.recent-files",
+          "instance": "default"
+        },
+        "kind": "file",
+        "title": "Q3.numbers",
+        "updatedAt": "2026-10-30T08:00:00+09:00",
+        "path": "/Users/mina/Documents/Q3.numbers",
+        "size": 482113,
+        "mime": "application/vnd.apple.numbers",
+        "modifiedAt": "2026-10-30T08:00:00+09:00"
+      },
+      {
+        "id": "p-12",
+        "source": {
+          "connector": "endue.os-contacts",
+          "instance": "default"
+        },
+        "kind": "person",
+        "title": "Jun Park",
+        "updatedAt": "2026-09-01T10:00:00Z",
+        "emails": ["jun@example.com"],
+        "phones": ["+82 10 0000 0000"],
+        "org": "Example"
+      },
+      {
+        "id": "https://blog.example.com/posts/42",
+        "source": {
+          "connector": "endue.rss",
+          "instance": "default"
+        },
+        "kind": "entry",
+        "title": "Shipping on Fridays",
+        "updatedAt": "2026-10-30T06:00:00Z",
+        "url": "https://blog.example.com/posts/42",
+        "feed": "Example Engineering",
+        "publishedAt": "2026-10-30T06:00:00Z",
+        "summary": "Why we stopped worrying."
+      },
+      {
+        "id": "steps",
+        "source": {
+          "connector": "example.health",
+          "instance": "default"
+        },
+        "kind": "metric",
+        "title": "Steps",
+        "updatedAt": "2026-10-30T21:00:00+09:00",
+        "series": "steps",
+        "unit": "steps",
+        "points": [
+          {
+            "t": "2026-10-29T00:00:00+09:00",
+            "v": 8412.5
+          },
+          {
+            "t": "2026-10-30T00:00:00+09:00",
+            "v": 10233.25
+          }
+        ]
+      }
+    ],
+    "cursor": "c2:page-2"
+  }
+}

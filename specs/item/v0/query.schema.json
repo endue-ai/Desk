@@ -1,0 +1,144 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://endue.ai/specs/item/v0/query.schema.json",
+  "title": "Desk item v0: queries",
+  "description": "How items are asked for and handed over: a query (kinds, sources, full-text search, conditions, sort, cursor paging), a page of items, and the change of one item (ADR 0032).",
+  "$defs": {
+    "ItemQuery": {
+      "description": "Which items, in which order, how many. Every part narrows: kinds and sources, the full-text search and each where condition (all of them must hold).",
+      "type": "object",
+      "properties": {
+        "kinds": {
+          "description": "Absent means every kind.",
+          "type": "array",
+          "items": { "$ref": "item.schema.json#/$defs/ItemKind" },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "sources": {
+          "description": "Absent means every source the caller may read.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/SourceSelector" },
+          "minItems": 1
+        },
+        "text": {
+          "description": "Full-text search over title, body and the kinds' text fields.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "where": { "type": "array", "items": { "$ref": "#/$defs/ItemCondition" } },
+        "sort": {
+          "description": "The first entry sorts first; absent is updatedAt, newest first.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/ItemSort" }
+        },
+        "cursor": {
+          "description": "The cursor of the previous ItemPage, to read the next one. Opaque.",
+          "type": "string",
+          "minLength": 1
+        },
+        "limit": {
+          "description": "Items per page: 50 when absent, 500 at most.",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 500
+        }
+      },
+      "additionalProperties": false
+    },
+    "SourceSelector": {
+      "description": "A connector id (every instance of it), connector/instance (one instance), or, in a view binding only, $ and the name of one of the view's requires entries ($calendar).",
+      "type": "string",
+      "maxLength": 200,
+      "pattern": "^(\\$[a-z][a-z0-9-]*|[a-z][a-z0-9-]*(\\.[a-z][a-z0-9-]*)+(/[a-z0-9][a-z0-9_-]{0,63})?)$"
+    },
+    "FieldPath": {
+      "description": "A dotted path into an item: start, from.email, raw.labels, points.0.v.",
+      "type": "string",
+      "maxLength": 256,
+      "pattern": "^[A-Za-z_][A-Za-z0-9_]*(\\.[A-Za-z0-9_-]+)*$"
+    },
+    "ConditionOp": {
+      "description": "How a condition compares. in takes an array of values; contains matches a substring or an array element; exists takes no value, or false for a missing field.",
+      "type": "string",
+      "enum": ["eq", "ne", "lt", "lte", "gt", "gte", "in", "contains", "exists"]
+    },
+    "ItemCondition": {
+      "description": "One condition on one field.",
+      "type": "object",
+      "properties": {
+        "field": { "$ref": "#/$defs/FieldPath" },
+        "op": { "$ref": "#/$defs/ConditionOp" },
+        "value": { "description": "What the field is compared with. Any JSON value." }
+      },
+      "required": ["field", "op"],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": { "properties": { "op": { "const": "exists" } } },
+          "then": { "properties": { "value": { "type": "boolean" } } },
+          "else": { "properties": { "value": true }, "required": ["value"] }
+        },
+        {
+          "if": { "properties": { "op": { "const": "in" } } },
+          "then": { "properties": { "value": { "type": "array" } } }
+        }
+      ]
+    },
+    "SortDirection": {
+      "description": "Ascending or descending.",
+      "type": "string",
+      "enum": ["asc", "desc"]
+    },
+    "ItemSort": {
+      "description": "Sort by one field.",
+      "type": "object",
+      "properties": {
+        "field": { "$ref": "#/$defs/FieldPath" },
+        "dir": { "$ref": "#/$defs/SortDirection" }
+      },
+      "required": ["field", "dir"],
+      "additionalProperties": false
+    },
+    "ItemPage": {
+      "description": "One page of a query's items.",
+      "type": "object",
+      "properties": {
+        "items": { "type": "array", "items": { "$ref": "item.schema.json#/$defs/Item" } },
+        "cursor": {
+          "description": "Pass it as ItemQuery.cursor for the next page; absent on the last page.",
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": ["items"],
+      "additionalProperties": false
+    },
+    "ItemChange": {
+      "description": "What changed about one item: it is new or different (upserted), or gone (removed).",
+      "oneOf": [{ "$ref": "#/$defs/ItemUpserted" }, { "$ref": "#/$defs/ItemRemoved" }]
+    },
+    "ItemUpserted": {
+      "description": "The item is new, or replaces the one with the same source and id.",
+      "type": "object",
+      "properties": {
+        "change": { "const": "upserted" },
+        "item": { "$ref": "item.schema.json#/$defs/Item" }
+      },
+      "required": ["change", "item"],
+      "additionalProperties": false
+    },
+    "ItemRemoved": {
+      "description": "The item with this source and id is gone.",
+      "type": "object",
+      "properties": {
+        "change": { "const": "removed" },
+        "source": { "$ref": "item.schema.json#/$defs/ItemSource" },
+        "id": { "$ref": "item.schema.json#/$defs/ItemId" }
+      },
+      "required": ["change", "source", "id"],
+      "additionalProperties": false
+    }
+  }
+}

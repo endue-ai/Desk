@@ -44,4 +44,33 @@ describe("codegen", () => {
     }
     assert.match(rust, /"https:\/\/endue\.ai\/specs\/init\/v0\/init\.schema\.json"/);
   });
+
+  it("emits the item, view and connector types, and the new plugin kinds and permission", () => {
+    const rust = first["crates/desk-bridge/src/generated.rs"];
+    const ts = first["packages/bridge/src/generated.ts"];
+    for (const name of [
+      "ItemQuery",
+      "ItemPage",
+      "View",
+      "ConnectorManifest",
+      "ConnectorStatus",
+      "DataReadPermission",
+    ]) {
+      assert.match(rust, new RegExp(`pub struct ${name} \\{`), `${name} in Rust`);
+      assert.match(ts, new RegExp(`export interface ${name} \\{`), `${name} in TypeScript`);
+    }
+    for (const name of ["Item", "ItemChange"]) {
+      assert.match(rust, new RegExp(`pub enum ${name} \\{`), `${name} in Rust`);
+      assert.match(ts, new RegExp(`export type ${name} =`), `${name} in TypeScript`);
+    }
+    const kinds = /pub enum PluginKind \{[^}]*\}/.exec(rust)?.[0] ?? "";
+    for (const kind of ["connector", "view"])
+      assert.ok(kinds.includes(`#[serde(rename = "${kind}")]`), `PluginKind ${kind} in Rust`);
+    assert.match(ts, /export type PluginKind = [^;]*"connector" \| "view";/);
+    for (const file of ["item/v0/item", "item/v0/query", "view/v0/view", "connector/v0/connector"])
+      assert.ok(
+        rust.includes(`"https://endue.ai/specs/${file}.schema.json"`),
+        `${file} in SCHEMAS`,
+      );
+  });
 });

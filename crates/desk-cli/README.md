@@ -8,7 +8,7 @@ Layer: Rust core (see `docs/architecture.md`). Status: the commands below.
 ## Commands
 
 ```bash
-desk plugin validate <dir>             # plugin.json against specs/plugin v0, and the entry exists
+desk plugin validate <dir>             # plugin.json against specs/plugin v0; entry and view files exist
 desk ping                              # a round trip to the running desk; prints ok
 desk cmd list                          # id<TAB>provider<TAB>title per command
 desk cmd run <id> [--args <json>]      # waits for cmd.answered; prints the result as JSON
@@ -24,7 +24,8 @@ the desk's answer line as it came (for `cmd run`, the `cmd.answered` event line)
 
 Exit codes: 0 ok; 1 a failed check, a bridge error (`desk: <code>: <message>` on stderr), a failed
 or cancelled command, or no desk at the socket; 2 usage. `plugin validate` prints
-`ok <id> <version> (<kind> plugin)` or every problem with its location.
+`ok <id> <version> (<kind> plugin)` or every problem with its location, including the names the
+schema cannot check (`desk_bridge::manifest_problems`: views' `$name`s and params, connector actions).
 
 Run it from the repo with `cargo run -p desk-cli -- <command>`. CI runs `plugin validate` for every
 folder with a `plugin.json` in `plugins/` and `examples/` (`.github/workflows/plugin-validate.yml`).

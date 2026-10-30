@@ -1,0 +1,26 @@
+{
+  "target": "View",
+  "description": "timeline is not in the component catalogue",
+  "instance": {
+    "id": "desk.today",
+    "version": "0.1.0",
+    "title": "Today",
+    "description": "Today's events and the open tasks, side by side.",
+    "requires": {
+      "calendar": {
+        "kinds": ["event"],
+        "title": "A calendar"
+      },
+      "tasks": {
+        "kinds": ["task"],
+        "title": "A task list"
+      }
+    },
+    "layout": {
+      "type": "timeline",
+      "binding": {
+        "kinds": ["event"]
+      }
+    }
+  }
+}

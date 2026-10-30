@@ -77,7 +77,7 @@ defineUiPlugin({
 2. 在需要的那一刻再申请：`bridge.call("perm.request", { permission, reason })`。
 3. 每次调用都传入相应的范围，并尽可能缩小。
 
-词汇表（`fs:read`、`fs:write`、`proc:spawn`、`net:fetch`、`audio:capture`、`ui:surface`、`ui:notify`、`plugin:manage`）见 `specs/plugin/v0/README.md`。
+词汇表（`fs:read`、`fs:write`、`proc:spawn`、`net:fetch`、`audio:capture`、`ui:surface`、`ui:notify`、`plugin:manage`、`brain:converse`、`cmd:invoke`、`cmd:advise`、`settings:read`、`log:read`、`events:subscribe`、`perm:manage`）见 `specs/plugin/v0/README.md`。
 
 ## 贡献项
 

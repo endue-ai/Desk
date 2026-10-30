@@ -1,0 +1,13 @@
+{
+  "target": "ItemQuery",
+  "description": "in compares with an array of values",
+  "instance": {
+    "where": [
+      {
+        "field": "status",
+        "op": "in",
+        "value": "open"
+      }
+    ]
+  }
+}

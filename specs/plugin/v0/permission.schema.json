@@ -21,7 +21,10 @@
         { "$ref": "#/$defs/SettingsReadPermission" },
         { "$ref": "#/$defs/LogReadPermission" },
         { "$ref": "#/$defs/EventsSubscribePermission" },
-        { "$ref": "#/$defs/PermManagePermission" }
+        { "$ref": "#/$defs/PermManagePermission" },
+        { "$ref": "#/$defs/DataReadPermission" },
+        { "$ref": "#/$defs/ConnectorManagePermission" },
+        { "$ref": "#/$defs/ViewManagePermission" }
       ]
     },
     "FsReadPermission": {
@@ -209,6 +212,46 @@
       "required": ["permission"],
       "additionalProperties": false
     },
+    "DataReadPermission": {
+      "description": "Read the items of the desk's index (data.*) that the kinds and sources cover. Absent kinds or sources mean all of them. There is no data:write: changes go through the connectors' commands.",
+      "type": "object",
+      "properties": {
+        "permission": { "const": "data:read" },
+        "kinds": {
+          "description": "Item kinds the permission covers.",
+          "type": "array",
+          "items": { "$ref": "../../item/v0/item.schema.json#/$defs/ItemKind" },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "sources": {
+          "description": "Connector id patterns the permission covers.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/ConnectorPattern" },
+          "minItems": 1
+        }
+      },
+      "required": ["permission"],
+      "additionalProperties": false
+    },
+    "ConnectorManagePermission": {
+      "description": "List the connector instances with their status, connect and disconnect them, pause them and sync them (connector.*).",
+      "type": "object",
+      "properties": {
+        "permission": { "const": "connector:manage" }
+      },
+      "required": ["permission"],
+      "additionalProperties": false
+    },
+    "ViewManagePermission": {
+      "description": "List, open, save and remove the person's views (view.*).",
+      "type": "object",
+      "properties": {
+        "permission": { "const": "view:manage" }
+      },
+      "required": ["permission"],
+      "additionalProperties": false
+    },
     "PathPattern": {
       "description": "An absolute path, or one rooted at ~ or at ${plugin}, ${workspace} or ${home}, with forward slashes. * matches within a segment and ** across segments.",
       "type": "string",
@@ -228,6 +271,12 @@
     },
     "CommandPattern": {
       "description": "A command id, or a pattern in which * matches any run of characters, dots included: * covers every command, eris.* every command under eris.",
+      "type": "string",
+      "maxLength": 128,
+      "pattern": "^[a-z0-9*-]+(\\.[a-z0-9*-]+)*$"
+    },
+    "ConnectorPattern": {
+      "description": "A connector's plugin id, or a pattern in which * matches any run of characters, dots included, like command ids: * covers every connector, endue.* every connector under endue.",
       "type": "string",
       "maxLength": 128,
       "pattern": "^[a-z0-9*-]+(\\.[a-z0-9*-]+)*$"

@@ -28,7 +28,19 @@
           "type": "array",
           "items": { "$ref": "#/$defs/Surface" }
         },
-        "contributes": { "$ref": "contributes.schema.json#/$defs/PluginContributes" }
+        "contributes": { "$ref": "contributes.schema.json#/$defs/PluginContributes" },
+        "view": {
+          "description": "A view plugin's one view, inline.",
+          "$ref": "../../view/v0/view.schema.json#/$defs/View"
+        },
+        "views": {
+          "description": "A view plugin's view files, one View each, relative to the plugin folder.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/ViewPath" },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "connector": { "$ref": "../../connector/v0/connector.schema.json#/$defs/ConnectorManifest" }
       },
       "required": ["id", "version", "kind"],
       "additionalProperties": false,
@@ -38,7 +50,7 @@
           "then": { "properties": { "surfaces": { "type": "array", "maxItems": 0 } } }
         },
         {
-          "if": { "properties": { "kind": { "not": { "const": "policy" } } } },
+          "if": { "properties": { "kind": { "not": { "enum": ["policy", "view"] } } } },
           "then": { "properties": { "entry": true }, "required": ["entry"] }
         },
         {
@@ -47,6 +59,22 @@
             "properties": { "entry": false, "contributes": true },
             "required": ["contributes"]
           }
+        },
+        {
+          "if": { "properties": { "kind": { "const": "view" } } },
+          "then": {
+            "properties": { "entry": false, "view": true, "views": true },
+            "oneOf": [
+              { "properties": { "view": true }, "required": ["view"] },
+              { "properties": { "views": true }, "required": ["views"] }
+            ]
+          },
+          "else": { "properties": { "view": false, "views": false } }
+        },
+        {
+          "if": { "properties": { "kind": { "const": "connector" } } },
+          "then": { "properties": { "connector": true }, "required": ["connector"] },
+          "else": { "properties": { "connector": false } }
         }
       ]
     },
@@ -62,15 +90,20 @@
       "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?(\\+[0-9A-Za-z.-]+)?$"
     },
     "PluginKind": {
-      "description": "ui runs in a sandboxed iframe, logic in a Wasm instance, tool as an MCP server inside the VM. policy runs no code: it only contributes data (ADR 0017).",
+      "description": "ui runs in a sandboxed iframe, logic in a Wasm instance, tool as an MCP server inside the VM. policy runs no code: it only contributes data (ADR 0017). connector brings an app's data in as items, as a Wasm component or an MCP server; view runs no code either: it is one or more views (ADR 0032).",
       "type": "string",
-      "enum": ["ui", "logic", "tool", "policy"]
+      "enum": ["ui", "logic", "tool", "policy", "connector", "view"]
     },
     "EntryPath": {
       "description": "Path to the entry file, relative to the plugin folder, without .. segments.",
       "type": "string",
       "minLength": 1,
       "pattern": "^(?!/)(?!.*(^|/)\\.\\.(/|$))[^\\\\]+$"
+    },
+    "ViewPath": {
+      "description": "A view file relative to the plugin folder, without .. segments: YAML (.yaml, .yml) or JSON (.json).",
+      "type": "string",
+      "pattern": "^(?!/)(?!.*(^|/)\\.\\.(/|$))[^\\\\]+\\.(ya?ml|json)$"
     },
     "Surface": {
       "description": "A surface a UI plugin can open on the desk.",

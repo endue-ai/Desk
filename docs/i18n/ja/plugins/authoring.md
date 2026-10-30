@@ -77,7 +77,7 @@ defineUiPlugin({
 2. 必要になったその時点で要求します：`bridge.call("perm.request", { permission, reason })`。
 3. 各呼び出しでは、対応するスコープをできるだけ狭くして渡します。
 
-語彙（`fs:read`、`fs:write`、`proc:spawn`、`net:fetch`、`audio:capture`、`ui:surface`、`ui:notify`、`plugin:manage`）は `specs/plugin/v0/README.md` にあります。
+語彙（`fs:read`、`fs:write`、`proc:spawn`、`net:fetch`、`audio:capture`、`ui:surface`、`ui:notify`、`plugin:manage`、`brain:converse`、`cmd:invoke`、`cmd:advise`、`settings:read`、`log:read`、`events:subscribe`、`perm:manage`）は `specs/plugin/v0/README.md` にあります。
 
 ## コントリビューション
 

@@ -1,0 +1,30 @@
+{
+  "target": "ConnectorManifest",
+  "description": "http is not a binding; wasm and mcp are",
+  "instance": {
+    "binding": "http",
+    "auth": {
+      "kind": "none"
+    },
+    "resources": [
+      {
+        "kind": "note"
+      },
+      {
+        "kind": "file",
+        "live": true
+      }
+    ],
+    "sync": {
+      "mode": "pull",
+      "intervalSeconds": 300
+    },
+    "instanceSettings": {
+      "folder": {
+        "kind": "string",
+        "title": "Folder",
+        "required": true
+      }
+    }
+  }
+}

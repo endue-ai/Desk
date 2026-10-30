@@ -1,0 +1,326 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://endue.ai/specs/item/v0/item.schema.json",
+  "title": "Desk item v0",
+  "description": "The one shape every connector brings data in as, the index keeps and every view shows: an envelope all kinds share, plus the fields of eight kinds and record (ADR 0032). query.schema.json carries items in queries, pages and changes.",
+  "$defs": {
+    "ItemKind": {
+      "description": "What an item is. record is any other shape, described by the JSON Schema it names.",
+      "type": "string",
+      "enum": ["event", "message", "task", "note", "file", "person", "entry", "metric", "record"]
+    },
+    "Item": {
+      "description": "One item: the shared envelope (id, source, kind, title, updatedAt; createdAt, deepLink, body and raw when there are) plus the fields of its kind.",
+      "oneOf": [
+        { "$ref": "#/$defs/EventItem" },
+        { "$ref": "#/$defs/MessageItem" },
+        { "$ref": "#/$defs/TaskItem" },
+        { "$ref": "#/$defs/NoteItem" },
+        { "$ref": "#/$defs/FileItem" },
+        { "$ref": "#/$defs/PersonItem" },
+        { "$ref": "#/$defs/EntryItem" },
+        { "$ref": "#/$defs/MetricItem" },
+        { "$ref": "#/$defs/RecordItem" }
+      ]
+    },
+    "ItemId": {
+      "description": "The item's id, unique within its source and kept as the source gives it. An index keys items by source.connector, source.instance and id; there is no global id format.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512
+    },
+    "ItemSource": {
+      "description": "Where the item came from: the connector plugin and its instance.",
+      "type": "object",
+      "properties": {
+        "connector": { "$ref": "../../plugin/v0/plugin.schema.json#/$defs/PluginId" },
+        "instance": { "$ref": "#/$defs/InstanceId" }
+      },
+      "required": ["connector", "instance"],
+      "additionalProperties": false
+    },
+    "InstanceId": {
+      "description": "One connection of a connector, unique within it: default, work, personal.",
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$"
+    },
+    "Timestamp": {
+      "description": "An RFC 3339 time with an offset (Z or +09:00); a time without one is refused.",
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$"
+    },
+    "ItemTitle": {
+      "description": "One line that names the item in a list.",
+      "type": "string",
+      "maxLength": 1000
+    },
+    "ItemBody": {
+      "description": "The item's text (a note's content, a message's body), as Markdown or plain text.",
+      "type": "string"
+    },
+    "DeepLink": {
+      "description": "A URL that opens the item in its own app: https:, or the app's scheme (message:, x-apple-reminder:). It is the way back to the original.",
+      "type": "string",
+      "maxLength": 4096,
+      "pattern": "^[A-Za-z][A-Za-z0-9+.-]*:[^\\s]+$"
+    },
+    "ItemRaw": {
+      "description": "Everything else the source said about the item, as it said it. Views may read it (raw.labels); nothing else depends on its shape.",
+      "type": "object"
+    },
+    "PersonRef": {
+      "description": "A person an item names, by name, email or both.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "email": { "type": "string", "pattern": "^[^@\\s]+@[^@\\s]+$" }
+      },
+      "minProperties": 1,
+      "additionalProperties": false
+    },
+    "EventItem": {
+      "description": "A calendar event.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "#/$defs/ItemId" },
+        "source": { "$ref": "#/$defs/ItemSource" },
+        "kind": { "const": "event" },
+        "title": { "$ref": "#/$defs/ItemTitle" },
+        "updatedAt": { "$ref": "#/$defs/Timestamp" },
+        "createdAt": { "$ref": "#/$defs/Timestamp" },
+        "deepLink": { "$ref": "#/$defs/DeepLink" },
+        "body": { "$ref": "#/$defs/ItemBody" },
+        "raw": { "$ref": "#/$defs/ItemRaw" },
+        "start": { "$ref": "#/$defs/Timestamp" },
+        "end": { "$ref": "#/$defs/Timestamp" },
+        "allDay": {
+          "description": "A whole-day event; start and end are midnights.",
+          "type": "boolean"
+        },
+        "location": { "type": "string" },
+        "attendees": { "type": "array", "items": { "$ref": "#/$defs/PersonRef" } },
+        "recurrence": {
+          "description": "The RFC 5545 RRULE as the source wrote it (FREQ=WEEKLY;BYDAY=MO), kept so the rule is never lost.",
+          "type": "string",
+          "minLength": 1
+        },
+        "calendar": { "description": "The calendar it belongs to, by name.", "type": "string" }
+      },
+      "required": ["id", "source", "kind", "title", "updatedAt", "start", "end"],
+      "additionalProperties": false
+    },
+    "MessageItem": {
+      "description": "A mail, chat or notification message.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "#/$defs/ItemId" },
+        "source": { "$ref": "#/$defs/ItemSource" },
+        "kind": { "const": "message" },
+        "title": { "$ref": "#/$defs/ItemTitle" },
+        "updatedAt": { "$ref": "#/$defs/Timestamp" },
+        "createdAt": { "$ref": "#/$defs/Timestamp" },
+        "deepLink": { "$ref": "#/$defs/DeepLink" },
+        "body": { "$ref": "#/$defs/ItemBody" },
+        "raw": { "$ref": "#/$defs/ItemRaw" },
+        "from": { "$ref": "#/$defs/PersonRef" },
+        "to": { "type": "array", "items": { "$ref": "#/$defs/PersonRef" } },
+        "receivedAt": { "$ref": "#/$defs/Timestamp" },
+        "unread": { "type": "boolean" },
+        "snippet": { "description": "The first words, for a list.", "type": "string" },
+        "thread": {
+          "description": "The thread or channel it belongs to, by the source's id.",
+          "type": "string"
+        }
+      },
+      "required": ["id", "source", "kind", "title", "updatedAt", "from", "receivedAt", "unread"],
+      "additionalProperties": false
+    },
+    "TaskStatus": {
+      "description": "Where a task stands.",
+      "type": "string",
+      "enum": ["open", "done", "cancelled"]
+    },
+    "TaskItem": {
+      "description": "A to-do, reminder, ticket or issue.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "#/$defs/ItemId" },
+        "source": { "$ref": "#/$defs/ItemSource" },
+        "kind": { "const": "task" },
+        "title": { "$ref": "#/$defs/ItemTitle" },
+        "updatedAt": { "$ref": "#/$defs/Timestamp" },
+        "createdAt": { "$ref": "#/$defs/Timestamp" },
+        "deepLink": { "$ref": "#/$defs/DeepLink" },
+        "body": { "$ref": "#/$defs/ItemBody" },
+        "raw": { "$ref": "#/$defs/ItemRaw" },
+        "status": { "$ref": "#/$defs/TaskStatus" },
+        "due": { "$ref": "#/$defs/Timestamp" },
+        "completedAt": { "$ref": "#/$defs/Timestamp" },
+        "priority": {
+          "description": "1 is the most urgent, 4 the least; absent is none.",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4
+        },
+        "project": {
+          "description": "The list, project or board it belongs to, by name.",
+          "type": "string"
+        }
+      },
+      "required": ["id", "source", "kind", "title", "updatedAt", "status"],
+      "additionalProperties": false
+    },
+    "NoteItem": {
+      "description": "A note; its text is body.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "#/$defs/ItemId" },
+        "source": { "$ref": "#/$defs/ItemSource" },
+        "kind": { "const": "note" },
+        "title": { "$ref": "#/$defs/ItemTitle" },
+        "updatedAt": { "$ref": "#/$defs/Timestamp" },
+        "createdAt": { "$ref": "#/$defs/Timestamp" },
+        "deepLink": { "$ref": "#/$defs/DeepLink" },
+        "body": { "$ref": "#/$defs/ItemBody" },
+        "raw": { "$ref": "#/$defs/ItemRaw" },
+        "path": {
+          "description": "Where the note lives in its source, as a path.",
+          "type": "string"
+        }
+      },
+      "required": ["id", "source", "kind", "title", "updatedAt"],
+      "additionalProperties": false
+    },
+    "FileItem": {
+      "description": "A file, on the device or in a store.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "#/$defs/ItemId" },
+        "source": { "$ref": "#/$defs/ItemSource" },
+        "kind": { "const": "file" },
+        "title": { "$ref": "#/$defs/ItemTitle" },
+        "updatedAt": { "$ref": "#/$defs/Timestamp" },
+        "createdAt": { "$ref": "#/$defs/Timestamp" },
+        "deepLink": { "$ref": "#/$defs/DeepLink" },
+        "body": { "$ref": "#/$defs/ItemBody" },
+        "raw": { "$ref": "#/$defs/ItemRaw" },
+        "path": {
+          "description": "The file's path in its source.",
+          "type": "string",
+          "minLength": 1
+        },
+        "size": { "description": "Bytes.", "type": "integer", "minimum": 0 },
+        "mime": { "type": "string", "minLength": 1 },
+        "modifiedAt": { "$ref": "#/$defs/Timestamp" }
+      },
+      "required": ["id", "source", "kind", "title", "updatedAt", "path", "size", "modifiedAt"],
+      "additionalProperties": false
+    },
+    "PersonItem": {
+      "description": "A contact.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "#/$defs/ItemId" },
+        "source": { "$ref": "#/$defs/ItemSource" },
+        "kind": { "const": "person" },
+        "title": { "$ref": "#/$defs/ItemTitle" },
+        "updatedAt": { "$ref": "#/$defs/Timestamp" },
+        "createdAt": { "$ref": "#/$defs/Timestamp" },
+        "deepLink": { "$ref": "#/$defs/DeepLink" },
+        "body": { "$ref": "#/$defs/ItemBody" },
+        "raw": { "$ref": "#/$defs/ItemRaw" },
+        "emails": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "phones": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "org": { "type": "string" }
+      },
+      "required": ["id", "source", "kind", "title", "updatedAt"],
+      "additionalProperties": false
+    },
+    "EntryItem": {
+      "description": "An entry of a feed (RSS, Atom, a changelog).",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "#/$defs/ItemId" },
+        "source": { "$ref": "#/$defs/ItemSource" },
+        "kind": { "const": "entry" },
+        "title": { "$ref": "#/$defs/ItemTitle" },
+        "updatedAt": { "$ref": "#/$defs/Timestamp" },
+        "createdAt": { "$ref": "#/$defs/Timestamp" },
+        "deepLink": { "$ref": "#/$defs/DeepLink" },
+        "body": { "$ref": "#/$defs/ItemBody" },
+        "raw": { "$ref": "#/$defs/ItemRaw" },
+        "url": { "$ref": "#/$defs/DeepLink" },
+        "feed": {
+          "description": "The feed it came from, by its title.",
+          "type": "string",
+          "minLength": 1
+        },
+        "publishedAt": { "$ref": "#/$defs/Timestamp" },
+        "summary": { "type": "string" }
+      },
+      "required": ["id", "source", "kind", "title", "updatedAt", "url", "feed", "publishedAt"],
+      "additionalProperties": false
+    },
+    "MetricPoint": {
+      "description": "One point of a time series: when, and the value.",
+      "type": "object",
+      "properties": {
+        "t": { "$ref": "#/$defs/Timestamp" },
+        "v": { "type": "number" }
+      },
+      "required": ["t", "v"],
+      "additionalProperties": false
+    },
+    "MetricItem": {
+      "description": "A time series: steps, build times, a balance.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "#/$defs/ItemId" },
+        "source": { "$ref": "#/$defs/ItemSource" },
+        "kind": { "const": "metric" },
+        "title": { "$ref": "#/$defs/ItemTitle" },
+        "updatedAt": { "$ref": "#/$defs/Timestamp" },
+        "createdAt": { "$ref": "#/$defs/Timestamp" },
+        "deepLink": { "$ref": "#/$defs/DeepLink" },
+        "body": { "$ref": "#/$defs/ItemBody" },
+        "raw": { "$ref": "#/$defs/ItemRaw" },
+        "series": {
+          "description": "The series' name within its source.",
+          "type": "string",
+          "minLength": 1
+        },
+        "unit": { "description": "What v counts: steps, ms, EUR.", "type": "string" },
+        "points": {
+          "description": "Oldest first.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/MetricPoint" }
+        }
+      },
+      "required": ["id", "source", "kind", "title", "updatedAt", "series", "points"],
+      "additionalProperties": false
+    },
+    "RecordItem": {
+      "description": "Any other shape (an invoice, a deploy): its fields follow the JSON Schema it names.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "#/$defs/ItemId" },
+        "source": { "$ref": "#/$defs/ItemSource" },
+        "kind": { "const": "record" },
+        "title": { "$ref": "#/$defs/ItemTitle" },
+        "updatedAt": { "$ref": "#/$defs/Timestamp" },
+        "createdAt": { "$ref": "#/$defs/Timestamp" },
+        "deepLink": { "$ref": "#/$defs/DeepLink" },
+        "body": { "$ref": "#/$defs/ItemBody" },
+        "raw": { "$ref": "#/$defs/ItemRaw" },
+        "schema": {
+          "description": "The URI of the JSON Schema the fields follow, named by its vendor (https://schemas.example.com/deploy.json).",
+          "$ref": "#/$defs/DeepLink"
+        },
+        "fields": { "description": "The record itself.", "type": "object" }
+      },
+      "required": ["id", "source", "kind", "title", "updatedAt", "schema", "fields"],
+      "additionalProperties": false
+    }
+  }
+}
