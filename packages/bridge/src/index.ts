@@ -16,6 +16,13 @@ export {
   type ParamsOf,
   type ResultOf,
 } from "./client";
+export {
+  FIXTURE_CONNECTOR,
+  FIXTURE_NOW,
+  type FixtureConnector,
+  fixtureConnector,
+  fixtureItems,
+} from "./fixtures";
 export * from "./generated";
 export {
   type StubCommands,
