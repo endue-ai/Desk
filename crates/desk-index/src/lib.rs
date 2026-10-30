@@ -187,7 +187,12 @@ mod tests {
 
     #[test]
     fn the_core_holds_the_index_behind_its_trait() {
-        let dir = std::env::temp_dir().join(format!("desk-index-trait-{}", std::process::id()));
+        let nanos = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .subsec_nanos();
+        let name = format!("desk-index-trait-{}-{nanos}", std::process::id());
+        let dir = std::env::temp_dir().join(name);
         let index: Arc<dyn ItemIndex> = Arc::new(Index::open(dir.join("index.sqlite")).unwrap());
         let item = serde_json::from_value(serde_json::json!({
             "id": "t1", "source": { "connector": "desk.fixtures", "instance": "default" },
@@ -204,6 +209,8 @@ mod tests {
         }))
         .unwrap();
         assert_eq!(index.remove(&source, &["t1".to_string()]).unwrap(), 1);
+        // Windows refuses to delete a file that is still open.
+        drop(index);
         std::fs::remove_dir_all(dir).unwrap();
     }
 }
