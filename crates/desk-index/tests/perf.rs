@@ -67,7 +67,7 @@ fn ten_thousand_items_query_under_fifty_milliseconds() {
     let plain = median(&all);
     let with_scope = median(&scoped);
     eprintln!(
-        "desk-index: median of five queries over {ITEMS} items: {plain:?}, with a scope {with_scope:?}"
+        "desk-index: median of five queries over {ITEMS} items: {plain:?}, scoped {with_scope:?}"
     );
     assert!(plain < BUDGET, "{plain:?} is over the {BUDGET:?} budget");
     assert!(

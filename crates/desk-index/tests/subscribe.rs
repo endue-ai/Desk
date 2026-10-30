@@ -87,7 +87,7 @@ fn an_item_that_leaves_the_query_is_delivered_as_removed() {
     let q = query(json!({ "where": [{ "field": "status", "op": "eq", "value": "open" }] }));
     let changes = index.subscribe(&q, &all()).unwrap();
     let open = task("desk.fixtures", "t1", "Pay rent", T);
-    index.upsert(&[open.clone()]).unwrap();
+    index.upsert(std::slice::from_ref(&open)).unwrap();
     assert_eq!(changes.try_recv().unwrap(), [upserted(&open)]);
 
     let done = task_with(
@@ -97,7 +97,7 @@ fn an_item_that_leaves_the_query_is_delivered_as_removed() {
         T,
         json!({ "status": "done" }),
     );
-    index.upsert(&[done.clone()]).unwrap();
+    index.upsert(std::slice::from_ref(&done)).unwrap();
     assert_eq!(
         changes.try_recv().unwrap(),
         [removed("desk.fixtures", "t1")]

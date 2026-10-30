@@ -1,4 +1,5 @@
-//! Limits per source: a size cap (oldest updatedAt first) and a retention period; counts per source.
+//! Limits per source: a size cap (oldest updatedAt first) and a retention period; counts per
+//! source.
 
 mod common;
 
@@ -61,7 +62,7 @@ fn a_source_over_its_cap_loses_its_oldest_items_first() {
 
     // A newer item pushes the oldest out, in the same batch.
     let a6 = task("desk.fixtures", "a6", "A", &day(6));
-    index.upsert(&[a6.clone()]).unwrap();
+    index.upsert(std::slice::from_ref(&a6)).unwrap();
     assert_eq!(
         changes.try_recv().unwrap(),
         [upserted(&a6), removed("desk.fixtures", "a3")]

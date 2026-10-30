@@ -32,6 +32,16 @@ pub fn open(name: &str) -> Index {
     Index::open(temp_path(name)).unwrap()
 }
 
+/// 2026-10-`day` at `hour`:00Z.
+pub fn at(day: u32, hour: u32) -> String {
+    format!("2026-10-{day:02}T{hour:02}:00:00Z")
+}
+
+/// 2026-10-`day` at 09:00Z.
+pub fn day(day: u32) -> String {
+    at(day, 9)
+}
+
 pub fn all() -> DataReadScope {
     DataReadScope::all()
 }
@@ -118,6 +128,11 @@ pub fn id_of(item: &Item) -> String {
 
 pub fn ids(page: &ItemPage) -> Vec<String> {
     page.items.iter().map(id_of).collect()
+}
+
+/// The ids `query` answers over the whole index, joined by spaces.
+pub fn found(index: &Index, value: Value) -> String {
+    ids_of(index, value).join(" ")
 }
 
 /// The ids `query` answers over the whole index.
