@@ -31,7 +31,7 @@
           "items": { "$ref": "../../view/v0/view.schema.json#/$defs/ComponentType" }
         },
         "connectors": {
-          "description": "The connectors with at least one instance, by id, with only the kinds the caller's data:read grants cover.",
+          "description": "The connectors with at least one instance, by id, with only the kinds the caller's data:read grants cover; a connector with none of them is left out.",
           "type": "array",
           "items": { "$ref": "#/$defs/CatalogConnector" }
         },

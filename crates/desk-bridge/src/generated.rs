@@ -1820,7 +1820,7 @@ pub struct CatalogGetParams {}
 pub struct CatalogGetResult {
     /// The view components the desk renders.
     pub components: Vec<ComponentType>,
-    /// The connectors with at least one instance, by id, with only the kinds the caller's data:read grants cover.
+    /// The connectors with at least one instance, by id, with only the kinds the caller's data:read grants cover; a connector with none of them is left out.
     pub connectors: Vec<CatalogConnector>,
     /// The registered commands the caller's cmd:invoke grants cover, in registration order.
     pub commands: Vec<CommandInfo>,

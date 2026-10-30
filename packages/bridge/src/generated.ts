@@ -1161,7 +1161,7 @@ export type CatalogGetParams = Record<string, never>;
 export interface CatalogGetResult {
   /** The view components the desk renders. */
   components: ComponentType[];
-  /** The connectors with at least one instance, by id, with only the kinds the caller's data:read grants cover. */
+  /** The connectors with at least one instance, by id, with only the kinds the caller's data:read grants cover; a connector with none of them is left out. */
   connectors: CatalogConnector[];
   /** The registered commands the caller's cmd:invoke grants cover, in registration order. */
   commands: CommandInfo[];
