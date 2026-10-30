@@ -88,7 +88,8 @@ answers only when the person has granted a permission that covers that scope.
 3. Pass the matching scope with each call, as narrow as you can.
 
 The vocabulary (`fs:read`, `fs:write`, `proc:spawn`, `net:fetch`, `audio:capture`, `ui:surface`,
-`ui:notify`, `plugin:manage`) is in `specs/plugin/v0/README.md`.
+`ui:notify`, `plugin:manage`, `brain:converse`, `cmd:invoke`, `cmd:advise`, `settings:read`, `log:read`,
+`events:subscribe`, `perm:manage`) is in `specs/plugin/v0/README.md`.
 
 ## Contributions
 
