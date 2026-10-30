@@ -1,0 +1,13 @@
+{
+  "target": "BridgeRequest",
+  "description": "brain.spaces.list takes only its scope",
+  "instance": {
+    "id": 23,
+    "method": "brain.spaces.list",
+    "params": {
+      "scope": {
+        "permission": "brain:converse"
+      }
+    }
+  }
+}
