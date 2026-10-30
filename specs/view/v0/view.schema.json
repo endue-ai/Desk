@@ -1,0 +1,292 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://endue.ai/specs/view/v0/view.schema.json",
+  "title": "Desk view v0",
+  "description": "A view: a surface that shows items, written as data instead of code, so it is validated at install and shared without review (ADR 0032). The person's views live as YAML in ~/.desk/views/<id>.yaml; on the wire a view is JSON of the same shape.",
+  "$defs": {
+    "View": {
+      "description": "One view file.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "#/$defs/ViewId" },
+        "version": { "$ref": "../../plugin/v0/plugin.schema.json#/$defs/Version" },
+        "title": { "$ref": "#/$defs/Template" },
+        "description": {
+          "description": "One sentence about what the view shows.",
+          "type": "string"
+        },
+        "requires": {
+          "description": "The sources the view needs, by name. Bindings name them as $name; the person picks an instance for each when the view opens.",
+          "type": "object",
+          "propertyNames": { "$ref": "#/$defs/RequireName" },
+          "additionalProperties": { "$ref": "#/$defs/ViewRequirement" }
+        },
+        "params": {
+          "description": "Values the person sets when the view opens, by name. Templates read them as {params.<name>}.",
+          "type": "object",
+          "propertyNames": { "$ref": "#/$defs/ParamName" },
+          "additionalProperties": { "$ref": "#/$defs/ViewParam" }
+        },
+        "layout": { "$ref": "#/$defs/ViewNode" },
+        "provenance": { "$ref": "#/$defs/ViewProvenance" }
+      },
+      "required": ["id", "version", "title", "layout"],
+      "additionalProperties": false
+    },
+    "ViewId": {
+      "description": "Lowercase and dotted like a plugin id: desk.today, example.sprint-board.",
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*(\\.[a-z][a-z0-9-]*)+$",
+      "maxLength": 128
+    },
+    "RequireName": {
+      "description": "A requires entry's name: calendar, tasks, work-mail.",
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$",
+      "maxLength": 64
+    },
+    "ViewRequirement": {
+      "description": "One source a view needs: items of these kinds, optionally from one connector.",
+      "type": "object",
+      "properties": {
+        "kinds": {
+          "type": "array",
+          "items": { "$ref": "../../item/v0/item.schema.json#/$defs/ItemKind" },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "connector": {
+          "description": "Only this connector's instances will do; absent, any connector with the kinds.",
+          "$ref": "../../plugin/v0/plugin.schema.json#/$defs/PluginId"
+        },
+        "title": {
+          "description": "What the person is asked for: A calendar.",
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": ["kinds"],
+      "additionalProperties": false
+    },
+    "ParamName": {
+      "description": "A param's name: days, project, showDone.",
+      "type": "string",
+      "pattern": "^[a-z][a-zA-Z0-9]*$",
+      "maxLength": 64
+    },
+    "ViewParam": {
+      "description": "One param: a string, an integer, a boolean or one of a list of choices. Without a default the person is asked when the view opens.",
+      "oneOf": [
+        { "$ref": "#/$defs/StringParam" },
+        { "$ref": "#/$defs/IntegerParam" },
+        { "$ref": "#/$defs/BooleanParam" },
+        { "$ref": "#/$defs/EnumParam" }
+      ]
+    },
+    "StringParam": {
+      "description": "A text param.",
+      "type": "object",
+      "properties": {
+        "kind": { "const": "string" },
+        "title": { "type": "string", "minLength": 1 },
+        "default": { "type": "string" }
+      },
+      "required": ["kind"],
+      "additionalProperties": false
+    },
+    "IntegerParam": {
+      "description": "A whole-number param, optionally within bounds.",
+      "type": "object",
+      "properties": {
+        "kind": { "const": "integer" },
+        "title": { "type": "string", "minLength": 1 },
+        "default": { "type": "integer" },
+        "minimum": { "type": "integer" },
+        "maximum": { "type": "integer" }
+      },
+      "required": ["kind"],
+      "additionalProperties": false
+    },
+    "BooleanParam": {
+      "description": "An on-off param.",
+      "type": "object",
+      "properties": {
+        "kind": { "const": "boolean" },
+        "title": { "type": "string", "minLength": 1 },
+        "default": { "type": "boolean" }
+      },
+      "required": ["kind"],
+      "additionalProperties": false
+    },
+    "EnumParam": {
+      "description": "A param that is one of its choices.",
+      "type": "object",
+      "properties": {
+        "kind": { "const": "enum" },
+        "title": { "type": "string", "minLength": 1 },
+        "choices": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "default": { "type": "string" }
+      },
+      "required": ["kind", "choices"],
+      "additionalProperties": false
+    },
+    "ViewNode": {
+      "description": "A node of the layout tree: a container that arranges its children, or a component that shows items.",
+      "oneOf": [{ "$ref": "#/$defs/ViewContainer" }, { "$ref": "#/$defs/ViewComponent" }]
+    },
+    "ContainerType": {
+      "description": "grid lays its children out in columns, split side by side (or one above the other) with a divider, tabs one at a time under their titles, stack one after another.",
+      "type": "string",
+      "enum": ["grid", "split", "tabs", "stack"]
+    },
+    "LayoutDirection": {
+      "description": "The way a split or a stack runs.",
+      "type": "string",
+      "enum": ["horizontal", "vertical"]
+    },
+    "ViewContainer": {
+      "description": "A container: it arranges its children and shows no items itself.",
+      "type": "object",
+      "properties": {
+        "type": { "$ref": "#/$defs/ContainerType" },
+        "title": { "$ref": "#/$defs/Template" },
+        "children": {
+          "description": "In order. Under tabs, each child's title is its tab.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/ViewNode" },
+          "minItems": 1
+        },
+        "columns": {
+          "description": "grid only: columns, 2 when absent.",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 12
+        },
+        "direction": { "$ref": "#/$defs/LayoutDirection" }
+      },
+      "required": ["type", "children"],
+      "additionalProperties": false
+    },
+    "ComponentType": {
+      "description": "The component catalogue: list, table, card, detail (the selected item, else the binding's first), calendar, agenda, kanban (a column per groupBy value), chart, markdown (text) and stat (how many items, or text for the first).",
+      "type": "string",
+      "enum": [
+        "list",
+        "table",
+        "card",
+        "detail",
+        "calendar",
+        "agenda",
+        "kanban",
+        "chart",
+        "markdown",
+        "stat"
+      ]
+    },
+    "CalendarRange": {
+      "description": "How much time a calendar or an agenda shows at once.",
+      "type": "string",
+      "enum": ["day", "week", "month"]
+    },
+    "ChartKind": {
+      "description": "How a chart draws: metric items as their points, other items as counts per groupBy value.",
+      "type": "string",
+      "enum": ["bar", "line", "sparkline"]
+    },
+    "ViewComponent": {
+      "description": "A component: it shows the items its binding matches, each with its fields, and offers its actions on them.",
+      "type": "object",
+      "properties": {
+        "type": { "$ref": "#/$defs/ComponentType" },
+        "title": { "$ref": "#/$defs/Template" },
+        "binding": { "$ref": "../../item/v0/query.schema.json#/$defs/ItemQuery" },
+        "fields": {
+          "description": "What each item shows, in order: a table's columns, a card's lines.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/ViewField" }
+        },
+        "actions": { "type": "array", "items": { "$ref": "#/$defs/ViewAction" } },
+        "empty": {
+          "description": "Shown when the binding matches nothing.",
+          "type": "string",
+          "minLength": 1
+        },
+        "groupBy": { "$ref": "../../item/v0/query.schema.json#/$defs/FieldPath" },
+        "range": { "$ref": "#/$defs/CalendarRange" },
+        "chart": { "$ref": "#/$defs/ChartKind" },
+        "text": { "$ref": "#/$defs/Template" }
+      },
+      "required": ["type"],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": { "properties": { "type": { "const": "kanban" } } },
+          "then": { "properties": { "groupBy": true }, "required": ["groupBy"] }
+        }
+      ]
+    },
+    "Template": {
+      "description": "Text in which {path} is a field of the item in scope (or params.<name>), and {path|time}, {path|date}, {path|relative} or {path|number} formats it. {{ and }} are literal braces. There is no expression language in v0.",
+      "type": "string",
+      "maxLength": 1000,
+      "pattern": "^(\\{\\{|\\}\\}|[^{}]|\\{[A-Za-z_][A-Za-z0-9_]*(\\.[A-Za-z0-9_-]+)*(\\|(time|date|relative|number))?\\})*$"
+    },
+    "ViewField": {
+      "description": "One field of an item as a component shows it.",
+      "type": "object",
+      "properties": {
+        "label": { "description": "A table's column header, a card's label.", "type": "string" },
+        "value": { "$ref": "#/$defs/Template" }
+      },
+      "required": ["value"],
+      "additionalProperties": false
+    },
+    "ViewAction": {
+      "description": "A command the component offers on an item. Every action is a command: keys, the palette, Eris and agents run the same one.",
+      "type": "object",
+      "properties": {
+        "command": { "$ref": "../../plugin/v0/contributes.schema.json#/$defs/CommandId" },
+        "title": {
+          "description": "Shown on the button and in the action menu.",
+          "type": "string",
+          "minLength": 1
+        },
+        "args": {
+          "description": "Passed to the command. Any JSON value; strings in it are templates over the item ({id})."
+        },
+        "key": { "$ref": "../../plugin/v0/contributes.schema.json#/$defs/KeyCombo" }
+      },
+      "required": ["command"],
+      "additionalProperties": false
+    },
+    "ViewProvenance": {
+      "description": "Who made the view, when, and from which words. It travels with the view when it is shared.",
+      "type": "object",
+      "properties": {
+        "author": {
+          "description": "person, eris, an agent's name or a plugin id.",
+          "type": "string",
+          "minLength": 1
+        },
+        "createdAt": { "$ref": "../../item/v0/item.schema.json#/$defs/Timestamp" },
+        "words": {
+          "description": "What the person said to have it made.",
+          "type": "string",
+          "minLength": 1
+        },
+        "brain": {
+          "description": "The brain that wrote it, when one did.",
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": ["author", "createdAt"],
+      "additionalProperties": false
+    }
+  }
+}

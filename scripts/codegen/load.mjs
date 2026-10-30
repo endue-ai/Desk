@@ -47,16 +47,23 @@ export function brainBundle(openapi) {
   };
 }
 
-/** Every spec document, keyed by spec name. */
+/**
+ * The plugin manifest and the integration specs it references (permissions name item kinds, view
+ * plugins carry views, connector plugins their connector block), which reference it back: one set.
+ */
+export const PLUGIN_FOLDERS = ["plugin/v0", "item/v0", "view/v0", "connector/v0"];
+
+/** Every spec document, keyed by spec name: each set holds what its vectors need to resolve. */
 export function loadAll(root = ROOT) {
+  const plugin = PLUGIN_FOLDERS.flatMap((folder) => loadSchemas(root, folder));
+  const init = [...plugin, ...loadSchemas(root, "init/v0")];
   return {
-    bridge: [
-      ...loadSchemas(root, "plugin/v0"),
-      ...loadSchemas(root, "init/v0"),
-      ...loadSchemas(root, "bridge/v0"),
-    ],
-    plugin: loadSchemas(root, "plugin/v0"),
-    init: [...loadSchemas(root, "plugin/v0"), ...loadSchemas(root, "init/v0")],
+    bridge: [...init, ...loadSchemas(root, "bridge/v0")],
+    plugin,
+    item: plugin,
+    view: plugin,
+    connector: plugin,
+    init,
     brain: [loadBrain(root).bundle],
   };
 }

@@ -1,0 +1,20 @@
+{
+  "target": "PluginManifest",
+  "description": "a view plugin whose views are files in its folder",
+  "instance": {
+    "id": "example.boards",
+    "version": "0.2.0",
+    "kind": "view",
+    "permissions": [
+      {
+        "permission": "data:read",
+        "kinds": ["task", "metric"]
+      },
+      {
+        "permission": "cmd:invoke",
+        "ids": ["example.jira.*"]
+      }
+    ],
+    "views": ["views/sprint.yaml", "views/builds.json"]
+  }
+}

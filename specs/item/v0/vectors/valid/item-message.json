@@ -1,0 +1,29 @@
+{
+  "target": "Item",
+  "description": "an unread mail, with its sender, recipients and thread",
+  "instance": {
+    "id": "<m-77@mail.example.com>",
+    "source": {
+      "connector": "endue.imap",
+      "instance": "work"
+    },
+    "kind": "message",
+    "title": "Re: launch checklist",
+    "updatedAt": "2026-10-30T09:41:07+09:00",
+    "deepLink": "message://%3Cm-77@mail.example.com%3E",
+    "body": "Looks good to me.",
+    "from": {
+      "name": "Jun",
+      "email": "jun@example.com"
+    },
+    "to": [
+      {
+        "email": "team@example.com"
+      }
+    ],
+    "receivedAt": "2026-10-30T09:41:07+09:00",
+    "unread": true,
+    "snippet": "Looks good to me.",
+    "thread": "launch-checklist"
+  }
+}

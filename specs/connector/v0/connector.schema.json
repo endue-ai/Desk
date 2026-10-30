@@ -1,0 +1,234 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://endue.ai/specs/connector/v0/connector.schema.json",
+  "title": "Desk connector v0",
+  "description": "One contract for every connector, with two bindings: a Wasm component or an MCP server (ADR 0032). A connector brings an app's data in as items and its actions as commands; it has no screen of its own.",
+  "$defs": {
+    "ConnectorManifest": {
+      "description": "What a kind connector plugin declares under connector in plugin.json.",
+      "type": "object",
+      "properties": {
+        "binding": { "$ref": "#/$defs/ConnectorBinding" },
+        "auth": { "$ref": "#/$defs/ConnectorAuth" },
+        "resources": {
+          "description": "The kinds of item the connector brings in, one entry per kind.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/ConnectorResource" },
+          "minItems": 1
+        },
+        "sync": { "$ref": "#/$defs/ConnectorSync" },
+        "instanceSettings": {
+          "description": "What the person fills in for each instance, by name (a folder, an account, a token).",
+          "type": "object",
+          "propertyNames": { "$ref": "#/$defs/ConnectorSettingName" },
+          "additionalProperties": { "$ref": "#/$defs/ConnectorSetting" }
+        }
+      },
+      "required": ["binding", "auth", "resources", "sync"],
+      "additionalProperties": false
+    },
+    "ConnectorBinding": {
+      "description": "How the connector runs: wasm, a component the plugin's entry names (no VM to boot); mcp, an MCP server inside the VM that follows the Desk profile in the README.",
+      "type": "string",
+      "enum": ["wasm", "mcp"]
+    },
+    "ConnectorAuthKind": {
+      "description": "none (local files, the OS's own data), token (a key the person pastes) or oauth.",
+      "type": "string",
+      "enum": ["none", "token", "oauth"]
+    },
+    "ConnectorAuth": {
+      "description": "How an instance signs in. Tokens are kept by the core and never handed to the connector's code. No v0 method starts an OAuth flow yet.",
+      "type": "object",
+      "properties": {
+        "kind": { "$ref": "#/$defs/ConnectorAuthKind" },
+        "title": {
+          "description": "What the person is asked for: Personal access token.",
+          "type": "string",
+          "minLength": 1
+        },
+        "authorizationUrl": { "$ref": "#/$defs/HttpsUrl" },
+        "tokenUrl": { "$ref": "#/$defs/HttpsUrl" },
+        "scopes": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        }
+      },
+      "required": ["kind"],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": { "properties": { "kind": { "const": "oauth" } } },
+          "then": {
+            "properties": { "authorizationUrl": true, "tokenUrl": true, "scopes": true },
+            "required": ["authorizationUrl", "tokenUrl", "scopes"]
+          },
+          "else": {
+            "properties": { "authorizationUrl": false, "tokenUrl": false, "scopes": false }
+          }
+        }
+      ]
+    },
+    "HttpsUrl": {
+      "description": "An https URL.",
+      "type": "string",
+      "maxLength": 2048,
+      "pattern": "^https://[^\\s]+$"
+    },
+    "ConnectorResource": {
+      "description": "One kind of item the connector brings in, and the commands that act on it.",
+      "type": "object",
+      "properties": {
+        "kind": { "$ref": "../../item/v0/item.schema.json#/$defs/ItemKind" },
+        "actions": {
+          "description": "Command ids, each one the plugin declares in contributes.commands: actions are commands.",
+          "type": "array",
+          "items": { "$ref": "../../plugin/v0/contributes.schema.json#/$defs/CommandId" },
+          "uniqueItems": true
+        },
+        "live": {
+          "description": "The connector can answer queries for this kind directly, beyond what the index holds (a live search).",
+          "type": "boolean"
+        }
+      },
+      "required": ["kind"],
+      "additionalProperties": false
+    },
+    "ConnectorSyncMode": {
+      "description": "pull: the core asks every interval; push: the connector says when something changed; both.",
+      "type": "string",
+      "enum": ["pull", "push", "both"]
+    },
+    "ConnectorSync": {
+      "description": "How the index stays current.",
+      "type": "object",
+      "properties": {
+        "mode": { "$ref": "#/$defs/ConnectorSyncMode" },
+        "intervalSeconds": {
+          "description": "Between pulls; the core may wait longer (battery, metered networks, rate limits). 900 when absent.",
+          "type": "integer",
+          "minimum": 60,
+          "maximum": 86400
+        }
+      },
+      "required": ["mode"],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": { "properties": { "mode": { "const": "push" } } },
+          "then": { "properties": { "intervalSeconds": false } }
+        }
+      ]
+    },
+    "ConnectorSettingName": {
+      "description": "An instance setting's name: folder, calendarId, apiKey.",
+      "type": "string",
+      "pattern": "^[a-z][a-zA-Z0-9]*$",
+      "maxLength": 64
+    },
+    "ConnectorSettingKind": {
+      "description": "The JSON type of an instance setting's value.",
+      "type": "string",
+      "enum": ["string", "integer", "boolean"]
+    },
+    "ConnectorSetting": {
+      "description": "One instance setting. A secret one is a string the core keeps in the OS keychain and never lists back; it has no default.",
+      "type": "object",
+      "properties": {
+        "kind": { "$ref": "#/$defs/ConnectorSettingKind" },
+        "title": { "type": "string", "minLength": 1 },
+        "description": { "type": "string" },
+        "default": {
+          "description": "The value until the person sets one. Any JSON value of the kind."
+        },
+        "secret": { "type": "boolean" },
+        "required": { "description": "The instance cannot connect without it.", "type": "boolean" }
+      },
+      "required": ["kind", "title"],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": { "properties": { "secret": { "const": true } }, "required": ["secret"] },
+          "then": { "properties": { "kind": { "const": "string" }, "default": false } }
+        }
+      ]
+    },
+    "ConnectorInstance": {
+      "description": "One connection of a connector, as the host lists it. Secret settings are never in settings.",
+      "type": "object",
+      "properties": {
+        "connector": { "$ref": "../../plugin/v0/plugin.schema.json#/$defs/PluginId" },
+        "instance": { "$ref": "../../item/v0/item.schema.json#/$defs/InstanceId" },
+        "title": { "description": "The name the person gave it: Work calendar.", "type": "string" },
+        "settings": {
+          "description": "The values of its settings that are not secret.",
+          "type": "object"
+        },
+        "status": { "$ref": "#/$defs/ConnectorStatus" }
+      },
+      "required": ["connector", "instance", "status"],
+      "additionalProperties": false
+    },
+    "ConnectorState": {
+      "description": "connected and current; syncing now; stale (the last sync is too old, the items stay readable); error (see error); paused by the person.",
+      "type": "string",
+      "enum": ["connected", "syncing", "stale", "error", "paused"]
+    },
+    "ConnectorStatus": {
+      "description": "Where an instance stands.",
+      "type": "object",
+      "properties": {
+        "state": { "$ref": "#/$defs/ConnectorState" },
+        "lastSyncAt": {
+          "description": "The last sync that succeeded.",
+          "$ref": "../../item/v0/item.schema.json#/$defs/Timestamp"
+        },
+        "error": { "$ref": "#/$defs/ConnectorError" }
+      },
+      "required": ["state"],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": { "properties": { "state": { "const": "error" } } },
+          "then": { "properties": { "error": true }, "required": ["error"] }
+        }
+      ]
+    },
+    "ConnectorError": {
+      "description": "Why an instance is in error.",
+      "type": "object",
+      "properties": {
+        "message": {
+          "description": "One sentence to show the person.",
+          "type": "string",
+          "minLength": 1
+        },
+        "reauth": { "description": "Signing in again would fix it.", "type": "boolean" }
+      },
+      "required": ["message"],
+      "additionalProperties": false
+    },
+    "ConnectorSyncResult": {
+      "description": "What one sync step brought: the changes since the cursor the core passed in.",
+      "type": "object",
+      "properties": {
+        "changes": {
+          "type": "array",
+          "items": { "$ref": "../../item/v0/query.schema.json#/$defs/ItemChange" }
+        },
+        "cursor": {
+          "description": "Where the next step starts; the core keeps it per instance and passes it back. Absent: the next sync starts over.",
+          "type": "string",
+          "minLength": 1
+        },
+        "done": {
+          "description": "false: more changes are waiting, ask again at once with cursor.",
+          "type": "boolean"
+        }
+      },
+      "required": ["changes", "done"],
+      "additionalProperties": false
+    }
+  }
+}

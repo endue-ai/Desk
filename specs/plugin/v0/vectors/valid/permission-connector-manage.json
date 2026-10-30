@@ -1,0 +1,7 @@
+{
+  "target": "Permission",
+  "description": "connector:manage has no scope",
+  "instance": {
+    "permission": "connector:manage"
+  }
+}

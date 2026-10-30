@@ -1,0 +1,9 @@
+{
+  "target": "Permission",
+  "description": "read events and tasks from every endue connector and one other",
+  "instance": {
+    "permission": "data:read",
+    "kinds": ["event", "task"],
+    "sources": ["endue.*", "example.jira"]
+  }
+}

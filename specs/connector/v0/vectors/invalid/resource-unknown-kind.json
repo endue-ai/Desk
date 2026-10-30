@@ -1,0 +1,26 @@
+{
+  "target": "ConnectorManifest",
+  "description": "calendar is not an item kind (event is)",
+  "instance": {
+    "binding": "wasm",
+    "auth": {
+      "kind": "none"
+    },
+    "resources": [
+      {
+        "kind": "calendar"
+      }
+    ],
+    "sync": {
+      "mode": "pull",
+      "intervalSeconds": 300
+    },
+    "instanceSettings": {
+      "folder": {
+        "kind": "string",
+        "title": "Folder",
+        "required": true
+      }
+    }
+  }
+}
