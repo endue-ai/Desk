@@ -2,8 +2,9 @@
 
 The calls the web runtime (and every plugin through it) makes into the Rust core. JSON Schema 2020-12,
 one file per namespace: `bridge.schema.json` (envelope, errors, shared types), `fs`, `proc`, `net`, `plugins`,
-`store`, `init`, `brain`, `audio`, `ui`, `perm`, `cmd`, `settings`, `log` and `events`. v0 may break on any
-minor release (ADR 0004).
+`store`, `init`, `brain`, `audio`, `ui`, `perm`, `cmd`, `settings`, `log`, `events`, `data`, `connector`,
+`view` and `catalog`. Items, views and connectors are the types of `specs/item`, `specs/view` and
+`specs/connector` (ADR 0032). v0 may break on any minor release (ADR 0004).
 
 ## Envelope
 
@@ -21,7 +22,8 @@ Scopes are never widened implicitly: asking is `perm.request`, and the person de
 
 Calls that touch only the caller's own data need no scope: `perm.request`, `perm.query`, `perm.revoke` of
 its own grants, `store.*`, `init.get`, `cmd.register`, `cmd.unregister`, `cmd.answer`, `settings.set`,
-`settings.get` and `settings.list` of its own keys, `log.write` and `events.unsubscribe`.
+`settings.get` and `settings.list` of its own keys, `log.write`, `events.unsubscribe` and
+`data.unsubscribe`. `catalog.get` needs none either: it shows only what the caller's grants already cover.
 
 ## Callers and events
 
@@ -31,9 +33,10 @@ grants, store values, commands, settings and log channels per caller; `core` nam
 An event about the caller's own work reaches it without asking: `fs.changed` for its watches, `proc.*` for
 its processes, `audio.wake` for its captures, `brain.turn` for its turns, `perm.changed` for its grants,
 `cmd.invoked` for the commands it provides, `cmd.answered` for the commands it invoked and
-`settings.changed` for its own keys. `plugin.changed` goes to holders of `plugin:manage`, `perm.prompt` to
-holders of `perm:manage` and `ui.notified` to the runtime, which shows it. Everything else about other
-callers arrives only through `events.subscribe`.
+`settings.changed` for its own keys and `data.changed` for its data subscriptions. `plugin.changed` goes to
+holders of `plugin:manage`, `perm.prompt` to holders of `perm:manage`, `connector.changed` to holders of
+`connector:manage`, `view.changed` to holders of `view:manage` and `ui.notified` to the runtime, which shows
+it. Everything else about other callers arrives only through `events.subscribe`.
 
 ## Methods
 
@@ -175,6 +178,58 @@ a caller gets each event once however many subscriptions name it. Subscriptions 
 unloads or the grant is revoked.
 
 **events.unsubscribe** ends one of the caller's subscriptions; an unknown id is `not_found`.
+
+**data.query** returns one page of the index's items that the query matches: its `kinds`, `sources` (a
+connector id or `connector/instance`; a view's `$name` is `invalid_params`), full-text `text` and `where`
+conditions, in `sort` order (newest `updatedAt` first when absent), `limit` at a time (50, at most 500).
+The page's `cursor` asks for the next one; a cursor the core did not hand out is `invalid_params`. It needs
+a `data:read` scope, and items of kinds or sources the scope does not cover are left out, not refused.
+
+**data.get** returns one item by its source and id, or no `item` when the index has none or the
+`data:read` scope does not cover it.
+
+**data.subscribe** starts delivering `data.changed` events for the items a query selects (its kinds,
+sources, text and where conditions; sort, cursor and limit do not apply) and the `data:read` scope
+covers, and returns a `subscriptionId`. Each event carries the changes in order; an item that stops
+matching arrives as `removed`. Subscriptions end when the caller unloads or its grant is revoked.
+
+**data.unsubscribe** ends one of the caller's data subscriptions; another caller's or an unknown id is
+`not_found`.
+
+**connector.list** returns the installed connectors by id, each with its instances (status, the title the
+person gave it, its settings but the secret ones) and the kinds of item it brings in. It needs
+`connector:manage`.
+
+**connector.connect** adds an instance of an installed connector and returns its id, `default` when none
+is given. `settings` follow the connector's `instanceSettings`: a name it does not declare, a value of the
+wrong kind or a missing required one is `invalid_params`, and secret values go to the OS keychain, never
+back out. An unknown connector is `not_found`; an instance id it already has is `already_exists`. No v0
+method starts an OAuth flow.
+
+**connector.disconnect** removes an instance and the items it brought in, which subscribers hear as
+`removed`. An unknown instance is `not_found`.
+
+**connector.sync** syncs one instance now and returns `started: true` at once; its progress arrives as
+`connector.changed` (`syncing`, then `connected` or `error`). An unknown instance is `not_found`.
+`connector.changed` events (`connected`, `updated`, `disconnected`, with the status after the change) go
+to holders of `connector:manage`.
+
+**view.list** returns the person's views (`~/.desk/views`) by id, with their version, title and
+description. It needs `view:manage`.
+
+**view.get** returns one of the person's views whole; an unknown id is `not_found`.
+
+**view.save** writes a view, new or replacing the one with its id. It must pass `specs/view/v0` and its
+names must resolve (`desk_bridge::view_problems`: every `$name` a `requires` entry, every param a template
+reads declared); otherwise it is `invalid_params` and nothing is written.
+
+**view.remove** deletes one of the person's views; an unknown id is `not_found`. `view.changed` events
+(`saved`, `removed`) go to holders of `view:manage`.
+
+**catalog.get** describes what a view, or the brain writing one, can use here: the view components the
+desk renders, the connected connectors with their instances and the kinds and fields of their items, and
+the registered commands. It takes no params and needs no scope: a caller sees only the connectors and kinds
+its `data:read` grants cover and the commands its `cmd:invoke` grants cover.
 
 ## Vectors
 

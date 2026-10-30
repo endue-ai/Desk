@@ -6,10 +6,11 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use desk_bridge::{
-    BridgeEvent, BridgeRequest, BridgeResponse, ConnectorInstance, ConnectorManifest,
-    ConnectorStatus, ConnectorSyncResult, InitDocument, InitGetResult, InitSettingKey, Item,
-    ItemChange, ItemPage, ItemQuery, PermQueryResult, Permission, PluginContributes,
-    PluginListResult, PluginManifest, StoreGetResult, View, manifest_problems, view_problems,
+    BridgeEvent, BridgeRequest, BridgeResponse, CatalogGetResult, ConnectorInstance,
+    ConnectorManifest, ConnectorStatus, ConnectorSyncResult, InitDocument, InitGetResult,
+    InitSettingKey, Item, ItemChange, ItemPage, ItemQuery, PermQueryResult, Permission,
+    PluginContributes, PluginListResult, PluginManifest, StoreGetResult, View, manifest_problems,
+    view_problems,
 };
 use serde::Serialize;
 use serde::de::DeserializeOwned;
@@ -218,6 +219,7 @@ fn valid_vectors_roundtrip_through_generated_types() {
                 "PermQueryResult" => roundtrip::<PermQueryResult>(vector),
                 "PluginListResult" => roundtrip::<PluginListResult>(vector),
                 "StoreGetResult" => roundtrip::<StoreGetResult>(vector),
+                "CatalogGetResult" => roundtrip::<CatalogGetResult>(vector),
                 "PluginManifest" => roundtrip::<PluginManifest>(vector),
                 "Permission" => roundtrip::<Permission>(vector),
                 "InitDocument" => roundtrip::<InitDocument>(vector),
@@ -240,4 +242,6 @@ fn generated_init_types_refuse_unknown_keys() {
 fn generated_types_reject_a_request_without_scope() {
     let request = json!({ "id": 1, "method": "fs.read", "params": { "path": "~/a.txt" } });
     assert!(serde_json::from_value::<BridgeRequest>(request).is_err());
+    let query = json!({ "id": 2, "method": "data.query", "params": { "query": {} } });
+    assert!(serde_json::from_value::<BridgeRequest>(query).is_err());
 }

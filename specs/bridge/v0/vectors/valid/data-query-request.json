@@ -1,0 +1,33 @@
+{
+  "target": "BridgeRequest",
+  "description": "data.query: open tasks and today's events of the fixture connector, soonest first, two at a time",
+  "instance": {
+    "id": 40,
+    "method": "data.query",
+    "params": {
+      "query": {
+        "kinds": ["event", "task"],
+        "sources": ["desk.fixtures/default"],
+        "where": [
+          {
+            "field": "raw.labels",
+            "op": "contains",
+            "value": "work"
+          }
+        ],
+        "sort": [
+          {
+            "field": "updatedAt",
+            "dir": "desc"
+          }
+        ],
+        "limit": 2
+      },
+      "scope": {
+        "permission": "data:read",
+        "kinds": ["event", "task"],
+        "sources": ["desk.fixtures"]
+      }
+    }
+  }
+}

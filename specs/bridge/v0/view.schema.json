@@ -1,0 +1,158 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://endue.ai/specs/bridge/v0/view.schema.json",
+  "title": "Desk bridge v0: view",
+  "description": "The person's views, the YAML files in ~/.desk/views (ADR 0032): list, read, save and remove them. A saved view is checked like one installed from a plugin. Every call needs view:manage.",
+  "$defs": {
+    "ViewSummary": {
+      "description": "A view as view.list returns it.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "../../view/v0/view.schema.json#/$defs/ViewId" },
+        "version": { "$ref": "../../plugin/v0/plugin.schema.json#/$defs/Version" },
+        "title": { "$ref": "../../view/v0/view.schema.json#/$defs/Template" },
+        "description": { "type": "string" }
+      },
+      "required": ["id", "version", "title"],
+      "additionalProperties": false
+    },
+    "ViewListRequest": {
+      "description": "List the person's views.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "view.list" },
+        "params": { "$ref": "#/$defs/ViewListParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "ViewListParams": {
+      "description": "Parameters of view.list.",
+      "type": "object",
+      "properties": {
+        "scope": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/ViewManagePermission" }
+      },
+      "required": ["scope"],
+      "additionalProperties": false
+    },
+    "ViewListResult": {
+      "description": "Result of view.list, by view id.",
+      "type": "object",
+      "properties": {
+        "views": { "type": "array", "items": { "$ref": "#/$defs/ViewSummary" } }
+      },
+      "required": ["views"],
+      "additionalProperties": false
+    },
+    "ViewGetRequest": {
+      "description": "Read one view whole.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "view.get" },
+        "params": { "$ref": "#/$defs/ViewGetParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "ViewGetParams": {
+      "description": "Parameters of view.get.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "../../view/v0/view.schema.json#/$defs/ViewId" },
+        "scope": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/ViewManagePermission" }
+      },
+      "required": ["id", "scope"],
+      "additionalProperties": false
+    },
+    "ViewGetResult": {
+      "description": "Result of view.get.",
+      "type": "object",
+      "properties": {
+        "view": { "$ref": "../../view/v0/view.schema.json#/$defs/View" }
+      },
+      "required": ["view"],
+      "additionalProperties": false
+    },
+    "ViewSaveRequest": {
+      "description": "Save a view, new or replacing the one with its id.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "view.save" },
+        "params": { "$ref": "#/$defs/ViewSaveParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "ViewSaveParams": {
+      "description": "Parameters of view.save. The view must pass specs/view/v0 and its names must resolve.",
+      "type": "object",
+      "properties": {
+        "view": { "$ref": "../../view/v0/view.schema.json#/$defs/View" },
+        "scope": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/ViewManagePermission" }
+      },
+      "required": ["view", "scope"],
+      "additionalProperties": false
+    },
+    "ViewSaveResult": {
+      "description": "Result of view.save.",
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "ViewRemoveRequest": {
+      "description": "Remove one of the person's views.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "view.remove" },
+        "params": { "$ref": "#/$defs/ViewRemoveParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "ViewRemoveParams": {
+      "description": "Parameters of view.remove.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "../../view/v0/view.schema.json#/$defs/ViewId" },
+        "scope": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/ViewManagePermission" }
+      },
+      "required": ["id", "scope"],
+      "additionalProperties": false
+    },
+    "ViewRemoveResult": {
+      "description": "Result of view.remove.",
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "ViewChangedEvent": {
+      "description": "A view was saved or removed. Sent to callers that hold view:manage.",
+      "type": "object",
+      "properties": {
+        "event": { "const": "view.changed" },
+        "data": { "$ref": "#/$defs/ViewChangedData" }
+      },
+      "required": ["event", "data"],
+      "additionalProperties": false
+    },
+    "ViewChangedData": {
+      "description": "Payload of view.changed.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "../../view/v0/view.schema.json#/$defs/ViewId" },
+        "change": { "$ref": "#/$defs/ViewChange" }
+      },
+      "required": ["id", "change"],
+      "additionalProperties": false
+    },
+    "ViewChange": {
+      "description": "What happened to the view.",
+      "type": "string",
+      "enum": ["saved", "removed"]
+    }
+  }
+}
