@@ -184,7 +184,9 @@ fn the_rules_beyond_the_schemas_name_what_does_not_resolve() {
         "contributes": { "commands": [{ "id": "example.tasks.done", "title": "Done" }] },
         "connector": {
             "binding": "wasm", "auth": { "kind": "none" }, "sync": { "mode": "pull" },
-            "resources": [{ "kind": "task", "actions": ["example.tasks.done", "example.tasks.move"] }]
+            "resources": [
+                { "kind": "task", "actions": ["example.tasks.done", "example.tasks.move"] }
+            ]
         }
     }))
     .unwrap();

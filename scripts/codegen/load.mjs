@@ -68,7 +68,7 @@ export function loadAll(root = ROOT) {
   };
 }
 
-/** The documents of each folder that exists under root/specs, and every definition by name and folder. */
+/** Each folder's documents (none when it is missing), and every definition by name and folder. */
 export function loadDefs(root, folders) {
   const defs = new Map();
   const docs = {};

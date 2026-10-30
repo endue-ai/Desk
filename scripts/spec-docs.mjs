@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // spec-docs: render the API reference from specs/ into a folder: every bridge method (params, result,
 // errors, the permission that covers it), every event, the permission vocabulary, the plugin manifest
-// fields, the brain endpoints and every item, view and connector type. The docs site builds it and it is
-// never committed, so specs in open PRs never drift from it (docs/site/README.md). Node 22, yaml only.
+// fields, the brain endpoints and every item, view and connector type. The docs site builds it and it
+// is never committed, so specs in open PRs never drift from it (docs/site/README.md). Node 22, yaml.
 //   node scripts/spec-docs.mjs <out> [--root <dir with specs/>]      (just docs-api <out>)
 
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -11,7 +11,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { loadBrain, loadDefs, PLUGIN_FOLDERS } from "./codegen/load.mjs";
 
 export const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-/** Specs whose page lists every type they define: [title, folder]; the page is the title, lowercase. */
+/** Specs whose page lists every type they define, as [title, folder]; the file is the title. */
 const TYPED = Object.entries({ Items: "item/v0", Views: "view/v0", Connectors: "connector/v0" });
 const slug = (title) => title.toLowerCase();
 const BASE = ["index.md", "bridge.md", "permissions.md", "manifest.md", "brain.md"];

@@ -119,7 +119,7 @@ function nodeSources(node: ViewNode, at: string): Array<[string, string]> {
   return sources.map((source, i): [string, string] => [`${at}/binding/sources/${i}`, source]);
 }
 
-/** The rules view.schema.json cannot say: $names are requires entries, template params are declared. */
+/** What view.schema.json cannot say: $names are requires entries, template params are declared. */
 function viewProblems(view: View): string[] {
   const problems: string[] = [];
   const requires = Object.keys(view.requires ?? {});
@@ -135,7 +135,7 @@ function viewProblems(view: View): string[] {
   return problems.sort();
 }
 
-/** The rules plugin.schema.json cannot say: an inline view's names resolve, actions are commands. */
+/** What plugin.schema.json cannot say: an inline view's names resolve, actions are commands. */
 function manifestProblems(manifest: PluginManifest): string[] {
   const problems = manifest.view ? viewProblems(manifest.view).map((p) => `/view${p}`) : [];
   const commands = (manifest.contributes?.commands ?? []).map((c) => c.id);
