@@ -114,6 +114,9 @@ export function stubCommands(
   const me = (caller: string | undefined) => caller ?? "desk";
   const holds = (caller: string, permission: Permission) =>
     grants.find((g) => g.caller === caller && covers(g.grant.permission, permission));
+  /** Whether the caller holds a grant covering `permission`; the runtime holds every one. */
+  const may = (caller: string | undefined, permission: Permission) =>
+    me(caller) === "desk" || holds(me(caller), permission) !== undefined;
   const holders = (permission: Permission) =>
     grants.filter((g) => covers(g.grant.permission, permission)).map((g) => g.caller);
   const subscribers = (name: EventName) =>
@@ -137,7 +140,7 @@ export function stubCommands(
     changed(grantId, change);
     if (change !== "revoked" || !gone) return;
     // Revoking a data:read grant ends the data subscriptions no other grant still covers.
-    data.drop(gone.caller, (scope) => holds(gone.caller, scope) !== undefined);
+    data.drop(gone.caller, (scope) => may(gone.caller, scope));
     // Revoking an events:subscribe grant ends the subscriptions no other grant still covers.
     if (gone.grant.permission.permission !== "events:subscribe") return;
     for (const [id, { caller, names }] of subscriptions)
@@ -155,9 +158,8 @@ export function stubCommands(
   };
   const data = stubData({
     check: (caller, scope) => check(caller, scope),
-    may: (caller, permission) =>
-      me(caller) === "desk" || holds(me(caller), permission) !== undefined,
-    holders: (permission) => holders(permission),
+    may,
+    holders,
     later,
     fresh,
     me,
