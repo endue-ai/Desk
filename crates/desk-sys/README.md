@@ -1,11 +1,11 @@
 # desk-sys
 
-Primitives: fs (notify), proc (portable-pty), net and audio (cpal, wake word), each behind a cargo
-feature. No permission checks: desk-core authorizes every call first. proc and net return
-`Error { code, message }` with the bridge `ErrorCode`; fs returns `io::Error`s whose kind maps to it
-through `Error::from` (OS permission errors are `io_error`).
+Primitives: fs (notify), proc (portable-pty), net, calendar (EventKit) and audio (cpal, wake word),
+each behind a cargo feature. No permission checks: desk-core authorizes every call first. proc, net
+and calendar return `Error { code, message }` with the bridge `ErrorCode`; fs returns `io::Error`s
+whose kind maps to it through `Error::from` (OS permission errors are `io_error`).
 
-Layer: Tauri shell (see `docs/architecture.md`). Status: fs, proc and net; audio comes later.
+Layer: Tauri shell (see `docs/architecture.md`). Status: fs, proc, net and calendar; audio later.
 
 ## Features and public API
 
@@ -23,6 +23,10 @@ Layer: Tauri shell (see `docs/architecture.md`). Status: fs, proc and net; audio
   { status, headers, body }` over rustls with the OS trust store. Every URL, redirects included,
   must match `allowed_hosts` (`host_allowed`) before it is connected to, or the call is
   `permission_denied`. Non-2xx statuses are responses. At most 10 redirects and a 64 MiB body.
+- `calendar`: `CalendarSource` (`authorization`, `request_access`, `calendars`, `events(from, to)`,
+  `reminders(Status)`) answers `Calendar`, `Event` and `Reminder` with RFC 3339 times; `os()` is
+  EventKit on macOS, `unsupported` elsewhere; `fake::FakeCalendar` for tests. Read only, and
+  `permission_denied` without reaching the OS until it grants `FullAccess`.
 - `NAME`: the crate name.
 
 ## Testing
@@ -31,6 +35,6 @@ Layer: Tauri shell (see `docs/architecture.md`). Status: fs, proc and net; audio
 cargo test -p desk-sys --all-features
 ```
 
-`tests/{fs,proc,net}.rs` each need their feature (`required-features`). proc tests run the test
-binary itself as the child (the `child` test, active only with `DESK_SYS_TEST_CHILD`); net tests
-serve from in-process listeners and never touch the network.
+Each `tests/<feature>.rs` needs its feature. proc tests run the test binary itself as the child
+(`DESK_SYS_TEST_CHILD`); net tests serve from in-process listeners, never the network; calendar
+tests use the fake, and the EventKit one is `#[ignore]`d: run `-- --ignored` on a Mac with access.
