@@ -50,14 +50,16 @@ function say(core: BridgeClient, text: string): Promise<BrainReply> {
   return new Promise((resolve, reject) => {
     let turnId: string | undefined;
     let answer = "";
+    let done = false;
     // Events can arrive before brain.say answers with the turn's id; they wait for it here.
     const early: BrainTurnData[] = [];
     const finish = (reply: BrainReply) => {
+      done = true;
       off();
       resolve(reply);
     };
     const on = (data: BrainTurnData) => {
-      if (data.turnId !== turnId) return;
+      if (done || data.turnId !== turnId) return;
       if (data.kind === "started") answer = "";
       else if (data.kind === "delta") answer += data.text ?? "";
       else if (data.kind === "completed") finish({ text: answer });
