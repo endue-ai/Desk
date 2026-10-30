@@ -151,13 +151,21 @@ fn write_refuses_a_folder_and_a_symlink() {
     );
 }
 
-/// Start a debounced watch whose batches arrive on the returned channel.
+/// Start a debounced watch with the default quiet period; batches arrive on the returned channel.
 fn start_watch(dir: &Path, recursive: bool) -> (desk_sys::fs::Watch, Receiver<Vec<Changed>>) {
-    let (sender, receiver) = mpsc::channel();
     let options = WatchOptions {
         recursive,
         ..WatchOptions::default()
     };
+    start_watch_with(dir, options)
+}
+
+/// Start a debounced watch with `options`; batches arrive on the returned channel.
+fn start_watch_with(
+    dir: &Path,
+    options: WatchOptions,
+) -> (desk_sys::fs::Watch, Receiver<Vec<Changed>>) {
+    let (sender, receiver) = mpsc::channel();
     let watch = watch_debounced(dir, options, move |batch| {
         let _ = sender.send(batch);
     })
@@ -237,14 +245,21 @@ fn watch_reports_created_modified_and_removed_paths() {
 #[test]
 fn watch_coalesces_a_burst_into_one_batch() {
     let dir = temp_dir();
-    let (_watch, receiver) = start_watch(&dir, true);
+    // On a loaded runner the writer or notify's thread can be descheduled for longer than the
+    // default 100 ms, which splits the burst; no such gap outlasts 1 s.
+    let options = WatchOptions {
+        recursive: true,
+        debounce: Duration::from_secs(1),
+    };
+    let (_watch, receiver) = start_watch_with(&dir, options);
     let path = dir.join("burst.txt");
     for i in 0..20 {
         fs::write(&path, format!("write {i}")).unwrap();
     }
     let first = batch_with(&receiver, &path);
     let mut batches = vec![first];
-    batches.extend(batches_until_quiet(&receiver, Duration::from_millis(500)));
+    // Longer than the quiet period, so a trailing batch would still be seen.
+    batches.extend(batches_until_quiet(&receiver, Duration::from_millis(1500)));
     let entries = batches.iter().flatten().filter(|c| c.path == path).count();
     assert_eq!(entries, 1, "twenty writes arrive as one entry: {batches:?}");
 }
