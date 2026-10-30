@@ -16,7 +16,7 @@ use desk_bridge::{
     BrainConversePermission, BrainStatusResult, BridgeError, BridgeRequest, BridgeResponse,
     ErrorCode, Permission, SCHEMAS,
 };
-use desk_core::{BrainOptions, Core, Roots};
+use desk_core::{BrainMode, BrainOptions, Core, Roots};
 use serde_json::{Value, json};
 
 const DESK: &str = "desk";
@@ -239,6 +239,29 @@ fn brain_status_is_offline_while_the_brain_is_unreachable() {
     let unknown = vectors.join("invalid/brain-status-unknown-mode.json");
     let vector: Value = serde_json::from_str(&fs::read_to_string(unknown).unwrap()).unwrap();
     assert!(!is_status(&vector["instance"]));
+}
+
+#[test]
+fn brain_status_names_a_local_brains_model_while_it_answers() {
+    let echo = Echo::start();
+    let options = BrainOptions {
+        mode: BrainMode::Local {
+            model: "llama-3.2-3b".to_owned(),
+        },
+        ..BrainOptions::default()
+    };
+    let brain = Arc::new(HttpBrain::new(echo.url()).unwrap());
+    let local = bare().with_brain(brain, options.clone());
+    local.grant(DESK, converse());
+    let status = call(&local, DESK, "brain.status", json!({})).unwrap();
+    assert_eq!(status, json!({ "mode": "local", "model": "llama-3.2-3b" }));
+    assert!(is_status(&status));
+
+    let gone = Arc::new(HttpBrain::new(&format!("http://127.0.0.1:{}/v0", free_port())).unwrap());
+    let unreachable = bare().with_brain(gone, options);
+    unreachable.grant(DESK, converse());
+    let status = call(&unreachable, DESK, "brain.status", json!({})).unwrap();
+    assert_eq!(status, json!({ "mode": "offline" }));
 }
 
 #[test]
