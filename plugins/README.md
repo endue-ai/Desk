@@ -9,6 +9,7 @@ there were two formats, the API would have holes.
 | `sidebar/` | Left bar: agents and spaces |
 | `toolbar/` | Right status panel: the drawer list (plugins, access) |
 | `dock/` | Bottom dock: open and put away the plugins that open on the desk |
+| `terminal/` | The person's shell in a PTY the core runs: several as tabs and desk buffers (`endue.terminal`, ADR 0037) |
 | `onboarding/` | First-run scenario |
 | `explorer/` | The folders the person allows as a tree (`endue.explorer`); files open through `desk.files` |
 | `calendar/` | iCalendar (RFC 5545) files in month, week, day and agenda views (`endue.calendar`), with reminders and commands for agents |
@@ -39,7 +40,7 @@ The base plugins a person works with from the first day (requirements, BASE):
 
 Every plugin folder holds `plugin.json`, `README.md`, and as needed `ui/`, `logic/`, `tool/` and `tests/`.
 
-Status: `sidebar`, `eris`, `onboarding`, `toolbar`, `dock` and the ten `desk.*` policies work. With the
+Status: `sidebar`, `eris`, `onboarding`, `toolbar`, `dock`, `terminal` and the ten `desk.*` policies work. With the
 shell (`mountDesk`, ADR 0025), the agent bar, the rail and the bottom edge hold the places of `sidebar`,
 `toolbar` and `dock`, and the shell's profiles turn those three off. The
 runtime puts `left`, `right` and `bottom` surfaces on the desk's edges, as `desk.display` says. The first

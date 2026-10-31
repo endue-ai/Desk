@@ -7,17 +7,21 @@ and its sync, the brain conversation with its session store and lease client, th
 ## Public API
 
 - `Core::new(Roots { home })`, `Core::handle(caller, BridgeRequest) -> BridgeResponse`: serves `fs.*`
-  (`fs.list` with `modifiedAt`), `perm.*`, `events.*`, `plugin.*`, `store.*`, `settings.*`, `log.*`,
-  `cmd.*`, `ui.notify`, `init.get`, `brain.*`, `data.*`, `connector.*`, `view.*` and `catalog.get`;
-  others answer `unsupported`. Call it off the UI thread: `perm.request`, `connector.connect` wait.
+  (`fs.list` with `modifiedAt`), `proc.*`, `perm.*`, `events.*`, `plugin.*`, `store.*`, `settings.*`,
+  `log.*`, `cmd.*`, `ui.notify`, `init.get`, `brain.*`, `data.*`, `connector.*`, `view.*` and
+  `catalog.get`; others answer `unsupported`. Call it off the UI thread: `perm.request` and
+  `connector.connect` wait.
+- Processes (`core_proc.rs`): `proc.spawn` passes the permission engine for its command (a PTY only
+  under a scope and a grant that allow `pty`); `proc.output` (UTF-8 at whole characters, else base64)
+  and `proc.exit` reach the caller only; later calls need the owner and a covering scope.
 - Permissions: `Core::grant` (session), `with_grant_file(path)` (`always` grants, ADR 0029),
   `with_prompter` (`RefuseAll` by default); `perm.request` becomes a `perm.prompt` to the
   `perm:manage` holders. `PermissionEngine`: deny by default; a `once` grant is spent by its call.
 - `EventBus`: `subscribe`, `subscribe_addressed` (`Delivery { to, event }`), `publish`, `publish_to`;
-  `subscription_count()`, `watch_count()`.
+  `subscription_count()`, `watch_count()`, `process_count()`.
 - Plugins: `with_plugin_store(path)`, `install_plugin(dir, built_in)`, `install_plugins_in`,
   `plugins()`, `plugin_file(id, path)`, `watch_plugins()`, `validate_dir(dir)`. A plugin turned off
-  takes its commands, waiting requests and subscriptions with it, and pauses its connector instances.
+  takes its commands, waiting requests, subscriptions and processes with it; its connectors pause.
 - Storage: `with_store_file(path)`, `with_settings_file(path)`, `with_log_dir(dir)`, `Core::log`.
 - Brain: `with_brain(brain, BrainOptions)`, `open_session(id)`, `brain_session()`, `LeaseClient`,
   `SessionStore`; `brain.say` streams `brain.turn`; the directory passes the brain's answers through.
@@ -31,10 +35,6 @@ and its sync, the brain conversation with its session store and lease client, th
 
 ## Testing
 
-```bash
-cargo test -p desk-core
-```
-
-`tests/` covers each side; `conversation`, `directory` and `lease` start `examples/brain-echo` (needs
-Node). The integration layer's tests (`data`, `connectors*`, `views`, `plugin_views`, `catalog`) run
-on a temp index, a `FakeCalendar`, a fake clock and an explicit tick (helpers in `tests/layer`).
+`cargo test -p desk-core`. `tests/` covers each side (`proc`'s child is the test binary itself;
+`conversation`, `directory` and `lease` start `examples/brain-echo`, needs Node); the integration
+layer's tests run on a temp index, a `FakeCalendar`, a fake clock and an explicit tick (`tests/layer`).

@@ -14,7 +14,7 @@ desk-brain.workspace = true
 desk-bridge.workspace = true
 desk-index.workspace = true
 desk-plugin-host.workspace = true
-desk-sys = { workspace = true, features = ["fs", "calendar"] }
+desk-sys = { workspace = true, features = ["fs", "calendar", "proc"] }
 jsonschema.workspace = true
 serde.workspace = true
 serde_json.workspace = true

@@ -1,6 +1,6 @@
 ---
 name: dispatch
-description: Dispatcher. Start every ai:ready Task issue whose lane is free (no Scope overlap with work in flight, at most four at once), each in its own worktree with its own author agent running run-task. Never writes code or merges. Use as /dispatch, optionally /dispatch <max-new>.
+description: Dispatcher. Start every ai:ready Task issue whose lane is free (no Scope overlap with work in flight, at most fifteen at once), each in its own worktree with its own author agent running run-task. Never writes code or merges. Use as /dispatch, optionally /dispatch <max-new>.
 argument-hint: "[max-new]"
 ---
 
