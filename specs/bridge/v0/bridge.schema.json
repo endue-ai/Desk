@@ -33,6 +33,7 @@
         { "$ref": "fs.schema.json#/$defs/FsWriteRequest" },
         { "$ref": "fs.schema.json#/$defs/FsListRequest" },
         { "$ref": "fs.schema.json#/$defs/FsWatchRequest" },
+        { "$ref": "fs.schema.json#/$defs/FsUrlRequest" },
         { "$ref": "proc.schema.json#/$defs/ProcSpawnRequest" },
         { "$ref": "proc.schema.json#/$defs/ProcWriteRequest" },
         { "$ref": "proc.schema.json#/$defs/ProcResizeRequest" },

@@ -72,7 +72,7 @@ fn an_always_grant_is_written_to_the_grant_file_and_loaded_at_start() {
     assert_eq!(query(&again, NOTES), vec![grant]);
     assert_eq!(
         read_hello(&again, NOTES).unwrap(),
-        json!({ "content": "# Hello", "encoding": "utf8" })
+        json!({ "content": "# Hello", "encoding": "utf8", "size": 7 })
     );
 }
 

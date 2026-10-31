@@ -1,8 +1,11 @@
-//! The fs side of `Core` beyond reading: fs.write, and fs.watch with its `fs.changed` events. A
-//! watch reports paths in the caller's own terms (under the path it asked for) and ends when the
-//! caller's grants no longer cover it (after a revoke, or the call that spent a once grant).
+//! The fs side of `Core` beyond fs.read's answer: reading a byte range, fs.write, and fs.watch with
+//! its `fs.changed` events. A watch reports paths in the caller's own terms (under the path it asked
+//! for) and ends when the caller's grants no longer cover it (after a revoke, or the call that spent
+//! a once grant).
 
 use std::collections::BTreeMap;
+use std::fs::File;
+use std::io::{self, Read, Seek, SeekFrom};
 use std::path::Path;
 use std::sync::MutexGuard;
 
@@ -137,6 +140,47 @@ impl Core {
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
     }
+}
+
+/// `length` bytes at most from `offset`, or to the end of the file without a length, and the file's
+/// size. Only the range is read; a range past the end reads what is there, nothing from an offset at
+/// or past it. A folder is `IsADirectory`.
+pub(crate) fn read_range(
+    path: &Path,
+    offset: u64,
+    length: Option<u64>,
+) -> io::Result<(Vec<u8>, u64)> {
+    // Before opening: Windows cannot open a folder as a file, and would call it access denied.
+    if std::fs::metadata(path)?.is_dir() {
+        return Err(io::Error::from(io::ErrorKind::IsADirectory));
+    }
+    let mut file = File::open(path)?;
+    let size = file.metadata()?.len();
+    let mut bytes = Vec::new();
+    match length {
+        Some(0) => {}
+        Some(length) => {
+            if offset < size {
+                file.seek(SeekFrom::Start(offset))?;
+                let length = length.min(size - offset);
+                bytes.reserve_exact(usize::try_from(length).unwrap_or(0));
+                file.take(length).read_to_end(&mut bytes)?;
+            }
+        }
+        // To the end, however long the file has grown (or files that report no size).
+        None => {
+            file.seek(SeekFrom::Start(offset))?;
+            file.read_to_end(&mut bytes)?;
+        }
+    }
+    // A file that grew while it was read to the end is as long as what was read.
+    let read_to = offset.saturating_add(bytes.len() as u64);
+    let size = if bytes.is_empty() {
+        size
+    } else {
+        size.max(read_to)
+    };
+    Ok((bytes, size))
 }
 
 /// `changed` under `root` as a bridge path under `base` (the path the caller watched).

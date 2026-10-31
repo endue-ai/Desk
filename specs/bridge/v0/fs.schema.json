@@ -2,10 +2,10 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://endue.ai/specs/bridge/v0/fs.schema.json",
   "title": "Desk bridge v0: fs",
-  "description": "Files: read, write, list and watch. Scoped by fs:read or fs:write paths.",
+  "description": "Files: read (whole or a byte range), hand a frame a URL of a file, write, list and watch. Scoped by fs:read or fs:write paths.",
   "$defs": {
     "FsReadRequest": {
-      "description": "Read a whole file.",
+      "description": "Read a file, whole or a byte range of it.",
       "type": "object",
       "properties": {
         "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
@@ -21,6 +21,16 @@
       "properties": {
         "path": { "$ref": "bridge.schema.json#/$defs/Path" },
         "encoding": { "$ref": "bridge.schema.json#/$defs/Encoding" },
+        "offset": {
+          "description": "Where the range starts, in bytes from the start of the file; 0 when absent.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "length": {
+          "description": "How many bytes to read from offset at most; to the end of the file when absent. 0 reads nothing and answers only the size.",
+          "type": "integer",
+          "minimum": 0
+        },
         "scope": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/FsReadPermission" }
       },
       "required": ["path", "scope"],
@@ -30,10 +40,62 @@
       "description": "Result of fs.read.",
       "type": "object",
       "properties": {
-        "content": { "description": "The file content.", "type": "string" },
-        "encoding": { "$ref": "bridge.schema.json#/$defs/Encoding" }
+        "content": {
+          "description": "The bytes read: the whole file, or the range.",
+          "type": "string"
+        },
+        "encoding": { "$ref": "bridge.schema.json#/$defs/Encoding" },
+        "size": {
+          "description": "The file's total size in bytes, whatever range was read. The core always sends it.",
+          "type": "integer",
+          "minimum": 0
+        }
       },
       "required": ["content", "encoding"],
+      "additionalProperties": false
+    },
+    "FsUrlRequest": {
+      "description": "Get a URL the caller's frame can load one file from (a video, an image), without passing the bytes through the bridge.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "fs.url" },
+        "params": { "$ref": "#/$defs/FsUrlParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "FsUrlParams": {
+      "description": "Parameters of fs.url.",
+      "type": "object",
+      "properties": {
+        "path": { "$ref": "bridge.schema.json#/$defs/Path" },
+        "scope": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/FsReadPermission" }
+      },
+      "required": ["path", "scope"],
+      "additionalProperties": false
+    },
+    "FsUrlResult": {
+      "description": "Result of fs.url.",
+      "type": "object",
+      "properties": {
+        "url": {
+          "description": "/_desk/file/<token>/<file name>: a path the frame resolves against its own desk-plugin location. It works while the caller runs and holds an fs:read grant that covers the file.",
+          "type": "string",
+          "pattern": "^/_desk/file/[0-9a-f]{32}/[^/?#]+$"
+        },
+        "size": {
+          "description": "The file's size in bytes when the URL was made.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "type": {
+          "description": "The media type the URL is served with, from the file's extension: video/mp4, image/png, ..., application/octet-stream when the extension is not known.",
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": ["url", "size", "type"],
       "additionalProperties": false
     },
     "FsWriteRequest": {

@@ -1,7 +1,6 @@
 # @endue-ai/plugin-sdk
 
 Everything a plugin author imports: plugin definitions, the bridge client and a test harness.
-
 Layer: Plugins (see `docs/architecture.md`). Guide: `docs/plugins/authoring.md`.
 
 ## Public API
@@ -27,10 +26,11 @@ Layer: Plugins (see `docs/architecture.md`). Guide: `docs/plugins/authoring.md`.
   `-contrast`, `-motion`. Chords (Meta, Control, Alt, Escape) reach the desk unless prevented.
 - `connect(transport?)`, `windowTransport()`, the protocol types, `BridgeCallError` and bridge types.
 - `@endue-ai/plugin-sdk/testing`: `createTestHost({ pluginId, state?, handlers?, commands?, settings?,
-  grants?, callers?, prompt?, now?, refuse? })` runs a plugin on the bridge's stub of the core
-  (`stubCommands`; `handlers` override it, `refuse` fails a method): `transport`, `calls`, `batches`,
-  `state`, `closed`, `visible`, `ran`, `keys`, `settings`, `grants`, `logged`, `surfaces`, `call` (as
-  the desk or another caller), `emit`, `command`, `invoke`, `theme`, `upsert`, `remove`, `settle`.
+  grants?, callers?, prompt?, now?, refuse?, files? })` runs a plugin on the bridge's stub of the core
+  (`stubCommands`; `handlers` override it, `refuse` fails a method, `files` back `fs.read`, `fs.url`):
+  `transport`, `calls`, `batches`, `state`, `closed`, `visible`, `ran`, `keys`, `settings`, `grants`,
+  `logged`, `surfaces`, `call` (as any caller), `emit`, `command`, `invoke`, `theme`, `upsert`,
+  `remove`, `settle`.
 
 Calls made in one tick leave in one message. The app serves the bundle (`pnpm --filter
 @endue-ai/plugin-sdk build`, output `dist/plugin-sdk.js`) at `/_desk/plugin-sdk.js`.

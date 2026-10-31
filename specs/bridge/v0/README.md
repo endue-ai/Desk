@@ -41,8 +41,22 @@ Everything else about other callers arrives only through `events.subscribe`.
 
 ## Methods
 
-**fs.read** reads a whole file and returns its content as UTF-8 text or base64. The path must be inside
-an `fs:read` scope. Missing files are `not_found`; folders are `invalid_params`.
+**fs.read** reads a whole file, or with `offset` and `length` (bytes) a range of it, and returns the
+content as UTF-8 text or base64 with the file's total `size`. A range that runs past the end returns the
+bytes that are there, none from an offset at or past the end; `length: 0` returns only the size. Bytes
+that are not UTF-8, a whole file's or a range's, are read with `encoding: base64`; asked as UTF-8 they are
+`invalid_params`. The path must be inside an `fs:read` scope. Missing files are `not_found`; folders are
+`invalid_params`.
+
+**fs.url** returns a URL the caller's frame can load one file from, so media never passes through the
+bridge: `url` is `/_desk/file/<token>/<file name>`, a path the frame resolves against its own
+`desk-plugin` location, with the file's `size` and the media `type` it is served with (from the
+extension; `application/octet-stream` when unknown). The token is 128 random bits and belongs to the
+caller; each call makes a new one. The app serves it with HTTP ranges (`206`, `Content-Range`, `416`
+outside the file) and `Cache-Control: no-store`. A URL stops working when the caller unloads, when the
+core stops, and as soon as the caller no longer holds an `fs:read` grant that covers the path: the grant
+is checked on every request, so a `once` grant is spent by the call itself. It needs an `fs:read` scope;
+missing files are `not_found` and folders `invalid_params`.
 
 **fs.write** creates or overwrites a file with the given content and returns the bytes written. It needs
 an `fs:write` scope; with `createDirs` it also creates missing parent folders inside the same scope.

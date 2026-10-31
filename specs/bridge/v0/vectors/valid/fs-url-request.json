@@ -1,0 +1,15 @@
+{
+  "target": "BridgeRequest",
+  "description": "fs.url for a film inside a granted folder",
+  "instance": {
+    "id": 5,
+    "method": "fs.url",
+    "params": {
+      "path": "~/Movies/Holiday 2026.mp4",
+      "scope": {
+        "permission": "fs:read",
+        "paths": ["~/Movies/**"]
+      }
+    }
+  }
+}

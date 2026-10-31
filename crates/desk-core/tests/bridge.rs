@@ -65,7 +65,7 @@ fn fs_read_returns_the_file_through_a_granted_scope() {
     );
     assert_eq!(
         result(response),
-        json!({ "content": "# Hello", "encoding": "utf8" })
+        json!({ "content": "# Hello", "encoding": "utf8", "size": 7 })
     );
 }
 
@@ -80,7 +80,7 @@ fn fs_read_can_return_base64() {
     );
     assert_eq!(
         result(response),
-        json!({ "content": "YWJj", "encoding": "base64" })
+        json!({ "content": "YWJj", "encoding": "base64", "size": 3 })
     );
 }
 

@@ -10,9 +10,8 @@ TypeScript client for the Desk bridge, typed from `specs/bridge`, `specs/plugin`
   `BridgeCallError` (`code`, `permission`) when the core says no. `onEvent(listener)`.
 - `tauriAdapter(invoke, listen?)`: the app adapter; requests go to the `bridge_call` command.
 - `browserStub(handlers)`: answers the methods it is given, any other `unsupported` (never a silent
-  success); `emit` sends events; handlers throw `StubError(code, message, permission?)`. For unit and
-  Playwright tests and plain-browser development.
-- `stubCommands(emit, { grants?, settings?, prompt?, now? })`: the core's rules, per caller, in memory.
+  success); `emit` sends events; handlers throw `StubError(code, message, permission?)`. For tests.
+- `stubCommands(emit, { grants?, settings?, prompt?, now?, files? })`: the core's rules, per caller.
   Its `handlers` serve `cmd.*`, `perm.*` (request, query, revoke, list, answer), `settings.*`, `log.*`,
   `events.*` and `ui.surface.*`. A plugin's scoped call needs a covering grant, else
   `permission_denied`; the runtime (`desk`) is trusted and `cmd.list`/`cmd.invoke` check no grants.
@@ -22,8 +21,9 @@ TypeScript client for the Desk bridge, typed from `specs/bridge`, `specs/plugin`
   commands, surfaces, subscriptions and prompts; `state()` shows what it holds. `data.*`,
   `connector.*`, `view.*` and `catalog.get` run over an index of the fixture connector `desk.fixtures`
   (`fixtureItems()`: events, tasks, notes, messages around `FIXTURE_NOW`); `upsert(item)` and
-  `remove(source, id)` change it and fire `data.changed`. `fs.*`, `proc.*`, `net.*`, `audio.*`,
-  `plugin.*`, `store.*`, `init.get`, `brain.say` and `ui.notify` are not served.
+  `remove(source, id)` change it and fire `data.changed`. With `files` (bridge path to text or bytes)
+  `fs.read` reads them, ranges too, and `fs.url` answers a `data:` URL (`stub-fs.ts`). Other `fs.*`,
+  `proc.*`, `net.*`, `audio.*`, `plugin.*`, `store.*`, `init.get`, `brain.say`, `ui.notify` are not.
 - Every generated type (`BridgeRequest`, `Permission`, `PluginManifest`, `Item`, `View`, `TurnEvent`,
   ...), `BridgeMethodMap`, `BridgeMethod`, `BRIDGE_METHODS` and `brainSchema`.
 
@@ -36,5 +36,5 @@ pnpm exec vitest run packages/bridge
 ```
 
 `src/contract.test.ts` checks the shared vectors with Ajv (and, for views and manifests, the names
-that must resolve) and the init.yaml template; `src/client.test.ts` covers the client and both
-adapters; `src/stub-*.test.ts` one method group each.
+that must resolve) and the init.yaml template; `src/client.test.ts` the client and both adapters;
+`src/stub-*.test.ts` one method group each.

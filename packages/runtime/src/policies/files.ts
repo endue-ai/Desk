@@ -17,7 +17,7 @@ export interface RecentFile {
 }
 
 export interface FilesPolicy extends Installed {
-  /** The plugin that opens `path` as the rules say, or undefined. */
+  /** The plugin that opens `path` as the rules say (case folded when none matches as written). */
   openerFor(path: string): string | undefined;
   recent(): RecentFile[];
   /** Read the recent files the desk kept (store.get); call once at start. */
@@ -31,11 +31,18 @@ const OWN_SAVE_MS = 3000;
 /** The message of a failed request, without the error's class name in front. */
 const reason = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
-/** The opener for `path`: the first rule whose pattern matches the file name (or the whole path). */
+/**
+ * The opener for `path`: the first rule whose pattern matches the file name (or the whole path) as
+ * written; when none does, the first that matches it in any case, as Emacs's auto-mode-case-fold
+ * (`IMG_0001.JPG` opens with a `*.jpg` rule, while `*.Z` still wins for `x.Z` over an earlier `*.z`).
+ */
 export function opener(rules: PolicySet["files"], path: string): string | undefined {
   const name = baseName(path);
-  return rules.find((rule) => globMatch(rule.pattern, rule.pattern.includes("/") ? path : name))
-    ?.plugin;
+  const subject = (pattern: string) => (pattern.includes("/") ? path : name);
+  const exact = rules.find((rule) => globMatch(rule.pattern, subject(rule.pattern)));
+  const folded = (pattern: string) =>
+    globMatch(pattern.toLowerCase(), subject(pattern).toLowerCase());
+  return (exact ?? rules.find((rule) => folded(rule.pattern)))?.plugin;
 }
 
 export function installFiles(
