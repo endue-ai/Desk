@@ -58,6 +58,22 @@ describe("MOBI, AZW, AZW3 and PRC", () => {
     ]);
   });
 
+  it("a cover (EXTH 201) the text does not show becomes the first chapter", async () => {
+    const book = await readMobi(mobi6({ cover: true }));
+    expect(book.chapters.map((c) => c.title)).toEqual([
+      "Cover",
+      "Contents",
+      "Chapter One",
+      "Chapter Two",
+    ]);
+    expect(
+      parse((await book.chapter(0)).html)
+        .querySelector("img")
+        ?.getAttribute("src"),
+    ).toMatch(/^data:image\/png;base64,/);
+    expect(book.toc[1]).toMatchObject({ title: "Chapter One", unit: 2 });
+  });
+
   it("HUFF/CDIC compression reads to the same text", async () => {
     const book = await readMobi(mobi6({ compression: "huffcdic" }));
     expect(book.chapters).toHaveLength(3);

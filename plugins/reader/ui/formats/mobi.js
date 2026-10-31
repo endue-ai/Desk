@@ -16,6 +16,8 @@ import { nest } from "./toc.js";
  */
 
 const NULL = 0xffffffff;
+const COVER =
+  '<html><body><p style="text-align: center; margin: 0"><img src="cover:book" alt="Cover"/></p></body></html>';
 const valid = (/** @type {number} */ n) => n !== NULL && n > 0;
 
 /** Record 0: the PalmDOC header, the MOBI header and its EXTH records. */
@@ -138,7 +140,7 @@ export function merge(/** @type {string[]} */ parts) {
 
 /** The book's chapters as a reader book: sanitized when first shown, links resolved by anchor. */
 export function chaptersBook(
-  /** @type {{ format: string, title: string, parts: string[], decode(part: string): string, image(src: string): string | undefined, link(href: string): string | undefined, css(i: number): Promise<{ css: string[], fonts: import("./css.js").Font[] }>, toc: Array<{ title: string, anchor: string, depth: number }> }} */ o,
+  /** @type {{ format: string, title: string, parts: string[], decode(part: string): string, image(src: string): string | undefined, link(href: string): string | undefined, css(i: number): Promise<{ css: string[], fonts: import("./css.js").Font[] }>, toc: Array<{ title: string, anchor: string, depth: number }>, firstTitle?: string }} */ o,
 ) {
   /** @type {Map<string, number>} */
   const anchors = new Map();
@@ -184,7 +186,9 @@ export function chaptersBook(
       : [{ title: entry.title, unit, anchor: entry.anchor, depth: entry.depth }];
   });
   const chapters = o.parts.map((_, unit) => ({
-    title: flat.find((e) => e.unit === unit)?.title ?? (headings[unit] || `Part ${unit + 1}`),
+    title:
+      (unit === 0 && o.firstTitle) ||
+      (flat.find((e) => e.unit === unit)?.title ?? (headings[unit] || `Part ${unit + 1}`)),
   }));
   return {
     kind: /** @type {const} */ ("chapters"),
@@ -222,7 +226,8 @@ export async function readMobi(bytes) {
   const first = records[0];
   if (!first) throw new Unreadable("The book is damaged: it has no header record.");
   let base = 0;
-  let h = header(first);
+  const opening = header(first);
+  let h = opening;
   const boundary = h.exth.get(121);
   if (h.version < 8 && boundary && boundary.length >= 4) {
     const k8 = u32(boundary, 0);
@@ -234,8 +239,8 @@ export async function readMobi(bytes) {
     ) {
       const firstImage = h.firstImage;
       [base, h] = [k8, header(kf8)];
-      if (!valid(h.firstImage)) h.firstImage = firstImage;
-      else h.firstImage += k8;
+      // Both halves share the images, numbered from the MOBI 6 header's first image (as calibre reads it).
+      h.firstImage = firstImage;
     }
   }
   const kf8 = h.version >= 8 && valid(h.skel);
@@ -249,6 +254,20 @@ export async function readMobi(bytes) {
     return record && mime ? dataUrl(mime, record) : undefined;
   };
   const decode = (/** @type {string} */ part) => new TextDecoder(h.encoding).decode(bytesOf(part));
+  // The cover (EXTH 201) is an image record the text does not show; it becomes the first chapter.
+  const coverAt = h.exth.get(201) ?? opening.exth.get(201);
+  const cover = coverAt && coverAt.length >= 4 ? image(u32(coverAt, 0) + 1) : undefined;
+  /** @type {typeof chaptersBook} */
+  const make = (o) =>
+    cover
+      ? chaptersBook({
+          ...o,
+          parts: [COVER, ...o.parts],
+          image: (src) => (src === "cover:book" ? cover : o.image(src)),
+          css: (i) => (i === 0 ? Promise.resolve({ css: [], fonts: [] }) : o.css(i - 1)),
+          firstTitle: "Cover",
+        })
+      : chaptersBook(o);
   if (kf8)
     return assembleKf8({
       records,
@@ -259,7 +278,7 @@ export async function readMobi(bytes) {
       decode,
       format,
       title,
-      chaptersBook,
+      chaptersBook: make,
     });
 
   let text = latin1(raw);
@@ -289,7 +308,7 @@ export async function readMobi(bytes) {
     .replace(/<a([^>]*?)\sfilepos\s*=\s*["']?0*(\d+)["']?/gi, '<a$1 href="#filepos$2"')
     .replace(/<img([^>]*?)\srecindex\s*=\s*["']?(\d+)["']?/gi, '<img$1 src="recindex:$2"');
   const parts = merge(marked.split(/<mbp:pagebreak[^>]*>/i));
-  return chaptersBook({
+  return make({
     format,
     title,
     parts,

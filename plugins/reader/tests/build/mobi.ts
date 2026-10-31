@@ -18,13 +18,15 @@ interface Header {
   title: string;
   extraFlags: number;
   huff?: [offset: number, count: number];
+  /** EXTH 201: the cover, as an offset from the first image record. */
+  cover?: number;
   ncx?: number;
   kf8?: { fdst: number; fdstCount: number; skel: number; frag: number };
 }
 
-function exth(records: Array<[number, string]>): Uint8Array {
+function exth(records: Array<[number, string | Uint8Array]>): Uint8Array {
   const bodies = records.map(([type, value]) => {
-    const data = text(value);
+    const data = typeof value === "string" ? text(value) : value;
     const head = new DataView(new ArrayBuffer(8));
     head.setUint32(0, type);
     head.setUint32(4, 8 + data.length);
@@ -44,6 +46,9 @@ function record0(h: Header): Uint8Array {
   const ext = exth([
     [100, "Fixture Author"],
     [503, h.title],
+    ...(h.cover === undefined
+      ? []
+      : [[201, new Uint8Array([0, 0, 0, h.cover])] as [number, Uint8Array]]),
   ]);
   const title = text(h.title);
   const view = new DataView(new ArrayBuffer(16 + length));
@@ -128,6 +133,8 @@ function mobi6Html(): Uint8Array {
 export interface MobiOptions {
   compression?: "palmdoc" | "huffcdic";
   encryption?: number;
+  /** Give the book a cover (EXTH 201) pointing at its one image. */
+  cover?: boolean;
 }
 
 export function mobi6(options: MobiOptions = {}): Uint8Array {
@@ -170,6 +177,7 @@ export function mobi6(options: MobiOptions = {}): Uint8Array {
     extraFlags: 0b11,
     huff: huffRecords.length ? [firstImage + 1, huffRecords.length] : undefined,
     ncx: ncxIndex,
+    cover: options.cover ? 0 : undefined,
   });
   return pdb("The_Lantern_Keeper", "BOOK", "MOBI", [
     header,
