@@ -40,6 +40,7 @@ The base plugins a person works with from the first day (requirements, BASE):
 | --- | --- |
 | `notes/` (`endue.notes`) | Markdown and text files in a plain text area: the first file opener |
 | `git/` (`endue.git`) | A keyboard-first front for Git: status, staging, commits, the log as a graph, diffs; every operation a command |
+| `docker/` (`endue.docker`) | Containers, Compose projects, images, volumes and networks: logs that follow, a container's detail, a shell, clean-up; every operation a command |
 
 Every plugin folder holds `plugin.json`, `README.md`, and as needed `ui/`, `logic/`, `tool/` and `tests/`.
 

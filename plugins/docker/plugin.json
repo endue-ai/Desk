@@ -1,0 +1,302 @@
+{
+  "id": "endue.docker",
+  "name": "Docker",
+  "version": "0.1.0",
+  "kind": "ui",
+  "entry": "ui/index.html",
+  "description": "Containers, Compose projects, images, volumes and networks of the engine the docker program reaches: start, stop, logs that follow, a container's detail, a shell inside it, resource use and clean-up, every operation a command that runs docker without a shell.",
+  "permissions": [
+    {
+      "permission": "proc:spawn",
+      "commands": ["docker"]
+    },
+    {
+      "permission": "cmd:invoke",
+      "ids": [
+        "desk.palette.pick",
+        "desk.buffers.open",
+        "desk.buffers.update",
+        "desk.files.open",
+        "endue.terminal.run"
+      ]
+    },
+    {
+      "permission": "ui:notify"
+    }
+  ],
+  "surfaces": [
+    {
+      "id": "main",
+      "title": "Docker",
+      "placement": "center"
+    }
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "id": "endue.docker.open",
+        "title": "Docker: open",
+        "keywords": ["containers", "whale", "engine"]
+      },
+      {
+        "id": "endue.docker.refresh",
+        "title": "Docker: refresh",
+        "keywords": ["reload"]
+      },
+      {
+        "id": "endue.docker.containers",
+        "title": "Docker: containers",
+        "keywords": ["ps", "list"]
+      },
+      {
+        "id": "endue.docker.compose",
+        "title": "Docker: Compose projects",
+        "keywords": ["compose", "stack", "services"]
+      },
+      {
+        "id": "endue.docker.images",
+        "title": "Docker: images",
+        "keywords": ["image", "tags"]
+      },
+      {
+        "id": "endue.docker.volumes",
+        "title": "Docker: volumes",
+        "keywords": ["volume", "storage"]
+      },
+      {
+        "id": "endue.docker.networks",
+        "title": "Docker: networks",
+        "keywords": ["network"]
+      },
+      {
+        "id": "endue.docker.system",
+        "title": "Docker: engine and disk use",
+        "keywords": ["df", "version", "info"]
+      },
+      {
+        "id": "endue.docker.start",
+        "title": "Docker: start the container",
+        "keywords": ["run", "up"]
+      },
+      {
+        "id": "endue.docker.stop",
+        "title": "Docker: stop the container",
+        "keywords": ["halt"]
+      },
+      {
+        "id": "endue.docker.restart",
+        "title": "Docker: restart the container",
+        "keywords": ["reboot"]
+      },
+      {
+        "id": "endue.docker.pause",
+        "title": "Docker: pause the container",
+        "keywords": ["freeze"]
+      },
+      {
+        "id": "endue.docker.unpause",
+        "title": "Docker: unpause the container",
+        "keywords": ["resume"]
+      },
+      {
+        "id": "endue.docker.kill",
+        "title": "Docker: kill the container",
+        "keywords": ["sigkill"]
+      },
+      {
+        "id": "endue.docker.remove",
+        "title": "Docker: remove the container",
+        "keywords": ["rm", "delete"]
+      },
+      {
+        "id": "endue.docker.logs",
+        "title": "Docker: logs",
+        "keywords": ["tail", "follow", "output"]
+      },
+      {
+        "id": "endue.docker.tail",
+        "title": "Docker: read the last log lines",
+        "keywords": ["logs", "read"]
+      },
+      {
+        "id": "endue.docker.inspect",
+        "title": "Docker: container detail",
+        "keywords": ["inspect", "env", "mounts"]
+      },
+      {
+        "id": "endue.docker.stats",
+        "title": "Docker: resource use",
+        "keywords": ["cpu", "memory", "top"]
+      },
+      {
+        "id": "endue.docker.shell",
+        "title": "Docker: open a shell in the container",
+        "keywords": ["exec", "attach", "terminal"]
+      },
+      {
+        "id": "endue.docker.run",
+        "title": "Docker: run a container from an image",
+        "keywords": ["create", "new"]
+      },
+      {
+        "id": "endue.docker.pull",
+        "title": "Docker: pull an image",
+        "keywords": ["download", "update"]
+      },
+      {
+        "id": "endue.docker.remove-image",
+        "title": "Docker: remove the image",
+        "keywords": ["rmi", "delete"]
+      },
+      {
+        "id": "endue.docker.prune-images",
+        "title": "Docker: remove dangling images",
+        "keywords": ["prune", "clean"]
+      },
+      {
+        "id": "endue.docker.remove-volume",
+        "title": "Docker: remove the volume",
+        "keywords": ["delete"]
+      },
+      {
+        "id": "endue.docker.prune-volumes",
+        "title": "Docker: remove unused volumes",
+        "keywords": ["prune", "clean"]
+      },
+      {
+        "id": "endue.docker.remove-network",
+        "title": "Docker: remove the network",
+        "keywords": ["delete"]
+      },
+      {
+        "id": "endue.docker.prune-networks",
+        "title": "Docker: remove unused networks",
+        "keywords": ["prune", "clean"]
+      },
+      {
+        "id": "endue.docker.up",
+        "title": "Docker: Compose up",
+        "keywords": ["compose", "start", "deploy"]
+      },
+      {
+        "id": "endue.docker.down",
+        "title": "Docker: Compose down",
+        "keywords": ["compose", "teardown"]
+      },
+      {
+        "id": "endue.docker.compose-start",
+        "title": "Docker: start the Compose project",
+        "keywords": ["compose"]
+      },
+      {
+        "id": "endue.docker.compose-stop",
+        "title": "Docker: stop the Compose project",
+        "keywords": ["compose"]
+      },
+      {
+        "id": "endue.docker.compose-restart",
+        "title": "Docker: restart the Compose project",
+        "keywords": ["compose"]
+      },
+      {
+        "id": "endue.docker.compose-pull",
+        "title": "Docker: pull the Compose project's images",
+        "keywords": ["compose", "update"]
+      },
+      {
+        "id": "endue.docker.open-file",
+        "title": "Docker: open the Compose file",
+        "keywords": ["compose", "yaml", "edit"]
+      },
+      {
+        "id": "endue.docker.prune",
+        "title": "Docker: clean up",
+        "keywords": ["system", "prune", "disk"]
+      },
+      {
+        "id": "endue.docker.context",
+        "title": "Docker: switch context",
+        "keywords": ["engine", "remote", "host"]
+      },
+      {
+        "id": "endue.docker.cancel",
+        "title": "Docker: cancel the running operation",
+        "keywords": ["kill", "abort"]
+      }
+    ],
+    "keys": [
+      {
+        "key": "Mod+Shift+K",
+        "command": "endue.docker.open"
+      }
+    ],
+    "settings": {
+      "endue.docker.context": {
+        "kind": "string",
+        "default": "",
+        "description": "The Docker context every call uses (docker --context). Empty: the CLI's current context. Docker: switch context changes it for this plugin only."
+      },
+      "endue.docker.path": {
+        "kind": "string",
+        "default": "",
+        "description": "The PATH docker is looked up on and runs with (folders separated by :), for a desk started without the shell's PATH. Empty: the desk's PATH, then where Docker Desktop, OrbStack and Homebrew install it."
+      },
+      "endue.docker.show-all": {
+        "kind": "boolean",
+        "default": true,
+        "description": "List stopped containers too, not only running ones."
+      },
+      "endue.docker.stop-timeout": {
+        "kind": "integer",
+        "default": 10,
+        "description": "Seconds a stop or restart waits before docker kills the container (0 to 600)."
+      },
+      "endue.docker.log-tail": {
+        "kind": "integer",
+        "default": 500,
+        "description": "How many of the last log lines open with the logs (0 to 100000)."
+      },
+      "endue.docker.log-max": {
+        "kind": "integer",
+        "default": 5000,
+        "description": "How many log lines the logs view keeps while following (100 to 100000)."
+      },
+      "endue.docker.timestamps": {
+        "kind": "boolean",
+        "default": false,
+        "description": "Show each log line's time."
+      },
+      "endue.docker.follow": {
+        "kind": "boolean",
+        "default": true,
+        "description": "Follow logs as they are written when they open."
+      },
+      "endue.docker.stats-interval": {
+        "kind": "integer",
+        "default": 5,
+        "description": "Seconds between samples of CPU and memory use while the containers show (0: never, up to 3600)."
+      },
+      "endue.docker.shell": {
+        "kind": "string",
+        "default": "/bin/sh",
+        "description": "The program a shell in a container runs: a path or name inside the container, like /bin/bash."
+      },
+      "endue.docker.confirm": {
+        "kind": "boolean",
+        "default": true,
+        "description": "Ask before killing, removing, taking down or pruning."
+      },
+      "endue.docker.notify": {
+        "kind": "string",
+        "default": "failures",
+        "choices": ["failures", "none"],
+        "description": "Tell the person when a container stops with an error, runs out of memory or turns unhealthy."
+      },
+      "endue.docker.reveal-env": {
+        "kind": "boolean",
+        "default": false,
+        "description": "Show the values of environment variables whose names look secret (PASSWORD, TOKEN, KEY…) in a container's detail."
+      }
+    }
+  }
+}
