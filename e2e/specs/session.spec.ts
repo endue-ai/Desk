@@ -12,7 +12,15 @@
 // system layer. A shell window put away in the drawer and raised across a reload stays with the
 // runtime e2e (packages/runtime/e2e/shell*.spec.ts on the stub): no shell window is open here.
 import { $, browser, expect } from "@wdio/globals";
-import { focusedSurface, inFrame, SYSTEM, shellReady, surface, waitForData } from "../support/desk";
+import {
+  focusedSurface,
+  inFrame,
+  SYSTEM,
+  shellReady,
+  surface,
+  waitForData,
+  windowOf,
+} from "../support/desk";
 
 const HELLO = "e2e.hello";
 const DOCK = "endue.dock";
@@ -53,7 +61,7 @@ describe("session: the shell across a relaunch", () => {
     await inFrame(DOCK, () => tile().click());
     await expect(surface(HELLO)).toExist();
     // Under the shell a centre surface sits in a shell window (ADR 0040): its title bar is the window's.
-    await surface(HELLO).$(".surface-title").click();
+    await windowOf(HELLO).$(".surface-title").click();
     await waitForData(
       "store.json",
       (value) => session(value)?.focused === HELLO,
