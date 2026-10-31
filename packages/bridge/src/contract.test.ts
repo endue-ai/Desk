@@ -18,6 +18,8 @@ import type {
   ItemQuery,
   PluginManifest,
   View,
+  ViewGetResult,
+  ViewListResult,
   ViewNode,
 } from "./generated";
 
@@ -249,6 +251,30 @@ describe("generated types agree with the schemas", () => {
     expect(plugin("ConnectorManifest")(connector)).toBe(true);
     expect(plugin("ConnectorStatus")(status)).toBe(true);
     expect(plugin("Permission")(read)).toBe(true);
+  });
+
+  it("a typed view.list and view.get result say where each view came from", () => {
+    const view = {
+      id: "desk.today",
+      version: "0.1.0",
+      title: "Today",
+      layout: { type: "list", binding: { kinds: ["event"] }, fields: [{ value: "{title}" }] },
+    } satisfies View;
+    const listed = {
+      views: [
+        {
+          id: "desk.today",
+          version: "0.1.0",
+          title: "Today",
+          source: "plugin",
+          plugin: "desk.today",
+        },
+        { id: "example.notes", version: "0.1.0", title: "Notes", source: "file" },
+      ],
+    } satisfies ViewListResult;
+    const got = { view, source: "plugin", plugin: "desk.today" } satisfies ViewGetResult;
+    expect(bridge("ViewListResult")(listed)).toBe(true);
+    expect(bridge("ViewGetResult")(got)).toBe(true);
   });
 
   it("a typed init document is valid", () => {

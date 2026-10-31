@@ -1,9 +1,10 @@
 /**
  * The integration layer for the browser stub (ADR 0032), so views, plugins and tests run without the
  * core: an in-memory index of items (data.*), the installed connectors and their instances
- * (connector.*), the person's views (view.*) and catalog.get. It starts with the fixture connector
- * `desk.fixtures` and its items (fixtures.ts); `upsert` and `remove` change the index as a sync
- * would, and subscribers hear it as data.changed.
+ * (connector.*), the person's views (view.*; the stub has no view plugins, so every view it keeps
+ * is source file) and catalog.get. It starts with the fixture connector `desk.fixtures` and its
+ * items (fixtures.ts); `upsert` and `remove` change the index as a sync would, and subscribers hear
+ * it as data.changed.
  */
 import { StubError, type StubHandlers } from "./adapters";
 import {
@@ -137,8 +138,13 @@ export function stubData(ctx: DataContext): StubData {
       if (setting.required && !(name in given)) throw invalid(`${connector.id} needs ${name}`);
     return kept;
   };
-  const summary = ({ id, version, title, description }: View): ViewSummary =>
-    description === undefined ? { id, version, title } : { id, version, title, description };
+  const summary = ({ id, version, title, description }: View): ViewSummary => ({
+    id,
+    version,
+    title,
+    ...(description === undefined ? {} : { description }),
+    source: "file",
+  });
 
   return {
     upsert,
@@ -239,7 +245,7 @@ export function stubData(ctx: DataContext): StubData {
         ctx.check(caller, scope);
         const view = views.get(id);
         if (!view) throw missing(`a view ${id}`);
-        return { view: structuredClone(view) };
+        return { view: structuredClone(view), source: "file" };
       },
       "view.save": ({ view, scope }, caller) => {
         ctx.check(caller, scope);

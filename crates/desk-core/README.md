@@ -31,7 +31,7 @@ and its sync, the brain conversation with its session store and lease client, th
   `with_calendar(source)` (the built-ins `desk.calendar` and `desk.reminders`), `with_clock`,
   `with_secrets_file(path)`; then `start_connectors()` (Wasm connectors on `desk-plugin-host`),
   `tick_connectors()`, `start_connector_scheduler(period)`; `watch_views()` (`ViewWatcher`) and
-  `view_problems()` over `~/.desk/views/*.yaml`.
+  `view_problems()` over `~/.desk/views/*.yaml` and the view plugins' views (`source: plugin`).
 
 ## Testing
 

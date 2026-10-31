@@ -2460,15 +2460,20 @@ export interface UiNotifiedData {
   level: NotifyLevel;
 }
 
-/** A view as view.list returns it. */
+/** Where a view comes from: plugin, an enabled view plugin's inline view or one of its view files, read-only; file, the person's file in ~/.desk/views. */
+export type ViewSource = "plugin" | "file";
+
+/** A view as view.list returns it: where it comes from and, for a plugin's view, the plugin. */
 export interface ViewSummary {
   id: ViewId;
   version: Version;
   title: Template;
   description?: string;
+  source: ViewSource;
+  plugin?: PluginId;
 }
 
-/** List the person's views. */
+/** List the views: the person's and the enabled view plugins', one per id. */
 export interface ViewListRequest {
   id: RequestId;
   method: "view.list";
@@ -2485,7 +2490,7 @@ export interface ViewListResult {
   views: ViewSummary[];
 }
 
-/** Read one view whole. */
+/** Read one view whole, the person's or a plugin's. */
 export interface ViewGetRequest {
   id: RequestId;
   method: "view.get";
@@ -2498,12 +2503,14 @@ export interface ViewGetParams {
   scope: ViewManagePermission;
 }
 
-/** Result of view.get. */
+/** Result of view.get: the view, where it comes from and, for a plugin's view, the plugin. */
 export interface ViewGetResult {
   view: View;
+  source: ViewSource;
+  plugin?: PluginId;
 }
 
-/** Save a view, new or replacing the one with its id. */
+/** Save one of the person's views, new or replacing the one with its id. A plugin's view is not saved: an id an enabled view plugin provides is saved only over the person's file of that id. */
 export interface ViewSaveRequest {
   id: RequestId;
   method: "view.save";
@@ -2519,7 +2526,7 @@ export interface ViewSaveParams {
 /** Result of view.save. */
 export type ViewSaveResult = Record<string, never>;
 
-/** Remove one of the person's views. */
+/** Remove one of the person's views. A plugin's view is not removed. */
 export interface ViewRemoveRequest {
   id: RequestId;
   method: "view.remove";

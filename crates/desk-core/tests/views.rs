@@ -79,7 +79,7 @@ fn view_save_writes_yaml_that_list_and_get_read_back() {
     let listed = desk.ok("desk", "view.list", json!({ "scope": view_manage() }));
     let summary = json!({
         "id": "example.today", "version": "0.1.0", "title": "Today",
-        "description": "What is on today.",
+        "description": "What is on today.", "source": "file",
     });
     assert_eq!(listed, json!({ "views": [summary] }));
     let got = desk.ok(
@@ -87,7 +87,7 @@ fn view_save_writes_yaml_that_list_and_get_read_back() {
         "view.get",
         json!({ "id": "example.today", "scope": view_manage() }),
     );
-    assert_eq!(got, json!({ "view": today() }));
+    assert_eq!(got, json!({ "view": today(), "source": "file" }));
     let events = changed(&desk);
     assert_eq!(events.len(), 1, "{events:?}");
     assert_eq!(events[0].0, Some(vec!["desk".to_owned()]));

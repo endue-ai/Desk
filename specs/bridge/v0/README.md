@@ -235,17 +235,24 @@ come back out (ADR 0036). An unknown connector is `not_found`; an instance id it
 `connector.changed` events (`connected`, `updated`, `disconnected`, with the status after the change) go
 to holders of `connector:manage`.
 
-**view.list** returns the person's views (`~/.desk/views`) by id, with their version, title and
-description. It needs `view:manage`.
+**view.list** returns the views by id, with their version, title, description and `source`: `file` for
+the person's (`~/.desk/views`), `plugin` with the `plugin` id for an enabled view plugin's inline `view`
+or `views` files, which are read-only. Each id is listed once: the person's file shadows a plugin's view
+of its id, then the plugins count in `plugin.list` order. It needs `view:manage`.
 
-**view.get** returns one of the person's views whole; an unknown id is `not_found`.
+**view.get** returns one view whole, with the same `source` and `plugin`; an unknown id is `not_found`.
 
-**view.save** writes a view, new or replacing the one with its id. It must pass `specs/view/v0` and its
-names must resolve (`desk_bridge::view_problems`: every `$name` a `requires` entry, every param a template
-reads declared); otherwise it is `invalid_params` and nothing is written.
+**view.save** writes one of the person's views, new or replacing the one with its id. It must pass
+`specs/view/v0` and its names must resolve (`desk_bridge::view_problems`: every `$name` a `requires`
+entry, every param a template reads declared); otherwise it is `invalid_params` and nothing is written.
+An id an enabled view plugin provides is `invalid_params` too ("owned by plugin ..."), unless the
+person's file of that id exists, which it then replaces.
 
-**view.remove** deletes one of the person's views; an unknown id is `not_found`. `view.changed` events
-(`saved`, `removed`) go to holders of `view:manage`.
+**view.remove** deletes one of the person's views; a plugin's view is `invalid_params` naming the plugin,
+and an unknown id is `not_found`. `view.changed` events (`saved`, `removed`) go to holders of
+`view:manage`. They also follow the view plugins: when one is installed, turned on or off, or reloaded,
+each id it now provides is `saved` and each it stopped providing `removed`, unless a person's file
+shadows it; removing a person's file that shadowed a plugin's view is `saved`.
 
 **catalog.get** describes what a view, or the brain writing one, can use here: the view components the
 desk renders, the connected connectors with their instances and the kinds and fields of their items, and

@@ -201,8 +201,21 @@ const TODAY: View = {
     fields: [{ value: "{start|time} {title}" }],
   },
 };
+/** TODAY as view.list sums it up: the stub's views are all the person's files. */
+const SUMMARY = { id: "example.today", version: "0.1.0", title: "Today", source: "file" } as const;
 
 describe("the stub's views and connectors", () => {
+  it("the stub's views are the person's: view.list and view.get answer source file", async () => {
+    const { client } = setup();
+    await client.call("view.save", { view: TODAY, scope: VIEWS });
+    const { views } = await client.call("view.list", { scope: VIEWS });
+    expect(views).toEqual([{ ...SUMMARY, description: "Today's events." }]);
+    expect(views[0]).not.toHaveProperty("plugin");
+    const got = await client.call("view.get", { id: "example.today", scope: VIEWS });
+    expect(got).toEqual({ view: TODAY, source: "file" });
+    expect(got).not.toHaveProperty("plugin");
+  });
+
   it("view.save keeps a valid view, view.list and view.get return it, view.remove drops it, and an invalid view is invalid_params", async () => {
     const MANAGER = { caller: "example.views" };
     const { client, core, of, settle } = setup({ grants: { "example.views": [VIEWS] } });
@@ -215,13 +228,11 @@ describe("the stub's views and connectors", () => {
       {},
     );
     await expect(client.call("view.list", { scope: VIEWS }, MANAGER)).resolves.toEqual({
-      views: [
-        { id: "example.today", version: "0.1.0", title: "Today", description: "Today's events." },
-      ],
+      views: [{ ...SUMMARY, description: "Today's events." }],
     });
     await expect(
       client.call("view.get", { id: "example.today", scope: VIEWS }, MANAGER),
-    ).resolves.toEqual({ view: TODAY });
+    ).resolves.toEqual({ view: TODAY, source: "file" });
 
     const unresolved = { ...TODAY, layout: { type: "list", binding: { sources: ["$mail"] } } };
     const noLayout = { id: "example.bare", version: "0.1.0", title: "Bare" } as unknown as View;
@@ -232,6 +243,7 @@ describe("the stub's views and connectors", () => {
       });
     await expect(client.call("view.get", { id: "example.today", scope: VIEWS })).resolves.toEqual({
       view: TODAY,
+      source: "file",
     });
 
     await expect(

@@ -4,6 +4,7 @@
 #![allow(dead_code)]
 
 pub mod fixtures;
+pub mod views;
 
 use std::fs;
 use std::path::PathBuf;
