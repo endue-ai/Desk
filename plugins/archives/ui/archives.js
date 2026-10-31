@@ -52,6 +52,11 @@ function level(name, format, archive, note) {
   const tree = buildTree(archive?.entries ?? []);
   /** @type {Level} */
   const made = { name, format, tree, expanded: new Set(), marked: new Set(), selected: null };
+  // A lone folder at the top (a project folder, usr/share/doc/...) opens, down to where it branches.
+  for (let node = tree.root; node.children.length === 1 && node.children[0]?.kind === "folder"; ) {
+    node = /** @type {typeof node} */ (node.children[0]);
+    made.expanded.add(node.id);
+  }
   if (archive) made.archive = archive;
   const why = note ?? archive?.note;
   if (why) made.note = why;

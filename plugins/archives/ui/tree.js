@@ -119,7 +119,7 @@ export function visibleRows(root, state) {
         kind: child.kind,
         size: folder ? child.size : (entry?.size ?? 0),
         date: formatDate(child.date),
-        method: entry?.method ?? "",
+        method: folder ? "" : (entry?.method ?? ""),
         encrypted: entry?.encrypted === true,
         outside: outside(child.id),
         marked: state.marked.has(child.id),

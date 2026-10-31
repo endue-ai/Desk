@@ -202,7 +202,8 @@ main {
 }
 
 #tree:focus-visible {
-  outline-offset: -2px;
+  outline-width: 1px;
+  outline-offset: -1px;
 }
 
 .space {

@@ -19,9 +19,16 @@ function recorded(b, o) {
   return new Date(Date.UTC(1900 + y, mo - 1, d, h, mi, s) - offset * 60000);
 }
 
-/** Rock Ridge fields in a record's system use area: NM (name), SL (link), PX (mode). @param {Uint8Array} su */
+/** A directory record's system use area: after the name and its padding byte. @param {Uint8Array} r */
+const systemUse = (r) => r.subarray(33 + (r[32] ?? 0) + (((r[32] ?? 0) + 1) % 2));
+
+/**
+ * Rock Ridge fields in a record's system use area: NM (name), SL (link), PX (mode), and CE, where
+ * the area goes on in another block.
+ * @param {Uint8Array} su
+ */
 function rockRidge(su) {
-  /** @type {{ name?: string, link?: string, mode?: number }} */
+  /** @type {{ name?: string, link?: string, mode?: number, more?: [number, number, number] }} */
   const out = {};
   let name = "";
   /** @type {string[]} */
@@ -94,17 +101,10 @@ export async function openIso(source, _name, kind) {
 
   // Rock Ridge when the primary tree carries names in it; otherwise Joliet when there is one.
   const root = (/** @type {Uint8Array} */ d) => d.subarray(156, 190);
-  const rootDot = (await records(u32(root(primary), 2), u32(root(primary), 10)))[0];
-  const susp = rootDot
-    ? rootDot.subarray(34 + (rootDot[32] ?? 0) + (((rootDot[32] ?? 0) + 1) % 2))
-    : new Uint8Array(0);
-  const hasSusp = at(susp, 0, "SP");
-  const firstChildren = hasSusp ? await records(u32(root(primary), 2), u32(root(primary), 10)) : [];
-  const rr =
-    hasSusp &&
-    firstChildren
-      .slice(2)
-      .some((r) => rockRidge(r.subarray(34 + (r[32] ?? 0) + (((r[32] ?? 0) + 1) % 2))).name);
+  const firstChildren = await records(u32(root(primary), 2), u32(root(primary), 10));
+  const rootDot = firstChildren[0];
+  const hasSusp = !!rootDot && at(systemUse(rootDot), 0, "SP");
+  const rr = hasSusp && firstChildren.slice(2).some((r) => rockRidge(systemUse(r)).name);
   const volume = !rr && joliet ? joliet : primary;
   const names = rr ? "Rock Ridge" : volume === joliet ? "Joliet" : "ISO 9660";
 
@@ -127,7 +127,18 @@ export async function openIso(source, _name, kind) {
       const id = r.subarray(33, 33 + nameLength);
       if (nameLength === 1 && (id[0] === 0 || id[0] === 1)) continue;
       const flags = r[25] ?? 0;
-      const extra = rr ? rockRidge(r.subarray(34 + nameLength + ((nameLength + 1) % 2))) : {};
+      let extra = rr ? rockRidge(systemUse(r)) : {};
+      if (extra.more) {
+        // The rest of the fields sit in a continuation area elsewhere.
+        const [where, offset, size] = extra.more;
+        const rest = rockRidge(await source.read(where * block + offset, Math.min(size, 4096)));
+        const name =
+          extra.name !== undefined && rest.name !== undefined
+            ? extra.name + rest.name
+            : (rest.name ?? extra.name);
+        extra = { ...extra, ...rest };
+        if (name !== undefined) extra.name = name;
+      }
       let name = volume === joliet ? utf16be(id) : latin1(id);
       name = extra.name ?? name.replace(/;\d+$/, "").replace(/\.$/, "");
       const path = folder ? `${folder}/${name}` : name;

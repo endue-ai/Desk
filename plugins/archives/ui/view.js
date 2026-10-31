@@ -108,6 +108,7 @@ export function createView(doc, actions) {
       );
       const listing = !!next && !next.note;
       browser.hidden = !listing;
+      filter.hidden = !listing;
       summary.textContent = listing ? (next?.summary ?? "") : "";
       if (next && filter.value !== next.filter) filter.value = next.filter;
       for (const header of doc.querySelectorAll("[aria-sort]")) {
