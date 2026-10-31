@@ -22,7 +22,11 @@ export interface PluginData {
   /** One page of the items a query matches (data.query). */
   query(query: ItemQuery, options?: { scope?: DataReadPermission }): Promise<ItemPage>;
   /** One item by its source and id, or undefined when there is none (data.get). */
-  get(source: ItemSource, id: string, options?: { scope?: DataReadPermission }): Promise<Item | undefined>;
+  get(
+    source: ItemSource,
+    id: string,
+    options?: { scope?: DataReadPermission },
+  ): Promise<Item | undefined>;
   /**
    * Hear the changes to the items a query selects (data.subscribe); resolves with the function that
    * unsubscribes, which sends data.unsubscribe once however often it is called.

@@ -49,7 +49,8 @@ export function parseBlocks(source: string): Block[] {
       const close = fence[1] ?? "```";
       const body: string[] = [];
       at += 1;
-      while (at < lines.length && !(lines[at] ?? "").startsWith(close)) body.push(lines[at++] ?? "");
+      while (at < lines.length && !(lines[at] ?? "").startsWith(close))
+        body.push(lines[at++] ?? "");
       blocks.push({ kind: "code", text: body.join("\n") });
       at += 1;
     } else if (QUOTE.test(line)) {
@@ -84,7 +85,10 @@ const INLINE: Array<[RegExp, (m: RegExpExecArray) => Inline[]]> = [
     ([, label = "", href = ""]) =>
       SAFE.test(href) ? [{ kind: "link", href, children: parseInline(label) }] : parseInline(label),
   ],
-  [/^(\*\*|__)(?=\S)([\s\S]*?\S)\1/, (m) => [{ kind: "strong", children: parseInline(m[2] ?? "") }]],
+  [
+    /^(\*\*|__)(?=\S)([\s\S]*?\S)\1/,
+    (m) => [{ kind: "strong", children: parseInline(m[2] ?? "") }],
+  ],
   [/^(\*|_)(?=\S)([\s\S]*?\S)\1(?!\1)/, (m) => [{ kind: "em", children: parseInline(m[2] ?? "") }]],
 ];
 

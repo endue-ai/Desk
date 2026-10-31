@@ -155,8 +155,7 @@ export class DeskAgenda extends Base {
     const start = (e: DeskAgendaEvent) => instant(e.start);
     this.#shown = [...this.#events].sort(
       (a, b) =>
-        Number(b.allDay === true) - Number(a.allDay === true) ||
-        compareValues(start(a), start(b)),
+        Number(b.allDay === true) - Number(a.allDay === true) || compareValues(start(a), start(b)),
     );
     const now = instant(this.getAttribute("now") ?? Number.NaN);
     const known = !Number.isNaN(now);
