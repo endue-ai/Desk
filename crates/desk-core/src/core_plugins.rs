@@ -122,6 +122,7 @@ impl Core {
         self.drop_provider(id);
         self.withdraw_prompts(id);
         self.drop_subscriber(id);
+        self.drop_data(id);
         self.settle_unheard();
     }
 

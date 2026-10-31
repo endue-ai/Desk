@@ -1,5 +1,7 @@
 //! `Core::handle`: one bridge request in, one bridge response out. Every primitive call passes the
 //! permission engine first (`Core::check`); methods the core does not serve yet answer `unsupported`.
+//! The integration layer (`data.*`, `connector.*`, `view.*`, `catalog.get`) holds the item index
+//! as `Arc<dyn ItemIndex>`, the OS calendar as a `CalendarSource` and one connector host.
 
 use std::io;
 use std::path::{Path, PathBuf};
@@ -11,11 +13,14 @@ use desk_bridge::{
     BridgeError, BridgeFailure, BridgeRequest, BridgeResponse, BridgeSuccess, DirEntry, Encoding,
     EntryKind, ErrorCode, False, FsListResult, FsReadResult, Permission, RequestId, True,
 };
+use desk_index::ItemIndex;
+use desk_plugin_host::rfc3339;
 use desk_sys::fs as sysfs;
 use serde::Serialize;
 
 use crate::conversation::Conversation;
 use crate::core_cmd::Commands;
+use crate::core_data::DataSubscriptions;
 use crate::core_events::Subscriptions;
 use crate::core_fs::Watches;
 use crate::core_perm::{Prompter, RefuseAll};
@@ -52,6 +57,8 @@ pub struct Core {
     pub(crate) notifications: AtomicU64,
     pub(crate) watches: Mutex<Watches>,
     pub(crate) commands: Mutex<Commands>,
+    pub(crate) index: Option<Arc<dyn ItemIndex>>,
+    pub(crate) data_subscriptions: Mutex<DataSubscriptions>,
 }
 
 impl Core {
@@ -71,6 +78,8 @@ impl Core {
             notifications: AtomicU64::new(0),
             watches: Mutex::new(Watches::default()),
             commands: Mutex::new(Commands::default()),
+            index: None,
+            data_subscriptions: Mutex::new(DataSubscriptions::default()),
         }
     }
 
@@ -156,10 +165,10 @@ impl Core {
             R::LogTail(r) => (r.id, unsupported("log.tail")),
             R::EventsSubscribe(r) => (r.id, self.events_subscribe(caller, r.params)),
             R::EventsUnsubscribe(r) => (r.id, self.events_unsubscribe(caller, r.params)),
-            R::DataQuery(r) => (r.id, unsupported("data.query")),
-            R::DataGet(r) => (r.id, unsupported("data.get")),
-            R::DataSubscribe(r) => (r.id, unsupported("data.subscribe")),
-            R::DataUnsubscribe(r) => (r.id, unsupported("data.unsubscribe")),
+            R::DataQuery(r) => (r.id, self.data_query(caller, r.params)),
+            R::DataGet(r) => (r.id, self.data_get(caller, r.params)),
+            R::DataSubscribe(r) => (r.id, self.data_subscribe(caller, r.params)),
+            R::DataUnsubscribe(r) => (r.id, self.data_unsubscribe(caller, r.params)),
             R::ConnectorList(r) => (r.id, unsupported("connector.list")),
             R::ConnectorConnect(r) => (r.id, unsupported("connector.connect")),
             R::ConnectorDisconnect(r) => (r.id, unsupported("connector.disconnect")),
@@ -243,7 +252,7 @@ fn list(path: &Path) -> Answer {
                 sysfs::EntryKind::Symlink => EntryKind::Symlink,
             },
             size: entry.size,
-            modified_at: None,
+            modified_at: entry.modified.map(rfc3339),
         })
         .collect();
     json(FsListResult { entries })
