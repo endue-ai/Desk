@@ -27,7 +27,7 @@ and its sync, the brain conversation with its session store and lease client, th
   `with_calendar(source)` (the built-ins `desk.calendar` and `desk.reminders`), `with_clock`,
   `with_secrets_file(path)`; then `start_connectors()` (Wasm connectors on `desk-plugin-host`),
   `tick_connectors()`, `start_connector_scheduler(period)`; `watch_views()` (`ViewWatcher`) and
-  `view_problems()` over `~/.desk/views/*.yaml`.
+  `view_problems()` over `~/.desk/views/*.yaml` and the view plugins' views (`source: plugin`).
 
 ## Testing
 
@@ -36,5 +36,5 @@ cargo test -p desk-core
 ```
 
 `tests/` covers each side; `conversation`, `directory` and `lease` start `examples/brain-echo` (needs
-Node). The integration layer's tests (`data`, `connectors`, `connectors_wasm`, `views`, `catalog`)
-run on a temp index, a `FakeCalendar`, a fake clock and an explicit tick (helpers in `tests/layer`).
+Node). The integration layer's tests (`data`, `connectors*`, `views`, `plugin_views`, `catalog`) run
+on a temp index, a `FakeCalendar`, a fake clock and an explicit tick (helpers in `tests/layer`).

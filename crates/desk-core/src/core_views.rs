@@ -1,11 +1,13 @@
 //! The view side of `Core`: view.list, get, save and remove under `view:manage`, over the person's
-//! view files, `~/.desk/views/<id>.yaml` (specs/view/v0, ADR 0032). Views are read from disk on
-//! every call. A file must pass the schema and `desk_bridge::view_problems` and be named after the
-//! id inside it; one that does not is left out of view.list, view.get names it, and
-//! `Core::view_problems` lists it. view.save checks the same and writes YAML atomically.
-//! `view.changed` goes to the `view:manage` holders, once per change, whoever made it.
+//! view files, `~/.desk/views/<id>.yaml` (specs/view/v0, ADR 0032), and the view plugins' views
+//! (`core_plugin_views`), which a person's file of the same id shadows and which are read-only.
+//! Files are read from disk on every call. A file must pass the schema and
+//! `desk_bridge::view_problems` and be named after the id inside it; one that does not is left out
+//! of view.list, view.get names it, and `Core::view_problems` lists it. view.save checks the same
+//! and writes YAML atomically. `view.changed` goes to the `view:manage` holders, once per change,
+//! whoever made it.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::io;
 use std::path::{Path, PathBuf};
 use std::sync::{MutexGuard, OnceLock};
@@ -14,7 +16,7 @@ use desk_bridge::{
     BridgeError, BridgeEvent, ErrorCode, Permission, View, ViewChange, ViewChangedData,
     ViewChangedEvent, ViewGetParams, ViewGetResult, ViewListParams, ViewListResult,
     ViewManagePermission, ViewRemoveParams, ViewRemoveResult, ViewSaveParams, ViewSaveResult,
-    ViewSummary, view_problems,
+    ViewSource, ViewSummary, view_problems,
 };
 use serde_json::{Value, json};
 
@@ -37,32 +39,37 @@ pub(crate) enum ViewFile {
 }
 
 impl Core {
-    /// Problems with the files in the views folder, each naming its file: those are left out.
+    /// Problems with the files in the views folder, each naming its file, then with the view
+    /// plugins' views, each naming its plugin and file: those are left out.
     pub fn view_problems(&self) -> Vec<String> {
-        self.view_files()
+        let mut problems: Vec<String> = self
+            .view_files()
             .into_iter()
             .filter_map(|(_, file)| match file {
                 ViewFile::Invalid(problem) => Some(problem),
                 ViewFile::Valid(..) => None,
             })
-            .collect()
+            .collect();
+        problems.extend(self.plugin_view_problems());
+        problems
     }
 
     pub(crate) fn view_list(&self, caller: &str, params: ViewListParams) -> Answer {
         self.check_views(caller, params.scope)?;
-        let mut views: Vec<ViewSummary> = self
-            .view_files()
+        let files = self.view_files();
+        let shadowed: BTreeSet<String> = files.iter().map(|(id, _)| id.clone()).collect();
+        let mut views: Vec<ViewSummary> = files
             .into_iter()
             .filter_map(|(_, file)| match file {
-                ViewFile::Valid(view, _) => Some(ViewSummary {
-                    id: view.id,
-                    version: view.version,
-                    title: view.title,
-                    description: view.description,
-                }),
+                ViewFile::Valid(view, _) => Some(summary(*view, ViewSource::File, None)),
                 ViewFile::Invalid(_) => None,
             })
             .collect();
+        for (id, (plugin, view)) in self.plugin_views() {
+            if !shadowed.contains(&id) {
+                views.push(summary(view, ViewSource::Plugin, Some(plugin)));
+            }
+        }
         views.sort_by(|a, b| a.id.cmp(&b.id));
         answer(ViewListResult { views })
     }
@@ -70,9 +77,20 @@ impl Core {
     pub(crate) fn view_get(&self, caller: &str, params: ViewGetParams) -> Answer {
         self.check_views(caller, params.scope)?;
         match read_view(&self.view_path(&params.id)?) {
-            Ok(ViewFile::Valid(view, _)) => answer(ViewGetResult { view: *view }),
+            Ok(ViewFile::Valid(view, _)) => answer(ViewGetResult {
+                view: *view,
+                source: ViewSource::File,
+                plugin: None,
+            }),
             Ok(ViewFile::Invalid(problem)) => Err(error(ErrorCode::InvalidParams, problem)),
-            Err(e) if e.kind() == io::ErrorKind::NotFound => Err(no_view(&params.id)),
+            Err(e) if e.kind() == io::ErrorKind::NotFound => match self.plugin_view(&params.id) {
+                Some((plugin, view)) => answer(ViewGetResult {
+                    view,
+                    source: ViewSource::Plugin,
+                    plugin: Some(plugin),
+                }),
+                None => Err(no_view(&params.id)),
+            },
             Err(e) => Err(io_error(e)),
         }
     }
@@ -91,6 +109,12 @@ impl Core {
         }
         let id = params.view.id.clone();
         let path = self.view_path(&id)?;
+        if !path.exists()
+            && let Some((plugin, _)) = self.plugin_view(&id)
+        {
+            let why = format!("{id} is owned by plugin {plugin}; save it under another id");
+            return Err(error(ErrorCode::InvalidParams, why));
+        }
         let text =
             yaml_serde::to_string(&value).map_err(|e| error(ErrorCode::Internal, e.to_string()))?;
         {
@@ -102,18 +126,24 @@ impl Core {
         answer(ViewSaveResult {})
     }
 
+    /// Delete the person's file. A plugin's view of the id, if any, answers view.get after it.
     pub(crate) fn view_remove(&self, caller: &str, params: ViewRemoveParams) -> Answer {
         self.check_views(caller, params.scope)?;
         let path = self.view_path(&params.id)?;
+        let owner = self.plugin_view(&params.id).map(|(plugin, _)| plugin);
         {
             let mut seen = self.views_seen();
-            std::fs::remove_file(&path).map_err(|e| match e.kind() {
-                io::ErrorKind::NotFound => no_view(&params.id),
+            std::fs::remove_file(&path).map_err(|e| match (e.kind(), &owner) {
+                (io::ErrorKind::NotFound, Some(plugin)) => {
+                    let why = format!("{} is a view of plugin {plugin}, read-only", params.id);
+                    error(ErrorCode::InvalidParams, why)
+                }
+                (io::ErrorKind::NotFound, None) => no_view(&params.id),
                 _ => io_error(e),
             })?;
             seen.0.remove(&params.id);
         }
-        self.view_changed(&params.id, ViewChange::Removed);
+        self.view_changed(&params.id, shown(owner.is_some()));
         answer(ViewRemoveResult {})
     }
 
@@ -135,9 +165,11 @@ impl Core {
     }
 
     /// The file of view `id` may have changed on disk: announce it once if it did. A file that
-    /// breaks is not announced; one that goes is `removed` if it had been announced.
+    /// breaks is not announced; one that goes is `removed` if it had been announced, or `saved`
+    /// when a plugin's view of its id answers now.
     pub(crate) fn view_file_changed(&self, id: &str) {
         let path = self.views_folder().join(format!("{id}.yaml"));
+        let provided = self.plugin_view(id).is_some();
         let change = {
             let mut seen = self.views_seen();
             match read_view(&path) {
@@ -146,7 +178,7 @@ impl Core {
                     Some(ViewChange::Saved)
                 }
                 Err(e) if e.kind() == io::ErrorKind::NotFound => {
-                    seen.0.remove(id).map(|_| ViewChange::Removed)
+                    seen.0.remove(id).map(|_| shown(provided))
                 }
                 _ => None,
             }
@@ -157,7 +189,7 @@ impl Core {
     }
 
     /// Every `*.yaml` file in the views folder, by name, as read.
-    fn view_files(&self) -> Vec<(String, ViewFile)> {
+    pub(crate) fn view_files(&self) -> Vec<(String, ViewFile)> {
         let Ok(entries) = std::fs::read_dir(self.views_folder()) else {
             return Vec::new();
         };
@@ -190,7 +222,7 @@ impl Core {
     }
 
     /// `view.changed` for the view:manage holders.
-    fn view_changed(&self, id: &str, change: ViewChange) {
+    pub(crate) fn view_changed(&self, id: &str, change: ViewChange) {
         let scope = Permission::ViewManage(ViewManagePermission {
             permission: Default::default(),
         });
@@ -213,38 +245,75 @@ impl Core {
     }
 }
 
-/// Read and check one view file. A file that cannot be read at all is the io error.
+/// Read and check one of the person's view files, which must be named after its id. A file that
+/// cannot be read at all is the io error.
 pub(crate) fn read_view(path: &Path) -> io::Result<ViewFile> {
     let name = path.file_name().unwrap_or_default().to_string_lossy();
     let bytes = std::fs::read(path)?;
-    let invalid = |why: String| Ok(ViewFile::Invalid(format!("{name}{why}")));
-    let Ok(text) = String::from_utf8(bytes) else {
-        return invalid(": not UTF-8".to_owned());
+    let stem = name.strip_suffix(".yaml").unwrap_or(&name);
+    Ok(match parse_view(&name, bytes, false) {
+        Ok((view, _)) if view.id != stem => ViewFile::Invalid(format!(
+            "{name}: its id is {}; name the file {}.yaml",
+            view.id, view.id
+        )),
+        Ok((view, text)) => ViewFile::Valid(Box::new(view), text),
+        Err(problem) => ViewFile::Invalid(problem),
+    })
+}
+
+/// Parse one view, JSON when `json` and YAML otherwise, and check it; returns it with its text.
+/// Every problem starts with `name`.
+pub(crate) fn parse_view(name: &str, bytes: Vec<u8>, json: bool) -> Result<(View, String), String> {
+    let text = String::from_utf8(bytes).map_err(|_| format!("{name}: not UTF-8"))?;
+    let value = if json {
+        serde_json::from_str::<Value>(&text).map_err(|e| format!("{name}: not JSON: {e}"))?
+    } else {
+        let value = yaml_serde::from_str::<Option<Value>>(&text);
+        let value = value.map_err(|e| format!("{name}: not YAML: {e}"))?;
+        value.unwrap_or(Value::Null)
     };
-    let value = match yaml_serde::from_str::<Option<Value>>(&text) {
-        Ok(value) => value.unwrap_or(Value::Null),
-        Err(e) => return invalid(format!(": not YAML: {e}")),
+    Ok((check_view(name, value)?, text))
+}
+
+/// Check one view: the schema, then `desk_bridge::view_problems`. Every problem starts with
+/// `name`, followed by where it is.
+pub(crate) fn check_view(name: &str, value: Value) -> Result<View, String> {
+    let named = |problems: Vec<String>| {
+        let problems: Vec<String> = problems.iter().map(|p| format!("{name}{p}")).collect();
+        problems.join("; ")
     };
     let problems = schema_problems(&value);
     if !problems.is_empty() {
-        return invalid(problems.join(&format!("; {name}")));
+        return Err(named(problems));
     }
-    let view: View = match serde_json::from_value(value) {
-        Ok(view) => view,
-        Err(e) => return invalid(format!(": not a view: {e}")),
-    };
-    let named = view_problems(&view);
-    if !named.is_empty() {
-        return invalid(named.join(&format!("; {name}")));
+    let view: View =
+        serde_json::from_value(value).map_err(|e| format!("{name}: not a view: {e}"))?;
+    let problems = view_problems(&view);
+    if !problems.is_empty() {
+        return Err(named(problems));
     }
-    let stem = name.strip_suffix(".yaml").unwrap_or(&name);
-    if view.id != stem {
-        return invalid(format!(
-            ": its id is {}; name the file {}.yaml",
-            view.id, view.id
-        ));
+    Ok(view)
+}
+
+fn summary(view: View, source: ViewSource, plugin: Option<String>) -> ViewSummary {
+    ViewSummary {
+        id: view.id,
+        version: view.version,
+        title: view.title,
+        description: view.description,
+        source,
+        plugin,
     }
-    Ok(ViewFile::Valid(Box::new(view), text))
+}
+
+/// What a change means for view.get: `saved` when an id still answers (a plugin's view under the
+/// person's file that went), `removed` when it no longer does.
+pub(crate) fn shown(answers: bool) -> ViewChange {
+    if answers {
+        ViewChange::Saved
+    } else {
+        ViewChange::Removed
+    }
 }
 
 /// Where `value` breaks specs/view/v0, each as `<pointer>: <problem>`.

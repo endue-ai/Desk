@@ -1,6 +1,6 @@
 //! The plugin side of `Core`: install, list, enable, serve files, and report changes on the bus. A
-//! plugin turned off unloads: its commands, waiting requests and subscriptions go with it, and a
-//! connector's instances pause.
+//! plugin turned off unloads: its commands, waiting requests and subscriptions go with it, a
+//! connector's instances pause, and a view plugin's views leave view.list.
 
 use std::io;
 use std::path::{Path, PathBuf};
@@ -42,6 +42,7 @@ impl Core {
             }
         }
         self.plugin_changed(&info.id, PluginChange::Installed, info.revision);
+        self.plugin_views_changed(&info);
         self.install_connector(&info);
         info
     }
@@ -80,6 +81,7 @@ impl Core {
         let refreshed = self.registry().refresh(id);
         if let Some(info) = refreshed {
             self.plugin_changed(&info.id, PluginChange::Updated, info.revision);
+            self.plugin_views_changed(&info);
             self.reload_connector(&info.id);
         }
     }
@@ -108,6 +110,7 @@ impl Core {
             PluginChange::Disabled
         };
         self.plugin_changed(&info.id, change, info.revision);
+        self.plugin_views_changed(&info);
         // A connector's instances pause while its plugin is off, and resume when it is on.
         self.connector_toggled(&info.id);
         json(PluginSetEnabledResult { plugin: info })

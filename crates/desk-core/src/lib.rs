@@ -18,6 +18,7 @@ mod core_host;
 mod core_init;
 mod core_log;
 mod core_perm;
+mod core_plugin_views;
 mod core_plugins;
 mod core_prompts;
 mod core_settings;

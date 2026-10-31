@@ -26,6 +26,7 @@ use crate::core_data::DataSubscriptions;
 use crate::core_events::Subscriptions;
 use crate::core_fs::Watches;
 use crate::core_perm::{Prompter, RefuseAll};
+use crate::core_plugin_views::ProvidedViews;
 use crate::core_prompts::Prompts;
 use crate::core_views::ViewsSeen;
 use crate::events::EventBus;
@@ -71,6 +72,7 @@ pub struct Core {
     pub(crate) data_subscriptions: Mutex<DataSubscriptions>,
     pub(crate) connectors: Connectors,
     pub(crate) views: Mutex<ViewsSeen>,
+    pub(crate) provided_views: Mutex<ProvidedViews>,
 }
 
 impl Core {
@@ -99,6 +101,7 @@ impl Core {
             data_subscriptions: Mutex::new(DataSubscriptions::default()),
             connectors: Connectors::default(),
             views: Mutex::new(ViewsSeen::default()),
+            provided_views: Mutex::new(ProvidedViews::default()),
         }
     }
 
