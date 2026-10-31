@@ -40,6 +40,7 @@ The base plugins a person works with from the first day (requirements, BASE):
 | --- | --- |
 | `notes/` (`endue.notes`) | Markdown and text files in a plain text area: the first file opener |
 | `git/` (`endue.git`) | A keyboard-first front for Git: status, staging, commits, the log as a graph, diffs; every operation a command |
+| `database/` (`endue.database`) | A client for PostgreSQL, MySQL / MariaDB and SQLite through their own command-line clients (ADR 0038): connections, an explorer, SQL consoles, exact results, guards for read-only and production connections |
 
 Every plugin folder holds `plugin.json`, `README.md`, and as needed `ui/`, `logic/`, `tool/` and `tests/`.
 
