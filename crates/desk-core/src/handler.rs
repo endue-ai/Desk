@@ -26,6 +26,7 @@ use crate::core_data::DataSubscriptions;
 use crate::core_events::Subscriptions;
 use crate::core_fs::Watches;
 use crate::core_perm::{Prompter, RefuseAll};
+use crate::core_proc::Processes;
 use crate::core_prompts::Prompts;
 use crate::core_views::ViewsSeen;
 use crate::events::EventBus;
@@ -71,6 +72,7 @@ pub struct Core {
     pub(crate) data_subscriptions: Mutex<DataSubscriptions>,
     pub(crate) connectors: Connectors,
     pub(crate) views: Mutex<ViewsSeen>,
+    pub(crate) processes: Arc<Mutex<Processes>>,
 }
 
 impl Core {
@@ -99,6 +101,7 @@ impl Core {
             data_subscriptions: Mutex::new(DataSubscriptions::default()),
             connectors: Connectors::default(),
             views: Mutex::new(ViewsSeen::default()),
+            processes: Arc::new(Mutex::new(Processes::default())),
         }
     }
 
@@ -163,10 +166,10 @@ impl Core {
             R::UiNotify(r) => (r.id, self.notify(caller, r.params)),
             R::FsWrite(r) => (r.id, self.fs_write(caller, r.params)),
             R::FsWatch(r) => (r.id, self.fs_watch(caller, r.params)),
-            R::ProcSpawn(r) => (r.id, unsupported("proc.spawn")),
-            R::ProcWrite(r) => (r.id, unsupported("proc.write")),
-            R::ProcResize(r) => (r.id, unsupported("proc.resize")),
-            R::ProcKill(r) => (r.id, unsupported("proc.kill")),
+            R::ProcSpawn(r) => (r.id, self.proc_spawn(caller, r.params)),
+            R::ProcWrite(r) => (r.id, self.proc_write(caller, r.params)),
+            R::ProcResize(r) => (r.id, self.proc_resize(caller, r.params)),
+            R::ProcKill(r) => (r.id, self.proc_kill(caller, r.params)),
             R::NetFetch(r) => (r.id, unsupported("net.fetch")),
             R::AudioCaptureStart(r) => (r.id, unsupported("audio.capture.start")),
             R::AudioCaptureStop(r) => (r.id, unsupported("audio.capture.stop")),
@@ -211,7 +214,8 @@ impl Core {
         self.resolve(path)
     }
 
-    fn resolve(&self, path: &str) -> Result<PathBuf, BridgeError> {
+    /// A bridge path on the file system: `~` and `${home}` are the home folder.
+    pub(crate) fn resolve(&self, path: &str) -> Result<PathBuf, BridgeError> {
         let normalized = normalize(path).ok_or_else(|| {
             error(
                 ErrorCode::InvalidParams,
@@ -238,7 +242,7 @@ impl Core {
             .fold(base, |p, s| p.join(s)))
     }
 
-    /// `~` and `${home}`.
+    /// The home folder: `~` and `${home}`, and where a process starts unless its caller says where.
     pub(crate) fn home(&self) -> &Path {
         &self.roots.home
     }

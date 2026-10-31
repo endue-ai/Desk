@@ -14,6 +14,8 @@ not in the brief: `ASSUMPTIONS.md`.
 - `PluginHost`: mounts UI plugins, relays their calls as their own caller, reloads a surface on
   `plugin.changed`, carries commands and keys, shares the theme (ADR 0012, 0014); events go to their
   owner (`fs.changed`, `data.changed`) or to `*:manage` holders. A shown overlay goes on top.
+  `Owners` (`owners.ts`) does that routing for brain turns, fs watches, data subscriptions and
+  processes, holding events that arrive before the call's answer.
 - Policies: `collect(plugins)`, `Commands` (the core's registry), layered `Settings`, `Keymap` (the
   person's layer `desk.keys.bindings` last; `rebind.ts`), `decide`, `resolveTheme`, `Notifications`,
   `Buffers`; `src/policies/*`, one desk.* policy each. `HostViews` (`views.ts`): focus and buffers.

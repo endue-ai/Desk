@@ -1,17 +1,14 @@
 import type {
-  BrainSayResult,
-  BrainTurnEvent,
   BridgeClient,
   BridgeEvent,
   BridgeRequest,
   BridgeResponse,
-  DataSubscribeResult,
-  FsWatchResult,
   Permission,
   PluginInfo,
 } from "@endue-ai/bridge";
 import { CommandError } from "./commands";
 import type { KeyLike } from "./input";
+import { eventKey, Owners } from "./owners";
 import { PluginCommands } from "./plugin-commands";
 import type { SurfaceSpec } from "./surfaces";
 
@@ -53,8 +50,6 @@ type PluginMessage =
   | { type: "desk:key"; key: KeyLike };
 
 const MANAGE = { permission: "plugin:manage" } as const;
-/** How many unclaimed turns keep their early events. */
-const EARLY_TURNS = 32;
 
 /**
  * Mounts UI plugins on surfaces and carries their bridge calls. Plugins are told apart by the
@@ -65,14 +60,8 @@ export class PluginHost {
   readonly #options: PluginHostOptions;
   readonly #mounted = new Map<string, PluginInfo>();
   readonly #state = new Map<string, unknown>();
-  /** brain.turn id -> the plugin whose brain.say started it. */
-  readonly #turns = new Map<string, string>();
-  /** brain.turn events that arrived before the brain.say answer that names their turn. */
-  readonly #early = new Map<string, BrainTurnEvent[]>();
-  /** fs.watch id -> the plugin that started the watch; its fs.changed events go there only. */
-  readonly #watches = new Map<string, string>();
-  /** data.subscribe id -> the plugin that subscribed; its data.changed events go there only. */
-  readonly #subscriptions = new Map<string, string>();
+  /** Turns, watches, data subscriptions and processes, by the plugin whose call started them. */
+  readonly #owners = new Owners();
   /** Commands delivered to plugins that wait for their reply, by call id. */
   readonly #pending = new Map<
     number,
@@ -179,9 +168,7 @@ export class PluginHost {
     }
     this.#waiting.delete(id);
     this.#commands.unmounted(id);
-    for (const [watch, owner] of this.#watches) if (owner === id) this.#watches.delete(watch);
-    for (const [sub, owner] of this.#subscriptions)
-      if (owner === id) this.#subscriptions.delete(sub);
+    this.#owners.drop(id);
     for (const [call, pending] of this.#pending) {
       if (pending.plugin !== id) continue;
       this.#pending.delete(call);
@@ -191,17 +178,12 @@ export class PluginHost {
   }
 
   #onEvent(event: BridgeEvent): void {
-    if (event.event === "brain.turn") {
-      this.#turn(event);
-      return;
-    }
-    if (event.event === "fs.changed" || event.event === "data.changed") {
-      // A watch's changes go to the plugin that started it, a data subscription's to its subscriber.
-      const owner =
-        event.event === "fs.changed"
-          ? this.#watches.get(event.data.watchId)
-          : this.#subscriptions.get(event.data.subscriptionId);
-      if (owner) this.#post(owner, { type: "desk:event", event });
+    const key = eventKey(event);
+    if (key !== undefined) {
+      // Owned events go only to the plugin whose call started them; other plugins never see them.
+      const owner = this.#owners.route(event, key);
+      if (owner !== undefined && this.#mounted.has(owner))
+        this.#post(owner, { type: "desk:event", event });
       return;
     }
     if (event.event === "connector.changed" || event.event === "view.changed") {
@@ -253,43 +235,19 @@ export class PluginHost {
     }
   }
 
-  /** A turn's events go only to the plugin that said it; other plugins never see them. */
-  #turn(event: BrainTurnEvent): void {
-    const { turnId, kind } = event.data;
-    const owner = this.#turns.get(turnId);
-    if (owner === undefined) {
-      const early = this.#early.get(turnId) ?? [];
-      early.push(event);
-      this.#early.set(turnId, early);
-      const oldest = this.#early.keys().next().value;
-      if (this.#early.size > EARLY_TURNS && oldest !== undefined) this.#early.delete(oldest);
-      return;
-    }
-    this.#post(owner, { type: "desk:event", event });
-    if (kind === "completed" || kind === "error") this.#turns.delete(turnId);
-  }
-
-  /** A brain.say answer names its turn: deliver what came early, and route the rest. */
+  /**
+   * A call's answer names the turn, watch, subscription or process it started: its events go to the
+   * plugin that made the call, those that came early first. An unsubscribe ends its key.
+   */
   #claim(request: BridgeRequest, response: BridgeResponse, owner: string): void {
     this.#commands.observe(request, response, owner);
-    if (request.method === "fs.watch" && response.ok) {
-      this.#watches.set((response.result as FsWatchResult).watchId, owner);
-      return;
-    }
-    if (request.method === "data.subscribe" && response.ok) {
-      this.#subscriptions.set((response.result as DataSubscribeResult).subscriptionId, owner);
-      return;
-    }
     if (request.method === "data.unsubscribe" && response.ok) {
-      this.#subscriptions.delete(request.params.subscriptionId);
+      this.#owners.release(`sub:${request.params.subscriptionId}`);
       return;
     }
-    if (request.method !== "brain.say" || !response.ok) return;
-    const { turnId } = response.result as BrainSayResult;
-    this.#turns.set(turnId, owner);
-    const early = this.#early.get(turnId) ?? [];
-    this.#early.delete(turnId);
-    for (const event of early) this.#turn(event);
+    for (const event of this.#owners.claim(request, response, owner)) {
+      this.#post(owner, { type: "desk:event", event });
+    }
   }
 
   #post(id: string, message: unknown): void {
@@ -342,7 +300,7 @@ export class PluginHost {
         ).then((answers) => {
           const results = answers.map(({ request, response }) => ({ id: request.id, response }));
           this.#post(id, { type: "desk:results", results });
-          // After the results, so a plugin learns its turn id before the turn's first event.
+          // After the results, so a plugin learns its turn, watch, subscription or process id first.
           for (const { request, response } of answers) this.#claim(request, response, id);
         });
         break;
