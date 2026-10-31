@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Reader</title>
+    <script type="importmap">
+      { "imports": { "@endue-ai/plugin-sdk": "/_desk/plugin-sdk.js" } }
+    </script>
+    <link rel="stylesheet" href="./vendor/pdf_layers.css" />
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <header>
+      <div id="heading">
+        <h1 id="title">No document open</h1>
+        <p id="detail"></p>
+      </div>
+      <div role="toolbar" id="tools" aria-label="Reader" aria-controls="doc" hidden>
+        <button type="button" id="contents-toggle" aria-expanded="false" aria-controls="side">Contents</button>
+        <span class="group">
+          <button type="button" id="prev" aria-label="Previous page"><span aria-hidden="true">‹</span></button>
+          <label for="page" id="page-label">Page</label>
+          <input id="page" type="number" min="1" value="1" inputmode="numeric" aria-describedby="count" />
+          <span id="count">/ 0</span>
+          <button type="button" id="next" aria-label="Next page"><span aria-hidden="true">›</span></button>
+        </span>
+        <span class="group">
+          <button type="button" id="zoom-out" aria-label="Zoom out"><span aria-hidden="true">−</span></button>
+          <output id="zoom" aria-label="Zoom" aria-live="off">100%</output>
+          <button type="button" id="zoom-in" aria-label="Zoom in"><span aria-hidden="true">+</span></button>
+          <button type="button" id="fit-width">Fit width</button>
+          <button type="button" id="fit-page">Fit page</button>
+        </span>
+        <span class="group">
+          <button type="button" id="find-toggle" aria-controls="find" aria-keyshortcuts="Meta+F Control+F">Search</button>
+          <button type="button" id="bookmark">Bookmark</button>
+          <button type="button" id="add-note">Add note</button>
+        </span>
+      </div>
+    </header>
+    <form id="find" role="search" aria-label="Search in the document" hidden>
+      <input id="find-text" type="search" aria-label="Search for" autocomplete="off" spellcheck="false" />
+      <button type="button" id="find-prev" aria-label="Previous match" aria-keyshortcuts="Shift+Meta+G Shift+Control+G"><span aria-hidden="true">↑</span></button>
+      <button type="submit" id="find-next" aria-label="Next match" aria-keyshortcuts="Meta+G Control+G"><span aria-hidden="true">↓</span></button>
+      <span id="find-status" aria-live="polite"></span>
+      <button type="button" id="find-close" aria-label="Close search"><span aria-hidden="true">×</span></button>
+    </form>
+    <div id="body">
+      <aside id="side" aria-label="Contents, bookmarks and notes" hidden>
+        <div role="tablist" aria-label="Panels">
+          <button type="button" role="tab" id="tab-contents" aria-controls="contents" aria-selected="true">Contents</button>
+          <button type="button" role="tab" id="tab-bookmarks" aria-controls="bookmarks" aria-selected="false" tabindex="-1">Bookmarks</button>
+          <button type="button" role="tab" id="tab-notes" aria-controls="notes" aria-selected="false" tabindex="-1">Notes</button>
+        </div>
+        <div role="tabpanel" id="contents" aria-labelledby="tab-contents"></div>
+        <div role="tabpanel" id="bookmarks" aria-labelledby="tab-bookmarks" hidden></div>
+        <div role="tabpanel" id="notes" aria-labelledby="tab-notes" hidden>
+          <form id="note-form" hidden>
+            <label for="note-text" id="note-label">Note</label>
+            <textarea id="note-text" rows="4" maxlength="4000"></textarea>
+            <div class="row">
+              <button type="submit">Keep note</button>
+              <button type="button" id="note-cancel">Cancel</button>
+            </div>
+          </form>
+          <ul id="note-list"></ul>
+        </div>
+      </aside>
+      <main id="doc" tabindex="0" aria-label="Document">
+        <p id="empty">Open a PDF, an e-book or a comic from the files list, or with Mod+O.</p>
+        <div id="pages" hidden></div>
+        <article id="chapter" hidden></article>
+        <nav id="chapter-nav" aria-label="Chapters" hidden>
+          <button type="button" id="chapter-prev">Previous chapter</button>
+          <button type="button" id="chapter-next">Next chapter</button>
+        </nav>
+        <form id="unlock" hidden>
+          <p id="unlock-why">This PDF is protected by a password.</p>
+          <label for="password">Password</label>
+          <input id="password" type="password" autocomplete="off" />
+          <button type="submit">Open</button>
+        </form>
+        <section id="details" aria-labelledby="details-title" hidden>
+          <h2 id="details-title"></h2>
+          <p id="details-why"></p>
+          <dl id="details-facts"></dl>
+        </section>
+      </main>
+    </div>
+    <p id="status" role="status"></p>
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

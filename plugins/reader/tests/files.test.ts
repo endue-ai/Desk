@@ -20,7 +20,7 @@ describe("the desk's file requests", () => {
     const shown = view.shown.at(-1);
     expect(shown).toMatchObject({ buffer: A.buffer, path: A.path, name: "a.cbz" });
     expect(shown?.book).toMatchObject({ kind: "pages", format: "CBZ comic" });
-    expect(shown?.book.pages).toHaveLength(3);
+    expect(shown?.book.kind === "pages" && shown.book.pages).toHaveLength(3);
     expect(view.focused).toBeGreaterThan(0);
   });
 
@@ -89,13 +89,14 @@ describe("the desk's file requests", () => {
     let reads = 0;
     const handlers = disk({ [X.path]: cbz() });
     const read = handlers["fs.read"];
+    if (!read) throw new Error("disk() serves fs.read");
     const { host, view, params } = await mount({
       handlers: {
         ...handlers,
         "fs.read": (p, caller) => {
           reads++;
           if (reads === 1) throw denied("fs:read over ~/Documents/x.cbz");
-          return read?.(p, caller);
+          return read(p, caller);
         },
         "perm.request": ({ permission }) => ({
           granted: true,

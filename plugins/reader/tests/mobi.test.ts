@@ -46,7 +46,7 @@ describe("MOBI, AZW, AZW3 and PRC", () => {
       /^data:image\/png;base64,iVBORw0KGgo/,
     );
     const contents = parse((await book.chapter(0)).html);
-    const link = contents.querySelector("a")?.getAttribute("href") ?? "";
+    const link = contents.querySelector("a[href]")?.getAttribute("href") ?? "";
     expect(book.target(link, 0)).toMatchObject({ unit: 1 });
     const two = await book.chapter(2);
     expect(two.html).not.toMatch(/<script|steal/);
@@ -77,7 +77,7 @@ describe("MOBI, AZW, AZW3 and PRC", () => {
     expect(one.css.join("\n")).toContain("#336699");
     const page = parse(one.html);
     expect(page.querySelector("img")?.getAttribute("src")).toMatch(/^data:image\/png;base64,/);
-    const link = page.querySelector("a")?.getAttribute("href") ?? "";
+    const link = page.querySelector("a[href]")?.getAttribute("href") ?? "";
     expect(book.target(link, 0)).toMatchObject({ unit: 1 });
     const two = await book.chapter(1);
     expect(two.html).toContain("The lantern swung on its hook.");

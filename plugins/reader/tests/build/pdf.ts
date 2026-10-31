@@ -15,16 +15,22 @@ const md5 = (...parts: Uint8Array[]) => {
 
 function rc4(key: Uint8Array, data: Uint8Array): Uint8Array {
   const s = Array.from({ length: 256 }, (_, i) => i);
+  const at = (i: number) => s[i] ?? 0;
+  const swap = (i: number, j: number) => {
+    const t = at(i);
+    s[i] = at(j);
+    s[j] = t;
+  };
   for (let i = 0, j = 0; i < 256; i++) {
-    j = (j + s[i] + key[i % key.length]) & 255;
-    [s[i], s[j]] = [s[j], s[i]];
+    j = (j + at(i) + (key[i % key.length] ?? 0)) & 255;
+    swap(i, j);
   }
   const out = new Uint8Array(data.length);
   for (let n = 0, i = 0, j = 0; n < data.length; n++) {
     i = (i + 1) & 255;
-    j = (j + s[i]) & 255;
-    [s[i], s[j]] = [s[j], s[i]];
-    out[n] = data[n] ^ s[(s[i] + s[j]) & 255];
+    j = (j + at(i)) & 255;
+    swap(i, j);
+    out[n] = (data[n] ?? 0) ^ at((at(i) + at(j)) & 255);
   }
   return out;
 }
@@ -134,8 +140,9 @@ export function pdf(options: PdfOptions = {}): Uint8Array {
       ),
     );
   }
-  const parts: Buffer[] = [Buffer.from("%PDF-1.4\n%\xe2\xe3\xcf\xd3\n", "latin1")];
-  let length = parts[0].length;
+  const head = Buffer.from("%PDF-1.4\n%\xe2\xe3\xcf\xd3\n", "latin1");
+  const parts: Buffer[] = [head];
+  let length = head.length;
   const offsets: number[] = [];
   objects.forEach((make, i) => {
     const body = Buffer.concat([

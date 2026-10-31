@@ -22,7 +22,8 @@ describe("XPS and OXPS", () => {
     const page = await book.page(0);
     const svg = svgOf(page.svg);
     expect(svg.documentElement.getAttribute("viewBox")).toBe("0 0 816 1056");
-    const [triangle, curve] = [...svg.querySelectorAll("path")];
+    const shapes = [...svg.querySelectorAll("path")].filter((p) => !p.closest("defs"));
+    const [triangle, curve] = shapes;
     expect(triangle?.getAttribute("d")).toBe("M10 10L100 10L100 60Z");
     expect(triangle?.getAttribute("fill")).toBe("#3366cc");
     expect(triangle?.getAttribute("stroke")).toBe("#202020");
@@ -47,7 +48,7 @@ describe("XPS and OXPS", () => {
     const image = svg.querySelector("pattern image");
     expect(image?.getAttribute("href")).toMatch(/^data:image\/png;base64,iVBORw0KGgo/);
     expect(svg.querySelector("pattern")?.getAttribute("width")).toBe("200");
-    const polyline = [...svg.querySelectorAll("path")].at(-1);
+    const polyline = shapes.at(-1);
     expect(polyline?.getAttribute("d")).toBe("M10 500L110 500L110 600Z");
   });
 

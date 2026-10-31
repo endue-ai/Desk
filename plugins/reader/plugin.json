@@ -1,0 +1,85 @@
+{
+  "id": "endue.reader",
+  "name": "Reader",
+  "version": "0.1.0",
+  "kind": "ui",
+  "entry": "ui/index.html",
+  "description": "Opens PDFs, XPS, e-books (EPUB, MOBI, AZW, FB2) and comics (CBZ, CBT) in one reader: pages, contents, bookmarks, search and notes. It reads; it never writes the file.",
+  "permissions": [
+    {
+      "permission": "cmd:invoke",
+      "ids": ["desk.files.changed"]
+    }
+  ],
+  "surfaces": [
+    {
+      "id": "main",
+      "title": "Reader",
+      "placement": "center"
+    }
+  ],
+  "contributes": {
+    "files": [
+      {
+        "pattern": "*.pdf",
+        "plugin": "endue.reader"
+      },
+      {
+        "pattern": "*.xps",
+        "plugin": "endue.reader"
+      },
+      {
+        "pattern": "*.oxps",
+        "plugin": "endue.reader"
+      },
+      {
+        "pattern": "*.epub",
+        "plugin": "endue.reader"
+      },
+      {
+        "pattern": "*.mobi",
+        "plugin": "endue.reader"
+      },
+      {
+        "pattern": "*.azw",
+        "plugin": "endue.reader"
+      },
+      {
+        "pattern": "*.azw3",
+        "plugin": "endue.reader"
+      },
+      {
+        "pattern": "*.prc",
+        "plugin": "endue.reader"
+      },
+      {
+        "pattern": "*.fb2",
+        "plugin": "endue.reader"
+      },
+      {
+        "pattern": "*.cbz",
+        "plugin": "endue.reader"
+      },
+      {
+        "pattern": "*.cbt",
+        "plugin": "endue.reader"
+      },
+      {
+        "pattern": "*.cbr",
+        "plugin": "endue.reader"
+      },
+      {
+        "pattern": "*.cb7",
+        "plugin": "endue.reader"
+      },
+      {
+        "pattern": "*.djvu",
+        "plugin": "endue.reader"
+      },
+      {
+        "pattern": "*.djv",
+        "plugin": "endue.reader"
+      }
+    ]
+  }
+}

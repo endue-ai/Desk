@@ -1,0 +1,372 @@
+/* The desk's design tokens (@endue-ai/ui). Frames do not inherit the desk's, so they are declared
+   here; the runtime redefines them for the theme in force. The paper colours are the reader's. */
+:root {
+  --desk-background: #141416;
+  --desk-card: #1e1d21;
+  --desk-border: #333136;
+  --desk-text: #f2f0f5;
+  --desk-text-muted: #b0adb7;
+  --desk-accent: #b6a3f5;
+  --reader-paper: #ffffff;
+  --reader-hit: rgb(255 200 0 / 0.45);
+  --reader-hit-current: rgb(255 120 0 / 0.6);
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  margin: 0;
+  background: var(--desk-card);
+  color: var(--desk-text);
+  font: 13px/1.5 -apple-system, "SUIT", "Inter", system-ui, sans-serif;
+}
+
+header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--desk-border);
+}
+
+#heading {
+  min-width: 0;
+  flex: 1 1 200px;
+}
+
+h1 {
+  margin: 0;
+  overflow: hidden;
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#detail,
+#status,
+.quiet {
+  margin: 0;
+  color: var(--desk-text-muted);
+}
+
+#detail {
+  overflow: hidden;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+[role="toolbar"],
+.group,
+#find,
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+
+[role="toolbar"] {
+  gap: 4px 12px;
+}
+
+button,
+input,
+textarea,
+output {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  min-height: 24px;
+  padding: 1px 8px;
+  border: 1px solid var(--desk-border);
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+}
+
+button:hover:not(:disabled) {
+  border-color: var(--desk-accent);
+}
+
+button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+button[aria-expanded="true"],
+[role="tab"][aria-selected="true"] {
+  border-color: var(--desk-accent);
+  background: color-mix(in srgb, var(--desk-accent) 18%, transparent);
+}
+
+input,
+textarea {
+  box-sizing: border-box;
+  border: 1px solid var(--desk-border);
+  border-radius: 6px;
+  background: var(--desk-background);
+}
+
+#page {
+  width: 4.5em;
+  padding: 1px 4px;
+  text-align: right;
+}
+
+#count {
+  color: var(--desk-text-muted);
+}
+
+#zoom {
+  min-width: 3.2em;
+  text-align: center;
+}
+
+:focus-visible {
+  outline: 2px solid var(--desk-accent);
+  outline-offset: 2px;
+}
+
+#find {
+  padding: 4px 12px;
+  border-bottom: 1px solid var(--desk-border);
+}
+
+#find-text {
+  width: min(22em, 50vw);
+  padding: 2px 6px;
+}
+
+#find-status {
+  color: var(--desk-text-muted);
+}
+
+#body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+#side {
+  display: flex;
+  flex-direction: column;
+  width: min(280px, 40vw);
+  border-right: 1px solid var(--desk-border);
+  overflow: auto;
+}
+
+#side [role="tablist"] {
+  display: flex;
+  gap: 4px;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--desk-border);
+}
+
+#side [role="tabpanel"] {
+  padding: 6px 8px;
+}
+
+#side ul {
+  margin: 0;
+  padding-left: 12px;
+  list-style: none;
+}
+
+#side li {
+  margin: 2px 0;
+}
+
+#side li button {
+  max-width: 100%;
+  border-color: transparent;
+  text-align: left;
+}
+
+#side li button:hover,
+#side li button:focus-visible {
+  border-color: var(--desk-accent);
+}
+
+#note-form {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+#note-text {
+  width: 100%;
+  padding: 4px 6px;
+  resize: vertical;
+}
+
+.note {
+  margin: 4px 0 0;
+  white-space: pre-wrap;
+}
+
+#doc {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  overflow: auto;
+  background: var(--desk-background);
+}
+
+#doc:focus-visible {
+  outline-offset: -2px;
+}
+
+#empty,
+#unlock,
+#details {
+  max-width: 34em;
+  margin: 48px auto;
+  padding: 0 16px;
+}
+
+#empty {
+  color: var(--desk-text-muted);
+}
+
+#unlock {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+#unlock[hidden],
+#details[hidden],
+#pages[hidden] {
+  display: none;
+}
+
+#unlock p {
+  flex-basis: 100%;
+  margin: 0;
+}
+
+#password {
+  padding: 3px 6px;
+}
+
+#details h2 {
+  margin: 0 0 4px;
+  font-size: 15px;
+}
+
+#details dl {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 2px 12px;
+}
+
+#details dt {
+  color: var(--desk-text-muted);
+}
+
+#details dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+#pages {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+}
+
+.page {
+  position: relative;
+  flex: none;
+  overflow: hidden;
+  background: var(--reader-paper);
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.45);
+}
+
+.page > canvas,
+.page > img,
+.page > svg {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.page > img {
+  object-fit: contain;
+}
+
+.page[data-failed] {
+  display: grid;
+  place-items: center;
+  color: #6b6870;
+}
+
+.textLayer mark.hit {
+  background: var(--reader-hit);
+  color: transparent;
+  border-radius: 2px;
+}
+
+.textLayer mark.hit.current {
+  background: var(--reader-hit-current);
+}
+
+.page tspan.hit {
+  fill: #9a3d00;
+  text-decoration: underline;
+}
+
+.page tspan.hit.current {
+  fill: #d24f00;
+}
+
+#chapter {
+  display: block;
+  min-height: 100%;
+}
+
+#chapter[hidden],
+#chapter-nav[hidden] {
+  display: none;
+}
+
+#chapter-nav {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px;
+}
+
+#status {
+  min-height: 1.5em;
+  margin: 0;
+  padding: 2px 12px;
+  border-top: 1px solid var(--desk-border);
+  font-size: 12px;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    scroll-behavior: auto !important;
+  }
+}
