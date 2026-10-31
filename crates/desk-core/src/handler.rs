@@ -18,6 +18,7 @@ use desk_index::ItemIndex;
 use desk_plugin_host::{Clock, SystemClock, rfc3339};
 use desk_sys::calendar::CalendarSource;
 use desk_sys::fs as sysfs;
+use desk_sys::shell::{Opener, SystemOpener};
 use serde::Serialize;
 
 use crate::conversation::Conversation;
@@ -80,6 +81,7 @@ pub struct Core {
     pub(crate) processes: Arc<Mutex<Processes>>,
     pub(crate) provided_views: Mutex<ProvidedViews>,
     pub(crate) surfaces: Mutex<Surfaces>,
+    pub(crate) opener: Box<dyn Opener>,
 }
 
 impl Core {
@@ -112,6 +114,7 @@ impl Core {
             processes: Arc::new(Mutex::new(Processes::default())),
             provided_views: Mutex::new(ProvidedViews::default()),
             surfaces: Mutex::new(Surfaces::default()),
+            opener: Box::new(SystemOpener),
         }
     }
 
@@ -220,7 +223,7 @@ impl Core {
             R::ViewSave(r) => (r.id, self.view_save(caller, r.params)),
             R::ViewRemove(r) => (r.id, self.view_remove(caller, r.params)),
             R::CatalogGet(r) => (r.id, self.catalog_get(caller)),
-            R::ShellOpen(r) => (r.id, unsupported("shell.open")),
+            R::ShellOpen(r) => (r.id, self.shell_open(caller, r.params)),
         }
     }
 
