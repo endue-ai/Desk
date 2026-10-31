@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://endue.ai/specs/bridge/v0/brain.schema.json",
   "title": "Desk bridge v0: brain",
-  "description": "Talk to the brain through the core: the core holds the session, its lease and the brain client, and streams the answer back as brain.turn events. Scoped by brain:converse.",
+  "description": "Talk to the brain through the core: the core holds the session, its lease and the brain client, and streams the answer back as brain.turn events. The core also reads the brain's agent directory (agents, A2A cards, spaces and A2A tasks, specs/brain/v0) and says whether the brain can be reached. Scoped by brain:converse.",
   "$defs": {
     "BrainSayRequest": {
       "description": "Say something to the brain in the desk's current session.",
@@ -34,6 +34,216 @@
         "turnId": { "type": "string", "minLength": 1 }
       },
       "required": ["turnId"],
+      "additionalProperties": false
+    },
+    "BrainAgentsListRequest": {
+      "description": "List the person's agents one page at a time, as the brain's listAgents does.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "brain.agents.list" },
+        "params": { "$ref": "#/$defs/BrainAgentsListParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "BrainAgentsListParams": {
+      "description": "Parameters of brain.agents.list: the query of listAgents (specs/brain/v0). A field left out takes the brain's default.",
+      "type": "object",
+      "properties": {
+        "spaceId": {
+          "description": "Only agents in this space.",
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "description": "Only agents with this status, an AgentStatus of specs/brain/v0.",
+          "type": "string",
+          "pattern": "^(active|inactive|archived)$"
+        },
+        "page": {
+          "description": "The page to read, from 1 (the brain's default is 1).",
+          "type": "integer",
+          "minimum": 1
+        },
+        "limit": {
+          "description": "Items per page, 1 to 100 (the brain's default is 20).",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        },
+        "scope": {
+          "$ref": "../../plugin/v0/permission.schema.json#/$defs/BrainConversePermission"
+        }
+      },
+      "required": ["scope"],
+      "additionalProperties": false
+    },
+    "BrainAgentsListResult": {
+      "description": "Result of brain.agents.list: the brain's AgentList (specs/brain/v0), items newest first and pagination, passed through unchanged.",
+      "type": "object"
+    },
+    "BrainAgentsCardRequest": {
+      "description": "Read one agent's A2A card, as the brain's getAgentCard does.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "brain.agents.card" },
+        "params": { "$ref": "#/$defs/BrainAgentsCardParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "BrainAgentsCardParams": {
+      "description": "Parameters of brain.agents.card.",
+      "type": "object",
+      "properties": {
+        "agentId": {
+          "description": "The agent's id, as brain.agents.list lists it.",
+          "type": "string",
+          "minLength": 1
+        },
+        "scope": {
+          "$ref": "../../plugin/v0/permission.schema.json#/$defs/BrainConversePermission"
+        }
+      },
+      "required": ["agentId", "scope"],
+      "additionalProperties": false
+    },
+    "BrainAgentsCardResult": {
+      "description": "Result of brain.agents.card: the brain's AgentCard (specs/brain/v0), passed through unchanged.",
+      "type": "object"
+    },
+    "BrainSpacesListRequest": {
+      "description": "List the spaces the person can open, as the brain's listSpaces does.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "brain.spaces.list" },
+        "params": { "$ref": "#/$defs/BrainSpacesListParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "BrainSpacesListParams": {
+      "description": "Parameters of brain.spaces.list.",
+      "type": "object",
+      "properties": {
+        "scope": {
+          "$ref": "../../plugin/v0/permission.schema.json#/$defs/BrainConversePermission"
+        }
+      },
+      "required": ["scope"],
+      "additionalProperties": false
+    },
+    "BrainSpacesListResult": {
+      "description": "Result of brain.spaces.list: the brain's SpaceList (specs/brain/v0), passed through unchanged.",
+      "type": "object"
+    },
+    "BrainTasksListRequest": {
+      "description": "List the A2A tasks agents handed each other one page at a time, as the brain's listA2ATasks does.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "brain.tasks.list" },
+        "params": { "$ref": "#/$defs/BrainTasksListParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "BrainTasksListParams": {
+      "description": "Parameters of brain.tasks.list: the query of listA2ATasks (specs/brain/v0). A field left out takes the brain's default.",
+      "type": "object",
+      "properties": {
+        "targetAgentId": {
+          "description": "Only tasks this agent is doing.",
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "description": "Only tasks with this status, an A2ATaskStatus of specs/brain/v0.",
+          "type": "string",
+          "pattern": "^(submitted|working|input_required|completed|failed|canceled)$"
+        },
+        "page": {
+          "description": "The page to read, from 1 (the brain's default is 1).",
+          "type": "integer",
+          "minimum": 1
+        },
+        "limit": {
+          "description": "Items per page, 1 to 100 (the brain's default is 20).",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        },
+        "scope": {
+          "$ref": "../../plugin/v0/permission.schema.json#/$defs/BrainConversePermission"
+        }
+      },
+      "required": ["scope"],
+      "additionalProperties": false
+    },
+    "BrainTasksListResult": {
+      "description": "Result of brain.tasks.list: the brain's A2ATaskList (specs/brain/v0), items newest first and pagination, passed through unchanged.",
+      "type": "object"
+    },
+    "BrainStatusRequest": {
+      "description": "Which brain the desk talks to, and whether it can be reached now.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "brain.status" },
+        "params": { "$ref": "#/$defs/BrainStatusParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "BrainStatusParams": {
+      "description": "Parameters of brain.status.",
+      "type": "object",
+      "properties": {
+        "scope": {
+          "$ref": "../../plugin/v0/permission.schema.json#/$defs/BrainConversePermission"
+        }
+      },
+      "required": ["scope"],
+      "additionalProperties": false
+    },
+    "BrainStatusResult": {
+      "description": "Result of brain.status: a brain on this machine with its model, a brain in the cloud, or offline.",
+      "oneOf": [
+        { "$ref": "#/$defs/BrainStatusLocal" },
+        { "$ref": "#/$defs/BrainStatusCloud" },
+        { "$ref": "#/$defs/BrainStatusOffline" }
+      ]
+    },
+    "BrainStatusLocal": {
+      "description": "A brain on this machine, named by the model it runs.",
+      "type": "object",
+      "properties": {
+        "mode": { "const": "local" },
+        "model": { "type": "string", "minLength": 1 }
+      },
+      "required": ["mode", "model"],
+      "additionalProperties": false
+    },
+    "BrainStatusCloud": {
+      "description": "A brain over the network, such as endue AI. credits is left out while the brain reports none.",
+      "type": "object",
+      "properties": {
+        "mode": { "const": "cloud" },
+        "credits": { "description": "Credits left.", "type": "integer", "minimum": 0 }
+      },
+      "required": ["mode"],
+      "additionalProperties": false
+    },
+    "BrainStatusOffline": {
+      "description": "The brain cannot be reached now, or the desk has none.",
+      "type": "object",
+      "properties": {
+        "mode": { "const": "offline" }
+      },
+      "required": ["mode"],
       "additionalProperties": false
     },
     "BrainTurnEvent": {

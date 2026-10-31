@@ -1,7 +1,11 @@
-//! A mock `Host` that records every call (`mock`), plugin folders in temporary directories, and
-//! small test components written in component WAT (`wat`).
+//! A mock `Host` that records every call (`mock`), plugin folders in temporary directories, small
+//! test components written in component WAT (`wat`, `connector_wat`), and what connector tests
+//! share (`connector`).
 #![allow(dead_code)]
 
+mod connector;
+mod connector_wat;
+mod disk;
 mod mock;
 mod wat;
 
@@ -14,6 +18,14 @@ use desk_plugin_host::{Limits, LogicHost};
 use serde_json::{Value, json};
 
 // Each test binary uses some of these, so most binaries leave some unused.
+#[allow(unused_imports)]
+pub use connector::{Desk, FakeClock, Folder, HELLO, RecordingSink, Sent, at, ran, time};
+#[allow(unused_imports)]
+pub use connector::{connector_dir, hello_connector, hello_connector_copy};
+#[allow(unused_imports)]
+pub use connector::{guest_error, host_error, ids, source, state};
+#[allow(unused_imports)]
+pub use connector_wat::connector;
 #[allow(unused_imports)]
 pub use mock::{Answer, Call, Line, MockHost, Note, level_name};
 #[allow(unused_imports)]

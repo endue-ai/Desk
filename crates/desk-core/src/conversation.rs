@@ -29,6 +29,16 @@ pub const READ_ONLY_LINE: &str =
 /// What Eris says when a turn failed for any other reason.
 pub const FAILED_LINE: &str = "Something went wrong on my side. Try that again in a moment.";
 
+/// Which kind of brain the desk talks to, as brain.status reports it while the brain answers.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub enum BrainMode {
+    /// A brain over the network, such as endue AI or examples/brain-echo.
+    #[default]
+    Cloud,
+    /// A brain on this machine, running `model`.
+    Local { model: String },
+}
+
 /// How the core talks to its brain.
 #[derive(Debug, Clone)]
 pub struct BrainOptions {
@@ -40,6 +50,8 @@ pub struct BrainOptions {
     /// The first wait before retrying an unreachable brain. It doubles up to `max_retry`.
     pub retry: Duration,
     pub max_retry: Duration,
+    /// What brain.status names while the brain answers.
+    pub mode: BrainMode,
 }
 
 impl Default for BrainOptions {
@@ -50,6 +62,7 @@ impl Default for BrainOptions {
             ttl_seconds: 60,
             retry: Duration::from_secs(1),
             max_retry: Duration::from_secs(15),
+            mode: BrainMode::Cloud,
         }
     }
 }
@@ -125,6 +138,15 @@ impl Conversation {
 
     pub(crate) fn session_id(&self) -> Option<String> {
         self.lock().store.session_id().map(str::to_owned)
+    }
+
+    /// The brain itself, for calls outside the session (the agent directory). They need no lock.
+    pub(crate) fn brain(&self) -> &Arc<dyn Brain> {
+        &self.brain
+    }
+
+    pub(crate) fn mode(&self) -> &BrainMode {
+        &self.options.mode
     }
 
     fn run(&self, turn: &str, text: &str) {

@@ -1606,6 +1606,163 @@ pub struct BrainSayResult {
     pub turn_id: String,
 }
 
+/// List the person's agents one page at a time, as the brain's listAgents does.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct BrainAgentsListRequest {
+    pub id: RequestId,
+    pub method: BrainAgentsListRequestMethod,
+    pub params: BrainAgentsListParams,
+}
+
+/// Parameters of brain.agents.list: the query of listAgents (specs/brain/v0). A field left out takes the brain's default.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct BrainAgentsListParams {
+    /// Only agents in this space.
+    #[serde(rename = "spaceId", default, skip_serializing_if = "Option::is_none")]
+    pub space_id: Option<String>,
+    /// Only agents with this status, an AgentStatus of specs/brain/v0.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub status: Option<String>,
+    /// The page to read, from 1 (the brain's default is 1).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub page: Option<u64>,
+    /// Items per page, 1 to 100 (the brain's default is 20).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub limit: Option<u64>,
+    pub scope: BrainConversePermission,
+}
+
+/// Result of brain.agents.list: the brain's AgentList (specs/brain/v0), items newest first and pagination, passed through unchanged.
+pub type BrainAgentsListResult = serde_json::Map<String, serde_json::Value>;
+
+/// Read one agent's A2A card, as the brain's getAgentCard does.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct BrainAgentsCardRequest {
+    pub id: RequestId,
+    pub method: BrainAgentsCardRequestMethod,
+    pub params: BrainAgentsCardParams,
+}
+
+/// Parameters of brain.agents.card.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct BrainAgentsCardParams {
+    /// The agent's id, as brain.agents.list lists it.
+    #[serde(rename = "agentId")]
+    pub agent_id: String,
+    pub scope: BrainConversePermission,
+}
+
+/// Result of brain.agents.card: the brain's AgentCard (specs/brain/v0), passed through unchanged.
+pub type BrainAgentsCardResult = serde_json::Map<String, serde_json::Value>;
+
+/// List the spaces the person can open, as the brain's listSpaces does.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct BrainSpacesListRequest {
+    pub id: RequestId,
+    pub method: BrainSpacesListRequestMethod,
+    pub params: BrainSpacesListParams,
+}
+
+/// Parameters of brain.spaces.list.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct BrainSpacesListParams {
+    pub scope: BrainConversePermission,
+}
+
+/// Result of brain.spaces.list: the brain's SpaceList (specs/brain/v0), passed through unchanged.
+pub type BrainSpacesListResult = serde_json::Map<String, serde_json::Value>;
+
+/// List the A2A tasks agents handed each other one page at a time, as the brain's listA2ATasks does.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct BrainTasksListRequest {
+    pub id: RequestId,
+    pub method: BrainTasksListRequestMethod,
+    pub params: BrainTasksListParams,
+}
+
+/// Parameters of brain.tasks.list: the query of listA2ATasks (specs/brain/v0). A field left out takes the brain's default.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct BrainTasksListParams {
+    /// Only tasks this agent is doing.
+    #[serde(
+        rename = "targetAgentId",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub target_agent_id: Option<String>,
+    /// Only tasks with this status, an A2ATaskStatus of specs/brain/v0.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub status: Option<String>,
+    /// The page to read, from 1 (the brain's default is 1).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub page: Option<u64>,
+    /// Items per page, 1 to 100 (the brain's default is 20).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub limit: Option<u64>,
+    pub scope: BrainConversePermission,
+}
+
+/// Result of brain.tasks.list: the brain's A2ATaskList (specs/brain/v0), items newest first and pagination, passed through unchanged.
+pub type BrainTasksListResult = serde_json::Map<String, serde_json::Value>;
+
+/// Which brain the desk talks to, and whether it can be reached now.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct BrainStatusRequest {
+    pub id: RequestId,
+    pub method: BrainStatusRequestMethod,
+    pub params: BrainStatusParams,
+}
+
+/// Parameters of brain.status.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct BrainStatusParams {
+    pub scope: BrainConversePermission,
+}
+
+/// Result of brain.status: a brain on this machine with its model, a brain in the cloud, or offline.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum BrainStatusResult {
+    BrainStatusLocal(BrainStatusLocal),
+    BrainStatusCloud(BrainStatusCloud),
+    BrainStatusOffline(BrainStatusOffline),
+}
+
+/// A brain on this machine, named by the model it runs.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct BrainStatusLocal {
+    pub mode: BrainStatusLocalMode,
+    pub model: String,
+}
+
+/// A brain over the network, such as endue AI. credits is left out while the brain reports none.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct BrainStatusCloud {
+    pub mode: BrainStatusCloudMode,
+    /// Credits left.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub credits: Option<u64>,
+}
+
+/// The brain cannot be reached now, or the desk has none.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct BrainStatusOffline {
+    pub mode: BrainStatusOfflineMode,
+}
+
 /// Progress of a brain.say turn.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -1689,6 +1846,11 @@ pub enum BridgeRequest {
     StoreSet(StoreSetRequest),
     InitGet(InitGetRequest),
     BrainSay(BrainSayRequest),
+    BrainAgentsList(BrainAgentsListRequest),
+    BrainAgentsCard(BrainAgentsCardRequest),
+    BrainSpacesList(BrainSpacesListRequest),
+    BrainTasksList(BrainTasksListRequest),
+    BrainStatus(BrainStatusRequest),
     CmdRegister(CmdRegisterRequest),
     CmdUnregister(CmdUnregisterRequest),
     CmdList(CmdListRequest),
@@ -3929,6 +4091,70 @@ pub enum BrainSayRequestMethod {
     #[default]
     #[serde(rename = "brain.say")]
     BrainSay,
+}
+
+/// The `method` of [`BrainAgentsListRequest`]: always `"brain.agents.list"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum BrainAgentsListRequestMethod {
+    #[default]
+    #[serde(rename = "brain.agents.list")]
+    BrainAgentsList,
+}
+
+/// The `method` of [`BrainAgentsCardRequest`]: always `"brain.agents.card"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum BrainAgentsCardRequestMethod {
+    #[default]
+    #[serde(rename = "brain.agents.card")]
+    BrainAgentsCard,
+}
+
+/// The `method` of [`BrainSpacesListRequest`]: always `"brain.spaces.list"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum BrainSpacesListRequestMethod {
+    #[default]
+    #[serde(rename = "brain.spaces.list")]
+    BrainSpacesList,
+}
+
+/// The `method` of [`BrainTasksListRequest`]: always `"brain.tasks.list"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum BrainTasksListRequestMethod {
+    #[default]
+    #[serde(rename = "brain.tasks.list")]
+    BrainTasksList,
+}
+
+/// The `method` of [`BrainStatusRequest`]: always `"brain.status"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum BrainStatusRequestMethod {
+    #[default]
+    #[serde(rename = "brain.status")]
+    BrainStatus,
+}
+
+/// The `mode` of [`BrainStatusLocal`]: always `"local"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum BrainStatusLocalMode {
+    #[default]
+    #[serde(rename = "local")]
+    Local,
+}
+
+/// The `mode` of [`BrainStatusCloud`]: always `"cloud"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum BrainStatusCloudMode {
+    #[default]
+    #[serde(rename = "cloud")]
+    Cloud,
+}
+
+/// The `mode` of [`BrainStatusOffline`]: always `"offline"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum BrainStatusOfflineMode {
+    #[default]
+    #[serde(rename = "offline")]
+    Offline,
 }
 
 /// The `event` of [`BrainTurnEvent`]: always `"brain.turn"`.

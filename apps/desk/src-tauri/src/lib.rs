@@ -8,8 +8,12 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
 use desk_brain_endue::HttpBrain;
-use desk_bridge::{CmdInvokePermission, Permission, PluginManagePermission};
-use desk_core::{BrainOptions, Core, MockRemote, PluginWatcher, Roots, SyncError, SyncOutcome};
+use desk_bridge::{
+    BrainConversePermission, CmdInvokePermission, Permission, PluginManagePermission,
+};
+use desk_core::{
+    BrainMode, BrainOptions, Core, MockRemote, PluginWatcher, Roots, SyncError, SyncOutcome,
+};
 use tauri::{Emitter, Manager};
 
 /// The caller id of the web runtime itself. Plugins call under their own ids.
@@ -52,8 +56,10 @@ pub fn run() {
                 std::env::var("DESK_BRAIN_URL").unwrap_or_else(|_| DEFAULT_BRAIN_URL.to_owned());
             match HttpBrain::new(&url) {
                 Ok(brain) => {
+                    // An HTTP brain is endue AI or brain-echo: brain.status names it cloud.
                     let options = BrainOptions {
                         state_file: Some(data.join("brain.json")),
+                        mode: BrainMode::Cloud,
                         ..BrainOptions::default()
                     };
                     core = core.with_brain(Arc::new(brain), options);
@@ -74,6 +80,13 @@ pub fn run() {
                 Permission::CmdInvoke(CmdInvokePermission {
                     permission: Default::default(),
                     ids: vec!["*".to_owned()],
+                }),
+            );
+            // The shell talks to the brain and reads its agent directory as the runtime.
+            core.grant(
+                RUNTIME_CALLER,
+                Permission::BrainConverse(BrainConversePermission {
+                    permission: Default::default(),
                 }),
             );
             for dir in env_paths("DESK_PLUGIN_DIRS") {

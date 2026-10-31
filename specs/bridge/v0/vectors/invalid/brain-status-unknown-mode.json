@@ -1,0 +1,7 @@
+{
+  "target": "BrainStatusResult",
+  "description": "hybrid is not a brain mode",
+  "instance": {
+    "mode": "hybrid"
+  }
+}

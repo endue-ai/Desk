@@ -5,6 +5,7 @@ pub const NAME: &str = env!("CARGO_PKG_NAME");
 mod conversation;
 mod core_brain;
 mod core_cmd;
+mod core_directory;
 mod core_events;
 mod core_fs;
 mod core_init;
@@ -29,7 +30,7 @@ mod sync_mock;
 mod time;
 mod watch;
 
-pub use conversation::{BrainOptions, FAILED_LINE, OFFLINE_LINE, READ_ONLY_LINE};
+pub use conversation::{BrainMode, BrainOptions, FAILED_LINE, OFFLINE_LINE, READ_ONLY_LINE};
 pub use core_perm::{Prompter, RefuseAll};
 pub use events::{Delivery, EventBus};
 pub use handler::{Core, Roots};
