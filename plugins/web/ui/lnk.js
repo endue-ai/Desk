@@ -1,6 +1,6 @@
 // Windows Shell Links (.lnk, MS-SHLLINK): the header, the LinkInfo's local or network path and the
-// StringData (description, relative path, working folder, arguments, icon location). The target
-// ID list is skipped; the environment-variable block names the target when LinkInfo is absent.
+// StringData (description, relative path, working folder, arguments, icon location). Without
+// LinkInfo, the target comes from the ID list's drive and file entries, or the environment block.
 
 const CLSID = "0114020000000000c000000000000046";
 const FLAGS = {
@@ -40,7 +40,15 @@ export function readShellLink(bytes) {
   if (clsid !== CLSID) throw new Error("This is not a Windows shortcut.");
   const flags = u32(20);
   let at = 0x4c;
-  if (flags & FLAGS.idList) at += 2 + u16(at);
+  let listed;
+  if (flags & FLAGS.idList) {
+    try {
+      listed = idListPath(bytes, at + 2, at + 2 + u16(at), u16, u32, terminated);
+    } catch {
+      // An ID list Web cannot follow: LinkInfo or the strings may still name the target.
+    }
+    at += 2 + u16(at);
+  }
   /** @type {ShellLink} */
   const link = {};
   if (flags & FLAGS.info) {
@@ -81,6 +89,7 @@ export function readShellLink(bytes) {
     );
     at += 2 + length;
   }
+  if (!link.target && !link.network && listed) link.target = listed;
   // ExtraData: the EnvironmentVariableDataBlock names the target as %VAR%\path.
   while (!link.target && !link.network && at + 8 <= bytes.length) {
     const size = u32(at);
@@ -92,4 +101,40 @@ export function readShellLink(bytes) {
     at += size;
   }
   return link;
+}
+
+/**
+ * The file-system path an ID list spells: a drive item ("C:\\") and file entry items, each
+ * with its long name from the 0xBEEF0004 extension block when it has one (MS-SHLLINK, libfwsi).
+ * @param {Uint8Array} bytes @param {number} start @param {number} end
+ * @param {(at: number) => number} u16 @param {(at: number) => number} u32
+ * @param {(at: number, unicode?: boolean) => string} terminated
+ */
+function idListPath(bytes, start, end, u16, u32, terminated) {
+  let drive = "";
+  /** @type {string[]} */
+  const names = [];
+  for (let at = start; at + 2 < end; ) {
+    const size = u16(at);
+    if (size < 3 || at + size > end) break;
+    const type = bytes[at + 2] ?? 0;
+    if ((type & 0x70) === 0x20) drive = terminated(at + 3);
+    else if ((type & 0x70) === 0x30) {
+      const unicode = (type & 0x04) !== 0;
+      const short = terminated(at + 14, unicode);
+      let ext = at + 14 + (unicode ? (short.length + 1) * 2 : short.length + 1);
+      if ((ext - at) % 2) ext++;
+      let name = short;
+      if (ext + 8 <= at + size && u32(ext + 4) === 0xbeef0004) {
+        const version = u16(ext + 2);
+        const offset =
+          version >= 9 ? 46 : version >= 8 ? 42 : version >= 7 ? 38 : version >= 3 ? 20 : 0;
+        if (offset && ext + offset < at + size) name = terminated(ext + offset, true) || short;
+      }
+      names.push(name);
+    }
+    at += size;
+  }
+  if (!drive && names.length === 0) return undefined;
+  return `${drive}${drive && !drive.endsWith("\\") ? "\\" : ""}${names.join("\\")}`;
 }
