@@ -80,9 +80,10 @@ function run(fragment: DocumentFragment) {
 
 const nothing = { base: "file:///~/Sites/page.html", load: async () => "missing" as const };
 
-let alerts: ReturnType<typeof vi.fn>;
+type Alert = (message?: unknown) => void;
+let alerts: ReturnType<typeof vi.fn<Alert>>;
 beforeEach(() => {
-  alerts = vi.fn();
+  alerts = vi.fn<Alert>();
   window.alert = alerts;
   document.body.replaceChildren();
 });
