@@ -243,6 +243,7 @@ fn list(path: &Path) -> Answer {
                 sysfs::EntryKind::Symlink => EntryKind::Symlink,
             },
             size: entry.size,
+            modified_at: None,
         })
         .collect();
     json(FsListResult { entries })

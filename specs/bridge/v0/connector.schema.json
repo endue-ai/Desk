@@ -64,7 +64,7 @@
       "additionalProperties": false
     },
     "ConnectorConnectParams": {
-      "description": "Parameters of connector.connect. instance is default when absent; settings follow the connector's instanceSettings, and the secret ones go to the OS keychain.",
+      "description": "Parameters of connector.connect. instance is default when absent; settings follow the connector's instanceSettings; the secret ones stay with the core and never come back out (ADR 0036).",
       "type": "object",
       "properties": {
         "connector": { "$ref": "../../plugin/v0/plugin.schema.json#/$defs/PluginId" },
