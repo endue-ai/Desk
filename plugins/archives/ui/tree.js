@@ -53,6 +53,18 @@ export function buildTree(entries) {
   return { root, byId };
 }
 
+/** Each folder's children in the last order asked, so moving through a large folder does not sort it again. */
+const orders = new WeakMap();
+/** @param {Node} node @param {Sort} sort @param {(a: Node, b: Node) => number} order @returns {Node[]} */
+function sorted(node, sort, order) {
+  const key = `${sort.by}:${sort.descending}`;
+  const known = orders.get(node);
+  if (known?.key === key) return known.list;
+  const list = node.children.slice().sort(order);
+  orders.set(node, { key, list });
+  return list;
+}
+
 const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: "base" });
 
 /** @param {Sort} sort */
@@ -106,7 +118,7 @@ export function visibleRows(root, state) {
   let size = 0;
   /** @param {Node} node @param {number} depth */
   const walk = (node, depth) => {
-    const kids = (needle ? node.children.filter(match) : node.children).slice().sort(order);
+    const kids = needle ? node.children.filter(match).sort(order) : sorted(node, state.sort, order);
     kids.forEach((child, i) => {
       const entry = child.entry;
       const folder = child.kind === "folder";
