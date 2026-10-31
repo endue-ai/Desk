@@ -210,6 +210,14 @@ export function chaptersBook(
 
 /** @param {Uint8Array} bytes */
 export async function readMobi(bytes) {
+  if (ascii(bytes, 0, 3) === "TPZ")
+    throw new Unreadable("This is a Topaz book, a Kindle format the reader does not read.", {
+      format: "Topaz",
+    });
+  if (ascii(bytes, 0, 4) === "CONT" || ascii(bytes, 1, 6) === "DRMION")
+    throw new Unreadable("This is a KFX book, a Kindle format the reader does not read.", {
+      format: "KFX",
+    });
   const { records, type, creator } = readPdb(bytes);
   const first = records[0];
   if (!first) throw new Unreadable("The book is damaged: it has no header record.");

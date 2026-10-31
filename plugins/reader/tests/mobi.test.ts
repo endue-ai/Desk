@@ -88,6 +88,16 @@ describe("MOBI, AZW, AZW3 and PRC", () => {
     ]);
   });
 
+  it("Topaz and KFX books open the details view and say which Kindle format they are", async () => {
+    const topaz = await openBook(bytes("TPZ0", [0, 0, 0, 0]), {
+      name: "old.azw",
+      path: "~/old.azw",
+    });
+    expect(topaz).toMatchObject({ kind: "details", format: "Topaz" });
+    const kfx = await openBook(bytes("CONT", [2, 0, 0, 0]), { name: "new.azw", path: "~/new.azw" });
+    expect(kfx).toMatchObject({ kind: "details", format: "KFX" });
+  });
+
   it("a DRM flag opens the details view", async () => {
     const book = await openBook(mobi6({ encryption: 2 }), {
       name: "locked.azw",
