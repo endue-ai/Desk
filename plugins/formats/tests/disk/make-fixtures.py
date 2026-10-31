@@ -147,8 +147,7 @@ def fat(name, kib, fat_type, label, extra=(), many=300, fragment=False):
 
 def exfat():
     image = f"{WORK}/exfat.img"
-    with open(image, "wb") as f:
-        f.truncate(8 * 1024 * 1024)
+    blank(image, 8 * 1024 * 1024)
     run("mkfs.exfat", "-L", "EXFATDISK", "-c", "4K", image, stdout=subprocess.DEVNULL)
     root = f"{WORK}/tree-exfat"
     tree(root, many=150)
@@ -180,8 +179,7 @@ def ext(name, fs, size, label, options):
 
 def ntfs():
     image = f"{WORK}/ntfs.img"
-    with open(image, "wb") as f:
-        f.truncate(16 * 1024 * 1024)
+    blank(image, 16 * 1024 * 1024)
     run("mkntfs", "-F", "-Q", "-q", "-L", "NTFSDISK", "-c", "4096", "-p", "0", "-H", "0", "-S", "0", image)
     root = f"{WORK}/tree-ntfs"
     tree(root, many=150, links=True)
@@ -211,10 +209,14 @@ def ntfs():
 
 
 def partition_image(path, size, make):
-    with open(path, "wb") as f:
-        f.truncate(size)
+    blank(path, size)
     make(path)
     return path
+
+
+def blank(path, size):
+    with open(path, "wb") as f:
+        f.truncate(size)
 
 
 def place(disk, part, start):
@@ -225,8 +227,7 @@ def place(disk, part, start):
 
 def gpt():
     disk = f"{WORK}/gpt.img"
-    with open(disk, "wb") as f:
-        f.truncate(12 * 1024 * 1024)
+    blank(disk, 12 * 1024 * 1024)
     run("sgdisk", "-o", "-U", "5A1E5A1E-0000-4000-8000-000000000184",
         "-n", "1:2048:10239", "-t", "1:ef00", "-c", "1:EFI",
         "-n", "2:10240:22527", "-t", "2:8300", "-c", "2:root",
@@ -255,8 +256,7 @@ def gpt():
 
 def mbr():
     disk = f"{WORK}/mbr.img"
-    with open(disk, "wb") as f:
-        f.truncate(16 * 1024 * 1024)
+    blank(disk, 16 * 1024 * 1024)
     script = "\n".join([
         "label: dos", "label-id: 0x0184abcd",
         "start=2048, size=8192, type=6",
@@ -346,15 +346,17 @@ def main():
         "ext2.img": (ext("ext2.img", "ext2", "4M", "ext2-disk", ["-b", "1024", "-I", "128"]), "ext", "ext2", "ext2-disk"),
         "ntfs.img": (ntfs(), "ntfs", "NTFS", "NTFSDISK"),
     }
+    lines = []  # one line per file (entries.jsonl); the rest is plain JSON (expected.json)
     for name, (image, kind, fs_type, label) in systems.items():
-        expected["filesystems"][name] = {"type": fs_type, "label": label, "size": os.path.getsize(image),
-                                         "entries": mounted(image, kind)}
+        expected["filesystems"][name] = {"type": fs_type, "label": label, "size": os.path.getsize(image)}
+        lines += [{"image": name, **e} for e in mounted(image, kind)]
         save(name)
 
     for name, (disk, parts) in (("gpt.img", gpt()), ("mbr.img", mbr())):
         expected["disks"][name] = {"size": os.path.getsize(disk), "sha256": sha(disk), "partitions": [
-            {"number": n, "start": s * 512, "size": c * 512,
-             "entries": mounted(disk, k, s * 512, c * 512) if k else []} for n, s, c, k in parts]}
+            {"number": n, "start": s * 512, "size": c * 512} for n, s, c, _ in parts]}
+        for n, s, c, k in parts:
+            lines += [{"image": name, "partition": n, **e} for e in (mounted(disk, k, s * 512, c * 512) if k else [])]
         save(name)
 
     raw = f"{WORK}/gpt.img"
@@ -385,18 +387,8 @@ def main():
     save("split-s001.vmdk")
     expected["big"] = big()
 
-    # Entries one per line (entries.jsonl), the rest as plain JSON (expected.json).
-    lines = []
-    for name, fs in expected["filesystems"].items():
-        for entry in fs.pop("entries"):
-            lines.append({"image": name, **entry})
-    for name, disk in expected["disks"].items():
-        for part in disk["partitions"]:
-            for entry in part.pop("entries"):
-                lines.append({"image": name, "partition": part["number"], **entry})
     with open(f"{OUT}/entries.jsonl", "w") as f:
-        for line in lines:
-            f.write(json.dumps(line, ensure_ascii=False, sort_keys=True, separators=(",", ":")) + "\n")
+        f.writelines(json.dumps(e, ensure_ascii=False, sort_keys=True, separators=(",", ":")) + "\n" for e in lines)
     with open(f"{OUT}/expected.json", "w") as f:
         json.dump(expected, f, indent=2, ensure_ascii=False, sort_keys=True)
         f.write("\n")
