@@ -8,10 +8,10 @@ use std::path::{Path, PathBuf};
 use desk_bridge::{
     BridgeEvent, BridgeRequest, BridgeResponse, CatalogGetResult, ConnectorInstance,
     ConnectorManifest, ConnectorStatus, ConnectorSyncResult, FsReadResult, FsUrlResult,
-    InitDocument, InitGetResult,
-    InitSettingKey, Item, ItemChange, ItemPage, ItemQuery, PaletteResults, PermQueryResult,
-    Permission, PluginContributes, PluginListResult, PluginManifest, StoreGetResult, View,
-    ViewGetResult, ViewListResult, ViewSource, ViewSummary, manifest_problems, view_problems,
+    InitDocument, InitGetResult, InitSettingKey, Item, ItemChange, ItemPage, ItemQuery,
+    PaletteResults, PermQueryResult, Permission, PluginContributes, PluginListResult,
+    PluginManifest, StoreGetResult, View, ViewGetResult, ViewListResult, ViewSource, ViewSummary,
+    manifest_problems, view_problems,
 };
 use serde::Serialize;
 use serde::de::DeserializeOwned;
