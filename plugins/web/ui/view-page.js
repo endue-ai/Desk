@@ -6,8 +6,35 @@ import { preparePage } from "./page.js";
 /**
  * @typedef {import("./formats.js").PageInput} PageInput
  * @typedef {import("./page.js").PreparedPage} PreparedPage
- * @typedef {{ nodes: HTMLElement, title: string, left: PreparedPage["left"], empty: boolean, scroll: number }} Drawn
+ * @typedef {{ nodes: HTMLElement, title: string, left: PreparedPage["left"], empty: boolean,
+ *   scroll: number, painted?: boolean }} Drawn
  */
+
+const BACKGROUND = ["color", "image", "repeat", "position", "size", "attachment", "origin", "clip"];
+
+/**
+ * As a browser paints the canvas with the body's background when the root has none, move the
+ * body's background to the html wrapper, which fills the page's box.
+ * @param {ShadowRoot} shadow @param {Window | null} view
+ */
+function paintCanvas(shadow, view) {
+  const html = /** @type {HTMLElement | null} */ (shadow.querySelector("web-html"));
+  const body = /** @type {HTMLElement | null} */ (html?.querySelector(":scope > web-body") ?? null);
+  if (!html || !body || !view) return;
+  const root = view.getComputedStyle(html);
+  const clear = (/** @type {string} */ colour) =>
+    colour === "transparent" || /^rgba\(.*,\s*0\)$/.test(colour);
+  if (root.backgroundImage && root.backgroundImage !== "none") return;
+  if (root.backgroundColor && !clear(root.backgroundColor)) return;
+  const own = view.getComputedStyle(body);
+  if (clear(own.backgroundColor) && (!own.backgroundImage || own.backgroundImage === "none"))
+    return;
+  for (const part of BACKGROUND) {
+    const value = own.getPropertyValue(`background-${part}`);
+    if (value) html.style.setProperty(`background-${part}`, value);
+  }
+  body.style.setProperty("background", "none");
+}
 
 /**
  * @param {Document} doc
@@ -101,6 +128,10 @@ export function createPageView(doc, host, on) {
       if (ticket !== drawing) return null;
       stash();
       shadow.append(...drawn.nodes.childNodes);
+      if (!drawn.painted) {
+        drawn.painted = true;
+        paintCanvas(shadow, doc.defaultView);
+      }
       current = { input, drawn };
       host.scrollTop = drawn.scroll;
       return drawn;

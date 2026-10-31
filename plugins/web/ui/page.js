@@ -14,8 +14,7 @@ export { BUDGET };
  */
 
 /** The browser's defaults the page builds on, for the wrappers that stand in for html and body. */
-const BASE_CSS = `web-html { display: block; min-height: 100%; background: #fff; color: #000;
-  color-scheme: light; font: 16px "Times New Roman", Times, serif; text-align: start; }
+const BASE_CSS = `web-html { display: flow-root; min-height: 100%; color: #000; color-scheme: light; font: 16px "Times New Roman", Times, serif; text-align: start; }
 web-body { display: block; margin: 8px; }
 .web-frame { display: block; margin: 4px 0; padding: 8px; border: 1px dashed #888; color: #555;
   font: 13px system-ui, sans-serif; }`;

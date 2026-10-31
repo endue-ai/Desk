@@ -95,7 +95,8 @@ main {
   min-height: 0;
 }
 
-main:focus {
+main:focus,
+section:focus {
   outline: none;
 }
 

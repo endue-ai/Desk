@@ -79,8 +79,9 @@ export function renderCard(doc, section, card, open) {
   const title = el(doc, "h2", "", card.title);
   title.id = "card-title";
   const parts = [title];
-  if (card.url) parts.push(el(doc, "p", "card-target", card.url));
-  else if (card.path) parts.push(el(doc, "p", "card-target", card.path));
+  // The target, as selectable text: the URL, the local path, or the first field (a Windows path).
+  const target = card.url ?? card.path ?? card.fields[0]?.[1];
+  if (target) parts.push(el(doc, "p", "card-target", target));
   const list = el(doc, "dl", "fields");
   for (const [name, value] of card.fields)
     list.append(el(doc, "dt", "", name), el(doc, "dd", "", value));
@@ -96,6 +97,10 @@ export function renderCard(doc, section, card, open) {
   } else if (card.url && !/^file:/i.test(card.url))
     parts.push(
       el(doc, "p", "note", "Opening a browser is not available yet: copy the address to open it."),
+    );
+  else if (!card.url && /^([A-Za-z]:\\|\\\\)/.test(target ?? ""))
+    parts.push(
+      el(doc, "p", "note", "The target is a path on a Windows computer or network share."),
     );
   section.replaceChildren(...parts);
 }

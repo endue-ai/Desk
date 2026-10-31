@@ -164,7 +164,11 @@ export function createView(doc, actions) {
       const changed = shown?.model !== file?.model;
       file = shown;
       name.textContent = shown ? shown.name : "No file open";
-      detail.textContent = shown ? `${shown.model.format} · ${shown.path}` : "";
+      const title =
+        shown && "title" in shown.model && shown.model.kind !== "card" ? shown.model.title : "";
+      detail.textContent = shown
+        ? [shown.model.format, title, shown.path].filter(Boolean).join(" · ")
+        : "";
       const model = shown?.model;
       if (changed && model?.kind === "entries") {
         selected = Math.min(model.selected, Math.max(0, model.entries.length - 1));
