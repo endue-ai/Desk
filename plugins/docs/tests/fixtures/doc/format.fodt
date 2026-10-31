@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- The Word 97 format fixture's source: LibreOffice turns it into format.doc and format.docx
+     (make.sh). Every name and number in it is made up. -->
+<office:document xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0" xmlns:style="urn:oasis:names:tc:opendocument:xmlns:style:1.0" xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0" xmlns:table="urn:oasis:names:tc:opendocument:xmlns:table:1.0" xmlns:draw="urn:oasis:names:tc:opendocument:xmlns:drawing:1.0" xmlns:fo="urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:meta="urn:oasis:names:tc:opendocument:xmlns:meta:1.0" xmlns:svg="urn:oasis:names:tc:opendocument:xmlns:svg-compatible:1.0" office:version="1.3" office:mimetype="application/vnd.oasis.opendocument.text">
+ <office:meta><dc:title>Format check</dc:title></office:meta>
+ <office:font-face-decls>
+  <style:font-face style:name="Liberation Serif" svg:font-family="&apos;Liberation Serif&apos;"/>
+  <style:font-face style:name="Liberation Sans" svg:font-family="&apos;Liberation Sans&apos;"/>
+  <style:font-face style:name="Liberation Mono" svg:font-family="&apos;Liberation Mono&apos;"/>
+ </office:font-face-decls>
+ <office:styles>
+  <style:default-style style:family="paragraph"><style:text-properties style:font-name="Liberation Serif" fo:font-size="11pt"/></style:default-style>
+  <style:style style:name="Standard" style:family="paragraph"><style:paragraph-properties fo:margin-bottom="0.1in"/></style:style>
+  <style:style style:name="Heading" style:family="paragraph" style:parent-style-name="Standard"><style:paragraph-properties fo:margin-top="0.17in" fo:margin-bottom="0.08in" fo:keep-with-next="always"/><style:text-properties style:font-name="Liberation Sans" fo:font-weight="bold" fo:color="#1f3864"/></style:style>
+  <style:style style:name="Heading_20_1" style:display-name="Heading 1" style:family="paragraph" style:parent-style-name="Heading" style:default-outline-level="1"><style:text-properties fo:font-size="18pt"/></style:style>
+  <style:style style:name="Heading_20_2" style:display-name="Heading 2" style:family="paragraph" style:parent-style-name="Heading" style:default-outline-level="2"><style:text-properties fo:font-size="14pt"/></style:style>
+  <style:style style:name="Heading_20_3" style:display-name="Heading 3" style:family="paragraph" style:parent-style-name="Heading" style:default-outline-level="3"><style:text-properties fo:font-size="12pt" fo:font-style="italic"/></style:style>
+  <style:style style:name="Quote" style:family="paragraph" style:parent-style-name="Standard"><style:paragraph-properties fo:margin-left="0.5in" fo:margin-right="0.5in" fo:text-indent="0.25in" fo:line-height="150%" fo:text-align="justify"/></style:style>
+  <style:style style:name="Footnote" style:family="paragraph" style:parent-style-name="Standard"><style:text-properties fo:font-size="9pt"/></style:style>
+  <text:list-style style:name="Numbering_20_123" style:display-name="Numbering 123">
+   <text:list-level-style-number text:level="1" style:num-suffix="." style:num-format="1"><style:list-level-properties text:list-level-position-and-space-mode="label-alignment"><style:list-level-label-alignment text:label-followed-by="listtab" fo:text-indent="-0.25in" fo:margin-left="0.5in"/></style:list-level-properties></text:list-level-style-number>
+   <text:list-level-style-number text:level="2" style:num-suffix="." style:num-format="a"><style:list-level-properties text:list-level-position-and-space-mode="label-alignment"><style:list-level-label-alignment text:label-followed-by="listtab" fo:text-indent="-0.25in" fo:margin-left="0.75in"/></style:list-level-properties></text:list-level-style-number>
+  </text:list-style>
+  <text:list-style style:name="List_20_1" style:display-name="List 1">
+   <text:list-level-style-bullet text:level="1" text:bullet-char="•"><style:list-level-properties text:list-level-position-and-space-mode="label-alignment"><style:list-level-label-alignment text:label-followed-by="listtab" fo:text-indent="-0.25in" fo:margin-left="0.5in"/></style:list-level-properties></text:list-level-style-bullet>
+  </text:list-style>
+  <text:notes-configuration text:note-class="endnote" style:num-format="i" text:start-value="0"/>
+ </office:styles>
+ <office:automatic-styles>
+  <style:style style:name="T1" style:family="text"><style:text-properties fo:font-weight="bold" fo:color="#ff0000" fo:font-size="14pt"/></style:style>
+  <style:style style:name="T2" style:family="text"><style:text-properties fo:font-style="italic" style:text-underline-style="solid" style:text-underline-width="auto" style:text-underline-color="font-color"/></style:style>
+  <style:style style:name="T3" style:family="text"><style:text-properties fo:background-color="#ffff00"/></style:style>
+  <style:style style:name="T4" style:family="text"><style:text-properties style:text-line-through-style="solid"/></style:style>
+  <style:style style:name="T5" style:family="text"><style:text-properties style:text-position="super 58%"/></style:style>
+  <style:style style:name="T6" style:family="text"><style:text-properties style:text-position="sub 58%"/></style:style>
+  <style:style style:name="T7" style:family="text"><style:text-properties style:font-name="Liberation Mono" fo:color="#2e75b6"/></style:style>
+  <style:style style:name="T8" style:family="text"><style:text-properties fo:font-variant="small-caps"/></style:style>
+  <style:style style:name="P1" style:family="paragraph" style:parent-style-name="Standard"><style:paragraph-properties fo:text-align="center"/></style:style>
+  <style:style style:name="P2" style:family="paragraph" style:parent-style-name="Standard"><style:paragraph-properties fo:text-align="end"/></style:style>
+  <style:style style:name="P3" style:family="paragraph" style:parent-style-name="Standard"><style:paragraph-properties fo:break-before="page"/></style:style>
+  <style:style style:name="P4" style:family="paragraph" style:parent-style-name="Standard" style:master-page-name="Letter"/>
+  <style:style style:name="P5" style:family="paragraph" style:parent-style-name="Standard"><style:paragraph-properties fo:margin-top="0.25in" fo:margin-bottom="0.25in" fo:line-height="0.3in"/></style:style>
+  <style:style style:name="Tbl" style:family="table"><style:table-properties style:width="6in"/></style:style>
+  <style:style style:name="Tbl.A" style:family="table-column"><style:table-column-properties style:column-width="3in"/></style:style>
+  <style:style style:name="Tbl.B" style:family="table-column"><style:table-column-properties style:column-width="1.5in"/></style:style>
+  <style:style style:name="Tbl.C" style:family="table-cell"><style:table-cell-properties fo:padding="0.04in" fo:border="0.5pt solid #000000"/></style:style>
+  <style:style style:name="Tbl.H" style:family="table-cell"><style:table-cell-properties fo:padding="0.04in" fo:border="0.5pt solid #000000" fo:background-color="#dde4f0"/></style:style>
+  <style:style style:name="Sect1" style:family="section"><style:section-properties><style:columns fo:column-count="2" fo:column-gap="0.25in"/></style:section-properties></style:style>
+  <style:style style:name="fr1" style:family="graphic"/>
+  <style:style style:name="fr2" style:family="graphic"><style:graphic-properties fo:border="0.5pt solid #000000" fo:padding="0.05in"/></style:style>
+  <style:page-layout style:name="pmA4"><style:page-layout-properties fo:page-width="21cm" fo:page-height="29.7cm" fo:margin-top="2cm" fo:margin-bottom="2cm" fo:margin-left="2.5cm" fo:margin-right="2cm"/><style:header-style><style:header-footer-properties fo:min-height="0in" fo:margin-bottom="0.2in"/></style:header-style><style:footer-style><style:header-footer-properties fo:min-height="0in" fo:margin-top="0.2in"/></style:footer-style></style:page-layout>
+  <style:page-layout style:name="pmLetter"><style:page-layout-properties fo:page-width="8.5in" fo:page-height="11in" fo:margin-top="1in" fo:margin-bottom="1in" fo:margin-left="1in" fo:margin-right="1in"/><style:header-style><style:header-footer-properties fo:min-height="0in" fo:margin-bottom="0.2in"/></style:header-style><style:footer-style><style:header-footer-properties fo:min-height="0in" fo:margin-top="0.2in"/></style:footer-style></style:page-layout>
+ </office:automatic-styles>
+ <office:master-styles>
+  <style:master-page style:name="Standard" style:page-layout-name="pmA4">
+   <style:header><text:p text:style-name="P1">Format check · header</text:p></style:header>
+   <style:footer><text:p text:style-name="P1">Page <text:page-number text:select-page="current">1</text:page-number> of <text:page-count>2</text:page-count></text:p></style:footer>
+  </style:master-page>
+  <style:master-page style:name="Letter" style:page-layout-name="pmLetter">
+   <style:header><text:p text:style-name="P2">Letter pages</text:p></style:header>
+   <style:footer><text:p text:style-name="P2">Format check · footer</text:p></style:footer>
+  </style:master-page>
+ </office:master-styles>
+ <office:body>
+  <office:text>
+   <text:tracked-changes>
+    <text:changed-region xml:id="ct1" text:id="ct1"><text:deletion><office:change-info><dc:creator>Mina Park</dc:creator><dc:date>2026-10-21T09:00:00</dc:date></office:change-info><text:p>removed words </text:p></text:deletion></text:changed-region>
+    <text:changed-region xml:id="ct2" text:id="ct2"><text:insertion><office:change-info><dc:creator>Mina Park</dc:creator><dc:date>2026-10-21T09:05:00</dc:date></office:change-info></text:insertion></text:changed-region>
+   </text:tracked-changes>
+   <text:h text:style-name="Heading_20_1" text:outline-level="1">Format check</text:h>
+   <text:p text:style-name="Standard">This line has <text:span text:style-name="T1">a bold red 14 pt run</text:span>, <text:span text:style-name="T2">italic underlined words</text:span>, <text:span text:style-name="T3">a highlight</text:span>, <text:span text:style-name="T4">struck text</text:span>, x<text:span text:style-name="T5">2</text:span> and H<text:span text:style-name="T6">2</text:span>O, <text:span text:style-name="T7">mono blue</text:span> and <text:span text:style-name="T8">small caps</text:span>.</text:p>
+   <text:p text:style-name="P1">A centred paragraph.</text:p>
+   <text:p text:style-name="P2">A paragraph on the right.</text:p>
+   <text:p text:style-name="Quote">A quoted paragraph, justified, indented half an inch on both sides with a quarter-inch first line and one and a half lines of spacing, long enough to wrap onto a second line.</text:p>
+   <text:p text:style-name="P5">Exact spacing: a quarter inch before and after.</text:p>
+   <text:p text:style-name="Standard">Kept text <text:change text:change-id="ct1"/>stays, and <text:change-start text:change-id="ct2"/>inserted words<text:change-end text:change-id="ct2"/> show.</text:p>
+   <text:p text:style-name="Standard">See <text:a xlink:type="simple" xlink:href="https://example.com/format">the format page</text:a> and write to <text:a xlink:type="simple" xlink:href="mailto:desk@example.com">the desk</text:a>.<text:note text:id="ftn1" text:note-class="footnote"><text:note-citation>1</text:note-citation><text:note-body><text:p text:style-name="Footnote">A footnote about the format.</text:p></text:note-body></text:note> The end has a note too.<text:note text:id="edn1" text:note-class="endnote"><text:note-citation>i</text:note-citation><text:note-body><text:p text:style-name="Footnote">An endnote at the end.</text:p></text:note-body></text:note></text:p>
+   <text:p text:style-name="Standard">The <office:annotation office:name="c1"><dc:creator>Mina Park</dc:creator><dc:date>2026-10-20T10:30:00</dc:date><text:p>Check the totals.</text:p></office:annotation>reviewed numbers<office:annotation-end office:name="c1"/> stand.</text:p>
+   <text:h text:style-name="Heading_20_2" text:outline-level="2">Lists</text:h>
+   <text:list text:style-name="Numbering_20_123">
+    <text:list-item><text:p text:style-name="Standard">First step</text:p></text:list-item>
+    <text:list-item><text:p text:style-name="Standard">Second step</text:p>
+     <text:list><text:list-item><text:p text:style-name="Standard">Inner one</text:p></text:list-item><text:list-item><text:p text:style-name="Standard">Inner two</text:p></text:list-item></text:list>
+    </text:list-item>
+    <text:list-item><text:p text:style-name="Standard">Third step</text:p></text:list-item>
+   </text:list>
+   <text:list text:style-name="List_20_1">
+    <text:list-item><text:p text:style-name="Standard">A bullet</text:p></text:list-item>
+    <text:list-item><text:p text:style-name="Standard">Another bullet</text:p></text:list-item>
+   </text:list>
+   <text:h text:style-name="Heading_20_3" text:outline-level="3">Table</text:h>
+   <table:table table:name="Counts" table:style-name="Tbl">
+    <table:table-column table:style-name="Tbl.A"/>
+    <table:table-column table:style-name="Tbl.B" table:number-columns-repeated="2"/>
+    <table:table-row><table:table-cell table:style-name="Tbl.H" table:number-columns-spanned="3"><text:p text:style-name="P1">Counts by site</text:p></table:table-cell><table:covered-table-cell/><table:covered-table-cell/></table:table-row>
+    <table:table-row><table:table-cell table:style-name="Tbl.H"><text:p>Site</text:p></table:table-cell><table:table-cell table:style-name="Tbl.H"><text:p>Morning</text:p></table:table-cell><table:table-cell table:style-name="Tbl.H"><text:p>Evening</text:p></table:table-cell></table:table-row>
+    <table:table-row><table:table-cell table:style-name="Tbl.C" table:number-rows-spanned="2"><text:p>East</text:p></table:table-cell><table:table-cell table:style-name="Tbl.C"><text:p>12</text:p></table:table-cell><table:table-cell table:style-name="Tbl.C"><text:p>9</text:p></table:table-cell></table:table-row>
+    <table:table-row><table:covered-table-cell/><table:table-cell table:style-name="Tbl.C"><text:p>14</text:p></table:table-cell><table:table-cell table:style-name="Tbl.C"><text:p>11</text:p></table:table-cell></table:table-row>
+   </table:table>
+   <text:p text:style-name="P1"><draw:frame draw:style-name="fr1" draw:name="Chart" text:anchor-type="as-char" svg:width="1.25in" svg:height="0.625in"><draw:image><office:binary-data>iVBORw0KGgoAAAANSUhEUgAAAHgAAAA8CAIAAAAiz+n/AAAAl0lEQVR42u3c0QmAMAxAwVQcpGs4kFN1INfoJnEJlVDvDVDKEfoRxJaZoffbEIAGLdCgQQs0aIGu2l7nKv04nzpqXsNEezoEGrRAgwYt0KAFGjRoxR+WSrH0AstEezpACzRo0AhAgxZo0KAVBXYda3/UYqJBCzRogQYNWqBBCzRo0AINWqBBgxZo0AL9Vc1/70w0aIEu2w0ZHA93bgd4aAAAAABJRU5ErkJggg==</office:binary-data></draw:image><svg:desc>A small chart</svg:desc></draw:frame> <draw:frame draw:style-name="fr1" draw:name="Photo" text:anchor-type="as-char" svg:width="0.89in" svg:height="0.44in"><draw:image><office:binary-data>/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAoHBwgHBgoICAgLCgoLDhgQDg0NDh0VFhEYIx8lJCIfIiEmKzcvJik0KSEiMEExNDk7Pj4+JS5ESUM8SDc9Pjv/2wBDAQoLCw4NDhwQEBw7KCIoOzs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozv/wAARCAAgAEADASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwC2YqYYqvGKmGKvm4TPWqVCiYqYYqvGKmGKuuEzhqVCgYqYYqvmKmGKuuEzhqVCgYqYYqvmKozFXVCZw1Kh0Jiphiq+YqYYq+ThM9qpUKBiphiq8YqYYq6oTOGpUKJiphiq8YqYYq64TOGpUKJiphiq8YqYYq64TOGpUP/Z</office:binary-data></draw:image><svg:desc>A photo</svg:desc></draw:frame> <draw:frame draw:style-name="fr1" draw:name="Shape" text:anchor-type="as-char" svg:width="1.39in" svg:height="0.69in"><draw:image><office:binary-data>183GmgAAAAAAANAH6AOgBQAAAACJVgEACQAAAygAAAABAAcAAAAAAAUAAAALAgAAAAAFAAAADALoA9AHBwAAAPwCAABkOB8AAAAEAAAALQEAAAcAAAAbBIQDbAdkAGQAAwAAAAAA</office:binary-data></draw:image><svg:desc>A drawing</svg:desc></draw:frame></text:p>
+   <text:p text:style-name="Standard">A text box follows this paragraph.<draw:frame draw:style-name="fr2" draw:name="Box" text:anchor-type="paragraph" svg:x="4in" svg:y="0in" svg:width="2in" svg:height="0.6in"><draw:text-box><text:p text:style-name="Standard">Boxed note text.</text:p></draw:text-box></draw:frame></text:p>
+   <text:p text:style-name="P3">한글 문단: 두 번째 페이지가 여기서 시작한다.</text:p>
+   <text:p text:style-name="P4">The Letter section starts here.</text:p>
+   <text:section text:style-name="Sect1" text:name="Columns">
+    <text:p text:style-name="Standard">Two columns of text become one column in the page view. This paragraph is long enough to fill a little of both columns when a word processor lays it out.</text:p>
+   </text:section>
+   <text:p text:style-name="Standard">The last paragraph.</text:p>
+  </office:text>
+ </office:body>
+</office:document>
