@@ -51,6 +51,12 @@ type PluginMessage =
 
 const MANAGE = { permission: "plugin:manage" } as const;
 
+/** The callers the core addressed an event to (`to` on the Tauri payload), or undefined for everyone. */
+function recipientsOf(event: BridgeEvent): string[] | undefined {
+  const to = (event as { to?: unknown }).to;
+  return Array.isArray(to) ? to.filter((id): id is string => typeof id === "string") : undefined;
+}
+
 /**
  * Mounts UI plugins on surfaces and carries their bridge calls. Plugins are told apart by the
  * frame a message comes from, so a plugin can only ever call as itself.
@@ -197,7 +203,18 @@ export class PluginHost {
       if (plugin && this.#mounted.has(plugin)) this.#post(plugin, { type: "desk:event", event });
       return;
     }
-    if (event.event !== "plugin.changed") return;
+    if (event.event !== "plugin.changed") {
+      // An event the core addressed (a prompt to the perm:manage holder, a subscribed event) goes
+      // to the plugins it names; one that names nobody goes to whoever manages what it is about.
+      const to = recipientsOf(event);
+      if (to) {
+        for (const id of to)
+          if (this.#mounted.has(id)) this.#post(id, { type: "desk:event", event });
+      } else if (event.event === "perm.prompt" || event.event === "perm.changed") {
+        this.#broadcast(event, "perm:manage");
+      }
+      return;
+    }
     this.#broadcast(event);
     if (this.#deps.listed) void this.#list().then((all) => this.#deps.listed?.(all));
     const { plugin, change, revision } = event.data;

@@ -35,7 +35,9 @@ async function mount(plugins: PluginInfo[]) {
       reload() {},
       frame: (id) => {
         const posted = frames.get(id);
-        return posted ? ({ postMessage: (m: unknown) => posted.push(m) } as unknown as Window) : null;
+        return posted
+          ? ({ postMessage: (m: unknown) => posted.push(m) } as unknown as Window)
+          : null;
       },
     },
     { url: () => "about:blank" },

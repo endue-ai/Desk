@@ -8,7 +8,11 @@ use serde_json::Value;
 /// The payload of `bridge://event` for one delivery: the event as the bridge contract writes it,
 /// plus `to` when the core addressed it to particular callers.
 pub fn payload(delivery: Delivery) -> Value {
-    serde_json::to_value(&delivery.event).unwrap_or(Value::Null)
+    let mut value = serde_json::to_value(&delivery.event).unwrap_or(Value::Null);
+    if let (Some(to), Some(object)) = (delivery.to, value.as_object_mut()) {
+        object.insert("to".to_owned(), Value::from(to));
+    }
+    value
 }
 
 #[cfg(test)]
@@ -36,7 +40,10 @@ mod tests {
         });
         assert_eq!(addressed["event"], "cmd.changed");
         assert_eq!(addressed["to"], serde_json::json!(["endue.permissions"]));
-        let everyone = payload(Delivery { to: None, event: changed() });
+        let everyone = payload(Delivery {
+            to: None,
+            event: changed(),
+        });
         assert_eq!(everyone["event"], "cmd.changed");
         assert!(everyone.get("to").is_none());
     }
