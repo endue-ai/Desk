@@ -99,6 +99,19 @@ describe("files it cannot show as slides", () => {
     expect(details?.querySelector("img")?.getAttribute("alt")).toBe("Preview of talk.key");
   });
 
+  it("a Keynote package with only slide thumbnails shows those", async () => {
+    const opened = await openFile(
+      zip({
+        "Index/Document.iwa": new Uint8Array(32),
+        "Data/st-1A2B-297.jpg": JPEG,
+        "Data/mt-3C4D-300.jpg": JPEG,
+      }),
+      "theme.key",
+    );
+    expect(opened).toMatchObject({ kind: "preview" });
+    expect(opened.kind === "preview" && opened.images).toHaveLength(1);
+  });
+
   it("a Keynote package without a preview says why", async () => {
     const opened = await openFile(zip({ "Index/Document.iwa": new Uint8Array(32) }), "bare.key");
     expect(opened).toMatchObject({ kind: "details", format: "Keynote presentation" });

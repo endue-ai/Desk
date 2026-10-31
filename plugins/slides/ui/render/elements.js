@@ -54,7 +54,7 @@ function shapeElement(doc, shape, deck) {
     if (flip) svg.style.transform = flip;
     el.append(svg);
   }
-  if (shape.text?.paragraphs.length) {
+  if (shape.text?.paragraphs.some((p) => p.runs.some((r) => r.text !== ""))) {
     const text = textElement(doc, shape.text);
     // A vertically flipped shape turns its text upside down, as PowerPoint draws it.
     if (shape.box.flipV) text.style.transform = `${text.style.transform} rotate(180deg)`.trim();

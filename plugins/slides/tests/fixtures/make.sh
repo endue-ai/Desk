@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Rebuilds the real-world fixtures: sample.pptx from python-pptx (make.py), then LibreOffice converts
 # it to .odp and .ppt (strip.py drops the .ppt's thumbnail) and writes its own .pptx (sample-lo.pptx). Needs Docker. With a folder argument
-# it writes there instead, and adds .fodp, .otp, .potx and .pps copies for the live check.
+# it writes there instead, and adds the other formats (.fodp, .otp, .ppsx, .potx, .pptm, .pps,
+# .pot; .ppsm and .potm are copies of the .pptm) for the live check.
 set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 out="$(mkdir -p "${1:-$here}" && cd "${1:-$here}" && pwd)"
@@ -36,10 +37,16 @@ XCU
   cp /tmp/lo/sample.pptx /out/sample-lo.pptx
   if [ "$EXTRA" = yes ]; then
     lo fodp --outdir /tmp /tmp/sample.pptx
-    cp /tmp/sample.fodp /out/
-    cp /tmp/sample.odp /out/sample.otp
-    cp /tmp/sample.pptx /out/sample.potx
-    cp /tmp/sample.ppt /out/sample.pps
+    lo "otp:impress8_template" --outdir /tmp /tmp/sample.pptx
+    lo "ppsx:Impress MS PowerPoint 2007 XML AutoPlay" --outdir /tmp /tmp/sample.pptx
+    lo "potx:Impress MS PowerPoint 2007 XML Template" --outdir /tmp /tmp/sample.pptx
+    lo "pptm:Impress MS PowerPoint 2007 XML VBA" --outdir /tmp /tmp/sample.pptx
+    lo "pps:MS PowerPoint 97 AutoPlay" --outdir /tmp /tmp/sample.pptx
+    lo "pot:MS PowerPoint 97 Vorlage" --outdir /tmp /tmp/sample.pptx
+    for f in pps pot; do [ -f /tmp/sample.$f ] && python3 /w/strip.py /tmp/sample.$f; done
+    for f in fodp otp ppsx potx pptm pps pot; do cp /tmp/sample.$f /out/ 2>/dev/null || echo "no .$f"; done
+    cp /tmp/sample.pptm /out/sample.ppsm 2>/dev/null || true
+    cp /tmp/sample.pptm /out/sample.potm 2>/dev/null || true
   fi
 '
 ls -l "$out"

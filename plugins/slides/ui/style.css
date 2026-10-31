@@ -145,7 +145,7 @@ button:focus-visible {
   flex: 1;
   align-items: center;
   justify-content: center;
-  min-height: 120px;
+  min-height: 0;
   overflow: hidden;
   background: var(--desk-background);
 }
@@ -351,6 +351,23 @@ h2 {
 
 #status:empty {
   display: none;
+}
+
+/* A small window keeps the slide: the rail and then the notes give way. */
+@media (max-width: 560px) {
+  #deck {
+    grid-template-columns: 1fr;
+  }
+
+  #rail-nav {
+    display: none;
+  }
+}
+
+@media (max-height: 360px) {
+  #notes {
+    display: none;
+  }
 }
 
 [hidden] {

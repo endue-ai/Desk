@@ -21,6 +21,14 @@ export async function keynotePreview(zip) {
     const url = imageUrl(await zip.bytes(name).catch(() => new Uint8Array()));
     if (url) return { kind: "preview", format, images: [url], sentence: KEYNOTE };
   }
+  // Themes and some documents carry only slide thumbnails (Data/st-*.jpg).
+  const thumbs = zip.names.filter((n) => /^Data\/st-[^/]*\.(jpe?g|png)$/i.test(n)).slice(0, 24);
+  const images = [];
+  for (const name of thumbs) {
+    const url = imageUrl(await zip.bytes(name).catch(() => new Uint8Array()));
+    if (url) images.push(url);
+  }
+  if (images.length) return { kind: "preview", format, images, sentence: KEYNOTE };
   return {
     kind: "details",
     format,

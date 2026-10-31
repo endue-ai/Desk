@@ -49,7 +49,11 @@ export function createView(doc) {
   const fitSlide = () => {
     const slide = /** @type {HTMLElement | null} */ (frame.firstElementChild);
     if (!slide || !deck) return;
-    const area = { width: stage.clientWidth - 24, height: stage.clientHeight - 24 };
+    const pad = stage.clientWidth > 320 ? 24 : 4;
+    const area = {
+      width: Math.max(1, stage.clientWidth - pad),
+      height: Math.max(1, stage.clientHeight - pad),
+    };
     const { scale, width, height } = scaleToFit(area, deck.size);
     frame.style.width = `${width}px`;
     frame.style.height = `${height}px`;
