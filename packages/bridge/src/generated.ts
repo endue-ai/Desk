@@ -1492,7 +1492,7 @@ export interface ConnectorConnectRequest {
   params: ConnectorConnectParams;
 }
 
-/** Parameters of connector.connect. instance is default when absent; settings follow the connector's instanceSettings, and the secret ones go to the OS keychain. */
+/** Parameters of connector.connect. instance is default when absent; settings follow the connector's instanceSettings; the secret ones stay with the core and never come back out (ADR 0036). */
 export interface ConnectorConnectParams {
   connector: PluginId;
   instance?: InstanceId;
@@ -1744,6 +1744,8 @@ export interface DirEntry {
   kind: EntryKind;
   /** Size in bytes, for files. */
   size?: number;
+  /** When the entry last changed; absent when the OS has none. */
+  modifiedAt?: Timestamp;
 }
 
 /** What a folder entry is. */

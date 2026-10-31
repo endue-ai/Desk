@@ -1,5 +1,7 @@
 //! `Core::handle`: one bridge request in, one bridge response out. Every primitive call passes the
 //! permission engine first (`Core::check`); methods the core does not serve yet answer `unsupported`.
+//! The integration layer (`data.*`, `connector.*`, `view.*`, `catalog.get`) holds the item index
+//! as `Arc<dyn ItemIndex>`, the OS calendar as a `CalendarSource` and one connector host.
 
 use std::io;
 use std::path::{Path, PathBuf};
@@ -11,21 +13,28 @@ use desk_bridge::{
     BridgeError, BridgeFailure, BridgeRequest, BridgeResponse, BridgeSuccess, DirEntry, Encoding,
     EntryKind, ErrorCode, False, FsListResult, FsReadResult, Permission, RequestId, True,
 };
+use desk_index::ItemIndex;
+use desk_plugin_host::{Clock, SystemClock, rfc3339};
+use desk_sys::calendar::CalendarSource;
 use desk_sys::fs as sysfs;
 use serde::Serialize;
 
 use crate::conversation::Conversation;
 use crate::core_cmd::Commands;
+use crate::core_connectors::Connectors;
+use crate::core_data::DataSubscriptions;
 use crate::core_events::Subscriptions;
 use crate::core_fs::Watches;
 use crate::core_perm::{Prompter, RefuseAll};
 use crate::core_proc::Processes;
 use crate::core_prompts::Prompts;
+use crate::core_views::ViewsSeen;
 use crate::events::EventBus;
 use crate::init::InitFile;
 use crate::paths::normalize;
 use crate::perm::{Denied, PermissionEngine, Target};
 use crate::plugins::PluginRegistry;
+use crate::secrets::Secrets;
 use crate::store::Store;
 use crate::sync::Syncer;
 
@@ -53,6 +62,13 @@ pub struct Core {
     pub(crate) notifications: AtomicU64,
     pub(crate) watches: Mutex<Watches>,
     pub(crate) commands: Mutex<Commands>,
+    pub(crate) index: Option<Arc<dyn ItemIndex>>,
+    pub(crate) calendar: Option<Arc<dyn CalendarSource>>,
+    pub(crate) clock: Arc<dyn Clock>,
+    pub(crate) secrets: Mutex<Secrets>,
+    pub(crate) data_subscriptions: Mutex<DataSubscriptions>,
+    pub(crate) connectors: Connectors,
+    pub(crate) views: Mutex<ViewsSeen>,
     pub(crate) processes: Arc<Mutex<Processes>>,
 }
 
@@ -73,6 +89,13 @@ impl Core {
             notifications: AtomicU64::new(0),
             watches: Mutex::new(Watches::default()),
             commands: Mutex::new(Commands::default()),
+            index: None,
+            calendar: None,
+            clock: Arc::new(SystemClock),
+            secrets: Mutex::new(Secrets::new(None)),
+            data_subscriptions: Mutex::new(DataSubscriptions::default()),
+            connectors: Connectors::default(),
+            views: Mutex::new(ViewsSeen::default()),
             processes: Arc::new(Mutex::new(Processes::default())),
         }
     }
@@ -159,19 +182,19 @@ impl Core {
             R::LogTail(r) => (r.id, unsupported("log.tail")),
             R::EventsSubscribe(r) => (r.id, self.events_subscribe(caller, r.params)),
             R::EventsUnsubscribe(r) => (r.id, self.events_unsubscribe(caller, r.params)),
-            R::DataQuery(r) => (r.id, unsupported("data.query")),
-            R::DataGet(r) => (r.id, unsupported("data.get")),
-            R::DataSubscribe(r) => (r.id, unsupported("data.subscribe")),
-            R::DataUnsubscribe(r) => (r.id, unsupported("data.unsubscribe")),
-            R::ConnectorList(r) => (r.id, unsupported("connector.list")),
-            R::ConnectorConnect(r) => (r.id, unsupported("connector.connect")),
-            R::ConnectorDisconnect(r) => (r.id, unsupported("connector.disconnect")),
-            R::ConnectorSyncNow(r) => (r.id, unsupported("connector.sync")),
-            R::ViewList(r) => (r.id, unsupported("view.list")),
-            R::ViewGet(r) => (r.id, unsupported("view.get")),
-            R::ViewSave(r) => (r.id, unsupported("view.save")),
-            R::ViewRemove(r) => (r.id, unsupported("view.remove")),
-            R::CatalogGet(r) => (r.id, unsupported("catalog.get")),
+            R::DataQuery(r) => (r.id, self.data_query(caller, r.params)),
+            R::DataGet(r) => (r.id, self.data_get(caller, r.params)),
+            R::DataSubscribe(r) => (r.id, self.data_subscribe(caller, r.params)),
+            R::DataUnsubscribe(r) => (r.id, self.data_unsubscribe(caller, r.params)),
+            R::ConnectorList(r) => (r.id, self.connector_list(caller, r.params)),
+            R::ConnectorConnect(r) => (r.id, self.connector_connect(caller, r.params)),
+            R::ConnectorDisconnect(r) => (r.id, self.connector_disconnect(caller, r.params)),
+            R::ConnectorSyncNow(r) => (r.id, self.connector_sync(caller, r.params)),
+            R::ViewList(r) => (r.id, self.view_list(caller, r.params)),
+            R::ViewGet(r) => (r.id, self.view_get(caller, r.params)),
+            R::ViewSave(r) => (r.id, self.view_save(caller, r.params)),
+            R::ViewRemove(r) => (r.id, self.view_remove(caller, r.params)),
+            R::CatalogGet(r) => (r.id, self.catalog_get(caller)),
         }
     }
 
@@ -214,7 +237,7 @@ impl Core {
             .fold(base, |p, s| p.join(s)))
     }
 
-    /// The home folder, where a process starts unless its caller says where.
+    /// The home folder: `~` and `${home}`, and where a process starts unless its caller says where.
     pub(crate) fn home(&self) -> &Path {
         &self.roots.home
     }
@@ -252,6 +275,7 @@ fn list(path: &Path) -> Answer {
                 sysfs::EntryKind::Symlink => EntryKind::Symlink,
             },
             size: entry.size,
+            modified_at: entry.modified.map(rfc3339),
         })
         .collect();
     json(FsListResult { entries })

@@ -5,9 +5,9 @@
   "version": "0.0.0",
   "identifier": "ai.endue.desk",
   "build": {
-    "beforeDevCommand": "pnpm --filter @endue-ai/plugin-sdk build && pnpm dev",
+    "beforeDevCommand": "pnpm --filter @endue-ai/plugin-sdk --filter @endue-ai/ui build && pnpm dev",
     "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "pnpm --filter @endue-ai/plugin-sdk build && pnpm build",
+    "beforeBuildCommand": "pnpm --filter @endue-ai/plugin-sdk --filter @endue-ai/ui build && pnpm build",
     "frontendDist": "../dist"
   },
   "app": {

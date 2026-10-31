@@ -1,45 +1,40 @@
 # desk-core
 
 Kernel of endue Desk: the permission engine, the event bus, the plugin registry, storage, init.yaml
-and its sync, the brain conversation with its session store and lease client, and the bridge handler.
-
-Layer: Rust core (see `docs/architecture.md`).
+and its sync, the brain conversation with its session store and lease client, the integration layer
+(the item index, connectors, views) and the bridge handler. Layer: Rust core (`docs/architecture.md`).
 
 ## Public API
 
-- `Core::new(Roots { home })`, `Core::handle(caller, BridgeRequest) -> BridgeResponse`: serves `fs.*`,
-  `proc.*`, `perm.*`, `events.*`, `plugin.*`, `store.*`, `cmd.*`, `ui.notify`, `init.get` and `brain.*`;
-  other methods answer `unsupported` for now. Hosts call it off their UI thread: `perm.request` waits.
+- `Core::new(Roots { home })`, `Core::handle(caller, BridgeRequest) -> BridgeResponse`: serves `fs.*`
+  (`fs.list` with `modifiedAt`), `proc.*`, `perm.*`, `events.*`, `plugin.*`, `store.*`, `cmd.*`,
+  `ui.notify`, `init.get`, `brain.*`, `data.*`, `connector.*`, `view.*` and `catalog.get`; others
+  answer `unsupported`. Hosts call it off their UI thread: `perm.request` and `connector.connect` wait.
 - Processes (`core_proc.rs`): `proc.spawn` passes the permission engine for its command (a PTY only
-  under a scope and a grant that allow `pty`), starts in the home folder unless `cwd` says where, and
-  reports `proc.output` (UTF-8 split at whole characters, else base64) and `proc.exit` to its caller.
-  Later calls need the owner and a scope covering the command; another caller's id is `not_found`. A
-  plugin turned off or a revoked grant ends the processes it covered. `process_count()`.
-- Permissions: `Core::grant` (session), `with_grant_file(path)` (`always` grants on disk, ADR 0029),
-  `with_prompter` (decides when no `perm:manage` holder can be prompted; `RefuseAll` by default).
-  `perm.request` becomes a `perm.prompt` to the `perm:manage` holders; the first `perm.answer` decides.
-  `PermissionEngine`: deny by default; a call passes when its scope covers the target and a grant covers
-  the scope; a lasting grant is used before a `once` grant, which the call spends.
-- `EventBus`: `subscribe` (every event), `subscribe_addressed` (`Delivery { to, event }`, for routers),
-  `publish`, `publish_to`. `events.subscribe` adds named events about every caller;
-  `subscription_count()`, `watch_count()`.
-- Plugins: `with_plugin_store(path)`, `install_plugin(dir, built_in)`, `install_plugins_in`, `plugins()`,
-  `plugin_file(id, path)`, `watch_plugins()`. A plugin turned off takes its commands, waiting requests
-  and subscriptions with it. `validate_dir(dir)`: the manifest check.
+  under a scope and a grant that allow `pty`); `proc.output` (UTF-8 at whole characters, else base64)
+  and `proc.exit` reach the caller only; later calls need the owner and a covering scope.
+- Permissions: `Core::grant` (session), `with_grant_file(path)` (`always` grants, ADR 0029),
+  `with_prompter` (`RefuseAll` by default); `perm.request` becomes a `perm.prompt` to the
+  `perm:manage` holders. `PermissionEngine`: deny by default; a `once` grant is spent by its call.
+- `EventBus`: `subscribe`, `subscribe_addressed` (`Delivery { to, event }`), `publish`, `publish_to`;
+  `subscription_count()`, `watch_count()`, `process_count()`.
+- Plugins: `with_plugin_store(path)`, `install_plugin(dir, built_in)`, `install_plugins_in`,
+  `plugins()`, `plugin_file(id, path)`, `watch_plugins()`, `validate_dir(dir)`. A plugin turned off
+  takes its commands, waiting requests, subscriptions and processes with it; its connectors pause.
 - Store: `with_store_file(path)`; one JSON value (64 KiB max) per caller and key.
-- Brain: `with_brain(brain, BrainOptions)`, `open_session(id)`, `brain_session()`; `brain.say` streams
-  `brain.turn` events (`OFFLINE_LINE`, `READ_ONLY_LINE`). `LeaseClient`, `SessionStore`. The directory
-  (`brain.agents.*`, `brain.spaces.list`, `brain.tasks.list`) passes the brain's answers through;
-  `brain.status` is `offline` while the brain is unreachable, else `BrainOptions::mode` (`BrainMode`).
-- init.yaml (ADR 0016): `with_init_file(path)`, `init()`, `init_problem()`; sync: `with_sync(remote,
+- Brain: `with_brain(brain, BrainOptions)`, `open_session(id)`, `brain_session()`, `LeaseClient`,
+  `SessionStore`; `brain.say` streams `brain.turn`; the directory passes the brain's answers through.
+- init.yaml (ADR 0016): `with_init_file(path)`, `init()`, `init_problem()`, `with_sync(remote,
   state_file)`, `sync_init()`, `resolve_init(Keep)`; `MockRemote` stands in for endue.
+- Integration layer (ADR 0036): `with_index(Arc<dyn ItemIndex>)` (`data.*` under `data:read`),
+  `with_calendar(source)` (the built-ins `desk.calendar` and `desk.reminders`), `with_clock`,
+  `with_secrets_file(path)`; then `start_connectors()` (Wasm connectors on `desk-plugin-host`),
+  `tick_connectors()`, `start_connector_scheduler(period)`; `watch_views()` (`ViewWatcher`) and
+  `view_problems()` over `~/.desk/views/*.yaml`.
 
 ## Testing
 
-```bash
-cargo test -p desk-core
-```
-
-Integration tests in `tests/`: permissions, events, bridge, plugins, store, cmd, fs, proc (the child
-is the test binary itself), init, sync, lease, conversation and directory (the last three start `examples/brain-echo`; needs Node); `grants_store.rs`,
-`prompts.rs` and `events_bridge.rs` cover grants on disk, prompts and subscriptions.
+`cargo test -p desk-core`. `tests/` covers each side (`proc`'s child is the test binary itself);
+`conversation`, `directory` and `lease` start `examples/brain-echo` (needs Node). The integration
+layer's tests (`data`, `connectors`, `connectors_wasm`, `views`, `catalog`) run on a temp index, a
+`FakeCalendar`, a fake clock and an explicit tick (helpers in `tests/layer`).

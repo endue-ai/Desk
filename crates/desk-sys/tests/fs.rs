@@ -72,6 +72,44 @@ fn list_returns_entries_sorted_with_kind_and_size() {
     );
 }
 
+/// Set `path`'s modification time to `time`; folders too.
+fn set_modified(path: &Path, time: SystemTime) {
+    #[cfg(windows)]
+    let file = {
+        use std::os::windows::fs::OpenOptionsExt;
+        // FILE_FLAG_BACKUP_SEMANTICS opens folders too.
+        let mut options = fs::OpenOptions::new();
+        options.write(true).custom_flags(0x0200_0000);
+        options.open(path).unwrap()
+    };
+    #[cfg(not(windows))]
+    let file = fs::File::open(path).unwrap();
+    file.set_modified(time).unwrap();
+}
+
+#[test]
+fn list_reports_when_each_entry_last_changed() {
+    let dir = temp_dir();
+    let at = |secs: u64| UNIX_EPOCH + Duration::from_secs(secs);
+    // 2026-10-30T00:00:00Z, a day later and two days later, in whole seconds.
+    set_modified(&dir.join("a.bin"), at(1_793_318_400));
+    set_modified(&dir.join("b.txt"), at(1_793_404_800));
+    set_modified(&dir.join("sub"), at(1_793_491_200));
+    let modified: Vec<(String, Option<SystemTime>)> = list(&dir)
+        .unwrap()
+        .into_iter()
+        .map(|e| (e.name, e.modified))
+        .collect();
+    assert_eq!(
+        modified,
+        vec![
+            ("a.bin".to_owned(), Some(at(1_793_318_400))),
+            ("b.txt".to_owned(), Some(at(1_793_404_800))),
+            ("sub".to_owned(), Some(at(1_793_491_200))),
+        ]
+    );
+}
+
 #[test]
 fn write_creates_a_file_and_reports_the_bytes_written() {
     let dir = temp_dir();

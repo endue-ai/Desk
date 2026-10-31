@@ -46,8 +46,9 @@ an `fs:read` scope. Missing files are `not_found`; folders are `invalid_params`.
 **fs.write** creates or overwrites a file with the given content and returns the bytes written. It needs
 an `fs:write` scope; with `createDirs` it also creates missing parent folders inside the same scope.
 
-**fs.list** returns the entries of one folder with their kind and, for files, their size. It is not
-recursive. It needs an `fs:read` scope.
+**fs.list** returns the entries of one folder with their kind, for files their size, and `modifiedAt`,
+when the entry last changed (absent when the OS has none). It is not recursive. It needs an `fs:read`
+scope.
 
 **fs.watch** starts reporting changes under a path as `fs.changed` events, recursively when asked, and
 returns a `watchId`. Watches end when the caller unloads or its grant is revoked. It needs `fs:read`.
@@ -222,9 +223,9 @@ person gave it, its settings but the secret ones) and the kinds of item it bring
 
 **connector.connect** adds an instance of an installed connector and returns its id, `default` when none
 is given. `settings` follow the connector's `instanceSettings`: a name it does not declare, a value of the
-wrong kind or a missing required one is `invalid_params`, and secret values go to the OS keychain, never
-back out. An unknown connector is `not_found`; an instance id it already has is `already_exists`. No v0
-method starts an OAuth flow.
+wrong kind or a missing required one is `invalid_params`, and secret values stay with the core and never
+come back out (ADR 0036). An unknown connector is `not_found`; an instance id it already has is
+`already_exists`. No v0 method starts an OAuth flow.
 
 **connector.disconnect** removes an instance and the items it brought in, which subscribers hear as
 `removed`. An unknown instance is `not_found`.

@@ -9,11 +9,14 @@ use std::sync::{Arc, Mutex};
 
 use desk_brain_endue::HttpBrain;
 use desk_bridge::{
-    BrainConversePermission, CmdInvokePermission, Permission, PluginManagePermission,
+    BrainConversePermission, CmdInvokePermission, ConnectorManagePermission, Permission,
+    PluginManagePermission, ViewManagePermission,
 };
 use desk_core::{
     BrainMode, BrainOptions, Core, MockRemote, PluginWatcher, Roots, SyncError, SyncOutcome,
+    ViewWatcher,
 };
+use desk_index::Index;
 use tauri::{Emitter, Manager};
 
 /// The caller id of the web runtime itself. Plugins call under their own ids.
@@ -25,8 +28,11 @@ pub const DEFAULT_BRAIN_URL: &str = "http://127.0.0.1:8787/v0";
 /// Where init.yaml lives under home unless `DESK_INIT` names another file, like `~/.emacs.d/init.el`.
 pub const INIT_FILE: &str = ".desk/init.yaml";
 
-/// Keeps the hot-reload watcher alive for the life of the app.
-struct Watching(#[allow(dead_code)] Mutex<Option<PluginWatcher>>);
+/// How often the connector scheduler looks for due syncs.
+const CONNECTOR_TICK: std::time::Duration = std::time::Duration::from_secs(1);
+
+/// Keeps the hot-reload and views watchers alive for the life of the app.
+struct Watching(#[allow(dead_code)] Mutex<(Option<PluginWatcher>, Option<ViewWatcher>)>);
 
 pub fn run() {
     tauri::Builder::default()
@@ -46,9 +52,20 @@ pub fn run() {
                 .with_init_file(init)
                 .with_sync(Arc::new(remote), Some(data.join("sync.json")))
                 .with_plugin_store(data.join("plugins.json"))
-                .with_store_file(data.join("store.json"));
+                .with_store_file(data.join("store.json"))
+                .with_secrets_file(data.join("secrets.json"));
             if let Some(problem) = core.init_problem() {
                 eprintln!("endue Desk: init.yaml is not in force ({problem}); using the defaults");
+            }
+            // The item index (ADR 0033): without it data.* answers io_error and syncs fail.
+            match Index::open(data.join("index.sqlite")) {
+                Ok(index) => core = core.with_index(Arc::new(index)),
+                Err(why) => eprintln!("endue Desk: no item index ({why}); data.* is unavailable"),
+            }
+            // The OS calendar makes the built-in connectors desk.calendar and desk.reminders. It is
+            // macOS only for now; elsewhere there is none, and nothing asks the OS until connect.
+            if let Ok(calendar) = desk_sys::calendar::os() {
+                core = core.with_calendar(Arc::from(calendar));
             }
             // Before plugins install, so a setup pulled from another desk applies from this start.
             sync_init(&core);
@@ -89,6 +106,19 @@ pub fn run() {
                     permission: Default::default(),
                 }),
             );
+            // The runtime connects the person's connectors and keeps their views (ADR 0036).
+            core.grant(
+                RUNTIME_CALLER,
+                Permission::ConnectorManage(ConnectorManagePermission {
+                    permission: Default::default(),
+                }),
+            );
+            core.grant(
+                RUNTIME_CALLER,
+                Permission::ViewManage(ViewManagePermission {
+                    permission: Default::default(),
+                }),
+            );
             for dir in env_paths("DESK_PLUGIN_DIRS") {
                 core.install_plugins_in(&dir, true);
             }
@@ -96,7 +126,13 @@ pub fn run() {
                 core.install_plugin(&dir, false);
             }
             let watcher = core.watch_plugins().ok();
-            app.manage(Watching(Mutex::new(watcher)));
+            core.start_connectors();
+            core.start_connector_scheduler(CONNECTOR_TICK);
+            let views = core.watch_views().ok();
+            for problem in core.view_problems() {
+                eprintln!("endue Desk: a view is left out ({problem})");
+            }
+            app.manage(Watching(Mutex::new((watcher, views))));
 
             // Core events reach the runtime as Tauri events; the runtime routes them to plugins.
             let events = core.events().subscribe();

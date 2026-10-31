@@ -2297,7 +2297,7 @@ pub struct ConnectorConnectRequest {
     pub params: ConnectorConnectParams,
 }
 
-/// Parameters of connector.connect. instance is default when absent; settings follow the connector's instanceSettings, and the secret ones go to the OS keychain.
+/// Parameters of connector.connect. instance is default when absent; settings follow the connector's instanceSettings; the secret ones stay with the core and never come back out (ADR 0036).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ConnectorConnectParams {
@@ -2654,6 +2654,13 @@ pub struct DirEntry {
     /// Size in bytes, for files.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub size: Option<u64>,
+    /// When the entry last changed; absent when the OS has none.
+    #[serde(
+        rename = "modifiedAt",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub modified_at: Option<Timestamp>,
 }
 
 /// What a folder entry is.

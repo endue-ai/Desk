@@ -19,6 +19,7 @@ desk-brain = { path = "crates/desk-brain" }
 desk-brain-endue = { path = "crates/desk-brain-endue" }
 desk-core = { path = "crates/desk-core" }
 desk-index = { path = "crates/desk-index" }
+desk-plugin-host = { path = "crates/desk-plugin-host" }
 desk-sys = { path = "crates/desk-sys" }
 base64 = "0.23"
 notify = { version = "8", default-features = false, features = ["macos_fsevent"] }
