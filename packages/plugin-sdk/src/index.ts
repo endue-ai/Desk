@@ -37,6 +37,13 @@ export type {
 } from "./context";
 export { type PluginData, type PluginViews, readScope } from "./data";
 export {
+  type ByteSource,
+  byteSource,
+  type FileRef,
+  type ReadBytesOptions,
+  readBytes,
+} from "./files";
+export {
   type CommandOutcome,
   type HostMessage,
   isDeskKey,
@@ -56,5 +63,6 @@ export {
   type PluginTheme,
   type UiPlugin,
 } from "./sdk";
+export { startWorker } from "./worker";
 
 export const NAME = "@endue-ai/plugin-sdk";

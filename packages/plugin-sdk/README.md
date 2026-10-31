@@ -1,7 +1,7 @@
 # @endue-ai/plugin-sdk
 
-Everything a plugin author imports: plugin definitions, the bridge client and a test harness.
-Layer: Plugins (see `docs/architecture.md`). Guide: `docs/plugins/authoring.md`.
+What a plugin imports: definitions, the bridge client, file reads, workers and a test harness.
+Layer: Plugins (`docs/architecture.md`). Guide: `docs/plugins/authoring.md`.
 
 ## Public API
 
@@ -22,18 +22,18 @@ Layer: Plugins (see `docs/architecture.md`). Guide: `docs/plugins/authoring.md`.
   provider's `cmd.answered` (needs a `cmd:invoke` grant covering the id); `list()` is `cmd.list`;
   `on(name, handler)` answers this plugin's commands (`cmd.invoked`) and the desk's requests by name,
   after `mount`. A failure is a `CommandFailed` (`unknown_command`, `failed`, `cancelled`).
-- `ctx.theme`: `get()`, `on(listener)`; the frame gets `--desk-*` properties and `data-scheme`,
-  `-contrast`, `-motion`. Chords (Meta, Control, Alt, Escape) reach the desk unless prevented.
-- `connect(transport?)`, `windowTransport()`, the protocol types, `BridgeCallError` and bridge types.
+- `ctx.theme`: `get()`, `on(listener)`; the frame gets `--desk-*`, `data-scheme`, `-contrast` and
+  `-motion`. Chords (Meta, Control, Alt, Escape) reach the desk unless prevented.
+- `readBytes(ctx, { path, scope }, { onProgress?(done, total), signal? })`: the file as a `Uint8Array`,
+  in 2 MiB `Range` requests to its `fs.url` URL (else `fs.read` ranges); `signal` rejects (`AbortError`).
+  `byteSource(ctx, file)`: `{ size, read(offset, length) }`, cached. `startWorker(url)`: a module worker.
+- `connect(transport?)`, `windowTransport()`, the protocol types, `BridgeCallError` and bridge types;
+  one tick's calls leave in one message. The app serves `dist/plugin-sdk.js` at `/_desk/plugin-sdk.js`.
 - `@endue-ai/plugin-sdk/testing`: `createTestHost({ pluginId, state?, handlers?, commands?, settings?,
   grants?, callers?, prompt?, now?, refuse?, files? })` runs a plugin on the bridge's stub of the core
-  (`stubCommands`; `handlers` override it, `refuse` fails a method, `files` back `fs.read`, `fs.url`):
-  `transport`, `calls`, `batches`, `state`, `closed`, `visible`, `ran`, `keys`, `settings`, `grants`,
-  `logged`, `surfaces`, `call` (as any caller), `emit`, `command`, `invoke`, `theme`, `upsert`,
-  `remove`, `settle`.
-
-Calls made in one tick leave in one message. The app serves the bundle (`pnpm --filter
-@endue-ai/plugin-sdk build`, output `dist/plugin-sdk.js`) at `/_desk/plugin-sdk.js`.
+  (`handlers` override it, `refuse` fails a method, `files` back `fs.read` and `fs.url`): `transport`,
+  `calls`, `batches`, `state`, `closed`, `visible`, `ran`, `keys`, `settings`, `grants`, `logged`,
+  `surfaces`, `call` (as any caller), `emit`, `command`, `invoke`, `theme`, `upsert`, `remove`, `settle`.
 
 ## Testing
 
