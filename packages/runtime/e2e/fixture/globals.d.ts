@@ -14,6 +14,8 @@ declare global {
       desk: Desk;
       clock: ManualClock;
       bridge: BrowserBridge;
+      /** The core's stub, to emit plugin.changed and the like. */
+      stub: BrowserStub;
       step(ms: number): void;
       envelopes: { user: Envelope; eris: Envelope };
     };

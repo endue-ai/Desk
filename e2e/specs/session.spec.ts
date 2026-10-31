@@ -52,7 +52,8 @@ describe("session: the shell across a relaunch", () => {
     // Open it from the dock and put it in use (center surfaces open without the focus).
     await inFrame(DOCK, () => tile().click());
     await expect(surface(HELLO)).toExist();
-    await surface(HELLO).$(".desk-surface-title").click();
+    // Under the shell a centre surface sits in a shell window (ADR 0040): its title bar is the window's.
+    await surface(HELLO).$(".surface-title").click();
     await waitForData(
       "store.json",
       (value) => session(value)?.focused === HELLO,
