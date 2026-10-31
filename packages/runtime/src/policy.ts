@@ -8,6 +8,7 @@ import type {
   DisplayRule,
   FileOpener,
   KeyBinding,
+  PaletteProvider,
   PluginInfo,
   ProfileContribution,
   SettingContribution,
@@ -28,6 +29,8 @@ export interface PolicySet {
   settings: Record<string, SettingContribution & { owner: string }>;
   /** By id; a later layer's profile of the same id replaces the earlier one. */
   profiles: Array<ProfileContribution & { owner: string }>;
+  /** What the palette asks as the person types, in layer order: each one's group follows the last. */
+  paletteProviders: Array<PaletteProvider & { owner: string }>;
   /** Contributions dropped because they reach outside their plugin's id, for people. */
   ignored: string[];
 }
@@ -42,6 +45,7 @@ export function emptyPolicy(): PolicySet {
     themes: [],
     settings: {},
     profiles: [],
+    paletteProviders: [],
     ignored: [],
   };
 }
@@ -82,6 +86,10 @@ export function collect(plugins: readonly PluginInfo[]): PolicySet {
       else set.ignored.push(`${owner}: setting ${key} is outside ${owner}`);
     }
     for (const profile of c.profiles ?? []) profiles.set(profile.id, { ...profile, owner });
+    for (const provider of c.paletteProviders ?? []) {
+      if (owns(owner, provider.command)) set.paletteProviders.push({ ...provider, owner });
+      else set.ignored.push(`${owner}: palette provider ${provider.command} is outside ${owner}`);
+    }
   }
   set.profiles = [...profiles.values()];
   return set;
