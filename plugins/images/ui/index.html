@@ -38,7 +38,7 @@
             <option value="">Choose an image</option>
           </select>
         </label>
-        <button type="button" id="details-toggle" aria-expanded="true" aria-controls="details">Details</button>
+        <button type="button" id="details-toggle" aria-expanded="false" aria-controls="details">Details</button>
       </div>
     </header>
     <main>
@@ -47,7 +47,7 @@
         <figure id="pane-b" class="pane" hidden><div class="frame"></div><figcaption></figcaption></figure>
         <p id="hint" hidden>Mod+= and Mod+- zoom, Mod+0 fits. Left and Right go through the folder; when zoomed in, the arrows pan.</p>
       </div>
-      <aside id="details" aria-label="Details">
+      <aside id="details" aria-label="Details" hidden>
         <h2>Details</h2>
         <dl id="details-list"></dl>
       </aside>

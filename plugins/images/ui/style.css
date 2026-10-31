@@ -28,14 +28,17 @@ header {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 4px 12px;
-  padding: 8px 12px 6px;
+  gap: 2px 12px;
+  padding: 4px 8px;
   border-bottom: 1px solid var(--desk-border);
 }
 
 #heading {
+  display: flex;
+  flex: 1 1 160px;
+  align-items: baseline;
+  gap: 8px;
   min-width: 0;
-  flex: 1 1 200px;
 }
 
 h1,
@@ -48,19 +51,28 @@ h2 {
 }
 
 #summary {
+  flex: 0 1 auto;
+  min-width: 0;
   margin: 0;
+  overflow: hidden;
   color: var(--desk-text-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 #position:not(:empty)::before {
   content: "· ";
 }
 
+/* One row that scrolls rather than wraps, so a small window keeps room for the image. */
 #toolbar {
   display: flex;
-  flex-wrap: wrap;
+  flex: 0 1 auto;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
 }
 
 .gap {
@@ -69,8 +81,9 @@ h2 {
 
 button,
 select {
-  min-height: 26px;
-  padding: 2px 8px;
+  flex: none;
+  min-height: 24px;
+  padding: 1px 7px;
   border: 1px solid var(--desk-border);
   border-radius: 6px;
   background: var(--desk-background);
@@ -112,6 +125,7 @@ select:focus-visible,
 }
 
 main {
+  position: relative;
   display: flex;
   flex: 1;
   min-height: 0;
@@ -198,12 +212,18 @@ figcaption:empty {
   color: var(--desk-text);
 }
 
+/* The details lie over the stage's right side, so opening them never shrinks the image. */
 #details {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
   box-sizing: border-box;
-  width: 260px;
+  width: min(300px, 85%);
   padding: 10px 12px;
   overflow: auto;
   border-left: 1px solid var(--desk-border);
+  background: var(--desk-card);
 }
 
 #details h2 {
@@ -226,12 +246,22 @@ dd {
   overflow-wrap: anywhere;
 }
 
+/* The status line lies over the bottom of the stage and takes no room while it is empty. */
 #status {
-  min-height: 1.5em;
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
   margin: 0;
-  padding: 2px 12px 4px;
-  border-top: 1px solid var(--desk-border);
+  padding: 0 8px;
   color: var(--desk-text-muted);
+  pointer-events: none;
+}
+
+#status:not(:empty) {
+  padding: 2px 8px;
+  border-top: 1px solid var(--desk-border);
+  background: var(--desk-card);
 }
 
 [hidden] {
