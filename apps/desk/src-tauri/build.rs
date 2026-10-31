@@ -4,8 +4,16 @@ fn main() {
     // The plugin SDK and the @endue-ai/ui bundle are embedded in the binary and served to plugin
     // frames.
     for (bundle, package, recipe) in [
-        ("../../../packages/plugin-sdk/dist/plugin-sdk.js", "@endue-ai/plugin-sdk", "build-sdk"),
-        ("../../../packages/ui/dist/ui.js", "@endue-ai/ui", "build-ui"),
+        (
+            "../../../packages/plugin-sdk/dist/plugin-sdk.js",
+            "@endue-ai/plugin-sdk",
+            "build-sdk",
+        ),
+        (
+            "../../../packages/ui/dist/ui.js",
+            "@endue-ai/ui",
+            "build-ui",
+        ),
     ] {
         println!("cargo:rerun-if-changed={bundle}");
         assert!(

@@ -132,10 +132,18 @@ mod tests {
             assert_eq!(response.status(), StatusCode::OK, "{path}");
             let kind = response.headers().get(header::CONTENT_TYPE).unwrap();
             assert_eq!(kind, "text/javascript; charset=utf-8", "{path}");
-            assert!(response.headers().get(header::CONTENT_SECURITY_POLICY).is_none());
+            assert!(
+                response
+                    .headers()
+                    .get(header::CONTENT_SECURITY_POLICY)
+                    .is_none()
+            );
             assert_eq!(response.body().as_slice(), bundle.as_bytes(), "{path}");
         }
-        assert!(UI.contains("customElements"), "the ui bundle defines its elements");
+        assert!(
+            UI.contains("customElements"),
+            "the ui bundle defines its elements"
+        );
     }
 
     #[test]
@@ -144,7 +152,15 @@ mod tests {
             Ok(format!("{id} {file}").into_bytes())
         });
         assert_eq!(served.body().as_slice(), b"example.hello ui/index.html");
-        assert!(served.headers().get(header::CONTENT_SECURITY_POLICY).is_some());
-        assert_eq!(respond("/_desk/other.js", missing).status(), StatusCode::NOT_FOUND);
+        assert!(
+            served
+                .headers()
+                .get(header::CONTENT_SECURITY_POLICY)
+                .is_some()
+        );
+        assert_eq!(
+            respond("/_desk/other.js", missing).status(),
+            StatusCode::NOT_FOUND
+        );
     }
 }
