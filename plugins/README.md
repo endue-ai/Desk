@@ -29,6 +29,13 @@ no code, only what they contribute in `plugin.json`. Turn one off and another pl
 | `profiles/` (`desk.profiles`) | `init.el` | Profiles: a plugin set plus settings, switched and saved (formerly `modes/`) |
 | `shell/` (`desk.shell`) | a frame's parameters | What a profile lays out in the shell (desktops 1–4), Eris's mesh and soul, the shell's colours, the sample profiles |
 
+The base plugins a person works with from the first day (requirements, BASE):
+
+| Plugin | Role |
+| --- | --- |
+| `notes/` (`endue.notes`) | Markdown and text files in a plain text area: the first file opener |
+| `git/` (`endue.git`) | A keyboard-first front for Git: status, staging, commits, the log as a graph, diffs; every operation a command |
+
 Every plugin folder holds `plugin.json`, `README.md`, and as needed `ui/`, `logic/`, `tool/` and `tests/`.
 
 Status: `sidebar`, `eris`, `onboarding`, `toolbar`, `dock` and the ten `desk.*` policies work. With the
