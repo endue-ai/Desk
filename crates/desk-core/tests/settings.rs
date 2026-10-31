@@ -1,6 +1,7 @@
-//! settings.get, settings.set and settings.list (ADR 0031): keys per owner, read through three layers
-//! (the manifest default, init.yaml, the set value), another owner's keys under `settings:read`,
-//! `settings.changed` on the bus, and set values kept in one file across a restart.
+//! settings.get, settings.set and settings.list (ADR 0031): keys per owner, read through three
+//! layers (the manifest default, init.yaml, the set value), another owner's keys under
+//! `settings:read`, `settings.changed` on the bus, and set values kept in one file across a
+//! restart.
 
 mod support;
 
