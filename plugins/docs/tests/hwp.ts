@@ -1,7 +1,7 @@
 // Builds HWP 5.0 files in code (the compound file, its FileHeader, a DocInfo with paragraph shapes
 // and deflated BodyText sections of records), and the HWPX package (OWPML) for the same document.
 import { makeCfb, utf16 } from "./cfb";
-import { concat, deflateRaw, makeZip, PNG } from "./zip";
+import { concat, crc32, deflateRaw, makeZip, PNG } from "./zip";
 
 const TAG = { PARA_SHAPE: 25, PARA_HEADER: 66, PARA_TEXT: 67, CTRL_HEADER: 71 } as const;
 const LIST_HEADER = 72;
@@ -81,6 +81,10 @@ function table(rows: string[][], level: number): Uint8Array {
 /** Paragraph shapes: 0 is body text, 1 an outline heading at level 1. */
 const PARA_SHAPES = [record(TAG.PARA_SHAPE, 1, u32(0)), record(TAG.PARA_SHAPE, 1, u32(1 << 23))];
 
+/** Deflated as Hancom writes it: raw deflate, then a CRC and the size (which strict inflaters reject). */
+const hancomDeflate = async (bytes: Uint8Array) =>
+  concat([await deflateRaw(bytes), u32(crc32(bytes), bytes.length)]);
+
 export async function makeHwp(
   blocks: HwpBlock[],
   options: { password?: boolean; distribution?: boolean } = {},
@@ -98,11 +102,11 @@ export async function makeHwp(
   header.set(new TextEncoder().encode("HWP Document File"));
   const flags = 1 | (options.password ? 2 : 0) | (options.distribution ? 4 : 0);
   header.set(u32(0x05000300, flags), 32);
-  const docInfo = await deflateRaw(concat([record(16, 0, new Uint8Array(26)), ...PARA_SHAPES]));
+  const docInfo = await hancomDeflate(concat([record(16, 0, new Uint8Array(26)), ...PARA_SHAPES]));
   return makeCfb({
     FileHeader: header,
     DocInfo: docInfo,
-    "BodyText/Section0": await deflateRaw(concat(body)),
+    "BodyText/Section0": await hancomDeflate(concat(body)),
   });
 }
 

@@ -31,7 +31,10 @@ export function readWpd(bytes) {
   if (r.u16(12) !== 0) throw new DocError(ENCRYPTED);
   if (start >= bytes.length || start < 16)
     throw new DocError("This file is damaged: its document area is missing.");
-  const text = major === 0 ? wp5(bytes, start) : wp6(bytes, start);
+  // WordPerfect for DOS and Windows (product 1) is decoded; the Mac versions' codes differ, and
+  // their text is gathered from the printable runs between them.
+  const decoded = r.u8(8) !== 1 ? "" : major === 0 ? wp5(bytes, start) : wp6(bytes, start);
+  const text = decoded.trim() ? decoded : printableRuns(bytes.subarray(start));
   const blocks = paragraphsOf(text.replace(/\n{3,}/g, "\n\n").trim());
   return documentOf({
     format: "wpd",
@@ -100,4 +103,19 @@ function wp5(/** @type {Uint8Array} */ b, /** @type {number} */ start) {
     i++;
   }
   return out;
+}
+
+/** Runs of three or more printable ASCII characters, one per line. */
+function printableRuns(/** @type {Uint8Array} */ bytes) {
+  const lines = [];
+  let run = "";
+  for (const b of bytes) {
+    if (b >= 0x20 && b < 0x7f) run += String.fromCharCode(b);
+    else {
+      if (run.trim().length >= 3) lines.push(run.trim());
+      run = "";
+    }
+  }
+  if (run.trim().length >= 3) lines.push(run.trim());
+  return lines.join("\n");
 }

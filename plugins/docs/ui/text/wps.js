@@ -21,7 +21,6 @@ export function readWps(cfb, raw) {
     .replace(/\r\n?/g, "\n")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
-  if (!clean) throw new DocError("Docs found no text in this Works document.");
   return documentOf({
     format: "wps",
     formatName: "Microsoft Works document",

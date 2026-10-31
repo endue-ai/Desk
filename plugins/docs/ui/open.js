@@ -20,7 +20,6 @@ import { isZip, Zip } from "./zip.js";
 /** @typedef {import("./model.js").Opened} Opened */
 
 const OOXML = ["docx", "docm", "dotx", "dotm"];
-const ODF = ["odt", "ott", "fodt", "sxw"];
 
 const extOf = (/** @type {string} */ path) => {
   const name = path.slice(path.lastIndexOf("/") + 1);
@@ -76,10 +75,10 @@ async function read(bytes, ext, state) {
     const inner = await inflate(bytes, "gzip").catch(() => {
       throw new DocError("This file is damaged: it does not decompress.");
     });
-    return readXml(decodeText(inner), ext, state, pick);
+    return readXml(decodeText(inner), state);
   }
   const head = decodeText(bytes.subarray(0, 512)).trimStart();
-  if (head.startsWith("<")) return readXml(decodeText(bytes), ext, state, pick);
+  if (head.startsWith("<")) return readXml(decodeText(bytes), state);
   if (head.startsWith("{") && (ext === "gdoc" || /"doc_id"|"url"/.test(head))) {
     state.format = "gdoc";
     return readGdoc(decodeText(bytes));
@@ -112,7 +111,7 @@ async function readZip(zip, ext, state, pick) {
       : mimetype.endsWith("text-template")
         ? "ott"
         : mimetype === "" || mimetype.endsWith(".text") || mimetype.endsWith("text-master")
-          ? pick(["odt", "ott"], "odt")
+          ? pick(["odt", "ott", "sxw"], "odt")
           : "";
     if (!format)
       throw new DocError(`This OpenDocument package is not a text document (${mimetype}).`);
@@ -158,11 +157,9 @@ function readCompound(cfb, _ext, state, pick) {
 
 /**
  * @param {string} text
- * @param {string} ext
  * @param {{ format: string }} state
- * @param {(family: string[], fallback: string) => string} pick
  */
-function readXml(text, _ext, state, pick) {
+function readXml(text, state) {
   const root = /<([A-Za-z_][\w.-]*:)?([A-Za-z_][\w.-]*)[\s>/]/.exec(
     text.replace(/<\?[\s\S]*?\?>|<!--[\s\S]*?-->|<!DOCTYPE[^>]*>/g, ""),
   );
@@ -172,7 +169,7 @@ function readXml(text, _ext, state, pick) {
     return readAbw(text);
   }
   if (name === "document" && /opendocument|openoffice/.test(text.slice(0, 4000))) {
-    state.format = pick(ODF, "fodt") === "odt" ? "fodt" : state.format;
+    state.format = "fodt";
     return readOdfFlat(text, "fodt");
   }
   if (name === "html")
