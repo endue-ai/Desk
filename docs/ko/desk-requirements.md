@@ -186,6 +186,7 @@ Tauri 셸과 `desk-sys` 는 드라이버입니다. 검사는 하지 않고 코�
 | 플러그인 | 역할 | 단계 |
 | --- | --- | --- |
 | `notes` | 마크다운 메모 표면, 폴더에 파일로 저장 | 2 |
+| `git` | 키보드 중심 Git 표면: 상태 · 스테이징 · 커밋 · 로그 그래프 · diff. 모든 동작이 커맨드. 요구사항은 `git-plugin-requirements.md` | 2 |
 | `viewer` | 마크다운 · 이미지 · JSON · PDF 미리보기 | 2 |
 | `calendar` · `mail` | endue 커넥터 표면 (장면 6 · 7) | 3 |
 | `tasks` | 할 일 보드 (장면 8 "Plan my week") | 3 |

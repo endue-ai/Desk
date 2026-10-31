@@ -31,6 +31,15 @@ pub fn rfc3339(secs: u64) -> String {
     )
 }
 
+/// `time` in UTC with milliseconds, as `YYYY-MM-DDTHH:MM:SS.mmmZ`, for log entries; times before
+/// 1970 are written as the epoch. Grants keep whole seconds (`rfc3339_now`).
+pub fn rfc3339_millis(time: SystemTime) -> String {
+    let since = time.duration_since(UNIX_EPOCH).unwrap_or_default();
+    let seconds = rfc3339(since.as_secs());
+    let whole = seconds.strip_suffix('Z').unwrap_or(&seconds);
+    format!("{whole}.{:03}Z", since.subsec_millis())
+}
+
 /// Seconds since the Unix epoch of an RFC 3339 time with an offset (`Z`, `+09:00`) and an optional
 /// fraction, which is dropped; `None` when it does not read as one.
 pub fn parse_rfc3339(text: &str) -> Option<i64> {
@@ -85,7 +94,9 @@ pub fn parse_rfc3339(text: &str) -> Option<i64> {
 
 #[cfg(test)]
 mod tests {
-    use super::{parse_rfc3339, rfc3339};
+    use std::time::{Duration, UNIX_EPOCH};
+
+    use super::{parse_rfc3339, rfc3339, rfc3339_millis};
 
     #[test]
     fn reads_times_with_offsets_and_fractions() {
@@ -114,5 +125,13 @@ mod tests {
         assert_eq!(rfc3339(0), "1970-01-01T00:00:00Z");
         assert_eq!(rfc3339(951_782_400), "2000-02-29T00:00:00Z");
         assert_eq!(rfc3339(1_793_088_000), "2026-10-27T08:00:00Z");
+    }
+
+    #[test]
+    fn formats_milliseconds_always() {
+        let at = |millis: u64| rfc3339_millis(UNIX_EPOCH + Duration::from_millis(millis));
+        assert_eq!(at(0), "1970-01-01T00:00:00.000Z");
+        assert_eq!(at(1_793_088_000_123), "2026-10-27T08:00:00.123Z");
+        assert_eq!(at(1_793_088_000_007), "2026-10-27T08:00:00.007Z");
     }
 }

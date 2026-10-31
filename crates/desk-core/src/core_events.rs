@@ -1,8 +1,9 @@
 //! The events side of `Core`: events.subscribe and events.unsubscribe, and who an addressed event is
 //! for. A caller hears events about its own work without asking; a subscription adds the named events
 //! about every caller, under an `events:subscribe` scope covering every name. A subscription lasts
-//! while a grant covers it and the caller is loaded. `settings.changed` and `log.entry` are accepted
-//! names that nothing publishes yet.
+//! while a grant covers it and the caller is loaded. Data permissions still apply when an event is
+//! published: `settings.changed` only under a covering `settings:read` grant (`core_settings`),
+//! `log.entry` only with `log:read` (`core_log`).
 
 use std::collections::BTreeMap;
 use std::sync::MutexGuard;

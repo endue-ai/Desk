@@ -1,0 +1,308 @@
+{
+  "tag": "main",
+  "data-density": "regular",
+  "children": [
+    {
+      "tag": "header",
+      "class": "bar",
+      "children": [
+        {
+          "tag": "h1",
+          "text": "Today"
+        },
+        {
+          "tag": "p",
+          "class": "description",
+          "text": "Today's events, the tasks due by tonight, unread messages and the notes touched last."
+        }
+      ]
+    },
+    {
+      "tag": "div",
+      "class": "container grid",
+      "data-direction": "horizontal",
+      "children": [
+        {
+          "tag": "div",
+          "class": "pane",
+          "children": [
+            {
+              "tag": "section",
+              "class": "component",
+              "data-component": "agenda",
+              "data-state": "ready",
+              "children": [
+                {
+                  "tag": "h2",
+                  "class": "component-title",
+                  "text": "Schedule"
+                },
+                {
+                  "tag": "desk-agenda",
+                  "density": "regular",
+                  "label": "Schedule",
+                  "time-zone": "Asia/Seoul",
+                  "now": "2026-10-30T09:00:00+09:00",
+                  "shadow": [
+                    {
+                      "tag": "div",
+                      "role": "listbox",
+                      "aria-label": "Schedule",
+                      "tabindex": "0",
+                      "children": [
+                        {
+                          "tag": "div",
+                          "role": "separator",
+                          "aria-label": "Now, 09:00",
+                          "class": "now"
+                        },
+                        {
+                          "tag": "div",
+                          "role": "option",
+                          "aria-selected": "false",
+                          "children": [
+                            {
+                              "tag": "span",
+                              "class": "time",
+                              "text": "10:00"
+                            },
+                            {
+                              "tag": "span",
+                              "class": "title",
+                              "text": "10:00 Team standup"
+                            },
+                            {
+                              "tag": "span",
+                              "class": "detail",
+                              "text": "Room 3"
+                            }
+                          ]
+                        },
+                        {
+                          "tag": "div",
+                          "role": "option",
+                          "aria-selected": "false",
+                          "children": [
+                            {
+                              "tag": "span",
+                              "class": "time",
+                              "text": "12:30"
+                            },
+                            {
+                              "tag": "span",
+                              "class": "title",
+                              "text": "12:30 Lunch with Mina"
+                            },
+                            {
+                              "tag": "span",
+                              "class": "detail",
+                              "text": "Bistro Seoul"
+                            }
+                          ]
+                        },
+                        {
+                          "tag": "div",
+                          "role": "option",
+                          "aria-selected": "false",
+                          "children": [
+                            {
+                              "tag": "span",
+                              "class": "time",
+                              "text": "16:00"
+                            },
+                            {
+                              "tag": "span",
+                              "class": "title",
+                              "text": "16:00 Design review"
+                            },
+                            {
+                              "tag": "span",
+                              "class": "detail",
+                              "text": "Room 1"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "div",
+          "class": "pane",
+          "children": [
+            {
+              "tag": "section",
+              "class": "component",
+              "data-component": "list",
+              "data-state": "unbound",
+              "children": [
+                {
+                  "tag": "h2",
+                  "class": "component-title",
+                  "text": "Due"
+                },
+                {
+                  "tag": "p",
+                  "class": "status",
+                  "text": "No source is connected for this yet."
+                },
+                {
+                  "tag": "desk-button",
+                  "role": "button",
+                  "tabindex": "0",
+                  "density": "regular",
+                  "text": "Connect a source",
+                  "shadow": [
+                    {
+                      "tag": "slot"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "div",
+          "class": "pane",
+          "children": [
+            {
+              "tag": "section",
+              "class": "component",
+              "data-component": "list",
+              "data-state": "ready",
+              "children": [
+                {
+                  "tag": "h2",
+                  "class": "component-title",
+                  "text": "Unread"
+                },
+                {
+                  "tag": "desk-list",
+                  "role": "listbox",
+                  "aria-label": "Unread",
+                  "tabindex": "0",
+                  "density": "regular",
+                  "label": "Unread",
+                  "shadow": [
+                    {
+                      "tag": "slot"
+                    }
+                  ],
+                  "children": [
+                    {
+                      "tag": "div",
+                      "role": "option",
+                      "aria-selected": "false",
+                      "children": [
+                        {
+                          "tag": "span",
+                          "class": "title",
+                          "text": "Lunch today?"
+                        },
+                        {
+                          "tag": "span",
+                          "class": "detail",
+                          "text": "Mina · 48 minutes ago"
+                        }
+                      ]
+                    },
+                    {
+                      "tag": "div",
+                      "role": "option",
+                      "aria-selected": "false",
+                      "children": [
+                        {
+                          "tag": "span",
+                          "class": "title",
+                          "text": "Boiler check on Monday"
+                        },
+                        {
+                          "tag": "span",
+                          "class": "detail",
+                          "text": "Mr. Park · 16 hours ago"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "div",
+          "class": "pane",
+          "children": [
+            {
+              "tag": "section",
+              "class": "component",
+              "data-component": "list",
+              "data-state": "ready",
+              "children": [
+                {
+                  "tag": "h2",
+                  "class": "component-title",
+                  "text": "Last touched"
+                },
+                {
+                  "tag": "desk-list",
+                  "role": "listbox",
+                  "aria-label": "Last touched",
+                  "tabindex": "0",
+                  "density": "regular",
+                  "label": "Last touched",
+                  "shadow": [
+                    {
+                      "tag": "slot"
+                    }
+                  ],
+                  "children": [
+                    {
+                      "tag": "div",
+                      "role": "option",
+                      "aria-selected": "false",
+                      "children": [
+                        {
+                          "tag": "span",
+                          "class": "title",
+                          "text": "Ideas for the offsite"
+                        },
+                        {
+                          "tag": "span",
+                          "class": "detail",
+                          "text": "4 days ago"
+                        }
+                      ]
+                    },
+                    {
+                      "tag": "div",
+                      "role": "option",
+                      "aria-selected": "false",
+                      "children": [
+                        {
+                          "tag": "span",
+                          "class": "title",
+                          "text": "Kimchi stew"
+                        },
+                        {
+                          "tag": "span",
+                          "class": "detail",
+                          "text": "6 days ago"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

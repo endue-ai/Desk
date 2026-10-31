@@ -1,0 +1,328 @@
+/* The desk's design tokens (@endue-ai/ui). Frames do not inherit the desk's, so they are declared
+   here; the runtime redefines them for the theme in force. The lane colours are the plugin's own. */
+:root {
+  --desk-background: #141416;
+  --desk-card: #1e1d21;
+  --desk-border: #333136;
+  --desk-text: #f2f0f5;
+  --desk-text-muted: #b0adb7;
+  --desk-accent: #b6a3f5;
+  --git-add: rgba(95, 208, 190, 0.18);
+  --git-add-text: #7fe0cf;
+  --git-del: rgba(224, 115, 138, 0.18);
+  --git-del-text: #f29bb0;
+  --git-lane-0: #b6a3f5;
+  --git-lane-1: #5fd0be;
+  --git-lane-2: #e8c98a;
+  --git-lane-3: #5b9bf5;
+  --git-lane-4: #e0738a;
+  --git-lane-5: #8fd36b;
+  --git-lane-6: #f5a35b;
+  --git-lane-7: #a7b1c3;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  margin: 0;
+  background: var(--desk-card);
+  color: var(--desk-text);
+  font: 13px/1.6 -apple-system, "SUIT", "Inter", system-ui, sans-serif;
+}
+
+header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  padding: 8px 12px 4px;
+  border-bottom: 1px solid var(--desk-border);
+}
+
+h1 {
+  margin: 0;
+  font-size: 15px;
+}
+
+#head {
+  display: flex;
+  gap: 8px;
+  margin: 0;
+  color: var(--desk-text-muted);
+}
+
+#branch {
+  color: var(--desk-text);
+}
+
+#busy {
+  color: var(--desk-accent);
+}
+
+main {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+}
+
+#view {
+  flex: 1;
+  overflow: auto;
+  padding: 6px 0;
+  outline: none;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 12px;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 22px;
+  padding: 0 12px;
+  white-space: pre;
+  cursor: default;
+}
+
+.row[aria-level="2"] {
+  padding-left: 28px;
+}
+
+.row[aria-level="3"] {
+  padding-left: 12px;
+}
+
+.row:focus,
+.row[aria-selected="true"] {
+  background: color-mix(in srgb, var(--desk-accent) 16%, transparent);
+  outline: none;
+}
+
+.row.section,
+.row.head .label {
+  color: var(--desk-text-muted);
+}
+
+.row.section .title {
+  color: var(--desk-text);
+  font-weight: 600;
+}
+
+.row .caret {
+  width: 1ch;
+  color: var(--desk-text-muted);
+}
+
+.row .change {
+  width: 1ch;
+  font-weight: 600;
+}
+
+.row.modified .change,
+.row.typechange .change {
+  color: var(--git-lane-2);
+}
+
+.row.added .change,
+.row.untracked .change {
+  color: var(--git-add-text);
+}
+
+.row.deleted .change,
+.row.unmerged .change {
+  color: var(--git-del-text);
+}
+
+.row.renamed .change,
+.row.copied .change {
+  color: var(--git-lane-3);
+}
+
+.row .detail,
+.row .meta,
+.row .counts,
+.row .heading,
+.row .no {
+  color: var(--desk-text-muted);
+}
+
+.row .sha {
+  color: var(--git-lane-2);
+}
+
+.row .refs:empty {
+  display: none;
+}
+
+.ref {
+  margin-right: 4px;
+  padding: 0 5px;
+  border: 1px solid var(--desk-border);
+  border-radius: 8px;
+  color: var(--desk-text-muted);
+  font-size: 11px;
+}
+
+.ref.current,
+.ref.branch.current {
+  border-color: var(--desk-accent);
+  color: var(--desk-accent);
+}
+
+.ref.remote {
+  color: var(--git-lane-1);
+}
+
+.ref.tag {
+  color: var(--git-lane-2);
+}
+
+.row .subject {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.row.more,
+.row.empty {
+  color: var(--desk-text-muted);
+  font-style: italic;
+}
+
+.graph {
+  flex: none;
+  overflow: visible;
+}
+
+.graph .lane {
+  fill: none;
+  stroke-width: 1.5;
+}
+
+.graph .dot {
+  stroke: var(--desk-card);
+  stroke-width: 1;
+}
+
+.lane-0 { stroke: var(--git-lane-0); fill: var(--git-lane-0); }
+.lane-1 { stroke: var(--git-lane-1); fill: var(--git-lane-1); }
+.lane-2 { stroke: var(--git-lane-2); fill: var(--git-lane-2); }
+.lane-3 { stroke: var(--git-lane-3); fill: var(--git-lane-3); }
+.lane-4 { stroke: var(--git-lane-4); fill: var(--git-lane-4); }
+.lane-5 { stroke: var(--git-lane-5); fill: var(--git-lane-5); }
+.lane-6 { stroke: var(--git-lane-6); fill: var(--git-lane-6); }
+.lane-7 { stroke: var(--git-lane-7); fill: var(--git-lane-7); }
+
+.graph .lane {
+  fill: none;
+}
+
+.row.hunk {
+  color: var(--git-lane-3);
+}
+
+.row.line {
+  min-height: 18px;
+  gap: 0;
+}
+
+.row.line .no {
+  flex: none;
+  width: 5ch;
+  text-align: right;
+  padding-right: 1ch;
+  user-select: none;
+}
+
+.row.line .text {
+  flex: 1;
+  padding-left: 1ch;
+}
+
+.row.line.add {
+  background: var(--git-add);
+}
+
+.row.line.add .text {
+  color: var(--git-add-text);
+}
+
+.row.line.del {
+  background: var(--git-del);
+}
+
+.row.line.del .text {
+  color: var(--git-del-text);
+}
+
+.row.line.note .text {
+  color: var(--desk-text-muted);
+  font-style: italic;
+}
+
+#commit {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+}
+
+#commit h2 {
+  margin: 0;
+  font-size: 14px;
+}
+
+#commit-summary,
+#commit .hint {
+  margin: 0;
+  color: var(--desk-text-muted);
+}
+
+#commit-message {
+  flex: 1;
+  min-height: 120px;
+  padding: 8px;
+  border: 1px solid var(--desk-border);
+  border-radius: 6px;
+  background: var(--desk-background);
+  color: var(--desk-text);
+  font: 13px/1.5 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  resize: none;
+}
+
+#commit-message:focus {
+  border-color: var(--desk-accent);
+  outline: none;
+}
+
+#commit .options {
+  display: flex;
+  gap: 16px;
+  margin: 0;
+}
+
+footer {
+  padding: 4px 12px 8px;
+  border-top: 1px solid var(--desk-border);
+  color: var(--desk-text-muted);
+  font-size: 12px;
+}
+
+footer p {
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#status:empty {
+  display: none;
+}

@@ -17,12 +17,14 @@ import {
 } from "./layout";
 import type { Notice, NoticeInput } from "./notify";
 import { PluginHost, type PluginHostOptions } from "./plugins";
+import { installAliases } from "./policies/aliases";
 import { installBuffers } from "./policies/buffers";
 import type { DeskContext } from "./policies/context";
 import { installDisplay } from "./policies/display";
 import { installFiles } from "./policies/files";
 import { installKeys, PERSONAL_KEYS } from "./policies/keys";
 import { installNotify } from "./policies/notify";
+import { installPalette } from "./policies/palette";
 import { installProfiles } from "./policies/profiles";
 import { installSession, type SessionPart } from "./policies/session";
 import { installTheme } from "./policies/theme";
@@ -187,6 +189,9 @@ export function createRuntime(options: RuntimeOptions): Runtime {
   };
   const theme = installTheme(ctx, options.themeRoot);
   const keys = installKeys(ctx);
+  // Contributed commands with `runs`, and the palette's providers, are the desk's to answer.
+  const aliases = installAliases(ctx);
+  const palette = installPalette(ctx);
   const notify = installNotify(ctx, statusLine);
   const focusSurface = (id: string | null) => {
     shortcuts.focus(id);
@@ -342,7 +347,8 @@ export function createRuntime(options: RuntimeOptions): Runtime {
     status: () => notify.text(),
     dispose() {
       routing.dispose();
-      for (const policy of [profiles, session, files, buffers, display, notify, keys, theme]) {
+      const policies = [profiles, session, files, buffers, display, notify, palette, aliases];
+      for (const policy of [...policies, keys, theme]) {
         policy.dispose();
       }
       pluginHost?.stop();
