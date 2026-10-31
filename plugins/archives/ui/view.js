@@ -1,0 +1,156 @@
+// The DOM for the archives plugin: the file's name, format and levels, its details, the tree with
+// sort buttons and a name filter, the preview, the extract buttons, a progress line and a status
+// live region. Chords the desk binds are never prevented; Mod+F and Escape inside the surface are
+// the plugin's (Escape only while an extraction runs).
+import { createPreview } from "./view-preview.js";
+import { createTree } from "./view-tree.js";
+
+/**
+ * @typedef {import("./archives.js").ArchiveModel} ArchiveModel
+ * @typedef {import("./preview.js").PreviewModel} PreviewModel
+ * @typedef {{
+ *   select(id: string): unknown, toggle(id: string): unknown, open(id: string): unknown,
+ *   up(): unknown, sort(by: "name" | "size" | "date"): unknown, filter(text: string): unknown,
+ *   mark(id: string): unknown, extract(which: "selected" | "all"): unknown, stop(): unknown,
+ * }} Actions
+ */
+
+/** @param {Document} doc @param {Actions} actions */
+export function createView(doc, actions) {
+  const byId = (/** @type {string} */ id) => /** @type {HTMLElement} */ (doc.getElementById(id));
+  const name = byId("archive-name");
+  const about = byId("archive-about");
+  const levels = byId("levels");
+  const note = byId("note");
+  const details = byId("details");
+  const browser = byId("browser");
+  const summary = byId("summary");
+  const filter = /** @type {HTMLInputElement} */ (byId("filter"));
+  const up = /** @type {HTMLButtonElement} */ (byId("up"));
+  const selectedButton = /** @type {HTMLButtonElement} */ (byId("extract-selected"));
+  const allButton = /** @type {HTMLButtonElement} */ (byId("extract-all"));
+  const stop = /** @type {HTMLButtonElement} */ (byId("stop"));
+  const progress = byId("progress");
+  const status = byId("status");
+  const treeElement = byId("tree");
+  /** @type {ArchiveModel | null} */
+  let model = null;
+
+  const tree = createTree(doc, treeElement, actions);
+  const preview = createPreview(doc, byId("preview"), {
+    open: () => model?.selected && actions.open(model.selected),
+  });
+
+  filter.addEventListener("input", () => actions.filter(filter.value));
+  up.addEventListener("click", () => actions.up());
+  selectedButton.addEventListener("click", () => actions.extract("selected"));
+  allButton.addEventListener("click", () => actions.extract("all"));
+  stop.addEventListener("click", () => actions.stop());
+  for (const button of doc.querySelectorAll("button[data-sort]"))
+    button.addEventListener("click", () =>
+      actions.sort(
+        /** @type {"name" | "size" | "date"} */ (/** @type {HTMLElement} */ (button).dataset.sort),
+      ),
+    );
+  levels.addEventListener("click", (event) => {
+    const button = /** @type {HTMLElement} */ (event.target).closest?.("button[data-up]");
+    if (button)
+      for (let i = Number(/** @type {HTMLElement} */ (button).dataset.up); i > 0; i--) actions.up();
+  });
+
+  doc.addEventListener("keydown", (event) => {
+    const mod = event.metaKey || event.ctrlKey;
+    if (mod && !event.altKey && !event.shiftKey && event.key.toLowerCase() === "f") {
+      event.preventDefault();
+      filter.focus();
+      filter.select();
+    } else if (event.key === "Escape" && !mod && model?.extracting) {
+      event.preventDefault();
+      actions.stop();
+    } else if (event.key === "Escape" && !mod && doc.activeElement === filter && filter.value) {
+      event.preventDefault();
+      filter.value = "";
+      actions.filter("");
+      treeElement.focus();
+    }
+  });
+
+  return {
+    /** @param {ArchiveModel | null} next */
+    archive(next) {
+      model = next;
+      name.textContent = next ? next.name : "No archive open";
+      about.textContent = next ? `${next.format}, ${next.path}` : "";
+      levels.hidden = !next || next.levels.length < 2;
+      levels.replaceChildren(
+        ...(next?.levels ?? []).map((level, i, all) => {
+          const item = doc.createElement(i < all.length - 1 ? "button" : "span");
+          item.textContent = level;
+          if (i < all.length - 1) {
+            item.dataset.up = String(all.length - 1 - i);
+            /** @type {HTMLButtonElement} */ (item).type = "button";
+          } else item.setAttribute("aria-current", "location");
+          return item;
+        }),
+      );
+      up.hidden = levels.hidden;
+      note.hidden = !next?.note;
+      note.textContent = next?.note ?? "";
+      details.hidden = !next?.details.length;
+      details.replaceChildren(
+        ...(next?.details ?? []).flatMap((d) => {
+          const dt = doc.createElement("dt");
+          dt.textContent = d.label;
+          const dd = doc.createElement("dd");
+          dd.textContent = d.value;
+          return [dt, dd];
+        }),
+      );
+      const listing = !!next && !next.note;
+      browser.hidden = !listing;
+      summary.textContent = listing ? (next?.summary ?? "") : "";
+      if (next && filter.value !== next.filter) filter.value = next.filter;
+      for (const header of doc.querySelectorAll("[aria-sort]")) {
+        const by = /** @type {HTMLElement | null} */ (header.querySelector("button[data-sort]"))
+          ?.dataset.sort;
+        const on = next?.sort.by === by;
+        header.setAttribute(
+          "aria-sort",
+          on ? (next?.sort.descending ? "descending" : "ascending") : "none",
+        );
+      }
+      const refused = next?.refusal;
+      selectedButton.disabled = !listing || !!refused || !!next?.extracting;
+      allButton.disabled = !listing || !!refused || !!next?.extracting;
+      allButton.title = refused ?? "";
+      selectedButton.title = refused ?? "";
+      stop.hidden = !next?.extracting;
+      tree.render(listing ? (next?.rows ?? []) : [], next?.selected ?? null);
+    },
+
+    /** @param {PreviewModel | null} next */
+    preview(next) {
+      preview(next);
+    },
+
+    /** @param {string} words */
+    status(words) {
+      status.textContent = words;
+    },
+
+    /** @param {string} line */
+    progress(line) {
+      progress.textContent = line;
+      progress.hidden = !line;
+      const running = !!line && line.startsWith("Extracting");
+      if (model) model.extracting = running;
+      stop.hidden = !running;
+      selectedButton.disabled = running || selectedButton.disabled;
+      allButton.disabled = running || allButton.disabled;
+    },
+
+    focus() {
+      if (!browser.hidden) treeElement.focus();
+    },
+  };
+}

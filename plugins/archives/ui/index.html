@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Archives</title>
+    <script type="importmap">
+      { "imports": { "@endue-ai/plugin-sdk": "/_desk/plugin-sdk.js" } }
+    </script>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <header>
+      <div class="title">
+        <h1 id="archive-name">No archive open</h1>
+        <p id="archive-about"></p>
+        <nav id="levels" aria-label="Archive levels" hidden></nav>
+      </div>
+      <div class="actions">
+        <input id="filter" type="search" placeholder="Filter by name" aria-label="Filter by name" />
+        <button id="up" type="button" hidden>Up one level</button>
+        <button id="extract-selected" type="button">Extract selected</button>
+        <button id="extract-all" type="button">Extract all</button>
+        <button id="stop" type="button" hidden>Stop</button>
+      </div>
+    </header>
+    <section id="about" aria-label="Details">
+      <p id="note" hidden></p>
+      <dl id="details" hidden></dl>
+    </section>
+    <main id="browser" hidden>
+      <div id="listing">
+        <div class="columns" role="row">
+          <span role="columnheader" aria-sort="ascending" class="name"><button type="button" data-sort="name">Name</button></span>
+          <span role="columnheader" aria-sort="none" class="size"><button type="button" data-sort="size">Size</button></span>
+          <span role="columnheader" class="packed">Packed</span>
+          <span role="columnheader" aria-sort="none" class="date"><button type="button" data-sort="date">Date</button></span>
+          <span role="columnheader" class="method">Method</span>
+        </div>
+        <div id="tree" role="tree" tabindex="0" aria-label="Contents" aria-describedby="summary"></div>
+        <p id="summary"></p>
+      </div>
+      <section id="preview" aria-label="Preview" hidden></section>
+    </main>
+    <footer>
+      <p id="progress" hidden></p>
+      <p id="status" role="status"></p>
+    </footer>
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>
