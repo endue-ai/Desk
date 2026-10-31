@@ -30,6 +30,16 @@ export function half(/** @type {number} */ h) {
   return s * (1 + m / 1024) * 2 ** (e - 15);
 }
 
+/** Every half as a float, built on first use. */
+/** @type {Float32Array | null} */
+let halves = null;
+const halfTable = () => {
+  if (halves) return halves;
+  halves = new Float32Array(65536);
+  for (let h = 0; h < 65536; h++) halves[h] = half(h);
+  return halves;
+};
+
 /** The header's attributes, by name, as [type, start, size]; and where the offset table starts. */
 function attributes(/** @type {Uint8Array} */ bytes) {
   const r = reader(bytes);
@@ -75,10 +85,17 @@ function unRle(/** @type {Uint8Array} */ data, /** @type {number} */ size) {
 
 /** Undo the predictor and the byte interleave that RLE and ZIP apply before compressing. */
 function unPredict(/** @type {Uint8Array} */ t) {
-  for (let i = 1; i < t.length; i++) t[i] = ((t[i - 1] ?? 0) + (t[i] ?? 0) - 128) & 255;
+  let previous = t[0] ?? 0;
+  for (let i = 1; i < t.length; i++) {
+    previous = (previous + /** @type {number} */ (t[i]) - 128) & 255;
+    t[i] = previous;
+  }
   const out = new Uint8Array(t.length);
-  const mid = Math.floor((t.length + 1) / 2);
-  for (let i = 0, a = 0, b = mid; i < t.length; i++) out[i] = (i % 2 === 0 ? t[a++] : t[b++]) ?? 0;
+  const mid = (t.length + 1) >> 1;
+  for (let i = 0, a = 0, b = mid; i < t.length; i += 2) {
+    out[i] = /** @type {number} */ (t[a++]);
+    if (i + 1 < t.length) out[i + 1] = /** @type {number} */ (t[b++]);
+  }
   return out;
 }
 
@@ -124,6 +141,11 @@ export async function decodeExr(/** @type {Uint8Array} */ bytes) {
     ri = gi = bi = y;
   }
 
+  const table = halfTable();
+  /** Which RGBA slots each channel fills. */
+  const targetsOf = channels.map((_, index) =>
+    [ri, gi, bi, ai].flatMap((t, k) => (t === index ? [k] : [])),
+  );
   const lines = LINES[compression] ?? 1;
   const chunks = Math.ceil(height / lines);
   const float = new Float32Array(width * height * 4);
@@ -140,20 +162,28 @@ export async function decodeExr(/** @type {Uint8Array} */ bytes) {
     if (size < expected && compression === 1) data = unPredict(unRle(data, expected));
     else if (size < expected && compression >= 2) data = unPredict(await inflate(data, "deflate"));
     if (data.length < expected) fail("A block of its pixels is damaged.");
-    const d = reader(data);
+    const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
     for (let row = 0; row < rows; row++) {
       const y = y0 + row;
       if (y < 0 || y >= height) continue;
       let at = row * bytesPerLine;
-      channels.forEach((channel, index) => {
-        const targets = [ri, gi, bi, ai].flatMap((t, k) => (t === index ? [k] : []));
-        for (let x = 0; x < width; x++) {
-          const p = at + x * channel.bytes;
-          const v = channel.type === 1 ? half(d.u16(p)) : channel.type === 2 ? d.f32(p) : d.u32(p);
-          for (const k of targets) float[(y * width + x) * 4 + k] = v;
-        }
+      for (let ci = 0; ci < channels.length; ci++) {
+        const channel = channels[ci];
+        const targets = targetsOf[ci] ?? [];
+        if (!channel) continue;
+        if (targets.length > 0)
+          for (let x = 0, o = y * width * 4; x < width; x++, o += 4) {
+            const p = at + x * channel.bytes;
+            const v =
+              channel.type === 1
+                ? (table[view.getUint16(p, true)] ?? 0)
+                : channel.type === 2
+                  ? view.getFloat32(p, true)
+                  : view.getUint32(p, true);
+            for (const k of targets) float[o + k] = v;
+          }
         at += channel.bytes * width;
-      });
+      }
     }
   }
   const kinds = [...new Set(channels.map((c) => ["UINT", "HALF", "FLOAT"][c.type] ?? "?"))].join(

@@ -3,6 +3,8 @@
 import { fail, reader } from "../bytes.js";
 import { canvasFor, enough } from "./pixels.js";
 
+const five = (/** @type {number} */ c) => (c << 3) | (c >> 2);
+
 /** @returns {import("./pixels.js").Pixels} */
 export function decodeTga(/** @type {Uint8Array} */ bytes) {
   const r = reader(bytes);
@@ -16,85 +18,81 @@ export function decodeTga(/** @type {Uint8Array} */ bytes) {
   if (![1, 2, 3].includes(base) || type > 11)
     fail("It uses a TGA image type Images does not read.");
   const alphaBits = descriptor & 15;
+  const grey = base === 3;
   const out = canvasFor(width, height);
 
-  /** One colour of `size` bits at `at`, as RGBA. */
+  /** Write the colour of `size` bits at `at` into `to` at `o`. */
   const colour = (
+    /** @type {Uint8Array | Uint8ClampedArray} */ to,
+    /** @type {number} */ o,
     /** @type {number} */ at,
     /** @type {number} */ size,
-    /** @type {boolean} */ grey,
+    /** @type {boolean} */ isGrey,
   ) => {
-    if (grey) {
-      const v = r.u8(at);
-      return [v, v, v, size === 16 ? r.u8(at + 1) : 255];
-    }
-    if (size === 15 || size === 16) {
-      const v = r.u16(at);
-      const five = (/** @type {number} */ c) => (c << 3) | (c >> 2);
-      return [
-        five((v >> 10) & 31),
-        five((v >> 5) & 31),
-        five(v & 31),
-        size === 16 && alphaBits ? (v & 0x8000 ? 255 : 0) : 255,
-      ];
-    }
-    if (size === 24) return [r.u8(at + 2), r.u8(at + 1), r.u8(at), 255];
-    if (size === 32) return [r.u8(at + 2), r.u8(at + 1), r.u8(at), r.u8(at + 3)];
-    return fail(`It stores ${size}-bit pixels, which TGA does not define.`);
+    if (isGrey) {
+      const v = bytes[at] ?? 0;
+      to[o] = to[o + 1] = to[o + 2] = v;
+      to[o + 3] = size === 16 ? (bytes[at + 1] ?? 0) : 255;
+    } else if (size === 15 || size === 16) {
+      const v = (bytes[at] ?? 0) | ((bytes[at + 1] ?? 0) << 8);
+      to[o] = five((v >> 10) & 31);
+      to[o + 1] = five((v >> 5) & 31);
+      to[o + 2] = five(v & 31);
+      to[o + 3] = size === 16 && alphaBits ? (v & 0x8000 ? 255 : 0) : 255;
+    } else if (size === 24 || size === 32) {
+      to[o] = bytes[at + 2] ?? 0;
+      to[o + 1] = bytes[at + 1] ?? 0;
+      to[o + 2] = bytes[at] ?? 0;
+      to[o + 3] = size === 32 ? (bytes[at + 3] ?? 0) : 255;
+    } else fail(`It stores ${size}-bit pixels, which TGA does not define.`);
   };
 
   let at = 18 + idLength;
-  /** @type {number[][]} */
-  const palette = [];
+  const palette = new Uint8Array(mapLength * 4);
   if (mapType === 1) {
     const step = Math.ceil(mapBits / 8);
     enough(bytes, at, mapLength * step);
-    for (let i = 0; i < mapLength; i++) palette.push(colour(at + i * step, mapBits, false));
+    for (let i = 0; i < mapLength; i++) colour(palette, i * 4, at + i * step, mapBits, false);
     at += mapLength * step;
   }
   const step = Math.ceil(bits / 8);
-  const pixelAt = (/** @type {number} */ p) => {
-    if (base === 1) {
-      const index = step === 1 ? r.u8(p) : r.u16(p);
-      return palette[index - mapFirst] ?? [0, 0, 0, 255];
-    }
-    return colour(p, bits, base === 3);
+  if (step < 1 || step > 4) fail(`It stores ${bits}-bit pixels, which TGA does not define.`);
+  const right = (descriptor & 0x10) !== 0;
+  const top = (descriptor & 0x20) !== 0;
+  /** Pixel `n` in file order, from the bytes at `p`. */
+  const put = (/** @type {number} */ n, /** @type {number} */ p) => {
+    const x = n % width;
+    const y = (n - x) / width;
+    const o = ((top ? y : height - 1 - y) * width + (right ? width - 1 - x : x)) * 4;
+    if (base !== 1) return colour(out, o, p, bits, grey);
+    const index =
+      (step === 1 ? (bytes[p] ?? 0) : (bytes[p] ?? 0) | ((bytes[p + 1] ?? 0) << 8)) - mapFirst;
+    out.set(
+      index >= 0 && index < mapLength ? palette.subarray(index * 4, index * 4 + 4) : [0, 0, 0, 255],
+      o,
+    );
   };
 
   const total = width * height;
-  const right = (descriptor & 0x10) !== 0;
-  const top = (descriptor & 0x20) !== 0;
-  const put = (/** @type {number} */ n, /** @type {number[]} */ px) => {
-    const x = n % width;
-    const y = Math.floor(n / width);
-    const ox = right ? width - 1 - x : x;
-    const oy = top ? y : height - 1 - y;
-    out.set(px, (oy * width + ox) * 4);
-  };
-  let n = 0;
-  while (n < total) {
-    if (!rle) {
-      enough(bytes, at, step);
-      put(n++, pixelAt(at));
-      at += step;
-      continue;
+  if (!rle) {
+    enough(bytes, at, total * step);
+    for (let n = 0; n < total; n++, at += step) put(n, at);
+  } else
+    for (let n = 0; n < total; ) {
+      enough(bytes, at, 1 + step);
+      const header = bytes[at++] ?? 0;
+      const count = (header & 0x7f) + 1;
+      if (header & 0x80) {
+        for (let i = 0; i < count && n < total; i++) put(n++, at);
+        at += step;
+      } else {
+        enough(bytes, at, count * step);
+        for (let i = 0; i < count && n < total; i++, at += step) put(n++, at);
+      }
     }
-    enough(bytes, at, 1 + step);
-    const header = r.u8(at++);
-    const count = (header & 0x7f) + 1;
-    if (header & 0x80) {
-      const px = pixelAt(at);
-      at += step;
-      for (let i = 0; i < count && n < total; i++) put(n++, px);
-    } else {
-      enough(bytes, at, count * step);
-      for (let i = 0; i < count && n < total; i++, at += step) put(n++, pixelAt(at));
-    }
-  }
   // A 32-bit file that says it has no alpha, and whose alpha bytes are all zero, is opaque.
   if (bits === 32 && alphaBits === 0 && out.every((v, i) => i % 4 !== 3 || v === 0))
     for (let i = 3; i < out.length; i += 4) out[i] = 255;
-  const colourName =
-    base === 1 ? "colour-mapped" : base === 3 ? "greyscale" : alphaBits ? "RGBA" : "RGB";
-  return { width, height, rgba: out, depth: `${bits}-bit ${colourName}${rle ? ", RLE" : ""}` };
+  const name = base === 1 ? "colour-mapped" : grey ? "greyscale" : alphaBits ? "RGBA" : "RGB";
+  return { width, height, rgba: out, depth: `${bits}-bit ${name}${rle ? ", RLE" : ""}` };
 }

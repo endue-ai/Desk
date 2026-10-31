@@ -35,7 +35,7 @@ export function rowsOf(d, size, seen = {}) {
 
 /**
  * What the view shows for one file.
- * @param {{ buffer: string, path: string, name: string, size: number, content?: string, bytes: Uint8Array }} file
+ * @param {{ buffer: string, path: string, name: string, size: number, content?: string, bytes?: Uint8Array }} file
  * @param {Decoded} d
  * @returns {ImageModel}
  */

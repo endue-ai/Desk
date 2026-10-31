@@ -63,50 +63,63 @@ export function decodeNetpbm(/** @type {Uint8Array} */ bytes) {
   const out = canvasFor(width ?? 0, height ?? 0);
   const total = (width ?? 0) * (height ?? 0);
   const scale = 255 / max;
-  /** @type {number[]} */
-  const samples = [];
-
+  const alpha = channels === 2 || channels === 4;
+  const bits = kind === 1 || kind === 4;
+  /** Put sample `index` (pixel-major) of value `v`, already scaled to 0-255. */
+  const put = (/** @type {number} */ index, /** @type {number} */ v) => {
+    const pixel = Math.floor(index / channels);
+    const c = index - pixel * channels;
+    const p = pixel * 4;
+    if (channels >= 3) {
+      if (c < 3) out[p + c] = v;
+      else out[p + 3] = v;
+    } else if (c === 0) out[p] = out[p + 1] = out[p + 2] = v;
+    else out[p + 3] = v;
+    if (!alpha && c === 0) out[p + 3] = 255;
+  };
+  const count = total * channels;
+  let filled = 0;
   if (kind === 1) {
-    // Plain bitmaps may run their digits together.
-    for (let at = start - 1; at < bytes.length && samples.length < total; at++) {
+    // Plain bitmaps may run their digits together; 1 is black.
+    for (let at = start - 1; at < bytes.length && filled < count; at++) {
       const c = bytes[at];
-      if (c === 0x30 || c === 0x31) samples.push(c === 0x31 ? 0 : 1);
+      if (c === 0x30 || c === 0x31) put(filled++, c === 0x31 ? 0 : 255);
       else if (c === 0x23) while (at < bytes.length && bytes[at] !== 0x0a) at++;
     }
   } else if (kind === 2 || kind === 3) {
     const text = ascii(bytes, start - 1, bytes.length).replace(/#[^\n]*/g, " ");
-    for (const token of text.split(/\s+/)) if (token !== "") samples.push(Number(token) * scale);
+    for (const token of text.split(/\s+/))
+      if (token !== "" && filled < count) put(filled++, Number(token) * scale);
   } else if (kind === 4) {
     const row = Math.ceil((width ?? 0) / 8);
     enough(bytes, start, row * (height ?? 0));
     for (let y = 0; y < (height ?? 0); y++)
       for (let x = 0; x < (width ?? 0); x++) {
         const bit = ((bytes[start + y * row + (x >> 3)] ?? 0) >> (7 - (x & 7))) & 1;
-        samples.push(bit ? 0 : 1);
+        put(filled++, bit ? 0 : 255);
       }
   } else {
     const wide = max > 255;
-    const count = total * channels;
     enough(bytes, start, count * (wide ? 2 : 1));
-    for (let i = 0; i < count; i++) {
-      const v = wide
-        ? ((bytes[start + i * 2] ?? 0) << 8) | (bytes[start + i * 2 + 1] ?? 0)
-        : (bytes[start + i] ?? 0);
-      samples.push(v * scale);
-    }
+    if (!wide && channels >= 3 && scale === 1) {
+      // The common case, 8-bit RGB or RGBA, without a call per sample.
+      for (let i = 0, at = start, p = 0; i < total; i++, p += 4, at += channels) {
+        out[p] = bytes[at] ?? 0;
+        out[p + 1] = bytes[at + 1] ?? 0;
+        out[p + 2] = bytes[at + 2] ?? 0;
+        out[p + 3] = channels === 4 ? (bytes[at + 3] ?? 0) : 255;
+      }
+      filled = count;
+    } else
+      for (let i = 0; i < count; i++) {
+        const at = start + i * (wide ? 2 : 1);
+        put(
+          filled++,
+          (wide ? ((bytes[at] ?? 0) << 8) | (bytes[at + 1] ?? 0) : (bytes[at] ?? 0)) * scale,
+        );
+      }
   }
-  const bits = kind === 1 || kind === 4;
-  if (samples.length < total * channels) fail("The file ends before its pixels do.");
-  // P1 and P4 bits are 1 for black (flipped above); a PAM black-and-white tuple is 1 for white.
-  const white = bits ? 255 : 1;
-  const alpha = channels === 2 || channels === 4;
-  for (let i = 0; i < total; i++) {
-    const p = i * 4;
-    const s = i * channels;
-    if (channels >= 3) out.set([samples[s] ?? 0, samples[s + 1] ?? 0, samples[s + 2] ?? 0], p);
-    else out[p] = out[p + 1] = out[p + 2] = (samples[s] ?? 0) * white;
-    out[p + 3] = alpha ? (samples[s + channels - 1] ?? 0) : 255;
-  }
+  if (filled < count) fail("The file ends before its pixels do.");
   const colour =
     channels >= 3
       ? alpha

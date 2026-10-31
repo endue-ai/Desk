@@ -17,8 +17,8 @@ import { modelOf, rowsOf } from "./details.js";
  * @typedef {{ image: ImageModel | null, partner: ImageModel | null,
  *   position: { index: number, count: number } | null, choices: Choice[] }} ImagesState
  * @typedef {{ render(state: ImagesState): void, status(text: string): void, focus(): void }} View
- * @typedef {{ buffer: string, path: string, name: string, size: number, content: string,
- *   bytes: Uint8Array, decoded: Decoded, model: ImageModel, watchId?: string }} Entry
+ * @typedef {{ buffer: string, path: string, name: string, size: number, decoded: Decoded,
+ *   model: ImageModel, watchId?: string }} Entry
  */
 
 const PLUGIN = "endue.images";
@@ -147,13 +147,18 @@ export function createImages({ bridge, commands }, view) {
     }
   };
 
-  /** Read and decode one file. Decoding never throws: a file it cannot show is a details view. */
+  /**
+   * Read and decode one file. Decoding never throws: a file it cannot show is a details view. The
+   * bytes and the base64 are let go once the model holds its data URL.
+   */
   const load = async (/** @type {string} */ buffer, /** @type {string} */ path) => {
     const content = await read(path);
     const bytes = fromBase64(content);
     const decoded = await decode(bytes, path);
-    const file = { buffer, path, name: nameOf(path), size: bytes.length, content, bytes };
-    return /** @type {Entry} */ ({ ...file, decoded, model: modelOf(file, decoded) });
+    const file = { buffer, path, name: nameOf(path), size: bytes.length };
+    const model = modelOf({ ...file, content, bytes }, decoded);
+    delete decoded.data;
+    return /** @type {Entry} */ ({ ...file, decoded, model });
   };
 
   /** List the folder of `path`: its images, in natural order. Without a listing there is no walk. */

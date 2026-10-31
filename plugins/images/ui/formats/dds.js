@@ -157,19 +157,28 @@ export function decodeDds(/** @type {Uint8Array} */ bytes) {
     fail(`It stores ${bits}-bit pixels, which Images does not read.`);
   enough(bytes, start, width * height * step);
   const [cr, cg, cb, ca] = masks.map(channel);
-  for (let i = 0; i < width * height; i++) {
-    const at = start + i * step;
-    let v = 0;
-    for (let k = step - 1; k >= 0; k--) v = v * 256 + (bytes[at + k] ?? 0);
-    const get = (
-      /** @type {{ shift: number, max: number } | null | undefined} */ c,
-      fallback = 0,
-    ) => (c ? Math.round(((Math.floor(v / 2 ** c.shift) & c.max) * 255) / c.max) : fallback);
-    const red = get(cr);
-    const p = i * 4;
-    if (alphaOnly) out.set([255, 255, 255, get(ca ?? channel(r.u32(104)))], p);
-    else if (luminance) out.set([red, red, red, get(ca, 255)], p);
-    else out.set([red, get(cg), get(cb), get(ca, 255)], p);
+  const alphaMask = alphaOnly ? (ca ?? channel(r.u32(104))) : ca;
+  /** A channel of pixel value `v`, scaled to 8 bits. */
+  const get = (
+    /** @type {number} */ v,
+    /** @type {{ shift: number, max: number } | null | undefined} */ c,
+    /** @type {number} */ fallback,
+  ) => (c ? (((v >>> c.shift) & c.max) * 255) / c.max : fallback);
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  for (let i = 0, at = start, p = 0; i < width * height; i++, at += step, p += 4) {
+    const v =
+      step === 4
+        ? view.getUint32(at, true)
+        : step === 3
+          ? (bytes[at] ?? 0) | ((bytes[at + 1] ?? 0) << 8) | ((bytes[at + 2] ?? 0) << 16)
+          : step === 2
+            ? view.getUint16(at, true)
+            : (bytes[at] ?? 0);
+    const red = get(v, cr, 0);
+    out[p] = alphaOnly ? 255 : red;
+    out[p + 1] = alphaOnly ? 255 : luminance ? red : get(v, cg, 0);
+    out[p + 2] = alphaOnly ? 255 : luminance ? red : get(v, cb, 0);
+    out[p + 3] = get(v, alphaMask, 255);
   }
   const colour = luminance ? "luminance" : alphaOnly ? "alpha" : ca ? "RGBA" : "RGB";
   return { width, height, rgba: out, depth: `${bits}-bit ${colour}, uncompressed` };
