@@ -11,6 +11,7 @@ there were two formats, the API would have holes.
 | `dock/` | Bottom dock: open and put away the plugins that open on the desk |
 | `onboarding/` | First-run scenario |
 | `explorer/` | The folders the person allows as a tree (`endue.explorer`); files open through `desk.files` |
+| `calendar/` | iCalendar (RFC 5545) files in month, week, day and agenda views (`endue.calendar`), with reminders and commands for agents |
 | `mail/` | The person's mail from the index as threads in mailboxes, invitations read and answered (iTIP, iMIP), changes through the connector's commands (`endue.mail`) |
 
 The desk's default policies (ADR 0017), each a `desk.*` plugin. All but the palette are `policy` plugins:
