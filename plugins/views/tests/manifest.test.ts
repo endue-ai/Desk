@@ -39,6 +39,7 @@ describe("plugin.json", () => {
       { permission: "connector:manage" },
       { permission: "view:manage" },
       { permission: "cmd:invoke", ids: ["*"] },
+      { permission: "shell:open", schemes: ["http", "https", "mailto"] },
     ]);
     expect(views.contributes?.commands?.map((command) => command.id)).toEqual([
       "desk.views.open",

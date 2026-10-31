@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { CallerGrant } from "../../../packages/bridge/src/index";
+import { fileManagerOf } from "../ui/describe.js";
 import { grant, type Handlers, MANAGE, mount, plugin } from "./harness";
 
 const plugins = [plugin("example.notes", "Notes", "ui"), plugin("endue.eris", "Eris", "ui")];
@@ -57,6 +58,28 @@ describe("the grant list", () => {
       },
     ]);
     expect(list?.groups[1]?.grants[0]?.revokeLabel).toBe("Revoke Talk to the brain from Eris");
+  });
+
+  it("names shell:open grants in words", async () => {
+    const links = { permission: "shell:open", schemes: ["https"] } as const;
+    const files = { permission: "shell:open", paths: ["~/Downloads/**"] } as const;
+    const { view } = await mount(
+      core([grant("example.notes", "g7", links), grant("example.notes", "g8", files)]),
+    );
+    const shown = view.lists.at(-1)?.groups[0]?.grants;
+    const manager = fileManagerOf(globalThis.navigator?.platform ?? "");
+    expect(shown?.map((g) => [g.permission, g.scope, g.revokeLabel])).toEqual([
+      [
+        "Open links (https) in your browser",
+        "",
+        "Revoke Open links (https) in your browser from Notes",
+      ],
+      [
+        `Show files in ${manager}`,
+        "~/Downloads/**",
+        `Revoke Show files in ${manager} (~/Downloads/**) from Notes`,
+      ],
+    ]);
   });
 
   it("says when nobody holds a grant", async () => {

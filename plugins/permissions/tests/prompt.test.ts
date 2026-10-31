@@ -51,6 +51,18 @@ describe("the prompt", () => {
     });
   });
 
+  it("names shell:open in words", async () => {
+    const links = { permission: "shell:open", schemes: ["https", "mailto"] } as const;
+    const reason = "To open https://example.com/";
+    const { view } = await prompted(core(), ask("p1", { permission: links, reason }));
+    expect(view.prompts.at(-1)).toMatchObject({
+      permission: "Open links (https, mailto) in your browser",
+      scope: "",
+      reason,
+      warning: null,
+    });
+  });
+
   it.each(["once", "session", "always"] as const)(
     "answers with the chosen duration: %s",
     async (duration) => {
