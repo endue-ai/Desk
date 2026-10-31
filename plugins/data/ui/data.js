@@ -22,6 +22,8 @@ import { CHECKED, folderOf, join, nameOf, pickedKey } from "./schemas.js";
  */
 
 const NAME = "Data";
+/** How long a read may take before the status line says it is reading. */
+const SLOW_MS = 400;
 
 const codeOf = (/** @type {unknown} */ error) =>
   /** @type {{ code?: string }} */ (error)?.code ?? "error";
@@ -149,7 +151,7 @@ export function createData({ bridge, commands, settings }, view, options = {}) {
   const opening = (/** @type {File} */ file) => {
     const { opened, name } = file;
     if (opened.reason) return `${name}: ${opened.reason}`;
-    if (!opened.doc) return `Opened ${name} as raw text. ${opened.note ?? ""}`.trim();
+    if (!opened.doc) return `${name}: ${opened.note ?? "opened as raw text."}`;
     const [first, ...rest] = opened.doc.errors;
     if (!first) return `Opened ${name} as ${opened.label}.`;
     const count = rest.length === 0 ? "1 parse error" : `${rest.length + 1} parse errors`;
@@ -164,8 +166,10 @@ export function createData({ bridge, commands, settings }, view, options = {}) {
   /** Read and open a file for its buffer. */
   const load = async (/** @type {string} */ buffer, /** @type {string} */ path) => {
     await ready;
-    const bytes = await read(path);
     const name = nameOf(path);
+    // A large file takes a while to arrive: say so after a moment, not for every small file.
+    const slow = setTimeout(() => say(`Reading ${name}…`), SLOW_MS);
+    const bytes = await read(path).finally(() => clearTimeout(slow));
     const opened = openFile(name, bytes, options);
     const checked = CHECKED.has(opened.format) && opened.doc !== undefined;
     /** @type {SchemaState} */

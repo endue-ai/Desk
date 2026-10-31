@@ -324,3 +324,12 @@ footer { border-top: 1px solid var(--desk-border); }
 }
 
 [hidden] { display: none !important; }
+
+/* Small windows: one line of header that scrolls sideways, so the panes keep the height. */
+@media (max-width: 720px), (max-height: 480px) {
+  header { flex-wrap: nowrap; gap: 8px; padding: 4px 8px; overflow-x: auto; white-space: nowrap; }
+  .title { display: flex; align-items: baseline; gap: 8px; }
+  #toolbar { flex-wrap: nowrap; margin-left: 0; }
+  #where, #status { padding: 2px 8px; }
+  #problems { max-height: 22vh; padding: 2px 8px; }
+}

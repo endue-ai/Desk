@@ -190,6 +190,42 @@ describe("the raw view", () => {
   });
 });
 
+describe("the problems panel", () => {
+  it("lists schema errors with pointer, message and line; selecting one selects its node", () => {
+    show("a.json", '{\n  "servers": [\n    { "port": 80 },\n    { "port": "http" }\n  ]\n}\n');
+    const error = {
+      pointer: "/servers/1/port",
+      message: "Should be integer, not string.",
+      keyword: "type",
+      line: 4,
+      col: 7,
+      root: 0,
+    };
+    view.schema("file:~/data/a.json", {
+      state: "invalid",
+      how: "sibling",
+      source: "~/data/a.schema.json",
+      errors: [error],
+    });
+    const button = [...document.querySelectorAll<HTMLElement>("#problems button")].find((b) =>
+      b.textContent?.startsWith("/servers/1/port"),
+    );
+    expect(button?.textContent).toBe("/servers/1/port: Should be integer, not string. Line 4.");
+    expect($("#problems").textContent).toContain("a.schema.json");
+    button?.click();
+    expect(keyText(selected())).toBe("port");
+    expect($("#pointer").textContent).toBe("/servers/1/port");
+    expect($('#raw .line[data-line="4"]').classList.contains("current")).toBe(true);
+  });
+
+  it("says why there is no check: a remote schema is never fetched", () => {
+    show("b.json", '{ "$schema": "https://example.invalid/s.json" }');
+    const note = "Remote schemas are not fetched: https://example.invalid/s.json.";
+    view.schema("file:~/data/b.json", { state: "remote", how: "$schema", note, errors: [] });
+    expect($("#problems").textContent).toContain(note);
+  });
+});
+
 describe("files it cannot show", () => {
   it("open as a details view", () => {
     show("broken.plist", bytesOf("bplist00\x00\x01"));
