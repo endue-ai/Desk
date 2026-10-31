@@ -23,6 +23,7 @@ body {
   flex-direction: column;
   box-sizing: border-box;
   margin: 0;
+  overflow: auto;
   background: var(--desk-card);
   color: var(--desk-text);
   font: 13px/1.5 -apple-system, "SUIT", "Inter", system-ui, sans-serif;
@@ -32,7 +33,7 @@ header {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 8px 12px 6px;
+  padding: 6px 12px 4px;
   border-bottom: 1px solid var(--desk-border);
 }
 
@@ -83,7 +84,10 @@ button[aria-current="true"] {
 
 #bar {
   margin: 0;
-  padding: 4px 12px;
+  padding: 2px 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   border-bottom: 1px solid var(--desk-border);
   background: var(--desk-background);
   color: var(--desk-text-muted);
@@ -92,7 +96,7 @@ button[aria-current="true"] {
 main {
   display: flex;
   flex: 1;
-  min-height: 0;
+  min-height: 80px;
 }
 
 main:focus,
@@ -107,7 +111,7 @@ main > :not(nav) {
 }
 
 #entries {
-  flex: 0 0 280px;
+  flex: 0 0 clamp(160px, 30%, 280px);
   overflow: auto;
   border-right: 1px solid var(--desk-border);
 }
@@ -264,6 +268,26 @@ button.entry[aria-current="true"] {
   min-height: 1.5em;
   overflow-wrap: anywhere;
   user-select: text;
+}
+
+#status:empty {
+  min-height: 0;
+  padding: 0;
+  border-top: 0;
+}
+
+/* A narrow surface puts the entries above the page. */
+@media (max-width: 520px) {
+  main {
+    flex-direction: column;
+  }
+
+  #entries {
+    flex: 0 1 auto;
+    max-height: 40%;
+    border-right: 0;
+    border-bottom: 1px solid var(--desk-border);
+  }
 }
 
 [hidden] {

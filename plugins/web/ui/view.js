@@ -113,6 +113,7 @@ export function createView(doc, actions) {
 
   const sayLeft = (/** @type {string} */ words) => {
     bar.textContent = words;
+    bar.title = words;
     bar.hidden = !words;
   };
 

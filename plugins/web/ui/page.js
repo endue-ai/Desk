@@ -3,7 +3,7 @@
 // The view puts the result in a shadow root; nothing on the page runs or reaches the network.
 import { isImageData } from "./bytes.js";
 import { BUDGET, collect } from "./resources.js";
-import { basePolicy, sanitizeInto } from "./sanitize.js";
+import { basePolicy, sanitizeSlowly } from "./sanitize.js";
 
 export { BUDGET };
 
@@ -18,6 +18,20 @@ const BASE_CSS = `web-html { display: flow-root; min-height: 100%; color: #000; 
 web-body { display: block; margin: 8px; }
 .web-frame { display: block; margin: 4px 0; padding: 8px; border: 1px dashed #888; color: #555;
   font: 13px system-ui, sans-serif; }`;
+
+/**
+ * Give the event loop a turn: a message, which hidden pages do not throttle as they do timers.
+ * @returns {Promise<void>}
+ */
+const pause = () =>
+  new Promise((go) => {
+    const channel = new MessageChannel();
+    channel.port1.onmessage = () => {
+      channel.port1.close();
+      go();
+    };
+    channel.port2.postMessage(null);
+  });
 
 /** Parse as the page says: XHTML as XML (HTML when it is not well-formed), the rest as HTML. */
 export function parse(/** @type {string} */ text, /** @type {string} */ mime) {
@@ -85,9 +99,8 @@ export async function preparePage(input, target, options = {}) {
   if (doc.body && doc.body !== doc.documentElement) wrap(doc.body, body);
   html.append(body);
   root.append(html);
-  if (content === doc.documentElement && !doc.body)
-    sanitizeInto({ childNodes: [content] }, target, body, policy);
-  else sanitizeInto(content, target, body, policy);
+  const source = content === doc.documentElement && !doc.body ? { childNodes: [content] } : content;
+  await sanitizeSlowly(source, target, body, policy, pause);
   const empty =
     !body.textContent?.trim() &&
     !body.querySelector("img, svg, input, button, select, textarea, video, hr, table");

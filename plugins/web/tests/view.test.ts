@@ -104,3 +104,44 @@ describe("the page view", () => {
     expect(byId("bar").hidden).toBe(true);
   });
 });
+
+describe("entries and cards", () => {
+  const RSS = `<?xml version="1.0"?><rss version="2.0"><channel><title>News</title>
+    <item><title>One</title><description>&lt;p&gt;First story&lt;/p&gt;</description></item>
+    <item><title>Two</title><description>&lt;p&gt;Second story&lt;/p&gt;</description></item>
+    </channel></rss>`;
+
+  it("arrow keys move through a feed's entries and draw the one selected", async () => {
+    const feed = file("~/Feeds/news.rss");
+    const { host, settle } = await mount({
+      handlers: disk({ [feed.path]: RSS }),
+      view: (actions) => createView(document, actions),
+    });
+    await host.command("desk.files.visit", feed);
+    await settle();
+    expect(byId("entries").getAttribute("aria-label")).toBe("Items");
+    const buttons = [...document.querySelectorAll<HTMLButtonElement>("button.entry")];
+    expect(buttons.map((b) => b.getAttribute("aria-current"))).toEqual(["true", "false"]);
+    expect(shadow().querySelector("p")?.textContent).toBe("First story");
+    buttons[0]?.focus();
+    buttons[0]?.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }));
+    await settle();
+    expect(buttons.map((b) => b.getAttribute("aria-current"))).toEqual(["false", "true"]);
+    expect(document.activeElement).toBe(buttons[1]);
+    expect(shadow().querySelector("p")?.textContent).toBe("Second story");
+  });
+
+  it("a link card shows its target as text, and Open runs desk.files.open for a local one", async () => {
+    const link = file("~/Desktop/page.url");
+    const { host, ran, settle } = await mount({
+      handlers: disk({ [link.path]: "[InternetShortcut]\nURL=file:///~/Sites/index.html\n" }),
+      view: (actions) => createView(document, actions),
+    });
+    await host.command("desk.files.visit", link);
+    expect(byId("card").hidden).toBe(false);
+    expect(document.querySelector(".card-target")?.textContent).toBe("file:///~/Sites/index.html");
+    click(document.querySelector("#card button"));
+    await settle();
+    expect(ran("desk.files.open")).toEqual([{ path: "~/Sites/index.html" }]);
+  });
+});

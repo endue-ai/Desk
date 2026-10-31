@@ -152,11 +152,32 @@ function attribute(element, attr, space, policy) {
  * @param {Policy} policy
  */
 export function sanitizeInto(source, target, into, policy) {
+  for (const _ of walk(source, target, into, policy, Infinity));
+}
+
+/**
+ * The same, a slice at a time: the surface stays responsive while a large page is copied.
+ * @param {{ childNodes: ArrayLike<Node> }} source @param {Document} target @param {Node} into
+ * @param {Policy} policy @param {() => Promise<void>} pause called between slices
+ */
+export async function sanitizeSlowly(source, target, into, policy, pause) {
+  for (const _ of walk(source, target, into, policy, 2000)) await pause();
+}
+
+/**
+ * The walk itself, iterative so deep nesting cannot overflow the stack; it yields after every
+ * `slice` nodes.
+ * @param {{ childNodes: ArrayLike<Node> }} source @param {Document} target @param {Node} into
+ * @param {Policy} policy @param {number} slice
+ */
+function* walk(source, target, into, policy, slice) {
   /** @type {Array<[Node, Node]>} */
-  const stack = [...source.childNodes]
+  const stack = [...Array.from(source.childNodes)]
     .reverse()
     .map((node) => /** @type {[Node, Node]} */ ([node, into]));
+  let done = 0;
   while (stack.length > 0) {
+    if (++done % slice === 0) yield;
     const [node, parent] = /** @type {[Node, Node]} */ (stack.pop());
     if (node.nodeType === 3 || node.nodeType === 4) {
       parent.appendChild(target.createTextNode(/** @type {CharacterData} */ (node).data));
