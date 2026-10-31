@@ -21,9 +21,8 @@ describe("ctx.views", () => {
     const { host, ctx } = await mounted({ grants: [VIEWS] });
     const today = vector("view-today");
     await ctx.views.save(today);
-    expect(await ctx.views.list()).toEqual([
-      { id: "desk.today", version: "0.1.0", title: "Today", description: today.description },
-    ]);
+    const summary = { id: "desk.today", version: "0.1.0", title: "Today", source: "file" };
+    expect(await ctx.views.list()).toEqual([{ ...summary, description: today.description }]);
     expect(await ctx.views.get("desk.today")).toEqual(today);
     await ctx.views.remove("desk.today");
     expect(await ctx.views.list()).toEqual([]);

@@ -10,7 +10,7 @@ use desk_bridge::{
     ConnectorManifest, ConnectorStatus, ConnectorSyncResult, InitDocument, InitGetResult,
     InitSettingKey, Item, ItemChange, ItemPage, ItemQuery, PaletteResults, PermQueryResult,
     Permission, PluginContributes, PluginListResult, PluginManifest, StoreGetResult, View,
-    manifest_problems, view_problems,
+    ViewGetResult, ViewListResult, ViewSource, ViewSummary, manifest_problems, view_problems,
 };
 use serde::Serialize;
 use serde::de::DeserializeOwned;
@@ -86,8 +86,8 @@ fn names_resolve(target: &str, instance: &Value) -> bool {
     }
 }
 
-/// Validate every vector of `spec` against `docs`; returns the files judged differently.
-fn judge(docs: &[Value], spec: &str) -> Vec<String> {
+/// One registry of `docs`, and a validator for each of their definitions, by name.
+fn validators(docs: &[Value]) -> impl Fn(&str) -> jsonschema::Validator + '_ {
     let registry = jsonschema::Registry::new()
         .extend(
             docs.iter()
@@ -96,21 +96,27 @@ fn judge(docs: &[Value], spec: &str) -> Vec<String> {
         .unwrap()
         .prepare()
         .unwrap();
-    let uri_of = |target: &str| {
-        docs.iter()
+    move |target: &str| {
+        let uri = docs
+            .iter()
             .find(|doc| doc["$defs"].get(target).is_some())
             .map(|doc| format!("{}#/$defs/{target}", doc["$id"].as_str().unwrap()))
-            .unwrap_or_else(|| panic!("no definition named {target}"))
-    };
-    let mut wrong = Vec::new();
-    for vector in vectors(spec) {
-        let validator = jsonschema::options()
+            .unwrap_or_else(|| panic!("no definition named {target}"));
+        jsonschema::options()
             .with_registry(&registry)
             .should_validate_formats(false)
-            .build(&json!({ "$ref": uri_of(&vector.target) }))
-            .unwrap();
-        let valid =
-            validator.is_valid(&vector.instance) && names_resolve(&vector.target, &vector.instance);
+            .build(&json!({ "$ref": uri }))
+            .unwrap()
+    }
+}
+
+/// Validate every vector of `spec` against `docs`; returns the files judged differently.
+fn judge(docs: &[Value], spec: &str) -> Vec<String> {
+    let validator = validators(docs);
+    let mut wrong = Vec::new();
+    for vector in vectors(spec) {
+        let valid = validator(&vector.target).is_valid(&vector.instance)
+            && names_resolve(&vector.target, &vector.instance);
         if valid != vector.valid {
             wrong.push(vector.file);
         }
@@ -227,6 +233,8 @@ fn valid_vectors_roundtrip_through_generated_types() {
                 "InitGetResult" => roundtrip::<InitGetResult>(vector),
                 "PluginContributes" => roundtrip::<PluginContributes>(vector),
                 "PaletteResults" => roundtrip::<PaletteResults>(vector),
+                "ViewListResult" => roundtrip::<ViewListResult>(vector),
+                "ViewGetResult" => roundtrip::<ViewGetResult>(vector),
                 other => panic!("{}: no Rust type mapped for {other}", vector.file),
             }
         }
@@ -245,4 +253,35 @@ fn generated_types_reject_a_request_without_scope() {
     assert!(serde_json::from_value::<BridgeRequest>(request).is_err());
     let query = json!({ "id": 2, "method": "data.query", "params": { "query": {} } });
     assert!(serde_json::from_value::<BridgeRequest>(query).is_err());
+}
+
+#[test]
+fn typed_view_results_say_where_each_view_came_from() {
+    let mut docs = plugin_schemas();
+    docs.extend(schemas("bridge/v0"));
+    let validator = validators(&docs);
+    let summary = |id: &str, source, plugin: Option<&str>| ViewSummary {
+        id: id.to_owned(),
+        version: "0.1.0".to_owned(),
+        title: "Today".to_owned(),
+        description: None,
+        source,
+        plugin: plugin.map(str::to_owned),
+    };
+    let listed = ViewListResult {
+        views: vec![
+            summary("desk.today", ViewSource::Plugin, Some("desk.today")),
+            summary("example.notes", ViewSource::File, None),
+        ],
+    };
+    let listed = serde_json::to_value(&listed).unwrap();
+    assert!(validator("ViewListResult").is_valid(&listed), "{listed}");
+    assert_eq!(listed["views"][0]["source"], "plugin");
+    assert_eq!(listed["views"][1]["source"], "file");
+    assert_eq!(listed["views"][1].get("plugin"), None);
+
+    let vector = specs().join("bridge/v0/vectors/valid/view-get-result-plugin.json");
+    let view = read_json(&vector)["instance"]["view"].take();
+    let unnamed = json!({ "view": view, "source": "plugin" });
+    assert!(!validator("ViewGetResult").is_valid(&unnamed), "{unnamed}");
 }
