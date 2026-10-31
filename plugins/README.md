@@ -14,6 +14,9 @@ there were two formats, the API would have holes.
 | `explorer/` | The folders the person allows as a tree (`endue.explorer`); files open through `desk.files` |
 | `calendar/` | iCalendar (RFC 5545) files in month, week, day and agenda views (`endue.calendar`), with reminders and commands for agents |
 | `mail/` | The person's mail from the index as threads in mailboxes, invitations read and answered (iTIP, iMIP), changes through the connector's commands (`endue.mail`) |
+| `views/` | The view engine (`desk.views`): draws view files (`specs/view/v0`) as surfaces, over the core's `data.*` and `view.*` |
+| `today/` | The day at a glance (`desk.today`): a data-only `view` plugin that `desk.views` draws; `Mod+T` opens it |
+| `item/` | One item in Desk (`desk.item`): the data-only `view` plugin the palette's Open in Desk shows |
 
 The desk's default policies (ADR 0017), each a `desk.*` plugin. All but the palette are `policy` plugins:
 no code, only what they contribute in `plugin.json`. Turn one off and another plugin can take its place.
@@ -42,7 +45,8 @@ Every plugin folder holds `plugin.json`, `README.md`, and as needed `ui/`, `logi
 
 Status: `sidebar`, `eris`, `onboarding`, `toolbar`, `dock`, `terminal` and the ten `desk.*` policies work. With the
 shell (`mountDesk`, ADR 0025), the agent bar, the rail and the bottom edge hold the places of `sidebar`,
-`toolbar` and `dock`, and the shell's profiles turn those three off. The
-runtime puts `left`, `right` and `bottom` surfaces on the desk's edges, as `desk.display` says. The first
-run still draws its own frame of the toolbar, dock, profiles and left bar inside its overlay.
+`toolbar` and `dock`, and the shell's profiles turn those three off. The runtime puts `left`, `right` and
+`bottom` surfaces on the desk's edges, as `desk.display` says. The first run still draws its own frame of
+the toolbar, dock, profiles and left bar inside its overlay. The view engine `desk.views` draws six of the
+ten view components over the core's item index; `calendar`, `kanban`, `chart` and `detail` come later.
 `just dev` installs every folder here that has a `plugin.json` as a built-in plugin.
