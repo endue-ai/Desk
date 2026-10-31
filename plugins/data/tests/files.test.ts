@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { StubError } from "../../../packages/bridge/src/index";
 import { plainOf } from "../ui/tree.js";
 import { denied, disk, file, folderRead, mount } from "./harness";
+import { rootOf } from "./nodes";
 
 const A = file("~/data/a.json");
 const B = file("~/data/b.yaml");
@@ -18,7 +19,7 @@ describe("the desk's file requests", () => {
     const shown = view.shown.at(-1);
     expect(shown).toMatchObject({ ...A, name: "a.json", size: 19, maskKeys: true });
     expect(shown?.opened).toMatchObject({ format: "json", label: "JSON" });
-    expect(plainOf(shown?.opened.doc?.roots[0] ?? null)).toEqual({ name: "desk" });
+    expect(plainOf(rootOf(shown?.opened.doc))).toEqual({ name: "desk" });
     expect(view.focused).toBe(1);
     expect(view.statuses.at(-1)).toBe("Opened a.json as JSON.");
   });
@@ -32,7 +33,7 @@ describe("the desk's file requests", () => {
     expect(params("fs.read").filter((p) => (p as { path: string }).path === A.path)).toHaveLength(
       2,
     );
-    expect(plainOf(view.shown.at(-1)?.opened.doc?.roots[0] ?? null)).toEqual({ v: 2 });
+    expect(plainOf(rootOf(view.shown.at(-1)?.opened.doc))).toEqual({ v: 2 });
   });
 
   it("show switches between open files and closed forgets one", async () => {
@@ -127,7 +128,7 @@ describe("files outside the grants", () => {
       { path: X.path, encoding: "base64", scope: DOCS },
       { path: X.path, encoding: "base64", scope: DOCS },
     ]);
-    expect(plainOf(view.shown.at(-1)?.opened.doc?.roots[0] ?? null)).toEqual({ title: "x" });
+    expect(plainOf(rootOf(view.shown.at(-1)?.opened.doc))).toEqual({ title: "x" });
   });
 
   it("other errors say their code and ask nothing", async () => {
