@@ -121,6 +121,23 @@ describe("zoom", () => {
   });
 });
 
+describe("what the webview cannot decode", () => {
+  it("opens as the details view with that reason", async () => {
+    const heic = fixture("exif.heic");
+    await open({ "~/Pictures/a.heic": heic }, "~/Pictures/a.heic");
+    const img = document.querySelector("#pane-a img.media") as HTMLImageElement;
+    expect(img.alt).toBe("a.heic");
+    img.dispatchEvent(new Event("error"));
+    const card = document.querySelector("#pane-a .notice") as HTMLElement;
+    expect(card.querySelector("h2")?.textContent).toBe("a.heic");
+    expect(card.querySelector(".reason")?.textContent).toBe(
+      "This system's webview does not decode HEIC.",
+    );
+    expect(card.textContent).toContain("File size");
+    expect(document.querySelector("#pane-a .media")).toBeNull();
+  });
+});
+
 describe("rotate and flip", () => {
   it("turn and mirror the view only, and refit", async () => {
     const { params } = await open({ "~/Pictures/a.png": BIG }, "~/Pictures/a.png");
