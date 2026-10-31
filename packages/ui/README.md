@@ -32,7 +32,7 @@ Web runtime (`docs/architecture.md`).
 <script type="module">import "@endue-ai/ui";</script>
 ```
 
-The app does not serve the bundle yet (the runtime's e2e server does, at `/_desk/ui.js`).
+The app serves `dist/ui.js` at `/_desk/ui.js` on its `desk-plugin` scheme, as the runtime's e2e server does.
 `demo/index.html` shows every element: build, then open it.
 
 ## Testing
