@@ -142,12 +142,19 @@ describe("desk-progress", () => {
 
   it("stops the stripe under reduced motion, the OS's or the desk's", () => {
     const css = elements["desk-progress"].styles;
-    // The OS setting, in CSS.
-    const media = /@media \(prefers-reduced-motion: reduce\) \{([\s\S]*?)\n\}/.exec(css)?.[1];
-    expect(media).toMatch(/\.fill \{[^}]*animation: none;/);
-    // The desk's own setting (data-motion on the frame's root) and the OS's, read when it connects.
-    const still = parseRules(css).find((rule) => rule.selector === ".fill[data-still]");
-    expect(still?.declarations.animation).toBe("none");
+    // The stripe moves only where the OS lets it, and only while the fill is not held still (the
+    // desk's own setting, data-motion on the frame's root, and the OS's, read when it connects).
+    const motion = /@media \(prefers-reduced-motion: no-preference\) \{([\s\S]*?)\n\}/.exec(
+      css,
+    )?.[1];
+    expect(motion).toMatch(/\.fill:not\(\[data-still\]\) \{\s*animation: desk-progress-stripe /);
+    const outside = css.replace(motion ?? "", "");
+    expect(outside).not.toMatch(/\b(animation|transition):/);
+    // Still, the stripe rests in the middle of the track.
+    const resting = parseRules(css).find(
+      (rule) => rule.selector === ".track[data-indeterminate] .fill",
+    );
+    expect(resting?.declarations.transform).toBe("translateX(75%)");
 
     vi.stubGlobal("matchMedia", (query: string) => ({
       matches: query === "(prefers-reduced-motion: reduce)",

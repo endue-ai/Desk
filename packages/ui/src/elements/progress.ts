@@ -48,20 +48,10 @@ const css = `
   color: var(--desk-background);
   transform: scaleX(0);
   transform-origin: left;
-  transition: transform 120ms linear;
 }
 .track[data-indeterminate] .fill {
   width: 40%;
-  transform: translateX(-100%);
-  transition: none;
-  animation: desk-progress-stripe 1.4s ease-in-out infinite;
-}
-.track[data-indeterminate] .fill[data-still] {
   transform: translateX(75%);
-}
-.fill[data-still] {
-  animation: none;
-  transition: none;
 }
 .detail {
   margin-top: 4px;
@@ -100,13 +90,12 @@ button:focus-visible {
     transform: translateX(250%);
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  .fill {
-    animation: none;
-    transition: none;
+@media (prefers-reduced-motion: no-preference) {
+  .track:not([data-indeterminate]) .fill:not([data-still]) {
+    transition: transform 120ms linear;
   }
-  .track[data-indeterminate] .fill {
-    transform: translateX(75%);
+  .track[data-indeterminate] .fill:not([data-still]) {
+    animation: desk-progress-stripe 1.4s ease-in-out infinite;
   }
 }
 `;
