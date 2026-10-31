@@ -76,7 +76,8 @@ describe("xar and installer packages", () => {
     expect(await read(pkg, "PackageInfo")).toContain('identifier="ai.endue.sample"');
     const payload = await open(await pkg.read(entry(pkg, "Payload")), "Payload");
     expect(payload.format).toBe("cpio (gzip)");
-    expect(files(payload)).toEqual(["opt/sample/hello.txt"]);
+    // pkgbuild adds AppleDouble entries (._opt, ...) for attributes macOS keeps on every file.
+    expect(files(payload)).toContain("opt/sample/hello.txt");
     expect(await read(payload, "opt/sample/hello.txt")).toBe(TREE.hello);
   });
 });

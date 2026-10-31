@@ -103,10 +103,14 @@ export const denied = (what: string) =>
 /** A file's buffer and path, as the desk sends them in every request. */
 export const file = (path: string) => ({ buffer: `file:${path}`, path });
 
-export const READ = (folder: string) =>
-  ({ permission: "fs:read", paths: [`${folder}/**`] }) as const;
-export const WRITE = (folder: string) =>
-  ({ permission: "fs:write", paths: [`${folder}/**`] }) as const;
+export const READ = (folder: string) => ({
+  permission: "fs:read" as const,
+  paths: [`${folder}/**`],
+});
+export const WRITE = (folder: string) => ({
+  permission: "fs:write" as const,
+  paths: [`${folder}/**`],
+});
 
 /** The names of the rows the view was last asked to show, in order. */
 export const rowNames = (view: RecordingView) => view.archives.at(-1)?.rows.map((r) => r.name);

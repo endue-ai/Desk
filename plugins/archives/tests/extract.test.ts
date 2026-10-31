@@ -111,7 +111,8 @@ describe("extraction", () => {
     expect(Object.keys(written)).toEqual([`${TARGET}/ok.txt`, `${TARGET}/sub/in.txt`]);
     const said = view.statuses.at(-1) ?? "";
     expect(said).toContain(`Extracted 2 files (10 bytes) to ${TARGET}.`);
-    expect(said).toContain("Refused 6 outside the folder: ../evil, /etc/x, C:\\x, sub/..\\..\\win");
+    // Names are shown with "/" between their parts, as the tree shows them.
+    expect(said).toContain("Refused 6 outside the folder: ../evil, /etc/x, C:/x, sub/../../win");
     expect(said).toContain("out, sub/up.");
   });
 
