@@ -1,0 +1,97 @@
+{
+  "id": "endue.docs",
+  "name": "Docs",
+  "version": "0.1.0",
+  "kind": "ui",
+  "entry": "ui/index.html",
+  "description": "Opens word-processor documents (Word, Pages, OpenDocument, RTF, Hangul, AbiWord, WordPerfect, Works) in one page view with an outline, comments and find. It reads; it does not edit.",
+  "permissions": [
+    {
+      "permission": "cmd:invoke",
+      "ids": ["desk.files.changed"]
+    }
+  ],
+  "surfaces": [
+    {
+      "id": "main",
+      "title": "Docs",
+      "placement": "center"
+    }
+  ],
+  "contributes": {
+    "files": [
+      {
+        "pattern": "*.docx",
+        "plugin": "endue.docs"
+      },
+      {
+        "pattern": "*.docm",
+        "plugin": "endue.docs"
+      },
+      {
+        "pattern": "*.dotx",
+        "plugin": "endue.docs"
+      },
+      {
+        "pattern": "*.dotm",
+        "plugin": "endue.docs"
+      },
+      {
+        "pattern": "*.doc",
+        "plugin": "endue.docs"
+      },
+      {
+        "pattern": "*.dot",
+        "plugin": "endue.docs"
+      },
+      {
+        "pattern": "*.odt",
+        "plugin": "endue.docs"
+      },
+      {
+        "pattern": "*.ott",
+        "plugin": "endue.docs"
+      },
+      {
+        "pattern": "*.fodt",
+        "plugin": "endue.docs"
+      },
+      {
+        "pattern": "*.sxw",
+        "plugin": "endue.docs"
+      },
+      {
+        "pattern": "*.rtf",
+        "plugin": "endue.docs"
+      },
+      {
+        "pattern": "*.pages",
+        "plugin": "endue.docs"
+      },
+      {
+        "pattern": "*.hwp",
+        "plugin": "endue.docs"
+      },
+      {
+        "pattern": "*.hwpx",
+        "plugin": "endue.docs"
+      },
+      {
+        "pattern": "*.abw",
+        "plugin": "endue.docs"
+      },
+      {
+        "pattern": "*.wpd",
+        "plugin": "endue.docs"
+      },
+      {
+        "pattern": "*.wps",
+        "plugin": "endue.docs"
+      },
+      {
+        "pattern": "*.gdoc",
+        "plugin": "endue.docs"
+      }
+    ]
+  }
+}

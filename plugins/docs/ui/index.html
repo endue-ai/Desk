@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Docs</title>
+    <script type="importmap">
+      { "imports": { "@endue-ai/plugin-sdk": "/_desk/plugin-sdk.js" } }
+    </script>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <header id="bar">
+      <div id="title">
+        <h1 id="doc-name">No document open</h1>
+        <p id="doc-detail">
+          <span id="doc-format"></span>
+          <span id="doc-badge" hidden>Text only</span>
+        </p>
+      </div>
+      <div id="tools" role="toolbar" aria-label="Document" hidden>
+        <button type="button" id="outline-toggle" aria-pressed="true" aria-controls="outline">
+          Outline
+        </button>
+        <button type="button" id="comments-toggle" aria-pressed="false" aria-controls="comments">
+          Comments
+        </button>
+        <button type="button" id="find-open" aria-controls="find">Find</button>
+        <button type="button" id="zoom-out" aria-label="Zoom out">−</button>
+        <span id="zoom-level" aria-label="Zoom">100%</span>
+        <button type="button" id="zoom-in" aria-label="Zoom in">+</button>
+        <button type="button" id="zoom-fit">Fit width</button>
+      </div>
+    </header>
+    <div id="find" role="search" aria-label="Find in document" hidden>
+      <input id="find-text" type="search" aria-label="Find in document" autocomplete="off" />
+      <button type="button" id="find-prev" aria-label="Previous match">↑</button>
+      <button type="button" id="find-next" aria-label="Next match">↓</button>
+      <span id="find-count"></span>
+      <button type="button" id="find-close" aria-label="Close find">×</button>
+    </div>
+    <div id="layout" hidden>
+      <nav id="outline" aria-label="Outline">
+        <h2>Outline</h2>
+        <p id="outline-empty">No headings.</p>
+        <ol id="outline-list"></ol>
+      </nav>
+      <div id="desk" tabindex="0" role="document" aria-labelledby="doc-name">
+        <div id="sheet"></div>
+      </div>
+      <aside id="comments" aria-label="Comments" hidden>
+        <h2>Comments</h2>
+        <ol id="comment-list"></ol>
+      </aside>
+    </div>
+    <section id="details" aria-labelledby="doc-name" hidden>
+      <p id="details-reason"></p>
+      <p id="details-url" hidden></p>
+      <img id="details-preview" alt="" hidden />
+      <dl id="details-facts"></dl>
+    </section>
+    <p id="status" role="status"></p>
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>
