@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import type { Element } from "../ui/deck.js";
+import type { Element, Fill } from "../ui/deck.js";
 import { openFile } from "../ui/open.js";
+import { fillOf } from "../ui/ppt/fill.js";
 import { cfb } from "./cfb";
 import { powerPointDeck } from "./fixtures/ppt/styled";
 import { bodyText, deckOf, fixture, flat, shapes } from "./model";
@@ -85,18 +86,35 @@ describe("PowerPoint 97-2003", () => {
     ]);
   });
 
+  it("a title slide draws the main master's shapes, then its title master's, under its own", async () => {
+    const deck = await deckOf(powerPointDeck(), "styled.ppt");
+    const slide = deck.slides[2];
+    expect(slide?.title).toBe("Welcome");
+    const [logo, band, title] = slide?.elements ?? [];
+    expect(logo).toMatchObject({ geometry: { name: "ellipse" }, fill: { color: "#c00000" } });
+    expect(band).toMatchObject({ box: { x: 0, y: 306, w: 720, h: 9 }, fill: { color: "#e2efda" } });
+    expect(title).toMatchObject({ placeholder: "ctrTitle", text: { anchor: "bottom" } });
+    expect(title?.type === "shape" && title.text?.paragraphs[0]?.runs[0]).toMatchObject({
+      text: "Welcome",
+      size: 40,
+      bold: true,
+      color: "#1f3864",
+    });
+    expect(slide?.elements).toHaveLength(3);
+  });
+
   it("gradients with a focus, colours of the shape's own, links, numbering and groups", async () => {
     const deck = await deckOf(powerPointDeck(), "styled.ppt");
     const elements = deck.slides[0]?.elements;
     const gradient = shapeAt(elements, 4);
+    // PowerPoint writes DrawingML's 90 degree gradient, clear at the top, as angle 0 and focus 100.
     expect(gradient.fill).toEqual({
       type: "gradient",
       shape: "linear",
-      angle: 180,
+      angle: 0,
       stops: [
         { pos: 0, color: "#0000ff" },
-        { pos: 0.5, color: "#ff0000" },
-        { pos: 1, color: "#0000ff" },
+        { pos: 1, color: "rgba(255, 0, 0, 0)" },
       ],
     });
     expect(gradient.line).toMatchObject({ color: "#800000", width: 2 });
@@ -125,12 +143,109 @@ describe("PowerPoint 97-2003", () => {
     const slide = deck.slides[1];
     expect(slide?.hidden).toBe(true);
     expect(slide?.background).toEqual({ type: "solid", color: "#ffffcc" });
-    const [plain, wmf, png] = slide?.elements ?? [];
+    const [plain, wmf, png, art] = slide?.elements ?? [];
     expect(plain?.type === "shape" && plain.text?.paragraphs[0]?.runs[0]?.color).toBe("#336699");
     expect(wmf).toMatchObject({ type: "picture", image: null, label: "Windows Metafile picture" });
     expect(png?.type === "picture" && (await deck.image(png.image ?? ""))).toMatch(
       /^data:image\/png;base64,iVBOR/,
     );
+    // WordArt: its text, flat, in its font and its fill colour, centred in its box.
+    expect(art).toMatchObject({
+      type: "shape",
+      fill: { type: "none" },
+      text: { anchor: "middle" },
+    });
+    expect(art?.type === "shape" && art.text?.paragraphs[0]).toMatchObject({
+      align: "center",
+      runs: [{ text: "Sale", font: "Impact", color: "#ff0000", size: 36 }],
+    });
+  });
+
+  it("shaded fills turn, focus and swap as PowerPoint and LibreOffice draw them", () => {
+    const fill = (type: number, angle: number, focus: number) =>
+      fillOf(
+        new Map([
+          [0x0180, { value: type, data: null }],
+          [0x018b, { value: (angle * 65536) >>> 0, data: null }],
+          [0x018c, { value: focus >>> 0, data: null }],
+        ]),
+        { scheme: [], fill: [255, 0, 0], back: [0, 0, 255] },
+      );
+    const [red, blue] = ["#ff0000", "#0000ff"];
+    const at = (fill: Fill) =>
+      fill.type === "gradient"
+        ? [fill.shape, fill.angle, fill.stops.map((s) => [s.pos, s.color])]
+        : fill;
+    // Angle 0: the fill colour at the bottom; angles turn anticlockwise.
+    expect(at(fill(4, 0, 0))).toEqual([
+      "linear",
+      0,
+      [
+        [0, red],
+        [1, blue],
+      ],
+    ]);
+    expect(at(fill(7, 90, 0))).toEqual([
+      "linear",
+      270,
+      [
+        [0, red],
+        [1, blue],
+      ],
+    ]);
+    expect(at(fill(4, 45, 100))).toEqual([
+      "linear",
+      315,
+      [
+        [0, blue],
+        [1, red],
+      ],
+    ]);
+    // Focus 50 puts the background colour in the middle; a negative angle or focus swaps colours.
+    expect(at(fill(4, 0, 50))).toEqual([
+      "linear",
+      0,
+      [
+        [0, red],
+        [0.5, blue],
+        [1, red],
+      ],
+    ]);
+    expect(at(fill(4, -90, 50))).toEqual([
+      "linear",
+      270,
+      [
+        [0, blue],
+        [0.5, red],
+        [1, blue],
+      ],
+    ]);
+    expect(at(fill(4, -180, 0))).toEqual([
+      "linear",
+      0,
+      [
+        [0, red],
+        [1, blue],
+      ],
+    ]);
+    expect(at(fill(8, 180, -50))).toEqual([
+      "linear",
+      0,
+      [
+        [0, blue],
+        [0.5, red],
+        [1, blue],
+      ],
+    ]);
+    // Radial fills run from the outside in: the background colour at the centre.
+    expect(at(fill(6, 0, 0))).toEqual([
+      "radial",
+      0,
+      [
+        [0, blue],
+        [1, red],
+      ],
+    ]);
   });
 
   it("an encrypted .ppt opens as the details view", async () => {

@@ -152,8 +152,9 @@ export function powerPointDeck() {
         props: [
           [0x0180, 4],
           [0x0181, 0x0000ff],
+          [0x0182, 0],
           [0x0183, 0xff0000],
-          [0x018c, 50],
+          [0x018c, 100],
           [0x01c0, 0x108001f0],
           [0x01cb, 25400],
           [0x01ff, 0x80008],
@@ -218,9 +219,46 @@ export function powerPointDeck() {
           anchor: [2880, 1152, 4032, 2304],
           props: [[0x0104, 2], NO_LINE],
         }),
+        shape({
+          type: 136,
+          spid: 0xc04,
+          anchor: [288, 2880, 4032, 3456],
+          props: [
+            [0x00c0, utf16("Sale\0")],
+            [0x00c5, utf16("Impact\0")],
+            [0x0181, 0x0000ff],
+          ],
+        }),
       ],
       [[0x0181, 0xccffff]],
     ),
+  ]);
+  // A title master: it follows the main master's shapes, scheme and background, and adds its own.
+  const titleMaster = box(0x03ee, [
+    slideAtom(MASTER, 0, 7),
+    drawing([
+      shape({
+        spid: 0x601,
+        placement: 3,
+        anchor: [576, 1440, 5184, 2304],
+        props: [[0x0087, 2], NO_FILL, NO_LINE],
+        textbox: text(6, "Title"),
+      }),
+      shape({ spid: 0x602, anchor: [0, 2448, 5760, 2520], props: [[0x0181, 0x08000004], NO_LINE] }),
+    ]),
+  ]);
+  const slide3 = box(0x03ee, [
+    slideAtom(MASTER + 1, 0, 7),
+    drawing([
+      shape({
+        spid: 0x901,
+        flags: 0x220,
+        placement: 15,
+        anchor: [576, 1440, 5184, 2304],
+        props: [[0x0301, 0x601]],
+        textbox: [atom(0x0f9e, le([0, 4]))],
+      }),
+    ]),
   ]);
   const notes = box(0x03f0, [
     atom(0x03f1, le([256, 4], [0, 2], [0, 2]), 0, 1),
@@ -279,15 +317,17 @@ export function powerPointDeck() {
         box(0xf001, [bse(3), bse(6, atom(0xf01e, le(new Uint8Array(17), PNG), 0x6e0))], 2),
       ]),
     ]),
-    box(0x0ff0, [persist(2, MASTER)], 1),
+    box(0x0ff0, [persist(2, MASTER), persist(6, MASTER + 1)], 1),
     box(0x0ff0, [
       persist(3, 256),
       ...text(0, "Hello", le(pfRun(6, 0, 0), cfRun(6, 0))),
       ...text(1, "One\rTwo", le(pfRun(4, 0, 0), pfRun(4, 1, 0), cfRun(8, 0))),
       persist(4, 257),
+      persist(7, 258),
+      ...text(6, "Welcome", le(pfRun(8, 0, 0), cfRun(8, 0))),
     ]),
     box(0x0ff0, [persist(5, 0x101)], 2),
     atom(0x03ea, new Uint8Array()),
   ]);
-  return presentation([document, master, slide1, slide2, notes]);
+  return presentation([document, master, slide1, slide2, notes, titleMaster, slide3]);
 }
