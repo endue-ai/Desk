@@ -132,14 +132,14 @@ impl Core {
             Ok(status) => status,
             Err(failure) => {
                 self.connect_failed(id, instance);
-                self.drain_statuses();
                 return Err(plugin_error(failure));
             }
         };
         if let Err(why) = self.lock_secrets().set(id, instance, secret) {
             let _ = host.remove_instance(id, instance);
-            self.connect_failed(id, instance);
+            // What the host said about the instance it no longer has goes nowhere.
             self.drain_statuses();
+            self.connect_failed(id, instance);
             return Err(io_error(why));
         }
         self.set_title(id, instance, params.title);
