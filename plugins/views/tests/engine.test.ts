@@ -47,7 +47,8 @@ describe("desk.views", () => {
     const [schedule] = m.shown();
     expect(ids(schedule?.items ?? [])).toEqual(["ev-standup", "ev-lunch", "ev-review"]);
     const model = m.view.drawn.at(-1);
-    const drawn = present(schedule as ComponentModel, model?.env) as {
+    if (!model) throw new Error("nothing was drawn");
+    const drawn = present(schedule as ComponentModel, model.env) as {
       events: Array<{ title: string }>;
     };
     expect(drawn).toMatchObject({ kind: "agenda", now: "2026-10-30T09:00:00+09:00" });
@@ -282,7 +283,7 @@ describe("desk.views", () => {
     await m.host.call("view.remove", { id: "desk.today", scope: VIEWS });
     await m.settle();
     expect(m.params("data.unsubscribe")).toHaveLength(7);
-    expect(m.view.notices.at(-1)).toBe("Today was removed.");
+    expect(m.view.notices.at(-1)).toBe("Today, again was removed.");
   });
 
   it("desk.views.open-original fails until shell.open is served", async () => {

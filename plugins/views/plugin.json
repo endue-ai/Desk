@@ -1,0 +1,40 @@
+{
+  "id": "desk.views",
+  "name": "Views",
+  "version": "0.1.0",
+  "kind": "ui",
+  "entry": "ui/index.html",
+  "description": "The view engine: opens a view file, binds its requires to connected sources, and draws its items, live, with the desk's elements.",
+  "permissions": [
+    { "permission": "data:read" },
+    { "permission": "connector:manage" },
+    { "permission": "view:manage" },
+    { "permission": "cmd:invoke", "ids": ["*"] }
+  ],
+  "surfaces": [{ "id": "main", "title": "Views", "placement": "overlay", "hidden": true }],
+  "contributes": {
+    "commands": [
+      {
+        "id": "desk.views.open",
+        "title": "Open a view",
+        "keywords": ["view", "dashboard", "today"]
+      },
+      { "id": "desk.views.close", "title": "Close the view" },
+      {
+        "id": "desk.views.reconnect",
+        "title": "Reconnect a source",
+        "keywords": ["sync", "connector"]
+      },
+      {
+        "id": "desk.views.request-access",
+        "title": "Ask for access to items",
+        "keywords": ["permission", "data"]
+      },
+      {
+        "id": "desk.views.open-original",
+        "title": "Open in the original app",
+        "keywords": ["deep link", "source"]
+      }
+    ]
+  }
+}

@@ -12,6 +12,7 @@ const plugins: Record<string, string> = {
   "test.counter": here("./fixture/plugins/test-counter"),
   "test.echo": here("./fixture/plugins/test-echo"),
   "desk.palette": join(repo, "plugins/palette"),
+  "desk.views": join(repo, "plugins/views"),
   "endue.eris": join(repo, "plugins/eris"),
   "endue.onboarding": join(repo, "plugins/onboarding"),
   "endue.sidebar": join(repo, "plugins/sidebar"),
@@ -19,6 +20,9 @@ const plugins: Record<string, string> = {
   "endue.dock": join(repo, "plugins/dock"),
 };
 const sdk = join(repo, "packages/plugin-sdk/src/index.ts");
+const ui = join(repo, "packages/ui/src/bundle.ts");
+/** What the app serves under /_desk/ (the SDK, the elements), from their sources. */
+const desk: Record<string, string> = { "/_desk/plugin-sdk.js": sdk, "/_desk/ui.js": ui };
 const types: Record<string, string> = {
   ".html": "text/html",
   ".js": "text/javascript",
@@ -27,7 +31,10 @@ const types: Record<string, string> = {
   ".svg": "image/svg+xml",
 };
 
-/** Serve plugin files and the SDK as the core does over desk-plugin:// (the dev page uses it too). */
+/**
+ * Serve plugin files, the SDK and @endue-ai/ui as the core does over desk-plugin:// (the dev page uses
+ * it too). The app serves the SDK today; /_desk/ui.js comes with the core's data.* and view.*.
+ */
 export function pluginFiles(): Plugin {
   return {
     name: "desk-plugin-files",
@@ -36,9 +43,10 @@ export function pluginFiles(): Plugin {
         const url = new URL(req.url ?? "/", "http://fixture");
         // Sandboxed frames have an opaque origin; module scripts need CORS.
         res.setHeader("Access-Control-Allow-Origin", "*");
-        if (url.pathname === "/_desk/plugin-sdk.js") {
+        const source = desk[url.pathname];
+        if (source) {
           res.statusCode = 302;
-          res.setHeader("Location", `/@fs${sdk.split(sep).join("/")}`);
+          res.setHeader("Location", `/@fs${source.split(sep).join("/")}`);
           res.end();
           return;
         }

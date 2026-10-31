@@ -1,0 +1,204 @@
+{
+  "tag": "main",
+  "data-density": "regular",
+  "children": [
+    {
+      "tag": "header",
+      "class": "bar",
+      "children": [
+        {
+          "tag": "h1",
+          "text": "Today"
+        },
+        {
+          "tag": "p",
+          "class": "description",
+          "text": "Today's events and the open tasks, side by side."
+        }
+      ]
+    },
+    {
+      "tag": "div",
+      "class": "container split",
+      "data-direction": "horizontal",
+      "children": [
+        {
+          "tag": "div",
+          "class": "pane",
+          "children": [
+            {
+              "tag": "section",
+              "class": "component",
+              "data-component": "agenda",
+              "data-state": "ready",
+              "children": [
+                {
+                  "tag": "h2",
+                  "class": "component-title",
+                  "text": "Schedule"
+                },
+                {
+                  "tag": "desk-agenda",
+                  "density": "regular",
+                  "label": "Schedule",
+                  "time-zone": "Asia/Seoul",
+                  "now": "2026-10-30T09:00:00+09:00",
+                  "shadow": [
+                    {
+                      "tag": "div",
+                      "role": "listbox",
+                      "aria-label": "Schedule",
+                      "tabindex": "0",
+                      "children": [
+                        {
+                          "tag": "div",
+                          "role": "separator",
+                          "aria-label": "Now, 09:00",
+                          "class": "now"
+                        },
+                        {
+                          "tag": "div",
+                          "role": "option",
+                          "aria-selected": "false",
+                          "children": [
+                            {
+                              "tag": "span",
+                              "class": "time",
+                              "text": "10:00"
+                            },
+                            {
+                              "tag": "span",
+                              "class": "title",
+                              "text": "10:00 Team standup"
+                            },
+                            {
+                              "tag": "span",
+                              "class": "detail",
+                              "text": "Room 3"
+                            }
+                          ]
+                        },
+                        {
+                          "tag": "div",
+                          "role": "option",
+                          "aria-selected": "false",
+                          "children": [
+                            {
+                              "tag": "span",
+                              "class": "time",
+                              "text": "12:30"
+                            },
+                            {
+                              "tag": "span",
+                              "class": "title",
+                              "text": "12:30 Lunch with Mina"
+                            },
+                            {
+                              "tag": "span",
+                              "class": "detail",
+                              "text": "Bistro Seoul"
+                            }
+                          ]
+                        },
+                        {
+                          "tag": "div",
+                          "role": "option",
+                          "aria-selected": "false",
+                          "children": [
+                            {
+                              "tag": "span",
+                              "class": "time",
+                              "text": "16:00"
+                            },
+                            {
+                              "tag": "span",
+                              "class": "title",
+                              "text": "16:00 Design review"
+                            },
+                            {
+                              "tag": "span",
+                              "class": "detail",
+                              "text": "Room 1"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "div",
+          "class": "pane",
+          "children": [
+            {
+              "tag": "section",
+              "class": "component",
+              "data-component": "list",
+              "data-state": "ready",
+              "children": [
+                {
+                  "tag": "h2",
+                  "class": "component-title",
+                  "text": "To do"
+                },
+                {
+                  "tag": "desk-list",
+                  "role": "listbox",
+                  "aria-label": "To do",
+                  "tabindex": "0",
+                  "density": "regular",
+                  "label": "To do",
+                  "shadow": [
+                    {
+                      "tag": "slot"
+                    }
+                  ],
+                  "children": [
+                    {
+                      "tag": "div",
+                      "role": "option",
+                      "aria-selected": "false",
+                      "children": [
+                        {
+                          "tag": "span",
+                          "class": "title",
+                          "text": "Send the weekly report"
+                        },
+                        {
+                          "tag": "span",
+                          "class": "detail",
+                          "text": "Due in 8 hours"
+                        }
+                      ]
+                    },
+                    {
+                      "tag": "div",
+                      "role": "option",
+                      "aria-selected": "false",
+                      "children": [
+                        {
+                          "tag": "span",
+                          "class": "title",
+                          "text": "Buy groceries"
+                        },
+                        {
+                          "tag": "span",
+                          "class": "detail",
+                          "text": "Due tomorrow"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

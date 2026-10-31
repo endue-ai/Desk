@@ -167,8 +167,10 @@ test.describe("desk.views", () => {
     await expect(menu).toHaveAttribute("open", "");
     await expect(menu.getByRole("menuitem")).toHaveText(items);
     await menu.getByRole("menuitem", { name: "Open in the original app" }).click();
-    await expect(frame.locator("desk-toast")).toHaveText("Desk can't open the original app yet");
-    await expect(frame.locator("desk-toast")).toBeVisible();
+    const toast = frame.locator("desk-toast");
+    await expect(toast).toBeVisible();
+    // Its own text; the shadow root adds the dismiss button.
+    await expect(toast).toHaveJSProperty("textContent", "Desk can't open the original app yet");
   });
 
   test("a surface narrower than 480 px draws compact", async ({ page }) => {
