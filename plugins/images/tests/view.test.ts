@@ -138,8 +138,9 @@ describe("rotate and flip", () => {
   });
 
   it("applies the EXIF orientation on open", async () => {
+    // 64 x 48 stored, 48 x 64 shown: small enough to grow by a whole factor, at most 8.
     await open({ "~/Pictures/turned.jpg": fixture("exif.jpg") }, "~/Pictures/turned.jpg");
-    expect(transform()).toBe("translate(0px, 0px) rotate(90deg) scale(1, 1)");
+    expect(transform()).toBe("translate(0px, 0px) rotate(90deg) scale(8, 8)");
   });
 });
 

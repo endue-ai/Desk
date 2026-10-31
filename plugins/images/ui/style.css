@@ -209,10 +209,15 @@ figcaption:empty {
 }
 
 .notice .reason {
+  margin-bottom: 10px;
   color: var(--desk-text);
 }
 
-/* The details lie over the stage's right side, so opening them never shrinks the image. */
+main.beside #stage {
+  margin-right: 300px;
+}
+
+/* The details lie over the stage's right side in a narrow window, beside it in a wide one. */
 #details {
   position: absolute;
   top: 0;

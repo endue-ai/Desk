@@ -2,6 +2,7 @@
 // or two panes on the stage, the details panel and a status live region. It keeps the zoom, pan and
 // turn (viewer.js), handles the keys and the pointer, and asks the controller for the rest. Chords
 // the desk binds (Mod+S, Mod+O, Mod+W, Mod+K ...) are never prevented.
+import { notice, rows } from "./cards.js";
 import { createViewer, fitOf, fromOrientation, PAN, transform, turned } from "./viewer.js";
 
 /**
@@ -27,6 +28,7 @@ export function createView(doc, act, options = {}) {
   const pick = /** @type {HTMLSelectElement} */ (byId("compare-with"));
   const picker = byId("compare-pick");
   const details = byId("details");
+  const main = /** @type {HTMLElement} */ (stage.parentElement);
   const status = byId("status");
   /** @type {(id: string) => Pane} */
   const paneOf = (id) => {
@@ -60,6 +62,8 @@ export function createView(doc, act, options = {}) {
 
   /** Each shown pane's size, its image's turned size and the scale that fits it. */
   const geometry = () => {
+    // Open details sit beside the stage when there is room, over it when there is not.
+    main.classList.toggle("beside", !details.hidden && main.clientWidth >= 720);
     const whole = measure(stage);
     const box = { width: comparing() ? whole.width / 2 : whole.width, height: whole.height };
     return [a, ...(comparing() ? [b] : [])]
@@ -118,17 +122,7 @@ export function createView(doc, act, options = {}) {
     pane.frame.replaceChildren();
     if (!model) return;
     if (model.kind === "details") {
-      const card = doc.createElement("div");
-      card.className = "notice";
-      const title = doc.createElement("h2");
-      title.textContent = model.name;
-      const facts = doc.createElement("p");
-      facts.textContent = `${model.format} · ${model.details.find((r) => r.label === "File size")?.value ?? ""}`;
-      const reason = doc.createElement("p");
-      reason.className = "reason";
-      reason.textContent = model.reason ?? "";
-      card.append(title, facts, reason);
-      pane.frame.append(card);
+      pane.frame.append(notice(doc, model));
       return;
     }
     if (model.kind === "pixels" && model.pixels) {
@@ -142,7 +136,6 @@ export function createView(doc, act, options = {}) {
     } else {
       const img = doc.createElement("img");
       img.alt = model.name;
-      img.decoding = "async";
       img.draggable = false;
       img.addEventListener("error", () => act("failed", model));
       img.addEventListener("load", () => {
@@ -160,23 +153,8 @@ export function createView(doc, act, options = {}) {
 
   /** The details panel: one term and description per row. */
   const describe = (/** @type {ImageModel | null} */ model) => {
-    const list = byId("details-list");
-    list.replaceChildren(
-      ...(model?.details ?? []).flatMap(({ label, value }) => {
-        const dt = doc.createElement("dt");
-        dt.textContent = label;
-        const dd = doc.createElement("dd");
-        dd.textContent = value;
-        return [dt, dd];
-      }),
-    );
-    if (model?.kind === "details") {
-      const dt = doc.createElement("dt");
-      dt.textContent = "Why";
-      const dd = doc.createElement("dd");
-      dd.textContent = model.reason ?? "";
-      list.append(dt, dd);
-    }
+    const reason = model?.kind === "details" ? [{ label: "Why", value: model.reason ?? "" }] : [];
+    byId("details-list").replaceChildren(...rows(doc, [...(model?.details ?? []), ...reason]));
   };
 
   /** The compare picker's options: the other open images and the folder's. */

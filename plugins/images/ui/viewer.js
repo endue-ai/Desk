@@ -32,11 +32,15 @@ export function fromOrientation(orientation) {
 export const turned = (/** @type {Size} */ size, /** @type {number} */ rotation) =>
   rotation % 180 ? { width: size.height, height: size.width } : size;
 
-/** The scale that fits `size` into `pane`, never above 1. */
-export const fitOf = (/** @type {Size} */ pane, /** @type {Size} */ size) =>
-  size.width > 0 && size.height > 0 && pane.width > 0 && pane.height > 0
-    ? Math.min(1, pane.width / size.width, pane.height / size.height)
-    : 1;
+/**
+ * The scale that fits `size` into `pane`. An image smaller than half the pane grows by a whole
+ * factor, up to 8, so its pixels stay square and sharp; one that nearly fits stays at 100%.
+ */
+export const fitOf = (/** @type {Size} */ pane, /** @type {Size} */ size) => {
+  if (!(size.width > 0 && size.height > 0 && pane.width > 0 && pane.height > 0)) return 1;
+  const ratio = Math.min(pane.width / size.width, pane.height / size.height);
+  return ratio >= 2 ? Math.min(8, Math.floor(ratio)) : Math.min(1, ratio);
+};
 
 const clamp = (/** @type {number} */ v, /** @type {number} */ lo, /** @type {number} */ hi) =>
   Math.min(hi, Math.max(lo, v));
