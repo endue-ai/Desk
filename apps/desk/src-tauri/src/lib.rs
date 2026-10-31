@@ -2,6 +2,7 @@
 
 mod commands;
 mod events;
+mod file_urls;
 mod protocol;
 mod socket;
 
@@ -37,8 +38,12 @@ struct Watching(#[allow(dead_code)] Mutex<(Option<PluginWatcher>, Option<ViewWat
 
 pub fn run() {
     tauri::Builder::default()
-        .register_uri_scheme_protocol(protocol::SCHEME, |ctx, request| {
-            protocol::serve(ctx.app_handle(), &request)
+        .register_asynchronous_uri_scheme_protocol(protocol::SCHEME, |ctx, request, responder| {
+            // A file URL reads from disk: answer from the blocking pool, never the main thread.
+            let app = ctx.app_handle().clone();
+            tauri::async_runtime::spawn_blocking(move || {
+                responder.respond(protocol::serve(&app, &request));
+            });
         })
         .setup(|app| {
             let data = app.path().app_data_dir()?;
