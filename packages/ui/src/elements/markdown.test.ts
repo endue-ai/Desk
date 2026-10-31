@@ -48,7 +48,7 @@ describe("desk-markdown", () => {
         "## Next",
       ].join("\n"),
     );
-    const [body] = [...root.children].filter((child) => child.localName !== "style");
+    const [body] = queryAll(root, (el) => el.getAttribute("class") === "body");
     expect(shape(body as Element)).toEqual({
       div: [
         "h1: Ideas",
