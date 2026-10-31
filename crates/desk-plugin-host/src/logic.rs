@@ -5,29 +5,30 @@ use std::fmt;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use desk_bridge::PluginManifest;
+use desk_bridge::{PluginKind, PluginManifest};
 use serde_json::Value;
 use wasmtime::component::{Component, HasSelf, Linker};
-use wasmtime::{Config, Engine, Store, Trap};
+use wasmtime::{Engine, Store, Trap};
 
-use crate::bindings::{Error, Plugin};
+use crate::bindings::{Error, ErrorCode, Plugin};
 use crate::host::Host;
 use crate::imports::Imports;
 use crate::limits::{Limits, Ticker};
 use crate::manifest;
-use crate::state::State;
+use crate::state::{self, State};
 
 /// Why a plugin could not be installed or did not run to the end.
 #[derive(Debug, Clone, PartialEq)]
 pub enum PluginError {
     /// The engine or linker could not be set up.
     Setup(String),
-    /// plugin.json is missing or wrong, the plugin is not a logic plugin, or its entry cannot be read.
+    /// plugin.json is missing or wrong, the plugin is not of the kind (or binding) the host runs,
+    /// or its entry cannot be read.
     Manifest(String),
     /// The entry is not a Wasm component Wasmtime can compile.
     Compile(String),
     /// The component imports something the host does not provide, or lacks one of the world's
-    /// exports (`start`, `on-command`, `on-event`).
+    /// exports (`start`, `on-command`, `on-event`; for a connector `sync`, `query`, `act`, `status`).
     Link(String),
     /// A call ran past the time limit.
     TimeLimit,
@@ -41,6 +42,13 @@ pub enum PluginError {
     Crashed(String),
     /// No plugin with this id is installed.
     NotInstalled(String),
+    /// The connector has no instance by this name (`<connector>/<instance>`).
+    NoInstance(String),
+    /// The instance (`<connector>/<instance>`) is paused; resume it to sync.
+    Paused(String),
+    /// The host itself refused: settings that do not fit, an item that does not, an action the
+    /// manifest does not declare, the index sink, an instance that already exists.
+    Host(Error),
 }
 
 impl fmt::Display for PluginError {
@@ -53,9 +61,12 @@ impl fmt::Display for PluginError {
             Self::TimeLimit => write!(f, "the plugin ran past its time limit"),
             Self::MemoryLimit => write!(f, "the plugin asked for more memory than its limit"),
             Self::Trap(why) => write!(f, "the plugin trapped: {why}"),
-            Self::Guest(error) => write!(f, "{:?}: {}", error.code, error.message),
+            Self::Guest(error) => write!(f, "{}: {}", code_name(error.code), error.message),
             Self::Crashed(why) => write!(f, "the plugin crashed earlier ({why}); reload it"),
-            Self::NotInstalled(id) => write!(f, "no logic plugin {id} is installed"),
+            Self::NotInstalled(id) => write!(f, "no plugin {id} is installed"),
+            Self::NoInstance(name) => write!(f, "there is no instance {name}"),
+            Self::Paused(name) => write!(f, "{name} is paused"),
+            Self::Host(error) => write!(f, "{}: {}", code_name(error.code), error.message),
         }
     }
 }
@@ -89,9 +100,7 @@ pub struct LogicHost {
 impl LogicHost {
     pub fn new(host: Arc<dyn Host>, limits: Limits) -> Result<Self, PluginError> {
         let setup = |e: wasmtime::Error| PluginError::Setup(format!("{e:#}"));
-        let mut config = Config::new();
-        config.wasm_component_model(true).epoch_interruption(true);
-        let engine = Engine::new(&config).map_err(setup)?;
+        let engine = state::engine().map_err(setup)?;
         let mut linker = Linker::new(&engine);
         wasmtime_wasi::p2::add_to_linker_sync(&mut linker).map_err(setup)?;
         Plugin::add_to_linker::<State, HasSelf<State>>(&mut linker, |state| state)
@@ -109,7 +118,7 @@ impl LogicHost {
     /// Install the logic plugin in `dir` and instantiate it, without starting it. Returns its id.
     /// Installing an id again replaces the plugin.
     pub fn install(&mut self, dir: &Path) -> Result<String, PluginError> {
-        let (manifest, bytes) = manifest::read(dir)?;
+        let (manifest, bytes) = manifest::read(dir, PluginKind::Logic)?;
         let run = self.instantiate(&manifest, &bytes)?;
         let id = manifest.id;
         let dir = dir.to_path_buf();
@@ -153,7 +162,7 @@ impl LogicHost {
     /// instance is dropped; what the plugin keeps in the store is still there.
     pub fn reload(&mut self, id: &str) -> Result<(), PluginError> {
         let dir = self.installed_mut(id)?.dir.clone();
-        let fresh = manifest::read(&dir).and_then(|(manifest, bytes)| {
+        let fresh = manifest::read(&dir, PluginKind::Logic).and_then(|(manifest, bytes)| {
             if manifest.id != id {
                 let renamed = format!("plugin.json now says {}, not {id}", manifest.id);
                 return Err(PluginError::Manifest(renamed));
@@ -216,10 +225,7 @@ impl LogicHost {
         let component = Component::from_binary(&self.engine, bytes)
             .map_err(|e| PluginError::Compile(format!("{e:#}")))?;
         let imports = Imports::new(manifest, Arc::clone(&self.host));
-        let mut store = Box::new(Store::new(&self.engine, State::new(imports, &self.limits)));
-        store.limiter(|state| &mut state.limiter);
-        store.epoch_deadline_trap();
-        store.set_epoch_deadline(self.limits.ticks());
+        let mut store = state::store(&self.engine, imports, &self.limits);
         match Plugin::instantiate(&mut *store, &component, &self.linker) {
             Ok(plugin) => Ok(Run::Ready { store, plugin }),
             Err(error) => Err(stopped(&error, &store, PluginError::Link)),
@@ -227,8 +233,23 @@ impl LogicHost {
     }
 }
 
+/// The WIT name of an error code: `not-found`, `invalid-params`.
+pub(crate) fn code_name(code: ErrorCode) -> &'static str {
+    match code {
+        ErrorCode::PermissionDenied => "permission-denied",
+        ErrorCode::InvalidParams => "invalid-params",
+        ErrorCode::NotFound => "not-found",
+        ErrorCode::AlreadyExists => "already-exists",
+        ErrorCode::IoError => "io-error",
+        ErrorCode::Timeout => "timeout",
+        ErrorCode::Cancelled => "cancelled",
+        ErrorCode::Unsupported => "unsupported",
+        ErrorCode::Internal => "internal",
+    }
+}
+
 /// Name what stopped a call: a limit, or else `otherwise` with the error's text.
-fn stopped(
+pub(crate) fn stopped(
     error: &wasmtime::Error,
     store: &Store<State>,
     otherwise: fn(String) -> PluginError,

@@ -1,7 +1,9 @@
 //! A mock `Host`: it records every call as (plugin, bridge method, main argument) and keeps what a
-//! desk would keep (files, the store, commands, answers, settings, the log) in memory.
+//! desk would keep (files, the store, commands, answers, settings, the log) in memory. Absolute
+//! paths are files on disk (`disk`).
 
 use std::collections::{BTreeMap, BTreeSet};
+use std::path::Path;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 
@@ -9,6 +11,8 @@ use desk_plugin_host::{Command, CommandInfo, Decision, DirEntry, Duration, Entry
 use desk_plugin_host::{ErrorCode, Failure, Grant, Host, LogEntry, LogLevel, NotifyLevel};
 use desk_plugin_host::{Request, Response, Setting};
 use serde_json::{Value, json};
+
+use super::disk;
 
 /// One call that reached the host: the plugin, the bridge method and its main argument.
 pub type Call = (String, String, String);
@@ -112,6 +116,9 @@ pub fn level_name(level: LogLevel) -> &'static str {
 impl Host for MockHost {
     fn fs_read(&self, plugin: &str, path: &str) -> Result<Vec<u8>, Error> {
         self.call(plugin, "fs.read", path)?;
+        if Path::new(path).is_absolute() {
+            return disk::read(path);
+        }
         self.files.lock().unwrap().get(path).cloned().ok_or(Error {
             code: ErrorCode::NotFound,
             message: format!("{path} does not exist"),
@@ -120,10 +127,14 @@ impl Host for MockHost {
 
     fn fs_list(&self, plugin: &str, path: &str) -> Result<Vec<DirEntry>, Error> {
         self.call(plugin, "fs.list", path)?;
+        if Path::new(path).is_absolute() {
+            return disk::list(path);
+        }
         Ok(vec![DirEntry {
             name: "hello.txt".into(),
             kind: EntryKind::File,
             size: Some(5),
+            modified_at: None,
         }])
     }
 
