@@ -29,6 +29,7 @@ use crate::core_perm::{Prompter, RefuseAll};
 use crate::core_plugin_views::ProvidedViews;
 use crate::core_proc::Processes;
 use crate::core_prompts::Prompts;
+use crate::core_ui::Surfaces;
 use crate::core_views::ViewsSeen;
 use crate::events::EventBus;
 use crate::init::InitFile;
@@ -75,6 +76,7 @@ pub struct Core {
     pub(crate) views: Mutex<ViewsSeen>,
     pub(crate) processes: Arc<Mutex<Processes>>,
     pub(crate) provided_views: Mutex<ProvidedViews>,
+    pub(crate) surfaces: Mutex<Surfaces>,
 }
 
 impl Core {
@@ -105,6 +107,7 @@ impl Core {
             views: Mutex::new(ViewsSeen::default()),
             processes: Arc::new(Mutex::new(Processes::default())),
             provided_views: Mutex::new(ProvidedViews::default()),
+            surfaces: Mutex::new(Surfaces::default()),
         }
     }
 
@@ -176,8 +179,8 @@ impl Core {
             R::NetFetch(r) => (r.id, self.net_fetch(caller, r.params)),
             R::AudioCaptureStart(r) => (r.id, unsupported("audio.capture.start")),
             R::AudioCaptureStop(r) => (r.id, unsupported("audio.capture.stop")),
-            R::UiSurfaceOpen(r) => (r.id, unsupported("ui.surface.open")),
-            R::UiSurfaceClose(r) => (r.id, unsupported("ui.surface.close")),
+            R::UiSurfaceOpen(r) => (r.id, self.surface_open(caller, r.params)),
+            R::UiSurfaceClose(r) => (r.id, self.surface_close(caller, r.params)),
             R::CmdRegister(r) => (r.id, self.cmd_register(caller, r.params)),
             R::CmdUnregister(r) => (r.id, self.cmd_unregister(caller, r.params)),
             R::CmdList(r) => (r.id, self.cmd_list(caller, r.params)),
