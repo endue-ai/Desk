@@ -2,22 +2,36 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://endue.ai/specs/bridge/v0/view.schema.json",
   "title": "Desk bridge v0: view",
-  "description": "The person's views, the YAML files in ~/.desk/views (ADR 0032): list, read, save and remove them. A saved view is checked like one installed from a plugin. Every call needs view:manage.",
+  "description": "The views on this desk (ADR 0032): the person's, the YAML files in ~/.desk/views, which can be listed, read, saved and removed, and the enabled view plugins', which can be listed and read but neither saved nor removed. A person's file shadows a plugin's view of its id. A saved view is checked like one installed from a plugin. Every call needs view:manage.",
   "$defs": {
+    "ViewSource": {
+      "description": "Where a view comes from: plugin, an enabled view plugin's inline view or one of its view files, read-only; file, the person's file in ~/.desk/views.",
+      "type": "string",
+      "enum": ["plugin", "file"]
+    },
     "ViewSummary": {
-      "description": "A view as view.list returns it.",
+      "description": "A view as view.list returns it: where it comes from and, for a plugin's view, the plugin.",
       "type": "object",
       "properties": {
         "id": { "$ref": "../../view/v0/view.schema.json#/$defs/ViewId" },
         "version": { "$ref": "../../plugin/v0/plugin.schema.json#/$defs/Version" },
         "title": { "$ref": "../../view/v0/view.schema.json#/$defs/Template" },
-        "description": { "type": "string" }
+        "description": { "type": "string" },
+        "source": { "$ref": "#/$defs/ViewSource" },
+        "plugin": { "$ref": "../../plugin/v0/plugin.schema.json#/$defs/PluginId" }
       },
-      "required": ["id", "version", "title"],
-      "additionalProperties": false
+      "required": ["id", "version", "title", "source"],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": { "properties": { "source": { "const": "plugin" } } },
+          "then": { "properties": { "plugin": true }, "required": ["plugin"] },
+          "else": { "properties": { "plugin": false } }
+        }
+      ]
     },
     "ViewListRequest": {
-      "description": "List the person's views.",
+      "description": "List the views: the person's and the enabled view plugins', one per id.",
       "type": "object",
       "properties": {
         "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
@@ -46,7 +60,7 @@
       "additionalProperties": false
     },
     "ViewGetRequest": {
-      "description": "Read one view whole.",
+      "description": "Read one view whole, the person's or a plugin's.",
       "type": "object",
       "properties": {
         "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
@@ -67,16 +81,25 @@
       "additionalProperties": false
     },
     "ViewGetResult": {
-      "description": "Result of view.get.",
+      "description": "Result of view.get: the view, where it comes from and, for a plugin's view, the plugin.",
       "type": "object",
       "properties": {
-        "view": { "$ref": "../../view/v0/view.schema.json#/$defs/View" }
+        "view": { "$ref": "../../view/v0/view.schema.json#/$defs/View" },
+        "source": { "$ref": "#/$defs/ViewSource" },
+        "plugin": { "$ref": "../../plugin/v0/plugin.schema.json#/$defs/PluginId" }
       },
-      "required": ["view"],
-      "additionalProperties": false
+      "required": ["view", "source"],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": { "properties": { "source": { "const": "plugin" } } },
+          "then": { "properties": { "plugin": true }, "required": ["plugin"] },
+          "else": { "properties": { "plugin": false } }
+        }
+      ]
     },
     "ViewSaveRequest": {
-      "description": "Save a view, new or replacing the one with its id.",
+      "description": "Save one of the person's views, new or replacing the one with its id. A plugin's view is not saved: an id an enabled view plugin provides is saved only over the person's file of that id.",
       "type": "object",
       "properties": {
         "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
@@ -103,7 +126,7 @@
       "additionalProperties": false
     },
     "ViewRemoveRequest": {
-      "description": "Remove one of the person's views.",
+      "description": "Remove one of the person's views. A plugin's view is not removed.",
       "type": "object",
       "properties": {
         "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },

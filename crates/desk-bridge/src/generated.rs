@@ -3750,7 +3750,16 @@ pub struct UiNotifiedData {
     pub level: NotifyLevel,
 }
 
-/// A view as view.list returns it.
+/// Where a view comes from: plugin, an enabled view plugin's inline view or one of its view files, read-only; file, the person's file in ~/.desk/views.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum ViewSource {
+    #[serde(rename = "plugin")]
+    Plugin,
+    #[serde(rename = "file")]
+    File,
+}
+
+/// A view as view.list returns it: where it comes from and, for a plugin's view, the plugin.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ViewSummary {
@@ -3759,9 +3768,12 @@ pub struct ViewSummary {
     pub title: Template,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
+    pub source: ViewSource,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub plugin: Option<PluginId>,
 }
 
-/// List the person's views.
+/// List the views: the person's and the enabled view plugins', one per id.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ViewListRequest {
@@ -3784,7 +3796,7 @@ pub struct ViewListResult {
     pub views: Vec<ViewSummary>,
 }
 
-/// Read one view whole.
+/// Read one view whole, the person's or a plugin's.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ViewGetRequest {
@@ -3801,14 +3813,17 @@ pub struct ViewGetParams {
     pub scope: ViewManagePermission,
 }
 
-/// Result of view.get.
+/// Result of view.get: the view, where it comes from and, for a plugin's view, the plugin.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ViewGetResult {
     pub view: View,
+    pub source: ViewSource,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub plugin: Option<PluginId>,
 }
 
-/// Save a view, new or replacing the one with its id.
+/// Save one of the person's views, new or replacing the one with its id. A plugin's view is not saved: an id an enabled view plugin provides is saved only over the person's file of that id.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ViewSaveRequest {
@@ -3830,7 +3845,7 @@ pub struct ViewSaveParams {
 #[serde(deny_unknown_fields)]
 pub struct ViewSaveResult {}
 
-/// Remove one of the person's views.
+/// Remove one of the person's views. A plugin's view is not removed.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ViewRemoveRequest {

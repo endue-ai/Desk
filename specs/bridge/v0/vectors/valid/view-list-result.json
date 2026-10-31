@@ -1,0 +1,23 @@
+{
+  "target": "ViewListResult",
+  "description": "view.list answered: the person's file and a view of the plugin desk.today",
+  "instance": {
+    "views": [
+      {
+        "id": "desk.today",
+        "version": "0.1.0",
+        "title": "Today",
+        "description": "Today's events, the tasks due by tonight, unread messages and the notes touched last.",
+        "source": "plugin",
+        "plugin": "desk.today"
+      },
+      {
+        "id": "example.notes",
+        "version": "0.1.0",
+        "title": "Notes",
+        "description": "The notes touched this week.",
+        "source": "file"
+      }
+    ]
+  }
+}
