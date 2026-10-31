@@ -6,6 +6,7 @@ use std::fs::{OpenOptions, Permissions};
 use std::io::{self, Write as _};
 use std::path::Path;
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::time::SystemTime;
 
 mod watch;
 pub use watch::{Change, Changed, Watch, WatchOptions, watch, watch_changes, watch_debounced};
@@ -25,6 +26,8 @@ pub struct Entry {
     pub kind: EntryKind,
     /// Size in bytes, for files only.
     pub size: Option<u64>,
+    /// When a file or folder last changed; `None` for symlinks, and when the OS has no such time.
+    pub modified: Option<SystemTime>,
 }
 
 /// Read a whole file.
@@ -32,7 +35,8 @@ pub fn read(path: &Path) -> io::Result<Vec<u8>> {
     std::fs::read(path)
 }
 
-/// List one folder, sorted by name. Not recursive.
+/// List one folder, sorted by name, with each file's size and each file's and folder's modification
+/// time. Not recursive.
 pub fn list(path: &Path) -> io::Result<Vec<Entry>> {
     let mut entries = Vec::new();
     for entry in std::fs::read_dir(path)? {
@@ -45,14 +49,19 @@ pub fn list(path: &Path) -> io::Result<Vec<Entry>> {
         } else {
             EntryKind::File
         };
-        let size = match kind {
-            EntryKind::File => Some(entry.metadata()?.len()),
-            EntryKind::Dir | EntryKind::Symlink => None,
+        let (size, modified) = match kind {
+            EntryKind::File => {
+                let metadata = entry.metadata()?;
+                (Some(metadata.len()), metadata.modified().ok())
+            }
+            EntryKind::Dir => (None, entry.metadata().and_then(|m| m.modified()).ok()),
+            EntryKind::Symlink => (None, None),
         };
         entries.push(Entry {
             name: entry.file_name().to_string_lossy().into_owned(),
             kind,
             size,
+            modified,
         });
     }
     entries.sort_by(|a, b| a.name.cmp(&b.name));
