@@ -195,7 +195,13 @@ export function readExif(bytes, format, jpeg) {
       if (cmt)
         ifds = { ifd0: firstIfd(cmt.ifd0), exif: firstIfd(cmt.exif), gps: firstIfd(cmt.gps) };
     } else if ((format === "tiff" || format === "raw") && tiffShaped) ifds = ifdsOf(bytes);
-    else {
+    else if (format === "raw" && has(bytes, 0, "\0MRM")) {
+      // Minolta's MRW: blocks of a name and a big-endian length; TTW holds a TIFF.
+      const r = reader(bytes, false);
+      const end = Math.min(bytes.length, r.u32(4) + 8);
+      for (let at = 8; at + 8 <= end; at += 8 + r.u32(at + 4))
+        if (has(bytes, at, "\0TTW")) ifds = ifdsOf(bytes.subarray(at + 8, at + 8 + r.u32(at + 4)));
+    } else {
       const block =
         format === "jpeg"
           ? jpegExif(bytes)

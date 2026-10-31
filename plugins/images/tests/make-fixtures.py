@@ -137,6 +137,8 @@ def main():
     # Two plain JPEGs for the RAW containers the tests build: a thumbnail and a larger preview.
     Image.new("RGB", (16, 12), (40, 120, 200)).save(out("small.jpg"), quality=70)
     Image.new("RGB", (64, 48), (40, 200, 120)).save(out("large.jpg"), quality=70)
+    # A one-channel JPEG larger than both, as older PowerShot CRWs keep sensor data.
+    Image.new("L", (128, 96), 128).save(out("grey.jpg"), quality=70)
     # Animated GIF, APNG and WebP: three frames each.
     frames = [Image.new("RGB", (8, 8), c) for c in ((255, 0, 0), (0, 255, 0), (0, 0, 255))]
     frames[0].save(out("anim.gif"), save_all=True, append_images=frames[1:], duration=100, loop=0)

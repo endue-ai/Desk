@@ -14,7 +14,7 @@ import { decodeNetpbm } from "./formats/netpbm.js";
 import { decodeNifti } from "./formats/nifti.js";
 import { probe } from "./formats/probe.js";
 import { decodeQoi } from "./formats/qoi.js";
-import { largestJpeg } from "./formats/raw.js";
+import { largestJpeg, largestStrips } from "./formats/raw.js";
 import { decodeTga } from "./formats/tga.js";
 import { decodeEmf, decodeEps, decodeWmf } from "./formats/vector.js";
 import { LABELS, sniff } from "./sniff.js";
@@ -118,8 +118,12 @@ export async function decode(bytes, name) {
     }
     if (id === "raw") {
       const jpeg = largestJpeg(bytes);
-      const exif = readExif(bytes, id, jpeg ? bytes.subarray(jpeg.start, jpeg.end) : undefined);
+      const exif = readExif(bytes, id, jpeg?.data);
       const orientation = exif?.orientation ?? 1;
+      const strips = largestStrips(bytes);
+      const label = "Embedded preview";
+      if (strips && (!jpeg || strips.width * strips.height > jpeg.width * jpeg.height))
+        return { ...base, kind: "pixels", ...strips, label, exif, orientation, depth: "8-bit RGB" };
       if (!jpeg)
         return {
           ...base,
@@ -127,18 +131,19 @@ export async function decode(bytes, name) {
           orientation,
           reason: "It carries no embedded preview that Images can show.",
         };
-      const data = bytes.subarray(jpeg.start, jpeg.end);
+      const { data, width, height } = jpeg;
+      const depth = probe("jpeg", data).depth;
       return {
         ...base,
         kind: "web",
         mime: "image/jpeg",
         data,
-        width: jpeg.width,
-        height: jpeg.height,
-        label: "Embedded preview",
+        width,
+        height,
+        label,
         exif,
         orientation,
-        depth: probe("jpeg", data).depth,
+        depth,
       };
     }
     const mime = MIME[id];

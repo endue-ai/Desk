@@ -81,7 +81,7 @@ function image(
   stretch(values, lo, hi, out, (i) => (height - 1 - Math.floor(i / width)) * width + (i % width));
   const rows = [
     { label: "BITPIX", value: String(bitpix) },
-    { label: "Range", value: `${lo} to ${hi}` },
+    { label: "Range", value: `${Number(lo.toPrecision(6))} to ${Number(hi.toPrecision(6))}` },
     ...["OBJECT", "TELESCOP", "INSTRUME"].flatMap((k) =>
       cards.get(k) ? [{ label: k[0] + k.slice(1).toLowerCase(), value: cards.get(k) ?? "" }] : [],
     ),

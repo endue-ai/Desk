@@ -127,6 +127,44 @@ describe("embedded previews", () => {
     expect(result.data).toEqual(jpeg);
   });
 
+  it("prefers a colour JPEG to a larger one-channel JPEG of sensor data (CRW)", async () => {
+    const crw = concat(ascii("II\x1a\0\0\0HEAPCCDR"), sensor(256), fixture("grey.jpg"), SMALL);
+    const result = await preview(crw, "CRW_0001.CRW");
+    expect(result).toMatchObject({ width: 16, height: 12 });
+    expect(result.data).toEqual(SMALL);
+  });
+
+  it("shows an uncompressed RGB thumbnail when there is no JPEG (DNG, 3FR, ERF)", async () => {
+    const rgb = Uint8Array.from({ length: 4 * 2 * 3 }, (_, i) => i * 10);
+    const bytes = tiff(
+      [
+        [0x100, 3, [4]],
+        [0x101, 3, [2]],
+        [0x102, 3, [8, 8, 8]],
+        [0x103, 3, [1]],
+        [0x106, 3, [2]],
+        [0x111, 4, { blob: "rgb" }],
+        [0x115, 3, [3]],
+        [0x117, 4, { blob: "rgb" }],
+      ],
+      { blobs: { rgb } },
+    );
+    const result = await decode(bytes, "L1000001.DNG");
+    expect(result).toMatchObject({
+      kind: "pixels",
+      label: "Embedded preview",
+      width: 4,
+      height: 2,
+    });
+    const expected = Array.from({ length: 8 }, (_, p) => [
+      p * 30,
+      p * 30 + 10,
+      p * 30 + 20,
+      255,
+    ]).flat();
+    expect(Array.from(result.rgba ?? [])).toEqual(expected);
+  });
+
   it("a RAW without a preview opens as the details view", async () => {
     const bytes = tiff([
       [0x100, 4, [6000]],

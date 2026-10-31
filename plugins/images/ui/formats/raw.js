@@ -6,7 +6,7 @@ import { has, reader } from "../bytes.js";
 import { boxes } from "./isobmff.js";
 import { openTiff } from "./tiff.js";
 
-/** @typedef {{ start: number, end: number, width: number, height: number }} Jpeg */
+/** @typedef {{ start: number, end: number, width: number, height: number, colour: boolean }} Jpeg */
 
 /** Start-of-frame markers a webview decodes: baseline, extended and progressive Huffman. */
 const DECODABLE = new Set([0xc0, 0xc1, 0xc2]);
@@ -28,7 +28,8 @@ export function jpegAt(bytes, start) {
   let width = 0;
   let height = 0;
   let scanned = false;
-  while (at + 4 <= bytes.length) {
+  let colour = false;
+  while (at + 2 <= bytes.length) {
     if (bytes[at] !== 0xff) {
       if (!scanned) return null;
       // Entropy-coded data: the next marker is an FF not followed by 00 or a restart marker.
@@ -47,14 +48,16 @@ export function jpegAt(bytes, start) {
       at += 2;
       continue;
     }
-    if (marker === 0xd9) return scanned && width > 0 ? { start, end: at + 2, width, height } : null;
-    if (marker === 0xd8) return null;
+    if (marker === 0xd9)
+      return scanned && width > 0 ? { start, end: at + 2, width, height, colour } : null;
+    if (marker === 0xd8 || at + 4 > bytes.length) return null;
     const length = r.u16(at + 2);
     if (length < 2 || at + 2 + length > bytes.length) return null;
     if (FRAMES.has(marker)) {
       if (!DECODABLE.has(marker) || length < 8) return null;
       height = r.u16(at + 5);
       width = r.u16(at + 7);
+      colour = r.u8(at + 9) >= 3;
       if (width === 0 || height === 0) return null;
     } else if (marker === 0xda) {
       if (width === 0) return null;
@@ -104,9 +107,10 @@ function fromRaf(/** @type {Uint8Array} */ bytes) {
 }
 
 /**
- * The largest embedded JPEG a webview shows, or null.
+ * The largest embedded JPEG a webview shows, or null. Its bytes are `data`: a copy when the file
+ * keeps it damaged on purpose (Minolta's MRW thumbnail starts 00 D8 instead of FF D8).
  * @param {Uint8Array} bytes
- * @returns {Jpeg | null}
+ * @returns {(Jpeg & { data: Uint8Array }) | null}
  */
 export function largestJpeg(bytes) {
   const starts = new Set([...fromTiff(bytes), ...fromCr3(bytes), ...fromRaf(bytes)]);
@@ -118,16 +122,74 @@ export function largestJpeg(bytes) {
     if (bytes[at + 1] === 0xd8 && bytes[at + 2] === 0xff) starts.add(at);
   /** @type {Jpeg | null} */
   let best = null;
-  const area = (/** @type {Jpeg} */ j) => j.width * j.height;
+  // Colour first: a one-channel "JPEG" of sensor size is sensor data (older PowerShot CRWs).
+  const area = (/** @type {Jpeg} */ j) => j.width * j.height * (j.colour ? 1 : 1e-9);
   for (const start of starts) {
     const jpeg = jpegAt(bytes, start);
     if (!jpeg) continue;
-    if (
-      !best ||
-      area(jpeg) > area(best) ||
-      (area(jpeg) === area(best) && jpeg.end - jpeg.start > best.end - best.start)
-    )
-      best = jpeg;
+    const longer =
+      best && area(jpeg) === area(best) && jpeg.end - jpeg.start > best.end - best.start;
+    if (!best || area(jpeg) > area(best) || longer) best = jpeg;
+  }
+  if (best) return { ...best, data: bytes.subarray(best.start, best.end) };
+  if (!has(bytes, 0, "\0MRM")) return null;
+  for (
+    let at = bytes.indexOf(0xd8);
+    at > 0 && at + 2 < bytes.length;
+    at = bytes.indexOf(0xd8, at + 1)
+  ) {
+    if (bytes[at - 1] !== 0 || bytes[at + 1] !== 0xff) continue;
+    const copy = bytes.slice(at - 1, Math.min(bytes.length, at - 1 + (1 << 20)));
+    copy[0] = 0xff;
+    const jpeg = jpegAt(copy, 0);
+    if (jpeg)
+      return { ...jpeg, start: at - 1, end: at - 1 + jpeg.end, data: copy.subarray(0, jpeg.end) };
+  }
+  return null;
+}
+
+/**
+ * The largest uncompressed 8-bit RGB image among the TIFF IFDs: the thumbnail DNG, 3FR and ERF
+ * files keep, as RGBA.
+ * @param {Uint8Array} bytes
+ * @returns {{ width: number, height: number, rgba: Uint8ClampedArray } | null}
+ */
+export function largestStrips(bytes) {
+  /** @type {{ width: number, height: number, rgba: Uint8ClampedArray } | null} */
+  let best = null;
+  try {
+    for (const ifd of openTiff(bytes).all()) {
+      const [width = 0, height = 0] = [ifd.number(0x100), ifd.number(0x101)];
+      const plain =
+        (ifd.number(0x103) ?? 1) === 1 &&
+        ifd.number(0x106) === 2 &&
+        (ifd.number(0x11c) ?? 1) === 1 &&
+        ifd.number(0x115) === 3 &&
+        ifd.numbers(0x102).every((b) => b === 8);
+      if (!plain || width * height === 0 || width * height > 2 ** 25) continue;
+      if (best && width * height <= best.width * best.height) continue;
+      const counts = ifd.numbers(0x117);
+      const rgb = new Uint8Array(width * height * 3);
+      let filled = 0;
+      ifd.numbers(0x111).forEach((offset, i) => {
+        const part = bytes
+          .subarray(offset, offset + (counts[i] ?? 0))
+          .subarray(0, rgb.length - filled);
+        rgb.set(part, filled);
+        filled += part.length;
+      });
+      if (filled < rgb.length) continue;
+      const rgba = new Uint8ClampedArray(width * height * 4);
+      for (let p = 0; p < width * height; p++) {
+        rgba[p * 4] = rgb[p * 3] ?? 0;
+        rgba[p * 4 + 1] = rgb[p * 3 + 1] ?? 0;
+        rgba[p * 4 + 2] = rgb[p * 3 + 2] ?? 0;
+        rgba[p * 4 + 3] = 255;
+      }
+      best = { width, height, rgba };
+    }
+  } catch {
+    // Not a TIFF: no strips to show.
   }
   return best;
 }
