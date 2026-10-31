@@ -6,7 +6,7 @@ first run, plugins and the session across a relaunch.
 | Path | Purpose |
 | --- | --- |
 | `wdio.conf.ts` | WebdriverIO + tauri-driver: one app process per spec file, each with a fresh `HOME` |
-| `specs/` | `launch` (ready line, first run, Skip intro), `plugins` (sidebar toggle), `session` (relaunch) |
+| `specs/` | On the desk shell, Default profile: `launch` (both layers, ready line, first run, Skip intro), `plugins` (the Plugins list toggled from the keyboard), `session` (the dock and the desktop switcher across a relaunch) |
 | `support/` | `driver.ts` starts tauri-driver per spec; `desk.ts` holds the specs' helpers |
 | `driver/` | `webkit-webdriver.sh`: the native driver, with the app's stdout kept for the log |
 | `fixtures/` | `init.yaml` (the template), `init-no-first-run.yaml`, the `e2e.hello` test plugin |
