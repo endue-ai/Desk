@@ -7,6 +7,7 @@ mod common;
 
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::mpsc::Receiver;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
@@ -88,13 +89,16 @@ fn answer(data: &[BrainTurnData]) -> String {
         .collect()
 }
 
+static COUNTER: AtomicU64 = AtomicU64::new(0);
+
 fn temp_file() -> PathBuf {
     let nanos = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap()
         .as_nanos();
+    let n = COUNTER.fetch_add(1, Ordering::SeqCst);
     std::env::temp_dir()
-        .join(format!("desk-brain-{}-{nanos}", std::process::id()))
+        .join(format!("desk-brain-{}-{nanos}-{n}", std::process::id()))
         .join("brain.json")
 }
 
