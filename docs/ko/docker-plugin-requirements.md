@@ -5,7 +5,7 @@
 > 컨테이너 관리 표면을 Desk 의 기본 플러그인 `endue.docker`(`plugins/docker`) 가 프로덕션 수준에서 맡으려면 무엇이
 > 있어야 하는지를 번호를 붙여 적은 문서입니다. `desk-requirements.md` 의 BASE 표에서 한 줄(`docker`)을 차지하고, 이 문서가
 > 그 줄을 펼칩니다. 요구사항 한 줄이 Task 이슈 하나의 요구사항 칸이 됩니다. 왜 Engine API 소켓이 아니라 docker CLI 인지는
-> ADR 0038 이, 코드가 하는 일은 `plugins/docker/README.md` 가 말합니다. *현재* 열은 이 문서와 함께 들어간 첫 판(0.1.0)
+> ADR 0039 이, 코드가 하는 일은 `plugins/docker/README.md` 가 말합니다. *현재* 열은 이 문서와 함께 들어간 첫 판(0.1.0)
 > 기준입니다.
 
 좋은 컨테이너 표면의 값어치는 셋입니다. 엔진의 *지금*(무엇이 돌고, 무엇이 죽었고, 무엇이 자리를 차지하는지)이 한 화면에
@@ -129,7 +129,7 @@ Docker Desktop · lazydocker · Portainer · k9s 의 관용을 빌리고, 버퍼
 ## 가정과 결정 (뒤집으려면 거절에 한 줄로)
 
 1. `kind: ui`, id `endue.docker`, 이름 Docker, 표면 하나. 로그 · 상세는 같은 표면의 버퍼다.
-2. CLI 를 쓴다(ADR 0038). 소켓 · `net.fetch` 는 쓰지 않는다.
+2. CLI 를 쓴다(ADR 0039). 소켓 · `net.fetch` 는 쓰지 않는다.
 3. 키 `Mod+Shift+K`(`D` 는 방해 금지가 쓴다). 목록 안에서 `n`/`p` 는 이동이라 일시정지는 `P`.
 4. 컨텍스트는 플러그인 안에서만 바뀐다. 전역 `docker context use` 는 사람의 터미널까지 바꾸므로 쓰지 않는다.
 5. `rm` 기본은 익명 볼륨을 남긴다(`-v` 는 `volumes: true`). `down` 기본은 볼륨 · 이미지를 남긴다. `system prune` 기본은 볼륨을 남긴다.
@@ -144,7 +144,7 @@ Docker Desktop · lazydocker · Portainer · k9s 의 관용을 빌리고, 버퍼
 
 | 순서 | 이슈 | Scope | 선행 |
 | --- | --- | --- | --- |
-| T1 | `plugins/docker` 편입 (A 단계, 이 문서, ADR 0038) | `plugins/docker/**` · `plugins/README.md` · `docs/ko/docker-plugin-requirements.md` · `docs/ko/desk-requirements.md` · `docs/adr/0038-*` · `docs/qa/TESTING.md` | — |
+| T1 | `plugins/docker` 편입 (A 단계, 이 문서, ADR 0039) | `plugins/docker/**` · `plugins/README.md` · `docs/ko/docker-plugin-requirements.md` · `docs/ko/desk-requirements.md` · `docs/adr/0039-*` · `docs/qa/TESTING.md` | — |
 | T2 | D1: 로그인 셸 PATH 해석 | `apps/desk/src-tauri/**` · `crates/desk-sys/**` | — |
 | T3 | D4: 스텁의 가짜 `docker` 와 `packages/runtime/e2e/docker.spec.ts` | `packages/bridge/src/**` · `packages/runtime/e2e/**` | — |
 | T4 | DOCK-19 일괄 동작 · 필터 | `plugins/docker/**` | T1 |

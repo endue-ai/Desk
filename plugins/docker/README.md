@@ -6,7 +6,7 @@ six lists (`1`–`6`), a container's detail and its logs as desk buffers; single
 start, `x` stop, `r` restart, `P` pause, `K` kill, `D` remove, `l` logs, `e` shell, `↵` detail). Every
 operation is a command (`endue.docker.*`, registered again with an argument schema for agents), so the
 palette, Eris and agents run the same ones; `Mod+Shift+K` is `endue.docker.open`. Design and
-requirements: `docs/ko/docker-plugin-requirements.md`; why the CLI and not the socket: ADR 0038.
+requirements: `docs/ko/docker-plugin-requirements.md`; why the CLI and not the socket: ADR 0039.
 
 docker runs through `proc.spawn` without a shell, with `--context` when the person picked one, every
 name checked (`ui/refs.js`) and `--` before positional values. `docker events` keeps the lists current;
