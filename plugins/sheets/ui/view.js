@@ -26,8 +26,9 @@ export function sizeOf(/** @type {number} */ bytes) {
   return `${n.toFixed(1)} ${units[unit]}`;
 }
 
+/** A sum or an average without the float noise of adding many decimals: 15 digits at most. */
 const number = (/** @type {number} */ n) =>
-  n.toLocaleString("en-US", { maximumFractionDigits: 10, useGrouping: true });
+  Number(n.toPrecision(15)).toLocaleString("en-US", { maximumFractionDigits: 6 });
 
 /** @param {Document} doc */
 export function createView(doc) {
@@ -233,7 +234,7 @@ export function createView(doc) {
         byId("details-name").textContent = model.name;
         byId("details-size").textContent = sizeOf(model.size);
         byId("details-format").textContent =
-          `${model.book.detected} (named as ${model.book.format})`;
+          `${model.book.detected} (the name says ${model.book.format})`;
         byId("details-cause").textContent = model.book.cause ?? "";
       } else if (model?.book.kind === "link") {
         byId("link-url").textContent = model.book.url;

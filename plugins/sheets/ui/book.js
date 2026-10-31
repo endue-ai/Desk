@@ -37,7 +37,13 @@ const READ = {
 export const ENCRYPTED = "This workbook is encrypted.";
 const NO_WORKBOOK = "This ZIP archive holds no workbook.";
 const OLD_NUMBERS = "This is a Numbers document from 2009 or earlier, which Sheets cannot read.";
-const TEXT_KINDS = new Set(["Text", "XML", "HTML", "JSON", "DIF", "SYLK", "UTF-16 text"]);
+/** What a binary-only format may start with; the parser would read anything else as text. */
+const CONTAINERS = new Set([
+  "ZIP archive",
+  "OLE compound file",
+  "Lotus worksheet",
+  "Quattro Pro notebook",
+]);
 
 const utf8 = (/** @type {ArrayLike<number> | undefined} */ data) =>
   data ? new TextDecoder().decode(data instanceof Uint8Array ? data : Uint8Array.from(data)) : "";
@@ -276,7 +282,10 @@ export function openBook(bytes, { name, encoding = "auto" }) {
           const { sheet, detail } = readCsv(bytes, { name, encoding });
           return { kind: "sheets", format: formatOf(name), detail, sheets: [sheet] };
         }
-        if ((BINARY.has(ext) && TEXT_KINDS.has(detected)) || (ext === "fods" && detected !== "XML"))
+        if (
+          (BINARY.has(ext) && !CONTAINERS.has(detected)) ||
+          (ext === "fods" && detected !== "XML")
+        )
           return say(damaged(name));
       }
       const wb = XLSX.read(bytes, { ...READ });

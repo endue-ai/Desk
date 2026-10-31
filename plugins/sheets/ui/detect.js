@@ -61,6 +61,7 @@ export function detect(bytes) {
     return "OLE compound file";
   if (startsWith(bytes, [0, 0]) && (bytes[2] === 2 || bytes[2] === 0x1a) && bytes[3] === 0)
     return "Lotus worksheet";
+  if (startsWith(bytes, [0x51, 0x50, 0x57], 4)) return "Quattro Pro notebook";
   if (bytes[0] === 0x09 && [0, 2, 4].includes(bytes[1] ?? -1)) return "Excel 2-4 worksheet";
   if (startsWith(bytes, [0xff, 0xfe]) || startsWith(bytes, [0xfe, 0xff])) return "UTF-16 text";
   const first = bytes.subarray(0, 1024);

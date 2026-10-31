@@ -20,26 +20,71 @@ export const contrast = (/** @type {string} */ fill) => {
   return 0.299 * r + 0.587 * g + 0.114 * b > 150 ? "#1b1b1f" : "#f4f2f7";
 };
 
+const FONT = '-apple-system, "SUIT", "Inter", system-ui, sans-serif';
+/** @type {CanvasRenderingContext2D | null | undefined} */
+let context;
+/** @type {Map<string, number>} */
+const widths = new Map();
+
+/** The width of a text in the grid's font, or undefined where nothing can measure (jsdom). */
+function measure(/** @type {string} */ text, /** @type {string} */ font) {
+  if (context === undefined) {
+    const real = typeof document !== "undefined" && !/jsdom/u.test(navigator.userAgent);
+    context = real ? document.createElement("canvas").getContext("2d") : null;
+  }
+  if (!context) return undefined;
+  const key = `${font}|${text}`;
+  let width = widths.get(key);
+  if (width === undefined) {
+    if (widths.size > 20_000) widths.clear();
+    context.font = font;
+    width = context.measureText(text).width;
+    widths.set(key, width);
+  }
+  return width;
+}
+
 /**
- * Paint one cell: its text, box, style, and whether it is selected or the active cell.
+ * @typedef {{
+ *   selected: boolean, active: boolean, fixed: boolean, size: number, room: number,
+ * }} CellState size: the font size in pixels; room: empty cells to the right that text may run over
+ */
+
+/**
+ * Paint one cell: its text, box, style, and whether it is selected or the active cell. A number
+ * too wide for its column shows as #### and text runs over the empty cells to its right, as in
+ * spreadsheet programs.
  * @param {HTMLElement} el
  * @param {Sheet} sheet
  * @param {number} r
  * @param {number} c
  * @param {[number, number, number, number]} box left, top, width, height
- * @param {boolean} selected
- * @param {boolean} active
+ * @param {CellState} state
  */
-export function paintCell(el, sheet, r, c, box, selected, active) {
-  const text = sheet.text(r, c);
-  if (el.textContent !== text) el.textContent = text;
-  place(el, ...box);
+export function paintCell(el, sheet, r, c, box, state) {
+  const label = /** @type {HTMLElement} */ (
+    el.firstElementChild ?? el.appendChild(el.ownerDocument.createElement("span"))
+  );
   const cell = sheet.cell(r, c);
   const style = sheet.style(r, c);
-  // As spreadsheets align by default: numbers right, truth values and errors centred, text left.
   const kind = cell?.t;
-  el.dataset.align =
+  const align =
     style?.align ?? (kind === "n" ? "right" : kind === "b" || kind === "e" ? "center" : "left");
+  const font = `${style?.italic ? "italic " : ""}${style?.bold ? "bold " : ""}${state.size}px ${FONT}`;
+  const room = box[2] - 8;
+  let text = sheet.text(r, c);
+  let spill = 0;
+  const wide = text && !style?.wrap ? measure(text, font) : undefined;
+  if (wide !== undefined && wide > room) {
+    if (kind === "n") text = "#".repeat(Math.max(1, Math.floor(room / (measure("#", font) || 8))));
+    else if (align === "left" && state.room > 0) spill = Math.min(wide, room + state.room);
+  }
+  if (label.textContent !== text) label.textContent = text;
+  label.style.maxWidth = spill ? `${Math.ceil(spill)}px` : "";
+  el.classList.toggle("spill", spill > 0);
+  place(el, ...box);
+  el.dataset.align = align;
+  el.classList.toggle("fixed", state.fixed);
   el.style.backgroundColor = style?.fill ?? "";
   el.style.color = style?.color ?? (style?.fill ? contrast(style.fill) : "");
   el.style.fontWeight = style?.bold ? "bold" : "";
@@ -47,8 +92,8 @@ export function paintCell(el, sheet, r, c, box, selected, active) {
   const lines = [style?.underline && "underline", style?.strike && "line-through"];
   el.style.textDecoration = lines.filter(Boolean).join(" ");
   el.classList.toggle("wrap", Boolean(style?.wrap));
-  el.setAttribute("aria-selected", String(selected));
-  el.classList.toggle("active", active);
+  el.setAttribute("aria-selected", String(state.selected));
+  el.classList.toggle("active", state.active);
 }
 
 /**

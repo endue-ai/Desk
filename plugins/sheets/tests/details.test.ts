@@ -41,6 +41,13 @@ describe("files that open as the details view", () => {
       detected: "Text",
       reason: "This file is damaged or is not an OpenDocument spreadsheet.",
     });
+    // Bytes that no spreadsheet program writes: the parser would read them as text.
+    const noise = Uint8Array.from({ length: 512 }, (_, i) => (i * 37 + 11) % 256);
+    expect(openBook(noise, { name: "old.qpw" })).toMatchObject({
+      kind: "details",
+      detected: "Binary data",
+      reason: "This file is damaged or is not a Quattro Pro notebook.",
+    });
     expect(openBook(new Uint8Array(0), { name: "empty.xlsx" })).toMatchObject({
       kind: "details",
       detected: "Empty",

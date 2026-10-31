@@ -193,6 +193,28 @@ export function numberOf(/** @type {string} */ raw) {
 }
 
 /**
+ * Column widths for a format that has none: the longest text in the first rows, from Excel's
+ * default width (64 pixels) up to 400. Wide characters (CJK) count twice.
+ * @param {string[][]} rows
+ */
+export function widthsOf(rows) {
+  /** @type {number[]} */
+  const widths = [];
+  for (const row of rows.slice(0, 2000)) {
+    row.forEach((text, c) => {
+      let units = 0;
+      for (const ch of text.slice(0, 80))
+        units += /[\u1100-\u115f\u2e80-\ua4cf\uac00-\ud7a3\uf900-\ufaff\uff00-\uff60]/u.test(ch)
+          ? 2
+          : 1;
+      const px = Math.min(400, Math.max(64, Math.round(units * 7 + 12)));
+      if (px > (widths[c] ?? 0)) widths[c] = px;
+    });
+  }
+  return widths;
+}
+
+/**
  * One sheet from a CSV or TSV file. Cells are made when the grid asks for them.
  * @param {Uint8Array} bytes
  * @param {{ name: string, encoding?: string }} file
@@ -203,6 +225,7 @@ export function readCsv(bytes, { name, encoding = "auto" }) {
   const rows = parseCsv(decoded.text, delimiter);
   const cols = rows.reduce((max, row) => Math.max(max, row.length), 0);
   const sheet = createSheet({
+    widths: widthsOf(rows),
     name: name.replace(/\.[^.]*$/u, "") || name,
     rows: rows.length,
     cols,

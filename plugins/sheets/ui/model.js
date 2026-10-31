@@ -34,8 +34,8 @@
 export const DEFAULT_WIDTH = 64;
 export const DEFAULT_HEIGHT = 20;
 /** A small sheet still shows a page of empty cells around its data, as spreadsheet programs do. */
-const MIN_ROWS = 50;
-const MIN_COLS = 16;
+const MIN_ROWS = 100;
+const MIN_COLS = 26;
 
 /** The column letters for a column index: 0 is A, 26 is AA. */
 export function columnName(/** @type {number} */ c) {

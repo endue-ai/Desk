@@ -94,23 +94,45 @@ export function createGrid(doc, { root, scroller, sizer, layer }, { changed }) {
       el.classList.toggle("on", c >= from.c && c <= to.c);
     }
 
+    /** The width of the empty cells after positions[i] on row r, which its text may run over. */
+    const roomAfter = (
+      /** @type {number} */ r,
+      /** @type {number[]} */ positions,
+      /** @type {number} */ i,
+    ) => {
+      let room = 0;
+      for (let k = i + 1; k < positions.length && room < 2000; k++) {
+        const q = positions[k] ?? 0;
+        if (q !== (positions[k - 1] ?? 0) + 1) break;
+        const c = cols.index[q] ?? 0;
+        if (s.filled(r, c) || s.style(r, c)?.fill || selection?.mergeAt(r, c)) break;
+        room += span(cols, q, q);
+      }
+      return room;
+    };
     /** Paint row position p's cells at the column positions given, merged areas as one cell. */
     const paintRow = (/** @type {number} */ p, /** @type {number[]} */ positions) => {
       const r = rows.index[p] ?? 0;
       const line = pool.line(r);
       place(line.el, 0, yOf(p), 0, span(rows, p, p));
       line.el.style.zIndex = p < fixed.rows ? "2" : "1";
-      for (const q of positions) {
+      positions.forEach((q, i) => {
         const c = cols.index[q] ?? 0;
         const merge = selection?.mergeAt(r, c);
-        if (merge && (merge.s.r !== r || merge.s.c !== c)) continue;
+        if (merge && (merge.s.r !== r || merge.s.c !== c)) return;
         const w = merge ? span(cols, q, cols.until(merge.e.c)) : span(cols, q, q);
         const h = merge ? span(rows, p, rows.until(merge.e.r)) : span(rows, p, p);
         const el = pool.cell(line, r, c);
+        const pinned = p < fixed.rows || q < fixed.cols;
         el.style.zIndex = q < fixed.cols ? "2" : "1";
-        const selected = r >= from.r && r <= to.r && c >= from.c && c <= to.c;
-        paintCell(el, s, r, c, [xOf(q), 0, w, h], selected, active.r === r && active.c === c);
-      }
+        paintCell(el, s, r, c, [xOf(q), 0, w, h], {
+          selected: r >= from.r && r <= to.r && c >= from.c && c <= to.c,
+          active: active.r === r && active.c === c,
+          fixed: pinned,
+          size: 12 * zoom,
+          room: merge || pinned || s.cell(r, c)?.t !== "s" ? 0 : roomAfter(r, positions, i),
+        });
+      });
       return line;
     };
 
@@ -176,7 +198,7 @@ export function createGrid(doc, { root, scroller, sizer, layer }, { changed }) {
     headW = Math.round(Math.max(40, String(s.rows).length * 8 + 16) * zoom);
     sizer.style.width = `${headW + cols.total}px`;
     sizer.style.height = `${head + rows.total}px`;
-    layer.style.fontSize = `${13 * zoom}px`;
+    layer.style.fontSize = `${12 * zoom}px`;
     root.setAttribute("aria-rowcount", String(s.rows + 1));
     root.setAttribute("aria-colcount", String(s.cols + 1));
     root.setAttribute("aria-label", s.name);

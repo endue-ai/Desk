@@ -137,7 +137,10 @@ export function createSelection(sheet, rows, cols) {
     /** Count, sum and average of the numbers in the range; undefined for a single cell. */
     stats() {
       const { s, e } = range();
-      if (s.r === e.r && s.c === e.c) return undefined;
+      // One cell, or the merged area of the active cell, is not a range.
+      const own = mergeAt(active.r, active.c) ?? { s: active, e: active };
+      if (s.r === own.s.r && s.c === own.s.c && e.r === own.e.r && e.c === own.e.c)
+        return undefined;
       const [r0, r1, c0, c1] = [rows.from(s.r), rows.until(e.r), cols.from(s.c), cols.until(e.c)];
       let count = 0;
       let sum = 0;

@@ -20,6 +20,8 @@ import { extensionOf } from "./detect.js";
 
 export const NAME = "Sheets";
 const SETTING = "csv-encoding";
+/** Files larger than this say "Opening" before the parser starts. */
+const LARGE = 512 * 1024;
 /** Formats whose text depends on the csv-encoding setting: their bytes are kept to read again. */
 const TEXT = new Set(["csv", "tsv"]);
 
@@ -192,6 +194,11 @@ export function createSheets({ bridge, commands, settings }, view, { open = open
     const bytes = await read(path);
     await loaded;
     const name = nameOf(path);
+    if (bytes.length > LARGE) {
+      // The parser holds the frame while it works: say so first, and let the frame paint it.
+      say(`Opening ${name}…`);
+      await new Promise((resolve) => setTimeout(resolve, 30));
+    }
     /** @type {Held} */
     const file = { buffer, path, name, size: bytes.length, book: parse(bytes, name) };
     if (TEXT.has(extensionOf(name))) file.bytes = bytes;
