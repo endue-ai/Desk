@@ -2,6 +2,7 @@
 //! handing every call to `Imports`.
 
 use wasmtime::component::ResourceTable;
+use wasmtime::{Config, Engine, Store};
 use wasmtime_wasi::{WasiCtx, WasiCtxView, WasiView};
 
 use crate::bindings::desk::host::{cmd, events, fs, log, net, perm, settings, store, types, ui};
@@ -28,6 +29,23 @@ impl State {
             table: ResourceTable::new(),
         }
     }
+}
+
+/// An engine for Wasm components with epoch interruption, which the time limit needs.
+pub(crate) fn engine() -> wasmtime::Result<Engine> {
+    let mut config = Config::new();
+    config.wasm_component_model(true).epoch_interruption(true);
+    Engine::new(&config)
+}
+
+/// A store for one plugin: its imports, its memory limiter, and the time limit armed for the
+/// instantiation that follows.
+pub(crate) fn store(engine: &Engine, imports: Imports, limits: &Limits) -> Box<Store<State>> {
+    let mut store = Box::new(Store::new(engine, State::new(imports, limits)));
+    store.limiter(|state| &mut state.limiter);
+    store.epoch_deadline_trap();
+    store.set_epoch_deadline(limits.ticks());
+    store
 }
 
 impl WasiView for State {

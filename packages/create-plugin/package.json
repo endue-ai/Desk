@@ -2,7 +2,7 @@
   "name": "@endue-ai/create-plugin",
   "version": "0.0.0",
   "private": true,
-  "description": "pnpm create @endue-ai/plugin: scaffold a Desk UI plugin folder that passes desk plugin validate.",
+  "description": "pnpm create @endue-ai/plugin: scaffold a Desk UI plugin or Wasm connector folder that passes desk plugin validate.",
   "license": "Apache-2.0",
   "type": "module",
   "exports": {
