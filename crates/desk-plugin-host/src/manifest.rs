@@ -1,26 +1,45 @@
-//! Reading a logic plugin folder: plugin.json and the component its `entry` names.
+//! Reading a Wasm plugin folder (a logic plugin, or a connector with `binding: wasm`): plugin.json
+//! and the component its `entry` names.
 
 use std::fs;
 use std::path::{Component, Path, PathBuf};
 
-use desk_bridge::{PluginKind, PluginManifest};
+use desk_bridge::{ConnectorBinding, PluginKind, PluginManifest};
 
 use crate::logic::PluginError;
 
-/// The manifest of the logic plugin in `dir` and the bytes of its entry. `desk plugin validate`
-/// checks the full schema; this checks what running the plugin depends on.
-pub(crate) fn read(dir: &Path) -> Result<(PluginManifest, Vec<u8>), PluginError> {
+/// The manifest of the plugin of `kind` in `dir` and the bytes of its entry. `desk plugin validate`
+/// checks the full schema; this checks what running the plugin depends on. A connector must declare
+/// its `connector` block with `binding: wasm`: an MCP connector runs in the VM, not here.
+pub(crate) fn read(dir: &Path, kind: PluginKind) -> Result<(PluginManifest, Vec<u8>), PluginError> {
     let text = fs::read_to_string(dir.join("plugin.json"))
         .map_err(|e| PluginError::Manifest(format!("plugin.json cannot be read: {e}")))?;
     let manifest: PluginManifest = serde_json::from_str(&text)
         .map_err(|e| PluginError::Manifest(format!("plugin.json: {e}")))?;
-    if manifest.kind != PluginKind::Logic {
-        return Err(PluginError::Manifest(format!(
-            "{} is not a logic plugin",
-            manifest.id
-        )));
+    let id = &manifest.id;
+    match kind {
+        _ if manifest.kind != kind => {
+            let kind = if kind == PluginKind::Logic {
+                "logic plugin"
+            } else {
+                "connector"
+            };
+            return Err(PluginError::Manifest(format!("{id} is not a {kind}")));
+        }
+        PluginKind::Connector => match &manifest.connector {
+            None => {
+                let why = format!("{id} declares no connector block");
+                return Err(PluginError::Manifest(why));
+            }
+            Some(connector) if connector.binding != ConnectorBinding::Wasm => {
+                let why = format!("{id} is not a Wasm connector (binding: wasm)");
+                return Err(PluginError::Manifest(why));
+            }
+            Some(_) => {}
+        },
+        _ => {}
     }
-    // The schema requires `entry` for every kind but policy, so a logic plugin without one is broken.
+    // The schema requires `entry` for every kind but policy and view, so one without it is broken.
     let name = manifest
         .entry
         .as_deref()

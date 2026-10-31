@@ -1,0 +1,14 @@
+{
+  "target": "BridgeRequest",
+  "description": "pages count from 1",
+  "instance": {
+    "id": 21,
+    "method": "brain.agents.list",
+    "params": {
+      "page": 0,
+      "scope": {
+        "permission": "brain:converse"
+      }
+    }
+  }
+}

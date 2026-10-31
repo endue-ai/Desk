@@ -78,22 +78,73 @@ fn fs_read_can_return_base64() {
     );
 }
 
+/// Set `path`'s modification time to `secs` since the epoch.
+fn set_modified(path: &std::path::Path, secs: u64) {
+    #[cfg(windows)]
+    let file = {
+        use std::os::windows::fs::OpenOptionsExt;
+        // FILE_FLAG_BACKUP_SEMANTICS opens folders too.
+        let mut options = fs::OpenOptions::new();
+        options.write(true).custom_flags(0x0200_0000);
+        options.open(path).unwrap()
+    };
+    #[cfg(not(windows))]
+    let file = fs::File::open(path).unwrap();
+    let time = UNIX_EPOCH + std::time::Duration::from_secs(secs);
+    file.set_modified(time).unwrap();
+}
+
+/// A validator for `FsListResult` in the embedded schemas.
+fn fs_list_result() -> jsonschema::Validator {
+    let resources = desk_bridge::SCHEMAS.iter().map(|(id, text)| {
+        let value: Value = serde_json::from_str(text).unwrap();
+        ((*id).to_owned(), value)
+    });
+    let registry = jsonschema::Registry::new()
+        .extend(resources)
+        .unwrap()
+        .prepare()
+        .unwrap();
+    let fs = "https://endue.ai/specs/bridge/v0/fs.schema.json#/$defs/FsListResult";
+    jsonschema::options()
+        .with_registry(&registry)
+        .should_validate_formats(false)
+        .build(&json!({ "$ref": fs }))
+        .unwrap()
+}
+
 #[test]
-fn fs_list_returns_sorted_entries_with_kinds() {
+fn fs_list_returns_sorted_entries_with_kinds_and_modified_at() {
     // A grant on dir/** also covers listing dir itself.
-    let core = granted_core(temp_home());
+    let home = temp_home();
+    // 2026-10-30T00:00:00Z
+    set_modified(&home.join("Documents/hello.md"), 1_793_318_400);
+    let core = granted_core(home);
     let response = core.handle(
         "desk",
         request(json!({ "id": 3, "method": "fs.list",
             "params": { "path": "~/Documents", "scope": fs_read(&["~/Documents/**"]) } })),
     );
+    let listed = result(response);
+    let entries = listed["entries"].as_array().unwrap();
+    assert_eq!(entries.len(), 2, "{listed}");
     assert_eq!(
-        result(response),
-        json!({ "entries": [
-            { "name": "hello.md", "kind": "file", "size": 7 },
-            { "name": "notes", "kind": "dir" }
-        ] })
+        entries[0],
+        json!({ "name": "hello.md", "kind": "file", "size": 7, "modifiedAt": "2026-10-30T00:00:00Z" })
     );
+    assert_eq!(
+        (&entries[1]["name"], &entries[1]["kind"]),
+        (&json!("notes"), &json!("dir"))
+    );
+    assert!(entries[1]["modifiedAt"].is_string(), "{listed}");
+    let validator = fs_list_result();
+    assert!(validator.is_valid(&listed), "{listed}");
+
+    // The vector's answer has the same shape.
+    let vector = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../specs/bridge/v0/vectors/valid/fs-list-result.json");
+    let vector: Value = serde_json::from_str(&fs::read_to_string(vector).unwrap()).unwrap();
+    assert!(validator.is_valid(&vector["instance"]["result"]));
 }
 
 #[test]

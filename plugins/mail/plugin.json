@@ -1,0 +1,134 @@
+{
+  "id": "endue.mail",
+  "name": "Mail",
+  "version": "0.1.0",
+  "kind": "ui",
+  "entry": "ui/index.html",
+  "description": "Shows the person's mail from the desk's index as threads in mailboxes, reads messages and their meeting invitations (iCalendar, iTIP), writes replies and new mail, and acts through the mail connector's commands.",
+  "permissions": [
+    { "permission": "data:read", "kinds": ["message"] },
+    {
+      "permission": "cmd:invoke",
+      "ids": ["*.mail.send", "*.mail.move", "*.mail.flag", "desk.palette.pick"]
+    },
+    { "permission": "ui:notify" }
+  ],
+  "surfaces": [{ "id": "main", "title": "Mail", "placement": "center" }],
+  "contributes": {
+    "commands": [
+      {
+        "id": "endue.mail.open",
+        "title": "Show mail",
+        "keywords": ["mail", "email", "inbox", "messages"]
+      },
+      {
+        "id": "endue.mail.show",
+        "title": "Open a message",
+        "keywords": ["mail", "read", "message"]
+      },
+      {
+        "id": "endue.mail.mailbox",
+        "title": "Go to a mailbox",
+        "keywords": ["mail", "inbox", "archive", "sent", "drafts", "trash", "folder"]
+      },
+      {
+        "id": "endue.mail.search",
+        "title": "Search mail",
+        "keywords": ["mail", "find", "search"]
+      },
+      {
+        "id": "endue.mail.refresh",
+        "title": "Refresh mail",
+        "keywords": ["mail", "reload", "sync"]
+      },
+      {
+        "id": "endue.mail.compose",
+        "title": "New message",
+        "keywords": ["mail", "write", "compose", "email", "send"]
+      },
+      {
+        "id": "endue.mail.reply",
+        "title": "Reply to the open message",
+        "keywords": ["mail", "reply", "answer", "respond"]
+      },
+      {
+        "id": "endue.mail.forward",
+        "title": "Forward the open message",
+        "keywords": ["mail", "forward"]
+      },
+      {
+        "id": "endue.mail.send",
+        "title": "Send the message being written",
+        "keywords": ["mail", "send"]
+      },
+      {
+        "id": "endue.mail.discard",
+        "title": "Discard the message being written",
+        "keywords": ["mail", "discard", "draft", "cancel"]
+      },
+      {
+        "id": "endue.mail.archive",
+        "title": "Archive the open message",
+        "keywords": ["mail", "archive", "done"]
+      },
+      {
+        "id": "endue.mail.trash",
+        "title": "Move the open message to the trash",
+        "keywords": ["mail", "delete", "trash", "remove"]
+      },
+      {
+        "id": "endue.mail.flag",
+        "title": "Flag or unflag the open message",
+        "keywords": ["mail", "flag", "star", "important"]
+      },
+      {
+        "id": "endue.mail.toggle-unread",
+        "title": "Mark the open message read or unread",
+        "keywords": ["mail", "read", "unread", "seen"]
+      },
+      {
+        "id": "endue.mail.rsvp",
+        "title": "Answer the open message's invitation",
+        "keywords": [
+          "mail",
+          "invitation",
+          "accept",
+          "decline",
+          "tentative",
+          "meeting",
+          "rsvp",
+          "calendar"
+        ]
+      }
+    ],
+    "keys": [{ "key": "Mod+Shift+I", "command": "endue.mail.open" }],
+    "settings": {
+      "endue.mail.page": {
+        "kind": "integer",
+        "default": 50,
+        "description": "How many messages a mailbox lists at a time; Show more lists the next page."
+      },
+      "endue.mail.notify": {
+        "kind": "boolean",
+        "default": true,
+        "description": "Show a notification when new mail arrives in the inbox."
+      },
+      "endue.mail.mark-read": {
+        "kind": "string",
+        "default": "open",
+        "choices": ["open", "never"],
+        "description": "When a message is marked read: when it opens, or never by itself."
+      },
+      "endue.mail.signature": {
+        "kind": "string",
+        "default": "",
+        "description": "Text added under every new message, reply and forward."
+      },
+      "endue.mail.addresses": {
+        "kind": "array",
+        "default": [],
+        "description": "The person's own email addresses: left out of a reply to all, and used to answer invitations as the right attendee."
+      }
+    }
+  }
+}

@@ -1,12 +1,16 @@
 /**
  * The core on the browser stub, for dev pages and tests (never shipped): the command registry
  * (cmd.*, as the stub keeps it), the installed plugins from their plugin.json, plugin.setEnabled,
- * the store, init.yaml's start profile and settings, and perm.query. More methods come as handlers.
+ * the store, init.yaml's start profile and settings, perm.query, and the stub's index of fixture items
+ * (data.*, connector.*, view.*). Built-in plugins hold their manifest's permissions, as the core
+ * grants them at install. More methods come as handlers.
  */
 import {
   BridgeClient,
   type BrowserStub,
   browserStub,
+  type Item,
+  type ItemSource,
   type PluginInfo,
   type PluginManifest,
   type StubHandlers,
@@ -35,6 +39,10 @@ export interface BrowserCore {
   stub: BrowserStub;
   /** plugin.list's answer, changed in place by plugin.setEnabled. */
   plugins: PluginInfo[];
+  /** Put an item in the index, or replace it, as a sync would; subscribers hear data.changed. */
+  upsert(item: Item): void;
+  /** Take an item out of the index (false when it was not there); subscribers hear data.changed. */
+  remove(source: ItemSource, id: string): boolean;
 }
 
 /** An in-memory store over `data`, which tests may read. */
@@ -69,7 +77,11 @@ export function browserCore(options: BrowserCoreOptions): BrowserCore {
     revision: 1,
     manifest,
   }));
-  const registry = stubCommands((event) => stub.emit(event));
+  // A built-in plugin holds what its manifest declares, as desk-core grants it at install.
+  const grants = Object.fromEntries(
+    plugins.filter((p) => p.builtIn).map((p) => [p.id, p.manifest?.permissions ?? []]),
+  );
+  const registry = stubCommands((event) => stub.emit(event), { grants });
   const stub = browserStub({
     ...registry.handlers,
     "perm.query": () => ({ grants: [] }),
@@ -102,5 +114,11 @@ export function browserCore(options: BrowserCoreOptions): BrowserCore {
     }),
     ...options.handlers,
   });
-  return { client: new BridgeClient(stub), stub, plugins };
+  return {
+    client: new BridgeClient(stub),
+    stub,
+    plugins,
+    upsert: registry.upsert,
+    remove: registry.remove,
+  };
 }

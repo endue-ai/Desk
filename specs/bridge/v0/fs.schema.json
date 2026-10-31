@@ -109,7 +109,11 @@
           "minLength": 1
         },
         "kind": { "$ref": "#/$defs/EntryKind" },
-        "size": { "description": "Size in bytes, for files.", "type": "integer", "minimum": 0 }
+        "size": { "description": "Size in bytes, for files.", "type": "integer", "minimum": 0 },
+        "modifiedAt": {
+          "description": "When the entry last changed; absent when the OS has none.",
+          "$ref": "../../item/v0/item.schema.json#/$defs/Timestamp"
+        }
       },
       "required": ["name", "kind"],
       "additionalProperties": false

@@ -1,11 +1,13 @@
 # apps/desk
 
 The Tauri 2 app. A thin adapter only: `src-tauri/` forwards every bridge call to `crates/desk-core`,
-and `src/` mounts the runtime and connects the bridge.
+and `src/` mounts the desk shell (`mountDesk`) and connects the bridge.
 
 | Path | What it does |
 | --- | --- |
-| `src/main.ts` | Mounts `@endue-ai/runtime` with the tauri bridge adapter, then reports `desk_ready` |
+| `src/main.ts` | Mounts the shell of `@endue-ai/runtime` on the tauri bridge adapter, then reports `desk_ready` |
+| `src/shell-bridge.ts` | The shell's `ShellBridge` over the core: store, perm, `brain.*` and the agent directory |
+| `src-tauri/src/lib.rs` | Builds the core; the runtime (`desk`) holds `plugin:manage`, `cmd:invoke` and `brain:converse` |
 | `src-tauri/src/commands/` | `bridge_call` (to `Core::handle`) and `desk_ready` (logs the status line) |
 | `src-tauri/capabilities/` | The main window may call exactly those two commands |
 | `src-tauri/tauri.conf.json` | Window, strict CSP, bundle; identifier `ai.endue.desk` |
@@ -14,7 +16,9 @@ and `src/` mounts the runtime and connects the bridge.
 ## Run and check
 
 ```bash
+just brain-echo  # optional: the brain on :8787, whose agents fill the agent bar
 just dev         # Vite on :1420 plus the app; the terminal prints "desk ready · bridge: tauri"
+pnpm exec vitest run apps/desk   # the shell bridge, over the browser stub
 just check-app   # clippy for the app crate (needs the platform webview SDK)
 just build-app   # debug binary
 ```

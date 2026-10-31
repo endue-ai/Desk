@@ -1,0 +1,17 @@
+{
+  "target": "BridgeRequest",
+  "description": "brain.tasks.list with every query field: one target agent, one status, one page",
+  "instance": {
+    "id": 24,
+    "method": "brain.tasks.list",
+    "params": {
+      "targetAgentId": "ag_01JBZ8Q4MR0000000000000001",
+      "status": "input_required",
+      "page": 1,
+      "limit": 100,
+      "scope": {
+        "permission": "brain:converse"
+      }
+    }
+  }
+}

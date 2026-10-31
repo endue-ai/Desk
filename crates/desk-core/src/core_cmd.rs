@@ -96,6 +96,31 @@ impl Core {
         json(CmdListResult { commands: listed })
     }
 
+    /// The registered commands a `cmd:invoke` grant of the caller covers, in registration order,
+    /// as cmd.list lists them. No grant is spent.
+    pub(crate) fn commands_covered(&self, caller: &str) -> Vec<CommandInfo> {
+        let registered: Vec<CommandInfo> = {
+            let commands = self.commands();
+            let all = commands
+                .order
+                .iter()
+                .filter_map(|id| commands.by_id.get(id));
+            all.cloned().collect()
+        };
+        let permissions = self.permissions();
+        registered
+            .into_iter()
+            .filter(|c| {
+                let scope = Permission::CmdInvoke(desk_bridge::CmdInvokePermission {
+                    permission: Default::default(),
+                    ids: vec![c.id.clone()],
+                });
+                let target = Target::CommandId(&c.id);
+                permissions.authorize(caller, &scope, &target).is_ok()
+            })
+            .collect()
+    }
+
     pub(crate) fn cmd_invoke(&self, caller: &str, params: CmdInvokeParams) -> Answer {
         let scope = Permission::CmdInvoke(params.scope);
         self.check(caller, &scope, &Target::CommandId(&params.id))?;

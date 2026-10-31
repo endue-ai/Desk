@@ -13,7 +13,7 @@ items, views and connectors of the integration layer.
 | `view/v0/` | Views, surfaces written as data: requires, params, a layout of containers and components, actions as commands |
 | `connector/v0/` | What a connector plugin declares, its status and sync results, and the MCP profile of a Desk-aware server |
 | `init/v0/` | `init.yaml`, a person's setup: schema, the template Desk writes, and the sync rules |
-| `wit/` | Wasm host interface for logic plugins (`desk:host`) |
+| `wit/` | Wasm interfaces: the host interface logic plugins import (`desk:host`) and the world Wasm connectors build to (`desk:connector`) |
 
 Spec first: change a file here, run `just codegen`, then implement. Generated files are committed and
 start with a GENERATED header. Each spec keeps valid and invalid examples in `vectors/` that both the Rust

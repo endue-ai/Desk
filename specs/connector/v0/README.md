@@ -17,8 +17,8 @@ kind `connector` declares it under `connector` in `plugin.json`: `ConnectorManif
 - Actions are commands: every id in `resources[].actions` is one the plugin declares in
   `contributes.commands`, and views, the palette, Eris and agents run it with `cmd.invoke`. There is no
   `data:write`. `desk_bridge::manifest_problems` checks the rule; the contract tests judge vectors with it.
-- Secrets stay with the core: a `secret` setting is a string kept in the OS keychain, never listed back
-  and never handed to the connector's code, and so are tokens.
+- Secrets stay with the core and never come back out (ADR 0036): a `secret` setting is a string that is
+  never listed back and never handed to the connector's code, and so are tokens.
 
 Host-facing: `ConnectorInstance` (an id unique within its connector, which items carry in `source`; its
 settings but the secret ones; status), `ConnectorStatus` (`connected`, `syncing`, `stale`, `error` with

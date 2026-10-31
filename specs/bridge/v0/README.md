@@ -46,8 +46,9 @@ an `fs:read` scope. Missing files are `not_found`; folders are `invalid_params`.
 **fs.write** creates or overwrites a file with the given content and returns the bytes written. It needs
 an `fs:write` scope; with `createDirs` it also creates missing parent folders inside the same scope.
 
-**fs.list** returns the entries of one folder with their kind and, for files, their size. It is not
-recursive. It needs an `fs:read` scope.
+**fs.list** returns the entries of one folder with their kind, for files their size, and `modifiedAt`,
+when the entry last changed (absent when the OS has none). It is not recursive. It needs an `fs:read`
+scope.
 
 **fs.watch** starts reporting changes under a path as `fs.changed` events, recursively when asked, and
 returns a `watchId`. Watches end when the caller unloads or its grant is revoked. It needs `fs:read`.
@@ -126,6 +127,26 @@ core keeps retrying, and `online` marks the reconnection before the answer conti
 turn that failed, for example on a desk that became read-only because another desk took the
 session's lease. It needs `brain:converse`; each turn's events go only to the caller that said it.
 
+**brain.agents.list** returns one page of the person's agents, newest first, as the brain contract's
+`listAgents` answers it (`AgentList` in `specs/brain/v0`, passed through): `spaceId` keeps the agents in
+that space, `status` keeps one status, and `page` (from 1) and `limit` (1 to 100) choose the page, with
+the brain's defaults when left out. A query the brain refuses is `invalid_params`; a brain that cannot be
+reached is `io_error`. It needs `brain:converse`, like the next four, and a desk without a brain answers
+`unsupported`.
+
+**brain.agents.card** returns one agent's A2A card (`AgentCard`) by `agentId`. An agent the brain does
+not know is `not_found`.
+
+**brain.spaces.list** returns every space the person can open (`SpaceList`), in the brain's order.
+
+**brain.tasks.list** returns one page of the A2A tasks agents handed each other, newest first
+(`A2ATaskList`): `targetAgentId` keeps the tasks one agent is doing, `status` keeps one status, and
+`page` and `limit` work as for agents.
+
+**brain.status** says which brain the desk talks to: `local` with the model it runs, `cloud` with the
+credits left when the brain reports them, or `offline` while the brain cannot be reached. The core asks
+the brain on every call; a desk without a brain is `offline`.
+
 **perm.revoke** gives a grant back. People can revoke any grant at any time; callers learn about it from
 `perm.changed`. With a `perm:manage` scope it revokes another caller's grant, for the person's
 permissions view.
@@ -202,9 +223,9 @@ person gave it, its settings but the secret ones) and the kinds of item it bring
 
 **connector.connect** adds an instance of an installed connector and returns its id, `default` when none
 is given. `settings` follow the connector's `instanceSettings`: a name it does not declare, a value of the
-wrong kind or a missing required one is `invalid_params`, and secret values go to the OS keychain, never
-back out. An unknown connector is `not_found`; an instance id it already has is `already_exists`. No v0
-method starts an OAuth flow.
+wrong kind or a missing required one is `invalid_params`, and secret values stay with the core and never
+come back out (ADR 0036). An unknown connector is `not_found`; an instance id it already has is
+`already_exists`. No v0 method starts an OAuth flow.
 
 **connector.disconnect** removes an instance and the items it brought in, which subscribers hear as
 `removed`. An unknown instance is `not_found`.

@@ -1008,6 +1008,117 @@ export interface BrainSayResult {
   turnId: string;
 }
 
+/** List the person's agents one page at a time, as the brain's listAgents does. */
+export interface BrainAgentsListRequest {
+  id: RequestId;
+  method: "brain.agents.list";
+  params: BrainAgentsListParams;
+}
+
+/** Parameters of brain.agents.list: the query of listAgents (specs/brain/v0). A field left out takes the brain's default. */
+export interface BrainAgentsListParams {
+  /** Only agents in this space. */
+  spaceId?: string;
+  /** Only agents with this status, an AgentStatus of specs/brain/v0. */
+  status?: string;
+  /** The page to read, from 1 (the brain's default is 1). */
+  page?: number;
+  /** Items per page, 1 to 100 (the brain's default is 20). */
+  limit?: number;
+  scope: BrainConversePermission;
+}
+
+/** Result of brain.agents.list: the brain's AgentList (specs/brain/v0), items newest first and pagination, passed through unchanged. */
+export type BrainAgentsListResult = Record<string, unknown>;
+
+/** Read one agent's A2A card, as the brain's getAgentCard does. */
+export interface BrainAgentsCardRequest {
+  id: RequestId;
+  method: "brain.agents.card";
+  params: BrainAgentsCardParams;
+}
+
+/** Parameters of brain.agents.card. */
+export interface BrainAgentsCardParams {
+  /** The agent's id, as brain.agents.list lists it. */
+  agentId: string;
+  scope: BrainConversePermission;
+}
+
+/** Result of brain.agents.card: the brain's AgentCard (specs/brain/v0), passed through unchanged. */
+export type BrainAgentsCardResult = Record<string, unknown>;
+
+/** List the spaces the person can open, as the brain's listSpaces does. */
+export interface BrainSpacesListRequest {
+  id: RequestId;
+  method: "brain.spaces.list";
+  params: BrainSpacesListParams;
+}
+
+/** Parameters of brain.spaces.list. */
+export interface BrainSpacesListParams {
+  scope: BrainConversePermission;
+}
+
+/** Result of brain.spaces.list: the brain's SpaceList (specs/brain/v0), passed through unchanged. */
+export type BrainSpacesListResult = Record<string, unknown>;
+
+/** List the A2A tasks agents handed each other one page at a time, as the brain's listA2ATasks does. */
+export interface BrainTasksListRequest {
+  id: RequestId;
+  method: "brain.tasks.list";
+  params: BrainTasksListParams;
+}
+
+/** Parameters of brain.tasks.list: the query of listA2ATasks (specs/brain/v0). A field left out takes the brain's default. */
+export interface BrainTasksListParams {
+  /** Only tasks this agent is doing. */
+  targetAgentId?: string;
+  /** Only tasks with this status, an A2ATaskStatus of specs/brain/v0. */
+  status?: string;
+  /** The page to read, from 1 (the brain's default is 1). */
+  page?: number;
+  /** Items per page, 1 to 100 (the brain's default is 20). */
+  limit?: number;
+  scope: BrainConversePermission;
+}
+
+/** Result of brain.tasks.list: the brain's A2ATaskList (specs/brain/v0), items newest first and pagination, passed through unchanged. */
+export type BrainTasksListResult = Record<string, unknown>;
+
+/** Which brain the desk talks to, and whether it can be reached now. */
+export interface BrainStatusRequest {
+  id: RequestId;
+  method: "brain.status";
+  params: BrainStatusParams;
+}
+
+/** Parameters of brain.status. */
+export interface BrainStatusParams {
+  scope: BrainConversePermission;
+}
+
+/** Result of brain.status: a brain on this machine with its model, a brain in the cloud, or offline. */
+export type BrainStatusResult = BrainStatusLocal | BrainStatusCloud | BrainStatusOffline;
+
+/** A brain on this machine, named by the model it runs. */
+export interface BrainStatusLocal {
+  mode: "local";
+  model: string;
+}
+
+/** A brain over the network, such as endue AI. credits is left out while the brain reports none. */
+export interface BrainStatusCloud {
+  mode: "cloud";
+  /** Credits left. */
+  credits?: number;
+}
+
+/** The brain cannot be reached now, or the desk has none. */
+export interface BrainStatusOffline {
+  mode: "offline";
+}
+
 /** Progress of a brain.say turn. */
 export interface BrainTurnEvent {
   event: "brain.turn";
@@ -1063,6 +1174,11 @@ export type BridgeRequest =
   | StoreSetRequest
   | InitGetRequest
   | BrainSayRequest
+  | BrainAgentsListRequest
+  | BrainAgentsCardRequest
+  | BrainSpacesListRequest
+  | BrainTasksListRequest
+  | BrainStatusRequest
   | CmdRegisterRequest
   | CmdUnregisterRequest
   | CmdListRequest
@@ -1376,7 +1492,7 @@ export interface ConnectorConnectRequest {
   params: ConnectorConnectParams;
 }
 
-/** Parameters of connector.connect. instance is default when absent; settings follow the connector's instanceSettings, and the secret ones go to the OS keychain. */
+/** Parameters of connector.connect. instance is default when absent; settings follow the connector's instanceSettings; the secret ones stay with the core and never come back out (ADR 0036). */
 export interface ConnectorConnectParams {
   connector: PluginId;
   instance?: InstanceId;
@@ -1628,6 +1744,8 @@ export interface DirEntry {
   kind: EntryKind;
   /** Size in bytes, for files. */
   size?: number;
+  /** When the entry last changed; absent when the OS has none. */
+  modifiedAt?: Timestamp;
 }
 
 /** What a folder entry is. */
@@ -2408,6 +2526,11 @@ export interface BridgeMethodMap {
   "store.set": { params: StoreSetParams; result: StoreSetResult };
   "init.get": { params: InitGetParams; result: InitGetResult };
   "brain.say": { params: BrainSayParams; result: BrainSayResult };
+  "brain.agents.list": { params: BrainAgentsListParams; result: BrainAgentsListResult };
+  "brain.agents.card": { params: BrainAgentsCardParams; result: BrainAgentsCardResult };
+  "brain.spaces.list": { params: BrainSpacesListParams; result: BrainSpacesListResult };
+  "brain.tasks.list": { params: BrainTasksListParams; result: BrainTasksListResult };
+  "brain.status": { params: BrainStatusParams; result: BrainStatusResult };
   "cmd.register": { params: CmdRegisterParams; result: CmdRegisterResult };
   "cmd.unregister": { params: CmdUnregisterParams; result: CmdUnregisterResult };
   "cmd.list": { params: CmdListParams; result: CmdListResult };
@@ -2465,6 +2588,11 @@ export const BRIDGE_METHODS = [
   "store.set",
   "init.get",
   "brain.say",
+  "brain.agents.list",
+  "brain.agents.card",
+  "brain.spaces.list",
+  "brain.tasks.list",
+  "brain.status",
   "cmd.register",
   "cmd.unregister",
   "cmd.list",
