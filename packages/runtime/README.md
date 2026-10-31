@@ -19,7 +19,7 @@ not in the brief: `ASSUMPTIONS.md`.
 - Policies: `collect(plugins)`, `Commands` (the core's registry), layered `Settings`, `Keymap` (the
   person's layer `desk.keys.bindings` last; `rebind.ts`), `decide`, `resolveTheme`, `Notifications`,
   `Buffers`; `src/policies/*`, one desk.* policy each. `HostViews` (`views.ts`): focus and buffers.
-- `mountDesk({ root, bridge, core, plugins, clock?, lang?, platform?, epoch? })`: the shell (system
+- `mountDesk({ root, bridge, core, plugins, clock?, lang?, platform?, epoch?, seed? })`: the shell (system
   layer: profiles, desktops, agent bar; mode layer: Eris, rail, bottom edge, surfaces) over its own
   runtime; returns `{ store, ticker, eris, runtime, ready, refresh, dispose }` (`plugins/shell`).
 - `ShellBridge` (audio, the brain's voice, the agent directory of specs/brain/v0, ADR 0024);
