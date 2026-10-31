@@ -3,8 +3,10 @@
 // with one ask on a refusal, data.subscribe for changes, sync.js); acting on one runs the
 // connector's command; writing is writing.js; the commands are commands.js. It talks only to
 // ctx.bridge, ctx.commands, ctx.settings, ctx.surface and a view, so the SDK's test host runs it.
+
 import { createActions } from "./actions.js";
 import { registerCommands } from "./commands.js";
+import { NO_ACCOUNT } from "./compose.js";
 import {
   MAILBOXES,
   mailboxOf,
@@ -222,6 +224,7 @@ export function createMail({ bridge, commands, settings, surface }, view, option
     nav();
     await Promise.all([load(), countUnread()]);
     if (s.open) await show(s.open);
+    if (s.accounts.length === 0) say(NO_ACCOUNT);
   };
   /** The message a command names (`{ source, id }`, from an agent), or the open one. */
   const named = async (/** @type {Record<string, unknown>} */ a) => {

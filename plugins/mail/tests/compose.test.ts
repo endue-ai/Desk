@@ -144,7 +144,7 @@ describe("drafts", () => {
 
   it("names what stops a send, and shapes the connector's arguments", () => {
     const empty = newDraft({ now: NOW });
-    expect(problemsOf(empty)).toEqual([
+    expect(problemsOf(empty, ["acme.imap/work"])).toEqual([
       "Choose the account to send from.",
       "Add at least one recipient.",
     ]);

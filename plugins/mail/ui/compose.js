@@ -218,17 +218,24 @@ export function newDraft(given = {}) {
   };
 }
 
+/** Said when there is no account to send from, on Send and on Refresh. */
+export const NO_ACCOUNT = "No mail account is connected yet.";
+
 /**
- * What stops a draft from being sent, in words; an empty list means it can go.
+ * What stops a draft from being sent, in words; an empty list means it can go. `accounts` are the
+ * ones there are to send from: with none, there is nothing to choose.
  * @param {Draft} draft
+ * @param {string[]} [accounts]
  */
-export function problemsOf(draft) {
+export function problemsOf(draft, accounts = []) {
   /** @type {string[]} */
   const problems = [];
   const to = parseAddresses(draft.to);
   const cc = parseAddresses(draft.cc);
   const bcc = parseAddresses(draft.bcc);
-  if (!draft.account) problems.push("Choose the account to send from.");
+  if (!draft.account) {
+    problems.push(accounts.length === 0 ? NO_ACCOUNT : "Choose the account to send from.");
+  }
   if (to.people.length + cc.people.length + bcc.people.length === 0)
     problems.push("Add at least one recipient.");
   for (const bad of [...to.invalid, ...cc.invalid, ...bcc.invalid])
