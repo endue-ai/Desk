@@ -87,4 +87,30 @@ describe("createTestHost", () => {
     });
     expect(seen).toEqual(["plugin.changed"]);
   });
+
+  it("serves fs.read ranges and fs.url from the files it is given", async () => {
+    const scope = { permission: "fs:read", paths: ["~/Music/**"] } as const;
+    const song = Uint8Array.from([0x49, 0x44, 0x33, 4, 0, 0, 0xff, 0xfb]);
+    const host = createTestHost({
+      pluginId: "example.player",
+      grants: [scope],
+      files: { "~/Music/song.mp3": song },
+    });
+    let header: unknown;
+    let url: unknown;
+    await defineUiPlugin(
+      {
+        async mount(ctx) {
+          const path = "~/Music/song.mp3";
+          const range = { path, encoding: "base64", offset: 0, length: 3, scope } as const;
+          header = await ctx.bridge.call("fs.read", range);
+          url = await ctx.bridge.call("fs.url", { path, scope });
+        },
+      },
+      host.transport,
+    );
+    await host.settle();
+    expect(header).toEqual({ content: "SUQz", encoding: "base64", size: 8 });
+    expect(url).toEqual({ url: "data:audio/mpeg;base64,SUQzBAAA//s=", size: 8, type: "audio/mpeg" });
+  });
 });
