@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { CallerGrant } from "../../../packages/bridge/src/index";
+import type { CallerGrant, Permission } from "../../../packages/bridge/src/index";
 import { fileManagerOf } from "../ui/describe.js";
 import { grant, type Handlers, MANAGE, mount, plugin } from "./harness";
 
@@ -61,8 +61,8 @@ describe("the grant list", () => {
   });
 
   it("names shell:open grants in words", async () => {
-    const links = { permission: "shell:open", schemes: ["https"] } as const;
-    const files = { permission: "shell:open", paths: ["~/Downloads/**"] } as const;
+    const links: Permission = { permission: "shell:open", schemes: ["https"] };
+    const files: Permission = { permission: "shell:open", paths: ["~/Downloads/**"] };
     const { view } = await mount(
       core([grant("example.notes", "g7", links), grant("example.notes", "g8", files)]),
     );
