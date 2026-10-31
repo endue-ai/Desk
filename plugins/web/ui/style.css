@@ -29,6 +29,13 @@ body {
   font: 13px/1.5 -apple-system, "SUIT", "Inter", system-ui, sans-serif;
 }
 
+/* The page's box takes what is left; the lines around it keep their height. */
+header,
+#bar,
+#status {
+  flex-shrink: 0;
+}
+
 header {
   display: flex;
   align-items: center;
