@@ -6,24 +6,24 @@ and its sync, the brain conversation with its session store and lease client, th
 
 ## Public API
 
-- `Core::new(Roots { home })`, `Core::handle(caller, BridgeRequest) -> BridgeResponse`: serves every
-  bridge method but `audio.capture.*` (`unsupported`). Call it off the UI thread: `perm.request`,
-  `connector.connect` and `net.fetch` wait.
-- Processes (`core_proc.rs`): `proc.spawn` passes the permission engine for its command (a PTY only
-  under a scope and a grant that allow `pty`); `proc.output` (UTF-8 at whole characters, else base64)
-  and `proc.exit` reach the caller only; later calls need the owner and a covering scope.
+- `Core::new(Roots { home })`, `Core::handle(caller, BridgeRequest) -> BridgeResponse`: every method
+  but `audio.capture.*` (`unsupported`). Call it off the UI thread: `perm.request` and others wait.
+- `proc.spawn` passes the permission engine for its command (a PTY only where scope and grant allow
+  `pty`); `proc.output` and `proc.exit` reach the caller only; later calls need owner and scope.
 - `net.fetch` checks the URL against the `net:fetch` scope (`Target::Url`), desk-sys every redirect;
   `ui.surface.open` needs `ui:surface` and a declared surface, and `ui.surface.*` events go to `desk`.
+- Files (ADR 0041): `fs.read` reads byte ranges; `fs.url` makes a 128-bit token that `file_url(token)`
+  resolves to a `FileUrl { path, media_type }` while the caller runs and a grant covers the path.
 - Permissions: `Core::grant` (session), `with_grant_file(path)` (`always` grants, ADR 0029),
   `with_prompter` (`RefuseAll` by default); `perm.request` becomes a `perm.prompt` to the
   `perm:manage` holders. `PermissionEngine`: deny by default; a `once` grant is spent by its call.
-- `EventBus`: `subscribe`, `subscribe_addressed` (`Delivery { to, event }`), `publish`, `publish_to`;
-  `subscription_count()`, `watch_count()`, `process_count()`, `surface_count()`.
+- `EventBus`: `subscribe`, `subscribe_addressed`, `publish`, `publish_to`; `subscription_count()`,
+  `watch_count()`, `process_count()`, `surface_count()`, `file_url_count()`; `media_type(name)`.
 - Plugins: `with_plugin_store(path)`, `install_plugin(dir, built_in)`, `install_plugins_in`,
   `plugins()`, `plugin_file(id, path)`, `watch_plugins()`, `validate_dir(dir)`. A plugin turned off
-  takes its commands, waiting requests, subscriptions, processes and surfaces; its connectors pause.
+  takes its commands, requests, subscriptions, processes, surfaces and URLs; its connectors pause.
 - Storage: `with_store_file(path)`, `with_settings_file(path)`, `with_log_dir(dir)`, `Core::log`.
-- Brain: `with_brain(brain, BrainOptions)`, `open_session(id)`, `brain_session()`, `LeaseClient`,
+  Brain: `with_brain(brain, BrainOptions)`, `open_session(id)`, `brain_session()`, `LeaseClient`,
   `SessionStore`; `brain.say` streams `brain.turn`; the directory passes the brain's answers through.
 - init.yaml (ADR 0016): `with_init_file(path)`, `init()`, `init_problem()`, `with_sync(remote,
   state_file)`, `sync_init()`, `resolve_init(Keep)`; `MockRemote` stands in for endue.

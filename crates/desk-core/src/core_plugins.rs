@@ -1,6 +1,6 @@
 //! The plugin side of `Core`: install, list, enable, serve files, and report changes on the bus. A
-//! plugin turned off unloads: its commands, waiting requests, subscriptions, processes and surfaces
-//! go with it, a connector's instances pause, and a view plugin's views leave view.list.
+//! plugin turned off unloads: its commands, waiting requests, subscriptions, processes, surfaces and
+//! file URLs go with it, a connector's instances pause, and a view plugin's views leave view.list.
 
 use std::io;
 use std::path::{Path, PathBuf};
@@ -125,8 +125,8 @@ impl Core {
     }
 
     /// A plugin that stops provides no commands, waits for no answer, hears no subscriptions, runs
-    /// no processes and shows no surfaces; if it was the last perm:manage holder, the Prompter
-    /// decides what waits.
+    /// no processes, shows no surfaces and serves no file URLs; if it was the last perm:manage
+    /// holder, the Prompter decides what waits.
     fn unloaded(&self, id: &str) {
         self.drop_provider(id);
         self.withdraw_prompts(id);
@@ -134,6 +134,7 @@ impl Core {
         self.drop_data(id);
         self.drop_processes(id);
         self.drop_surfaces(id);
+        self.drop_file_urls(id);
         self.settle_unheard();
     }
 

@@ -11,7 +11,8 @@ use std::sync::{Arc, Mutex, MutexGuard};
 use base64::Engine as _;
 use desk_bridge::{
     BridgeError, BridgeFailure, BridgeRequest, BridgeResponse, BridgeSuccess, DirEntry, Encoding,
-    EntryKind, ErrorCode, False, FsListResult, FsReadResult, Permission, RequestId, True,
+    EntryKind, ErrorCode, False, FsListResult, FsReadParams, FsReadResult, Permission, RequestId,
+    True,
 };
 use desk_index::ItemIndex;
 use desk_plugin_host::{Clock, SystemClock, rfc3339};
@@ -24,7 +25,8 @@ use crate::core_cmd::Commands;
 use crate::core_connectors::Connectors;
 use crate::core_data::DataSubscriptions;
 use crate::core_events::Subscriptions;
-use crate::core_fs::Watches;
+use crate::core_fs::{Watches, read_range};
+use crate::core_fs_url::FileUrls;
 use crate::core_perm::{Prompter, RefuseAll};
 use crate::core_plugin_views::ProvidedViews;
 use crate::core_proc::Processes;
@@ -66,6 +68,7 @@ pub struct Core {
     pub(crate) sync: Option<Syncer>,
     pub(crate) notifications: AtomicU64,
     pub(crate) watches: Mutex<Watches>,
+    pub(crate) file_urls: Mutex<FileUrls>,
     pub(crate) commands: Mutex<Commands>,
     pub(crate) index: Option<Arc<dyn ItemIndex>>,
     pub(crate) calendar: Option<Arc<dyn CalendarSource>>,
@@ -97,6 +100,7 @@ impl Core {
             sync: None,
             notifications: AtomicU64::new(0),
             watches: Mutex::new(Watches::default()),
+            file_urls: Mutex::new(FileUrls::default()),
             commands: Mutex::new(Commands::default()),
             index: None,
             calendar: None,
@@ -140,10 +144,19 @@ impl Core {
         use BridgeRequest as R;
         match request {
             R::FsRead(r) => {
-                let scope = Permission::FsRead(r.params.scope);
+                let FsReadParams {
+                    path,
+                    encoding,
+                    offset,
+                    length,
+                    scope,
+                } = r.params;
                 let answer = self
-                    .authorize(caller, &scope, &r.params.path)
-                    .and_then(|path| read(&path, r.params.encoding.unwrap_or(Encoding::Utf8)));
+                    .authorize(caller, &Permission::FsRead(scope), &path)
+                    .and_then(|path| {
+                        let encoding = encoding.unwrap_or(Encoding::Utf8);
+                        read(&path, encoding, offset.unwrap_or(0), length)
+                    });
                 (r.id, answer)
             }
             R::FsList(r) => {
@@ -172,7 +185,7 @@ impl Core {
             R::UiNotify(r) => (r.id, self.notify(caller, r.params)),
             R::FsWrite(r) => (r.id, self.fs_write(caller, r.params)),
             R::FsWatch(r) => (r.id, self.fs_watch(caller, r.params)),
-            R::FsUrl(r) => (r.id, unsupported("fs.url")),
+            R::FsUrl(r) => (r.id, self.fs_url(caller, r.params)),
             R::ProcSpawn(r) => (r.id, self.proc_spawn(caller, r.params)),
             R::ProcWrite(r) => (r.id, self.proc_write(caller, r.params)),
             R::ProcResize(r) => (r.id, self.proc_resize(caller, r.params)),
@@ -261,14 +274,19 @@ impl Core {
     }
 }
 
-fn read(path: &Path, encoding: Encoding) -> Answer {
-    let bytes = sysfs::read(path).map_err(io_error)?;
-    let size = Some(bytes.len() as u64);
+/// fs.read: `length` bytes at most from `offset` (to the end without a length), with the file's size.
+fn read(path: &Path, encoding: Encoding, offset: u64, length: Option<u64>) -> Answer {
+    let (bytes, size) = read_range(path, offset, length).map_err(io_error)?;
     let content = match encoding {
         Encoding::Utf8 => String::from_utf8(bytes).map_err(|_| {
+            let what = if offset == 0 && length.is_none() {
+                "the file is"
+            } else {
+                "the range is"
+            };
             error(
                 ErrorCode::InvalidParams,
-                "the file is not UTF-8; read it as base64".to_owned(),
+                format!("{what} not UTF-8; read it as base64"),
             )
         })?,
         Encoding::Base64 => base64::engine::general_purpose::STANDARD.encode(bytes),
@@ -276,7 +294,7 @@ fn read(path: &Path, encoding: Encoding) -> Answer {
     json(FsReadResult {
         content,
         encoding,
-        size,
+        size: Some(size),
     })
 }
 

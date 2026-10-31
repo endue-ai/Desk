@@ -29,7 +29,12 @@ fn core() -> (Core, PathBuf) {
 }
 
 fn url_of(core: &Core, caller: &str, path: &str) -> Result<Value, BridgeError> {
-    call(core, caller, "fs.url", json!({ "path": path, "scope": movies() }))
+    call(
+        core,
+        caller,
+        "fs.url",
+        json!({ "path": path, "scope": movies() }),
+    )
 }
 
 /// The token in `/_desk/file/<token>/<file name>`.
@@ -50,7 +55,10 @@ fn fs_url_needs_the_read_grant() {
     let (core, home) = core();
     let denied = url_of(&core, HELLO, "~/Movies/Holiday 2026.mp4").unwrap_err();
     assert_eq!(denied.code, ErrorCode::PermissionDenied);
-    assert_eq!(denied.permission, Some(serde_json::from_value(movies()).unwrap()));
+    assert_eq!(
+        denied.permission,
+        Some(serde_json::from_value(movies()).unwrap())
+    );
 
     grant(&core, HELLO, movies());
     let answer = url_of(&core, HELLO, "~/Movies/Holiday 2026.mp4").unwrap();
@@ -85,7 +93,11 @@ fn a_token_resolves_to_its_file_until_the_caller_unloads() {
     let token = token_of(&answer);
     let film = home.join("Movies/Holiday 2026.mp4");
     assert_eq!(resolves(&core, &token), Some(film.clone()));
-    assert_eq!(resolves(&core, &token), Some(film), "every request, not once");
+    assert_eq!(
+        resolves(&core, &token),
+        Some(film),
+        "every request, not once"
+    );
 
     set_enabled(&core, HELLO, false);
     assert_eq!(resolves(&core, &token), None, "the caller unloaded");
@@ -105,7 +117,11 @@ fn a_revoked_grant_stops_the_url() {
     let film = json!({ "permission": "fs:read", "paths": ["~/Movies/Holiday 2026.mp4"] });
     let narrow = grant(&core, HELLO, film);
     call(&core, HELLO, "perm.revoke", json!({ "grantId": wide })).unwrap();
-    assert_eq!(resolves(&core, &token), Some(path.clone()), "the narrow grant covers it");
+    assert_eq!(
+        resolves(&core, &token),
+        Some(path.clone()),
+        "the narrow grant covers it"
+    );
     call(&core, HELLO, "perm.revoke", json!({ "grantId": narrow })).unwrap();
     assert_eq!(resolves(&core, &token), None, "no grant covers the path");
 
@@ -127,7 +143,11 @@ fn a_once_grant_is_spent_by_the_call_that_makes_the_url() {
     let answer = url_of(&core, HELLO, "~/Movies/Holiday 2026.mp4").unwrap();
     assert_eq!(resolves(&core, &token_of(&answer)), None);
     grant(&core, HELLO, movies());
-    assert_eq!(resolves(&core, &token_of(&answer)), None, "and it stays spent");
+    assert_eq!(
+        resolves(&core, &token_of(&answer)),
+        None,
+        "and it stays spent"
+    );
 }
 
 #[test]

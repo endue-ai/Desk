@@ -111,7 +111,10 @@ fn a_range_needs_the_read_grant() {
     let range = json!({ "encoding": "base64", "offset": 10, "length": 5 });
     let denied = read(&core, "~/Documents/blob.bin", range.clone()).unwrap_err();
     assert_eq!(denied.code, ErrorCode::PermissionDenied);
-    assert_eq!(denied.permission, Some(serde_json::from_value(docs()).unwrap()));
+    assert_eq!(
+        denied.permission,
+        Some(serde_json::from_value(docs()).unwrap())
+    );
     grant(
         &core,
         NOTES,

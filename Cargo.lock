@@ -941,6 +941,7 @@ dependencies = [
  "desk-index",
  "desk-plugin-host",
  "desk-sys",
+ "getrandom 0.3.4",
  "jsonschema",
  "serde",
  "serde_json",
