@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Database</title>
+    <script type="importmap">
+      { "imports": { "@endue-ai/plugin-sdk": "/_desk/plugin-sdk.js" } }
+    </script>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <header>
+      <h1 id="title">Database</h1>
+      <span id="badge" class="tag" hidden></span>
+      <nav id="actions" aria-label="Run" hidden>
+        <button type="button" data-act="run" title="The statement at the caret, or the selection (Mod+Enter)">Run</button>
+        <button type="button" data-act="runAll" title="The whole script (Mod+Shift+Enter)">Run all</button>
+        <button type="button" data-act="runTransaction" title="The whole script in one transaction: all or nothing">In a transaction</button>
+        <button type="button" data-act="dryRun" title="The whole script, then ROLLBACK">Dry run</button>
+        <button type="button" data-act="explain" title="EXPLAIN the statement at the caret">Explain</button>
+        <button type="button" data-act="cancel" class="cancel" title="Stop the run (Escape in the editor)">Cancel</button>
+        <button type="button" data-act="more" title="Load four times as many rows">More rows</button>
+        <button type="button" data-act="history" title="Earlier statements of this connection">History</button>
+        <button type="button" data-act="copy" title="Copy the result as TSV, CSV, JSON, Markdown or INSERT">Copy as…</button>
+      </nav>
+      <span id="busy" role="img" aria-label="Running" hidden>…</span>
+    </header>
+    <main>
+      <aside id="side" aria-label="Connections">
+        <div class="side-head">
+          <h2>Connections</h2>
+          <button type="button" data-act="create" title="New connection (n)">New</button>
+          <button type="button" data-act="importUri" title="New connection from a URI (u)">URI</button>
+        </div>
+        <div id="tree" role="tree" aria-label="Connections" tabindex="0"></div>
+      </aside>
+      <section id="work" aria-label="Console">
+        <p id="empty">Pick a connection on the left, or add one with New.</p>
+        <form id="table-bar" hidden aria-label="Rows">
+          <label>Filter <input id="where" placeholder="WHERE …" spellcheck="false" /></label>
+          <label>Order by <input id="order" placeholder="ORDER BY …" spellcheck="false" /></label>
+          <button type="submit">Apply</button>
+          <button type="button" data-page="-1" aria-label="Previous page">‹</button>
+          <span id="page"></span>
+          <button type="button" data-page="1" aria-label="Next page">›</button>
+          <button type="button" id="count">Count</button>
+        </form>
+        <textarea id="editor" hidden spellcheck="false" aria-label="SQL" placeholder="SELECT … — Mod+Enter runs the statement at the caret"></textarea>
+        <div id="results" hidden>
+          <div id="tabs" role="tablist" aria-label="Results"></div>
+          <div id="result"></div>
+        </div>
+      </section>
+      <form id="form" class="dialog" hidden aria-labelledby="form-title">
+        <h2 id="form-title"></h2>
+        <label>Name <input id="f-name" autocomplete="off" placeholder="user@host/database when empty" /></label>
+        <label>Engine
+          <select id="f-engine">
+            <option value="postgresql">PostgreSQL</option>
+            <option value="mysql">MySQL / MariaDB</option>
+            <option value="sqlite">SQLite</option>
+          </select>
+        </label>
+        <label data-for="sqlite">File <input id="f-file" placeholder="~/data/app.db" spellcheck="false" /></label>
+        <label data-for="server">Host <input id="f-host" placeholder="localhost" spellcheck="false" /></label>
+        <label data-for="server">Port <input id="f-port" inputmode="numeric" /></label>
+        <label data-for="server">Database <input id="f-database" spellcheck="false" /></label>
+        <label data-for="server">User <input id="f-user" autocomplete="off" spellcheck="false" /></label>
+        <label data-for="server">TLS <select id="f-ssl"></select></label>
+        <label data-for="server">CA file <input id="f-sslCa" placeholder="~/certs/ca.pem" spellcheck="false" /></label>
+        <label>Environment <select id="f-tag"></select></label>
+        <label class="check"><input type="checkbox" id="f-readOnly" /> Read-only: refuse statements that change anything</label>
+        <p class="hint">No password is kept here: the client's own files (~/.pgpass, ~/.my.cnf) are used, and when the server asks, you type it once per session.</p>
+        <p id="form-error" class="error" role="alert"></p>
+        <p id="form-note" class="note" role="status"></p>
+        <p class="buttons">
+          <button type="button" id="form-test">Test</button>
+          <button type="button" id="form-cancel">Cancel</button>
+          <button type="submit">Save</button>
+        </p>
+      </form>
+      <form id="password" class="dialog" hidden aria-labelledby="password-title">
+        <h2 id="password-title">Password</h2>
+        <p id="password-text"></p>
+        <label>Password <input type="password" id="password-value" autocomplete="off" /></label>
+        <p class="hint">Kept in memory until you disconnect or quit; never written down.</p>
+        <p class="buttons">
+          <button type="button" id="password-cancel">Cancel</button>
+          <button type="submit">Connect</button>
+        </p>
+      </form>
+    </main>
+    <footer>
+      <p id="hints"></p>
+      <p id="summary" aria-live="polite"></p>
+      <p id="status" role="status"></p>
+    </footer>
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>
