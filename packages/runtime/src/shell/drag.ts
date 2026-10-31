@@ -6,8 +6,9 @@ export interface DragHandlers {
   /** Return false to ignore this pointer (a button inside the handle, say). */
   accept?(event: PointerEvent): boolean;
   start?(): void;
-  move(dx: number, dy: number): void;
-  end(dx: number, dy: number): void;
+  move(dx: number, dy: number, event: PointerEvent): void;
+  /** `event` is the pointer's last place, for what depends on where it was let go (snapping). */
+  end(dx: number, dy: number, event: PointerEvent): void;
 }
 
 export function draggable(handle: HTMLElement, handlers: DragHandlers): () => void {
@@ -26,7 +27,7 @@ export function draggable(handle: HTMLElement, handlers: DragHandlers): () => vo
         document.documentElement.classList.add("is-grabbing");
         handlers.start?.();
       }
-      handlers.move(dx, dy);
+      handlers.move(dx, dy, m);
     };
     const up = (u: PointerEvent) => {
       window.removeEventListener("pointermove", move);
@@ -34,7 +35,7 @@ export function draggable(handle: HTMLElement, handlers: DragHandlers): () => vo
       window.removeEventListener("pointercancel", up);
       if (!dragging) return;
       document.documentElement.classList.remove("is-grabbing");
-      handlers.end(u.clientX - x0, u.clientY - y0);
+      handlers.end(u.clientX - x0, u.clientY - y0, u);
       // The click that follows a drag is not a click.
       const swallow = (c: Event) => c.stopPropagation();
       window.addEventListener("click", swallow, { capture: true, once: true });

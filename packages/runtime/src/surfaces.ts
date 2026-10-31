@@ -41,19 +41,26 @@ export class SurfaceHost {
     this.#edges = edges;
   }
 
-  open(spec: SurfaceSpec): HTMLElement {
+  /**
+   * Make a surface's section. By default it goes on the grid (or its edge bar); `into: null` leaves
+   * it detached, with no title bar of its own, for a window host that places it (ADR 0040).
+   */
+  open(spec: SurfaceSpec, into?: HTMLElement | null): HTMLElement {
     const existing = this.#surfaces.get(spec.id);
     if (existing) return existing;
     const doc = this.#container.ownerDocument;
     const overlay = spec.placement === "overlay";
     const edges = this.#edges;
     const edge = edges ? edgeOf(spec.placement) : undefined;
+    const windowed = into === null;
     const section = doc.createElement("section");
     section.className = overlay
       ? "desk-surface desk-surface--overlay"
       : edge
         ? "desk-surface desk-surface--edge"
-        : "desk-surface";
+        : windowed
+          ? "desk-surface desk-surface--windowed"
+          : "desk-surface";
     if (spec.hidden) section.classList.add("desk-surface--transient");
     section.dataset.surface = spec.id;
     section.tabIndex = -1;
@@ -71,9 +78,11 @@ export class SurfaceHost {
     if (spec.srcdoc !== undefined) frame.srcdoc = spec.srcdoc;
     else if (spec.src !== undefined) frame.src = spec.src;
 
-    if (overlay || edge) section.append(frame);
+    if (overlay || edge || windowed) section.append(frame);
     else section.append(title, frame);
-    (edges && edge ? edges.bar(edge) : this.#container).append(section);
+    if (into) into.append(section);
+    else if (into === undefined)
+      (edges && edge ? edges.bar(edge) : this.#container).append(section);
     this.#surfaces.set(spec.id, section);
     return section;
   }
@@ -102,9 +111,10 @@ export class SurfaceHost {
     section.querySelector("iframe")?.focus();
   }
 
+  /** Shown and on the page: a section a window host put away is not one to cycle to. */
   visible(id: string): boolean {
     const section = this.#surfaces.get(id);
-    return section !== undefined && !section.hidden;
+    return section !== undefined && !section.hidden && section.isConnected;
   }
 
   /** The window inside a surface's frame, to tell plugin messages apart. */

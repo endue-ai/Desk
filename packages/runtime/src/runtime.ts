@@ -49,6 +49,8 @@ export interface RuntimeOptions {
   themeRoot?: HTMLElement;
   /** Views a host draws itself (the shell's panes): focus cycling and buffers reach them too. */
   views?: HostViews;
+  /** Where centre and floating surfaces go instead of the grid: the shell's windows. */
+  windows?: WindowHost;
 }
 
 export interface RuntimeProfiles {
@@ -65,6 +67,18 @@ export interface RuntimePlugins {
   mounted(): string[];
   /** Send a command to a mounted plugin, for example `command("endue.eris", "state", "thinking")`. */
   command(id: string, name: string, args?: unknown): void;
+  /** Take a plugin's surface away for the rest of this session (closing its window does this). */
+  unmount(id: string): void;
+}
+
+/**
+ * A host that holds the surfaces that would otherwise sit on the compositor's grid: the shell's
+ * windows (ADR 0040). The runtime creates each centre or floating surface's section detached and
+ * hands it over; the host places it in a window and takes the window away when the surface closes.
+ */
+export interface WindowHost {
+  adopt(spec: SurfaceSpec, section: HTMLElement): void;
+  release(id: string): void;
 }
 
 export interface Runtime {
@@ -273,9 +287,14 @@ export function createRuntime(options: RuntimeOptions): Runtime {
 
   const openSurface = (spec: SurfaceSpec) => {
     const decision = display.decide(spec);
-    const section = surfaces.open({ ...spec, placement: decision.area });
+    // With a window host, centre and floating surfaces are its windows, not grid cells.
+    const windowed =
+      options.windows !== undefined && (decision.area === "center" || decision.area === "floating");
+    const placed = { ...spec, placement: decision.area };
+    const section = surfaces.open(placed, windowed ? null : undefined);
+    if (windowed) options.windows?.adopt(placed, section);
     // Overlays cover the desk and edge surfaces sit around it; only grid surfaces take cells.
-    if (takesCell(decision.area)) {
+    else if (takesCell(decision.area)) {
       commit(place(layout, spec.id, { colSpan: decision.columns, rowSpan: decision.rows }));
     }
     display.sizeEdge(section, decision);
@@ -290,6 +309,7 @@ export function createRuntime(options: RuntimeOptions): Runtime {
   };
   function closeSurface(id: string) {
     surfaces.close(id);
+    options.windows?.release(id);
     buffers.surfaceClosed(id);
     if (shortcuts.focused === id) shortcuts.focus(null);
   }
@@ -328,6 +348,7 @@ export function createRuntime(options: RuntimeOptions): Runtime {
         .catch(() => {}),
       mounted: () => host.mounted(),
       command: (id, name, args) => host.command(id, name, args),
+      unmount: (id) => host.unmount(id),
     };
   }
 

@@ -16,6 +16,24 @@ export interface Rect {
   h: number;
 }
 
+/** The free area between the bars in the reference frame: where windows tile, snap and fill. */
+export const FREE: Rect = {
+  x: SAFE.left,
+  y: SAFE.top,
+  w: REF.width - SAFE.left - SAFE.right,
+  h: REF.height - SAFE.top - SAFE.bottom,
+};
+
+/** The free area as it sits on a window of `vw`×`vh` pixels. */
+export function freeOnScreen(vw: number, vh: number): Rect {
+  return {
+    x: SAFE.left,
+    y: SAFE.top,
+    w: Math.max(MIN.w, vw - SAFE.left - SAFE.right),
+    h: Math.max(MIN.h, vh - SAFE.top - SAFE.bottom),
+  };
+}
+
 function factors(vw: number, vh: number) {
   const kx = (vw - SAFE.left - SAFE.right) / (REF.width - SAFE.left - SAFE.right);
   const ky = (vh - SAFE.top - SAFE.bottom) / (REF.height - SAFE.top - SAFE.bottom);

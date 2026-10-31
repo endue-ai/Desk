@@ -29,6 +29,8 @@ export interface SurfacePlacement {
   pinned: boolean;
   /** How the surface is split into panes. Absent: one pane showing the view named by `id`. */
   panes?: PaneNode;
+  /** Where it was before it filled the free area; present only while it fills it. */
+  restore?: { x: number; y: number; w: number; h: number };
 }
 
 /** One pane: shows a view ("calendar", "notes", "agent:<id>", "launcher", ...). */

@@ -33,6 +33,13 @@ const testPlugins: PluginManifest[] = [
     entry: "ui/index.html",
     surfaces: [{ id: "main", title: "Counter", placement: "center" }],
   },
+  {
+    id: "example.hello-ui",
+    version: "0.1.0",
+    kind: "ui",
+    entry: "ui/index.html",
+    surfaces: [{ id: "main", title: "Hello", placement: "center" }],
+  },
 ];
 const core = browserCore({
   manifests: [
