@@ -180,6 +180,63 @@ ${shape("rect", [2540000, 0, 2540000, 2540000])}${shape("ellipse", [0, 2540000, 
   });
 });
 
+describe("PresentationML drawings and templates", () => {
+  const frame = (uri: string, inner: string) =>
+    `<p:graphicFrame><p:nvGraphicFramePr><p:cNvPr id="40" name="Frame"/><p:cNvGraphicFramePr/><p:nvPr/></p:nvGraphicFramePr><p:xfrm><a:off x="1270000" y="0"/><a:ext cx="2540000" cy="1270000"/></p:xfrm><a:graphic><a:graphicData uri="${uri}">${inner}</a:graphicData></a:graphic></p:graphicFrame>`;
+  const DGM = "http://schemas.openxmlformats.org/drawingml/2006/diagram";
+  const CHART = "http://schemas.openxmlformats.org/drawingml/2006/chart";
+
+  it("SmartArt shows its cached drawing; a chart without one is a labelled box", async () => {
+    const smartArt = frame(
+      DGM,
+      `<dgm:relIds xmlns:dgm="${DGM}" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" r:dm="rId20" r:lo="rId21" r:qs="rId22" r:cs="rId23"/>`,
+    );
+    const chart = frame(
+      CHART,
+      `<c:chart xmlns:c="${CHART}" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" r:id="rId30"/>`,
+    );
+    const data = `<?xml version="1.0"?><dgm:dataModel xmlns:dgm="${DGM}" xmlns:dsp="http://schemas.microsoft.com/office/drawing/2008/diagram"><dgm:extLst><dgm:ext><dsp:dataModelExt relId="rId24"/></dgm:ext></dgm:extLst></dgm:dataModel>`;
+    const drawing = `<?xml version="1.0"?><dsp:drawing xmlns:dsp="http://schemas.microsoft.com/office/drawing/2008/diagram" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><dsp:spTree><dsp:nvGrpSpPr><dsp:cNvPr id="0" name=""/><dsp:cNvGrpSpPr/></dsp:nvGrpSpPr><dsp:grpSpPr/>
+<dsp:sp modelId="{1}"><dsp:nvSpPr><dsp:cNvPr id="0" name=""/><dsp:cNvSpPr/></dsp:nvSpPr><dsp:spPr>${xfrm(0, 0, 1270000, 635000)}<a:prstGeom prst="chevron"><a:avLst/></a:prstGeom><a:solidFill><a:srgbClr val="00AA00"/></a:solidFill></dsp:spPr><dsp:txBody><a:bodyPr/><a:p><a:r><a:t>Step</a:t></a:r></a:p></dsp:txBody></dsp:sp></dsp:spTree></dsp:drawing>`;
+    const deck = await deckOf(
+      pptx(
+        [
+          {
+            shapes: smartArt + chart,
+            rels: [
+              ["rId20", "diagramData", "../diagrams/data1.xml"],
+              ["rId24", "diagramDrawing", "../diagrams/drawing1.xml"],
+              ["rId30", "chart", "../charts/chart1.xml"],
+            ],
+          },
+        ],
+        { "ppt/diagrams/data1.xml": data, "ppt/diagrams/drawing1.xml": drawing },
+      ),
+      "a.pptx",
+    );
+    const [art, box] = deck.slides[0]?.elements ?? [];
+    expect(art).toMatchObject({ type: "group", box: { x: 100, y: 0, w: 200, h: 100 } });
+    const step = art?.type === "group" ? art.children[0] : undefined;
+    expect(step).toMatchObject({
+      type: "shape",
+      geometry: { name: "chevron" },
+      fill: { color: "#00aa00" },
+      box: { x: 0, y: 0, w: 100, h: 50 },
+    });
+    expect(box).toMatchObject({ type: "placeholder", label: "Chart" });
+  });
+
+  it("a template without slides shows its layouts", async () => {
+    const deck = await deckOf(pptx([]), "a.potx");
+    expect(deck.format).toBe("PowerPoint template");
+    expect(deck.slides.map((s) => s.title)).toEqual(["Layout title"]);
+    expect(shapes(deck.slides[0]).map((s) => bodyText(s.text))).toEqual([
+      "Layout title",
+      "Layout body",
+    ]);
+  });
+});
+
 describe("PresentationML files made by real tools", () => {
   it("python-pptx: titles, shapes, a cropped picture, a table, notes and a hidden slide", async () => {
     const deck = await deckOf(fixture("sample.pptx"), "sample.pptx");

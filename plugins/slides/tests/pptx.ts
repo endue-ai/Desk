@@ -81,6 +81,8 @@ export interface SlideSpec {
   notes?: string;
   hidden?: boolean;
   background?: string;
+  /** More relationships of the slide: [id, type, target]. */
+  rels?: Array<[string, string, string]>;
 }
 
 const slideXml = (spec: SlideSpec) => `<?xml version="1.0" encoding="UTF-8"?>
@@ -138,6 +140,7 @@ export function pptx(slides: SlideSpec[], extra: Record<string, Entry> = {}): Ui
       ["rId1", "slideLayout", "../slideLayouts/slideLayout1.xml"],
       ["rId9", "image", "../media/image1.png"],
     ];
+    list.push(...(spec.rels ?? []));
     if (spec.notes !== undefined) {
       list.push(["rId2", "notesSlide", `../notesSlides/notesSlide${n}.xml`]);
       files[`ppt/notesSlides/notesSlide${n}.xml`] = notesXml(spec.notes);
