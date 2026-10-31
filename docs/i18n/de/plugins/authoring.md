@@ -91,7 +91,7 @@ diesen Bereich abdeckt.
 
 Das Vokabular (`fs:read`, `fs:write`, `proc:spawn`, `net:fetch`, `audio:capture`, `ui:surface`,
 `ui:notify`, `plugin:manage`, `brain:converse`, `cmd:invoke`, `cmd:advise`, `settings:read`, `log:read`,
-`events:subscribe`, `perm:manage`) steht in `specs/plugin/v0/README.md`.
+`events:subscribe`, `perm:manage`, `data:read`, `connector:manage`, `view:manage`) steht in `specs/plugin/v0/README.md`.
 
 ## Beiträge
 
@@ -132,6 +132,29 @@ Das Theme erreicht Ihren Frame als CSS-Eigenschaften `--desk-*` und als `ctx.the
 die in Ihrem Frame gedrückt werden, erreichen die Tastenbelegung des Desks, außer Sie rufen
 `preventDefault()` auf. Die Standardrichtlinien und was jede entscheidet, stehen in `plugins/README.md`.
 
+## Einträge und Ansichten
+
+Was die Apps enthalten, die eine Person verbindet, kommt als Einträge einer einzigen Form auf den
+Desk (`specs/item/v0`, ADR 0032): Termine, Aufgaben, Nachrichten, Notizen und mehr, aus jeder Quelle
+gleich. `ctx.data` liest den Index des Desks mit einer `data:read`-Berechtigung und übergibt den
+engsten Geltungsbereich, den eine Abfrage braucht; `ctx.views` liest und speichert die Ansichten der
+Person mit `view:manage`:
+
+```js
+const { items } = await ctx.data.query({
+  kinds: ["task"],
+  where: [{ field: "due", op: "lt", value: "2026-10-31T00:00:00+09:00" }],
+});
+const stop = await ctx.data.subscribe({ kinds: ["task"] }, (changes) => redraw(changes));
+await ctx.commands.run("desk.views.open", { id: "desk.today" });
+```
+
+Eine Ansicht ist Daten, kein Code (`specs/view/v0`): das eingebaute `desk.views` zeichnet sie mit den
+Elementen von `@endue-ai/ui` (`desk-list`, `desk-table`, `desk-agenda`, `desk-stat`, `desk-markdown`,
+`desk-card`), und ihre Vorlagen kennen die Uhr (`{today}`, `{tomorrow}`). Ihre Seite kann dieselben
+Elemente importieren (`"@endue-ai/ui": "/_desk/ui.js"` in ihrer Import-Map), sobald die App sie
+ausliefert; der Testserver der Laufzeit tut es schon.
+
 ## Testen
 
 `@endue-ai/plugin-sdk/testing` führt das Plugin ohne Browser gegen eine simulierte Bridge aus:
@@ -143,7 +166,7 @@ import { createTestHost } from "@endue-ai/plugin-sdk/testing";
 const host = createTestHost({ pluginId: "example.my-plugin", handlers: { "perm.query": () => ({ grants: [] }) } });
 await defineUiPlugin(myPlugin, host.transport);
 await host.settle();
-// host.calls, host.state, host.emit(event)
+// host.calls, host.state, host.emit(event), host.upsert(item)
 ```
 
 Vor der Veröffentlichung muss `desk plugin validate <folder>` erfolgreich durchlaufen; die CI führt den Befehl
