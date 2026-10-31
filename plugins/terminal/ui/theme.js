@@ -89,12 +89,13 @@ export function xtermTheme(theme) {
 /**
  * The options every terminal is made with, and given again when the settings or the theme change.
  * Reduced motion stops the cursor blinking; high contrast asks xterm for a 7:1 ratio on every cell.
+ * The Unicode 11 addon is proposed API in xterm, so loading it needs allowProposedApi.
  * @param {Settings} settings
  * @param {ThemeState} theme
  */
 export function terminalOptions(settings, theme) {
   return {
-    allowProposedApi: false,
+    allowProposedApi: true,
     cursorBlink: settings.cursorBlink && !theme.reducedMotion,
     cursorStyle: settings.cursorStyle,
     fontFamily: settings.fontFamily || MONOSPACE,

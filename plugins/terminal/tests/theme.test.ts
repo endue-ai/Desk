@@ -50,7 +50,7 @@ describe("the terminal's theme", () => {
 describe("the terminal's options", () => {
   it("come from the settings and the theme", () => {
     expect(terminalOptions(DEFAULTS, dark)).toEqual({
-      allowProposedApi: false,
+      allowProposedApi: true,
       cursorBlink: true,
       cursorStyle: "block",
       fontFamily: MONOSPACE,
