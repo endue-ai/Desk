@@ -273,8 +273,10 @@ input[type="range"] {
   outline-offset: 2px;
 }
 
-#stage:focus-visible {
-  outline-offset: -2px;
+/* The title and the stage take the focus when a file opens; they are not controls. */
+#title:focus,
+#stage:focus {
+  outline: none;
 }
 
 #status {

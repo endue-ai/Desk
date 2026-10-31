@@ -54,6 +54,8 @@ export function createMedia(doc, act) {
   let shownCues = "";
   /** @type {((time: number) => void) | null} */
   let onTime = null;
+  /** Whether the next source of the same buffer plays on (a playlist going on, next while playing). */
+  let carryOn = false;
 
   const duration = () =>
     media && Number.isFinite(media.duration) ? media.duration : (model?.info?.duration ?? 0);
@@ -138,7 +140,6 @@ export function createMedia(doc, act) {
     if (!media) return;
     media.muted = on;
     pressed(mute, on);
-    mute.textContent = on ? "🔇" : "🔊";
   };
   const setSpeed = (/** @type {number} */ rate) => {
     speed.value = String(rate);
@@ -188,6 +189,7 @@ export function createMedia(doc, act) {
     element.addEventListener("ended", (e) => {
       if (!mine(e)) return;
       drawPlay();
+      carryOn = true;
       act("ended");
     });
     element.addEventListener("error", (e) => mine(e) && media?.error && act("failed"));
@@ -288,19 +290,26 @@ export function createMedia(doc, act) {
   return {
     /** Show the model's media; a new source starts where the model says. */
     load(/** @type {Model} */ next) {
+      const same = model?.buffer === next.buffer;
+      const playing = carryOn || (media !== null && !media.paused);
+      carryOn = false;
       model = next;
       const element = next.element === "video" ? video : audio;
-      if (media && media !== element) this.unload(false);
-      media = element;
-      video.hidden = next.element !== "video";
-      audio.hidden = true;
       if (next.src && loaded !== next.src) {
+        if (media) this.unload(false);
+        media = element;
         loaded = next.src;
         retry.hidden = true;
         element.src = next.src;
         pending = next.start ?? 0;
         if (pending > 0) element.currentTime = pending;
+        if (same && playing) toggle();
       } else if (!next.src) this.unload(false);
+      media = element;
+      video.hidden = next.element !== "video";
+      audio.hidden = true;
+      theatre.hidden = next.element !== "video";
+      if (theatre.hidden) setTheatre(false);
       transport.hidden = !loaded;
       const many = (next.playlist?.rows.length ?? 0) > 1;
       byId("previous").hidden = !many;
@@ -324,12 +333,14 @@ export function createMedia(doc, act) {
     /** Take the source away (details, cue lists, a closed file). */
     unload(all = true) {
       stopTicker();
-      if (media && loaded) {
+      const had = loaded;
+      // Forget the source first: the old element's pause event is not this file's progress.
+      loaded = "";
+      if (media && had) {
         media.pause();
         media.removeAttribute("src");
         media.load();
       }
-      loaded = "";
       overlay.textContent = "";
       shownCues = "";
       if (!all) return;
