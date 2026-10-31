@@ -3,19 +3,24 @@
 //! index, connectors and views; ADR 0036).
 pub const NAME: &str = env!("CARGO_PKG_NAME");
 
+mod calendar_items;
 mod conversation;
 mod core_brain;
+mod core_builtins;
 mod core_cmd;
+mod core_connectors;
 mod core_data;
 mod core_directory;
 mod core_events;
 mod core_fs;
+mod core_host;
 mod core_init;
 mod core_perm;
 mod core_plugins;
 mod core_prompts;
 mod core_store;
 mod core_ui;
+mod core_wasm;
 mod events;
 mod grants;
 mod handler;
@@ -25,6 +30,7 @@ mod manifest;
 mod paths;
 mod perm;
 mod plugins;
+mod secrets;
 mod sessions;
 mod store;
 mod sync;

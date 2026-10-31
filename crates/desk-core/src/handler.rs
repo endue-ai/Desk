@@ -14,12 +14,14 @@ use desk_bridge::{
     EntryKind, ErrorCode, False, FsListResult, FsReadResult, Permission, RequestId, True,
 };
 use desk_index::ItemIndex;
-use desk_plugin_host::rfc3339;
+use desk_plugin_host::{Clock, SystemClock, rfc3339};
+use desk_sys::calendar::CalendarSource;
 use desk_sys::fs as sysfs;
 use serde::Serialize;
 
 use crate::conversation::Conversation;
 use crate::core_cmd::Commands;
+use crate::core_connectors::Connectors;
 use crate::core_data::DataSubscriptions;
 use crate::core_events::Subscriptions;
 use crate::core_fs::Watches;
@@ -30,6 +32,7 @@ use crate::init::InitFile;
 use crate::paths::normalize;
 use crate::perm::{Denied, PermissionEngine, Target};
 use crate::plugins::PluginRegistry;
+use crate::secrets::Secrets;
 use crate::store::Store;
 use crate::sync::Syncer;
 
@@ -58,7 +61,11 @@ pub struct Core {
     pub(crate) watches: Mutex<Watches>,
     pub(crate) commands: Mutex<Commands>,
     pub(crate) index: Option<Arc<dyn ItemIndex>>,
+    pub(crate) calendar: Option<Arc<dyn CalendarSource>>,
+    pub(crate) clock: Arc<dyn Clock>,
+    pub(crate) secrets: Mutex<Secrets>,
     pub(crate) data_subscriptions: Mutex<DataSubscriptions>,
+    pub(crate) connectors: Connectors,
 }
 
 impl Core {
@@ -79,7 +86,11 @@ impl Core {
             watches: Mutex::new(Watches::default()),
             commands: Mutex::new(Commands::default()),
             index: None,
+            calendar: None,
+            clock: Arc::new(SystemClock),
+            secrets: Mutex::new(Secrets::new(None)),
             data_subscriptions: Mutex::new(DataSubscriptions::default()),
+            connectors: Connectors::default(),
         }
     }
 
@@ -169,10 +180,10 @@ impl Core {
             R::DataGet(r) => (r.id, self.data_get(caller, r.params)),
             R::DataSubscribe(r) => (r.id, self.data_subscribe(caller, r.params)),
             R::DataUnsubscribe(r) => (r.id, self.data_unsubscribe(caller, r.params)),
-            R::ConnectorList(r) => (r.id, unsupported("connector.list")),
-            R::ConnectorConnect(r) => (r.id, unsupported("connector.connect")),
-            R::ConnectorDisconnect(r) => (r.id, unsupported("connector.disconnect")),
-            R::ConnectorSyncNow(r) => (r.id, unsupported("connector.sync")),
+            R::ConnectorList(r) => (r.id, self.connector_list(caller, r.params)),
+            R::ConnectorConnect(r) => (r.id, self.connector_connect(caller, r.params)),
+            R::ConnectorDisconnect(r) => (r.id, self.connector_disconnect(caller, r.params)),
+            R::ConnectorSyncNow(r) => (r.id, self.connector_sync(caller, r.params)),
             R::ViewList(r) => (r.id, unsupported("view.list")),
             R::ViewGet(r) => (r.id, unsupported("view.get")),
             R::ViewSave(r) => (r.id, unsupported("view.save")),
