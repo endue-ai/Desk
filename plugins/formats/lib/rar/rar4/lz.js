@@ -33,9 +33,9 @@ const DIST_BASE = DIST_BITS.map((_, i, bits) => bits.slice(0, i).reduce((n, b) =
 const SHORT_BASE = [0, 4, 8, 16, 32, 64, 128, 192];
 const SHORT_BITS = [2, 2, 3, 4, 5, 6, 6, 6];
 const MARGIN = 0x10000;
-const SLICE = 1 << 18;
+const SLICE = 1 << 16;
 /** PPMd decodes a few times slower than LZ: smaller slices keep the turns frequent. */
-const PPM_SLICE = 1 << 16;
+const PPM_SLICE = 1 << 14;
 /** Packed bytes kept loaded ahead of decoding: more than a table, a filter or a PPMd step reads. */
 const AHEAD = 1 << 18;
 /** Loaded bytes a step may read past the stopping point: the longest filter definition. */

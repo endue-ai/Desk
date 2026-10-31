@@ -19,7 +19,7 @@ const BC = 20;
 const TABLES = NC + DC + LDC + RC;
 /** Room kept free in the ring beyond the unflushed bytes: more than one match can add. */
 const MARGIN = 0x10000;
-const SLICE = 1 << 18;
+const SLICE = 1 << 16;
 const MOST_FILTERS = 8192;
 
 /** A match length from its slot and extra bits. @param {Input} input @param {number} slot */
