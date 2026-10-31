@@ -104,10 +104,7 @@ export async function openRanges(
       if (offset >= size || length <= 0) return { bytes: new Uint8Array(0), whole: false };
       if (!fallback) {
         try {
-          const got = await fetchPart(offset, length, signal);
-          return "body" in got
-            ? { body: got.body, whole: true }
-            : { bytes: got.bytes, whole: false };
+          return await fetchPart(offset, length, signal);
         } catch (error) {
           if (isAbort(error) || signal?.aborted) throw aborted(signal);
         }
