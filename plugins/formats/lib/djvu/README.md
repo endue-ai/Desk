@@ -27,7 +27,8 @@ long work yields every 25 ms and stops with an AbortError when `signal` fires.
 
 Written from the DjVu v3 specification (LizardTech, 2005) and the DjVu2 specification (AT&T,
 1999), never from DjVuLibre's source. Where the printed specification and files made by the
-reference encoder disagree, the code follows the files and says so (`zp.js`, `jb2-number.js`).
+reference encoder disagree, the code follows the files and says so (`zp.js`, `jb2-number.js`,
+`iw44.js`, `iw44-image.js`). The decoders match DjVuLibre's `ddjvu` output on the test files.
 
 ## Tests
 

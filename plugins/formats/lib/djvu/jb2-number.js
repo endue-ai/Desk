@@ -45,7 +45,8 @@ export class NumberContext {
 
 /**
  * Decodes an integer in [low, high]. Phase 1 decides the sign (1: not negative), phase 2 finds
- * the range v = |n| (or |n| - 1 below zero) falls in (0: in this range, 1: try the next one),
+ * the range v = |n| (or |n| - 1 below zero) falls in (0: in this range, 1: try the next one;
+ * the printed text says the opposite, cjb2's streams decode only this way),
  * phase 3 reads v's bits within the range, most significant first. Decisions [low, high] settle
  * are not decoded, but the walk still passes their node.
  * @param {import("./zp.js").ZPDecoder} zp @param {NumberContext} tree
