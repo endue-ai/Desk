@@ -98,7 +98,7 @@ describe("desk.item", () => {
     if (!groceries) throw new Error("no fixture task-groceries");
     core.upsert({ ...groceries, source: { connector: "desk.fixtures", instance: "work" } });
 
-    const binding = (manifest().view?.layout as ViewComponent).binding ?? {};
+    const binding = ((manifest().view as View).layout as ViewComponent).binding ?? {};
     const query = filled(binding, {
       connector: "desk.fixtures",
       instance: "default",
