@@ -1,0 +1,261 @@
+{
+  "id": "endue.images",
+  "name": "Images",
+  "version": "0.1.0",
+  "kind": "ui",
+  "entry": "ui/index.html",
+  "description": "Opens every still image in one viewer: web formats, HEIC and TIFF where the system decodes them, its own decoders for TGA, Netpbm, QOI, DDS, HDR, OpenEXR, ICNS, KTX, DICOM, FITS and NIfTI, camera RAW previews; zoom, pan, rotate, details and EXIF, the folder's other images, and two images side by side. It never writes a file.",
+  "permissions": [
+    {
+      "permission": "cmd:invoke",
+      "ids": ["desk.files.changed", "desk.files.open", "desk.buffers.close"]
+    }
+  ],
+  "surfaces": [
+    {
+      "id": "main",
+      "title": "Images",
+      "placement": "center"
+    }
+  ],
+  "contributes": {
+    "files": [
+      {
+        "pattern": "*.png",
+        "plugin": "endue.images"
+      },
+      {
+        "pattern": "*.apng",
+        "plugin": "endue.images"
+      },
+      {
+        "pattern": "*.jpg",
+        "plugin": "endue.images"
+      },
+      {
+        "pattern": "*.jpeg",
+        "plugin": "endue.images"
+      },
+      {
+        "pattern": "*.jpe",
+        "plugin": "endue.images"
+      },
+      {
+        "pattern": "*.jfif",
+        "plugin": "endue.images"
+      },
+      {
+        "pattern": "*.pjpeg",
+        "plugin": "endue.images"
+      },
+      {
+        "pattern": "*.gif",
+        "plugin": "endue.images"
+      },
+      {
+        "pattern": "*.webp",
+        "plugin": "endue.images"
+      },
+      {
+        "pattern": "*.avif",
+        "plugin": "endue.images"
+      },
+      {
+        "pattern": "*.heic",
+        "plugin": "endue.images"
+      },
+      {
+        "pattern": "*.heif",
+        "plugin": "endue.images"
+      },
+      {
+        "pattern": "*.jxl",
+        "plugin": "endue.images"
+      },
+      {
+        "pattern": "*.bmp",
+        "plugin": "endue.images"
+      },
+      {
+        "pattern": "*.dib",
+        "plugin": "endue.images"
+      },
+      {
+        "pattern": "*.tif",
+        "plugin": "endue.images"
+      },
+      {
+        "pattern": "*.tiff",
+        "plugin": "endue.images"
+      },
+      {
+        "pattern": "*.ico",
+        "plugin": "endue.images"
+      },
+      {
+        "pattern": "*.cur",
+        "plugin": "endue.images"
+      },
+      {
+        "pattern": "*.icns",
+        "plugin": "endue.images"
+      },
+      {
+        "pattern": "*.svg",
+        "plugin": "endue.images"
+      },
+      {
+        "pattern": "*.svgz",
+        "plugin": "endue.images"
+      },
+      {
+        "pattern": "*.tga",
+        "plugin": "endue.images"
+      },
+      {
+        "pattern": "*.pnm",
+        "plugin": "endue.images"
+      },
+      {
+        "pattern": "*.pbm",
+        "plugin": "endue.images"
+      },
+      {
+        "pattern": "*.pgm",
+        "plugin": "endue.images"
+      },
+      {
+        "pattern": "*.ppm",
+        "plugin": "endue.images"
+      },
+      {
+        "pattern": "*.pam",
+        "plugin": "endue.images"
+      },
+      {
+        "pattern": "*.qoi",
+        "plugin": "endue.images"
+      },
+      {
+        "pattern": "*.dds",
+        "plugin": "endue.images"
+      },
+      {
+        "pattern": "*.hdr",
+        "plugin": "endue.images"
+      },
+      {
+        "pattern": "*.exr",
+        "plugin": "endue.images"
+      },
+      {
+        "pattern": "*.ktx",
+        "plugin": "endue.images"
+      },
+      {
+        "pattern": "*.eps",
+        "plugin": "endue.images"
+      },
+      {
+        "pattern": "*.wmf",
+        "plugin": "endue.images"
+      },
+      {
+        "pattern": "*.emf",
+        "plugin": "endue.images"
+      },
+      {
+        "pattern": "*.dng",
+        "plugin": "endue.images"
+      },
+      {
+        "pattern": "*.cr2",
+        "plugin": "endue.images"
+      },
+      {
+        "pattern": "*.cr3",
+        "plugin": "endue.images"
+      },
+      {
+        "pattern": "*.crw",
+        "plugin": "endue.images"
+      },
+      {
+        "pattern": "*.nef",
+        "plugin": "endue.images"
+      },
+      {
+        "pattern": "*.nrw",
+        "plugin": "endue.images"
+      },
+      {
+        "pattern": "*.arw",
+        "plugin": "endue.images"
+      },
+      {
+        "pattern": "*.srf",
+        "plugin": "endue.images"
+      },
+      {
+        "pattern": "*.sr2",
+        "plugin": "endue.images"
+      },
+      {
+        "pattern": "*.orf",
+        "plugin": "endue.images"
+      },
+      {
+        "pattern": "*.rw2",
+        "plugin": "endue.images"
+      },
+      {
+        "pattern": "*.raf",
+        "plugin": "endue.images"
+      },
+      {
+        "pattern": "*.pef",
+        "plugin": "endue.images"
+      },
+      {
+        "pattern": "*.srw",
+        "plugin": "endue.images"
+      },
+      {
+        "pattern": "*.3fr",
+        "plugin": "endue.images"
+      },
+      {
+        "pattern": "*.erf",
+        "plugin": "endue.images"
+      },
+      {
+        "pattern": "*.kdc",
+        "plugin": "endue.images"
+      },
+      {
+        "pattern": "*.mrw",
+        "plugin": "endue.images"
+      },
+      {
+        "pattern": "*.dcm",
+        "plugin": "endue.images"
+      },
+      {
+        "pattern": "*.fits",
+        "plugin": "endue.images"
+      },
+      {
+        "pattern": "*.fit",
+        "plugin": "endue.images"
+      },
+      {
+        "pattern": "*.fts",
+        "plugin": "endue.images"
+      },
+      {
+        "pattern": "*.nii",
+        "plugin": "endue.images"
+      }
+    ]
+  }
+}
