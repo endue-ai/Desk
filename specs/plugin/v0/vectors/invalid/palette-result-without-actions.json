@@ -1,0 +1,13 @@
+{
+  "target": "PaletteResults",
+  "description": "every result has an action to run, in actions",
+  "instance": {
+    "results": [
+      {
+        "id": "desk.fixtures/default/task-groceries",
+        "title": "Buy groceries",
+        "kind": "task"
+      }
+    ]
+  }
+}

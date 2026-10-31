@@ -15,7 +15,7 @@ plugin adds to the desk's policies as data (ADR 0017).
 | `entry` | Entry file relative to the plugin folder, never outside it; `policy` and `view` plugins have none |
 | `permissions` | Everything the plugin may ask for; each is granted by the person at first use |
 | `surfaces` | Surfaces a UI plugin can open, with a placement (`hidden` until it shows itself); other kinds declare none |
-| `contributes` | Commands, keys, display rules, file openers, themes, settings and profiles; required for `policy` |
+| `contributes` | Commands, keys, display rules, file openers, themes, settings, profiles and palette providers; required for `policy` |
 | `view`, `views` | A `view` plugin's one view inline (`specs/view/v0`), or its view files (`.yaml`, `.yml`, `.json`); exactly one of the two |
 | `connector` | A `connector` plugin's connector block (`specs/connector/v0`); required for that kind, refused for others |
 
@@ -28,12 +28,22 @@ order, each layer over the one before: the built-in `desk.*` policy plugins, the
 | Section | Like (Emacs) | A later layer |
 | --- | --- | --- |
 | `commands` | `defun` + `interactive` | adds commands; ids start with the plugin id |
+| `commands[].runs` | `defalias` | makes the command an alias the desk answers: it runs `runs.command` with `runs.args`, the caller's args merged over them key by key |
 | `keys` | `global-map` | rebinds a key; `"command": ""` unbinds it |
 | `display` | `display-buffer-alist` | is asked first; the first matching rule decides |
 | `files` | `auto-mode-alist` | is asked first; the first matching pattern decides |
 | `themes` | `load-theme`, `defface` | adds themes; the one for the scheme and contrast in force applies |
 | `settings` | `defcustom` | declares its own keys (they start with the plugin id) with defaults |
 | `profiles` | `init.el` | adds profiles; a profile with the same id replaces the earlier one |
+| `paletteProviders` | `consult-buffer-sources` | adds a group after the earlier layers' groups; commands start with the plugin id |
+
+An alias (`runs`) is how a data-only plugin (`view`, `policy`) offers a command: the desk registers it
+while the plugin is on and runs its target as `desk`; a UI plugin's command with `runs` is the desk's
+too. A palette provider `{ command, title }` is asked on every change of a typed query of two characters
+or more: the palette runs its command with a `PaletteQuery` (`query`, `limit`) and lists the
+`PaletteResults` it answers under `title`, after the commands. Each `PaletteResult` has an `id`, a
+`title`, an optional `detail` and `kind` (a short lowercase word: an item kind for items), and one to
+eight `actions` (`{ command, title, args? }`): Enter runs the first, Mod+Enter the second.
 
 ## Permission vocabulary
 

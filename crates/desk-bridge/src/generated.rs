@@ -31,6 +31,13 @@ pub struct PluginContributes {
     /// Profiles: a plugin set plus settings, like an init file.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub profiles: Option<Vec<ProfileContribution>>,
+    /// Commands the palette asks as the person types, each listing its answers in a group of its own after the commands. Their commands start with the plugin id; later layers' groups come after earlier ones.
+    #[serde(
+        rename = "paletteProviders",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub palette_providers: Option<Vec<PaletteProvider>>,
 }
 
 /// A command id: lowercase and dotted, with at least two segments, for example eris.say or desk.palette.open. Unique across callers (bridge cmd.*); a plugin's contributed commands start with its own id.
@@ -46,6 +53,72 @@ pub struct CommandContribution {
     /// More words the palette matches.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub keywords: Option<Vec<String>>,
+    /// Makes the command an alias the desk answers while the plugin is on: it runs this command with these args, the caller's object args merged over them key by key. Data-only plugins (view, policy) offer commands this way.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub runs: Option<CommandCall>,
+}
+
+/// A command's args: an object, as cmd.invoke passes them.
+pub type CommandArgs = serde_json::Map<String, serde_json::Value>;
+
+/// A command and the args it is run with.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CommandCall {
+    pub command: CommandId,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub args: Option<CommandArgs>,
+}
+
+/// A command the palette runs with a PaletteQuery whenever the typed query changes (two characters or more), and whose PaletteResults it lists under title.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PaletteProvider {
+    pub command: CommandId,
+    /// The group's name in the palette: Items.
+    pub title: String,
+}
+
+/// What the palette asks a provider: the query as typed, trimmed, and how many results it shows.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PaletteQuery {
+    pub query: String,
+    pub limit: u64,
+}
+
+/// What a provider answers: its results, best first. The palette shows up to the limit it asked for.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PaletteResults {
+    pub results: Vec<PaletteResult>,
+}
+
+/// One result: what it shows, and the commands that act on it, in order. Enter runs the first, Mod+Enter the second.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PaletteResult {
+    /// Unique among the provider's results: an item's connector/instance/id.
+    pub id: String,
+    pub title: String,
+    /// A second, quieter line: Task · desk.fixtures.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub detail: Option<String>,
+    /// A short lowercase word for what it is: an item kind for items (task, event), or the provider's own (file, plugin).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub kind: Option<String>,
+    pub actions: Vec<PaletteAction>,
+}
+
+/// A command the palette runs on a result, with its args.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PaletteAction {
+    pub command: CommandId,
+    /// Shown under the results: Open in Desk.
+    pub title: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub args: Option<CommandArgs>,
 }
 
 /// Modifiers and one key joined with +, for example Mod+K, Mod+Shift+], Escape. Mod is Meta on macOS and Control elsewhere.
