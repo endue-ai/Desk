@@ -139,7 +139,7 @@
       ]
     },
     "BridgeEvent": {
-      "description": "Something the core reports without being asked: file changes, process output, wake words, permission changes, notifications, commands, settings, log entries, and changes to items, connectors and views.",
+      "description": "Something the core reports without being asked: file changes, process output, wake words, permission changes, notifications, surfaces, commands, settings, log entries, and changes to items, connectors and views.",
       "oneOf": [
         { "$ref": "fs.schema.json#/$defs/FsChangedEvent" },
         { "$ref": "proc.schema.json#/$defs/ProcOutputEvent" },
@@ -149,6 +149,8 @@
         { "$ref": "perm.schema.json#/$defs/PermPromptEvent" },
         { "$ref": "plugins.schema.json#/$defs/PluginChangedEvent" },
         { "$ref": "ui.schema.json#/$defs/UiNotifiedEvent" },
+        { "$ref": "ui.schema.json#/$defs/UiSurfaceOpenedEvent" },
+        { "$ref": "ui.schema.json#/$defs/UiSurfaceClosedEvent" },
         { "$ref": "brain.schema.json#/$defs/BrainTurnEvent" },
         { "$ref": "cmd.schema.json#/$defs/CmdChangedEvent" },
         { "$ref": "cmd.schema.json#/$defs/CmdInvokedEvent" },

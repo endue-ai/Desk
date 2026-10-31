@@ -5,7 +5,7 @@
   "description": "Surfaces and notifications. Scoped by ui:surface and ui:notify.",
   "$defs": {
     "UiSurfaceOpenRequest": {
-      "description": "Open one of the surfaces the caller's manifest declares.",
+      "description": "Open one of the surfaces the caller's manifest declares; the runtime hears ui.surface.opened.",
       "type": "object",
       "properties": {
         "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
@@ -41,7 +41,7 @@
       "additionalProperties": false
     },
     "UiSurfaceCloseRequest": {
-      "description": "Close a surface the caller opened.",
+      "description": "Close a surface the caller opened; the runtime hears ui.surface.closed.",
       "type": "object",
       "properties": {
         "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
@@ -125,6 +125,54 @@
         "level": { "$ref": "#/$defs/NotifyLevel" }
       },
       "required": ["notificationId", "caller", "title", "level"],
+      "additionalProperties": false
+    },
+    "UiSurfaceOpenedEvent": {
+      "description": "A caller's ui.surface.open passed its checks; the runtime mounts the surface as its display policy says.",
+      "type": "object",
+      "properties": {
+        "event": { "const": "ui.surface.opened" },
+        "data": { "$ref": "#/$defs/UiSurfaceOpenedData" }
+      },
+      "required": ["event", "data"],
+      "additionalProperties": false
+    },
+    "UiSurfaceOpenedData": {
+      "description": "Payload of ui.surface.opened. placement and title are the call's, else the manifest's; title is absent when neither has one.",
+      "type": "object",
+      "properties": {
+        "handle": { "description": "Names the open surface.", "type": "string", "minLength": 1 },
+        "caller": { "description": "The plugin that opened it.", "type": "string", "minLength": 1 },
+        "surface": {
+          "description": "The surface id from the caller's manifest.",
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*$"
+        },
+        "placement": { "$ref": "../../plugin/v0/plugin.schema.json#/$defs/SurfacePlacement" },
+        "title": { "type": "string" }
+      },
+      "required": ["handle", "caller", "surface", "placement"],
+      "additionalProperties": false
+    },
+    "UiSurfaceClosedEvent": {
+      "description": "A surface closed: its caller closed it, or the caller unloaded; the runtime unmounts it.",
+      "type": "object",
+      "properties": {
+        "event": { "const": "ui.surface.closed" },
+        "data": { "$ref": "#/$defs/UiSurfaceClosedData" }
+      },
+      "required": ["event", "data"],
+      "additionalProperties": false
+    },
+    "UiSurfaceClosedData": {
+      "description": "Payload of ui.surface.closed. Placement and title are what ui.surface.opened said.",
+      "type": "object",
+      "properties": {
+        "handle": { "type": "string", "minLength": 1 },
+        "caller": { "description": "The plugin that opened it.", "type": "string", "minLength": 1 },
+        "surface": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" }
+      },
+      "required": ["handle", "caller", "surface"],
       "additionalProperties": false
     }
   }

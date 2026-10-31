@@ -172,12 +172,45 @@ fn a_call_without_a_grant_is_denied_and_names_the_permission() {
 #[test]
 fn methods_the_core_does_not_serve_yet_are_unsupported() {
     let core = Core::new(Roots { home: temp_home() });
-    let error = failure(core.handle(
-        "desk",
-        request(json!({ "id": 6, "method": "net.fetch",
-            "params": { "url": "https://example.com", "scope": { "permission": "net:fetch", "hosts": ["example.com"] } } })),
-    ));
-    assert_eq!(error.code, ErrorCode::Unsupported);
+    let answer = |method: &str, params: Value| {
+        failure(core.handle(
+            "desk",
+            request(json!({ "id": 6, "method": method, "params": params })),
+        ))
+    };
+    let audio = json!({ "permission": "audio:capture" });
+    let capture = answer("audio.capture.start", json!({ "scope": audio }));
+    assert_eq!(capture.code, ErrorCode::Unsupported);
+    let stop = answer(
+        "audio.capture.stop",
+        json!({ "captureId": "c-1", "scope": audio }),
+    );
+    assert_eq!(stop.code, ErrorCode::Unsupported);
+
+    // Served now: without a grant they are denied, not unsupported.
+    let net = json!({ "permission": "net:fetch", "hosts": ["example.com"] });
+    let surface = json!({ "permission": "ui:surface" });
+    for (method, params) in [
+        (
+            "net.fetch",
+            json!({ "url": "https://example.com", "scope": net }),
+        ),
+        (
+            "ui.surface.open",
+            json!({ "surface": "main", "scope": surface }),
+        ),
+        (
+            "ui.surface.close",
+            json!({ "handle": "s-1", "scope": surface }),
+        ),
+    ] {
+        let error = answer(method, params);
+        assert_eq!(
+            error.code,
+            ErrorCode::PermissionDenied,
+            "{method}: {error:?}"
+        );
+    }
 }
 
 #[test]

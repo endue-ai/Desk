@@ -18,6 +18,9 @@ pub enum Target<'a> {
     Path(&'a str),
     Command(&'a str),
     Host(&'a str),
+    /// An http or https URL (net.fetch): its host, and its port where the scope names one, as
+    /// desk-sys matches every URL of the call.
+    Url(&'a str),
     /// A command id in the command registry (cmd.invoke).
     CommandId(&'a str),
     /// Event names (events.subscribe).
@@ -300,6 +303,7 @@ pub(crate) fn scope_allows(scope: &Permission, target: &Target<'_>) -> bool {
         (Permission::NetFetch(s), Target::Host(host)) => {
             s.hosts.iter().any(|h| host_match(h, host))
         }
+        (Permission::NetFetch(s), Target::Url(url)) => desk_sys::net::host_allowed(&s.hosts, url),
         (Permission::CmdInvoke(s), Target::CommandId(id)) => {
             s.ids.iter().any(|p| star_match(p, id))
         }
