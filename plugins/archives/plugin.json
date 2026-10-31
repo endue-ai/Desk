@@ -1,0 +1,237 @@
+{
+  "id": "endue.archives",
+  "name": "Archives",
+  "version": "0.1.0",
+  "kind": "ui",
+  "entry": "ui/index.html",
+  "description": "Opens every archive, package and disk image as a tree with a preview of the selected entry, and extracts to a folder the person picks. It never changes the archive.",
+  "permissions": [
+    {
+      "permission": "cmd:invoke",
+      "ids": ["desk.files.changed", "desk.palette.pick"]
+    }
+  ],
+  "surfaces": [
+    {
+      "id": "main",
+      "title": "Archives",
+      "placement": "center"
+    }
+  ],
+  "contributes": {
+    "files": [
+      {
+        "pattern": "*.zip",
+        "plugin": "endue.archives"
+      },
+      {
+        "pattern": "*.zipx",
+        "plugin": "endue.archives"
+      },
+      {
+        "pattern": "*.jar",
+        "plugin": "endue.archives"
+      },
+      {
+        "pattern": "*.war",
+        "plugin": "endue.archives"
+      },
+      {
+        "pattern": "*.ear",
+        "plugin": "endue.archives"
+      },
+      {
+        "pattern": "*.apk",
+        "plugin": "endue.archives"
+      },
+      {
+        "pattern": "*.aab",
+        "plugin": "endue.archives"
+      },
+      {
+        "pattern": "*.ipa",
+        "plugin": "endue.archives"
+      },
+      {
+        "pattern": "*.xpi",
+        "plugin": "endue.archives"
+      },
+      {
+        "pattern": "*.crx",
+        "plugin": "endue.archives"
+      },
+      {
+        "pattern": "*.nupkg",
+        "plugin": "endue.archives"
+      },
+      {
+        "pattern": "*.whl",
+        "plugin": "endue.archives"
+      },
+      {
+        "pattern": "*.egg",
+        "plugin": "endue.archives"
+      },
+      {
+        "pattern": "*.appx",
+        "plugin": "endue.archives"
+      },
+      {
+        "pattern": "*.appxbundle",
+        "plugin": "endue.archives"
+      },
+      {
+        "pattern": "*.msix",
+        "plugin": "endue.archives"
+      },
+      {
+        "pattern": "*.msixbundle",
+        "plugin": "endue.archives"
+      },
+      {
+        "pattern": "*.tar",
+        "plugin": "endue.archives"
+      },
+      {
+        "pattern": "*.tgz",
+        "plugin": "endue.archives"
+      },
+      {
+        "pattern": "*.tbz",
+        "plugin": "endue.archives"
+      },
+      {
+        "pattern": "*.tbz2",
+        "plugin": "endue.archives"
+      },
+      {
+        "pattern": "*.txz",
+        "plugin": "endue.archives"
+      },
+      {
+        "pattern": "*.tzst",
+        "plugin": "endue.archives"
+      },
+      {
+        "pattern": "*.gz",
+        "plugin": "endue.archives"
+      },
+      {
+        "pattern": "*.bz2",
+        "plugin": "endue.archives"
+      },
+      {
+        "pattern": "*.xz",
+        "plugin": "endue.archives"
+      },
+      {
+        "pattern": "*.lzma",
+        "plugin": "endue.archives"
+      },
+      {
+        "pattern": "*.zst",
+        "plugin": "endue.archives"
+      },
+      {
+        "pattern": "*.lz4",
+        "plugin": "endue.archives"
+      },
+      {
+        "pattern": "*.Z",
+        "plugin": "endue.archives"
+      },
+      {
+        "pattern": "*.7z",
+        "plugin": "endue.archives"
+      },
+      {
+        "pattern": "*.rar",
+        "plugin": "endue.archives"
+      },
+      {
+        "pattern": "*.cab",
+        "plugin": "endue.archives"
+      },
+      {
+        "pattern": "*.iso",
+        "plugin": "endue.archives"
+      },
+      {
+        "pattern": "*.deb",
+        "plugin": "endue.archives"
+      },
+      {
+        "pattern": "*.rpm",
+        "plugin": "endue.archives"
+      },
+      {
+        "pattern": "*.gem",
+        "plugin": "endue.archives"
+      },
+      {
+        "pattern": "*.pkg",
+        "plugin": "endue.archives"
+      },
+      {
+        "pattern": "*.xar",
+        "plugin": "endue.archives"
+      },
+      {
+        "pattern": "*.msi",
+        "plugin": "endue.archives"
+      },
+      {
+        "pattern": "*.dmg",
+        "plugin": "endue.archives"
+      },
+      {
+        "pattern": "*.img",
+        "plugin": "endue.archives"
+      },
+      {
+        "pattern": "*.vhd",
+        "plugin": "endue.archives"
+      },
+      {
+        "pattern": "*.vhdx",
+        "plugin": "endue.archives"
+      },
+      {
+        "pattern": "*.vmdk",
+        "plugin": "endue.archives"
+      },
+      {
+        "pattern": "*.qcow2",
+        "plugin": "endue.archives"
+      },
+      {
+        "pattern": "*.wim",
+        "plugin": "endue.archives"
+      },
+      {
+        "pattern": "*.snap",
+        "plugin": "endue.archives"
+      },
+      {
+        "pattern": "*.AppImage",
+        "plugin": "endue.archives"
+      },
+      {
+        "pattern": "*.arj",
+        "plugin": "endue.archives"
+      },
+      {
+        "pattern": "*.lha",
+        "plugin": "endue.archives"
+      },
+      {
+        "pattern": "*.lzh",
+        "plugin": "endue.archives"
+      },
+      {
+        "pattern": "*.torrent",
+        "plugin": "endue.archives"
+      }
+    ]
+  }
+}

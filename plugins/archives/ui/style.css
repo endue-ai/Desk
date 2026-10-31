@@ -1,0 +1,350 @@
+/* The desk's design tokens (@endue-ai/ui). Frames do not inherit the desk's, so they are declared
+   here; the runtime redefines them for the theme in force. */
+:root {
+  --desk-background: #141416;
+  --desk-card: #1e1d21;
+  --desk-border: #333136;
+  --desk-text: #f2f0f5;
+  --desk-text-muted: #b0adb7;
+  --desk-accent: #b6a3f5;
+  --archives-warning: #f29bb0;
+  --archives-row: 24px;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  margin: 0;
+  background: var(--desk-card);
+  color: var(--desk-text);
+  font: 13px/1.5 -apple-system, "SUIT", "Inter", system-ui, sans-serif;
+}
+
+button,
+input {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  padding: 2px 8px;
+  border: 1px solid var(--desk-border);
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+}
+
+button:hover:not(:disabled),
+button:focus-visible {
+  border-color: var(--desk-accent);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+input {
+  padding: 2px 6px;
+  border: 1px solid var(--desk-border);
+  border-radius: 6px;
+  background: var(--desk-background);
+}
+
+:focus-visible {
+  outline: 2px solid var(--desk-accent);
+  outline-offset: 1px;
+}
+
+header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  padding: 8px 12px 6px;
+  border-bottom: 1px solid var(--desk-border);
+}
+
+.title {
+  flex: 1;
+  min-width: 0;
+}
+
+h1,
+h2 {
+  margin: 0;
+  overflow: hidden;
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+p {
+  margin: 0;
+}
+
+#archive-about,
+#summary,
+.caption,
+#progress,
+#status,
+dt {
+  color: var(--desk-text-muted);
+}
+
+#archive-about {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#levels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+}
+
+#levels > * + *::before {
+  content: "\203a";
+  margin-right: 4px;
+  color: var(--desk-text-muted);
+}
+
+#levels button {
+  padding: 0 4px;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+#about {
+  padding: 0 12px;
+}
+
+#note {
+  margin: 10px 0;
+}
+
+#details {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 2px 12px;
+  margin: 8px 0;
+}
+
+dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+main {
+  display: grid;
+  flex: 1;
+  grid-template-columns: minmax(260px, 1fr) minmax(220px, 40%);
+  min-height: 0;
+}
+
+#listing {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  border-right: 1px solid var(--desk-border);
+}
+
+.columns,
+.row {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) 76px 76px 128px 90px;
+  align-items: center;
+  gap: 6px;
+  padding-right: 8px;
+}
+
+.columns {
+  padding: 4px 8px 4px 0;
+  border-bottom: 1px solid var(--desk-border);
+  color: var(--desk-text-muted);
+}
+
+.columns button {
+  padding: 0 4px;
+  border-color: transparent;
+}
+
+.columns [aria-sort="ascending"] button::after {
+  content: " \25b4";
+}
+
+.columns [aria-sort="descending"] button::after {
+  content: " \25be";
+}
+
+.size,
+.packed {
+  text-align: right;
+}
+
+#tree {
+  position: relative;
+  flex: 1;
+  overflow: auto;
+}
+
+#tree:focus-visible {
+  outline-width: 1px;
+  outline-offset: -1px;
+}
+
+.space {
+  position: relative;
+}
+
+.row {
+  position: absolute;
+  right: 0;
+  left: 0;
+  height: var(--archives-row);
+  white-space: nowrap;
+  cursor: default;
+}
+
+.row > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.row[aria-selected="true"] {
+  background: var(--desk-background);
+  box-shadow: inset 2px 0 0 var(--desk-accent);
+}
+
+.row .size,
+.row .packed,
+.row .date,
+.row .method,
+.row .link {
+  color: var(--desk-text-muted);
+}
+
+.twisty,
+.mark {
+  display: inline-block;
+  width: 1.2ch;
+  color: var(--desk-text-muted);
+}
+
+.mark {
+  color: var(--desk-accent);
+}
+
+.kind-folder .label {
+  font-weight: 600;
+}
+
+.lock {
+  margin-left: 6px;
+  color: var(--archives-warning);
+  vertical-align: -1px;
+}
+
+.row.outside .label {
+  color: var(--archives-warning);
+}
+
+#summary {
+  padding: 4px 8px;
+  border-top: 1px solid var(--desk-border);
+}
+
+#preview {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  min-height: 0;
+  padding: 8px 12px;
+  overflow: auto;
+}
+
+#preview > h2,
+#preview > p,
+#preview > button {
+  flex: none;
+}
+
+#preview pre {
+  flex: 1;
+  min-height: 0;
+  margin: 0;
+  padding: 8px;
+  overflow: auto;
+  border: 1px solid var(--desk-border);
+  border-radius: 6px;
+  background: var(--desk-background);
+  font: 12px/1.5 ui-monospace, "SF Mono", Menlo, monospace;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+#preview pre.hex {
+  white-space: pre;
+  overflow-wrap: normal;
+}
+
+#preview img {
+  max-width: 100%;
+  max-height: 70vh;
+  align-self: flex-start;
+  object-fit: contain;
+  background: repeating-conic-gradient(var(--desk-border) 0 25%, transparent 0 50%) 0 0 / 16px 16px;
+}
+
+#preview button {
+  align-self: flex-start;
+}
+
+footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 12px;
+  padding: 4px 12px 6px;
+  border-top: 1px solid var(--desk-border);
+}
+
+/* A narrow surface puts the preview under the tree and keeps the name, size and date. */
+@media (max-width: 640px) {
+  main {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(0, 1fr) minmax(0, 40%);
+  }
+
+  #listing {
+    border-right: 0;
+    border-bottom: 1px solid var(--desk-border);
+  }
+
+  .columns,
+  .row {
+    grid-template-columns: minmax(80px, 1fr) 64px 112px;
+  }
+
+  .packed,
+  .method {
+    display: none;
+  }
+}
+
+[hidden] {
+  display: none !important;
+}
