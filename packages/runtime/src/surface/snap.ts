@@ -4,8 +4,10 @@
  */
 import type { Rect } from "./geometry";
 
-/** How close to an edge, in pixels, a drop has to be to snap. */
+/** How close to the left or right edge, in pixels, a drop has to be to snap. */
 export const SNAP = 24;
+/** The top is stricter: a title bar grabbed on a window already at the top sits within 24 px of it. */
+export const SNAP_TOP = 8;
 const GAP = 12;
 
 /** The two halves of an area, a gap between them. */
@@ -24,7 +26,7 @@ export function snapFor(
   area: Rect,
   threshold = SNAP,
 ): Rect | null {
-  if (pointer.y <= area.y + threshold) return { ...area };
+  if (pointer.y <= area.y + Math.min(threshold, SNAP_TOP)) return { ...area };
   if (pointer.x <= area.x + threshold) return halves(area).left;
   if (pointer.x >= area.x + area.w - threshold) return halves(area).right;
   return null;

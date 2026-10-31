@@ -10,8 +10,9 @@ describe("snapFor", () => {
     expect(snapFor(rect, { x: area.x + area.w - 5, y: 400 }, area)).toEqual(halves(area).right);
   });
 
-  it("one dropped at the top fills the area", () => {
-    expect(snapFor(rect, { x: 700, y: area.y + 10 }, area)).toEqual(area);
+  it("one dropped at the top fills the area; a title bar grabbed lower down does not", () => {
+    expect(snapFor(rect, { x: 700, y: area.y + 4 }, area)).toEqual(area);
+    expect(snapFor(rect, { x: 700, y: area.y + 20 }, area)).toBeNull();
   });
 
   it("elsewhere it stays where it was dropped", () => {

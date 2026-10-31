@@ -44,12 +44,15 @@ test.describe("plugin surfaces as shell windows", () => {
     );
     await expect(inner(page)).toBeVisible();
     await expect(frame(page).getByRole("button")).toBeVisible();
-    // Two unplaced windows share the free area: side by side, the whole height.
+    // Two unplaced windows share the free area under Eris: side by side, its whole height.
     await expect(window_(page)).toHaveCSS("left", "104px");
+    await expect(window_(page)).toHaveCSS("top", "190px");
     await expect(window_(page, HELLO)).toHaveCSS("left", "726px");
-    await expect(window_(page)).toHaveCSS("height", "740px");
-    // The runtime's grid holds nothing: the window manager placed them.
-    await expect(page.locator(".desk-compositor > .desk-surface")).toHaveCount(0);
+    await expect(window_(page)).toHaveCSS("height", "622px");
+    // The runtime's grid holds nothing but overlays: the window manager placed them.
+    await expect(
+      page.locator(".desk-compositor > .desk-surface:not(.desk-surface--overlay)"),
+    ).toHaveCount(0);
   });
 
   test("the resize grip resizes it and dragging the title bar moves it, as session edits; the frame keeps its state", async ({
@@ -84,12 +87,12 @@ test.describe("plugin surfaces as shell windows", () => {
     // The pointer, not the window, decides: it ends 6 px inside the free area's left edge.
     await dragTitle(page, HELLO, -(before.x + 120 - 110), 0);
     await expect(window_(page, HELLO)).toHaveCSS("left", "104px");
-    await expect(window_(page, HELLO)).toHaveCSS("top", "72px");
+    await expect(window_(page, HELLO)).toHaveCSS("top", "190px");
     await expect(window_(page, HELLO)).toHaveCSS("width", "610px");
-    await expect(window_(page, HELLO)).toHaveCSS("height", "740px");
+    await expect(window_(page, HELLO)).toHaveCSS("height", "622px");
     await window_(page, HELLO).locator(".surface-title").dblclick();
     await expect(window_(page, HELLO)).toHaveCSS("width", "1232px");
-    await expect(window_(page, HELLO)).toHaveCSS("height", "740px");
+    await expect(window_(page, HELLO)).toHaveCSS("height", "622px");
     await window_(page, HELLO).locator(".surface-title").dblclick();
     await expect(window_(page, HELLO)).toHaveCSS("width", "610px");
     await expect(window_(page, HELLO)).toHaveCSS("left", "104px");

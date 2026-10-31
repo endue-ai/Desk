@@ -1,4 +1,8 @@
-/** Pointer dragging with an 8 px threshold, so a click stays a click. Cursor is "grabbing" meanwhile. */
+/**
+ * Pointer dragging with an 8 px threshold, so a click stays a click. Cursor is "grabbing" meanwhile.
+ * The handle captures the pointer at once: a window's body is a plugin's frame, and a pointer that
+ * crosses into a frame before the threshold would otherwise never report back to the desk.
+ */
 
 export const DRAG_THRESHOLD = 8;
 
@@ -17,13 +21,17 @@ export function draggable(handle: HTMLElement, handlers: DragHandlers): () => vo
     const x0 = e.clientX;
     const y0 = e.clientY;
     let dragging = false;
+    try {
+      handle.setPointerCapture?.(e.pointerId);
+    } catch {
+      // A pointer the browser no longer tracks: the drag still works over the desk's own DOM.
+    }
     const move = (m: PointerEvent) => {
       const dx = m.clientX - x0;
       const dy = m.clientY - y0;
       if (!dragging && Math.hypot(dx, dy) <= DRAG_THRESHOLD) return;
       if (!dragging) {
         dragging = true;
-        handle.setPointerCapture?.(e.pointerId);
         document.documentElement.classList.add("is-grabbing");
         handlers.start?.();
       }
