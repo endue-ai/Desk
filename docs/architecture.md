@@ -19,14 +19,17 @@ can be changed while the app is running.
  the user's computer               │                           cost of change
  ┌─────────────────────────────────┴──────────────────────────────┐
  │ Plugins      UI (iframe) · logic (Wasm) · tools (MCP, in a VM) │  instant
+ │              · connectors (Wasm · MCP) · views (data)          │
  ├────────────────────────────────────────────────────────────────┤
  │ Web runtime  compositor (3D/2D) · surfaces · input · layout    │  restart
  │              · UI plugin host · desk shell (until ADR 0026)    │
  ├────────────────────────────────────────────────────────────────┤
- │ Desk bridge  specs/bridge → TS client · Rust types             │  rebuild
+ │ Desk bridge  specs/bridge · specs/item · specs/view            │  rebuild
+ │              · specs/connector → TS client · Rust types        │
  ├────────────────────────────────────────────────────────────────┤
- │ Rust core    permissions · event bus · storage                 │  rebuild
- │              · logic plugin host (Wasm) · VM · brain clients   │
+ │ Rust core    permissions · event bus · storage · item index    │  rebuild
+ │              · logic plugin and connector host (Wasm) · VM     │
+ │              · built-in connectors · brain clients             │
  ├────────────────────────────────────────────────────────────────┤
  │ Tauri shell  windows · webviews · primitives (fs, proc, net,   │  rebuild
  │              audio)                                            │
@@ -44,8 +47,8 @@ device. Everything else runs on the user's computer.
 | endue AI (cloud) | outside the repository; only `specs/brain` and `crates/desk-brain-endue` live here |
 | Plugins | `plugins/` · `packages/plugin-sdk` · `specs/plugin` · `specs/wit` · `examples/` |
 | Web runtime | `packages/runtime`: the compositor, the UI plugin host (ADR 0012) and, until ADR 0026 is decided, the desk shell (ADR 0025) · `packages/ui` |
-| Desk bridge | `specs/bridge` · `packages/bridge` · `crates/desk-bridge` (types generated from `specs/bridge` and `specs/plugin`) |
-| Rust core | `crates/desk-core` · `crates/desk-plugin-host`, which runs logic plugins on Wasmtime (ADR 0019) · `crates/desk-vm` · `crates/desk-brain*` |
+| Desk bridge | `specs/bridge` · `specs/item`, `specs/view` and `specs/connector`, the integration layer's contracts (ADR 0032) · `packages/bridge` · `crates/desk-bridge` (types generated from these and `specs/plugin`) |
+| Rust core | `crates/desk-core`, which also serves the integration layer (`data.*`, `connector.*`, `view.*`, `catalog.get`) and defines the built-in connectors `desk.calendar` and `desk.reminders` over the OS calendar (ADR 0036, proposed) · `crates/desk-index`, the item index in one SQLite file (ADR 0033) · `crates/desk-plugin-host`, which runs logic plugins (ADR 0019) and Wasm connectors (ADR 0034, proposed) on Wasmtime · `crates/desk-vm` · `crates/desk-brain*` |
 | Tauri shell | `apps/desk/src-tauri` · `crates/desk-sys` |
 | OS | `apps/desk/src-tauri/capabilities` · release workflow (signing, notarisation) |
 
@@ -62,6 +65,7 @@ takes the same shape and names the parts the way an operating system would.
 | Window manager | window manager | frames · windows | 3D canvas compositor |
 | Shell | terminal shell | M-x | Eris · command palette |
 | Apps | applications | packages (Elisp) | plugins (UI · Wasm · MCP) |
+| Connected data | mounted file systems · search index | Gnus back ends · Org agenda | connectors · items in one index · views (ADR 0032) |
 | Boot config | init | init.el | `init.yaml` (profile + plugins + settings) |
 | Package manager | apt · brew | package.el · MELPA | marketplace |
 | Behaviour override | none | advice · hooks | event hooks · command overrides |

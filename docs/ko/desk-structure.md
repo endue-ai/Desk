@@ -1,6 +1,6 @@
 # endue Desk 구조
 
-2026-10-30 · Team endue
+2026-10-31 · Team endue
 
 > 이 문서가 Desk 설계의 단일 진실입니다. 코드와 어긋나면 ADR 로 결정을 남기고 이 문서를 고칩니다. 영어 요약은 `docs/architecture.md`, 되돌리기 어려운 결정은 `docs/adr/` 에 있습니다.
 
@@ -15,15 +15,17 @@ Desk 는 Tauri 셸과 작은 Rust 코어 위에 웹 런타임을 얹고, 그 위
  사용자 컴퓨터                     │                                 바꾸는 비용
  ┌────────────────────────────────┴──────────────────────────────┐
  │ 플러그인   UI(iframe) · 로직(Wasm) · 도구(MCP, 가벼운 VM 안)     │  즉시
+ │            · 커넥터(Wasm · MCP) · 뷰(데이터)                     │
  ├───────────────────────────────────────────────────────────────┤
  │ 웹 런타임  compositor(3D/2D) · surfaces · input · layout · theme │  재시작
  │            · UI 플러그인 호스트 · 데스크 셸 (ADR 0026 까지)      │
  ├───────────────────────────────────────────────────────────────┤
- │ Desk 브리지  specs/bridge · specs/plugin 에서 생성된 타입        │  재빌드
+ │ Desk 브리지  specs/bridge · specs/plugin · specs/item            │  재빌드
+ │              · specs/view · specs/connector 에서 생성된 타입     │
  │              (TS 클라이언트 · Rust 타입)                         │
  ├───────────────────────────────────────────────────────────────┤
- │ Rust 코어  권한 · 이벤트 버스 · 저장소 · VM · 두뇌               │  재빌드
- │            · 로직(Wasm) 플러그인 호스트                          │
+ │ Rust 코어  권한 · 이벤트 버스 · 저장소 · 항목 색인 · VM · 두뇌   │  재빌드
+ │            · 로직(Wasm) 플러그인과 커넥터 호스트 · 내장 커넥터   │
  ├───────────────────────────────────────────────────────────────┤
  │ Tauri 셸   창 · 웹뷰 · 원시 기능(fs · proc · net · audio)        │  재빌드
  ├───────────────────────────────────────────────────────────────┤
@@ -45,6 +47,7 @@ Emacs 는 작은 C 코어 위에서 거의 모든 기능이 Elisp 로 돌고, �
 | 창 관리자 | 윈도 매니저 | 프레임 · 윈도 | 3D 캔버스 컴포지터 |
 | 셸 | 터미널 셸 | M-x | Eris · 명령 팔레트 |
 | 앱 | 응용 프로그램 | 패키지 (Elisp) | 플러그인 (UI · Wasm · MCP) |
+| 연결한 데이터 | 마운트한 파일 시스템 · 검색 색인 | Gnus 백엔드 · Org agenda | 커넥터 · 색인 하나에 모이는 항목 · 뷰 (ADR 0032) |
 | 부팅 설정 | init | init.el | 프로필 (플러그인 묶음 + 설정) |
 | 패키지 관리자 | apt · brew | package.el · MELPA | 마켓플레이스 |
 | 동작 바꿔치기 | 없음 | advice · hook | 이벤트 훅 · 커맨드 덮어쓰기 |
@@ -98,7 +101,7 @@ Rust 가 맡는 일이 무거울수록 Tauri 가 유리하고, 위험은 OS 마�
 
 ## 파일 트리
 
-하나의 모노레포에 Rust 워크스페이스(`crates/`)와 pnpm 워크스페이스(`packages/` · `apps/` · `plugins/`)를 같이 둡니다. 열림과 닫힘의 경계는 `specs/` 가 긋고, 브리지·두뇌·플러그인의 타입은 모두 거기서 생성됩니다. 깊이는 4단계를 넘지 않습니다.
+하나의 모노레포에 Rust 워크스페이스(`crates/`)와 pnpm 워크스페이스(`packages/` · `apps/` · `plugins/`)를 같이 둡니다. 열림과 닫힘의 경계는 `specs/` 가 긋고, 브리지·두뇌·플러그인과 통합 계층(항목·뷰·커넥터)의 타입은 모두 거기서 생성됩니다. 깊이는 4단계를 넘지 않습니다.
 
 ```text
 desk/
@@ -124,17 +127,21 @@ desk/
 │   └── CODEOWNERS
 │
 ├── specs/                    # 열림/닫힘의 경계. 언어 중립 계약, 단일 진실
-│   ├── bridge/v0/            # Desk 브리지: JSON Schema + 메서드 문서 (fs · proc · net · audio · ui · perm · plugin · store · brain · init · cmd · settings · log · events)
+│   ├── bridge/v0/            # Desk 브리지: JSON Schema + 메서드 문서 (fs · proc · net · audio · ui · perm · plugin · store · brain · init · cmd · settings · log · events · data · connector · view · catalog)
 │   ├── brain/v0/             # 두뇌 API: openapi.yaml (세션 · 턴 · 스트리밍 · 임대 · 에이전트 디렉터리, ADR 0024)
 │   ├── init/v0/              # init.yaml 스키마 · 템플릿 · 동기화 규칙 (ADR 0016)
 │   ├── plugin/v0/            # plugin.json 매니페스트 스키마 · 권한 어휘 · contributes (ADR 0017)
-│   └── wit/                  # 로직 플러그인의 Wasm 호스트 인터페이스 (desk:host)
+│   ├── item/v0/              # 항목: 연결한 데이터의 한 모양. 봉투 · kind 여덟 + record · 질의 · 페이지 · 변경 (ADR 0032)
+│   ├── view/v0/              # 뷰: 데이터로 쓴 화면. requires · params · 컨테이너와 컴포넌트의 배치 · 동작은 커맨드 (ADR 0032)
+│   ├── connector/v0/         # 커넥터가 선언하는 것(바인딩 wasm · mcp, 인증, 리소스, 동기화) · 상태 · 동기화 결과 · Desk 를 아는 MCP 서버의 프로필 (ADR 0032)
+│   └── wit/                  # Wasm 인터페이스: 로직 플러그인이 import 하는 desk:host (브리지의 부분집합) · Wasm 커넥터가 빌드하는 world desk:connector (ADR 0034 제안)
 │
 ├── crates/                   # Rust. 접두사 desk-
-│   ├── desk-core/            # 커널: 권한 엔진 · 이벤트 버스 · 저장소 · 플러그인 레지스트리 · 커맨드 레지스트리(cmd.*, ADR 0017) · init.yaml · 두뇌 대화와 세션 임대 클라이언트(ADR 0014) · 브리지 핸들러
+│   ├── desk-core/            # 커널: 권한 엔진 · 이벤트 버스 · 저장소 · 플러그인 레지스트리 · 커맨드 레지스트리(cmd.*, ADR 0017) · init.yaml · 두뇌 대화와 세션 임대 클라이언트(ADR 0014) · 통합 계층(data.* · connector.* · view.* · catalog.get)과 OS 캘린더 위의 내장 커넥터 desk.calendar · desk.reminders (ADR 0036 제안) · 브리지 핸들러
 │   ├── desk-sys/             # 원시 기능: fs(notify, 원자적 쓰기) · proc(portable-pty) · net(rustls, 호스트 allowlist) (#63). feature 로 분리. audio(cpal, 호출어)는 계획
 │   ├── desk-bridge/          # 브리지 Rust 측: specs/bridge · specs/plugin 에서 생성된 타입만 (src/generated.rs)
-│   ├── desk-plugin-host/     # 로직 플러그인의 Wasmtime 호스트 LogicHost: 설치 · 시작 · 리로드, 메모리 · 시간 상한 (ADR 0019, #68). WIT desk:host 는 fs · net · ui.notify · perm.query · store 만 (#76 이 넓힘). MCP 감독은 아직 없음
+│   ├── desk-index/           # 항목 색인: 데이터 폴더의 SQLite 파일 하나(index.sqlite, FTS5). data:read 범위는 SQL 안에서 걸고, 코어는 ItemIndex 트레이트로만 앎 (ADR 0033)
+│   ├── desk-plugin-host/     # Wasmtime 호스트 둘: 로직 플러그인의 LogicHost (설치 · 시작 · 리로드, ADR 0019, #68)와 Wasm 커넥터의 ConnectorHost (desk:connector · 인스턴스 · 동기화 일정 · 항목마다 출처 도장, ADR 0034 제안). 플러그인 · 커넥터마다 store 하나와 메모리 · 시간 상한. MCP 감독은 아직 없음
 │   ├── desk-vm/              # 가벼운 Linux VM: 부팅 · vsock · 허락한 폴더만 virtiofs (macOS Virtualization.framework · Windows WSL2 · Linux KVM). 빈 crate, 계획
 │   ├── desk-brain/           # 두뇌 트레이트 + 생성된 클라이언트 타입
 │   ├── desk-brain-local/     # 로컬 두뇌 어댑터: Ollama (#42). llama.cpp 는 계획
@@ -165,6 +172,9 @@ desk/
 │   ├── permissions/          # grant 목록 · 회수 · 프롬프트 창 (endue.permissions, #69)
 │   ├── explorer/             # 허락한 폴더 트리 · 열기는 desk.files 로 · 감시 (endue.explorer, docs/ko/explorer-requirements.md)
 │   ├── mail/                 # 색인의 message 항목을 메일함 · 스레드로, 초대장(iTIP) 읽기 · 답하기, 변경은 커넥터 커맨드로 (endue.mail, docs/ko/mail-requirements.md)
+│   ├── views/                # 뷰 엔진 desk.views: 뷰 파일(specs/view)을 화면으로. data.query 로 묶고 data.subscribe 로 살려 두며 @endue-ai/ui 로 그림 (ADR 0032)
+│   ├── today/                # 오늘 한눈에 desk.today: 데이터만 가진 view 플러그인, desk.views 가 그림 (Mod+T)
+│   ├── item/                 # 항목 하나 desk.item: 팔레트의 Open in Desk 가 여는 view 플러그인
 │   ├── profiles/             # 프로필 전환 · 저장 (desk.profiles, 예전 이름 modes)
 │   ├── shell/                # 데스크 셸의 정책 desk.shell: 샘플 프로필 · 설정 · 색 (ADR 0025). 셸의 코드는 packages/runtime
 │   ├── display/ · keys/ · palette/ · buffers/ · files/ · session/ · notify/ · theme/
@@ -175,6 +185,7 @@ desk/
 ├── examples/                 # 한 명령으로 도는 최소 예제
 │   ├── plugin-hello-ui/
 │   ├── plugin-hello-wasm/    # Rust wasm32-wasip2 컴포넌트, 빌드한 결과도 커밋 (#68)
+│   ├── plugin-hello-connector/ # 가장 작은 Wasm 커넥터: 폴더의 *.md 를 note 항목으로 (desk:connector), 빌드한 결과도 커밋 (ADR 0034)
 │   ├── plugin-hello-mcp/     # README 만, 계획
 │   └── brain-echo/           # 두뇌 명세의 최소 구현. 테스트와 AI 학습용
 │
@@ -208,8 +219,8 @@ desk/
 | endue AI (클라우드) | 저장소 밖. `specs/brain` 과 `crates/desk-brain-endue` 만 여기 |
 | 플러그인 | `plugins/` · `packages/plugin-sdk` · `specs/plugin` · `specs/wit` · `examples/` |
 | 웹 런타임 | `packages/runtime` (컴포지터, UI 플러그인 호스트 ADR 0012, ADR 0026 이 정할 때까지 데스크 셸 ADR 0025) · `packages/ui` |
-| Desk 브리지 | `specs/bridge` · `packages/bridge` · `crates/desk-bridge` (`specs/bridge` · `specs/plugin` 에서 생성된 타입) |
-| Rust 코어 | `crates/desk-core` · `crates/desk-plugin-host` (로직 플러그인, Wasmtime, ADR 0019) · `crates/desk-vm` · `crates/desk-brain*` |
+| Desk 브리지 | `specs/bridge` · 통합 계층의 계약 `specs/item` · `specs/view` · `specs/connector` (ADR 0032) · `packages/bridge` · `crates/desk-bridge` (이 명세들과 `specs/plugin` 에서 생성된 타입) |
+| Rust 코어 | `crates/desk-core` (통합 계층 `data.*` · `connector.*` · `view.*` · `catalog.get` 과 내장 커넥터 `desk.calendar` · `desk.reminders`, ADR 0036 제안) · `crates/desk-index` (항목 색인, SQLite, ADR 0033) · `crates/desk-plugin-host` (로직 플러그인 ADR 0019 · Wasm 커넥터 ADR 0034 제안, Wasmtime) · `crates/desk-vm` · `crates/desk-brain*` |
 | Tauri 셸 | `apps/desk/src-tauri` · `crates/desk-sys` |
 | 운영체제 | `apps/desk/src-tauri/capabilities` · `.github/workflows/release.yml` (서명 · 공증) |
 
@@ -414,7 +425,7 @@ AI 를 위한 준비물
 
 ## 결정
 
-MCP 도구는 가벼운 VM 으로 격리하고, 나머지는 데스크톱 오픈소스의 관례를 따릅니다. 결정마다 `docs/adr/` 에 한 장이 있고, 0026 · 0027 · 0028 은 아직 제안입니다(사람이 정함).
+MCP 도구는 가벼운 VM 으로 격리하고, 나머지는 데스크톱 오픈소스의 관례를 따릅니다. 결정마다 `docs/adr/` 에 한 장이 있고, 0026 · 0027 · 0028 · 0034 · 0036 은 아직 제안입니다(사람이 정함).
 
 | 질문 | 결정 | 따른 관례 | ADR |
 | --- | --- | --- | --- |
@@ -444,6 +455,11 @@ MCP 도구는 가벼운 VM 으로 격리하고, 나머지는 데스크톱 오픈
 | 셸의 자리 | 제안: `plugins/` 로 한 부분씩, API 가 생기는 대로. 창과 칸은 런타임에 남음 |  | 0026 (제안) |
 | Eris 하나 | 제안: `plugins/eris` 가 남고 셸의 Eris 가 그리로 합쳐짐 |  | 0027 (제안) |
 | 데스크 가장자리 | 제안: `plugins/{dock,toolbar,sidebar}` 가 남고 셸의 레일 · 아래 가장자리 · 에이전트 바를 받아들임 |  | 0028 (제안) |
+| 연결한 데이터 | 항목은 모델 하나(봉투 + kind 여덟 + `record`), 뷰는 코드가 아니라 데이터, 커넥터는 계약 하나에 바인딩 둘(Wasm · MCP), 동작은 커맨드. `data:write` 는 없음 |  | 0032 |
+| 항목 색인 | 따로 crate `desk-index`, 데이터 폴더의 SQLite 파일 하나(FTS5). 시간은 UTC 순간으로 비교하고, `data:read` 범위는 SQL 안에서 걸어 페이지가 모자라지 않음 |  | 0033 |
+| Wasm 커넥터 | 제안: `desk:connector` world 의 컴포넌트를 플러그인 호스트가 돌림. 항목의 출처는 호스트가 찍고, 인스턴스와 커서는 커넥터 자기 저장소에 |  | 0034 (제안) |
+| 캘린더 파일 | `endue.calendar` 가 자기 iCalendar 엔진을 갖고, 읽은 것은 모르는 속성까지 그대로 다시 씀 | RFC 5545 · RFC 5546 · RFC 7986 | 0035 |
+| 통합 계층의 자리 | 제안: 코어가 `data.*` · `connector.*` · `view.*` · `catalog.get` 을 제공. 내장 커넥터 `desk.calendar` · `desk.reminders` 는 코어 안, 비밀 설정은 키체인 전까지 0600 파일 |  | 0036 (제안) |
 
 ## 열린 질문
 
