@@ -1,0 +1,389 @@
+/* The desk's design tokens (@endue-ai/ui). Frames do not inherit the desk's, so they are declared
+   here; the runtime redefines them for the theme in force. Pages are paper: white whatever the theme. */
+:root {
+  --desk-background: #141416;
+  --desk-card: #1e1d21;
+  --desk-border: #333136;
+  --desk-text: #f2f0f5;
+  --desk-text-muted: #b0adb7;
+  --desk-accent: #b6a3f5;
+  --docs-paper: #ffffff;
+  --docs-ink: #1a1a1a;
+  --docs-hit: #ffe066;
+  --docs-hit-current: #ff9f1c;
+  --docs-comment: #fff1b8;
+  --docs-comment-on: #ffd24d;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  margin: 0;
+  background: var(--desk-card);
+  color: var(--desk-text);
+  font: 13px/1.5 -apple-system, "SUIT", "Inter", system-ui, sans-serif;
+}
+
+#bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  padding: 8px 12px 6px;
+  border-bottom: 1px solid var(--desk-border);
+}
+
+#title {
+  min-width: 0;
+  flex: 1;
+}
+
+h1 {
+  overflow: hidden;
+  margin: 0;
+  font-size: 15px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+h2 {
+  margin: 0 0 6px;
+  color: var(--desk-text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+#doc-detail {
+  margin: 0;
+  color: var(--desk-text-muted);
+}
+
+#doc-badge {
+  margin-left: 6px;
+  padding: 0 6px;
+  border: 1px solid var(--desk-border);
+  border-radius: 999px;
+  font-size: 11px;
+}
+
+#tools,
+#find {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+
+#find {
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--desk-border);
+}
+
+button,
+input {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  padding: 2px 8px;
+  border: 1px solid var(--desk-border);
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+}
+
+button:hover,
+button[aria-pressed="true"] {
+  border-color: var(--desk-accent);
+}
+
+input {
+  min-width: 200px;
+  padding: 2px 8px;
+  border: 1px solid var(--desk-border);
+  border-radius: 6px;
+  background: var(--desk-background);
+}
+
+:focus-visible {
+  outline: 2px solid var(--desk-accent);
+  outline-offset: 2px;
+}
+
+#zoom-level,
+#find-count {
+  min-width: 44px;
+  color: var(--desk-text-muted);
+  text-align: center;
+}
+
+#layout {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+#outline,
+#comments {
+  overflow: auto;
+  box-sizing: border-box;
+  width: 220px;
+  flex: none;
+  padding: 10px;
+}
+
+#outline {
+  border-right: 1px solid var(--desk-border);
+}
+
+#comments {
+  width: 260px;
+  border-left: 1px solid var(--desk-border);
+}
+
+#outline ol,
+#comments ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+#outline li button {
+  display: block;
+  overflow: hidden;
+  width: 100%;
+  margin: 1px 0;
+  border-color: transparent;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#outline li[data-level="2"] button { padding-left: 18px; }
+#outline li[data-level="3"] button { padding-left: 28px; }
+#outline li[data-level="4"] button { padding-left: 38px; }
+#outline li[data-level="5"] button { padding-left: 48px; }
+#outline li[data-level="6"] button { padding-left: 58px; }
+
+#outline-empty {
+  color: var(--desk-text-muted);
+}
+
+.comment {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  margin-bottom: 6px;
+  padding: 6px 8px;
+  text-align: left;
+}
+
+.comment time {
+  color: var(--desk-text-muted);
+  font-size: 11px;
+}
+
+#desk {
+  overflow: auto;
+  flex: 1;
+  min-width: 0;
+  background: var(--desk-background);
+}
+
+#sheet {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  width: max-content;
+  min-width: 100%;
+  box-sizing: border-box;
+  padding: 24px;
+}
+
+.page {
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  overflow-wrap: break-word;
+  background: var(--docs-paper);
+  color: var(--docs-ink);
+  box-shadow: 0 2px 12px rgb(0 0 0 / 0.45);
+  font: 11pt/1.17 -apple-system, "SUIT", "Inter", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 792pt;
+}
+
+.page-header,
+.page-footer {
+  color: #444;
+}
+
+.page-footer {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+.page-body {
+  flex: 1 0 auto;
+}
+
+.page-notes {
+  margin-top: 12pt;
+  padding-top: 6pt;
+  border-top: 0.75pt solid #999;
+  font-size: 9pt;
+}
+
+.note {
+  display: flex;
+  gap: 4pt;
+}
+
+.note-label {
+  min-width: 12pt;
+  vertical-align: super;
+}
+
+.para {
+  margin: 0;
+  min-height: 1em;
+  white-space: pre-wrap;
+  tab-size: 4;
+}
+
+.marker {
+  display: inline-block;
+  text-indent: 0;
+}
+
+.link {
+  color: #1a56c4;
+  text-decoration: underline;
+}
+
+.noteref {
+  padding: 0 1px;
+  border: 0;
+  color: inherit;
+  font-size: 0.7em;
+  vertical-align: super;
+}
+
+.commented {
+  background-color: var(--docs-comment);
+}
+
+.comment-point::after {
+  content: "\25B4";
+  color: #c79a00;
+}
+
+.is-selected {
+  background-color: var(--docs-comment-on);
+  outline: 1px solid #c79a00;
+}
+
+mark.find-hit {
+  background: var(--docs-hit);
+  color: inherit;
+}
+
+mark.find-hit.is-current {
+  background: var(--docs-hit-current);
+}
+
+.page img {
+  max-width: 100%;
+  height: auto;
+  vertical-align: bottom;
+}
+
+.image-missing {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  max-width: 100%;
+  min-height: 2em;
+  padding: 4pt;
+  border: 1px dashed #999;
+  color: #666;
+  font-size: 9pt;
+}
+
+.table-wrap {
+  overflow-x: auto;
+  margin: 4pt 0;
+}
+
+.table {
+  border-collapse: collapse;
+}
+
+.table td {
+  padding: 2pt 5pt;
+  vertical-align: top;
+}
+
+.table.bordered td {
+  border: 0.75pt solid #000;
+}
+
+#details {
+  overflow: auto;
+  flex: 1;
+  padding: 16px 12px;
+}
+
+#details-preview {
+  display: block;
+  max-width: min(100%, 720px);
+  max-height: 60vh;
+  margin-bottom: 12px;
+  border: 1px solid var(--desk-border);
+}
+
+#details-facts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 2px 12px;
+  margin: 0 0 8px;
+}
+
+#details-facts dt {
+  color: var(--desk-text-muted);
+}
+
+#details-facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.selectable {
+  user-select: all;
+  overflow-wrap: anywhere;
+}
+
+#status {
+  min-height: 1.5em;
+  margin: 0;
+  padding: 2px 12px 4px;
+  border-top: 1px solid var(--desk-border);
+  color: var(--desk-text-muted);
+}
+
+[hidden] {
+  display: none !important;
+}

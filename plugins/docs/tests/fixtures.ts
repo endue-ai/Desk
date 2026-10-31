@@ -151,15 +151,16 @@ export function makeWpd() {
 /** Works 2000 (WPS 8): a compound file whose CONTENTS stream indexes a UTF-16 TEXT chunk. */
 export function makeWps() {
   const text = utf16("Works first line\rWorks second line\r");
-  const header = new Uint8Array(48);
+  // "CHNKWKS ", a 24-byte header, then 24-byte index entries: flags, name, id, count, name,
+  // offset and length.
+  const header = new Uint8Array(56);
   header.set(utf8("CHNKWKS "));
   header.set([4, 0, 1, 0, 1, 0, 0, 3], 8);
-  const entry = new DataView(header.buffer, 24, 24);
+  const entry = new DataView(header.buffer, 32, 24);
   entry.setUint16(0, 0x18, true);
-  header.set(utf8("TEXT"), 26);
-  entry.setUint16(6, 0, true);
+  header.set(utf8("TEXT"), 34);
   entry.setUint32(8, 1, true);
-  header.set(utf8("TEXT"), 36);
+  header.set(utf8("TEXT"), 44);
   entry.setUint32(16, 512, true);
   entry.setUint32(20, text.length, true);
   const contents = new Uint8Array(512 + text.length);
