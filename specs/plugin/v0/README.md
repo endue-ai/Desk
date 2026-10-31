@@ -16,6 +16,7 @@ plugin adds to the desk's policies as data (ADR 0017).
 | `permissions` | Everything the plugin may ask for; each is granted by the person at first use |
 | `surfaces` | Surfaces a UI plugin can open, with a placement (`hidden` until it shows itself); other kinds declare none |
 | `contributes` | Commands, keys, display rules, file openers, themes, settings, profiles and palette providers; required for `policy` |
+| `autoload` | Off until the desk needs it, like Emacs's autoload: off at start unless a stored flag says on, its file openers count while off; `desk.files` turns it on for a file and off after its last file; default `false` |
 | `view`, `views` | A `view` plugin's one view inline (`specs/view/v0`), or its view files (`.yaml`, `.yml`, `.json`); exactly one of the two |
 | `connector` | A `connector` plugin's connector block (`specs/connector/v0`); required for that kind, refused for others |
 

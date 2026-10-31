@@ -29,6 +29,10 @@
           "items": { "$ref": "#/$defs/Surface" }
         },
         "contributes": { "$ref": "contributes.schema.json#/$defs/PluginContributes" },
+        "autoload": {
+          "description": "Installed but off until the desk needs it, like Emacs's autoload. With no stored enabled flag the plugin starts off, and its file openers count while it is off: desk.files turns it on to open a file and off again when its last file closes; profiles leave it as it is. Default false.",
+          "type": "boolean"
+        },
         "view": {
           "description": "A view plugin's one view, inline.",
           "$ref": "../../view/v0/view.schema.json#/$defs/View"
