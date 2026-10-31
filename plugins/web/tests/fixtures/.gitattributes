@@ -1,0 +1,3 @@
+# Binary property lists made by make.sh: never touch their line endings.
+*.webarchive binary
+*.webloc binary
