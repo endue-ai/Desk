@@ -22,7 +22,8 @@ function detailOf(/** @type {Model} */ model) {
     );
   if (model.format) parts.push(model.format);
   if (info?.duration) parts.push(clock(info.duration));
-  if (model.mode === "cues") parts.push(`${model.cues?.length ?? 0} cues`);
+  const count = model.cues?.length ?? 0;
+  if (model.mode === "cues") parts.push(count === 1 ? "1 cue" : `${count} cues`);
   parts.push(model.item?.path ?? model.path);
   return parts.join(" · ");
 }

@@ -37,8 +37,13 @@ const media = (/** @type {Track[]} */ tracks) =>
 
 /** "This system's WebKit cannot play MP4 with H.264 and AAC." */
 export function cannot(/** @type {Info} */ info, tracks = info.tracks) {
-  const names = [...new Set(media(tracks).map((t) => t.codec))];
-  return `This system's WebKit cannot play ${info.container} with ${names.length ? words(names) : "an unknown codec"}.`;
+  const all = [...new Set(media(tracks).map((t) => t.codec))];
+  if (all.length === 0)
+    return `This system's WebKit cannot play ${info.container} with an unknown codec.`;
+  // "cannot play WavPack with WavPack" says the name twice: the container's own codec is left out.
+  const names = all.filter((name) => name !== info.container);
+  if (names.length === 0) return `This system's WebKit cannot play ${info.container}.`;
+  return `This system's WebKit cannot play ${info.container} with ${words(names)}.`;
 }
 
 /**

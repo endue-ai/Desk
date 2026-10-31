@@ -1,8 +1,10 @@
 // The media elements and the transport: one <video> and one <audio> (only one has a source at a time),
 // play and pause, the seek bar and time, volume and mute, speed, loop, theatre mode, the subtitle
 // overlay with its menu and offset, the resume offer, and the keys. A stalled element (the position
-// stands still while playing, as when a URL's grant was revoked) is reported, never left frozen.
+// stands still or no frame is drawn while playing, as when a URL's grant was revoked: stall.js) is
+// reported with a Try again button, never left frozen.
 import { actionFor } from "./keys.js";
+import { createStallWatch } from "./stall.js";
 import { activeAt } from "./subtitles.js";
 import { clock } from "./time.js";
 
@@ -10,8 +12,6 @@ import { clock } from "./time.js";
  * @typedef {import("./player.js").Model} Model
  * @typedef {(name: string, ...args: unknown[]) => unknown} Act
  */
-
-const STALL_SECONDS = 6;
 
 /**
  * @param {Document} doc
@@ -49,8 +49,7 @@ export function createMedia(doc, act) {
   let offered = "";
   /** @type {ReturnType<typeof setInterval> | undefined} */
   let ticker;
-  let still = 0;
-  let last = -1;
+  const stall = createStallWatch();
   let shownCues = "";
   /** @type {((time: number) => void) | null} */
   let onTime = null;
@@ -97,16 +96,19 @@ export function createMedia(doc, act) {
   /** While playing: draw the cues smoothly and watch for a stall. */
   const startTicker = () => {
     stopTicker();
-    still = 0;
-    last = -1;
+    stall.check({ playing: false, time: 0, frames: -1, visible: true }, Date.now());
     ticker = win.setInterval(() => {
       if (!media || media.paused || media.ended) return stopTicker();
       drawCues();
-      if (doc.visibilityState === "hidden") return;
-      if (media.currentTime === last) still += 0.25;
-      else still = 0;
-      last = media.currentTime;
-      if (still >= STALL_SECONDS && retry.hidden) {
+      const quality =
+        media instanceof win.HTMLVideoElement ? media.getVideoPlaybackQuality?.() : undefined;
+      const sample = {
+        playing: true,
+        time: media.currentTime,
+        frames: quality ? quality.totalVideoFrames : -1,
+        visible: doc.visibilityState !== "hidden",
+      };
+      if (stall.check(sample, Date.now()) && retry.hidden) {
         retry.hidden = false;
         act("stalled");
       }
@@ -174,7 +176,6 @@ export function createMedia(doc, act) {
     });
     element.addEventListener("timeupdate", (e) => {
       if (!mine(e)) return;
-      if (!retry.hidden && media && media.currentTime !== last) retry.hidden = true;
       drawTime();
       report();
     });
