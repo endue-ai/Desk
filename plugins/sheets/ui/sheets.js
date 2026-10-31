@@ -232,9 +232,10 @@ export function createSheets({ bridge, commands, settings }, view, { open = open
   });
 
   answer("desk.buffers.show", (args) => {
-    held(requested(args).buffer);
-    present(requested(args).buffer);
-    return "";
+    const file = held(requested(args).buffer);
+    present(file.buffer);
+    // The desk shows a file right after its visit: the status line keeps saying what it is.
+    return summary(file);
   });
 
   answer("desk.buffers.closed", (args) => {

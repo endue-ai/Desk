@@ -323,3 +323,11 @@ footer {
 [hidden] {
   display: none !important;
 }
+
+/* A small tile (the desk's overview) keeps the grid: the name and the tabs give way first. */
+@media (max-height: 240px) {
+  header,
+  .tabs {
+    display: none;
+  }
+}

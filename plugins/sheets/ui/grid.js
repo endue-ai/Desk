@@ -36,7 +36,8 @@ function windowOf(
   for (let p = 0; p < fixed; p++) out.push(p);
   if (ax.count === 0) return out;
   const start = Math.max(fixed, ax.at(scroll + (ax.offset[fixed] ?? 0)) - OVERSCAN);
-  const stop = Math.min(ax.count - 1, ax.at(scroll + room) + OVERSCAN);
+  // A frame smaller than its headers still draws a few rows past the frozen ones.
+  const stop = Math.min(ax.count - 1, Math.max(start, ax.at(scroll + room)) + OVERSCAN);
   for (let p = start; p <= stop; p++) out.push(p);
   return out;
 }
