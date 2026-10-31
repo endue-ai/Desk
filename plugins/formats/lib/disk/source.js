@@ -73,12 +73,13 @@ export function extentSource(image, size, locate, format) {
   };
 }
 
-const BLOCK = 64 * 1024;
-const KEEP = 64;
+const BLOCK = 16 * 1024;
+const KEEP = 256;
 
 /**
- * A source that keeps the last 64 blocks of 64 KiB it read: directories, tables and inodes sit
- * close together. Reads of 2 MiB and more go straight through.
+ * A source that keeps the last 256 blocks of 16 KiB it read (4 MiB): inodes, tables and records
+ * sit close together, while directories scatter, so a small block reads less around each one.
+ * Reads of 2 MiB and more go straight through.
  * @param {Source} source @returns {Source}
  */
 export function cachedSource(source) {
