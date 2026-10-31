@@ -84,7 +84,7 @@ Budgets per issue: 3 CI failures, 2 review rounds, 24 hours. Past any of them, s
 Several agents work at once on one trunk (ADR 0015).
 
 - A task's Scope is its lane. `just lanes` shows what is in flight and what can start; a task waits
-  while its Scope overlaps one in flight, and at most four run at once.
+  while its Scope overlaps one in flight, and at most fifteen run at once.
 - One task, one worktree: `just task-start <issue>` claims the issue (`ai:in-progress`) and creates
   `.claude/worktrees/ai-<issue>` on `ai/<issue>-<slug>`. Never work in the main checkout or in another
   task's worktree. `just task-gc` removes merged ones.
