@@ -1,0 +1,8 @@
+# Files made by tools, kept byte for byte: binary property lists, MHTML's CRLF lines, gzip, .lnk.
+*.webarchive binary
+*.webloc binary
+*.mhtml binary
+*.gz binary
+*.lnk binary
+*.png binary
+*.jpg binary
