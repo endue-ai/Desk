@@ -59,7 +59,7 @@ export async function mount(
 ): Promise<Mounted> {
   const host = createTestHost({
     pluginId: "endue.sheets",
-    handlers: { "init.get": () => ({ settings: {} }), ...options.handlers },
+    handlers: { "init.get": () => ({ profile: "default", settings: {} }), ...options.handlers },
     commands: { ...DESK, ...options.commands },
     settings: options.settings,
   });
