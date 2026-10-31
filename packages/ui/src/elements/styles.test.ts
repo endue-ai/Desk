@@ -14,7 +14,7 @@ const UNFOCUSED = new Set(["desk-stat", "desk-card"]);
 const DENSE = ["desk-list", "desk-table", "desk-agenda", "desk-stat", "desk-markdown", "desk-card"];
 
 describe("element styles", () => {
-  it("cover the eleven elements", () => {
+  it("cover the twelve elements", () => {
     expect(Object.keys(elements)).toEqual([
       "desk-button",
       "desk-input",
@@ -27,6 +27,7 @@ describe("element styles", () => {
       "desk-stat",
       "desk-markdown",
       "desk-card",
+      "desk-progress",
     ]);
   });
 

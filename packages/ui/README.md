@@ -1,9 +1,8 @@
 # @endue-ai/ui
 
-What a plugin page imports for a native-looking surface: the theme tokens, `tokens.css`, and eleven
-framework-free custom elements whose CSS reads only the `--desk-*` custom properties, so any theme
-that redefines them (`desk.theme`) restyles them. Why custom elements: `docs/adr/0022-*.md`. Layer:
-Web runtime (`docs/architecture.md`).
+What a plugin page imports for a native-looking surface: the theme tokens, `tokens.css`, and twelve
+framework-free custom elements whose CSS reads only the `--desk-*` properties, so a theme that redefines
+them (`desk.theme`) restyles them. Why: `docs/adr/0022-*.md`. Layer: Web runtime (`docs/architecture.md`).
 
 ## Public API
 
@@ -16,6 +15,8 @@ Web runtime (`docs/architecture.md`).
   - `<desk-dialog label open>`: modal; `show()`, `close()`; Escape fires `cancel`, then `close`.
   - `<desk-menu label open>`: `show(anchor)`, `toggle(anchor)`, `close()`; `desk-select`, `close`.
   - `<desk-toast tone="error" dismiss-label>`: `show(message, { duration })`; `close`.
+  - `<desk-progress label value max detail delay cancelable cancel-label>`: the one progress UI (no `value`:
+    indeterminate); shows after `delay` ms (300, then `shown`); Cancel fires `desk-cancel`.
   - `<desk-table label>`: `columns` (`{ key, label, sortable }`), `rows` (`{ cells, values }`), `sort`,
     `selectedIndex`, `activeRow`, `rowOf(node)`; `desk-select` `{ index, row }`, `desk-sort` `{ key, direction }`.
   - `<desk-agenda label time-zone now locale>`: `events` (`{ title, start, end, allDay, detail }`), a
@@ -32,8 +33,7 @@ Web runtime (`docs/architecture.md`).
 <script type="module">import "@endue-ai/ui";</script>
 ```
 
-The app serves `dist/ui.js` at `/_desk/ui.js` on its `desk-plugin` scheme, as the runtime's e2e server does.
-`demo/index.html` shows every element: build, then open it.
+The app serves `dist/ui.js` at `/_desk/ui.js` (as the e2e server does); `demo/index.html` shows each element.
 
 ## Testing
 

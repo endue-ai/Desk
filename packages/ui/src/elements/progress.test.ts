@@ -146,7 +146,7 @@ describe("desk-progress", () => {
     const media = /@media \(prefers-reduced-motion: reduce\) \{([\s\S]*?)\n\}/.exec(css)?.[1];
     expect(media).toMatch(/\.fill \{[^}]*animation: none;/);
     // The desk's own setting (data-motion on the frame's root) and the OS's, read when it connects.
-    const still = parseRules(css).find((rule) => rule.selector.includes(".fill[data-still]"));
+    const still = parseRules(css).find((rule) => rule.selector === ".fill[data-still]");
     expect(still?.declarations.animation).toBe("none");
 
     vi.stubGlobal("matchMedia", (query: string) => ({

@@ -34,6 +34,32 @@ byId("toast-error").addEventListener("click", () => {
   toast.show("Could not reach endue. This one stays until you dismiss it.", { duration: 0 });
 });
 
+// A read of 48 MB that moves until it ends or Cancel stops it.
+const reading = byId("reading");
+let timer;
+const read = (from) => {
+  clearInterval(timer);
+  let done = from;
+  const show = () => {
+    reading.value = done;
+    reading.detail = `${done.toFixed(1)} of 48.0 MB`;
+  };
+  show();
+  timer = setInterval(() => {
+    done = Math.min(48, done + 0.8);
+    show();
+    if (done >= 48) clearInterval(timer);
+  }, 200);
+};
+// `?still` keeps the bar where it starts, for pictures.
+if (!new URLSearchParams(location.search).has("still")) read(12.4);
+reading.addEventListener("desk-cancel", () => {
+  clearInterval(timer);
+  reading.detail = "Cancelled";
+  toast.show("Reading budget.xlsx cancelled.");
+});
+byId("read-again").addEventListener("click", () => read(0));
+
 const tasks = byId("tasks");
 tasks.columns = [
   { key: "task", label: "Task", sortable: true },

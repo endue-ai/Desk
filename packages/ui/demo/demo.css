@@ -43,6 +43,11 @@ code {
   align-items: flex-end;
   gap: 12px;
 }
+.stack {
+  display: grid;
+  gap: 20px;
+  max-width: 480px;
+}
 .actions {
   display: flex;
   justify-content: flex-end;
