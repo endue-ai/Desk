@@ -15,7 +15,7 @@
     <main>
       <h1>@endue-ai/ui</h1>
       <p class="muted">
-        Six elements that read only the <code>--desk-*</code> custom properties from
+        Eleven elements that read only the <code>--desk-*</code> custom properties from
         <code>tokens.css</code>. Try them with the keyboard: Tab, the arrows, Enter, Space, Escape.
       </p>
       <p id="missing" hidden>
@@ -81,6 +81,30 @@
           <desk-button id="toast-error">Show an error</desk-button>
         </div>
         <desk-toast id="toast"></desk-toast>
+      </section>
+
+      <section aria-labelledby="h-table">
+        <h2 id="h-table">desk-table</h2>
+        <desk-table label="Open tasks" id="tasks"></desk-table>
+      </section>
+
+      <section aria-labelledby="h-agenda">
+        <h2 id="h-agenda">desk-agenda</h2>
+        <desk-agenda label="Today" id="agenda"></desk-agenda>
+      </section>
+
+      <section aria-labelledby="h-stat">
+        <h2 id="h-stat">desk-stat and desk-card</h2>
+        <div class="row">
+          <desk-stat label="Open tasks" value="7"></desk-stat>
+          <desk-stat label="Build" value="42" unit="min" density="compact"></desk-stat>
+          <desk-card heading="Ideas for the offsite"><p>A hike on Saturday, lunch by the river.</p></desk-card>
+        </div>
+      </section>
+
+      <section aria-labelledby="h-markdown">
+        <h2 id="h-markdown">desk-markdown</h2>
+        <desk-markdown id="markdown"></desk-markdown>
       </section>
 
       <section aria-labelledby="h-theme">

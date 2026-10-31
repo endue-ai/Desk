@@ -39,6 +39,13 @@ const css = `
 :host([hidden]) {
   display: none;
 }
+:host([density="compact"]) {
+  padding: 2px;
+  font-size: 12px;
+}
+:host([density="compact"]) ::slotted(*) {
+  padding: 2px 6px;
+}
 `;
 
 /**

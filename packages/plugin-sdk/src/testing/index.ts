@@ -9,6 +9,8 @@ import {
   type CmdAnsweredData,
   type ErrorCode,
   type Grant,
+  type Item,
+  type ItemSource,
   type LogEntry,
   type ParamsOf,
   type Permission,
@@ -89,6 +91,10 @@ export interface TestHost {
   invoke(id: string, args?: Record<string, unknown>): Promise<unknown>;
   /** Hand the plugin a theme, as the runtime does at start and on every change. */
   theme(theme: ThemeState): void;
+  /** Put an item in the stub's index, or replace it, as a sync would: subscribers hear data.changed. */
+  upsert(item: Item): void;
+  /** Take an item out of the index (false when it was not there); subscribers hear data.changed. */
+  remove(source: ItemSource, id: string): boolean;
   /** Wait until every call the plugin made has been answered. */
   settle(): Promise<void>;
 }
@@ -250,6 +256,8 @@ export function createTestHost(options: TestHostOptions): TestHost {
     },
     call: (method, params, caller) => bridge.call(method, params, caller ? { caller } : {}),
     emit: (event) => handler?.({ type: "desk:event", event }),
+    upsert: (item) => registry.upsert(item),
+    remove: (source, id) => registry.remove(source, id),
     settle: async () => {
       while (inFlight.size > 0) await Promise.all(inFlight);
       await new Promise((resolve) => setTimeout(resolve, 0));

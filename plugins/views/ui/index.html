@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Views</title>
+    <script type="importmap">
+      {
+        "imports": {
+          "@endue-ai/plugin-sdk": "/_desk/plugin-sdk.js",
+          "@endue-ai/ui": "/_desk/ui.js"
+        }
+      }
+    </script>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <main id="root" data-density="regular" aria-labelledby="view-title"></main>
+    <desk-menu id="actions" label="Actions"></desk-menu>
+    <desk-toast id="toast"></desk-toast>
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

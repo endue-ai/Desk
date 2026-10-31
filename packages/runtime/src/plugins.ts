@@ -5,7 +5,9 @@ import type {
   BridgeEvent,
   BridgeRequest,
   BridgeResponse,
+  DataSubscribeResult,
   FsWatchResult,
+  Permission,
   PluginInfo,
 } from "@endue-ai/bridge";
 import { CommandError } from "./commands";
@@ -69,6 +71,8 @@ export class PluginHost {
   readonly #early = new Map<string, BrainTurnEvent[]>();
   /** fs.watch id -> the plugin that started the watch; its fs.changed events go there only. */
   readonly #watches = new Map<string, string>();
+  /** data.subscribe id -> the plugin that subscribed; its data.changed events go there only. */
+  readonly #subscriptions = new Map<string, string>();
   /** Commands delivered to plugins that wait for their reply, by call id. */
   readonly #pending = new Map<
     number,
@@ -176,6 +180,8 @@ export class PluginHost {
     this.#waiting.delete(id);
     this.#commands.unmounted(id);
     for (const [watch, owner] of this.#watches) if (owner === id) this.#watches.delete(watch);
+    for (const [sub, owner] of this.#subscriptions)
+      if (owner === id) this.#subscriptions.delete(sub);
     for (const [call, pending] of this.#pending) {
       if (pending.plugin !== id) continue;
       this.#pending.delete(call);
@@ -189,9 +195,18 @@ export class PluginHost {
       this.#turn(event);
       return;
     }
-    if (event.event === "fs.changed") {
-      const owner = this.#watches.get(event.data.watchId);
+    if (event.event === "fs.changed" || event.event === "data.changed") {
+      // A watch's changes go to the plugin that started it, a data subscription's to its subscriber.
+      const owner =
+        event.event === "fs.changed"
+          ? this.#watches.get(event.data.watchId)
+          : this.#subscriptions.get(event.data.subscriptionId);
       if (owner) this.#post(owner, { type: "desk:event", event });
+      return;
+    }
+    if (event.event === "connector.changed" || event.event === "view.changed") {
+      const manage = event.event === "connector.changed" ? "connector:manage" : "view:manage";
+      this.#broadcast(event, manage);
       return;
     }
     if (event.event === "cmd.invoked" || event.event === "cmd.answered") {
@@ -227,10 +242,13 @@ export class PluginHost {
     }
   }
 
-  /** plugin.changed goes to plugins that manage plugins, like the sidebar. */
-  #broadcast(event: BridgeEvent): void {
+  /**
+   * An event for the plugins whose manifest asks for `manage`: plugin.changed to the ones that manage
+   * plugins (the sidebar), connector.changed and view.changed to the ones that manage those.
+   */
+  #broadcast(event: BridgeEvent, manage: Permission["permission"] = "plugin:manage"): void {
     for (const [id, info] of this.#mounted) {
-      const manages = info.manifest?.permissions?.some((p) => p.permission === "plugin:manage");
+      const manages = info.manifest?.permissions?.some((p) => p.permission === manage);
       if (manages) this.#post(id, { type: "desk:event", event });
     }
   }
@@ -256,6 +274,14 @@ export class PluginHost {
     this.#commands.observe(request, response, owner);
     if (request.method === "fs.watch" && response.ok) {
       this.#watches.set((response.result as FsWatchResult).watchId, owner);
+      return;
+    }
+    if (request.method === "data.subscribe" && response.ok) {
+      this.#subscriptions.set((response.result as DataSubscribeResult).subscriptionId, owner);
+      return;
+    }
+    if (request.method === "data.unsubscribe" && response.ok) {
+      this.#subscriptions.delete(request.params.subscriptionId);
       return;
     }
     if (request.method !== "brain.say" || !response.ok) return;

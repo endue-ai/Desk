@@ -86,7 +86,7 @@ defineUiPlugin({
 
 어휘(`fs:read`, `fs:write`, `proc:spawn`, `net:fetch`, `audio:capture`, `ui:surface`,
 `ui:notify`, `plugin:manage`, `brain:converse`, `cmd:invoke`, `cmd:advise`, `settings:read`, `log:read`,
-`events:subscribe`, `perm:manage`)는 `specs/plugin/v0/README.md`에 있습니다.
+`events:subscribe`, `perm:manage`, `data:read`, `connector:manage`, `view:manage`)는 `specs/plugin/v0/README.md`에 있습니다.
 
 ## 기여 항목
 
@@ -124,6 +124,28 @@ defineUiPlugin({
 `ctx.theme` 으로 전달됩니다. 프레임 안에서 누른 키 조합은 `preventDefault()` 를 부르지 않는 한 데스크의
 키맵에 전달됩니다. 기본 정책과 각각이 정하는 것은 `plugins/README.md` 에 있습니다.
 
+## 아이템과 뷰
+
+사람이 연결한 앱의 내용은 하나의 모양을 가진 아이템으로 데스크에 들어옵니다(`specs/item/v0`, ADR 0032).
+일정, 할 일, 메시지, 노트 등이 어느 소스에서 오든 같은 모양입니다. `ctx.data`는 `data:read` 권한으로
+데스크의 색인을 읽고, 쿼리에 필요한 가장 좁은 범위를 넘깁니다. `ctx.views`는 `view:manage`로 그 사람의
+뷰를 읽고 저장합니다.
+
+```js
+const { items } = await ctx.data.query({
+  kinds: ["task"],
+  where: [{ field: "due", op: "lt", value: "2026-10-31T00:00:00+09:00" }],
+});
+const stop = await ctx.data.subscribe({ kinds: ["task"] }, (changes) => redraw(changes));
+await ctx.commands.run("desk.views.open", { id: "desk.today" });
+```
+
+뷰는 코드가 아니라 데이터입니다(`specs/view/v0`). 내장 플러그인 `desk.views`가 `@endue-ai/ui` 요소
+(`desk-list`, `desk-table`, `desk-agenda`, `desk-stat`, `desk-markdown`, `desk-card`)로 그리고, 템플릿은
+시계를 압니다(`{today}`, `{tomorrow}`). 앱이 이 요소들을 제공하게 되면 여러분의 페이지도 import map
+(`"@endue-ai/ui": "/_desk/ui.js"`)으로 같은 요소를 불러올 수 있습니다. 지금은 런타임의 테스트 서버가
+제공합니다.
+
 ## 테스트
 
 `@endue-ai/plugin-sdk/testing`을 쓰면 브라우저 없이 모의 브리지를 상대로 플러그인을 실행할 수 있습니다.
@@ -135,7 +157,7 @@ import { createTestHost } from "@endue-ai/plugin-sdk/testing";
 const host = createTestHost({ pluginId: "example.my-plugin", handlers: { "perm.query": () => ({ grants: [] }) } });
 await defineUiPlugin(myPlugin, host.transport);
 await host.settle();
-// host.calls, host.state, host.emit(event)
+// host.calls, host.state, host.emit(event), host.upsert(item)
 ```
 
 공개하기 전에 `desk plugin validate <folder>`를 통과해야 합니다. CI는 `plugins/`와 `examples/` 안의 모든 폴더에
