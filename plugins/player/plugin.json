@@ -4,6 +4,7 @@
   "version": "0.1.0",
   "kind": "ui",
   "entry": "ui/index.html",
+  "autoload": true,
   "description": "Plays every video and audio file in one player: one transport, subtitles drawn over the video, playlists and CUE chapters, and each file's tags and cover. What the system's WebKit cannot play opens as its details. It never writes a file.",
   "permissions": [{ "permission": "cmd:invoke", "ids": ["desk.files.changed"] }],
   "surfaces": [{ "id": "main", "title": "Player", "placement": "center" }],

@@ -4,6 +4,7 @@
   "version": "0.1.0",
   "kind": "ui",
   "entry": "ui/index.html",
+  "autoload": true,
   "description": "Opens word-processor documents (Word, Pages, OpenDocument, RTF, Hangul, AbiWord, WordPerfect, Works) in one page view with an outline, comments and find. It reads; it does not edit.",
   "permissions": [
     {

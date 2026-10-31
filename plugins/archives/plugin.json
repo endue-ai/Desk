@@ -4,6 +4,7 @@
   "version": "0.1.0",
   "kind": "ui",
   "entry": "ui/index.html",
+  "autoload": true,
   "description": "Opens every archive, package and disk image as a tree with a preview of the selected entry, and extracts to a folder the person picks. It never changes the archive.",
   "permissions": [
     {
