@@ -1,0 +1,18 @@
+{
+  "target": "BridgeRequest",
+  "description": "fs.read of five bytes from offset 10, as base64: a zip's end, a header",
+  "instance": {
+    "id": 4,
+    "method": "fs.read",
+    "params": {
+      "path": "~/Downloads/photos.zip",
+      "encoding": "base64",
+      "offset": 10,
+      "length": 5,
+      "scope": {
+        "permission": "fs:read",
+        "paths": ["~/Downloads/**"]
+      }
+    }
+  }
+}

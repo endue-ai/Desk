@@ -1,0 +1,9 @@
+{
+  "target": "FsUrlResult",
+  "description": "the URL is a path on the frame's own location, never an absolute URL with a scheme",
+  "instance": {
+    "url": "desk-plugin://localhost/_desk/file/3f9c2a1be47d0c5a8e6b19f2d4a7c03e/Holiday%202026.mp4",
+    "size": 1288490188,
+    "type": "video/mp4"
+  }
+}

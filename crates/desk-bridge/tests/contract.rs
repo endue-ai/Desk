@@ -7,7 +7,8 @@ use std::path::{Path, PathBuf};
 
 use desk_bridge::{
     BridgeEvent, BridgeRequest, BridgeResponse, CatalogGetResult, ConnectorInstance,
-    ConnectorManifest, ConnectorStatus, ConnectorSyncResult, InitDocument, InitGetResult,
+    ConnectorManifest, ConnectorStatus, ConnectorSyncResult, FsReadResult, FsUrlResult,
+    InitDocument, InitGetResult,
     InitSettingKey, Item, ItemChange, ItemPage, ItemQuery, PaletteResults, PermQueryResult,
     Permission, PluginContributes, PluginListResult, PluginManifest, StoreGetResult, View,
     ViewGetResult, ViewListResult, ViewSource, ViewSummary, manifest_problems, view_problems,
@@ -222,6 +223,8 @@ fn valid_vectors_roundtrip_through_generated_types() {
                 "BridgeRequest" => roundtrip::<BridgeRequest>(vector),
                 "BridgeResponse" => roundtrip::<BridgeResponse>(vector),
                 "BridgeEvent" => roundtrip::<BridgeEvent>(vector),
+                "FsReadResult" => roundtrip::<FsReadResult>(vector),
+                "FsUrlResult" => roundtrip::<FsUrlResult>(vector),
                 "PermQueryResult" => roundtrip::<PermQueryResult>(vector),
                 "PluginListResult" => roundtrip::<PluginListResult>(vector),
                 "StoreGetResult" => roundtrip::<StoreGetResult>(vector),

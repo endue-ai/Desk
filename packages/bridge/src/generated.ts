@@ -1204,6 +1204,7 @@ export type BridgeRequest =
   | FsWriteRequest
   | FsListRequest
   | FsWatchRequest
+  | FsUrlRequest
   | ProcSpawnRequest
   | ProcWriteRequest
   | ProcResizeRequest
@@ -1727,7 +1728,7 @@ export interface EventsUnsubscribeParams {
 /** Result of events.unsubscribe. */
 export type EventsUnsubscribeResult = Record<string, never>;
 
-/** Read a whole file. */
+/** Read a file, whole or a byte range of it. */
 export interface FsReadRequest {
   id: RequestId;
   method: "fs.read";
@@ -1738,14 +1739,43 @@ export interface FsReadRequest {
 export interface FsReadParams {
   path: Path;
   encoding?: Encoding;
+  /** Where the range starts, in bytes from the start of the file; 0 when absent. */
+  offset?: number;
+  /** How many bytes to read from offset at most; to the end of the file when absent. 0 reads nothing and answers only the size. */
+  length?: number;
   scope: FsReadPermission;
 }
 
 /** Result of fs.read. */
 export interface FsReadResult {
-  /** The file content. */
+  /** The bytes read: the whole file, or the range. */
   content: string;
   encoding: Encoding;
+  /** The file's total size in bytes, whatever range was read. The core always sends it. */
+  size?: number;
+}
+
+/** Get a URL the caller's frame can load one file from (a video, an image), without passing the bytes through the bridge. */
+export interface FsUrlRequest {
+  id: RequestId;
+  method: "fs.url";
+  params: FsUrlParams;
+}
+
+/** Parameters of fs.url. */
+export interface FsUrlParams {
+  path: Path;
+  scope: FsReadPermission;
+}
+
+/** Result of fs.url. */
+export interface FsUrlResult {
+  /** /_desk/file/<token>/<file name>: a path the frame resolves against its own desk-plugin location. It works while the caller runs and holds an fs:read grant that covers the file. */
+  url: string;
+  /** The file's size in bytes when the URL was made. */
+  size: number;
+  /** The media type the URL is served with, from the file's extension: video/mp4, image/png, ..., application/octet-stream when the extension is not known. */
+  type: string;
 }
 
 /** Create or overwrite a file. */
@@ -2597,6 +2627,7 @@ export interface BridgeMethodMap {
   "fs.write": { params: FsWriteParams; result: FsWriteResult };
   "fs.list": { params: FsListParams; result: FsListResult };
   "fs.watch": { params: FsWatchParams; result: FsWatchResult };
+  "fs.url": { params: FsUrlParams; result: FsUrlResult };
   "proc.spawn": { params: ProcSpawnParams; result: ProcSpawnResult };
   "proc.write": { params: ProcWriteParams; result: ProcWriteResult };
   "proc.resize": { params: ProcResizeParams; result: ProcResizeResult };
@@ -2659,6 +2690,7 @@ export const BRIDGE_METHODS = [
   "fs.write",
   "fs.list",
   "fs.watch",
+  "fs.url",
   "proc.spawn",
   "proc.write",
   "proc.resize",

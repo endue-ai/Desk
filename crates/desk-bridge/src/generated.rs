@@ -1898,6 +1898,7 @@ pub enum BridgeRequest {
     FsWrite(FsWriteRequest),
     FsList(FsListRequest),
     FsWatch(FsWatchRequest),
+    FsUrl(FsUrlRequest),
     ProcSpawn(ProcSpawnRequest),
     ProcWrite(ProcWriteRequest),
     ProcResize(ProcResizeRequest),
@@ -2630,7 +2631,7 @@ pub struct EventsUnsubscribeParams {
 #[serde(deny_unknown_fields)]
 pub struct EventsUnsubscribeResult {}
 
-/// Read a whole file.
+/// Read a file, whole or a byte range of it.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct FsReadRequest {
@@ -2646,6 +2647,12 @@ pub struct FsReadParams {
     pub path: Path,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub encoding: Option<Encoding>,
+    /// Where the range starts, in bytes from the start of the file; 0 when absent.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub offset: Option<u64>,
+    /// How many bytes to read from offset at most; to the end of the file when absent. 0 reads nothing and answers only the size.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub length: Option<u64>,
     pub scope: FsReadPermission,
 }
 
@@ -2653,9 +2660,41 @@ pub struct FsReadParams {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct FsReadResult {
-    /// The file content.
+    /// The bytes read: the whole file, or the range.
     pub content: String,
     pub encoding: Encoding,
+    /// The file's total size in bytes, whatever range was read. The core always sends it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub size: Option<u64>,
+}
+
+/// Get a URL the caller's frame can load one file from (a video, an image), without passing the bytes through the bridge.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct FsUrlRequest {
+    pub id: RequestId,
+    pub method: FsUrlRequestMethod,
+    pub params: FsUrlParams,
+}
+
+/// Parameters of fs.url.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct FsUrlParams {
+    pub path: Path,
+    pub scope: FsReadPermission,
+}
+
+/// Result of fs.url.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct FsUrlResult {
+    /// /_desk/file/<token>/<file name>: a path the frame resolves against its own desk-plugin location. It works while the caller runs and holds an fs:read grant that covers the file.
+    pub url: String,
+    /// The file's size in bytes when the URL was made.
+    pub size: u64,
+    /// The media type the URL is served with, from the file's extension: video/mp4, image/png, ..., application/octet-stream when the extension is not known.
+    pub r#type: String,
 }
 
 /// Create or overwrite a file.
@@ -4477,6 +4516,14 @@ pub enum FsReadRequestMethod {
     #[default]
     #[serde(rename = "fs.read")]
     FsRead,
+}
+
+/// The `method` of [`FsUrlRequest`]: always `"fs.url"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum FsUrlRequestMethod {
+    #[default]
+    #[serde(rename = "fs.url")]
+    FsUrl,
 }
 
 /// The `method` of [`FsWriteRequest`]: always `"fs.write"`.

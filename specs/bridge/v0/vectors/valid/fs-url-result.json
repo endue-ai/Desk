@@ -1,0 +1,9 @@
+{
+  "target": "FsUrlResult",
+  "description": "fs.url answered: a root-relative URL with a 128-bit token and the encoded file name, the size and the media type",
+  "instance": {
+    "url": "/_desk/file/3f9c2a1be47d0c5a8e6b19f2d4a7c03e/Holiday%202026.mp4",
+    "size": 1288490188,
+    "type": "video/mp4"
+  }
+}

@@ -172,6 +172,7 @@ impl Core {
             R::UiNotify(r) => (r.id, self.notify(caller, r.params)),
             R::FsWrite(r) => (r.id, self.fs_write(caller, r.params)),
             R::FsWatch(r) => (r.id, self.fs_watch(caller, r.params)),
+            R::FsUrl(r) => (r.id, unsupported("fs.url")),
             R::ProcSpawn(r) => (r.id, self.proc_spawn(caller, r.params)),
             R::ProcWrite(r) => (r.id, self.proc_write(caller, r.params)),
             R::ProcResize(r) => (r.id, self.proc_resize(caller, r.params)),
@@ -262,6 +263,7 @@ impl Core {
 
 fn read(path: &Path, encoding: Encoding) -> Answer {
     let bytes = sysfs::read(path).map_err(io_error)?;
+    let size = Some(bytes.len() as u64);
     let content = match encoding {
         Encoding::Utf8 => String::from_utf8(bytes).map_err(|_| {
             error(
@@ -271,7 +273,11 @@ fn read(path: &Path, encoding: Encoding) -> Answer {
         })?,
         Encoding::Base64 => base64::engine::general_purpose::STANDARD.encode(bytes),
     };
-    json(FsReadResult { content, encoding })
+    json(FsReadResult {
+        content,
+        encoding,
+        size,
+    })
 }
 
 fn list(path: &Path) -> Answer {
