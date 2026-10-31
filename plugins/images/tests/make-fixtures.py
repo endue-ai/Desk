@@ -65,6 +65,39 @@ def sidecar_f32(name, alpha):
     open(out(name + ".f32"), "wb").write(struct.pack(f"<{4 * n}f", *values))
 
 
+def sidecar_half(name, source):
+    """ffmpeg's EXR decoder rounds halves inexactly, so the uncompressed file's halves are read here
+    with struct's IEEE half ("e"); every compression of the same pattern holds the same halves."""
+    data = open(out(source), "rb").read()
+    at = 8
+    channels = []
+    while True:
+        end = data.index(b"\0", at)
+        attr = data[at:end].decode()
+        at = end + 1
+        if not attr:
+            break
+        end = data.index(b"\0", at)
+        at = end + 1
+        size = struct.unpack_from("<I", data, at)[0]
+        if attr == "channels":
+            c = at + 4
+            while data[c] != 0:
+                stop = data.index(b"\0", c)
+                channels.append(data[c:stop].decode())
+                c = stop + 17
+        at += 4 + size
+    values = []
+    for y in range(H):
+        offset = struct.unpack_from("<Q", data, at + y * 8)[0]
+        row = {}
+        for i, channel in enumerate(channels):
+            row[channel] = struct.unpack_from(f"<{W}e", data, offset + 8 + i * W * 2)
+        for x in range(W):
+            values += [row["R"][x], row["G"][x], row["B"][x], row["A"][x]]
+    open(out(name + ".f32"), "wb").write(struct.pack(f"<{4 * W * H}f", *values))
+
+
 def exif_block(orientation):
     exif = Image.Exif()
     exif[0x010F] = "Example"
@@ -144,7 +177,10 @@ def main():
             name = f"{compression}-{kind}.exr"
             ffmpeg("-i", png, "-pix_fmt", "gbrapf32le", "-compression", compression, "-format", kind,
                    out(name))
-            sidecar_f32(name, True)
+            if kind == "float":
+                sidecar_f32(name, True)
+            else:
+                sidecar_half(name, "none-half.exr")
     # ICNS with PNG entries, from Pillow.
     Image.new("RGBA", (64, 64), (90, 60, 200, 255)).save(out("png.icns"), sizes=[(16, 16), (32, 32)])
 

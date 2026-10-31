@@ -1,0 +1,170 @@
+// OpenEXR scanline files: uncompressed, RLE, ZIPS and ZIP; HALF, FLOAT and UINT channels; R, G, B
+// and A, or Y alone. To float, then tone-mapped. Tiled, deep and multi-part files and the other
+// compressions (PIZ, PXR24, B44, DWA) open the details view with that reason.
+import { ascii, fail, inflate, reader } from "../bytes.js";
+import { canvasFor, enough } from "./pixels.js";
+import { toneMap } from "./tonemap.js";
+
+const COMPRESSIONS = [
+  "none",
+  "RLE",
+  "ZIPS",
+  "ZIP",
+  "PIZ",
+  "PXR24",
+  "B44",
+  "B44A",
+  "DWAA",
+  "DWAB",
+  "HTJ2K",
+];
+const LINES = [1, 1, 1, 16];
+
+/** IEEE half to float. */
+export function half(/** @type {number} */ h) {
+  const s = h & 0x8000 ? -1 : 1;
+  const e = (h >> 10) & 31;
+  const m = h & 1023;
+  if (e === 0) return s * m * 2 ** -24;
+  if (e === 31) return m ? Number.NaN : s * Number.POSITIVE_INFINITY;
+  return s * (1 + m / 1024) * 2 ** (e - 15);
+}
+
+/** The header's attributes, by name, as [type, start, size]; and where the offset table starts. */
+function attributes(/** @type {Uint8Array} */ bytes) {
+  const r = reader(bytes);
+  /** @type {Map<string, { type: string, at: number, size: number }>} */
+  const found = new Map();
+  let at = 8;
+  const cstring = () => {
+    const end = bytes.indexOf(0, at);
+    if (end < 0 || end - at > 255) fail("Its header is damaged.");
+    const text = ascii(bytes, at, end - at);
+    at = end + 1;
+    return text;
+  };
+  for (;;) {
+    const name = cstring();
+    if (name === "") break;
+    const type = cstring();
+    const size = r.u32(at);
+    found.set(name, { type, at: at + 4, size });
+    at += 4 + size;
+    if (at > bytes.length) fail("Its header is damaged.");
+  }
+  return { found, end: at };
+}
+
+/** RLE as OpenEXR writes it: a negative count is that many literal bytes, else count + 1 repeats. */
+function unRle(/** @type {Uint8Array} */ data, /** @type {number} */ size) {
+  const out = new Uint8Array(size);
+  let o = 0;
+  for (let i = 0; i < data.length && o < size; ) {
+    const n = ((data[i++] ?? 0) << 24) >> 24;
+    if (n < 0) {
+      out.set(data.subarray(i, i - n), o);
+      o -= n;
+      i -= n;
+    } else {
+      out.fill(data[i++] ?? 0, o, o + n + 1);
+      o += n + 1;
+    }
+  }
+  return out;
+}
+
+/** Undo the predictor and the byte interleave that RLE and ZIP apply before compressing. */
+function unPredict(/** @type {Uint8Array} */ t) {
+  for (let i = 1; i < t.length; i++) t[i] = ((t[i - 1] ?? 0) + (t[i] ?? 0) - 128) & 255;
+  const out = new Uint8Array(t.length);
+  const mid = Math.floor((t.length + 1) / 2);
+  for (let i = 0, a = 0, b = mid; i < t.length; i++) out[i] = (i % 2 === 0 ? t[a++] : t[b++]) ?? 0;
+  return out;
+}
+
+/** @returns {Promise<import("./pixels.js").Pixels>} */
+export async function decodeExr(/** @type {Uint8Array} */ bytes) {
+  const r = reader(bytes);
+  const flags = r.u32(4);
+  if (flags & 0x200) fail("It is a tiled OpenEXR; Images reads scanline files.");
+  if (flags & 0x800) fail("It is a deep OpenEXR; Images reads flat images.");
+  if (flags & 0x1000) fail("It is a multi-part OpenEXR; Images reads single-part files.");
+  const { found, end } = attributes(bytes);
+  const attr = (/** @type {string} */ name) =>
+    found.get(name) ?? fail(`Its header has no ${name}.`);
+  const compression = r.u8(attr("compression").at);
+  if (compression > 3)
+    fail(
+      `It uses ${COMPRESSIONS[compression] ?? "an unknown"} compression, which Images does not read.`,
+    );
+  const box = attr("dataWindow").at;
+  const [xMin, yMin, xMax, yMax] = [r.i32(box), r.i32(box + 4), r.i32(box + 8), r.i32(box + 12)];
+  const width = xMax - xMin + 1;
+  const height = yMax - yMin + 1;
+  canvasFor(width, height);
+
+  const list = attr("channels");
+  /** @type {Array<{ name: string, type: number, bytes: number, sampled: boolean }>} */
+  const channels = [];
+  for (let at = list.at; at < list.at + list.size - 1; ) {
+    const stop = bytes.indexOf(0, at);
+    const name = ascii(bytes, at, stop - at);
+    const type = r.i32(stop + 1);
+    const sampled = r.i32(stop + 9) === 1 && r.i32(stop + 13) === 1;
+    channels.push({ name, type, bytes: type === 1 ? 2 : 4, sampled });
+    at = stop + 17;
+  }
+  const bytesPerLine = channels.reduce((n, c) => n + c.bytes * width, 0);
+  const pick = (/** @type {string} */ want) =>
+    channels.findIndex((c) => c.sampled && (c.name === want || c.name.endsWith(`.${want}`)));
+  let [ri, gi, bi, ai] = ["R", "G", "B", "A"].map(pick);
+  if (ri < 0 && gi < 0 && bi < 0) {
+    const y = pick("Y") >= 0 ? pick("Y") : channels.findIndex((c) => c.sampled);
+    if (y < 0) fail("It has no channel Images can show.");
+    ri = gi = bi = y;
+  }
+
+  const lines = LINES[compression] ?? 1;
+  const chunks = Math.ceil(height / lines);
+  const float = new Float32Array(width * height * 4);
+  for (let i = 3; i < float.length; i += 4) float[i] = 1;
+  enough(bytes, end, chunks * 8);
+  for (let c = 0; c < chunks; c++) {
+    const offset = r.u64(end + c * 8);
+    const y0 = r.i32(offset) - yMin;
+    const size = r.i32(offset + 4);
+    enough(bytes, offset + 8, size);
+    const rows = Math.min(lines, height - y0);
+    const expected = bytesPerLine * rows;
+    let data = bytes.subarray(offset + 8, offset + 8 + size);
+    if (size < expected && compression === 1) data = unPredict(unRle(data, expected));
+    else if (size < expected && compression >= 2) data = unPredict(await inflate(data, "deflate"));
+    if (data.length < expected) fail("A block of its pixels is damaged.");
+    const d = reader(data);
+    for (let row = 0; row < rows; row++) {
+      const y = y0 + row;
+      if (y < 0 || y >= height) continue;
+      let at = row * bytesPerLine;
+      channels.forEach((channel, index) => {
+        const targets = [ri, gi, bi, ai].flatMap((t, k) => (t === index ? [k] : []));
+        for (let x = 0; x < width; x++) {
+          const p = at + x * channel.bytes;
+          const v = channel.type === 1 ? half(d.u16(p)) : channel.type === 2 ? d.f32(p) : d.u32(p);
+          for (const k of targets) float[(y * width + x) * 4 + k] = v;
+        }
+        at += channel.bytes * width;
+      });
+    }
+  }
+  const kinds = [...new Set(channels.map((c) => ["UINT", "HALF", "FLOAT"][c.type] ?? "?"))].join(
+    ", ",
+  );
+  return {
+    width,
+    height,
+    rgba: toneMap(float, width * height),
+    float,
+    depth: `${kinds}, ${channels.map((c) => c.name).join(" ")}, tone-mapped`,
+    rows: [{ label: "Compression", value: COMPRESSIONS[compression] ?? "none" }],
+  };
+}

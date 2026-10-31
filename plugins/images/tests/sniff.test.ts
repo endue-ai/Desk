@@ -1,7 +1,8 @@
 import { gzipSync } from "node:zlib";
 import { describe, expect, it } from "vitest";
 import { sniff } from "../ui/sniff.js";
-import { ascii, concat, fits, pngHeader, tiff, writer } from "./build";
+import { ascii, concat, fits, pngHeader, writer } from "./build";
+import { tiff } from "./containers";
 import { disk, fixture, image, mount } from "./harness";
 
 const at = (offset: number, bytes: Uint8Array, length = offset + bytes.length + 64) => {

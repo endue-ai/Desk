@@ -2,7 +2,8 @@
 // two real JPEGs (make-fixtures.py): a 16 x 12 thumbnail and a 64 x 48 preview.
 import { describe, expect, it } from "vitest";
 import { decode } from "../ui/decode.js";
-import { ascii, concat, cr3, raf, tiff, withApp1, writer } from "./build";
+import { ascii, concat, writer } from "./build";
+import { cr3, raf, tiff, withApp1 } from "./containers";
 import { fixture } from "./harness";
 
 const SMALL = fixture("small.jpg");

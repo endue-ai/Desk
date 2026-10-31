@@ -19,8 +19,9 @@ const f32 = (name: string) => {
 /** Decode a fixture (or bytes) and return its pixels, failing with the reason when it did not. */
 async function pixels(bytes: Uint8Array, name: string) {
   const result = await decode(bytes, name);
-  if (result.kind !== "pixels") throw new Error(`${name}: ${result.kind} ${result.reason ?? ""}`);
-  return result;
+  if (result.kind !== "pixels" || !result.rgba)
+    throw new Error(`${name}: ${result.kind} ${result.reason ?? ""}`);
+  return { ...result, rgba: result.rgba };
 }
 const px = async (name: string) => Uint8Array.from((await pixels(fixture(name), name)).rgba);
 
@@ -120,8 +121,9 @@ describe("ICNS and KTX", () => {
   });
 
   it("shows the largest PNG entry through the webview", async () => {
+    // Pillow writes every size up to ic10 (512 pt at 2x), so the largest entry is 1024 pixels.
     const result = await decode(fixture("png.icns"), "png.icns");
-    expect(result).toMatchObject({ kind: "web", mime: "image/png", width: 64, height: 64 });
+    expect(result).toMatchObject({ kind: "web", mime: "image/png", width: 1024, height: 1024 });
   });
 
   it("reads KTX 1 holding uncompressed RGBA8", async () => {

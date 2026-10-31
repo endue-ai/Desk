@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Images</title>
+    <script type="importmap">
+      { "imports": { "@endue-ai/plugin-sdk": "/_desk/plugin-sdk.js" } }
+    </script>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <header>
+      <div id="heading">
+        <h1 id="name">No image open</h1>
+        <p id="summary">
+          <span id="format"></span>
+          <span id="position" aria-label="Position in the folder"></span>
+        </p>
+      </div>
+      <div id="toolbar" role="toolbar" aria-label="Image" aria-controls="stage">
+        <button type="button" id="previous" aria-label="Previous image" title="Previous image (Left)">‹</button>
+        <button type="button" id="next" aria-label="Next image" title="Next image (Right)">›</button>
+        <span class="gap" aria-hidden="true"></span>
+        <button type="button" id="zoom-out" aria-label="Zoom out" title="Zoom out (Mod+-)">−</button>
+        <output id="zoom-level" aria-label="Zoom">100%</output>
+        <button type="button" id="zoom-in" aria-label="Zoom in" title="Zoom in (Mod+=)">+</button>
+        <button type="button" id="zoom-fit" title="Fit to the surface (Mod+0)">Fit</button>
+        <button type="button" id="zoom-actual" title="Actual pixels">100%</button>
+        <span class="gap" aria-hidden="true"></span>
+        <button type="button" id="rotate-left" aria-label="Rotate left" title="Rotate left">⟲</button>
+        <button type="button" id="rotate-right" aria-label="Rotate right" title="Rotate right">⟳</button>
+        <button type="button" id="flip" aria-label="Flip" aria-pressed="false" title="Flip horizontally">⇋</button>
+        <span class="gap" aria-hidden="true"></span>
+        <button type="button" id="compare" aria-pressed="false" title="Compare with another image">Compare</button>
+        <label id="compare-pick" hidden>
+          <span>with</span>
+          <select id="compare-with">
+            <option value="">Choose an image</option>
+          </select>
+        </label>
+        <button type="button" id="details-toggle" aria-expanded="true" aria-controls="details">Details</button>
+      </div>
+    </header>
+    <main>
+      <div id="stage" tabindex="0" role="group" aria-label="Image view" aria-describedby="hint">
+        <figure id="pane-a" class="pane"><div class="frame"></div><figcaption></figcaption></figure>
+        <figure id="pane-b" class="pane" hidden><div class="frame"></div><figcaption></figcaption></figure>
+        <p id="hint" hidden>Mod+= and Mod+- zoom, Mod+0 fits. Left and Right go through the folder; when zoomed in, the arrows pan.</p>
+      </div>
+      <aside id="details" aria-label="Details">
+        <h2>Details</h2>
+        <dl id="details-list"></dl>
+      </aside>
+    </main>
+    <p id="status" role="status"></p>
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>
