@@ -65,7 +65,20 @@
         { "$ref": "log.schema.json#/$defs/LogWriteRequest" },
         { "$ref": "log.schema.json#/$defs/LogTailRequest" },
         { "$ref": "events.schema.json#/$defs/EventsSubscribeRequest" },
-        { "$ref": "events.schema.json#/$defs/EventsUnsubscribeRequest" }
+        { "$ref": "events.schema.json#/$defs/EventsUnsubscribeRequest" },
+        { "$ref": "data.schema.json#/$defs/DataQueryRequest" },
+        { "$ref": "data.schema.json#/$defs/DataGetRequest" },
+        { "$ref": "data.schema.json#/$defs/DataSubscribeRequest" },
+        { "$ref": "data.schema.json#/$defs/DataUnsubscribeRequest" },
+        { "$ref": "connector.schema.json#/$defs/ConnectorListRequest" },
+        { "$ref": "connector.schema.json#/$defs/ConnectorConnectRequest" },
+        { "$ref": "connector.schema.json#/$defs/ConnectorDisconnectRequest" },
+        { "$ref": "connector.schema.json#/$defs/ConnectorSyncNowRequest" },
+        { "$ref": "view.schema.json#/$defs/ViewListRequest" },
+        { "$ref": "view.schema.json#/$defs/ViewGetRequest" },
+        { "$ref": "view.schema.json#/$defs/ViewSaveRequest" },
+        { "$ref": "view.schema.json#/$defs/ViewRemoveRequest" },
+        { "$ref": "catalog.schema.json#/$defs/CatalogGetRequest" }
       ]
     },
     "BridgeResponse": {
@@ -121,7 +134,7 @@
       ]
     },
     "BridgeEvent": {
-      "description": "Something the core reports without being asked: file changes, process output, wake words, permission changes, notifications, commands, settings and log entries.",
+      "description": "Something the core reports without being asked: file changes, process output, wake words, permission changes, notifications, commands, settings, log entries, and changes to items, connectors and views.",
       "oneOf": [
         { "$ref": "fs.schema.json#/$defs/FsChangedEvent" },
         { "$ref": "proc.schema.json#/$defs/ProcOutputEvent" },
@@ -136,7 +149,10 @@
         { "$ref": "cmd.schema.json#/$defs/CmdInvokedEvent" },
         { "$ref": "cmd.schema.json#/$defs/CmdAnsweredEvent" },
         { "$ref": "settings.schema.json#/$defs/SettingsChangedEvent" },
-        { "$ref": "log.schema.json#/$defs/LogEntryEvent" }
+        { "$ref": "log.schema.json#/$defs/LogEntryEvent" },
+        { "$ref": "data.schema.json#/$defs/DataChangedEvent" },
+        { "$ref": "connector.schema.json#/$defs/ConnectorChangedEvent" },
+        { "$ref": "view.schema.json#/$defs/ViewChangedEvent" }
       ]
     }
   }

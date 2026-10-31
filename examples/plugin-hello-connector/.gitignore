@@ -1,0 +1,8 @@
+# Everything cargo builds except the component the entry names, which is committed so the host's tests
+# run where the wasm32-wasip2 target is not installed.
+/build/*
+!/build/wasm32-wasip2/
+/build/wasm32-wasip2/*
+!/build/wasm32-wasip2/release/
+/build/wasm32-wasip2/release/*
+!/build/wasm32-wasip2/release/hello_connector.wasm

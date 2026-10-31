@@ -10,6 +10,7 @@ there were two formats, the API would have holes.
 | `toolbar/` | Right status panel: the drawer list (plugins, access) |
 | `dock/` | Bottom dock: open and put away the plugins that open on the desk |
 | `onboarding/` | First-run scenario |
+| `explorer/` | The folders the person allows as a tree (`endue.explorer`); files open through `desk.files` |
 | `terminal/` | The person's shell in a PTY the core runs: several as tabs and desk buffers (`endue.terminal`, ADR 0033) |
 
 The desk's default policies (ADR 0017), each a `desk.*` plugin. All but the palette are `policy` plugins:

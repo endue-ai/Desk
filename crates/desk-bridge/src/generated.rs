@@ -1701,6 +1701,19 @@ pub enum BridgeRequest {
     LogTail(LogTailRequest),
     EventsSubscribe(EventsSubscribeRequest),
     EventsUnsubscribe(EventsUnsubscribeRequest),
+    DataQuery(DataQueryRequest),
+    DataGet(DataGetRequest),
+    DataSubscribe(DataSubscribeRequest),
+    DataUnsubscribe(DataUnsubscribeRequest),
+    ConnectorList(ConnectorListRequest),
+    ConnectorConnect(ConnectorConnectRequest),
+    ConnectorDisconnect(ConnectorDisconnectRequest),
+    ConnectorSyncNow(ConnectorSyncNowRequest),
+    ViewList(ViewListRequest),
+    ViewGet(ViewGetRequest),
+    ViewSave(ViewSaveRequest),
+    ViewRemove(ViewRemoveRequest),
+    CatalogGet(CatalogGetRequest),
 }
 
 /// The answer to one request: a result, or an error.
@@ -1764,7 +1777,7 @@ pub enum ErrorCode {
     Internal,
 }
 
-/// Something the core reports without being asked: file changes, process output, wake words, permission changes, notifications, commands, settings and log entries.
+/// Something the core reports without being asked: file changes, process output, wake words, permission changes, notifications, commands, settings, log entries, and changes to items, connectors and views.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum BridgeEvent {
@@ -1782,6 +1795,52 @@ pub enum BridgeEvent {
     CmdAnswered(CmdAnsweredEvent),
     SettingsChanged(SettingsChangedEvent),
     LogEntry(LogEntryEvent),
+    DataChanged(DataChangedEvent),
+    ConnectorChanged(ConnectorChangedEvent),
+    ViewChanged(ViewChangedEvent),
+}
+
+/// Describe what the caller can bind, show and run.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CatalogGetRequest {
+    pub id: RequestId,
+    pub method: CatalogGetRequestMethod,
+    pub params: CatalogGetParams,
+}
+
+/// Parameters of catalog.get: none.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CatalogGetParams {}
+
+/// Result of catalog.get.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CatalogGetResult {
+    /// The view components the desk renders.
+    pub components: Vec<ComponentType>,
+    /// The connectors with at least one instance, by id, with only the kinds the caller's data:read grants cover; a connector with none of them is left out.
+    pub connectors: Vec<CatalogConnector>,
+    /// The registered commands the caller's cmd:invoke grants cover, in registration order.
+    pub commands: Vec<CommandInfo>,
+}
+
+/// A connected connector: its instances and the kinds of item it brings in.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CatalogConnector {
+    pub id: PluginId,
+    pub instances: Vec<InstanceId>,
+    pub kinds: Vec<CatalogKind>,
+}
+
+/// One kind of item a connector brings in, and the fields its items have, which bindings, sorts and templates can name.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CatalogKind {
+    pub kind: ItemKind,
+    pub fields: Vec<FieldPath>,
 }
 
 /// A registered command as cmd.list returns it.
@@ -2033,6 +2092,258 @@ pub struct CmdAnsweredData {
     pub result: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub error: Option<CommandFailure>,
+}
+
+/// An installed connector as connector.list returns it: its instances and the kinds of item it brings in.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ConnectorInfo {
+    pub id: PluginId,
+    pub instances: Vec<ConnectorInstance>,
+    pub resources: Vec<ConnectorResource>,
+}
+
+/// List the installed connectors and their instances.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ConnectorListRequest {
+    pub id: RequestId,
+    pub method: ConnectorListRequestMethod,
+    pub params: ConnectorListParams,
+}
+
+/// Parameters of connector.list.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ConnectorListParams {
+    pub scope: ConnectorManagePermission,
+}
+
+/// Result of connector.list, by connector id.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ConnectorListResult {
+    pub connectors: Vec<ConnectorInfo>,
+}
+
+/// Add an instance of an installed connector.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ConnectorConnectRequest {
+    pub id: RequestId,
+    pub method: ConnectorConnectRequestMethod,
+    pub params: ConnectorConnectParams,
+}
+
+/// Parameters of connector.connect. instance is default when absent; settings follow the connector's instanceSettings, and the secret ones go to the OS keychain.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ConnectorConnectParams {
+    pub connector: PluginId,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub instance: Option<InstanceId>,
+    /// The name the person gives it: Work calendar.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
+    /// Values of the connector's instance settings, by name.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub settings: Option<serde_json::Map<String, serde_json::Value>>,
+    pub scope: ConnectorManagePermission,
+}
+
+/// Result of connector.connect: the new instance's id.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ConnectorConnectResult {
+    pub instance: InstanceId,
+}
+
+/// Remove an instance, and the items it brought in.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ConnectorDisconnectRequest {
+    pub id: RequestId,
+    pub method: ConnectorDisconnectRequestMethod,
+    pub params: ConnectorDisconnectParams,
+}
+
+/// Parameters of connector.disconnect.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ConnectorDisconnectParams {
+    pub connector: PluginId,
+    pub instance: InstanceId,
+    pub scope: ConnectorManagePermission,
+}
+
+/// Result of connector.disconnect.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ConnectorDisconnectResult {}
+
+/// Sync one instance now, without waiting for its interval.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ConnectorSyncNowRequest {
+    pub id: RequestId,
+    pub method: ConnectorSyncNowRequestMethod,
+    pub params: ConnectorSyncNowParams,
+}
+
+/// Parameters of connector.sync.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ConnectorSyncNowParams {
+    pub connector: PluginId,
+    pub instance: InstanceId,
+    pub scope: ConnectorManagePermission,
+}
+
+/// Result of connector.sync: the sync started; its progress arrives as connector.changed.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ConnectorSyncNowResult {
+    pub started: True,
+}
+
+/// An instance was connected, changed status or was disconnected. Sent to callers that hold connector:manage.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ConnectorChangedEvent {
+    pub event: ConnectorChangedEventEvent,
+    pub data: ConnectorChangedData,
+}
+
+/// Payload of connector.changed. status is the instance's status after the change; a disconnected instance has none.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ConnectorChangedData {
+    pub connector: PluginId,
+    pub instance: InstanceId,
+    pub change: ConnectorChange,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub status: Option<ConnectorStatus>,
+}
+
+/// What happened to the instance: connected (new), updated (its status changed) or disconnected (gone, with its items).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum ConnectorChange {
+    #[serde(rename = "connected")]
+    Connected,
+    #[serde(rename = "updated")]
+    Updated,
+    #[serde(rename = "disconnected")]
+    Disconnected,
+}
+
+/// Read one page of the items a query matches.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DataQueryRequest {
+    pub id: RequestId,
+    pub method: DataQueryRequestMethod,
+    pub params: DataQueryParams,
+}
+
+/// Parameters of data.query. Items the scope does not cover are left out, not refused.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DataQueryParams {
+    pub query: ItemQuery,
+    pub scope: DataReadPermission,
+}
+
+/// Result of data.query: one page, with the cursor of the next while there is one.
+pub type DataQueryResult = ItemPage;
+
+/// Read one item by its source and id.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DataGetRequest {
+    pub id: RequestId,
+    pub method: DataGetRequestMethod,
+    pub params: DataGetParams,
+}
+
+/// Parameters of data.get.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DataGetParams {
+    pub source: ItemSource,
+    pub id: ItemId,
+    pub scope: DataReadPermission,
+}
+
+/// Result of data.get. item is absent when the index has none, or the scope does not cover it.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DataGetResult {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub item: Option<Item>,
+}
+
+/// Start receiving data.changed for the items a query matches.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DataSubscribeRequest {
+    pub id: RequestId,
+    pub method: DataSubscribeRequestMethod,
+    pub params: DataSubscribeParams,
+}
+
+/// Parameters of data.subscribe. The query's kinds, sources, text and where conditions select the items; its sort, cursor and limit do not apply.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DataSubscribeParams {
+    pub query: ItemQuery,
+    pub scope: DataReadPermission,
+}
+
+/// Result of data.subscribe.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DataSubscribeResult {
+    #[serde(rename = "subscriptionId")]
+    pub subscription_id: String,
+}
+
+/// Stop one of the caller's data subscriptions.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DataUnsubscribeRequest {
+    pub id: RequestId,
+    pub method: DataUnsubscribeRequestMethod,
+    pub params: DataUnsubscribeParams,
+}
+
+/// Parameters of data.unsubscribe.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DataUnsubscribeParams {
+    #[serde(rename = "subscriptionId")]
+    pub subscription_id: String,
+}
+
+/// Result of data.unsubscribe.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DataUnsubscribeResult {}
+
+/// Items a data subscription matches changed. Sent to the caller that subscribed.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DataChangedEvent {
+    pub event: DataChangedEventEvent,
+    pub data: DataChangedData,
+}
+
+/// Payload of data.changed: the subscription, and what changed in order. An item that stops matching the query arrives as removed.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DataChangedData {
+    #[serde(rename = "subscriptionId")]
+    pub subscription_id: String,
+    pub changes: Vec<ItemChange>,
 }
 
 /// Start receiving the named events about every caller.
@@ -3197,6 +3508,133 @@ pub struct UiNotifiedData {
     pub level: NotifyLevel,
 }
 
+/// A view as view.list returns it.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ViewSummary {
+    pub id: ViewId,
+    pub version: Version,
+    pub title: Template,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+}
+
+/// List the person's views.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ViewListRequest {
+    pub id: RequestId,
+    pub method: ViewListRequestMethod,
+    pub params: ViewListParams,
+}
+
+/// Parameters of view.list.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ViewListParams {
+    pub scope: ViewManagePermission,
+}
+
+/// Result of view.list, by view id.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ViewListResult {
+    pub views: Vec<ViewSummary>,
+}
+
+/// Read one view whole.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ViewGetRequest {
+    pub id: RequestId,
+    pub method: ViewGetRequestMethod,
+    pub params: ViewGetParams,
+}
+
+/// Parameters of view.get.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ViewGetParams {
+    pub id: ViewId,
+    pub scope: ViewManagePermission,
+}
+
+/// Result of view.get.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ViewGetResult {
+    pub view: View,
+}
+
+/// Save a view, new or replacing the one with its id.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ViewSaveRequest {
+    pub id: RequestId,
+    pub method: ViewSaveRequestMethod,
+    pub params: ViewSaveParams,
+}
+
+/// Parameters of view.save. The view must pass specs/view/v0 and its names must resolve.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ViewSaveParams {
+    pub view: View,
+    pub scope: ViewManagePermission,
+}
+
+/// Result of view.save.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ViewSaveResult {}
+
+/// Remove one of the person's views.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ViewRemoveRequest {
+    pub id: RequestId,
+    pub method: ViewRemoveRequestMethod,
+    pub params: ViewRemoveParams,
+}
+
+/// Parameters of view.remove.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ViewRemoveParams {
+    pub id: ViewId,
+    pub scope: ViewManagePermission,
+}
+
+/// Result of view.remove.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ViewRemoveResult {}
+
+/// A view was saved or removed. Sent to callers that hold view:manage.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ViewChangedEvent {
+    pub event: ViewChangedEventEvent,
+    pub data: ViewChangedData,
+}
+
+/// Payload of view.changed.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ViewChangedData {
+    pub id: ViewId,
+    pub change: ViewChange,
+}
+
+/// What happened to the view.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum ViewChange {
+    #[serde(rename = "saved")]
+    Saved,
+    #[serde(rename = "removed")]
+    Removed,
+}
+
 /// The `permission` of [`FsReadPermission`]: always `"fs:read"`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub enum FsReadPermissionPermission {
@@ -3501,6 +3939,14 @@ pub enum BrainTurnEventEvent {
     BrainTurn,
 }
 
+/// The `method` of [`CatalogGetRequest`]: always `"catalog.get"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum CatalogGetRequestMethod {
+    #[default]
+    #[serde(rename = "catalog.get")]
+    CatalogGet,
+}
+
 /// The `method` of [`CmdRegisterRequest`]: always `"cmd.register"`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub enum CmdRegisterRequestMethod {
@@ -3563,6 +4009,86 @@ pub enum CmdAnsweredEventEvent {
     #[default]
     #[serde(rename = "cmd.answered")]
     CmdAnswered,
+}
+
+/// The `method` of [`ConnectorListRequest`]: always `"connector.list"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum ConnectorListRequestMethod {
+    #[default]
+    #[serde(rename = "connector.list")]
+    ConnectorList,
+}
+
+/// The `method` of [`ConnectorConnectRequest`]: always `"connector.connect"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum ConnectorConnectRequestMethod {
+    #[default]
+    #[serde(rename = "connector.connect")]
+    ConnectorConnect,
+}
+
+/// The `method` of [`ConnectorDisconnectRequest`]: always `"connector.disconnect"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum ConnectorDisconnectRequestMethod {
+    #[default]
+    #[serde(rename = "connector.disconnect")]
+    ConnectorDisconnect,
+}
+
+/// The `method` of [`ConnectorSyncNowRequest`]: always `"connector.sync"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum ConnectorSyncNowRequestMethod {
+    #[default]
+    #[serde(rename = "connector.sync")]
+    ConnectorSync,
+}
+
+/// The `event` of [`ConnectorChangedEvent`]: always `"connector.changed"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum ConnectorChangedEventEvent {
+    #[default]
+    #[serde(rename = "connector.changed")]
+    ConnectorChanged,
+}
+
+/// The `method` of [`DataQueryRequest`]: always `"data.query"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum DataQueryRequestMethod {
+    #[default]
+    #[serde(rename = "data.query")]
+    DataQuery,
+}
+
+/// The `method` of [`DataGetRequest`]: always `"data.get"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum DataGetRequestMethod {
+    #[default]
+    #[serde(rename = "data.get")]
+    DataGet,
+}
+
+/// The `method` of [`DataSubscribeRequest`]: always `"data.subscribe"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum DataSubscribeRequestMethod {
+    #[default]
+    #[serde(rename = "data.subscribe")]
+    DataSubscribe,
+}
+
+/// The `method` of [`DataUnsubscribeRequest`]: always `"data.unsubscribe"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum DataUnsubscribeRequestMethod {
+    #[default]
+    #[serde(rename = "data.unsubscribe")]
+    DataUnsubscribe,
+}
+
+/// The `event` of [`DataChangedEvent`]: always `"data.changed"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum DataChangedEventEvent {
+    #[default]
+    #[serde(rename = "data.changed")]
+    DataChanged,
 }
 
 /// The `method` of [`EventsSubscribeRequest`]: always `"events.subscribe"`.
@@ -3869,6 +4395,46 @@ pub enum UiNotifiedEventEvent {
     UiNotified,
 }
 
+/// The `method` of [`ViewListRequest`]: always `"view.list"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum ViewListRequestMethod {
+    #[default]
+    #[serde(rename = "view.list")]
+    ViewList,
+}
+
+/// The `method` of [`ViewGetRequest`]: always `"view.get"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum ViewGetRequestMethod {
+    #[default]
+    #[serde(rename = "view.get")]
+    ViewGet,
+}
+
+/// The `method` of [`ViewSaveRequest`]: always `"view.save"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum ViewSaveRequestMethod {
+    #[default]
+    #[serde(rename = "view.save")]
+    ViewSave,
+}
+
+/// The `method` of [`ViewRemoveRequest`]: always `"view.remove"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum ViewRemoveRequestMethod {
+    #[default]
+    #[serde(rename = "view.remove")]
+    ViewRemove,
+}
+
+/// The `event` of [`ViewChangedEvent`]: always `"view.changed"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum ViewChangedEventEvent {
+    #[default]
+    #[serde(rename = "view.changed")]
+    ViewChanged,
+}
+
 /// The JSON value `true`, as a type.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub struct True;
@@ -3957,8 +4523,20 @@ pub const SCHEMAS: &[(&str, &str)] = &[
         include_str!("../../../specs/bridge/v0/bridge.schema.json"),
     ),
     (
+        "https://endue.ai/specs/bridge/v0/catalog.schema.json",
+        include_str!("../../../specs/bridge/v0/catalog.schema.json"),
+    ),
+    (
         "https://endue.ai/specs/bridge/v0/cmd.schema.json",
         include_str!("../../../specs/bridge/v0/cmd.schema.json"),
+    ),
+    (
+        "https://endue.ai/specs/bridge/v0/connector.schema.json",
+        include_str!("../../../specs/bridge/v0/connector.schema.json"),
+    ),
+    (
+        "https://endue.ai/specs/bridge/v0/data.schema.json",
+        include_str!("../../../specs/bridge/v0/data.schema.json"),
     ),
     (
         "https://endue.ai/specs/bridge/v0/events.schema.json",
@@ -4003,5 +4581,9 @@ pub const SCHEMAS: &[(&str, &str)] = &[
     (
         "https://endue.ai/specs/bridge/v0/ui.schema.json",
         include_str!("../../../specs/bridge/v0/ui.schema.json"),
+    ),
+    (
+        "https://endue.ai/specs/bridge/v0/view.schema.json",
+        include_str!("../../../specs/bridge/v0/view.schema.json"),
     ),
 ];

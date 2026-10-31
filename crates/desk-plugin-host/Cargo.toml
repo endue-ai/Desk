@@ -1,6 +1,6 @@
 [package]
 name = "desk-plugin-host"
-description = "Wasmtime host for logic plugins and supervisor for MCP tool plugins (MCP runs inside desk-vm)."
+description = "Wasmtime host for logic plugins and Wasm connectors, and supervisor for MCP tool plugins (MCP runs inside desk-vm)."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

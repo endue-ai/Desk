@@ -154,6 +154,19 @@ impl Core {
             R::LogTail(r) => (r.id, unsupported("log.tail")),
             R::EventsSubscribe(r) => (r.id, self.events_subscribe(caller, r.params)),
             R::EventsUnsubscribe(r) => (r.id, self.events_unsubscribe(caller, r.params)),
+            R::DataQuery(r) => (r.id, unsupported("data.query")),
+            R::DataGet(r) => (r.id, unsupported("data.get")),
+            R::DataSubscribe(r) => (r.id, unsupported("data.subscribe")),
+            R::DataUnsubscribe(r) => (r.id, unsupported("data.unsubscribe")),
+            R::ConnectorList(r) => (r.id, unsupported("connector.list")),
+            R::ConnectorConnect(r) => (r.id, unsupported("connector.connect")),
+            R::ConnectorDisconnect(r) => (r.id, unsupported("connector.disconnect")),
+            R::ConnectorSyncNow(r) => (r.id, unsupported("connector.sync")),
+            R::ViewList(r) => (r.id, unsupported("view.list")),
+            R::ViewGet(r) => (r.id, unsupported("view.get")),
+            R::ViewSave(r) => (r.id, unsupported("view.save")),
+            R::ViewRemove(r) => (r.id, unsupported("view.remove")),
+            R::CatalogGet(r) => (r.id, unsupported("catalog.get")),
         }
     }
 

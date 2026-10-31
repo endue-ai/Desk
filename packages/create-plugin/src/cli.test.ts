@@ -41,6 +41,25 @@ describe("main", () => {
     expect(out.join("\n")).toContain("Change the id");
   });
 
+  it("creates a Rust connector with --kind connector and prints the build before validate", async () => {
+    expect(await run("my-notes", "--kind", "connector")).toBe(0);
+    const dir = join(cwd, "my-notes");
+    expect(manifestIn(dir)).toMatchObject({ id: "local.my-notes", kind: "connector" });
+    expect(existsSync(join(dir, "src/lib.rs"))).toBe(true);
+    expect(err).toEqual([]);
+    const line = (text: string) => out.findIndex((l) => l.includes(text));
+    const [target, build, validate] = [
+      line("rustup target add wasm32-wasip2"),
+      line("cargo build --release"),
+      line("plugin validate"),
+    ];
+    expect(target).toBeGreaterThan(0);
+    expect(build).toBeGreaterThan(target);
+    expect(validate).toBeGreaterThan(build);
+    expect(out[build]).toContain(dir);
+    expect(out.join("\n")).not.toContain("DESK_DEV_PLUGINS");
+  });
+
   it("quotes a folder with a space in the next commands", async () => {
     expect(await run("my notes")).toBe(0);
     const dir = join(cwd, "my notes");

@@ -1,6 +1,11 @@
-// The files of a new UI plugin, in the same layout as examples/plugin-hello-ui.
+// The files of a new UI plugin, in the same layout as examples/plugin-hello-ui; a connector's are
+// in ./connector.
 
 import type { PluginManifest } from "@endue-ai/bridge";
+import { renderConnector } from "./connector";
+
+/** What the folder holds: a UI plugin, or a Wasm connector in Rust. */
+export type TemplateKind = "ui" | "connector";
 
 export interface PluginOptions {
   /** Manifest id, already checked with `checkId`. */
@@ -9,10 +14,13 @@ export interface PluginOptions {
   name: string;
   /** One sentence about what the plugin does; left out of the manifest when absent. */
   description?: string;
+  /** `ui` when absent. */
+  kind?: TemplateKind;
 }
 
 /** Every file of the plugin folder, keyed by its path relative to the folder. */
 export function renderPlugin(options: PluginOptions): Record<string, string> {
+  if (options.kind === "connector") return renderConnector(options);
   return {
     "plugin.json": manifest(options),
     "README.md": readme(options),

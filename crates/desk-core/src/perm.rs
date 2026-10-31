@@ -224,7 +224,29 @@ pub fn covers(grant: &Permission, scope: &Permission) -> bool {
             s.names.iter().all(|name| g.names.contains(name))
         }
         (Permission::PermManage(_), Permission::PermManage(_)) => true,
+        (Permission::DataRead(g), Permission::DataRead(s)) => {
+            narrows(g.kinds.as_deref(), s.kinds.as_deref(), |g, a| g == a)
+                && narrows(g.sources.as_deref(), s.sources.as_deref(), |p, a| {
+                    star_match(p, a)
+                })
+        }
+        (Permission::ConnectorManage(_), Permission::ConnectorManage(_)) => true,
+        (Permission::ViewManage(_), Permission::ViewManage(_)) => true,
         _ => false,
+    }
+}
+
+/// Whether a granted list covers an asked one, where an absent list means all: every asked entry is
+/// matched by a granted one, and only an absent grant covers an absent scope.
+fn narrows<T>(
+    granted: Option<&[T]>,
+    asked: Option<&[T]>,
+    matches: impl Fn(&T, &T) -> bool,
+) -> bool {
+    match (granted, asked) {
+        (None, _) => true,
+        (Some(_), None) => false,
+        (Some(granted), Some(asked)) => asked.iter().all(|a| granted.iter().any(|g| matches(g, a))),
     }
 }
 
@@ -274,9 +296,13 @@ pub(crate) fn scope_allows(scope: &Permission, target: &Target<'_>) -> bool {
             | Permission::UiNotify(_)
             | Permission::PluginManage(_)
             | Permission::BrainConverse(_)
-            | Permission::PermManage(_),
+            | Permission::PermManage(_)
+            | Permission::ConnectorManage(_)
+            | Permission::ViewManage(_),
             Target::None,
         ) => true,
+        // data.*: the scope narrows which items the call sees.
+        (Permission::DataRead(_), Target::None) => true,
         _ => false,
     }
 }

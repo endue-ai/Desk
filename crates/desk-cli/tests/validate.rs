@@ -31,6 +31,21 @@ fn the_examples_and_built_in_plugins_validate() {
     }
 }
 
+#[test]
+fn hello_connector_validates_as_a_connector_plugin() {
+    let dir = repo().join("examples/plugin-hello-connector");
+    let out = desk(&["plugin", "validate", dir.to_str().unwrap()]);
+    assert!(
+        out.status.success(),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert_eq!(
+        String::from_utf8_lossy(&out.stdout),
+        "ok example.hello-connector 0.1.0 (connector plugin)\n"
+    );
+}
+
 /// A fresh plugin folder holding `manifest` as its plugin.json.
 fn plugin_dir(name: &str, manifest: &str) -> PathBuf {
     let nanos = SystemTime::now()

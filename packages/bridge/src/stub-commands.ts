@@ -1,11 +1,13 @@
 /**
  * The core for the browser stub, so the runtime and plugins can be tested without it: the command
  * registry (cmd.*, ADR 0017), grants and prompts (perm.*), settings, the log, subscriptions (events.*)
- * and surfaces (ui.surface.*), per caller, with the core's rules (specs/bridge/v0/README.md). A plugin
- * caller's scoped call needs a covering grant; the runtime (`desk`) is trusted. cmd.list and cmd.invoke
- * check no grants. `audience` names the plugins the core would deliver an event to.
+ * and surfaces (ui.surface.*), per caller, with the core's rules (specs/bridge/v0/README.md), plus the
+ * items, connectors, views and catalog of stub-data.ts. A plugin caller's scoped call needs a covering
+ * grant; the runtime (`desk`) is trusted. cmd.list and cmd.invoke check no grants. `audience` names the
+ * plugins the core would deliver an event to.
  */
 import { StubError, type StubHandlers } from "./adapters";
+import { FIXTURE_NOW } from "./fixtures";
 import type {
   BridgeEvent,
   CallerGrant,
@@ -16,6 +18,8 @@ import type {
   Grant,
   GrantChange,
   GrantDuration,
+  Item,
+  ItemSource,
   LogEntry,
   Permission,
   PermPromptData,
@@ -23,6 +27,8 @@ import type {
   Setting,
   SurfacePlacement,
 } from "./generated";
+import { covers, keyMatch, starMatch } from "./stub-covers";
+import { type DataServed, stubData } from "./stub-data";
 
 /** The methods the stub serves; any other is `unsupported` (adapters.ts). */
 type Served =
@@ -31,7 +37,8 @@ type Served =
   | `settings.${"get" | "set" | "list"}`
   | `log.${"write" | "tail"}`
   | `events.${"subscribe" | "unsubscribe"}`
-  | `ui.surface.${"open" | "close"}`;
+  | `ui.surface.${"open" | "close"}`
+  | DataServed;
 
 export interface StubOptions {
   /** Grants each caller holds from the start, as `session` grants with ids g-<n>. */
@@ -40,7 +47,8 @@ export interface StubOptions {
   settings?: Setting[];
   /** The person's answer to perm.request when no caller holds perm:manage; granted by default. */
   prompt?: (data: PermPromptData) => boolean;
-  /** The core's clock: log entries and grants are stamped with it. */
+  /** The core's clock: log entries and grants are stamped with it, and connector syncs, which use
+   * `FIXTURE_NOW` (the fixtures' today) when it is absent. */
   now?: () => string;
 }
 
@@ -70,47 +78,10 @@ export interface StubCommands {
    * subscriptions and prompts end. Its grants stay. */
   drop(caller: string): void;
   state(): StubState;
-}
-
-/** `*` matches any run of characters, dots included (or what `any` allows). */
-function starMatch(pattern: string, text: string, any = ".*"): boolean {
-  const source = pattern
-    .split("*")
-    .map((part) => part.replace(/[.+?^${}()|[\]\\]/g, "\\$&"))
-    .join(any);
-  return new RegExp(`^${source}$`).test(text);
-}
-
-/** `owner/key` patterns: `*` stays within its part. */
-const keyMatch = (pattern: string, text: string) => starMatch(pattern, text, "[^/]*");
-/** Paths, hosts and programs: equal, under a trailing `*`, or under a leading `*.`. */
-const within = (grant: string, asked: string) =>
-  grant === asked ||
-  (grant.endsWith("*") && asked.startsWith(grant.replace(/\*+$/, ""))) ||
-  (grant.startsWith("*.") && asked.endsWith(grant.slice(1)));
-
-const at = (permission: Permission, field: string) =>
-  (permission as unknown as Record<string, unknown>)[field];
-
-type Match = (pattern: string, text: string) => boolean;
-/** The list each scoped permission carries, and how a granted pattern covers an asked one. */
-const LISTS: Partial<Record<Permission["permission"], [string, Match]>> = {
-  "cmd:invoke": ["ids", (p, t) => starMatch(p, t)],
-  "settings:read": ["keys", keyMatch],
-  "events:subscribe": ["names", (p, t) => p === t],
-  "fs:read": ["paths", within],
-  "fs:write": ["paths", within],
-  "net:fetch": ["hosts", within],
-  "proc:spawn": ["commands", within],
-};
-
-/** Whether `grant` covers everything `scope` asks for, as desk-core's `covers` judges it. */
-function covers(grant: Permission, scope: Permission): boolean {
-  const [field, match] = LISTS[scope.permission] ?? ["", () => true];
-  const list = (p: Permission) => (at(p, field) ?? []) as string[];
-  const flag = (name: string) => at(scope, name) !== true || at(grant, name) === true;
-  const all = list(scope).every((text) => list(grant).some((pattern) => match(pattern, text)));
-  return grant.permission === scope.permission && all && flag("pty") && flag("wakeWord");
+  /** Put an item in the index, or replace the one with its source and id; fires data.changed. */
+  upsert(item: Item): void;
+  /** Take an item out of the index (false when it was not there); fires data.changed. */
+  remove(source: ItemSource, id: string): boolean;
 }
 
 const MANAGE: Permission = { permission: "perm:manage" };
@@ -143,6 +114,9 @@ export function stubCommands(
   const me = (caller: string | undefined) => caller ?? "desk";
   const holds = (caller: string, permission: Permission) =>
     grants.find((g) => g.caller === caller && covers(g.grant.permission, permission));
+  /** Whether the caller holds a grant covering `permission`; the runtime holds every one. */
+  const may = (caller: string | undefined, permission: Permission) =>
+    me(caller) === "desk" || holds(me(caller), permission) !== undefined;
   const holders = (permission: Permission) =>
     grants.filter((g) => covers(g.grant.permission, permission)).map((g) => g.caller);
   const subscribers = (name: EventName) =>
@@ -164,8 +138,11 @@ export function stubCommands(
     const index = grants.findIndex((g) => g.grant.grantId === grantId);
     const [gone] = grants.splice(index, 1);
     changed(grantId, change);
+    if (change !== "revoked" || !gone) return;
+    // Revoking a data:read grant ends the data subscriptions no other grant still covers.
+    data.drop(gone.caller, (scope) => may(gone.caller, scope));
     // Revoking an events:subscribe grant ends the subscriptions no other grant still covers.
-    if (change !== "revoked" || gone?.grant.permission.permission !== "events:subscribe") return;
+    if (gone.grant.permission.permission !== "events:subscribe") return;
     for (const [id, { caller, names }] of subscriptions)
       if (caller === gone.caller && !holds(caller, { permission: "events:subscribe", names }))
         subscriptions.delete(id);
@@ -179,6 +156,16 @@ export function stubCommands(
     if (!held) throw new StubError("permission_denied", why, scope);
     if (held.grant.duration === "once") take(held.grant.grantId, "expired");
   };
+  const data = stubData({
+    check: (caller, scope) => check(caller, scope),
+    may,
+    holders,
+    later,
+    fresh,
+    me,
+    now: options.now ?? (() => FIXTURE_NOW),
+    commands: () => [...commands.values()],
+  });
 
   const answered = (invocationId: string, result: unknown, error?: CommandFailure): void => {
     const invocation = pending.get(invocationId);
@@ -212,6 +199,7 @@ export function stubCommands(
       to.push(event.data.owner, ...subscribers("settings.changed").filter(read));
     } else if (event.event === "log.entry")
       to.push(...subscribers("log.entry").filter((c) => holds(c, LOG)));
+    else to.push(...data.audience(event));
     return [...new Set(to)].filter((c): c is string => c !== undefined && c !== "desk");
   };
 
@@ -233,10 +221,14 @@ export function stubCommands(
       for (const [id, s] of subscriptions) if (s.caller === caller) subscriptions.delete(id);
       for (const prompt of [...prompts.values()])
         if (prompt.data.caller === caller) prompt.decide(false);
+      data.drop(caller);
     },
     state: () =>
       structuredClone({ grants, settings: sorted(), log, surfaces: [...surfaces.values()] }),
+    upsert: data.upsert,
+    remove: data.remove,
     handlers: {
+      ...data.handlers,
       "cmd.register": (params, caller) => {
         const provider = me(caller);
         const existing = commands.get(params.id);

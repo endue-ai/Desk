@@ -163,6 +163,7 @@ desk/
 │   ├── toolbar/              # 오른쪽 상태 패널 (서랍 목록). 셸의 레일과 같은 자리 (ADR 0028)
 │   ├── dock/                 # 아래 독 (플러그인 타일). 셸의 아래 가장자리와 같은 자리 (ADR 0028)
 │   ├── permissions/          # grant 목록 · 회수 · 프롬프트 창 (endue.permissions, #69)
+│   ├── explorer/             # 허락한 폴더 트리 · 열기는 desk.files 로 · 감시 (endue.explorer, docs/ko/explorer-requirements.md)
 │   ├── terminal/             # 터미널: 사용자의 셸을 코어의 PTY 에서, xterm.js 는 폴더 안에 (endue.terminal, ADR 0033)
 │   ├── profiles/             # 프로필 전환 · 저장 (desk.profiles, 예전 이름 modes)
 │   ├── shell/                # 데스크 셸의 정책 desk.shell: 샘플 프로필 · 설정 · 색 (ADR 0025). 셸의 코드는 packages/runtime

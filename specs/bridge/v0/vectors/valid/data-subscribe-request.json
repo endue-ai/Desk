@@ -1,0 +1,24 @@
+{
+  "target": "BridgeRequest",
+  "description": "data.subscribe: changes to the open tasks, under a data:read scope for every source",
+  "instance": {
+    "id": 42,
+    "method": "data.subscribe",
+    "params": {
+      "query": {
+        "kinds": ["task"],
+        "where": [
+          {
+            "field": "status",
+            "op": "eq",
+            "value": "open"
+          }
+        ]
+      },
+      "scope": {
+        "permission": "data:read",
+        "kinds": ["task"]
+      }
+    }
+  }
+}
