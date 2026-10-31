@@ -46,9 +46,11 @@ const store: Record<string, unknown> = JSON.parse(params.get("store") ?? "{}");
 const written: Array<{ path: string; content: string }> = [];
 const clock = new ManualClock();
 const { client, stub } = browserCore({
-  // The bare desk: every desk.* policy but the shell's own.
+  // The bare desk: every desk.* policy but the shell's own (views.html has the view engine).
   manifests: [
-    ...Object.values(manifests).filter((m) => m.id.startsWith("desk.") && m.id !== "desk.shell"),
+    ...Object.values(manifests).filter(
+      (m) => m.id.startsWith("desk.") && m.id !== "desk.shell" && m.id !== "desk.views",
+    ),
     echo,
     counter,
   ],

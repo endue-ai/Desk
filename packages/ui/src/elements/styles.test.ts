@@ -9,8 +9,12 @@ const COLOURED =
   /^(color|background(-color)?|border(-[a-z]+)?(-color)?|outline(-color)?|box-shadow)$/;
 const PLAIN = /^(-?[\d.]+(px|%|em|rem)?|solid|none|inherit|transparent|currentcolor|inset)$/i;
 
+// What takes no focus: a number and a card show, they are not controls.
+const UNFOCUSED = new Set(["desk-stat", "desk-card"]);
+const DENSE = ["desk-list", "desk-table", "desk-agenda", "desk-stat", "desk-markdown", "desk-card"];
+
 describe("element styles", () => {
-  it("cover the six elements", () => {
+  it("cover the eleven elements", () => {
     expect(Object.keys(elements)).toEqual([
       "desk-button",
       "desk-input",
@@ -18,7 +22,23 @@ describe("element styles", () => {
       "desk-dialog",
       "desk-menu",
       "desk-toast",
+      "desk-table",
+      "desk-agenda",
+      "desk-stat",
+      "desk-markdown",
+      "desk-card",
     ]);
+  });
+
+  it("desk-list and the five new elements style a compact density", () => {
+    const styles = elements as Record<string, { styles: string }>;
+    for (const name of DENSE) {
+      const rules = parseRules(styles[name]?.styles ?? "");
+      const compact = rules.filter((rule) =>
+        rule.selector.startsWith(':host([density="compact"])'),
+      );
+      expect(compact.length, name).toBeGreaterThan(0);
+    }
   });
 
   for (const [name, element] of Object.entries(elements)) {
@@ -44,6 +64,7 @@ describe("element styles", () => {
       for (const property of used) expect(known).toContain(property);
     });
 
+    if (UNFOCUSED.has(name)) continue;
     it(`${name} draws a visible focus ring in the accent`, () => {
       const rings = rules.filter(
         (rule) =>

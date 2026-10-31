@@ -1,6 +1,6 @@
 /**
- * Routes owned events (brain turns, fs watches, processes) to the plugin whose call started them:
- * a plugin hears about its own work and nothing of other plugins'. Events that arrive before the
+ * Routes owned events (brain turns, fs watches, data subscriptions, processes) to the plugin whose
+ * call started them: a plugin hears about its own work and nothing of other plugins'. Events that arrive before the
  * call's answer names their key wait for the claim, in order, so a process that writes at once is
  * not missed.
  */
@@ -9,6 +9,7 @@ import type {
   BridgeEvent,
   BridgeRequest,
   BridgeResponse,
+  DataSubscribeResult,
   FsWatchResult,
   ProcSpawnResult,
 } from "@endue-ai/bridge";
@@ -23,6 +24,8 @@ export function eventKey(event: BridgeEvent): string | undefined {
       return `turn:${event.data.turnId}`;
     case "fs.changed":
       return `watch:${event.data.watchId}`;
+    case "data.changed":
+      return `sub:${event.data.subscriptionId}`;
     case "proc.output":
     case "proc.exit":
       return `proc:${event.data.procId}`;
@@ -39,6 +42,8 @@ export function claimKey(request: BridgeRequest, response: BridgeResponse): stri
       return `turn:${(response.result as BrainSayResult).turnId}`;
     case "fs.watch":
       return `watch:${(response.result as FsWatchResult).watchId}`;
+    case "data.subscribe":
+      return `sub:${(response.result as DataSubscribeResult).subscriptionId}`;
     case "proc.spawn":
       return `proc:${(response.result as ProcSpawnResult).procId}`;
     default:
@@ -84,6 +89,12 @@ export class Owners {
     const early = this.#early.get(key) ?? [];
     this.#early.delete(key);
     return early.filter((event) => this.route(event, key) !== undefined);
+  }
+
+  /** A key ended on purpose (data.unsubscribe): nothing more is routed for it. */
+  release(key: string): void {
+    this.#owners.delete(key);
+    this.#early.delete(key);
   }
 
   /** Forget everything `owner` held: its surface went away. */

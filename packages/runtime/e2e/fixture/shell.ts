@@ -17,13 +17,15 @@ if (!root) throw new Error("no #desk element");
 const params = new URLSearchParams(location.search);
 const clock = new ManualClock();
 // The desk.* policies (the shell's own included) and the palette: the plugin chrome the shell
-// replaces (dock, toolbar, sidebar) is not installed here.
+// replaces (dock, toolbar, sidebar) is not installed here, nor the view engine (views.html has it).
 const manifests = import.meta.glob<PluginManifest>("../../../../plugins/*/plugin.json", {
   eager: true,
   import: "default",
 });
 const core = browserCore({
-  manifests: Object.values(manifests).filter((m) => m.id.startsWith("desk.")),
+  manifests: Object.values(manifests).filter(
+    (m) => m.id.startsWith("desk.") && m.id !== "desk.views",
+  ),
   store: params.has("persist") ? localStore("desk.core.") : memoryStore(),
   init: {
     profile: "morning",

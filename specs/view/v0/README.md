@@ -28,8 +28,13 @@ Each has an optional `title`, `binding`, `fields` (`{ label?, value }`), `action
   the same id. A view runs no code; what it cannot say is a UI plugin's job.
 - A template is text in which `{path}` is a field of the item in scope and `{params.<name>}` a param;
   `{path|time}`, `|date`, `|relative` and `|number` format it, and `{{` `}}` are braces. Titles, field
-  values, `text` and the strings in action `args` and binding `where` values are templates. There is no
-  expression language in v0.
+  values, `text` and the strings in action `args` and binding `where` values are templates, so
+  `{params.<name>}` is filled in a `where` value and an action arg too. There is no expression
+  language in v0.
+- `{now}`, `{today}`, `{tomorrow}` and `{yesterday}` are the view engine's clock, in the view's time
+  zone, as RFC 3339 instants: now, and the starts of this day, the next and the one before. A `where`
+  value `{today}` compares as an instant (`start gte {today}`, `due lt {tomorrow}`). A template that is
+  one placeholder alone keeps the value's type (a number stays a number).
 
 Two rules go beyond the schema: every `$name` is a `requires` entry and every `{params.<name>}` a
 declared param. `desk_bridge::view_problems` checks them; the contract tests judge the vectors with it.

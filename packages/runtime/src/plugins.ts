@@ -3,6 +3,7 @@ import type {
   BridgeEvent,
   BridgeRequest,
   BridgeResponse,
+  Permission,
   PluginInfo,
 } from "@endue-ai/bridge";
 import { CommandError } from "./commands";
@@ -59,7 +60,7 @@ export class PluginHost {
   readonly #options: PluginHostOptions;
   readonly #mounted = new Map<string, PluginInfo>();
   readonly #state = new Map<string, unknown>();
-  /** Turns, watches and processes, by the plugin whose call started them (owners.ts). */
+  /** Turns, watches, data subscriptions and processes, by the plugin whose call started them. */
   readonly #owners = new Owners();
   /** Commands delivered to plugins that wait for their reply, by call id. */
   readonly #pending = new Map<
@@ -185,6 +186,11 @@ export class PluginHost {
         this.#post(owner, { type: "desk:event", event });
       return;
     }
+    if (event.event === "connector.changed" || event.event === "view.changed") {
+      const manage = event.event === "connector.changed" ? "connector:manage" : "view:manage";
+      this.#broadcast(event, manage);
+      return;
+    }
     if (event.event === "cmd.invoked" || event.event === "cmd.answered") {
       // The provider hears its invocations; a caller hears its answers. The desk's own go nowhere.
       const plugin = this.#commands.route(event);
@@ -218,20 +224,27 @@ export class PluginHost {
     }
   }
 
-  /** plugin.changed goes to plugins that manage plugins, like the sidebar. */
-  #broadcast(event: BridgeEvent): void {
+  /**
+   * An event for the plugins whose manifest asks for `manage`: plugin.changed to the ones that manage
+   * plugins (the sidebar), connector.changed and view.changed to the ones that manage those.
+   */
+  #broadcast(event: BridgeEvent, manage: Permission["permission"] = "plugin:manage"): void {
     for (const [id, info] of this.#mounted) {
-      const manages = info.manifest?.permissions?.some((p) => p.permission === "plugin:manage");
+      const manages = info.manifest?.permissions?.some((p) => p.permission === manage);
       if (manages) this.#post(id, { type: "desk:event", event });
     }
   }
 
   /**
-   * A call's answer names the turn, watch or process it started: its events go to the plugin that
-   * made the call, those that came early first.
+   * A call's answer names the turn, watch, subscription or process it started: its events go to the
+   * plugin that made the call, those that came early first. An unsubscribe ends its key.
    */
   #claim(request: BridgeRequest, response: BridgeResponse, owner: string): void {
     this.#commands.observe(request, response, owner);
+    if (request.method === "data.unsubscribe" && response.ok) {
+      this.#owners.release(`sub:${request.params.subscriptionId}`);
+      return;
+    }
     for (const event of this.#owners.claim(request, response, owner)) {
       this.#post(owner, { type: "desk:event", event });
     }
@@ -287,7 +300,7 @@ export class PluginHost {
         ).then((answers) => {
           const results = answers.map(({ request, response }) => ({ id: request.id, response }));
           this.#post(id, { type: "desk:results", results });
-          // After the results, so a plugin learns its turn, watch or process id before its events.
+          // After the results, so a plugin learns its turn, watch, subscription or process id first.
           for (const { request, response } of answers) this.#claim(request, response, id);
         });
         break;

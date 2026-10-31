@@ -1,0 +1,39 @@
+{
+  "tag": "main",
+  "data-density": "regular",
+  "children": [
+    {
+      "tag": "header",
+      "class": "bar",
+      "children": [
+        {
+          "tag": "h1",
+          "text": "Overdue"
+        },
+        {
+          "tag": "p",
+          "class": "description",
+          "text": "Tasks that were due before yesterday: none in the fixtures."
+        }
+      ]
+    },
+    {
+      "tag": "section",
+      "class": "component",
+      "data-component": "list",
+      "data-state": "empty",
+      "children": [
+        {
+          "tag": "h2",
+          "class": "component-title",
+          "text": "Overdue"
+        },
+        {
+          "tag": "p",
+          "class": "empty",
+          "text": "Nothing due"
+        }
+      ]
+    }
+  ]
+}

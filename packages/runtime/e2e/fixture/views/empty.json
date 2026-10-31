@@ -1,0 +1,38 @@
+{
+  "id": "test.empty",
+  "version": "0.1.0",
+  "title": "Overdue",
+  "description": "Tasks that were due before yesterday: none in the fixtures.",
+  "requires": {
+    "tasks": {
+      "kinds": ["task"],
+      "title": "A task list"
+    }
+  },
+  "layout": {
+    "type": "list",
+    "title": "Overdue",
+    "binding": {
+      "kinds": ["task"],
+      "sources": ["$tasks"],
+      "where": [
+        {
+          "field": "status",
+          "op": "eq",
+          "value": "open"
+        },
+        {
+          "field": "due",
+          "op": "lt",
+          "value": "{yesterday}"
+        }
+      ]
+    },
+    "fields": [
+      {
+        "value": "{title}"
+      }
+    ],
+    "empty": "Nothing due"
+  }
+}

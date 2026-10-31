@@ -21,6 +21,11 @@ const brainSay: BridgeRequest = {
   method: "brain.say",
   params: { text: "hi", scope: { permission: "brain:converse" } },
 };
+const dataSubscribe: BridgeRequest = {
+  id: 4,
+  method: "data.subscribe",
+  params: { query: { kinds: ["note"] }, scope: { permission: "data:read" } },
+};
 const ok = (id: number, result: unknown): BridgeResponse => ({ id, ok: true, result });
 
 const changed = (watchId: string): BridgeEvent => ({
@@ -32,6 +37,10 @@ const output = (procId: string, data: string): BridgeEvent => ({
   data: { procId, stream: "pty", data, encoding: "utf8" },
 });
 const exit = (procId: string): BridgeEvent => ({ event: "proc.exit", data: { procId, code: 0 } });
+const dataChanged = (subscriptionId: string): BridgeEvent => ({
+  event: "data.changed",
+  data: { subscriptionId, changes: [] },
+});
 const turn = (turnId: string, kind: "started" | "completed"): BridgeEvent => ({
   event: "brain.turn",
   data: { turnId, kind },
@@ -54,6 +63,16 @@ describe("Owners", () => {
     expect(claimKey(fsWatch, ok(1, { watchId: "w1" }))).toBe("watch:w1");
     expect(claimKey(procSpawn, ok(2, { procId: "p1", pid: 4 }))).toBe("proc:p1");
     expect(claimKey(brainSay, ok(3, { turnId: "t1" }))).toBe("turn:t1");
+  });
+
+  it("sends a data subscription's changes to its subscriber until it unsubscribes", () => {
+    const owners = new Owners();
+    expect(claimKey(dataSubscribe, ok(4, { subscriptionId: "s1" }))).toBe("sub:s1");
+    owners.claim(dataSubscribe, ok(4, { subscriptionId: "s1" }), "endue.mail");
+    expect(route(owners, dataChanged("s1"))).toBe("endue.mail");
+    expect(route(owners, dataChanged("s2"))).toBeUndefined();
+    owners.release("sub:s1");
+    expect(route(owners, dataChanged("s1"))).toBeUndefined();
   });
 
   it("sends a watch's changes only to the plugin that started it", () => {

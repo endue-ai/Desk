@@ -17,6 +17,7 @@ import {
   SURFACE,
   type SurfaceOptions,
 } from "./context";
+import { dataFor, type PluginData, type PluginViews } from "./data";
 import { type HostMessage, type ThemeState, type Transport, windowTransport } from "./protocol";
 
 /** The bridge as a plugin sees it: calls are checked against the plugin's own grants. */
@@ -62,6 +63,10 @@ export interface PluginContext {
   log: PluginLog;
   events: PluginEvents;
   perm: PluginPerm;
+  /** The desk's item index (data.*), under the plugin's data:read grants. */
+  data: PluginData;
+  /** The person's views (view.*), under view:manage. */
+  views: PluginViews;
 }
 
 export interface UiPlugin {
@@ -147,6 +152,7 @@ export function connect(transport: Transport = windowTransport()): Promise<Plugi
           hide: () => transport.send({ type: "desk:visible", visible: false }),
         },
         commands: commands.api,
+        ...dataFor(bridge),
         theme: {
           get: () => theme,
           on: (listener) => {
