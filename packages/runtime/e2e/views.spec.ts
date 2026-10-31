@@ -166,11 +166,20 @@ test.describe("desk.views", () => {
     await first.click({ button: "right" });
     await expect(menu).toHaveAttribute("open", "");
     await expect(menu.getByRole("menuitem")).toHaveText(items);
+    // The original opens through shell.open (ADR 0047); the stub core hands its link to window.open.
+    await page.evaluate(() => {
+      const opened: string[] = [];
+      Object.assign(window, { __opened: opened });
+      window.open = (url) => {
+        opened.push(String(url));
+        return null;
+      };
+    });
     await menu.getByRole("menuitem", { name: "Open in the original app" }).click();
-    const toast = frame.locator("desk-toast");
-    await expect(toast).toBeVisible();
-    // Its own text; the shadow root adds the dismiss button.
-    await expect(toast).toHaveJSProperty("textContent", "Desk can't open the original app yet");
+    await expect
+      .poll(() => page.evaluate(() => (window as unknown as { __opened: string[] }).__opened))
+      .toEqual(["https://jira.example.com/browse/task-report"]);
+    await expect(frame.locator("desk-toast")).toBeHidden();
   });
 
   test("a surface narrower than 480 px draws compact", async ({ page }) => {
