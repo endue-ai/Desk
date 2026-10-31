@@ -18,7 +18,7 @@ use desk_bridge::{
 use desk_sys::proc::{self as sysproc, Event, Process, SpawnOptions, Stream};
 
 use crate::events::EventBus;
-use crate::handler::{Answer, Core, denied, error, json};
+use crate::handler::{Answer, Core, denied, error, json, sys_error};
 use crate::perm::{Denied, Target};
 
 struct ProcEntry {
@@ -303,11 +303,6 @@ fn size_of(size: desk_bridge::PtySize) -> sysproc::PtySize {
         cols: clamp(size.cols),
         rows: clamp(size.rows),
     }
-}
-
-/// A primitive's error, whose code is already the bridge's.
-fn sys_error(err: desk_sys::Error) -> BridgeError {
-    error(err.code, err.message)
 }
 
 pub(crate) fn lock(processes: &Mutex<Processes>) -> MutexGuard<'_, Processes> {

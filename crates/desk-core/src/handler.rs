@@ -173,7 +173,7 @@ impl Core {
             R::ProcWrite(r) => (r.id, self.proc_write(caller, r.params)),
             R::ProcResize(r) => (r.id, self.proc_resize(caller, r.params)),
             R::ProcKill(r) => (r.id, self.proc_kill(caller, r.params)),
-            R::NetFetch(r) => (r.id, unsupported("net.fetch")),
+            R::NetFetch(r) => (r.id, self.net_fetch(caller, r.params)),
             R::AudioCaptureStart(r) => (r.id, unsupported("audio.capture.start")),
             R::AudioCaptureStop(r) => (r.id, unsupported("audio.capture.stop")),
             R::UiSurfaceOpen(r) => (r.id, unsupported("ui.surface.open")),
@@ -314,6 +314,11 @@ fn unsupported(method: &str) -> Answer {
         ErrorCode::Unsupported,
         format!("{method} is not served by the core yet"),
     ))
+}
+
+/// A primitive's error, whose code is already the bridge's.
+pub(crate) fn sys_error(err: desk_sys::Error) -> BridgeError {
+    error(err.code, err.message)
 }
 
 pub(crate) fn io_error(err: io::Error) -> BridgeError {
