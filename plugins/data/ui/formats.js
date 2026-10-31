@@ -150,12 +150,11 @@ function open(name, bytes, format, label, options) {
     };
   const doc = parseText(name, text, format, label);
   if (doc === "raw") {
-    return {
-      format: "text",
-      label: "Text",
-      text,
-      note: `This file does not read as INI (line ${iniLine(text)}), so it opens as raw text.`,
-    };
+    const note =
+      format === "ini"
+        ? `This file does not read as INI (line ${iniLine(text)}), so it opens as raw text.`
+        : "Data does not know this file's format, so it opens as raw text.";
+    return { format: "text", label: "Text", text, note };
   }
   return { format: doc.format, label: doc.label, text, doc: doc.doc, ...extra };
 }

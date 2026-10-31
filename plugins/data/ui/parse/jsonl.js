@@ -28,6 +28,7 @@ export function parseJsonLines(text) {
     out.warnings?.push(...(doc.warnings ?? []));
     out.secretRanges?.push(...(doc.secretRanges ?? []));
     if (error) {
+      error.message = error.message.replace("end of input", "end of the line");
       out.errors.push(error);
       /** @type {DataNode} */
       const bad = {
