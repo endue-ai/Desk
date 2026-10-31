@@ -936,6 +936,8 @@ dependencies = [
  "desk-brain",
  "desk-brain-endue",
  "desk-bridge",
+ "desk-index",
+ "desk-plugin-host",
  "desk-sys",
  "jsonschema",
  "serde",

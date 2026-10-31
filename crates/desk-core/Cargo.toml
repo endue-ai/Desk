@@ -12,7 +12,9 @@ publish.workspace = true
 base64.workspace = true
 desk-brain.workspace = true
 desk-bridge.workspace = true
-desk-sys = { workspace = true, features = ["fs"] }
+desk-index.workspace = true
+desk-plugin-host.workspace = true
+desk-sys = { workspace = true, features = ["fs", "calendar"] }
 jsonschema.workspace = true
 serde.workspace = true
 serde_json.workspace = true
