@@ -56,7 +56,9 @@ on, and nothing new is reachable.
 ### Consequences
 
 * Good, because a read moves binary parts with no base64 or JSON, reports progress after each part,
-  and stops on Cancel; workers keep the surface drawing while a format parses.
+  and stops on Cancel: in the app a 1 GB file read in 1.2 s (a debug build on macOS, 512 parts), and
+  WKWebView sent no preflight for a single byte range. Workers keep the surface drawing while a
+  format parses.
 * Good, because `connect-src` names only the desk's scheme: other origins stay blocked for `fetch`,
   `XMLHttpRequest`, `EventSource` and `WebSocket`, inside workers too (they inherit the frame's CSP).
 * Bad, because frame code can now read the bytes of any file URL whose token it holds, and the scheme's
@@ -66,7 +68,8 @@ on, and nothing new is reachable.
   any JavaScript it ships; `eval` and `new Function` stay blocked.
 * Bad, because import maps do not reach workers: a worker module imports by URL, not `@endue-ai/...`.
   A worker whose import fails reports only an `error` event without a message.
-* Bad, because Tauri's bodies live in memory, so a 1 GB read is 512 requests through the scheme handler.
+* Bad, because Tauri's bodies live in memory, so every 2 MiB is one request through the scheme handler,
+  and `readBytes` holds the whole file in the frame: formats that need parts use `byteSource`.
 
 ## More Information
 
