@@ -17,6 +17,9 @@ pub const MAX_PART: u64 = 2 * 1024 * 1024;
 /// `bytes=0-`, so a frame that asks for a film without a range cannot fill memory.
 pub const MAX_WHOLE: u64 = 64 * 1024 * 1024;
 
+/// The response headers a frame's `fetch` may read besides the safelisted ones: where a part sits.
+pub const EXPOSED: &str = "Content-Range, Content-Length, Accept-Ranges";
+
 /// A file URL is a document of nothing: never a page that could run without the plugin's CSP.
 const FILE_CSP: &str = "default-src 'none'; style-src 'unsafe-inline'; sandbox";
 
@@ -103,6 +106,7 @@ fn read(file: &FileUrl, range: Option<&str>, head: bool) -> io::Result<Response<
     let size = opened.metadata()?.len();
     let response = Response::builder()
         .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+        .header(header::ACCESS_CONTROL_EXPOSE_HEADERS, EXPOSED)
         .header(header::CACHE_CONTROL, "no-store")
         .header(header::ACCEPT_RANGES, "bytes")
         .header(header::CONTENT_TYPE, file.media_type)
@@ -159,6 +163,7 @@ fn status(status: StatusCode) -> Response<Vec<u8>> {
     Response::builder()
         .status(status)
         .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+        .header(header::ACCESS_CONTROL_EXPOSE_HEADERS, EXPOSED)
         .header(header::CACHE_CONTROL, "no-store")
         .body(Vec::new())
         .unwrap_or_default()

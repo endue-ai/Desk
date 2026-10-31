@@ -4,9 +4,11 @@
 //!
 //! macOS and Linux see `desk-plugin://localhost/<id>/<path>`; Windows sees
 //! `http://desk-plugin.localhost/<id>/<path>`. Plugin frames are sandboxed (opaque origin), so
-//! responses allow any origin, and HTML gets a CSP that blocks network access: plugins reach the
-//! network only through the bridge's net.fetch, under its permission check. Media, images and
-//! fonts load from the scheme itself, media and images also from `blob:` and `data:`.
+//! responses allow any origin, preflights are answered (`Range` may be sent; `Content-Range` and
+//! its kin may be read), and HTML gets a CSP that blocks network access: plugins reach the network
+//! only through the bridge's net.fetch, under its permission check, while `fetch` reaches the scheme
+//! itself (file URLs). Scripts, media, images and fonts load from the scheme, media and images also
+//! from `blob:` and `data:`; workers start from `blob:` and WebAssembly may compile (ADR 0048).
 
 use std::io;
 use std::sync::Arc;
@@ -32,6 +34,9 @@ const UI: &str = include_str!(concat!(
 const FILE_PREFIX: &str = "_desk/file/";
 
 const SOURCES: &str = "desk-plugin: http://desk-plugin.localhost";
+/// The plugin frames' CSP with `{sources}` for the scheme in both forms; the runtime's e2e server
+/// serves its plugin frames under the same file, with its own origin as the sources.
+const PLUGIN_CSP: &str = include_str!("plugin-csp.txt");
 
 /// What the scheme serves from the core: plugin files, and the file a URL token names.
 pub trait Source {
@@ -68,6 +73,9 @@ pub fn serve(app: &AppHandle, request: &Request<Vec<u8>>) -> Response<Vec<u8>> {
 
 /// The response for a request: a file URL, one of the embedded bundles, or a plugin's file.
 fn respond(request: &Request<Vec<u8>>, source: &impl Source) -> Response<Vec<u8>> {
+    if request.method() == Method::OPTIONS {
+        return preflight();
+    }
     let path = decode(request.uri().path().trim_start_matches('/'));
     if let Some(rest) = path.strip_prefix(FILE_PREFIX) {
         let file = match rest.split_once('/') {
@@ -111,11 +119,20 @@ fn respond(request: &Request<Vec<u8>>, source: &impl Source) -> Response<Vec<u8>
 }
 
 fn plugin_csp() -> String {
-    format!(
-        "default-src 'none'; script-src {SOURCES} 'unsafe-inline'; style-src {SOURCES} 'unsafe-inline'; \
-         img-src {SOURCES} data: blob:; media-src {SOURCES} blob: data:; font-src {SOURCES}; \
-         connect-src 'none'; frame-src 'none'; form-action 'none'"
-    )
+    PLUGIN_CSP.trim().replace("{sources}", SOURCES)
+}
+
+/// The answer to a CORS preflight, for any path: a frame's `fetch` with a `Range` header asks first.
+fn preflight() -> Response<Vec<u8>> {
+    Response::builder()
+        .status(StatusCode::NO_CONTENT)
+        .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+        .header(header::ACCESS_CONTROL_ALLOW_METHODS, "GET, HEAD, OPTIONS")
+        .header(header::ACCESS_CONTROL_ALLOW_HEADERS, "Range")
+        .header(header::ACCESS_CONTROL_EXPOSE_HEADERS, file_urls::EXPOSED)
+        .header(header::ACCESS_CONTROL_MAX_AGE, "600")
+        .body(Vec::new())
+        .unwrap_or_default()
 }
 
 /// A plugin file's type: the web's own types here, media and documents as fs.url types them.

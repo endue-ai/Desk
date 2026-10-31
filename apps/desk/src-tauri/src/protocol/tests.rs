@@ -230,8 +230,11 @@ fn the_plugin_csp_allows_media_and_blob_images() {
 #[test]
 fn the_plugin_csp_runs_workers_and_webassembly_and_fetches_only_the_desk() {
     let csp = plugin_csp();
-    // A module worker starts from a blob: trampoline; it imports the plugin's files as scripts.
-    assert_eq!(directive(&csp, "worker-src"), ["blob:"]);
+    // A module worker starts from a blob: trampoline that imports the plugin's file: WebKit checks a
+    // module worker's whole import graph against worker-src, so the scheme is there too.
+    let workers = directive(&csp, "worker-src");
+    assert_eq!(workers[0], "blob:");
+    assert_eq!(workers[1..], SCHEME_FORMS);
     let scripts = directive(&csp, "script-src");
     for source in SCHEME_FORMS
         .iter()
