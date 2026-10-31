@@ -41,7 +41,7 @@ const calls = (page: Page, method: string) =>
 test.describe("desk.views", () => {
   test("view-today renders from the spec's vector on the stub fixtures", async ({ page }) => {
     await load(page);
-    const frame = await open(page, { id: "desk.today" });
+    const frame = await open(page, { id: "test.view-today" });
     await expect(frame.locator('[data-component="list"][data-state="ready"]')).toBeVisible();
     await expect(frame.locator('[data-component="agenda"][data-state="ready"]')).toBeVisible();
     await expect(frame.locator("#root")).toHaveAttribute("data-density", "regular");
@@ -71,7 +71,7 @@ test.describe("desk.views", () => {
 
   test("a data.changed from the stub updates the rendered list", async ({ page }) => {
     await load(page);
-    const frame = await open(page, { id: "desk.today" });
+    const frame = await open(page, { id: "test.view-today" });
     const list = frame.locator('[data-component="list"] desk-list');
     await expect(list).toContainText("Send the weekly report");
     // A mark on the frame's window: a reloaded frame would not have it.
@@ -114,7 +114,7 @@ test.describe("desk.views", () => {
 
   test("a connector in error draws the error state with Reconnect", async ({ page }) => {
     await load(page, "?status=error");
-    const frame = await open(page, { id: "desk.today" });
+    const frame = await open(page, { id: "test.view-today" });
     const bound = frame.locator("[data-component]");
     await expect(bound).toHaveCount(2);
     for (const component of await bound.all()) {
@@ -176,7 +176,7 @@ test.describe("desk.views", () => {
   test("a surface narrower than 480 px draws compact", async ({ page }) => {
     await page.setViewportSize({ width: 420, height: 800 });
     await load(page);
-    const frame = await open(page, { id: "desk.today" });
+    const frame = await open(page, { id: "test.view-today" });
     await expect(frame.locator('[data-component="list"][data-state="ready"]')).toBeVisible();
     await expect(frame.locator("#root")).toHaveAttribute("data-density", "compact");
     const densities = await frame.evaluate(() =>
@@ -190,7 +190,7 @@ test.describe("desk.views", () => {
 
   test("the palette opened over a view is drawn above it", async ({ page }) => {
     await load(page);
-    const frame = await open(page, { id: "desk.today" });
+    const frame = await open(page, { id: "test.view-today" });
     await expect(frame.locator('[data-component="list"][data-state="ready"]')).toBeVisible();
     await page.keyboard.press("Control+K");
     await expect(page.locator(PALETTE)).toBeVisible();
