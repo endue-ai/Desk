@@ -5,6 +5,7 @@
 //   ?platform=mac                        the keymap's platform  ?profile=focus             start profile
 //   ?rules=[{"match":{...},"area":...}]  display rules test.echo contributes
 //   ?store={"session":{...}}             what the core's store holds for the runtime at start
+//   ?initProblem=why                     init.get reports init.yaml as not in force
 import type { PluginManifest } from "@endue-ai/bridge";
 import "../../src/desk.css";
 import { browserCore, memoryStore } from "../../src/bridge/core";
@@ -64,6 +65,7 @@ const { client, stub } = browserCore({
   init: {
     profile: params.get("profile") ?? "default",
     settings: JSON.parse(params.get("init") ?? "{}"),
+    ...(params.has("initProblem") ? { problem: params.get("initProblem") ?? "" } : {}),
   },
   handlers: {
     "fs.write": ({ path, content }) => {

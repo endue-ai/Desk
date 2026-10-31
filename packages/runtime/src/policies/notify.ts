@@ -110,7 +110,8 @@ export function installNotify(ctx: DeskContext, statusLine: HTMLElement): Notify
       base = text;
       if (!notifications.current()) render(null);
     },
-    text: () => statusLine.textContent ?? "",
+    // The base line, not the notice over it: desk_ready and the smoke test read "desk ready".
+    text: () => base,
     dispose: offs.dispose,
   };
 }

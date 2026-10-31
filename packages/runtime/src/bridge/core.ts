@@ -29,7 +29,7 @@ export interface BrowserCoreOptions {
   /** Installed but turned off. */
   off?: Iterable<string>;
   store?: CoreStore;
-  init?: { profile?: string; settings?: Record<string, unknown> };
+  init?: { profile?: string; settings?: Record<string, unknown>; problem?: string };
   /** More methods (fs.write, ui.notify, ...), or the ones above answered differently. */
   handlers?: StubHandlers;
 }
@@ -111,6 +111,7 @@ export function browserCore(options: BrowserCoreOptions): BrowserCore {
     "init.get": () => ({
       profile: options.init?.profile ?? "default",
       settings: options.init?.settings ?? {},
+      ...(options.init?.problem ? { problem: options.init.problem } : {}),
     }),
     ...options.handlers,
   });

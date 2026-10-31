@@ -21,7 +21,11 @@ describe("desk.notify's status line", () => {
     const policy = installNotify(context(), line);
     policy.setBase("desk ready · bridge: browser");
     expect(policy.text()).toBe("desk ready · bridge: browser");
-    policy.notify({ caller: "desk", title: "No profile nope — init.yaml names it.", level: "warning" });
+    policy.notify({
+      caller: "desk",
+      title: "No profile nope — init.yaml names it.",
+      level: "warning",
+    });
     expect(line.textContent).toBe("No profile nope — init.yaml names it.");
     expect(policy.text()).toBe("desk ready · bridge: browser");
   });
