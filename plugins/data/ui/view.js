@@ -6,6 +6,7 @@
 
 import { createPanel } from "./panel.js";
 import { createRawView } from "./raw-view.js";
+import { CHECKED } from "./schemas.js";
 import { chainOf, search } from "./search.js";
 import { isMasked, maskRanges } from "./secrets.js";
 import { childrenOf, isBranch, pathOf, pointerOf, previewOf, resolve } from "./tree.js";
@@ -59,6 +60,7 @@ export function createView(doc, actions) {
     count: byId("search-count"),
     status: byId("status"),
     toolbar: byId("toolbar"),
+    validate: byId("validate"),
   };
   /** @type {Record<Mode, HTMLElement>} */
   const modes = { tree: byId("mode-tree"), raw: byId("mode-raw"), both: byId("mode-both") };
@@ -190,7 +192,7 @@ export function createView(doc, actions) {
     button.addEventListener("click", () => setMode(/** @type {Mode} */ (name)));
   byId("expand-all").addEventListener("click", () => tree.expandAll());
   byId("collapse-all").addEventListener("click", () => tree.collapseAll());
-  byId("validate").addEventListener("click", () => actions.validateWith());
+  $.validate.addEventListener("click", () => actions.validateWith());
   byId("search-next").addEventListener("click", () => next());
   $.reveal.addEventListener("click", () => {
     const row = tree.selected();
@@ -244,6 +246,7 @@ export function createView(doc, actions) {
       $.path.textContent = next?.path ?? "";
       $.format.textContent = next ? next.opened.label : "";
       $.toolbar.hidden = !next || next.opened.reason !== undefined;
+      $.validate.hidden = !next || !CHECKED.has(next.opened.format) || !next.opened.doc;
       $.note.hidden = !next?.opened.note;
       $.note.textContent = next?.opened.note ?? "";
       $.details.hidden = true;

@@ -86,13 +86,19 @@ const RULES = {
       "tok-key",
     ],
     [/"(?:[^"\\]|\\.)*"?|'(?:[^']|'')*'?/y, "tok-string"],
-    [/\d{4}-\d\d-\d\d(?:[Tt ][\d:.]+(?:Z|[ ]?[-+][\d:]+)?)?(?=\s|$|,|\])/y, "tok-date"],
     [
-      /[-+]?(?:0x[0-9a-fA-F]+|0o[0-7]+|\.(?:inf|Inf|INF|nan|NaN|NAN)|\d+\.?\d*(?:[eE][-+]?\d+)?)(?=\s|$|,|\]|\})/y,
+      /(?<=(?:^[\s-]*|:\s+|[[,{]\s*))\d{4}-\d\d-\d\d(?:[Tt ][\d:.]+(?:Z|[ ]?[-+][\d:]+)?)?(?=\s*(?:$|#|,|\]|\}))/y,
+      "tok-date",
+    ],
+    [
+      /(?<=(?:^[\s-]*|:\s+|[[,{]\s*))[-+]?(?:0x[0-9a-fA-F]+|0o[0-7]+|\.(?:inf|Inf|INF|nan|NaN|NAN)|\d+\.?\d*(?:[eE][-+]?\d+)?)(?=\s*(?:$|#|,|\]|\}))/y,
       "tok-number",
     ],
-    [/\b(?:true|false|True|False|TRUE|FALSE|null|Null|NULL)\b|~/y, "tok-literal"],
-    [/[-:?|>,[\]{}]/y, "tok-punct"],
+    [
+      /(?<=(?:^[\s-]*|:\s+|[[,{]\s*))(?:true|false|True|False|TRUE|FALSE|null|Null|NULL|~)(?=\s*(?:$|#|,|\]|\}))/y,
+      "tok-literal",
+    ],
+    [/-(?=\s)|:(?=\s|$)|[?|>,[\]{}]/y, "tok-punct"],
   ],
   toml: [
     [/#.*/y, "tok-comment"],

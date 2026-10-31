@@ -98,6 +98,10 @@ input[type="search"] {
 
 :focus-visible { outline: 2px solid var(--desk-accent); outline-offset: 1px; }
 
+#tree:focus-visible, #raw:focus-visible { outline-offset: -2px; }
+
+#details:focus { outline: none; }
+
 #search-count {
   max-width: 28em;
   overflow: hidden;
@@ -152,7 +156,6 @@ main[data-mode="tree"] > #tree-pane, main[data-mode="raw"] > #raw-pane { border-
 .row {
   display: flex;
   align-items: center;
-  gap: 2px;
   height: var(--data-row);
   padding-right: 8px;
   overflow: hidden;
@@ -167,7 +170,10 @@ main[data-mode="tree"] > #tree-pane, main[data-mode="raw"] > #raw-pane { border-
   outline-offset: -1px;
 }
 
+.sep { white-space: pre; }
+
 .twisty {
+  flex: none;
   display: inline-block;
   width: 14px;
   color: var(--desk-text-muted);
@@ -224,7 +230,10 @@ main[data-mode="tree"] > #tree-pane, main[data-mode="raw"] > #raw-pane { border-
 
 .line.current { background: var(--data-current); }
 
-.line.error { box-shadow: inset 3px 0 0 var(--data-error); }
+.line.error {
+  background: color-mix(in srgb, var(--data-error) 14%, transparent);
+  box-shadow: inset 3px 0 0 var(--data-error);
+}
 
 .line.error .ln { color: var(--data-error); }
 
@@ -271,7 +280,7 @@ footer { border-top: 1px solid var(--desk-border); }
 
 #where code { font: 12px ui-monospace, "SF Mono", Menlo, monospace; user-select: text; }
 
-#where[data-root="true"] #pointer::before { content: "(the root)"; color: var(--desk-text-muted); }
+#where[data-root="true"] #pointer::before, #where[data-root="true"] #dotted::before { content: "(the root)"; color: var(--desk-text-muted); }
 
 #problems {
   max-height: 30vh;
