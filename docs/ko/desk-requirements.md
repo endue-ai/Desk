@@ -189,7 +189,15 @@ Tauri 셸과 `desk-sys` 는 드라이버입니다. 검사는 하지 않고 코�
 | `git` | 키보드 중심 Git 표면: 상태 · 스테이징 · 커밋 · 로그 그래프 · diff. 모든 동작이 커맨드. 요구사항은 `git-plugin-requirements.md` | 2 |
 | `database` | PostgreSQL · MySQL / MariaDB · SQLite 클라이언트: 연결 · 탐색기 · SQL 콘솔 · 결과 · 읽기 전용과 운영 DB 보호. 엔진의 공식 CLI 를 셸 없이(ADR 0038). 요구사항은 `database-plugin-requirements.md` | 2 |
 | `docker` | 컨테이너 관리 표면: 컨테이너 · Compose · 이미지 · 볼륨 · 네트워크, 따라가는 로그 · 상세 · 셸 · 정리 · 실패 알림. 모든 동작이 커맨드. 요구사항은 `docker-plugin-requirements.md`, CLI 를 쓰는 이유는 ADR 0039 | 2 |
-| `viewer` | 마크다운 · 이미지 · JSON · PDF 미리보기 | 2 |
+| `sheets` | 스프레드시트를 한 그리드로: Excel(xlsx · xls · xlsb) · Numbers · ODS · CSV/TSV(구분자 · 인코딩 자동, EUC-KR 포함) · DIF · SYLK · Lotus · Quattro · Google Sheets 바로가기. 시트 탭 · 수식 바 · 찾기. SheetJS 를 vendoring(ADR 0043) | 2 |
+| `docs` | 워드 문서를 한 페이지 뷰로: Word(docx · doc) · ODF · RTF · HWPX · HWP · AbiWord · WordPerfect/Works(텍스트) · Pages(미리보기) · Google Docs 바로가기. 개요 · 주석 · 찾기. 한 문서 모델과 자체 리더 | 2 |
+| `slides` | 프레젠테이션을 한 뷰어로: PowerPoint(pptx · ppt) · ODP · Keynote(미리보기) · Google Slides 바로가기. 썸네일 레일 · 발표자 노트 · 재생 모드 | 2 |
+| `reader` | PDF · 전자책 · 만화를 한 리더로: PDF(pdf.js vendoring, ADR 0042) · XPS · EPUB · MOBI/KF8 · FB2 · CBZ/CBT. 목차 · 검색 · 북마크 · 노트. CBR · CB7 · DjVu 는 상세 정보 | 2 |
+| `images` | 이미지를 한 뷰어로: 웹 포맷 · HEIC · JPEG XL · TIFF(WebKit 이 해독하는 곳에서) · 자체 디코더(TGA · Netpbm · QOI · DDS · HDR · EXR · ICNS · KTX · DICOM · FITS · NIfTI) · RAW 내장 미리보기. 확대 · EXIF · 폴더 넘기기 · 비교 | 2 |
+| `player` | 영상 · 음성을 한 플레이어로: `fs.url` 스트리밍(ADR 0041), WebKit 이 못 트는 컨테이너는 코덱 정보, MIDI · AU 는 플러그인이 직접 재생. 자막(SRT · VTT · ASS · SAMI 등) · 재생목록 · 이어 보기 | 2 |
+| `data` | 구조화 데이터 · 설정 파일을 트리와 원문으로: JSON 계열 · YAML · TOML · XML · plist · INI · properties · dotenv · HCL · MessagePack · CBOR · BSON. 검색 · JSON Schema 검증 · 비밀 값 가림 | 2 |
+| `archives` | 압축 · 패키지 · 디스크 이미지를 한 트리로: ZIP 계열 · tar(gzip · bzip2 · xz · zstd · LZ4) · 7z · ISO · deb · rpm · gem · pkg · cab, 미리보기와 안전한 풀기(zip-slip 차단). RAR · MSI · 디스크 이미지는 목록이나 상세 정보. 범위 읽기(ADR 0041) | 2 |
+| `web` | 저장한 웹 페이지 · 웹 아카이브 · 링크 파일 · 피드를 안전하게: allowlist sanitizer 를 거쳐 shadow root 에(ADR 0044), MHTML · webarchive · WARC · MAFF, url · webloc · desktop · lnk 는 카드, RSS · Atom · OPML. 스크립트는 돌지 않고 네트워크는 쓰지 않는다 | 2 |
 | `calendar` · `mail` | endue 커넥터 표면 (장면 6 · 7) | 3 |
 | `tasks` | 할 일 보드 (장면 8 "Plan my week") | 3 |
 | `agent-chat` | 에이전트별 대화와 활동 기록 표면 (AG-05) | 3 |
@@ -309,6 +317,9 @@ CI · 테스트 층 · 릴리스 파이프라인은 `desk-structure.md` 가 정�
 | PKG-02 · PKG-03 (`desk` CLI 가 로컬 소켓으로 실행 중 데스크에) | #80 | 진행 중 |
 | SET-03 · CORE-16 (코어가 `settings.*` · `log.*` 를 처리) | #81 | 진행 중 |
 | OPS-01 (앱 e2e 와 설치 스모크) | #82 | 진행 중 |
+| BASE 파일 플러그인의 기반: `fs.read` 범위 읽기 · `fs.url` 스트리밍 · 확장자 대소문자 무시(ADR 0041) | #153 · #164 | 머지 |
+| BASE `sheets` · `docs` · `slides` · `reader` · `images` · `player` · `data` · `archives` · `web` (활동별 파일 플러그인, ADR 0042 · 0043 · 0044 · 0045) | #154–#162 · #165–#172 · #174 | 머지 |
+| 파일 플러그인 autoload: 시작할 때 꺼져 있고 파일을 열면 켜진다(ADR 0046) | #173 · #175 | 머지 |
 
 모드는 정책 스택(#54, #55 로 머지)에서 프로필로 이름이 바뀌었습니다. 이 문서의 RT-07 · SYSP `modes` 는 프로필을 뜻합니다.
 
