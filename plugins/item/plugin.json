@@ -1,0 +1,37 @@
+{
+  "id": "desk.item",
+  "name": "Item",
+  "version": "0.1.0",
+  "kind": "view",
+  "description": "One item in Desk: what the palette's Open in Desk shows.",
+  "view": {
+    "id": "desk.item",
+    "version": "0.1.0",
+    "title": "Item",
+    "description": "One item from a connected source.",
+    "params": {
+      "connector": { "kind": "string", "title": "Connector" },
+      "instance": { "kind": "string", "title": "Instance" },
+      "id": { "kind": "string", "title": "Item" }
+    },
+    "layout": {
+      "type": "card",
+      "binding": {
+        "where": [
+          { "field": "source.connector", "op": "eq", "value": "{params.connector}" },
+          { "field": "source.instance", "op": "eq", "value": "{params.instance}" },
+          { "field": "id", "op": "eq", "value": "{params.id}" }
+        ],
+        "limit": 1
+      },
+      "fields": [
+        { "value": "{title}" },
+        { "label": "Kind", "value": "{kind}" },
+        { "label": "From", "value": "{source.connector}" },
+        { "label": "Updated", "value": "{updatedAt|relative}" },
+        { "value": "{body}" }
+      ],
+      "empty": "This item is not in Desk any more."
+    }
+  }
+}

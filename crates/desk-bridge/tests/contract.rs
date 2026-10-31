@@ -8,9 +8,9 @@ use std::path::{Path, PathBuf};
 use desk_bridge::{
     BridgeEvent, BridgeRequest, BridgeResponse, CatalogGetResult, ConnectorInstance,
     ConnectorManifest, ConnectorStatus, ConnectorSyncResult, InitDocument, InitGetResult,
-    InitSettingKey, Item, ItemChange, ItemPage, ItemQuery, PermQueryResult, Permission,
-    PluginContributes, PluginListResult, PluginManifest, StoreGetResult, View, manifest_problems,
-    view_problems,
+    InitSettingKey, Item, ItemChange, ItemPage, ItemQuery, PaletteResults, PermQueryResult,
+    Permission, PluginContributes, PluginListResult, PluginManifest, StoreGetResult, View,
+    manifest_problems, view_problems,
 };
 use serde::Serialize;
 use serde::de::DeserializeOwned;
@@ -226,6 +226,7 @@ fn valid_vectors_roundtrip_through_generated_types() {
                 "InitSettingKey" => roundtrip::<InitSettingKey>(vector),
                 "InitGetResult" => roundtrip::<InitGetResult>(vector),
                 "PluginContributes" => roundtrip::<PluginContributes>(vector),
+                "PaletteResults" => roundtrip::<PaletteResults>(vector),
                 other => panic!("{}: no Rust type mapped for {other}", vector.file),
             }
         }

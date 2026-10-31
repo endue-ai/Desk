@@ -91,6 +91,36 @@ describe("collect", () => {
     expect(policy.ignored).toHaveLength(3);
   });
 
+  it("collects palette providers in layer order and ignores one whose command is outside its plugin", () => {
+    const policy = collect([
+      plugin("example.files", {
+        paletteProviders: [
+          { command: "example.files.find", title: "Files" },
+          { command: "desk.palette.items", title: "Steal the items" },
+        ],
+      }),
+      plugin(
+        "desk.palette",
+        { paletteProviders: [{ command: "desk.palette.items", title: "Items" }] },
+        { kind: "ui" },
+      ),
+      plugin(
+        "example.off",
+        { paletteProviders: [{ command: "example.off.find", title: "Off" }] },
+        {
+          enabled: false,
+        },
+      ),
+    ]);
+    expect(policy.paletteProviders).toEqual([
+      { command: "desk.palette.items", title: "Items", owner: "desk.palette" },
+      { command: "example.files.find", title: "Files", owner: "example.files" },
+    ]);
+    expect(policy.ignored).toEqual([
+      "example.files: palette provider desk.palette.items is outside example.files",
+    ]);
+  });
+
   it("lets a later layer's profile replace an earlier one of the same id", () => {
     const policy = collect([
       plugin("example.focus", { profiles: [{ id: "focus", name: "Deep focus" }] }),
