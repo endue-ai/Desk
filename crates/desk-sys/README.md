@@ -9,11 +9,11 @@ Layer: Tauri shell (see `docs/architecture.md`). Status: fs, proc, net and calen
 
 ## Features and public API
 
-- `fs`: `read`, `list` (sorted; `EntryKind` file, dir or symlink), `write(path, bytes,
-  create_dirs)` (temp file + rename, keeps permissions, refuses folders and symlinks),
-  `watch_debounced(path, WatchOptions { recursive, debounce }, on_changes)` (one batch of
-  `Changed { path, change }` per quiet period, created/modified/removed). `watch_changes(path,
-  recursive, on_change)` and `watch` are raw, undebounced watches. Dropping a `Watch` stops it.
+- `fs`: `read`, `list` (sorted; `EntryKind` file, dir or symlink; `size` of files, `modified` of
+  files and folders), `write(path, bytes, create_dirs)` (temp file + rename, keeps permissions,
+  refuses folders and symlinks), `watch_debounced(path, WatchOptions { recursive, debounce },
+  on_changes)` (one batch of `Changed { path, change }` per quiet period, created/modified/removed),
+  and the raw `watch_changes(path, recursive, on_change)` and `watch`. Dropping a `Watch` stops it.
 - `proc`: `spawn(&SpawnOptions { program, args, cwd, env, pty }, on_event) -> Process`, no shell,
   program looked up on PATH. `on_event` gets `Event::Output { stream, data }` (stdout, stderr or
   pty) and then `Event::Exit(Exit { code, signal })`, always last. `Process::write`, `resize` (PTY

@@ -42,12 +42,12 @@ check:
     pnpm exec spectral lint specs/brain/v0/openapi.yaml --fail-severity=warn --quiet
 
 # Lint the Tauri app crate (needs the platform webview SDK)
-check-app: build-sdk
+check-app: build-sdk build-ui
     pnpm --filter @endue-ai/desk-app build
     cargo clippy -p desk-app --all-targets -- -D warnings
 
 # Build the Tauri app binary
-build-app: build-sdk
+build-app: build-sdk build-ui
     pnpm --filter @endue-ai/desk-app build
     cargo build -p desk-app
 
@@ -82,6 +82,10 @@ docs-api out:
 # Bundle the plugin SDK that the app serves to plugin frames
 build-sdk:
     pnpm --filter @endue-ai/plugin-sdk build
+
+# Bundle @endue-ai/ui (its elements and tokens) that the app serves to plugin frames at /_desk/ui.js
+build-ui:
+    pnpm --filter @endue-ai/ui build
 
 # Measure the opening frame time (pass "record" to make it the new baseline in e2e/perf/budgets.json).
 # Native WebKit with the machine to itself; on macOS for people only (ADR 0018)
