@@ -27,6 +27,7 @@ use crate::core_events::Subscriptions;
 use crate::core_fs::Watches;
 use crate::core_perm::{Prompter, RefuseAll};
 use crate::core_prompts::Prompts;
+use crate::core_views::ViewsSeen;
 use crate::events::EventBus;
 use crate::init::InitFile;
 use crate::paths::normalize;
@@ -66,6 +67,7 @@ pub struct Core {
     pub(crate) secrets: Mutex<Secrets>,
     pub(crate) data_subscriptions: Mutex<DataSubscriptions>,
     pub(crate) connectors: Connectors,
+    pub(crate) views: Mutex<ViewsSeen>,
 }
 
 impl Core {
@@ -91,6 +93,7 @@ impl Core {
             secrets: Mutex::new(Secrets::new(None)),
             data_subscriptions: Mutex::new(DataSubscriptions::default()),
             connectors: Connectors::default(),
+            views: Mutex::new(ViewsSeen::default()),
         }
     }
 
@@ -184,10 +187,10 @@ impl Core {
             R::ConnectorConnect(r) => (r.id, self.connector_connect(caller, r.params)),
             R::ConnectorDisconnect(r) => (r.id, self.connector_disconnect(caller, r.params)),
             R::ConnectorSyncNow(r) => (r.id, self.connector_sync(caller, r.params)),
-            R::ViewList(r) => (r.id, unsupported("view.list")),
-            R::ViewGet(r) => (r.id, unsupported("view.get")),
-            R::ViewSave(r) => (r.id, unsupported("view.save")),
-            R::ViewRemove(r) => (r.id, unsupported("view.remove")),
+            R::ViewList(r) => (r.id, self.view_list(caller, r.params)),
+            R::ViewGet(r) => (r.id, self.view_get(caller, r.params)),
+            R::ViewSave(r) => (r.id, self.view_save(caller, r.params)),
+            R::ViewRemove(r) => (r.id, self.view_remove(caller, r.params)),
             R::CatalogGet(r) => (r.id, unsupported("catalog.get")),
         }
     }
@@ -228,6 +231,11 @@ impl Core {
             .split('/')
             .filter(|s| !s.is_empty())
             .fold(base, |p, s| p.join(s)))
+    }
+
+    /// `~` and `${home}`.
+    pub(crate) fn home(&self) -> &Path {
+        &self.roots.home
     }
 
     pub(crate) fn permissions(&self) -> MutexGuard<'_, PermissionEngine> {
