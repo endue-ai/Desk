@@ -28,8 +28,12 @@ const MAX_DELAY_MS = 30_000;
 /** Failures a retry cannot fix. */
 const FINAL = new Set(["missing", "unsupported", "denied", "context"]);
 
-/** @type {Clock} */
-const SYSTEM_CLOCK = {
+/**
+ * The platform's timers. Called through wrappers: a browser throws "Illegal invocation" when
+ * setTimeout runs with another object as `this`.
+ * @type {Clock}
+ */
+export const SYSTEM_CLOCK = {
   setTimeout: (fn, ms) => setTimeout(fn, ms),
   clearTimeout: (id) => clearTimeout(id),
   now: () => Date.now(),

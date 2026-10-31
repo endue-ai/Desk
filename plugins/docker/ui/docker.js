@@ -16,7 +16,7 @@ import { createLogs, readLogs, titleOf } from "./logs.js";
 import { containerTarget, contextName, logTarget } from "./refs.js";
 import { createRunner } from "./run.js";
 import { DEFAULTS, loadSettings } from "./settings.js";
-import { createAlerts, createWatcher } from "./watch.js";
+import { createAlerts, createWatcher, SYSTEM_CLOCK } from "./watch.js";
 
 /**
  * @typedef {import("@endue-ai/plugin-sdk").PluginContext} PluginContext
@@ -55,7 +55,7 @@ const isList = (/** @type {string} */ name) =>
  * @param {Options} [options] `cancelled` makes the error a cancelled command answers with.
  */
 export function createDocker({ bridge, commands, state }, view, options = {}) {
-  const clock = options.clock ?? { setTimeout, clearTimeout, now: () => Date.now() };
+  const clock = options.clock ?? SYSTEM_CLOCK;
   let settings = DEFAULTS;
   let context = "";
   const runner =

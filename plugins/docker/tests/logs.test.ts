@@ -125,6 +125,21 @@ describe("createLogs", () => {
     });
   });
 
+  it("puts a burst from both pipes in time order before it shows", async () => {
+    const { runner, models, app } = logs();
+    await app.open({ kind: "container", id: "abc", name: "web" }, { follow: true });
+    const onLine = runner.streams[0]?.options.onLine;
+    onLine?.("stdout", "2026-10-31T06:00:00Z a");
+    onLine?.("stdout", "2026-10-31T06:00:02Z c");
+    onLine?.("stderr", "2026-10-31T06:00:01Z b");
+    await wait();
+    expect(models.at(-1)?.lines.map((l) => `${l.n}:${l.stream}:${l.text}`)).toEqual([
+      "0:stdout:a",
+      "1:stderr:b",
+      "2:stdout:c",
+    ]);
+  });
+
   it("keeps at most max lines and counts what dropped off the front", async () => {
     const { runner, models, app } = logs({ tail: 10, max: 100 });
     await app.open({ kind: "container", id: "abc", name: "web" }, { follow: true });

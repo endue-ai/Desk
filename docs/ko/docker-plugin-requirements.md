@@ -106,7 +106,7 @@ Docker Desktop · lazydocker · Portainer · k9s 의 관용을 빌리고, 버퍼
 | NF-08 | Podman: `docker` 호환 shim 경로만. `podman` 직접 실행은 열린 질문 | 없음 | C |
 | NF-09 | 국제화: 문자열은 영어 한 곳에. RT-13 번들이 오면 `locales` | 없음 | C |
 | NF-10 | Windows: named pipe · 경로 · 신호. 앱 e2e 가 Linux 를 먼저 덮는다 | 없음 | C |
-| NF-11 | 테스트: 파서는 실제 Docker 29 출력에서 뜬 픽스처, 검사 · 실행기 · 로그 · 감시 · 동작 · 컨트롤러 · 렌더러 · 키 · 설정 · 매니페스트(`plugins/docker/tests`, 108). 실제 엔진 스모크(실행 · 로그 · 상세 · 정지 · 삭제 · Compose up/down)는 사람이 돌린다. 런타임 e2e 는 스텁의 가짜 proc(D4) 뒤 | 일부 (단위만) | A · B |
+| NF-11 | 테스트: 파서는 실제 Docker 29 출력에서 뜬 픽스처, 검사 · 실행기 · 로그 · 감시 · 동작 · 컨트롤러 · 렌더러 · 키 · 설정 · 매니페스트(`plugins/docker/tests`, 110). 실제 엔진 스모크(실행 · 로그 · 상세 · 정지 · 삭제 · Compose up/down)는 사람이 돌린다. 런타임 e2e 는 스텁의 가짜 proc(D4) 뒤 | 일부 (단위만) | A · B |
 
 ## 의존: Desk 쪽에서 해야 하는 것
 

@@ -164,6 +164,10 @@ export function renderCompose(doc, model, folded) {
   return rows;
 }
 
+/** A digest reference as it fits a row: `repo@sha256:4f53cda18c2b…`; the item keeps the whole. */
+const shortDigest = (/** @type {string} */ ref) =>
+  ref.replace(/@(sha256:[0-9a-f]{12})[0-9a-f]+$/, "@$1…");
+
 /** @param {Document} doc @param {ImagesModel} model @returns {RowSpec[]} */
 export function renderImages(doc, model) {
   if (model.images.length === 0) return [empty(doc, "No images. U pulls one.")];
@@ -188,7 +192,7 @@ export function renderImages(doc, model) {
         },
         1,
         [
-          span(doc, "name", image.dangling ? "<none>" : image.ref),
+          span(doc, "name", image.dangling ? "<none>" : shortDigest(image.ref)),
           span(doc, "id muted", image.id.replace(/^sha256:/, "").slice(0, 12)),
           span(doc, "size", image.size),
           span(doc, "created muted", image.created),

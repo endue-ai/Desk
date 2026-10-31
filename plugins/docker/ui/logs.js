@@ -73,6 +73,10 @@ export function parseLine(raw, stream, prefixed) {
  */
 const where = (/** @type {LogTarget} */ target) => (target.kind === "project" ? { cwd: "/" } : {});
 
+/** Earlier first; lines without a time (or with the same one) keep their order. */
+const byTime = (/** @type {{ time: string }} */ a, /** @type {{ time: string }} */ b) =>
+  a.time === "" || b.time === "" || a.time === b.time ? 0 : a.time < b.time ? -1 : 1;
+
 /** Whether a line shows under a filter: every word, in any case, in its source or text. */
 export function matches(/** @type {LogLine} */ line, /** @type {string} */ filter) {
   if (filter === "") return true;
@@ -113,16 +117,18 @@ export function createLogs({ runner, onChange, limits, flushMs = 50 }) {
   let timer = null;
   let next = 0;
 
+  /**
+   * Lines since the last flush. stdout and stderr come over two pipes, so a burst (the tail a
+   * follow starts with) arrives out of order: each batch is put in time order before it shows.
+   * @type {Omit<LogLine, "n">[]}
+   */
+  let pending = [];
+
   const flush = () => {
     timer = null;
-    onChange(model);
-  };
-  const changed = () => {
-    if (timer === null) timer = setTimeout(flush, flushMs);
-  };
-
-  const push = (/** @type {Omit<LogLine, "n">} */ line) => {
-    model.lines.push({ n: next++, ...line });
+    const batch = pending.sort(byTime);
+    pending = [];
+    for (const line of batch) model.lines.push({ n: next++, ...line });
     const { max } = limits();
     // Trim in steps, so a long follow does not shift the array on every line.
     if (model.lines.length > max + Math.max(16, Math.floor(max / 10))) {
@@ -130,6 +136,14 @@ export function createLogs({ runner, onChange, limits, flushMs = 50 }) {
       model.lines.splice(0, drop);
       model.first += drop;
     }
+    onChange(model);
+  };
+  const changed = () => {
+    if (timer === null) timer = setTimeout(flush, flushMs);
+  };
+
+  const push = (/** @type {Omit<LogLine, "n">} */ line) => {
+    pending.push(line);
     changed();
   };
 
@@ -159,6 +173,7 @@ export function createLogs({ runner, onChange, limits, flushMs = 50 }) {
       generation,
     };
     next = 0;
+    pending = [];
     onChange(model);
     const prefixed = target.kind === "project";
     const tail = options.tail ?? limits().tail;
@@ -205,6 +220,7 @@ export function createLogs({ runner, onChange, limits, flushMs = 50 }) {
 
   /** Forget the lines on screen; a follow goes on. */
   const clear = () => {
+    pending = [];
     model.first += model.lines.length;
     model.lines = [];
     onChange(model);
@@ -256,5 +272,5 @@ export async function readLogs(runner, target, args) {
     for (const raw of text.split("\n")) if (raw !== "") all.push(parseLine(raw, stream, prefixed));
   }
   // Stable: lines with the same time keep their stream's order.
-  return all.sort((a, b) => (a.time < b.time ? -1 : a.time > b.time ? 1 : 0));
+  return all.sort(byTime);
 }

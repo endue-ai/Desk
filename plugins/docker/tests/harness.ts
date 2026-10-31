@@ -280,6 +280,8 @@ export async function mount(
     state?: unknown;
     init?: Record<string, unknown>;
     store?: Record<string, unknown>;
+    /** Run on the platform's timers instead of the fake clock. */
+    systemClock?: boolean;
   } = {},
 ): Promise<Mounted> {
   const docker = fakeDocker(options.script ?? engine());
@@ -319,7 +321,11 @@ export async function mount(
       mount(ctx) {
         const cancelled = (message: string) =>
           new CommandFailed("endue.docker.cancel", "cancelled", message);
-        app = createDocker(ctx, view, { clock, flushMs: 0, cancelled });
+        app = createDocker(ctx, view, {
+          ...(options.systemClock ? {} : { clock }),
+          flushMs: 0,
+          cancelled,
+        });
         keys = wireCommands(ctx, app, view);
       },
     },

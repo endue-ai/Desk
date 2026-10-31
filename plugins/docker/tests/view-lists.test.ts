@@ -83,7 +83,7 @@ describe("the list renderers", () => {
       expect.stringMatching(/^web node:22/),
     ]);
     expect(text(renderImages(doc, { images: parseImages(IMAGES) }))).toEqual([
-      expect.stringMatching(/^ghcr\.io\/acme\/api@sha256:4f53cda18c2b.* e45cdcfd2c0e 1\.2GB/),
+      expect.stringMatching(/^ghcr\.io\/acme\/api@sha256:4f53cda18c2b… e45cdcfd2c0e 1\.2GB/),
       "postgres:17 9431865c385c 438MB 2026-10-20 13:38:33 +0900 KST 1 container",
       "<none> 0e4a9e06ad09 394MB 2026-10-31 09:29:36 +0900 KST unused",
     ]);
