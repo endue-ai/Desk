@@ -130,14 +130,17 @@ describe("partition tables", () => {
     expect(utf8(await disk.read(entry(disk, "hello.txt")))).toBe("Hello, disks!\n");
   });
 
-  it.each(CONTAINERS.map(([name]) => name))("%s lists the same files as the raw disk", async (name) => {
-    const raw = await openDisk(memorySource(image("gpt.img")));
-    const disk = await openDisk(memorySource(image(name)));
-    expect(detail(disk, "Virtual size")).toMatch(/12 MiB/);
-    expect(paths(disk)).toEqual(paths(raw));
-    const notes = entry(disk, "rootfs/home/example/notes.txt");
-    expect(sha(await disk.read(notes))).toBe(sha(await raw.read(entry(raw, notes.path))));
-  });
+  it.each(CONTAINERS.map(([name]) => name))(
+    "%s lists the same files as the raw disk",
+    async (name) => {
+      const raw = await openDisk(memorySource(image("gpt.img")));
+      const disk = await openDisk(memorySource(image(name)));
+      expect(detail(disk, "Virtual size")).toMatch(/12 MiB/);
+      expect(paths(disk)).toEqual(paths(raw));
+      const notes = entry(disk, "rootfs/home/example/notes.txt");
+      expect(sha(await disk.read(notes))).toBe(sha(await raw.read(entry(raw, notes.path))));
+    },
+  );
 
   it("reads the tables and directories, not the whole disk", async () => {
     const { source, counter } = counted(image("gpt-dynamic.vhdx"));

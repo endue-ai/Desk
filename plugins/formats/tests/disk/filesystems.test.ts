@@ -4,8 +4,8 @@ import { memorySource } from "../../lib/disk/source.js";
 import {
   counted,
   detail,
-  entry,
   type Expected,
+  entry,
   expected,
   image,
   paths,

@@ -3,6 +3,11 @@ import { openContainer, openDisk, openFilesystem } from "../../lib/disk/index.js
 import { memorySource } from "../../lib/disk/source.js";
 import { copy, counted, detail, image } from "./fixtures";
 
+/** Damage one byte. @param {Uint8Array} bytes @param {number} at */
+const flip = (bytes: Uint8Array, at: number) => {
+  bytes[at] = (bytes[at] ?? 0) ^ 0xff;
+};
+
 /** The details-only answer a refused image gets: its facts and one sentence, nothing listed. */
 async function refused(bytes: Uint8Array, sentence: RegExp) {
   const disk = await openDisk(memorySource(bytes));
@@ -62,14 +67,14 @@ describe("damage", () => {
 
   it("fails on a GPT whose header and backup both fail their checksums", async () => {
     const bytes = copy("gpt.img");
-    bytes[512 + 40] ^= 0xff;
-    bytes[bytes.length - 512 + 40] ^= 0xff;
+    flip(bytes, 512 + 40);
+    flip(bytes, bytes.length - 512 + 40);
     await expect(openDisk(memorySource(bytes))).rejects.toThrow(/GPT partition table is damaged/);
   });
 
   it("reads a GPT from its backup header when the first one is damaged", async () => {
     const bytes = copy("gpt.img");
-    bytes[512 + 40] ^= 0xff;
+    flip(bytes, 512 + 40);
     const disk = await openDisk(memorySource(bytes));
     expect(detail(disk, "Partitions")).toBe("3");
   });
@@ -97,9 +102,7 @@ describe("cancelling", () => {
     const { source, counter } = counted(image("ntfs.img"), (reads) => {
       if (reads === 6) controller.abort();
     });
-    await expect(openDisk(source, { signal: controller.signal })).rejects.toThrow(
-      /cancel|abort/i,
-    );
+    await expect(openDisk(source, { signal: controller.signal })).rejects.toThrow(/cancel|abort/i);
     const after = counter.reads;
     await new Promise((resolve) => setTimeout(resolve, 50));
     expect(counter.reads).toBe(after);

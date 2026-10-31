@@ -31,7 +31,21 @@ interface Fixtures {
   >;
   big: { size: number; markers: { offset: number; length: number; sha256: string }[] };
 }
+/** expected.json, with each file's entries from entries.jsonl (one line per file). */
 export const expected = JSON.parse(readFileSync(join(dir, "expected.json"), "utf8")) as Fixtures;
+for (const line of readFileSync(join(dir, "entries.jsonl"), "utf8").split("\n")) {
+  if (!line) continue;
+  const { image, partition, ...entry } = JSON.parse(line) as Expected & {
+    image: string;
+    partition?: number;
+  };
+  const fs = expected.filesystems[image];
+  const part = expected.disks[image]?.partitions.find((p) => p.number === partition);
+  const into = partition === undefined ? fs : part;
+  if (!into)
+    throw new Error(`entries.jsonl names ${image} ${partition ?? ""}, which is not expected`);
+  into.entries = [...(into.entries ?? []), entry];
+}
 
 const images = new Map<string, Uint8Array>();
 /** A fixture image as the tool wrote it (they are kept gzipped). */
@@ -80,7 +94,7 @@ export function entry(archive: Archive, path: string): Entry {
   if (!found) throw new Error(`no ${path} in ${paths(archive).slice(0, 40).join(", ")}`);
   return found;
 }
-export const detail = (archive: Archive, label: string) =>
+export const detail = (archive: Pick<Archive, "details">, label: string) =>
   archive.details.find((d) => d.label === label)?.value;
 export const utf8 = (bytes: Uint8Array) => new TextDecoder().decode(bytes);
 

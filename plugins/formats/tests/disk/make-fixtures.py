@@ -385,19 +385,21 @@ def main():
     save("split-s001.vmdk")
     expected["big"] = big()
 
+    # Entries one per line (entries.jsonl), the rest as plain JSON (expected.json).
+    lines = []
+    for name, fs in expected["filesystems"].items():
+        for entry in fs.pop("entries"):
+            lines.append({"image": name, **entry})
+    for name, disk in expected["disks"].items():
+        for part in disk["partitions"]:
+            for entry in part.pop("entries"):
+                lines.append({"image": name, "partition": part["number"], **entry})
+    with open(f"{OUT}/entries.jsonl", "w") as f:
+        for line in lines:
+            f.write(json.dumps(line, ensure_ascii=False, sort_keys=True, separators=(",", ":")) + "\n")
     with open(f"{OUT}/expected.json", "w") as f:
-        f.write(dump(expected) + "\n")
-
-
-def dump(value, depth=0):
-    """JSON with one line per file entry, so a change to one file is a one-line diff."""
-    pad = " " * depth
-    if isinstance(value, dict) and "path" not in value:
-        items = [f'{pad} {json.dumps(k)}: {dump(v, depth + 1)}' for k, v in sorted(value.items())]
-        return "{\n" + ",\n".join(items) + f"\n{pad}}}"
-    if isinstance(value, list) and value and isinstance(value[0], dict):
-        return "[\n" + ",\n".join(f"{pad} {dump(v, depth + 1)}" for v in value) + f"\n{pad}]"
-    return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+        json.dump(expected, f, indent=2, ensure_ascii=False, sort_keys=True)
+        f.write("\n")
 
 
 main()
