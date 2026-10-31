@@ -2,13 +2,14 @@
  * desk.files (files.el, auto-mode-alist): which plugin opens a file, the recent files, saving, and
  * what happens when a file changes on disk. The desk never reads or writes files itself: the plugin
  * that opens a file does, under its own permissions, and the desk asks it to (desk.files.visit,
- * desk.files.save, desk.files.revert).
+ * desk.files.save, desk.files.revert). An autoload opener that is off comes on for a file and, when
+ * the desk turned it on, goes off again with its last buffer (ADR 0046).
  */
 import { baseName } from "../buffers";
 import { CommandError } from "../commands";
 import type { NoticeInput } from "../notify";
-import { globMatch, type PolicySet } from "../policy";
-import type { BuffersPolicy } from "./buffers";
+import { autoloads, globMatch, type PolicySet } from "../policy";
+import type { BufferEvents, BuffersPolicy } from "./buffers";
 import { type DeskContext, disposer, type Installed } from "./context";
 
 export interface RecentFile {
@@ -22,9 +23,14 @@ export interface FilesPolicy extends Installed {
   recent(): RecentFile[];
   /** Read the recent files the desk kept (store.get); call once at start. */
   load(): Promise<void>;
+  /** Once the session is back: turn off the autoload plugins the desk turned on that hold no file. */
+  settle(): void;
 }
 
 const RECENT_KEY = "files.recent";
+/** The autoload plugins the desk turned on for a file, kept so that a restart still knows them. */
+const AUTOLOADED_KEY = "files.autoloaded";
+const MANAGE = { permission: "plugin:manage" } as const;
 /** How long after desk.files.save a change on disk at that path counts as the save itself. */
 const OWN_SAVE_MS = 3000;
 
@@ -47,7 +53,7 @@ export function opener(rules: PolicySet["files"], path: string): string | undefi
 
 export function installFiles(
   ctx: DeskContext,
-  buffers: BuffersPolicy,
+  buffers: BuffersPolicy & BufferEvents,
   notify: (input: NoticeInput) => void,
 ): FilesPolicy {
   const { hub, bridge } = ctx;
@@ -57,6 +63,17 @@ export function installFiles(
   let recent: RecentFile[] = [];
   /** When the desk last had each path saved, so the plugin's own write is not reported as a change. */
   const savedAt = new Map<string, number>();
+  /** Autoload plugins that were off until the desk turned them on for a file; not the person's. */
+  const autoloaded = new Set<string>();
+  const keepAutoloaded = () =>
+    void bridge.call("store.set", { key: AUTOLOADED_KEY, value: [...autoloaded] }).catch(() => {});
+  /** Plugins the desk just turned off, until the plugin list says so too. */
+  const goingOff = new Set<string>();
+  offs.add(
+    hub.onPolicy(() => {
+      for (const plugin of goingOff) if (!hub.enabled(plugin)) goingOff.delete(plugin);
+    }),
+  );
 
   const remember = (file: RecentFile) => {
     const max = settings.get("desk.files.recent-max", 20);
@@ -75,14 +92,30 @@ export function installFiles(
   /** Turn the opener on when it is off, and wait until it can answer. */
   const ready = async (plugin: string) => {
     if (!ctx.mounted(plugin)) {
-      await bridge.call("plugin.setEnabled", {
-        plugin,
-        enabled: true,
-        scope: { permission: "plugin:manage" },
-      });
+      const info = hub.plugins.find((p) => p.id === plugin);
+      const off = goingOff.delete(plugin) || info?.enabled === false;
+      await bridge.call("plugin.setEnabled", { plugin, enabled: true, scope: MANAGE });
+      // Off and autoload: the desk turned it on, so the desk turns it off after its last file.
+      if (autoloads(info) && off && !autoloaded.has(plugin)) {
+        autoloaded.add(plugin);
+        keepAutoloaded();
+      }
     }
     await ctx.whenReady(plugin);
   };
+
+  /** Turn off an autoload plugin the desk turned on, once it holds no buffer: its window goes now. */
+  const release = (plugin: string) => {
+    if (!autoloaded.has(plugin) || list.ofPlugin(plugin).some((b) => !b.surface)) return;
+    autoloaded.delete(plugin);
+    keepAutoloaded();
+    if (ctx.mounted(plugin)) ctx.unmount(plugin);
+    goingOff.add(plugin);
+    void bridge
+      .call("plugin.setEnabled", { plugin, enabled: false, scope: MANAGE })
+      .catch(() => {});
+  };
+  offs.add(buffers.onClosed((buffer) => release(buffer.plugin)));
 
   const open = async (path: string, by?: string) => {
     const existing = list.byPath(path);
@@ -102,6 +135,7 @@ export function installFiles(
       await ctx.request(plugin, "desk.files.visit", { buffer: id, path });
     } catch (error) {
       list.remove(id);
+      release(plugin);
       notify({
         caller: "desk",
         title: `${baseName(path)} did not open`,
@@ -217,9 +251,24 @@ export function installFiles(
     openerFor: (path) => opener(hub.policy.files, path),
     recent: () => [...recent],
     load: async () => {
-      const stored = await bridge.call("store.get", { key: RECENT_KEY }).catch(() => ({}));
+      const [stored, kept] = await Promise.all(
+        [RECENT_KEY, AUTOLOADED_KEY].map((key) =>
+          bridge.call("store.get", { key }).catch(() => ({})),
+        ),
+      );
       const value = (stored as { value?: unknown }).value;
       if (Array.isArray(value)) recent = value as RecentFile[];
+      const plugins = (kept as { value?: unknown }).value;
+      if (Array.isArray(plugins)) {
+        for (const plugin of plugins) if (typeof plugin === "string") autoloaded.add(plugin);
+      }
+    },
+    settle: () => {
+      for (const plugin of [...autoloaded]) {
+        // Turned off since (by hand, or while Desk was not running): no longer the desk's.
+        if (hub.plugins.find((p) => p.id === plugin)?.enabled === true) release(plugin);
+        else if (autoloaded.delete(plugin)) keepAutoloaded();
+      }
     },
     dispose: offs.dispose,
   };

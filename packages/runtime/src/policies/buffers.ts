@@ -18,6 +18,15 @@ export interface BuffersPolicy extends Installed {
   show(id: string): Promise<void>;
 }
 
+/** What desk.buffers tells the policies that follow its buffers (desk.files). */
+export interface BufferEvents {
+  /**
+   * Hear every buffer that closes: after its plugin heard desk.buffers.closed, before the next
+   * buffer shows, and each one that goes with its plugin's surface.
+   */
+  onClosed(listener: (buffer: Buffer) => void): () => void;
+}
+
 export interface BuffersActions {
   focus(plugin: string): void;
 }
@@ -29,12 +38,19 @@ const CLOSE_CHOICES = [
   { id: "cancel", label: "Keep it open" },
 ];
 
-export function installBuffers(ctx: DeskContext, actions: BuffersActions): BuffersPolicy {
+export function installBuffers(
+  ctx: DeskContext,
+  actions: BuffersActions,
+): BuffersPolicy & BufferEvents {
   const { hub, surfaces } = ctx;
   const { commands, settings } = hub;
   const buffers = new Buffers();
   const offs = disposer();
   let opened = 0;
+  const closedListeners = new Set<(buffer: Buffer) => void>();
+  const closed = (buffer: Buffer) => {
+    for (const listener of [...closedListeners]) listener(buffer);
+  };
 
   const surfaceId = (plugin: string) => `surface:${plugin}`;
 
@@ -73,6 +89,7 @@ export function installBuffers(ctx: DeskContext, actions: BuffersActions): Buffe
         .request(buffer.plugin, "desk.buffers.closed", { buffer: buffer.id })
         .catch(() => {});
     }
+    closed(buffer);
     const next = buffers.current();
     if (next && settings.get("desk.buffers.after-close", "previous") === "previous") {
       await show(next.id).catch(() => {});
@@ -173,7 +190,9 @@ export function installBuffers(ctx: DeskContext, actions: BuffersActions): Buffe
         buffers.add({ id: surfaceId(plugin), name: title, plugin, modified: false, surface: true });
     },
     surfaceClosed: (plugin) => {
-      for (const buffer of buffers.ofPlugin(plugin)) buffers.remove(buffer.id);
+      const gone = buffers.ofPlugin(plugin);
+      for (const buffer of gone) buffers.remove(buffer.id);
+      for (const buffer of gone) closed(buffer);
     },
     focused: (plugin) => {
       if (plugin === null) return;
@@ -181,6 +200,10 @@ export function installBuffers(ctx: DeskContext, actions: BuffersActions): Buffe
       if (mine) buffers.touch(mine.id);
     },
     show,
+    onClosed: (listener) => {
+      closedListeners.add(listener);
+      return () => closedListeners.delete(listener);
+    },
     dispose: offs.dispose,
   };
 }

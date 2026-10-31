@@ -2,10 +2,12 @@
  * desk.profiles (init.el, switched while Desk runs): a profile is a plugin set plus settings. The
  * one init.yaml names applies at start; switching applies another: its settings layer over
  * init.yaml's and its plugins turn on and off. People save their own with desk.profiles.save.
+ * Autoload plugins are desk.files' to turn on and off (ADR 0046): profiles leave them as they are.
  */
 import type { ProfileContribution } from "@endue-ai/bridge";
 import { CommandError } from "../commands";
 import type { NoticeInput } from "../notify";
+import { autoloads } from "../policy";
 import { type DeskContext, disposer, type Installed } from "./context";
 
 export const PROFILES_KEY = "profiles";
@@ -62,15 +64,17 @@ export function installProfiles(
     if (!quiet) notify({ caller: "desk", title: `Profile: ${profile.name}`, level: "info" });
     settings.setLayer("profile", profile.settings ?? {});
     const installed = new Map(hub.plugins.map((p) => [p.id, p.enabled]));
-    const disabled = new Set(profile.plugins?.disabled ?? []);
+    const lazy = new Set(hub.plugins.filter((p) => autoloads(p)).map((p) => p.id));
+    const disabled = new Set((profile.plugins?.disabled ?? []).filter((p) => !lazy.has(p)));
     // What an earlier switch turned off comes back under a profile that leaves it on; what the
     // person turned off by hand is not in this list and stays off.
     for (const plugin of turnedOff) {
-      if (!disabled.has(plugin) && installed.get(plugin) === false) await setEnabled(plugin, true);
+      if (!disabled.has(plugin) && !lazy.has(plugin) && installed.get(plugin) === false)
+        await setEnabled(plugin, true);
     }
     const off = new Set(turnedOff.filter((plugin) => disabled.has(plugin)));
     for (const plugin of profile.plugins?.enabled ?? []) {
-      if (installed.get(plugin) === false) await setEnabled(plugin, true);
+      if (!lazy.has(plugin) && installed.get(plugin) === false) await setEnabled(plugin, true);
     }
     for (const plugin of disabled) {
       if (installed.get(plugin) === true && !KEEP_ON.has(plugin)) {
@@ -130,7 +134,7 @@ export function installProfiles(
       if (!id) return null;
       if (!/^[a-z0-9][a-z0-9._-]{0,63}$/.test(id))
         throw new CommandError("failed", `${id} is not a profile name (lowercase, digits, . _ -)`);
-      const plugins = hub.plugins.filter((p) => p.status === "ready");
+      const plugins = hub.plugins.filter((p) => p.status === "ready" && !autoloads(p));
       const profile: ProfileContribution = {
         id,
         name: name ?? all().find((p) => p.id === id)?.name ?? id,

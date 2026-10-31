@@ -24,8 +24,11 @@ const ui = (id: string, autoload = false): PluginManifest => ({
   ...(autoload ? { autoload: true } : {}),
 });
 
-/** desk.profiles on the stub core, an autoload plugin and a plain one, `off` off at start. */
-async function desk(off: string[], store: Record<string, unknown> = {}) {
+/**
+ * desk.profiles on the stub core, an autoload plugin (off at start) and a plain one; `off` off at
+ * start too, `on` on (desk.files turned it on for a file, say).
+ */
+async function desk(off: string[], store: Record<string, unknown> = {}, on: string[] = []) {
   const core = browserCore({
     manifests: [
       {
@@ -41,6 +44,7 @@ async function desk(off: string[], store: Record<string, unknown> = {}) {
     store: memoryStore(store),
     init: { profile: "plain" },
   });
+  for (const info of core.plugins) if (on.includes(info.id)) info.enabled = true;
   const bridge = core.client;
   const hub = new PolicyHub(bridge);
   const list = async () => hub.apply((await bridge.call("plugin.list", { scope: MANAGE })).plugins);
@@ -75,7 +79,7 @@ describe("desk.profiles leaves autoload plugins as they are", () => {
   });
 
   it("a profile that disables an autoload plugin that is on leaves it on", async () => {
-    const d = await desk([]);
+    const d = await desk([], {}, [SHEETS]);
     expect(d.enabled(SHEETS)).toBe(true);
     await d.switchTo("quiet");
     expect(d.enabled(SHEETS)).toBe(true);

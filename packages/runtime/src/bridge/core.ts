@@ -26,7 +26,7 @@ export interface CoreStore {
 export interface BrowserCoreOptions {
   /** The installed plugins; `desk.*` ones are built in. */
   manifests: PluginManifest[];
-  /** Installed but turned off. */
+  /** Installed but turned off. Autoload plugins start off anyway, as the core starts them. */
   off?: Iterable<string>;
   store?: CoreStore;
   init?: { profile?: string; settings?: Record<string, unknown>; problem?: string };
@@ -72,7 +72,7 @@ export function browserCore(options: BrowserCoreOptions): BrowserCore {
   const plugins: PluginInfo[] = options.manifests.map((manifest) => ({
     id: manifest.id,
     status: "ready",
-    enabled: !off.has(manifest.id),
+    enabled: !off.has(manifest.id) && manifest.autoload !== true,
     builtIn: manifest.id.startsWith("desk."),
     revision: 1,
     manifest,

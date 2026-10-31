@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { browserCore, memoryStore } from "../bridge/core";
 import { ManualClock } from "../clock";
 import { PolicyHub } from "../hub";
-import { type BuffersPolicy, installBuffers } from "./buffers";
+import { type BufferEvents, type BuffersPolicy, installBuffers } from "./buffers";
 import type { DeskContext } from "./context";
 import { installFiles } from "./files";
 
@@ -34,13 +34,15 @@ interface DeskOptions {
   /** On at start, as a stored enabled flag would have it. */
   on?: string[];
   store?: Record<string, unknown>;
+  /** How long the host takes to list the plugins again after a plugin.changed, in ms. */
+  listDelay?: number;
 }
 
 /**
  * desk.buffers and desk.files on the stub core, with a plugin host that mounts a UI plugin when it
  * is turned on (its surface becomes a buffer) and takes it away when it is turned off.
  */
-async function desk({ off = [], on = [], store = {} }: DeskOptions = {}) {
+async function desk({ off = [], on = [], store = {}, listDelay = 0 }: DeskOptions = {}) {
   const core = browserCore({
     manifests: [
       policy("desk.buffers"),
@@ -60,7 +62,7 @@ async function desk({ off = [], on = [], store = {} }: DeskOptions = {}) {
   const mounted = new Set<string>();
   const waiting = new Map<string, Array<() => void>>();
   const log: string[] = [];
-  let buffers: BuffersPolicy | undefined;
+  let buffers: (BuffersPolicy & BufferEvents) | undefined;
   const list = async () => hub.apply((await bridge.call("plugin.list", { scope: MANAGE })).plugins);
   const mount = (id: string) => {
     if (mounted.has(id)) return;
@@ -76,7 +78,8 @@ async function desk({ off = [], on = [], store = {} }: DeskOptions = {}) {
     if (event.event !== "plugin.changed") return;
     const { plugin, change } = event.data;
     if (change === "disabled") unmount(plugin);
-    void list().then(() => {
+    const later = new Promise((resolve) => setTimeout(resolve, listDelay));
+    void later.then(list).then(() => {
       if (change === "enabled") mount(plugin);
     });
   });
@@ -191,6 +194,18 @@ describe("what desk.files remembers about the autoload plugins it turned on", ()
     await d.run("desk.buffers.close", { id: "file:~/b.csv" });
     await d.quiet();
     expect(d.enabled(SHEETS)).toBe(true);
+  });
+
+  it("a file opened right after the last one closed brings the plugin back as the desk's", async () => {
+    const d = await desk({ listDelay: 50 });
+    await d.run("desk.files.open", { path: "~/a.csv" });
+    await d.run("desk.buffers.close", { id: "file:~/a.csv" });
+    // At once, before the plugin list says it is off.
+    await d.run("desk.files.open", { path: "~/b.csv" });
+    expect(d.mounted.has(SHEETS)).toBe(true);
+    await d.run("desk.buffers.close", { id: "file:~/b.csv" });
+    await vi.waitFor(() => expect(d.enabled(SHEETS)).toBe(false));
+    expect(d.mounted.has(SHEETS)).toBe(false);
   });
 
   it("after a restart, the plugin goes with its last file all the same", async () => {
