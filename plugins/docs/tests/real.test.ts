@@ -66,8 +66,9 @@ describe("documents written by LibreOffice and AbiWord", () => {
 /** What a Word 97 file and its OOXML copy must agree on, adjacent runs of one look joined. */
 function shape(doc: DocModel) {
   const look = (r: TextRun) =>
-    JSON.stringify([r.bold, r.italic, r.underline, r.strike, r.size, r.color, r.highlight])
-      .concat(JSON.stringify([r.script, r.link, r.comments, r.font?.split(",")[0]]));
+    JSON.stringify([r.bold, r.italic, r.underline, r.strike, r.size, r.color, r.highlight]).concat(
+      JSON.stringify([r.script, r.link, r.comments, r.font?.split(",")[0]]),
+    );
   return {
     headings: headings(doc),
     runs: paragraphs(doc).map((p) =>

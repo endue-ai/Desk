@@ -66,10 +66,14 @@ describe("Word 97-2003 (.doc)", () => {
 
   it("an encrypted file and a damaged piece table open as the details view", async () => {
     const doc = fixture("doc/format.doc");
-    const encrypted = patched(doc, (fib) => fib.setUint16(0x0a, fib.getUint16(0x0a, true) | 0x0100, true));
+    const encrypted = patched(doc, (fib) =>
+      fib.setUint16(0x0a, fib.getUint16(0x0a, true) | 0x0100, true),
+    );
     expect((await details(encrypted)).reason).toBe("This document is encrypted.");
     // fcClx is the 34th (fc, lcb) pair after the 154-byte head of the FIB.
     const damaged = patched(doc, (fib) => fib.setUint32(0x9a + 33 * 8, 0x7ffffff0, true));
-    expect((await details(damaged)).reason).toBe("This file is damaged: its piece table is missing.");
+    expect((await details(damaged)).reason).toBe(
+      "This file is damaged: its piece table is missing.",
+    );
   });
 });

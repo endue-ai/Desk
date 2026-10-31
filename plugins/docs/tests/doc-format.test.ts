@@ -23,30 +23,33 @@ const para = (doc: DocModel, start: string) =>
   paragraphs(doc).find((p) => textOf(p).startsWith(start)) as Paragraph;
 const first = (font: string | undefined) => font?.split(",")[0]?.trim();
 
-/** The look of each run that has text, adjacent runs of one look joined. */
-const looks = (doc: DocModel) =>
-  paragraphs(doc).flatMap((p) => {
-    const out: Array<Record<string, unknown>> = [];
-    for (const i of p.inlines) {
-      if (i.type !== "text") continue;
-      const look = {
-        bold: i.bold || undefined,
-        italic: i.italic || undefined,
-        underline: i.underline || undefined,
-        strike: i.strike || undefined,
-        size: i.size,
-        color: i.color,
-        script: i.script,
-        link: i.link,
-        font: first(i.font),
-      };
-      const last = out.at(-1);
-      if (last && JSON.stringify({ ...last, text: "" }) === JSON.stringify({ ...look, text: "" }))
-        last.text += i.text;
-      else out.push({ ...look, text: i.text });
-    }
-    return out;
-  });
+/**
+ * The look of each run that has text in reading order, adjacent runs of one look joined, also
+ * across paragraphs: the Word 97 reader joins paragraphs whose mark was deleted, the OOXML reader
+ * does not.
+ */
+const looks = (doc: DocModel) => {
+  const out: Array<Record<string, unknown>> = [];
+  for (const i of paragraphs(doc).flatMap((p) => p.inlines)) {
+    if (i.type !== "text") continue;
+    const look = {
+      bold: i.bold || undefined,
+      italic: i.italic || undefined,
+      underline: i.underline || undefined,
+      strike: i.strike || undefined,
+      size: i.size,
+      color: i.color,
+      script: i.script,
+      link: i.link,
+      font: first(i.font),
+    };
+    const last = out.at(-1);
+    if (last && JSON.stringify({ ...last, text: "" }) === JSON.stringify({ ...look, text: "" }))
+      last.text += i.text;
+    else out.push({ ...look, text: i.text });
+  }
+  return out;
+};
 
 describe("Word 97-2003 from LibreOffice", () => {
   it("is a full document with its title", async () => {
@@ -64,12 +67,20 @@ describe("Word 97-2003 from LibreOffice", () => {
 
   it("runs keep bold, colour, size, italic, underline, highlight, strike, scripts and fonts", async () => {
     const doc = await open("format.doc");
-    expect(run(doc, "a bold red 14 pt run")).toMatchObject({ bold: true, color: "#FF0000", size: 14 });
+    expect(run(doc, "a bold red 14 pt run")).toMatchObject({
+      bold: true,
+      color: "#FF0000",
+      size: 14,
+    });
     expect(run(doc, "italic underlined words")).toMatchObject({ italic: true, underline: true });
     expect(run(doc, "a highlight")).toMatchObject({ highlight: "#FFFF00" });
     expect(run(doc, "struck text")).toMatchObject({ strike: true });
     expect(run(doc, "2")).toMatchObject({ script: "super" });
-    expect(runs(doc).filter((r) => r.text === "2").map((r) => r.script)).toEqual(["super", "sub"]);
+    expect(
+      runs(doc)
+        .filter((r) => r.text === "2")
+        .map((r) => r.script),
+    ).toEqual(["super", "sub"]);
     expect(run(doc, "small caps")).toMatchObject({ caps: true });
     const mono = run(doc, "mono blue") as TextRun;
     expect([first(mono.font), mono.color]).toEqual(["Liberation Mono", "#2E75B6"]);
@@ -87,7 +98,12 @@ describe("Word 97-2003 from LibreOffice", () => {
       indent: { left: 36, right: 36, first: 18 },
       spacing: { line: 1.5 },
     });
-    expect(para(doc, "Exact spacing").spacing).toEqual({ before: 18, after: 18, line: 21.6, exact: true });
+    expect(para(doc, "Exact spacing").spacing).toEqual({
+      before: 18,
+      after: 18,
+      line: 21.6,
+      exact: true,
+    });
   });
 
   it("a numbered and a bulleted list keep their markers and indents", async () => {
@@ -109,7 +125,9 @@ describe("Word 97-2003 from LibreOffice", () => {
     expect(table?.borders).toBe(true);
     expect(table?.columns).toEqual([233.9, 117, 117]);
     expect(
-      table?.rows.map((r) => r.cells.map((c) => [textOf(c.blocks[0]), c.colSpan, c.rowSpan, c.fill])),
+      table?.rows.map((r) =>
+        r.cells.map((c) => [textOf(c.blocks[0]), c.colSpan, c.rowSpan, c.fill]),
+      ),
     ).toEqual([
       [["Counts by site", 3, 1, "#DDE4F0"]],
       [
@@ -140,9 +158,11 @@ describe("Word 97-2003 from LibreOffice", () => {
     expect(doc.sections[0]?.margins).toMatchObject({ top: 86.1, left: 70.9, right: 56.7 });
     expect(plainText(doc.sections[0]?.header ?? [])).toBe("Format check · header");
     const footer = doc.sections[0]?.footer[0] as Paragraph;
-    expect(footer.inlines.map((i) => (i.type === "text" ? i.text : i.type === "field" ? `<${i.field}>` : ""))).toEqual(
-      ["Page ", "<page>", " of ", "<pages>"],
-    );
+    expect(
+      footer.inlines.map((i) =>
+        i.type === "text" ? i.text : i.type === "field" ? `<${i.field}>` : "",
+      ),
+    ).toEqual(["Page ", "<page>", " of ", "<pages>"]);
     expect(plainText(doc.sections[1]?.header ?? [])).toBe("Letter pages");
     expect(plainText(doc.sections[3]?.footer ?? [])).toBe("Format check · footer");
     expect(doc.sections[0]?.blocks.filter((b) => b.type === "pagebreak")).toHaveLength(1);
@@ -164,7 +184,10 @@ describe("Word 97-2003 from LibreOffice", () => {
     const doc = await open("format.doc");
     expect(doc.comments).toHaveLength(1);
     const [comment] = doc.comments;
-    expect([comment?.author, plainText(comment?.blocks ?? [])]).toEqual(["Mina Park", "Check the totals."]);
+    expect([comment?.author, plainText(comment?.blocks ?? [])]).toEqual([
+      "Mina Park",
+      "Check the totals.",
+    ]);
     expect(comment?.date).toMatch(/^2026-10-20T10:30/);
     expect(run(doc, "reviewed numbers")?.comments).toEqual([comment?.id]);
   });
@@ -190,14 +213,19 @@ describe("Word 97-2003 from LibreOffice", () => {
     const doc = await open("format.doc");
     const all = texts(doc);
     expect(all).toContain("Kept text stays, and inserted words show.");
-    expect(all.join("\n")).not.toContain("removed words");
+    expect(all).toContain("Joined: first half and second half.");
+    expect(all.join("\n")).not.toMatch(/removed words|was cut here|Removed lead-in/);
     const box = all.indexOf("Boxed note text.");
     expect(all[box - 1]).toBe("A text box follows this paragraph.");
   });
 
   it("a .dot template reads as a template, with the same content", async () => {
     const dot = await open("format.dot");
-    expect(dot).toMatchObject({ format: "dot", formatName: "Word 97-2003 template", textOnly: false });
+    expect(dot).toMatchObject({
+      format: "dot",
+      formatName: "Word 97-2003 template",
+      textOnly: false,
+    });
     expect(looks(dot)).toEqual(looks(await open("format.doc")));
   });
 
@@ -215,7 +243,9 @@ describe("Word 97-2003 from textutil", () => {
     expect(run(doc, "the format page")).toMatchObject({ underline: true, color: "#0000E9" });
     expect(para(doc, "A centred paragraph").align).toBe("center");
     const [table] = tables(doc);
-    expect(table?.rows.map((r) => r.cells.map((c) => [textOf(c.blocks[0]), c.colSpan, c.rowSpan]))).toEqual([
+    expect(
+      table?.rows.map((r) => r.cells.map((c) => [textOf(c.blocks[0]), c.colSpan, c.rowSpan])),
+    ).toEqual([
       [["Counts by site", 3, 1]],
       [
         ["Site", 1, 1],
