@@ -32,7 +32,8 @@ test.describe("the desk shell", () => {
   test("profiles that lay the desk out unfold on hover and fold away again", async ({ page }) => {
     await page.hover(".mode-chip.is-current");
     await step(page, 400);
-    await expect(page.locator(".modes-more .mode-chip")).toHaveCount(4);
+    // Deep work, Review, Studio, Night and Default, the way home.
+    await expect(page.locator(".modes-more .mode-chip")).toHaveCount(5);
     await expect(page.locator(".modes-more")).toHaveCSS("max-width", "720px");
     await expect(page.locator('[data-mode="studio"] .mode-copied')).toHaveText("jin");
     expect(await shellTree(page, ".modes")).toMatchSnapshot("modes-open.json");

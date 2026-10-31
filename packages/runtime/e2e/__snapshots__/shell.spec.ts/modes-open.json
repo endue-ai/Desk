@@ -159,6 +159,31 @@
          "text": "Night"
         }
        ]
+      },
+      {
+       "tag": "button",
+       "class": "mode-chip",
+       "aria-label": "Default",
+       "aria-pressed": "false",
+       "data-mode": "default",
+       "style": {
+        "background": "rgb(30, 29, 33)",
+        "border": "solid rgb(51, 49, 54)"
+       },
+       "children": [
+        {
+         "tag": "svg",
+         "icon": "sparkle"
+        },
+        {
+         "tag": "span",
+         "class": "mode-name",
+         "style": {
+          "color": "rgb(242, 240, 245)"
+         },
+         "text": "Default"
+        }
+       ]
       }
      ]
     }
