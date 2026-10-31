@@ -62,8 +62,11 @@ export async function* decodeStream(codec, input, options) {
   }
 }
 
-/** A decoded part of a source, as an Input a reader can pull from. @param {string} codec @param {Source} source */
-export const decodedInput = (codec, source, /** @type {any} */ options) =>
+/**
+ * A decoded part of a source, as an Input a reader can pull from.
+ * @param {string} codec @param {Source} source @param {any} [options]
+ */
+export const decodedInput = (codec, source, options = undefined) =>
   inputOfChunks(decodeStream(codec, inputFrom(source), options));
 
 /**
@@ -92,12 +95,11 @@ export async function collect(chunks, limit = Number.POSITIVE_INFINITY, expect =
   return out;
 }
 
-/** Decode all of `bytes` (or its first `limit` bytes). @param {string} codec @param {Uint8Array} bytes */
-export const decode = (
-  codec,
-  bytes,
-  /** @type {any} */ options,
-  limit = Number.POSITIVE_INFINITY,
-) => collect(decodeStream(codec, inputOf(bytes), options), limit);
+/**
+ * Decode all of `bytes` (or its first `limit` bytes).
+ * @param {string} codec @param {Uint8Array} bytes @param {any} [options] @param {number} [limit]
+ */
+export const decode = (codec, bytes, options = undefined, limit = Number.POSITIVE_INFINITY) =>
+  collect(decodeStream(codec, inputOf(bytes), options), limit);
 
 export { Input, inputFrom, inputOf, inputOfChunks };

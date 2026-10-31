@@ -44,6 +44,10 @@ export function cleanPath(raw, { relative = false } = {}) {
   return (absolute ? "/" : "") + parts.join("/");
 }
 
+/** Whether a path would leave the folder it is extracted to: absolute, a drive letter, or "..". @param {string} path */
+export const outside = (path) =>
+  /^\//.test(path) || /^[A-Za-z]:/.test(path) || path.split("/").includes("..");
+
 /** The folder a path is in, "" at the top. @param {string} path */
 export const parentOf = (path) => {
   const slash = path.lastIndexOf("/");
@@ -68,6 +72,7 @@ export function withFolders(entries) {
     byPath.set(entry.path, entry);
   }
   for (const entry of [...byPath.values()]) {
+    if (outside(entry.path)) continue;
     for (let parent = parentOf(entry.path); parent && parent !== "/"; parent = parentOf(parent)) {
       if (byPath.has(parent)) break;
       byPath.set(parent, /** @type {E} */ ({ path: parent, kind: "folder", size: 0 }));
