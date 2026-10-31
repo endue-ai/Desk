@@ -72,3 +72,9 @@ describe("the terminal's options", () => {
     expect(terminalOptions(DEFAULTS, { ...dark, contrast: "high" }).minimumContrastRatio).toBe(7);
   });
 });
+
+describe("the terminal's options", () => {
+  it("lets xterm load its proposed-API addons (Unicode 11)", () => {
+    expect(terminalOptions(DEFAULTS, dark).allowProposedApi).toBe(true);
+  });
+});

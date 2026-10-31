@@ -53,3 +53,18 @@ describe("remember", () => {
     expect(remember([], "a", 0)).toEqual([]);
   });
 });
+
+describe("score: where the characters may land", () => {
+  it("does not match letters scattered inside words", () => {
+    expect(score("theme", "Forward the open message")).toBe(0);
+    expect(score("keyboard", "Quit what is in progress")).toBe(0);
+    expect(score("theme", "Switch between light and dark")).toBe(0);
+  });
+
+  it("still matches runs and word starts", () => {
+    expect(score("theme", "theme")).toBeGreaterThan(0);
+    expect(score("light dark", "Switch between light and dark")).toBeGreaterThan(0);
+    expect(score("opf", "Open a file")).toBeGreaterThan(0);
+    expect(score("show a plugin", "Show a plugin's surface")).toBeGreaterThan(0);
+  });
+});

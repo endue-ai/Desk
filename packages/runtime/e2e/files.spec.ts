@@ -127,3 +127,15 @@ test.describe("desk.buffers", () => {
     expect(back).toBe("file:~/notes/a.txt");
   });
 });
+
+test.describe("desk.files: the plugin's own writes", () => {
+  test("saving a file does not report it as changed on disk", async ({ page }) => {
+    await open(page);
+    await run(page, "desk.files.open", { path: "~/notes/a.txt" });
+    await run(page, "desk.files.save", {});
+    await expect(status(page)).toHaveText("Saved a.txt");
+    expect(await run(page, "desk.files.changed", { path: "~/notes/a.txt" })).toBe("own-save");
+    await expect(status(page)).toHaveText("Saved a.txt");
+    await expect(echo(page).getByTestId("log")).not.toContainText("revert ~/notes/a.txt;");
+  });
+});

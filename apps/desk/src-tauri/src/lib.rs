@@ -1,6 +1,7 @@
 //! The Tauri shell: windows, the webview and the plugin URL scheme. Everything else lives in desk-core.
 
 mod commands;
+mod events;
 mod protocol;
 mod socket;
 

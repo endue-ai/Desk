@@ -259,3 +259,17 @@ test("Eris drags anywhere on screen and the place is kept in the profile", async
   await expect(eris).toHaveCSS("top", `${900 - 138}px`);
   await page.evaluate(() => localStorage.clear());
 });
+
+test.describe("the profile switcher's way home", () => {
+  test.beforeEach(async ({ page }) => {
+    await openShell(page);
+  });
+
+  test("the Default chip is offered while another profile is in force", async ({ page }) => {
+    await page.hover(".mode-chip.is-current");
+    await step(page, 400);
+    await expect(page.locator('.modes-more [data-mode="default"]')).toHaveCount(1);
+    await page.click('.modes-more [data-mode="default"]');
+    await expect(page.locator(".mode-chip.is-current")).toHaveAttribute("data-mode", "default");
+  });
+});

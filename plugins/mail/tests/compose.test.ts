@@ -180,3 +180,11 @@ describe("drafts", () => {
     });
   });
 });
+
+describe("problemsOf without an account", () => {
+  it("says no account is connected when there is none to choose from", () => {
+    const draft = { ...newDraft({ now: NOW }), to: "mina@example.com", account: "" };
+    expect(problemsOf(draft, [])).toEqual(["No mail account is connected yet."]);
+    expect(problemsOf(draft, ["acme.imap/work"])).toEqual(["Choose the account to send from."]);
+  });
+});
