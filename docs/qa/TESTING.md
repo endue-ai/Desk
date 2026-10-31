@@ -48,6 +48,8 @@ catch; until then they are marked "not yet".
 - Animations run on an injected clock and randomness takes a seed. Snapshots are taken at fixed times.
 - Timing tests choose their own quiet periods, wide enough for a loaded runner, instead of relying on
   defaults (`watch_coalesces_a_burst_into_one_batch` debounces for 1 s, not the default 100 ms).
+- Test helpers that build temp paths include a process-wide counter next to the process id, never the
+  clock alone: tests run in parallel threads, and the clock can hand two of them the same path (#106).
 - Test hooks (`desk.test.*`) exist only behind the `test-hooks` feature, never in release builds.
 - Playwright runs only through `just test-e2e` and `just perf-opening` (ADR 0018). On macOS the
   runtime e2e runs in a Linux container, at most two e2e runs share a machine, and native WebKit is
