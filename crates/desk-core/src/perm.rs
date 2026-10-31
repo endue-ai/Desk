@@ -22,6 +22,8 @@ pub enum Target<'a> {
     CommandId(&'a str),
     /// Event names (events.subscribe).
     Events(&'a [EventName]),
+    /// Another owner's setting as `owner/key` (settings.get).
+    Setting(&'a str),
 }
 
 /// A denied call: the scope that was missing and why.
@@ -232,6 +234,11 @@ pub fn covers(grant: &Permission, scope: &Permission) -> bool {
         }
         (Permission::ConnectorManage(_), Permission::ConnectorManage(_)) => true,
         (Permission::ViewManage(_), Permission::ViewManage(_)) => true,
+        (Permission::SettingsRead(g), Permission::SettingsRead(s)) => s
+            .keys
+            .iter()
+            .all(|a| g.keys.iter().any(|p| setting_match(p, a))),
+        (Permission::LogRead(_), Permission::LogRead(_)) => true,
         _ => false,
     }
 }
@@ -271,6 +278,17 @@ pub fn star_match(pattern: &str, text: &str) -> bool {
     true
 }
 
+/// `owner/key` against a setting pattern: `*` matches within its own side of the `/`, as in
+/// `star_match`, so `endue.eris/*` covers every Eris setting and `*/*` every setting.
+pub(crate) fn setting_match(pattern: &str, setting: &str) -> bool {
+    match (pattern.split_once('/'), setting.split_once('/')) {
+        (Some((owner, key)), Some((asked_owner, asked_key))) => {
+            star_match(owner, asked_owner) && star_match(key, asked_key)
+        }
+        _ => false,
+    }
+}
+
 /// Whether `scope` covers `target`, whatever the grants.
 pub(crate) fn scope_allows(scope: &Permission, target: &Target<'_>) -> bool {
     match (scope, target) {
@@ -298,9 +316,15 @@ pub(crate) fn scope_allows(scope: &Permission, target: &Target<'_>) -> bool {
             | Permission::BrainConverse(_)
             | Permission::PermManage(_)
             | Permission::ConnectorManage(_)
-            | Permission::ViewManage(_),
+            | Permission::ViewManage(_)
+            | Permission::LogRead(_),
             Target::None,
         ) => true,
+        (Permission::SettingsRead(s), Target::Setting(setting)) => {
+            s.keys.iter().any(|p| setting_match(p, setting))
+        }
+        // settings.list: the scope only narrows what is listed.
+        (Permission::SettingsRead(_), Target::None) => true,
         // data.*: the scope narrows which items the call sees.
         (Permission::DataRead(_), Target::None) => true,
         _ => false,
