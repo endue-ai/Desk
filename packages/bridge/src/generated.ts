@@ -17,6 +17,8 @@ export interface PluginContributes {
   settings?: Record<string, SettingContribution>;
   /** Profiles: a plugin set plus settings, like an init file. */
   profiles?: ProfileContribution[];
+  /** Commands the palette asks as the person types, each listing its answers in a group of its own after the commands. Their commands start with the plugin id; later layers' groups come after earlier ones. */
+  paletteProviders?: PaletteProvider[];
 }
 
 /** A command id: lowercase and dotted, with at least two segments, for example eris.say or desk.palette.open. Unique across callers (bridge cmd.*); a plugin's contributed commands start with its own id. */
@@ -29,6 +31,55 @@ export interface CommandContribution {
   title: string;
   /** More words the palette matches. */
   keywords?: string[];
+  /** Makes the command an alias the desk answers while the plugin is on: it runs this command with these args, the caller's object args merged over them key by key. Data-only plugins (view, policy) offer commands this way. */
+  runs?: CommandCall;
+}
+
+/** A command's args: an object, as cmd.invoke passes them. */
+export type CommandArgs = Record<string, unknown>;
+
+/** A command and the args it is run with. */
+export interface CommandCall {
+  command: CommandId;
+  args?: CommandArgs;
+}
+
+/** A command the palette runs with a PaletteQuery whenever the typed query changes (two characters or more), and whose PaletteResults it lists under title. */
+export interface PaletteProvider {
+  command: CommandId;
+  /** The group's name in the palette: Items. */
+  title: string;
+}
+
+/** What the palette asks a provider: the query as typed, trimmed, and how many results it shows. */
+export interface PaletteQuery {
+  query: string;
+  limit: number;
+}
+
+/** What a provider answers: its results, best first. The palette shows up to the limit it asked for. */
+export interface PaletteResults {
+  results: PaletteResult[];
+}
+
+/** One result: what it shows, and the commands that act on it, in order. Enter runs the first, Mod+Enter the second. */
+export interface PaletteResult {
+  /** Unique among the provider's results: an item's connector/instance/id. */
+  id: string;
+  title: string;
+  /** A second, quieter line: Task · desk.fixtures. */
+  detail?: string;
+  /** A short lowercase word for what it is: an item kind for items (task, event), or the provider's own (file, plugin). */
+  kind?: string;
+  actions: PaletteAction[];
+}
+
+/** A command the palette runs on a result, with its args. */
+export interface PaletteAction {
+  command: CommandId;
+  /** Shown under the results: Open in Desk. */
+  title: string;
+  args?: CommandArgs;
 }
 
 /** Modifiers and one key joined with +, for example Mod+K, Mod+Shift+], Escape. Mod is Meta on macOS and Control elsewhere. */

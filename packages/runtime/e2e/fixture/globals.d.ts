@@ -21,10 +21,12 @@ declare global {
     __deskWritten: Array<{ path: string; content: string }>;
     /** The edges fixture's plugin.list, to change before emitting plugin.changed. */
     __deskPlugins: PluginInfo[];
-    /** The views fixture (views.html): its views saved, example.jira's runs, the index changed. */
+    /** The views fixture (views.html): its views saved, the test callers' runs, the index changed. */
     __views: {
       ready: Promise<void>;
       invoked: Array<{ id: string; args: unknown; caller: string }>;
+      /** What test.search's commands (test.search.find, test.search.record) were run with. */
+      search: Array<{ id: string; args: unknown; caller: string }>;
       upsert(item: Item): void;
       remove(source: ItemSource, id: string): boolean;
     };
