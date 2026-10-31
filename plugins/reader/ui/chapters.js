@@ -12,7 +12,7 @@ import { loadFonts } from "./paint.js";
  */
 
 const BASE = `:host { display: block; color: #1d1b1f; background: #fbfaf7; }
-.body { max-width: 42em; margin: 0 auto; padding: 2em 2.5em 3em; font: 1.06rem/1.65 Georgia, "Iowan Old Style", "Noto Serif", serif; overflow-wrap: break-word; }
+.reader-column { box-sizing: border-box; max-width: 46em; margin: 0 auto; padding: 2em 2.5em 3em; font: 1.06rem/1.65 Georgia, "Iowan Old Style", "Noto Serif", serif; overflow-wrap: break-word; }
 img, svg, video { max-width: 100%; height: auto; }
 a { color: #4b3aa8; } a.external { text-decoration: underline dotted; }
 pre { white-space: pre-wrap; } table { border-collapse: collapse; max-width: 100%; }
@@ -108,10 +108,11 @@ export function createChapters(host, scroller, hooks) {
       await loadFonts(host.ownerDocument, chapter.fonts);
       unit = target;
       showing = next;
+      // The book's own body rules apply to its .body; the reading column around it is the reader's.
       root.innerHTML = [
         `<style>${BASE}</style>`,
         ...chapter.css.map((css) => `<style>${css.replace(/<\/style/gi, "")}</style>`),
-        chapter.html,
+        `<div class="reader-column">${chapter.html}</div>`,
       ].join("");
       place(to);
       return root;

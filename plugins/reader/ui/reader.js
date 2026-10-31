@@ -41,6 +41,16 @@ const requested = (/** @type {unknown} */ args) => {
   };
 };
 
+/** What the status line says once a file is open. */
+const opened = (/** @type {{ name: string, book: Book }} */ { name, book }) => {
+  if (book.kind === "pages")
+    return `${name}: ${book.format}, ${book.pages.length} ${book.pages.length === 1 ? "page" : "pages"}.`;
+  if (book.kind === "chapters")
+    return `${name}: ${book.format}, ${book.chapters.length} ${book.chapters.length === 1 ? "chapter" : "chapters"}.`;
+  if (book.kind === "password") return "This PDF is protected by a password.";
+  return `${name} cannot be shown: ${book.why}`;
+};
+
 /** How long the last position waits before it is kept, while the person scrolls. */
 const POSITION_DELAY = 600;
 
@@ -164,6 +174,7 @@ export function createReader({ bridge, commands }, view, options = {}) {
     const file = { buffer, path, name: nameOf(path), size: bytes.length, book, bytes, ...marks };
     files.set(buffer, file);
     present(buffer);
+    view.status(opened(file));
     await watch(file);
   });
 
@@ -269,9 +280,7 @@ export function createReader({ bridge, commands }, view, options = {}) {
       file.book = book;
       if (book.kind !== "password") file.password = password;
       present(file.buffer);
-      view.status(
-        book.kind === "password" ? "That password is not right." : `Opened ${file.name}.`,
-      );
+      view.status(book.kind === "password" ? "That password is not right." : opened(file));
     },
   };
 }

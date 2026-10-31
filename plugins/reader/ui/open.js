@@ -12,7 +12,8 @@ import { paintPdf } from "./pdf-paint.js";
  * @typedef {import("./formats/imagesize.js").Size} Size
  * @typedef {import("./formats/toc.js").Toc} Toc
  * @typedef {{ unit: number, anchor?: string }} Target
- * @typedef {(i: number, host: HTMLElement, scale: number) => Promise<void>} Paint
+ * @typedef {{ go(unit: number): void, external(url: string): void }} PaintHooks
+ * @typedef {(i: number, host: HTMLElement, scale: number, hooks: PaintHooks) => Promise<void>} Paint
  * @typedef {{ kind: "pages", format: string, title: string, pages: Size[], toc: Toc[],
  *   text(i: number): Promise<string>, measure?(i: number): Promise<Size>, paint: Paint,
  *   close?(): unknown }} PagesBook
@@ -53,7 +54,10 @@ async function read(bytes, found, options) {
       const { openPdf } = await import("./formats/pdf.js");
       const lib = await options.pdfjs();
       const book = await openPdf(bytes, { pdfjs: lib, password: options.password });
-      return { ...book, paint: (i, host, scale) => paintPdf(lib, book, i, host, scale) };
+      return {
+        ...book,
+        paint: (i, host, scale, hooks) => paintPdf(lib, book, i, host, scale, hooks),
+      };
     }
     case "epub": {
       const { readEpub } = await import("./formats/epub.js");

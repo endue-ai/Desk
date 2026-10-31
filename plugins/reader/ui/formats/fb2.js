@@ -25,6 +25,12 @@ const hrefOf = (/** @type {Element} */ el) =>
   el.getAttribute("href") ??
   "";
 
+/** A section without a title is named by its first paragraph, when that is short (as calibre writes). */
+const lead = (/** @type {Element} */ section) => {
+  const text = clean(kids(section, "p")[0]?.textContent);
+  return text.length <= 80 ? text : "";
+};
+
 /** The text of an FB2 file in the encoding its XML declaration names (often windows-1251). */
 function textOf(/** @type {Uint8Array} */ bytes) {
   if (bytes[0] === 0xff && bytes[1] === 0xfe) return new TextDecoder("utf-16le").decode(bytes);
@@ -178,7 +184,8 @@ export function readFb2(bytes) {
     for (const section of sections) {
       const unit = parts.length;
       const markup = html(section, unit, 1);
-      const name = clean(kids(section, "title")[0]?.textContent) || `Chapter ${unit + 1}`;
+      const name =
+        clean(kids(section, "title")[0]?.textContent) || lead(section) || `Chapter ${unit + 1}`;
       parts.push({
         title: name,
         html: markup,

@@ -35,6 +35,20 @@ const params = (/** @type {Uint8Array} */ bytes, /** @type {string | undefined} 
 });
 
 /**
+ * A page's text items, read from pdf.js's stream with a reader: getTextContent iterates the stream
+ * with for await, which WebKit's ReadableStream does not offer.
+ * @param {any} page
+ * @returns {Promise<Array<{ str?: string, hasEOL?: boolean }>>}
+ */
+async function textContent(page) {
+  const reader = page.streamTextContent().getReader();
+  const items = [];
+  for (let next = await reader.read(); !next.done; next = await reader.read())
+    items.push(...(next.value?.items ?? []));
+  return items;
+}
+
+/**
  * @param {Uint8Array} bytes
  * @param {{ pdfjs: Pdfjs | object, password?: string }} options
  */
@@ -110,15 +124,8 @@ export async function openPdf(bytes, { pdfjs, password }) {
     let found = texts.get(i);
     if (!found) {
       found = page(i)
-        .then((p) => p.getTextContent())
-        .then((content) =>
-          content.items
-            .map(
-              (/** @type {{ str?: string, hasEOL?: boolean }} */ t) =>
-                (t.str ?? "") + (t.hasEOL ? "\n" : ""),
-            )
-            .join(""),
-        )
+        .then((p) => textContent(p))
+        .then((items) => items.map((t) => (t.str ?? "") + (t.hasEOL ? "\n" : "")).join(""))
         .catch(() => "");
       texts.set(i, found);
     }

@@ -3,6 +3,8 @@
 // inside the file jump through `go`; links to the web are not followed from the sandboxed frame.
 import { CSS_PER_POINT } from "./formats/pdf.js";
 
+const MAX_PIXELS = 16_000_000;
+
 /**
  * @typedef {{ go(unit: number): void, external(url: string): void }} Hooks
  * @typedef {{ page(i: number): Promise<any>, resolve(dest: unknown): Promise<number | undefined>,
@@ -72,7 +74,12 @@ export async function paintPdf(lib, book, i, host, zoom, hooks) {
   ])
     host.style.setProperty(name, value);
   const canvas = doc.createElement("canvas");
-  const ratio = Math.min(doc.defaultView?.devicePixelRatio || 1, 3);
+  // Sharp on a Retina screen, but never past what a canvas holds (16 million pixels in WebKit).
+  const pixels = viewport.width * viewport.height || 1;
+  const ratio = Math.max(
+    0.5,
+    Math.min(doc.defaultView?.devicePixelRatio || 1, 2, Math.sqrt(MAX_PIXELS / pixels)),
+  );
   canvas.width = Math.floor(viewport.width * ratio);
   canvas.height = Math.floor(viewport.height * ratio);
   canvas.style.width = `${viewport.width}px`;
