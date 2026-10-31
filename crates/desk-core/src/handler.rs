@@ -220,6 +220,7 @@ impl Core {
             R::ViewSave(r) => (r.id, self.view_save(caller, r.params)),
             R::ViewRemove(r) => (r.id, self.view_remove(caller, r.params)),
             R::CatalogGet(r) => (r.id, self.catalog_get(caller)),
+            R::ShellOpen(r) => (r.id, unsupported("shell.open")),
         }
     }
 
