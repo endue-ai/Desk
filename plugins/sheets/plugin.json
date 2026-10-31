@@ -1,0 +1,45 @@
+{
+  "id": "endue.sheets",
+  "name": "Sheets",
+  "version": "0.1.0",
+  "kind": "ui",
+  "entry": "ui/index.html",
+  "description": "Opens every spreadsheet in one grid, read-only: Excel, Numbers, OpenDocument, CSV and the older formats, with sheet tabs, a formula bar, find and the selection's sum.",
+  "permissions": [{ "permission": "cmd:invoke", "ids": ["desk.files.changed"] }],
+  "surfaces": [{ "id": "main", "title": "Sheets", "placement": "center" }],
+  "contributes": {
+    "files": [
+      { "pattern": "*.xlsx", "plugin": "endue.sheets" },
+      { "pattern": "*.xlsm", "plugin": "endue.sheets" },
+      { "pattern": "*.xlsb", "plugin": "endue.sheets" },
+      { "pattern": "*.xls", "plugin": "endue.sheets" },
+      { "pattern": "*.xlt", "plugin": "endue.sheets" },
+      { "pattern": "*.xltx", "plugin": "endue.sheets" },
+      { "pattern": "*.xltm", "plugin": "endue.sheets" },
+      { "pattern": "*.ods", "plugin": "endue.sheets" },
+      { "pattern": "*.ots", "plugin": "endue.sheets" },
+      { "pattern": "*.fods", "plugin": "endue.sheets" },
+      { "pattern": "*.numbers", "plugin": "endue.sheets" },
+      { "pattern": "*.csv", "plugin": "endue.sheets" },
+      { "pattern": "*.tsv", "plugin": "endue.sheets" },
+      { "pattern": "*.dif", "plugin": "endue.sheets" },
+      { "pattern": "*.slk", "plugin": "endue.sheets" },
+      { "pattern": "*.sylk", "plugin": "endue.sheets" },
+      { "pattern": "*.wk1", "plugin": "endue.sheets" },
+      { "pattern": "*.wk3", "plugin": "endue.sheets" },
+      { "pattern": "*.wk4", "plugin": "endue.sheets" },
+      { "pattern": "*.wks", "plugin": "endue.sheets" },
+      { "pattern": "*.123", "plugin": "endue.sheets" },
+      { "pattern": "*.qpw", "plugin": "endue.sheets" },
+      { "pattern": "*.gsheet", "plugin": "endue.sheets" }
+    ],
+    "settings": {
+      "endue.sheets.csv-encoding": {
+        "kind": "string",
+        "default": "auto",
+        "choices": ["auto", "utf-8", "euc-kr", "shift_jis", "windows-1252"],
+        "description": "The encoding of CSV and TSV files. auto: a byte order mark (UTF-8 or UTF-16), then UTF-8, and EUC-KR (code page 949) when the bytes are not UTF-8."
+      }
+    }
+  }
+}

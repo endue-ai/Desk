@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?mso-application progid="Excel.Sheet"?>
+<!-- The workbook every fixture is converted from (make.sh). Made-up numbers, no personal data. -->
+<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
+  xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"
+  xmlns:x="urn:schemas-microsoft-com:office:excel">
+ <Styles>
+  <Style ss:ID="Default" ss:Name="Normal"><Font ss:FontName="Arial" ss:Size="10"/></Style>
+  <Style ss:ID="title"><Font ss:FontName="Arial" ss:Size="14" ss:Bold="1" ss:Color="#1F3864"/>
+   <Interior ss:Color="#FFFF00" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center"/></Style>
+  <Style ss:ID="head"><Font ss:FontName="Arial" ss:Size="10" ss:Bold="1"/>
+   <Interior ss:Color="#D9E1F2" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center"/></Style>
+  <Style ss:ID="money"><NumberFormat ss:Format="&quot;$&quot;#,##0.00"/></Style>
+  <Style ss:ID="share"><NumberFormat ss:Format="0.0%"/></Style>
+  <Style ss:ID="day"><NumberFormat ss:Format="yyyy\-mm\-dd"/></Style>
+  <Style ss:ID="total"><Font ss:FontName="Arial" ss:Size="10" ss:Bold="1" ss:Italic="1"/></Style>
+  <Style ss:ID="sum"><Font ss:FontName="Arial" ss:Size="10" ss:Bold="1" ss:Color="#C00000"/>
+   <NumberFormat ss:Format="&quot;$&quot;#,##0.00"/></Style>
+  <Style ss:ID="sumshare"><Font ss:FontName="Arial" ss:Size="10" ss:Bold="1"/><NumberFormat ss:Format="0.0%"/></Style>
+  <Style ss:ID="wrap"><Font ss:FontName="Arial" ss:Size="10" ss:Underline="Single"/>
+   <Alignment ss:Horizontal="Right" ss:WrapText="1"/></Style>
+ </Styles>
+ <Worksheet ss:Name="Budget">
+  <Table>
+   <Column ss:Width="96"/><Column ss:Width="80"/><Column ss:Width="60"/><Column ss:Width="72"/>
+   <Column ss:Hidden="1" ss:Width="40"/>
+   <Row ss:Height="24">
+    <Cell ss:MergeAcross="3" ss:StyleID="title"><Data ss:Type="String">Quarterly budget</Data></Cell>
+   </Row>
+   <Row>
+    <Cell ss:StyleID="head"><Data ss:Type="String">Item</Data></Cell>
+    <Cell ss:StyleID="head"><Data ss:Type="String">Amount</Data></Cell>
+    <Cell ss:StyleID="head"><Data ss:Type="String">Share</Data></Cell>
+    <Cell ss:StyleID="head"><Data ss:Type="String">Due</Data></Cell>
+    <Cell><Data ss:Type="String">draft</Data></Cell>
+   </Row>
+   <Row>
+    <Cell><Data ss:Type="String">Rent</Data></Cell>
+    <Cell ss:StyleID="money"><Data ss:Type="Number">1200</Data></Cell>
+    <Cell ss:StyleID="share"><Data ss:Type="Number">0.5</Data></Cell>
+    <Cell ss:StyleID="day"><Data ss:Type="DateTime">2026-01-15T00:00:00.000</Data></Cell>
+   </Row>
+   <Row>
+    <Cell><Data ss:Type="String">Power</Data></Cell>
+    <Cell ss:StyleID="money"><Data ss:Type="Number">300.5</Data></Cell>
+    <Cell ss:StyleID="share"><Data ss:Type="Number">0.125</Data></Cell>
+    <Cell ss:StyleID="day"><Data ss:Type="DateTime">2026-02-01T00:00:00.000</Data></Cell>
+   </Row>
+   <Row>
+    <Cell><Data ss:Type="String">Water</Data></Cell>
+    <Cell ss:StyleID="money"><Data ss:Type="Number">99.25</Data></Cell>
+    <Cell ss:StyleID="share"><Data ss:Type="Number">0.375</Data></Cell>
+    <Cell ss:StyleID="day"><Data ss:Type="DateTime">2026-03-10T00:00:00.000</Data></Cell>
+   </Row>
+   <Row>
+    <Cell ss:StyleID="total"><Data ss:Type="String">Total</Data></Cell>
+    <Cell ss:StyleID="sum" ss:Formula="=SUM(R[-3]C:R[-1]C)"><Data ss:Type="Number">1599.75</Data></Cell>
+    <Cell ss:StyleID="sumshare" ss:Formula="=SUM(R[-3]C:R[-1]C)"><Data ss:Type="Number">1</Data></Cell>
+    <Cell><Data ss:Type="Boolean">1</Data></Cell>
+   </Row>
+   <Row ss:Hidden="1">
+    <Cell><Data ss:Type="String">Hidden row</Data></Cell>
+   </Row>
+   <Row ss:Height="30">
+    <Cell ss:MergeAcross="1" ss:StyleID="wrap"><Data ss:Type="String">Paid on the first working day</Data></Cell>
+   </Row>
+  </Table>
+  <WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel">
+   <Selected/>
+   <FreezePanes/>
+   <FrozenNoSplit/>
+   <SplitHorizontal>2</SplitHorizontal>
+   <TopRowBottomPane>2</TopRowBottomPane>
+   <SplitVertical>1</SplitVertical>
+   <LeftColumnRightPane>1</LeftColumnRightPane>
+   <ActivePane>0</ActivePane>
+  </WorksheetOptions>
+ </Worksheet>
+ <Worksheet ss:Name="Notes">
+  <Table>
+   <Row>
+    <Cell><Data ss:Type="String">Language</Data></Cell>
+    <Cell><Data ss:Type="String">Word</Data></Cell>
+   </Row>
+   <Row>
+    <Cell><Data ss:Type="String">Korean</Data></Cell>
+    <Cell><Data ss:Type="String">가격</Data></Cell>
+   </Row>
+   <Row>
+    <Cell><Data ss:Type="String">Korean</Data></Cell>
+    <Cell><Data ss:Type="String">합계</Data></Cell>
+   </Row>
+   <Row>
+    <Cell><Data ss:Type="String">Japanese</Data></Cell>
+    <Cell><Data ss:Type="String">合計</Data></Cell>
+   </Row>
+  </Table>
+ </Worksheet>
+ <Worksheet ss:Name="Scratch">
+  <Table>
+   <Row><Cell><Data ss:Type="String">not shown</Data></Cell></Row>
+  </Table>
+  <WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel">
+   <Visible>SheetHidden</Visible>
+  </WorksheetOptions>
+ </Worksheet>
+</Workbook>
