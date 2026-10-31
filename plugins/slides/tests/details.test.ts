@@ -48,6 +48,18 @@ describe("files it cannot show as slides", () => {
     expect(empty).toMatchObject({ kind: "details", reason: "The file is empty." });
   });
 
+  it("a presentation without slides says so", async () => {
+    const bytes = zip({
+      "[Content_Types].xml": "<Types/>",
+      "ppt/presentation.xml": `<p:presentation xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"><p:sldIdLst/><p:sldSz cx="9144000" cy="6858000"/></p:presentation>`,
+    });
+    expect(await openFile(bytes, "none.pptx")).toMatchObject({
+      kind: "details",
+      format: "PowerPoint presentation",
+      reason: "This presentation has no slides.",
+    });
+  });
+
   it("a password-protected PowerPoint file opens as the details view", async () => {
     const bytes = cfb({
       EncryptionInfo: new Uint8Array(200),

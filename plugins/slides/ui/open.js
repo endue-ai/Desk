@@ -57,6 +57,12 @@ const why = (/** @type {unknown} */ error) => {
 /** @param {string} format @param {string} reason @returns {Opened} */
 const details = (format, reason) => ({ kind: "details", format, reason });
 
+/** A deck to show, or the details view when it has no slides. @param {string} format @param {Deck} deck @returns {Opened} */
+const deckOrEmpty = (format, deck) =>
+  deck.slides.length
+    ? { kind: "deck", format, deck }
+    : details(format, "This presentation has no slides.");
+
 /**
  * @param {Uint8Array} bytes
  * @param {string} name
@@ -101,7 +107,7 @@ async function openZip(bytes, ext) {
       "PowerPoint presentation",
     );
     try {
-      return { kind: "deck", format, deck: await readPptx(zip, format) };
+      return deckOrEmpty(format, await readPptx(zip, format));
     } catch (error) {
       return details(format, why(error));
     }
@@ -125,7 +131,7 @@ async function openZip(bytes, ext) {
         (zip.has("content.xml") && zip.encrypted("content.xml"))
       )
         return details(format, ENCRYPTED);
-      return { kind: "deck", format, deck: await readOdpZip(zip, format) };
+      return deckOrEmpty(format, await readOdpZip(zip, format));
     } catch (error) {
       return details(format, why(error));
     }
@@ -152,7 +158,7 @@ function openCompound(bytes, ext) {
     return details("Compound file", "This compound file holds no PowerPoint presentation.");
   const format = formatFor(ext, ["ppt", "pps", "pot"], FORMATS.ppt ?? "");
   try {
-    return { kind: "deck", format, deck: readPpt(cfb, format) };
+    return deckOrEmpty(format, readPpt(cfb, format));
   } catch (error) {
     if (error instanceof EncryptedError) return details(format, ENCRYPTED);
     return details(format, why(error));
@@ -169,9 +175,5 @@ async function openXml(bytes, ext) {
       "This XML file is not an OpenDocument presentation.",
     );
   const format = FORMATS.fodp ?? "";
-  return {
-    kind: "deck",
-    format,
-    deck: await readOdp({ content: root, styles: root, files: null }, format),
-  };
+  return deckOrEmpty(format, await readOdp({ content: root, styles: root, files: null }, format));
 }

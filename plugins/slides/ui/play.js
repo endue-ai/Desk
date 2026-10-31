@@ -20,6 +20,11 @@ export function createPlayer(doc, actions) {
   let deck = null;
   let index = 0;
   let digits = "";
+  /** While playing, the rest of the page is out of reach (a modal dialog). */
+  const others = () => [...doc.body.children].filter((el) => el !== player && el.id !== "status");
+  const inert = (/** @type {boolean} */ on) => {
+    for (const el of others()) /** @type {HTMLElement} */ (el).inert = on;
+  };
 
   const fitSlide = () => {
     const slide = /** @type {HTMLElement | null} */ (stage.firstElementChild);
@@ -64,6 +69,7 @@ export function createPlayer(doc, actions) {
     digits = "";
     player.hidden = true;
     stage.replaceChildren();
+    inert(false);
     actions.left(index);
   };
   byId("player-leave").addEventListener("click", close);
@@ -77,6 +83,7 @@ export function createPlayer(doc, actions) {
       index = Math.min(Math.max(0, at), which.slides.length - 1);
       digits = "";
       player.hidden = false;
+      inert(true);
       draw();
       player.focus();
       actions.say(`Playing from slide ${index + 1}. Escape leaves.`);
