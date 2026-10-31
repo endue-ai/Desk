@@ -56,9 +56,17 @@ describe("remember", () => {
 
 describe("score: where the characters may land", () => {
   it("does not match letters scattered inside words", () => {
-    expect(score("theme", "Forward the open message")).toBe(0);
     expect(score("keyboard", "Quit what is in progress")).toBe(0);
     expect(score("theme", "Switch between light and dark")).toBe(0);
+    expect(score("af", "leaf")).toBe(0);
+  });
+
+  it("leaves fragmented matches out once a command holds the query whole", () => {
+    const mail = { id: "endue.mail.forward", label: "Forward the open message" };
+    expect(filter("theme", [...commands, mail]).map((c: Entry) => c.id)).toEqual([
+      "desk.theme.toggle",
+    ]);
+    expect(filter("fom", [mail]).map((c: Entry) => c.id)).toEqual(["endue.mail.forward"]);
   });
 
   it("still matches runs and word starts", () => {

@@ -155,6 +155,25 @@ defineUiPlugin({
       return was;
     };
 
+    /**
+     * A command run from here that failed is reported on the status line: its title, then why. A
+     * cancelled one (the person backed out of a pick) is not.
+     * @param {string} what
+     * @param {unknown} error
+     */
+    const report = (what, error) => {
+      const message = error instanceof Error ? error.message : String(error);
+      if (/^[^:]+: cancelled: /.test(message)) return;
+      void ctx.bridge
+        .call("ui.notify", {
+          title: `${what} failed`,
+          body: message.replace(/^[^:]+: (?:failed|unknown_command): /, ""),
+          level: "error",
+          scope: { permission: "ui:notify" },
+        })
+        .catch(() => {});
+    };
+
     /** Run the selected row: a command, a pick, or a result's first action (its second with mod). */
     const choose = (mod = false) => {
       const row = shown[selected];
@@ -162,7 +181,11 @@ defineUiPlugin({
       const was = close();
       if (row.type === "result") {
         const action = actionOf(row.result, mod);
-        if (action) void ctx.commands.run(action.command, action.args ?? {}).catch(() => {});
+        if (action) {
+          void ctx.commands
+            .run(action.command, action.args ?? {})
+            .catch((error) => report(action.title ?? action.command, error));
+        }
         return;
       }
       const { entry } = row;
@@ -170,7 +193,7 @@ defineUiPlugin({
       if (was?.kind === "commands") {
         history = remember(history, entry.id, max);
         void ctx.bridge.call("store.set", { key: "history", value: history }).catch(() => {});
-        void ctx.commands.run(entry.id).catch(() => {});
+        void ctx.commands.run(entry.id).catch((error) => report(entry.label ?? entry.id, error));
       }
     };
 
