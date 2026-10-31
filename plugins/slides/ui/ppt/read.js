@@ -20,7 +20,7 @@ import {
 } from "./records.js";
 import { backgroundIn, masterPlacement, readDrawing, shapeTable } from "./shapes.js";
 import { masterLevels, readCF, readPF } from "./styles.js";
-import { outlinesOf, readText } from "./textbox.js";
+import { outlineNumbers, outlinesOf, readText } from "./textbox.js";
 
 /**
  * @typedef {import("../deck.js").Deck} Deck
@@ -123,12 +123,13 @@ export function readPpt(cfb, format) {
   const notes = notesOf(doc, entries(2), at);
   const image = imagesOf(doc, docRec, cfb.stream("Pictures"));
   const docHF = headersFootersIn(doc, docRec, 3);
+  const numbered = outlineNumbers(doc, childOf(doc, docRec, T.docInfo));
 
   /** @type {Slide[]} */
   const slides = entries(0).map((entry, i) => {
     const number = firstNumber + i;
     const container = at(entry.persist);
-    const outline = outlinesOf(doc, entry.records);
+    const outline = outlinesOf(doc, entry.records, numbered.get(entry.id));
     if (container?.type !== T.slide) return fallbackSlide(doc, outline, i + 1, width, height);
     const slideAtom = childOf(doc, container, T.slideAtom);
     const flags = slideAtom ? u16(doc, slideAtom.body + 20) : 7;

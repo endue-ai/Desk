@@ -258,6 +258,13 @@ export function powerPointDeck() {
         props: [[0x0301, 0x601]],
         textbox: [atom(0x0f9e, le([0, 4]))],
       }),
+      shape({
+        spid: 0x902,
+        flags: 0x220,
+        placement: 14,
+        anchor: [576, 2592, 5184, 3600],
+        textbox: [atom(0x0f9e, le([1, 4]))],
+      }),
     ]),
   ]);
   const notes = box(0x03f0, [
@@ -325,8 +332,28 @@ export function powerPointDeck() {
       persist(4, 257),
       persist(7, 258),
       ...text(6, "Welcome", le(pfRun(8, 0, 0), cfRun(8, 0))),
+      ...text(1, "Alpha\rBeta", le(pfRun(6, 0, 1, [1, 2]), pfRun(5, 0, 1, [1, 2]), cfRun(11, 0))),
     ]),
     box(0x0ff0, [persist(5, 0x101)], 2),
+    // The document's PowerPoint 2000 tag numbers the outline's second text on slide 258: (a), (b).
+    box(0x07d0, [
+      box(0x1388, [
+        box(0x138a, [
+          atom(0x0fba, utf16("___PPT9")),
+          box(0x138b, [
+            box(0x0fae, [
+              atom(0x0faf, le([258, 4], [1, 4]), 1),
+              atom(
+                0x0fac,
+                le(
+                  ...[0, 1].map(() => le([0x03000000, 4], [1, 2], [8, 2], [1, 2], [0, 4], [0, 4])),
+                ),
+              ),
+            ]),
+          ]),
+        ]),
+      ]),
+    ]),
     atom(0x03ea, new Uint8Array()),
   ]);
   return presentation([document, master, slide1, slide2, notes, titleMaster, slide3]);

@@ -100,7 +100,14 @@ describe("PowerPoint 97-2003", () => {
       bold: true,
       color: "#1f3864",
     });
-    expect(slide?.elements).toHaveLength(3);
+    // Its body takes the main master's body placeholder, and its numbers from the document's tag.
+    const body = slide?.elements[3];
+    expect(body?.type === "shape" && body.text?.paragraphs.map((p) => p.bullet?.text)).toEqual([
+      "(a)",
+      "(b)",
+    ]);
+    expect(body?.type === "shape" && body.text?.paragraphs[0]?.runs[0]?.size).toBe(28);
+    expect(slide?.elements).toHaveLength(4);
   });
 
   it("gradients with a focus, colours of the shape's own, links, numbering and groups", async () => {

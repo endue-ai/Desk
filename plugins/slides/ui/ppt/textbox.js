@@ -10,7 +10,8 @@ import { rulerOf, textRuns } from "./styles.js";
  * @typedef {import("./records.js").PptRecord} PptRecord
  * @typedef {import("./text.js").PptText} PptText
  * @typedef {import("./text.js").Field} Field
- * @typedef {{ type: number, records: PptRecord[] }} Outline  one text of a SlideListWithText entry
+ * @typedef {{ type: number, records: PptRecord[], numbers?: Numbers }} Outline  one text of a
+ *   SlideListWithText entry, with its numbering from the document's PowerPoint 2000 tag
  * @typedef {Array<{ scheme: number, start: number } | null>} Numbers
  */
 
@@ -24,12 +25,38 @@ const FIELDS = /** @type {Record<number, Field>} */ ({
 });
 
 /** The texts of a SlideListWithText entry: each starts at a TextHeaderAtom. @param {Uint8Array} b @param {PptRecord[]} records */
-export function outlinesOf(b, records) {
+export function outlinesOf(b, records, /** @type {Numbers[]} */ numbers = []) {
   /** @type {Outline[]} */
   const out = [];
   for (const rec of records) {
-    if (rec.type === T.textHeader) out.push({ type: u32(b, rec.body), records: [] });
+    if (rec.type === T.textHeader)
+      out.push({ type: u32(b, rec.body), records: [], numbers: numbers[out.length] });
     else out.at(-1)?.records.push(rec);
+  }
+  return out;
+}
+
+/**
+ * Numbering of outline texts from the document's "___PPT9" tag (OutlineTextProps9Container): by
+ * slide id, then by the text's index in its SlideListWithText entry.
+ * @param {Uint8Array} b @param {PptRecord | null} docInfo  the DocInfoListContainer
+ * @returns {Map<number, Numbers[]>}
+ */
+export function outlineNumbers(b, docInfo) {
+  /** @type {Map<number, Numbers[]>} */
+  const out = new Map();
+  const list = childrenOf(b, ninthBlob(b, docInfo)).find((r) => r.type === T.outlineText9);
+  /** @type {PptRecord | null} */
+  let header = null;
+  for (const rec of childrenOf(b, list ?? null)) {
+    if (rec.type === T.outlineHeader9) header = rec;
+    else if (rec.type === T.styleText9 && header) {
+      const slide = u32(b, header.body);
+      const byIndex = out.get(slide) ?? [];
+      byIndex[header.inst] = numbersOf(b, rec);
+      out.set(slide, byIndex);
+      header = null;
+    }
   }
   return out;
 }
@@ -80,23 +107,27 @@ export function readText(b, box, data, outline) {
     const found = outline[u32(b, ref.body)];
     if (!found) return null;
     const ruler = records.find((r) => r.type === T.textRuler);
-    return textFrom(b, ruler ? [...found.records, ruler] : found.records, found.type, numbers);
+    const ordered = ruler ? [ruler, ...found.records] : found.records;
+    return textFrom(b, ordered, found.type, numbers.length ? numbers : (found.numbers ?? []));
   }
   return header ? textFrom(b, records, u32(b, header.body), numbers) : null;
 }
 
-/** The StyleTextProp9Atom in a shape's "___PPT9" programmable tag, or null. @param {Uint8Array} b @param {PptRecord | null} data */
-function ninthOf(b, data) {
-  for (const tag of childrenOf(b, childOf(b, data, T.progTags))) {
+/** The data of the "___PPT9" programmable tag under a record, or null. @param {Uint8Array} b @param {PptRecord | null} parent */
+function ninthBlob(b, parent) {
+  for (const tag of childrenOf(b, childOf(b, parent, T.progTags))) {
     if (tag.type !== T.progBinaryTag) continue;
     const name = childOf(b, tag, T.cString);
     const blob = childOf(b, tag, T.binaryTagData);
-    if (!name || !blob || utf16le(b.subarray(name.body, name.body + name.len)) !== "___PPT9")
-      continue;
-    return childrenOf(b, blob).find((r) => r.type === T.styleText9) ?? null;
+    if (name && blob && utf16le(b.subarray(name.body, name.body + name.len)) === "___PPT9")
+      return blob;
   }
   return null;
 }
+
+/** The StyleTextProp9Atom in a shape's "___PPT9" tag, or null. @param {Uint8Array} b @param {PptRecord | null} data */
+const ninthOf = (b, data) =>
+  childrenOf(b, ninthBlob(b, data)).find((r) => r.type === T.styleText9) ?? null;
 
 /**
  * Automatic numbering by paragraph run from a StyleTextProp9Atom: each entry is a TextPFException9,
