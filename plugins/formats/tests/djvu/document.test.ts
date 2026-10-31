@@ -224,14 +224,38 @@ describe("damaged files and long work", () => {
 
   it("fails with a sentence when a page's data is damaged or cut short", async () => {
     const book = fixture("book.djvu");
-    const cut = book.slice(0, 2400);
-    await expect(openDjvu(source(cut)).then((doc) => doc.renderPage(0))).rejects.toThrow(/\.$/);
+    // A file cut inside a page's mask fails with a sentence; inside its background, the page
+    // shows the chunks that arrived and says so. The pages after the cut are missing.
+    for (const id of ["Sjbz", "BG44"]) {
+      const cut = book.slice(0, findChunk(book, id) + 500);
+      const doc = await openDjvu(source(cut));
+      expect(doc.note).toMatch(/^The file is cut short: 2 of its 3 pages are missing\.$/);
+      await expect(doc.renderPage(2)).rejects.toThrow(/cut short before it\.$/);
+      if (id === "Sjbz") {
+        await expect(doc.renderPage(0)).rejects.toThrow(/^The JB2 data is cut short\.$/);
+        continue;
+      }
+      const partial = await doc.renderPage(0);
+      expect([partial.width, partial.height]).toEqual([600, 400]);
+      expect(partial.note).toMatch(/cut short.*\.$/);
+    }
     const damaged = book.slice();
     const sjbz = findChunk(damaged, "Sjbz");
     for (let i = sjbz + 40; i < sjbz + 400; i++) damaged[i] = (damaged[i] ?? 0) ^ 0xa5;
+    // DjVu has no checksums: damaged JB2 data either fails with a sentence or decodes to noise.
     const doc = await openDjvu(source(damaged));
-    await expect(doc.renderPage(0)).rejects.toThrow(/\.$/);
+    const outcome = await doc.renderPage(0).then(
+      (page) => [page.width, page.height],
+      (error: Error) => error.message,
+    );
+    if (typeof outcome === "string") expect(outcome).toMatch(/^The JB2 data .*\.$/);
+    else expect(outcome).toEqual([600, 400]);
     await expect(doc.renderPage(5)).rejects.toThrow(/no page 6/);
+    // A damaged directory is caught when the document opens.
+    const directory = book.slice();
+    const dirm = findChunk(directory, "DIRM");
+    for (let i = dirm + 30; i < dirm + 60; i++) directory[i] = (directory[i] ?? 0) ^ 0x3c;
+    await expect(openDjvu(source(directory))).rejects.toThrow(/\.$/);
   });
 
   it("stops with an AbortError when the signal fires, before or during a large page", async () => {
