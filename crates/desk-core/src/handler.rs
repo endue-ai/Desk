@@ -30,6 +30,7 @@ use crate::core_prompts::Prompts;
 use crate::core_views::ViewsSeen;
 use crate::events::EventBus;
 use crate::init::InitFile;
+use crate::log::Log;
 use crate::paths::normalize;
 use crate::perm::{Denied, PermissionEngine, Target};
 use crate::plugins::PluginRegistry;
@@ -55,6 +56,8 @@ pub struct Core {
     pub(crate) subscriptions: Mutex<Subscriptions>,
     pub(crate) plugins: Mutex<PluginRegistry>,
     pub(crate) store: Mutex<Store>,
+    pub(crate) settings: Mutex<Store>,
+    pub(crate) log: Mutex<Log>,
     pub(crate) conversation: Option<Arc<Conversation>>,
     pub(crate) init: Mutex<InitFile>,
     pub(crate) sync: Option<Syncer>,
@@ -81,6 +84,8 @@ impl Core {
             subscriptions: Mutex::new(Subscriptions::default()),
             plugins: Mutex::new(PluginRegistry::new(None)),
             store: Mutex::new(Store::new(None)),
+            settings: Mutex::new(Store::new(None)),
+            log: Mutex::new(Log::default()),
             conversation: None,
             init: Mutex::new(InitFile::memory()),
             sync: None,
@@ -172,11 +177,11 @@ impl Core {
             R::CmdList(r) => (r.id, self.cmd_list(caller, r.params)),
             R::CmdInvoke(r) => (r.id, self.cmd_invoke(caller, r.params)),
             R::CmdAnswer(r) => (r.id, self.cmd_answer(caller, r.params)),
-            R::SettingsGet(r) => (r.id, unsupported("settings.get")),
-            R::SettingsSet(r) => (r.id, unsupported("settings.set")),
-            R::SettingsList(r) => (r.id, unsupported("settings.list")),
-            R::LogWrite(r) => (r.id, unsupported("log.write")),
-            R::LogTail(r) => (r.id, unsupported("log.tail")),
+            R::SettingsGet(r) => (r.id, self.settings_get(caller, r.params)),
+            R::SettingsSet(r) => (r.id, self.settings_set(caller, r.params)),
+            R::SettingsList(r) => (r.id, self.settings_list(caller, r.params)),
+            R::LogWrite(r) => (r.id, self.log_write(caller, r.params)),
+            R::LogTail(r) => (r.id, self.log_tail(caller, r.params)),
             R::EventsSubscribe(r) => (r.id, self.events_subscribe(caller, r.params)),
             R::EventsUnsubscribe(r) => (r.id, self.events_unsubscribe(caller, r.params)),
             R::DataQuery(r) => (r.id, self.data_query(caller, r.params)),
