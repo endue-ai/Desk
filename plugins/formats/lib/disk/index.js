@@ -209,6 +209,7 @@ async function listing(format, details, volumes, prefixed, work) {
       if (prefixed) entry.path = `${folder}/${entry.path}`;
       entries.push(entry);
       refs.set(entry.path, { fs, ref, entry });
+      if (entries.length % 4096 === 0) await work.tick();
     }
   }
   return {
