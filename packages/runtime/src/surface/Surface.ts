@@ -122,7 +122,9 @@ export function mountSurfaces(root: HTMLElement, ctx: ShellCtx): () => void {
         splitRight,
         splitDown,
         tool(ctx.tr(p.pinned ? "unpin" : "pin"), "pin", () => togglePin(ctx, p.id), p.pinned),
-        tool(ctx.tr("stash"), "drawer", () => stash(ctx, p.id)),
+        tool(ctx.tr("stash"), "drawer", () =>
+          stash(ctx, p.id, viewOf(ctx, activeLeaf(ctx, p)?.view ?? p.id).title),
+        ),
         tool(ctx.tr("close"), "close", () => closeSurface(ctx, p.id)),
       ),
     );

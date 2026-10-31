@@ -25,7 +25,7 @@ import { h, listen } from "./dom";
 import { keepShell, syncProfiles } from "./link";
 import { paneViews } from "./panes";
 import { mountRail } from "./Rail";
-import { Store, sampleState } from "./state";
+import { type DeskState, emptyState, Store } from "./state";
 import { Ticker } from "./ticker";
 
 export interface DeskOptions {
@@ -42,6 +42,8 @@ export interface DeskOptions {
   platform?: Platform;
   /** Wall-clock time at clock 0, for "started 4 minutes ago" (default: now). */
   epoch?: number;
+  /** State to start from over the empty desk: the dev page and the fixtures seed the sample desk. */
+  seed?: Partial<DeskState>;
 }
 
 export interface Desk {
@@ -60,7 +62,7 @@ export function mountDesk(options: DeskOptions): Desk {
   const clock = options.clock ?? realClock();
   const ticker = new Ticker(clock);
   const epoch = options.epoch ?? Date.now();
-  const store = new Store(sampleState(options.lang ?? "ko"));
+  const store = new Store({ ...emptyState(options.lang ?? "ko"), ...options.seed });
   const platform = options.platform ?? detectPlatform();
   const root = options.root;
   root.classList.add("shell");
@@ -124,9 +126,15 @@ export function mountDesk(options: DeskOptions): Desk {
   ];
 
   const refresh = () => loadDirectory(ctx);
+  // The rail shows the brain the core has; a host without one leaves it offline.
+  const brain = options.bridge.brain.status().then(
+    (status) => store.set({ brain: status }),
+    () => undefined,
+  );
   const ready = (runtime.plugins?.ready ?? runtime.ready)
     .then(() => restored.done())
     .then(refresh)
+    .then(() => brain)
     .then(() => runtime.commands.settled());
 
   return {

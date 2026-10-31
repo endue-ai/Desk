@@ -11,6 +11,7 @@ import erisReply from "../../src/bridge/envelopes/eris-reply.json";
 import userHello from "../../src/bridge/envelopes/user-hello.json";
 import { ManualClock } from "../../src/clock";
 import { mountDesk } from "../../src/shell/Desk";
+import { sampleState } from "../../src/shell/state";
 
 const root = document.getElementById("desk");
 if (!root) throw new Error("no #desk element");
@@ -41,6 +42,7 @@ const core = browserCore({
 // A fixed wall clock and platform, so "4:12 ago" and "⌘N" read the same on every machine.
 const epoch = Date.parse("2026-10-28T09:00:00.000Z");
 const bridge = browserBridge({ now: () => clock.now(), epoch });
+const lang = params.get("lang") === "en" ? "en" : "ko";
 const desk = mountDesk({
   root,
   bridge,
@@ -49,7 +51,8 @@ const desk = mountDesk({
   clock,
   epoch,
   platform: "mac",
-  lang: params.get("lang") === "en" ? "en" : "ko",
+  lang,
+  seed: sampleState(lang, epoch),
 });
 
 /** Advance the clock in 16 ms frames, ending exactly at `ms` later. */

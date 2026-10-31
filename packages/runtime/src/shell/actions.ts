@@ -11,13 +11,16 @@ import {
 } from "../modes/types";
 import type { Runtime } from "../runtime";
 import type { DeskState, Store } from "./state";
+import { surfaceTitle, type Titled } from "./titles";
 
-export interface Ctx {
+export interface Ctx extends Titled {
   store: Store;
   bridge: ShellBridge;
   /** The desk under the shell: commands, settings, profiles. */
   runtime: Runtime;
   now(): number;
+  /** Wall-clock milliseconds now, for what is kept across a relaunch (the drawer's ages). */
+  wall(): number;
 }
 
 export const AUTHOR = "me";
@@ -64,16 +67,27 @@ export function togglePin(ctx: Ctx, id: string): void {
   }));
 }
 
-export function stash(ctx: Ctx, id: string): void {
+/** Put a surface away in the drawer under its title (the title bar's, when the caller has it). */
+export function stash(ctx: Ctx, id: string, name = surfaceTitle(ctx, id)): void {
   const placement = layoutOf(ctx.store.get()).surfaces.find((p) => p.id === id);
   if (!placement) return;
   closeSurface(ctx, id);
   ctx.store.set((s) => ({
     drawer: [
-      { id: `surface-${id}`, kind: "surface", name: id, at: ctx.now(), placement },
+      { id: `surface-${id}`, kind: "surface", name, at: ctx.wall(), placement },
       ...s.drawer.filter((d) => d.placement?.id !== id),
     ],
   }));
+}
+
+/** A place not already taken by another surface at exactly the same spot: the next one steps down. */
+function cascade(placement: SurfacePlacement, others: SurfacePlacement[]): SurfacePlacement {
+  let { x, y } = placement;
+  while (others.some((o) => o.x === x && o.y === y)) {
+    x += 24;
+    y += 24;
+  }
+  return { ...placement, x, y };
 }
 
 /** Default places, in the 1440×900 reference frame. The centre stays free unless the user moves things. */
@@ -94,7 +108,10 @@ export function defaultPlacement(id: string): SurfacePlacement {
 export function openSurface(ctx: Ctx, id: string, placement?: SurfacePlacement): void {
   const s = ctx.store.get();
   if (!layoutOf(s).surfaces.some((p) => p.id === id)) {
-    edit(ctx, (l) => ({ ...l, surfaces: [...l.surfaces, placement ?? defaultPlacement(id)] }));
+    edit(ctx, (l) => ({
+      ...l,
+      surfaces: [...l.surfaces, cascade(placement ?? defaultPlacement(id), l.surfaces)],
+    }));
   }
   ctx.store.set((st) => ({
     focused: id,
@@ -139,8 +156,8 @@ export function switched(ctx: Ctx, modes: Mode[], id: string): void {
       ...sent.map((p) => ({
         id: `surface-${p.id}`,
         kind: "surface" as const,
-        name: p.id,
-        at: ctx.now(),
+        name: surfaceTitle(ctx, p.id),
+        at: ctx.wall(),
         placement: p,
       })),
       ...s.drawer.filter((d) => !sent.some((p) => p.id === d.placement?.id)),

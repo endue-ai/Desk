@@ -110,7 +110,6 @@
 }
 .space { border-radius: 10px; }
 .space.is-selected { border-color: var(--desk-accent); background: var(--desk-primary-soft); color: var(--desk-text); }
-.space-add { width: 36px; height: 36px; border-radius: 10px; }
 
 /* Rail */
 
