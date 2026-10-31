@@ -1,0 +1,461 @@
+/* The desk's design tokens (@endue-ai/ui). Frames do not inherit the desk's, so they are declared here;
+   the SDK sets the theme in force over them. */
+:root {
+  --desk-background: #141416;
+  --desk-card: #1e1d21;
+  --desk-border: #333136;
+  --desk-text: #f2f0f5;
+  --desk-text-muted: #b0adb7;
+  --desk-accent: #b6a3f5;
+  --event: color-mix(in srgb, var(--desk-accent) 26%, var(--desk-card));
+  --event-border: var(--desk-accent);
+  --hour: 48px;
+  color-scheme: dark light;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 8px 12px;
+  background: var(--desk-card);
+  color: var(--desk-text);
+  font: 13px/1.5 -apple-system, "SUIT", "Inter", system-ui, sans-serif;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: inherit;
+}
+
+main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  padding: 3px 10px;
+  border: 1px solid var(--desk-border);
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+}
+
+button:hover:not(:disabled) {
+  border-color: var(--desk-text-muted);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+button.primary {
+  border-color: var(--desk-accent);
+  background: var(--desk-accent);
+  color: var(--desk-background);
+}
+
+button.danger {
+  border-color: #e5747a;
+  color: #e5747a;
+}
+
+:focus-visible {
+  outline: 2px solid var(--desk-accent);
+  outline-offset: 1px;
+}
+
+.bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.nav,
+.modes {
+  display: flex;
+  gap: 2px;
+}
+
+.modes [aria-checked="true"] {
+  border-color: var(--desk-accent);
+  color: var(--desk-accent);
+}
+
+h1 {
+  flex: 1;
+  margin: 0;
+  font-size: 15px;
+}
+
+#cal-detail,
+#status {
+  margin: 4px 0;
+  color: var(--desk-text-muted);
+}
+
+#cal-mark > [aria-hidden],
+#cal-problems {
+  color: var(--desk-accent);
+}
+
+#grid {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  overflow: auto;
+  border: 1px solid var(--desk-border);
+  border-radius: 6px;
+  background: var(--desk-background);
+}
+
+.empty {
+  margin: auto;
+  color: var(--desk-text-muted);
+}
+
+/* Events */
+.event {
+  display: flex;
+  gap: 4px;
+  width: 100%;
+  min-width: 0;
+  padding: 0 4px;
+  overflow: hidden;
+  border: 0;
+  border-left: 3px solid var(--event-border);
+  border-radius: 3px;
+  background: var(--event);
+  text-align: start;
+  white-space: nowrap;
+}
+
+.event .title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.event .time,
+.event .when,
+.event .where {
+  color: var(--desk-text-muted);
+}
+
+.event[data-free="true"] {
+  background: transparent;
+  border-left-style: dashed;
+}
+
+.event[data-status="tentative"] {
+  background: repeating-linear-gradient(135deg, var(--event) 0 6px, transparent 6px 10px);
+}
+
+.event[data-status="cancelled"] .title {
+  text-decoration: line-through;
+}
+
+.more {
+  border: 0;
+  padding: 0 4px;
+  color: var(--desk-text-muted);
+}
+
+/* Month */
+.month {
+  width: 100%;
+  height: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+}
+
+.month th {
+  padding: 4px;
+  color: var(--desk-text-muted);
+  font-weight: 500;
+  text-align: start;
+}
+
+.month td {
+  height: calc(100% / 6);
+  padding: 2px;
+  border-top: 1px solid var(--desk-border);
+  border-left: 1px solid var(--desk-border);
+  vertical-align: top;
+  cursor: default;
+}
+
+.month td.outside .date {
+  opacity: 0.45;
+}
+
+.month td.today .date {
+  border-radius: 10px;
+  padding: 0 6px;
+  background: var(--desk-accent);
+  color: var(--desk-background);
+}
+
+.month .events {
+  display: grid;
+  gap: 2px;
+  margin: 2px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Week and day */
+.columns {
+  --days: 7;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.columns.days-1 {
+  --days: 1;
+}
+
+.row,
+.scroll {
+  display: grid;
+  grid-template-columns: 56px repeat(var(--days), minmax(0, 1fr));
+}
+
+.row .col {
+  padding: 2px;
+  border-left: 1px solid var(--desk-border);
+}
+
+.head .col {
+  display: flex;
+  gap: 4px;
+  align-items: baseline;
+  color: var(--desk-text-muted);
+}
+
+.head .col.today b {
+  color: var(--desk-accent);
+}
+
+.all-day {
+  border-bottom: 1px solid var(--desk-border);
+}
+
+.all-day .col {
+  display: grid;
+  gap: 2px;
+  align-content: start;
+  min-height: 24px;
+}
+
+.gutter {
+  padding: 2px 4px;
+  color: var(--desk-text-muted);
+  font-size: 11px;
+}
+
+.scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.hours .hour {
+  height: var(--hour);
+  padding-right: 6px;
+  color: var(--desk-text-muted);
+  font-size: 11px;
+  text-align: end;
+  transform: translateY(-0.6em);
+}
+
+.scroll > .col {
+  position: relative;
+  height: calc(var(--hour) * 24);
+  border-left: 1px solid var(--desk-border);
+  background: repeating-linear-gradient(
+    to bottom,
+    var(--desk-border) 0 1px,
+    transparent 1px var(--hour)
+  );
+}
+
+.block {
+  position: absolute;
+  flex-direction: column;
+  gap: 0;
+  padding: 1px 4px;
+  white-space: normal;
+  border: 1px solid var(--desk-background);
+  border-left: 3px solid var(--event-border);
+}
+
+.block.continued {
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
+
+.block.continues {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.now {
+  position: absolute;
+  right: 0;
+  left: 0;
+  height: 2px;
+  background: #e5747a;
+  pointer-events: none;
+}
+
+/* Agenda */
+.agenda {
+  padding: 4px 12px;
+}
+
+.agenda h2 {
+  margin: 12px 0 4px;
+  font-size: 13px;
+}
+
+.agenda h2.today {
+  color: var(--desk-accent);
+}
+
+.agenda ul {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.agenda .event {
+  gap: 12px;
+  padding: 4px 8px;
+}
+
+.agenda .when {
+  flex: none;
+  width: 9em;
+}
+
+/* Editor */
+dialog {
+  width: min(460px, 92vw);
+  max-height: 92vh;
+  padding: 16px;
+  border: 1px solid var(--desk-border);
+  border-radius: 10px;
+  background: var(--desk-card);
+  color: var(--desk-text);
+}
+
+dialog::backdrop {
+  background: rgb(0 0 0 / 0.45);
+}
+
+dialog form {
+  display: grid;
+  gap: 6px;
+}
+
+dialog h2 {
+  margin: 0 0 4px;
+  font-size: 15px;
+}
+
+dialog label,
+dialog legend {
+  color: var(--desk-text-muted);
+}
+
+dialog input:not([type="checkbox"], [type="radio"]),
+dialog select,
+dialog textarea {
+  width: 100%;
+  padding: 4px 6px;
+  border: 1px solid var(--desk-border);
+  border-radius: 6px;
+  background: var(--desk-background);
+}
+
+dialog [aria-invalid="true"] {
+  border-color: #e5747a;
+}
+
+fieldset {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+fieldset.times input {
+  flex: 1;
+}
+
+fieldset legend {
+  padding: 0 0 2px;
+}
+
+#editor-scope {
+  flex-direction: column;
+}
+
+.check {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  color: var(--desk-text);
+}
+
+.error {
+  flex-basis: 100%;
+  margin: 0;
+  color: #e5747a;
+}
+
+.actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.spacer {
+  flex: 1;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .event {
+    transition: border-color 120ms;
+  }
+}
