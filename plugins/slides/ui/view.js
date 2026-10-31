@@ -43,24 +43,28 @@ export function createView(doc) {
   /** Where each open file was left. @type {Map<string, number>} */
   const positions = new Map();
 
-  const say = (/** @type {string} */ text) => {
-    status.textContent = text;
-  };
   const fitSlide = () => {
     const slide = /** @type {HTMLElement | null} */ (frame.firstElementChild);
     if (!slide || !deck) return;
-    const pad = stage.clientWidth > 320 ? 24 : 4;
+    // A margin around the slide, unless the surface is too small to spare one.
+    const { clientWidth: w, clientHeight: h } = stage;
     const area = {
-      width: Math.max(1, stage.clientWidth - pad),
-      height: Math.max(1, stage.clientHeight - pad),
+      width: Math.max(1, w - (w > 320 ? 24 : 4)),
+      height: Math.max(1, h - (h > 200 ? 24 : 4)),
     };
     const { scale, width, height } = scaleToFit(area, deck.size);
     frame.style.width = `${width}px`;
     frame.style.height = `${height}px`;
     slide.style.transform = `scale(${scale})`;
   };
+  const say = (/** @type {string} */ text) => {
+    status.textContent = text;
+    // The status line takes room when it has words: the slide fits what is left.
+    fitSlide();
+  };
   const Resize = doc.defaultView?.ResizeObserver;
   if (Resize) new Resize(fitSlide).observe(stage);
+  doc.defaultView?.addEventListener("resize", fitSlide);
 
   const rail = createRail(doc, byId("rail"), (i) => go(i));
   const player = createPlayer(doc, {

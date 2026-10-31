@@ -355,6 +355,21 @@ h2 {
 
 /* A small window keeps the slide: the rail and then the notes give way. */
 @media (max-width: 560px) {
+  header {
+    flex-wrap: nowrap;
+    padding: 4px 8px;
+  }
+
+  h1 {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  #deck-format {
+    display: none;
+  }
+
   #deck {
     grid-template-columns: 1fr;
   }
