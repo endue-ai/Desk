@@ -77,7 +77,7 @@ defineUiPlugin({
 2. 在需要的那一刻再申请：`bridge.call("perm.request", { permission, reason })`。
 3. 每次调用都传入相应的范围，并尽可能缩小。
 
-词汇表（`fs:read`、`fs:write`、`proc:spawn`、`net:fetch`、`audio:capture`、`ui:surface`、`ui:notify`、`plugin:manage`、`brain:converse`、`cmd:invoke`、`cmd:advise`、`settings:read`、`log:read`、`events:subscribe`、`perm:manage`）见 `specs/plugin/v0/README.md`。
+词汇表（`fs:read`、`fs:write`、`proc:spawn`、`net:fetch`、`audio:capture`、`ui:surface`、`ui:notify`、`plugin:manage`、`brain:converse`、`cmd:invoke`、`cmd:advise`、`settings:read`、`log:read`、`events:subscribe`、`perm:manage`、`data:read`、`connector:manage`、`view:manage`）见 `specs/plugin/v0/README.md`。
 
 ## 贡献项
 
@@ -115,6 +115,26 @@ defineUiPlugin({
 传到你的框架。在框架里按下的组合键会传到桌面的按键映射，除非你调用了 `preventDefault()`。默认策略及其各自
 决定的内容见 `plugins/README.md`。
 
+## 条目与视图
+
+人们连接的应用中的内容，以同一种形状的条目进入桌面（`specs/item/v0`，ADR 0032）：事件、任务、消息、笔记等，
+无论来自哪个来源都一样。`ctx.data` 在 `data:read` 权限下读取桌面的索引，并传入查询所需的最窄范围；
+`ctx.views` 在 `view:manage` 下读取和保存用户的视图：
+
+```js
+const { items } = await ctx.data.query({
+  kinds: ["task"],
+  where: [{ field: "due", op: "lt", value: "2026-10-31T00:00:00+09:00" }],
+});
+const stop = await ctx.data.subscribe({ kinds: ["task"] }, (changes) => redraw(changes));
+await ctx.commands.run("desk.views.open", { id: "desk.today" });
+```
+
+视图是数据，而不是代码（`specs/view/v0`）：内置的 `desk.views` 用 `@endue-ai/ui` 的元素（`desk-list`、
+`desk-table`、`desk-agenda`、`desk-stat`、`desk-markdown`、`desk-card`）绘制它，模板知道时钟（`{today}`、
+`{tomorrow}`）。等应用开始提供这些元素后，你的页面也可以通过导入映射（`"@endue-ai/ui": "/_desk/ui.js"`）
+引入同样的元素；目前由运行时的测试服务器提供。
+
 ## 测试
 
 `@endue-ai/plugin-sdk/testing` 无需浏览器即可运行你的插件，并以模拟的桥接层作为对端：
@@ -126,7 +146,7 @@ import { createTestHost } from "@endue-ai/plugin-sdk/testing";
 const host = createTestHost({ pluginId: "example.my-plugin", handlers: { "perm.query": () => ({ grants: [] }) } });
 await defineUiPlugin(myPlugin, host.transport);
 await host.settle();
-// host.calls, host.state, host.emit(event)
+// host.calls, host.state, host.emit(event), host.upsert(item)
 ```
 
 发布之前，必须通过 `desk plugin validate <folder>`；CI 会对 `plugins/` 和 `examples/` 中的每个目录运行该命令。
