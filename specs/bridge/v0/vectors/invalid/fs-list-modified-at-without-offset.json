@@ -2,6 +2,8 @@
   "target": "FsListResult",
   "description": "fs.list's modifiedAt is an RFC 3339 time with an offset",
   "instance": {
-    "entries": [{ "name": "hello.md", "kind": "file", "size": 7, "modifiedAt": "2026-10-30T00:00:00" }]
+    "entries": [
+      { "name": "hello.md", "kind": "file", "size": 7, "modifiedAt": "2026-10-30T00:00:00" }
+    ]
   }
 }
