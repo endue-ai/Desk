@@ -1,0 +1,13 @@
+{
+  "target": "BridgeRequest",
+  "description": "brain.status takes only its scope",
+  "instance": {
+    "id": 25,
+    "method": "brain.status",
+    "params": {
+      "scope": {
+        "permission": "brain:converse"
+      }
+    }
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "target": "BridgeResponse",
+  "description": "brain.status answers a brain in the cloud with the credits it reports",
+  "instance": {
+    "id": 25,
+    "ok": true,
+    "result": {
+      "mode": "cloud",
+      "credits": 1200
+    }
+  }
+}

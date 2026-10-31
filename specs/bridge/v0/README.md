@@ -126,6 +126,26 @@ core keeps retrying, and `online` marks the reconnection before the answer conti
 turn that failed, for example on a desk that became read-only because another desk took the
 session's lease. It needs `brain:converse`; each turn's events go only to the caller that said it.
 
+**brain.agents.list** returns one page of the person's agents, newest first, as the brain contract's
+`listAgents` answers it (`AgentList` in `specs/brain/v0`, passed through): `spaceId` keeps the agents in
+that space, `status` keeps one status, and `page` (from 1) and `limit` (1 to 100) choose the page, with
+the brain's defaults when left out. A query the brain refuses is `invalid_params`; a brain that cannot be
+reached is `io_error`. It needs `brain:converse`, like the next four, and a desk without a brain answers
+`unsupported`.
+
+**brain.agents.card** returns one agent's A2A card (`AgentCard`) by `agentId`. An agent the brain does
+not know is `not_found`.
+
+**brain.spaces.list** returns every space the person can open (`SpaceList`), in the brain's order.
+
+**brain.tasks.list** returns one page of the A2A tasks agents handed each other, newest first
+(`A2ATaskList`): `targetAgentId` keeps the tasks one agent is doing, `status` keeps one status, and
+`page` and `limit` work as for agents.
+
+**brain.status** says which brain the desk talks to: `local` with the model it runs, `cloud` with the
+credits left when the brain reports them, or `offline` while the brain cannot be reached. The core asks
+the brain on every call; a desk without a brain is `offline`.
+
 **perm.revoke** gives a grant back. People can revoke any grant at any time; callers learn about it from
 `perm.changed`. With a `perm:manage` scope it revokes another caller's grant, for the person's
 permissions view.

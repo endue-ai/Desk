@@ -8,7 +8,7 @@ Layer: Rust core (see `docs/architecture.md`).
 ## Public API
 
 - `Core::new(Roots { home })`, `Core::handle(caller, BridgeRequest) -> BridgeResponse`: serves `fs.*`,
-  `proc.*`, `perm.*`, `events.*`, `plugin.*`, `store.*`, `cmd.*`, `ui.notify`, `init.get` and `brain.say`;
+  `proc.*`, `perm.*`, `events.*`, `plugin.*`, `store.*`, `cmd.*`, `ui.notify`, `init.get` and `brain.*`;
   other methods answer `unsupported` for now. Hosts call it off their UI thread: `perm.request` waits.
 - Processes (`core_proc.rs`): `proc.spawn` passes the permission engine for its command (a PTY only
   under a scope and a grant that allow `pty`), starts in the home folder unless `cwd` says where, and
@@ -28,7 +28,9 @@ Layer: Rust core (see `docs/architecture.md`).
   and subscriptions with it. `validate_dir(dir)`: the manifest check.
 - Store: `with_store_file(path)`; one JSON value (64 KiB max) per caller and key.
 - Brain: `with_brain(brain, BrainOptions)`, `open_session(id)`, `brain_session()`; `brain.say` streams
-  `brain.turn` events (`OFFLINE_LINE`, `READ_ONLY_LINE`). `LeaseClient`, `SessionStore`.
+  `brain.turn` events (`OFFLINE_LINE`, `READ_ONLY_LINE`). `LeaseClient`, `SessionStore`. The directory
+  (`brain.agents.*`, `brain.spaces.list`, `brain.tasks.list`) passes the brain's answers through;
+  `brain.status` is `offline` while the brain is unreachable, else `BrainOptions::mode` (`BrainMode`).
 - init.yaml (ADR 0016): `with_init_file(path)`, `init()`, `init_problem()`; sync: `with_sync(remote,
   state_file)`, `sync_init()`, `resolve_init(Keep)`; `MockRemote` stands in for endue.
 
@@ -38,6 +40,6 @@ Layer: Rust core (see `docs/architecture.md`).
 cargo test -p desk-core
 ```
 
-Integration tests in `tests/`: permissions, events, bridge, plugins, store, cmd, fs, proc (the child is
-the test binary itself), init, sync, lease and conversation (the last two start `examples/brain-echo`; needs Node); `grants_store.rs`,
+Integration tests in `tests/`: permissions, events, bridge, plugins, store, cmd, fs, proc (the child
+is the test binary itself), init, sync, lease, conversation and directory (the last three start `examples/brain-echo`; needs Node); `grants_store.rs`,
 `prompts.rs` and `events_bridge.rs` cover grants on disk, prompts and subscriptions.
