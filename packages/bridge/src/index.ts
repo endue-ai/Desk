@@ -32,5 +32,6 @@ export {
   stubCommands,
 } from "./stub-commands";
 export { mediaType, pathMatch, type StubFiles, stubFs } from "./stub-fs";
+export { shellLink, type StubOpened } from "./stub-shell";
 
 export const NAME = "@endue-ai/bridge";
