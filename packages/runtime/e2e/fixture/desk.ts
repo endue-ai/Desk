@@ -1,6 +1,6 @@
 /// <reference types="vite/client" />
-// Test page: the runtime with the built-in desk.* policy plugins (their real plugin.json files) and a
-// test UI plugin, on the browser bridge stub. Never shipped.
+// Test page: the runtime with the built-in desk.* policy plugins (their real plugin.json files) and
+// test UI plugins (one of them autoload), on the browser bridge stub. Never shipped.
 //   ?init={"desk.theme.scheme":"light"}  init.yaml settings    ?off=desk.keys,desk.theme  disabled
 //   ?platform=mac                        the keymap's platform  ?profile=focus             start profile
 //   ?rules=[{"match":{...},"area":...}]  display rules test.echo contributes
@@ -41,6 +41,16 @@ const counter: PluginManifest = {
   entry: "ui/index.html",
   surfaces: [{ id: "main", title: "Counter", placement: "center" }],
 };
+// An autoload opener (ADR 0046): off at start, on for a *.lazy file, off again after its last one.
+const lazy: PluginManifest = {
+  id: "test.lazy",
+  version: "0.1.0",
+  kind: "ui",
+  entry: "ui/index.html",
+  autoload: true,
+  surfaces: [{ id: "main", title: "Lazy", placement: "center" }],
+  contributes: { files: [{ pattern: "*.lazy", plugin: "test.lazy" }] },
+};
 let notices = 0;
 // The core's store (per caller) and the files plugins wrote, kept in memory for the tests.
 const store: Record<string, unknown> = JSON.parse(params.get("store") ?? "{}");
@@ -59,6 +69,7 @@ const { client, stub } = browserCore({
     ),
     echo,
     counter,
+    lazy,
   ],
   off,
   store: memoryStore(store),

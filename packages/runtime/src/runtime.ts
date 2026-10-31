@@ -343,7 +343,7 @@ export function createRuntime(options: RuntimeOptions): Runtime {
         // The desk's built-ins are in the registry before profiles and the session run them.
         .then(() => commands.settled())
         .then(() => profiles.start())
-        .then(() => session.restore())
+        .then(() => session.restore().then(() => files.settle()))
         .then(() => commands.settled())
         .catch(() => {}),
       mounted: () => host.mounted(),

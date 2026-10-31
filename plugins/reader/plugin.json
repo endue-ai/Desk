@@ -4,6 +4,7 @@
   "version": "0.1.0",
   "kind": "ui",
   "entry": "ui/index.html",
+  "autoload": true,
   "description": "Opens PDFs, XPS, e-books (EPUB, MOBI, AZW, FB2) and comics (CBZ, CBT) in one reader: pages, contents, bookmarks, search and notes. It reads; it never writes the file.",
   "permissions": [
     {

@@ -67,6 +67,39 @@ describe("collect", () => {
     expect(policy.files.map((f) => f.pattern)).toEqual(["*.md", "*"]);
   });
 
+  it("counts an off autoload plugin's file openers in its layer, and nothing else of it", () => {
+    const sheets = plugin(
+      "example.sheets",
+      {
+        files: [{ pattern: "*.csv", plugin: "example.sheets" }],
+        commands: [{ id: "example.sheets.find", title: "Find" }],
+        settings: { "example.sheets.encoding": { kind: "string", default: "auto" } },
+      },
+      { kind: "ui", enabled: false },
+    );
+    if (sheets.manifest) sheets.manifest.autoload = true;
+    const policy = collect([
+      plugin("desk.files", { files: [{ pattern: "*", plugin: "desk.files" }] }),
+      sheets,
+      plugin("example.mine", { files: [{ pattern: "*.csv", plugin: "example.mine" }] }),
+      plugin(
+        "example.off",
+        { files: [{ pattern: "*.txt", plugin: "example.off" }] },
+        {
+          enabled: false,
+        },
+      ),
+    ]);
+    expect(policy.files.map((f) => f.owner)).toEqual([
+      "example.mine",
+      "example.sheets",
+      "desk.files",
+    ]);
+    expect(policy.plugins).toEqual(["desk.files", "example.mine"]);
+    expect(policy.commands).toEqual([]);
+    expect(policy.settings).toEqual({});
+  });
+
   it("drops commands, settings and themes outside the plugin's own id", () => {
     const policy = collect([
       plugin(

@@ -69,4 +69,8 @@ describe("plugin.json", () => {
     expect(opener(rules, "~/Decks/notes.md")).toBeUndefined();
     expect(opener(rules, "~/Decks/sheet.xlsx")).toBeUndefined();
   });
+
+  it("autoloads: off at start, on when a file needs it, off after its last one (ADR 0046)", () => {
+    expect(manifest().autoload).toBe(true);
+  });
 });

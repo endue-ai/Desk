@@ -73,4 +73,8 @@ describe("plugin.json", () => {
     expect(html).not.toMatch(/https?:\/\//);
     expect(html).toContain("./vendor/pdf_layers.css");
   });
+
+  it("autoloads: off at start, on when a file needs it, off after its last one (ADR 0046)", () => {
+    expect(manifest().autoload).toBe(true);
+  });
 });

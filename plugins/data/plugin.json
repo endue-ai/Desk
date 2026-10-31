@@ -4,6 +4,7 @@
   "version": "0.1.0",
   "kind": "ui",
   "entry": "ui/index.html",
+  "autoload": true,
   "description": "Opens structured data and configuration files (JSON, JSON5, JSON Lines, YAML, TOML, XML, property lists, INI, properties, dotenv, HCL, MessagePack, CBOR, BSON) as a tree and raw text, with search, paths, parse errors at their line, JSON Schema checks and masked secrets. It reads; it does not edit.",
   "permissions": [
     {

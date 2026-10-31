@@ -4,6 +4,7 @@
   "version": "0.1.0",
   "kind": "ui",
   "entry": "ui/index.html",
+  "autoload": true,
   "description": "Opens every still image in one viewer: web formats, HEIC and TIFF where the system decodes them, its own decoders for TGA, Netpbm, QOI, DDS, HDR, OpenEXR, ICNS, KTX, DICOM, FITS and NIfTI, camera RAW previews; zoom, pan, rotate, details and EXIF, the folder's other images, and two images side by side. It never writes a file.",
   "permissions": [
     {

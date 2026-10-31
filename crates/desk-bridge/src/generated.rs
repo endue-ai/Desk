@@ -523,6 +523,9 @@ pub struct PluginManifest {
     pub surfaces: Option<Vec<Surface>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub contributes: Option<PluginContributes>,
+    /// Installed but off until the desk needs it, like Emacs's autoload. With no stored enabled flag the plugin starts off, and its file openers count while it is off: desk.files turns it on to open a file and off again when its last file closes; profiles leave it as it is. Default false.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub autoload: Option<bool>,
     /// A view plugin's one view, inline.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub view: Option<View>,

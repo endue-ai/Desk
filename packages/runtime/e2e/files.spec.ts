@@ -1,6 +1,9 @@
 import { expect, type Page, test } from "@playwright/test";
 
 const echo = (page: Page) => page.frameLocator('[data-surface="test.echo"] iframe');
+const lazy = (page: Page) => page.frameLocator('[data-surface="test.lazy"] iframe');
+const surface = (page: Page, id: string) => page.locator(`[data-surface="${id}"]`);
+const autoloaded = (page: Page) => page.evaluate(() => window.__deskStore["files.autoloaded"]);
 const palette = (page: Page) => page.frameLocator('[data-surface="desk.palette"] iframe');
 const status = (page: Page) => page.locator(".desk-status");
 const run = (page: Page, id: string, args?: unknown) =>
@@ -137,5 +140,25 @@ test.describe("desk.files: the plugin's own writes", () => {
     expect(await run(page, "desk.files.changed", { path: "~/notes/a.txt" })).toBe("own-save");
     await expect(status(page)).toHaveText("Saved a.txt");
     await expect(echo(page).getByTestId("log")).not.toContainText("revert ~/notes/a.txt;");
+  });
+});
+
+test.describe("desk.files: autoload openers (ADR 0046)", () => {
+  test("an autoload opener is off at start, comes up with the file and goes when the file closes", async ({
+    page,
+  }) => {
+    await open(page);
+    await expect(surface(page, "test.lazy")).toHaveCount(0);
+    expect(await run(page, "desk.files.open", { path: "~/notes/a.lazy" })).toBe(
+      "file:~/notes/a.lazy",
+    );
+    await expect(lazy(page).getByTestId("file")).toHaveText("file:~/notes/a.lazy: ~/notes/a.lazy");
+    expect(await autoloaded(page)).toEqual(["test.lazy"]);
+    await run(page, "desk.buffers.close", { id: "file:~/notes/a.lazy" });
+    await expect(surface(page, "test.lazy")).toHaveCount(0);
+    expect(await buffers(page)).not.toContain("surface:test.lazy");
+    await expect.poll(() => autoloaded(page)).toEqual([]);
+    // The plain opener beside it stays where it was.
+    await expect(surface(page, "test.echo")).toHaveCount(1);
   });
 });

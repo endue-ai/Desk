@@ -362,6 +362,8 @@ export interface PluginManifest {
   /** Surfaces a UI plugin can open. Only UI plugins declare surfaces. */
   surfaces?: Surface[];
   contributes?: PluginContributes;
+  /** Installed but off until the desk needs it, like Emacs's autoload. With no stored enabled flag the plugin starts off, and its file openers count while it is off: desk.files turns it on to open a file and off again when its last file closes; profiles leave it as it is. Default false. */
+  autoload?: boolean;
   /** A view plugin's one view, inline. */
   view?: View;
   /** A view plugin's view files, one View each, relative to the plugin folder. */

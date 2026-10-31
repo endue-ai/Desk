@@ -4,6 +4,7 @@
   "version": "0.1.0",
   "kind": "ui",
   "entry": "ui/index.html",
+  "autoload": true,
   "description": "Opens saved web pages, web archives, link files and feeds read-only: pages drawn sanitized in a shadow root, nothing run, nothing fetched.",
   "permissions": [
     {
