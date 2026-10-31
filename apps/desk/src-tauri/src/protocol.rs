@@ -1,4 +1,5 @@
-//! The `desk-plugin` URL scheme: plugin files by id and path, and the plugin SDK.
+//! The `desk-plugin` URL scheme: plugin files by id and path, the plugin SDK
+//! (`/_desk/plugin-sdk.js`) and the `@endue-ai/ui` bundle (`/_desk/ui.js`), both embedded.
 //!
 //! macOS and Linux see `desk-plugin://localhost/<id>/<path>`; Windows sees
 //! `http://desk-plugin.localhost/<id>/<path>`. Plugin frames are sandboxed (opaque origin), so
@@ -19,25 +20,37 @@ const SDK: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/../../../packages/plugin-sdk/dist/plugin-sdk.js"
 ));
+const UI_PATH: &str = "_desk/ui.js";
+const UI: &str = include_str!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/../../../packages/ui/dist/ui.js"
+));
 
 const SOURCES: &str = "desk-plugin: http://desk-plugin.localhost";
 
 pub fn serve(app: &AppHandle, request: &Request<Vec<u8>>) -> Response<Vec<u8>> {
-    let path = decode(request.uri().path().trim_start_matches('/'));
-    let body = if path == SDK_PATH {
-        Ok(SDK.as_bytes().to_vec())
-    } else {
-        match path.split_once('/') {
-            Some((id, file)) => app.state::<Arc<Core>>().plugin_file(id, file),
-            None => Err(io::Error::from(io::ErrorKind::NotFound)),
-        }
-    };
+    let response = respond(request.uri().path(), |id, file| {
+        app.state::<Arc<Core>>().plugin_file(id, file)
+    });
     #[cfg(debug_assertions)]
-    eprintln!(
-        "desk-plugin: {} {}",
-        if body.is_ok() { 200 } else { 404 },
-        request.uri()
-    );
+    eprintln!("desk-plugin: {} {}", response.status(), request.uri());
+    response
+}
+
+/// The response for a URL path: one of the embedded bundles, or a plugin's file.
+fn respond(
+    path: &str,
+    plugin_file: impl Fn(&str, &str) -> io::Result<Vec<u8>>,
+) -> Response<Vec<u8>> {
+    let path = decode(path.trim_start_matches('/'));
+    let body = match path.as_str() {
+        SDK_PATH => Ok(SDK.as_bytes().to_vec()),
+        UI_PATH => Ok(UI.as_bytes().to_vec()),
+        _ => match path.split_once('/') {
+            Some((id, file)) => plugin_file(id, file),
+            None => Err(io::Error::from(io::ErrorKind::NotFound)),
+        },
+    };
     let mut response = Response::builder()
         .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
         .header(header::CACHE_CONTROL, "no-store");
@@ -102,4 +115,36 @@ fn decode(path: &str) -> String {
         i += 1;
     }
     String::from_utf8_lossy(&out).into_owned()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn missing(_id: &str, _file: &str) -> io::Result<Vec<u8>> {
+        Err(io::Error::from(io::ErrorKind::NotFound))
+    }
+
+    #[test]
+    fn the_ui_bundle_and_the_sdk_are_served_as_javascript() {
+        for (path, bundle) in [("/_desk/ui.js", UI), ("/_desk/plugin-sdk.js", SDK)] {
+            let response = respond(path, missing);
+            assert_eq!(response.status(), StatusCode::OK, "{path}");
+            let kind = response.headers().get(header::CONTENT_TYPE).unwrap();
+            assert_eq!(kind, "text/javascript; charset=utf-8", "{path}");
+            assert!(response.headers().get(header::CONTENT_SECURITY_POLICY).is_none());
+            assert_eq!(response.body().as_slice(), bundle.as_bytes(), "{path}");
+        }
+        assert!(UI.contains("customElements"), "the ui bundle defines its elements");
+    }
+
+    #[test]
+    fn plugin_files_come_from_the_core_and_missing_ones_are_404() {
+        let served = respond("/example.hello/ui/index.html", |id, file| {
+            Ok(format!("{id} {file}").into_bytes())
+        });
+        assert_eq!(served.body().as_slice(), b"example.hello ui/index.html");
+        assert!(served.headers().get(header::CONTENT_SECURITY_POLICY).is_some());
+        assert_eq!(respond("/_desk/other.js", missing).status(), StatusCode::NOT_FOUND);
+    }
 }
