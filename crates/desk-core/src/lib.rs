@@ -7,6 +7,7 @@ mod calendar_items;
 mod conversation;
 mod core_brain;
 mod core_builtins;
+mod core_catalog;
 mod core_cmd;
 mod core_connectors;
 mod core_data;

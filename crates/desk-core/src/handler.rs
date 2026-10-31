@@ -191,7 +191,7 @@ impl Core {
             R::ViewGet(r) => (r.id, self.view_get(caller, r.params)),
             R::ViewSave(r) => (r.id, self.view_save(caller, r.params)),
             R::ViewRemove(r) => (r.id, self.view_remove(caller, r.params)),
-            R::CatalogGet(r) => (r.id, unsupported("catalog.get")),
+            R::CatalogGet(r) => (r.id, self.catalog_get(caller)),
         }
     }
 
