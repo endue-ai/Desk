@@ -40,7 +40,10 @@
       "description": "Result of fs.read.",
       "type": "object",
       "properties": {
-        "content": { "description": "The bytes read: the whole file, or the range.", "type": "string" },
+        "content": {
+          "description": "The bytes read: the whole file, or the range.",
+          "type": "string"
+        },
         "encoding": { "$ref": "bridge.schema.json#/$defs/Encoding" },
         "size": {
           "description": "The file's total size in bytes, whatever range was read. The core always sends it.",
@@ -81,7 +84,11 @@
           "type": "string",
           "pattern": "^/_desk/file/[0-9a-f]{32}/[^/?#]+$"
         },
-        "size": { "description": "The file's size in bytes when the URL was made.", "type": "integer", "minimum": 0 },
+        "size": {
+          "description": "The file's size in bytes when the URL was made.",
+          "type": "integer",
+          "minimum": 0
+        },
         "type": {
           "description": "The media type the URL is served with, from the file's extension: video/mp4, image/png, ..., application/octet-stream when the extension is not known.",
           "type": "string",
