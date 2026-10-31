@@ -1,0 +1,74 @@
+{
+  "text.txt": {
+    "size": 98304,
+    "sha256": "0cf613014620a79173de12da4591e868c715fb5603256de2cc9a25192d70d972"
+  },
+  "data.bin": {
+    "size": 49152,
+    "sha256": "9750c2f8db040c516540c55ba5f60e7c9d682c6b1bc39db3c4bbda57b203cea9"
+  },
+  "empty.txt": {
+    "size": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "docs/notes/readme.md": {
+    "size": 42,
+    "sha256": "6886030dd13b53fa6796b015340f56d3dcad5aa6ffac577d7fd593e6010d82b1"
+  },
+  "unicode/Ünïcödé.txt": {
+    "size": 26,
+    "sha256": "928d07dcc2bbe3fde6397235e78b6e49177ea83d17fad23a4256b289b5b77475"
+  },
+  "unicode/日本語.txt": {
+    "size": 28,
+    "sha256": "8a76eaaa6b0ad036fdadc46af442a66f4c8befd0069785a0ba72ccf8fe1ce888"
+  },
+  "unicode/한국어 이름.txt": {
+    "size": 16,
+    "sha256": "8d0648e42d053f74bd9c37413b282b7cc79170d02b0ac6ea5bc92860e14a1935"
+  },
+  "chapters/one.txt": {
+    "size": 40960,
+    "sha256": "96ecd68c95a1db5eb9e99dbf3bf99e23b5b38cd015bb526fd4ce1862921580ee"
+  },
+  "chapters/two.txt": {
+    "size": 53248,
+    "sha256": "10f8a8728b9472b7a4161357b9469c449ae1d75d48a056ed21835ce1ad37f6ca"
+  },
+  "chapters/three.txt": {
+    "size": 45056,
+    "sha256": "82cb3615a59062661525abd806fcc5a8b02fbe590d3058c7d9fa45eb6d6c5d05"
+  },
+  "tool.exe": {
+    "size": 98304,
+    "sha256": "12ca14c36a923a2bc60c7eed5022f2aa0544d2f99041a652902165f584e2b9f0"
+  },
+  "tool-e8.exe": {
+    "size": 65536,
+    "sha256": "37535b56ded4388b63bbe296cb97d2daad5107036da3bec9adb33ec3471355d8"
+  },
+  "table.dat": {
+    "size": 65536,
+    "sha256": "da4bfa2a5acfd4f8bdb674060e4f752df5a4af052761e81f0a2178b0c1a51db1"
+  },
+  "image.bmp": {
+    "size": 36918,
+    "sha256": "7294d2457688a1c65d2c1dc238f34cccbd161356805bdbf0a083a0f910385c05"
+  },
+  "sound.wav": {
+    "size": 64044,
+    "sha256": "213120f940754e7291681f9b8d8b7ba481d094480e3aa3bbd12b9bb2600230fe"
+  },
+  "noise.bin": {
+    "size": 73728,
+    "sha256": "5d5600e6d5eadb4e61ee0ef5cc2eba91bf5e270422f17151d1a19a77677c7c8f"
+  },
+  "far.bin": {
+    "size": 6455296,
+    "sha256": "798843133af5bce94c58c115fce564f0214e429ae4b4282dc6e1218de947b0f3"
+  },
+  "far4.bin": {
+    "size": 3801088,
+    "sha256": "973294e0659a1acee2a47f065c18760bd738df7daa5e8dbc61fba3a24ca88545"
+  }
+}
