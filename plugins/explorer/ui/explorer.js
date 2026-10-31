@@ -240,11 +240,16 @@ export function createExplorer({ bridge, commands, settings, surface }, view, op
       return path;
     }
     setRoots([...roots, path]);
-    void keepRoots();
-    if (await expand(path)) {
-      select(path);
-      surface.show();
+    if (!(await expand(path))) {
+      // Refused or missing: a root that cannot be listed is of no use, so it does not stay.
+      const why = folders.get(path)?.error ?? `Could not list ${path}.`;
+      expanded.delete(path);
+      setRoots(roots.filter((root) => root !== path));
+      throw new Error(why);
     }
+    void keepRoots();
+    select(path);
+    surface.show();
     return path;
   };
 

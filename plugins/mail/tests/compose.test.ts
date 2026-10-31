@@ -144,7 +144,7 @@ describe("drafts", () => {
 
   it("names what stops a send, and shapes the connector's arguments", () => {
     const empty = newDraft({ now: NOW });
-    expect(problemsOf(empty)).toEqual([
+    expect(problemsOf(empty, ["acme.imap/work"])).toEqual([
       "Choose the account to send from.",
       "Add at least one recipient.",
     ]);
@@ -178,5 +178,13 @@ describe("drafts", () => {
       references: ["<x@y>"],
       calendar: { method: "REPLY", ics: "BEGIN:VCALENDAR" },
     });
+  });
+});
+
+describe("problemsOf without an account", () => {
+  it("says no account is connected when there is none to choose from", () => {
+    const draft = { ...newDraft({ now: NOW }), to: "mina@example.com", account: "" };
+    expect(problemsOf(draft, [])).toEqual(["No mail account is connected yet."]);
+    expect(problemsOf(draft, ["acme.imap/work"])).toEqual(["Choose the account to send from."]);
   });
 });

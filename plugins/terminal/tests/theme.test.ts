@@ -50,7 +50,7 @@ describe("the terminal's theme", () => {
 describe("the terminal's options", () => {
   it("come from the settings and the theme", () => {
     expect(terminalOptions(DEFAULTS, dark)).toEqual({
-      allowProposedApi: false,
+      allowProposedApi: true,
       cursorBlink: true,
       cursorStyle: "block",
       fontFamily: MONOSPACE,
@@ -70,5 +70,11 @@ describe("the terminal's options", () => {
   it("stop the cursor blinking under reduced motion and ask for 7:1 in high contrast", () => {
     expect(terminalOptions(DEFAULTS, { ...dark, reducedMotion: true }).cursorBlink).toBe(false);
     expect(terminalOptions(DEFAULTS, { ...dark, contrast: "high" }).minimumContrastRatio).toBe(7);
+  });
+});
+
+describe("the terminal's options", () => {
+  it("lets xterm load its proposed-API addons (Unicode 11)", () => {
+    expect(terminalOptions(DEFAULTS, dark).allowProposedApi).toBe(true);
   });
 });

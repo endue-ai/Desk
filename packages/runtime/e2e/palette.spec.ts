@@ -120,3 +120,18 @@ test.describe("desk.display", () => {
     expect(await page.evaluate(() => window.__desk.runtime.shortcuts.focused)).toBe("test.counter");
   });
 });
+
+test.describe("desk.palette: a command that fails", () => {
+  test("a command that fails from the palette says why", async ({ page }) => {
+    await open(page);
+    await page.keyboard.press("Control+K");
+    await page.keyboard.type("Show a plugin");
+    await expect(frame(page).getByRole("option").first()).toContainText("Show a plugin's surface");
+    await page.keyboard.press("Enter");
+    await expect(page.locator(palette)).toBeHidden();
+    await expect(page.locator(".desk-status")).toHaveText(
+      "Show a plugin's surface failed — say which plugin: { plugin }",
+    );
+    await expect(page.locator(".desk-status")).toHaveAttribute("data-level", "error");
+  });
+});

@@ -219,7 +219,7 @@ describe("palette providers", () => {
     expect(asker.groups()).toEqual([]);
   });
 
-  it("desk.palette contributes its item provider and holds data:read", () => {
+  it("desk.palette contributes its item provider and holds data:read and ui:notify", () => {
     const palette = readJson(join(root, "plugins/palette/plugin.json")) as PluginManifest;
     const valid = validator("PluginManifest");
     expect(valid(palette), JSON.stringify(valid.errors)).toBe(true);
@@ -232,6 +232,7 @@ describe("palette providers", () => {
     expect(palette.permissions).toEqual([
       { permission: "cmd:invoke", ids: ["*"] },
       { permission: "data:read" },
+      { permission: "ui:notify" },
     ]);
   });
 });

@@ -259,6 +259,14 @@ export function createRuntime(options: RuntimeOptions): Runtime {
     async () => {
       await Promise.all([hub.readInit(bridge), files.load()]);
       showStatus(`desk ready · bridge: ${bridge.adapterName}`);
+      if (hub.initProblem) {
+        notify.notify({
+          caller: "desk",
+          title: "init.yaml is not in force",
+          body: hub.initProblem,
+          level: "warning",
+        });
+      }
     },
     () => showStatus(`desk cannot reach the core · bridge: ${bridge.adapterName}`),
   );
@@ -274,7 +282,11 @@ export function createRuntime(options: RuntimeOptions): Runtime {
     if ((decision.area === "center" || decision.area === "floating") && !spec.hidden) {
       buffers.surfaceOpened(spec.id, spec.title);
     }
-    if (decision.focus && !spec.hidden) focusSurface(spec.id);
+    // A visible overlay is modal: a surface that mounts under it does not take the focus from it.
+    const modal = root.querySelector(".desk-surface--overlay:not([hidden])");
+    if (decision.focus && !spec.hidden && (decision.area === "overlay" || !modal)) {
+      focusSurface(spec.id);
+    }
   };
   function closeSurface(id: string) {
     surfaces.close(id);

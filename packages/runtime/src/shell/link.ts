@@ -125,7 +125,10 @@ async function restore(ctx: ShellCtx, saved: Partial<SavedShell> | null): Promis
     desktop: DESKTOPS.includes(saved.desktop as DesktopIndex)
       ? (saved.desktop as DesktopIndex)
       : s.desktop,
-    drawer: Array.isArray(saved.drawer) ? saved.drawer : s.drawer,
+    // Items a session saved with clock times (before wall-clock ages) are dated now.
+    drawer: Array.isArray(saved.drawer)
+      ? saved.drawer.map((d) => (d.at < 1e12 ? { ...d, at: ctx.wall() } : d))
+      : s.drawer,
     spaceId: typeof saved.spaceId === "string" ? saved.spaceId : s.spaceId,
   }));
 }

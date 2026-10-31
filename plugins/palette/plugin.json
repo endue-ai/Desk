@@ -10,7 +10,8 @@
       "permission": "cmd:invoke",
       "ids": ["*"]
     },
-    { "permission": "data:read" }
+    { "permission": "data:read" },
+    { "permission": "ui:notify" }
   ],
   "surfaces": [
     {

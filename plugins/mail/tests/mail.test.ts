@@ -514,3 +514,11 @@ describe("settings and state", () => {
     expect(NOW).toBeGreaterThan(0);
   });
 });
+
+describe("refresh without an account", () => {
+  it("says so on the status line instead of staying quiet", async () => {
+    const { host, view } = await mount({ items: [] });
+    await host.command("endue.mail.refresh");
+    expect(view.statuses.at(-1)).toBe("No mail account is connected yet.");
+  });
+});

@@ -1,6 +1,7 @@
 //! The Tauri shell: windows, the webview and the plugin URL scheme. Everything else lives in desk-core.
 
 mod commands;
+mod events;
 mod protocol;
 mod socket;
 
@@ -134,14 +135,17 @@ pub fn run() {
             }
             app.manage(Watching(Mutex::new((watcher, views))));
 
-            // Core events reach the runtime as Tauri events; the runtime routes them to plugins.
-            let events = core.events().subscribe();
+            // Core events reach the runtime as Tauri events, each with the callers it is for, so the
+            // runtime can hand an addressed event (a perm.prompt, a subscribed event) to the plugin it
+            // names. Subscribing this way also tells the core a router listens: without one it never
+            // sends a prompt and the Prompter decides alone.
+            let events = core.events().subscribe_addressed();
             let handle = app.handle().clone();
             std::thread::Builder::new()
                 .name("desk-events".to_owned())
                 .spawn(move || {
-                    for event in events {
-                        let _ = handle.emit("bridge://event", event);
+                    for delivery in events {
+                        let _ = handle.emit("bridge://event", events::payload(delivery));
                     }
                 })?;
             // The desk CLI reaches the core over a same-user socket as `cli`, and hears every core

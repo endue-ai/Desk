@@ -13,6 +13,7 @@ export class PolicyHub {
   #policy: PolicySet = emptyPolicy();
   #plugins: PluginInfo[] = [];
   #profile = "default";
+  #problem: string | undefined;
   readonly #listeners = new Set<(policy: PolicySet) => void>();
 
   constructor(bridge: BridgeClient) {
@@ -30,6 +31,11 @@ export class PolicyHub {
   /** The profile init.yaml asks to start in. */
   get startProfile(): string {
     return this.#profile;
+  }
+
+  /** Why init.yaml is not in force, for people, when the core could not apply it. */
+  get initProblem(): string | undefined {
+    return this.#problem;
   }
 
   /** Collect the policies of the plugins as listed now, and tell every module. */
@@ -53,6 +59,7 @@ export class PolicyHub {
     try {
       const init = await bridge.call("init.get", {});
       this.#profile = init.profile;
+      this.#problem = init.problem;
       this.settings.setLayer("init", init.settings);
     } catch {
       // No init.get (an older core, or the browser stub): the defaults stay in force.

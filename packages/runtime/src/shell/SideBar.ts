@@ -117,17 +117,6 @@ export function mountSideBar(root: HTMLElement, ctx: ShellCtx): () => void {
             h("span", { "aria-hidden": "true" }, initial(sp.name)),
           ),
         ),
-        h(
-          "button",
-          {
-            class: "add-button space-add",
-            type: "button",
-            "data-key": "space-add",
-            "aria-label": ctx.tr("addSpace"),
-            title: ctx.tr("addSpace"),
-          },
-          icon("plus", 16),
-        ),
       ),
     ]);
     render(more, () =>

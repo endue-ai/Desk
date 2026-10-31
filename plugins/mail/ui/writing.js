@@ -205,7 +205,7 @@ export function createWriting(deps) {
     /** Send the draft through the account's connector; the composer closes once it went. */
     send: async () => {
       if (!draft) throw new Error("Nothing is being written.");
-      const problems = problemsOf(draft);
+      const problems = problemsOf(draft, await actions.accounts());
       if (problems.length > 0) {
         show(problems);
         throw new Error(problems[0] ?? "The draft cannot be sent.");
