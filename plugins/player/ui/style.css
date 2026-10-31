@@ -1,0 +1,313 @@
+/* The desk's design tokens (@endue-ai/ui). Frames do not inherit the desk's, so they are declared
+   here; the runtime redefines them for the theme in force. The stage and subtitle colours are the
+   player's: video is shown on black, and subtitles are white on a shadow whatever the theme. */
+:root {
+  --desk-background: #141416;
+  --desk-card: #1e1d21;
+  --desk-border: #333136;
+  --desk-text: #f2f0f5;
+  --desk-text-muted: #b0adb7;
+  --desk-accent: #b6a3f5;
+  --player-stage: #000;
+  --player-subtitle: #fff;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  margin: 0;
+  background: var(--desk-card);
+  color: var(--desk-text);
+  font: 13px/1.5 -apple-system, "SUIT", "Inter", system-ui, sans-serif;
+}
+
+main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+header {
+  padding: 8px 12px 6px;
+  border-bottom: 1px solid var(--desk-border);
+}
+
+h1,
+h2 {
+  margin: 0;
+  font-size: 15px;
+}
+
+h2 {
+  margin: 8px 0 4px;
+  font-size: 13px;
+}
+
+p {
+  margin: 0 0 4px;
+}
+
+#detail,
+#status,
+#message {
+  color: var(--desk-text-muted);
+}
+
+#detail {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+#stage,
+#details,
+#cuelist {
+  flex: 1;
+  min-width: 0;
+  overflow: auto;
+}
+
+#stage {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+body[data-mode="media"] #stage:has(video:not([hidden])) {
+  background: var(--player-stage);
+}
+
+video {
+  max-width: 100%;
+  max-height: 100%;
+}
+
+#overlay {
+  position: absolute;
+  right: 5%;
+  bottom: 6%;
+  left: 5%;
+  color: var(--player-subtitle);
+  font-size: 20px;
+  line-height: 1.3;
+  text-align: center;
+  text-shadow: 0 0 4px #000, 0 1px 2px #000;
+  white-space: pre-line;
+  pointer-events: none;
+}
+
+#card {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  padding: 16px;
+}
+
+#cover,
+#no-cover {
+  width: 160px;
+  height: 160px;
+  border-radius: 6px;
+  object-fit: cover;
+}
+
+#no-cover {
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--desk-border);
+  background: var(--desk-background);
+  color: var(--desk-text-muted);
+  font-size: 48px;
+}
+
+dl {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 2px 12px;
+  margin: 0;
+}
+
+dt {
+  color: var(--desk-text-muted);
+}
+
+dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+#details,
+#cuelist {
+  padding: 8px 12px;
+}
+
+#why {
+  margin: 4px 0 8px;
+  color: var(--desk-text);
+  font-weight: 600;
+}
+
+table {
+  margin-top: 8px;
+  border-collapse: collapse;
+}
+
+caption {
+  text-align: left;
+  color: var(--desk-text-muted);
+}
+
+th,
+td {
+  padding: 2px 10px 2px 0;
+  border-bottom: 1px solid var(--desk-border);
+  text-align: left;
+  vertical-align: top;
+}
+
+td:not(.cue-text) {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.cue-text {
+  white-space: pre-line;
+}
+
+aside {
+  width: 260px;
+  padding: 0 12px 8px;
+  overflow: auto;
+  border-left: 1px solid var(--desk-border);
+}
+
+ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+li > button,
+li > span {
+  display: block;
+  width: 100%;
+  padding: 3px 6px;
+  text-align: left;
+}
+
+li.remote > span,
+li.missing > span {
+  color: var(--desk-text-muted);
+}
+
+[aria-current="true"] {
+  color: var(--desk-accent);
+  font-weight: 600;
+}
+
+#resume,
+#transport {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  padding: 6px 12px;
+  border-top: 1px solid var(--desk-border);
+}
+
+#seek {
+  flex: 1;
+  min-width: 120px;
+}
+
+#volume {
+  width: 80px;
+}
+
+#time,
+#duration,
+output {
+  font-variant-numeric: tabular-nums;
+}
+
+button,
+select {
+  padding: 2px 8px;
+  border: 1px solid var(--desk-border);
+  border-radius: 6px;
+  background: var(--desk-background);
+  color: var(--desk-text);
+  font: inherit;
+}
+
+li > button {
+  border-color: transparent;
+  background: none;
+}
+
+button[aria-pressed="true"] {
+  border-color: var(--desk-accent);
+  color: var(--desk-accent);
+}
+
+input[type="range"] {
+  accent-color: var(--desk-accent);
+}
+
+:focus-visible {
+  outline: 2px solid var(--desk-accent);
+  outline-offset: 2px;
+}
+
+#stage:focus-visible {
+  outline-offset: -2px;
+}
+
+#status {
+  margin: 0;
+  padding: 4px 12px;
+}
+
+#status:empty {
+  display: none;
+}
+
+/* Theatre mode: the video fills the surface; the transport stays at the bottom; Escape leaves. */
+body.theatre header,
+body.theatre aside,
+body.theatre #status {
+  display: none;
+}
+
+body.theatre #stage {
+  background: var(--player-stage);
+}
+
+body.theatre #transport {
+  border-top: 0;
+  background: var(--player-stage);
+}
+
+[hidden] {
+  display: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    scroll-behavior: auto;
+  }
+}

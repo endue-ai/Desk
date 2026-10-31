@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Player</title>
+    <script type="importmap">
+      { "imports": { "@endue-ai/plugin-sdk": "/_desk/plugin-sdk.js" } }
+    </script>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <main aria-labelledby="title">
+      <header>
+        <h1 id="title" tabindex="-1">No file open</h1>
+        <p id="detail"></p>
+      </header>
+      <div id="body">
+        <section id="stage" aria-label="Player" tabindex="-1" hidden>
+          <video id="video" playsinline preload="metadata" hidden></video>
+          <div id="overlay" aria-hidden="true"></div>
+          <div id="card" hidden>
+            <img id="cover" alt="Cover" hidden />
+            <div id="no-cover" aria-hidden="true">♪</div>
+            <dl id="tags"></dl>
+          </div>
+          <audio id="audio" preload="metadata" hidden></audio>
+          <p id="message" hidden></p>
+        </section>
+        <section id="details" aria-labelledby="details-title" hidden>
+          <h2 id="details-title">Details</h2>
+          <p id="why"></p>
+          <dl id="facts"></dl>
+          <table id="tracks" hidden>
+            <caption>Tracks</caption>
+            <thead><tr><th scope="col">Kind</th><th scope="col">Codec</th><th scope="col">Details</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </section>
+        <section id="cuelist" aria-labelledby="cues-title" hidden>
+          <h2 id="cues-title">Cues</h2>
+          <table>
+            <thead><tr><th scope="col">Start</th><th scope="col">End</th><th scope="col">Text</th></tr></thead>
+            <tbody id="cue-rows"></tbody>
+          </table>
+          <button type="button" id="more-cues" hidden>Show more cues</button>
+        </section>
+        <aside id="side" aria-label="Playlist and chapters" hidden>
+          <h2 id="rows-title">Playlist</h2>
+          <ol id="rows" aria-labelledby="rows-title"></ol>
+          <h2 id="chapters-title">Chapters</h2>
+          <ol id="chapters" aria-labelledby="chapters-title"></ol>
+        </aside>
+      </div>
+      <div id="resume" role="group" aria-label="Resume" hidden>
+        <span id="resume-text"></span>
+        <button type="button" id="resume-yes">Resume</button>
+        <button type="button" id="resume-no">Start over</button>
+      </div>
+      <div id="transport" role="toolbar" aria-label="Transport" hidden>
+        <button type="button" id="previous" aria-label="Previous" hidden>⏮</button>
+        <button type="button" id="play" aria-label="Play">▶</button>
+        <button type="button" id="next" aria-label="Next" hidden>⏭</button>
+        <span id="time" aria-hidden="true">0:00</span>
+        <input id="seek" type="range" min="0" max="0" step="any" value="0" aria-label="Seek" />
+        <span id="duration" aria-hidden="true">0:00</span>
+        <button type="button" id="mute" aria-label="Mute" aria-pressed="false">🔊</button>
+        <input id="volume" type="range" min="0" max="1" step="0.05" value="1" aria-label="Volume" />
+        <select id="speed" aria-label="Speed">
+          <option value="0.5">0.5×</option>
+          <option value="0.75">0.75×</option>
+          <option value="1" selected>1×</option>
+          <option value="1.25">1.25×</option>
+          <option value="1.5">1.5×</option>
+          <option value="1.75">1.75×</option>
+          <option value="2">2×</option>
+        </select>
+        <button type="button" id="loop" aria-pressed="false">Loop</button>
+        <span id="subtitle-controls" hidden>
+          <select id="subs" aria-label="Subtitles"></select>
+          <button type="button" id="earlier" aria-label="Subtitles 0.1 s earlier">−0.1 s</button>
+          <output id="offset" aria-label="Subtitle offset">0.0 s</output>
+          <button type="button" id="later" aria-label="Subtitles 0.1 s later">+0.1 s</button>
+        </span>
+        <button type="button" id="retry" hidden>Try again</button>
+        <button type="button" id="theatre" aria-pressed="false">Theatre</button>
+      </div>
+    </main>
+    <p id="status" role="status"></p>
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

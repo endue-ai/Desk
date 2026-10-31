@@ -154,5 +154,7 @@ export const fixture = (name: string): Uint8Array =>
   new Uint8Array(readFileSync(join(import.meta.dirname, "fixtures", name)));
 
 /** The scope the player asks for and reads under: the file's folder. */
-export const folderScope = (folder: string) =>
-  ({ permission: "fs:read", paths: [`${folder}/**`] }) as const;
+export const folderScope = (folder: string) => ({
+  permission: "fs:read" as const,
+  paths: [`${folder}/**`],
+});
