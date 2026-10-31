@@ -1,6 +1,9 @@
 import { type Edges, edgeOf } from "./edges";
 import type { Cell } from "./layout";
 
+/** The stacking level of overlays in desk.css; one shown later is raised above it. */
+const OVERLAY_Z = 10;
+
 /** A surface to show: a sandboxed iframe with a title. */
 export interface SurfaceSpec {
   id: string;
@@ -28,6 +31,8 @@ export class SurfaceHost {
   readonly #surfaces = new Map<string, HTMLElement>();
   readonly #onFocus: (id: string) => void;
   readonly #edges: Edges | undefined;
+  /** How many times an overlay was shown: each one shown goes above those shown before it. */
+  #raised = 0;
 
   /** Without `edges`, edge surfaces sit in `container` like the rest. */
   constructor(container: HTMLElement, onFocus: (id: string) => void, edges?: Edges) {
@@ -90,7 +95,11 @@ export class SurfaceHost {
     const section = this.#surfaces.get(id);
     if (!section) return;
     section.hidden = !visible;
-    if (visible) section.querySelector("iframe")?.focus();
+    if (!visible) return;
+    // An overlay shown over another (the palette over a view) is drawn above it.
+    if (section.classList.contains("desk-surface--overlay"))
+      section.style.zIndex = String(OVERLAY_Z + ++this.#raised);
+    section.querySelector("iframe")?.focus();
   }
 
   visible(id: string): boolean {
