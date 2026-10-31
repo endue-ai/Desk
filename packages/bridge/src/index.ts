@@ -31,5 +31,6 @@ export {
   type StubSurface,
   stubCommands,
 } from "./stub-commands";
+export { mediaType, pathMatch, type StubFiles, stubFs } from "./stub-fs";
 
 export const NAME = "@endue-ai/bridge";

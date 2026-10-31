@@ -1,7 +1,9 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { BridgeClient, browserStub, stubCommands } from "./index";
+import { BridgeClient, browserStub, type FsReadPermission, mediaType, stubCommands } from "./index";
 
-const MOVIES = { permission: "fs:read", paths: ["~/Movies/**"] } as const;
+const MOVIES: FsReadPermission = { permission: "fs:read", paths: ["~/Movies/**"] };
 const PLAYER = { caller: "example.player" };
 /** 100 bytes, `3 * i` for byte `i`: not UTF-8 from byte 43 on. */
 const BLOB = Uint8Array.from({ length: 100 }, (_, i) => (i * 3) & 0xff);
@@ -58,9 +60,9 @@ describe("the stub's in-memory files", () => {
   it("reads only under a covering grant, and a missing file is not_found", async () => {
     const bridge = client();
     const params = { path: "~/Movies/clip.mp4", scope: MOVIES };
-    await expect(
-      bridge.call("fs.read", params, { caller: "example.other" }),
-    ).rejects.toMatchObject({ code: "permission_denied", permission: MOVIES });
+    await expect(bridge.call("fs.read", params, { caller: "example.other" })).rejects.toMatchObject(
+      { code: "permission_denied", permission: MOVIES },
+    );
     await expect(
       bridge.call("fs.url", { path: "~/Documents/a.md", scope: MOVIES }, PLAYER),
     ).rejects.toMatchObject({ code: "permission_denied" });
@@ -89,5 +91,17 @@ describe("the stub's in-memory files", () => {
       PLAYER,
     );
     expect(notes).toMatchObject({ size: 8, type: "application/octet-stream" });
+  });
+
+  it("types files as desk-core's media_types.rs does", () => {
+    const rust = readFileSync(
+      join(import.meta.dirname, "../../../crates/desk-core/src/media_types.rs"),
+      "utf8",
+    );
+    const table = [...rust.matchAll(/\("([0-9a-z]+)", "([^"]+)"\)/g)];
+    expect(table.length).toBeGreaterThan(30);
+    for (const [, extension, type] of table) expect(mediaType(`a.${extension}`)).toBe(type);
+    expect(mediaType("IMG_0001.JPG")).toBe("image/jpeg");
+    expect(mediaType("~/notes.md")).toBe("application/octet-stream");
   });
 });

@@ -2,7 +2,8 @@
  * The core for the browser stub, so the runtime and plugins can be tested without it: the command
  * registry (cmd.*, ADR 0017), grants and prompts (perm.*), settings, the log, subscriptions (events.*)
  * and surfaces (ui.surface.*), per caller, with the core's rules (specs/bridge/v0/README.md), plus the
- * items, connectors, views and catalog of stub-data.ts. A plugin caller's scoped call needs a covering
+ * items, connectors, views and catalog of stub-data.ts and, given files, fs.read and fs.url of
+ * stub-fs.ts. A plugin caller's scoped call needs a covering
  * grant; the runtime (`desk`) is trusted. cmd.list and cmd.invoke check no grants. `audience` names the
  * plugins the core would deliver an event to.
  */
@@ -29,6 +30,7 @@ import type {
 } from "./generated";
 import { covers, keyMatch, starMatch } from "./stub-covers";
 import { type DataServed, stubData } from "./stub-data";
+import { type FsServed, type StubFiles, stubFs } from "./stub-fs";
 
 /** The methods the stub serves; any other is `unsupported` (adapters.ts). */
 type Served =
@@ -50,6 +52,8 @@ export interface StubOptions {
   /** The core's clock: log entries and grants are stamped with it, and connector syncs, which use
    * `FIXTURE_NOW` (the fixtures' today) when it is absent. */
   now?: () => string;
+  /** Files by bridge path; with them the stub serves fs.read (ranges too) and fs.url (stub-fs.ts). */
+  files?: StubFiles;
 }
 
 export interface StubSurface {
@@ -69,7 +73,8 @@ export interface StubState {
 }
 
 export interface StubCommands {
-  handlers: Required<Pick<StubHandlers, Served>>;
+  /** The methods above, and fs.read and fs.url when the options hold files. */
+  handlers: Required<Pick<StubHandlers, Served>> & Pick<StubHandlers, FsServed>;
   /** The caller providing a command, or undefined. */
   providerOf(id: string): string | undefined;
   /** The plugin callers the core would deliver an event to (never the runtime: it hears all). */
@@ -229,6 +234,7 @@ export function stubCommands(
     remove: data.remove,
     handlers: {
       ...data.handlers,
+      ...(options.files && stubFs(options.files, check)),
       "cmd.register": (params, caller) => {
         const provider = me(caller);
         const existing = commands.get(params.id);
