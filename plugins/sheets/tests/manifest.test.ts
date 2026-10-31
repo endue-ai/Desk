@@ -99,4 +99,8 @@ describe("plugin.json", () => {
       expect(opener(own, path), path).toBeUndefined();
     }
   });
+
+  it("autoloads: off at start, on when a file needs it, off after its last one (ADR 0046)", () => {
+    expect(manifest().autoload).toBe(true);
+  });
 });

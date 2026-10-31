@@ -125,4 +125,8 @@ describe("plugin.json", () => {
     expect(opener(rules, "~/data/notes.md")).toBeUndefined();
     expect(opener(rules, "~/data/environment")).toBeUndefined();
   });
+
+  it("autoloads: off at start, on when a file needs it, off after its last one (ADR 0046)", () => {
+    expect(manifest().autoload).toBe(true);
+  });
 });

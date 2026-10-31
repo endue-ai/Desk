@@ -11,6 +11,8 @@ const plugins: Record<string, string> = {
   "example.hello-ui": join(repo, "examples/plugin-hello-ui"),
   "test.counter": here("./fixture/plugins/test-counter"),
   "test.echo": here("./fixture/plugins/test-echo"),
+  // The autoload opener of the desk page is the echo plugin under another id.
+  "test.lazy": here("./fixture/plugins/test-echo"),
   "desk.palette": join(repo, "plugins/palette"),
   "desk.views": join(repo, "plugins/views"),
   "endue.eris": join(repo, "plugins/eris"),

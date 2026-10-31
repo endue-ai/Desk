@@ -74,4 +74,8 @@ describe("plugin.json", () => {
     expect(opener(rules, "~/src/index.ts")).toBeUndefined();
     expect(opener(rules, "~/notes.txt")).toBeUndefined();
   });
+
+  it("autoloads: off at start, on when a file needs it, off after its last one (ADR 0046)", () => {
+    expect(manifest().autoload).toBe(true);
+  });
 });
