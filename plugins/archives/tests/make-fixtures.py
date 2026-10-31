@@ -156,6 +156,28 @@ def rar4(files):
     return out + block(0x7B, 0x4000, b"")
 
 
+def scrub_xar(path):
+    """xar writes the builder's account into its table of contents: make every owner root:wheel and
+    drop extended attributes, then fix the header's lengths and the TOC checksum at heap offset 0."""
+    import re
+    data = path.read_bytes()
+    size, version, packed, unpacked, algorithm = struct.unpack(">HHQQI", data[4:28])
+    toc = zlib.decompress(data[size:size + packed]).decode()
+    toc = re.sub(r"<user>[^<]*</user>", "<user>root</user>", toc)
+    toc = re.sub(r"<group>[^<]*</group>", "<group>wheel</group>", toc)
+    toc = re.sub(r"<uid>[^<]*</uid>", "<uid>0</uid>", toc)
+    toc = re.sub(r"<gid>[^<]*</gid>", "<gid>0</gid>", toc)
+    toc = re.sub(r"\s*<ea\b[\s\S]*?</ea>", "", toc)
+    raw = toc.encode()
+    packed_toc = zlib.compress(raw, 9)
+    heap = bytearray(data[size + packed:])
+    digest = {1: hashlib.sha1, 2: hashlib.md5}.get(algorithm, hashlib.sha1)(packed_toc).digest()
+    if algorithm in (1, 2):
+        heap[:len(digest)] = digest
+    head = data[:4] + struct.pack(">HHQQI", size, version, len(packed_toc), len(raw), algorithm)
+    path.write_bytes(head + data[28:size] + packed_toc + bytes(heap))
+
+
 def bencode_info_hash(data):
     """SHA-1 of the bencoded info dictionary, by its byte span in the file."""
     def end(i):
@@ -222,9 +244,11 @@ def main():
 
     # tar: ustar, GNU long names and PAX, then inside each stream.
     names = "hello.txt docs data.bin image.png deep link"
-    sh(f"tar --no-mac-metadata --format ustar -cf {OUT}/ustar.tar hello.txt docs link", t)
-    sh(f"tar --no-mac-metadata --format gnutar -cf {OUT}/gnu.tar {names}", t)
-    sh(f"tar --no-mac-metadata --format pax -cf {work}/pax.tar {names} inner.zip", t)
+    # bsdtar would store the builder's account name: every owner is root:wheel instead.
+    tar = "tar --no-mac-metadata --uid 0 --gid 0 --uname root --gname wheel"
+    sh(f"{tar} --format ustar -cf {OUT}/ustar.tar hello.txt docs link", t)
+    sh(f"{tar} --format gnutar -cf {OUT}/gnu.tar {names}", t)
+    sh(f"{tar} --format pax -cf {work}/pax.tar {names} inner.zip", t)
     shutil.copy(work / "pax.tar", OUT / "pax.tar")
     for ext, tool in [("tar.gz", "gzip -9 -n"), ("tbz2", "bzip2 -9"), ("txz", "xz"),
                       ("tar.zst", "zstd -q -19"), ("tar.lz4", "lz4 -q -9")]:
@@ -235,7 +259,10 @@ def main():
     sh(f"xar --compression=bzip2 -cf {OUT}/tree-bzip2.xar hello.txt words.txt", t)
     sh(f"mkdir -p {work}/pkgroot/opt/sample && cp hello.txt {work}/pkgroot/opt/sample/", t)
     run("pkgbuild", "--quiet", "--root", work / "pkgroot", "--identifier", "ai.endue.sample",
-        "--version", "1.0", "--install-location", "/", OUT / "sample.pkg")
+        "--version", "1.0", "--install-location", "/", "--ownership", "recommended",
+        OUT / "sample.pkg")
+    for name in ["tree.xar", "tree-bzip2.xar", "sample.pkg"]:
+        scrub_xar(OUT / name)
 
     # Disk images on macOS: ISO 9660 with Joliet, and a compressed UDIF image.
     sh(f"hdiutil makehybrid -quiet -iso -joliet -default-volume-name SAMPLE "
