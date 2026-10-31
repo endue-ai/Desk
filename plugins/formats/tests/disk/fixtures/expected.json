@@ -40,7 +40,7 @@
       {"kind":"folder","mtime":1790856000,"path":"home","size":0},
       {"kind":"folder","mtime":1790856000,"path":"home/example","size":0},
       {"kind":"file","mtime":1790856000,"path":"home/example/notes.txt","sha256":"b025b9ede00cf9ab","size":12288},
-      {"kind":"folder","mtime":1793483154,"path":"lost+found","size":0}
+      {"kind":"folder","mtime":1793483697,"path":"lost+found","size":0}
      ],
      "number": 2,
      "size": 6291456,
@@ -53,7 +53,7 @@
      "start": 11534336
     }
    ],
-   "sha256": "4d3dac0cb1c8fbb0298264474701d6c212ca170335057b4569072f461c33b4b5",
+   "sha256": "eba7bec8a4686d2f95698c5430876349f7e707e1c58572355957844f969a6c2c",
    "size": 12582912
   },
   "mbr.img": {
@@ -73,7 +73,7 @@
       {"kind":"folder","mtime":1790856000,"path":"docs","size":0},
       {"kind":"file","mtime":1790856000,"path":"docs/readme.md","sha256":"ee75bd9ffbe1cb6a","size":12},
       {"kind":"file","mtime":1790856000,"path":"hello.txt","sha256":"4c6375abda40b5e3","size":24},
-      {"kind":"folder","mtime":1793483155,"path":"lost+found","size":0}
+      {"kind":"folder","mtime":1793483698,"path":"lost+found","size":0}
      ],
      "number": 5,
      "size": 4194304,
@@ -90,7 +90,7 @@
      "start": 11534336
     }
    ],
-   "sha256": "052e4804aef35f6ffa9145d01494ee569f86e4e419b5022542f1313d25472dc2",
+   "sha256": "b844827d41895b714553c69bf420e21e246b3d2d0c41ff8781b64b345f3d6611",
    "size": 16777216
   }
  },
@@ -288,7 +288,7 @@
     {"kind":"folder","mtime":1790856000,"path":"deep/one/two/three/four/five/six","size":0},
     {"kind":"folder","mtime":1790856000,"path":"deep/one/two/three/four/five/six/seven","size":0},
     {"kind":"file","mtime":1790856000,"path":"deep/one/two/three/four/five/six/seven/deep.txt","sha256":"64896f89fd111900","size":5},
-    {"kind":"folder","mtime":1793483154,"path":"docs","size":0},
+    {"kind":"folder","mtime":1793483696,"path":"docs","size":0},
     {"kind":"file","mtime":1790856000,"path":"docs/A long file name, with spaces and more than eight characters.txt","sha256":"bbdbb75b415ee9a4","size":5},
     {"inode":26,"kind":"file","mtime":1790856000,"path":"docs/hello-again.txt","sha256":"38390ffa66e279d9","size":14},
     {"kind":"file","mtime":1790856000,"path":"docs/readme.md","sha256":"64e4cc084e476ca1","size":59},
@@ -297,7 +297,7 @@
     {"inode":26,"kind":"file","mtime":1790856000,"path":"hello.txt","sha256":"38390ffa66e279d9","size":14},
     {"kind":"link","link":"docs/readme.md","mtime":1790856000,"path":"link-to-readme","size":14},
     {"kind":"link","link":"deep/one/two/three/four/five/six/seven/../../../../../../../docs/readme.md","mtime":1790856000,"path":"long-link","size":74},
-    {"kind":"folder","mtime":1793483154,"path":"lost+found","size":0},
+    {"kind":"folder","mtime":1793483696,"path":"lost+found","size":0},
     {"kind":"file","mtime":1790856000,"path":"lower.txt","sha256":"b908e4daaf9d57fe","size":6},
     {"kind":"folder","mtime":1790856000,"path":"many","size":0},
     {"kind":"file","mtime":1790856000,"path":"many/a-file-with-a-longer-name-000.txt","sha256":"41b3fbbe4d8d6bbd","size":7},
@@ -422,7 +422,7 @@
     {"kind":"folder","mtime":1790856000,"path":"deep/one/two/three/four/five/six","size":0},
     {"kind":"folder","mtime":1790856000,"path":"deep/one/two/three/four/five/six/seven","size":0},
     {"kind":"file","mtime":1790856000,"path":"deep/one/two/three/four/five/six/seven/deep.txt","sha256":"64896f89fd111900","size":5},
-    {"kind":"folder","mtime":1793483154,"path":"docs","size":0},
+    {"kind":"folder","mtime":1793483696,"path":"docs","size":0},
     {"kind":"file","mtime":1790856000,"path":"docs/A long file name, with spaces and more than eight characters.txt","sha256":"bbdbb75b415ee9a4","size":5},
     {"inode":29,"kind":"file","mtime":1790856000,"path":"docs/hello-again.txt","sha256":"38390ffa66e279d9","size":14},
     {"kind":"file","mtime":1790856000,"path":"docs/readme.md","sha256":"64e4cc084e476ca1","size":59},
@@ -431,7 +431,7 @@
     {"inode":29,"kind":"file","mtime":1790856000,"path":"hello.txt","sha256":"38390ffa66e279d9","size":14},
     {"kind":"link","link":"docs/readme.md","mtime":1790856000,"path":"link-to-readme","size":14},
     {"kind":"link","link":"deep/one/two/three/four/five/six/seven/../../../../../../../docs/readme.md","mtime":1790856000,"path":"long-link","size":74},
-    {"kind":"folder","mtime":1793483154,"path":"lost+found","size":0},
+    {"kind":"folder","mtime":1793483696,"path":"lost+found","size":0},
     {"kind":"file","mtime":1790856000,"path":"lower.txt","sha256":"b908e4daaf9d57fe","size":6},
     {"kind":"folder","mtime":1790856000,"path":"many","size":0},
     {"kind":"file","mtime":1790856000,"path":"many/a-file-with-a-longer-name-000.txt","sha256":"41b3fbbe4d8d6bbd","size":7},
@@ -1081,11 +1081,11 @@
     {"kind":"file","mtime":1790856000,"path":"deep/one/two/three/four/five/six/seven/deep.txt","sha256":"64896f89fd111900","size":5},
     {"kind":"folder","mtime":1790856000,"path":"docs","size":0},
     {"kind":"file","mtime":1790856000,"path":"docs/A long file name, with spaces and more than eight characters.txt","sha256":"bbdbb75b415ee9a4","size":5},
-    {"inode":81,"kind":"file","mtime":1793483154.6075633,"path":"docs/hello-again.txt","sha256":"38390ffa66e279d9","size":14},
+    {"inode":81,"kind":"file","mtime":1793483696.4164944,"path":"docs/hello-again.txt","sha256":"38390ffa66e279d9","size":14},
     {"kind":"file","mtime":1790856000,"path":"docs/readme.md","sha256":"64e4cc084e476ca1","size":59},
     {"kind":"file","mtime":1790856000,"path":"docs/한글 이름.txt","sha256":"8d0648e42d053f74","size":16},
     {"kind":"file","mtime":1790856000,"path":"empty.txt","sha256":"e3b0c44298fc1c14","size":0},
-    {"inode":81,"kind":"file","mtime":1793483154.6075633,"path":"hello.txt","sha256":"38390ffa66e279d9","size":14},
+    {"inode":81,"kind":"file","mtime":1793483696.4164944,"path":"hello.txt","sha256":"38390ffa66e279d9","size":14},
     {"kind":"link","link":"docs/readme.md","mtime":1790856000,"path":"link-to-readme","size":14},
     {"kind":"link","link":"deep/one/two/three/four/five/six/seven/../../../../../../../docs/readme.md","mtime":1790856000,"path":"long-link","size":74},
     {"kind":"file","mtime":1790856000,"path":"lower.txt","sha256":"b908e4daaf9d57fe","size":6},

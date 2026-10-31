@@ -227,10 +227,10 @@ def gpt():
     disk = f"{WORK}/gpt.img"
     with open(disk, "wb") as f:
         f.truncate(12 * 1024 * 1024)
-    run("sgdisk", "-q", "-o", "-U", "5A1E5A1E-0000-4000-8000-000000000184",
+    run("sgdisk", "-o", "-U", "5A1E5A1E-0000-4000-8000-000000000184",
         "-n", "1:2048:10239", "-t", "1:ef00", "-c", "1:EFI",
         "-n", "2:10240:22527", "-t", "2:8300", "-c", "2:root",
-        "-n", "3:22528:24542", "-t", "3:8200", "-c", "3:swap", disk)
+        "-n", "3:22528:24542", "-t", "3:8200", "-c", "3:swap", disk, stdout=subprocess.DEVNULL)
     small = f"{WORK}/tree-gpt"
     shutil.rmtree(small, ignore_errors=True)
     put(small, "hello.txt", b"Hello from the EFI partition!\n")
