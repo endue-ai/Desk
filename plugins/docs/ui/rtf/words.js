@@ -103,10 +103,18 @@ export function applyWord(doc, state, word, p) {
     case "s":
       if (state.dest === "stylesheet") doc.styleStart(p ?? 0);
       else {
+        // The style's own properties first; the words after \sN override them.
         const style = doc.styles.get(p ?? 0);
+        for (const layer of doc.styleChain(p ?? 0)) {
+          Object.assign(run, layer.run);
+          Object.assign(para, layer.para);
+        }
         para.style = style?.name;
         para.level = style?.level;
       }
+      break;
+    case "sbasedon":
+      if (state.dest === "stylesheet") doc.styleBasedOn(p ?? 0);
       break;
     case "outlinelevel":
       if (state.dest === "stylesheet") doc.styleLevel(p ?? 0);

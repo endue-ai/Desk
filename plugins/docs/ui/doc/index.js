@@ -111,6 +111,7 @@ export function readDoc(cfb, format) {
         } else cell.push(content);
       } else {
         closeTable();
+        if (props.breakBefore && blocks.length) blocks.push({ type: "pagebreak" });
         blocks.push(content);
         if (code === 0x0c) blocks.push({ type: "pagebreak" });
       }
@@ -177,7 +178,7 @@ function createPapx(wd, table, plc) {
   const t = new Reader(table);
   const w = new Reader(wd);
   const n = plc.lcb >= 12 ? Math.floor((plc.lcb - 4) / 8) : 0;
-  const none = { inTable: false, ttp: false, istd: 0 };
+  const none = { inTable: false, ttp: false, istd: 0, breakBefore: false };
   return (/** @type {number} */ fc) => {
     if (fc < 0 || n === 0) return none;
     let page = -1;
@@ -248,7 +249,7 @@ function hiddenRanges(wd, table, plc) {
 
 /** The table and style facts in a PAPX's istd and grpprl. */
 function sprms(/** @type {Reader} */ r, /** @type {number} */ start, /** @type {number} */ end) {
-  const out = { inTable: false, ttp: false, istd: r.u16(start) };
+  const out = { inTable: false, ttp: false, istd: r.u16(start), breakBefore: false };
   let at = start + 2;
   while (at + 2 <= end) {
     const sprm = r.u16(at);
@@ -257,6 +258,7 @@ function sprms(/** @type {Reader} */ r, /** @type {number} */ start, /** @type {
     if (sprm === 0x2416 || sprm === 0x244b) out.inTable ||= r.u8(at) !== 0;
     if (sprm === 0x2417 || sprm === 0x244c) out.ttp ||= r.u8(at) !== 0;
     if (sprm === 0x6649 && r.u32(at) > 0) out.inTable = true;
+    if (sprm === 0x2407) out.breakBefore = r.u8(at) !== 0;
     const size =
       spra === 0 || spra === 1
         ? 1

@@ -61,7 +61,8 @@ h2 {
   text-transform: uppercase;
 }
 
-#doc-detail {
+#doc-detail,
+#outline-empty {
   margin: 0;
   color: var(--desk-text-muted);
 }
@@ -159,6 +160,7 @@ input {
 
 #outline li button {
   display: block;
+  padding-left: calc(8px + (var(--level, 1) - 1) * 12px);
   overflow: hidden;
   width: 100%;
   margin: 1px 0;
@@ -166,16 +168,6 @@ input {
   text-align: left;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-#outline li[data-level="2"] button { padding-left: 18px; }
-#outline li[data-level="3"] button { padding-left: 28px; }
-#outline li[data-level="4"] button { padding-left: 38px; }
-#outline li[data-level="5"] button { padding-left: 48px; }
-#outline li[data-level="6"] button { padding-left: 58px; }
-
-#outline-empty {
-  color: var(--desk-text-muted);
 }
 
 .comment {
@@ -192,7 +184,6 @@ input {
   color: var(--desk-text-muted);
   font-size: 11px;
 }
-
 #desk {
   overflow: auto;
   flex: 1;
@@ -226,12 +217,12 @@ input {
 
 .page-header,
 .page-footer {
+  display: flex;
+  flex-direction: column;
   color: #444;
 }
 
 .page-footer {
-  display: flex;
-  flex-direction: column;
   justify-content: flex-end;
 }
 
@@ -253,7 +244,6 @@ input {
 
 .note-label {
   min-width: 12pt;
-  vertical-align: super;
 }
 
 .para {
@@ -261,6 +251,21 @@ input {
   min-height: 1em;
   white-space: pre-wrap;
   tab-size: 4;
+}
+
+/* Text-only documents carry no formatting: their headings still read as headings. */
+.text-only .para {
+  margin-bottom: 6pt;
+}
+
+.text-only [role="heading"] {
+  margin: 12pt 0 6pt;
+  font-size: 1.35em;
+  font-weight: 700;
+}
+
+.text-only [role="heading"][aria-level="1"] {
+  font-size: 1.6em;
 }
 
 .marker {
@@ -300,7 +305,7 @@ mark.find-hit {
   color: inherit;
 }
 
-mark.find-hit.is-current {
+mark.is-current {
   background: var(--docs-hit-current);
 }
 
@@ -345,6 +350,11 @@ mark.find-hit.is-current {
   overflow: auto;
   flex: 1;
   padding: 16px 12px;
+}
+
+#details-reason {
+  margin: 0 0 12px;
+  font-size: 15px;
 }
 
 #details-preview {

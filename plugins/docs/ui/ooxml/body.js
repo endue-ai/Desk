@@ -136,6 +136,8 @@ function table(tbl, ctx) {
   /** The cell a vertical merge started in, by grid column. */
   /** @type {Map<number, import("../model.js").Cell>} */
   const open = new Map();
+  /** Borders drawn cell by cell (w:tcBorders), as LibreOffice writes them. */
+  let cellBorders = false;
   /** @type {Element[]} */
   const trs = [];
   const collect = (/** @type {Element} */ parent) => {
@@ -165,6 +167,12 @@ function table(tbl, ctx) {
     cells(tr);
     for (const tc of tcs) {
       const tcPr = kid(tc, "tcPr");
+      if (
+        kids(kid(tcPr, "tcBorders")).some(
+          (b) => !["nil", "none"].includes(attr(b, "val") ?? "none"),
+        )
+      )
+        cellBorders = true;
       const span = Math.max(1, num(kid(tcPr, "gridSpan"), "val") ?? 1);
       const merge = kid(tcPr, "vMerge");
       const mergeVal = attr(merge, "val");
@@ -195,7 +203,7 @@ function table(tbl, ctx) {
     rows.push(row);
   }
   /** @type {import("../model.js").Table} */
-  const out = { type: "table", rows, borders: ctx.styles.tableBorders(tblPr) };
+  const out = { type: "table", rows, borders: ctx.styles.tableBorders(tblPr) || cellBorders };
   if (columns.some((c) => c > 0)) out.columns = columns;
   return out;
 }

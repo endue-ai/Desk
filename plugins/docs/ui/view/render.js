@@ -188,13 +188,16 @@ function renderTable(table, ctx) {
   el.className = table.borders ? "table bordered" : "table";
   if (table.columns?.length) {
     const group = doc.createElement("colgroup");
+    const total = table.columns.reduce((a, b) => a + b, 0);
     for (const width of table.columns) {
       const col = doc.createElement("col");
-      if (width) col.style.width = `${width}pt`;
+      if (width && table.relative) col.style.width = `${Math.round((width / total) * 1000) / 10}%`;
+      else if (width) col.style.width = `${width}pt`;
       group.append(col);
     }
     el.append(group);
   }
+  if (table.relative) el.style.width = "100%";
   const body = doc.createElement("tbody");
   for (const row of table.rows) {
     const tr = doc.createElement("tr");

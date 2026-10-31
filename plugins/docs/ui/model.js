@@ -22,7 +22,8 @@
  * @typedef {TextRun | Image | Tab | LineBreak | NoteRef | Field | Anchor} Inline
  * @typedef {{ blocks: Block[], colSpan: number, rowSpan: number, width?: number, fill?: string }} Cell
  * @typedef {{ cells: Cell[], header?: boolean }} Row
- * @typedef {{ type: "table", rows: Row[], columns?: number[], borders: boolean }} Table
+ * @typedef {{ type: "table", rows: Row[], columns?: number[], borders: boolean, relative?: boolean }} Table
+ *   relative: the columns are proportions of the text width, not points.
  *   Covered cells of a merge are left out, as in HTML.
  * @typedef {{ type: "pagebreak" }} PageBreak
  * @typedef {Paragraph | Table | Image | PageBreak} Block

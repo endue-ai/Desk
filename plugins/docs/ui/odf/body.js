@@ -220,11 +220,14 @@ function table(el, ctx) {
   /** @type {number[]} */
   const columns = [];
   let borders = false;
+  // A table aligned to the margins fills the text width; its columns are shares of it.
+  const full = ctx.styles.get("table", attr(el, "style-name")).full === true;
   const visit = (/** @type {Element} */ parent, /** @type {boolean} */ header) => {
     for (const child of kids(parent)) {
       const name = child.localName;
       if (name === "table-column") {
-        const width = ctx.styles.get("table-column", attr(child, "style-name")).column ?? 0;
+        const style = ctx.styles.get("table-column", attr(child, "style-name"));
+        const width = (full ? style.share : style.column) ?? 0;
         const repeat = Math.min(64, Number(attr(child, "number-columns-repeated") ?? 1));
         for (let i = 0; i < repeat; i++) columns.push(width);
       } else if (
@@ -265,6 +268,7 @@ function table(el, ctx) {
   visit(el, false);
   /** @type {import("../model.js").Table} */
   const out = { type: "table", rows, borders };
+  if (full) out.relative = true;
   if (columns.some((c) => c > 0)) out.columns = columns;
   return out;
 }

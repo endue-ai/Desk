@@ -19,8 +19,10 @@ export function createDoc() {
   /** @type {Array<string | undefined>} */
   const colors = [];
   let parts = { red: 0, green: 0, blue: 0, any: false };
-  /** @type {Map<number, { name: string, level?: number }>} */
+  /** @type {Map<number, { name: string, level?: number, basedOn?: number, run: import("./index.js").RtfRun, para: RtfPara }>} */
   const styles = new Map();
+  /** @type {number | undefined} */
+  let basedOn;
   let styleId = 0;
   /** @type {number | undefined} */
   let styleLevel;
@@ -164,17 +166,33 @@ export function createDoc() {
     styleStart(/** @type {number} */ id) {
       styleId = id;
       styleLevel = undefined;
+      basedOn = undefined;
+    },
+    styleBasedOn(/** @type {number} */ id) {
+      basedOn = id;
+    },
+    /** A style and the styles it is based on, the base first. */
+    styleChain(/** @type {number} */ id) {
+      const chain = [];
+      for (let at = styles.get(id), guard = 0; at && guard < 16; guard++) {
+        chain.unshift(at);
+        at = at.basedOn === undefined || at.basedOn === id ? undefined : styles.get(at.basedOn);
+      }
+      return chain;
     },
     styleLevel(/** @type {number} */ level) {
       styleLevel = level;
     },
-    styleText(/** @type {string} */ text) {
+    /** A style's name ends its entry; the properties its entry set are the style's. */
+    styleText(/** @type {string} */ text, /** @type {State} */ state) {
       const name = text.replace(/;[\s\S]*$/, "").trim();
       if (!name) return;
       const heading = /^heading ([1-6])$/i.exec(name);
       const level =
         styleLevel !== undefined ? styleLevel + 1 : heading ? Number(heading[1]) : undefined;
-      styles.set(styleId, level !== undefined && level <= 6 ? { name, level } : { name });
+      const { style: _s, level: _l, ...para } = state.para;
+      const style = { name, basedOn, run: { ...state.run }, para };
+      styles.set(styleId, level !== undefined && level <= 6 ? { ...style, level } : style);
     },
     /** @param {Pict} pict @param {State} state */
     picture(pict, state) {

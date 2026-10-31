@@ -41,6 +41,7 @@ export function renderOutline(doc, listEl, empty, go) {
       ...headings.map((h) => {
         const li = doc.createElement("li");
         li.dataset.level = String(h.level);
+        li.style.setProperty("--level", String(h.level));
         const button = doc.createElement("button");
         button.type = "button";
         button.textContent = h.text;

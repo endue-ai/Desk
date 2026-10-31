@@ -73,13 +73,14 @@ export class Flow {
   /** \par: the paragraph ends; inside a table it joins the current cell. */
   /** @param {RtfPara} props */
   par(props) {
-    if (props.pagebb) this.pageBreak();
     const p = this.paragraph(props);
-    if (props.intbl) this.cell.push(p);
-    else {
-      this.closeTable();
-      this.blocks.push(p);
+    if (props.intbl) {
+      this.cell.push(p);
+      return;
     }
+    this.closeTable();
+    if (props.pagebb) this.blocks.push({ type: "pagebreak" });
+    this.blocks.push(p);
   }
 
   /** \cell: the cell's last paragraph ends with it. */
@@ -90,44 +91,65 @@ export class Flow {
     this.cell = [];
   }
 
-  /** \row: the cells meet the row definition's merges and widths. */
+  /** \row: the cells meet the row definition's merges and right edges. */
   /** @param {CellDef[]} defs */
   endRow(defs) {
     if (this.inlines.length > 0) this.endCell({});
     this.table ??= { type: "table", rows: [], borders: true };
-    /** @type {import("../model.js").Cell[]} */
+    /** @type {Array<import("../model.js").Cell & { left?: number, right?: number }>} */
     const row = [];
     let left = 0;
     this.cells.forEach((cell, i) => {
       const def = defs[i];
-      const width = def ? twips(def.right - left) : undefined;
+      const span = { left, right: def?.right ?? left };
       if (def) left = def.right;
-      if (def?.hmerge === "next" && row.length > 0) {
-        const prev = /** @type {import("../model.js").Cell} */ (row.at(-1));
-        prev.colSpan++;
+      const prev = row.at(-1);
+      if (def?.hmerge === "next" && prev) {
+        prev.right = span.right;
         prev.blocks.push(...cell.blocks.filter((b) => b.type !== "paragraph" || b.inlines.length));
         return;
       }
       if (def?.vmerge === "next") {
-        const origin = this.merges.get(i);
+        const origin = this.merges.get(span.left);
         if (origin) {
           origin.rowSpan++;
           return;
         }
       }
-      if (width && width > 0) cell.width = width;
       if (def?.fill) cell.fill = def.fill;
-      if (def?.vmerge === "first") this.merges.set(i, cell);
-      else this.merges.delete(i);
-      row.push(cell);
+      const placed = def ? Object.assign(cell, span) : cell;
+      if (def?.vmerge === "first") this.merges.set(span.left, placed);
+      else this.merges.delete(span.left);
+      row.push(placed);
     });
     this.table.rows.push({ cells: row });
     this.cells = [];
   }
 
+  /** The table ends: cells span the columns their edges cover across all rows. */
   closeTable() {
     if (this.cells.length > 0) this.endRow([]);
-    if (this.table) this.blocks.push(this.table);
+    const table = this.table;
+    if (table) {
+      /** @type {Array<import("../model.js").Cell & { left?: number, right?: number }>} */
+      const cells = table.rows.flatMap((r) => r.cells);
+      const edges = [
+        ...new Set(cells.flatMap((c) => (c.right ? [c.left ?? 0, c.right] : []))),
+      ].sort((a, b) => a - b);
+      for (const cell of cells) {
+        if (cell.right) {
+          const covered = edges.filter(
+            (e) => e > (cell.left ?? 0) && e <= (cell.right ?? 0),
+          ).length;
+          cell.colSpan = Math.max(1, covered);
+        }
+        delete cell.left;
+        delete cell.right;
+      }
+      if (edges.length > 1)
+        table.columns = edges.slice(1).map((e, i) => twips(e - (edges[i] ?? 0)));
+      this.blocks.push(table);
+    }
     this.table = null;
     this.merges.clear();
   }

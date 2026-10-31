@@ -42,6 +42,8 @@ export function createView(doc) {
   let model = null;
   let token = 0;
   let zoom = 1;
+  /** Until the person zooms, a page wider than the desk is fitted to it. */
+  let zoomed = false;
   /** @type {string | null} */
   let selected = null;
   /** @type {Promise<void>} */
@@ -60,16 +62,23 @@ export function createView(doc) {
     zoomLevel.textContent = `${Math.round(zoom * 100)}%`;
   };
   const zoomBy = (/** @type {1 | -1} */ step) => {
+    zoomed = true;
     const next =
       step > 0
         ? ZOOMS.find((z) => z > zoom + 0.001)
         : [...ZOOMS].reverse().find((z) => z < zoom - 0.001);
     setZoom(next ?? zoom);
   };
-  const fit = () => {
+  /** The zoom at which the widest page fills the desk, or undefined before layout. */
+  const fitZoom = () => {
     const widest = Math.max(...(model?.sections ?? []).map((s) => s.width), 0);
-    if (!widest || desk.clientWidth === 0) return;
-    setZoom((desk.clientWidth - 40) / (widest * PX));
+    if (!widest || desk.clientWidth === 0) return undefined;
+    return (desk.clientWidth - 48) / (widest * PX);
+  };
+  const fit = () => {
+    zoomed = true;
+    const value = fitZoom();
+    if (value) setZoom(value);
   };
 
   const goTo = async (/** @type {string} */ id) => {
@@ -135,7 +144,20 @@ export function createView(doc) {
       const top = part("page-header", Math.max(0, m.top - header));
       renderBlocks(section.header, ctx, top);
       const body = part("page-body", 0);
-      renderBlocks(page.blocks, ctx, body);
+      // The page is on the sheet before its body is complete, so a long page appears at once
+      // and fills in while the surface stays responsive.
+      article.append(top, body);
+      sheet.append(article);
+      drawnPages.push(article);
+      for (let at = 0; at < page.blocks.length; at += BATCH) {
+        renderBlocks(page.blocks.slice(at, at + BATCH), ctx, body);
+        budget -= Math.min(BATCH, page.blocks.length - at);
+        if (budget <= 0) {
+          budget = BATCH;
+          await new Promise((resolve) => setTimeout(resolve, 0));
+          if (mine !== token) return;
+        }
+      }
       const own = [...ctx.notes].map((id) => notes.get(id)).filter((n) => n?.kind === "footnote");
       const last = index === pages.length - 1;
       const ends = last ? doc_.notes.filter((n) => n.kind === "endnote") : [];
@@ -143,15 +165,8 @@ export function createView(doc) {
       for (const note of [...own, ...ends]) if (note) noteBox.append(renderNote(note, ctx));
       const bottom = part("page-footer", Math.max(0, m.bottom - footer));
       renderBlocks(section.footer, ctx, bottom);
-      article.append(top, body, ...(noteBox.childElementCount ? [noteBox] : []), bottom);
-      sheet.append(article);
-      drawnPages.push(article);
-      budget -= page.blocks.length + 1;
-      if (budget <= 0) {
-        budget = BATCH;
-        await new Promise((resolve) => setTimeout(resolve, 0));
-        if (mine !== token) return;
-      }
+      article.append(...(noteBox.childElementCount ? [noteBox] : []), bottom);
+      budget--;
     }
     cache.set(doc_, drawnPages);
   };
@@ -177,6 +192,13 @@ export function createView(doc) {
     el.append(label, text);
     return el;
   };
+
+  const detailEls = () => ({
+    facts: byId("details-facts"),
+    reason: byId("details-reason"),
+    preview: /** @type {HTMLImageElement} */ (byId("details-preview")),
+    url: byId("details-url"),
+  });
 
   const closeFind = () => {
     findBar.hidden = true;
@@ -267,8 +289,10 @@ export function createView(doc) {
       }
     } else if (mod && (key === "=" || key === "+")) zoomBy(1);
     else if (mod && (key === "-" || key === "_")) zoomBy(-1);
-    else if (mod && key === "0") setZoom(1);
-    else if (key === "escape" && !findBar.hidden) closeFind();
+    else if (mod && key === "0") {
+      zoomed = true;
+      setZoom(1);
+    } else if (key === "escape" && !findBar.hidden) closeFind();
     else if (key === "escape" && selected) select(null);
     else return;
     event.preventDefault();
@@ -297,20 +321,13 @@ export function createView(doc) {
       }
       if (shown.doc.kind === "details") {
         sheet.replaceChildren();
-        renderDetails(
-          doc,
-          {
-            facts: byId("details-facts"),
-            reason: byId("details-reason"),
-            preview: /** @type {HTMLImageElement} */ (byId("details-preview")),
-            url: byId("details-url"),
-          },
-          /** @type {Shown & { doc: import("../model.js").Details }} */ (shown),
-        );
+        const details_ = /** @type {Shown & { doc: import("../model.js").Details }} */ (shown);
+        renderDetails(doc, detailEls(), details_);
         say(shown.doc.reason);
         return;
       }
       const docModel = shown.doc;
+      sheet.classList.toggle("text-only", docModel.textOnly);
       outlineList(headingsOf(docModel).list);
       comments.render(docModel.comments);
       const count = docModel.comments.length;
@@ -319,10 +336,26 @@ export function createView(doc) {
       commentsPanel.hidden = count === 0 || closed.comments;
       commentsToggle.setAttribute("aria-pressed", String(!commentsPanel.hidden));
       outline.hidden = closed.outline;
-      drawn = draw(docModel, mine);
+      drawn = draw(docModel, mine).catch(() => {
+        // A model the renderer cannot draw still says so instead of leaving a blank page.
+        sheet.replaceChildren();
+        layout.hidden = true;
+        tools.hidden = true;
+        details.hidden = false;
+        renderDetails(doc, detailEls(), {
+          ...shown,
+          doc: {
+            kind: "details",
+            format: docModel.format,
+            formatName: docModel.formatName,
+            reason: "Docs could not draw this document.",
+          },
+        });
+      });
       await drawn;
-      if (mine !== token) return;
-      setZoom(zoom);
+      if (mine !== token || layout.hidden) return;
+      const fitted = zoomed ? undefined : fitZoom();
+      setZoom(fitted && fitted < 1 ? fitted : zoomed ? zoom : 1);
       if (!findBar.hidden && findText.value) runFind();
       const pages = sheet.childElementCount;
       say(

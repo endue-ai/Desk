@@ -43,7 +43,7 @@ export function readRtf(bytes) {
     } else if (state.text) state.text.push(text);
     else if (state.dest === "fonttbl") doc.fontText(state, text);
     else if (state.dest === "colortbl") doc.colorText(text);
-    else if (state.dest === "stylesheet") doc.styleText(text);
+    else if (state.dest === "stylesheet") doc.styleText(text, state);
   };
   const flush = () => {
     if (pending.length === 0) return;

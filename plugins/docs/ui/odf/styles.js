@@ -7,7 +7,7 @@ import { attr, findAll, kid, kids } from "../xml.js";
 /**
  * @typedef {import("../ooxml/styles.js").RunProps} RunProps
  * @typedef {import("../ooxml/styles.js").ParaProps & { breakBefore?: boolean, breakAfter?: boolean, outline?: number, list?: string, master?: string }} ParaProps
- * @typedef {{ name: string, display: string, para: ParaProps, run: RunProps & { relative?: number }, fill?: string, border?: boolean, column?: number }} OdfStyle
+ * @typedef {{ name: string, display: string, para: ParaProps, run: RunProps & { relative?: number }, fill?: string, border?: boolean, column?: number, share?: number, full?: boolean }} OdfStyle
  * @typedef {{ format: string, prefix: string, suffix: string, display: number, start: number, bullet?: string, indent?: import("../model.js").Indent }} ListLevel
  */
 
@@ -164,8 +164,12 @@ export function createOdfStyles(docs) {
     if (list) style.para.list = list;
     const master = attr(el, "master-page-name");
     style.para.master = master || undefined;
-    const column = length(attr(props(el, "table-column"), "column-width"));
+    const columnProps = props(el, "table-column");
+    const column = length(attr(columnProps, "column-width"));
     if (column) style.column = column;
+    const share = Number.parseFloat(attr(columnProps, "rel-column-width") ?? "");
+    if (share > 0) style.share = share;
+    if (attr(props(el, "table"), "align") === "margins") style.full = true;
     const fill = color(attr(cell, "background-color"));
     if (fill) style.fill = fill;
     const border = attr(cell, "border") ?? attr(cell, "border-top") ?? attr(cell, "border-left");
