@@ -49,6 +49,8 @@ async function described(codec, source) {
     if (flags & 8) out.name = field(head, at, head.length - at);
     // ISIZE is the size modulo 2^32: trusted below 4 GiB of input only.
     if (source.size < 0xffffffff) out.size = u32(await source.read(source.size - 4, 4), 0);
+  } else if (codec === "xz" && source.size >= 32) {
+    out.size = await xzSize(source);
   } else if (codec === "lzma") {
     const head = await source.read(0, 13);
     const size = u64(head, 5);
@@ -71,6 +73,39 @@ async function described(codec, source) {
     }
   }
   return out;
+}
+
+/**
+ * The decoded size from an xz file's index, when the file is one stream: the footer's backward size
+ * finds the index, whose records give each block's sizes. -1 otherwise.
+ * @param {Source} source
+ */
+async function xzSize(source) {
+  const footer = await source.read(source.size - 12, 12);
+  if (footer[10] !== 0x59 || footer[11] !== 0x5a) return -1;
+  const indexSize = (u32(footer, 4) + 1) * 4;
+  if (indexSize > 16 * 1024 * 1024 || indexSize + 24 > source.size) return -1;
+  const index = await source.read(source.size - 12 - indexSize, indexSize);
+  let at = 1;
+  const varint = () => {
+    let value = 0;
+    for (let shift = 1; at < index.length; shift *= 128) {
+      const b = /** @type {number} */ (index[at++]);
+      value += (b & 0x7f) * shift;
+      if (!(b & 0x80)) return value;
+    }
+    return Number.NaN;
+  };
+  if (index[0] !== 0) return -1;
+  const records = varint();
+  let packed = 0;
+  let size = 0;
+  for (let i = 0; i < records; i++) {
+    packed += Math.ceil(varint() / 4) * 4;
+    size += varint();
+  }
+  // Only a single stream fills the file exactly; padding or more streams leave the size unknown.
+  return Number.isFinite(size) && 12 + packed + indexSize + 12 === source.size ? size : -1;
 }
 
 /**

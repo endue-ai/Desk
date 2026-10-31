@@ -74,7 +74,8 @@ async function openLevel(source, name) {
       "This is not an archive, package or disk image that Archives reads.",
     );
   try {
-    return level(name, kind.label, await openDetected(source, name, kind));
+    const archive = await openDetected(source, name, kind);
+    return level(name, archive.format, archive);
   } catch (error) {
     const why = message(error);
     return level(name, kind.label, undefined, /\.$/.test(why) ? why : `${why}.`);

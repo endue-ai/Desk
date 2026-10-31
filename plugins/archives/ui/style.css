@@ -277,6 +277,12 @@ main {
   overflow: auto;
 }
 
+#preview > h2,
+#preview > p,
+#preview > button {
+  flex: none;
+}
+
 #preview pre {
   flex: 1;
   min-height: 0;
@@ -314,6 +320,29 @@ footer {
   gap: 2px 12px;
   padding: 4px 12px 6px;
   border-top: 1px solid var(--desk-border);
+}
+
+/* A narrow surface puts the preview under the tree and keeps the name, size and date. */
+@media (max-width: 640px) {
+  main {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(0, 1fr) minmax(0, 40%);
+  }
+
+  #listing {
+    border-right: 0;
+    border-bottom: 1px solid var(--desk-border);
+  }
+
+  .columns,
+  .row {
+    grid-template-columns: minmax(80px, 1fr) 64px 112px;
+  }
+
+  .packed,
+  .method {
+    display: none;
+  }
 }
 
 [hidden] {

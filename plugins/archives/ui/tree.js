@@ -141,10 +141,23 @@ export function visibleRows(root, state) {
   const folders = countFolders(root);
   const plural = (/** @type {number} */ n, /** @type {string} */ word) =>
     `${n} ${word}${n === 1 ? "" : "s"}`;
+  // A stream's size is known only once it is decoded: then the total is not given.
+  const unknown = [...walkFiles(root)].some((n) => (n.entry?.size ?? 0) < 0);
+  const total = unknown ? "size unknown" : formatSize(needle ? size : root.size);
   const summary = needle
-    ? `${files} of ${plural(root.files, "file")} match, ${formatSize(size)}`
-    : `${plural(root.files, "file")}, ${plural(folders, "folder")}, ${formatSize(root.size)}`;
+    ? `${files} of ${plural(root.files, "file")} match, ${total}`
+    : [plural(root.files, "file"), folders ? plural(folders, "folder") : "", total]
+        .filter(Boolean)
+        .join(", ");
   return { rows, summary };
+}
+
+/** Every file node under `node`. @param {Node} node @returns {Generator<Node>} */
+function* walkFiles(node) {
+  for (const c of node.children) {
+    if (c.kind === "folder") yield* walkFiles(c);
+    else yield c;
+  }
 }
 
 /** @param {Node} node @returns {number} */

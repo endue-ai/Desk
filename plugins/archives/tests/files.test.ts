@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { noise, TREE, zipOf } from "./fixtures";
+import { fixture, noise, TREE, zipOf } from "./fixtures";
 import { file, mount, READ, rowNames } from "./harness";
 
 const DOWNLOADS = READ("~/Downloads");
@@ -167,5 +167,21 @@ describe("the desk's file requests", () => {
     await app.up();
     expect(view.archives.at(-1)).toMatchObject({ levels: ["outer.zip"] });
     expect(rowNames(view)).toEqual(["inner.zip", "top.txt"]);
+  });
+
+  it("names the archive's own format: a tar inside a stream, a RAR's version", async () => {
+    const tgz = "~/Downloads/tree.tar.gz";
+    const rar = "~/Downloads/rar5.rar";
+    const { host, view } = await mount({
+      files: { [tgz]: fixture("tree.tar.gz"), [rar]: fixture("rar5.rar") },
+      grants: [DOWNLOADS],
+    });
+    await host.command("desk.files.visit", file(tgz));
+    expect(view.archives.at(-1)).toMatchObject({ format: "tar (gzip)" });
+    await host.command("desk.files.visit", file(rar));
+    expect(view.archives.at(-1)).toMatchObject({
+      format: "RAR 5",
+      refusal: "RAR decompression is not available.",
+    });
   });
 });
