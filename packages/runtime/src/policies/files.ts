@@ -25,6 +25,11 @@ export interface FilesPolicy extends Installed {
 }
 
 const RECENT_KEY = "files.recent";
+/** How long after desk.files.save a change on disk at that path counts as the save itself. */
+const OWN_SAVE_MS = 3000;
+
+/** The message of a failed request, without the error's class name in front. */
+const reason = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
 /** The opener for `path`: the first rule whose pattern matches the file name (or the whole path). */
 export function opener(rules: PolicySet["files"], path: string): string | undefined {
@@ -43,6 +48,8 @@ export function installFiles(
   const list = buffers.buffers;
   const offs = disposer();
   let recent: RecentFile[] = [];
+  /** When the desk last had each path saved, so the plugin's own write is not reported as a change. */
+  const savedAt = new Map<string, number>();
 
   const remember = (file: RecentFile) => {
     const max = settings.get("desk.files.recent-max", 20);
@@ -91,7 +98,7 @@ export function installFiles(
       notify({
         caller: "desk",
         title: `${baseName(path)} did not open`,
-        body: String(error),
+        body: reason(error),
         level: "error",
       });
       throw error;
@@ -156,6 +163,7 @@ export function installFiles(
       const buffer = fileBuffer(args);
       await ctx.request(buffer.plugin, "desk.files.save", { buffer: buffer.id, path: buffer.path });
       list.update(buffer.id, { modified: false });
+      savedAt.set(buffer.path, Date.now());
       notify({ caller: "desk", title: `Saved ${buffer.name}`, level: "success" });
       return buffer.id;
     },
@@ -169,6 +177,12 @@ export function installFiles(
       const path = (args as { path?: string } | undefined)?.path ?? "";
       const buffer = list.byPath(path);
       if (!buffer) return "not open";
+      // The watch fires for the plugin's own write too: just saved and unchanged since means it.
+      const saved = savedAt.get(path);
+      if (saved !== undefined && Date.now() - saved < OWN_SAVE_MS && !buffer.modified) {
+        savedAt.delete(path);
+        return "own-save";
+      }
       const rule = settings.get<"reload" | "ask" | "ignore">("desk.files.on-change", "reload");
       if (rule === "ignore") return "ignored";
       if (rule === "reload" && !buffer.modified) {
