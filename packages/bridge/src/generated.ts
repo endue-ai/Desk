@@ -1294,7 +1294,7 @@ export type ErrorCode =
   | "unsupported"
   | "internal";
 
-/** Something the core reports without being asked: file changes, process output, wake words, permission changes, notifications, commands, settings, log entries, and changes to items, connectors and views. */
+/** Something the core reports without being asked: file changes, process output, wake words, permission changes, notifications, surfaces, commands, settings, log entries, and changes to items, connectors and views. */
 export type BridgeEvent =
   | FsChangedEvent
   | ProcOutputEvent
@@ -1304,6 +1304,8 @@ export type BridgeEvent =
   | PermPromptEvent
   | PluginChangedEvent
   | UiNotifiedEvent
+  | UiSurfaceOpenedEvent
+  | UiSurfaceClosedEvent
   | BrainTurnEvent
   | CmdChangedEvent
   | CmdInvokedEvent
@@ -2383,7 +2385,7 @@ export interface StoreSetParams {
 /** Result of store.set. */
 export type StoreSetResult = Record<string, never>;
 
-/** Open one of the surfaces the caller's manifest declares. */
+/** Open one of the surfaces the caller's manifest declares; the runtime hears ui.surface.opened. */
 export interface UiSurfaceOpenRequest {
   id: RequestId;
   method: "ui.surface.open";
@@ -2405,7 +2407,7 @@ export interface UiSurfaceOpenResult {
   handle: string;
 }
 
-/** Close a surface the caller opened. */
+/** Close a surface the caller opened; the runtime hears ui.surface.closed. */
 export interface UiSurfaceCloseRequest {
   id: RequestId;
   method: "ui.surface.close";
@@ -2458,6 +2460,38 @@ export interface UiNotifiedData {
   title: string;
   body?: string;
   level: NotifyLevel;
+}
+
+/** A caller's ui.surface.open passed its checks; the runtime mounts the surface as its display policy says. */
+export interface UiSurfaceOpenedEvent {
+  event: "ui.surface.opened";
+  data: UiSurfaceOpenedData;
+}
+
+/** Payload of ui.surface.opened. placement and title are the call's, else the manifest's; title is absent when neither has one. */
+export interface UiSurfaceOpenedData {
+  /** Names the open surface. */
+  handle: string;
+  /** The plugin that opened it. */
+  caller: string;
+  /** The surface id from the caller's manifest. */
+  surface: string;
+  placement: SurfacePlacement;
+  title?: string;
+}
+
+/** A surface closed: its caller closed it, or the caller unloaded; the runtime unmounts it. */
+export interface UiSurfaceClosedEvent {
+  event: "ui.surface.closed";
+  data: UiSurfaceClosedData;
+}
+
+/** Payload of ui.surface.closed. Placement and title are what ui.surface.opened said. */
+export interface UiSurfaceClosedData {
+  handle: string;
+  /** The plugin that opened it. */
+  caller: string;
+  surface: string;
 }
 
 /** Where a view comes from: plugin, an enabled view plugin's inline view or one of its view files, read-only; file, the person's file in ~/.desk/views. */

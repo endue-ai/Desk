@@ -2012,7 +2012,7 @@ pub enum ErrorCode {
     Internal,
 }
 
-/// Something the core reports without being asked: file changes, process output, wake words, permission changes, notifications, commands, settings, log entries, and changes to items, connectors and views.
+/// Something the core reports without being asked: file changes, process output, wake words, permission changes, notifications, surfaces, commands, settings, log entries, and changes to items, connectors and views.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum BridgeEvent {
@@ -2024,6 +2024,8 @@ pub enum BridgeEvent {
     PermPrompt(PermPromptEvent),
     PluginChanged(PluginChangedEvent),
     UiNotified(UiNotifiedEvent),
+    UiSurfaceOpened(UiSurfaceOpenedEvent),
+    UiSurfaceClosed(UiSurfaceClosedEvent),
     BrainTurn(BrainTurnEvent),
     CmdChanged(CmdChangedEvent),
     CmdInvoked(CmdInvokedEvent),
@@ -3634,7 +3636,7 @@ pub struct StoreSetParams {
 #[serde(deny_unknown_fields)]
 pub struct StoreSetResult {}
 
-/// Open one of the surfaces the caller's manifest declares.
+/// Open one of the surfaces the caller's manifest declares; the runtime hears ui.surface.opened.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct UiSurfaceOpenRequest {
@@ -3664,7 +3666,7 @@ pub struct UiSurfaceOpenResult {
     pub handle: String,
 }
 
-/// Close a surface the caller opened.
+/// Close a surface the caller opened; the runtime hears ui.surface.closed.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct UiSurfaceCloseRequest {
@@ -3748,6 +3750,47 @@ pub struct UiNotifiedData {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub body: Option<String>,
     pub level: NotifyLevel,
+}
+
+/// A caller's ui.surface.open passed its checks; the runtime mounts the surface as its display policy says.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct UiSurfaceOpenedEvent {
+    pub event: UiSurfaceOpenedEventEvent,
+    pub data: UiSurfaceOpenedData,
+}
+
+/// Payload of ui.surface.opened. placement and title are the call's, else the manifest's; title is absent when neither has one.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct UiSurfaceOpenedData {
+    /// Names the open surface.
+    pub handle: String,
+    /// The plugin that opened it.
+    pub caller: String,
+    /// The surface id from the caller's manifest.
+    pub surface: String,
+    pub placement: SurfacePlacement,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
+}
+
+/// A surface closed: its caller closed it, or the caller unloaded; the runtime unmounts it.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct UiSurfaceClosedEvent {
+    pub event: UiSurfaceClosedEventEvent,
+    pub data: UiSurfaceClosedData,
+}
+
+/// Payload of ui.surface.closed. Placement and title are what ui.surface.opened said.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct UiSurfaceClosedData {
+    pub handle: String,
+    /// The plugin that opened it.
+    pub caller: String,
+    pub surface: String,
 }
 
 /// Where a view comes from: plugin, an enabled view plugin's inline view or one of its view files, read-only; file, the person's file in ~/.desk/views.
@@ -4714,6 +4757,22 @@ pub enum UiNotifiedEventEvent {
     #[default]
     #[serde(rename = "ui.notified")]
     UiNotified,
+}
+
+/// The `event` of [`UiSurfaceOpenedEvent`]: always `"ui.surface.opened"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum UiSurfaceOpenedEventEvent {
+    #[default]
+    #[serde(rename = "ui.surface.opened")]
+    UiSurfaceOpened,
+}
+
+/// The `event` of [`UiSurfaceClosedEvent`]: always `"ui.surface.closed"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum UiSurfaceClosedEventEvent {
+    #[default]
+    #[serde(rename = "ui.surface.closed")]
+    UiSurfaceClosed,
 }
 
 /// The `method` of [`ViewListRequest`]: always `"view.list"`.

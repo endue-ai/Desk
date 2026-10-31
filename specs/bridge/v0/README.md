@@ -35,8 +35,9 @@ its processes, `audio.wake` for its captures, `brain.turn` for its turns, `perm.
 `cmd.invoked` for the commands it provides, `cmd.answered` for the commands it invoked and
 `settings.changed` for its own keys and `data.changed` for its data subscriptions. `plugin.changed` goes to
 holders of `plugin:manage`, `perm.prompt` to holders of `perm:manage`, `connector.changed` to holders of
-`connector:manage`, `view.changed` to holders of `view:manage` and `ui.notified` to the runtime, which shows
-it. Everything else about other callers arrives only through `events.subscribe`.
+`connector:manage`, `view.changed` to holders of `view:manage`, and `ui.notified`, `ui.surface.opened` and
+`ui.surface.closed` to the runtime, which shows the notification or mounts and unmounts the surface.
+Everything else about other callers arrives only through `events.subscribe`.
 
 ## Methods
 
@@ -55,7 +56,9 @@ returns a `watchId`. Watches end when the caller unloads or its grant is revoked
 
 **proc.spawn** starts a program with arguments (no shell), an optional working folder and extra
 environment, and returns a `procId`. With `pty` it runs in a pseudo-terminal of that size and the scope
-must allow `pty`. Output arrives as `proc.output` events and the end as `proc.exit`.
+must allow `pty`. Output arrives as `proc.output` events and the end as `proc.exit`. A caller that
+unloads, or loses the grant that covers the command, has its processes killed and reaped; their
+`proc.exit` still arrives.
 
 **proc.write** writes data to the process's stdin, or to its PTY. It needs the same `proc:spawn` scope
 the process was started with.
@@ -68,7 +71,9 @@ reports `proc.exit` when it ends.
 
 **net.fetch** makes one HTTP or HTTPS request to a host inside a `net:fetch` scope, follows no redirects
 to hosts outside it, and returns status, headers and the whole body. Non-2xx statuses are results, not
-errors; a missed `timeoutMs` is `timeout`.
+errors; a missed `timeoutMs` is `timeout`. A redirect outside the scope is `permission_denied` before it
+is connected to. Header names come back lowercase; `bodyEncoding` is `utf8` for a body that is UTF-8 text
+and `base64` otherwise. More than 10 redirects or a body over 64 MiB is `io_error`.
 
 **audio.capture.start** opens the microphone under an `audio:capture` scope and returns a `captureId`.
 With `wakeWord` (allowed by the scope) the core listens for the wake word and sends `audio.wake` events;
@@ -77,9 +82,15 @@ audio itself never leaves the core through the bridge in v0.
 **audio.capture.stop** closes a capture. Stopping a capture that already ended is not an error.
 
 **ui.surface.open** opens one of the surfaces the caller's manifest declares, optionally at a placement
-and with a title, and returns a handle. It needs `ui:surface`.
+and with a title, and returns a handle. It needs `ui:surface`. A surface the manifest does not declare is
+`invalid_params`, and so is any call by a caller without a manifest (`desk`, `cli`). The runtime hears
+`ui.surface.opened` with the handle, the caller, the surface, its placement and title (the call's, else
+the manifest's) and mounts it as its display policy says. Opening a surface that is open gives another
+handle.
 
-**ui.surface.close** closes a surface the caller opened.
+**ui.surface.close** closes a surface the caller opened and sends the runtime `ui.surface.closed`. A
+handle the caller does not hold is `not_found`. A caller that unloads has its surfaces closed, each with
+its `ui.surface.closed`; losing `ui:surface` leaves them open.
 
 **ui.notify** shows a notification with a title, an optional body and a level, and returns its id. It
 needs `ui:notify`. The core sends the runtime a `ui.notified` event naming the caller; how long it

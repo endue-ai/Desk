@@ -1,0 +1,16 @@
+{
+  "target": "BridgeRequest",
+  "description": "ui.surface.open of a declared surface, at another placement and with a title",
+  "instance": {
+    "id": 12,
+    "method": "ui.surface.open",
+    "params": {
+      "surface": "main",
+      "placement": "right",
+      "title": "Hi",
+      "scope": {
+        "permission": "ui:surface"
+      }
+    }
+  }
+}
