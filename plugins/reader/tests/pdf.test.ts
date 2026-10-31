@@ -49,6 +49,20 @@ describe("PDF through the vendored pdf.js", () => {
     await book.close();
   });
 
+  it("reads page text without getTextContent, whose for-await WebKit's streams do not offer", async () => {
+    const book = await openPdf(pdf(), { pdfjs });
+    const proto = Object.getPrototypeOf(await book.page(1)) as { getTextContent: unknown };
+    const original = proto.getTextContent;
+    proto.getTextContent = () =>
+      Promise.reject(new TypeError("ReadableStream is not async iterable"));
+    try {
+      expect(await book.text(1)).toContain("lantern");
+    } finally {
+      proto.getTextContent = original;
+      await book.close();
+    }
+  });
+
   it("a password fixture asks for its password, refuses a wrong one and opens with it", async () => {
     const locked = pdf({ password: "hunter2" });
     const asked = await openPdf(locked, { pdfjs }).catch((error: unknown) => error);
