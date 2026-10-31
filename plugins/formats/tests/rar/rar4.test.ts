@@ -87,6 +87,13 @@ describe("RAR 4", () => {
     expect(entry(archive, "chapters/two.txt").packed).toBeLessThan(8 * 1024);
   });
 
+  it("keeps the PPMd escape symbol when a model restarts without naming one", async () => {
+    await expectOriginals(await openFixture("rar4-ppmd-restart.rar"), [
+      "ppmd/code.exe",
+      "ppmd/prose.txt",
+    ]);
+  });
+
   it("decodes a solid stream that switches between LZ and PPMd", async () => {
     await expectOriginals(await openFixture("rar4-mixed.rar"), [
       "text.txt",

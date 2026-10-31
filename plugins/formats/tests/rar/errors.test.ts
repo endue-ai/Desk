@@ -174,6 +174,13 @@ describe("archives the decoder refuses", () => {
     }
   });
 
+  it("an entry that needs more dictionary than allowed is refused", async () => {
+    const archive = await openFixture("rar5-dict.rar", { maxWindow: 4 * 1024 * 1024 });
+    const far = entry(archive, "far.bin");
+    expect(far.refusal).toMatch(/needs a 8 MB dictionary/);
+    await expect(archive.read(far)).rejects.toThrow(/dictionary/);
+  });
+
   it("names DOS and Windows hosts stored in their OEM code page read as such", async () => {
     const bytes = fixture("rar4-stored.rar");
     const at = header4(bytes, "empty.txt");

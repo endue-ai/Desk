@@ -24,6 +24,7 @@ for m in 1 3 5; do r6 -m$m /out/rar4-m$m.rar "${tree[@]}"; done
 r6 -m0 /out/rar4-stored.rar "${few[@]}"
 r6 -m5 -s -mct- /out/rar4-solid.rar chapters text.txt data.bin
 r6 -m5 -s -mct+ /out/rar4-ppmd.rar chapters text.txt
+r6 -m5 -s -mct+ /out/rar4-ppmd-restart.rar ppmd/code.exe ppmd/prose.txt
 r6 -m5 -s /out/rar4-mixed.rar text.txt data.bin chapters/one.txt tool.exe
 r6 -m5 -md4m /out/rar4-dict.rar far4.bin
 r6 -m5 /out/rar4-filters.rar image.bmp sound.wav table.dat tool.exe

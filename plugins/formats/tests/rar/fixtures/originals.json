@@ -70,5 +70,13 @@
   "far4.bin": {
     "size": 3801088,
     "sha256": "973294e0659a1acee2a47f065c18760bd738df7daa5e8dbc61fba3a24ca88545"
+  },
+  "ppmd/code.exe": {
+    "size": 163840,
+    "sha256": "c6d8ff9a95c605d0a780c48c7f47132e48de7a8393b4321ce803fee2d119d11a"
+  },
+  "ppmd/prose.txt": {
+    "size": 131072,
+    "sha256": "0ba22986d151f69afe586b30f5b677f9f2eccfbda794f063a65e0396bfb59c01"
   }
 }

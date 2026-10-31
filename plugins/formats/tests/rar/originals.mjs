@@ -204,6 +204,8 @@ export const ORIGINALS = {
   "noise.bin": () => noise(8, 72 * 1024),
   "far.bin": () => far(80 * 1024, 6 * 1024 * 1024),
   "far4.bin": () => far(64 * 1024, 3 * 1024 * 1024 + 512 * 1024),
+  "ppmd/code.exe": () => x86(81, 160 * 1024),
+  "ppmd/prose.txt": () => prose(77, 128 * 1024),
 };
 /** The symbolic links in the tree: path and target. */
 export const LINKS = { "link.txt": "text.txt" };

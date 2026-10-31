@@ -2,8 +2,23 @@
 // a dictionary larger than RAR 4 allows, and the delta, E8 and E8E9 filters. Every entry's bytes
 // and CRC match the original files.
 import { describe, expect, it } from "vitest";
+import { Fields } from "../../lib/rar/bytes.js";
+import { crc32 } from "../../lib/rar/crc32.js";
+import { list5 } from "../../lib/rar/rar5/headers.js";
 import { Decoder5 } from "../../lib/rar/rar5/lz.js";
-import { entry, expectOriginals, FEW, FOLDERS, LINK, openFixture, original, TREE } from "./helpers";
+import {
+  entry,
+  expectOriginals,
+  FEW,
+  FOLDERS,
+  fixture,
+  LINK,
+  memory,
+  open,
+  openFixture,
+  original,
+  TREE,
+} from "./helpers";
 
 describe("RAR 5", () => {
   for (const [level, method] of [
@@ -96,10 +111,75 @@ describe("RAR 5", () => {
     expect(head).toEqual(original("text.txt").subarray(0, 1000));
   });
 
+  it("finds an archive after a self-extracting module", async () => {
+    for (const name of ["rar5-m3.rar", "rar4-m3.rar"]) {
+      const stub = new Uint8Array(70000).fill(0x90);
+      stub.set([0x4d, 0x5a]);
+      const bytes = new Uint8Array(stub.length + fixture(name).length);
+      bytes.set(stub);
+      bytes.set(fixture(name), stub.length);
+      const archive = await open(bytes);
+      expect(archive.details).toContainEqual({ label: "Self-extracting", value: "Yes" });
+      await expectOriginals(archive, ["text.txt", "docs/notes/readme.md"]);
+    }
+  });
+
   it("reports BLAKE2sp hashes as not checked", async () => {
     const archive = await openFixture("rar5-blake.rar");
     expect(archive.details).toContainEqual({ label: "Checksums", value: "BLAKE2sp, not checked" });
     await expectOriginals(archive, ["docs/notes/readme.md"]);
+  });
+});
+
+/** Sets the dictionary-size bits of the first file header's compression information. */
+function withDictionary(bytes: Uint8Array, bits: number) {
+  const out = bytes.slice();
+  let pos = 8;
+  for (;;) {
+    const lead = new Fields(out, pos + 4);
+    const size = lead.vint();
+    const f = new Fields(out, lead.pos, lead.pos + size);
+    const type = f.vint();
+    const flags = f.vint();
+    if (flags & 1) f.vint();
+    const data = flags & 2 ? f.vint() : 0;
+    if (type === 2) {
+      const fileFlags = f.vint();
+      f.vint();
+      f.vint();
+      if (fileFlags & 2) f.u32();
+      if (fileFlags & 4) f.u32();
+      const at = f.pos;
+      const info = (f.vint() & ~0x3c00) | (bits << 10);
+      if (f.pos - at !== 2) throw new Error("expected a two-byte vint");
+      out[at] = (info & 0x7f) | 0x80;
+      out[at + 1] = info >> 7;
+      new DataView(out.buffer).setUint32(pos, crc32(out.subarray(pos + 4, lead.pos + size)), true);
+      return out;
+    }
+    pos = lead.pos + size + data;
+  }
+}
+
+describe("RAR 5 dictionaries", () => {
+  it("decodes with any dictionary size the header asks for, the ring no larger than the data", async () => {
+    const rings: number[] = [];
+    const file = Decoder5.prototype.file;
+    Decoder5.prototype.file = function (this: Decoder5, ...args: Parameters<Decoder5["file"]>) {
+      rings.push(this.win.length);
+      return file.apply(this, args);
+    };
+    try {
+      for (const bits of [0, 3, 7, 11, 15]) {
+        const bytes = withDictionary(fixture("rar5-m3.rar"), bits);
+        const { listed } = await list5(memory(bytes), 0);
+        expect(listed[0]?.data?.dictionary).toBe(0x20000 * 2 ** bits);
+        await expectOriginals(await open(bytes), ["text.txt"]);
+      }
+    } finally {
+      Decoder5.prototype.file = file;
+    }
+    expect(Math.max(...rings)).toBeLessThanOrEqual(256 * 1024);
   });
 });
 
