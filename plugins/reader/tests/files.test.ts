@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { cbz } from "./build/comics";
+import { pdf } from "./build/pdf";
 import { denied, disk, file, folderScope, mount } from "./harness";
 
 const A = file("~/Comics/a.cbz");
@@ -51,6 +52,22 @@ describe("the desk's file requests", () => {
     await expect(host.command("desk.buffers.show", A)).rejects.toThrow(`No file ${A.buffer}.`);
     await host.command("desk.buffers.show", B);
     expect(view.shown.at(-1)).toMatchObject({ buffer: B.buffer });
+  });
+
+  it("a locked PDF waits for its password, refuses a wrong one and opens with the right one", async () => {
+    const L = file("~/Docs/locked.pdf");
+    const { host, view, app } = await mount({
+      handlers: disk({ [L.path]: pdf({ password: "hunter2" }) }),
+    });
+    await host.command("desk.files.visit", L);
+    expect(view.shown.at(-1)?.book).toMatchObject({ kind: "password", wrong: false });
+    expect(view.statuses.at(-1)).toBe("This PDF is protected by a password.");
+    await app.unlock("letmein");
+    expect(view.shown.at(-1)?.book).toMatchObject({ kind: "password", wrong: true });
+    expect(view.statuses.at(-1)).toBe("That password is not right.");
+    await app.unlock("hunter2");
+    expect(view.shown.at(-1)?.book).toMatchObject({ kind: "pages", format: "PDF" });
+    expect(view.statuses.at(-1)).toBe("locked.pdf: PDF, 2 pages.");
   });
 
   it("save is refused: the reader never writes the file", async () => {

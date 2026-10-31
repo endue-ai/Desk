@@ -18,6 +18,7 @@ import { openBook } from "./open.js";
  * @typedef {{ buffer: string, path: string, name: string, size: number, book: Book } & Marks} ShownModel
  * @typedef {{ show(model: ShownModel | null): void, marks(model: ShownModel): void, status(text: string): void, focus(): void }} View
  * @typedef {ShownModel & { bytes: Uint8Array, watchId?: string, password?: string }} Open
+ *   `bytes` stays only while the book waits for its password; the readers keep what they need.
  */
 
 const nameOf = (/** @type {string} */ path) => path.slice(path.lastIndexOf("/") + 1);
@@ -40,6 +41,11 @@ const requested = (/** @type {unknown} */ args) => {
     path: typeof path === "string" && path !== "" ? path : undefined,
   };
 };
+
+const NOTHING = new Uint8Array(0);
+/** A file's bytes are kept only for a book that waits for its password. */
+const kept = (/** @type {Book} */ book, /** @type {Uint8Array} */ bytes) =>
+  book.kind === "password" ? bytes : NOTHING;
 
 /** What the status line says once a file is open. */
 const opened = (/** @type {{ name: string, book: Book }} */ { name, book }) => {
@@ -171,7 +177,15 @@ export function createReader({ bridge, commands }, view, options = {}) {
     ]);
     forget(buffer);
     /** @type {Open} */
-    const file = { buffer, path, name: nameOf(path), size: bytes.length, book, bytes, ...marks };
+    const file = {
+      buffer,
+      path,
+      name: nameOf(path),
+      size: bytes.length,
+      book,
+      bytes: kept(book, bytes),
+      ...marks,
+    };
     files.set(buffer, file);
     present(buffer);
     view.status(opened(file));
@@ -186,7 +200,7 @@ export function createReader({ bridge, commands }, view, options = {}) {
     Promise.resolve(
       file.book.kind === "pages" || file.book.kind === "chapters" ? file.book.close?.() : undefined,
     ).catch(() => {});
-    Object.assign(file, { book, bytes, size: bytes.length });
+    Object.assign(file, { book, bytes: kept(book, bytes), size: bytes.length });
     if (shown === buffer) present(buffer);
   });
 
@@ -278,6 +292,8 @@ export function createReader({ bridge, commands }, view, options = {}) {
       const book = await open(file.bytes, file.path, password);
       if (files.get(file.buffer) !== file) return;
       file.book = book;
+      file.bytes = kept(book, file.bytes);
+      // Held in memory for a revert, never kept in the store.
       if (book.kind !== "password") file.password = password;
       present(file.buffer);
       view.status(book.kind === "password" ? "That password is not right." : opened(file));
