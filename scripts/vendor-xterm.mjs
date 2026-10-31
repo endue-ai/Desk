@@ -1,5 +1,5 @@
 // Copies the terminal plugin's emulator, xterm.js and its addons, from the npm packages the lockfile
-// pins into plugins/terminal/ui/vendor, with their licences and a VERSIONS file (ADR 0033).
+// pins into plugins/terminal/ui/vendor, with their licences and a VERSIONS file (ADR 0037).
 // `just vendor-terminal` runs it; its test checks the committed copy matches, like codegen-check.
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";

@@ -6,5 +6,5 @@
 *.icns binary
 *.svg text eol=lf
 
-# Third-party code copied in by `just vendor-terminal` (ADR 0033): not ours, not worth a diff.
+# Third-party code copied in by `just vendor-terminal` (ADR 0037): not ours, not worth a diff.
 plugins/*/ui/vendor/** linguist-vendored -diff

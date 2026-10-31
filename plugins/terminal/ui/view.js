@@ -1,6 +1,6 @@
 // The DOM for the terminal plugin: a tab strip, one xterm.js terminal per session in a pane of its
 // own, and a status live region. Keys go to the shell unless keys.js hands them to the desk or the
-// clipboard. The emulator is vendored in ./vendor (ADR 0033).
+// clipboard. The emulator is vendored in ./vendor (ADR 0037).
 import { FitAddon } from "./vendor/addon-fit.mjs";
 import { Unicode11Addon } from "./vendor/addon-unicode11.mjs";
 import { Terminal } from "./vendor/xterm.mjs";

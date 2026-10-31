@@ -5,7 +5,7 @@ folder format and on the public SDK only. Each terminal runs the person's shell 
 the core starts with `proc.spawn` (`pty`), types with `proc.write`, follows with `proc.output` and
 `proc.exit`, and sizes with `proc.resize`. Several terminals share one surface as tabs, each a desk
 buffer (`desk.buffers.open`), so `Mod+B` and `Mod+W` work on them. The requirements are in
-`docs/ko/terminal-requirements.md`; why xterm.js is vendored is ADR 0033.
+`docs/ko/terminal-requirements.md`; why xterm.js is vendored is ADR 0037.
 
 | Permission | Why |
 | --- | --- |

@@ -88,7 +88,7 @@ build-ui:
     pnpm --filter @endue-ai/ui build
 
 # Copy the terminal plugin's emulator (xterm.js and its addons) from the pinned npm packages into
-# plugins/terminal/ui/vendor; scripts/vendor-xterm.test.mjs checks the copy matches (ADR 0033)
+# plugins/terminal/ui/vendor; scripts/vendor-xterm.test.mjs checks the copy matches (ADR 0037)
 vendor-terminal:
     node scripts/vendor-xterm.mjs
 

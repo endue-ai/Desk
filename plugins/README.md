@@ -9,7 +9,7 @@ there were two formats, the API would have holes.
 | `sidebar/` | Left bar: agents and spaces |
 | `toolbar/` | Right status panel: the drawer list (plugins, access) |
 | `dock/` | Bottom dock: open and put away the plugins that open on the desk |
-| `terminal/` | The person's shell in a PTY the core runs: several as tabs and desk buffers (`endue.terminal`, ADR 0033) |
+| `terminal/` | The person's shell in a PTY the core runs: several as tabs and desk buffers (`endue.terminal`, ADR 0037) |
 | `onboarding/` | First-run scenario |
 | `explorer/` | The folders the person allows as a tree (`endue.explorer`); files open through `desk.files` |
 | `mail/` | The person's mail from the index as threads in mailboxes, invitations read and answered (iTIP, iMIP), changes through the connector's commands (`endue.mail`) |

@@ -175,7 +175,7 @@ Tauri 셸과 `desk-sys` 는 드라이버입니다. 검사는 하지 않고 코�
 | `theme-endue` | 기본 테마 밝음 · 어두움 | kind `theme` | 있음 (#55 `desk.theme`: 밝음 · 어두움 · 고대비. kind `theme` 대신 `contributes.themes`) | 1 |
 | `help` | describe (RT-06) · 단축키 치트시트 · walkthrough 목록 | `cmd.list` · 키맵 읽기 | 없음 | 2 |
 | `files` | 허락한 폴더 보기(dired): 열기 · 드래그 · 감시 | `fs:read` · `dialog` | 일부 (#55 `desk.files`: 여는 규칙 · 최근 · 저장 · 되돌리기 · 디스크 변경. 폴더 보기는 `endue.explorer`, `plugins/explorer`: 트리 · 열기 · 감시 · 드래그 내보내기 · 새 파일. 쓰기 작업과 `dialog` 는 없음, `explorer-requirements.md`) | 2 |
-| `terminal` | PTY 표면(term) | `proc:spawn` pty | 일부 (터미널 변경: `endue.terminal`, 셸 · 탭 · 버퍼 · 테마 · 키 · `run`. 요구사항은 `terminal-requirements.md`, 에뮬레이터는 ADR 0033) | 2 |
+| `terminal` | PTY 표면(term) | `proc:spawn` pty | 일부 (터미널 변경: `endue.terminal`, 셸 · 탭 · 버퍼 · 테마 · 키 · `run`. 요구사항은 `terminal-requirements.md`, 에뮬레이터는 ADR 0037) | 2 |
 | `scratch` | 빈 텍스트 표면, 저장 안 해도 남음 | store | 없음 | 2 |
 | `account` | endue ID 로그인 · 상태 · 동기화 (SYNC) | `sync.*` | 없음 | 3 |
 
@@ -301,7 +301,7 @@ CI · 테스트 층 · 릴리스 파이프라인은 `desk-structure.md` 가 정�
 | 약속 2 · SYSP `eris` · `agents` · `rail` · `dock` (ADR 0026 · 0027 · 0028 초안, 설계 문서를 `main` 에 맞춤) | #75 | 진행 중 |
 | CORE-10 · DX-04 (WIT 가 브리지 전체를 덮고, hello-wasm 이 커맨드를 제공) | #76 | 진행 중 |
 | CORE-01 · SYS-02 · SYS-03 (코어가 `proc.*` · `net.fetch` · `ui.surface.*` 를 처리) | #77 | 진행 중 (`proc.*` 는 터미널 변경이 먼저 처리) |
-| SYSP `terminal` (`endue.terminal`, 코어의 `proc.*`, 런타임의 프로세스 이벤트 라우팅) | 터미널 변경 · `docs/ko/terminal-requirements.md` · ADR 0033 | 진행 중 |
+| SYSP `terminal` (`endue.terminal`, 코어의 `proc.*`, 런타임의 프로세스 이벤트 라우팅) | 터미널 변경 · `docs/ko/terminal-requirements.md` · ADR 0037 | 진행 중 |
 | BASE `notes` (파일을 여는 첫 플러그인) | #78 | 진행 중 |
 | PKG-04 · PKG-06 · BR-07 (SDK 와 브라우저 스텁이 브리지 v0 전부) | #79 | 진행 중 |
 | PKG-02 · PKG-03 (`desk` CLI 가 로컬 소켓으로 실행 중 데스크에) | #80 | 진행 중 |
