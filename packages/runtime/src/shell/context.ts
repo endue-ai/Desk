@@ -1,5 +1,6 @@
 import type { ErisState } from "../eris/states";
 import type { Platform } from "../input";
+import type { PluginWindows } from "../surface/host";
 import type { Ctx } from "./actions";
 import type { CopyKey } from "./copy";
 import type { Ticker } from "./ticker";
@@ -15,6 +16,8 @@ export interface ShellCtx extends Ctx {
   platform: Platform;
   /** The first key bound to a command, as people read it on this platform. */
   keyOf(command: string): string | undefined;
+  /** The plugin surfaces the runtime handed to the shell's windows (ADR 0040). */
+  windows: PluginWindows;
   /** Eris's controls for parts that make her react (the composer, the rail). */
   eris: {
     say(text: string, words?: { word: string; at: number }[]): void;

@@ -9,7 +9,15 @@ import { selectAgent, spaceAgents } from "../system/agents";
 import { setDesktop } from "./actions";
 import type { ShellCtx } from "./context";
 import type { CopyKey } from "./copy";
-import { closePane, newWindow, openView, splitPane } from "./windows";
+import {
+  closePane,
+  focusedWindow,
+  newWindow,
+  openView,
+  snapTo,
+  splitPane,
+  toggleMaximize,
+} from "./windows";
 
 const VIEWS: [string, CopyKey, string[]][] = [
   ["calendar", "surfaceCalendar", ["calendar", "캘린더", "일정"]],
@@ -70,6 +78,23 @@ export function defineCommands(ctx: ShellCtx): () => void {
   display("close-pane", ctx.tr("cmdClosePane"), ["close", "pane", "닫기", "칸"], () =>
     closePane(ctx),
   );
+  display(
+    "maximize",
+    ctx.tr("cmdMaximize"),
+    ["maximize", "restore", "fill", "최대화", "복원"],
+    () => {
+      const id = focusedWindow(ctx);
+      if (id) toggleMaximize(ctx, id);
+    },
+  );
+  display("snap-left", ctx.tr("cmdSnapLeft"), ["snap", "left", "half", "왼쪽", "절반"], () => {
+    const id = focusedWindow(ctx);
+    if (id) snapTo(ctx, id, "left");
+  });
+  display("snap-right", ctx.tr("cmdSnapRight"), ["snap", "right", "half", "오른쪽", "절반"], () => {
+    const id = focusedWindow(ctx);
+    if (id) snapTo(ctx, id, "right");
+  });
   for (const d of DESKTOPS) {
     shell(`desktop-${d}`, ctx.tr("cmdDesktop", { n: d }), ["desktop", "데스크톱", String(d)], () =>
       setDesktop(ctx, d),

@@ -10,6 +10,7 @@ import {
   type SurfacePlacement,
 } from "../modes/types";
 import type { Runtime } from "../runtime";
+import { tiles } from "../surface/tiling";
 import type { DeskState, Store } from "./state";
 import { surfaceTitle, type Titled } from "./titles";
 
@@ -41,6 +42,46 @@ export function dirty(s: DeskState): boolean {
   return isDirty(modeOf(s), baseOf(s), s.session);
 }
 
+/**
+ * Plugin surfaces the runtime handed over that no layout places and the drawer does not hold:
+ * tiled in the free area in mount order, until the person moves or resizes one (ADR 0040).
+ */
+export function autoPlacements(
+  s: DeskState,
+  desktop: DesktopIndex = s.desktop,
+): SurfacePlacement[] {
+  const placed = new Set(layoutOf(s, desktop).surfaces.map((p) => p.plugin));
+  const away = new Set(s.drawer.map((d) => d.placement?.plugin));
+  const free = s.adopted.filter((a) => !placed.has(a.id) && !away.has(a.id));
+  const rects = tiles(free.length);
+  return free.flatMap((a, i) => {
+    const rect = rects[i];
+    if (!rect) return [];
+    return [
+      {
+        id: a.id,
+        plugin: a.id,
+        ...rect,
+        pinned: false,
+        panes: { kind: "view" as const, id: "p1", view: `plugin:${a.id}` },
+      },
+    ];
+  });
+}
+
+/** Every window on a desktop: what the layout places, then the tiled plugin surfaces. */
+export function windowsOf(s: DeskState, desktop: DesktopIndex = s.desktop): SurfacePlacement[] {
+  return [...layoutOf(s, desktop).surfaces, ...autoPlacements(s, desktop)];
+}
+
+/** A tiled plugin window enters the layout as it is before an edit (a move, a pin, a split). */
+export function ensurePlaced(ctx: Ctx, id: string): void {
+  const s = ctx.store.get();
+  if (layoutOf(s).surfaces.some((p) => p.id === id)) return;
+  const auto = autoPlacements(s).find((p) => p.id === id);
+  if (auto) edit(ctx, (l) => ({ ...l, surfaces: [...l.surfaces, auto] }));
+}
+
 /** Change the current desktop's layout as an unsaved session edit. */
 export function edit(ctx: Ctx, change: (l: DesktopLayout) => DesktopLayout): void {
   ctx.store.set((s) => {
@@ -50,6 +91,7 @@ export function edit(ctx: Ctx, change: (l: DesktopLayout) => DesktopLayout): voi
 }
 
 export function moveSurface(ctx: Ctx, id: string, rect: Partial<SurfacePlacement>): void {
+  ensurePlaced(ctx, id);
   edit(ctx, (l) => ({
     ...l,
     surfaces: l.surfaces.map((p) => (p.id === id ? { ...p, ...rect } : p)),
@@ -61,6 +103,7 @@ export function closeSurface(ctx: Ctx, id: string): void {
 }
 
 export function togglePin(ctx: Ctx, id: string): void {
+  ensurePlaced(ctx, id);
   edit(ctx, (l) => ({
     ...l,
     surfaces: l.surfaces.map((p) => (p.id === id ? { ...p, pinned: !p.pinned } : p)),
@@ -69,6 +112,7 @@ export function togglePin(ctx: Ctx, id: string): void {
 
 /** Put a surface away in the drawer under its title (the title bar's, when the caller has it). */
 export function stash(ctx: Ctx, id: string, name = surfaceTitle(ctx, id)): void {
+  ensurePlaced(ctx, id);
   const placement = layoutOf(ctx.store.get()).surfaces.find((p) => p.id === id);
   if (!placement) return;
   closeSurface(ctx, id);

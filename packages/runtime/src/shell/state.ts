@@ -46,6 +46,8 @@ export interface DeskState {
   tasks: A2ATask[];
   directory: "loading" | "ready" | "offline";
   drawer: DrawerItem[];
+  /** Plugin surfaces the runtime handed to the shell's windows (ADR 0040), in mount order. */
+  adopted: { id: string; title: string }[];
   attention: { id: string; text: string }[];
   desks: { id: string; name: string; busy: boolean; here: boolean }[];
   brain: BrainStatus;
@@ -119,6 +121,7 @@ export function emptyState(lang: Lang): DeskState {
     tasks: [],
     directory: "loading",
     drawer: [],
+    adopted: [],
     attention: [],
     desks: [],
     brain: { mode: "offline" },

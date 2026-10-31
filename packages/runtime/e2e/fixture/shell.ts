@@ -24,10 +24,30 @@ const manifests = import.meta.glob<PluginManifest>("../../../../plugins/*/plugin
   eager: true,
   import: "default",
 });
+// ?plugins=1 adds the UI test plugins, whose centre surfaces open as the shell's windows.
+const testPlugins: PluginManifest[] = [
+  {
+    id: "test.counter",
+    version: "0.1.0",
+    kind: "ui",
+    entry: "ui/index.html",
+    surfaces: [{ id: "main", title: "Counter", placement: "center" }],
+  },
+  {
+    id: "example.hello-ui",
+    version: "0.1.0",
+    kind: "ui",
+    entry: "ui/index.html",
+    surfaces: [{ id: "main", title: "Hello", placement: "center" }],
+  },
+];
 const core = browserCore({
-  manifests: Object.values(manifests).filter(
-    (m) => m.id.startsWith("desk.") && m.id !== "desk.views" && m.kind !== "view",
-  ),
+  manifests: [
+    ...Object.values(manifests).filter(
+      (m) => m.id.startsWith("desk.") && m.id !== "desk.views" && m.kind !== "view",
+    ),
+    ...(params.has("plugins") ? testPlugins : []),
+  ],
   store: params.has("persist") ? localStore("desk.core.") : memoryStore(),
   init: {
     profile: "morning",
@@ -69,6 +89,7 @@ window.__shell = {
   desk,
   clock,
   bridge,
+  stub: core.stub,
   step,
   envelopes: { user: userHello as Envelope, eris: erisReply as Envelope },
 };

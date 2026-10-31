@@ -13,6 +13,7 @@ import { type ErisHandle, mountEris } from "../eris/Eris";
 import { detectPlatform, type Platform } from "../input";
 import type { PluginHostOptions } from "../plugins";
 import { createRuntime, type Runtime } from "../runtime";
+import { pluginWindows } from "../surface/host";
 import { mountSurfaces } from "../surface/Surface";
 import { loadDirectory } from "../system/agents";
 import { mountSystemLayer } from "../system/layer";
@@ -72,10 +73,12 @@ export function mountDesk(options: DeskOptions): Desk {
     say: () => undefined,
     setState: () => undefined,
   };
+  const windows = pluginWindows(store);
   // The runtime is created below; nothing reads it before then.
   const ctx: ShellCtx = {
     store,
     bridge: options.bridge,
+    windows,
     runtime: undefined as unknown as Runtime,
     now: () => ticker.now(),
     ticker,
@@ -100,6 +103,8 @@ export function mountDesk(options: DeskOptions): Desk {
     plugins: options.plugins,
     themeRoot: doc.documentElement,
     views: paneViews(ctx),
+    // One window manager: the plugins' centre and floating surfaces are the shell's windows.
+    windows,
   });
   const { runtime } = ctx;
 

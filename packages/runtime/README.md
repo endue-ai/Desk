@@ -7,7 +7,7 @@ not in the brief: `ASSUMPTIONS.md`.
 
 ## Public API
 
-- `createRuntime({ root, bridge, clock?, storage?, platform?, plugins?, themeRoot?, views? })` returns a
+- `createRuntime({ root, bridge, clock?, storage?, platform?, plugins?, themeRoot?, views?, windows? })` returns a
   `Runtime`: `ready`, `openSurface`, `closeSurface`, `moveSurface`, `focusSurface`, `layout()`,
   `status()`, `shortcuts`, `commands`, `settings`, `keymap`, `buffers`, `profiles`, `policy()`,
   `notify(notice)`, `theme()`, `onQuit`, `keep(name, part)`, `plugins`, `dispose()`.
@@ -21,7 +21,8 @@ not in the brief: `ASSUMPTIONS.md`.
   `Buffers`; `src/policies/*`, one desk.* policy each. `HostViews` (`views.ts`): focus and buffers.
 - `mountDesk({ root, bridge, core, plugins, clock?, lang?, platform?, epoch?, seed? })`: the shell (system
   layer: profiles, desktops, agent bar; mode layer: Eris, rail, bottom edge, surfaces) over its own
-  runtime; returns `{ store, ticker, eris, runtime, ready, refresh, dispose }` (`plugins/shell`).
+  runtime, whose centre and floating plugin surfaces it holds as its windows (ADR 0040); returns
+  `{ store, ticker, eris, runtime, ready, refresh, dispose }` (`plugins/shell`).
 - `ShellBridge` (audio, the brain's voice, the agent directory of specs/brain/v0, ADR 0024);
   `browserBridge`, `browserCore` (the core's stub: cmd.*, plugins and built-in grants, store, init,
   fixture items, `upsert`, `remove`) for pages and tests.

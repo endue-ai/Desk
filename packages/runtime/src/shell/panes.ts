@@ -3,9 +3,9 @@
  * desk.buffers reach them as they reach plugin surfaces. A view's id is "<surface>/<pane>".
  */
 import { leaves, panesOf } from "../surface/tree";
-import { viewOf } from "../surface/views";
+import { resolveView, viewOf } from "../surface/views";
 import type { HostViews } from "../views";
-import { layoutOf } from "./actions";
+import { windowsOf } from "./actions";
 import type { ShellCtx } from "./context";
 import { closePane, focusPane } from "./windows";
 
@@ -15,17 +15,23 @@ const split = (id: string): [string, string] => {
 };
 
 export function paneViews(ctx: ShellCtx): HostViews {
-  const all = () =>
-    layoutOf(ctx.store.get()).surfaces.flatMap((p) =>
-      leaves(panesOf(p)).map((leaf) => ({ id: `${p.id}/${leaf.id}`, view: leaf.view })),
+  // A pane showing a plugin's surface is that surface, which the runtime counts itself (ADR 0040).
+  const all = () => {
+    const s = ctx.store.get();
+    return windowsOf(s).flatMap((p) =>
+      leaves(panesOf(p))
+        .map((leaf) => ({ id: `${p.id}/${leaf.id}`, view: resolveView(s, p, leaf.view) }))
+        .filter((leaf) => !leaf.view.startsWith("plugin:")),
     );
+  };
   return {
     ids: () => all().map((view) => view.id),
     focused: () => {
       const s = ctx.store.get();
-      const surface = layoutOf(s).surfaces.find((p) => p.id === s.focused);
+      const surface = windowsOf(s).find((p) => p.id === s.focused);
       const pane = surface && (s.pane ?? leaves(panesOf(surface))[0]?.id);
-      return surface && pane ? `${surface.id}/${pane}` : null;
+      const id = surface && pane ? `${surface.id}/${pane}` : null;
+      return id && all().some((v) => v.id === id) ? id : null;
     },
     focus: (id) => focusPane(ctx, ...split(id)),
     title: (id) => {
@@ -35,7 +41,7 @@ export function paneViews(ctx: ShellCtx): HostViews {
     close: (id) => closePane(ctx, ...split(id)),
     onChange: (listener) =>
       ctx.store.watch(
-        (s) => [layoutOf(s).surfaces.map((p) => [p.id, panesOf(p)]), s.focused, s.pane, s.lang],
+        (s) => [windowsOf(s).map((p) => [p.id, panesOf(p)]), s.adopted, s.focused, s.pane, s.lang],
         listener,
       ),
   };

@@ -15,8 +15,15 @@ export const READY = "desk ready · bridge: tauri";
 export const SYSTEM = '#desk.shell [data-layer="system"]';
 export const MODE = '#desk.shell [data-layer="mode"]';
 
-/** A plugin's surface on the runtime under the shell's mode layer, by plugin id. */
-export const surface = (plugin: string) => $(`${MODE} [data-surface="${plugin}"]`);
+/**
+ * A plugin's surface on the runtime under the shell's mode layer, by plugin id: the runtime's own
+ * section (`.desk-surface`), which under the shell sits inside a shell window whose `data-surface`
+ * is the same id (ADR 0040).
+ */
+export const surface = (plugin: string) => $(`${MODE} .desk-surface[data-surface="${plugin}"]`);
+
+/** The shell window that holds a plugin's centre surface: its title bar and tools. */
+export const windowOf = (plugin: string) => $(`${MODE} section.surface[data-surface="${plugin}"]`);
 
 /** The shell's drawer button (bottom edge); `aria-expanded` says whether the drawer is open. */
 export const drawerButton = () => $(`${MODE} .drawer-button`);
@@ -42,7 +49,7 @@ export async function shellReady(): Promise<void> {
 
 /** Run `body` inside a plugin's sandboxed frame, then return to the shell. */
 export async function inFrame<T>(plugin: string, body: () => Promise<T>): Promise<T> {
-  const frame = $(`${MODE} [data-surface="${plugin}"] iframe`);
+  const frame = $(`${MODE} .desk-surface[data-surface="${plugin}"] iframe`);
   await frame.waitForExist();
   await browser.switchFrame(frame);
   try {
