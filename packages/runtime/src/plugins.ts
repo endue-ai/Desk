@@ -96,7 +96,7 @@ export class PluginHost {
   }
 
   /** Launch an installed UI plugin, including one put away or disabled by the person. */
-  async launch(id: string): Promise<void> {
+  async launch(id: string, waitForReady = false): Promise<void> {
     let info = (await this.#list()).find((p) => p.id === id);
     if (info?.status !== "ready" || info.manifest?.kind !== "ui")
       throw new Error(`No launchable plugin ${id}`);
@@ -108,7 +108,7 @@ export class PluginHost {
       }));
     }
     this.#mount(info);
-    await this.whenReady(id);
+    if (waitForReady) await this.whenReady(id);
     this.#deps.show?.(id, true);
   }
 

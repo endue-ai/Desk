@@ -80,7 +80,7 @@ export async function openSearchHit(ctx, hit) {
   if (hit.kind === "file" || hit.kind === "application") {
     return ctx.bridge.call("search.open", { id: hit.id, scope: { permission: "search:system" } });
   }
-  await ctx.commands.run("desk.plugins.open", { plugin: hit.plugin });
+  await ctx.commands.run("desk.plugins.open", { plugin: hit.plugin, waitForReady: !!hit.command });
   if (hit.command) {
     const commands = await ctx.commands.list();
     if (!commands.some((c) => c.id === hit.command && c.provider === hit.plugin))

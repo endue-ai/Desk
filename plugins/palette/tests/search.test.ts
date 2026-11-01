@@ -68,7 +68,7 @@ describe("global search", () => {
     const hit = { kind: "document", plugin: "notes", command: "notes.open", args: { note: "7" } };
     await openSearchHit(ctx, hit);
     expect(run.mock.calls).toEqual([
-      ["desk.plugins.open", { plugin: "notes" }],
+      ["desk.plugins.open", { plugin: "notes", waitForReady: true }],
       ["notes.open", { note: "7" }],
     ]);
     list.mockResolvedValue([{ id: "notes.open", provider: "impostor" }]);

@@ -346,7 +346,7 @@ export function createRuntime(options: RuntimeOptions): Runtime {
       run: async (args) => {
         const id = (args as { plugin?: unknown })?.plugin;
         if (typeof id !== "string") throw new Error("Choose a plugin to open");
-        await host.launch(id);
+        await host.launch(id, (args as { waitForReady?: unknown }).waitForReady === true);
         focusSurface(id);
       },
     });

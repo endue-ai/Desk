@@ -137,7 +137,14 @@ test("search opens a disabled plugin and matches another plugin's published body
         method: "search.replace",
         params: {
           documents: [
-            { id: "trip", title: "Travel plan", text: "서울 출장", detail: "Echo document" },
+            {
+              id: "trip",
+              title: "Travel plan",
+              text: "서울 출장",
+              detail: "Echo document",
+              command: "test.echo.say",
+              args: { text: "Trip" },
+            },
           ],
         },
       },
