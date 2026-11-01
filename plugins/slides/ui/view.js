@@ -31,8 +31,9 @@ function createProgress(doc) {
     if (!bar) return;
     bar.hidden = value === null;
     cancel = value?.cancel ?? (() => {});
-    if (value) Object.assign(bar, { label: value.label, value: value.value, max: value.max });
-    if (value) Object.assign(bar, { detail: value.detail, cancelable: true });
+    if (!value) return;
+    const { label, max, detail } = value;
+    Object.assign(bar, { label, value: value.value, max, detail, cancelable: true });
   };
 }
 
