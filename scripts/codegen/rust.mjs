@@ -1,18 +1,16 @@
 // Model → Rust (serde). Output is unformatted; codegen.mjs pipes it through rustfmt.
 import { pascal, snake, variantName } from "./model.mjs";
 
-const KEYWORDS = new Set([
-  "type",
-  "match",
-  "use",
-  "mod",
-  "fn",
-  "impl",
-  "ref",
-  "self",
-  "loop",
-  "move",
-]);
+// Rust's strict and reserved keywords, written as raw identifiers (r#type) when a field has the name.
+const KEYWORDS = new Set(
+  [
+    "abstract as async await become box break const continue do dyn else enum extern final fn for",
+    "gen if impl in let loop macro match mod move mut override priv pub ref return self static struct",
+    "trait try type typeof unsafe unsized use virtual where while yield",
+  ]
+    .join(" ")
+    .split(" "),
+);
 
 export function emitRust(model, { header, extra = "" }) {
   const consts = [];

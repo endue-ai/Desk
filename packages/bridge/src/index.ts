@@ -16,6 +16,13 @@ export {
   type ParamsOf,
   type ResultOf,
 } from "./client";
+export {
+  FIXTURE_CONNECTOR,
+  FIXTURE_NOW,
+  type FixtureConnector,
+  fixtureConnector,
+  fixtureItems,
+} from "./fixtures";
 export * from "./generated";
 export {
   type StubCommands,
@@ -24,5 +31,7 @@ export {
   type StubSurface,
   stubCommands,
 } from "./stub-commands";
+export { mediaType, pathMatch, type StubFiles, stubFs } from "./stub-fs";
+export { type StubOpened, shellLink } from "./stub-shell";
 
 export const NAME = "@endue-ai/bridge";

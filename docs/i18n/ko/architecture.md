@@ -8,7 +8,7 @@
 Desk는 하나의 앱으로 만든 하나의 OS입니다. Tauri 셸과 작은 Rust 코어가 웹 런타임을 싣고, 그 런타임 위의
 설정과 키바인딩을 제외한 기능은 플러그인입니다. Emacs처럼 코어는 프리미티브만 갖고, 나머지는 모두 앱이 실행되는 동안 바꿀 수 있습니다.
 
-설정 UI, 기본 키바인딩과 개인 설정 저장은 플러그인이 아닌 런타임 코어 기능입니다. 플러그인을 모두 꺼도 사용할 수 있으며, 플러그인은 추가 단축키를 제공할 수 있습니다. [ADR 0031](../../adr/0031-core-settings-and-keybindings.md).
+설정 UI, 기본 키바인딩과 개인 설정 저장은 플러그인이 아닌 런타임 코어 기능입니다. 플러그인을 모두 꺼도 사용할 수 있으며, 플러그인은 추가 단축키를 제공할 수 있습니다. [ADR 0053](../../adr/0053-core-settings-and-keybindings.md).
 
 ## 한눈에 보기
 
@@ -19,14 +19,17 @@ Desk는 하나의 앱으로 만든 하나의 OS입니다. Tauri 셸과 작은 Ru
  the user's computer               │                           cost of change
  ┌─────────────────────────────────┴──────────────────────────────┐
  │ Plugins      UI (iframe) · logic (Wasm) · tools (MCP, in a VM) │  instant
+ │              · connectors (Wasm · MCP) · views (data)          │
  ├────────────────────────────────────────────────────────────────┤
  │ Web runtime  compositor (3D/2D) · surfaces · input · layout    │  restart
  │              · UI plugin host · desk shell (until ADR 0026)    │
  ├────────────────────────────────────────────────────────────────┤
- │ Desk bridge  specs/bridge → TS client · Rust types             │  rebuild
+ │ Desk bridge  specs/bridge · specs/item · specs/view            │  rebuild
+ │              · specs/connector → TS client · Rust types        │
  ├────────────────────────────────────────────────────────────────┤
- │ Rust core    permissions · event bus · storage                 │  rebuild
- │              · logic plugin host (Wasm) · VM · brain clients   │
+ │ Rust core    permissions · event bus · storage · item index    │  rebuild
+ │              · logic plugin and connector host (Wasm) · VM     │
+ │              · built-in connectors · brain clients             │
  ├────────────────────────────────────────────────────────────────┤
  │ Tauri shell  windows · webviews · primitives (fs, proc, net,   │  rebuild
  │              audio)                                            │
@@ -44,8 +47,8 @@ Desk는 하나의 앱으로 만든 하나의 OS입니다. Tauri 셸과 작은 Ru
 | endue AI (클라우드) | 저장소 밖에 있습니다. 이 저장소에는 `specs/brain`과 `crates/desk-brain-endue`만 있습니다 |
 | 플러그인 | `plugins/` · `packages/plugin-sdk` · `specs/plugin` · `specs/wit` · `examples/` |
 | 웹 런타임 | `packages/runtime`: 컴포지터, UI 플러그인 호스트(ADR 0012), 그리고 ADR 0026이 정해질 때까지 데스크 셸(ADR 0025) · `packages/ui` |
-| Desk 브리지 | `specs/bridge` · `packages/bridge` · `crates/desk-bridge` (`specs/bridge`와 `specs/plugin`에서 생성한 타입) |
-| Rust 코어 | `crates/desk-core` · `crates/desk-plugin-host`(로직 플러그인을 Wasmtime에서 실행, ADR 0019) · `crates/desk-vm` · `crates/desk-brain*` |
+| Desk 브리지 | `specs/bridge` · 통합 계층의 계약인 `specs/item`, `specs/view`, `specs/connector`(ADR 0032) · `packages/bridge` · `crates/desk-bridge` (이 계약들과 `specs/plugin`에서 생성한 타입) |
+| Rust 코어 | `crates/desk-core`(통합 계층의 `data.*`, `connector.*`, `view.*`, `catalog.get`도 제공하고 OS 캘린더 위에 내장 커넥터 `desk.calendar`와 `desk.reminders`를 정의, 아직 제안 상태인 ADR 0036) · `crates/desk-index`(SQLite 파일 하나에 두는 아이템 색인, ADR 0033) · `crates/desk-plugin-host`(로직 플러그인과 Wasm 커넥터를 Wasmtime에서 실행, ADR 0019 · 아직 제안 상태인 ADR 0034) · `crates/desk-vm` · `crates/desk-brain*` |
 | Tauri 셸 | `apps/desk/src-tauri` · `crates/desk-sys` |
 | OS | `apps/desk/src-tauri/capabilities` · 릴리스 워크플로 (서명, 공증) |
 
@@ -62,6 +65,7 @@ Emacs는 작은 C 코어 위에서 거의 모든 것을 Elisp로 실행하며, �
 | 창 관리자 | 창 관리자 | 프레임 · 창 | 3D 캔버스 컴포지터 |
 | 셸 | 터미널 셸 | M-x | Eris · 명령 팔레트 |
 | 앱 | 애플리케이션 | 패키지 (Elisp) | 플러그인 (UI · Wasm · MCP) |
+| 연결한 데이터 | 마운트한 파일 시스템 · 검색 색인 | Gnus 백엔드 · Org agenda | 커넥터 · 색인 하나에 모이는 아이템 · 뷰 (ADR 0032) |
 | 부트 설정 | init | init.el | `init.yaml` (프로필 + 플러그인 + 설정) |
 | 패키지 관리자 | apt · brew | package.el · MELPA | 마켓플레이스 |
 | 동작 재정의 | 없음 | advice · hook | 이벤트 훅 · 명령 재정의 |

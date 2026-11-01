@@ -1,0 +1,8 @@
+{
+  "target": "Permission",
+  "description": "calendar is not an item kind",
+  "instance": {
+    "permission": "data:read",
+    "kinds": ["calendar"]
+  }
+}

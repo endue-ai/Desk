@@ -1,0 +1,106 @@
+{
+  "id": "endue.calendar",
+  "name": "Calendar",
+  "version": "0.1.0",
+  "kind": "ui",
+  "entry": "ui/index.html",
+  "description": "Opens iCalendar (RFC 5545) files in month, week, day and agenda views: repeating events, time zones, reminders, and an editor that writes back everything it read.",
+  "permissions": [
+    { "permission": "fs:read", "paths": ["${home}/Calendar/**"] },
+    { "permission": "fs:write", "paths": ["${home}/Calendar/**"] },
+    {
+      "permission": "cmd:invoke",
+      "ids": ["desk.files.changed", "desk.files.open", "desk.buffers.update", "desk.palette.pick"]
+    },
+    { "permission": "ui:notify" }
+  ],
+  "surfaces": [{ "id": "main", "title": "Calendar", "placement": "center" }],
+  "contributes": {
+    "files": [
+      { "pattern": "*.ics", "plugin": "endue.calendar" },
+      { "pattern": "*.ical", "plugin": "endue.calendar" },
+      { "pattern": "*.ifb", "plugin": "endue.calendar" }
+    ],
+    "commands": [
+      {
+        "id": "endue.calendar.open",
+        "title": "Open my calendar",
+        "keywords": ["calendar", "schedule", "events", "ics"]
+      },
+      { "id": "endue.calendar.today", "title": "Calendar: go to today", "keywords": ["calendar"] },
+      {
+        "id": "endue.calendar.next",
+        "title": "Calendar: next",
+        "keywords": ["calendar", "forward"]
+      },
+      {
+        "id": "endue.calendar.previous",
+        "title": "Calendar: previous",
+        "keywords": ["calendar", "back"]
+      },
+      { "id": "endue.calendar.month", "title": "Calendar: month view", "keywords": ["calendar"] },
+      { "id": "endue.calendar.week", "title": "Calendar: week view", "keywords": ["calendar"] },
+      { "id": "endue.calendar.day", "title": "Calendar: day view", "keywords": ["calendar"] },
+      {
+        "id": "endue.calendar.agenda",
+        "title": "Calendar: agenda",
+        "keywords": ["calendar", "list", "upcoming"]
+      },
+      {
+        "id": "endue.calendar.new",
+        "title": "Calendar: new event",
+        "keywords": ["calendar", "add", "create", "meeting"]
+      },
+      {
+        "id": "endue.calendar.goto",
+        "title": "Calendar: go to a date",
+        "keywords": ["calendar", "jump", "date"]
+      }
+    ],
+    "keys": [{ "key": "Mod+Shift+C", "command": "endue.calendar.open" }],
+    "settings": {
+      "endue.calendar.file": {
+        "kind": "string",
+        "default": "~/Calendar/calendar.ics",
+        "description": "The calendar Open my calendar opens, made empty when it does not exist."
+      },
+      "endue.calendar.view": {
+        "kind": "string",
+        "default": "month",
+        "choices": ["month", "week", "day", "agenda"],
+        "description": "The view a calendar opens in."
+      },
+      "endue.calendar.week-start": {
+        "kind": "string",
+        "default": "locale",
+        "choices": ["locale", "sunday", "monday", "saturday"],
+        "description": "The first day of the week: the locale's, or a named day."
+      },
+      "endue.calendar.time-zone": {
+        "kind": "string",
+        "default": "",
+        "description": "The IANA time zone events are shown in; empty for the system's."
+      },
+      "endue.calendar.event-minutes": {
+        "kind": "integer",
+        "default": 60,
+        "description": "How long a new event lasts."
+      },
+      "endue.calendar.reminder-minutes": {
+        "kind": "integer",
+        "default": 10,
+        "description": "The reminder a new timed event gets, in minutes before it starts."
+      },
+      "endue.calendar.day-start": {
+        "kind": "integer",
+        "default": 8,
+        "description": "The hour the week and day views scroll to."
+      },
+      "endue.calendar.reminders": {
+        "kind": "boolean",
+        "default": true,
+        "description": "Show a notification when an event's reminder is due, while its calendar is open."
+      }
+    }
+  }
+}

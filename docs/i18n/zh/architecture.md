@@ -7,7 +7,7 @@
 Desk 是以一个应用构建的一个操作系统：Tauri 外壳和小型 Rust 核心承载一个 Web 运行时，运行时之上的设置和键绑定之外的功能是插件。
 与 Emacs 一样，核心只保留原语，其余一切都能在应用运行时修改。
 
-设置界面、默认键绑定和个人设置持久化属于运行时核心，而非插件。禁用所有插件后仍可使用；插件可以添加快捷键。 [ADR 0031](../../adr/0031-core-settings-and-keybindings.md).
+设置界面、默认键绑定和个人设置持久化属于运行时核心，而非插件。禁用所有插件后仍可使用；插件可以添加快捷键。 [ADR 0053](../../adr/0053-core-settings-and-keybindings.md).
 
 ## 概览
 
@@ -18,14 +18,17 @@ Desk 是以一个应用构建的一个操作系统：Tauri 外壳和小型 Rust 
  the user's computer               │                           cost of change
  ┌─────────────────────────────────┴──────────────────────────────┐
  │ Plugins      UI (iframe) · logic (Wasm) · tools (MCP, in a VM) │  instant
+ │              · connectors (Wasm · MCP) · views (data)          │
  ├────────────────────────────────────────────────────────────────┤
  │ Web runtime  compositor (3D/2D) · surfaces · input · layout    │  restart
  │              · UI plugin host · desk shell (until ADR 0026)    │
  ├────────────────────────────────────────────────────────────────┤
- │ Desk bridge  specs/bridge → TS client · Rust types             │  rebuild
+ │ Desk bridge  specs/bridge · specs/item · specs/view            │  rebuild
+ │              · specs/connector → TS client · Rust types        │
  ├────────────────────────────────────────────────────────────────┤
- │ Rust core    permissions · event bus · storage                 │  rebuild
- │              · logic plugin host (Wasm) · VM · brain clients   │
+ │ Rust core    permissions · event bus · storage · item index    │  rebuild
+ │              · logic plugin and connector host (Wasm) · VM     │
+ │              · built-in connectors · brain clients             │
  ├────────────────────────────────────────────────────────────────┤
  │ Tauri shell  windows · webviews · primitives (fs, proc, net,   │  rebuild
  │              audio)                                            │
@@ -42,8 +45,8 @@ Desk 是以一个应用构建的一个操作系统：Tauri 外壳和小型 Rust 
 | endue AI（云端） | 位于仓库之外；本仓库中只有 `specs/brain` 和 `crates/desk-brain-endue` |
 | 插件 | `plugins/` · `packages/plugin-sdk` · `specs/plugin` · `specs/wit` · `examples/` |
 | Web 运行时 | `packages/runtime`：合成器、UI 插件宿主（ADR 0012），以及在 ADR 0026 决定之前的桌面外壳（ADR 0025） · `packages/ui` |
-| Desk 桥接层 | `specs/bridge` · `packages/bridge` · `crates/desk-bridge`（由 `specs/bridge` 和 `specs/plugin` 生成的类型） |
-| Rust 核心 | `crates/desk-core` · `crates/desk-plugin-host`（在 Wasmtime 上运行逻辑插件，ADR 0019） · `crates/desk-vm` · `crates/desk-brain*` |
+| Desk 桥接层 | `specs/bridge` · 集成层的契约 `specs/item`、`specs/view` 和 `specs/connector`（ADR 0032） · `packages/bridge` · `crates/desk-bridge`（由这些契约和 `specs/plugin` 生成的类型） |
+| Rust 核心 | `crates/desk-core`（还提供集成层的 `data.*`、`connector.*`、`view.*`、`catalog.get`，并基于操作系统日历定义内置连接器 `desk.calendar` 和 `desk.reminders`，ADR 0036，仍处于提议阶段） · `crates/desk-index`（存放在一个 SQLite 文件中的条目索引，ADR 0033） · `crates/desk-plugin-host`（在 Wasmtime 上运行逻辑插件和 Wasm 连接器，ADR 0019；ADR 0034 仍处于提议阶段） · `crates/desk-vm` · `crates/desk-brain*` |
 | Tauri 外壳 | `apps/desk/src-tauri` · `crates/desk-sys` |
 | 操作系统 | `apps/desk/src-tauri/capabilities` · 发布工作流（签名、公证） |
 
@@ -59,6 +62,7 @@ Emacs 在小型 C 核心之上用 Elisp 运行几乎所有功能，而且可以�
 | 窗口管理器 | 窗口管理器 | frame · window | 3D 画布合成器 |
 | Shell | 终端 shell | M-x | Eris · 命令面板 |
 | 应用 | 应用程序 | 包（Elisp） | 插件（UI · Wasm · MCP） |
+| 接入的数据 | 挂载的文件系统 · 搜索索引 | Gnus 后端 · Org agenda | 连接器 · 汇集在同一个索引中的条目 · 视图（ADR 0032） |
 | 启动配置 | init | init.el | `init.yaml`（配置档 + 插件 + 设置） |
 | 包管理器 | apt · brew | package.el · MELPA | 插件市场 |
 | 行为覆盖 | 无 | advice · hook | 事件钩子 · 命令覆盖 |

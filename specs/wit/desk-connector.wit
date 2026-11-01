@@ -1,0 +1,89 @@
+/// Wasm connectors: plugins of kind `connector` with `binding: wasm` (specs/connector/v0).
+package desk:connector@0.0.0 {
+  /// Items as they cross the WIT. Mirrors specs/item/v0; JSON crosses as text.
+  interface types {
+    /// Mirrors ItemKind in specs/item/v0.
+    enum item-kind { event, message, task, note, file, person, entry, metric, %record }
+
+    /// One instance of the connector (CN-09).
+    record instance {
+      /// Unique within the connector; the host puts it in every item's `source.instance`.
+      id: string,
+      /// The instance's settings as JSON object text, without the fields marked secret.
+      settings: string,
+    }
+
+    /// An item without its `source`, which the host fills in.
+    record item {
+      /// Unique within the instance.
+      id: string,
+      kind: item-kind,
+      title: string,
+      /// RFC 3339 with an offset, as every time below.
+      updated-at: string,
+      created-at: option<string>,
+      /// Opens the item in its own app.
+      deep-link: option<string>,
+      body: option<string>,
+      /// The kind's own fields (specs/item/v0, e.g. a note's `path`), JSON object text; `{}` for none.
+      details: string,
+      /// The source's own data, JSON text.
+      raw: option<string>,
+    }
+
+    variant item-change {
+      upserted(item),
+      /// The id of an item that is gone.
+      removed(string),
+    }
+
+    record sync-result {
+      changes: list<item-change>,
+      /// Replaces the instance's cursor; the host passes it to the next `sync`. None starts over.
+      cursor: option<string>,
+      /// False: there is more, and the host calls `sync` again at once with the new cursor.
+      done: bool,
+    }
+
+    /// ItemQuery in specs/item/v0, for this instance only.
+    record item-query {
+      /// Empty: every kind.
+      kinds: list<item-kind>,
+      text: option<string>,
+      /// `where` (conditions ANDed), JSON array text.
+      conditions: option<string>,
+      /// `sort`, JSON array text.
+      sort: option<string>,
+      cursor: option<string>,
+      /// 1 to 500.
+      limit: u32,
+    }
+
+    record item-page {
+      items: list<item>,
+      /// The next page; none on the last.
+      cursor: option<string>,
+    }
+  }
+
+  /// What a Wasm connector may import, and what it exports.
+  world connector {
+    import desk:host/fs@0.0.0;
+    import desk:host/net@0.0.0;
+    import desk:host/perm@0.0.0;
+    import desk:host/store@0.0.0;
+    import desk:host/log@0.0.0;
+
+    use desk:host/types@0.0.0.{error};
+    use types.{instance, item-query, item-page, sync-result};
+
+    /// The changes since `cursor` (none: everything).
+    export sync: func(instance: instance, cursor: option<string>) -> result<sync-result, error>;
+    /// A live query for what the index does not hold; `unsupported` when the connector has none.
+    export query: func(instance: instance, query: item-query) -> result<item-page, error>;
+    /// One of the connector's actions (a command id in `resources[].actions`); args and result are JSON text.
+    export act: func(instance: instance, action: string, args-json: string) -> result<string, error>;
+    /// Whether the instance can sync as set up; the error is the reason it cannot.
+    export status: func(instance: instance) -> result<_, error>;
+  }
+}

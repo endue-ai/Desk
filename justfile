@@ -42,12 +42,15 @@ check:
     pnpm exec spectral lint specs/brain/v0/openapi.yaml --fail-severity=warn --quiet
 
 # Lint the Tauri app crate (needs the platform webview SDK)
-check-app: build-sdk
+check-app: build-sdk build-ui
     pnpm --filter @endue-ai/desk-app build
     cargo clippy -p desk-app --all-targets -- -D warnings
+    cargo test -p desk-app --lib
+    cargo check -p tauri-plugin-single-instance --all-targets --all-features
+    @if [ "$(uname -s)" = Linux ]; then dbus-run-session -- cargo test -p tauri-plugin-single-instance --lib --tests -- --include-ignored; else cargo test -p tauri-plugin-single-instance --lib --tests; fi
 
 # Build the Tauri app binary
-build-app: build-sdk
+build-app: build-sdk build-ui
     pnpm --filter @endue-ai/desk-app build
     cargo build -p desk-app
 
@@ -82,6 +85,17 @@ docs-api out:
 # Bundle the plugin SDK that the app serves to plugin frames
 build-sdk:
     pnpm --filter @endue-ai/plugin-sdk build
+
+# Bundle @endue-ai/ui (its elements and the two sheets) that the app serves to plugin frames under
+# /_desk/, and refresh the committed copy of the generated tokens.css the shell imports
+build-ui:
+    pnpm --filter @endue-ai/ui build
+    cp packages/ui/dist/tokens.css packages/ui/src/tokens.css
+
+# Copy the terminal plugin's emulator (xterm.js and its addons) from the pinned npm packages into
+# plugins/terminal/ui/vendor; scripts/vendor-xterm.test.mjs checks the copy matches (ADR 0037)
+vendor-terminal:
+    node scripts/vendor-xterm.mjs
 
 # Measure the opening frame time (pass "record" to make it the new baseline in e2e/perf/budgets.json).
 # Native WebKit with the machine to itself; on macOS for people only (ADR 0018)

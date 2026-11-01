@@ -1,6 +1,6 @@
 # Core settings and key bindings
 
-Settings and keyboard bindings are runtime core facilities (ADR 0031), available with no
+Settings and keyboard bindings are runtime core facilities (ADR 0053), available with no
 plugins installed or enabled. No new bridge method or generated wire type is needed.
 
 - `desk.settings.open` opens a single system settings window; optional `section` selects

@@ -1,5 +1,7 @@
 //! `Core::handle`: one bridge request in, one bridge response out. Every primitive call passes the
-//! permission engine first; methods the core does not serve yet answer `unsupported`.
+//! permission engine first (`Core::check`); methods the core does not serve yet answer `unsupported`.
+//! The integration layer (`data.*`, `connector.*`, `view.*`, `catalog.get`) holds the item index
+//! as `Arc<dyn ItemIndex>`, the OS calendar as a `CalendarSource` and one connector host.
 
 use std::io;
 use std::path::{Path, PathBuf};
@@ -8,22 +10,37 @@ use std::sync::{Arc, Mutex, MutexGuard};
 
 use base64::Engine as _;
 use desk_bridge::{
-    BridgeError, BridgeEvent, BridgeFailure, BridgeRequest, BridgeResponse, BridgeSuccess,
-    DirEntry, Encoding, EntryKind, ErrorCode, False, FsListResult, FsReadResult, Grant,
-    GrantChange, GrantDuration, PermChangedData, PermChangedEvent, PermQueryResult,
-    PermRequestResult, PermRevokeResult, Permission, RequestId, True,
+    BridgeError, BridgeFailure, BridgeRequest, BridgeResponse, BridgeSuccess, DirEntry, Encoding,
+    EntryKind, ErrorCode, False, FsListResult, FsReadParams, FsReadResult, Permission, RequestId,
+    True,
 };
+use desk_index::ItemIndex;
+use desk_plugin_host::{Clock, SystemClock, rfc3339};
+use desk_sys::calendar::CalendarSource;
 use desk_sys::fs as sysfs;
+use desk_sys::shell::{Opener, SystemOpener};
 use serde::Serialize;
 
 use crate::conversation::Conversation;
 use crate::core_cmd::Commands;
-use crate::core_fs::Watches;
+use crate::core_connectors::Connectors;
+use crate::core_data::DataSubscriptions;
+use crate::core_events::Subscriptions;
+use crate::core_fs::{Watches, read_range};
+use crate::core_fs_url::FileUrls;
+use crate::core_perm::{Prompter, RefuseAll};
+use crate::core_plugin_views::ProvidedViews;
+use crate::core_proc::Processes;
+use crate::core_prompts::Prompts;
+use crate::core_ui::Surfaces;
+use crate::core_views::ViewsSeen;
 use crate::events::EventBus;
 use crate::init::InitFile;
+use crate::log::Log;
 use crate::paths::normalize;
-use crate::perm::{Denied, PermissionEngine, Target, covers};
+use crate::perm::{Denied, PermissionEngine, Target};
 use crate::plugins::PluginRegistry;
+use crate::secrets::Secrets;
 use crate::store::Store;
 use crate::sync::Syncer;
 
@@ -34,36 +51,37 @@ pub struct Roots {
     pub home: PathBuf,
 }
 
-/// Asks the person whether to grant a permission. Desk's prompt UI implements this.
-pub trait Prompter: Send + Sync {
-    fn ask(&self, caller: &str, permission: &Permission, reason: &str) -> bool;
-}
-
-/// The prompter used until a prompt UI exists: it refuses everything.
-#[derive(Debug, Default)]
-pub struct RefuseAll;
-
-impl Prompter for RefuseAll {
-    fn ask(&self, _caller: &str, _permission: &Permission, _reason: &str) -> bool {
-        false
-    }
-}
-
 pub(crate) type Answer = Result<serde_json::Value, BridgeError>;
 
 pub struct Core {
     roots: Roots,
     permissions: Mutex<PermissionEngine>,
     events: EventBus,
-    prompter: Box<dyn Prompter>,
+    pub(crate) prompter: Box<dyn Prompter>,
+    pub(crate) prompts: Mutex<Prompts>,
+    pub(crate) subscriptions: Mutex<Subscriptions>,
     pub(crate) plugins: Mutex<PluginRegistry>,
     pub(crate) store: Mutex<Store>,
+    pub(crate) settings: Mutex<Store>,
+    pub(crate) log: Mutex<Log>,
     pub(crate) conversation: Option<Arc<Conversation>>,
     pub(crate) init: Mutex<InitFile>,
     pub(crate) sync: Option<Syncer>,
     pub(crate) notifications: AtomicU64,
     pub(crate) watches: Mutex<Watches>,
+    pub(crate) file_urls: Mutex<FileUrls>,
     pub(crate) commands: Mutex<Commands>,
+    pub(crate) index: Option<Arc<dyn ItemIndex>>,
+    pub(crate) calendar: Option<Arc<dyn CalendarSource>>,
+    pub(crate) clock: Arc<dyn Clock>,
+    pub(crate) secrets: Mutex<Secrets>,
+    pub(crate) data_subscriptions: Mutex<DataSubscriptions>,
+    pub(crate) connectors: Connectors,
+    pub(crate) views: Mutex<ViewsSeen>,
+    pub(crate) processes: Arc<Mutex<Processes>>,
+    pub(crate) provided_views: Mutex<ProvidedViews>,
+    pub(crate) surfaces: Mutex<Surfaces>,
+    pub(crate) opener: Box<dyn Opener>,
 }
 
 impl Core {
@@ -73,14 +91,30 @@ impl Core {
             permissions: Mutex::new(PermissionEngine::new()),
             events: EventBus::new(),
             prompter: Box::new(RefuseAll),
+            prompts: Mutex::new(Prompts::default()),
+            subscriptions: Mutex::new(Subscriptions::default()),
             plugins: Mutex::new(PluginRegistry::new(None)),
             store: Mutex::new(Store::new(None)),
+            settings: Mutex::new(Store::new(None)),
+            log: Mutex::new(Log::default()),
             conversation: None,
             init: Mutex::new(InitFile::memory()),
             sync: None,
             notifications: AtomicU64::new(0),
             watches: Mutex::new(Watches::default()),
+            file_urls: Mutex::new(FileUrls::default()),
             commands: Mutex::new(Commands::default()),
+            index: None,
+            calendar: None,
+            clock: Arc::new(SystemClock),
+            secrets: Mutex::new(Secrets::new(None)),
+            data_subscriptions: Mutex::new(DataSubscriptions::default()),
+            connectors: Connectors::default(),
+            views: Mutex::new(ViewsSeen::default()),
+            processes: Arc::new(Mutex::new(Processes::default())),
+            provided_views: Mutex::new(ProvidedViews::default()),
+            surfaces: Mutex::new(Surfaces::default()),
+            opener: Box::new(SystemOpener),
         }
     }
 
@@ -91,13 +125,6 @@ impl Core {
 
     pub fn events(&self) -> &EventBus {
         &self.events
-    }
-
-    /// Grant directly, as the person would through a prompt.
-    pub fn grant(&self, caller: &str, permission: Permission) -> Grant {
-        let grant = self.permissions().grant(caller, permission);
-        self.changed(&grant.grant_id, GrantChange::Granted);
-        grant
     }
 
     pub fn handle(&self, caller: &str, request: BridgeRequest) -> BridgeResponse {
@@ -120,10 +147,19 @@ impl Core {
         use BridgeRequest as R;
         match request {
             R::FsRead(r) => {
-                let scope = Permission::FsRead(r.params.scope);
+                let FsReadParams {
+                    path,
+                    encoding,
+                    offset,
+                    length,
+                    scope,
+                } = r.params;
                 let answer = self
-                    .authorize(caller, &scope, &r.params.path)
-                    .and_then(|path| read(&path, r.params.encoding.unwrap_or(Encoding::Utf8)));
+                    .authorize(caller, &Permission::FsRead(scope), &path)
+                    .and_then(|path| {
+                        let encoding = encoding.unwrap_or(Encoding::Utf8);
+                        read(&path, encoding, offset.unwrap_or(0), length)
+                    });
                 (r.id, answer)
             }
             R::FsList(r) => {
@@ -133,88 +169,61 @@ impl Core {
                     .and_then(|path| list(&path));
                 (r.id, answer)
             }
-            R::PermQuery(r) => {
-                let mut grants = self.permissions().grants(caller);
-                if let Some(filter) = &r.params.permission {
-                    grants.retain(|grant| covers(&grant.permission, filter));
-                }
-                (r.id, json(PermQueryResult { grants }))
-            }
-            R::PermRequest(r)
-                if matches!(
-                    r.params.duration,
-                    Some(GrantDuration::Once | GrantDuration::Always)
-                ) =>
-            {
-                (r.id, unsupported("perm.request once or always"))
-            }
-            R::PermRequest(r) => {
-                let params = r.params;
-                let answer = if self
-                    .prompter
-                    .ask(caller, &params.permission, &params.reason)
-                {
-                    let grant = self.grant(caller, params.permission);
-                    json(PermRequestResult {
-                        granted: true,
-                        grant: Some(grant),
-                    })
-                } else {
-                    json(PermRequestResult {
-                        granted: false,
-                        grant: None,
-                    })
-                };
-                (r.id, answer)
-            }
-            R::PermRevoke(r) if r.params.scope.is_some() => {
-                (r.id, unsupported("perm.revoke of another caller's grant"))
-            }
-            R::PermRevoke(r) => {
-                let answer = if self.permissions().revoke(caller, &r.params.grant_id) {
-                    self.changed(&r.params.grant_id, GrantChange::Revoked);
-                    self.prune_watches(caller);
-                    json(PermRevokeResult {})
-                } else {
-                    Err(error(
-                        ErrorCode::NotFound,
-                        format!("no grant {}", r.params.grant_id),
-                    ))
-                };
-                (r.id, answer)
-            }
+            R::PermQuery(r) => (r.id, self.perm_query(caller, r.params)),
+            R::PermRequest(r) => (r.id, self.perm_request(caller, r.params)),
+            R::PermRevoke(r) => (r.id, self.perm_revoke(caller, r.params)),
+            R::PermList(r) => (r.id, self.perm_list(caller, r.params)),
+            R::PermAnswer(r) => (r.id, self.perm_answer(caller, r.params)),
             R::PluginList(r) => (r.id, self.plugin_list(caller, r.params)),
             R::PluginSetEnabled(r) => (r.id, self.plugin_set_enabled(caller, r.params)),
             R::StoreGet(r) => (r.id, self.store_get(caller, r.params)),
             R::StoreSet(r) => (r.id, self.store_set(caller, r.params)),
             R::BrainSay(r) => (r.id, self.brain_say(caller, r.params)),
+            R::BrainAgentsList(r) => (r.id, self.brain_agents_list(caller, r.params)),
+            R::BrainAgentsCard(r) => (r.id, self.brain_agents_card(caller, r.params)),
+            R::BrainSpacesList(r) => (r.id, self.brain_spaces_list(caller, r.params)),
+            R::BrainTasksList(r) => (r.id, self.brain_tasks_list(caller, r.params)),
+            R::BrainStatus(r) => (r.id, self.brain_status(caller, r.params)),
             R::InitGet(r) => (r.id, self.init_get(caller)),
             R::UiNotify(r) => (r.id, self.notify(caller, r.params)),
             R::FsWrite(r) => (r.id, self.fs_write(caller, r.params)),
             R::FsWatch(r) => (r.id, self.fs_watch(caller, r.params)),
-            R::ProcSpawn(r) => (r.id, unsupported("proc.spawn")),
-            R::ProcWrite(r) => (r.id, unsupported("proc.write")),
-            R::ProcResize(r) => (r.id, unsupported("proc.resize")),
-            R::ProcKill(r) => (r.id, unsupported("proc.kill")),
-            R::NetFetch(r) => (r.id, unsupported("net.fetch")),
+            R::FsUrl(r) => (r.id, self.fs_url(caller, r.params)),
+            R::ProcSpawn(r) => (r.id, self.proc_spawn(caller, r.params)),
+            R::ProcWrite(r) => (r.id, self.proc_write(caller, r.params)),
+            R::ProcResize(r) => (r.id, self.proc_resize(caller, r.params)),
+            R::ProcKill(r) => (r.id, self.proc_kill(caller, r.params)),
+            R::NetFetch(r) => (r.id, self.net_fetch(caller, r.params)),
             R::AudioCaptureStart(r) => (r.id, unsupported("audio.capture.start")),
             R::AudioCaptureStop(r) => (r.id, unsupported("audio.capture.stop")),
-            R::UiSurfaceOpen(r) => (r.id, unsupported("ui.surface.open")),
-            R::UiSurfaceClose(r) => (r.id, unsupported("ui.surface.close")),
-            R::PermList(r) => (r.id, unsupported("perm.list")),
-            R::PermAnswer(r) => (r.id, unsupported("perm.answer")),
+            R::UiSurfaceOpen(r) => (r.id, self.surface_open(caller, r.params)),
+            R::UiSurfaceClose(r) => (r.id, self.surface_close(caller, r.params)),
             R::CmdRegister(r) => (r.id, self.cmd_register(caller, r.params)),
             R::CmdUnregister(r) => (r.id, self.cmd_unregister(caller, r.params)),
             R::CmdList(r) => (r.id, self.cmd_list(caller, r.params)),
             R::CmdInvoke(r) => (r.id, self.cmd_invoke(caller, r.params)),
             R::CmdAnswer(r) => (r.id, self.cmd_answer(caller, r.params)),
-            R::SettingsGet(r) => (r.id, unsupported("settings.get")),
-            R::SettingsSet(r) => (r.id, unsupported("settings.set")),
-            R::SettingsList(r) => (r.id, unsupported("settings.list")),
-            R::LogWrite(r) => (r.id, unsupported("log.write")),
-            R::LogTail(r) => (r.id, unsupported("log.tail")),
-            R::EventsSubscribe(r) => (r.id, unsupported("events.subscribe")),
-            R::EventsUnsubscribe(r) => (r.id, unsupported("events.unsubscribe")),
+            R::SettingsGet(r) => (r.id, self.settings_get(caller, r.params)),
+            R::SettingsSet(r) => (r.id, self.settings_set(caller, r.params)),
+            R::SettingsList(r) => (r.id, self.settings_list(caller, r.params)),
+            R::LogWrite(r) => (r.id, self.log_write(caller, r.params)),
+            R::LogTail(r) => (r.id, self.log_tail(caller, r.params)),
+            R::EventsSubscribe(r) => (r.id, self.events_subscribe(caller, r.params)),
+            R::EventsUnsubscribe(r) => (r.id, self.events_unsubscribe(caller, r.params)),
+            R::DataQuery(r) => (r.id, self.data_query(caller, r.params)),
+            R::DataGet(r) => (r.id, self.data_get(caller, r.params)),
+            R::DataSubscribe(r) => (r.id, self.data_subscribe(caller, r.params)),
+            R::DataUnsubscribe(r) => (r.id, self.data_unsubscribe(caller, r.params)),
+            R::ConnectorList(r) => (r.id, self.connector_list(caller, r.params)),
+            R::ConnectorConnect(r) => (r.id, self.connector_connect(caller, r.params)),
+            R::ConnectorDisconnect(r) => (r.id, self.connector_disconnect(caller, r.params)),
+            R::ConnectorSyncNow(r) => (r.id, self.connector_sync(caller, r.params)),
+            R::ViewList(r) => (r.id, self.view_list(caller, r.params)),
+            R::ViewGet(r) => (r.id, self.view_get(caller, r.params)),
+            R::ViewSave(r) => (r.id, self.view_save(caller, r.params)),
+            R::ViewRemove(r) => (r.id, self.view_remove(caller, r.params)),
+            R::CatalogGet(r) => (r.id, self.catalog_get(caller)),
+            R::ShellOpen(r) => (r.id, self.shell_open(caller, r.params)),
         }
     }
 
@@ -225,13 +234,12 @@ impl Core {
         scope: &Permission,
         path: &str,
     ) -> Result<PathBuf, BridgeError> {
-        self.permissions()
-            .authorize(caller, scope, &Target::Path(path))
-            .map_err(denied)?;
+        self.check(caller, scope, &Target::Path(path))?;
         self.resolve(path)
     }
 
-    fn resolve(&self, path: &str) -> Result<PathBuf, BridgeError> {
+    /// A bridge path on the file system: `~` and `${home}` are the home folder.
+    pub(crate) fn resolve(&self, path: &str) -> Result<PathBuf, BridgeError> {
         let normalized = normalize(path).ok_or_else(|| {
             error(
                 ErrorCode::InvalidParams,
@@ -258,36 +266,40 @@ impl Core {
             .fold(base, |p, s| p.join(s)))
     }
 
+    /// The home folder: `~` and `${home}`, and where a process starts unless its caller says where.
+    pub(crate) fn home(&self) -> &Path {
+        &self.roots.home
+    }
+
     pub(crate) fn permissions(&self) -> MutexGuard<'_, PermissionEngine> {
         self.permissions
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
     }
-
-    fn changed(&self, grant_id: &str, change: GrantChange) {
-        self.events
-            .publish(BridgeEvent::PermChanged(PermChangedEvent {
-                event: Default::default(),
-                data: PermChangedData {
-                    grant_id: grant_id.to_owned(),
-                    change,
-                },
-            }));
-    }
 }
 
-fn read(path: &Path, encoding: Encoding) -> Answer {
-    let bytes = sysfs::read(path).map_err(io_error)?;
+/// fs.read: `length` bytes at most from `offset` (to the end without a length), with the file's size.
+fn read(path: &Path, encoding: Encoding, offset: u64, length: Option<u64>) -> Answer {
+    let (bytes, size) = read_range(path, offset, length).map_err(io_error)?;
     let content = match encoding {
         Encoding::Utf8 => String::from_utf8(bytes).map_err(|_| {
+            let what = if offset == 0 && length.is_none() {
+                "the file is"
+            } else {
+                "the range is"
+            };
             error(
                 ErrorCode::InvalidParams,
-                "the file is not UTF-8; read it as base64".to_owned(),
+                format!("{what} not UTF-8; read it as base64"),
             )
         })?,
         Encoding::Base64 => base64::engine::general_purpose::STANDARD.encode(bytes),
     };
-    json(FsReadResult { content, encoding })
+    json(FsReadResult {
+        content,
+        encoding,
+        size: Some(size),
+    })
 }
 
 fn list(path: &Path) -> Answer {
@@ -302,6 +314,7 @@ fn list(path: &Path) -> Answer {
                 sysfs::EntryKind::Symlink => EntryKind::Symlink,
             },
             size: entry.size,
+            modified_at: entry.modified.map(rfc3339),
         })
         .collect();
     json(FsListResult { entries })
@@ -332,6 +345,11 @@ fn unsupported(method: &str) -> Answer {
         ErrorCode::Unsupported,
         format!("{method} is not served by the core yet"),
     ))
+}
+
+/// A primitive's error, whose code is already the bridge's.
+pub(crate) fn sys_error(err: desk_sys::Error) -> BridgeError {
+    error(err.code, err.message)
 }
 
 pub(crate) fn io_error(err: io::Error) -> BridgeError {

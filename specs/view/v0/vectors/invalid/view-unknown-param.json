@@ -1,0 +1,82 @@
+{
+  "target": "View",
+  "description": "the title reads {params.days}, which the view does not declare",
+  "instance": {
+    "id": "desk.today",
+    "version": "0.1.0",
+    "title": "Next {params.days} days",
+    "description": "Today's events and the open tasks, side by side.",
+    "requires": {
+      "calendar": {
+        "kinds": ["event"],
+        "title": "A calendar"
+      },
+      "tasks": {
+        "kinds": ["task"],
+        "title": "A task list"
+      }
+    },
+    "layout": {
+      "type": "split",
+      "direction": "horizontal",
+      "children": [
+        {
+          "type": "agenda",
+          "title": "Schedule",
+          "range": "day",
+          "binding": {
+            "kinds": ["event"],
+            "sources": ["$calendar"],
+            "sort": [
+              {
+                "field": "start",
+                "dir": "asc"
+              }
+            ]
+          },
+          "fields": [
+            {
+              "value": "{start|time} {title}"
+            },
+            {
+              "value": "{location}"
+            }
+          ],
+          "empty": "Nothing on the calendar today."
+        },
+        {
+          "type": "list",
+          "title": "To do",
+          "binding": {
+            "kinds": ["task"],
+            "sources": ["$tasks"],
+            "where": [
+              {
+                "field": "status",
+                "op": "eq",
+                "value": "open"
+              }
+            ],
+            "sort": [
+              {
+                "field": "due",
+                "dir": "asc"
+              }
+            ],
+            "limit": 20
+          },
+          "fields": [
+            {
+              "value": "{title}"
+            },
+            {
+              "label": "Due",
+              "value": "{due|relative}"
+            }
+          ],
+          "empty": "Nothing left to do."
+        }
+      ]
+    }
+  }
+}

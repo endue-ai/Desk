@@ -1,15 +1,21 @@
 /**
  * The core on the browser stub, for dev pages and tests (never shipped): the command registry
  * (cmd.*, as the stub keeps it), the installed plugins from their plugin.json, plugin.setEnabled,
- * the store, init.yaml's start profile and settings, and perm.query. More methods come as handlers.
+ * the store, init.yaml's start profile and settings, perm.query, and the stub's index of fixture items
+ * (data.*, connector.*, view.*), and shell.open, which hands links to `open` (window.open on the dev
+ * page) and only records reveals. Built-in plugins hold their manifest's permissions, as the core
+ * grants them at install. More methods come as handlers.
  */
 import {
   BridgeClient,
   type BrowserStub,
   browserStub,
+  type Item,
+  type ItemSource,
   type PluginInfo,
   type PluginManifest,
   type StubHandlers,
+  type StubOpened,
   stubCommands,
 } from "@endue-ai/bridge";
 
@@ -22,12 +28,14 @@ export interface CoreStore {
 export interface BrowserCoreOptions {
   /** The installed plugins; `desk.*` ones are built in. */
   manifests: PluginManifest[];
-  /** Installed but turned off. */
+  /** Installed but turned off. Autoload plugins start off anyway, as the core starts them. */
   off?: Iterable<string>;
   store?: CoreStore;
-  init?: { profile?: string; settings?: Record<string, unknown> };
+  init?: { profile?: string; settings?: Record<string, unknown>; problem?: string };
   /** More methods (fs.write, ui.notify, ...), or the ones above answered differently. */
   handlers?: StubHandlers;
+  /** Where shell.open's links go: a new window by default, nowhere without a window. */
+  open?: (url: string) => void;
 }
 
 export interface BrowserCore {
@@ -35,6 +43,12 @@ export interface BrowserCore {
   stub: BrowserStub;
   /** plugin.list's answer, changed in place by plugin.setEnabled. */
   plugins: PluginInfo[];
+  /** Put an item in the index, or replace it, as a sync would; subscribers hear data.changed. */
+  upsert(item: Item): void;
+  /** Take an item out of the index (false when it was not there); subscribers hear data.changed. */
+  remove(source: ItemSource, id: string): boolean;
+  /** Every shell.open the core let through, links and reveals, oldest first. */
+  opened(): StubOpened[];
 }
 
 /** An in-memory store over `data`, which tests may read. */
@@ -64,12 +78,22 @@ export function browserCore(options: BrowserCoreOptions): BrowserCore {
   const plugins: PluginInfo[] = options.manifests.map((manifest) => ({
     id: manifest.id,
     status: "ready",
-    enabled: !off.has(manifest.id),
+    enabled: !off.has(manifest.id) && manifest.autoload !== true,
     builtIn: manifest.id.startsWith("desk."),
     revision: 1,
     manifest,
   }));
-  const registry = stubCommands((event) => stub.emit(event));
+  // A built-in plugin holds what its manifest declares, as desk-core grants it at install.
+  const grants = Object.fromEntries(
+    plugins.filter((p) => p.builtIn).map((p) => [p.id, p.manifest?.permissions ?? []]),
+  );
+  const open = options.open ?? newWindow;
+  const registry = stubCommands((event) => stub.emit(event), {
+    grants,
+    open: ({ target, reveal }) => {
+      if (!reveal) open(target);
+    },
+  });
   const stub = browserStub({
     ...registry.handlers,
     "perm.query": () => ({ grants: [] }),
@@ -99,8 +123,21 @@ export function browserCore(options: BrowserCoreOptions): BrowserCore {
     "init.get": () => ({
       profile: options.init?.profile ?? "default",
       settings: options.init?.settings ?? {},
+      ...(options.init?.problem ? { problem: options.init.problem } : {}),
     }),
     ...options.handlers,
   });
-  return { client: new BridgeClient(stub), stub, plugins };
+  return {
+    client: new BridgeClient(stub),
+    stub,
+    plugins,
+    upsert: registry.upsert,
+    remove: registry.remove,
+    opened: () => registry.state().opened,
+  };
+}
+
+/** A link in a new window, without a way back to this page; nothing where there is no window. */
+function newWindow(url: string): void {
+  if (typeof window !== "undefined") window.open(url, "_blank", "noopener,noreferrer");
 }

@@ -1,19 +1,25 @@
 //! store.get and store.set: a JSON value per caller and key, kept in desk-core storage.
 
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use desk_bridge::{BridgeRequest, BridgeResponse, ErrorCode};
 use desk_core::{Core, Roots};
 use serde_json::{Value, json};
 
+static COUNTER: AtomicU64 = AtomicU64::new(0);
+
+/// A `store.json` in a folder of its own. The counter keeps tests running in parallel apart; the
+/// clock alone can hand two of them the same folder.
 fn temp_file() -> PathBuf {
     let nanos = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap()
         .as_nanos();
+    let n = COUNTER.fetch_add(1, Ordering::SeqCst);
     std::env::temp_dir()
-        .join(format!("desk-store-{}-{nanos}", std::process::id()))
+        .join(format!("desk-store-{}-{nanos}-{n}", std::process::id()))
         .join("store.json")
 }
 

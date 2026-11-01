@@ -1,0 +1,87 @@
+{
+  "id": "endue.git",
+  "name": "Git",
+  "version": "0.1.0",
+  "kind": "ui",
+  "entry": "ui/index.html",
+  "description": "A keyboard-first front for Git: the status of a repository, staging, commits, the log as a graph and diffs, every operation a command that runs the git program without a shell.",
+  "permissions": [
+    { "permission": "proc:spawn", "commands": ["git"] },
+    {
+      "permission": "cmd:invoke",
+      "ids": ["desk.files.open", "desk.palette.pick", "desk.buffers.open", "desk.buffers.update"]
+    }
+  ],
+  "surfaces": [{ "id": "main", "title": "Git", "placement": "center" }],
+  "contributes": {
+    "commands": [
+      {
+        "id": "endue.git.status",
+        "title": "Git: status",
+        "keywords": ["repository", "stage", "vc", "version control"]
+      },
+      {
+        "id": "endue.git.refresh",
+        "title": "Git: refresh",
+        "keywords": ["reload", "revert-buffer"]
+      },
+      { "id": "endue.git.stage", "title": "Git: stage", "keywords": ["add", "index"] },
+      { "id": "endue.git.unstage", "title": "Git: unstage", "keywords": ["reset", "index"] },
+      {
+        "id": "endue.git.discard",
+        "title": "Git: discard changes",
+        "keywords": ["restore", "checkout", "clean"]
+      },
+      { "id": "endue.git.commit", "title": "Git: commit", "keywords": ["amend", "sign-off"] },
+      { "id": "endue.git.log", "title": "Git: log", "keywords": ["history", "graph", "commits"] },
+      { "id": "endue.git.diff", "title": "Git: diff", "keywords": ["changes", "patch", "staged"] },
+      { "id": "endue.git.fetch", "title": "Git: fetch", "keywords": ["remote", "prune"] },
+      { "id": "endue.git.pull", "title": "Git: pull", "keywords": ["remote", "fast-forward"] },
+      { "id": "endue.git.push", "title": "Git: push", "keywords": ["remote", "upstream"] },
+      {
+        "id": "endue.git.checkout",
+        "title": "Git: switch branch",
+        "keywords": ["branch", "switch", "create"]
+      },
+      { "id": "endue.git.visit", "title": "Git: open the file", "keywords": ["find-file"] },
+      {
+        "id": "endue.git.cancel",
+        "title": "Git: cancel the running operation",
+        "keywords": ["kill"]
+      }
+    ],
+    "keys": [{ "key": "Mod+Shift+G", "command": "endue.git.status" }],
+    "settings": {
+      "endue.git.log-count": {
+        "kind": "integer",
+        "default": 200,
+        "description": "How many commits the log loads at a time."
+      },
+      "endue.git.diff-context": {
+        "kind": "integer",
+        "default": 3,
+        "description": "Lines of context around each change in a diff."
+      },
+      "endue.git.sign-off": {
+        "kind": "boolean",
+        "default": false,
+        "description": "Add a Signed-off-by trailer to every commit (DCO)."
+      },
+      "endue.git.pull-rebase": {
+        "kind": "boolean",
+        "default": false,
+        "description": "Pull with --rebase instead of --ff-only."
+      },
+      "endue.git.confirm": {
+        "kind": "boolean",
+        "default": true,
+        "description": "Ask before discarding changes or pushing with --force-with-lease."
+      },
+      "endue.git.recent-max": {
+        "kind": "integer",
+        "default": 10,
+        "description": "How many repositories to remember for the repository pick."
+      }
+    }
+  }
+}

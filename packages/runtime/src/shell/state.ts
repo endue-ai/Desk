@@ -1,5 +1,6 @@
 /**
- * The shell's state in one store, plus the sample desk the prototype starts with. Profiles, the
+ * The shell's state in one store, the empty desk the app starts with and the sample desk the dev
+ * page and the fixtures start with. Profiles, the
  * moved desktops and Eris's settings mirror the runtime's (link.ts); the theme is desk.theme's.
  */
 import type { A2ATask, Agent, AgentCard, Space } from "@endue-ai/bridge";
@@ -16,7 +17,7 @@ export interface DrawerItem {
   id: string;
   kind: "surface" | "file" | "recent";
   name: string;
-  /** Clock time it entered the drawer; recent items fade after 12 h and leave after 24 h. */
+  /** Wall-clock milliseconds it entered the drawer; recent items fade after 12 h and leave after 24 h. */
   at: number;
   placement?: SurfacePlacement;
 }
@@ -45,6 +46,8 @@ export interface DeskState {
   tasks: A2ATask[];
   directory: "loading" | "ready" | "offline";
   drawer: DrawerItem[];
+  /** Plugin surfaces the runtime handed to the shell's windows (ADR 0040), in mount order. */
+  adopted: { id: string; title: string }[];
   attention: { id: string; text: string }[];
   desks: { id: string; name: string; busy: boolean; here: boolean }[];
   brain: BrainStatus;
@@ -99,7 +102,8 @@ export class Store {
 
 const HOUR = 3_600_000;
 
-export function sampleState(lang: Lang): DeskState {
+/** What the app starts with: the base profile, nothing in the drawer, no brain until the core says. */
+export function emptyState(lang: Lang): DeskState {
   return {
     lang,
     // The base until desk.profiles lists the profiles.
@@ -116,10 +120,34 @@ export function sampleState(lang: Lang): DeskState {
     cards: {},
     tasks: [],
     directory: "loading",
+    drawer: [],
+    adopted: [],
+    attention: [],
+    desks: [],
+    brain: { mode: "offline" },
+    sees: { folders: [], calendar: false, mail: false, mic: false },
+    vm: "resting",
+    listening: false,
+    popover: null,
+    dialog: null,
+    eris: { state: "idle", density: "balanced", soul: "wisp", saying: "" },
+    composer: { open: false, text: "", selected: 0 },
+    focused: null,
+    pane: null,
+  };
+}
+
+/**
+ * The sample desk the dev page and the fixtures start with (never the app): drawer items dated
+ * from `epoch` in wall-clock milliseconds, things that need attention, other desks, a local brain.
+ */
+export function sampleState(lang: Lang, epoch = Date.now()): DeskState {
+  return {
+    ...emptyState(lang),
     drawer: [
-      { id: "file-brief", kind: "file", name: "brief.pdf", at: -3 * HOUR },
-      { id: "recent-weather", kind: "recent", name: "Weather this week", at: -2 * HOUR },
-      { id: "recent-summary", kind: "recent", name: "Inbox summary", at: -18 * HOUR },
+      { id: "file-brief", kind: "file", name: "brief.pdf", at: epoch - 3 * HOUR },
+      { id: "recent-weather", kind: "recent", name: "Weather this week", at: epoch - 2 * HOUR },
+      { id: "recent-summary", kind: "recent", name: "Inbox summary", at: epoch - 18 * HOUR },
     ],
     attention: [
       { id: "a-overlap", text: "Two meetings overlap at 14:00" },
@@ -133,12 +161,6 @@ export function sampleState(lang: Lang): DeskState {
     sees: { folders: ["~/Documents"], calendar: true, mail: false, mic: true },
     vm: "resting",
     listening: true,
-    popover: null,
-    dialog: null,
-    eris: { state: "idle", density: "balanced", soul: "wisp", saying: "" },
-    composer: { open: false, text: "", selected: 0 },
-    focused: null,
-    pane: null,
   };
 }
 

@@ -20,10 +20,13 @@ export class PluginCommands {
     this.#bridge = bridge;
   }
 
-  /** Register the commands a mounting plugin's manifest declares under its own id. */
+  /**
+   * Register the commands a mounting plugin's manifest declares under its own id. A command with
+   * `runs` is an alias the desk answers (policies/aliases.ts), so it is not the plugin's.
+   */
   mounted(info: PluginInfo): void {
-    const own = (info.manifest?.contributes?.commands ?? []).filter((c) =>
-      c.id.startsWith(`${info.id}.`),
+    const own = (info.manifest?.contributes?.commands ?? []).filter(
+      (c) => c.id.startsWith(`${info.id}.`) && !c.runs,
     );
     for (const command of own) {
       const params = {

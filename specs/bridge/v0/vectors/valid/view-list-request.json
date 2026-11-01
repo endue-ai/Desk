@@ -1,0 +1,13 @@
+{
+  "target": "BridgeRequest",
+  "description": "view.list under view:manage",
+  "instance": {
+    "id": 45,
+    "method": "view.list",
+    "params": {
+      "scope": {
+        "permission": "view:manage"
+      }
+    }
+  }
+}

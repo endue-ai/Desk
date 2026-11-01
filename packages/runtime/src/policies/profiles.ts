@@ -2,13 +2,17 @@
  * desk.profiles (init.el, switched while Desk runs): a profile is a plugin set plus settings. The
  * one init.yaml names applies at start; switching applies another: its settings layer over
  * init.yaml's and its plugins turn on and off. People save their own with desk.profiles.save.
+ * Autoload plugins are desk.files' to turn on and off (ADR 0046): profiles leave them as they are.
  */
 import type { ProfileContribution } from "@endue-ai/bridge";
 import { CommandError } from "../commands";
 import type { NoticeInput } from "../notify";
+import { autoloads } from "../policy";
 import { type DeskContext, disposer, type Installed } from "./context";
 
 export const PROFILES_KEY = "profiles";
+/** The plugins a profile switch turned off, kept so the next profile that leaves them on brings them back. */
+export const OFF_KEY = "profiles.off";
 /** Never turned off by a profile: there would be no way back. */
 const KEEP_ON = new Set(["desk.profiles", "desk.palette"]);
 
@@ -32,6 +36,8 @@ export function installProfiles(
   const offs = disposer();
   let saved: ProfileContribution[] = [];
   let active: string | undefined;
+  /** What a switch turned off and no later profile turned on again (OFF_KEY in the store). */
+  let turnedOff: string[] = [];
   const listeners = new Set<() => void>();
   const changed = () => {
     for (const listener of [...listeners]) listener();
@@ -58,11 +64,27 @@ export function installProfiles(
     if (!quiet) notify({ caller: "desk", title: `Profile: ${profile.name}`, level: "info" });
     settings.setLayer("profile", profile.settings ?? {});
     const installed = new Map(hub.plugins.map((p) => [p.id, p.enabled]));
-    for (const plugin of profile.plugins?.enabled ?? []) {
-      if (installed.get(plugin) === false) await setEnabled(plugin, true);
+    const lazy = new Set(hub.plugins.filter((p) => autoloads(p)).map((p) => p.id));
+    const disabled = new Set((profile.plugins?.disabled ?? []).filter((p) => !lazy.has(p)));
+    // What an earlier switch turned off comes back under a profile that leaves it on; what the
+    // person turned off by hand is not in this list and stays off.
+    for (const plugin of turnedOff) {
+      if (!disabled.has(plugin) && !lazy.has(plugin) && installed.get(plugin) === false)
+        await setEnabled(plugin, true);
     }
-    for (const plugin of profile.plugins?.disabled ?? []) {
-      if (installed.get(plugin) === true && !KEEP_ON.has(plugin)) await setEnabled(plugin, false);
+    const off = new Set(turnedOff.filter((plugin) => disabled.has(plugin)));
+    for (const plugin of profile.plugins?.enabled ?? []) {
+      if (!lazy.has(plugin) && installed.get(plugin) === false) await setEnabled(plugin, true);
+    }
+    for (const plugin of disabled) {
+      if (installed.get(plugin) === true && !KEEP_ON.has(plugin)) {
+        await setEnabled(plugin, false);
+        off.add(plugin);
+      }
+    }
+    if (off.size !== turnedOff.length || [...off].some((p) => !turnedOff.includes(p))) {
+      turnedOff = [...off];
+      void bridge.call("store.set", { key: OFF_KEY, value: turnedOff }).catch(() => {});
     }
     changed();
     return id;
@@ -112,7 +134,7 @@ export function installProfiles(
       if (!id) return null;
       if (!/^[a-z0-9][a-z0-9._-]{0,63}$/.test(id))
         throw new CommandError("failed", `${id} is not a profile name (lowercase, digits, . _ -)`);
-      const plugins = hub.plugins.filter((p) => p.status === "ready");
+      const plugins = hub.plugins.filter((p) => p.status === "ready" && !autoloads(p));
       const profile: ProfileContribution = {
         id,
         name: name ?? all().find((p) => p.id === id)?.name ?? id,
@@ -147,9 +169,14 @@ export function installProfiles(
     },
     start: async () => {
       if (!hub.enabled("desk.profiles")) return;
-      const stored = await bridge.call("store.get", { key: PROFILES_KEY }).catch(() => ({}));
+      const [stored, off] = await Promise.all([
+        bridge.call("store.get", { key: PROFILES_KEY }).catch(() => ({})),
+        bridge.call("store.get", { key: OFF_KEY }).catch(() => ({})),
+      ]);
       const value = (stored as { value?: unknown }).value;
       if (Array.isArray(value)) saved = value as ProfileContribution[];
+      const offValue = (off as { value?: unknown }).value;
+      if (Array.isArray(offValue)) turnedOff = offValue.filter((p) => typeof p === "string");
       changed();
       const start = hub.startProfile;
       if (all().some((p) => p.id === start)) await apply(start, true);

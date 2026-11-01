@@ -13,6 +13,7 @@ import { type ErisHandle, mountEris } from "../eris/Eris";
 import { detectPlatform, type Platform } from "../input";
 import type { PluginHostOptions } from "../plugins";
 import { createRuntime, type Runtime } from "../runtime";
+import { pluginWindows } from "../surface/host";
 import { mountSurfaces } from "../surface/Surface";
 import { loadDirectory } from "../system/agents";
 import { mountSystemLayer } from "../system/layer";
@@ -25,7 +26,7 @@ import { h, listen } from "./dom";
 import { keepShell, syncProfiles } from "./link";
 import { paneViews } from "./panes";
 import { mountRail } from "./Rail";
-import { Store, sampleState } from "./state";
+import { type DeskState, emptyState, Store } from "./state";
 import { Ticker } from "./ticker";
 
 export interface DeskOptions {
@@ -36,12 +37,16 @@ export interface DeskOptions {
   core: BridgeClient;
   /** Where plugin files are served from; the runtime mounts the enabled UI plugins (the palette). */
   plugins: PluginHostOptions;
+  /** Native hosts may pick a file; cancellation leaves the desk unchanged. */
+  pickFile?: () => Promise<string | null>;
   clock?: Clock;
   lang?: Lang;
   /** "Mod" is ⌘ on mac and Ctrl elsewhere; detected from the browser unless given. */
   platform?: Platform;
   /** Wall-clock time at clock 0, for "started 4 minutes ago" (default: now). */
   epoch?: number;
+  /** State to start from over the empty desk: the dev page and the fixtures seed the sample desk. */
+  seed?: Partial<DeskState>;
 }
 
 export interface Desk {
@@ -60,7 +65,7 @@ export function mountDesk(options: DeskOptions): Desk {
   const clock = options.clock ?? realClock();
   const ticker = new Ticker(clock);
   const epoch = options.epoch ?? Date.now();
-  const store = new Store(sampleState(options.lang ?? "ko"));
+  const store = new Store({ ...emptyState(options.lang ?? "ko"), ...options.seed });
   const platform = options.platform ?? detectPlatform();
   const root = options.root;
   root.classList.add("shell");
@@ -70,10 +75,12 @@ export function mountDesk(options: DeskOptions): Desk {
     say: () => undefined,
     setState: () => undefined,
   };
+  const windows = pluginWindows(store);
   // The runtime is created below; nothing reads it before then.
   const ctx: ShellCtx = {
     store,
     bridge: options.bridge,
+    windows,
     runtime: undefined as unknown as Runtime,
     now: () => ticker.now(),
     ticker,
@@ -97,8 +104,11 @@ export function mountDesk(options: DeskOptions): Desk {
     platform,
     language: options.lang ?? "ko",
     plugins: options.plugins,
+    pickFile: options.pickFile,
     themeRoot: doc.documentElement,
     views: paneViews(ctx),
+    // One window manager: the plugins' centre and floating surfaces are the shell's windows.
+    windows,
   });
   const { runtime } = ctx;
 
@@ -125,9 +135,15 @@ export function mountDesk(options: DeskOptions): Desk {
   ];
 
   const refresh = () => loadDirectory(ctx);
+  // The rail shows the brain the core has; a host without one leaves it offline.
+  const brain = options.bridge.brain.status().then(
+    (status) => store.set({ brain: status }),
+    () => undefined,
+  );
   const ready = (runtime.plugins?.ready ?? runtime.ready)
     .then(() => restored.done())
     .then(refresh)
+    .then(() => brain)
     .then(() => runtime.commands.settled());
 
   return {

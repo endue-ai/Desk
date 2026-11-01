@@ -1,16 +1,23 @@
-//! The `desk-plugin` URL scheme: plugin files by id and path, and the plugin SDK.
+//! The `desk-plugin` URL scheme: plugin files by id and path, the plugin SDK
+//! (`/_desk/plugin-sdk.js`), the UI bundle and shared sheets (`/_desk/ui.js`, `tokens.css`, `base.css`), and the
+//! files fs.url hands out (`/_desk/file/<token>/<file name>`), with HTTP ranges (ADR 0041).
 //!
 //! macOS and Linux see `desk-plugin://localhost/<id>/<path>`; Windows sees
 //! `http://desk-plugin.localhost/<id>/<path>`. Plugin frames are sandboxed (opaque origin), so
-//! responses allow any origin, and HTML gets a CSP that blocks network access: plugins reach the
-//! network only through the bridge's net.fetch, under its permission check.
+//! responses allow any origin, preflights are answered (`Range` may be sent; `Content-Range` and
+//! its kin may be read), and HTML gets a CSP that blocks network access: plugins reach the network
+//! only through the bridge's net.fetch, under its permission check, while `fetch` reaches the scheme
+//! itself (file URLs). Scripts, media, images and fonts load from the scheme, media and images also
+//! from `blob:` and `data:`; workers start from `blob:` and WebAssembly may compile (ADR 0048).
 
 use std::io;
 use std::sync::Arc;
 
-use desk_core::Core;
-use tauri::http::{Request, Response, StatusCode, header};
+use desk_core::{Core, FileUrl, media_type};
+use tauri::http::{Method, Request, Response, StatusCode, header};
 use tauri::{AppHandle, Manager};
+
+use crate::file_urls;
 
 pub const SCHEME: &str = "desk-plugin";
 
@@ -19,25 +26,86 @@ const SDK: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/../../../packages/plugin-sdk/dist/plugin-sdk.js"
 ));
+const UI_PATH: &str = "_desk/ui.js";
+const UI: &str = include_str!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/../../../packages/ui/dist/ui.js"
+));
+const TOKENS_PATH: &str = "_desk/tokens.css";
+const TOKENS: &str = include_str!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/../../../packages/ui/dist/tokens.css"
+));
+const BASE_PATH: &str = "_desk/base.css";
+const BASE: &str = include_str!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/../../../packages/ui/dist/base.css"
+));
+const FILE_PREFIX: &str = "_desk/file/";
 
 const SOURCES: &str = "desk-plugin: http://desk-plugin.localhost";
+/// The plugin frames' CSP with `{sources}` for the scheme in both forms; the runtime's e2e server
+/// serves its plugin frames under the same file, with its own origin as the sources.
+const PLUGIN_CSP: &str = include_str!("plugin-csp.txt");
 
+/// What the scheme serves from the core: plugin files, and the file a URL token names.
+pub trait Source {
+    fn plugin_file(&self, id: &str, path: &str) -> io::Result<Vec<u8>>;
+    fn file_url(&self, token: &str) -> Option<FileUrl>;
+}
+
+impl Source for Core {
+    fn plugin_file(&self, id: &str, path: &str) -> io::Result<Vec<u8>> {
+        Core::plugin_file(self, id, path)
+    }
+
+    fn file_url(&self, token: &str) -> Option<FileUrl> {
+        Core::file_url(self, token)
+    }
+}
+
+/// Called off the main thread: a file URL reads from disk.
 pub fn serve(app: &AppHandle, request: &Request<Vec<u8>>) -> Response<Vec<u8>> {
-    let path = decode(request.uri().path().trim_start_matches('/'));
-    let body = if path == SDK_PATH {
-        Ok(SDK.as_bytes().to_vec())
-    } else {
-        match path.split_once('/') {
-            Some((id, file)) => app.state::<Arc<Core>>().plugin_file(id, file),
-            None => Err(io::Error::from(io::ErrorKind::NotFound)),
-        }
-    };
+    let core = app.state::<Arc<Core>>();
+    let response = respond(request, core.as_ref());
     #[cfg(debug_assertions)]
-    eprintln!(
-        "desk-plugin: {} {}",
-        if body.is_ok() { 200 } else { 404 },
-        request.uri()
-    );
+    {
+        let range = request.headers().get(header::RANGE);
+        let range = range.and_then(|r| r.to_str().ok()).unwrap_or("-");
+        eprintln!(
+            "desk-plugin: {} {} {range}",
+            response.status(),
+            request.uri()
+        );
+    }
+    response
+}
+
+/// The response for a request: a file URL, one of the embedded bundles, or a plugin's file.
+fn respond(request: &Request<Vec<u8>>, source: &impl Source) -> Response<Vec<u8>> {
+    if request.method() == Method::OPTIONS {
+        return preflight();
+    }
+    let path = decode(request.uri().path().trim_start_matches('/'));
+    if let Some(rest) = path.strip_prefix(FILE_PREFIX) {
+        let file = match rest.split_once('/') {
+            Some((token, _name)) => source.file_url(token),
+            None => None,
+        };
+        let range = request.headers().get(header::RANGE);
+        let range = range.and_then(|r| r.to_str().ok());
+        return file_urls::respond(file, range, request.method() == Method::HEAD);
+    }
+    let body = match path.as_str() {
+        SDK_PATH => Ok(SDK.as_bytes().to_vec()),
+        UI_PATH => Ok(UI.as_bytes().to_vec()),
+        TOKENS_PATH => Ok(TOKENS.as_bytes().to_vec()),
+        BASE_PATH => Ok(BASE.as_bytes().to_vec()),
+        _ => match path.split_once('/') {
+            Some((id, file)) => source.plugin_file(id, file),
+            None => Err(io::Error::from(io::ErrorKind::NotFound)),
+        },
+    };
     let mut response = Response::builder()
         .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
         .header(header::CACHE_CONTROL, "no-store");
@@ -63,23 +131,32 @@ pub fn serve(app: &AppHandle, request: &Request<Vec<u8>>) -> Response<Vec<u8>> {
 }
 
 fn plugin_csp() -> String {
-    format!(
-        "default-src 'none'; script-src {SOURCES} 'unsafe-inline'; style-src {SOURCES} 'unsafe-inline'; \
-         img-src {SOURCES} data:; font-src {SOURCES}; connect-src 'none'; frame-src 'none'; form-action 'none'"
-    )
+    PLUGIN_CSP.trim().replace("{sources}", SOURCES)
 }
 
+/// The answer to a CORS preflight, for any path: a frame's `fetch` with a `Range` header asks first.
+fn preflight() -> Response<Vec<u8>> {
+    Response::builder()
+        .status(StatusCode::NO_CONTENT)
+        .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+        .header(header::ACCESS_CONTROL_ALLOW_METHODS, "GET, HEAD, OPTIONS")
+        .header(header::ACCESS_CONTROL_ALLOW_HEADERS, "Range")
+        .header(header::ACCESS_CONTROL_EXPOSE_HEADERS, file_urls::EXPOSED)
+        .header(header::ACCESS_CONTROL_MAX_AGE, "600")
+        .body(Vec::new())
+        .unwrap_or_default()
+}
+
+/// A plugin file's type: the web's own types here, media and documents as fs.url types them.
 fn mime_type(path: &str) -> &'static str {
     match path.rsplit('.').next().unwrap_or_default() {
         "html" => "text/html; charset=utf-8",
         "js" | "mjs" => "text/javascript; charset=utf-8",
         "css" => "text/css; charset=utf-8",
         "json" => "application/json",
-        "svg" => "image/svg+xml",
-        "png" => "image/png",
         "woff2" => "font/woff2",
         "wasm" => "application/wasm",
-        _ => "application/octet-stream",
+        _ => media_type(path),
     }
 }
 
@@ -102,4 +179,40 @@ fn decode(path: &str) -> String {
         i += 1;
     }
     String::from_utf8_lossy(&out).into_owned()
+}
+
+#[cfg(test)]
+mod tests;
+
+#[cfg(test)]
+mod shared_sheets_tests {
+    use super::*;
+
+    struct NoFiles;
+    impl Source for NoFiles {
+        fn plugin_file(&self, _: &str, _: &str) -> io::Result<Vec<u8>> {
+            Err(io::ErrorKind::NotFound.into())
+        }
+        fn file_url(&self, _: &str) -> Option<FileUrl> {
+            None
+        }
+    }
+
+    #[test]
+    fn shared_sheets_are_embedded_css_with_frame_cors() {
+        for (path, content) in [(TOKENS_PATH, TOKENS), (BASE_PATH, BASE)] {
+            let request = Request::builder()
+                .uri(format!("/{path}"))
+                .body(vec![])
+                .unwrap();
+            let response = respond(&request, &NoFiles);
+            assert_eq!(response.status(), StatusCode::OK);
+            assert_eq!(
+                response.headers()[header::CONTENT_TYPE],
+                "text/css; charset=utf-8"
+            );
+            assert_eq!(response.headers()[header::ACCESS_CONTROL_ALLOW_ORIGIN], "*");
+            assert_eq!(response.body(), content.as_bytes());
+        }
+    }
 }

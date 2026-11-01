@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Docker</title>
+    <script type="importmap">
+      { "imports": { "@endue-ai/plugin-sdk": "/_desk/plugin-sdk.js" } }
+    </script>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <header>
+      <h1>Docker</h1>
+      <p id="head">
+        <span id="engine"></span>
+        <span id="context"></span>
+        <span id="live" role="img" aria-label="Live: following the engine's events" hidden>●</span>
+        <span id="busy" role="img" aria-label="Working" hidden>…</span>
+      </p>
+      <nav id="tabs" role="tablist" aria-label="Docker lists"></nav>
+    </header>
+    <p id="problem" role="alert" hidden></p>
+    <main>
+      <div id="view" role="tree" aria-label="Docker containers" tabindex="0"></div>
+      <section id="logs" hidden aria-labelledby="logs-head">
+        <p id="logs-head"></p>
+        <div id="log-lines" role="log" aria-labelledby="logs-head" tabindex="0"></div>
+        <p id="logs-end"></p>
+      </section>
+    </main>
+    <footer>
+      <p id="hints"></p>
+      <p id="status" role="status"></p>
+    </footer>
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

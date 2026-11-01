@@ -34,7 +34,7 @@ through a reused fixture server. How do parallel agents integrate without steppi
 Chosen option: "one trunk with lanes, task worktrees and a merge queue".
 
 * **Lanes.** A task's Scope is its lane. `scripts/lanes.mjs` starts a ready task only when its Scope
-  overlaps no task in flight, at most four at once. `Cargo.lock`, `pnpm-lock.yaml` and
+  overlaps no task in flight, at most fifteen at once (four until 2026-10-29, see the note below). `Cargo.lock`, `pnpm-lock.yaml` and
   `docs/qa/TESTING.md` are shared: the later PR takes main's lockfile and regenerates it, or keeps both
   table rows. Claiming adds `ai:in-progress`; the lane frees when the PR merges and closes the issue.
   One dispatcher claims at a time.
@@ -67,3 +67,7 @@ Chosen option: "one trunk with lanes, task worktrees and a merge queue".
 
 Applying the ruleset is a manual step after this change is on `main`: `scripts/sync-rulesets.sh`.
 Procedures: `.claude/skills/dispatch/SKILL.md`, `.claude/skills/run-task/SKILL.md`.
+
+Note, 2026-10-31: the cap on tasks in flight went from four to fifteen on 2026-10-29 (#45, PR #48;
+`MAX_IN_FLIGHT` in `scripts/lanes.mjs` is the number). The merge queue's group size went from four to
+15 the same day (PR #91). Both are constants, so this record is amended in place rather than superseded.

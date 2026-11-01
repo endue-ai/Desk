@@ -132,3 +132,19 @@ test.describe("desk.notify", () => {
     await expect(page.locator(".desk-status")).not.toHaveText(/while you were away/);
   });
 });
+
+test.describe("desk.display: overlays", () => {
+  test("a modal overlay keeps the focus when a later surface asks for it", async ({ page }) => {
+    // test.echo mounts first as an overlay; test.counter mounts after it and asks for the focus.
+    const rules = [
+      { match: { plugin: "test.echo" }, area: "overlay", focus: true },
+      { match: { plugin: "test.counter" }, area: "center", focus: true },
+    ];
+    await open(page, `?rules=${encodeURIComponent(JSON.stringify(rules))}`);
+    await expect(page.locator('[data-surface="test.echo"].desk-surface--overlay')).toBeVisible();
+    const focused = await page.evaluate(
+      () => document.activeElement?.closest("[data-surface]")?.getAttribute("data-surface") ?? null,
+    );
+    expect(focused).toBe("test.echo");
+  });
+});

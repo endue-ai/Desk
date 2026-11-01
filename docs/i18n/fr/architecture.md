@@ -9,7 +9,7 @@ Desk est un OS conçu comme une seule app : un shell Tauri et un petit cœur Rus
 les fonctions au-dessus de ce runtime, hors réglages et raccourcis, sont des plugins. Comme Emacs, le cœur ne garde que des primitives,
 et tout le reste peut être modifié pendant que l'app tourne.
 
-L’interface des réglages, les raccourcis par défaut et la sauvegarde des préférences font partie du cœur du runtime, pas des plugins. Ils restent disponibles sans aucun plugin ; les plugins peuvent ajouter des raccourcis. [ADR 0031](../../adr/0031-core-settings-and-keybindings.md).
+L’interface des réglages, les raccourcis par défaut et la sauvegarde des préférences font partie du cœur du runtime, pas des plugins. Ils restent disponibles sans aucun plugin ; les plugins peuvent ajouter des raccourcis. [ADR 0053](../../adr/0053-core-settings-and-keybindings.md).
 
 ## Vue d'ensemble
 
@@ -20,14 +20,17 @@ L’interface des réglages, les raccourcis par défaut et la sauvegarde des pr�
  the user's computer               │                           cost of change
  ┌─────────────────────────────────┴──────────────────────────────┐
  │ Plugins      UI (iframe) · logic (Wasm) · tools (MCP, in a VM) │  instant
+ │              · connectors (Wasm · MCP) · views (data)          │
  ├────────────────────────────────────────────────────────────────┤
  │ Web runtime  compositor (3D/2D) · surfaces · input · layout    │  restart
  │              · UI plugin host · desk shell (until ADR 0026)    │
  ├────────────────────────────────────────────────────────────────┤
- │ Desk bridge  specs/bridge → TS client · Rust types             │  rebuild
+ │ Desk bridge  specs/bridge · specs/item · specs/view            │  rebuild
+ │              · specs/connector → TS client · Rust types        │
  ├────────────────────────────────────────────────────────────────┤
- │ Rust core    permissions · event bus · storage                 │  rebuild
- │              · logic plugin host (Wasm) · VM · brain clients   │
+ │ Rust core    permissions · event bus · storage · item index    │  rebuild
+ │              · logic plugin and connector host (Wasm) · VM     │
+ │              · built-in connectors · brain clients             │
  ├────────────────────────────────────────────────────────────────┤
  │ Tauri shell  windows · webviews · primitives (fs, proc, net,   │  rebuild
  │              audio)                                            │
@@ -45,8 +48,8 @@ jour de l'app. Seul endue AI vit hors de l'appareil. Tout le reste s'exécute su
 | endue AI (cloud) | hors du dépôt ; seuls `specs/brain` et `crates/desk-brain-endue` se trouvent ici |
 | Plugins | `plugins/` · `packages/plugin-sdk` · `specs/plugin` · `specs/wit` · `examples/` |
 | Runtime web | `packages/runtime` : le compositeur, l'hôte des plugins UI (ADR 0012) et, jusqu'à la décision de l'ADR 0026, le shell du bureau (ADR 0025) · `packages/ui` |
-| Pont Desk | `specs/bridge` · `packages/bridge` · `crates/desk-bridge` (types générés depuis `specs/bridge` et `specs/plugin`) |
-| Cœur Rust | `crates/desk-core` · `crates/desk-plugin-host`, qui exécute les plugins logiques sur Wasmtime (ADR 0019) · `crates/desk-vm` · `crates/desk-brain*` |
+| Pont Desk | `specs/bridge` · `specs/item`, `specs/view` et `specs/connector`, les contrats de la couche d'intégration (ADR 0032) · `packages/bridge` · `crates/desk-bridge` (types générés depuis ces contrats et `specs/plugin`) |
+| Cœur Rust | `crates/desk-core`, qui sert aussi la couche d'intégration (`data.*`, `connector.*`, `view.*`, `catalog.get`) et définit les connecteurs intégrés `desk.calendar` et `desk.reminders` sur le calendrier de l'OS (ADR 0036, à l'état de proposition) · `crates/desk-index`, l'index des éléments dans un seul fichier SQLite (ADR 0033) · `crates/desk-plugin-host`, qui exécute les plugins logiques (ADR 0019) et les connecteurs Wasm (ADR 0034, à l'état de proposition) sur Wasmtime · `crates/desk-vm` · `crates/desk-brain*` |
 | Shell Tauri | `apps/desk/src-tauri` · `crates/desk-sys` |
 | OS | `apps/desk/src-tauri/capabilities` · workflow de publication (signature, notarisation) |
 
@@ -63,6 +66,7 @@ tourne. Desk adopte la même forme et nomme ses parties comme le ferait un syst�
 | Gestionnaire de fenêtres | gestionnaire de fenêtres | frames · windows | compositeur de canevas 3D |
 | Shell | shell de terminal | M-x | Eris · palette de commandes |
 | Applications | applications | paquets (Elisp) | plugins (UI · Wasm · MCP) |
+| Données connectées | systèmes de fichiers montés · index de recherche | backends de Gnus · Org agenda | connecteurs · éléments réunis dans un seul index · vues (ADR 0032) |
 | Configuration de démarrage | init | init.el | `init.yaml` (profil + plugins + réglages) |
 | Gestionnaire de paquets | apt · brew | package.el · MELPA | place de marché |
 | Surcharge de comportement | aucune | advice · hooks | hooks d'événements · surcharges de commandes |

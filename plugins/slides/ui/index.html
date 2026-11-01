@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Slides</title>
+    <script type="importmap">
+      { "imports": { "@endue-ai/plugin-sdk": "/_desk/plugin-sdk.js" } }
+    </script>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <header>
+      <h1 id="deck-name">No presentation open</h1>
+      <p id="deck-detail">
+        <span id="deck-format"></span>
+        <span id="deck-count"></span>
+        <span id="deck-badge" hidden>Text only</span>
+      </p>
+      <button id="play" type="button" aria-keyshortcuts="F5 Shift+F5" hidden>Play</button>
+    </header>
+    <main id="deck" hidden>
+      <nav id="rail-nav" aria-label="Slides">
+        <ol id="rail"></ol>
+      </nav>
+      <div id="viewer">
+        <section id="stage" tabindex="0" aria-roledescription="slide" aria-label="Slide">
+          <div id="slide-frame"></div>
+        </section>
+        <section id="notes" aria-labelledby="notes-title">
+          <h2 id="notes-title">Notes</h2>
+          <div id="notes-text"></div>
+        </section>
+      </div>
+    </main>
+    <section id="details" tabindex="-1" hidden aria-labelledby="details-name"></section>
+    <div id="player" role="dialog" aria-modal="true" aria-label="Play mode" tabindex="-1" hidden>
+      <div id="player-stage"></div>
+      <div id="player-bar">
+        <p id="player-counter"></p>
+        <p id="player-goto" aria-live="polite"></p>
+        <button id="player-leave" type="button" aria-keyshortcuts="Escape">Leave play mode</button>
+      </div>
+    </div>
+    <p id="status" role="status"></p>
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

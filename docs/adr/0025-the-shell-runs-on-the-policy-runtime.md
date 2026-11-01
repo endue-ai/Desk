@@ -55,7 +55,8 @@ since the rail, the bottom edge and the agent bar hold those places.
 * Good, because a plugin's command, key, theme or profile reaches the shell with no shell code.
 * Good, because the shell's state survives restarts through the same record as the desk's.
 * Bad, because two window models remain: the shell's floating windows and the grid. One of them should
-  go when the shell's views become plugins.
+  go when the shell's views become plugins. (ADR 0040: the shell's windows hold the plugin surfaces;
+  the grid stays only for a runtime without the shell.)
 * Bad, because profiles that lay the desk out (`desk.shell.mode`) mean nothing on the bare desk.
 
 ## More Information

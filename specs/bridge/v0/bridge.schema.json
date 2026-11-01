@@ -33,6 +33,7 @@
         { "$ref": "fs.schema.json#/$defs/FsWriteRequest" },
         { "$ref": "fs.schema.json#/$defs/FsListRequest" },
         { "$ref": "fs.schema.json#/$defs/FsWatchRequest" },
+        { "$ref": "fs.schema.json#/$defs/FsUrlRequest" },
         { "$ref": "proc.schema.json#/$defs/ProcSpawnRequest" },
         { "$ref": "proc.schema.json#/$defs/ProcWriteRequest" },
         { "$ref": "proc.schema.json#/$defs/ProcResizeRequest" },
@@ -54,6 +55,11 @@
         { "$ref": "store.schema.json#/$defs/StoreSetRequest" },
         { "$ref": "init.schema.json#/$defs/InitGetRequest" },
         { "$ref": "brain.schema.json#/$defs/BrainSayRequest" },
+        { "$ref": "brain.schema.json#/$defs/BrainAgentsListRequest" },
+        { "$ref": "brain.schema.json#/$defs/BrainAgentsCardRequest" },
+        { "$ref": "brain.schema.json#/$defs/BrainSpacesListRequest" },
+        { "$ref": "brain.schema.json#/$defs/BrainTasksListRequest" },
+        { "$ref": "brain.schema.json#/$defs/BrainStatusRequest" },
         { "$ref": "cmd.schema.json#/$defs/CmdRegisterRequest" },
         { "$ref": "cmd.schema.json#/$defs/CmdUnregisterRequest" },
         { "$ref": "cmd.schema.json#/$defs/CmdListRequest" },
@@ -65,7 +71,21 @@
         { "$ref": "log.schema.json#/$defs/LogWriteRequest" },
         { "$ref": "log.schema.json#/$defs/LogTailRequest" },
         { "$ref": "events.schema.json#/$defs/EventsSubscribeRequest" },
-        { "$ref": "events.schema.json#/$defs/EventsUnsubscribeRequest" }
+        { "$ref": "events.schema.json#/$defs/EventsUnsubscribeRequest" },
+        { "$ref": "data.schema.json#/$defs/DataQueryRequest" },
+        { "$ref": "data.schema.json#/$defs/DataGetRequest" },
+        { "$ref": "data.schema.json#/$defs/DataSubscribeRequest" },
+        { "$ref": "data.schema.json#/$defs/DataUnsubscribeRequest" },
+        { "$ref": "connector.schema.json#/$defs/ConnectorListRequest" },
+        { "$ref": "connector.schema.json#/$defs/ConnectorConnectRequest" },
+        { "$ref": "connector.schema.json#/$defs/ConnectorDisconnectRequest" },
+        { "$ref": "connector.schema.json#/$defs/ConnectorSyncNowRequest" },
+        { "$ref": "view.schema.json#/$defs/ViewListRequest" },
+        { "$ref": "view.schema.json#/$defs/ViewGetRequest" },
+        { "$ref": "view.schema.json#/$defs/ViewSaveRequest" },
+        { "$ref": "view.schema.json#/$defs/ViewRemoveRequest" },
+        { "$ref": "catalog.schema.json#/$defs/CatalogGetRequest" },
+        { "$ref": "shell.schema.json#/$defs/ShellOpenRequest" }
       ]
     },
     "BridgeResponse": {
@@ -121,7 +141,7 @@
       ]
     },
     "BridgeEvent": {
-      "description": "Something the core reports without being asked: file changes, process output, wake words, permission changes, notifications, commands, settings and log entries.",
+      "description": "Something the core reports without being asked: file changes, process output, wake words, permission changes, notifications, surfaces, commands, settings, log entries, and changes to items, connectors and views.",
       "oneOf": [
         { "$ref": "fs.schema.json#/$defs/FsChangedEvent" },
         { "$ref": "proc.schema.json#/$defs/ProcOutputEvent" },
@@ -131,12 +151,17 @@
         { "$ref": "perm.schema.json#/$defs/PermPromptEvent" },
         { "$ref": "plugins.schema.json#/$defs/PluginChangedEvent" },
         { "$ref": "ui.schema.json#/$defs/UiNotifiedEvent" },
+        { "$ref": "ui.schema.json#/$defs/UiSurfaceOpenedEvent" },
+        { "$ref": "ui.schema.json#/$defs/UiSurfaceClosedEvent" },
         { "$ref": "brain.schema.json#/$defs/BrainTurnEvent" },
         { "$ref": "cmd.schema.json#/$defs/CmdChangedEvent" },
         { "$ref": "cmd.schema.json#/$defs/CmdInvokedEvent" },
         { "$ref": "cmd.schema.json#/$defs/CmdAnsweredEvent" },
         { "$ref": "settings.schema.json#/$defs/SettingsChangedEvent" },
-        { "$ref": "log.schema.json#/$defs/LogEntryEvent" }
+        { "$ref": "log.schema.json#/$defs/LogEntryEvent" },
+        { "$ref": "data.schema.json#/$defs/DataChangedEvent" },
+        { "$ref": "connector.schema.json#/$defs/ConnectorChangedEvent" },
+        { "$ref": "view.schema.json#/$defs/ViewChangedEvent" }
       ]
     }
   }

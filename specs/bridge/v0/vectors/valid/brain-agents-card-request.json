@@ -1,0 +1,14 @@
+{
+  "target": "BridgeRequest",
+  "description": "brain.agents.card names the agent",
+  "instance": {
+    "id": 22,
+    "method": "brain.agents.card",
+    "params": {
+      "agentId": "ag_01JBZ8Q4MR0000000000000001",
+      "scope": {
+        "permission": "brain:converse"
+      }
+    }
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "target": "ConnectorManifest",
+  "description": "oauth names its authorization URL, token URL and scopes",
+  "instance": {
+    "binding": "wasm",
+    "auth": {
+      "kind": "oauth",
+      "authorizationUrl": "https://accounts.example.com/auth",
+      "scopes": ["read"]
+    },
+    "resources": [
+      {
+        "kind": "note"
+      },
+      {
+        "kind": "file",
+        "live": true
+      }
+    ],
+    "sync": {
+      "mode": "pull",
+      "intervalSeconds": 300
+    },
+    "instanceSettings": {
+      "folder": {
+        "kind": "string",
+        "title": "Folder",
+        "required": true
+      }
+    }
+  }
+}

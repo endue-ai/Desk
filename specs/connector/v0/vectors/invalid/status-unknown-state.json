@@ -1,0 +1,7 @@
+{
+  "target": "ConnectorStatus",
+  "description": "offline is not a connector state",
+  "instance": {
+    "state": "offline"
+  }
+}

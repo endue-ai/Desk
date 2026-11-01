@@ -1,0 +1,48 @@
+{
+  "target": "View",
+  "description": "a stack of a week calendar over the selected event's detail",
+  "instance": {
+    "id": "example.week",
+    "version": "0.1.0",
+    "title": "Week",
+    "requires": {
+      "calendar": {
+        "kinds": ["event"]
+      }
+    },
+    "layout": {
+      "type": "stack",
+      "direction": "vertical",
+      "children": [
+        {
+          "type": "calendar",
+          "range": "week",
+          "binding": {
+            "kinds": ["event"],
+            "sources": ["$calendar"]
+          }
+        },
+        {
+          "type": "detail",
+          "binding": {
+            "kinds": ["event"],
+            "sources": ["$calendar"]
+          },
+          "fields": [
+            {
+              "label": "When",
+              "value": "{start|date} {start|time}"
+            },
+            {
+              "label": "Where",
+              "value": "{location}"
+            },
+            {
+              "value": "{body}"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

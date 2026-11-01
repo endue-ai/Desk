@@ -22,10 +22,14 @@ tauri-build = { version = "2", features = [] }
 desk-brain-endue.workspace = true
 desk-bridge.workspace = true
 desk-core.workspace = true
+desk-index.workspace = true
+desk-sys = { workspace = true, features = ["calendar"] }
 # Not in [workspace.dependencies] yet: a later chore moves it there.
 desk-ipc = { path = "../../../crates/desk-ipc" }
 serde_json.workspace = true
 tauri = { version = "2", features = [] }
+tauri-plugin-dialog = "2.8.4"
+tauri-plugin-single-instance = { path = "../../../vendor/tauri-plugin-single-instance" }
 
 [lints]
 workspace = true

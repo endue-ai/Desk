@@ -11,6 +11,21 @@ export interface KeyLike {
 
 export type Platform = "mac" | "other";
 
+/** Route window keys while leaving composition and plain text editing to their controls. */
+export function listenForShortcuts(win: Window, shortcuts: ShortcutRouter): () => void {
+  const onKey = (event: KeyboardEvent) => {
+    if (event.defaultPrevented || event.isComposing || event.keyCode === 229) return;
+    const editable = (event.target as Element | null)?.closest?.(
+      "input, textarea, select, [contenteditable]:not([contenteditable=false])",
+    );
+    if (editable && !(event.metaKey || event.ctrlKey || event.altKey) && event.key !== "Escape")
+      return;
+    if (shortcuts.handle(event)) event.preventDefault();
+  };
+  win.addEventListener("keydown", onKey);
+  return () => win.removeEventListener("keydown", onKey);
+}
+
 /** Guess the platform from the browser; tests pass it explicitly. */
 export function detectPlatform(): Platform {
   const nav = typeof navigator === "undefined" ? undefined : navigator;

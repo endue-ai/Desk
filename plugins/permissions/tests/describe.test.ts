@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import type { Permission } from "../../../packages/bridge/src/index";
-import { broadWarning, describeCaller, describePermission, durationLabel } from "../ui/describe.js";
+import {
+  broadWarning,
+  describeCaller,
+  describePermission,
+  durationLabel,
+  fileManagerOf,
+} from "../ui/describe.js";
 import { plugin } from "./harness";
 
 describe("permissions in words", () => {
@@ -49,6 +55,31 @@ describe("permissions in words", () => {
     }
     const unknown = { permission: "camera:capture" } as unknown as Permission;
     expect(describePermission(unknown)).toEqual({ label: "camera:capture", scope: "" });
+  });
+
+  it("puts shell:open in words: links in the browser, files in the platform's file manager", () => {
+    const links: Permission = { permission: "shell:open", schemes: ["https", "mailto"] };
+    const files: Permission = { permission: "shell:open", paths: ["~/Downloads/**"] };
+    const both: Permission = { permission: "shell:open", schemes: ["https"], paths: ["~/Desk/**"] };
+    expect(describePermission(links, "Finder")).toEqual({
+      label: "Open links (https, mailto) in your browser",
+      scope: "",
+    });
+    expect(describePermission(files, "Finder")).toEqual({
+      label: "Show files in Finder",
+      scope: "~/Downloads/**",
+    });
+    expect(describePermission(files, "Explorer").label).toBe("Show files in Explorer");
+    expect(describePermission(both, "the file manager")).toEqual({
+      label: "Open links (https) in your browser and show files in the file manager",
+      scope: "~/Desk/**",
+    });
+    expect(fileManagerOf("MacIntel")).toBe("Finder");
+    expect(fileManagerOf("Win32")).toBe("Explorer");
+    expect(fileManagerOf("Linux x86_64")).toBe("the file manager");
+    expect(describePermission(files).label).toBe(
+      `Show files in ${fileManagerOf(globalThis.navigator?.platform ?? "")}`,
+    );
   });
 
   it("names the three durations", () => {

@@ -1,6 +1,6 @@
 [package]
 name = "desk-sys"
-description = "Primitives: fs (notify), proc (portable-pty), net and audio (cpal, wake word), each behind a cargo feature."
+description = "Primitives: fs (notify), proc (portable-pty), net, calendar (EventKit) and audio (cpal, wake word), each behind a cargo feature."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -18,6 +18,17 @@ fs = ["dep:notify"]
 proc = ["dep:portable-pty", "dep:shared_child", "dep:libc"]
 ## HTTP(S) fetch over rustls, with a host allowlist checked on every redirect.
 net = ["dep:ureq", "dep:url"]
+## Links and files handed to the system: open http, https and mailto URLs, show files in the file manager.
+shell = ["dep:url"]
+## Calendars, events and reminders, read only: EventKit on macOS, `unsupported` elsewhere, and a fake.
+calendar = [
+  "dep:time",
+  "dep:block2",
+  "dep:objc2",
+  "dep:objc2-app-kit",
+  "dep:objc2-event-kit",
+  "dep:objc2-foundation",
+]
 
 [dependencies]
 desk-bridge.workspace = true
@@ -26,9 +37,47 @@ portable-pty = { version = "0.9", optional = true }
 shared_child = { version = "1.1", optional = true, default-features = false }
 ureq = { version = "3.1", optional = true, default-features = false, features = ["rustls", "platform-verifier"] }
 url = { version = "2.5", optional = true }
+time = { version = "0.3.47", optional = true, default-features = false, features = ["formatting", "parsing"] }
 
 [target.'cfg(unix)'.dependencies]
 libc = { version = "0.2", optional = true }
+
+# EventKit, for `calendar` on macOS; AppKit only for a calendar's color.
+[target.'cfg(target_os = "macos")'.dependencies]
+block2 = { version = "0.6", optional = true }
+objc2 = { version = "0.6.2", optional = true }
+objc2-app-kit = { version = "0.3.2", optional = true, default-features = false, features = [
+  "std",
+  "NSColor",
+  "NSColorSpace",
+  "objc2-core-foundation",
+] }
+objc2-event-kit = { version = "0.3.2", optional = true, default-features = false, features = [
+  "std",
+  "bitflags",
+  "block2",
+  "EKCalendar",
+  "EKCalendarItem",
+  "EKEvent",
+  "EKEventStore",
+  "EKObject",
+  "EKRecurrenceDayOfWeek",
+  "EKRecurrenceEnd",
+  "EKRecurrenceRule",
+  "EKReminder",
+  "EKTypes",
+] }
+objc2-foundation = { version = "0.3.2", optional = true, default-features = false, features = [
+  "std",
+  "NSArray",
+  "NSCalendar",
+  "NSDate",
+  "NSEnumerator",
+  "NSError",
+  "NSString",
+  "NSTimeZone",
+  "NSValue",
+] }
 
 [[test]]
 name = "fs"
@@ -41,6 +90,14 @@ required-features = ["proc"]
 [[test]]
 name = "net"
 required-features = ["net"]
+
+[[test]]
+name = "calendar"
+required-features = ["calendar"]
+
+[[test]]
+name = "shell"
+required-features = ["shell"]
 
 [lints]
 workspace = true

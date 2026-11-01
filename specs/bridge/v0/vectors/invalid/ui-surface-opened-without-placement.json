@@ -1,0 +1,12 @@
+{
+  "target": "BridgeEvent",
+  "description": "ui.surface.opened always names a placement, so the runtime can mount it",
+  "instance": {
+    "event": "ui.surface.opened",
+    "data": {
+      "handle": "s-1",
+      "caller": "example.hello",
+      "surface": "main"
+    }
+  }
+}

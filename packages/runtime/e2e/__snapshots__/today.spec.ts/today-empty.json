@@ -1,0 +1,124 @@
+{
+  "tag": "main",
+  "data-density": "regular",
+  "children": [
+    {
+      "tag": "header",
+      "class": "bar",
+      "children": [
+        {
+          "tag": "h1",
+          "text": "Today"
+        },
+        {
+          "tag": "p",
+          "class": "description",
+          "text": "Today's events, the tasks due by tonight, unread messages and the notes touched last."
+        }
+      ]
+    },
+    {
+      "tag": "div",
+      "class": "container grid",
+      "data-direction": "horizontal",
+      "children": [
+        {
+          "tag": "div",
+          "class": "pane",
+          "children": [
+            {
+              "tag": "section",
+              "class": "component",
+              "data-component": "agenda",
+              "data-state": "empty",
+              "children": [
+                {
+                  "tag": "h2",
+                  "class": "component-title",
+                  "text": "Schedule"
+                },
+                {
+                  "tag": "p",
+                  "class": "empty",
+                  "text": "Nothing on the calendar today."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "div",
+          "class": "pane",
+          "children": [
+            {
+              "tag": "section",
+              "class": "component",
+              "data-component": "list",
+              "data-state": "empty",
+              "children": [
+                {
+                  "tag": "h2",
+                  "class": "component-title",
+                  "text": "Due"
+                },
+                {
+                  "tag": "p",
+                  "class": "empty",
+                  "text": "Nothing due."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "div",
+          "class": "pane",
+          "children": [
+            {
+              "tag": "section",
+              "class": "component",
+              "data-component": "list",
+              "data-state": "empty",
+              "children": [
+                {
+                  "tag": "h2",
+                  "class": "component-title",
+                  "text": "Unread"
+                },
+                {
+                  "tag": "p",
+                  "class": "empty",
+                  "text": "No unread messages."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "div",
+          "class": "pane",
+          "children": [
+            {
+              "tag": "section",
+              "class": "component",
+              "data-component": "list",
+              "data-state": "empty",
+              "children": [
+                {
+                  "tag": "h2",
+                  "class": "component-title",
+                  "text": "Last touched"
+                },
+                {
+                  "tag": "p",
+                  "class": "empty",
+                  "text": "No notes yet."
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

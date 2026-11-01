@@ -12,8 +12,9 @@ cheap to change.
    as plugins; the brief puts them in `packages/runtime/src/shell`. They can move into `plugins/` once
    the plugin API covers chrome placement. The first-run Eris plugin (`plugins/eris`) is unchanged.
 3. **`pnpm dev`** (root or package) starts the shell on the browser stubs (`browserCore` for the core,
-   kept in localStorage; `browserBridge` for the shell); `just dev` still starts the Tauri app, which
-   does not mount the shell yet.
+   kept in localStorage; `browserBridge` for the shell); `just dev` starts the Tauri app, which mounts
+   the shell on the Rust core (#115). Since ADR 0040 the shell's windows hold the plugins' centre and
+   floating surfaces; unplaced ones are tiled in the free area until moved.
 4. **Snapshots are render trees** (ADR 0011), not pixels. Boxes are recorded only for elements that CSS
    sizes, never for text-sized ones. The Eris canvas is captured as `data-mesh` (front, back and dot
    counts plus a hash of the rounded frame) and `data-rings` (displacement per ring, % of R).

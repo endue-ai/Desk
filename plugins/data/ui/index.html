@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Data</title>
+    <script type="importmap">
+      { "imports": { "@endue-ai/plugin-sdk": "/_desk/plugin-sdk.js", "@endue-ai/ui": "/_desk/ui.js" } }
+    </script>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <header>
+      <div class="title">
+        <h1 id="name">No file open</h1>
+        <p id="detail"><span id="path"></span> <span id="format" class="format"></span></p>
+      </div>
+      <div id="toolbar" role="toolbar" aria-label="Data" hidden>
+        <div class="modes" role="group" aria-label="Show">
+          <button type="button" id="mode-tree" aria-pressed="false">Tree</button>
+          <button type="button" id="mode-raw" aria-pressed="false">Raw</button>
+          <button type="button" id="mode-both" aria-pressed="true">Both</button>
+        </div>
+        <button type="button" id="expand-all">Expand all</button>
+        <button type="button" id="collapse-all">Collapse all</button>
+        <div class="search" role="search">
+          <input
+            id="search"
+            type="search"
+            aria-label="Search keys and values"
+            aria-keyshortcuts="Meta+F Control+F"
+            placeholder="Search keys and values"
+            autocomplete="off"
+            spellcheck="false"
+          />
+          <button type="button" id="search-next" aria-keyshortcuts="Meta+G Control+G">Next</button>
+          <span id="search-count" aria-live="polite"></span>
+        </div>
+        <button type="button" id="validate">Validate with…</button>
+      </div>
+    </header>
+    <desk-progress id="progress" label="Reading" cancelable hidden></desk-progress>
+    <p id="note" hidden></p>
+    <main id="panes" hidden>
+      <section id="tree-pane" aria-label="Tree">
+        <div id="tree" role="tree" tabindex="0" aria-label="Tree"></div>
+      </section>
+      <section id="raw-pane" aria-label="Raw text">
+        <div id="raw" role="region" tabindex="0" aria-label="Raw text"></div>
+      </section>
+    </main>
+    <section id="details" tabindex="-1" aria-labelledby="details-title" hidden>
+      <h2 id="details-title">This file cannot be shown</h2>
+      <dl>
+        <dt>Name</dt>
+        <dd id="details-name"></dd>
+        <dt>Size</dt>
+        <dd id="details-size"></dd>
+        <dt>Format</dt>
+        <dd id="details-format"></dd>
+      </dl>
+      <p id="details-reason"></p>
+    </section>
+    <footer>
+      <div id="where" hidden>
+        <span class="label">Pointer</span> <code id="pointer"></code>
+        <span class="label">Path</span> <code id="dotted"></code>
+        <button type="button" id="reveal" hidden>Reveal value</button>
+      </div>
+      <section id="problems" aria-label="Problems" hidden></section>
+      <p id="status" role="status"></p>
+    </footer>
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

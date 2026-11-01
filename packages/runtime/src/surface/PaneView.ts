@@ -9,7 +9,7 @@ import { draggable } from "../shell/drag";
 import { icon } from "../shell/icons";
 import { closePane, focusPane, resizeSplit } from "../shell/windows";
 import { leaves, MIN_RATIO, panesOf } from "./tree";
-import { type Mounted, viewOf } from "./views";
+import { type Mounted, resolveView, viewOf } from "./views";
 
 const STEP = 0.05;
 
@@ -19,7 +19,8 @@ export function renderPanes(ctx: ShellCtx, surface: SurfacePlacement): Mounted {
   const many = leaves(tree).length > 1;
 
   const leafEl = (node: Extract<PaneNode, { kind: "view" }>) => {
-    const view = viewOf(ctx, node.view);
+    const shown = resolveView(ctx.store.get(), surface, node.view);
+    const view = viewOf(ctx, shown);
     const mounted = view.mount({ surface: surface.id, pane: node.id });
     if (mounted.off) offs.push(mounted.off);
     return h(
@@ -27,7 +28,7 @@ export function renderPanes(ctx: ShellCtx, surface: SurfacePlacement): Mounted {
       {
         class: `pane${view.byEris ? " is-eris" : ""}`,
         "data-pane": node.id,
-        "data-view": node.view,
+        "data-view": shown,
         role: "group",
         "aria-label": view.title,
       },

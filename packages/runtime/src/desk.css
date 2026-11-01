@@ -83,6 +83,14 @@ body {
   border-top: 1px solid var(--desk-border);
 }
 
+/* A surface a window host holds (the shell's windows, ADR 0040): the window has the title bar. */
+.desk-surface--windowed {
+  grid-template-rows: minmax(0, 1fr);
+  height: 100%;
+  border: 0;
+  border-radius: 0;
+}
+
 /* An overlay surface (the first run) covers the whole desk, status line included. */
 .desk-surface--overlay {
   position: absolute;

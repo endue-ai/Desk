@@ -1,0 +1,398 @@
+/* The desk's design tokens (@endue-ai/ui). Frames do not inherit the desk's, so they are declared
+   here; the runtime redefines them for the theme in force. The environment colours are the plugin's. */
+:root {
+  --desk-background: #141416;
+  --desk-card: #1e1d21;
+  --desk-border: #333136;
+  --desk-text: #f2f0f5;
+  --desk-text-muted: #b0adb7;
+  --desk-accent: #b6a3f5;
+  --db-production: #f29bb0;
+  --db-staging: #e8c98a;
+  --db-development: #7fe0cf;
+  --db-error: #f29bb0;
+  --db-row: 24px;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  margin: 0;
+  background: var(--desk-card);
+  color: var(--desk-text);
+  font: 13px/1.5 -apple-system, "SUIT", "Inter", system-ui, sans-serif;
+}
+
+/* A production connection draws a band at the top, so a write there is never a surprise. */
+body[data-tag="production"] {
+  box-shadow: inset 0 3px 0 var(--db-production);
+}
+
+header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  padding: 8px 12px 6px;
+  border-bottom: 1px solid var(--desk-border);
+}
+
+h1,
+h2 {
+  margin: 0;
+  font-size: 14px;
+}
+
+nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-left: auto;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  padding: 2px 8px;
+  border: 1px solid var(--desk-border);
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+}
+
+button:hover,
+button:focus-visible {
+  border-color: var(--desk-accent);
+}
+
+body[data-running="false"] .cancel {
+  opacity: 0.5;
+}
+
+input,
+select {
+  padding: 2px 6px;
+  border: 1px solid var(--desk-border);
+  border-radius: 6px;
+  background: var(--desk-background);
+}
+
+.tag {
+  padding: 0 6px;
+  border-radius: 8px;
+  border: 1px solid var(--desk-border);
+  color: var(--desk-text-muted);
+  font-size: 11px;
+}
+
+.tag-production {
+  --tag: var(--db-production);
+}
+
+.tag-staging {
+  --tag: var(--db-staging);
+}
+
+.tag-development {
+  --tag: var(--db-development);
+}
+
+.tag[class*="tag-"] {
+  border-color: var(--tag);
+  color: var(--tag);
+}
+
+main {
+  position: relative;
+  display: grid;
+  flex: 1;
+  grid-template-columns: minmax(180px, 26%) 1fr;
+  min-height: 0;
+}
+
+#side {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-right: 1px solid var(--desk-border);
+}
+
+.side-head {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+}
+
+#tree {
+  flex: 1;
+  overflow: auto;
+  outline: none;
+}
+
+.row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding-right: 8px;
+  white-space: nowrap;
+  cursor: default;
+}
+
+.row[aria-selected="true"] {
+  background: var(--desk-background);
+  box-shadow: inset 2px 0 0 var(--desk-accent);
+}
+
+.row .caret {
+  width: 1ch;
+  color: var(--desk-text-muted);
+}
+
+.row .detail,
+.row.info {
+  overflow: hidden;
+  color: var(--desk-text-muted);
+  text-overflow: ellipsis;
+}
+
+.row.error,
+.line.error,
+.error {
+  color: var(--db-error);
+}
+
+#work,
+#results {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+#empty,
+.empty {
+  padding: 12px;
+  color: var(--desk-text-muted);
+}
+
+#editor {
+  flex: 0 0 38%;
+  min-height: 80px;
+  padding: 8px 12px;
+  border: 0;
+  border-bottom: 1px solid var(--desk-border);
+  background: var(--desk-background);
+  font: 13px/1.5 ui-monospace, "SF Mono", Menlo, monospace;
+  resize: vertical;
+  outline: none;
+  tab-size: 2;
+}
+
+#table-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--desk-border);
+}
+
+#table-bar input {
+  width: 16em;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+}
+
+#tabs {
+  display: flex;
+  gap: 2px;
+  padding: 4px 8px 0;
+  overflow-x: auto;
+}
+
+#tabs [role="tab"] {
+  border-radius: 6px 6px 0 0;
+  border-bottom: 0;
+}
+
+#tabs [aria-selected="true"] {
+  border-color: var(--desk-accent);
+  background: var(--desk-background);
+}
+
+#result {
+  flex: 1;
+  min-height: 0;
+  border-top: 1px solid var(--desk-border);
+}
+
+.scroller {
+  height: 100%;
+  overflow: auto;
+}
+
+.grid {
+  position: relative;
+  min-width: max-content;
+  outline: none;
+  font: 12px/var(--db-row) ui-monospace, "SF Mono", Menlo, monospace;
+}
+
+.grid-row {
+  display: grid;
+  height: var(--db-row);
+}
+
+.head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--desk-card);
+  border-bottom: 1px solid var(--desk-border);
+}
+
+.header {
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.header[aria-sort="ascending"]::after {
+  content: " ▲";
+}
+
+.header[aria-sort="descending"]::after {
+  content: " ▼";
+}
+
+.spacer {
+  position: relative;
+}
+
+.body .grid-row {
+  position: absolute;
+}
+
+.cell {
+  overflow: hidden;
+  padding: 0 8px;
+  border-right: 1px solid var(--desk-border);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.cell.number {
+  text-align: right;
+}
+
+.cell.null {
+  color: var(--desk-text-muted);
+  font-style: italic;
+}
+
+.cell.chosen {
+  background: var(--desk-background);
+}
+
+.cell.cursor {
+  box-shadow: inset 0 0 0 1px var(--desk-accent);
+}
+
+.messages {
+  margin: 0;
+  padding: 8px 12px;
+  list-style: none;
+  overflow: auto;
+  max-height: 100%;
+  box-sizing: border-box;
+  font: 12px/1.6 ui-monospace, "SF Mono", Menlo, monospace;
+  white-space: pre-wrap;
+}
+
+.line.notice,
+.line.skipped {
+  color: var(--desk-text-muted);
+}
+
+.dialog {
+  position: absolute;
+  inset: 24px auto auto 50%;
+  z-index: 2;
+  display: grid;
+  gap: 6px;
+  width: min(440px, 90%);
+  padding: 14px 16px;
+  border: 1px solid var(--desk-border);
+  border-radius: 10px;
+  background: var(--desk-card);
+  transform: translateX(-50%);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+}
+
+.dialog label {
+  display: grid;
+  grid-template-columns: 7em 1fr;
+  align-items: center;
+  gap: 8px;
+}
+
+.dialog label.check {
+  display: flex;
+}
+
+.dialog p {
+  margin: 0;
+}
+
+.dialog .hint,
+.note {
+  color: var(--desk-text-muted);
+  font-size: 12px;
+}
+
+.dialog .buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 16px;
+  padding: 4px 12px 6px;
+  border-top: 1px solid var(--desk-border);
+  color: var(--desk-text-muted);
+  font-size: 12px;
+}
+
+footer p {
+  margin: 0;
+}
+
+#status {
+  margin-left: auto;
+  color: var(--desk-text);
+}
+
+.offscreen {
+  position: fixed;
+  left: -9999px;
+}
+[hidden] {
+  display: none !important;
+}

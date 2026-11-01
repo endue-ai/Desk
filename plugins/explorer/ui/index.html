@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Explorer</title>
+    <script type="importmap">
+      { "imports": { "@endue-ai/plugin-sdk": "/_desk/plugin-sdk.js" } }
+    </script>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <header>
+      <h1 id="title">Explorer</h1>
+      <div class="tools" role="toolbar" aria-label="Explorer tools">
+        <button id="add-folder" type="button" title="Add a folder" aria-label="Add a folder">+</button>
+        <button id="new-file" type="button" title="New file" aria-label="New file">
+          <span aria-hidden="true">✎</span>
+        </button>
+        <button id="toggle-preview" type="button" aria-controls="preview" aria-expanded="false" title="Quick preview (Space)" aria-label="Quick preview">◉</button>
+        <button id="refresh" type="button" title="Refresh" aria-label="Refresh">
+          <span aria-hidden="true">↻</span>
+        </button>
+        <button
+          id="toggle-hidden"
+          type="button"
+          title="Show dotfiles"
+          aria-label="Dotfiles"
+          aria-pressed="false"
+        >
+          <span aria-hidden="true">.•</span>
+        </button>
+      </div>
+    </header>
+    <main>
+      <ul id="tree" role="tree" aria-labelledby="title" tabindex="0"></ul>
+      <p id="empty" hidden>Nothing to show.</p>
+    </main>
+    <section id="preview" role="region" aria-labelledby="preview-title" hidden>
+      <div class="preview-tools">
+        <h2 id="preview-title"></h2>
+        <button id="preview-open" type="button" title="Open file (Enter)">Open</button>
+        <button id="preview-close" type="button" title="Close preview (Escape)" aria-label="Close preview">×</button>
+      </div>
+      <p id="preview-detail"></p>
+      <div id="preview-content"></div>
+    </section>
+    <p id="status" role="status"></p>
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

@@ -16,11 +16,19 @@
         <img src="./assets/state-idle.svg" alt="" />
         <figcaption id="label" role="status" aria-live="polite">Eris is idle</figcaption>
       </figure>
+      <section id="conversation" aria-label="Conversation history" tabindex="0"></section>
       <div id="answer" class="cap"></div>
       <form id="say" class="say">
+        <details id="attachment" hidden open>
+          <summary id="attachment-name"></summary>
+          <pre id="attachment-excerpt"></pre>
+          <button id="remove-attachment" type="button">Remove attachment</button>
+        </details>
         <label for="say-text" class="sr-only">Talk to Eris</label>
         <input id="say-text" type="text" autocomplete="off" maxlength="8000" placeholder="Say something to Eris" />
         <button type="submit" class="send">Send</button>
+        <button id="attach-file" type="button">Attach open text file</button>
+        <p id="context-notice" role="status" aria-live="polite"></p>
       </form>
     </main>
     <script type="module" src="./main.js"></script>

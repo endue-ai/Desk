@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Web</title>
+    <script type="importmap">
+      { "imports": { "@endue-ai/plugin-sdk": "/_desk/plugin-sdk.js" } }
+    </script>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <header>
+      <div id="heading">
+        <h1 id="file-name">No file open</h1>
+        <p id="file-detail"></p>
+      </div>
+      <button id="source-toggle" type="button" aria-pressed="false" aria-controls="source" hidden>
+        Source
+      </button>
+    </header>
+    <p id="bar" role="status" hidden></p>
+    <main id="body" tabindex="-1" aria-labelledby="file-name">
+      <nav id="entries" aria-label="Entries" hidden><ul id="entry-list"></ul></nav>
+      <div id="page" tabindex="0" role="document" aria-label="Page" hidden></div>
+      <pre id="text" tabindex="0" aria-label="Record" hidden></pre>
+      <section id="card" tabindex="-1" aria-labelledby="card-title" hidden></section>
+      <section id="outline" tabindex="-1" aria-label="Outline" hidden></section>
+      <section id="details" tabindex="-1" aria-label="Details" hidden></section>
+      <div id="source" tabindex="0" role="region" aria-label="Source" hidden></div>
+    </main>
+    <p id="status" role="status"></p>
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

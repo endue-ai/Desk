@@ -1,6 +1,7 @@
 //! The plugin registry: installed plugin folders, their validation status, revisions and the
 //! enabled flags, which are persisted in a small JSON store. init.yaml can hold plugins off at
-//! start without touching the persisted flags.
+//! start without touching the persisted flags. A plugin with no stored flag starts on, unless its
+//! manifest says `autoload`: then it is off until the desk turns it on (ADR 0046).
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
@@ -157,7 +158,12 @@ impl PluginRegistry {
                 PluginStatus::Failed
             },
             enabled: !self.held_off.contains(&entry.id)
-                && self.store.enabled.get(&entry.id).copied().unwrap_or(true),
+                && self
+                    .store
+                    .enabled
+                    .get(&entry.id)
+                    .copied()
+                    .unwrap_or(!autoload(entry)),
             built_in: entry.built_in,
             revision: entry.revision,
             manifest: entry.manifest.clone(),
@@ -175,6 +181,15 @@ impl PluginRegistry {
             }
         }
     }
+}
+
+/// Whether a plugin's manifest asks to stay off until the desk needs it.
+fn autoload(entry: &Entry) -> bool {
+    entry
+        .manifest
+        .as_ref()
+        .and_then(|manifest| manifest.autoload)
+        .unwrap_or(false)
 }
 
 /// Validate a folder: (id, manifest when valid, error when not).

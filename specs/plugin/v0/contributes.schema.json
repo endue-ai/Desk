@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://endue.ai/specs/plugin/v0/contributes.schema.json",
   "title": "plugin.json v0: contributes",
-  "description": "What a plugin adds to the desk's policies as data: commands, keys, display rules, file openers, themes, settings and profiles. Core settings and key bindings remain available without plugins. Core key bindings are the first layer; the runtime layers every enabled plugin's contributions: the built-in desk.* policy plugins first, then the others, then init.yaml, then the active profile (ADR 0017).",
+  "description": "What a plugin adds to the desk's policies as data: commands, keys, display rules, file openers, themes, settings, profiles and palette providers. Core settings and key bindings remain available without plugins. Core key bindings are the first layer; the runtime layers every enabled plugin's contributions: the built-in desk.* policy plugins first, then the others, then init.yaml, then the active profile (ADR 0017).",
   "$defs": {
     "PluginContributes": {
       "description": "A plugin's contributions. Every list is optional; the runtime ignores commands, settings and themes outside the plugin's own id.",
@@ -43,6 +43,11 @@
           "description": "Profiles: a plugin set plus settings, like an init file.",
           "type": "array",
           "items": { "$ref": "#/$defs/ProfileContribution" }
+        },
+        "paletteProviders": {
+          "description": "Commands the palette asks as the person types, each listing its answers in a group of its own after the commands. Their commands start with the plugin id; later layers' groups come after earlier ones.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/PaletteProvider" }
         }
       },
       "additionalProperties": false
@@ -63,9 +68,111 @@
           "description": "More words the palette matches.",
           "type": "array",
           "items": { "type": "string", "minLength": 1 }
+        },
+        "runs": {
+          "description": "Makes the command an alias the desk answers while the plugin is on: it runs this command with these args, the caller's object args merged over them key by key. Data-only plugins (view, policy) offer commands this way.",
+          "$ref": "#/$defs/CommandCall"
         }
       },
       "required": ["id", "title"],
+      "additionalProperties": false
+    },
+    "CommandArgs": {
+      "description": "A command's args: an object, as cmd.invoke passes them.",
+      "type": "object"
+    },
+    "CommandCall": {
+      "description": "A command and the args it is run with.",
+      "type": "object",
+      "properties": {
+        "command": { "$ref": "#/$defs/CommandId" },
+        "args": { "$ref": "#/$defs/CommandArgs" }
+      },
+      "required": ["command"],
+      "additionalProperties": false
+    },
+    "PaletteProvider": {
+      "description": "A command the palette runs with a PaletteQuery whenever the typed query changes (two characters or more), and whose PaletteResults it lists under title.",
+      "type": "object",
+      "properties": {
+        "command": { "$ref": "#/$defs/CommandId" },
+        "title": {
+          "description": "The group's name in the palette: Items.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        }
+      },
+      "required": ["command", "title"],
+      "additionalProperties": false
+    },
+    "PaletteQuery": {
+      "description": "What the palette asks a provider: the query as typed, trimmed, and how many results it shows.",
+      "type": "object",
+      "properties": {
+        "query": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "limit": { "type": "integer", "minimum": 1, "maximum": 50 }
+      },
+      "required": ["query", "limit"],
+      "additionalProperties": false
+    },
+    "PaletteResults": {
+      "description": "What a provider answers: its results, best first. The palette shows up to the limit it asked for.",
+      "type": "object",
+      "properties": {
+        "results": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/PaletteResult" },
+          "maxItems": 50
+        }
+      },
+      "required": ["results"],
+      "additionalProperties": false
+    },
+    "PaletteResult": {
+      "description": "One result: what it shows, and the commands that act on it, in order. Enter runs the first, Mod+Enter the second.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "description": "Unique among the provider's results: an item's connector/instance/id.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        },
+        "title": { "type": "string", "minLength": 1 },
+        "detail": {
+          "description": "A second, quieter line: Task · desk.fixtures.",
+          "type": "string"
+        },
+        "kind": {
+          "description": "A short lowercase word for what it is: an item kind for items (task, event), or the provider's own (file, plugin).",
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*$",
+          "maxLength": 32
+        },
+        "actions": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/PaletteAction" },
+          "minItems": 1,
+          "maxItems": 8
+        }
+      },
+      "required": ["id", "title", "actions"],
+      "additionalProperties": false
+    },
+    "PaletteAction": {
+      "description": "A command the palette runs on a result, with its args.",
+      "type": "object",
+      "properties": {
+        "command": { "$ref": "#/$defs/CommandId" },
+        "title": {
+          "description": "Shown under the results: Open in Desk.",
+          "type": "string",
+          "minLength": 1
+        },
+        "args": { "$ref": "#/$defs/CommandArgs" }
+      },
+      "required": ["command", "title"],
       "additionalProperties": false
     },
     "KeyCombo": {

@@ -7,6 +7,7 @@
     <!-- Build first (pnpm --filter @endue-ai/ui build), then open this file in a browser. Classic
          scripts, because browsers refuse module scripts over file://. -->
     <link rel="stylesheet" href="../dist/tokens.css" />
+    <link rel="stylesheet" href="../dist/base.css" />
     <link rel="stylesheet" href="./demo.css" />
     <script src="../dist/ui.iife.js"></script>
     <script src="./demo.js" defer></script>
@@ -15,7 +16,7 @@
     <main>
       <h1>@endue-ai/ui</h1>
       <p class="muted">
-        Six elements that read only the <code>--desk-*</code> custom properties from
+        Twelve elements that read only the <code>--desk-*</code> custom properties from
         <code>tokens.css</code>. Try them with the keyboard: Tab, the arrows, Enter, Space, Escape.
       </p>
       <p id="missing" hidden>
@@ -83,10 +84,44 @@
         <desk-toast id="toast"></desk-toast>
       </section>
 
+      <section aria-labelledby="h-progress">
+        <h2 id="h-progress">desk-progress</h2>
+        <div class="stack">
+          <desk-progress id="reading" label="Reading budget.xlsx" max="48" value="12.4"
+            detail="12.4 of 48.0 MB" cancelable delay="0"></desk-progress>
+          <desk-progress label="Opening the archive" detail="Reading the directory" delay="0"></desk-progress>
+          <div class="row"><desk-button id="read-again">Read again</desk-button></div>
+        </div>
+      </section>
+
+      <section aria-labelledby="h-table">
+        <h2 id="h-table">desk-table</h2>
+        <desk-table label="Open tasks" id="tasks"></desk-table>
+      </section>
+
+      <section aria-labelledby="h-agenda">
+        <h2 id="h-agenda">desk-agenda</h2>
+        <desk-agenda label="Today" id="agenda"></desk-agenda>
+      </section>
+
+      <section aria-labelledby="h-stat">
+        <h2 id="h-stat">desk-stat and desk-card</h2>
+        <div class="row">
+          <desk-stat label="Open tasks" value="7"></desk-stat>
+          <desk-stat label="Build" value="42" unit="min" density="compact"></desk-stat>
+          <desk-card heading="Ideas for the offsite"><p>A hike on Saturday, lunch by the river.</p></desk-card>
+        </div>
+      </section>
+
+      <section aria-labelledby="h-markdown">
+        <h2 id="h-markdown">desk-markdown</h2>
+        <desk-markdown id="markdown"></desk-markdown>
+      </section>
+
       <section aria-labelledby="h-theme">
         <h2 id="h-theme">a theme</h2>
         <p class="muted">A theme only redefines the custom properties; the elements follow.</p>
-        <desk-button id="theme">Swap the accent</desk-button>
+        <desk-button id="theme">Swap action colors</desk-button>
       </section>
     </main>
   </body>

@@ -5,7 +5,7 @@ import type { Commands } from "./commands";
 import { Preferences } from "./core/preferences";
 import { Edges, takesCell } from "./edges";
 import { PolicyHub } from "./hub";
-import { type Platform, ShortcutRouter } from "./input";
+import { listenForShortcuts, type Platform, ShortcutRouter } from "./input";
 import type { Keymap } from "./keymap";
 import {
   type Cell,
@@ -18,12 +18,14 @@ import {
 } from "./layout";
 import type { Notice, NoticeInput } from "./notify";
 import { PluginHost, type PluginHostOptions } from "./plugins";
+import { installAliases } from "./policies/aliases";
 import { installBuffers } from "./policies/buffers";
 import type { DeskContext } from "./policies/context";
 import { installDisplay } from "./policies/display";
 import { installFiles } from "./policies/files";
 import { installKeys } from "./policies/keys";
 import { installNotify } from "./policies/notify";
+import { installPalette } from "./policies/palette";
 import { installProfiles } from "./policies/profiles";
 import { installSession, type SessionPart } from "./policies/session";
 import { installTheme } from "./policies/theme";
@@ -51,6 +53,10 @@ export interface RuntimeOptions {
   themeRoot?: HTMLElement;
   /** Views a host draws itself (the shell's panes): focus cycling and buffers reach them too. */
   views?: HostViews;
+  /** Where centre and floating surfaces go instead of the grid: the shell's windows. */
+  windows?: WindowHost;
+  /** Native hosts may pick a file; null means the person cancelled. */
+  pickFile?: () => Promise<string | null>;
 }
 
 export interface RuntimeProfiles {
@@ -67,6 +73,14 @@ export interface RuntimePlugins {
   mounted(): string[];
   /** Send a command to a mounted plugin, for example `command("endue.eris", "state", "thinking")`. */
   command(id: string, name: string, args?: unknown): void;
+  /** Take a plugin's surface away for the rest of this session (closing its window does this). */
+  unmount(id: string): void;
+}
+
+/** The shell's window host places detached surfaces and removes them when closed (ADR 0040). */
+export interface WindowHost {
+  adopt(spec: SurfaceSpec, section: HTMLElement): void;
+  release(id: string): void;
 }
 
 export interface Runtime {
@@ -162,16 +176,7 @@ export function createRuntime(options: RuntimeOptions): Runtime {
   };
   applyGrid();
 
-  const onKey = (event: KeyboardEvent) => {
-    if (event.defaultPrevented || event.isComposing || event.keyCode === 229) return;
-    const editable = (event.target as Element | null)?.closest?.(
-      "input, textarea, select, [contenteditable]:not([contenteditable=false])",
-    );
-    if (editable && !(event.metaKey || event.ctrlKey || event.altKey) && event.key !== "Escape")
-      return;
-    if (shortcuts.handle(event)) event.preventDefault();
-  };
-  win.addEventListener("keydown", onKey);
+  const offKeys = listenForShortcuts(win, shortcuts);
 
   // Built before the policies so they can share messages with plugins and ask them things.
   let pluginHost: PluginHost | undefined;
@@ -201,6 +206,9 @@ export function createRuntime(options: RuntimeOptions): Runtime {
   const keys = installKeys(ctx, options.language ?? "ko");
   const preferences = new Preferences(hub.settings, bridge);
   const settingsWindow = installSettingsWindow(ctx, keys, preferences, options.language ?? "ko");
+  // Contributed commands with `runs`, and the palette's providers, are the desk's to answer.
+  const aliases = installAliases(ctx);
+  const palette = installPalette(ctx);
   const notify = installNotify(ctx, statusLine);
   const focusSurface = (id: string | null) => {
     shortcuts.focus(id);
@@ -225,7 +233,7 @@ export function createRuntime(options: RuntimeOptions): Runtime {
   });
   const buffers = installBuffers(ctx, { focus: focusAny });
   routing = connectViews(views, buffers);
-  const files = installFiles(ctx, buffers, (input) => notify.notify(input));
+  const files = installFiles(ctx, buffers, notify.notify, options.pickFile);
   const session = installSession(ctx, buffers, {
     layout: () => structuredClone(layout),
     setLayout: (next) => commit(next),
@@ -260,25 +268,43 @@ export function createRuntime(options: RuntimeOptions): Runtime {
       await Promise.all([hub.readInit(bridge), files.load(), preferences.load()]);
       await commands.settled();
       showStatus(`desk ready · bridge: ${bridge.adapterName}`);
+      if (hub.initProblem) {
+        notify.notify({
+          caller: "desk",
+          title: "init.yaml is not in force",
+          body: hub.initProblem,
+          level: "warning",
+        });
+      }
     },
     () => showStatus(`desk cannot reach the core · bridge: ${bridge.adapterName}`),
   );
 
   const openSurface = (spec: SurfaceSpec) => {
     const decision = display.decide(spec);
-    const section = surfaces.open({ ...spec, placement: decision.area });
+    // With a window host, centre and floating surfaces are its windows, not grid cells.
+    const windowed =
+      options.windows !== undefined && (decision.area === "center" || decision.area === "floating");
+    const placed = { ...spec, placement: decision.area };
+    const section = surfaces.open(placed, windowed ? null : undefined);
+    if (windowed) options.windows?.adopt(placed, section);
     // Overlays cover the desk and edge surfaces sit around it; only grid surfaces take cells.
-    if (takesCell(decision.area)) {
+    else if (takesCell(decision.area)) {
       commit(place(layout, spec.id, { colSpan: decision.columns, rowSpan: decision.rows }));
     }
     display.sizeEdge(section, decision);
     if ((decision.area === "center" || decision.area === "floating") && !spec.hidden) {
       buffers.surfaceOpened(spec.id, spec.title);
     }
-    if (decision.focus && !spec.hidden) focusSurface(spec.id);
+    // A visible overlay is modal: a surface that mounts under it does not take the focus from it.
+    const modal = root.querySelector(".desk-surface--overlay:not([hidden])");
+    if (decision.focus && !spec.hidden && (decision.area === "overlay" || !modal)) {
+      focusSurface(spec.id);
+    }
   };
   function closeSurface(id: string) {
     surfaces.close(id);
+    options.windows?.release(id);
     buffers.surfaceClosed(id);
     if (shortcuts.focused === id) shortcuts.focus(null);
   }
@@ -312,11 +338,12 @@ export function createRuntime(options: RuntimeOptions): Runtime {
         // The desk's built-ins are in the registry before profiles and the session run them.
         .then(() => commands.settled())
         .then(() => profiles.start())
-        .then(() => session.restore())
+        .then(() => session.restore().then(() => files.settle()))
         .then(() => commands.settled())
         .catch(() => {}),
       mounted: () => host.mounted(),
       command: (id, name, args) => host.command(id, name, args),
+      unmount: (id) => host.unmount(id),
     };
   }
 
@@ -352,18 +379,18 @@ export function createRuntime(options: RuntimeOptions): Runtime {
       settingsWindow.dispose();
       preferences.dispose();
       routing.dispose();
-      for (const policy of [profiles, session, files, buffers, display, notify, keys, theme]) {
+      const policies = [profiles, session, files, buffers, display, notify, palette, aliases];
+      for (const policy of [...policies, keys, theme]) {
         policy.dispose();
       }
       pluginHost?.stop();
       commands.dispose();
-      win.removeEventListener("keydown", onKey);
+      offKeys();
       for (const id of surfaces.ids()) surfaces.close(id);
       root.replaceChildren();
     },
   };
 }
-
 function memoryStorage(): LayoutStorage {
   const data = new Map<string, string>();
   return {

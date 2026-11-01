@@ -1,0 +1,17 @@
+{
+  "target": "PluginContributes",
+  "description": "an alias names the command it runs",
+  "instance": {
+    "commands": [
+      {
+        "id": "example.today.open",
+        "title": "Open today",
+        "runs": {
+          "args": {
+            "id": "example.today"
+          }
+        }
+      }
+    ]
+  }
+}

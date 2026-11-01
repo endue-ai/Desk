@@ -38,6 +38,8 @@ interface fs {
     name: string,
     kind: entry-kind,
     size: option<u64>,
+    /// When the entry last changed, RFC 3339 in UTC; none when the desk cannot tell.
+    modified-at: option<string>,
   }
 
   /// bridge: fs.read

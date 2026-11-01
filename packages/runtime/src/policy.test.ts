@@ -67,6 +67,39 @@ describe("collect", () => {
     expect(policy.files.map((f) => f.pattern)).toEqual(["*.md", "*"]);
   });
 
+  it("counts an off autoload plugin's file openers in its layer, and nothing else of it", () => {
+    const sheets = plugin(
+      "example.sheets",
+      {
+        files: [{ pattern: "*.csv", plugin: "example.sheets" }],
+        commands: [{ id: "example.sheets.find", title: "Find" }],
+        settings: { "example.sheets.encoding": { kind: "string", default: "auto" } },
+      },
+      { kind: "ui", enabled: false },
+    );
+    if (sheets.manifest) sheets.manifest.autoload = true;
+    const policy = collect([
+      plugin("desk.files", { files: [{ pattern: "*", plugin: "desk.files" }] }),
+      sheets,
+      plugin("example.mine", { files: [{ pattern: "*.csv", plugin: "example.mine" }] }),
+      plugin(
+        "example.off",
+        { files: [{ pattern: "*.txt", plugin: "example.off" }] },
+        {
+          enabled: false,
+        },
+      ),
+    ]);
+    expect(policy.files.map((f) => f.owner)).toEqual([
+      "example.mine",
+      "example.sheets",
+      "desk.files",
+    ]);
+    expect(policy.plugins).toEqual(["desk.files", "example.mine"]);
+    expect(policy.commands).toEqual([]);
+    expect(policy.settings).toEqual({});
+  });
+
   it("drops commands, settings and themes outside the plugin's own id", () => {
     const policy = collect([
       plugin(
@@ -89,6 +122,36 @@ describe("collect", () => {
     expect(Object.keys(policy.settings)).toEqual(["example.notes.folder"]);
     expect(policy.themes).toEqual([]);
     expect(policy.ignored).toHaveLength(3);
+  });
+
+  it("collects palette providers in layer order and ignores one whose command is outside its plugin", () => {
+    const policy = collect([
+      plugin("example.files", {
+        paletteProviders: [
+          { command: "example.files.find", title: "Files" },
+          { command: "desk.palette.items", title: "Steal the items" },
+        ],
+      }),
+      plugin(
+        "desk.palette",
+        { paletteProviders: [{ command: "desk.palette.items", title: "Items" }] },
+        { kind: "ui" },
+      ),
+      plugin(
+        "example.off",
+        { paletteProviders: [{ command: "example.off.find", title: "Off" }] },
+        {
+          enabled: false,
+        },
+      ),
+    ]);
+    expect(policy.paletteProviders).toEqual([
+      { command: "desk.palette.items", title: "Items", owner: "desk.palette" },
+      { command: "example.files.find", title: "Files", owner: "example.files" },
+    ]);
+    expect(policy.ignored).toEqual([
+      "example.files: palette provider desk.palette.items is outside example.files",
+    ]);
   });
 
   it("lets a later layer's profile replace an earlier one of the same id", () => {

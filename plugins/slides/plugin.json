@@ -1,0 +1,29 @@
+{
+  "id": "endue.slides",
+  "name": "Slides",
+  "version": "0.1.0",
+  "kind": "ui",
+  "entry": "ui/index.html",
+  "autoload": true,
+  "description": "Opens PowerPoint, OpenDocument and older PowerPoint presentations in one viewer with a thumbnail rail, speaker notes and play mode; shows Keynote previews and Google Slides shortcuts. Read-only.",
+  "permissions": [{ "permission": "cmd:invoke", "ids": ["desk.files.changed"] }],
+  "surfaces": [{ "id": "main", "title": "Slides", "placement": "center" }],
+  "contributes": {
+    "files": [
+      { "pattern": "*.pptx", "plugin": "endue.slides" },
+      { "pattern": "*.pptm", "plugin": "endue.slides" },
+      { "pattern": "*.ppsx", "plugin": "endue.slides" },
+      { "pattern": "*.ppsm", "plugin": "endue.slides" },
+      { "pattern": "*.potx", "plugin": "endue.slides" },
+      { "pattern": "*.potm", "plugin": "endue.slides" },
+      { "pattern": "*.ppt", "plugin": "endue.slides" },
+      { "pattern": "*.pps", "plugin": "endue.slides" },
+      { "pattern": "*.pot", "plugin": "endue.slides" },
+      { "pattern": "*.odp", "plugin": "endue.slides" },
+      { "pattern": "*.otp", "plugin": "endue.slides" },
+      { "pattern": "*.fodp", "plugin": "endue.slides" },
+      { "pattern": "*.key", "plugin": "endue.slides" },
+      { "pattern": "*.gslides", "plugin": "endue.slides" }
+    ]
+  }
+}

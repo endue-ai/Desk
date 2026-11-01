@@ -1,0 +1,49 @@
+{
+  "target": "BridgeRequest",
+  "description": "view.save: an agenda bound to one requires entry, made by Eris",
+  "instance": {
+    "id": 46,
+    "method": "view.save",
+    "params": {
+      "view": {
+        "id": "example.today",
+        "version": "0.1.0",
+        "title": "Today",
+        "requires": {
+          "calendar": {
+            "kinds": ["event"],
+            "title": "A calendar"
+          }
+        },
+        "layout": {
+          "type": "agenda",
+          "range": "day",
+          "binding": {
+            "kinds": ["event"],
+            "sources": ["$calendar"],
+            "sort": [
+              {
+                "field": "start",
+                "dir": "asc"
+              }
+            ]
+          },
+          "fields": [
+            {
+              "value": "{start|time} {title}"
+            }
+          ],
+          "empty": "Nothing on the calendar today."
+        },
+        "provenance": {
+          "author": "eris",
+          "createdAt": "2026-10-30T09:00:00+09:00",
+          "words": "show me today's calendar"
+        }
+      },
+      "scope": {
+        "permission": "view:manage"
+      }
+    }
+  }
+}

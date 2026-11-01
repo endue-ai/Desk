@@ -6,20 +6,20 @@ const css = `
   box-sizing: border-box;
   padding: 4px;
   border: 1px solid var(--desk-border);
-  border-radius: 8px;
+  border-radius: var(--desk-radius-md);
   background: var(--desk-card);
   color: var(--desk-text);
   font: inherit;
-  font-size: 13px;
+  font-size: var(--desk-text-sm);
   overflow: auto;
 }
 :host(:focus-visible) {
-  outline: 2px solid var(--desk-accent);
+  outline: 2px solid var(--desk-ring);
   outline-offset: 2px;
 }
 ::slotted(*) {
   padding: 6px 10px;
-  border-radius: 6px;
+  border-radius: var(--desk-radius-md);
   color: var(--desk-text);
   cursor: pointer;
 }
@@ -29,15 +29,22 @@ const css = `
 }
 ::slotted([aria-selected="true"]) {
   background: var(--desk-card);
-  color: var(--desk-accent);
+  color: var(--desk-primary-text);
   font-weight: 600;
 }
 ::slotted([data-active][aria-selected="true"]) {
   background: var(--desk-border);
-  color: var(--desk-accent);
+  color: var(--desk-primary-text);
 }
 :host([hidden]) {
   display: none;
+}
+:host([density="compact"]) {
+  padding: 2px;
+  font-size: var(--desk-text-xs);
+}
+:host([density="compact"]) ::slotted(*) {
+  padding: 2px 6px;
 }
 `;
 

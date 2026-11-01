@@ -21,7 +21,11 @@
         { "$ref": "#/$defs/SettingsReadPermission" },
         { "$ref": "#/$defs/LogReadPermission" },
         { "$ref": "#/$defs/EventsSubscribePermission" },
-        { "$ref": "#/$defs/PermManagePermission" }
+        { "$ref": "#/$defs/PermManagePermission" },
+        { "$ref": "#/$defs/DataReadPermission" },
+        { "$ref": "#/$defs/ConnectorManagePermission" },
+        { "$ref": "#/$defs/ViewManagePermission" },
+        { "$ref": "#/$defs/ShellOpenPermission" }
       ]
     },
     "FsReadPermission": {
@@ -209,6 +213,77 @@
       "required": ["permission"],
       "additionalProperties": false
     },
+    "DataReadPermission": {
+      "description": "Read the items of the desk's index (data.*) that the kinds and sources cover. Absent kinds or sources mean all of them. There is no data:write: changes go through the connectors' commands.",
+      "type": "object",
+      "properties": {
+        "permission": { "const": "data:read" },
+        "kinds": {
+          "description": "Item kinds the permission covers.",
+          "type": "array",
+          "items": { "$ref": "../../item/v0/item.schema.json#/$defs/ItemKind" },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "sources": {
+          "description": "Connector id patterns the permission covers.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/ConnectorPattern" },
+          "minItems": 1
+        }
+      },
+      "required": ["permission"],
+      "additionalProperties": false
+    },
+    "ConnectorManagePermission": {
+      "description": "List the connector instances with their status, connect and disconnect them, pause them and sync them (connector.*).",
+      "type": "object",
+      "properties": {
+        "permission": { "const": "connector:manage" }
+      },
+      "required": ["permission"],
+      "additionalProperties": false
+    },
+    "ViewManagePermission": {
+      "description": "List, open, save and remove the person's views (view.*).",
+      "type": "object",
+      "properties": {
+        "permission": { "const": "view:manage" }
+      },
+      "required": ["permission"],
+      "additionalProperties": false
+    },
+    "ShellOpenPermission": {
+      "description": "Hand links to the system with shell.open: open URLs whose scheme is in schemes in their default app, and show files under paths in the file manager. Only http, https and mailto are ever opened, and a path is only shown, never opened or run.",
+      "type": "object",
+      "properties": {
+        "permission": { "const": "shell:open" },
+        "schemes": {
+          "description": "URL schemes the permission opens.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/ShellScheme" },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "paths": {
+          "description": "Path patterns whose files and folders the permission shows in the file manager.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/PathPattern" },
+          "minItems": 1
+        }
+      },
+      "required": ["permission"],
+      "additionalProperties": false,
+      "anyOf": [
+        { "properties": { "schemes": true }, "required": ["schemes"] },
+        { "properties": { "paths": true }, "required": ["paths"] }
+      ]
+    },
+    "ShellScheme": {
+      "description": "A URL scheme shell.open hands to the system: the browser for http and https, the mail app for mailto.",
+      "type": "string",
+      "enum": ["http", "https", "mailto"]
+    },
     "PathPattern": {
       "description": "An absolute path, or one rooted at ~ or at ${plugin}, ${workspace} or ${home}, with forward slashes. * matches within a segment and ** across segments.",
       "type": "string",
@@ -228,6 +303,12 @@
     },
     "CommandPattern": {
       "description": "A command id, or a pattern in which * matches any run of characters, dots included: * covers every command, eris.* every command under eris.",
+      "type": "string",
+      "maxLength": 128,
+      "pattern": "^[a-z0-9*-]+(\\.[a-z0-9*-]+)*$"
+    },
+    "ConnectorPattern": {
+      "description": "A connector's plugin id, or a pattern in which * matches any run of characters, dots included, like command ids: * covers every connector, endue.* every connector under endue.",
       "type": "string",
       "maxLength": 128,
       "pattern": "^[a-z0-9*-]+(\\.[a-z0-9*-]+)*$"

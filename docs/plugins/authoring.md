@@ -88,7 +88,9 @@ answers only when the person has granted a permission that covers that scope.
 3. Pass the matching scope with each call, as narrow as you can.
 
 The vocabulary (`fs:read`, `fs:write`, `proc:spawn`, `net:fetch`, `audio:capture`, `ui:surface`,
-`ui:notify`, `plugin:manage`) is in `specs/plugin/v0/README.md`.
+`ui:notify`, `plugin:manage`, `brain:converse`, `cmd:invoke`, `cmd:advise`, `settings:read`, `log:read`,
+`events:subscribe`, `perm:manage`, `data:read`, `connector:manage`, `view:manage`) is in
+`specs/plugin/v0/README.md`.
 
 ## Contributions
 
@@ -126,6 +128,28 @@ work with `desk.buffers.update { id, modified: true }`. The theme reaches your f
 properties and `ctx.theme`. Key chords pressed in your frame reach the desk's keymap unless you call
 `preventDefault()`. The defaults, and what each one decides, are listed in `plugins/README.md`.
 
+## Items and views
+
+What the apps a person connects hold reaches the desk as items of one shape (`specs/item/v0`, ADR
+0032): events, tasks, messages, notes and more, from every source alike. `ctx.data` reads the desk's
+index under a `data:read` permission and passes the narrowest scope a query needs; `ctx.views` reads
+and saves the person's views under `view:manage`:
+
+```js
+const { items } = await ctx.data.query({
+  kinds: ["task"],
+  where: [{ field: "due", op: "lt", value: "2026-10-31T00:00:00+09:00" }],
+});
+const stop = await ctx.data.subscribe({ kinds: ["task"] }, (changes) => redraw(changes));
+await ctx.commands.run("desk.views.open", { id: "desk.today" });
+```
+
+A view is data, not code (`specs/view/v0`): the built-in `desk.views` draws it with the
+`@endue-ai/ui` elements (`desk-list`, `desk-table`, `desk-agenda`, `desk-stat`, `desk-markdown`,
+`desk-card`), and its templates know the clock (`{today}`, `{tomorrow}`). Your page can import the
+same elements (`"@endue-ai/ui": "/_desk/ui.js"` in its import map) once the app serves them; the
+runtime's test server does today.
+
 ## Testing
 
 `@endue-ai/plugin-sdk/testing` runs your plugin without a browser, against a mock bridge:
@@ -137,7 +161,7 @@ import { createTestHost } from "@endue-ai/plugin-sdk/testing";
 const host = createTestHost({ pluginId: "example.my-plugin", handlers: { "perm.query": () => ({ grants: [] }) } });
 await defineUiPlugin(myPlugin, host.transport);
 await host.settle();
-// host.calls, host.state, host.emit(event)
+// host.calls, host.state, host.emit(event), host.upsert(item)
 ```
 
 Before you publish, `desk plugin validate <folder>` must pass; CI runs it for every folder in
