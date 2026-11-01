@@ -76,3 +76,17 @@ describe("mail date formatter reuse", () => {
     expect(work()).toBe(afterFill + 1);
   });
 });
+
+it("resolves the current zone again when the person changes it", async () => {
+  const resolved = Intl.DateTimeFormat.prototype.resolvedOptions;
+  let zone = "Asia/Seoul";
+  vi.spyOn(Intl.DateTimeFormat.prototype, "resolvedOptions").mockImplementation(function (
+    this: Intl.DateTimeFormat,
+  ) {
+    return { ...resolved.call(this), timeZone: zone };
+  });
+  const { whenLine } = await import("../ui/format.js");
+  expect(whenLine(span, { locale: "en-GB" }).line).toBe("Tue, 3 Nov 2026, 16:00 – 17:00");
+  zone = "Europe/Berlin";
+  expect(whenLine(span, { locale: "en-GB" }).line).toBe("Tue, 3 Nov 2026, 08:00 – 09:00");
+});

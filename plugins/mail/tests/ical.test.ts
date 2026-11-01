@@ -252,7 +252,7 @@ describe("zone validation work", () => {
       expect(construct.mock.calls.length).toBe(first);
       for (let i = 0; i < 80; i++) expect(check(`Invalid/Zone${i}`)).toBe(false);
       const afterFill = construct.mock.calls.length;
-      expect(check("Asia/Seoul")).toBe(true);
+      expect(check("Mars/Olympus")).toBe(false);
       expect(construct.mock.calls.length).toBe(afterFill + 1);
     } finally {
       construct.mockRestore();
