@@ -1,4 +1,5 @@
 // The fixtures make-fixtures.py made with the real tools, and small archives built here byte by byte.
+// The codec streams and the 7z archives live beside the decoders and the reader in endue.formats.
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -7,8 +8,16 @@ import { openArchive } from "../ui/formats/index.js";
 import { memorySource } from "../ui/source.js";
 
 const dir = join(import.meta.dirname, "fixtures");
+const library = join(import.meta.dirname, "../../formats/tests");
+/** Where make-fixtures.py wrote `name`: the library's codec and 7z folders, or here. */
+const folder = (name: string) =>
+  /^(text[.-]|hello\.txt\.gz$)/.test(name)
+    ? join(library, "codecs/fixtures")
+    : name.endsWith(".7z")
+      ? join(library, "sevenzip/fixtures")
+      : dir;
 
-export const fixture = (name: string) => new Uint8Array(readFileSync(join(dir, name)));
+export const fixture = (name: string) => new Uint8Array(readFileSync(join(folder(name), name)));
 /** Disk images are kept gzipped; this is the image the tool wrote. */
 export const gunzipped = (name: string) =>
   new Uint8Array(gunzipSync(readFileSync(join(dir, name))));

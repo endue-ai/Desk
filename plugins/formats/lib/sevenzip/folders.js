@@ -1,15 +1,14 @@
 // Decoding a 7z folder: its coders chained by their binds, from the pack streams to the one output
 // stream. Copy, LZMA, LZMA2, BCJ x86, Delta, Deflate and BZip2; AES means encrypted.
-import { decodeStream } from "../../codecs/index.js";
-import { inflateRaw } from "../../codecs/inflate.js";
-import { inputFrom, inputOfChunks } from "../../codecs/input.js";
-import { bcjX86, deltaDecode, lzma2Raw, lzmaRaw } from "../../codecs/lzma/index.js";
-import { sliceSource } from "../../source.js";
-import { ENCRYPTED } from "../archive.js";
+import { decodeStream } from "../codecs/index.js";
+import { inflateRaw } from "../codecs/inflate.js";
+import { inputFrom, inputOfChunks } from "../codecs/input.js";
+import { bcjX86, deltaDecode, lzma2Raw, lzmaRaw } from "../codecs/lzma/index.js";
+import { ENCRYPTED, sliceSource } from "./archive.js";
 import { mainOut } from "./header.js";
 
-/** @typedef {import("../../source.js").Source} Source */
-/** @typedef {import("../../codecs/input.js").Input} Input */
+/** @typedef {import("./archive.js").Source} Source */
+/** @typedef {import("../codecs/input.js").Input} Input */
 /** @typedef {import("./header.js").Folder} Folder */
 /** @typedef {import("./header.js").Streams} Streams */
 

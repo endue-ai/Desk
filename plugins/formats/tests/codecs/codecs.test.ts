@@ -1,6 +1,6 @@
+import { decode } from "@endue-ai/formats/codecs/index.js";
 import { describe, expect, it } from "vitest";
-import { decode } from "../ui/codecs/index.js";
-import { expected, fixture, sha256 } from "./fixtures";
+import { expected, fixture, sha256 } from "./helpers";
 
 // Every fixture is the same 210 KB of generated text, written by the real tool named.
 const STREAMS = [
@@ -24,7 +24,7 @@ function damaged(bytes: Uint8Array, at: number, count = 16) {
   return copy;
 }
 
-describe("the plugin's own decoders", () => {
+describe("the decoders of endue.formats", () => {
   for (const [file, codec, what] of STREAMS) {
     it(`${codec} decodes ${file} (${what}) to the exact original bytes`, async () => {
       const out = await decode(codec, fixture(file));

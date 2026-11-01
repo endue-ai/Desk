@@ -2,7 +2,10 @@
 // sits in memory whole. A decoder awaits `need(n)` at a safe point (a block header, every few
 // thousand symbols), then reads synchronously from `buf` at `pos`.
 
-/** @typedef {import("../source.js").Source} Source */
+/**
+ * @typedef {{ size: number, read(offset: number, length: number): Promise<Uint8Array> }} Source
+ * a file read by byte ranges: read answers exactly min(length, size - offset) bytes.
+ */
 
 export class Input {
   /** @param {() => Promise<Uint8Array | null>} pull the next chunk; null at the end */

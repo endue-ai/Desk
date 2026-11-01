@@ -1,6 +1,6 @@
 // Filters that undo what an encoder did before compressing: x86 BCJ (relative CALL and JMP targets
 // made absolute again) and Delta. Both work on decoded chunks and carry state across them.
-import { concat } from "../../bytes.js";
+import { concat } from "../bytes.js";
 
 const ALLOWED = [true, true, true, false, true, false, false, false];
 const BIT = [0, 1, 2, 2, 3, 3, 3, 3];

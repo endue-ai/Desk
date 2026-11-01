@@ -2,9 +2,9 @@
 
 `endue.archives`, every archive, package and disk image in one browser: the contents as a tree, a
 preview of the selected entry, and extraction to a folder the person picks. It never changes the
-archive. Community folder format, public SDK only, and its own readers and decoders (no third-party
-code): Deflate and gzip go through `DecompressionStream`; bzip2, LZMA, LZMA2/xz, Zstandard, LZ4 and
-LZW are `ui/codecs/`.
+archive. Community folder format, public SDK only, no third-party code. The decoders (Deflate and gzip
+through `DecompressionStream`; bzip2, LZMA, LZMA2/xz, Zstandard, LZ4, LZW) and the 7z reader come from
+the library `endue.formats` (`@endue-ai/formats/`, mapped in `ui/index.html`'s import map).
 
 | Kind | Formats |
 | --- | --- |
@@ -28,12 +28,12 @@ leave it (`..`, absolute paths, drive letters, links out); an existing file asks
 | File | Purpose |
 | --- | --- |
 | `ui/archives.js` | Requests, levels (archives inside archives), selection, previews |
-| `ui/files.js`, `ui/source.js`, `ui/formats/`, `ui/codecs/` | Ranged reads and a block cache; one reader per format (`index.js` tells them apart); the decoders |
+| `ui/files.js`, `ui/source.js`, `ui/formats/` | Ranged reads and a block cache; one reader per format (`index.js` tells them apart), on the library's codecs and 7z reader |
 | `ui/extract.js`, `ui/safety.js`, `ui/tree.js`, `ui/preview.js` | Extraction and the paths it refuses; sorting, filtering and previews, without the DOM |
 | `ui/view*.js` | The DOM: a virtual ARIA tree, the preview pane, status and progress |
 
 Keys: arrows, Page Up/Down, Home/End, Enter and Space (mark) in the tree, Mod+F filters, Escape stops an
-extraction. `tests/make-fixtures.py` remakes the fixtures with the real tools.
+extraction. `tests/make-fixtures.py` remakes the fixtures with the real tools (and the library's).
 ```bash
 pnpm exec vitest run plugins/archives
 cargo run -p desk-cli -- plugin validate plugins/archives

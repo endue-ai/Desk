@@ -2,9 +2,10 @@
 // ranges of a folder's decoded bytes. Stored and MSZIP folders are read; MSZIP blocks go through
 // DecompressionStream, each with the previous 32 KiB put in front as a stored deflate block, since a
 // block may copy from what the one before it decoded.
+
+import { collect, decodeStream } from "@endue-ai/formats/codecs/index.js";
+import { inputOf } from "@endue-ai/formats/codecs/input.js";
 import { at, Cursor, cp437, dosDate, text } from "../bytes.js";
-import { collect, decodeStream } from "../codecs/index.js";
-import { inputOf } from "../codecs/input.js";
 import { cleanPath, row, withFolders } from "./archive.js";
 
 /** @typedef {import("../source.js").Source} Source */

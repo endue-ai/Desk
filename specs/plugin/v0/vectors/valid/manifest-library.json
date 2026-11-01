@@ -1,0 +1,11 @@
+{
+  "target": "PluginManifest",
+  "description": "a library plugin: files other plugins import, no entry, no surfaces, no contributions",
+  "instance": {
+    "id": "endue.formats",
+    "name": "Formats",
+    "version": "0.1.0",
+    "kind": "library",
+    "description": "Format readers and decoders other plugins import."
+  }
+}

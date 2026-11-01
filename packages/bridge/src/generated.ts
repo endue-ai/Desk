@@ -402,8 +402,8 @@ export type PluginId = string;
 /** Semantic version, for example 0.1.0 or 1.2.3-beta.1. */
 export type Version = string;
 
-/** ui runs in a sandboxed iframe, logic in a Wasm instance, tool as an MCP server inside the VM. policy runs no code: it only contributes data (ADR 0017). connector brings an app's data in as items, as a Wasm component or an MCP server; view runs no code either: it is one or more views (ADR 0032). */
-export type PluginKind = "ui" | "logic" | "tool" | "policy" | "connector" | "view";
+/** ui runs in a sandboxed iframe, logic in a Wasm instance, tool as an MCP server inside the VM. policy runs no code: it only contributes data (ADR 0017). library runs no code of its own either: it is files other plugins import, served at /<id>/... like any plugin's, never mounted and never turned off. connector brings an app's data in as items, as a Wasm component or an MCP server; view runs no code either: it is one or more views (ADR 0032). */
+export type PluginKind = "ui" | "logic" | "tool" | "policy" | "library" | "connector" | "view";
 
 /** Path to the entry file, relative to the plugin folder, without .. segments. */
 export type EntryPath = string;

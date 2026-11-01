@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# The Linux half of make-fixtures.py, run in debian:bookworm-slim with the tree in /work/tree and the
-# fixtures folder in /out. "main" makes 7z, deb, rpm, gem, cab, msi, arj, lha, disk images, WIM,
-# SquashFS and a torrent; "rar" (on linux/amd64, where rar is packaged) makes the RAR 5 archive.
+# The Linux half of make-fixtures.py, run in debian:bookworm-slim with the tree in /work/tree, the
+# fixtures folder in /out and endue.formats' 7z fixtures folder in /sevenzip. "main" makes 7z (into
+# /sevenzip), deb, rpm, gem, cab, msi, arj, lha, disk images, WIM, SquashFS and a torrent; "rar" (on
+# linux/amd64, where rar is packaged) makes the RAR 5 archive.
 set -euo pipefail
 export SOURCE_DATE_EPOCH=1790856000
 cd /work/tree
@@ -19,10 +20,10 @@ command -v 7zz >/dev/null || apt-get install -y -qq --no-install-recommends 7zip
   wimtools squashfs-tools mktorrent fdisk ruby >/dev/null 2>&1
 
 # 7z: a solid LZMA2 block with an encoded header; plain LZMA with a plain header; BCJ; copy.
-7zz a -bd -bso0 -t7z -m0=LZMA2 -mx=9 -ms=on -mhc=on /out/solid.7z hello.txt docs data.bin words.txt
-7zz a -bd -bso0 -t7z -m0=LZMA -ms=off -mhc=off /out/plain.7z hello.txt docs/readme.md
-7zz a -bd -bso0 -t7z -m0=BCJ -m1=LZMA2 -mhc=off /out/bcj.7z data.bin words.txt
-7zz a -bd -bso0 -t7z -m0=Copy -mhc=off /out/copy.7z hello.txt image.png
+7zz a -bd -bso0 -t7z -m0=LZMA2 -mx=9 -ms=on -mhc=on /sevenzip/solid.7z hello.txt docs data.bin words.txt
+7zz a -bd -bso0 -t7z -m0=LZMA -ms=off -mhc=off /sevenzip/plain.7z hello.txt docs/readme.md
+7zz a -bd -bso0 -t7z -m0=BCJ -m1=LZMA2 -mhc=off /sevenzip/bcj.7z data.bin words.txt
+7zz a -bd -bso0 -t7z -m0=Copy -mhc=off /sevenzip/copy.7z hello.txt image.png
 
 # Debian packages: xz (dpkg's default) and gzip.
 mkdir -p /work/deb/DEBIAN /work/deb/usr/share/doc/sample

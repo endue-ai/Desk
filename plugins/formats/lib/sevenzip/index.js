@@ -1,16 +1,17 @@
 // 7z: the start header names where the header lies (at the end); the header, plain or itself
 // encoded, lists folders (coder chains over pack streams) and files. Nothing packed is read until an
 // entry is: a file's folder is decoded from its start and the files before it skipped.
-import { at, u32, u64, utf8 } from "../../bytes.js";
-import { crc32 } from "../../codecs/checksums.js";
-import { collect } from "../../codecs/index.js";
-import { cleanPath, ENCRYPTED, withFolders } from "../archive.js";
+
+import { crc32 } from "../codecs/checksums.js";
+import { collect } from "../codecs/index.js";
+import { cleanPath, ENCRYPTED, withFolders } from "./archive.js";
+import { at, u32, u64, utf8 } from "./bytes.js";
 import { encrypted, folderChunks, methodOf } from "./folders.js";
 import { parseHeader } from "./header.js";
 
-/** @typedef {import("../../source.js").Source} Source */
-/** @typedef {import("../archive.js").Entry} Entry */
-/** @typedef {import("../archive.js").Archive} Archive */
+/** @typedef {import("./archive.js").Source} Source */
+/** @typedef {import("./archive.js").Entry} Entry */
+/** @typedef {import("./archive.js").Archive} Archive */
 /** @typedef {import("./header.js").Streams} Streams */
 /** @typedef {{ folder: number, offset: number, crc?: number }} Place where a file's data lies */
 
