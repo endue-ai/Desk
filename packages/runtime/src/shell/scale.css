@@ -1,6 +1,8 @@
 /*
- * The shell's scale: type, space, radius, motion and layers. Colours are not here: they are theme
- * tokens (desk.theme, with the shell's own from plugins/shell), read as --desk-* custom properties.
+ * The shell's scale, read from the design tokens (@endue-ai/ui tokens.css, --desk-*) under the names
+ * the shell's sheets use, so the shell and every plugin page measure alike. Colours are theme tokens
+ * too (desk.theme, with the shell's own from plugins/shell). Only the layers and the heading metrics
+ * are the shell's alone.
  */
 
 :root {
@@ -11,49 +13,46 @@
   color-scheme: light;
 }
 
-/* Type, space, radius, motion, layers. */
 :root {
-  --font-primary:
-    "Inter", "SUIT Variable", "SUIT", -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
-  --font-mono: "JetBrains Mono", monospace;
-  --text-2xs: 11px;
-  --text-xs: 12px;
-  --text-sm: 14px;
-  --text-base: 16px;
-  --text-lg: 18px;
-  --text-xl: 20px;
-  --text-2xl: 24px;
-  --text-3xl: 32px;
-  --text-4xl: 40px;
+  --font-primary: var(--desk-font-sans);
+  --font-mono: var(--desk-font-mono);
+  --text-2xs: var(--desk-text-2xs);
+  --text-xs: var(--desk-text-xs);
+  --text-sm: var(--desk-text-sm);
+  --text-base: var(--desk-text-base);
+  --text-lg: var(--desk-text-lg);
+  --text-xl: var(--desk-text-xl);
+  --text-2xl: var(--desk-text-2xl);
+  --text-3xl: var(--desk-text-3xl);
+  --text-4xl: var(--desk-text-4xl);
   --leading-heading: 1.2;
   --tracking-heading: -0.02em;
 
-  --space-1: 4px;
-  --space-2: 8px;
-  --space-3: 12px;
-  --space-4: 16px;
-  --space-5: 20px;
-  --space-6: 24px;
-  --space-8: 32px;
-  --space-10: 40px;
-  --space-12: 48px;
-  --space-16: 64px;
+  --space-1: var(--desk-space-1);
+  --space-2: var(--desk-space-2);
+  --space-3: var(--desk-space-3);
+  --space-4: var(--desk-space-4);
+  --space-5: var(--desk-space-5);
+  --space-6: var(--desk-space-6);
+  --space-8: var(--desk-space-8);
+  --space-10: var(--desk-space-10);
+  --space-12: var(--desk-space-12);
+  --space-16: var(--desk-space-16);
 
-  --control-xs: 28px;
-  --control-sm: 32px;
-  --control-md: 40px;
-  --control-lg: 48px;
+  --control-xs: var(--desk-control-xs);
+  --control-sm: var(--desk-control-sm);
+  --control-md: var(--desk-control-md);
+  --control-lg: var(--desk-control-lg);
 
-  --radius-sm: 4px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
-  --radius-full: 9999px;
+  --radius-sm: var(--desk-radius-sm);
+  --radius-md: var(--desk-radius-md);
+  --radius-lg: var(--desk-radius-lg);
+  --radius-full: var(--desk-radius-full);
 
-
-  --motion-fast: 150ms;
-  --motion-base: 220ms;
-  --motion-slow: 400ms;
-  --motion-theme: 350ms;
+  --motion-fast: var(--desk-motion-fast);
+  --motion-base: var(--desk-motion-base);
+  --motion-slow: var(--desk-motion-slow);
+  --motion-theme: var(--desk-motion-theme);
   --ease-out-expo: cubic-bezier(0.22, 1, 0.36, 1);
 
   --z-float: 20;
@@ -66,7 +65,8 @@
   --z-tooltip: 1080;
 }
 
-/* desk.theme sets data-motion from desk.theme.motion (or the OS when it says "system"). */
+/* desk.theme sets data-motion from desk.theme.motion (or the OS when it says "system"); the runtime
+   also zeroes the --desk-motion-* tokens then, so plugin frames stop too. */
 [data-motion="reduce"] {
   --motion-fast: 0ms;
   --motion-base: 0ms;

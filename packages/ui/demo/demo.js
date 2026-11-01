@@ -94,9 +94,21 @@ byId("markdown").addEventListener("desk-link", (event) =>
   toast.show(`Link to ${event.detail.href}`),
 );
 
-// A one-property theme: the elements change with no code of their own.
+// A standalone semantic theme: the elements change without changing their own CSS.
+const actionTheme = {
+  primary: "#8fd3c1",
+  primaryForeground: "#142b25",
+  primaryHover: "#acebd9",
+  primaryText: "#8fd3c1",
+  ring: "#8fd3c1",
+  accent: "#8fd3c1",
+};
+let alternate = false;
 byId("theme").addEventListener("click", () => {
+  alternate = !alternate;
   const root = document.documentElement.style;
-  if (root.getPropertyValue("--desk-accent")) root.removeProperty("--desk-accent");
-  else root.setProperty("--desk-accent", "#8fd3c1");
+  for (const [name, value] of Object.entries(window.DeskUI.cssVariables(actionTheme))) {
+    if (alternate) root.setProperty(name, value);
+    else root.removeProperty(name);
+  }
 });

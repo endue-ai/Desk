@@ -1,40 +1,33 @@
 # @endue-ai/ui
 
-What a plugin page imports for a native-looking surface: the theme tokens, `tokens.css`, and twelve
-framework-free custom elements whose CSS reads only the `--desk-*` properties, so a theme that redefines
-them (`desk.theme`) restyles them. Why: `docs/adr/0022-*.md`. Layer: Web runtime (`docs/architecture.md`).
+The shared Desk design system: semantic colors and scale, base page styles, and framework-free
+custom elements. The shell and plugin frames read the same `--desk-*` properties; a theme restyles
+both. See [the design system guide](../../docs/design-system.md) and ADR 0022 for custom elements.
 
 ## Public API
 
-- `@endue-ai/ui` (no DOM, safe in Node): `tokens` (`background` #141416, `card` #1e1d21, `border`
-  #333136, `text` #f2f0f5, `textMuted` #b0adb7, `accent` #b6a3f5), `cssVariables(theme?)`
-  (`--desk-text-muted`, ...), `tokensCss(theme?)` (one `:root` rule), `ThemeTokens`, `NAME`.
-- `@endue-ai/ui/elements`: `defineElements()`, `elements` (by tag name) and the classes.
-  - `<desk-button variant="primary" disabled>`, `<desk-input label value placeholder type disabled>`.
-  - `<desk-list label>`: a listbox of its children; `selectedIndex`; `desk-select` `{ index, item }`.
-  - `<desk-dialog label open>`: modal; `show()`, `close()`; Escape fires `cancel`, then `close`.
-  - `<desk-menu label open>`: `show(anchor)`, `toggle(anchor)`, `close()`; `desk-select`, `close`.
-  - `<desk-toast tone="error" dismiss-label>`: `show(message, { duration })`; `close`.
-  - `<desk-progress label value max detail delay cancelable cancel-label>`: the one progress UI (no `value`:
-    indeterminate); shows after `delay` ms (300, then `shown`); Cancel fires `desk-cancel`.
-  - `<desk-table label>`: `columns` (`{ key, label, sortable }`), `rows` (`{ cells, values }`), `sort`,
-    `selectedIndex`, `activeRow`, `rowOf(node)`; `desk-select` `{ index, row }`, `desk-sort` `{ key, direction }`.
-  - `<desk-agenda label time-zone now locale>`: `events` (`{ title, start, end, allDay, detail }`), a
-    now-line and `data-past`; `selectedIndex`, `activeEvent`, `eventOf(node)`; `desk-select` `{ index, event }`.
-  - `<desk-stat label value unit>`, `<desk-card heading>`, `<desk-markdown source>` (a CommonMark
-    subset, no raw HTML or images; links fire `desk-link` `{ href }`).
-  - `desk-list` and the last five take `density="compact"`.
-- `pnpm --filter @endue-ai/ui build`: `dist/ui.js` (an ES module that defines the elements on import),
-  `dist/ui.iife.js` (the same as a classic script, global `DeskUI`) and `dist/tokens.css`.
+- `@endue-ai/ui` (DOM-free): `tokens`, `colors`, `scale`, `cssVariables(theme?)`, `propertyOf(name)`,
+  `tokensCss(theme?)`, `MOTION_TOKENS`, `ThemeTokens`, `ColorTokens`, `ScaleTokens`, `NAME`.
+- `@endue-ai/ui/tokens.css`: default values; `@endue-ai/ui/base.css`: page, toolbar and feedback patterns.
+- `@endue-ai/ui/elements`: `defineElements()`, `elements` (by tag name) and their classes:
+  `desk-button`, `desk-input`, `desk-list`, `desk-dialog`, `desk-menu`, `desk-toast`, `desk-table`,
+  `desk-agenda`, `desk-stat`, `desk-card`, `desk-markdown`, `desk-progress`. Elements keep native roles and keyboard behavior.
+- `desk-progress`: `label`, `value`, `max`, `detail`, `cancelable`, `delay` (300ms default); `desk-cancel`
+  asks the caller to abort. Reduced motion follows the OS and Desk's preference.
+- `just build-ui`: builds `dist/ui.js`, `ui.iife.js`, `tokens.css`, `base.css`; refreshes source token CSS.
+
+The app serves the ES module and sheets at `/_desk/ui.js`, `/_desk/tokens.css`, `/_desk/base.css`.
 
 ```html
-<link rel="stylesheet" href="tokens.css" />
-<script type="importmap">{ "imports": { "@endue-ai/ui": "./ui.js" } }</script>
+<link rel="stylesheet" href="/_desk/tokens.css" />
+<link rel="stylesheet" href="/_desk/base.css" />
+<script type="importmap">{ "imports": { "@endue-ai/ui": "/_desk/ui.js" } }</script>
 <script type="module">import "@endue-ai/ui";</script>
+<desk-button variant="primary">Save</desk-button>
 ```
-
-The app serves `dist/ui.js` at `/_desk/ui.js` (as the e2e server does); `demo/index.html` shows each element.
 
 ## Testing
 
-`pnpm exec vitest run packages/ui`, in Node on a small DOM fake (`src/elements/test-dom/`).
+`pnpm exec vitest run packages/ui` checks tokens, sheet generation, builds and elements on a small DOM
+fake. `just test-e2e packages/runtime/e2e/design-system.spec.ts` checks the shared sheets and live
+preferences in a sandboxed Notes frame. `demo/index.html` shows the elements after a build.

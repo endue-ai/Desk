@@ -81,6 +81,13 @@ export function createDisk(bridge, { rootOf, changed }) {
         )
       ).entries,
 
+    /** Read a bounded preview under the same folder grant as the listing. */
+    read: (/** @type {string} */ path, /** @type {number} */ length) =>
+      withGrant(
+        { permission: "fs:read", verb: "read", path, reason: `To preview ${path} in ${NAME}` },
+        (scope) => bridge.call("fs.read", { path, offset: 0, length, encoding: "base64", scope }),
+      ),
+
     /** Create an empty file. The caller makes sure nothing is there first. */
     create: (/** @type {string} */ path) =>
       withGrant(

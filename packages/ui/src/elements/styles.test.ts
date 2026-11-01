@@ -59,18 +59,19 @@ describe("element styles", () => {
       }
     });
 
-    it(`${name} reads only tokens that tokens.ts defines`, () => {
-      const used = [...element.styles.matchAll(/var\((--[a-z-]+)/g)].map((match) => match[1]);
+    it(`${name} reads only tokens that tokens.ts defines, and never the old accent`, () => {
+      const used = [...element.styles.matchAll(/var\((--[a-z0-9-]+)/g)].map((match) => match[1]);
       expect(used.length).toBeGreaterThan(0);
       for (const property of used) expect(known).toContain(property);
+      expect(used).not.toContain("--desk-accent");
     });
 
     if (UNFOCUSED.has(name)) continue;
-    it(`${name} draws a visible focus ring in the accent`, () => {
+    it(`${name} draws a visible focus ring in the ring token`, () => {
       const rings = rules.filter(
         (rule) =>
           rule.selector.includes(":focus-visible") &&
-          rule.declarations.outline === "2px solid var(--desk-accent)",
+          rule.declarations.outline === "2px solid var(--desk-ring)",
       );
       expect(rings.length).toBeGreaterThan(0);
     });
