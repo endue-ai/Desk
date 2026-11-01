@@ -1,4 +1,3 @@
-import { writeSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { page } from "../../../packages/bridge/src/stub-query";
 import { ACCOUNT, CONNECTOR, denied, ME, mount, READ, SOURCE, sample } from "./harness";
@@ -77,34 +76,15 @@ describe("the mailbox", () => {
   });
 
   it("keys move the selection and Enter opens", async () => {
-    const started = performance.now();
-    let stage = "mount";
-    const debug = (event: string) =>
-      writeSync(1, `MAIL_DIAG ${Math.round(performance.now() - started)}ms ${stage}: ${event}\n`);
-    const beat = setInterval(() => debug("heartbeat"), 500);
-    beat.unref?.();
-    try {
-      const { app, view } = await mount({ debug });
-      debug("done");
-      stage = "ArrowDown";
-      await app.key("ArrowDown");
-      expect(view.selected()).toBe(LUNCH);
-      debug("done");
-      stage = "j";
-      await app.key("j");
-      expect(view.selected()).toBe(INVITE_THREAD);
-      debug("done");
-      stage = "x";
-      expect(await app.key("x")).toBe(false);
-      debug("done");
-      stage = "Enter";
-      await app.key("Enter");
-      expect(view.reading()).toBe("m-invite");
-      expect(view.focused.at(-1)).toBe("reader");
-      debug("done");
-    } finally {
-      clearInterval(beat);
-    }
+    const { app, view } = await mount();
+    await app.key("ArrowDown");
+    expect(view.selected()).toBe(LUNCH);
+    await app.key("j");
+    expect(view.selected()).toBe(INVITE_THREAD);
+    expect(await app.key("x")).toBe(false);
+    await app.key("Enter");
+    expect(view.reading()).toBe("m-invite");
+    expect(view.focused.at(-1)).toBe("reader");
   });
 });
 

@@ -1,8 +1,8 @@
 import type { MessageItem } from "../../../packages/bridge/src/index";
 
-const CONNECTOR = "acme.imap";
-const SOURCE = { connector: CONNECTOR, instance: "work" } as const;
-const ME = "me@example.com";
+export const CONNECTOR = "acme.imap";
+export const SOURCE = { connector: CONNECTOR, instance: "work" } as const;
+export const ME = "me@example.com";
 const MINA = { name: "Mina", email: "mina@example.com" };
 
 const at = (day: number, time: string) => `2026-10-${day}T${time}:00+09:00`;

@@ -14,9 +14,9 @@ import {
 import { matches, page } from "../../../packages/bridge/src/stub-query";
 import { defineUiPlugin } from "../../../packages/plugin-sdk/src/index";
 import { createTestHost, type TestHost } from "../../../packages/plugin-sdk/src/testing/index";
-import { sample } from "./mail-fixtures";
+import { CONNECTOR, sample } from "./mail-fixtures";
 
-export { INVITE, message, sample } from "./mail-fixtures";
+export { CONNECTOR, INVITE, ME, message, SOURCE, sample } from "./mail-fixtures";
 
 import type { Draft } from "../ui/compose.js";
 import { createMail } from "../ui/mail.js";
@@ -27,12 +27,9 @@ export type Handlers = NonNullable<Options["handlers"]>;
 export type Commands = NonNullable<Options["commands"]>;
 type ListState = { more: boolean; loading: boolean; empty: string };
 
-export const CONNECTOR = "acme.imap";
 export const ACCOUNT = `${CONNECTOR}/work`;
-export const SOURCE = { connector: CONNECTOR, instance: "work" } as const;
 /** The test's today: Friday 30 October 2026, 9 in the morning in Seoul. */
 export const NOW = Date.parse("2026-10-30T09:00:00+09:00");
-export const ME = "me@example.com";
 
 export interface RecordingView {
   navs: Nav[];
@@ -210,7 +207,6 @@ export interface MountOptions {
   init?: Record<string, unknown>;
   store?: Record<string, unknown>;
   pick?: (args: unknown) => string | undefined;
-  debug?: (event: string) => void;
 }
 
 export const READ: DataReadPermission = { permission: "data:read", kinds: ["message"] };
@@ -270,28 +266,6 @@ export async function mount(options: MountOptions = {}): Promise<Mounted> {
   data.attach(host);
   const view = recordingView();
   let app: ReturnType<typeof createMail> | undefined;
-  const pending = new Map<number, string>();
-  const transport = host.transport;
-  const monitored: typeof transport = {
-    send(message) {
-      if (message.type === "desk:calls") {
-        for (const call of message.calls) pending.set(call.id, call.method);
-        options.debug?.(
-          `sent ${message.calls.map((call) => call.method).join(",")} pending=${JSON.stringify([...pending])}`,
-        );
-      }
-      transport.send(message);
-    },
-    listen(handler) {
-      return transport.listen((message) => {
-        if (message.type === "desk:results") {
-          for (const result of message.results) pending.delete(result.id);
-          options.debug?.(`results pending=${JSON.stringify([...pending])}`);
-        }
-        handler(message);
-      });
-    },
-  };
   await defineUiPlugin(
     {
       async mount(ctx) {
@@ -299,14 +273,14 @@ export async function mount(options: MountOptions = {}): Promise<Mounted> {
         await app.start();
       },
     },
-    options.debug ? monitored : host.transport,
+    host.transport,
   );
   const settle = async () => {
     for (let i = 0; i < 8; i++) await host.settle();
     await new Promise((resolve) => setTimeout(resolve, 5));
     for (let i = 0; i < 4; i++) await host.settle();
   };
-  await settle();
+  // defineUiPlugin awaits app.start(), including its initial queries and subscription.
   if (!app) throw new Error("the plugin did not mount");
   return {
     host,
