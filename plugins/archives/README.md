@@ -14,10 +14,10 @@ disk, Apple and pack readers come from the library `endue.formats` (`@endue-ai/f
 | Contents only | ARJ, LHA, MSI streams |
 | Details only | torrent, and images whose volumes are not read (the note says why) |
 
-Files are read through the SDK's `byteSource` (`fs.url` ranges, or ranged `fs.read`) with its block
-cache: a ZIP's directory, a disk's tables, entries only when previewed or extracted. The format comes
-from the first bytes, then the extension. Opening, long decodes and extraction show the desk's
-`<desk-progress>` after 300 ms, with Cancel (Escape too).
+Files are read through the SDK's `byteSource` (`fs.url` or ranged `fs.read`) and its block cache: a
+ZIP's directory, a disk's tables, entries when previewed or extracted; reads of 2 to 31 blocks still go
+a block at a time, a workaround for #262 (fixed in the SDK). The format comes from the first bytes, then
+the extension. Opening, decodes and extraction show `<desk-progress>` after 300 ms, with Cancel.
 
 It answers `desk.files.visit`, `.revert`, `desk.buffers.show` and `.closed`, refuses `desk.files.save`,
 and asks once for the file's folder when its grants do not cover a read. Extraction asks with
@@ -32,8 +32,8 @@ files over 64 MiB are listed, not written (`fs.write` carries a file whole). Per
 | `ui/files.js`, `formats/`, `library-*.js`, `extract.js`, `safety.js`, `tree.js`, `preview.js` | File access, one reader per format (`index.js` tells them apart), the library worker, extraction and the paths it refuses, sorting and previews, without the DOM |
 | `ui/view*.js` | The DOM: a virtual ARIA tree, the preview pane, status and progress |
 
-Keys: arrows, Page Up/Down, Home/End, Enter and Space (mark) in the tree, Mod+F filters. Tests use the
-library's fixtures; `tests/make-fixtures.py` remakes the plugin's own with the real tools.
+Keys: arrows, Page Up/Down, Home/End, Enter and Space (mark) in the tree, Mod+F filters, Escape stops
+long work. Tests use the library's fixtures; `tests/make-fixtures.py` remakes the plugin's own.
 ```bash
 pnpm exec vitest run plugins/archives
 cargo run -p desk-cli -- plugin validate plugins/archives

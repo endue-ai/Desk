@@ -31,7 +31,7 @@ closes search or panel; Mod+S, Mod+O, Mod+W, Mod+K pass to the desk. `tests/buil
 
 | Permission | Why |
 | --- | --- |
-| `cmd:invoke` (`desk.files.changed`), `fs:read`, `shell:open` | File changes, scoped reads, http/https/mailto links |
+| `cmd:invoke` (`desk.files.changed`); `fs:read` and `shell:open`, asked when needed | File changes; scoped reads; http, https and mailto links |
 
 ```bash
 pnpm exec vitest run plugins/reader
