@@ -8,7 +8,7 @@ import {
 } from "../../../packages/bridge/src/index";
 import type { ComponentModel } from "../ui/engine.js";
 import { present } from "../ui/present.js";
-import { CONNECTORS, manifest, mount, VIEWS, vector } from "./harness";
+import { CONNECTORS, LINKS, manifest, mount, VIEWS, vector } from "./harness";
 
 const today = vector("view-today");
 const source = { connector: FIXTURE_CONNECTOR, instance: "default" };
@@ -286,17 +286,24 @@ describe("desk.views", () => {
     expect(m.view.notices.at(-1)).toBe("Today, again was removed.");
   });
 
-  it("desk.views.open-original fails until shell.open is served", async () => {
+  it("desk.views.open-original opens the item's URL with shell.open", async () => {
     const m = await mount({ views: [today] });
-    await expect(
-      m.host.invoke("desk.views.open-original", { url: "https://endue.ai" }),
-    ).rejects.toThrow("failed: shell.open is not served yet");
+    const opened = await m.host.invoke("desk.views.open-original", { url: "https://endue.ai" });
+    expect(opened).toEqual({ opened: true });
     await m.engine.link("https://endue.ai/docs");
     await m.settle();
     expect(m.host.ran.at(-1)).toEqual({
       name: "desk.views.open-original",
       args: { url: "https://endue.ai/docs" },
     });
-    expect(m.view.toasts).toEqual(["Desk can't open the original app yet"]);
+    expect(m.params("shell.open")).toEqual([
+      { target: "https://endue.ai", scope: LINKS },
+      { target: "https://endue.ai/docs", scope: LINKS },
+    ]);
+    expect(m.view.toasts).toEqual([]);
+    // A link the desk never opens is said in a toast.
+    await m.engine.link("javascript:alert(1)");
+    await m.settle();
+    expect(m.view.toasts).toEqual(["Desk could not open the link."]);
   });
 });

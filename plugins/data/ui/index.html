@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <title>Data</title>
     <script type="importmap">
-      { "imports": { "@endue-ai/plugin-sdk": "/_desk/plugin-sdk.js" } }
+      { "imports": { "@endue-ai/plugin-sdk": "/_desk/plugin-sdk.js", "@endue-ai/ui": "/_desk/ui.js" } }
     </script>
     <link rel="stylesheet" href="./style.css" />
   </head>
@@ -38,6 +38,7 @@
         <button type="button" id="validate">Validate with…</button>
       </div>
     </header>
+    <desk-progress id="progress" label="Reading" cancelable hidden></desk-progress>
     <p id="note" hidden></p>
     <main id="panes" hidden>
       <section id="tree-pane" aria-label="Tree">

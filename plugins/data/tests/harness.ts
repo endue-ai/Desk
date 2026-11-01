@@ -4,7 +4,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { StubError } from "../../../packages/bridge/src/index";
-import { defineUiPlugin } from "../../../packages/plugin-sdk/src/index";
+import { defineUiPlugin, readBytes } from "../../../packages/plugin-sdk/src/index";
 import { createTestHost, type TestHost } from "../../../packages/plugin-sdk/src/testing/index";
 import { createData, type SchemaState, type Shown } from "../ui/data.js";
 import { createView } from "../ui/view.js";
@@ -81,7 +81,7 @@ async function mountWith<V extends AnyView>(view: V, options: MountOptions): Pro
   await defineUiPlugin(
     {
       mount(ctx) {
-        app = createData(ctx, view);
+        app = createData(ctx, view, { readBytes });
       },
     },
     host.transport,
@@ -138,10 +138,19 @@ export function disk(
       store[key] = value;
       return {};
     },
-    "fs.read": ({ path, encoding }) => {
+    "fs.read": ({ path, encoding, offset = 0, length }) => {
       const content = files[path];
       if (content === undefined) throw new StubError("not_found", `no file ${path}`);
-      if (encoding === "base64") return { content: base64(content), encoding: "base64" };
+      if (encoding === "base64") {
+        const bytes = Buffer.from(content);
+        return {
+          content: base64(
+            bytes.subarray(offset, length === undefined ? undefined : offset + length),
+          ),
+          encoding: "base64",
+          size: bytes.length,
+        };
+      }
       return { content: Buffer.from(content).toString("utf8"), encoding: "utf8" };
     },
     "fs.list": ({ path }) => ({

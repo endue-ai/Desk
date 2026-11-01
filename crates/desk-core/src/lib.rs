@@ -1,7 +1,7 @@
 //! Kernel of endue Desk: permission engine, event bus, plugin registry, session store, settings and
 //! the log, the session lease client, init.yaml with its sync, the bridge handler with the file URLs
-//! it hands frames (ADR 0041), and the integration layer (the item index, connectors and views;
-//! ADR 0036).
+//! it hands frames (ADR 0041), links handed to the system (ADR 0047), and the integration layer (the
+//! item index, connectors and views; ADR 0036).
 pub const NAME: &str = env!("CARGO_PKG_NAME");
 
 mod calendar_items;
@@ -26,6 +26,7 @@ mod core_plugins;
 mod core_proc;
 mod core_prompts;
 mod core_settings;
+mod core_shell;
 mod core_store;
 mod core_ui;
 mod core_views;

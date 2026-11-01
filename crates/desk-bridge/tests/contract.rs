@@ -10,8 +10,8 @@ use desk_bridge::{
     ConnectorManifest, ConnectorStatus, ConnectorSyncResult, FsReadResult, FsUrlResult,
     InitDocument, InitGetResult, InitSettingKey, Item, ItemChange, ItemPage, ItemQuery,
     PaletteResults, PermQueryResult, Permission, PluginContributes, PluginListResult,
-    PluginManifest, StoreGetResult, View, ViewGetResult, ViewListResult, ViewSource, ViewSummary,
-    manifest_problems, view_problems,
+    PluginManifest, ShellOpenResult, StoreGetResult, View, ViewGetResult, ViewListResult,
+    ViewSource, ViewSummary, manifest_problems, view_problems,
 };
 use serde::Serialize;
 use serde::de::DeserializeOwned;
@@ -229,6 +229,7 @@ fn valid_vectors_roundtrip_through_generated_types() {
                 "PluginListResult" => roundtrip::<PluginListResult>(vector),
                 "StoreGetResult" => roundtrip::<StoreGetResult>(vector),
                 "CatalogGetResult" => roundtrip::<CatalogGetResult>(vector),
+                "ShellOpenResult" => roundtrip::<ShellOpenResult>(vector),
                 "PluginManifest" => roundtrip::<PluginManifest>(vector),
                 "Permission" => roundtrip::<Permission>(vector),
                 "InitDocument" => roundtrip::<InitDocument>(vector),

@@ -49,6 +49,11 @@ export function createView(doc) {
   ].map(byId);
   const [details, link, status, stats] = ["details", "link", "status", "stats"].map(byId);
   const root = byId("grid");
+  const progress = /** @type {import("@endue-ai/ui").DeskProgress | null} */ (
+    doc.querySelector("desk-progress")
+  );
+  let cancel = () => {};
+  progress?.addEventListener("desk-cancel", () => cancel());
   const input = /** @type {HTMLInputElement} */ (findText);
 
   /** @type {Shown | null} */
@@ -208,6 +213,21 @@ export function createView(doc) {
   });
 
   return {
+    /** @param {import("./sheets.js").Progress | null} value */
+    progress(value) {
+      if (!progress) return;
+      progress.hidden = value === null;
+      if (!value) {
+        cancel = () => {};
+        return;
+      }
+      progress.label = value.label;
+      progress.value = value.value;
+      progress.max = value.max;
+      progress.detail = value.detail;
+      progress.cancelable = true;
+      cancel = value.cancel;
+    },
     /** @param {Shown | null} model */
     show(model) {
       keep();

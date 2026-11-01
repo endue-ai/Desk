@@ -1,5 +1,5 @@
-// Reading the elements' shadow CSS in tests: flat rules (the elements use no at-rules or nesting)
-// and the WCAG 2 contrast ratio.
+// Reading the elements' shadow CSS in tests: flat rules (no nesting; the rules inside an at-rule
+// block such as @media or @keyframes read as flat rules too) and the WCAG 2 contrast ratio.
 
 export type Rule = { selector: string; declarations: Record<string, string> };
 

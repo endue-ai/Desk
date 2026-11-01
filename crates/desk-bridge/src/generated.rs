@@ -311,6 +311,7 @@ pub enum Permission {
     DataRead(DataReadPermission),
     ConnectorManage(ConnectorManagePermission),
     ViewManage(ViewManagePermission),
+    ShellOpen(ShellOpenPermission),
 }
 
 /// Read files, list folders and watch for changes under the given paths.
@@ -463,6 +464,30 @@ pub struct ConnectorManagePermission {
 #[serde(deny_unknown_fields)]
 pub struct ViewManagePermission {
     pub permission: ViewManagePermissionPermission,
+}
+
+/// Hand links to the system with shell.open: open URLs whose scheme is in schemes in their default app, and show files under paths in the file manager. Only http, https and mailto are ever opened, and a path is only shown, never opened or run.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ShellOpenPermission {
+    pub permission: ShellOpenPermissionPermission,
+    /// URL schemes the permission opens.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub schemes: Option<Vec<ShellScheme>>,
+    /// Path patterns whose files and folders the permission shows in the file manager.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub paths: Option<Vec<PathPattern>>,
+}
+
+/// A URL scheme shell.open hands to the system: the browser for http and https, the mail app for mailto.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum ShellScheme {
+    #[serde(rename = "http")]
+    Http,
+    #[serde(rename = "https")]
+    Https,
+    #[serde(rename = "mailto")]
+    Mailto,
 }
 
 /// An absolute path, or one rooted at ~ or at ${plugin}, ${workspace} or ${home}, with forward slashes. * matches within a segment and ** across segments.
@@ -1953,6 +1978,7 @@ pub enum BridgeRequest {
     ViewSave(ViewSaveRequest),
     ViewRemove(ViewRemoveRequest),
     CatalogGet(CatalogGetRequest),
+    ShellOpen(ShellOpenRequest),
 }
 
 /// The answer to one request: a result, or an error.
@@ -3627,6 +3653,34 @@ pub struct SettingsChangedEvent {
     pub data: Setting,
 }
 
+/// Open a URL in the system's default handler, or show a file in the file manager.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ShellOpenRequest {
+    pub id: RequestId,
+    pub method: ShellOpenRequestMethod,
+    pub params: ShellOpenParams,
+}
+
+/// Parameters of shell.open.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ShellOpenParams {
+    /// An absolute URL (only http, https and mailto are ever opened), or with reveal a path (~/... or absolute) to show in its folder.
+    pub target: String,
+    /// Show the file or folder at the path target, selected in its folder in the file manager, instead of opening a URL. A path is never opened or run.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reveal: Option<bool>,
+    pub scope: ShellOpenPermission,
+}
+
+/// Result of shell.open: the system took the URL or showed the file.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ShellOpenResult {
+    pub opened: True,
+}
+
 /// A key in the caller's own namespace.
 pub type StoreKey = String;
 
@@ -4119,6 +4173,14 @@ pub enum ViewManagePermissionPermission {
     #[default]
     #[serde(rename = "view:manage")]
     ViewManage,
+}
+
+/// The `permission` of [`ShellOpenPermission`]: always `"shell:open"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum ShellOpenPermissionPermission {
+    #[default]
+    #[serde(rename = "shell:open")]
+    ShellOpen,
 }
 
 /// The `kind` of [`EventItem`]: always `"event"`.
@@ -4761,6 +4823,14 @@ pub enum SettingsChangedEventEvent {
     SettingsChanged,
 }
 
+/// The `method` of [`ShellOpenRequest`]: always `"shell.open"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum ShellOpenRequestMethod {
+    #[default]
+    #[serde(rename = "shell.open")]
+    ShellOpen,
+}
+
 /// The `method` of [`StoreGetRequest`]: always `"store.get"`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub enum StoreGetRequestMethod {
@@ -5003,6 +5073,10 @@ pub const SCHEMAS: &[(&str, &str)] = &[
     (
         "https://endue.ai/specs/bridge/v0/settings.schema.json",
         include_str!("../../../specs/bridge/v0/settings.schema.json"),
+    ),
+    (
+        "https://endue.ai/specs/bridge/v0/shell.schema.json",
+        include_str!("../../../specs/bridge/v0/shell.schema.json"),
     ),
     (
         "https://endue.ai/specs/bridge/v0/store.schema.json",

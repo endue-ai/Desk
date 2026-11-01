@@ -10,11 +10,11 @@ const css = `
   max-width: 320px;
   padding: 4px;
   border: 1px solid var(--desk-border);
-  border-radius: 8px;
+  border-radius: var(--desk-radius-md);
   background: var(--desk-card);
   color: var(--desk-text);
   font: inherit;
-  font-size: 13px;
+  font-size: var(--desk-text-sm);
   box-shadow: 0 8px 24px var(--desk-background);
 }
 :host([open]) {
@@ -25,7 +25,7 @@ const css = `
 }
 ::slotted(*) {
   padding: 6px 10px;
-  border-radius: 6px;
+  border-radius: var(--desk-radius-md);
   color: var(--desk-text);
   cursor: pointer;
   outline: none;
@@ -35,7 +35,7 @@ const css = `
   color: var(--desk-text);
 }
 ::slotted(:focus-visible) {
-  outline: 2px solid var(--desk-accent);
+  outline: 2px solid var(--desk-ring);
   outline-offset: -2px;
 }
 ::slotted([role="separator"]) {

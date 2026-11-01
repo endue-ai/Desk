@@ -10,8 +10,10 @@ contributes in `plugin.json`. The shell itself is `mountDesk` in `packages/runti
   bottom edge hold those places.
 - **Settings.** `desk.shell.mode`; `desk.shell.layouts` (desktops moved since the profile was saved);
   `desk.shell.density` (Eris's mesh: airy, balanced, dense); `desk.shell.soul` (wisp, solemn).
-- **Themes.** `desk.shell.dark` and `desk.shell.light` add the shell's colours (popovers, status dots,
-  Eris's persona) to desk.theme's, as `--desk-*` custom properties.
+- **Themes.** `desk.shell.dark` and `desk.shell.light` add the shell's own colours (status dots and
+  fills, the secondary surface, the glow, Eris's persona) to desk.theme's, as `--desk-*` custom
+  properties. Surfaces every page shares (popover, hover, input, muted, the shadows, the tooltip) are
+  desk.theme's role colours (`docs/design-system.md`).
 
 Its commands (`desk.shell.desktop-1` to `desktop-4`, `desk.shell.density`, `desk.shell.soul`, the
 agents) and the pane commands under `desk.display` are defined by the shell at runtime; their keys

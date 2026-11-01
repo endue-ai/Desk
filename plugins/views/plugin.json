@@ -9,7 +9,8 @@
     { "permission": "data:read" },
     { "permission": "connector:manage" },
     { "permission": "view:manage" },
-    { "permission": "cmd:invoke", "ids": ["*"] }
+    { "permission": "cmd:invoke", "ids": ["*"] },
+    { "permission": "shell:open", "schemes": ["http", "https", "mailto"] }
   ],
   "surfaces": [{ "id": "main", "title": "Views", "placement": "overlay", "hidden": true }],
   "contributes": {

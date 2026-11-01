@@ -18,7 +18,7 @@ asked for once with `perm.request`; a refusal is said in the terminal: `Not allo
 
 | Command | What it does |
 | --- | --- |
-| `endue.terminal.new` (`Mod+Shift+T`), `.focus` (`` Control+` ``), `.close`, `.next`, `.previous` | Terminals as tabs; `.close` sends the shell a hang-up |
+| `endue.terminal.new { cwd? }` (`Mod+Shift+T`), `.focus` (`` Control+` ``), `.close`, `.next`, `.previous` | New uses the configured shell and arguments in `cwd` (defaults to settings); `.close` sends a hang-up |
 | `endue.terminal.clear`, `.interrupt`, `.restart` | Clear the screen; send `int`; start the shell again (Enter after an exit does too) |
 | `endue.terminal.run { command, args?, cwd?, title? }` | A program of its own in a new terminal, without a shell; answers `{ session, procId }`. A shell with arguments is refused, so a caller cannot slip past the person |
 
@@ -30,7 +30,8 @@ asked for once with `perm.request`; a refusal is said in the terminal: `Not allo
 | `ui/vendor/` | xterm.js 6 with the fit and unicode11 addons (MIT), copied by `just vendor-terminal` |
 
 Inside a terminal Escape and Control chords belong to the shell; the desk's own chords (`keys.js`,
-plus `endue.terminal.keys-to-desk`) still reach the desk. Copy is `Mod+C` over a selection (and
+plus `endue.terminal.keys-to-desk`) still reach the desk. `Mod+Alt+Left/Right` switches buffers
+on every platform; `Control+Tab` and `Control+Shift+Tab` move focus between surfaces. Copy is `Mod+C` over a selection (and
 `Control+Shift+C`), paste `Mod+V` (and `Control+Shift+V`). Settings: `endue.terminal.*` in `plugin.json`.
 
 ```bash
