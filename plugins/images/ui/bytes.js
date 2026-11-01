@@ -71,10 +71,18 @@ export function reader(bytes, le = true) {
  * @param {"deflate" | "gzip" | "deflate-raw"} format
  */
 export async function inflate(bytes, format) {
-  const stream = new Blob([/** @type {BlobPart} */ (bytes)])
-    .stream()
-    .pipeThrough(new DecompressionStream(format));
-  return new Uint8Array(await new Response(stream).arrayBuffer());
+  // No Blob: reading a Blob's stream fails in a WebKit worker of a sandboxed frame.
+  const stream = new DecompressionStream(format);
+  const writer = stream.writable.getWriter();
+  // Written and read at once: a stream that is not read applies back pressure and never ends. A
+  // write that fails fails the readable too, which is where the error is reported.
+  const written = writer
+    .write(/** @type {Uint8Array<ArrayBuffer>} */ (bytes))
+    .then(() => writer.close())
+    .catch(() => {});
+  const out = new Uint8Array(await new Response(stream.readable).arrayBuffer());
+  await written;
+  return out;
 }
 
 /** The extension of a file name, lower case, without the dot ("" when it has none). */
