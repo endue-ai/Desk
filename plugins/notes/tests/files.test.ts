@@ -6,7 +6,7 @@ const B = note("~/Notes/b.txt");
 
 describe("the desk's file requests", () => {
   it("visit reads the file into the buffer and watches it", async () => {
-    const { host, view, params } = await mount({ handlers: disk({ [A.path]: "# A\n" }) });
+    const { host, view, params, settle } = await mount({ handlers: disk({ [A.path]: "# A\n" }) });
     await expect(host.command("desk.files.visit", A)).resolves.toBeUndefined();
     expect(host.calls.filter((c) => c.method.startsWith("fs.")).map((c) => c.method)).toEqual([
       "fs.read",
@@ -17,6 +17,10 @@ describe("the desk's file requests", () => {
     expect(view.notes.at(-1)).toEqual({ ...A, name: "a.md", text: "# A\n", modified: false });
     expect(view.focused).toBe(1);
     expect(view.statuses).toEqual([]);
+    await settle();
+    expect(params("search.replace").at(-1)).toMatchObject({
+      documents: [{ id: A.path, title: "a.md", text: "# A\n", command: "endue.notes.search-open" }],
+    });
   });
 
   it("save writes the text and clears the modified mark", async () => {
