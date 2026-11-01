@@ -21,12 +21,14 @@ export interface ModeManifest {
 export interface SurfacePlacement {
   id: string;
   plugin: string;
-  /** Position and size in the 1440×900 reference frame; the shell maps it onto the window. */
+  /** Floating: 1440×900 reference frame. Canvas: world pixels, independent of app size. */
   x: number;
   y: number;
   w: number;
   h: number;
   pinned: boolean;
+  /** Absent/true: anchored to the app viewport. False: moves with the desktop canvas. */
+  floating?: boolean;
   /** How the surface is split into panes. Absent: one pane showing the view named by `id`. */
   panes?: PaneNode;
   /** Where it was before it filled the free area; present only while it fills it. */

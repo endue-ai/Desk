@@ -187,6 +187,10 @@ export function mountEris(
         dragging = null;
         moveEris(ctx, p);
       },
+      cancel: () => {
+        dragging = null;
+        frame(ctx.ticker.now());
+      },
     }),
     listen(el, "keydown", (e) => {
       const k = e as KeyboardEvent;

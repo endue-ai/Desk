@@ -4,15 +4,15 @@
  */
 
 import type { SurfacePlacement } from "../modes/types";
-import { closeSurface, moveSurface, stash, togglePin, windowsOf } from "../shell/actions";
+import { closeSurface, stash, togglePin, windowsOf } from "../shell/actions";
 import type { ShellCtx } from "../shell/context";
 import { h, listen, render } from "../shell/dom";
-import { draggable } from "../shell/drag";
 import { icon } from "../shell/icons";
-import { focusPane, splitPane, toggleMaximize } from "../shell/windows";
-import { clampRect, freeOnScreen, fromScreen, type Rect, toScreen } from "./geometry";
+import { panOf } from "../shell/Pan";
+import { focusPane, splitPane, toggleFloating, toggleMaximize } from "../shell/windows";
+import { isFloating, screenRect } from "./coordinates";
+import { place, surfaceInteractions } from "./interactions";
 import { renderPanes } from "./PaneView";
-import { snapFor } from "./snap";
 import { findLeaf, leaves, panesOf } from "./tree";
 import { type Mounted, resolveView, viewOf } from "./views";
 
@@ -75,13 +75,6 @@ export function mountSurfaces(root: HTMLElement, ctx: ShellCtx): () => void {
     return key ? `${label} (${key})` : label;
   };
 
-  const place = (el: HTMLElement, r: Rect) => {
-    el.style.left = `${r.x}px`;
-    el.style.top = `${r.y}px`;
-    el.style.width = `${r.w}px`;
-    el.style.height = `${r.h}px`;
-  };
-
   /** Title bar text for the active pane: icon, name, the view's own line and Eris's badge. */
   const drawTitle = (entry: Entry, p: SurfacePlacement) => {
     const view = viewOf(ctx, activeView(ctx, p));
@@ -125,7 +118,14 @@ export function mountSurfaces(root: HTMLElement, ctx: ShellCtx): () => void {
       () => togglePin(ctx, p.id),
       p.pinned,
     );
+    const floatTool = tool(
+      ctx.tr("floating"),
+      "floating",
+      () => toggleFloating(ctx, p.id, size()),
+      isFloating(p),
+    );
     const relabel = () => {
+      floatTool.setAttribute("aria-pressed", String(isFloating(entry.placement)));
       for (const [button, label, command] of [
         [splitRight, ctx.tr("splitRight"), "desk.display.split-right"],
         [splitDown, ctx.tr("splitDown"), "desk.display.split-down"],
@@ -147,6 +147,7 @@ export function mountSurfaces(root: HTMLElement, ctx: ShellCtx): () => void {
         { class: "surface-tools" },
         splitRight,
         splitDown,
+        floatTool,
         pinTool,
         tool(ctx.tr("stash"), "drawer", () =>
           stash(ctx, p.id, viewOf(ctx, activeView(ctx, entry.placement)).title),
@@ -155,11 +156,6 @@ export function mountSurfaces(root: HTMLElement, ctx: ShellCtx): () => void {
       ),
     );
     const body = h("div", { class: "surface-body" });
-    const grip = h("span", {
-      class: "surface-resize",
-      "aria-hidden": "true",
-      title: ctx.tr("resize"),
-    });
     const el = h(
       "section",
       {
@@ -170,24 +166,7 @@ export function mountSurfaces(root: HTMLElement, ctx: ShellCtx): () => void {
       },
       bar,
       body,
-      grip,
     );
-    let start: Rect = { x: 0, y: 0, w: 0, h: 0 };
-    const begin = () => {
-      start = { x: el.offsetLeft, y: el.offsetTop, w: el.offsetWidth, h: el.offsetHeight };
-      el.classList.add("is-dragging");
-    };
-    const commit = (r: Rect) => {
-      el.classList.remove("is-dragging");
-      const { vw, vh } = size();
-      moveSurface(ctx, p.id, fromScreen(r, vw, vh));
-    };
-    /** A drag let go at an edge of the free area snaps there; anywhere else it stays. */
-    const drop = (r: Rect, e: PointerEvent) => {
-      const { vw, vh } = size();
-      const snapped = snapFor(r, { x: e.clientX, y: e.clientY }, freeOnScreen(vw, vh));
-      commit(snapped ?? r);
-    };
     /** Focus follows the pointer or keyboard into a pane. */
     const focusFrom = (target: EventTarget | null) => {
       const pane = (target as Element | null)?.closest?.("[data-pane]")?.getAttribute("data-pane");
@@ -201,29 +180,7 @@ export function mountSurfaces(root: HTMLElement, ctx: ShellCtx): () => void {
         if ((e.target as Element).closest("button")) return;
         toggleMaximize(ctx, p.id);
       }),
-      draggable(bar, {
-        accept: (e) => !(e.target as Element).closest("button") && !entry.placement.pinned,
-        start: begin,
-        move: (dx, dy) => {
-          const { vw, vh } = size();
-          place(el, clampRect({ ...start, x: start.x + dx, y: start.y + dy }, vw, vh));
-        },
-        end: (dx, dy, e) => {
-          const { vw, vh } = size();
-          drop(clampRect({ ...start, x: start.x + dx, y: start.y + dy }, vw, vh), e);
-        },
-      }),
-      draggable(grip, {
-        start: begin,
-        move: (dx, dy) => {
-          const { vw, vh } = size();
-          place(el, clampRect({ ...start, w: start.w + dx, h: start.h + dy }, vw, vh));
-        },
-        end: (dx, dy) => {
-          const { vw, vh } = size();
-          commit(clampRect({ ...start, w: start.w + dx, h: start.h + dy }, vw, vh));
-        },
-      }),
+      surfaceInteractions(el, bar, () => entry.placement, size, ctx),
     ];
     const entry: Entry = {
       el,
@@ -273,10 +230,18 @@ export function mountSurfaces(root: HTMLElement, ctx: ShellCtx): () => void {
       const views = all.map((l) => resolveView(s, p, l.view));
       const panesKey = JSON.stringify([panesOf(p), views]);
       if (entry.panesKey !== panesKey) {
+        const activeSplit = entry.body.contains(document.activeElement)
+          ? document.activeElement?.getAttribute("data-split")
+          : null;
         entry.panes.off?.();
         entry.panes = renderPanes(ctx, p);
         entry.body.replaceChildren(entry.panes.el);
         entry.panesKey = panesKey;
+        if (activeSplit) {
+          entry.body
+            .querySelector<HTMLElement>(`[data-split="${CSS.escape(activeSplit)}"]`)
+            ?.focus();
+        }
       }
       const active = s.focused === p.id ? activeLeaf(ctx, p)?.id : undefined;
       for (const pane of entry.body.querySelectorAll<HTMLElement>("[data-pane]")) {
@@ -287,9 +252,12 @@ export function mountSurfaces(root: HTMLElement, ctx: ShellCtx): () => void {
         views.every((view) => viewOf(ctx, view).byEris),
       );
       entry.el.classList.toggle("is-pinned", p.pinned);
+      entry.el.dataset.floating = String(isFloating(p));
       entry.relabel();
       drawTitle(entry, p);
-      place(entry.el, toScreen(p, vw, vh));
+      // Status/focus updates must not overwrite an in-progress pointer preview.
+      if (!entry.el.classList.contains("is-dragging"))
+        place(entry.el, screenRect(p, panOf(s), vw, vh));
       entry.el.style.zIndex = String(p.id === s.focused ? 100 : p.pinned ? 50 + i : 1 + i);
       entry.el.classList.toggle("is-focused", p.id === s.focused);
     });
@@ -304,6 +272,7 @@ export function mountSurfaces(root: HTMLElement, ctx: ShellCtx): () => void {
         s.pane,
         s.lang,
         s.desktop,
+        s.pan,
         s.agents,
         s.tasks,
         s.drawer,

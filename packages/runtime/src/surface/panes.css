@@ -36,6 +36,8 @@
 
 .divider {
   position: relative;
+  touch-action: none;
+  user-select: none;
   /* Above both panes, so its 9 px hit area (::before) is not covered by the pane after it. */
   z-index: 1;
   flex: none;

@@ -199,7 +199,7 @@ export function pageToSvg(page, assets) {
   };
 
   /** @returns {string} */
-  const walk = (/** @type {Element} */ el) => {
+  const draw = (/** @type {Element} */ el) => {
     switch (el.localName) {
       case "Canvas": {
         pushResources(el);
@@ -287,6 +287,19 @@ export function pageToSvg(page, assets) {
       default:
         return "";
     }
+  };
+
+  const walk = (el) => {
+    const shape = draw(el);
+    const href = el.getAttribute("FixedPage.NavigateUri") ?? el.getAttribute("NavigateUri");
+    if (
+      !shape ||
+      !href ||
+      /^\/\//.test(href) ||
+      (/^[\w+.-]+:/.test(href) && !/^(https?|mailto):/i.test(href))
+    )
+      return shape;
+    return `<a${attrs({ "data-reader-link": href, role: "link", tabindex: "0", "aria-label": href })}>${shape}</a>`;
   };
 
   pushResources(page);

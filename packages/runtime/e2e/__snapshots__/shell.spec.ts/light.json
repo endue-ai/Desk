@@ -1466,7 +1466,7 @@
              "class": "icon-button tool",
              "aria-label": "오른쪽으로 나누기 (⌘D)",
              "box": [
-              543,
+              517,
               249,
               24,
               24
@@ -1486,7 +1486,7 @@
              "class": "icon-button tool",
              "aria-label": "아래로 나누기 (⌥⌘D)",
              "box": [
-              569,
+              543,
               249,
               24,
               24
@@ -1498,6 +1498,27 @@
               {
                "tag": "svg",
                "icon": "split-down"
+              }
+             ]
+            },
+            {
+             "tag": "button",
+             "class": "icon-button tool",
+             "aria-label": "플로팅 모드",
+             "aria-pressed": "true",
+             "box": [
+              569,
+              249,
+              24,
+              24
+             ],
+             "style": {
+              "border": "solid rgba(0, 0, 0, 0)"
+             },
+             "children": [
+              {
+               "tag": "svg",
+               "icon": "floating"
               }
              ]
             },
@@ -1902,6 +1923,55 @@
          "style": {
           "color": "rgb(30, 24, 51)"
          }
+        },
+        {
+         "tag": "span",
+         "class": "surface-resize",
+         "style": {
+          "color": "rgb(30, 24, 51)"
+         }
+        },
+        {
+         "tag": "span",
+         "class": "surface-resize",
+         "style": {
+          "color": "rgb(30, 24, 51)"
+         }
+        },
+        {
+         "tag": "span",
+         "class": "surface-resize",
+         "style": {
+          "color": "rgb(30, 24, 51)"
+         }
+        },
+        {
+         "tag": "span",
+         "class": "surface-resize",
+         "style": {
+          "color": "rgb(30, 24, 51)"
+         }
+        },
+        {
+         "tag": "span",
+         "class": "surface-resize",
+         "style": {
+          "color": "rgb(30, 24, 51)"
+         }
+        },
+        {
+         "tag": "span",
+         "class": "surface-resize",
+         "style": {
+          "color": "rgb(30, 24, 51)"
+         }
+        },
+        {
+         "tag": "span",
+         "class": "surface-resize",
+         "style": {
+          "color": "rgb(30, 24, 51)"
+         }
         }
        ]
       },
@@ -1970,7 +2040,7 @@
              "class": "icon-button tool",
              "aria-label": "오른쪽으로 나누기 (⌘D)",
              "box": [
-              1183,
+              1157,
               229,
               24,
               24
@@ -1990,7 +2060,7 @@
              "class": "icon-button tool",
              "aria-label": "아래로 나누기 (⌥⌘D)",
              "box": [
-              1209,
+              1183,
               229,
               24,
               24
@@ -2002,6 +2072,27 @@
               {
                "tag": "svg",
                "icon": "split-down"
+              }
+             ]
+            },
+            {
+             "tag": "button",
+             "class": "icon-button tool",
+             "aria-label": "플로팅 모드",
+             "aria-pressed": "true",
+             "box": [
+              1209,
+              229,
+              24,
+              24
+             ],
+             "style": {
+              "border": "solid rgba(0, 0, 0, 0)"
+             },
+             "children": [
+              {
+               "tag": "svg",
+               "icon": "floating"
               }
              ]
             },
@@ -2185,6 +2276,55 @@
            ]
           }
          ]
+        },
+        {
+         "tag": "span",
+         "class": "surface-resize",
+         "style": {
+          "color": "rgb(30, 24, 51)"
+         }
+        },
+        {
+         "tag": "span",
+         "class": "surface-resize",
+         "style": {
+          "color": "rgb(30, 24, 51)"
+         }
+        },
+        {
+         "tag": "span",
+         "class": "surface-resize",
+         "style": {
+          "color": "rgb(30, 24, 51)"
+         }
+        },
+        {
+         "tag": "span",
+         "class": "surface-resize",
+         "style": {
+          "color": "rgb(30, 24, 51)"
+         }
+        },
+        {
+         "tag": "span",
+         "class": "surface-resize",
+         "style": {
+          "color": "rgb(30, 24, 51)"
+         }
+        },
+        {
+         "tag": "span",
+         "class": "surface-resize",
+         "style": {
+          "color": "rgb(30, 24, 51)"
+         }
+        },
+        {
+         "tag": "span",
+         "class": "surface-resize",
+         "style": {
+          "color": "rgb(30, 24, 51)"
+         }
         },
         {
          "tag": "span",

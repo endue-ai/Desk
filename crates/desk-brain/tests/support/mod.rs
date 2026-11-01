@@ -11,7 +11,7 @@ use desk_brain::BRAIN_SCHEMA_JSON;
 use desk_brain_endue::http::{Endpoint, send};
 use serde_json::{Value, json};
 
-/// brain-echo on a free port, with no pause between events and one lease second lasting 20 ms.
+/// brain-echo on a free port, with no pause between events and its normal lease clock.
 pub struct Echo {
     child: Child,
     pub url: String,
@@ -19,14 +19,29 @@ pub struct Echo {
 
 impl Echo {
     pub fn start() -> Self {
+        Self::with_lease_clock(None)
+    }
+
+    /// Only explicit expiry checks accelerate a lease second to 20 real milliseconds.
+    pub fn with_accelerated_leases() -> Self {
+        Self::with_lease_clock(Some(20))
+    }
+
+    fn with_lease_clock(second_ms: Option<u64>) -> Self {
         let server =
             Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/brain-echo/server.mjs");
-        let mut child = Command::new("node")
+        let mut command = Command::new("node");
+        // An inherited demo speed-up must not turn response validation into an expiry test.
+        command
             .arg(server)
             .args(["--port", "0"])
             .env("BRAIN_ECHO_DELAY_MS", "0")
-            .env("BRAIN_ECHO_SECOND_MS", "20")
-            .stdout(Stdio::piped())
+            .env_remove("BRAIN_ECHO_SECOND_MS")
+            .stdout(Stdio::piped());
+        if let Some(second_ms) = second_ms {
+            command.env("BRAIN_ECHO_SECOND_MS", second_ms.to_string());
+        }
+        let mut child = command
             .spawn()
             .expect("node runs examples/brain-echo (Node 22 or later)");
         let mut line = String::new();

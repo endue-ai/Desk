@@ -34,6 +34,8 @@
   border-bottom: 1px solid var(--desk-border);
   color: var(--desk-text);
   cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
   touch-action: none;
   white-space: nowrap;
 }
@@ -55,14 +57,20 @@
 .tool[aria-pressed="true"] { color: var(--desk-accent); }
 
 .surface-body { min-height: 0; overflow: auto; }
-.surface-resize {
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  width: 16px;
-  height: 16px;
-  cursor: nwse-resize;
-  touch-action: none;
+.surface-resize { position: absolute; z-index: 2; touch-action: none; }
+.surface-resize[data-resize="n"], .surface-resize[data-resize="s"] { left: 16px; right: 16px; height: 6px; cursor: ns-resize; }
+.surface-resize[data-resize="e"], .surface-resize[data-resize="w"] { top: 16px; bottom: 16px; width: 6px; cursor: ew-resize; }
+.surface-resize[data-resize="n"] { top: 0; }
+.surface-resize[data-resize="s"] { bottom: 0; }
+.surface-resize[data-resize="e"] { right: 0; }
+.surface-resize[data-resize="w"] { left: 0; }
+.surface-resize[data-resize="nw"], .surface-resize[data-resize="ne"],
+.surface-resize[data-resize="sw"], .surface-resize[data-resize="se"] { width: 16px; height: 16px; }
+.surface-resize[data-resize="nw"] { left: 0; top: 0; cursor: nwse-resize; }
+.surface-resize[data-resize="ne"] { right: 0; top: 0; cursor: nesw-resize; }
+.surface-resize[data-resize="sw"] { left: 0; bottom: 0; cursor: nesw-resize; }
+.surface-resize[data-resize="se"] {
+  right: 0; bottom: 0; cursor: nwse-resize;
   background: linear-gradient(135deg, transparent 50%, var(--desk-input) 50%, var(--desk-input) 58%, transparent 58%, transparent 72%, var(--desk-input) 72%, var(--desk-input) 80%, transparent 80%);
 }
 

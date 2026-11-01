@@ -5,7 +5,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { StubError } from "../../../packages/bridge/src/index";
-import { defineUiPlugin } from "../../../packages/plugin-sdk/src/index";
+import { byteSource, defineUiPlugin, readBytes } from "../../../packages/plugin-sdk/src/index";
 import { createTestHost, type TestHost } from "../../../packages/plugin-sdk/src/testing/index";
 import { createReader, type ShownModel } from "../ui/reader.js";
 import { loadPdfjs } from "./pdfjs";
@@ -59,6 +59,7 @@ export async function mount<V extends View = RecordingView>(
   options: {
     handlers?: Handlers;
     commands?: Commands;
+    pdfjs?: () => Promise<object>;
     view?: (app: () => Reader | undefined) => V;
   } = {},
 ): Promise<Mounted<V>> {
@@ -72,7 +73,7 @@ export async function mount<V extends View = RecordingView>(
   await defineUiPlugin(
     {
       mount(ctx) {
-        app = createReader(ctx, view, { pdfjs: loadPdfjs });
+        app = createReader(ctx, view, { pdfjs: options.pdfjs ?? loadPdfjs, byteSource, readBytes });
       },
     },
     host.transport,
@@ -99,11 +100,17 @@ export function disk(
 ): Handlers {
   let watches = 0;
   return {
-    "fs.read": ({ path, encoding }) => {
+    "fs.read": ({ path, encoding, offset = 0, length }) => {
       const bytes = files[path];
       if (bytes === undefined) throw new StubError("not_found", `no file ${path}`);
       if (encoding !== "base64") throw new StubError("invalid_params", "the reader reads base64");
-      return { content: Buffer.from(bytes).toString("base64"), encoding: "base64" };
+      return {
+        content: Buffer.from(
+          bytes.slice(offset, length === undefined ? undefined : offset + length),
+        ).toString("base64"),
+        encoding: "base64",
+        size: bytes.length,
+      };
     },
     "fs.watch": () => ({ watchId: `w${++watches}` }),
     "store.get": ({ key }) => (key in store ? { value: store[key] } : {}),

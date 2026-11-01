@@ -39,7 +39,9 @@ body {
 
 .is-grabbing,
 .is-grabbing * {
-  cursor: grabbing !important;
+  cursor: var(--desk-drag-cursor, grabbing) !important;
+  user-select: none !important;
+  -webkit-user-select: none !important;
 }
 
 .sr-only {
@@ -122,7 +124,7 @@ body {
   color: var(--desk-text);
   transition: background-color var(--motion-fast) ease;
 }
-.icon-button:hover,
+.icon-button:hover:not(:disabled),
 .icon-button.is-open { background: var(--desk-hover); }
 
 .add-button {
@@ -156,10 +158,10 @@ body {
 }
 .btn-xs { height: var(--control-xs); padding: 0 var(--space-2); font-size: var(--text-xs); }
 .btn-primary { background: var(--desk-primary); color: var(--desk-primary-foreground); }
-.btn-primary:hover { background: var(--desk-primary-hover); }
+.btn-primary:hover:not(:disabled) { background: var(--desk-primary-hover); }
 .btn-outline { border-color: var(--desk-input); color: var(--desk-text); }
-.btn-outline:hover,
-.btn-ghost:hover { background: var(--desk-hover); }
+.btn-outline:hover:not(:disabled),
+.btn-ghost:hover:not(:disabled) { background: var(--desk-hover); }
 
 .input {
   width: 100%;
@@ -261,7 +263,7 @@ body {
   background: transparent;
   transition: background-color var(--motion-fast) ease;
 }
-.segment:hover { background: var(--desk-hover); }
+.segment:hover:not(:disabled) { background: var(--desk-hover); }
 .segment.is-selected { border-color: var(--desk-accent); background: var(--desk-primary-soft); }
 
 .tooltip {
@@ -320,3 +322,8 @@ body {
     animation: none !important;
   }
 }
+
+/* Canvas windows follow this background; the shell controls and floating windows stay anchored. */
+.shell.has-canvas { cursor: grab; touch-action: none; background-image: radial-gradient(var(--desk-border) 1px, transparent 1px); background-size: 24px 24px; background-position: var(--pan-x, 0px) var(--pan-y, 0px); }
+.shell.has-canvas .surface { cursor: auto; }
+.canvas-reset { position: absolute; left: 104px; bottom: 24px; z-index: 200; width: 32px; height: 32px; background: var(--desk-card); border: 1px solid var(--desk-border); border-radius: var(--radius-sm); }

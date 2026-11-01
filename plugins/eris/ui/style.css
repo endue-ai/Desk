@@ -200,3 +200,14 @@ body {
   text-overflow: ellipsis;
   pointer-events: none;
 }
+
+/* Match the shell's action feedback inside the isolated plugin frame. */
+button:not(:disabled),
+select:not(:disabled) {
+  cursor: pointer;
+}
+
+button:disabled,
+select:disabled {
+  cursor: not-allowed;
+}

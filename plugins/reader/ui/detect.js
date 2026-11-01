@@ -39,12 +39,12 @@ const isPalmBook = (bytes) => {
   return id === "BOOKMOBI" || id === "TEXtREAd" || id === "TEXtTlDc";
 };
 
-/** @param {Uint8Array} bytes @param {string} name @returns {Promise<Detected>} */
-export async function detect(bytes, name) {
+/** @param {Uint8Array} bytes @param {string} name @param {import("@endue-ai/plugin-sdk").ByteSource} [source] @returns {Promise<Detected>} */
+export async function detect(bytes, name, source) {
   const pdf = indexOf(bytes.subarray(0, 1024), "%PDF-");
   if (pdf >= 0) return { format: "pdf" };
   if (isZip(bytes)) {
-    const zip = await readZip(bytes);
+    const zip = await readZip(source ?? bytes);
     const mimetype = zip.has("mimetype") ? (await zip.text("mimetype")).trim() : "";
     if (mimetype === "application/epub+zip" || zip.has("META-INF/container.xml"))
       return { format: "epub", zip };
