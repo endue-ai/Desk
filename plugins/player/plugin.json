@@ -5,7 +5,7 @@
   "kind": "ui",
   "entry": "ui/index.html",
   "autoload": true,
-  "description": "Plays every video and audio file in one player: one transport, subtitles drawn over the video, playlists and CUE chapters, and each file's tags and cover. What the system's WebKit cannot play opens as its details. It never writes a file.",
+  "description": "Plays every video and audio file in one player: one transport, subtitles drawn over the video, playlists and CUE chapters, and each file's tags and cover. What the system's WebKit cannot play itself is remuxed for Media Source Extensions or decoded by FFmpeg in WebAssembly; damaged and protected files open as their details. It never writes a file.",
   "permissions": [{ "permission": "cmd:invoke", "ids": ["desk.files.changed"] }],
   "surfaces": [{ "id": "main", "title": "Player", "placement": "center" }],
   "contributes": {
