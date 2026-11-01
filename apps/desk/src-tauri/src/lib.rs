@@ -4,6 +4,8 @@ mod commands;
 mod events;
 mod file_urls;
 mod open_files;
+mod palette;
+mod palette_assets;
 mod protocol;
 mod socket;
 
@@ -39,6 +41,7 @@ struct Watching(#[allow(dead_code)] Mutex<(Option<PluginWatcher>, Option<ViewWat
 
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .manage(open_files::OpenFiles::default())
         .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
             open_files::deliver(app, open_files::argument_paths(args));
@@ -167,12 +170,25 @@ pub fn run() {
             // The desk CLI reaches the core over a same-user socket as `cli`, and hears every core
             // event too (ADR 0030).
             app.manage(socket::serve(&core));
-            app.manage(core);
+            app.manage(Arc::clone(&core));
+            palette::setup(app, &core)?;
             Ok(())
+        })
+        .on_window_event(|window, event| {
+            if window.label() == "main"
+                && let tauri::WindowEvent::CloseRequested { api, .. } = event
+            {
+                api.prevent_close();
+                let _ = window.hide();
+            }
         })
         .invoke_handler(tauri::generate_handler![
             commands::bridge::bridge_call,
             commands::ready::desk_ready,
+            palette::palette_hide,
+            palette::palette_reveal_main,
+            palette::palette_prepare_main,
+            palette::palette_present,
             commands::files::take_open_files
         ])
         .build(tauri::generate_context!())

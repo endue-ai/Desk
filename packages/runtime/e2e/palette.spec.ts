@@ -121,6 +121,52 @@ test.describe("desk.display", () => {
   });
 });
 
+test("search opens a disabled plugin and matches another plugin's published body", async ({
+  page,
+}) => {
+  await open(page);
+  await page.evaluate(async () => {
+    await window.__desk.stub.call({
+      id: 900,
+      method: "plugin.setEnabled",
+      params: { plugin: "test.counter", enabled: false, scope: { permission: "plugin:manage" } },
+    });
+    await window.__desk.stub.call(
+      {
+        id: 901,
+        method: "search.replace",
+        params: {
+          documents: [
+            {
+              id: "trip",
+              title: "Travel plan",
+              text: "서울 출장",
+              detail: "Echo document",
+              command: "test.echo.say",
+              args: { text: "Trip" },
+            },
+          ],
+        },
+      },
+      "test.echo",
+    );
+  });
+  await expect(page.locator('[data-surface="test.counter"]')).toHaveCount(0);
+  await page.keyboard.press("Control+K");
+  await frame(page).getByTestId("query").fill("test.counter");
+  await expect(frame(page).getByRole("option").first()).toContainText("test.counter");
+  await page.keyboard.press("Enter");
+  await expect(page.locator(palette)).toBeHidden();
+  await expect(page.locator('[data-surface="test.counter"]')).toBeVisible();
+  await page.evaluate(() => window.__desk.runtime.plugins?.unmount("test.echo"));
+  await page.keyboard.press("Control+K");
+  await frame(page).getByTestId("query").fill("서울 출장");
+  await expect(frame(page).getByRole("option").first()).toContainText("Travel plan");
+  await page.keyboard.press("Enter");
+  await expect(page.locator(palette)).toBeHidden();
+  expect(await page.evaluate(() => window.__desk.runtime.shortcuts.focused)).toBe("test.echo");
+});
+
 test.describe("desk.palette: a command that fails", () => {
   test("a command that fails from the palette says why", async ({ page }) => {
     await open(page);

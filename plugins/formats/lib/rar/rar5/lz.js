@@ -79,7 +79,7 @@ export class Decoder5 {
       while (input.pos < end) {
         const room = this.win.length - MARGIN - (this.pos - this.flushed);
         if (room <= 0) throw new Error(DAMAGED);
-        this.decode(input, end, Math.min(room, SLICE));
+        this.decode(input, end, Math.min(room, SLICE), pace);
         this.flush(sink);
         if (sink.done) return;
         await pace.step();
@@ -126,13 +126,17 @@ export class Decoder5 {
     this.tables = true;
   }
 
-  /** Decodes symbols until the block's end or `budget` more bytes. @param {Input} input @param {number} end @param {number} budget */
-  decode(input, end, budget) {
+  /** Decodes until the byte or time budget is spent. @param {Input} input @param {number} end @param {number} budget @param {Pace} pace */
+  decode(input, end, budget, pace) {
     const { win, mask, main, dist, low, len, reps } = this;
     const start = this.pos;
     let w = start % win.length;
     let made = 0;
+    let symbols = 0;
     while (input.pos < end && made < budget) {
+      // A byte limit alone can overrun the time budget on slow or contended hosts.
+      // Stop between symbols so file() can flush and yield without losing match state.
+      if ((symbols++ & 63) === 0 && pace.due()) break;
       const sym = main.decode(input);
       if (sym < 256) {
         win[w] = sym;

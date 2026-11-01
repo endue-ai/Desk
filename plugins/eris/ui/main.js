@@ -1,6 +1,7 @@
 // The Eris surface: her status pose, and a conversation typed to her. The runtime switches the pose
 // with the `state` command, for example runtime.plugins.command("endue.eris", "state", "thinking").
 import { defineUiPlugin } from "@endue-ai/plugin-sdk";
+import { conversationSearch } from "./search.js";
 import { REDUCED, WISP } from "./soul-text.js";
 import { Talk } from "./talk.js";
 import { Timeline } from "./timeline.js";
@@ -24,14 +25,15 @@ function show(state) {
 }
 
 defineUiPlugin({
-  mount({ bridge, commands, state }) {
+  async mount({ bridge, commands, state }) {
     show(state.get()?.pose ?? "idle");
     commands.on("state", (next) => {
       show(String(next));
       state.set({ ...state.get(), pose: String(next) });
     });
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    new Talk({
+    let history;
+    const talk = new Talk({
       doc: document,
       bridge,
       commands,
@@ -40,6 +42,13 @@ defineUiPlugin({
       show,
       style: reduced ? REDUCED : WISP,
       reduced,
-    }).start();
+      completed: (turn) => {
+        void history?.add(turn);
+      },
+    });
+    history = await conversationSearch({ bridge, commands }, (prompt, answer) =>
+      talk.showExchange(prompt, answer),
+    );
+    talk.start();
   },
 });

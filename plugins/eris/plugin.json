@@ -10,5 +10,8 @@
     { "permission": "cmd:invoke", "ids": ["desk.buffers.list", "desk.palette.pick"] },
     { "permission": "fs:read", "paths": ["${home}/**"] }
   ],
-  "surfaces": [{ "id": "main", "title": "Eris", "placement": "right" }]
+  "surfaces": [{ "id": "main", "title": "Eris", "placement": "right" }],
+  "contributes": {
+    "commands": [{ "id": "endue.eris.search-open", "title": "Open a conversation from search" }]
+  }
 }

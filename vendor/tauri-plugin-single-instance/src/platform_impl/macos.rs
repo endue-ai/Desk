@@ -4,7 +4,7 @@
 
 use std::{
     io::{BufWriter, Error, ErrorKind, Write},
-    os::unix::net::UnixStream,
+    os::unix::net::{UnixListener, UnixStream},
     path::PathBuf,
 };
 
@@ -43,8 +43,13 @@ pub fn init<R: Runtime>(cb: Box<SingleInstanceCallback<R>>) -> TauriPlugin<R> {
                         ErrorKind::NotFound | ErrorKind::ConnectionRefused => {
                             // This process claims itself as singleton as likely none exists
                             socket_cleanup(&socket);
-                            manage_instance_lock(app, InstanceLock(socket.clone()));
-                            listen_for_other_instances(socket, app.clone(), cb);
+                            // Own the socket before setup returns: the async executor may be
+                            // busy when another process immediately tries to contact us.
+                            let listener = UnixListener::bind(&socket)?;
+                            let lock = InstanceLock(socket);
+                            listener.set_nonblocking(true)?;
+                            manage_instance_lock(app, lock);
+                            listen_for_other_instances(listener, app.clone(), cb);
                         }
                         _ => {
                             tracing::debug!(
@@ -97,12 +102,12 @@ fn notify_singleton(socket: &PathBuf) -> Result<(), Error> {
 }
 
 fn listen_for_other_instances<A: Runtime>(
-    socket: PathBuf,
+    listener: UnixListener,
     app: AppHandle<A>,
     mut cb: Box<SingleInstanceCallback<A>>,
 ) {
     tauri::async_runtime::spawn(async move {
-        match tokio::net::UnixListener::bind(socket) {
+        match tokio::net::UnixListener::from_std(listener) {
             Ok(listener) => loop {
                 match listener.accept().await {
                     Ok((mut stream, _addr)) => {

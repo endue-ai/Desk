@@ -2,7 +2,7 @@
 
 The calls the web runtime (and every plugin through it) makes into the Rust core. JSON Schema 2020-12,
 one file per namespace: `bridge.schema.json` (envelope, errors, shared types), `fs`, `proc`, `net`, `plugins`,
-`store`, `init`, `brain`, `audio`, `ui`, `perm`, `cmd`, `settings`, `log`, `events`, `data`, `connector`,
+`store`, `search`, `init`, `brain`, `audio`, `ui`, `perm`, `cmd`, `settings`, `log`, `events`, `data`, `connector`,
 `view`, `catalog` and `shell`. Items, views and connectors are the types of `specs/item`, `specs/view` and
 `specs/connector` (ADR 0032). v0 may break on any minor release (ADR 0004).
 
@@ -23,9 +23,16 @@ one call that asks by itself: without a grant that covers its scope, the core as
 scope, through `perm.prompt` as `perm.request` does, and runs the call once they allow it.
 
 Calls that touch only the caller's own data need no scope: `perm.request`, `perm.query`, `perm.revoke` of
-its own grants, `store.*`, `init.get`, `cmd.register`, `cmd.unregister`, `cmd.answer`, `settings.set`,
+its own grants, `store.*`, `search.replace`, `init.get`, `cmd.register`, `cmd.unregister`, `cmd.answer`, `settings.set`,
 `settings.get` and `settings.list` of its own keys, `log.write`, `events.unsubscribe` and
 `data.unsubscribe`. `catalog.get` needs none either: it shows only what the caller's grants already cover.
+
+## Search
+
+`search.replace` atomically publishes the installed caller's documents (500 / 4 MiB), persisted in
+the core. `search.query` needs `search:read`; disabled plugins' documents are excluded. `search.system`
+needs `search:system` and queries the OS index. `search.open` uses the same permission and accepts only
+a recent OS result id belonging to that caller (five-minute expiry), never a supplied path.
 
 ## Callers and events
 

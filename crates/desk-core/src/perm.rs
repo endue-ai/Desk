@@ -223,6 +223,8 @@ pub fn covers(grant: &Permission, scope: &Permission) -> bool {
         (Permission::UiSurface(_), Permission::UiSurface(_)) => true,
         (Permission::UiNotify(_), Permission::UiNotify(_)) => true,
         (Permission::PluginManage(_), Permission::PluginManage(_)) => true,
+        (Permission::SearchRead(_), Permission::SearchRead(_)) => true,
+        (Permission::SearchSystem(_), Permission::SearchSystem(_)) => true,
         (Permission::BrainConverse(_), Permission::BrainConverse(_)) => true,
         (Permission::CmdInvoke(g), Permission::CmdInvoke(s)) => {
             s.ids.iter().all(|a| g.ids.iter().any(|p| star_match(p, a)))
@@ -330,6 +332,8 @@ pub(crate) fn scope_allows(scope: &Permission, target: &Target<'_>) -> bool {
             | Permission::UiSurface(_)
             | Permission::UiNotify(_)
             | Permission::PluginManage(_)
+            | Permission::SearchRead(_)
+            | Permission::SearchSystem(_)
             | Permission::BrainConverse(_)
             | Permission::PermManage(_)
             | Permission::ConnectorManage(_)

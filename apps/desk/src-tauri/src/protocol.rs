@@ -101,6 +101,9 @@ fn respond(request: &Request<Vec<u8>>, source: &impl Source) -> Response<Vec<u8>
         UI_PATH => Ok(UI.as_bytes().to_vec()),
         TOKENS_PATH => Ok(TOKENS.as_bytes().to_vec()),
         BASE_PATH => Ok(BASE.as_bytes().to_vec()),
+        _ if crate::palette_assets::file(&path).is_some() => {
+            Ok(crate::palette_assets::file(&path).unwrap().to_vec())
+        }
         _ => match path.split_once('/') {
             Some((id, file)) => source.plugin_file(id, file),
             None => Err(io::Error::from(io::ErrorKind::NotFound)),

@@ -14,10 +14,15 @@ use crate::RUNTIME_CALLER;
 #[tauri::command]
 pub async fn bridge_call(
     app: AppHandle,
+    window: tauri::WebviewWindow,
     request: BridgeRequest,
     caller: Option<String>,
 ) -> Result<BridgeResponse, String> {
-    let caller = caller.unwrap_or_else(|| RUNTIME_CALLER.to_owned());
+    let caller = if window.label() == crate::palette::LABEL {
+        crate::palette::CALLER.to_owned()
+    } else {
+        caller.unwrap_or_else(|| RUNTIME_CALLER.to_owned())
+    };
     #[cfg(debug_assertions)]
     if caller != RUNTIME_CALLER {
         let value = serde_json::to_value(&request).unwrap_or_default();

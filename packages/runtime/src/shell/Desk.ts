@@ -40,6 +40,8 @@ export interface DeskOptions {
   plugins: PluginHostOptions;
   /** Native hosts may pick a file; cancellation leaves the desk unchanged. */
   pickFile?: () => Promise<string | null>;
+  /** Let the native host reveal a shared picker opened by a background command. */
+  onSurfaceShown?(id: string): void;
   clock?: Clock;
   lang?: Lang;
   /** "Mod" is ⌘ on mac and Ctrl elsewhere; detected from the browser unless given. */
@@ -105,6 +107,7 @@ export function mountDesk(options: DeskOptions): Desk {
     platform,
     plugins: options.plugins,
     pickFile: options.pickFile,
+    onSurfaceShown: options.onSurfaceShown,
     themeRoot: doc.documentElement,
     views: paneViews(ctx),
     // One window manager: the plugins' centre and floating surfaces are the shell's windows.

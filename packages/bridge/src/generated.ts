@@ -189,6 +189,8 @@ export interface ProfileContribution {
 
 /** One permission with its scope. Plugin manifests declare these; bridge calls carry the one that covers them. */
 export type Permission =
+  | SearchReadPermission
+  | SearchSystemPermission
   | FsReadPermission
   | FsWritePermission
   | ProcSpawnPermission
@@ -208,6 +210,16 @@ export type Permission =
   | ConnectorManagePermission
   | ViewManagePermission
   | ShellOpenPermission;
+
+/** Search explicitly published plugin documents and installed plugin launchers. */
+export interface SearchReadPermission {
+  permission: "search:read";
+}
+
+/** Query the OS file and application index and open a recent result with its default application. */
+export interface SearchSystemPermission {
+  permission: "search:system";
+}
 
 /** Read files, list folders and watch for changes under the given paths. */
 export interface FsReadPermission {
@@ -1215,6 +1227,10 @@ export type Encoding = "utf8" | "base64";
 
 /** Any bridge call. The method field selects the params shape. */
 export type BridgeRequest =
+  | SearchReplaceRequest
+  | SearchQueryRequest
+  | SearchSystemRequest
+  | SearchOpenRequest
   | FsReadRequest
   | FsWriteRequest
   | FsListRequest
@@ -2322,6 +2338,84 @@ export interface ProcExitData {
   signal?: Signal;
 }
 
+/** A plugin explicitly publishes searchable text. command must belong to that plugin; args are sent only after the person opens the result. Do not publish secrets. */
+export interface SearchDocument {
+  id: string;
+  title: string;
+  detail?: string;
+  text?: string;
+  command?: CommandId;
+  args?: Record<string, unknown>;
+}
+
+export interface SearchHit {
+  id: string;
+  title: string;
+  detail?: string;
+  kind: SearchKind;
+  plugin?: string;
+  command?: string;
+  args?: Record<string, unknown>;
+}
+
+export type SearchKind = "plugin" | "document" | "file" | "application";
+
+export interface SearchReplaceParams {
+  documents: SearchDocument[];
+}
+
+export type SearchReplaceResult = Record<string, never>;
+
+export interface SearchReplaceRequest {
+  id: RequestId;
+  method: "search.replace";
+  params: SearchReplaceParams;
+}
+
+export interface SearchQueryParams {
+  query: string;
+  limit?: number;
+  scope: SearchReadPermission;
+}
+
+export interface SearchQueryResult {
+  hits: SearchHit[];
+}
+
+export interface SearchQueryRequest {
+  id: RequestId;
+  method: "search.query";
+  params: SearchQueryParams;
+}
+
+export interface SearchSystemParams {
+  query: string;
+  scope: SearchSystemPermission;
+}
+
+export interface SearchSystemResult {
+  hits: SearchHit[];
+}
+
+export interface SearchSystemRequest {
+  id: RequestId;
+  method: "search.system";
+  params: SearchSystemParams;
+}
+
+export interface SearchOpenParams {
+  id: string;
+  scope: SearchSystemPermission;
+}
+
+export type SearchOpenResult = Record<string, never>;
+
+export interface SearchOpenRequest {
+  id: RequestId;
+  method: "search.open";
+  params: SearchOpenParams;
+}
+
 /** A key in its owner's namespace, lowercase and dotted: voice, motion.reduce. */
 export type SettingKey = string;
 
@@ -2660,6 +2754,10 @@ export type ViewChange = "saved" | "removed";
 
 /** Params and result of each bridge method. */
 export interface BridgeMethodMap {
+  "search.replace": { params: SearchReplaceParams; result: SearchReplaceResult };
+  "search.query": { params: SearchQueryParams; result: SearchQueryResult };
+  "search.system": { params: SearchSystemParams; result: SearchSystemResult };
+  "search.open": { params: SearchOpenParams; result: SearchOpenResult };
   "fs.read": { params: FsReadParams; result: FsReadResult };
   "fs.write": { params: FsWriteParams; result: FsWriteResult };
   "fs.list": { params: FsListParams; result: FsListResult };
@@ -2724,6 +2822,10 @@ export type BridgeMethod = keyof BridgeMethodMap;
 
 /** Every bridge method, in spec order. */
 export const BRIDGE_METHODS = [
+  "search.replace",
+  "search.query",
+  "search.system",
+  "search.open",
   "fs.read",
   "fs.write",
   "fs.list",

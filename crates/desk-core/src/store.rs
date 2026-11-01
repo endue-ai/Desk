@@ -42,11 +42,20 @@ impl Store {
 
     /// Set a value. Fails when it is larger than `MAX_VALUE_BYTES`.
     pub fn set(&mut self, caller: &str, key: &str, value: Value) -> Result<(), String> {
+        self.set_bounded(caller, key, value, MAX_VALUE_BYTES)
+    }
+
+    /// Internal namespaces can have their own aggregate budget, independent of store.set.
+    pub(crate) fn set_bounded(
+        &mut self,
+        caller: &str,
+        key: &str,
+        value: Value,
+        limit: usize,
+    ) -> Result<(), String> {
         let size = serde_json::to_vec(&value).map(|v| v.len()).unwrap_or(0);
-        if size > MAX_VALUE_BYTES {
-            return Err(format!(
-                "value is {size} bytes; the limit is {MAX_VALUE_BYTES}"
-            ));
+        if size > limit {
+            return Err(format!("value is {size} bytes; the limit is {limit}"));
         }
         self.data
             .entry(caller.to_owned())
