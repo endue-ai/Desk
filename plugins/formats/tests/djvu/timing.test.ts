@@ -39,6 +39,22 @@ it("includes uninterrupted work after the final yield and detects an exceeded ce
   expect(measured.maximum < 60).toBe(false);
 });
 
+it("detects work exceeding the ceiling before the first yield, with no final tail", async () => {
+  let now = 0;
+  const measured = await measureRender(
+    async () => {
+      now = 61;
+      const rested = pacing.pacer().rest();
+      now += 80;
+      await rested;
+    },
+    { clock: () => now },
+  );
+  expect(measured.waiting).toBe(80);
+  expect(measured.maximum).toBe(61);
+  expect(measured.maximum < 60).toBe(false);
+});
+
 it("restores the pacer and timers when rendering rejects", async () => {
   vi.useFakeTimers();
   const pacer = pacing.pacer;
