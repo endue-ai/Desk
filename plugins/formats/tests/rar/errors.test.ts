@@ -217,39 +217,60 @@ describe("aborting", () => {
     expect(visited).toHaveLength(1);
   });
 
-  it("a long decode gives the event loop a turn at least every 25 ms and says how far it is", async () => {
-    const heard: [number, number][] = [];
-    const archive = await openFixture("rar5-dict.rar", {
-      progress: (done, total) => heard.push([done, total]),
-    });
-    const far = entry(archive, "far.bin");
-    const step = Pace.prototype.step;
-    const turns: number[] = [];
-    Pace.prototype.step = async function (this: Pace) {
-      const since = this.since;
-      await step.call(this);
-      if (this.since !== since) turns.push(this.since);
-    };
-    let ticks = 0;
-    const timer = setInterval(() => ticks++, 1);
-    const start = performance.now();
-    try {
-      await archive.each([far, far, far, far, far, far], async () => {});
-    } finally {
-      clearInterval(timer);
-      Pace.prototype.step = step;
-    }
-    const end = performance.now();
-    expect(end - start).toBeGreaterThan(25);
-    const marks = [start, ...turns, end];
-    const longest = Math.max(...marks.slice(1).map((t, i) => t - (marks[i] ?? t)));
-    expect(longest).toBeLessThan(25);
-    expect(ticks).toBeGreaterThan(1);
-    expect(heard.length).toBeGreaterThan(1);
-    for (const [i, [done, total]] of heard.entries()) {
-      expect(total).toBe(6 * far.size);
-      expect(done).toBeLessThanOrEqual(total);
-      expect(done).toBeGreaterThanOrEqual(heard[i - 1]?.[0] ?? 0);
-    }
-  });
+  it.each([0, 40])(
+    "a long decode yields within 25 ms of active work with a %i ms scheduler delay",
+    async (delay) => {
+      const heard: [number, number][] = [];
+      const archive = await openFixture("rar5-dict.rar", {
+        progress: (done, total) => heard.push([done, total]),
+      });
+      const far = entry(archive, "far.bin");
+      const immediate = globalThis.setImmediate;
+      if (delay) {
+        // The event loop is free while a yielded decoder waits to be scheduled again.
+        globalThis.setImmediate = ((callback: () => void) =>
+          immediate(() => setTimeout(callback, delay))) as typeof setImmediate;
+      }
+      const step = Pace.prototype.step;
+      const active: number[] = [];
+      const waits: number[] = [];
+      let lastPace: Pace | undefined;
+      Pace.prototype.step = async function (this: Pace) {
+        const since = this.since;
+        lastPace = this;
+        const pending = step.call(this);
+        const beforeYield = performance.now();
+        await pending;
+        if (this.since !== since) {
+          active.push(beforeYield - since);
+          waits.push(this.since - beforeYield);
+        }
+      };
+      let ticks = 0;
+      const timer = setInterval(() => ticks++, 1);
+      const start = performance.now();
+      try {
+        await archive.each([far, far, far, far, far, far], async () => {});
+      } finally {
+        clearInterval(timer);
+        Pace.prototype.step = step;
+        globalThis.setImmediate = immediate;
+      }
+      const end = performance.now();
+      expect(end - start).toBeGreaterThan(25);
+      // Include the final work after the last yield, but not time already ceded to the event loop.
+      expect(lastPace).toBeDefined();
+      expect(active.length).toBeGreaterThan(1);
+      if (lastPace) active.push(end - lastPace.since);
+      expect(Math.max(...active)).toBeLessThan(25);
+      if (delay) expect(Math.max(...waits)).toBeGreaterThan(25);
+      expect(ticks).toBeGreaterThan(1);
+      expect(heard.length).toBeGreaterThan(1);
+      for (const [i, [done, total]] of heard.entries()) {
+        expect(total).toBe(6 * far.size);
+        expect(done).toBeLessThanOrEqual(total);
+        expect(done).toBeGreaterThanOrEqual(heard[i - 1]?.[0] ?? 0);
+      }
+    },
+  );
 });
