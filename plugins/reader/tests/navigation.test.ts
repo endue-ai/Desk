@@ -87,3 +87,41 @@ it.each([false, true])(
     }
   },
 );
+
+it.each([false, true])(
+  "scroll reports wait for the requested chapter to commit (same book: %s)",
+  async (sameBook) => {
+    vi.useFakeTimers();
+    const host = document.createElement("div");
+    const scroller = document.createElement("div");
+    scroller.append(host);
+    const moved = vi.fn();
+    const view = createChapters(host, scroller, { moved, go() {}, external() {} });
+    let resolve!: (value: typeof chapter) => void;
+    const read = vi.fn(async () => chapter);
+    const next = { ...chapters, chapter: read };
+    await view.show(next, 1);
+    if (!sameBook) view.clear();
+    read.mockImplementationOnce(
+      () =>
+        new Promise((done) => {
+          resolve = done;
+        }),
+    );
+    const pending = view.show(sameBook ? next : { ...next }, 0);
+    try {
+      scroller.dispatchEvent(new Event("scroll"));
+      await vi.advanceTimersByTimeAsync(150);
+      expect(moved).not.toHaveBeenCalled();
+      resolve(chapter);
+      await pending;
+      scroller.dispatchEvent(new Event("scroll"));
+      await vi.advanceTimersByTimeAsync(150);
+      expect(moved).toHaveBeenCalledExactlyOnceWith({ unit: 0, offset: 0 });
+    } finally {
+      resolve(chapter);
+      await pending;
+      view.clear();
+    }
+  },
+);
