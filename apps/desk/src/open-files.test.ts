@@ -20,7 +20,7 @@ const host = () => ({
 });
 
 beforeEach(() => {
-  vi.clearAllMocks();
+  vi.resetAllMocks();
   native.invoke.mockResolvedValue([]);
   native.listen.mockImplementation(async (_event, next) => {
     signal = next;
