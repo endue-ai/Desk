@@ -1,9 +1,12 @@
 // The slides plugin without its DOM. It answers the desk's file and buffer requests (desk.files.visit,
-// .revert, .save, desk.buffers.show, .closed) for the presentations it holds, reads them with fs.read
-// as base64, asks with perm.request for a file its grants do not cover, and follows each file on disk.
-// It only talks to ctx.commands, ctx.bridge and a view, so the SDK's test host runs it.
-import { fromBase64 } from "./bytes.js";
+// .revert, .save, desk.buffers.show, .closed) for the presentations it holds, reads them in ranges
+// with the SDK's readBytes and shows the progress, asks with perm.request for a file its grants do
+// not cover, opens a file over 8 MiB in a worker that stays while its deck is held, follows each
+// file on disk, and opens a slide's links with shell.open. It only talks to ctx.commands,
+// ctx.bridge and a view, so the SDK's test host runs it.
+import { imageCache } from "./deck.js";
 import { openFile } from "./open.js";
+import { createLinks } from "./render/links.js";
 
 /**
  * @typedef {import("@endue-ai/plugin-sdk").PluginContext} PluginContext
@@ -11,9 +14,16 @@ import { openFile } from "./open.js";
  * @typedef {import("@endue-ai/bridge").Permission} Permission
  * @typedef {import("./open.js").Opened} Opened
  * @typedef {{ buffer: string, path: string, name: string, size: number, opened: Opened }} Shown
- * @typedef {{ show(model: Shown | null): void, status(text: string): void, focus(): void }} View
- * @typedef {Shown & { watchId?: string }} OpenFile
+ * @typedef {{ label: string, value: number | null, max: number, detail: string, cancel(): void }} Progress
+ * @typedef {{ show(model: Shown | null): void, status(text: string): void, focus(): void,
+ *   progress?(value: Progress | null): void }} View
+ * @typedef {Shown & { watchId?: string, close?: () => void }} OpenFile
+ * @typedef {{ read: typeof import("@endue-ai/plugin-sdk").readBytes,
+ *   startWorker?: typeof import("@endue-ai/plugin-sdk").startWorker }} Options
  */
+
+/** Files over this many bytes open in a worker. */
+export const LARGE = 8 * 1024 * 1024;
 
 const nameOf = (/** @type {string} */ path) => path.slice(path.lastIndexOf("/") + 1);
 const folderOf = (/** @type {string} */ path) => {
@@ -30,6 +40,8 @@ const scopeOf = (path) => ({
 });
 const codeOf = (/** @type {unknown} */ error) =>
   /** @type {{ code?: string }} */ (error)?.code ?? "error";
+const bytesOf = (/** @type {number} */ done, /** @type {number} */ total) =>
+  `${done.toLocaleString("en-US")} of ${total.toLocaleString("en-US")} bytes`;
 
 /** The buffer and path the desk sends with every request. */
 const requested = (/** @type {unknown} */ args) => {
@@ -51,10 +63,78 @@ function summary(name, opened) {
 }
 
 /**
+ * Open a presentation in a worker started with the SDK's startWorker (ui/worker.js): the bytes move
+ * to it (they are gone here afterwards), the deck comes back in parts, and its pictures are asked of
+ * the worker, which stays until `close`. The signal ends the worker while it opens.
+ * @param {Uint8Array} bytes @param {string} name
+ * @param {{ signal: AbortSignal, startWorker: NonNullable<Options["startWorker"]> }} options
+ * @returns {Promise<{ opened: Opened, close(): void }>}
+ */
+export function openInWorker(bytes, name, { signal, startWorker }) {
+  return new Promise((resolve, reject) => {
+    signal.throwIfAborted();
+    const worker = startWorker(new URL("./worker.js", import.meta.url), { name: "Slides reader" });
+    /** @type {Map<number, (url: string | null) => void>} */
+    const asked = new Map();
+    let next = 0;
+    let closed = false;
+    const close = () => {
+      closed = true;
+      worker.terminate();
+      for (const answer of asked.values()) answer(null);
+      asked.clear();
+    };
+    /** @type {any} */
+    let opened;
+    const abort = () => {
+      close();
+      reject(new DOMException("Opening was cancelled.", "AbortError"));
+    };
+    signal.addEventListener("abort", abort, { once: true });
+    const settle = (/** @type {() => void} */ then) => {
+      signal.removeEventListener("abort", abort);
+      then();
+    };
+    worker.onerror = (event) => {
+      event.preventDefault?.();
+      close();
+      settle(() => reject(new Error(event.message || "The presentation reader stopped.")));
+    };
+    worker.onmessage = ({ data }) => {
+      if (data.type === "image") {
+        asked.get(data.n)?.(data.url);
+        asked.delete(data.n);
+      } else if (data.type === "head") opened = data.opened;
+      else if (data.type === "slides") opened.deck.slides.push(...data.items);
+      else if (data.type === "failed") {
+        close();
+        settle(() => reject(new Error(data.message)));
+      } else if (data.type === "done") {
+        if (data.opened) {
+          close();
+          return settle(() => resolve({ opened: data.opened, close }));
+        }
+        opened.deck.image = imageCache(
+          (id) =>
+            new Promise((answer) => {
+              if (closed) return answer(null);
+              asked.set(++next, answer);
+              worker.postMessage({ type: "image", n: next, id });
+            }),
+        );
+        settle(() => resolve({ opened, close }));
+      }
+    };
+    worker.postMessage({ type: "open", bytes, name }, [bytes.buffer]);
+  });
+}
+
+/**
  * @param {Pick<PluginContext, "bridge" | "commands">} ctx
  * @param {View} view
+ * @param {Options} options
  */
-export function createSlides({ bridge, commands }, view) {
+export function createSlides({ bridge, commands }, view, { read: readBytes, startWorker }) {
   /** @type {Map<string, OpenFile>} */
   const files = new Map();
   /** @type {Map<string, string>} */
@@ -62,6 +142,11 @@ export function createSlides({ bridge, commands }, view) {
   /** @type {string | null} */
   let shown = null;
   let said = "";
+  /** The opening under way and its buffer: its work stops with this controller. */
+  /** @type {AbortController | undefined} */
+  let opening;
+  let openingBuffer = "";
+  const links = createLinks(bridge);
   const say = (/** @type {string} */ text) => {
     if (text === said) return;
     said = text;
@@ -87,22 +172,37 @@ export function createSlides({ bridge, commands }, view) {
   const forget = (/** @type {string} */ buffer) => {
     const file = files.get(buffer);
     if (file?.watchId) watches.delete(file.watchId);
+    file?.close?.();
     files.delete(buffer);
   };
+  /** Stop the opening under way, if any; the deck on screen stays. Answers its buffer. */
+  const stopOpening = () => {
+    const buffer = openingBuffer;
+    if (!opening) return buffer;
+    opening.abort();
+    opening = undefined;
+    openingBuffer = "";
+    view.progress?.(null);
+    return buffer;
+  };
 
-  /** Read a file as bytes; when the grants do not cover it, ask once for its folder and try again. */
-  const read = async (/** @type {string} */ path) => {
+  /** The whole file in ranges; when the grants do not cover it, ask once for its folder and try again. */
+  const read = async (
+    /** @type {string} */ path,
+    /** @type {AbortSignal} */ signal,
+    /** @type {(done: number, total: number) => void} */ onProgress,
+  ) => {
     const scope = scopeOf(path);
     const refused = new Error(`Not allowed to read ${path}.`);
     const failed = (/** @type {unknown} */ error) =>
       codeOf(error) === "permission_denied"
         ? refused
         : new Error(`Could not read ${path}: ${codeOf(error)}.`);
-    const call = () => bridge.call("fs.read", { path, encoding: "base64", scope });
-    let result;
+    const call = () => readBytes({ bridge }, { path, scope }, { signal, onProgress });
     try {
-      result = await call();
+      return await call();
     } catch (error) {
+      if (signal.aborted) throw error;
       if (codeOf(error) !== "permission_denied") throw failed(error);
       const decision = await bridge
         .call("perm.request", {
@@ -110,26 +210,73 @@ export function createSlides({ bridge, commands }, view) {
           reason: `To open ${path} in Slides`,
         })
         .catch(() => ({ granted: false }));
+      signal.throwIfAborted();
       if (!decision.granted) throw refused;
-      result = await call().catch((again) => {
+      return await call().catch((again) => {
+        if (signal.aborted) throw again;
         throw failed(again);
       });
     }
-    return result.encoding === "base64"
-      ? fromBase64(result.content)
-      : new TextEncoder().encode(result.content);
   };
 
-  /** Read and open a file; a reader's failure is a details view, never an error. */
-  const load = async (/** @type {string} */ path) => {
-    const bytes = await read(path);
-    /** @type {Opened} */
-    const opened = await openFile(bytes, nameOf(path)).catch((error) => ({
-      kind: /** @type {const} */ ("details"),
-      format: "Unknown format",
-      reason: `The file could not be read (${error instanceof Error ? error.message : error}).`,
-    }));
-    return { size: bytes.length, opened };
+  /**
+   * Read and open a file, showing the progress; a reader's failure is a details view, never an
+   * error. Cancel stops the read or the worker and keeps what is on screen.
+   * @returns {Promise<{ size: number, opened: Opened, close?: () => void }>}
+   */
+  const load = async (/** @type {string} */ buffer, /** @type {string} */ path) => {
+    stopOpening();
+    const job = new AbortController();
+    opening = job;
+    openingBuffer = buffer;
+    const name = nameOf(path);
+    const report = (
+      /** @type {string} */ label,
+      /** @type {number | null} */ value = null,
+      max = 1,
+      detail = name,
+    ) => {
+      if (opening === job)
+        view.progress?.({ label, value, max, detail, cancel: () => job.abort() });
+    };
+    say(`Opening ${name}…`);
+    report("Reading");
+    try {
+      const bytes = await read(path, job.signal, (done, total) =>
+        report("Reading", done, total, bytesOf(done, total)),
+      );
+      const size = bytes.length;
+      report("Opening");
+      const failed = (/** @type {unknown} */ error) => {
+        if (job.signal.aborted) throw error;
+        const why = error instanceof Error ? error.message : String(error);
+        /** @type {Opened} */
+        const opened = {
+          kind: "details",
+          format: "Unknown format",
+          reason: `The file could not be read (${why}).`,
+        };
+        return { opened, close: undefined };
+      };
+      const { opened, close } = await (startWorker && size > LARGE
+        ? openInWorker(bytes, name, { signal: job.signal, startWorker })
+        : openFile(bytes, name).then((opened) => ({ opened, close: undefined }))
+      ).catch(failed);
+      if (job.signal.aborted) {
+        close?.();
+        job.signal.throwIfAborted();
+      }
+      return { size, opened, close };
+    } catch (error) {
+      if (job.signal.aborted) throw new Error(`Opening ${name} was cancelled.`);
+      throw error;
+    } finally {
+      if (opening === job) {
+        opening = undefined;
+        openingBuffer = "";
+        view.progress?.(null);
+      }
+    }
   };
 
   const watch = async (/** @type {OpenFile} */ file) => {
@@ -161,10 +308,10 @@ export function createSlides({ bridge, commands }, view) {
   answer("desk.files.visit", async (args) => {
     const { buffer, path } = requested(args);
     if (!buffer || !path) throw new Error("A visit needs a buffer and a path.");
-    const { size, opened } = await load(path);
+    const { size, opened, close } = await load(buffer, path);
     forget(buffer);
     /** @type {OpenFile} */
-    const file = { buffer, path, name: nameOf(path), size, opened };
+    const file = { buffer, path, name: nameOf(path), size, opened, close };
     files.set(buffer, file);
     present(buffer);
     await watch(file);
@@ -178,8 +325,13 @@ export function createSlides({ bridge, commands }, view) {
   answer("desk.files.revert", async (args) => {
     const { buffer, path: asked } = requested(args);
     const file = held(buffer);
-    const { size, opened } = await load(asked ?? file.path);
-    Object.assign(file, { size, opened });
+    const { size, opened, close } = await load(buffer, asked ?? file.path);
+    if (files.get(buffer) !== file) {
+      close?.();
+      return "";
+    }
+    file.close?.();
+    Object.assign(file, { size, opened, close });
     if (shown === buffer) render();
     return summary(file.name, opened);
   });
@@ -187,12 +339,16 @@ export function createSlides({ bridge, commands }, view) {
   answer("desk.buffers.show", (args) => {
     const { buffer } = requested(args);
     const file = held(buffer);
+    stopOpening();
     present(buffer);
     return summary(file.name, file.opened);
   });
 
   answer("desk.buffers.closed", (args) => {
     const { buffer } = requested(args);
+    // Closing the buffer that is still opening stops that opening.
+    const pending = openingBuffer === buffer && stopOpening() === buffer;
+    if (pending && !files.has(buffer)) return "";
     held(buffer);
     forget(buffer);
     if (shown === buffer) {
@@ -211,4 +367,16 @@ export function createSlides({ bridge, commands }, view) {
   });
 
   render();
+
+  return {
+    /** A link on a slide: http, https and mailto open in the system's browser or mail app. */
+    external: async (/** @type {string} */ url) => {
+      try {
+        if (await links(url)) say(`Opened ${url}`);
+      } catch (error) {
+        const why = codeOf(error) === "permission_denied" ? "not allowed" : codeOf(error);
+        say(`Could not open ${url}: ${why}.`);
+      }
+    },
+  };
 }
