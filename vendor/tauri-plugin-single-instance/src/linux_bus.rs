@@ -94,65 +94,74 @@ pub fn start(
                     Err(zbus::Error::NameTaken) => {
                         let result = async {
                             let connection = builder().build().await?;
-                            let owner = connection
-                                .call_method(
-                                    Some("org.freedesktop.DBus"),
-                                    "/org/freedesktop/DBus",
-                                    Some("org.freedesktop.DBus"),
-                                    "GetNameOwner",
-                                    &(name.as_str(),),
-                                )
-                                .await;
-                            let failed = match owner {
-                                Ok(reply) => {
-                                    let owner: String = reply.body().deserialize()?;
-                                    // Address the observed owner, never a replacement. Do not replay
-                                    // an ambiguously delivered call to another instance.
-                                    match connection
-                                        .call_method(
-                                            Some(owner.as_str()),
-                                            path.as_str(),
-                                            Some("org.SingleInstance.DBus"),
-                                            "ExecuteCallback",
-                                            &(args, cwd),
-                                        )
-                                        .await
-                                    {
-                                        Ok(reply) => {
-                                            reply.body().deserialize::<()>()?;
-                                            return Ok::<_, zbus::Error>(None);
-                                        }
-                                        Err(error) => {
-                                            let alive = connection
-                                                .call_method(
-                                                    Some("org.freedesktop.DBus"),
-                                                    "/org/freedesktop/DBus",
-                                                    Some("org.freedesktop.DBus"),
-                                                    "NameHasOwner",
-                                                    &(owner.as_str(),),
-                                                )
-                                                .await?
-                                                .body()
-                                                .deserialize::<bool>()?;
-                                            if alive {
-                                                return Err(error);
+                            let delivered = async {
+                                let owner = connection
+                                    .call_method(
+                                        Some("org.freedesktop.DBus"),
+                                        "/org/freedesktop/DBus",
+                                        Some("org.freedesktop.DBus"),
+                                        "GetNameOwner",
+                                        &(name.as_str(),),
+                                    )
+                                    .await;
+                                let failed = match owner {
+                                    Ok(reply) => {
+                                        let owner: String = reply.body().deserialize()?;
+                                        // Address the observed owner, never a replacement. Do not replay
+                                        // an ambiguously delivered call to another instance.
+                                        match connection
+                                            .call_method(
+                                                Some(owner.as_str()),
+                                                path.as_str(),
+                                                Some("org.SingleInstance.DBus"),
+                                                "ExecuteCallback",
+                                                &(args, cwd),
+                                            )
+                                            .await
+                                        {
+                                            Ok(reply) => {
+                                                reply.body().deserialize::<()>()?;
+                                                return Ok::<_, zbus::Error>(None);
                                             }
-                                            error
+                                            Err(error) => {
+                                                let alive = connection
+                                                    .call_method(
+                                                        Some("org.freedesktop.DBus"),
+                                                        "/org/freedesktop/DBus",
+                                                        Some("org.freedesktop.DBus"),
+                                                        "NameHasOwner",
+                                                        &(owner.as_str(),),
+                                                    )
+                                                    .await?
+                                                    .body()
+                                                    .deserialize::<bool>()?;
+                                                if alive {
+                                                    return Err(error);
+                                                }
+                                                error
+                                            }
                                         }
                                     }
-                                }
-                                Err(zbus::Error::MethodError(ref name, _, _))
-                                    if name.as_str()
-                                        == "org.freedesktop.DBus.Error.NameHasNoOwner" =>
-                                {
-                                    // The owner left before any delivery was attempted.
-                                    zbus::Error::NameTaken
-                                }
-                                Err(error) => return Err(error),
-                            };
+                                    Err(zbus::Error::MethodError(ref name, _, _))
+                                        if name.as_str()
+                                            == "org.freedesktop.DBus.Error.NameHasNoOwner" =>
+                                    {
+                                        // The owner left before any delivery was attempted.
+                                        zbus::Error::NameTaken
+                                    }
+                                    Err(error) => return Err(error),
+                                };
+                                Ok::<_, zbus::Error>(Some(failed))
+                            }
+                            .await;
                             let _ = connection.close().await;
-                            // Election is bounded: if a replacement won, keep the original error.
-                            elect().await.map(Some).map_err(|_| failed)
+                            match delivered? {
+                                None => Ok(None),
+                                Some(failed) => {
+                                    // If a replacement won, keep the original error.
+                                    elect().await.map(Some).map_err(|_| failed)
+                                }
+                            }
                         }
                         .await
                         .map_err(|error| {
