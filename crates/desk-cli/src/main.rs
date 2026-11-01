@@ -42,6 +42,7 @@ fn validate(dir: &Path) -> ExitCode {
                 PluginKind::Logic => "logic",
                 PluginKind::Tool => "tool",
                 PluginKind::Policy => "policy",
+                PluginKind::Library => "library",
                 PluginKind::Connector => "connector",
                 PluginKind::View => "view",
             };

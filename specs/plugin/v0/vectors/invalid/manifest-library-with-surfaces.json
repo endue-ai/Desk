@@ -1,0 +1,15 @@
+{
+  "target": "PluginManifest",
+  "description": "a library is never mounted, so it declares no surfaces",
+  "instance": {
+    "id": "endue.formats",
+    "version": "0.1.0",
+    "kind": "library",
+    "surfaces": [
+      {
+        "id": "main",
+        "placement": "center"
+      }
+    ]
+  }
+}
