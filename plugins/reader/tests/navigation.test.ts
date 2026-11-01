@@ -10,6 +10,7 @@ const chapter = { html: "<p>Chapter</p>", css: [], fonts: [] };
 const pages = {
   kind: "pages" as const,
   format: "PDF",
+  title: "Pages",
   pages: Array.from({ length: 3 }, () => ({ width: 100, height: 200 })),
   toc: [],
   text: async () => "",
@@ -18,6 +19,7 @@ const pages = {
 const chapters = {
   kind: "chapters" as const,
   format: "EPUB",
+  title: "Chapters",
   chapters: [{ title: "One" }, { title: "Two" }],
   toc: [],
   chapter: async () => chapter,
@@ -45,36 +47,43 @@ it.each(["pages", "chapters"])("clearing %s retires its queued scroll report", a
   expect(vi.getTimerCount()).toBe(0);
 });
 
-it("an aborted chapter navigation cannot report its position into the next book", async () => {
-  loadPage(document);
-  const moved = vi.fn();
-  const view = createView(document, {
-    moved,
-    zoomed() {},
-    bookmark() {},
-    note() {},
-    forget() {},
-    unlock() {},
-  });
-  const model = (book: typeof pages | typeof chapters, unit = 0) => ({
-    buffer: book.format,
-    path: book.format,
-    name: book.format,
-    size: 1,
-    book,
-    at: { unit, offset: 0 },
-    zoom: 1,
-    bookmarks: [],
-    notes: [],
-  });
-  const pending = { ...chapters, chapter: () => new Promise<typeof chapter>(() => {}) };
-  view.show(model(pending));
-  const input = document.getElementById("page") as HTMLInputElement;
-  input.value = "2";
-  input.dispatchEvent(new Event("change", { bubbles: true }));
-  view.show(model(pages, 1));
-  for (let i = 0; i < 12; i++) await Promise.resolve();
-  expect(moved).not.toHaveBeenCalled();
-  expect(input.value).toBe("2");
-  view.show(null);
-});
+it.each([false, true])(
+  "an aborted navigation cannot report after a book switch (return: %s)",
+  async (returnToBook) => {
+    loadPage(document);
+    const moved = vi.fn();
+    const view = createView(document, {
+      moved,
+      zoomed() {},
+      bookmark() {},
+      note() {},
+      forget() {},
+      unlock() {},
+    });
+    const model = (book: typeof pages | typeof chapters, unit = 0) => ({
+      buffer: book.format,
+      path: book.format,
+      name: book.format,
+      size: 1,
+      book,
+      at: { unit, offset: 0 },
+      zoom: 1,
+      bookmarks: [],
+      notes: [],
+    });
+    const pending = { ...chapters, chapter: () => new Promise<typeof chapter>(() => {}) };
+    try {
+      view.show(model(pending));
+      const input = document.getElementById("page") as HTMLInputElement;
+      input.value = "2";
+      input.dispatchEvent(new Event("change", { bubbles: true }));
+      view.show(model(pages, 1));
+      if (returnToBook) view.show(model(pending, 1));
+      for (let i = 0; i < 12; i++) await Promise.resolve();
+      expect(moved).not.toHaveBeenCalled();
+      expect(input.value).toBe("2");
+    } finally {
+      view.show(null);
+    }
+  },
+);
