@@ -6,11 +6,11 @@ const css = `
   display: block;
   box-sizing: border-box;
   border: 1px solid var(--desk-border);
-  border-radius: 8px;
+  border-radius: var(--desk-radius-md);
   background: var(--desk-card);
   color: var(--desk-text);
   font: inherit;
-  font-size: 13px;
+  font-size: var(--desk-text-sm);
   overflow: auto;
 }
 :host([hidden]) {
@@ -22,7 +22,7 @@ const css = `
   outline: none;
 }
 [role="grid"]:focus-visible {
-  outline: 2px solid var(--desk-accent);
+  outline: 2px solid var(--desk-ring);
   outline-offset: -2px;
 }
 [role="rowgroup"] {
@@ -52,7 +52,7 @@ button {
   cursor: pointer;
 }
 button:focus-visible {
-  outline: 2px solid var(--desk-accent);
+  outline: 2px solid var(--desk-ring);
   outline-offset: 2px;
 }
 .body [role="row"] {
@@ -63,14 +63,14 @@ button:focus-visible {
   color: var(--desk-text);
 }
 .body [aria-selected="true"] {
-  color: var(--desk-accent);
+  color: var(--desk-primary-text);
 }
 :host([density="compact"]) [role="columnheader"],
 :host([density="compact"]) [role="gridcell"] {
   padding: 2px 6px;
 }
 :host([density="compact"]) {
-  font-size: 12px;
+  font-size: var(--desk-text-xs);
 }
 `;
 

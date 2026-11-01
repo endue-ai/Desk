@@ -10,7 +10,7 @@ const css = `
   min-width: 160px;
   color: var(--desk-text);
   font: inherit;
-  font-size: 13px;
+  font-size: var(--desk-text-sm);
 }
 :host([hidden]) {
   display: none;
@@ -44,7 +44,7 @@ const css = `
   left: 0;
   width: 100%;
   border-radius: 3px;
-  background: var(--desk-accent);
+  background: var(--desk-primary);
   color: var(--desk-background);
   transform: scaleX(0);
   transform-origin: left;
@@ -56,19 +56,19 @@ const css = `
 .detail {
   margin-top: 4px;
   color: var(--desk-text-muted);
-  font-size: 12px;
+  font-size: var(--desk-text-xs);
   font-variant-numeric: tabular-nums;
 }
 button {
   flex: none;
-  min-height: 26px;
+  min-height: var(--desk-control-xs);
   padding: 0 10px;
   border: 1px solid var(--desk-border);
-  border-radius: 6px;
+  border-radius: var(--desk-radius-md);
   background: var(--desk-card);
   color: var(--desk-text);
   font: inherit;
-  font-size: 12px;
+  font-size: var(--desk-text-xs);
   cursor: pointer;
 }
 button:hover {
@@ -76,7 +76,7 @@ button:hover {
   color: var(--desk-text);
 }
 button:focus-visible {
-  outline: 2px solid var(--desk-accent);
+  outline: 2px solid var(--desk-ring);
   outline-offset: 1px;
 }
 [hidden] {
