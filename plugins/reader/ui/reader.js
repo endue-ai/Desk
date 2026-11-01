@@ -178,6 +178,8 @@ export function createReader({ bridge, commands }, view, options) {
     const { buffer } = requested(args);
     held(buffer);
     flush();
+    // The desk follows visit with show; the existing view may still be decoding its first page.
+    if (shown === buffer) return view.focus();
     present(buffer);
   });
 
