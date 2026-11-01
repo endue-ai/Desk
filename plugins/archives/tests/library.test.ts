@@ -1,5 +1,6 @@
-// endue.archives reads 7z and decodes streams with endue.formats (#181): the page maps the library's
-// folder in its import map, and the readers import it by its bare specifier.
+// endue.archives reads 7z, RAR, disk images, DMGs, SquashFS and WIM and decodes streams with
+// endue.formats (#181, #194): the page maps the library's folder in its import map, the readers
+// import it by its bare specifier, and the library worker by its URL.
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -25,13 +26,16 @@ describe("endue.archives on endue.formats", () => {
     const map = /<script type="importmap">([\s\S]*?)<\/script>/.exec(html)?.[1] ?? "{}";
     expect(JSON.parse(map).imports).toEqual({
       "@endue-ai/plugin-sdk": "/_desk/plugin-sdk.js",
+      "@endue-ai/ui": "/_desk/ui.js",
       "@endue-ai/formats/": "/endue.formats/lib/",
     });
   });
 
-  it("keeps no copy of the codecs or the 7z reader, and imports only files the library has", () => {
+  it("keeps no copy of the library's readers, and imports only files the library has", () => {
     expect(existsSync(join(ui, "codecs"))).toBe(false);
     expect(existsSync(join(ui, "formats/sevenzip"))).toBe(false);
+    for (const reader of ["rar", "disk", "dmg", "vdisk", "squashfs", "wim"])
+      expect(existsSync(join(ui, `formats/${reader}.js`)), reader).toBe(false);
     const imported = new Set<string>();
     for (const module of modules()) {
       const source = readFileSync(join(ui, module), "utf8");
@@ -41,7 +45,15 @@ describe("endue.archives on endue.formats", () => {
       }
     }
     expect([...imported]).toEqual(
-      expect.arrayContaining(["codecs/index.js", "codecs/input.js", "sevenzip/index.js"]),
+      expect.arrayContaining([
+        "codecs/index.js",
+        "codecs/input.js",
+        "sevenzip/index.js",
+        "rar/index.js",
+        "disk/index.js",
+        "apple/index.js",
+        "packs/index.js",
+      ]),
     );
   });
 

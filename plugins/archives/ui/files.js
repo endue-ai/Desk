@@ -1,12 +1,13 @@
-// The plugin's file access: ranged fs.read calls as base64 (asking once with perm.request for the
-// file's folder when its grants do not cover it), fs.watch, and the scopes extraction writes under.
-// Every failure is an Error whose message is the sentence the person reads.
-import { fromBase64 } from "./bytes.js";
-import { cachedSource } from "./source.js";
+// The plugin's file access: the SDK's byteSource (ranges through the file's fs.url URL, or ranged
+// fs.read calls, with its block cache), asking once with perm.request for the file's folder when its
+// grants do not cover it; fs.watch; and the scopes extraction writes under. Every failure is an
+// Error whose message is the sentence the person reads.
 
 /**
  * @typedef {import("@endue-ai/plugin-sdk").PluginContext["bridge"]} Bridge
  * @typedef {import("@endue-ai/bridge").Permission} Permission
+ * @typedef {import("./source.js").Source} Source
+ * @typedef {(ctx: { bridge: Bridge }, file: { path: string, scope: { permission: "fs:read", paths: string[] } }) => Promise<Source>} ByteSource
  */
 
 /** The folder a file is in. @param {string} path */
@@ -26,8 +27,8 @@ export function scopeUnder(permission, folder) {
 export const codeOf = (/** @type {unknown} */ error) =>
   /** @type {{ code?: string }} */ (error)?.code ?? "error";
 
-/** @param {Bridge} bridge */
-export function createFiles(bridge) {
+/** @param {Bridge} bridge @param {ByteSource} byteSource the SDK's */
+export function createFiles(bridge, byteSource) {
   /**
    * Ask once for `scope`; true when the person allows it.
    * @param {Permission} scope @param {string} reason
@@ -47,30 +48,33 @@ export function createFiles(bridge) {
     const scope = /** @type {const} */ (scopeUnder("fs:read", folderOf(path)));
     const refused = new Error(`Not allowed to read ${path}.`);
     /** @param {unknown} error */
-    const failed = (error) =>
-      codeOf(error) === "permission_denied"
-        ? refused
-        : new Error(`Could not read ${path}: ${codeOf(error)}.`);
-    /** @param {number} offset @param {number} length */
-    const read = (offset, length) =>
-      bridge.call("fs.read", { path, encoding: "base64", offset, length, scope });
-    let first;
+    const failed = (error) => {
+      const code = /** @type {{ code?: string }} */ (error)?.code;
+      if (code === "permission_denied") return refused;
+      if (code) return new Error(`Could not read ${path}: ${code}.`);
+      return error instanceof Error ? error : new Error(`Could not read ${path}.`);
+    };
+    const acquire = async () => {
+      const raw = await byteSource({ bridge }, { path, scope });
+      // The first bytes inside the one ask: a URL can exist even when its fallback read is denied.
+      await raw.read(0, Math.min(raw.size, 4096));
+      return raw;
+    };
+    let raw;
     try {
-      first = await read(0, 0);
+      raw = await acquire();
     } catch (error) {
       if (codeOf(error) !== "permission_denied") throw failed(error);
       if (!(await ask(scope, `To open ${path} in Archives`))) throw refused;
-      first = await read(0, 0).catch((e) => Promise.reject(failed(e)));
+      raw = await acquire().catch((e) => Promise.reject(failed(e)));
     }
-    const size = first.size ?? 0;
-    const source = cachedSource(async (offset, length) => {
-      try {
-        return fromBase64((await read(offset, length)).content);
-      } catch (error) {
-        throw failed(error);
-      }
-    }, size);
-    return { source, size, scope };
+    const from = raw;
+    /** @type {Source} */
+    const source = {
+      size: from.size,
+      read: (offset, length) => from.read(offset, length).catch((e) => Promise.reject(failed(e))),
+    };
+    return { source, size: from.size, scope };
   };
 
   /** Follow the file; undefined when it cannot be watched. @param {string} path */

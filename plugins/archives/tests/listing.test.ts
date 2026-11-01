@@ -19,31 +19,6 @@ const details = (archive: Archive) =>
   archive.details.map((d) => `${d.label}: ${d.value}`).join("\n");
 
 describe("contents only: listed, extraction refused with a reason", () => {
-  it("RAR 4: names, sizes and dates; stored entries read", async () => {
-    const rar = await open(fixture("rar4.rar"), "rar4.rar");
-    expect(rar.format).toBe("RAR 4");
-    expect(rar.refusal).toBe("RAR decompression is not available.");
-    expect(files(rar)).toEqual(["docs/readme.md", "hello.txt"]);
-    expect(entry(rar, "docs")).toMatchObject({ kind: "folder" });
-    expect(entry(rar, "hello.txt")).toMatchObject({ size: 17, packed: 17, method: "Stored" });
-    expect(entry(rar, "hello.txt").date).toBeInstanceOf(Date);
-    expect(await read(rar, "hello.txt")).toBe(TREE.hello);
-  });
-
-  it("RAR 5: the stored entries' data, and a compressed entry refused", async () => {
-    const rar = await open(fixture("rar5.rar"), "rar5.rar");
-    expect(rar.format).toBe("RAR 5");
-    expect(rar.refusal).toBe("RAR decompression is not available.");
-    expect(files(rar)).toEqual(["docs/readme.md", "hello.txt", "words.txt"]);
-    expect(entry(rar, "words.txt")).toMatchObject({ size: 48069 });
-    expect(entry(rar, "words.txt").packed).toBeLessThan(48069);
-    expect(entry(rar, "hello.txt").date?.toISOString()).toBe(WHEN);
-    expect(await read(rar, "docs/readme.md")).toBe(TREE.readme);
-    await expect(rar.read(entry(rar, "words.txt"))).rejects.toThrow(
-      "RAR decompression is not available.",
-    );
-  });
-
   it("ARJ: a header listing", async () => {
     const arj = await open(fixture("sample.arj"), "sample.arj");
     expect(arj.format).toBe("ARJ");
@@ -74,22 +49,24 @@ describe("contents only: listed, extraction refused with a reason", () => {
   });
 });
 
-describe("details only", () => {
-  it("DMG: the UDIF trailer and its partition list", async () => {
+describe("disk images through endue.formats, with today's details above the tree", () => {
+  it("DMG: the HFS+ volume's files under the UDIF and partition rows", async () => {
     const dmg = await open(fixture("sample.dmg"), "sample.dmg");
-    expect(dmg.format).toBe("DMG");
-    expect(dmg.entries).toEqual([]);
-    expect(dmg.note).toBe("Browsing the files inside a DMG is not available.");
-    expect(details(dmg)).toContain("Apple_HFS");
-    expect(details(dmg)).toMatch(/Partitions: \d+/);
+    expect(dmg.format).toBe("Apple disk image (UDZO)");
+    expect(dmg.note).toBeUndefined();
+    expect(detail(dmg, "Format")).toBe("UDIF, zlib-compressed (UDZO)");
+    expect(detail(dmg, "Partition 1")).toMatch(/Apple HFS\+.*HFS\+ “Sample”/);
+    expect(files(dmg)).toEqual(["readme.md", "한글.txt"]);
+    expect(await read(dmg, "readme.md")).toBe(TREE.readme);
   });
 
-  it("IMG with an MBR: the partition table", async () => {
+  it("IMG with an MBR and no file systems: the partition table and why nothing is listed", async () => {
     const img = await open(gunzipped("mbr.img.gz"), "mbr.img");
     expect(img.format).toBe("Disk image");
+    expect(img.note).toBe("None of the disk's partitions holds a file system that can be read.");
     expect(detail(img, "Partition table")).toBe("MBR");
     expect(detail(img, "Partition 1")).toBe("Linux (0x83), 1.0 MiB");
-    expect(detail(img, "Partition 2")).toMatch(/^NTFS, exFAT or HPFS \(0x07\), /);
+    expect(detail(img, "Partition 2")).toMatch(/^NTFS or exFAT \(0x07\), /);
   });
 
   it("IMG with a GPT: names and types", async () => {
@@ -105,10 +82,12 @@ describe("details only", () => {
     ["disk.vmdk.gz", "VMDK", "Version: 1"],
     ["disk.qcow2.gz", "QCOW2", "Version: 3"],
   ] as const) {
-    it(`${format}: virtual size and format version`, async () => {
+    it(`${format}: virtual size and format version of an empty disk`, async () => {
       const disk = await open(gunzipped(file), file.replace(/\.gz$/, ""));
       expect(disk.format).toBe(format);
-      expect(disk.note).toBe(`Browsing the files inside a ${format} is not available.`);
+      expect(disk.note).toBe(
+        "No partition table or file system that can be read was found in the image.",
+      );
       expect(detail(disk, "Virtual size")).toMatch(/^64 MiB \(67,1\d\d,\d{3} bytes\)$/);
       expect(details(disk)).toContain(extra);
     });
@@ -144,7 +123,9 @@ describe("details only", () => {
     expect(detail(image, "Compression")).toBe("gzip");
     expect(detail(image, "Inodes")).toBe("3");
   });
+});
 
+describe("details only", () => {
   it("torrent: name, files with sizes, piece length, trackers and the info hash", async () => {
     const torrent = await open(fixture("tree.torrent"), "tree.torrent");
     expect(torrent.format).toBe("Torrent");

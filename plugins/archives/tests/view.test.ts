@@ -177,21 +177,23 @@ describe("the archive view", () => {
       expect(key(tree, chord).defaultPrevented).toBe(false);
   });
 
-  it("shows a progress line while extracting and stops on Escape", async () => {
-    const seen: string[] = [];
+  it("shows the progress element while extracting and stops on Escape", async () => {
+    const seen: Array<{ hidden: boolean; detail: unknown }> = [];
     let writes = 0;
     const { app } = await opened({
       "fs.write": ({ content }: { content: string }) => {
-        seen.push($("#progress").textContent ?? "");
+        const progress = $("#progress") as HTMLElement & { detail?: unknown };
+        seen.push({ hidden: progress.hidden === true, detail: progress.detail });
         if (++writes === 1) key(document.body, { key: "Escape" });
         return { bytesWritten: content.length };
       },
       "fs.list": () => ({ entries: [] }),
     });
     await app.extract("all");
-    expect(seen[0]).toMatch(/^Extracting 0 of 6 files, 0 bytes of /);
+    expect(seen[0]).toMatchObject({ hidden: false });
+    expect(String(seen[0]?.detail)).toMatch(/^0 of 6 files, 0 bytes of /);
     expect(writes).toBe(1);
     expect($("#status").textContent).toContain("Stopped after 1 of 6 files.");
-    expect($("#progress").textContent).toBe("");
+    expect($("#progress").hidden).toBe(true);
   });
 });
