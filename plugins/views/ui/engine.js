@@ -29,7 +29,9 @@ import { fill, fillValue } from "./template.js";
  */
 
 const CONNECTORS = /** @type {const} */ ({ permission: "connector:manage" });
-const ORIGINAL = "Desk can't open the original app yet";
+/** @type {import("@endue-ai/bridge").ShellOpenPermission} */
+const LINKS = { permission: "shell:open", schemes: ["http", "https", "mailto"] };
+const ORIGINAL = "Desk could not open the link.";
 const codeOf = (/** @type {unknown} */ error) => /** @type {{ code?: string }} */ (error)?.code;
 const said = (/** @type {unknown} */ error) =>
   error instanceof Error ? error.message : String(error);
@@ -258,8 +260,10 @@ export function createEngine(ctx, screen, options = {}) {
       await Promise.all([...(current?.live.values() ?? [])].filter((e) => e.refused).map(refresh));
     return { granted };
   });
-  ctx.commands.on("desk.views.open-original", () => {
-    throw new Error("shell.open is not served yet");
+  ctx.commands.on("desk.views.open-original", async (args) => {
+    const { url } = /** @type {{ url?: unknown }} */ (args ?? {});
+    if (typeof url !== "string" || !url) throw new Error("desk.views.open-original needs a url.");
+    return ctx.bridge.call("shell.open", { target: url, scope: LINKS });
   });
 
   ctx.bridge.onEvent((/** @type {BridgeEvent} */ event) => {
@@ -342,7 +346,7 @@ export function createEngine(ctx, screen, options = {}) {
       if (entry.original !== undefined) await openOriginal(entry.original);
       else if (entry.action !== undefined) await act(path, entry.action, key);
     },
-    /** A link in a markdown component: the original app, once shell.open is served. */
+    /** A link in a markdown component, in the browser or the mail app (shell.open). */
     link: (/** @type {string} */ href) => openOriginal(href),
   };
 }

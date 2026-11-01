@@ -19,6 +19,8 @@ export const DESK_KEYS = Object.freeze([
   "Mod+/",
   "Mod+B",
   "Mod+W",
+  "Mod+Alt+ArrowRight",
+  "Mod+Alt+ArrowLeft",
   "Mod+N",
   "Mod+D",
   "Mod+Alt+D",

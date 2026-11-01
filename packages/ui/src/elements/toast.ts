@@ -19,14 +19,15 @@ const css = `
   background: var(--desk-card);
   color: var(--desk-text);
   font: inherit;
-  font-size: 13px;
+  font-size: var(--desk-text-sm);
   box-shadow: 0 8px 24px var(--desk-background);
 }
 :host([open]) {
   display: flex;
 }
 :host([tone="error"]) {
-  border-color: var(--desk-accent);
+  border-color: var(--desk-danger-border);
+  color: var(--desk-danger-text);
 }
 .message {
   flex: 1;
@@ -37,7 +38,7 @@ button {
   height: 24px;
   padding: 0;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--desk-radius-md);
   background: var(--desk-card);
   color: var(--desk-text-muted);
   font: inherit;
@@ -50,7 +51,7 @@ button:hover {
   color: var(--desk-text);
 }
 button:focus-visible {
-  outline: 2px solid var(--desk-accent);
+  outline: 2px solid var(--desk-ring);
   outline-offset: 1px;
 }
 :host([hidden]) {

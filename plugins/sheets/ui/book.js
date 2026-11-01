@@ -3,9 +3,14 @@
 // what SheetJS Community Edition leaves out (OOXML styles and frozen panes, ODS sizes and panes).
 // Nothing here throws: every failure is a details view, and the parser's console stays quiet.
 import { readCsv } from "./csv.js";
-import { BINARY, detect, extensionOf, formatOf, withArticle } from "./detect.js";
+import { BINARY, detect, extensionOf, formatOf } from "./detect.js";
+import { damaged, ENCRYPTED, failure, NO_WORKBOOK, OLD_NUMBERS, sayer } from "./errors.js";
+
+export { ENCRYPTED, failure } from "./errors.js";
+
 import { addressOf, createSheet } from "./model.js";
 import { odsLayout } from "./ods.js";
+import { odsParts } from "./ods-parts.js";
 import { parseStyles, scanSheet } from "./styles.js";
 import * as cptable from "./vendor/cpexcel.full.mjs";
 import * as XLSX from "./vendor/xlsx.mjs";
@@ -21,7 +26,7 @@ XLSX.set_cptable(cptable);
  * @typedef {{ kind: "details", format: string, detected: string, reason: string, cause?: string }} Details
  * @typedef {{ kind: "link", format: string, url: string }} Link
  * @typedef {Sheets | Details | Link} Book
- * @typedef {{ frozen?: Frozen, styleAt?: Sheet["style"] }} Extras
+ * @typedef {{ frozen?: Frozen, styleAt?: Sheet["style"], releaseRow?: (r: number) => void }} Extras
  * @typedef {(reason: string, cause?: string) => Details} Say
  */
 
@@ -34,9 +39,6 @@ const READ = {
   sheetStubs: true,
   cellDates: false,
 };
-export const ENCRYPTED = "This workbook is encrypted.";
-const NO_WORKBOOK = "This ZIP archive holds no workbook.";
-const OLD_NUMBERS = "This is a Numbers document from 2009 or earlier, which Sheets cannot read.";
 /** What a binary-only format may start with; the parser would read anything else as text. */
 const CONTAINERS = new Set([
   "ZIP archive",
@@ -62,34 +64,6 @@ function quietly(/** @type {() => Book} */ run) {
   }
 }
 
-/** @param {Uint8Array} bytes @param {string} name @returns {Say} */
-const sayer = (bytes, name) => (reason, cause) => ({
-  kind: "details",
-  format: formatOf(name),
-  detected: detect(bytes),
-  reason,
-  ...(cause ? { cause } : {}),
-});
-
-/**
- * The details view for an error the parser threw.
- * @param {Uint8Array} bytes
- * @param {string} name
- * @param {unknown} error
- * @returns {Details}
- */
-export function failure(bytes, name, error) {
-  const say = sayer(bytes, name);
-  const message = error instanceof Error ? error.message : String(error);
-  if (/password|encrypt/iu.test(message)) return say(ENCRYPTED);
-  if (/NUMBERS 0[89]/u.test(message)) return say(OLD_NUMBERS);
-  if (/Could not find workbook|Unsupported ZIP file/u.test(message)) return say(NO_WORKBOOK);
-  return say(damaged(name), message);
-}
-
-const damaged = (/** @type {string} */ name) =>
-  `This file is damaged or is not ${withArticle(formatOf(name))}.`;
-
 /** A Google Drive shortcut: JSON with the document's address, or only its id. */
 function shortcut(/** @type {Uint8Array} */ bytes, /** @type {Say} */ say) {
   try {
@@ -105,6 +79,14 @@ function shortcut(/** @type {Uint8Array} */ bytes, /** @type {Say} */ say) {
   }
   return say("This shortcut holds no address of a Google Sheets document.");
 }
+
+/** Only the grid's declared cell fields; SheetJS rich text, HTML and fill objects stay private. */
+const modelCell = (cell) => {
+  if (!cell) return undefined;
+  const value = { t: cell.t };
+  for (const key of ["v", "w", "f", "z"]) if (cell[key] !== undefined) value[key] = cell[key];
+  return value;
+};
 
 /**
  * One SheetJS worksheet as the grid's sheet.
@@ -152,7 +134,7 @@ function sheetOf(ws, name, layout, extras) {
     name,
     rows: lastRow + 1,
     cols: lastCol + 1,
-    cellAt: data ? (r, c) => data[r]?.[c] : (r, c) => ws?.[addressOf(r, c)],
+    cellAt: (r, c) => modelCell(data ? data[r]?.[c] : ws?.[addressOf(r, c)]),
     merges: (ws?.["!merges"] ?? []).map((/** @type {any} */ m) => ({
       s: { r: m.s.r, c: m.s.c },
       e: { r: m.e.r, c: m.e.c },
@@ -163,6 +145,10 @@ function sheetOf(ws, name, layout, extras) {
     hiddenCols,
     frozen: extras.frozen ?? layout?.frozen ?? { rows: 0, cols: 0 },
     styleAt: extras.styleAt,
+    releaseRow: (r) => {
+      if (data) data[r] = undefined;
+      extras.releaseRow?.(r);
+    },
     format: (cell) => {
       if (cell.t !== "n" || typeof cell.v !== "number") return undefined;
       try {
@@ -206,6 +192,7 @@ function ooxmlExtras(wb, text) {
     /** @type {Extras} */
     const extras = scan.frozen ? { frozen: scan.frozen } : {};
     if (styled) {
+      extras.releaseRow = scan.releaseRow;
       extras.styleAt = (r, c) => {
         const format = scan.format(r, c);
         return format === undefined ? undefined : styles[format];
@@ -219,10 +206,10 @@ function ooxmlExtras(wb, text) {
  * The visible sheets of a SheetJS workbook.
  * @param {any} wb
  * @param {Say} say
- * @param {{ ods?: ReturnType<typeof odsLayout>, ooxml?: (index: number) => Extras }} extra
+ * @param {{ ods?: ReturnType<typeof odsLayout>, ooxml?: (index: number) => Extras, only?: string, emit?: (sheet: Sheet, total: number) => void }} extra
  * @returns {Book}
  */
-function bookOf(wb, say, { ods, ooxml }) {
+function bookOf(wb, say, { ods, ooxml, only, emit }) {
   /** @type {string[]} */
   const names = wb.SheetNames ?? [];
   const isHidden = (/** @type {string} */ name, /** @type {number} */ i) =>
@@ -231,10 +218,14 @@ function bookOf(wb, say, { ods, ooxml }) {
   // A workbook whose every sheet is hidden still shows them: Excel never saves one, others might.
   const visible = shown.length ? shown : names;
   if (!visible.length) return say("This workbook has no sheets.");
-  const sheets = visible.map((name) => {
-    const i = names.indexOf(name);
-    return sheetOf(wb.Sheets[name], name, ods?.sheets.get(name), ooxml?.(i) ?? {});
-  });
+  const sheets = visible
+    .filter((name) => !only || name === only)
+    .map((name) => {
+      const i = names.indexOf(name);
+      const sheet = sheetOf(wb.Sheets[name], name, ods?.sheets.get(name), ooxml?.(i) ?? {});
+      emit?.(sheet, visible.length);
+      return sheet;
+    });
   const left = names.length - visible.length;
   const detail = left ? `${left} hidden sheet${left === 1 ? "" : "s"} left out` : "";
   return { kind: "sheets", format: say("").format, detail, sheets };
@@ -243,21 +234,61 @@ function bookOf(wb, say, { ods, ooxml }) {
 /**
  * @param {Uint8Array} bytes
  * @param {Say} say
+ * @param {(sheet: Sheet, total: number) => void} [emit]
  */
-function fromZip(bytes, say) {
+function fromZip(bytes, say, emit) {
   const zip = XLSX.CFB.read(bytes, { type: "buffer" });
   // CFB.find takes a path from the root; without the slash it matches any entry of that name.
   const entry = (/** @type {string} */ path) => XLSX.CFB.find(zip, `/${path.replace(/^\//u, "")}`);
   const text = (/** @type {string} */ path) => (path ? utf8(entry(path)?.content) : "");
   if (entry("META-INF/manifest.xml")) {
     if (text("META-INF/manifest.xml").includes("encryption-data")) return say(ENCRYPTED);
+    const content = text("content.xml");
+    const ods = odsLayout(content, text("settings.xml"));
+    if (emit) {
+      const part = entry("content.xml");
+      const saved = part.content;
+      const count = ods.sheets.size - ods.hidden.size || ods.sheets.size;
+      let left = 0;
+      try {
+        for (const xml of odsParts(content)) {
+          part.content = new TextEncoder().encode(xml);
+          const wb = XLSX.parse_zip(zip, { ...READ });
+          if (ods.hidden.size < ods.sheets.size && ods.hidden.has(wb.SheetNames[0])) {
+            left++;
+            continue;
+          }
+          const book = bookOf(wb, say, { ods });
+          if (book.kind !== "sheets") return book;
+          for (const sheet of book.sheets) emit(sheet, count);
+        }
+      } finally {
+        part.content = saved;
+      }
+      return {
+        kind: "sheets",
+        format: say("").format,
+        detail: left ? `${left} hidden sheet${left === 1 ? "" : "s"} left out` : "",
+        sheets: [],
+      };
+    }
     const wb = XLSX.parse_zip(zip, { ...READ });
-    return bookOf(wb, say, { ods: odsLayout(text("content.xml"), text("settings.xml")) });
+    return bookOf(wb, say, { ods });
   }
   if (entry("Index/Document.iwa") || entry("Index.zip"))
     return bookOf(XLSX.parse_zip(zip, { ...READ }), say, {});
   if (entry("index.xml") || entry("index.xml.gz")) return say(OLD_NUMBERS);
   if (!entry("[Content_Types].xml")) return say(NO_WORKBOOK);
+  if (emit) {
+    const header = XLSX.parse_zip(zip, { ...READ, bookSheets: true });
+    let last;
+    for (const name of header.SheetNames ?? []) {
+      // Selective OOXML parsing keeps the next worksheet untouched until this one is sent.
+      const wb = XLSX.parse_zip(zip, { ...READ, sheets: name });
+      last = bookOf(wb, say, { ooxml: ooxmlExtras(wb, text), only: name, emit });
+    }
+    return last?.kind === "sheets" ? { ...last, sheets: [] } : say("This workbook has no sheets.");
+  }
   const wb = XLSX.parse_zip(zip, { ...READ });
   return bookOf(wb, say, { ooxml: ooxmlExtras(wb, text) });
 }
@@ -265,10 +296,10 @@ function fromZip(bytes, say) {
 /**
  * Open a spreadsheet file.
  * @param {Uint8Array} bytes the whole file
- * @param {{ name: string, encoding?: string }} file its name, and the csv-encoding setting
+ * @param {{ name: string, encoding?: string, onSheet?: (sheet: Sheet, total: number) => void }} file its name, and the csv-encoding setting
  * @returns {Book}
  */
-export function openBook(bytes, { name, encoding = "auto" }) {
+export function openBook(bytes, { name, encoding = "auto", onSheet }) {
   const say = sayer(bytes, name);
   const ext = extensionOf(name);
   const detected = detect(bytes);
@@ -276,7 +307,7 @@ export function openBook(bytes, { name, encoding = "auto" }) {
   if (ext === "gsheet") return shortcut(bytes, say);
   try {
     return quietly(() => {
-      if (detected === "ZIP archive") return fromZip(bytes, say);
+      if (detected === "ZIP archive") return fromZip(bytes, say, onSheet);
       if (detected !== "OLE compound file") {
         if (ext === "csv" || ext === "tsv") {
           const { sheet, detail } = readCsv(bytes, { name, encoding });

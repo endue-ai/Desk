@@ -38,9 +38,21 @@ export function wireCommands(commands, app) {
     return id;
   };
 
-  commands.on("endue.terminal.new", async () => {
-    const session = await app.open();
+  commands.on("endue.terminal.new", async (args) => {
+    const { cwd } = /** @type {{ cwd?: unknown }} */ (args ?? {});
+    if (
+      cwd !== undefined &&
+      (typeof cwd !== "string" ||
+        cwd.includes("\0") ||
+        !/^(\/|~(\/|$)|[A-Za-z]:\/|\$\{(plugin|workspace|home)\}(\/|$))[^\\]*$/u.test(cwd))
+    ) {
+      throw new Error(
+        "The working directory must be an absolute or home-relative path with forward slashes.",
+      );
+    }
+    const session = await app.open(undefined, cwd);
     app.focus(session.id);
+    if (!session.procId) throw new Error(session.exit ?? "Could not start the terminal.");
     return session.id;
   });
   commands.on("endue.terminal.focus", async () => {

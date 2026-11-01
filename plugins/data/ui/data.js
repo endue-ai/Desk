@@ -1,5 +1,5 @@
 // The data plugin without its DOM. It answers the desk's file and buffer requests (desk.files.visit,
-// .revert, .save, desk.buffers.show, .closed), reads files as base64 with one ask for the file's
+// .revert, .save, desk.buffers.show, .closed), reads files in binary ranges with one ask for the file's
 // folder when its grants do not cover it, opens them with formats.js, follows them with fs.watch,
 // checks them against their JSON Schema (schema-check.js), and tells the view what to show. It only
 // talks to ctx and a view, so the SDK's test host runs it with a recording view.
@@ -7,6 +7,7 @@
 import { openFile } from "./formats.js";
 import { createSchemaCheck } from "./schema-check.js";
 import { CHECKED, folderOf, join, nameOf, pickedKey } from "./schemas.js";
+import { openWorker } from "./worker-client.js";
 
 /**
  * @typedef {import("@endue-ai/plugin-sdk").PluginContext} PluginContext
@@ -17,13 +18,13 @@ import { CHECKED, folderOf, join, nameOf, pickedKey } from "./schemas.js";
  * @typedef {{ buffer: string, path: string, name: string, size: number, opened: Opened,
  *   schema: SchemaState, maskKeys: boolean }} Shown
  * @typedef {{ show(model: Shown | null): void, schema(buffer: string, state: SchemaState): void,
- *   mask(keys: boolean): void, status(text: string): void, focus(): void }} View
+ *   mask(keys: boolean): void, status(text: string): void, focus(): void,
+ *   progress?(state: { phase: string, done: number, total: number } | null): void }} View
  * @typedef {Omit<Shown, "maskKeys"> & { watchId?: string }} File
  */
 
 const NAME = "Data";
-/** How long a read may take before the status line says it is reading. */
-const SLOW_MS = 400;
+const WORKER_THRESHOLD = 1024 * 1024;
 
 const codeOf = (/** @type {unknown} */ error) =>
   /** @type {{ code?: string }} */ (error)?.code ?? "error";
@@ -39,24 +40,12 @@ const requested = (/** @type {unknown} */ args) => {
   };
 };
 
-/** @param {string} content */
-function fromBase64(content) {
-  const native = /** @type {{ fromBase64?: (s: string) => Uint8Array }} */ (
-    /** @type {unknown} */ (Uint8Array)
-  ).fromBase64;
-  if (native) return native(content);
-  const binary = atob(content);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-  return bytes;
-}
-
 /**
  * @param {Pick<PluginContext, "bridge" | "commands" | "settings">} ctx
  * @param {View} view
- * @param {import("./formats.js").OpenOptions} [options]
+ * @param {import("./formats.js").OpenOptions & { readBytes: typeof import("@endue-ai/plugin-sdk").readBytes, startWorker?: typeof import("@endue-ai/plugin-sdk").startWorker }} options
  */
-export function createData({ bridge, commands, settings }, view, options = {}) {
+export function createData({ bridge, commands, settings }, view, options) {
   /** @type {Map<string, File>} */
   const files = new Map();
   /** Watch id -> the buffer it follows. @type {Map<string, string>} */
@@ -65,6 +54,8 @@ export function createData({ bridge, commands, settings }, view, options = {}) {
   let shown = null;
   let maskKeys = true;
   let said = "";
+  /** @type {{ buffer: string, stop: AbortController } | null} */
+  let loading = null;
 
   const say = (/** @type {string} */ text) => {
     if (text === said) return;
@@ -102,20 +93,23 @@ export function createData({ bridge, commands, settings }, view, options = {}) {
   const forget = (/** @type {string} */ buffer) => {
     const file = files.get(buffer);
     if (file?.watchId) watches.delete(file.watchId);
+    file?.opened.remote?.close();
     files.delete(buffer);
   };
 
   /** Read a file's bytes. When the grants do not cover it, ask once for its folder and try again. */
-  const read = async (/** @type {string} */ path, ask = true) => {
+  const read = async (/** @type {string} */ path, ask = true, readOptions = {}) => {
     const scope = scopeOf(path);
     const refused = new Error(`Not allowed to read ${path}.`);
-    const call = () => bridge.call("fs.read", { path, encoding: "base64", scope });
+    const call = () => options.readBytes({ bridge }, { path, scope }, readOptions);
     const failed = (/** @type {unknown} */ error) =>
-      codeOf(error) === "permission_denied"
-        ? refused
-        : new Error(`Could not read ${path}: ${codeOf(error)}.`);
+      error?.name === "AbortError"
+        ? error
+        : codeOf(error) === "permission_denied"
+          ? refused
+          : new Error(`Could not read ${path}: ${codeOf(error)}.`);
     try {
-      return fromBase64((await call()).content);
+      return await call();
     } catch (error) {
       if (codeOf(error) !== "permission_denied" || !ask) throw failed(error);
     }
@@ -126,7 +120,7 @@ export function createData({ bridge, commands, settings }, view, options = {}) {
       .catch(() => ({ granted: false }));
     if (!decision.granted) throw refused;
     try {
-      return fromBase64((await call()).content);
+      return await call();
     } catch (error) {
       throw failed(error);
     }
@@ -159,7 +153,9 @@ export function createData({ bridge, commands, settings }, view, options = {}) {
   };
 
   const runSchema = async (/** @type {File} */ file) => {
-    file.schema = await check(file);
+    file.schema = file.opened.remote
+      ? await file.opened.remote.request("schema", { path: file.path, size: file.size })
+      : await check(file);
     if (files.get(file.buffer) === file) view.schema(file.buffer, file.schema);
   };
 
@@ -167,14 +163,42 @@ export function createData({ bridge, commands, settings }, view, options = {}) {
   const load = async (/** @type {string} */ buffer, /** @type {string} */ path) => {
     await ready;
     const name = nameOf(path);
-    // A large file takes a while to arrive: say so after a moment, not for every small file.
-    const slow = setTimeout(() => say(`Reading ${name}…`), SLOW_MS);
-    const bytes = await read(path).finally(() => clearTimeout(slow));
-    const opened = openFile(name, bytes, options);
-    const checked = CHECKED.has(opened.format) && opened.doc !== undefined;
-    /** @type {SchemaState} */
-    const schema = { state: checked ? "loading" : "none", errors: [] };
-    return /** @type {File} */ ({ buffer, path, name, size: bytes.length, opened, schema });
+    loading?.stop.abort(new DOMException("Opening was cancelled.", "AbortError"));
+    const stop = new AbortController();
+    loading = { buffer, stop };
+    const progress = (phase) => (done, total) => view.progress?.({ phase, done, total });
+    view.progress?.({ phase: "Reading", done: 0, total: 0 });
+    try {
+      const bytes = await read(path, true, {
+        signal: stop.signal,
+        onProgress: progress("Reading"),
+      });
+      const size = bytes.length;
+      view.progress?.({ phase: "Parsing", done: 0, total: size });
+      const opened =
+        size > WORKER_THRESHOLD
+          ? await openWorker(name, bytes, options.startWorker, {
+              signal: stop.signal,
+              onProgress: progress("Parsing"),
+              maskKeys,
+              bridge,
+              read: (path) => read(path, false),
+            })
+          : openFile(name, bytes, options);
+      if (stop.signal.aborted) {
+        opened.remote?.close();
+        throw new DOMException("Opening was cancelled.", "AbortError");
+      }
+      const checked = CHECKED.has(opened.format) && opened.doc !== undefined;
+      /** @type {SchemaState} */
+      const schema = { state: checked ? "loading" : "none", errors: [] };
+      return /** @type {File} */ ({ buffer, path, name, size, opened, schema });
+    } finally {
+      if (loading?.stop === stop) {
+        loading = null;
+        view.progress?.(null);
+      }
+    }
   };
 
   /**
@@ -210,6 +234,7 @@ export function createData({ bridge, commands, settings }, view, options = {}) {
     const old = held(buffer);
     const file = await load(buffer, path ?? old.path);
     if (old.watchId) file.watchId = old.watchId;
+    old.opened.remote?.close();
     files.set(buffer, file);
     if (shown === buffer) present(buffer);
     say(opening(file));
@@ -228,6 +253,10 @@ export function createData({ bridge, commands, settings }, view, options = {}) {
 
   answer("desk.buffers.closed", (args) => {
     const { buffer } = requested(args);
+    if (loading?.buffer === buffer) {
+      loading.stop.abort();
+      if (!files.has(buffer)) return;
+    }
     held(buffer);
     forget(buffer);
     if (shown !== buffer) return;
@@ -282,5 +311,10 @@ export function createData({ bridge, commands, settings }, view, options = {}) {
     say(`${file.name} ${result} ${nameOf(schema)}.`);
   };
 
-  return { validateWith };
+  return {
+    validateWith,
+    cancel() {
+      loading?.stop.abort(new DOMException("Opening was cancelled.", "AbortError"));
+    },
+  };
 }

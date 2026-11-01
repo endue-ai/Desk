@@ -1,19 +1,19 @@
-// The explorer without its DOM: the tree's state and its commands. It lists the folders the person
-// allows (disk.js: fs.list with one ask on a refusal, fs.watch), a page at a time, opens a file
-// through the desk (desk.js: desk.files.open, so the plugin that owns the file type reads it under its
-// own grants), and keeps the expanded folders and the selection in the store. It talks only to
-// ctx.bridge, ctx.commands, ctx.settings, ctx.surface and a view, so the SDK's test host runs it.
+// Explorer state and commands on the public SDK: bounded previews, folder grants,
+// file opening through desk.files.open, and the remembered tree selection.
+import { contextActions } from "./context-actions.js";
 import { createDeskLink } from "./desk.js";
 import { createDisk } from "./disk.js";
+import { createPreview } from "./preview.js";
 import {
   rows as flatten,
+  folderList,
+  folderOf,
   foldersBetween,
   isUnder,
   joinPath,
   jump,
   move,
   normalizePath,
-  parentOf,
 } from "./tree.js";
 
 /**
@@ -22,10 +22,10 @@ import {
  * @typedef {import("./tree.js").Folder} Folder
  * @typedef {{ showHidden: boolean, folders: string[] }} Header
  * @typedef {{ tree(rows: Row[], selected: string | null): void, header(header: Header): void,
- *   status(text: string): void, focus(id: string | null): void }} View
+ *   status(text: string): void, focus(id: string | null): void,
+ *   selection?(id: string | null): void, preview?(model: import("./preview.js").Preview | null): void }} View
  */
 
-/** The defaults of plugin.json's contributes.settings, for a core that has none set. */
 const DEFAULTS = { folders: ["~/Documents"], "show-hidden": false, page: 500 };
 const STORE_KEY = "tree";
 const NAME = "the explorer";
@@ -34,13 +34,6 @@ const asString = (/** @type {unknown} */ value) =>
   typeof value === "string" && value !== "" ? value : undefined;
 const args = (/** @type {unknown} */ value) =>
   /** @type {Record<string, unknown>} */ (value && typeof value === "object" ? value : {});
-
-/** A list of folder paths from a setting or the store, normalised, without duplicates. */
-const folderList = (/** @type {unknown} */ value) => {
-  if (!Array.isArray(value)) return undefined;
-  const paths = value.map((v) => (typeof v === "string" ? normalizePath(v) : undefined));
-  return [...new Set(paths)].filter((v) => v !== undefined);
-};
 
 /**
  * @param {Pick<PluginContext, "bridge" | "commands" | "settings" | "surface">} ctx
@@ -73,10 +66,10 @@ export function createExplorer({ bridge, commands, settings, surface }, view, op
     view.status(text);
   };
   const rowOf = (/** @type {string | null} */ id) => list.find((row) => row.id === id);
-  /** The selection stays through a listing; the view sees it once its row is there. */
   const render = () => {
     list = flatten(roots, folders, expanded, { showHidden, page });
     view.tree(list, rowOf(selected) ? selected : null);
+    if (!rowOf(selected)) preview.close();
   };
   const header = () => view.header({ showHidden, folders: [...roots] });
   const save = () =>
@@ -109,7 +102,6 @@ export function createExplorer({ bridge, commands, settings, surface }, view, op
     }
   };
 
-  /** A change under a watched, expanded folder lists it again, once the burst is over. */
   const changed = (/** @type {string} */ folder) => {
     if (!expanded.has(folder)) return;
     clearTimeout(timers.get(folder));
@@ -118,6 +110,7 @@ export function createExplorer({ bridge, commands, settings, surface }, view, op
   };
   const disk = createDisk(bridge, { rootOf, changed });
   const desk = createDeskLink(commands);
+  const preview = createPreview(disk, (model) => view.preview?.(model));
 
   const expand = async (/** @type {string} */ path) => {
     if (!expanded.has(path)) {
@@ -137,18 +130,22 @@ export function createExplorer({ bridge, commands, settings, surface }, view, op
   };
   const select = (/** @type {string | null} */ id) => {
     selected = id;
-    render();
+    if (view.selection) view.selection(selected);
+    else render();
     view.focus(selected);
+    void preview.select(rowOf(selected));
     void save();
   };
 
-  const open = (/** @type {string} */ path) =>
-    desk.open(path).then(
+  const open = (/** @type {string} */ path) => {
+    preview.close();
+    return desk.open(path).then(
       () => say(""),
       (error) => say(error.message),
     );
+  };
 
-  /** Enter, Space or a click: a folder opens or closes, a file opens, a "more" row shows a page. */
+  /** Enter or double click: a folder opens or closes, a file opens, a "more" row shows a page. */
   const activate = async (/** @type {string} */ id) => {
     const row = rowOf(id);
     if (!row) return;
@@ -166,8 +163,16 @@ export function createExplorer({ bridge, commands, settings, surface }, view, op
     }
   };
 
-  /** A key pressed on the tree; resolves whether the tree used it. */
   const key = async (/** @type {string} */ name) => {
+    if (name === "Escape" && preview.active()) {
+      preview.close();
+      view.focus(selected);
+      return true;
+    }
+    if (name === " " && ["file", "symlink"].includes(rowOf(selected)?.kind ?? "")) {
+      await preview.toggle(rowOf(selected));
+      return true;
+    }
     if (name === "Enter" || name === " ") {
       if (selected !== null) await activate(selected);
       return selected !== null;
@@ -180,7 +185,6 @@ export function createExplorer({ bridge, commands, settings, surface }, view, op
     return true;
   };
 
-  /** Type-ahead: letters typed within a moment select the next row that starts with them. */
   const type = (/** @type {string} */ letter, now = Date.now()) => {
     typed = now - typedAt < 700 ? typed + letter : letter;
     typedAt = now;
@@ -193,7 +197,6 @@ export function createExplorer({ bridge, commands, settings, surface }, view, op
     return id !== undefined;
   };
 
-  /** Expand every folder from the root down to the one holding `path`; false when one failed. */
   const uncover = async (/** @type {string} */ root, /** @type {string} */ path) => {
     for (const folder of [root, ...foldersBetween(root, path)]) {
       if (!(await expand(folder))) return false;
@@ -201,7 +204,6 @@ export function createExplorer({ bridge, commands, settings, surface }, view, op
     return true;
   };
 
-  /** Show a file in the tree: the one named, or the one in use. */
   const reveal = async (/** @type {string | undefined} */ path) => {
     const target = path ?? (await desk.inUse());
     if (!target) throw new Error("No file is in use.");
@@ -225,7 +227,6 @@ export function createExplorer({ bridge, commands, settings, surface }, view, op
   };
   const keepRoots = () => settings.set("folders", roots).catch(() => {});
 
-  /** Add a folder to the tree, asked for in the palette when none is given, and list it. */
   const addFolder = async (/** @type {string | undefined} */ given) => {
     const typedPath = given ?? (await desk.pick("Add a folder", "~/path/to/folder"));
     if (typedPath === undefined) return null;
@@ -260,16 +261,8 @@ export function createExplorer({ bridge, commands, settings, surface }, view, op
     return [...roots];
   };
 
-  /** The folder a new file goes in: the selected folder, the selected file's, or the first root. */
-  const selectedFolder = () => {
-    const row = rowOf(selected);
-    if (!row) return roots[0];
-    return row.kind === "dir" || row.kind === "more" ? row.path : parentOf(row.path);
-  };
-
-  /** Create an empty file and open it. The folder is listed again first, so nothing is overwritten. */
   const newFile = async (/** @type {{ folder?: string, name?: string }} */ wanted) => {
-    const folder = wanted.folder ?? selectedFolder();
+    const folder = wanted.folder ?? folderOf(rowOf(selected)) ?? roots[0];
     if (!folder) throw new Error(`Add a folder to ${NAME} first.`);
     const name = wanted.name ?? (await desk.pick(`New file in ${folder}`, "name.md"));
     if (name === undefined) return null;
@@ -311,12 +304,7 @@ export function createExplorer({ bridge, commands, settings, surface }, view, op
 
   /** @type {Map<string, (args: Record<string, unknown>) => unknown>} */
   const own = new Map();
-  /**
-   * Run one of the plugin's commands, from the desk (cmd.invoked) or its own tools. A failure goes
-   * to the status line and ends the command with the same words, which the desk shows in its notice.
-   * @param {string} name
-   * @param {unknown} raw
-   */
+  /** Run a command and report failures. @param {string} name @param {unknown} raw */
   const command = async (name, raw) => {
     const handler = own.get(name);
     if (!handler) throw new Error(`${NAME} has no command ${name}.`);
@@ -355,8 +343,20 @@ export function createExplorer({ bridge, commands, settings, surface }, view, op
   answer("endue.explorer.new-file", (a) =>
     newFile({ folder: asString(a.folder), name: asString(a.name) }),
   );
+  const context = contextActions(bridge, commands, {
+    selected: () => rowOf(selected),
+    open: async (row) => {
+      preview.close();
+      return row.kind === "dir" ? expand(row.path) : desk.open(row.path);
+    },
+  });
+  for (const [id, action] of Object.entries(context))
+    answer(id, async () => {
+      const result = await action();
+      say("");
+      return result;
+    });
 
-  /** Read the settings and the saved tree, show it, and list the folders that were expanded. */
   const start = async () => {
     const init = await bridge.call("init.get", {}).catch(() => ({ settings: {} }));
     const setting = async (/** @type {keyof typeof DEFAULTS} */ name) =>
@@ -380,5 +380,21 @@ export function createExplorer({ bridge, commands, settings, surface }, view, op
     render();
   };
 
-  return { start, select, activate, key, type, command, addFolder, removeFolder, newFile, reveal };
+  const dispose = () => {
+    preview.close();
+    for (const timer of timers.values()) clearTimeout(timer);
+  };
+  return {
+    start,
+    select,
+    activate,
+    key,
+    type,
+    command,
+    addFolder,
+    removeFolder,
+    newFile,
+    reveal,
+    dispose,
+  };
 }

@@ -23,6 +23,7 @@ const root = join(import.meta.dirname, "../../..");
 
 export const VIEWS = { permission: "view:manage" } as const;
 export const CONNECTORS = { permission: "connector:manage" } as const;
+export const LINKS = { permission: "shell:open", schemes: ["http", "https", "mailto"] } as const;
 export const manifest = () =>
   JSON.parse(readFileSync(join(root, "plugins/views/plugin.json"), "utf8")) as PluginManifest;
 

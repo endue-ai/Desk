@@ -83,9 +83,11 @@ docs-api out:
 build-sdk:
     pnpm --filter @endue-ai/plugin-sdk build
 
-# Bundle @endue-ai/ui (its elements and tokens) that the app serves to plugin frames at /_desk/ui.js
+# Bundle @endue-ai/ui (its elements and the two sheets) that the app serves to plugin frames under
+# /_desk/, and refresh the committed copy of the generated tokens.css the shell imports
 build-ui:
     pnpm --filter @endue-ai/ui build
+    cp packages/ui/dist/tokens.css packages/ui/src/tokens.css
 
 # Copy the terminal plugin's emulator (xterm.js and its addons) from the pinned npm packages into
 # plugins/terminal/ui/vendor; scripts/vendor-xterm.test.mjs checks the copy matches (ADR 0037)

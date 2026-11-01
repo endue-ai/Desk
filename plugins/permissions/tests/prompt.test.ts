@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { PermPromptData } from "../../../packages/bridge/src/index";
+import type { Permission, PermPromptData } from "../../../packages/bridge/src/index";
 import { type Handlers, MANAGE, type Mounted, mount, plugin } from "./harness";
 
 const SURFACE = { permission: "ui:surface" } as const;
@@ -48,6 +48,18 @@ describe("the prompt", () => {
       duration: "This session",
       warning: null,
       waiting: 0,
+    });
+  });
+
+  it("names shell:open in words", async () => {
+    const links: Permission = { permission: "shell:open", schemes: ["https", "mailto"] };
+    const reason = "To open https://example.com/";
+    const { view } = await prompted(core(), ask("p1", { permission: links, reason }));
+    expect(view.prompts.at(-1)).toMatchObject({
+      permission: "Open links (https, mailto) in your browser",
+      scope: "",
+      reason,
+      warning: null,
     });
   });
 
