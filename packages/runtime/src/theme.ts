@@ -2,8 +2,10 @@
  * Themes (desk.theme, like load-theme and defface): the scheme, contrast and motion the person asks
  * for, or the OS's when they say "system", and the contributed tokens for them. Themes of a scheme
  * layer over each other; high-contrast themes layer over the normal ones, so they only change a few.
+ * The result is every design token (@endue-ai/ui: the role colours and the scale), applied to the
+ * shell's root and to each plugin frame as --desk-* custom properties.
  */
-import { cssVariables, tokens } from "@endue-ai/ui";
+import { cssVariables, MOTION_TOKENS, tokens } from "@endue-ai/ui";
 import type { PolicySet } from "./policy";
 
 export type Scheme = "light" | "dark";
@@ -57,7 +59,21 @@ export function resolveTheme(
     ...(contrast === "high" ? ofScheme.filter((theme) => theme.contrast === "high") : []),
   ];
   const merged: Record<string, string> = { ...tokens };
-  for (const theme of applied) Object.assign(merged, theme.tokens);
+  for (const theme of applied) {
+    const values = theme.tokens;
+    Object.assign(merged, values);
+    // Old themes had one brand role. Keep them effective after controls adopt semantic roles.
+    if (values.accent !== undefined && values.primary === undefined) {
+      for (const name of ["primary", "primaryHover", "primaryText", "ring"])
+        if (values[name] === undefined) merged[name] = values.accent;
+      if (values.primaryForeground === undefined)
+        merged.primaryForeground = merged.background ?? tokens.background;
+    } else if (values.primary !== undefined && values.accent === undefined) {
+      merged.accent = values.primary;
+    }
+  }
+  // The motion tokens are inline on each root, so a stylesheet rule could not zero them.
+  if (reducedMotion) for (const name of MOTION_TOKENS) merged[name] = "0ms";
   return {
     scheme,
     contrast,

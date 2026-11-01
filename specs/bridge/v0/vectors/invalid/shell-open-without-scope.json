@@ -1,0 +1,11 @@
+{
+  "target": "BridgeRequest",
+  "description": "shell.open carries its shell:open scope",
+  "instance": {
+    "id": 9,
+    "method": "shell.open",
+    "params": {
+      "target": "https://example.com/"
+    }
+  }
+}

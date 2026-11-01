@@ -3,8 +3,9 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { StubError } from "../../../packages/bridge/src/index";
-import { defineUiPlugin } from "../../../packages/plugin-sdk/src/index";
+import { defineUiPlugin, readBytes } from "../../../packages/plugin-sdk/src/index";
 import { createTestHost, type TestHost } from "../../../packages/plugin-sdk/src/testing/index";
+import { openBook } from "../ui/book.js";
 import { createSheets, type Open, type Shown } from "../ui/sheets.js";
 
 type Options = Parameters<typeof createTestHost>[0];
@@ -68,7 +69,7 @@ export async function mount(
   await defineUiPlugin(
     {
       mount(ctx) {
-        createSheets(ctx, view, options.open ? { open: options.open } : {});
+        createSheets(ctx, view, { read: readBytes, open: options.open ?? openBook });
         mounted = true;
       },
     },
@@ -96,10 +97,15 @@ export const base64 = (data: Uint8Array | string) =>
 export function disk(files: Record<string, Uint8Array | string>): Handlers {
   let watches = 0;
   return {
-    "fs.read": ({ path }) => {
+    "fs.read": ({ path, offset = 0, length }) => {
       const content = files[path];
       if (content === undefined) throw new StubError("not_found", `no file ${path}`);
-      return { content: base64(content), encoding: "base64" };
+      const bytes = typeof content === "string" ? new TextEncoder().encode(content) : content;
+      return {
+        content: base64(bytes.subarray(offset, length === undefined ? undefined : offset + length)),
+        encoding: "base64",
+        size: bytes.length,
+      };
     },
     "fs.watch": () => ({ watchId: `w${++watches}` }),
   };

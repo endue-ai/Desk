@@ -39,8 +39,17 @@ function narrows(granted: string[] | undefined, asked: string[] | undefined, mat
   return asked?.every((a) => granted.some((g) => match(g, a))) ?? false;
 }
 
+/** Every asked entry matched by a granted one; an absent list asks nothing and grants nothing. */
+const each = (granted: string[] = [], asked: string[] = [], match: Match) =>
+  asked.every((a) => granted.some((g) => match(g, a)));
+
 /** Whether `grant` covers everything `scope` asks for, as desk-core's `covers` judges it. */
 export function covers(grant: Permission, scope: Permission): boolean {
+  if (grant.permission === "shell:open" && scope.permission === "shell:open")
+    return (
+      each(grant.schemes, scope.schemes, (g, a) => g === a) &&
+      each(grant.paths, scope.paths, within)
+    );
   if (grant.permission === "data:read" && scope.permission === "data:read")
     return (
       narrows(grant.kinds, scope.kinds, (g, a) => g === a) &&

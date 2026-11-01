@@ -1,7 +1,21 @@
-// PowerPoint 97-2003 binary records ([MS-PPT], [MS-ODRAW]): record headers, containers, the persist
-// directory that maps persist ids to stream offsets, text atoms with their paragraph levels, and
-// the pictures of the BLIP store. No DOM.
-import { i16, i32, u16, u32, utf16le } from "../bytes.js";
+// PowerPoint 97-2003 binary records ([MS-PPT], [MS-ODRAW]): record types, headers, containers, the
+// persist directory that maps persist ids to stream offsets, text atoms, shape anchors and the
+// pictures of the BLIP store. No DOM.
+import { utf16le } from "../bytes.js";
+
+// Little-endian reads straight from the bytes (0 past the end): a stream is read field by field.
+/** @param {Uint8Array} b @param {number} at */
+export const u16 = (b, at) =>
+  at >= 0 && at + 2 <= b.length ? (b[at] ?? 0) | ((b[at + 1] ?? 0) << 8) : 0;
+/** @param {Uint8Array} b @param {number} at */
+export const i16 = (b, at) => (u16(b, at) << 16) >> 16;
+/** @param {Uint8Array} b @param {number} at */
+export const i32 = (b, at) =>
+  at >= 0 && at + 4 <= b.length
+    ? (b[at] ?? 0) | ((b[at + 1] ?? 0) << 8) | ((b[at + 2] ?? 0) << 16) | ((b[at + 3] ?? 0) << 24)
+    : 0;
+/** @param {Uint8Array} b @param {number} at */
+export const u32 = (b, at) => i32(b, at) >>> 0;
 
 /** @typedef {{ type: number, inst: number, ver: number, at: number, body: number, len: number }} PptRecord */
 
@@ -12,30 +26,59 @@ export const T = {
   slideAtom: 0x03ef,
   notes: 0x03f0,
   notesAtom: 0x03f1,
+  environment: 0x03f2,
   slidePersist: 0x03f3,
+  mainMaster: 0x03f8,
   slideShowInfo: 0x03f9,
   drawingGroup: 0x040b,
   drawing: 0x040c,
-  slideList: 0x0ff0,
-  userEdit: 0x0ff5,
+  fontCollection: 0x07d5,
+  colorScheme: 0x07f0,
+  placeholder: 0x0bc3,
   outlineRef: 0x0f9e,
   textHeader: 0x0f9f,
   textChars: 0x0fa0,
   styleText: 0x0fa1,
+  textMasterStyle: 0x0fa3,
+  textCFDefaults: 0x0fa4,
+  textPFDefaults: 0x0fa5,
+  textRuler: 0x0fa6,
   textBytes: 0x0fa8,
-  placeholder: 0x0bc3,
+  styleText9: 0x0fac,
+  outlineText9: 0x0fae,
+  outlineHeader9: 0x0faf,
+  docInfo: 0x07d0,
+  fontEntity: 0x0fb7,
+  cString: 0x0fba,
+  slideNumberMC: 0x0fd8,
+  headersFooters: 0x0fd9,
+  headersFootersAtom: 0x0fda,
+  textInteractive: 0x0fdf,
+  slideList: 0x0ff0,
+  userEdit: 0x0ff5,
+  dateTimeMC: 0x0ff7,
+  genericDateMC: 0x0ff8,
+  headerMC: 0x0ff9,
+  footerMC: 0x0ffa,
+  progTags: 0x1388,
+  progBinaryTag: 0x138a,
+  binaryTagData: 0x138b,
+  rtfDateTimeMC: 0x1015,
   persistDir: 0x1772,
   cryptSession: 0x2f14,
   bstore: 0xf001,
+  dg: 0xf002,
   spgr: 0xf003,
   sp: 0xf004,
   fbse: 0xf007,
   spgrAtom: 0xf009,
+  fsp: 0xf00a,
   fopt: 0xf00b,
   clientTextbox: 0xf00d,
   childAnchor: 0xf00f,
   clientAnchor: 0xf010,
   clientData: 0xf011,
+  tertiaryFopt: 0xf122,
 };
 
 /** The record at `at`, or null past the end. @param {Uint8Array} b @param {number} at @returns {PptRecord | null} */
@@ -136,60 +179,6 @@ export function textOfAtom(b, rec) {
   return null;
 }
 
-/** Bytes each TextPFException field takes, by mask bit, in field order. */
-const PF_FIELDS = [
-  [0x0000000f, 2],
-  [0x00000080, 2],
-  [0x00000010, 2],
-  [0x00000040, 2],
-  [0x00000020, 4],
-  [0x00000800, 2],
-  [0x00001000, 2],
-  [0x00002000, 2],
-  [0x00004000, 2],
-  [0x00000100, 2],
-  [0x00000400, 2],
-  [0x00008000, 2],
-];
-
-/**
- * The paragraph levels and bullets a StyleTextPropAtom gives a text, one per paragraph. A run covers
- * a number of characters, paragraph ends included; a paragraph takes the run its first character is in.
- * @param {Uint8Array} b @param {PptRecord | null} rec @param {string} text
- * @returns {Array<{ level: number, bullet: boolean }>}
- */
-export function paragraphStyles(b, rec, text) {
-  /** @type {Array<{ level: number, bullet: boolean }>} */
-  const out = [];
-  if (!rec) return out;
-  const starts = [0];
-  for (let i = 0; i < text.length; i++)
-    if (text[i] === "\r" && i + 1 < text.length) starts.push(i + 1);
-  let at = rec.body;
-  const end = rec.body + rec.len;
-  let covered = 0;
-  while (covered <= text.length && out.length < starts.length && at + 10 <= end) {
-    const count = Math.max(1, u32(b, at));
-    const level = u16(b, at + 4);
-    const masks = u32(b, at + 6);
-    at += 10;
-    let bullet = false;
-    for (const [bit, size] of PF_FIELDS) {
-      if (!(masks & (bit ?? 0))) continue;
-      if (bit === 0x0000000f) bullet = Boolean(u16(b, at) & 1);
-      at += size ?? 2;
-    }
-    if (masks & 0x00100000) at += 2 + u16(b, at) * 4;
-    if (masks & 0x00010000) at += 2;
-    if (masks & 0x000e0000) at += 2;
-    if (masks & 0x00200000) at += 2;
-    while (out.length < starts.length && (starts[out.length] ?? 0) < covered + count)
-      out.push({ level: Math.min(4, level), bullet });
-    covered += count;
-  }
-  return out;
-}
-
 /**
  * A shape's anchor as [left, top, right, bottom]: a client anchor in master units (576 per inch,
  * stored top, left, right, bottom), a child anchor or group frame in its group's units.
@@ -203,16 +192,6 @@ export function anchorOf(/** @type {Uint8Array} */ b, /** @type {PptRecord | nul
   if (rec.len >= 8)
     return [i16(b, rec.body + 2), i16(b, rec.body), i16(b, rec.body + 4), i16(b, rec.body + 6)];
   return null;
-}
-
-/** OfficeArtFOPT properties by property id (simple ones only). @param {Uint8Array} b @param {PptRecord | null} rec */
-export function propertiesOf(b, rec) {
-  /** @type {Map<number, number>} */
-  const props = new Map();
-  if (!rec) return props;
-  for (let i = 0; i < rec.inst && rec.body + i * 6 + 6 <= rec.body + rec.len; i++)
-    props.set(u16(b, rec.body + i * 6) & 0x3fff, u32(b, rec.body + i * 6 + 2));
-  return props;
 }
 
 /** A BLIP record as displayable bytes (JPEG, PNG, TIFF, DIB made a BMP), or null for metafiles. */

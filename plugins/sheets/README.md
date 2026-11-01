@@ -5,8 +5,9 @@ the public SDK only: Excel (`.xlsx .xlsm .xlsb .xls .xlt .xltx .xltm`), OpenDocu
 .fods`), Numbers, CSV and TSV, DIF, SYLK, Lotus 1-2-3 and Quattro Pro, and Google Sheets shortcuts.
 
 It answers `desk.files.visit`, `.revert`, `desk.buffers.show` and `.closed` (`{ buffer, path }`);
-`desk.files.save` is refused ("Sheets opens files read-only."). It reads with `fs.read` as base64, asks
-once with `perm.request` for a folder its grants do not cover, and follows each file with `fs.watch`.
+`desk.files.save` is refused ("Sheets opens files read-only."). It reads binary ranges through SDK `readBytes` (with bounded `fs.read` fallback), asks once for
+a folder outside its grants, and follows each file with `fs.watch`. Reading and parsing show
+`desk-progress` after 300 ms; Cancel restores the previous file. Revert uses the same path.
 
 SheetJS Community Edition 0.20.3 parses, vendored in `ui/vendor` by `scripts/vendor-sheetjs.mjs`
 (ADR 0043). The plugin reads OOXML cell styles and frozen panes and ODS sizes and panes itself.
@@ -16,6 +17,7 @@ SheetJS Community Edition 0.20.3 parses, vendored in `ui/vendor` by `scripts/ven
 | `ui/sheets.js` | The desk's requests, fs calls with one ask on refusal, watches, the encoding setting |
 | `ui/book.js`, `ui/detect.js` | Bytes to a book: the format from the first bytes, SheetJS, the details view |
 | `ui/csv.js`, `ui/styles.js`, `ui/ods.js` | CSV encodings and delimiters; xl/styles.xml; ODS layout |
+| `ui/worker.js`, `ui/parse.js`, `ui/wire.js` | Worker parsing, sheet transfers, lazy cell decoding |
 | `ui/model.js` | The sheet the grid draws: cells, text, formula bar content, sizes, merges |
 | `ui/grid.js`, `ui/paint.js`, `ui/layout.js` | The virtual grid: only the cells on screen are in the DOM |
 | `ui/selection.js`, `ui/keys.js`, `ui/find.js` | Selection, keys, count/sum/average, find |

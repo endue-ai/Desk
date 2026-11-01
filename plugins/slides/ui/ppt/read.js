@@ -1,145 +1,44 @@
-// PowerPoint 97-2003 (.ppt, .pps, .pot) as a text-only deck: each slide's title and body text from
-// the PowerPoint Document stream, laid out as a title over the body, its pictures from the Pictures
-// stream at their anchors, its notes and its hidden mark.
-import { imageUrl, u16, u32 } from "../bytes.js";
-import { boxOf, imageCache, NO_FILL, paragraphOf, rect, runOf, textOf } from "../deck.js";
+// PowerPoint 97-2003 (.ppt, .pps, .pot) as a deck ([MS-PPT]): the latest user edit and its persist
+// directory, the document's size, fonts and default styles, the masters (main and title) with their
+// colour schemes, text styles, shapes and backgrounds, then every slide in order: the master's shapes
+// and footers it shows, its own shapes, its background, notes and hidden mark. Pictures come from
+// the Pictures stream when the renderer asks for them. No DOM.
+import { imageUrl } from "../bytes.js";
+import { imageCache, plainText } from "../deck.js";
+import { DEFAULT_SCHEME, schemeOf } from "./color.js";
+import { fallbackSlide } from "./fallback.js";
 import {
-  anchorOf,
   blipBytes,
   childOf,
   childrenOf,
   descendants,
-  paragraphStyles,
   persistDirectory,
-  propertiesOf,
   recordAt,
   T,
-  textOfAtom,
+  u16,
+  u32,
 } from "./records.js";
+import { backgroundIn, masterPlacement, readDrawing, shapeTable } from "./shapes.js";
+import { masterLevels, readCF, readPF } from "./styles.js";
+import { outlineNumbers, outlinesOf, readText } from "./textbox.js";
 
 /**
  * @typedef {import("../deck.js").Deck} Deck
  * @typedef {import("../deck.js").Slide} Slide
+ * @typedef {import("../deck.js").Fill} Fill
  * @typedef {import("../deck.js").Element} SlideElement
  * @typedef {import("./records.js").PptRecord} PptRecord
- * @typedef {{ type: number, text: string, styles: Array<{ level: number, bullet: boolean }> }} PptText
- * @typedef {{ texts: PptText[], pictures: Array<{ blip: number, anchor: number[] }> }} Drawn
+ * @typedef {import("./styles.js").Level} Level
+ * @typedef {import("./shapes.js").MasterShape} MasterShape
+ * @typedef {import("./shapes.js").Scope} Scope
+ * @typedef {{
+ *   id: number, rec: PptRecord, main: boolean, parent: number, flags: number, scheme: string[],
+ *   styles: Map<number, Level[]>, drawing: PptRecord | null, placeholders: Map<number, MasterShape>
+ * }} Master
+ * @typedef {{ flags: number, date: string, header: string, footer: string }} HeadersFooters
  */
 
 export class EncryptedError extends Error {}
-
-const TITLE_TYPES = [0, 6];
-const NOTES_TYPE = 2;
-
-/** The texts and pictures in a slide's or notes page's drawing. */
-function drawingOf(
-  /** @type {Uint8Array} */ doc,
-  /** @type {PptRecord} */ container,
-  /** @type {PptText[]} */ outline,
-) {
-  /** @type {Drawn} */
-  const out = { texts: [], pictures: [] };
-  const drawing = childOf(doc, container, T.drawing);
-  if (!drawing) return out;
-  /** Walk a group: its first shape gives its frame, which maps its children's anchors. */
-  const group = (/** @type {PptRecord} */ spgr, /** @type {(a: number[]) => number[]} */ map) => {
-    let frame = map;
-    for (const [i, child] of childrenOf(doc, spgr).entries()) {
-      if (child.type === T.spgr) {
-        group(child, frame);
-        continue;
-      }
-      if (child.type !== T.sp) continue;
-      const anchorRec = childOf(doc, child, T.clientAnchor) ?? childOf(doc, child, T.childAnchor);
-      const anchor = anchorOf(doc, anchorRec);
-      const groupFrame = anchorOf(doc, childOf(doc, child, T.spgrAtom));
-      if (i === 0 && groupFrame && anchor) {
-        const [l = 0, t = 0, r = 0, b = 0] = map(anchor);
-        const [gl = 0, gt = 0, gr = 1, gb = 1] = groupFrame;
-        const sx = (r - l) / (gr - gl || 1);
-        const sy = (b - t) / (gb - gt || 1);
-        frame = (a) => [
-          l + ((a[0] ?? 0) - gl) * sx,
-          t + ((a[1] ?? 0) - gt) * sy,
-          l + ((a[2] ?? 0) - gl) * sx,
-          t + ((a[3] ?? 0) - gt) * sy,
-        ];
-        continue;
-      }
-      shape(child, anchor ? frame(anchor) : null);
-    }
-  };
-  const shape = (/** @type {PptRecord} */ sp, /** @type {number[] | null} */ anchor) => {
-    const props = propertiesOf(doc, childOf(doc, sp, T.fopt));
-    const blip = props.get(0x0104) ?? props.get(0x0186);
-    if (blip && anchor) out.pictures.push({ blip, anchor });
-    const box = childOf(doc, sp, T.clientTextbox);
-    if (!box) return;
-    let type = 4;
-    for (const rec of childrenOf(doc, box)) {
-      if (rec.type === T.textHeader) type = u32(doc, rec.body);
-      else if (rec.type === T.outlineRef) {
-        const ref = outline[u32(doc, rec.body)];
-        if (ref) out.texts.push(ref);
-      } else {
-        const text = textOfAtom(doc, rec);
-        if (text === null) continue;
-        const style =
-          childrenOf(doc, box).find((r) => r.type === T.styleText && r.at > rec.at) ?? null;
-        out.texts.push({ type, text, styles: paragraphStyles(doc, style, text) });
-      }
-    }
-  };
-  for (const rec of descendants(doc, drawing))
-    if (rec.type === T.spgr) {
-      group(rec, (a) => a);
-      break;
-    }
-  return out;
-}
-
-/** The text atoms of one slide's entry in a SlideListWithText, by index. */
-function outlineTexts(/** @type {Uint8Array} */ doc, /** @type {PptRecord[]} */ records) {
-  /** @type {PptText[]} */
-  const texts = [];
-  let type = 4;
-  for (const [i, rec] of records.entries()) {
-    if (rec.type === T.textHeader) type = u32(doc, rec.body);
-    const text = textOfAtom(doc, rec);
-    if (text === null) continue;
-    const style = records
-      .slice(i + 1)
-      .find((r) => r.type === T.styleText || r.type === T.textHeader);
-    texts.push({
-      type,
-      text,
-      styles: paragraphStyles(doc, style?.type === T.styleText ? style : null, text),
-    });
-  }
-  return texts;
-}
-
-/** Paragraphs of texts: "\r" ends one, "\v" breaks a line, a lone "*" is a field. @param {PptText[]} texts */
-function paragraphs(texts, /** @type {number} */ size, /** @type {boolean} */ bold) {
-  return texts.flatMap((t) =>
-    t.text
-      .replace(/\r$/, "")
-      .split("\r")
-      .map((line, i) => ({
-        line: line.replace(/\v/g, "\n"),
-        style: t.styles[i] ?? { level: 0, bullet: false },
-      }))
-      .filter(({ line }) => line.trim() !== "" && line.trim() !== "*")
-      .map(({ line, style }) =>
-        paragraphOf([runOf(line, { size: size * (1 - style.level * 0.1), bold, font: "" })], {
-          level: style.level,
-          marginLeft: style.level * size * 1.2 + (style.bullet ? size : 0),
-          indent: style.bullet ? -size : 0,
-          bullet: style.bullet ? { text: "•", color: "#000000", font: "", size } : null,
-        }),
-      ),
-  );
-}
 
 /** @param {{ stream(name: string): Uint8Array | null }} cfb @param {string} format @returns {Deck} */
 export function readPpt(cfb, format) {
@@ -154,43 +53,294 @@ export function readPpt(cfb, format) {
   const atom = childOf(doc, docRec, T.documentAtom);
   const width = (atom ? u32(doc, atom.body) : 5760) / 8 || 720;
   const height = (atom ? u32(doc, atom.body + 4) : 4320) / 8 || 540;
+  const firstNumber = atom ? u16(doc, atom.body + 32) || 1 : 1;
+  const omitOnTitle = atom ? doc[atom.body + 37] === 1 : false;
+  const at = (/** @type {number} */ persist) => recordAt(doc, offsets.get(persist) ?? -1);
 
-  /** Slide lists: 0 slides, 2 notes. Each entry: the persist atom and the text records after it. */
+  // Fonts and the document's default text styles.
+  const env = childOf(doc, docRec, T.environment);
+  const fonts = childrenOf(doc, childOf(doc, env, T.fontCollection))
+    .filter((r) => r.type === T.fontEntity)
+    .map((r) => faceName(doc, r));
+  const cfDefaults = childOf(doc, env, T.textCFDefaults);
+  const pfDefaults = childOf(doc, env, T.textPFDefaults);
+  /** @type {Level[]} */
+  const defaults = [
+    {
+      pf: pfDefaults ? readPF(doc, pfDefaults.body + 2).pf : {},
+      cf: cfDefaults ? readCF(doc, cfDefaults.body).cf : {},
+    },
+  ];
+  const envStyles = stylesIn(doc, env);
+
+  /** Slide lists: 0 slides, 1 masters, 2 notes. Each entry: the persist atom and the records after it. */
   const lists = childrenOf(doc, docRec).filter((r) => r.type === T.slideList);
   const entries = (/** @type {number} */ inst) => {
-    /** @type {Array<{ persist: number, slideId: number, records: PptRecord[] }>} */
+    /** @type {Array<{ persist: number, id: number, records: PptRecord[] }>} */
     const out = [];
     for (const rec of childrenOf(doc, lists.find((l) => l.inst === inst) ?? null)) {
       if (rec.type === T.slidePersist)
-        out.push({ persist: u32(doc, rec.body), slideId: u32(doc, rec.body + 12), records: [] });
+        out.push({ persist: u32(doc, rec.body), id: u32(doc, rec.body + 12), records: [] });
       else out.at(-1)?.records.push(rec);
     }
     return out;
   };
-  /** Notes text by the notes page's own id, and by the id of the slide it belongs to. */
-  /** @type {Map<number, string>} */
-  const notesById = new Map();
-  /** @type {Map<number, string>} */
-  const notesBySlide = new Map();
-  for (const entry of entries(2)) {
-    const container = recordAt(doc, offsets.get(entry.persist) ?? -1);
-    if (!container || container.type !== T.notes) continue;
-    const slideRef = u32(doc, childOf(doc, container, T.notesAtom)?.body ?? 0);
-    const drawn = drawingOf(doc, container, outlineTexts(doc, entry.records));
-    const text = drawn.texts
-      .filter((t) => t.type === NOTES_TYPE)
-      .map((t) => t.text.replace(/\r$/, "").replace(/[\r\v]/g, "\n"))
-      .join("\n");
-    notesById.set(entry.slideId, text.trim());
-    notesBySlide.set(slideRef, text.trim());
-  }
 
-  const pictures = cfb.stream("Pictures");
+  /** @type {Map<number, MasterShape>} */
+  const masterShapes = new Map();
+  /** @type {Map<number, Master>} */
+  const masters = new Map();
+  for (const entry of entries(1)) {
+    const rec = at(entry.persist);
+    if (!rec || (rec.type !== T.mainMaster && rec.type !== T.slide)) continue;
+    const slideAtom = childOf(doc, rec, T.slideAtom);
+    const drawing = childOf(doc, rec, T.drawing);
+    /** @type {Map<number, MasterShape>} */
+    const own = shapeTable(doc, drawing, new Map());
+    for (const [k, v] of own) masterShapes.set(k, v);
+    masters.set(entry.id, {
+      id: entry.id,
+      rec,
+      main: rec.type === T.mainMaster,
+      parent: slideAtom ? u32(doc, slideAtom.body + 12) : 0,
+      flags: slideAtom ? u16(doc, slideAtom.body + 20) : 0,
+      scheme: schemeIn(doc, rec) ?? [],
+      styles: stylesIn(doc, rec),
+      drawing,
+      placeholders: new Map(
+        [...own.values()].filter((s) => s.placement).map((s) => [s.placement, s]),
+      ),
+    });
+  }
+  const firstMain = [...masters.values()].find((m) => m.main);
+  const mainOf = (/** @type {Master | undefined} */ m) =>
+    m && !m.main ? (masters.get(m.parent) ?? firstMain) : (m ?? firstMain);
+  // A title master without a scheme of its own, or following its main master's, takes that one.
+  for (const m of masters.values())
+    if (!m.main && (m.flags & 2 || m.scheme.length === 0)) m.scheme = mainOf(m)?.scheme ?? [];
+  for (const m of masters.values()) if (m.scheme.length === 0) m.scheme = DEFAULT_SCHEME;
+
+  const notes = notesOf(doc, entries(2), at);
+  const image = imagesOf(doc, docRec, cfb.stream("Pictures"));
+  const docHF = headersFootersIn(doc, docRec, 3);
+  const numbered = outlineNumbers(doc, childOf(doc, docRec, T.docInfo));
+
+  /** @type {Slide[]} */
+  const slides = entries(0).map((entry, i) => {
+    const number = firstNumber + i;
+    const container = at(entry.persist);
+    const outline = outlinesOf(doc, entry.records, numbered.get(entry.id));
+    if (container?.type !== T.slide) return fallbackSlide(doc, outline, i + 1, width, height);
+    const slideAtom = childOf(doc, container, T.slideAtom);
+    const flags = slideAtom ? u16(doc, slideAtom.body + 20) : 7;
+    const master = masters.get(slideAtom ? u32(doc, slideAtom.body + 12) : 0) ?? firstMain;
+    const main = mainOf(master);
+    const scheme =
+      (flags & 2 ? null : schemeIn(doc, container)) ?? master?.scheme ?? DEFAULT_SCHEME;
+    const hf = headersFootersIn(doc, container, 0) ?? docHF;
+    const drawing = childOf(doc, container, T.drawing);
+    const ownPlacements = new Set(
+      [...shapeTable(doc, drawing, new Map()).values()].map((s) => s.placement),
+    );
+    const isTitle = slideAtom ? u32(doc, slideAtom.body) === 0 : false;
+    const shows = (/** @type {number} */ p) =>
+      !ownPlacements.has(p) &&
+      !(omitOnTitle && isTitle) &&
+      Boolean((hf?.flags ?? 0) & (p === 7 ? 1 : p === 8 ? 8 : p === 9 ? 0x20 : 0));
+    const backgroundOf = (/** @type {Master | undefined} */ m, depth = 0) => {
+      const found =
+        m && (m.main || !(m.flags & 4))
+          ? backgroundIn(
+              m.drawing,
+              scopeFor(m, () => false, [], { type: "none" }),
+            )
+          : null;
+      if (!found && m && !m.main && depth < 2) return backgroundOf(mainOf(m), depth + 1);
+      return found ?? { type: "solid", color: scheme[0] ?? "#ffffff" };
+    };
+    /** A scope for a drawing on this slide. */
+    function scopeFor(
+      /** @type {Master | undefined} */ owner,
+      /** @type {(p: number) => boolean} */ keep,
+      /** @type {import("./textbox.js").Outline[]} */ texts,
+      /** @type {Fill} */ background,
+    ) {
+      return /** @type {Scope} */ ({
+        doc,
+        scheme,
+        background,
+        masterShapes,
+        masterPlaceholder: (p) =>
+          (owner ?? master)?.placeholders.get(p) ?? main?.placeholders.get(masterPlacement(p)),
+        keep,
+        outline: texts,
+        context: (type) => ({
+          levels: chainFor(type, defaults, envStyles, main?.styles),
+          scheme,
+          fonts,
+          slideNumber: number,
+          footer: hf?.footer ?? "",
+          header: hf?.header ?? "",
+          date: hf
+            ? hf.flags & 4
+              ? hf.date
+              : hf.flags & 2
+                ? new Date().toLocaleDateString()
+                : ""
+            : "",
+        }),
+        blipKind: image.kind,
+      });
+    }
+    const masterBackground = backgroundOf(master);
+    /** @type {SlideElement[]} */
+    const elements = [];
+    if (flags & 1 && master) {
+      const layers = master.main ? [master] : [...(master.flags & 1 ? [main] : []), master];
+      for (const m of layers)
+        if (m)
+          elements.push(
+            ...readDrawing(
+              m.drawing,
+              scopeFor(m, m === master ? shows : () => false, [], masterBackground),
+            ),
+          );
+    }
+    const scope = scopeFor(undefined, () => true, outline, masterBackground);
+    const own = readDrawing(drawing, scope);
+    // A slide whose drawing holds nothing (an outline-only entry) still shows its outline text.
+    elements.push(
+      ...(own.length || !outline.length
+        ? own
+        : fallbackSlide(doc, outline, i + 1, width, height).elements),
+    );
+    const heading = elements.find(
+      (e) => e.type === "shape" && (e.placeholder === "title" || e.placeholder === "ctrTitle"),
+    );
+    const info = childOf(doc, container, T.slideShowInfo);
+    return {
+      number: i + 1,
+      title: heading?.type === "shape" ? plainText(heading.text).replace(/\s+/g, " ").trim() : "",
+      hidden: info ? Boolean(u16(doc, info.body + 10) & 0x4) : false,
+      background: (flags & 4 ? null : backgroundIn(drawing, scope)) ?? masterBackground,
+      elements,
+      notes:
+        notes.byId.get(slideAtom ? u32(doc, slideAtom.body + 16) : -1) ??
+        notes.bySlide.get(entry.id) ??
+        "",
+    };
+  });
+  return { format, size: { width, height }, slides, textOnly: false, image: image.url };
+}
+
+/** A FontEntityAtom's face name. @param {Uint8Array} b @param {PptRecord} rec */
+function faceName(b, rec) {
+  let s = "";
+  for (let i = 0; i < 32; i++) {
+    const c = u16(b, rec.body + i * 2);
+    if (c === 0) break;
+    s += String.fromCharCode(c);
+  }
+  return s;
+}
+
+/** The colour scheme a slide or master uses (instance 1; masters also list others). */
+function schemeIn(/** @type {Uint8Array} */ b, /** @type {PptRecord} */ container) {
+  return schemeOf(
+    b,
+    childrenOf(b, container).find((r) => r.type === T.colorScheme && r.inst === 1) ?? null,
+  );
+}
+
+/** A container's TextMasterStyleAtoms by text type. @param {Uint8Array} b @param {PptRecord | null} container */
+function stylesIn(b, container) {
+  /** @type {Map<number, Level[]>} */
+  const out = new Map();
+  for (const rec of childrenOf(b, container))
+    if (rec.type === T.textMasterStyle) out.set(rec.inst, masterLevels(b, rec));
+  return out;
+}
+
+/**
+ * The levels a text of a type inherits, lowest first: the document's defaults, the environment's
+ * styles and the master's, a centred title over the title, the other bodies over the body.
+ * @param {number} type @param {Level[]} defaults @param {Map<number, Level[]>} env
+ * @param {Map<number, Level[]> | undefined} master @returns {Level[][]}
+ */
+function chainFor(type, defaults, env, master) {
+  const bases =
+    type === 0 || type === 6
+      ? [0, type]
+      : type === 1 || type >= 5
+        ? [1, type]
+        : [type === 3 ? 4 : type];
+  const unique = [...new Set(bases)];
+  return [
+    defaults,
+    ...(type === 4 ? [env.get(4)] : []),
+    ...unique.map((t) => master?.get(t)),
+  ].filter((l) => l !== undefined);
+}
+
+/** A HeadersFootersContainer of an instance: its flags and strings. @returns {HeadersFooters | null} */
+function headersFootersIn(
+  /** @type {Uint8Array} */ b,
+  /** @type {PptRecord} */ container,
+  /** @type {number} */ inst,
+) {
+  const hf = childrenOf(b, container).find((r) => r.type === T.headersFooters && r.inst === inst);
+  if (!hf) return null;
+  const atom = childOf(b, hf, T.headersFootersAtom);
+  const text = (/** @type {number} */ i) => {
+    const rec = childrenOf(b, hf).find((r) => r.type === T.cString && r.inst === i);
+    return rec ? new TextDecoder("utf-16le").decode(b.subarray(rec.body, rec.body + rec.len)) : "";
+  };
+  return {
+    flags: atom ? u16(b, atom.body + 2) : 0,
+    date: text(0),
+    header: text(1),
+    footer: text(2),
+  };
+}
+
+/** Notes text by the notes page's own id, and by the id of the slide it belongs to. */
+function notesOf(
+  /** @type {Uint8Array} */ b,
+  /** @type {Array<{ persist: number, id: number, records: PptRecord[] }>} */ list,
+  /** @type {(persist: number) => PptRecord | null} */ at,
+) {
+  /** @type {Map<number, string>} */
+  const byId = new Map();
+  /** @type {Map<number, string>} */
+  const bySlide = new Map();
+  for (const entry of list) {
+    const container = at(entry.persist);
+    if (!container || container.type !== T.notes) continue;
+    const outline = outlinesOf(b, entry.records);
+    const drawing = childOf(b, container, T.drawing);
+    const texts = (drawing ? descendants(b, drawing) : [])
+      .filter((r) => r.type === T.clientTextbox)
+      .map((box) => readText(b, box, null, outline))
+      .filter((t) => t?.type === 2)
+      .map((t) => (t?.text ?? "").replace(/[\r\v]/g, "\n"));
+    const text = texts.join("\n").trim();
+    byId.set(entry.id, text);
+    bySlide.set(u32(b, childOf(b, container, T.notesAtom)?.body ?? 0), text);
+  }
+  return { byId, bySlide };
+}
+
+/** The BLIP store: each picture's kind, and its data: URL when the renderer asks. */
+function imagesOf(
+  /** @type {Uint8Array} */ doc,
+  /** @type {PptRecord} */ docRec,
+  /** @type {Uint8Array | null} */ pictures,
+) {
   const store = descendants(doc, childOf(doc, docRec, T.drawingGroup) ?? docRec).find(
     (r) => r.type === T.bstore,
   );
   const blips = store ? childrenOf(doc, store) : [];
-  const image = imageCache(async (id) => {
+  const url = imageCache(async (id) => {
     const rec = blips[Number(id.slice(4)) - 1];
     if (!rec) return null;
     if (rec.type !== T.fbse) return imageUrl(blipBytes(doc, rec.at) ?? new Uint8Array());
@@ -203,88 +353,11 @@ export function readPpt(cfb, format) {
         : null;
     return bytes ? imageUrl(bytes) : null;
   });
-
-  const pt = (/** @type {number} */ units) => units / 8;
-  /** @type {Slide[]} */
-  const slides = entries(0).map((entry, i) => {
-    const container = recordAt(doc, offsets.get(entry.persist) ?? -1);
-    const isSlide = container?.type === T.slide;
-    const drawn =
-      isSlide && container
-        ? drawingOf(doc, container, outlineTexts(doc, entry.records))
-        : { texts: outlineTexts(doc, entry.records), pictures: [] };
-    if (drawn.texts.length === 0) drawn.texts = outlineTexts(doc, entry.records);
-    const titleTexts = drawn.texts.filter((t) => TITLE_TYPES.includes(t.type));
-    const bodyTexts = drawn.texts.filter(
-      (t) => !TITLE_TYPES.includes(t.type) && t.type !== NOTES_TYPE,
-    );
-    const titleSize = Math.round(height * 0.067);
-    const titleParagraphs = paragraphs(titleTexts.slice(0, 1), titleSize, true);
-    const bodyBox = boxOf({ x: width * 0.06, y: height * 0.24, w: width * 0.88, h: height * 0.7 });
-    let bodySize = Math.round(height * 0.044);
-    const lines = paragraphs(bodyTexts, bodySize, false).length;
-    if (lines * bodySize * 1.45 > bodyBox.h) bodySize = Math.max(8, bodyBox.h / (lines * 1.45));
-    /** @type {SlideElement[]} */
-    const elements = [
-      shapeOf(
-        "Title",
-        "title",
-        boxOf({ x: width * 0.06, y: height * 0.05, w: width * 0.88, h: height * 0.16 }),
-        titleParagraphs,
-        "bottom",
-      ),
-      shapeOf("Body", "body", bodyBox, paragraphs(bodyTexts, bodySize, false), "top"),
-    ];
-    for (const [n, p] of drawn.pictures.entries()) {
-      const [l = 0, t = 0, r = 0, b = 0] = p.anchor;
-      elements.push({
-        type: "picture",
-        name: `Picture ${n + 1}`,
-        box: boxOf({ x: pt(l), y: pt(t), w: pt(r - l), h: pt(b - t) }),
-        image: `pib:${p.blip}`,
-        crop: { left: 0, top: 0, right: 0, bottom: 0 },
-        line: null,
-        geometry: rect(),
-        label: `Picture ${n + 1}`,
-      });
-    }
-    const info = container ? childOf(doc, container, T.slideShowInfo) : null;
-    const slideAtom = container ? childOf(doc, container, T.slideAtom) : null;
-    return {
-      number: i + 1,
-      title: titleParagraphs
-        .map((p) => p.runs.map((r) => r.text).join(""))
-        .join(" ")
-        .replace(/\s+/g, " ")
-        .trim(),
-      hidden: info ? Boolean(u16(doc, info.body + 10) & 0x4) : false,
-      background: { type: "solid", color: "#ffffff" },
-      elements,
-      notes:
-        notesById.get(slideAtom ? u32(doc, slideAtom.body + 16) : -1) ??
-        notesBySlide.get(entry.slideId) ??
-        "",
-    };
-  });
-  return { format, size: { width, height }, slides, textOnly: true, image };
-}
-
-/** A text shape of the text-only layout. */
-function shapeOf(
-  /** @type {string} */ name,
-  /** @type {string} */ placeholder,
-  /** @type {import("../deck.js").Box} */ box,
-  /** @type {import("../deck.js").Paragraph[]} */ paras,
-  /** @type {"top" | "bottom"} */ anchor,
-) {
-  return /** @type {SlideElement} */ ({
-    type: "shape",
-    name,
-    box,
-    geometry: rect(),
-    fill: NO_FILL,
-    line: null,
-    text: textOf(paras, { anchor }),
-    placeholder,
-  });
+  const kind = (/** @type {number} */ pib) => {
+    const rec = blips[pib - 1];
+    if (!rec) return "";
+    const type = rec.type === T.fbse ? (doc[rec.body] ?? 0) : rec.type - 0xf018;
+    return type === 2 ? "emf" : type === 3 ? "wmf" : type === 4 ? "pict" : "bitmap";
+  };
+  return { url, kind };
 }

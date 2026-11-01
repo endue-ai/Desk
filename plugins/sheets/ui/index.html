@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <title>Sheets</title>
     <script type="importmap">
-      { "imports": { "@endue-ai/plugin-sdk": "/_desk/plugin-sdk.js" } }
+      { "imports": { "@endue-ai/plugin-sdk": "/_desk/plugin-sdk.js", "@endue-ai/ui": "/_desk/ui.js" } }
     </script>
     <link rel="stylesheet" href="./style.css" />
   </head>
@@ -13,6 +13,7 @@
       <h1 id="book-name">No spreadsheet open</h1>
       <p id="book-detail"></p>
     </header>
+    <desk-progress id="opening" hidden></desk-progress>
     <div id="formula" class="formula" hidden>
       <output id="cell-address" aria-label="Selected cell"></output>
       <input id="cell-content" aria-label="Cell content" readonly spellcheck="false" />

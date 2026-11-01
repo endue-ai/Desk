@@ -8,7 +8,7 @@ const css = `
   box-sizing: border-box;
   padding: 10px 14px;
   border: 1px solid var(--desk-border);
-  border-radius: 8px;
+  border-radius: var(--desk-radius-md);
   background: var(--desk-card);
   color: var(--desk-text);
   font: inherit;
@@ -30,7 +30,7 @@ const css = `
 .unit,
 .label {
   color: var(--desk-text-muted);
-  font-size: 12px;
+  font-size: var(--desk-text-xs);
 }
 :host([density="compact"]) {
   padding: 6px 10px;

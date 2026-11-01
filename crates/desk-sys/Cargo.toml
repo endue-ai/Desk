@@ -18,6 +18,8 @@ fs = ["dep:notify"]
 proc = ["dep:portable-pty", "dep:shared_child", "dep:libc"]
 ## HTTP(S) fetch over rustls, with a host allowlist checked on every redirect.
 net = ["dep:ureq", "dep:url"]
+## Links and files handed to the system: open http, https and mailto URLs, show files in the file manager.
+shell = ["dep:url"]
 ## Calendars, events and reminders, read only: EventKit on macOS, `unsupported` elsewhere, and a fake.
 calendar = [
   "dep:time",
@@ -92,6 +94,10 @@ required-features = ["net"]
 [[test]]
 name = "calendar"
 required-features = ["calendar"]
+
+[[test]]
+name = "shell"
+required-features = ["shell"]
 
 [lints]
 workspace = true

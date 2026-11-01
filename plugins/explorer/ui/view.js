@@ -1,7 +1,8 @@
 // The DOM for the explorer: a header with the folder tools, one flat list with role=tree whose rows
 // carry their level (the WAI-ARIA tree pattern, roving tabindex), and a status live region for
 // refusals and errors. Rows are draggable: a drop target reads the path as text/plain or
-// application/x-desk-path. Chords (Mod+…, Escape) are never prevented, so they reach the desk.
+// application/x-desk-path. Desk chords pass through; Escape first closes a visible preview.
+import { previewView } from "./preview-view.js";
 
 /**
  * @typedef {import("./tree.js").Row} Row
@@ -46,13 +47,41 @@ export function createView(doc, actions) {
   byId("new-file").addEventListener("click", () => actions.newFile());
   byId("refresh").addEventListener("click", () => actions.refresh());
   hidden.addEventListener("click", () => actions.toggleHidden());
+  const preview = previewView(doc, {
+    open: (path) => actions.activate(path),
+    close: () => actions.key("Escape"),
+  });
+  byId("toggle-preview").addEventListener("click", () => actions.key(" "));
+  doc.body.addEventListener("keydown", (event) => {
+    if (
+      event.key === "Escape" &&
+      preview.active() &&
+      !event.metaKey &&
+      !event.ctrlKey &&
+      !event.altKey
+    ) {
+      event.preventDefault();
+      event.stopPropagation();
+      void actions.key("Escape");
+    }
+  });
 
   tree.addEventListener("click", (event) => {
     const item = /** @type {HTMLElement} */ (event.target).closest("[role=treeitem]");
     const id = item instanceof HTMLElement ? item.dataset.id : undefined;
     if (id === undefined) return;
     actions.select(id);
-    void actions.activate(id);
+    if (item.dataset.kind === "dir" || item.dataset.kind === "more") void actions.activate(id);
+  });
+  tree.addEventListener("dblclick", (event) => {
+    const item = /** @type {HTMLElement} */ (event.target).closest("[role=treeitem]");
+    if (
+      !(item instanceof HTMLElement) ||
+      item.dataset.kind === "dir" ||
+      item.dataset.kind === "more"
+    )
+      return;
+    if (item.dataset.id) void actions.activate(item.dataset.id);
   });
   const TREE_KEYS = [
     "ArrowUp",
@@ -134,9 +163,19 @@ export function createView(doc, actions) {
     return item;
   };
 
+  const selection = (/** @type {string | null} */ id) => {
+    selected = id;
+    for (const [key, item] of items) {
+      item.setAttribute("aria-selected", String(key === id));
+      item.tabIndex = key === id ? 0 : -1;
+    }
+    tree.tabIndex = id === null || !items.has(id) ? 0 : -1;
+  };
   return {
+    selection,
     /** @param {Row[]} rows @param {string | null} picked */
     tree(rows, picked) {
+      const heldFocus = tree.contains(doc.activeElement);
       selected = picked;
       items.clear();
       const nodes = rows.map((model, index) => {
@@ -147,6 +186,7 @@ export function createView(doc, actions) {
       tree.replaceChildren(...nodes);
       tree.tabIndex = picked === null || !items.has(picked) ? 0 : -1;
       empty.hidden = rows.length > 0;
+      if (heldFocus) focus(selected);
     },
 
     /** @param {Header} header */
@@ -164,6 +204,7 @@ export function createView(doc, actions) {
       status.textContent = words;
     },
 
+    preview: preview.render,
     focus,
   };
 }

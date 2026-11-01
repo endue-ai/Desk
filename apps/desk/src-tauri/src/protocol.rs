@@ -1,5 +1,5 @@
 //! The `desk-plugin` URL scheme: plugin files by id and path, the plugin SDK
-//! (`/_desk/plugin-sdk.js`) and the `@endue-ai/ui` bundle (`/_desk/ui.js`), both embedded, and the
+//! (`/_desk/plugin-sdk.js`), the UI bundle and shared sheets (`/_desk/ui.js`, `tokens.css`, `base.css`), and the
 //! files fs.url hands out (`/_desk/file/<token>/<file name>`), with HTTP ranges (ADR 0041).
 //!
 //! macOS and Linux see `desk-plugin://localhost/<id>/<path>`; Windows sees
@@ -30,6 +30,16 @@ const UI_PATH: &str = "_desk/ui.js";
 const UI: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/../../../packages/ui/dist/ui.js"
+));
+const TOKENS_PATH: &str = "_desk/tokens.css";
+const TOKENS: &str = include_str!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/../../../packages/ui/dist/tokens.css"
+));
+const BASE_PATH: &str = "_desk/base.css";
+const BASE: &str = include_str!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/../../../packages/ui/dist/base.css"
 ));
 const FILE_PREFIX: &str = "_desk/file/";
 
@@ -89,6 +99,8 @@ fn respond(request: &Request<Vec<u8>>, source: &impl Source) -> Response<Vec<u8>
     let body = match path.as_str() {
         SDK_PATH => Ok(SDK.as_bytes().to_vec()),
         UI_PATH => Ok(UI.as_bytes().to_vec()),
+        TOKENS_PATH => Ok(TOKENS.as_bytes().to_vec()),
+        BASE_PATH => Ok(BASE.as_bytes().to_vec()),
         _ => match path.split_once('/') {
             Some((id, file)) => source.plugin_file(id, file),
             None => Err(io::Error::from(io::ErrorKind::NotFound)),
@@ -171,3 +183,36 @@ fn decode(path: &str) -> String {
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod shared_sheets_tests {
+    use super::*;
+
+    struct NoFiles;
+    impl Source for NoFiles {
+        fn plugin_file(&self, _: &str, _: &str) -> io::Result<Vec<u8>> {
+            Err(io::ErrorKind::NotFound.into())
+        }
+        fn file_url(&self, _: &str) -> Option<FileUrl> {
+            None
+        }
+    }
+
+    #[test]
+    fn shared_sheets_are_embedded_css_with_frame_cors() {
+        for (path, content) in [(TOKENS_PATH, TOKENS), (BASE_PATH, BASE)] {
+            let request = Request::builder()
+                .uri(format!("/{path}"))
+                .body(vec![])
+                .unwrap();
+            let response = respond(&request, &NoFiles);
+            assert_eq!(response.status(), StatusCode::OK);
+            assert_eq!(
+                response.headers()[header::CONTENT_TYPE],
+                "text/css; charset=utf-8"
+            );
+            assert_eq!(response.headers()[header::ACCESS_CONTROL_ALLOW_ORIGIN], "*");
+            assert_eq!(response.body(), content.as_bytes());
+        }
+    }
+}

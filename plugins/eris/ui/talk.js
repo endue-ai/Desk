@@ -1,5 +1,8 @@
 // Talking to Eris: what the person types rises into her centre and is absorbed, and the brain's
 // answer comes back as soul text under her, word by word while it streams (brain.say, brain.turn).
+
+import { createContext } from "./context.js";
+import { createConversation } from "./conversation.js";
 import { leave, renderLine, wordsFromText } from "./soul-text.js";
 
 const CONVERSE = { permission: "brain:converse" };
@@ -28,15 +31,20 @@ export class Talk {
   #shown = 0;
   #nextAt = 0;
   #index = 100;
+  #conversation;
+  #context;
+  #question = "";
 
   /** `show(pose)` switches Eris's pose; `style` is the soul text style. */
-  constructor({ doc, bridge, timeline, show, style, reduced }) {
+  constructor({ doc, bridge, timeline, show, style, reduced, commands, state }) {
     this.#doc = doc;
     this.#bridge = bridge;
     this.#timeline = timeline;
     this.#show = show;
     this.#style = style;
     this.#reduced = reduced;
+    this.#conversation = createConversation(doc, state);
+    this.#context = createContext(doc, bridge, commands);
   }
 
   start() {
@@ -50,21 +58,31 @@ export class Talk {
   async send(value) {
     const text = value.trim();
     if (!text || this.#busy) return;
+    let message;
+    try {
+      message = this.#context.message(text);
+    } catch (error) {
+      this.#context.report(error.message);
+      return;
+    }
+    this.#question = text;
+    this.#conversation.begin(text, this.#context.name());
     this.#setBusy(true);
     this.#turn = null;
     this.#el("say-text").value = "";
     this.#rise(text);
     this.#show("thinking");
     try {
-      const { turnId } = await this.#bridge.call("brain.say", { text, scope: CONVERSE });
+      const { turnId } = await this.#bridge.call("brain.say", { text: message, scope: CONVERSE });
       this.#turn ??= turnId;
+      this.#context.clear();
     } catch {
       this.#fail(FAILED);
     }
   }
 
   #onEvent(event) {
-    if (event.event !== "brain.turn") return;
+    if (event.event !== "brain.turn" || !this.#busy) return;
     const { turnId, kind, text } = event.data;
     // Desk sends a plugin only its own turns, so an event before the answer is for this one.
     if (this.#turn === null && this.#busy) this.#turn = turnId;
@@ -78,10 +96,12 @@ export class Talk {
         if (!this.#line) this.#begin();
         this.#text += text ?? "";
         this.#write(false);
+        this.#conversation.answer(this.#text);
         break;
       case "completed":
         this.#write(true);
         this.#announce(this.#text.trim());
+        this.#conversation.answer(this.#text, true);
         this.#show("done");
         this.#setBusy(false);
         this.#timeline.at(this.#timeline.time + 1200, () => {
@@ -91,6 +111,7 @@ export class Talk {
       case "offline":
         this.#show("heads-up");
         this.#notice = this.#say(text ?? "");
+        this.#conversation.notice(text ?? "Waiting for connection…");
         break;
       case "online":
         this.#drop(this.#notice);
@@ -160,6 +181,8 @@ export class Talk {
   }
 
   #fail(text) {
+    this.#conversation.notice(text, true);
+    if (!this.#el("say-text").value) this.#el("say-text").value = this.#question;
     this.#drop(this.#line);
     this.#drop(this.#notice);
     this.#line = null;
@@ -228,7 +251,7 @@ export class Talk {
 
   #setBusy(busy) {
     this.#busy = busy;
-    this.#el("say").querySelector("button").disabled = busy;
+    for (const button of this.#el("say").querySelectorAll("button")) button.disabled = busy;
   }
 
   #el(id) {

@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { canonical, comboOf, DESK_KEYS, decide, type KeyPress } from "../ui/keys.js";
 import type { Platform } from "../ui/shell.js";
@@ -92,6 +93,38 @@ describe("who gets a key pressed in a terminal", () => {
   it("lists the desk's keys as desk.keys binds them", () => {
     for (const chord of ["Mod+K", "Mod+B", "Mod+W", "Control+Tab", "Control+1", "Mod+Shift+T"]) {
       expect(DESK_KEYS).toContain(chord);
+    }
+  });
+});
+
+describe("Desk navigation inside the terminal", () => {
+  it("buffer navigation reaches the desk on every platform", () => {
+    for (const platform of ["mac", "linux", "windows"] as const) {
+      for (const key of ["ArrowLeft", "ArrowRight"]) {
+        const modifiers = { altKey: true, [platform === "mac" ? "metaKey" : "ctrlKey"]: true };
+        expect(on(platform, press(key, modifiers)), `${platform}: ${key}`).toBe("desk");
+      }
+    }
+  });
+
+  it("every shipped desk chord except Escape reaches the desk", () => {
+    const manifest = JSON.parse(
+      readFileSync(new URL("../../keys/plugin.json", import.meta.url), "utf8"),
+    ) as { contributes: { keys: { key: string; command: string }[] } };
+    for (const { key: chord, command } of manifest.contributes.keys) {
+      // Escape cancels shell input and is intentionally owned by the terminal.
+      if (chord === "Escape") continue;
+      for (const platform of ["mac", "linux", "windows"] as const) {
+        const parts = canonical(chord, platform).split("+");
+        const key = parts.pop() ?? "";
+        const event = press(key, {
+          metaKey: parts.includes("Meta"),
+          ctrlKey: parts.includes("Control"),
+          altKey: parts.includes("Alt"),
+          shiftKey: parts.includes("Shift"),
+        });
+        expect(on(platform, event), `${platform}: ${chord} (${command})`).toBe("desk");
+      }
     }
   });
 });
