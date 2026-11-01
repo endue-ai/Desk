@@ -17,7 +17,6 @@ no code, only what they contribute in `plugin.json`. Turn one off and another pl
 | Plugin | Like (Emacs) | Decides |
 | --- | --- | --- |
 | `display/` (`desk.display`) | `window.el`, `display-buffer-alist` | Where a new surface goes, how big, whether it takes the focus |
-| `keys/` (`desk.keys`) | `bindings.el`, `global-map` | Which key runs which command; Mod is Command on macOS, Control elsewhere |
 | `palette/` (`desk.palette`) | `M-x`, the minibuffer | The command palette, picking one of many, run history, cancel (a UI plugin) |
 | `buffers/` (`desk.buffers`) | `buffer.el`, `ibuffer` | The buffer list, switching, asking before closing unsaved work, what shows next |
 | `files/` (`desk.files`) | `files.el`, `auto-mode-alist` | Which plugin opens a file, recent files, saving, changes on disk |
@@ -29,9 +28,12 @@ no code, only what they contribute in `plugin.json`. Turn one off and another pl
 
 Every plugin folder holds `plugin.json`, `README.md`, and as needed `ui/`, `logic/`, `tool/` and `tests/`.
 
-Status: `sidebar`, `eris`, `onboarding`, `toolbar`, `dock` and the ten `desk.*` policies work. With the
+Status: `sidebar`, `eris`, `onboarding`, `toolbar`, `dock` and the nine `desk.*` policies work. With the
 shell (`mountDesk`, ADR 0025), the agent bar, the rail and the bottom edge hold the places of `sidebar`,
 `toolbar` and `dock`, and the shell's profiles turn those three off. The
 runtime puts `left`, `right` and `bottom` surfaces on the desk's edges, as `desk.display` says. The first
 run still draws its own frame of the toolbar, dock, profiles and left bar inside its overlay.
 `just dev` installs every folder here that has a `plugin.json` as a built-in plugin.
+
+Settings, default keys and personal preference storage belong to the runtime core (ADR 0031),
+not a plugin. Plugins can contribute additional bindings with `contributes.keys`.

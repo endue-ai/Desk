@@ -9,6 +9,7 @@ type that crosses a boundary: the Desk bridge, the brain API, plugin manifests a
 | `brain/v0/` | Brain API: `openapi.yaml` (sessions, turns, streaming, leases) |
 | `plugin/v0/` | `plugin.json` manifest schema, the permission vocabulary, and what plugins contribute to the desk's policies (`contributes`, ADR 0017) |
 | `init/v0/` | `init.yaml`, a person's setup: schema, the template Desk writes, and the sync rules |
+| `runtime/v0/` | Core settings UI, key-binding precedence and preference persistence (no new wire types) |
 | `wit/` | Wasm host interface for logic plugins (`desk:host`) |
 
 Spec first: change a file here, run `just codegen`, then implement. Generated files are committed and

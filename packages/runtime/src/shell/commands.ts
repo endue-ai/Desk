@@ -75,12 +75,6 @@ export function defineCommands(ctx: ShellCtx): () => void {
       setDesktop(ctx, d),
     );
   }
-  shell(
-    "open-keys",
-    ctx.tr("cmdKeys"),
-    ["keys", "shortcuts", "keybindings", "단축키", "설정", "settings"],
-    () => openView(ctx, "keys"),
-  );
   for (const [id, key, words] of VIEWS) {
     const name = ctx.tr(key);
     shell(`open-${id}`, ctx.tr("cmdOpen", { x: name }), [...words, name], () => openView(ctx, id));

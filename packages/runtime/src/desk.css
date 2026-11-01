@@ -1,3 +1,5 @@
+@import "./settings-ui/settings.css";
+
 /* The 2D desk. Every size is fixed in CSS so render snapshots do not depend on fonts. */
 
 html,

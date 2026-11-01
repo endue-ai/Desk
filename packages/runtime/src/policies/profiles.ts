@@ -10,7 +10,7 @@ import { type DeskContext, disposer, type Installed } from "./context";
 
 export const PROFILES_KEY = "profiles";
 /** Never turned off by a profile: there would be no way back. */
-const KEEP_ON = new Set(["desk.profiles", "desk.palette", "desk.keys"]);
+const KEEP_ON = new Set(["desk.profiles", "desk.palette"]);
 
 export interface ProfilesPolicy extends Installed {
   /** The profile in force, or undefined before the first is applied. */

@@ -4,6 +4,7 @@
  * layer over each other; high-contrast themes layer over the normal ones, so they only change a few.
  */
 import { cssVariables, tokens } from "@endue-ai/ui";
+import { HIGH_CONTRAST, LIGHT_COLORS } from "./core/colors";
 import type { PolicySet } from "./policy";
 
 export type Scheme = "light" | "dark";
@@ -56,7 +57,11 @@ export function resolveTheme(
     ...ofScheme.filter((theme) => (theme.contrast ?? "normal") === "normal"),
     ...(contrast === "high" ? ofScheme.filter((theme) => theme.contrast === "high") : []),
   ];
-  const merged: Record<string, string> = { ...tokens };
+  const merged: Record<string, string> = {
+    ...tokens,
+    ...(scheme === "light" ? LIGHT_COLORS : {}),
+    ...(contrast === "high" ? HIGH_CONTRAST[scheme] : {}),
+  };
   for (const theme of applied) Object.assign(merged, theme.tokens);
   return {
     scheme,

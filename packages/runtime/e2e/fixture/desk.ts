@@ -47,11 +47,15 @@ const written: Array<{ path: string; content: string }> = [];
 const clock = new ManualClock();
 const { client, stub } = browserCore({
   // The bare desk: every desk.* policy but the shell's own.
-  manifests: [
-    ...Object.values(manifests).filter((m) => m.id.startsWith("desk.") && m.id !== "desk.shell"),
-    echo,
-    counter,
-  ],
+  manifests: params.has("core")
+    ? []
+    : [
+        ...Object.values(manifests).filter(
+          (m) => m.id.startsWith("desk.") && m.id !== "desk.shell",
+        ),
+        echo,
+        counter,
+      ],
   off,
   store: memoryStore(store),
   init: {

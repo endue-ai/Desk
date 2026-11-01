@@ -9,7 +9,7 @@ import { resolveKeymap } from "./keymap";
 import type { PolicySet } from "./policy";
 
 export interface KeyLayers {
-  /** Every plugin's bindings, in layer order. */
+  /** Core defaults and plugin bindings, in layer order. */
   contributed: PolicySet["keys"];
   /** The person's layer. */
   personal: KeyBinding[];
@@ -17,6 +17,8 @@ export interface KeyLayers {
 }
 
 const owned = (personal: KeyBinding[]) => personal.map((key) => ({ ...key, owner: "person" }));
+const comboFor = (key: KeyBinding, platform: Platform) =>
+  canonical(platform === "mac" && key.mac ? key.mac : key.key, platform);
 
 /** The canonical keys of `command`, with or without the person's layer. */
 export function keysOf(layers: KeyLayers, command: string, withPerson = true): string[] {
@@ -43,9 +45,7 @@ function free(layers: KeyLayers, combos: string[]): KeyBinding[] {
   const plugin = new Set(
     resolveKeymap(layers.contributed, layers.platform).map((binding) => binding.combo),
   );
-  const kept = layers.personal.filter(
-    (key) => !combos.includes(canonical(key.key, layers.platform)),
-  );
+  const kept = layers.personal.filter((key) => !combos.includes(comboFor(key, layers.platform)));
   return [
     ...kept,
     ...combos.filter((combo) => plugin.has(combo)).map((combo) => ({ key: combo, command: "" })),
@@ -80,6 +80,6 @@ export function unbind(layers: KeyLayers, command: string): KeyBinding[] {
 export function reset(layers: KeyLayers, command: string): KeyBinding[] {
   const plugin = keysOf(layers, command, false);
   return layers.personal.filter(
-    (key) => key.command !== command && !plugin.includes(canonical(key.key, layers.platform)),
+    (key) => key.command !== command && !plugin.includes(comboFor(key, layers.platform)),
   );
 }

@@ -2,6 +2,7 @@ import type { BridgeClient, ProfileContribution } from "@endue-ai/bridge";
 import type { Buffers } from "./buffers";
 import { type Clock, realClock, tween } from "./clock";
 import type { Commands } from "./commands";
+import { Preferences } from "./core/preferences";
 import { Edges, takesCell } from "./edges";
 import { PolicyHub } from "./hub";
 import { type Platform, ShortcutRouter } from "./input";
@@ -21,13 +22,15 @@ import { installBuffers } from "./policies/buffers";
 import type { DeskContext } from "./policies/context";
 import { installDisplay } from "./policies/display";
 import { installFiles } from "./policies/files";
-import { installKeys, PERSONAL_KEYS } from "./policies/keys";
+import { installKeys } from "./policies/keys";
 import { installNotify } from "./policies/notify";
 import { installProfiles } from "./policies/profiles";
 import { installSession, type SessionPart } from "./policies/session";
 import { installTheme } from "./policies/theme";
 import type { PolicySet } from "./policy";
 import type { Settings } from "./settings";
+import type { SettingsLanguage } from "./settings-ui/copy";
+import { installSettingsWindow, type SettingsWindow } from "./settings-ui/window";
 import { SurfaceHost, type SurfaceSpec } from "./surfaces";
 import { applyTheme, type ThemeState } from "./theme";
 import { connectViews, type HostViews, type ViewRouting } from "./views";
@@ -41,6 +44,7 @@ export interface RuntimeOptions {
   /** Where the layout is saved; defaults to an in-memory store. */
   storage?: LayoutStorage;
   platform?: Platform;
+  language?: SettingsLanguage;
   /** Mount the core's UI plugins; without it the desk shows only what callers open. */
   plugins?: PluginHostOptions;
   /** Where the theme's tokens and data-scheme go; `root` unless a host (the shell) wraps the desk. */
@@ -74,7 +78,9 @@ export interface Runtime {
   readonly commands: Commands;
   /** Settings in layers: plugin defaults, init.yaml, the active profile, this session. */
   readonly settings: Settings;
-  /** The keymap in force (desk.keys), the person's layer included. */
+  readonly preferences: Preferences;
+  readonly settingsWindow: SettingsWindow;
+  /** Core and plugin bindings with the person's layer last. */
   readonly keymap: Keymap;
   /** The buffer list (desk.buffers): plugin surfaces, their buffers and a host's views. */
   readonly buffers: Buffers;
@@ -157,6 +163,12 @@ export function createRuntime(options: RuntimeOptions): Runtime {
   applyGrid();
 
   const onKey = (event: KeyboardEvent) => {
+    if (event.defaultPrevented || event.isComposing || event.keyCode === 229) return;
+    const editable = (event.target as Element | null)?.closest?.(
+      "input, textarea, select, [contenteditable]:not([contenteditable=false])",
+    );
+    if (editable && !(event.metaKey || event.ctrlKey || event.altKey) && event.key !== "Escape")
+      return;
     if (shortcuts.handle(event)) event.preventDefault();
   };
   win.addEventListener("keydown", onKey);
@@ -186,7 +198,9 @@ export function createRuntime(options: RuntimeOptions): Runtime {
     },
   };
   const theme = installTheme(ctx, options.themeRoot);
-  const keys = installKeys(ctx);
+  const keys = installKeys(ctx, options.language ?? "ko");
+  const preferences = new Preferences(hub.settings, bridge);
+  const settingsWindow = installSettingsWindow(ctx, keys, preferences, options.language ?? "ko");
   const notify = installNotify(ctx, statusLine);
   const focusSurface = (id: string | null) => {
     shortcuts.focus(id);
@@ -227,15 +241,6 @@ export function createRuntime(options: RuntimeOptions): Runtime {
     buffers.focused(id);
     session.changed();
   };
-  const { settings } = hub;
-  // The person's key bindings come back with the session.
-  session.keep("keys", {
-    save: () => settings.layer("session")[PERSONAL_KEYS] ?? null,
-    restore: (value) => {
-      if (Array.isArray(value)) settings.set(PERSONAL_KEYS, value);
-    },
-    onChange: (listener) => settings.onChange((keys) => keys.includes(PERSONAL_KEYS) && listener()),
-  });
   keys.onQuit(() => notify.notifications.dismiss());
   keys.onQuit(() => {
     if (commands.has("desk.palette.cancel"))
@@ -252,7 +257,8 @@ export function createRuntime(options: RuntimeOptions): Runtime {
 
   const ready = bridge.call("perm.query", {}).then(
     async () => {
-      await Promise.all([hub.readInit(bridge), files.load()]);
+      await Promise.all([hub.readInit(bridge), files.load(), preferences.load()]);
+      await commands.settled();
       showStatus(`desk ready · bridge: ${bridge.adapterName}`);
     },
     () => showStatus(`desk cannot reach the core · bridge: ${bridge.adapterName}`),
@@ -320,6 +326,8 @@ export function createRuntime(options: RuntimeOptions): Runtime {
     plugins,
     commands,
     settings: hub.settings,
+    preferences,
+    settingsWindow,
     keymap: keys.keymap,
     buffers: buffers.buffers,
     profiles: {
@@ -341,6 +349,8 @@ export function createRuntime(options: RuntimeOptions): Runtime {
     layout: () => structuredClone(layout),
     status: () => notify.text(),
     dispose() {
+      settingsWindow.dispose();
+      preferences.dispose();
       routing.dispose();
       for (const policy of [profiles, session, files, buffers, display, notify, keys, theme]) {
         policy.dispose();

@@ -28,6 +28,8 @@ export function comboOf(event: KeyLike): string {
 }
 
 function keyName(event: KeyLike): string {
+  // The persisted combo grammar has no whitespace; use the named key for Space chords.
+  if (event.key === " ") return "Space";
   // macOS composes Option+letter into another character (⌥D is ∂): with Alt held, a letter or
   // digit key is named by the key itself, so Mod+Alt+D means the same key on every platform.
   const physical = event.altKey ? /^(?:Key([A-Z])|Digit([0-9]))$/.exec(event.code ?? "") : null;

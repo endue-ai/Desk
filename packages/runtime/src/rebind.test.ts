@@ -42,6 +42,14 @@ describe("rebind", () => {
 });
 
 describe("unbind and reset", () => {
+  it("removes mac-specific personal bindings by their effective key", () => {
+    const source = layers([
+      { key: "Control+J", mac: "Meta+J", command: "desk.display.new-surface" },
+    ]);
+    const after = layers(rebind(source, "desk.display.new-surface", "Meta+E").personal);
+    expect(keysOf(after, "desk.display.new-surface")).toEqual(["Meta+E"]);
+    expect(commandAt(after, "Meta+J")).toBeUndefined();
+  });
   it("unbinds every key of a command", () => {
     const after = layers(unbind(layers(), "desk.display.focus-next"));
     expect(keysOf(after, "desk.display.focus-next")).toEqual([]);

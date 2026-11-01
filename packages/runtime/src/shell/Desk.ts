@@ -95,6 +95,7 @@ export function mountDesk(options: DeskOptions): Desk {
     bridge: options.core,
     clock,
     platform,
+    language: options.lang ?? "ko",
     plugins: options.plugins,
     themeRoot: doc.documentElement,
     views: paneViews(ctx),
