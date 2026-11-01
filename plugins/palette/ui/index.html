@@ -18,10 +18,14 @@
         aria-expanded="true"
         aria-controls="results"
         aria-autocomplete="list"
+        maxlength="256"
+        aria-label="Search Desk and this computer"
         autocomplete="off"
         spellcheck="false"
       />
       <ul id="results" role="listbox" data-testid="results" aria-labelledby="title"></ul>
+      <p class="status" role="status" aria-live="polite" data-testid="status"></p>
+      <footer>↑↓ Navigate <span>↵ Open</span> <span>Esc Close</span></footer>
     </div>
     <script type="module" src="./main.js"></script>
   </body>

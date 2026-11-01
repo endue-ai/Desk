@@ -43,6 +43,8 @@ export interface RuntimeOptions {
   platform?: Platform;
   /** Mount the core's UI plugins; without it the desk shows only what callers open. */
   plugins?: PluginHostOptions;
+  /** Native shells can bring a newly shown overlay to the foreground. */
+  onSurfaceShown?(id: string): void;
   /** Where the theme's tokens and data-scheme go; `root` unless a host (the shell) wraps the desk. */
   themeRoot?: HTMLElement;
   /** Views a host draws itself (the shell's panes): focus cycling and buffers reach them too. */
@@ -289,7 +291,10 @@ export function createRuntime(options: RuntimeOptions): Runtime {
         close: closeSurface,
         reload: (id, src) => surfaces.reload(id, src),
         frame: (id) => surfaces.frame(id),
-        show: (id, visible) => surfaces.show(id, visible),
+        show: (id, visible) => {
+          surfaces.show(id, visible);
+          if (visible) options.onSurfaceShown?.(id);
+        },
         key: (id, key) => {
           shortcuts.focus(id);
           shortcuts.handle(key);
@@ -299,6 +304,17 @@ export function createRuntime(options: RuntimeOptions): Runtime {
       options.plugins,
     );
     pluginHost = host;
+    commands.define("desk.plugins.open", {
+      title: "Open a plugin",
+      owner: "desk",
+      keywords: ["launch", "application"],
+      run: async (args) => {
+        const id = (args as { plugin?: unknown })?.plugin;
+        if (typeof id !== "string") throw new Error("Choose a plugin to open");
+        await host.launch(id);
+        focusSurface(id);
+      },
+    });
     plugins = {
       // A desk without plugin:manage still works; it just shows no plugins.
       ready: ready

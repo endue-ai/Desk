@@ -26,6 +26,8 @@ pub fn serve(app: &AppHandle, request: &Request<Vec<u8>>) -> Response<Vec<u8>> {
     let path = decode(request.uri().path().trim_start_matches('/'));
     let body = if path == SDK_PATH {
         Ok(SDK.as_bytes().to_vec())
+    } else if let Some(bytes) = crate::palette_assets::file(&path) {
+        Ok(bytes.to_vec())
     } else {
         match path.split_once('/') {
             Some((id, file)) => app.state::<Arc<Core>>().plugin_file(id, file),

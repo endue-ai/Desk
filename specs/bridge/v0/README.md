@@ -2,7 +2,7 @@
 
 The calls the web runtime (and every plugin through it) makes into the Rust core. JSON Schema 2020-12,
 one file per namespace: `bridge.schema.json` (envelope, errors, shared types), `fs`, `proc`, `net`, `plugins`,
-`store`, `init`, `brain`, `audio`, `ui`, `perm`, `cmd`, `settings`, `log` and `events`. v0 may break on any
+`store`, `search`, `init`, `brain`, `audio`, `ui`, `perm`, `cmd`, `settings`, `log` and `events`. v0 may break on any
 minor release (ADR 0004).
 
 ## Envelope
@@ -20,8 +20,15 @@ or event). Otherwise the answer is `permission_denied`, with the missing permiss
 Scopes are never widened implicitly: asking is `perm.request`, and the person decides.
 
 Calls that touch only the caller's own data need no scope: `perm.request`, `perm.query`, `perm.revoke` of
-its own grants, `store.*`, `init.get`, `cmd.register`, `cmd.unregister`, `cmd.answer`, `settings.set`,
+its own grants, `store.*`, `search.replace`, `init.get`, `cmd.register`, `cmd.unregister`, `cmd.answer`, `settings.set`,
 `settings.get` and `settings.list` of its own keys, `log.write` and `events.unsubscribe`.
+
+## Search
+
+`search.replace` atomically publishes the installed caller's documents (500 / 4 MiB), persisted in
+the core. `search.query` needs `search:read`; disabled plugins' documents are excluded. `search.system`
+needs `search:system` and queries the OS index. `search.open` uses the same permission and accepts only
+a recent OS result id belonging to that caller (five-minute expiry), never a supplied path.
 
 ## Callers and events
 

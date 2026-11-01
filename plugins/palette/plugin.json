@@ -4,11 +4,17 @@
   "version": "0.1.0",
   "kind": "ui",
   "entry": "ui/index.html",
-  "description": "The command palette and the place where commands ask to pick one of many (M-x and the minibuffer).",
+  "description": "System search for plugin data, installed plugins, commands, OS files and applications; also the shared picker.",
   "permissions": [
     {
       "permission": "cmd:invoke",
       "ids": ["*"]
+    },
+    {
+      "permission": "search:read"
+    },
+    {
+      "permission": "search:system"
     }
   ],
   "surfaces": [
@@ -23,8 +29,8 @@
     "commands": [
       {
         "id": "desk.palette.open",
-        "title": "Run a command",
-        "keywords": ["m-x", "commands", "palette"]
+        "title": "Search Desk and this computer",
+        "keywords": ["m-x", "commands", "palette", "search", "spotlight", "files", "plugins"]
       },
       {
         "id": "desk.palette.pick",

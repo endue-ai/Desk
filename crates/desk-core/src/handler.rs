@@ -64,6 +64,7 @@ pub struct Core {
     pub(crate) notifications: AtomicU64,
     pub(crate) watches: Mutex<Watches>,
     pub(crate) commands: Mutex<Commands>,
+    pub(crate) search_results: Mutex<crate::core_search::RecentResults>,
 }
 
 impl Core {
@@ -81,6 +82,7 @@ impl Core {
             notifications: AtomicU64::new(0),
             watches: Mutex::new(Watches::default()),
             commands: Mutex::new(Commands::default()),
+            search_results: Mutex::default(),
         }
     }
 
@@ -185,6 +187,10 @@ impl Core {
             }
             R::PluginList(r) => (r.id, self.plugin_list(caller, r.params)),
             R::PluginSetEnabled(r) => (r.id, self.plugin_set_enabled(caller, r.params)),
+            R::SearchReplace(r) => (r.id, self.search_replace(caller, r.params)),
+            R::SearchQuery(r) => (r.id, self.search_query(caller, r.params)),
+            R::SearchSystem(r) => (r.id, self.search_system(caller, r.params)),
+            R::SearchOpen(r) => (r.id, self.search_open(caller, r.params)),
             R::StoreGet(r) => (r.id, self.store_get(caller, r.params)),
             R::StoreSet(r) => (r.id, self.store_set(caller, r.params)),
             R::BrainSay(r) => (r.id, self.brain_say(caller, r.params)),

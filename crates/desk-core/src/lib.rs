@@ -8,6 +8,7 @@ mod core_cmd;
 mod core_fs;
 mod core_init;
 mod core_plugins;
+mod core_search;
 mod core_store;
 mod core_ui;
 mod events;

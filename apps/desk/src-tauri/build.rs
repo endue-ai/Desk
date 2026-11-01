@@ -4,6 +4,7 @@ fn main() {
     // The plugin SDK is embedded in the binary and served to plugin frames.
     let sdk = "../../../packages/plugin-sdk/dist/plugin-sdk.js";
     println!("cargo:rerun-if-changed={sdk}");
+    println!("cargo:rerun-if-changed=../../../plugins/palette/ui");
     assert!(
         Path::new(sdk).is_file(),
         "{sdk} is missing: run `pnpm --filter @endue-ai/plugin-sdk build` first \
@@ -11,8 +12,15 @@ fn main() {
     );
 
     // Declaring the app's commands makes Tauri generate one permission per command, so the
-    // capability can allow exactly these two and nothing else.
-    let manifest = tauri_build::AppManifest::new().commands(&["bridge_call", "desk_ready"]);
+    // capability can allow only bridge, readiness and palette window operations.
+    let manifest = tauri_build::AppManifest::new().commands(&[
+        "bridge_call",
+        "desk_ready",
+        "palette_hide",
+        "palette_reveal_main",
+        "palette_prepare_main",
+        "palette_present",
+    ]);
     tauri_build::try_build(tauri_build::Attributes::new().app_manifest(manifest))
         .expect("tauri build script");
 }

@@ -9,12 +9,17 @@ use crate::RUNTIME_CALLER;
 /// sandboxed and cannot reach this command; the runtime names the plugin it calls for. The core
 /// checks permissions; this only forwards.
 #[tauri::command]
-pub fn bridge_call(
+pub async fn bridge_call(
+    window: tauri::WebviewWindow,
     core: tauri::State<'_, Arc<Core>>,
     request: BridgeRequest,
     caller: Option<String>,
-) -> BridgeResponse {
-    let caller = caller.as_deref().unwrap_or(RUNTIME_CALLER);
+) -> Result<BridgeResponse, String> {
+    let caller = if window.label() == crate::palette::LABEL {
+        crate::palette::CALLER.to_owned()
+    } else {
+        caller.unwrap_or_else(|| RUNTIME_CALLER.to_owned())
+    };
     #[cfg(debug_assertions)]
     if caller != RUNTIME_CALLER {
         let value = serde_json::to_value(&request).unwrap_or_default();
@@ -23,5 +28,8 @@ pub fn bridge_call(
             value["method"].as_str().unwrap_or("?")
         );
     }
-    core.handle(caller, request)
+    let core = core.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || core.handle(&caller, request))
+        .await
+        .map_err(|e| e.to_string())
 }

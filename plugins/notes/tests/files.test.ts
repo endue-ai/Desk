@@ -8,7 +8,10 @@ describe("the desk's file requests", () => {
   it("visit reads the file into the buffer and watches it", async () => {
     const { host, view, params } = await mount({ handlers: disk({ [A.path]: "# A\n" }) });
     await expect(host.command("desk.files.visit", A)).resolves.toBeUndefined();
-    expect(host.calls.map((c) => c.method)).toEqual(["fs.read", "fs.watch"]);
+    expect(host.calls.filter((c) => c.method.startsWith("fs.")).map((c) => c.method)).toEqual([
+      "fs.read",
+      "fs.watch",
+    ]);
     expect(params("fs.read")).toEqual([{ path: A.path, encoding: "utf8", scope: NOTES_READ }]);
     expect(params("fs.watch")).toEqual([{ path: A.path, scope: NOTES_READ }]);
     expect(view.notes.at(-1)).toEqual({ ...A, name: "a.md", text: "# A\n", modified: false });

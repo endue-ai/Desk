@@ -29,6 +29,10 @@
     "BridgeRequest": {
       "description": "Any bridge call. The method field selects the params shape.",
       "oneOf": [
+        { "$ref": "search.schema.json#/$defs/SearchReplaceRequest" },
+        { "$ref": "search.schema.json#/$defs/SearchQueryRequest" },
+        { "$ref": "search.schema.json#/$defs/SearchSystemRequest" },
+        { "$ref": "search.schema.json#/$defs/SearchOpenRequest" },
         { "$ref": "fs.schema.json#/$defs/FsReadRequest" },
         { "$ref": "fs.schema.json#/$defs/FsWriteRequest" },
         { "$ref": "fs.schema.json#/$defs/FsListRequest" },

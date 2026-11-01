@@ -220,6 +220,8 @@ pub struct ProfileContribution {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum Permission {
+    SearchRead(SearchReadPermission),
+    SearchSystem(SearchSystemPermission),
     FsRead(FsReadPermission),
     FsWrite(FsWritePermission),
     ProcSpawn(ProcSpawnPermission),
@@ -235,6 +237,20 @@ pub enum Permission {
     LogRead(LogReadPermission),
     EventsSubscribe(EventsSubscribePermission),
     PermManage(PermManagePermission),
+}
+
+/// Search explicitly published plugin documents and installed plugin launchers.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SearchReadPermission {
+    pub permission: SearchReadPermissionPermission,
+}
+
+/// Query the OS file and application index and open a recent result with its default application.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SearchSystemPermission {
+    pub permission: SearchSystemPermissionPermission,
 }
 
 /// Read files, list folders and watch for changes under the given paths.
@@ -679,6 +695,10 @@ pub enum Encoding {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum BridgeRequest {
+    SearchReplace(SearchReplaceRequest),
+    SearchQuery(SearchQueryRequest),
+    SearchSystem(SearchSystemRequest),
+    SearchOpen(SearchOpenRequest),
     FsRead(FsReadRequest),
     FsWrite(FsWriteRequest),
     FsList(FsListRequest),
@@ -1948,6 +1968,131 @@ pub struct ProcExitData {
     pub signal: Option<Signal>,
 }
 
+/// A plugin explicitly publishes searchable text. command must belong to that plugin; args are sent only after the person opens the result. Do not publish secrets.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SearchDocument {
+    pub id: String,
+    pub title: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub detail: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub text: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub command: Option<CommandId>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub args: Option<serde_json::Map<String, serde_json::Value>>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SearchHit {
+    pub id: String,
+    pub title: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub detail: Option<String>,
+    pub kind: SearchKind,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub plugin: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub command: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub args: Option<serde_json::Map<String, serde_json::Value>>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum SearchKind {
+    #[serde(rename = "plugin")]
+    Plugin,
+    #[serde(rename = "document")]
+    Document,
+    #[serde(rename = "file")]
+    File,
+    #[serde(rename = "application")]
+    Application,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SearchReplaceParams {
+    pub documents: Vec<SearchDocument>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SearchReplaceResult {}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SearchReplaceRequest {
+    pub id: RequestId,
+    pub method: SearchReplaceRequestMethod,
+    pub params: SearchReplaceParams,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SearchQueryParams {
+    pub query: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub limit: Option<u64>,
+    pub scope: SearchReadPermission,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SearchQueryResult {
+    pub hits: Vec<SearchHit>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SearchQueryRequest {
+    pub id: RequestId,
+    pub method: SearchQueryRequestMethod,
+    pub params: SearchQueryParams,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SearchSystemParams {
+    pub query: String,
+    pub scope: SearchSystemPermission,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SearchSystemResult {
+    pub hits: Vec<SearchHit>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SearchSystemRequest {
+    pub id: RequestId,
+    pub method: SearchSystemRequestMethod,
+    pub params: SearchSystemParams,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SearchOpenParams {
+    pub id: String,
+    pub scope: SearchSystemPermission,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SearchOpenResult {}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SearchOpenRequest {
+    pub id: RequestId,
+    pub method: SearchOpenRequestMethod,
+    pub params: SearchOpenParams,
+}
+
 /// A key in its owner's namespace, lowercase and dotted: voice, motion.reduce.
 pub type SettingKey = String;
 
@@ -2210,6 +2355,22 @@ pub struct UiNotifiedData {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub body: Option<String>,
     pub level: NotifyLevel,
+}
+
+/// The `permission` of [`SearchReadPermission`]: always `"search:read"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum SearchReadPermissionPermission {
+    #[default]
+    #[serde(rename = "search:read")]
+    SearchRead,
+}
+
+/// The `permission` of [`SearchSystemPermission`]: always `"search:system"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum SearchSystemPermissionPermission {
+    #[default]
+    #[serde(rename = "search:system")]
+    SearchSystem,
 }
 
 /// The `permission` of [`FsReadPermission`]: always `"fs:read"`.
@@ -2660,6 +2821,38 @@ pub enum ProcExitEventEvent {
     ProcExit,
 }
 
+/// The `method` of [`SearchReplaceRequest`]: always `"search.replace"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum SearchReplaceRequestMethod {
+    #[default]
+    #[serde(rename = "search.replace")]
+    SearchReplace,
+}
+
+/// The `method` of [`SearchQueryRequest`]: always `"search.query"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum SearchQueryRequestMethod {
+    #[default]
+    #[serde(rename = "search.query")]
+    SearchQuery,
+}
+
+/// The `method` of [`SearchSystemRequest`]: always `"search.system"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum SearchSystemRequestMethod {
+    #[default]
+    #[serde(rename = "search.system")]
+    SearchSystem,
+}
+
+/// The `method` of [`SearchOpenRequest`]: always `"search.open"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum SearchOpenRequestMethod {
+    #[default]
+    #[serde(rename = "search.open")]
+    SearchOpen,
+}
+
 /// The `method` of [`SettingsGetRequest`]: always `"settings.get"`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub enum SettingsGetRequestMethod {
@@ -2845,6 +3038,10 @@ pub const SCHEMAS: &[(&str, &str)] = &[
     (
         "https://endue.ai/specs/bridge/v0/proc.schema.json",
         include_str!("../../../specs/bridge/v0/proc.schema.json"),
+    ),
+    (
+        "https://endue.ai/specs/bridge/v0/search.schema.json",
+        include_str!("../../../specs/bridge/v0/search.schema.json"),
     ),
     (
         "https://endue.ai/specs/bridge/v0/settings.schema.json",

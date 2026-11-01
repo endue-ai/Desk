@@ -7,6 +7,8 @@
     "Permission": {
       "description": "One permission with its scope. Plugin manifests declare these; bridge calls carry the one that covers them.",
       "oneOf": [
+        { "$ref": "#/$defs/SearchReadPermission" },
+        { "$ref": "#/$defs/SearchSystemPermission" },
         { "$ref": "#/$defs/FsReadPermission" },
         { "$ref": "#/$defs/FsWritePermission" },
         { "$ref": "#/$defs/ProcSpawnPermission" },
@@ -23,6 +25,20 @@
         { "$ref": "#/$defs/EventsSubscribePermission" },
         { "$ref": "#/$defs/PermManagePermission" }
       ]
+    },
+    "SearchReadPermission": {
+      "description": "Search explicitly published plugin documents and installed plugin launchers.",
+      "type": "object",
+      "properties": { "permission": { "const": "search:read" } },
+      "required": ["permission"],
+      "additionalProperties": false
+    },
+    "SearchSystemPermission": {
+      "description": "Query the OS file and application index and open a recent result with its default application.",
+      "type": "object",
+      "properties": { "permission": { "const": "search:system" } },
+      "required": ["permission"],
+      "additionalProperties": false
     },
     "FsReadPermission": {
       "description": "Read files, list folders and watch for changes under the given paths.",

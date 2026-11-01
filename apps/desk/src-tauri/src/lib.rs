@@ -1,6 +1,8 @@
 //! The Tauri shell: windows, the webview and the plugin URL scheme. Everything else lives in desk-core.
 
 mod commands;
+mod palette;
+mod palette_assets;
 mod protocol;
 mod socket;
 
@@ -26,6 +28,7 @@ struct Watching(#[allow(dead_code)] Mutex<Option<PluginWatcher>>);
 
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .register_uri_scheme_protocol(protocol::SCHEME, |ctx, request| {
             protocol::serve(ctx.app_handle(), &request)
         })
@@ -98,12 +101,25 @@ pub fn run() {
             // The desk CLI reaches the core over a same-user socket as `cli`, and hears every core
             // event too (ADR 0030).
             app.manage(socket::serve(&core));
+            palette::setup(app, &core)?;
             app.manage(core);
             Ok(())
         })
+        .on_window_event(|window, event| {
+            if window.label() == "main"
+                && let tauri::WindowEvent::CloseRequested { api, .. } = event
+            {
+                api.prevent_close();
+                let _ = window.hide();
+            }
+        })
         .invoke_handler(tauri::generate_handler![
             commands::bridge::bridge_call,
-            commands::ready::desk_ready
+            commands::ready::desk_ready,
+            palette::palette_hide,
+            palette::palette_reveal_main,
+            palette::palette_prepare_main,
+            palette::palette_present
         ])
         .run(tauri::generate_context!())
         .expect("endue Desk failed to start");

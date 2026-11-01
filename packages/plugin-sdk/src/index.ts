@@ -46,3 +46,6 @@ export {
 } from "./sdk";
 
 export const NAME = "@endue-ai/plugin-sdk";
+
+export type { SearchDocument, SearchHit } from "@endue-ai/bridge";
+export type { PluginSearch } from "./search";

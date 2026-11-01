@@ -19,6 +19,8 @@ Layer: Plugins (see `docs/architecture.md`). Guide: `docs/plugins/authoring.md`.
   provider's `cmd.answered` (needs a `cmd:invoke` grant covering the id); `list()` is `cmd.list`;
   `on(name, handler)` answers this plugin's commands (`cmd.invoked`) and the desk's requests by name,
   after `mount`. A failure is a `CommandFailed` (`unknown_command`, `failed`, `cancelled`).
+- `ctx.search.replace(documents)`: publish this plugin's searchable documents (500 / 4 MiB);
+  `[]` clears them. Each result can name a command owned by this plugin and its args.
 - `ctx.theme`: `get()`, `on(listener)`; the frame gets the tokens as `--desk-*` properties and
   `data-scheme`, `data-contrast`, `data-motion`. Chords pressed in the frame (Meta, Control, Alt,
   Escape) reach the desk's keymap unless the plugin called `preventDefault()` (`isDeskKey`).
@@ -33,7 +35,6 @@ Calls made in one tick leave in one message. The app serves the bundle (`pnpm --
 @endue-ai/plugin-sdk build`, output `dist/plugin-sdk.js`) at `/_desk/plugin-sdk.js`.
 
 ## Testing
-
 ```bash
 pnpm exec vitest run packages/plugin-sdk
 ```

@@ -13,6 +13,8 @@ import {
   stubCommands,
 } from "@endue-ai/bridge";
 
+import { searchHandlers } from "./search";
+
 /** What the core's store holds for the runtime: memory, or localStorage to survive a reload. */
 export interface CoreStore {
   get(key: string): unknown;
@@ -72,6 +74,7 @@ export function browserCore(options: BrowserCoreOptions): BrowserCore {
   const registry = stubCommands((event) => stub.emit(event));
   const stub = browserStub({
     ...registry.handlers,
+    ...searchHandlers(plugins, store),
     "perm.query": () => ({ grants: [] }),
     "plugin.list": () => ({ plugins: structuredClone(plugins) }),
     "plugin.setEnabled": ({ plugin, enabled }) => {

@@ -18,6 +18,7 @@ import {
   type SurfaceOptions,
 } from "./context";
 import { type HostMessage, type ThemeState, type Transport, windowTransport } from "./protocol";
+import { type PluginSearch, searchFor } from "./search";
 
 /** The bridge as a plugin sees it: calls are checked against the plugin's own grants. */
 export interface PluginBridge {
@@ -57,6 +58,7 @@ export interface PluginContext {
   state: PluginState;
   surface: PluginSurface;
   commands: PluginCommands;
+  search: PluginSearch;
   theme: PluginTheme;
   settings: PluginSettings;
   log: PluginLog;
@@ -147,6 +149,7 @@ export function connect(transport: Transport = windowTransport()): Promise<Plugi
           hide: () => transport.send({ type: "desk:visible", visible: false }),
         },
         commands: commands.api,
+        search: searchFor(bridge),
         theme: {
           get: () => theme,
           on: (listener) => {
