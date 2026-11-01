@@ -5,7 +5,7 @@
 // byteSource and startWorker (passed in) and a view, so the SDK's test host runs it.
 
 import { formatSize } from "./bytes.js";
-import { createExtractor, WRITE_LIMIT } from "./extract.js";
+import { createExtractor, MEMORY_LIMIT } from "./extract.js";
 import { createFiles, folderOf, nameOf } from "./files.js";
 import { createJobs } from "./jobs.js";
 import { closeLevels, openLevel } from "./opening.js";
@@ -285,7 +285,7 @@ export function createArchives({ bridge, commands }, view, { byteSource, startWo
       const node = at?.tree.byId.get(id);
       const entry = node?.entry;
       if (!file || !at?.archive || !entry || entry.kind !== "file") return;
-      if (entry.size > WRITE_LIMIT) return say(`${nameOf(id)} is too large to open here.`);
+      if (entry.size > MEMORY_LIMIT) return say(`${nameOf(id)} is too large to open here.`);
       try {
         const bytes = await reading(at.archive, entry, Infinity, `Reading ${nameOf(id)}`);
         const inner = await opening(memorySource(bytes), nameOf(id));

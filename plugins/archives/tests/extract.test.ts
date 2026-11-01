@@ -190,6 +190,27 @@ describe("extraction", () => {
     expect(mounted.view.progresses.at(-1)).toBeNull();
   });
 
+  it("a file larger than the desk writes in one piece is listed, not written", async () => {
+    const big = zipOf([
+      { name: "small.txt", data: "small" },
+      { name: "huge.bin", data: new Uint8Array((64 << 20) + 1) },
+    ]);
+    const { written, handlers } = disk();
+    const { commands } = picks(TARGET);
+    const { host, app, view } = await mount({
+      files: { "~/Downloads/big.zip": big },
+      grants: [READ("~/Downloads")],
+      handlers,
+      commands,
+    });
+    await host.command("desk.files.visit", file("~/Downloads/big.zip"));
+    await app.extract("all");
+    expect(Object.keys(written)).toEqual([`${TARGET}/small.txt`]);
+    expect(view.statuses.at(-1)).toContain(
+      "Larger than 64 MiB, which the desk cannot write in one piece yet: huge.bin.",
+    );
+  });
+
   it("an archive that cannot be extracted says why", async () => {
     const rar = new Uint8Array([0x52, 0x61, 0x72, 0x21, 0x1a, 0x07, 0x01, 0x00]);
     const { handlers } = disk();

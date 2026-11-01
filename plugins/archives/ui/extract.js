@@ -14,8 +14,13 @@ import { safeTarget } from "./safety.js";
  * @typedef {ReturnType<typeof import("./jobs.js").createJobs>} Jobs
  */
 
-/** The most one file may hold: fs.write carries it whole, as base64. */
-export const WRITE_LIMIT = 512 * 1024 * 1024;
+/** The most one entry may hold to be read whole into memory (an archive opened one level down). */
+export const MEMORY_LIMIT = 512 * 1024 * 1024;
+/**
+ * The most one extracted file may hold: fs.write carries it whole, as base64, and in the desk's
+ * webview a write of 64 MiB takes seconds while one of 128 MiB never reaches the core.
+ */
+export const EXTRACT_LIMIT = 64 * 1024 * 1024;
 
 const STOP = Symbol("stop");
 const aborted = (/** @type {unknown} */ error) =>
@@ -77,6 +82,8 @@ export function createExtractor({ bridge, commands }, files, out) {
     const links = [];
     /** @type {string[]} */
     const unread = [];
+    /** @type {string[]} */
+    const large = [];
     for (const entry of chosen) {
       const safe = safeTarget(
         target,
@@ -86,7 +93,8 @@ export function createExtractor({ bridge, commands }, files, out) {
       if ("refused" in safe) refused.push(entry.path);
       else if (entry.encrypted) locked.push(entry.path);
       else if (entry.kind === "link") links.push(entry.path);
-      else if (entry.refusal || entry.size > WRITE_LIMIT) unread.push(entry.path);
+      else if (entry.refusal) unread.push(entry.path);
+      else if (entry.size > EXTRACT_LIMIT) large.push(entry.path);
       else plan.push({ entry, path: safe.path });
     }
     const total = plan.reduce((n, p) => n + Math.max(0, p.entry.size), 0);
@@ -219,6 +227,8 @@ export function createExtractor({ bridge, commands }, files, out) {
     if (locked.length) ending += ` Encrypted, not extracted: ${locked.join(", ")}.`;
     if (links.length) ending += ` Links are not created: ${links.join(", ")}.`;
     if (unread.length) ending += ` Not readable here: ${unread.join(", ")}.`;
+    if (large.length)
+      ending += ` Larger than ${formatSize(EXTRACT_LIMIT)}, which the desk cannot write in one piece yet: ${large.join(", ")}.`;
     out.say(ending);
   };
 

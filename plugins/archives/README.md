@@ -22,8 +22,9 @@ from the first bytes, then the extension. Opening, long decodes and extraction s
 It answers `desk.files.visit`, `.revert`, `desk.buffers.show` and `.closed`, refuses `desk.files.save`,
 and asks once for the file's folder when its grants do not cover a read. Extraction asks with
 `desk.palette.pick` for the folder, then `perm.request` for `fs:write` on it, and refuses names that
-leave it (`..`, absolute paths, drive letters, links out); an existing file asks once for the run.
-Permission: `cmd:invoke` for `desk.files.changed` and `desk.palette.pick`.
+leave it (`..`, absolute paths, drive letters, links out); an existing file asks once for the run;
+files over 64 MiB are listed, not written (`fs.write` carries a file whole). Permission:
+`cmd:invoke` for `desk.files.changed` and `desk.palette.pick`.
 
 | File | Purpose |
 | --- | --- |
