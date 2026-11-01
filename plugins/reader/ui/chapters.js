@@ -31,6 +31,7 @@ export function createChapters(host, scroller, hooks) {
   /** @type {ChaptersBook | null} */
   let showing = null;
   let unit = 0;
+  let requested = { unit: 0, offset: 0 };
   let generation = 0;
   let displayedGeneration = 0;
   /** @type {ReturnType<typeof setTimeout> | undefined} */
@@ -109,6 +110,7 @@ export function createChapters(host, scroller, hooks) {
       const mine = ++generation;
       book = next;
       const target = Math.max(0, Math.min(next.chapters.length - 1, i));
+      requested = { unit: target, offset: to.offset ?? 0 };
       if (target === unit && showing === next) {
         displayedGeneration = mine;
         place(to);
@@ -147,13 +149,15 @@ export function createChapters(host, scroller, hooks) {
       generation++;
       book = null;
       showing = null;
+      requested = { unit: 0, offset: 0 };
       root.replaceChildren();
     },
     zoom(/** @type {number} */ z) {
       host.style.setProperty("zoom", String(z));
       return z;
     },
-    current: () => ({ unit, offset: offset() }),
+    current: () =>
+      displayedGeneration === generation ? { unit, offset: offset() } : requested,
     root: () => root,
   };
 }
