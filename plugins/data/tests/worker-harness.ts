@@ -29,6 +29,9 @@ export function workerHarness() {
     messages,
     workers,
     stopped: () => stopped,
-    close: () => workers.forEach((worker) => worker.terminate()),
+    close: () =>
+      workers.forEach((worker) => {
+        worker.terminate();
+      }),
   };
 }
