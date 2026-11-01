@@ -31,9 +31,15 @@ body {
 
 /* The page's box takes what is left; the lines around it keep their height. */
 header,
+#opening,
 #bar,
 #status {
   flex-shrink: 0;
+}
+
+#opening {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--desk-border);
 }
 
 header {

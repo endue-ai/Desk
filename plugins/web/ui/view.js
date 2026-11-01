@@ -1,7 +1,8 @@
 // The DOM for the web plugin: the file's name and format, a Source toggle, a bar for what a page
-// left out, and one of a page (in a shadow root), a list of entries beside a page, a link card,
-// an outline or a file's details. A status live region says what happened. Chords (Mod+S, Mod+O,
-// Mod+W, Mod+K) are never prevented, so the SDK passes them to the desk.
+// left out, the progress of an opening (Cancel stops it), and one of a page (in a shadow root), a
+// list of entries beside a page, a link card, an outline or a file's details. A status live
+// region says what happened. Links go to the plugin: within the page, to a local file, or out to
+// the browser. Chords (Mod+S, Mod+O, Mod+W, Mod+K) are never prevented, so the SDK passes them on.
 import { localPath } from "./links.js";
 import { createSource } from "./source.js";
 import { createPageView } from "./view-page.js";
@@ -18,7 +19,9 @@ import {
  * @typedef {import("./formats.js").Model} Model
  * @typedef {import("./formats.js").PageInput} PageInput
  * @typedef {import("./resources.js").Left} Left
- * @typedef {{ open(path: string): unknown, say(text: string): void }} Actions
+ * @typedef {import("./web.js").Job} Job
+ * @typedef {import("./web.js").Progress} Progress
+ * @typedef {{ open(path: string): unknown, external(url: string): unknown, say(text: string): void }} Actions
  */
 
 const plural = (/** @type {number} */ n, /** @type {string} */ one, /** @type {string} */ many) =>
@@ -57,8 +60,10 @@ const withoutHash = (/** @type {string} */ href) => {
 /**
  * @param {Document} doc
  * @param {Actions} actions
+ * @param {{ sliceOver?: number, first?: number }} [options] how pages are parsed and copied
+ *   in parts (page.js)
  */
-export function createView(doc, actions) {
+export function createView(doc, actions, options = {}) {
   const byId = (/** @type {string} */ id) => /** @type {HTMLElement} */ (doc.getElementById(id));
   const name = byId("file-name");
   const detail = byId("file-detail");
@@ -74,6 +79,11 @@ export function createView(doc, actions) {
   const sourceBox = byId("source");
   const status = byId("status");
   const source = createSource(doc, sourceBox);
+  const progressBar = /** @type {import("@endue-ai/ui").DeskProgress | null} */ (
+    doc.querySelector("desk-progress")
+  );
+  let cancel = () => {};
+  progressBar?.addEventListener("desk-cancel", () => cancel());
 
   /** @type {Shown | null} */
   let file = null;
@@ -96,12 +106,14 @@ export function createView(doc, actions) {
     }
     const path = localPath(href);
     if (path) return void actions.open(path);
-    actions.say(href);
+    void actions.external(href);
   };
-  const pages = createPageView(doc, pageHost, {
-    link,
-    submitted: () => actions.say("Forms on saved pages do not submit."),
-  });
+  const pages = createPageView(
+    doc,
+    pageHost,
+    { link, submitted: () => actions.say("Forms on saved pages do not submit.") },
+    options,
+  );
 
   /** The text the Source button shows for what is on screen. */
   const sourceText = () => {
@@ -117,8 +129,10 @@ export function createView(doc, actions) {
     bar.hidden = !words;
   };
 
-  /** Show the content of the file (or of its selected entry), or its source. */
-  const layout = async () => {
+  let layouts = 0;
+  /** Show the content of the file (or of its selected entry), or its source. @param {Job} [job] */
+  const layout = async (job) => {
+    const mine = ++layouts;
     const model = file?.model;
     const kind = model?.kind;
     const entry = kind === "entries" ? model?.entries[selected] : undefined;
@@ -140,7 +154,9 @@ export function createView(doc, actions) {
     }
     if (entry && !entry.page) text.textContent = entry.text ?? "";
     page = shownPage;
-    const drawn = await pages.draw(shownPage);
+    const drawn = await pages.draw(shownPage, job);
+    // A later layout took over while this page was drawn: it says what is on screen.
+    if (mine !== layouts) return;
     if (drawn && !showSource) {
       sayLeft(leftOut(drawn.left, drawn.empty));
       if (drawn.title)
@@ -156,12 +172,28 @@ export function createView(doc, actions) {
 
   toggle.addEventListener("click", () => {
     sourceOn = !sourceOn;
-    void layout();
+    layout().catch(() => {});
   });
 
   return {
-    /** @param {Shown | null} shown */
-    async show(shown) {
+    /** @param {Progress | null} value */
+    progress(value) {
+      if (!progressBar) return;
+      progressBar.hidden = value === null;
+      if (!value) {
+        cancel = () => {};
+        return;
+      }
+      progressBar.label = value.label;
+      progressBar.value = value.value;
+      progressBar.max = value.max;
+      progressBar.detail = value.detail;
+      progressBar.cancelable = true;
+      cancel = value.cancel;
+    },
+
+    /** @param {Shown | null} shown @param {Job} [job] what an opening draws under */
+    async show(shown, job) {
       const changed = shown?.model !== file?.model;
       file = shown;
       name.textContent = shown ? shown.name : "No file open";
@@ -178,7 +210,10 @@ export function createView(doc, actions) {
         markEntry(entryList, selected);
       }
       if (changed && model?.kind === "card")
-        renderCard(doc, card, model, (path) => void actions.open(path));
+        renderCard(doc, card, model, {
+          open: (path) => void actions.open(path),
+          external: (url) => void actions.external(url),
+        });
       if (changed && model?.kind === "outline")
         renderOutline(doc, outline, model.title, model.outlines);
       if (changed && shown && model?.kind === "details")
@@ -188,7 +223,7 @@ export function createView(doc, actions) {
           format: model.format,
           reason: model.reason,
         });
-      await layout();
+      await layout(job);
     },
 
     /** @param {string} words */
