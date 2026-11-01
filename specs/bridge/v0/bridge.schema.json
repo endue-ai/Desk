@@ -89,7 +89,11 @@
         { "$ref": "view.schema.json#/$defs/ViewSaveRequest" },
         { "$ref": "view.schema.json#/$defs/ViewRemoveRequest" },
         { "$ref": "catalog.schema.json#/$defs/CatalogGetRequest" },
-        { "$ref": "shell.schema.json#/$defs/ShellOpenRequest" }
+        { "$ref": "shell.schema.json#/$defs/ShellOpenRequest" },
+        { "$ref": "update.schema.json#/$defs/UpdateStatusRequest" },
+        { "$ref": "update.schema.json#/$defs/UpdateCheckRequest" },
+        { "$ref": "update.schema.json#/$defs/UpdateDownloadRequest" },
+        { "$ref": "update.schema.json#/$defs/UpdateApplyRequest" }
       ]
     },
     "BridgeResponse": {
@@ -145,7 +149,7 @@
       ]
     },
     "BridgeEvent": {
-      "description": "Something the core reports without being asked: file changes, process output, wake words, permission changes, notifications, surfaces, commands, settings, log entries, and changes to items, connectors and views.",
+      "description": "Something the core reports without being asked: file changes, process output, wake words, permission changes, notifications, surfaces, commands, settings, log entries, changes to items, connectors and views, and the desk's update status.",
       "oneOf": [
         { "$ref": "fs.schema.json#/$defs/FsChangedEvent" },
         { "$ref": "proc.schema.json#/$defs/ProcOutputEvent" },
@@ -165,7 +169,8 @@
         { "$ref": "log.schema.json#/$defs/LogEntryEvent" },
         { "$ref": "data.schema.json#/$defs/DataChangedEvent" },
         { "$ref": "connector.schema.json#/$defs/ConnectorChangedEvent" },
-        { "$ref": "view.schema.json#/$defs/ViewChangedEvent" }
+        { "$ref": "view.schema.json#/$defs/ViewChangedEvent" },
+        { "$ref": "update.schema.json#/$defs/UpdateChangedEvent" }
       ]
     }
   }

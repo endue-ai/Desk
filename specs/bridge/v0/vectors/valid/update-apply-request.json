@@ -1,0 +1,13 @@
+{
+  "target": "BridgeRequest",
+  "description": "update.apply installs the staged build and restarts into it",
+  "instance": {
+    "id": 43,
+    "method": "update.apply",
+    "params": {
+      "scope": {
+        "permission": "update:manage"
+      }
+    }
+  }
+}
