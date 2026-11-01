@@ -159,10 +159,17 @@ const refusedWith = (details, sentence) => ({
 
 /** The name, version and summary from the desktop file at the top of the file system. @param {Archive} fs */
 async function desktopEntry(fs) {
-  const file = fs.entries.find(
-    (e) => e.kind === "file" && !e.path.includes("/") && e.path.endsWith(".desktop"),
-  );
-  if (!file || file.size > 1 << 20) return [];
+  let file = fs.entries.find((e) => !e.path.includes("/") && e.path.endsWith(".desktop"));
+  // Often a link into usr/share/applications: follow it (relative to the top) once.
+  if (file?.kind === "link") {
+    const parts = [];
+    for (const step of (file.link ?? "").split("/"))
+      if (step === "..") parts.pop();
+      else if (step && step !== ".") parts.push(step);
+    const target = parts.join("/");
+    file = fs.entries.find((e) => e.path === target);
+  }
+  if (file?.kind !== "file" || file.size > 1 << 20) return [];
   let text;
   try {
     text = new TextDecoder().decode(await fs.read(file, 65536));

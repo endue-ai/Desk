@@ -167,6 +167,29 @@ describe("AppImages", () => {
     await expectTree(image, tree);
   });
 
+  it("follows a desktop file that is a link into usr/share/applications", async () => {
+    const tree = app();
+    const [desktop] = tree.children.splice(0, 1);
+    tree.children.push({
+      kind: "symlink",
+      name: "sample.desktop",
+      target: "usr/share/applications/sample.desktop",
+    });
+    const usr = tree.children.find((c) => c.name === "usr");
+    if (usr?.kind !== "dir" || desktop?.kind !== "file") throw new Error("the tree changed");
+    usr.children.push({
+      kind: "dir",
+      name: "share",
+      children: [{ kind: "dir", name: "applications", children: [desktop] }],
+    });
+    const image = await openAppImage(
+      memorySource(concat(elfStub(), buildSquashfs(tree, { compressor: "lzo" }))),
+    );
+    expect(detail(image, "Name")).toBe("Sample App");
+    expect(detail(image, "Comment")).toBe("A sample");
+    await expectTree(image, tree);
+  });
+
   it("finds the file system past padding after the ELF, and reads mksquashfs's image there", async () => {
     const bytes = concat(elfStub(), new Uint8Array(3000), fixture("sample.squashfs"));
     const image = await openAppImage(memorySource(bytes));
