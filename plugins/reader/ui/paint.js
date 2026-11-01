@@ -41,9 +41,10 @@ export function paintImage(host, image, label) {
 }
 
 /** @param {HTMLElement} host @param {{ svg: string, fonts: Font[] }} page */
-export async function paintSvg(host, page) {
+export async function paintSvg(host, page, hooks) {
   const doc = host.ownerDocument;
   await loadFonts(doc, page.fonts);
+  hooks?.signal?.throwIfAborted();
   const parsed = new (doc.defaultView?.DOMParser ?? DOMParser)().parseFromString(
     page.svg,
     "image/svg+xml",
@@ -51,5 +52,17 @@ export async function paintSvg(host, page) {
   const svg = doc.importNode(parsed.documentElement, true);
   svg.setAttribute("width", "100%");
   svg.setAttribute("height", "100%");
+  const follow = (event) => {
+    if (event.type === "keydown" && event.key !== "Enter" && event.key !== " ") return;
+    const link = event.target?.closest?.("[data-reader-link]");
+    if (!link) return;
+    event.preventDefault();
+    const href = link.getAttribute("data-reader-link");
+    const unit = hooks?.target(href);
+    if (unit !== undefined) hooks.go(unit);
+    else if (/^(https?|mailto):/i.test(href)) hooks?.external(href);
+  };
+  svg.addEventListener("click", follow);
+  svg.addEventListener("keydown", follow);
   host.replaceChildren(svg);
 }

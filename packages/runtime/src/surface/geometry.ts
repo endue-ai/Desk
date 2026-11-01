@@ -52,12 +52,7 @@ export function toScreen(p: Rect, vw: number, vh: number): Rect {
   const h = Math.max(MIN.h, Math.round(p.h * k));
   const x = Math.round(SAFE.left + (p.x - SAFE.left) * kx);
   const y = Math.round(SAFE.top + (p.y - SAFE.top) * ky);
-  return {
-    x: Math.max(SAFE.left, Math.min(x, vw - SAFE.right - w)),
-    y: Math.max(SAFE.top, Math.min(y, vh - SAFE.bottom - h)),
-    w,
-    h,
-  };
+  return clampRect({ x, y, w, h }, vw, vh);
 }
 
 /** The inverse, for a surface the user dragged or resized on screen. */
