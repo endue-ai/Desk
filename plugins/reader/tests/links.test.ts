@@ -2,6 +2,30 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { expect, it, vi } from "vitest";
+import {
+  BridgeClient,
+  browserStub,
+  type ShellOpenParams,
+  stubCommands,
+} from "../../../packages/bridge/src/index";
+
+it("document links reach the bridge's actual shell adapter and share one grant", async () => {
+  const { createLinks } = await import("../ui/links.js");
+  const prompt = vi.fn(() => true);
+  const core = stubCommands(() => {}, { prompt });
+  const bridge = new BridgeClient(browserStub(core.handlers));
+  const open = createLinks({
+    call: (method: "shell.open", params: ShellOpenParams) =>
+      bridge.call(method, params, { caller: "endue.reader" }),
+  });
+  await open("https://example.com/");
+  await open("mailto:reader@example.com");
+  expect(core.state().opened).toEqual([
+    { caller: "endue.reader", target: "https://example.com/", reveal: false },
+    { caller: "endue.reader", target: "mailto:reader@example.com", reveal: false },
+  ]);
+  expect(prompt).toHaveBeenCalledOnce();
+});
 
 it("external document links use one scoped shell.open and only the three allowed schemes", async () => {
   expect(
@@ -15,8 +39,8 @@ it("external document links use one scoped shell.open and only the three allowed
   await open("mailto:reader@example.com");
   const scope = { permission: "shell:open", schemes: ["http", "https", "mailto"] };
   expect(call.mock.calls).toEqual([
-    ["shell.open", { url: "https://example.com/", scope }],
-    ["shell.open", { url: "mailto:reader@example.com", scope }],
+    ["shell.open", { target: "https://example.com/", scope }],
+    ["shell.open", { target: "mailto:reader@example.com", scope }],
   ]);
   call.mockClear();
   for (const url of [
@@ -37,7 +61,7 @@ it("a shell.open refusal does not ask again or retry", async () => {
   });
   await expect(createLinks({ call })("https://example.com/")).rejects.toBe(refused);
   expect(call).toHaveBeenCalledExactlyOnceWith("shell.open", {
-    url: "https://example.com/",
+    target: "https://example.com/",
     scope: { permission: "shell:open", schemes: ["http", "https", "mailto"] },
   });
 });
@@ -63,7 +87,7 @@ it("an EPUB web link uses shell.open while its internal link keeps jumping", asy
   await chapters.show(book, 0);
   host.shadowRoot?.querySelector<HTMLAnchorElement>("a.external")?.click();
   expect(call).toHaveBeenCalledExactlyOnceWith("shell.open", {
-    url: "https://example.com/",
+    target: "https://example.com/",
     scope: { permission: "shell:open", schemes: ["http", "https", "mailto"] },
   });
   host.shadowRoot
@@ -122,7 +146,7 @@ it("a PDF URI annotation routes through the same scoped external link action", a
     );
     host.querySelector("a")?.click();
     expect(call).toHaveBeenCalledExactlyOnceWith("shell.open", {
-      url: "https://example.com/",
+      target: "https://example.com/",
       scope: { permission: "shell:open", schemes: ["http", "https", "mailto"] },
     });
   } finally {
