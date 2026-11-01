@@ -62,23 +62,20 @@ it.each(["signal", "transport"])("stops between chunks when %s cancels", async (
   expect(failed).not.toHaveBeenCalled();
 });
 
-it.each([0, CHUNK - 1])(
-  "reports a short read of %i bytes without another request",
-  async (sent) => {
-    const failed = vi.fn();
-    const read = vi.fn(async () => new Uint8Array(sent));
-    const transport = pdfRange(
-      { PDFDataRangeTransport: Range },
-      { size: 3 * CHUNK, read },
-      undefined,
-      failed,
-    );
-    transport.requestDataRange(1, 3 * CHUNK);
-    await settle();
-    expect(failed).toHaveBeenCalledExactlyOnceWith(
-      expect.objectContaining({ message: "The PDF got shorter while it was read." }),
-    );
-    expect(read).toHaveBeenCalledOnce();
-    expect(transport.onDataRange).not.toHaveBeenCalled();
-  },
-);
+it.each([0, CHUNK - 1])("reports a short read of %i bytes without another request", async (sent) => {
+  const failed = vi.fn();
+  const read = vi.fn(async () => new Uint8Array(sent));
+  const transport = pdfRange(
+    { PDFDataRangeTransport: Range },
+    { size: 3 * CHUNK, read },
+    undefined,
+    failed,
+  );
+  transport.requestDataRange(1, 3 * CHUNK);
+  await settle();
+  expect(failed).toHaveBeenCalledExactlyOnceWith(
+    expect.objectContaining({ message: "The PDF got shorter while it was read." }),
+  );
+  expect(read).toHaveBeenCalledOnce();
+  expect(transport.onDataRange).not.toHaveBeenCalled();
+});
