@@ -1,8 +1,8 @@
-// PDF through the vendored pdf.js (ui/vendor, ADR 0042), within the plugin frame's CSP: no eval,
-// no fetches (no CMaps, standard fonts or wasm: system fonts stand in), and the worker running in
-// this thread (the frame's opaque origin cannot start a Worker; main.js imports the worker module
-// first, so pdf.js finds globalThis.pdfjsWorker). The bytes go in as data; pdf.js gets a copy.
+// PDF through the vendored pdf.js. Random-access input uses its range transport, and the browser
+// supplies an owned real worker (or the existing in-frame fallback when it cannot start).
+
 import { PasswordNeeded, Unreadable } from "./errors.js";
+import { pdfRange } from "./pdf-range.js";
 
 export { PasswordNeeded };
 
@@ -19,15 +19,15 @@ export const CSS_PER_POINT = 96 / 72;
 const round = (/** @type {number} */ n) => Math.round(n * 100) / 100;
 
 /** What getDocument is asked: everything the frame's CSP would refuse stays off. */
-const params = (/** @type {Uint8Array} */ bytes, /** @type {string | undefined} */ password) => ({
-  data: bytes.slice(),
+const params = (/** @type {object} */ input, /** @type {string | undefined} */ password) => ({
+  ...input,
   ...(password === undefined ? {} : { password }),
   isEvalSupported: false,
   useSystemFonts: true,
   useWorkerFetch: false,
   useWasm: false,
   enableXfa: false,
-  disableRange: true,
+  rangeChunkSize: 65536,
   disableStream: true,
   disableAutoFetch: true,
   enableHWA: false,
@@ -49,17 +49,71 @@ async function textContent(page) {
 }
 
 /**
- * @param {Uint8Array} bytes
- * @param {{ pdfjs: Pdfjs | object, password?: string }} options
+ * @param {Uint8Array | import("@endue-ai/plugin-sdk").ByteSource} bytes
+ * @param {{ pdfjs: Pdfjs | object, password?: string, signal?: AbortSignal }} options
  */
-export async function openPdf(bytes, { pdfjs, password }) {
-  const lib = /** @type {Pdfjs} */ (pdfjs);
-  const task = lib.getDocument(params(bytes, password));
-  /** @type {any} */
-  let doc;
+export async function openPdf(bytes, { pdfjs, password, signal }) {
+  const lib = /** @type {any} */ (pdfjs);
+  signal?.throwIfAborted();
+  const own = await lib.createWorker?.(signal);
+  if (signal?.aborted) {
+    own?.close();
+    signal.throwIfAborted();
+  }
+  let fail;
+  let task;
+  let closed;
+  const failed = new Promise((_, reject) => {
+    fail = reject;
+  });
+  const guarded = (operation) => Promise.race([failed, operation]);
+  let stopped = false;
+  const stop = (error) => {
+    if (stopped) return;
+    stopped = true;
+    fail(error);
+    bytes.cancel?.(error);
+    void close().catch(() => {});
+  };
+  const range = bytes instanceof Uint8Array ? undefined : pdfRange(lib, bytes, signal, stop);
+  const abort = () => stop(signal.reason);
+  const close = () => {
+    if (closed) return closed;
+    signal?.removeEventListener("abort", abort);
+    range?.abort();
+    closed = Promise.resolve(task?.destroy()).finally(() => own?.close());
+    return closed;
+  };
+  signal?.addEventListener("abort", abort, { once: true });
   try {
-    doc = await task.promise;
+    const input =
+      bytes instanceof Uint8Array ? { data: bytes.slice() } : { range, length: bytes.size };
+    task = lib.getDocument(params({ ...input, ...(own ? { worker: own.worker } : {}) }, password));
+    const doc = await guarded(task.promise);
+    const book = await describePdf(doc, close, guarded);
+    const beginDecode = (signal) => {
+      const cancel = () => stop(signal.reason);
+      signal?.addEventListener("abort", cancel, { once: true });
+      if (signal?.aborted) cancel();
+      return () => signal?.removeEventListener("abort", cancel);
+    };
+    return {
+      ...book,
+      guard: guarded,
+      beginDecode,
+      stopped: () => stopped,
+      async measure(i, /** @type {AbortSignal | undefined} */ signal = undefined) {
+        const release = beginDecode(signal);
+        try {
+          return await book.measure(i);
+        } finally {
+          release();
+        }
+      },
+    };
   } catch (error) {
+    await close().catch(() => {});
+    if (signal?.aborted || error?.name === "AbortError") throw error;
     const { name, code, message } =
       /** @type {{ name?: string, code?: number, message?: string }} */ (error ?? {});
     if (name === "PasswordException") throw new PasswordNeeded(code === 2);
@@ -69,15 +123,19 @@ export async function openPdf(bytes, { pdfjs, password }) {
       format: "PDF",
     });
   }
+}
+
+/** Metadata and pages share the range failure, including reads requested after opening. */
+async function describePdf(doc, close, guarded) {
   /** @type {Map<number, Promise<any>>} */
   const loaded = new Map();
   const page = (/** @type {number} */ i) => {
     let found = loaded.get(i);
     if (!found) {
-      found = doc.getPage(i + 1);
+      found = guarded(doc.getPage(i + 1));
       loaded.set(i, /** @type {Promise<any>} */ (found));
     }
-    return /** @type {Promise<any>} */ (found);
+    return /** @type {Promise<any>} */ (guarded(found));
   };
   const sizeOf = (/** @type {any} */ p) => {
     const viewport = p.getViewport({ scale: CSS_PER_POINT });
@@ -113,9 +171,9 @@ export async function openPdf(bytes, { pdfjs, password }) {
     }
     return out;
   };
-  const toc = await outline((await doc.getOutline().catch(() => null)) ?? []);
+  const toc = await guarded(outline((await guarded(doc.getOutline().catch(() => null))) ?? []));
 
-  const meta = await doc.getMetadata().catch(() => ({}));
+  const meta = await guarded(doc.getMetadata().catch(() => ({})));
   const title = String(meta?.info?.Title ?? meta?.metadata?.get?.("dc:title") ?? "").trim();
 
   /** @type {Map<number, Promise<string>>} */
@@ -164,6 +222,6 @@ export async function openPdf(bytes, { pdfjs, password }) {
       pages[i] = size;
       return size;
     },
-    close: () => task.destroy(),
+    close,
   };
 }

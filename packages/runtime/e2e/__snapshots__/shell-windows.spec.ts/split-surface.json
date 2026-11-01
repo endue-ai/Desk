@@ -63,7 +63,7 @@
        "class": "icon-button tool",
        "aria-label": "오른쪽으로 나누기 (⌘D)",
        "box": [
-        823,
+        797,
         249,
         24,
         24
@@ -83,7 +83,7 @@
        "class": "icon-button tool",
        "aria-label": "아래로 나누기 (⌥⌘D)",
        "box": [
-        849,
+        823,
         249,
         24,
         24
@@ -95,6 +95,27 @@
         {
          "tag": "svg",
          "icon": "split-down"
+        }
+       ]
+      },
+      {
+       "tag": "button",
+       "class": "icon-button tool",
+       "aria-label": "플로팅 모드",
+       "aria-pressed": "true",
+       "box": [
+        849,
+        249,
+        24,
+        24
+       ],
+       "style": {
+        "border": "solid rgba(0, 0, 0, 0)"
+       },
+       "children": [
+        {
+         "tag": "svg",
+         "icon": "floating"
         }
        ]
       },
@@ -790,6 +811,55 @@
      ]
     }
    ]
+  },
+  {
+   "tag": "span",
+   "class": "surface-resize",
+   "style": {
+    "color": "rgb(242, 240, 245)"
+   }
+  },
+  {
+   "tag": "span",
+   "class": "surface-resize",
+   "style": {
+    "color": "rgb(242, 240, 245)"
+   }
+  },
+  {
+   "tag": "span",
+   "class": "surface-resize",
+   "style": {
+    "color": "rgb(242, 240, 245)"
+   }
+  },
+  {
+   "tag": "span",
+   "class": "surface-resize",
+   "style": {
+    "color": "rgb(242, 240, 245)"
+   }
+  },
+  {
+   "tag": "span",
+   "class": "surface-resize",
+   "style": {
+    "color": "rgb(242, 240, 245)"
+   }
+  },
+  {
+   "tag": "span",
+   "class": "surface-resize",
+   "style": {
+    "color": "rgb(242, 240, 245)"
+   }
+  },
+  {
+   "tag": "span",
+   "class": "surface-resize",
+   "style": {
+    "color": "rgb(242, 240, 245)"
+   }
   },
   {
    "tag": "span",

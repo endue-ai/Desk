@@ -64,10 +64,14 @@ export async function readXps(zip) {
 
   /** @type {Map<number, Element>} */
   const parsed = new Map();
-  const fixedPage = async (/** @type {number} */ i) => {
+  const fixedPage = async (
+    /** @type {number} */ i,
+    /** @type {AbortSignal | undefined} */ signal = undefined,
+  ) => {
+    signal?.throwIfAborted();
     let found = parsed.get(i);
     if (!found) {
-      const root = xml(await zip.text(present[i]?.path ?? "")).documentElement;
+      const root = xml(await zip.text(present[i]?.path ?? "", signal)).documentElement;
       if (root?.localName !== "FixedPage")
         throw new Unreadable("The XPS document is damaged: a page is not a FixedPage.", { format });
       parsed.set(i, root);
@@ -94,7 +98,12 @@ export async function readXps(zip) {
   const dictionaries = new Map();
 
   /** Read what a page refers to (images, fonts, remote dictionaries) before it is drawn. */
-  const preload = async (/** @type {Element} */ page, /** @type {string} */ base) => {
+  const preload = async (
+    /** @type {Element} */ page,
+    /** @type {string} */ base,
+    /** @type {AbortSignal} */ signal,
+  ) => {
+    signal?.throwIfAborted();
     for (const dict of all(page, "ResourceDictionary")) {
       const source = dict.getAttribute("Source");
       if (!source) continue;
@@ -102,7 +111,9 @@ export async function readXps(zip) {
       if (!dictionaries.has(path))
         dictionaries.set(
           path,
-          zip.has(path) ? (xml(await zip.text(path)).documentElement ?? undefined) : undefined,
+          zip.has(path)
+            ? (xml(await zip.text(path, signal)).documentElement ?? undefined)
+            : undefined,
         );
     }
     for (const brush of all(page, "ImageBrush")) {
@@ -114,7 +125,10 @@ export async function readXps(zip) {
         ),
       );
       if (images.has(path) || !zip.has(path)) continue;
-      const bytes = await zip.read(path).catch(() => undefined);
+      const bytes = await zip.read(path, signal).catch((error) => {
+        if (signal?.aborted) throw error;
+        return undefined;
+      });
       const size = bytes && imageSize(bytes);
       const mime = bytes && (imageType(bytes) ?? mimeOf(path));
       images.set(
@@ -127,7 +141,10 @@ export async function readXps(zip) {
     for (const glyphs of all(page, "Glyphs")) {
       const path = part(base, (glyphs.getAttribute("FontUri") ?? "").split("#")[0] ?? "");
       if (fonts.has(path) || !zip.has(path)) continue;
-      const raw = await zip.read(path).catch(() => undefined);
+      const raw = await zip.read(path, signal).catch((error) => {
+        if (signal?.aborted) throw error;
+        return undefined;
+      });
       if (!raw) continue;
       const bytes =
         /\.odttf$/i.test(path) || (raw[0] !== 0 && raw[0] !== 0x4f && raw[0] !== 0x74)
@@ -139,27 +156,31 @@ export async function readXps(zip) {
 
   /** @type {Map<number, Promise<XpsPage>>} */
   const drawn = new Map();
-  const page = (/** @type {number} */ i) => {
+  const build = async (i, signal = undefined) => {
+    signal?.throwIfAborted();
+    const root = await fixedPage(i, signal);
+    const base = present[i]?.path ?? "";
+    await preload(root, base, signal);
+    signal?.throwIfAborted();
+    /** @type {Set<{ family: string, bytes: Uint8Array }>} */
+    const used = new Set();
+    const { svg, text } = pageToSvg(root, {
+      image: (source) =>
+        images.get(part(base, source.replace(/^\{ColorConvertedBitmap\s+([^\s}]+).*$/, "$1"))),
+      font: (uri) => {
+        const font = fonts.get(part(base, uri.split("#")[0] ?? ""));
+        if (font) used.add(font);
+        return font?.family;
+      },
+      dictionary: (source) => dictionaries.get(part(base, source)),
+    });
+    return { svg, text, fonts: [...used] };
+  };
+  const page = (i, signal = undefined) => {
+    if (signal) return build(i, signal);
     let found = drawn.get(i);
     if (!found) {
-      found = (async () => {
-        const root = await fixedPage(i);
-        const base = present[i]?.path ?? "";
-        await preload(root, base);
-        /** @type {Set<{ family: string, bytes: Uint8Array }>} */
-        const used = new Set();
-        const { svg, text } = pageToSvg(root, {
-          image: (source) =>
-            images.get(part(base, source.replace(/^\{ColorConvertedBitmap\s+([^\s}]+).*$/, "$1"))),
-          font: (uri) => {
-            const font = fonts.get(part(base, uri.split("#")[0] ?? ""));
-            if (font) used.add(font);
-            return font?.family;
-          },
-          dictionary: (source) => dictionaries.get(part(base, source)),
-        });
-        return { svg, text, fonts: [...used] };
-      })();
+      found = build(i);
       drawn.set(i, found);
     }
     return found;
@@ -172,9 +193,18 @@ export async function readXps(zip) {
     pages,
     toc: [],
     page,
+    target: (href, from) => {
+      if (/^[\w+.-]+:|^\/\//.test(href)) return undefined;
+      const resolved = resolvePath(present[from]?.path ?? "", href);
+      const unit = present.findIndex((item) => item.path === resolved.path);
+      return unit >= 0 ? unit : undefined;
+    },
     text: async (/** @type {number} */ i) => (await page(i)).text,
-    measure: async (/** @type {number} */ i) => {
-      const root = await fixedPage(i);
+    measure: async (
+      /** @type {number} */ i,
+      /** @type {AbortSignal | undefined} */ signal = undefined,
+    ) => {
+      const root = await fixedPage(i, signal);
       const size = {
         width: Number(root.getAttribute("Width") ?? pages[i]?.width ?? 816),
         height: Number(root.getAttribute("Height") ?? pages[i]?.height ?? 1056),

@@ -8,14 +8,21 @@ const B = file("~/Comics/b.cbz");
 const JUNK = file("~/Comics/broken.cbz");
 
 describe("the desk's file requests", () => {
-  it("visit reads the file as base64, opens it and watches it", async () => {
+  it("visit reads bounded binary ranges, opens it and watches it", async () => {
     const { host, view, params } = await mount({ handlers: disk({ [A.path]: cbz() }) });
     await expect(host.command("desk.files.visit", A)).resolves.toBeUndefined();
     expect(host.calls.map((c) => c.method)).toEqual(
       expect.arrayContaining(["fs.read", "fs.watch", "store.get"]),
     );
     expect(params("fs.read")).toEqual([
-      { path: A.path, encoding: "base64", scope: folderScope(A.path) },
+      { path: A.path, encoding: "base64", offset: 0, length: 0, scope: folderScope(A.path) },
+      {
+        path: A.path,
+        encoding: "base64",
+        offset: 0,
+        length: cbz().length,
+        scope: folderScope(A.path),
+      },
     ]);
     expect(params("fs.watch")).toEqual([{ path: A.path, scope: folderScope(A.path) }]);
     const shown = view.shown.at(-1);
@@ -42,7 +49,7 @@ describe("the desk's file requests", () => {
     expect(view.shown.at(-1)).toMatchObject({ buffer: B.buffer });
 
     await expect(host.command("desk.files.revert", A)).resolves.toBeUndefined();
-    expect(params("fs.read")).toHaveLength(3);
+    expect(params("fs.read")).toHaveLength(6);
 
     await expect(host.command("desk.buffers.show", A)).resolves.toBeUndefined();
     expect(view.shown.at(-1)).toMatchObject({ buffer: A.buffer, name: "a.cbz" });
@@ -127,7 +134,7 @@ describe("the desk's file requests", () => {
       },
     });
     await expect(host.command("desk.files.visit", X)).resolves.toBeUndefined();
-    expect(params("fs.read")).toHaveLength(2);
+    expect(params("fs.read")).toHaveLength(3);
     expect(params("perm.request")).toHaveLength(1);
     expect(view.shown.at(-1)?.book).toMatchObject({ kind: "pages" });
   });

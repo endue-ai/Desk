@@ -6,10 +6,10 @@ import { imageSize } from "./imagesize.js";
 
 /**
  * @typedef {import("./imagesize.js").Size} Size
- * @typedef {{ names: string[], read(name: string): Uint8Array | Promise<Uint8Array> }} Archive
+ * @typedef {{ names: string[], read(name: string, signal?: AbortSignal): Uint8Array | Promise<Uint8Array> }} Archive
  * @typedef {{ kind: "pages", format: string, title: string, names: string[], pages: Size[],
- *   toc: import("./toc.js").Toc[], image(i: number): Promise<{ mime: string, bytes: Uint8Array }>,
- *   measure(i: number): Promise<Size>, text(i: number): Promise<string> }} ComicBook
+ *   toc: import("./toc.js").Toc[], image(i: number, signal?: AbortSignal): Promise<{ mime: string, bytes: Uint8Array }>,
+ *   measure(i: number, signal?: AbortSignal): Promise<Size>, text(i: number): Promise<string> }} ComicBook
  */
 
 /** macOS resource forks and hidden files are not pages. */
@@ -28,15 +28,23 @@ export async function readComic(archive, kind) {
     throw new Unreadable("The archive holds no images to show as pages.", { format });
   /** @type {Map<number, Size>} */
   const measured = new Map();
-  const image = async (/** @type {number} */ i) => {
+  const image = async (
+    /** @type {number} */ i,
+    /** @type {AbortSignal | undefined} */ signal = undefined,
+  ) => {
+    signal?.throwIfAborted();
     const name = names[i];
     if (name === undefined) throw new Unreadable(`There is no page ${i + 1}.`, { format });
-    return { mime: mimeOf(name), bytes: await archive.read(name) };
+    return { mime: mimeOf(name), bytes: await archive.read(name, signal) };
   };
-  const measure = async (/** @type {number} */ i) => {
+  const measure = async (
+    /** @type {number} */ i,
+    /** @type {AbortSignal | undefined} */ signal = undefined,
+  ) => {
     const known = measured.get(i);
     if (known) return known;
-    const size = imageSize((await image(i)).bytes) ?? pages[i] ?? { width: 800, height: 1200 };
+    const size = imageSize((await image(i, signal)).bytes) ??
+      pages[i] ?? { width: 800, height: 1200 };
     measured.set(i, size);
     pages[i] = size;
     return size;

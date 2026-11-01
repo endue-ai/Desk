@@ -63,6 +63,7 @@ export function syncProfiles(ctx: ShellCtx): () => void {
 interface SavedShell {
   profile: string;
   layouts: DeskState["session"];
+  pan: DeskState["pan"];
   desktop: DesktopIndex;
   drawer: DeskState["drawer"];
   spaceId: string;
@@ -82,6 +83,7 @@ export function keepShell(ctx: ShellCtx): { off(): void; done(): Promise<void> }
       return {
         profile: s.modeId,
         layouts: s.session,
+        pan: s.pan,
         desktop: s.desktop,
         drawer: s.drawer,
         spaceId: s.spaceId,
@@ -94,7 +96,7 @@ export function keepShell(ctx: ShellCtx): { off(): void; done(): Promise<void> }
     },
     onChange: (listener) => {
       const offs = [
-        store.watch((s) => [s.modeId, s.session, s.desktop, s.drawer, s.spaceId], listener),
+        store.watch((s) => [s.modeId, s.session, s.desktop, s.drawer, s.spaceId, s.pan], listener),
         settings.onChange((keys) => (keys.includes(DENSITY) || keys.includes(SOUL)) && listener()),
       ];
       return () => {
@@ -125,6 +127,12 @@ async function restore(ctx: ShellCtx, saved: Partial<SavedShell> | null): Promis
     desktop: DESKTOPS.includes(saved.desktop as DesktopIndex)
       ? (saved.desktop as DesktopIndex)
       : s.desktop,
+    pan: Object.fromEntries(
+      DESKTOPS.flatMap((d) => {
+        const p = saved.pan?.[d];
+        return p && Number.isFinite(p.x) && Number.isFinite(p.y) ? [[d, p]] : [];
+      }),
+    ),
     // Items a session saved with clock times (before wall-clock ages) are dated now.
     drawer: Array.isArray(saved.drawer)
       ? saved.drawer.map((d) => (d.at < 1e12 ? { ...d, at: ctx.wall() } : d))

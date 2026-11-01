@@ -7,7 +7,7 @@
 /**
  * @typedef {import("./open.js").PagesBook} PagesBook
  * @typedef {import("./marks.js").At} At
- * @typedef {{ moved(at: At): void, go(unit: number): void, external(url: string): void }} Hooks
+ * @typedef {{ moved(at: At): void, go(unit: number): void, external(url: string): void, reload?(): unknown, work?(detail: string, run: (signal?: AbortSignal) => Promise<unknown>): Promise<unknown> }} Hooks
  */
 
 const PAD = 16;
@@ -35,6 +35,10 @@ export function createPages(doc, host, scroller, hooks) {
   let generation = 0;
   /** @type {ReturnType<typeof setTimeout> | undefined} */
   let scrolled;
+  const stopScroll = () => {
+    if (scrolled !== undefined) clearTimeout(scrolled);
+    scrolled = undefined;
+  };
 
   const heightOf = (/** @type {number} */ i) => (book?.pages[i]?.height ?? 0) * zoom;
   const layout = () => {
@@ -74,22 +78,51 @@ export function createPages(doc, host, scroller, hooks) {
     if (current && (current.zoom === zoom || book.format !== "PDF")) return current.done;
     const mine = generation;
     const target = book;
-    const done = (async () => {
-      const before = target.pages[i];
-      const size = (await target.measure?.(i).catch(() => before)) ?? before;
-      if (mine !== generation) return box;
-      if (size && before && (size.width !== before.width || size.height !== before.height)) {
-        const at = where();
-        layout();
-        if (i < at.unit) goTo(at.unit, at.offset, false);
+    const work = hooks.work ?? ((_detail, run) => run());
+    const done = work(`Page ${i + 1}`, async (signal) => {
+      const release = target.beginDecode?.(signal);
+      try {
+        const before = target.pages[i];
+        const size =
+          (await target.measure?.(i, signal).catch((error) => {
+            if (signal?.aborted || target.stopped?.()) throw error;
+            return before;
+          })) ?? before;
+        if (mine !== generation) return box;
+        if (size && before && (size.width !== before.width || size.height !== before.height)) {
+          const at = where();
+          layout();
+          if (i < at.unit) goTo(at.unit, at.offset, false);
+        }
+        signal?.throwIfAborted();
+        await target
+          .paint(i, box, zoom, { go: hooks.go, external: hooks.external, signal })
+          .catch((error) => {
+            if (signal?.aborted || target.stopped?.() || error?.name === "AbortError") throw error;
+            box.dataset.failed = "true";
+            box.textContent = `Page ${i + 1} could not be drawn.`;
+          });
+        box.dataset.drawn = "true";
+        return box;
+      } finally {
+        release?.();
       }
-      await target.paint(i, box, zoom, { go: hooks.go, external: hooks.external }).catch(() => {
+    }).catch((error) => {
+      if (target.stopped?.() && mine === generation) {
+        box.dataset.cancelled = "true";
+        box.replaceChildren(doc.createTextNode("PDF decoding stopped. "));
+        const retry = doc.createElement("button");
+        retry.type = "button";
+        retry.textContent = "Reload document";
+        retry.addEventListener("click", () => hooks.reload?.());
+        box.append(retry);
+      } else if (error?.name !== "AbortError") {
         box.dataset.failed = "true";
         box.textContent = `Page ${i + 1} could not be drawn.`;
-      });
-      box.dataset.drawn = "true";
+      }
+      if (mine === generation) drawn.delete(i);
       return box;
-    })();
+    });
     drawn.set(i, { zoom, done });
     return done;
   };
@@ -158,6 +191,7 @@ export function createPages(doc, host, scroller, hooks) {
   return {
     /** @param {PagesBook} next @param {{ at: At, zoom: number | null }} start */
     load(next, start) {
+      stopScroll();
       generation++;
       book = next;
       drawn.clear();
@@ -175,6 +209,7 @@ export function createPages(doc, host, scroller, hooks) {
       return zoom;
     },
     clear() {
+      stopScroll();
       generation++;
       book = null;
       boxes = [];

@@ -12,19 +12,21 @@ import { paintPdf } from "./pdf-paint.js";
  * @typedef {import("./formats/imagesize.js").Size} Size
  * @typedef {import("./formats/toc.js").Toc} Toc
  * @typedef {{ unit: number, anchor?: string }} Target
- * @typedef {{ go(unit: number): void, external(url: string): void }} PaintHooks
+ * @typedef {{ go(unit: number): void, external(url: string): void, signal?: AbortSignal }} PaintHooks
  * @typedef {(i: number, host: HTMLElement, scale: number, hooks: PaintHooks) => Promise<void>} Paint
  * @typedef {{ kind: "pages", format: string, title: string, pages: Size[], toc: Toc[],
- *   text(i: number): Promise<string>, measure?(i: number): Promise<Size>, paint: Paint,
- *   close?(): unknown }} PagesBook
+ *   text(i: number): Promise<string>, measure?(i: number, signal?: AbortSignal): Promise<Size>, paint: Paint,
+ *   close?(): unknown, beginDecode?(signal?: AbortSignal): () => void, stopped?(): boolean }} PagesBook
  * @typedef {{ html: string, css: string[], fonts?: Array<{ family: string, bytes: Uint8Array }> }} Chapter
  * @typedef {{ kind: "chapters", format: string, title: string, chapters: Array<{ title: string }>,
- *   toc: Toc[], chapter(i: number): Promise<Chapter>, target(href: string, from: number): Target | undefined,
+ *   toc: Toc[], chapter(i: number, signal?: AbortSignal): Promise<Chapter>, target(href: string, from: number): Target | undefined,
  *   text(i: number): Promise<string>, close?(): unknown }} ChaptersBook
  * @typedef {{ kind: "details", name: string, size: number, format: string, why: string, facts: Fact[] }} DetailsBook
  * @typedef {{ kind: "password", name: string, size: number, format: string, wrong: boolean }} PasswordBook
  * @typedef {PagesBook | ChaptersBook | DetailsBook | PasswordBook} Book
- * @typedef {{ name: string, path: string, password?: string, pdfjs?: () => Promise<object> }} OpenOptions
+ * @typedef {{ name: string, path: string, password?: string, pdfjs?: () => Promise<object>,
+ *   signal?: AbortSignal, readAll?: () => Promise<Uint8Array>, phase?: (label: string) => void }} OpenOptions
+ * @typedef {Uint8Array | import("@endue-ai/plugin-sdk").ByteSource} Input
  */
 
 const LABELS = /** @type {Record<string, string>} */ ({
@@ -42,18 +44,29 @@ const LABELS = /** @type {Record<string, string>} */ ({
 });
 
 /**
- * @param {Uint8Array} bytes
+ * @param {Input} input
  * @param {import("./detect.js").Detected} found
  * @param {OpenOptions} options
  * @returns {Promise<Book>}
  */
-async function read(bytes, found, options) {
+async function read(input, found, options) {
+  const bytes = ["pdf", "epub", "xps", "cbz"].includes(found.format)
+    ? input
+    : input instanceof Uint8Array
+      ? input
+      : await options.readAll();
+  options.signal?.throwIfAborted();
+  options.phase?.("Parsing");
   switch (found.format) {
     case "pdf": {
       if (!options.pdfjs) throw new Unreadable("This build of the reader has no PDF engine.");
       const { openPdf } = await import("./formats/pdf.js");
       const lib = await options.pdfjs();
-      const book = await openPdf(bytes, { pdfjs: lib, password: options.password });
+      const book = await openPdf(input, {
+        pdfjs: lib,
+        password: options.password,
+        signal: options.signal,
+      });
       return {
         ...book,
         paint: (i, host, scale, hooks) => paintPdf(lib, book, i, host, scale, hooks),
@@ -76,7 +89,16 @@ async function read(bytes, found, options) {
       const { readXps } = await import("./formats/xps.js");
       if (!found.zip) throw new Unreadable("The XPS document is damaged.");
       const book = await readXps(found.zip);
-      return { ...book, paint: async (i, host) => paintSvg(host, await book.page(i)) };
+      return {
+        ...book,
+        paint: async (i, host, _scale, hooks) =>
+          paintSvg(host, await book.page(i, hooks.signal), {
+            signal: hooks.signal,
+            go: hooks.go,
+            external: hooks.external,
+            target: (href) => book.target(href, i),
+          }),
+      };
     }
     case "cbz":
     case "cbt": {
@@ -87,7 +109,11 @@ async function read(bytes, found, options) {
       const book = await readComic(archive, found.format === "cbz" ? "CBZ" : "CBT");
       return {
         ...book,
-        paint: async (i, host) => paintImage(host, await book.image(i), `Page ${i + 1}`),
+        paint: async (i, host, _scale, hooks) => {
+          const image = await book.image(i, hooks.signal);
+          hooks.signal?.throwIfAborted();
+          paintImage(host, image, `Page ${i + 1}`);
+        },
       };
     }
     default: {
@@ -98,16 +124,19 @@ async function read(bytes, found, options) {
   }
 }
 
-/** @param {Uint8Array} bytes @param {OpenOptions} options @returns {Promise<Book>} */
-export async function openBook(bytes, options) {
+/** @param {Input} input @param {OpenOptions} options @returns {Promise<Book>} */
+export async function openBook(input, options) {
   const { name } = options;
-  const size = bytes.length;
+  const size = input instanceof Uint8Array ? input.length : input.size;
   let format = formatOfName(name);
   try {
-    const found = await detect(bytes, name);
+    options.signal?.throwIfAborted();
+    const bytes = input instanceof Uint8Array ? input : await input.read(0, Math.min(size, 4096));
+    const found = await detect(bytes, name, input instanceof Uint8Array ? undefined : input);
     format = found.format;
-    return await read(bytes, found, options);
+    return await read(input, found, options);
   } catch (error) {
+    if (options.signal?.aborted || error?.name === "AbortError") throw error;
     if (error instanceof PasswordNeeded)
       return { kind: "password", name, size, format: "PDF", wrong: error.wrong };
     const label = LABELS[format] ?? "Unknown";

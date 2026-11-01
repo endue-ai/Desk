@@ -198,7 +198,7 @@ test.describe("the desk shell", () => {
     await page.mouse.up();
     await expect(calendar).toHaveCSS("left", "170px");
     await expect(calendar).toHaveCSS("top", "280px");
-    const grip = await calendar.locator(".surface-resize").boundingBox();
+    const grip = await calendar.locator('[data-resize="se"]').boundingBox();
     if (!grip) throw new Error("no grip");
     await page.mouse.move(grip.x + 8, grip.y + 8);
     await page.mouse.down();

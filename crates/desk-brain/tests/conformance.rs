@@ -189,6 +189,8 @@ fn lease_conflicts_answer_with_the_contract_codes() {
     contract.check("BrainError", &error);
 
     // Five lease seconds are 100 ms here.
+    let accelerated = Echo::with_accelerated_leases();
+    let wire = Wire::new(&accelerated);
     let other = wire.session();
     let short = wire.acquire(&other, "desk-a", 5);
     thread::sleep(Duration::from_millis(250));

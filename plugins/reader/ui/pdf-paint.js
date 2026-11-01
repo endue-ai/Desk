@@ -6,9 +6,9 @@ import { CSS_PER_POINT } from "./formats/pdf.js";
 const MAX_PIXELS = 16_000_000;
 
 /**
- * @typedef {{ go(unit: number): void, external(url: string): void }} Hooks
+ * @typedef {{ go(unit: number): void, external(url: string): void, signal?: AbortSignal }} Hooks
  * @typedef {{ page(i: number): Promise<any>, resolve(dest: unknown): Promise<number | undefined>,
- *   pages: unknown[], doc: any }} PdfBook
+ *   pages: unknown[], doc: any, guard?(work: Promise<any>): Promise<any> }} PdfBook
  */
 
 /** The parts of pdf.js's link service the annotation layer calls. */
@@ -61,7 +61,9 @@ function linkService(
  * @param {Hooks} hooks
  */
 export async function paintPdf(lib, book, i, host, zoom, hooks) {
-  const page = await book.page(i);
+  const wait = book.guard ?? ((work) => work);
+  const page = await wait(book.page(i));
+  hooks.signal?.throwIfAborted();
   const viewport = page.getViewport({ scale: zoom * CSS_PER_POINT });
   const doc = host.ownerDocument;
   const scale = String(viewport.scale);
@@ -93,19 +95,35 @@ export async function paintPdf(lib, book, i, host, zoom, hooks) {
   const context = canvas.getContext("2d");
   if (context) {
     const transform = ratio === 1 ? undefined : [ratio, 0, 0, ratio, 0, 0];
-    await page.render({
+    const task = page.render({
       canvas,
       canvasContext: context,
       viewport,
       ...(transform ? { transform } : {}),
-    }).promise;
+    });
+    const cancel = () => task.cancel();
+    hooks.signal?.addEventListener("abort", cancel, { once: true });
+    try {
+      await wait(task.promise);
+    } finally {
+      hooks.signal?.removeEventListener("abort", cancel);
+    }
   }
-  await new lib.TextLayer({
+  hooks.signal?.throwIfAborted();
+  const textLayer = new lib.TextLayer({
     textContentSource: page.streamTextContent(),
     container: text,
     viewport,
-  }).render();
-  const annotations = await page.getAnnotations();
+  });
+  const cancelText = () => textLayer.cancel();
+  hooks.signal?.addEventListener("abort", cancelText, { once: true });
+  try {
+    await wait(textLayer.render());
+  } finally {
+    hooks.signal?.removeEventListener("abort", cancelText);
+  }
+  hooks.signal?.throwIfAborted();
+  const annotations = await wait(page.getAnnotations());
   if (annotations.length === 0) return;
   const service = linkService(book, i, hooks);
   const layer = new lib.AnnotationLayer({
@@ -120,16 +138,18 @@ export async function paintPdf(lib, book, i, host, zoom, hooks) {
     structTreeLayer: null,
     commentManager: null,
   });
-  await layer.render({
-    annotations,
-    viewport,
-    div: notes,
-    page,
-    linkService: service,
-    renderForms: false,
-    imageResourcesPath: "",
-    enableScripting: false,
-    hasJSActions: false,
-    fieldObjects: null,
-  });
+  await wait(
+    layer.render({
+      annotations,
+      viewport,
+      div: notes,
+      page,
+      linkService: service,
+      renderForms: false,
+      imageResourcesPath: "",
+      enableScripting: false,
+      hasJSActions: false,
+      fieldObjects: null,
+    }),
+  );
 }

@@ -8,7 +8,7 @@ import { loadFonts } from "./paint.js";
  * @typedef {import("./open.js").ChaptersBook} ChaptersBook
  * @typedef {import("./open.js").Target} Target
  * @typedef {import("./marks.js").At} At
- * @typedef {{ moved(at: At): void, go(target: Target): void, external(url: string): void }} Hooks
+ * @typedef {{ moved(at: At): void, go(target: Target): void, external(url: string): void, work?(detail: string, run: (signal?: AbortSignal) => Promise<unknown>): Promise<any> }} Hooks
  */
 
 const BASE = `:host { display: block; color: #1d1b1f; background: #fbfaf7; }
@@ -31,33 +31,47 @@ export function createChapters(host, scroller, hooks) {
   /** @type {ChaptersBook | null} */
   let showing = null;
   let unit = 0;
+  let requested = { unit: 0, offset: 0 };
   let generation = 0;
+  let displayedGeneration = 0;
   /** @type {ReturnType<typeof setTimeout> | undefined} */
   let scrolled;
+  const stopScroll = () => {
+    if (scrolled !== undefined) clearTimeout(scrolled);
+    scrolled = undefined;
+  };
 
   const offset = () => {
     const room = scroller.scrollHeight - scroller.clientHeight;
     return room > 0 ? Math.max(0, Math.min(1, scroller.scrollTop / room)) : 0;
   };
 
-  root.addEventListener("click", (event) => {
+  const follow = (event) => {
+    if (
+      event.type === "keydown" &&
+      (event.key !== "Enter" || !event.target?.closest?.("a.external"))
+    )
+      return;
     const link = /** @type {Element | null} */ (
       event.target instanceof Element ? event.target : null
     )?.closest("a");
     if (!link || !book) return;
     event.preventDefault();
+    if (displayedGeneration !== generation) return;
     const href = link.getAttribute("href");
     if (href) {
       const target = book.target(href, unit);
       if (target) hooks.go(target);
     } else if (link.classList.contains("external"))
       hooks.external(link.getAttribute("title") ?? "");
-  });
+  };
+  root.addEventListener("click", follow);
+  root.addEventListener("keydown", follow);
 
   scroller.addEventListener(
     "scroll",
     () => {
-      if (!book) return;
+      if (!book || displayedGeneration !== generation) return;
       if (scrolled !== undefined) clearTimeout(scrolled);
       scrolled = setTimeout(() => {
         scrolled = undefined;
@@ -92,22 +106,35 @@ export function createChapters(host, scroller, hooks) {
      * @param {{ anchor?: string, offset?: number }} [to]
      */
     async show(next, i, to = {}) {
+      stopScroll();
       const mine = ++generation;
       book = next;
       const target = Math.max(0, Math.min(next.chapters.length - 1, i));
+      requested = { unit: target, offset: to.offset ?? 0 };
       if (target === unit && showing === next) {
+        displayedGeneration = mine;
         place(to);
         return root;
       }
-      const chapter = await next.chapter(target).catch((error) => ({
-        html: `<div class="body"><p>This chapter could not be shown: ${String(error?.message ?? error).replace(/[<&]/g, "")}</p></div>`,
-        css: [],
-        fonts: [],
-      }));
+      const work = hooks.work ?? ((_detail, run) => run());
+      const chapter = await work(`Chapter ${target + 1}`, (signal) =>
+        next.chapter(target, signal),
+      ).catch((error) =>
+        error?.name === "AbortError"
+          ? null
+          : {
+              html: `<div class="body"><p>This chapter could not be shown: ${String(error?.message ?? error).replace(/[<&]/g, "")}</p></div>`,
+              css: [],
+              fonts: [],
+            },
+      );
+      if (!chapter) return root;
       if (mine !== generation) return root;
       await loadFonts(host.ownerDocument, chapter.fonts);
+      if (mine !== generation) return root;
       unit = target;
       showing = next;
+      displayedGeneration = mine;
       // The book's own body rules apply to its .body; the reading column around it is the reader's.
       root.innerHTML = [
         `<style>${BASE}</style>`,
@@ -118,16 +145,18 @@ export function createChapters(host, scroller, hooks) {
       return root;
     },
     clear() {
+      stopScroll();
       generation++;
       book = null;
       showing = null;
+      requested = { unit: 0, offset: 0 };
       root.replaceChildren();
     },
     zoom(/** @type {number} */ z) {
       host.style.setProperty("zoom", String(z));
       return z;
     },
-    current: () => ({ unit, offset: offset() }),
+    current: () => (displayedGeneration === generation ? { unit, offset: offset() } : requested),
     root: () => root,
   };
 }

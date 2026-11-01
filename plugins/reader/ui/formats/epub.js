@@ -139,9 +139,19 @@ export async function readEpub(zip) {
   /** Every file a chapter or its CSS points at, read once. */
   /** @type {Map<string, Uint8Array>} */
   const files = new Map();
-  const load = async (/** @type {string} */ path) => {
+  const load = async (
+    /** @type {string} */ path,
+    /** @type {AbortSignal | undefined} */ signal = undefined,
+  ) => {
+    signal?.throwIfAborted();
     if (!files.has(path) && zip.has(path))
-      files.set(path, await zip.read(path).catch(() => new Uint8Array()));
+      files.set(
+        path,
+        await zip.read(path, signal).catch((error) => {
+          if (signal?.aborted) throw error;
+          return new Uint8Array();
+        }),
+      );
     return files.get(path);
   };
   const inline = (/** @type {string} */ path) => {
@@ -151,8 +161,13 @@ export async function readEpub(zip) {
   const manifestType = (/** @type {string} */ path) =>
     [...manifest.values()].find((i) => i.path === path)?.type ?? mimeOf(path);
   /** Read every package file these hrefs name, so the synchronous resolvers find them. */
-  const preload = async (/** @type {string} */ base, /** @type {Iterable<string>} */ hrefs) => {
-    for (const href of hrefs) if (!isExternal(href)) await load(resolvePath(base, href).path);
+  const preload = async (
+    /** @type {string} */ base,
+    /** @type {Iterable<string>} */ hrefs,
+    /** @type {AbortSignal} */ signal,
+  ) => {
+    for (const href of hrefs)
+      if (!isExternal(href)) await load(resolvePath(base, href).path, signal);
   };
   const cssResolver = (/** @type {string} */ base) => ({
     url: (/** @type {string} */ href) =>
@@ -168,9 +183,13 @@ export async function readEpub(zip) {
   /** @type {Map<number, Promise<Chapter>>} */
   const cache = new Map();
   /** @returns {Promise<Chapter>} */
-  const build = async (/** @type {number} */ i) => {
+  const build = async (
+    /** @type {number} */ i,
+    /** @type {AbortSignal | undefined} */ signal = undefined,
+  ) => {
+    signal?.throwIfAborted();
     const href = chapters[i]?.href ?? "";
-    const doc = parseMarkup(await zip.text(href));
+    const doc = parseMarkup(await zip.text(href, signal));
     const css = [];
     const fonts = [];
     const sheets = all(doc, "link").filter((l) => /stylesheet/i.test(l.getAttribute("rel") ?? ""));
@@ -186,8 +205,8 @@ export async function readEpub(zip) {
         sheet.text ??
         (isExternal(sheet.base)
           ? ""
-          : new TextDecoder().decode((await load(sheet.base)) ?? new Uint8Array()));
-      await preload(sheet.base, urlsIn(text));
+          : new TextDecoder().decode((await load(sheet.base, signal)) ?? new Uint8Array()));
+      await preload(sheet.base, urlsIn(text), signal);
       const safe = sanitizeCss(text, cssResolver(sheet.base));
       css.push(safe.css);
       fonts.push(...safe.fonts);
@@ -205,7 +224,8 @@ export async function readEpub(zip) {
     const styled = [...body.querySelectorAll("[style]")].flatMap((el) =>
       urlsIn(el.getAttribute("style") ?? ""),
     );
-    await preload(href, [...sources, ...styled]);
+    await preload(href, [...sources, ...styled], signal);
+    signal?.throwIfAborted();
     const result = sanitizeHtml(body, {
       image: (src) => (isExternal(src) ? undefined : inline(resolvePath(href, src).path)),
       link: (link) => {
@@ -217,7 +237,11 @@ export async function readEpub(zip) {
     });
     return { html: wrap(body, result.html), css, fonts, text: result.text };
   };
-  const chapter = (/** @type {number} */ i) => {
+  const chapter = (
+    /** @type {number} */ i,
+    /** @type {AbortSignal | undefined} */ signal = undefined,
+  ) => {
+    if (signal) return build(i, signal);
     let found = cache.get(i);
     if (!found) {
       found = build(i);

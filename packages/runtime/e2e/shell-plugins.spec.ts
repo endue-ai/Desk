@@ -61,7 +61,7 @@ test.describe("plugin surfaces as shell windows", () => {
     await frame(page).getByRole("button").click();
     await expect(frame(page).getByTestId("count")).toHaveText("1");
     const before = await box(page);
-    const grip = window_(page).locator(".surface-resize");
+    const grip = window_(page).locator('[data-resize="se"]');
     const g = await grip.boundingBox();
     if (!g) throw new Error("no grip");
     await page.mouse.move(g.x + 8, g.y + 8);
