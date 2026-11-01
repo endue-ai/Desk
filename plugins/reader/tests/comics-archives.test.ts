@@ -1,7 +1,7 @@
 // CB7 and CBR comics through endue.formats: their images in natural order, one page each, like CBZ;
 // a solid archive decoded once, in its own order, with each page handed over as it comes out;
 // encrypted and damaged archives as the details view with the library's sentence.
-import { ENCRYPTED, LOCKED } from "@endue-ai/formats/rar/index.js";
+import { ENCRYPTED, LOCKED, openRar } from "@endue-ai/formats/rar/index.js";
 import { describe, expect, it } from "vitest";
 import { ORIGINALS } from "../../formats/tests/rar/originals.mjs";
 import { openBook } from "../ui/open.js";
@@ -42,6 +42,16 @@ const AS_PAGES = {
   "chapters/one.txt": "chapters/one.png",
   "chapters/two.txt": "chapters/two.png",
   "chapters/three.txt": "chapters/three.png",
+};
+/** What listing an archive and one pass of the library through all of it read. */
+const oncePass = async (path: string) => {
+  const source = counted(library(path));
+  const archive = await openRar(source);
+  await archive.each(
+    archive.entries.filter((e) => e.kind === "file"),
+    async () => {},
+  );
+  return source.bytesRead;
 };
 const original = (page: string) => {
   const path = Object.entries(AS_PAGES).find(([, name]) => name === page)?.[0];
@@ -112,7 +122,7 @@ describe("CBR", () => {
       // Every page in natural order (not the archive's): the archive is read about once.
       for (const [i, name] of book.names.entries())
         expect((await book.image(i)).bytes, name).toEqual(original(name));
-      expect(source.bytesRead).toBeLessThan(source.size * 1.2);
+      expect(source.bytesRead).toBeLessThan((await oncePass(path)) + source.size * 0.2);
       await book.close?.();
     },
   );
@@ -126,7 +136,9 @@ describe("CBR", () => {
     stop.abort();
     expect(await waiting).toMatchObject({ name: "AbortError" });
     expect((await book.image(last)).bytes).toEqual(original("chapters/two.png"));
-    expect(source.bytesRead).toBeLessThan(source.size * 1.2);
+    expect(source.bytesRead).toBeLessThan(
+      (await oncePass("rar/rar5-solid.rar")) + source.size * 0.2,
+    );
     await book.close?.();
   });
 

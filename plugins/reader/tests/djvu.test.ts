@@ -169,7 +169,10 @@ describe("DjVu", () => {
     const source = counted(library("djvu/book.djvu"));
     const book = await djvu(source);
     expect(book.pages).toHaveLength(3);
-    expect(source.bytesRead).toBeLessThan(source.size / 2);
+    // Beyond the reader's first 4 KiB, which name the format: the directory and each page's head.
+    const [sniff, ...rest] = source.reads;
+    expect(sniff).toEqual([0, 4096]);
+    expect(rest.reduce((sum, [, length]) => sum + length, 0)).toBeLessThan(source.size / 4);
   });
 
   it("a damaged DjVu opens the details view with the library's sentence", async () => {

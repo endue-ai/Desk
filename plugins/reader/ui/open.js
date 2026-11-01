@@ -2,7 +2,6 @@
 // shown comes back as a details view (name, size, format, one sentence why), and a locked PDF as a
 // password request: never an error the surface would have to catch.
 import { detect, formatOfName } from "./detect.js";
-import { describe, NOT_YET } from "./formats/describe.js";
 import { PasswordNeeded, Unreadable } from "./formats/errors.js";
 import { paintImage, paintSvg } from "./paint.js";
 import { paintPdf } from "./pdf-paint.js";
@@ -12,11 +11,13 @@ import { paintPdf } from "./pdf-paint.js";
  * @typedef {import("./formats/imagesize.js").Size} Size
  * @typedef {import("./formats/toc.js").Toc} Toc
  * @typedef {{ unit: number, anchor?: string }} Target
- * @typedef {{ go(unit: number): void, external(url: string): void, signal?: AbortSignal }} PaintHooks
+ * @typedef {{ go(unit: number): void, external(url: string): void, signal?: AbortSignal,
+ *   progress?(done: number, total: number): void }} PaintHooks
  * @typedef {(i: number, host: HTMLElement, scale: number, hooks: PaintHooks) => Promise<void>} Paint
  * @typedef {{ kind: "pages", format: string, title: string, pages: Size[], toc: Toc[],
  *   text(i: number): Promise<string>, measure?(i: number, signal?: AbortSignal): Promise<Size>, paint: Paint,
- *   close?(): unknown, beginDecode?(signal?: AbortSignal): () => void, stopped?(): boolean }} PagesBook
+ *   close?(): unknown, beginDecode?(signal?: AbortSignal): () => void, stopped?(): boolean,
+ *   scaled?: boolean, note?: string }} PagesBook
  * @typedef {{ html: string, css: string[], fonts?: Array<{ family: string, bytes: Uint8Array }> }} Chapter
  * @typedef {{ kind: "chapters", format: string, title: string, chapters: Array<{ title: string }>,
  *   toc: Toc[], chapter(i: number, signal?: AbortSignal): Promise<Chapter>, target(href: string, from: number): Target | undefined,
@@ -25,7 +26,8 @@ import { paintPdf } from "./pdf-paint.js";
  * @typedef {{ kind: "password", name: string, size: number, format: string, wrong: boolean }} PasswordBook
  * @typedef {PagesBook | ChaptersBook | DetailsBook | PasswordBook} Book
  * @typedef {{ name: string, path: string, password?: string, pdfjs?: () => Promise<object>,
- *   signal?: AbortSignal, readAll?: () => Promise<Uint8Array>, phase?: (label: string) => void }} OpenOptions
+ *   signal?: AbortSignal, readAll?: () => Promise<Uint8Array>, phase?: (label: string) => void,
+ *   startWorker?: import("./djvu-client.js").StartWorker }} OpenOptions
  * @typedef {Uint8Array | import("@endue-ai/plugin-sdk").ByteSource} Input
  */
 
@@ -43,6 +45,30 @@ const LABELS = /** @type {Record<string, string>} */ ({
   unknown: "Unknown",
 });
 
+/** Formats read by ranges: the rest are read whole. */
+const RANGED = ["pdf", "epub", "xps", "cbz", "cbr", "cb7", "djvu"];
+
+/** Bytes as the Source the readers take; a ByteSource already is one. @param {Input} input */
+const sourceOf = (input) =>
+  input instanceof Uint8Array
+    ? {
+        size: input.length,
+        read: async (/** @type {number} */ offset, /** @type {number} */ length) =>
+          input.subarray(offset, Math.min(input.length, offset + length)),
+      }
+    : input;
+
+/** A comic's pages are its images, drawn whole into the box the view sized. */
+const comic = (/** @type {import("./formats/comics.js").ComicBook} */ book) => ({
+  ...book,
+  /** @type {Paint} */
+  paint: async (i, host, _scale, hooks) => {
+    const image = await book.image(i, hooks.signal, hooks.progress);
+    hooks.signal?.throwIfAborted();
+    paintImage(host, image, `Page ${i + 1}`);
+  },
+});
+
 /**
  * @param {Input} input
  * @param {import("./detect.js").Detected} found
@@ -50,7 +76,7 @@ const LABELS = /** @type {Record<string, string>} */ ({
  * @returns {Promise<Book>}
  */
 async function read(input, found, options) {
-  const bytes = ["pdf", "epub", "xps", "cbz"].includes(found.format)
+  const bytes = RANGED.includes(found.format)
     ? input
     : input instanceof Uint8Array
       ? input
@@ -106,21 +132,24 @@ async function read(input, found, options) {
       const { readTar } = await import("./formats/tar.js");
       const archive = found.format === "cbz" ? found.zip : readTar(bytes);
       if (!archive) throw new Unreadable("The archive is damaged.");
-      const book = await readComic(archive, found.format === "cbz" ? "CBZ" : "CBT");
-      return {
-        ...book,
-        paint: async (i, host, _scale, hooks) => {
-          const image = await book.image(i, hooks.signal);
-          hooks.signal?.throwIfAborted();
-          paintImage(host, image, `Page ${i + 1}`);
-        },
-      };
+      return comic(await readComic(archive, found.format === "cbz" ? "CBZ" : "CBT"));
     }
-    default: {
-      const described = describe(bytes);
-      if (described) throw new Unreadable(NOT_YET, described);
+    case "cbr":
+    case "cb7": {
+      const { readArchiveComic } = await import("./formats/archive-comic.js");
+      const kind = found.format === "cbr" ? "CBR" : "CB7";
+      const { signal, name } = options;
+      return comic(await readArchiveComic(sourceOf(input), kind, { name, signal }));
+    }
+    case "djvu": {
+      const { readDjvu } = await import("./formats/djvu.js");
+      const { paintDjvu } = await import("./djvu-paint.js");
+      const { signal, startWorker } = options;
+      const book = await readDjvu(sourceOf(input), { signal, startWorker });
+      return { ...book, paint: (i, host, zoom, hooks) => paintDjvu(book, i, host, zoom, hooks) };
+    }
+    default:
       throw new Unreadable("The reader does not know this kind of file.");
-    }
   }
 }
 

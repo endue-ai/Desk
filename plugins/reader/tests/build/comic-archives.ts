@@ -34,7 +34,7 @@ const u32le = (n: number) => {
 };
 
 /** A RAR 5 header block: CRC32, size, the fields (type, flags, ...), then its data area. */
-function block5(fields: number[], data = new Uint8Array(0)) {
+function block5(fields: number[], data: Uint8Array = new Uint8Array(0)) {
   const body = new Uint8Array(fields);
   const head = concat([new Uint8Array(vint(body.length)), body]);
   return concat([u32le(crc32(head)), head, data]);
@@ -120,14 +120,16 @@ export function renamed(bytes: Uint8Array, names: Record<string, string>): Uint8
   return out;
 }
 
-/** Bytes as the Source the readers take, counting the bytes read. */
+/** Bytes as the Source the readers take, keeping the reads and counting the bytes read. */
 export function counted(bytes: Uint8Array) {
   const source = {
     size: bytes.length,
     bytesRead: 0,
+    reads: [] as Array<[offset: number, length: number]>,
     async read(offset: number, length: number) {
       const part = bytes.subarray(offset, Math.min(bytes.length, offset + length));
       source.bytesRead += part.length;
+      source.reads.push([offset, part.length]);
       return part;
     },
   };

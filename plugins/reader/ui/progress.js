@@ -46,8 +46,15 @@ export function createProgress(element, status) {
         abort = () => reject(signal.reason);
         signal.addEventListener("abort", abort, { once: true });
       });
+      // A job that knows how far it is says so: the bar becomes determinate.
+      const report = (/** @type {number} */ value, /** @type {number} */ max) => {
+        if (!jobs.has(controller) || !(max > 0)) return;
+        job.value = value;
+        job.max = max;
+        render();
+      };
       try {
-        return await Promise.race([operation(signal), stopped]);
+        return await Promise.race([operation(signal, report), stopped]);
       } catch (error) {
         if (signal.aborted && jobs.has(controller)) status(`Decoding ${detail} was cancelled.`);
         throw error;

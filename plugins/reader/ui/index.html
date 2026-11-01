@@ -4,7 +4,13 @@
     <meta charset="utf-8" />
     <title>Reader</title>
     <script type="importmap">
-      { "imports": { "@endue-ai/plugin-sdk": "/_desk/plugin-sdk.js", "@endue-ai/ui": "/_desk/ui.js" } }
+      {
+        "imports": {
+          "@endue-ai/plugin-sdk": "/_desk/plugin-sdk.js",
+          "@endue-ai/ui": "/_desk/ui.js",
+          "@endue-ai/formats/": "/endue.formats/lib/"
+        }
+      }
     </script>
     <link rel="stylesheet" href="./vendor/pdf_layers.css" />
     <link rel="stylesheet" href="./style.css" />
@@ -68,7 +74,7 @@
         </div>
       </aside>
       <main id="doc" tabindex="0" aria-label="Document">
-        <p id="empty">Open a PDF, an e-book or a comic from the files list, or with Mod+O.</p>
+        <p id="empty">Open a PDF, an e-book, a comic or a DjVu book from the files list, or with Mod+O.</p>
         <div id="pages" hidden></div>
         <article id="chapter" hidden></article>
         <nav id="chapter-nav" aria-label="Chapters" hidden>
