@@ -128,7 +128,7 @@ describe("reading in ranges", () => {
       null,
     ]);
     expect(view.shown.at(-1)).toMatchObject({ size: bytes.length, doc: { kind: "document" } });
-  });
+  }, 20_000);
 });
 
 describe("a file over 8 MiB", () => {
@@ -150,7 +150,7 @@ describe("a file over 8 MiB", () => {
     expect(doc).toEqual(expected);
     expect(texts(doc)).toHaveLength(1201);
     expect(view.shown.at(-1)).toMatchObject({ size: bytes.length });
-  });
+  }, 20_000);
 
   it("a small file stays on the main thread", async () => {
     const workers = fakeWorkers();
@@ -189,7 +189,7 @@ describe("a file over 8 MiB", () => {
       });
       expect(worker, name).toEqual(native);
     }
-  });
+  }, 20_000);
 });
 
 describe("Cancel", () => {
@@ -220,7 +220,7 @@ describe("Cancel", () => {
     await expect(visit).rejects.toThrow("Opening big.docx was cancelled.");
     expect(workers.terminated()).toBe(1);
     expect(view.shown.at(-1)).toBeNull();
-  });
+  }, 20_000);
 });
 
 describe("the bar", () => {

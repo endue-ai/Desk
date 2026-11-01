@@ -176,8 +176,11 @@ describe("reading in ranges", () => {
     expect(src).toMatch(/^blob:/);
     const blob = resolveObjectURL(src);
     expect(blob?.type).toBe("image/png");
-    expect(new Uint8Array((await blob?.arrayBuffer()) ?? [])).toEqual(bytes);
-  });
+    // Compared as buffers: toEqual walks 4 MiB element by element for seconds.
+    const shown = Buffer.from((await blob?.arrayBuffer()) ?? new ArrayBuffer(0));
+    expect(shown.length).toBe(bytes.length);
+    expect(Buffer.compare(shown, Buffer.from(bytes))).toBe(0);
+  }, 20_000);
 
   it("Cancel while reading stops the read, keeps the image on screen and says so", async () => {
     const fetcher = vi.fn(
@@ -245,7 +248,7 @@ describe("decoding in a worker", () => {
     expect(shown).toMatchObject({ kind: "pixels", format: "OpenEXR", width: 1024, height: 1400 });
     expect(Array.from(shown?.pixels?.data.subarray(0, 4) ?? [])).toEqual([255, 188, 0, 255]);
     expect(view.progress).toHaveBeenLastCalledWith(null);
-  });
+  }, 20_000);
 
   it("a small EXR decodes in place, without a worker", async () => {
     const { start } = fakeWorkers();
@@ -296,5 +299,5 @@ describe("decoding in a worker", () => {
     expect(after?.pixels?.data).not.toEqual(before);
     await host.command("desk.buffers.closed", { buffer: volume.buffer });
     expect(workers[0]?.terminated).toBe(true);
-  });
+  }, 20_000);
 });

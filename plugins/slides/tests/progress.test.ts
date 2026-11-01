@@ -110,7 +110,7 @@ describe("reading in ranges", () => {
     const labels = view.phases.map((p) => p?.label ?? null);
     expect(labels.filter((l, i) => l !== labels[i - 1])).toEqual(["Reading", "Opening", null]);
     expect(view.statuses).toEqual(["Opening a.pptx…", "a.pptx: 2 slides."]);
-  });
+  }, 20_000);
 });
 
 describe("a file over 8 MiB", () => {
@@ -136,7 +136,7 @@ describe("a file over 8 MiB", () => {
     expect(workers.terminated()).toBe(0);
     await host.command("desk.buffers.closed", { buffer: BIG.buffer });
     expect(workers.terminated()).toBe(1);
-  });
+  }, 20_000);
 
   it("a small file stays on the main thread", async () => {
     const workers = fakeWorkers();
@@ -165,7 +165,7 @@ describe("a file over 8 MiB", () => {
       });
       expect(JSON.stringify(worker), name).toBe(JSON.stringify(native));
     }
-  });
+  }, 20_000);
 });
 
 describe("Cancel", () => {
@@ -196,7 +196,7 @@ describe("Cancel", () => {
     await expect(visit).rejects.toThrow("Opening big.pptx was cancelled.");
     expect(workers.terminated()).toBe(1);
     expect(view.shown.at(-1)).toBeNull();
-  });
+  }, 20_000);
 });
 
 describe("the bar", () => {

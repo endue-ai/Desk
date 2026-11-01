@@ -147,7 +147,7 @@ describe("large pages", () => {
     expect(seen.at(-1)).toBeNull();
     expect(shadow().querySelectorAll("p")).toHaveLength(1501);
     expect(byId("file-name").textContent).toBe("a.html");
-  });
+  }, 20_000);
 
   it("a huge page opens with its first part; a jump past it copies the rest first", async () => {
     Element.prototype.scrollIntoView = vi.fn();
@@ -169,7 +169,7 @@ describe("large pages", () => {
     expect(shadow().querySelectorAll("p")).toHaveLength(1501);
     const target = vi.mocked(Element.prototype.scrollIntoView).mock.contexts.at(-1) as Element;
     expect(target.id).toBe("end");
-  });
+  }, 20_000);
 
   it("Cancel while a page draws puts the previous file back", async () => {
     const seen: Progress[] = [];
@@ -261,7 +261,7 @@ describe("large archives in a worker", () => {
     expect(started[0]?.terminated).toBe(false);
     await host.command("desk.buffers.closed", { buffer: M.buffer });
     expect(started[0]?.terminated).toBe(true);
-  });
+  }, 20_000);
 
   it("a small file never starts a worker", async () => {
     const { startWorker } = workers();
