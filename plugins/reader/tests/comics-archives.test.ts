@@ -1,12 +1,16 @@
-// CB7 and CBR comics through endue.formats: their images in natural order, one page each, like CBZ;
-// a solid archive decoded once, in its own order, with each page handed over as it comes out;
-// encrypted and damaged archives as the details view with the library's sentence.
+// Comics: CBZ and CBT through the plugin's own readers, CB7 and CBR through endue.formats, all with
+// their images in natural order, one page each; a solid archive decoded once, in its own order, with
+// each page handed over as it comes out; encrypted and damaged archives as the details view with
+// the library's sentence.
 import { ENCRYPTED, LOCKED, openRar } from "@endue-ai/formats/rar/index.js";
 import { describe, expect, it } from "vitest";
 import { ORIGINALS } from "../../formats/tests/rar/originals.mjs";
+import { readComic } from "../ui/formats/comics.js";
+import { readTar } from "../ui/formats/tar.js";
+import { readZip } from "../ui/formats/zip.js";
 import { openBook } from "../ui/open.js";
 import { cb7, counted, library, rar5Stored, renamed } from "./build/comic-archives";
-import { COMIC_PAGES } from "./build/comics";
+import { COMIC_PAGES, cbt, cbz } from "./build/comics";
 import { localWorkers } from "./build/local-worker";
 
 type Comic = {
@@ -60,6 +64,24 @@ const original = (page: string) => {
   const path = Object.entries(AS_PAGES).find(([, name]) => name === page)?.[0];
   return (ORIGINALS as Record<string, () => Uint8Array>)[path ?? ""]?.();
 };
+
+describe("CBZ and CBT", () => {
+  it.each([
+    ["CBZ", async () => readComic(await readZip(cbz()), "CBZ")],
+    ["CBT", async () => readComic(readTar(cbt()), "CBT")],
+  ])("%s: the images in natural order, one page each", async (kind, read) => {
+    const book = await read();
+    expect(book).toMatchObject({ kind: "pages", format: `${kind} comic` });
+    expect(book.names).toEqual(NATURAL);
+    expect(book.pages).toHaveLength(3);
+    expect((await book.image(0)).mime).toBe("image/png");
+    expect(await book.measure(2)).toEqual({ width: 6, height: 9 });
+  });
+
+  it("CBZ through openBook, by its first bytes", async () => {
+    expect(await open(cbz(), "issue.zip")).toMatchObject({ kind: "pages", format: "CBZ comic" });
+  });
+});
 
 describe("CB7", () => {
   it("bsdtar's solid LZMA2 comic: the images in natural order, one page each", async () => {
