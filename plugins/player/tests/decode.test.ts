@@ -1,8 +1,10 @@
 // The vendored decoder (ui/vendor/ffmpeg/ffmpeg.wasm, built by scripts/vendor-ffmpeg.sh) in Node:
 // the first frames and samples of each format WebKit cannot decode, their sizes and a checksum, and
 // seeking. Fixtures: make-decode-fixtures.sh and make-fixtures.sh. The tones are FFmpeg's sine at
-// an eighth of full scale (RMS 0.0884), the DSD ones half scale (RMS 0.3536); the pictures' mean
-// luma was recorded from FFmpeg 9.0.2's decoders.
+// an eighth of full scale (RMS 0.0884; the stereo APE one is spread over two channels at -3 dB, RMS
+// 0.0625), the DSD ones half scale (RMS 0.3536). The pictures' mean luma and the AMR tone's level
+// (speech coding keeps a pure tone's level only roughly) were recorded from FFmpeg 9.0.2's own
+// decoders on the command line.
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
@@ -100,13 +102,27 @@ describe("the first frames of what WebKit cannot decode", () => {
 });
 
 const AUDIO = [
-  { name: "tone.wma", codec: "wmav2", rate: 8000, channels: 1, rms: 0.0884 },
-  { name: "decode/tone.ape", codec: "ape", rate: 44100, channels: 2, rms: 0.0884 },
-  { name: "tone.wv", codec: "wavpack", rate: 8000, channels: 1, rms: 0.0884 },
-  { name: "decode/tone.amr", codec: "amrnb", rate: 8000, channels: 1, rms: 0.0884, loose: true },
-  // DSD decodes at 352.8 kHz; the decoder averages it down to 176.4 kHz.
-  { name: "decode/tone.dsf", codec: "dsd_lsbf_planar", rate: 176400, channels: 2, rms: 0.3536 },
-  { name: "decode/tone.dff", codec: "dsd_msbf", rate: 176400, channels: 2, rms: 0.3536 },
+  { name: "tone.wma", codec: "wmav2", rate: 8000, channels: 1, rms: 0.0884, seconds: 0.2 },
+  { name: "decode/tone.ape", codec: "ape", rate: 44100, channels: 2, rms: 0.0625, seconds: 0.2 },
+  { name: "tone.wv", codec: "wavpack", rate: 8000, channels: 1, rms: 0.0884, seconds: 0.2 },
+  { name: "decode/tone.amr", codec: "amrnb", rate: 8000, channels: 1, rms: 0.0643, seconds: 0.2 },
+  // DSD decodes at 352.8 kHz; the decoder averages it down to 176.4 kHz. The clips are short.
+  {
+    name: "decode/tone.dsf",
+    codec: "dsd_lsbf_planar",
+    rate: 176400,
+    channels: 2,
+    rms: 0.3536,
+    seconds: 0.1,
+  },
+  {
+    name: "decode/tone.dff",
+    codec: "dsd_msbf",
+    rate: 176400,
+    channels: 2,
+    rms: 0.3536,
+    seconds: 0.04,
+  },
 ];
 
 describe("the first samples of what WebKit cannot decode", () => {
@@ -119,11 +135,10 @@ describe("the first samples of what WebKit cannot decode", () => {
         channels: want.channels,
         codec: want.codec,
       });
-      const got = rms(media, 0.2);
+      const got = rms(media, want.seconds);
       expect(got).toMatchObject({ rate: want.rate, channels: want.channels });
-      expect(got.count).toBeGreaterThanOrEqual(want.rate * 0.2);
-      // Lossy speech coding keeps a tone's level only roughly.
-      expect(Math.abs(got.value - want.rms) / want.rms).toBeLessThan(want.loose ? 0.25 : 0.05);
+      expect(got.count).toBeGreaterThanOrEqual(want.rate * want.seconds);
+      expect(Math.abs(got.value - want.rms) / want.rms).toBeLessThan(0.05);
       media.close();
     });
 });
@@ -187,8 +202,9 @@ describe("what the decoder refuses, in words", () => {
   });
 
   it("a file cut short ends cleanly", () => {
+    // Three quarters: past the headers (the first 10 KB of this small AVI), into its frames.
     const whole = bytesOf("clip.avi");
-    const media = ffmpeg.open(fileOf(whole.subarray(0, whole.length >> 1)), {
+    const media = ffmpeg.open(fileOf(whole.subarray(0, Math.floor(whole.length * 0.75))), {
       video: true,
       audio: true,
     });

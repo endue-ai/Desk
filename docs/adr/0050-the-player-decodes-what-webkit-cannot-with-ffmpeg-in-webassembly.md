@@ -82,7 +82,7 @@ library that no one could write again.
   decoders, seek in a fraction of a second and cost no WebAssembly at all.
 * Good, because the long tail (WMV, RealMedia, OGV, VOB, WMA, APE, WavPack, AMR, DSD) plays without a
   native binary, in the same transport, with the same subtitles, playlists, resume and tags.
-* Bad, because the vendored binary adds about {SIZE} to the repository and is updated by rebuilding.
+* Bad, because the vendored binary adds about 2.6 MiB to the repository and is updated by rebuilding.
 * Bad, because the decoder is single-threaded: 1080p VC-1 or MPEG-2 may drop frames on slower machines,
   and the sound's pitch follows the speed setting on the software path.
 * Bad, because H.264, HEVC and Opus are not in the software build (WebKit decodes the first two; FFmpeg's
