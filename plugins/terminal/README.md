@@ -30,7 +30,8 @@ asked for once with `perm.request`; a refusal is said in the terminal: `Not allo
 | `ui/vendor/` | xterm.js 6 with the fit and unicode11 addons (MIT), copied by `just vendor-terminal` |
 
 Inside a terminal Escape and Control chords belong to the shell; the desk's own chords (`keys.js`,
-plus `endue.terminal.keys-to-desk`) still reach the desk. Copy is `Mod+C` over a selection (and
+plus `endue.terminal.keys-to-desk`) still reach the desk. `Mod+Alt+Left/Right` switches buffers
+on every platform; `Control+Tab` and `Control+Shift+Tab` move focus between surfaces. Copy is `Mod+C` over a selection (and
 `Control+Shift+C`), paste `Mod+V` (and `Control+Shift+V`). Settings: `endue.terminal.*` in `plugin.json`.
 
 ```bash
