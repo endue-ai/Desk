@@ -1,0 +1,57 @@
+{
+  "target": "View",
+  "description": "tabs of a card and markdown, made by Eris from the person's words",
+  "instance": {
+    "id": "eris.reading",
+    "version": "0.1.0",
+    "title": "Reading",
+    "requires": {
+      "feeds": {
+        "kinds": ["entry"]
+      }
+    },
+    "layout": {
+      "type": "tabs",
+      "children": [
+        {
+          "type": "card",
+          "title": "New",
+          "binding": {
+            "kinds": ["entry"],
+            "sources": ["$feeds"],
+            "sort": [
+              {
+                "field": "publishedAt",
+                "dir": "desc"
+              }
+            ],
+            "limit": 10
+          },
+          "fields": [
+            {
+              "value": "{title}"
+            },
+            {
+              "label": "From",
+              "value": "{feed}"
+            },
+            {
+              "value": "{publishedAt|relative}"
+            }
+          ]
+        },
+        {
+          "type": "markdown",
+          "title": "About",
+          "text": "Posts from the feeds you follow. Use {{ and }} for braces."
+        }
+      ]
+    },
+    "provenance": {
+      "author": "eris",
+      "createdAt": "2026-10-30T09:00:00+09:00",
+      "words": "show me what my feeds posted, newest first",
+      "brain": "endue"
+    }
+  }
+}

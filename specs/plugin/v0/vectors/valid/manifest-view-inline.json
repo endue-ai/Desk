@@ -1,0 +1,35 @@
+{
+  "target": "PluginManifest",
+  "description": "a view plugin: no entry, one view inline, and the data it reads",
+  "instance": {
+    "id": "example.today",
+    "name": "Today",
+    "version": "0.1.0",
+    "kind": "view",
+    "description": "Today's events.",
+    "permissions": [
+      {
+        "permission": "data:read",
+        "kinds": ["event"]
+      }
+    ],
+    "view": {
+      "id": "example.today",
+      "version": "0.1.0",
+      "title": "Today",
+      "requires": {
+        "calendar": {
+          "kinds": ["event"]
+        }
+      },
+      "layout": {
+        "type": "agenda",
+        "range": "day",
+        "binding": {
+          "kinds": ["event"],
+          "sources": ["$calendar"]
+        }
+      }
+    }
+  }
+}

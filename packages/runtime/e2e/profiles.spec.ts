@@ -80,3 +80,31 @@ test.describe("desk.profiles", () => {
     await expect(status(page)).toHaveText("Profile: Quiet");
   });
 });
+
+test.describe("desk.profiles: what a switch turned off", () => {
+  test("a plugin a profile turned off comes back with a profile that leaves it on", async ({
+    page,
+  }) => {
+    await open(page);
+    await setEnabled(page, "test.counter", false);
+    await page.evaluate(() =>
+      window.__desk.runtime.commands.run("desk.profiles.save", { id: "quiet", name: "Quiet" }),
+    );
+    await setEnabled(page, "test.counter", true);
+    await page.evaluate(() =>
+      window.__desk.runtime.commands.run("desk.profiles.switch", { id: "quiet" }),
+    );
+    await expect(page.locator('[data-surface="test.counter"]')).toHaveCount(0);
+    await page.evaluate(() =>
+      window.__desk.runtime.commands.run("desk.profiles.switch", { id: "default" }),
+    );
+    await expect(page.locator('[data-surface="test.counter"]')).toHaveCount(1);
+    await expect(status(page)).toHaveText("Profile: Default");
+  });
+
+  test("init.yaml's problem shows as a warning at start", async ({ page }) => {
+    await open(page, `?initProblem=${encodeURIComponent("line 3 is not YAML")}`);
+    await expect(status(page)).toHaveText("init.yaml is not in force — line 3 is not YAML");
+    await expect(status(page)).toHaveAttribute("data-level", "warning");
+  });
+});

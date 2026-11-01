@@ -1,0 +1,188 @@
+{
+  "id": "endue.database",
+  "name": "Database",
+  "version": "0.1.0",
+  "kind": "ui",
+  "entry": "ui/index.html",
+  "description": "A client for PostgreSQL, MySQL / MariaDB and SQLite through their own command-line clients without a shell: connections, an explorer of schemas, tables and columns, SQL consoles, results that keep NULL apart, table pages, history, and guards for read-only and production connections.",
+  "permissions": [
+    { "permission": "proc:spawn", "commands": ["psql", "mysql", "mariadb", "sqlite3"] },
+    {
+      "permission": "cmd:invoke",
+      "ids": ["desk.palette.pick", "desk.buffers.open", "desk.buffers.update", "desk.buffers.close"]
+    }
+  ],
+  "surfaces": [{ "id": "main", "title": "Database", "placement": "center" }],
+  "contributes": {
+    "files": [
+      { "pattern": "*.sqlite", "plugin": "endue.database" },
+      { "pattern": "*.sqlite3", "plugin": "endue.database" },
+      { "pattern": "*.db3", "plugin": "endue.database" }
+    ],
+    "commands": [
+      {
+        "id": "endue.database.open",
+        "title": "Database: open",
+        "keywords": ["sql", "postgres", "mysql", "sqlite", "client"]
+      },
+      {
+        "id": "endue.database.console",
+        "title": "Database: open a console",
+        "keywords": ["sql", "query"]
+      },
+      {
+        "id": "endue.database.new-connection",
+        "title": "Database: new connection",
+        "keywords": ["add", "connect", "postgres", "mysql", "mariadb", "sqlite"]
+      },
+      {
+        "id": "endue.database.import-uri",
+        "title": "Database: new connection from a URI",
+        "keywords": ["url", "dsn", "connection string"]
+      },
+      {
+        "id": "endue.database.edit-connection",
+        "title": "Database: change a connection",
+        "keywords": ["edit"]
+      },
+      {
+        "id": "endue.database.duplicate-connection",
+        "title": "Database: duplicate a connection",
+        "keywords": ["copy", "clone"]
+      },
+      {
+        "id": "endue.database.remove-connection",
+        "title": "Database: remove a connection",
+        "keywords": ["delete", "forget"]
+      },
+      {
+        "id": "endue.database.test-connection",
+        "title": "Database: test a connection",
+        "keywords": ["ping", "version"]
+      },
+      {
+        "id": "endue.database.disconnect",
+        "title": "Database: disconnect",
+        "keywords": ["forget password", "sign out"]
+      },
+      {
+        "id": "endue.database.copy-uri",
+        "title": "Database: copy the connection URI",
+        "keywords": ["url", "dsn"]
+      },
+      {
+        "id": "endue.database.run",
+        "title": "Database: run the statement",
+        "keywords": ["execute", "query", "selection"]
+      },
+      {
+        "id": "endue.database.run-all",
+        "title": "Database: run the script",
+        "keywords": ["execute", "all"]
+      },
+      {
+        "id": "endue.database.run-transaction",
+        "title": "Database: run the script in one transaction",
+        "keywords": ["atomic", "begin", "commit"]
+      },
+      {
+        "id": "endue.database.dry-run",
+        "title": "Database: dry run (roll back at the end)",
+        "keywords": ["rollback", "preview", "test"]
+      },
+      {
+        "id": "endue.database.explain",
+        "title": "Database: explain the statement",
+        "keywords": ["plan", "query plan"]
+      },
+      {
+        "id": "endue.database.cancel",
+        "title": "Database: cancel the run",
+        "keywords": ["stop", "kill", "interrupt"]
+      },
+      {
+        "id": "endue.database.more",
+        "title": "Database: load more rows",
+        "keywords": ["fetch", "page"]
+      },
+      {
+        "id": "endue.database.open-table",
+        "title": "Database: open a table's rows",
+        "keywords": ["data", "browse"]
+      },
+      {
+        "id": "endue.database.refresh",
+        "title": "Database: refresh the explorer",
+        "keywords": ["reload", "schema"]
+      },
+      {
+        "id": "endue.database.history",
+        "title": "Database: history",
+        "keywords": ["recent", "earlier queries"]
+      },
+      {
+        "id": "endue.database.copy",
+        "title": "Database: copy the result as",
+        "keywords": ["csv", "tsv", "json", "markdown", "insert", "export"]
+      },
+      {
+        "id": "endue.database.clients",
+        "title": "Database: check the clients",
+        "keywords": ["psql", "mysql", "mariadb", "sqlite3", "install", "version"]
+      }
+    ],
+    "keys": [{ "key": "Mod+Shift+B", "command": "endue.database.open" }],
+    "settings": {
+      "endue.database.max-rows": {
+        "kind": "integer",
+        "default": 500,
+        "description": "Rows a result keeps (1 to 100000); More rows loads four times as many."
+      },
+      "endue.database.timeout-seconds": {
+        "kind": "integer",
+        "default": 0,
+        "description": "Stop a run that takes longer, in seconds; 0 waits as long as it takes. PostgreSQL ends the statement on the server (statement_timeout)."
+      },
+      "endue.database.confirm": {
+        "kind": "boolean",
+        "default": true,
+        "description": "Ask before statements that change a production connection, and before DROP, TRUNCATE, or UPDATE and DELETE without WHERE anywhere. Agents' writes are always asked."
+      },
+      "endue.database.history": {
+        "kind": "boolean",
+        "default": true,
+        "description": "Keep the statements each connection ran (never their results, never statements that carry a password)."
+      },
+      "endue.database.history-max": {
+        "kind": "integer",
+        "default": 200,
+        "description": "How many statements each connection's history keeps (0 to 1000)."
+      },
+      "endue.database.system-schemas": {
+        "kind": "boolean",
+        "default": false,
+        "description": "Show the system schemas in the explorer (pg_catalog, information_schema, mysql, sys ...)."
+      },
+      "endue.database.psql": {
+        "kind": "string",
+        "default": "",
+        "description": "The psql program: a name on PATH or a full path. Empty: psql. A path outside the plugin's grants is asked for once."
+      },
+      "endue.database.mysql": {
+        "kind": "string",
+        "default": "",
+        "description": "The MySQL client: a name on PATH or a full path. Empty: mysql, else mariadb."
+      },
+      "endue.database.sqlite3": {
+        "kind": "string",
+        "default": "",
+        "description": "The sqlite3 program: a name on PATH or a full path. Empty: sqlite3."
+      },
+      "endue.database.path": {
+        "kind": "array",
+        "default": [],
+        "description": "Folders searched for the clients when they are not on the desk's PATH, before Homebrew's and the system's."
+      }
+    }
+  }
+}

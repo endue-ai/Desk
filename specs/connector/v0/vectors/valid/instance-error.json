@@ -1,0 +1,20 @@
+{
+  "target": "ConnectorInstance",
+  "description": "an instance in error that needs signing in again; secret settings are not listed",
+  "instance": {
+    "connector": "example.jira",
+    "instance": "work",
+    "title": "Work Jira",
+    "settings": {
+      "site": "https://example.atlassian.net"
+    },
+    "status": {
+      "state": "error",
+      "lastSyncAt": "2026-10-30T08:00:00Z",
+      "error": {
+        "message": "The token was revoked.",
+        "reauth": true
+      }
+    }
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "target": "ItemChange",
+  "description": "an item that is gone, named by its source and id",
+  "instance": {
+    "change": "removed",
+    "source": {
+      "connector": "endue.os-reminders",
+      "instance": "default"
+    },
+    "id": "x-1042"
+  }
+}

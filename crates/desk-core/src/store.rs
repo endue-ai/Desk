@@ -1,4 +1,5 @@
 //! desk-core storage for store.get and store.set: one JSON value per caller and key, in one file.
+//! settings.set keeps its values the same way, in a file of its own (`core_settings`).
 
 use std::collections::BTreeMap;
 use std::fs;
@@ -28,6 +29,15 @@ impl Store {
 
     pub fn get(&self, caller: &str, key: &str) -> Option<Value> {
         self.data.get(caller)?.get(key).cloned()
+    }
+
+    /// Every value as (caller, key, value), by caller and then key.
+    pub fn all(&self) -> impl Iterator<Item = (&str, &str, &Value)> {
+        self.data.iter().flat_map(|(caller, values)| {
+            values
+                .iter()
+                .map(move |(key, value)| (caller.as_str(), key.as_str(), value))
+        })
     }
 
     /// Set a value. Fails when it is larger than `MAX_VALUE_BYTES`.

@@ -62,7 +62,7 @@ Emacs 에서 *작은 코어 + 모든 것은 커맨드 + 실행 중에 고친다*
 
 | ID | 요구사항 | 현재 | 단계 |
 | --- | --- | --- | --- |
-| CORE-01 | 브리지 v0 메서드를 전부 처리한다. `fs.write` · `fs.watch` · `proc.*` · `net.fetch` · `audio.capture.*` · `ui.*` 가 `unsupported` 가 아니다 | 일부 (37 중 18 이 통째로 `unsupported`: proc ×4 · `net.fetch` · `audio.capture` ×2 · `ui.surface` ×2 · `perm.list` · `perm.answer` · settings ×3 · log ×2 · events ×2. `perm.request` once · always 와 남의 grant `perm.revoke` 는 일부. #43 · #55) | 1 |
+| CORE-01 | 브리지 v0 메서드를 전부 처리한다. `fs.write` · `fs.watch` · `proc.*` · `net.fetch` · `audio.capture.*` · `ui.*` 가 `unsupported` 가 아니다 | 일부 (37 중 14 가 통째로 `unsupported`: `net.fetch` · `audio.capture` ×2 · `ui.surface` ×2 · `perm.list` · `perm.answer` · settings ×3 · log ×2 · events ×2. `perm.request` once · always 와 남의 grant `perm.revoke` 는 일부. #43 · #55) | 1 |
 | CORE-02 | grant 는 디스크에 남아 재시작 뒤 유지된다. 기간은 한 번 · 이번 세션 · 항상 중 하나. 호출자(런타임 · 플러그인 · 에이전트 · CLI)마다 따로 갖고, 사람이 언제든 목록을 보고 회수하며 `perm.changed` 로 알린다 | 일부 (메모리) | 1 |
 | CORE-03 | 프롬프트 정책: 같은 요청을 반복해 묻지 않는다. 광역 권한(임의 `proc` · `net *`)은 경고 문구를 붙인다. 에이전트가 낸 요청은 에이전트 이름과 이유를 보인다. 사람이 정한 승인 정책(항상 묻기 · 세션 · 자동)을 따른다 | 일부 (#69: 광역 권한 경고 문구, 호출자 · 이유 · 기간을 보이는 프롬프트 창. 코어의 반복 질문 막기 · 승인 정책은 없음) | 1 |
 | CORE-04 | 커맨드 레지스트리: id(reverse-domain) · 설명 · 인자 JSON Schema · 제공자 · 가용 조건(`when`). 등록 · 조회 · 호출은 브리지 `cmd.*` 로. 클릭 · 키 · 팔레트 · Eris · 에이전트 · CLI 가 같은 경로로 부르고, 호출마다 호출자가 기록된다 | 있음 (#55: 코어의 `cmd.*`, 인자 스키마 검사 · 호출자 기록. `when` 은 기록만 하고 아직 평가하지 않음) | 1 |
@@ -88,7 +88,7 @@ Tauri 셸과 `desk-sys` 는 드라이버입니다. 검사는 하지 않고 코�
 | ID | 요구사항 | 현재 | 단계 |
 | --- | --- | --- | --- |
 | SYS-01 | fs: 원자적 write · notify 기반 watch(디바운스) · 심볼릭 링크와 권한 오류의 오류 코드 | 있음 (#63: 원자적 write · 디바운스 watch · 오류 코드. #55: 코어의 `fs.write` · `fs.watch`) | 1 |
-| SYS-02 | proc: 셸 없는 spawn · PTY(portable-pty) · stdin/stdout/stderr 스트림 · 신호 · 환경 · cwd · 좀비 회수 | 일부 (#63: desk-sys `proc`, 셸 없는 spawn · PTY · 스트림 · 신호 · 환경 · cwd · 회수. 코어는 아직 `unsupported`) | 1 |
+| SYS-02 | proc: 셸 없는 spawn · PTY(portable-pty) · stdin/stdout/stderr 스트림 · 신호 · 환경 · cwd · 좀비 회수 | 있음 (#63: desk-sys `proc`. 터미널 변경: 코어가 `proc.*` 를 처리 — 권한 · 소유 · 이벤트 · off · 회수 때 종료, `core_proc.rs`) | 1 |
 | SYS-03 | net: 호스트 allowlist · 범위 밖 리다이렉트 금지 · 타임아웃 · OS 프록시 존중. 스트리밍 바디는 뒤에 | 일부 (#63: desk-sys `net`, 호스트 allowlist · 리다이렉트 검사 · 타임아웃 · 프록시는 환경 변수. 코어는 아직 `unsupported`) | 1 |
 | SYS-04 | audio: cpal 캡처 · 장치 선택 · 온디바이스 호출어 · 오디오는 브리지로 나가지 않는다(v0) | 없음 | 3 |
 | SYS-05 | ui 원시: 네이티브 알림 · 파일/폴더 선택 창 · 외부 링크 열기 · 클립보드(1) · 다중 창 · 전체 화면 · 항상 위 · 트레이 · 전역 단축키(4) | 없음 | 1 · 4 |
@@ -174,8 +174,8 @@ Tauri 셸과 `desk-sys` 는 드라이버입니다. 검사는 하지 않고 코�
 | `messages` | `*Messages*`: 로그 · 오류 · 최근 커맨드 | `log.*` | 없음 | 1 |
 | `theme-endue` | 기본 테마 밝음 · 어두움 | kind `theme` | 있음 (#55 `desk.theme`: 밝음 · 어두움 · 고대비. kind `theme` 대신 `contributes.themes`) | 1 |
 | `help` | describe (RT-06) · 단축키 치트시트 · walkthrough 목록 | `cmd.list` · 키맵 읽기 | 없음 | 2 |
-| `files` | 허락한 폴더 보기(dired): 열기 · 드래그 · 감시 | `fs:read` · `dialog` | 일부 (#55 `desk.files`: 여는 규칙 · 최근 · 저장 · 되돌리기 · 디스크 변경. 폴더 보기는 없음) | 2 |
-| `terminal` | PTY 표면(term) | `proc:spawn` pty | 없음 | 2 |
+| `files` | 허락한 폴더 보기(dired): 열기 · 드래그 · 감시 | `fs:read` · `dialog` | 일부 (#55 `desk.files`: 여는 규칙 · 최근 · 저장 · 되돌리기 · 디스크 변경. 폴더 보기는 `endue.explorer`, `plugins/explorer`: 트리 · 열기 · 감시 · 드래그 내보내기 · 새 파일. 쓰기 작업과 `dialog` 는 없음, `explorer-requirements.md`) | 2 |
+| `terminal` | PTY 표면(term) | `proc:spawn` pty | 일부 (터미널 변경: `endue.terminal`, 셸 · 탭 · 버퍼 · 테마 · 키 · `run`. 요구사항은 `terminal-requirements.md`, 에뮬레이터는 ADR 0037) | 2 |
 | `scratch` | 빈 텍스트 표면, 저장 안 해도 남음 | store | 없음 | 2 |
 | `account` | endue ID 로그인 · 상태 · 동기화 (SYNC) | `sync.*` | 없음 | 3 |
 
@@ -186,7 +186,18 @@ Tauri 셸과 `desk-sys` 는 드라이버입니다. 검사는 하지 않고 코�
 | 플러그인 | 역할 | 단계 |
 | --- | --- | --- |
 | `notes` | 마크다운 메모 표면, 폴더에 파일로 저장 | 2 |
-| `viewer` | 마크다운 · 이미지 · JSON · PDF 미리보기 | 2 |
+| `git` | 키보드 중심 Git 표면: 상태 · 스테이징 · 커밋 · 로그 그래프 · diff. 모든 동작이 커맨드. 요구사항은 `git-plugin-requirements.md` | 2 |
+| `database` | PostgreSQL · MySQL / MariaDB · SQLite 클라이언트: 연결 · 탐색기 · SQL 콘솔 · 결과 · 읽기 전용과 운영 DB 보호. 엔진의 공식 CLI 를 셸 없이(ADR 0038). 요구사항은 `database-plugin-requirements.md` | 2 |
+| `docker` | 컨테이너 관리 표면: 컨테이너 · Compose · 이미지 · 볼륨 · 네트워크, 따라가는 로그 · 상세 · 셸 · 정리 · 실패 알림. 모든 동작이 커맨드. 요구사항은 `docker-plugin-requirements.md`, CLI 를 쓰는 이유는 ADR 0039 | 2 |
+| `sheets` | 스프레드시트를 한 그리드로: Excel(xlsx · xls · xlsb) · Numbers · ODS · CSV/TSV(구분자 · 인코딩 자동, EUC-KR 포함) · DIF · SYLK · Lotus · Quattro · Google Sheets 바로가기. 시트 탭 · 수식 바 · 찾기. SheetJS 를 vendoring(ADR 0043) | 2 |
+| `docs` | 워드 문서를 한 페이지 뷰로: Word(docx · doc) · ODF · RTF · HWPX · HWP · AbiWord · WordPerfect/Works(텍스트) · Pages(미리보기) · Google Docs 바로가기. 개요 · 주석 · 찾기. 한 문서 모델과 자체 리더 | 2 |
+| `slides` | 프레젠테이션을 한 뷰어로: PowerPoint(pptx · ppt) · ODP · Keynote(미리보기) · Google Slides 바로가기. 썸네일 레일 · 발표자 노트 · 재생 모드 | 2 |
+| `reader` | PDF · 전자책 · 만화를 한 리더로: PDF(pdf.js vendoring, ADR 0042) · XPS · EPUB · MOBI/KF8 · FB2 · CBZ/CBT. 목차 · 검색 · 북마크 · 노트. CBR · CB7 · DjVu 는 상세 정보 | 2 |
+| `images` | 이미지를 한 뷰어로: 웹 포맷 · HEIC · JPEG XL · TIFF(WebKit 이 해독하는 곳에서) · 자체 디코더(TGA · Netpbm · QOI · DDS · HDR · EXR · ICNS · KTX · DICOM · FITS · NIfTI) · RAW 내장 미리보기. 확대 · EXIF · 폴더 넘기기 · 비교 | 2 |
+| `player` | 영상 · 음성을 한 플레이어로: `fs.url` 스트리밍(ADR 0041), WebKit 이 못 트는 컨테이너는 코덱 정보, MIDI · AU 는 플러그인이 직접 재생. 자막(SRT · VTT · ASS · SAMI 등) · 재생목록 · 이어 보기 | 2 |
+| `data` | 구조화 데이터 · 설정 파일을 트리와 원문으로: JSON 계열 · YAML · TOML · XML · plist · INI · properties · dotenv · HCL · MessagePack · CBOR · BSON. 검색 · JSON Schema 검증 · 비밀 값 가림 | 2 |
+| `archives` | 압축 · 패키지 · 디스크 이미지를 한 트리로: ZIP 계열 · tar(gzip · bzip2 · xz · zstd · LZ4) · 7z · ISO · deb · rpm · gem · pkg · cab, 미리보기와 안전한 풀기(zip-slip 차단). RAR · MSI · 디스크 이미지는 목록이나 상세 정보. 범위 읽기(ADR 0041) | 2 |
+| `web` | 저장한 웹 페이지 · 웹 아카이브 · 링크 파일 · 피드를 안전하게: allowlist sanitizer 를 거쳐 shadow root 에(ADR 0044), MHTML · webarchive · WARC · MAFF, url · webloc · desktop · lnk 는 카드, RSS · Atom · OPML. 스크립트는 돌지 않고 네트워크는 쓰지 않는다 | 2 |
 | `calendar` · `mail` | endue 커넥터 표면 (장면 6 · 7) | 3 |
 | `tasks` | 할 일 보드 (장면 8 "Plan my week") | 3 |
 | `agent-chat` | 에이전트별 대화와 활동 기록 표면 (AG-05) | 3 |
@@ -299,12 +310,16 @@ CI · 테스트 층 · 릴리스 파이프라인은 `desk-structure.md` 가 정�
 | RT-01 · AG-02 (Tauri 앱이 셸을 띄우고, 에이전트 디렉터리 · 두뇌 상태가 브리지로) | #74 | 진행 중 |
 | 약속 2 · SYSP `eris` · `agents` · `rail` · `dock` (ADR 0026 · 0027 · 0028 초안, 설계 문서를 `main` 에 맞춤) | #75 | 진행 중 |
 | CORE-10 · DX-04 (WIT 가 브리지 전체를 덮고, hello-wasm 이 커맨드를 제공) | #76 | 진행 중 |
-| CORE-01 · SYS-02 · SYS-03 (코어가 `proc.*` · `net.fetch` · `ui.surface.*` 를 처리) | #77 | 진행 중 |
+| CORE-01 · SYS-02 · SYS-03 (코어가 `proc.*` · `net.fetch` · `ui.surface.*` 를 처리) | #77 | 진행 중 (`proc.*` 는 터미널 변경이 먼저 처리) |
+| SYSP `terminal` (`endue.terminal`, 코어의 `proc.*`, 런타임의 프로세스 이벤트 라우팅) | 터미널 변경 · `docs/ko/terminal-requirements.md` · ADR 0037 | 진행 중 |
 | BASE `notes` (파일을 여는 첫 플러그인) | #78 | 진행 중 |
 | PKG-04 · PKG-06 · BR-07 (SDK 와 브라우저 스텁이 브리지 v0 전부) | #79 | 진행 중 |
 | PKG-02 · PKG-03 (`desk` CLI 가 로컬 소켓으로 실행 중 데스크에) | #80 | 진행 중 |
 | SET-03 · CORE-16 (코어가 `settings.*` · `log.*` 를 처리) | #81 | 진행 중 |
 | OPS-01 (앱 e2e 와 설치 스모크) | #82 | 진행 중 |
+| BASE 파일 플러그인의 기반: `fs.read` 범위 읽기 · `fs.url` 스트리밍 · 확장자 대소문자 무시(ADR 0041) | #153 · #164 | 머지 |
+| BASE `sheets` · `docs` · `slides` · `reader` · `images` · `player` · `data` · `archives` · `web` (활동별 파일 플러그인, ADR 0042 · 0043 · 0044 · 0045) | #154–#162 · #165–#172 · #174 | 머지 |
+| 파일 플러그인 autoload: 시작할 때 꺼져 있고 파일을 열면 켜진다(ADR 0046) | #173 · #175 | 머지 |
 
 모드는 정책 스택(#54, #55 로 머지)에서 프로필로 이름이 바뀌었습니다. 이 문서의 RT-07 · SYSP `modes` 는 프로필을 뜻합니다.
 

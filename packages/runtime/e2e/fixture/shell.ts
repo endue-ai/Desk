@@ -11,19 +11,43 @@ import erisReply from "../../src/bridge/envelopes/eris-reply.json";
 import userHello from "../../src/bridge/envelopes/user-hello.json";
 import { ManualClock } from "../../src/clock";
 import { mountDesk } from "../../src/shell/Desk";
+import { sampleState } from "../../src/shell/state";
 
 const root = document.getElementById("desk");
 if (!root) throw new Error("no #desk element");
 const params = new URLSearchParams(location.search);
 const clock = new ManualClock();
 // The desk.* policies (the shell's own included) and the palette: the plugin chrome the shell
-// replaces (dock, toolbar, sidebar) is not installed here.
+// replaces (dock, toolbar, sidebar) is not installed here, nor the view engine and the view plugins
+// (views.html has them).
 const manifests = import.meta.glob<PluginManifest>("../../../../plugins/*/plugin.json", {
   eager: true,
   import: "default",
 });
+// ?plugins=1 adds the UI test plugins, whose centre surfaces open as the shell's windows.
+const testPlugins: PluginManifest[] = [
+  {
+    id: "test.counter",
+    version: "0.1.0",
+    kind: "ui",
+    entry: "ui/index.html",
+    surfaces: [{ id: "main", title: "Counter", placement: "center" }],
+  },
+  {
+    id: "example.hello-ui",
+    version: "0.1.0",
+    kind: "ui",
+    entry: "ui/index.html",
+    surfaces: [{ id: "main", title: "Hello", placement: "center" }],
+  },
+];
 const core = browserCore({
-  manifests: Object.values(manifests).filter((m) => m.id.startsWith("desk.")),
+  manifests: [
+    ...Object.values(manifests).filter(
+      (m) => m.id.startsWith("desk.") && m.id !== "desk.views" && m.kind !== "view",
+    ),
+    ...(params.has("plugins") ? testPlugins : []),
+  ],
   store: params.has("persist") ? localStore("desk.core.") : memoryStore(),
   init: {
     profile: "morning",
@@ -38,6 +62,7 @@ const core = browserCore({
 // A fixed wall clock and platform, so "4:12 ago" and "⌘N" read the same on every machine.
 const epoch = Date.parse("2026-10-28T09:00:00.000Z");
 const bridge = browserBridge({ now: () => clock.now(), epoch });
+const lang = params.get("lang") === "en" ? "en" : "ko";
 const desk = mountDesk({
   root,
   bridge,
@@ -46,7 +71,8 @@ const desk = mountDesk({
   clock,
   epoch,
   platform: "mac",
-  lang: params.get("lang") === "en" ? "en" : "ko",
+  lang,
+  seed: sampleState(lang, epoch),
 });
 
 /** Advance the clock in 16 ms frames, ending exactly at `ms` later. */
@@ -63,6 +89,7 @@ window.__shell = {
   desk,
   clock,
   bridge,
+  stub: core.stub,
   step,
   envelopes: { user: userHello as Envelope, eris: erisReply as Envelope },
 };

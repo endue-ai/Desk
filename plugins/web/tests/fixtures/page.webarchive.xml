@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>WebMainResource</key>
+	<dict>
+		<key>WebResourceData</key>
+		<data>PCFET0NUWVBFIGh0bWw+PGh0bWw+PGhlYWQ+PG1ldGEgY2hhcnNldD0idXRmLTgiPjx0aXRsZT5BcmNoaXZlZCBwYWdlPC90aXRsZT48bGluayByZWw9InN0eWxlc2hlZXQiIGhyZWY9InN0eWxlLmNzcyI+PC9oZWFkPjxib2R5PjxoMT5TYXZlZCBieSBTYWZhcmk8L2gxPjxwPkNhZsOpIGFuZCDtlZzqta3slrQ8L3A+PGltZyBzcmM9ImRvdC5wbmciIGFsdD0iZG90Ij48aW1nIHNyYz0iaHR0cHM6Ly9leGFtcGxlLmNvbS9yZW1vdGUucG5nIiBhbHQ9InJlbW90ZSI+PC9ib2R5PjwvaHRtbD4=</data>
+		<key>WebResourceFrameName</key>
+		<string></string>
+		<key>WebResourceMIMEType</key>
+		<string>text/html</string>
+		<key>WebResourceTextEncodingName</key>
+		<string>UTF-8</string>
+		<key>WebResourceURL</key>
+		<string>https://example.com/a/index.html</string>
+	</dict>
+	<key>WebSubresources</key>
+	<array>
+		<dict>
+			<key>WebResourceData</key>
+			<data>iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==</data>
+			<key>WebResourceMIMEType</key>
+			<string>image/png</string>
+			<key>WebResourceURL</key>
+			<string>https://example.com/a/dot.png</string>
+		</dict>
+		<dict>
+			<key>WebResourceData</key>
+			<data>aDEgeyBjb2xvcjogcmdiKDEwLCAyMCwgMzApOyB9</data>
+			<key>WebResourceMIMEType</key>
+			<string>text/css</string>
+			<key>WebResourceTextEncodingName</key>
+			<string>UTF-8</string>
+			<key>WebResourceURL</key>
+			<string>https://example.com/a/style.css</string>
+		</dict>
+	</array>
+</dict>
+</plist>

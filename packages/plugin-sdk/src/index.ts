@@ -3,9 +3,16 @@ export type {
   BridgeMethod,
   BridgeRequest,
   BridgeResponse,
+  DataReadPermission,
   EventName,
   Grant,
   GrantDuration,
+  Item,
+  ItemChange,
+  ItemKind,
+  ItemPage,
+  ItemQuery,
+  ItemSource,
   LogEntry,
   LogLevel,
   ParamsOf,
@@ -14,6 +21,10 @@ export type {
   ResultOf,
   Setting,
   SurfacePlacement,
+  View,
+  ViewComponent,
+  ViewNode,
+  ViewSummary,
 } from "@endue-ai/bridge";
 export { BridgeCallError } from "@endue-ai/bridge";
 export { CommandFailed, type CommandInfo, type PluginCommands } from "./commands";
@@ -24,6 +35,14 @@ export type {
   PluginSettings,
   SurfaceOptions,
 } from "./context";
+export { type PluginData, type PluginViews, readScope } from "./data";
+export {
+  type ByteSource,
+  byteSource,
+  type FileRef,
+  type ReadBytesOptions,
+  readBytes,
+} from "./files";
 export {
   type CommandOutcome,
   type HostMessage,
@@ -44,6 +63,7 @@ export {
   type PluginTheme,
   type UiPlugin,
 } from "./sdk";
+export { startWorker } from "./worker";
 
 export const NAME = "@endue-ai/plugin-sdk";
 

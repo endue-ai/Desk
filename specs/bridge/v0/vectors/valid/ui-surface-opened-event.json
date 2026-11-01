@@ -1,0 +1,14 @@
+{
+  "target": "BridgeEvent",
+  "description": "a surface that passed its checks, with the placement and title the runtime mounts it at",
+  "instance": {
+    "event": "ui.surface.opened",
+    "data": {
+      "handle": "s-1",
+      "caller": "example.hello",
+      "surface": "main",
+      "placement": "center",
+      "title": "Hello"
+    }
+  }
+}

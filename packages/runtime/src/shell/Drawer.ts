@@ -30,11 +30,11 @@ export function mountDrawer(root: HTMLElement, ctx: ShellCtx): () => void {
   root.append(el);
 
   const visible = () => {
-    const now = ctx.now();
+    const now = ctx.wall();
     return ctx.store.get().drawer.filter((d) => d.kind !== "recent" || now - d.at < 24 * HOUR);
   };
   const entry = (item: DrawerItem) => {
-    const age = ctx.now() - item.at;
+    const age = ctx.wall() - item.at;
     const hours = Math.floor(age / HOUR);
     return h(
       "li",

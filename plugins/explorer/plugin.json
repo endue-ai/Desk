@@ -1,0 +1,125 @@
+{
+  "id": "endue.explorer",
+  "name": "Explorer",
+  "version": "0.1.0",
+  "kind": "ui",
+  "entry": "ui/index.html",
+  "description": "Shows the folders the person allows as a tree, opens files in the plugin the desk names, and follows changes on disk.",
+  "permissions": [
+    {
+      "permission": "fs:read",
+      "paths": ["${home}/**"]
+    },
+    {
+      "permission": "fs:write",
+      "paths": ["${home}/**"]
+    },
+    {
+      "permission": "cmd:invoke",
+      "ids": [
+        "desk.files.open",
+        "desk.buffers.list",
+        "desk.palette.pick",
+        "endue.terminal.new",
+        "endue.git.status"
+      ]
+    },
+    {
+      "permission": "shell:open",
+      "paths": ["${home}/**"]
+    }
+  ],
+  "surfaces": [
+    {
+      "id": "main",
+      "title": "Explorer",
+      "placement": "left"
+    }
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "id": "endue.explorer.open",
+        "title": "Show the explorer",
+        "keywords": ["files", "folders", "tree", "dired", "explorer"]
+      },
+      {
+        "id": "endue.explorer.reveal",
+        "title": "Reveal the file in use in the explorer",
+        "keywords": ["files", "reveal", "locate", "find"]
+      },
+      {
+        "id": "endue.explorer.refresh",
+        "title": "Refresh the explorer",
+        "keywords": ["files", "reload", "revert"]
+      },
+      {
+        "id": "endue.explorer.toggle-hidden",
+        "title": "Show or hide dotfiles in the explorer",
+        "keywords": ["files", "hidden", "dotfiles"]
+      },
+      {
+        "id": "endue.explorer.add-folder",
+        "title": "Add a folder to the explorer",
+        "keywords": ["files", "folder", "root", "workspace"]
+      },
+      {
+        "id": "endue.explorer.remove-folder",
+        "title": "Remove a folder from the explorer",
+        "keywords": ["files", "folder", "root"]
+      },
+      {
+        "id": "endue.explorer.new-file",
+        "title": "New file in the explorer's folder",
+        "keywords": ["files", "create", "new"]
+      },
+      {
+        "id": "endue.explorer.open-selected",
+        "title": "Open the Explorer selection",
+        "keywords": ["files", "selection", "explorer"]
+      },
+      {
+        "id": "endue.explorer.terminal-here",
+        "title": "Open terminal in the Explorer folder",
+        "keywords": ["files", "selection", "explorer"]
+      },
+      {
+        "id": "endue.explorer.git-here",
+        "title": "Git status in the Explorer folder",
+        "keywords": ["files", "selection", "explorer"]
+      },
+      {
+        "id": "endue.explorer.show-in-file-manager",
+        "title": "Show Explorer selection in the system file manager",
+        "keywords": ["files", "selection", "explorer"]
+      }
+    ],
+    "keys": [
+      {
+        "key": "Mod+Shift+E",
+        "command": "endue.explorer.open"
+      },
+      {
+        "key": "Mod+Shift+R",
+        "command": "endue.explorer.reveal"
+      }
+    ],
+    "settings": {
+      "endue.explorer.folders": {
+        "kind": "array",
+        "default": ["~/Documents"],
+        "description": "The folders the tree starts from. Each one is asked for (fs:read) the first time it is listed."
+      },
+      "endue.explorer.show-hidden": {
+        "kind": "boolean",
+        "default": false,
+        "description": "Show entries whose name starts with a dot."
+      },
+      "endue.explorer.page": {
+        "kind": "integer",
+        "default": 500,
+        "description": "How many entries a folder shows before a 'more' row; the row shows the next page."
+      }
+    }
+  }
+}

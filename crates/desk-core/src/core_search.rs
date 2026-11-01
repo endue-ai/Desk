@@ -1,5 +1,5 @@
 //! Search is a core primitive: plugins publish their own documents; only granted callers read them.
-use crate::handler::{Answer, Core, denied, error, io_error, json};
+use crate::handler::{Answer, Core, error, io_error, json};
 use crate::perm::Target;
 use desk_bridge::{
     ErrorCode, Permission, PluginKind, PluginStatus, SearchDocument, SearchHit, SearchKind,
@@ -64,9 +64,7 @@ impl Core {
     }
 
     pub(crate) fn search_query(&self, caller: &str, params: SearchQueryParams) -> Answer {
-        self.permissions()
-            .authorize(caller, &Permission::SearchRead(params.scope), &Target::None)
-            .map_err(denied)?;
+        self.check(caller, &Permission::SearchRead(params.scope), &Target::None)?;
         if params.query.chars().count() > 256
             || params.limit.is_some_and(|n| !(1..=100).contains(&n))
         {
@@ -140,13 +138,11 @@ impl Core {
     }
 
     pub(crate) fn search_system(&self, caller: &str, params: SearchSystemParams) -> Answer {
-        self.permissions()
-            .authorize(
-                caller,
-                &Permission::SearchSystem(params.scope),
-                &Target::None,
-            )
-            .map_err(denied)?;
+        self.check(
+            caller,
+            &Permission::SearchSystem(params.scope),
+            &Target::None,
+        )?;
         let paths = desk_sys::search::search(&params.query).map_err(io_error)?;
         let mut recent = self
             .search_results
@@ -192,13 +188,11 @@ impl Core {
     }
 
     pub(crate) fn search_open(&self, caller: &str, params: SearchOpenParams) -> Answer {
-        self.permissions()
-            .authorize(
-                caller,
-                &Permission::SearchSystem(params.scope),
-                &Target::None,
-            )
-            .map_err(denied)?;
+        self.check(
+            caller,
+            &Permission::SearchSystem(params.scope),
+            &Target::None,
+        )?;
         let path = self
             .search_results
             .lock()
@@ -243,6 +237,31 @@ mod tests {
     use super::*;
     use crate::Roots;
     use desk_bridge::SearchSystemPermission;
+
+    #[test]
+    fn a_once_search_grant_is_spent_by_the_first_query() {
+        let core = Core::new(Roots {
+            home: std::env::temp_dir(),
+        });
+        let scope = desk_bridge::SearchReadPermission {
+            permission: Default::default(),
+        };
+        core.grant_for(
+            "palette",
+            Permission::SearchRead(scope.clone()),
+            desk_bridge::GrantDuration::Once,
+        );
+        let params = SearchQueryParams {
+            query: "notes".into(),
+            limit: None,
+            scope,
+        };
+        assert!(core.search_query("palette", params.clone()).is_ok());
+        assert_eq!(
+            core.search_query("palette", params).unwrap_err().code,
+            ErrorCode::PermissionDenied
+        );
+    }
 
     #[test]
     fn an_os_result_belongs_to_one_caller_and_expires() {

@@ -27,6 +27,9 @@ and be registered by that plugin. The palette opens its UI before invoking the c
 | `desk.palette.pick` | `{ title, items: [{ id, label, detail }], free }`; resolves the id or cancels |
 | `desk.palette.cancel` | Close and cancel any pending pick |
 
+Providers from `contributes.paletteProviders` remain grouped; Enter runs the first action,
+Mod+Enter the second. `desk.palette.items` searches the shared item index through `data.query`.
+
 History keeps up to `desk.palette.history` command ids (default 50). Async sources are debounced;
 stale replies are discarded and at most one OS request runs per palette at a time.
 

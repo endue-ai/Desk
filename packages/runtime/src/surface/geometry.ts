@@ -16,6 +16,30 @@ export interface Rect {
   h: number;
 }
 
+/** Where Eris sits by default (centred, 40 px from the top, 138 px tall): windows tile below her. */
+export const BELOW_ERIS = 190;
+
+/**
+ * The free area between the bars and under Eris's place in the reference frame: where windows
+ * tile, snap and fill. A window can still be dragged above it, up to the chips.
+ */
+export const FREE: Rect = {
+  x: SAFE.left,
+  y: BELOW_ERIS,
+  w: REF.width - SAFE.left - SAFE.right,
+  h: REF.height - BELOW_ERIS - SAFE.bottom,
+};
+
+/** The free area as it sits on a window of `vw`×`vh` pixels. */
+export function freeOnScreen(vw: number, vh: number): Rect {
+  return {
+    x: SAFE.left,
+    y: BELOW_ERIS,
+    w: Math.max(MIN.w, vw - SAFE.left - SAFE.right),
+    h: Math.max(MIN.h, vh - BELOW_ERIS - SAFE.bottom),
+  };
+}
+
 function factors(vw: number, vh: number) {
   const kx = (vw - SAFE.left - SAFE.right) / (REF.width - SAFE.left - SAFE.right);
   const ky = (vh - SAFE.top - SAFE.bottom) / (REF.height - SAFE.top - SAFE.bottom);

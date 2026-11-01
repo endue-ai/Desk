@@ -1,0 +1,293 @@
+/* The desk's design tokens (@endue-ai/ui). Frames do not inherit the desk's, so they are declared
+   here; the runtime redefines them for the theme in force. The state colours are the plugin's own. */
+:root {
+  --desk-background: #141416;
+  --desk-card: #1e1d21;
+  --desk-border: #333136;
+  --desk-text: #f2f0f5;
+  --desk-text-muted: #b0adb7;
+  --desk-accent: #b6a3f5;
+  --docker-running: #5fd0be;
+  --docker-paused: #e8c98a;
+  --docker-stopped: #8e8a96;
+  --docker-failed: #f29bb0;
+  --docker-stderr: #f2b8c6;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  margin: 0;
+  background: var(--desk-card);
+  color: var(--desk-text);
+  font: 13px/1.6 -apple-system, "SUIT", "Inter", system-ui, sans-serif;
+}
+
+header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  padding: 8px 12px 0;
+  border-bottom: 1px solid var(--desk-border);
+}
+
+h1 {
+  margin: 0;
+  font-size: 15px;
+}
+
+#head {
+  display: flex;
+  gap: 8px;
+  margin: 0;
+  color: var(--desk-text-muted);
+}
+
+#live {
+  color: var(--docker-running);
+}
+
+#busy {
+  color: var(--desk-accent);
+}
+
+#tabs {
+  display: flex;
+  flex-basis: 100%;
+  gap: 2px;
+}
+
+#tabs button {
+  padding: 2px 10px 4px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--desk-text-muted);
+  font: inherit;
+  cursor: pointer;
+}
+
+#tabs button[aria-selected="true"] {
+  border-bottom-color: var(--desk-accent);
+  color: var(--desk-text);
+}
+
+#problem {
+  margin: 0;
+  padding: 6px 12px;
+  background: color-mix(in srgb, var(--docker-failed) 14%, transparent);
+  color: var(--desk-text);
+}
+
+main {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+}
+
+#view,
+#log-lines {
+  flex: 1;
+  overflow: auto;
+  outline: none;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 12px;
+}
+
+#view {
+  padding: 6px 0;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 22px;
+  padding: 0 12px;
+  white-space: pre;
+  cursor: default;
+}
+
+.row[aria-level="2"] {
+  padding-left: 28px;
+}
+
+.row:focus,
+.row[aria-selected="true"] {
+  background: color-mix(in srgb, var(--desk-accent) 16%, transparent);
+  outline: none;
+}
+
+.row.section {
+  color: var(--desk-text-muted);
+}
+
+.row.section .title,
+.row .name {
+  color: var(--desk-text);
+  font-weight: 600;
+}
+
+.row .caret {
+  width: 1ch;
+  color: var(--desk-text-muted);
+}
+
+.muted,
+.row .label {
+  color: var(--desk-text-muted);
+}
+
+.row .label {
+  min-width: 14ch;
+}
+
+.row .value {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.row.masked .value {
+  letter-spacing: 0.1em;
+}
+
+.row .image,
+.row .files,
+.row .status {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.row .ports {
+  color: var(--desk-accent);
+}
+
+.row .tag {
+  padding: 0 6px;
+  border: 1px solid var(--desk-border);
+  border-radius: 8px;
+  color: var(--desk-text-muted);
+  font-size: 11px;
+}
+
+.row.dangling .name,
+.row.builtin .name,
+.row.anonymous .name,
+.row.state-exited .name,
+.row.state-created .name {
+  color: var(--desk-text-muted);
+  font-weight: 400;
+}
+
+.row.error .value {
+  color: var(--docker-failed);
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--docker-stopped);
+}
+
+.dot.state-running {
+  background: var(--docker-running);
+}
+
+.dot.state-paused,
+.dot.state-restarting,
+.dot.state-partial,
+.dot.health-starting {
+  background: var(--docker-paused);
+}
+
+.dot.state-dead,
+.dot.health-unhealthy {
+  background: var(--docker-failed);
+}
+
+#logs {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+}
+
+#logs[hidden] {
+  display: none;
+}
+
+#logs-head,
+#logs-end {
+  margin: 0;
+  padding: 4px 12px;
+  color: var(--desk-text-muted);
+}
+
+#logs-head[data-state="following"]::after {
+  content: " · following";
+  color: var(--docker-running);
+}
+
+#log-lines {
+  padding: 4px 12px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+#log-lines:focus-visible {
+  box-shadow: inset 0 0 0 1px var(--desk-accent);
+}
+
+.line .time,
+.line .source {
+  margin-right: 1ch;
+  color: var(--desk-text-muted);
+}
+
+.line .source {
+  color: var(--desk-accent);
+}
+
+.line.stderr {
+  color: var(--docker-stderr);
+}
+
+footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 12px;
+  border-top: 1px solid var(--desk-border);
+  color: var(--desk-text-muted);
+  font-size: 12px;
+}
+
+footer p {
+  margin: 0;
+}
+
+#hints {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .row {
+    transition: background-color 80ms linear;
+  }
+}
+
+html[data-motion="reduce"] .row {
+  transition: none;
+}

@@ -10,6 +10,7 @@ import erisReply from "../src/bridge/envelopes/eris-reply.json";
 import userHello from "../src/bridge/envelopes/user-hello.json";
 import { realClock } from "../src/clock";
 import { mountDesk } from "../src/shell/Desk";
+import { sampleState } from "../src/shell/state";
 
 const root = document.getElementById("desk");
 if (!root) throw new Error("no #desk element");
@@ -25,13 +26,15 @@ const core = browserCore({
   store: localStore("desk.core."),
   init: { profile: "morning" },
 });
+const lang = params.get("lang") === "en" ? "en" : "ko";
 const desk = mountDesk({
   root,
   bridge,
   core: core.client,
   plugins: { url: (id, path, revision) => `/plugins/${id}/${path}?v=${revision}` },
   clock,
-  lang: params.get("lang") === "en" ? "en" : "ko",
+  lang,
+  seed: sampleState(lang),
 });
 
 // Shift+U plays a recorded "user speaking" envelope, Shift+E an Eris reply, for trying the rings.

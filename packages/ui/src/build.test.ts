@@ -20,9 +20,11 @@ describe("build", () => {
   }, 60_000);
   afterAll(() => rmSync(outDir, { recursive: true, force: true }));
 
-  it("writes ui.js, ui.iife.js and tokens.css", () => {
-    expect(readdirSync(outDir).sort()).toEqual(["tokens.css", "ui.iife.js", "ui.js"]);
+  it("writes ui.js, ui.iife.js, tokens.css and base.css", () => {
+    expect(readdirSync(outDir).sort()).toEqual(["base.css", "tokens.css", "ui.iife.js", "ui.js"]);
     expect(readFileSync(join(outDir, "tokens.css"), "utf8")).toBe(tokensCss());
+    const base = readFileSync(new URL("./base.css", import.meta.url), "utf8");
+    expect(readFileSync(join(outDir, "base.css"), "utf8")).toBe(base);
     expect(readFileSync(join(outDir, "ui.iife.js"), "utf8")).toMatch(/\bvar DeskUI = /);
   });
 
@@ -30,8 +32,11 @@ describe("build", () => {
     // Imported in Node, where there is no DOM: it must load and leave defining to the browser.
     const ui = await import(pathToFileURL(join(outDir, "ui.js")).href);
     expect(typeof ui.defineElements).toBe("function");
-    expect(Object.keys(ui.elements)).toHaveLength(6);
+    expect(Object.keys(ui.elements)).toHaveLength(12);
+    expect(ui.elements["desk-table"]).toBe(ui.DeskTable);
+    expect(ui.elements["desk-markdown"]).toBe(ui.DeskMarkdown);
     expect(ui.elements["desk-dialog"]).toBe(ui.DeskDialog);
+    expect(ui.elements["desk-progress"]).toBe(ui.DeskProgress);
     expect(ui.tokensCss()).toBe(tokensCss());
   });
 });

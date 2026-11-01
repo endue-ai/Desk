@@ -88,7 +88,8 @@ passe par le pont, et chaque appel au pont, sauf `perm.*`, porte la portée de p
 3. Passez la portée correspondante avec chaque appel, aussi étroite que possible.
 
 Le vocabulaire (`fs:read`, `fs:write`, `proc:spawn`, `net:fetch`, `audio:capture`, `ui:surface`,
-`ui:notify`, `plugin:manage`) se trouve dans `specs/plugin/v0/README.md`.
+`ui:notify`, `plugin:manage`, `brain:converse`, `cmd:invoke`, `cmd:advise`, `settings:read`, `log:read`,
+`events:subscribe`, `perm:manage`, `data:read`, `connector:manage`, `view:manage`) se trouve dans `specs/plugin/v0/README.md`.
 
 ## Contributions
 
@@ -129,6 +130,29 @@ dans votre cadre sous forme de propriétés CSS `--desk-*` et de `ctx.theme`. Le
 pressées dans votre cadre atteignent le keymap du bureau, sauf si vous appelez `preventDefault()`. Les
 politiques par défaut, et ce que chacune décide, sont listées dans `plugins/README.md`.
 
+## Éléments et vues
+
+Ce que contiennent les applications qu'une personne connecte arrive sur le bureau sous forme d'éléments
+d'une seule forme (`specs/item/v0`, ADR 0032) : événements, tâches, messages, notes et plus, de toutes
+les sources de la même façon. `ctx.data` lit l'index du bureau avec une permission `data:read` et passe
+la portée la plus étroite dont une requête a besoin ; `ctx.views` lit et enregistre les vues de la
+personne avec `view:manage` :
+
+```js
+const { items } = await ctx.data.query({
+  kinds: ["task"],
+  where: [{ field: "due", op: "lt", value: "2026-10-31T00:00:00+09:00" }],
+});
+const stop = await ctx.data.subscribe({ kinds: ["task"] }, (changes) => redraw(changes));
+await ctx.commands.run("desk.views.open", { id: "desk.today" });
+```
+
+Une vue est une donnée, pas du code (`specs/view/v0`) : le plugin intégré `desk.views` la dessine avec
+les éléments de `@endue-ai/ui` (`desk-list`, `desk-table`, `desk-agenda`, `desk-stat`, `desk-markdown`,
+`desk-card`), et ses modèles connaissent l'horloge (`{today}`, `{tomorrow}`). Votre page pourra
+importer les mêmes éléments (`"@endue-ai/ui": "/_desk/ui.js"` dans sa carte d'import) dès que
+l'application les servira ; le serveur de test du runtime le fait déjà.
+
 ## Tests
 
 `@endue-ai/plugin-sdk/testing` exécute votre plugin sans navigateur, avec un pont simulé :
@@ -140,7 +164,7 @@ import { createTestHost } from "@endue-ai/plugin-sdk/testing";
 const host = createTestHost({ pluginId: "example.my-plugin", handlers: { "perm.query": () => ({ grants: [] }) } });
 await defineUiPlugin(myPlugin, host.transport);
 await host.settle();
-// host.calls, host.state, host.emit(event)
+// host.calls, host.state, host.emit(event), host.upsert(item)
 ```
 
 Avant de publier, `desk plugin validate <folder>` doit réussir ; la CI l'exécute pour chaque dossier de

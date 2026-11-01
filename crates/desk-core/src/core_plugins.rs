@@ -1,16 +1,18 @@
-//! The plugin side of `Core`: install, list, enable, serve files, and report changes on the bus.
+//! The plugin side of `Core`: install, list, enable, serve files, and report changes on the bus. A
+//! plugin turned off unloads: its commands, waiting requests, subscriptions, processes, surfaces and
+//! file URLs go with it, a connector's instances pause, and a view plugin's views leave view.list.
 
 use std::io;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, MutexGuard};
 
 use desk_bridge::{
-    BridgeEvent, ErrorCode, Permission, PluginChange, PluginChangedData, PluginChangedEvent,
-    PluginInfo, PluginListParams, PluginListResult, PluginSetEnabledParams, PluginSetEnabledResult,
-    PluginStatus,
+    BridgeEvent, ErrorCode, EventName, Permission, PluginChange, PluginChangedData,
+    PluginChangedEvent, PluginInfo, PluginListParams, PluginListResult, PluginManagePermission,
+    PluginSetEnabledParams, PluginSetEnabledResult, PluginStatus,
 };
 
-use crate::handler::{Answer, Core, denied, error, json};
+use crate::handler::{Answer, Core, error, json};
 use crate::perm::Target;
 use crate::plugins::PluginRegistry;
 use crate::watch::{self, PluginWatcher};
@@ -40,6 +42,8 @@ impl Core {
             }
         }
         self.plugin_changed(&info.id, PluginChange::Installed, info.revision);
+        self.plugin_views_changed(&info);
+        self.install_connector(&info);
         info
     }
 
@@ -77,6 +81,8 @@ impl Core {
         let refreshed = self.registry().refresh(id);
         if let Some(info) = refreshed {
             self.plugin_changed(&info.id, PluginChange::Updated, info.revision);
+            self.plugin_views_changed(&info);
+            self.reload_connector(&info.id);
         }
     }
 
@@ -100,35 +106,63 @@ impl Core {
         let change = if params.enabled {
             PluginChange::Enabled
         } else {
-            // A plugin that stops provides no commands.
-            self.drop_provider(&info.id);
+            self.unloaded(&info.id);
             PluginChange::Disabled
         };
         self.plugin_changed(&info.id, change, info.revision);
+        self.plugin_views_changed(&info);
+        // A connector's instances pause while its plugin is off, and resume when it is on.
+        self.connector_toggled(&info.id);
         json(PluginSetEnabledResult { plugin: info })
+    }
+
+    /// Whether `caller` can act: callers that are not plugins always can, plugins while enabled and
+    /// ready.
+    pub(crate) fn running(&self, caller: &str) -> bool {
+        self.registry()
+            .get(caller)
+            .is_none_or(|info| info.enabled && info.status == PluginStatus::Ready)
+    }
+
+    /// A plugin that stops provides no commands, waits for no answer, hears no subscriptions, runs
+    /// no processes, shows no surfaces and serves no file URLs; if it was the last perm:manage
+    /// holder, the Prompter decides what waits.
+    fn unloaded(&self, id: &str) {
+        self.drop_provider(id);
+        self.withdraw_prompts(id);
+        self.drop_subscriber(id);
+        self.drop_data(id);
+        self.drop_processes(id);
+        self.drop_surfaces(id);
+        self.drop_file_urls(id);
+        self.settle_unheard();
     }
 
     fn authorize_manage(
         &self,
         caller: &str,
-        scope: desk_bridge::PluginManagePermission,
+        scope: PluginManagePermission,
     ) -> Result<(), desk_bridge::BridgeError> {
-        self.permissions()
-            .authorize(caller, &Permission::PluginManage(scope), &Target::None)
-            .map(|_| ())
-            .map_err(denied)
+        self.check(caller, &Permission::PluginManage(scope), &Target::None)
     }
 
+    /// `plugin.changed` for the plugin:manage holders and the callers subscribed to it.
     fn plugin_changed(&self, id: &str, change: PluginChange, revision: u64) {
-        self.events()
-            .publish(BridgeEvent::PluginChanged(PluginChangedEvent {
+        let managers = self.holders(&Permission::PluginManage(PluginManagePermission {
+            permission: Default::default(),
+        }));
+        let to = self.recipients(EventName::PluginChanged, managers);
+        self.events().publish_to(
+            to,
+            BridgeEvent::PluginChanged(PluginChangedEvent {
                 event: Default::default(),
                 data: PluginChangedData {
                     plugin: id.to_owned(),
                     change,
                     revision,
                 },
-            }));
+            }),
+        );
     }
 
     fn registry(&self) -> MutexGuard<'_, PluginRegistry> {

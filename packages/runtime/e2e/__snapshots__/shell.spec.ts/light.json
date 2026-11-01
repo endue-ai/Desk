@@ -178,6 +178,31 @@
              "text": "Night"
             }
            ]
+          },
+          {
+           "tag": "button",
+           "class": "mode-chip",
+           "aria-label": "Default",
+           "aria-pressed": "false",
+           "data-mode": "default",
+           "style": {
+            "background": "rgb(255, 255, 255)",
+            "border": "solid rgb(221, 214, 229)"
+           },
+           "children": [
+            {
+             "tag": "svg",
+             "icon": "sparkle"
+            },
+            {
+             "tag": "span",
+             "class": "mode-name",
+             "style": {
+              "color": "rgb(30, 24, 51)"
+             },
+             "text": "Default"
+            }
+           ]
           }
          ]
         }
@@ -487,7 +512,7 @@
       {
        "tag": "button",
        "class": "add-button desktop-add",
-       "aria-label": "데스크톱 추가",
+       "aria-label": "빈 데스크톱으로",
        "box": [
         1384,
         24,
@@ -512,14 +537,14 @@
      "aria-label": "에이전트 · 스페이스",
      "box": [
       24,
-      277,
+      299,
       56,
-      347
+      303
      ],
      "style": {
       "background": "rgb(255, 255, 255)",
       "border": "solid rgb(221, 214, 229)",
-      "transform": "matrix(1, 0, 0, 1, 0, -173.5)"
+      "transform": "matrix(1, 0, 0, 1, 0, -151.5)"
      },
      "children": [
       {
@@ -543,7 +568,7 @@
          "aria-pressed": "true",
          "box": [
           34,
-          314,
+          336,
           36,
           36
          ],
@@ -577,7 +602,7 @@
          "aria-pressed": "false",
          "box": [
           34,
-          358,
+          380,
           36,
           36
          ],
@@ -602,7 +627,7 @@
          "aria-pressed": "false",
          "box": [
           34,
-          402,
+          424,
           36,
           36
          ],
@@ -653,7 +678,7 @@
          "aria-pressed": "true",
          "box": [
           34,
-          487,
+          509,
           36,
           36
          ],
@@ -678,7 +703,7 @@
          "aria-pressed": "false",
          "box": [
           34,
-          531,
+          553,
           36,
           36
          ],
@@ -693,26 +718,6 @@
             "color": "rgb(30, 24, 51)"
            },
            "text": "S"
-          }
-         ]
-        },
-        {
-         "tag": "button",
-         "class": "add-button space-add",
-         "aria-label": "스페이스 추가",
-         "box": [
-          34,
-          575,
-          36,
-          36
-         ],
-         "style": {
-          "border": "dashed rgb(137, 127, 149)"
-         },
-         "children": [
-          {
-           "tag": "svg",
-           "icon": "plus"
           }
          ]
         }

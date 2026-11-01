@@ -12,6 +12,10 @@ use crate::bindings::{
 };
 use crate::host::Host;
 
+/// The prefix of the store keys the host keeps in a plugin's own store (a connector's instances
+/// and cursors); a guest can neither read nor write them.
+pub(crate) const RESERVED: &str = "desk.";
+
 /// The permissions `desk:host` imports need. The imports are the closed set here, not the
 /// vocabulary: a permission the vocabulary gains later authorises no import until one names it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -124,13 +128,16 @@ impl Imports {
     }
 
     /// Needs no permission: every plugin has its own namespace. The value comes back as JSON text.
+    /// Keys under `desk.` are the host's (a connector's instances and cursors): permission-denied.
     pub fn store_get(&self, key: &str) -> Result<Option<String>, Error> {
+        self.own_key("store.get", key)?;
         let value = self.host.store_get(&self.plugin, key)?;
         Ok(value.map(|value| value.to_string()))
     }
 
-    /// Needs no permission. `value` must be JSON text.
+    /// Needs no permission, but not under `desk.`, as `store_get`. `value` must be JSON text.
     pub fn store_set(&self, key: &str, value: &str) -> Result<(), Error> {
+        self.own_key("store.set", key)?;
         let value = json("store.set", "value", value)?;
         self.host.store_set(&self.plugin, key, value)
     }
@@ -231,6 +238,20 @@ impl Imports {
     ) -> Result<Vec<LogEntry>, Error> {
         self.needs("log.tail", Needs::LogRead)?;
         self.host.log_tail(&self.plugin, channel, count)
+    }
+
+    /// Refuse a store key the host keeps for itself (`RESERVED`).
+    fn own_key(&self, method: &str, key: &str) -> Result<(), Error> {
+        if !key.starts_with(RESERVED) {
+            return Ok(());
+        }
+        Err(Error {
+            code: ErrorCode::PermissionDenied,
+            message: format!(
+                "{method}: keys under {RESERVED} belong to the desk, not to {}",
+                self.plugin
+            ),
+        })
     }
 
     /// Refuse before the host sees the call when the manifest never asked for the permission.

@@ -72,6 +72,44 @@ fn list_returns_entries_sorted_with_kind_and_size() {
     );
 }
 
+/// Set `path`'s modification time to `time`; folders too.
+fn set_modified(path: &Path, time: SystemTime) {
+    #[cfg(windows)]
+    let file = {
+        use std::os::windows::fs::OpenOptionsExt;
+        // FILE_FLAG_BACKUP_SEMANTICS opens folders too.
+        let mut options = fs::OpenOptions::new();
+        options.write(true).custom_flags(0x0200_0000);
+        options.open(path).unwrap()
+    };
+    #[cfg(not(windows))]
+    let file = fs::File::open(path).unwrap();
+    file.set_modified(time).unwrap();
+}
+
+#[test]
+fn list_reports_when_each_entry_last_changed() {
+    let dir = temp_dir();
+    let at = |secs: u64| UNIX_EPOCH + Duration::from_secs(secs);
+    // 2026-10-30T00:00:00Z, a day later and two days later, in whole seconds.
+    set_modified(&dir.join("a.bin"), at(1_793_318_400));
+    set_modified(&dir.join("b.txt"), at(1_793_404_800));
+    set_modified(&dir.join("sub"), at(1_793_491_200));
+    let modified: Vec<(String, Option<SystemTime>)> = list(&dir)
+        .unwrap()
+        .into_iter()
+        .map(|e| (e.name, e.modified))
+        .collect();
+    assert_eq!(
+        modified,
+        vec![
+            ("a.bin".to_owned(), Some(at(1_793_318_400))),
+            ("b.txt".to_owned(), Some(at(1_793_404_800))),
+            ("sub".to_owned(), Some(at(1_793_491_200))),
+        ]
+    );
+}
+
 #[test]
 fn write_creates_a_file_and_reports_the_bytes_written() {
     let dir = temp_dir();
@@ -151,13 +189,21 @@ fn write_refuses_a_folder_and_a_symlink() {
     );
 }
 
-/// Start a debounced watch whose batches arrive on the returned channel.
+/// Start a debounced watch with the default quiet period; batches arrive on the returned channel.
 fn start_watch(dir: &Path, recursive: bool) -> (desk_sys::fs::Watch, Receiver<Vec<Changed>>) {
-    let (sender, receiver) = mpsc::channel();
     let options = WatchOptions {
         recursive,
         ..WatchOptions::default()
     };
+    start_watch_with(dir, options)
+}
+
+/// Start a debounced watch with `options`; batches arrive on the returned channel.
+fn start_watch_with(
+    dir: &Path,
+    options: WatchOptions,
+) -> (desk_sys::fs::Watch, Receiver<Vec<Changed>>) {
+    let (sender, receiver) = mpsc::channel();
     let watch = watch_debounced(dir, options, move |batch| {
         let _ = sender.send(batch);
     })
@@ -237,14 +283,21 @@ fn watch_reports_created_modified_and_removed_paths() {
 #[test]
 fn watch_coalesces_a_burst_into_one_batch() {
     let dir = temp_dir();
-    let (_watch, receiver) = start_watch(&dir, true);
+    // On a loaded runner the writer or notify's thread can be descheduled for longer than the
+    // default 100 ms, which splits the burst; no such gap outlasts 1 s.
+    let options = WatchOptions {
+        recursive: true,
+        debounce: Duration::from_secs(1),
+    };
+    let (_watch, receiver) = start_watch_with(&dir, options);
     let path = dir.join("burst.txt");
     for i in 0..20 {
         fs::write(&path, format!("write {i}")).unwrap();
     }
     let first = batch_with(&receiver, &path);
     let mut batches = vec![first];
-    batches.extend(batches_until_quiet(&receiver, Duration::from_millis(500)));
+    // Longer than the quiet period, so a trailing batch would still be seen.
+    batches.extend(batches_until_quiet(&receiver, Duration::from_millis(1500)));
     let entries = batches.iter().flatten().filter(|c| c.path == path).count();
     assert_eq!(entries, 1, "twenty writes arrive as one entry: {batches:?}");
 }

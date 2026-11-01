@@ -15,7 +15,9 @@
     },
     {
       "permission": "search:system"
-    }
+    },
+    { "permission": "data:read" },
+    { "permission": "ui:notify" }
   ],
   "surfaces": [
     {
@@ -41,8 +43,14 @@
         "id": "desk.palette.cancel",
         "title": "Close the palette",
         "keywords": ["cancel", "quit"]
+      },
+      {
+        "id": "desk.palette.items",
+        "title": "Search items",
+        "keywords": ["search", "items", "find"]
       }
     ],
+    "paletteProviders": [{ "command": "desk.palette.items", "title": "Items" }],
     "settings": {
       "desk.palette.history": {
         "kind": "integer",

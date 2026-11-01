@@ -12,10 +12,13 @@ const readJson = (path: string): unknown => JSON.parse(readFileSync(path, "utf8"
 
 function manifestValidator() {
   const ajv = new Ajv2020({ strict: true, allErrors: true, validateFormats: false });
-  for (const name of readdirSync(pluginSpec)
-    .filter((n) => n.endsWith(".schema.json"))
-    .sort()) {
-    ajv.addSchema(readJson(join(pluginSpec, name)) as object);
+  // The manifest references the item, view and connector specs, which reference it back.
+  for (const folder of ["plugin/v0", "item/v0", "view/v0", "connector/v0"]) {
+    const dir = join(pluginSpec, "../..", folder);
+    for (const name of readdirSync(dir)
+      .filter((n) => n.endsWith(".schema.json"))
+      .sort())
+      ajv.addSchema(readJson(join(dir, name)) as object);
   }
   const validate = ajv.getSchema("https://endue.ai/specs/plugin/v0/plugin.schema.json");
   if (!validate) throw new Error("cannot compile plugin.schema.json");

@@ -1,0 +1,274 @@
+/* The desk's design tokens (@endue-ai/ui). Frames do not inherit the desk's, so they are declared
+   here; the runtime redefines them for the theme in force. */
+:root {
+  --desk-background: #141416;
+  --desk-card: #1e1d21;
+  --desk-border: #333136;
+  --desk-text: #f2f0f5;
+  --desk-text-muted: #b0adb7;
+  --desk-accent: #b6a3f5;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  margin: 0;
+  background: var(--desk-card);
+  color: var(--desk-text);
+  font: 13px/1.5 -apple-system, "SUIT", "Inter", system-ui, sans-serif;
+}
+
+header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 12px;
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--desk-border);
+}
+
+#heading {
+  display: flex;
+  flex: 1 1 160px;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+h1,
+h2 {
+  margin: 0;
+  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#summary {
+  flex: 0 1 auto;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  color: var(--desk-text-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#position:not(:empty)::before {
+  content: "· ";
+}
+
+/* One row that scrolls rather than wraps, so a small window keeps room for the image. */
+#toolbar {
+  display: flex;
+  flex: 0 1 auto;
+  align-items: center;
+  gap: 3px;
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.gap {
+  width: 6px;
+}
+
+button,
+select {
+  flex: none;
+  min-height: 24px;
+  padding: 1px 7px;
+  border: 1px solid var(--desk-border);
+  border-radius: 6px;
+  background: var(--desk-background);
+  color: var(--desk-text);
+  font: inherit;
+}
+
+button:disabled {
+  opacity: 0.45;
+}
+
+button[aria-pressed="true"] {
+  border-color: var(--desk-accent);
+  color: var(--desk-accent);
+}
+
+button:focus-visible,
+select:focus-visible,
+#stage:focus-visible {
+  outline: 2px solid var(--desk-accent);
+  outline-offset: -2px;
+}
+
+#zoom-level {
+  min-width: 44px;
+  text-align: center;
+  color: var(--desk-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+#compare-pick {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+#compare-pick span {
+  color: var(--desk-text-muted);
+}
+
+main {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+#stage {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  background-color: var(--desk-background);
+  cursor: default;
+  user-select: none;
+  touch-action: none;
+}
+
+#stage[data-zoomed="in"] {
+  cursor: grab;
+}
+
+.pane {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+}
+
+#stage.split #pane-b {
+  border-left: 1px solid var(--desk-border);
+}
+
+.frame {
+  position: absolute;
+  inset: 0;
+}
+
+.media {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  max-width: none;
+  transform-origin: 50% 50%;
+  /* The view applies the EXIF orientation itself; the webview's own would turn it twice. */
+  image-orientation: none;
+  background-image: conic-gradient(var(--desk-card) 25%, var(--desk-border) 0 50%, var(--desk-card) 0 75%, var(--desk-border) 0);
+  background-size: 16px 16px;
+}
+
+figcaption {
+  position: absolute;
+  left: 8px;
+  bottom: 6px;
+  padding: 0 6px;
+  border-radius: 4px;
+  background: var(--desk-card);
+  color: var(--desk-text-muted);
+}
+
+figcaption:empty {
+  display: none;
+}
+
+.notice {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  box-sizing: border-box;
+  width: min(420px, calc(100% - 32px));
+  padding: 16px;
+  border: 1px solid var(--desk-border);
+  border-radius: 8px;
+  background: var(--desk-card);
+  transform: translate(-50%, -50%);
+}
+
+.notice p {
+  margin: 6px 0 0;
+  color: var(--desk-text-muted);
+}
+
+.notice .reason {
+  margin-bottom: 10px;
+  color: var(--desk-text);
+}
+
+main.beside #stage {
+  margin-right: 300px;
+}
+
+/* The details lie over the stage's right side in a narrow window, beside it in a wide one. */
+#details {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  box-sizing: border-box;
+  width: min(300px, 85%);
+  padding: 10px 12px;
+  overflow: auto;
+  border-left: 1px solid var(--desk-border);
+  background: var(--desk-card);
+}
+
+#details h2 {
+  margin-bottom: 6px;
+}
+
+dl {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 2px 10px;
+  margin: 0;
+}
+
+dt {
+  color: var(--desk-text-muted);
+}
+
+dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+/* The status line lies over the bottom of the stage and takes no room while it is empty. */
+#status {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  margin: 0;
+  padding: 0 8px;
+  color: var(--desk-text-muted);
+  pointer-events: none;
+}
+
+#status:not(:empty) {
+  padding: 2px 8px;
+  border-top: 1px solid var(--desk-border);
+  background: var(--desk-card);
+}
+
+[hidden] {
+  display: none !important;
+}

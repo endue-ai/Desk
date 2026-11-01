@@ -1,10 +1,11 @@
 /// <reference types="vite/client" />
-// Test page: the runtime with the built-in desk.* policy plugins (their real plugin.json files) and a
-// test UI plugin, on the browser bridge stub. Never shipped.
+// Test page: the runtime with the built-in desk.* policy plugins (their real plugin.json files) and
+// test UI plugins (one of them autoload), on the browser bridge stub. Never shipped.
 //   ?init={"desk.theme.scheme":"light"}  init.yaml settings    ?off=desk.keys,desk.theme  disabled
 //   ?platform=mac                        the keymap's platform  ?profile=focus             start profile
 //   ?rules=[{"match":{...},"area":...}]  display rules test.echo contributes
 //   ?store={"session":{...}}             what the core's store holds for the runtime at start
+//   ?initProblem=why                     init.get reports init.yaml as not in force
 import type { PluginManifest } from "@endue-ai/bridge";
 import "../../src/desk.css";
 import { browserCore, memoryStore } from "../../src/bridge/core";
@@ -40,23 +41,42 @@ const counter: PluginManifest = {
   entry: "ui/index.html",
   surfaces: [{ id: "main", title: "Counter", placement: "center" }],
 };
+// An autoload opener (ADR 0046): off at start, on for a *.lazy file, off again after its last one.
+const lazy: PluginManifest = {
+  id: "test.lazy",
+  version: "0.1.0",
+  kind: "ui",
+  entry: "ui/index.html",
+  autoload: true,
+  surfaces: [{ id: "main", title: "Lazy", placement: "center" }],
+  contributes: { files: [{ pattern: "*.lazy", plugin: "test.lazy" }] },
+};
 let notices = 0;
 // The core's store (per caller) and the files plugins wrote, kept in memory for the tests.
 const store: Record<string, unknown> = JSON.parse(params.get("store") ?? "{}");
 const written: Array<{ path: string; content: string }> = [];
 const clock = new ManualClock();
 const { client, stub } = browserCore({
-  // The bare desk: every desk.* policy but the shell's own.
+  // The bare desk: every desk.* policy but the shell's own (views.html has the view engine and the
+  // view plugins).
   manifests: [
-    ...Object.values(manifests).filter((m) => m.id.startsWith("desk.") && m.id !== "desk.shell"),
+    ...Object.values(manifests).filter(
+      (m) =>
+        m.id.startsWith("desk.") &&
+        m.id !== "desk.shell" &&
+        m.id !== "desk.views" &&
+        m.kind !== "view",
+    ),
     echo,
     counter,
+    lazy,
   ],
   off,
   store: memoryStore(store),
   init: {
     profile: params.get("profile") ?? "default",
     settings: JSON.parse(params.get("init") ?? "{}"),
+    ...(params.has("initProblem") ? { problem: params.get("initProblem") ?? "" } : {}),
   },
   handlers: {
     "fs.write": ({ path, content }) => {

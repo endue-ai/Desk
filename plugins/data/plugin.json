@@ -1,0 +1,137 @@
+{
+  "id": "endue.data",
+  "name": "Data",
+  "version": "0.1.0",
+  "kind": "ui",
+  "entry": "ui/index.html",
+  "autoload": true,
+  "description": "Opens structured data and configuration files (JSON, JSON5, JSON Lines, YAML, TOML, XML, property lists, INI, properties, dotenv, HCL, MessagePack, CBOR, BSON) as a tree and raw text, with search, paths, parse errors at their line, JSON Schema checks and masked secrets. It reads; it does not edit.",
+  "permissions": [
+    {
+      "permission": "cmd:invoke",
+      "ids": ["desk.files.changed", "desk.palette.pick"]
+    }
+  ],
+  "surfaces": [
+    {
+      "id": "main",
+      "title": "Data",
+      "placement": "center"
+    }
+  ],
+  "contributes": {
+    "files": [
+      {
+        "pattern": "*.json",
+        "plugin": "endue.data"
+      },
+      {
+        "pattern": "*.jsonc",
+        "plugin": "endue.data"
+      },
+      {
+        "pattern": "*.json5",
+        "plugin": "endue.data"
+      },
+      {
+        "pattern": "*.jsonl",
+        "plugin": "endue.data"
+      },
+      {
+        "pattern": "*.ndjson",
+        "plugin": "endue.data"
+      },
+      {
+        "pattern": "*.yaml",
+        "plugin": "endue.data"
+      },
+      {
+        "pattern": "*.yml",
+        "plugin": "endue.data"
+      },
+      {
+        "pattern": "*.toml",
+        "plugin": "endue.data"
+      },
+      {
+        "pattern": "*.xml",
+        "plugin": "endue.data"
+      },
+      {
+        "pattern": "*.xsd",
+        "plugin": "endue.data"
+      },
+      {
+        "pattern": "*.xsl",
+        "plugin": "endue.data"
+      },
+      {
+        "pattern": "*.xslt",
+        "plugin": "endue.data"
+      },
+      {
+        "pattern": "*.plist",
+        "plugin": "endue.data"
+      },
+      {
+        "pattern": "*.ini",
+        "plugin": "endue.data"
+      },
+      {
+        "pattern": "*.cfg",
+        "plugin": "endue.data"
+      },
+      {
+        "pattern": "*.conf",
+        "plugin": "endue.data"
+      },
+      {
+        "pattern": "*.properties",
+        "plugin": "endue.data"
+      },
+      {
+        "pattern": "*.env",
+        "plugin": "endue.data"
+      },
+      {
+        "pattern": ".env",
+        "plugin": "endue.data"
+      },
+      {
+        "pattern": ".env.*",
+        "plugin": "endue.data"
+      },
+      {
+        "pattern": "*.hcl",
+        "plugin": "endue.data"
+      },
+      {
+        "pattern": "*.tf",
+        "plugin": "endue.data"
+      },
+      {
+        "pattern": "*.tfvars",
+        "plugin": "endue.data"
+      },
+      {
+        "pattern": "*.msgpack",
+        "plugin": "endue.data"
+      },
+      {
+        "pattern": "*.bson",
+        "plugin": "endue.data"
+      },
+      {
+        "pattern": "*.cbor",
+        "plugin": "endue.data"
+      }
+    ],
+    "settings": {
+      "endue.data.mask-secrets": {
+        "kind": "boolean",
+        "default": true,
+        "description": "Show values whose key looks like a secret (password, passwd, secret, token, api_key, apikey, private_key) as dots until revealed. dotenv values are always masked."
+      }
+    }
+  }
+}

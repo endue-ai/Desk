@@ -1,0 +1,16 @@
+{
+  "target": "BridgeEvent",
+  "description": "connector.changed: an instance went stale, with its last sync",
+  "instance": {
+    "event": "connector.changed",
+    "data": {
+      "connector": "desk.fixtures",
+      "instance": "default",
+      "change": "updated",
+      "status": {
+        "state": "stale",
+        "lastSyncAt": "2026-10-30T08:55:00+09:00"
+      }
+    }
+  }
+}

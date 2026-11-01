@@ -1,14 +1,16 @@
 # @endue-ai/plugin-sdk
 
-Everything a plugin author imports: plugin definitions, the bridge client and a test harness.
-
-Layer: Plugins (see `docs/architecture.md`). Guide: `docs/plugins/authoring.md`.
+What a plugin imports: definitions, the bridge client, file reads, workers and a test harness.
+Layer: Plugins (`docs/architecture.md`). Guide: `docs/plugins/authoring.md`.
 
 ## Public API
-
 - `defineUiPlugin({ mount(ctx) })`: connect to the runtime, then mount. `ctx` has `pluginId`,
   `bridge` (`call`, `onEvent`), `state` (`get`, `set`; kept across reloads), `surface`, `commands`,
-  `theme`, `settings`, `log`, `events` and `perm`, typed from `@endue-ai/bridge`.
+  `theme`, `settings`, `log`, `events`, `perm`, `data` and `views`, typed from `@endue-ai/bridge`.
+- `ctx.data` (`data.*`, ADR 0032): `query(query, { scope? })` resolves the page, under the narrowest
+  `data:read` scope (`readScope`: its kinds and the connectors of its sources); `get(source, id)` the
+  item or undefined; `subscribe(query, listener)` the function that unsubscribes, once. `ctx.views`
+  (`view.*`, needs `view:manage`): `list()`, `get(id)`, `save(view)`, `remove(id)`.
 - `ctx.surface`: `open(id, { placement?, title? })` resolves a handle for `close(handle)`
   (`ui.surface.*`, needs `ui:surface`); `close()` ends this frame's own, `show()`/`hide()` a `hidden` one.
 - `ctx.settings` (the plugin's own keys, `settings.*`): `get(key)`, `set(key, value)`, `list()`,
@@ -21,20 +23,18 @@ Layer: Plugins (see `docs/architecture.md`). Guide: `docs/plugins/authoring.md`.
   after `mount`. A failure is a `CommandFailed` (`unknown_command`, `failed`, `cancelled`).
 - `ctx.search.replace(documents)`: publish this plugin's searchable documents (500 / 4 MiB);
   `[]` clears them. Each result can name a command owned by this plugin and its args.
-- `ctx.theme`: `get()`, `on(listener)`; the frame gets the tokens as `--desk-*` properties and
-  `data-scheme`, `data-contrast`, `data-motion`. Chords pressed in the frame (Meta, Control, Alt,
-  Escape) reach the desk's keymap unless the plugin called `preventDefault()` (`isDeskKey`).
-- `connect(transport?)`, `windowTransport()`, the protocol types, `BridgeCallError` and bridge types.
+- `ctx.theme`: `get()`, `on(listener)`; the frame gets `--desk-*`, `data-scheme`, `-contrast` and
+  `-motion`. Chords (Meta, Control, Alt, Escape) reach the desk unless prevented.
+- `readBytes(ctx, { path, scope }, { onProgress?(done, total), signal? })`: the file as a `Uint8Array`,
+  in 2 MiB `Range` requests to its `fs.url` URL (else `fs.read` ranges); `signal` rejects (`AbortError`).
+  `byteSource(ctx, file)`: `{ size, read(offset, length) }`, cached. `startWorker(url)`: a module worker.
+- `connect(transport?)`, `windowTransport()`, the protocol types, `BridgeCallError` and bridge types;
+  one tick's calls leave in one message. The app serves `dist/plugin-sdk.js` at `/_desk/plugin-sdk.js`.
 - `@endue-ai/plugin-sdk/testing`: `createTestHost({ pluginId, state?, handlers?, commands?, settings?,
-  grants?, callers?, prompt?, now?, refuse? })` runs a plugin on the bridge's stub of the core
-  (`stubCommands`; `handlers` override it, `refuse` fails a method): `transport`, `calls`, `batches`,
-  `state`, `closed`, `visible`, `ran`, `keys`, `settings`, `grants`, `logged`, `surfaces`, `call` (as
-  the desk or another caller), `emit`, `command`, `invoke`, `theme`, `settle`.
-
-Calls made in one tick leave in one message. The app serves the bundle (`pnpm --filter
-@endue-ai/plugin-sdk build`, output `dist/plugin-sdk.js`) at `/_desk/plugin-sdk.js`.
+  grants?, callers?, prompt?, now?, refuse?, files? })` runs a plugin on the bridge's stub of the core
+  (`handlers` override it, `refuse` fails a method, `files` back `fs.read` and `fs.url`): `transport`,
+  `calls`, `batches`, `state`, `closed`, `visible`, `ran`, `keys`, `settings`, `grants`, `logged`,
+  `surfaces`, `call` (as any caller), `emit`, `command`, `invoke`, `theme`, `upsert`, `remove`, `settle`.
 
 ## Testing
-```bash
-pnpm exec vitest run packages/plugin-sdk
-```
+`pnpm exec vitest run packages/plugin-sdk`

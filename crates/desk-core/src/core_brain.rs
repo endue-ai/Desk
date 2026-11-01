@@ -6,7 +6,7 @@ use desk_brain::Brain;
 use desk_bridge::{BrainSayParams, BrainSayResult, ErrorCode, Permission};
 
 use crate::conversation::{BrainOptions, Conversation};
-use crate::handler::{Answer, Core, denied, error, json};
+use crate::handler::{Answer, Core, error, json};
 use crate::lease::LeaseError;
 use crate::perm::Target;
 
@@ -32,13 +32,11 @@ impl Core {
     }
 
     pub(crate) fn brain_say(&self, caller: &str, params: BrainSayParams) -> Answer {
-        self.permissions()
-            .authorize(
-                caller,
-                &Permission::BrainConverse(params.scope),
-                &Target::None,
-            )
-            .map_err(denied)?;
+        self.check(
+            caller,
+            &Permission::BrainConverse(params.scope),
+            &Target::None,
+        )?;
         let conversation = self.conversation.as_ref().ok_or_else(|| {
             error(
                 ErrorCode::Unsupported,

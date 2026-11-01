@@ -85,6 +85,46 @@ li[aria-selected="true"] {
   color: var(--desk-text-muted, #b0adb7);
 }
 
+/* A provider's results under its title, after the commands. */
+li[role="group"] {
+  display: block;
+  padding: 0;
+}
+
+li[role="group"] > ul {
+  max-height: none;
+  padding: 0;
+  overflow: visible;
+}
+
+.group {
+  display: block;
+  padding: 8px 10px 2px;
+  color: var(--desk-text-muted, #b0adb7);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* The selected result's actions, in the order Enter and Mod+Enter run them. */
+.actions {
+  display: flex;
+  gap: 16px;
+  padding: 8px 14px;
+  border-top: 1px solid var(--desk-border, #333136);
+  color: var(--desk-text-muted, #b0adb7);
+  font-size: 12px;
+}
+
+.actions[hidden] {
+  display: none;
+}
+
+kbd {
+  font: inherit;
+  color: var(--desk-text, #f2f0f5);
+}
+
 @media (prefers-reduced-motion: no-preference) {
   :root:not([data-motion="reduce"]) .box {
     animation: rise 120ms ease-out;

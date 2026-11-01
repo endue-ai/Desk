@@ -1,5 +1,8 @@
-// What the specs share: the desk's status line, plugin frames, and the files the app keeps in its
-// data folder under the spec's HOME (support/driver.ts sets it up).
+// What the specs share: the desk shell's two layers and its ready state, plugin frames, and the files
+// the app keeps in its data folder under the spec's HOME (support/driver.ts sets it up). The app
+// mounts the desk shell (apps/desk/src/main.ts): `#desk.shell` holds the system layer (profiles,
+// desktops, the agent bar) and the mode layer, which holds the runtime (plugin surfaces on its grid
+// and edges, the status line). Selectors follow the runtime e2e (packages/runtime/e2e/shell*.spec.ts).
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { $, browser, expect } from "@wdio/globals";
@@ -8,19 +11,45 @@ import { HOME_VAR, LOG_VAR } from "./driver";
 /** The status line the runtime shows and `desk_ready` prints once the bridge answered. */
 export const READY = "desk ready · bridge: tauri";
 
-/** A surface on the desk, by plugin id. */
-export const surface = (plugin: string) => $(`[data-surface="${plugin}"]`);
+/** The shell's layers: the desk's own controls, and what a profile lays out over the runtime. */
+export const SYSTEM = '#desk.shell [data-layer="system"]';
+export const MODE = '#desk.shell [data-layer="mode"]';
 
-/** Wait until the desk's status line reads READY (not "desk cannot reach the core ..."). */
-export async function deskReady(): Promise<void> {
-  await expect($("footer.desk-status")).toHaveElementProperty("textContent", READY, {
+/**
+ * A plugin's surface on the runtime under the shell's mode layer, by plugin id: the runtime's own
+ * section (`.desk-surface`), which under the shell sits inside a shell window whose `data-surface`
+ * is the same id (ADR 0040).
+ */
+export const surface = (plugin: string) => $(`${MODE} .desk-surface[data-surface="${plugin}"]`);
+
+/** The shell window that holds a plugin's centre surface: its title bar and tools. */
+export const windowOf = (plugin: string) => $(`${MODE} section.surface[data-surface="${plugin}"]`);
+
+/** The shell's drawer button (bottom edge); `aria-expanded` says whether the drawer is open. */
+export const drawerButton = () => $(`${MODE} .drawer-button`);
+
+/**
+ * Wait until the shell is in: both layers are mounted, the status line reads READY (not "desk cannot
+ * reach the core ..."), and the agent bar's agents group is no longer busy. The shell clears
+ * `aria-busy` when the agent directory was read, which it does after the plugins mounted and the saved
+ * session was put back; with no brain the directory is offline and the bar shows `.bar-offline`.
+ */
+export async function shellReady(): Promise<void> {
+  await expect($(SYSTEM)).toExist({ wait: 30_000 });
+  await expect($(MODE)).toExist();
+  await expect($(`${MODE} footer.desk-status`)).toHaveElementProperty("textContent", READY, {
     wait: 30_000,
   });
+  await expect($(`${SYSTEM} .sidebar .bar-group[aria-busy]`)).toHaveAttribute(
+    "aria-busy",
+    "false",
+    { wait: 30_000 },
+  );
 }
 
-/** Run `body` inside a plugin's sandboxed frame, then return to the desk. */
+/** Run `body` inside a plugin's sandboxed frame, then return to the shell. */
 export async function inFrame<T>(plugin: string, body: () => Promise<T>): Promise<T> {
-  const frame = $(`[data-surface="${plugin}"] iframe`);
+  const frame = $(`${MODE} .desk-surface[data-surface="${plugin}"] iframe`);
   await frame.waitForExist();
   await browser.switchFrame(frame);
   try {

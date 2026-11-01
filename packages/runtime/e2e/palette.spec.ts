@@ -151,10 +151,26 @@ test("search opens a disabled plugin and matches another plugin's published body
   await page.keyboard.press("Enter");
   await expect(page.locator(palette)).toBeHidden();
   await expect(page.locator('[data-surface="test.counter"]')).toBeVisible();
+  await page.evaluate(() => window.__desk.runtime.plugins?.unmount("test.echo"));
   await page.keyboard.press("Control+K");
   await frame(page).getByTestId("query").fill("서울 출장");
   await expect(frame(page).getByRole("option").first()).toContainText("Travel plan");
   await page.keyboard.press("Enter");
   await expect(page.locator(palette)).toBeHidden();
   expect(await page.evaluate(() => window.__desk.runtime.shortcuts.focused)).toBe("test.echo");
+});
+
+test.describe("desk.palette: a command that fails", () => {
+  test("a command that fails from the palette says why", async ({ page }) => {
+    await open(page);
+    await page.keyboard.press("Control+K");
+    await page.keyboard.type("Show a plugin");
+    await expect(frame(page).getByRole("option").first()).toContainText("Show a plugin's surface");
+    await page.keyboard.press("Enter");
+    await expect(page.locator(palette)).toBeHidden();
+    await expect(page.locator(".desk-status")).toHaveText(
+      "Show a plugin's surface failed — say which plugin: { plugin }",
+    );
+    await expect(page.locator(".desk-status")).toHaveAttribute("data-level", "error");
+  });
 });

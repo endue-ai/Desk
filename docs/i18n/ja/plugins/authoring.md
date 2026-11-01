@@ -77,7 +77,7 @@ defineUiPlugin({
 2. 必要になったその時点で要求します：`bridge.call("perm.request", { permission, reason })`。
 3. 各呼び出しでは、対応するスコープをできるだけ狭くして渡します。
 
-語彙（`fs:read`、`fs:write`、`proc:spawn`、`net:fetch`、`audio:capture`、`ui:surface`、`ui:notify`、`plugin:manage`）は `specs/plugin/v0/README.md` にあります。
+語彙（`fs:read`、`fs:write`、`proc:spawn`、`net:fetch`、`audio:capture`、`ui:surface`、`ui:notify`、`plugin:manage`、`brain:converse`、`cmd:invoke`、`cmd:advise`、`settings:read`、`log:read`、`events:subscribe`、`perm:manage`、`data:read`、`connector:manage`、`view:manage`）は `specs/plugin/v0/README.md` にあります。
 
 ## コントリビューション
 
@@ -115,6 +115,28 @@ defineUiPlugin({
 `ctx.theme` として届きます。フレーム内で押したキーの組み合わせは、`preventDefault()` を呼ばない限りデスクの
 キーマップに届きます。既定ポリシーとそれぞれが決めることは `plugins/README.md` にあります。
 
+## アイテムとビュー
+
+人が接続したアプリの中身は、ひとつの形のアイテムとしてデスクに届きます（`specs/item/v0`、ADR 0032）。
+イベント、タスク、メッセージ、ノートなどが、どのソースからでも同じ形です。`ctx.data` は `data:read`
+権限のもとでデスクのインデックスを読み、クエリに必要な最も狭いスコープを渡します。`ctx.views` は
+`view:manage` のもとで、その人のビューを読み書きします。
+
+```js
+const { items } = await ctx.data.query({
+  kinds: ["task"],
+  where: [{ field: "due", op: "lt", value: "2026-10-31T00:00:00+09:00" }],
+});
+const stop = await ctx.data.subscribe({ kinds: ["task"] }, (changes) => redraw(changes));
+await ctx.commands.run("desk.views.open", { id: "desk.today" });
+```
+
+ビューはコードではなくデータです（`specs/view/v0`）。組み込みの `desk.views` が `@endue-ai/ui` の要素
+（`desk-list`、`desk-table`、`desk-agenda`、`desk-stat`、`desk-markdown`、`desk-card`）で描き、テンプレートは
+時計を知っています（`{today}`、`{tomorrow}`）。アプリがこれらの要素を配信するようになれば、あなたのページも
+インポートマップ（`"@endue-ai/ui": "/_desk/ui.js"`）で同じ要素を読み込めます。現在はランタイムのテスト
+サーバーが配信しています。
+
 ## テスト
 
 `@endue-ai/plugin-sdk/testing` を使うと、ブラウザーを使わずに、モックのブリッジを相手にプラグインを実行できます。
@@ -126,7 +148,7 @@ import { createTestHost } from "@endue-ai/plugin-sdk/testing";
 const host = createTestHost({ pluginId: "example.my-plugin", handlers: { "perm.query": () => ({ grants: [] }) } });
 await defineUiPlugin(myPlugin, host.transport);
 await host.settle();
-// host.calls, host.state, host.emit(event)
+// host.calls, host.state, host.emit(event), host.upsert(item)
 ```
 
 公開する前に、`desk plugin validate <folder>` が通る必要があります。CI は `plugins/` と `examples/` 内のすべてのフォルダーに対してこれを実行します。

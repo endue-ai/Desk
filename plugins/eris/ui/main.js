@@ -29,13 +29,15 @@ defineUiPlugin({
     show(state.get()?.pose ?? "idle");
     commands.on("state", (next) => {
       show(String(next));
-      state.set({ pose: String(next) });
+      state.set({ ...state.get(), pose: String(next) });
     });
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     let history;
     const talk = new Talk({
       doc: document,
       bridge,
+      commands,
+      state,
       timeline: new Timeline(),
       show,
       style: reduced ? REDUCED : WISP,

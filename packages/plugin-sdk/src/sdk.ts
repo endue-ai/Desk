@@ -17,6 +17,7 @@ import {
   SURFACE,
   type SurfaceOptions,
 } from "./context";
+import { dataFor, type PluginData, type PluginViews } from "./data";
 import { type HostMessage, type ThemeState, type Transport, windowTransport } from "./protocol";
 import { type PluginSearch, searchFor } from "./search";
 
@@ -64,6 +65,10 @@ export interface PluginContext {
   log: PluginLog;
   events: PluginEvents;
   perm: PluginPerm;
+  /** The desk's item index (data.*), under the plugin's data:read grants. */
+  data: PluginData;
+  /** The person's views (view.*), under view:manage. */
+  views: PluginViews;
 }
 
 export interface UiPlugin {
@@ -150,6 +155,7 @@ export function connect(transport: Transport = windowTransport()): Promise<Plugi
         },
         commands: commands.api,
         search: searchFor(bridge),
+        ...dataFor(bridge),
         theme: {
           get: () => theme,
           on: (listener) => {

@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Calendar</title>
+    <script type="importmap">
+      { "imports": { "@endue-ai/plugin-sdk": "/_desk/plugin-sdk.js" } }
+    </script>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <main aria-labelledby="cal-title">
+      <header class="bar">
+        <div class="nav">
+          <button type="button" id="prev" aria-label="Previous" title="Previous (k)">‹</button>
+          <button type="button" id="today" title="Today (t)">Today</button>
+          <button type="button" id="next" aria-label="Next" title="Next (j)">›</button>
+        </div>
+        <h1 id="cal-title" aria-live="polite">No calendar open</h1>
+        <div class="modes" role="radiogroup" aria-label="View">
+          <button type="button" role="radio" data-mode="month" aria-checked="true" title="Month (m)">Month</button>
+          <button type="button" role="radio" data-mode="week" aria-checked="false" title="Week (w)">Week</button>
+          <button type="button" role="radio" data-mode="day" aria-checked="false" title="Day (d)">Day</button>
+          <button type="button" role="radio" data-mode="agenda" aria-checked="false" title="Agenda (a)">Agenda</button>
+        </div>
+        <button type="button" id="new" class="primary" title="New event (c)">New event</button>
+      </header>
+      <p id="cal-detail">
+        <span id="cal-name"></span>
+        <span id="cal-mark" hidden><span aria-hidden="true">● </span>Unsaved changes</span>
+        <span id="cal-problems" hidden></span>
+      </p>
+      <section id="grid" aria-label="Calendar"></section>
+    </main>
+
+    <dialog id="editor" aria-labelledby="editor-title">
+      <form novalidate>
+        <h2 id="editor-title">New event</h2>
+        <label for="title">Title</label>
+        <input id="title" name="title" autocomplete="off" placeholder="(No title)" />
+
+        <label class="check"><input type="checkbox" name="allDay" /> All day</label>
+
+        <fieldset class="times">
+          <legend>Starts</legend>
+          <input type="date" name="startDate" aria-label="Start date" aria-describedby="startDate-error" />
+          <input type="time" name="startTime" aria-label="Start time" step="300" />
+          <p id="startDate-error" class="error" hidden></p>
+        </fieldset>
+        <fieldset class="times">
+          <legend>Ends</legend>
+          <input type="date" name="endDate" aria-label="End date" aria-describedby="endDate-error" />
+          <input type="time" name="endTime" aria-label="End time" step="300" />
+          <p id="endDate-error" class="error" hidden></p>
+        </fieldset>
+
+        <label for="zone" id="zone-label">Time zone</label>
+        <input id="zone" name="zone" list="zones" autocomplete="off" spellcheck="false" aria-describedby="zone-error" />
+        <datalist id="zones"></datalist>
+        <p id="zone-error" class="error" hidden></p>
+
+        <label for="repeat">Repeat</label>
+        <select id="repeat" name="repeat"></select>
+        <label for="rrule" id="rrule-label" hidden>Rule (RFC 5545 RRULE)</label>
+        <input id="rrule" name="rrule" hidden spellcheck="false" autocomplete="off" placeholder="FREQ=WEEKLY;BYDAY=MO,WE" aria-describedby="rrule-error" />
+        <p id="rrule-error" class="error" hidden></p>
+
+        <label for="reminder">Reminder</label>
+        <select id="reminder" name="reminder"></select>
+
+        <label for="location">Location</label>
+        <input id="location" name="location" autocomplete="off" />
+
+        <label for="description">Notes</label>
+        <textarea id="description" name="description" rows="3"></textarea>
+
+        <label for="free">Show as</label>
+        <select id="free" name="free">
+          <option value="busy">Busy</option>
+          <option value="free">Free</option>
+        </select>
+
+        <fieldset id="editor-scope" hidden>
+          <legend>This event repeats. Change or delete</legend>
+          <label class="check"><input type="radio" name="scope" value="one" checked /> This event</label>
+          <label class="check"><input type="radio" name="scope" value="following" /> This and following events</label>
+          <label class="check"><input type="radio" name="scope" value="all" /> All events</label>
+        </fieldset>
+
+        <div class="actions">
+          <button type="button" id="editor-delete" class="danger">Delete</button>
+          <span class="spacer"></span>
+          <button type="button" id="editor-cancel">Cancel</button>
+          <button type="submit" class="primary">Save</button>
+        </div>
+      </form>
+    </dialog>
+    <p id="status" role="status"></p>
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

@@ -28,6 +28,21 @@ impl Core {
         json(StoreSetResult {})
     }
 
+    /// A value in `caller`'s namespace, for the core's own records (a connector's instances).
+    pub(crate) fn stored(&self, caller: &str, key: &str) -> Option<serde_json::Value> {
+        self.kv().get(caller, key)
+    }
+
+    /// Set a value in `caller`'s namespace, as store.set does.
+    pub(crate) fn store_put(
+        &self,
+        caller: &str,
+        key: &str,
+        value: serde_json::Value,
+    ) -> Result<(), String> {
+        self.kv().set(caller, key, value)
+    }
+
     fn kv(&self) -> MutexGuard<'_, Store> {
         self.store
             .lock()

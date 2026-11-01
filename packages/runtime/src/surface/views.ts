@@ -2,8 +2,10 @@
  * Views: what a pane can show. Each has a title for the title bar and a body that may keep itself
  * up to date (the agent screen follows its A2A card and tasks; the shortcut list follows the keymap).
  */
+import type { SurfacePlacement } from "../modes/types";
 import type { ShellCtx } from "../shell/context";
 import { h } from "../shell/dom";
+import type { DeskState } from "../shell/state";
 import { agentBody } from "./samples/agent";
 import { calendarBody } from "./samples/calendar";
 import { keysBody } from "./samples/keys";
@@ -32,8 +34,38 @@ export interface View {
 
 const still = (el: HTMLElement): Mounted => ({ el });
 
+/**
+ * The view a pane shows. A pane named after its surface whose plugin the runtime handed over shows
+ * that plugin's surface, so a profile that places `endue.calendar` gets the plugin, not a sample.
+ */
+export function resolveView(
+  s: DeskState,
+  p: Pick<SurfacePlacement, "id" | "plugin">,
+  view: string,
+): string {
+  if (view === p.id && s.adopted.some((a) => a.id === p.plugin)) return `plugin:${p.plugin}`;
+  return view;
+}
+
 export function viewOf(ctx: ShellCtx, view: string): View {
   const s = ctx.store.get();
+  if (view.startsWith("plugin:")) {
+    const id = view.slice("plugin:".length);
+    const adopted = s.adopted.find((a) => a.id === id);
+    const name = adopted?.title ?? id;
+    return {
+      icon: "box",
+      title: name,
+      sub: "",
+      byEris: false,
+      mount: () =>
+        still(
+          ctx.windows.has(id)
+            ? ctx.windows.body(id)
+            : h("p", { class: "plugin-off" }, ctx.tr("pluginOff", { name })),
+        ),
+    };
+  }
   switch (view) {
     case "calendar":
       return {

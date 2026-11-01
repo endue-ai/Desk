@@ -9,12 +9,15 @@ import {
   type CmdAnsweredData,
   type ErrorCode,
   type Grant,
+  type Item,
+  type ItemSource,
   type LogEntry,
   type ParamsOf,
   type Permission,
   type PermPromptData,
   type ResultOf,
   StubError,
+  type StubFiles,
   type StubHandlers,
   type StubSurface,
   stubCommands,
@@ -27,8 +30,8 @@ export interface TestHostOptions {
   state?: unknown;
   /**
    * Bridge methods answered your way, ahead of the stub's copy of the core (cmd.*, perm.*,
-   * settings.*, log.*, events.*, ui.surface.*); they check no grants. Any other method is
-   * `unsupported`.
+   * settings.*, log.*, events.*, ui.surface.*, and fs.read and fs.url with `files`); they check no
+   * grants. Any other method is `unsupported`.
    */
   handlers?: StubHandlers;
   /**
@@ -48,6 +51,11 @@ export interface TestHostOptions {
   now?: () => string;
   /** Methods that fail with the given code whoever serves them. */
   refuse?: Partial<Record<BridgeMethod, ErrorCode>>;
+  /**
+   * Files by bridge path ("~/Movies/clip.mp4"), text or bytes: with them fs.read (ranges too) and
+   * fs.url answer as the core does, under the plugin's grants; fs.url gives a `data:` URL.
+   */
+  files?: StubFiles;
 }
 
 export interface TestHost {
@@ -89,6 +97,10 @@ export interface TestHost {
   invoke(id: string, args?: Record<string, unknown>): Promise<unknown>;
   /** Hand the plugin a theme, as the runtime does at start and on every change. */
   theme(theme: ThemeState): void;
+  /** Put an item in the stub's index, or replace it, as a sync would: subscribers hear data.changed. */
+  upsert(item: Item): void;
+  /** Take an item out of the index (false when it was not there); subscribers hear data.changed. */
+  remove(source: ItemSource, id: string): boolean;
   /** Wait until every call the plugin made has been answered. */
   settle(): Promise<void>;
 }
@@ -110,7 +122,7 @@ export function createTestHost(options: TestHostOptions): TestHost {
       else if (event.event === "cmd.answered" && event.data.caller === "desk")
         answers.get(event.data.invocationId)?.(event.data);
     },
-    { grants, settings, prompt: options.prompt, now: options.now },
+    { grants, settings, prompt: options.prompt, now: options.now, files: options.files },
   );
   const refused = Object.fromEntries(
     Object.entries(options.refuse ?? {}).map(([method, code]) => [
@@ -250,6 +262,8 @@ export function createTestHost(options: TestHostOptions): TestHost {
     },
     call: (method, params, caller) => bridge.call(method, params, caller ? { caller } : {}),
     emit: (event) => handler?.({ type: "desk:event", event }),
+    upsert: (item) => registry.upsert(item),
+    remove: (source, id) => registry.remove(source, id),
     settle: async () => {
       while (inFlight.size > 0) await Promise.all(inFlight);
       await new Promise((resolve) => setTimeout(resolve, 0));

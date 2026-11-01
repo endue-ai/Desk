@@ -1,0 +1,150 @@
+/* desk.views: a view over the whole desk. Colours come from the desk's theme; the elements style
+   themselves from the same tokens. */
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: var(--desk-background, #141416);
+  color: var(--desk-text, #f2f0f5);
+  font: 14px/20px -apple-system, "SUIT", "Inter", system-ui, sans-serif;
+}
+
+#root {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  height: 100%;
+  padding: 20px 24px;
+  overflow: auto;
+}
+
+#root[data-density="compact"] {
+  gap: 10px;
+  padding: 10px 12px;
+}
+
+.bar h1 {
+  margin: 0;
+  font-size: 20px;
+  line-height: 28px;
+}
+
+.description,
+.status,
+.empty,
+.notice,
+.detail,
+.line .label {
+  color: var(--desk-text-muted, #b0adb7);
+}
+
+.description {
+  margin: 2px 0 0;
+}
+
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.container.split[data-direction="horizontal"],
+.container.stack[data-direction="horizontal"] {
+  flex-direction: row;
+}
+
+.container.grid {
+  display: grid;
+  grid-template-columns: repeat(var(--columns, 2), minmax(0, 1fr));
+}
+
+/* Compact: a split stacks its panes, a grid takes one column. */
+#root[data-density="compact"] .container.split,
+#root[data-density="compact"] .container.stack {
+  flex-direction: column;
+}
+
+#root[data-density="compact"] .container.grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.pane {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.pane[hidden] {
+  display: none;
+}
+
+[role="tablist"] {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--desk-border, #333136);
+}
+
+[role="tab"] {
+  padding: 6px 12px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--desk-text-muted, #b0adb7);
+  font: inherit;
+  cursor: pointer;
+}
+
+[role="tab"][aria-selected="true"] {
+  border-bottom-color: var(--desk-accent, #b6a3f5);
+  color: var(--desk-text, #f2f0f5);
+}
+
+[role="tab"]:focus-visible {
+  outline: 2px solid var(--desk-accent, #b6a3f5);
+  outline-offset: 2px;
+}
+
+.component {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.component-title,
+.container-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--desk-text-muted, #b0adb7);
+  text-transform: uppercase;
+}
+
+.status,
+.empty,
+.notice {
+  margin: 0;
+}
+
+.component[data-state="error"] .status {
+  color: var(--desk-text, #f2f0f5);
+}
+
+.component desk-button {
+  align-self: flex-start;
+}
+
+desk-list .title {
+  display: block;
+}
+
+desk-list .detail {
+  display: block;
+  font-size: 12px;
+}
+
+.line {
+  margin: 0;
+}

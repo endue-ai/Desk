@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Mail</title>
+    <script type="importmap">
+      { "imports": { "@endue-ai/plugin-sdk": "/_desk/plugin-sdk.js" } }
+    </script>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <nav id="nav" aria-label="Mailboxes">
+      <header>
+        <h1 id="title">Mail</h1>
+        <div class="tools" role="toolbar" aria-label="Mail tools">
+          <button id="compose" type="button" title="New message (c)" aria-label="New message">✎</button>
+          <button id="refresh" type="button" title="Refresh" aria-label="Refresh">
+            <span aria-hidden="true">↻</span>
+          </button>
+        </div>
+      </header>
+      <select id="account" aria-label="Account" hidden></select>
+      <ul id="mailboxes"></ul>
+    </nav>
+    <section id="messages" aria-labelledby="title">
+      <input
+        id="search"
+        type="search"
+        placeholder="Search (/)"
+        aria-label="Search mail"
+        autocomplete="off"
+      />
+      <ul id="list" role="listbox" aria-label="Messages" tabindex="0"></ul>
+      <p id="empty" hidden>Nothing to show.</p>
+      <button id="more" type="button" hidden>Show more</button>
+    </section>
+    <section id="pane" data-showing="none">
+      <article id="reader" aria-label="Message" tabindex="0" hidden></article>
+      <form id="composer" aria-label="Compose" hidden>
+        <h2>New message</h2>
+        <ul class="problems" role="alert" hidden></ul>
+        <label>To <input name="to" type="text" autocomplete="off" spellcheck="false" /></label>
+        <label>Cc <input name="cc" type="text" autocomplete="off" spellcheck="false" /></label>
+        <label>Bcc <input name="bcc" type="text" autocomplete="off" spellcheck="false" /></label>
+        <label>Subject <input name="subject" type="text" autocomplete="off" /></label>
+        <textarea name="body" aria-label="Message text" rows="12"></textarea>
+        <div class="tools" role="toolbar" aria-label="Composer actions">
+          <button type="submit" title="Send (Mod+Enter)">Send</button>
+          <button type="button" data-close title="Keep as a draft (Escape)">Close</button>
+          <button type="button" data-discard>Discard</button>
+        </div>
+      </form>
+    </section>
+    <p id="status" role="status"></p>
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

@@ -1,40 +1,70 @@
-//! Kernel of endue Desk: permission engine, event bus, plugin registry, session store, the session
-//! lease client, init.yaml with its sync, and the bridge handler.
+//! Kernel of endue Desk: permission engine, event bus, plugin registry, session store, settings and
+//! the log, the session lease client, init.yaml with its sync, the bridge handler with the file URLs
+//! it hands frames (ADR 0041), links handed to the system (ADR 0047), and the integration layer (the
+//! item index, connectors and views; ADR 0036).
 pub const NAME: &str = env!("CARGO_PKG_NAME");
 
+mod calendar_items;
 mod conversation;
 mod core_brain;
+mod core_builtins;
+mod core_catalog;
 mod core_cmd;
+mod core_connectors;
+mod core_data;
+mod core_directory;
+mod core_events;
 mod core_fs;
+mod core_fs_url;
+mod core_host;
 mod core_init;
+mod core_log;
+mod core_net;
+mod core_perm;
+mod core_plugin_views;
 mod core_plugins;
+mod core_proc;
+mod core_prompts;
 mod core_search;
+mod core_settings;
+mod core_shell;
 mod core_store;
 mod core_ui;
+mod core_views;
+mod core_wasm;
 mod events;
+mod grants;
 mod handler;
 mod init;
 mod lease;
+mod log;
 mod manifest;
+mod media_types;
 mod paths;
 mod perm;
 mod plugins;
+mod secrets;
 mod sessions;
 mod store;
 mod sync;
 mod sync_mock;
 mod time;
+mod views_watch;
 mod watch;
 
-pub use conversation::{BrainOptions, FAILED_LINE, OFFLINE_LINE, READ_ONLY_LINE};
-pub use events::EventBus;
-pub use handler::{Core, Prompter, RefuseAll, Roots};
+pub use conversation::{BrainMode, BrainOptions, FAILED_LINE, OFFLINE_LINE, READ_ONLY_LINE};
+pub use core_fs_url::FileUrl;
+pub use core_perm::{Prompter, RefuseAll};
+pub use events::{Delivery, EventBus};
+pub use handler::{Core, Roots};
 pub use init::{INIT_TEMPLATE, INIT_VERSION, Init, PluginSetup, SyncSetup};
 pub use lease::{LeaseClient, LeaseError};
 pub use manifest::validate_dir;
+pub use media_types::media_type;
 pub use perm::{Denied, PermissionEngine, Target};
 pub use plugins::PluginRegistry;
 pub use sessions::{Said, SessionStore, Speaker};
 pub use sync::{Keep, RemoteFailure, Snapshot, SyncError, SyncOutcome, SyncRemote};
 pub use sync_mock::MockRemote;
+pub use views_watch::ViewWatcher;
 pub use watch::PluginWatcher;

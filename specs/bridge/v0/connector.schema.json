@@ -1,0 +1,196 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://endue.ai/specs/bridge/v0/connector.schema.json",
+  "title": "Desk bridge v0: connector",
+  "description": "The connections of the installed connectors (ADR 0032): list them with their status, connect and disconnect instances, and sync one now. Every call needs connector:manage. An instance is named by its connector and its id, which is unique only within the connector.",
+  "$defs": {
+    "ConnectorInfo": {
+      "description": "An installed connector as connector.list returns it: its instances and the kinds of item it brings in.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "../../plugin/v0/plugin.schema.json#/$defs/PluginId" },
+        "instances": {
+          "type": "array",
+          "items": { "$ref": "../../connector/v0/connector.schema.json#/$defs/ConnectorInstance" }
+        },
+        "resources": {
+          "type": "array",
+          "items": { "$ref": "../../connector/v0/connector.schema.json#/$defs/ConnectorResource" }
+        }
+      },
+      "required": ["id", "instances", "resources"],
+      "additionalProperties": false
+    },
+    "ConnectorListRequest": {
+      "description": "List the installed connectors and their instances.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "connector.list" },
+        "params": { "$ref": "#/$defs/ConnectorListParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "ConnectorListParams": {
+      "description": "Parameters of connector.list.",
+      "type": "object",
+      "properties": {
+        "scope": {
+          "$ref": "../../plugin/v0/permission.schema.json#/$defs/ConnectorManagePermission"
+        }
+      },
+      "required": ["scope"],
+      "additionalProperties": false
+    },
+    "ConnectorListResult": {
+      "description": "Result of connector.list, by connector id.",
+      "type": "object",
+      "properties": {
+        "connectors": { "type": "array", "items": { "$ref": "#/$defs/ConnectorInfo" } }
+      },
+      "required": ["connectors"],
+      "additionalProperties": false
+    },
+    "ConnectorConnectRequest": {
+      "description": "Add an instance of an installed connector.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "connector.connect" },
+        "params": { "$ref": "#/$defs/ConnectorConnectParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "ConnectorConnectParams": {
+      "description": "Parameters of connector.connect. instance is default when absent; settings follow the connector's instanceSettings; the secret ones stay with the core and never come back out (ADR 0036).",
+      "type": "object",
+      "properties": {
+        "connector": { "$ref": "../../plugin/v0/plugin.schema.json#/$defs/PluginId" },
+        "instance": { "$ref": "../../item/v0/item.schema.json#/$defs/InstanceId" },
+        "title": {
+          "description": "The name the person gives it: Work calendar.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "settings": {
+          "description": "Values of the connector's instance settings, by name.",
+          "type": "object"
+        },
+        "scope": {
+          "$ref": "../../plugin/v0/permission.schema.json#/$defs/ConnectorManagePermission"
+        }
+      },
+      "required": ["connector", "scope"],
+      "additionalProperties": false
+    },
+    "ConnectorConnectResult": {
+      "description": "Result of connector.connect: the new instance's id.",
+      "type": "object",
+      "properties": {
+        "instance": { "$ref": "../../item/v0/item.schema.json#/$defs/InstanceId" }
+      },
+      "required": ["instance"],
+      "additionalProperties": false
+    },
+    "ConnectorDisconnectRequest": {
+      "description": "Remove an instance, and the items it brought in.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "connector.disconnect" },
+        "params": { "$ref": "#/$defs/ConnectorDisconnectParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "ConnectorDisconnectParams": {
+      "description": "Parameters of connector.disconnect.",
+      "type": "object",
+      "properties": {
+        "connector": { "$ref": "../../plugin/v0/plugin.schema.json#/$defs/PluginId" },
+        "instance": { "$ref": "../../item/v0/item.schema.json#/$defs/InstanceId" },
+        "scope": {
+          "$ref": "../../plugin/v0/permission.schema.json#/$defs/ConnectorManagePermission"
+        }
+      },
+      "required": ["connector", "instance", "scope"],
+      "additionalProperties": false
+    },
+    "ConnectorDisconnectResult": {
+      "description": "Result of connector.disconnect.",
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "ConnectorSyncNowRequest": {
+      "description": "Sync one instance now, without waiting for its interval.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "connector.sync" },
+        "params": { "$ref": "#/$defs/ConnectorSyncNowParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "ConnectorSyncNowParams": {
+      "description": "Parameters of connector.sync.",
+      "type": "object",
+      "properties": {
+        "connector": { "$ref": "../../plugin/v0/plugin.schema.json#/$defs/PluginId" },
+        "instance": { "$ref": "../../item/v0/item.schema.json#/$defs/InstanceId" },
+        "scope": {
+          "$ref": "../../plugin/v0/permission.schema.json#/$defs/ConnectorManagePermission"
+        }
+      },
+      "required": ["connector", "instance", "scope"],
+      "additionalProperties": false
+    },
+    "ConnectorSyncNowResult": {
+      "description": "Result of connector.sync: the sync started; its progress arrives as connector.changed.",
+      "type": "object",
+      "properties": {
+        "started": { "const": true }
+      },
+      "required": ["started"],
+      "additionalProperties": false
+    },
+    "ConnectorChangedEvent": {
+      "description": "An instance was connected, changed status or was disconnected. Sent to callers that hold connector:manage.",
+      "type": "object",
+      "properties": {
+        "event": { "const": "connector.changed" },
+        "data": { "$ref": "#/$defs/ConnectorChangedData" }
+      },
+      "required": ["event", "data"],
+      "additionalProperties": false
+    },
+    "ConnectorChangedData": {
+      "description": "Payload of connector.changed. status is the instance's status after the change; a disconnected instance has none.",
+      "type": "object",
+      "properties": {
+        "connector": { "$ref": "../../plugin/v0/plugin.schema.json#/$defs/PluginId" },
+        "instance": { "$ref": "../../item/v0/item.schema.json#/$defs/InstanceId" },
+        "change": { "$ref": "#/$defs/ConnectorChange" },
+        "status": { "$ref": "../../connector/v0/connector.schema.json#/$defs/ConnectorStatus" }
+      },
+      "required": ["connector", "instance", "change"],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": { "properties": { "change": { "const": "disconnected" } } },
+          "then": { "properties": { "status": false } },
+          "else": { "properties": { "status": true }, "required": ["status"] }
+        }
+      ]
+    },
+    "ConnectorChange": {
+      "description": "What happened to the instance: connected (new), updated (its status changed) or disconnected (gone, with its items).",
+      "type": "string",
+      "enum": ["connected", "updated", "disconnected"]
+    }
+  }
+}

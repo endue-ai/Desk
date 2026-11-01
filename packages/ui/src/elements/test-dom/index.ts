@@ -86,6 +86,16 @@ export function query(root: Node | null, localName: string): HTMLElement {
   return found as unknown as HTMLElement;
 }
 
+/** Every element under `root` (a shadow root or an element) that `predicate` keeps, in tree order. */
+export function queryAll(
+  root: Node | Element | ShadowRoot | null,
+  predicate: (element: HTMLElement) => boolean,
+): HTMLElement[] {
+  if (!root) return [];
+  const all = [...descendants(root as unknown as FakeNode)] as unknown as HTMLElement[];
+  return all.filter(predicate);
+}
+
 /** Give an element the box `getBoundingClientRect` reports. */
 export function place(element: Element, rect: Partial<FakeElement["rect"]>): void {
   const fake = element as unknown as FakeElement;

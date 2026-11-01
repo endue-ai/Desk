@@ -1,0 +1,18 @@
+{
+  "target": "PluginContributes",
+  "description": "a palette provider: the palette runs its command as the person types and lists its answers under its title",
+  "instance": {
+    "commands": [
+      {
+        "id": "example.files.find",
+        "title": "Find files"
+      }
+    ],
+    "paletteProviders": [
+      {
+        "command": "example.files.find",
+        "title": "Files"
+      }
+    ]
+  }
+}

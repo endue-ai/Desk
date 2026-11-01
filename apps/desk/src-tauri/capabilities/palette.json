@@ -1,0 +1,15 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "palette",
+  "description": "The shipped search window can use its fixed core caller and show or hide itself.",
+  "windows": ["palette"],
+  "permissions": [
+    "core:event:allow-listen",
+    "core:event:allow-unlisten",
+    "allow-bridge-call",
+    "allow-palette-hide",
+    "allow-palette-reveal-main",
+    "allow-palette-prepare-main",
+    "allow-palette-present"
+  ]
+}

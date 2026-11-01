@@ -43,6 +43,13 @@
   pointer-events: auto;
 }
 
+/* The shell's bottom chrome (drawer button, composer, running chips) sits over the runtime's bottom
+   72px; the side bars stop above it, so their last rows stay clickable (issue 131). */
+.layer-desk .desk-edge--left,
+.layer-desk .desk-edge--right {
+  padding-bottom: 72px;
+}
+
 /* The status line is the echo area: one quiet line at the top, above Eris, between the profiles and
    the desktops. Centred by its margins, not a transform: a translate of -50% would be half the
    text's width, which differs with the fonts installed (render trees, ADR 0011). */

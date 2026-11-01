@@ -1,0 +1,21 @@
+{
+  "target": "ConnectorManifest",
+  "description": "an OAuth connector that pushes its changes, so it has no interval",
+  "instance": {
+    "binding": "mcp",
+    "auth": {
+      "kind": "oauth",
+      "authorizationUrl": "https://accounts.example.com/o/oauth2/auth",
+      "tokenUrl": "https://oauth2.example.com/token",
+      "scopes": ["calendar.readonly"]
+    },
+    "resources": [
+      {
+        "kind": "event"
+      }
+    ],
+    "sync": {
+      "mode": "push"
+    }
+  }
+}

@@ -17,6 +17,7 @@ pub fn file(path: &str) -> Option<&'static [u8]> {
         "main.js" => asset!("main.js"),
         "match.js" => asset!("match.js"),
         "search.js" => asset!("search.js"),
+        "providers.js" => asset!("providers.js"),
         "style.css" => asset!("style.css"),
         _ => return None,
     })
@@ -25,8 +26,38 @@ pub fn file(path: &str) -> Option<&'static [u8]> {
 #[cfg(test)]
 mod tests {
     #[test]
+    fn native_palette_has_its_own_enabled_capability() {
+        let config: serde_json::Value =
+            serde_json::from_str(include_str!("../tauri.conf.json")).unwrap();
+        let capability: serde_json::Value =
+            serde_json::from_str(include_str!("../capabilities/palette.json")).unwrap();
+        assert!(
+            config["app"]["security"]["capabilities"]
+                .as_array()
+                .unwrap()
+                .contains(&capability["identifier"])
+        );
+        assert_eq!(capability["windows"], serde_json::json!(["palette"]));
+        assert!(
+            capability["permissions"]
+                .as_array()
+                .unwrap()
+                .contains(&serde_json::json!("allow-bridge-call"))
+        );
+    }
+
+    #[test]
     fn only_the_shipped_palette_files_are_served() {
-        assert!(super::file("_desk/palette/index.html").is_some());
+        for name in [
+            "index.html",
+            "main.js",
+            "providers.js",
+            "search.js",
+            "match.js",
+            "style.css",
+        ] {
+            assert!(super::file(&format!("_desk/palette/{name}")).is_some());
+        }
         assert!(super::file("_desk/palette/../../plugin.json").is_none());
         assert!(super::file("desk.palette/ui/main.js").is_none());
     }
