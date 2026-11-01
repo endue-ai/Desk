@@ -23,12 +23,17 @@
  *   details: Detail[],
  *   note?: string,
  *   refusal?: string,
- *   read(entry: Entry, limit?: number): Promise<Uint8Array>,
- *   each?(entries: Entry[], visit: (entry: Entry, bytes: Uint8Array) => Promise<unknown>): Promise<void>,
+ *   read(entry: Entry, limit?: number, job?: Job): Promise<Uint8Array>,
+ *   each?(entries: Entry[], visit: (entry: Entry, bytes: Uint8Array) => Promise<unknown>, job?: Job): Promise<void>,
+ *   close?(): void,
  * }} Archive
  * `note` is the one sentence a details-only format shows; `refusal` why nothing is extracted;
  * `read` gives the entry's bytes (its first `limit` bytes when given); `each`, when a format has
- * it, reads several entries in one pass (a tar inside a stream, a solid 7z block).
+ * it, reads several entries in one pass (a tar inside a stream, a solid 7z block); `close` ends
+ * what the archive holds open (its library worker).
+ * @typedef {{ signal?: AbortSignal, report?: (done: number, total: number) => void }} Job
+ * The work a read belongs to: its signal stops it, `report` hears how far a decode is. Formats that
+ * cannot stop or tell ignore it.
  */
 
 export const ENCRYPTED = "Encrypted: not extracted.";

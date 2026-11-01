@@ -1,4 +1,4 @@
-// Continuous pages (PDF, XPS, comics): one box per page at its size times the zoom, laid out
+// Continuous pages (PDF, XPS, comics, DjVu): one box per page at its size times the zoom, laid out
 // arithmetically so the current page and the visible ones are known without layout (and in
 // jsdom). Only pages near the screen are drawn; pages far from it are emptied again, so a long
 // file never holds more than a few canvases. Timers, not animation frames: a hidden frame's
@@ -7,7 +7,9 @@
 /**
  * @typedef {import("./open.js").PagesBook} PagesBook
  * @typedef {import("./marks.js").At} At
- * @typedef {{ moved(at: At): void, go(unit: number): void, external(url: string): void }} Hooks
+ * @typedef {(done: number, total: number) => void} Report
+ * @typedef {{ moved(at: At): void, go(unit: number): void, external(url: string): void, reload?(): unknown,
+ *   work?(detail: string, run: (signal?: AbortSignal, report?: Report) => Promise<unknown>): Promise<unknown> }} Hooks
  */
 
 const PAD = 16;
@@ -35,8 +37,23 @@ export function createPages(doc, host, scroller, hooks) {
   let generation = 0;
   /** @type {ReturnType<typeof setTimeout> | undefined} */
   let scrolled;
+  const stopScroll = () => {
+    if (scrolled !== undefined) clearTimeout(scrolled);
+    scrolled = undefined;
+  };
 
   const heightOf = (/** @type {number} */ i) => (book?.pages[i]?.height ?? 0) * zoom;
+  /** A page that cannot be drawn says so, with the reader's sentence when it has one. */
+  const failed = (
+    /** @type {HTMLElement} */ box,
+    /** @type {number} */ i,
+    /** @type {any} */ error,
+  ) => {
+    box.dataset.failed = "true";
+    const why =
+      typeof error?.message === "string" && /\.$/.test(error.message) ? ` ${error.message}` : "";
+    box.textContent = `Page ${i + 1} could not be drawn.${why}`;
+  };
   const layout = () => {
     tops = [];
     let y = PAD;
@@ -66,30 +83,56 @@ export function createPages(doc, host, scroller, hooks) {
     return { unit: i, offset: Math.max(0, Math.min(1, (y - (tops[i] ?? 0)) / h)) };
   };
 
-  /** Draw page `i` (again, when the zoom changed for a PDF), and measure it first. */
+  /** Draw page `i` (again, when the zoom changed for a PDF or DjVu), and measure it first. */
   const draw = (/** @type {number} */ i) => {
     const box = boxes[i];
     const current = drawn.get(i);
     if (!book || !box) return Promise.resolve(box ?? host);
-    if (current && (current.zoom === zoom || book.format !== "PDF")) return current.done;
+    const scaled = book.format === "PDF" || book.scaled === true;
+    if (current && (current.zoom === zoom || !scaled)) return current.done;
     const mine = generation;
     const target = book;
-    const done = (async () => {
-      const before = target.pages[i];
-      const size = (await target.measure?.(i).catch(() => before)) ?? before;
-      if (mine !== generation) return box;
-      if (size && before && (size.width !== before.width || size.height !== before.height)) {
-        const at = where();
-        layout();
-        if (i < at.unit) goTo(at.unit, at.offset, false);
+    const work = hooks.work ?? ((_detail, run) => run());
+    const done = work(`Page ${i + 1}`, async (signal, progress) => {
+      const release = target.beginDecode?.(signal);
+      try {
+        const before = target.pages[i];
+        const size =
+          (await target.measure?.(i, signal, progress).catch((error) => {
+            if (signal?.aborted || target.stopped?.()) throw error;
+            return before;
+          })) ?? before;
+        if (mine !== generation) return box;
+        if (size && before && (size.width !== before.width || size.height !== before.height)) {
+          const at = where();
+          layout();
+          if (i < at.unit) goTo(at.unit, at.offset, false);
+        }
+        signal?.throwIfAborted();
+        await target
+          .paint(i, box, zoom, { go: hooks.go, external: hooks.external, signal, progress })
+          .catch((error) => {
+            if (signal?.aborted || target.stopped?.() || error?.name === "AbortError") throw error;
+            failed(box, i, error);
+          });
+        box.dataset.drawn = "true";
+        return box;
+      } finally {
+        release?.();
       }
-      await target.paint(i, box, zoom, { go: hooks.go, external: hooks.external }).catch(() => {
-        box.dataset.failed = "true";
-        box.textContent = `Page ${i + 1} could not be drawn.`;
-      });
-      box.dataset.drawn = "true";
+    }).catch((error) => {
+      if (target.stopped?.() && mine === generation) {
+        box.dataset.cancelled = "true";
+        box.replaceChildren(doc.createTextNode(`${target.format} decoding stopped. `));
+        const retry = doc.createElement("button");
+        retry.type = "button";
+        retry.textContent = "Reload document";
+        retry.addEventListener("click", () => hooks.reload?.());
+        box.append(retry);
+      } else if (error?.name !== "AbortError") failed(box, i, error);
+      if (mine === generation && drawn.get(i)?.done === done) drawn.delete(i);
       return box;
-    })();
+    });
     drawn.set(i, { zoom, done });
     return done;
   };
@@ -158,6 +201,7 @@ export function createPages(doc, host, scroller, hooks) {
   return {
     /** @param {PagesBook} next @param {{ at: At, zoom: number | null }} start */
     load(next, start) {
+      stopScroll();
       generation++;
       book = next;
       drawn.clear();
@@ -175,6 +219,7 @@ export function createPages(doc, host, scroller, hooks) {
       return zoom;
     },
     clear() {
+      stopScroll();
       generation++;
       book = null;
       boxes = [];

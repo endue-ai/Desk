@@ -20,17 +20,23 @@ const words = (shown: unknown) => {
 };
 
 describe("the desk's file requests", () => {
-  it("visit reads the file as base64, shows it and watches it", async () => {
+  it("visit reads the file in ranges, shows it and watches it", async () => {
     const { host, view, params } = await mount({ handlers: disk({ [A.path]: rtf("Alpha") }) });
     await expect(host.command("desk.files.visit", A)).resolves.toBeUndefined();
-    expect(host.calls.map((c) => c.method)).toEqual(["fs.read", "fs.watch"]);
-    expect(params("fs.read")).toEqual([{ path: A.path, encoding: "base64", scope: DOCS }]);
+    // Without fs.url (the test host has none), readBytes asks fs.read for the size, then the bytes.
+    expect(host.calls.map((c) => c.method)).toEqual(["fs.url", "fs.read", "fs.read", "fs.watch"]);
+    const size = rtf("Alpha").length;
+    expect(params("fs.read")).toEqual([
+      { path: A.path, encoding: "base64", offset: 0, length: 0, scope: DOCS },
+      { path: A.path, encoding: "base64", offset: 0, length: size, scope: DOCS },
+    ]);
     expect(params("fs.watch")).toEqual([{ path: A.path, scope: DOCS }]);
-    expect(view.shown.at(-1)).toMatchObject({ ...A, name: "a.rtf", size: rtf("Alpha").length });
+    expect(view.shown.at(-1)).toMatchObject({ ...A, name: "a.rtf", size });
     expect(view.shown.at(-1)).toMatchObject({ doc: { kind: "document", format: "rtf" } });
     expect(words(view.shown.at(-1))).toBe("Alpha");
     expect(view.focused).toBe(1);
-    expect(view.statuses).toEqual([]);
+    // The view says what it shows in place of these words ("a.rtf: 1 page.").
+    expect(view.statuses).toEqual(["Opening a.rtf…"]);
   });
 
   it("revert reads the file again", async () => {
@@ -39,7 +45,7 @@ describe("the desk's file requests", () => {
     await host.command("desk.files.visit", A);
     files[A.path] = rtf("Changed");
     await expect(host.command("desk.files.revert", A)).resolves.toBeUndefined();
-    expect(params("fs.read")).toHaveLength(2);
+    expect(params("fs.read")).toHaveLength(4);
     expect(words(view.shown.at(-1))).toBe("Changed");
   });
 
@@ -100,6 +106,7 @@ describe("a file the grants do not cover", () => {
       { permission: DOCS, reason: "To open ~/Documents/a.rtf in Docs" },
     ]);
     expect(params("fs.read")).toHaveLength(1);
+    expect(view.phases.at(-1)).toBeNull();
     expect(params("fs.watch")).toEqual([]);
     expect(view.statuses.at(-1)).toBe("Not allowed to read ~/Documents/a.rtf.");
     expect(view.shown.at(-1)).toBeNull();
@@ -107,18 +114,19 @@ describe("a file the grants do not cover", () => {
 
   it("a granted ask reads again and opens the document", async () => {
     let reads = 0;
+    const files = disk({ [A.path]: rtf("Alpha") });
     const { host, view, params } = await mount({
       handlers: {
-        ...disk({}),
-        "fs.read": () => {
+        ...files,
+        "fs.read": (params, caller) => {
           if (++reads === 1) throw denied("fs:read over ~/Documents/a.rtf");
-          return { content: btoa("{\\rtf1\\ansi Alpha\\par}"), encoding: "base64" };
+          return files["fs.read"]?.(params, caller) as never;
         },
         "perm.request": granted as never,
       },
     });
     await expect(host.command("desk.files.visit", A)).resolves.toBeUndefined();
-    expect(params("fs.read")).toHaveLength(2);
+    expect(params("fs.read")).toHaveLength(3);
     expect(params("perm.request")).toHaveLength(1);
     expect(words(view.shown.at(-1))).toBe("Alpha");
   });

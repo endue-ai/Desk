@@ -54,8 +54,19 @@
           "then": { "properties": { "surfaces": { "type": "array", "maxItems": 0 } } }
         },
         {
-          "if": { "properties": { "kind": { "not": { "enum": ["policy", "view"] } } } },
+          "if": { "properties": { "kind": { "not": { "enum": ["policy", "view", "library"] } } } },
           "then": { "properties": { "entry": true }, "required": ["entry"] }
+        },
+        {
+          "if": { "properties": { "kind": { "const": "library" } } },
+          "then": {
+            "properties": {
+              "entry": false,
+              "contributes": false,
+              "permissions": false,
+              "autoload": false
+            }
+          }
         },
         {
           "if": { "properties": { "kind": { "const": "policy" } } },
@@ -94,9 +105,9 @@
       "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?(\\+[0-9A-Za-z.-]+)?$"
     },
     "PluginKind": {
-      "description": "ui runs in a sandboxed iframe, logic in a Wasm instance, tool as an MCP server inside the VM. policy runs no code: it only contributes data (ADR 0017). connector brings an app's data in as items, as a Wasm component or an MCP server; view runs no code either: it is one or more views (ADR 0032).",
+      "description": "ui runs in a sandboxed iframe, logic in a Wasm instance, tool as an MCP server inside the VM. policy runs no code: it only contributes data (ADR 0017). library runs no code of its own either: it is files other plugins import, served at /<id>/... like any plugin's, never mounted and never turned off. connector brings an app's data in as items, as a Wasm component or an MCP server; view runs no code either: it is one or more views (ADR 0032).",
       "type": "string",
-      "enum": ["ui", "logic", "tool", "policy", "connector", "view"]
+      "enum": ["ui", "logic", "tool", "policy", "library", "connector", "view"]
     },
     "EntryPath": {
       "description": "Path to the entry file, relative to the plugin folder, without .. segments.",

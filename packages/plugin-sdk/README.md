@@ -4,7 +4,6 @@ What a plugin imports: definitions, the bridge client, file reads, workers and a
 Layer: Plugins (`docs/architecture.md`). Guide: `docs/plugins/authoring.md`.
 
 ## Public API
-
 - `defineUiPlugin({ mount(ctx) })`: connect to the runtime, then mount. `ctx` has `pluginId`,
   `bridge` (`call`, `onEvent`), `state` (`get`, `set`; kept across reloads), `surface`, `commands`,
   `theme`, `settings`, `log`, `events`, `perm`, `data` and `views`, typed from `@endue-ai/bridge`.
@@ -22,6 +21,8 @@ Layer: Plugins (`docs/architecture.md`). Guide: `docs/plugins/authoring.md`.
   provider's `cmd.answered` (needs a `cmd:invoke` grant covering the id); `list()` is `cmd.list`;
   `on(name, handler)` answers this plugin's commands (`cmd.invoked`) and the desk's requests by name,
   after `mount`. A failure is a `CommandFailed` (`unknown_command`, `failed`, `cancelled`).
+- `ctx.search.replace(documents)`: publish this plugin's searchable documents (500 / 4 MiB);
+  `[]` clears them. Each result can name a command owned by this plugin and its args.
 - `ctx.theme`: `get()`, `on(listener)`; the frame gets `--desk-*`, `data-scheme`, `-contrast` and
   `-motion`. Chords (Meta, Control, Alt, Escape) reach the desk unless prevented.
 - `readBytes(ctx, { path, scope }, { onProgress?(done, total), signal? })`: the file as a `Uint8Array`,
@@ -36,5 +37,4 @@ Layer: Plugins (`docs/architecture.md`). Guide: `docs/plugins/authoring.md`.
   `surfaces`, `call` (as any caller), `emit`, `command`, `invoke`, `theme`, `upsert`, `remove`, `settle`.
 
 ## Testing
-
 `pnpm exec vitest run packages/plugin-sdk`

@@ -31,11 +31,38 @@ const WORDS = {
 };
 
 /**
- * What a permission allows and how far its scope reaches. An unknown permission shows its own name.
- * @param {Permission} permission
+ * The file manager's name on a `navigator.platform`: Finder, Explorer, or the file manager.
+ * @param {string} platform
+ */
+export function fileManagerOf(platform) {
+  if (/^mac/i.test(platform)) return "Finder";
+  if (/^win/i.test(platform)) return "Explorer";
+  return "the file manager";
+}
+
+const FILE_MANAGER = fileManagerOf(globalThis.navigator?.platform ?? "");
+
+/**
+ * shell:open: links in the browser (the schemes named), files in the file manager (the paths).
+ * @param {import("@endue-ai/bridge").ShellOpenPermission} p
+ * @param {string} fileManager
  * @returns {Described}
  */
-export function describePermission(permission) {
+function describeShell(p, fileManager) {
+  const links = p.schemes ? `Open links (${list(p.schemes)}) in your browser` : "";
+  const files = p.paths ? `show files in ${fileManager}` : "";
+  const label = links && files ? `${links} and ${files}` : links || files || "Open links";
+  return { label: label.charAt(0).toUpperCase() + label.slice(1), scope: list(p.paths) };
+}
+
+/**
+ * What a permission allows and how far its scope reaches. An unknown permission shows its own name.
+ * @param {Permission} permission
+ * @param {string} [fileManager] where shell:open shows files: this platform's file manager by default
+ * @returns {Described}
+ */
+export function describePermission(permission, fileManager = FILE_MANAGER) {
+  if (permission.permission === "shell:open") return describeShell(permission, fileManager);
   const words = WORDS[permission.permission];
   if (!words) return { label: permission.permission, scope: "" };
   return { label: words[0], scope: words[1](permission) };

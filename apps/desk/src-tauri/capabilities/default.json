@@ -1,12 +1,15 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "The main window may call the bridge, report readiness and hear core events (bridge://event). Nothing else: every primitive goes through bridge_call and the core permission engine.",
+  "description": "The main window may call the bridge, report readiness, drain OS file-open paths, hear core/native events and show the file picker. File data still goes through bridge_call and the core permission engine.",
   "windows": ["main"],
   "permissions": [
     "allow-bridge-call",
     "allow-desk-ready",
+    "allow-take-open-files",
     "core:event:allow-listen",
-    "core:event:allow-unlisten"
+    "core:event:allow-unlisten",
+    "allow-palette-reveal-main",
+    "dialog:allow-open"
   ]
 }

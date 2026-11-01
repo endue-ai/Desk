@@ -24,6 +24,7 @@ import type { ShellCtx } from "./context";
 import { type Lang, t } from "./copy";
 import { h, listen } from "./dom";
 import { keepShell, syncProfiles } from "./link";
+import { mountPan } from "./Pan";
 import { paneViews } from "./panes";
 import { mountRail } from "./Rail";
 import { type DeskState, emptyState, Store } from "./state";
@@ -37,6 +38,10 @@ export interface DeskOptions {
   core: BridgeClient;
   /** Where plugin files are served from; the runtime mounts the enabled UI plugins (the palette). */
   plugins: PluginHostOptions;
+  /** Native hosts may pick a file; cancellation leaves the desk unchanged. */
+  pickFile?: () => Promise<string | null>;
+  /** Let the native host reveal a shared picker opened by a background command. */
+  onSurfaceShown?(id: string): void;
   clock?: Clock;
   lang?: Lang;
   /** "Mod" is ⌘ on mac and Ctrl elsewhere; detected from the browser unless given. */
@@ -101,6 +106,8 @@ export function mountDesk(options: DeskOptions): Desk {
     clock,
     platform,
     plugins: options.plugins,
+    pickFile: options.pickFile,
+    onSurfaceShown: options.onSurfaceShown,
     themeRoot: doc.documentElement,
     views: paneViews(ctx),
     // One window manager: the plugins' centre and floating surfaces are the shell's windows.
@@ -114,6 +121,7 @@ export function mountDesk(options: DeskOptions): Desk {
   const eris = mountEris(modeLayer, ctx, () => layoutOf(store.get()).eris);
   pending.say = eris.say;
   pending.setState = eris.setState;
+  parts.push(mountPan(root, ctx));
   parts.push(mountRail(modeLayer, ctx), mountBottom(modeLayer, ctx), mountSurfaces(modeLayer, ctx));
 
   const restored = keepShell(ctx);

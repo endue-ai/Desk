@@ -1,9 +1,9 @@
 // Archives whose entries follow each other in one stream (tar, cpio), read through a decoder or
 // straight from the file. Listing reads every header once; reading an entry starts the stream again
 // and skips to it; `each` reads many entries in one pass.
-import { collect, pause } from "../codecs/index.js";
+import { collect, pause } from "@endue-ai/formats/codecs/index.js";
 
-/** @typedef {import("../codecs/input.js").Input} Input */
+/** @typedef {import("@endue-ai/formats/codecs/input.js").Input} Input */
 /** @typedef {import("./archive.js").Entry} Entry */
 /** @typedef {import("./archive.js").Archive} Archive */
 /** @typedef {Entry & { start: number }} Placed an entry with where its data starts in the stream */

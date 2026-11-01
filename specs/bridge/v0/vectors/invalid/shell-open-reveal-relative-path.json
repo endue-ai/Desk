@@ -1,0 +1,16 @@
+{
+  "target": "BridgeRequest",
+  "description": "a reveal names a rooted path, never a relative one",
+  "instance": {
+    "id": 10,
+    "method": "shell.open",
+    "params": {
+      "target": "Downloads/report.pdf",
+      "reveal": true,
+      "scope": {
+        "permission": "shell:open",
+        "paths": ["~/Downloads/**"]
+      }
+    }
+  }
+}

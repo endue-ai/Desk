@@ -95,6 +95,23 @@ export class PluginHost {
     for (const info of all) this.#mount(info);
   }
 
+  /** Launch an installed UI plugin, including one put away or disabled by the person. */
+  async launch(id: string, waitForReady = false): Promise<void> {
+    let info = (await this.#list()).find((p) => p.id === id);
+    if (info?.status !== "ready" || info.manifest?.kind !== "ui")
+      throw new Error(`No launchable plugin ${id}`);
+    if (!info.enabled) {
+      ({ plugin: info } = await this.#deps.bridge.call("plugin.setEnabled", {
+        plugin: id,
+        enabled: true,
+        scope: MANAGE,
+      }));
+    }
+    this.#mount(info);
+    if (waitForReady) await this.whenReady(id);
+    this.#deps.show?.(id, true);
+  }
+
   mounted(): string[] {
     return [...this.#mounted.keys()];
   }

@@ -92,7 +92,6 @@ p {
 #archive-about,
 #summary,
 .caption,
-#progress,
 #status,
 dt {
   color: var(--desk-text-muted);
@@ -128,7 +127,10 @@ dt {
 }
 
 #about {
+  flex: none;
+  max-height: 35vh;
   padding: 0 12px;
+  overflow-y: auto;
 }
 
 #note {
@@ -317,9 +319,17 @@ main {
 footer {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 2px 12px;
   padding: 4px 12px 6px;
   border-top: 1px solid var(--desk-border);
+}
+
+/* Long work: the desk's progress element, which waits 300 ms before it shows. */
+#progress {
+  flex: 1 1 280px;
+  max-width: 520px;
+  padding: 2px 0;
 }
 
 /* A narrow surface puts the preview under the tree and keeps the name, size and date. */

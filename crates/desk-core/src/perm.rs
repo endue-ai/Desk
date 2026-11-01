@@ -4,7 +4,7 @@
 
 use std::path::PathBuf;
 
-use desk_bridge::{CallerGrant, EventName, Grant, GrantDuration, Permission};
+use desk_bridge::{CallerGrant, EventName, Grant, GrantDuration, Permission, ShellScheme};
 
 use crate::grants;
 use crate::paths::{glob_match, host_covers, host_match, normalize, pattern_covers};
@@ -27,6 +27,8 @@ pub enum Target<'a> {
     Events(&'a [EventName]),
     /// Another owner's setting as `owner/key` (settings.get).
     Setting(&'a str),
+    /// The scheme of a link handed to the system (shell.open); a reveal is a `Path`.
+    Scheme(ShellScheme),
 }
 
 /// A denied call: the scope that was missing and why.
@@ -221,6 +223,8 @@ pub fn covers(grant: &Permission, scope: &Permission) -> bool {
         (Permission::UiSurface(_), Permission::UiSurface(_)) => true,
         (Permission::UiNotify(_), Permission::UiNotify(_)) => true,
         (Permission::PluginManage(_), Permission::PluginManage(_)) => true,
+        (Permission::SearchRead(_), Permission::SearchRead(_)) => true,
+        (Permission::SearchSystem(_), Permission::SearchSystem(_)) => true,
         (Permission::BrainConverse(_), Permission::BrainConverse(_)) => true,
         (Permission::CmdInvoke(g), Permission::CmdInvoke(s)) => {
             s.ids.iter().all(|a| g.ids.iter().any(|p| star_match(p, a)))
@@ -242,6 +246,17 @@ pub fn covers(grant: &Permission, scope: &Permission) -> bool {
             .iter()
             .all(|a| g.keys.iter().any(|p| setting_match(p, a))),
         (Permission::LogRead(_), Permission::LogRead(_)) => true,
+        // shell:open: an absent list covers nothing, and only an absent scope list is covered by it.
+        (Permission::ShellOpen(g), Permission::ShellOpen(s)) => {
+            s.schemes
+                .iter()
+                .flatten()
+                .all(|a| g.schemes.iter().flatten().any(|h| h == a))
+                && all_paths(
+                    g.paths.as_deref().unwrap_or_default(),
+                    s.paths.as_deref().unwrap_or_default(),
+                )
+        }
         _ => false,
     }
 }
@@ -317,6 +332,8 @@ pub(crate) fn scope_allows(scope: &Permission, target: &Target<'_>) -> bool {
             | Permission::UiSurface(_)
             | Permission::UiNotify(_)
             | Permission::PluginManage(_)
+            | Permission::SearchRead(_)
+            | Permission::SearchSystem(_)
             | Permission::BrainConverse(_)
             | Permission::PermManage(_)
             | Permission::ConnectorManage(_)
@@ -331,6 +348,12 @@ pub(crate) fn scope_allows(scope: &Permission, target: &Target<'_>) -> bool {
         (Permission::SettingsRead(_), Target::None) => true,
         // data.*: the scope narrows which items the call sees.
         (Permission::DataRead(_), Target::None) => true,
+        (Permission::ShellOpen(s), Target::Scheme(scheme)) => {
+            s.schemes.iter().flatten().any(|allowed| allowed == scheme)
+        }
+        (Permission::ShellOpen(s), Target::Path(path)) => {
+            s.paths.as_ref().is_some_and(|paths| path_in(paths, path))
+        }
         _ => false,
     }
 }

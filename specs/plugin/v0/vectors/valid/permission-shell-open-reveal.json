@@ -1,0 +1,8 @@
+{
+  "target": "Permission",
+  "description": "shell:open that only shows files under a folder in the file manager",
+  "instance": {
+    "permission": "shell:open",
+    "paths": ["~/Downloads/**"]
+  }
+}

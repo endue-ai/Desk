@@ -11,14 +11,27 @@ plugin adds to the desk's policies as data (ADR 0017).
 | --- | --- |
 | `id` | Reverse-domain id with a dot, lowercase: `endue.eris`, `example.hello-ui` |
 | `version` | Semantic version |
-| `kind` | `ui` (sandboxed iframe), `logic` (Wasm), `tool` (MCP inside the VM), `policy` (data only), `connector` (items in, actions as commands; Wasm or MCP), `view` (data only) |
-| `entry` | Entry file relative to the plugin folder, never outside it; `policy` and `view` plugins have none |
-| `permissions` | Everything the plugin may ask for; each is granted by the person at first use |
+| `kind` | `ui` (sandboxed iframe), `logic` (Wasm), `tool` (MCP inside the VM), `policy` (data only), `library` (files other plugins import), `connector` (items in, actions as commands; Wasm or MCP), `view` (data only) |
+| `entry` | Entry file relative to the plugin folder, never outside it; `policy`, `library` and `view` plugins have none |
+| `permissions` | Everything the plugin may ask for; each is granted by the person at first use; a `library` has none |
 | `surfaces` | Surfaces a UI plugin can open, with a placement (`hidden` until it shows itself); other kinds declare none |
-| `contributes` | Commands, keys, display rules, file openers, themes, settings, profiles and palette providers; required for `policy` |
-| `autoload` | Off until the desk needs it, like Emacs's autoload: off at start unless a stored flag says on, its file openers count while off; `desk.files` turns it on for a file and off after its last file; default `false` |
+| `contributes` | Commands, keys, display rules, file openers, themes, settings, profiles and palette providers; required for `policy`, refused for `library` |
+| `autoload` | Off until the desk needs it, like Emacs's autoload: off at start unless a stored flag says on, its file openers count while off; `desk.files` turns it on for a file and off after its last file; default `false`; refused for `library` |
 | `view`, `views` | A `view` plugin's one view inline (`specs/view/v0`), or its view files (`.yaml`, `.yml`, `.json`); exactly one of the two |
 | `connector` | A `connector` plugin's connector block (`specs/connector/v0`); required for that kind, refused for others |
+
+## Libraries
+
+A `library` plugin is files other plugins import: code shared by several plugins lives once, and
+updates like any plugin. It runs nothing of its own, so it has no `entry`, no surfaces, no
+contributions, no permissions and no `autoload`: its modules run in the frame of the plugin that
+imports them, under that plugin's grants. The desk installs it like any plugin and serves its files at
+`/<id>/<path>` on the plugin scheme; the runtime never mounts it, `plugin.setEnabled` refuses to turn
+it off (`unsupported`) and init.yaml's `plugins.disabled` does not hold it off, so `plugin.list`
+always reports it enabled. A consumer maps a bare prefix to the library's folder in its page's import
+map, for `endue.formats`: `{ "imports": { "@endue-ai/formats/": "/endue.formats/lib/" } }`, then
+imports `@endue-ai/formats/<folder>/<file>.js`. Inside a library, modules import each other by
+relative paths.
 
 ## Contributions
 
@@ -68,9 +81,11 @@ eight `actions` (`{ command, title, args? }`): Enter runs the first, Mod+Enter t
 | `data:read` | `kinds`, `sources` | Items of the index through `data.*` (served from #103 on); absent `kinds` or `sources` mean all |
 | `connector:manage` | none | Connector instances through `connector.*`: list, connect, disconnect, pause, sync (from #103 on) |
 | `view:manage` | none | The person's views through `view.*`: list, open, save, remove (from #103 on) |
+| `shell:open` | `schemes`, `paths` | `shell.open` of URLs whose scheme is in `schemes` (`http`, `https`, `mailto`), and of reveals of files under `paths`; at least one of the two |
 
 Paths are absolute or rooted at `~`, `${plugin}`, `${workspace}` or `${home}`, with `*` within a segment
-and `**` across segments. Hosts are names with an optional port, or `*.domain` for subdomains. Commands
+and `**` across segments. `shell:open` schemes are the three the core ever opens: a scope narrows them,
+never widens them, and its `paths` are only shown in the file manager, never opened. Hosts are names with an optional port, or `*.domain` for subdomains. Commands
 are program names or absolute paths, without arguments.
 
 Command ids are lowercase and dotted (`eris.say`); in `ids`, `*` matches any run of characters, dots

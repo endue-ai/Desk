@@ -1,11 +1,12 @@
 // ZIP and everything built on it (jar, apk, ipa, docx-like packages, crx, whl, nupkg, appx, ...):
 // the end record and the central directory read from the end of the file in a few ranged reads,
 // ZIP64, UTF-8, Unicode-path, CP949 and CP437 names, and each entry read only when asked for.
+
+import { crc32 } from "@endue-ai/formats/codecs/checksums.js";
+import { collect, decodeStream, pause } from "@endue-ai/formats/codecs/index.js";
+import { inputFrom, named } from "@endue-ai/formats/codecs/input.js";
+import { lzmaRaw } from "@endue-ai/formats/codecs/lzma/index.js";
 import { at, cp437, dosDate, text, u16, u32, u64, unixDate, utf8 } from "../bytes.js";
-import { crc32 } from "../codecs/checksums.js";
-import { collect, decodeStream, pause } from "../codecs/index.js";
-import { inputFrom, named } from "../codecs/input.js";
-import { lzmaRaw } from "../codecs/lzma/index.js";
 import { cleanPath, ENCRYPTED, row, withFolders } from "./archive.js";
 
 /** @typedef {import("../source.js").Source} Source */

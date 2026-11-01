@@ -7,6 +7,8 @@
     "Permission": {
       "description": "One permission with its scope. Plugin manifests declare these; bridge calls carry the one that covers them.",
       "oneOf": [
+        { "$ref": "#/$defs/SearchReadPermission" },
+        { "$ref": "#/$defs/SearchSystemPermission" },
         { "$ref": "#/$defs/FsReadPermission" },
         { "$ref": "#/$defs/FsWritePermission" },
         { "$ref": "#/$defs/ProcSpawnPermission" },
@@ -24,8 +26,23 @@
         { "$ref": "#/$defs/PermManagePermission" },
         { "$ref": "#/$defs/DataReadPermission" },
         { "$ref": "#/$defs/ConnectorManagePermission" },
-        { "$ref": "#/$defs/ViewManagePermission" }
+        { "$ref": "#/$defs/ViewManagePermission" },
+        { "$ref": "#/$defs/ShellOpenPermission" }
       ]
+    },
+    "SearchReadPermission": {
+      "description": "Search explicitly published plugin documents and installed plugin launchers.",
+      "type": "object",
+      "properties": { "permission": { "const": "search:read" } },
+      "required": ["permission"],
+      "additionalProperties": false
+    },
+    "SearchSystemPermission": {
+      "description": "Query the OS file and application index and open a recent result with its default application.",
+      "type": "object",
+      "properties": { "permission": { "const": "search:system" } },
+      "required": ["permission"],
+      "additionalProperties": false
     },
     "FsReadPermission": {
       "description": "Read files, list folders and watch for changes under the given paths.",
@@ -251,6 +268,37 @@
       },
       "required": ["permission"],
       "additionalProperties": false
+    },
+    "ShellOpenPermission": {
+      "description": "Hand links to the system with shell.open: open URLs whose scheme is in schemes in their default app, and show files under paths in the file manager. Only http, https and mailto are ever opened, and a path is only shown, never opened or run.",
+      "type": "object",
+      "properties": {
+        "permission": { "const": "shell:open" },
+        "schemes": {
+          "description": "URL schemes the permission opens.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/ShellScheme" },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "paths": {
+          "description": "Path patterns whose files and folders the permission shows in the file manager.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/PathPattern" },
+          "minItems": 1
+        }
+      },
+      "required": ["permission"],
+      "additionalProperties": false,
+      "anyOf": [
+        { "properties": { "schemes": true }, "required": ["schemes"] },
+        { "properties": { "paths": true }, "required": ["paths"] }
+      ]
+    },
+    "ShellScheme": {
+      "description": "A URL scheme shell.open hands to the system: the browser for http and https, the mail app for mailto.",
+      "type": "string",
+      "enum": ["http", "https", "mailto"]
     },
     "PathPattern": {
       "description": "An absolute path, or one rooted at ~ or at ${plugin}, ${workspace} or ${home}, with forward slashes. * matches within a segment and ** across segments.",

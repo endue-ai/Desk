@@ -2,7 +2,10 @@
 // xl/styles.xml gives each cell format's font, fill and alignment, the theme gives the colours a
 // format names by number, and a sheet part gives each cell's format and the frozen panes.
 
+import { descendant, parseXml } from "./xml.js";
+
 /** @typedef {import("./model.js").CellStyle} CellStyle */
+/** @typedef {import("./xml.js").XmlNode} XmlNode */
 
 /** Excel's 64 indexed colours (64 and 65 are the system's text and window colours). */
 const INDEXED = `000000 FFFFFF FF0000 00FF00 0000FF FFFF00 FF00FF 00FFFF
@@ -16,18 +19,12 @@ const INDEXED = `000000 FFFFFF FF0000 00FF00 0000FF FFFF00 FF00FF 00FFFF
 /** The theme's colour for each theme index: Excel swaps the first two pairs of the scheme. */
 const THEME_ORDER = [1, 0, 3, 2, 4, 5, 6, 7, 8, 9, 10, 11];
 
-/** @param {string} xml */
-const parse = (xml) =>
-  typeof DOMParser === "undefined" || !xml
-    ? undefined
-    : new DOMParser().parseFromString(xml, "application/xml");
-
 /** Child elements of `node` by local name, whatever their prefix. */
-const children = (/** @type {Element | undefined} */ node, /** @type {string} */ name) =>
+const children = (/** @type {XmlNode | undefined} */ node, /** @type {string} */ name) =>
   node ? [...node.children].filter((child) => child.localName === name) : [];
-const child = (/** @type {Element | undefined} */ node, /** @type {string} */ name) =>
+const child = (/** @type {XmlNode | undefined} */ node, /** @type {string} */ name) =>
   children(node, name)[0];
-const flag = (/** @type {Element | undefined} */ node) => {
+const flag = (/** @type {XmlNode | undefined} */ node) => {
   if (!node) return false;
   const val = node.getAttribute("val");
   return val === null || (val !== "0" && val !== "false" && val !== "none");
@@ -71,7 +68,7 @@ export function tint(/** @type {string} */ hex, /** @type {number} */ amount) {
 
 /** The theme's scheme colours, in the order of the file. */
 function themeColors(/** @type {string} */ themeXml) {
-  const scheme = parse(themeXml)?.getElementsByTagNameNS("*", "clrScheme")[0];
+  const scheme = descendant(parseXml(themeXml), "clrScheme");
   return [...(scheme?.children ?? [])].map((slot) => {
     const value = slot.children[0];
     const hex = value?.getAttribute("lastClr") ?? value?.getAttribute("val") ?? "";
@@ -80,7 +77,7 @@ function themeColors(/** @type {string} */ themeXml) {
 }
 
 /**
- * @param {Element | undefined} node a color, fgColor or bgColor element
+ * @param {XmlNode | undefined} node a color, fgColor or bgColor element
  * @param {(string | undefined)[]} theme
  * @param {string[]} indexed
  */
@@ -108,13 +105,13 @@ const ALIGN = /** @type {Record<string, string>} */ ({
 
 /**
  * Each cell format of xl/styles.xml (cellXfs, by index) as the grid draws it; undefined for a
- * format that looks like the grid's own cells. Without a DOMParser there are no styles.
+ * format that looks like the grid's own cells. The same attribute reader runs in the parsing worker.
  * @param {string} stylesXml
  * @param {string} [themeXml]
  * @returns {(CellStyle | undefined)[]}
  */
 export function parseStyles(stylesXml, themeXml = "") {
-  const root = parse(stylesXml)?.documentElement;
+  const root = parseXml(stylesXml);
   if (root?.localName !== "styleSheet") return [];
   const theme = themeColors(themeXml);
   const custom = children(child(child(root, "colors"), "indexedColors"), "rgbColor");
@@ -222,6 +219,9 @@ export function scanSheet(sheetXml) {
   }
   return {
     frozen,
+    releaseRow: (r) => {
+      delete cells[r];
+    },
     /** @param {number} r @param {number} c */
     format: (r, c) =>
       cells[r]?.[c] ??

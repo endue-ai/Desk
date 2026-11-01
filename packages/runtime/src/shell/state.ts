@@ -33,6 +33,8 @@ export interface DeskState {
   modeId: string;
   desktop: DesktopIndex;
   session: Session;
+  /** Canvas offset per desktop; navigation does not dirty the saved window layout. */
+  pan: Partial<Record<DesktopIndex, { x: number; y: number }>>;
   modesOpen: boolean;
   /** The agent directory (specs/brain/v0), loaded through the bridge. */
   spaces: Space[];
@@ -111,6 +113,7 @@ export function emptyState(lang: Lang): DeskState {
     modeId: "default",
     desktop: 1,
     session: {},
+    pan: {},
     modesOpen: false,
     spaces: [],
     spaceId: "",

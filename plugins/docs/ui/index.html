@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <title>Docs</title>
     <script type="importmap">
-      { "imports": { "@endue-ai/plugin-sdk": "/_desk/plugin-sdk.js" } }
+      { "imports": { "@endue-ai/plugin-sdk": "/_desk/plugin-sdk.js", "@endue-ai/ui": "/_desk/ui.js" } }
     </script>
     <link rel="stylesheet" href="./style.css" />
   </head>
@@ -31,6 +31,7 @@
         <button type="button" id="zoom-fit">Fit width</button>
       </div>
     </header>
+    <desk-progress id="opening" hidden></desk-progress>
     <div id="find" role="search" aria-label="Find in document" hidden>
       <input id="find-text" type="search" aria-label="Find in document" autocomplete="off" />
       <button type="button" id="find-prev" aria-label="Previous match">↑</button>

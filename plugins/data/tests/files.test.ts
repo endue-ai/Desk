@@ -9,12 +9,15 @@ const B = file("~/data/b.yaml");
 const READ = folderRead(A.path);
 
 describe("the desk's file requests", () => {
-  it("visit reads the file as base64, shows its tree and watches it", async () => {
+  it("visit uses bounded base64 fallback ranges, shows its tree and watches it", async () => {
     const { host, view, params } = await mount({
       handlers: disk({ [A.path]: '{ "name": "desk" }\n' }),
     });
     await expect(host.command("desk.files.visit", A)).resolves.toBeUndefined();
-    expect(params("fs.read")[0]).toEqual({ path: A.path, encoding: "base64", scope: READ });
+    expect(params("fs.read").slice(0, 2)).toEqual([
+      { path: A.path, encoding: "base64", scope: READ, offset: 0, length: 0 },
+      { path: A.path, encoding: "base64", scope: READ, offset: 0, length: 19 },
+    ]);
     expect(params("fs.watch")).toEqual([{ path: A.path, scope: READ }]);
     const shown = view.shown.at(-1);
     expect(shown).toMatchObject({ ...A, name: "a.json", size: 19, maskKeys: true });
@@ -30,9 +33,13 @@ describe("the desk's file requests", () => {
     await host.command("desk.files.visit", A);
     files[A.path] = '{ "v": 2 }';
     await expect(host.command("desk.files.revert", A)).resolves.toBeUndefined();
-    expect(params("fs.read").filter((p) => (p as { path: string }).path === A.path)).toHaveLength(
-      2,
-    );
+    expect(
+      params("fs.read").filter(
+        (p) =>
+          (p as { path: string; length: number }).path === A.path &&
+          (p as { length: number }).length > 0,
+      ),
+    ).toHaveLength(2);
     expect(plainOf(rootOf(view.shown.at(-1)?.opened.doc))).toEqual({ v: 2 });
   });
 
@@ -95,7 +102,9 @@ describe("files outside the grants", () => {
     expect(params("perm.request")).toEqual([
       { permission: DOCS, reason: "To open ~/Documents/x.toml in Data" },
     ]);
-    expect(params("fs.read")).toEqual([{ path: X.path, encoding: "base64", scope: DOCS }]);
+    expect(params("fs.read")).toEqual([
+      { path: X.path, encoding: "base64", scope: DOCS, offset: 0, length: 0 },
+    ]);
     expect(params("fs.watch")).toEqual([]);
     expect(view.statuses.at(-1)).toBe("Not allowed to read ~/Documents/x.toml.");
     expect(view.shown.at(-1)).toBeNull();
@@ -106,10 +115,17 @@ describe("files outside the grants", () => {
     const { host, view, params } = await mount({
       handlers: {
         ...disk({ [X.path]: 'title = "x"\n' }),
-        "fs.read": ({ path }) => {
+        "fs.read": ({ path, offset = 0, length }) => {
           reads++;
           if (reads === 1) throw denied(`fs:read over ${path}`);
-          return { content: Buffer.from('title = "x"\n').toString("base64"), encoding: "base64" };
+          const bytes = Buffer.from('title = "x"\n');
+          return {
+            content: bytes
+              .subarray(offset, length === undefined ? undefined : offset + length)
+              .toString("base64"),
+            encoding: "base64",
+            size: bytes.length,
+          };
         },
         "perm.request": ({ permission }) => ({
           granted: true,
@@ -125,8 +141,8 @@ describe("files outside the grants", () => {
     await expect(host.command("desk.files.visit", X)).resolves.toBeUndefined();
     expect(params("perm.request")).toHaveLength(1);
     expect(params("fs.read").slice(0, 2)).toEqual([
-      { path: X.path, encoding: "base64", scope: DOCS },
-      { path: X.path, encoding: "base64", scope: DOCS },
+      { path: X.path, encoding: "base64", scope: DOCS, offset: 0, length: 0 },
+      { path: X.path, encoding: "base64", scope: DOCS, offset: 0, length: 0 },
     ]);
     expect(plainOf(rootOf(view.shown.at(-1)?.opened.doc))).toEqual({ title: "x" });
   });

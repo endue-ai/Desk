@@ -293,6 +293,8 @@ pub struct ProfileContribution {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum Permission {
+    SearchRead(SearchReadPermission),
+    SearchSystem(SearchSystemPermission),
     FsRead(FsReadPermission),
     FsWrite(FsWritePermission),
     ProcSpawn(ProcSpawnPermission),
@@ -311,6 +313,21 @@ pub enum Permission {
     DataRead(DataReadPermission),
     ConnectorManage(ConnectorManagePermission),
     ViewManage(ViewManagePermission),
+    ShellOpen(ShellOpenPermission),
+}
+
+/// Search explicitly published plugin documents and installed plugin launchers.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SearchReadPermission {
+    pub permission: SearchReadPermissionPermission,
+}
+
+/// Query the OS file and application index and open a recent result with its default application.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SearchSystemPermission {
+    pub permission: SearchSystemPermissionPermission,
 }
 
 /// Read files, list folders and watch for changes under the given paths.
@@ -465,6 +482,30 @@ pub struct ViewManagePermission {
     pub permission: ViewManagePermissionPermission,
 }
 
+/// Hand links to the system with shell.open: open URLs whose scheme is in schemes in their default app, and show files under paths in the file manager. Only http, https and mailto are ever opened, and a path is only shown, never opened or run.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ShellOpenPermission {
+    pub permission: ShellOpenPermissionPermission,
+    /// URL schemes the permission opens.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub schemes: Option<Vec<ShellScheme>>,
+    /// Path patterns whose files and folders the permission shows in the file manager.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub paths: Option<Vec<PathPattern>>,
+}
+
+/// A URL scheme shell.open hands to the system: the browser for http and https, the mail app for mailto.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum ShellScheme {
+    #[serde(rename = "http")]
+    Http,
+    #[serde(rename = "https")]
+    Https,
+    #[serde(rename = "mailto")]
+    Mailto,
+}
+
 /// An absolute path, or one rooted at ~ or at ${plugin}, ${workspace} or ${home}, with forward slashes. * matches within a segment and ** across segments.
 pub type PathPattern = String;
 
@@ -542,7 +583,7 @@ pub type PluginId = String;
 /// Semantic version, for example 0.1.0 or 1.2.3-beta.1.
 pub type Version = String;
 
-/// ui runs in a sandboxed iframe, logic in a Wasm instance, tool as an MCP server inside the VM. policy runs no code: it only contributes data (ADR 0017). connector brings an app's data in as items, as a Wasm component or an MCP server; view runs no code either: it is one or more views (ADR 0032).
+/// ui runs in a sandboxed iframe, logic in a Wasm instance, tool as an MCP server inside the VM. policy runs no code: it only contributes data (ADR 0017). library runs no code of its own either: it is files other plugins import, served at /<id>/... like any plugin's, never mounted and never turned off. connector brings an app's data in as items, as a Wasm component or an MCP server; view runs no code either: it is one or more views (ADR 0032).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum PluginKind {
     #[serde(rename = "ui")]
@@ -553,6 +594,8 @@ pub enum PluginKind {
     Tool,
     #[serde(rename = "policy")]
     Policy,
+    #[serde(rename = "library")]
+    Library,
     #[serde(rename = "connector")]
     Connector,
     #[serde(rename = "view")]
@@ -1897,6 +1940,10 @@ pub enum Encoding {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum BridgeRequest {
+    SearchReplace(SearchReplaceRequest),
+    SearchQuery(SearchQueryRequest),
+    SearchSystem(SearchSystemRequest),
+    SearchOpen(SearchOpenRequest),
     FsRead(FsReadRequest),
     FsWrite(FsWriteRequest),
     FsList(FsListRequest),
@@ -1953,6 +2000,7 @@ pub enum BridgeRequest {
     ViewSave(ViewSaveRequest),
     ViewRemove(ViewRemoveRequest),
     CatalogGet(CatalogGetRequest),
+    ShellOpen(ShellOpenRequest),
 }
 
 /// The answer to one request: a result, or an error.
@@ -3530,6 +3578,131 @@ pub struct ProcExitData {
     pub signal: Option<Signal>,
 }
 
+/// A plugin explicitly publishes searchable text. command must belong to that plugin; args are sent only after the person opens the result. Do not publish secrets.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SearchDocument {
+    pub id: String,
+    pub title: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub detail: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub text: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub command: Option<CommandId>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub args: Option<serde_json::Map<String, serde_json::Value>>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SearchHit {
+    pub id: String,
+    pub title: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub detail: Option<String>,
+    pub kind: SearchKind,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub plugin: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub command: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub args: Option<serde_json::Map<String, serde_json::Value>>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum SearchKind {
+    #[serde(rename = "plugin")]
+    Plugin,
+    #[serde(rename = "document")]
+    Document,
+    #[serde(rename = "file")]
+    File,
+    #[serde(rename = "application")]
+    Application,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SearchReplaceParams {
+    pub documents: Vec<SearchDocument>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SearchReplaceResult {}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SearchReplaceRequest {
+    pub id: RequestId,
+    pub method: SearchReplaceRequestMethod,
+    pub params: SearchReplaceParams,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SearchQueryParams {
+    pub query: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub limit: Option<u64>,
+    pub scope: SearchReadPermission,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SearchQueryResult {
+    pub hits: Vec<SearchHit>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SearchQueryRequest {
+    pub id: RequestId,
+    pub method: SearchQueryRequestMethod,
+    pub params: SearchQueryParams,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SearchSystemParams {
+    pub query: String,
+    pub scope: SearchSystemPermission,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SearchSystemResult {
+    pub hits: Vec<SearchHit>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SearchSystemRequest {
+    pub id: RequestId,
+    pub method: SearchSystemRequestMethod,
+    pub params: SearchSystemParams,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SearchOpenParams {
+    pub id: String,
+    pub scope: SearchSystemPermission,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SearchOpenResult {}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SearchOpenRequest {
+    pub id: RequestId,
+    pub method: SearchOpenRequestMethod,
+    pub params: SearchOpenParams,
+}
+
 /// A key in its owner's namespace, lowercase and dotted: voice, motion.reduce.
 pub type SettingKey = String;
 
@@ -3625,6 +3798,34 @@ pub struct SettingsListResult {
 pub struct SettingsChangedEvent {
     pub event: SettingsChangedEventEvent,
     pub data: Setting,
+}
+
+/// Open a URL in the system's default handler, or show a file in the file manager.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ShellOpenRequest {
+    pub id: RequestId,
+    pub method: ShellOpenRequestMethod,
+    pub params: ShellOpenParams,
+}
+
+/// Parameters of shell.open.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ShellOpenParams {
+    /// An absolute URL (only http, https and mailto are ever opened), or with reveal a path (~/... or absolute) to show in its folder.
+    pub target: String,
+    /// Show the file or folder at the path target, selected in its folder in the file manager, instead of opening a URL. A path is never opened or run.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reveal: Option<bool>,
+    pub scope: ShellOpenPermission,
+}
+
+/// Result of shell.open: the system took the URL or showed the file.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ShellOpenResult {
+    pub opened: True,
 }
 
 /// A key in the caller's own namespace.
@@ -3977,6 +4178,22 @@ pub enum ViewChange {
     Removed,
 }
 
+/// The `permission` of [`SearchReadPermission`]: always `"search:read"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum SearchReadPermissionPermission {
+    #[default]
+    #[serde(rename = "search:read")]
+    SearchRead,
+}
+
+/// The `permission` of [`SearchSystemPermission`]: always `"search:system"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum SearchSystemPermissionPermission {
+    #[default]
+    #[serde(rename = "search:system")]
+    SearchSystem,
+}
+
 /// The `permission` of [`FsReadPermission`]: always `"fs:read"`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub enum FsReadPermissionPermission {
@@ -4119,6 +4336,14 @@ pub enum ViewManagePermissionPermission {
     #[default]
     #[serde(rename = "view:manage")]
     ViewManage,
+}
+
+/// The `permission` of [`ShellOpenPermission`]: always `"shell:open"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum ShellOpenPermissionPermission {
+    #[default]
+    #[serde(rename = "shell:open")]
+    ShellOpen,
 }
 
 /// The `kind` of [`EventItem`]: always `"event"`.
@@ -4729,6 +4954,38 @@ pub enum ProcExitEventEvent {
     ProcExit,
 }
 
+/// The `method` of [`SearchReplaceRequest`]: always `"search.replace"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum SearchReplaceRequestMethod {
+    #[default]
+    #[serde(rename = "search.replace")]
+    SearchReplace,
+}
+
+/// The `method` of [`SearchQueryRequest`]: always `"search.query"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum SearchQueryRequestMethod {
+    #[default]
+    #[serde(rename = "search.query")]
+    SearchQuery,
+}
+
+/// The `method` of [`SearchSystemRequest`]: always `"search.system"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum SearchSystemRequestMethod {
+    #[default]
+    #[serde(rename = "search.system")]
+    SearchSystem,
+}
+
+/// The `method` of [`SearchOpenRequest`]: always `"search.open"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum SearchOpenRequestMethod {
+    #[default]
+    #[serde(rename = "search.open")]
+    SearchOpen,
+}
+
 /// The `method` of [`SettingsGetRequest`]: always `"settings.get"`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub enum SettingsGetRequestMethod {
@@ -4759,6 +5016,14 @@ pub enum SettingsChangedEventEvent {
     #[default]
     #[serde(rename = "settings.changed")]
     SettingsChanged,
+}
+
+/// The `method` of [`ShellOpenRequest`]: always `"shell.open"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum ShellOpenRequestMethod {
+    #[default]
+    #[serde(rename = "shell.open")]
+    ShellOpen,
 }
 
 /// The `method` of [`StoreGetRequest`]: always `"store.get"`.
@@ -5001,8 +5266,16 @@ pub const SCHEMAS: &[(&str, &str)] = &[
         include_str!("../../../specs/bridge/v0/proc.schema.json"),
     ),
     (
+        "https://endue.ai/specs/bridge/v0/search.schema.json",
+        include_str!("../../../specs/bridge/v0/search.schema.json"),
+    ),
+    (
         "https://endue.ai/specs/bridge/v0/settings.schema.json",
         include_str!("../../../specs/bridge/v0/settings.schema.json"),
+    ),
+    (
+        "https://endue.ai/specs/bridge/v0/shell.schema.json",
+        include_str!("../../../specs/bridge/v0/shell.schema.json"),
     ),
     (
         "https://endue.ai/specs/bridge/v0/store.schema.json",

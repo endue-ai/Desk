@@ -3,7 +3,7 @@
 // pause(), paused, duration and error that a test drives.
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { vi } from "vitest";
+import { afterEach, vi } from "vitest";
 import { createView } from "../ui/view.js";
 import { type MountOptions, mount } from "./harness";
 
@@ -41,6 +41,13 @@ function fakeMedia(element: HTMLMediaElement, duration: number): FakeMedia {
 }
 
 const html = readFileSync(join(import.meta.dirname, "../ui/index.html"), "utf8");
+const views = new Set<ReturnType<typeof createView>>();
+
+afterEach(() => {
+  // A test can mount several pages; detached media still owns its playback interval.
+  for (const view of views) view.show(null);
+  views.clear();
+});
 
 /** Mount the page: `duration` is what both media elements report once they have a source. */
 export async function mountPage(options: MountOptions & { duration?: number } = {}) {
@@ -51,6 +58,7 @@ export async function mountPage(options: MountOptions & { duration?: number } = 
   const audio = fakeMedia(byId<HTMLAudioElement>("audio"), options.duration ?? 100);
   let app: Record<string, (...args: unknown[]) => unknown> | undefined;
   const view = createView(document, (name, ...args) => app?.[name]?.(...args));
+  views.add(view);
   const mounted = await mount({ ...options, view });
   app = mounted.app as unknown as Record<string, (...args: unknown[]) => unknown>;
   /** Press a key where the focus is (the body when nothing has it). */

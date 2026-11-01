@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <title>Web</title>
     <script type="importmap">
-      { "imports": { "@endue-ai/plugin-sdk": "/_desk/plugin-sdk.js" } }
+      { "imports": { "@endue-ai/plugin-sdk": "/_desk/plugin-sdk.js", "@endue-ai/ui": "/_desk/ui.js" } }
     </script>
     <link rel="stylesheet" href="./style.css" />
   </head>
@@ -18,6 +18,7 @@
         Source
       </button>
     </header>
+    <desk-progress id="opening" hidden></desk-progress>
     <p id="bar" role="status" hidden></p>
     <main id="body" tabindex="-1" aria-labelledby="file-name">
       <nav id="entries" aria-label="Entries" hidden><ul id="entry-list"></ul></nav>

@@ -1,8 +1,9 @@
 // ISO 9660 images: the volume descriptors at 32 KiB, then each directory's records, read one
 // directory at a time; Joliet's UCS-2 names, or Rock Ridge names and links when the image has them.
 // A file's data is read only when it is previewed or extracted.
+
+import { pause } from "@endue-ai/formats/codecs/index.js";
 import { at, latin1, u32, utf16be } from "../bytes.js";
-import { pause } from "../codecs/index.js";
 import { cleanPath, row, withFolders } from "./archive.js";
 
 /** @typedef {import("../source.js").Source} Source */

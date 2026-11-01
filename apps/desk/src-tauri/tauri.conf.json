@@ -18,14 +18,14 @@
         "title": "endue Desk",
         "width": 1280,
         "height": 800,
-        "minWidth": 800,
+        "minWidth": 1024,
         "minHeight": 500,
         "backgroundColor": "#141416"
       }
     ],
     "security": {
       "csp": "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; frame-src 'self' data: blob: desk-plugin: http://desk-plugin.localhost; connect-src ipc: http://ipc.localhost",
-      "capabilities": ["default"]
+      "capabilities": ["default", "palette"]
     }
   },
   "bundle": {
@@ -37,6 +37,121 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "fileAssociations": [
+      {
+        "ext": ["md"],
+        "name": "Markdown",
+        "mimeType": "text/markdown",
+        "role": "Viewer",
+        "rank": "Alternate"
+      },
+      {
+        "ext": ["txt"],
+        "name": "Plain text",
+        "mimeType": "text/plain",
+        "role": "Viewer",
+        "rank": "Alternate"
+      },
+      {
+        "ext": ["csv"],
+        "name": "CSV",
+        "mimeType": "text/csv",
+        "role": "Viewer",
+        "rank": "Alternate"
+      },
+      {
+        "ext": ["xlsx"],
+        "name": "Excel workbook",
+        "mimeType": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "role": "Viewer",
+        "rank": "Alternate"
+      },
+      {
+        "ext": ["docx"],
+        "name": "Word document",
+        "mimeType": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "role": "Viewer",
+        "rank": "Alternate"
+      },
+      {
+        "ext": ["pptx"],
+        "name": "PowerPoint presentation",
+        "mimeType": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        "role": "Viewer",
+        "rank": "Alternate"
+      },
+      {
+        "ext": ["pdf"],
+        "name": "PDF",
+        "mimeType": "application/pdf",
+        "role": "Viewer",
+        "rank": "Alternate"
+      },
+      {
+        "ext": ["png"],
+        "name": "PNG image",
+        "mimeType": "image/png",
+        "role": "Viewer",
+        "rank": "Alternate"
+      },
+      {
+        "ext": ["jpg", "jpeg"],
+        "name": "JPEG image",
+        "mimeType": "image/jpeg",
+        "role": "Viewer",
+        "rank": "Alternate"
+      },
+      {
+        "ext": ["gif"],
+        "name": "GIF image",
+        "mimeType": "image/gif",
+        "role": "Viewer",
+        "rank": "Alternate"
+      },
+      {
+        "ext": ["webp"],
+        "name": "WebP image",
+        "mimeType": "image/webp",
+        "role": "Viewer",
+        "rank": "Alternate"
+      },
+      {
+        "ext": ["mp3"],
+        "name": "MP3 audio",
+        "mimeType": "audio/mpeg",
+        "role": "Viewer",
+        "rank": "Alternate"
+      },
+      {
+        "ext": ["mp4"],
+        "name": "MP4 video",
+        "mimeType": "video/mp4",
+        "role": "Viewer",
+        "rank": "Alternate"
+      },
+      {
+        "ext": ["zip"],
+        "name": "ZIP archive",
+        "mimeType": "application/zip",
+        "role": "Viewer",
+        "rank": "Alternate"
+      },
+      {
+        "ext": ["html"],
+        "name": "HTML document",
+        "mimeType": "text/html",
+        "role": "Viewer",
+        "rank": "Alternate"
+      }
+    ],
+    "linux": {
+      "deb": {
+        "desktopTemplate": "linux/desk.desktop"
+      },
+      "rpm": {
+        "desktopTemplate": "linux/desk.desktop"
+      }
+    }
   }
 }

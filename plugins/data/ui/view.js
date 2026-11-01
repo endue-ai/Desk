@@ -5,19 +5,19 @@
 // The desk's chords (Mod+S, Mod+O, Mod+W, Mod+K) are never prevented.
 
 import { createPanel } from "./panel.js";
-import { createRawView } from "./raw-view.js";
+import { createPanes } from "./panes.js";
 import { CHECKED } from "./schemas.js";
 import { chainOf, search } from "./search.js";
 import { isMasked, maskRanges } from "./secrets.js";
 import { childrenOf, isBranch, pathOf, pointerOf, previewOf, resolve } from "./tree.js";
-import { createTreeView, MASK } from "./tree-view.js";
+import { MASK } from "./tree-view.js";
 
 /**
  * @typedef {import("./data.js").Shown} Shown
  * @typedef {import("./data.js").SchemaState} SchemaState
  * @typedef {import("./tree-view.js").Row} Row
  * @typedef {import("./tree-view.js").TreeState} TreeState
- * @typedef {{ validateWith(): unknown }} Actions
+ * @typedef {{ validateWith(): unknown, cancel?(): unknown }} Actions
  * @typedef {"tree" | "raw" | "both"} Mode
  */
 
@@ -79,6 +79,16 @@ export function createView(doc, actions) {
   const say = (/** @type {string} */ text) => {
     $.status.textContent = text;
   };
+  const failure = (error) => {
+    if (error.name !== "AbortError") say(error.message);
+  };
+  const safely = (action) => {
+    try {
+      return Promise.resolve(action()).catch(failure);
+    } catch (error) {
+      failure(error);
+    }
+  };
   const docOf = () => model?.opened.doc;
 
   /** The raw view's dots: every masked range, but the revealed node's. */
@@ -87,7 +97,7 @@ export function createView(doc, actions) {
     if (!data) return [];
     const ranges = maskRanges(data, maskKeys);
     const row = revealed === null ? undefined : tree.selected();
-    const node = row?.key === revealed ? row?.chain.at(-1) : undefined;
+    const node = row?.key === revealed ? row?.chain?.at(-1) : undefined;
     if (!node || node.from === undefined || node.to === undefined) return ranges;
     const [from, to] = [node.from, node.to];
     /** @type {Array<[number, number]>} */
@@ -104,12 +114,12 @@ export function createView(doc, actions) {
 
   /** The pointer, path and reveal button of the selected row; the raw view follows it. */
   const selectRow = (/** @type {Row} */ row) => {
-    const node = row.chain.at(-1);
-    const pointer = pointerOf(row.chain);
+    const node = row.chain?.at(-1) ?? row;
+    const pointer = row.pointer ?? pointerOf(row.chain);
     $.pointer.textContent = pointer;
-    $.dotted.textContent = pathOf(row.chain);
+    $.dotted.textContent = row.dotted ?? pathOf(row.chain);
     $.where.dataset.root = pointer === "" ? "true" : "false";
-    const masked = !row.group && isMasked(row.chain, maskKeys);
+    const masked = !row.group && (row.masked ?? isMasked(row.chain, maskKeys));
     $.reveal.hidden = !masked;
     $.reveal.textContent = revealed === row.key ? "Hide value" : "Reveal value";
     if (node && !row.group) raw.goTo(node.line, node.col);
@@ -123,23 +133,32 @@ export function createView(doc, actions) {
     say(revealed ? `Showing the value of ${row.label}.` : `Hid the value of ${row.label}.`);
   };
 
-  const tree = createTreeView(doc, $.tree, { select: selectRow, status: say, reveal });
-  const raw = createRawView(doc, $.raw);
+  const { tree, raw } = createPanes(doc, $, { select: selectRow, status: say, reveal });
   const panel = createPanel(doc, byId("problems"), {
     line: (line, col) => {
       if (stateOf()?.mode === "tree") setMode("both");
       raw.goTo(line, col);
     },
-    node: (error) => {
-      const root = docOf()?.roots[error.root ?? 0];
-      const chain = root ? resolve(root, error.pointer) : undefined;
-      if (!chain) return;
-      const path = [error.root ?? 0];
-      for (let i = 1; i < chain.length; i++)
-        path.push(childrenOf(/** @type {*} */ (chain[i - 1])).indexOf(/** @type {*} */ (chain[i])));
-      tree.reveal(path);
-      tree.focus();
-    },
+    node: (error) =>
+      safely(async () => {
+        if (model?.opened.remote) {
+          const active = model;
+          const path = await active.opened.remote.request("resolve", error);
+          if (active !== model) return;
+          if (path) await tree.reveal(path);
+          return tree.focus();
+        }
+        const root = docOf()?.roots[error.root ?? 0];
+        const chain = root ? resolve(root, error.pointer) : undefined;
+        if (!chain) return;
+        const path = [error.root ?? 0];
+        for (let i = 1; i < chain.length; i++)
+          path.push(
+            childrenOf(/** @type {*} */ (chain[i - 1])).indexOf(/** @type {*} */ (chain[i])),
+          );
+        tree.reveal(path);
+        tree.focus();
+      }),
   });
 
   const stateOf = () => (model ? states.get(model.buffer) : undefined);
@@ -164,12 +183,16 @@ export function createView(doc, actions) {
   };
 
   /** Go to the next (or previous) match, searching first when the query changed. */
-  const next = (step = 1) => {
+  const nextMatch = async (step) => {
     const data = docOf();
     const query = $.search.value.trim();
     if (!data || query === "") return resetSearch();
     if (query !== found.query) {
-      const { matches, more } = search(data, query, (chain) => isMasked(chain, maskKeys));
+      const active = model;
+      const { matches, more } = model?.opened.remote
+        ? await model.opened.remote.request("search", { query })
+        : search(data, query, (chain) => isMasked(chain, maskKeys));
+      if (active !== model || query !== $.search.value.trim()) return;
       found = { query, matches, more, at: -1 };
     }
     const total = found.matches.length;
@@ -180,6 +203,13 @@ export function createView(doc, actions) {
     found.at = (found.at + step + total) % total;
     const match = /** @type {import("./search.js").Match} */ (found.matches[found.at]);
     tree.reveal(match.path);
+    if (model?.opened.remote) {
+      const active = model;
+      const node = await model.opened.remote.request("node", { path: match.path });
+      if (active === model)
+        $.count.textContent = `${found.at + 1} of ${total}${found.more ? "+" : ""} · ${node.dotted || "the root"}${node.branch ? "" : ` = ${node.preview}`}`;
+      return;
+    }
     const chain = chainOf(data, match.path);
     const node = chain.at(-1);
     const value =
@@ -187,12 +217,13 @@ export function createView(doc, actions) {
     const where = pathOf(chain) || "the root";
     $.count.textContent = `${found.at + 1} of ${total}${found.more ? "+" : ""} · ${where}${value}`;
   };
+  const next = (step = 1) => safely(() => nextMatch(step));
 
   for (const [name, button] of Object.entries(modes))
     button.addEventListener("click", () => setMode(/** @type {Mode} */ (name)));
   byId("expand-all").addEventListener("click", () => tree.expandAll());
   byId("collapse-all").addEventListener("click", () => tree.collapseAll());
-  $.validate.addEventListener("click", () => actions.validateWith());
+  $.validate.addEventListener("click", () => safely(() => actions.validateWith()));
   byId("search-next").addEventListener("click", () => next());
   $.reveal.addEventListener("click", () => {
     const row = tree.selected();
@@ -236,7 +267,21 @@ export function createView(doc, actions) {
     panel.show(null, null);
   };
 
+  byId("progress").addEventListener("desk-cancel", () => actions.cancel?.());
+
   return {
+    progress(state) {
+      const progress = byId("progress");
+      progress.hidden = !state;
+      if (!state) return;
+      const total = state.total.toLocaleString("en-US");
+      progress.setAttribute(
+        "label",
+        `${state.phase} · ${state.done.toLocaleString("en-US")} of ${total} bytes`,
+      );
+      if (state.total > 0) progress.setAttribute("value", String(state.done / state.total));
+      else progress.removeAttribute("value");
+    },
     /** @param {Shown | null} next */
     show(next) {
       model = next;
@@ -251,6 +296,8 @@ export function createView(doc, actions) {
       $.note.textContent = next?.opened.note ?? "";
       $.details.hidden = true;
       if (!next) {
+        tree.load(null, { expanded: new Set(), selected: null }, true);
+        raw.load(null, [], []);
         $.panes.hidden = true;
         $.where.hidden = true;
         panel.show(null, null);
@@ -271,8 +318,10 @@ export function createView(doc, actions) {
       setMode(state.mode);
       $.tree.setAttribute("aria-label", `Tree of ${next.name}`);
       $.raw.setAttribute("aria-label", `Raw text of ${next.name}`);
+      // The worker must forget a previously revealed value before the raw viewport requests lines.
+      if (next.opened.remote) tree.load(data, state, maskKeys, next.opened.remote);
       raw.load(next.opened, data ? maskRanges(data, maskKeys) : [], data?.errors ?? []);
-      tree.load(data, state, maskKeys);
+      if (!next.opened.remote) tree.load(data, state, maskKeys);
       panel.show(next.opened, next.schema);
     },
     /** @param {string} buffer @param {SchemaState} state */

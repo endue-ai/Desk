@@ -5,6 +5,13 @@
   "kind": "ui",
   "entry": "ui/index.html",
   "description": "Eris, the secretary: her status poses, a conversation typed to her, and the soul text and orb other plugins reuse.",
-  "permissions": [{ "permission": "brain:converse" }],
-  "surfaces": [{ "id": "main", "title": "Eris", "placement": "right" }]
+  "permissions": [
+    { "permission": "brain:converse" },
+    { "permission": "cmd:invoke", "ids": ["desk.buffers.list", "desk.palette.pick"] },
+    { "permission": "fs:read", "paths": ["${home}/**"] }
+  ],
+  "surfaces": [{ "id": "main", "title": "Eris", "placement": "right" }],
+  "contributes": {
+    "commands": [{ "id": "endue.eris.search-open", "title": "Open a conversation from search" }]
+  }
 }

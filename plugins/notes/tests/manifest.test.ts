@@ -47,7 +47,15 @@ describe("plugin.json", () => {
     expect(notes.permissions).toEqual([
       { permission: "fs:read", paths: [NOTES] },
       { permission: "fs:write", paths: [NOTES] },
-      { permission: "cmd:invoke", ids: ["desk.files.changed", "desk.buffers.update"] },
+      {
+        permission: "cmd:invoke",
+        ids: [
+          "desk.files.changed",
+          "desk.buffers.update",
+          "desk.files.open",
+          "desk.buffers.switch",
+        ],
+      },
     ]);
   });
 

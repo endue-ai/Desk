@@ -189,6 +189,8 @@ export interface ProfileContribution {
 
 /** One permission with its scope. Plugin manifests declare these; bridge calls carry the one that covers them. */
 export type Permission =
+  | SearchReadPermission
+  | SearchSystemPermission
   | FsReadPermission
   | FsWritePermission
   | ProcSpawnPermission
@@ -206,7 +208,18 @@ export type Permission =
   | PermManagePermission
   | DataReadPermission
   | ConnectorManagePermission
-  | ViewManagePermission;
+  | ViewManagePermission
+  | ShellOpenPermission;
+
+/** Search explicitly published plugin documents and installed plugin launchers. */
+export interface SearchReadPermission {
+  permission: "search:read";
+}
+
+/** Query the OS file and application index and open a recent result with its default application. */
+export interface SearchSystemPermission {
+  permission: "search:system";
+}
 
 /** Read files, list folders and watch for changes under the given paths. */
 export interface FsReadPermission {
@@ -320,6 +333,18 @@ export interface ViewManagePermission {
   permission: "view:manage";
 }
 
+/** Hand links to the system with shell.open: open URLs whose scheme is in schemes in their default app, and show files under paths in the file manager. Only http, https and mailto are ever opened, and a path is only shown, never opened or run. */
+export interface ShellOpenPermission {
+  permission: "shell:open";
+  /** URL schemes the permission opens. */
+  schemes?: ShellScheme[];
+  /** Path patterns whose files and folders the permission shows in the file manager. */
+  paths?: PathPattern[];
+}
+
+/** A URL scheme shell.open hands to the system: the browser for http and https, the mail app for mailto. */
+export type ShellScheme = "http" | "https" | "mailto";
+
 /** An absolute path, or one rooted at ~ or at ${plugin}, ${workspace} or ${home}, with forward slashes. * matches within a segment and ** across segments. */
 export type PathPattern = string;
 
@@ -377,8 +402,8 @@ export type PluginId = string;
 /** Semantic version, for example 0.1.0 or 1.2.3-beta.1. */
 export type Version = string;
 
-/** ui runs in a sandboxed iframe, logic in a Wasm instance, tool as an MCP server inside the VM. policy runs no code: it only contributes data (ADR 0017). connector brings an app's data in as items, as a Wasm component or an MCP server; view runs no code either: it is one or more views (ADR 0032). */
-export type PluginKind = "ui" | "logic" | "tool" | "policy" | "connector" | "view";
+/** ui runs in a sandboxed iframe, logic in a Wasm instance, tool as an MCP server inside the VM. policy runs no code: it only contributes data (ADR 0017). library runs no code of its own either: it is files other plugins import, served at /<id>/... like any plugin's, never mounted and never turned off. connector brings an app's data in as items, as a Wasm component or an MCP server; view runs no code either: it is one or more views (ADR 0032). */
+export type PluginKind = "ui" | "logic" | "tool" | "policy" | "library" | "connector" | "view";
 
 /** Path to the entry file, relative to the plugin folder, without .. segments. */
 export type EntryPath = string;
@@ -1202,6 +1227,10 @@ export type Encoding = "utf8" | "base64";
 
 /** Any bridge call. The method field selects the params shape. */
 export type BridgeRequest =
+  | SearchReplaceRequest
+  | SearchQueryRequest
+  | SearchSystemRequest
+  | SearchOpenRequest
   | FsReadRequest
   | FsWriteRequest
   | FsListRequest
@@ -1257,7 +1286,8 @@ export type BridgeRequest =
   | ViewGetRequest
   | ViewSaveRequest
   | ViewRemoveRequest
-  | CatalogGetRequest;
+  | CatalogGetRequest
+  | ShellOpenRequest;
 
 /** The answer to one request: a result, or an error. */
 export type BridgeResponse = BridgeSuccess | BridgeFailure;
@@ -2308,6 +2338,84 @@ export interface ProcExitData {
   signal?: Signal;
 }
 
+/** A plugin explicitly publishes searchable text. command must belong to that plugin; args are sent only after the person opens the result. Do not publish secrets. */
+export interface SearchDocument {
+  id: string;
+  title: string;
+  detail?: string;
+  text?: string;
+  command?: CommandId;
+  args?: Record<string, unknown>;
+}
+
+export interface SearchHit {
+  id: string;
+  title: string;
+  detail?: string;
+  kind: SearchKind;
+  plugin?: string;
+  command?: string;
+  args?: Record<string, unknown>;
+}
+
+export type SearchKind = "plugin" | "document" | "file" | "application";
+
+export interface SearchReplaceParams {
+  documents: SearchDocument[];
+}
+
+export type SearchReplaceResult = Record<string, never>;
+
+export interface SearchReplaceRequest {
+  id: RequestId;
+  method: "search.replace";
+  params: SearchReplaceParams;
+}
+
+export interface SearchQueryParams {
+  query: string;
+  limit?: number;
+  scope: SearchReadPermission;
+}
+
+export interface SearchQueryResult {
+  hits: SearchHit[];
+}
+
+export interface SearchQueryRequest {
+  id: RequestId;
+  method: "search.query";
+  params: SearchQueryParams;
+}
+
+export interface SearchSystemParams {
+  query: string;
+  scope: SearchSystemPermission;
+}
+
+export interface SearchSystemResult {
+  hits: SearchHit[];
+}
+
+export interface SearchSystemRequest {
+  id: RequestId;
+  method: "search.system";
+  params: SearchSystemParams;
+}
+
+export interface SearchOpenParams {
+  id: string;
+  scope: SearchSystemPermission;
+}
+
+export type SearchOpenResult = Record<string, never>;
+
+export interface SearchOpenRequest {
+  id: RequestId;
+  method: "search.open";
+  params: SearchOpenParams;
+}
+
 /** A key in its owner's namespace, lowercase and dotted: voice, motion.reduce. */
 export type SettingKey = string;
 
@@ -2377,6 +2485,27 @@ export interface SettingsListResult {
 export interface SettingsChangedEvent {
   event: "settings.changed";
   data: Setting;
+}
+
+/** Open a URL in the system's default handler, or show a file in the file manager. */
+export interface ShellOpenRequest {
+  id: RequestId;
+  method: "shell.open";
+  params: ShellOpenParams;
+}
+
+/** Parameters of shell.open. */
+export interface ShellOpenParams {
+  /** An absolute URL (only http, https and mailto are ever opened), or with reveal a path (~/... or absolute) to show in its folder. */
+  target: string;
+  /** Show the file or folder at the path target, selected in its folder in the file manager, instead of opening a URL. A path is never opened or run. */
+  reveal?: boolean;
+  scope: ShellOpenPermission;
+}
+
+/** Result of shell.open: the system took the URL or showed the file. */
+export interface ShellOpenResult {
+  opened: true;
 }
 
 /** A key in the caller's own namespace. */
@@ -2625,6 +2754,10 @@ export type ViewChange = "saved" | "removed";
 
 /** Params and result of each bridge method. */
 export interface BridgeMethodMap {
+  "search.replace": { params: SearchReplaceParams; result: SearchReplaceResult };
+  "search.query": { params: SearchQueryParams; result: SearchQueryResult };
+  "search.system": { params: SearchSystemParams; result: SearchSystemResult };
+  "search.open": { params: SearchOpenParams; result: SearchOpenResult };
   "fs.read": { params: FsReadParams; result: FsReadResult };
   "fs.write": { params: FsWriteParams; result: FsWriteResult };
   "fs.list": { params: FsListParams; result: FsListResult };
@@ -2681,6 +2814,7 @@ export interface BridgeMethodMap {
   "view.save": { params: ViewSaveParams; result: ViewSaveResult };
   "view.remove": { params: ViewRemoveParams; result: ViewRemoveResult };
   "catalog.get": { params: CatalogGetParams; result: CatalogGetResult };
+  "shell.open": { params: ShellOpenParams; result: ShellOpenResult };
 }
 
 /** A bridge method name. */
@@ -2688,6 +2822,10 @@ export type BridgeMethod = keyof BridgeMethodMap;
 
 /** Every bridge method, in spec order. */
 export const BRIDGE_METHODS = [
+  "search.replace",
+  "search.query",
+  "search.system",
+  "search.open",
   "fs.read",
   "fs.write",
   "fs.list",
@@ -2744,4 +2882,5 @@ export const BRIDGE_METHODS = [
   "view.save",
   "view.remove",
   "catalog.get",
+  "shell.open",
 ] as const satisfies readonly BridgeMethod[];

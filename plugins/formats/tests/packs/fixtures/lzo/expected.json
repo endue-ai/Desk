@@ -1,0 +1,26 @@
+{
+  "empty": {
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "size": 0
+  },
+  "mixed": {
+    "sha256": "7035b717f677f3211ebc16a4ee5812dcecddb045f09f0f14667c0c5207a8da79",
+    "size": 65536
+  },
+  "noise": {
+    "sha256": "d633dd90d54ccb6e7d852dfd3c907b451cb077d4db9210a634e26167d8fe0d20",
+    "size": 8192
+  },
+  "runs": {
+    "sha256": "4a4888a678851e2d8d85d044fed485f94dc0c86f2a6d1f7b85c68eee4e3f38de",
+    "size": 32048
+  },
+  "text": {
+    "sha256": "a0f72e4e581d868f89ec632ce9322686540bc31e9c7d63317f328773a5f8a18b",
+    "size": 49152
+  },
+  "tiny": {
+    "sha256": "523b065f90e7c5aff8f9b64d62abcc29313fdbc46e7b525091267d223526e609",
+    "size": 3
+  }
+}

@@ -30,6 +30,14 @@ export function axis(length, size, hidden, zoom = 1) {
     offset[p + 1] = (offset[p] ?? 0) + Math.max(0, Math.round(size(i) * zoom));
     p++;
   }
+  return axisFrom(index, offset);
+}
+
+/** Attach constant-time metadata and binary lookups to axes prepared by the worker.
+ * @param {Int32Array} index @param {Float64Array} offset @returns {Axis}
+ */
+export function axisFrom(index, offset) {
+  const count = index.length;
   /** The first position whose index is at least i (count when none). */
   const from = (/** @type {number} */ i) => {
     let lo = 0;

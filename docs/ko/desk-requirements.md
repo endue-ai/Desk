@@ -189,15 +189,16 @@ Tauri 셸과 `desk-sys` 는 드라이버입니다. 검사는 하지 않고 코�
 | `git` | 키보드 중심 Git 표면: 상태 · 스테이징 · 커밋 · 로그 그래프 · diff. 모든 동작이 커맨드. 요구사항은 `git-plugin-requirements.md` | 2 |
 | `database` | PostgreSQL · MySQL / MariaDB · SQLite 클라이언트: 연결 · 탐색기 · SQL 콘솔 · 결과 · 읽기 전용과 운영 DB 보호. 엔진의 공식 CLI 를 셸 없이(ADR 0038). 요구사항은 `database-plugin-requirements.md` | 2 |
 | `docker` | 컨테이너 관리 표면: 컨테이너 · Compose · 이미지 · 볼륨 · 네트워크, 따라가는 로그 · 상세 · 셸 · 정리 · 실패 알림. 모든 동작이 커맨드. 요구사항은 `docker-plugin-requirements.md`, CLI 를 쓰는 이유는 ADR 0039 | 2 |
-| `sheets` | 스프레드시트를 한 그리드로: Excel(xlsx · xls · xlsb) · Numbers · ODS · CSV/TSV(구분자 · 인코딩 자동, EUC-KR 포함) · DIF · SYLK · Lotus · Quattro · Google Sheets 바로가기. 시트 탭 · 수식 바 · 찾기. SheetJS 를 vendoring(ADR 0043) | 2 |
-| `docs` | 워드 문서를 한 페이지 뷰로: Word(docx · doc) · ODF · RTF · HWPX · HWP · AbiWord · WordPerfect/Works(텍스트) · Pages(미리보기) · Google Docs 바로가기. 개요 · 주석 · 찾기. 한 문서 모델과 자체 리더 | 2 |
-| `slides` | 프레젠테이션을 한 뷰어로: PowerPoint(pptx · ppt) · ODP · Keynote(미리보기) · Google Slides 바로가기. 썸네일 레일 · 발표자 노트 · 재생 모드 | 2 |
-| `reader` | PDF · 전자책 · 만화를 한 리더로: PDF(pdf.js vendoring, ADR 0042) · XPS · EPUB · MOBI/KF8 · FB2 · CBZ/CBT. 목차 · 검색 · 북마크 · 노트. CBR · CB7 · DjVu 는 상세 정보 | 2 |
-| `images` | 이미지를 한 뷰어로: 웹 포맷 · HEIC · JPEG XL · TIFF(WebKit 이 해독하는 곳에서) · 자체 디코더(TGA · Netpbm · QOI · DDS · HDR · EXR · ICNS · KTX · DICOM · FITS · NIfTI) · RAW 내장 미리보기. 확대 · EXIF · 폴더 넘기기 · 비교 | 2 |
+| `sheets` | 스프레드시트를 한 그리드로: Excel(xlsx · xls · xlsb) · Numbers · ODS · CSV/TSV(구분자 · 인코딩 자동, EUC-KR 포함) · DIF · SYLK · Lotus · Quattro · Google Sheets 바로가기. 시트 탭 · 수식 바 · 찾기. SheetJS 를 vendoring(ADR 0043). 큰 통합 문서는 범위 읽기와 워커 파싱, `<desk-progress>` 와 취소 | 2 |
+| `docs` | 워드 문서를 한 페이지 뷰로: Word(docx · doc) · ODF · RTF · HWPX · HWP 5.0 · AbiWord 는 서식 그대로, WordPerfect/Works 는 텍스트, Pages 는 미리보기, Google Docs 는 바로가기. 개요 · 주석 · 찾기, 링크는 `shell.open` 으로. 한 문서 모델과 자체 리더, 범위 읽기 · `<desk-progress>` · 8 MiB 넘는 파일은 워커 | 2 |
+| `slides` | 프레젠테이션을 한 뷰어로: PowerPoint(pptx · ppt, 둘 다 보이는 그대로) · ODP · Keynote(미리보기) · Google Slides 바로가기. 썸네일 레일 · 발표자 노트 · 재생 모드, pptx · ODP 의 링크는 `shell.open` 으로, 슬라이드 이동은 덱 안에서. 범위 읽기 · `<desk-progress>` · 8 MiB 넘는 파일은 워커 | 2 |
+| `reader` | PDF · 전자책 · 만화를 한 리더로: PDF(pdf.js vendoring, ADR 0042) · XPS · EPUB · MOBI/KF8 · FB2 · CBZ/CBT, `endue.formats` 로 CBR · CB7 · DjVu. 목차 · 검색 · 북마크 · 노트, 링크는 `shell.open` 으로. 큰 PDF 는 필요한 범위만 읽고, 디코딩은 워커, `<desk-progress>` 와 취소 | 2 |
+| `images` | 이미지를 한 뷰어로: 웹 포맷 · HEIC · JPEG XL · TIFF(WebKit 이 해독하는 곳에서) · 자체 디코더(TGA · Netpbm · QOI · DDS · HDR · EXR · ICNS · KTX · DICOM · FITS · NIfTI) · RAW 내장 미리보기. 확대 · EXIF · 폴더 넘기기 · 비교. 범위 읽기 · `<desk-progress>` · 8 MiB 넘는 파일은 워커에서 해독 | 2 |
 | `player` | 영상 · 음성을 한 플레이어로: `fs.url` 스트리밍(ADR 0041), WebKit 이 못 트는 컨테이너는 코덱 정보, MIDI · AU 는 플러그인이 직접 재생. 자막(SRT · VTT · ASS · SAMI 등) · 재생목록 · 이어 보기 | 2 |
-| `data` | 구조화 데이터 · 설정 파일을 트리와 원문으로: JSON 계열 · YAML · TOML · XML · plist · INI · properties · dotenv · HCL · MessagePack · CBOR · BSON. 검색 · JSON Schema 검증 · 비밀 값 가림 | 2 |
-| `archives` | 압축 · 패키지 · 디스크 이미지를 한 트리로: ZIP 계열 · tar(gzip · bzip2 · xz · zstd · LZ4) · 7z · ISO · deb · rpm · gem · pkg · cab, 미리보기와 안전한 풀기(zip-slip 차단). RAR · MSI · 디스크 이미지는 목록이나 상세 정보. 범위 읽기(ADR 0041) | 2 |
-| `web` | 저장한 웹 페이지 · 웹 아카이브 · 링크 파일 · 피드를 안전하게: allowlist sanitizer 를 거쳐 shadow root 에(ADR 0044), MHTML · webarchive · WARC · MAFF, url · webloc · desktop · lnk 는 카드, RSS · Atom · OPML. 스크립트는 돌지 않고 네트워크는 쓰지 않는다 | 2 |
+| `data` | 구조화 데이터 · 설정 파일을 트리와 원문으로: JSON 계열 · YAML · TOML · XML · plist · INI · properties · dotenv · HCL · MessagePack · CBOR · BSON. 검색 · JSON Schema 검증 · 비밀 값 가림. 1 MiB 넘는 파일은 워커가 파싱 · 검색 · 검증하고 화면엔 가린 줄만 보낸다 | 2 |
+| `archives` | 압축 · 패키지 · 디스크 이미지를 한 트리로: ZIP 계열 · tar(gzip · bzip2 · xz · zstd · LZ4) · 7z · RAR 4/5 · ISO · deb · rpm · gem · pkg · cab, 디스크 이미지(MBR · GPT · VHD · VHDX · VMDK · QCOW2 안의 FAT · exFAT · ext · NTFS, DMG 안의 HFS+ · APFS, SquashFS · Snap · AppImage, WIM)는 파티션과 파일까지. 미리보기와 안전한 풀기(zip-slip 차단). ARJ · LHA · MSI 는 목록만, torrent 는 상세 정보. 디코더는 `endue.formats`, 범위 읽기(ADR 0041) · `<desk-progress>` | 2 |
+| `web` | 저장한 웹 페이지 · 웹 아카이브 · 링크 파일 · 피드를 안전하게: allowlist sanitizer 를 거쳐 shadow root 에(ADR 0044), MHTML · webarchive · WARC · MAFF, url · webloc · desktop · lnk 는 카드, RSS · Atom · OPML. 스크립트는 돌지 않고 네트워크는 쓰지 않는다. 바깥 링크는 `shell.open` 으로 브라우저에. 8 MB 넘는 페이지 · 아카이브는 워커에서 읽고, 큰 페이지는 조각으로 그린다 | 2 |
+| `formats` | 라이브러리 플러그인(kind `library`): 파일 플러그인들이 같이 쓰는 포맷 리더 · 디코더 한 벌(codecs · 7z · RAR · DjVu · PC 디스크 · Apple 디스크 · SquashFS/WIM). 진입점 · 표면 · 권한이 없고 끌 수 없으며, 가져다 쓰는 플러그인의 프레임(이나 워커)에서 그 플러그인의 권한으로 돈다. `@endue-ai/formats/` import map 으로 가져온다(`archives` · `reader`) | 2 |
 | `calendar` · `mail` | endue 커넥터 표면 (장면 6 · 7) | 3 |
 | `tasks` | 할 일 보드 (장면 8 "Plan my week") | 3 |
 | `agent-chat` | 에이전트별 대화와 활동 기록 표면 (AG-05) | 3 |
@@ -320,6 +321,12 @@ CI · 테스트 층 · 릴리스 파이프라인은 `desk-structure.md` 가 정�
 | BASE 파일 플러그인의 기반: `fs.read` 범위 읽기 · `fs.url` 스트리밍 · 확장자 대소문자 무시(ADR 0041) | #153 · #164 | 머지 |
 | BASE `sheets` · `docs` · `slides` · `reader` · `images` · `player` · `data` · `archives` · `web` (활동별 파일 플러그인, ADR 0042 · 0043 · 0044 · 0045) | #154–#162 · #165–#172 · #174 | 머지 |
 | 파일 플러그인 autoload: 시작할 때 꺼져 있고 파일을 열면 켜진다(ADR 0046) | #173 · #175 | 머지 |
+| BASE 파일 플러그인의 기반 2: `<desk-progress>` · `readBytes` · `byteSource` · `startWorker`(ADR 0048), `byteSource` 의 취소와 동시 읽기 수정, BR-01 · BR-06 의 `shell.open` · `shell:open`(ADR 0047) | #180 · #198, #225 · #231, #262 · #263, #179 · #200 | 머지 |
+| 라이브러리 플러그인(kind `library`)과 `endue.formats`: archives 의 codecs · 7z 를 옮기고, RAR 4 · 5(ADR 0051) · DjVu · PC 디스크(VHD · VHDX · VMDK · QCOW2 · MBR · GPT · FAT · exFAT · ext4 · NTFS) · Apple 디스크(DMG · HFS+ · APFS · LZFSE) · SquashFS · WIM | #181 · #254, #182 · #201, #183 · #202, #184 · #199, #185 · #255, #186 · #256, #258 · #259 | 머지 |
+| BASE 파일 플러그인 두 번째 물결: `docs` 의 서식 있는 .doc · .hwp, `slides` 의 서식 있는 .ppt, `sheets` · `data` · `reader` 의 큰 파일, `docs` · `slides` · `web` · `images` 의 진행 표시 · 워커 · 링크, `reader` 의 DjVu · CB7 · CBR, `archives` 의 RAR 와 디스크 이미지 | #191 · #205, #192 · #203, #193 · #204, #187 · #224, #188 · #229, #189 · #240, #196 · #253, #190 · #257, #194 · #261 | 머지 |
+| BASE `player` 가 WebKit 이 못 트는 것을 재생: MSE 로 remux, WebAssembly 의 FFmpeg 디코더 | #195 | 진행 중 |
+
+파일 플러그인 두 번째 물결의 네 행은 2026-11-02 의 `main`(`98763db`) 기준입니다.
 
 모드는 정책 스택(#54, #55 로 머지)에서 프로필로 이름이 바뀌었습니다. 이 문서의 RT-07 · SYSP `modes` 는 프로필을 뜻합니다.
 

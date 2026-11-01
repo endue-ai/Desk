@@ -1,6 +1,5 @@
-// Bytes: base64 in and out (the frame may not fetch, not even a data: URL), readers for both byte
-// orders, inflate through DecompressionStream, and the error a decoder throws with the sentence the
-// person reads.
+// Bytes: readers for both byte orders, inflate through DecompressionStream, and the error a decoder
+// throws with the sentence the person reads.
 
 /** A decoder's failure, in words for the details view. */
 export class Unreadable extends Error {}
@@ -9,22 +8,6 @@ export class Unreadable extends Error {}
 export const fail = (message) => {
   throw new Unreadable(message);
 };
-
-/** @param {string} text */
-export function fromBase64(text) {
-  const binary = atob(text);
-  const out = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) out[i] = binary.charCodeAt(i);
-  return out;
-}
-
-/** @param {Uint8Array} bytes */
-export function toBase64(bytes) {
-  let binary = "";
-  for (let i = 0; i < bytes.length; i += 0x8000)
-    binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
-  return btoa(binary);
-}
 
 /** @param {Uint8Array} bytes @param {number} at @param {number} length */
 export const ascii = (bytes, at, length) => {
@@ -88,10 +71,18 @@ export function reader(bytes, le = true) {
  * @param {"deflate" | "gzip" | "deflate-raw"} format
  */
 export async function inflate(bytes, format) {
-  const stream = new Blob([/** @type {BlobPart} */ (bytes)])
-    .stream()
-    .pipeThrough(new DecompressionStream(format));
-  return new Uint8Array(await new Response(stream).arrayBuffer());
+  // No Blob: reading a Blob's stream fails in a WebKit worker of a sandboxed frame.
+  const stream = new DecompressionStream(format);
+  const writer = stream.writable.getWriter();
+  // Written and read at once: a stream that is not read applies back pressure and never ends. A
+  // write that fails fails the readable too, which is where the error is reported.
+  const written = writer
+    .write(/** @type {Uint8Array<ArrayBuffer>} */ (bytes))
+    .then(() => writer.close())
+    .catch(() => {});
+  const out = new Uint8Array(await new Response(stream.readable).arrayBuffer());
+  await written;
+  return out;
 }
 
 /** The extension of a file name, lower case, without the dot ("" when it has none). */

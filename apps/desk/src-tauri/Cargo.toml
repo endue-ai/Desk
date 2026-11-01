@@ -27,7 +27,10 @@ desk-sys = { workspace = true, features = ["calendar"] }
 # Not in [workspace.dependencies] yet: a later chore moves it there.
 desk-ipc = { path = "../../../crates/desk-ipc" }
 serde_json.workspace = true
-tauri = { version = "2", features = [] }
+tauri = { version = "2", features = ["tray-icon"] }
+tauri-plugin-global-shortcut = "2"
+tauri-plugin-dialog = "2.8.4"
+tauri-plugin-single-instance = { path = "../../../vendor/tauri-plugin-single-instance" }
 
 [lints]
 workspace = true

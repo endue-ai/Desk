@@ -110,6 +110,19 @@ describe("HDR and OpenEXR", () => {
         expect(Array.from(result.float ?? [])).toEqual(Array.from(f32(`${name}.f32`)));
         near(result.rgba, toneMap(f32(`${name}.f32`), W * H), 1);
       });
+
+  it("inflates without reading a Blob, which a WebKit worker of a sandboxed frame cannot", async () => {
+    const stream = Blob.prototype.stream;
+    Blob.prototype.stream = () => {
+      throw new DOMException("The I/O read operation failed.", "NotReadableError");
+    };
+    try {
+      const result = await pixels(fixture("zip16-half.exr"), "zip16-half.exr");
+      expect(Array.from(result.float ?? [])).toEqual(Array.from(f32("zip16-half.exr.f32")));
+    } finally {
+      Blob.prototype.stream = stream;
+    }
+  });
 });
 
 describe("ICNS and KTX", () => {

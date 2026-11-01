@@ -4,7 +4,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { StubError } from "../../../packages/bridge/src/index";
-import { defineUiPlugin } from "../../../packages/plugin-sdk/src/index";
+import { defineUiPlugin, readBytes } from "../../../packages/plugin-sdk/src/index";
 import { createTestHost, type TestHost } from "../../../packages/plugin-sdk/src/testing/index";
 import type { Shown } from "../ui/web.js";
 import { createWeb } from "../ui/web.js";
@@ -13,13 +13,24 @@ type Options = Parameters<typeof createTestHost>[0];
 export type Handlers = NonNullable<Options["handlers"]>;
 export type Commands = NonNullable<Options["commands"]>;
 
+/** What the plugin shows on the progress bar, or null when it hides it. */
+export type Progress = {
+  label: string;
+  value: number | null;
+  max: number;
+  detail: string;
+  cancel(): void;
+} | null;
+
 export interface RecordingView {
   shown: Array<Shown | null>;
   statuses: string[];
+  progresses: Progress[];
   /** How many times the plugin moved the keyboard focus to its surface. */
   focused: number;
   show(file: Shown | null): void;
   status(text: string): void;
+  progress(value: Progress): void;
   focus(): void;
 }
 
@@ -27,11 +38,13 @@ export function recordingView(): RecordingView {
   const view: RecordingView = {
     shown: [],
     statuses: [],
+    progresses: [],
     focused: 0,
     show: (file) => {
       view.shown.push(file);
     },
     status: (text) => view.statuses.push(text),
+    progress: (value) => view.progresses.push(value),
     focus: () => {
       view.focused++;
     },
@@ -41,9 +54,10 @@ export function recordingView(): RecordingView {
 
 type View = Parameters<typeof createWeb>[1];
 
-/** What the view asks of the plugin: open a local file, or say something on the status line. */
+/** What the view asks of the plugin: open a local file or a link, or say something. */
 export interface Actions {
   open(path: string): unknown;
+  external(url: string): unknown;
   say(text: string): void;
 }
 
@@ -70,6 +84,8 @@ export async function mount<V extends View = RecordingView>(
     commands?: Commands;
     /** Make the view from the plugin's actions; a recording view by default. */
     view?: (actions: Actions) => V;
+    /** The rest of createWeb's options: startWorker, the worker threshold. */
+    options?: Partial<Parameters<typeof createWeb>[2]>;
   } = {},
 ): Promise<Mounted<V>> {
   const host = createTestHost({
@@ -80,13 +96,14 @@ export async function mount<V extends View = RecordingView>(
   let app: ReturnType<typeof createWeb> | undefined;
   const actions: Actions = {
     open: (path: string) => app?.open(path),
+    external: (url: string) => app?.external(url),
     say: (text: string) => app?.say(text),
   };
   const view = (options.view ? options.view(actions) : recordingView()) as V;
   await defineUiPlugin(
     {
       mount(ctx) {
-        app = createWeb(ctx, view);
+        app = createWeb(ctx, view, { read: readBytes, ...options.options });
       },
     },
     host.transport,
@@ -108,14 +125,27 @@ export async function mount<V extends View = RecordingView>(
 const base64 = (bytes: Uint8Array | string) =>
   Buffer.from(typeof bytes === "string" ? Buffer.from(bytes, "utf8") : bytes).toString("base64");
 
-/** fs.read (base64) and fs.watch over an in-memory disk; files missing from it are not_found. */
+/** The bytes of a file on the in-memory disk. */
+const bytesOf = (content: Uint8Array | string) =>
+  typeof content === "string" ? new Uint8Array(Buffer.from(content, "utf8")) : content;
+
+/**
+ * fs.read (base64, in ranges with the file's size, as readBytes asks when the desk gives no URL)
+ * and fs.watch over an in-memory disk; files missing from it are not_found.
+ */
 export function disk(files: Record<string, Uint8Array | string>): Handlers {
   let watches = 0;
   return {
-    "fs.read": ({ path }) => {
+    "fs.read": ({ path, offset = 0, length }) => {
       const content = files[path];
       if (content === undefined) throw new StubError("not_found", `no file ${path}`);
-      return { content: base64(content), encoding: "base64" };
+      const bytes = bytesOf(content);
+      const end = length === undefined ? bytes.length : offset + length;
+      return {
+        content: base64(bytes.subarray(offset, end)),
+        encoding: "base64",
+        size: bytes.length,
+      };
     },
     "fs.watch": () => ({ watchId: `w${++watches}` }),
   };
@@ -123,6 +153,12 @@ export function disk(files: Record<string, Uint8Array | string>): Handlers {
 
 export const denied = (what: string) =>
   new StubError("permission_denied", `${what} is not granted`);
+
+/** The fs.read calls readBytes makes for a whole file of `size` bytes without a URL. */
+export const ranged = (path: string, scope: unknown, size: number) => [
+  { path, encoding: "base64", offset: 0, length: 0, scope },
+  ...(size ? [{ path, encoding: "base64", offset: 0, length: size, scope }] : []),
+];
 
 /** A file's buffer and path, as the desk sends them in every request. */
 export const file = (path: string) => ({ buffer: `file:${path}`, path });

@@ -229,6 +229,9 @@ export function readCsv(bytes, { name, encoding = "auto" }) {
     name: name.replace(/\.[^.]*$/u, "") || name,
     rows: rows.length,
     cols,
+    releaseRow: (r) => {
+      delete rows[r];
+    },
     cellAt: (r, c) => {
       const text = rows[r]?.[c];
       if (text === undefined || text === "") return undefined;

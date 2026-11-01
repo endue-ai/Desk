@@ -124,6 +124,11 @@ select:focus-visible,
   color: var(--desk-text-muted);
 }
 
+#opening {
+  flex: none;
+  padding: 12px 16px;
+}
+
 main {
   position: relative;
   display: flex;
@@ -271,4 +276,15 @@ dd {
 
 [hidden] {
   display: none !important;
+}
+
+/* Match the shell's action feedback inside the isolated plugin frame. */
+button:not(:disabled),
+select:not(:disabled) {
+  cursor: pointer;
+}
+
+button:disabled,
+select:disabled {
+  cursor: not-allowed;
 }

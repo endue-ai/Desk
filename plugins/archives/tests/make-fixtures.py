@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-"""Makes the archives plugin's test fixtures with the real tools, into tests/fixtures/.
+"""Makes the archives plugin's test fixtures with the real tools, into tests/fixtures/, and the codec
+streams and 7z archives the library endue.formats tests its decoders and 7z reader with, into
+plugins/formats/tests/codecs/fixtures/ and plugins/formats/tests/sevenzip/fixtures/.
 
   python3 plugins/archives/tests/make-fixtures.py
 
@@ -15,6 +17,9 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 OUT = HERE / "fixtures"
+LIBRARY = HERE.parent.parent / "formats" / "tests"
+CODECS = LIBRARY / "codecs" / "fixtures"  # text.* and hello.txt.gz
+SEVENZIP = LIBRARY / "sevenzip" / "fixtures"  # *.7z
 WHEN = 1790856000  # 2026-10-01T12:00:00Z
 
 
@@ -202,9 +207,19 @@ def bencode_info_hash(data):
     raise ValueError("no info dictionary")
 
 
+def library_folder(folder, patterns):
+    """Empty the library's fixtures of these names, leaving whatever else is there."""
+    folder.mkdir(parents=True, exist_ok=True)
+    for pattern in patterns:
+        for path in folder.glob(pattern):
+            path.unlink()
+
+
 def main():
     shutil.rmtree(OUT, ignore_errors=True)
     OUT.mkdir()
+    library_folder(CODECS, ["text.*", "text-*", "hello.txt.gz", "expected.json"])
+    library_folder(SEVENZIP, ["*.7z", "expected.json"])
     work = Path(tempfile.mkdtemp(prefix="archives-fixtures-"))
     os.environ["COPYFILE_DISABLE"] = "1"
     tree(work / "tree")
@@ -214,7 +229,7 @@ def main():
                          "sha256": hashlib.sha256(text.read_bytes()).hexdigest()}}
 
     # Codecs, by the real tools: several blocks each.
-    pipe = lambda args, name: run(*args, text, stdout=open(OUT / name, "wb"))
+    pipe = lambda args, name: run(*args, text, stdout=open(CODECS / name, "wb"))
     pipe(["bzip2", "-1", "-c"], "text.bz2")  # 100k blocks: three of them
     pipe(["xz", "-c", "--block-size=64KiB"], "text.xz")  # CRC64, four blocks
     pipe(["xz", "-c", "--check=crc32", "-e"], "text-crc32.xz")
@@ -229,7 +244,7 @@ def main():
     hello.write_bytes(TREE["hello.txt"])
     os.utime(hello, (WHEN, WHEN))
     run("gzip", "-k", "-9", hello)  # keeps the name and time in the header
-    shutil.move(str(work / "hello.txt.gz"), OUT / "hello.txt.gz")
+    shutil.move(str(work / "hello.txt.gz"), CODECS / "hello.txt.gz")
 
     # ZIP: Info-ZIP's own (deflate, stored, a symlink, extended times), ZIP64, encryption, by hand.
     t = work / "tree"
@@ -278,16 +293,18 @@ def main():
     # FIXTURE_IMAGE names an image with the tools already installed, to skip apt-get while iterating.
     image = os.environ.get("FIXTURE_IMAGE", "debian:bookworm-slim")
     for platform, part, used in [("linux/arm64", "main", image), ("linux/amd64", "rar", "debian:bookworm-slim")]:
-        sh(f"docker run --rm --platform {platform} -v {work}:/work -v {OUT}:/out "
+        sh(f"docker run --rm --platform {platform} -v {work}:/work -v {OUT}:/out -v {SEVENZIP}:/sevenzip "
            f"-v {HERE}/make-fixtures-linux.sh:/make.sh:ro {used} bash /make.sh {part}", work)
 
     expected["torrent"] = {"infoHash": bencode_info_hash((OUT / "tree.torrent").read_bytes())}
     expected["words"] = {"size": len(TREE["words.txt"]),
                          "sha256": hashlib.sha256(TREE["words.txt"]).hexdigest()}
     (OUT / "expected.json").write_text(json.dumps(expected, indent=2) + "\n")
+    (CODECS / "expected.json").write_text(json.dumps({"text": expected["text"]}, indent=2) + "\n")
+    (SEVENZIP / "expected.json").write_text(json.dumps({"words": expected["words"]}, indent=2) + "\n")
     shutil.rmtree(work)
-    total = sum(p.stat().st_size for p in OUT.iterdir())
-    print(f"{len(list(OUT.iterdir()))} fixtures, {total // 1024} KB")
+    made = [p for folder in (OUT, CODECS, SEVENZIP) for p in folder.iterdir()]
+    print(f"{len(made)} fixtures, {sum(p.stat().st_size for p in made) // 1024} KB")
 
 
 if __name__ == "__main__":

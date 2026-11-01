@@ -1,0 +1,11 @@
+{
+  "target": "BridgeRequest",
+  "description": "search query without scope",
+  "instance": {
+    "id": 1,
+    "method": "search.query",
+    "params": {
+      "query": "notes"
+    }
+  }
+}

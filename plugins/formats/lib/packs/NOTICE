@@ -1,0 +1,33 @@
+endue.formats pack readers (lib/packs)
+
+These readers were written for endue Desk from published descriptions of the formats. No code was
+taken or followed from squashfs-tools, squashfs-tools-ng, wimlib, liblzo2, 7-Zip, libmspack or any
+other source under the GPL or the LGPL, and no permissively licensed implementation was followed.
+
+Descriptions followed
+
+* SquashFS 4.0: the on-disk format as its authors document it (Phillip Lougher's
+  Documentation/filesystems/squashfs.rst in the Linux kernel and the squashfs-tools README): the
+  superblock, metadata blocks, inode and directory tables, fragment, id and export tables, and the
+  compression ids and their options.
+
+* LZO1X: the stream format as documented in Documentation/staging/lzo.rst of the Linux kernel
+  (instruction encoding, literal and match forms, the end marker).
+
+* AppImage: the AppImage specification (https://github.com/AppImage/AppImageSpec): the type 1 and
+  type 2 magic, the runtime's .upd_info and .sha256_sig sections; ELF headers from the System V ABI.
+
+* XPRESS Huffman: [MS-XCA] Xpress Compression Algorithm, Microsoft Open Specifications, section 2.2
+  (LZ77+Huffman decompression) and its section 3.2 examples.
+
+* LZX: [MS-PATCH] LZX DELTA Compression and Decompression, Microsoft Open Specifications, sections
+  2.1 to 2.7 (blocks, trees and pretrees, position slots, aligned offsets, E8 translation), with
+  the WIM variant's differences (each chunk independent, E8 translation always on with size
+  12,000,000, the 1-bit default block size).
+
+* WIM: Microsoft's Windows Imaging File Format (WIM) description: the header, resource headers, the
+  lookup table, the XML data, the metadata resource's security data and directory entries.
+
+The test fixtures are data made with the tools in a container or through liblzo2
+(tests/packs/make-fixtures.sh, tests/packs/make-lzo.py,
+plugins/archives/tests/make-fixtures-linux.sh); the tools are not part of this repository.

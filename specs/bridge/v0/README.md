@@ -2,8 +2,8 @@
 
 The calls the web runtime (and every plugin through it) makes into the Rust core. JSON Schema 2020-12,
 one file per namespace: `bridge.schema.json` (envelope, errors, shared types), `fs`, `proc`, `net`, `plugins`,
-`store`, `init`, `brain`, `audio`, `ui`, `perm`, `cmd`, `settings`, `log`, `events`, `data`, `connector`,
-`view` and `catalog`. Items, views and connectors are the types of `specs/item`, `specs/view` and
+`store`, `search`, `init`, `brain`, `audio`, `ui`, `perm`, `cmd`, `settings`, `log`, `events`, `data`, `connector`,
+`view`, `catalog` and `shell`. Items, views and connectors are the types of `specs/item`, `specs/view` and
 `specs/connector` (ADR 0032). v0 may break on any minor release (ADR 0004).
 
 ## Envelope
@@ -18,12 +18,21 @@ Every call that reaches beyond the caller's own data carries its permission scop
 the vocabulary in `specs/plugin/v0/permission.schema.json`. The core runs a call only when the caller holds
 a grant that covers the scope and the scope covers the call (the path, command, host, command id, setting
 or event). Otherwise the answer is `permission_denied`, with the missing permission in `error.permission`.
-Scopes are never widened implicitly: asking is `perm.request`, and the person decides.
+Scopes are never widened implicitly: asking is `perm.request`, and the person decides. `shell.open` is the
+one call that asks by itself: without a grant that covers its scope, the core asks the person for that
+scope, through `perm.prompt` as `perm.request` does, and runs the call once they allow it.
 
 Calls that touch only the caller's own data need no scope: `perm.request`, `perm.query`, `perm.revoke` of
-its own grants, `store.*`, `init.get`, `cmd.register`, `cmd.unregister`, `cmd.answer`, `settings.set`,
+its own grants, `store.*`, `search.replace`, `init.get`, `cmd.register`, `cmd.unregister`, `cmd.answer`, `settings.set`,
 `settings.get` and `settings.list` of its own keys, `log.write`, `events.unsubscribe` and
 `data.unsubscribe`. `catalog.get` needs none either: it shows only what the caller's grants already cover.
+
+## Search
+
+`search.replace` atomically publishes the installed caller's documents (500 / 4 MiB), persisted in
+the core. `search.query` needs `search:read`; disabled plugins' documents are excluded. `search.system`
+needs `search:system` and queries the OS index. `search.open` uses the same permission and accepts only
+a recent OS result id belonging to that caller (five-minute expiry), never a supplied path.
 
 ## Callers and events
 
@@ -283,6 +292,19 @@ shadows it; removing a person's file that shadowed a plugin's view is `saved`.
 desk renders, the connected connectors with their instances and the kinds and fields of their items, and
 the registered commands. It takes no params and needs no scope: a caller sees only the connectors and kinds
 its `data:read` grants cover and the commands its `cmd:invoke` grants cover.
+
+**shell.open** hands a link to the system and answers `opened: true` once the system took it. `target` is
+an absolute URL, opened in the system's default app for its scheme: the browser for `http` and `https`,
+the mail app for `mailto`. Only those three are ever opened, whatever a scope says: `file:`,
+`javascript:`, `data:`, any other scheme, a URL with control characters and a relative one are
+`invalid_params`. The URL goes to the OS as one argument, never through a shell (`open` on macOS,
+`xdg-open` on Linux, `ShellExecuteW` on Windows). With `reveal: true`, `target` is a path (`~/...` or
+absolute) and its folder is shown in the file manager with the file selected (`open -R`, the
+`org.freedesktop.FileManager1` D-Bus call or `xdg-open` of the folder, `explorer /select,`); a path is
+only shown, never opened or run, and a missing one is `not_found`. It needs a `shell:open` scope whose
+`schemes` hold the URL's scheme, or whose `paths` cover the path; a target the scope does not cover is
+`permission_denied` at once. Without a grant that covers the scope the core asks the person first (see
+Deny by default): a refusal is `permission_denied`, a caller that unloads first `cancelled`.
 
 ## Vectors
 

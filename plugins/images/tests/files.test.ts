@@ -1,3 +1,4 @@
+import { resolveObjectURL } from "node:buffer";
 import { describe, expect, it } from "vitest";
 import { pngHeader } from "./build";
 import { denied, disk, fixture, folderScope, image, mount } from "./harness";
@@ -8,12 +9,23 @@ const X = image("~/Documents/x.png");
 const SCOPE = folderScope(A.path);
 
 describe("the desk's file requests", () => {
-  it("visit reads the file as base64, shows it, watches it and lists its folder", async () => {
+  it("visit reads the file in ranges, shows it, watches it and lists its folder", async () => {
     const files = { [A.path]: fixture("exif.png") };
     const { host, view, params } = await mount({ handlers: disk(files) });
     await expect(host.command("desk.files.visit", A)).resolves.toBeUndefined();
-    expect(host.calls.map((c) => c.method)).toEqual(["fs.read", "fs.watch", "fs.list"]);
-    expect(params("fs.read")).toEqual([{ path: A.path, encoding: "base64", scope: SCOPE }]);
+    // Without a file URL from the desk, the SDK reads ranges through fs.read: the size, then bytes.
+    expect(host.calls.map((c) => c.method)).toEqual([
+      "fs.url",
+      "fs.read",
+      "fs.read",
+      "fs.watch",
+      "fs.list",
+    ]);
+    const size = files[A.path]?.length;
+    expect(params("fs.read")).toEqual([
+      { path: A.path, encoding: "base64", scope: SCOPE, offset: 0, length: 0 },
+      { path: A.path, encoding: "base64", scope: SCOPE, offset: 0, length: size },
+    ]);
     expect(params("fs.watch")).toEqual([{ path: A.path, scope: SCOPE }]);
     expect(params("fs.list")).toEqual([{ path: "~/Pictures", scope: SCOPE }]);
     const shown = view.states.at(-1)?.image;
@@ -27,9 +39,10 @@ describe("the desk's file requests", () => {
       height: 48,
       size: files[A.path]?.length,
     });
-    expect(shown?.src).toBe(
-      `data:image/png;base64,${Buffer.from(fixture("exif.png")).toString("base64")}`,
-    );
+    // The webview decodes the bytes from a blob: URL; nothing goes through base64.
+    const blob = resolveObjectURL(shown?.src ?? "");
+    expect(blob?.type).toBe("image/png");
+    expect(new Uint8Array((await blob?.arrayBuffer()) ?? [])).toEqual(fixture("exif.png"));
     expect(view.states.at(-1)?.position).toEqual({ index: 1, count: 1 });
     expect(view.focused).toBe(1);
     expect(view.statuses).toEqual([]);
@@ -42,7 +55,7 @@ describe("the desk's file requests", () => {
     expect(view.states.at(-1)?.image).toMatchObject({ width: 10, height: 20 });
     files[A.path] = pngHeader(30, 40);
     await expect(host.command("desk.files.revert", A)).resolves.toBeUndefined();
-    expect(params("fs.read")).toHaveLength(2);
+    expect(params("fs.read")).toHaveLength(4);
     expect(view.states.at(-1)?.image).toMatchObject({ buffer: A.buffer, width: 30, height: 40 });
   });
 
@@ -108,7 +121,9 @@ describe("files outside the grants", () => {
     expect(params("perm.request")).toEqual([
       { permission: DOCS, reason: "To open ~/Documents/x.png in Images" },
     ]);
-    expect(params("fs.read")).toEqual([{ path: X.path, encoding: "base64", scope: DOCS }]);
+    expect(params("fs.read")).toEqual([
+      { path: X.path, encoding: "base64", scope: DOCS, offset: 0, length: 0 },
+    ]);
     expect(params("fs.watch")).toEqual([]);
     expect(view.statuses.at(-1)).toBe("Not allowed to read ~/Documents/x.png.");
     expect(view.states.at(-1)?.image ?? null).toBeNull();
@@ -120,12 +135,15 @@ describe("files outside the grants", () => {
     const { host, view, params } = await mount({
       handlers: {
         ...disk(files),
-        "fs.read": ({ path }) => {
+        "fs.read": ({ path, offset = 0, length }) => {
           reads++;
           if (reads === 1) throw denied(`fs:read over ${path}`);
+          const bytes = files[X.path] ?? new Uint8Array();
+          const part = bytes.subarray(offset, length === undefined ? undefined : offset + length);
           return {
-            content: Buffer.from(files[X.path] ?? []).toString("base64"),
+            content: Buffer.from(part).toString("base64"),
             encoding: "base64",
+            size: bytes.length,
           };
         },
         "perm.request": ({ permission }) => ({
@@ -140,8 +158,9 @@ describe("files outside the grants", () => {
       },
     });
     await expect(host.command("desk.files.visit", X)).resolves.toBeUndefined();
-    const read = { path: X.path, encoding: "base64", scope: DOCS };
-    expect(params("fs.read")).toEqual([read, read]);
+    const read = { path: X.path, encoding: "base64", scope: DOCS, offset: 0, length: 0 };
+    const size = files[X.path]?.length;
+    expect(params("fs.read")).toEqual([read, read, { ...read, length: size }]);
     expect(params("perm.request")).toHaveLength(1);
     expect(view.states.at(-1)?.image).toMatchObject({ buffer: X.buffer, width: 4, height: 3 });
   });

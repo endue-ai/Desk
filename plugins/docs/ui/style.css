@@ -222,9 +222,7 @@ input {
   color: #444;
 }
 
-.page-footer {
-  justify-content: flex-end;
-}
+.page-footer { justify-content: flex-end; }
 
 .page-body {
   flex: 1 0 auto;
@@ -345,6 +343,8 @@ mark.is-current {
 .table.bordered td {
   border: 0.75pt solid #000;
 }
+
+#opening { flex: none; padding: 8px 12px; }
 
 #details {
   overflow: auto;

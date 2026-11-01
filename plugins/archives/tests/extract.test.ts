@@ -164,7 +164,7 @@ describe("extraction", () => {
     expect(view.statuses.at(-1)).toBe(`Not allowed to write ${TARGET}.`);
   });
 
-  it("Escape stops between files and the progress line counts files and bytes", async () => {
+  it("Escape stops between files and the progress element counts files and bytes", async () => {
     let app: { stop(): void } | undefined;
     const { written, handlers } = disk({}, () => app?.stop());
     const { commands } = picks(TARGET);
@@ -178,9 +178,37 @@ describe("extraction", () => {
     await mounted.host.command("desk.files.visit", file(PATH));
     await mounted.app.extract("all");
     expect(Object.keys(written)).toEqual([`${TARGET}/ok.txt`]);
-    expect(mounted.view.progresses).toContain("Extracting 1 of 2 files, 4 bytes of 10 bytes");
+    expect(mounted.view.progresses).toContainEqual(
+      expect.objectContaining({
+        label: "Extracting evil.zip",
+        value: 4,
+        max: 10,
+        detail: "1 of 2 files, 4 bytes of 10 bytes",
+      }),
+    );
     expect(mounted.view.statuses.at(-1)).toContain("Stopped after 1 of 2 files.");
-    expect(mounted.view.progresses.at(-1)).toBe("");
+    expect(mounted.view.progresses.at(-1)).toBeNull();
+  });
+
+  it("a file larger than the desk writes in one piece is listed, not written", async () => {
+    const big = zipOf([
+      { name: "small.txt", data: "small" },
+      { name: "huge.bin", data: new Uint8Array((64 << 20) + 1) },
+    ]);
+    const { written, handlers } = disk();
+    const { commands } = picks(TARGET);
+    const { host, app, view } = await mount({
+      files: { "~/Downloads/big.zip": big },
+      grants: [READ("~/Downloads")],
+      handlers,
+      commands,
+    });
+    await host.command("desk.files.visit", file("~/Downloads/big.zip"));
+    await app.extract("all");
+    expect(Object.keys(written)).toEqual([`${TARGET}/small.txt`]);
+    expect(view.statuses.at(-1)).toContain(
+      "Larger than 64 MiB, which the desk cannot write in one piece yet: huge.bin.",
+    );
   });
 
   it("an archive that cannot be extracted says why", async () => {

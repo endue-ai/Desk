@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://endue.ai/specs/bridge/v0/shell.schema.json",
+  "title": "Desk bridge v0: shell",
+  "description": "Hand a link to the system: open an http, https or mailto URL in its default app, or show a file in the file manager. Scoped by shell:open schemes and paths.",
+  "$defs": {
+    "ShellOpenRequest": {
+      "description": "Open a URL in the system's default handler, or show a file in the file manager.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "shell.open" },
+        "params": { "$ref": "#/$defs/ShellOpenParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "ShellOpenParams": {
+      "description": "Parameters of shell.open.",
+      "type": "object",
+      "properties": {
+        "target": {
+          "description": "An absolute URL (only http, https and mailto are ever opened), or with reveal a path (~/... or absolute) to show in its folder.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 8192
+        },
+        "reveal": {
+          "description": "Show the file or folder at the path target, selected in its folder in the file manager, instead of opening a URL. A path is never opened or run.",
+          "type": "boolean"
+        },
+        "scope": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/ShellOpenPermission" }
+      },
+      "required": ["target", "scope"],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": { "reveal": { "const": true } },
+            "required": ["reveal"]
+          },
+          "then": { "properties": { "target": { "$ref": "bridge.schema.json#/$defs/Path" } } }
+        }
+      ]
+    },
+    "ShellOpenResult": {
+      "description": "Result of shell.open: the system took the URL or showed the file.",
+      "type": "object",
+      "properties": {
+        "opened": { "const": true }
+      },
+      "required": ["opened"],
+      "additionalProperties": false
+    }
+  }
+}

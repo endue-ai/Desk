@@ -213,3 +213,19 @@ export function jump(list, selected, letters) {
   }
   return undefined;
 }
+
+/** A list of folder paths from a setting or the store, normalised, without duplicates. */
+export function folderList(/** @type {unknown} */ value) {
+  if (!Array.isArray(value)) return undefined;
+  const paths = value.map((v) => (typeof v === "string" ? normalizePath(v) : undefined));
+  return [...new Set(paths)].filter((v) => v !== undefined);
+}
+
+/** The folder a row refers to, or the parent of a selected file. */
+export function folderOf(/** @type {Row | undefined} */ row) {
+  return row
+    ? row.kind === "dir" || row.kind === "more"
+      ? row.path
+      : parentOf(row.path)
+    : undefined;
+}
