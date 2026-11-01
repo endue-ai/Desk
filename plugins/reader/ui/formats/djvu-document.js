@@ -1,6 +1,6 @@
 // A DjVu document as the reader uses it, over endue.formats' openDjvu: its pages' sizes and
 // resolutions, the outline, a page's hidden text and a page drawn at a scale. It runs in the DjVu
-// worker (djvu-worker.js) or, where none starts, in the frame. No SDK, no DOM.
+// library worker (library-worker.js) or, where none starts, in the frame. No SDK, no DOM.
 
 /**
  * @typedef {{ size: number, read(offset: number, length: number): Promise<Uint8Array> }} Source

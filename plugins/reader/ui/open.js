@@ -15,7 +15,7 @@ import { paintPdf } from "./pdf-paint.js";
  *   progress?(done: number, total: number): void }} PaintHooks
  * @typedef {(i: number, host: HTMLElement, scale: number, hooks: PaintHooks) => Promise<void>} Paint
  * @typedef {{ kind: "pages", format: string, title: string, pages: Size[], toc: Toc[],
- *   text(i: number): Promise<string>, measure?(i: number, signal?: AbortSignal): Promise<Size>, paint: Paint,
+ *   text(i: number): Promise<string>, measure?(i: number, signal?: AbortSignal, report?: (done: number, total: number) => void): Promise<Size>, paint: Paint,
  *   close?(): unknown, beginDecode?(signal?: AbortSignal): () => void, stopped?(): boolean,
  *   scaled?: boolean, note?: string }} PagesBook
  * @typedef {{ html: string, css: string[], fonts?: Array<{ family: string, bytes: Uint8Array }> }} Chapter
@@ -138,8 +138,8 @@ async function read(input, found, options) {
     case "cb7": {
       const { readArchiveComic } = await import("./formats/archive-comic.js");
       const kind = found.format === "cbr" ? "CBR" : "CB7";
-      const { signal, name } = options;
-      return comic(await readArchiveComic(sourceOf(input), kind, { name, signal }));
+      const { signal, name, startWorker } = options;
+      return comic(await readArchiveComic(sourceOf(input), kind, { name, signal, startWorker }));
     }
     case "djvu": {
       const { readDjvu } = await import("./formats/djvu.js");

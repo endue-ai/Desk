@@ -7,6 +7,7 @@ import { ORIGINALS } from "../../formats/tests/rar/originals.mjs";
 import { openBook } from "../ui/open.js";
 import { cb7, counted, library, rar5Stored, renamed } from "./build/comic-archives";
 import { COMIC_PAGES } from "./build/comics";
+import { localWorkers } from "./build/local-worker";
 
 type Comic = {
   kind: "pages";
@@ -26,10 +27,12 @@ type Details = {
 
 const NATURAL = ["Issue 1/1.png", "Issue 1/2.png", "Issue 1/10.png"];
 const PNG = [0x89, 0x50, 0x4e, 0x47];
-const open = async (bytes: Uint8Array | ReturnType<typeof counted>, name: string) =>
-  (await openBook(bytes, { name, path: `~/Comics/${name}` })) as unknown as Comic | Details;
-const comic = async (bytes: Uint8Array | ReturnType<typeof counted>, name: string) => {
-  const book = await open(bytes, name);
+const open = async (bytes: Uint8Array | ReturnType<typeof counted>, name: string, more = {}) =>
+  (await openBook(bytes, { name, path: `~/Comics/${name}`, ...more })) as unknown as
+    | Comic
+    | Details;
+const comic = async (bytes: Uint8Array | ReturnType<typeof counted>, name: string, more = {}) => {
+  const book = await open(bytes, name, more);
   if (book.kind !== "pages") throw new Error(`${name} opened as ${JSON.stringify(book)}`);
   return book;
 };
@@ -161,4 +164,40 @@ describe("CBR", () => {
       expect(book).toMatchObject({ kind: "details", format: "CBR comic", why: LOCKED });
     },
   );
+});
+
+describe("in the library worker", () => {
+  it("a CB7 lists and decodes there, and closing the comic ends the worker", async () => {
+    const startWorker = localWorkers();
+    const book = await comic(cb7(), "issue.cb7", { startWorker });
+    expect(startWorker.urls[0]?.href).toMatch(/\/ui\/library-worker\.js$/);
+    expect(book.names).toEqual(NATURAL);
+    expect([...(await book.image(2)).bytes.subarray(0, 4)]).toEqual(PNG);
+    await book.close?.();
+    expect(startWorker.workers[0]?.terminated).toBe(true);
+  });
+
+  it("a solid CBR's pass runs there, one entry at a time as the frame takes them", async () => {
+    const startWorker = localWorkers();
+    const book = await comic(renamed(library("rar/rar5-solid.rar"), AS_PAGES), "solid.cbr", {
+      startWorker,
+    });
+    for (const [i, name] of book.names.entries())
+      expect((await book.image(i)).bytes, name).toEqual(original(name));
+    await book.close?.();
+  });
+
+  it("damage there still opens the details view with the library's sentence", async () => {
+    const bytes = cb7();
+    bytes[12] = (bytes[12] ?? 0) ^ 0xff;
+    const book = await open(bytes, "damaged.cb7", { startWorker: localWorkers() });
+    expect(book).toMatchObject({ kind: "details", why: "The 7z start header is damaged." });
+  });
+
+  it("a worker that cannot load endue.formats leaves the comic to the frame", async () => {
+    const startWorker = localWorkers(() => Promise.reject(new Error("404")));
+    const book = await comic(rar5Stored(COMIC_PAGES), "issue.cbr", { startWorker });
+    expect(book.names).toEqual(NATURAL);
+    expect(startWorker.workers[0]?.terminated).toBe(true);
+  });
 });

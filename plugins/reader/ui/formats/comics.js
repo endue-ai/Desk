@@ -11,7 +11,7 @@ import { imageSize } from "./imagesize.js";
  * @typedef {{ names: string[], read(name: string, signal?: AbortSignal, report?: Report): Uint8Array | Promise<Uint8Array> }} Archive
  * @typedef {{ kind: "pages", format: string, title: string, names: string[], pages: Size[],
  *   toc: import("./toc.js").Toc[], image(i: number, signal?: AbortSignal, report?: Report): Promise<{ mime: string, bytes: Uint8Array }>,
- *   measure(i: number, signal?: AbortSignal): Promise<Size>, text(i: number): Promise<string> }} ComicBook
+ *   measure(i: number, signal?: AbortSignal, report?: Report): Promise<Size>, text(i: number): Promise<string> }} ComicBook
  */
 
 /** macOS resource forks and hidden files are not pages. */
@@ -43,10 +43,11 @@ export async function readComic(archive, kind) {
   const measure = async (
     /** @type {number} */ i,
     /** @type {AbortSignal | undefined} */ signal = undefined,
+    /** @type {Report | undefined} */ report = undefined,
   ) => {
     const known = measured.get(i);
     if (known) return known;
-    const size = imageSize((await image(i, signal)).bytes) ??
+    const size = imageSize((await image(i, signal, report)).bytes) ??
       pages[i] ?? { width: 800, height: 1200 };
     measured.set(i, size);
     pages[i] = size;

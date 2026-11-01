@@ -1,4 +1,6 @@
-// The same delayed progress element covers file opening and active page/chapter decoding.
+// The same delayed progress element covers file opening and active page/chapter decoding. It shows
+// the opening, else the newest decoding job; Cancel on decoding stops every page being decoded,
+// since the one bar stands for all of them.
 /** @typedef {{ label: string, value: number | null, max: number, detail: string, cancel(): void }} Progress */
 export function createProgress(element, status) {
   let opening = null;
@@ -9,7 +11,11 @@ export function createProgress(element, status) {
     if (!element) return;
     const value = opening ?? [...jobs.values()].at(-1);
     element.hidden = !value;
-    cancel = value?.cancel ?? (() => {});
+    cancel = opening
+      ? opening.cancel
+      : () => {
+          for (const job of [...jobs.values()]) job.cancel();
+        };
     if (!value) return;
     element.label = value.label;
     element.value = value.value;

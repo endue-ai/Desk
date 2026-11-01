@@ -5,15 +5,17 @@
 import { createHash } from "node:crypto";
 import { openDjvu } from "@endue-ai/formats/djvu/index.js";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { createDjvuHandler, libraryUrl } from "../ui/djvu-worker.js";
+import { libraryUrl } from "../ui/library-worker.js";
 import { openBook } from "../ui/open.js";
 import { createView } from "../ui/view.js";
 import { counted, library } from "./build/comic-archives";
+import { localWorkers } from "./build/local-worker";
 import { disk, file, loadPage, mount } from "./harness";
 
 type Raster = { width: number; height: number; rgba?: Uint8Array };
 type Djvu = {
   kind: "pages";
+  stopped(): boolean;
   format: string;
   title: string;
   pages: Array<{ width: number; height: number }>;
@@ -40,27 +42,6 @@ const libraryPage = async (i: number, scale: number) => {
   const doc = await openDjvu({ size: bytes.length, read: async (o, l) => bytes.slice(o, o + l) });
   return doc.renderPage(i, { scale });
 };
-
-/** A worker on this thread: the module's handler, with the ready message the module posts. */
-class LocalWorker extends EventTarget {
-  terminated = false;
-  #handle = createDjvuHandler((data: unknown) => this.#send(data), openDjvu);
-  constructor() {
-    super();
-    this.#send({ type: "ready" });
-  }
-  #send(data: unknown) {
-    queueMicrotask(() => {
-      if (!this.terminated) this.dispatchEvent(new MessageEvent("message", { data }));
-    });
-  }
-  postMessage(data: unknown) {
-    queueMicrotask(() => void this.#handle(data));
-  }
-  terminate() {
-    this.terminated = true;
-  }
-}
 
 describe("DjVu", () => {
   beforeEach(() => document.body.replaceChildren());
@@ -123,27 +104,59 @@ describe("DjVu", () => {
   });
 
   it("decodes in a worker that imports the library by its URL on the plugin scheme", async () => {
-    const started: URL[] = [];
-    const workers: LocalWorker[] = [];
-    const startWorker = (url: URL) => {
-      started.push(url);
-      const worker = new LocalWorker();
-      workers.push(worker);
-      return worker;
-    };
+    const startWorker = localWorkers();
     const book = await djvu(library("djvu/book.djvu"), { startWorker });
-    expect(started[0]?.href).toMatch(/\/ui\/djvu-worker\.js$/);
+    expect(startWorker.urls[0]?.href).toMatch(/\/ui\/library-worker\.js$/);
     expect(book.pages).toHaveLength(3);
     expect(await book.text(1)).toBe("Grüße 한글\ncolours");
     expect(sha((await book.raster(1, 0.64)).rgba)).toBe(sha((await libraryPage(1, 0.64)).rgba));
     await book.close?.();
-    expect(workers[0]?.terminated).toBe(true);
-    expect(libraryUrl("desk-plugin://localhost/endue.reader/ui/djvu-worker.js")).toBe(
+    expect(startWorker.workers[0]?.terminated).toBe(true);
+    expect(libraryUrl("djvu", "desk-plugin://localhost/endue.reader/ui/library-worker.js")).toBe(
       "desk-plugin://localhost/endue.formats/lib/djvu/index.js",
     );
-    expect(libraryUrl("http://desk-plugin.localhost/endue.reader/ui/djvu-worker.js")).toBe(
-      "http://desk-plugin.localhost/endue.formats/lib/djvu/index.js",
-    );
+    expect(
+      libraryUrl("rar", "http://desk-plugin.localhost/endue.reader/ui/library-worker.js"),
+    ).toBe("http://desk-plugin.localhost/endue.formats/lib/rar/index.js");
+  });
+
+  it("a worker that stops says so: the book is stopped and its pages fail with a sentence", async () => {
+    const startWorker = localWorkers();
+    const book = await djvu(library("djvu/book.djvu"), { startWorker });
+    startWorker.workers[0]?.dispatchEvent(new Event("error"));
+    expect(book.stopped()).toBe(true);
+    await expect(book.raster(0, 0.5)).rejects.toThrow("The decoder stopped.");
+  });
+
+  it("zooming draws the pages on screen again at the new zoom", async () => {
+    loadPage(document);
+    const action = () => {};
+    const { host, settle } = await mount({
+      handlers: disk({ [BOOK.path]: library("djvu/book.djvu") }),
+      view: () =>
+        createView(document, {
+          moved: action,
+          zoomed: action,
+          bookmark: action,
+          note: action,
+          forget: action,
+          unlock: action,
+        }),
+    });
+    await host.command("desk.files.visit", BOOK);
+    await settle();
+    const width = () =>
+      document.querySelector<HTMLCanvasElement>('#pages [data-unit="0"] canvas')?.width;
+    await vi.waitFor(() => expect(width()).toBe(384));
+    (document.getElementById("zoom-in") as HTMLButtonElement).click();
+    await vi.waitFor(() => expect(width()).toBe(422));
+  });
+
+  it("decodes in the frame when the worker cannot load the library", async () => {
+    const startWorker = localWorkers(() => Promise.reject(new Error("404")));
+    const book = await djvu(library("djvu/book.djvu"), { startWorker });
+    expect(startWorker.workers[0]?.terminated).toBe(true);
+    expect(await book.text(1)).toBe("Grüße 한글\ncolours");
   });
 
   it("decodes in the frame when the worker cannot start", async () => {

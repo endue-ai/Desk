@@ -93,10 +93,10 @@ export function createPass(each, order, sizeOf) {
     want(entry, signal, report) {
       const have = out.get(entry);
       if (have) return Promise.resolve(have);
+      if (closed || signal?.aborted) return Promise.reject(cancelled(signal));
       if (failure) return Promise.reject(failure);
       if (!needs.has(entry))
         return Promise.reject(new Error("The archive does not hold this page."));
-      if (closed || signal?.aborted) return Promise.reject(cancelled(signal));
       return new Promise((resolve, reject) => {
         const withdraw = () => waiter.reject(cancelled(signal));
         /** @type {Waiter<E>} */

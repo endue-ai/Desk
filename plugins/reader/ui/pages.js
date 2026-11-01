@@ -98,7 +98,7 @@ export function createPages(doc, host, scroller, hooks) {
       try {
         const before = target.pages[i];
         const size =
-          (await target.measure?.(i, signal).catch((error) => {
+          (await target.measure?.(i, signal, progress).catch((error) => {
             if (signal?.aborted || target.stopped?.()) throw error;
             return before;
           })) ?? before;
