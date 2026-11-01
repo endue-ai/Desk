@@ -1,6 +1,7 @@
 //! The plugin side of `Core`: install, list, enable, serve files, and report changes on the bus. A
 //! plugin turned off unloads: its commands, waiting requests, subscriptions, processes, surfaces and
-//! file URLs go with it, a connector's instances pause, and a view plugin's views leave view.list.
+//! file URLs go with it, a connector's instances pause, and a view plugin's views leave view.list. A
+//! library is never turned off: other plugins import its files, which the scheme serves.
 
 use std::io;
 use std::path::{Path, PathBuf};
@@ -8,8 +9,8 @@ use std::sync::{Arc, MutexGuard};
 
 use desk_bridge::{
     BridgeEvent, ErrorCode, EventName, Permission, PluginChange, PluginChangedData,
-    PluginChangedEvent, PluginInfo, PluginListParams, PluginListResult, PluginManagePermission,
-    PluginSetEnabledParams, PluginSetEnabledResult, PluginStatus,
+    PluginChangedEvent, PluginInfo, PluginKind, PluginListParams, PluginListResult,
+    PluginManagePermission, PluginSetEnabledParams, PluginSetEnabledResult, PluginStatus,
 };
 
 use crate::handler::{Answer, Core, error, json};
@@ -99,10 +100,23 @@ impl Core {
         params: PluginSetEnabledParams,
     ) -> Answer {
         self.authorize_manage(caller, params.scope)?;
+        let missing = || error(ErrorCode::NotFound, format!("no plugin {}", params.plugin));
+        let before = self.registry().get(&params.plugin).ok_or_else(missing)?;
+        if is_library(&before) {
+            // Plugins import a library's files at any time: it stays on, and nothing changes.
+            if !params.enabled {
+                let why = format!(
+                    "{} is a library other plugins import: it is never turned off",
+                    before.id
+                );
+                return Err(error(ErrorCode::Unsupported, why));
+            }
+            return json(PluginSetEnabledResult { plugin: before });
+        }
         let info = self
             .registry()
             .set_enabled(&params.plugin, params.enabled)
-            .ok_or_else(|| error(ErrorCode::NotFound, format!("no plugin {}", params.plugin)))?;
+            .ok_or_else(missing)?;
         let change = if params.enabled {
             PluginChange::Enabled
         } else {
@@ -170,4 +184,11 @@ impl Core {
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
     }
+}
+
+/// Whether the plugin is a library (files other plugins import).
+fn is_library(info: &PluginInfo) -> bool {
+    info.manifest
+        .as_ref()
+        .is_some_and(|manifest| manifest.kind == PluginKind::Library)
 }

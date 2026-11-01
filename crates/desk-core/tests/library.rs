@@ -84,7 +84,7 @@ fn a_library_is_never_mounted_or_turned_off() {
     fs::write(&store, json!({ "enabled": { LIBRARY: false } }).to_string()).unwrap();
     let core = Core::new(roots(&home))
         .with_init_file(init)
-        .with_plugin_store(store.clone());
+        .with_plugin_store(store);
 
     let info = core.install_plugin(&library(&home), true);
     assert!(

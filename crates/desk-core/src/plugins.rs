@@ -1,14 +1,15 @@
 //! The plugin registry: installed plugin folders, their validation status, revisions and the
 //! enabled flags, which are persisted in a small JSON store. init.yaml can hold plugins off at
 //! start without touching the persisted flags. A plugin with no stored flag starts on, unless its
-//! manifest says `autoload`: then it is off until the desk turns it on (ADR 0046).
+//! manifest says `autoload`: then it is off until the desk turns it on (ADR 0046). A library (files
+//! other plugins import) is always on: no flag or hold turns it off.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 
-use desk_bridge::{PluginInfo, PluginManifest, PluginStatus};
+use desk_bridge::{PluginInfo, PluginKind, PluginManifest, PluginStatus};
 use serde::{Deserialize, Serialize};
 
 use crate::manifest::{fallback_id, inside, validate_dir};
@@ -100,8 +101,12 @@ impl PluginRegistry {
         Some(self.info(index))
     }
 
+    /// Turn a plugin on or off and remember it. A library stays on and nothing is remembered.
     pub fn set_enabled(&mut self, id: &str, enabled: bool) -> Option<PluginInfo> {
         let index = self.entries.iter().position(|e| e.id == id)?;
+        if library(&self.entries[index]) {
+            return Some(self.info(index));
+        }
         self.held_off.remove(id);
         self.store.enabled.insert(id.to_owned(), enabled);
         self.save();
@@ -109,10 +114,12 @@ impl PluginRegistry {
     }
 
     /// Keep a plugin disabled for this run without changing its persisted flag (init.yaml's
-    /// `plugins.disabled`). A later set_enabled overrides it.
+    /// `plugins.disabled`). A later set_enabled overrides it. A library is never held off.
     pub fn hold_off(&mut self, id: &str) -> Option<PluginInfo> {
         let index = self.entries.iter().position(|e| e.id == id)?;
-        self.held_off.insert(id.to_owned());
+        if !library(&self.entries[index]) {
+            self.held_off.insert(id.to_owned());
+        }
         Some(self.info(index))
     }
 
@@ -157,13 +164,14 @@ impl PluginRegistry {
             } else {
                 PluginStatus::Failed
             },
-            enabled: !self.held_off.contains(&entry.id)
-                && self
-                    .store
-                    .enabled
-                    .get(&entry.id)
-                    .copied()
-                    .unwrap_or(!autoload(entry)),
+            enabled: library(entry)
+                || (!self.held_off.contains(&entry.id)
+                    && self
+                        .store
+                        .enabled
+                        .get(&entry.id)
+                        .copied()
+                        .unwrap_or(!autoload(entry))),
             built_in: entry.built_in,
             revision: entry.revision,
             manifest: entry.manifest.clone(),
@@ -181,6 +189,14 @@ impl PluginRegistry {
             }
         }
     }
+}
+
+/// Whether the plugin is a library: files other plugins import, never turned off.
+fn library(entry: &Entry) -> bool {
+    entry
+        .manifest
+        .as_ref()
+        .is_some_and(|manifest| manifest.kind == PluginKind::Library)
 }
 
 /// Whether a plugin's manifest asks to stay off until the desk needs it.
