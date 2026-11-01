@@ -19,3 +19,7 @@ addons, from the pinned npm packages into `plugins/terminal/ui/vendor/` (ADR 003
 `lanes.mjs` decides which Task issues may run in parallel (`just lanes`, `just task-start`), and
 `worktree.sh` gives each task its own worktree (ADR 0015). `sync-rulesets.sh` applies
 `.github/rulesets/*.json`; maintainers run it by hand, like `sync-labels.sh`.
+
+`ui-lint.mjs` (in `just check`) keeps every UI on the theme's tokens: no literal colours, fonts, text
+sizes, radii or durations outside `theme: content` marks, as a ratchet over
+`ui-lint-baseline/<target>.json` (`docs/design-system.md`, ADR 0056). Its test runs in `just test-unit`.
