@@ -1,35 +1,18 @@
 //! Disconnect evidence may cross two threads; neither delivery order may lose an event.
 
 use std::sync::mpsc::{self, Receiver};
-use std::time::Duration;
 
 use desk_core::Delivery;
 use serde_json::{Value, json};
 
-type Observed = (Option<Vec<String>>, Value);
+#[path = "layer/event_observation.rs"]
+mod event_observation;
+use event_observation::{Observed, collect_disconnect};
 const CONNECTOR: &str = "example.notes";
 const INSTANCE: &str = "work";
 
-// The old disconnect observer: wait_for("data.changed") drops preceding deliveries, then
-// named("connector.changed") drains what is left. This reproduces its loss without a scheduler.
 fn observe(receiver: &Receiver<Delivery>) -> Result<Vec<Observed>, String> {
-    let mut observed = Vec::new();
-    loop {
-        let delivery = receiver
-            .recv_timeout(Duration::from_secs(10))
-            .map_err(|error| error.to_string())?;
-        let value = serde_json::to_value(delivery.event).unwrap();
-        if value["event"] == "data.changed" {
-            observed.push((delivery.to, value));
-            break;
-        }
-    }
-    observed.extend(
-        receiver
-            .try_iter()
-            .map(|delivery| (delivery.to, serde_json::to_value(delivery.event).unwrap())),
-    );
-    Ok(observed)
+    collect_disconnect(receiver, CONNECTOR, INSTANCE)
 }
 
 fn status(change: &str) -> Value {
