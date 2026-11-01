@@ -125,3 +125,51 @@ it.each([false, true])(
     }
   },
 );
+
+it("chapter links belong to the committed chapter while another book is loading", async () => {
+  const host = document.createElement("div");
+  const scroller = document.createElement("div");
+  scroller.append(host);
+  const go = vi.fn();
+  const external = vi.fn();
+  const view = createChapters(host, scroller, { moved() {}, go, external });
+  const linked = {
+    ...chapter,
+    html: '<a href="chapter2.xhtml">Inside</a><a class="external" title="https://example.com/">Outside</a>',
+  };
+  const target = vi.fn(() => ({ unit: 1 }));
+  await view.show({ ...chapters, target, chapter: async () => linked }, 0);
+  let resolve!: (value: typeof chapter) => void;
+  const nextTarget = vi.fn(() => ({ unit: 0 }));
+  const pending = view.show(
+    {
+      ...chapters,
+      target: nextTarget,
+      chapter: () =>
+        new Promise((done) => {
+          resolve = done;
+        }),
+    },
+    0,
+  );
+  const clickLinks = () => {
+    for (const link of host.shadowRoot!.querySelectorAll("a")) link.click();
+  };
+  try {
+    clickLinks();
+    expect(target).not.toHaveBeenCalled();
+    expect(nextTarget).not.toHaveBeenCalled();
+    expect(go).not.toHaveBeenCalled();
+    expect(external).not.toHaveBeenCalled();
+    resolve(linked);
+    await pending;
+    clickLinks();
+    expect(nextTarget).toHaveBeenCalledExactlyOnceWith("chapter2.xhtml", 0);
+    expect(go).toHaveBeenCalledExactlyOnceWith({ unit: 0 });
+    expect(external).toHaveBeenCalledExactlyOnceWith("https://example.com/");
+  } finally {
+    resolve(linked);
+    await pending;
+    view.clear();
+  }
+});
