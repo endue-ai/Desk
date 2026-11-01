@@ -254,3 +254,18 @@ it("passes local file lists through the Linux desktop entry used by deb, rpm and
   expect(desktop).toContain("Type=Application");
   expect(desktop).toContain("Terminal=false");
 });
+
+it("runs native app gates for vendored single-instance changes", () => {
+  const workflow = readFileSync(join(root, ".github/workflows/ci.yml"), "utf8");
+  const pattern = workflow.match(/grep -qE '([^']+)' <<<"\$files"/)?.[1];
+  expect(pattern).toBeDefined();
+  const filter = new RegExp(pattern ?? "^$");
+  for (const path of [
+    "vendor/tauri-plugin-single-instance/src/platform_impl/linux.rs",
+    "vendor/tauri-plugin-single-instance/Cargo.toml",
+    "apps/desk/src-tauri/src/lib.rs",
+    "crates/desk-sys/src/lib.rs",
+  ])
+    expect(filter.test(path), path).toBe(true);
+  expect(filter.test("packages/runtime/src/main.ts")).toBe(false);
+});

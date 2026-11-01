@@ -21,6 +21,7 @@ Viewers still request their usual file permissions. Browser hosts keep the path-
 Packaged builds advertise common built-in formats as viewers. Finder/file-manager opens wait for the
 runtime and focus the existing window; paths are consumed once without granting file access (ADR 0052).
 Windows installers add Open With entries and preserve existing default-app choices on install/removal.
+The attributed single-instance vendor keeps Linux on maintained zbus; see ADR 0052 and its NOTICE.
 
 ## Run and check
 
@@ -28,7 +29,7 @@ Windows installers add Open With entries and preserve existing default-app choic
 just brain-echo  # optional: the brain on :8787, whose agents fill the agent bar
 just dev         # Vite on :1420 plus the app; the terminal prints "desk ready · bridge: tauri"
 pnpm exec vitest run apps/desk   # the shell bridge, over the browser stub
-just check-app   # clippy for the app crate (needs the platform webview SDK)
+just check-app   # native lint/tests and single-instance integration (needs the webview SDK)
 just build-app   # debug binary
 ```
 

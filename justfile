@@ -45,6 +45,9 @@ check:
 check-app: build-sdk build-ui
     pnpm --filter @endue-ai/desk-app build
     cargo clippy -p desk-app --all-targets -- -D warnings
+    cargo test -p desk-app --lib
+    cargo check -p tauri-plugin-single-instance --all-targets --all-features
+    @if [ "$(uname -s)" = Linux ]; then dbus-run-session -- cargo test -p tauri-plugin-single-instance --lib --tests -- --include-ignored; else cargo test -p tauri-plugin-single-instance --lib --tests; fi
 
 # Build the Tauri app binary
 build-app: build-sdk build-ui

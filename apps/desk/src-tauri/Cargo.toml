@@ -29,7 +29,7 @@ desk-ipc = { path = "../../../crates/desk-ipc" }
 serde_json.workspace = true
 tauri = { version = "2", features = [] }
 tauri-plugin-dialog = "2.8.4"
-tauri-plugin-single-instance = "2.5.4"
+tauri-plugin-single-instance = { path = "../../../vendor/tauri-plugin-single-instance" }
 
 [lints]
 workspace = true
