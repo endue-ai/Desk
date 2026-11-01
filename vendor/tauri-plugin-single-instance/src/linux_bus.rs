@@ -1,15 +1,18 @@
 // Linux zbus 6 adapter; upstream protocol and provenance are recorded in NOTICE.
-use std::{sync::mpsc, thread};
+use std::{
+    sync::{Arc, Mutex, mpsc},
+    thread,
+};
 use tokio::sync::oneshot;
 use zbus::{connection::Builder, interface};
 
 pub type Callback = Box<dyn FnMut(Vec<String>, String) + Send + Sync + 'static>;
 
-struct Service(Callback);
+struct Service(Arc<Mutex<Callback>>);
 #[interface(name = "org.SingleInstance.DBus")]
 impl Service {
     fn execute_callback(&mut self, argv: Vec<String>, cwd: String) {
-        (self.0)(argv, cwd);
+        (self.0.lock().unwrap())(argv, cwd);
     }
 }
 
@@ -75,45 +78,108 @@ pub fn start(
                     Some(address) => Builder::address(address),
                     None => Builder::session(),
                 };
-                let connection = builder()
-                    .name(name.as_str())
-                    .replace_existing_names(false)
-                    .allow_name_replacements(false)
-                    .serve_at(path.as_str(), Service(callback))
-                    .build()
-                    .await;
-                match connection {
-                    Ok(connection) => {
-                        let _ = ready_tx.send(Ok(Started::Primary));
-                        let _ = stop_rx.await;
-                        // Closing breaks references held by the object server and releases ownership.
-                        let _ = connection.close().await;
-                    }
+                // Keep the callback alive even if the first builder loses the name election.
+                let callback = Arc::new(Mutex::new(callback));
+                let elect = || {
+                    builder()
+                        .name(name.as_str())
+                        .replace_existing_names(false)
+                        .allow_name_replacements(false)
+                        .serve_at(path.as_str(), Service(callback.clone()))
+                        .build()
+                };
+                let first = elect().await;
+                let connection = match first {
+                    Ok(connection) => Some(connection),
                     Err(zbus::Error::NameTaken) => {
                         let result = async {
                             let connection = builder().build().await?;
-                            let reply = connection
+                            let owner = connection
                                 .call_method(
-                                    Some(name.as_str()),
-                                    path.as_str(),
-                                    Some("org.SingleInstance.DBus"),
-                                    "ExecuteCallback",
-                                    &(args, cwd),
+                                    Some("org.freedesktop.DBus"),
+                                    "/org/freedesktop/DBus",
+                                    Some("org.freedesktop.DBus"),
+                                    "GetNameOwner",
+                                    &(name.as_str(),),
                                 )
                                 .await;
+                            let failed = match owner {
+                                Ok(reply) => {
+                                    let owner: String = reply.body().deserialize()?;
+                                    // Address the observed owner, never a replacement. Do not replay
+                                    // an ambiguously delivered call to another instance.
+                                    match connection
+                                        .call_method(
+                                            Some(owner.as_str()),
+                                            path.as_str(),
+                                            Some("org.SingleInstance.DBus"),
+                                            "ExecuteCallback",
+                                            &(args, cwd),
+                                        )
+                                        .await
+                                    {
+                                        Ok(reply) => {
+                                            reply.body().deserialize::<()>()?;
+                                            return Ok::<_, zbus::Error>(None);
+                                        }
+                                        Err(error) => {
+                                            let alive = connection
+                                                .call_method(
+                                                    Some("org.freedesktop.DBus"),
+                                                    "/org/freedesktop/DBus",
+                                                    Some("org.freedesktop.DBus"),
+                                                    "NameHasOwner",
+                                                    &(owner.as_str(),),
+                                                )
+                                                .await?
+                                                .body()
+                                                .deserialize::<bool>()?;
+                                            if alive {
+                                                return Err(error);
+                                            }
+                                            error
+                                        }
+                                    }
+                                }
+                                Err(zbus::Error::MethodError(ref name, _, _))
+                                    if name.as_str()
+                                        == "org.freedesktop.DBus.Error.NameHasNoOwner" =>
+                                {
+                                    // The owner left before any delivery was attempted.
+                                    zbus::Error::NameTaken
+                                }
+                                Err(error) => return Err(error),
+                            };
                             let _ = connection.close().await;
-                            reply?.body().deserialize::<()>()?;
-                            Ok::<_, zbus::Error>(Started::Forwarded)
+                            // Election is bounded: if a replacement won, keep the original error.
+                            elect().await.map(Some).map_err(|_| failed)
                         }
                         .await
                         .map_err(|error| {
                             format!("failed to forward arguments to the running instance: {error}")
                         });
-                        let _ = ready_tx.send(result);
+                        match result {
+                            Ok(Some(connection)) => Some(connection),
+                            Ok(None) => {
+                                let _ = ready_tx.send(Ok(Started::Forwarded));
+                                None
+                            }
+                            Err(error) => {
+                                let _ = ready_tx.send(Err(error));
+                                None
+                            }
+                        }
                     }
                     Err(error) => {
                         let _ = ready_tx.send(Ok(Started::Unavailable(error.to_string())));
+                        None
                     }
+                };
+                if let Some(connection) = connection {
+                    let _ = ready_tx.send(Ok(Started::Primary));
+                    let _ = stop_rx.await;
+                    // Closing breaks references held by the object server and releases ownership.
+                    let _ = connection.close().await;
                 }
             });
         })
