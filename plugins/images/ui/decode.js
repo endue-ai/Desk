@@ -24,9 +24,13 @@ import { LABELS, sniff } from "./sniff.js";
  * @typedef {import("./formats/pixels.js").Slices} Slices
  * @typedef {import("./formats/exif.js").Exif} Exif
  * @typedef {{ id: string, format: string, kind: "web" | "pixels" | "details", orientation: number,
- *   mime?: string, data?: Uint8Array, width?: number, height?: number, rgba?: Uint8ClampedArray,
- *   float?: Float32Array, slices?: Slices, label?: string, reason?: string, depth?: string,
- *   frames?: number, animated?: boolean, rows: Row[], exif?: Exif }} Decoded
+ *   mime?: string, data?: Uint8Array, url?: string, width?: number, height?: number,
+ *   rgba?: Uint8ClampedArray, float?: Float32Array, slices?: Slices, label?: string,
+ *   reason?: string, depth?: string, frames?: number, animated?: boolean, rows: Row[],
+ *   exif?: Exif, close?: () => void }} Decoded
+ *   url: the blob: URL of `data` once decoding.js made it; close ends a volume's worker.
+ * @typedef {{ progress?: (done: number, total: number) => void }} DecodeOptions
+ *   progress: rows decoded of all, from the decoders that count them (OpenEXR).
  */
 
 export const MIME = /** @type {Record<string, string>} */ ({
@@ -60,7 +64,7 @@ const ORIENTATION = /** @type {Record<string, number>} */ ({
 });
 
 /** Own decoders, by format. */
-const OWN = /** @type {Record<string, (b: Uint8Array) => unknown>} */ ({
+const OWN = /** @type {Record<string, (b: Uint8Array, options: DecodeOptions) => unknown>} */ ({
   tga: decodeTga,
   netpbm: decodeNetpbm,
   qoi: decodeQoi,
@@ -87,9 +91,10 @@ export function webviewReason(/** @type {string} */ id, /** @type {string} */ fo
 /**
  * @param {Uint8Array} bytes
  * @param {string} name the file name or path
+ * @param {DecodeOptions} [options]
  * @returns {Promise<Decoded>}
  */
-export async function decode(bytes, name) {
+export async function decode(bytes, name, options = {}) {
   const id = sniff(bytes, name);
   const ext = extensionOf(name);
   let format = id === "raw" ? `RAW (${ext ? ext.toUpperCase() : "camera"})` : LABELS[id];
@@ -101,7 +106,7 @@ export async function decode(bytes, name) {
       const inner = await inflate(bytes, "gzip");
       const found = sniff(inner, name.replace(/\.gz$/i, ""));
       if (found !== "unknown")
-        return { ...(await decode(inner, name)), format: `${LABELS[found]} (gzip)` };
+        return { ...(await decode(inner, name, options)), format: `${LABELS[found]} (gzip)` };
     }
     if (id === "unknown")
       return { ...base, reason: "Its first bytes are not those of any image format Images reads." };
@@ -162,7 +167,7 @@ export async function decode(bytes, name) {
     }
     const decoder = OWN[id];
     if (!decoder) return { ...base, reason: "Images does not read this format." };
-    const out = /** @type {Record<string, unknown>} */ (await decoder(bytes));
+    const out = /** @type {Record<string, unknown>} */ (await decoder(bytes, options));
     const rows = /** @type {Row[]} */ (out.rows ?? []);
     const depth = /** @type {string | undefined} */ (out.depth);
     if (out.web) {
