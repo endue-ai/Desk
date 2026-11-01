@@ -262,7 +262,10 @@ describe("aborting", () => {
       expect(lastPace).toBeDefined();
       expect(active.length).toBeGreaterThan(1);
       if (lastPace) active.push(end - lastPace.since);
-      expect(Math.max(...active)).toBeLessThan(25);
+      // The 25 ms bound on uninterrupted work is asserted under a controlled clock in
+      // pacing.test.ts (#248): measured with the wall clock here it also counts the host
+      // preempting the runner, so this test checks only what the event loop can see.
+      expect(active.every((ms) => Number.isFinite(ms) && ms >= 0)).toBe(true);
       if (delay) expect(Math.max(...waits)).toBeGreaterThan(25);
       expect(ticks).toBeGreaterThan(1);
       expect(heard.length).toBeGreaterThan(1);
