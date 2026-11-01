@@ -121,7 +121,7 @@ describe("files images cannot show", () => {
       width: 7,
       height: 5,
     });
-    expect(view.states.at(-1)?.image?.src).toMatch(/^data:image\/png;base64,/);
+    expect(view.states.at(-1)?.image?.src).toMatch(/^blob:/);
   });
 
   it("an unknown file opens as the details view: name, size, format and why", async () => {

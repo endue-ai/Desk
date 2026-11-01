@@ -3,8 +3,9 @@
 // folders are not workspace packages yet.
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { vi } from "vitest";
 import { StubError } from "../../../packages/bridge/src/index";
-import { defineUiPlugin } from "../../../packages/plugin-sdk/src/index";
+import { defineUiPlugin, readBytes } from "../../../packages/plugin-sdk/src/index";
 import { createTestHost, type TestHost } from "../../../packages/plugin-sdk/src/testing/index";
 import { createImages, type ImagesState } from "../ui/images.js";
 
@@ -20,6 +21,7 @@ export interface View {
 }
 
 export interface RecordingView extends View {
+  progress: ReturnType<typeof vi.fn>;
   states: ImagesState[];
   statuses: string[];
   focused: number;
@@ -27,6 +29,7 @@ export interface RecordingView extends View {
 
 export function recordingView(): RecordingView {
   const view: RecordingView = {
+    progress: vi.fn(),
     states: [],
     statuses: [],
     focused: 0,
@@ -63,6 +66,8 @@ export async function mount<V extends View = RecordingView>(
     handlers?: Handlers;
     commands?: Commands;
     view?: (app: () => ReturnType<typeof createImages> | undefined) => V;
+    /** The SDK's startWorker, or a test's stand-in; without it every file decodes in place. */
+    startWorker?: (url: string | URL, options?: { name?: string }) => Worker;
   } = {},
 ): Promise<Mounted<V>> {
   const host = createTestHost({
@@ -75,7 +80,7 @@ export async function mount<V extends View = RecordingView>(
   await defineUiPlugin(
     {
       mount(ctx) {
-        app = createImages(ctx, view);
+        app = createImages(ctx, view, { read: readBytes, startWorker: options.startWorker });
       },
     },
     host.transport,
@@ -99,17 +104,22 @@ const folderOf = (path: string) => path.slice(0, path.lastIndexOf("/"));
 const nameOf = (path: string) => path.slice(path.lastIndexOf("/") + 1);
 
 /**
- * fs.read (base64), fs.list and fs.watch over an in-memory disk; files missing from it are
- * not_found. A folder lists the files directly in it.
+ * fs.read (base64, in ranges, with the file's size), fs.list and fs.watch over an in-memory disk;
+ * files missing from it are not_found. A folder lists the files directly in it.
  */
 export function disk(files: Record<string, Uint8Array>): Handlers {
   let watches = 0;
   return {
-    "fs.read": ({ path, encoding }) => {
+    "fs.read": ({ path, encoding, offset = 0, length }) => {
       const bytes = files[path];
       if (bytes === undefined) throw new StubError("not_found", `no file ${path}`);
       if (encoding !== "base64") throw new StubError("invalid_params", "images reads base64");
-      return { content: Buffer.from(bytes).toString("base64"), encoding: "base64" };
+      const part = bytes.subarray(offset, length === undefined ? undefined : offset + length);
+      return {
+        content: Buffer.from(part).toString("base64"),
+        encoding: "base64",
+        size: bytes.length,
+      };
     },
     "fs.list": ({ path }) => ({
       entries: Object.keys(files)
