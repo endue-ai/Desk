@@ -72,7 +72,12 @@ static int pick(Media *m, enum AVMediaType type, const AVCodec **found, int *mis
 static int open_decoder(Media *m, Decoder *d, enum AVMediaType type) {
   const AVCodec *codec = NULL;
   int missing = AV_CODEC_ID_NONE;
-  d->index = pick(m, type, &codec, &missing);
+  // FFmpeg's own choice first: it prefers streams that carried frames while the file was probed
+  // (a RealMedia SureStream file lists a dozen streams, and only one of each kind has packets).
+  d->index = av_find_best_stream(m->fmt, type, -1, -1, &codec, 0);
+  if (d->index < 0 || !codec ||
+      (m->fmt->streams[d->index]->disposition & AV_DISPOSITION_ATTACHED_PIC))
+    d->index = pick(m, type, &codec, &missing);
   if (d->index < 0) {
     if (missing == AV_CODEC_ID_NONE) return 0;
     char message[160];

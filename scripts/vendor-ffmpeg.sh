@@ -88,6 +88,7 @@ echo "vendor-ffmpeg: built in $(( $(date +%s) - started )) s" >&2
 mkdir -p "$VENDOR"
 rm -f "$VENDOR"/*
 cp "$WORK/out/ffmpeg.wasm" "$VENDOR/ffmpeg.wasm"
+chmod 644 "$VENDOR/ffmpeg.wasm"
 cp "$WORK/ffmpeg-${FFMPEG_VERSION}/COPYING.LGPLv2.1" "$VENDOR/COPYING.LGPLv2.1"
 {
   echo "# endue.player's software decoder: FFmpeg built to WebAssembly by scripts/vendor-ffmpeg.sh."

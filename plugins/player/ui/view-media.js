@@ -111,6 +111,9 @@ export function createMedia(doc, act, engines) {
       if (!media || media.paused || media.ended) return stopTicker();
       drawCues();
       const quality = pictures(media) ? media.getVideoPlaybackQuality() : undefined;
+      // Frames shown and dropped, for whoever checks playback (the QA harness reads it).
+      if (quality)
+        transport.dataset.frames = `${quality.totalVideoFrames} ${quality.droppedVideoFrames}`;
       const sample = {
         playing: true,
         time: media.currentTime,
