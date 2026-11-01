@@ -17,14 +17,17 @@ const textOf = (view: Awaited<ReturnType<typeof mount>>["view"], rows = 2, cols 
 };
 
 describe("the desk's file requests", () => {
-  it("visit reads the file as base64, shows it and watches it", async () => {
+  it("visit reads bounded ranges, shows it and watches it", async () => {
     const { host, view, params } = await mount({
       handlers: disk({ [A.path]: "name,qty\napple,3\n", [B.path]: fixture("budget.xlsx") }),
     });
     await expect(host.command("desk.files.visit", A)).resolves.toBeUndefined();
     const fs = host.calls.map((c) => c.method).filter((m) => m.startsWith("fs."));
-    expect(fs).toEqual(["fs.read", "fs.watch"]);
-    expect(params("fs.read")).toEqual([{ path: A.path, encoding: "base64", scope: DOCS_READ }]);
+    expect(fs).toEqual(["fs.url", "fs.read", "fs.read", "fs.watch"]);
+    expect(params("fs.read")).toEqual([
+      { path: A.path, encoding: "base64", scope: DOCS_READ, offset: 0, length: 0 },
+      { path: A.path, encoding: "base64", scope: DOCS_READ, offset: 0, length: 17 },
+    ]);
     expect(params("fs.watch")).toEqual([{ path: A.path, scope: DOCS_READ }]);
     expect(view.shown.at(-1)).toMatchObject({ ...A, name: "a.csv", size: 17 });
     expect(textOf(view)).toEqual([
@@ -45,7 +48,7 @@ describe("the desk's file requests", () => {
     await host.command("desk.files.visit", A);
     files[A.path] = "a,b\n7,8\n";
     await expect(host.command("desk.files.revert", A)).resolves.toBeUndefined();
-    expect(params("fs.read")).toHaveLength(2);
+    expect(params("fs.read")).toHaveLength(4);
     expect(textOf(view)).toEqual([
       ["a", "b"],
       ["7", "8"],
@@ -125,11 +128,17 @@ describe("files outside the grants", () => {
     const { host, view, params } = await mount({
       handlers: {
         ...disk({ [X.path]: fixture("budget.xlsx") }),
-        "fs.read": () => {
+        "fs.read": ({ offset = 0, length }) => {
           reads++;
           if (reads === 1) throw denied("fs:read over ~/Documents/x.xlsx");
           return {
-            content: Buffer.from(fixture("budget.xlsx")).toString("base64"),
+            content: Buffer.from(
+              fixture("budget.xlsx").subarray(
+                offset,
+                length === undefined ? undefined : offset + length,
+              ),
+            ).toString("base64"),
+            size: fixture("budget.xlsx").length,
             encoding: "base64",
           };
         },
@@ -145,7 +154,7 @@ describe("files outside the grants", () => {
       },
     });
     await expect(host.command("desk.files.visit", X)).resolves.toBeUndefined();
-    expect(params("fs.read")).toHaveLength(2);
+    expect(params("fs.read")).toHaveLength(3);
     expect(params("perm.request")).toHaveLength(1);
     expect(view.shown.at(-1)?.book.kind).toBe("sheets");
   });
