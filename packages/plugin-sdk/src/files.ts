@@ -113,17 +113,20 @@ export async function readBytes(
 /**
  * Random access to the file at `path` through its fs.url URL (or ranged fs.read calls), with a
  * cache of 64 blocks of 64 KiB, so a format's neighbouring reads ask the desk once. A read of
- * 2 MiB or more goes straight through. The source has the shape `endue.archives` reads.
+ * 2 MiB or more goes straight through. The signal stops all current and future reads, including
+ * cache hits. The source has the shape `endue.archives` reads.
  */
 export async function byteSource(
   ctx: Pick<PluginContext, "bridge">,
   file: FileRef,
   options: { signal?: AbortSignal } = {},
 ): Promise<ByteSource> {
-  return cachedSource(await openRanges(ctx.bridge, file, options.signal), file.path);
+  const ranges = await openRanges(ctx.bridge, file, options.signal);
+  throwIfAborted(options.signal);
+  return cachedSource(ranges, file.path, options.signal);
 }
 
-function cachedSource(ranges: Ranges, path: string): ByteSource {
+function cachedSource(ranges: Ranges, path: string, signal?: AbortSignal): ByteSource {
   const { size } = ranges;
   const blocks = new Map<number, Uint8Array>();
   /** The whole file, once a server answered a range with all of it. */
@@ -137,14 +140,16 @@ function cachedSource(ranges: Ranges, path: string): ByteSource {
   const exact = async (start: number, end: number): Promise<Uint8Array> => {
     const out = new Uint8Array(end - start);
     for (let at = start; at < end; ) {
+      throwIfAborted(signal);
       if (memory) {
         out.set(memory.subarray(at, end), at - start);
         break;
       }
-      const got = await ranges.part(at, end - at);
+      const got = await ranges.part(at, end - at, signal);
+      throwIfAborted(signal);
       if (got.whole) {
         const all = new Uint8Array(size);
-        if ((await drain(got.body, all, () => {})) < size) throw shorter(path);
+        if ((await drain(got.body, all, () => {}, signal)) < size) throw shorter(path);
         memory = all;
         continue;
       }
@@ -158,6 +163,7 @@ function cachedSource(ranges: Ranges, path: string): ByteSource {
   return {
     size,
     read: async (offset, length) => {
+      throwIfAborted(signal);
       const start = Math.max(0, Math.min(offset, size));
       const end = Math.min(size, start + Math.max(0, length));
       if (end <= start) return new Uint8Array(0);
@@ -170,6 +176,7 @@ function cachedSource(ranges: Ranges, path: string): ByteSource {
         let until = index;
         while (until < last && !blocks.has(until + 1)) until++;
         const got = await exact(index * BLOCK, Math.min(size, (until + 1) * BLOCK));
+        throwIfAborted(signal);
         if (memory) return memory.slice(start, end);
         for (let i = index; i <= until; i++) {
           keep(i, got.subarray((i - index) * BLOCK, (i - index + 1) * BLOCK));
