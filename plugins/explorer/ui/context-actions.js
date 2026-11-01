@@ -45,18 +45,7 @@ export function contextActions(bridge, commands, { selected, open }) {
       codeOf(error) === "permission_denied"
         ? refused
         : new Error(`Could not show ${path}: ${codeOf(error) ?? "error"}.`);
-    try {
-      return await bridge.call("shell.open", params);
-    } catch (error) {
-      if (codeOf(error) !== "permission_denied") throw failed(error);
-    }
-    const decision = await bridge
-      .call("perm.request", {
-        permission: scope,
-        reason: `To show ${path} in the system file manager`,
-      })
-      .catch(() => ({ granted: false }));
-    if (!decision.granted) throw refused;
+    // shell.open asks through the core. A refusal is final, not a reason to ask again.
     return bridge.call("shell.open", params).catch((error) => {
       throw failed(error);
     });

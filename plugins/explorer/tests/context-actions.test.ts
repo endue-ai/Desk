@@ -53,7 +53,7 @@ describe("Explorer selection commands", () => {
     expect(d.params("proc.spawn")).toEqual([]);
   });
 
-  it("asks for the exact reveal path once and preserves a refusal", async () => {
+  it("lets the core ask for the exact reveal path once and preserves a refusal", async () => {
     const path = `${DOCS}/a2.md`;
     const d = await mount({
       handlers: {
@@ -68,13 +68,15 @@ describe("Explorer selection commands", () => {
     await expect(d.host.command("endue.explorer.show-in-file-manager")).rejects.toThrow(
       /not allowed/i,
     );
-    expect(d.params("perm.request")).toEqual([
+    // shell.open already asks through core.check_or_ask. A denial must not trigger another ask.
+    expect(d.params("perm.request")).toEqual([]);
+    expect(d.params("shell.open")).toEqual([
       {
-        permission: { permission: "shell:open", paths: [path] },
-        reason: `To show ${path} in the system file manager`,
+        target: path,
+        reveal: true,
+        scope: { permission: "shell:open", paths: [path] },
       },
     ]);
-    expect(d.params("shell.open")).toHaveLength(1);
     expect(d.ran("desk.files.open")).toEqual([]);
   });
 
@@ -88,15 +90,14 @@ describe("Explorer selection commands", () => {
     expect(d.params("shell.open")).toEqual([]);
   });
 
-  it("retries the same reveal only after a grant and reports other system failures", async () => {
+  it("accepts the core's granted reveal and reports other system failures without a new ask", async () => {
     let attempts = 0;
     const d = await mount({
       handlers: {
         ...disk(sample()),
         "shell.open": () => {
           attempts++;
-          if (attempts === 1) throw denied("reveal");
-          if (attempts === 3) throw new StubError("not_found", "gone");
+          if (attempts === 2) throw new StubError("not_found", "gone");
           return { opened: true };
         },
         "perm.request": () => ({ granted: true }),
@@ -104,11 +105,11 @@ describe("Explorer selection commands", () => {
     });
     d.app.select(`${DOCS}/a2.md`);
     await d.host.command("endue.explorer.show-in-file-manager");
-    expect(d.params("shell.open")[0]).toEqual(d.params("shell.open")[1]);
+    expect(d.params("shell.open")).toHaveLength(1);
     await expect(d.host.command("endue.explorer.show-in-file-manager")).rejects.toThrow(
       /not_found/,
     );
-    expect(d.params("perm.request")).toHaveLength(1);
+    expect(d.params("perm.request")).toEqual([]);
     expect(d.view.statuses.at(-1)).toMatch(/could not show/i);
   });
 
