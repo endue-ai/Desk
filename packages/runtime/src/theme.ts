@@ -6,6 +6,7 @@
  * shell's root and to each plugin frame as --desk-* custom properties.
  */
 import { cssVariables, MOTION_TOKENS, tokens } from "@endue-ai/ui";
+import { HIGH_CONTRAST, LIGHT_COLORS } from "./core/colors";
 import type { PolicySet } from "./policy";
 
 export type Scheme = "light" | "dark";
@@ -58,7 +59,11 @@ export function resolveTheme(
     ...ofScheme.filter((theme) => (theme.contrast ?? "normal") === "normal"),
     ...(contrast === "high" ? ofScheme.filter((theme) => theme.contrast === "high") : []),
   ];
-  const merged: Record<string, string> = { ...tokens };
+  const merged: Record<string, string> = {
+    ...tokens,
+    ...(scheme === "light" ? LIGHT_COLORS : {}),
+    ...(contrast === "high" ? HIGH_CONTRAST[scheme] : {}),
+  };
   for (const theme of applied) {
     const values = theme.tokens;
     Object.assign(merged, values);

@@ -6,9 +6,9 @@ English · [日本語](i18n/ja/architecture.md) · [中文](i18n/zh/architecture
 This is the English summary of the design. The source of truth is `docs/ko/desk-structure.md`; decisions
 that are hard to reverse are in `docs/adr/`.
 
-Desk is one OS built as one app: a Tauri shell and a small Rust core carry a web runtime, and every
-feature on top of that runtime is a plugin. Like Emacs, the core keeps only primitives and everything else
-can be changed while the app is running.
+Desk is one OS built as one app: a Tauri shell and a small Rust core carry a web runtime. The runtime
+owns settings, keyboard bindings and their persistence. Other features on top are plugins. Like Emacs,
+the Rust core keeps primitives while plugins can be changed while the app is running.
 
 ## At a glance
 
@@ -76,8 +76,10 @@ Six principles follow from this:
 1. **Small core.** The Rust core holds primitives (fs, proc, net, audio, ui), not features.
 2. **Built-ins are plugins.** Eris, the sidebar, the toolbar and profile switching use the same API as
    community plugins, so the API has no holes and even built-ins can be replaced. The desk's default
-   policies (where surfaces go, keys, files, themes, notifications) are data-only `desk.*` plugins too
-   (ADR 0017). The desk shell (`mountDesk`) is not there yet: it is code in `packages/runtime` (ADR 0025)
+   policies (where surfaces go, files, themes, notifications) are data-only `desk.*` plugins too
+   (ADR 0017). Settings and default keys are core facilities, always available without plugins
+   ([ADR 0053](adr/0053-core-settings-and-keybindings.md)); plugins may add bindings. The desk shell
+   (`mountDesk`) is not there yet: it is code in `packages/runtime` (ADR 0025)
    until ADR 0026, still proposed, decides where it lives. Until then Eris exists twice, as `plugins/eris`
    and in the shell (ADR 0027), and so do the desk's edges, as the dock, toolbar and sidebar plugins and
    the shell's bottom edge, rail and agent bar (ADR 0028).

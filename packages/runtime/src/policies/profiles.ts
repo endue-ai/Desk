@@ -14,7 +14,7 @@ export const PROFILES_KEY = "profiles";
 /** The plugins a profile switch turned off, kept so the next profile that leaves them on brings them back. */
 export const OFF_KEY = "profiles.off";
 /** Never turned off by a profile: there would be no way back. */
-const KEEP_ON = new Set(["desk.profiles", "desk.palette", "desk.keys"]);
+const KEEP_ON = new Set(["desk.profiles", "desk.palette"]);
 
 export interface ProfilesPolicy extends Installed {
   /** The profile in force, or undefined before the first is applied. */

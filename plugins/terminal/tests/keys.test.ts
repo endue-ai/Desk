@@ -1,5 +1,5 @@
-import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { DEFAULT_KEYS } from "../../../packages/runtime/src/core/keys";
 import { canonical, comboOf, DESK_KEYS, decide, type KeyPress } from "../ui/keys.js";
 import type { Platform } from "../ui/shell.js";
 
@@ -90,7 +90,7 @@ describe("who gets a key pressed in a terminal", () => {
     expect(on("mac", press("q", { metaKey: true }), { deskKeys: ["Mod+Q"] })).toBe("desk");
   });
 
-  it("lists the desk's keys as desk.keys binds them", () => {
+  it("lists the desk's keys as the core binds them", () => {
     for (const chord of ["Mod+K", "Mod+B", "Mod+W", "Control+Tab", "Control+1", "Mod+Shift+T"]) {
       expect(DESK_KEYS).toContain(chord);
     }
@@ -108,10 +108,7 @@ describe("Desk navigation inside the terminal", () => {
   });
 
   it("every shipped desk chord except Escape reaches the desk", () => {
-    const manifest = JSON.parse(
-      readFileSync(new URL("../../keys/plugin.json", import.meta.url), "utf8"),
-    ) as { contributes: { keys: { key: string; command: string }[] } };
-    for (const { key: chord, command } of manifest.contributes.keys) {
+    for (const { key: chord, command } of DEFAULT_KEYS) {
       // Escape cancels shell input and is intentionally owned by the terminal.
       if (chord === "Escape") continue;
       for (const platform of ["mac", "linux", "windows"] as const) {

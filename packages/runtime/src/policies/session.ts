@@ -1,7 +1,7 @@
 /**
  * desk.session (desktop.el, savehist): keep the desk as it was across restarts. The layout, the
  * files open in buffers, the surface in use, the notification history and the parts a host keeps
- * (the person's key bindings, the shell's desktops) are kept with store.set whenever they change,
+ * (the shell's desktops) are kept with store.set whenever they change,
  * and put back after the plugins have mounted.
  */
 import { type Layout, loadLayout } from "../layout";

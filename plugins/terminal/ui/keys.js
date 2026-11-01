@@ -10,13 +10,14 @@
  */
 
 /**
- * The desk's chords that a terminal never swallows, as desk.keys and the shell bind them. Mod is
+ * The desk's chords that a terminal never swallows, as the core and the shell bind them. Mod is
  * Meta on macOS and Control elsewhere, as in the runtime's keymap.
  */
 export const DESK_KEYS = Object.freeze([
   "Mod+K",
   "Mod+Shift+P",
   "Mod+/",
+  "Mod+,",
   "Mod+B",
   "Mod+W",
   "Mod+Alt+ArrowRight",

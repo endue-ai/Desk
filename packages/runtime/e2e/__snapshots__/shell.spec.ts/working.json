@@ -775,6 +775,21 @@
         "color": "rgb(176, 173, 183)"
        },
        "text": "desk ready · bridge: browser"
+      },
+      {
+       "tag": "button",
+       "class": "desk-settings-launcher",
+       "aria-label": "설정 열기",
+       "style": {
+        "background": "rgb(30, 29, 33)",
+        "border": "solid rgb(51, 49, 54)"
+       },
+       "children": [
+        {
+         "tag": "svg",
+         "icon": null
+        }
+       ]
       }
      ]
     },

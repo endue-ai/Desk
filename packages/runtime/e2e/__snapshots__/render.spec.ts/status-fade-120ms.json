@@ -52,6 +52,60 @@
         "opacity": "0.5"
       },
       "text": "desk ready · bridge: browser"
+    },
+    {
+      "tag": "button",
+      "class": "desk-settings-launcher",
+      "title": "설정 열기",
+      "box": [
+        1226,
+        726,
+        36,
+        36
+      ],
+      "style": {
+        "display": "grid",
+        "background-color": "rgb(30, 29, 33)",
+        "color": "rgb(176, 173, 183)",
+        "border-top-color": "rgb(51, 49, 54)",
+        "opacity": "1"
+      },
+      "children": [
+        {
+          "tag": "svg",
+          "box": [
+            1234,
+            734,
+            21,
+            21
+          ],
+          "style": {
+            "display": "block",
+            "background-color": "rgba(0, 0, 0, 0)",
+            "color": "rgb(176, 173, 183)",
+            "border-top-color": "rgb(176, 173, 183)",
+            "opacity": "1"
+          },
+          "children": [
+            {
+              "tag": "path",
+              "box": [
+                1238,
+                736,
+                12,
+                12
+              ],
+              "style": {
+                "display": "inline",
+                "background-color": "rgba(0, 0, 0, 0)",
+                "color": "rgb(176, 173, 183)",
+                "border-top-color": "rgb(176, 173, 183)",
+                "opacity": "1"
+              }
+            }
+          ]
+        }
+      ]
     }
   ]
 }

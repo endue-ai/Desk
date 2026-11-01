@@ -64,6 +64,7 @@ export class Commands {
   /** Answers that arrived before cmd.invoke's own answer named their invocation. */
   readonly #early = new Map<string, CmdAnsweredData>();
   readonly #listeners = new Set<(run: CommandRun) => void>();
+  readonly #changes = new Set<() => void>();
   #chain: Promise<void> = Promise.resolve();
   #queued = false;
   readonly #off: () => void;
@@ -132,6 +133,12 @@ export class Commands {
   onRun(listener: (run: CommandRun) => void): () => void {
     this.#listeners.add(listener);
     return () => this.#listeners.delete(listener);
+  }
+
+  /** Registry changes, including plugins enabled or disabled while settings is open. */
+  onChange(listener: () => void): () => void {
+    this.#changes.add(listener);
+    return () => this.#changes.delete(listener);
   }
 
   dispose(): void {
@@ -246,5 +253,6 @@ export class Commands {
         { id: c.id, title: c.title, keywords: c.keywords ?? [], provider: c.provider },
       ]),
     );
+    for (const listener of this.#changes) listener();
   }
 }

@@ -11,6 +11,21 @@ export interface KeyLike {
 
 export type Platform = "mac" | "other";
 
+/** Route window keys while leaving composition and plain text editing to their controls. */
+export function listenForShortcuts(win: Window, shortcuts: ShortcutRouter): () => void {
+  const onKey = (event: KeyboardEvent) => {
+    if (event.defaultPrevented || event.isComposing || event.keyCode === 229) return;
+    const editable = (event.target as Element | null)?.closest?.(
+      "input, textarea, select, [contenteditable]:not([contenteditable=false])",
+    );
+    if (editable && !(event.metaKey || event.ctrlKey || event.altKey) && event.key !== "Escape")
+      return;
+    if (shortcuts.handle(event)) event.preventDefault();
+  };
+  win.addEventListener("keydown", onKey);
+  return () => win.removeEventListener("keydown", onKey);
+}
+
 /** Guess the platform from the browser; tests pass it explicitly. */
 export function detectPlatform(): Platform {
   const nav = typeof navigator === "undefined" ? undefined : navigator;
@@ -28,6 +43,8 @@ export function comboOf(event: KeyLike): string {
 }
 
 function keyName(event: KeyLike): string {
+  // The persisted combo grammar has no whitespace; use the named key for Space chords.
+  if (event.key === " ") return "Space";
   // macOS composes Option+letter into another character (⌥D is ∂): with Alt held, a letter or
   // digit key is named by the key itself, so Mod+Alt+D means the same key on every platform.
   const physical = event.altKey ? /^(?:Key([A-Z])|Digit([0-9]))$/.exec(event.code ?? "") : null;

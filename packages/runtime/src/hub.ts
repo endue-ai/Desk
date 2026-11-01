@@ -4,6 +4,7 @@
  */
 import type { BridgeClient, PluginInfo } from "@endue-ai/bridge";
 import { Commands } from "./commands";
+import { CORE_SETTINGS } from "./core/defaults";
 import { collect, emptyPolicy, type PolicySet } from "./policy";
 import { Settings } from "./settings";
 
@@ -18,6 +19,7 @@ export class PolicyHub {
 
   constructor(bridge: BridgeClient) {
     this.commands = new Commands(bridge);
+    this.settings.setDefaults(CORE_SETTINGS);
   }
 
   get policy(): PolicySet {
@@ -50,7 +52,7 @@ export class PolicyHub {
         setting,
       ]),
     );
-    this.settings.setDefaults(defaults);
+    this.settings.setDefaults({ ...defaults, ...CORE_SETTINGS });
     for (const listener of this.#listeners) listener(this.#policy);
   }
 

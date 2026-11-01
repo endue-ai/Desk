@@ -59,18 +59,20 @@ const clock = new ManualClock();
 const { client, stub } = browserCore({
   // The bare desk: every desk.* policy but the shell's own (views.html has the view engine and the
   // view plugins).
-  manifests: [
-    ...Object.values(manifests).filter(
-      (m) =>
-        m.id.startsWith("desk.") &&
-        m.id !== "desk.shell" &&
-        m.id !== "desk.views" &&
-        m.kind !== "view",
-    ),
-    echo,
-    counter,
-    lazy,
-  ],
+  manifests: params.has("core")
+    ? []
+    : [
+        ...Object.values(manifests).filter(
+          (m) =>
+            m.id.startsWith("desk.") &&
+            m.id !== "desk.shell" &&
+            m.id !== "desk.views" &&
+            m.kind !== "view",
+        ),
+        echo,
+        counter,
+        lazy,
+      ],
   off,
   store: memoryStore(store),
   init: {
