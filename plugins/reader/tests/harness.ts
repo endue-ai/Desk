@@ -59,6 +59,7 @@ export async function mount<V extends View = RecordingView>(
   options: {
     handlers?: Handlers;
     commands?: Commands;
+    pdfjs?: () => Promise<object>;
     view?: (app: () => Reader | undefined) => V;
   } = {},
 ): Promise<Mounted<V>> {
@@ -72,7 +73,7 @@ export async function mount<V extends View = RecordingView>(
   await defineUiPlugin(
     {
       mount(ctx) {
-        app = createReader(ctx, view, { pdfjs: loadPdfjs, byteSource, readBytes });
+        app = createReader(ctx, view, { pdfjs: options.pdfjs ?? loadPdfjs, byteSource, readBytes });
       },
     },
     host.transport,
