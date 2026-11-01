@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { openDjvu } from "../../lib/djvu/index.js";
 import { COLOURS, INK, PAGES, pbm, photo, textPage } from "./build/images.mjs";
 import { fixture, psnr } from "./helpers";
+import { measureRender } from "./timing";
 
 const source = (bytes: Uint8Array) => ({
   size: bytes.length,
@@ -272,29 +273,27 @@ describe("damaged files and long work", () => {
       turns++;
       if (turns === 2) late.abort();
     }, 1);
-    await expect(doc.renderPage(0, { signal: late.signal })).rejects.toMatchObject({
-      name: "AbortError",
-    });
-    clearInterval(timer);
+    try {
+      await expect(doc.renderPage(0, { signal: late.signal })).rejects.toMatchObject({
+        name: "AbortError",
+      });
+    } finally {
+      clearInterval(timer);
+    }
   });
 
-  it("gives the event loop a turn at least every 25 ms on a 300 dpi page", async () => {
-    const doc = await open("big.djvu");
-    let last = performance.now();
-    let longest = 0;
-    let running = true;
-    const tick = () => {
-      const now = performance.now();
-      longest = Math.max(longest, now - last);
-      last = now;
-      if (running) setTimeout(tick, 0);
-    };
-    setTimeout(tick, 0);
-    const page = await doc.renderPage(0);
-    running = false;
-    expect([page.width, page.height]).toEqual([2550, 3300]);
-    expect(longest).toBeLessThan(60);
-  });
+  it.each([0, 80])(
+    "bounds uninterrupted work and yields on a 300 dpi page (scheduler delay %i ms)",
+    async (delay) => {
+      const doc = await open("big.djvu");
+      const measured = await measureRender(() => doc.renderPage(0), { delay });
+      expect([measured.result.width, measured.result.height]).toEqual([2550, 3300]);
+      expect(measured.maximum).toBeLessThan(60);
+      expect(measured.turns).toBeGreaterThan(1);
+      expect(measured.yields).toBeGreaterThan(1);
+      if (delay) expect(measured.waiting).toBeGreaterThanOrEqual(60);
+    },
+  );
 });
 
 /** Where the data of the first chunk called `id` starts. */
