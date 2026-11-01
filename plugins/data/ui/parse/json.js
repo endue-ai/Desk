@@ -26,7 +26,7 @@ const MAX_WARNINGS = 100;
  * Parse a whole text, or the part between `from` and `to` (one line of JSON Lines).
  * @param {string} text
  * @param {Dialect} [dialect]
- * @param {{ from?: number, to?: number, starts?: Uint32Array }} [range]
+ * @param {{ from?: number, to?: number, starts?: Uint32Array, onProgress?: (fraction: number) => void }} [range]
  * @returns {DataDoc}
  */
 export function parseJson(text, dialect = "json", range = {}) {
@@ -38,10 +38,12 @@ class JsonParser {
   /**
    * @param {string} text
    * @param {Dialect} dialect
-   * @param {{ from?: number, to?: number, starts?: Uint32Array }} range
+   * @param {{ from?: number, to?: number, starts?: Uint32Array, onProgress?: (fraction: number) => void }} range
    */
   constructor(text, dialect, range) {
     this.text = text;
+    this.onProgress = range.onProgress;
+    this.nextProgress = 256 * 1024;
     this.dialect = dialect;
     this.from = range.from ?? 0;
     this.to = range.to ?? text.length;
@@ -94,6 +96,10 @@ class JsonParser {
     let scalar = false;
     try {
       for (;;) {
+        if (lex.pos >= this.nextProgress) {
+          this.onProgress?.(lex.pos / this.to);
+          this.nextProgress = lex.pos + 256 * 1024;
+        }
         if (value) {
           lex.space();
           const top = stack.length - 1;
