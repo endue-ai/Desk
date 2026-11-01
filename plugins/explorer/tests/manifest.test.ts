@@ -53,8 +53,15 @@ describe("plugin.json", () => {
       { permission: "fs:write", paths: [HOME] },
       {
         permission: "cmd:invoke",
-        ids: ["desk.files.open", "desk.buffers.list", "desk.palette.pick"],
+        ids: [
+          "desk.files.open",
+          "desk.buffers.list",
+          "desk.palette.pick",
+          "endue.terminal.new",
+          "endue.git.status",
+        ],
       },
+      { permission: "shell:open", paths: [HOME] },
     ]);
     // The explorer opens no file type itself: the desk's rules name the plugin that does.
     expect(explorer.contributes?.files).toBeUndefined();
@@ -71,6 +78,10 @@ describe("plugin.json", () => {
       `${ID}.add-folder`,
       `${ID}.remove-folder`,
       `${ID}.new-file`,
+      `${ID}.open-selected`,
+      `${ID}.terminal-here`,
+      `${ID}.git-here`,
+      `${ID}.show-in-file-manager`,
     ]);
     for (const key of contributes?.keys ?? []) expect(ids).toContain(key.command);
     expect(contributes?.keys?.map((k) => k.key)).toEqual(["Mod+Shift+E", "Mod+Shift+R"]);

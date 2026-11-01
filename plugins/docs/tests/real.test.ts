@@ -4,6 +4,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import type { DocModel, TextRun } from "../ui/model.js";
 import { plainText } from "../ui/model.js";
 import { openDocument } from "../ui/open.js";
 import { asDocument, headings, images, paragraphs, tables, textOf, texts } from "./model";
@@ -23,7 +24,7 @@ const HEADINGS = [
 ];
 
 describe("documents written by LibreOffice and AbiWord", () => {
-  for (const name of ["rich.docx", "rich.odt", "rich.rtf", "rich.fodt", "rich.abw"])
+  for (const name of ["rich.docx", "rich.doc", "rich.odt", "rich.rtf", "rich.fodt", "rich.abw"])
     it(`${name}: headings, lists, a merged table, the picture, the comment and the footnote`, async () => {
       const doc = await open(name);
       expect(doc.textOnly).toBe(false);
@@ -55,14 +56,37 @@ describe("documents written by LibreOffice and AbiWord", () => {
       }
     });
 
-  it("rich.doc gives the same text, headings and table, as text only", async () => {
-    const doc = await open("rich.doc");
-    expect(doc.textOnly).toBe(true);
-    expect(headings(doc)).toEqual(HEADINGS);
-    expect(texts(doc)).toContain(
-      "The survey covered three regions over six weeks. Details are on the project page.",
-    );
-    expect(tables(doc)[0]?.rows.map((r) => r.cells.length)).toEqual([1, 3, 3, 3, 3]);
-    expect(doc.sections[0]?.blocks.filter((b) => b.type === "pagebreak")).toHaveLength(1);
+  it("rich.doc gives the model rich.docx gives: headings, runs, lists and the table", async () => {
+    const [binary, xml] = await Promise.all([open("rich.doc"), open("rich.docx")]);
+    expect(binary.textOnly).toBe(false);
+    expect(shape(binary)).toEqual(shape(xml));
   });
 });
+
+/** What a Word 97 file and its OOXML copy must agree on, adjacent runs of one look joined. */
+function shape(doc: DocModel) {
+  const look = (r: TextRun) =>
+    JSON.stringify([r.bold, r.italic, r.underline, r.strike, r.size, r.color, r.highlight]).concat(
+      JSON.stringify([r.script, r.link, r.comments, r.font?.split(",")[0]]),
+    );
+  return {
+    headings: headings(doc),
+    runs: paragraphs(doc).map((p) =>
+      p.inlines.reduce<Array<{ look: string; text: string }>>((out, i) => {
+        if (i.type !== "text") return out;
+        const last = out.at(-1);
+        if (last?.look === look(i)) last.text += i.text;
+        else out.push({ look: look(i), text: i.text });
+        return out;
+      }, []),
+    ),
+    lists: paragraphs(doc).flatMap((p) => (p.marker ? [[p.marker, p.indent, textOf(p)]] : [])),
+    tables: tables(doc).map((t) => ({
+      borders: t.borders,
+      columns: t.columns,
+      rows: t.rows.map((r) =>
+        r.cells.map((c) => [c.blocks.map(textOf).join(" "), c.colSpan, c.rowSpan, c.fill, c.width]),
+      ),
+    })),
+  };
+}

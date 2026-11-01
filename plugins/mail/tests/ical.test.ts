@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { children, parse, prop, props, serialize, text } from "../ui/ical/component.js";
 import { escapeText, fold, formatLine, parseLine, unescapeText, unfold } from "../ui/ical/lines.js";
 import {
@@ -233,5 +233,29 @@ describe("values (RFC 5545 §3.3)", () => {
     expect(rfc3339(Date.UTC(2026, 10, 3, 7), 9 * H)).toBe("2026-11-03T16:00:00+09:00");
     expect(rfc3339(Date.UTC(2026, 10, 3, 7), 0)).toBe("2026-11-03T07:00:00Z");
     expect(rfc3339(Date.UTC(2026, 10, 3, 7), -5.5 * H)).toBe("2026-11-03T01:30:00-05:30");
+  });
+});
+
+describe("zone validation work", () => {
+  it("reuses valid and invalid zone checks with a bounded cache", async () => {
+    vi.resetModules();
+    const construct = vi.spyOn(Intl, "DateTimeFormat");
+    try {
+      const { isZone: check } = await import("../ui/ical/values.js");
+      expect(check("Asia/Seoul")).toBe(true);
+      expect(check("Mars/Olympus")).toBe(false);
+      const first = construct.mock.calls.length;
+      for (let i = 0; i < 10; i++) {
+        expect(check("Asia/Seoul")).toBe(true);
+        expect(check("Mars/Olympus")).toBe(false);
+      }
+      expect(construct.mock.calls.length).toBe(first);
+      for (let i = 0; i < 80; i++) expect(check(`Invalid/Zone${i}`)).toBe(false);
+      const afterFill = construct.mock.calls.length;
+      expect(check("Mars/Olympus")).toBe(false);
+      expect(construct.mock.calls.length).toBe(afterFill + 1);
+    } finally {
+      construct.mockRestore();
+    }
   });
 });

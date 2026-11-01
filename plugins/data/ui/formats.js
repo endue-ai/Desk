@@ -27,9 +27,12 @@ import { parseYaml } from "./parse/yaml.js";
  * @property {DataDoc} [doc] The tree; absent for details and raw-only files
  * @property {string} [text] The text, for the raw view of text formats
  * @property {Uint8Array} [bytes] The bytes, for the hex dump of binary formats
+ * @property {{ request(method: string, args?: any): Promise<any>, close(): void }} [remote]
+ * @property {number} [lineCount]
+ * @property {number} [rootCount]
  * @property {string} [note] Said above the raw view (a .conf that is not INI, a guessed encoding)
  * @property {string} [reason] Why the file opens as details only
- * @typedef {{ DOMParser?: typeof DOMParser }} OpenOptions
+ * @typedef {{ DOMParser?: typeof DOMParser, onProgress?: (fraction: number) => void }} OpenOptions
  */
 
 /** File names VS Code reads as JSON with comments, though they end in .json. */
@@ -148,7 +151,7 @@ function open(name, bytes, format, label, options) {
       label,
       reason: "It is an old-style (OpenStep) property list, which Data does not read.",
     };
-  const doc = parseText(name, text, format, label);
+  const doc = parseText(name, text, format, label, options);
   if (doc === "raw") {
     const note =
       format === "ini"
@@ -169,21 +172,25 @@ const iniLine = (/** @type {string} */ text) => parseIni(text).errors[0]?.line ?
  * @param {string} label
  * @returns {{ format: FormatId, label: string, doc: DataDoc } | "raw"}
  */
-function parseText(name, text, format, label) {
+function parseText(name, text, format, label, options) {
   const lower = name.toLowerCase();
   switch (format) {
     case "json": {
       if (JSONC_NAMES.test(name))
-        return { format: "jsonc", label: "JSONC", doc: parseJson(text, "jsonc") };
-      return { format, label, doc: parseJson(text, "json") };
+        return {
+          format: "jsonc",
+          label: "JSONC",
+          doc: parseJson(text, "jsonc", { onProgress: options.onProgress }),
+        };
+      return { format, label, doc: parseJson(text, "json", { onProgress: options.onProgress }) };
     }
     case "jsonc":
     case "json5":
-      return { format, label, doc: parseJson(text, format) };
+      return { format, label, doc: parseJson(text, format, { onProgress: options.onProgress }) };
     case "jsonl":
       return { format, label, doc: parseJsonLines(text) };
     case "yaml":
-      return { format, label, doc: parseYaml(text) };
+      return { format, label, doc: parseYaml(text, { onProgress: options.onProgress }) };
     case "toml":
       return { format, label, doc: parseToml(text) };
     case "ini": {
@@ -200,7 +207,11 @@ function parseText(name, text, format, label) {
     default: {
       const first = text.trimStart()[0];
       if (first === "{" || first === "[")
-        return { format: "json", label: "JSON", doc: parseJson(text, "json") };
+        return {
+          format: "json",
+          label: "JSON",
+          doc: parseJson(text, "json", { onProgress: options.onProgress }),
+        };
       return "raw";
     }
   }

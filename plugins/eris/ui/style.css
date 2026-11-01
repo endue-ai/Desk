@@ -1,4 +1,5 @@
 body {
+  color-scheme: dark;
   margin: 0;
   background: #1e1d21;
   color: #b0adb7;
@@ -8,7 +9,8 @@ body {
 #root {
   position: relative;
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
   justify-items: center;
   align-items: center;
   height: 100vh;
@@ -18,22 +20,62 @@ body {
 }
 
 #pose {
+  grid-row: 1;
   margin: 0;
   text-align: center;
 }
 
 #pose img {
-  width: 120px;
-  height: 120px;
+  width: 80px;
+  height: 80px;
+}
+
+#conversation {
+  grid-row: 2;
+  min-width: 0;
+  min-height: 0;
+  width: 100%;
+  height: 100%;
+  overflow-y: auto;
+  overflow-wrap: anywhere;
+  scrollbar-gutter: stable;
+}
+
+#conversation article {
+  margin: 8px 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #26252a;
+}
+
+#conversation article[data-role="user"] {
+  border-left: 2px solid #e8c98a;
+}
+
+#conversation strong {
+  color: #f2f0f5;
+  font-size: 11px;
+}
+
+#conversation p {
+  margin: 4px 0 0;
+  white-space: pre-wrap;
+  user-select: text;
+  color: #e3e0e9;
+}
+
+#conversation small {
+  color: #b0adb7;
 }
 
 /* The answer under Eris: soul text at panel size. A long one scrolls; the form below never moves. */
 #answer.cap {
+  grid-row: 3;
   height: auto;
   min-height: 0;
-  max-height: 100%;
+  max-height: 72px;
   overflow-y: auto;
-  font-size: 22px;
+  font-size: 16px;
 }
 
 #answer .wrap {
@@ -41,14 +83,17 @@ body {
 }
 
 .say {
-  display: flex;
+  grid-row: 4;
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 8px;
   width: 100%;
   margin-top: 12px;
 }
 
 .say input {
-  flex: 1;
   min-width: 0;
   padding: 8px 10px;
   border: 1px solid #3a3840;
@@ -58,7 +103,8 @@ body {
   font: inherit;
 }
 
-.say input:focus-visible {
+.say :focus-visible,
+#conversation:focus-visible {
   outline: 2px solid #e8c98a;
   outline-offset: 1px;
 }
@@ -75,6 +121,71 @@ body {
 
 .send:disabled {
   opacity: 0.45;
+}
+
+#attach-file,
+#remove-attachment {
+  justify-self: start;
+  padding: 4px 0;
+  border: 0;
+  background: transparent;
+  color: #e8c98a;
+  font: inherit;
+  cursor: pointer;
+}
+
+#attachment,
+#attach-file,
+#context-notice {
+  grid-column: 1 / -1;
+}
+
+#attachment {
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid #3a3840;
+  border-radius: 8px;
+}
+
+#attachment summary {
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+
+#attachment pre {
+  max-height: 90px;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: 11px/1.5 monospace;
+  margin: 6px 0;
+}
+
+#context-notice {
+  margin: 0;
+  font-size: 11px;
+}
+
+#context-notice:empty {
+  display: none;
+}
+
+/* Small docked panels keep the composer in view and scroll context independently. */
+@media (max-height: 450px) {
+  #root { padding: 0 8px 8px; }
+  #pose img { width: 32px; height: 32px; }
+  #pose figcaption, #answer.cap { display: none; }
+  .say { max-height: 65vh; overflow-y: auto; margin-top: 4px; gap: 4px; }
+  #say-text, .send { grid-row: 1; }
+  #say-text { grid-column: 1; }
+  .send { grid-column: 2; }
+  #attach-file { grid-row: 2; }
+  #attachment { grid-row: 3; }
+  #context-notice { grid-row: 4; }
+}
+
+@media (max-height: 300px) {
+  #pose { display: none; }
 }
 
 /* The person's words on their way into Eris's centre. */
