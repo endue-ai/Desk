@@ -41,6 +41,11 @@ export function modelOf(/** @type {Entry} */ entry) {
     model.element = item.element;
     const src = item.blob ?? item.url;
     if (src) model.src = src;
+    if (!item.blob) {
+      model.engine = item.engine ?? "native";
+      if (model.engine !== "native")
+        model.target = { path: item.path, size: item.size, format: item.info?.format ?? "" };
+    }
     model.start = entry.position;
     if (entry.resume !== null) model.resume = entry.resume;
     const cover = pictureUrl(item.info?.cover);

@@ -1,23 +1,31 @@
-// The media elements and the transport: one <video> and one <audio> (only one has a source at a time),
-// play and pause, the seek bar and time, volume and mute, speed, loop, theatre mode, the subtitle
-// overlay with its menu and offset, the resume offer, and the keys. A stalled element (the position
-// stands still or no frame is drawn while playing, as when a URL's grant was revoked: stall.js) is
-// reported with a Try again button, never left frozen.
+// The media and the transport: one <video> and one <audio> (only one has a source at a time), or the
+// software player's element drawing on a canvas (engines.js picks), play and pause, the seek bar and
+// time, volume and mute, speed, loop, theatre mode, the subtitle overlay with its menu and offset, the
+// resume offer, the progress while an engine starts or buffers, and the keys. A stalled element (the
+// position stands still or no frame is drawn while playing, as when a URL's grant was revoked:
+// stall.js) is reported with a Try again button, never left frozen.
 import { actionFor } from "./keys.js";
 import { createStallWatch } from "./stall.js";
 import { activeAt } from "./subtitles.js";
 import { clock } from "./time.js";
+import { createEngineSlot } from "./view-engine.js";
 
 /**
  * @typedef {import("./player.js").Model} Model
+ * @typedef {import("./engines.js").Media} Media
  * @typedef {(name: string, ...args: unknown[]) => unknown} Act
  */
+
+/** Whether the media draws pictures the stall watch can count. */
+const pictures = (/** @type {any} */ media) =>
+  typeof media?.getVideoPlaybackQuality === "function" && media.hasVideo !== false;
 
 /**
  * @param {Document} doc
  * @param {Act} act
+ * @param {ReturnType<typeof import("./engines.js").createEngines>} engines
  */
-export function createMedia(doc, act) {
+export function createMedia(doc, act, engines) {
   const byId = (/** @type {string} */ id) => /** @type {HTMLElement} */ (doc.getElementById(id));
   const video = /** @type {HTMLVideoElement} */ (byId("video"));
   const audio = /** @type {HTMLAudioElement} */ (byId("audio"));
@@ -38,9 +46,11 @@ export function createMedia(doc, act) {
   const retry = byId("retry");
   const resume = byId("resume");
   const resumeText = byId("resume-text");
+  const slot = createEngineSlot(doc, act, engines);
+  const screen = slot.screen;
   const win = doc.defaultView ?? globalThis;
 
-  /** @type {HTMLMediaElement | null} */
+  /** @type {Media | null} */
   let media = null;
   let loaded = "";
   /** @type {Model | null} */
@@ -100,8 +110,7 @@ export function createMedia(doc, act) {
     ticker = win.setInterval(() => {
       if (!media || media.paused || media.ended) return stopTicker();
       drawCues();
-      const quality =
-        media instanceof win.HTMLVideoElement ? media.getVideoPlaybackQuality?.() : undefined;
+      const quality = pictures(media) ? media.getVideoPlaybackQuality() : undefined;
       const sample = {
         playing: true,
         time: media.currentTime,
@@ -145,7 +154,8 @@ export function createMedia(doc, act) {
   };
   const setSpeed = (/** @type {number} */ rate) => {
     speed.value = String(rate);
-    for (const element of [video, audio]) {
+    for (const element of new Set([video, audio, media])) {
+      if (!element) continue;
       element.defaultPlaybackRate = rate;
       element.playbackRate = rate;
     }
@@ -161,8 +171,11 @@ export function createMedia(doc, act) {
     pressed(theatre, on);
   };
 
-  for (const element of [video, audio]) {
+  /** The transport's handlers on a media's events. */
+  const listen = (/** @type {EventTarget} */ element) => {
     const mine = (/** @type {Event} */ event) => event.target === media && loaded !== "";
+    slot.watch(element, mine);
+    element.addEventListener("dropping", (e) => mine(e) && act("dropping"));
     element.addEventListener("play", (e) => {
       if (!mine(e)) return;
       drawPlay();
@@ -193,8 +206,21 @@ export function createMedia(doc, act) {
       carryOn = true;
       act("ended");
     });
-    element.addEventListener("error", (e) => mine(e) && media?.error && act("failed"));
-  }
+    element.addEventListener("error", (e) => {
+      if (!mine(e) || !media?.error) return;
+      // The software player's error is a sentence; an element's is WebKit's own.
+      act("failed", media instanceof win.HTMLMediaElement ? undefined : media.error.message);
+    });
+  };
+  listen(video);
+  listen(audio);
+  slot.onCancel(() => {
+    if (!loaded) return;
+    api.unload(false);
+    retry.hidden = false;
+    transport.hidden = false;
+    act("cancelled");
+  });
 
   play.addEventListener("click", toggle);
   seek.addEventListener("input", () => seekTo(Number(seek.value)));
@@ -203,8 +229,7 @@ export function createMedia(doc, act) {
   speed.addEventListener("change", () => setSpeed(Number(speed.value)));
   loop.addEventListener("click", () => {
     const on = !video.loop;
-    video.loop = on;
-    audio.loop = on;
+    for (const element of new Set([video, audio, media])) if (element) element.loop = on;
     pressed(loop, on);
   });
   theatre.addEventListener("click", () => setTheatre(!doc.body.classList.contains("theatre")));
@@ -288,26 +313,32 @@ export function createMedia(doc, act) {
     return true;
   };
 
-  return {
+  const api = {
     /** Show the model's media; a new source starts where the model says. */
     load(/** @type {Model} */ next) {
       const same = model?.buffer === next.buffer;
-      const playing = carryOn || (media !== null && !media.paused);
+      const wasPlaying = carryOn || (media !== null && !media.paused);
       carryOn = false;
       model = next;
       const element = next.element === "video" ? video : audio;
-      if (next.src && loaded !== next.src) {
+      const key = next.src ? `${next.engine ?? "native"} ${next.src}` : "";
+      if (key && loaded !== key) {
         if (media) this.unload(false);
-        media = element;
-        loaded = next.src;
+        loaded = key;
         retry.hidden = true;
-        element.src = next.src;
+        media = slot.open(next, element, listen);
+        media.loop = video.loop;
+        media.playbackRate = Number(speed.value);
         pending = next.start ?? 0;
-        if (pending > 0) element.currentTime = pending;
-        if (same && playing) toggle();
-      } else if (!next.src) this.unload(false);
-      media = element;
-      video.hidden = next.element !== "video";
+        if (pending > 0) media.currentTime = pending;
+        if (same && wasPlaying) toggle();
+      } else if (!key) {
+        this.unload(false);
+        media = element;
+      }
+      const drawn = next.element === "video" && next.engine === "software";
+      screen.hidden = !drawn;
+      video.hidden = next.element !== "video" || drawn;
       audio.hidden = true;
       theatre.hidden = next.element !== "video";
       if (theatre.hidden) setTheatre(false);
@@ -334,14 +365,9 @@ export function createMedia(doc, act) {
     /** Take the source away (details, cue lists, a closed file). */
     unload(all = true) {
       stopTicker();
-      const had = loaded;
       // Forget the source first: the old element's pause event is not this file's progress.
       loaded = "";
-      if (media && had) {
-        media.pause();
-        media.removeAttribute("src");
-        media.load();
-      }
+      slot.close();
       overlay.textContent = "";
       shownCues = "";
       if (!all) return;
@@ -350,6 +376,7 @@ export function createMedia(doc, act) {
       transport.hidden = true;
       resume.hidden = true;
       video.hidden = true;
+      screen.hidden = true;
       setTheatre(false);
     },
     seekTo,
@@ -360,4 +387,5 @@ export function createMedia(doc, act) {
     canPlay: (/** @type {string} */ type) => video.canPlayType(type),
     focus: () => !transport.hidden && play.focus(),
   };
+  return api;
 }

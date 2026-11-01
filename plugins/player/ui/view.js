@@ -3,6 +3,7 @@
 // and a status live region. The view keeps the transport's state; the controller (player.js) says
 // what is open. Chords (Mod+S, Mod+O, Mod+W, Mod+K) are never prevented, so the desk gets them.
 
+import { createEngines } from "./engines.js";
 import { clock } from "./time.js";
 import { createMedia } from "./view-media.js";
 import { createPanels } from "./view-panels.js";
@@ -31,15 +32,19 @@ function detailOf(/** @type {Model} */ model) {
 /**
  * @param {Document} doc
  * @param {Act} act
+ * @param {import("./engines.js").EngineDeps} [deps] the SDK's workers and reads (main.js); without
+ *   them the view plays what the webview plays, and MSE where the window has it
  */
-export function createView(doc, act) {
+export function createView(doc, act, deps = {}) {
   const byId = (/** @type {string} */ id) => /** @type {HTMLElement} */ (doc.getElementById(id));
   const title = byId("title");
   const detail = byId("detail");
   const stage = byId("stage");
   const message = byId("message");
   const status = byId("status");
-  const media = createMedia(doc, act);
+  const engines = createEngines(doc.defaultView ?? globalThis, deps);
+  const media = createMedia(doc, act, engines);
+  const progress = byId("progress");
   const panels = createPanels(doc, act, (seconds) => media.seekTo(seconds));
   media.onTime((now) => panels.time(now));
   /** @type {Model | null} */
@@ -64,6 +69,11 @@ export function createView(doc, act) {
       message.textContent = next?.message ?? "";
       if (next?.mode === "media") media.load(next);
       else media.unload();
+      // Reading the file, or rendering a song: the bar, with the message as its label.
+      if (next?.mode === "loading") {
+        progress.setAttribute("label", next.message || `Opening ${next.name}…`);
+        progress.hidden = false;
+      }
       panels.card(next);
       panels.details(next);
       panels.cues(next);
@@ -82,5 +92,9 @@ export function createView(doc, act) {
 
     /** What the webview says about a media type: "", "maybe" or "probably". */
     canPlay: (/** @type {string} */ type) => media.canPlay(type),
+    /** Whether Media Source Extensions decode a type. */
+    canRemux: (/** @type {string} */ type) => engines.canRemux(type),
+    /** Whether the software decoder runs here. */
+    software: engines.software,
   };
 }

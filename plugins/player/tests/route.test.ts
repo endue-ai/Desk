@@ -44,9 +44,10 @@ describe("which engine plays each extension", () => {
   it("what WebKit plays itself stays native", async () => {
     expect(await engines("clip.mp4")).toEqual(["native"]);
     expect(await engines("clip.mov")).toEqual(["native"]);
-    expect(await engines("tone-v23.mp3")).toEqual(["native"]);
-    expect(await engines("tone.m4a")).toEqual(["native"]);
-    expect(await engines("tone.flac")).toEqual(["native"]);
+    // The decoder is the fallback for the sound it also decodes.
+    expect(await engines("tone-v23.mp3")).toEqual(["native", "software"]);
+    expect(await engines("tone.m4a")).toEqual(["native", "software"]);
+    expect(await engines("tone.flac")).toEqual(["native", "software"]);
     // WebM and Ogg Opus play natively; the remuxer is the next engine.
     expect(await engines("remux/vp9-opus.webm")).toEqual(["native", "remux"]);
     expect(await engines("tone.opus")).toEqual(["native", "remux"]);
@@ -167,8 +168,13 @@ describe("the player follows the route", () => {
     });
     Object.assign(view, caps, { playable: (t: string) => webkit.canPlay(t) });
     await host.command("desk.files.visit", M);
-    expect(shown()).toMatchObject({ mode: "media", element: "video", engine: "remux" });
-    expect(shown()?.src).toMatch(/clip\.mkv/);
+    expect(shown()).toMatchObject({
+      mode: "media",
+      element: "video",
+      engine: "remux",
+      target: { path: M.path, format: "matroska" },
+    });
+    expect(shown()?.src).toBeTruthy();
   });
 
   it("a WMV plays in software, and a failure of the last engine opens the details", async () => {

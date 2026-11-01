@@ -21,10 +21,16 @@ export interface RecordingView {
   asked: string[];
   /** What canPlay answers: "maybe" for everything unless a test says otherwise. */
   playable: (type: string) => "" | "maybe" | "probably";
+  /** What MSE's isTypeSupported answers: nothing by default, as without MSE. */
+  remuxable: (type: string) => boolean;
+  /** Whether the software decoder runs: not by default. */
+  decodes: boolean;
   show(model: Model | null): void;
   status(text: string): void;
   focus(): void;
   canPlay(type: string): "" | "maybe" | "probably";
+  canRemux(type: string): boolean;
+  readonly software: boolean;
 }
 
 export function recordingView(): RecordingView {
@@ -34,6 +40,8 @@ export function recordingView(): RecordingView {
     focused: 0,
     asked: [],
     playable: () => "maybe",
+    remuxable: () => false,
+    decodes: false,
     show: (model) => view.models.push(model === null ? null : structuredClone(model)),
     status: (text) => view.statuses.push(text),
     focus: () => {
@@ -42,6 +50,10 @@ export function recordingView(): RecordingView {
     canPlay: (type) => {
       view.asked.push(type);
       return view.playable(type);
+    },
+    canRemux: (type) => view.remuxable(type),
+    get software() {
+      return view.decodes;
     },
   };
   return view;
