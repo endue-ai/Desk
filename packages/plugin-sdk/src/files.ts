@@ -160,6 +160,7 @@ function cachedSource(ranges: Ranges, path: string, signal?: AbortSignal): ByteS
     }
     return out;
   };
+  const wholeFile = () => memory;
   /** Blocks on their way from the desk: concurrent reads of one block share its request. */
   const inflight = new Map<number, Promise<Uint8Array>>();
   /** Ask for blocks index..until in one request; each block enters the cache when it arrives. */
@@ -211,7 +212,9 @@ function cachedSource(ranges: Ranges, path: string, signal?: AbortSignal): ByteS
       for (let index = first; index <= last; index++) {
         const block = await mine[index - first];
         throwIfAborted(signal);
-        if (memory) return memory.slice(start, end);
+        // A whole-file answer may have arrived while this read waited.
+        const whole = wholeFile();
+        if (whole) return whole.slice(start, end);
         if (!block) throw shorter(path);
         const from = Math.max(start, index * BLOCK);
         const to = Math.min(end, (index + 1) * BLOCK);
