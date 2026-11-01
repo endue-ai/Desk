@@ -1,11 +1,12 @@
 // The sheets plugin without its DOM. It answers the desk's file and buffer requests
 // (desk.files.visit, .save, .revert, desk.buffers.show, .closed) for the spreadsheets it holds,
-// reads them as base64 with fs.read, asks with perm.request for a folder its grants do not cover,
+// reads bounded binary ranges, asks with perm.request for a folder its grants do not cover,
 // follows each file on disk, and reads CSV again when the csv-encoding setting changes. It only
 // talks to ctx.commands, ctx.bridge, ctx.settings and a view, so the SDK's test host runs it.
-import { failure, openBook } from "./book.js";
+
 import { ENCODINGS } from "./csv.js";
 import { extensionOf } from "./detect.js";
+import { failure } from "./errors.js";
 
 /**
  * @typedef {import("@endue-ai/plugin-sdk").PluginContext} PluginContext
@@ -13,16 +14,15 @@ import { extensionOf } from "./detect.js";
  * @typedef {import("@endue-ai/bridge").Permission} Permission
  * @typedef {import("./book.js").Book} Book
  * @typedef {{ buffer: string, path: string, name: string, size: number, book: Book }} Shown
- * @typedef {(bytes: Uint8Array, file: { name: string, encoding: string }) => Book} Open
- * @typedef {{ show(model: Shown | null): void, status(text: string): void, focus(): void }} View
- * @typedef {Shown & { bytes?: Uint8Array, watchId?: string }} Held
+ * @typedef {(bytes: Uint8Array, file: { name: string, encoding: string }, options: import("./parse.js").ParseOptions) => Book | Promise<Book>} Open
+ * @typedef {{ label: string, value: number | null, max: number, detail: string, cancel(): void }} Progress
+ * @typedef {{ show(model: Shown | null): void, status(text: string): void, focus(): void, progress?(value: Progress | null): void }} View
+ * @typedef {Shown & { watchId?: string }} Held
  */
 
 export const NAME = "Sheets";
 const SETTING = "csv-encoding";
-/** Files larger than this say "Opening" before the parser starts. */
-const LARGE = 512 * 1024;
-/** Formats whose text depends on the csv-encoding setting: their bytes are kept to read again. */
+/** Formats whose text depends on the csv-encoding setting. */
 const TEXT = new Set(["csv", "tsv"]);
 
 const nameOf = (/** @type {string} */ path) => path.slice(path.lastIndexOf("/") + 1);
@@ -73,9 +73,9 @@ function summary(/** @type {Shown} */ { name, book }) {
 /**
  * @param {Pick<PluginContext, "bridge" | "commands" | "settings">} ctx
  * @param {View} view
- * @param {{ open?: Open }} [options]
+ * @param {{ open: Open, read: typeof import("@endue-ai/plugin-sdk").readBytes }} options
  */
-export function createSheets({ bridge, commands, settings }, view, { open = openBook } = {}) {
+export function createSheets({ bridge, commands, settings }, view, { open, read: readBytes }) {
   /** Open files by the buffer the desk named them with. @type {Map<string, Held>} */
   const files = new Map();
   /** Watch id -> the buffer it follows. @type {Map<string, string>} */
@@ -84,6 +84,10 @@ export function createSheets({ bridge, commands, settings }, view, { open = open
   let shown = null;
   let encoding = "auto";
   let said = "";
+  /** @type {AbortController | undefined} */
+  let opening;
+  /** @type {string | undefined} */
+  let openingBuffer;
 
   const say = (/** @type {string} */ text) => {
     if (text === said) return;
@@ -98,6 +102,15 @@ export function createSheets({ bridge, commands, settings }, view, { open = open
     return { buffer, path, name, size, book };
   };
   const render = () => view.show(model(shown === null ? undefined : files.get(shown)));
+  const stopOpening = () => {
+    const buffer = openingBuffer;
+    opening?.abort();
+    opening = undefined;
+    openingBuffer = undefined;
+    view.progress?.(null);
+    if (buffer !== undefined) render();
+    return buffer;
+  };
   const present = (/** @type {string} */ buffer) => {
     shown = buffer;
     render();
@@ -116,10 +129,10 @@ export function createSheets({ bridge, commands, settings }, view, { open = open
   };
 
   /** Read a whole file; when the grants do not cover it, ask once for its folder and try again. */
-  const read = async (/** @type {string} */ path) => {
+  const read = async (/** @type {string} */ path, signal, onProgress) => {
     const scope = scopeOf(path);
     const refused = new Error(`Not allowed to read ${path}.`);
-    const call = () => bridge.call("fs.read", { path, encoding: "base64", scope });
+    const call = () => readBytes({ bridge }, { path, scope }, { signal, onProgress });
     const failed = (/** @type {unknown} */ error) =>
       codeOf(error) === "permission_denied"
         ? refused
@@ -128,29 +141,20 @@ export function createSheets({ bridge, commands, settings }, view, { open = open
     try {
       answer = await call();
     } catch (error) {
+      if (signal.aborted) throw error;
       if (codeOf(error) !== "permission_denied") throw failed(error);
       // perm.request answers a refusal as a result; a failed ask counts as one.
       const reason = `To open ${path} in ${NAME}`;
       const decision = await bridge
         .call("perm.request", { permission: /** @type {Permission} */ (scope), reason })
         .catch(() => ({ granted: false }));
+      signal.throwIfAborted();
       if (!decision.granted) throw refused;
       answer = await call().catch((again) => {
         throw failed(again);
       });
     }
-    return answer.encoding === "base64"
-      ? bytesOf(answer.content)
-      : new TextEncoder().encode(answer.content);
-  };
-
-  /** Parse without ever throwing: what cannot be read is a details view. */
-  const parse = (/** @type {Uint8Array} */ bytes, /** @type {string} */ name) => {
-    try {
-      return open(bytes, { name, encoding });
-    } catch (error) {
-      return failure(bytes, name, error);
-    }
+    return answer;
   };
 
   /** Follow the file on disk. Without a watch the file still opens; changes just go unnoticed. */
@@ -189,20 +193,77 @@ export function createSheets({ bridge, commands, settings }, view, { open = open
     encoding = encodingOf(own ?? fromInit);
   })();
 
-  /** Read a file into its buffer, replacing what the buffer held. */
-  const load = async (/** @type {string} */ buffer, /** @type {string} */ path) => {
-    const bytes = await read(path);
-    await loaded;
+  /** Read and parse in isolation. A partial book is a preview until the whole operation commits. */
+  const load = async (/** @type {string} */ buffer, /** @type {string} */ path, preview = true) => {
+    stopOpening();
+    const job = new AbortController();
+    opening = job;
+    openingBuffer = buffer;
     const name = nameOf(path);
-    if (bytes.length > LARGE) {
-      // The parser holds the frame while it works: say so first, and let the frame paint it.
-      say(`Opening ${name}…`);
-      await new Promise((resolve) => setTimeout(resolve, 30));
+    const previous = model(shown === null ? undefined : files.get(shown));
+    let first = false;
+    let size = 0;
+    const report = (label, value, max, detail) => {
+      if (opening === job && !first)
+        view.progress?.({ label, value, max, detail, cancel: () => job.abort() });
+    };
+    report("Reading", null, 1, name);
+    say(`Opening ${name}…`);
+    try {
+      const bytes = await read(path, job.signal, (done, total) =>
+        report(
+          "Reading",
+          done,
+          total,
+          `${done.toLocaleString("en-US")} of ${total.toLocaleString("en-US")} bytes`,
+        ),
+      );
+      size = bytes.length;
+      // Keep only the signature for a worker error: ownership of the file goes to the worker.
+      const signature = bytes.slice(0, 512);
+      await loaded;
+      job.signal.throwIfAborted();
+      report("Parsing", null, 1, name);
+      let book;
+      try {
+        book = await open(
+          bytes,
+          { name, encoding },
+          {
+            signal: job.signal,
+            progress: (done, total) =>
+              report(
+                "Parsing",
+                done,
+                total,
+                `${done.toLocaleString("en-US")} of ${total.toLocaleString("en-US")} rows`,
+              ),
+            sheet: (book) => {
+              if (opening !== job || job.signal.aborted || !preview) return;
+              view.show({ buffer, path, name, size, book });
+              if (!first) view.focus();
+              first = true;
+              view.progress?.(null);
+            },
+          },
+        );
+      } catch (error) {
+        if (job.signal.aborted) throw error;
+        book = failure(signature, name, error);
+      }
+      job.signal.throwIfAborted();
+      return { buffer, path, name, size, book, focused: first };
+    } catch (error) {
+      if (opening === job) view.show(previous);
+      if (job.signal.aborted) throw new Error(`Opening ${name} was cancelled.`);
+      throw error;
+    } finally {
+      if (opening === job) {
+        opening = undefined;
+        openingBuffer = undefined;
+        view.progress?.(null);
+      }
     }
-    /** @type {Held} */
-    const file = { buffer, path, name, size: bytes.length, book: parse(bytes, name) };
-    if (TEXT.has(extensionOf(name))) file.bytes = bytes;
-    return file;
   };
 
   answer("desk.files.visit", async (args) => {
@@ -211,7 +272,9 @@ export function createSheets({ bridge, commands, settings }, view, { open = open
     const file = await load(buffer, path);
     forget(buffer);
     files.set(buffer, file);
-    present(buffer);
+    shown = buffer;
+    render();
+    if (!file.focused) view.focus();
     await watch(file);
     return summary(file);
   });
@@ -219,10 +282,9 @@ export function createSheets({ bridge, commands, settings }, view, { open = open
   answer("desk.files.revert", async (args) => {
     const { buffer, path } = requested(args);
     const before = held(buffer);
-    const file = await load(buffer, path ?? before.path);
+    const file = await load(buffer, path ?? before.path, shown === buffer);
     if (files.get(buffer) !== before) return "";
     Object.assign(before, { ...file, watchId: before.watchId });
-    if (!file.bytes) delete before.bytes;
     if (shown === buffer) render();
     return summary(before);
   });
@@ -232,6 +294,7 @@ export function createSheets({ bridge, commands, settings }, view, { open = open
   });
 
   answer("desk.buffers.show", (args) => {
+    stopOpening();
     const file = held(requested(args).buffer);
     present(file.buffer);
     // The desk shows a file right after its visit: the status line keeps saying what it is.
@@ -240,6 +303,8 @@ export function createSheets({ bridge, commands, settings }, view, { open = open
 
   answer("desk.buffers.closed", (args) => {
     const { buffer } = requested(args);
+    const pending = stopOpening();
+    if (pending === buffer && !files.has(buffer)) return "";
     held(buffer);
     forget(buffer);
     if (shown !== buffer) return "";
@@ -261,10 +326,17 @@ export function createSheets({ bridge, commands, settings }, view, { open = open
   settings.onChange(({ key, value }) => {
     if (key !== SETTING && key !== `endue.sheets.${SETTING}`) return;
     encoding = encodingOf(value);
-    for (const file of files.values()) {
-      if (file.bytes) file.book = parse(file.bytes, file.name);
-    }
-    render();
+    // Reuse the same ranged read / worker path, including cancellation, for an encoding change.
+    const reload = async () => {
+      for (const file of files.values()) {
+        if (!TEXT.has(extensionOf(file.name))) continue;
+        const next = await load(file.buffer, file.path, shown === file.buffer);
+        if (files.get(file.buffer) !== file) continue;
+        Object.assign(file, { ...next, watchId: file.watchId });
+        if (shown === file.buffer) render();
+      }
+    };
+    reload().catch((error) => say(error instanceof Error ? error.message : String(error)));
   });
 
   render();
