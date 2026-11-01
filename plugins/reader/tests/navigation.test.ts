@@ -22,7 +22,7 @@ const chapters = {
   title: "Chapters",
   chapters: [{ title: "One" }, { title: "Two" }],
   toc: [],
-  chapter: async () => chapter,
+  chapter: async (_unit: number) => chapter,
   target: () => undefined,
   text: async () => "",
 };

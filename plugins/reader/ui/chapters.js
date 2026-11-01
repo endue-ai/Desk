@@ -156,8 +156,7 @@ export function createChapters(host, scroller, hooks) {
       host.style.setProperty("zoom", String(z));
       return z;
     },
-    current: () =>
-      displayedGeneration === generation ? { unit, offset: offset() } : requested,
+    current: () => (displayedGeneration === generation ? { unit, offset: offset() } : requested),
     root: () => root,
   };
 }
