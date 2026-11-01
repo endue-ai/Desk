@@ -56,8 +56,9 @@ describe("quick preview follows the Explorer selection", () => {
     const old = d.app.key(" ");
     await vi.waitFor(() => expect(finish).toBeDefined());
     d.app.select(`${DOCS}/a10.md`);
-    await d.settle();
-    expect(shown).toHaveBeenLastCalledWith(expect.objectContaining({ text: "new selection" }));
+    await vi.waitFor(() =>
+      expect(shown).toHaveBeenLastCalledWith(expect.objectContaining({ text: "new selection" })),
+    );
     await d.app.key("Escape");
     finish?.(text("stale content"));
     await old;

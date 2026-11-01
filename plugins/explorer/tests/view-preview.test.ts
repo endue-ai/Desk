@@ -42,7 +42,10 @@ const show = (model: unknown) =>
 
 describe("Explorer quick preview controls", () => {
   it("one click only selects a file and double click opens it", () => {
+    const original = item();
     item().click();
+    view.selection(row.id);
+    expect(item()).toBe(original);
     expect(actions.select).toHaveBeenCalledWith(row.id);
     expect(actions.activate).not.toHaveBeenCalled();
     item().dispatchEvent(new MouseEvent("dblclick", { bubbles: true }));
