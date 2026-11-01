@@ -4,8 +4,9 @@
 // archives refuse with the library's sentence; a RAR inside a ZIP opens one level down.
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { StubError } from "../../../packages/bridge/src/index";
+import { READY_WITHIN, startLibraryWorker } from "../ui/library-client.js";
 import { openLevel } from "../ui/opening.js";
 import { memorySource } from "../ui/source.js";
 import { entry, expected, files, fixture, open, read, sha256, TREE, zipOf } from "./fixtures";
@@ -148,6 +149,20 @@ describe("solid archives", () => {
     expect(sha256(await archive.read(last))).toBe(ORIGINALS["tool.exe"]?.sha256);
     archive.close?.();
     expect(startWorker.workers[0]?.terminated).toBe(true);
+  });
+
+  it("a worker that never says it is ready is ended, and the frame opens the archive", async () => {
+    vi.useFakeTimers();
+    try {
+      const silent = Object.assign(new EventTarget(), { terminated: false, postMessage() {} });
+      const terminate = vi.fn();
+      const starting = startLibraryWorker(() => Object.assign(silent, { terminate }) as never);
+      await vi.advanceTimersByTimeAsync(READY_WITHIN);
+      await expect(starting).resolves.toBeUndefined();
+      expect(terminate).toHaveBeenCalledOnce();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("a worker that cannot load endue.formats leaves the RAR to the frame", async () => {

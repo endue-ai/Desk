@@ -26,7 +26,10 @@ const cancelled = (/** @type {AbortSignal | undefined} */ signal) =>
 export const unavailable = (/** @type {unknown} */ error) =>
   /** @type {{ name?: string } | null} */ (error)?.name === "LibraryUnavailable";
 
-/** A started worker, or undefined when none starts. @param {StartWorker | undefined} startWorker */
+/** How long a worker may take to say it is ready before the frame opens the archive itself. */
+export const READY_WITHIN = 5000;
+
+/** A started worker, or undefined when none starts in time. @param {StartWorker | undefined} startWorker */
 export async function startLibraryWorker(startWorker) {
   if (!startWorker) return undefined;
   try {
@@ -36,6 +39,7 @@ export async function startLibraryWorker(startWorker) {
           name: "Archives decoder",
         });
         const end = (/** @type {Error | undefined} */ error) => {
+          clearTimeout(late);
           worker.removeEventListener("message", ready);
           worker.removeEventListener("error", failed);
           if (!error) return resolve(worker);
@@ -46,6 +50,10 @@ export async function startLibraryWorker(startWorker) {
           if (data?.type === "ready") end(undefined);
         };
         const failed = () => end(new Error("The library worker could not start."));
+        const late = setTimeout(
+          () => end(new Error("The library worker did not start.")),
+          READY_WITHIN,
+        );
         worker.addEventListener("message", ready);
         worker.addEventListener("error", failed);
       })
