@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, expect, it } from "vitest";
 import { mounted } from "./conversation-harness";
 
@@ -43,6 +44,16 @@ describe("readable Eris conversation", () => {
     expect(h.input.value).toBe("keep my question");
     expect(h.text()).toContain("keep my question");
     expect(h.text()).toContain("Something went wrong");
+  });
+
+  it("marks an interrupted turn after a reload without replaying the question", async () => {
+    const h = mounted();
+    await h.send("keep this pending question");
+    h.emit("offline", "Waiting for connection");
+    const restored = mounted({ saved: h.saved() });
+    expect(restored.text()).toContain("keep this pending question");
+    expect(restored.text()).toContain("Answer interrupted by a panel reload");
+    expect(restored.calls).toHaveLength(0);
   });
 
   it("keeps offline progress and renders answer markup only as text", async () => {

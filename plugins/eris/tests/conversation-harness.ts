@@ -1,5 +1,4 @@
 import { readFileSync } from "node:fs";
-import { JSDOM } from "jsdom";
 import { vi } from "vitest";
 import { REDUCED } from "../ui/soul-text.js";
 import { Talk } from "../ui/talk.js";
@@ -7,16 +6,16 @@ import { Talk } from "../ui/talk.js";
 export function mounted(
   options: {
     saved?: unknown;
-    files?: Array<{ path?: string; name?: string }>;
+    files?: Array<{ path?: string; name?: string; modified?: boolean }>;
     pick?: string | null;
     read?: (params: Record<string, unknown>) => unknown;
     granted?: boolean;
     failSend?: boolean;
   } = {},
 ) {
-  const dom = new JSDOM(readFileSync(new URL("../ui/index.html", import.meta.url), "utf8"));
-  const doc = dom.window.document;
-  dom.window.Element.prototype.animate = vi.fn(() => ({}) as Animation);
+  const doc = document;
+  doc.documentElement.innerHTML = readFileSync("plugins/eris/ui/index.html", "utf8");
+  Element.prototype.animate = vi.fn(() => ({}) as Animation);
   const calls: Array<{ method: string; params: Record<string, unknown> }> = [];
   let listen = (_event: unknown) => {};
   let saved = options.saved;

@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, expect, it } from "vitest";
 import { mounted } from "./conversation-harness";
 
@@ -70,5 +71,39 @@ describe("explicit Eris file context", () => {
     const text = String(h.calls.find((c) => c.method === "brain.say")?.params.text);
     expect(text.length).toBeLessThanOrEqual(8000);
     expect(text).toContain("excerpt");
+  });
+
+  it("keeps the question while a read is pending and discards the read after Remove", async () => {
+    let resolve: (value: unknown) => void = () => {};
+    const h = mounted({
+      read: () =>
+        new Promise((done) => {
+          resolve = done;
+        }),
+    });
+    await h.click("attach-file");
+    await h.send("wait for context");
+    expect(h.calls.some((c) => c.method === "brain.say")).toBe(false);
+    expect(h.input.value).toBe("wait for context");
+    await h.click("remove-attachment");
+    resolve({ content: "stale file", encoding: "utf8", size: 10 });
+    await h.settle();
+    expect(h.doc.getElementById("attachment")?.hidden).toBe(true);
+    await h.send("plain question");
+    expect(h.calls.find((c) => c.method === "brain.say")?.params.text).toBe("plain question");
+  });
+
+  it("decodes a base64 range ending inside a UTF-8 character and explains unsaved edits", async () => {
+    const bytes = Buffer.from(`${"a".repeat(16383)}한`).subarray(0, 16384);
+    const h = mounted({
+      files: [{ path: "~/notes.txt", modified: true }],
+      read: () => ({ content: bytes.toString("base64"), encoding: "base64", size: 16386 }),
+    });
+    await h.click("attach-file");
+    expect(h.doc.getElementById("attachment")?.hidden).toBe(false);
+    expect(h.doc.getElementById("attachment-excerpt")?.textContent).toHaveLength(3000);
+    expect(h.doc.getElementById("context-notice")?.textContent).toContain(
+      "Unsaved changes are excluded",
+    );
   });
 });
