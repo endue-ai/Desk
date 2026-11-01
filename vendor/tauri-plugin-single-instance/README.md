@@ -7,7 +7,8 @@ Windows/macOS source, public `init`/`Builder`/`destroy` API and optional feature
 The official Tauri 2 release still depends on zbus 5's discontinued standalone type crates.
 Linux uses the same private session-bus name, object path and `ExecuteCallback(argv, cwd)` method.
 A primary holds the connection until cleanup; a secondary exits successfully only after delivery
-is acknowledged. A missing bus still permits launch; failed forwarding is an initialization error.
+is acknowledged. If the observed owner disconnects during delivery, a new primary may be elected
+without replaying that delivery. A missing bus permits launch; live-owner errors remain errors.
 No path is read or granted authority here. Desk validates delivered arguments in its OS adapter.
 
 | Path | Responsibility |

@@ -56,6 +56,10 @@ name = "linux_bus"
 path = "tests/linux_bus.rs"
 
 [[test]]
+name = "owner_exit"
+path = "tests/owner_exit.rs"
+
+[[test]]
 name = "instance_lock"
 path = "tests/instance_lock.rs"
 
