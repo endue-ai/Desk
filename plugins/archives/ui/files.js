@@ -27,6 +27,43 @@ export function scopeUnder(permission, folder) {
 export const codeOf = (/** @type {unknown} */ error) =>
   /** @type {{ code?: string }} */ (error)?.code ?? "error";
 
+/** byteSource's cache block, and the span (in blocks) its reads skip the cache from. */
+const BLOCK = 64 * 1024;
+const LONG = 32;
+
+/**
+ * `source` with each read that spans several cached blocks asked one block at a time. byteSource
+ * fills a read's missing blocks and then copies them out; reads running at once (the library
+ * worker's, a preview's, an extraction's) can push a block of one out of its cache in between, and
+ * that read then fails. A read inside one block has nothing in between.
+ * @param {Source} source @returns {Source}
+ */
+export function blockwise(source) {
+  return {
+    size: source.size,
+    read: async (offset, length) => {
+      const start = Math.max(0, Math.min(offset, source.size));
+      const end = Math.min(source.size, start + Math.max(0, length));
+      const first = Math.floor(start / BLOCK);
+      const last = Math.floor((end - 1) / BLOCK);
+      if (end <= start || first === last || last - first >= LONG)
+        return source.read(start, end - start);
+      const parts = [];
+      for (let index = first; index <= last; index++) {
+        const from = Math.max(start, index * BLOCK);
+        parts.push(source.read(from, Math.min(end, (index + 1) * BLOCK) - from));
+      }
+      const out = new Uint8Array(end - start);
+      let at = 0;
+      for (const part of await Promise.all(parts)) {
+        out.set(part, at);
+        at += part.length;
+      }
+      return out;
+    },
+  };
+}
+
 /** @param {Bridge} bridge @param {ByteSource} byteSource the SDK's */
 export function createFiles(bridge, byteSource) {
   /**
@@ -68,7 +105,7 @@ export function createFiles(bridge, byteSource) {
       if (!(await ask(scope, `To open ${path} in Archives`))) throw refused;
       raw = await acquire().catch((e) => Promise.reject(failed(e)));
     }
-    const from = raw;
+    const from = blockwise(raw);
     /** @type {Source} */
     const source = {
       size: from.size,
