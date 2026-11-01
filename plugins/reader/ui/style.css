@@ -322,6 +322,8 @@ textarea {
   clip-path: inset(50%);
   white-space: pre-wrap;
 }
+/* The library gives no word positions: the page holding the current match is outlined instead. */
+.page:has(> .page-text mark.current) { outline: 3px solid var(--reader-hit-current); outline-offset: 3px; }
 .page > .page-note { position: absolute; inset: auto 0 0; margin: 0; padding: 4px 8px; background: var(--desk-card); color: var(--desk-text); font-size: 12px; }
 
 .page[data-failed] {
