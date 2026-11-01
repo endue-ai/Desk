@@ -77,9 +77,9 @@ describe("IW44 layers", () => {
 
   it("FORM:PM44 and FORM:BM44 decode exactly like the same data in BG44 chunks", async () => {
     const pm44 = await (await layer("photo.iw4", "PM44")).render();
-    expect(pm44.rgba).toEqual((await (await layer("photo.djvu")).render()).rgba);
+    expectSameBytes(pm44.rgba, (await (await layer("photo.djvu")).render()).rgba);
     const bm44 = await (await layer("photo-grey.iw4", "BM44")).render();
-    expect(bm44.rgba).toEqual((await (await layer("photo-grey.djvu")).render()).rgba);
+    expectSameBytes(bm44.rgba, (await (await layer("photo-grey.djvu")).render()).rgba);
   });
 
   it("each chunk refines the image: the first alone is coarser but recognisable", async () => {
@@ -216,7 +216,7 @@ describe("pacing", () => {
     for (const data of chunksOf(fixture("photo.djvu"), "BG44")) await image.decodeChunk(data, pace);
     const out = await image.render({ pace });
     expect(pace.rests).toBeGreaterThan(10);
-    expect(out.rgba).toEqual((await (await layer("photo.djvu")).render()).rgba);
+    expectSameBytes(out.rgba, (await (await layer("photo.djvu")).render()).rgba);
   });
 
   it("stops with an AbortError once the signal fires", async () => {
@@ -230,3 +230,14 @@ describe("pacing", () => {
     await expect(image.render({ pace })).rejects.toMatchObject({ name: "AbortError" });
   });
 });
+
+/** Exact equality of two renders, byte for byte: `toEqual` on hundreds of KB takes seconds on CI. */
+function expectSameBytes(
+  actual: Uint8ClampedArray | Uint8Array,
+  expected: Uint8ClampedArray | Uint8Array,
+) {
+  expect(actual.length).toBe(expected.length);
+  const view = (a: Uint8ClampedArray | Uint8Array) =>
+    Buffer.from(a.buffer, a.byteOffset, a.byteLength);
+  expect(Buffer.compare(view(actual), view(expected))).toBe(0);
+}

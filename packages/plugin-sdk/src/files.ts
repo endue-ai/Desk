@@ -160,6 +160,27 @@ function cachedSource(ranges: Ranges, path: string, signal?: AbortSignal): ByteS
     }
     return out;
   };
+  const wholeFile = () => memory;
+  /** Blocks on their way from the desk: concurrent reads of one block share its request. */
+  const inflight = new Map<number, Promise<Uint8Array>>();
+  /** Ask for blocks index..until in one request; each block enters the cache when it arrives. */
+  const fetchRun = (index: number, until: number) => {
+    const run = exact(index * BLOCK, Math.min(size, (until + 1) * BLOCK));
+    for (let i = index; i <= until; i++) {
+      const block = run.then((got) => got.subarray((i - index) * BLOCK, (i - index + 1) * BLOCK));
+      inflight.set(i, block);
+      block.then(
+        (bytes) => {
+          if (inflight.get(i) !== block) return;
+          inflight.delete(i);
+          keep(i, bytes);
+        },
+        () => {
+          if (inflight.get(i) === block) inflight.delete(i);
+        },
+      );
+    }
+  };
   return {
     size,
     read: async (offset, length) => {
@@ -171,22 +192,30 @@ function cachedSource(ranges: Ranges, path: string, signal?: AbortSignal): ByteS
       const first = Math.floor(start / BLOCK);
       const last = Math.floor((end - 1) / BLOCK);
       if (last - first >= LONG) return exact(start, end);
+      // The read holds its own blocks: the cache may evict them while it waits for the others.
+      const mine: Array<Uint8Array | Promise<Uint8Array>> = [];
       for (let index = first; index <= last; index++) {
-        if (blocks.has(index)) continue;
-        let until = index;
-        while (until < last && !blocks.has(until + 1)) until++;
-        const got = await exact(index * BLOCK, Math.min(size, (until + 1) * BLOCK));
-        throwIfAborted(signal);
-        if (memory) return memory.slice(start, end);
-        for (let i = index; i <= until; i++) {
-          keep(i, got.subarray((i - index) * BLOCK, (i - index + 1) * BLOCK));
+        const cached = blocks.get(index);
+        if (cached) {
+          keep(index, cached);
+          mine.push(cached);
+          continue;
         }
-        index = until;
+        if (!inflight.has(index)) {
+          let until = index;
+          while (until < last && !blocks.has(until + 1) && !inflight.has(until + 1)) until++;
+          fetchRun(index, until);
+        }
+        mine.push(inflight.get(index) as Promise<Uint8Array>);
       }
       const out = new Uint8Array(end - start);
       for (let index = first; index <= last; index++) {
-        const block = blocks.get(index) as Uint8Array;
-        keep(index, block);
+        const block = await mine[index - first];
+        throwIfAborted(signal);
+        // A whole-file answer may have arrived while this read waited.
+        const whole = wholeFile();
+        if (whole) return whole.slice(start, end);
+        if (!block) throw shorter(path);
         const from = Math.max(start, index * BLOCK);
         const to = Math.min(end, (index + 1) * BLOCK);
         out.set(block.subarray(from - index * BLOCK, to - index * BLOCK), from - start);
