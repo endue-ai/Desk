@@ -179,9 +179,7 @@ describe("the desk's file requests", () => {
     await host.command("desk.files.visit", file(tgz));
     expect(view.archives.at(-1)).toMatchObject({ format: "tar (gzip)" });
     await host.command("desk.files.visit", file(rar));
-    expect(view.archives.at(-1)).toMatchObject({
-      format: "RAR 5",
-      refusal: "RAR decompression is not available.",
-    });
+    expect(view.archives.at(-1)).toMatchObject({ format: "RAR 5" });
+    expect(view.archives.at(-1)?.refusal).toBeUndefined();
   });
 });

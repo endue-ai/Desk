@@ -1,5 +1,7 @@
 // Which format a file is, from its first bytes (a few known places further in: an ISO's
-// descriptors, a DMG's or VHD's trailer), then its extension; and the reader that opens it.
+// descriptors, a DMG's or VHD's trailer, an ext superblock), then its extension; and the reader that
+// opens it. RAR, disk images, DMGs, SquashFS and WIM are endue.formats' (library.js), which the
+// frame loads through the import map when they are opened here rather than in the library worker.
 
 import { openSevenZip } from "@endue-ai/formats/sevenzip/index.js";
 import { at, u16 } from "../bytes.js";
@@ -7,27 +9,41 @@ import { openArj } from "./arj.js";
 import { openCab } from "./cab.js";
 import { isCpio } from "./cpio.js";
 import { openDeb } from "./deb.js";
-import { openDisk } from "./disk.js";
-import { openDmg } from "./dmg.js";
 import { openGem } from "./gem.js";
 import { openIso } from "./iso.js";
 import { openLha } from "./lha.js";
+import { LIBRARY, openLibrary } from "./library.js";
 import { openMsi } from "./msi.js";
-import { openRar } from "./rar.js";
 import { openRpm } from "./rpm.js";
-import { openSquashfs } from "./squashfs.js";
 import { openStream } from "./stream.js";
 import { isTar, openTar } from "./tar.js";
 import { openTorrent } from "./torrent.js";
-import { openVirtualDisk } from "./vdisk.js";
-import { openWim } from "./wim.js";
 import { openXar } from "./xar.js";
 import { openZip } from "./zip.js";
 
 /** @typedef {import("../source.js").Source} Source */
 /** @typedef {import("./archive.js").Archive} Archive */
-/** @typedef {(source: Source, name: string, kind: Kind) => Promise<Archive>} Opener */
+/** @typedef {import("./archive.js").Job} Job */
+/** @typedef {(source: Source, name: string, kind: Kind, job?: Job) => Promise<Archive>} Opener */
 /** @typedef {{ key: string, label: string }} Kind */
+
+/** endue.formats' folders, loaded when first used. @type {Record<string, () => Promise<unknown>>} */
+const FOLDERS = {
+  rar: () => import("@endue-ai/formats/rar/index.js"),
+  disk: () => import("@endue-ai/formats/disk/index.js"),
+  apple: () => import("@endue-ai/formats/apple/index.js"),
+  packs: () => import("@endue-ai/formats/packs/index.js"),
+};
+
+/** @type {Opener} */
+async function library(source, _name, kind, job) {
+  const load = FOLDERS[LIBRARY[kind.key] ?? ""];
+  if (!load) throw new Error(`${kind.label} is not read here.`);
+  return openLibrary(await load(), kind, source, job);
+}
+
+/** Whether endue.formats opens this kind (so the library worker can). @param {Kind} kind */
+export const inLibrary = (kind) => kind.key in LIBRARY;
 
 /** @type {Record<string, [string, Opener]>} */
 const FORMATS = {
@@ -42,7 +58,7 @@ const FORMATS = {
   lz4: ["LZ4", openStream],
   lzw: ["compress", openStream],
   "7z": ["7z", openSevenZip],
-  rar: ["RAR", openRar],
+  rar: ["RAR", library],
   iso: ["ISO 9660", openIso],
   deb: ["Debian package", openDeb],
   rpm: ["RPM package", openRpm],
@@ -53,16 +69,16 @@ const FORMATS = {
   msi: ["MSI", openMsi],
   arj: ["ARJ", openArj],
   lha: ["LHA", openLha],
-  dmg: ["DMG", openDmg],
-  img: ["Disk image", openDisk],
-  vhd: ["VHD", openVirtualDisk],
-  vhdx: ["VHDX", openVirtualDisk],
-  vmdk: ["VMDK", openVirtualDisk],
-  qcow2: ["QCOW2", openVirtualDisk],
-  wim: ["WIM", openWim],
-  squashfs: ["SquashFS", openSquashfs],
-  snap: ["Snap", openSquashfs],
-  appimage: ["AppImage", openSquashfs],
+  dmg: ["DMG", library],
+  img: ["Disk image", library],
+  vhd: ["VHD", library],
+  vhdx: ["VHDX", library],
+  vmdk: ["VMDK", library],
+  qcow2: ["QCOW2", library],
+  wim: ["WIM", library],
+  squashfs: ["SquashFS", library],
+  snap: ["Snap", library],
+  appimage: ["AppImage", library],
   torrent: ["Torrent", openTorrent],
 };
 
@@ -148,7 +164,12 @@ export async function detectFormat(source, name) {
     if (at(tail, 0, "koly")) key = "dmg";
     else if (at(tail, 0, "conectix") || at(tail, 1, "conectix")) key = "vhd";
   }
-  if (!key && head.length >= 512 && (at(head, 512, "EFI PART") || u16(head, 510) === 0xaa55))
+  const ext4 = head.length >= 1082 && u16(head, 1080) === 0xef53;
+  if (
+    !key &&
+    head.length >= 512 &&
+    (at(head, 512, "EFI PART") || u16(head, 510) === 0xaa55 || ext4)
+  )
     key = ext === "img" || ext === "" || !EXTENSIONS[ext] ? "img" : "";
   if (!key && ext === "torrent" && head[0] === 0x64) key = "torrent";
   if (
@@ -163,11 +184,11 @@ export async function detectFormat(source, name) {
   return { key, label };
 }
 
-/** Open what `detectFormat` found. @param {Source} source @param {string} name @param {Kind} kind */
-export async function openDetected(source, name, kind) {
+/** Open what `detectFormat` found. @param {Source} source @param {string} name @param {Kind} kind @param {Job} [job] */
+export async function openDetected(source, name, kind, job) {
   const format = FORMATS[kind.key];
   if (!format) throw new Error(`${kind.label} is not read here.`);
-  return format[1](source, name, kind);
+  return format[1](source, name, kind, job);
 }
 
 /**

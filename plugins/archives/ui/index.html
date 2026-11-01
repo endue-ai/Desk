@@ -7,6 +7,7 @@
       {
         "imports": {
           "@endue-ai/plugin-sdk": "/_desk/plugin-sdk.js",
+          "@endue-ai/ui": "/_desk/ui.js",
           "@endue-ai/formats/": "/endue.formats/lib/"
         }
       }
@@ -25,10 +26,9 @@
         <button id="up" type="button" hidden>Up one level</button>
         <button id="extract-selected" type="button">Extract selected</button>
         <button id="extract-all" type="button">Extract all</button>
-        <button id="stop" type="button" hidden>Stop</button>
       </div>
     </header>
-    <section id="about" aria-label="Details">
+    <section id="about" aria-label="Details" tabindex="0">
       <p id="note" hidden></p>
       <dl id="details" hidden></dl>
     </section>
@@ -47,7 +47,7 @@
       <section id="preview" aria-label="Preview" hidden></section>
     </main>
     <footer>
-      <p id="progress" hidden></p>
+      <desk-progress id="progress" hidden></desk-progress>
       <p id="status" role="status"></p>
     </footer>
     <script type="module" src="./main.js"></script>
