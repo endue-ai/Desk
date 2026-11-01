@@ -170,12 +170,15 @@ export function createTerminals({ bridge, commands, state }, view, { platform, s
   };
 
   /** A new terminal: the settings' shell, or `program`. Resolves once it has started, or failed. */
-  const open = async (/** @type {Program} */ program = undefined) => {
+  const open = async (
+    /** @type {Program} */ program = undefined,
+    /** @type {string} */ cwd = settings.cwd,
+  ) => {
     next += 1;
     const id = `t-${next}`;
     const programs = program
       ? [program]
-      : candidates(platform, settings).map((p) => ({ ...p, cwd: settings.cwd }));
+      : candidates(platform, settings).map((p) => ({ ...p, cwd }));
     const first = /** @type {Program} */ (programs[0]);
     /** @type {Session} */
     const session = {

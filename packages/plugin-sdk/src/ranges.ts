@@ -44,17 +44,34 @@ function fromBase64(text: string): Uint8Array {
 }
 
 /** Ranged fs.read calls, as base64. */
-async function bridgeRanges(bridge: PluginBridge, file: FileRef, size?: number): Promise<Ranges> {
+async function bridgeRanges(
+  bridge: PluginBridge,
+  file: FileRef,
+  size?: number,
+  signal?: AbortSignal,
+): Promise<Ranges> {
   const { path, scope } = file;
-  const read = (offset: number, length: number) =>
-    bridge.call("fs.read", { path, encoding: "base64", offset, length, scope });
-  const known = size ?? (await read(0, 0)).size ?? 0;
+  const read = async (offset: number, length: number, signal?: AbortSignal) => {
+    throwIfAborted(signal);
+    try {
+      const result = await bridge.call("fs.read", {
+        path,
+        encoding: "base64",
+        offset,
+        length,
+        scope,
+      });
+      throwIfAborted(signal);
+      return result;
+    } catch (error) {
+      throw signal?.aborted ? aborted(signal) : error;
+    }
+  };
+  const known = size ?? (await read(0, 0, signal)).size ?? 0;
   return {
     size: known,
     part: async (offset, length, signal) => {
-      throwIfAborted(signal);
-      const { content } = await read(offset, Math.min(length, BRIDGE_PART));
-      throwIfAborted(signal);
+      const { content } = await read(offset, Math.min(length, BRIDGE_PART), signal);
       return { bytes: fromBase64(content), whole: false };
     },
   };
@@ -77,7 +94,7 @@ export async function openRanges(
     ({ url, size } = await bridge.call("fs.url", { path: file.path, scope: file.scope }));
   } catch {
     throwIfAborted(signal);
-    return bridgeRanges(bridge, file);
+    return bridgeRanges(bridge, file, undefined, signal);
   }
   throwIfAborted(signal);
   let fallback: Promise<Ranges> | undefined;
@@ -89,8 +106,11 @@ export async function openRanges(
     const end = Math.min(size, offset + length) - 1;
     const headers = { Range: `bytes=${offset}-${end}` };
     const response = await fetch(url, { headers, signal });
+    throwIfAborted(signal);
     if (response.status === 206) {
-      return { bytes: new Uint8Array(await response.arrayBuffer()), whole: false };
+      const bytes = new Uint8Array(await response.arrayBuffer());
+      throwIfAborted(signal);
+      return { bytes, whole: false };
     }
     if (response.status === 416) return { bytes: new Uint8Array(0), whole: false };
     // The server ignored Range (a data: URL, another server): the body is the whole file.
@@ -126,16 +146,23 @@ export async function drain(
 ): Promise<number> {
   const reader = body.body?.getReader();
   if (!reader) {
+    throwIfAborted(signal);
     const all = new Uint8Array(await body.arrayBuffer());
+    throwIfAborted(signal);
     into.set(all.subarray(0, into.length));
     onChunk(Math.min(all.length, into.length));
     return Math.min(all.length, into.length);
   }
+  const onAbort = () => {
+    void reader.cancel().catch(() => {});
+  };
+  signal?.addEventListener("abort", onAbort, { once: true });
   let done = 0;
   try {
     for (;;) {
       throwIfAborted(signal);
       const next = await reader.read();
+      throwIfAborted(signal);
       if (next.done) break;
       const piece = next.value.subarray(0, Math.max(0, into.length - done));
       into.set(piece, done);
@@ -146,6 +173,7 @@ export async function drain(
   } catch (error) {
     throw isAbort(error) || signal?.aborted ? aborted(signal) : error;
   } finally {
+    signal?.removeEventListener("abort", onAbort);
     void reader.cancel().catch(() => {});
   }
   throwIfAborted(signal);

@@ -2,6 +2,7 @@
 // carry their level (the WAI-ARIA tree pattern, roving tabindex), and a status live region for
 // refusals and errors. Rows are draggable: a drop target reads the path as text/plain or
 // application/x-desk-path. Desk chords pass through; Escape first closes a visible preview.
+import { contextMenu } from "./context-menu.js";
 import { previewView } from "./preview-view.js";
 
 /**
@@ -11,6 +12,7 @@ import { previewView } from "./preview-view.js";
  *   select(id: string): unknown, activate(id: string): unknown,
  *   key(name: string): unknown, type(letter: string): boolean,
  *   addFolder(): unknown, newFile(): unknown, refresh(): unknown, toggleHidden(): unknown,
+ *   context?(command: string): unknown,
  * }} Actions
  */
 
@@ -42,6 +44,19 @@ export function createView(doc, actions) {
   const items = new Map();
   /** @type {string | null} */
   let selected = null;
+  const menu = contextMenu(
+    doc,
+    (id) => actions.context?.(id),
+    () => focus(selected),
+  );
+
+  tree.addEventListener("contextmenu", (event) => {
+    const item = /** @type {HTMLElement} */ (event.target).closest("[role=treeitem]");
+    if (!(item instanceof HTMLElement) || !item.dataset.id || item.dataset.kind === "more") return;
+    event.preventDefault();
+    actions.select(item.dataset.id);
+    menu.show(event.clientX, event.clientY);
+  });
 
   byId("add-folder").addEventListener("click", () => actions.addFolder());
   byId("new-file").addEventListener("click", () => actions.newFile());
@@ -96,6 +111,14 @@ export function createView(doc, actions) {
   tree.addEventListener("keydown", (event) => {
     // The desk's chords pass; the tree takes its own keys, and letters for type-ahead.
     if (event.metaKey || event.ctrlKey || event.altKey) return;
+    if (event.key === "ContextMenu" || (event.key === "F10" && event.shiftKey)) {
+      const item = selected === null ? undefined : items.get(selected);
+      if (!item || item.dataset.kind === "more") return;
+      event.preventDefault();
+      const bounds = item.getBoundingClientRect();
+      menu.show(bounds.left + 12, bounds.bottom);
+      return;
+    }
     if (event.key.length === 1 && event.key !== " ") {
       if (actions.type(event.key)) event.preventDefault();
     } else if (TREE_KEYS.includes(event.key)) {
@@ -175,6 +198,7 @@ export function createView(doc, actions) {
     selection,
     /** @param {Row[]} rows @param {string | null} picked */
     tree(rows, picked) {
+      menu.close(true);
       const heldFocus = tree.contains(doc.activeElement);
       selected = picked;
       items.clear();

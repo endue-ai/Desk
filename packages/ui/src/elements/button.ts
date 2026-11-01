@@ -5,33 +5,38 @@ const css = `
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: var(--desk-space-2);
   box-sizing: border-box;
-  min-height: 32px;
-  padding: 0 14px;
+  min-height: var(--desk-control-sm);
+  padding: 0 var(--desk-space-3);
   border: 1px solid var(--desk-border);
-  border-radius: 8px;
+  border-radius: var(--desk-radius-md);
   background: var(--desk-card);
   color: var(--desk-text);
   font: inherit;
-  font-size: 13px;
+  font-size: var(--desk-text-sm);
   line-height: 1;
   white-space: nowrap;
   cursor: pointer;
   user-select: none;
 }
 :host(:hover) {
-  background: var(--desk-border);
+  background: var(--desk-hover);
   color: var(--desk-text);
 }
 :host(:focus-visible) {
-  outline: 2px solid var(--desk-accent);
+  outline: 2px solid var(--desk-ring);
   outline-offset: 2px;
 }
 :host([variant="primary"]) {
-  border-color: var(--desk-accent);
-  background: var(--desk-accent);
-  color: var(--desk-background);
+  border-color: var(--desk-primary);
+  background: var(--desk-primary);
+  color: var(--desk-primary-foreground);
+}
+:host([variant="primary"]:hover:not([disabled])) {
+  border-color: var(--desk-primary-hover);
+  background: var(--desk-primary-hover);
+  color: var(--desk-primary-foreground);
 }
 :host([disabled]) {
   opacity: 0.5;

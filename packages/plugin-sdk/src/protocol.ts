@@ -68,6 +68,7 @@ const HOST_TYPES = new Set([
 
 /** The frame transport: messages go to the parent window and only the parent is heard. */
 export function windowTransport(win: Window = window): Transport {
+  let appliedVariables = new Set<string>();
   return {
     send: (message) => win.parent.postMessage(message, "*"),
     listen: (handler) => {
@@ -91,6 +92,11 @@ export function windowTransport(win: Window = window): Transport {
     },
     theme: (theme) => {
       const root = win.document.documentElement;
+      for (const name of appliedVariables)
+        if (!(name in theme.variables)) root.style.removeProperty(name);
+      appliedVariables = new Set(
+        Object.keys(theme.variables).filter((name) => name.startsWith("--desk-")),
+      );
       for (const [name, value] of Object.entries(theme.variables))
         root.style.setProperty(name, value);
       root.dataset.scheme = theme.scheme;

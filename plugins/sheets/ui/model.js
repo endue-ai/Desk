@@ -13,9 +13,11 @@
  * @typedef {{ rows: number, cols: number }} Frozen
  * @typedef {{
  *   name: string, rows: number, cols: number, lastRow: number, lastCol: number,
+ *   axes?: { rows: import("./layout.js").Axis, cols: import("./layout.js").Axis },
  *   cell(r: number, c: number): Cell | undefined, filled(r: number, c: number): boolean,
  *   text(r: number, c: number): string, input(r: number, c: number): string,
  *   style(r: number, c: number): CellStyle | undefined, merges: Range[],
+ *   releaseRow?(r: number): void,
  *   width(c: number): number, height(r: number): number,
  *   hiddenRow(r: number): boolean, hiddenCol(c: number): boolean, frozen: Frozen,
  * }} Sheet
@@ -26,6 +28,7 @@
  *   widths?: ArrayLike<number | undefined>, heights?: ArrayLike<number | undefined>,
  *   hiddenRows?: Set<number>, hiddenCols?: Set<number>, frozen?: Frozen,
  *   styleAt?: (r: number, c: number) => CellStyle | undefined,
+ *   releaseRow?: (r: number) => void,
  *   format?: (cell: Cell) => string | undefined,
  * }} SheetSource
  */
@@ -105,6 +108,7 @@ export function createSheet(source) {
     lastRow: Math.max(lastRow, mergedRows - 1),
     lastCol: Math.max(lastCol, mergedCols - 1),
     cell: cellAt,
+    releaseRow: source.releaseRow,
     filled: (r, c) => {
       const cell = cellAt(r, c);
       return cell !== undefined && cell.t !== "z" && cell.v !== undefined && cell.v !== "";

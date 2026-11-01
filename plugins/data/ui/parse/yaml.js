@@ -17,13 +17,15 @@ import { Reader, YamlFail } from "./yaml-scan.js";
  */
 
 /** @param {string} text @returns {DataDoc} */
-export function parseYaml(text) {
-  return new Composer(text).stream();
+export function parseYaml(text, options = {}) {
+  return new Composer(text, options).stream();
 }
 
 export class Composer {
   /** @param {string} text */
-  constructor(text) {
+  constructor(text, options = {}) {
+    this.onProgress = options.onProgress;
+    this.nextProgress = 256 * 1024;
     this.r = new Reader(text);
     this.lines = lineStarts(text);
     /** @type {Map<string, DataNode>} */
@@ -145,6 +147,10 @@ export class Composer {
    */
   content(n, place, props, block, compact) {
     const { r } = this;
+    if (r.pos >= this.nextProgress) {
+      this.onProgress?.(r.pos / r.text.length);
+      this.nextProgress = r.pos + 256 * 1024;
+    }
     const at = r.pos;
     const col = r.col(at);
     const c = r.ch();

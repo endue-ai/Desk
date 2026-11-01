@@ -6,6 +6,8 @@ import "@endue-ai/runtime/desk.css";
 import "@endue-ai/runtime/shell.css";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import { installNativeFileDrops, pickNativeFile } from "./native-files";
+import { installOpenedFiles } from "./open-files";
 import { shellBridge } from "./shell-bridge";
 
 const root = document.getElementById("desk");
@@ -25,7 +27,34 @@ const desk = mountDesk({
   clock: realClock(),
   platform: navigator.userAgent.includes("Macintosh") ? "mac" : "other",
   lang: navigator.language.startsWith("ko") ? "ko" : "en",
+  pickFile: pickNativeFile,
 });
+
+const disposeDrops = installNativeFileDrops({
+  ready: desk.ready,
+  commands: desk.runtime.commands,
+  report: (error) =>
+    desk.runtime.notify({
+      caller: "desk",
+      title: "Could not open the dropped file",
+      body: error instanceof Error ? error.message : String(error),
+      level: "error",
+    }),
+});
+window.addEventListener("pagehide", disposeDrops, { once: true });
+
+const disposeOpened = installOpenedFiles({
+  ready: desk.ready,
+  commands: desk.runtime.commands,
+  report: (error) =>
+    desk.runtime.notify({
+      caller: "desk",
+      title: "Could not open the associated file",
+      body: error instanceof Error ? error.message : String(error),
+      level: "error",
+    }),
+});
+window.addEventListener("pagehide", disposeOpened, { once: true });
 
 await desk.ready;
 await invoke("desk_ready", { status: desk.runtime.status() });

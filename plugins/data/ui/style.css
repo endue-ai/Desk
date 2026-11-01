@@ -110,6 +110,8 @@ input[type="search"] {
   white-space: nowrap;
 }
 
+#progress { margin: 8px 12px; }
+
 #note {
   margin: 0;
   padding: 4px 12px;
