@@ -18,7 +18,7 @@ asked for once with `perm.request`; a refusal is said in the terminal: `Not allo
 
 | Command | What it does |
 | --- | --- |
-| `endue.terminal.new` (`Mod+Shift+T`), `.focus` (`` Control+` ``), `.close`, `.next`, `.previous` | Terminals as tabs; `.close` sends the shell a hang-up |
+| `endue.terminal.new { cwd? }` (`Mod+Shift+T`), `.focus` (`` Control+` ``), `.close`, `.next`, `.previous` | New uses the configured shell and arguments in `cwd` (defaults to settings); `.close` sends a hang-up |
 | `endue.terminal.clear`, `.interrupt`, `.restart` | Clear the screen; send `int`; start the shell again (Enter after an exit does too) |
 | `endue.terminal.run { command, args?, cwd?, title? }` | A program of its own in a new terminal, without a shell; answers `{ session, procId }`. A shell with arguments is refused, so a caller cannot slip past the person |
 

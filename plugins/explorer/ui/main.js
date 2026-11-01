@@ -16,6 +16,7 @@ defineUiPlugin({
       activate: (id) => app?.activate(id),
       key: (name) => app?.key(name),
       type: (letter) => app?.type(letter) === true,
+      context: (id) => own(id)(),
       addFolder: own("endue.explorer.add-folder"),
       newFile: own("endue.explorer.new-file"),
       refresh: own("endue.explorer.refresh"),
