@@ -1,0 +1,23 @@
+plugins/player/ui/remux: the player's demuxers and fragmented MP4 muxer
+
+No third-party code is copied, ported or translated here. Every reader and writer is implemented
+from the published specifications:
+
+- ISO/IEC 14496-12 (ISO base media file format, movie fragments), 14496-14 (MP4, esds) and
+  14496-15 (avcC, hvcC); ISO/IEC 23003-5 (ipcm, pcmC)
+- ITU-T H.264 and H.265 (sequence parameter sets, slice headers, picture order count)
+- AV1 Codec ISO Media File Format Binding (av1C); VP Codec ISO Media File Format Binding (vpcC)
+  and the VP9 bitstream specification (uncompressed header)
+- Encapsulation of Opus in ISO-BMFF (dOps); Encapsulation of FLAC in ISO-BMFF (dfLa);
+  RFC 6716 (Opus packets), RFC 7845 (Ogg Opus), RFC 9639 (FLAC)
+- ETSI TS 102 366 (AC-3 and E-AC-3, dac3 and dec3); ISO/IEC 14496-3 and 13818-7 (AAC, ADTS);
+  ISO/IEC 11172-3 and 13818-3 (MPEG audio frame headers)
+- RFC 8794 (EBML) and RFC 9559 (Matroska); the WebM container guidelines
+- Microsoft AVI RIFF file reference and OpenDML AVI File Format Extensions 1.02
+- Adobe Flash Video File Format Specification 10.1 and Enhanced RTMP (Veovera)
+- RFC 3533 (Ogg) and the Ogg FLAC mapping
+- SMPTE ST 377-1 (MXF), ST 379-2 (generic container), ST 381-3 (AVC mapping), ST 382 (sound)
+- ISO/IEC 13818-1 (MPEG-2 transport streams, PES)
+
+The ALAC magic cookie layout follows Apple's ALAC description, published under the Apache License
+2.0 (https://github.com/macosforge/alac); only the field offsets are used.
