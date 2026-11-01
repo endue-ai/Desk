@@ -32,6 +32,7 @@ export function createChapters(host, scroller, hooks) {
   let showing = null;
   let unit = 0;
   let generation = 0;
+  let displayedGeneration = 0;
   /** @type {ReturnType<typeof setTimeout> | undefined} */
   let scrolled;
   const stopScroll = () => {
@@ -68,7 +69,7 @@ export function createChapters(host, scroller, hooks) {
   scroller.addEventListener(
     "scroll",
     () => {
-      if (!book) return;
+      if (!book || displayedGeneration !== generation) return;
       if (scrolled !== undefined) clearTimeout(scrolled);
       scrolled = setTimeout(() => {
         scrolled = undefined;
@@ -108,6 +109,7 @@ export function createChapters(host, scroller, hooks) {
       book = next;
       const target = Math.max(0, Math.min(next.chapters.length - 1, i));
       if (target === unit && showing === next) {
+        displayedGeneration = mine;
         place(to);
         return root;
       }
@@ -129,6 +131,7 @@ export function createChapters(host, scroller, hooks) {
       if (mine !== generation) return root;
       unit = target;
       showing = next;
+      displayedGeneration = mine;
       // The book's own body rules apply to its .body; the reading column around it is the reader's.
       root.innerHTML = [
         `<style>${BASE}</style>`,
