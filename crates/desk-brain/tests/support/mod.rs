@@ -31,6 +31,7 @@ impl Echo {
         let server =
             Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/brain-echo/server.mjs");
         let mut command = Command::new("node");
+        // An inherited demo speed-up must not turn response validation into an expiry test.
         command
             .arg(server)
             .args(["--port", "0"])
