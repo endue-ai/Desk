@@ -6,8 +6,10 @@ Dieses Dokument übersetzt die englische Zusammenfassung des Designs. Maßgeblic
 `docs/ko/desk-structure.md`; schwer umkehrbare Entscheidungen stehen in `docs/adr/`.
 
 Desk ist ein OS, gebaut als eine App: Eine Tauri-Shell und ein kleiner Rust-Kern tragen eine Web-Runtime,
-und jede Funktion auf dieser Runtime ist ein Plugin. Wie bei Emacs enthält der Kern nur Primitive, und
+und die Funktionen außer Einstellungen und Tastenkürzeln sind Plugins. Wie bei Emacs enthält der Kern nur Primitive, und
 alles andere lässt sich im laufenden Betrieb ändern.
+
+Die Einstellungsoberfläche, Standardtastenkürzel und das Speichern persönlicher Einstellungen gehören zum Runtime-Kern, nicht zu Plugins. Sie bleiben ohne Plugins verfügbar; Plugins können weitere Tastenkürzel beitragen. [ADR 0031](../../adr/0031-core-settings-and-keybindings.md).
 
 ## Auf einen Blick
 
@@ -72,7 +74,7 @@ Daraus folgen sechs Prinzipien:
 2. **Eingebaute Funktionen sind Plugins.** Eris, die Seitenleiste, die Werkzeugleiste und der
    Profilwechsel nutzen dieselbe API wie Community-Plugins. So hat die API keine Lücken, und selbst
    eingebaute Funktionen lassen sich ersetzen. Auch die Standardrichtlinien des Desks (wo Oberflächen
-   erscheinen, Tasten, Dateien, Themes, Benachrichtigungen) sind reine Daten-Plugins `desk.*` (ADR 0017).
+   erscheinen, Dateien, Themes, Benachrichtigungen) sind reine Daten-Plugins `desk.*` (ADR 0017).
    Die Desk-Shell (`mountDesk`) ist es noch nicht: Sie ist Code in `packages/runtime` (ADR 0025), bis die
    noch vorgeschlagene ADR 0026 entscheidet, wohin sie gehört. Bis dahin gibt es Eris zweimal, als
    `plugins/eris` und in der Shell (ADR 0027), und ebenso die Ränder des Desks: die Plugins Dock,
