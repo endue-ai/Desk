@@ -53,10 +53,12 @@ export class Grow {
 class MetaWriter {
   blocks = new Grow();
   pending: number[] = [];
-  constructor(
-    private pack: (b: Uint8Array) => Uint8Array,
-    private keep: boolean,
-  ) {}
+  pack: (b: Uint8Array) => Uint8Array;
+  keep: boolean;
+  constructor(pack: (b: Uint8Array) => Uint8Array, keep: boolean) {
+    this.pack = pack;
+    this.keep = keep;
+  }
   get ref() {
     return this.blocks.length * 65536 + this.pending.length;
   }
