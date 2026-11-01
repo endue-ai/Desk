@@ -101,8 +101,8 @@ function attributesOf(element, space, resolve) {
   } else if (name === "a" && href) {
     const inside = resolve.link(href);
     if (inside !== undefined) out.push(["href", inside]);
-    else if (/^(https?|mailto|ftp):/i.test(href.trim())) {
-      out.push(["title", href.trim()]);
+    else if (/^(https?|mailto):/i.test(href.trim())) {
+      out.push(["title", href.trim()], ["role", "link"], ["tabindex", "0"]);
       classes.push("external");
     }
   } else if (space === "svg" && name === "use") {
