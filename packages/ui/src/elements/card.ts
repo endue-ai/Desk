@@ -5,11 +5,11 @@ const css = `
   display: block;
   box-sizing: border-box;
   border: 1px solid var(--desk-border);
-  border-radius: 8px;
+  border-radius: var(--desk-radius-md);
   background: var(--desk-card);
   color: var(--desk-text);
   font: inherit;
-  font-size: 13px;
+  font-size: var(--desk-text-sm);
 }
 :host([hidden]) {
   display: none;
@@ -23,7 +23,7 @@ section {
 h2 {
   margin: 0;
   color: var(--desk-text);
-  font-size: 14px;
+  font-size: var(--desk-text-sm);
   font-weight: 600;
 }
 h2[hidden] {

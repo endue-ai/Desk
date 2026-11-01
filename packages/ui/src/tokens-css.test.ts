@@ -26,8 +26,9 @@ describe("tokensCss", () => {
 
   it("is what src/tokens.css holds, the committed copy the shell imports", () => {
     const committed = readFileSync(new URL("./tokens.css", import.meta.url), "utf8");
-    expect(committed, "regenerate: pnpm --filter @endue-ai/ui build, copy dist/tokens.css to src").toBe(
-      tokensCss(),
-    );
+    expect(
+      committed,
+      "regenerate: pnpm --filter @endue-ai/ui build, copy dist/tokens.css to src",
+    ).toBe(tokensCss());
   });
 });

@@ -23,7 +23,7 @@ describe("design tokens", () => {
       primaryForeground: "#1e1833",
       ring: "#b6a3f5",
     });
-    // The old name of the brand fill stays an alias until plugins have moved (ADR 0049).
+    // The old name of the brand fill stays an alias until plugins have moved (docs/design-system.md).
     expect(colors.accent).toBe(colors.primary);
   });
 
@@ -57,9 +57,17 @@ describe("design tokens", () => {
     expect(propertyOf("space16")).toBe("--desk-space-16");
     expect(propertyOf("primaryForeground")).toBe("--desk-primary-foreground");
     const variables = cssVariables();
-    expect(Object.keys(variables)).toHaveLength(Object.keys(tokens).length);
+    for (const name of Object.keys(tokens)) expect(variables).toHaveProperty(propertyOf(name));
     expect(variables["--desk-background"]).toBe("#141416");
     expect(variables["--desk-text-sm"]).toBe("14px");
     expect(cssVariables({ paper: "#fdfcf8" })).toEqual({ "--desk-paper": "#fdfcf8" });
+  });
+
+  it("preserves numeric token names existing plugins already read", () => {
+    expect(cssVariables({ lane1: "#abcdef" })).toEqual({
+      "--desk-lane-1": "#abcdef",
+      "--desk-lane1": "#abcdef",
+    });
+    expect(cssVariables()["--desk-space3"]).toBe(cssVariables()["--desk-space-3"]);
   });
 });

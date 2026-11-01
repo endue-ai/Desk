@@ -1,0 +1,133 @@
+/*
+ * @endue-ai/ui base sheet for plugin pages: what every frame used to copy. Colours and sizes come
+ * only from the --desk-* tokens (tokens.css, and the theme the runtime applies), so a theme restyles
+ * the page without a change here. Link it after tokens.css:
+ *   <link rel="stylesheet" href="/_desk/tokens.css" />
+ *   <link rel="stylesheet" href="/_desk/base.css" />
+ * Controls (buttons, inputs, menus, dialogs, toasts) are the elements in ui.js; the classes at the
+ * end are layout patterns with no behaviour of their own.
+ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--desk-card);
+  color: var(--desk-text);
+  font-family: var(--desk-font-sans);
+  font-size: var(--desk-text-sm);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+a {
+  color: var(--desk-primary-text);
+}
+
+code,
+kbd,
+pre,
+samp {
+  font-family: var(--desk-font-mono);
+  font-size: var(--desk-text-xs);
+}
+
+:focus-visible {
+  outline: 2px solid var(--desk-ring);
+  outline-offset: 2px;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Layout patterns. A bar across the top of a page: a title, then tools; `.desk-bar-spacer` pushes
+   what follows to the right. */
+.desk-bar {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--desk-space-2);
+  min-height: var(--desk-control-md);
+  padding: 0 var(--desk-space-3);
+  border-bottom: 1px solid var(--desk-border);
+}
+
+.desk-bar-title {
+  margin: 0;
+  overflow: hidden;
+  font-size: var(--desk-text-sm);
+  font-weight: 600;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.desk-bar-spacer {
+  flex: 1;
+}
+
+/* A pane that scrolls on its own inside a flex or grid layout. */
+.desk-pane {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+}
+
+/* A details column beside the main pane. */
+.desk-details {
+  padding: var(--desk-space-3);
+  border-left: 1px solid var(--desk-border);
+  font-size: var(--desk-text-xs);
+}
+
+/* An empty state or a notice in place of content. */
+.desk-empty {
+  margin: var(--desk-space-3);
+  padding: var(--desk-space-4);
+  border-radius: var(--desk-radius-md);
+  background: var(--desk-muted);
+  color: var(--desk-text-muted);
+  text-align: center;
+}
+
+.desk-muted {
+  color: var(--desk-text-muted);
+}
+
+/* A recoverable failure. Supply role="alert" when a new error appears and a retry/recovery action. */
+.desk-error {
+  margin: var(--desk-space-3);
+  padding: var(--desk-space-4);
+  border: 1px solid var(--desk-danger-border);
+  border-radius: var(--desk-radius-md);
+  background: var(--desk-danger-soft);
+  color: var(--desk-danger-text);
+}

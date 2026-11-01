@@ -3,9 +3,12 @@
   <head>
     <meta charset="utf-8" />
     <title>Hello UI</title>
-    <!-- Desk serves the SDK at /_desk/plugin-sdk.js; the import map lets plugins import it by name. -->
+    <!-- Desk serves these under /_desk/: the design tokens and the base sheet for plugin pages, the SDK
+         and the elements (docs/design-system.md). The import map lets plugins import the two by name. -->
+    <link rel="stylesheet" href="/_desk/tokens.css" />
+    <link rel="stylesheet" href="/_desk/base.css" />
     <script type="importmap">
-      { "imports": { "@endue-ai/plugin-sdk": "/_desk/plugin-sdk.js" } }
+      { "imports": { "@endue-ai/plugin-sdk": "/_desk/plugin-sdk.js", "@endue-ai/ui": "/_desk/ui.js" } }
     </script>
     <link rel="stylesheet" href="./style.css" />
   </head>
@@ -14,7 +17,7 @@
     <p data-testid="revision"></p>
     <p data-testid="bridge">bridge: waiting</p>
     <p>
-      <button type="button">Count</button>
+      <desk-button variant="primary">Count</desk-button>
       <span data-testid="count">0</span>
     </p>
     <script type="module" src="./main.js"></script>

@@ -5,7 +5,8 @@ test("Notes shares the design scale and follows live theme and reduced-motion ch
 }) => {
   const failures: string[] = [];
   page.on("response", (response) => {
-    if (response.url().includes("/_desk/") && !response.ok()) failures.push(response.url());
+    if (response.url().includes("/_desk/") && response.status() >= 400)
+      failures.push(response.url());
   });
   await page.goto("/design-system.html");
   await page.waitForFunction(() => window.__desk !== undefined);

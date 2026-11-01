@@ -20,16 +20,19 @@ const plugins: Record<string, string> = {
   "endue.onboarding": join(repo, "plugins/onboarding"),
   "endue.sidebar": join(repo, "plugins/sidebar"),
   "endue.toolbar": join(repo, "plugins/toolbar"),
+  "endue.notes": join(repo, "plugins/notes"),
   "endue.dock": join(repo, "plugins/dock"),
 };
 const sdk = join(repo, "packages/plugin-sdk/src/index.ts");
 const ui = join(repo, "packages/ui/src/bundle.ts");
-/** What the app serves under /_desk/ (the SDK, the elements), from their sources. */
-const desk: Record<string, string> = { "/_desk/plugin-sdk.js": sdk, "/_desk/ui.js": ui };
-/**
- * The app's plugin-frame CSP (apps/desk/src-tauri/src/plugin-csp.txt, ADR 0048) with this server's
- * origin where the app names its desk-plugin scheme: frames here run under the same rules.
- */
+/** What the app serves under /_desk/ (the SDK, elements and shared sheets), from their sources. */
+const desk: Record<string, string> = {
+  "/_desk/plugin-sdk.js": sdk,
+  "/_desk/ui.js": ui,
+  "/_desk/tokens.css": join(repo, "packages/ui/src/tokens.css"),
+  "/_desk/base.css": join(repo, "packages/ui/src/base.css"),
+};
+/** The app's plugin-frame CSP with this server's origin in place of the plugin scheme. */
 const csp = readFileSync(join(repo, "apps/desk/src-tauri/src/plugin-csp.txt"), "utf8").trim();
 export const pluginCsp = (origin: string) => csp.replaceAll("{sources}", origin);
 const types: Record<string, string> = {
@@ -53,6 +56,12 @@ export function pluginFiles(): Plugin {
         // Sandboxed frames have an opaque origin; module scripts need CORS.
         res.setHeader("Access-Control-Allow-Origin", "*");
         const source = desk[url.pathname];
+        if (source?.endsWith(".css")) {
+          res.setHeader("Content-Type", "text/css");
+          res.setHeader("Cache-Control", "no-store");
+          res.end(readFileSync(source));
+          return;
+        }
         if (source) {
           res.statusCode = 302;
           res.setHeader("Location", `/@fs${source.split(sep).join("/")}`);
