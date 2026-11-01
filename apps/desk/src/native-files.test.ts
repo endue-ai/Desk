@@ -26,6 +26,10 @@ describe("native file entry", () => {
     expect(native.open).toHaveBeenCalledWith({ multiple: false, directory: false });
     native.open.mockResolvedValue("C:\\Users\\Person\\notes.md");
     expect(await pickNativeFile()).toBe("C:/Users/Person/notes.md");
+    native.open.mockResolvedValue("/notes/a\\b.md");
+    expect(await pickNativeFile()).toBe("/notes/a\\b.md");
+    native.open.mockResolvedValue("\\\\server\\share\\notes.md");
+    expect(await pickNativeFile()).toBe("//server/share/notes.md");
   });
 
   it("queues drops until ready and opens distinct paths in order despite a failed file", async () => {
@@ -63,10 +67,34 @@ describe("native file entry", () => {
       report: vi.fn(),
     });
     handler({ payload: { type: "leave" } });
-    drop(["name-only.md", "https://example.com/file.md", ""]);
+    drop(["name-only.md", "https://example.com/file.md", "", "/invalid\0.md"]);
     await Promise.resolve();
     expect(run).not.toHaveBeenCalled();
     dispose();
+  });
+
+  it("serializes separate batches and stops the remaining paths when disposed", async () => {
+    let finish: () => void = () => {};
+    const run = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          finish = resolve;
+        }),
+    );
+    const dispose = installNativeFileDrops({
+      ready: Promise.resolve(),
+      commands: { run },
+      report: vi.fn(),
+    });
+    drop(["/one.md", "/two.md"]);
+    drop(["/three.md"]);
+    await vi.waitFor(() => expect(run).toHaveBeenCalledOnce());
+    dispose();
+    finish();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(run).toHaveBeenCalledOnce();
+    expect(off).toHaveBeenCalledOnce();
   });
 
   it("disposal cancels queued paths and also unlistens when registration resolves late", async () => {
