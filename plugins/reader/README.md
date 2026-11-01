@@ -6,17 +6,17 @@ community folder format and on the public SDK only. `contributes.files` opens `*
 The first bytes pick the reader, then the extension. It reads; it never writes the file.
 
 PDF is pdf.js (`pdfjs-dist` 6.4.299, pinned in `package.json`, copied into `ui/vendor` by
-`node scripts/vendor-pdfjs.mjs`, ADR 0042), inside the frame's CSP: no eval, no fetches (system fonts
-stand in for CMaps and standard fonts), its worker in the frame. EPUB 2 and 3, MOBI 6 and KF8
+`node scripts/vendor-pdfjs.mjs`, ADR 0042), inside the frame's CSP: no eval or remote font fetches. PDF pages read SDK byte ranges in a real
+worker, with the in-frame worker as the fallback when startup fails. EPUB 2 and 3, MOBI 6 and KF8
 (PalmDOC, HUFF/CDIC), FB2, XPS and OXPS (pages as SVG, `.odttf` fonts de-obfuscated), CBZ and CBT
 are the plugin's own code. CBR, CB7 and DjVu open as details with their page counts; so does
 anything damaged, encrypted or with DRM. Book HTML is rebuilt from an allowlist (no scripts,
 handlers or remote URLs) into a shadow root with the book's CSS.
 
 It answers `desk.files.visit`, `.revert`, `desk.buffers.show` and `.closed`; `.save` is refused.
-It reads with `fs.read` (base64), asks once with `perm.request` for a file's folder, follows files
+It reads SDK binary ranges (ZIP directory and visible entries), asks once for a file's folder, follows files
 with `fs.watch` (`desk.files.changed`), and keeps position, zoom, bookmarks and notes per path in
-its store (`store.set`), never in the file.
+its store (`store.set`), never in the file. Progress offers Cancel; stopped PDFs offer Reload document.
 
 | File | Purpose |
 | --- | --- |
@@ -31,10 +31,10 @@ Escape closes the search or the panel. The desk's chords (Mod+S, Mod+O, Mod+W, M
 
 | Permission | Why |
 | --- | --- |
-| `cmd:invoke` (`desk.files.changed`) | Tell the desk a file changed on disk |
+| `cmd:invoke` (`desk.files.changed`), `fs:read`, `shell:open` | File changes, scoped reads, http/https/mailto links |
 
 ```bash
 pnpm exec vitest run plugins/reader
-node --test scripts/vendor-pdfjs.test.mjs
+python3 plugins/reader/tests/build/live.py /tmp/reader-large # 300 MiB PDF, 100 MiB EPUB
 cargo run -p desk-cli -- plugin validate plugins/reader
 ```

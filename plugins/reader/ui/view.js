@@ -7,6 +7,7 @@ import { createChapters } from "./chapters.js";
 import { createFind } from "./find.js";
 import { sizeInWords } from "./formats/bytes.js";
 import { createPages } from "./pages.js";
+import { createProgress } from "./progress.js";
 import { createSide } from "./side.js";
 
 /**
@@ -15,7 +16,7 @@ import { createSide } from "./side.js";
  * @typedef {import("./open.js").Target} Target
  * @typedef {{ moved(at: At): unknown, zoomed(zoom: number): unknown, bookmark(at: At, label: string): unknown,
  *   note(at: At, text: string): unknown, forget(kind: "bookmarks" | "notes", index: number): unknown,
- *   unlock(password: string): unknown }} Actions
+ *   unlock(password: string): unknown, reload?(): unknown, external?(url: string): unknown }} Actions
  */
 
 const STEPS = [0.25, 0.33, 0.5, 0.67, 0.75, 0.8, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2, 2.5, 3, 4, 5];
@@ -67,22 +68,22 @@ export function createView(doc, actions) {
     if (String(at.unit + 1) !== pageInput.value) counter(at.unit);
     actions.moved(at);
   };
-  const external = (/** @type {string} */ url) =>
-    say(
-      url
-        ? `Links to the web do not open from the reader: ${url}`
-        : "That link leaves the book; the reader does not follow it.",
-    );
+  const external = (url) => actions.external?.(url);
+  const progress = createProgress(doc.querySelector("desk-progress"), say);
+  const work = (detail, operation) => progress.run(detail, operation);
 
   const pages = createPages(doc, byId("pages"), docPane, {
     moved,
+    reload: () => actions.reload?.(),
     go: (unit) => goTo({ unit }),
     external,
+    work,
   });
   const chapters = createChapters(byId("chapter"), docPane, {
     moved,
     go: (target) => goTo(target),
     external,
+    work,
   });
 
   /** Go to a page, or a chapter and an anchor or offset in it. */
@@ -235,8 +236,10 @@ export function createView(doc, actions) {
   });
 
   return {
+    progress: (value) => progress.set(value),
     /** @param {ShownModel | null} next */
     show(next) {
+      progress.clear();
       model = next;
       find.reset();
       const b = next?.book;

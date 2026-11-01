@@ -18,7 +18,7 @@ it("uses the SDK worker port after the vendored worker announces readiness", asy
   const port = new Port();
   const worker = { promise: Promise.resolve(), destroy: vi.fn() };
   const lib = { PDFWorker: { create: vi.fn(() => worker) } };
-  const start = vi.fn(() => port);
+  const start = vi.fn((_url: URL) => port);
   const fallback = vi.fn();
   const pending = createPdfWorker(lib, start, { fallback });
   port.dispatchEvent(
@@ -27,7 +27,7 @@ it("uses the SDK worker port after the vendored worker announces readiness", asy
     }),
   );
   const own = await pending;
-  expect(start.mock.calls[0]?.[0].href).toMatch(/vendor\/pdf\.worker\.min\.mjs$/);
+  expect(start.mock.calls[0]?.[0]?.href).toMatch(/vendor\/pdf\.worker\.min\.mjs$/);
   expect(lib.PDFWorker.create).toHaveBeenCalledWith({ port });
   expect(fallback).not.toHaveBeenCalled();
   own.close();
@@ -48,4 +48,46 @@ it("falls back to the in-frame worker when the module cannot start", async () =>
   expect(fallback).toHaveBeenCalledOnce();
   expect(lib.PDFWorker.create).toHaveBeenCalledWith({});
   own.close();
+});
+
+it("cancels startup without creating a fallback worker", async () => {
+  const { createPdfWorker } = await implementation();
+  const stop = new AbortController();
+  const port = new Port();
+  const create = vi.fn();
+  const fallback = vi.fn();
+  const pending = createPdfWorker({ PDFWorker: { create } }, () => port, {
+    fallback,
+    signal: stop.signal,
+  }).catch((error) => error);
+  stop.abort();
+  expect(await pending).toMatchObject({ name: "AbortError" });
+  expect(port.terminate).toHaveBeenCalledOnce();
+  expect(create).not.toHaveBeenCalled();
+  expect(fallback).not.toHaveBeenCalled();
+});
+
+it("cancels after readiness while PDFWorker initialization is still pending", async () => {
+  const { createPdfWorker } = await implementation();
+  const stop = new AbortController();
+  const port = new Port();
+  const worker = { promise: new Promise(() => {}), destroy: vi.fn() };
+  const create = vi.fn(() => worker);
+  const fallback = vi.fn();
+  const pending = createPdfWorker({ PDFWorker: { create } }, () => port, {
+    fallback,
+    signal: stop.signal,
+  }).catch((error) => error);
+  port.dispatchEvent(
+    new MessageEvent("message", {
+      data: { sourceName: "worker", targetName: "main", action: "ready" },
+    }),
+  );
+  await Promise.resolve();
+  expect(create).toHaveBeenCalledOnce();
+  stop.abort();
+  expect(await pending).toMatchObject({ name: "AbortError" });
+  expect(worker.destroy).toHaveBeenCalledOnce();
+  expect(port.terminate).toHaveBeenCalledOnce();
+  expect(fallback).not.toHaveBeenCalled();
 });

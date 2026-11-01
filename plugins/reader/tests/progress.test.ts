@@ -41,3 +41,29 @@ it("shows opening and decoding phases after 300 ms and routes Cancel", async () 
   expect(progress.hidden).toBe(true);
   expect(progress.shown).toBe(false);
 });
+
+it("stops decoding and does not let a discarded view overwrite the next opening status", async () => {
+  const { createProgress } = await import("../ui/progress.js");
+  const element = document.createElement("desk-progress") as DeskProgress;
+  const status = vi.fn();
+  const progress = createProgress(element, status);
+  let signal!: AbortSignal;
+  const pending = progress
+    .run("Page 1", (next: AbortSignal) => {
+      signal = next;
+      return new Promise(() => {});
+    })
+    .catch((error) => error);
+  element.dispatchEvent(new Event("desk-cancel"));
+  expect(await pending).toMatchObject({ name: "AbortError" });
+  expect(signal.aborted).toBe(true);
+  expect(status).toHaveBeenLastCalledWith("Decoding Page 1 was cancelled.");
+  status.mockClear();
+  const previous = progress.run("Page 2", () => new Promise(() => {})).catch((e) => e);
+  progress.clear();
+  progress.set({ label: "Reading", value: null, max: 1, detail: "Next.pdf", cancel: () => {} });
+  expect(await previous).toMatchObject({ name: "AbortError" });
+  expect(status).not.toHaveBeenCalled();
+  expect(element.label).toBe("Reading");
+  expect(element.hidden).toBe(false);
+});

@@ -1,5 +1,6 @@
 // Forty independent page streams: opening page one must not read the other pages' padding.
-export function largePdf(count = 40, padding = 128 * 1024): Uint8Array {
+// Each page exceeds pdf.js / SDK 64 KiB alignment, so metadata reads cannot resemble a full read.
+export function largePdf(count = 40, padding = 512 * 1024): Uint8Array {
   const objects: string[] = [
     "<< /Type /Catalog /Pages 2 0 R >>",
     `<< /Type /Pages /Count ${count} /Kids [${Array.from({ length: count }, (_, i) => `${4 + i * 2} 0 R`).join(" ")}] >>`,

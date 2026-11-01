@@ -8,7 +8,7 @@ import { loadFonts } from "./paint.js";
  * @typedef {import("./open.js").ChaptersBook} ChaptersBook
  * @typedef {import("./open.js").Target} Target
  * @typedef {import("./marks.js").At} At
- * @typedef {{ moved(at: At): void, go(target: Target): void, external(url: string): void }} Hooks
+ * @typedef {{ moved(at: At): void, go(target: Target): void, external(url: string): void, work?(detail: string, run: (signal?: AbortSignal) => Promise<unknown>): Promise<any> }} Hooks
  */
 
 const BASE = `:host { display: block; color: #1d1b1f; background: #fbfaf7; }
@@ -40,7 +40,12 @@ export function createChapters(host, scroller, hooks) {
     return room > 0 ? Math.max(0, Math.min(1, scroller.scrollTop / room)) : 0;
   };
 
-  root.addEventListener("click", (event) => {
+  const follow = (event) => {
+    if (
+      event.type === "keydown" &&
+      (event.key !== "Enter" || !event.target?.closest?.("a.external"))
+    )
+      return;
     const link = /** @type {Element | null} */ (
       event.target instanceof Element ? event.target : null
     )?.closest("a");
@@ -52,7 +57,9 @@ export function createChapters(host, scroller, hooks) {
       if (target) hooks.go(target);
     } else if (link.classList.contains("external"))
       hooks.external(link.getAttribute("title") ?? "");
-  });
+  };
+  root.addEventListener("click", follow);
+  root.addEventListener("keydown", follow);
 
   scroller.addEventListener(
     "scroll",
@@ -99,13 +106,22 @@ export function createChapters(host, scroller, hooks) {
         place(to);
         return root;
       }
-      const chapter = await next.chapter(target).catch((error) => ({
-        html: `<div class="body"><p>This chapter could not be shown: ${String(error?.message ?? error).replace(/[<&]/g, "")}</p></div>`,
-        css: [],
-        fonts: [],
-      }));
+      const work = hooks.work ?? ((_detail, run) => run());
+      const chapter = await work(`Chapter ${target + 1}`, (signal) =>
+        next.chapter(target, signal),
+      ).catch((error) =>
+        error?.name === "AbortError"
+          ? null
+          : {
+              html: `<div class="body"><p>This chapter could not be shown: ${String(error?.message ?? error).replace(/[<&]/g, "")}</p></div>`,
+              css: [],
+              fonts: [],
+            },
+      );
+      if (!chapter) return root;
       if (mine !== generation) return root;
       await loadFonts(host.ownerDocument, chapter.fonts);
+      if (mine !== generation) return root;
       unit = target;
       showing = next;
       // The book's own body rules apply to its .body; the reading column around it is the reader's.
