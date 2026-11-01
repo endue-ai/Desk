@@ -5,6 +5,7 @@ import { dirty, modeOf, revert, saveAsNewMode, saveIntoMode, switchMode } from "
 import type { ShellCtx } from "./context";
 import { h, listen, render } from "./dom";
 import { icon } from "./icons";
+import { containModal } from "./modal";
 
 function chip(ctx: ShellCtx, mode: Mode, current: boolean, changed: boolean): HTMLElement {
   const copied = mode.manifest.copiedFrom;
@@ -160,6 +161,7 @@ export function mountModes(root: HTMLElement, ctx: ShellCtx): () => void {
   others.style.maxWidth = "0px";
   others.style.opacity = "0";
   draw();
+  let releaseDialog: (() => void) | undefined;
   const offs = [
     ctx.store.watch((s) => [s.modes, s.modeId, s.session, s.popover === "mode-menu", s.lang], draw),
     ctx.store.watch(
@@ -168,7 +170,13 @@ export function mountModes(root: HTMLElement, ctx: ShellCtx): () => void {
     ),
     ctx.store.watch(
       (s) => s.dialog,
-      (d) => render(dialogSlot, () => (d === "new-mode" ? [dialog(ctx)] : [])),
+      (d) => {
+        releaseDialog?.();
+        releaseDialog = undefined;
+        render(dialogSlot, () => (d === "new-mode" ? [dialog(ctx)] : []));
+        const panel = dialogSlot.querySelector<HTMLElement>(".dialog");
+        if (panel) releaseDialog = containModal(panel, () => ctx.store.set({ dialog: null }), add);
+      },
     ),
     listen(row, "pointerenter", () => ctx.store.set({ modesOpen: true })),
     listen(el, "pointerleave", () => {
@@ -182,6 +190,7 @@ export function mountModes(root: HTMLElement, ctx: ShellCtx): () => void {
   ];
   return () => {
     for (const off of offs) off();
+    releaseDialog?.();
     el.remove();
     dialogSlot.remove();
   };

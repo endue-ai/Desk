@@ -33,3 +33,10 @@ test("a dragged rect stays inside and keeps its minimum size", () => {
     h: MIN.h,
   });
 });
+
+test("a window resized on a small screen still fits when the screen grows", () => {
+  const saved = fromScreen({ x: 104, y: 72, w: 800, h: 608 }, 1024, 768);
+  const shown = toScreen(saved, 1440, 900);
+  expect(shown.x + shown.w).toBeLessThanOrEqual(1440 - SAFE.right);
+  expect(shown.y + shown.h).toBeLessThanOrEqual(900 - SAFE.bottom);
+});
