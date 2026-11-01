@@ -1,12 +1,13 @@
 // tar: ustar, GNU long names and links, PAX extended headers; a plain file read header by header
 // (the data skipped by offset), or a tar inside a compressed stream read as it decodes.
+
+import { inputSeekable } from "@endue-ai/formats/codecs/input.js";
 import { field, text, unixDate } from "../bytes.js";
-import { inputSeekable } from "../codecs/input.js";
 import { cleanPath, withFolders } from "./archive.js";
 import { streamedArchive } from "./streamed.js";
 
 /** @typedef {import("../source.js").Source} Source */
-/** @typedef {import("../codecs/input.js").Input} Input */
+/** @typedef {import("@endue-ai/formats/codecs/input.js").Input} Input */
 /** @typedef {import("./streamed.js").Placed} Placed */
 
 /** An octal field, or GNU's base-256 when its first byte has the high bit. @param {Uint8Array} b @param {number} o @param {number} n */

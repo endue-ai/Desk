@@ -33,11 +33,13 @@ function modules(dir = lib): string[] {
   });
 }
 
-/** The specifiers a module imports: static, dynamic and in JSDoc types. */
-const specifiers = (source: string) =>
-  [
-    ...source.matchAll(/\bfrom\s+"([^"]+)"|\bimport\s*\(\s*"([^"]+)"\s*\)|^import\s+"([^"]+)"/gm),
-  ].map((m) => m[1] ?? m[2] ?? m[3] ?? "");
+/** The specifiers a module imports and re-exports, and those its JSDoc types import. */
+const specifiers = (source: string) => [
+  ...[...source.matchAll(/^(?:import|export)\s+(?:[\w*\s{},$]+\s+from\s+)?"([^"]+)"/gm)].map(
+    (m) => m[1] ?? "",
+  ),
+  ...[...source.matchAll(/\bimport\(\s*"([^"]+)"\s*\)/g)].map((m) => m[1] ?? ""),
+];
 
 /** The folder names other tasks build on (#181): one per format family. */
 const FAMILIES = ["codecs", "sevenzip", "rar", "djvu", "disk", "apple", "packs"];

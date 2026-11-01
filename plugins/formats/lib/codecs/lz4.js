@@ -1,6 +1,6 @@
 // LZ4 frames (and the legacy format): blocks of literal runs and matches into the last 64 KiB,
 // linked or independent, with XXH32 header, block and content checksums.
-import { u32 } from "../bytes.js";
+import { u32 } from "./bytes.js";
 import { damaged, endsEarly } from "./input.js";
 import { Xxh32, xxh32 } from "./xxh32.js";
 

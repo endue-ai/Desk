@@ -1,5 +1,7 @@
 // Which format a file is, from its first bytes (a few known places further in: an ISO's
 // descriptors, a DMG's or VHD's trailer), then its extension; and the reader that opens it.
+
+import { openSevenZip } from "@endue-ai/formats/sevenzip/index.js";
 import { at, u16 } from "../bytes.js";
 import { openArj } from "./arj.js";
 import { openCab } from "./cab.js";
@@ -13,7 +15,6 @@ import { openLha } from "./lha.js";
 import { openMsi } from "./msi.js";
 import { openRar } from "./rar.js";
 import { openRpm } from "./rpm.js";
-import { openSevenZip } from "./sevenzip/index.js";
 import { openSquashfs } from "./squashfs.js";
 import { openStream } from "./stream.js";
 import { isTar, openTar } from "./tar.js";

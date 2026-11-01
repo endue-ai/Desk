@@ -1,5 +1,5 @@
 // Raw LZMA (as 7z and ZIP's method 14 store it), and the .lzma ("LZMA alone") file around it.
-import { u32 } from "../../bytes.js";
+import { u32 } from "../bytes.js";
 import { damaged, endsEarly } from "../input.js";
 import { END, LzmaDecoder, properties, Window } from "./decoder.js";
 import { RangeDecoder } from "./range.js";

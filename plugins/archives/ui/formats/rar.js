@@ -1,7 +1,8 @@
 // RAR 4 and RAR 5: the headers listed (names, sizes, dates, methods); the data of stored entries
 // read. Decompression is not available: RAR's algorithm is published only as the unrar source.
+
+import { crc32 } from "@endue-ai/formats/codecs/checksums.js";
 import { at, dosDate, text, u16, u32, unixDate, utf8 } from "../bytes.js";
-import { crc32 } from "../codecs/checksums.js";
 import { cleanPath, ENCRYPTED, withFolders } from "./archive.js";
 
 /** @typedef {import("../source.js").Source} Source */

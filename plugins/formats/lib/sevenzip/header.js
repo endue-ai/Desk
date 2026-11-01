@@ -1,6 +1,6 @@
 // The 7z header's properties: pack info, folders (coder chains), substreams and files info, as
 // 7zFormat.txt lays them out. Pure parsing of the header's bytes; no decoding here.
-import { fileTime, u32, utf16le } from "../../bytes.js";
+import { fileTime, u32, utf16le } from "./bytes.js";
 
 const END = 0x00;
 const HEADER = 0x01;

@@ -1,6 +1,6 @@
 // The .xz container: streams of blocks, each a filter chain ending in LZMA2 and followed by its
 // check (CRC32 or CRC64; SHA-256 is passed over), an index of the blocks, and a footer.
-import { at, u32 } from "../../bytes.js";
+import { at, u32 } from "../bytes.js";
 import { crc32 } from "../checksums.js";
 import { damaged, endsEarly } from "../input.js";
 import { bcjX86, deltaDecode } from "./bcj.js";

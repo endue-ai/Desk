@@ -8,7 +8,7 @@ import { unlzma, unxz } from "./lzma/index.js";
 import { uncompress } from "./lzw.js";
 import { unzstd } from "./zstd/index.js";
 
-/** @typedef {import("../source.js").Source} Source */
+/** @typedef {import("./input.js").Source} Source */
 /** @typedef {(input: Input, options?: any) => AsyncGenerator<Uint8Array>} Decoder */
 
 /** @type {Record<string, Decoder>} */
