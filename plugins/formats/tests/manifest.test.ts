@@ -1,5 +1,5 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
-import { dirname, join, relative, resolve } from "node:path";
+import { dirname, join, relative, resolve, sep } from "node:path";
 import Ajv2020 from "ajv/dist/2020.js";
 import { describe, expect, it } from "vitest";
 import type { PluginManifest } from "../../../packages/bridge/src/index";
@@ -24,12 +24,12 @@ function manifestValidator() {
   return validate;
 }
 
-/** Every module under lib/, as a path relative to it. */
+/** Every module under lib/, as a path relative to it with "/" between folders on every OS. */
 function modules(dir = lib): string[] {
   return readdirSync(dir).flatMap((name) => {
     const path = join(dir, name);
     if (statSync(path).isDirectory()) return modules(path);
-    return name.endsWith(".js") ? [relative(lib, path)] : [];
+    return name.endsWith(".js") ? [relative(lib, path).split(sep).join("/")] : [];
   });
 }
 
