@@ -173,3 +173,50 @@ it("chapter links belong to the committed chapter while another book is loading"
     view.clear();
   }
 });
+
+it("pending chapter controls use the new book's requested position", async () => {
+  loadPage(document);
+  const bookmark = vi.fn();
+  const note = vi.fn();
+  const view = createView(document, {
+    moved() {},
+    zoomed() {},
+    bookmark,
+    note,
+    forget() {},
+    unlock() {},
+  });
+  const model = (book: typeof chapters, unit: number) => ({
+    buffer: book.title,
+    path: book.title,
+    name: book.title,
+    size: 1,
+    book,
+    at: { unit, offset: 0.25 },
+    zoom: 1,
+    bookmarks: [],
+    notes: [],
+  });
+  const old = {
+    ...chapters,
+    title: "Old",
+    chapters: [{ title: "One" }, { title: "Two" }, { title: "Three" }],
+  };
+  const read = vi.fn((_unit: number) => new Promise<typeof chapter>(() => {}));
+  try {
+    view.show(model(old, 2));
+    for (let i = 0; i < 12; i++) await Promise.resolve();
+    view.show(model({ ...chapters, title: "New", chapter: read }, 0));
+    document.getElementById("bookmark")?.click();
+    expect(bookmark).toHaveBeenCalledExactlyOnceWith({ unit: 0, offset: 0.25 }, "One (25%)");
+    document.getElementById("add-note")?.click();
+    const text = document.getElementById("note-text") as HTMLTextAreaElement;
+    text.value = "Remember";
+    text.closest("form")?.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+    expect(note).toHaveBeenCalledExactlyOnceWith({ unit: 0, offset: 0.25 }, "Remember");
+    document.getElementById("next")?.click();
+    expect(read.mock.calls.map(([unit]) => unit)).toEqual([0, 1]);
+  } finally {
+    view.show(null);
+  }
+});
