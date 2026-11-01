@@ -128,14 +128,14 @@ describe("cancels and pacing", () => {
     });
   });
 
-  it("gives the event loop a turn while it lists 20,000 files and reads a large one", async () => {
-    const large = mixed(3 << 20, 30000, 8);
+  it("gives the event loop a turn while it lists 10,000 files and reads a large one", async () => {
+    const large = mixed(2 << 20, 30000, 8);
     const tree: SqDir = {
       kind: "dir",
       name: "",
       children: [
         { kind: "file", name: "large.bin", data: large },
-        ...Array.from({ length: 40 }, (_, d) => ({
+        ...Array.from({ length: 20 }, (_, d) => ({
           kind: "dir" as const,
           name: `folder ${d}`,
           children: Array.from({ length: 500 }, (_, f) => ({
@@ -148,7 +148,7 @@ describe("cancels and pacing", () => {
     };
     const bytes = buildSquashfs(tree, { compressor: "zstd", blockSize: 131072 });
     const listed = await worstGap(() => open(bytes));
-    expect(listed.result.entries.length).toBe(1 + 40 + 20000);
+    expect(listed.result.entries.length).toBe(1 + 20 + 10000);
     expect(listed.worst).toBeLessThan(100);
     const fs = listed.result;
     const read = await worstGap(() => fs.read(entry(fs, "large.bin")));

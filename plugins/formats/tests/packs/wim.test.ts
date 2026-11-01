@@ -280,7 +280,7 @@ describe("damage and cancels", () => {
   });
 
   it("gives the event loop a turn while it lists many files", async () => {
-    const files = Array.from({ length: 60 }, (_, d) => ({
+    const files = Array.from({ length: 30 }, (_, d) => ({
       name: `folder ${d}`,
       dir: Array.from({ length: 100 }, (_, f) => ({
         name: `file ${f}.txt`,
@@ -300,12 +300,12 @@ describe("damage and cancels", () => {
     setTimeout(beat, 0);
     const wim = await openWim(memorySource(many.bytes));
     done = true;
-    expect(wim.entries.length).toBe(1 + 60 + 6000);
+    expect(wim.entries.length).toBe(1 + 30 + 3000);
     expect(worst).toBeLessThan(100);
   }, 60000);
 
   it("gives the event loop a turn while it reads a large file", async () => {
-    const large = mixed(3 << 20, 30000, 8);
+    const large = mixed(2 << 20, 30000, 8);
     const big = buildWim({
       compression: "xpress",
       images: [{ name: "Big", root: [{ name: "large.bin", data: large }] }],

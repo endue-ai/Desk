@@ -52,7 +52,8 @@ export class Grow {
 /** Metadata blocks of 8 KiB, compressed when that is smaller; positions as (block, offset). */
 class MetaWriter {
   blocks = new Grow();
-  pending: number[] = [];
+  pending = new Uint8Array(8192);
+  fill = 0;
   pack: (b: Uint8Array) => Uint8Array;
   keep: boolean;
   constructor(pack: (b: Uint8Array) => Uint8Array, keep: boolean) {
@@ -60,18 +61,21 @@ class MetaWriter {
     this.keep = keep;
   }
   get ref() {
-    return this.blocks.length * 65536 + this.pending.length;
+    return this.blocks.length * 65536 + this.fill;
   }
   write(bytes: ArrayLike<number>) {
-    for (let i = 0; i < bytes.length; i++) {
-      this.pending.push(bytes[i] ?? 0);
-      if (this.pending.length === 8192) this.flush();
+    for (let i = 0; i < bytes.length; ) {
+      const n = Math.min(bytes.length - i, 8192 - this.fill);
+      for (let k = 0; k < n; k++) this.pending[this.fill + k] = bytes[i + k] ?? 0;
+      this.fill += n;
+      i += n;
+      if (this.fill === 8192) this.flush();
     }
   }
   flush() {
-    if (!this.pending.length) return;
-    const raw = Uint8Array.from(this.pending);
-    this.pending = [];
+    if (!this.fill) return;
+    const raw = this.pending.slice(0, this.fill);
+    this.fill = 0;
     const packed = this.pack(raw);
     const small = this.keep || packed.length < raw.length;
     const body = small ? packed : raw;
@@ -312,7 +316,7 @@ export function buildSquashfs(root: SqDir, o: SqOptions): Uint8Array {
     const starts: number[] = [];
     const base = out.length;
     for (const entry of entries) {
-      if (meta.pending.length === 0) starts.push(base + meta.blocks.length);
+      if (meta.fill === 0) starts.push(base + meta.blocks.length);
       meta.write(entry);
     }
     out.push(meta.bytes());
