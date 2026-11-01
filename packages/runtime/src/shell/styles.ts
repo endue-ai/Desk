@@ -1,4 +1,5 @@
 // The shell's stylesheets in cascade order: the scale first, then the parts.
+import "@endue-ai/ui/tokens.css";
 import "./scale.css";
 import "./shell.css";
 import "./chrome.css";

@@ -23,5 +23,6 @@ defineUiPlugin({
     });
     app = createExplorer(ctx, view);
     await app.start();
+    window.addEventListener("pagehide", () => app?.dispose(), { once: true });
   },
 });

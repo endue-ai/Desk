@@ -11,7 +11,7 @@ const css = `
   box-sizing: border-box;
   padding: 16px;
   font: inherit;
-  font-size: 13px;
+  font-size: var(--desk-text-sm);
 }
 :host([open]) {
   display: flex;
@@ -39,7 +39,7 @@ const css = `
   box-shadow: 0 16px 48px var(--desk-background);
 }
 :host(:focus-visible) .panel {
-  outline: 2px solid var(--desk-accent);
+  outline: 2px solid var(--desk-ring);
   outline-offset: 2px;
 }
 :host([hidden]) {

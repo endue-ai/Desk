@@ -7,12 +7,12 @@ const css = `
   display: inline-block;
   color: var(--desk-text-muted);
   font: inherit;
-  font-size: 13px;
+  font-size: var(--desk-text-sm);
 }
 label {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--desk-space-1);
 }
 .text:empty {
   display: none;
@@ -20,10 +20,10 @@ label {
 input {
   box-sizing: border-box;
   width: 100%;
-  min-height: 32px;
-  padding: 0 10px;
-  border: 1px solid var(--desk-border);
-  border-radius: 8px;
+  min-height: var(--desk-control-sm);
+  padding: 0 var(--desk-space-3);
+  border: 1px solid var(--desk-input);
+  border-radius: var(--desk-radius-md);
   background: var(--desk-background);
   color: var(--desk-text);
   font: inherit;
@@ -32,7 +32,7 @@ input::placeholder {
   color: var(--desk-text-muted);
 }
 input:focus-visible {
-  outline: 2px solid var(--desk-accent);
+  outline: 2px solid var(--desk-ring);
   outline-offset: 1px;
 }
 :host([disabled]) {

@@ -6,7 +6,7 @@ const css = `
   display: block;
   color: var(--desk-text);
   font: inherit;
-  font-size: 13px;
+  font-size: var(--desk-text-sm);
   line-height: 1.5;
 }
 :host([hidden]) {
@@ -35,15 +35,15 @@ blockquote {
 }
 code {
   padding: 0 4px;
-  border-radius: 4px;
+  border-radius: var(--desk-radius-sm);
   background: var(--desk-border);
   color: var(--desk-text);
   font-family: ui-monospace, monospace;
-  font-size: 12px;
+  font-size: var(--desk-text-xs);
 }
 pre {
   padding: 8px 10px;
-  border-radius: 6px;
+  border-radius: var(--desk-radius-md);
   background: var(--desk-border);
   overflow: auto;
 }
@@ -56,12 +56,12 @@ blockquote {
   color: var(--desk-text-muted);
 }
 a {
-  color: var(--desk-accent);
+  color: var(--desk-primary-text);
   text-decoration: underline;
   cursor: pointer;
 }
 a:focus-visible {
-  outline: 2px solid var(--desk-accent);
+  outline: 2px solid var(--desk-ring);
   outline-offset: 2px;
 }
 .alt {
@@ -69,7 +69,7 @@ a:focus-visible {
   font-style: italic;
 }
 :host([density="compact"]) {
-  font-size: 12px;
+  font-size: var(--desk-text-xs);
   line-height: 1.4;
 }
 `;

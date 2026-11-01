@@ -55,6 +55,7 @@ export function installFiles(
   ctx: DeskContext,
   buffers: BuffersPolicy & BufferEvents,
   notify: (input: NoticeInput) => void,
+  pickFile?: () => Promise<string | null>,
 ): FilesPolicy {
   const { hub, bridge } = ctx;
   const { commands, settings } = hub;
@@ -176,11 +177,13 @@ export function installFiles(
       const { path, plugin } = (args ?? {}) as { path?: string; plugin?: string };
       const chosen =
         path ??
-        (await pick(
-          "Open a file",
-          recent.map((r) => ({ id: r.path, label: baseName(r.path), detail: r.path })),
-          true,
-        ));
+        (pickFile
+          ? await pickFile()
+          : await pick(
+              "Open a file",
+              recent.map((r) => ({ id: r.path, label: baseName(r.path), detail: r.path })),
+              true,
+            ));
       return chosen ? open(chosen, plugin) : null;
     },
     ["find-file"],

@@ -193,8 +193,8 @@ export function createGrid(doc, { root, scroller, sizer, layer }, { changed }) {
   const layout = () => {
     const s = sheet;
     if (!s) return;
-    rows = axis(s.rows, s.height, s.hiddenRow, zoom);
-    cols = axis(s.cols, s.width, s.hiddenCol, zoom);
+    rows = zoom === 1 && s.axes ? s.axes.rows : axis(s.rows, s.height, s.hiddenRow, zoom);
+    cols = zoom === 1 && s.axes ? s.axes.cols : axis(s.cols, s.width, s.hiddenCol, zoom);
     head = Math.round(HEAD * zoom);
     headW = Math.round(Math.max(40, String(s.rows).length * 8 + 16) * zoom);
     sizer.style.width = `${headW + cols.total}px`;
