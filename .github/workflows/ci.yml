@@ -40,7 +40,7 @@ jobs:
           else
             files="apps/desk/src-tauri/"
           fi
-          if grep -qE '^(apps/desk/src-tauri/|crates/desk-sys/)' <<<"$files"; then app=true; else app=false; fi
+          if grep -qE '^(apps/desk/src-tauri/|crates/desk-sys/|vendor/tauri-plugin-single-instance/)' <<<"$files"; then app=true; else app=false; fi
           echo "app=$app" | tee -a "$GITHUB_OUTPUT"
 
   check-linux:

@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["crates/*", "apps/desk/src-tauri"]
+members = ["crates/*", "apps/desk/src-tauri", "vendor/tauri-plugin-single-instance"]
 # The Tauri app needs the system webview SDKs to build, so day-to-day commands skip it.
 # `just check-app` and the app-build CI job cover it.
 default-members = ["crates/*"]

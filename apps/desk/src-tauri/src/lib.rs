@@ -3,6 +3,7 @@
 mod commands;
 mod events;
 mod file_urls;
+mod open_files;
 mod protocol;
 mod socket;
 
@@ -38,6 +39,11 @@ struct Watching(#[allow(dead_code)] Mutex<(Option<PluginWatcher>, Option<ViewWat
 
 pub fn run() {
     tauri::Builder::default()
+        .manage(open_files::OpenFiles::default())
+        .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
+            open_files::deliver(app, open_files::argument_paths(args));
+            open_files::focus(app);
+        }))
         .plugin(tauri_plugin_dialog::init())
         .register_asynchronous_uri_scheme_protocol(protocol::SCHEME, |ctx, request, responder| {
             // A file URL reads from disk: answer from the blocking pool, never the main thread.
@@ -47,6 +53,10 @@ pub fn run() {
             });
         })
         .setup(|app| {
+            app.state::<open_files::OpenFiles>()
+                .push(open_files::argument_paths(
+                    std::env::args_os().map(|arg| arg.into_string().unwrap_or_default()),
+                ));
             let data = app.path().app_data_dir()?;
             let home = home_dir();
             let init = std::env::var_os("DESK_INIT")
@@ -162,10 +172,17 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             commands::bridge::bridge_call,
-            commands::ready::desk_ready
+            commands::ready::desk_ready,
+            commands::files::take_open_files
         ])
-        .run(tauri::generate_context!())
-        .expect("endue Desk failed to start");
+        .build(tauri::generate_context!())
+        .expect("endue Desk failed to start")
+        .run(|_app, _event| {
+            #[cfg(target_os = "macos")]
+            if let tauri::RunEvent::Opened { urls } = _event {
+                open_files::deliver(_app, urls.iter().filter_map(open_files::file_url));
+            }
+        });
 }
 
 fn sync_init(core: &Core) {
