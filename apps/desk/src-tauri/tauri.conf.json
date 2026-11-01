@@ -18,7 +18,7 @@
         "title": "endue Desk",
         "width": 1280,
         "height": 800,
-        "minWidth": 800,
+        "minWidth": 1024,
         "minHeight": 500,
         "backgroundColor": "#141416"
       }

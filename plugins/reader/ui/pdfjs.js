@@ -1,6 +1,6 @@
-// pdf.js for the plugin frame, loaded on the first PDF: the worker module first, which sets
-// globalThis.pdfjsWorker, so pdf.js runs its worker in this thread (an opaque-origin frame cannot
-// start a Worker), then the main module. Both are the vendored copies in ui/vendor (ADR 0042).
+// Load the main pdf.js module on demand. Each PDF owns a real SDK worker; the vendored in-frame
+// implementation is imported only when that worker cannot start.
+import { createPdfWorker } from "./pdf-worker.js";
 
 /** @type {Promise<object> | undefined} */
 let loading;
@@ -42,10 +42,18 @@ function framesEvenWhenHidden(/** @type {Window} */ win) {
   };
 }
 
-export function loadPdfjs() {
-  loading ??= import("./vendor/pdf.worker.min.mjs").then(() => {
+export async function loadPdfjs(startWorker) {
+  loading ??= import("./vendor/pdf.min.mjs").then((lib) => {
     framesEvenWhenHidden(window);
-    return import("./vendor/pdf.min.mjs");
+    return lib;
   });
-  return loading;
+  const lib = await loading;
+  return {
+    ...lib,
+    createWorker: (signal) =>
+      createPdfWorker(lib, startWorker, {
+        signal,
+        fallback: () => import("./vendor/pdf.worker.min.mjs"),
+      }),
+  };
 }

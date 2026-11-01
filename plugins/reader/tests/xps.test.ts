@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { deobfuscate } from "../ui/formats/odttf.js";
 import { readXps } from "../ui/formats/xps.js";
 import { readZip } from "../ui/formats/zip.js";
@@ -69,4 +69,39 @@ describe("XPS and OXPS", () => {
     );
     expect(await book.text(1)).toContain("The second page of the XPS");
   });
+});
+
+it("keeps scoped XPS hyperlinks clickable and resolves internal page targets", async () => {
+  const { zip } = await import("./build/archive");
+  const { openBook } = await import("../ui/open.js");
+  const bytes = zip([
+    [
+      "book.fdseq",
+      '<FixedDocumentSequence><DocumentReference Source="book.fdoc"/></FixedDocumentSequence>',
+    ],
+    [
+      "book.fdoc",
+      '<FixedDocument><PageContent Source="one.fpage" Width="100" Height="100"/><PageContent Source="two.fpage" Width="100" Height="100"/></FixedDocument>',
+    ],
+    [
+      "one.fpage",
+      '<FixedPage Width="100" Height="100"><Glyphs UnicodeString="Web" FixedPage.NavigateUri="https://example.com/"/><Glyphs UnicodeString="Next" FixedPage.NavigateUri="two.fpage"/><Glyphs UnicodeString="Bad" FixedPage.NavigateUri="javascript:alert(1)"/></FixedPage>',
+    ],
+    ["two.fpage", '<FixedPage Width="100" Height="100"/>'],
+  ]);
+  const book = await openBook(bytes, { name: "links.xps", path: "links.xps" });
+  expect(book.kind).toBe("pages");
+  if (book.kind !== "pages") return;
+  const host = document.createElement("div");
+  const go = vi.fn();
+  const external = vi.fn();
+  await book.paint(0, host, 1, { go, external });
+  const links = host.querySelectorAll("[data-reader-link]");
+  expect(links).toHaveLength(2);
+  links[0]?.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+  expect(external).toHaveBeenCalledWith("https://example.com/");
+  links[1]?.dispatchEvent(
+    new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true }),
+  );
+  expect(go).toHaveBeenCalledWith(1);
 });
