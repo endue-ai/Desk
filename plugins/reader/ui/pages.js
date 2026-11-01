@@ -35,6 +35,10 @@ export function createPages(doc, host, scroller, hooks) {
   let generation = 0;
   /** @type {ReturnType<typeof setTimeout> | undefined} */
   let scrolled;
+  const stopScroll = () => {
+    if (scrolled !== undefined) clearTimeout(scrolled);
+    scrolled = undefined;
+  };
 
   const heightOf = (/** @type {number} */ i) => (book?.pages[i]?.height ?? 0) * zoom;
   const layout = () => {
@@ -187,6 +191,7 @@ export function createPages(doc, host, scroller, hooks) {
   return {
     /** @param {PagesBook} next @param {{ at: At, zoom: number | null }} start */
     load(next, start) {
+      stopScroll();
       generation++;
       book = next;
       drawn.clear();
@@ -204,6 +209,7 @@ export function createPages(doc, host, scroller, hooks) {
       return zoom;
     },
     clear() {
+      stopScroll();
       generation++;
       book = null;
       boxes = [];

@@ -33,6 +33,7 @@ export function createView(doc, actions) {
   /** @type {ShownModel | null} */
   let model = null;
   let zoom = 1;
+  let generation = 0;
 
   const book = () => model?.book ?? null;
   const reflowed = () => book()?.kind === "chapters";
@@ -88,6 +89,7 @@ export function createView(doc, actions) {
 
   /** Go to a page, or a chapter and an anchor or offset in it. */
   async function goTo(/** @type {Target & { offset?: number }} */ target) {
+    const currentGeneration = ++generation;
     const b = book();
     if (!b || count() === 0) return null;
     const unit = Math.max(0, Math.min(count() - 1, target.unit));
@@ -95,6 +97,7 @@ export function createView(doc, actions) {
     say(`${unitWord()} ${unit + 1} of ${count()}`);
     if (b.kind === "chapters") {
       const root = await chapters.show(b, unit, target);
+      if (generation !== currentGeneration) return null;
       actions.moved(chapters.current());
       return root;
     }
@@ -239,6 +242,7 @@ export function createView(doc, actions) {
     progress: (value) => progress.set(value),
     /** @param {ShownModel | null} next */
     show(next) {
+      generation++;
       progress.clear();
       model = next;
       find.reset();

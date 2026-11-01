@@ -2,22 +2,17 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { expect, it, vi } from "vitest";
-import {
-  BridgeClient,
-  browserStub,
-  type ShellOpenParams,
-  stubCommands,
-} from "../../../packages/bridge/src/index";
+import { BridgeClient, browserStub, stubCommands } from "../../../packages/bridge/src/index";
+import type { PluginBridge } from "../../../packages/plugin-sdk/src/index";
 
 it("document links reach the bridge's actual shell adapter and share one grant", async () => {
   const { createLinks } = await import("../ui/links.js");
   const prompt = vi.fn(() => true);
   const core = stubCommands(() => {}, { prompt });
   const bridge = new BridgeClient(browserStub(core.handlers));
-  const open = createLinks({
-    call: (method: "shell.open", params: ShellOpenParams) =>
-      bridge.call(method, params, { caller: "endue.reader" }),
-  });
+  const call: PluginBridge["call"] = (method, params) =>
+    bridge.call(method, params, { caller: "endue.reader" });
+  const open = createLinks({ call });
   await open("https://example.com/");
   await open("mailto:reader@example.com");
   expect(core.state().opened).toEqual([
@@ -33,7 +28,7 @@ it("external document links use one scoped shell.open and only the three allowed
     "external link handler is implemented",
   ).toBe(true);
   const { createLinks } = await import("../ui/links.js");
-  const call = vi.fn(async (_method, _params) => ({}));
+  const call = vi.fn().mockResolvedValue({ opened: true });
   const open = createLinks({ call });
   await open("https://example.com/");
   await open("mailto:reader@example.com");
@@ -73,7 +68,7 @@ it("an EPUB web link uses shell.open while its internal link keeps jumping", asy
   const { epub } = await import("./build/books");
   const { createLinks } = await import("../ui/links.js");
   const book = await readEpub(await readZip(epub(3)));
-  const call = vi.fn(async (_method, _params) => ({}));
+  const call = vi.fn().mockResolvedValue({ opened: true });
   const go = vi.fn();
   const host = document.createElement("div");
   const scroller = document.createElement("div");
@@ -110,7 +105,7 @@ it("a PDF URI annotation routes through the same scoped external link action", a
   const { createLinks } = await import("../ui/links.js");
   const pdfjs = await loadPdfjs();
   const book = await openPdf(pdf(), { pdfjs });
-  const call = vi.fn(async (_method, _params) => ({}));
+  const call = vi.fn().mockResolvedValue({ opened: true });
   const context = vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(null);
   const host = document.createElement("div");
   try {

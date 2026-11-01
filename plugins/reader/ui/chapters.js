@@ -34,6 +34,10 @@ export function createChapters(host, scroller, hooks) {
   let generation = 0;
   /** @type {ReturnType<typeof setTimeout> | undefined} */
   let scrolled;
+  const stopScroll = () => {
+    if (scrolled !== undefined) clearTimeout(scrolled);
+    scrolled = undefined;
+  };
 
   const offset = () => {
     const room = scroller.scrollHeight - scroller.clientHeight;
@@ -99,6 +103,7 @@ export function createChapters(host, scroller, hooks) {
      * @param {{ anchor?: string, offset?: number }} [to]
      */
     async show(next, i, to = {}) {
+      stopScroll();
       const mine = ++generation;
       book = next;
       const target = Math.max(0, Math.min(next.chapters.length - 1, i));
@@ -134,6 +139,7 @@ export function createChapters(host, scroller, hooks) {
       return root;
     },
     clear() {
+      stopScroll();
       generation++;
       book = null;
       showing = null;

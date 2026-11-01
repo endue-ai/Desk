@@ -80,18 +80,21 @@ it("the desk showing the just-visited buffer preserves its pending PDF decode", 
 
 it("switching away during PDF decoding stops it and returning offers a working Reload", async () => {
   const { host, settle, close, createWorker } = await pendingPdf();
-  await host.command("desk.files.visit", BOOK);
-  await settle();
-  expect(close).toHaveBeenCalledOnce();
-  await host.command("desk.buffers.show", PDF);
-  await settle();
-  const reload = document.querySelector<HTMLButtonElement>(".page[data-cancelled] button");
-  expect(reload?.textContent).toBe("Reload document");
-  reload?.click();
-  await settle();
-  expect(createWorker).toHaveBeenCalledTimes(2);
-  expect(document.querySelector("canvas")).not.toBeNull();
-  expect(document.querySelector(".page[data-cancelled]")).toBeNull();
-  await host.command("desk.buffers.closed", PDF);
-  await host.command("desk.buffers.closed", BOOK);
+  try {
+    await host.command("desk.files.visit", BOOK);
+    await settle();
+    expect(close).toHaveBeenCalledOnce();
+    await host.command("desk.buffers.show", PDF);
+    await settle();
+    const reload = document.querySelector<HTMLButtonElement>(".page[data-cancelled] button");
+    expect(reload?.textContent).toBe("Reload document");
+    reload?.click();
+    await settle();
+    expect(createWorker).toHaveBeenCalledTimes(2);
+    expect(document.querySelector("canvas")).not.toBeNull();
+    expect(document.querySelector(".page[data-cancelled]")).toBeNull();
+  } finally {
+    await host.command("desk.buffers.closed", PDF);
+    await host.command("desk.buffers.closed", BOOK);
+  }
 });
