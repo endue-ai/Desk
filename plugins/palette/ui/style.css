@@ -59,7 +59,6 @@ li {
   align-items: baseline;
   padding: 6px 10px;
   border-radius: 8px;
-  cursor: default;
 }
 
 li[aria-selected="true"] {
@@ -136,4 +135,8 @@ kbd {
     opacity: 0;
     transform: translate(-50%, -6px);
   }
+}
+
+li[role="option"] {
+  cursor: pointer;
 }

@@ -11,6 +11,7 @@ const PATHS: Record<string, string> = {
   mic: "M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3zM19 10v2a7 7 0 0 1-14 0v-2M12 19v3",
   brain: "M9 3h6v4h4v6h-4v4H9v-4H5V7h4zM12 7v6M9 10h6",
   drawer: "M3 13h5l2 3h4l2-3h5M5 5h14l2 8v6H3v-6z",
+  floating: "M3 3h14v4M3 3v14h4M9 9h12v12H9z",
   pin: "M12 17v5M8 3h8l-1 6 3 4H6l3-4z",
   close: "M6 6l12 12M18 6L6 18",
   raise: "M12 19V5M6 11l6-6 6 6",

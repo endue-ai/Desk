@@ -3,7 +3,8 @@
  * closes, or takes another view. Every change is a session edit of the current desktop's layout.
  */
 import type { PaneSplit, SurfacePlacement } from "../modes/types";
-import { FREE } from "../surface/geometry";
+import { appSize, isFloating, screenRect, storedRect } from "../surface/coordinates";
+import { clampRect, FREE, freeOnScreen } from "../surface/geometry";
 import { halves } from "../surface/snap";
 import {
   close,
@@ -26,6 +27,7 @@ import {
   openSurface,
   windowsOf,
 } from "./actions";
+import { panOf } from "./Pan";
 
 const SIZE = { w: 480, h: 320 };
 
@@ -61,19 +63,42 @@ function focusedPlacement(ctx: Ctx): SurfacePlacement | undefined {
   return windowsOf(s).find((p) => p.id === s.focused);
 }
 
+/** Switch coordinate systems while preserving the visible rectangle. */
+export function toggleFloating(ctx: Ctx, id: string, size = appSize()): void {
+  const pan = panOf(ctx.store.get());
+  update(ctx, id, (p) => {
+    const floating = !isFloating(p);
+    const screen = screenRect(p, pan, size.vw, size.vh);
+    const rect = floating ? clampRect(screen, size.vw, size.vh) : screen;
+    return {
+      ...p,
+      ...storedRect(rect, floating, pan, size.vw, size.vh),
+      floating,
+      restore: undefined,
+    };
+  });
+}
+
+function freeArea(ctx: Ctx, p: SurfacePlacement) {
+  if (isFloating(p)) return FREE;
+  const { vw, vh } = appSize();
+  return storedRect(freeOnScreen(vw, vh), false, panOf(ctx.store.get()), vw, vh);
+}
+
 /** Fill the free area, keeping the place to come back to; a second call comes back. */
 export function toggleMaximize(ctx: Ctx, id: string): void {
   update(ctx, id, (p) => {
     const { restore, ...rest } = p;
     if (restore) return { ...rest, ...restore };
-    return { ...rest, restore: { x: p.x, y: p.y, w: p.w, h: p.h }, ...FREE };
+    return { ...rest, restore: { x: p.x, y: p.y, w: p.w, h: p.h }, ...freeArea(ctx, p) };
   });
 }
 
 /** Snap a window to a half of the free area, or fill it; a snapped window has nothing to restore. */
 export function snapTo(ctx: Ctx, id: string, where: "left" | "right" | "full"): void {
-  const rect = where === "full" ? FREE : halves(FREE)[where];
   update(ctx, id, (p) => {
+    const free = freeArea(ctx, p);
+    const rect = where === "full" ? free : halves(free)[where];
     const { restore: _restore, ...rest } = p;
     return { ...rest, ...rect };
   });

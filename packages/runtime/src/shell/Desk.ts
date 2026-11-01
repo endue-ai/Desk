@@ -24,6 +24,7 @@ import type { ShellCtx } from "./context";
 import { type Lang, t } from "./copy";
 import { h, listen } from "./dom";
 import { keepShell, syncProfiles } from "./link";
+import { mountPan } from "./Pan";
 import { paneViews } from "./panes";
 import { mountRail } from "./Rail";
 import { type DeskState, emptyState, Store } from "./state";
@@ -114,6 +115,7 @@ export function mountDesk(options: DeskOptions): Desk {
   const eris = mountEris(modeLayer, ctx, () => layoutOf(store.get()).eris);
   pending.say = eris.say;
   pending.setState = eris.setState;
+  parts.push(mountPan(root, ctx));
   parts.push(mountRail(modeLayer, ctx), mountBottom(modeLayer, ctx), mountSurfaces(modeLayer, ctx));
 
   const restored = keepShell(ctx);

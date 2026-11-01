@@ -90,6 +90,7 @@ export function renderPanes(ctx: ShellCtx, surface: SurfacePlacement): Mounted {
       Math.min(1 - MIN_RATIO, Math.max(MIN_RATIO, start + (row ? dx : dy) / size));
     offs.push(
       draggable(divider, {
+        cursor: row ? "col-resize" : "row-resize",
         start: () => {
           const r = el.getBoundingClientRect();
           size = Math.max(1, row ? r.width : r.height);
@@ -97,6 +98,11 @@ export function renderPanes(ctx: ShellCtx, surface: SurfacePlacement): Mounted {
         },
         move: (dx, dy) => {
           a.style.flexBasis = `${ratioAt(dx, dy) * 100}%`;
+          divider.setAttribute("aria-valuenow", String(Math.round(ratioAt(dx, dy) * 100)));
+        },
+        cancel: () => {
+          a.style.flexBasis = `${start * 100}%`;
+          divider.setAttribute("aria-valuenow", String(Math.round(start * 100)));
         },
         end: (dx, dy) => resizeSplit(ctx, surface.id, node.id, ratioAt(dx, dy)),
       }),
