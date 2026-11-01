@@ -13,6 +13,14 @@ const be64 = (b: Uint8Array, o: number, v: number) => {
   be32(b, o + 4, v >>> 0);
 };
 
+/** Whether every byte is zero, four at a time (the chunks start on sector boundaries). */
+function allZero(bytes: Uint8Array) {
+  const words = new Uint32Array(bytes.buffer, bytes.byteOffset, bytes.length >> 2);
+  for (const word of words) if (word) return false;
+  for (let i = words.length * 4; i < bytes.length; i++) if (bytes[i]) return false;
+  return true;
+}
+
 export interface Built {
   image: Uint8Array;
   /** Where each chunk's bytes are in the image. */
@@ -66,7 +74,7 @@ export function buildUdif(
   let at = 0;
   for (let sector = 0; sector * 512 < disk.length; sector += sectors) {
     const bytes = disk.subarray(sector * 512, Math.min(disk.length, (sector + sectors) * 512));
-    const zero = bytes.every((b) => b === 0);
+    const zero = allZero(bytes);
     const packed = zero
       ? new Uint8Array(0)
       : method === "zlib"

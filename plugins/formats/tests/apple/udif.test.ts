@@ -175,7 +175,9 @@ describe("reading by ranges", () => {
   });
 
   it("gives the event loop a turn while it decodes, and stops when cancelled", async () => {
-    const disk = new Uint8Array(96 << 20).map((_, i) => (i >> 9) & 0xff);
+    const disk = new Uint8Array(96 << 20);
+    for (let sector = 0; sector < disk.length / 512; sector++)
+      disk.fill(sector & 0xff, sector * 512, sector * 512 + 512);
     const { image } = buildUdif(disk);
     const opened = await openUdif(memorySource(image));
     let turns = 0;
