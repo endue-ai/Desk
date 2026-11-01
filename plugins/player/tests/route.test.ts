@@ -211,3 +211,28 @@ describe("the player follows the route", () => {
     });
   });
 });
+
+describe("the progress bar's Cancel", () => {
+  it("stops a slow opening at the details", async () => {
+    const X = file("~/Movies/x.mp4");
+    const bytes = fixture("clip.mp4");
+    const { host, app, shown, view, settle } = await mount({
+      files: { [X.path]: bytes },
+      grants: ["~/Movies/**"],
+      handlers: {
+        "fs.url": async () => {
+          await new Promise((resolve) => setTimeout(resolve, 600));
+          return { url: "data:video/mp4;base64,", size: bytes.length, type: "video/mp4" };
+        },
+      },
+    });
+    const visit = host.command("desk.files.visit", X);
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    expect(shown()).toMatchObject({ mode: "loading", name: "x.mp4" });
+    app.cancelled();
+    await visit;
+    await settle();
+    expect(shown()).toMatchObject({ mode: "details", why: "Stopped opening x.mp4." });
+    expect(view.statuses).toContain("Stopped x.mp4. Choose Try again to play it.");
+  });
+});

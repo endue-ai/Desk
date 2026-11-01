@@ -215,10 +215,11 @@ export function createMedia(doc, act, engines) {
   listen(video);
   listen(audio);
   slot.onCancel(() => {
-    if (!loaded) return;
-    api.unload(false);
-    retry.hidden = false;
-    transport.hidden = false;
+    if (loaded) {
+      api.unload(false);
+      retry.hidden = false;
+      transport.hidden = false;
+    }
     act("cancelled");
   });
 

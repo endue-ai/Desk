@@ -5,19 +5,16 @@
 import { codeOf, createAccess, nameOf } from "./access.js";
 import { detect, familyByName } from "./format.js";
 import {
-  capsOf,
-  details,
-  fallBack,
   findSubtitles,
   HEAD,
   openCues,
   openPlaylist,
   playDecoded,
   playMedia,
-  SAYINGS,
   showSubtitles,
 } from "./load.js";
 import { modelOf } from "./model.js";
+import { cancel, capsOf, details, fallBack, SAYINGS } from "./outcome.js";
 import { createResume } from "./resume.js";
 
 /**
@@ -343,7 +340,7 @@ export function createPlayer({ bridge, commands }, view, options) {
     say: (/** @type {string} */ words) => say(words),
     stalled: about(SAYINGS.stalled),
     dropping: about(SAYINGS.dropping),
-    cancelled: about(SAYINGS.cancelled),
+    cancelled: () => act((entry) => say(cancel(entry))),
     /** Ask for the file again (a new URL, a new question when the grant is gone) where it was. */
     retry: () =>
       act(async (entry) => {
