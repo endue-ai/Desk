@@ -41,7 +41,7 @@ const requested = (/** @type {unknown} */ args) => {
 /** What the status line says once a file is open. */
 const opened = (/** @type {{ name: string, book: Book }} */ { name, book }) => {
   if (book.kind === "pages")
-    return `${name}: ${book.format}, ${book.pages.length} ${book.pages.length === 1 ? "page" : "pages"}.`;
+    return `${name}: ${book.format}, ${book.pages.length} ${book.pages.length === 1 ? "page" : "pages"}.${book.note ? ` ${book.note}` : ""}`;
   if (book.kind === "chapters")
     return `${name}: ${book.format}, ${book.chapters.length} ${book.chapters.length === 1 ? "chapter" : "chapters"}.`;
   if (book.kind === "password") return "This PDF is protected by a password.";
@@ -54,7 +54,8 @@ const POSITION_DELAY = 600;
 /**
  * @param {Pick<PluginContext, "bridge" | "commands">} ctx
  * @param {View} view
- * @param {{ pdfjs?: () => Promise<object>, byteSource: typeof import("@endue-ai/plugin-sdk").byteSource, readBytes: typeof import("@endue-ai/plugin-sdk").readBytes }} options
+ * @param {{ pdfjs?: () => Promise<object>, byteSource: typeof import("@endue-ai/plugin-sdk").byteSource,
+ *   readBytes: typeof import("@endue-ai/plugin-sdk").readBytes, startWorker?: import("./djvu-client.js").StartWorker }} options
  */
 export function createReader({ bridge, commands }, view, options) {
   /** @type {Map<string, Open>} */

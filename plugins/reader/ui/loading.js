@@ -8,7 +8,11 @@ const scopeOf = (path) => ({
   paths: [`${path.slice(0, path.lastIndexOf("/"))}/**`],
 });
 
-export function createLoading(bridge, view, { byteSource, readBytes, pdfjs }) {
+export function createLoading(
+  bridge,
+  view,
+  { byteSource, readBytes, pdfjs, startWorker = undefined },
+) {
   let opening;
   const cancel = () => {
     opening?.abort();
@@ -84,6 +88,7 @@ export function createLoading(bridge, view, { byteSource, readBytes, pdfjs }) {
           path,
           password,
           pdfjs,
+          startWorker,
           signal: job.signal,
           phase: (label) => progress(label),
           readAll: () =>

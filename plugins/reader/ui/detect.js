@@ -1,7 +1,7 @@
 // Which reader opens a file: its first bytes decide, then its extension. A ZIP is looked into: an
 // EPUB has its mimetype or container.xml, an XPS its FixedDocumentSequence, a CBZ images.
 import { ascii, decode, extensionOf, indexOf, isImage } from "./formats/bytes.js";
-import { is7z, isDjvu, rarVersion } from "./formats/describe.js";
+import { is7z, isDjvu, rarVersion } from "./formats/signatures.js";
 import { isTar } from "./formats/tar.js";
 import { isZip, readZip } from "./formats/zip.js";
 
