@@ -1,26 +1,65 @@
 import { describe, expect, it } from "vitest";
-import { cssVariables, tokens } from "./index";
+import { colors, cssVariables, propertyOf, scale, tokens } from "./index";
 
-describe("theme tokens", () => {
-  it("have the design values", () => {
-    expect(tokens).toEqual({
+const HEX = /^#[0-9a-f]{6}$/;
+const RGBA = /^rgba\(\d{1,3}, \d{1,3}, \d{1,3}, 0(\.\d+)?\)$/;
+const SHADOW = /^0 \d+px \d+px rgba\(0, 0, 0, 0\.\d+\)$/;
+
+describe("design tokens", () => {
+  it("are the scale and the role colours, under distinct names", () => {
+    expect(tokens).toEqual({ ...scale, ...colors });
+    const shared = Object.keys(scale).filter((name) => name in colors);
+    expect(shared).toEqual([]);
+  });
+
+  it("keep the design's dark values for the surfaces, text and the brand", () => {
+    expect(colors).toMatchObject({
       background: "#141416",
       card: "#1e1d21",
       border: "#333136",
       text: "#f2f0f5",
       textMuted: "#b0adb7",
-      accent: "#b6a3f5",
+      primary: "#b6a3f5",
+      primaryForeground: "#1e1833",
+      ring: "#b6a3f5",
     });
+    // The old name of the brand fill stays an alias until plugins have moved (ADR 0049).
+    expect(colors.accent).toBe(colors.primary);
   });
 
-  it("become CSS custom properties", () => {
-    expect(cssVariables()).toEqual({
-      "--desk-background": "#141416",
-      "--desk-card": "#1e1d21",
-      "--desk-border": "#333136",
-      "--desk-text": "#f2f0f5",
-      "--desk-text-muted": "#b0adb7",
-      "--desk-accent": "#b6a3f5",
-    });
+  it("give every status a fill, an ink, a text, a soft surface and a border", () => {
+    for (const status of ["success", "warning", "danger", "info"]) {
+      const record = colors as Record<string, string>;
+      expect(record[status]).toMatch(HEX);
+      expect(record[`${status}Foreground`]).toMatch(HEX);
+      expect(record[`${status}Text`]).toMatch(HEX);
+      expect(record[`${status}Soft`]).toMatch(RGBA);
+      expect(record[`${status}Border`]).toMatch(RGBA);
+    }
+  });
+
+  it("hold colours, shadows and sizes only", () => {
+    for (const [name, value] of Object.entries(colors)) {
+      const kind = name.startsWith("shadow") ? SHADOW : HEX.test(value) ? HEX : RGBA;
+      expect(value, name).toMatch(kind);
+    }
+    for (const [name, value] of Object.entries(scale)) {
+      if (name.startsWith("font")) expect(value, name).toContain(",");
+      else expect(value, name).toMatch(/^\d+(px|ms)$/);
+    }
+  });
+
+  it("become --desk-* custom properties, digits hyphenated like the words", () => {
+    expect(propertyOf("textMuted")).toBe("--desk-text-muted");
+    expect(propertyOf("text2xs")).toBe("--desk-text-2xs");
+    expect(propertyOf("text2xl")).toBe("--desk-text-2xl");
+    expect(propertyOf("chart1")).toBe("--desk-chart-1");
+    expect(propertyOf("space16")).toBe("--desk-space-16");
+    expect(propertyOf("primaryForeground")).toBe("--desk-primary-foreground");
+    const variables = cssVariables();
+    expect(Object.keys(variables)).toHaveLength(Object.keys(tokens).length);
+    expect(variables["--desk-background"]).toBe("#141416");
+    expect(variables["--desk-text-sm"]).toBe("14px");
+    expect(cssVariables({ paper: "#fdfcf8" })).toEqual({ "--desk-paper": "#fdfcf8" });
   });
 });
