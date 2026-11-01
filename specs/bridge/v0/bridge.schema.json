@@ -84,7 +84,8 @@
         { "$ref": "view.schema.json#/$defs/ViewGetRequest" },
         { "$ref": "view.schema.json#/$defs/ViewSaveRequest" },
         { "$ref": "view.schema.json#/$defs/ViewRemoveRequest" },
-        { "$ref": "catalog.schema.json#/$defs/CatalogGetRequest" }
+        { "$ref": "catalog.schema.json#/$defs/CatalogGetRequest" },
+        { "$ref": "shell.schema.json#/$defs/ShellOpenRequest" }
       ]
     },
     "BridgeResponse": {

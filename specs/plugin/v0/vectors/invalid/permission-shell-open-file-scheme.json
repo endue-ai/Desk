@@ -1,0 +1,8 @@
+{
+  "target": "Permission",
+  "description": "shell:open never opens file: URLs, whatever a scope says",
+  "instance": {
+    "permission": "shell:open",
+    "schemes": ["https", "file"]
+  }
+}

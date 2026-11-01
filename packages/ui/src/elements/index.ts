@@ -8,6 +8,7 @@ import { DeskInput } from "./input";
 import { DeskList } from "./list";
 import { DeskMarkdown } from "./markdown";
 import { DeskMenu } from "./menu";
+import { DeskProgress } from "./progress";
 import { DeskStat } from "./stat";
 import { DeskTable } from "./table";
 import { DeskToast } from "./toast";
@@ -31,6 +32,7 @@ export {
   DeskList,
   DeskMarkdown,
   DeskMenu,
+  DeskProgress,
   DeskStat,
   DeskTable,
   DeskToast,
@@ -49,6 +51,7 @@ export const elements = {
   "desk-stat": DeskStat,
   "desk-markdown": DeskMarkdown,
   "desk-card": DeskCard,
+  "desk-progress": DeskProgress,
 } as const;
 
 /** Define every element that is not defined yet; safe to call more than once. */
@@ -71,5 +74,6 @@ declare global {
     "desk-stat": DeskStat;
     "desk-markdown": DeskMarkdown;
     "desk-card": DeskCard;
+    "desk-progress": DeskProgress;
   }
 }

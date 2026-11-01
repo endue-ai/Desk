@@ -38,6 +38,7 @@ struct Watching(#[allow(dead_code)] Mutex<(Option<PluginWatcher>, Option<ViewWat
 
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
         .register_asynchronous_uri_scheme_protocol(protocol::SCHEME, |ctx, request, responder| {
             // A file URL reads from disk: answer from the blocking pool, never the main thread.
             let app = ctx.app_handle().clone();

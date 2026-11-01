@@ -3,6 +3,8 @@
 // milliseconds as if the local date and time were UTC; a zone turns it into an instant at the end,
 // through the Intl API, so the plugin ships no zone table.
 
+import { dateTimeFormat, knowsZone } from "../intl.js";
+
 export const DAY = 86_400_000;
 
 /**
@@ -116,34 +118,19 @@ export function parseOffset(text) {
 }
 
 /** Whether the Intl API knows a zone by this name. @param {string} name */
-export function isZone(name) {
-  try {
-    new Intl.DateTimeFormat("en-US", { timeZone: name });
-    return true;
-  } catch {
-    return false;
-  }
-}
+export const isZone = (name) => knowsZone(name);
 
-/** @type {Map<string, Intl.DateTimeFormat>} */
-const formats = new Map();
-const formatFor = (/** @type {string} */ tz) => {
-  let format = formats.get(tz);
-  if (!format) {
-    format = new Intl.DateTimeFormat("en-US", {
-      timeZone: tz,
-      hourCycle: "h23",
-      year: "numeric",
-      month: "numeric",
-      day: "numeric",
-      hour: "numeric",
-      minute: "numeric",
-      second: "numeric",
-    });
-    formats.set(tz, format);
-  }
-  return format;
-};
+const formatFor = (/** @type {string} */ tz) =>
+  dateTimeFormat("en-US", {
+    timeZone: tz,
+    hourCycle: "h23",
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+    hour: "numeric",
+    minute: "numeric",
+    second: "numeric",
+  });
 
 /**
  * The offset of a zone at an instant, in milliseconds east of UTC.

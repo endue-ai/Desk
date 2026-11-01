@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>test worker</title>
+    <script type="importmap">
+      { "imports": { "@endue-ai/plugin-sdk": "/_desk/plugin-sdk.js" } }
+    </script>
+  </head>
+  <body>
+    <!-- A test-only plugin for the frames' CSP (ADR 0048): a worker started with startWorker that
+         imports a neighbour, compiles WebAssembly and fetches a file of the plugin; fetch from the
+         frame; and eval, which stays blocked. -->
+    <p data-testid="worker">waiting</p>
+    <p data-testid="wasm">waiting</p>
+    <p data-testid="worker-fetch">waiting</p>
+    <p data-testid="fetch">waiting</p>
+    <p data-testid="eval">waiting</p>
+    <script type="module">
+      import { defineUiPlugin, startWorker } from "@endue-ai/plugin-sdk";
+
+      const $ = (id) => document.querySelector(`[data-testid=${id}]`);
+      defineUiPlugin({
+        async mount() {
+          try {
+            (0, eval)("1");
+            $("eval").textContent = "allowed";
+          } catch {
+            $("eval").textContent = "blocked";
+          }
+          const worker = startWorker(new URL("./worker.js", import.meta.url));
+          worker.onmessage = ({ data }) => {
+            $("worker").textContent = String(data.sum);
+            $("wasm").textContent = String(data.add);
+            $("worker-fetch").textContent = data.fetched;
+          };
+          worker.onerror = (event) => ($("worker").textContent = `error: ${event.message}`);
+          worker.postMessage(new Uint8Array([1, 2, 3, 4, 5]));
+          $("fetch").textContent = await fetch(new URL("./data.txt", import.meta.url))
+            .then((response) => response.text())
+            .then((text) => text.trim(), (error) => `failed: ${error}`);
+        },
+      });
+    </script>
+  </body>
+</html>

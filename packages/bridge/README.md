@@ -11,18 +11,18 @@ TypeScript client for the Desk bridge, typed from `specs/bridge`, `specs/plugin`
 - `tauriAdapter(invoke, listen?)`: the app adapter; requests go to the `bridge_call` command.
 - `browserStub(handlers)`: answers the methods it is given, any other `unsupported` (never a silent
   success); `emit` sends events; handlers throw `StubError(code, message, permission?)`. For tests.
-- `stubCommands(emit, { grants?, settings?, prompt?, now?, files? })`: the core's rules, per caller.
-  Its `handlers` serve `cmd.*`, `perm.*` (request, query, revoke, list, answer), `settings.*`, `log.*`,
-  `events.*` and `ui.surface.*`. A plugin's scoped call needs a covering grant, else
+- `stubCommands(emit, { grants?, settings?, prompt?, now?, files?, open? })`: the core's rules, per
+  caller. Its `handlers` serve `cmd.*`, `perm.*`, `settings.*`, `log.*`, `events.*`, `ui.surface.*`
+  and `shell.open` (refused as the core refuses, asking without a grant, recorded in `state().opened`
+  and handed to `open`; nothing opens). A plugin's scoped call needs a covering grant, else
   `permission_denied`; the runtime (`desk`) is trusted and `cmd.list`/`cmd.invoke` check no grants.
   `perm.prompt` goes to `perm:manage` holders and the first `perm.answer` decides; without one,
   `prompt` does (granted by default). `once` grants expire after the call they allow.
   `audience(event)` names the plugins the core would deliver an event to; `drop(caller)` ends its
   commands, surfaces, subscriptions and prompts; `state()` shows what it holds. `data.*`,
-  `connector.*`, `view.*` and `catalog.get` run over an index of the fixture connector `desk.fixtures`
-  (`fixtureItems()`: events, tasks, notes, messages around `FIXTURE_NOW`); `upsert(item)` and
-  `remove(source, id)` change it and fire `data.changed`. With `files` (bridge path to text or bytes)
-  `fs.read` reads them, ranges too, and `fs.url` answers a `data:` URL (`stub-fs.ts`). Other `fs.*`,
+  `connector.*`, `view.*` and `catalog.get` run over the fixture connector `desk.fixtures`
+  (`fixtureItems()`); `upsert(item)` and `remove(source, id)` change it and fire `data.changed`. With
+  `files` `fs.read` reads them, ranges too, and `fs.url` answers a `data:` URL. Other `fs.*`,
   `proc.*`, `net.*`, `audio.*`, `plugin.*`, `store.*`, `init.get`, `brain.say`, `ui.notify` are not.
 - Every generated type (`BridgeRequest`, `Permission`, `PluginManifest`, `Item`, `View`, `TurnEvent`,
   ...), `BridgeMethodMap`, `BridgeMethod`, `BRIDGE_METHODS` and `brainSchema`.
