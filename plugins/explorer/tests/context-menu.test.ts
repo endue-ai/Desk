@@ -101,4 +101,12 @@ describe("Explorer context menu", () => {
     expect(document.activeElement).toBe(items()[0]);
     expect(context).not.toHaveBeenCalled();
   });
+
+  it("refreshing the tree closes the stale menu and keeps keyboard focus on the selection", () => {
+    key(items()[0] as HTMLElement, "F10", true);
+    expect(menu()?.hidden).toBe(false);
+    view.tree(rows, "/a.md");
+    expect(menu()?.hidden).toBe(true);
+    expect(document.activeElement).toBe(items()[0]);
+  });
 });

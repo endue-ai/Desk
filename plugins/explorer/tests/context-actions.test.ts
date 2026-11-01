@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { StubError } from "../../../packages/bridge/src/index";
 import { DOCS, denied, disk, file, mount, sample } from "./harness";
 
 describe("Explorer selection commands", () => {
@@ -85,5 +86,39 @@ describe("Explorer selection commands", () => {
     );
     expect(d.params("perm.request")).toEqual([]);
     expect(d.params("shell.open")).toEqual([]);
+  });
+
+  it("retries the same reveal only after a grant and reports other system failures", async () => {
+    let attempts = 0;
+    const d = await mount({
+      handlers: {
+        ...disk(sample()),
+        "shell.open": () => {
+          attempts++;
+          if (attempts === 1) throw denied("reveal");
+          if (attempts === 3) throw new StubError("not_found", "gone");
+          return { opened: true };
+        },
+        "perm.request": () => ({ granted: true }),
+      },
+    });
+    d.app.select(`${DOCS}/a2.md`);
+    await d.host.command("endue.explorer.show-in-file-manager");
+    expect(d.params("shell.open")[0]).toEqual(d.params("shell.open")[1]);
+    await expect(d.host.command("endue.explorer.show-in-file-manager")).rejects.toThrow(
+      /not_found/,
+    );
+    expect(d.params("perm.request")).toHaveLength(1);
+    expect(d.view.statuses.at(-1)).toMatch(/could not show/i);
+  });
+
+  it("Open expands a selected folder without collapsing an already open one", async () => {
+    const d = await mount({ handlers: disk(sample()) });
+    d.app.select(`${DOCS}/Work`);
+    await d.host.command("endue.explorer.open-selected");
+    await d.host.command("endue.explorer.open-selected");
+    expect(d.view.shown()).toContain("1:dir:Work+");
+    expect(d.view.shown()).toContain("2:file:c.md");
+    expect(d.ran("desk.files.open")).toEqual([]);
   });
 });

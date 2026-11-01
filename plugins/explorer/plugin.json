@@ -6,14 +6,36 @@
   "entry": "ui/index.html",
   "description": "Shows the folders the person allows as a tree, opens files in the plugin the desk names, and follows changes on disk.",
   "permissions": [
-    { "permission": "fs:read", "paths": ["${home}/**"] },
-    { "permission": "fs:write", "paths": ["${home}/**"] },
+    {
+      "permission": "fs:read",
+      "paths": ["${home}/**"]
+    },
+    {
+      "permission": "fs:write",
+      "paths": ["${home}/**"]
+    },
     {
       "permission": "cmd:invoke",
-      "ids": ["desk.files.open", "desk.buffers.list", "desk.palette.pick"]
+      "ids": [
+        "desk.files.open",
+        "desk.buffers.list",
+        "desk.palette.pick",
+        "endue.terminal.new",
+        "endue.git.status"
+      ]
+    },
+    {
+      "permission": "shell:open",
+      "paths": ["${home}/**"]
     }
   ],
-  "surfaces": [{ "id": "main", "title": "Explorer", "placement": "left" }],
+  "surfaces": [
+    {
+      "id": "main",
+      "title": "Explorer",
+      "placement": "left"
+    }
+  ],
   "contributes": {
     "commands": [
       {
@@ -50,11 +72,37 @@
         "id": "endue.explorer.new-file",
         "title": "New file in the explorer's folder",
         "keywords": ["files", "create", "new"]
+      },
+      {
+        "id": "endue.explorer.open-selected",
+        "title": "Open the Explorer selection",
+        "keywords": ["files", "selection", "explorer"]
+      },
+      {
+        "id": "endue.explorer.terminal-here",
+        "title": "Open terminal in the Explorer folder",
+        "keywords": ["files", "selection", "explorer"]
+      },
+      {
+        "id": "endue.explorer.git-here",
+        "title": "Git status in the Explorer folder",
+        "keywords": ["files", "selection", "explorer"]
+      },
+      {
+        "id": "endue.explorer.show-in-file-manager",
+        "title": "Show Explorer selection in the system file manager",
+        "keywords": ["files", "selection", "explorer"]
       }
     ],
     "keys": [
-      { "key": "Mod+Shift+E", "command": "endue.explorer.open" },
-      { "key": "Mod+Shift+R", "command": "endue.explorer.reveal" }
+      {
+        "key": "Mod+Shift+E",
+        "command": "endue.explorer.open"
+      },
+      {
+        "key": "Mod+Shift+R",
+        "command": "endue.explorer.reveal"
+      }
     ],
     "settings": {
       "endue.explorer.folders": {
