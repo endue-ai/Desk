@@ -56,6 +56,7 @@ export function createChapters(host, scroller, hooks) {
     )?.closest("a");
     if (!link || !book) return;
     event.preventDefault();
+    if (displayedGeneration !== generation) return;
     const href = link.getAttribute("href");
     if (href) {
       const target = book.target(href, unit);

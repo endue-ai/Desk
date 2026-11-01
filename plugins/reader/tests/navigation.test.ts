@@ -153,7 +153,7 @@ it("chapter links belong to the committed chapter while another book is loading"
     0,
   );
   const clickLinks = () => {
-    for (const link of host.shadowRoot!.querySelectorAll("a")) link.click();
+    for (const link of view.root().querySelectorAll("a")) link.click();
   };
   try {
     clickLinks();
