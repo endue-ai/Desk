@@ -388,3 +388,6 @@ h2 {
 [hidden] {
   display: none !important;
 }
+
+#opening { flex: none; padding: 8px 12px; }
+.slide .link { cursor: pointer; }

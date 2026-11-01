@@ -1,6 +1,7 @@
 // The parts of the surface that are not a page: the entries list (feed items, WARC records, MAFF
 // pages), a link file's card, an OPML outline and a file's details. Each is built from text with
 // textContent and attributes only: nothing here is parsed as markup.
+import { externalUrl } from "./external.js";
 
 /**
  * @typedef {import("./formats.js").Entry} Entry
@@ -72,10 +73,11 @@ export function markEntry(/** @type {HTMLElement} */ list, /** @type {number} */
 
 /**
  * A link file's card: its title, its target as selectable text, its fields, and a button that
- * opens a local target.
- * @param {Document} doc @param {HTMLElement} section @param {Card} card @param {(path: string) => void} open
+ * opens a local target, or an http, https or mailto address in the browser or mail app.
+ * @param {Document} doc @param {HTMLElement} section @param {Card} card
+ * @param {{ open(path: string): void, external(url: string): void }} on
  */
-export function renderCard(doc, section, card, open) {
+export function renderCard(doc, section, card, on) {
   const title = el(doc, "h2", "", card.title);
   title.id = "card-title";
   const parts = [title];
@@ -86,17 +88,23 @@ export function renderCard(doc, section, card, open) {
   for (const [name, value] of card.fields)
     list.append(el(doc, "dt", "", name), el(doc, "dd", "", value));
   parts.push(list);
+  const button = (/** @type {string} */ label, /** @type {() => void} */ click) => {
+    const node = /** @type {HTMLButtonElement} */ (el(doc, "button", "open", label));
+    node.type = "button";
+    node.addEventListener("click", click);
+    parts.push(node);
+  };
+  const url = externalUrl(card.url);
   if (card.path) {
     const path = card.path;
-    const button = /** @type {HTMLButtonElement} */ (
-      el(doc, "button", "open", `Open ${path.slice(path.lastIndexOf("/") + 1)}`)
+    button(`Open ${path.slice(path.lastIndexOf("/") + 1)}`, () => on.open(path));
+  } else if (url)
+    button(url.startsWith("mailto:") ? "Open in mail app" : "Open in browser", () =>
+      on.external(url),
     );
-    button.type = "button";
-    button.addEventListener("click", () => open(path));
-    parts.push(button);
-  } else if (card.url && !/^file:/i.test(card.url))
+  else if (card.url && !/^file:/i.test(card.url))
     parts.push(
-      el(doc, "p", "note", "Opening a browser is not available yet: copy the address to open it."),
+      el(doc, "p", "note", "Only http, https and mailto addresses open outside the desk."),
     );
   else if (!card.url && /^([A-Za-z]:\\|\\\\)/.test(target ?? ""))
     parts.push(

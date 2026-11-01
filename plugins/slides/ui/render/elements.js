@@ -2,6 +2,7 @@
 // the geometry, an SVG outline, the text on top), pictures with crop, tables, groups and the boxes
 // of what is not drawn.
 import { drawGeometry } from "../geometry.js";
+import { markLink } from "./links.js";
 import { paintFill, strokeSvg } from "./paint.js";
 import { paragraphElement, textElement } from "./text.js";
 
@@ -156,6 +157,15 @@ function tableElement(doc, table, deck) {
  * @returns {HTMLElement}
  */
 export function elementOf(doc, element, deck) {
+  const el = drawElement(doc, element, deck);
+  // A shape or picture with a click action is a link as a whole (render/hyperlinks.js).
+  const { link } = /** @type {SlideElement & { link?: string }} */ (element);
+  if (link) markLink(el, link);
+  return el;
+}
+
+/** @param {Document} doc @param {SlideElement} element @param {Deck} deck @returns {HTMLElement} */
+function drawElement(doc, element, deck) {
   switch (element.type) {
     case "shape":
       return shapeElement(doc, element, deck);

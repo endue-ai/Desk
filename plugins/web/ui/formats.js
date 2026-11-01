@@ -12,7 +12,8 @@ import { openWarc } from "./warc.js";
  * Where a page's resources come from. `load` takes an absolute URL and answers its bytes, or
  * "remote" (never fetched: Web does not reach the network) or "missing".
  * @typedef {{ bytes: Uint8Array, type?: string }} Loaded
- * @typedef {{ base: string, load(url: string): Promise<Loaded | "remote" | "missing"> }} Resolver
+ * `local` is the path of a page read from disk, whose resolver reads the files around it.
+ * @typedef {{ base: string, local?: string, load(url: string): Promise<Loaded | "remote" | "missing"> }} Resolver
  * @typedef {{ text: string, mime: string, resolver: Resolver }} PageInput
  * @typedef {{ title: string, detail?: string, date?: string, author?: string, link?: string,
  *   page?: PageInput, text?: string, source?: string }} Entry
@@ -44,6 +45,7 @@ export function fileUrl(/** @type {string} */ path) {
 export function diskResolver(path, disk) {
   return {
     base: fileUrl(path),
+    local: path,
     load: async (url) => {
       if (/^(https?|ftp):/i.test(url) || /^file:\/\/(?!\/|localhost\/)/i.test(url)) return "remote";
       const local = localPath(url);

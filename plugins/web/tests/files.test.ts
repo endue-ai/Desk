@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from "vitest";
-import { denied, disk, file, folder, mount } from "./harness";
+import { denied, disk, file, folder, mount, ranged } from "./harness";
 
 const A = file("~/Sites/a.html");
 const B = file("~/Saved/b.url");
@@ -11,11 +11,13 @@ const PAGE = "<!doctype html><title>A</title><p>Hello</p>";
 const LINK = "[InternetShortcut]\r\nURL=https://example.com/\r\n";
 
 describe("the desk's file requests", () => {
-  it("visit reads the file as base64 in its folder, shows it and watches it", async () => {
+  it("visit reads the file in ranges in its folder, shows it and watches it", async () => {
     const { host, view, params } = await mount({ handlers: disk({ [A.path]: PAGE }) });
     await expect(host.command("desk.files.visit", A)).resolves.toBeUndefined();
-    expect(host.calls.map((c) => c.method)).toEqual(["fs.read", "fs.watch"]);
-    expect(params("fs.read")).toEqual([{ path: A.path, encoding: "base64", scope: SITES }]);
+    // No URL from this desk: readBytes falls back to ranged fs.read calls.
+    expect(host.calls.map((c) => c.method)).toEqual(["fs.url", "fs.read", "fs.read", "fs.watch"]);
+    expect(params("fs.url")).toEqual([{ path: A.path, scope: SITES }]);
+    expect(params("fs.read")).toEqual(ranged(A.path, SITES, PAGE.length));
     expect(params("fs.watch")).toEqual([{ path: A.path, scope: SITES }]);
     expect(view.shown.at(-1)).toMatchObject({
       ...A,
@@ -33,7 +35,7 @@ describe("the desk's file requests", () => {
     await host.command("desk.files.visit", A);
     files[A.path] = "<p>Changed</p>";
     await expect(host.command("desk.files.revert", A)).resolves.toBeUndefined();
-    expect(params("fs.read")).toHaveLength(2);
+    expect(params("fs.url")).toHaveLength(2);
     expect(view.shown.at(-1)).toMatchObject({ ...A, model: { source: "<p>Changed</p>" } });
   });
 
@@ -102,7 +104,7 @@ describe("files outside the grants", () => {
     expect(params("perm.request")).toEqual([
       { permission: DOCS, reason: "To open ~/Documents/x.html in Web" },
     ]);
-    expect(params("fs.read")).toEqual([{ path: X.path, encoding: "base64", scope: DOCS }]);
+    expect(params("fs.read")).toEqual(ranged(X.path, DOCS, 0));
     expect(params("fs.watch")).toEqual([]);
     expect(view.statuses.at(-1)).toBe("Not allowed to read ~/Documents/x.html.");
     expect(view.shown.at(-1)).toBeNull();
@@ -112,10 +114,14 @@ describe("files outside the grants", () => {
     let reads = 0;
     const { host, view, params } = await mount({
       handlers: {
-        "fs.read": () => {
+        "fs.read": ({ offset = 0, length }) => {
           reads++;
           if (reads === 1) throw denied("fs:read over ~/Documents/x.html");
-          return { content: Buffer.from(PAGE).toString("base64"), encoding: "base64" };
+          const bytes = Buffer.from(PAGE).subarray(
+            offset,
+            length === undefined ? undefined : offset + length,
+          );
+          return { content: bytes.toString("base64"), encoding: "base64", size: PAGE.length };
         },
         "perm.request": ({ permission }) => ({
           granted: true,
@@ -130,8 +136,10 @@ describe("files outside the grants", () => {
       },
     });
     await expect(host.command("desk.files.visit", X)).resolves.toBeUndefined();
-    const read = { path: X.path, encoding: "base64", scope: DOCS };
-    expect(params("fs.read")).toEqual([read, read]);
+    expect(params("fs.read")).toEqual([
+      ...ranged(X.path, DOCS, 0),
+      ...ranged(X.path, DOCS, PAGE.length),
+    ]);
     expect(params("perm.request")).toHaveLength(1);
     expect(view.shown.at(-1)).toMatchObject({ ...X, model: { kind: "page" } });
   });
