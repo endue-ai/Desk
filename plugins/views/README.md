@@ -12,7 +12,7 @@ binding through `data.query` and keeps it live with `data.subscribe`, and draws 
 | `desk.views.close` | Ends its subscriptions and hides it (Escape) |
 | `desk.views.reconnect` | `{ connector, instance }`: `connector.sync` (the Reconnect button) |
 | `desk.views.request-access` | `{ kinds, sources }`: `perm.request` for that `data:read`, then queries again |
-| `desk.views.open-original` | `{ url }`: fails `failed` until `shell.open` is served; its menu item says so in a toast |
+| `desk.views.open-original` | `{ url }`: `shell.open` of the item's URL (http, https, mailto); a refusal is said in a toast |
 
 Components: `list`, `table` (sortable columns), `agenda` (its day, a now-line), `stat`, `markdown` and
 `card`, in `grid`, `split`, `stack` and `tabs`. `calendar`, `kanban`, `chart` and `detail` say they come
@@ -24,7 +24,7 @@ runs an item's first action; `.` and a right click open its actions. Under 480 p
 | --- | --- |
 | `data:read` | Read the items its views bind |
 | `connector:manage` | List instances to bind requires, follow their status, sync on Reconnect |
-| `view:manage` | Read the views it opens and follow changes to them |
+| `view:manage`; `shell:open` (http, https, mailto) | Read the views it opens and follow changes to them; open an item's link |
 | `cmd:invoke` (`*`) | Run the actions views name, `desk.palette.pick` and its own commands |
 
 | File | Purpose |

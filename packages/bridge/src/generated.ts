@@ -206,7 +206,8 @@ export type Permission =
   | PermManagePermission
   | DataReadPermission
   | ConnectorManagePermission
-  | ViewManagePermission;
+  | ViewManagePermission
+  | ShellOpenPermission;
 
 /** Read files, list folders and watch for changes under the given paths. */
 export interface FsReadPermission {
@@ -319,6 +320,18 @@ export interface ConnectorManagePermission {
 export interface ViewManagePermission {
   permission: "view:manage";
 }
+
+/** Hand links to the system with shell.open: open URLs whose scheme is in schemes in their default app, and show files under paths in the file manager. Only http, https and mailto are ever opened, and a path is only shown, never opened or run. */
+export interface ShellOpenPermission {
+  permission: "shell:open";
+  /** URL schemes the permission opens. */
+  schemes?: ShellScheme[];
+  /** Path patterns whose files and folders the permission shows in the file manager. */
+  paths?: PathPattern[];
+}
+
+/** A URL scheme shell.open hands to the system: the browser for http and https, the mail app for mailto. */
+export type ShellScheme = "http" | "https" | "mailto";
 
 /** An absolute path, or one rooted at ~ or at ${plugin}, ${workspace} or ${home}, with forward slashes. * matches within a segment and ** across segments. */
 export type PathPattern = string;
@@ -1257,7 +1270,8 @@ export type BridgeRequest =
   | ViewGetRequest
   | ViewSaveRequest
   | ViewRemoveRequest
-  | CatalogGetRequest;
+  | CatalogGetRequest
+  | ShellOpenRequest;
 
 /** The answer to one request: a result, or an error. */
 export type BridgeResponse = BridgeSuccess | BridgeFailure;
@@ -2379,6 +2393,27 @@ export interface SettingsChangedEvent {
   data: Setting;
 }
 
+/** Open a URL in the system's default handler, or show a file in the file manager. */
+export interface ShellOpenRequest {
+  id: RequestId;
+  method: "shell.open";
+  params: ShellOpenParams;
+}
+
+/** Parameters of shell.open. */
+export interface ShellOpenParams {
+  /** An absolute URL (only http, https and mailto are ever opened), or with reveal a path (~/... or absolute) to show in its folder. */
+  target: string;
+  /** Show the file or folder at the path target, selected in its folder in the file manager, instead of opening a URL. A path is never opened or run. */
+  reveal?: boolean;
+  scope: ShellOpenPermission;
+}
+
+/** Result of shell.open: the system took the URL or showed the file. */
+export interface ShellOpenResult {
+  opened: true;
+}
+
 /** A key in the caller's own namespace. */
 export type StoreKey = string;
 
@@ -2681,6 +2716,7 @@ export interface BridgeMethodMap {
   "view.save": { params: ViewSaveParams; result: ViewSaveResult };
   "view.remove": { params: ViewRemoveParams; result: ViewRemoveResult };
   "catalog.get": { params: CatalogGetParams; result: CatalogGetResult };
+  "shell.open": { params: ShellOpenParams; result: ShellOpenResult };
 }
 
 /** A bridge method name. */
@@ -2744,4 +2780,5 @@ export const BRIDGE_METHODS = [
   "view.save",
   "view.remove",
   "catalog.get",
+  "shell.open",
 ] as const satisfies readonly BridgeMethod[];

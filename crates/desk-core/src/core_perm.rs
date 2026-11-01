@@ -1,7 +1,8 @@
 //! The perm side of `Core`: the one permission check every call passes, grants for every duration,
 //! perm.query, perm.request, perm.revoke and perm.list, and `perm.changed` for the holder and the
 //! callers subscribed to it. `always` grants live in the grant file (ADR 0029); asking the person
-//! goes through `perm.prompt` (`core_prompts`) or, with nobody to prompt, the `Prompter`.
+//! goes through `perm.prompt` (`core_prompts`) or, with nobody to prompt, the `Prompter`, for
+//! perm.request and for the calls that ask by themselves (`check_or_ask`, shell.open).
 
 use std::path::PathBuf;
 
@@ -14,7 +15,7 @@ use desk_bridge::{
 
 use crate::core_prompts::Outcome;
 use crate::handler::{Answer, Core, denied, error, json};
-use crate::perm::{PermissionEngine, Target, covers};
+use crate::perm::{Denied, PermissionEngine, Target, covers, scope_allows};
 
 /// Asks the person whether to grant a permission when no caller holding perm:manage can be asked
 /// through `perm.prompt`. The asked duration applies.
@@ -94,24 +95,57 @@ impl Core {
     /// Ask the person; the call waits for the answer. A refusal is a result, not an error.
     pub(crate) fn perm_request(&self, caller: &str, params: PermRequestParams) -> Answer {
         let asked = params.duration.unwrap_or(GrantDuration::Session);
-        let grant = match self.prompt(caller, &params.permission, &params.reason, asked) {
-            Outcome::Granted(grant) => Some(grant),
-            Outcome::Refused => None,
-            Outcome::Withdrawn => {
-                return Err(error(
-                    ErrorCode::Cancelled,
-                    format!("{caller} stopped before the person answered"),
-                ));
-            }
-            Outcome::Unheard => self
-                .prompter
-                .ask(caller, &params.permission, &params.reason)
-                .then(|| self.grant_for(caller, params.permission, asked)),
-        };
+        let grant = self.ask(caller, &params.permission, &params.reason, asked)?;
         json(PermRequestResult {
             granted: grant.is_some(),
             grant,
         })
+    }
+
+    /// `check`, but when no grant covers a scope that covers the target, ask the person for the scope
+    /// first, for the session, as perm.request asks (shell.open). A refusal is `permission_denied`.
+    pub(crate) fn check_or_ask(
+        &self,
+        caller: &str,
+        scope: &Permission,
+        target: &Target<'_>,
+        reason: &str,
+    ) -> Result<(), BridgeError> {
+        let held = self.permissions().authorize(caller, scope, target);
+        if held.is_err() && scope_allows(scope, target) {
+            let asked = self.ask(caller, scope, reason, GrantDuration::Session)?;
+            if asked.is_none() {
+                let reason = format!("the person did not allow {caller} this scope");
+                return Err(denied(Denied {
+                    permission: scope.clone(),
+                    reason,
+                }));
+            }
+        }
+        self.check(caller, scope, target)
+    }
+
+    /// Ask the person for `permission`, through perm.prompt or else the Prompter: the grant they
+    /// made, or none when they refused. `cancelled` when the caller stopped first.
+    fn ask(
+        &self,
+        caller: &str,
+        permission: &Permission,
+        reason: &str,
+        duration: GrantDuration,
+    ) -> Result<Option<Grant>, BridgeError> {
+        match self.prompt(caller, permission, reason, duration) {
+            Outcome::Granted(grant) => Ok(Some(grant)),
+            Outcome::Refused => Ok(None),
+            Outcome::Withdrawn => Err(error(
+                ErrorCode::Cancelled,
+                format!("{caller} stopped before the person answered"),
+            )),
+            Outcome::Unheard => Ok(self
+                .prompter
+                .ask(caller, permission, reason)
+                .then(|| self.grant_for(caller, permission.clone(), duration))),
+        }
     }
 
     /// Give a grant back: one's own without a scope, anyone's with perm:manage.

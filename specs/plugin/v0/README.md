@@ -68,9 +68,11 @@ eight `actions` (`{ command, title, args? }`): Enter runs the first, Mod+Enter t
 | `data:read` | `kinds`, `sources` | Items of the index through `data.*` (served from #103 on); absent `kinds` or `sources` mean all |
 | `connector:manage` | none | Connector instances through `connector.*`: list, connect, disconnect, pause, sync (from #103 on) |
 | `view:manage` | none | The person's views through `view.*`: list, open, save, remove (from #103 on) |
+| `shell:open` | `schemes`, `paths` | `shell.open` of URLs whose scheme is in `schemes` (`http`, `https`, `mailto`), and of reveals of files under `paths`; at least one of the two |
 
 Paths are absolute or rooted at `~`, `${plugin}`, `${workspace}` or `${home}`, with `*` within a segment
-and `**` across segments. Hosts are names with an optional port, or `*.domain` for subdomains. Commands
+and `**` across segments. `shell:open` schemes are the three the core ever opens: a scope narrows them,
+never widens them, and its `paths` are only shown in the file manager, never opened. Hosts are names with an optional port, or `*.domain` for subdomains. Commands
 are program names or absolute paths, without arguments.
 
 Command ids are lowercase and dotted (`eris.say`); in `ids`, `*` matches any run of characters, dots
