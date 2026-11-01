@@ -32,11 +32,16 @@ export function playRemuxed(element, remuxed, options) {
   const ms = new Source();
   if (managed) /** @type {any} */ (element).disableRemotePlayback = true;
   // A sandboxed frame's blob: URLs name an opaque origin, and WebKit will not attach a MediaSource
-  // through one (MEDIA_ERR_SRC_NOT_SUPPORTED at once): srcObject attaches it directly.
-  const direct = "srcObject" in element;
+  // through one (MEDIA_ERR_SRC_NOT_SUPPORTED at once): srcObject attaches it directly. Chromium takes
+  // only a MediaStream there, and the blob: URL instead.
+  let direct = true;
+  try {
+    /** @type {any} */ (element).srcObject = ms;
+  } catch {
+    direct = false;
+  }
   const url = direct ? "" : win.URL.createObjectURL(ms);
-  if (direct) /** @type {any} */ (element).srcObject = ms;
-  else element.src = url;
+  if (!direct) element.src = url;
   let closed = false;
   let generation = 0;
   /** @type {SourceBuffer | null} */

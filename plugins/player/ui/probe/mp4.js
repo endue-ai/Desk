@@ -109,8 +109,9 @@ function sampleEntry(/** @type {Uint8Array} */ stsd, /** @type {string} */ kind)
   const vpcC = config(inner, "vpcC");
   const av1C = config(inner, "av1C");
   const esds = config(inner, "esds");
-  if (avcC) track.codecId = avcCodec(type, avcC);
-  else if (hvcC) track.codecId = hevcCodec(type, hvcC);
+  const named = drm?.original || type;
+  if (avcC) track.codecId = avcCodec(named, avcC);
+  else if (hvcC) track.codecId = hevcCodec(named, hvcC);
   else if (vpcC) track.codecId = vp9Codec(vpcC);
   else if (av1C) track.codecId = av1Codec(av1C);
   else if (esds) Object.assign(track, esdsCodec(esds) ?? {});
@@ -142,7 +143,13 @@ function protection(
   const schm = parts.find((b) => b.type === "schm");
   const at = (/** @type {Box | undefined} */ b, skip = 0) =>
     b ? latin1(stsd.subarray(b.at + b.header + skip, b.at + b.header + skip + 4)) : "";
-  const original = at(frma);
+  // Without frma, the configuration box says what the entry stands for.
+  const configs = /** @type {Record<string, string>} */ ({
+    avcC: "avc1",
+    hvcC: "hvc1",
+    esds: "mp4a",
+  });
+  const original = at(frma) || (inner.map((b) => configs[b.type]).find(Boolean) ?? "");
   // schm is a full box: its scheme type follows the version and flags.
   const scheme = at(schm, 4);
   const fairplay = type.startsWith("drm") || scheme === "itun";

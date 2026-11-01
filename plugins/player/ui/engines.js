@@ -156,8 +156,8 @@ export function createEngines(win, deps) {
       /** @type {Array<() => void>} */
       const undo = [];
       hooks.busy("Remuxing…");
-      remux(model, hooks).then(
-        ({ remuxed, sound }) => {
+      remux(model, hooks)
+        .then(({ remuxed, sound }) => {
           if (closed) return;
           const fed = playRemuxed(element, remuxed, {
             win,
@@ -167,9 +167,8 @@ export function createEngines(win, deps) {
           });
           undo.push(() => fed.close());
           if (sound && model.target) undo.push(beside(element, model.target, src));
-        },
-        (error) => !closed && hooks.fail(message(error)),
-      );
+        })
+        .catch((error) => !closed && hooks.fail(message(error)));
       return {
         media: element,
         close() {
