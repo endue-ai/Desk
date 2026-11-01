@@ -20,6 +20,8 @@ import { damaged, Metadata } from "./squashfs-meta.js";
 const NONE = 0xffffffff;
 const UNCOMPRESSED = 0x1000000;
 const DEVICES = "Devices, pipes and sockets hold no data.";
+/** The most bytes read into one piece: a listing or a file read whole. */
+const LARGEST = 2 ** 31 - 1;
 
 /** An image of a kind not read here: its details and the sentence, nothing listed. */
 const refused = (
@@ -184,6 +186,10 @@ async function walk(fs, sb, work, visit) {
   let count = 0;
   while (stack.length) {
     const { path, inode } = /** @type {{ path: string, inode: Inode }} */ (stack.pop());
+    if ((inode.listing ?? 0) > LARGEST)
+      throw damaged(
+        `the folder “${path || "/"}” says its listing is larger than a file system holds`,
+      );
     const listing = await fs.read(
       sb.dirTable + (inode.dirStart ?? 0),
       inode.dirOffset ?? 0,
@@ -267,8 +273,12 @@ class DataBlocks {
   /** The first `n` bytes of a file. @param {Inode} inode @param {number} n @param {Work} work @param {string} path */
   async read(inode, n, work, path) {
     const { blockSize } = this.sb;
-    const out = new Uint8Array(n);
     const blocks = inode.blocks ?? [];
+    const stored = blocks.reduce((sum, word) => sum + (word & (UNCOMPRESSED - 1)), 0);
+    if ((inode.blocksStart ?? 0) + stored > this.sb.used)
+      throw damaged(`the blocks of “${path}” lie past the end of the file system`);
+    if (n > LARGEST) throw new Error(`“${path}” is too large to read in one piece.`);
+    const out = new Uint8Array(n);
     let at = inode.blocksStart ?? 0;
     let done = 0;
     for (let i = 0; i < blocks.length && done < n; i++) {

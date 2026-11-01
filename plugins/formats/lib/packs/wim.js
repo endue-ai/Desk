@@ -178,6 +178,7 @@ export async function openWim(source, options = {}) {
       const res = found.res;
       if (!res) return new Uint8Array(0);
       const n = Math.min(res.original, Math.max(0, limit));
+      if (n > 2 ** 31 - 1) throw new Error(`“${entry.path}” is too large to read in one piece.`);
       return resources.read(res, 0, n, reading, `“${entry.path}”`);
     },
   };

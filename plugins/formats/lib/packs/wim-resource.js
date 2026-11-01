@@ -100,6 +100,8 @@ export class Resources {
   async table(res) {
     const count = Math.ceil(res.original / this.chunk);
     const width = res.original > 0xffffffff ? 8 : 4;
+    if ((count - 1) * width > res.size)
+      throw new Error("The WIM is damaged: a resource's chunk table is larger than the resource.");
     const bytes = await this.raw(res, 0, (count - 1) * width, "a chunk table");
     const head = (count - 1) * width;
     const starts = new Array(count + 1);
