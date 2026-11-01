@@ -1,6 +1,7 @@
 // Words and times for the screen: people, dates relative to today, and when an invitation is, in the
 // person's zone and, when it differs, the zone the organizer wrote. Pure functions over Intl.
-import { toWall } from "./ical/values.js";
+import { localZone, toWall } from "./ical/values.js";
+import { dateTimeFormat } from "./intl.js";
 
 /**
  * @typedef {{ name?: string, email?: string }} PersonRef
@@ -24,8 +25,8 @@ export function personLine(person) {
 export const peopleLine = (people) => (people ?? []).map(personLine).join(", ");
 
 const sameDay = (/** @type {Date} */ a, /** @type {Date} */ b, /** @type {string} */ zone) =>
-  a.toLocaleDateString("en-CA", { timeZone: zone }) ===
-  b.toLocaleDateString("en-CA", { timeZone: zone });
+  dateTimeFormat("en-CA", { timeZone: zone }).format(a) ===
+  dateTimeFormat("en-CA", { timeZone: zone }).format(b);
 
 /**
  * A message's time for its list row: the time today, the weekday this week, else the date.
@@ -36,14 +37,18 @@ export function listTime(iso, clock = {}) {
   const at = new Date(iso);
   if (Number.isNaN(at.getTime())) return "";
   const now = new Date(clock.now ?? Date.now());
-  const zone = clock.zone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const zone = clock.zone ?? localZone();
   const locale = clock.locale ?? "en-US";
   if (sameDay(at, now, zone))
-    return at.toLocaleTimeString(locale, { timeZone: zone, hour: "2-digit", minute: "2-digit" });
+    return dateTimeFormat(locale, { timeZone: zone, hour: "2-digit", minute: "2-digit" }).format(
+      at,
+    );
   if (now.getTime() - at.getTime() < 6 * 86_400_000 && at.getTime() <= now.getTime())
-    return at.toLocaleDateString(locale, { timeZone: zone, weekday: "short" });
+    return dateTimeFormat(locale, { timeZone: zone, weekday: "short" }).format(at);
   const year = at.getFullYear() === now.getFullYear() ? {} : { year: "numeric" };
-  return at.toLocaleDateString(locale, { timeZone: zone, month: "short", day: "numeric", ...year });
+  return dateTimeFormat(locale, { timeZone: zone, month: "short", day: "numeric", ...year }).format(
+    at,
+  );
 }
 
 /**
@@ -54,32 +59,32 @@ export function listTime(iso, clock = {}) {
 export function fullTime(iso, clock = {}) {
   const at = new Date(iso);
   if (Number.isNaN(at.getTime())) return iso;
-  return at.toLocaleString(clock.locale ?? "en-US", {
-    timeZone: clock.zone ?? Intl.DateTimeFormat().resolvedOptions().timeZone,
+  return dateTimeFormat(clock.locale ?? "en-US", {
+    timeZone: clock.zone ?? localZone(),
     weekday: "short",
     year: "numeric",
     month: "short",
     day: "numeric",
     hour: "2-digit",
     minute: "2-digit",
-  });
+  }).format(at);
 }
 
 /** A wall time (ms as if UTC) as a date in words. */
 const wallDate = (/** @type {number} */ wall, /** @type {string} */ locale) =>
-  new Date(wall).toLocaleDateString(locale, {
+  dateTimeFormat(locale, {
     timeZone: "UTC",
     weekday: "short",
     month: "short",
     day: "numeric",
     year: "numeric",
-  });
+  }).format(wall);
 const wallClock = (/** @type {number} */ wall, /** @type {string} */ locale) =>
-  new Date(wall).toLocaleTimeString(locale, {
+  dateTimeFormat(locale, {
     timeZone: "UTC",
     hour: "2-digit",
     minute: "2-digit",
-  });
+  }).format(wall);
 
 /**
  * When an invitation is, as one line, plus the organizer's wall time when it was written in another
@@ -90,7 +95,7 @@ const wallClock = (/** @type {number} */ wall, /** @type {string} */ locale) =>
  */
 export function whenLine({ start, end, allDay }, clock = {}) {
   const locale = clock.locale ?? "en-US";
-  const zone = clock.zone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const zone = clock.zone ?? localZone();
   if (allDay) {
     const last = end.wall - 86_400_000;
     const line =

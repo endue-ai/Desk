@@ -6,10 +6,10 @@
 mod layer;
 
 use std::sync::Arc;
-use std::time::Duration;
 
 use desk_bridge::ErrorCode;
 use desk_sys::calendar::{Authorization, CalendarSource};
+use layer::event_observation::collect_disconnect;
 use layer::fixtures::{hello, mac, mac_desk, notes, state, write_at};
 use layer::{DAY, Desk, HELLO, NOW, connector_manage, source, time};
 use serde_json::{Value, json};
@@ -139,7 +139,12 @@ fn disconnect_clears_the_items_and_the_secrets() {
         desk.call("desk", "connector.disconnect", params)
     };
     assert_eq!(disconnect(HELLO, "notes").unwrap(), json!({}));
-    let (_, removed) = desk.wait_for("data.changed");
+    let events = collect_disconnect(&desk.seen, HELLO, "notes").unwrap();
+    let removed = &events
+        .iter()
+        .find(|(_, event)| event["event"] == "data.changed")
+        .unwrap()
+        .1["data"];
     assert_eq!(
         removed["changes"],
         json!([{ "change": "removed", "source": source(HELLO, "notes"), "id": "alpha.md" }])
@@ -151,7 +156,6 @@ fn disconnect_clears_the_items_and_the_secrets() {
             .contains("s3cret")
     );
     assert!(desk.instances(HELLO).is_empty());
-    let events = desk.named("connector.changed", Duration::from_millis(100));
     assert!(!serde_json::to_string(&events).unwrap().contains("s3cret"));
     let gone = events
         .iter()

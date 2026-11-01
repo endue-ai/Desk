@@ -49,6 +49,7 @@ catch; until then they are marked "not yet".
 | `packages/**`, `apps/**/src`, `plugins/**` | `ci`: biome, tsc, vitest on three OSes, `runtime-e2e` on Linux; `red-on-base` (new `*.test.ts`); `security` |
 | `scripts/**` | `ci` (biome, `node --test`) |
 | `.github/workflows/**` | `ci` (actionlint) |
+| `scripts/ci-apt.mjs`, `scripts/ci-apt.test.mjs` | `ci` (Node fixture tests for source preservation, bounded APT retries/timeouts and workflow ordering) and `e2e` (the existing packaged-app tests after real Ubuntu dependency installation) |
 | `specs/**` | `ci` (spec lint, contract tests), `codegen-check`; run `just codegen` and commit the generated files |
 | `plugins/**`, `examples/**` | `ci` (biome for plugin JS; `examples/brain-echo` is covered by the Rust conformance and lease tests), `plugin-validate`; `plugins/**` also runs `e2e` |
 | `e2e/**` | `ci` (biome); `e2e` (`app-e2e` on Linux: `just bundle-app`, `just test-app-e2e`, `just smoke`; not a required check) |

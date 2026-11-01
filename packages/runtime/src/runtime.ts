@@ -51,6 +51,8 @@ export interface RuntimeOptions {
   views?: HostViews;
   /** Where centre and floating surfaces go instead of the grid: the shell's windows. */
   windows?: WindowHost;
+  /** Native hosts may pick a file; null means the person cancelled. */
+  pickFile?: () => Promise<string | null>;
 }
 
 export interface RuntimeProfiles {
@@ -71,11 +73,7 @@ export interface RuntimePlugins {
   unmount(id: string): void;
 }
 
-/**
- * A host that holds the surfaces that would otherwise sit on the compositor's grid: the shell's
- * windows (ADR 0040). The runtime creates each centre or floating surface's section detached and
- * hands it over; the host places it in a window and takes the window away when the surface closes.
- */
+/** The shell's window host places detached surfaces and removes them when closed (ADR 0040). */
 export interface WindowHost {
   adopt(spec: SurfaceSpec, section: HTMLElement): void;
   release(id: string): void;
@@ -230,7 +228,7 @@ export function createRuntime(options: RuntimeOptions): Runtime {
   });
   const buffers = installBuffers(ctx, { focus: focusAny });
   routing = connectViews(views, buffers);
-  const files = installFiles(ctx, buffers, (input) => notify.notify(input));
+  const files = installFiles(ctx, buffers, notify.notify, options.pickFile);
   const session = installSession(ctx, buffers, {
     layout: () => structuredClone(layout),
     setLayout: (next) => commit(next),

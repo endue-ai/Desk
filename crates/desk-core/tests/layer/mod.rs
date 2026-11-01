@@ -3,6 +3,7 @@
 //! and grants; the addressed deliveries seen so far; and copies of examples/plugin-hello-connector.
 #![allow(dead_code)]
 
+pub mod event_observation;
 pub mod fixtures;
 pub mod views;
 

@@ -19,6 +19,7 @@ import {
   replyCalendar,
   replySubject,
 } from "./ical/itip.js";
+import { localZone } from "./ical/values.js";
 
 /**
  * @typedef {import("./compose.js").Draft} Draft
@@ -65,7 +66,8 @@ const STATUSES = /** @type {Record<string, Answer>} */ ({
  */
 export function invitationView(message, addresses, said, clock) {
   if (!message.calendar) return undefined;
-  const reading = readCalendar(message.calendar, clock?.zone);
+  const resolvedClock = { ...clock, zone: clock?.zone ?? localZone() };
+  const reading = readCalendar(message.calendar, resolvedClock.zone);
   const invitation = reading.invitations[0];
   if (!invitation) {
     return {
@@ -85,7 +87,7 @@ export function invitationView(message, addresses, said, clock) {
   const organizer = invitation.organizer;
   return {
     summary: invitation.summary,
-    when: whenLine(invitation, clock),
+    when: whenLine(invitation, resolvedClock),
     ...(invitation.location ? { location: invitation.location } : {}),
     ...(invitation.description ? { description: invitation.description } : {}),
     ...(organizer ? { organizer: organizer.name ?? organizer.email } : {}),
