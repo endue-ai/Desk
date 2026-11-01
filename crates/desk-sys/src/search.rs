@@ -94,10 +94,7 @@ fn output(mut command: Command) -> io::Result<Vec<u8>> {
         let _ = child.kill();
     }
     let _ = child.wait();
-    // A capped result is complete for us: the producer may then have died of SIGPIPE or of the
-    // kill above, and its exit status says nothing about the index.
-    let capped = matches!(&result, Ok(Ok(bytes)) if bytes.len() as u64 >= MAX_OUTPUT);
-    if !capped && status.is_some_and(|s| !s.success() && s.code() != Some(1)) {
+    if status.is_some_and(|s| !s.success() && s.code() != Some(1)) {
         return Err(io::Error::other("The OS search index is unavailable"));
     }
     result.map_err(|_| io::Error::new(io::ErrorKind::TimedOut, "The OS search index timed out"))?
@@ -164,20 +161,6 @@ mod tests {
         assert_eq!(args.len(), 2);
         assert_eq!(args[0], "-0");
         assert!(args[1].contains("quote\\\" OR \\* $(touch /tmp/never)"));
-    }
-
-    #[cfg(unix)]
-    #[test]
-    fn a_capped_result_is_kept_whatever_the_producer_exits_with() {
-        for _ in 0..50 {
-            let mut producer = Command::new("/bin/sh");
-            producer.args([
-                "-c",
-                &format!("head -c {} /dev/zero; exit 2", MAX_OUTPUT + 4096),
-            ]);
-            let bytes = output(producer).expect("a capped result is a success");
-            assert_eq!(bytes.len() as u64, MAX_OUTPUT);
-        }
     }
 
     #[cfg(unix)]
