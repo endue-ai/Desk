@@ -11,7 +11,7 @@ import { openFile } from "../ui/open.js";
 import { LARGE } from "../ui/slides.js";
 import { createView } from "../ui/view.js";
 import { handleRequest, XmlDomParser } from "../ui/worker.js";
-import { disk, file, mount } from "./harness";
+import { disk, file, type Handlers, mount } from "./harness";
 import { odp, page } from "./odp";
 import { loadPage } from "./page";
 import { pptx, title } from "./pptx";
@@ -49,12 +49,12 @@ function ranged(files: Record<string, Uint8Array>, urls = Object.keys(files), he
     return new Response(bytes.slice(Number(range?.[1]), Number(range?.[2]) + 1), { status: 206 });
   });
   vi.stubGlobal("fetch", fetcher);
-  const handlers = {
+  const handlers: Handlers = {
     ...disk(files),
-    "fs.url": ({ path }: { path: string }) => {
+    "fs.url": ({ path }) => {
       if (!urls.includes(path)) throw new Error("no URL");
       const url = `https://file.invalid/#${encodeURIComponent(path)}`;
-      return { url, size: files[path]?.length ?? 0 };
+      return { url, size: files[path]?.length ?? 0, type: "application/octet-stream" };
     },
   };
   return { fetcher, handlers };

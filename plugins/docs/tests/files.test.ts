@@ -35,7 +35,8 @@ describe("the desk's file requests", () => {
     expect(view.shown.at(-1)).toMatchObject({ doc: { kind: "document", format: "rtf" } });
     expect(words(view.shown.at(-1))).toBe("Alpha");
     expect(view.focused).toBe(1);
-    expect(view.statuses).toEqual(["Opening a.rtf…", ""]);
+    // The view says what it shows in place of these words ("a.rtf: 1 page.").
+    expect(view.statuses).toEqual(["Opening a.rtf…"]);
   });
 
   it("revert reads the file again", async () => {

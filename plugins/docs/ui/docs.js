@@ -225,6 +225,8 @@ export function createDocs({ bridge, commands }, view, options) {
         };
       });
       job.signal.throwIfAborted();
+      // The view says what it shows in place of "Opening…": nothing here clears its words.
+      said = "";
       return { buffer, path, name, size, doc };
     } catch (error) {
       if (job.signal.aborted) throw new Error(`Opening ${name} was cancelled.`);
