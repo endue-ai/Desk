@@ -26,14 +26,20 @@ pub trait Host: Send + Sync + 'static {
         create_dirs: bool,
     ) -> Result<u64, Error>;
     /// bridge: fs.history. The versions the desk kept of the file, newest first, `limit` at most.
+    /// A host that keeps no history answers `unsupported`, as by default.
     fn fs_history(
         &self,
-        plugin: &str,
-        path: &str,
-        limit: Option<u32>,
-    ) -> Result<Vec<FsVersion>, Error>;
-    /// bridge: fs.restore. Writes the version back; returns the bytes written.
-    fn fs_restore(&self, plugin: &str, path: &str, version_id: &str) -> Result<u64, Error>;
+        _plugin: &str,
+        _path: &str,
+        _limit: Option<u32>,
+    ) -> Result<Vec<FsVersion>, Error> {
+        Err(unsupported("fs.history"))
+    }
+    /// bridge: fs.restore. Writes the version back; returns the bytes written. `unsupported` by
+    /// default, as `fs_history`.
+    fn fs_restore(&self, _plugin: &str, _path: &str, _version_id: &str) -> Result<u64, Error> {
+        Err(unsupported("fs.restore"))
+    }
     /// bridge: net.fetch
     fn net_fetch(&self, plugin: &str, request: Request) -> Result<Response, Error>;
     /// bridge: ui.notify
@@ -103,4 +109,12 @@ pub trait Host: Send + Sync + 'static {
         channel: Option<&str>,
         count: Option<u32>,
     ) -> Result<Vec<LogEntry>, Error>;
+}
+
+/// The answer of a method a host does not back.
+fn unsupported(method: &str) -> Error {
+    Error {
+        code: crate::bindings::ErrorCode::Unsupported,
+        message: format!("{method} is not served by this host"),
+    }
 }
