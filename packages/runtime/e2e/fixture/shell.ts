@@ -8,7 +8,8 @@
 // fixture market, e2e/themes/market served at /market/, as https://market.test/index.json, and
 // ?market=tab opens the studio's Market tab, ?market=<theme id> previews that theme there). brain.ask
 // answers as examples/brain-echo does (propose_theme from the words of the prompt's last line).
-// Never shipped.
+// ?views=1 installs desk.views, and brain.ask answers propose_view for desk.propose as
+// src/propose/fixtures.ts scripts it. Never shipped.
 import type { PluginManifest } from "@endue-ai/bridge";
 import "../../src/desk.css";
 import "../../src/shell/styles";
@@ -18,6 +19,7 @@ import { browserCore, localStore, memoryStore } from "../../src/bridge/core";
 import erisReply from "../../src/bridge/envelopes/eris-reply.json";
 import userHello from "../../src/bridge/envelopes/user-hello.json";
 import { ManualClock } from "../../src/clock";
+import { viewFor } from "../../src/propose/fixtures";
 import { mountDesk } from "../../src/shell/Desk";
 import { sampleState } from "../../src/shell/state";
 import testTheme from "../themes/test-theme/plugin.json";
@@ -55,13 +57,21 @@ const market = params.has("market");
 const core = browserCore({
   manifests: [
     ...Object.values(manifests).filter(
-      (m) => m.id.startsWith("desk.") && m.id !== "desk.views" && m.kind !== "view",
+      (m) =>
+        m.id.startsWith("desk.") &&
+        (m.id !== "desk.views" || params.has("views")) &&
+        m.kind !== "view",
     ),
     ...(params.has("plugins") ? testPlugins : []),
     ...(params.has("themes") ? [testTheme as PluginManifest] : []),
   ],
   store: params.has("persist") ? localStore("desk.core.") : memoryStore(),
-  ask: (prompt, tool) => (tool === "propose_theme" ? proposeTheme(prompt) : undefined),
+  ask: (prompt, tool) =>
+    tool === "propose_theme"
+      ? proposeTheme(prompt)
+      : tool === "propose_view" && params.has("views")
+        ? viewFor(prompt)
+        : undefined,
   ...(market ? { download: fromFixtureMarket } : {}),
   init: {
     profile: "morning",

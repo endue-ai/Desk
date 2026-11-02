@@ -17,6 +17,7 @@ import {
   type NodeModel,
   type ViewModel,
 } from "../ui/engine.js";
+import { createPreview, type Preview } from "../ui/preview.js";
 
 type Options = Parameters<typeof createTestHost>[0];
 const root = join(import.meta.dirname, "../../..");
@@ -80,6 +81,8 @@ export interface Mounted {
   host: TestHost;
   view: RecordingView;
   engine: Engine;
+  /** desk.views.preview's buttons: Apply, Try again with a correction, Discard. */
+  preview: Preview;
   /** desk.views.open, as the desk runs it. */
   open(args: Record<string, unknown>): Promise<unknown>;
   /** The components as drawn last: the last draw, with every update since applied. */
@@ -112,6 +115,7 @@ export async function mount(
   for (const view of options.views ?? []) await host.call("view.save", { view, scope: VIEWS });
   const view = recordingView();
   let engine: Engine | undefined;
+  let preview: Preview | undefined;
   await defineUiPlugin(
     {
       mount(ctx) {
@@ -120,6 +124,7 @@ export async function mount(
           zone: "Asia/Seoul",
           locale: "en-US",
         });
+        preview = createPreview(ctx, engine);
       },
     },
     host.transport,
@@ -128,7 +133,7 @@ export async function mount(
     for (let i = 0; i < 6; i++) await host.settle();
   };
   await settle();
-  if (!engine) throw new Error("the plugin did not mount");
+  if (!engine || !preview) throw new Error("the plugin did not mount");
   const shown = () => {
     let drawn: ComponentModel[] = [];
     for (const entry of view.log) {
@@ -141,6 +146,7 @@ export async function mount(
     host,
     view,
     engine,
+    preview,
     open: async (args) => {
       const result = host.invoke("desk.views.open", args);
       await settle();
