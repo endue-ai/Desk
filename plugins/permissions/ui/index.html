@@ -44,6 +44,34 @@
       </div>
       <p id="prompt-waiting"></p>
     </section>
+    <section
+      id="approval"
+      role="alertdialog"
+      aria-modal="true"
+      aria-labelledby="approval-title"
+      aria-describedby="approval-body"
+      hidden
+    >
+      <h1 id="approval-title"></h1>
+      <div id="approval-body">
+        <p id="approval-who" class="kind"></p>
+        <p id="approval-what"></p>
+        <pre id="approval-preview" class="preview" tabindex="0" aria-label="Preview" hidden></pre>
+        <p id="approval-more" class="kind" hidden>More changes are not shown.</p>
+        <p id="approval-size"></p>
+        <p id="approval-task"></p>
+      </div>
+      <div class="actions" data-for="approval">
+        <button type="button" data-answer="once">Allow once</button>
+        <button type="button" data-answer="task">Allow for this task</button>
+        <button type="button" data-answer="deny">Deny</button>
+      </div>
+      <div class="actions" data-for="result" hidden>
+        <button type="button" data-answer="undo" hidden>Undo</button>
+        <button type="button" data-answer="done">Done</button>
+      </div>
+      <p id="approval-waiting"></p>
+    </section>
     <p id="status" role="status"></p>
     <script type="module" src="./main.js"></script>
   </body>
