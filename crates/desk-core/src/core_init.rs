@@ -21,6 +21,9 @@ impl Core {
     /// Sync init.yaml through `remote` (endue, or `MockRemote` until endue serves sync). The last
     /// version both sides agreed on is kept in `state_file`, or in memory.
     pub fn with_sync(mut self, remote: Arc<dyn SyncRemote>, state_file: Option<PathBuf>) -> Self {
+        if let Some(path) = &state_file {
+            self.screen_state(path, crate::sync::readable);
+        }
         self.sync = Some(Syncer::new(remote, state_file));
         self
     }

@@ -27,7 +27,7 @@ fn hello(parent: &Path, version: &str) -> PathBuf {
 }
 
 /// A data folder whose store lists example.hello 0.1.0 as quarantined.
-fn data(home: &Path) -> PathBuf {
+fn data_folder(home: &Path) -> PathBuf {
     let data = home.join("data");
     fs::create_dir_all(&data).unwrap();
     let store = json!({ "desk": { "plugins.quarantined": [
@@ -39,7 +39,13 @@ fn data(home: &Path) -> PathBuf {
 
 fn enabled(core: &Core) -> Value {
     grant(core, "desk", plugin_manage());
-    let list = call(core, "desk", "plugin.list", json!({ "scope": plugin_manage() })).unwrap();
+    let list = call(
+        core,
+        "desk",
+        "plugin.list",
+        json!({ "scope": plugin_manage() }),
+    )
+    .unwrap();
     list["plugins"]
         .as_array()
         .unwrap()
@@ -52,14 +58,17 @@ fn enabled(core: &Core) -> Value {
 #[test]
 fn a_quarantined_plugin_is_held_off_until_its_version_changes() {
     let home = home("quarantine");
-    let data = data(&home);
+    let data = data_folder(&home);
 
     let core = Core::new(roots(&home))
         .with_store_file(data.join("store.json"))
         .with_plugin_store(data.join("plugins.json"));
     core.install_plugin(&hello(&home, "0.1.0"), false);
     assert_eq!(enabled(&core), false, "the version that failed is held off");
-    assert!(!data.join("plugins.json").exists(), "plugins.json is not written");
+    assert!(
+        !data.join("plugins.json").exists(),
+        "plugins.json is not written"
+    );
 
     // The person turns it on: it runs, and that is their choice to remember.
     call(
@@ -73,7 +82,7 @@ fn a_quarantined_plugin_is_held_off_until_its_version_changes() {
 
     // A new version is not held, even with the old entry still in the store.
     let other = home.join("other");
-    let data = data(&other);
+    let data = data_folder(&other);
     let updated = Core::new(roots(&other))
         .with_store_file(data.join("store.json"))
         .with_plugin_store(data.join("plugins.json"));

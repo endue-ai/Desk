@@ -63,7 +63,10 @@ fn a_ready_after_sixty_seconds_is_late_and_counts_as_failed() {
     start.ready(at(61));
     assert_eq!(record(&path)["phase"], "late");
     let (start, begun) = LastStart::begin(&path, at(100), 8);
-    assert_eq!(begun.failed_before, 1, "a late start counts as one that did not make it");
+    assert_eq!(
+        begun.failed_before, 1,
+        "a late start counts as one that did not make it"
+    );
     start.ready(at(160));
     assert_eq!(record(&path)["phase"], "ready", "60 s is still in time");
 }

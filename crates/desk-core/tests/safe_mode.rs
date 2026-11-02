@@ -17,7 +17,13 @@ fn repo_plugins() -> PathBuf {
 
 fn listed(core: &Core) -> Vec<Value> {
     grant(core, "desk", plugin_manage());
-    call(core, "desk", "plugin.list", json!({ "scope": plugin_manage() })).unwrap()["plugins"]
+    call(
+        core,
+        "desk",
+        "plugin.list",
+        json!({ "scope": plugin_manage() }),
+    )
+    .unwrap()["plugins"]
         .as_array()
         .unwrap()
         .clone()
@@ -25,7 +31,9 @@ fn listed(core: &Core) -> Vec<Value> {
 
 fn desk_policy(plugin: &Value) -> bool {
     plugin["manifest"]["kind"] == "policy"
-        && plugin["id"].as_str().is_some_and(|id| id.starts_with("desk."))
+        && plugin["id"]
+            .as_str()
+            .is_some_and(|id| id.starts_with("desk."))
 }
 
 #[test]
@@ -66,7 +74,11 @@ fn safe_mode_runs_only_the_desk_policy_plugins() {
             assert_eq!(plugin["enabled"], false, "{id} is held off in safe mode");
         }
     }
-    assert_eq!(fs::read_to_string(&store).unwrap(), flags, "plugins.json is untouched");
+    assert_eq!(
+        fs::read_to_string(&store).unwrap(),
+        flags,
+        "plugins.json is untouched"
+    );
 
     let safe = core.safe_mode().expect("safe mode is on");
     assert_eq!(safe.reason, SafeReason::Asked);

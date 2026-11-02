@@ -71,7 +71,13 @@ fn each_unreadable_state_file_starts_empty_and_is_kept_broken() {
     }
 
     // Each starts empty: the store and the settings hold nothing, and the person's own state works.
-    let got = call(&core, "example.notes", "store.get", json!({ "key": "draft" })).unwrap();
+    let got = call(
+        &core,
+        "example.notes",
+        "store.get",
+        json!({ "key": "draft" }),
+    )
+    .unwrap();
     assert_eq!(got, json!({}));
     call(
         &core,
@@ -82,7 +88,10 @@ fn each_unreadable_state_file_starts_empty_and_is_kept_broken() {
     .unwrap();
     let stored: serde_json::Value =
         serde_json::from_str(&fs::read_to_string(data.join("store.json")).unwrap()).unwrap();
-    assert_eq!(stored["example.notes"]["draft"], 1, "the next write starts afresh");
+    assert_eq!(
+        stored["example.notes"]["draft"], 1,
+        "the next write starts afresh"
+    );
     assert_eq!(
         fs::read_to_string(data.join("store.json.broken")).unwrap(),
         GARBAGE,
@@ -105,13 +114,27 @@ fn a_missing_or_readable_state_file_is_not_broken() {
     let home = home("state-fine");
     let data = home.join("data");
     fs::create_dir_all(&data).unwrap();
-    fs::write(data.join("store.json"), r#"{ "example.notes": { "draft": 2 } }"#).unwrap();
-    fs::write(data.join("plugins.json"), r#"{ "enabled": { "example.notes": false } }"#).unwrap();
+    fs::write(
+        data.join("store.json"),
+        r#"{ "example.notes": { "draft": 2 } }"#,
+    )
+    .unwrap();
+    fs::write(
+        data.join("plugins.json"),
+        r#"{ "enabled": { "example.notes": false } }"#,
+    )
+    .unwrap();
 
     let core = core_on(&home);
 
     assert!(core.broken_files().is_empty(), "{:?}", core.broken_files());
-    let got = call(&core, "example.notes", "store.get", json!({ "key": "draft" })).unwrap();
+    let got = call(
+        &core,
+        "example.notes",
+        "store.get",
+        json!({ "key": "draft" }),
+    )
+    .unwrap();
     assert_eq!(got, json!({ "value": 2 }));
     for name in FILES {
         assert!(!data.join(format!("{name}.broken")).exists(), "{name}");
@@ -144,7 +167,11 @@ fn an_unreadable_item_index_is_kept_broken_and_opened_fresh() {
         json!({ "query": query, "scope": scope }),
     )
     .unwrap();
-    assert_eq!(page["items"], json!([]), "data.* answers from the empty index");
+    assert_eq!(
+        page["items"],
+        json!([]),
+        "data.* answers from the empty index"
+    );
 }
 
 #[test]
@@ -163,7 +190,10 @@ fn an_unparseable_view_file_is_kept_broken_at_start() {
     assert_eq!(names(&core.broken_files()), vec!["torn.yaml".to_owned()]);
     assert!(views.join("torn.yaml.broken").exists());
     assert!(!views.join("torn.yaml").exists());
-    assert!(views.join("odd.yaml").exists(), "a schema problem keeps its file");
+    assert!(
+        views.join("odd.yaml").exists(),
+        "a schema problem keeps its file"
+    );
     assert!(
         core.view_problems().iter().any(|p| p.contains("odd.yaml")),
         "{:?}",

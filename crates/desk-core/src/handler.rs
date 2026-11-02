@@ -85,6 +85,7 @@ pub struct Core {
     pub(crate) opener: Box<dyn Opener>,
     pub(crate) updater: Option<desk_update::Updater>,
     pub(crate) themes: crate::core_themes::Themes,
+    pub(crate) start: Mutex<crate::core_state::StartState>,
 }
 
 impl Core {
@@ -121,6 +122,7 @@ impl Core {
             opener: Box::new(SystemOpener),
             updater: None,
             themes: Default::default(),
+            start: Mutex::default(),
         }
     }
 

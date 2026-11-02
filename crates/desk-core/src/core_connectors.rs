@@ -69,6 +69,7 @@ impl Core {
 
     /// Keep connector secrets in `path` (`secrets.json` in the data folder; ADR 0036).
     pub fn with_secrets_file(self, path: PathBuf) -> Self {
+        self.screen_state(&path, crate::secrets::readable);
         *self.lock_secrets() = Secrets::new(Some(path));
         self
     }

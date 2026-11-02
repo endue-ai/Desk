@@ -29,6 +29,7 @@ impl Core {
     /// `store.json`), in the store's shape `{ owner: { key: value } }`, written on every set.
     /// Without it they last until the core goes.
     pub fn with_settings_file(self, path: PathBuf) -> Self {
+        self.screen_state(&path, crate::store::readable);
         *self.set_values() = Store::new(Some(path));
         self
     }
