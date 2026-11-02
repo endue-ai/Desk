@@ -1,0 +1,14 @@
+{
+  "target": "BridgeRequest",
+  "description": "a reason, when given, is not empty",
+  "instance": {
+    "id": 68,
+    "method": "perm.request",
+    "params": {
+      "permission": {
+        "permission": "ui:notify"
+      },
+      "reason": ""
+    }
+  }
+}
