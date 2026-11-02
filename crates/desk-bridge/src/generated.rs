@@ -1965,6 +1965,38 @@ pub struct InitSync {
     pub enabled: Option<bool>,
 }
 
+/// The whole of keys.yaml. Every key is optional.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct KeysFile {
+    /// The format version. Default 0. Desk ignores a file with a version newer than it reads.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub version: Option<u64>,
+    /// The person's bindings, in order: a later one of the same key wins, and "command": "" takes a key away from the plugins. Default none.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub bindings: Option<Vec<KeyBinding>>,
+}
+
+/// The whole of a profile file. Every key is optional; an empty file is a profile that changes nothing.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ProfileFile {
+    /// The format version. Default 0. Desk ignores a file with a version newer than it reads.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub version: Option<u64>,
+    /// What the profile switcher shows. Default: the file name.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    /// One line under the name in the switcher.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub plugins: Option<ProfilePlugins>,
+    /// Settings in force while the profile is, over init.yaml's.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub settings: Option<BTreeMap<String, serde_json::Value>>,
+}
+
 /// Start capturing the microphone. With wakeWord, audio.wake events arrive when the wake word is heard.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -6534,6 +6566,14 @@ pub const SCHEMAS: &[(&str, &str)] = &[
     (
         "https://endue.ai/specs/init/v0/init.schema.json",
         include_str!("../../../specs/init/v0/init.schema.json"),
+    ),
+    (
+        "https://endue.ai/specs/init/v0/keys.schema.json",
+        include_str!("../../../specs/init/v0/keys.schema.json"),
+    ),
+    (
+        "https://endue.ai/specs/init/v0/profile.schema.json",
+        include_str!("../../../specs/init/v0/profile.schema.json"),
     ),
     (
         "https://endue.ai/specs/bridge/v0/audio.schema.json",

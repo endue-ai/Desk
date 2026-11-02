@@ -1,0 +1,10 @@
+{
+  "target": "KeysFile",
+  "description": "keys.yaml is a mapping, not a bare list",
+  "instance": [
+    {
+      "key": "Mod+J",
+      "command": "desk.palette.open"
+    }
+  ]
+}

@@ -1,7 +1,8 @@
 /**
  * Keyboard shortcuts: every command in the registry with its keys. "Change" records the next key
  * press (Esc cancels); a key another command had moves here, and the list says where it came from.
- * Changes are the person's layer of the keymap (`desk.keys.bindings`); desk.session keeps them.
+ * Changes are the person's layer of the keymap (`desk.keys.bindings`), which desk.keys keeps in
+ * `~/.desk/keys.yaml`.
  */
 
 import { comboOf, formatCombo } from "../../input";

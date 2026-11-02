@@ -1,0 +1,7 @@
+{
+  "target": "KeysFile",
+  "description": "unknown keys are refused, so a typo surfaces",
+  "instance": {
+    "binding": []
+  }
+}

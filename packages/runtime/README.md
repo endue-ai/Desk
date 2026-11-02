@@ -28,9 +28,9 @@ and DOM (ADR 0010); animations run on an injected clock (ADR 0013). Shell decisi
   desk.views, a profile (a ghost) or keys (a table, conflicts marked) on the runtime's card.
 - `ShellBridge` (audio, the brain's voice, the agent directory of specs/brain/v0, ADR 0024);
   `browserBridge`, `browserCore` (the core's stub: cmd.*, plugins and built-in grants, store, init,
-  fixture items, `upsert`, `remove`, `brain.ask` by `ask` or a scripted `brain`) for pages and
-  tests. `ShortcutRouter`, `comboOf`; layout `place`, `move`, `remove`; `realClock`, `ManualClock`,
-  `tween`; `applyTheme`.
+  the desk folder (`folder`), fixture items, `upsert`, `remove`, `brain.ask` by `ask` or a scripted
+  `brain`) for pages and tests. `ShortcutRouter`, `comboOf`; layout `place`, `move`, `remove`;
+  `realClock`, `ManualClock`, `tween`; `applyTheme`.
 
 ## Run and test
 

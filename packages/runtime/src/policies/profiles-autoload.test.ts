@@ -1,9 +1,10 @@
 import type { PluginManifest, ProfileContribution } from "@endue-ai/bridge";
 import { describe, expect, it } from "vitest";
 import { browserCore, memoryStore } from "../bridge/core";
+import { checkProfileFile, readDeskYaml } from "../desk-yaml";
 import { PolicyHub } from "../hub";
 import type { DeskContext } from "./context";
-import { installProfiles, OFF_KEY, PROFILES_KEY } from "./profiles";
+import { installProfiles, OFF_KEY } from "./profiles";
 
 const SHEETS = "example.sheets";
 const NOTES = "example.notes";
@@ -90,7 +91,14 @@ describe("desk.profiles leaves autoload plugins as they are", () => {
   it("a saved profile does not list autoload plugins", async () => {
     const d = await desk([SHEETS]);
     await d.hub.commands.run("desk.profiles.save", { id: "mine", name: "Mine" });
-    const [mine] = d.store[PROFILES_KEY] as ProfileContribution[];
-    expect(mine?.plugins).toEqual({ enabled: ["desk.profiles", NOTES], disabled: [] });
+    const read = readDeskYaml(
+      "mine",
+      d.core.folder.read("~/.desk/profiles/mine.yaml") ?? "",
+      checkProfileFile,
+    );
+    expect(read.ok && read.value.plugins).toEqual({
+      enabled: ["desk.profiles", NOTES],
+      disabled: [],
+    });
   });
 });

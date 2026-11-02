@@ -18,9 +18,9 @@ use std::time::Instant;
 
 use desk_brain_endue::HttpBrain;
 use desk_bridge::{
-    BrainConversePermission, CmdInvokePermission, ConnectorManagePermission, PermManagePermission,
-    Permission, PluginManagePermission, ShellOpenPermission, ThemeManagePermission,
-    UpdateManagePermission, ViewManagePermission,
+    BrainConversePermission, CmdInvokePermission, ConnectorManagePermission, FsReadPermission,
+    FsWritePermission, PermManagePermission, Permission, PluginManagePermission,
+    ShellOpenPermission, ThemeManagePermission, UpdateManagePermission, ViewManagePermission,
 };
 use desk_core::{
     BrainMode, BrainOptions, Core, MockRemote, PluginWatcher, Roots, SyncError, SyncOutcome,
@@ -185,6 +185,25 @@ pub fn run() {
                 RUNTIME_CALLER,
                 Permission::ViewManage(ViewManagePermission {
                     permission: Default::default(),
+                }),
+            );
+            // The person's files in the desk folder (ADR 0079): the runtime reads and watches the
+            // folder, and writes only the saved profiles and keys.yaml.
+            core.grant(
+                RUNTIME_CALLER,
+                Permission::FsRead(FsReadPermission {
+                    permission: Default::default(),
+                    paths: vec!["~/.desk/**".to_owned()],
+                }),
+            );
+            core.grant(
+                RUNTIME_CALLER,
+                Permission::FsWrite(FsWritePermission {
+                    permission: Default::default(),
+                    paths: vec![
+                        "~/.desk/profiles/**".to_owned(),
+                        "~/.desk/keys.yaml".to_owned(),
+                    ],
                 }),
             );
             // The runtime shows the update and restarts into it when the person asks (ADR 0054).
