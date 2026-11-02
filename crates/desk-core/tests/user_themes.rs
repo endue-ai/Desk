@@ -363,7 +363,7 @@ fn a_caller_without_theme_manage_is_refused() {
 }
 
 #[test]
-fn user_themes_load_at_start_and_the_folder_is_watched() {
+fn user_themes_load_at_start_and_each_change_in_the_folder_is_announced_once() {
     let home = home("themes-start");
     let write = |folder: &str, manifest: Value| {
         let dir = themes(&home).join(folder);
@@ -384,17 +384,17 @@ fn user_themes_load_at_start_and_the_folder_is_watched() {
         assert!(!installed(&core, id), "{id} is not a user theme");
     }
     let deliveries = core.events().subscribe_addressed();
-    let _watcher = core.watch_themes().expect("the watch starts");
+    let _watchers = (core.watch_plugins().unwrap(), core.watch_themes().unwrap());
     save(&core, manifest(PAPER), files()).unwrap();
+    fs::write(themes(&home).join("kept/images/paper.png"), b"redrawn").unwrap();
     std::thread::sleep(std::time::Duration::from_millis(400));
     let once = named(&deliveries, "plugin.changed");
-    assert_eq!(once.len(), 1, "the core's own write is announced once");
+    assert_eq!(once.len(), 2, "each change once, not once per watcher");
+    assert_eq!(once[1].data(), &changed("local.kept", "updated", 2));
     write("dropped", manifest("local.dropped"));
     let added = wait_for(&deliveries, "plugin.changed").data().clone();
-    assert_eq!(added["plugin"], "local.dropped");
-    assert_eq!(added["change"], "installed");
+    assert_eq!(added, changed("local.dropped", "installed", 1));
     fs::remove_dir_all(themes(&home).join("dropped")).unwrap();
     let gone = wait_for(&deliveries, "plugin.changed").data().clone();
-    assert_eq!(gone["plugin"], "local.dropped");
-    assert_eq!(gone["change"], "removed");
+    assert_eq!(gone, changed("local.dropped", "removed", 1));
 }
