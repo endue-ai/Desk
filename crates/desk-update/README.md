@@ -15,7 +15,8 @@ verify it at once, keep it on disk, and install it only when asked.
 - `policy::choose`: newer, for this target, `minFrom` met, inside the rollout, never a downgrade.
 - `verify::verify`: minisign in the Tauri encoding, with the version an artifact was signed for.
 - `stage::Stage`: `<data>/updates`, one staged build, the rollout salt and the index serials seen.
-- `manifest`: `index.json` and `release.json`; `schedule`: 30 s, then 4 h ± 10 %, backing off.
+- `manifest`: `index.json` and `release.json` as `specs/update/v0` defines them, read through the
+  types `just codegen` writes to `src/generated.rs`; `schedule`: 30 s, then 4 h ± 10 %, backing off.
 - `https::Https` (feature `https`): the `Transport` over ureq and rustls, bounded per read, one user
   agent for every desk.
 
@@ -26,4 +27,5 @@ cargo test -p desk-update
 ```
 
 The tests sign their data with keys made at test time (`minisign`, a dev-dependency) and run the
-updater over a fake origin and a fake installer.
+updater over a fake origin and a fake installer. `tests/vectors.rs` holds the crate to the spec's
+vectors and decision cases.
