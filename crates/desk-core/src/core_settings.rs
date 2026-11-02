@@ -94,7 +94,7 @@ impl Core {
 
     /// The value in force for `owner`'s `key`: the set value, else init.yaml's `owner.key`, else
     /// the default `owner`'s manifest declares; none when no layer has one.
-    fn setting_in_force(&self, owner: &str, key: &str) -> Option<Value> {
+    pub(crate) fn setting_in_force(&self, owner: &str, key: &str) -> Option<Value> {
         if let Some(value) = self.set_values().get(owner, key) {
             return Some(value);
         }

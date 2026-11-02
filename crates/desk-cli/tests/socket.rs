@@ -326,6 +326,92 @@ fn plugin_and_perm_commands_send_their_manage_scopes() {
     );
 }
 
+fn status(state: &str, extra: Value) -> Value {
+    let mut status = json!({
+        "state": state,
+        "current": { "version": "0.1.0", "commit": "fa7a4af" },
+        "channel": "stable"
+    });
+    for (key, value) in extra.as_object().unwrap() {
+        status[key] = value.clone();
+    }
+    status
+}
+
+fn changed(data: Value) -> String {
+    json!({ "event": "update.changed", "data": data }).to_string()
+}
+
+#[test]
+fn desk_update_prints_the_state_and_the_builds() {
+    let staged = status(
+        "staged",
+        json!({ "release": { "version": "0.2.0" }, "staged": true }),
+    );
+    let answer = staged.clone();
+    let server = Server::start(move |r| vec![ok(r, answer.clone())]);
+    let out = server.desk(&["update"]);
+    assert_eq!(out.status.code(), Some(0), "{}", stderr(&out));
+    assert_eq!(stdout(&out), "staged\t0.1.0\tstable\t0.2.0\n");
+    assert_eq!(server.last()["method"], "update.status");
+    assert_eq!(
+        server.last()["params"],
+        json!({ "scope": { "permission": "update:manage" } })
+    );
+    let downloading = status(
+        "downloading",
+        json!({ "release": { "version": "0.2.0" }, "received": 25, "total": 100 }),
+    );
+    let server = Server::start(move |r| vec![ok(r, downloading.clone())]);
+    let out = server.desk(&["update", "download"]);
+    assert_eq!(stdout(&out), "downloading\t0.1.0\tstable\t0.2.0\t25%\n");
+    assert_eq!(server.last()["method"], "update.download");
+}
+
+#[test]
+fn desk_update_check_waits_for_the_check_to_end() {
+    let server = Server::start(|r| {
+        vec![
+            ok(r, status("checking", json!({}))),
+            changed(status("checking", json!({}))),
+            json!({ "event": "plugin.changed", "data": { "plugin": "example.notes", "change": "enabled", "revision": 2 } }).to_string(),
+            changed(status("up-to-date", json!({ "checkedAt": "2026-11-20T09:14:02Z" }))),
+        ]
+    });
+    let out = server.desk(&["update", "check"]);
+    assert_eq!(out.status.code(), Some(0), "{}", stderr(&out));
+    assert_eq!(stdout(&out), "up-to-date\t0.1.0\tstable\t-\n");
+    assert_eq!(server.last()["method"], "update.check");
+
+    let server = Server::start(|r| {
+        vec![
+            ok(r, status("checking", json!({}))),
+            changed(status(
+                "failed",
+                json!({ "reason": "the channel index: offline" }),
+            )),
+        ]
+    });
+    let out = server.desk(&["update", "check"]);
+    assert_eq!(out.status.code(), Some(1));
+    assert_eq!(stderr(&out), "desk: failed: the channel index: offline\n");
+}
+
+#[test]
+fn desk_update_apply_starts_the_restart() {
+    let applying = status(
+        "applying",
+        json!({ "release": { "version": "0.2.0" }, "staged": true }),
+    );
+    let server = Server::start(move |r| vec![ok(r, applying.clone())]);
+    let out = server.desk(&["update", "apply"]);
+    assert_eq!(out.status.code(), Some(0), "{}", stderr(&out));
+    assert_eq!(stdout(&out), "applying\t0.1.0\tstable\t0.2.0\n");
+    assert_eq!(server.last()["method"], "update.apply");
+    let usage = server.desk(&["update", "later"]);
+    assert_eq!(usage.status.code(), Some(2));
+}
+
 #[test]
 fn no_desk_at_the_socket_exits_1() {
     let path = socket();

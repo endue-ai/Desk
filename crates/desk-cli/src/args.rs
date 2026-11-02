@@ -13,6 +13,9 @@ pub const USAGE: &str = "usage: desk [--json] <command>
   plugin enable <id> | disable <id>     turn a plugin on or off
   perm list                             every grant: grantId, caller, permission
   perm revoke <grantId>                 take a grant back
+  update                                the desk's updates: state, running build, channel, chosen build
+  update check                          read the channel index now and print what came of it
+  update download | apply               download the chosen build, or restart into the staged one
 --json prints the desk's answer line as it is. Exit codes: 0 ok, 1 failed, 2 usage.";
 
 pub struct Args {
@@ -43,6 +46,16 @@ pub enum Remote {
     PermRevoke {
         grant_id: String,
     },
+    /// update.status, or update.check, update.download or update.apply.
+    Update(UpdateStep),
+}
+
+/// What `desk update` asks of the desk's updater (ADR 0054).
+pub enum UpdateStep {
+    Status,
+    Check,
+    Download,
+    Apply,
 }
 
 /// The action the arguments ask for, or `None` for a usage error.
@@ -70,6 +83,10 @@ pub fn parse(args: Vec<String>) -> Option<Args> {
         ["perm", "revoke", grant] => Action::Remote(Remote::PermRevoke {
             grant_id: name(grant)?,
         }),
+        ["update"] => Action::Remote(Remote::Update(UpdateStep::Status)),
+        ["update", "check"] => Action::Remote(Remote::Update(UpdateStep::Check)),
+        ["update", "download"] => Action::Remote(Remote::Update(UpdateStep::Download)),
+        ["update", "apply"] => Action::Remote(Remote::Update(UpdateStep::Apply)),
         _ => return None,
     };
     Some(Args { action, json })

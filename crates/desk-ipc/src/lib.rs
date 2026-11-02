@@ -11,7 +11,7 @@ use std::path::PathBuf;
 
 use desk_bridge::{
     CmdInvokePermission, LogReadPermission, PermManagePermission, Permission,
-    PluginManagePermission,
+    PluginManagePermission, UpdateManagePermission,
 };
 
 #[cfg(unix)]
@@ -58,8 +58,9 @@ pub fn socket_path() -> Option<PathBuf> {
 }
 
 /// What the app grants [`CALLER`] at start, session-long: run any command, list and toggle plugins,
-/// see and revoke every grant, read the log. Only the same OS user can open the socket, and that user
-/// can already do all of this through the desk itself (ADR 0030).
+/// see and revoke every grant, read the log (ADR 0030), and drive the desk's updates (ADR 0054). Only
+/// the same OS user can open the socket, and that user can already do all of this through the desk
+/// itself.
 pub fn grants() -> Vec<Permission> {
     vec![
         Permission::CmdInvoke(CmdInvokePermission {
@@ -73,6 +74,9 @@ pub fn grants() -> Vec<Permission> {
             permission: Default::default(),
         }),
         Permission::LogRead(LogReadPermission {
+            permission: Default::default(),
+        }),
+        Permission::UpdateManage(UpdateManagePermission {
             permission: Default::default(),
         }),
     ]
