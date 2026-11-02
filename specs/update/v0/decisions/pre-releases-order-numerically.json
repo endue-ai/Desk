@@ -1,10 +1,7 @@
 {
   "description": "pre-release numbers compare as numbers: pre.100 is newer than pre.48 and pre.9",
   "current": "0.2.1-pre.48",
-  "targets": [
-    "linux-x86_64-deb",
-    "linux-x86_64"
-  ],
+  "targets": ["linux-x86_64-deb", "linux-x86_64"],
   "salt": "6d0c7e1f42a95b38c4d2e7f01a3b5c6d8e9f0a1b2c3d4e5f60718293a4b5c6d7",
   "buckets": {
     "0.2.1-pre.100": 97,
@@ -19,28 +16,19 @@
       {
         "version": "0.2.1-pre.100",
         "rollout": 100,
-        "targets": [
-          "linux-x86_64-deb",
-          "linux-x86_64"
-        ],
+        "targets": ["linux-x86_64-deb", "linux-x86_64"],
         "release": "releases/0.2.1-pre.100/release.json"
       },
       {
         "version": "0.2.1-pre.48",
         "rollout": 100,
-        "targets": [
-          "linux-x86_64-deb",
-          "linux-x86_64"
-        ],
+        "targets": ["linux-x86_64-deb", "linux-x86_64"],
         "release": "releases/0.2.1-pre.48/release.json"
       },
       {
         "version": "0.2.1-pre.9",
         "rollout": 100,
-        "targets": [
-          "linux-x86_64-deb",
-          "linux-x86_64"
-        ],
+        "targets": ["linux-x86_64-deb", "linux-x86_64"],
         "release": "releases/0.2.1-pre.9/release.json"
       }
     ]

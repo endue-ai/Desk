@@ -4,12 +4,7 @@
   "instance": {
     "version": "v0.2.0",
     "rollout": 100,
-    "targets": [
-      "linux-x86_64-appimage",
-      "linux-x86_64",
-      "linux-x86_64-deb",
-      "linux-x86_64-rpm"
-    ],
+    "targets": ["linux-x86_64-appimage", "linux-x86_64", "linux-x86_64-deb", "linux-x86_64-rpm"],
     "release": "releases/v0.2.0/release.json"
   }
 }
