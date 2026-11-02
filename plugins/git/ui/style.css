@@ -270,6 +270,12 @@ main {
   padding: 12px;
 }
 
+/* `display: flex` above outranks the browser's `[hidden]` rule; the editor shows only while a
+   commit is being written. */
+#commit[hidden] {
+  display: none;
+}
+
 #commit h2 {
   margin: 0;
   font-size: var(--desk-text-sm);
