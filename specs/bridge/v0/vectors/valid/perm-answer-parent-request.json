@@ -1,0 +1,16 @@
+{
+  "target": "BridgeRequest",
+  "description": "perm.answer grants the parent folder the prompt offered",
+  "instance": {
+    "id": 47,
+    "method": "perm.answer",
+    "params": {
+      "promptId": "p3",
+      "granted": true,
+      "parent": true,
+      "scope": {
+        "permission": "perm:manage"
+      }
+    }
+  }
+}

@@ -42,7 +42,7 @@ slows the desk down is handled by turning it off, not by this model.
 | [UI plugin iframe](#ui-plugin-iframe) | plugin, hostile page | Sandboxed frame, CSP without network, caller named by frame | SVG without CSP, IPC reach untested (no issue yet) |
 | [Wasm logic plugin](#wasm-logic-plugin) | plugin | Not run at all | The host, #39 |
 | [MCP tool process and the VM](#mcp-tool-process-and-the-vm) | plugin, agent | Not run at all | The VM and supervisor (no issue yet) |
-| [Bridge and permission engine](#bridge-and-permission-engine) | all | Deny by default, scopes never widened implicitly | No prompter (#64 and no issue yet), symlinks, Windows paths, dev folders (no issue yet) |
+| [Bridge and permission engine](#bridge-and-permission-engine) | all | Deny by default, scopes never widened implicitly, the prompt policy (CORE-03) | Distinct scopes each prompt, symlinks, Windows paths, dev folders (no issue yet) |
 | [Brain and its lease](#brain-and-its-lease) | agent, plugin | Core holds the conversation; one writer per session | No TLS, no token storage (no issue yet) |
 | [Marketplace](#marketplace) | marketplace entry | ADR 0005 only; `plugin-validate` checks this repository's plugins | Index, signing, verification (no issue yet) |
 | [init.yaml sync](#inityaml-sync) | tampered copy | Schema check, both sides kept on conflict, no grants in the file | No authenticity, no real transport (no issue yet) |
@@ -112,9 +112,19 @@ On main:
   its scope covers the target (the path) and one of the caller's grants covers the scope. Anything else
   answers `permission_denied` with the missing permission.
 - Scopes are never widened implicitly. A scope wider than every grant is denied; the only way to add a
-  grant is `perm.request`, which the person answers. In the app nobody can answer yet: the core's
-  default prompter refuses every request, so only built-in plugins hold grants (the permissions their
-  manifests declare, `crates/desk-core/src/core_plugins.rs`), and the runtime holds `plugin:manage`.
+  grant is `perm.request`, which the person answers in the permissions plugin's prompt (with nobody
+  holding `perm:manage`, the core's default prompter refuses every request). Built-in plugins hold the
+  permissions their manifests declare (`crates/desk-core/src/core_plugins.rs`), and the runtime holds
+  `plugin:manage`. The one wider scope a prompt can grant is the parent folder the core offers (below),
+  and only when the person picks that button.
+- The prompt policy (CORE-03, `crates/desk-core/src/prompt_policy.rs`) keeps a caller from wearing the
+  person down. Identical requests waiting at once share one prompt; a request one of the caller's
+  lasting grants covers is answered without one; a refusal the person makes is remembered for the
+  session per caller and scope, so asking again is refused at once (`refused-earlier`) until the
+  caller is granted a scope that covers it. The default prompter's refusals are not remembered. A
+  caller's third folder under one parent adds an "Allow all of" button for the parent: never a root,
+  the home folder or a folder holding it, never a parent the person refused that caller, and focus
+  still starts on Don't allow.
 - Grants last for the session and live in memory; `once` and `always` are refused, and so is revoking
   another caller's grant.
 - Paths are normalised lexically, and `..` above a root is rejected (`crates/desk-core/src/paths.rs`).
@@ -124,8 +134,9 @@ On main:
 
 Gaps:
 
-- No prompter: `perm.request` is always refused in the app. #64 builds the prompter plugin; the core
-  side of prompts and grant persistence has no issue yet.
+- A refusal matches one exact scope. A caller that varies its scope (another folder, another host) is
+  asked again for each, and three sibling folders bring the parent offer; nothing limits how often a
+  caller asks for distinct scopes. No issue yet.
 - Path checks are lexical. A symlink inside an allowed folder that points outside it is followed by
   `fs.read`. No issue yet.
 - The core splits bridge paths on `/` only and does not enforce the schema's no-backslash rule, so on
