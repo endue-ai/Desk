@@ -232,7 +232,7 @@ cargo run -p desk-cli -- theme export local.my-theme     # local.my-theme.desk-t
 cargo run -p desk-cli -- theme import ~/Downloads/dusk.desk-theme
 ```
 
-`.desk-theme` 是一个 JSON 文件：`format` 为 `desk-theme/1`，`manifest` 是主题的 `plugin.json`，`files` 是主题块引用的文件的 base64，最大 16 MiB（ADR 0058）。导入时会先按主题插件检查，再以 `local.` 下的 id 安装到用户的主题目录；`desk theme list` 可以列出它，`desk theme remove` 可以删除它。主题工作室的 Export 和 Import 做同样的事，也接受拖放到工作室上的 `.desk-theme`。
+`.desk-theme` 是一个 JSON 文件：`format` 为 `desk-theme/1`，`manifest` 是主题的 `plugin.json`，`files` 是主题块引用的文件的 base64，最大 16 MiB（ADR 0058）。导入时会先按主题插件检查，再安装到用户的主题目录，id 不在 `local.` 或 `market.` 之下时改为 `local.<名称>`；`desk theme list` 可以列出它，`desk theme remove` 可以删除它。主题工作室的 Export 和 Import 做同样的事，也接受拖放到工作室上的 `.desk-theme`。
 
 ### 市场
 

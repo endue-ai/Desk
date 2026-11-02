@@ -234,7 +234,7 @@ cargo run -p desk-cli -- theme export local.my-theme     # local.my-theme.desk-t
 cargo run -p desk-cli -- theme import ~/Downloads/dusk.desk-theme
 ```
 
-`.desk-theme` はひとつの JSON ファイルです。`format` は `desk-theme/1`、`manifest` はテーマの `plugin.json`、`files` はブロックが指すファイルの base64 で、16 MiB までです（ADR 0058）。読み込むとテーマプラグインとして検査され、利用者のテーマフォルダーに `local.` 以下の id でインストールされます。`desk theme list` で一覧でき、`desk theme remove` で削除できます。スタジオの Export と Import も同じことを行い、スタジオにドロップした `.desk-theme` も受け付けます。
+`.desk-theme` はひとつの JSON ファイルです。`format` は `desk-theme/1`、`manifest` はテーマの `plugin.json`、`files` はブロックが指すファイルの base64 で、16 MiB までです（ADR 0058）。読み込むとテーマプラグインとして検査され、利用者のテーマフォルダーにインストールされます。id が `local.` と `market.` の外にあれば `local.<名前>` になります。`desk theme list` で一覧でき、`desk theme remove` で削除できます。スタジオの Export と Import も同じことを行い、スタジオにドロップした `.desk-theme` も受け付けます。
 
 ### マーケット
 

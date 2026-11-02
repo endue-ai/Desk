@@ -278,9 +278,9 @@ cargo run -p desk-cli -- theme import ~/Downloads/dusk.desk-theme
 
 A `.desk-theme` is one JSON file: `format` `desk-theme/1`, the theme's `plugin.json` as `manifest`, and
 the files its block names in `files`, base64, 16 MiB at most (ADR 0058). Importing one checks it as a
-theme plugin and installs it in the person's themes folder under an id inside `local.`; `desk theme list`
-shows it and `desk theme remove` deletes it. The studio's Export and Import do the same, and it takes a
-`.desk-theme` dropped on it.
+theme plugin and installs it in the person's themes folder, where an id outside `local.` and `market.`
+becomes `local.<its name>`; `desk theme list` shows it and `desk theme remove` deletes it. The studio's
+Export and Import do the same, and it takes a `.desk-theme` dropped on it.
 
 ### The market
 
