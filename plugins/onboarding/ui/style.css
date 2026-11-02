@@ -1,23 +1,12 @@
 /* Layout and controls ported from docs/reference/eris-opening-prototype.html. The centre stays empty:
    Eris speaks below the orb, controls arrive one at a time below that. */
 
-:root {
-  --bg: #141416;
-  --card: #1e1d21;
-  --fg: #f2f0f5;
-  --muted: #b0adb7;
-  --primary: #b6a3f5;
-  --line: #333136;
-  --eris: #e8c98a;
-}
-
 html,
 body {
   margin: 0;
-  background: var(--bg);
-  color: var(--fg);
-  font-family: "Inter", "SUIT Variable", "SUIT", -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo",
-    sans-serif;
+  background: var(--desk-background);
+  color: var(--desk-text);
+  font-family: var(--desk-font-sans);
 }
 
 #root {
@@ -66,7 +55,7 @@ body {
   width: 120px;
   height: 2px;
   transform-origin: 0 50%;
-  background: linear-gradient(90deg, rgba(233, 237, 244, 0), rgba(233, 237, 244, 0.9));
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--eris-frost) 90%, transparent));
 }
 
 .floor {
@@ -78,13 +67,14 @@ body {
   transform-origin: 50% 0;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80'%3E%3Cpath d='M0 .75H80M.75 0V80' stroke='%23e9edf4' stroke-opacity='.22' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
   background-size: 80px 80px;
-  mask-image: radial-gradient(ellipse 30% 40% at 50% 0%, #000 10%, transparent 70%);
+  /* A mask: only the alpha of its colours counts. */
+  mask-image: radial-gradient(ellipse 30% 40% at 50% 0%, black 10%, transparent 70%);
 }
 
 .sphere .count {
   position: absolute;
   inset: 0;
-  font-size: 72px;
+  font-size: calc(var(--desk-text-2xl) * 3);
   font-weight: 400;
 }
 
@@ -103,14 +93,14 @@ body {
   width: 4px;
   height: 1000px;
   transform-origin: 50% 0;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.9));
+  background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--eris-white) 90%, transparent));
 }
 
 .shard {
   position: absolute;
   width: 22px;
   height: 22px;
-  background: rgba(233, 237, 244, 0.36);
+  background: color-mix(in srgb, var(--eris-frost) 36%, transparent);
   pointer-events: none;
 }
 
@@ -123,7 +113,7 @@ body {
   width: 36px;
   height: 40px;
   clip-path: polygon(92.5% 94.5%, 35.6% 8.3%, 8.1% 37.5%);
-  background: linear-gradient(135deg, #f5e2b4, #d4a85f);
+  background: linear-gradient(135deg, var(--eris-gold-light), var(--eris-gold-deep));
 }
 
 .user-rise {
@@ -132,9 +122,9 @@ body {
   right: 0;
   top: 168px;
   text-align: center;
-  font-size: 32px;
+  font-size: var(--desk-text-3xl);
   font-weight: 400;
-  color: var(--fg);
+  color: var(--desk-text);
   pointer-events: none;
 }
 
@@ -158,8 +148,8 @@ body {
 label {
   display: block;
   margin-bottom: 6px;
-  font-size: 12px;
-  color: var(--muted);
+  font-size: var(--desk-text-xs);
+  color: var(--desk-text-muted);
 }
 
 input {
@@ -167,24 +157,24 @@ input {
   height: 40px;
   box-sizing: border-box;
   padding: 0 12px;
-  border-radius: 8px;
-  border: 1px solid #837991;
-  background: var(--card);
-  color: var(--fg);
+  border-radius: var(--desk-radius-md);
+  border: 1px solid var(--desk-input);
+  background: var(--desk-card);
+  color: var(--desk-text);
   font-family: inherit;
-  font-size: 16px;
+  font-size: var(--desk-text-base);
 }
 
 input:focus {
   outline: none;
-  border-color: var(--primary);
-  box-shadow: 0 0 0 1px var(--primary);
+  border-color: var(--desk-ring);
+  box-shadow: 0 0 0 1px var(--desk-ring);
 }
 
 #formslot p {
   margin: 0;
-  font-size: 12px;
-  color: var(--muted);
+  font-size: var(--desk-text-xs);
+  color: var(--desk-text-muted);
 }
 
 .stub {
@@ -201,35 +191,35 @@ input:focus {
 }
 
 #formslot p.help {
-  color: var(--fg);
+  color: var(--desk-text);
 }
 
 .btn {
   height: 32px;
   padding: 0 12px;
-  border-radius: 8px;
-  border: 1px solid #837991;
+  border-radius: var(--desk-radius-md);
+  border: 1px solid var(--desk-input);
   background: transparent;
-  color: var(--fg);
+  color: var(--desk-text);
   font-family: inherit;
-  font-size: 14px;
+  font-size: var(--desk-text-sm);
   cursor: pointer;
 }
 
 .btn.quiet {
-  color: var(--muted);
+  color: var(--desk-text-muted);
 }
 
 .btn.primary {
   height: 40px;
   padding: 0 16px;
   border: none;
-  background: var(--primary);
-  color: #1e1833;
+  background: var(--desk-primary);
+  color: var(--desk-primary-foreground);
   font-weight: 500;
 }
 
 button:focus-visible {
-  outline: 2px solid var(--primary);
+  outline: 2px solid var(--desk-ring);
   outline-offset: 2px;
 }
