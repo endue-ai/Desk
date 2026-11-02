@@ -286,7 +286,7 @@ fn export_then_import_round_trips_byte_for_byte() {
     save(&core, manifest(PAPER), files()).unwrap();
     let to = |path: &str| json!({ "theme": PAPER, "path": path });
     let first = export(&core, to("~/out/first.desk-theme")).unwrap();
-    let path = home.join("out/first.desk-theme");
+    let path = home.join("out").join("first.desk-theme");
     assert_eq!(first, json!({ "path": path.to_string_lossy() }));
     let first = read(path);
     let inline = export(&core, json!({ "theme": PAPER, "inline": true }));
