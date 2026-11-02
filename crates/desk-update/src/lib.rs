@@ -5,6 +5,7 @@
 //! `Updater`'s status as `update.*`.
 pub const NAME: &str = env!("CARGO_PKG_NAME");
 
+pub mod generated;
 #[cfg(feature = "https")]
 pub mod https;
 pub mod manifest;
