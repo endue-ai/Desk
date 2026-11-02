@@ -3,13 +3,16 @@
  * UI, not a plugin. Its gallery shows the endue theme and every installed theme plugin as cards; the
  * focused or hovered card is previewed on the whole desk, Enter or a click applies it, and Escape (or
  * closing) puts back what was in force. Its editor (editor.ts, TS-03 to TS-05) tunes a copy of a theme
- * while the desk previews it. The command desk.theme.studio opens it.
+ * while the desk previews it; "From an image" (brand.ts, TS-09) starts one from a logo's colours. The
+ * command desk.theme.studio opens it.
  */
+import type { ThemePackage } from "@endue-ai/bridge";
 import type { Commands } from "../commands";
 import type { RuntimeThemes } from "../policies/theme";
 import { h, render } from "../shell/dom";
 import { icon } from "../shell/icons";
 import { containModal } from "../shell/modal";
+import { createBrandPanel } from "./brand";
 import { themeCardElement } from "./card";
 import { type StudioCopy, type StudioLang, studioText } from "./copy";
 import { createEditor, type ThemeIo } from "./editor";
@@ -47,6 +50,7 @@ export function mountThemeStudio(host: HTMLElement, deps: StudioDeps): ThemeStud
   let tag: string | undefined;
   let selected = "";
   let editing = false;
+  let branding = false;
   let panel: HTMLElement | undefined;
   let offDrops: (() => void) | undefined;
   let arriving: string | undefined;
@@ -85,6 +89,12 @@ export function mountThemeStudio(host: HTMLElement, deps: StudioDeps): ThemeStud
     io: () => deps.io?.(),
     back: (id) => gallery(id),
   });
+  const brand = createBrandPanel({
+    tr,
+    open: () => fromImage(),
+    back: () => gallery(),
+    make: (theme, name) => edit(undefined, theme, name),
+  });
   const actions = h(
     "div",
     { class: "theme-gallery-actions" },
@@ -108,6 +118,7 @@ export function mountThemeStudio(host: HTMLElement, deps: StudioDeps): ThemeStud
       },
       tr("newTheme"),
     ),
+    brand.entry,
   );
   const transfer = {
     io: () => deps.io?.(),
@@ -125,8 +136,9 @@ export function mountThemeStudio(host: HTMLElement, deps: StudioDeps): ThemeStud
   const layout = () => {
     scrim?.classList.toggle("is-editing", editing);
     panel?.classList.toggle("is-editing", editing);
-    search.hidden = editing;
+    search.hidden = editing || branding;
     if (!editing) drawTransfer();
+    if (branding) return render(content, () => [brand.element]);
     render(content, () =>
       editing
         ? [editor.element]
@@ -138,16 +150,25 @@ export function mountThemeStudio(host: HTMLElement, deps: StudioDeps): ThemeStud
           ],
     );
   };
-  const edit = (from: string | undefined) => {
+  const edit = (from: string | undefined, made?: ThemePackage, name?: string) => {
     editing = true;
+    branding = false;
     themes.preview(undefined);
     layout();
-    editor.start(from || undefined, themes.state().scheme);
+    if (made) editor.startDraft(made, themes.state().scheme, name);
+    else editor.start(from || undefined, themes.state().scheme);
     content.querySelector<HTMLElement>("input, select, button")?.focus();
+  };
+  const fromImage = () => {
+    branding = true;
+    themes.preview(undefined);
+    layout();
+    brand.start();
   };
   const gallery = (id?: string) => {
     editor.stop();
     editing = false;
+    branding = false;
     if (id !== undefined) {
       selected = id;
       arriving = id;
@@ -260,6 +281,7 @@ export function mountThemeStudio(host: HTMLElement, deps: StudioDeps): ThemeStud
     if (!scrim) return;
     if (editing) editor.stop();
     editing = false;
+    branding = false;
     offDrops?.();
     offDrops = undefined;
     themes.preview(undefined);
