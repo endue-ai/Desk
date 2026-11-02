@@ -176,6 +176,7 @@ impl PluginRegistry {
             revision: entry.revision,
             manifest: entry.manifest.clone(),
             error: entry.error.clone(),
+            folder: None,
         }
     }
 

@@ -2075,6 +2075,8 @@ export interface InitGetResult {
   settings: Record<string, unknown>;
   /** Why init.yaml is not in force, for people. The defaults (or the last setup that matched) are in force instead. */
   problem?: string;
+  /** Where init.yaml is read from, rooted at ~ when it is in the home folder, so people can be shown it. */
+  file?: Path;
 }
 
 /** How much an entry matters. */
@@ -2334,6 +2336,8 @@ export interface PluginInfo {
   manifest?: PluginManifest;
   /** Why the plugin failed, for people. */
   error?: string;
+  /** The folder the plugin was installed from, as an absolute path, so people can be shown its files. */
+  folder?: Path;
 }
 
 /** ready: the manifest is valid and the entry exists; failed: it cannot run. */

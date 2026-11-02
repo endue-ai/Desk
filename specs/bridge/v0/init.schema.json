@@ -37,6 +37,10 @@
         "problem": {
           "description": "Why init.yaml is not in force, for people. The defaults (or the last setup that matched) are in force instead.",
           "type": "string"
+        },
+        "file": {
+          "description": "Where init.yaml is read from, rooted at ~ when it is in the home folder, so people can be shown it.",
+          "$ref": "bridge.schema.json#/$defs/Path"
         }
       },
       "required": ["profile", "settings"],

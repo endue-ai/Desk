@@ -69,6 +69,7 @@ impl Core {
             profile: init.profile.clone(),
             settings,
             problem: file.problem().map(str::to_owned),
+            file: None,
         })
     }
 

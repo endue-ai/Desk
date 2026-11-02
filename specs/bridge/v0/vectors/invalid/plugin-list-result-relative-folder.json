@@ -1,0 +1,16 @@
+{
+  "target": "PluginListResult",
+  "description": "a plugin's folder is an absolute path, never relative to the desk",
+  "instance": {
+    "plugins": [
+      {
+        "id": "example.hello",
+        "status": "ready",
+        "enabled": true,
+        "builtIn": false,
+        "revision": 1,
+        "folder": "plugins/hello"
+      }
+    ]
+  }
+}
