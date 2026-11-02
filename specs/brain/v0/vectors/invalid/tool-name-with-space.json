@@ -1,0 +1,35 @@
+{
+  "target": "TurnRequest",
+  "description": "tool names are letters, digits, _ and -",
+  "instance": {
+    "leaseId": "l1",
+    "message": {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "A theme like warm paper."
+        }
+      ]
+    },
+    "tools": [
+      {
+        "name": "propose theme",
+        "description": "Propose a desk theme for what the person described.",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": {
+              "type": "string"
+            }
+          },
+          "required": ["name", "description"]
+        }
+      }
+    ]
+  }
+}

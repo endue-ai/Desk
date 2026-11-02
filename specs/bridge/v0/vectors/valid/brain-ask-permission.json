@@ -1,0 +1,7 @@
+{
+  "target": "Permission",
+  "description": "brain:ask has no scope of its own",
+  "instance": {
+    "permission": "brain:ask"
+  }
+}

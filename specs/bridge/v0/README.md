@@ -162,6 +162,20 @@ core keeps retrying, and `online` marks the reconnection before the answer conti
 turn that failed, for example on a desk that became read-only because another desk took the
 session's lease. It needs `brain:converse`; each turn's events go only to the caller that said it.
 
+**brain.ask** asks the brain one question and returns a local `turnId` at once; the answer is the
+arguments the brain calls the caller's `tool` with (ADR 0059). `prompt` is everything the brain gets: the
+desk's conversation is neither sent nor written, because each ask opens a session of its own with its
+own lease, offers the tool with `toolChoice` naming it (`tools` in `specs/brain/v0`), and releases the
+lease once the turn ends. The core never runs the tool and never answers the call. The turn arrives as
+`brain.turn` events addressed to the caller only (`started`, `delta`, `completed`); `completed` carries
+`structured`, the tool call's arguments, when the brain called the tool with arguments that match its
+`schema`, and nothing when it answered in text instead (a brain that does not know tools). `schema` is
+a JSON Schema 2020-12 whose `type` is `object`; it may `$ref` the desk's specs by their `$id`, and one
+that does not compile is `invalid_params`. An unreachable brain gives the same `offline` turn as
+`brain.say`: the ask waits, retries and continues after `online`; a refusal is `error`. It needs
+`brain:ask`, which reaches no session of the desk's: `brain:converse` does not cover it, nor it
+`brain:converse`. A desk without a brain answers `unsupported`.
+
 **brain.agents.list** returns one page of the person's agents, newest first, as the brain contract's
 `listAgents` answers it (`AgentList` in `specs/brain/v0`, passed through): `spaceId` keeps the agents in
 that space, `status` keeps one status, and `page` (from 1) and `limit` (1 to 100) choose the page, with

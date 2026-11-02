@@ -1,0 +1,19 @@
+{
+  "target": "BridgeRequest",
+  "description": "the tool's schema is a JSON Schema object",
+  "instance": {
+    "id": 31,
+    "method": "brain.ask",
+    "params": {
+      "prompt": "A theme like warm paper.",
+      "tool": {
+        "name": "propose_theme",
+        "description": "Propose a desk theme for what the person described.",
+        "schema": "object"
+      },
+      "scope": {
+        "permission": "brain:ask"
+      }
+    }
+  }
+}

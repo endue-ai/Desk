@@ -30,6 +30,38 @@ export interface ClientInfo {
 export interface TurnRequest {
   leaseId: string;
   message: UserMessage;
+  /** Tools the brain may call in this turn, besides any it has of its own. */
+  tools?: ToolDefinition[];
+  toolChoice?: ToolChoice;
+}
+
+/** A tool offered for one turn. The brain calls it with tool.call and arguments that match schema; Desk decides whether it runs. */
+export interface ToolDefinition {
+  /** Unique among the turn's tools, for example propose_theme. */
+  name: string;
+  /** What the tool is for and when to call it. */
+  description: string;
+  /** A JSON Schema 2020-12 of the arguments, whose type is object. */
+  schema: Record<string, unknown>;
+}
+
+/** Whether the brain must call a tool of the turn: auto (it may answer in text, the default), required (one of the tools) or tool (the one named). It needs tools. */
+export type ToolChoice = AutoToolChoice | RequiredToolChoice | NamedToolChoice;
+
+/** The brain calls a tool or answers in text, as it sees fit. */
+export interface AutoToolChoice {
+  type: "auto";
+}
+
+/** The brain answers by calling one of the turn's tools. */
+export interface RequiredToolChoice {
+  type: "required";
+}
+
+/** The brain answers by calling the named tool, which must be one of the turn's tools. */
+export interface NamedToolChoice {
+  type: "tool";
+  name: string;
 }
 
 /** What the person said or typed. */
@@ -357,8 +389,96 @@ export const brainSchema = {
         message: {
           $ref: "#/$defs/UserMessage",
         },
+        tools: {
+          description: "Tools the brain may call in this turn, besides any it has of its own.",
+          type: "array",
+          items: {
+            $ref: "#/$defs/ToolDefinition",
+          },
+          minItems: 1,
+          maxItems: 32,
+        },
+        toolChoice: {
+          $ref: "#/$defs/ToolChoice",
+        },
       },
       required: ["leaseId", "message"],
+      additionalProperties: false,
+    },
+    ToolDefinition: {
+      description:
+        "A tool offered for one turn. The brain calls it with tool.call and arguments that match schema; Desk decides whether it runs.",
+      type: "object",
+      properties: {
+        name: {
+          description: "Unique among the turn's tools, for example propose_theme.",
+          type: "string",
+          pattern: "^[A-Za-z0-9_-]{1,64}$",
+        },
+        description: {
+          description: "What the tool is for and when to call it.",
+          type: "string",
+          minLength: 1,
+        },
+        schema: {
+          description: "A JSON Schema 2020-12 of the arguments, whose type is object.",
+          type: "object",
+        },
+      },
+      required: ["name", "description", "schema"],
+      additionalProperties: false,
+    },
+    ToolChoice: {
+      description:
+        "Whether the brain must call a tool of the turn: auto (it may answer in text, the default), required (one of the tools) or tool (the one named). It needs tools.",
+      oneOf: [
+        {
+          $ref: "#/$defs/AutoToolChoice",
+        },
+        {
+          $ref: "#/$defs/RequiredToolChoice",
+        },
+        {
+          $ref: "#/$defs/NamedToolChoice",
+        },
+      ],
+    },
+    AutoToolChoice: {
+      description: "The brain calls a tool or answers in text, as it sees fit.",
+      type: "object",
+      properties: {
+        type: {
+          const: "auto",
+        },
+      },
+      required: ["type"],
+      additionalProperties: false,
+    },
+    RequiredToolChoice: {
+      description: "The brain answers by calling one of the turn's tools.",
+      type: "object",
+      properties: {
+        type: {
+          const: "required",
+        },
+      },
+      required: ["type"],
+      additionalProperties: false,
+    },
+    NamedToolChoice: {
+      description:
+        "The brain answers by calling the named tool, which must be one of the turn's tools.",
+      type: "object",
+      properties: {
+        type: {
+          const: "tool",
+        },
+        name: {
+          type: "string",
+          pattern: "^[A-Za-z0-9_-]{1,64}$",
+        },
+      },
+      required: ["type", "name"],
       additionalProperties: false,
     },
     UserMessage: {

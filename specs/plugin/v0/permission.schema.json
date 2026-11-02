@@ -18,6 +18,7 @@
         { "$ref": "#/$defs/UiNotifyPermission" },
         { "$ref": "#/$defs/PluginManagePermission" },
         { "$ref": "#/$defs/BrainConversePermission" },
+        { "$ref": "#/$defs/BrainAskPermission" },
         { "$ref": "#/$defs/CmdInvokePermission" },
         { "$ref": "#/$defs/CmdAdvisePermission" },
         { "$ref": "#/$defs/SettingsReadPermission" },
@@ -155,6 +156,15 @@
       "type": "object",
       "properties": {
         "permission": { "const": "brain:converse" }
+      },
+      "required": ["permission"],
+      "additionalProperties": false
+    },
+    "BrainAskPermission": {
+      "description": "Ask the brain one question with brain.ask and receive the answer as structured values through a tool, as brain.turn events for the caller only. Each ask runs in a session of its own: it neither reads nor writes the desk's conversation, which stays with brain:converse.",
+      "type": "object",
+      "properties": {
+        "permission": { "const": "brain:ask" }
       },
       "required": ["permission"],
       "additionalProperties": false
