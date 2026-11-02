@@ -10,6 +10,7 @@ describe("a look request said to Eris", () => {
       "테마를 따뜻한 종이 느낌으로",
       "따뜻한 느낌으로 바꿔줘",
       "분위기를 차분한 숲처럼 해줘",
+      "이끼 느낌으로",
     ])
       expect(isLookRequest(text), text).toBe(true);
   });
@@ -23,6 +24,9 @@ describe("a look request said to Eris", () => {
       "테마 바꿔줘",
       "hello there",
       "make a note about the paper",
+      "I feel like pizza",
+      "I want to feel better",
+      "이 테마 바꿔 줘",
     ])
       expect(isLookRequest(text), text).toBe(false);
   });
