@@ -5,8 +5,8 @@ English · [日本語](../i18n/ja/plugins/authoring.md) · [中文](../i18n/zh/p
 [한국어](../i18n/ko/plugins/authoring.md)
 
 A Desk plugin is a folder. Built-in features use exactly the same format, so anything Desk itself does
-on screen, your plugin can do too. This page covers UI plugins (v0); logic (Wasm) and tool (MCP)
-plugins come later.
+on screen, your plugin can do too. This page covers UI plugins (v0) and themes; logic (Wasm) and tool
+(MCP) plugins come later.
 
 ## Start from the example
 
@@ -166,3 +166,118 @@ await host.settle();
 
 Before you publish, `desk plugin validate <folder>` must pass; CI runs it for every folder in
 `plugins/` and `examples/`.
+
+## Making a theme
+
+A theme is a plugin of kind `theme`: the design system's values and the font and image files they name,
+no code, so it asks for no permission (ADR 0056, ADR 0057). Start from the template or the example:
+
+```bash
+pnpm --filter @endue-ai/create-plugin build                       # once
+node packages/create-plugin/dist/create-plugin.js ../my-theme --kind theme
+DESK_DEV_PLUGINS=$PWD/../my-theme just dev
+cargo run -p desk-cli -- theme apply local.my-theme
+```
+
+Once the package is published this is `pnpm create @endue-ai/plugin my-theme --kind theme`. The template
+has every role colour for both schemes, every other layer at its default, and a README that says what
+each one paints; `examples/plugin-hello-theme` is the smallest theme with a font and a backdrop.
+Installing a theme does not apply it: the setting `desk.theme.active` names the one in force, chosen in
+the theme studio (the palette button at the top right, or Themes in the command palette), with
+`desk.theme.use` or with `desk theme apply`.
+
+### The block
+
+`plugin.json` has kind `theme` and a `theme` block (`specs/plugin/v0/theme.schema.json`), and no
+`entry`, `permissions`, `surfaces`, `contributes` or `autoload`:
+
+```json
+{
+  "id": "example.dusk",
+  "name": "Dusk",
+  "version": "0.1.0",
+  "kind": "theme",
+  "theme": {
+    "license": "Apache-2.0 AND OFL-1.1",
+    "type": {
+      "sans": "\"Space Grotesk\", system-ui, sans-serif",
+      "fonts": [{ "family": "Space Grotesk", "src": "fonts/space-grotesk.woff2", "weight": "300 700" }]
+    },
+    "shape": { "radius": "round" },
+    "dark": {
+      "colors": { "background": "#1a1412", "text": "#f6ede6", "primary": "#ff9a62", "primaryForeground": "#2a1206" },
+      "backdrop": { "gradient": ["#2e1c15", "#1a1412"], "glow": "rgba(255, 140, 80, 0.12)" }
+    }
+  }
+}
+```
+
+`author`, `license` (an SPDX expression for the theme and its files), `tags`, `preview` (up to five
+colours for its gallery card) and `origin` (the sentence and the theme it started from) describe it.
+`light` and `dark` hold one scheme each. A theme needs one of them; the desk's own theme stands in for
+the other.
+
+### Layers and presets
+
+Six layers, each with a default, so a palette alone is a theme:
+
+| Layer | Key | Values |
+| --- | --- | --- |
+| Palette | `<scheme>.colors` | Token name (camelCase) to a CSS colour: the roles in `docs/design-system.md`, the shell's and Eris's tokens. A role left out keeps the desk's |
+| Material | `<scheme>.material` | `opacity` 0.6–1, `blur` 0–24 px, `noise` 0–0.15, `border` 0–2 px, `shadow` none, soft or strong |
+| Type | `type` | `sans` and `mono` font stacks, `scale` 0.85–1.25, `tracking` −0.02–0.05 em, `fonts` |
+| Shape | `shape` | `radius` none, subtle, soft or round; `density` compact, comfortable or spacious |
+| Motion | `motion` | `personality` snappy, smooth or calm |
+| Backdrop | `<scheme>.backdrop` | A `color`, a `gradient` of two to four colours at an `angle`, or an `image` with `fit` cover or tile; a `glow` |
+
+`<scheme>.terminal.ansi` gives the terminal its sixteen colours and `<scheme>.contrast` the palette's
+changes under high contrast. Radius, density, motion, type scale and shadow are presets: the runtime
+turns each name into tokens (`docs/design-system.md`, "Choosing a theme"), so a theme keeps working when
+the desk retunes them. Numbers are bounded and values carry no `url()`, so any valid theme stays usable.
+
+### The gate
+
+The desk gates every theme it applies (`@endue-ai/ui/theme`): text reaches 4.5:1 on its ground, borders
+and fills 3:1, and under high contrast 7:1 and 4.5:1. A foreground that falls short moves only its OKLCH
+lightness, as little as reaches the ratio; a ground never changes. Without a `contrast` palette a theme's
+high contrast is derived the same way from its own colours. Check your pairs in both schemes, so the
+gate has nothing to fix.
+
+### Assets and limits
+
+Fonts are `.woff2` files and images `.png`, `.jpg` or `.webp` (no SVG, which can carry script), inside
+the folder: 2 MiB each and 8 MiB together. Name a font's licence in `license` and keep its licence file
+beside it; the built-in themes keep `fonts/OFL.txt` and a `fonts/SOURCE.md` with the upstream and the
+checksums. The desk loads a theme's fonts as `FontFace` in the shell and in every plugin frame; only the
+shell draws the backdrop.
+
+### Testing a theme
+
+```bash
+cargo run -p desk-cli -- plugin validate ../my-theme
+pnpm exec vitest run --root ../my-theme
+```
+
+`desk plugin validate` checks the block against the schema and the files against their limits. The
+template's `tests/theme.test.ts` compiles both schemes with `compileTheme` and gates them over the endue
+palette with `gate`, as the desk does before it applies a theme, and fails with every fix the gate
+would make.
+
+### Sharing as `.desk-theme`
+
+```bash
+cargo run -p desk-cli -- theme export local.my-theme     # local.my-theme.desk-theme in Downloads
+cargo run -p desk-cli -- theme import ~/Downloads/dusk.desk-theme
+```
+
+A `.desk-theme` is one JSON file: `format` `desk-theme/1`, the theme's `plugin.json` as `manifest`, and
+the files its block names in `files`, base64, 16 MiB at most (ADR 0058). Importing one checks it as a
+theme plugin and installs it in the person's themes folder under an id inside `local.`; `desk theme list`
+shows it and `desk theme remove` deletes it.
+
+### The market
+
+A theme market is coming (`docs/ko/theme-requirements.md`, TC-05 and TS-08): an index of `.desk-theme`
+files with their sha256, which the studio lists, previews and installs under ids inside `market.`.
+`theme.import` already takes an `https` URL with the bundle's `sha256` and refuses bytes that do not
+match. Until the market opens, share the file itself.
