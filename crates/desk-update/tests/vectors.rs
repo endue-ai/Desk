@@ -101,8 +101,14 @@ fn index_and_release_vectors_are_judged_by_the_schemas() {
             let back = round_trip(target, instance);
             if name.contains("unknown-fields") {
                 // Read past, not refused, and not carried on either.
-                assert_eq!(back["releases"][0]["version"], instance["releases"][0]["version"]);
-                assert!(back.get("mirror").is_none(), "{name} kept a field it does not know");
+                assert_eq!(
+                    back["releases"][0]["version"],
+                    instance["releases"][0]["version"]
+                );
+                assert!(
+                    back.get("mirror").is_none(),
+                    "{name} kept a field it does not know"
+                );
             } else {
                 assert_eq!(&back, instance, "{kind}/{name} does not round-trip");
             }
@@ -139,7 +145,10 @@ fn decision_vectors_pick_the_expected_build() {
         assert_eq!(next.map(String::as_str), expected, "{name}: the next build");
 
         let Some(staged) = case["staged"].as_str() else {
-            assert!(case["expect"].get("staged").is_none(), "{name}: no staged build");
+            assert!(
+                case["expect"].get("staged").is_none(),
+                "{name}: no staged build"
+            );
             continue;
         };
         let fate = if !listed(&index, staged) {
@@ -151,7 +160,11 @@ fn decision_vectors_pick_the_expected_build() {
         } else {
             "dropped"
         };
-        assert_eq!(Some(fate), case["expect"]["staged"].as_str(), "{name}: the staged build");
+        assert_eq!(
+            Some(fate),
+            case["expect"]["staged"].as_str(),
+            "{name}: the staged build"
+        );
     }
 }
 
@@ -160,7 +173,10 @@ fn the_rollout_bucket_matches_the_vectors() {
     for (name, case) in files("decisions") {
         let salt = hex(case["salt"].as_str().unwrap());
         let buckets = case["buckets"].as_object().unwrap();
-        assert!(!buckets.is_empty() || case["index"]["releases"] == json!([]), "{name}");
+        assert!(
+            !buckets.is_empty() || case["index"]["releases"] == json!([]),
+            "{name}"
+        );
         for (version, expected) in buckets {
             assert_eq!(
                 u64::from(bucket(&salt, version)),

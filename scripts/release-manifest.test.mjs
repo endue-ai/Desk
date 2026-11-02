@@ -252,4 +252,3 @@ describe("release-manifest and specs/update/v0", () => {
     assert.equal(two.serial, 2);
   });
 });
-
