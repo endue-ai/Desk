@@ -72,12 +72,12 @@ impl fs::Host for State {
         self.imports.fs_write(&path, &contents, create_dirs)
     }
 
-    fn history(&mut self, _path: String, _limit: Option<u32>) -> Result<Vec<fs::Version>, Error> {
-        Err(unsupported("fs.history"))
+    fn history(&mut self, path: String, limit: Option<u32>) -> Result<Vec<fs::Version>, Error> {
+        self.imports.fs_history(&path, limit)
     }
 
-    fn restore(&mut self, _path: String, _version_id: String) -> Result<u64, Error> {
-        Err(unsupported("fs.restore"))
+    fn restore(&mut self, path: String, version_id: String) -> Result<u64, Error> {
+        self.imports.fs_restore(&path, &version_id)
     }
 }
 
@@ -190,13 +190,5 @@ impl log::Host for State {
         count: Option<u32>,
     ) -> Result<Vec<LogEntry>, Error> {
         self.imports.log_tail(channel.as_deref(), count)
-    }
-}
-
-/// A bridge method the host does not back yet.
-fn unsupported(method: &str) -> Error {
-    Error {
-        code: crate::bindings::ErrorCode::Unsupported,
-        message: format!("{method} is not served to plugins yet"),
     }
 }

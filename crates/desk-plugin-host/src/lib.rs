@@ -24,7 +24,7 @@ pub use bindings::{
     Command, CommandInfo, Decision, DirEntry, Duration, EntryKind, Error, ErrorCode,
 };
 pub use bindings::{
-    Failure, FailureCode, Grant, LogEntry, LogLevel, NotifyLevel, Request, Response,
+    Failure, FailureCode, FsVersion, Grant, LogEntry, LogLevel, NotifyLevel, Request, Response,
 };
 pub use clock::{Clock, SystemClock, rfc3339};
 pub use connector::ConnectorHost;

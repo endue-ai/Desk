@@ -2,7 +2,8 @@
 
 use serde_json::Value;
 
-use crate::bindings::{Command, CommandInfo, Decision, DirEntry, Duration, Error, Failure, Grant};
+use crate::bindings::{Command, CommandInfo, Decision, DirEntry, Duration, Error, Failure};
+use crate::bindings::{FsVersion, Grant};
 use crate::bindings::{LogEntry, LogLevel, NotifyLevel, Request, Response, Setting};
 
 /// The desk side of a logic plugin's imports, one method per bridge method in the WIT. Every call
@@ -24,6 +25,15 @@ pub trait Host: Send + Sync + 'static {
         contents: &[u8],
         create_dirs: bool,
     ) -> Result<u64, Error>;
+    /// bridge: fs.history. The versions the desk kept of the file, newest first, `limit` at most.
+    fn fs_history(
+        &self,
+        plugin: &str,
+        path: &str,
+        limit: Option<u32>,
+    ) -> Result<Vec<FsVersion>, Error>;
+    /// bridge: fs.restore. Writes the version back; returns the bytes written.
+    fn fs_restore(&self, plugin: &str, path: &str, version_id: &str) -> Result<u64, Error>;
     /// bridge: net.fetch
     fn net_fetch(&self, plugin: &str, request: Request) -> Result<Response, Error>;
     /// bridge: ui.notify

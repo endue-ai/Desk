@@ -107,6 +107,8 @@ impl Session {
             ),
             Remote::Update(step) => self.update(step),
             Remote::Theme(step) => self.theme(step),
+            Remote::Fs(step) => self.files(step),
+            Remote::Log { count } => self.log(count),
         }
     }
 

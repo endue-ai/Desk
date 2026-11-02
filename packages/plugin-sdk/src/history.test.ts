@@ -38,8 +38,16 @@ describe("a file's history", () => {
 
   it("restoreFile writes a version back with fs.restore and answers what it kept", async () => {
     const { host, ctx } = await plugin();
-    const written = await ctx.bridge.call("fs.write", { path: PATH, content: "# two", scope: WRITE });
-    const restored = await restoreFile(ctx, { path: PATH, scope: WRITE }, written.version as string);
+    const written = await ctx.bridge.call("fs.write", {
+      path: PATH,
+      content: "# two",
+      scope: WRITE,
+    });
+    const restored = await restoreFile(
+      ctx,
+      { path: PATH, scope: WRITE },
+      written.version as string,
+    );
     expect(restored).toEqual({ bytesWritten: 5, version: expect.any(String) });
     const read = await ctx.bridge.call("fs.read", { path: PATH, scope: READ });
     expect(read.content).toBe("# one");
@@ -48,8 +56,8 @@ describe("a file's history", () => {
 
   it("a refused restore rejects as fs.restore does", async () => {
     const { ctx } = await plugin();
-    await expect(
-      restoreFile(ctx, { path: PATH, scope: WRITE }, "1-abcdef"),
-    ).rejects.toMatchObject({ code: "not_found" });
+    await expect(restoreFile(ctx, { path: PATH, scope: WRITE }, "1-abcdef")).rejects.toMatchObject({
+      code: "not_found",
+    });
   });
 });

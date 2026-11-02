@@ -30,7 +30,7 @@ export interface TestHostOptions {
   state?: unknown;
   /**
    * Bridge methods answered your way, ahead of the stub's copy of the core (cmd.*, perm.*,
-   * settings.*, log.*, events.*, ui.surface.*, and fs.read and fs.url with `files`); they check no
+   * settings.*, log.*, events.*, ui.surface.*, and the fs.* calls with `files`); they check no
    * grants. Any other method is `unsupported`.
    */
   handlers?: StubHandlers;
@@ -52,8 +52,9 @@ export interface TestHostOptions {
   /** Methods that fail with the given code whoever serves them. */
   refuse?: Partial<Record<BridgeMethod, ErrorCode>>;
   /**
-   * Files by bridge path ("~/Movies/clip.mp4"), text or bytes: with them fs.read (ranges too) and
-   * fs.url answer as the core does, under the plugin's grants; fs.url gives a `data:` URL.
+   * Files by bridge path ("~/Movies/clip.mp4"), text or bytes: with them fs.read (ranges too),
+   * fs.url, fs.write, fs.history and fs.restore answer as the core does, under the plugin's grants;
+   * fs.url gives a `data:` URL, and a write keeps what it replaces as a version (ADR 0076).
    */
   files?: StubFiles;
 }

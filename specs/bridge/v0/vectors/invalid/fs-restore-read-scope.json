@@ -9,9 +9,7 @@
       "version": "1793520000000-3fa9c1",
       "scope": {
         "permission": "fs:read",
-        "paths": [
-          "~/Notes/**"
-        ]
+        "paths": ["~/Notes/**"]
       }
     }
   }

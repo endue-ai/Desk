@@ -1,8 +1,10 @@
 //! A write that dies half way (ADR 0076): fs.write puts the bytes in a temp file beside the target
 //! and renames it over the target, so a process killed at any moment leaves the old file or the new
 //! one, never a mix, and the history it kept still starts. The child half of the first test is this
-//! binary run again with `DESK_INTERRUPT_HOME`: it writes until it is killed.
+//! binary run again with `DESK_INTERRUPT_HOME`: it writes until it is killed, every other round
+//! without keeping versions (`DESK_INTERRUPT_BARE`).
 
+use std::collections::BTreeSet;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
@@ -14,6 +16,8 @@ use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 
 const HOME_ENV: &str = "DESK_INTERRUPT_HOME";
+/// Set for the rounds whose child keeps no history.
+const BARE_ENV: &str = "DESK_INTERRUPT_BARE";
 const SIZE: usize = 4 * 1024 * 1024;
 const ROUNDS: u64 = 20;
 
@@ -80,6 +84,12 @@ fn child_writes_until_killed() {
         return;
     };
     let core = core(Path::new(&home));
+    if std::env::var_os(BARE_ENV).is_some_and(|bare| !bare.is_empty()) {
+        // Keep nothing, so each turn of the loop is the temp file, its sync and the rename.
+        let params = json!({ "key": "history-max-versions", "value": 0 });
+        let request = json!({ "id": 1, "method": "settings.set", "params": params });
+        core.handle("desk.files", serde_json::from_value(request).unwrap());
+    }
     let (a, b) = (content('a'), content('b'));
     loop {
         for text in [&b, &a] {
@@ -94,6 +104,7 @@ fn a_write_killed_mid_way_leaves_the_old_or_the_new_file() {
     let (a, b) = (content('a'), content('b'));
     fs::write(home.join("big/file.txt"), &a).unwrap();
     let whole = [sha256(a.as_bytes()), sha256(b.as_bytes())];
+    let mut torn = 0;
     for round in 0..ROUNDS {
         let mut child = Command::new(std::env::current_exe().unwrap())
             .args([
@@ -103,6 +114,7 @@ fn a_write_killed_mid_way_leaves_the_old_or_the_new_file() {
                 "--nocapture",
             ])
             .env(HOME_ENV, &home)
+            .env(BARE_ENV, if round % 2 == 1 { "1" } else { "" })
             .stdout(Stdio::null())
             .stderr(Stdio::null())
             .spawn()
@@ -127,20 +139,42 @@ fn a_write_killed_mid_way_leaves_the_old_or_the_new_file() {
             json!({ "path": "~/big/file.txt", "scope": scope }),
         )
         .expect("fs.history after a kill");
-        for version in listed["versions"].as_array().unwrap() {
-            let sha = version["sha256"].as_str().unwrap();
+        let kept: BTreeSet<&str> = listed["versions"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|version| version["sha256"].as_str().unwrap())
+            .collect();
+        for sha in kept {
             assert!(
-                whole.contains(&sha.to_owned()),
+                whole.iter().any(|w| w == sha),
                 "round {round}: a version is a mix"
             );
             let blob = home.join(".data/history/objects").join(sha);
-            assert_eq!(
-                sha256(&fs::read(blob).unwrap()),
-                sha,
-                "round {round}: a blob is torn"
-            );
+            let blob = sha256(&fs::read(blob).unwrap());
+            assert_eq!(blob, sha, "round {round}: a blob is torn");
+        }
+        torn += temp_files(&home.join("big"));
+    }
+    // The rounds without a history spend most of their loop writing and syncing the temp file, so
+    // kills land between it and its rename: the case this is about.
+    assert!(
+        torn > 0,
+        "no kill landed between a temp file and its rename"
+    );
+}
+
+/// How many temp files killed writes left in `dir`; it removes them.
+fn temp_files(dir: &Path) -> usize {
+    let mut count = 0;
+    for entry in fs::read_dir(dir).unwrap().flatten() {
+        let name = entry.file_name().to_string_lossy().into_owned();
+        if name.starts_with('.') && name.ends_with(".tmp") {
+            fs::remove_file(entry.path()).unwrap();
+            count += 1;
         }
     }
+    count
 }
 
 #[test]

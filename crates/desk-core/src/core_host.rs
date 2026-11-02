@@ -10,8 +10,8 @@ use base64::Engine as _;
 use desk_bridge::{BridgeError, BridgeRequest, BridgeResponse, Item, ItemSource};
 use desk_plugin_host::{
     Command, CommandInfo, Decision, DirEntry, Duration, EntryKind, Error, ErrorCode, Failure,
-    FailureCode, Grant, Host, IndexSink, LogEntry, LogLevel, NotifyLevel, Request, Response,
-    Setting,
+    FailureCode, FsVersion, Grant, Host, IndexSink, LogEntry, LogLevel, NotifyLevel, Request,
+    Response, Setting,
 };
 use serde_json::{Value, json};
 
@@ -93,6 +93,39 @@ impl Host for CoreHost {
         });
         let written = self.ask(plugin, "fs.write", params)?;
         Ok(written["bytesWritten"].as_u64().unwrap_or_default())
+    }
+
+    fn fs_history(
+        &self,
+        plugin: &str,
+        path: &str,
+        limit: Option<u32>,
+    ) -> Result<Vec<FsVersion>, Error> {
+        let scope = json!({ "permission": "fs:read", "paths": [path] });
+        let mut params = json!({ "path": path, "scope": scope });
+        if let Some(limit) = limit {
+            params["limit"] = json!(limit);
+        }
+        let listed = self.ask(plugin, "fs.history", params)?;
+        let versions: Vec<desk_bridge::FsVersion> =
+            serde_json::from_value(listed["versions"].clone()).unwrap_or_default();
+        Ok(versions
+            .into_iter()
+            .map(|v| FsVersion {
+                id: v.id,
+                at: v.at,
+                caller: v.caller,
+                size: v.size,
+                sha256: v.sha256,
+            })
+            .collect())
+    }
+
+    fn fs_restore(&self, plugin: &str, path: &str, version_id: &str) -> Result<u64, Error> {
+        let scope = json!({ "permission": "fs:write", "paths": [path] });
+        let params = json!({ "path": path, "version": version_id, "scope": scope });
+        let restored = self.ask(plugin, "fs.restore", params)?;
+        Ok(restored["bytesWritten"].as_u64().unwrap_or_default())
     }
 
     fn net_fetch(&self, _plugin: &str, _request: Request) -> Result<Response, Error> {

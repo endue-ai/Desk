@@ -9,9 +9,7 @@
       "version": "latest",
       "scope": {
         "permission": "fs:write",
-        "paths": [
-          "~/Notes/**"
-        ]
+        "paths": ["~/Notes/**"]
       }
     }
   }

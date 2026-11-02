@@ -9,9 +9,7 @@
       "limit": 5,
       "scope": {
         "permission": "fs:read",
-        "paths": [
-          "~/Notes/**"
-        ]
+        "paths": ["~/Notes/**"]
       }
     }
   }

@@ -83,7 +83,9 @@ pub fn run() {
                 .with_sync(Arc::new(remote), Some(data.join("sync.json")))
                 .with_plugin_store(data.join("plugins.json"))
                 .with_store_file(data.join("store.json"))
-                .with_secrets_file(data.join("secrets.json"));
+                .with_secrets_file(data.join("secrets.json"))
+                // Every fs.write keeps the bytes it replaces here first (ADR 0076).
+                .with_history_dir(data.join("history"));
             if let Some(problem) = core.init_problem() {
                 eprintln!("endue Desk: init.yaml is not in force ({problem}); using the defaults");
             }

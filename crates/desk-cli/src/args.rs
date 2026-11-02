@@ -21,6 +21,9 @@ pub const USAGE: &str = "usage: desk [--json] <command>
   theme import <file>                   install a .desk-theme file as a user theme; prints its id
   theme export <id> [file]              write a theme as a .desk-theme file (default: in Downloads)
   theme remove <id>                     delete a user theme
+  fs history <path> [--limit <n>]       the versions the desk kept of a file: id, at, caller, size
+  fs restore <path> <version>           write a kept version back (what it replaces is kept too)
+  log [--count <n>]                     the desk's log, oldest first: at, level, channel, message
 --json prints the desk's answer line as it is. Exit codes: 0 ok, 1 failed, 2 usage.";
 
 pub struct Args {
@@ -55,6 +58,18 @@ pub enum Remote {
     Update(UpdateStep),
     /// The installed themes and the person's own (ADR 0058).
     Theme(ThemeStep),
+    /// A file's kept versions (ADR 0076).
+    Fs(FsStep),
+    /// log.tail.
+    Log {
+        count: Option<u64>,
+    },
+}
+
+/// What `desk fs` asks of the desk's history of a file.
+pub enum FsStep {
+    History { path: PathBuf, limit: Option<u64> },
+    Restore { path: PathBuf, version: String },
 }
 
 /// What `desk update` asks of the desk's updater (ADR 0054).
@@ -104,6 +119,11 @@ pub fn parse(args: Vec<String>) -> Option<Args> {
         ["update", "download"] => Action::Remote(Remote::Update(UpdateStep::Download)),
         ["update", "apply"] => Action::Remote(Remote::Update(UpdateStep::Apply)),
         ["theme", rest @ ..] => Action::Remote(Remote::Theme(theme(rest)?)),
+        ["fs", rest @ ..] => Action::Remote(Remote::Fs(fs(rest)?)),
+        ["log"] => Action::Remote(Remote::Log { count: None }),
+        ["log", "--count", count] => Action::Remote(Remote::Log {
+            count: Some(number(count)?),
+        }),
         _ => return None,
     };
     Some(Args { action, json })
@@ -126,6 +146,33 @@ fn theme(rest: &[&str]) -> Option<ThemeStep> {
         ["remove", id] => ThemeStep::Remove(name(id)?),
         _ => return None,
     })
+}
+
+/// `fs history <path> [--limit <n>]` (the flag before or after the path) or `fs restore <path>
+/// <version>`.
+fn fs(rest: &[&str]) -> Option<FsStep> {
+    Some(match rest {
+        ["history", path] => FsStep::History {
+            path: PathBuf::from(name(path)?),
+            limit: None,
+        },
+        ["history", path, "--limit", limit] | ["history", "--limit", limit, path] => {
+            FsStep::History {
+                path: PathBuf::from(name(path)?),
+                limit: Some(number(limit)?),
+            }
+        }
+        ["restore", path, version] => FsStep::Restore {
+            path: PathBuf::from(name(path)?),
+            version: name(version)?,
+        },
+        _ => return None,
+    })
+}
+
+/// A count of 1 or more.
+fn number(word: &str) -> Option<u64> {
+    word.parse().ok().filter(|n| *n > 0)
 }
 
 /// `cmd run <id> [--args <json object>]`, with `--args` before or after the id.

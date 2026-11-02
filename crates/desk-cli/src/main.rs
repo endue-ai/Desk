@@ -2,6 +2,7 @@
 //! usage. `plugin validate` works offline; the other subcommands reach a running desk over its socket.
 
 mod args;
+mod files;
 mod remote;
 mod theme;
 

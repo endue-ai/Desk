@@ -8,9 +8,7 @@
       "path": "~/Notes/plan.md",
       "scope": {
         "permission": "fs:read",
-        "paths": [
-          "~/Notes/**"
-        ]
+        "paths": ["~/Notes/**"]
       }
     }
   }
