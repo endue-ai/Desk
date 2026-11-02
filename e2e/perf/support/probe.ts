@@ -1,7 +1,7 @@
 // Input to screen, measured in the shell page: from a key's keydown (its `timeStamp`, when the page
 // got the event) to the animation frame after the one in which the change was first seen, by when
 // that change was painted. WebKitWebDriver delivers the keys; the OS's own input path before the
-// page is not in the number.
+// page is not in the number. The functions passed to browser.execute run in the page.
 import { browser } from "@wdio/globals";
 
 /** What a key is expected to change: the palette's surface shown, or the focus moved. */
@@ -25,7 +25,9 @@ export async function arm(change: Change): Promise<void> {
     const onKey = (event: KeyboardEvent) => {
       if (["Control", "Shift", "Alt", "Meta"].includes(event.key)) return;
       removeEventListener("keydown", onKey, true);
-      const start = event.timeStamp;
+      // When the event arrived; should its clock ever not be the page's, when it is handled.
+      const handled = performance.now();
+      const start = event.timeStamp > 0 && event.timeStamp <= handled ? event.timeStamp : handled;
       const watch = () => {
         if (!changed()) {
           requestAnimationFrame(watch);
