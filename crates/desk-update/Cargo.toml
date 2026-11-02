@@ -1,0 +1,26 @@
+[package]
+name = "desk-update"
+description = "The updater's decisions (ADR 0054): channel index and release manifests, minisign verification, the choice of the next build, staging, the schedule and the state machine. Knows nothing of Tauri."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+base64.workspace = true
+getrandom = "0.3"
+# The verifier the Tauri updater plugin uses, so both read the same signatures.
+minisign-verify = "0.2"
+semver = "1"
+serde.workspace = true
+serde_json.workspace = true
+sha2 = "0.10"
+
+[dev-dependencies]
+# Signs test data with keys made at test time; nothing key-like is committed.
+minisign = "0.9"
+
+[lints]
+workspace = true
