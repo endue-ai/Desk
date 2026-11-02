@@ -344,11 +344,14 @@ fn a_brain_ask_turn_hands_its_tool_call_back_and_runs_no_agent_tool() {
         "{calls:?}"
     );
 
-    // The desk's conversation still runs mira's tool calls as mira.
+    // The desk's conversation still runs mira's tool calls as mira, once the person approves the
+    // write (ADR 0078).
     let turn = say(
         &core,
         &write_call(Some("mira"), "~/Notes/today.md", "~/Notes/**"),
     );
+    let approval = wait_for(&deliveries, "perm.approval");
+    approve_as_desk(&core, &approval, "once");
     let said = answer(&deliveries, &turn, &mut Vec::new());
     assert!(said.contains("The fs.write tool said:"), "{said}");
     assert_eq!(brain.results.load(Ordering::SeqCst), 1);
