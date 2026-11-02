@@ -1,0 +1,9 @@
+{
+  "target": "PluginManifest",
+  "description": "a theme plugin needs its theme block",
+  "instance": {
+    "id": "example.paper",
+    "version": "1.0.0",
+    "kind": "theme"
+  }
+}

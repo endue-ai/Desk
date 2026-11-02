@@ -1,0 +1,8 @@
+{
+  "target": "ThemeFont",
+  "description": "a font file stays inside the plugin folder",
+  "instance": {
+    "family": "Literata",
+    "src": "../other/literata.woff2"
+  }
+}

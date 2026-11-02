@@ -575,6 +575,9 @@ pub struct PluginManifest {
     pub views: Option<Vec<ViewPath>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub connector: Option<ConnectorManifest>,
+    /// A theme plugin's theme: its layers and the font and image files it brings, relative to the plugin folder.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub theme: Option<ThemePackage>,
 }
 
 /// Reverse-domain style id with at least one dot, lowercase, for example endue.eris or example.hello-ui.
@@ -583,7 +586,7 @@ pub type PluginId = String;
 /// Semantic version, for example 0.1.0 or 1.2.3-beta.1.
 pub type Version = String;
 
-/// ui runs in a sandboxed iframe, logic in a Wasm instance, tool as an MCP server inside the VM. policy runs no code: it only contributes data (ADR 0017). library runs no code of its own either: it is files other plugins import, served at /<id>/... like any plugin's, never mounted and never turned off. connector brings an app's data in as items, as a Wasm component or an MCP server; view runs no code either: it is one or more views (ADR 0032).
+/// ui runs in a sandboxed iframe, logic in a Wasm instance, tool as an MCP server inside the VM. policy runs no code: it only contributes data (ADR 0017). library runs no code of its own either: it is files other plugins import, served at /<id>/... like any plugin's, never mounted and never turned off. connector brings an app's data in as items, as a Wasm component or an MCP server; view runs no code either: it is one or more views (ADR 0032). theme runs no code: it is a theme block and its font and image files, chosen with desk.theme.active (ADR 0056).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum PluginKind {
     #[serde(rename = "ui")]
@@ -600,6 +603,8 @@ pub enum PluginKind {
     Connector,
     #[serde(rename = "view")]
     View,
+    #[serde(rename = "theme")]
+    Theme,
 }
 
 /// Path to the entry file, relative to the plugin folder, without .. segments.
@@ -638,6 +643,242 @@ pub enum SurfacePlacement {
     Overlay,
     #[serde(rename = "floating")]
     Floating,
+}
+
+/// A theme: the layers every scheme shares (type, shape, motion) and one variant per scheme. At least one of light and dark; the desk's own theme stands in for a missing one.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ThemePackage {
+    /// Who made it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub author: Option<String>,
+    /// An SPDX licence expression for the theme and its assets, for example CC0-1.0 or OFL-1.1.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub license: Option<String>,
+    /// Words a gallery filters by, for example warm, paper or high-contrast.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tags: Option<Vec<String>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub origin: Option<ThemeOrigin>,
+    /// Up to five colours that stand for the theme on a gallery card, the most telling first. Taken from the variants when absent.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub preview: Option<Vec<ThemeColor>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub r#type: Option<ThemeType>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub shape: Option<ThemeShape>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub motion: Option<ThemeMotion>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub light: Option<ThemeVariant>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub dark: Option<ThemeVariant>,
+}
+
+/// Where a theme came from: the sentence it was described with, and the theme it started from.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ThemeOrigin {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub prompt: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub base: Option<PluginId>,
+}
+
+/// One scheme's values: its palette (and high-contrast palette), material, backdrop and terminal colours.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ThemeVariant {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub colors: Option<ThemeColors>,
+    /// The palette's changes under high contrast. When absent the desk derives them from the palette, so the theme keeps its character at 7:1.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub contrast: Option<ThemeColors>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub material: Option<ThemeMaterial>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub backdrop: Option<ThemeBackdrop>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub terminal: Option<ThemeTerminal>,
+}
+
+/// Token name (camelCase, as in @endue-ai/ui: background, text, primary, chart1, the shell's and Eris's tokens) to a value. Missing roles keep the desk's.
+pub type ThemeColors = BTreeMap<String, ThemeValue>;
+
+/// A CSS value for one token: a colour, or a shadow for the shadow tokens. No url(), braces, semicolons or angle brackets.
+pub type ThemeValue = String;
+
+/// A CSS colour: #rgb, #rgba, #rrggbb, #rrggbbaa, rgb(), rgba(), hsl(), hsla() or oklch().
+pub type ThemeColor = String;
+
+/// What surfaces are made of: how opaque, how much they blur what is behind, grain, edge and elevation.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ThemeMaterial {
+    /// Surface opacity, 0.6 to 1 (default 1). Below 1 the backdrop shows through, blurred.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub opacity: Option<f64>,
+    /// Backdrop blur in px, 0 to 24 (default 0).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub blur: Option<u64>,
+    /// Grain over surfaces, 0 to 0.15 (default 0).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub noise: Option<f64>,
+    /// Border width in px, 0 to 2 (default 1).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub border: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub shadow: Option<ThemeShadow>,
+}
+
+/// Elevation: none, soft (the default) or strong. Shadow tokens in colors win.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum ThemeShadow {
+    #[serde(rename = "none")]
+    None,
+    #[serde(rename = "soft")]
+    Soft,
+    #[serde(rename = "strong")]
+    Strong,
+}
+
+/// What the desk shows behind its windows: a colour, a gradient or an image, and the glow at the top.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ThemeBackdrop {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub color: Option<ThemeColor>,
+    /// Two to four colours, drawn as a linear gradient at angle.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub gradient: Option<Vec<ThemeColor>>,
+    /// The gradient's angle in degrees (default 180).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub angle: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub image: Option<ThemeImagePath>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fit: Option<ThemeImageFit>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub glow: Option<ThemeColor>,
+}
+
+/// cover fills the desk with the image; tile repeats it at its own size.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum ThemeImageFit {
+    #[serde(rename = "cover")]
+    Cover,
+    #[serde(rename = "tile")]
+    Tile,
+}
+
+/// The terminal's sixteen ANSI colours, black to bright white.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ThemeTerminal {
+    pub ansi: Vec<ThemeColor>,
+}
+
+/// Typefaces and the type scale, shared by both schemes.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ThemeType {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sans: Option<ThemeFontStack>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub mono: Option<ThemeFontStack>,
+    /// Multiplies every text size, 0.85 to 1.25 (default 1).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub scale: Option<f64>,
+    /// Letter spacing of body text in em, -0.02 to 0.05 (default 0).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tracking: Option<f64>,
+    /// Font files the theme brings, loaded for the shell and every plugin page.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fonts: Option<Vec<ThemeFont>>,
+}
+
+/// A CSS font-family list, for example "Literata", Georgia, serif.
+pub type ThemeFontStack = String;
+
+/// One font file of the theme.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ThemeFont {
+    pub family: String,
+    pub src: ThemeFontPath,
+    /// A weight or a variable font's range, for example 400 or 200 900.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub weight: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub style: Option<ThemeFontStyle>,
+}
+
+/// normal or italic.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum ThemeFontStyle {
+    #[serde(rename = "normal")]
+    Normal,
+    #[serde(rename = "italic")]
+    Italic,
+}
+
+/// A .woff2 file relative to the plugin folder, without .. segments.
+pub type ThemeFontPath = String;
+
+/// A .png, .jpg, .jpeg or .webp file relative to the plugin folder, without .. segments.
+pub type ThemeImagePath = String;
+
+/// Corner and density presets, shared by both schemes.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ThemeShape {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub radius: Option<ThemeRadius>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub density: Option<ThemeDensity>,
+}
+
+/// none (square), subtle (2, 4, 6 px), soft (4, 8, 12 px, the default) or round (6, 12, 18 px) for the small, medium and large radius.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum ThemeRadius {
+    #[serde(rename = "none")]
+    None,
+    #[serde(rename = "subtle")]
+    Subtle,
+    #[serde(rename = "soft")]
+    Soft,
+    #[serde(rename = "round")]
+    Round,
+}
+
+/// Control heights: compact (24 to 44 px), comfortable (28 to 48 px, the default) or spacious (32 to 52 px).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum ThemeDensity {
+    #[serde(rename = "compact")]
+    Compact,
+    #[serde(rename = "comfortable")]
+    Comfortable,
+    #[serde(rename = "spacious")]
+    Spacious,
+}
+
+/// How things move, shared by both schemes. Reduced motion still stops everything.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ThemeMotion {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub personality: Option<ThemeMotionPersonality>,
+}
+
+/// snappy (short, sharp), smooth (the default) or calm (long, gentle).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum ThemeMotionPersonality {
+    #[serde(rename = "snappy")]
+    Snappy,
+    #[serde(rename = "smooth")]
+    Smooth,
+    #[serde(rename = "calm")]
+    Calm,
 }
 
 /// What an item is. record is any other shape, described by the JSON Schema it names.
@@ -5184,6 +5425,10 @@ pub const SCHEMAS: &[(&str, &str)] = &[
     (
         "https://endue.ai/specs/plugin/v0/plugin.schema.json",
         include_str!("../../../specs/plugin/v0/plugin.schema.json"),
+    ),
+    (
+        "https://endue.ai/specs/plugin/v0/theme.schema.json",
+        include_str!("../../../specs/plugin/v0/theme.schema.json"),
     ),
     (
         "https://endue.ai/specs/item/v0/item.schema.json",
