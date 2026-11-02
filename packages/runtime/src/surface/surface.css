@@ -9,9 +9,12 @@
   /* One column the width of the surface: a long title never pushes the tools out. */
   grid-template-columns: minmax(0, 1fr);
   overflow: hidden;
-  border: 1px solid var(--desk-border);
+  border: var(--desk-border-width) solid var(--desk-border);
   border-radius: var(--radius-lg);
-  background: var(--desk-card);
+  /* A translucent theme sets --desk-surface (the card mixed with transparency) and a blur. */
+  background: var(--desk-surface, var(--desk-card));
+  backdrop-filter: var(--desk-surface-filter, none);
+  -webkit-backdrop-filter: var(--desk-surface-filter, none);
   pointer-events: auto;
   outline: none;
 }

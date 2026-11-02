@@ -7,12 +7,16 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
+    "./theme": "./src/theme/index.ts",
     "./elements": "./src/elements/index.ts",
     "./tokens.css": "./src/tokens.css",
     "./base.css": "./src/base.css"
   },
   "scripts": {
     "build": "vite build"
+  },
+  "dependencies": {
+    "@endue-ai/bridge": "workspace:*"
   },
   "devDependencies": {
     "vite": "8.3.5"

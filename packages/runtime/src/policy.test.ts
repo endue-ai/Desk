@@ -225,3 +225,41 @@ describe("Settings", () => {
     expect(changes).toEqual([["desk.notify.dnd"]]);
   });
 });
+
+describe("installed themes", () => {
+  const themePlugin = (id: string, info: Partial<PluginInfo> = {}): PluginInfo => ({
+    id,
+    status: "ready",
+    enabled: true,
+    builtIn: false,
+    revision: 4,
+    manifest: {
+      id,
+      name: "Paper",
+      version: "1.0.0",
+      kind: "theme",
+      description: "Warm paper.",
+      theme: { light: { colors: { background: "#f6f1e7" } } },
+    },
+    ...info,
+  });
+
+  it("are listed for desk.theme.active to pick, with their revision, and contribute nothing", () => {
+    const set = collect([plugin("desk.theme", {}), themePlugin("example.paper")]);
+    expect(set.installedThemes).toEqual([
+      {
+        id: "example.paper",
+        name: "Paper",
+        description: "Warm paper.",
+        revision: 4,
+        theme: { light: { colors: { background: "#f6f1e7" } } },
+      },
+    ]);
+    expect(set.themes).toEqual([]);
+  });
+
+  it("leave out a theme that failed validation", () => {
+    const failed = themePlugin("example.broken", { status: "failed" });
+    expect(collect([failed]).installedThemes).toEqual([]);
+  });
+});

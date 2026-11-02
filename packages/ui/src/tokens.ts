@@ -2,7 +2,10 @@
  * The desk's design tokens: the endue design system as `--desk-*` custom properties
  * (docs/design-system.md). `colors` are role colours a theme sets per scheme (plugins/theme carries
  * the light set and the high-contrast layers); `scale` is type, space, radius, control height and
- * motion, the same under every theme. Plugin pages and the shell read both.
+ * motion, which a theme's type, shape and motion layers retune; `material` is what surfaces are made
+ * of and what lies behind the windows, per scheme; `terminal` is the sixteen ANSI colours. Plugin pages
+ * and the shell read them all; a theme (docs/ko/theme-requirements.md) sets them through
+ * `@endue-ai/ui/theme`.
  */
 
 /** Role colours, with the dark scheme's values. A theme redefines any of them; none is a literal elsewhere. */
@@ -69,7 +72,7 @@ export const colors = {
   chart8: "#a7b1c3",
 } as const;
 
-/** Type, space, radius, control heights and motion. Themes leave these alone. */
+/** Type, space, radius, control heights and motion: a theme's type, shape and motion presets set them. */
 export const scale = {
   fontSans:
     '"Inter", "SUIT Variable", "SUIT", -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif',
@@ -84,6 +87,8 @@ export const scale = {
   text2xl: "24px",
   text3xl: "32px",
   text4xl: "40px",
+  // Letter spacing of body text.
+  tracking: "0em",
   // Space: a 4px grid.
   space1: "4px",
   space2: "8px",
@@ -110,13 +115,51 @@ export const scale = {
   motionBase: "220ms",
   motionSlow: "400ms",
   motionTheme: "350ms",
+  // The curve the motion tokens move along.
+  easing: "cubic-bezier(0.22, 1, 0.36, 1)",
+} as const;
+
+/** What surfaces are made of and what the desk shows behind its windows: a theme's material and backdrop. */
+export const material = {
+  // Surfaces' opacity (0.6 to 1): below 1 the backdrop shows through, blurred by `blur`.
+  surfaceOpacity: "1",
+  blur: "0px",
+  // Grain over surfaces, 0 to 0.15.
+  noise: "0",
+  borderWidth: "1px",
+  // One background-image layer behind the shell: none, a gradient or an image's url().
+  backdrop: "none",
+  backdropSize: "cover",
+  backdropRepeat: "no-repeat",
+} as const;
+
+/** The terminal's ANSI colours, black to bright white, with the dark scheme's values. */
+export const terminal = {
+  ansi0: "#1e1d21",
+  ansi1: "#ff8484",
+  ansi2: "#5dbe5f",
+  ansi3: "#ffb347",
+  ansi4: "#6cadff",
+  ansi5: "#b6a3f5",
+  ansi6: "#5fd0be",
+  ansi7: "#d7d4dc",
+  ansi8: "#6f6a78",
+  ansi9: "#ffa3a3",
+  ansi10: "#86d788",
+  ansi11: "#ffd089",
+  ansi12: "#9cc9ff",
+  ansi13: "#cfc3ff",
+  ansi14: "#8de0d3",
+  ansi15: "#ffffff",
 } as const;
 
 /** Every token: what `tokens.css` declares and what the runtime applies to each frame as `--desk-*`. */
-export const tokens = { ...scale, ...colors } as const;
+export const tokens = { ...scale, ...colors, ...material, ...terminal } as const;
 
 export type ColorTokens = { readonly [K in keyof typeof colors]: string };
 export type ScaleTokens = { readonly [K in keyof typeof scale]: string };
+export type MaterialTokens = { readonly [K in keyof typeof material]: string };
+export type TerminalTokens = { readonly [K in keyof typeof terminal]: string };
 export type ThemeTokens = { readonly [K in keyof typeof tokens]: string };
 
 /** The tokens the runtime zeroes under reduced motion. */
