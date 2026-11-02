@@ -72,7 +72,6 @@ impl Default for BrainOptions {
 pub(crate) trait Tools: Send + Sync {
     /// The tool's output, and whether it failed. `turn` is the desk's turn the call belongs to.
     fn run(&self, turn: &str, call: &ToolCall) -> (Value, bool);
-
     /// The desk's turn `turn` ended.
     fn ended(&self, _turn: &str) {}
 }
@@ -283,15 +282,29 @@ impl Conversation {
             let routed = self.tools.get().and_then(Weak::upgrade);
             let (output, failed) =
                 routed.map_or_else(|| echo(&call), |tools| tools.run(sink.turn, &call));
-            let request = ToolResultRequest {
-                lease_id: lease_id.clone(),
-                call_id: call.call_id,
-                output,
+            let request = |lease_id| ToolResultRequest {
+                lease_id,
+                call_id: call.call_id.clone(),
+                output: output.clone(),
                 is_error: failed.then_some(true),
             };
-            self.brain
-                .submit_tool_result(&session, &turn_id, &request, &mut |event| sink.on(event))
-                .map_err(|f| stop(state, f))?;
+            // A tool may wait for the person (a prompt, an approval) longer than the lease lasts:
+            // its result then goes back under the lease acquired again, not by running the turn again.
+            for again in [false, true] {
+                let lease_id = state.lease.ensure().map_err(|e| lease_stop(state, e))?;
+                match self.brain.submit_tool_result(
+                    &session,
+                    &turn_id,
+                    &request(lease_id),
+                    &mut |event| sink.on(event),
+                ) {
+                    Ok(_) => break,
+                    Err(f) if !again && f.code() == Some(BrainErrorCode::LeaseExpired) => {
+                        state.lease.refused(f);
+                    }
+                    Err(f) => return Err(stop(state, f)),
+                }
+            }
         }
         if sink.completed && !sink.failed {
             Ok(())
