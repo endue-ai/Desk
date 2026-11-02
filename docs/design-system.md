@@ -117,8 +117,8 @@ document's text, a highlight, an image's checkerboard) are not the theme's: mark
 `theme: content` comment on the line, or on the line that opens the rule.
 
 `node scripts/ui-lint.mjs` checks this in `just check` as a ratchet. `scripts/ui-lint-baseline/<target>.json`
-holds the literals a plugin (or `_runtime`, `_ui`, `_examples`) still has; more fail, and fewer fail too
-until `node scripts/ui-lint.mjs --update` lowers the baseline (or deletes it at zero). `--list` names each
+holds the literals a plugin (or `_runtime`, `_ui`, `_examples`) may still have; more fail, fewer are
+reported until `node scripts/ui-lint.mjs --update` lowers the baseline (or deletes it at zero). `--list` names each
 literal. A plugin with no baseline keeps a `tests/theme.test.ts` that expects `lintPlugin("<folder>")` to
 be empty. The design behind it is `docs/ko/theme-requirements.md` (TP) and ADR 0056.
 

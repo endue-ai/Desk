@@ -113,13 +113,16 @@ test("pages: <style> blocks and style attributes, at their lines", () => {
   );
 });
 
-test("the ratchet fails above and below the baseline, and passes when they match", () => {
+test("the ratchet fails above the baseline and only notes what is below it", () => {
   const findings = [{ rule: "color" }, { rule: "color" }, { rule: "radius" }];
   assert.deepEqual(count(findings), { color: 2, radius: 1 });
-  assert.deepEqual(compare("x", { color: 2, radius: 1 }, { color: 2, radius: 1 }), []);
-  assert.equal(compare("x", { color: 3 }, { color: 2 }).length, 1);
-  assert.match(compare("x", { color: 1 }, { color: 2 })[0], /--update/);
-  assert.equal(compare("x", { color: 1 }, {}).length, 1);
+  const same = compare("x", { color: 2, radius: 1 }, { color: 2, radius: 1 });
+  assert.deepEqual(same, { problems: [], notes: [] });
+  assert.equal(compare("x", { color: 3 }, { color: 2 }).problems.length, 1);
+  const lower = compare("x", { color: 1 }, { color: 2 });
+  assert.deepEqual(lower.problems, []);
+  assert.match(lower.notes[0], /below the baseline/);
+  assert.equal(compare("x", { color: 1 }, {}).problems.length, 1);
 });
 
 test("plugins are linted by their ui folder, vendored code left out", () => {

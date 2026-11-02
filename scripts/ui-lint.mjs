@@ -9,9 +9,9 @@
 //   node scripts/ui-lint.mjs --update   write the baselines as the code stands
 //   node scripts/ui-lint.mjs --list     print every finding
 //
-// Ratchet: scripts/ui-lint-baseline/<target>.json holds the counts a target still has. A target with
-// no baseline must have none; counts above the baseline fail, and so do counts below it, until the
-// baseline is lowered with --update (or deleted once it reaches zero).
+// Ratchet: scripts/ui-lint-baseline/<target>.json holds the counts a target may still have. A target
+// with no baseline must have none; counts above the baseline fail; counts below it are reported, to
+// be lowered with --update (or the file deleted once it reaches zero).
 import { existsSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -222,20 +222,23 @@ export function readBaseline(name, dir = BASELINES) {
   return existsSync(path) ? JSON.parse(readFileSync(path, "utf8")) : {};
 }
 
-/** Compare counts to a baseline: problems as sentences, empty when they match. */
+/**
+ * Compare counts to a baseline: `problems` (more literals than the baseline allows) fail the check;
+ * `notes` (fewer) only ask for a lower baseline, so work in parallel that removes literals never
+ * fails another PR. Each plugin's own tests/theme.test.ts holds it at zero once migrated.
+ */
 export function compare(name, counts, baseline) {
   const problems = [];
+  const notes = [];
   for (const rule of RULES) {
     const have = counts[rule] ?? 0;
     const allowed = baseline[rule] ?? 0;
     if (have > allowed)
       problems.push(`${name}: ${have} ${rule} literal(s), baseline allows ${allowed}`);
     if (have < allowed)
-      problems.push(
-        `${name}: ${have} ${rule} literal(s), baseline still says ${allowed}: run node scripts/ui-lint.mjs --update`,
-      );
+      notes.push(`${name}: ${have} ${rule} literal(s), below the baseline's ${allowed}`);
   }
-  return problems;
+  return { problems, notes };
 }
 
 function main(args) {
@@ -255,9 +258,11 @@ function main(args) {
     console.log("ui-lint: baselines written");
     return 0;
   }
-  const problems = results.flatMap(({ target, findings }) =>
+  const compared = results.map(({ target, findings }) =>
     compare(target.name, count(findings), readBaseline(target.name)),
   );
+  const problems = compared.flatMap((c) => c.problems);
+  const notes = compared.flatMap((c) => c.notes);
   for (const name of existsSync(BASELINES) ? readdirSync(BASELINES) : []) {
     if (!results.some(({ target }) => `${target.name}.json` === name))
       problems.push(`${name}: a baseline for a target that does not exist`);
@@ -268,7 +273,11 @@ function main(args) {
     return 1;
   }
   const left = results.reduce((n, { findings }) => n + findings.length, 0);
-  console.log(`ui-lint: ${results.length} targets match their baselines (${left} literals left)`);
+  console.log(`ui-lint: ${results.length} targets within their baselines (${left} literals left)`);
+  if (notes.length > 0)
+    console.log(
+      `  lower with node scripts/ui-lint.mjs --update:\n${notes.map((n) => `  - ${n}`).join("\n")}`,
+    );
   return 0;
 }
 
