@@ -113,7 +113,7 @@ function paragraph(
     ),
   ];
   const pp = propsOf(chain, "paragraph-properties");
-  const base = runOf("", { size: 18, color: "#000000" });
+  const base = runOf("", { size: 18, color: "#000000" }); // theme: content
   applyText(base, propsOf(chain, "text-properties"), ctx.index);
   /** @type {Run[]} */
   const runs = [];

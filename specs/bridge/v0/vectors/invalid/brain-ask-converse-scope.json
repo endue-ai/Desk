@@ -1,0 +1,31 @@
+{
+  "target": "BridgeRequest",
+  "description": "brain:converse does not stand in for brain:ask",
+  "instance": {
+    "id": 31,
+    "method": "brain.ask",
+    "params": {
+      "prompt": "A theme like warm paper.",
+      "tool": {
+        "name": "propose_theme",
+        "description": "Propose a desk theme for what the person described.",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": {
+              "type": "string"
+            }
+          },
+          "required": ["name", "description"]
+        }
+      },
+      "scope": {
+        "permission": "brain:converse"
+      }
+    }
+  }
+}

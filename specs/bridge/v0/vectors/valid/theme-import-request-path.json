@@ -1,0 +1,14 @@
+{
+  "target": "BridgeRequest",
+  "description": "theme.import of a .desk-theme file",
+  "instance": {
+    "id": 63,
+    "method": "theme.import",
+    "params": {
+      "path": "~/Downloads/paper.desk-theme",
+      "scope": {
+        "permission": "theme:manage"
+      }
+    }
+  }
+}

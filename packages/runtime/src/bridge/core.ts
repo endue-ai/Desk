@@ -4,22 +4,29 @@
  * the store, init.yaml's start profile and settings, perm.query, and the stub's index of fixture items
  * (data.*, connector.*, view.*), and shell.open, which hands links to `open` (window.open on the dev
  * page) and only records reveals. Built-in plugins hold their manifest's permissions, as the core
- * grants them at install. A scripted brain answers brain.say (and brain.ask) when one is given. More
- * methods come as handlers.
+ * grants them at install. brain.ask answers through `ask`, or through a scripted brain (`brain`) that
+ * streams its turns as the core does; the theme market (theme.market.*, theme.import by url) downloads
+ * through `download`. More methods come as handlers.
  */
 import {
+  type BrainTurnData,
   BridgeClient,
+  type BridgeEvent,
   type BrowserStub,
   browserStub,
   type Item,
   type ItemSource,
   type PluginInfo,
   type PluginManifest,
+  StubError,
   type StubHandlers,
   type StubOpened,
   stubCommands,
+  type ThemeBundle,
+  type ThemeIndex,
+  type ThemeMarketListResult,
 } from "@endue-ai/bridge";
-
+import { themeHandlers } from "./core-themes";
 import { type ScriptedBrain, scriptedBrain } from "./scripted-brain";
 import { searchHandlers } from "./search";
 
@@ -36,12 +43,25 @@ export interface BrowserCoreOptions {
   off?: Iterable<string>;
   store?: CoreStore;
   init?: { profile?: string; settings?: Record<string, unknown>; problem?: string };
-  /** brain.say, brain.status and, when it says so, brain.ask answered from a script. */
+  /**
+   * brain.ask and brain.status answered from a script, as the core streams and checks them; it
+   * answers brain.ask instead of `ask` when both are given.
+   */
   brain?: ScriptedBrain;
   /** More methods (fs.write, ui.notify, ...), or the ones above answered differently. */
   handlers?: StubHandlers;
   /** Where shell.open's links go: a new window by default, nowhere without a window. */
   open?: (url: string) => void;
+  /**
+   * brain.ask's brain: the arguments it calls `tool` with for `prompt` (examples/brain-echo's
+   * propose_theme in the fixtures), or undefined to answer in words. Without it brain.ask is not served.
+   */
+  ask?: (prompt: string, tool: string) => Record<string, unknown> | undefined;
+  /**
+   * The theme market's network: the bytes at an https URL (the fixture market, say). Without it
+   * theme.market.list, theme.market.fetch and theme.import by url are not served.
+   */
+  download?: (url: string) => Promise<ArrayBuffer>;
 }
 
 export interface BrowserCore {
@@ -100,9 +120,12 @@ export function browserCore(options: BrowserCoreOptions): BrowserCore {
       if (!reveal) open(target);
     },
   });
+  const themes = themeHandlers(plugins, (event) => stub.emit(event));
   const stub = browserStub({
     ...registry.handlers,
     ...searchHandlers(plugins, store),
+    ...themes,
+    ...(options.download ? marketHandlers(options, plugins, themes, options.download) : {}),
     "perm.query": () => ({ grants: [] }),
     "plugin.list": () => ({ plugins: structuredClone(plugins) }),
     "plugin.setEnabled": ({ plugin, enabled }) => {
@@ -127,6 +150,7 @@ export function browserCore(options: BrowserCoreOptions): BrowserCore {
       store.set(key, value);
       return {};
     },
+    ...(options.ask ? { "brain.ask": brainAsk(options.ask, (event) => stub.emit(event)) } : {}),
     "init.get": () => ({
       profile: options.init?.profile ?? "default",
       settings: options.init?.settings ?? {},
@@ -142,6 +166,95 @@ export function browserCore(options: BrowserCoreOptions): BrowserCore {
     upsert: registry.upsert,
     remove: registry.remove,
     opened: () => registry.state().opened,
+  };
+}
+
+/** brain.ask in memory: the turn starts and completes a moment after the answer names it. */
+function brainAsk(
+  answer: NonNullable<BrowserCoreOptions["ask"]>,
+  emit: (event: BridgeEvent) => void,
+): NonNullable<StubHandlers["brain.ask"]> {
+  let asks = 0;
+  return ({ prompt, tool }) => {
+    const turnId = `a${++asks}`;
+    const turn = (data: Omit<BrainTurnData, "turnId">) =>
+      emit({ event: "brain.turn", data: { turnId, ...data } });
+    setTimeout(() => {
+      turn({ kind: "started" });
+      const structured = answer(prompt, tool.name);
+      turn(structured ? { kind: "completed", structured } : { kind: "completed", text: prompt });
+    }, 0);
+    return { turnId };
+  };
+}
+
+/**
+ * The theme market in memory: the indexes desk.theme.markets lists (init.yaml's, else desk.theme's
+ * default) merged by id, the first winning; a theme is installed when plugin.list has it, and has an
+ * update when its version differs. Downloads are checked against their sha256 as the core checks them.
+ */
+function marketHandlers(
+  options: BrowserCoreOptions,
+  plugins: PluginInfo[],
+  themes: StubHandlers,
+  download: (url: string) => Promise<ArrayBuffer>,
+): StubHandlers {
+  const text = async (url: string) => new TextDecoder().decode(await download(url));
+  const checked = async (url: string, sha256: string): Promise<ThemeBundle> => {
+    const bytes = await download(url);
+    const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", bytes));
+    const hex = [...digest].map((b) => b.toString(16).padStart(2, "0")).join("");
+    if (hex !== sha256)
+      throw new StubError("invalid_params", `${url}: sha256 ${hex}, not ${sha256}`);
+    return JSON.parse(new TextDecoder().decode(bytes)) as ThemeBundle;
+  };
+  const markets = (): string[] => {
+    const own = options.init?.settings?.["desk.theme.markets"];
+    const policy = options.manifests.find((m) => m.id === "desk.theme");
+    const declared = policy?.contributes?.settings?.["desk.theme.markets"]?.default;
+    const list = Array.isArray(own) ? own : Array.isArray(declared) ? declared : [];
+    return list.filter((url): url is string => typeof url === "string");
+  };
+  const list = async (): Promise<ThemeMarketListResult> => {
+    const result: ThemeMarketListResult = { themes: [], problems: [] };
+    for (const market of markets()) {
+      try {
+        const index = JSON.parse(await text(market)) as ThemeIndex;
+        if (index.format !== "desk-theme-index/1") throw new Error("not a theme index");
+        for (const theme of index.themes) {
+          if (result.themes.some((t) => t.theme.id === theme.id)) continue;
+          const installed = plugins.find((p) => p.id === theme.id)?.manifest?.version;
+          const state =
+            installed === undefined
+              ? "available"
+              : installed === theme.version
+                ? "installed"
+                : "update";
+          const url = new URL(theme.url, market).href;
+          result.themes.push({
+            theme: { ...theme, url },
+            market,
+            state,
+            ...(installed ? { installed } : {}),
+          });
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        result.problems.push({ market, message });
+      }
+    }
+    return result;
+  };
+  const importBundle = themes["theme.import"];
+  return {
+    "theme.market.list": list,
+    "theme.market.fetch": async ({ url, sha256 }) => ({ bundle: await checked(url, sha256) }),
+    "theme.import": async (params, caller) => {
+      if (!importBundle) throw new StubError("unsupported", "theme.import is not served");
+      if (!params.url) return importBundle(params, caller);
+      const bundle = await checked(params.url, params.sha256 ?? "");
+      return importBundle({ bundle, scope: params.scope }, caller);
+    },
   };
 }
 

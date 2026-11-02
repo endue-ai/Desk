@@ -58,6 +58,8 @@ export function createGrid(doc, { root, scroller, sizer, layer }, { changed }) {
   let zoom = 1;
   let headW = 40;
   let head = HEAD;
+  /** The cells' font, read from the theme (--desk-text-xs, --desk-font-sans) for measuring text. */
+  let face = { size: 12, family: "sans-serif" };
   const pool = createPool(doc, layer);
 
   /** Frozen rows and columns, as positions on the axes. */
@@ -130,7 +132,8 @@ export function createGrid(doc, { root, scroller, sizer, layer }, { changed }) {
           selected: r >= from.r && r <= to.r && c >= from.c && c <= to.c,
           active: active.r === r && active.c === c,
           fixed: pinned,
-          size: 12 * zoom,
+          size: face.size,
+          family: face.family,
           room: merge || pinned || s.cell(r, c)?.t !== "s" ? 0 : roomAfter(r, positions, i),
         });
       });
@@ -199,7 +202,12 @@ export function createGrid(doc, { root, scroller, sizer, layer }, { changed }) {
     headW = Math.round(Math.max(40, String(s.rows).length * 8 + 16) * zoom);
     sizer.style.width = `${headW + cols.total}px`;
     sizer.style.height = `${head + rows.total}px`;
-    layer.style.fontSize = `${12 * zoom}px`;
+    layer.style.fontSize = `calc(var(--desk-text-xs) * ${zoom})`;
+    const font = doc.defaultView?.getComputedStyle(layer);
+    face = {
+      size: Number.parseFloat(font?.fontSize ?? "") || 12 * zoom,
+      family: font?.fontFamily || "sans-serif",
+    };
     root.setAttribute("aria-rowcount", String(s.rows + 1));
     root.setAttribute("aria-colcount", String(s.cols + 1));
     root.setAttribute("aria-label", s.name);

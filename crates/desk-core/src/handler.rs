@@ -84,6 +84,7 @@ pub struct Core {
     pub(crate) surfaces: Mutex<Surfaces>,
     pub(crate) opener: Box<dyn Opener>,
     pub(crate) updater: Option<desk_update::Updater>,
+    pub(crate) themes: crate::core_themes::Themes,
 }
 
 impl Core {
@@ -119,6 +120,7 @@ impl Core {
             surfaces: Mutex::new(Surfaces::default()),
             opener: Box::new(SystemOpener),
             updater: None,
+            themes: Default::default(),
         }
     }
 
@@ -187,6 +189,7 @@ impl Core {
             R::StoreGet(r) => (r.id, self.store_get(caller, r.params)),
             R::StoreSet(r) => (r.id, self.store_set(caller, r.params)),
             R::BrainSay(r) => (r.id, self.brain_say(caller, r.params)),
+            R::BrainAsk(r) => (r.id, self.brain_ask(caller, r.params)),
             R::BrainAgentsList(r) => (r.id, self.brain_agents_list(caller, r.params)),
             R::BrainAgentsCard(r) => (r.id, self.brain_agents_card(caller, r.params)),
             R::BrainSpacesList(r) => (r.id, self.brain_spaces_list(caller, r.params)),
@@ -236,6 +239,12 @@ impl Core {
             R::UpdateCheck(r) => (r.id, self.update_check(caller, r.params)),
             R::UpdateDownload(r) => (r.id, self.update_download(caller, r.params)),
             R::UpdateApply(r) => (r.id, self.update_apply(caller, r.params)),
+            R::ThemeSave(r) => (r.id, self.theme_save(caller, r.params)),
+            R::ThemeImport(r) => (r.id, self.theme_import(caller, r.params)),
+            R::ThemeExport(r) => (r.id, self.theme_export(caller, r.params)),
+            R::ThemeRemove(r) => (r.id, self.theme_remove(caller, r.params)),
+            R::ThemeMarketList(r) => (r.id, self.theme_market_list(caller, r.params)),
+            R::ThemeMarketFetch(r) => (r.id, self.theme_market_fetch(caller, r.params)),
         }
     }
 

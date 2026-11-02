@@ -60,7 +60,20 @@ details (name, size, format, why).
 | `archives/` (`endue.archives`) | Every archive, package and disk image as a tree with previews and safe extraction: ZIP family, tar with gzip, bzip2, xz, zstd and LZ4, 7z, ISO, deb, rpm, gem, pkg, cab; RAR, MSI and disk images listed or described; ranged reads (ADR 0041) |
 | `web/` (`endue.web`) | Saved pages drawn safely in a shadow root after an allowlist sanitizer (ADR 0044), MHTML, web archives, WARC and MAFF, link files (url, webloc, desktop, lnk) as cards, RSS, Atom and OPML; no script runs and nothing is fetched |
 
-Every plugin folder holds `plugin.json`, `README.md`, and as needed `ui/`, `logic/`, `tool/` and `tests/`.
+The built-in themes: plugins of kind `theme` (ADR 0056, ADR 0057), values and the font and image files
+they name, no code. Installing one does not apply it: `desk.theme.active` names the one in force, set
+from the theme studio, `desk.theme.use` or `desk theme apply`. `examples/plugin-hello-theme` is the
+smallest; `docs/plugins/authoring.md` (Making a theme) says how to make one.
+
+| Plugin | Role |
+| --- | --- |
+| `theme-paper/` (`endue.theme-paper`) | Paper & Ink: warm paper and ink-blue accents, Literata, a paper grain behind the windows, soft corners, calm motion |
+| `theme-amber/` (`endue.theme-amber`) | Amber CRT: an amber phosphor terminal, IBM Plex Mono everywhere, scanlines, square corners, snappy motion |
+| `theme-glass/` (`endue.theme-glass`) | Glass: translucent panes that blur an aurora behind them, round corners, deep shadows |
+| `theme-fjord/` (`endue.theme-fjord`) | Fjord: cool northern blues, a gradient of deep water or mist, subtle corners, roomy controls |
+
+Every plugin folder holds `plugin.json`, `README.md`, and as needed `ui/`, `logic/`, `tool/` and `tests/`
+(a theme: `fonts/`, `images/` and `tests/`).
 
 Status: `sidebar`, `eris`, `onboarding`, `toolbar`, `dock`, `terminal` and the ten `desk.*` policies work. With the
 shell (`mountDesk`, ADR 0025), the agent bar, the rail and the bottom edge hold the places of `sidebar`,

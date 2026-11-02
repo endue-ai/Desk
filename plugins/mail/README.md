@@ -1,10 +1,10 @@
 # plugins/mail
 
-`endue.mail`, the mail surface, in the community folder format and on the public SDK only. One
-`center` surface shows the `message` items of the desk's index (ADR 0032) as threads in mailboxes
-(Inbox, Unread, Flagged, Sent, Drafts, Archive, Trash, Junk), opens a message, writes replies,
-forwards and new mail, and answers meeting invitations. Requirements, decisions and the road ahead:
-`docs/ko/mail-requirements.md`.
+`endue.mail`, the mail surface, in the community folder format and on the public SDK only. One `center`
+surface shows the `message` items of the desk's index (ADR 0032) as threads in mailboxes (Inbox, Unread,
+Flagged, Sent, Drafts, Archive, Trash, Junk), opens a message, writes replies, forwards and new mail,
+and answers meeting invitations. Its page takes every colour, font, size and radius from the theme
+(`tests/theme.test.ts`). Requirements, decisions and the road ahead: `docs/ko/mail-requirements.md`.
 
 The plugin reads but never writes the index: every change goes through the commands the mail
 connector provides, as ADR 0032 says. A connector `acme.imap` that brings messages in provides

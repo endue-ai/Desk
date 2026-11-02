@@ -9,7 +9,8 @@ and DOM (ADR 0010); animations run on an injected clock (ADR 0013). Shell decisi
 - `createRuntime({ root, bridge, clock?, storage?, platform?, plugins?, themeRoot?, views?, windows? })` returns a
   `Runtime`: `ready`, `openSurface`, `closeSurface`, `moveSurface`, `focusSurface`, `layout()`,
   `status()`, `shortcuts`, `commands`, `settings`, `keymap`, `buffers`, `profiles`, `policy()`,
-  `notify(notice)`, `theme()`, `onQuit`, `keep(name, part)`, `plugins`, `dispose()`.
+  `notify(notice)`, `theme()`, `themes` (installed, active, preview, apply, resolve: what the theme
+  studio drives, ADR 0056), `onQuit`, `keep(name, part)`, `plugins`, `dispose()`.
 - `PluginHost`: mounts UI plugins, relays their calls as their own caller, reloads a surface on
   `plugin.changed`, carries commands and keys, shares the theme (ADR 0012, 0014). `Owners` routes
   events to their owner (brain turns, fs watches, data subscriptions, processes) or to `*:manage`

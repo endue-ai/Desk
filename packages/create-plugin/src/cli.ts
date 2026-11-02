@@ -1,20 +1,21 @@
 // `create-plugin <folder>`: arguments in, a plugin folder and the next commands out.
 
-import { basename, resolve } from "node:path";
+import { existsSync, realpathSync } from "node:fs";
+import { basename, dirname, join, relative, resolve, sep } from "node:path";
 import { parseArgs } from "node:util";
 import { checkId, defaultId, defaultName } from "./names";
 import { renderPlugin, type TemplateKind } from "./template";
 import { writePlugin } from "./write";
 
-const KINDS: readonly TemplateKind[] = ["ui", "connector"];
+const KINDS: readonly TemplateKind[] = ["ui", "connector", "theme"];
 
-export const USAGE = `usage: create-plugin <folder> [--kind ui|connector] [--id <id>] [--name <name>]
+export const USAGE = `usage: create-plugin <folder> [--kind ui|connector|theme] [--id <id>] [--name <name>]
                      [--description <text>]
 
-Creates a Desk plugin in <folder>, which must be missing or empty: a UI plugin, or with
---kind connector a Wasm connector in Rust.
+Creates a Desk plugin in <folder>, which must be missing or empty: a UI plugin, with
+--kind connector a Wasm connector in Rust, or with --kind theme a theme.
 
-  --kind <kind>         ui (default) or connector
+  --kind <kind>         ui (default), connector or theme
   --id <id>             manifest id, lowercase reverse-domain (default: local.<folder>)
   --name <name>         display name (default: the folder name as words)
   --description <text>  one sentence about what the plugin does`;
@@ -24,6 +25,8 @@ export interface Io {
   cwd: string;
   out(line: string): void;
   err(line: string): void;
+  /** The Desk repository the command runs from, when it knows; a theme's test imports from it. */
+  desk?: string;
 }
 
 /** Run the command. Exit codes, as in `desk`: 0 ok, 1 the folder was not written, 2 usage. */
@@ -44,7 +47,7 @@ export async function main(argv: readonly string[], io: Io): Promise<number> {
   if (extra.length > 0) return usageError(io, `unexpected argument ${extra.join(" ")}`);
 
   const kind = (values.kind ?? "ui") as TemplateKind;
-  if (!KINDS.includes(kind)) return usageError(io, `kind ${kind} is not ui or connector`);
+  if (!KINDS.includes(kind)) return usageError(io, `kind ${kind} is not ui, connector or theme`);
 
   const dir = resolve(io.cwd, folder);
   const id = values.id ?? defaultId(basename(dir));
@@ -53,8 +56,11 @@ export async function main(argv: readonly string[], io: Io): Promise<number> {
   const name = values.name ?? defaultName(basename(dir));
   if (name.trim() === "") return usageError(io, "name is empty");
 
+  const desk =
+    io.desk === undefined ? undefined : relative(real(dir), real(io.desk)).split(sep).join("/");
   try {
-    await writePlugin(dir, renderPlugin({ id, name, description: values.description, kind }));
+    const options = { id, name, description: values.description, kind, desk };
+    await writePlugin(dir, renderPlugin(options));
   } catch (error) {
     io.err(`create-plugin: ${(error as Error).message}`);
     return 1;
@@ -68,6 +74,13 @@ export async function main(argv: readonly string[], io: Io): Promise<number> {
     io.out(`  cd ${shellQuote(dir)} && cargo build --release`);
     io.out("Then, from the Desk repository:");
     io.out(`  cargo run -p desk-cli -- plugin validate ${shellQuote(dir)}`);
+  } else if (kind === "theme") {
+    io.out("Next, from the Desk repository:");
+    io.out(`  cargo run -p desk-cli -- plugin validate ${shellQuote(dir)}`);
+    io.out(`  pnpm exec vitest run --root ${shellQuote(dir)}`);
+    io.out(`  DESK_DEV_PLUGINS=${shellQuote(dir)} just dev`);
+    io.out("Then choose it in the theme studio, or with:");
+    io.out(`  cargo run -p desk-cli -- theme apply ${id}`);
   } else {
     io.out("Next, from the Desk repository:");
     io.out(`  cargo run -p desk-cli -- plugin validate ${shellQuote(dir)}`);
@@ -100,6 +113,16 @@ function usageError(io: Io, message: string): number {
   io.err("");
   io.err(USAGE);
   return 2;
+}
+
+/**
+ * `path` with its links resolved, as the test that imports through it will see it (macOS's /tmp is
+ * /private/tmp); the part that does not exist yet is kept as it is.
+ */
+function real(path: string): string {
+  if (existsSync(path)) return realpathSync(path);
+  const parent = dirname(path);
+  return parent === path ? path : join(real(parent), basename(path));
 }
 
 /** `text` as one shell word: unchanged when it is safe, single-quoted otherwise. */

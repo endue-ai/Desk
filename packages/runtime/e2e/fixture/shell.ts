@@ -2,16 +2,24 @@
 // Test page: the desk shell on the browser bridge stubs (the core's and the shell's), a manual clock
 // and in-memory storage. ?lang=en, ?persist=1 (the core's store in localStorage), ?reduced=1
 // (desk.theme.motion: reduce), ?init={...} (more init.yaml settings), ?themes=1 (the test theme
-// plugin installed), ?views=1 (desk.views, and a scripted brain for desk.propose). Never shipped.
+// plugin installed), ?studio=1 (the theme studio open once the desk is ready; ?studio=<theme id>
+// previews that theme too; ?edit=<theme id> opens the editor on a copy of it; ?describe=<sentence>
+// runs Describe on it; ?say=<sentence> says it to Eris through the composer; ?market=1 lists the
+// fixture market, e2e/themes/market served at /market/, as https://market.test/index.json, and
+// ?market=tab opens the studio's Market tab, ?market=<theme id> previews that theme there). brain.ask
+// answers as examples/brain-echo does (propose_theme from the words of the prompt's last line).
+// ?views=1 installs desk.views, and brain.ask answers propose_view for desk.propose as
+// src/propose/fixtures.ts scripts it. Never shipped.
 import type { PluginManifest } from "@endue-ai/bridge";
 import "../../src/desk.css";
 import "../../src/shell/styles";
+import { proposeTheme } from "../../../../examples/brain-echo/theme.mjs";
 import { browserBridge, type Envelope } from "../../src/bridge/browser";
 import { browserCore, localStore, memoryStore } from "../../src/bridge/core";
 import erisReply from "../../src/bridge/envelopes/eris-reply.json";
 import userHello from "../../src/bridge/envelopes/user-hello.json";
 import { ManualClock } from "../../src/clock";
-import { scriptedViews } from "../../src/propose/fixtures";
+import { viewFor } from "../../src/propose/fixtures";
 import { mountDesk } from "../../src/shell/Desk";
 import { sampleState } from "../../src/shell/state";
 import testTheme from "../themes/test-theme/plugin.json";
@@ -44,6 +52,8 @@ const testPlugins: PluginManifest[] = [
     surfaces: [{ id: "main", title: "Hello", placement: "center" }],
   },
 ];
+const MARKET = "https://market.test/";
+const market = params.has("market");
 const core = browserCore({
   manifests: [
     ...Object.values(manifests).filter(
@@ -56,13 +66,20 @@ const core = browserCore({
     ...(params.has("themes") ? [testTheme as PluginManifest] : []),
   ],
   store: params.has("persist") ? localStore("desk.core.") : memoryStore(),
-  ...(params.has("views") ? { brain: { answer: scriptedViews } } : {}),
+  ask: (prompt, tool) =>
+    tool === "propose_theme"
+      ? proposeTheme(prompt)
+      : tool === "propose_view" && params.has("views")
+        ? viewFor(prompt)
+        : undefined,
+  ...(market ? { download: fromFixtureMarket } : {}),
   init: {
     profile: "morning",
     settings: {
       ...(params.has("reduced")
         ? { "desk.theme.motion": "reduce" }
         : { "desk.theme.motion": "full" }),
+      ...(market ? { "desk.theme.markets": [`${MARKET}index.json`] } : {}),
       ...JSON.parse(params.get("init") ?? "{}"),
     },
   },
@@ -83,6 +100,13 @@ const desk = mountDesk({
   seed: sampleState(lang, epoch),
 });
 
+/** The fixture market's files, as the network would answer its https URLs. */
+async function fromFixtureMarket(url: string): Promise<ArrayBuffer> {
+  const answer = await fetch(url.replace(MARKET, "/market/"));
+  if (!answer.ok) throw new Error(`${url} answered ${answer.status}`);
+  return answer.arrayBuffer();
+}
+
 /** Advance the clock in 16 ms frames, ending exactly at `ms` later. */
 function step(ms: number): void {
   let left = ms;
@@ -101,3 +125,51 @@ window.__shell = {
   step,
   envelopes: { user: userHello as Envelope, eris: erisReply as Envelope },
 };
+
+if (params.has("studio")) {
+  const previewed = params.get("studio") ?? "1";
+  void desk.ready
+    .then(() => desk.runtime.commands.run("desk.theme.studio"))
+    .then(() => previewed !== "1" && desk.runtime.themes.preview(previewed));
+}
+
+if (params.has("edit")) {
+  void desk.ready.then(() =>
+    desk.runtime.commands.run("desk.theme.edit", { id: params.get("edit") }),
+  );
+}
+
+if (params.has("describe")) {
+  void desk.ready.then(() =>
+    desk.runtime.commands.run("desk.theme.describe", { text: params.get("describe") }),
+  );
+}
+
+const marketView = params.get("market");
+if (marketView && marketView !== "1") {
+  const press = (selector: string, tries = 50): void => {
+    const button = document.querySelector<HTMLElement>(selector);
+    if (button) button.click();
+    else if (tries > 0) setTimeout(() => press(selector, tries - 1), 50);
+  };
+  void desk.ready.then(async () => {
+    await desk.runtime.commands.run("desk.theme.studio");
+    press('[data-key="market"]');
+    if (marketView !== "tab") press(`[data-theme="${marketView}"] [data-key="market-preview"]`);
+  });
+}
+
+if (params.has("say")) {
+  void desk.ready.then(() => {
+    const input = document.querySelector<HTMLInputElement>("#composer-input");
+    if (!input) return;
+    input.focus();
+    input.value = params.get("say") ?? "";
+    input.dispatchEvent(new Event("input"));
+    // The last choice says it to Eris.
+    for (const key of ["ArrowUp", "Enter"])
+      input.dispatchEvent(new KeyboardEvent("keydown", { key }));
+    // Once her answer is in, run her clock until she says it.
+    setTimeout(() => step(2500), 100);
+  });
+}

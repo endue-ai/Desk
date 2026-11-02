@@ -56,13 +56,22 @@ export const BOARD_WORK = {
 };
 
 /**
- * A scripted brain for fixture pages: the board for a sentence about a board, only work after a
- * correction that says so, and an echo of the prompt otherwise (which is no view).
+ * The view a brain would propose for a prompt: only work after a correction that says so, the board
+ * for a sentence about a board, and none otherwise.
+ */
+export function viewFor(prompt: string): Record<string, unknown> | undefined {
+  if (/only the work calendar/i.test(prompt)) return BOARD_WORK;
+  if (/as a board/i.test(prompt)) return BOARD;
+  return undefined;
+}
+
+/**
+ * A scripted brain for fixture pages: the view viewFor gives in a fenced block, and an echo of the
+ * prompt otherwise (which is no view).
  */
 export function scriptedViews(prompt: string): string {
-  if (/only the work calendar/i.test(prompt)) return answer(BOARD_WORK);
-  if (/as a board/i.test(prompt)) return answer(BOARD);
-  return `I heard: ${prompt.slice(0, 200)}`;
+  const view = viewFor(prompt);
+  return view ? answer(view) : `I heard: ${prompt.slice(0, 200)}`;
 }
 
 const answer = (view: unknown) =>

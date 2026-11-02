@@ -7,15 +7,16 @@ import { moveEris } from "../shell/actions";
 import type { ShellCtx } from "../shell/context";
 import { h, listen } from "../shell/dom";
 import { draggable } from "../shell/drag";
-import { BODY, digest, frameModel, type Palette, paint, paintMoon } from "./draw";
+import { BODY, digest, type FrameModel, frameModel, type Palette, paint, paintMoon } from "./draw";
 import { DENSITIES, type DensityName, generateMesh, type Mesh } from "./mesh";
 import { SoulText } from "./SoulText";
-import { coreBreath, type ErisState, floatOffset, LOOKS } from "./states";
+import { coreBreath, type ErisState, floatOffset, LOOKS, type Look } from "./states";
 import { PULSE_TO_RIM_MS, Voice } from "./voice";
 
 const MOON = 18;
 const DEFAULT_TOP = 40;
 
+/** Her colours: the theme's eris* tokens, which the theme in force sets on the document's root. */
 function palette(): Palette {
   const css = getComputedStyle(document.documentElement);
   const v = (name: string) => css.getPropertyValue(`--desk-eris-${name}`).trim();
@@ -88,6 +89,8 @@ export function mountEris(
   };
   const ctx2d = canvas.getContext("2d");
   let colors = palette();
+  // The frame painted last, so a new theme repaints it at once instead of on the next tick.
+  let painted: { model: FrameModel; look: Look } | undefined;
   let spin = 0;
   let last = ctx.ticker.now();
   let dragging: { x: number; y: number } | null = null;
@@ -135,6 +138,7 @@ export function mountEris(
       colors = palette();
       paintMoonNow();
     }
+    painted = { model, look };
     if (ctx2d && colors.frost) paint(ctx2d, model, look, colors, BODY);
     canvas.dataset.mesh = digest(model);
     canvas.dataset.rings = rings.disp.map((d) => (d * 100).toFixed(2)).join(" ");
@@ -167,11 +171,14 @@ export function mountEris(
   let start = { x: 0, y: 0 };
   const offs = [
     ctx.ticker.add(frame),
-    // desk.theme applies a new theme before this hears the settings change.
-    ctx.runtime.settings.onChange((keys) => {
-      if (!keys.some((key) => key.startsWith("desk.theme."))) return;
+    // Every theme applied: a desk.theme.* setting, a preview, a theme plugin installed or edited, the
+    // OS's scheme. The theme system calls this after it has set the new tokens.
+    ctx.runtime.themes.onChange(() => {
       colors = palette();
       paintMoonNow();
+      if (ctx2d && colors.frost && painted) {
+        paint(ctx2d, painted.model, painted.look, colors, BODY);
+      }
     }),
     draggable(el, {
       start: () => {
