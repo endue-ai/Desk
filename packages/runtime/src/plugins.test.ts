@@ -100,4 +100,13 @@ describe("PluginHost hot reload", () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(host.mounted()).toEqual([]);
   });
+
+  it("leaves a plugin put away for the session away when its files change", async () => {
+    const { stub, host } = await mount([plugin("local.my-plugin")]);
+    host.unmount("local.my-plugin");
+    const data = { plugin: "local.my-plugin", change: "updated", revision: 2 };
+    stub.emit({ event: "plugin.changed", data } as BridgeEvent);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(host.mounted()).toEqual([]);
+  });
 });
