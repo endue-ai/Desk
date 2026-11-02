@@ -53,8 +53,15 @@ pub const UNSUPPORTED: &str = "the desk socket is not available on Windows yet";
 pub fn socket_path() -> Option<PathBuf> {
     match std::env::var_os(SOCKET_ENV) {
         Some(path) if !path.is_empty() => Some(PathBuf::from(path)),
-        _ => dirs::data_dir().map(|data| data.join(APP_ID).join(SOCKET_FILE)),
+        _ => data_dir().map(|data| data.join(SOCKET_FILE)),
     }
+}
+
+/// The desk's data folder, where the app keeps its state files (macOS
+/// `~/Library/Application Support/ai.endue.desk`, Linux `$XDG_DATA_HOME/ai.endue.desk` or
+/// `~/.local/share/ai.endue.desk`). `None` when there is no home.
+pub fn data_dir() -> Option<PathBuf> {
+    dirs::data_dir().map(|data| data.join(APP_ID))
 }
 
 /// What the app grants [`CALLER`] at start, session-long: run any command, list and toggle plugins,

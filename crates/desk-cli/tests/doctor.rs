@@ -14,7 +14,8 @@ fn temp(tag: &str) -> PathBuf {
         .duration_since(UNIX_EPOCH)
         .unwrap()
         .as_nanos();
-    let dir = std::env::temp_dir().join(format!("desk-doctor-{tag}-{}-{nanos}", std::process::id()));
+    let dir =
+        std::env::temp_dir().join(format!("desk-doctor-{tag}-{}-{nanos}", std::process::id()));
     fs::create_dir_all(&dir).unwrap();
     dir
 }
@@ -50,7 +51,10 @@ fn doctor_lists_quarantined_plugins_and_broken_files() {
     let out = doctor(&home, &data, false);
     assert!(out.status.success());
     let text = String::from_utf8_lossy(&out.stdout);
-    assert!(text.contains("quarantined\texample.throws\t0.1.0"), "{text}");
+    assert!(
+        text.contains("quarantined\texample.throws\t0.1.0"),
+        "{text}"
+    );
     assert!(text.contains("plugins.json.broken"), "{text}");
     assert!(text.contains("torn.yaml.broken"), "{text}");
 
@@ -66,7 +70,11 @@ fn doctor_lists_quarantined_plugins_and_broken_files() {
         .map(|path| path.as_str().unwrap().to_owned())
         .collect();
     assert_eq!(broken.len(), 2, "{broken:?}");
-    assert!(broken.iter().any(|path| path.ends_with("plugins.json.broken")));
+    assert!(
+        broken
+            .iter()
+            .any(|path| path.ends_with("plugins.json.broken"))
+    );
     assert!(broken.iter().any(|path| path.ends_with("torn.yaml.broken")));
 }
 
