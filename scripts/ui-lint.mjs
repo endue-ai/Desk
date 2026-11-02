@@ -13,7 +13,7 @@
 // no baseline must have none; counts above the baseline fail, and so do counts below it, until the
 // baseline is lowered with --update (or deleted once it reaches zero).
 import { existsSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
-import { join, relative } from "node:path";
+import { join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 export const ROOT = fileURLToPath(new URL("..", import.meta.url));
@@ -49,8 +49,8 @@ function files(root, dir) {
     }
   };
   if (existsSync(join(root, dir))) walk(join(root, dir));
-  // The token definitions themselves are where literals belong.
-  return out.filter((path) => !/packages\/ui\/src\/tokens\.css$/.test(path));
+  // The token definitions themselves are where literals belong (any separator: Windows too).
+  return out.filter((path) => !/packages[\\/]ui[\\/]src[\\/]tokens\.css$/.test(path));
 }
 
 const NAMED = new Set(
@@ -200,7 +200,7 @@ export function lintTarget(target, root = ROOT) {
       : path.endsWith(".html")
         ? lintHtml(source)
         : lintJs(source);
-    return found.map((f) => ({ file: relative(root, path), ...f }));
+    return found.map((f) => ({ file: relative(root, path).split(sep).join("/"), ...f }));
   });
 }
 
