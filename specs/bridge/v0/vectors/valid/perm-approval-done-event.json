@@ -1,0 +1,12 @@
+{
+  "target": "BridgeEvent",
+  "description": "an approved write ran and wrote 21 bytes",
+  "instance": {
+    "event": "perm.approval.done",
+    "data": {
+      "approvalId": "a-1",
+      "ok": true,
+      "bytesWritten": 21
+    }
+  }
+}

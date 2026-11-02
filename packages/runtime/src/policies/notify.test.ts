@@ -5,9 +5,13 @@ import { PolicyHub } from "../hub";
 import type { DeskContext } from "./context";
 import { installNotify } from "./notify";
 
-/** The status line as a plain object: text and a data-level, nothing else is read. */
+/** The status line as a plain object: text, a data-level and a class list; a notice with no actions reads nothing else. */
 function statusLine() {
-  return { textContent: "", dataset: {} as DOMStringMap } as unknown as HTMLElement;
+  return {
+    textContent: "",
+    dataset: {} as DOMStringMap,
+    classList: { toggle: () => false },
+  } as unknown as HTMLElement;
 }
 
 function context(): DeskContext {

@@ -18,6 +18,7 @@
         "profile": { "$ref": "#/$defs/InitProfile" },
         "plugins": { "$ref": "#/$defs/InitPlugins" },
         "settings": { "$ref": "#/$defs/InitSettings" },
+        "agents": { "$ref": "#/$defs/InitAgents" },
         "sync": { "$ref": "#/$defs/InitSync" }
       },
       "additionalProperties": false
@@ -50,6 +51,29 @@
       "description": "A setting key: lowercase, dotted by owner, for example eris.voice or motion.reduce.",
       "type": "string",
       "pattern": "^[a-z0-9][a-z0-9._-]{0,127}$"
+    },
+    "InitAgents": {
+      "description": "What the brain's agents may be granted on this desk, by agent id (the agentId of the brain's tool calls; the caller is agent:<id>). Default none: an agent without an entry asks the person before every first use (ADR 0072).",
+      "type": "object",
+      "propertyNames": { "$ref": "#/$defs/InitAgentId" },
+      "additionalProperties": { "$ref": "#/$defs/InitAgent" }
+    },
+    "InitAgentId": {
+      "description": "An agent id as the brain names it, for example ag_01JBZ8Q4MR0000000000000001.",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,121}$"
+    },
+    "InitAgent": {
+      "description": "One agent's setup.",
+      "type": "object",
+      "properties": {
+        "allow": {
+          "description": "The permissions and scopes the agent may be granted. Within them the person is still asked at first use; outside them the agent is refused (outside-allowlist), whatever it holds. Empty or absent: no limit, every first use asks.",
+          "type": "array",
+          "items": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/Permission" }
+        }
+      },
+      "additionalProperties": false
     },
     "InitSync": {
       "description": "Syncing init.yaml through the person's endue account.",

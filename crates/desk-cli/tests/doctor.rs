@@ -1,96 +1,119 @@
-//! `desk doctor` (ADR 0061): offline, it lists the plugins the runtime quarantined (`desk`'s store
-//! key `plugins.quarantined` in store.json) and every `.broken` file in the data folder and the views
-//! folder. It always exits 0; `--json` prints `{ quarantined, broken }`.
+//! `desk doctor --trace <file>`: the start-up trace a `DESK_TRACE=1` start wrote, summarized
+//! offline (phases, totals, the five longest). Exit codes: 0 ok, 1 no trace there, 2 usage.
 
-use std::fs;
-use std::path::{Path, PathBuf};
-use std::process::Command;
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::path::PathBuf;
+use std::process::{Command, Output};
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use serde_json::{Value, json};
 
-fn temp(tag: &str) -> PathBuf {
-    let nanos = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap()
-        .as_nanos();
-    let dir =
-        std::env::temp_dir().join(format!("desk-doctor-{tag}-{}-{nanos}", std::process::id()));
-    fs::create_dir_all(&dir).unwrap();
-    dir
-}
+static COUNTER: AtomicU64 = AtomicU64::new(0);
 
-/// `desk doctor` on `data` with `home` as the home folder (for `~/.desk/views`).
-fn doctor(home: &Path, data: &Path, json: bool) -> std::process::Output {
-    let mut args = vec!["doctor", "--data", data.to_str().unwrap()];
-    if json {
-        args.push("--json");
-    }
+fn desk(args: &[&str]) -> Output {
     Command::new(env!("CARGO_BIN_EXE_desk"))
         .args(args)
-        .env("HOME", home)
-        .env("USERPROFILE", home)
         .output()
         .expect("desk runs")
 }
 
-#[test]
-fn doctor_lists_quarantined_plugins_and_broken_files() {
-    let home = temp("lists");
-    let data = home.join("data");
-    let views = home.join(".desk/views");
-    fs::create_dir_all(&data).unwrap();
-    fs::create_dir_all(&views).unwrap();
-    let store = json!({ "desk": { "plugins.quarantined": [
-        { "id": "example.throws", "version": "0.1.0", "at": "2026-11-02T09:00:00Z" }
-    ] } });
-    fs::write(data.join("store.json"), store.to_string()).unwrap();
-    fs::write(data.join("plugins.json.broken"), "{").unwrap();
-    fs::write(views.join("torn.yaml.broken"), "id: [").unwrap();
+/// `text` in a fresh file.
+fn file(text: &str) -> PathBuf {
+    let n = COUNTER.fetch_add(1, Ordering::Relaxed);
+    let path = std::env::temp_dir().join(format!("desk-cli-trace-{}-{n}.json", std::process::id()));
+    std::fs::write(&path, text).unwrap();
+    path
+}
 
-    let out = doctor(&home, &data, false);
-    assert!(out.status.success());
-    let text = String::from_utf8_lossy(&out.stdout);
-    assert!(
-        text.contains("quarantined\texample.throws\t0.1.0"),
-        "{text}"
-    );
-    assert!(text.contains("plugins.json.broken"), "{text}");
-    assert!(text.contains("torn.yaml.broken"), "{text}");
+/// A complete event (`ph: "X"`): `ts` and `dur` in µs.
+fn x(name: &str, cat: &str, ts: u64, dur: u64) -> Value {
+    json!({ "name": name, "cat": cat, "ph": "X", "ts": ts, "dur": dur, "pid": 1, "tid": 1 })
+}
 
-    let out = doctor(&home, &data, true);
-    assert!(out.status.success());
-    let answer: Value = serde_json::from_slice(&out.stdout).unwrap();
-    assert_eq!(answer["quarantined"][0]["id"], "example.throws");
-    assert_eq!(answer["quarantined"][0]["version"], "0.1.0");
-    let broken: Vec<String> = answer["broken"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .map(|path| path.as_str().unwrap().to_owned())
-        .collect();
-    assert_eq!(broken.len(), 2, "{broken:?}");
-    assert!(
-        broken
-            .iter()
-            .any(|path| path.ends_with("plugins.json.broken"))
-    );
-    assert!(broken.iter().any(|path| path.ends_with("torn.yaml.broken")));
+fn trace() -> PathBuf {
+    let events = json!({ "traceEvents": [
+        x("core init", "core", 5_000, 20_000),
+        x("plugin registry", "core", 25_000, 70_000),
+        x("mount endue.notes", "plugin", 300_000, 180_000),
+        x("mount endue.sheets", "plugin", 310_000, 140_000),
+        x("session restore", "runtime", 500_000, 90_000),
+        x("plugin list", "runtime", 280_000, 10_000),
+        x("first interactive frame", "runtime", 610_000, 30_000),
+        { "name": "ready line", "ph": "i", "s": "p", "ts": 612_000, "pid": 1, "tid": 1 },
+    ]});
+    file(&events.to_string())
+}
+
+fn stdout(out: &Output) -> String {
+    String::from_utf8_lossy(&out.stdout).into_owned()
 }
 
 #[test]
-fn doctor_says_ok_when_there_is_nothing_to_report() {
-    let home = temp("ok");
-    let data = home.join("data");
-    fs::create_dir_all(&data).unwrap();
-    fs::write(data.join("store.json"), "{}").unwrap();
+fn doctor_trace_prints_phases_totals_and_the_five_longest() {
+    let path = trace();
+    let out = desk(&["doctor", "--trace", path.to_str().unwrap()]);
+    assert!(
+        out.status.success(),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let text = stdout(&out);
+    for part in [
+        "phases",
+        "core init",
+        "session restore",
+        "totals",
+        "ready line",
+        "612.0",
+        "first interactive frame",
+        "640.0",
+        "five longest",
+    ] {
+        assert!(text.contains(part), "{part:?} in:\n{text}");
+    }
+    // Longest first: the notes mount leads; plugin list (10 ms) is not among the five.
+    let longest = &text[text.find("five longest").unwrap()..];
+    assert!(longest.find("mount endue.notes") < longest.find("mount endue.sheets"));
+    assert!(!longest.contains("plugin list"), "{longest}");
+    let _ = std::fs::remove_file(path);
+}
 
-    let out = doctor(&home, &data, false);
+#[test]
+fn doctor_trace_with_json_prints_the_summary_as_json() {
+    let path = trace();
+    let out = desk(&["--json", "doctor", "--trace", path.to_str().unwrap()]);
     assert!(out.status.success());
-    assert!(String::from_utf8_lossy(&out.stdout).starts_with("ok"));
+    let summary: Value = serde_json::from_str(&stdout(&out)).expect("one JSON document");
+    assert_eq!(summary["phases"].as_array().map(Vec::len), Some(7));
+    assert_eq!(summary["longest"].as_array().map(Vec::len), Some(5));
+    assert_eq!(summary["longest"][0]["name"], "mount endue.notes");
+    assert_eq!(summary["longest"][0]["durationMs"], 180.0);
+    let marks = summary["marks"].as_array().expect("marks");
+    assert!(
+        marks
+            .iter()
+            .any(|m| m["name"] == "ready line" && m["atMs"] == 612.0)
+    );
+    let _ = std::fs::remove_file(path);
+}
 
-    let out = doctor(&home, &home.join("no-data-yet"), true);
-    assert!(out.status.success(), "a desk that never ran is fine too");
-    let answer: Value = serde_json::from_slice(&out.stdout).unwrap();
-    assert_eq!(answer, json!({ "quarantined": [], "broken": [] }));
+#[test]
+fn doctor_trace_on_a_missing_or_broken_file_exits_1() {
+    let missing = std::env::temp_dir().join("desk-cli-no-such-trace.json");
+    let out = desk(&["doctor", "--trace", missing.to_str().unwrap()]);
+    assert_eq!(out.status.code(), Some(1));
+    assert!(String::from_utf8_lossy(&out.stderr).starts_with("desk: "));
+
+    let broken = file("{ \"traceEvents\": \"no\" }");
+    let out = desk(&["doctor", "--trace", broken.to_str().unwrap()]);
+    assert_eq!(out.status.code(), Some(1));
+    assert!(String::from_utf8_lossy(&out.stderr).contains("trace"));
+    let _ = std::fs::remove_file(broken);
+}
+
+#[test]
+fn doctor_without_a_trace_file_is_a_usage_error() {
+    // Bare `doctor` is the state check (tests/health.rs); only `--trace` needs its file.
+    let out = desk(&["doctor", "--trace"]);
+    assert_eq!(out.status.code(), Some(2));
+    assert!(String::from_utf8_lossy(&out.stderr).contains("doctor --trace"));
 }

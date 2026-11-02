@@ -934,6 +934,7 @@ dependencies = [
  "desk-index",
  "desk-ipc",
  "desk-sys",
+ "desk-trace",
  "desk-update",
  "serde_json",
  "tauri",
@@ -990,6 +991,8 @@ dependencies = [
  "desk-bridge",
  "desk-core",
  "desk-ipc",
+ "desk-plugin-host",
+ "desk-trace",
  "serde_json",
 ]
 
@@ -1009,6 +1012,7 @@ dependencies = [
  "jsonschema",
  "serde",
  "serde_json",
+ "sha2",
  "yaml_serde",
 ]
 
@@ -1037,6 +1041,7 @@ name = "desk-plugin-host"
 version = "0.0.0"
 dependencies = [
  "desk-bridge",
+ "serde",
  "serde_json",
  "wasmtime",
  "wasmtime-wasi",
@@ -1061,6 +1066,14 @@ dependencies = [
  "time",
  "ureq",
  "url",
+]
+
+[[package]]
+name = "desk-trace"
+version = "0.0.0"
+dependencies = [
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

@@ -90,7 +90,7 @@ describe("the view kind", () => {
         },
       },
     });
-    expect(await kindOn(core).context()).toEqual({
+    expect(await kindOn(core).context(request)).toEqual({
       components: ["list", "agenda"],
       sources: [
         {
@@ -115,6 +115,10 @@ describe("the view kind", () => {
     expect(slugOf("  Q4: Sales & {params.region} ")).toBe("q4-sales-region");
     expect(slugOf("이번 주 일정")).toBe("view");
     expect(slugOf("2026 plans")).toBe("view-2026-plans");
+    // Another kind names its ids the same way, with its own word when the title gives none.
+    expect(slugOf("Quiet night", "profile")).toBe("quiet-night");
+    expect(slugOf("밤", "profile")).toBe("profile");
+    expect(slugOf("24/7 support", "profile")).toBe("profile-24-7-support");
     const core = browserCore({ manifests, brain: { answer: () => "" } });
     const taken: View = { ...BOARD, id: "eris.events-this-week", version: "0.1.0" } as View;
     await core.client.call("view.save", { view: taken, scope: VIEWS });

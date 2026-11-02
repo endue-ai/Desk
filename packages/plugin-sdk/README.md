@@ -11,7 +11,8 @@ What a plugin imports. Layer: Plugins (`docs/architecture.md`). Guide: `docs/plu
   item or undefined; `subscribe(query, listener)` the function that unsubscribes, once. `ctx.views`
   (`view.*`, needs `view:manage`): `list()`, `get(id)`, `save(view)`, `remove(id)`.
 - `ctx.surface`: `open(id, { placement?, title? })` resolves a handle for `close(handle)`
-  (`ui.surface.*`, needs `ui:surface`); `close()` ends this frame's own, `show()`/`hide()` a `hidden` one.
+  (`ui.surface.*`, needs `ui:surface`); `close()` ends this frame's own, `show()`/`hide()` a `hidden`
+  one; `onUnload(provider)`: JSON (64 KiB) kept when the desk unloads it unseen, back as `restored`.
 - `ctx.settings` (the plugin's own keys, `settings.*`): `get(key)`, `set(key, value)`, `list()`,
   `onChange(listener)`. `ctx.log`: `write(level, message, fields?)`, `tail({ channel?, count? })`
   (needs `log:read`). `ctx.events.subscribe(names, listener)` resolves the function that unsubscribes
@@ -20,21 +21,21 @@ What a plugin imports. Layer: Plugins (`docs/architecture.md`). Guide: `docs/plu
   provider's `cmd.answered` (needs a `cmd:invoke` grant covering the id); `list()` is `cmd.list`;
   `on(name, handler)` answers this plugin's commands (`cmd.invoked`) and the desk's requests by name,
   after `mount`. A failure is a `CommandFailed` (`unknown_command`, `failed`, `cancelled`).
-- `ctx.search.replace(documents)`: publish searchable documents (500 / 4 MiB), each may name a command.
+- `ctx.search.replace(documents)`: searchable documents (500 / 4 MiB; `[]` clears), each may name a command.
 - `ctx.theme`: `get()`, `on(listener)`; the frame gets `--desk-*`, `data-scheme`, `-contrast` and
   `-motion`. Chords (Meta, Control, Alt, Escape) reach the desk unless prevented.
-- `readBytes(ctx, { path, scope }, { onProgress?(done, total), signal? })`: the file as a `Uint8Array`,
-  in 2 MiB `Range` requests to its `fs.url` URL (else `fs.read` ranges); `signal` rejects (`AbortError`).
-  `byteSource(ctx, file)`: `{ size, read(offset, length) }`, cached. `startWorker(url)`: a module worker.
+- `readBytes(ctx, { path, scope }, { onProgress?, signal? })`: the file, in 2 MiB `Range` requests to its
+  `fs.url` URL (else `fs.read` ranges); `signal` rejects. `byteSource(ctx, file)`: `{ size, read(offset,
+  length) }`, cached. `startWorker(url)`. `fileHistory(ctx, file, { limit? })`, `restoreFile(ctx, file, v)`.
 - `connect(transport?)`, `windowTransport()`, the protocol types, `BridgeCallError` and bridge types;
   one tick's calls leave in one message. The frame tells the desk its first `desk:ready`, or
-  `desk:failed` when mount or the frame throws before it (ADR 0061). Served at `/_desk/plugin-sdk.js`.
-- `@endue-ai/plugin-sdk/testing`: `createTestHost({ pluginId, state?, handlers?, commands?, settings?,
-  grants?, callers?, prompt?, now?, refuse?, files? })` runs a plugin on the bridge's stub of the core
-  (`handlers` override it, `refuse` fails a method, `files` back `fs.read` and `fs.url`): `transport`,
-  `calls`, `batches`, `state`, `started`, `closed`, `visible`, `ran`, `keys`, `settings`, `grants`, `logged`,
-  `surfaces`, `call` (as any caller), `emit`, `command`, `invoke`, `theme`, `upsert`, `remove`, `settle`.
+  `desk:failed` when mount or the frame throws before it (ADR 0061). The app serves `dist/plugin-sdk.js` at `/_desk/plugin-sdk.js`.
+- `@endue-ai/plugin-sdk/testing`: `createTestHost({ pluginId, state?, restored?, handlers?, commands?,
+  settings?, grants?, callers?, prompt?, now?, refuse?, files? })` runs a plugin on the stub core
+  (`handlers` override it, `refuse` fails a method, `files` back the `fs.*` calls): `transport`,
+  `calls`, `batches`, `state`, `closed`, `visible`, `ran`, `keys`, `settings`, `grants`, `logged`,
+  `surfaces`, `call`, `emit`, `command`, `surfaceState`, `invoke`, `theme`, `upsert`, `remove`, `settle`.
   `assertRoundTrip(bytes, parse, serialize)`, `assertMinimalEdit(before, after, edit)` (ADR 0071).
 
 ## Testing
-`pnpm exec vitest run packages/plugin-sdk`
+`pnpm exec vitest run packages/plugin-sdk`; `desk plugin test` runs plugins on `vitest.plugin.config.ts`.

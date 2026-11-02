@@ -11,6 +11,7 @@ import { icon } from "../shell/icons";
 import { panOf } from "../shell/Pan";
 import { focusPane, splitPane, toggleFloating, toggleMaximize } from "../shell/windows";
 import { isFloating, screenRect } from "./coordinates";
+import { zOf } from "./cover";
 import { place, surfaceInteractions } from "./interactions";
 import { renderPanes } from "./PaneView";
 import { findLeaf, leaves, panesOf } from "./tree";
@@ -258,7 +259,7 @@ export function mountSurfaces(root: HTMLElement, ctx: ShellCtx): () => void {
       // Status/focus updates must not overwrite an in-progress pointer preview.
       if (!entry.el.classList.contains("is-dragging"))
         place(entry.el, screenRect(p, panOf(s), vw, vh));
-      entry.el.style.zIndex = String(p.id === s.focused ? 100 : p.pinned ? 50 + i : 1 + i);
+      entry.el.style.zIndex = String(zOf(p, i, s.focused));
       entry.el.classList.toggle("is-focused", p.id === s.focused);
     });
   };

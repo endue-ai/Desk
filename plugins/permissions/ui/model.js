@@ -10,7 +10,7 @@ import { broadWarning, describeCaller, describePermission, durationLabel } from 
  * @typedef {{ grantId: string, permission: string, scope: string, duration: string,
  *   warning: string | null, revokeLabel: string }} GrantItem
  * @typedef {{ caller: Caller, grants: GrantItem[] }} GrantGroup
- * @typedef {{ summary: string, groups: GrantGroup[] }} GrantList
+ * @typedef {{ summary: string, groups: GrantGroup[], agents: GrantGroup[] }} GrantList
  * @typedef {{ scope: string, folder: string, label: string }} ParentOffer
  * @typedef {{ promptId: string, title: string, caller: Caller, permission: string, scope: string,
  *   reason: string, duration: string, warning: string | null, parent: ParentOffer | null,
@@ -21,7 +21,8 @@ const count = (/** @type {number} */ n, /** @type {string} */ noun) =>
   `${n} ${noun}${n === 1 ? "" : "s"}`;
 
 /**
- * Every grant, one group per caller, callers by name then id, grants in the core's order (oldest first).
+ * Every grant, one group per caller, callers by name then id, grants in the core's order (oldest first);
+ * agents (`agent:<id>`) apart from plugins and the desk.
  * @param {CallerGrant[]} grants
  * @param {PluginInfo[]} plugins
  * @returns {GrantList}
@@ -52,7 +53,8 @@ export function grantList(grants, plugins) {
     grants.length === 0
       ? "Nobody holds a permission."
       : `${count(grants.length, "permission")} held by ${count(sorted.length, "caller")}`;
-  return { summary, groups: sorted };
+  const agent = (/** @type {GrantGroup} */ g) => g.caller.kind === "Agent";
+  return { summary, groups: sorted.filter((g) => !agent(g)), agents: sorted.filter(agent) };
 }
 
 /**

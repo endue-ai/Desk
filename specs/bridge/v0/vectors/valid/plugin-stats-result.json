@@ -1,0 +1,12 @@
+{
+  "target": "PluginStatsResult",
+  "description": "the calls of the runtime, a plugin and the CLI over the last minute, most first",
+  "instance": {
+    "windowSeconds": 60,
+    "callers": [
+      { "caller": "desk", "calls": 412, "failed": 3 },
+      { "caller": "endue.terminal", "calls": 96, "failed": 0 },
+      { "caller": "cli", "calls": 2, "failed": 1 }
+    ]
+  }
+}

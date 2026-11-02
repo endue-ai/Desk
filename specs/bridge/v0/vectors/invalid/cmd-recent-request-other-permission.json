@@ -1,0 +1,11 @@
+{
+  "target": "BridgeRequest",
+  "description": "cmd:invoke is not the scope cmd.recent needs",
+  "instance": {
+    "id": 43,
+    "method": "cmd.recent",
+    "params": {
+      "scope": { "permission": "cmd:invoke", "ids": ["*"] }
+    }
+  }
+}

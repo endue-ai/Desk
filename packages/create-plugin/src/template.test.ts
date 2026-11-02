@@ -48,6 +48,7 @@ describe("renderPlugin", () => {
       kind: "ui",
       entry: "ui/index.html",
       surfaces: [{ id: "main", title: "My plugin", placement: "center" }],
+      contributes: { commands: [{ id: "example.my-plugin.count", title: "My plugin: count" }] },
     });
   });
 
@@ -81,6 +82,18 @@ describe("renderPlugin", () => {
     expect(files["ui/index.html"]).toContain('"@endue-ai/plugin-sdk": "/_desk/plugin-sdk.js"');
     expect(files["ui/index.html"]).toContain('<script type="module" src="./main.js"></script>');
     expect(files["ui/main.js"]).toContain('import { defineUiPlugin } from "@endue-ai/plugin-sdk";');
+  });
+
+  it("keeps the plugin apart from its page, so its one test runs it on the SDK test host", () => {
+    const files = renderPlugin({ id: "example.my-plugin", name: "My plugin" });
+    expect(files["ui/main.js"]).toContain('import { plugin } from "./plugin.js";');
+    expect(files["ui/main.js"]).toContain("defineUiPlugin(plugin);");
+    // Only main.js imports the SDK: the page's import map resolves it, and tests import plugin.js.
+    expect(files["ui/plugin.js"]).not.toContain("@endue-ai/plugin-sdk");
+    expect(files["ui/plugin.js"]).toMatch(/ctx\.commands\.on\(`\$\{ctx\.pluginId\}\.count`/);
+    const test = files["tests/plugin.test.js"] ?? "";
+    expect(test).toContain('import { createTestHost } from "@endue-ai/plugin-sdk/testing";');
+    expect(test).toContain('import { plugin } from "../ui/plugin.js";');
   });
 
   it("escapes the name in the entry page", () => {

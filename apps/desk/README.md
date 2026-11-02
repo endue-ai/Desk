@@ -9,9 +9,10 @@ and `src/` mounts the desk shell (`mountDesk`) and connects the bridge.
 | `src/native-files.ts` | Native single-file picker and queued native drops, routed through `desk.files.open` |
 | `src/open-files.ts`, `src-tauri/src/open_files.rs` | Startup and running OS file-open queue, consumed after runtime readiness |
 | `src/shell-bridge.ts` | The shell's `ShellBridge` over the core: store, perm, `brain.*` and the agent directory |
-| `src-tauri/src/lib.rs` | Builds the core; the runtime (`desk`) holds `plugin:manage`, `cmd:invoke`, `brain:converse`, `connector:manage` and `view:manage` |
-| `src-tauri/src/commands/` | Bridge forwarding, readiness logging (marks last-start.json), consuming OS file-open paths, and the start (ADR 0061): `--safe`/`DESK_SAFE=1` or a crash loop starts safe mode, `desk_start` tells the shell, `desk_relaunch` starts again without it |
-| `src-tauri/capabilities/` | Main-window bridge/readiness, event listeners and native file picker |
+| `src/startup.ts`, `src-tauri/src/trace.rs` | `DESK_TRACE=1`: the start-up trace in the data folder (`trace.json`, `crates/desk-trace`), the runtime's phases sent with `desk_trace` |
+| `src-tauri/src/lib.rs` | Builds the core; the runtime (`desk`) holds `plugin:manage`, `cmd:invoke`, `perm:manage` (desk.describe, ADR 0075), `brain:converse`, `connector:manage` and `view:manage` |
+| `src-tauri/src/commands/` | Bridge forwarding, readiness logging (the trace's ready line; marks last-start.json), consuming OS file-open paths, and the start (ADR 0061): `--safe`/`DESK_SAFE=1` or a crash loop starts safe mode, `desk_start` tells the shell, `desk_relaunch` starts again without it |
+| `src-tauri/capabilities/` | Main-window bridge/readiness/start-up phases, event listeners and native file picker |
 | `src-tauri/tauri.conf.json` | Window, strict CSP, bundle; identifier `ai.endue.desk` |
 | `src-tauri/icons/` | Placeholder icons generated from a flat accent square |
 

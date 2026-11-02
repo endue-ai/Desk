@@ -2,15 +2,22 @@
 
 set shell := ["bash", "-euo", "pipefail", "-c"]
 
+# Between folders in DESK_PLUGIN_DIRS and DESK_DEV_PLUGINS, as in PATH
+path_sep := if os_family() == "windows" { ";" } else { ":" }
+
+# The dev plugins `just dev` loads when DESK_DEV_PLUGINS names none
+dev_examples := (justfile_directory() / "examples/plugin-hello-ui") + path_sep + (justfile_directory() / "examples/plugin-hello-view")
+
 # List recipes
 default:
     @just --list
 
 # Run the desktop app in development mode: built-in plugins from plugins/ and, as dev plugins, the
-# folders in DESK_DEV_PLUGINS, else plugin-hello-ui; saving a plugin file reloads only its surface
+# folders in DESK_DEV_PLUGINS, else plugin-hello-ui and plugin-hello-view; saving a plugin file
+# reloads only that plugin
 dev:
     DESK_PLUGIN_DIRS="{{justfile_directory()}}/plugins" \
-    DESK_DEV_PLUGINS={{quote(env("DESK_DEV_PLUGINS", justfile_directory() / "examples/plugin-hello-ui"))}} \
+    DESK_DEV_PLUGINS={{quote(env("DESK_DEV_PLUGINS", dev_examples))}} \
     pnpm --filter @endue-ai/desk-app tauri dev
 
 # Run examples/brain-echo, the smallest brain, where the app looks by default (http://127.0.0.1:8787/v0)
@@ -103,6 +110,12 @@ vendor-terminal:
 # Native WebKit with the machine to itself; on macOS for people only (ADR 0018)
 perf-opening mode="check":
     node scripts/e2e.mjs perf {{mode}}
+
+# WebdriverIO + tauri-driver on the bundled app (`just bundle-app` first) under a display, results in
+# e2e/test-results/perf, baselines in e2e/perf/budgets.json; nightly in the e2e workflow's perf job.
+# Measure the app's start-up, idle memory and input latency ("record" sets the baselines). Linux
+perf-app mode="check": (_not-macos "perf-app" "tauri-driver does not run on macOS (ADR 0006); the e2e workflow's perf job runs it on Linux")
+    PERF_MODE={{mode}} pnpm exec wdio run e2e/perf/wdio.conf.ts
 
 # Check that this session still has its macOS login session (a WindowServer crash ends it; ADR 0018)
 doctor:

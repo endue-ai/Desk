@@ -2,9 +2,12 @@ import type { BridgeClient, ProfileContribution } from "@endue-ai/bridge";
 import type { Buffers } from "./buffers";
 import { type Clock, realClock, tween } from "./clock";
 import type { Commands } from "./commands";
+import { installDescribe } from "./describe/install";
 import { Edges, takesCell } from "./edges";
+import { installFrames, type WindowVisibility } from "./frames/install";
 import { PolicyHub } from "./hub";
 import { type Platform, ShortcutRouter } from "./input";
+import { installInspect } from "./inspect/install";
 import type { Keymap } from "./keymap";
 import {
   type Cell,
@@ -33,6 +36,7 @@ import type { Settings } from "./settings";
 import { brokenRecordNotice, installStart, type StartInfo } from "./start";
 import { SurfaceHost, type SurfaceSpec } from "./surfaces";
 import { applyTheme, type ThemeState } from "./theme";
+import { timed } from "./timing";
 import { connectViews, type HostViews, type ViewRouting } from "./views";
 
 export interface RuntimeOptions {
@@ -80,7 +84,7 @@ export interface RuntimePlugins {
 }
 
 /** The shell's window host places detached surfaces and removes them when closed (ADR 0040). */
-export interface WindowHost {
+export interface WindowHost extends WindowVisibility {
   adopt(spec: SurfaceSpec, section: HTMLElement): void;
   release(id: string): void;
 }
@@ -234,6 +238,8 @@ export function createRuntime(options: RuntimeOptions): Runtime {
     ],
     focused: () => shortcuts.focused ?? views?.focused() ?? null,
   });
+  // Centre and floating surfaces out of sight are unloaded, their state kept (ADR 0070).
+  const frames = installFrames(ctx, { windows: options.windows, host: () => pluginHost });
   const buffers = installBuffers(ctx, { focus: focusAny });
   routing = connectViews(views, buffers);
   const broken = (key: string) => notify.notify(brokenRecordNotice(key, options.start?.dataDir));
@@ -250,6 +256,8 @@ export function createRuntime(options: RuntimeOptions): Runtime {
   const { start: info, relaunch } = options;
   const start = installStart(ctx, { notify: notify.notify, save: session.save, info, relaunch });
   const profiles = installProfiles(ctx, (input) => notify.notify(input));
+  const about = installDescribe(ctx, { keys, profile: profiles.active, notify: notify.notify });
+  const inspect = installInspect(ctx, { buffers: buffers.buffers, views });
   notify.notifications.onPush(() => session.changed());
   onLayout = () => session.changed();
   onSurfaceFocus = (id) => {
@@ -325,8 +333,10 @@ export function createRuntime(options: RuntimeOptions): Runtime {
     if (decision.focus && !spec.hidden && (decision.area === "overlay" || !modal)) {
       focusSurface(spec.id);
     }
+    frames.opened(placed);
   };
   function closeSurface(id: string) {
+    frames.closed(id);
     surfaces.close(id);
     options.windows?.release(id);
     buffers.surfaceClosed(id);
@@ -355,6 +365,7 @@ export function createRuntime(options: RuntimeOptions): Runtime {
         },
         listed: (all) => hub.apply(all),
         outcome: (id, ok) => start.outcome(id, ok),
+        wake: (id) => frames.wake(id),
       },
       options.plugins,
     );
@@ -375,8 +386,8 @@ export function createRuntime(options: RuntimeOptions): Runtime {
       ready: ready
         .then(() => host.start())
         // The desk's built-ins are in the registry before profiles and the session run them.
-        .then(() => commands.settled())
-        .then(() => profiles.start())
+        .then(() => timed("command registry", () => commands.settled()))
+        .then(() => timed("profile start", () => profiles.start()))
         .then(() => session.restore().then(() => files.settle()))
         .then(() => commands.settled())
         .catch(() => {}),
@@ -414,6 +425,7 @@ export function createRuntime(options: RuntimeOptions): Runtime {
     layout: () => structuredClone(layout),
     status: () => notify.text(),
     dispose() {
+      frames.dispose();
       routing.dispose();
       const policies = [
         start,
@@ -426,7 +438,7 @@ export function createRuntime(options: RuntimeOptions): Runtime {
         palette,
         aliases,
       ];
-      for (const policy of [...policies, keys, theme]) {
+      for (const policy of [about, inspect, ...policies, keys, theme]) {
         policy.dispose();
       }
       pluginHost?.stop();

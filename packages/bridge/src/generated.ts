@@ -33,6 +33,8 @@ export interface CommandContribution {
   keywords?: string[];
   /** Makes the command an alias the desk answers while the plugin is on: it runs this command with these args, the caller's object args merged over them key by key. Data-only plugins (view, policy) offer commands this way. */
   runs?: CommandCall;
+  /** The command does something that cannot be taken back (sends, deletes, pays, pushes). An agent's call of it (agent:<id>) waits for the person's approval every time, even with a cmd:invoke grant; a person's own calls never wait (ADR 0078). */
+  irreversible?: boolean;
 }
 
 /** A command's args: an object, as cmd.invoke passes them. */
@@ -1201,6 +1203,7 @@ export interface InitDocument {
   profile?: InitProfile;
   plugins?: InitPlugins;
   settings?: InitSettings;
+  agents?: InitAgents;
   sync?: InitSync;
 }
 
@@ -1218,6 +1221,18 @@ export type InitSettings = Record<string, unknown>;
 
 /** A setting key: lowercase, dotted by owner, for example eris.voice or motion.reduce. */
 export type InitSettingKey = string;
+
+/** What the brain's agents may be granted on this desk, by agent id (the agentId of the brain's tool calls; the caller is agent:<id>). Default none: an agent without an entry asks the person before every first use (ADR 0072). */
+export type InitAgents = Record<string, InitAgent>;
+
+/** An agent id as the brain names it, for example ag_01JBZ8Q4MR0000000000000001. */
+export type InitAgentId = string;
+
+/** One agent's setup. */
+export interface InitAgent {
+  /** The permissions and scopes the agent may be granted. Within them the person is still asked at first use; outside them the agent is refused (outside-allowlist), whatever it holds. Empty or absent: no limit, every first use asks. */
+  allow?: Permission[];
+}
 
 /** Syncing init.yaml through the person's endue account. */
 export interface InitSync {
@@ -1461,7 +1476,7 @@ export type RequestId = number;
 /** An absolute path, or one rooted at ~ or at ${plugin}, ${workspace} or ${home}, with forward slashes. */
 export type Path = string;
 
-/** Who makes calls: a plugin id such as endue.eris, or a name of the desk's own such as desk (the web runtime). core names desk-core itself. */
+/** Who makes calls: a plugin id such as endue.eris, a name of the desk's own such as desk (the web runtime), or agent:<id> for an agent of the brain whose tool call the core runs (ADR 0072). core names desk-core itself. */
 export type CallerId = string;
 
 /** How binary-safe string content is encoded. */
@@ -1478,6 +1493,8 @@ export type BridgeRequest =
   | FsListRequest
   | FsWatchRequest
   | FsUrlRequest
+  | FsHistoryRequest
+  | FsRestoreRequest
   | ProcSpawnRequest
   | ProcWriteRequest
   | ProcResizeRequest
@@ -1493,8 +1510,10 @@ export type BridgeRequest =
   | PermRevokeRequest
   | PermListRequest
   | PermAnswerRequest
+  | PermApproveRequest
   | PluginListRequest
   | PluginSetEnabledRequest
+  | PluginStatsRequest
   | StoreGetRequest
   | StoreSetRequest
   | InitGetRequest
@@ -1510,6 +1529,7 @@ export type BridgeRequest =
   | CmdListRequest
   | CmdInvokeRequest
   | CmdAnswerRequest
+  | CmdRecentRequest
   | SettingsGetRequest
   | SettingsSetRequest
   | SettingsListRequest
@@ -1580,7 +1600,7 @@ export type ErrorCode =
   | "unsupported"
   | "internal";
 
-/** Something the core reports without being asked: file changes, process output, wake words, permission changes, notifications, surfaces, commands, settings, log entries, changes to items, connectors and views, and the desk's update status. */
+/** Something the core reports without being asked: file changes, process output, wake words, permission changes, prompts and approvals, notifications, surfaces, commands, settings, log entries, changes to items, connectors and views, and the desk's update status. */
 export type BridgeEvent =
   | FsChangedEvent
   | ProcOutputEvent
@@ -1588,6 +1608,8 @@ export type BridgeEvent =
   | AudioWakeEvent
   | PermChangedEvent
   | PermPromptEvent
+  | PermApprovalEvent
+  | PermApprovalDoneEvent
   | PluginChangedEvent
   | UiNotifiedEvent
   | UiSurfaceOpenedEvent
@@ -1743,6 +1765,38 @@ export interface CmdAnswerParams {
 
 /** Result of cmd.answer. */
 export type CmdAnswerResult = Record<string, never>;
+
+/** List the last command invocations the core saw, for an inspector. */
+export interface CmdRecentRequest {
+  id: RequestId;
+  method: "cmd.recent";
+  params: CmdRecentParams;
+}
+
+/** Parameters of cmd.recent. */
+export interface CmdRecentParams {
+  scope: PermManagePermission;
+}
+
+/** Result of cmd.recent: the last 200 invocations at most, oldest first. */
+export interface CmdRecentResult {
+  invocations: CommandInvocation[];
+}
+
+/** One cmd.invoke the core saw: who ran which command, who provided it, when, and once it was answered how long it took and how it ended. One still waiting has no durationMs and no ok. */
+export interface CommandInvocation {
+  invocationId: string;
+  id: CommandId;
+  caller: CallerId;
+  provider: CallerId;
+  /** When it was invoked, RFC 3339 on the core's clock. */
+  at: string;
+  /** Milliseconds from cmd.invoke to its answer. */
+  durationMs?: number;
+  /** Whether it was answered with a result rather than an error. */
+  ok?: boolean;
+  error?: CommandFailureCode;
+}
 
 /** Why an invocation failed. */
 export interface CommandFailure {
@@ -2086,6 +2140,66 @@ export interface FsWriteParams {
 export interface FsWriteResult {
   /** Bytes written to disk. */
   bytesWritten: number;
+  /** The version that keeps what this write replaced, as fs.history lists it. Absent when nothing was kept: a new file, the same bytes, or a desk that keeps no history. */
+  version?: FsVersionId;
+}
+
+/** List the versions the desk kept of one file: the content each of its writes replaced. */
+export interface FsHistoryRequest {
+  id: RequestId;
+  method: "fs.history";
+  params: FsHistoryParams;
+}
+
+/** Parameters of fs.history. */
+export interface FsHistoryParams {
+  path: Path;
+  /** The newest versions to list at most; all the desk keeps when absent. */
+  limit?: number;
+  scope: FsReadPermission;
+}
+
+/** Result of fs.history: newest first, empty when the desk kept nothing of the path (also when the file is gone). */
+export interface FsHistoryResult {
+  versions: FsVersion[];
+}
+
+/** One kept version of a file: the bytes a desk write replaced. */
+export interface FsVersion {
+  id: FsVersionId;
+  /** When the write that replaced these bytes ran: the last moment the file held them. RFC 3339. */
+  at: string;
+  /** The caller whose write replaced these bytes. The caller that wrote them is the next older version's. */
+  caller: CallerId;
+  /** The version's size in bytes. */
+  size: number;
+  /** The SHA-256 of the version's bytes, lowercase hex. */
+  sha256: string;
+}
+
+/** A version's id: the Unix time in milliseconds when it was kept, a dash and six hex digits. */
+export type FsVersionId = string;
+
+/** Write a kept version of a file back, as fs.write writes, so what it replaces is kept too. */
+export interface FsRestoreRequest {
+  id: RequestId;
+  method: "fs.restore";
+  params: FsRestoreParams;
+}
+
+/** Parameters of fs.restore. */
+export interface FsRestoreParams {
+  path: Path;
+  version: FsVersionId;
+  scope: FsWritePermission;
+}
+
+/** Result of fs.restore: what fs.write answers for the same write. */
+export interface FsRestoreResult {
+  /** Bytes written to disk. */
+  bytesWritten: number;
+  /** The version that keeps what the restore replaced; absent when nothing was kept. */
+  version?: FsVersionId;
 }
 
 /** List the entries of a folder. */
@@ -2175,12 +2289,14 @@ export interface InitGetResult {
   settings: Record<string, unknown>;
   /** Why init.yaml is not in force, for people. The defaults (or the last setup that matched) are in force instead. */
   problem?: string;
+  /** Where init.yaml is read from, rooted at ~ when it is in the home folder, so people can be shown it. */
+  file?: Path;
 }
 
 /** How much an entry matters. */
 export type LogLevel = "debug" | "info" | "warn" | "error";
 
-/** One log entry. channel is the caller that wrote it, or core for desk-core. */
+/** One log entry. channel is the caller that wrote it, core for desk-core, or perm for the permission log the core keeps: every grant, every refusal and every call of an agent, with fields caller, permission, scope, decision (granted, allowed, approved, refused or denied), and target, reason, duration and grantId where they apply (ADR 0072). An approved irreversible call of an agent (approved) carries approval (once or task), approvalId and task where there is one; a call the person denied is refused with reason not-approved (ADR 0078). */
 export interface LogEntry {
   /** RFC 3339 timestamp, set by the core. */
   at: string;
@@ -2282,15 +2398,15 @@ export interface PermRequestParams {
 /** How long a grant lasts. once: the next call it allows, then it expires. session: until Desk quits. always: kept on disk across restarts. Every grant lasts until revoked at the latest. perm.request defaults to session. */
 export type GrantDuration = "once" | "session" | "always";
 
-/** Result of perm.request. A refusal is a result, not an error. A request that a lasting grant (session or always) already covers is granted at once with that grant. */
+/** Result of perm.request. A refusal is a result, not an error. A request that a lasting grant (session or always) already covers is granted at once with that grant, unless the caller is an agent and the grant lies outside its allowlist. */
 export interface PermRequestResult {
   granted: boolean;
   grant?: Grant;
   reason?: RefusalReason;
 }
 
-/** Why perm.request was refused without asking the person. refused-earlier: the person refused this caller this permission and scope earlier in the session; it holds until the caller is granted a permission that covers it. Absent from a result means the person (or the core's own prompter) refused this request. */
-export type RefusalReason = "refused-earlier";
+/** Why perm.request was refused without asking the person. refused-earlier: the person refused this caller this permission and scope earlier in the session; it holds until the caller is granted a permission that covers it. outside-allowlist: the caller is an agent (agent:<id>) and no permission in agents.<id>.allow of init.yaml covers the request; an agent is never granted anything outside a non-empty allowlist (ADR 0072). Absent from a result means the person (or the core's own prompter) refused this request. */
+export type RefusalReason = "refused-earlier" | "outside-allowlist";
 
 /** List the caller's current grants. */
 export interface PermQueryRequest {
@@ -2380,7 +2496,7 @@ export interface PermAnswerParams {
 /** Result of perm.answer. */
 export type PermAnswerResult = Record<string, never>;
 
-/** A caller asked for a permission and the person has to decide. Sent to callers that hold perm:manage. */
+/** A caller asked for a permission and the person has to decide. Sent to callers that hold perm:manage. An agent's caller is agent:<id>; it asks only within its allowlist. */
 export interface PermPromptEvent {
   event: "perm.prompt";
   data: PermPromptData;
@@ -2394,8 +2510,80 @@ export interface PermPromptData {
   /** The caller's reason, to show as it is. Absent when the caller gave none. */
   reason?: string;
   duration: GrantDuration;
-  /** The parent folder the person may grant instead: the same permission over the folder that holds the one asked for, offered when this caller asks for a third folder under it in the session. Never a root, the home folder or a folder holding it, nor a scope the person refused this caller earlier. */
+  /** The parent folder the person may grant instead: the same permission over the folder that holds the one asked for, offered when this caller asks for a third folder under it in the session. Never a root, the home folder or a folder holding it, nor a scope the person refused this caller earlier, nor, for an agent, a scope outside its allowlist. */
   parent?: Permission;
+}
+
+/** An agent's irreversible call waits for the person's approval, even when a grant covers it (ADR 0078): an fs.write or a net.fetch whose target no always grant of the agent allows, a proc.spawn, or a cmd.invoke of a command its provider's manifest marks irreversible. Sent to callers that hold perm:manage; the first perm.approve decides. A caller that is not an agent is never held. */
+export interface PermApprovalEvent {
+  event: "perm.approval";
+  data: PermApprovalData;
+}
+
+/** Payload of perm.approval: which agent, what it is about to do, to what, and what it would change. */
+export interface PermApprovalData {
+  approvalId: string;
+  caller: CallerId;
+  action: ApprovalAction;
+  /** The scope the call carries, which a grant of the agent's covers. */
+  permission: Permission;
+  /** What the call touches: the path for fs.write, the command for proc.spawn, the URL for net.fetch, the command id for cmd.invoke. */
+  target: string;
+  preview?: ApprovalPreview;
+  /** fs.write: the bytes it would write. */
+  size?: number;
+  /** The task the call belongs to: the desk's brain turn (brain.turn's turnId) whose tool call it is. Present only when there is one; only then may perm.approve answer task. */
+  task?: string;
+}
+
+/** The bridge method an agent's irreversible call is. */
+export type ApprovalAction = "fs.write" | "proc.spawn" | "net.fetch" | "cmd.invoke";
+
+/** What the call would do, as text. diff: a unified diff of the file as it is against what the write puts there (a new file is all additions), when both are UTF-8 text and the file is at most 1 MiB; the first 200 changed lines. command: the command line, quoted for a POSIX shell. url: the method and the URL. args: the command's args as JSON. truncated says that the text was cut. */
+export interface ApprovalPreview {
+  kind: ApprovalPreviewKind;
+  text: string;
+  truncated?: boolean;
+}
+
+/** What a preview's text is: a unified diff, a command line, a method and URL, or a command's args as JSON. */
+export type ApprovalPreviewKind = "diff" | "command" | "url" | "args";
+
+/** The prompter answers a perm.approval with the person's decision. */
+export interface PermApproveRequest {
+  id: RequestId;
+  method: "perm.approve";
+  params: PermApproveParams;
+}
+
+/** Parameters of perm.approve. */
+export interface PermApproveParams {
+  approvalId: string;
+  answer: ApprovalAnswer;
+  scope: PermManagePermission;
+}
+
+/** once: this call runs. task: this call runs, and so do the agent's later calls of the same action whose target the approved scope covers, until the task ends (invalid_params on an approval without a task). deny: this call is refused with permission_denied; the next one asks again. */
+export type ApprovalAnswer = "once" | "task" | "deny";
+
+/** Result of perm.approve. */
+export type PermApproveResult = Record<string, never>;
+
+/** An approved call ran: what came of it. Sent to callers that hold perm:manage. */
+export interface PermApprovalDoneEvent {
+  event: "perm.approval.done";
+  data: PermApprovalDoneData;
+}
+
+/** Payload of perm.approval.done. */
+export interface PermApprovalDoneData {
+  approvalId: string;
+  ok: boolean;
+  /** fs.write: the bytes it wrote. */
+  bytesWritten?: number;
+  error?: BridgeError;
+  /** true when cmd.undo can take the write back (#276). Absent while the core does not serve cmd.undo. */
+  undoable?: boolean;
 }
 
 /** One of the caller's grants changed. */
@@ -2442,6 +2630,8 @@ export interface PluginInfo {
   manifest?: PluginManifest;
   /** Why the plugin failed, for people. */
   error?: string;
+  /** The folder the plugin was installed from, as an absolute path, so people can be shown its files. */
+  folder?: Path;
 }
 
 /** ready: the manifest is valid and the entry exists; failed: it cannot run. */
@@ -2464,6 +2654,34 @@ export interface PluginSetEnabledParams {
 /** Result of plugin.setEnabled: the plugin after the change. */
 export interface PluginSetEnabledResult {
   plugin: PluginInfo;
+}
+
+/** Count the bridge calls each caller made over the last minute, for an inspector. */
+export interface PluginStatsRequest {
+  id: RequestId;
+  method: "plugin.stats";
+  params: PluginStatsParams;
+}
+
+/** Parameters of plugin.stats. */
+export interface PluginStatsParams {
+  scope: PermManagePermission;
+}
+
+/** Result of plugin.stats: every caller that made a call in the window, most calls first. */
+export interface PluginStatsResult {
+  /** How far back the counts go, in seconds. */
+  windowSeconds: number;
+  callers: CallerStats[];
+}
+
+/** The bridge calls one caller made in the window: a plugin, the runtime (desk) or the CLI (cli). */
+export interface CallerStats {
+  caller: CallerId;
+  /** Calls the core answered. */
+  calls: number;
+  /** Calls among them that it answered with an error. */
+  failed: number;
 }
 
 /** A plugin was installed, updated on disk, removed, enabled or disabled. */
@@ -3003,6 +3221,25 @@ export interface UiSurfaceCloseParams {
 /** Result of ui.surface.close. */
 export type UiSurfaceCloseResult = Record<string, never>;
 
+/** The runtime asks a plugin's frame for the state to keep before it unloads a surface that is not visible (ADR 0070). Sent to the frame as a desk request, not to the core: it is not a BridgeRequest. Answering is optional; a frame that does not answer comes back cold. */
+export interface UiSurfaceStateRequest {
+  id: RequestId;
+  method: "ui.surface.state";
+  params: UiSurfaceStateParams;
+}
+
+/** Parameters of ui.surface.state. */
+export interface UiSurfaceStateParams {
+  /** The surface id from the plugin's manifest whose frame is about to be unloaded. */
+  surface: string;
+}
+
+/** A plugin's answer to ui.surface.state. The runtime keeps state in memory for the session, at most 64 KiB as UTF-8 JSON (a bigger one is dropped), and hands it back as restored when the frame loads again. */
+export interface UiSurfaceStateResult {
+  /** Any JSON value the plugin needs to come back as it was: what is open, the caret, the scroll. Absent: nothing to keep, the surface comes back cold. */
+  state?: unknown;
+}
+
 /** Show a notification. */
 export interface UiNotifyRequest {
   id: RequestId;
@@ -3288,6 +3525,8 @@ export interface BridgeMethodMap {
   "fs.list": { params: FsListParams; result: FsListResult };
   "fs.watch": { params: FsWatchParams; result: FsWatchResult };
   "fs.url": { params: FsUrlParams; result: FsUrlResult };
+  "fs.history": { params: FsHistoryParams; result: FsHistoryResult };
+  "fs.restore": { params: FsRestoreParams; result: FsRestoreResult };
   "proc.spawn": { params: ProcSpawnParams; result: ProcSpawnResult };
   "proc.write": { params: ProcWriteParams; result: ProcWriteResult };
   "proc.resize": { params: ProcResizeParams; result: ProcResizeResult };
@@ -3303,8 +3542,10 @@ export interface BridgeMethodMap {
   "perm.revoke": { params: PermRevokeParams; result: PermRevokeResult };
   "perm.list": { params: PermListParams; result: PermListResult };
   "perm.answer": { params: PermAnswerParams; result: PermAnswerResult };
+  "perm.approve": { params: PermApproveParams; result: PermApproveResult };
   "plugin.list": { params: PluginListParams; result: PluginListResult };
   "plugin.setEnabled": { params: PluginSetEnabledParams; result: PluginSetEnabledResult };
+  "plugin.stats": { params: PluginStatsParams; result: PluginStatsResult };
   "store.get": { params: StoreGetParams; result: StoreGetResult };
   "store.set": { params: StoreSetParams; result: StoreSetResult };
   "init.get": { params: InitGetParams; result: InitGetResult };
@@ -3320,6 +3561,7 @@ export interface BridgeMethodMap {
   "cmd.list": { params: CmdListParams; result: CmdListResult };
   "cmd.invoke": { params: CmdInvokeParams; result: CmdInvokeResult };
   "cmd.answer": { params: CmdAnswerParams; result: CmdAnswerResult };
+  "cmd.recent": { params: CmdRecentParams; result: CmdRecentResult };
   "settings.get": { params: SettingsGetParams; result: SettingsGetResult };
   "settings.set": { params: SettingsSetParams; result: SettingsSetResult };
   "settings.list": { params: SettingsListParams; result: SettingsListResult };
@@ -3367,6 +3609,8 @@ export const BRIDGE_METHODS = [
   "fs.list",
   "fs.watch",
   "fs.url",
+  "fs.history",
+  "fs.restore",
   "proc.spawn",
   "proc.write",
   "proc.resize",
@@ -3382,8 +3626,10 @@ export const BRIDGE_METHODS = [
   "perm.revoke",
   "perm.list",
   "perm.answer",
+  "perm.approve",
   "plugin.list",
   "plugin.setEnabled",
+  "plugin.stats",
   "store.get",
   "store.set",
   "init.get",
@@ -3399,6 +3645,7 @@ export const BRIDGE_METHODS = [
   "cmd.list",
   "cmd.invoke",
   "cmd.answer",
+  "cmd.recent",
   "settings.get",
   "settings.set",
   "settings.list",

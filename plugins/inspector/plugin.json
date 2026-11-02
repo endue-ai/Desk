@@ -1,0 +1,15 @@
+{
+  "id": "desk.inspector",
+  "name": "Inspector",
+  "version": "0.1.0",
+  "kind": "ui",
+  "entry": "ui/index.html",
+  "autoload": true,
+  "description": "What the desk holds now, read-only: the render tree, surfaces and buffers, the last commands, grants, settings by layer, plugins and bridge calls. Filters, and exports JSON as desk inspect prints it.",
+  "permissions": [
+    { "permission": "perm:manage" },
+    { "permission": "plugin:manage" },
+    { "permission": "cmd:invoke", "ids": ["desk.inspect.open"] }
+  ],
+  "surfaces": [{ "id": "main", "title": "Inspector", "placement": "center" }]
+}

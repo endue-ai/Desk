@@ -1,0 +1,7 @@
+⌘S runs desk.files.save.
+What it is: the key ⌘S (Meta+S)
+What it does: Save the file
+Plugin: desk.files (Files), /desk/plugins/files
+Layer: manifest default, desk.keys (Keys)
+Who may call it: you, with its keys or the palette; with a cmd:invoke grant: cli, desk.palette
+File: /desk/plugins/keys/plugin.json

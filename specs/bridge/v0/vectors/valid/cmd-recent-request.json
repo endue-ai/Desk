@@ -1,0 +1,11 @@
+{
+  "target": "BridgeRequest",
+  "description": "cmd.recent under a perm:manage scope",
+  "instance": {
+    "id": 41,
+    "method": "cmd.recent",
+    "params": {
+      "scope": { "permission": "perm:manage" }
+    }
+  }
+}

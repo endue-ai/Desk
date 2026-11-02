@@ -53,6 +53,7 @@ it("exposes only the named host queue drain to the main window alongside existin
     "allow-desk-ready",
     "allow-desk-start",
     "allow-desk-relaunch",
+    "allow-desk-trace",
     "allow-take-open-files",
     "core:event:allow-listen",
     "core:event:allow-unlisten",

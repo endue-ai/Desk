@@ -264,3 +264,51 @@ fn an_import_the_host_refuses_answers_permission_denied() {
     }
     assert!(host.notes().is_empty());
 }
+
+#[test]
+fn fs_history_needs_fs_read_and_fs_restore_needs_fs_write() {
+    let host = MockHost::with_file("${plugin}/out/a.txt", b"abc");
+    let manifest_with = |permissions: Value| Imports::new(&manifest(permissions), host.clone());
+
+    let neither = manifest_with(json!([{ "permission": "ui:notify" }]));
+    let refused = [
+        neither
+            .fs_history("${plugin}/out/a.txt", None)
+            .map(drop)
+            .unwrap_err(),
+        neither
+            .fs_restore("${plugin}/out/a.txt", "1-abcdef")
+            .map(drop)
+            .unwrap_err(),
+    ];
+    let reader = manifest_with(json!([{ "permission": "fs:read", "paths": ["${plugin}/**"] }]));
+    let versions = reader.fs_history("${plugin}/out/a.txt", Some(5)).unwrap();
+    assert_eq!(versions.len(), 1);
+    assert_eq!(versions[0].caller, "test.imports");
+    assert_eq!(versions[0].size, 3);
+    let read_only = reader
+        .fs_restore("${plugin}/out/a.txt", "1-abcdef")
+        .unwrap_err();
+    for error in refused.iter().chain([&read_only]) {
+        assert_eq!(error.code, ErrorCode::PermissionDenied, "{error:?}");
+    }
+    let writer = manifest_with(everything());
+    assert_eq!(
+        writer
+            .fs_restore("${plugin}/out/a.txt", "1-abcdef")
+            .unwrap(),
+        3
+    );
+
+    let calls: Vec<(String, String)> = host
+        .calls()
+        .into_iter()
+        .map(|(_, method, arg)| (method, arg))
+        .collect();
+    let expected = [
+        ("fs.history", "${plugin}/out/a.txt 5"),
+        ("fs.restore", "${plugin}/out/a.txt 1-abcdef"),
+    ]
+    .map(|(method, arg)| (method.to_owned(), arg.to_owned()));
+    assert_eq!(calls, expected);
+}

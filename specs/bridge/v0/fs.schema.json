@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://endue.ai/specs/bridge/v0/fs.schema.json",
   "title": "Desk bridge v0: fs",
-  "description": "Files: read (whole or a byte range), hand a frame a URL of a file, write, list and watch. Scoped by fs:read or fs:write paths.",
+  "description": "Files: read (whole or a byte range), hand a frame a URL of a file, write, list, watch, and the versions the desk kept of what its writes replaced (history, restore). Scoped by fs:read or fs:write paths.",
   "$defs": {
     "FsReadRequest": {
       "description": "Read a file, whole or a byte range of it.",
@@ -126,7 +126,118 @@
       "description": "Result of fs.write.",
       "type": "object",
       "properties": {
-        "bytesWritten": { "description": "Bytes written to disk.", "type": "integer", "minimum": 0 }
+        "bytesWritten": {
+          "description": "Bytes written to disk.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "version": {
+          "description": "The version that keeps what this write replaced, as fs.history lists it. Absent when nothing was kept: a new file, the same bytes, or a desk that keeps no history.",
+          "$ref": "#/$defs/FsVersionId"
+        }
+      },
+      "required": ["bytesWritten"],
+      "additionalProperties": false
+    },
+    "FsHistoryRequest": {
+      "description": "List the versions the desk kept of one file: the content each of its writes replaced.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "fs.history" },
+        "params": { "$ref": "#/$defs/FsHistoryParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "FsHistoryParams": {
+      "description": "Parameters of fs.history.",
+      "type": "object",
+      "properties": {
+        "path": { "$ref": "bridge.schema.json#/$defs/Path" },
+        "limit": {
+          "description": "The newest versions to list at most; all the desk keeps when absent.",
+          "type": "integer",
+          "minimum": 1
+        },
+        "scope": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/FsReadPermission" }
+      },
+      "required": ["path", "scope"],
+      "additionalProperties": false
+    },
+    "FsHistoryResult": {
+      "description": "Result of fs.history: newest first, empty when the desk kept nothing of the path (also when the file is gone).",
+      "type": "object",
+      "properties": {
+        "versions": { "type": "array", "items": { "$ref": "#/$defs/FsVersion" } }
+      },
+      "required": ["versions"],
+      "additionalProperties": false
+    },
+    "FsVersion": {
+      "description": "One kept version of a file: the bytes a desk write replaced.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "#/$defs/FsVersionId" },
+        "at": {
+          "description": "When the write that replaced these bytes ran: the last moment the file held them. RFC 3339.",
+          "type": "string",
+          "format": "date-time"
+        },
+        "caller": {
+          "description": "The caller whose write replaced these bytes. The caller that wrote them is the next older version's.",
+          "$ref": "bridge.schema.json#/$defs/CallerId"
+        },
+        "size": { "description": "The version's size in bytes.", "type": "integer", "minimum": 0 },
+        "sha256": {
+          "description": "The SHA-256 of the version's bytes, lowercase hex.",
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      },
+      "required": ["id", "at", "caller", "size", "sha256"],
+      "additionalProperties": false
+    },
+    "FsVersionId": {
+      "description": "A version's id: the Unix time in milliseconds when it was kept, a dash and six hex digits.",
+      "type": "string",
+      "pattern": "^[0-9]{1,16}-[0-9a-f]{6}$"
+    },
+    "FsRestoreRequest": {
+      "description": "Write a kept version of a file back, as fs.write writes, so what it replaces is kept too.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "fs.restore" },
+        "params": { "$ref": "#/$defs/FsRestoreParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "FsRestoreParams": {
+      "description": "Parameters of fs.restore.",
+      "type": "object",
+      "properties": {
+        "path": { "$ref": "bridge.schema.json#/$defs/Path" },
+        "version": { "$ref": "#/$defs/FsVersionId" },
+        "scope": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/FsWritePermission" }
+      },
+      "required": ["path", "version", "scope"],
+      "additionalProperties": false
+    },
+    "FsRestoreResult": {
+      "description": "Result of fs.restore: what fs.write answers for the same write.",
+      "type": "object",
+      "properties": {
+        "bytesWritten": {
+          "description": "Bytes written to disk.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "version": {
+          "description": "The version that keeps what the restore replaced; absent when nothing was kept.",
+          "$ref": "#/$defs/FsVersionId"
+        }
       },
       "required": ["bytesWritten"],
       "additionalProperties": false

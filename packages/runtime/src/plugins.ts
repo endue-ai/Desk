@@ -7,10 +7,12 @@ import type {
   PluginInfo,
 } from "@endue-ai/bridge";
 import { CommandError } from "./commands";
+import { Sleepers } from "./frames/sleepers";
 import type { KeyLike } from "./input";
 import { eventKey, Owners } from "./owners";
 import { PluginCommands } from "./plugin-commands";
 import type { SurfaceSpec } from "./surfaces";
+import { now, phase } from "./timing";
 
 export interface PluginHostOptions {
   /** The URL of a plugin file: desk-plugin:// in the app, a dev-server path in tests. */
@@ -33,6 +35,8 @@ export interface PluginHostDeps {
   listed?(plugins: PluginInfo[]): void;
   /** A frame reported its start: its first ready, or that it failed to start (ADR 0061). */
   outcome?(id: string, ok: boolean): void;
+  /** Load a frame the runtime unloaded again (ADR 0070); true when it was unloaded. */
+  wake?(id: string): boolean;
 }
 
 type Reply = {
@@ -75,15 +79,21 @@ export class PluginHost {
   /** Commands delivered to plugins that wait for their reply, by call id. */
   readonly #pending = new Map<
     number,
-    { plugin: string; resolve(v: unknown): void; reject(e: unknown): void }
+    { plugin: string; name: string; resolve(v: unknown): void; reject(e: unknown): void }
   >();
   #nextCall = 1;
   readonly #shared = new Map<string, unknown>();
   /** Plugins that said hello since they mounted, and callers waiting for one that has not yet. */
   readonly #greeted = new Set<string>();
   readonly #waiting = new Map<string, Array<{ resolve(): void; reject(e: unknown): void }>>();
+  /** When each plugin mounting now got its surface: its `mount <id>` phase ends at its hello. */
+  readonly #mounting = new Map<string, number>();
   readonly #commands: PluginCommands;
+  /** Plugins that were not ready when last listed: one of them turning ready on an update mounts. */
+  #unready = new Set<string>();
   #offEvents: (() => void) | undefined;
+  /** Plugins whose frame the runtime unloaded, until the next one says hello (ADR 0070). */
+  readonly #sleepers = new Sleepers();
 
   constructor(deps: PluginHostDeps, options: PluginHostOptions) {
     this.#deps = deps;
@@ -94,9 +104,11 @@ export class PluginHost {
   async start(): Promise<void> {
     this.#deps.win.addEventListener("message", this.#onMessage);
     this.#offEvents = this.#deps.bridge.onEvent((event) => this.#onEvent(event));
+    const start = now();
     const all = await this.#list();
     this.#deps.listed?.(all);
     for (const info of all) this.#mount(info);
+    phase("plugin list", start);
   }
 
   /** Launch an installed UI plugin, including one put away or disabled by the person. */
@@ -134,7 +146,7 @@ export class PluginHost {
       return Promise.reject(new CommandError("unknown_command", `${id} is not running`));
     const call = this.#nextCall++;
     return new Promise((resolve, reject) => {
-      this.#pending.set(call, { plugin: id, resolve, reject });
+      this.#pending.set(call, { plugin: id, name, resolve, reject });
       this.#post(id, { type: "desk:command", name, args, call });
     });
   }
@@ -142,6 +154,7 @@ export class PluginHost {
   /** Resolves once a mounted plugin has connected (said hello); rejects if it stops first. */
   whenReady(id: string): Promise<void> {
     if (this.#greeted.has(id)) return Promise.resolve();
+    if (this.#sleepers.asleep(id)) this.#deps.wake?.(id);
     return new Promise((resolve, reject) => {
       const waiting = this.#waiting.get(id) ?? [];
       waiting.push({ resolve, reject });
@@ -152,6 +165,27 @@ export class PluginHost {
   /** Take a plugin's surface away for the rest of this session, as `desk:close` does. */
   unmount(id: string): void {
     this.#unmount(id);
+  }
+
+  /** Whether a plugin's frame said hello since it last loaded, so it can answer the desk. */
+  greeted(id: string): boolean {
+    return this.#greeted.has(id);
+  }
+
+  /** Whether the desk waits for an answer from a plugin, besides `except`. */
+  busy(id: string, except?: string): boolean {
+    return [...this.#pending.values()].some((p) => p.plugin === id && p.name !== except);
+  }
+
+  /**
+   * The runtime took a plugin's frame away (ADR 0070): `state` goes to its next init as `restored`,
+   * and what the gone frame was asked is cancelled. The plugin stays mounted.
+   */
+  unloaded(id: string, state: unknown): void {
+    if (!this.#mounted.has(id)) return;
+    this.#greeted.delete(id);
+    this.#sleepers.sleep(id, state);
+    this.#cancel(id, "was unloaded before it answered");
   }
 
   /** Keep a message for every plugin, like the theme: sent now, and after each plugin's init. */
@@ -168,6 +202,7 @@ export class PluginHost {
 
   async #list(): Promise<PluginInfo[]> {
     const { plugins } = await this.#deps.bridge.call("plugin.list", { scope: MANAGE });
+    this.#unready = new Set(plugins.filter((p) => p.status !== "ready").map((p) => p.id));
     return plugins;
   }
 
@@ -177,6 +212,7 @@ export class PluginHost {
     if (this.#mounted.has(info.id)) return;
     const surface = manifest.surfaces?.[0];
     this.#mounted.set(info.id, info);
+    this.#mounting.set(info.id, now());
     this.#deps.open({
       id: info.id,
       title: surface?.title ?? manifest.name ?? info.id,
@@ -190,18 +226,24 @@ export class PluginHost {
   #unmount(id: string): void {
     if (!this.#mounted.delete(id)) return;
     this.#greeted.delete(id);
+    this.#mounting.delete(id);
     for (const waiter of this.#waiting.get(id) ?? []) {
       waiter.reject(new CommandError("cancelled", `${id} stopped`));
     }
     this.#waiting.delete(id);
     this.#commands.unmounted(id);
     this.#owners.drop(id);
+    this.#sleepers.forget(id);
+    this.#cancel(id, "stopped before it answered");
+    this.#deps.close(id);
+  }
+
+  #cancel(id: string, why: string): void {
     for (const [call, pending] of this.#pending) {
       if (pending.plugin !== id) continue;
       this.#pending.delete(call);
-      pending.reject(new CommandError("cancelled", `${id} stopped before it answered`));
+      pending.reject(new CommandError("cancelled", `${id} ${why}`));
     }
-    this.#deps.close(id);
   }
 
   #onEvent(event: BridgeEvent): void {
@@ -246,6 +288,13 @@ export class PluginHost {
           const next = { ...info, revision };
           this.#mounted.set(plugin, next);
           this.#deps.reload(plugin, this.#options.url(plugin, info.manifest.entry, revision));
+        } else if (!info && this.#unready.has(plugin)) {
+          // A dev folder filled or fixed while the desk runs: the plugin turns ready on its update.
+          // One the person or the plugin put away stays away; #mount takes only a ready, enabled UI plugin.
+          void this.#list().then((all) => {
+            const fresh = all.find((p) => p.id === plugin);
+            if (fresh) this.#mount(fresh);
+          });
         }
         break;
       case "disabled":
@@ -289,7 +338,8 @@ export class PluginHost {
   }
 
   #post(id: string, message: unknown): void {
-    this.#deps.frame(id)?.postMessage(message, "*");
+    if (!this.#sleepers.asleep(id)) this.#deps.frame(id)?.postMessage(message, "*");
+    else if (this.#sleepers.hold(id, message)) this.#deps.wake?.(id);
   }
 
   readonly #onMessage = (event: MessageEvent): void => {
@@ -297,13 +347,26 @@ export class PluginHost {
     if (!id) return;
     const message = event.data as PluginMessage;
     switch (message?.type) {
-      case "desk:hello":
-        this.#post(id, { type: "desk:init", pluginId: id, state: this.#state.get(id) });
+      case "desk:hello": {
+        const mounting = this.#mounting.get(id);
+        if (mounting !== undefined) {
+          this.#mounting.delete(id);
+          phase(`mount ${id}`, mounting);
+        }
+        const { restored, waited } = this.#sleepers.woke(id);
+        this.#post(id, {
+          type: "desk:init",
+          pluginId: id,
+          state: this.#state.get(id),
+          ...(restored === undefined ? {} : { restored }),
+        });
         for (const shared of this.#shared.values()) this.#post(id, shared);
+        for (const held of waited) this.#post(id, held);
         this.#greeted.add(id);
         for (const waiter of this.#waiting.get(id) ?? []) waiter.resolve();
         this.#waiting.delete(id);
         break;
+      }
       case "desk:state":
         this.#state.set(id, message.state);
         break;

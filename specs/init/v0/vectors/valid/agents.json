@@ -1,0 +1,21 @@
+{
+  "target": "InitDocument",
+  "description": "an agent capped to one folder and one command, and an agent with no entry of its own",
+  "instance": {
+    "agents": {
+      "mira": {
+        "allow": [
+          {
+            "permission": "fs:read",
+            "paths": ["~/Pictures/**"]
+          },
+          {
+            "permission": "cmd:invoke",
+            "ids": ["desk.files.open"]
+          }
+        ]
+      },
+      "theo": {}
+    }
+  }
+}

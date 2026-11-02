@@ -1,4 +1,5 @@
 import { type Edges, edgeOf } from "./edges";
+import { Settling } from "./frames/settle";
 import type { Cell } from "./layout";
 
 /** The stacking level of overlays in desk.css; one shown later is raised above it. */
@@ -33,6 +34,10 @@ export class SurfaceHost {
   readonly #edges: Edges | undefined;
   /** How many times an overlay was shown: each one shown goes above those shown before it. */
   #raised = 0;
+  /** The frames of unloaded surfaces, out of the page until they show again (ADR 0070). */
+  readonly #parked = new Map<string, HTMLIFrameElement>();
+  readonly #settling = new Settling();
+  readonly #listeners = new Set<() => void>();
 
   /** Without `edges`, edge surfaces sit in `container` like the rest. */
   constructor(container: HTMLElement, onFocus: (id: string) => void, edges?: Edges) {
@@ -65,7 +70,12 @@ export class SurfaceHost {
     section.dataset.surface = spec.id;
     section.tabIndex = -1;
     section.hidden = spec.hidden === true;
-    section.addEventListener("focusin", () => this.#onFocus(spec.id));
+    section.addEventListener("focusin", (event) => {
+      // The desk focusing the surface itself ends a frame's settling; the frame taking it does not.
+      if (event.target === section) this.#settling.forget(spec.id);
+      else if (this.#settling.refocus(spec.id, doc)) return;
+      this.#onFocus(spec.id);
+    });
 
     const title = doc.createElement("header");
     title.className = "desk-surface-title";
@@ -84,19 +94,65 @@ export class SurfaceHost {
     else if (into === undefined)
       (edges && edge ? edges.bar(edge) : this.#container).append(section);
     this.#surfaces.set(spec.id, section);
+    this.#changed();
     return section;
   }
 
   close(id: string): void {
     this.#surfaces.get(id)?.remove();
     this.#surfaces.delete(id);
+    this.#parked.delete(id);
+    this.#settling.forget(id);
     this.#edges?.prune();
+    this.#changed();
   }
 
-  /** Load a new URL in one surface's frame; nothing else on the desk changes. */
+  /** Load a new URL in one surface's frame (an unloaded one loads it when it shows again). */
   reload(id: string, src: string): void {
-    const frame = this.#surfaces.get(id)?.querySelector("iframe");
+    const frame = this.#surfaces.get(id)?.querySelector("iframe") ?? this.#parked.get(id);
     if (frame) frame.src = src;
+  }
+
+  /** Take a surface's frame out of the page, which frees it; `placeholder` stands in (ADR 0070). */
+  unload(id: string, placeholder: HTMLElement): boolean {
+    const section = this.#surfaces.get(id);
+    const frame = section?.querySelector("iframe");
+    if (!section || !frame) return false;
+    frame.replaceWith(placeholder);
+    this.#parked.set(id, frame);
+    return true;
+  }
+
+  /**
+   * Put an unloaded surface's frame back: it loads its page again. A surface with the focus gives it
+   * to the frame; otherwise the frame may not take it while it settles (`frames/settle.ts`).
+   */
+  remount(id: string): boolean {
+    const section = this.#surfaces.get(id);
+    const frame = this.#parked.get(id);
+    if (!section || !frame) return false;
+    this.#parked.delete(id);
+    const focused = section.contains(section.ownerDocument.activeElement);
+    const placeholder = section.querySelector(".desk-surface-placeholder");
+    if (placeholder) placeholder.replaceWith(frame);
+    else section.append(frame);
+    if (focused) frame.focus();
+    else this.#settling.start(id, frame);
+    return true;
+  }
+
+  unloaded(id: string): boolean {
+    return this.#parked.has(id);
+  }
+
+  /** Hear surfaces open, close, show and hide. */
+  onChange(listener: () => void): () => void {
+    this.#listeners.add(listener);
+    return () => this.#listeners.delete(listener);
+  }
+
+  #changed(): void {
+    for (const listener of [...this.#listeners]) listener();
   }
 
   /** Show or hide a surface without unloading it; a shown surface takes the keyboard focus. */
@@ -104,6 +160,7 @@ export class SurfaceHost {
     const section = this.#surfaces.get(id);
     if (!section) return;
     section.hidden = !visible;
+    this.#changed();
     if (!visible) return;
     // An overlay shown over another (the palette over a view) is drawn above it.
     if (section.classList.contains("desk-surface--overlay"))

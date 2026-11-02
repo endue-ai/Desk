@@ -1,0 +1,15 @@
+{
+  "target": "BridgeRequest",
+  "description": "perm.approve answers once, task or deny, never a grant's duration",
+  "instance": {
+    "id": 82,
+    "method": "perm.approve",
+    "params": {
+      "approvalId": "a-1",
+      "answer": "always",
+      "scope": {
+        "permission": "perm:manage"
+      }
+    }
+  }
+}

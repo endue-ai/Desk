@@ -7,6 +7,7 @@
  */
 import { type Layout, loadLayout } from "../layout";
 import type { Notice } from "../notify";
+import { now, phase } from "../timing";
 import type { BuffersPolicy } from "./buffers";
 import { type DeskContext, disposer, type Installed } from "./context";
 
@@ -122,6 +123,7 @@ export function installSession(
 
   const restore = async () => {
     if (options.hold) return;
+    const start = now();
     const saved = on() && settings.get("desk.session.restore", true) ? await read() : undefined;
     if (saved) {
       actions.setLayout(
@@ -137,6 +139,7 @@ export function installSession(
       }
     }
     restored = true;
+    phase("session restore", start);
   };
 
   offs.add(buffers.buffers.onChange(changed));

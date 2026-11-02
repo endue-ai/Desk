@@ -2,7 +2,8 @@
 
 use serde_json::Value;
 
-use crate::bindings::{Command, CommandInfo, Decision, DirEntry, Duration, Error, Failure, Grant};
+use crate::bindings::{Command, CommandInfo, Decision, DirEntry, Duration, Error, Failure};
+use crate::bindings::{FsVersion, Grant};
 use crate::bindings::{LogEntry, LogLevel, NotifyLevel, Request, Response, Setting};
 
 /// The desk side of a logic plugin's imports, one method per bridge method in the WIT. Every call
@@ -24,6 +25,21 @@ pub trait Host: Send + Sync + 'static {
         contents: &[u8],
         create_dirs: bool,
     ) -> Result<u64, Error>;
+    /// bridge: fs.history. The versions the desk kept of the file, newest first, `limit` at most.
+    /// A host that keeps no history answers `unsupported`, as by default.
+    fn fs_history(
+        &self,
+        _plugin: &str,
+        _path: &str,
+        _limit: Option<u32>,
+    ) -> Result<Vec<FsVersion>, Error> {
+        Err(unsupported("fs.history"))
+    }
+    /// bridge: fs.restore. Writes the version back; returns the bytes written. `unsupported` by
+    /// default, as `fs_history`.
+    fn fs_restore(&self, _plugin: &str, _path: &str, _version_id: &str) -> Result<u64, Error> {
+        Err(unsupported("fs.restore"))
+    }
     /// bridge: net.fetch
     fn net_fetch(&self, plugin: &str, request: Request) -> Result<Response, Error>;
     /// bridge: ui.notify
@@ -93,4 +109,12 @@ pub trait Host: Send + Sync + 'static {
         channel: Option<&str>,
         count: Option<u32>,
     ) -> Result<Vec<LogEntry>, Error>;
+}
+
+/// The answer of a method a host does not back.
+fn unsupported(method: &str) -> Error {
+    Error {
+        code: crate::bindings::ErrorCode::Unsupported,
+        message: format!("{method} is not served by this host"),
+    }
 }

@@ -34,7 +34,13 @@ export type PluginMessage =
 
 /** Messages the runtime sends to a plugin frame. */
 export type HostMessage =
-  | { type: "desk:init"; pluginId: string; state: unknown }
+  | {
+      type: "desk:init";
+      pluginId: string;
+      state: unknown;
+      /** What the plugin kept when the desk last unloaded this frame (ui.surface.state, ADR 0070). */
+      restored?: unknown;
+    }
   | { type: "desk:results"; results: Array<{ id: number; response: BridgeResponse }> }
   | { type: "desk:event"; event: BridgeEvent }
   | { type: "desk:command"; name: string; args?: unknown; call?: number }

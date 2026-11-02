@@ -17,6 +17,8 @@ const plugins: Record<string, string> = {
   "test.theme": here("./themes/test-theme"),
   // The autoload opener of the desk page is the echo plugin under another id.
   "test.lazy": here("./fixture/plugins/test-echo"),
+  // The shell page's terminal (?apps=1) is the counter under the terminal's id.
+  "endue.terminal": here("./fixture/plugins/test-counter"),
   "desk.palette": join(repo, "plugins/palette"),
   "desk.views": join(repo, "plugins/views"),
   "endue.eris": join(repo, "plugins/eris"),

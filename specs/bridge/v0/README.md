@@ -36,14 +36,27 @@ a recent OS result id belonging to that caller (five-minute expiry), never a sup
 
 ## Callers and events
 
-Every call is made by a caller: a plugin under its plugin id, the web runtime as `desk`. The core keeps
-grants, store values, commands, settings and log channels per caller; `core` names desk-core itself.
+Every call is made by a caller: a plugin under its plugin id, the web runtime as `desk`, an agent of the
+brain whose tool call the core runs as `agent:<id>` (ADR 0072). The core keeps grants, store values,
+commands, settings and log channels per caller; `core` names desk-core itself.
+
+An agent is never granted anything outside `agents.<id>.allow` in init.yaml when that list holds
+anything: a call or `perm.request` outside it is refused at once (`perm.request` answers
+`reason: "outside-allowlist"`, any other call `permission_denied`), whatever the agent holds, and the
+runtime hears a `ui.notified` from `core` naming the agent. Inside it, or with an empty list, an agent's
+call without a grant asks the person for the call's scope, as `shell.open` does.
+
+An agent's irreversible call waits for the person's approval even when a grant covers it (ADR 0078):
+`fs.write` to a path, and `net.fetch` to a host, that no `always` grant of the agent allows;
+`proc.spawn`; and `cmd.invoke` of a command whose provider's manifest marks it `irreversible`. The core
+holds the call after the cap and the permission check and sends `perm.approval` (see **perm.approve**).
+A caller that is not an agent is never held.
 
 An event about the caller's own work reaches it without asking: `fs.changed` for its watches, `proc.*` for
 its processes, `audio.wake` for its captures, `brain.turn` for its turns, `perm.changed` for its grants,
 `cmd.invoked` for the commands it provides, `cmd.answered` for the commands it invoked and
 `settings.changed` for its own keys and `data.changed` for its data subscriptions. `plugin.changed` goes to
-holders of `plugin:manage`, `perm.prompt` to holders of `perm:manage`, `connector.changed` to holders of
+holders of `plugin:manage`, `perm.prompt`, `perm.approval` and `perm.approval.done` to holders of `perm:manage`, `connector.changed` to holders of
 `connector:manage`, `view.changed` to holders of `view:manage`, `update.changed` to holders of
 `update:manage`, and `ui.notified`, `ui.surface.opened` and `ui.surface.closed` to the runtime, which
 shows the notification or mounts and unmounts the surface.
@@ -69,7 +82,21 @@ is checked on every request, so a `once` grant is spent by the call itself. It n
 missing files are `not_found` and folders `invalid_params`.
 
 **fs.write** creates or overwrites a file with the given content and returns the bytes written. It needs
-an `fs:write` scope; with `createDirs` it also creates missing parent folders inside the same scope.
+an `fs:write` scope; with `createDirs` it also creates missing parent folders inside the same scope. The
+bytes go to a temp file beside the target that is renamed over it, so the file is the old content or the
+new, never a mix. Before it overwrites a file whose bytes differ, the core keeps the old ones as a version
+in its local history and answers that version's id as `version` (ADR 0076); a new file keeps nothing.
+
+**fs.history** lists the versions the core kept of one file, newest first, `limit` at most: each is the
+content a write replaced, with `at` (when that write ran), `caller` (whose write it was), `size` and
+`sha256`. A path the core kept nothing of answers an empty list, also when the file is gone. It needs an
+`fs:read` scope. The history keeps `desk.files.history-max-versions` versions per path (50) and
+`desk.files.history-max-bytes` in all (256 MiB), dropping the oldest first.
+
+**fs.restore** writes a version back as fs.write writes it, so what it replaces is kept as a version in
+turn, and answers what fs.write answers. It needs an `fs:write` scope. A version the path's history does
+not hold is `not_found`; one whose bytes no longer match their `sha256` is `io_error`, and nothing is
+written.
 
 **fs.list** returns the entries of one folder with their kind, for files their size, and `modifiedAt`,
 when the entry last changed (absent when the OS has none). It is not recursive. It needs an `fs:read`
@@ -116,6 +143,16 @@ handle.
 handle the caller does not hold is `not_found`. A caller that unloads has its surfaces closed, each with
 its `ui.surface.closed`; losing `ui:surface` leaves them open.
 
+**ui.surface.state** is the one request that goes the other way: the runtime sends it to a plugin's
+frame, as it sends `desk.files.visit`, never to the core, and it is not a `BridgeRequest`. Before the
+runtime unloads a surface that has not been visible for `desk.display.unload-after`, or the one hidden
+longest once more than `desk.display.live-surfaces` frames are live (ADR 0070), it asks with the
+manifest's `surface` id. A plugin may answer with `state`, any JSON up to 64 KiB as UTF-8; the runtime
+keeps it in memory for the session and hands it back as `restored` in the frame's next `desk:init`,
+when the surface shows again. An answer without `state`, an error, a bigger state, no answer within
+two seconds or a frame that never said hello: the frame is unloaded all the same and comes back cold.
+Answering is optional, and needs no permission.
+
 **ui.notify** shows a notification with a title, an optional body and a level, and returns its id. It
 needs `ui:notify`. The core sends the runtime a `ui.notified` event naming the caller; how long it
 stays, whether do-not-disturb holds it back and how much history is kept is the runtime's notify policy.
@@ -149,12 +186,33 @@ core's own prompt decides, and its refusals are not remembered. When a caller as
 parent is never a root, the home folder or a folder holding it, nor a scope the person refused that caller
 earlier; `parent: true` on a prompt without one is `invalid_params`.
 
+**perm.approve** is the prompter's answer to `perm.approval`, the card an agent's irreversible call
+waits on. The event names the agent, the `action` (`fs.write`, `proc.spawn`, `net.fetch`,
+`cmd.invoke`), the scope the call carries, its `target` (the path, the command, the URL, the command
+id) and a `preview`: for a write, a unified diff of the file against what the write puts there (a new
+file is all additions) when both are UTF-8 text and the file is at most 1 MiB, the first 200 changed
+lines, with `size`, the bytes it writes; for a spawn its command line, for a fetch the method and the
+URL, for a command its args as JSON. `task` is the desk's brain turn the call belongs to, when there is
+one. The first `perm.approve` decides: `once` runs this call; `task` runs it and lets the agent's later
+calls of the same action through, without asking, for the rest of that turn when the approved scope
+covers their target (a write's `fs:write` scope, a fetch's `net:fetch` scope, the spawn's command, the
+command's id), and is `invalid_params` without a task; `deny` refuses the call `permission_denied` and is
+not remembered. An approval that is already decided is `not_found`. Without a `perm:manage` holder the
+core's own prompt decides, and refuses by default. Once an approved call ran, `perm.approval.done` says
+whether it succeeded, with `bytesWritten` for a write and the `error` when it failed; `undoable` will
+say when `cmd.undo` (#276) can take a write back.
+
 **plugin.list** returns every installed plugin with its status (`ready` or `failed` with a reason), whether
-it is enabled and built in, its file revision and its manifest. It needs `plugin:manage`.
+it is enabled and built in, its file revision, its manifest and the folder it was installed from (an
+absolute path, so `desk.describe` can name and reveal its plugin.json). It needs `plugin:manage`.
 
 **plugin.setEnabled** turns a plugin on or off and remembers the choice; the runtime mounts or unmounts
 its surfaces when `plugin.changed` arrives. It needs `plugin:manage`. `plugin.changed` events (installed,
 updated, removed, enabled, disabled) go to callers that hold `plugin:manage`.
+
+**plugin.stats** counts the bridge calls each caller made over the last minute (`windowSeconds`): every
+call the core answered, a plugin's, the runtime's (`desk`) and the CLI's (`cli`), and how many of them
+failed, most calls first. It needs `perm:manage`.
 
 **store.get** reads a value the caller stored earlier; `value` is absent for a key that was never
 set. Every caller (the runtime and each plugin) has its own namespace in desk-core storage, so the
@@ -165,7 +223,8 @@ survive restarts.
 
 **init.get** returns the setup in force from init.yaml: the profile to start in, and the settings whose
 key starts with the caller's id and a dot (`desk.` for the runtime itself). When the file is not in
-force, `problem` says why. Like the store, it needs no scope: callers see only their own settings.
+force, `problem` says why. `file` says where init.yaml is, rooted at `~` inside the home folder. Like
+the store, it needs no scope: callers see only their own settings.
 
 **brain.say** sends what the person typed to the brain in the desk's session and returns a local
 `turnId` at once. The answer arrives as `brain.turn` events with that id: `started`, `delta` (more text),
@@ -236,6 +295,11 @@ keys, the palette, Eris, agents and the CLI all invoke the same way.
 answered once; another caller's is `not_found`. A provider that stops leaves its waiting invocations
 answered `cancelled`. It needs no scope.
 
+**cmd.recent** returns the last 200 invocations the core saw, whoever invoked them, oldest first: the
+command, the caller, the provider, when it was invoked on the core's clock and, once answered, how long it
+took in milliseconds and whether it ended with a result or which error. One still waiting has neither. It
+needs `perm:manage`, like the grants an inspector shows beside it.
+
 **settings.get** reads one setting. Keys belong to the caller that sets them, like the store; `owner`
 names another caller, which needs a `settings:read` scope covering `owner/key`. `value` is absent for a
 key that was never set.
@@ -250,7 +314,12 @@ covers, whoever owns it, each with its owner.
 stamps the time. It needs no scope.
 
 **log.tail** returns the latest entries, oldest first: of one channel, or of every channel merged in time
-order. `count` is 100 by default and 1000 at most. It needs `log:read`.
+order. `count` is 100 by default and 1000 at most. It needs `log:read`. The core writes the channel
+`perm`: every grant (`decision: granted`), every refusal (`refused`) and every call of an agent
+(`allowed` or `denied`), with `caller`, `permission`, `scope`, and `target` (the path, command or other
+target), `reason`, `duration` and `grantId` where they apply. An agent's irreversible call the person
+approved is `approved`, with `approval` (`once` or `task`), `approvalId` and `task`; one they denied is
+`refused` with `reason: not-approved`.
 
 **events.subscribe** starts delivering named events about every caller, not only the caller's own:
 `plugin.changed`, `perm.changed`, `cmd.changed`, `cmd.invoked`, `settings.changed` and `log.entry`. The

@@ -3,7 +3,8 @@
 //! callers subscribed to it. `always` grants live in the grant file (ADR 0029); asking the person
 //! goes through `perm.prompt` (`core_prompts`) or, with nobody to prompt, the `Prompter`, for
 //! perm.request and for the calls that ask by themselves (`check_or_ask`, shell.open), as the prompt
-//! policy allows (`prompt_policy`).
+//! policy allows (`prompt_policy`). An agent's calls take `agents`' check, capped by its allowlist;
+//! grants and refusals go to the `perm` log channel (`perm_log`, ADR 0072).
 
 use std::path::PathBuf;
 
@@ -14,6 +15,7 @@ use desk_bridge::{
     PermRevokeResult, Permission, RefusalReason,
 };
 
+use crate::agents::agent_of;
 use crate::core_prompts::Outcome;
 use crate::handler::{Answer, Core, denied, error, json};
 use crate::perm::{Denied, PermissionEngine, Target, covers, scope_allows};
@@ -29,7 +31,7 @@ pub trait Prompter: Send + Sync {
 pub struct RefuseAll;
 
 /// What asking decided: a grant, or a refusal, with why nobody was asked when nobody was.
-enum Decision {
+pub(crate) enum Decision {
     Granted(Grant),
     Refused(Option<RefusalReason>),
 }
@@ -49,17 +51,29 @@ impl Core {
         self
     }
 
-    /// Grant for the session, as the person would through a prompt.
+    /// Grant for the session, as the person would through a prompt. The host's own grants (made
+    /// again at every start) reach the `perm` log only when they go to an agent.
     pub fn grant(&self, caller: &str, permission: Permission) -> Grant {
-        self.grant_for(caller, permission, GrantDuration::Session)
+        let grant = self.record(caller, permission, GrantDuration::Session);
+        if agent_of(caller).is_some() {
+            self.log_grant(caller, &grant);
+        }
+        grant
     }
 
+    /// A grant the person made, through a prompt or the Prompter: kept and logged.
     pub(crate) fn grant_for(
         &self,
         caller: &str,
         permission: Permission,
         duration: GrantDuration,
     ) -> Grant {
+        let grant = self.record(caller, permission, duration);
+        self.log_grant(caller, &grant);
+        grant
+    }
+
+    fn record(&self, caller: &str, permission: Permission, duration: GrantDuration) -> Grant {
         let grant = self.permissions().grant_for(caller, permission, duration);
         self.forget_refusals(caller, &grant.permission);
         self.changed(caller, &grant.grant_id, GrantChange::Granted);
@@ -67,9 +81,23 @@ impl Core {
     }
 
     /// The permission check every call passes: a grant of the caller's must cover the scope and the
-    /// scope the target. A `once` grant that allows the call is spent here, before the call runs: its
-    /// holder hears `expired`, and what only it covered ends.
+    /// scope the target. An agent's call is also capped by its allowlist and asks the person when no
+    /// grant covers it (`check_agent`).
     pub(crate) fn check(
+        &self,
+        caller: &str,
+        scope: &Permission,
+        target: &Target<'_>,
+    ) -> Result<(), BridgeError> {
+        if agent_of(caller).is_some() {
+            return self.check_agent(caller, scope, target);
+        }
+        self.allow_call(caller, scope, target)
+    }
+
+    /// The engine's half of `check`. A `once` grant that allows the call is spent here, before the
+    /// call runs: its holder hears `expired`, and what only it covered ends.
+    pub(crate) fn allow_call(
         &self,
         caller: &str,
         scope: &Permission,
@@ -102,16 +130,22 @@ impl Core {
     }
 
     /// Ask the person; the call waits for the answer. A refusal is a result, not an error. A request
-    /// one of the caller's lasting grants covers is answered with that grant, without asking.
+    /// one of the caller's lasting grants covers is answered with that grant, without asking; one
+    /// outside an agent's allowlist is refused at once.
     pub(crate) fn perm_request(&self, caller: &str, params: PermRequestParams) -> Answer {
-        let decided = match self.lasting_grant(caller, &params.permission) {
-            Some(grant) => Decision::Granted(grant),
-            None => {
+        let lasting = || self.lasting_grant(caller, &params.permission);
+        let decided = match (self.capped(caller, &params.permission), lasting()) {
+            (Some(reason), _) => Decision::Refused(Some(reason)),
+            (None, Some(grant)) => Decision::Granted(grant),
+            (None, None) => {
                 let asked = params.duration.unwrap_or(GrantDuration::Session);
                 let reason = params.reason.as_deref().unwrap_or_default();
                 self.ask(caller, &params.permission, reason, asked)?
             }
         };
+        if let Decision::Refused(why) = &decided {
+            self.refused(caller, &params.permission, None, *why);
+        }
         json(match decided {
             Decision::Granted(grant) => PermRequestResult {
                 granted: true,
@@ -139,9 +173,15 @@ impl Core {
         if held.is_err() && scope_allows(scope, target) {
             let asked = self.ask(caller, scope, reason, GrantDuration::Session)?;
             if let Decision::Refused(why) = asked {
+                self.refused(caller, scope, Some(target), why);
                 let reason = match why {
                     Some(RefusalReason::RefusedEarlier) => {
                         format!("the person refused {caller} this scope earlier in the session")
+                    }
+                    Some(RefusalReason::OutsideAllowlist) => {
+                        format!(
+                            "{caller} may not be granted this scope: it is outside its allowlist"
+                        )
                     }
                     None => format!("the person did not allow {caller} this scope"),
                 };
@@ -156,13 +196,17 @@ impl Core {
 
     /// Ask the person for `permission`, through perm.prompt or else the Prompter, as the prompt
     /// policy allows: the grant they made, or a refusal. `cancelled` when the caller stopped first.
-    fn ask(
+    /// Nobody is asked to grant an agent anything outside its allowlist.
+    pub(crate) fn ask(
         &self,
         caller: &str,
         permission: &Permission,
         reason: &str,
         duration: GrantDuration,
     ) -> Result<Decision, BridgeError> {
+        if let Some(capped) = self.capped(caller, permission) {
+            return Ok(Decision::Refused(Some(capped)));
+        }
         Ok(match self.prompt(caller, permission, reason, duration) {
             Outcome::Granted(grant) => Decision::Granted(grant),
             Outcome::Refused => Decision::Refused(None),

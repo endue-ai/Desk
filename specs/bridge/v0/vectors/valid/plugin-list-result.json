@@ -1,6 +1,6 @@
 {
   "target": "PluginListResult",
-  "description": "a ready plugin and a failed one",
+  "description": "a ready plugin with the folder it was installed from, and a failed one",
   "instance": {
     "plugins": [
       {
@@ -9,6 +9,7 @@
         "enabled": true,
         "builtIn": true,
         "revision": 1,
+        "folder": "/Applications/endue Desk.app/Contents/Resources/plugins/sidebar",
         "manifest": {
           "id": "endue.sidebar",
           "version": "0.1.0",

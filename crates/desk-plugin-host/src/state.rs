@@ -71,6 +71,14 @@ impl fs::Host for State {
     fn write(&mut self, path: String, contents: Vec<u8>, create_dirs: bool) -> Result<u64, Error> {
         self.imports.fs_write(&path, &contents, create_dirs)
     }
+
+    fn history(&mut self, path: String, limit: Option<u32>) -> Result<Vec<fs::Version>, Error> {
+        self.imports.fs_history(&path, limit)
+    }
+
+    fn restore(&mut self, path: String, version_id: String) -> Result<u64, Error> {
+        self.imports.fs_restore(&path, &version_id)
+    }
 }
 
 impl net::Host for State {

@@ -43,7 +43,7 @@ slows the desk down is handled by turning it off, not by this model.
 | [Wasm logic plugin](#wasm-logic-plugin) | plugin | Not run at all | The host, #39 |
 | [MCP tool process and the VM](#mcp-tool-process-and-the-vm) | plugin, agent | Not run at all | The VM and supervisor (no issue yet) |
 | [Bridge and permission engine](#bridge-and-permission-engine) | all | Deny by default, scopes never widened implicitly, the prompt policy (CORE-03) | Distinct scopes each prompt, symlinks, Windows paths, dev folders (no issue yet) |
-| [Brain and its lease](#brain-and-its-lease) | agent, plugin | Core holds the conversation; one writer per session | No TLS, no token storage (no issue yet) |
+| [Brain and its lease](#brain-and-its-lease) | agent, plugin | Core holds the conversation; one writer per session; an agent's tool calls run as `agent:<id>`, capped by the person's allowlist, and are logged; its irreversible calls wait for the person's approval with a preview | No TLS, no token storage, no cap without an allowlist, agent ids taken from the brain (no issue yet) |
 | [Marketplace](#marketplace) | marketplace entry | ADR 0005 only; `plugin-validate` checks this repository's plugins | Index, signing, verification (no issue yet) |
 | [init.yaml sync](#inityaml-sync) | tampered copy | Schema check, both sides kept on conflict, no grants in the file | No authenticity, no real transport (no issue yet) |
 | [The updater](#the-updater) | marketplace entry, network | Signed index, manifests and artifacts on R2; the desk checks length, sha256 and the signature bound to the version before installing; versions only go up (ADR 0054) | Keys and bucket (people), Windows Authenticode, update smoke on three OSes (no issue yet) |
@@ -159,15 +159,50 @@ On main:
 - A session has one writer: the lease holder. When another desk takes the lease over, this desk turns
   read-only and refuses to write (`crates/desk-core/src/lease.rs`). The first turn of each run takes
   the lease over.
-- Tools the brain asks for run in the core, not in a plugin. The only tool is `echo`, which touches
-  nothing (`crates/desk-core/src/conversation.rs`).
+- Tools the brain asks for run in the core, not in a plugin (`crates/desk-core/src/agent_tools.rs`,
+  ADR 0072). A tool call names its agent (`agentId`) and runs as the caller `agent:<id>`, with grants
+  of its own: never a plugin's, and never another agent's. A call that names no agent runs `echo`
+  only, which touches nothing.
+- What the cap guarantees: when `agents.<id>.allow` in init.yaml holds anything, the agent is never
+  granted, and never allowed, a scope that list does not cover. The check runs at every call
+  (`crates/desk-core/src/agents.rs`), so a grant kept from a wider list (a session grant, or an
+  `always` grant in the grant file) allows nothing outside the current list; `perm.request` answers
+  `outside-allowlist` without a prompt; the parent offer never reaches past the list; and the person
+  sees a notice naming the agent. init.yaml is read again at every agent call, so removing a line cuts
+  the agent off at its next call, without a restart.
+- Inside the list, a call no grant of the agent's covers prompts the person with the agent as the
+  caller, and the prompt policy (CORE-03) remembers the answer for that agent only.
+- Every grant the person makes and every grant an agent receives, every refusal, and every call of an
+  agent (allowed or denied) is written to the `perm` log channel with caller, permission, scope,
+  decision and target; `desk perm log --agent <id>` reads it.
+- What the hold guarantees (ADR 0078, `crates/desk-core/src/approvals.rs`): an agent's `fs.write` to a
+  path and `net.fetch` to a host that no `always` grant of its own allows, every `proc.spawn`, and
+  `cmd.invoke` of a command its provider's manifest marks `irreversible` do not run until the person
+  approves that call on a card, even when a session grant covers it. The hold comes after the cap and
+  the permission check, inside the methods themselves, so no route around it reaches them. The card
+  shows the agent, the target and a preview built by the core from the call itself (a diff of the
+  file against the bytes it would write, the command line, the method and URL, the args). "Allow for
+  this task" covers only the same action on targets the approved scope covers, until the desk's turn
+  ends; Deny refuses that call. With nobody holding `perm:manage`, the default prompter refuses. Calls
+  of the runtime, the CLI and plugins are never held. Approvals and denials go to the `perm` log.
 
 Gaps:
 
 - No TLS, so a brain anywhere but this machine would be reached in plain HTTP. No issue yet.
 - No token storage: tokens belong in the OS keychain only. No issue yet (#65 lists it as a requirement).
-- Brain tools that touch files or the network need the permission engine and a record of what an agent
-  did with each grant. No issue yet.
+- An agent without an allowlist (or with an empty one) is not capped: every first use prompts and the
+  prompt is the only gate. No issue yet.
+- The agent id is the brain's word: a compromised brain can call as any agent id, and so with that
+  agent's grants and allowlist. No issue yet.
+- Bridge methods that need no scope (an agent's own store, settings and log channel, `perm.request`)
+  run for an agent without the allowlist's say, as for any caller. No issue yet.
+- An agent's `always` grant switches the hold off for writes and fetches inside it, and a task is a
+  desk turn: an A2A task that spans turns asks again in each. No issue yet.
+- The preview is bounded: a binary file or one over 1 MiB shows only the size, a long diff its first
+  200 changed lines, a fetch its method and URL but not its body or headers. No issue yet.
+- `irreversible` on a command is its plugin author's word; a command that is not marked runs on the
+  agent's `cmd:invoke` grant alone. No issue yet.
+- Nothing takes an approved write back yet: Undo waits for `cmd.undo` (#276).
 
 ## Marketplace
 

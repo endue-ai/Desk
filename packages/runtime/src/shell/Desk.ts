@@ -19,6 +19,7 @@ import { pluginWindows } from "../surface/host";
 import { mountSurfaces } from "../surface/Surface";
 import { loadDirectory } from "../system/agents";
 import { mountSystemLayer } from "../system/layer";
+import { timed } from "../timing";
 import { layoutOf } from "./actions";
 import { mountBottom } from "./Bottom";
 import { defineCommands, dismiss } from "./commands";
@@ -135,14 +136,16 @@ export function mountDesk(options: DeskOptions): Desk {
   const restored = keepShell(ctx);
   const offs = [
     defineCommands(ctx),
-    // desk.propose: Eris makes views from a sentence and says what she made (ADR 0073). Its
-    // provenance takes the wall clock (Date.now), not the frame loop's time.
+    // desk.propose: Eris makes views, profiles and key bindings from a sentence and says what she
+    // made (ADR 0073). Its provenance takes the wall clock (Date.now), not the frame loop's time;
+    // the card for profiles and keys sits over the whole shell.
     installProposals({
       bridge: options.core,
       commands: runtime.commands,
       notify: (input) => runtime.notify(input),
       profile: () => runtime.profiles.active(),
       eris: ctx.eris,
+      desk: { host: root, settings: runtime.settings, policy: () => runtime.policy(), platform },
     }),
     syncProfiles(ctx),
     restored.off,
@@ -163,7 +166,7 @@ export function mountDesk(options: DeskOptions): Desk {
   );
   const ready = (runtime.plugins?.ready ?? runtime.ready)
     .then(() => restored.done())
-    .then(refresh)
+    .then(() => timed("agent directory", refresh))
     .then(() => brain)
     .then(() => runtime.commands.settled());
 

@@ -1,0 +1,11 @@
+{
+  "target": "BridgeRequest",
+  "description": "fs.history carries its fs:read scope",
+  "instance": {
+    "id": 24,
+    "method": "fs.history",
+    "params": {
+      "path": "~/Notes/plan.md"
+    }
+  }
+}

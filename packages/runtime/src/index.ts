@@ -34,6 +34,7 @@ export { type Desk, type DeskOptions, mountDesk } from "./shell/Desk";
 export type { BrokenStateFile, StartInfo } from "./start";
 export { SurfaceHost, type SurfaceSpec } from "./surfaces";
 export { applyTheme } from "./theme";
+export { PHASE_PREFIX, type Phase, phase, phases, timed } from "./timing";
 export type { HostViews } from "./views";
 
 export const NAME = "@endue-ai/runtime";

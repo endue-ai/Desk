@@ -17,6 +17,9 @@ export const DESK_KEYS = Object.freeze([
   "Mod+K",
   "Mod+Shift+P",
   "Mod+/",
+  // desk.describe.open; with Shift held the browser names the key "?", so both forms reach the desk.
+  "Mod+Shift+/",
+  "Mod+Shift+?",
   "Mod+B",
   "Mod+W",
   "Mod+Alt+ArrowRight",

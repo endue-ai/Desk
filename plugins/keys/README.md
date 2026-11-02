@@ -9,6 +9,7 @@ elsewhere; a binding's `mac` key replaces `key` on macOS.
 | `Mod+K`, `Mod+Shift+P` | `desk.palette.open` (M-x) |
 | `Escape` | `desk.keys.quit` (C-g: hide the palette, dismiss a notification) |
 | `Mod+/` | `desk.keys.list` |
+| `Mod+Shift+/` | `desk.describe.open` (C-h: the next key, or a pick, described) |
 | `Mod+B`, `Mod+W` | `desk.buffers.switch`, `desk.buffers.close` |
 | `Mod+Alt+ArrowRight`, `Mod+Alt+ArrowLeft` | `desk.buffers.next`, `desk.buffers.previous` |
 | `Mod+O`, `Mod+S`, `Mod+Shift+O` | `desk.files.open`, `desk.files.save`, `desk.files.recent` |
@@ -24,7 +25,8 @@ wins, and `"command": ""` takes a key away. Keys pressed inside a plugin's frame
 when they hold Command, Control or Alt, or are Escape, unless the plugin handled them. A key whose
 command is off (its policy plugin is disabled) does nothing and passes on. The person's own bindings
 are the last layer: the setting `desk.keys.bindings` (init.yaml, or the shell's rebinding screen, whose
-changes desk.session keeps).
+changes desk.session keeps). Eris writes there too ("bind Mod+Shift+T to open the terminal", ADR 0073),
+after a table that marks a key already taken.
 
 The runtime side is `packages/runtime/src/keymap.ts` and `src/policies/keys.ts`.
 

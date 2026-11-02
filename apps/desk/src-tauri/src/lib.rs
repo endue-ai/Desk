@@ -8,17 +8,19 @@ mod palette;
 mod palette_assets;
 mod protocol;
 mod socket;
+mod trace;
 mod tray;
 mod update;
 
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
+use std::time::Instant;
 
 use desk_brain_endue::HttpBrain;
 use desk_bridge::{
-    BrainConversePermission, CmdInvokePermission, ConnectorManagePermission, Permission,
-    PluginManagePermission, ShellOpenPermission, ThemeManagePermission, UpdateManagePermission,
-    ViewManagePermission,
+    BrainConversePermission, CmdInvokePermission, ConnectorManagePermission, PermManagePermission,
+    Permission, PluginManagePermission, ShellOpenPermission, ThemeManagePermission,
+    UpdateManagePermission, ViewManagePermission,
 };
 use desk_core::{
     BrainMode, BrainOptions, Core, MockRemote, PluginWatcher, Roots, SyncError, SyncOutcome,
@@ -48,6 +50,8 @@ type Watchers = (
 );
 
 pub fn run() {
+    // Process start for the start-up trace (DESK_TRACE=1): its clock reads 0 here.
+    let origin = desk_trace::Origin::now();
     let builder = tauri::Builder::default()
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .manage(open_files::OpenFiles::default())
@@ -65,12 +69,15 @@ pub fn run() {
                 responder.respond(protocol::serve(&app, &request));
             });
         })
-        .setup(|app| {
+        .setup(move |app| {
             app.state::<open_files::OpenFiles>()
                 .push(open_files::argument_paths(
                     std::env::args_os().map(|arg| arg.into_string().unwrap_or_default()),
                 ));
             let data = app.path().app_data_dir()?;
+            let tracing = trace::Tracing::from_env(origin, &data);
+            tracing.phase("tauri start", origin.instant());
+            let started = Instant::now();
             let home = home_dir();
             let init = std::env::var_os("DESK_INIT")
                 .map(PathBuf::from)
@@ -83,7 +90,9 @@ pub fn run() {
                 .with_sync(Arc::new(remote), Some(data.join("sync.json")))
                 .with_plugin_store(data.join("plugins.json"))
                 .with_store_file(data.join("store.json"))
-                .with_secrets_file(data.join("secrets.json"));
+                .with_secrets_file(data.join("secrets.json"))
+                // Every fs.write keeps the bytes it replaces here first (ADR 0076).
+                .with_history_dir(data.join("history"));
             // Safe mode, asked for or after two starts that never got ready, holds plugins off as
             // they install (ADR 0061).
             let (mut core, last) = commands::start::begin(&data, core);
@@ -126,6 +135,8 @@ pub fn run() {
                 core = core.with_updater(updater.clone());
             }
             let core = Arc::new(core);
+            // The brain's tool calls run in the core, each as the agent that asks (ADR 0072).
+            core.route_tools();
             // The runtime mounts plugins, so it may list and toggle them.
             core.grant(
                 RUNTIME_CALLER,
@@ -139,6 +150,14 @@ pub fn run() {
                 Permission::CmdInvoke(CmdInvokePermission {
                     permission: Default::default(),
                     ids: vec!["*".to_owned()],
+                }),
+            );
+            // desk.describe names who may run a command and describes grants (ADR 0075): it lists
+            // them, and shows them only to callers that may list them too.
+            core.grant(
+                RUNTIME_CALLER,
+                Permission::PermManage(PermManagePermission {
+                    permission: Default::default(),
                 }),
             );
             // The shell talks to the brain and reads its agent directory as the runtime.
@@ -198,6 +217,8 @@ pub fn run() {
                     paths: Some(paths.to_vec()),
                 }),
             );
+            tracing.phase("core init", started);
+            let started = Instant::now();
             for dir in env_paths("DESK_PLUGIN_DIRS") {
                 core.install_plugins_in(&dir, true);
             }
@@ -210,6 +231,8 @@ pub fn run() {
                 .watch_themes()
                 .map_err(|why| eprintln!("endue Desk: the themes folder is not watched ({why})"))
                 .ok();
+            tracing.phase("plugin registry", started);
+            let started = Instant::now();
             core.start_connectors();
             core.start_connector_scheduler(CONNECTOR_TICK);
             core.keep_broken_views();
@@ -219,6 +242,8 @@ pub fn run() {
                 eprintln!("endue Desk: a view is left out ({problem})");
             }
             app.manage(Watching(Mutex::new((watcher, views, themes))));
+            tracing.phase("connectors and views", started);
+            let started = Instant::now();
 
             // Core events reach the runtime as Tauri events, each with the callers it is for, so the
             // runtime can hand an addressed event (a perm.prompt, a subscribed event) to the plugin it
@@ -243,6 +268,9 @@ pub fn run() {
                 tray::follow(app.handle(), &updater);
                 app.manage(update::Updates(updater));
             }
+            tracing.phase("app services", started);
+            tracing.write();
+            app.manage(tracing);
             Ok(())
         })
         .on_window_event(|window, event| {
@@ -258,6 +286,7 @@ pub fn run() {
             commands::ready::desk_ready,
             commands::start::desk_start,
             commands::start::desk_relaunch,
+            trace::desk_trace,
             palette::palette_hide,
             palette::palette_reveal_main,
             palette::palette_prepare_main,

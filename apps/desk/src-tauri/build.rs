@@ -23,14 +23,15 @@ fn main() {
         );
     }
 
-    // Declaring the app's commands makes Tauri generate one permission per command, so the
-    // capability can allow exactly these three and nothing else.
+    // Declaring the app's commands makes Tauri generate one permission per command, so each
+    // capability can allow exactly the ones its window needs and nothing else.
     println!("cargo:rerun-if-changed=../../../plugins/palette/ui");
     let manifest = tauri_build::AppManifest::new().commands(&[
         "bridge_call",
         "desk_ready",
         "desk_start",
         "desk_relaunch",
+        "desk_trace",
         "take_open_files",
         "palette_hide",
         "palette_reveal_main",

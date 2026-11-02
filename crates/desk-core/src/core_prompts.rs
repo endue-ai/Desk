@@ -86,7 +86,11 @@ impl Core {
                 Some(waiting) => waiting.replies.push(reply),
                 None => {
                     let offerable = |parent: &str| self.offerable(parent);
-                    let parent = prompts.policy.parent_offer(caller, permission, offerable);
+                    let parent = prompts
+                        .policy
+                        .parent_offer(caller, permission, offerable)
+                        // Never beyond an agent's allowlist (ADR 0072).
+                        .filter(|offer| self.capped(caller, offer).is_none());
                     prompts.next += 1;
                     let prompt_id = format!("p-{}", prompts.next);
                     let event = BridgeEvent::PermPrompt(PermPromptEvent {
@@ -166,6 +170,11 @@ impl Core {
         json(PermAnswerResult {})
     }
 
+    /// Whether the person refused `caller` exactly `permission` earlier in the session.
+    pub(crate) fn refused_earlier(&self, caller: &str, permission: &Permission) -> bool {
+        self.prompts().policy.refused_earlier(caller, permission)
+    }
+
     /// `caller` was granted `permission`: the refusals it covers are forgotten.
     pub(crate) fn forget_refusals(&self, caller: &str, permission: &Permission) {
         self.prompts().policy.granted(caller, permission);
@@ -182,8 +191,10 @@ impl Core {
         });
     }
 
-    /// With no perm:manage holder left, the Prompter decides every waiting prompt, so no call hangs.
+    /// With no perm:manage holder left, the Prompter decides every waiting prompt and approval, so no
+    /// call hangs.
     pub(crate) fn settle_unheard(&self) {
+        self.settle_approvals();
         let mut prompts = self.prompts();
         if prompts.waiting.is_empty() || !self.holders(&perm_manage()).is_empty() {
             return;

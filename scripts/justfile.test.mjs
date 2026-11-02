@@ -1,7 +1,7 @@
 // The justfile's recipes as the guides use them, through `just --dry-run`: nothing here starts the app.
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { join, resolve } from "node:path";
+import { delimiter, join, resolve } from "node:path";
 import { test } from "node:test";
 
 const root = resolve(import.meta.dirname, "..");
@@ -38,9 +38,13 @@ function appEnv(command) {
 }
 
 // just joins its own paths with "/", so on Windows they mix separators: compare them resolved.
-test("just dev loads examples/plugin-hello-ui when DESK_DEV_PLUGINS is unset", { skip }, () => {
+test("just dev loads plugin-hello-ui and plugin-hello-view by default", { skip }, () => {
   const env = appEnv(dryRun({}));
-  assert.equal(resolve(env.DESK_DEV_PLUGINS), join(root, "examples/plugin-hello-ui"));
+  const folders = env.DESK_DEV_PLUGINS.split(delimiter).map((folder) => resolve(folder));
+  assert.deepEqual(folders, [
+    join(root, "examples/plugin-hello-ui"),
+    join(root, "examples/plugin-hello-view"),
+  ]);
   assert.equal(resolve(env.DESK_PLUGIN_DIRS), join(root, "plugins"));
 });
 

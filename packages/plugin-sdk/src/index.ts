@@ -44,6 +44,13 @@ export {
   readBytes,
 } from "./files";
 export {
+  type FileHistoryOptions,
+  type FsRestoreResult,
+  type FsVersion,
+  fileHistory,
+  restoreFile,
+} from "./history";
+export {
   type CommandOutcome,
   type HostMessage,
   isDeskKey,
