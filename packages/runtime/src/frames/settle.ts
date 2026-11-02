@@ -46,7 +46,15 @@ export class Settling {
     const before = this.#before as HTMLElement | null;
     if (before && before !== doc.body && before.isConnected && typeof before.focus === "function")
       before.focus();
-    else (doc.activeElement as HTMLElement | null)?.blur?.();
+    else {
+      // Nothing had the focus: the desk's page takes it back on its body. A frame element's blur
+      // leaves its page focused, so the body is made focusable for the moment it takes the focus.
+      const { body } = doc;
+      const tabbable = body.hasAttribute("tabindex");
+      if (!tabbable) body.tabIndex = -1;
+      body.focus({ preventScroll: true });
+      if (!tabbable) body.removeAttribute("tabindex");
+    }
     return true;
   }
 

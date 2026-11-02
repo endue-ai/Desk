@@ -257,6 +257,19 @@ describe("hidden surfaces are unloaded and their state kept", () => {
     expect(d.runtime.shortcuts.focused).toBe("b.two");
   });
 
+  it("with nothing focused, a frame loading again that focuses itself gives the focus back to the desk", async () => {
+    const d = await desk(["a.one", "b.two"], { [UNLOAD]: 60 });
+    (document.activeElement as HTMLElement | null)?.blur();
+    await d.hide("b.two");
+    await flush(60_000);
+    d.runtime.plugins?.command("b.two", "desk.buffers.show", { buffer: "x" });
+    await flush();
+    d.plugins["b.two"]?.frame()?.focus();
+    await flush(300);
+    expect(document.activeElement).toBe(document.body);
+    expect(d.runtime.shortcuts.focused).toBeNull();
+  });
+
   it("Tab through the desk lets the focus into a frame loading again", async () => {
     const d = await desk(["a.one", "b.two"], { [UNLOAD]: 60 });
     d.runtime.focusSurface("a.one");
