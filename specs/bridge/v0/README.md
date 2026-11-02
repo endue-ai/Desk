@@ -3,7 +3,7 @@
 The calls the web runtime (and every plugin through it) makes into the Rust core. JSON Schema 2020-12,
 one file per namespace: `bridge.schema.json` (envelope, errors, shared types), `fs`, `proc`, `net`, `plugins`,
 `store`, `search`, `init`, `brain`, `audio`, `ui`, `perm`, `cmd`, `settings`, `log`, `events`, `data`, `connector`,
-`view`, `catalog`, `shell` and `update`. Items, views and connectors are the types of `specs/item`,
+`view`, `catalog`, `shell`, `update` and `theme`. Items, views and connectors are the types of `specs/item`,
 `specs/view` and `specs/connector` (ADR 0032). v0 may break on any minor release (ADR 0004).
 
 ## Envelope
@@ -321,6 +321,31 @@ nothing is staged. `check`, `download` and `apply` answer at once; progress and 
 `update.changed` with the whole status. A failed step leaves `state: failed` with a `reason`, and a
 staged build stays staged. A build that does not update itself (no updater key, a development build, the
 browser stub) answers `unsupported`.
+
+**theme.save**, **theme.import**, **theme.export** and **theme.remove** keep the person's own themes
+(ADR 0058). Each needs a `theme:manage` scope, which the desk grants to the runtime and the CLI only. A
+user theme is a theme plugin (`specs/plugin/v0/theme.schema.json`) in the desk's user themes folder
+(`<data>/themes/<id>/`), installed at start like any plugin but not built in, watched, and announced
+with `plugin.changed`. Which theme is in force stays with `desk.theme.active`: saving or importing one
+does not apply it. `theme.save` takes a manifest of kind `theme` whose id is inside `local.` and its
+font and image files inline (`files`, base64); with `copyFrom` the files the manifest names that `files`
+leaves out are copied from that installed theme's folder at the same paths, which is how a tuned copy
+of a built-in theme keeps its fonts. The folder is written beside the others, checked as a plugin folder
+(the schema, the assets and their limits), and only then put in place: when the check fails the answer
+is `invalid_params` with the problems and nothing changes. A save replaces an earlier user theme of
+the same id whole; an id a built-in or any other plugin holds is `already_exists`. `theme.import`
+installs a `.desk-theme` bundle (`ThemeBundle`: `format: "desk-theme/1"`, the `manifest`, and
+`files` by path, base64; 16 MiB at most) given inline (`bundle`), as a file (`path`), or by `url`:
+`https` only, downloaded by the core with no redirect to another host and refused unless its bytes
+match `sha256`. A bundle whose id is outside `local.` and `market.` lands as `local.<its name as a
+slug>`; the rest is as `theme.save`. `theme.export` makes a bundle of any installed theme, built-in
+ones too: with `inline: true` it is the answer, otherwise it is written to `path` or to
+`<Downloads>/<id>.desk-theme` (`<id>-2.desk-theme` and on when that is taken) and the answer is the
+file's absolute path. The same theme exports to the same bytes, and a bundle imported and exported
+again comes back byte for byte. `theme.remove` deletes a user theme's folder (`local.` and `market.`
+ids only; any other plugin is `invalid_params`, an id nothing holds `not_found`). A desk that keeps no
+user themes folder (the browser stub) answers `unsupported` to `theme.save`, `theme.import` and
+`theme.remove`.
 
 ## Vectors
 

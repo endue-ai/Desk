@@ -1,0 +1,191 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://endue.ai/specs/bridge/v0/theme.schema.json",
+  "title": "Desk bridge v0: theme",
+  "description": "The person's own themes (ADR 0058). A user theme is a theme plugin in the desk's user themes folder, one folder per theme, installed like any plugin but not built in: theme.save writes one, theme.import installs a .desk-theme bundle (specs/plugin ThemeBundle), theme.export writes any installed theme as one, and theme.remove deletes a user theme. Every call needs theme:manage; each change reaches plugin:manage holders as plugin.changed. Which theme is in force stays with the setting desk.theme.active.",
+  "$defs": {
+    "ThemeSaveFile": {
+      "description": "One of the theme's font or image files, given inline.",
+      "type": "object",
+      "properties": {
+        "path": { "$ref": "../../plugin/v0/theme.schema.json#/$defs/ThemeAssetPath" },
+        "base64": { "$ref": "../../plugin/v0/theme.schema.json#/$defs/ThemeAssetData" }
+      },
+      "required": ["path", "base64"],
+      "additionalProperties": false
+    },
+    "ThemeBundleUrl": {
+      "description": "An https URL of a .desk-theme file. Plain http, and a redirect to another host, are refused.",
+      "type": "string",
+      "pattern": "^https://[^\\s]+$",
+      "maxLength": 2048
+    },
+    "ThemeSha256": {
+      "description": "The sha256 of a file's bytes, lowercase hex.",
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "ThemeSaveRequest": {
+      "description": "Save a theme as the person's own: write its folder in the user themes folder, check it as a theme plugin, then install it. It replaces an earlier user theme of the same id whole; when the check fails nothing is written and the earlier one stays. An id a built-in or any other plugin holds is already_exists.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "theme.save" },
+        "params": { "$ref": "#/$defs/ThemeSaveParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "ThemeSaveParams": {
+      "description": "Parameters of theme.save.",
+      "type": "object",
+      "properties": {
+        "manifest": {
+          "description": "The theme's plugin.json: kind theme, with an id inside local. (for example local.my-paper).",
+          "$ref": "../../plugin/v0/plugin.schema.json#/$defs/PluginManifest",
+          "type": "object",
+          "properties": {
+            "id": { "type": "string", "pattern": "^local\\." },
+            "kind": { "const": "theme" }
+          },
+          "required": ["id", "kind"]
+        },
+        "files": {
+          "description": "Font and image files the theme block names, each path once. With the ones copyFrom brings they are the theme folder's only files besides plugin.json.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/ThemeSaveFile" },
+          "maxItems": 10
+        },
+        "copyFrom": {
+          "description": "An installed theme (built-in, market or local) to copy files from: every font and backdrop image the saved theme block names that files does not give and that exists at the same path in that theme's folder. How a tuned copy keeps the fonts and images of the theme it started from. One that is not an installed theme is not_found.",
+          "$ref": "../../plugin/v0/plugin.schema.json#/$defs/PluginId"
+        },
+        "scope": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/ThemeManagePermission" }
+      },
+      "required": ["manifest", "scope"],
+      "additionalProperties": false
+    },
+    "ThemeSaveResult": {
+      "description": "Result of theme.save: the theme as installed.",
+      "type": "object",
+      "properties": { "plugin": { "$ref": "plugins.schema.json#/$defs/PluginInfo" } },
+      "required": ["plugin"],
+      "additionalProperties": false
+    },
+    "ThemeImportRequest": {
+      "description": "Install a .desk-theme bundle as a user theme: given inline, read from a file, or downloaded over https and checked against its sha256 (a mismatch is invalid_params and nothing lands). A bundle whose id is outside local. and market. lands as local.<its name as a slug>. It is checked and replaces an earlier user theme of its id as theme.save does.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "theme.import" },
+        "params": { "$ref": "#/$defs/ThemeImportParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "ThemeImportParams": {
+      "description": "Parameters of theme.import: exactly one of bundle, path and url, and sha256 with url.",
+      "type": "object",
+      "properties": {
+        "bundle": { "$ref": "../../plugin/v0/theme.schema.json#/$defs/ThemeBundle" },
+        "path": {
+          "description": "A .desk-theme file to read.",
+          "$ref": "bridge.schema.json#/$defs/Path"
+        },
+        "url": { "$ref": "#/$defs/ThemeBundleUrl" },
+        "sha256": { "$ref": "#/$defs/ThemeSha256" },
+        "scope": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/ThemeManagePermission" }
+      },
+      "required": ["scope"],
+      "additionalProperties": false,
+      "anyOf": [
+        { "properties": { "bundle": true }, "required": ["bundle"] },
+        { "properties": { "path": true }, "required": ["path"] },
+        { "properties": { "url": true }, "required": ["url"] }
+      ],
+      "not": {
+        "anyOf": [
+          { "properties": { "bundle": true, "path": true }, "required": ["bundle", "path"] },
+          { "properties": { "bundle": true, "url": true }, "required": ["bundle", "url"] },
+          { "properties": { "path": true, "url": true }, "required": ["path", "url"] }
+        ]
+      },
+      "dependentRequired": { "url": ["sha256"], "sha256": ["url"] }
+    },
+    "ThemeImportResult": {
+      "description": "Result of theme.import: the theme as installed, under the id it landed with.",
+      "type": "object",
+      "properties": { "plugin": { "$ref": "plugins.schema.json#/$defs/PluginInfo" } },
+      "required": ["plugin"],
+      "additionalProperties": false
+    },
+    "ThemeExportRequest": {
+      "description": "Make a .desk-theme bundle of any installed theme, built-in ones too: its plugin.json and the font and image files its theme block names. Returned with inline; otherwise written to path, or to <Downloads>/<id>.desk-theme (<id>-2.desk-theme and on when that is taken), and the file's path returned.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "theme.export" },
+        "params": { "$ref": "#/$defs/ThemeExportParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "ThemeExportParams": {
+      "description": "Parameters of theme.export. inline: true takes no path.",
+      "type": "object",
+      "properties": {
+        "theme": { "$ref": "../../plugin/v0/plugin.schema.json#/$defs/PluginId" },
+        "path": {
+          "description": "Where to write the bundle; an existing file there is replaced.",
+          "$ref": "bridge.schema.json#/$defs/Path"
+        },
+        "inline": { "description": "Return the bundle instead of writing it.", "type": "boolean" },
+        "scope": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/ThemeManagePermission" }
+      },
+      "required": ["theme", "scope"],
+      "additionalProperties": false,
+      "if": { "properties": { "inline": { "const": true } }, "required": ["inline"] },
+      "then": { "not": { "properties": { "path": true }, "required": ["path"] } }
+    },
+    "ThemeExportResult": {
+      "description": "Result of theme.export: the bundle with inline, otherwise the file written.",
+      "type": "object",
+      "properties": {
+        "path": { "description": "The file written, as an absolute path.", "type": "string" },
+        "bundle": { "$ref": "../../plugin/v0/theme.schema.json#/$defs/ThemeBundle" }
+      },
+      "additionalProperties": false,
+      "anyOf": [
+        { "properties": { "path": true }, "required": ["path"] },
+        { "properties": { "bundle": true }, "required": ["bundle"] }
+      ]
+    },
+    "ThemeRemoveRequest": {
+      "description": "Remove a user theme: its folder goes and plugin.changed says removed. Only themes in the user themes folder (local. and market. ids); any other plugin is invalid_params, an id nothing holds not_found. A removed theme that desk.theme.active names leaves the desk's own theme in force.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "theme.remove" },
+        "params": { "$ref": "#/$defs/ThemeRemoveParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "ThemeRemoveParams": {
+      "description": "Parameters of theme.remove.",
+      "type": "object",
+      "properties": {
+        "theme": { "$ref": "../../plugin/v0/plugin.schema.json#/$defs/PluginId" },
+        "scope": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/ThemeManagePermission" }
+      },
+      "required": ["theme", "scope"],
+      "additionalProperties": false
+    },
+    "ThemeRemoveResult": {
+      "description": "Result of theme.remove.",
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    }
+  }
+}

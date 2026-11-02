@@ -93,7 +93,11 @@
         { "$ref": "update.schema.json#/$defs/UpdateStatusRequest" },
         { "$ref": "update.schema.json#/$defs/UpdateCheckRequest" },
         { "$ref": "update.schema.json#/$defs/UpdateDownloadRequest" },
-        { "$ref": "update.schema.json#/$defs/UpdateApplyRequest" }
+        { "$ref": "update.schema.json#/$defs/UpdateApplyRequest" },
+        { "$ref": "theme.schema.json#/$defs/ThemeSaveRequest" },
+        { "$ref": "theme.schema.json#/$defs/ThemeImportRequest" },
+        { "$ref": "theme.schema.json#/$defs/ThemeExportRequest" },
+        { "$ref": "theme.schema.json#/$defs/ThemeRemoveRequest" }
       ]
     },
     "BridgeResponse": {

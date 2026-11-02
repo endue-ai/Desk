@@ -210,7 +210,8 @@ export type Permission =
   | ConnectorManagePermission
   | ViewManagePermission
   | ShellOpenPermission
-  | UpdateManagePermission;
+  | UpdateManagePermission
+  | ThemeManagePermission;
 
 /** Search explicitly published plugin documents and installed plugin launchers. */
 export interface SearchReadPermission {
@@ -348,6 +349,11 @@ export interface UpdateManagePermission {
   permission: "update:manage";
 }
 
+/** Keep the person's own themes with theme.*: save a theme into the desk's user themes folder, import a .desk-theme bundle, export any installed theme as one, and remove a user theme. The desk grants it to the runtime and the CLI only. */
+export interface ThemeManagePermission {
+  permission: "theme:manage";
+}
+
 /** A URL scheme shell.open hands to the system: the browser for http and https, the mail app for mailto. */
 export type ShellScheme = "http" | "https" | "mailto";
 
@@ -459,6 +465,22 @@ export interface ThemePackage {
   light?: ThemeVariant;
   dark?: ThemeVariant;
 }
+
+/** A theme as one file, a .desk-theme: JSON, 16 MiB at most, holding the theme's plugin.json and the font and image files its theme block names, base64. theme.export writes one and theme.import reads one; the desk checks it as a theme plugin folder before it lands. */
+export interface ThemeBundle {
+  /** The bundle format and its version. */
+  format: "desk-theme/1";
+  /** The theme's plugin.json: a plugin of kind theme. */
+  manifest: PluginManifest;
+  /** The theme's font and image files by their path in its folder, each base64. Only the paths its theme block names. */
+  files: Record<string, ThemeAssetData>;
+}
+
+/** A theme's font (.woff2) or image (.png, .jpg, .jpeg or .webp) file relative to its folder, without .. segments. */
+export type ThemeAssetPath = string;
+
+/** One asset file's bytes in padded base64 (RFC 4648): 2 MiB of bytes at most. */
+export type ThemeAssetData = string;
 
 /** Where a theme came from: the sentence it was described with, and the theme it started from. */
 export interface ThemeOrigin {
@@ -1440,7 +1462,11 @@ export type BridgeRequest =
   | UpdateStatusRequest
   | UpdateCheckRequest
   | UpdateDownloadRequest
-  | UpdateApplyRequest;
+  | UpdateApplyRequest
+  | ThemeSaveRequest
+  | ThemeImportRequest
+  | ThemeExportRequest
+  | ThemeRemoveRequest;
 
 /** The answer to one request: a result, or an error. */
 export type BridgeResponse = BridgeSuccess | BridgeFailure;
@@ -2700,6 +2726,103 @@ export interface StoreSetParams {
 /** Result of store.set. */
 export type StoreSetResult = Record<string, never>;
 
+/** One of the theme's font or image files, given inline. */
+export interface ThemeSaveFile {
+  path: ThemeAssetPath;
+  base64: ThemeAssetData;
+}
+
+/** An https URL of a .desk-theme file. Plain http, and a redirect to another host, are refused. */
+export type ThemeBundleUrl = string;
+
+/** The sha256 of a file's bytes, lowercase hex. */
+export type ThemeSha256 = string;
+
+/** Save a theme as the person's own: write its folder in the user themes folder, check it as a theme plugin, then install it. It replaces an earlier user theme of the same id whole; when the check fails nothing is written and the earlier one stays. An id a built-in or any other plugin holds is already_exists. */
+export interface ThemeSaveRequest {
+  id: RequestId;
+  method: "theme.save";
+  params: ThemeSaveParams;
+}
+
+/** Parameters of theme.save. */
+export interface ThemeSaveParams {
+  /** The theme's plugin.json: kind theme, with an id inside local. (for example local.my-paper). */
+  manifest: PluginManifest;
+  /** Font and image files the theme block names, each path once. With the ones copyFrom brings they are the theme folder's only files besides plugin.json. */
+  files?: ThemeSaveFile[];
+  /** An installed theme (built-in, market or local) to copy files from: every font and backdrop image the saved theme block names that files does not give and that exists at the same path in that theme's folder. How a tuned copy keeps the fonts and images of the theme it started from. One that is not an installed theme is not_found. */
+  copyFrom?: PluginId;
+  scope: ThemeManagePermission;
+}
+
+/** Result of theme.save: the theme as installed. */
+export interface ThemeSaveResult {
+  plugin: PluginInfo;
+}
+
+/** Install a .desk-theme bundle as a user theme: given inline, read from a file, or downloaded over https and checked against its sha256 (a mismatch is invalid_params and nothing lands). A bundle whose id is outside local. and market. lands as local.<its name as a slug>. It is checked and replaces an earlier user theme of its id as theme.save does. */
+export interface ThemeImportRequest {
+  id: RequestId;
+  method: "theme.import";
+  params: ThemeImportParams;
+}
+
+/** Parameters of theme.import: exactly one of bundle, path and url, and sha256 with url. */
+export interface ThemeImportParams {
+  bundle?: ThemeBundle;
+  /** A .desk-theme file to read. */
+  path?: Path;
+  url?: ThemeBundleUrl;
+  sha256?: ThemeSha256;
+  scope: ThemeManagePermission;
+}
+
+/** Result of theme.import: the theme as installed, under the id it landed with. */
+export interface ThemeImportResult {
+  plugin: PluginInfo;
+}
+
+/** Make a .desk-theme bundle of any installed theme, built-in ones too: its plugin.json and the font and image files its theme block names. Returned with inline; otherwise written to path, or to <Downloads>/<id>.desk-theme (<id>-2.desk-theme and on when that is taken), and the file's path returned. */
+export interface ThemeExportRequest {
+  id: RequestId;
+  method: "theme.export";
+  params: ThemeExportParams;
+}
+
+/** Parameters of theme.export. inline: true takes no path. */
+export interface ThemeExportParams {
+  theme: PluginId;
+  /** Where to write the bundle; an existing file there is replaced. */
+  path?: Path;
+  /** Return the bundle instead of writing it. */
+  inline?: boolean;
+  scope: ThemeManagePermission;
+}
+
+/** Result of theme.export: the bundle with inline, otherwise the file written. */
+export interface ThemeExportResult {
+  /** The file written, as an absolute path. */
+  path?: string;
+  bundle?: ThemeBundle;
+}
+
+/** Remove a user theme: its folder goes and plugin.changed says removed. Only themes in the user themes folder (local. and market. ids); any other plugin is invalid_params, an id nothing holds not_found. A removed theme that desk.theme.active names leaves the desk's own theme in force. */
+export interface ThemeRemoveRequest {
+  id: RequestId;
+  method: "theme.remove";
+  params: ThemeRemoveParams;
+}
+
+/** Parameters of theme.remove. */
+export interface ThemeRemoveParams {
+  theme: PluginId;
+  scope: ThemeManagePermission;
+}
+
+/** Result of theme.remove. */
+export type ThemeRemoveResult = Record<string, never>;
+
 /** Open one of the surfaces the caller's manifest declares; the runtime hears ui.surface.opened. */
 export interface UiSurfaceOpenRequest {
   id: RequestId;
@@ -3079,6 +3202,10 @@ export interface BridgeMethodMap {
   "update.check": { params: UpdateParams; result: UpdateCheckResult };
   "update.download": { params: UpdateParams; result: UpdateDownloadResult };
   "update.apply": { params: UpdateParams; result: UpdateApplyResult };
+  "theme.save": { params: ThemeSaveParams; result: ThemeSaveResult };
+  "theme.import": { params: ThemeImportParams; result: ThemeImportResult };
+  "theme.export": { params: ThemeExportParams; result: ThemeExportResult };
+  "theme.remove": { params: ThemeRemoveParams; result: ThemeRemoveResult };
 }
 
 /** A bridge method name. */
@@ -3151,4 +3278,8 @@ export const BRIDGE_METHODS = [
   "update.check",
   "update.download",
   "update.apply",
+  "theme.save",
+  "theme.import",
+  "theme.export",
+  "theme.remove",
 ] as const satisfies readonly BridgeMethod[];

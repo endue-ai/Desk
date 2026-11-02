@@ -28,7 +28,8 @@
         { "$ref": "#/$defs/ConnectorManagePermission" },
         { "$ref": "#/$defs/ViewManagePermission" },
         { "$ref": "#/$defs/ShellOpenPermission" },
-        { "$ref": "#/$defs/UpdateManagePermission" }
+        { "$ref": "#/$defs/UpdateManagePermission" },
+        { "$ref": "#/$defs/ThemeManagePermission" }
       ]
     },
     "SearchReadPermission": {
@@ -300,6 +301,13 @@
       "description": "See and drive the desk's own updates with update.*: the status, a check, a download, and applying a staged build, which restarts the desk. Receive update.changed. The desk grants it to the runtime and the CLI only; applying stays with the person.",
       "type": "object",
       "properties": { "permission": { "const": "update:manage" } },
+      "required": ["permission"],
+      "additionalProperties": false
+    },
+    "ThemeManagePermission": {
+      "description": "Keep the person's own themes with theme.*: save a theme into the desk's user themes folder, import a .desk-theme bundle, export any installed theme as one, and remove a user theme. The desk grants it to the runtime and the CLI only.",
+      "type": "object",
+      "properties": { "permission": { "const": "theme:manage" } },
       "required": ["permission"],
       "additionalProperties": false
     },
