@@ -28,7 +28,7 @@ import { installNotify } from "./policies/notify";
 import { installPalette } from "./policies/palette";
 import { installProfiles } from "./policies/profiles";
 import { installSession, type SessionPart } from "./policies/session";
-import { installTheme } from "./policies/theme";
+import { installTheme, type RuntimeThemes } from "./policies/theme";
 import type { PolicySet } from "./policy";
 import type { Settings } from "./settings";
 import { SurfaceHost, type SurfaceSpec } from "./surfaces";
@@ -106,6 +106,8 @@ export interface Runtime {
   notify(input: NoticeInput): Notice;
   /** The theme in force. */
   theme(): ThemeState;
+  /** The theme system: installed themes, the one in force, preview and apply (ADR 0056). */
+  readonly themes: RuntimeThemes;
   openSurface(spec: SurfaceSpec): void;
   closeSurface(id: string): void;
   moveSurface(id: string, cell: Cell): void;
@@ -257,6 +259,15 @@ export function createRuntime(options: RuntimeOptions): Runtime {
     },
     onChange: (listener) => settings.onChange((keys) => keys.includes(PERSONAL_KEYS) && listener()),
   });
+  // The theme the person chose comes back with the session too.
+  session.keep("theme", {
+    save: () => settings.layer("session")["desk.theme.active"] ?? null,
+    restore: (value) => {
+      if (typeof value === "string") settings.set("desk.theme.active", value);
+    },
+    onChange: (listener) =>
+      settings.onChange((changed) => changed.includes("desk.theme.active") && listener()),
+  });
   keys.onQuit(() => notify.notifications.dismiss());
   keys.onQuit(() => {
     if (commands.has("desk.palette.cancel"))
@@ -386,6 +397,7 @@ export function createRuntime(options: RuntimeOptions): Runtime {
     policy: () => hub.policy,
     notify: (input) => notify.notify(input),
     theme: () => theme.state(),
+    themes: theme,
     openSurface,
     closeSurface,
     moveSurface(id, cell) {

@@ -1,0 +1,15 @@
+{
+  "target": "BridgeRequest",
+  "description": "market names the index a url came from",
+  "instance": {
+    "id": 97,
+    "method": "theme.import",
+    "params": {
+      "path": "~/Downloads/paper-dusk.desk-theme",
+      "market": "https://raw.githubusercontent.com/endue-ai/Desk/main/market/themes/index.json",
+      "scope": {
+        "permission": "theme:manage"
+      }
+    }
+  }
+}

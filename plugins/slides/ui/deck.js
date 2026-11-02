@@ -96,7 +96,7 @@ export const runOf = (text, props = {}) => ({
   italic: false,
   underline: false,
   strike: false,
-  color: "#000000",
+  color: "#000000", // theme: content
   font: "",
   baseline: 0,
   ...props,

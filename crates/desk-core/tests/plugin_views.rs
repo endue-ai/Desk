@@ -4,14 +4,15 @@
 
 mod layer;
 
+use std::collections::BTreeSet;
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use desk_bridge::ErrorCode;
 use layer::views::{
-    call, changed, file, get, ids, list, next_changes, plugin, rewrite_manifest, set, set_enabled,
-    to_desk, view, write_file, yaml,
+    call, changed, file, get, ids, list, plugin, rewrite_manifest, set, set_enabled, to_desk, view,
+    write_file, yaml,
 };
 use layer::{Desk, temp, view_manage};
 use serde_json::{Value, json};
@@ -208,11 +209,11 @@ fn installing_or_reloading_a_view_plugin_announces_its_views() {
     let saved = [("example.board", "saved"), ("example.week", "saved")];
     assert_eq!(changed(&desk), to_desk(&saved));
 
+    // The OS watch is in place once watch_plugins returns: nothing to wait for.
     let _watcher = desk
         .core
         .watch_plugins()
         .expect("the plugin watcher starts");
-    std::thread::sleep(Duration::from_millis(200));
     let views = json!(["views/board.yaml", "views/month.yaml"]);
     let manifest =
         json!({ "id": "example.boards", "version": "0.1.0", "kind": "view", "views": views });
@@ -222,13 +223,42 @@ fn installing_or_reloading_a_view_plugin_announces_its_views() {
         ("example.month", "saved"),
         ("example.week", "removed"),
     ];
-    assert_eq!(next_changes(&desk, 3), set(&reloaded));
+    reload_announces(&desk, &saved, &reloaded);
     assert_eq!(ids(&desk), ["example.board", "example.month"]);
 
     rewrite_manifest(&dir, "{ \"id\": \"example.boards\", ");
+    let saved = [("example.board", "saved"), ("example.month", "saved")];
     let failed = [("example.board", "removed"), ("example.month", "removed")];
-    assert_eq!(next_changes(&desk, 2), set(&failed));
+    reload_announces(&desk, &saved, &failed);
     assert_eq!(ids(&desk), Vec::<String>::new());
+}
+
+/// Wait for the reload of example.boards that announces `changes`; each reload is a plugin.changed
+/// and then its view.changed. The watcher reloads on any file event in the folder, so a write that
+/// landed before the watch, or the staged manifest when its rename comes late, can reload the
+/// plugin as it was: that reload announces `unchanged` again and is let through. Any other
+/// announcement, or a view.changed outside a reload, fails.
+fn reload_announces(desk: &Desk, unchanged: &[(&str, &str)], changes: &[(&str, &str)]) {
+    let (unchanged, changes) = (set(unchanged), set(changes));
+    let deadline = Instant::now() + Duration::from_secs(10);
+    let mut reload: Option<BTreeSet<(String, String, String)>> = None;
+    while reload.as_ref() != Some(&changes) {
+        let left = deadline.saturating_duration_since(Instant::now());
+        let delivery = desk.seen.recv_timeout(left).unwrap_or_else(|_| {
+            panic!("no reload announced {changes:?} within 10 s; the last one: {reload:?}")
+        });
+        let to = delivery.to.unwrap_or_default().join(",");
+        let event = serde_json::to_value(delivery.event).unwrap();
+        let (data, text) = (&event["data"], |v: &Value| v.as_str().unwrap().to_owned());
+        if event["event"] == "plugin.changed" && data["plugin"] == "example.boards" {
+            if let Some(earlier) = reload.replace(BTreeSet::new()) {
+                assert_eq!(earlier, unchanged, "a reload before the change");
+            }
+        } else if event["event"] == "view.changed" {
+            let reload = reload.as_mut().expect("a view.changed outside a reload");
+            reload.insert((to, text(&data["id"]), text(&data["change"])));
+        }
+    }
 }
 
 #[test]

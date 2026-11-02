@@ -1,9 +1,14 @@
 body {
   color-scheme: dark;
   margin: 0;
-  background: #1e1d21;
-  color: #b0adb7;
-  font: 13px/1.5 -apple-system, "SUIT", "Inter", system-ui, sans-serif;
+  background: var(--desk-card);
+  color: var(--desk-text-muted);
+  font: calc(var(--desk-text-sm) - 1px)/1.5 var(--desk-font-sans);
+}
+
+/* Scroll bars and controls follow the theme's scheme (the SDK sets data-scheme on the root). */
+[data-scheme="light"] body {
+  color-scheme: light;
 }
 
 #root {
@@ -30,6 +35,34 @@ body {
   height: 80px;
 }
 
+/* In the light scheme her pose, frost art drawn for a dark desk, sits on her night as the orb does
+   in soul-text.css: one halo behind her body, one behind Dysnomia, solid past their lines. The
+   padding is a quarter of the image on each side and the halos are in percent of that box, so the
+   small layout below keeps them. In the state images her centre is at 50% 51.45% of the box and her
+   lines reach 28.2% from it; Dysnomia's facets reach 3.7% from her centre, which moves with the
+   pose. */
+[data-scheme="light"] #pose img {
+  box-sizing: content-box;
+  padding: 20px;
+  margin: -20px;
+  background-image:
+    radial-gradient(ellipse 11% 11% at 74.64% 71.01%, var(--eris-night) 50%, transparent 100%),
+    radial-gradient(ellipse 35% 35% at 50% 51.45%, var(--eris-night) 82%, transparent 100%);
+}
+
+/* Thinking, Dysnomia orbits to her upper left; oops, she sinks a little. */
+[data-scheme="light"] #pose[data-state="thinking"] img {
+  background-image:
+    radial-gradient(ellipse 11% 11% at 27.54% 29.71%, var(--eris-night) 50%, transparent 100%),
+    radial-gradient(ellipse 35% 35% at 50% 51.45%, var(--eris-night) 82%, transparent 100%);
+}
+
+[data-scheme="light"] #pose[data-state="oops"] img {
+  background-image:
+    radial-gradient(ellipse 11% 11% at 74.64% 73.19%, var(--eris-night) 50%, transparent 100%),
+    radial-gradient(ellipse 35% 35% at 50% 51.45%, var(--eris-night) 82%, transparent 100%);
+}
+
 #conversation {
   grid-row: 2;
   min-width: 0;
@@ -44,28 +77,28 @@ body {
 #conversation article {
   margin: 8px 0;
   padding: 10px 12px;
-  border-radius: 10px;
-  background: #26252a;
+  border-radius: var(--desk-radius-lg);
+  background: var(--desk-muted);
 }
 
 #conversation article[data-role="user"] {
-  border-left: 2px solid #e8c98a;
+  border-left: 2px solid var(--desk-chart-3);
 }
 
 #conversation strong {
-  color: #f2f0f5;
-  font-size: 11px;
+  color: var(--desk-text);
+  font-size: var(--desk-text-2xs);
 }
 
 #conversation p {
   margin: 4px 0 0;
   white-space: pre-wrap;
   user-select: text;
-  color: #e3e0e9;
+  color: var(--desk-text);
 }
 
 #conversation small {
-  color: #b0adb7;
+  color: var(--desk-text-muted);
 }
 
 /* The answer under Eris: soul text at panel size. A long one scrolls; the form below never moves. */
@@ -75,7 +108,7 @@ body {
   min-height: 0;
   max-height: 72px;
   overflow-y: auto;
-  font-size: 16px;
+  font-size: var(--desk-text-base);
 }
 
 #answer .wrap {
@@ -96,25 +129,25 @@ body {
 .say input {
   min-width: 0;
   padding: 8px 10px;
-  border: 1px solid #3a3840;
-  border-radius: 8px;
-  background: #26252a;
-  color: #f2f0f5;
+  border: 1px solid var(--desk-input);
+  border-radius: var(--desk-radius-md);
+  background: var(--desk-muted);
+  color: var(--desk-text);
   font: inherit;
 }
 
 .say :focus-visible,
 #conversation:focus-visible {
-  outline: 2px solid #e8c98a;
+  outline: 2px solid var(--desk-ring);
   outline-offset: 1px;
 }
 
 .send {
   padding: 8px 14px;
   border: 0;
-  border-radius: 8px;
-  background: #f2f0f5;
-  color: #1e1d21;
+  border-radius: var(--desk-radius-md);
+  background: var(--desk-primary);
+  color: var(--desk-primary-foreground);
   font: inherit;
   font-weight: 600;
 }
@@ -129,7 +162,7 @@ body {
   padding: 4px 0;
   border: 0;
   background: transparent;
-  color: #e8c98a;
+  color: var(--desk-primary-text);
   font: inherit;
   cursor: pointer;
 }
@@ -143,8 +176,8 @@ body {
 #attachment {
   min-width: 0;
   padding: 8px;
-  border: 1px solid #3a3840;
-  border-radius: 8px;
+  border: 1px solid var(--desk-border);
+  border-radius: var(--desk-radius-md);
 }
 
 #attachment summary {
@@ -157,13 +190,13 @@ body {
   overflow: auto;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-  font: 11px/1.5 monospace;
+  font: var(--desk-text-2xs)/1.5 var(--desk-font-mono);
   margin: 6px 0;
 }
 
 #context-notice {
   margin: 0;
-  font-size: 11px;
+  font-size: var(--desk-text-2xs);
 }
 
 #context-notice:empty {
@@ -174,6 +207,7 @@ body {
 @media (max-height: 450px) {
   #root { padding: 0 8px 8px; }
   #pose img { width: 32px; height: 32px; }
+  [data-scheme="light"] #pose img { padding: 8px; margin: -8px; }
   #pose figcaption, #answer.cap { display: none; }
   .say { max-height: 65vh; overflow-y: auto; margin-top: 4px; gap: 4px; }
   #say-text, .send { grid-row: 1; }
@@ -193,8 +227,8 @@ body {
   position: absolute;
   left: 50%;
   max-width: 90%;
-  color: #f2f0f5;
-  font-size: 16px;
+  color: var(--desk-text);
+  font-size: var(--desk-text-base);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;

@@ -1,0 +1,26 @@
+{
+  "target": "ThemeMarketFetchResult",
+  "description": "the checked bundle, not installed",
+  "instance": {
+    "bundle": {
+      "format": "desk-theme/1",
+      "manifest": {
+        "id": "market.paper-dusk",
+        "name": "Paper Dusk",
+        "version": "1.0.0",
+        "kind": "theme",
+        "theme": {
+          "author": "Team endue",
+          "license": "CC0-1.0",
+          "light": {
+            "colors": {
+              "background": "#f4ecdd",
+              "primary": "#8a4b2a"
+            }
+          }
+        }
+      },
+      "files": {}
+    }
+  }
+}

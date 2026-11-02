@@ -1,0 +1,22 @@
+{
+  "target": "ThemeBundle",
+  "description": "a bundle of a theme with a palette only and no files",
+  "instance": {
+    "format": "desk-theme/1",
+    "manifest": {
+      "id": "example.ember",
+      "name": "Ember",
+      "version": "0.1.0",
+      "kind": "theme",
+      "theme": {
+        "dark": {
+          "colors": {
+            "background": "#1a1210",
+            "primary": "#ff8a4c"
+          }
+        }
+      }
+    },
+    "files": {}
+  }
+}

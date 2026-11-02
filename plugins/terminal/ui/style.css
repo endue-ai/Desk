@@ -1,14 +1,5 @@
-/* The desk's design tokens (@endue-ai/ui). Frames do not inherit the desk's, so they are declared here;
-   the desk overrides them with the theme in force. */
-:root {
-  --desk-background: #141416;
-  --desk-card: #1e1d21;
-  --desk-border: #333136;
-  --desk-text: #f2f0f5;
-  --desk-text-muted: #b0adb7;
-  --desk-accent: #b6a3f5;
-}
-
+/* Every colour, font, size and radius is a --desk-* token: /_desk/tokens.css declares the defaults and
+   the desk applies the theme in force over them. xterm draws the terminal itself from theme.js. */
 html,
 body {
   height: 100%;
@@ -21,7 +12,7 @@ body {
   margin: 0;
   background: var(--desk-background);
   color: var(--desk-text);
-  font: 13px/1.4 -apple-system, "SUIT", "Inter", system-ui, sans-serif;
+  font: calc(var(--desk-text-sm) - 1px) / 1.4 var(--desk-font-sans);
 }
 
 #tabs {
@@ -37,7 +28,7 @@ body {
 .tab {
   display: flex;
   align-items: center;
-  border-radius: 6px 6px 0 0;
+  border-radius: calc(var(--desk-radius-md) - 2px) calc(var(--desk-radius-md) - 2px) 0 0;
   color: var(--desk-text-muted);
 }
 
@@ -90,7 +81,7 @@ body {
   margin: 0;
   padding: 2px 8px;
   color: var(--desk-text-muted);
-  font-size: 12px;
+  font-size: var(--desk-text-xs);
 }
 
 #status:empty {

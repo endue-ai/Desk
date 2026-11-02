@@ -18,6 +18,14 @@ A turn streams `turn.started`, any number of `text.delta`, then `turn.completed`
 When the brain needs a tool it sends `tool.call` and completes with `stopReason: tool_call`; Desk runs
 the tool and posts the result to `submitToolResult`, which streams the rest of the turn.
 
+`createTurn` may offer `tools` for that turn (`ToolDefinition`: `name`, `description`, and `schema`, a
+JSON Schema of the arguments whose type is object) and say with `toolChoice` whether the brain must call
+one: `auto` (the default: a tool or text), `required` (one of them) or `tool` with its `name`. A
+`toolChoice` without `tools`, or naming a tool the turn does not offer, is `invalid_request`. A brain that
+does not know tools answers in text. Desk's `brain.ask` sends one tool with `toolChoice: tool` in a
+session of its own and takes the `tool.call`'s arguments as the answer: it never posts a result, so that
+turn stays at `tool_call` and the session is not used again.
+
 ## Leases
 
 Only the lease holder may send turns or tool results. A lease lasts `ttlSeconds` (5 to 3600) and is

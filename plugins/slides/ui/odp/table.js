@@ -15,7 +15,7 @@ import { readParagraphs } from "./text.js";
 /** "0.03pt solid #000000" as a line, or null. @returns {Line | null} */
 function border(/** @type {string | undefined} */ value) {
   if (!value || value === "none") return null;
-  const color = /#[0-9a-f]{6}/i.exec(value)?.[0] ?? "#000000";
+  const color = /#[0-9a-f]{6}/i.exec(value)?.[0] ?? "#000000"; // theme: content
   const width = length(
     value.split(/\s+/).find((p) => /^[\d.]+[a-z]+$/i.test(p)),
     0.75,

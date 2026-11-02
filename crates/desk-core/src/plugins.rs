@@ -2,12 +2,15 @@
 //! enabled flags, which are persisted in a small JSON store. init.yaml can hold plugins off at
 //! start without touching the persisted flags. A plugin with no stored flag starts on, unless its
 //! manifest says `autoload`: then it is off until the desk turns it on (ADR 0046). A library (files
-//! other plugins import) is always on: no flag or hold turns it off.
+//! other plugins import) is always on: no flag or hold turns it off. Folders the core writes itself
+//! (user themes, ADR 0058) are written beside their place, checked, and only then put in it.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
+use std::hash::{DefaultHasher, Hash, Hasher};
 use std::io;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use desk_bridge::{PluginInfo, PluginKind, PluginManifest, PluginStatus};
 use serde::{Deserialize, Serialize};
@@ -132,6 +135,13 @@ impl PluginRegistry {
         Some(self.info(index))
     }
 
+    /// The installed plugins that are not built in and whose folder is directly in `parent`.
+    pub fn in_folder(&self, parent: &Path) -> Vec<(String, PathBuf)> {
+        let inside = |e: &&Entry| !e.built_in && e.dir.parent() == Some(parent);
+        let entries = self.entries.iter().filter(inside);
+        entries.map(|e| (e.id.clone(), e.dir.clone())).collect()
+    }
+
     /// Every installed plugin folder, for watching.
     pub fn folders(&self) -> Vec<(String, PathBuf)> {
         self.entries
@@ -221,6 +231,147 @@ fn load(dir: &Path) -> (String, Option<PluginManifest>, Option<String>) {
     match validate_dir(dir) {
         Ok(manifest) => (manifest.id.clone(), Some(manifest), None),
         Err(problems) => (declared_id(dir), None, Some(problems.join("; "))),
+    }
+}
+
+/// The sub-folders of `parent` with a plugin.json, in name order, hidden ones (`.name`) left out.
+pub fn plugin_dirs(parent: &Path) -> Vec<PathBuf> {
+    let mut dirs: Vec<PathBuf> = fs::read_dir(parent)
+        .map(|read| read.flatten().map(|entry| entry.path()).collect())
+        .unwrap_or_default();
+    dirs.retain(|dir| folder_in(parent, dir).is_some() && dir.join("plugin.json").is_file());
+    dirs.sort();
+    dirs
+}
+
+/// The folder of `parent` that `path` is in, unless it is hidden (`.name`).
+pub fn folder_in(parent: &Path, path: &Path) -> Option<PathBuf> {
+    let name = path
+        .strip_prefix(parent)
+        .ok()?
+        .components()
+        .next()?
+        .as_os_str();
+    (!name.to_string_lossy().starts_with('.')).then(|| parent.join(name))
+}
+
+/// The id and kind a folder's plugin.json declares, valid or not.
+pub fn declared(dir: &Path) -> Option<(String, String)> {
+    let text = fs::read_to_string(dir.join("plugin.json")).ok()?;
+    let value: serde_json::Value = serde_json::from_str(&text).ok()?;
+    let field = |name: &str| value[name].as_str().map(str::to_owned);
+    Some((field("id")?, field("kind")?))
+}
+
+/// Why a folder did not land: its check found problems, or the disk refused.
+pub enum Landing {
+    Invalid(Vec<String>),
+    Io(io::Error),
+}
+
+/// Write a plugin folder (plugin.json from `manifest`, then `files` by relative path) beside
+/// `target`, check it with `validate_dir`, and only then put it in place of `target`, whose earlier
+/// folder goes. Nothing is left behind when a step fails.
+pub fn land_folder(target: &Path, manifest: &PluginManifest, files: &Files) -> Result<(), Landing> {
+    static COUNTER: AtomicU64 = AtomicU64::new(0);
+    let n = COUNTER.fetch_add(1, Ordering::Relaxed);
+    let parent = target.parent().unwrap_or(target);
+    let name = target.file_name().unwrap_or_default().to_string_lossy();
+    let aside = |what: &str| parent.join(format!(".{what}-{name}-{}-{n}", std::process::id()));
+    let (staging, old) = (aside("saving"), aside("replaced"));
+    let written = write_folder(&staging, manifest, files).map_err(Landing::Io);
+    let landed = written
+        .and_then(|()| validate_dir(&staging).map(drop).map_err(Landing::Invalid))
+        .and_then(|()| replace_folder(&staging, target, &old).map_err(Landing::Io));
+    if landed.is_err() {
+        let _ = fs::remove_dir_all(&staging);
+    }
+    landed
+}
+
+type Files = BTreeMap<String, Vec<u8>>;
+
+fn write_folder(dir: &Path, manifest: &PluginManifest, files: &Files) -> io::Result<()> {
+    fs::create_dir_all(dir)?;
+    let mut text = serde_json::to_string_pretty(manifest).map_err(io::Error::other)?;
+    text.push('\n');
+    fs::write(dir.join("plugin.json"), text)?;
+    for (path, bytes) in files {
+        let leaves = io::Error::new(io::ErrorKind::InvalidInput, "a file leaves the folder");
+        let file = inside(dir, path).ok_or(leaves)?;
+        fs::create_dir_all(file.parent().unwrap_or(dir))?;
+        fs::write(file, bytes)?;
+    }
+    Ok(())
+}
+
+/// Put `staging` where `target` is, moving an earlier folder to `old` first and back on failure.
+fn replace_folder(staging: &Path, target: &Path, old: &Path) -> io::Result<()> {
+    let had = target.exists();
+    if had {
+        fs::rename(target, old)?;
+    }
+    if let Err(why) = fs::rename(staging, target) {
+        if had {
+            let _ = fs::rename(old, target);
+        }
+        return Err(why);
+    }
+    if had {
+        let _ = fs::remove_dir_all(old);
+    }
+    Ok(())
+}
+
+/// What a folder holds as one number, which changes when a file in it is added, removed, resized or
+/// rewritten: how a watcher tells someone's edit from the core's own write.
+pub fn fingerprint(dir: &Path) -> u64 {
+    let (mut folders, mut files) = (vec![dir.to_path_buf()], Vec::new());
+    while let Some(folder) = folders.pop() {
+        for entry in fs::read_dir(&folder).into_iter().flatten().flatten() {
+            match entry.metadata() {
+                Ok(meta) if meta.is_dir() => folders.push(entry.path()),
+                Ok(meta) => files.push((entry.path(), meta.len(), meta.modified().ok())),
+                Err(_) => {}
+            }
+        }
+    }
+    files.sort();
+    let mut hasher = DefaultHasher::new();
+    files.hash(&mut hasher);
+    hasher.finish()
+}
+
+/// The font and image files a theme plugin's block names, each once.
+pub fn theme_files(manifest: &PluginManifest) -> BTreeSet<String> {
+    let Some(theme) = &manifest.theme else {
+        return BTreeSet::new();
+    };
+    let fonts = theme.r#type.iter().flat_map(|t| t.fonts.iter().flatten());
+    let variants = [&theme.light, &theme.dark].into_iter().flatten();
+    let images = variants.filter_map(|v| v.backdrop.as_ref()?.image.clone());
+    fonts.map(|font| font.src.clone()).chain(images).collect()
+}
+
+/// An id inside `local.` from a name, else from `id`'s last part: `Paper & Ink` is `local.paper-ink`.
+pub fn local_id(name: &str, id: &str) -> String {
+    let clean = |text: &str| {
+        let words = text.split(|c: char| !c.is_ascii_alphanumeric());
+        let words: Vec<&str> = words.filter(|word| !word.is_empty()).collect();
+        let slug: String = words
+            .join("-")
+            .to_ascii_lowercase()
+            .chars()
+            .take(64)
+            .collect();
+        slug.trim_end_matches('-').to_owned()
+    };
+    let slug = Some(clean(name)).filter(|slug| !slug.is_empty());
+    let slug = slug.unwrap_or_else(|| clean(id.rsplit('.').next().unwrap_or_default()));
+    match slug.chars().next() {
+        None => "local.theme".to_owned(),
+        Some(c) if c.is_ascii_digit() => format!("local.theme-{slug}"),
+        Some(_) => format!("local.{slug}"),
     }
 }
 
