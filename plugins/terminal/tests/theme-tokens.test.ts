@@ -1,6 +1,6 @@
 // The terminal follows the theme whole (docs/ko/theme-requirements.md TP-05): the sixteen ANSI
 // colours come from the --desk-ansi-* variables a theme sets per scheme, a missing one falls back to
-// the desk's defaults, and the page has no colour, font, size or radius of its own.
+// what the page's tokens.css declares, and the page has no colour, font, size or radius of its own.
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -8,7 +8,7 @@ import { type InstalledTheme, resolveTheme } from "../../../packages/runtime/src
 import { colors, terminal } from "../../../packages/ui/src/tokens";
 import { lintPlugin } from "../../../scripts/ui-lint.mjs";
 import { DEFAULTS } from "../ui/shell.js";
-import { terminalOptions, xtermTheme } from "../ui/theme.js";
+import { THEME_VARIABLES, terminalOptions, xtermTheme } from "../ui/theme.js";
 
 /** xterm's names for the colours of --desk-ansi-0 … --desk-ansi-15. */
 const NAMES = [
@@ -39,9 +39,11 @@ type Contribution = {
   tokens: Record<string, string>;
 };
 
-const deskTheme = JSON.parse(
-  readFileSync(join(import.meta.dirname, "../../theme/plugin.json"), "utf8"),
-) as { contributes: { themes: Contribution[] } };
+const root = join(import.meta.dirname, "../../..");
+const read = (path: string) => readFileSync(join(root, path), "utf8");
+const deskTheme = JSON.parse(read("plugins/theme/plugin.json")) as {
+  contributes: { themes: Contribution[] };
+};
 const themes = deskTheme.contributes.themes;
 const light = themes.find((t) => t.scheme === "light" && (t.contrast ?? "normal") === "normal");
 if (!light) throw new Error("desk.theme has no light contribution");
@@ -106,27 +108,28 @@ describe("the terminal's ANSI colours", () => {
     expect(high.minimumContrastRatio).toBe(7);
   });
 
-  it("fall back one by one to @endue-ai/ui's defaults (dark) and desk.theme's light set", () => {
+  it("fall back one by one to the page's tokens.css, which declares every one of them", () => {
+    expect(read("plugins/terminal/ui/index.html")).toContain('href="/_desk/tokens.css"');
+    const declared = Object.fromEntries(
+      [...read("packages/ui/src/tokens.css").matchAll(/(--desk-[a-z0-9-]+):\s*([^;]+);/g)].map(
+        ([, name, value]) => [name, value?.trim()],
+      ),
+    );
+    expect(THEME_VARIABLES.filter((name) => !declared[name])).toEqual([]);
+    // What main.js reads from the page before the desk's theme arrives.
+    const page = Object.fromEntries(THEME_VARIABLES.map((name) => [name, declared[name] ?? ""]));
+    const defaults: string[] = SIXTEEN.map((i) => terminal[`ansi${i}` as keyof typeof terminal]);
     const some = { "--desk-ansi-1": "#ff0000", "--desk-ansi-2": "" };
-    const fallback = {
-      dark: SIXTEEN.map((i) => terminal[`ansi${i}` as keyof typeof terminal]),
-      light: SIXTEEN.map((i) => light.tokens[`ansi${i}`]),
-    };
     for (const scheme of ["dark", "light"] as const) {
-      const expected = [...fallback[scheme]];
+      const expected = [...defaults];
       expected[1] = "#ff0000";
-      expect(sixteen(xtermTheme(state(scheme, some)))).toEqual(expected);
-      expect(sixteen(xtermTheme(state(scheme)))).toEqual(fallback[scheme]);
+      expect(sixteen(xtermTheme(state(scheme, some), page))).toEqual(expected);
+      expect(sixteen(xtermTheme(state(scheme), page))).toEqual(defaults);
     }
-    expect(xtermTheme(state("dark"))).toMatchObject({
+    expect(xtermTheme(state("dark"), page)).toMatchObject({
       background: colors.background,
       foreground: colors.text,
       cursor: colors.accent,
-    });
-    expect(xtermTheme(state("light"))).toMatchObject({
-      background: light.tokens.background,
-      foreground: light.tokens.text,
-      cursor: light.tokens.accent,
     });
   });
 });
