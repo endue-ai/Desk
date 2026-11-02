@@ -1,0 +1,13 @@
+{
+  "target": "BridgeRequest",
+  "description": "update.status reads the update status under update:manage",
+  "instance": {
+    "id": 40,
+    "method": "update.status",
+    "params": {
+      "scope": {
+        "permission": "update:manage"
+      }
+    }
+  }
+}

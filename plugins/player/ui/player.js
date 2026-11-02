@@ -5,17 +5,16 @@
 import { codeOf, createAccess, nameOf } from "./access.js";
 import { detect, familyByName } from "./format.js";
 import {
-  details,
   findSubtitles,
   HEAD,
   openCues,
   openPlaylist,
   playDecoded,
   playMedia,
-  subtitleCues,
+  showSubtitles,
 } from "./load.js";
 import { modelOf } from "./model.js";
-import { cannot } from "./playable.js";
+import { cancel, capsOf, details, fallBack, SAYINGS } from "./outcome.js";
 import { createResume } from "./resume.js";
 
 /**
@@ -26,8 +25,11 @@ import { createResume } from "./resume.js";
  * @typedef {import("./playlists.js").Entry} ListEntry
  * @typedef {{ title: string, start: number }} Chapter
  * @typedef {{ title: string, detail: string, state: "playing" | "queued" | "remote" | "missing" }} Row
+ * @typedef {import("./route.js").Engine} Engine
  * @typedef {{ path: string, name: string, size: number, url?: string, blob?: string, info?: Info,
- *   problem?: string, format: string, element: "video" | "audio" }} Item
+ *   problem?: string, format: string, element: "video" | "audio", engine?: Engine,
+ *   engines?: Engine[], why?: string }} Item
+ *   engine: what plays it now; engines: the ones to try after it; why: the details' sentence.
  * @typedef {{
  *   buffer: string, path: string, name: string, size: number, format: string,
  *   mode: "loading" | "media" | "details" | "cues", why?: string, message?: string,
@@ -40,12 +42,14 @@ import { createResume } from "./resume.js";
  *   buffer: string, path: string, name: string, size: number, format: string,
  *   mode: Entry["mode"], why?: string, message?: string,
  *   element?: "video" | "audio", src?: string, start?: number, resume?: number,
+ *   engine?: Engine, target?: { path: string, size: number, format: string },
  *   info?: Info, cover?: string, item?: { path: string, name: string }, cues?: Cue[],
  *   subtitles?: { options: { id: string, label: string }[], selected: string, offset: number },
  *   playlist?: { rows: Row[], index: number }, chapters?: Chapter[],
  * }} Model
  * @typedef {{ show(model: Model | null): void, status(text: string): void, focus(): void,
- *   canPlay(type: string): string }} PlayerView
+ *   canPlay(type: string): string, canRemux?(type: string): boolean, software?: boolean }} PlayerView
+ *   canRemux: MSE's isTypeSupported; software: whether the decoder worker can run.
  * @typedef {{
  *   objectUrl(bytes: Uint8Array, type: string): string,
  *   revokeUrl(url: string): void,
@@ -120,24 +124,11 @@ export function createPlayer({ bridge, commands }, view, options) {
   };
 
   /** @type {import("./load.js").Deps} */
-  const deps = { access, canPlay: (type) => view.canPlay(type), options, show: refresh };
+  const deps = { access, caps: capsOf(view), options, show: refresh };
 
   /** Show the chosen subtitles ("" for none). */
-  const choose = async (/** @type {Entry} */ entry, /** @type {string} */ id) => {
-    const subs = entry.subs;
-    if (!subs) return;
-    if (id === "") {
-      subs.selected = "";
-      subs.cues = [];
-      return;
-    }
-    try {
-      subs.cues = await subtitleCues(deps, id);
-      subs.selected = id;
-    } catch (error) {
-      say(text(error));
-    }
-  };
+  const choose = (/** @type {Entry} */ entry, /** @type {string} */ id) =>
+    showSubtitles(deps, entry, id).catch((error) => say(text(error)));
 
   /** Play one item of the entry (its own file, or a playlist entry) and find its subtitles. */
   const play = async (/** @type {Entry} */ entry, /** @type {string} */ path) => {
@@ -248,12 +239,24 @@ export function createPlayer({ bridge, commands }, view, options) {
     };
     if (existing?.watchId) entry.watchId = existing.watchId;
     entries.set(buffer, entry);
+    const before = shown;
+    // A slow read (a large header, a question) shows the file loading, with the progress bar.
+    const slow = setTimeout(() => {
+      if (entries.get(buffer) !== entry || entry.mode !== "loading") return;
+      shown = buffer;
+      render();
+    }, 300);
     try {
       await load(entry);
     } catch (error) {
       if (entries.get(buffer) === entry) entries.delete(buffer);
-      if (shown === buffer) render();
+      if (shown === buffer) {
+        shown = before !== null && entries.has(before) ? before : null;
+        render();
+      }
       throw error;
+    } finally {
+      clearTimeout(slow);
     }
     if (entries.get(buffer) !== entry) return;
     present(buffer);
@@ -314,6 +317,11 @@ export function createPlayer({ bridge, commands }, view, options) {
         (error) => say(text(error)),
       );
   };
+  /** Say something about the item on screen. */
+  const about = (/** @type {(name: string) => string} */ words) => () => {
+    const name = current()?.item?.name;
+    if (name) say(words(name));
+  };
   const move = (/** @type {number} */ step) =>
     act(async (entry) => {
       const list = entry.playlist;
@@ -322,26 +330,17 @@ export function createPlayer({ bridge, commands }, view, options) {
     });
 
   return {
-    /** The media element reported an error: WebKit cannot play the file after all. */
-    failed: () =>
+    /** The engine failed (an element's error, the remuxer's or the decoder's words): the next one. */
+    failed: (reason = "") =>
       act((entry) => {
-        const item = entry.item;
-        if (!item || entry.mode !== "media") return;
-        const why = item.info
-          ? cannot(item.info)
-          : (item.problem ?? `This system's WebKit cannot play ${item.name}.`);
-        delete item.url;
-        details(entry, why, item.format);
-        say(why);
+        const why = fallBack(entry, reason);
+        if (why) say(why);
       }),
-    /** Playing, and the position has not moved for seconds: the file can no longer be read. */
-    stalled: () => {
-      const name = current()?.item?.name;
-      if (name)
-        say(
-          `Playback stopped: ${name} can no longer be read. Its permission may have been taken back; choose Try again.`,
-        );
-    },
+    /** A sentence from an engine (a sound it cannot play beside the picture). */
+    say: (/** @type {string} */ words) => say(words),
+    stalled: about(SAYINGS.stalled),
+    dropping: about(SAYINGS.dropping),
+    cancelled: () => act((entry) => say(cancel(entry))),
     /** Ask for the file again (a new URL, a new question when the grant is gone) where it was. */
     retry: () =>
       act(async (entry) => {

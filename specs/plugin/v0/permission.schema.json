@@ -27,7 +27,8 @@
         { "$ref": "#/$defs/DataReadPermission" },
         { "$ref": "#/$defs/ConnectorManagePermission" },
         { "$ref": "#/$defs/ViewManagePermission" },
-        { "$ref": "#/$defs/ShellOpenPermission" }
+        { "$ref": "#/$defs/ShellOpenPermission" },
+        { "$ref": "#/$defs/UpdateManagePermission" }
       ]
     },
     "SearchReadPermission": {
@@ -295,6 +296,13 @@
         { "properties": { "paths": true }, "required": ["paths"] }
       ]
     },
+    "UpdateManagePermission": {
+      "description": "See and drive the desk's own updates with update.*: the status, a check, a download, and applying a staged build, which restarts the desk. Receive update.changed. The desk grants it to the runtime and the CLI only; applying stays with the person.",
+      "type": "object",
+      "properties": { "permission": { "const": "update:manage" } },
+      "required": ["permission"],
+      "additionalProperties": false
+    },
     "ShellScheme": {
       "description": "A URL scheme shell.open hands to the system: the browser for http and https, the mail app for mailto.",
       "type": "string",
@@ -344,7 +352,8 @@
         "cmd.changed",
         "cmd.invoked",
         "settings.changed",
-        "log.entry"
+        "log.entry",
+        "update.changed"
       ]
     }
   }
