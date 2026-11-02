@@ -1,12 +1,14 @@
 /**
  * Bottom centre: the line you talk on. A 2 px line with a hint until focused, then a 48 px input that
  * doubles as the command palette. A sent line rises into the middle of the screen and is absorbed. A
- * request to change the look goes to the theme studio's Describe tab instead (eris/look.ts, TS-07).
+ * request to change the look goes to the theme studio's Describe tab instead (eris/look.ts, TS-07),
+ * and one to make something to desk.propose (ADR 0073); propose/route.ts decides which.
  */
 
 import type { CommandInfo } from "../commands";
 import { clamp01, cubicBezier, easeOutExpo } from "../ease";
-import { isLookRequest, LOOK_REPLY, SAY_TO_ERIS } from "../eris/look";
+import { LOOK_REPLY, SAY_TO_ERIS } from "../eris/look";
+import { routeOf } from "../propose/route";
 import { match } from "./commands";
 import type { ShellCtx } from "./context";
 import { h, listen, render } from "./dom";
@@ -60,6 +62,9 @@ export function mountComposer(root: HTMLElement, ctx: ShellCtx): () => void {
   };
   field.style.height = "2px";
 
+  /** Where a sentence goes: the theme studio, desk.propose or Eris's conversation. */
+  const route = (text: string) => routeOf(text, ctx.runtime.commands.has("desk.propose"));
+
   const choices = (text: string): { label: string; key?: string; run: () => void }[] => {
     found = match(ctx.runtime.commands.list(), text);
     if (!text.trim()) return [];
@@ -69,7 +74,10 @@ export function mountComposer(root: HTMLElement, ctx: ShellCtx): () => void {
         const run = () => void ctx.runtime.commands.run(c.id).catch(() => {});
         return { label: c.title, run, ...(key ? { key } : {}) };
       }),
-      { label: ctx.tr("sayTo", { x: text.trim() }), run: () => void send(text) },
+      {
+        label: ctx.tr(route(text).to === "propose" ? "makeWith" : "sayTo", { x: text.trim() }),
+        run: () => void send(text),
+      },
     ];
   };
 
@@ -136,10 +144,19 @@ export function mountComposer(root: HTMLElement, ctx: ShellCtx): () => void {
         ghost.style.opacity = (1 - t).toFixed(3);
       })
       .then(() => ghost.remove());
-    if (isLookRequest(text)) {
+    const to = route(text);
+    if (to.to === "look") {
       ctx.eris.say(LOOK_REPLY[ctx.store.get().lang]);
       const args = { text: text.trim(), from: "eris" };
       void ctx.runtime.commands.run("desk.theme.describe", args).catch(() => {});
+      return;
+    }
+    if (to.to === "propose") {
+      // "make …", "build …", "show me …" and "/make …": Eris makes it, and says her line when done.
+      ctx.eris.setState("thinking");
+      await ctx.runtime.commands
+        .run("desk.propose", to.args)
+        .catch(() => ctx.eris.setState("idle"));
       return;
     }
     await converse(text);

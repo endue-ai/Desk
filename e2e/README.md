@@ -6,10 +6,10 @@ first run, plugins and the session across a relaunch.
 | Path | Purpose |
 | --- | --- |
 | `wdio.conf.ts` | WebdriverIO + tauri-driver: one app process per spec file, each with a fresh `HOME` |
-| `specs/` | On the desk shell, Default profile: `launch` (both layers, ready line, first run, Skip intro), `plugins` (the Plugins list toggled from the keyboard), `session` (the dock and the desktop switcher across a relaunch) |
+| `specs/` | On the desk shell, Default profile: `launch` (both layers, ready line, first run, Skip intro), `plugins` (the Plugins list toggled from the keyboard), `session` (the dock and the desktop switcher across a relaunch), `themes` (user themes in the data folder: one the runtime saves with `theme.save` and one copied into `themes/` by hand, both listed after a relaunch) |
 | `support/` | `driver.ts` starts tauri-driver per spec; `desk.ts` holds the specs' helpers |
 | `driver/` | `webkit-webdriver.sh`: the native driver, with the app's stdout kept for the log |
-| `fixtures/` | `init.yaml` (the template), `init-no-first-run.yaml`, the `e2e.hello` test plugin |
+| `fixtures/` | `init.yaml` (the template), `init-no-first-run.yaml`, the `e2e.hello` test plugin, the `local.e2e-paper` user theme (`theme-e2e-paper`) |
 | `smoke/` | `install-and-launch.sh` (the Linux .deb), `verify-signature.sh` (a stub until signing) |
 | `perf/` | `budgets.json` (the opening frame-time baseline of `just perf-opening`, and the app's); `just perf-app`: `startup` (a second start with six surfaces saved, from `DESK_TRACE=1`'s trace), `memory` (RSS 5 min after start), `latency` (palette and focus switch, p95 of 20); `lib/` the pure parts, unit tested |
 

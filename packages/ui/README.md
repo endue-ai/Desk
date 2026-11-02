@@ -16,9 +16,11 @@ both. See [the design system guide](../../docs/design-system.md) and ADR 0022 fo
 - `@endue-ai/ui/tokens.css`: default values; `@endue-ai/ui/base.css`: page, toolbar and feedback patterns.
 - `@endue-ai/ui/elements`: `defineElements()`, `elements` (by tag name) and their classes:
   `desk-button`, `desk-input`, `desk-list`, `desk-dialog`, `desk-menu`, `desk-toast`, `desk-table`,
-  `desk-agenda`, `desk-stat`, `desk-card`, `desk-markdown`, `desk-progress`. Elements keep native roles and keyboard behavior.
+  `desk-agenda`, `desk-stat`, `desk-card`, `desk-markdown`, `desk-progress`, `desk-edit-tier`. Elements keep native roles and keyboard behavior.
 - `desk-progress`: `label`, `value`, `max`, `detail`, `cancelable`, `delay` (300ms default); `desk-cancel`
   asks the caller to abort. Reduced motion follows the OS and Desk's preference.
+- `desk-edit-tier`: `tier` (`lossless`, `text`, `read-only`; `EDIT_TIERS`), `format`, `label`, `detail`;
+  what saving does to a file, shown before the first edit (ADR 0071). Unknown or missing is read-only.
 - `just build-ui`: builds `dist/ui.js`, `ui.iife.js`, `tokens.css`, `base.css`; refreshes source token CSS.
 
 The app serves the ES module and sheets at `/_desk/ui.js`, `/_desk/tokens.css`, `/_desk/base.css`.

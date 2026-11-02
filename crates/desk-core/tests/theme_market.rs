@@ -89,10 +89,10 @@ fn bundle(id: &str, version: &str, primary: &str) -> Vec<u8> {
     bytes
 }
 
-fn entry(id: &str, version: &str, url: &str, bytes: &[u8], author: &str) -> Value {
+fn entry(id: &str, version: &str, url: &str, bytes: &[u8]) -> Value {
     json!({
         "id": id, "name": id.trim_start_matches("market."), "version": version,
-        "author": author, "license": "CC0-1.0", "preview": ["#f7f3ea", "#8a4b2a"],
+        "author": "Team endue", "license": "CC0-1.0", "preview": ["#f7f3ea", "#8a4b2a"],
         "url": url, "sha256": sha256_hex(bytes), "size": bytes.len()
     })
 }
@@ -105,13 +105,7 @@ fn index(entries: &[Value]) -> Vec<u8> {
 
 /// Put `bytes` on market ONE as market.dusk at `version`: the index and the bundle.
 fn publish(web: &Web, version: &str, bytes: &[u8]) {
-    let listed = entry(
-        "market.dusk",
-        version,
-        "dusk.desk-theme",
-        bytes,
-        "Team endue",
-    );
+    let listed = entry("market.dusk", version, "dusk.desk-theme", bytes);
     web.put(ONE, index(&[listed]));
     web.put(DUSK, bytes.to_vec());
 }
@@ -153,6 +147,22 @@ fn code(answer: Answer) -> ErrorCode {
     answer.expect_err("the call is refused").code
 }
 
+/// theme.<method> refused as invalid_params: why.
+fn refused(core: &Core, method: &str, params: Value) -> String {
+    let why = theme(core, method, params).expect_err("the call is refused");
+    assert_eq!(why.code, ErrorCode::InvalidParams, "{}", why.message);
+    why.message
+}
+
+/// Params for the bundle `bytes` at `url`, from `market` when one is named.
+fn by_url(url: &str, bytes: &[u8], market: Option<&str>) -> Value {
+    let mut params = json!({ "url": url, "sha256": sha256_hex(bytes) });
+    if let Some(market) = market {
+        params["market"] = json!(market);
+    }
+    params
+}
+
 fn installed(core: &Core, id: &str) -> Option<String> {
     let plugin = core.plugins().into_iter().find(|p| p.id == id)?;
     Some(plugin.manifest?.version)
@@ -169,25 +179,17 @@ fn entries(home: &Path) -> Vec<String> {
 fn indexes_are_fetched_in_order_and_merged_by_id_the_first_market_winning() {
     let home = home("market-list");
     let web = Web::default();
-    let (dusk, tide) = (
-        bundle("market.dusk", "1.0.0", "#8a4b2a"),
-        bundle("market.tide", "1.0.0", "#1f6f8b"),
-    );
+    let dusk = bundle("market.dusk", "1.0.0", "#8a4b2a");
+    let tide = bundle("market.tide", "1.0.0", "#1f6f8b");
     let moss = bundle("market.moss", "1.0.0", "#4e7a3a");
     let cdn = "https://cdn.example.com/tide.desk-theme";
     let one = [
-        entry("market.dusk", "1.0.0", "dusk.desk-theme", &dusk, "One"),
-        entry("market.tide", "1.0.0", cdn, &tide, "One"),
+        entry("market.dusk", "1.0.0", "dusk.desk-theme", &dusk),
+        entry("market.tide", "1.0.0", cdn, &tide),
     ];
     let two = [
-        entry("market.tide", "2.0.0", "tide.desk-theme", &tide, "Two"),
-        entry(
-            "market.moss",
-            "1.0.0",
-            "folder/moss.desk-theme",
-            &moss,
-            "Two",
-        ),
+        entry("market.tide", "2.0.0", "tide.desk-theme", &tide),
+        entry("market.moss", "1.0.0", "folder/moss.desk-theme", &moss),
     ];
     web.put(ONE, index(&one));
     web.put(TWO, index(&two));
@@ -201,10 +203,8 @@ fn indexes_are_fetched_in_order_and_merged_by_id_the_first_market_winning() {
     let all = list(&core);
     assert_eq!(ids(&all), ["market.dusk", "market.tide", "market.moss"]);
     let first = listed(&all, "market.tide");
-    assert_eq!(
-        (&first["market"], &first["theme"]["author"]),
-        (&json!(ONE), &json!("One"))
-    );
+    assert_eq!(first["market"], ONE);
+    assert_eq!(first["theme"]["version"], "1.0.0");
     assert_eq!(first["theme"]["url"], cdn);
     let dusk_url = &listed(&all, "market.dusk")["theme"]["url"];
     assert_eq!(
@@ -214,10 +214,8 @@ fn indexes_are_fetched_in_order_and_merged_by_id_the_first_market_winning() {
     let moss_url = &listed(&all, "market.moss")["theme"]["url"];
     assert_eq!(moss_url, "https://two.example.com/folder/moss.desk-theme");
     for theme in all["themes"].as_array().unwrap() {
-        assert_eq!(
-            (&theme["state"], theme.get("installed")),
-            (&json!("available"), None)
-        );
+        assert_eq!(theme["state"], "available");
+        assert!(theme.get("installed").is_none(), "{theme}");
     }
     let problems = all["problems"].as_array().unwrap();
     let failed: Vec<&str> = problems
@@ -280,29 +278,16 @@ fn a_bundle_whose_sha256_differs_is_refused() {
     let theme_entry = &listed(&all, "market.dusk")["theme"];
     let (url, sha256) = (&theme_entry["url"], &theme_entry["sha256"]);
 
-    let preview = theme(
-        &core,
-        "market.fetch",
-        json!({ "url": url, "sha256": sha256 }),
-    );
-    let refused = preview.expect_err("another file is refused");
-    assert_eq!(refused.code, ErrorCode::InvalidParams);
-    assert!(refused.message.contains("sha256"), "{}", refused.message);
+    let fetch = json!({ "url": url, "sha256": sha256 });
+    let why = refused(&core, "market.fetch", fetch.clone());
+    assert!(why.contains("sha256"), "{why}");
     let params = json!({ "url": url, "sha256": sha256, "market": ONE });
-    assert_eq!(
-        code(theme(&core, "import", params.clone())),
-        ErrorCode::InvalidParams
-    );
+    refused(&core, "import", params.clone());
     assert_eq!(installed(&core, "market.dusk"), None);
     assert!(entries(&home).is_empty(), "{:?}", entries(&home));
 
     web.put(DUSK, published.clone());
-    let fetched = theme(
-        &core,
-        "market.fetch",
-        json!({ "url": url, "sha256": sha256 }),
-    )
-    .unwrap();
+    let fetched = theme(&core, "market.fetch", fetch).unwrap();
     assert_eq!(fetched["bundle"]["manifest"]["id"], "market.dusk");
     // A preview installs nothing and leaves nothing behind.
     assert_eq!(installed(&core, "market.dusk"), None);
@@ -311,20 +296,16 @@ fn a_bundle_whose_sha256_differs_is_refused() {
     assert_eq!(landed["plugin"]["id"], "market.dusk");
     assert_eq!(listed(&list(&core), "market.dusk")["state"], "installed");
 
-    // A bundle with its right sha256 that is not a valid theme is refused too.
+    // A bundle its index lists, with its right sha256, that is not a valid theme is refused too.
     let mut wrong: Value =
         serde_json::from_slice(&bundle("market.moss", "1.0.0", "#4e7a3a")).unwrap();
     wrong["manifest"]["theme"]["dark"]["colors"]["background"] = json!("url(x.png)");
     let wrong = wrong.to_string().into_bytes();
-    web.put(
-        "https://one.example.com/themes/moss.desk-theme",
-        wrong.clone(),
-    );
-    let moss = json!({ "url": "https://one.example.com/themes/moss.desk-theme", "sha256": sha256_hex(&wrong) });
-    assert_eq!(
-        code(theme(&core, "market.fetch", moss)),
-        ErrorCode::InvalidParams
-    );
+    let moss = "https://one.example.com/moss.desk-theme";
+    web.put(ONE, index(&[entry("market.moss", "1.0.0", moss, &wrong)]));
+    web.put(moss, wrong.clone());
+    let why = refused(&core, "market.fetch", by_url(moss, &wrong, None));
+    assert!(why.contains("background"), "{why}");
 }
 
 #[test]
@@ -336,18 +317,14 @@ fn an_update_replaces_an_untouched_market_theme_and_leaves_an_edited_one() {
     markets(&core, &[ONE]);
     install(&core, "market.dusk").unwrap();
     let state = |core: &Core| listed(&list(core), "market.dusk").clone();
+    let again = |core: &Core| code(install(core, "market.dusk"));
     assert_eq!(state(&core)["state"], "installed");
     assert_eq!(state(&core)["installed"], "1.0.0");
     assert!(themes(&home).join(".market/market.dusk.json").is_file());
 
     publish(&web, "1.1.0", &bundle("market.dusk", "1.1.0", "#9a5b3a"));
-    assert_eq!(
-        (
-            state(&core)["state"].clone(),
-            state(&core)["installed"].clone()
-        ),
-        (json!("update"), json!("1.0.0"))
-    );
+    assert_eq!(state(&core)["state"], "update");
+    assert_eq!(state(&core)["installed"], "1.0.0");
     install(&core, "market.dusk").unwrap();
     assert_eq!(installed(&core, "market.dusk").as_deref(), Some("1.1.0"));
     assert_eq!(state(&core)["state"], "installed");
@@ -360,15 +337,10 @@ fn an_update_replaces_an_untouched_market_theme_and_leaves_an_edited_one() {
     assert_eq!(state(&core)["state"], "edited");
     publish(&web, "1.2.0", &bundle("market.dusk", "1.2.0", "#aa6b4a"));
     assert_eq!(state(&core)["state"], "edited");
-    assert_eq!(
-        code(install(&core, "market.dusk")),
-        ErrorCode::AlreadyExists
-    );
+    assert_eq!(again(&core), ErrorCode::AlreadyExists);
     let kept: Value = serde_json::from_slice(&fs::read(&manifest).unwrap()).unwrap();
-    assert_eq!(
-        (&kept["description"], &kept["version"]),
-        (&json!("Mine now"), &json!("1.1.0"))
-    );
+    assert_eq!(kept["description"], "Mine now");
+    assert_eq!(kept["version"], "1.1.0");
 
     // Removing it forgets where it came from; the market's theme installs again.
     theme(&core, "remove", json!({ "theme": "market.dusk" })).unwrap();
@@ -382,8 +354,44 @@ fn an_update_replaces_an_untouched_market_theme_and_leaves_an_edited_one() {
     let file: Value = serde_json::from_slice(&bundle("market.dusk", "1.2.0", "#aa6b4a")).unwrap();
     theme(&core, "import", json!({ "bundle": file })).unwrap();
     assert_eq!(state(&core)["state"], "edited");
-    assert_eq!(
-        code(install(&core, "market.dusk")),
-        ErrorCode::AlreadyExists
-    );
+    assert_eq!(again(&core), ErrorCode::AlreadyExists);
+}
+
+#[test]
+fn a_market_bundle_installs_only_under_the_id_its_index_lists() {
+    let home = home("market-ids");
+    let web = Web::default();
+    let calm = "https://one.example.com/themes/calm.desk-theme";
+    let lost = "https://two.example.com/lost.desk-theme";
+    let other = bundle("market.other", "1.0.0", "#2f5d50");
+    let stray = bundle("market.stray", "1.0.0", "#5d2f50");
+    web.put(ONE, index(&[entry("market.calm", "1.0.0", calm, &other)]));
+    web.put(TWO, index(&[entry("market.stray", "1.0.0", lost, &stray)]));
+    web.put(calm, other.clone());
+    web.put(lost, stray.clone());
+    let core = desk(&home, &web);
+    markets(&core, &[ONE]);
+
+    // ONE lists market.calm, but the bundle at its url says market.other: no preview, no install.
+    for (method, market) in [("market.fetch", None), ("import", Some(ONE))] {
+        let why = refused(&core, method, by_url(calm, &other, market));
+        assert!(why.contains("market.calm"), "{why}");
+        assert!(why.contains("market.other"), "{why}");
+    }
+    // A url no market in force lists: ONE does not, and TWO, which does, is not in force.
+    web.asked();
+    refused(&core, "market.fetch", by_url(lost, &stray, None));
+    refused(&core, "import", by_url(lost, &stray, Some(ONE)));
+    refused(&core, "import", by_url(lost, &stray, Some(TWO)));
+    let asked = web.asked();
+    assert!(!asked.contains(&lost.to_owned()), "{asked:?}");
+    assert!(entries(&home).is_empty(), "{:?}", entries(&home));
+
+    // A bundle from a file installs under its own id, as before; one with its entry's id installs.
+    let file: Value = serde_json::from_slice(&other).unwrap();
+    let landed = theme(&core, "import", json!({ "bundle": file })).unwrap();
+    assert_eq!(landed["plugin"]["id"], "market.other");
+    publish(&web, "1.0.0", &bundle("market.dusk", "1.0.0", "#8a4b2a"));
+    let dusk = install(&core, "market.dusk").unwrap();
+    assert_eq!(dusk["plugin"]["id"], "market.dusk");
 }
