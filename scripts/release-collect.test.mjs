@@ -4,7 +4,6 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, it } from "node:test";
 import { collect } from "./release-collect.mjs";
-import { targetsOf } from "./release-manifest.mjs";
 
 /** A bundle folder as Tauri leaves it: `files` by folder. */
 function bundle(files) {
@@ -40,7 +39,6 @@ describe("release-collect", () => {
   it("takes the NSIS installer on Windows and the AppImage, deb and rpm on Linux", () => {
     const windows = bundle({
       nsis: ["endue Desk_0.2.0_x64-setup.exe", "endue Desk_0.2.0_x64-setup.exe.sig"],
-      msi: ["endue Desk_0.2.0_x64_en-US.msi"],
     });
     const out = join(windows, "dist");
     assert.deepEqual(
@@ -48,7 +46,6 @@ describe("release-collect", () => {
       [
         "endue-desk_0.2.0_windows-x86_64-setup.exe",
         "endue-desk_0.2.0_windows-x86_64-setup.exe.sig",
-        "endue-desk_0.2.0_windows-x86_64.msi",
       ],
     );
     const linux = bundle({
@@ -92,38 +89,6 @@ describe("release-collect", () => {
     assert.throws(
       () => collect({ bundle: empty, version: "0.2.0", target: "darwin-universal", out: "d" }),
       /unknown target/u,
-    );
-  });
-
-  it("an_msi_is_collected_for_first_installs_but_never_as_an_updater_target", () => {
-    const windows = bundle({
-      nsis: ["endue Desk_0.2.1-pre.48_x64-setup.exe", "endue Desk_0.2.1-pre.48_x64-setup.exe.sig"],
-      // createUpdaterArtifacts signs the .msi too; Desk updates Windows through NSIS only (ADR 0054).
-      msi: ["endue Desk_0.2.1.48_x64_en-US.msi", "endue Desk_0.2.1.48_x64_en-US.msi.sig"],
-    });
-    const out = join(windows, "dist");
-    const names = collect({
-      bundle: windows,
-      version: "0.2.1-pre.48",
-      target: "windows-x86_64",
-      out,
-    });
-    const msi = "endue-desk_0.2.1-pre.48_windows-x86_64.msi";
-    assert.ok(names.includes(msi), `${msi} in ${names}`);
-    assert.ok(!names.includes(`${msi}.sig`), "the .msi is not an updater artifact");
-    assert.deepEqual(targetsOf(msi, "0.2.1-pre.48"), []);
-    const nsisOnly = bundle({
-      nsis: ["endue Desk_0.2.0_x64-setup.exe", "endue Desk_0.2.0_x64-setup.exe.sig"],
-    });
-    assert.throws(
-      () =>
-        collect({
-          bundle: nsisOnly,
-          version: "0.2.0",
-          target: "windows-x86_64",
-          out: join(nsisOnly, "d"),
-        }),
-      /expected one \.msi/u,
     );
   });
 

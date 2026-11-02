@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Copy one target's Tauri bundles into the release folder under canonical names (ADR 0054):
-// endue-desk_<version>_<target><ext>, each updater artifact with its .sig, the first-install images
-// (.dmg, .msi) without. Tauri names its output after the product ("endue Desk"), with spaces; R2 keys
+// endue-desk_<version>_<target><ext>, each updater artifact with its .sig, the first-install image
+// (.dmg) without. Tauri names its output after the product ("endue Desk"), with spaces; R2 keys
 // and URLs should not have them.
 //   node scripts/release-collect.mjs --bundle target/<triple>/release/bundle --version V
 //     --target darwin-aarch64|darwin-x86_64|windows-x86_64|linux-x86_64 --out dist
@@ -15,12 +15,7 @@ export const KINDS = {
     { folder: "macos", match: /\.app\.tar\.gz$/u, ext: ".app.tar.gz", signed: true },
     { folder: "dmg", match: /\.dmg$/u, ext: ".dmg", signed: false },
   ],
-  // The .msi is for first installs only: NSIS per-user installs are how Windows desks update, so the
-  // .sig createUpdaterArtifacts writes beside the .msi stays behind.
-  windows: [
-    { folder: "nsis", match: /-setup\.exe$/u, ext: "-setup.exe", signed: true },
-    { folder: "msi", match: /\.msi$/u, ext: ".msi", signed: false },
-  ],
+  windows: [{ folder: "nsis", match: /-setup\.exe$/u, ext: "-setup.exe", signed: true }],
   linux: [
     { folder: "appimage", match: /\.AppImage$/u, ext: ".AppImage", signed: true },
     { folder: "deb", match: /\.deb$/u, ext: ".deb", signed: true },

@@ -3,8 +3,8 @@ name: release-build
 # Builds one version for the four targets (ADR 0054), called by canary and release. No macOS
 # universal build: darwin-aarch64 and darwin-x86_64 ship apart. Updater artifacts are signed with
 # the updater key, the version in each signature; the public key and the commit go into the binary.
-# macOS is signed and notarised when the Apple secrets are set; Windows updates through NSIS and
-# also ships an .msi for first installs, both unsigned until the certificate is chosen. Linux builds
+# macOS is signed and notarised when the Apple secrets are set; Windows ships NSIS only, unsigned
+# until the certificate is chosen. Linux builds
 # an AppImage and a .deb, and an .rpm for releases only (RPM takes no hyphen in a version). The .deb
 # is checked against the updater key before it leaves. Each target leaves as the artifact
 # desk-<target>, canonical names from scripts/release-collect.mjs. A dry run (release-dry-run.yml)
@@ -46,7 +46,7 @@ jobs:
           - target: windows-x86_64
             os: windows-latest
             rust: x86_64-pc-windows-msvc
-            bundles: nsis,msi
+            bundles: nsis
           - target: linux-x86_64
             os: ubuntu-22.04
             rust: x86_64-unknown-linux-gnu
@@ -125,11 +125,9 @@ jobs:
           DESK_UPDATE_URL: ${{ vars.DESK_RELEASES_URL || 'https://releases.endue.ai/desk' }}
           DESK_BUILD_COMMIT: ${{ github.sha }}
         # createUpdaterArtifacts reads the public key from plugins.updater.pubkey and refuses an empty
-        # one; the plugin's own config needs it too. An .msi takes only a numeric version
-        # (major.minor.patch.build), so 0.2.1-pre.48 installs as 0.2.1.48 and 0.2.0 as 0.2.0.0.
+        # one; the plugin's own config needs it too.
         run: |
-          wix="$(sed -E 's/^([0-9]+[.][0-9]+[.][0-9]+)-pre[.]([0-9]+)$/\1.\2/; s/^([0-9]+[.][0-9]+[.][0-9]+)$/\1.0/' <<<"$VERSION")"
-          config="$(printf '{"version":"%s","bundle":{"createUpdaterArtifacts":true,"windows":{"wix":{"version":"%s"}}},"plugins":{"updater":{"pubkey":"%s"}}}' "$VERSION" "$wix" "$UPDATER_PUBKEY")"
+          config="$(printf '{"version":"%s","bundle":{"createUpdaterArtifacts":true},"plugins":{"updater":{"pubkey":"%s"}}}' "$VERSION" "$UPDATER_PUBKEY")"
           # RPM refuses a hyphen in the version: pre-releases (canary, beta) build no .rpm, and
           # desks installed from one follow stable.
           bundles="${{ matrix.bundles }}"
