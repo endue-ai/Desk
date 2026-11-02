@@ -1,0 +1,3 @@
+# Fixtures kept byte for byte: CRLF and CR line endings are what the CSV tests check.
+*.csv -text
+*.tsv -text

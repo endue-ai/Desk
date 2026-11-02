@@ -1,0 +1,123 @@
+// @vitest-environment jsdom
+// The page with the plugin behind it, on the SDK's test host: the edit tier on the surface, the
+// formula bar editing the active cell, the grid showing the edit and the unsaved mark (ADR 0071).
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { afterEach, describe, expect, it } from "vitest";
+import { defineUiPlugin, readBytes } from "../../../packages/plugin-sdk/src/index";
+import { createTestHost } from "../../../packages/plugin-sdk/src/testing/index";
+import { defineElements } from "../../../packages/ui/src/elements/index";
+import { openBook } from "../ui/book.js";
+import { createSheets, type Sheets } from "../ui/sheets.js";
+import { createView } from "../ui/view.js";
+import { disk, file, fixture } from "./harness";
+
+defineElements();
+
+const html = readFileSync(join(import.meta.dirname, "../ui/index.html"), "utf8");
+const A = file("~/Documents/cities.csv");
+const X = file("~/Documents/budget.xlsx");
+
+afterEach(() => document.body.replaceChildren());
+
+/** The plugin's page in jsdom with an 800 by 600 grid, mounted on the test host. */
+async function page(files: Record<string, Uint8Array>) {
+  const parsed = new DOMParser().parseFromString(html, "text/html");
+  for (const script of parsed.querySelectorAll("script")) script.remove();
+  document.body.replaceWith(document.importNode(parsed.body, true));
+  const scroller = document.getElementById("grid-scroll") as HTMLElement;
+  Object.defineProperty(scroller, "clientWidth", { value: 800, configurable: true });
+  Object.defineProperty(scroller, "clientHeight", { value: 600, configurable: true });
+  const host = createTestHost({
+    pluginId: "endue.sheets",
+    handlers: { "init.get": () => ({ profile: "default", settings: {} }), ...disk(files) },
+    commands: { "desk.files.changed": () => "", "desk.buffers.update": () => ({}) },
+  });
+  let app: Sheets | undefined;
+  const view = createView(document, { edit: (r, c, text) => app?.edit(r, c, text) ?? false });
+  await defineUiPlugin(
+    {
+      mount(ctx) {
+        app = createSheets(ctx, view, { read: readBytes, open: openBook });
+      },
+    },
+    host.transport,
+  );
+  for (let i = 0; i < 4; i++) await host.settle();
+  const byId = (id: string) => document.getElementById(id) as HTMLElement;
+  const grid = byId("grid");
+  const bar = byId("cell-content") as HTMLInputElement;
+  const tier = document.querySelector("desk-edit-tier") as HTMLElement;
+  const press = (key: string, target: Element = grid, mods: KeyboardEventInit = {}) => {
+    const event = new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true, ...mods });
+    target.dispatchEvent(event);
+    return event;
+  };
+  const type = (text: string) => {
+    bar.value = text;
+    bar.dispatchEvent(new Event("input", { bubbles: true }));
+  };
+  const cell = (r: number, c: number) =>
+    grid.querySelector(`[aria-rowindex="${r + 2}"] [aria-colindex="${c + 2}"]`)?.textContent;
+  const label = () => tier.shadowRoot?.querySelector(".label")?.textContent;
+  return { host, grid, bar, tier, press, type, cell, label, byId };
+}
+
+describe("editing a CSV on its page", () => {
+  it("shows the tier, edits the active cell in the formula bar and marks it unsaved", async () => {
+    const files = { [A.path]: fixture("crlf-bom-quotes.csv") };
+    const { host, grid, bar, tier, press, type, cell, label, byId } = await page(files);
+    await host.command("desk.files.visit", A);
+    expect(tier.hidden).toBe(false);
+    expect(label()).toBe("CSV · Lossless editing");
+    expect(byId("book-mark").hidden).toBe(true);
+    expect([bar.readOnly, grid.getAttribute("aria-readonly")]).toEqual([false, "false"]);
+
+    press("ArrowDown");
+    expect([byId("cell-address").textContent, bar.value]).toEqual(["A2", "Seoul, KR"]);
+    expect(press("F2").defaultPrevented).toBe(true);
+    expect(document.activeElement).toBe(bar);
+    expect(bar.readOnly).toBe(false);
+    type("Seoul, South Korea");
+    expect(press("Enter", bar).defaultPrevented).toBe(true);
+    expect(cell(1, 0)).toBe("Seoul, South Korea");
+    expect(byId("cell-address").textContent).toBe("A3");
+    expect(document.activeElement).toBe(grid);
+    expect(byId("book-mark").hidden).toBe(false);
+
+    // Typing on the grid starts an edit with that character; Escape leaves the cell as it was.
+    press("C");
+    expect([document.activeElement, bar.value]).toEqual([bar, "C"]);
+    press("Escape", bar);
+    expect([document.activeElement, bar.value, cell(2, 0)]).toEqual([grid, "Busan", "Busan"]);
+
+    // Mod+S reaches the desk from the bar: the save takes the edit in progress.
+    press("F2");
+    type("Ulsan");
+    expect(press("s", bar, { metaKey: true }).defaultPrevented).toBe(false);
+    await host.command("desk.files.save", A);
+    expect([cell(2, 0), byId("book-mark").hidden]).toEqual(["Ulsan", true]);
+    const saved = new TextDecoder().decode(files[A.path]);
+    expect(saved).toContain('"Seoul, South Korea",Korea');
+    expect(saved).toContain("\r\nUlsan,Korea,3.4,");
+  });
+
+  it("past a row's last field the formula bar stays read-only", async () => {
+    const { host, bar, press } = await page({ [A.path]: fixture("crlf-bom-quotes.csv") });
+    await host.command("desk.files.visit", A);
+    for (let i = 0; i < 4; i++) press("ArrowRight");
+    press("F2");
+    expect([bar.readOnly, document.activeElement === bar]).toEqual([true, false]);
+  });
+});
+
+describe("a format Sheets only reads", () => {
+  it("an .xlsx says Read-only and its formula bar stays read-only", async () => {
+    const { host, grid, bar, label, press } = await page({ [X.path]: fixture("budget.xlsx") });
+    await host.command("desk.files.visit", X);
+    expect(label()).toBe("XLSX · Read-only");
+    expect(press("F2").defaultPrevented).toBe(false);
+    press("q");
+    expect([bar.readOnly, document.activeElement]).toEqual([true, grid]);
+  });
+});

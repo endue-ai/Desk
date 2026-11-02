@@ -3,6 +3,9 @@
 //! of its own, with no core lock held and no timeout, so hosts call `Core::handle` off their UI
 //! thread. A prompt goes out only when a router reads addressed events (`subscribe_addressed`):
 //! without one no holder could hear it, so the `Prompter` decides, as it does with no holder.
+//! The prompt policy (`prompt_policy`) runs under the same lock: a request the person refused
+//! earlier never prompts, an identical request waits for the prompt already out, and a third folder
+//! under one parent offers the parent.
 
 use std::collections::BTreeMap;
 use std::sync::MutexGuard;
@@ -16,29 +19,44 @@ use desk_bridge::{
 use crate::core_perm::perm_manage;
 use crate::handler::{Answer, Core, error, json};
 use crate::perm::Target;
+use crate::prompt_policy::Policy;
 
 /// How a prompt ended.
+#[derive(Clone)]
 pub(crate) enum Outcome {
     Granted(Grant),
     Refused,
+    /// The person refused this caller this permission earlier in the session: nobody was asked.
+    RefusedEarlier,
     /// The requester unloaded first.
     Withdrawn,
     /// No perm:manage holder can hear it: the Prompter decides.
     Unheard,
 }
 
+/// A prompt that is out, with every identical request waiting for its answer.
 struct Waiting {
     caller: String,
     permission: Permission,
     duration: GrantDuration,
-    reply: Sender<Outcome>,
+    parent: Option<Permission>,
+    replies: Vec<Sender<Outcome>>,
 }
 
-/// The prompts waiting for an answer, by id.
+impl Waiting {
+    fn tell(&self, outcome: &Outcome) {
+        for reply in &self.replies {
+            let _ = reply.send(outcome.clone());
+        }
+    }
+}
+
+/// The prompts waiting for an answer, by id, and the policy's memory.
 #[derive(Default)]
 pub(crate) struct Prompts {
     next: u64,
     waiting: BTreeMap<String, Waiting>,
+    policy: Policy,
 }
 
 impl Core {
@@ -52,62 +70,105 @@ impl Core {
     ) -> Outcome {
         let answered = {
             let mut prompts = self.prompts();
+            if prompts.policy.refused_earlier(caller, permission) {
+                return Outcome::RefusedEarlier;
+            }
             let holders = self.holders(&perm_manage());
             if holders.is_empty() || !self.events().has_router() {
                 return Outcome::Unheard;
             }
-            prompts.next += 1;
-            let prompt_id = format!("p-{}", prompts.next);
             let (reply, answered) = mpsc::channel();
-            prompts.waiting.insert(
-                prompt_id.clone(),
-                Waiting {
-                    caller: caller.to_owned(),
-                    permission: permission.clone(),
-                    duration,
-                    reply,
-                },
-            );
-            let event = BridgeEvent::PermPrompt(PermPromptEvent {
-                event: Default::default(),
-                data: PermPromptData {
-                    prompt_id: prompt_id.clone(),
-                    caller: caller.to_owned(),
-                    permission: permission.clone(),
-                    reason: reason.to_owned(),
-                    duration,
-                },
-            });
-            if self.events().route(holders, event) == 0 {
-                prompts.waiting.remove(&prompt_id);
-                return Outcome::Unheard;
+            let same = prompts
+                .waiting
+                .values_mut()
+                .find(|w| w.caller == caller && w.permission == *permission);
+            match same {
+                Some(waiting) => waiting.replies.push(reply),
+                None => {
+                    let offerable = |parent: &str| self.offerable(parent);
+                    let parent = prompts.policy.parent_offer(caller, permission, offerable);
+                    prompts.next += 1;
+                    let prompt_id = format!("p-{}", prompts.next);
+                    let event = BridgeEvent::PermPrompt(PermPromptEvent {
+                        event: Default::default(),
+                        data: PermPromptData {
+                            prompt_id: prompt_id.clone(),
+                            caller: caller.to_owned(),
+                            permission: permission.clone(),
+                            reason: (!reason.is_empty()).then(|| reason.to_owned()),
+                            duration,
+                            parent: parent.clone(),
+                        },
+                    });
+                    prompts.waiting.insert(
+                        prompt_id.clone(),
+                        Waiting {
+                            caller: caller.to_owned(),
+                            permission: permission.clone(),
+                            duration,
+                            parent,
+                            replies: vec![reply],
+                        },
+                    );
+                    if self.events().route(holders, event) == 0 {
+                        prompts.waiting.remove(&prompt_id);
+                        return Outcome::Unheard;
+                    }
+                }
             }
             answered
         };
         answered.recv().unwrap_or(Outcome::Withdrawn)
     }
 
-    /// The person's decision, from a perm:manage holder. The grant is made before this returns.
+    /// The person's decision, from a perm:manage holder, for every request waiting on the prompt.
+    /// The grants are made before this returns: one for all, or one each for a `once` answer, so
+    /// every call the requests were made for can run. A refusal is remembered.
     pub(crate) fn perm_answer(&self, caller: &str, params: PermAnswerParams) -> Answer {
         self.check(caller, &Permission::PermManage(params.scope), &Target::None)?;
-        let waiting = self
-            .prompts()
-            .waiting
-            .remove(&params.prompt_id)
-            .ok_or_else(|| {
-                error(
-                    ErrorCode::NotFound,
-                    format!("no prompt {} is waiting", params.prompt_id),
-                )
-            })?;
-        let outcome = if params.granted {
-            let duration = params.duration.unwrap_or(waiting.duration);
-            Outcome::Granted(self.grant_for(&waiting.caller, waiting.permission, duration))
-        } else {
-            Outcome::Refused
+        let widen = params.granted && params.parent == Some(true);
+        let waiting = {
+            let mut prompts = self.prompts();
+            let id = params.prompt_id;
+            let Some(waiting) = prompts.waiting.remove(&id) else {
+                let missing = format!("no prompt {id} is waiting");
+                return Err(error(ErrorCode::NotFound, missing));
+            };
+            if widen && waiting.parent.is_none() {
+                // The prompt keeps waiting for an answer it can take.
+                prompts.waiting.insert(id.clone(), waiting);
+                let none = format!("prompt {id} offers no parent");
+                return Err(error(ErrorCode::InvalidParams, none));
+            }
+            if !params.granted {
+                prompts.policy.refuse(&waiting.caller, &waiting.permission);
+            }
+            waiting
         };
-        let _ = waiting.reply.send(outcome);
+        if !params.granted {
+            waiting.tell(&Outcome::Refused);
+            return json(PermAnswerResult {});
+        }
+        let duration = params.duration.unwrap_or(waiting.duration);
+        let permission = match (widen, &waiting.parent) {
+            (true, Some(parent)) => parent.clone(),
+            _ => waiting.permission.clone(),
+        };
+        let mut shared: Option<Grant> = None;
+        for reply in &waiting.replies {
+            let grant = match &shared {
+                Some(grant) if duration != GrantDuration::Once => grant.clone(),
+                _ => self.grant_for(&waiting.caller, permission.clone(), duration),
+            };
+            shared = Some(grant.clone());
+            let _ = reply.send(Outcome::Granted(grant));
+        }
         json(PermAnswerResult {})
+    }
+
+    /// `caller` was granted `permission`: the refusals it covers are forgotten.
+    pub(crate) fn forget_refusals(&self, caller: &str, permission: &Permission) {
+        self.prompts().policy.granted(caller, permission);
     }
 
     /// `caller` unloaded: its waiting requests end `cancelled` and their prompts are gone.
@@ -116,7 +177,7 @@ impl Core {
             if waiting.caller != caller {
                 return true;
             }
-            let _ = waiting.reply.send(Outcome::Withdrawn);
+            waiting.tell(&Outcome::Withdrawn);
             false
         });
     }
@@ -128,7 +189,7 @@ impl Core {
             return;
         }
         for (_, waiting) in std::mem::take(&mut prompts.waiting) {
-            let _ = waiting.reply.send(Outcome::Unheard);
+            waiting.tell(&Outcome::Unheard);
         }
     }
 

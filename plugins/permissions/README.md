@@ -22,7 +22,9 @@ the prompter: each `perm.prompt` opens the overlay, shows who asks, for what and
 
 A request is broad (CORE-03) when it names a shell or interpreter in `proc:spawn`, a host wildcard over
 a top-level domain, a file scope over a disk or the home folder, every command, every plugin's
-settings, or `perm:manage`. Focus starts on Don't allow; Tab stays inside the prompt.
+settings, or `perm:manage`. Focus starts on Don't allow; Tab stays inside the prompt. The reason line
+says "none given" when the caller gave none. When the core offers the parent folder (a caller's third
+folder under it), an "Allow all of <folder>" button grants that instead (`parent: true`).
 
 ```bash
 pnpm exec vitest run plugins/permissions

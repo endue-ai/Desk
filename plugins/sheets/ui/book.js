@@ -22,7 +22,10 @@ XLSX.set_cptable(cptable);
  * @typedef {import("./model.js").Cell} Cell
  * @typedef {import("./model.js").Frozen} Frozen
  * @typedef {import("./ods.js").Layout} Layout
- * @typedef {{ kind: "sheets", format: string, detail: string, sheets: Sheet[] }} Sheets
+ * @typedef {{
+ *   kind: "sheets", format: string, detail: string, sheets: Sheet[],
+ *   encoding?: string, csv?: import("./csv-syntax.js").CsvSyntax,
+ * }} Sheets CSV and TSV say the encoding they were read in, and in UTF-8 carry their syntax model
  * @typedef {{ kind: "details", format: string, detected: string, reason: string, cause?: string }} Details
  * @typedef {{ kind: "link", format: string, url: string }} Link
  * @typedef {Sheets | Details | Link} Book
@@ -310,8 +313,10 @@ export function openBook(bytes, { name, encoding = "auto", onSheet }) {
       if (detected === "ZIP archive") return fromZip(bytes, say, onSheet);
       if (detected !== "OLE compound file") {
         if (ext === "csv" || ext === "tsv") {
-          const { sheet, detail } = readCsv(bytes, { name, encoding });
-          return { kind: "sheets", format: formatOf(name), detail, sheets: [sheet] };
+          const { sheet, detail, syntax, ...read } = readCsv(bytes, { name, encoding });
+          const csv = syntax ? { csv: syntax } : {};
+          const format = formatOf(name);
+          return { kind: "sheets", format, detail, sheets: [sheet], ...read, ...csv };
         }
         if (
           (BINARY.has(ext) && !CONTAINERS.has(detected)) ||
