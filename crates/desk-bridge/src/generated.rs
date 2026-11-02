@@ -671,6 +671,45 @@ pub enum SurfacePlacement {
     Floating,
 }
 
+/// One market's index.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ThemeIndex {
+    /// The index format and its version.
+    pub format: ThemeIndexFormat,
+    /// The market's themes, each id once; built-in themes are never in an index.
+    pub themes: Vec<ThemeIndexEntry>,
+}
+
+/// One theme of a market: its card and its bundle. The bundle's manifest has the same id, name and version.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ThemeIndexEntry {
+    /// The theme plugin's id: market.<name>.
+    pub id: String,
+    pub name: String,
+    pub version: Version,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    /// Who made it.
+    pub author: String,
+    /// An SPDX licence expression for the theme and its assets, for example CC0-1.0 or Apache-2.0.
+    pub license: String,
+    /// Words a gallery filters by.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tags: Option<Vec<String>>,
+    /// Up to five colours that stand for the theme on its card, the most telling first.
+    pub preview: Vec<ThemeColor>,
+    pub url: ThemeIndexUrl,
+    /// The sha256 of the bundle's bytes, lowercase hex: a download that differs is refused.
+    pub sha256: String,
+    /// The bundle's size in bytes, 16 MiB at most.
+    pub size: u64,
+}
+
+/// Where the theme's .desk-theme is: an https URL, or a path relative to the index's own URL without .. segments (paper-dusk.desk-theme), so a market moves by moving its folder.
+pub type ThemeIndexUrl = String;
+
 /// A theme: the layers every scheme shares (type, shape, motion) and one variant per scheme. At least one of light and dark; the desk's own theme stands in for a missing one.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -2337,6 +2376,8 @@ pub enum BridgeRequest {
     ThemeImport(ThemeImportRequest),
     ThemeExport(ThemeExportRequest),
     ThemeRemove(ThemeRemoveRequest),
+    ThemeMarketList(ThemeMarketListRequest),
+    ThemeMarketFetch(ThemeMarketFetchRequest),
 }
 
 /// The answer to one request: a result, or an error.
@@ -4261,7 +4302,7 @@ pub struct ThemeSaveResult {
     pub plugin: PluginInfo,
 }
 
-/// Install a .desk-theme bundle as a user theme: given inline, read from a file, or downloaded over https and checked against its sha256 (a mismatch is invalid_params and nothing lands). A bundle whose id is outside local. and market. lands as local.<its name as a slug>. It is checked and replaces an earlier user theme of its id as theme.save does.
+/// Install a .desk-theme bundle as a user theme: given inline, read from a file, or downloaded over https and checked against its sha256 (a mismatch is invalid_params and nothing lands). A bundle whose id is outside local. and market. lands as local.<its name as a slug>. It is checked and replaces an earlier user theme of its id as theme.save does, except that a market. theme downloaded by url replaces an earlier one only while that one is still as its market published it (ADR 0060): one the person changed is already_exists and stays.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ThemeImportRequest {
@@ -4270,7 +4311,7 @@ pub struct ThemeImportRequest {
     pub params: ThemeImportParams,
 }
 
-/// Parameters of theme.import: exactly one of bundle, path and url, and sha256 with url.
+/// Parameters of theme.import: exactly one of bundle, path and url, and sha256 with url (market only with url).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ThemeImportParams {
@@ -4283,6 +4324,9 @@ pub struct ThemeImportParams {
     pub url: Option<ThemeBundleUrl>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub sha256: Option<ThemeSha256>,
+    /// With url, the market index that listed it: kept beside a market. theme with its version and sha256, so theme.market.list tells an update from the person's own changes.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub market: Option<ThemeMarketUrl>,
     pub scope: ThemeManagePermission,
 }
 
@@ -4348,6 +4392,91 @@ pub struct ThemeRemoveParams {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ThemeRemoveResult {}
+
+/// An https URL of a market index (specs/plugin ThemeIndex, desk-theme-index/1).
+pub type ThemeMarketUrl = String;
+
+/// Read every market index desk.theme.markets lists, in order, and merge their themes by id: the first market that lists an id wins. Each index is downloaded over https from its own host only; one that cannot be read or is not a valid index leaves its themes out and says why in problems. Each theme says whether this desk has it.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ThemeMarketListRequest {
+    pub id: RequestId,
+    pub method: ThemeMarketListRequestMethod,
+    pub params: ThemeMarketListParams,
+}
+
+/// Parameters of theme.market.list.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ThemeMarketListParams {
+    pub scope: ThemeManagePermission,
+}
+
+/// Result of theme.market.list: the merged themes in market order, and the markets that could not be read.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ThemeMarketListResult {
+    pub themes: Vec<ThemeMarketTheme>,
+    pub problems: Vec<ThemeMarketProblem>,
+}
+
+/// One theme a market offers: its index entry with url made absolute, the market that listed it, and how it stands on this desk.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ThemeMarketTheme {
+    pub theme: ThemeIndexEntry,
+    pub market: ThemeMarketUrl,
+    pub state: ThemeMarketState,
+    /// The version this desk has, when it has the theme.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub installed: Option<Version>,
+}
+
+/// available: not installed. installed: installed as the market publishes it now. update: installed from a market and unchanged since, and the market has other bytes now; installing it again replaces it. edited: installed but not as a market published it (changed since, or brought in from a file); an update never replaces it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum ThemeMarketState {
+    #[serde(rename = "available")]
+    Available,
+    #[serde(rename = "installed")]
+    Installed,
+    #[serde(rename = "update")]
+    Update,
+    #[serde(rename = "edited")]
+    Edited,
+}
+
+/// A market index that could not be read, and why.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ThemeMarketProblem {
+    pub market: String,
+    pub message: String,
+}
+
+/// Download a market theme to look at it before installing it: over https from the URL's host only, refused unless its bytes match sha256, and checked as a theme plugin in a temporary folder that goes again. Nothing is installed; the answer is the bundle, which the studio previews.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ThemeMarketFetchRequest {
+    pub id: RequestId,
+    pub method: ThemeMarketFetchRequestMethod,
+    pub params: ThemeMarketFetchParams,
+}
+
+/// Parameters of theme.market.fetch.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ThemeMarketFetchParams {
+    pub url: ThemeBundleUrl,
+    pub sha256: ThemeSha256,
+    pub scope: ThemeManagePermission,
+}
+
+/// Result of theme.market.fetch: the checked bundle.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ThemeMarketFetchResult {
+    pub bundle: ThemeBundle,
+}
 
 /// Open one of the surfaces the caller's manifest declares; the runtime hears ui.surface.opened.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -4990,6 +5119,14 @@ pub enum ThemeManagePermissionPermission {
     #[default]
     #[serde(rename = "theme:manage")]
     ThemeManage,
+}
+
+/// The `format` of [`ThemeIndex`]: always `"desk-theme-index/1"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum ThemeIndexFormat {
+    #[default]
+    #[serde(rename = "desk-theme-index/1")]
+    DeskThemeIndex1,
 }
 
 /// The `format` of [`ThemeBundle`]: always `"desk-theme/1"`.
@@ -5736,6 +5873,22 @@ pub enum ThemeRemoveRequestMethod {
     ThemeRemove,
 }
 
+/// The `method` of [`ThemeMarketListRequest`]: always `"theme.market.list"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum ThemeMarketListRequestMethod {
+    #[default]
+    #[serde(rename = "theme.market.list")]
+    ThemeMarketList,
+}
+
+/// The `method` of [`ThemeMarketFetchRequest`]: always `"theme.market.fetch"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum ThemeMarketFetchRequestMethod {
+    #[default]
+    #[serde(rename = "theme.market.fetch")]
+    ThemeMarketFetch,
+}
+
 /// The `method` of [`UiSurfaceOpenRequest`]: always `"ui.surface.open"`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub enum UiSurfaceOpenRequestMethod {
@@ -5918,6 +6071,10 @@ pub const SCHEMAS: &[(&str, &str)] = &[
     (
         "https://endue.ai/specs/plugin/v0/plugin.schema.json",
         include_str!("../../../specs/plugin/v0/plugin.schema.json"),
+    ),
+    (
+        "https://endue.ai/specs/plugin/v0/theme-index.schema.json",
+        include_str!("../../../specs/plugin/v0/theme-index.schema.json"),
     ),
     (
         "https://endue.ai/specs/plugin/v0/theme.schema.json",

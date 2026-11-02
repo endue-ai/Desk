@@ -35,3 +35,6 @@ for `plugins/theme-paper` and scanlines for `plugins/theme-amber`, one per schem
 generator and `node:zlib` only (no downloads). Run `node scripts/theme-textures.mjs` after changing it and
 commit the PNGs; its test, in `just test-unit`, checks that it draws the same bytes twice, writes valid
 PNGs and that the committed tiles hold the pixels it draws.
+
+`theme-market.mjs` (`just check`, ADR 0060) checks `market/themes`: an index with unique ids, each bundle
+beside it with its sha256, size and licence and a valid theme plugin. Its test runs in `just test-unit`.

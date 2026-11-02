@@ -274,7 +274,33 @@ cargo run -p desk-cli -- theme import ~/Downloads/dusk.desk-theme
 
 ### 마켓
 
-테마 마켓이 준비 중입니다(`docs/ko/theme-requirements.md` 의 TC-05, TS-08). `.desk-theme` 파일들과 그 sha256 을
-담은 색인이고, 스튜디오가 이를 보여 주고 미리 보고 `market.` 아래 id 로 설치합니다. `theme.import` 는 이미
-`https` URL 과 묶음의 `sha256` 을 받고, 바이트가 맞지 않으면 거부합니다. 마켓이 열리기 전에는 파일 자체를
-나누세요.
+스튜디오의 Market 탭은 설정 `desk.theme.markets` 가 색인의 https URL 로 가리키는 마켓들의 테마를 보여 줍니다
+(ADR 0060). 기본값은 이 저장소 `main` 의 `market/themes/index.json` 이고,
+`https://raw.githubusercontent.com/endue-ai/Desk/main/market/themes/index.json` 에서 읽습니다. 다른 마켓의
+색인은 `init.yaml` 에서 그 뒤에 덧붙입니다. 두 마켓이 같은 id 를 실으면 앞의 마켓이 이깁니다.
+
+```yaml
+settings:
+  desk.theme.markets:
+    - https://raw.githubusercontent.com/endue-ai/Desk/main/market/themes/index.json
+    - https://themes.example.com/index.json
+```
+
+카드는 테마의 미리보기 색, 이름, 만든 이, 라이선스와 이 데스크에서의 상태(Available, Installed, Update
+available, Edited)를 보여 줍니다. Preview 는 `.desk-theme` 을 받아 sha256 을 확인하고, 설치하지 않은 채 데스크
+전체에 보여 줍니다. Install 은 URL 과 sha256 을 넘기는 `theme.import` 로 `market.` 아래 id 그대로 들여오고,
+Apply 가 그 테마를 적용합니다. 업데이트는 내가 고치지 않은 마켓 테마만 바꿉니다. 내가 고친 테마는 내 것으로
+남습니다.
+
+테마를 올리려면 묶음과 색인 항목을 `market/themes/` 에 더하는 풀 리퀘스트를 엽니다.
+
+1. 테마를 내보냅니다(`desk theme export <id> <file>`, 또는 스튜디오의 Export). id 는 `market.` 아래로 하고,
+   버전과 `theme.author`, `theme.license`(글꼴과 이미지까지 덮는 SPDX 식)를 붙입니다.
+2. 파일을 `market/themes/` 에 `<name>.desk-theme` 으로 두고 `index.json`
+   (`specs/plugin/v0/theme-index.schema.json`)에 항목을 더합니다. `id`, `name`, `version`, `description`,
+   `author`, `license`, `tags`, 다섯 개까지의 `preview` 색, `url`(파일 이름), `sha256`, `size` 입니다.
+3. `node scripts/theme-market.mjs` 를 실행합니다. `just check` 에 들어 있는 이 마켓 검사기는 틀린 해시나
+   크기, 빠진 라이선스, 겹친 id, 올바른 테마 플러그인이 아닌 묶음을 거부하고, 테스트가 모든 마켓 테마를 두
+   scheme 에서 게이트에 통과시킵니다.
+
+업데이트는 새 버전과 그 새 묶음, sha256, 크기입니다. 같은 단계가 `market/themes/README.md` 에도 있습니다.

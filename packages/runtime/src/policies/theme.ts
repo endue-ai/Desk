@@ -1,12 +1,14 @@
 /**
  * desk.theme: resolve the theme from its settings, the OS and the theme plugin desk.theme.active names,
  * apply it (tokens and fonts), and share it with plugins. The studio reaches the core's theme.* and,
- * for Describe, brain.ask through it.
+ * for Describe, brain.ask, and for the Market tab theme.market.* (ADR 0060), through it.
  */
 import type {
   BrainAskTool,
   BrainStatusResult,
   BrainTurnData,
+  ThemeBundle,
+  ThemeMarketListResult,
   ThemePackage,
 } from "@endue-ai/bridge";
 import {
@@ -58,6 +60,18 @@ export interface RuntimeThemes {
   io(): ThemeIo;
   /** The core's brain.ask and brain.status, as the studio's Describe uses them (ADR 0059). */
   brain(): ThemeBrain;
+  /** The core's theme markets, as the studio's Market tab uses them (ADR 0060). */
+  market(): ThemeMarket;
+}
+
+/** The theme markets desk.theme.markets lists, through the core (theme:manage). */
+export interface ThemeMarket {
+  /** Every market's themes, merged by id, and the markets that could not be read. */
+  list(): Promise<ThemeMarketListResult>;
+  /** A market theme's bundle, downloaded and checked against `sha256`, to preview; nothing installs. */
+  fetch(url: string, sha256: string): Promise<ThemeBundle>;
+  /** Install a market theme (theme.import by url), kept with the market that listed it; its id. */
+  install(theme: { url: string; sha256: string; market: string }): Promise<string>;
 }
 
 /** One question to the brain, answered through a tool, and whether the brain can be reached. */
@@ -225,6 +239,7 @@ export function installTheme(
     },
     io: () => themeIo(ctx),
     brain: () => themeBrain(ctx),
+    market: () => themeMarket(ctx),
     previewDraft(theme, files = {}, scheme) {
       draftScheme = theme ? scheme : undefined;
       if (!theme) {
@@ -281,6 +296,18 @@ function themeIo(ctx: DeskContext): ThemeIo {
     async remove(id) {
       await ctx.bridge.call("theme.remove", { theme: id, scope });
     },
+  };
+}
+
+/** theme.market.* and theme.import by url on the core, as the runtime calls them. */
+function themeMarket(ctx: DeskContext): ThemeMarket {
+  const scope = { permission: "theme:manage" } as const;
+  return {
+    list: () => ctx.bridge.call("theme.market.list", { scope }),
+    fetch: async (url, sha256) =>
+      (await ctx.bridge.call("theme.market.fetch", { url, sha256, scope })).bundle,
+    install: async ({ url, sha256, market }) =>
+      (await ctx.bridge.call("theme.import", { url, sha256, market, scope })).plugin.id,
   };
 }
 

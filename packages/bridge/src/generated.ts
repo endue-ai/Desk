@@ -454,6 +454,39 @@ export interface Surface {
 /** Where the compositor puts the surface. */
 export type SurfacePlacement = "center" | "left" | "right" | "bottom" | "overlay" | "floating";
 
+/** One market's index. */
+export interface ThemeIndex {
+  /** The index format and its version. */
+  format: "desk-theme-index/1";
+  /** The market's themes, each id once; built-in themes are never in an index. */
+  themes: ThemeIndexEntry[];
+}
+
+/** One theme of a market: its card and its bundle. The bundle's manifest has the same id, name and version. */
+export interface ThemeIndexEntry {
+  /** The theme plugin's id: market.<name>. */
+  id: string;
+  name: string;
+  version: Version;
+  description?: string;
+  /** Who made it. */
+  author: string;
+  /** An SPDX licence expression for the theme and its assets, for example CC0-1.0 or Apache-2.0. */
+  license: string;
+  /** Words a gallery filters by. */
+  tags?: string[];
+  /** Up to five colours that stand for the theme on its card, the most telling first. */
+  preview: ThemeColor[];
+  url: ThemeIndexUrl;
+  /** The sha256 of the bundle's bytes, lowercase hex: a download that differs is refused. */
+  sha256: string;
+  /** The bundle's size in bytes, 16 MiB at most. */
+  size: number;
+}
+
+/** Where the theme's .desk-theme is: an https URL, or a path relative to the index's own URL without .. segments (paper-dusk.desk-theme), so a market moves by moving its folder. */
+export type ThemeIndexUrl = string;
+
 /** A theme: the layers every scheme shares (type, shape, motion) and one variant per scheme. At least one of light and dark; the desk's own theme stands in for a missing one. */
 export interface ThemePackage {
   /** Who made it. */
@@ -1505,7 +1538,9 @@ export type BridgeRequest =
   | ThemeSaveRequest
   | ThemeImportRequest
   | ThemeExportRequest
-  | ThemeRemoveRequest;
+  | ThemeRemoveRequest
+  | ThemeMarketListRequest
+  | ThemeMarketFetchRequest;
 
 /** The answer to one request: a result, or an error. */
 export type BridgeResponse = BridgeSuccess | BridgeFailure;
@@ -2800,20 +2835,22 @@ export interface ThemeSaveResult {
   plugin: PluginInfo;
 }
 
-/** Install a .desk-theme bundle as a user theme: given inline, read from a file, or downloaded over https and checked against its sha256 (a mismatch is invalid_params and nothing lands). A bundle whose id is outside local. and market. lands as local.<its name as a slug>. It is checked and replaces an earlier user theme of its id as theme.save does. */
+/** Install a .desk-theme bundle as a user theme: given inline, read from a file, or downloaded over https and checked against its sha256 (a mismatch is invalid_params and nothing lands). A bundle whose id is outside local. and market. lands as local.<its name as a slug>. It is checked and replaces an earlier user theme of its id as theme.save does, except that a market. theme downloaded by url replaces an earlier one only while that one is still as its market published it (ADR 0060): one the person changed is already_exists and stays. */
 export interface ThemeImportRequest {
   id: RequestId;
   method: "theme.import";
   params: ThemeImportParams;
 }
 
-/** Parameters of theme.import: exactly one of bundle, path and url, and sha256 with url. */
+/** Parameters of theme.import: exactly one of bundle, path and url, and sha256 with url (market only with url). */
 export interface ThemeImportParams {
   bundle?: ThemeBundle;
   /** A .desk-theme file to read. */
   path?: Path;
   url?: ThemeBundleUrl;
   sha256?: ThemeSha256;
+  /** With url, the market index that listed it: kept beside a market. theme with its version and sha256, so theme.market.list tells an update from the person's own changes. */
+  market?: ThemeMarketUrl;
   scope: ThemeManagePermission;
 }
 
@@ -2861,6 +2898,64 @@ export interface ThemeRemoveParams {
 
 /** Result of theme.remove. */
 export type ThemeRemoveResult = Record<string, never>;
+
+/** An https URL of a market index (specs/plugin ThemeIndex, desk-theme-index/1). */
+export type ThemeMarketUrl = string;
+
+/** Read every market index desk.theme.markets lists, in order, and merge their themes by id: the first market that lists an id wins. Each index is downloaded over https from its own host only; one that cannot be read or is not a valid index leaves its themes out and says why in problems. Each theme says whether this desk has it. */
+export interface ThemeMarketListRequest {
+  id: RequestId;
+  method: "theme.market.list";
+  params: ThemeMarketListParams;
+}
+
+/** Parameters of theme.market.list. */
+export interface ThemeMarketListParams {
+  scope: ThemeManagePermission;
+}
+
+/** Result of theme.market.list: the merged themes in market order, and the markets that could not be read. */
+export interface ThemeMarketListResult {
+  themes: ThemeMarketTheme[];
+  problems: ThemeMarketProblem[];
+}
+
+/** One theme a market offers: its index entry with url made absolute, the market that listed it, and how it stands on this desk. */
+export interface ThemeMarketTheme {
+  theme: ThemeIndexEntry;
+  market: ThemeMarketUrl;
+  state: ThemeMarketState;
+  /** The version this desk has, when it has the theme. */
+  installed?: Version;
+}
+
+/** available: not installed. installed: installed as the market publishes it now. update: installed from a market and unchanged since, and the market has other bytes now; installing it again replaces it. edited: installed but not as a market published it (changed since, or brought in from a file); an update never replaces it. */
+export type ThemeMarketState = "available" | "installed" | "update" | "edited";
+
+/** A market index that could not be read, and why. */
+export interface ThemeMarketProblem {
+  market: string;
+  message: string;
+}
+
+/** Download a market theme to look at it before installing it: over https from the URL's host only, refused unless its bytes match sha256, and checked as a theme plugin in a temporary folder that goes again. Nothing is installed; the answer is the bundle, which the studio previews. */
+export interface ThemeMarketFetchRequest {
+  id: RequestId;
+  method: "theme.market.fetch";
+  params: ThemeMarketFetchParams;
+}
+
+/** Parameters of theme.market.fetch. */
+export interface ThemeMarketFetchParams {
+  url: ThemeBundleUrl;
+  sha256: ThemeSha256;
+  scope: ThemeManagePermission;
+}
+
+/** Result of theme.market.fetch: the checked bundle. */
+export interface ThemeMarketFetchResult {
+  bundle: ThemeBundle;
+}
 
 /** Open one of the surfaces the caller's manifest declares; the runtime hears ui.surface.opened. */
 export interface UiSurfaceOpenRequest {
@@ -3246,6 +3341,8 @@ export interface BridgeMethodMap {
   "theme.import": { params: ThemeImportParams; result: ThemeImportResult };
   "theme.export": { params: ThemeExportParams; result: ThemeExportResult };
   "theme.remove": { params: ThemeRemoveParams; result: ThemeRemoveResult };
+  "theme.market.list": { params: ThemeMarketListParams; result: ThemeMarketListResult };
+  "theme.market.fetch": { params: ThemeMarketFetchParams; result: ThemeMarketFetchResult };
 }
 
 /** A bridge method name. */
@@ -3323,4 +3420,6 @@ export const BRIDGE_METHODS = [
   "theme.import",
   "theme.export",
   "theme.remove",
+  "theme.market.list",
+  "theme.market.fetch",
 ] as const satisfies readonly BridgeMethod[];

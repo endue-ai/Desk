@@ -105,6 +105,21 @@ const KO = {
   said: "말한 것",
   schemeOnly: "한 모드만 있는 테마라 적용하면 데스크가 그 모드로 바뀌어요",
   toEris: "Eris 에게 대신 보내기",
+  market: "마켓",
+  marketHint:
+    "desk.theme.markets 에 적힌 마켓의 테마예요. 미리보기는 테마를 받아 설치하지 않고 데스크 전체에 보여 주고, 받은 파일은 해시를 확인해요.",
+  marketLoading: "마켓을 읽는 중…",
+  marketEmpty: "마켓에 테마가 없어요.",
+  marketProblem: "읽지 못한 마켓",
+  preview: "미리보기",
+  install: "설치",
+  update: "업데이트",
+  available: "받을 수 있음",
+  installed: "설치됨",
+  updateAvailable: "업데이트 있음",
+  edited: "고친 테마 · 업데이트가 바꾸지 않아요",
+  downloading: "받는 중",
+  installing: "설치하는 중",
 };
 
 const EN: typeof KO = {
@@ -211,6 +226,21 @@ const EN: typeof KO = {
   said: "Said",
   schemeOnly: "Made for one scheme: Apply switches the desk to it",
   toEris: "Send to Eris instead",
+  market: "Market",
+  marketHint:
+    "Themes from the markets desk.theme.markets lists. Preview downloads one and shows it on the whole desk without installing it; every download's hash is checked.",
+  marketLoading: "Reading the markets…",
+  marketEmpty: "No market lists a theme.",
+  marketProblem: "Could not read",
+  preview: "Preview",
+  install: "Install",
+  update: "Update",
+  available: "Available",
+  installed: "Installed",
+  updateAvailable: "Update available",
+  edited: "Edited: updates leave it be",
+  downloading: "Downloading",
+  installing: "Installing",
 };
 
 export type StudioCopy = keyof typeof KO;

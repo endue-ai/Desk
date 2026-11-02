@@ -10,9 +10,9 @@ use desk_bridge::{
     ConnectorManifest, ConnectorStatus, ConnectorSyncResult, FsReadResult, FsUrlResult,
     InitDocument, InitGetResult, InitSettingKey, Item, ItemChange, ItemPage, ItemQuery,
     PaletteResults, PermQueryResult, Permission, PluginContributes, PluginListResult,
-    PluginManifest, ShellOpenResult, StoreGetResult, ThemeBundle, ThemeExportResult, ThemePackage,
-    ThemeType, ThemeVariant, View, ViewGetResult, ViewListResult, ViewSource, ViewSummary,
-    manifest_problems, view_problems,
+    PluginManifest, ShellOpenResult, StoreGetResult, ThemeBundle, ThemeExportResult, ThemeIndex,
+    ThemeMarketFetchResult, ThemeMarketListResult, ThemePackage, ThemeType, ThemeVariant, View,
+    ViewGetResult, ViewListResult, ViewSource, ViewSummary, manifest_problems, view_problems,
 };
 use serde::Serialize;
 use serde::de::DeserializeOwned;
@@ -245,6 +245,9 @@ fn valid_vectors_roundtrip_through_generated_types() {
                 "ThemeType" => roundtrip::<ThemeType>(vector),
                 "ThemeBundle" => roundtrip::<ThemeBundle>(vector),
                 "ThemeExportResult" => roundtrip::<ThemeExportResult>(vector),
+                "ThemeIndex" => roundtrip::<ThemeIndex>(vector),
+                "ThemeMarketListResult" => roundtrip::<ThemeMarketListResult>(vector),
+                "ThemeMarketFetchResult" => roundtrip::<ThemeMarketFetchResult>(vector),
                 other => panic!("{}: no Rust type mapped for {other}", vector.file),
             }
         }

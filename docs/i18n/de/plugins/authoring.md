@@ -292,7 +292,39 @@ löscht sie. Export und Import im Studio tun dasselbe, und das Studio nimmt eine
 
 ### Der Marktplatz
 
-Ein Theme-Marktplatz kommt (`docs/ko/theme-requirements.md`, TC-05 und TS-08): ein Index von
-`.desk-theme`-Dateien mit ihrer sha256, die das Studio auflistet, in der Vorschau zeigt und unter ids in
-`market.` installiert. `theme.import` nimmt schon eine `https`-URL mit der `sha256` des Bündels und lehnt
-Bytes ab, die nicht passen. Bis der Marktplatz öffnet, teilen Sie die Datei selbst.
+Der Market-Tab des Studios listet die Themes der Marktplätze, die die Einstellung `desk.theme.markets`
+mit der https-URL ihres Index nennt (ADR 0060). Voreingestellt ist `market/themes/index.json` dieses
+Repositorys auf `main`, gelesen von
+`https://raw.githubusercontent.com/endue-ai/Desk/main/market/themes/index.json`. Den Index eines anderen
+Marktplatzes fügen Sie in `init.yaml` dahinter an; listen zwei Marktplätze dieselbe id, gilt der erste:
+
+```yaml
+settings:
+  desk.theme.markets:
+    - https://raw.githubusercontent.com/endue-ai/Desk/main/market/themes/index.json
+    - https://themes.example.com/index.json
+```
+
+Jede Karte zeigt die Vorschaufarben eines Themes, seinen Namen, Autor und seine Lizenz und wie es auf
+diesem Desk steht: Available, Installed, Update available oder Edited. Preview lädt die `.desk-theme`
+herunter, prüft ihre sha256 und zeigt sie auf dem ganzen Desk, ohne sie zu installieren. Install holt
+sie über `theme.import` mit ihrer URL und sha256 herein, unter ihrer id in `market.`, und Apply setzt sie
+in Kraft. Ein Update ersetzt ein Theme vom Marktplatz nur, solange Sie es nicht geändert haben; ein
+Theme, das Sie geändert haben, bleibt Ihres.
+
+Um ein Theme zu veröffentlichen, öffnen Sie einen Pull Request, der sein Bündel und seinen Indexeintrag
+zu `market/themes/` hinzufügt:
+
+1. Exportieren Sie das Theme (`desk theme export <id> <file>` oder Export im Studio) mit einer id in
+   `market.`, einer Version, `theme.author` und `theme.license`: einem SPDX-Ausdruck, der auch seine
+   Schriften und Bilder abdeckt.
+2. Legen Sie die Datei als `<name>.desk-theme` in `market/themes/` und tragen Sie sie in `index.json`
+   ein (`specs/plugin/v0/theme-index.schema.json`): `id`, `name`, `version`, `description`, `author`,
+   `license`, `tags`, bis zu fünf `preview`-Farben, `url` (der Dateiname), `sha256` und `size`.
+3. Führen Sie `node scripts/theme-market.mjs` aus. Die Marktplatzprüfung, Teil von `just check`, lehnt
+   einen falschen Hash oder eine falsche Größe, eine fehlende Lizenz, eine doppelte id und ein Bündel ab,
+   das kein gültiges Theme-Plugin ist; ein Test schickt jedes Theme des Marktplatzes in beiden Schemes
+   durch die Kontrastprüfung.
+
+Ein Update ist eine neue Version mit ihrem neuen Bündel, ihrer sha256 und Größe. `market/themes/README.md`
+beschreibt dieselben Schritte.

@@ -3,7 +3,7 @@
 //! watched. theme.save and theme.import write a folder beside the others, check it with `validate_dir`
 //! and only then put it in place; theme.export makes a `.desk-theme` bundle of any installed theme;
 //! theme.remove deletes a user theme. Every call needs theme:manage; built-in ids and plugins outside
-//! the folder are never replaced.
+//! the folder are never replaced. Downloads and what a market theme keeps beside it are core_market's.
 
 use std::collections::btree_map::Entry;
 use std::collections::{BTreeMap, BTreeSet};
@@ -11,7 +11,6 @@ use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
-use std::time::Duration;
 
 use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD;
@@ -21,7 +20,6 @@ use desk_bridge::{
     ThemeRemoveParams, ThemeSaveParams,
 };
 use desk_sys::fs::{WatchOptions, watch_debounced};
-use desk_update::verify::sha256_hex;
 use serde_json::json;
 
 use crate::handler::{Answer, Core, error, io_error};
@@ -31,7 +29,7 @@ use crate::plugins::{
     Landing, declared, fingerprint, folder_in, land_folder, local_id, plugin_dirs, theme_files,
 };
 
-/// The largest `.desk-theme` bundle, in bytes.
+/// The largest `.desk-theme` bundle (and market index), in bytes.
 const BUNDLE_MAX: usize = 16 << 20;
 const SOURCES: &str = "theme.import takes one of bundle, path and url, and sha256 with url";
 
@@ -43,7 +41,7 @@ pub type ThemeFetch = dyn Fn(&str) -> Result<Vec<u8>, String> + Send + Sync;
 #[derive(Default)]
 pub(crate) struct Themes {
     dir: Option<PathBuf>,
-    fetch: Option<Box<ThemeFetch>>,
+    pub(crate) fetch: Option<Box<ThemeFetch>>,
     /// The one change at a time, and each user theme folder's fingerprint since the core last
     /// installed or refreshed it, so the watcher does not announce the core's own writes again.
     landing: Mutex<BTreeMap<PathBuf, u64>>,
@@ -119,6 +117,7 @@ impl Core {
     pub(crate) fn theme_import(&self, caller: &str, params: ThemeImportParams) -> Answer {
         self.check_theme(caller, params.scope)?;
         let sha256 = params.sha256.as_deref();
+        let url = params.url.clone();
         let bundle = match (params.bundle, params.path, params.url) {
             (Some(bundle), None, None) if sha256.is_none() => {
                 let size = serde_json::to_vec(&bundle).map_or(0, |b| b.len());
@@ -142,7 +141,10 @@ impl Core {
             manifest.id = local_id(name, &manifest.id);
         }
         let files = decode(&manifest, bundle.files.into_iter().collect())?;
-        Ok(json!({ "plugin": self.land(manifest, files)? }))
+        let record = self.market_guard(&manifest, url, sha256, params.market)?;
+        let plugin = self.land(manifest, files)?;
+        self.market_landed(&plugin.id, record);
+        Ok(json!({ "plugin": plugin }))
     }
 
     pub(crate) fn theme_export(&self, caller: &str, params: ThemeExportParams) -> Answer {
@@ -184,6 +186,7 @@ impl Core {
             return Err(error(ErrorCode::NotFound, format!("no plugin {id}")));
         };
         fs::remove_dir_all(&folder).map_err(io_error)?;
+        self.forget_market(&id);
         self.forget_theme(&id);
         Ok(json!({}))
     }
@@ -251,7 +254,7 @@ impl Core {
         registry.in_folder(dir)
     }
 
-    fn user_theme_dir(&self, id: &str) -> Option<PathBuf> {
+    pub(crate) fn user_theme_dir(&self, id: &str) -> Option<PathBuf> {
         let mut themes = self.user_themes(self.themes.dir.as_deref()?).into_iter();
         Some(themes.find(|(other, _)| other == id)?.1)
     }
@@ -281,25 +284,7 @@ impl Core {
         theme.ok_or_else(|| error(ErrorCode::NotFound, format!("no installed theme {id}")))
     }
 
-    /// A bundle by its https URL, refused unless its bytes have `sha256`.
-    fn download(&self, url: &str, sha256: Option<&str>) -> Failed<Vec<u8>> {
-        let Some(sha256) = sha256.filter(|_| https_host(url).is_some()) else {
-            return Err(invalid(format!("{url} needs https and a sha256")));
-        };
-        let fetched = match &self.themes.fetch {
-            Some(fetch) => fetch(url),
-            None => https_fetch(url),
-        };
-        let bytes = fetched.map_err(|why| error(ErrorCode::IoError, why))?;
-        too_big(url, bytes.len())?;
-        let actual = sha256_hex(&bytes);
-        if !actual.eq_ignore_ascii_case(sha256) {
-            return Err(invalid(format!("{url}: sha256 {actual}, not {sha256}")));
-        }
-        Ok(bytes)
-    }
-
-    fn check_theme(&self, caller: &str, scope: ThemeManagePermission) -> Failed<()> {
+    pub(crate) fn check_theme(&self, caller: &str, scope: ThemeManagePermission) -> Failed<()> {
         self.check(caller, &Permission::ThemeManage(scope), &Target::None)
     }
 
@@ -317,7 +302,7 @@ impl Core {
 }
 
 /// Files by path from base64: each one the theme names, once, and no larger than an asset may be.
-fn decode(manifest: &PluginManifest, given: Vec<(String, String)>) -> Failed<Files> {
+pub(crate) fn decode(manifest: &PluginManifest, given: Vec<(String, String)>) -> Failed<Files> {
     let named = theme_files(manifest);
     let mut files = Files::new();
     for (path, base64) in given {
@@ -339,11 +324,11 @@ fn decode(manifest: &PluginManifest, given: Vec<(String, String)>) -> Failed<Fil
     Ok(files)
 }
 
-fn parse(bytes: &[u8]) -> Failed<ThemeBundle> {
+pub(crate) fn parse(bytes: &[u8]) -> Failed<ThemeBundle> {
     serde_json::from_slice(bytes).map_err(|e| invalid(format!("not a .desk-theme: {e}")))
 }
 
-fn too_big(what: &str, size: usize) -> Failed<()> {
+pub(crate) fn too_big(what: &str, size: usize) -> Failed<()> {
     let why = format!("{what} is {size} bytes, over {BUNDLE_MAX}");
     (size <= BUNDLE_MAX)
         .then_some(())
@@ -365,31 +350,7 @@ fn free_name(dir: &Path, id: &str) -> PathBuf {
     names.find(|path| !path.exists()).expect("a free name")
 }
 
-/// `host:port` of an https URL (443 when it names none): the only host its download may reach.
-fn https_host(url: &str) -> Option<String> {
-    let rest = url.strip_prefix("https://")?;
-    let host = rest.split(['/', '?', '#']).next()?.to_ascii_lowercase();
-    let usable = !host.is_empty() && !host.contains(['@', '[', ' ']);
-    let port = if host.contains(':') { "" } else { ":443" };
-    usable.then(|| format!("{host}{port}"))
-}
-
-/// The desk's download: desk-sys `net`, to the URL's host only, for a 2xx answer, within a minute.
-fn https_fetch(url: &str) -> Result<Vec<u8>, String> {
-    let request = desk_sys::net::Request {
-        url: url.to_owned(),
-        allowed_hosts: https_host(url).into_iter().collect(),
-        timeout: Some(Duration::from_secs(60)),
-        ..Default::default()
-    };
-    let response = desk_sys::net::fetch(&request).map_err(|e| e.message)?;
-    match response.status {
-        200..=299 => Ok(response.body),
-        status => Err(format!("{url} answered {status}")),
-    }
-}
-
-fn invalid(why: String) -> BridgeError {
+pub(crate) fn invalid(why: String) -> BridgeError {
     error(ErrorCode::InvalidParams, why)
 }
 

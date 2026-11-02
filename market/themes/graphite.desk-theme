@@ -1,0 +1,134 @@
+{
+  "format": "desk-theme/1",
+  "manifest": {
+    "id": "market.graphite",
+    "name": "Graphite",
+    "version": "1.0.0",
+    "kind": "theme",
+    "description": "Pencil greys with one signal orange: square corners, compact controls and snappy motion for long working days.",
+    "theme": {
+      "author": "Team endue",
+      "license": "Apache-2.0",
+      "tags": [
+        "grey",
+        "orange",
+        "focused"
+      ],
+      "preview": [
+        "#17181c",
+        "#ff6a1a",
+        "#f0f0f2",
+        "#dd6935"
+      ],
+      "light": {
+        "colors": {
+          "background": "#f0f0f2",
+          "card": "#f5f5f6",
+          "muted": "#e6e6e8",
+          "popover": "#f5f5f6",
+          "hover": "#dcdcde",
+          "border": "#c9c9ca",
+          "input": "#808082",
+          "text": "#1f1f22",
+          "textMuted": "#5d5d61",
+          "tooltip": "#2d2d30",
+          "tooltipText": "#f5f5f6",
+          "primary": "#dd6935",
+          "primaryForeground": "#040305",
+          "primaryHover": "#bc592d",
+          "primaryText": "#a74e27",
+          "primarySubtle": "rgba(221, 105, 53, 0.08)",
+          "primarySoft": "rgba(221, 105, 53, 0.12)",
+          "primaryBorder": "rgba(221, 105, 53, 0.34)",
+          "ring": "#dd6935",
+          "accent": "#dd6935",
+          "success": "#3fa143",
+          "successForeground": "#1f1f22",
+          "successText": "#2a742d",
+          "successSoft": "rgba(63, 161, 67, 0.16)",
+          "successBorder": "rgba(63, 161, 67, 0.4)",
+          "warning": "#ca7c1c",
+          "warningForeground": "#1f1f22",
+          "warningText": "#93580e",
+          "warningSoft": "rgba(202, 124, 28, 0.16)",
+          "warningBorder": "rgba(202, 124, 28, 0.4)",
+          "danger": "#e0696a",
+          "dangerForeground": "#1f1f22",
+          "dangerText": "#b03e43",
+          "dangerSoft": "rgba(224, 105, 106, 0.16)",
+          "dangerBorder": "rgba(224, 105, 106, 0.4)",
+          "info": "#5090e0",
+          "infoForeground": "#1f1f22",
+          "infoText": "#2666b3",
+          "infoSoft": "rgba(80, 144, 224, 0.16)",
+          "infoBorder": "rgba(80, 144, 224, 0.4)"
+        },
+        "material": {
+          "border": 1,
+          "shadow": "none"
+        }
+      },
+      "dark": {
+        "colors": {
+          "background": "#17181c",
+          "card": "#1f2024",
+          "muted": "#242529",
+          "popover": "#2b2c30",
+          "hover": "#35363b",
+          "border": "#343539",
+          "input": "#7f8085",
+          "text": "#f1f2f4",
+          "textMuted": "#b0b1b4",
+          "tooltip": "#414246",
+          "tooltipText": "#f1f2f4",
+          "primary": "#ff6a1a",
+          "primaryForeground": "#17181c",
+          "primaryHover": "#ff803c",
+          "primaryText": "#ff6a1a",
+          "primarySubtle": "rgba(255, 106, 26, 0.08)",
+          "primarySoft": "rgba(255, 106, 26, 0.12)",
+          "primaryBorder": "rgba(255, 106, 26, 0.34)",
+          "ring": "#ff6a1a",
+          "accent": "#ff6a1a",
+          "success": "#5dbe5f",
+          "successForeground": "#17181c",
+          "successText": "#5dbe5f",
+          "successSoft": "rgba(93, 190, 95, 0.16)",
+          "successBorder": "rgba(93, 190, 95, 0.4)",
+          "warning": "#ff9800",
+          "warningForeground": "#17181c",
+          "warningText": "#ff9800",
+          "warningSoft": "rgba(255, 152, 0, 0.16)",
+          "warningBorder": "rgba(255, 152, 0, 0.4)",
+          "danger": "#ff8484",
+          "dangerForeground": "#17181c",
+          "dangerText": "#ff8484",
+          "dangerSoft": "rgba(255, 132, 132, 0.16)",
+          "dangerBorder": "rgba(255, 132, 132, 0.4)",
+          "info": "#6cadff",
+          "infoForeground": "#17181c",
+          "infoText": "#6cadff",
+          "infoSoft": "rgba(108, 173, 255, 0.16)",
+          "infoBorder": "rgba(108, 173, 255, 0.4)"
+        },
+        "material": {
+          "border": 1,
+          "shadow": "strong"
+        }
+      },
+      "type": {
+        "sans": "system-ui, -apple-system, \"Segoe UI\", sans-serif",
+        "mono": "ui-monospace, \"SF Mono\", Menlo, Consolas, monospace",
+        "tracking": -0.005
+      },
+      "shape": {
+        "radius": "subtle",
+        "density": "compact"
+      },
+      "motion": {
+        "personality": "snappy"
+      }
+    }
+  },
+  "files": {}
+}

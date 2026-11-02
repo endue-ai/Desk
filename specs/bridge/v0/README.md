@@ -361,6 +361,22 @@ ids only; any other plugin is `invalid_params`, an id nothing holds `not_found`)
 user themes folder (the browser stub) answers `unsupported` to `theme.save`, `theme.import` and
 `theme.remove`.
 
+**theme.market.list** and **theme.market.fetch** read the theme markets (ADR 0060), under the same
+`theme:manage`. `theme.market.list` downloads every index the setting `desk.theme.markets` lists
+(`specs/plugin/v0/theme-index.schema.json`), over `https` from each index's own host, and merges their
+themes by id, the first market winning. Each theme comes with its entry (`url` made absolute against
+its index), the `market` that listed it, the version installed if any, and a `state`: `available`,
+`installed` (as the market publishes it now), `update` (installed from a market, unchanged since, and
+the market has other bytes now) or `edited` (installed but changed since, or brought in from a file).
+An index that cannot be read leaves its themes out and is named in `problems`. `theme.market.fetch`
+downloads a bundle to preview it: `https`, refused unless it matches `sha256`, checked as a theme plugin
+in a temporary folder that goes again, and answered as the bundle; nothing is installed. Installing is
+`theme.import` with `url`, `sha256` and `market`: beside a `market.` theme the core keeps where it came
+from (`<data>/themes/.market/<id>.json`: the market, the URL, the version, the sha256 and a hash of
+the folder as it landed). A later import of the same id by `url` replaces it only while its folder still
+has that hash; a theme the person changed is `already_exists` and stays. `theme.remove` forgets the
+record with the folder.
+
 ## Vectors
 
 `vectors/valid` and `vectors/invalid` hold `{ target, description, instance }` files. Rust

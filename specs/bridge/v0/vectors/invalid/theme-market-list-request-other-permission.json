@@ -1,0 +1,14 @@
+{
+  "target": "BridgeRequest",
+  "description": "net:fetch does not cover the market",
+  "instance": {
+    "id": 94,
+    "method": "theme.market.list",
+    "params": {
+      "scope": {
+        "permission": "net:fetch",
+        "hosts": ["raw.githubusercontent.com"]
+      }
+    }
+  }
+}

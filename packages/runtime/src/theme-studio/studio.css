@@ -2,6 +2,7 @@
 
 @import "./brand.css";
 @import "./describe.css";
+@import "./market.css";
 
 .theme-studio-scrim {
   z-index: var(--z-modal-scrim);

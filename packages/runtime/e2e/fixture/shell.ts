@@ -4,8 +4,11 @@
 // (desk.theme.motion: reduce), ?init={...} (more init.yaml settings), ?themes=1 (the test theme
 // plugin installed), ?studio=1 (the theme studio open once the desk is ready; ?studio=<theme id>
 // previews that theme too; ?edit=<theme id> opens the editor on a copy of it; ?describe=<sentence>
-// runs Describe on it; ?say=<sentence> says it to Eris through the composer). brain.ask answers as
-// examples/brain-echo does (propose_theme from the words of the prompt's last line). Never shipped.
+// runs Describe on it; ?say=<sentence> says it to Eris through the composer; ?market=1 lists the
+// fixture market, e2e/themes/market served at /market/, as https://market.test/index.json, and
+// ?market=tab opens the studio's Market tab, ?market=<theme id> previews that theme there). brain.ask
+// answers as examples/brain-echo does (propose_theme from the words of the prompt's last line).
+// Never shipped.
 import type { PluginManifest } from "@endue-ai/bridge";
 import "../../src/desk.css";
 import "../../src/shell/styles";
@@ -47,6 +50,8 @@ const testPlugins: PluginManifest[] = [
     surfaces: [{ id: "main", title: "Hello", placement: "center" }],
   },
 ];
+const MARKET = "https://market.test/";
+const market = params.has("market");
 const core = browserCore({
   manifests: [
     ...Object.values(manifests).filter(
@@ -57,12 +62,14 @@ const core = browserCore({
   ],
   store: params.has("persist") ? localStore("desk.core.") : memoryStore(),
   ask: (prompt, tool) => (tool === "propose_theme" ? proposeTheme(prompt) : undefined),
+  ...(market ? { download: fromFixtureMarket } : {}),
   init: {
     profile: "morning",
     settings: {
       ...(params.has("reduced")
         ? { "desk.theme.motion": "reduce" }
         : { "desk.theme.motion": "full" }),
+      ...(market ? { "desk.theme.markets": [`${MARKET}index.json`] } : {}),
       ...JSON.parse(params.get("init") ?? "{}"),
     },
   },
@@ -82,6 +89,13 @@ const desk = mountDesk({
   lang,
   seed: sampleState(lang, epoch),
 });
+
+/** The fixture market's files, as the network would answer its https URLs. */
+async function fromFixtureMarket(url: string): Promise<ArrayBuffer> {
+  const answer = await fetch(url.replace(MARKET, "/market/"));
+  if (!answer.ok) throw new Error(`${url} answered ${answer.status}`);
+  return answer.arrayBuffer();
+}
 
 /** Advance the clock in 16 ms frames, ending exactly at `ms` later. */
 function step(ms: number): void {
@@ -119,6 +133,20 @@ if (params.has("describe")) {
   void desk.ready.then(() =>
     desk.runtime.commands.run("desk.theme.describe", { text: params.get("describe") }),
   );
+}
+
+const marketView = params.get("market");
+if (marketView && marketView !== "1") {
+  const press = (selector: string, tries = 50): void => {
+    const button = document.querySelector<HTMLElement>(selector);
+    if (button) button.click();
+    else if (tries > 0) setTimeout(() => press(selector, tries - 1), 50);
+  };
+  void desk.ready.then(async () => {
+    await desk.runtime.commands.run("desk.theme.studio");
+    press('[data-key="market"]');
+    if (marketView !== "tab") press(`[data-theme="${marketView}"] [data-key="market-preview"]`);
+  });
 }
 
 if (params.has("say")) {

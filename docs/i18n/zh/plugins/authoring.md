@@ -236,4 +236,21 @@ cargo run -p desk-cli -- theme import ~/Downloads/dusk.desk-theme
 
 ### 市场
 
-主题市场即将推出（`docs/ko/theme-requirements.md` 的 TC-05、TS-08）：一个列出 `.desk-theme` 文件及其 sha256 的索引，主题工作室据此列出、预览主题，并以 `market.` 下的 id 安装。`theme.import` 已经接受 `https` URL 及其包的 `sha256`，字节不一致时会拒绝。在市场开放之前，请直接分享文件本身。
+主题工作室的 Market 标签页列出设置 `desk.theme.markets` 以各索引的 https URL 列出的市场中的主题（ADR 0060）。默认是本仓库 `main` 分支上的 `market/themes/index.json`，从 `https://raw.githubusercontent.com/endue-ai/Desk/main/market/themes/index.json` 读取。其他市场的索引可以在 `init.yaml` 中加在它之后；两个市场列出同一个 id 时，以排在前面的为准：
+
+```yaml
+settings:
+  desk.theme.markets:
+    - https://raw.githubusercontent.com/endue-ai/Desk/main/market/themes/index.json
+    - https://themes.example.com/index.json
+```
+
+每张卡片显示主题的预览颜色、名称、作者和许可证，以及它在这台桌面上的状态：Available、Installed、Update available 或 Edited。Preview 会下载 `.desk-theme`、校验其 sha256，并在不安装的情况下把它显示在整个桌面上。Install 通过带 URL 和 sha256 的 `theme.import` 把它装入，id 仍在 `market.` 之下；Apply 让它生效。更新只会替换你没有改动过的市场主题；你改过的主题会保留为你自己的。
+
+要发布主题，请提交一个拉取请求，把它的包和索引条目加入 `market/themes/`：
+
+1. 导出主题（`desk theme export <id> <file>`，或工作室中的 Export），使用 `market.` 之下的 id，并设置版本、`theme.author` 和 `theme.license`（也涵盖其字体和图片的 SPDX 表达式）。
+2. 把文件以 `<name>.desk-theme` 放进 `market/themes/`，并在 `index.json`（`specs/plugin/v0/theme-index.schema.json`）中加入它的条目：`id`、`name`、`version`、`description`、`author`、`license`、`tags`、最多五个 `preview` 颜色、`url`（文件名）、`sha256` 和 `size`。
+3. 运行 `node scripts/theme-market.mjs`。这个市场检查器属于 `just check`，会拒绝哈希或大小不符、缺少许可证、id 重复以及不是有效主题插件的包；另有测试在两种 scheme 下用门禁检查每个市场主题。
+
+更新就是一个新版本，附带新的包、sha256 和大小。`market/themes/README.md` 中有同样的步骤。

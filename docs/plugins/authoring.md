@@ -284,7 +284,35 @@ Export and Import do the same, and it takes a `.desk-theme` dropped on it.
 
 ### The market
 
-A theme market is coming (`docs/ko/theme-requirements.md`, TC-05 and TS-08): an index of `.desk-theme`
-files with their sha256, which the studio lists, previews and installs under ids inside `market.`.
-`theme.import` already takes an `https` URL with the bundle's `sha256` and refuses bytes that do not
-match. Until the market opens, share the file itself.
+The studio's Market tab lists the themes of the markets that the setting `desk.theme.markets` names, by
+the https URL of each index (ADR 0060). The default is this repository's `market/themes/index.json` on
+`main`, read from `https://raw.githubusercontent.com/endue-ai/Desk/main/market/themes/index.json`. Add
+another market's index after it in `init.yaml`; when two markets list the same id, the first one wins:
+
+```yaml
+settings:
+  desk.theme.markets:
+    - https://raw.githubusercontent.com/endue-ai/Desk/main/market/themes/index.json
+    - https://themes.example.com/index.json
+```
+
+Each card shows a theme's preview colours, name, author and licence, and where it stands on this desk:
+Available, Installed, Update available or Edited. Preview downloads the `.desk-theme`, checks its
+sha256 and shows it on the whole desk without installing it. Install brings it in through
+`theme.import` with its URL and sha256, under its id inside `market.`, and Apply puts it in force. An
+update replaces a market theme only while you have not changed it; a theme you changed stays yours.
+
+To publish a theme, open a pull request that adds its bundle and its index entry to `market/themes/`:
+
+1. Export the theme (`desk theme export <id> <file>`, or Export in the studio) with an id inside
+   `market.`, a version, `theme.author` and `theme.license`: an SPDX expression that covers its fonts
+   and images too.
+2. Put the file in `market/themes/` as `<name>.desk-theme` and add its entry to `index.json`
+   (`specs/plugin/v0/theme-index.schema.json`): `id`, `name`, `version`, `description`, `author`,
+   `license`, `tags`, up to five `preview` colours, `url` (the file name), `sha256` and `size`.
+3. Run `node scripts/theme-market.mjs`. The market checker, part of `just check`, refuses a wrong hash
+   or size, a missing licence, a duplicate id and a bundle that is not a valid theme plugin; a test
+   gates every market theme in both schemes.
+
+An update is a new version with its new bundle, sha256 and size. `market/themes/README.md` has the
+same steps.
