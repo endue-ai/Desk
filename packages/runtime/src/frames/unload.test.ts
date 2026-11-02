@@ -235,8 +235,14 @@ describe("hidden surfaces are unloaded and their state kept", () => {
     expect(document.activeElement).toBe(before);
     expect(d.runtime.shortcuts.focused).toBe("a.one");
 
-    // Once it has settled, the person can move into it as into any frame.
-    await flush(5_000);
+    // Browsers that only blur the desk's window are heard too.
+    d.plugins["b.two"]?.frame()?.focus();
+    window.dispatchEvent(new FocusEvent("blur"));
+    await flush();
+    expect(document.activeElement).toBe(before);
+
+    // Once the person points at it, they can move into it as into any frame.
+    d.plugins["b.two"]?.frame()?.dispatchEvent(new PointerEvent("pointerover"));
     takeFocus(d.plugins["b.two"]?.frame());
     expect(document.activeElement).toBe(d.plugins["b.two"]?.frame());
     expect(d.runtime.shortcuts.focused).toBe("b.two");

@@ -41,6 +41,27 @@ test("a window wholly under a maximized one is unloaded to a placeholder and loa
   await expect(frame(page, COUNTER).getByRole("button")).toBeVisible();
 });
 
+test("a window that loads again does not take the focus when its page focuses itself", async ({
+  page,
+}) => {
+  await window_(page, HELLO).locator(".surface-title").dblclick();
+  await expect(inner(page, COUNTER).locator(".desk-surface-placeholder")).toHaveCount(1);
+  await window_(page, HELLO).locator(".surface-title").dblclick();
+  await expect(frame(page, COUNTER).getByRole("button")).toBeVisible();
+  // The person is in the desk's own page; the Counter page focuses its button as it shows, as many
+  // plugins do when they mount.
+  await page.locator(".desktop-button").first().focus();
+  await frame(page, COUNTER)
+    .getByRole("button")
+    .evaluate((button) => (button as HTMLElement).focus());
+  await page.waitForTimeout(200);
+  const focused = await page.evaluate(() =>
+    document.activeElement?.closest("[data-surface]")?.getAttribute("data-surface"),
+  );
+  expect(focused).not.toBe(COUNTER);
+  await expect(page.locator(".desktop-button").first()).toBeFocused();
+});
+
 test("a window that stays in sight is never unloaded", async ({ page }) => {
   await page.waitForTimeout(1_500);
   await expect(inner(page, COUNTER).locator("iframe")).toHaveCount(1);

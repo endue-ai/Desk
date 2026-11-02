@@ -70,8 +70,11 @@ export class SurfaceHost {
     section.dataset.surface = spec.id;
     section.tabIndex = -1;
     section.hidden = spec.hidden === true;
-    section.addEventListener("focusin", () => {
-      if (!this.#settling.refocus(spec.id, doc)) this.#onFocus(spec.id);
+    section.addEventListener("focusin", (event) => {
+      // The desk focusing the surface itself ends a frame's settling; the frame taking it does not.
+      if (event.target === section) this.#settling.forget(spec.id);
+      else if (this.#settling.refocus(spec.id, doc)) return;
+      this.#onFocus(spec.id);
     });
 
     const title = doc.createElement("header");
@@ -129,12 +132,12 @@ export class SurfaceHost {
     const frame = this.#parked.get(id);
     if (!section || !frame) return false;
     this.#parked.delete(id);
-    const before = section.ownerDocument.activeElement;
+    const focused = section.contains(section.ownerDocument.activeElement);
     const placeholder = section.querySelector(".desk-surface-placeholder");
     if (placeholder) placeholder.replaceWith(frame);
     else section.append(frame);
-    if (section.contains(before)) frame.focus();
-    else this.#settling.start(id, frame, before);
+    if (focused) frame.focus();
+    else this.#settling.start(id, frame);
     return true;
   }
 

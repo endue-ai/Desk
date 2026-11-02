@@ -53,8 +53,9 @@ iframe frees its page, and asking at that moment costs a plugin nothing while it
   plugin, the same iframe goes back in and loads; its `desk:init` carries `restored`
   (`ctx.surface.restored`) once. Messages that need an answer wait for its hello; other events to an
   unloaded plugin are dropped. The plugin stays mounted and on throughout. Unless its surface had the
-  focus, the frame may not take it for a second after it loads (five at most): plugins that focus
-  their view as they mount would otherwise pull the keyboard to every window that comes back.
+  focus, focus that moves into the frame goes back where it was until the person points at the frame
+  or the desk focuses it (ten seconds at most): plugins that focus their view as they mount would
+  otherwise pull the keyboard to every window that comes back (`frames/settle.ts`).
 * Notes is the first to keep its state: open notes, unsaved text, watches, caret and scroll.
 
 ### Consequences
