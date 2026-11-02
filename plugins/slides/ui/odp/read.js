@@ -82,7 +82,7 @@ export async function readOdp({ content, styles, files }, format) {
     const background = own ??
       (master?.background && master.background.type !== "none" ? master.background : undefined) ?? {
         type: "solid",
-        color: "#ffffff",
+        color: "#ffffff", // theme: content
       };
     /** @type {SlideElement[]} */
     const elements = [];

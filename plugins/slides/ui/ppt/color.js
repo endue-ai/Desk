@@ -11,14 +11,14 @@
 
 /** PowerPoint's default scheme. */
 export const DEFAULT_SCHEME = [
-  "#ffffff",
-  "#000000",
-  "#808080",
-  "#000000",
-  "#bbe0e3",
-  "#333399",
-  "#009999",
-  "#99cc00",
+  "#ffffff", // theme: content
+  "#000000", // theme: content
+  "#808080", // theme: content
+  "#000000", // theme: content
+  "#bbe0e3", // theme: content
+  "#333399", // theme: content
+  "#009999", // theme: content
+  "#99cc00", // theme: content
 ];
 
 const clamp = (/** @type {number} */ v) => Math.max(0, Math.min(255, Math.round(v)));
@@ -26,6 +26,7 @@ const clamp = (/** @type {number} */ v) => Math.max(0, Math.min(255, Math.round(
 /** 0..255 RGB as CSS, with an opacity under 1 as rgba(). @param {number[]} rgb */
 export function css(rgb, alpha = 1) {
   const [r = 0, g = 0, b = 0] = rgb.map(clamp);
+  // theme: content: the deck's own colour, as CSS
   if (alpha < 1) return `rgba(${r}, ${g}, ${b}, ${Math.round(Math.max(0, alpha) * 1000) / 1000})`;
   return `#${[r, g, b].map((c) => c.toString(16).padStart(2, "0")).join("")}`;
 }
@@ -77,7 +78,7 @@ export function colorRef(value, ctx) {
   const green = (value >>> 8) & 0xff;
   const blue = (value >>> 16) & 0xff;
   if (flags === 0xff) return null;
-  if (flags & 0x08) return rgbOf(ctx.scheme[red] ?? "#000000");
+  if (flags & 0x08) return rgbOf(ctx.scheme[red] ?? "#000000"); // theme: content
   if (!(flags & 0x10)) return [red, green, blue];
   // A system colour index: the shape's own colours, Windows colours, and a change to apply.
   const index = value & 0xff;
