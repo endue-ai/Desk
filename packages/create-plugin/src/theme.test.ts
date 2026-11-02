@@ -146,7 +146,7 @@ describe("create-plugin --kind theme", () => {
     expect(err).toEqual([]);
     const text = out.join("\n");
     expect(text).toContain("plugin validate");
-    expect(text).toContain("vitest run --root");
+    expect(text).toContain("plugin test");
     expect(text).toContain("DESK_DEV_PLUGINS=");
     expect(text).toContain("theme apply local.my-theme");
     expect(text).not.toContain("cargo build");
@@ -156,6 +156,6 @@ describe("create-plugin --kind theme", () => {
     const out: string[] = [];
     const io = { cwd: tmpdir(), out: (l: string) => out.push(l), err: () => {} };
     expect(await main(["--help"], io)).toBe(0);
-    expect(out.join("\n")).toContain("--kind ui|connector|theme");
+    expect(out.join("\n")).toMatch(/--kind ui\|[a-z|]*\btheme\b/);
   });
 });

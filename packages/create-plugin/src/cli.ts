@@ -3,22 +3,25 @@
 import { existsSync, realpathSync } from "node:fs";
 import { basename, dirname, join, relative, resolve, sep } from "node:path";
 import { parseArgs } from "node:util";
+import { isKind, KINDS, type Kind, type TemplateKind } from "./kinds";
 import { checkId, defaultId, defaultName } from "./names";
-import { renderPlugin, type TemplateKind } from "./template";
+import { renderPlugin } from "./template";
 import { writePlugin } from "./write";
 
-const KINDS: readonly TemplateKind[] = ["ui", "connector", "theme"];
+const NAMES = Object.keys(KINDS) as TemplateKind[];
 
-export const USAGE = `usage: create-plugin <folder> [--kind ui|connector|theme] [--id <id>] [--name <name>]
-                     [--description <text>]
-
-Creates a Desk plugin in <folder>, which must be missing or empty: a UI plugin, with
---kind connector a Wasm connector in Rust, or with --kind theme a theme.
-
-  --kind <kind>         ui (default), connector or theme
-  --id <id>             manifest id, lowercase reverse-domain (default: local.<folder>)
-  --name <name>         display name (default: the folder name as words)
-  --description <text>  one sentence about what the plugin does`;
+export const USAGE = [
+  `usage: create-plugin <folder> [--kind ${NAMES.join("|")}] [--id <id>]`,
+  "                     [--name <name>] [--description <text>]",
+  "",
+  "Creates a Desk plugin in <folder>, which must be missing or empty, with one test.",
+  "",
+  "  --kind <kind>         what the plugin is (default: ui):",
+  ...NAMES.map((name) => `                          ${name.padEnd(10)} ${KINDS[name].about}`),
+  "  --id <id>             manifest id, lowercase reverse-domain (default: local.<folder>)",
+  "  --name <name>         display name (default: the folder name as words)",
+  "  --description <text>  one sentence about what the plugin does",
+].join("\n");
 
 /** Where the command runs and where it reports. */
 export interface Io {
@@ -46,8 +49,8 @@ export async function main(argv: readonly string[], io: Io): Promise<number> {
   if (folder === undefined) return usageError(io, "missing <folder>");
   if (extra.length > 0) return usageError(io, `unexpected argument ${extra.join(" ")}`);
 
-  const kind = (values.kind ?? "ui") as TemplateKind;
-  if (!KINDS.includes(kind)) return usageError(io, `kind ${kind} is not ui, connector or theme`);
+  const kind = values.kind ?? "ui";
+  if (!isKind(kind)) return usageError(io, `kind ${kind} is not one of ${NAMES.join(", ")}`);
 
   const dir = resolve(io.cwd, folder);
   const id = values.id ?? defaultId(basename(dir));
@@ -68,24 +71,20 @@ export async function main(argv: readonly string[], io: Io): Promise<number> {
 
   io.out(`Created ${id} in ${dir}`);
   io.out("");
-  if (kind === "connector") {
+  const quoted = shellQuote(dir);
+  const { build, dev, after }: Kind = KINDS[kind];
+  if (build) {
     io.out("Next, build the component:");
     io.out("  rustup target add wasm32-wasip2");
-    io.out(`  cd ${shellQuote(dir)} && cargo build --release`);
+    io.out(`  cd ${quoted} && cargo build --release`);
     io.out("Then, from the Desk repository:");
-    io.out(`  cargo run -p desk-cli -- plugin validate ${shellQuote(dir)}`);
-  } else if (kind === "theme") {
-    io.out("Next, from the Desk repository:");
-    io.out(`  cargo run -p desk-cli -- plugin validate ${shellQuote(dir)}`);
-    io.out(`  pnpm exec vitest run --root ${shellQuote(dir)}`);
-    io.out(`  DESK_DEV_PLUGINS=${shellQuote(dir)} just dev`);
-    io.out("Then choose it in the theme studio, or with:");
-    io.out(`  cargo run -p desk-cli -- theme apply ${id}`);
   } else {
     io.out("Next, from the Desk repository:");
-    io.out(`  cargo run -p desk-cli -- plugin validate ${shellQuote(dir)}`);
-    io.out(`  DESK_DEV_PLUGINS=${shellQuote(dir)} just dev`);
   }
+  io.out(`  cargo run -p desk-cli -- plugin validate ${quoted}`);
+  io.out(`  cargo run -p desk-cli -- plugin test ${quoted}`);
+  if (dev) io.out(`  DESK_DEV_PLUGINS=${quoted} just dev`);
+  for (const line of after?.(id) ?? []) io.out(line);
   if (values.id === undefined) {
     io.out("");
     io.out(`Change the id in plugin.json to a reverse-domain id you own before you publish.`);

@@ -3,15 +3,33 @@
 # Ein Desk-Plugin schreiben
 
 Ein Desk-Plugin ist ein Ordner. Eingebaute Funktionen nutzen genau dasselbe Format; alles, was Desk selbst auf
-dem Bildschirm tut, kann also auch ein eigenes Plugin tun. Diese Seite behandelt UI-Plugins (v0) und
-Themes; Logik-Plugins (Wasm) und Tool-Plugins (MCP) folgen später.
+dem Bildschirm tut, kann also auch ein eigenes Plugin tun. Diese Seite beginnt mit den Arten von Plugins und
+ihren Vorlagen, behandelt dann UI-Plugins im Detail und zuletzt Themes; Tool-Plugins (MCP) folgen später.
 
-## Mit dem Beispiel beginnen
+## Mit einer Vorlage beginnen
+
+`create-plugin` legt einen Ordner einer Art an, der `desk plugin validate` besteht und einen Test mitbringt
+(`pnpm create @endue-ai/plugin`, sobald das Paket veröffentlicht ist):
 
 ```bash
-cp -R examples/plugin-hello-ui ../my-plugin      # then change the id in plugin.json
+pnpm --filter @endue-ai/create-plugin build
+node packages/create-plugin/dist/create-plugin.js ../my-plugin --kind ui
 cargo run -p desk-cli -- plugin validate ../my-plugin
+cargo run -p desk-cli -- plugin test ../my-plugin
 ```
+
+| Art | Was es ist | Beispiel |
+| --- | --- | --- |
+| `ui` | Eine Seite in einem isolierten Frame, auf dem SDK (der Rest dieser Seite) | `examples/plugin-hello-ui` |
+| `logic` | Eine Wasm-Komponente der Welt `desk:host`, in Rust (ADR 0019) | `examples/plugin-hello-wasm` |
+| `connector` | Eine Wasm-Komponente der Welt `desk:connector`, die Einträge hereinholt (ADR 0034) | `examples/plugin-hello-connector` |
+| `view` | Eine Ansicht als Daten: was sie zeigt, aus welchen Quellen; ohne Code (ADR 0032) | `examples/plugin-hello-view` |
+| `policy` | Befehle, Tasten und die übrigen Beiträge als Daten; ohne Code (ADR 0017) | die `desk.*`-Richtlinien in `plugins/` |
+| `theme` | Die Werte des Designsystems mit den Schriften und Bildern, die sie nennen; ohne Code (Ein Theme erstellen, ADR 0056) | `examples/plugin-hello-theme` |
+
+Die Rust-Arten werden mit dem eigenen Befehl der Sprache gebaut: `cargo build --release` im Ordner, für das
+Ziel `wasm32-wasip2` (einmalig `rustup target add wasm32-wasip2`). Die Komponente landet dort, wohin `entry` in
+`plugin.json` zeigt.
 
 Um ein Plugin schon während der Arbeit daran in Desk zu sehen, wird Desk mit dem eigenen Ordner als
 Entwicklungs-Plugin gestartet:
@@ -20,8 +38,46 @@ Entwicklungs-Plugin gestartet:
 DESK_DEV_PLUGINS=$PWD/../my-plugin just dev
 ```
 
-Wird eine beliebige Datei im Ordner gespeichert, lädt innerhalb einer Sekunde nur die Oberfläche dieses Plugins
-neu. Der Rest von Desk und der Zustand des Plugins bleiben, wie sie waren.
+Wird eine beliebige Datei im Ordner gespeichert, lädt innerhalb einer Sekunde nur dieses Plugin neu. Der Rest
+von Desk und der Zustand des Plugins bleiben, wie sie waren. Ein Ordner, der beim Start von Desk leer oder
+fehlerhaft ist, erscheint, sobald seine Dateien da oder behoben sind, ohne Neustart.
+
+### Testen mit `desk plugin test`
+
+`desk plugin test <folder>` prüft den Ordner wie `validate` und führt dann seine `tests/` auf dem Host aus, der
+zu seiner Art passt:
+
+- `ui`, `view`, `policy`, `theme` und die übrigen Arten ohne Wasm: `tests/*.test.js` oder `*.test.ts` mit
+  vitest auf dem Test-Host des SDK (`@endue-ai/plugin-sdk/testing`, siehe Testen unten), in einer
+  jsdom-Seite. Das SDK wird über seinen Namen importiert; der getestete Code bleibt frei von diesem Import,
+  wie in den Vorlagen (`ui/plugin.js`, dazu `ui/main.js`, das `defineUiPlugin(plugin)` aufruft).
+- `logic` und Wasm-`connector`: jede `tests/<name>.test.json` auf einem geskripteten Desk, dem Harness von
+  `desk-plugin-host`, mit der gebauten Komponente:
+
+```json
+{
+  "steps": ["start", { "command": { "id": "example.my-logic.greet", "args": { "name": "Ada" } } }],
+  "answers": [{ "method": "settings.get", "params": { "key": "greeting" }, "result": "Hi" }],
+  "expect": {
+    "calls": [
+      { "method": "cmd.register", "params": { "id": "example.my-logic.greet" } },
+      { "method": "cmd.answer", "params": { "result": "Hi, Ada!" } }
+    ]
+  }
+}
+```
+
+`steps` ist, was der Desk tut: `start`, `command` (`id`, `args`) und `event` (`name`, `data`) für ein
+Logik-Plugin, `connect` (`instance`, `settings`) und `sync` (`instance`) für einen Connector. Jeder Import, den
+das Plugin aufruft, wird als Bridge-Aufruf `{ method, params }` aufgezeichnet (`fs.read { path }`,
+`cmd.answer { invocationId, result }`) und vom ersten Eintrag in `answers` beantwortet, dessen `method` passt
+und dessen `params` der Aufruf enthält: mit `result` oder mit `error`
+(`{ "code": "not_found", "message": "…" }`). Ein Aufruf, den nichts beantwortet, erhält die leere Antwort:
+nichts, `null`, `[]` oder eine neue id; `store.get` liefert, was das Plugin gespeichert hat; Dateien und
+Netzwerk antworten mit `not_found` und `unsupported`. Die Aufrufe in `expect.calls` müssen in dieser
+Reihenfolge erfolgt sein, und die `expect.items` eines Connectors müssen unter den Einträgen sein, die seine
+Synchronisierungen gebracht haben; jeder passt, wenn er enthält, was dort steht. Ein Fehlschlag nennt, was
+erwartet wurde, und listet, was stattdessen kam.
 
 ## Der Ordner
 
@@ -314,13 +370,14 @@ Plugin-Frame; den Hintergrund zeichnet nur die Shell.
 
 ```bash
 cargo run -p desk-cli -- plugin validate ../my-theme
-pnpm exec vitest run --root ../my-theme
+cargo run -p desk-cli -- plugin test ../my-theme
 ```
 
-`desk plugin validate` prüft den Block gegen das Schema und die Dateien gegen ihre Grenzen. Die
-`tests/theme.test.ts` der Vorlage kompiliert beide Schemes mit `compileTheme` und prüft sie mit `gate`
-über der endue-Palette, wie der Desk es vor dem Anwenden eines Themes tut, und schlägt mit jeder
-Korrektur fehl, die die Prüfung vornehmen würde.
+`desk plugin validate` prüft den Block gegen das Schema und die Dateien gegen ihre Grenzen.
+`desk plugin test` führt die `tests/theme.test.ts` der Vorlage mit vitest auf dem Test-Host des SDK aus:
+Sie kompiliert beide Schemes mit `compileTheme` und prüft sie mit `gate` über der endue-Palette, wie der
+Desk es vor dem Anwenden eines Themes tut, und schlägt mit jeder Korrektur fehl, die die Prüfung vornehmen
+würde.
 
 ### Als `.desk-theme` teilen
 

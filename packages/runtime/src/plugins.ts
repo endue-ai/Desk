@@ -85,6 +85,8 @@ export class PluginHost {
   /** When each plugin mounting now got its surface: its `mount <id>` phase ends at its hello. */
   readonly #mounting = new Map<string, number>();
   readonly #commands: PluginCommands;
+  /** Plugins that were not ready when last listed: one of them turning ready on an update mounts. */
+  #unready = new Set<string>();
   #offEvents: (() => void) | undefined;
   /** Plugins whose frame the runtime unloaded, until the next one says hello (ADR 0070). */
   readonly #sleepers = new Sleepers();
@@ -196,6 +198,7 @@ export class PluginHost {
 
   async #list(): Promise<PluginInfo[]> {
     const { plugins } = await this.#deps.bridge.call("plugin.list", { scope: MANAGE });
+    this.#unready = new Set(plugins.filter((p) => p.status !== "ready").map((p) => p.id));
     return plugins;
   }
 
@@ -281,6 +284,13 @@ export class PluginHost {
           const next = { ...info, revision };
           this.#mounted.set(plugin, next);
           this.#deps.reload(plugin, this.#options.url(plugin, info.manifest.entry, revision));
+        } else if (!info && this.#unready.has(plugin)) {
+          // A dev folder filled or fixed while the desk runs: the plugin turns ready on its update.
+          // One the person or the plugin put away stays away; #mount takes only a ready, enabled UI plugin.
+          void this.#list().then((all) => {
+            const fresh = all.find((p) => p.id === plugin);
+            if (fresh) this.#mount(fresh);
+          });
         }
         break;
       case "disabled":

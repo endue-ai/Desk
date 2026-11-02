@@ -991,6 +991,7 @@ dependencies = [
  "desk-bridge",
  "desk-core",
  "desk-ipc",
+ "desk-plugin-host",
  "desk-trace",
  "serde_json",
 ]
@@ -1039,6 +1040,7 @@ name = "desk-plugin-host"
 version = "0.0.0"
 dependencies = [
  "desk-bridge",
+ "serde",
  "serde_json",
  "wasmtime",
  "wasmtime-wasi",

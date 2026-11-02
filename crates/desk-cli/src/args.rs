@@ -6,6 +6,7 @@ use serde_json::{Map, Value};
 
 pub const USAGE: &str = "usage: desk [--json] <command>
   plugin validate <dir>                 check a plugin folder against specs/plugin v0
+  plugin test <dir>                     run a plugin folder's tests on the host for its kind
   ping                                  a round trip to the running desk
   cmd list                              the commands the desk has: id, provider, title
   cmd run <id> [--args <json object>]   run a command and print its result
@@ -36,6 +37,8 @@ pub struct Args {
 pub enum Action {
     Help,
     Validate(PathBuf),
+    /// `plugin test <dir>`: the folder's tests, on the harness or the SDK's test host.
+    Test(PathBuf),
     /// `doctor --trace <file>`: a start-up trace, summarized offline.
     Trace(PathBuf),
     Remote(Remote),
@@ -101,6 +104,7 @@ pub fn parse(args: Vec<String>) -> Option<Args> {
     let action = match words.as_slice() {
         ["--help" | "-h" | "help"] => Action::Help,
         ["plugin", "validate", dir] => Action::Validate(PathBuf::from(dir)),
+        ["plugin", "test", dir] => Action::Test(PathBuf::from(dir)),
         ["doctor", "--trace", file] => Action::Trace(PathBuf::from(file)),
         ["ping"] => Action::Remote(Remote::Ping),
         ["cmd", "list"] => Action::Remote(Remote::CmdList),
