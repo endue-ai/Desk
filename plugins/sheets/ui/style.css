@@ -1,16 +1,10 @@
-/* The desk's design tokens (@endue-ai/ui). Frames do not inherit the desk's, so they are declared
-   here; the runtime redefines them for the theme in force. The grid's lines and selection are the
-   plugin's, mixed from them. */
+/* Every colour, font, size, radius and duration is the theme's: the desk's tokens come from
+   /_desk/tokens.css and the runtime redefines them for the theme in force. The grid's lines and
+   selection are the plugin's, mixed from them. */
 :root {
-  --desk-background: #141416;
-  --desk-card: #1e1d21;
-  --desk-border: #333136;
-  --desk-text: #f2f0f5;
-  --desk-text-muted: #b0adb7;
-  --desk-accent: #b6a3f5;
   --sheets-line: color-mix(in srgb, var(--desk-border) 80%, transparent);
-  --sheets-selection: color-mix(in srgb, var(--desk-accent) 32%, transparent);
-  --sheets-head-on: color-mix(in srgb, var(--desk-accent) 18%, var(--desk-card));
+  --sheets-selection: color-mix(in srgb, var(--desk-primary) 32%, transparent);
+  --sheets-head-on: color-mix(in srgb, var(--desk-primary) 18%, var(--desk-card));
 }
 
 html,
@@ -25,7 +19,7 @@ body {
   margin: 0;
   background: var(--desk-card);
   color: var(--desk-text);
-  font: 13px/1.5 -apple-system, "SUIT", "Inter", system-ui, sans-serif;
+  font: calc(var(--desk-text-sm) - 1px)/1.5 var(--desk-font-sans);
 }
 
 header {
@@ -38,12 +32,12 @@ header {
 
 h1 {
   margin: 0;
-  font-size: 15px;
+  font-size: calc(var(--desk-text-sm) + 1px);
 }
 
 h2 {
   margin: 0 0 6px;
-  font-size: 14px;
+  font-size: var(--desk-text-sm);
 }
 
 p {
@@ -66,7 +60,7 @@ button {
 button {
   padding: 1px 8px;
   border: 1px solid var(--desk-border);
-  border-radius: 6px;
+  border-radius: var(--desk-radius-md);
   background: transparent;
   cursor: pointer;
 }
@@ -74,7 +68,7 @@ button {
 button:hover,
 button:focus-visible,
 input:focus-visible {
-  border-color: var(--desk-accent);
+  border-color: var(--desk-ring);
   outline: none;
 }
 
@@ -90,8 +84,8 @@ input:focus-visible {
   min-width: 64px;
   padding: 2px 6px;
   border: 1px solid var(--desk-border);
-  border-radius: 6px;
-  font: 12px/1.5 ui-monospace, "SF Mono", monospace;
+  border-radius: var(--desk-radius-md);
+  font: var(--desk-text-xs)/1.5 var(--desk-font-mono);
   text-align: center;
 }
 
@@ -101,7 +95,7 @@ input:focus-visible {
   min-width: 0;
   padding: 2px 6px;
   border: 1px solid var(--desk-border);
-  border-radius: 6px;
+  border-radius: var(--desk-radius-md);
   background: var(--desk-background);
 }
 
@@ -110,7 +104,7 @@ input:focus-visible {
 }
 
 #cell-content {
-  font: 12px/1.5 ui-monospace, "SF Mono", monospace;
+  font: var(--desk-text-xs)/1.5 var(--desk-font-mono);
 }
 
 main {
@@ -131,7 +125,7 @@ main {
 
 /* An outline paints over the layer's cells, so the focus ring shows on every side. */
 .grid:focus-visible {
-  outline: 2px solid var(--desk-accent);
+  outline: 2px solid var(--desk-ring);
   outline-offset: -2px;
 }
 
@@ -153,7 +147,7 @@ main {
   overflow: hidden;
   background: var(--desk-background);
   pointer-events: none;
-  font-size: 12px;
+  font-size: var(--desk-text-xs);
 }
 
 .row,
@@ -234,7 +228,7 @@ main {
 
 .cell.active {
   z-index: 5 !important;
-  box-shadow: inset 0 0 0 2px var(--desk-accent);
+  box-shadow: inset 0 0 0 2px var(--desk-ring);
 }
 
 .col-head,
@@ -267,25 +261,25 @@ main {
 }
 
 .tabs [role="tab"] {
-  border-radius: 0 0 6px 6px;
+  border-radius: 0 0 var(--desk-radius-md) var(--desk-radius-md);
   white-space: nowrap;
 }
 
 .tabs [aria-selected="true"] {
-  border-color: var(--desk-accent);
-  box-shadow: inset 0 -2px 0 var(--desk-accent);
+  border-color: var(--desk-ring);
+  box-shadow: inset 0 -2px 0 var(--desk-ring);
 }
 
 .card {
   margin: 12px;
   padding: 12px 14px;
   border: 1px solid var(--desk-border);
-  border-radius: 8px;
+  border-radius: var(--desk-radius-md);
   background: var(--desk-background);
 }
 
 .card:focus-visible {
-  outline: 2px solid var(--desk-accent);
+  outline: 2px solid var(--desk-ring);
 }
 
 dl {
@@ -305,7 +299,7 @@ dd {
 }
 
 .selectable {
-  font: 12px/1.5 ui-monospace, "SF Mono", monospace;
+  font: var(--desk-text-xs)/1.5 var(--desk-font-mono);
   overflow-wrap: anywhere;
   user-select: text;
 }
@@ -317,7 +311,7 @@ footer {
   justify-content: space-between;
   padding: 4px 12px 6px;
   border-top: 1px solid var(--desk-border);
-  font-size: 12px;
+  font-size: var(--desk-text-xs);
 }
 
 [hidden] {
