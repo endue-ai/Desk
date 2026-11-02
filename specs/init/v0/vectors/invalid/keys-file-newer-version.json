@@ -1,0 +1,8 @@
+{
+  "target": "KeysFile",
+  "description": "a version newer than v0 reads",
+  "instance": {
+    "version": 1,
+    "bindings": []
+  }
+}

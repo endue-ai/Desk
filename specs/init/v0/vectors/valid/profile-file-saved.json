@@ -1,0 +1,20 @@
+{
+  "target": "ProfileFile",
+  "description": "a profile as desk.profiles.save writes it",
+  "instance": {
+    "name": "Writing",
+    "plugins": {
+      "enabled": [
+        "desk.profiles",
+        "endue.notes"
+      ],
+      "disabled": [
+        "endue.sidebar"
+      ]
+    },
+    "settings": {
+      "desk.notify.dnd": true,
+      "desk.theme.scheme": "dark"
+    }
+  }
+}

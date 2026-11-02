@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://endue.ai/specs/init/v0/profile.schema.json",
+  "title": "A profile file v0",
+  "description": "A profile the person keeps in the desk folder, ~/.desk/profiles/<id>.yaml: desk.profiles.save writes it and the person may edit it. The file is YAML; this schema describes the data it holds once parsed. The file name is the profile id, so the file holds none. A file of a contributed profile's id shadows that profile.",
+  "$ref": "#/$defs/ProfileFile",
+  "$defs": {
+    "ProfileFile": {
+      "description": "The whole of a profile file. Every key is optional; an empty file is a profile that changes nothing.",
+      "type": "object",
+      "properties": {
+        "version": {
+          "description": "The format version. Default 0. Desk ignores a file with a version newer than it reads.",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 0
+        },
+        "name": {
+          "description": "What the profile switcher shows. Default: the file name.",
+          "type": "string",
+          "minLength": 1
+        },
+        "description": {
+          "description": "One line under the name in the switcher.",
+          "type": "string"
+        },
+        "plugins": { "$ref": "../../plugin/v0/contributes.schema.json#/$defs/ProfilePlugins" },
+        "settings": {
+          "description": "Settings in force while the profile is, over init.yaml's.",
+          "type": "object",
+          "propertyNames": { "$ref": "../../plugin/v0/contributes.schema.json#/$defs/SettingName" },
+          "additionalProperties": {}
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

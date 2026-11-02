@@ -1,0 +1,18 @@
+{
+  "target": "ProfileFile",
+  "description": "a hand-written profile with a version, a description and settings only",
+  "instance": {
+    "version": 0,
+    "name": "Late night",
+    "description": "Dark and quiet",
+    "settings": {
+      "desk.theme.scheme": "dark",
+      "eris.wake-words": [
+        "eris"
+      ],
+      "layout.left": {
+        "width": 280
+      }
+    }
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "target": "KeysFile",
+  "description": "every binding names a command (or the empty string)",
+  "instance": {
+    "bindings": [
+      {
+        "key": "Mod+J"
+      }
+    ]
+  }
+}

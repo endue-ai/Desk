@@ -1,0 +1,9 @@
+{
+  "target": "ProfileFile",
+  "description": "setting keys are lowercase and dotted",
+  "instance": {
+    "settings": {
+      "Desk.Theme": "dark"
+    }
+  }
+}

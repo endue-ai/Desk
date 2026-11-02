@@ -1,0 +1,11 @@
+{
+  "target": "ProfileFile",
+  "description": "plugins are named by their id",
+  "instance": {
+    "plugins": {
+      "disabled": [
+        "Sidebar"
+      ]
+    }
+  }
+}
