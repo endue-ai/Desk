@@ -32,6 +32,7 @@ import type { PolicySet } from "./policy";
 import type { Settings } from "./settings";
 import { SurfaceHost, type SurfaceSpec } from "./surfaces";
 import { applyTheme, type ThemeState } from "./theme";
+import { timed } from "./timing";
 import { connectViews, type HostViews, type ViewRouting } from "./views";
 
 export interface RuntimeOptions {
@@ -366,8 +367,8 @@ export function createRuntime(options: RuntimeOptions): Runtime {
       ready: ready
         .then(() => host.start())
         // The desk's built-ins are in the registry before profiles and the session run them.
-        .then(() => commands.settled())
-        .then(() => profiles.start())
+        .then(() => timed("command registry", () => commands.settled()))
+        .then(() => timed("profile start", () => profiles.start()))
         .then(() => session.restore().then(() => files.settle()))
         .then(() => commands.settled())
         .catch(() => {}),

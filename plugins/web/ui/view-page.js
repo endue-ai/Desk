@@ -2,8 +2,8 @@
 // once (page.js) and kept while its file is open, so switching back is instant; a page goes on
 // screen as soon as its sheets are ready and fills in as it is copied, and a huge page's rest is
 // copied as it is scrolled to (or jumped to). Clicks on links and form submissions never reach
-// the browser: the view decides what a link does.
-import { startPage } from "./page.js";
+// the browser: the view decides what a link does. The page's preparation (page.js, its sanitizer
+// and its resources) loads with the first page, not with the plugin.
 
 /**
  * @typedef {import("./formats.js").PageInput} PageInput
@@ -109,7 +109,9 @@ export function createPageView(doc, host, on, options = {}) {
   const prepare = (input, job) => {
     let pending = cache.get(input);
     if (!pending) {
-      const page = startPage(input, doc, { ...job, ...options });
+      const page = import("./page.js").then(({ startPage }) =>
+        startPage(input, doc, { ...job, ...options }),
+      );
       pending = page.then(
         (page) => {
           const nodes = doc.createElement("div");
