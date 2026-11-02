@@ -1,9 +1,9 @@
 body {
   margin: 0;
   padding: 8px 12px;
-  background: #1e1d21;
-  color: #f2f0f5;
-  font: 13px/1.6 -apple-system, "SUIT", "Inter", system-ui, sans-serif;
+  background: var(--desk-card);
+  color: var(--desk-text);
+  font: calc(var(--desk-text-sm) - 1px) / 1.6 var(--desk-font-sans);
 }
 
 ul {
@@ -14,15 +14,15 @@ ul {
 
 li {
   padding: 4px 0;
-  border-bottom: 1px solid #333136;
+  border-bottom: 1px solid var(--desk-border);
 }
 
 small,
 p {
   display: block;
-  color: #b0adb7;
+  color: var(--desk-text-muted);
 }
 
 input {
-  accent-color: #b6a3f5;
+  accent-color: var(--desk-primary);
 }
