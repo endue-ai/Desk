@@ -1,14 +1,15 @@
 /**
  * A frame loading again after an unload (ADR 0070) may focus itself as it mounts: many plugins focus
  * their view when they show it. Unless its surface had the focus, that would take the keyboard from
- * wherever the person is whenever a window comes back into sight. So focus that moves into such a
- * frame goes back where it was, until the person points at the frame, the desk focuses its surface,
- * or ten seconds have passed. Browsers say so with a focusin on the surface, or a blur of the desk's
- * window, or (a window in the background, WKWebView) not at all: the focus is also looked at often.
+ * wherever the person is whenever a window comes back into sight, and a plugin may do it late (Docker
+ * waits for its engine first). So focus that moves into such a frame goes back where it was until the
+ * person points at the frame, the desk focuses its surface, Tab moves through the desk, or a minute
+ * has passed. Browsers say so with a focusin on the surface, or a blur of the desk's window, or (a
+ * window in the background, WKWebView) not at all: the focus is also looked at often.
  */
 
 /** The longest a frame loading again may not take the focus. */
-export const SETTLE_MAX_MS = 10_000;
+export const SETTLE_MAX_MS = 60_000;
 /** How often the focus is looked at while a frame settles. */
 export const LOOK_MS = 250;
 
@@ -75,11 +76,17 @@ export class Settling {
         if (doc.activeElement === held.frame) this.refocus(id, doc);
     };
     const onBlur = () => setTimeout(look, 0);
+    // Tab through the desk's own page is the person moving, frames included.
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Tab") for (const id of [...this.#held.keys()]) this.forget(id);
+    };
     doc.addEventListener("focusin", onFocus, true);
+    doc.addEventListener("keydown", onKey, true);
     win.addEventListener("blur", onBlur);
     const timer = setInterval(look, LOOK_MS);
     this.#off = () => {
       doc.removeEventListener("focusin", onFocus, true);
+      doc.removeEventListener("keydown", onKey, true);
       win.removeEventListener("blur", onBlur);
       clearInterval(timer);
     };

@@ -243,7 +243,9 @@ describe("hidden surfaces are unloaded and their state kept", () => {
     await flush();
     expect(document.activeElement).toBe(before);
 
-    // In a window in the background no event says so at all (WKWebView): it is looked at often.
+    // In a window in the background no event says so at all (WKWebView): it is looked at often,
+    // also when the plugin focuses itself late, after waiting for something.
+    await flush(20_000);
     d.plugins["b.two"]?.frame()?.focus();
     await flush(300);
     expect(document.activeElement).toBe(before);
@@ -253,6 +255,19 @@ describe("hidden surfaces are unloaded and their state kept", () => {
     takeFocus(d.plugins["b.two"]?.frame());
     expect(document.activeElement).toBe(d.plugins["b.two"]?.frame());
     expect(d.runtime.shortcuts.focused).toBe("b.two");
+  });
+
+  it("Tab through the desk lets the focus into a frame loading again", async () => {
+    const d = await desk(["a.one", "b.two"], { [UNLOAD]: 60 });
+    d.runtime.focusSurface("a.one");
+    await d.hide("b.two");
+    await flush(60_000);
+    d.runtime.plugins?.command("b.two", "desk.buffers.show", { buffer: "x" });
+    await flush();
+    document.dispatchEvent(new KeyboardEvent("keydown", { key: "Tab", bubbles: true }));
+    takeFocus(d.plugins["b.two"]?.frame());
+    await flush(300);
+    expect(document.activeElement).toBe(d.plugins["b.two"]?.frame());
   });
 
   it("0 keeps hidden surfaces loaded and sets no cap", async () => {
