@@ -60,6 +60,31 @@ describe("main", () => {
     expect(out.join("\n")).not.toContain("DESK_DEV_PLUGINS");
   });
 
+  it("creates a Rust logic plugin with --kind logic and prints build, validate and test", async () => {
+    expect(await run("my-logic", "--kind", "logic")).toBe(0);
+    const dir = join(cwd, "my-logic");
+    expect(manifestIn(dir)).toMatchObject({ id: "local.my-logic", kind: "logic" });
+    expect(existsSync(join(dir, "tests/greet.test.json"))).toBe(true);
+    const line = (text: string) => out.findIndex((l) => l.includes(text));
+    const [build, validate, test] = [
+      line("cargo build --release"),
+      line("plugin validate"),
+      line("plugin test"),
+    ];
+    expect(build).toBeGreaterThan(0);
+    expect(validate).toBeGreaterThan(build);
+    expect(test).toBeGreaterThan(validate);
+    expect(out.join("\n")).not.toContain("DESK_DEV_PLUGINS");
+  });
+
+  it("prints a dev run for a view plugin, which needs no build", async () => {
+    expect(await run("my-view", "--kind", "view")).toBe(0);
+    const dir = join(cwd, "my-view");
+    expect(manifestIn(dir)).toMatchObject({ id: "local.my-view", kind: "view" });
+    expect(out.join("\n")).not.toContain("cargo build");
+    expect(out.find((line) => line.includes("DESK_DEV_PLUGINS="))).toContain(dir);
+  });
+
   it("quotes a folder with a space in the next commands", async () => {
     expect(await run("my notes")).toBe(0);
     const dir = join(cwd, "my notes");
@@ -125,7 +150,7 @@ describe("main", () => {
     expect(existsSync(join(cwd, "notes"))).toBe(false);
   });
 
-  it.each([[[]], [["a", "b"]], [["a", "--kind", "logic"]], [["a", "--id"]]])(
+  it.each([[[]], [["a", "b"]], [["a", "--kind", "nope"]], [["a", "--id"]]])(
     "prints the usage for %j",
     async (argv) => {
       expect(await run(...argv)).toBe(2);

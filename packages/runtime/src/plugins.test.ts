@@ -43,7 +43,7 @@ async function mount(plugins: PluginInfo[]) {
     { url: () => "about:blank" },
   );
   await host.start();
-  return { stub, posted: (id: string) => frames.get(id) ?? [] };
+  return { stub, host, posted: (id: string) => frames.get(id) ?? [] };
 }
 
 const prompt = {
@@ -75,5 +75,29 @@ describe("PluginHost events", () => {
     stub.emit(event);
     expect(posted("a.one")).toEqual([{ type: "desk:event", event }]);
     expect(posted("b.two")).toEqual([]);
+  });
+});
+
+describe("PluginHost hot reload", () => {
+  it("mounts a plugin that turns ready on an update, as a dev folder filled while the desk runs", async () => {
+    // The folder was empty when the desk started: the core lists it as failed under its folder's id.
+    const plugins = [{ ...plugin("local.my-plugin"), status: "failed", manifest: undefined }];
+    const { stub, host } = await mount(plugins as PluginInfo[]);
+    expect(host.mounted()).toEqual([]);
+
+    plugins[0] = { ...plugin("local.my-plugin"), revision: 2 } as (typeof plugins)[0];
+    const data = { plugin: "local.my-plugin", change: "updated", revision: 2 };
+    stub.emit({ event: "plugin.changed", data } as BridgeEvent);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(host.mounted()).toEqual(["local.my-plugin"]);
+  });
+
+  it("leaves a plugin that is still failed after an update unmounted", async () => {
+    const plugins = [{ ...plugin("local.my-plugin"), status: "failed", manifest: undefined }];
+    const { stub, host } = await mount(plugins as PluginInfo[]);
+    const data = { plugin: "local.my-plugin", change: "updated", revision: 2 };
+    stub.emit({ event: "plugin.changed", data } as BridgeEvent);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(host.mounted()).toEqual([]);
   });
 });
