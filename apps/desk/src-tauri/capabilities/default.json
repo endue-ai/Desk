@@ -1,11 +1,13 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "The main window may call the bridge, report readiness, drain OS file-open paths, hear core/native events and show the file picker. File data still goes through bridge_call and the core permission engine.",
+  "description": "The main window may call the bridge, report readiness, read what this start found and start the desk again without safe mode, drain OS file-open paths, hear core/native events and show the file picker. File data still goes through bridge_call and the core permission engine.",
   "windows": ["main"],
   "permissions": [
     "allow-bridge-call",
     "allow-desk-ready",
+    "allow-desk-start",
+    "allow-desk-relaunch",
     "allow-take-open-files",
     "core:event:allow-listen",
     "core:event:allow-unlisten",
