@@ -217,27 +217,38 @@ export class Commands {
     });
   }
 
+  /**
+   * One pass: the calls of each step go out together, not one after another. At start the listed
+   * policy plugins bring dozens of built-ins while the plugin frames load, and one call waiting for
+   * the answer of the one before took the core's round trip that many times.
+   */
   async #sync(): Promise<void> {
-    for (const id of [...this.#registered]) {
+    const gone = [...this.#registered].filter((id) => {
       const spec = this.#builtIn.get(id);
-      if (spec && this.#active.has(spec.owner)) continue;
-      this.#registered.delete(id);
-      await this.#bridge.call("cmd.unregister", { id }).catch(() => {});
-    }
-    for (const [id, spec] of this.#builtIn) {
-      if (this.#registered.has(id) || !this.#active.has(spec.owner)) continue;
-      const params = {
-        id,
-        title: spec.title,
-        ...(spec.keywords ? { keywords: spec.keywords } : {}),
-      };
-      // A core without cmd.* (an older one, a bare stub) leaves the command unregistered.
-      const ok = await this.#bridge.call("cmd.register", params).then(
-        () => true,
-        () => false,
-      );
-      if (ok) this.#registered.add(id);
-    }
+      return !(spec && this.#active.has(spec.owner));
+    });
+    for (const id of gone) this.#registered.delete(id);
+    await Promise.all(
+      gone.map((id) => this.#bridge.call("cmd.unregister", { id }).catch(() => {})),
+    );
+    const due = [...this.#builtIn].filter(
+      ([id, spec]) => !this.#registered.has(id) && this.#active.has(spec.owner),
+    );
+    await Promise.all(
+      due.map(async ([id, spec]) => {
+        const params = {
+          id,
+          title: spec.title,
+          ...(spec.keywords ? { keywords: spec.keywords } : {}),
+        };
+        // A core without cmd.* (an older one, a bare stub) leaves the command unregistered.
+        const ok = await this.#bridge.call("cmd.register", params).then(
+          () => true,
+          () => false,
+        );
+        if (ok) this.#registered.add(id);
+      }),
+    );
     const listed = await this.#bridge.call("cmd.list", { scope: ALL }).catch(() => undefined);
     if (!listed) return;
     this.#known = new Map(
