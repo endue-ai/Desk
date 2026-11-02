@@ -1,7 +1,7 @@
 /**
  * Scripted brain answers for tests and fixture pages (never shipped): views a brain would propose for
  * "show my events this week as a board" over the stub's fixture events, without the parts the desk
- * writes itself (id, version, provenance).
+ * writes itself (id, version, provenance); the quiet night profile; Mod+Shift+T for the terminal.
  */
 import type { ScriptedAnswer } from "../bridge/scripted-brain";
 
@@ -75,4 +75,78 @@ export function scriptedViews(prompt: string): ScriptedAnswer {
   return view
     ? { text: "Here is a view for that.", structured: view }
     : `I heard: ${prompt.slice(0, 200)}`;
+}
+
+/** The profile sentence of the tests and the live check. */
+export const QUIET = "make a quiet night profile with only notes and terminal";
+/** The key binding sentence. */
+export const BIND = "bind Mod+Shift+T to open the terminal";
+const KEPT = ["endue.notes", "endue.terminal"];
+
+/**
+ * The quiet night profile over the plugins the desk listed (`id: "Name, kind, on|off"`): notes and
+ * the terminal on, every other app that is on (a ui plugin not the desk's own) off, do not disturb,
+ * and the two side by side on desktop 1.
+ */
+export function quietNight(plugins: Record<string, string> = {}) {
+  const others = Object.entries(plugins)
+    .filter(([id, what]) => !id.startsWith("desk.") && !KEPT.includes(id) && /, ui, on$/.test(what))
+    .map(([id]) => id);
+  return {
+    name: "Quiet night",
+    description: "Notes and a terminal, and nothing that interrupts.",
+    plugins: { enabled: KEPT, disabled: others },
+    settings: {
+      "desk.notify.dnd": true,
+      "desk.shell.mode": {
+        icon: "moon",
+        desktops: {
+          "1": {
+            surfaces: [
+              { id: "notes", plugin: "endue.notes", x: 120, y: 200, w: 520, h: 480, pinned: false },
+              {
+                id: "terminal",
+                plugin: "endue.terminal",
+                x: 680,
+                y: 200,
+                w: 640,
+                h: 480,
+                pinned: false,
+              },
+            ],
+          },
+        },
+      },
+    },
+  };
+}
+
+/** Mod+Shift+T shows the terminal. */
+export const TERMINAL_KEYS = {
+  bindings: [{ key: "Mod+Shift+T", command: "endue.terminal.focus" }],
+};
+
+/** The plugins in a prompt's context (`The desk: {...}`), when it carries them. */
+export function pluginsIn(prompt: string): Record<string, string> {
+  const line = prompt.split("\n").find((l) => l.startsWith("The desk: "));
+  try {
+    const desk = JSON.parse(line?.slice("The desk: ".length) ?? "{}") as { plugins?: unknown };
+    return typeof desk.plugins === "object" && desk.plugins !== null
+      ? (desk.plugins as Record<string, string>)
+      : {};
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * A scripted brain for tests and fixture pages: it calls the tool with the quiet night profile or
+ * Mod+Shift+T when asked for them, and answers as scriptedViews otherwise.
+ */
+export function scriptedDesk(prompt: string): ScriptedAnswer {
+  if (prompt.startsWith("Make a desk profile") && /quiet night/i.test(prompt))
+    return { text: "Here is a profile for that.", structured: quietNight(pluginsIn(prompt)) };
+  if (prompt.startsWith("Make a desk key binding") && /Mod\+Shift\+T/.test(prompt))
+    return { text: "Here they are.", structured: TERMINAL_KEYS };
+  return scriptedViews(prompt);
 }
