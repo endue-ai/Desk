@@ -132,8 +132,8 @@ export function createBrandPanel(deps: BrandDeps): BrandPanel {
     void read(file);
   });
 
-  const button = (key: string, label: StudioCopy, onClick: () => void, kind = "btn-outline") =>
-    h("button", { type: "button", class: `btn ${kind}`, "data-key": key, onClick }, tr(label));
+  const button = (key: string, label: StudioCopy, onClick: () => void) =>
+    h("button", { type: "button", class: "btn btn-outline", "data-key": key, onClick }, tr(label));
 
   const draw = () =>
     render(element, () => [
