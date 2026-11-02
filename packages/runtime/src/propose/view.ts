@@ -114,8 +114,7 @@ export function viewKind(options: ViewKindOptions): ProposalKind<View> {
       return tool;
     },
     compact() {
-      // A prompt has 8000 characters: params are left out of the schema it carries (still allowed).
-      compact ??= specs().bundle(VIEW, { compact: true, omit: [...DESKS, "params"] });
+      compact ??= specs().bundle(VIEW, { compact: true, omit: DESKS });
       return compact;
     },
 

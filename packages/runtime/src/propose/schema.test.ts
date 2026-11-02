@@ -84,7 +84,7 @@ describe("Schemas", () => {
     expect(schemas.validate("a view", VIEW)).toEqual(["/: must be object"]);
   });
 
-  it("bundles View into one self-contained schema that Ajv compiles, and a compact one under the bridge's 8000 characters with the prompt", () => {
+  it("bundles View into one self-contained schema that Ajv compiles, and a compact one that a retry's prompt repeats", () => {
     const schemas = new Schemas(documents);
     const full = schemas.bundle(VIEW);
     expect(JSON.stringify(full)).not.toMatch(/"\$ref":"(?!#\/\$defs\/)/);
@@ -98,6 +98,7 @@ describe("Schemas", () => {
     expect(text).not.toContain('"description":"');
     expect(text).not.toContain("ViewProvenance");
     expect((answer as { required: string[] }).required).toEqual(["title", "layout"]);
-    expect(text.length).toBeLessThan(6000);
+    // A quarter of brain.ask's 32000 characters at most, so the context still fits beside it.
+    expect(text.length).toBeLessThan(8000);
   });
 });

@@ -3,6 +3,7 @@
  * "show my events this week as a board" over the stub's fixture events, without the parts the desk
  * writes itself (id, version, provenance).
  */
+import type { ScriptedAnswer } from "../bridge/scripted-brain";
 
 const agenda = (title: string, calendar: string, empty: string) => ({
   type: "agenda",
@@ -66,13 +67,12 @@ export function viewFor(prompt: string): Record<string, unknown> | undefined {
 }
 
 /**
- * A scripted brain for fixture pages: the view viewFor gives in a fenced block, and an echo of the
- * prompt otherwise (which is no view).
+ * A scripted brain for tests and fixture pages: it calls the tool with viewFor's view, and answers
+ * in words, calling nothing, when there is none.
  */
-export function scriptedViews(prompt: string): string {
+export function scriptedViews(prompt: string): ScriptedAnswer {
   const view = viewFor(prompt);
-  return view ? answer(view) : `I heard: ${prompt.slice(0, 200)}`;
+  return view
+    ? { text: "Here is a view for that.", structured: view }
+    : `I heard: ${prompt.slice(0, 200)}`;
 }
-
-const answer = (view: unknown) =>
-  `Here is a view for that.\n\`\`\`json\n${JSON.stringify(view, null, 2)}\n\`\`\``;

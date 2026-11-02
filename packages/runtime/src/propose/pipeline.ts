@@ -40,7 +40,7 @@ export interface ProposalKind<T = unknown> {
   readonly guide: string;
   /** The tool brain.ask answers through. */
   tool(): AskTool;
-  /** The schema brain.say's prompt carries. */
+  /** The tool's schema without annotations: a retry repeats it when the brain gave no call it allows. */
   compact(): Record<string, unknown>;
   /** What the desk has that the brain may use; never the person's items themselves. */
   context(): Promise<unknown>;
@@ -100,17 +100,23 @@ export function createProposals(options: ProposalsOptions): Proposals {
   const draft = async <T>(kind: ProposalKind<T>, request: Request) => {
     const context = await kind.context();
     let problems: string[] = [];
+    // The core says no more than that the brain gave no call the tool's schema allows.
+    let schema: Record<string, unknown> | undefined;
     for (let attempt = 0; attempt < 2; attempt++) {
-      const said = problems;
+      const [said, repeated] = [problems, schema];
+      const tool = kind.tool();
       const answer = await options.asker.ask({
-        prompt: (budget) => promptFor(kind, request, context, said, budget),
-        tool: kind.tool(),
-        compact: kind.compact(),
+        prompt: (budget) => promptFor(kind, request, context, said, budget, repeated),
+        tool,
       });
       if (answer.value === undefined) {
-        problems = ["/: the answer held no JSON object"];
+        problems = [
+          `/: the answer was not a call of ${tool.name} with arguments its schema allows`,
+        ];
+        schema = kind.compact();
         continue;
       }
+      schema = undefined;
       const checked = await kind.check(answer.value, request);
       if ("value" in checked) return checked;
       problems = checked.problems;
@@ -199,8 +205,9 @@ export function createProposals(options: ProposalsOptions): Proposals {
 
 /**
  * The question for the brain in at most `budget` characters: the sentence, the corrections, the
- * kind's guide, what the desk has, the last proposal and what was wrong with the last answer. When it
- * would not fit, the last proposal goes first, then the context.
+ * kind's guide, what the desk has, the last proposal, what was wrong with the last answer and, after
+ * an answer that was no call the tool allows, the tool's schema. When it would not fit, the last
+ * proposal goes first, then the context.
  */
 export function promptFor(
   kind: Pick<ProposalKind, "noun" | "guide">,
@@ -208,6 +215,7 @@ export function promptFor(
   context: unknown,
   problems: string[],
   budget: number,
+  schema?: Record<string, unknown>,
 ): string {
   const head = [
     `Make a desk ${kind.noun} from what the person said: “${request.text}”.`,
@@ -218,11 +226,14 @@ export function promptFor(
       : []),
     kind.guide,
   ];
-  const tail = problems.length
-    ? [
-        `Your last answer was not valid: ${problems.slice(0, SHOWN).join("; ")}. Answer again with these fixed.`,
-      ]
-    : [];
+  const tail = [
+    ...(problems.length
+      ? [
+          `Your last answer was not valid: ${problems.slice(0, SHOWN).join("; ")}. Answer again with these fixed.`,
+        ]
+      : []),
+    ...(schema ? [`The arguments must match this JSON Schema: ${JSON.stringify(schema)}`] : []),
+  ];
   const optional = [
     `The desk: ${JSON.stringify(context)}`,
     ...(request.previous === undefined
