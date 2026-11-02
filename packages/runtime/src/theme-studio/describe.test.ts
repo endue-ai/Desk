@@ -14,6 +14,7 @@ import { PolicyHub } from "../hub";
 import type { DeskContext } from "../policies/context";
 import { installTheme, type ThemeIo } from "../policies/theme";
 import { createDescribe } from "./describe";
+import { companions } from "./draft";
 import { describePrompt, PROPOSE_THEME } from "./prompt";
 
 const deskTheme = {
@@ -49,13 +50,20 @@ const WARM = {
     },
   },
 };
-// The same, cleaned: unsafe tokens, unknown presets, files and the brain's origin gone, numbers in range.
+// The same, cleaned: unsafe tokens, unknown presets, files and the brain's origin gone, numbers in
+// range, and the primary's companions it left out (hover, tints, ring) derived as the editor does.
 const CLEAN = {
   shape: { radius: "soft" },
   motion: { personality: "calm" },
   type: { sans: "Georgia, serif", scale: 1.25 },
   light: {
-    colors: { background: "#f6f1e7", text: "#2a2118", textMuted: "#d8cfbf", primary: "#9a4a12" },
+    colors: {
+      ...companions("primary", "#9a4a12", "light"),
+      background: "#f6f1e7",
+      text: "#2a2118",
+      textMuted: "#d8cfbf",
+      primary: "#9a4a12",
+    },
     material: { noise: 0.15, blur: 24 },
     backdrop: { gradient: ["#f6f1e7", "#ede4d3"], angle: 180 },
   },

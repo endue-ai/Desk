@@ -1,11 +1,13 @@
 /**
  * A theme the brain proposed, cleaned before anything shows it: only the theme block's own keys, token
  * maps through cleanTokens, presets the desk knows, numbers clamped to their ranges, colours that are
- * colours, and no files (fonts, backdrop images) or origin, which Apply sets. The gate then runs on it
- * when the desk previews it (RuntimeThemes.previewDraft), as on every theme. DOM-free.
+ * colours, and no files (fonts, backdrop images) or origin, which Apply sets. A brand or status colour
+ * brings the companions the brain left out, as the editor derives them. The gate then runs on it when
+ * the desk previews it (RuntimeThemes.previewDraft), as on every theme. DOM-free.
  */
 import type { ThemePackage, ThemeVariant } from "@endue-ai/bridge";
 import { cleanTokens, DENSITY, MOTION, RADIUS, RANGES, SHADOW } from "@endue-ai/ui/theme";
+import { companions, type Scheme } from "./draft";
 
 /** propose_theme's arguments, cleaned: the name ("" when it gave none), a line about it, the block. */
 export interface Proposal {
@@ -50,15 +52,26 @@ const tokens = (v: unknown) => {
   const clean = cleanTokens(v);
   return Object.keys(clean).length > 0 ? clean : undefined;
 };
+/** A palette with the companions of its brand and status colours it lacks (a hover, tints, a ring). */
+const palette = (v: unknown, scheme: Scheme) => {
+  const own = tokens(v);
+  if (!own) return undefined;
+  const derived: Record<string, string> = {};
+  for (const name of ["primary", "success", "warning", "danger", "info"]) {
+    const base = own[name];
+    if (base) Object.assign(derived, companions(name, base, scheme));
+  }
+  return { ...derived, ...own };
+};
 
-function variant(input: unknown): ThemeVariant | undefined {
+function variant(input: unknown, scheme: Scheme): ThemeVariant | undefined {
   const v = fields(input);
   const m = fields(v.material);
   const b = fields(v.backdrop);
   const gradient = colors(b.gradient, 4);
   const ansi = colors(fields(v.terminal).ansi, 16);
   return some<ThemeVariant>({
-    colors: tokens(v.colors),
+    colors: palette(v.colors, scheme),
     contrast: tokens(v.contrast),
     material: some({
       opacity: within(m.opacity, RANGES.opacity),
@@ -104,8 +117,8 @@ export function cleanProposal(structured: unknown): Proposal | undefined {
       density: preset(fields(t.shape).density, DENSITY),
     }),
     motion: some({ personality: preset(fields(t.motion).personality, MOTION) }),
-    light: variant(t.light),
-    dark: variant(t.dark),
+    light: variant(t.light, "light"),
+    dark: variant(t.dark, "dark"),
   });
   if (!theme?.light && !theme?.dark) return undefined;
   return { name: text(args.name, 80), description: text(args.description, 400), theme };
