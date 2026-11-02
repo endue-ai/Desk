@@ -71,7 +71,7 @@ describe("editing a CSV on its page", () => {
     expect(tier.hidden).toBe(false);
     expect(label()).toBe("CSV · Lossless editing");
     expect(byId("book-mark").hidden).toBe(true);
-    expect(bar.readOnly).toBe(true);
+    expect([bar.readOnly, grid.getAttribute("aria-readonly")]).toEqual([false, "false"]);
 
     press("ArrowDown");
     expect([byId("cell-address").textContent, bar.value]).toEqual(["A2", "Seoul, KR"]);
@@ -91,9 +91,15 @@ describe("editing a CSV on its page", () => {
     press("Escape", bar);
     expect([document.activeElement, bar.value, cell(2, 0)]).toEqual([grid, "Busan", "Busan"]);
 
+    // Mod+S reaches the desk from the bar: the save takes the edit in progress.
+    press("F2");
+    type("Ulsan");
+    expect(press("s", bar, { metaKey: true }).defaultPrevented).toBe(false);
     await host.command("desk.files.save", A);
-    expect(byId("book-mark").hidden).toBe(true);
-    expect(new TextDecoder().decode(files[A.path])).toContain('"Seoul, South Korea",Korea');
+    expect([cell(2, 0), byId("book-mark").hidden]).toEqual(["Ulsan", true]);
+    const saved = new TextDecoder().decode(files[A.path]);
+    expect(saved).toContain('"Seoul, South Korea",Korea');
+    expect(saved).toContain("\r\nUlsan,Korea,3.4,");
   });
 
   it("past a row's last field the formula bar stays read-only", async () => {
