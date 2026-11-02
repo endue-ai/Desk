@@ -27,7 +27,7 @@ interface Held {
 }
 
 /** What each layer holds for `key`, lowest first, and whether it fits the declaration. */
-function held(key: string, f: Facts): Held[] {
+export function held(key: string, f: Pick<Facts, "declared" | "layers">): Held[] {
   const declared = f.declared[key];
   return LAYERS.filter((layer) => key in f.layers[layer]).map((layer) => {
     const value = f.layers[layer][key];
@@ -36,7 +36,10 @@ function held(key: string, f: Facts): Held[] {
 }
 
 /** The highest layer whose value for `key` fits, if any does. */
-export function settingInForce(key: string, f: Facts): Held | undefined {
+export function settingInForce(
+  key: string,
+  f: Pick<Facts, "declared" | "layers">,
+): Held | undefined {
   return held(key, f)
     .reverse()
     .find((h) => h.fits);

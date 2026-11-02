@@ -47,9 +47,10 @@ async function desk() {
     init: { settings: { "desk.theme.scheme": "light", "desk.notify.seconds": "long" } },
   });
   const bridge = core.client;
+  // perm:manage last: once a caller holds it, the next requests wait for its answer.
   const grants: Record<string, Array<{ permission: string; ids?: string[] }>> = {
-    cli: [{ permission: "cmd:invoke", ids: ["*"] }, MANAGE],
     "example.agent": [{ permission: "cmd:invoke", ids: [INSPECT] }],
+    cli: [{ permission: "cmd:invoke", ids: ["*"] }, MANAGE],
   };
   for (const [caller, permissions] of Object.entries(grants))
     for (const permission of permissions)
@@ -215,14 +216,8 @@ describe("desk.inspect.open", () => {
         { id: "scratch", title: "Scratch", placement: "grid", visible: true, focused: false },
       ],
       views: [{ id: "calendar", title: "Calendar", focused: false }],
+      // As desk.buffers.list answers them.
       buffers: [
-        {
-          id: "surface:desk.inspector",
-          name: "Inspector",
-          plugin: "desk.inspector",
-          modified: false,
-          surface: true,
-        },
         {
           id: "endue.notes:~/a.md",
           name: "a.md",
@@ -230,6 +225,13 @@ describe("desk.inspect.open", () => {
           path: "~/a.md",
           modified: true,
           surface: false,
+        },
+        {
+          id: "surface:desk.inspector",
+          name: "Inspector",
+          plugin: "desk.inspector",
+          modified: false,
+          surface: true,
         },
       ],
     });
