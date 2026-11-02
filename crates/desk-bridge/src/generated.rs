@@ -304,6 +304,7 @@ pub enum Permission {
     UiNotify(UiNotifyPermission),
     PluginManage(PluginManagePermission),
     BrainConverse(BrainConversePermission),
+    BrainAsk(BrainAskPermission),
     CmdInvoke(CmdInvokePermission),
     CmdAdvise(CmdAdvisePermission),
     SettingsRead(SettingsReadPermission),
@@ -407,6 +408,13 @@ pub struct PluginManagePermission {
 #[serde(deny_unknown_fields)]
 pub struct BrainConversePermission {
     pub permission: BrainConversePermissionPermission,
+}
+
+/// Ask the brain one question with brain.ask and receive the answer as structured values through a tool, as brain.turn events for the caller only. Each ask runs in a session of its own: it neither reads nor writes the desk's conversation, which stays with brain:converse.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct BrainAskPermission {
+    pub permission: BrainAskPermissionPermission,
 }
 
 /// Invoke and list the commands whose ids the patterns cover, whoever provides them.
@@ -2002,6 +2010,45 @@ pub struct BrainSayResult {
     pub turn_id: String,
 }
 
+/// Ask the brain one question and get the answer as structured values: the arguments it calls the caller's tool with.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct BrainAskRequest {
+    pub id: RequestId,
+    pub method: BrainAskRequestMethod,
+    pub params: BrainAskParams,
+}
+
+/// Parameters of brain.ask: what to ask and the tool whose arguments are the answer.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct BrainAskParams {
+    /// The question, with everything the brain needs to answer it. The desk's conversation is not sent.
+    pub prompt: String,
+    pub tool: BrainAskTool,
+    pub scope: BrainAskPermission,
+}
+
+/// The tool the brain must call to answer, a ToolDefinition of specs/brain/v0. The core never runs it: the arguments go back to the caller.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct BrainAskTool {
+    /// The tool's name, for example propose_theme.
+    pub name: String,
+    /// What the tool is for and when to call it, for the brain.
+    pub description: String,
+    /// A JSON Schema 2020-12 of the arguments. Its type is object; it may $ref the desk's own specs by their $id.
+    pub schema: serde_json::Map<String, serde_json::Value>,
+}
+
+/// Result of brain.ask: the answer arrives as brain.turn events with this id, for the caller only.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct BrainAskResult {
+    #[serde(rename = "turnId")]
+    pub turn_id: String,
+}
+
 /// List the person's agents one page at a time, as the brain's listAgents does.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -2159,7 +2206,7 @@ pub struct BrainStatusOffline {
     pub mode: BrainStatusOfflineMode,
 }
 
-/// Progress of a brain.say turn.
+/// Progress of a brain.say or brain.ask turn.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct BrainTurnEvent {
@@ -2167,7 +2214,7 @@ pub struct BrainTurnEvent {
     pub data: BrainTurnData,
 }
 
-/// Payload of brain.turn. delta carries answer text; error and offline carry a sentence for people.
+/// Payload of brain.turn. delta carries answer text; error and offline carry a sentence for people. A brain.ask turn's completed carries structured when the brain called the tool.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct BrainTurnData {
@@ -2176,6 +2223,9 @@ pub struct BrainTurnData {
     pub kind: BrainTurnKind,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub text: Option<String>,
+    /// brain.ask only, on completed: the arguments the brain called the tool with, checked against its schema. Absent when the brain answered in text instead.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub structured: Option<serde_json::Map<String, serde_json::Value>>,
 }
 
 /// started, delta (more text), completed; error (the turn failed, for example read-only after a takeover); offline (the brain is unreachable, the turn waits) and online (it resumed).
@@ -2247,6 +2297,7 @@ pub enum BridgeRequest {
     StoreSet(StoreSetRequest),
     InitGet(InitGetRequest),
     BrainSay(BrainSayRequest),
+    BrainAsk(BrainAskRequest),
     BrainAgentsList(BrainAgentsListRequest),
     BrainAgentsCard(BrainAgentsCardRequest),
     BrainSpacesList(BrainSpacesListRequest),
@@ -4837,6 +4888,14 @@ pub enum BrainConversePermissionPermission {
     BrainConverse,
 }
 
+/// The `permission` of [`BrainAskPermission`]: always `"brain:ask"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum BrainAskPermissionPermission {
+    #[default]
+    #[serde(rename = "brain:ask")]
+    BrainAsk,
+}
+
 /// The `permission` of [`CmdInvokePermission`]: always `"cmd:invoke"`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub enum CmdInvokePermissionPermission {
@@ -5091,6 +5150,14 @@ pub enum BrainSayRequestMethod {
     #[default]
     #[serde(rename = "brain.say")]
     BrainSay,
+}
+
+/// The `method` of [`BrainAskRequest`]: always `"brain.ask"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum BrainAskRequestMethod {
+    #[default]
+    #[serde(rename = "brain.ask")]
+    BrainAsk,
 }
 
 /// The `method` of [`BrainAgentsListRequest`]: always `"brain.agents.list"`.

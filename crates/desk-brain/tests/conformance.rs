@@ -251,6 +251,8 @@ fn the_http_client_holds_a_conversation() {
                 text: "hello there".to_owned(),
             }],
         },
+        tools: None,
+        tool_choice: None,
     };
     let mut answer = String::new();
     let mut last = None;

@@ -144,6 +144,13 @@ pub fn run() {
                     permission: Default::default(),
                 }),
             );
+            // The theme studio asks the brain for themes, each ask in a session of its own (ADR 0059).
+            core.grant(
+                RUNTIME_CALLER,
+                Permission::BrainAsk(desk_bridge::BrainAskPermission {
+                    permission: Default::default(),
+                }),
+            );
             // The runtime connects the person's connectors and keeps their views (ADR 0036).
             core.grant(
                 RUNTIME_CALLER,

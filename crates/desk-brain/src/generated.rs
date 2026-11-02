@@ -54,6 +54,58 @@ pub struct TurnRequest {
     #[serde(rename = "leaseId")]
     pub lease_id: String,
     pub message: UserMessage,
+    /// Tools the brain may call in this turn, besides any it has of its own.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tools: Option<Vec<ToolDefinition>>,
+    #[serde(
+        rename = "toolChoice",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub tool_choice: Option<ToolChoice>,
+}
+
+/// A tool offered for one turn. The brain calls it with tool.call and arguments that match schema; Desk decides whether it runs.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ToolDefinition {
+    /// Unique among the turn's tools, for example propose_theme.
+    pub name: String,
+    /// What the tool is for and when to call it.
+    pub description: String,
+    /// A JSON Schema 2020-12 of the arguments, whose type is object.
+    pub schema: serde_json::Map<String, serde_json::Value>,
+}
+
+/// Whether the brain must call a tool of the turn: auto (it may answer in text, the default), required (one of the tools) or tool (the one named). It needs tools.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum ToolChoice {
+    AutoTool(AutoToolChoice),
+    RequiredTool(RequiredToolChoice),
+    NamedTool(NamedToolChoice),
+}
+
+/// The brain calls a tool or answers in text, as it sees fit.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AutoToolChoice {
+    pub r#type: AutoToolChoiceType,
+}
+
+/// The brain answers by calling one of the turn's tools.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct RequiredToolChoice {
+    pub r#type: RequiredToolChoiceType,
+}
+
+/// The brain answers by calling the named tool, which must be one of the turn's tools.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct NamedToolChoice {
+    pub r#type: NamedToolChoiceType,
+    pub name: String,
 }
 
 /// What the person said or typed.
@@ -451,6 +503,30 @@ pub enum BrainErrorCode {
     Internal,
 }
 
+/// The `type` of [`AutoToolChoice`]: always `"auto"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum AutoToolChoiceType {
+    #[default]
+    #[serde(rename = "auto")]
+    Auto,
+}
+
+/// The `type` of [`RequiredToolChoice`]: always `"required"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum RequiredToolChoiceType {
+    #[default]
+    #[serde(rename = "required")]
+    Required,
+}
+
+/// The `type` of [`NamedToolChoice`]: always `"tool"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum NamedToolChoiceType {
+    #[default]
+    #[serde(rename = "tool")]
+    Tool,
+}
+
 /// The `role` of [`UserMessage`]: always `"user"`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub enum UserMessageRole {
@@ -601,11 +677,107 @@ pub const BRAIN_SCHEMA_JSON: &str = r##"{
         },
         "message": {
           "$ref": "#/$defs/UserMessage"
+        },
+        "tools": {
+          "description": "Tools the brain may call in this turn, besides any it has of its own.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ToolDefinition"
+          },
+          "minItems": 1,
+          "maxItems": 32
+        },
+        "toolChoice": {
+          "$ref": "#/$defs/ToolChoice"
         }
       },
       "required": [
         "leaseId",
         "message"
+      ],
+      "additionalProperties": false
+    },
+    "ToolDefinition": {
+      "description": "A tool offered for one turn. The brain calls it with tool.call and arguments that match schema; Desk decides whether it runs.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "description": "Unique among the turn's tools, for example propose_theme.",
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{1,64}$"
+        },
+        "description": {
+          "description": "What the tool is for and when to call it.",
+          "type": "string",
+          "minLength": 1
+        },
+        "schema": {
+          "description": "A JSON Schema 2020-12 of the arguments, whose type is object.",
+          "type": "object"
+        }
+      },
+      "required": [
+        "name",
+        "description",
+        "schema"
+      ],
+      "additionalProperties": false
+    },
+    "ToolChoice": {
+      "description": "Whether the brain must call a tool of the turn: auto (it may answer in text, the default), required (one of the tools) or tool (the one named). It needs tools.",
+      "oneOf": [
+        {
+          "$ref": "#/$defs/AutoToolChoice"
+        },
+        {
+          "$ref": "#/$defs/RequiredToolChoice"
+        },
+        {
+          "$ref": "#/$defs/NamedToolChoice"
+        }
+      ]
+    },
+    "AutoToolChoice": {
+      "description": "The brain calls a tool or answers in text, as it sees fit.",
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "auto"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false
+    },
+    "RequiredToolChoice": {
+      "description": "The brain answers by calling one of the turn's tools.",
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "required"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false
+    },
+    "NamedToolChoice": {
+      "description": "The brain answers by calling the named tool, which must be one of the turn's tools.",
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "tool"
+        },
+        "name": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{1,64}$"
+        }
+      },
+      "required": [
+        "type",
+        "name"
       ],
       "additionalProperties": false
     },

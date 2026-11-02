@@ -1,6 +1,9 @@
 // brain-echo's state: sessions, leases and turns, as specs/brain/v0/openapi.yaml describes them.
 // server.mjs only carries this over HTTP. The answer to a message is the message itself; a message
 // that starts with "tool:" asks Desk to run the echo tool first and answers with what it returned.
+// A turn that offers tools gets a call to the one toolChoice names, or to the first it knows:
+// propose_theme (theme.mjs) and echo.
+import { proposeTheme } from "./theme.mjs";
 
 /** A contract error: the HTTP status and the BrainError body. */
 export class BrainError extends Error {
@@ -53,6 +56,26 @@ const message = (v) =>
   v.content.length > 0 &&
   v.content.every(part);
 
+const TOOL_NAME = /^[A-Za-z0-9_-]{1,64}$/;
+const toolName = (v) => text(v) && TOOL_NAME.test(v);
+const toolDefinition = (v) =>
+  isObject(v) &&
+  only(v, ["name", "description", "schema"]) &&
+  toolName(v.name) &&
+  id(v.description) &&
+  isObject(v.schema);
+const tools = (v) => Array.isArray(v) && v.length >= 1 && v.length <= 32 && v.every(toolDefinition);
+const toolChoice = (v) =>
+  isObject(v) &&
+  (((v.type === "auto" || v.type === "required") && only(v, ["type"])) ||
+    (v.type === "tool" && only(v, ["type", "name"]) && toolName(v.name)));
+
+/** The tools brain-echo can call: each makes the arguments from what was said. */
+const KNOWN = {
+  propose_theme: (said) => proposeTheme(said),
+  echo: (said) => ({ text: said }),
+};
+
 const BODIES = {
   CreateSessionRequest: (b) =>
     only(b, ["title", "client"]) &&
@@ -67,7 +90,12 @@ const BODIES = {
     ttl(b.ttlSeconds) &&
     optional(b.takeover, (v) => typeof v === "boolean"),
   LeaseRenewRequest: (b) => only(b, ["ttlSeconds"]) && optional(b.ttlSeconds, ttl),
-  TurnRequest: (b) => only(b, ["leaseId", "message"]) && id(b.leaseId) && message(b.message),
+  TurnRequest: (b) =>
+    only(b, ["leaseId", "message", "tools", "toolChoice"]) &&
+    id(b.leaseId) &&
+    message(b.message) &&
+    optional(b.tools, tools) &&
+    optional(b.toolChoice, toolChoice),
   ToolResultRequest: (b) =>
     only(b, ["leaseId", "callId", "output", "isError"]) &&
     id(b.leaseId) &&
@@ -79,6 +107,19 @@ const BODIES = {
 function check(name, body) {
   if (!isObject(body) || !BODIES[name](body)) throw invalid(`The body is not a ${name}.`);
   return body;
+}
+
+/** The tool a turn calls: the one toolChoice names, else the first offered that brain-echo knows. */
+function chosenTool(body) {
+  const offered = body.tools ?? [];
+  const choice = body.toolChoice;
+  if (choice && offered.length === 0) throw invalid("toolChoice needs tools.");
+  if (choice?.type === "tool") {
+    const named = offered.find((t) => t.name === choice.name);
+    if (!named) throw invalid(`toolChoice names ${choice.name}, which the turn does not offer.`);
+    return named.name;
+  }
+  return offered.find((t) => t.name in KNOWN)?.name;
 }
 
 /** Answer text as stream events: one text.delta per word, spaces kept. */
@@ -210,31 +251,41 @@ export class EchoBrain {
     session.lease = null;
   }
 
-  /** The events of a new turn. A "tool:" message stops at tool_call until submitToolResult. */
+  /**
+   * The events of a new turn. A call to an offered tool, or a "tool:" message, stops at tool_call
+   * until submitToolResult.
+   */
   startTurn(sessionId, body) {
     check("TurnRequest", body);
+    const chosen = chosenTool(body);
     const session = this.#session(sessionId);
     this.#writer(session, body.leaseId);
     session.updatedAt = iso(this.#now());
     const said = body.message.content.map((p) => p.text).join("");
     const turnId = this.#id("turn");
     const started = { type: "turn.started", turnId };
-    const tool = /^tool:\s*([\s\S]*)$/.exec(said.trim());
-    if (!tool) {
+    const answer = (text) => [
+      started,
+      ...deltas(turnId, text),
+      { type: "turn.completed", turnId, stopReason: "end_turn" },
+    ];
+    const ask = (name, args) => {
+      const call = { callId: this.#id("call"), name, arguments: args };
+      session.calls.set(turnId, call);
       return [
         started,
-        ...deltas(turnId, said),
-        { type: "turn.completed", turnId, stopReason: "end_turn" },
+        ...deltas(turnId, `Let me ask the ${name} tool. `),
+        { type: "tool.call", turnId, call },
+        { type: "turn.completed", turnId, stopReason: "tool_call" },
       ];
+    };
+    if (chosen && KNOWN[chosen]) return ask(chosen, KNOWN[chosen](said));
+    if (chosen || (body.toolChoice && body.toolChoice.type !== "auto")) {
+      const names = (body.tools ?? []).map((t) => t.name).join(", ");
+      return answer(`brain-echo cannot call ${names}, so it answers in words: ${said}`);
     }
-    const call = { callId: this.#id("call"), name: "echo", arguments: { text: tool[1] } };
-    session.calls.set(turnId, call.callId);
-    return [
-      started,
-      ...deltas(turnId, "Let me ask the echo tool. "),
-      { type: "tool.call", turnId, call },
-      { type: "turn.completed", turnId, stopReason: "tool_call" },
-    ];
+    const tool = /^tool:\s*([\s\S]*)$/.exec(said.trim());
+    return tool ? ask("echo", { text: tool[1] }) : answer(said);
   }
 
   /** The rest of a turn once the tool's result is in. */
@@ -244,13 +295,14 @@ export class EchoBrain {
     this.#writer(session, body.leaseId);
     const waiting = session.calls.get(turnId);
     if (!waiting) throw notFound(`Turn ${turnId} is not waiting for a tool result.`);
-    if (waiting !== body.callId)
-      throw notFound(`Turn ${turnId} waits for ${waiting}, not ${body.callId}.`);
+    if (waiting.callId !== body.callId)
+      throw notFound(`Turn ${turnId} waits for ${waiting.callId}, not ${body.callId}.`);
     session.calls.delete(turnId);
     session.updatedAt = iso(this.#now());
     const output =
       typeof body.output?.text === "string" ? body.output.text : JSON.stringify(body.output);
-    const said = body.isError ? `The echo tool failed: ${output}` : `The echo tool said: ${output}`;
+    const tool = `The ${waiting.name} tool`;
+    const said = body.isError ? `${tool} failed: ${output}` : `${tool} said: ${output}`;
     return [...deltas(turnId, said), { type: "turn.completed", turnId, stopReason: "end_turn" }];
   }
 }

@@ -200,6 +200,7 @@ export type Permission =
   | UiNotifyPermission
   | PluginManagePermission
   | BrainConversePermission
+  | BrainAskPermission
   | CmdInvokePermission
   | CmdAdvisePermission
   | SettingsReadPermission
@@ -278,6 +279,11 @@ export interface PluginManagePermission {
 /** Talk to the brain in the desk's session with brain.say, and receive brain.turn events. */
 export interface BrainConversePermission {
   permission: "brain:converse";
+}
+
+/** Ask the brain one question with brain.ask and receive the answer as structured values through a tool, as brain.turn events for the caller only. Each ask runs in a session of its own: it neither reads nor writes the desk's conversation, which stays with brain:converse. */
+export interface BrainAskPermission {
+  permission: "brain:ask";
 }
 
 /** Invoke and list the commands whose ids the patterns cover, whoever provides them. */
@@ -1257,6 +1263,36 @@ export interface BrainSayResult {
   turnId: string;
 }
 
+/** Ask the brain one question and get the answer as structured values: the arguments it calls the caller's tool with. */
+export interface BrainAskRequest {
+  id: RequestId;
+  method: "brain.ask";
+  params: BrainAskParams;
+}
+
+/** Parameters of brain.ask: what to ask and the tool whose arguments are the answer. */
+export interface BrainAskParams {
+  /** The question, with everything the brain needs to answer it. The desk's conversation is not sent. */
+  prompt: string;
+  tool: BrainAskTool;
+  scope: BrainAskPermission;
+}
+
+/** The tool the brain must call to answer, a ToolDefinition of specs/brain/v0. The core never runs it: the arguments go back to the caller. */
+export interface BrainAskTool {
+  /** The tool's name, for example propose_theme. */
+  name: string;
+  /** What the tool is for and when to call it, for the brain. */
+  description: string;
+  /** A JSON Schema 2020-12 of the arguments. Its type is object; it may $ref the desk's own specs by their $id. */
+  schema: Record<string, unknown>;
+}
+
+/** Result of brain.ask: the answer arrives as brain.turn events with this id, for the caller only. */
+export interface BrainAskResult {
+  turnId: string;
+}
+
 /** List the person's agents one page at a time, as the brain's listAgents does. */
 export interface BrainAgentsListRequest {
   id: RequestId;
@@ -1368,17 +1404,19 @@ export interface BrainStatusOffline {
   mode: "offline";
 }
 
-/** Progress of a brain.say turn. */
+/** Progress of a brain.say or brain.ask turn. */
 export interface BrainTurnEvent {
   event: "brain.turn";
   data: BrainTurnData;
 }
 
-/** Payload of brain.turn. delta carries answer text; error and offline carry a sentence for people. */
+/** Payload of brain.turn. delta carries answer text; error and offline carry a sentence for people. A brain.ask turn's completed carries structured when the brain called the tool. */
 export interface BrainTurnData {
   turnId: string;
   kind: BrainTurnKind;
   text?: string;
+  /** brain.ask only, on completed: the arguments the brain called the tool with, checked against its schema. Absent when the brain answered in text instead. */
+  structured?: Record<string, unknown>;
 }
 
 /** started, delta (more text), completed; error (the turn failed, for example read-only after a takeover); offline (the brain is unreachable, the turn waits) and online (it resumed). */
@@ -1428,6 +1466,7 @@ export type BridgeRequest =
   | StoreSetRequest
   | InitGetRequest
   | BrainSayRequest
+  | BrainAskRequest
   | BrainAgentsListRequest
   | BrainAgentsCardRequest
   | BrainSpacesListRequest
@@ -3167,6 +3206,7 @@ export interface BridgeMethodMap {
   "store.set": { params: StoreSetParams; result: StoreSetResult };
   "init.get": { params: InitGetParams; result: InitGetResult };
   "brain.say": { params: BrainSayParams; result: BrainSayResult };
+  "brain.ask": { params: BrainAskParams; result: BrainAskResult };
   "brain.agents.list": { params: BrainAgentsListParams; result: BrainAgentsListResult };
   "brain.agents.card": { params: BrainAgentsCardParams; result: BrainAgentsCardResult };
   "brain.spaces.list": { params: BrainSpacesListParams; result: BrainSpacesListResult };
@@ -3243,6 +3283,7 @@ export const BRIDGE_METHODS = [
   "store.set",
   "init.get",
   "brain.say",
+  "brain.ask",
   "brain.agents.list",
   "brain.agents.card",
   "brain.spaces.list",
