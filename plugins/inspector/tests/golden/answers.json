@@ -1,0 +1,283 @@
+{
+  "description": "What the core and the runtime answer the inspector, the same for its tests and the CLI's (crates/desk-cli/tests/inspect.rs); export.txt is what both print from it.",
+  "cmd.recent": {
+    "invocations": [
+      {
+        "invocationId": "i-41",
+        "id": "desk.palette.open",
+        "caller": "desk",
+        "provider": "desk.palette",
+        "at": "2026-11-02T09:00:00.120Z",
+        "durationMs": 4,
+        "ok": true
+      },
+      {
+        "invocationId": "i-42",
+        "id": "desk.theme.toggle",
+        "caller": "desk.palette",
+        "provider": "desk",
+        "at": "2026-11-02T09:00:03Z",
+        "durationMs": 18,
+        "ok": true
+      },
+      {
+        "invocationId": "i-43",
+        "id": "endue.git.commit",
+        "caller": "cli",
+        "provider": "endue.git",
+        "at": "2026-11-02T09:00:05.500Z",
+        "durationMs": 340,
+        "ok": false,
+        "error": "failed"
+      },
+      {
+        "invocationId": "i-44",
+        "id": "desk.palette.pick",
+        "caller": "desk",
+        "provider": "desk.palette",
+        "at": "2026-11-02T09:00:07.250Z"
+      }
+    ]
+  },
+  "perm.list": {
+    "grants": [
+      {
+        "caller": "desk",
+        "grant": {
+          "grantId": "g1",
+          "permission": { "permission": "plugin:manage" },
+          "duration": "session",
+          "grantedAt": "2026-11-02T08:59:58Z"
+        }
+      },
+      {
+        "caller": "desk.inspector",
+        "grant": {
+          "grantId": "g7",
+          "permission": { "permission": "perm:manage" },
+          "duration": "always",
+          "grantedAt": "2026-11-02T08:59:58Z"
+        }
+      },
+      {
+        "caller": "endue.notes",
+        "grant": {
+          "grantId": "g9",
+          "permission": { "permission": "fs:write", "paths": ["~/Notes/**"] },
+          "duration": "once",
+          "grantedAt": "2026-11-02T09:00:01Z"
+        }
+      }
+    ]
+  },
+  "plugin.list": {
+    "plugins": [
+      {
+        "id": "desk.palette",
+        "status": "ready",
+        "enabled": true,
+        "builtIn": true,
+        "revision": 1,
+        "folder": "/desk/plugins/palette",
+        "manifest": {
+          "id": "desk.palette",
+          "name": "Palette",
+          "version": "0.1.0",
+          "kind": "ui",
+          "entry": "ui/index.html"
+        }
+      },
+      {
+        "id": "endue.sheets",
+        "status": "ready",
+        "enabled": false,
+        "builtIn": true,
+        "revision": 2,
+        "manifest": {
+          "id": "endue.sheets",
+          "name": "Sheets",
+          "version": "0.3.0",
+          "kind": "ui",
+          "entry": "ui/index.html",
+          "autoload": true
+        }
+      },
+      {
+        "id": "endue.terminal",
+        "status": "ready",
+        "enabled": true,
+        "builtIn": true,
+        "revision": 1,
+        "quarantined": false,
+        "notResponding": true,
+        "manifest": {
+          "id": "endue.terminal",
+          "name": "Terminal",
+          "version": "0.2.0",
+          "kind": "ui",
+          "entry": "ui/index.html"
+        }
+      },
+      {
+        "id": "example.broken",
+        "status": "failed",
+        "enabled": false,
+        "builtIn": false,
+        "revision": 0,
+        "error": "plugin.json: /kind must be one of ui, logic, tool",
+        "quarantined": true
+      }
+    ]
+  },
+  "plugin.stats": {
+    "windowSeconds": 60,
+    "callers": [
+      { "caller": "desk", "calls": 212, "failed": 2 },
+      { "caller": "desk.inspector", "calls": 30, "failed": 0 },
+      { "caller": "cli", "calls": 4, "failed": 1 }
+    ]
+  },
+  "desk.inspect.open": {
+    "tree": {
+      "tag": "div",
+      "id": "desk",
+      "box": [0, 0, 1440, 900],
+      "style": {
+        "display": "block",
+        "background-color": "rgb(20, 20, 22)",
+        "color": "rgb(242, 240, 245)",
+        "border-top-color": "rgb(242, 240, 245)",
+        "opacity": "1"
+      },
+      "children": [
+        {
+          "tag": "main",
+          "class": "desk-compositor",
+          "box": [0, 0, 1440, 876],
+          "style": {
+            "display": "grid",
+            "background-color": "rgba(0, 0, 0, 0)",
+            "color": "rgb(242, 240, 245)",
+            "border-top-color": "rgb(242, 240, 245)",
+            "opacity": "1"
+          },
+          "children": [
+            {
+              "tag": "section",
+              "class": "desk-surface",
+              "data-surface": "desk.inspector",
+              "tabindex": "-1",
+              "box": [0, 0, 1440, 876],
+              "style": {
+                "display": "flex",
+                "background-color": "rgb(30, 29, 33)",
+                "color": "rgb(242, 240, 245)",
+                "border-top-color": "rgb(51, 49, 54)",
+                "opacity": "1"
+              },
+              "children": [
+                {
+                  "tag": "header",
+                  "class": "desk-surface-title",
+                  "box": [0, 0, 1440, 24],
+                  "style": {
+                    "display": "block",
+                    "background-color": "rgba(0, 0, 0, 0)",
+                    "color": "rgb(176, 173, 183)",
+                    "border-top-color": "rgb(176, 173, 183)",
+                    "opacity": "1"
+                  },
+                  "text": "Inspector"
+                },
+                {
+                  "tag": "iframe",
+                  "class": "desk-surface-frame",
+                  "sandbox": "allow-scripts",
+                  "title": "Inspector",
+                  "box": [0, 24, 1440, 852],
+                  "style": {
+                    "display": "block",
+                    "background-color": "rgba(0, 0, 0, 0)",
+                    "color": "rgb(242, 240, 245)",
+                    "border-top-color": "rgb(242, 240, 245)",
+                    "opacity": "1"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "footer",
+          "class": "desk-status",
+          "role": "status",
+          "aria-live": "polite",
+          "box": [0, 876, 1440, 24],
+          "style": {
+            "display": "block",
+            "background-color": "rgba(0, 0, 0, 0)",
+            "color": "rgb(176, 173, 183)",
+            "border-top-color": "rgb(51, 49, 54)",
+            "opacity": "1"
+          },
+          "text": "desk ready · bridge: tauri"
+        }
+      ]
+    },
+    "surfaces": {
+      "surfaces": [
+        {
+          "id": "desk.inspector",
+          "plugin": "desk.inspector",
+          "title": "Inspector",
+          "placement": "window",
+          "visible": true,
+          "focused": true
+        },
+        {
+          "id": "desk.palette",
+          "plugin": "desk.palette",
+          "title": "Palette",
+          "placement": "overlay",
+          "visible": false,
+          "focused": false
+        }
+      ],
+      "views": [{ "id": "calendar", "title": "Calendar", "focused": false }],
+      "buffers": [
+        {
+          "id": "surface:desk.inspector",
+          "name": "Inspector",
+          "plugin": "desk.inspector",
+          "modified": false,
+          "surface": true
+        },
+        {
+          "id": "endue.notes:~/Notes/plan.md",
+          "name": "plan.md",
+          "plugin": "endue.notes",
+          "path": "~/Notes/plan.md",
+          "modified": true,
+          "surface": false
+        }
+      ]
+    },
+    "settings": [
+      { "key": "desk.keys.bindings", "value": [], "layer": "default", "owner": "desk.keys" },
+      {
+        "key": "desk.notify.seconds",
+        "value": 6,
+        "layer": "profile",
+        "owner": "desk.notify",
+        "skipped": [{ "layer": "init", "value": "long" }]
+      },
+      {
+        "key": "desk.shell.layouts",
+        "value": { "2": { "surfaces": [] }, "10": { "surfaces": [] }, "b": "\"quoted\" ünï" },
+        "layer": "session",
+        "owner": "desk.shell"
+      },
+      { "key": "desk.theme.scheme", "value": "light", "layer": "init", "owner": "desk.theme" }
+    ]
+  }
+}
