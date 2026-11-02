@@ -18,6 +18,15 @@ const keys: PluginManifest = {
   contributes: { keys: [{ key: "Mod+K", command: "desk.palette.open" }] },
 };
 
+/** desk.keys as its plugin.json declares the person's layer: a setting whose default is none. */
+const withSetting: PluginManifest = {
+  ...keys,
+  contributes: {
+    ...keys.contributes,
+    settings: { [PERSONAL_KEYS]: { kind: "array", default: [], description: "Your bindings." } },
+  },
+};
+
 interface Start {
   files?: Record<string, string>;
   store?: Record<string, unknown>;
@@ -27,7 +36,7 @@ interface Start {
 /** desk.keys and its file on the stub core, with a desk folder in memory. */
 async function desk({ files = {}, store = {}, init = {} }: Start = {}) {
   const core = browserCore({
-    manifests: [keys],
+    manifests: [withSetting],
     store: memoryStore(store),
     files,
     init: { settings: init },
@@ -78,6 +87,22 @@ describe("desk.keys keeps the person's bindings in ~/.desk/keys.yaml", () => {
     expect(d.command("Control+L")).toBeUndefined();
     expect(d.command("Control+P")).toBeUndefined();
     expect(d.command("Control+K")).toBe("desk.palette.open");
+  });
+
+  it("the plugins' defaults arriving at start do not write over keys.yaml", async () => {
+    const text = "bindings:\n  - key: Mod+J\n    command: desk.palette.open\n";
+    const core = browserCore({ manifests: [withSetting], files: { [KEYS_FILE]: text } });
+    const bridge = core.client;
+    const hub = new PolicyHub(bridge);
+    const ctx = { hub, bridge, shortcuts: new ShortcutRouter({ platform: "other" }) };
+    const policy = installKeys(ctx as unknown as DeskContext);
+    const file = installKeysFile(ctx as unknown as DeskContext, () => {});
+    // The plugin list (and with it desk.keys.bindings' default) arrives before the file is read.
+    hub.apply((await bridge.call("plugin.list", { scope: MANAGE })).plugins);
+    await file.start();
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(core.folder.read(KEYS_FILE)).toBe(text);
+    expect(policy.personal()).toEqual([J]);
   });
 
   it("a hand edit of keys.yaml rebinds without a restart", async () => {

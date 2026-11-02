@@ -41,6 +41,9 @@ export function installKeysFile(
   let valid = true;
   /** Set while the file's bindings go into the settings, so they are not written back. */
   let applying = false;
+  /** The session layer's bindings as the file last had them; null before start reads it. */
+  let held: string | null = null;
+  const session = () => JSON.stringify(settings.layer("session")[PERSONAL_KEYS] ?? []);
 
   const apply = (next: string | undefined) => {
     if (next === text) return;
@@ -50,6 +53,7 @@ export function installKeysFile(
       applying = true;
       settings.reset(PERSONAL_KEYS);
       applying = false;
+      held = session();
       return;
     }
     const read = readDeskYaml("keys.yaml", next, checkKeysFile);
@@ -66,6 +70,7 @@ export function installKeysFile(
     applying = true;
     settings.set(PERSONAL_KEYS, read.value.bindings ?? []);
     applying = false;
+    held = session();
   };
 
   const write = (bindings: KeyBinding[]) => {
@@ -98,7 +103,10 @@ export function installKeysFile(
 
   offs.add(
     settings.onChange((keys) => {
-      if (applying || !keys.includes(PERSONAL_KEYS)) return;
+      // Only the person's own changes count: not the file read back, not a default or a profile
+      // arriving (before start, the file has not been read yet and must not be written over).
+      if (applying || held === null || !keys.includes(PERSONAL_KEYS) || session() === held) return;
+      held = session();
       const value = settings.layer("session")[PERSONAL_KEYS];
       if (!valid) {
         notify({
@@ -122,6 +130,7 @@ export function installKeysFile(
         }),
       );
       apply(await folder.read(KEYS_FILE));
+      held ??= session();
     },
     dispose: offs.dispose,
   };

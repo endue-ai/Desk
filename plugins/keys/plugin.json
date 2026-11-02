@@ -115,7 +115,7 @@
       "desk.keys.bindings": {
         "kind": "array",
         "default": [],
-        "description": "The person's own bindings, layered over every plugin's: { key, command }, and \"command\": \"\" takes a key away. A rebinding screen writes them; desk.session keeps them."
+        "description": "The person's own bindings, layered over every plugin's: { key, command }, and \"command\": \"\" takes a key away. A rebinding screen writes them; desk.keys keeps them in ~/.desk/keys.yaml."
       }
     }
   }
