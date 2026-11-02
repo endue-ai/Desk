@@ -11,6 +11,7 @@ import type { KeyLike } from "./input";
 import { eventKey, Owners } from "./owners";
 import { PluginCommands } from "./plugin-commands";
 import type { SurfaceSpec } from "./surfaces";
+import { now, phase } from "./timing";
 
 export interface PluginHostOptions {
   /** The URL of a plugin file: desk-plugin:// in the app, a dev-server path in tests. */
@@ -78,6 +79,8 @@ export class PluginHost {
   /** Plugins that said hello since they mounted, and callers waiting for one that has not yet. */
   readonly #greeted = new Set<string>();
   readonly #waiting = new Map<string, Array<{ resolve(): void; reject(e: unknown): void }>>();
+  /** When each plugin mounting now got its surface: its `mount <id>` phase ends at its hello. */
+  readonly #mounting = new Map<string, number>();
   readonly #commands: PluginCommands;
   #offEvents: (() => void) | undefined;
 
@@ -90,9 +93,11 @@ export class PluginHost {
   async start(): Promise<void> {
     this.#deps.win.addEventListener("message", this.#onMessage);
     this.#offEvents = this.#deps.bridge.onEvent((event) => this.#onEvent(event));
+    const start = now();
     const all = await this.#list();
     this.#deps.listed?.(all);
     for (const info of all) this.#mount(info);
+    phase("plugin list", start);
   }
 
   /** Launch an installed UI plugin, including one put away or disabled by the person. */
@@ -173,6 +178,7 @@ export class PluginHost {
     if (this.#mounted.has(info.id)) return;
     const surface = manifest.surfaces?.[0];
     this.#mounted.set(info.id, info);
+    this.#mounting.set(info.id, now());
     this.#deps.open({
       id: info.id,
       title: surface?.title ?? manifest.name ?? info.id,
@@ -186,6 +192,7 @@ export class PluginHost {
   #unmount(id: string): void {
     if (!this.#mounted.delete(id)) return;
     this.#greeted.delete(id);
+    this.#mounting.delete(id);
     for (const waiter of this.#waiting.get(id) ?? []) {
       waiter.reject(new CommandError("cancelled", `${id} stopped`));
     }
@@ -293,13 +300,19 @@ export class PluginHost {
     if (!id) return;
     const message = event.data as PluginMessage;
     switch (message?.type) {
-      case "desk:hello":
+      case "desk:hello": {
+        const mounting = this.#mounting.get(id);
+        if (mounting !== undefined) {
+          this.#mounting.delete(id);
+          phase(`mount ${id}`, mounting);
+        }
         this.#post(id, { type: "desk:init", pluginId: id, state: this.#state.get(id) });
         for (const shared of this.#shared.values()) this.#post(id, shared);
         this.#greeted.add(id);
         for (const waiter of this.#waiting.get(id) ?? []) waiter.resolve();
         this.#waiting.delete(id);
         break;
+      }
       case "desk:state":
         this.#state.set(id, message.state);
         break;

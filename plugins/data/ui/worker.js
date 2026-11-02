@@ -1,4 +1,6 @@
-// One worker owns one document for its lifetime. Replies contain bounded, already-masked views.
+// One worker owns one document for its lifetime. Replies contain bounded, already-masked views. It
+// also keeps the document's edit session (edit/session.js): edits run here, and save takes its bytes.
+import { createSession } from "./edit/session.js";
 import { openFile } from "./formats.js";
 import { validate } from "./schema.js";
 import { createSchemaCheck } from "./schema-check.js";
@@ -13,6 +15,7 @@ const clip = (text, length = 2000) => String(text ?? "").slice(0, length);
 
 export function attachDataWorker(port) {
   let opened;
+  let session;
   let raw;
   let tree;
   let keys = true;
@@ -80,38 +83,57 @@ export function attachDataWorker(port) {
         message: hidden ? `Validation failed (${error.keyword}).` : clip(error.message, 500),
       };
     });
+  /** Show `next`: its raw lines, masks and tree, keeping which nodes are open. */
+  const adopt = (next, kept) => {
+    opened = next;
+    raw = workerRaw(opened, []);
+    updateMask();
+    tree = workerTree(opened.doc, snapshot, kept);
+  };
+  /** What the page keeps of the document: no text, bytes or tree. */
+  const metaOf = () => {
+    const { text: _text, bytes: _bytes, doc, ...meta } = opened;
+    return {
+      ...meta,
+      tier: session.tier,
+      why: session.why,
+      lineCount: raw.count,
+      rootCount: doc?.roots.length ?? 0,
+      doc: doc
+        ? {
+            roots: [],
+            errors: doc.errors.slice(0, 200).map((e) => ({ ...e, message: clip(e.message, 500) })),
+            warnings: doc.warnings
+              ?.slice(0, 200)
+              .map((e) => ({ ...e, message: clip(e.message, 500) })),
+          }
+        : undefined,
+    };
+  };
   const handle = async (method, args) => {
     if (method === "init") {
       keys = args.maskKeys !== false;
       const total = args.bytes.length;
       port.postMessage({ progress: { done: 0, total } });
-      opened = openFile(args.name, args.bytes, {
+      const first = openFile(args.name, args.bytes, {
         onProgress: (fraction) =>
           port.postMessage({ progress: { done: Math.floor(total * fraction), total } }),
       });
-      raw = workerRaw(opened, []);
-      updateMask();
-      tree = workerTree(opened.doc, snapshot);
+      session = createSession(args.name, args.bytes, first);
+      adopt(first);
       port.postMessage({ progress: { done: total, total } });
-      const { text: _text, bytes: _bytes, doc, ...meta } = opened;
-      return {
-        ...meta,
-        lineCount: raw.count,
-        rootCount: doc?.roots.length ?? 0,
-        doc: doc
-          ? {
-              roots: [],
-              errors: doc.errors
-                .slice(0, 200)
-                .map((e) => ({ ...e, message: clip(e.message, 500) })),
-              warnings: doc.warnings
-                ?.slice(0, 200)
-                .map((e) => ({ ...e, message: clip(e.message, 500) })),
-            }
-          : undefined,
-      };
+      return metaOf();
     }
     if (!opened) throw new Error("Open a document first.");
+    if (method === "begin") return session.valueOf(args.path);
+    if (method === "edit") {
+      if (!session.edit(args.path, args.text).changed) return { changed: false };
+      revealed = null;
+      adopt(session.opened, tree.state());
+      return { changed: true, ...metaOf() };
+    }
+    // A copy, so the session keeps its own; the copy's buffer moves to the page.
+    if (method === "bytes") return session.bytes.slice();
     if (method === "mask") {
       keys = args.keys;
       revealed = args.revealed;
@@ -168,9 +190,18 @@ export function attachDataWorker(port) {
       return;
     }
     try {
-      port.postMessage({ id: data.id, result: await handle(data.method, data.args ?? {}) });
-    } catch {
-      port.postMessage({ id: data.id, error: "Could not process the data document." });
+      const result = await handle(data.method, data.args ?? {});
+      port.postMessage(
+        { id: data.id, result },
+        result instanceof Uint8Array ? [result.buffer] : [],
+      );
+    } catch (error) {
+      // An edit's refusal is a sentence for the person; anything else stays inside the worker.
+      const refused = error?.name === "EditRefused";
+      port.postMessage({
+        id: data.id,
+        error: refused ? error.message : "Could not process the data document.",
+      });
     }
   });
   port.start?.();

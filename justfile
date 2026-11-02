@@ -104,6 +104,12 @@ vendor-terminal:
 perf-opening mode="check":
     node scripts/e2e.mjs perf {{mode}}
 
+# WebdriverIO + tauri-driver on the bundled app (`just bundle-app` first) under a display, results in
+# e2e/test-results/perf, baselines in e2e/perf/budgets.json; nightly in the e2e workflow's perf job.
+# Measure the app's start-up, idle memory and input latency ("record" sets the baselines). Linux
+perf-app mode="check": (_not-macos "perf-app" "tauri-driver does not run on macOS (ADR 0006); the e2e workflow's perf job runs it on Linux")
+    PERF_MODE={{mode}} pnpm exec wdio run e2e/perf/wdio.conf.ts
+
 # Check that this session still has its macOS login session (a WindowServer crash ends it; ADR 0018)
 doctor:
     node scripts/doctor.mjs

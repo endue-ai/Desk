@@ -934,6 +934,7 @@ dependencies = [
  "desk-index",
  "desk-ipc",
  "desk-sys",
+ "desk-trace",
  "desk-update",
  "serde_json",
  "tauri",
@@ -990,6 +991,7 @@ dependencies = [
  "desk-bridge",
  "desk-core",
  "desk-ipc",
+ "desk-trace",
  "serde_json",
 ]
 
@@ -1062,6 +1064,14 @@ dependencies = [
  "time",
  "ureq",
  "url",
+]
+
+[[package]]
+name = "desk-trace"
+version = "0.0.0"
+dependencies = [
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

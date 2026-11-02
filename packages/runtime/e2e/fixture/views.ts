@@ -10,7 +10,8 @@
 //   ?jira=1         example.jira is connected too, with the fixture tasks and their deep links
 //   ?empty=1        every fixture item is removed before anything opens
 //   ?resources=event,message,note   desk.fixtures serves only these kinds
-//   ?propose=1      desk.propose on a scripted brain (src/propose/fixtures.ts), as the shell has it
+//   ?propose=1      desk.propose on a scripted brain (src/propose/fixtures.ts), as the shell has it,
+//                   with the card for profiles and key bindings
 import {
   type ConnectorInfo,
   type ConnectorStatus,
@@ -26,7 +27,7 @@ import today from "../../../../specs/view/v0/vectors/valid/view-today.json";
 import "../../src/desk.css";
 import { browserCore } from "../../src/bridge/core";
 import { createRuntime, ManualClock } from "../../src/index";
-import { scriptedViews } from "../../src/propose/fixtures";
+import { scriptedDesk } from "../../src/propose/fixtures";
 import { installProposals } from "../../src/propose/install";
 import empty from "./views/empty.json";
 
@@ -106,7 +107,7 @@ const core = browserCore({
     search,
   ],
   handlers: { "connector.list": () => ({ connectors: listed() }) },
-  ...(params.has("propose") ? { brain: { answer: scriptedViews } } : {}),
+  ...(params.has("propose") ? { brain: { answer: scriptedDesk } } : {}),
 });
 const { client, stub } = core;
 
@@ -163,8 +164,9 @@ const ready = (async () => {
       });
 })();
 
+const root = document.getElementById("desk") as HTMLElement;
 const runtime = createRuntime({
-  root: document.getElementById("desk") as HTMLElement,
+  root,
   bridge: client,
   clock,
   storage: window.localStorage,
@@ -179,6 +181,12 @@ if (params.has("propose"))
     notify: (input) => runtime.notify(input),
     profile: () => runtime.profiles.active(),
     now: () => Date.now(),
+    desk: {
+      host: root,
+      settings: runtime.settings,
+      policy: () => runtime.policy(),
+      platform: "other",
+    },
   });
 
 window.__desk = { clock, runtime, stub, commands: [] };

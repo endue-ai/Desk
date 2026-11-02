@@ -1,7 +1,7 @@
 # desk-cli
 
-The `desk` CLI: plugin validate, and the commands, plugins, grants, files and log of a running desk.
-The hands AI agents use. Layer: Rust core (see `docs/architecture.md`).
+The `desk` CLI: plugin validate, doctor --trace, and the commands, plugins, grants, files and log of a
+running desk. The hands AI agents use. Layer: Rust core (see `docs/architecture.md`).
 
 ## Commands
 
@@ -17,11 +17,13 @@ desk perm revoke <grantId>             # prints ok
 desk fs history <path> [--limit <n>]   # id<TAB>at<TAB>caller<TAB>size per kept version (ADR 0076)
 desk fs restore <path> <version>       # writes the version back; prints ok
 desk log [--count <n>]                 # at<TAB>level<TAB>channel<TAB>message, oldest first
+desk doctor --trace <file>             # a DESK_TRACE=1 trace.json: phases, totals, the five longest
 ```
 
-All but `plugin validate` reach the running desk over its socket (`crates/desk-ipc`, ADR 0030) as
-the caller `cli`; `DESK_SOCKET` names another socket. `--json`, anywhere among the arguments, prints
-the desk's answer line as it came (for `cmd run`, the `cmd.answered` event line).
+All but `plugin validate` and `doctor --trace` reach the running desk over its socket
+(`crates/desk-ipc`, ADR 0030) as the caller `cli`; `DESK_SOCKET` names another socket. `--json`,
+anywhere among the arguments, prints the desk's answer line as it came (for `cmd run`, the
+`cmd.answered` event line; for `doctor --trace`, the summary as JSON).
 
 Exit codes: 0 ok; 1 a failed check, a bridge error (`desk: <code>: <message>` on stderr), a failed
 or cancelled command, or no desk at the socket; 2 usage. `plugin validate` prints
@@ -33,5 +35,5 @@ folder with a `plugin.json` in `plugins/` and `examples/` (`.github/workflows/pl
 
 ## Testing
 
-`cargo test -p desk-cli`. `tests/socket.rs` runs the binary against a scripted server; `tests/round_trip.rs` and
-`tests/fs_history.rs` against a real `desk_ipc::Listener` and `Core`.
+`cargo test -p desk-cli`. `tests/socket.rs` runs the binary against a scripted server; `tests/round_trip.rs`
+and `tests/fs_history.rs` against a real `desk_ipc::Listener` and `Core`; `tests/doctor.rs` on hand-made traces.

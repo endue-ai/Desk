@@ -24,6 +24,8 @@ pub const USAGE: &str = "usage: desk [--json] <command>
   fs history <path> [--limit <n>]       the versions the desk kept of a file: id, at, caller, size
   fs restore <path> <version>           write a kept version back (what it replaces is kept too)
   log [--count <n>]                     the desk's log, oldest first: at, level, channel, message
+  doctor --trace <file>                 summarize a start-up trace (DESK_TRACE=1): phases, totals,
+                                        the five longest
 --json prints the desk's answer line as it is. Exit codes: 0 ok, 1 failed, 2 usage.";
 
 pub struct Args {
@@ -34,6 +36,8 @@ pub struct Args {
 pub enum Action {
     Help,
     Validate(PathBuf),
+    /// `doctor --trace <file>`: a start-up trace, summarized offline.
+    Trace(PathBuf),
     Remote(Remote),
 }
 
@@ -100,6 +104,7 @@ pub fn parse(args: Vec<String>) -> Option<Args> {
     let action = match words.as_slice() {
         ["--help" | "-h" | "help"] => Action::Help,
         ["plugin", "validate", dir] => Action::Validate(PathBuf::from(dir)),
+        ["doctor", "--trace", file] => Action::Trace(PathBuf::from(file)),
         ["ping"] => Action::Remote(Remote::Ping),
         ["cmd", "list"] => Action::Remote(Remote::CmdList),
         ["cmd", "run", rest @ ..] => Action::Remote(cmd_run(rest)?),
