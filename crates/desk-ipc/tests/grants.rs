@@ -3,7 +3,7 @@
 use serde_json::json;
 
 #[test]
-fn the_cli_gets_exactly_the_four_permissions_adr_0030_lists() {
+fn the_cli_gets_the_permissions_adr_0030_lists_and_update_manage() {
     let granted: Vec<serde_json::Value> = desk_ipc::grants()
         .iter()
         .map(|permission| serde_json::to_value(permission).unwrap())
@@ -15,6 +15,7 @@ fn the_cli_gets_exactly_the_four_permissions_adr_0030_lists() {
             json!({ "permission": "plugin:manage" }),
             json!({ "permission": "perm:manage" }),
             json!({ "permission": "log:read" }),
+            json!({ "permission": "update:manage" }),
         ]
     );
 }

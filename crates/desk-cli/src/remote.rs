@@ -10,7 +10,7 @@ use desk_bridge::{BridgeEvent, BridgeRequest, BridgeResponse};
 use desk_ipc::Client;
 use serde_json::{Map, Value, json};
 
-use crate::args::Remote;
+use crate::args::{Remote, UpdateStep};
 
 pub fn run(remote: Remote, json: bool) -> ExitCode {
     let Some(path) = desk_ipc::socket_path() else {
@@ -105,6 +105,46 @@ impl Session {
                 "perm.revoke",
                 json!({ "grantId": grant_id, "scope": perm_manage }),
             ),
+            Remote::Update(step) => self.update(step),
+        }
+    }
+
+    /// update.* (ADR 0054), one status line. `check` waits for the `update.changed` that ends the
+    /// check, and exits 1 when it failed.
+    fn update(&mut self, step: UpdateStep) -> Result<ExitCode, Problem> {
+        let method = match step {
+            UpdateStep::Status => "update.status",
+            UpdateStep::Check => "update.check",
+            UpdateStep::Download => "update.download",
+            UpdateStep::Apply => "update.apply",
+        };
+        let reply = self.call(
+            method,
+            json!({ "scope": { "permission": "update:manage" } }),
+        )?;
+        let checking = matches!(step, UpdateStep::Check)
+            && reply
+                .result
+                .as_ref()
+                .is_ok_and(|s| s["state"] == "checking");
+        if !checking {
+            return Ok(self.report(reply, |status| vec![update_line(status)]));
+        }
+        loop {
+            let (event, line) = self.client.next_event_line()?;
+            let BridgeEvent::UpdateChanged(changed) = event else {
+                continue;
+            };
+            let status = serde_json::to_value(&changed.data).unwrap_or_default();
+            if status["state"] == "checking" {
+                continue;
+            }
+            let result = if status["state"] == "failed" {
+                Err(("failed".to_owned(), text(&status, "reason").to_owned()))
+            } else {
+                Ok(status)
+            };
+            return Ok(self.report(Reply { result, line }, |status| vec![update_line(status)]));
         }
     }
 
@@ -207,6 +247,23 @@ impl Session {
             }
         }
     }
+}
+
+/// `state  running  channel  chosen [percent]`: `staged  0.1.0  stable  0.2.0`.
+fn update_line(status: &Value) -> String {
+    let chosen = status["release"]["version"].as_str().unwrap_or("-");
+    let mut line = format!(
+        "{}\t{}\t{}\t{chosen}",
+        text(status, "state"),
+        text(&status["current"], "version"),
+        text(status, "channel")
+    );
+    if let (Some(received), Some(total)) = (status["received"].as_u64(), status["total"].as_u64())
+        && total > 0
+    {
+        line.push_str(&format!("\t{}%", received * 100 / total));
+    }
+    line
 }
 
 fn invoke(ids: &[&str]) -> Value {
