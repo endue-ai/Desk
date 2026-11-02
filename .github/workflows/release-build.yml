@@ -4,8 +4,9 @@ name: release-build
 # universal build: darwin-aarch64 and darwin-x86_64 ship apart. Updater artifacts are signed with
 # the updater key, the version in each signature; the public key and the commit go into the binary.
 # macOS is signed and notarised when the Apple secrets are set; Windows updates through NSIS and
-# also ships an .msi for first installs, both unsigned until the certificate is chosen. The Linux
-# .deb is checked against the updater key before it leaves. Each target leaves as the artifact
+# also ships an .msi for first installs, both unsigned until the certificate is chosen. Linux builds
+# an AppImage and a .deb, and an .rpm for releases only (RPM takes no hyphen in a version). The .deb
+# is checked against the updater key before it leaves. Each target leaves as the artifact
 # desk-<target>, canonical names from scripts/release-collect.mjs. A dry run (release-dry-run.yml)
 # stays out of the signing environment, signs with the run's throwaway key, embeds no key in the
 # binary and labels its artifacts desk-<target>-unsigned.
@@ -129,8 +130,12 @@ jobs:
         run: |
           wix="$(sed -E 's/^([0-9]+[.][0-9]+[.][0-9]+)-pre[.]([0-9]+)$/\1.\2/; s/^([0-9]+[.][0-9]+[.][0-9]+)$/\1.0/' <<<"$VERSION")"
           config="$(printf '{"version":"%s","bundle":{"createUpdaterArtifacts":true,"windows":{"wix":{"version":"%s"}}},"plugins":{"updater":{"pubkey":"%s"}}}' "$VERSION" "$wix" "$UPDATER_PUBKEY")"
+          # RPM refuses a hyphen in the version: pre-releases (canary, beta) build no .rpm, and
+          # desks installed from one follow stable.
+          bundles="${{ matrix.bundles }}"
+          if [[ "$VERSION" == *-* ]]; then bundles="${bundles/,rpm/}"; fi
           pnpm --filter @endue-ai/desk-app tauri build \
-            --target "${{ matrix.rust }}" --bundles "${{ matrix.bundles }}" --config "$config"
+            --target "${{ matrix.rust }}" --bundles "$bundles" --config "$config"
       - name: Collect the bundles under canonical names
         run: |
           node scripts/release-collect.mjs --bundle "target/${{ matrix.rust }}/release/bundle" \

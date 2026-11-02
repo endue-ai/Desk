@@ -24,7 +24,8 @@ export const KINDS = {
   linux: [
     { folder: "appimage", match: /\.AppImage$/u, ext: ".AppImage", signed: true },
     { folder: "deb", match: /\.deb$/u, ext: ".deb", signed: true },
-    { folder: "rpm", match: /\.rpm$/u, ext: ".rpm", signed: true },
+    // RPM takes no hyphen in a version, so pre-releases (canary, beta) build no .rpm.
+    { folder: "rpm", match: /\.rpm$/u, ext: ".rpm", signed: true, releasesOnly: true },
   ],
 };
 
@@ -35,7 +36,9 @@ export function collect({ bundle, version, target, out }) {
   if (!TARGETS.includes(target)) throw new Error(`unknown target ${target}`);
   mkdirSync(out, { recursive: true });
   const written = [];
+  const preRelease = version.includes("-");
   for (const kind of KINDS[target.split("-")[0]]) {
+    if (kind.releasesOnly && preRelease) continue;
     const folder = join(bundle, kind.folder);
     const found = existsSync(folder)
       ? readdirSync(folder).filter((name) => kind.match.test(name))
