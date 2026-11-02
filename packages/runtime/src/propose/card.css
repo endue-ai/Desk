@@ -57,14 +57,19 @@
   color: var(--desk-text-muted);
 }
 
+/* As @endue-ai/ui's desk-input draws its field. */
 .proposal-correction {
   height: var(--desk-control-sm);
-  padding: 0 var(--desk-space-2);
-  border: 1px solid var(--desk-border);
+  padding: 0 var(--desk-space-3);
+  border: 1px solid var(--desk-input);
   border-radius: var(--desk-radius-md);
-  background: var(--desk-input);
+  background: var(--desk-background);
   color: var(--desk-text);
   font: inherit;
+}
+
+.proposal-correction::placeholder {
+  color: var(--desk-text-muted);
 }
 
 .proposal-actions {
@@ -76,7 +81,7 @@
 .proposal-button {
   height: var(--desk-control-sm);
   padding: 0 var(--desk-space-3);
-  border: 1px solid var(--desk-border);
+  border: 1px solid var(--desk-input);
   border-radius: var(--desk-radius-md);
   background: transparent;
   color: var(--desk-text);
