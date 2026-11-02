@@ -128,14 +128,14 @@ export function mountDesk(options: DeskOptions): Desk {
   const restored = keepShell(ctx);
   const offs = [
     defineCommands(ctx),
-    // desk.propose: Eris makes views from a sentence and says what she made (ADR 0073).
+    // desk.propose: Eris makes views from a sentence and says what she made (ADR 0073). Its
+    // provenance takes the wall clock (Date.now), not the frame loop's time.
     installProposals({
       bridge: options.core,
       commands: runtime.commands,
       notify: (input) => runtime.notify(input),
       profile: () => runtime.profiles.active(),
       eris: ctx.eris,
-      now: () => ctx.wall(),
     }),
     syncProfiles(ctx),
     restored.off,
