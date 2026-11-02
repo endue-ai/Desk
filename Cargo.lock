@@ -1037,6 +1037,7 @@ name = "desk-plugin-host"
 version = "0.0.0"
 dependencies = [
  "desk-bridge",
+ "serde",
  "serde_json",
  "wasmtime",
  "wasmtime-wasi",
