@@ -2738,6 +2738,25 @@ export interface UiSurfaceCloseParams {
 /** Result of ui.surface.close. */
 export type UiSurfaceCloseResult = Record<string, never>;
 
+/** The runtime asks a plugin's frame for the state to keep before it unloads a surface that is not visible (ADR 0070). Sent to the frame as a desk request, not to the core: it is not a BridgeRequest. Answering is optional; a frame that does not answer comes back cold. */
+export interface UiSurfaceStateRequest {
+  id: RequestId;
+  method: "ui.surface.state";
+  params: UiSurfaceStateParams;
+}
+
+/** Parameters of ui.surface.state. */
+export interface UiSurfaceStateParams {
+  /** The surface id from the plugin's manifest whose frame is about to be unloaded. */
+  surface: string;
+}
+
+/** A plugin's answer to ui.surface.state. The runtime keeps state in memory for the session, at most 64 KiB as UTF-8 JSON (a bigger one is dropped), and hands it back as restored when the frame loads again. */
+export interface UiSurfaceStateResult {
+  /** Any JSON value the plugin needs to come back as it was: what is open, the caret, the scroll. Absent: nothing to keep, the surface comes back cold. */
+  state?: unknown;
+}
+
 /** Show a notification. */
 export interface UiNotifyRequest {
   id: RequestId;
