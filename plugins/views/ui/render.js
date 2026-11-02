@@ -1,9 +1,9 @@
 // The screen desk.views draws on: the view's title and layout in #root, one action menu and one toast,
 // the density by the frame's width, and the keys and pointer that select, act and open the menu.
 // Enter runs a component's first action, "." (or the ContextMenu key) and a right click open its
-// actions, Escape closes the view.
+// actions, Escape closes the view. A preview floats in a card with its bar; a notice sits on top.
 
-import { drawComponent, drawContainer, make } from "./draw.js";
+import { drawComponent, drawContainer, drawNotice, drawPreview, make } from "./draw.js";
 
 /**
  * @typedef {import("./engine.js").Engine} Engine
@@ -26,9 +26,10 @@ const COMPACT = 480;
 /**
  * @param {Document} doc
  * @param {() => Engine | undefined} engine  the engine, once it exists
+ * @param {() => import("./preview.js").Preview | undefined} [preview]  the preview, once it exists
  * @returns {Screen}
  */
-export function createScreen(doc, engine) {
+export function createScreen(doc, engine, preview = () => undefined) {
   const win = /** @type {Window} */ (doc.defaultView);
   const root = /** @type {HTMLElement} */ (doc.getElementById("root"));
   const menu = /** @type {Menu} */ (doc.getElementById("actions"));
@@ -139,6 +140,7 @@ export function createScreen(doc, engine) {
       model = next;
       sections.clear();
       menu.close();
+      doc.body.classList.toggle("previewing", Boolean(next?.preview));
       if (!next) {
         root.replaceChildren();
         return;
@@ -147,7 +149,14 @@ export function createScreen(doc, engine) {
       header.append(make(doc, "h1", { id: "view-title" }, next.title));
       if (next.description)
         header.append(make(doc, "p", { class: "description" }, next.description));
-      root.replaceChildren(header, draw(next.root, next.env));
+      const choose = (/** @type {string} */ choice, /** @type {string} */ text) =>
+        preview()?.choose(choice, text);
+      const bar = next.preview
+        ? [drawPreview(doc, next.preview, choose)]
+        : next.notice
+          ? [drawNotice(doc, next.notice, () => engine()?.noticeAction())]
+          : [];
+      root.replaceChildren(...bar, header, draw(next.root, next.env));
       dense();
     },
     update: (component, env) => {

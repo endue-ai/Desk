@@ -43,6 +43,7 @@ describe("plugin.json", () => {
     ]);
     expect(views.contributes?.commands?.map((command) => command.id)).toEqual([
       "desk.views.open",
+      "desk.views.preview",
       "desk.views.close",
       "desk.views.reconnect",
       "desk.views.request-access",

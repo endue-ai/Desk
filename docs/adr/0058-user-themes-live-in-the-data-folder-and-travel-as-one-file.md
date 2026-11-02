@@ -62,6 +62,12 @@ read by any language and is checked by the same schemas as everything else.
 * Bad, because the folder is only as private as the data folder; a theme is values and assets, never
   code, so it carries no secret and runs nothing
 
+Note, 2026-11-02: the app's part landed in PR #352 (#311). `apps/desk/src-tauri` passes
+`<app data>/themes/` to `Core::with_themes_dir`, runs `Core::watch_themes` beside hot reload (which
+leaves the folders in it to `watch_themes`, so each change is announced once), and grants
+`theme:manage` to the runtime and to the CLI's socket caller. `e2e/specs/themes.spec.ts` checks it in
+the app. The decision above is unchanged.
+
 ## More Information
 
 `specs/bridge/v0/theme.schema.json`, `specs/plugin/v0/theme.schema.json` (`ThemeBundle`),

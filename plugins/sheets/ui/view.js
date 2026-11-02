@@ -1,7 +1,9 @@
-// The DOM for the sheets plugin: the file's name and format, the formula bar, find, the grid with
-// its sheet tabs, the details view, the shortcut card, and the status line with the selection's
-// count, sum and average. Keys are the plugin's own only where the desk leaves them free (Mod+F,
-// Mod+G, Mod+=, Mod+-, Mod+0 and the grid's arrows); every other chord reaches the desk.
+// The DOM for the sheets plugin: the file's name and format, its edit tier and unsaved mark, the
+// formula bar (which edits a CSV or TSV cell, editor.js), find, the grid with its sheet tabs, the
+// details view, the shortcut card, and the status line with the selection's count, sum and
+// average. Keys are the plugin's own only where the desk leaves them free (Mod+F, Mod+G, Mod+=,
+// Mod+-, Mod+0, the grid's arrows, F2 and typing); every other chord reaches the desk.
+import { createEditor } from "./editor.js";
 import { findAll, MATCH_LIMIT, nextMatch } from "./find.js";
 import { createGrid } from "./grid.js";
 import { addressOf } from "./model.js";
@@ -30,8 +32,12 @@ export function sizeOf(/** @type {number} */ bytes) {
 const number = (/** @type {number} */ n) =>
   Number(n.toPrecision(15)).toLocaleString("en-US", { maximumFractionDigits: 6 });
 
-/** @param {Document} doc */
-export function createView(doc) {
+/**
+ * @param {Document} doc
+ * @param {{ edit(r: number, c: number, text: string): boolean }} [actions] what an edit asks of
+ *   the file on screen (sheets.js)
+ */
+export function createView(doc, actions = { edit: () => false }) {
   const byId = (/** @type {string} */ id) => /** @type {HTMLElement} */ (doc.getElementById(id));
   const [name, detail, formula, address, content] = [
     "book-name",
@@ -47,7 +53,15 @@ export function createView(doc) {
     "sheet",
     "tabs",
   ].map(byId);
-  const [details, link, status, stats] = ["details", "link", "status", "stats"].map(byId);
+  const [details, link, status, stats, mark] = [
+    "details",
+    "link",
+    "status",
+    "stats",
+    "book-mark",
+  ].map(byId);
+  /** `<desk-edit-tier>` of @endue-ai/ui: main.js defines it; here it only gets attributes. */
+  const tier = /** @type {HTMLElement} */ (doc.querySelector("desk-edit-tier"));
   const root = byId("grid");
   const progress = /** @type {import("@endue-ai/ui").DeskProgress | null} */ (
     doc.querySelector("desk-progress")
@@ -74,7 +88,7 @@ export function createView(doc) {
     if (!s || !selection) return;
     const { r, c } = selection.active();
     address.textContent = addressOf(r, c);
-    /** @type {HTMLInputElement} */ (content).value = s.input(r, c);
+    editor.show(s.input(r, c));
     const sums = selection.stats();
     stats.textContent = sums
       ? `Count ${number(sums.count)} · Sum ${number(sums.sum)} · Average ${number(sums.average)}`
@@ -89,6 +103,23 @@ export function createView(doc) {
       layer: byId("grid-layer"),
     },
     { changed: update },
+  );
+  const editor = createEditor(
+    { root, scroller: byId("grid-scroll"), bar: /** @type {HTMLInputElement} */ (content) },
+    {
+      active: () => grid.selection()?.active(),
+      editable: (r, c) => shown?.editable?.(r, c) ?? false,
+      text: (r, c) => sheet()?.input(r, c) ?? "",
+      commit: (r, c, text) => actions.edit(r, c, text),
+      move(dr, dc) {
+        const s = sheet();
+        const at = grid.selection()?.active();
+        if (!s || !at) return;
+        const clamp = (/** @type {number} */ n, /** @type {number} */ max) =>
+          Math.min(max - 1, Math.max(0, n));
+        grid.go(clamp(at.r + dr, s.rows), clamp(at.c + dc, s.cols));
+      },
+    },
   );
 
   /** Remember where the person was on the sheet on screen. */
@@ -232,6 +263,7 @@ export function createView(doc) {
     show(model) {
       keep();
       const same = model !== null && shown?.buffer === model.buffer;
+      if (!same) editor.reset();
       shown = model;
       const kind = model?.book.kind;
       name.textContent = model ? model.name : "No spreadsheet open";
@@ -242,6 +274,15 @@ export function createView(doc) {
         : "";
       formula.hidden = kind !== "sheets";
       sheetArea.hidden = kind !== "sheets";
+      tier.hidden = kind !== "sheets" || !model?.tier;
+      if (model?.tier) {
+        tier.setAttribute("tier", model.tier.tier);
+        tier.setAttribute("format", model.tier.format);
+        if (model.tier.detail) tier.setAttribute("detail", model.tier.detail);
+        else tier.removeAttribute("detail");
+      }
+      mark.hidden = !model?.modified;
+      root.setAttribute("aria-readonly", String(!model?.editable));
       details.hidden = kind !== "details";
       link.hidden = kind !== "link";
       if (kind !== "sheets") {
@@ -267,6 +308,11 @@ export function createView(doc) {
     /** @param {string} words */
     status(words) {
       status.textContent = words;
+    },
+
+    /** Commit the edit in progress in the formula bar, if any: a save takes it. */
+    commit() {
+      editor.commit();
     },
 
     focus() {
