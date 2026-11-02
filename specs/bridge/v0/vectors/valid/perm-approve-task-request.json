@@ -1,0 +1,15 @@
+{
+  "target": "BridgeRequest",
+  "description": "perm.approve lets the call and the rest of its task through",
+  "instance": {
+    "id": 81,
+    "method": "perm.approve",
+    "params": {
+      "approvalId": "a-1",
+      "answer": "task",
+      "scope": {
+        "permission": "perm:manage"
+      }
+    }
+  }
+}

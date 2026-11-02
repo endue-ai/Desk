@@ -180,6 +180,7 @@ impl Core {
             R::PermRevoke(r) => (r.id, self.perm_revoke(caller, r.params)),
             R::PermList(r) => (r.id, self.perm_list(caller, r.params)),
             R::PermAnswer(r) => (r.id, self.perm_answer(caller, r.params)),
+            R::PermApprove(r) => (r.id, unsupported("perm.approve")),
             R::PluginList(r) => (r.id, self.plugin_list(caller, r.params)),
             R::PluginSetEnabled(r) => (r.id, self.plugin_set_enabled(caller, r.params)),
             R::SearchReplace(r) => (r.id, self.search_replace(caller, r.params)),
