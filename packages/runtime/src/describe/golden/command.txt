@@ -1,0 +1,7 @@
+desk.files.save is a command of desk.files (Files).
+What it is: a command the desk provides while desk.files is on
+What it does: Save the file
+Plugin: desk.files (Files), /desk/plugins/files
+Keys: ⌘S (manifest default, desk.keys)
+Who may call it: you, with its keys or the palette; with a cmd:invoke grant: cli, desk.palette
+File: /desk/plugins/files/plugin.json

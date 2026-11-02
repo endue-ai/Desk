@@ -49,7 +49,11 @@
           "minimum": 0
         },
         "manifest": { "$ref": "../../plugin/v0/plugin.schema.json#/$defs/PluginManifest" },
-        "error": { "description": "Why the plugin failed, for people.", "type": "string" }
+        "error": { "description": "Why the plugin failed, for people.", "type": "string" },
+        "folder": {
+          "description": "The folder the plugin was installed from, as an absolute path, so people can be shown its files.",
+          "$ref": "bridge.schema.json#/$defs/Path"
+        }
       },
       "required": ["id", "status", "enabled", "builtIn", "revision"],
       "additionalProperties": false

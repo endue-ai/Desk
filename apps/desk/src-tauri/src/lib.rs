@@ -18,8 +18,9 @@ use std::time::Instant;
 
 use desk_brain_endue::HttpBrain;
 use desk_bridge::{
-    BrainConversePermission, CmdInvokePermission, ConnectorManagePermission, Permission,
-    PluginManagePermission, ThemeManagePermission, UpdateManagePermission, ViewManagePermission,
+    BrainConversePermission, CmdInvokePermission, ConnectorManagePermission, PermManagePermission,
+    Permission, PluginManagePermission, ThemeManagePermission, UpdateManagePermission,
+    ViewManagePermission,
 };
 use desk_core::{
     BrainMode, BrainOptions, Core, MockRemote, PluginWatcher, Roots, SyncError, SyncOutcome,
@@ -146,6 +147,14 @@ pub fn run() {
                 Permission::CmdInvoke(CmdInvokePermission {
                     permission: Default::default(),
                     ids: vec!["*".to_owned()],
+                }),
+            );
+            // desk.describe names who may run a command and describes grants (ADR 0075): it lists
+            // them, and shows them only to callers that may list them too.
+            core.grant(
+                RUNTIME_CALLER,
+                Permission::PermManage(PermManagePermission {
+                    permission: Default::default(),
                 }),
             );
             // The shell talks to the brain and reads its agent directory as the runtime.

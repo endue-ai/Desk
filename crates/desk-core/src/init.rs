@@ -182,6 +182,11 @@ impl InitFile {
         self.problem.as_deref()
     }
 
+    /// Where the file is; none for the template in memory.
+    pub fn path(&self) -> Option<&Path> {
+        self.path.as_deref()
+    }
+
     /// The text as it is now.
     pub fn read(&self) -> io::Result<String> {
         match &self.path {

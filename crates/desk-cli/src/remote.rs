@@ -74,6 +74,12 @@ impl Session {
                 },
             ),
             Remote::CmdRun { id, args } => self.cmd_run(&id, args),
+            // Key and profile layers are the runtime's: it answers, the CLI prints its text.
+            Remote::Describe { kind, name } => {
+                let args = json!({ "kind": kind, "name": name, "show": false });
+                let reply = self.invoke_and_wait(DESCRIBE, args.as_object().cloned())?;
+                Ok(self.report(reply, |result| vec![text(result, "text").to_owned()]))
+            }
             Remote::PluginList => self.listing(
                 "plugin.list",
                 json!({ "scope": plugin_manage }),
@@ -327,6 +333,9 @@ fn update_line(status: &Value) -> String {
     }
     line
 }
+
+/// The runtime's describe command (`desk describe`).
+const DESCRIBE: &str = "desk.describe.open";
 
 fn invoke(ids: &[&str]) -> Value {
     json!({ "permission": "cmd:invoke", "ids": ids })

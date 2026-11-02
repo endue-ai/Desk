@@ -42,7 +42,7 @@ export interface BrowserCoreOptions {
   /** Installed but turned off. Autoload plugins start off anyway, as the core starts them. */
   off?: Iterable<string>;
   store?: CoreStore;
-  init?: { profile?: string; settings?: Record<string, unknown>; problem?: string };
+  init?: { profile?: string; settings?: Record<string, unknown>; problem?: string; file?: string };
   /**
    * brain.ask and brain.status answered from a script, as the core streams and checks them; it
    * answers brain.ask instead of `ask` when both are given.
@@ -155,6 +155,7 @@ export function browserCore(options: BrowserCoreOptions): BrowserCore {
       profile: options.init?.profile ?? "default",
       settings: options.init?.settings ?? {},
       ...(options.init?.problem ? { problem: options.init.problem } : {}),
+      ...(options.init?.file ? { file: options.init.file } : {}),
     }),
     ...(options.brain ? scriptedBrain(options.brain, (event) => stub.emit(event)) : {}),
     ...options.handlers,

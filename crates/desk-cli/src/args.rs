@@ -15,6 +15,8 @@ pub const USAGE: &str = "usage: desk [--json] <command>
   perm list                             every grant: grantId, caller, permission
   perm revoke <grantId>                 take a grant back
   perm log [--agent <id>]               grants, refusals and agents' calls; one agent's only
+  describe key|command|setting|plugin|grant <x>
+                                        what it is, where it comes from and who may call it
   update                                the desk's updates: state, running build, channel, chosen build
   update check                          read the channel index now and print what came of it
   update download | apply               download the chosen build, or restart into the staged one
@@ -68,6 +70,11 @@ pub enum Remote {
     },
     /// update.status, or update.check, update.download or update.apply.
     Update(UpdateStep),
+    /// What a key, command, setting, plugin or grant is: the runtime's desk.describe.open answers.
+    Describe {
+        kind: &'static str,
+        name: String,
+    },
     /// The installed themes and the person's own (ADR 0058).
     Theme(ThemeStep),
     /// A file's kept versions (ADR 0076).
@@ -136,6 +143,10 @@ pub fn parse(args: Vec<String>) -> Option<Args> {
         ["update", "check"] => Action::Remote(Remote::Update(UpdateStep::Check)),
         ["update", "download"] => Action::Remote(Remote::Update(UpdateStep::Download)),
         ["update", "apply"] => Action::Remote(Remote::Update(UpdateStep::Apply)),
+        ["describe", kind, thing] => Action::Remote(Remote::Describe {
+            kind: KINDS.iter().find(|k| *k == kind)?,
+            name: name(thing)?,
+        }),
         ["theme", rest @ ..] => Action::Remote(Remote::Theme(theme(rest)?)),
         ["fs", rest @ ..] => Action::Remote(Remote::Fs(fs(rest)?)),
         ["log"] => Action::Remote(Remote::Log { count: None }),
@@ -146,6 +157,9 @@ pub fn parse(args: Vec<String>) -> Option<Args> {
     };
     Some(Args { action, json })
 }
+
+/// What `desk describe` can name.
+const KINDS: [&str; 5] = ["key", "command", "setting", "plugin", "grant"];
 
 /// `theme list | apply <id> | import <file> | export <id> [file] | remove <id>`.
 fn theme(rest: &[&str]) -> Option<ThemeStep> {

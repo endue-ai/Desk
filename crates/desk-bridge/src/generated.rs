@@ -3403,6 +3403,9 @@ pub struct InitGetResult {
     /// Why init.yaml is not in force, for people. The defaults (or the last setup that matched) are in force instead.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub problem: Option<String>,
+    /// Where init.yaml is read from, rooted at ~ when it is in the home folder, so people can be shown it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub file: Option<Path>,
 }
 
 /// How much an entry matters.
@@ -3955,6 +3958,9 @@ pub struct PluginInfo {
     /// Why the plugin failed, for people.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub error: Option<String>,
+    /// The folder the plugin was installed from, as an absolute path, so people can be shown its files.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub folder: Option<Path>,
 }
 
 /// ready: the manifest is valid and the entry exists; failed: it cannot run.
