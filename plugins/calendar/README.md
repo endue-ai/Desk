@@ -31,7 +31,8 @@ events that overlap; `.add` adds an event, unsaved until the person saves.
 Keys when no field has the focus: `t` today, `j`/`k` next and previous, `m` `w` `d` `a` views, `c` new
 event, `g` go to a date; arrow keys move between days in the month grid. Settings start with
 `endue.calendar.` (file, view, week-start, time-zone, event-minutes, reminder-minutes, day-start,
-reminders).
+reminders). Its page takes every colour, font, size, radius and duration from the theme
+(`tests/theme.test.ts`).
 
 ```bash
 pnpm exec vitest run plugins/calendar
