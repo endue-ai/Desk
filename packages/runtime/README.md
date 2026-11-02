@@ -22,8 +22,9 @@ and DOM (ADR 0010); animations run on an injected clock (ADR 0013). Shell decisi
   layer: profiles, desktops, agent bar; mode layer: Eris, rail, bottom edge, surfaces) over its own
   runtime, whose centre and floating plugin surfaces it holds as its windows (ADR 0040); returns
   `{ store, ticker, eris, runtime, ready, refresh, dispose }` (`plugins/shell`). It installs
-  `desk.propose` (`src/propose`, ADR 0073): a sentence to a view, asked of the brain with `brain.ask`
-  (ADR 0059), checked against the spec's schema, previewed in desk.views, applied with `view.save`.
+  `desk.propose` (`src/propose`, ADR 0073): a sentence to a view, a profile or key bindings, asked of
+  the brain with `brain.ask` (ADR 0059) and checked against the spec's schema; a view is previewed in
+  desk.views, a profile (a ghost) or keys (a table, conflicts marked) on the runtime's card.
 - `ShellBridge` (audio, the brain's voice, the agent directory of specs/brain/v0, ADR 0024);
   `browserBridge`, `browserCore` (the core's stub: cmd.*, plugins and built-in grants, store, init,
   fixture items, `upsert`, `remove`, `brain.ask` by `ask` or a scripted `brain`) for pages and
@@ -34,6 +35,6 @@ and DOM (ADR 0010); animations run on an injected clock (ADR 0013). Shell decisi
 
 `pnpm dev` (the shell at http://127.0.0.1:5173), `pnpm exec vitest run packages/runtime` (unit), and
 `just test-e2e` (Playwright on the stubs; macOS: a Linux container, ADR 0018). Fixtures: `desk.html` (desk.* policies, test plugins; `?init=`, `?off=`, `?platform=`, `?profile=`,
-`?rules=`, `?store=`), `shell.html` (`?lang=en`, `?persist=1`, `?reduced=1`, `?init=`, `?views=1`),
+`?rules=`, `?store=`), `shell.html` (`?lang=en`, `?persist=1`, `?reduced=1`, `?init=`, `?views=1`, `?apps=1`),
 `views.html` (desk.views on the fixture items; `?status=error`, `?jira=1`, `?propose=1`). Render
 trees (ADR 0011): `just test-e2e --update-snapshots`, review the JSON. Never run Playwright directly.
