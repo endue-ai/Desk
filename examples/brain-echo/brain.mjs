@@ -2,9 +2,9 @@
 // server.mjs only carries this over HTTP. The answer to a message is the message itself; a message
 // that starts with "tool:" asks Desk to run the echo tool first and answers with what it returned,
 // and "tool <name> as <agent>: <json arguments>" asks for that tool on behalf of that agent. A
-// message of several such lines asks for each in turn, all in one turn.
-// A turn that offers tools gets a call to the one toolChoice names, or to the first it knows:
-// propose_theme (theme.mjs) and echo.
+// message of several such calls (one per line, or joined by " then ") asks for each in turn, all in
+// one turn. A turn that offers tools gets a call to the one toolChoice names, or to the first it
+// knows: propose_theme (theme.mjs) and echo.
 import { proposeTheme } from "./theme.mjs";
 
 /** A contract error: the HTTP status and the BrainError body. */
@@ -134,11 +134,12 @@ function deltas(turnId, said) {
 }
 
 /**
- * The tool calls a message asks for, in order: one per line when every line is a tool line, else
- * the one the whole message asks for. Null for any other message.
+ * The tool calls a message asks for, in order: one per part when the message is several tool calls,
+ * one per line or joined by " then ", else the one the whole message asks for. Null for any other
+ * message.
  */
 function toolCalls(said) {
-  const lines = said.split("\n").filter((line) => line.trim() !== "");
+  const lines = said.split(/\n|\s+then\s+(?=tool[\s:])/).filter((line) => line.trim() !== "");
   if (lines.length > 1) {
     const calls = lines.map((line) => toolCall(line.trim()));
     if (calls.every(Boolean)) return calls;
