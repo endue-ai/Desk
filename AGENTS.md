@@ -17,6 +17,7 @@ English summary is `docs/architecture.md`.
 | `e2e/` | App-level tests (tauri-driver), install smoke tests and performance budgets |
 | `docs/` | Architecture, ADRs and guides; `docs/ko/` holds the Korean design documents, `docs/i18n/` the translations |
 | `brand/` | endue and Eris brand assets. Not Apache-2.0: see `brand/LICENSE` |
+| `market/` | `themes/`: the theme market's index and `.desk-theme` bundles; a pull request publishes a theme (ADR 0060) |
 | `scripts/` | Scripts that `justfile` recipes call |
 | `.github/` | Workflows, issue and PR templates, CODEOWNERS |
 

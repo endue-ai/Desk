@@ -226,6 +226,11 @@
         "kind": "string",
         "default": "",
         "description": "The theme plugin in force, by id (a plugin of kind theme, ADR 0056); empty for the endue theme. Installing a theme does not apply it."
+      },
+      "desk.theme.markets": {
+        "kind": "array",
+        "default": ["https://raw.githubusercontent.com/endue-ai/Desk/main/market/themes/index.json"],
+        "description": "The theme markets the studio's Market tab lists, by the https URL of each index (ADR 0060), in order: the first market that lists a theme's id wins. The default is this repository's market."
       }
     }
   }
