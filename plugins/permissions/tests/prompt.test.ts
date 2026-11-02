@@ -47,8 +47,45 @@ describe("the prompt", () => {
       reason: "To index your notes",
       duration: "This session",
       warning: null,
+      parent: null,
       waiting: 0,
     });
+  });
+
+  it("shows the reason, and says when none was given", async () => {
+    const { reason: _given, ...bare } = ask("p1");
+    const { view } = await prompted(core(), bare);
+    expect(view.prompts.at(-1)).toMatchObject({ promptId: "p1", reason: "" });
+  });
+
+  it("offers the parent folder as a second Allow button", async () => {
+    const pictures = (path: string): Permission => ({ permission: "fs:read", paths: [path] });
+    const third = ask("p3", {
+      permission: pictures("~/Pictures/2026/**"),
+      parent: pictures("~/Pictures/**"),
+    });
+    const { app, view, params, settle } = await prompted(core(), third);
+    expect(view.prompts.at(-1)).toMatchObject({
+      scope: "~/Pictures/2026/**",
+      parent: { scope: "~/Pictures/**", label: "Allow all of ~/Pictures (This session)" },
+    });
+    await app.answer("parent");
+    await settle();
+    expect(params("perm.answer")).toEqual([
+      { promptId: "p3", granted: true, duration: "session", parent: true, scope: MANAGE },
+    ]);
+    expect(view.prompts.at(-1)).toBeNull();
+    expect(view.statuses.at(-1)).toBe(
+      "Allowed Notes: Read files in all of ~/Pictures (This session).",
+    );
+  });
+
+  it("ignores the parent choice when no parent is offered", async () => {
+    const { app, view, params, settle } = await prompted(core(), ask("p1"));
+    await app.answer("parent");
+    await settle();
+    expect(params("perm.answer")).toEqual([]);
+    expect(view.prompts.at(-1)).toMatchObject({ promptId: "p1", parent: null });
   });
 
   it("names shell:open in words", async () => {
