@@ -362,20 +362,17 @@ fn a_caller_without_theme_manage_is_refused() {
     assert!(installed(&core, PAPER) && !installed(&core, "local.mine"));
 }
 
-/// A theme folder put in the user themes folder by hand: `manifest` with its font and image.
-fn write_theme(home: &Path, folder: &str, manifest: Value) {
-    let dir = themes(home).join(folder);
-    for (path, bytes) in [("fonts/mine.woff2", FONT), ("images/paper.png", IMAGE)] {
-        fs::create_dir_all(dir.join(path).parent().unwrap()).unwrap();
-        fs::write(dir.join(path), bytes).unwrap();
-    }
-    fs::write(dir.join("plugin.json"), manifest.to_string()).unwrap();
-}
-
 #[test]
-fn user_themes_load_at_start_and_the_folder_is_watched() {
+fn user_themes_load_at_start_and_each_change_in_the_folder_is_announced_once() {
     let home = home("themes-start");
-    let write = |folder: &str, manifest: Value| write_theme(&home, folder, manifest);
+    let write = |folder: &str, manifest: Value| {
+        let dir = themes(&home).join(folder);
+        for (path, bytes) in [("fonts/mine.woff2", FONT), ("images/paper.png", IMAGE)] {
+            fs::create_dir_all(dir.join(path).parent().unwrap()).unwrap();
+            fs::write(dir.join(path), bytes).unwrap();
+        }
+        fs::write(dir.join("plugin.json"), manifest.to_string()).unwrap();
+    };
     write("kept", manifest("local.kept"));
     write("foreign", manifest("example.foreign"));
     let library = json!({ "id": "local.library", "version": "0.1.0", "kind": "library" });
@@ -387,35 +384,17 @@ fn user_themes_load_at_start_and_the_folder_is_watched() {
         assert!(!installed(&core, id), "{id} is not a user theme");
     }
     let deliveries = core.events().subscribe_addressed();
-    let _watcher = core.watch_themes().expect("the watch starts");
+    let _watchers = (core.watch_plugins().unwrap(), core.watch_themes().unwrap());
     save(&core, manifest(PAPER), files()).unwrap();
+    fs::write(themes(&home).join("kept/images/paper.png"), b"redrawn").unwrap();
     std::thread::sleep(std::time::Duration::from_millis(400));
     let once = named(&deliveries, "plugin.changed");
-    assert_eq!(once.len(), 1, "the core's own write is announced once");
+    assert_eq!(once.len(), 2, "each change once, not once per watcher");
+    assert_eq!(once[1].data(), &changed("local.kept", "updated", 2));
     write("dropped", manifest("local.dropped"));
     let added = wait_for(&deliveries, "plugin.changed").data().clone();
-    assert_eq!(added["plugin"], "local.dropped");
-    assert_eq!(added["change"], "installed");
+    assert_eq!(added, changed("local.dropped", "installed", 1));
     fs::remove_dir_all(themes(&home).join("dropped")).unwrap();
     let gone = wait_for(&deliveries, "plugin.changed").data().clone();
-    assert_eq!(gone["plugin"], "local.dropped");
-    assert_eq!(gone["change"], "removed");
-}
-
-#[test]
-fn a_user_theme_edited_by_hand_is_announced_once_with_both_watchers_running() {
-    let home = home("themes-once");
-    write_theme(&home, "kept", manifest("local.kept"));
-    let core = Arc::new(desk(&home));
-    let _plugins = core.watch_plugins().expect("hot reload starts");
-    let _themes = core.watch_themes().expect("the watch starts");
-    let deliveries = core.events().subscribe_addressed();
-    let mut warmer = manifest("local.kept");
-    warmer["theme"]["light"]["colors"]["background"] = json!("#efe4cf");
-    fs::write(themes(&home).join("kept/plugin.json"), warmer.to_string()).unwrap();
-    let updated = wait_for(&deliveries, "plugin.changed").data().clone();
-    assert_eq!(updated, changed("local.kept", "updated", 2));
-    std::thread::sleep(std::time::Duration::from_millis(600));
-    let again = named(&deliveries, "plugin.changed");
-    assert_eq!(again, [], "announced once, not by both watchers");
+    assert_eq!(gone, changed("local.dropped", "removed", 1));
 }
