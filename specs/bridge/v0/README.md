@@ -36,8 +36,15 @@ a recent OS result id belonging to that caller (five-minute expiry), never a sup
 
 ## Callers and events
 
-Every call is made by a caller: a plugin under its plugin id, the web runtime as `desk`. The core keeps
-grants, store values, commands, settings and log channels per caller; `core` names desk-core itself.
+Every call is made by a caller: a plugin under its plugin id, the web runtime as `desk`, an agent of the
+brain whose tool call the core runs as `agent:<id>` (ADR 0072). The core keeps grants, store values,
+commands, settings and log channels per caller; `core` names desk-core itself.
+
+An agent is never granted anything outside `agents.<id>.allow` in init.yaml when that list holds
+anything: a call or `perm.request` outside it is refused at once (`perm.request` answers
+`reason: "outside-allowlist"`, any other call `permission_denied`), whatever the agent holds, and the
+runtime hears a `ui.notified` from `core` naming the agent. Inside it, or with an empty list, an agent's
+call without a grant asks the person for the call's scope, as `shell.open` does.
 
 An event about the caller's own work reaches it without asking: `fs.changed` for its watches, `proc.*` for
 its processes, `audio.wake` for its captures, `brain.turn` for its turns, `perm.changed` for its grants,
@@ -250,7 +257,10 @@ covers, whoever owns it, each with its owner.
 stamps the time. It needs no scope.
 
 **log.tail** returns the latest entries, oldest first: of one channel, or of every channel merged in time
-order. `count` is 100 by default and 1000 at most. It needs `log:read`.
+order. `count` is 100 by default and 1000 at most. It needs `log:read`. The core writes the channel
+`perm`: every grant (`decision: granted`), every refusal (`refused`) and every call of an agent
+(`allowed` or `denied`), with `caller`, `permission`, `scope`, and `target` (the path, command or other
+target), `reason`, `duration` and `grantId` where they apply.
 
 **events.subscribe** starts delivering named events about every caller, not only the caller's own:
 `plugin.changed`, `perm.changed`, `cmd.changed`, `cmd.invoked`, `settings.changed` and `log.entry`. The

@@ -16,9 +16,9 @@
       "pattern": "^(/|~(/|$)|[A-Za-z]:/|\\$\\{(plugin|workspace|home)\\}(/|$))[^\\\\]*$"
     },
     "CallerId": {
-      "description": "Who makes calls: a plugin id such as endue.eris, or a name of the desk's own such as desk (the web runtime). core names desk-core itself.",
+      "description": "Who makes calls: a plugin id such as endue.eris, a name of the desk's own such as desk (the web runtime), or agent:<id> for an agent of the brain whose tool call the core runs (ADR 0072). core names desk-core itself.",
       "type": "string",
-      "pattern": "^[a-z][a-z0-9-]*(\\.[a-z][a-z0-9-]*)*$",
+      "pattern": "^([a-z][a-z0-9-]*(\\.[a-z][a-z0-9-]*)*|agent:[A-Za-z0-9][A-Za-z0-9_.-]*)$",
       "maxLength": 128
     },
     "Encoding": {

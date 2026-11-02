@@ -1,0 +1,14 @@
+{
+  "target": "TurnEvent",
+  "description": "agentId is the brain's id, without the agent: prefix Desk adds",
+  "instance": {
+    "type": "tool.call",
+    "turnId": "t2",
+    "call": {
+      "callId": "c2",
+      "name": "fs.read",
+      "agentId": "agent:mira",
+      "arguments": {}
+    }
+  }
+}

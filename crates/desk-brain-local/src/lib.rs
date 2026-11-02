@@ -187,6 +187,8 @@ impl LocalBrain {
                     call_id: state.id("call"),
                     name: call.name.clone(),
                     arguments: call.arguments.clone(),
+                    // A local model speaks for no agent of endue AI: Desk runs only echo for it.
+                    agent_id: None,
                 })
                 .collect();
             let stored = state.session_mut(session_id)?;

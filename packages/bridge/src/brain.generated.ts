@@ -110,6 +110,8 @@ export interface ToolCall {
   name: string;
   /** Tool arguments as a JSON object. */
   arguments: Record<string, unknown>;
+  /** The agent that asks for the tool. Desk runs the call as the caller agent:<agentId>, with that agent's own grants, capped by agents.<agentId>.allow in init.yaml. Without it Desk runs only the echo tool. */
+  agentId?: string;
 }
 
 /** The turn ended. */
@@ -599,6 +601,12 @@ export const brainSchema = {
         arguments: {
           description: "Tool arguments as a JSON object.",
           type: "object",
+        },
+        agentId: {
+          description:
+            "The agent that asks for the tool. Desk runs the call as the caller agent:<agentId>, with that agent's own grants, capped by agents.<agentId>.allow in init.yaml. Without it Desk runs only the echo tool.",
+          type: "string",
+          pattern: "^[A-Za-z0-9][A-Za-z0-9_.-]{0,121}$",
         },
       },
       required: ["callId", "name", "arguments"],

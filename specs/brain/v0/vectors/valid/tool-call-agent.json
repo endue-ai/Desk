@@ -1,0 +1,18 @@
+{
+  "target": "TurnEvent",
+  "description": "an agent asks Desk to write a file",
+  "instance": {
+    "type": "tool.call",
+    "turnId": "t2",
+    "call": {
+      "callId": "c2",
+      "name": "fs.write",
+      "agentId": "ag_01JBZ8Q4MR0000000000000001",
+      "arguments": {
+        "path": "~/Documents/Notes/today.md",
+        "content": "Buy milk",
+        "scope": { "permission": "fs:write", "paths": ["~/Documents/Notes/**"] }
+      }
+    }
+  }
+}

@@ -22,6 +22,8 @@ export function createView(doc, actions) {
   const listTitle = byId("grants-title");
   const summary = byId("grants-summary");
   const groups = byId("grants-groups");
+  const agents = byId("agents");
+  const agentGroups = byId("agents-groups");
   const dialog = byId("prompt");
   const status = byId("status");
   const refuse = /** @type {HTMLButtonElement} */ (dialog.querySelector("[data-answer=refuse]"));
@@ -86,10 +88,11 @@ export function createView(doc, actions) {
     return li;
   };
 
-  const group = (/** @type {GrantGroup} */ entry, /** @type {number} */ index) => {
-    const id = `caller-${index}`;
+  /** A caller's grants under its heading: h2 for plugins and the desk, h3 under Agents. */
+  const group = (/** @type {GrantGroup} */ entry, /** @type {number} */ index, level = "h2") => {
+    const id = `caller-${level}-${index}`;
     const heading = el(
-      "h2",
+      level,
       { id },
       entry.caller.name,
       " ",
@@ -109,13 +112,14 @@ export function createView(doc, actions) {
     /** @param {GrantList} model */
     grants(model) {
       // A revoked row takes its button with it: keep focus at the same place in the list.
-      const before = [...groups.querySelectorAll("button")].indexOf(
-        /** @type {HTMLButtonElement} */ (doc.activeElement),
-      );
+      const buttons = () => [...list.querySelectorAll(".caller button")];
+      const before = buttons().indexOf(/** @type {HTMLButtonElement} */ (doc.activeElement));
       summary.textContent = model.summary;
-      groups.replaceChildren(...model.groups.map(group));
+      groups.replaceChildren(...model.groups.map((entry, i) => group(entry, i)));
+      agentGroups.replaceChildren(...model.agents.map((entry, i) => group(entry, i, "h3")));
+      agents.hidden = model.agents.length === 0;
       if (before < 0) return;
-      const after = [...groups.querySelectorAll("button")];
+      const after = buttons();
       (after[Math.min(before, after.length - 1)] ?? listTitle).focus();
     },
 
