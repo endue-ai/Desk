@@ -1,7 +1,8 @@
 /// <reference types="vite/client" />
 // Test page: the desk shell on the browser bridge stubs (the core's and the shell's), a manual clock
 // and in-memory storage. ?lang=en, ?persist=1 (the core's store in localStorage), ?reduced=1
-// (desk.theme.motion: reduce), ?init={...} (more init.yaml settings). Never shipped.
+// (desk.theme.motion: reduce), ?init={...} (more init.yaml settings), ?themes=1 (the test theme
+// plugin installed). Never shipped.
 import type { PluginManifest } from "@endue-ai/bridge";
 import "../../src/desk.css";
 import "../../src/shell/styles";
@@ -12,6 +13,7 @@ import userHello from "../../src/bridge/envelopes/user-hello.json";
 import { ManualClock } from "../../src/clock";
 import { mountDesk } from "../../src/shell/Desk";
 import { sampleState } from "../../src/shell/state";
+import testTheme from "../themes/test-theme/plugin.json";
 
 const root = document.getElementById("desk");
 if (!root) throw new Error("no #desk element");
@@ -47,6 +49,7 @@ const core = browserCore({
       (m) => m.id.startsWith("desk.") && m.id !== "desk.views" && m.kind !== "view",
     ),
     ...(params.has("plugins") ? testPlugins : []),
+    ...(params.has("themes") ? [testTheme as PluginManifest] : []),
   ],
   store: params.has("persist") ? localStore("desk.core.") : memoryStore(),
   init: {

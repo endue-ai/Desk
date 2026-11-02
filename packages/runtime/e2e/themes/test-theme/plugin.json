@@ -1,0 +1,41 @@
+{
+  "id": "test.theme",
+  "name": "Test tiles",
+  "version": "0.1.0",
+  "kind": "theme",
+  "description": "A fixture theme for the runtime's theme e2e: square corners, a tiled backdrop, a navy palette.",
+  "theme": {
+    "license": "CC0-1.0",
+    "shape": {
+      "radius": "none"
+    },
+    "motion": {
+      "personality": "snappy"
+    },
+    "dark": {
+      "colors": {
+        "background": "#102030",
+        "card": "#16263a",
+        "muted": "#1c3048",
+        "popover": "#1c3048",
+        "hover": "#243a56",
+        "text": "#eef4fb",
+        "textMuted": "#a9bdd3",
+        "primary": "#ffcf5a",
+        "primaryForeground": "#102030",
+        "primaryHover": "#ffdb80",
+        "primaryText": "#ffcf5a",
+        "ring": "#ffcf5a"
+      },
+      "material": {
+        "noise": 0.05,
+        "opacity": 0.9,
+        "blur": 10
+      },
+      "backdrop": {
+        "image": "images/tiles.png",
+        "fit": "tile"
+      }
+    }
+  }
+}

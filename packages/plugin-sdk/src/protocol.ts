@@ -1,4 +1,5 @@
 import type { BridgeEvent, BridgeRequest, BridgeResponse } from "@endue-ai/bridge";
+import { applyFonts, type ThemeFont } from "./theme-fonts";
 
 /** A key press, as the desk's keymap reads it. */
 export interface KeyPress {
@@ -35,12 +36,14 @@ export type HostMessage =
   | { type: "desk:command"; name: string; args?: unknown; call?: number }
   | { type: "desk:theme"; theme: ThemeState };
 
-/** The theme in force: its tokens as CSS custom properties, and what the person asked for. */
+/** The theme in force: its tokens as CSS custom properties, its fonts, and what the person asked for. */
 export interface ThemeState {
   scheme: "light" | "dark";
   contrast: "normal" | "high";
   reducedMotion: boolean;
   variables: Record<string, string>;
+  /** The fonts the active theme brings; the frame loads them as FontFace. */
+  fonts?: ThemeFont[];
 }
 
 /** How the SDK talks to its host: postMessage in a frame, memory in tests. */
@@ -102,6 +105,8 @@ export function windowTransport(win: Window = window): Transport {
       root.dataset.scheme = theme.scheme;
       root.dataset.contrast = theme.contrast;
       root.dataset.motion = theme.reducedMotion ? "reduce" : "full";
+      const Face = (win as Window & { FontFace?: typeof FontFace }).FontFace;
+      applyFonts(win.document.fonts, Face, theme.fonts ?? []);
     },
   };
 }

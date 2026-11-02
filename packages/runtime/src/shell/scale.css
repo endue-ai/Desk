@@ -53,7 +53,7 @@
   --motion-base: var(--desk-motion-base);
   --motion-slow: var(--desk-motion-slow);
   --motion-theme: var(--desk-motion-theme);
-  --ease-out-expo: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-out-expo: var(--desk-easing);
 
   --z-float: 20;
   --z-float-top: 30;

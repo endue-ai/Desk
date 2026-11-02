@@ -3,7 +3,7 @@
   "name": "Theme",
   "version": "0.1.0",
   "kind": "policy",
-  "description": "The endue theme: light and dark, high contrast, and reduced motion, or whatever the system prefers. Every role colour of the design system, for every plugin page and the shell.",
+  "description": "The endue theme: light and dark, high contrast, and reduced motion, or whatever the system prefers. Every role colour of the design system and the terminal's, for every plugin page and the shell; desk.theme.active picks an installed theme plugin over it.",
   "contributes": {
     "themes": [
       {
@@ -63,7 +63,23 @@
           "chart5": "#e0738a",
           "chart6": "#8fd36b",
           "chart7": "#f5a35b",
-          "chart8": "#a7b1c3"
+          "chart8": "#a7b1c3",
+          "ansi0": "#1e1d21",
+          "ansi1": "#ff8484",
+          "ansi2": "#5dbe5f",
+          "ansi3": "#ffb347",
+          "ansi4": "#6cadff",
+          "ansi5": "#b6a3f5",
+          "ansi6": "#5fd0be",
+          "ansi7": "#d7d4dc",
+          "ansi8": "#6f6a78",
+          "ansi9": "#ffa3a3",
+          "ansi10": "#86d788",
+          "ansi11": "#ffd089",
+          "ansi12": "#9cc9ff",
+          "ansi13": "#cfc3ff",
+          "ansi14": "#8de0d3",
+          "ansi15": "#ffffff"
         }
       },
       {
@@ -123,7 +139,23 @@
           "chart5": "#b8405e",
           "chart6": "#4e8f2a",
           "chart7": "#c2651b",
-          "chart8": "#5f6b7d"
+          "chart8": "#5f6b7d",
+          "ansi0": "#1e1833",
+          "ansi1": "#b80012",
+          "ansi2": "#006c44",
+          "ansi3": "#925000",
+          "ansi4": "#005fa3",
+          "ansi5": "#6b4f9e",
+          "ansi6": "#0d7a6e",
+          "ansi7": "#9b94a3",
+          "ansi8": "#675f70",
+          "ansi9": "#d83b3b",
+          "ansi10": "#2a8a5c",
+          "ansi11": "#b5700a",
+          "ansi12": "#2f7fc1",
+          "ansi13": "#8a6cc0",
+          "ansi14": "#2f9a8e",
+          "ansi15": "#ffffff"
         }
       },
       {
@@ -189,6 +221,11 @@
         "default": "system",
         "choices": ["system", "reduce", "full"],
         "description": "Reduced motion; system follows the OS."
+      },
+      "desk.theme.active": {
+        "kind": "string",
+        "default": "",
+        "description": "The theme plugin in force, by id (a plugin of kind theme, ADR 0056); empty for the endue theme. Installing a theme does not apply it."
       }
     }
   }

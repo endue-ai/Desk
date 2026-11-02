@@ -15,6 +15,7 @@ import type {
   ProfileContribution,
   SettingContribution,
   ThemeContribution,
+  ThemePackage,
 } from "@endue-ai/bridge";
 
 export interface PolicySet {
@@ -33,6 +34,14 @@ export interface PolicySet {
   profiles: Array<ProfileContribution & { owner: string }>;
   /** What the palette asks as the person types, in layer order: each one's group follows the last. */
   paletteProviders: Array<PaletteProvider & { owner: string }>;
+  /** Installed theme plugins (always on): desk.theme.active picks one (ADR 0056). */
+  installedThemes: Array<{
+    id: string;
+    name: string;
+    description?: string;
+    revision: number;
+    theme: ThemePackage;
+  }>;
   /** Contributions dropped because they reach outside their plugin's id, for people. */
   ignored: string[];
 }
@@ -48,6 +57,7 @@ export function emptyPolicy(): PolicySet {
     settings: {},
     profiles: [],
     paletteProviders: [],
+    installedThemes: [],
     ignored: [],
   };
 }
@@ -108,6 +118,17 @@ export function collect(plugins: readonly PluginInfo[]): PolicySet {
     }
   }
   set.profiles = [...profiles.values()];
+  for (const plugin of ordered(plugins, () => true)) {
+    const theme = plugin.manifest?.kind === "theme" ? plugin.manifest.theme : undefined;
+    if (!theme) continue;
+    set.installedThemes.push({
+      id: plugin.id,
+      name: plugin.manifest?.name ?? plugin.id,
+      ...(plugin.manifest?.description ? { description: plugin.manifest.description } : {}),
+      revision: plugin.revision,
+      theme,
+    });
+  }
   return set;
 }
 
