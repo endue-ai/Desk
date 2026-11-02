@@ -119,6 +119,14 @@ describe("YAML, the text tier", () => {
     expect(session.bytes).toEqual(before);
   });
 
+  it("refuses an empty value, which has no text to replace, in words", () => {
+    const session = open("empty.yaml", "a:\nb: 1\n");
+    expect(() => session.valueOf([0, 0])).toThrow(
+      "This value is empty in the file, so it is not edited here yet.",
+    );
+    expect(() => session.edit([0, 0], "5")).toThrow(/empty in the file/);
+  });
+
   it("takes a YAML value for a non-string, and refuses more than one", () => {
     const session = yaml();
     session.edit(pathOf(session, "/port"), "'8081'");

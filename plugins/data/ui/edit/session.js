@@ -113,6 +113,9 @@ export function createSession(name, original, first = openFile(name, original)) 
       );
     if (node.kind === "date") throw refused("Dates and times are not edited here yet.");
     if (!SCALARS.has(node.kind)) throw refused(`${node.kind} values are not edited here.`);
+    // YAML's `key:` holds a null with no text of its own: there is no place to write to yet.
+    if (tier === "text" && (node.to ?? 0) <= (node.from ?? 0))
+      throw refused("This value is empty in the file, so it is not edited here yet.");
     return node;
   };
   /** A scalar as written, for the editor of anything but a string. */
