@@ -17,7 +17,8 @@ const fixture = (name: string) => {
   return found.bytes;
 };
 const dialectOf = (name: string) => (name.endsWith(".jsonc") ? "jsonc" : "json");
-const text = (bytes: Uint8Array) => new TextDecoder().decode(bytes);
+// Keeps a BOM, so the BOM token reads as one.
+const text = (bytes: Uint8Array) => new TextDecoder("utf-8", { ignoreBOM: true }).decode(bytes);
 
 /** The child-index path of the node a JSON Pointer names in the session's current tree. */
 function pathOf(session: ReturnType<typeof createSession>, pointer: string | number[]): number[] {
