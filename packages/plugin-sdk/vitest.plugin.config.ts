@@ -5,12 +5,16 @@
 //
 //   DESK_PLUGIN_DIR=<folder> node node_modules/vitest/vitest.mjs run --config <this file>
 
+import { realpathSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
 
 const here = (path: string) => fileURLToPath(new URL(path, import.meta.url));
-const root = process.env.DESK_PLUGIN_DIR;
-if (!root) throw new Error("DESK_PLUGIN_DIR names the plugin folder to test");
+const dir = process.env.DESK_PLUGIN_DIR;
+if (!dir) throw new Error("DESK_PLUGIN_DIR names the plugin folder to test");
+// The folder by its real name: under a Windows 8.3 short name (C:\Users\RUNNER~1\...) the resolver
+// sees the test files by another name than the root and cannot load them.
+const root = realpathSync.native(dir);
 
 export default defineConfig({
   root,

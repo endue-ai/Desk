@@ -174,7 +174,10 @@ fn plugin_test_runs_a_ui_plugins_tests_on_the_sdk_test_host() {
 fn plugin_test_fails_when_a_ui_test_fails() {
     let folder = ui_plugin(3);
     let out = desk(&["plugin", "test", folder.arg()]);
-    assert_eq!(out.status.code(), Some(1), "{}", text(&out.stdout));
+    let (stdout, stderr) = (text(&out.stdout), text(&out.stderr));
+    assert_eq!(out.status.code(), Some(1), "{stdout}\n{stderr}");
+    // It fails on the expectation, not because the test did not load.
+    assert!(stderr.contains("to deeply equal"), "{stdout}\n{stderr}");
 }
 
 #[test]
