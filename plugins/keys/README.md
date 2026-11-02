@@ -23,10 +23,12 @@ Other plugins add bindings in their own `contributes.keys`; a later layer's bind
 wins, and `"command": ""` takes a key away. Keys pressed inside a plugin's frame reach the keymap too
 when they hold Command, Control or Alt, or are Escape, unless the plugin handled them. A key whose
 command is off (its policy plugin is disabled) does nothing and passes on. The person's own bindings
-are the last layer: the setting `desk.keys.bindings` (init.yaml, or the shell's rebinding screen, whose
-changes desk.session keeps).
+are the last layer: the setting `desk.keys.bindings`, from `~/.desk/keys.yaml` over a profile's and
+init.yaml's (ADR 0079; `specs/init/v0/keys.schema.json`). A rebinding writes the file; a hand edit
+applies at once; a file that does not check is ignored with a notice naming its line and never written
+over. Bindings an older desk kept in the session record move to the file once.
 
-The runtime side is `packages/runtime/src/keymap.ts` and `src/policies/keys.ts`.
+The runtime side is `packages/runtime/src/keymap.ts`, `src/policies/keys.ts` and `keys-file.ts`.
 
 ```bash
 cargo run -p desk-cli -- plugin validate plugins/keys

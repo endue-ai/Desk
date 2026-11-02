@@ -26,7 +26,7 @@ not in the brief: `ASSUMPTIONS.md`.
   `{ store, ticker, eris, runtime, ready, refresh, dispose }` (`plugins/shell`).
 - `ShellBridge` (audio, the brain's voice, the agent directory of specs/brain/v0, ADR 0024);
   `browserBridge`, `browserCore` (the core's stub: cmd.*, plugins and built-in grants, store, init,
-  fixture items, `upsert`, `remove`) for pages and tests.
+  the desk folder in memory (`folder`), fixture items, `upsert`, `remove`) for pages and tests.
 - `ShortcutRouter`, `comboOf`, `canonical`, `formatCombo`; layout `place`, `move`, `remove`; clock
   `realClock`, `ManualClock`, `tween`; `SurfaceHost`; `applyTheme`; `desk.css`; edge bars.
 
