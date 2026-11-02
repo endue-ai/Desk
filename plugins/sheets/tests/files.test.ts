@@ -78,13 +78,15 @@ describe("the desk's file requests", () => {
     expect(view.shown.at(-1)).toMatchObject({ buffer: C.buffer });
   });
 
-  it("save is refused: the plugin reads only", async () => {
-    const { host, view, params } = await mount({ handlers: disk({ [A.path]: "a\n" }) });
-    await host.command("desk.files.visit", A);
-    await expect(host.command("desk.files.save", A)).rejects.toThrow(
-      "Sheets opens files read-only.",
+  it("save is refused for a format Sheets only reads", async () => {
+    const { host, view, params } = await mount({
+      handlers: disk({ [B.path]: fixture("budget.xlsx") }),
+    });
+    await host.command("desk.files.visit", B);
+    await expect(host.command("desk.files.save", B)).rejects.toThrow(
+      "Sheets opens XLSX files read-only.",
     );
-    expect(view.statuses.at(-1)).toBe("Sheets opens files read-only.");
+    expect(view.statuses.at(-1)).toBe("Sheets opens XLSX files read-only.");
     expect(params("fs.write")).toEqual([]);
   });
 

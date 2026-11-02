@@ -161,7 +161,11 @@ fn grant_ids_stay_unique_across_a_restart() {
     drop(core);
 
     let second_core = restart(&home, &file);
-    let second = request(&second_core, NOTES, notes_read(), "always")["grant"]["grantId"].clone();
+    // The loaded grant covers the same request again: it answers it, and no grant is made.
+    let covered = request(&second_core, NOTES, notes_read(), "always");
+    assert_eq!(covered["grant"]["grantId"], first);
+    let second =
+        request(&second_core, NOTES, calendar_read(), "always")["grant"]["grantId"].clone();
     assert_ne!(second, first);
     call(
         &second_core,
