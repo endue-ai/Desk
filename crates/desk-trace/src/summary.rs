@@ -164,7 +164,7 @@ pub fn summarize(text: &str) -> Result<Summary, String> {
 
 impl fmt::Display for Summary {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(f, "phases{:>48}{:>12}", "start ms", "took ms")?;
+        writeln!(f, "phases{:>52}{:>12}", "start ms", "took ms")?;
         for p in &self.phases {
             writeln!(
                 f,

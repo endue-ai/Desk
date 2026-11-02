@@ -1,7 +1,9 @@
 //! `desk`: the command line for people and AI agents. Exit codes: 0 ok, 1 check or call failed, 2
-//! usage. `plugin validate` works offline; the other subcommands reach a running desk over its socket.
+//! usage. `plugin validate` and `doctor --trace` work offline; the other subcommands reach a
+//! running desk over its socket.
 
 mod args;
+mod doctor;
 mod remote;
 
 use std::path::Path;
@@ -22,6 +24,7 @@ fn main() -> ExitCode {
             ExitCode::SUCCESS
         }
         Action::Validate(dir) => validate(&dir),
+        Action::Trace(file) => doctor::trace(&file, args.json),
         Action::Remote(remote) => remote::run(remote, args.json),
     }
 }
