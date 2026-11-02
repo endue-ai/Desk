@@ -36,7 +36,7 @@
       "enum": ["once", "session", "always"]
     },
     "PermRequestResult": {
-      "description": "Result of perm.request. A refusal is a result, not an error. A request that a lasting grant (session or always) already covers is granted at once with that grant.",
+      "description": "Result of perm.request. A refusal is a result, not an error. A request that a lasting grant (session or always) already covers is granted at once with that grant, unless the caller is an agent and the grant lies outside its allowlist.",
       "type": "object",
       "properties": {
         "granted": { "type": "boolean" },
@@ -47,9 +47,9 @@
       "additionalProperties": false
     },
     "RefusalReason": {
-      "description": "Why perm.request was refused without asking the person. refused-earlier: the person refused this caller this permission and scope earlier in the session; it holds until the caller is granted a permission that covers it. Absent from a result means the person (or the core's own prompter) refused this request.",
+      "description": "Why perm.request was refused without asking the person. refused-earlier: the person refused this caller this permission and scope earlier in the session; it holds until the caller is granted a permission that covers it. outside-allowlist: the caller is an agent (agent:<id>) and no permission in agents.<id>.allow of init.yaml covers the request; an agent is never granted anything outside a non-empty allowlist (ADR 0072). Absent from a result means the person (or the core's own prompter) refused this request.",
       "type": "string",
-      "enum": ["refused-earlier"]
+      "enum": ["refused-earlier", "outside-allowlist"]
     },
     "PermQueryRequest": {
       "description": "List the caller's current grants.",
@@ -207,7 +207,7 @@
       "additionalProperties": false
     },
     "PermPromptEvent": {
-      "description": "A caller asked for a permission and the person has to decide. Sent to callers that hold perm:manage.",
+      "description": "A caller asked for a permission and the person has to decide. Sent to callers that hold perm:manage. An agent's caller is agent:<id>; it asks only within its allowlist.",
       "type": "object",
       "properties": {
         "event": { "const": "perm.prompt" },
@@ -229,7 +229,7 @@
         },
         "duration": { "$ref": "#/$defs/GrantDuration" },
         "parent": {
-          "description": "The parent folder the person may grant instead: the same permission over the folder that holds the one asked for, offered when this caller asks for a third folder under it in the session. Never a root, the home folder or a folder holding it, nor a scope the person refused this caller earlier.",
+          "description": "The parent folder the person may grant instead: the same permission over the folder that holds the one asked for, offered when this caller asks for a third folder under it in the session. Never a root, the home folder or a folder holding it, nor a scope the person refused this caller earlier, nor, for an agent, a scope outside its allowlist.",
           "$ref": "../../plugin/v0/permission.schema.json#/$defs/Permission"
         }
       },

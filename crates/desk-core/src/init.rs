@@ -51,6 +51,7 @@ impl Default for Init {
             profile: None,
             plugins: None,
             settings: None,
+            agents: None,
             sync: None,
         })
     }

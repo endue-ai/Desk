@@ -1,0 +1,16 @@
+{
+  "target": "InitDocument",
+  "description": "an agent's setup has only allow",
+  "instance": {
+    "agents": {
+      "mira": {
+        "deny": [
+          {
+            "permission": "fs:read",
+            "paths": ["~/**"]
+          }
+        ]
+      }
+    }
+  }
+}

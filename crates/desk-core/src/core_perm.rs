@@ -142,6 +142,9 @@ impl Core {
                     Some(RefusalReason::RefusedEarlier) => {
                         format!("the person refused {caller} this scope earlier in the session")
                     }
+                    Some(RefusalReason::OutsideAllowlist) => {
+                        format!("{caller} may not be granted this scope: it is outside its allowlist")
+                    }
                     None => format!("the person did not allow {caller} this scope"),
                 };
                 return Err(denied(Denied {
