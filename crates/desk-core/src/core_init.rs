@@ -1,7 +1,7 @@
 //! The init side of `Core`: init.yaml read at start, the plugin setup it asks for, and its sync
 //! through endue.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, MutexGuard};
 
 use desk_bridge::InitGetResult;
@@ -54,7 +54,8 @@ impl Core {
         self.init_file().remote_copy_path()
     }
 
-    /// init.get: the profile to start in and the caller's own settings (keys under `<caller>.`).
+    /// init.get: the profile to start in, the caller's own settings (keys under `<caller>.`) and
+    /// where init.yaml is, rooted at `~` inside the home folder (desk.describe names and shows it).
     pub(crate) fn init_get(&self, caller: &str) -> Answer {
         let file = self.init_file();
         let init = file.init();
@@ -69,7 +70,7 @@ impl Core {
             profile: init.profile.clone(),
             settings,
             problem: file.problem().map(str::to_owned),
-            file: None,
+            file: file.path().map(|path| bridge_path(path, self.home())),
         })
     }
 
@@ -96,5 +97,14 @@ impl Core {
 
     fn init_file(&self) -> MutexGuard<'_, InitFile> {
         lock(&self.init)
+    }
+}
+
+/// `path` as the bridge writes paths: `~/...` inside `home`, else as it is, with forward slashes.
+fn bridge_path(path: &Path, home: &Path) -> String {
+    let slashes = |p: &Path| p.to_string_lossy().replace('\\', "/");
+    match path.strip_prefix(home) {
+        Ok(rest) if !home.as_os_str().is_empty() => format!("~/{}", slashes(rest)),
+        _ => slashes(path),
     }
 }

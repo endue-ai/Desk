@@ -176,7 +176,7 @@ impl PluginRegistry {
             revision: entry.revision,
             manifest: entry.manifest.clone(),
             error: entry.error.clone(),
-            folder: None,
+            folder: Some(folder(&entry.dir)),
         }
     }
 
@@ -190,6 +190,12 @@ impl PluginRegistry {
             }
         }
     }
+}
+
+/// The folder as plugin.list names it: absolute, with forward slashes (a bridge `Path`).
+fn folder(dir: &Path) -> String {
+    let absolute = std::path::absolute(dir).unwrap_or_else(|_| dir.to_path_buf());
+    absolute.to_string_lossy().replace('\\', "/")
 }
 
 /// Whether the plugin is always on: a library (files other plugins import) or a theme (values the
