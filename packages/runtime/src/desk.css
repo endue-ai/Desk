@@ -81,6 +81,19 @@ body {
   border-top: 1px solid var(--desk-border);
 }
 
+/* A notice's actions (ADR 0061): small buttons after its text, clickable over the shell's layers. */
+.desk-status-action {
+  margin-left: var(--desk-space-2);
+  padding: 0 var(--desk-space-2);
+  font: inherit;
+  color: var(--desk-primary-text);
+  background: var(--desk-primary-soft);
+  border: 1px solid var(--desk-primary-border);
+  border-radius: var(--desk-radius-sm);
+  cursor: pointer;
+  pointer-events: auto;
+}
+
 /* A surface a window host holds (the shell's windows, ADR 0040): the window has the title bar. */
 .desk-surface--windowed {
   grid-template-rows: minmax(0, 1fr);

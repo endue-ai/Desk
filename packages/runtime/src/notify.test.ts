@@ -81,7 +81,12 @@ describe("Notifications", () => {
   it("shows a notice with actions again once the newer one ends, until it is dismissed", () => {
     const { clock, notifications } = center();
     const action = { label: "Turn on again", command: "desk.plugins.turn-on-again" };
-    notifications.push({ caller: "desk", title: "Quarantined", level: "warning", actions: [action] });
+    notifications.push({
+      caller: "desk",
+      title: "Quarantined",
+      level: "warning",
+      actions: [action],
+    });
     notifications.push({ caller: "example.build", title: "Built", level: "success" });
     expect(notifications.current()?.title).toBe("Built");
     clock.advance(4000);

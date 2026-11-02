@@ -135,6 +135,8 @@ const ko = {
   agentsOffline: "에이전트 목록을 읽지 못했습니다",
   agentScreen: "{name} 의 화면",
   file: "파일",
+  safeMode: "안전 모드",
+  startNormally: "일반 모드로 시작",
 };
 
 type Copy = typeof ko;
@@ -273,6 +275,8 @@ const en: Copy = {
   agentsOffline: "Could not read the agents",
   agentScreen: "{name}'s screen",
   file: "File",
+  safeMode: "Safe mode",
+  startNormally: "Start normally",
 };
 
 const tables: Record<Lang, Copy> = { ko, en };

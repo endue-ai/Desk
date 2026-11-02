@@ -14,6 +14,7 @@ import { detectPlatform, type Platform } from "../input";
 import type { PluginHostOptions } from "../plugins";
 import { installProposals } from "../propose/install";
 import { createRuntime, type Runtime } from "../runtime";
+import type { StartInfo } from "../start";
 import { pluginWindows } from "../surface/host";
 import { mountSurfaces } from "../surface/Surface";
 import { loadDirectory } from "../system/agents";
@@ -51,6 +52,10 @@ export interface DeskOptions {
   epoch?: number;
   /** State to start from over the empty desk: the dev page and the fixtures seed the sample desk. */
   seed?: Partial<DeskState>;
+  /** What the host found at start: safe mode and the state files kept broken (ADR 0061). */
+  start?: StartInfo;
+  /** Start the desk again without safe mode ("Start normally"); only a native host can. */
+  relaunch?: () => void | Promise<void>;
 }
 
 export interface Desk {
@@ -109,6 +114,8 @@ export function mountDesk(options: DeskOptions): Desk {
     plugins: options.plugins,
     pickFile: options.pickFile,
     onSurfaceShown: options.onSurfaceShown,
+    ...(options.start ? { start: options.start } : {}),
+    ...(options.relaunch ? { relaunch: options.relaunch } : {}),
     themeRoot: doc.documentElement,
     views: paneViews(ctx),
     // One window manager: the plugins' centre and floating surfaces are the shell's windows.
@@ -117,7 +124,7 @@ export function mountDesk(options: DeskOptions): Desk {
   const { runtime } = ctx;
 
   root.append(glow);
-  const parts = [mountSystemLayer(root, ctx)];
+  const parts = [mountSystemLayer(root, ctx, options.start?.safe)];
   root.append(modeLayer);
   const eris = mountEris(modeLayer, ctx, () => layoutOf(store.get()).eris);
   pending.say = eris.say;

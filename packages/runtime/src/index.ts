@@ -31,6 +31,7 @@ export {
   type RuntimeProfiles,
 } from "./runtime";
 export { type Desk, type DeskOptions, mountDesk } from "./shell/Desk";
+export type { BrokenStateFile, StartInfo } from "./start";
 export { SurfaceHost, type SurfaceSpec } from "./surfaces";
 export { applyTheme } from "./theme";
 export type { HostViews } from "./views";

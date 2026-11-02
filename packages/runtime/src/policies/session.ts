@@ -2,7 +2,8 @@
  * desk.session (desktop.el, savehist): keep the desk as it was across restarts. The layout, the
  * files open in buffers, the surface in use, the notification history and the parts a host keeps
  * (the person's key bindings, the shell's desktops) are kept with store.set whenever they change,
- * and put back after the plugins have mounted.
+ * and put back after the plugins have mounted. A record that cannot be put back is kept as
+ * `session.broken` and the desk starts empty (ADR 0061); in safe mode the record waits untouched.
  */
 import { type Layout, loadLayout } from "../layout";
 import type { Notice } from "../notify";
@@ -51,10 +52,29 @@ export interface SessionPolicy extends Installed {
   keep(name: string, part: SessionPart): () => void;
 }
 
+export interface SessionOptions {
+  /** Safe mode: neither restore nor save, so the normal session waits for a normal start. */
+  hold?: boolean;
+  /** A store record (`session`) could not be put back and was kept as `<key>.broken`. */
+  broken?(key: string): void;
+}
+
+/** Whether a stored record is a session this desk can put back. */
+function restorable(value: Partial<SavedSession>): value is SavedSession {
+  if (value.version !== 1) return false;
+  const layout = loadLayout({ getItem: () => JSON.stringify(value.layout), setItem: () => {} });
+  return (
+    JSON.stringify(layout) === JSON.stringify(value.layout) &&
+    (value.files === undefined || Array.isArray(value.files)) &&
+    (value.notices === undefined || Array.isArray(value.notices))
+  );
+}
+
 export function installSession(
   ctx: DeskContext,
   buffers: BuffersPolicy,
   actions: SessionActions,
+  options: SessionOptions = {},
 ): SessionPolicy {
   const { hub, bridge, win, surfaces } = ctx;
   const { commands, settings } = hub;
@@ -92,15 +112,21 @@ export function installSession(
   const read = async (): Promise<SavedSession | undefined> => {
     const stored = await bridge.call("store.get", { key: SESSION_KEY }).catch(() => ({}));
     const value = (stored as { value?: unknown }).value as Partial<SavedSession> | undefined;
-    return value?.version === 1 ? (value as SavedSession) : undefined;
+    if (value === undefined || value === null || restorable(value)) return value ?? undefined;
+    // Kept, not dropped: the desk starts empty and the person can still find what it held.
+    await bridge.call("store.set", { key: `${SESSION_KEY}.broken`, value }).catch(() => {});
+    await bridge.call("store.set", { key: SESSION_KEY, value: null }).catch(() => {});
+    options.broken?.(SESSION_KEY);
+    return undefined;
   };
 
   const restore = async () => {
+    if (options.hold) return;
     const saved = on() && settings.get("desk.session.restore", true) ? await read() : undefined;
     if (saved) {
-      // loadLayout validates what it is given, so a damaged session keeps the current layout.
-      const layout = loadLayout({ getItem: () => JSON.stringify(saved.layout), setItem: () => {} });
-      if (JSON.stringify(layout) === JSON.stringify(saved.layout)) actions.setLayout(layout);
+      actions.setLayout(
+        loadLayout({ getItem: () => JSON.stringify(saved.layout), setItem: () => {} }),
+      );
       if (Array.isArray(saved.notices)) actions.restoreNotices(saved.notices);
       for (const file of saved.files ?? []) {
         await commands.run("desk.files.open", file).catch(() => {});

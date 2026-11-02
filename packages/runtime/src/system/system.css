@@ -137,3 +137,36 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* Safe mode (ADR 0061): top centre, above every mode, in the theme's warning colours. */
+.layer-system .safe-badge {
+  position: absolute;
+  top: var(--space-6);
+  left: 50%;
+  z-index: var(--z-system);
+  display: flex;
+  align-items: center;
+  gap: var(--desk-space-2);
+  padding: var(--desk-space-1) var(--desk-space-1) var(--desk-space-1) var(--desk-space-3);
+  transform: translateX(-50%);
+  color: var(--desk-warning-text);
+  background: var(--desk-warning-soft);
+  border: 1px solid var(--desk-warning-border);
+  border-radius: var(--desk-radius-full);
+  font-size: var(--desk-text-xs);
+  pointer-events: auto;
+}
+
+.safe-badge-label {
+  font-weight: 600;
+}
+
+.safe-badge-button {
+  padding: var(--desk-space-1) var(--desk-space-3);
+  font: inherit;
+  color: var(--desk-warning-foreground);
+  background: var(--desk-warning);
+  border: 0;
+  border-radius: var(--desk-radius-full);
+  cursor: pointer;
+}

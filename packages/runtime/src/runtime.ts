@@ -30,6 +30,7 @@ import { installSession, type SessionPart } from "./policies/session";
 import { installTheme, type RuntimeThemes } from "./policies/theme";
 import type { PolicySet } from "./policy";
 import type { Settings } from "./settings";
+import { brokenRecordNotice, installStart, type StartInfo } from "./start";
 import { SurfaceHost, type SurfaceSpec } from "./surfaces";
 import { applyTheme, type ThemeState } from "./theme";
 import { connectViews, type HostViews, type ViewRouting } from "./views";
@@ -55,6 +56,9 @@ export interface RuntimeOptions {
   windows?: WindowHost;
   /** Native hosts may pick a file; null means the person cancelled. */
   pickFile?: () => Promise<string | null>;
+  /** What the host found at start (ADR 0061), and how it starts the desk again without safe mode. */
+  start?: StartInfo;
+  relaunch?: () => void | Promise<void>;
 }
 
 export interface RuntimeProfiles {
@@ -232,15 +236,19 @@ export function createRuntime(options: RuntimeOptions): Runtime {
   });
   const buffers = installBuffers(ctx, { focus: focusAny });
   routing = connectViews(views, buffers);
-  const files = installFiles(ctx, buffers, notify.notify, options.pickFile);
-  const session = installSession(ctx, buffers, {
+  const broken = (key: string) => notify.notify(brokenRecordNotice(key, options.start?.dataDir));
+  const files = installFiles(ctx, buffers, notify.notify, options.pickFile, broken);
+  const actions = {
     layout: () => structuredClone(layout),
-    setLayout: (next) => commit(next),
+    setLayout: (next: Layout) => commit(next),
     focus: focusSurface,
     focused: () => shortcuts.focused,
     notices: () => notify.notifications.history(),
-    restoreNotices: (notices) => notify.notifications.restore(notices),
-  });
+    restoreNotices: (notices: Notice[]) => notify.notifications.restore(notices),
+  };
+  const session = installSession(ctx, buffers, actions, { hold: !!options.start?.safe, broken });
+  const { start: info, relaunch } = options;
+  const start = installStart(ctx, { notify: notify.notify, save: session.save, info, relaunch });
   const profiles = installProfiles(ctx, (input) => notify.notify(input));
   notify.notifications.onPush(() => session.changed());
   onLayout = () => session.changed();
@@ -346,6 +354,7 @@ export function createRuntime(options: RuntimeOptions): Runtime {
           shortcuts.handle(key);
         },
         listed: (all) => hub.apply(all),
+        outcome: (id, ok) => start.outcome(id, ok),
       },
       options.plugins,
     );
@@ -406,7 +415,17 @@ export function createRuntime(options: RuntimeOptions): Runtime {
     status: () => notify.text(),
     dispose() {
       routing.dispose();
-      const policies = [profiles, session, files, buffers, display, notify, palette, aliases];
+      const policies = [
+        start,
+        profiles,
+        session,
+        files,
+        buffers,
+        display,
+        notify,
+        palette,
+        aliases,
+      ];
       for (const policy of [...policies, keys, theme]) {
         policy.dispose();
       }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { FAILURES_KEY, Quarantine, QUARANTINED_KEY } from "./quarantine";
+import { FAILURES_KEY, QUARANTINED_KEY, Quarantine } from "./quarantine";
 
 const AT = "2026-11-02T09:00:00.000Z";
 const THROWS = "example.throws";

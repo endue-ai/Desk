@@ -31,6 +31,8 @@ export interface PluginHostDeps {
   key?(id: string, key: KeyLike): void;
   /** The installed plugins, each time they are listed (at start and after every plugin.changed). */
   listed?(plugins: PluginInfo[]): void;
+  /** A frame reported its start: its first ready, or that it failed to start (ADR 0061). */
+  outcome?(id: string, ok: boolean): void;
 }
 
 type Reply = {
@@ -47,7 +49,9 @@ type PluginMessage =
   | { type: "desk:close" }
   | { type: "desk:visible"; visible: boolean }
   | ({ type: "desk:reply" } & Reply)
-  | { type: "desk:key"; key: KeyLike };
+  | { type: "desk:key"; key: KeyLike }
+  | { type: "desk:ready" }
+  | { type: "desk:failed"; message?: string };
 
 const MANAGE = { permission: "plugin:manage" } as const;
 
@@ -312,6 +316,10 @@ export class PluginHost {
         break;
       case "desk:key":
         this.#deps.key?.(id, message.key);
+        break;
+      case "desk:ready":
+      case "desk:failed":
+        this.#deps.outcome?.(id, message.type === "desk:ready");
         break;
       case "desk:reply": {
         const pending = this.#pending.get(message.call);

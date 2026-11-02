@@ -18,12 +18,18 @@ async function session(store: Record<string, unknown>, options: { hold?: boolean
   const bridge = core.client;
   const hub = new PolicyHub(bridge);
   hub.apply((await bridge.call("plugin.list", { scope: MANAGE })).plugins);
-  const ctx = { hub, bridge, win: window, clock: new ManualClock(), surfaces: { get: () => undefined } };
+  const ctx = {
+    hub,
+    bridge,
+    win: window,
+    clock: new ManualClock(),
+    surfaces: { get: () => undefined },
+  };
   const buffers = { buffers: { list: () => [], onChange: () => () => {} } };
   let layout: Layout = defaultLayout();
   const set: Layout[] = [];
   const broken: string[] = [];
-  const policy = installSession(
+  const desk = installSession(
     ctx as unknown as DeskContext,
     buffers as unknown as BuffersPolicy,
     {
@@ -39,7 +45,7 @@ async function session(store: Record<string, unknown>, options: { hold?: boolean
     },
     { ...options, broken: (key) => broken.push(key) },
   );
-  return { policy, set, broken, core };
+  return { policy: desk, set, broken, core };
 }
 
 describe("a session that fails to restore", () => {
