@@ -1,7 +1,7 @@
 /**
  * desk.propose and desk.propose.undo in the desk's registry, as the runtime's own commands (ADR 0017,
- * 0073). `desk.propose { kind?, text? }` ("Make with Eris…") makes a view from a sentence; without
- * one it asks for it with desk.palette.pick. `desk.propose.undo { kind?, id? }` takes back what this
+ * 0073). `desk.propose { kind?, text? }` ("Make with Eris…") makes a view from a sentence and answers
+ * with the outcome; without one it asks for it with desk.palette.pick and answers at once. `desk.propose.undo { kind?, id? }` takes back what this
  * session applied, the last one by default: the inverse `cmd.undo` (#276) can point to.
  */
 import type { BridgeClient } from "@endue-ai/bridge";
@@ -60,9 +60,22 @@ export function installProposals(options: InstallProposalsOptions): () => void {
       owner: "desk",
       run: async (args) => {
         const { kind = "view", text } = (args ?? {}) as { kind?: unknown; text?: unknown };
-        const said = typeof text === "string" && text.trim() ? text.trim() : await ask();
-        if (!said) return { status: "cancelled" };
-        return proposals.propose(String(kind), said);
+        if (typeof text === "string" && text.trim())
+          return proposals.propose(String(kind), text.trim());
+        // Asked from the palette: it cannot show its own pick while it waits for this command, so
+        // the command answers at once and the rest goes on without the caller (desk.notify.history
+        // does the same).
+        void ask()
+          .then((said) => (said ? proposals.propose(String(kind), said) : undefined))
+          .catch((error: unknown) =>
+            options.notify({
+              caller: "desk",
+              title: "Eris could not make that",
+              body: error instanceof Error ? error.message : String(error),
+              level: "error",
+            }),
+          );
+        return { status: "asking" };
       },
     }),
     commands.define("desk.propose.undo", {
