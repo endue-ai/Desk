@@ -22,6 +22,11 @@
   box-shadow: var(--desk-shadow-lg);
 }
 
+/* `.shell button { color: inherit }` outranks `.btn-primary`: the studio's filled buttons keep their ink. */
+.theme-studio .btn-primary {
+  color: var(--desk-primary-foreground);
+}
+
 .theme-studio-head {
   display: flex;
   align-items: center;
