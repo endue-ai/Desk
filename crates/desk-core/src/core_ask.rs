@@ -41,13 +41,14 @@ impl Core {
                 "brain.ask needs a prompt".to_owned(),
             ));
         }
+        let schema = compile(&params.tool.schema)?;
         let ask = Ask {
             conversation: Arc::clone(conversation),
             caller: caller.to_owned(),
             turn: conversation.next_ask(),
             prompt: prompt.to_owned(),
-            schema: compile(&params.tool.schema)?,
             tool: params.tool,
+            schema,
         };
         let turn = ask.turn.clone();
         let (events, to) = (conversation.events().clone(), vec![caller.to_owned()]);
