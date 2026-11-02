@@ -47,4 +47,26 @@ describe("the talk line's routes", () => {
     expect(to("/make a board", false)).toBe("talk");
     expect(to("make a board of the week that feels calm", false)).toBe("look");
   });
+
+  it("sends profile and key binding sentences to desk.propose with their kind, look words and all", () => {
+    expect(routeOf("make a quiet night profile with only notes and terminal")).toEqual({
+      to: "propose",
+      args: { kind: "profile", text: "make a quiet night profile with only notes and terminal" },
+    });
+    expect(routeOf("make a profile that feels like a calm evening")).toEqual({
+      to: "propose",
+      args: { kind: "profile", text: "make a profile that feels like a calm evening" },
+    });
+    expect(routeOf("bind Mod+Shift+T to open the terminal")).toEqual({
+      to: "propose",
+      args: { kind: "keys", text: "bind Mod+Shift+T to open the terminal" },
+    });
+    expect(routeOf("make shortcuts that feel quick for the four desktops")).toEqual({
+      to: "propose",
+      args: { kind: "keys", text: "make shortcuts that feel quick for the four desktops" },
+    });
+    for (const text of ["bind it", "what does bind mean to you?", "my profile is quiet", "binder"])
+      expect(to(text), text).toBe("talk");
+    expect(to("bind Mod+Shift+T to open the terminal", false)).toBe("talk");
+  });
 });
