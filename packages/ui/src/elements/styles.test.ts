@@ -9,12 +9,12 @@ const COLOURED =
   /^(color|background(-color)?|border(-[a-z]+)?(-color)?|outline(-color)?|box-shadow)$/;
 const PLAIN = /^(-?[\d.]+(px|%|em|rem)?|solid|none|inherit|transparent|currentcolor|inset)$/i;
 
-// What takes no focus: a number and a card show, they are not controls.
-const UNFOCUSED = new Set(["desk-stat", "desk-card"]);
+// What takes no focus: a number, a card and an edit tier show, they are not controls.
+const UNFOCUSED = new Set(["desk-stat", "desk-card", "desk-edit-tier"]);
 const DENSE = ["desk-list", "desk-table", "desk-agenda", "desk-stat", "desk-markdown", "desk-card"];
 
 describe("element styles", () => {
-  it("cover the twelve elements", () => {
+  it("cover the thirteen elements", () => {
     expect(Object.keys(elements)).toEqual([
       "desk-button",
       "desk-input",
@@ -28,6 +28,7 @@ describe("element styles", () => {
       "desk-markdown",
       "desk-card",
       "desk-progress",
+      "desk-edit-tier",
     ]);
   });
 

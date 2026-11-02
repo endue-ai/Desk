@@ -4,6 +4,7 @@ import { DeskAgenda } from "./agenda";
 import { DeskButton } from "./button";
 import { DeskCard } from "./card";
 import { DeskDialog } from "./dialog";
+import { DeskEditTier, EDIT_TIERS, type EditTier } from "./edit-tier";
 import { DeskInput } from "./input";
 import { DeskList } from "./list";
 import { DeskMarkdown } from "./markdown";
@@ -23,11 +24,13 @@ export type {
   DeskTableRow,
   DeskTableSelectDetail,
 } from "./table";
+export type { EditTier };
 export {
   DeskAgenda,
   DeskButton,
   DeskCard,
   DeskDialog,
+  DeskEditTier,
   DeskInput,
   DeskList,
   DeskMarkdown,
@@ -36,6 +39,7 @@ export {
   DeskStat,
   DeskTable,
   DeskToast,
+  EDIT_TIERS,
 };
 
 /** The elements by tag name. */
@@ -52,6 +56,7 @@ export const elements = {
   "desk-markdown": DeskMarkdown,
   "desk-card": DeskCard,
   "desk-progress": DeskProgress,
+  "desk-edit-tier": DeskEditTier,
 } as const;
 
 /** Define every element that is not defined yet; safe to call more than once. */
@@ -75,5 +80,6 @@ declare global {
     "desk-markdown": DeskMarkdown;
     "desk-card": DeskCard;
     "desk-progress": DeskProgress;
+    "desk-edit-tier": DeskEditTier;
   }
 }

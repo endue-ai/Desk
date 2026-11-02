@@ -4,8 +4,9 @@
  * the store, init.yaml's start profile and settings, perm.query, and the stub's index of fixture items
  * (data.*, connector.*, view.*), and shell.open, which hands links to `open` (window.open on the dev
  * page) and only records reveals. Built-in plugins hold their manifest's permissions, as the core
- * grants them at install. brain.ask answers through `ask` when given, and the theme market
- * (theme.market.*, theme.import by url) downloads through `download`. More methods come as handlers.
+ * grants them at install. brain.ask answers through `ask`, or through a scripted brain (`brain`) that
+ * streams its turns as the core does; the theme market (theme.market.*, theme.import by url) downloads
+ * through `download`. More methods come as handlers.
  */
 import {
   type BrainTurnData,
@@ -26,6 +27,7 @@ import {
   type ThemeMarketListResult,
 } from "@endue-ai/bridge";
 import { themeHandlers } from "./core-themes";
+import { type ScriptedBrain, scriptedBrain } from "./scripted-brain";
 import { searchHandlers } from "./search";
 
 /** What the core's store holds for the runtime: memory, or localStorage to survive a reload. */
@@ -41,6 +43,11 @@ export interface BrowserCoreOptions {
   off?: Iterable<string>;
   store?: CoreStore;
   init?: { profile?: string; settings?: Record<string, unknown>; problem?: string; file?: string };
+  /**
+   * brain.ask and brain.status answered from a script, as the core streams and checks them; it
+   * answers brain.ask instead of `ask` when both are given.
+   */
+  brain?: ScriptedBrain;
   /** More methods (fs.write, ui.notify, ...), or the ones above answered differently. */
   handlers?: StubHandlers;
   /** Where shell.open's links go: a new window by default, nowhere without a window. */
@@ -150,6 +157,7 @@ export function browserCore(options: BrowserCoreOptions): BrowserCore {
       ...(options.init?.problem ? { problem: options.init.problem } : {}),
       ...(options.init?.file ? { file: options.init.file } : {}),
     }),
+    ...(options.brain ? scriptedBrain(options.brain, (event) => stub.emit(event)) : {}),
     ...options.handlers,
   });
   return {
