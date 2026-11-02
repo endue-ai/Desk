@@ -82,6 +82,13 @@ fn grants_refusals_and_agent_calls_go_to_the_perm_channel() {
     assert_eq!(allowed[0]["fields"]["scope"], notes);
     assert_eq!(allowed[0]["fields"]["target"], "~/Notes/a.md");
 
+    // The write waited for an approval; with nobody to ask, the Prompter gave it once (ADR 0078).
+    let approved = with_decision(&entries, "approved");
+    assert_eq!(approved.len(), 1, "{approved:?}");
+    assert_eq!(approved[0]["fields"]["caller"], MIRA);
+    assert_eq!(approved[0]["fields"]["approval"], "once");
+    assert_eq!(approved[0]["fields"]["target"], "~/Notes/a.md");
+
     let refused = with_decision(&entries, "refused");
     assert_eq!(refused.len(), 1, "{refused:?}");
     assert_eq!(refused[0]["level"], "warn");
