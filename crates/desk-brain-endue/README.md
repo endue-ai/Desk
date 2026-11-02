@@ -10,7 +10,6 @@ with the real endue AI.
 ## Public API
 
 - `HttpBrain::new(base_url)`, `with_token(token)`, `base_url()`; implements `desk_brain::Brain`.
-  Turns carry `tools` and `toolChoice` as the contract writes them.
   Connection failures and broken streams are `BrainFailure::Unreachable`; error bodies become
   `BrainFailure::Refused`.
 - `http`: the transport, std only. `Endpoint::parse`, `send(endpoint, token, method, path, body)`,
