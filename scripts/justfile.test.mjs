@@ -26,7 +26,6 @@ function dryRun(env) {
 function appEnv(command) {
   assert.ok(command.endsWith(APP), `just dev no longer runs "${APP}":\n${command}`);
   const run = spawnSync("bash", ["-c", `${command.slice(0, -APP.length)} env -0`], {
-    env: { PATH: process.env.PATH },
     encoding: "utf8",
   });
   assert.equal(run.status, 0, run.stderr);
@@ -38,16 +37,17 @@ function appEnv(command) {
   );
 }
 
+// just joins its own paths with "/", so on Windows they mix separators: compare them resolved.
 test("just dev loads examples/plugin-hello-ui when DESK_DEV_PLUGINS is unset", { skip }, () => {
   const env = appEnv(dryRun({}));
-  assert.equal(env.DESK_DEV_PLUGINS, join(root, "examples/plugin-hello-ui"));
-  assert.equal(env.DESK_PLUGIN_DIRS, join(root, "plugins"));
+  assert.equal(resolve(env.DESK_DEV_PLUGINS), join(root, "examples/plugin-hello-ui"));
+  assert.equal(resolve(env.DESK_PLUGIN_DIRS), join(root, "plugins"));
 });
 
 test("just dev loads the dev plugin folder the caller names in DESK_DEV_PLUGINS", { skip }, () => {
   for (const folder of ["/some/folder", "/tmp/my plugins/a $HOME 'theme'"]) {
     const env = appEnv(dryRun({ DESK_DEV_PLUGINS: folder }));
     assert.equal(env.DESK_DEV_PLUGINS, folder);
-    assert.equal(env.DESK_PLUGIN_DIRS, join(root, "plugins"));
+    assert.equal(resolve(env.DESK_PLUGIN_DIRS), join(root, "plugins"));
   }
 });
