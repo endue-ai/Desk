@@ -4,6 +4,7 @@
 // fake timers for desk.display.unload-after.
 import type { PluginManifest } from "@endue-ai/bridge";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import display from "../../../../plugins/display/plugin.json";
 import { browserCore } from "../bridge/core";
 import { createRuntime } from "../runtime";
 
@@ -79,13 +80,19 @@ class Plugin {
   }
 }
 
-const flush = (ms = 0) => vi.advanceTimersByTimeAsync(ms);
+/** Let `ms` pass, then let what it set off settle: messages to frames go by timer in jsdom. */
+async function flush(ms = 0): Promise<void> {
+  await vi.advanceTimersByTimeAsync(ms);
+  for (let i = 0; i < 5; i++) await vi.advanceTimersByTimeAsync(0);
+}
 
 async function desk(ids: string[], settings: Record<string, unknown> = {}) {
   vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "performance"] });
   const root = document.createElement("div");
   document.body.replaceChildren(root);
-  const core = browserCore({ manifests: ids.map(centre), init: { settings } });
+  // desk.display brings desk.display.show and the two settings' defaults.
+  const manifests = [display as PluginManifest, ...ids.map(centre)];
+  const core = browserCore({ manifests, init: { settings } });
   const runtime = createRuntime({
     root,
     bridge: core.client,
@@ -229,7 +236,9 @@ describe("hidden surfaces are unloaded and their state kept", () => {
     b.messages = [];
     b.connect();
     await flush();
-    expect(b.messages.map((m) => m.name ?? m.type)).toEqual(["desk:init", "desk.buffers.show"]);
+    // Its init first, the theme every plugin gets, then what waited for it.
+    const heard = b.messages.map((m) => m.name ?? m.type).filter((m) => m !== "desk:theme");
+    expect(heard).toEqual(["desk:init", "desk.buffers.show"]);
     expect(d.runtime.plugins?.mounted()).toEqual(["a.one", "b.two"]);
     expect(d.core.plugins.find((p) => p.id === "b.two")?.enabled).toBe(true);
     const methods = d.core.stub.log.map((entry) => entry.request.method);

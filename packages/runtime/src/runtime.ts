@@ -3,6 +3,7 @@ import type { Buffers } from "./buffers";
 import { type Clock, realClock, tween } from "./clock";
 import type { Commands } from "./commands";
 import { Edges, takesCell } from "./edges";
+import { installFrames, type WindowVisibility } from "./frames/install";
 import { PolicyHub } from "./hub";
 import { type Platform, ShortcutRouter } from "./input";
 import type { Keymap } from "./keymap";
@@ -76,7 +77,7 @@ export interface RuntimePlugins {
 }
 
 /** The shell's window host places detached surfaces and removes them when closed (ADR 0040). */
-export interface WindowHost {
+export interface WindowHost extends WindowVisibility {
   adopt(spec: SurfaceSpec, section: HTMLElement): void;
   release(id: string): void;
 }
@@ -228,6 +229,8 @@ export function createRuntime(options: RuntimeOptions): Runtime {
     ],
     focused: () => shortcuts.focused ?? views?.focused() ?? null,
   });
+  // Centre and floating surfaces out of sight are unloaded, their state kept (ADR 0070).
+  const frames = installFrames(ctx, { windows: options.windows, host: () => pluginHost });
   const buffers = installBuffers(ctx, { focus: focusAny });
   routing = connectViews(views, buffers);
   const files = installFiles(ctx, buffers, notify.notify, options.pickFile);
@@ -306,8 +309,10 @@ export function createRuntime(options: RuntimeOptions): Runtime {
     if (decision.focus && !spec.hidden && (decision.area === "overlay" || !modal)) {
       focusSurface(spec.id);
     }
+    frames.opened(placed);
   };
   function closeSurface(id: string) {
+    frames.closed(id);
     surfaces.close(id);
     options.windows?.release(id);
     buffers.surfaceClosed(id);
@@ -335,6 +340,7 @@ export function createRuntime(options: RuntimeOptions): Runtime {
           shortcuts.handle(key);
         },
         listed: (all) => hub.apply(all),
+        wake: (id) => frames.wake(id),
       },
       options.plugins,
     );
@@ -393,6 +399,7 @@ export function createRuntime(options: RuntimeOptions): Runtime {
     layout: () => structuredClone(layout),
     status: () => notify.text(),
     dispose() {
+      frames.dispose();
       routing.dispose();
       const policies = [profiles, session, files, buffers, display, notify, palette, aliases];
       for (const policy of [...policies, keys, theme]) {

@@ -69,13 +69,14 @@ describe("covered plugin windows", () => {
   });
 
   it("the window in focus is drawn on top, so nothing covers it", () => {
-    const { host } = desk([window_("big", 104, 190, 1232, 622)], A);
+    const { host } = desk([{ ...window_("big", 104, 190, 1232, 622), pinned: true }], A);
     expect(host.covered?.(A)).toBe(false);
     expect(host.covered?.(B)).toBe(true);
   });
 
   it("a canvas window panned off the screen is not visible", () => {
-    const { store, host } = desk();
+    // In focus, so the tiled window beside it does not cover it once it is back in sight.
+    const { store, host } = desk([], A);
     const away: SurfacePlacement = {
       ...window_(A, 104, 190, 400, 300),
       plugin: A,
