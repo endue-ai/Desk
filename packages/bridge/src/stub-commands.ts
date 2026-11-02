@@ -2,10 +2,9 @@
  * The core for the browser stub, so the runtime and plugins can be tested without it: the command
  * registry (cmd.*, ADR 0017), grants and prompts (perm.*), settings, the log, subscriptions (events.*)
  * and surfaces (ui.surface.*), per caller, with the core's rules (specs/bridge/v0/README.md), plus the
- * items, connectors, views and catalog of stub-data.ts, shell.open of stub-shell.ts and, given files,
- * fs.read and fs.url of stub-fs.ts. A plugin caller's scoped call needs a covering grant; the runtime
- * (`desk`) is trusted. cmd.list and cmd.invoke check no grants. `audience` names the plugins the core
- * would deliver an event to.
+ * items, connectors, views and catalog of stub-data.ts, shell.open of stub-shell.ts, cmd.recent and
+ * plugin.stats of stub-recent.ts and, given files, fs.read and fs.url of stub-fs.ts. A plugin caller's
+ * scoped call needs a covering grant; the runtime (`desk`) is trusted; cmd.list and cmd.invoke check none.
  */
 import { StubError, type StubHandlers } from "./adapters";
 import { FIXTURE_NOW } from "./fixtures";
@@ -33,6 +32,7 @@ import { covers, keyMatch, starMatch } from "./stub-covers";
 import { type DataServed, stubData } from "./stub-data";
 import { type FsServed, type StubFiles, stubFs } from "./stub-fs";
 import { LOG, type LogServed, stubLog } from "./stub-log";
+import { type RecentServed, stubRecent } from "./stub-recent";
 import { type ShellServed, type StubOpened, stubShell } from "./stub-shell";
 
 /** The methods the stub serves; any other is `unsupported` (adapters.ts). */
@@ -44,7 +44,8 @@ type Served =
   | `events.${"subscribe" | "unsubscribe"}`
   | `ui.surface.${"open" | "close"}`
   | DataServed
-  | ShellServed;
+  | ShellServed
+  | RecentServed;
 
 export interface StubOptions {
   /** Grants each caller holds from the start, as `session` grants with ids g-<n>. */
@@ -95,6 +96,8 @@ export interface StubCommands {
   upsert(item: Item): void;
   /** Take an item out of the index (false when it was not there); fires data.changed. */
   remove(source: ItemSource, id: string): boolean;
+  /** Counts each call the stub answered, for plugin.stats: browserStub's observer. */
+  observe(caller: string | undefined, ok: boolean): void;
 }
 
 const MANAGE: Permission = { permission: "perm:manage" };
@@ -169,6 +172,7 @@ export function stubCommands(
     if (!held) throw new StubError("permission_denied", why, scope);
     if (held.grant.duration === "once") take(held.grant.grantId, "expired");
   };
+  const recent = stubRecent({ now, me, check });
   const data = stubData({
     check: (caller, scope) => check(caller, scope),
     may,
@@ -182,8 +186,8 @@ export function stubCommands(
 
   const answered = (invocationId: string, result: unknown, error?: CommandFailure): void => {
     const invocation = pending.get(invocationId);
-    if (!invocation) return;
-    pending.delete(invocationId);
+    if (!invocation || !pending.delete(invocationId)) return;
+    recent.answered(invocationId, error?.code);
     const { id, caller } = invocation;
     const outcome = error ? { error } : result === undefined ? {} : { result };
     later({ event: "cmd.answered", data: { invocationId, id, caller, ok: !error, ...outcome } });
@@ -269,10 +273,12 @@ export function stubCommands(
         surfaces: [...surfaces.values()],
         opened,
       }),
+    observe: recent.observe,
     upsert: data.upsert,
     remove: data.remove,
     handlers: {
       ...data.handlers,
+      ...recent.handlers,
       ...(options.files && stubFs(options.files, check)),
       ...stubShell({ check, may, me, request, opened, open: options.open }),
       ...stubLog({ log, now, me, later, check }),
@@ -299,7 +305,7 @@ export function stubCommands(
         const info = commands.get(id);
         if (!info) throw new StubError("not_found", `no command ${id}`);
         const invocationId = fresh("i");
-        pending.set(invocationId, { id, caller: me(caller), provider: info.provider });
+        pending.set(invocationId, recent.invoked(invocationId, id, me(caller), info.provider));
         later({
           event: "cmd.invoked",
           data: { invocationId, id, caller: me(caller), ...(args ? { args } : {}) },
