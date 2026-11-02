@@ -1,7 +1,6 @@
 //! The HTTPS transport against a local origin on 127.0.0.1 (plain HTTP, allowed only when asked):
 //! documents whole, artifacts with progress, refusals that name the status, and no `http://` unless
 //! the desk allows it.
-#![cfg(feature = "https")]
 
 use std::io::{BufRead, BufReader, Write};
 use std::net::TcpListener;

@@ -23,6 +23,10 @@ ureq = { version = "3.1", optional = true, default-features = false, features = 
 [features]
 https = ["dep:ureq"]
 
+[[test]]
+name = "https"
+required-features = ["https"]
+
 [dev-dependencies]
 # Signs test data with keys made at test time; nothing key-like is committed.
 minisign = "0.9"
