@@ -33,6 +33,8 @@ export interface Editor {
   element: HTMLElement;
   /** Start from an installed theme (a copy, or the theme itself when it is the person's own). */
   start(base: string | undefined, scheme: Scheme): void;
+  /** Start a new theme from a ready block (a palette from a brand image, say), named `name`. */
+  startDraft(theme: ThemePackage, scheme: Scheme, name?: string): void;
   stop(): void;
 }
 
@@ -268,21 +270,33 @@ export function createEditor(deps: EditorDeps): Editor {
     drawFixes(themes.state().fixes);
   };
 
+  const begin = (theme: ThemePackage | undefined, start: Scheme) => {
+    draft = draftFrom(theme);
+    scheme = start;
+    files.clear();
+    note = "";
+    preview();
+    draw();
+  };
+
   return {
     element,
     start(from, start) {
       const installed = themes.installed().find((t) => t.id === from);
-      draft = draftFrom(installed?.theme);
       base = installed?.id;
       baseUrl = installed?.url;
       own = from?.startsWith("local.") ? from : undefined;
       name = own ? (installed?.name ?? "") : installed ? `${installed.name} 2` : "";
       description = installed?.description ?? "";
-      scheme = start;
-      files.clear();
-      note = "";
-      preview();
-      draw();
+      begin(installed?.theme, start);
+    },
+    startDraft(theme, start, title = "") {
+      base = undefined;
+      baseUrl = undefined;
+      own = undefined;
+      name = title;
+      description = "";
+      begin(theme, start);
     },
     stop() {
       themes.previewDraft(undefined);

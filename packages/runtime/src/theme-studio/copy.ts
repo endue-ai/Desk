@@ -79,6 +79,13 @@ const KO = {
   mine: "내 테마",
   failed: "실패",
   fontsAfterSave: "새 글꼴은 저장한 뒤에 보여요.",
+  fromImage: "이미지에서",
+  fromImageHint:
+    "로고나 스크린샷을 고르거나 끌어다 놓으면 대표 색 다섯 개를 이 기기 안에서 찾아요. 이미지는 기기를 떠나지 않고 색만 쓰여요.",
+  pickImage: "이미지 고르기",
+  mainColors: "대표 색",
+  makeTheme: "테마 만들기",
+  noColors: "이 이미지에서 색을 찾지 못했어요.",
 };
 
 const EN: typeof KO = {
@@ -159,6 +166,13 @@ const EN: typeof KO = {
   mine: "Mine",
   failed: "Failed",
   fontsAfterSave: "A new font shows once the theme is saved.",
+  fromImage: "From an image",
+  fromImageHint:
+    "Pick or drop a logo or a screenshot: its five main colours are found on this device. The image never leaves it; only the colours are used.",
+  pickImage: "Pick an image",
+  mainColors: "Main colours",
+  makeTheme: "Make a theme",
+  noColors: "No colours found in this image.",
 };
 
 export type StudioCopy = keyof typeof KO;
