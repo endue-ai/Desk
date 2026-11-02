@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Inspector</title>
+    <link rel="stylesheet" href="/_desk/tokens.css" />
+    <link rel="stylesheet" href="/_desk/base.css" />
+    <script type="importmap">
+      { "imports": { "@endue-ai/plugin-sdk": "/_desk/plugin-sdk.js" } }
+    </script>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <header id="bar">
+      <h1>Inspector</h1>
+      <div id="sections" role="tablist" aria-label="Sections"></div>
+      <div id="tools">
+        <label for="filter">Filter</label>
+        <input id="filter" type="search" placeholder="Rows that contain… (/)" aria-keyshortcuts="/" />
+        <button id="export" type="button">Export JSON</button>
+      </div>
+    </header>
+    <main id="panel" role="tabpanel" tabindex="0">
+      <p id="summary"></p>
+      <div id="groups"></div>
+    </main>
+    <section
+      id="export-panel"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="export-title"
+      hidden
+    >
+      <h2 id="export-title">Export JSON</h2>
+      <textarea id="export-text" aria-labelledby="export-title" readonly spellcheck="false"></textarea>
+      <div id="export-actions">
+        <button id="copy" type="button">Copy</button>
+        <button id="close" type="button">Close</button>
+      </div>
+    </section>
+    <p id="status" role="status"></p>
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

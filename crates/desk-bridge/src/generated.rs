@@ -2355,6 +2355,7 @@ pub enum BridgeRequest {
     PermApprove(PermApproveRequest),
     PluginList(PluginListRequest),
     PluginSetEnabled(PluginSetEnabledRequest),
+    PluginStats(PluginStatsRequest),
     StoreGet(StoreGetRequest),
     StoreSet(StoreSetRequest),
     InitGet(InitGetRequest),
@@ -2370,6 +2371,7 @@ pub enum BridgeRequest {
     CmdList(CmdListRequest),
     CmdInvoke(CmdInvokeRequest),
     CmdAnswer(CmdAnswerRequest),
+    CmdRecent(CmdRecentRequest),
     SettingsGet(SettingsGetRequest),
     SettingsSet(SettingsSetRequest),
     SettingsList(SettingsListRequest),
@@ -2695,6 +2697,54 @@ pub struct CmdAnswerParams {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct CmdAnswerResult {}
+
+/// List the last command invocations the core saw, for an inspector.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CmdRecentRequest {
+    pub id: RequestId,
+    pub method: CmdRecentRequestMethod,
+    pub params: CmdRecentParams,
+}
+
+/// Parameters of cmd.recent.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CmdRecentParams {
+    pub scope: PermManagePermission,
+}
+
+/// Result of cmd.recent: the last 200 invocations at most, oldest first.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CmdRecentResult {
+    pub invocations: Vec<CommandInvocation>,
+}
+
+/// One cmd.invoke the core saw: who ran which command, who provided it, when, and once it was answered how long it took and how it ended. One still waiting has no durationMs and no ok.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CommandInvocation {
+    #[serde(rename = "invocationId")]
+    pub invocation_id: String,
+    pub id: CommandId,
+    pub caller: CallerId,
+    pub provider: CallerId,
+    /// When it was invoked, RFC 3339 on the core's clock.
+    pub at: String,
+    /// Milliseconds from cmd.invoke to its answer.
+    #[serde(
+        rename = "durationMs",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub duration_ms: Option<u64>,
+    /// Whether it was answered with a result rather than an error.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ok: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub error: Option<CommandFailureCode>,
+}
 
 /// Why an invocation failed.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -3995,6 +4045,43 @@ pub struct PluginSetEnabledParams {
 #[serde(deny_unknown_fields)]
 pub struct PluginSetEnabledResult {
     pub plugin: PluginInfo,
+}
+
+/// Count the bridge calls each caller made over the last minute, for an inspector.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PluginStatsRequest {
+    pub id: RequestId,
+    pub method: PluginStatsRequestMethod,
+    pub params: PluginStatsParams,
+}
+
+/// Parameters of plugin.stats.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PluginStatsParams {
+    pub scope: PermManagePermission,
+}
+
+/// Result of plugin.stats: every caller that made a call in the window, most calls first.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PluginStatsResult {
+    /// How far back the counts go, in seconds.
+    #[serde(rename = "windowSeconds")]
+    pub window_seconds: u64,
+    pub callers: Vec<CallerStats>,
+}
+
+/// The bridge calls one caller made in the window: a plugin, the runtime (desk) or the CLI (cli).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CallerStats {
+    pub caller: CallerId,
+    /// Calls the core answered.
+    pub calls: u64,
+    /// Calls among them that it answered with an error.
+    pub failed: u64,
 }
 
 /// A plugin was installed, updated on disk, removed, enabled or disabled.
@@ -5701,6 +5788,14 @@ pub enum CmdAnswerRequestMethod {
     CmdAnswer,
 }
 
+/// The `method` of [`CmdRecentRequest`]: always `"cmd.recent"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum CmdRecentRequestMethod {
+    #[default]
+    #[serde(rename = "cmd.recent")]
+    CmdRecent,
+}
+
 /// The `event` of [`CmdChangedEvent`]: always `"cmd.changed"`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub enum CmdChangedEventEvent {
@@ -6019,6 +6114,14 @@ pub enum PluginSetEnabledRequestMethod {
     #[default]
     #[serde(rename = "plugin.setEnabled")]
     PluginSetEnabled,
+}
+
+/// The `method` of [`PluginStatsRequest`]: always `"plugin.stats"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum PluginStatsRequestMethod {
+    #[default]
+    #[serde(rename = "plugin.stats")]
+    PluginStats,
 }
 
 /// The `event` of [`PluginChangedEvent`]: always `"plugin.changed"`.

@@ -6,15 +6,15 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use desk_bridge::{
-    BridgeEvent, BridgeRequest, BridgeResponse, CatalogGetResult, ConnectorInstance,
-    ConnectorManifest, ConnectorStatus, ConnectorSyncResult, FsHistoryResult, FsReadResult,
-    FsRestoreResult, FsUrlResult, FsWriteResult, InitDocument, InitGetResult, InitSettingKey, Item,
-    ItemChange, ItemPage, ItemQuery, PaletteResults, PermQueryResult, PermRequestResult,
-    Permission, PluginContributes, PluginListResult, PluginManifest, RefusalReason,
-    ShellOpenResult, StoreGetResult, ThemeBundle, ThemeExportResult, ThemeIndex,
-    ThemeMarketFetchResult, ThemeMarketListResult, ThemePackage, ThemeType, ThemeVariant,
-    UiSurfaceStateRequest, UiSurfaceStateResult, View, ViewGetResult, ViewListResult, ViewSource,
-    ViewSummary, manifest_problems, view_problems,
+    BridgeEvent, BridgeRequest, BridgeResponse, CatalogGetResult, CmdRecentResult,
+    ConnectorInstance, ConnectorManifest, ConnectorStatus, ConnectorSyncResult, FsHistoryResult,
+    FsReadResult, FsRestoreResult, FsUrlResult, FsWriteResult, InitDocument, InitGetResult,
+    InitSettingKey, Item, ItemChange, ItemPage, ItemQuery, PaletteResults, PermQueryResult,
+    PermRequestResult, Permission, PluginContributes, PluginListResult, PluginManifest,
+    PluginStatsResult, RefusalReason, ShellOpenResult, StoreGetResult, ThemeBundle,
+    ThemeExportResult, ThemeIndex, ThemeMarketFetchResult, ThemeMarketListResult, ThemePackage,
+    ThemeType, ThemeVariant, UiSurfaceStateRequest, UiSurfaceStateResult, View, ViewGetResult,
+    ViewListResult, ViewSource, ViewSummary, manifest_problems, view_problems,
 };
 use serde::Serialize;
 use serde::de::DeserializeOwned;
@@ -234,6 +234,8 @@ fn valid_vectors_roundtrip_through_generated_types() {
                 "PermQueryResult" => roundtrip::<PermQueryResult>(vector),
                 "PermRequestResult" => roundtrip::<PermRequestResult>(vector),
                 "PluginListResult" => roundtrip::<PluginListResult>(vector),
+                "PluginStatsResult" => roundtrip::<PluginStatsResult>(vector),
+                "CmdRecentResult" => roundtrip::<CmdRecentResult>(vector),
                 "StoreGetResult" => roundtrip::<StoreGetResult>(vector),
                 "CatalogGetResult" => roundtrip::<CatalogGetResult>(vector),
                 "ShellOpenResult" => roundtrip::<ShellOpenResult>(vector),

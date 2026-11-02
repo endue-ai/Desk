@@ -13,10 +13,10 @@ desk cmd list                          # id<TAB>provider<TAB>title per command
 desk cmd run <id> [--args <json>]      # waits for cmd.answered; prints the result as JSON
 desk plugin list                       # id<TAB>status<TAB>enabled|disabled per plugin
 desk plugin enable|disable <id>        # prints ok
-desk perm list                         # grantId<TAB>caller<TAB>permission per grant
-desk perm revoke <grantId>             # prints ok
+desk perm list | revoke <grantId>      # grantId<TAB>caller<TAB>permission per grant; revoke prints ok
 desk perm log [--agent <id>]           # at, caller, decision, permission, target, reason or approval
 desk describe key|command|setting|plugin|grant <x>   # desk.describe.open's answer, as text (ADR 0075)
+desk inspect [tree|surfaces|commands|grants|settings|plugins|calls]   # the inspector's Export JSON
 desk fs history|restore <path> ...    # [--limit <n>]: id, at, caller, size per version; <version>: ok
 desk log [--count <n>]                 # at<TAB>level<TAB>channel<TAB>message, oldest first
 desk doctor --trace <file>             # a DESK_TRACE=1 trace.json: phases, totals, the five longest
@@ -25,16 +25,16 @@ desk doctor --trace <file>             # a DESK_TRACE=1 trace.json: phases, tota
 All but `plugin validate`, `plugin test` and `doctor --trace` reach the running desk over its socket
 (`crates/desk-ipc`, ADR 0030) as the caller `cli`; `DESK_SOCKET` names another socket. `--json` prints
 the answer as it came (`cmd run`, `describe`: `cmd.answered`; `perm log`: each matching entry; `doctor`:
-JSON). Exit codes: 0 ok; 1 a failed check or test, a bridge error (`desk: <code>: <message>`), a failed
-or cancelled command, or no desk at the socket; 2 usage. `plugin validate` prints `ok <id> <version>
-(<kind> plugin)` or every problem (`desk_bridge::manifest_problems` included). `plugin test` runs on a
-plugin that validates. Logic plugins and Wasm connectors: each `tests/<name>.test.json` on the
-desk-plugin-host harness (`ok`/`FAILED <name>`, why on stderr, then a count). Other kinds:
-`tests/*.test.{js,ts}` with vitest on the SDK's test host, from the checkout the binary was built in or
-`DESK_REPO` (`packages/plugin-sdk/vitest.plugin.config.ts`). Tool, MCP: none yet.
+JSON); `inspect` prints JSON either way. Exit codes: 0 ok; 1 a failed check or test, a bridge error
+(`desk: <code>: <message>`), a failed or cancelled command, or no desk at the socket; 2 usage. `plugin
+validate` prints `ok <id> <version> (<kind> plugin)` or every problem (`desk_bridge::manifest_problems`
+included). `plugin test` runs on a plugin that validates. Logic plugins and Wasm connectors: each
+`tests/<name>.test.json` on the desk-plugin-host harness (`ok`/`FAILED <name>`, why on stderr, then a
+count). Other kinds: `tests/*.test.{js,ts}` with vitest on the SDK's test host, from the checkout the
+binary was built in or `DESK_REPO` (`packages/plugin-sdk/vitest.plugin.config.ts`). Tool, MCP: none yet.
 
 ## Testing
-`cargo test -p desk-cli`: `tests/socket.rs`, `perm_log.rs` and `describe.rs` (the runtime's golden
-texts) on a scripted server, `round_trip.rs` and `fs_history.rs` (ADR 0076) on a real `desk_ipc::Listener`
-and `Core`, `doctor.rs` on hand-made traces, `plugin_test.rs` and `templates.rs` (every create-plugin
-kind built, validated and tested; needs `node` and `pnpm install`).
+`cargo test -p desk-cli`: `tests/socket.rs`, `perm_log.rs`, `describe.rs` (the runtime's golden texts)
+and `inspect.rs` (the inspector's) on a scripted server, `doctor.rs` on handmade traces, `round_trip.rs`
+and `fs_history.rs` (ADR 0076) on a real `desk_ipc::Listener` and `Core`, `plugin_test.rs` and
+`templates.rs` (every create-plugin kind built and tested; needs `node`, `pnpm install`).

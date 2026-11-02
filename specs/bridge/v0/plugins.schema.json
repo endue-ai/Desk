@@ -96,6 +96,74 @@
       "required": ["plugin"],
       "additionalProperties": false
     },
+    "PluginStatsRequest": {
+      "description": "Count the bridge calls each caller made over the last minute, for an inspector.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "bridge.schema.json#/$defs/RequestId"
+        },
+        "method": {
+          "const": "plugin.stats"
+        },
+        "params": {
+          "$ref": "#/$defs/PluginStatsParams"
+        }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "PluginStatsParams": {
+      "description": "Parameters of plugin.stats.",
+      "type": "object",
+      "properties": {
+        "scope": {
+          "$ref": "../../plugin/v0/permission.schema.json#/$defs/PermManagePermission"
+        }
+      },
+      "required": ["scope"],
+      "additionalProperties": false
+    },
+    "PluginStatsResult": {
+      "description": "Result of plugin.stats: every caller that made a call in the window, most calls first.",
+      "type": "object",
+      "properties": {
+        "windowSeconds": {
+          "description": "How far back the counts go, in seconds.",
+          "type": "integer",
+          "minimum": 1
+        },
+        "callers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CallerStats"
+          }
+        }
+      },
+      "required": ["windowSeconds", "callers"],
+      "additionalProperties": false
+    },
+    "CallerStats": {
+      "description": "The bridge calls one caller made in the window: a plugin, the runtime (desk) or the CLI (cli).",
+      "type": "object",
+      "properties": {
+        "caller": {
+          "$ref": "bridge.schema.json#/$defs/CallerId"
+        },
+        "calls": {
+          "description": "Calls the core answered.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "failed": {
+          "description": "Calls among them that it answered with an error.",
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": ["caller", "calls", "failed"],
+      "additionalProperties": false
+    },
     "PluginChangedEvent": {
       "description": "A plugin was installed, updated on disk, removed, enabled or disabled.",
       "type": "object",

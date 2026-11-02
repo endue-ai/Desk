@@ -17,6 +17,8 @@ pub const USAGE: &str = "usage: desk [--json] <command>
   perm log [--agent <id>]               grants, refusals and agents' calls; one agent's only
   describe key|command|setting|plugin|grant <x>
                                         what it is, where it comes from and who may call it
+  inspect [tree|surfaces|commands|grants|settings|plugins|calls]
+                                        what the desk holds now, as the inspector's Export JSON
   update                                the desk's updates: state, running build, channel, chosen build
   update check                          read the channel index now and print what came of it
   update download | apply               download the chosen build, or restart into the staged one
@@ -77,6 +79,10 @@ pub enum Remote {
     },
     /// The installed themes and the person's own (ADR 0058).
     Theme(ThemeStep),
+    /// What the desk holds now, one section or all, as the inspector exports it.
+    Inspect {
+        section: Option<&'static str>,
+    },
     /// A file's kept versions (ADR 0076).
     Fs(FsStep),
     /// log.tail.
@@ -153,6 +159,10 @@ pub fn parse(args: Vec<String>) -> Option<Args> {
         ["log", "--count", count] => Action::Remote(Remote::Log {
             count: Some(number(count)?),
         }),
+        ["inspect"] => Action::Remote(Remote::Inspect { section: None }),
+        ["inspect", section] => Action::Remote(Remote::Inspect {
+            section: Some(SECTIONS.iter().find(|s| *s == section)?),
+        }),
         _ => return None,
     };
     Some(Args { action, json })
@@ -160,6 +170,11 @@ pub fn parse(args: Vec<String>) -> Option<Args> {
 
 /// What `desk describe` can name.
 const KINDS: [&str; 5] = ["key", "command", "setting", "plugin", "grant"];
+
+/// The inspector's sections, in its order (`plugins/inspector/ui/sections.js`).
+pub const SECTIONS: [&str; 7] = [
+    "tree", "surfaces", "commands", "grants", "settings", "plugins", "calls",
+];
 
 /// `theme list | apply <id> | import <file> | export <id> [file] | remove <id>`.
 fn theme(rest: &[&str]) -> Option<ThemeStep> {

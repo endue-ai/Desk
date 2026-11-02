@@ -3,10 +3,11 @@
  * (cmd.*, as the stub keeps it), the installed plugins from their plugin.json, plugin.setEnabled,
  * the store, init.yaml's start profile and settings, perm.query, and the stub's index of fixture items
  * (data.*, connector.*, view.*), and shell.open, which hands links to `open` (window.open on the dev
- * page) and only records reveals. Built-in plugins hold their manifest's permissions, as the core
- * grants them at install. brain.ask answers through `ask`, or through a scripted brain (`brain`) that
- * streams its turns as the core does; the theme market (theme.market.*, theme.import by url) downloads
- * through `download`. More methods come as handlers.
+ * page) and only records reveals, and cmd.recent and plugin.stats over every call it answers.
+ * Built-in plugins hold their manifest's permissions, as the core grants them at install. brain.ask
+ * answers through `ask`, or through a scripted brain (`brain`) that streams its turns as the core
+ * does; the theme market (theme.market.*, theme.import by url) downloads through `download`. More
+ * methods come as handlers.
  */
 import {
   type BrainTurnData,
@@ -121,7 +122,7 @@ export function browserCore(options: BrowserCoreOptions): BrowserCore {
     },
   });
   const themes = themeHandlers(plugins, (event) => stub.emit(event));
-  const stub = browserStub({
+  const handlers: StubHandlers = {
     ...registry.handlers,
     ...searchHandlers(plugins, store),
     ...themes,
@@ -159,7 +160,9 @@ export function browserCore(options: BrowserCoreOptions): BrowserCore {
     }),
     ...(options.brain ? scriptedBrain(options.brain, (event) => stub.emit(event)) : {}),
     ...options.handlers,
-  });
+  };
+  // Every call counts for plugin.stats, whoever answers it.
+  const stub = browserStub(handlers, registry.observe);
   return {
     client: new BridgeClient(stub),
     stub,

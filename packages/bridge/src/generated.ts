@@ -1513,6 +1513,7 @@ export type BridgeRequest =
   | PermApproveRequest
   | PluginListRequest
   | PluginSetEnabledRequest
+  | PluginStatsRequest
   | StoreGetRequest
   | StoreSetRequest
   | InitGetRequest
@@ -1528,6 +1529,7 @@ export type BridgeRequest =
   | CmdListRequest
   | CmdInvokeRequest
   | CmdAnswerRequest
+  | CmdRecentRequest
   | SettingsGetRequest
   | SettingsSetRequest
   | SettingsListRequest
@@ -1763,6 +1765,38 @@ export interface CmdAnswerParams {
 
 /** Result of cmd.answer. */
 export type CmdAnswerResult = Record<string, never>;
+
+/** List the last command invocations the core saw, for an inspector. */
+export interface CmdRecentRequest {
+  id: RequestId;
+  method: "cmd.recent";
+  params: CmdRecentParams;
+}
+
+/** Parameters of cmd.recent. */
+export interface CmdRecentParams {
+  scope: PermManagePermission;
+}
+
+/** Result of cmd.recent: the last 200 invocations at most, oldest first. */
+export interface CmdRecentResult {
+  invocations: CommandInvocation[];
+}
+
+/** One cmd.invoke the core saw: who ran which command, who provided it, when, and once it was answered how long it took and how it ended. One still waiting has no durationMs and no ok. */
+export interface CommandInvocation {
+  invocationId: string;
+  id: CommandId;
+  caller: CallerId;
+  provider: CallerId;
+  /** When it was invoked, RFC 3339 on the core's clock. */
+  at: string;
+  /** Milliseconds from cmd.invoke to its answer. */
+  durationMs?: number;
+  /** Whether it was answered with a result rather than an error. */
+  ok?: boolean;
+  error?: CommandFailureCode;
+}
 
 /** Why an invocation failed. */
 export interface CommandFailure {
@@ -2620,6 +2654,34 @@ export interface PluginSetEnabledParams {
 /** Result of plugin.setEnabled: the plugin after the change. */
 export interface PluginSetEnabledResult {
   plugin: PluginInfo;
+}
+
+/** Count the bridge calls each caller made over the last minute, for an inspector. */
+export interface PluginStatsRequest {
+  id: RequestId;
+  method: "plugin.stats";
+  params: PluginStatsParams;
+}
+
+/** Parameters of plugin.stats. */
+export interface PluginStatsParams {
+  scope: PermManagePermission;
+}
+
+/** Result of plugin.stats: every caller that made a call in the window, most calls first. */
+export interface PluginStatsResult {
+  /** How far back the counts go, in seconds. */
+  windowSeconds: number;
+  callers: CallerStats[];
+}
+
+/** The bridge calls one caller made in the window: a plugin, the runtime (desk) or the CLI (cli). */
+export interface CallerStats {
+  caller: CallerId;
+  /** Calls the core answered. */
+  calls: number;
+  /** Calls among them that it answered with an error. */
+  failed: number;
 }
 
 /** A plugin was installed, updated on disk, removed, enabled or disabled. */
@@ -3483,6 +3545,7 @@ export interface BridgeMethodMap {
   "perm.approve": { params: PermApproveParams; result: PermApproveResult };
   "plugin.list": { params: PluginListParams; result: PluginListResult };
   "plugin.setEnabled": { params: PluginSetEnabledParams; result: PluginSetEnabledResult };
+  "plugin.stats": { params: PluginStatsParams; result: PluginStatsResult };
   "store.get": { params: StoreGetParams; result: StoreGetResult };
   "store.set": { params: StoreSetParams; result: StoreSetResult };
   "init.get": { params: InitGetParams; result: InitGetResult };
@@ -3498,6 +3561,7 @@ export interface BridgeMethodMap {
   "cmd.list": { params: CmdListParams; result: CmdListResult };
   "cmd.invoke": { params: CmdInvokeParams; result: CmdInvokeResult };
   "cmd.answer": { params: CmdAnswerParams; result: CmdAnswerResult };
+  "cmd.recent": { params: CmdRecentParams; result: CmdRecentResult };
   "settings.get": { params: SettingsGetParams; result: SettingsGetResult };
   "settings.set": { params: SettingsSetParams; result: SettingsSetResult };
   "settings.list": { params: SettingsListParams; result: SettingsListResult };
@@ -3565,6 +3629,7 @@ export const BRIDGE_METHODS = [
   "perm.approve",
   "plugin.list",
   "plugin.setEnabled",
+  "plugin.stats",
   "store.get",
   "store.set",
   "init.get",
@@ -3580,6 +3645,7 @@ export const BRIDGE_METHODS = [
   "cmd.list",
   "cmd.invoke",
   "cmd.answer",
+  "cmd.recent",
   "settings.get",
   "settings.set",
   "settings.list",

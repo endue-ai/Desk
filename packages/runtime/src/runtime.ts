@@ -7,6 +7,7 @@ import { Edges, takesCell } from "./edges";
 import { installFrames, type WindowVisibility } from "./frames/install";
 import { PolicyHub } from "./hub";
 import { type Platform, ShortcutRouter } from "./input";
+import { installInspect } from "./inspect/install";
 import type { Keymap } from "./keymap";
 import {
   type Cell,
@@ -248,6 +249,7 @@ export function createRuntime(options: RuntimeOptions): Runtime {
   });
   const profiles = installProfiles(ctx, (input) => notify.notify(input));
   const about = installDescribe(ctx, { keys, profile: profiles.active, notify: notify.notify });
+  const inspect = installInspect(ctx, { buffers: buffers.buffers, views });
   notify.notifications.onPush(() => session.changed());
   onLayout = () => session.changed();
   onSurfaceFocus = (id) => {
@@ -417,7 +419,7 @@ export function createRuntime(options: RuntimeOptions): Runtime {
       frames.dispose();
       routing.dispose();
       const policies = [profiles, session, files, buffers, display, notify, palette, aliases];
-      for (const policy of [about, ...policies, keys, theme]) {
+      for (const policy of [about, inspect, ...policies, keys, theme]) {
         policy.dispose();
       }
       pluginHost?.stop();

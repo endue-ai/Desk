@@ -210,6 +210,10 @@ absolute path, so `desk.describe` can name and reveal its plugin.json). It needs
 its surfaces when `plugin.changed` arrives. It needs `plugin:manage`. `plugin.changed` events (installed,
 updated, removed, enabled, disabled) go to callers that hold `plugin:manage`.
 
+**plugin.stats** counts the bridge calls each caller made over the last minute (`windowSeconds`): every
+call the core answered, a plugin's, the runtime's (`desk`) and the CLI's (`cli`), and how many of them
+failed, most calls first. It needs `perm:manage`.
+
 **store.get** reads a value the caller stored earlier; `value` is absent for a key that was never
 set. Every caller (the runtime and each plugin) has its own namespace in desk-core storage, so the
 store needs no scope.
@@ -290,6 +294,11 @@ keys, the palette, Eris, agents and the CLI all invoke the same way.
 `error` (`failed`, or `cancelled` when the person or the provider gave up), not both. An invocation is
 answered once; another caller's is `not_found`. A provider that stops leaves its waiting invocations
 answered `cancelled`. It needs no scope.
+
+**cmd.recent** returns the last 200 invocations the core saw, whoever invoked them, oldest first: the
+command, the caller, the provider, when it was invoked on the core's clock and, once answered, how long it
+took in milliseconds and whether it ended with a result or which error. One still waiting has neither. It
+needs `perm:manage`, like the grants an inspector shows beside it.
 
 **settings.get** reads one setting. Keys belong to the caller that sets them, like the store; `owner`
 names another caller, which needs a `settings:read` scope covering `owner/key`. `value` is absent for a
