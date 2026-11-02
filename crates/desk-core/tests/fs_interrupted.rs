@@ -2,14 +2,17 @@
 //! and renames it over the target, so a process killed at any moment leaves the old file or the new
 //! one, never a mix, and the history it kept still starts. The child half of the first test is this
 //! binary run again with `DESK_INTERRUPT_HOME`: it writes until it is killed, every other round
-//! without keeping versions (`DESK_INTERRUPT_BARE`).
+//! without keeping versions (`DESK_INTERRUPT_BARE`), and the parent kills it when a temp file of its
+//! write is on disk.
 
 use std::collections::BTreeSet;
 use std::fs;
+use std::io::{BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
+use std::process::{Child, Command, Stdio};
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::sync::mpsc;
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use desk_bridge::{BridgeRequest, BridgeResponse, ErrorCode, Permission};
 use desk_core::{Core, Roots};
@@ -19,6 +22,8 @@ use sha2::{Digest, Sha256};
 const HOME_ENV: &str = "DESK_INTERRUPT_HOME";
 /// Set for the rounds whose child keeps no history.
 const BARE_ENV: &str = "DESK_INTERRUPT_BARE";
+/// What the child prints once its write loop runs.
+const READY: &str = "desk-interrupt-ready";
 const SIZE: usize = 4 * 1024 * 1024;
 const ROUNDS: u64 = 20;
 
@@ -95,11 +100,56 @@ fn child_writes_until_killed() {
         core.handle("desk.files", serde_json::from_value(request).unwrap());
     }
     let (a, b) = (content('a'), content('b'));
+    let mut ready = false;
     loop {
         for text in [&b, &a] {
             write(&core, text).expect("the child's write");
+            if !ready {
+                // The parent kills only once the loop runs.
+                println!("{READY}");
+                std::io::stdout().flush().unwrap();
+                ready = true;
+            }
         }
     }
+}
+
+/// Wait for the child's `READY` line, then kill it as soon as one of its temp files is in `dir`:
+/// while the temp file is written and synced, before its rename. Kill it anyway after two seconds.
+fn kill_mid_write(child: &mut Child, dir: &Path) {
+    let stdout = child.stdout.take().expect("the child's stdout");
+    let (tx, rx) = mpsc::channel();
+    std::thread::spawn(move || {
+        for line in BufReader::new(stdout).lines().map_while(Result::ok) {
+            if line.trim() == READY {
+                let _ = tx.send(());
+            }
+        }
+    });
+    if rx.recv_timeout(Duration::from_secs(60)).is_ok() {
+        let until = Instant::now() + Duration::from_secs(2);
+        while Instant::now() < until && temps_in(dir) == 0 {
+            std::thread::sleep(Duration::from_micros(200));
+        }
+    }
+    child.kill().expect("SIGKILL");
+    child.wait().unwrap();
+}
+
+/// How many temp files of killed writes `dir` holds.
+fn temps_in(dir: &Path) -> usize {
+    fs::read_dir(dir)
+        .map(|entries| {
+            entries
+                .flatten()
+                .filter(|e| is_temp(&e.file_name().to_string_lossy()))
+                .count()
+        })
+        .unwrap_or(0)
+}
+
+fn is_temp(name: &str) -> bool {
+    name.starts_with('.') && name.ends_with(".tmp")
 }
 
 #[test]
@@ -119,14 +169,11 @@ fn a_write_killed_mid_way_leaves_the_old_or_the_new_file() {
             ])
             .env(HOME_ENV, &home)
             .env(BARE_ENV, if round % 2 == 1 { "1" } else { "" })
-            .stdout(Stdio::null())
+            .stdout(Stdio::piped())
             .stderr(Stdio::null())
             .spawn()
             .expect("the child starts");
-        // Kill it at a different moment of its loop each round.
-        std::thread::sleep(Duration::from_millis(60 + round * 37 % 240));
-        child.kill().expect("SIGKILL");
-        child.wait().unwrap();
+        kill_mid_write(&mut child, &home.join("big"));
 
         let on_disk = sha256(&fs::read(home.join("big/file.txt")).unwrap());
         assert!(
@@ -160,8 +207,7 @@ fn a_write_killed_mid_way_leaves_the_old_or_the_new_file() {
         }
         torn += temp_files(&home.join("big"));
     }
-    // The rounds without a history spend most of their loop writing and syncing the temp file, so
-    // kills land between it and its rename: the case this is about.
+    // Kills aimed at a temp file land between it and its rename: the case this is about.
     assert!(
         torn > 0,
         "no kill landed between a temp file and its rename"
@@ -173,7 +219,7 @@ fn temp_files(dir: &Path) -> usize {
     let mut count = 0;
     for entry in fs::read_dir(dir).unwrap().flatten() {
         let name = entry.file_name().to_string_lossy().into_owned();
-        if name.starts_with('.') && name.ends_with(".tmp") {
+        if is_temp(&name) {
             fs::remove_file(entry.path()).unwrap();
             count += 1;
         }
