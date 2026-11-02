@@ -86,6 +86,25 @@ const KO = {
   mainColors: "대표 색",
   makeTheme: "테마 만들기",
   noColors: "이 이미지에서 색을 찾지 못했어요.",
+  describeWith: "이 색으로 말하기",
+  colorsWord: "색",
+  describe: "말하기",
+  describeHint:
+    "데스크가 어떤 느낌이면 좋을지 한 문장으로 말해 주세요. brain 에게는 문장과 지금 테마의 값, 규칙만 가고 파일이나 화면은 가지 않아요.",
+  sentence: "문장",
+  sentenceHint: "따뜻한 종이 질감",
+  generate: "만들기",
+  refine: "고치기",
+  tuneIt: "직접 다듬기",
+  discard: "버리기",
+  asking: "brain 에게 묻는 중…",
+  offline: "brain 이 연결되지 않았어요. 돌아오면 만들기가 켜져요.",
+  noCredits: "크레딧이 없어요. 생기면 만들기가 켜져요.",
+  refused: "brain 이 답하지 못했어요",
+  noTheme: "brain 이 테마를 주지 않았어요. 다른 문장으로 해 보세요.",
+  said: "말한 것",
+  schemeOnly: "한 모드만 있는 테마라 적용하면 데스크가 그 모드로 바뀌어요",
+  toEris: "Eris 에게 대신 보내기",
 };
 
 const EN: typeof KO = {
@@ -173,6 +192,25 @@ const EN: typeof KO = {
   mainColors: "Main colours",
   makeTheme: "Make a theme",
   noColors: "No colours found in this image.",
+  describeWith: "Describe with these",
+  colorsWord: "colours",
+  describe: "Describe",
+  describeHint:
+    "Say in one sentence how the desk should feel. Only the sentence, the current theme's values and the rules go to the brain; never files or the screen.",
+  sentence: "Sentence",
+  sentenceHint: "warm paper with a grainy texture",
+  generate: "Generate",
+  refine: "Refine",
+  tuneIt: "Tune it",
+  discard: "Discard",
+  asking: "Asking the brain…",
+  offline: "The brain is offline; Generate turns on when it is back.",
+  noCredits: "No credits left; Generate turns on when there are some.",
+  refused: "The brain could not answer",
+  noTheme: "The brain gave no theme. Try another sentence.",
+  said: "Said",
+  schemeOnly: "Made for one scheme: Apply switches the desk to it",
+  toEris: "Send to Eris instead",
 };
 
 export type StudioCopy = keyof typeof KO;

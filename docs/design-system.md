@@ -97,7 +97,16 @@ Enter or a click applies it, and Escape puts back what was in force. "Tune a cop
 every layer has its controls, the whole desk shows the draft as it changes, the gate's fixes are listed
 under the palette, and Save keeps it as the person's own theme (`local.<name>`, through `theme.save`,
 files the copy started with carried over by `copyFrom`). Import takes a `.desk-theme` file (or one
-dropped on the studio) and previews it; Export writes the selected theme as one. The commands `desk.theme.use`
+dropped on the studio) and previews it; Export writes the selected theme as one. Describe (or
+`desk.theme.describe` with `{ "text": "<sentence>" }`, which Eris runs when she is asked to change the
+desk's look, not the look of an app or page the person builds; "Send to Eris instead" hands a misfire
+back to her conversation) sends one sentence to the brain through `brain.ask` with the `propose_theme` tool (ADR 0059): the
+prompt holds the rules (the colour roles, the contrast pairs and the ranges below), the theme block's
+schema, the values in force and the sentence, never files or the screen. The proposal is cleaned,
+previewed on the whole desk through the gate with its fixes listed, and then applied (saved as a
+`local.` theme whose `origin.prompt` holds the sentences), refined with another sentence over it, tuned in
+the editor or discarded. Offline or out of credits Describe says so and Generate is off; the gallery
+and the editor keep working. The commands `desk.theme.use`
 (with `{ "id": "<theme plugin>" }`) and `desk.theme.default` change it too, a profile or `init.yaml`
 can carry it, and the choice comes back with the session. The runtime resolves the tokens in this order: the built-in tokens, the policy plugins'
 `contributes.themes` for the scheme (and their high-contrast layers), the active theme for the scheme,

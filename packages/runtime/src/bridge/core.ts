@@ -4,10 +4,12 @@
  * the store, init.yaml's start profile and settings, perm.query, and the stub's index of fixture items
  * (data.*, connector.*, view.*), and shell.open, which hands links to `open` (window.open on the dev
  * page) and only records reveals. Built-in plugins hold their manifest's permissions, as the core
- * grants them at install. More methods come as handlers.
+ * grants them at install. brain.ask answers through `ask` when given. More methods come as handlers.
  */
 import {
+  type BrainTurnData,
   BridgeClient,
+  type BridgeEvent,
   type BrowserStub,
   browserStub,
   type Item,
@@ -38,6 +40,11 @@ export interface BrowserCoreOptions {
   handlers?: StubHandlers;
   /** Where shell.open's links go: a new window by default, nowhere without a window. */
   open?: (url: string) => void;
+  /**
+   * brain.ask's brain: the arguments it calls `tool` with for `prompt` (examples/brain-echo's
+   * propose_theme in the fixtures), or undefined to answer in words. Without it brain.ask is not served.
+   */
+  ask?: (prompt: string, tool: string) => Record<string, unknown> | undefined;
 }
 
 export interface BrowserCore {
@@ -124,6 +131,7 @@ export function browserCore(options: BrowserCoreOptions): BrowserCore {
       store.set(key, value);
       return {};
     },
+    ...(options.ask ? { "brain.ask": brainAsk(options.ask, (event) => stub.emit(event)) } : {}),
     "init.get": () => ({
       profile: options.init?.profile ?? "default",
       settings: options.init?.settings ?? {},
@@ -138,6 +146,25 @@ export function browserCore(options: BrowserCoreOptions): BrowserCore {
     upsert: registry.upsert,
     remove: registry.remove,
     opened: () => registry.state().opened,
+  };
+}
+
+/** brain.ask in memory: the turn starts and completes a moment after the answer names it. */
+function brainAsk(
+  answer: NonNullable<BrowserCoreOptions["ask"]>,
+  emit: (event: BridgeEvent) => void,
+): NonNullable<StubHandlers["brain.ask"]> {
+  let asks = 0;
+  return ({ prompt, tool }) => {
+    const turnId = `a${++asks}`;
+    const turn = (data: Omit<BrainTurnData, "turnId">) =>
+      emit({ event: "brain.turn", data: { turnId, ...data } });
+    setTimeout(() => {
+      turn({ kind: "started" });
+      const structured = answer(prompt, tool.name);
+      turn(structured ? { kind: "completed", structured } : { kind: "completed", text: prompt });
+    }, 0);
+    return { turnId };
   };
 }
 

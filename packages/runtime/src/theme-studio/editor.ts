@@ -4,12 +4,11 @@
  * importing and deleting go through the core's theme.* methods when the runtime has them (`io`).
  */
 import type { ThemePackage } from "@endue-ai/bridge";
-import type { GateFix } from "@endue-ai/ui/theme";
 import type { RuntimeThemes, ThemeIo } from "../policies/theme";
 import { h, render } from "../shell/dom";
 import { type StudioCopy, type StudioLang, studioText } from "./copy";
-import { draftFrom, localId, type Scheme } from "./draft";
-import { base64, textField } from "./fields";
+import { draftFrom, type Scheme, saveTheme } from "./draft";
+import { base64, fixesList, textField } from "./fields";
 import {
   backdropSection,
   materialSection,
@@ -78,25 +77,7 @@ export function createEditor(deps: EditorDeps): Editor {
   };
   const preview = () => themes.previewDraft(draft, urls(), scheme);
 
-  const drawFixes = (fixes: GateFix[]) =>
-    render(fixesEl, () => [
-      h("h3", { class: "theme-fixes-title" }, tr("fixes")),
-      fixes.length === 0
-        ? h("p", { class: "theme-note" }, tr("noFixes"))
-        : h(
-            "ul",
-            {},
-            fixes.map((f) =>
-              h(
-                "li",
-                {},
-                h("code", {}, f.token),
-                ` ${f.from} → ${f.to}`,
-                f.against ? ` (${f.ratio}:1 · ${f.against})` : "",
-              ),
-            ),
-          ),
-    ]);
+  const drawFixes = () => render(fixesEl, () => fixesList(themes.state().fixes, tr));
 
   const context = (): SectionContext => ({
     draft,
@@ -114,7 +95,7 @@ export function createEditor(deps: EditorDeps): Editor {
     changed(rerender = false) {
       preview();
       if (rerender) drawBody();
-      drawFixes(themes.state().fixes);
+      drawFixes();
     },
   });
 
@@ -143,19 +124,19 @@ export function createEditor(deps: EditorDeps): Editor {
     run("saved", async () => {
       const io = deps.io();
       if (!io) return undefined;
-      const taken = themes.installed().map((t) => t.id);
-      const id = localId(name || tr("newTheme"), taken, own);
-      const entry = { id, name: name || tr("newTheme"), theme: draft };
-      await io.save(
-        description ? { ...entry, description } : entry,
-        [...files].map(([path, f]) => ({ path, base64: f.base64 })),
-        base,
+      const title = name || tr("newTheme");
+      own = await saveTheme(
+        themes,
+        io,
+        { name: title, description, theme: draft },
+        {
+          files: [...files].map(([path, f]) => ({ path, base64: f.base64 })),
+          ...(base ? { copyFrom: base } : {}),
+          ...(own ? { keep: own } : {}),
+        },
       );
-      own = id;
-      themes.previewDraft(undefined);
-      themes.apply(id);
-      deps.back(id);
-      return entry.name;
+      deps.back(own);
+      return title;
     });
 
   const draw = () => {
@@ -267,7 +248,7 @@ export function createEditor(deps: EditorDeps): Editor {
       note ? h("p", { class: "theme-note" }, note) : null,
     ]);
     drawBody();
-    drawFixes(themes.state().fixes);
+    drawFixes();
   };
 
   const begin = (theme: ThemePackage | undefined, start: Scheme) => {

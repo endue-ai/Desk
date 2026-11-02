@@ -1,8 +1,14 @@
 /**
  * desk.theme: resolve the theme from its settings, the OS and the theme plugin desk.theme.active names,
- * apply it (tokens and fonts), and share it with plugins.
+ * apply it (tokens and fonts), and share it with plugins. The studio reaches the core's theme.* and,
+ * for Describe, brain.ask through it.
  */
-import type { ThemePackage } from "@endue-ai/bridge";
+import type {
+  BrainAskTool,
+  BrainStatusResult,
+  BrainTurnData,
+  ThemePackage,
+} from "@endue-ai/bridge";
 import {
   applyThemeState,
   DEFAULT_THEME_SETTINGS,
@@ -30,8 +36,11 @@ export interface RuntimeThemes {
   preview(id: string | undefined): void;
   /** The theme previewed now, if any. */
   previewing(): string | undefined;
-  /** Choose a theme (`""` the endue theme): desk.theme.active, kept with the session. */
-  apply(id: string): void;
+  /**
+   * Choose a theme (`""` the endue theme): desk.theme.active, kept with the session. With `scheme`, the
+   * desk takes that scheme too (a theme described for one scheme only is applied as it was previewed).
+   */
+  apply(id: string, scheme?: Scheme): void;
   /** What the desk would look like with a theme, under the contrast in force and a scheme. */
   resolve(id: string, scheme?: Scheme): ThemeState;
   /** Hear when the theme in force, the preview or the installed themes change. */
@@ -47,6 +56,19 @@ export interface RuntimeThemes {
   ): void;
   /** The core's theme.* (save, import, export, remove), as the studio's editor uses them. */
   io(): ThemeIo;
+  /** The core's brain.ask and brain.status, as the studio's Describe uses them (ADR 0059). */
+  brain(): ThemeBrain;
+}
+
+/** One question to the brain, answered through a tool, and whether the brain can be reached. */
+export interface ThemeBrain {
+  /**
+   * Ask with `tool` (brain:ask); `hear` gets the turn's events (started, offline, online, completed,
+   * error) and nothing of other turns, until it ends. Resolves to a function that stops hearing it.
+   */
+  ask(prompt: string, tool: BrainAskTool, hear: (turn: BrainTurnData) => void): Promise<() => void>;
+  /** Which brain the desk has, or undefined when the core cannot say. */
+  status(): Promise<BrainStatusResult | undefined>;
 }
 
 /** What the core does with themes (theme.*): the studio's save, export, import and remove. */
@@ -187,8 +209,9 @@ export function installTheme(
       apply();
     },
     previewing: () => previewed,
-    apply(id) {
+    apply(id, scheme) {
       previewed = undefined;
+      if (scheme && resolve("").scheme !== scheme) settings.set("desk.theme.scheme", scheme);
       // A theme just saved or imported is chosen before plugin.list has caught up with it.
       const user = id.startsWith("local.") || id.startsWith("market.");
       const next = known(id) || user ? id : "";
@@ -201,6 +224,7 @@ export function installTheme(
       return () => listeners.delete(listener);
     },
     io: () => themeIo(ctx),
+    brain: () => themeBrain(ctx),
     previewDraft(theme, files = {}, scheme) {
       draftScheme = theme ? scheme : undefined;
       if (!theme) {
@@ -256,6 +280,52 @@ function themeIo(ctx: DeskContext): ThemeIo {
     },
     async remove(id) {
       await ctx.bridge.call("theme.remove", { theme: id, scope });
+    },
+  };
+}
+
+/** The most events a turn keeps while its ask waits for the answer that names it. */
+const EARLY = 64;
+
+/** brain.ask and brain.status on the core, as the runtime (which holds brain:ask) calls them. */
+function themeBrain(ctx: DeskContext): ThemeBrain {
+  return {
+    async ask(prompt, tool, hear) {
+      let turnId: string | undefined;
+      let ended = false;
+      const early: BrainTurnData[] = [];
+      const deliver = (turn: BrainTurnData) => {
+        if (ended) return;
+        hear(turn);
+        if (turn.kind === "completed" || turn.kind === "error") stop();
+      };
+      const off = ctx.bridge.onEvent((event) => {
+        if (event.event !== "brain.turn") return;
+        // An event can come before the answer names its turn: kept until then.
+        if (turnId === undefined) {
+          if (early.length < EARLY) early.push(event.data);
+        } else if (event.data.turnId === turnId) deliver(event.data);
+      });
+      const stop = () => {
+        ended = true;
+        off();
+      };
+      try {
+        const scope = { permission: "brain:ask" } as const;
+        turnId = (await ctx.bridge.call("brain.ask", { prompt, tool, scope })).turnId;
+      } catch (error) {
+        stop();
+        throw error;
+      }
+      for (const turn of early.splice(0)) if (turn.turnId === turnId) deliver(turn);
+      return stop;
+    },
+    async status() {
+      try {
+        return await ctx.bridge.call("brain.status", { scope: { permission: "brain:converse" } });
+      } catch {
+        return undefined;
+      }
     },
   };
 }

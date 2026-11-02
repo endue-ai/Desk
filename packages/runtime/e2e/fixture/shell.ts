@@ -3,10 +3,13 @@
 // and in-memory storage. ?lang=en, ?persist=1 (the core's store in localStorage), ?reduced=1
 // (desk.theme.motion: reduce), ?init={...} (more init.yaml settings), ?themes=1 (the test theme
 // plugin installed), ?studio=1 (the theme studio open once the desk is ready; ?studio=<theme id>
-// previews that theme too; ?edit=<theme id> opens the editor on a copy of it). Never shipped.
+// previews that theme too; ?edit=<theme id> opens the editor on a copy of it; ?describe=<sentence>
+// runs Describe on it; ?say=<sentence> says it to Eris through the composer). brain.ask answers as
+// examples/brain-echo does (propose_theme from the words of the prompt's last line). Never shipped.
 import type { PluginManifest } from "@endue-ai/bridge";
 import "../../src/desk.css";
 import "../../src/shell/styles";
+import { proposeTheme } from "../../../../examples/brain-echo/theme.mjs";
 import { browserBridge, type Envelope } from "../../src/bridge/browser";
 import { browserCore, localStore, memoryStore } from "../../src/bridge/core";
 import erisReply from "../../src/bridge/envelopes/eris-reply.json";
@@ -53,6 +56,7 @@ const core = browserCore({
     ...(params.has("themes") ? [testTheme as PluginManifest] : []),
   ],
   store: params.has("persist") ? localStore("desk.core.") : memoryStore(),
+  ask: (prompt, tool) => (tool === "propose_theme" ? proposeTheme(prompt) : undefined),
   init: {
     profile: "morning",
     settings: {
@@ -109,4 +113,25 @@ if (params.has("edit")) {
   void desk.ready.then(() =>
     desk.runtime.commands.run("desk.theme.edit", { id: params.get("edit") }),
   );
+}
+
+if (params.has("describe")) {
+  void desk.ready.then(() =>
+    desk.runtime.commands.run("desk.theme.describe", { text: params.get("describe") }),
+  );
+}
+
+if (params.has("say")) {
+  void desk.ready.then(() => {
+    const input = document.querySelector<HTMLInputElement>("#composer-input");
+    if (!input) return;
+    input.focus();
+    input.value = params.get("say") ?? "";
+    input.dispatchEvent(new Event("input"));
+    // The last choice says it to Eris.
+    for (const key of ["ArrowUp", "Enter"])
+      input.dispatchEvent(new KeyboardEvent("keydown", { key }));
+    // Once her answer is in, run her clock until she says it.
+    setTimeout(() => step(2500), 100);
+  });
 }

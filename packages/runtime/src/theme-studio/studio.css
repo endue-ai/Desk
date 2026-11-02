@@ -1,6 +1,7 @@
 /* The theme studio: a system window of the shell (ADR 0056). Every value is a theme token. */
 
 @import "./brand.css";
+@import "./describe.css";
 
 .theme-studio-scrim {
   z-index: var(--z-modal-scrim);
@@ -19,6 +20,11 @@
   background: var(--desk-popover);
   color: var(--desk-text);
   box-shadow: var(--desk-shadow-lg);
+}
+
+/* `.shell button { color: inherit }` outranks `.btn-primary`: the studio's filled buttons keep their ink. */
+.theme-studio .btn-primary {
+  color: var(--desk-primary-foreground);
 }
 
 .theme-studio-head {
