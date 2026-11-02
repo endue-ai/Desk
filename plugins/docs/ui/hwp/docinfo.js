@@ -113,7 +113,7 @@ function borderFill(/** @type {Reader} */ r) {
   const out = { border };
   if (r.u32(32) & 1) {
     const fill = colorref(r.u32(36));
-    if (fill && fill !== "#FFFFFF") out.fill = fill;
+    if (fill && fill !== "#FFFFFF") out.fill = fill; // theme: content
   }
   return out;
 }
@@ -138,9 +138,9 @@ function charShape(r, faces) {
   if (props & (1 << 15)) out.script = "super";
   else if (props & (1 << 16)) out.script = "sub";
   const color = colorref(r.u32(52));
-  if (color && color !== "#000000") out.color = color;
+  if (color && color !== "#000000") out.color = color; // theme: content
   const shade = colorref(r.u32(60));
-  if (shade && shade !== "#FFFFFF") out.highlight = shade;
+  if (shade && shade !== "#FFFFFF") out.highlight = shade; // theme: content
   // The Latin and Hangul faces first, then their substitutes.
   const latin = faces[1]?.[r.u16(2)] ?? [];
   const hangul = faces[0]?.[r.u16(0)] ?? [];

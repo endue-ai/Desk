@@ -194,6 +194,7 @@ function textOf(
     else if (name === "fwSpace") push("　");
     else if (name === "deleteBegin") ctx.deleted = true;
     else if (name === "deleteEnd") ctx.deleted = false;
+    // theme: content: a highlighter pen with no colour is yellow
     else if (name === "markpenBegin") mark = attr(el, "color") ?? "#FFFF00";
     else if (name === "markpenEnd") mark = "";
   }

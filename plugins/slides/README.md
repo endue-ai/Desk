@@ -31,7 +31,7 @@ Chords always reach the desk.
 | Folder | Purpose |
 | --- | --- |
 | `ui/pptx/`, `ui/odp/`, `ui/ppt/`, `ui/other.js` | The readers, on `ui/zip.js`, `ui/cfb.js` and `DOMParser` |
-| `ui/slides.js`, `ui/worker.js`, `ui/view.js`, `ui/play.js` | Desk requests, ranged reads, progress, links; the worker; the DOM; play mode |
+| `ui/slides.js`, `ui/worker.js`, `ui/view.js`, `ui/play.js`, `ui/style.css` | Desk requests, ranged reads, progress, links; the worker; the DOM; play mode; the theme's `--desk-*` tokens only (`tests/theme.test.ts`), a slide's own colours and faces marked `theme: content` |
 
 ```bash
 pnpm exec vitest run plugins/slides

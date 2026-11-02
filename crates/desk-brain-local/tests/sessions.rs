@@ -190,6 +190,8 @@ fn bad_requests_are_invalid_and_unknown_sessions_not_found() {
             role: Default::default(),
             content: Vec::<TextPart>::new(),
         },
+        tools: None,
+        tool_choice: None,
     };
     assert_eq!(
         refused(brain.create_turn(&session, &empty, &mut |_| {})),

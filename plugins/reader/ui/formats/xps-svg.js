@@ -35,9 +35,9 @@ export function color(/** @type {string | null} */ text) {
     const [a, r, g, b] = parts.length === 4 ? parts : [1, ...parts];
     const channel = (/** @type {number | undefined} */ c) =>
       Math.round(Math.max(0, Math.min(1, c ?? 0)) ** (1 / 2.2) * 255);
-    return { color: `rgb(${channel(r)},${channel(g)},${channel(b)})`, opacity: a ?? 1 };
+    return { color: `rgb(${channel(r)},${channel(g)},${channel(b)})`, opacity: a ?? 1 }; // theme: content
   }
-  return { color: "#000000", opacity: 1 };
+  return { color: "#000000", opacity: 1 }; // theme: content
 }
 
 const child = (/** @type {Element} */ el, /** @type {string} */ name) =>
@@ -275,7 +275,7 @@ export function pageToSvg(page, assets) {
           "font-weight": simulations.includes("Bold") ? "bold" : undefined,
           "font-style": simulations.includes("Italic") ? "italic" : undefined,
           direction: Number(el.getAttribute("BidiLevel") ?? 0) % 2 ? "rtl" : undefined,
-          fill: fill?.paint ?? "#000000",
+          fill: fill?.paint ?? "#000000", // theme: content
           "fill-opacity": fill && fill.opacity < 1 ? num(fill.opacity) : undefined,
           "xml:space": "preserve",
         })}>${esc(text)}</text>`;

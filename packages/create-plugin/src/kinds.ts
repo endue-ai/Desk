@@ -1,11 +1,12 @@
 // The kinds create-plugin scaffolds, one entry each: `--kind` takes these names, the usage lists
-// them with `about`, and the CLI prints each one's next steps from `build` and `dev`. A new kind is
-// one entry here and the module that renders its folder.
+// them with `about`, and the CLI prints each one's next steps from `build`, `dev` and `after`. A new
+// kind is one entry here and the module that renders its folder.
 
 import { renderConnector } from "./connector";
 import { renderLogic } from "./logic";
 import { renderPolicy } from "./policy";
 import type { PluginOptions } from "./template";
+import { renderTheme } from "./theme";
 import { renderUi } from "./ui";
 import { renderView } from "./view";
 
@@ -18,6 +19,8 @@ export interface Kind {
   build: boolean;
   /** A running desk shows it as a dev plugin (`DESK_DEV_PLUGINS`), reloading it on save. */
   dev: boolean;
+  /** What to do once it runs, printed after the next commands: a theme is chosen, for one. */
+  after?(id: string): string[];
 }
 
 export const KINDS = {
@@ -36,6 +39,16 @@ export const KINDS = {
   },
   view: { about: "a view, as data", render: renderView, build: false, dev: true },
   policy: { about: "commands and keys, as data", render: renderPolicy, build: false, dev: true },
+  theme: {
+    about: "colours, type, shape and motion, as data",
+    render: renderTheme,
+    build: false,
+    dev: true,
+    after: (id) => [
+      "Then choose it in the theme studio, or with:",
+      `  cargo run -p desk-cli -- theme apply ${id}`,
+    ],
+  },
 } satisfies Record<string, Kind>;
 
 /** What the folder holds. */

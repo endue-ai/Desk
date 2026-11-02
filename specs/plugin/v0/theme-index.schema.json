@@ -1,0 +1,97 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://endue.ai/specs/plugin/v0/theme-index.schema.json",
+  "title": "theme index v0",
+  "description": "A theme market's index (ADR 0060, docs/ko/theme-requirements.md TC-05): the themes one market offers, each with what its gallery card shows and where its .desk-theme bundle is, with the bundle's sha256 and size. The desk reads the indexes the setting desk.theme.markets lists; the first market lives in this repository (market/themes/index.json).",
+  "$defs": {
+    "ThemeIndex": {
+      "description": "One market's index.",
+      "type": "object",
+      "properties": {
+        "format": {
+          "description": "The index format and its version.",
+          "const": "desk-theme-index/1"
+        },
+        "themes": {
+          "description": "The market's themes, each id once; built-in themes are never in an index.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/ThemeIndexEntry" },
+          "maxItems": 500
+        }
+      },
+      "required": ["format", "themes"],
+      "additionalProperties": false
+    },
+    "ThemeIndexEntry": {
+      "description": "One theme of a market: its card and its bundle. The bundle's manifest has the same id, name and version.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "description": "The theme plugin's id: market.<name>.",
+          "type": "string",
+          "pattern": "^market\\.[a-z][a-z0-9-]*$",
+          "maxLength": 128
+        },
+        "name": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "version": { "$ref": "plugin.schema.json#/$defs/Version" },
+        "description": { "type": "string", "minLength": 1, "maxLength": 300 },
+        "author": {
+          "description": "Who made it.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "license": {
+          "description": "An SPDX licence expression for the theme and its assets, for example CC0-1.0 or Apache-2.0.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "tags": {
+          "description": "Words a gallery filters by.",
+          "type": "array",
+          "items": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,31}$" },
+          "maxItems": 12,
+          "uniqueItems": true
+        },
+        "preview": {
+          "description": "Up to five colours that stand for the theme on its card, the most telling first.",
+          "type": "array",
+          "items": { "$ref": "theme.schema.json#/$defs/ThemeColor" },
+          "minItems": 1,
+          "maxItems": 5
+        },
+        "url": { "$ref": "#/$defs/ThemeIndexUrl" },
+        "sha256": {
+          "description": "The sha256 of the bundle's bytes, lowercase hex: a download that differs is refused.",
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "size": {
+          "description": "The bundle's size in bytes, 16 MiB at most.",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 16777216
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "version",
+        "author",
+        "license",
+        "preview",
+        "url",
+        "sha256",
+        "size"
+      ],
+      "additionalProperties": false
+    },
+    "ThemeIndexUrl": {
+      "description": "Where the theme's .desk-theme is: an https URL, or a path relative to the index's own URL without .. segments (paper-dusk.desk-theme), so a market moves by moving its folder.",
+      "type": "string",
+      "maxLength": 2048,
+      "pattern": "^(https://[^\\s]+|(?!/)(?!.*(^|/)\\.\\.(/|$))[A-Za-z0-9._/-]+\\.desk-theme)$"
+    }
+  }
+}

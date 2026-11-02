@@ -1,16 +1,11 @@
-/* The desk's design tokens (@endue-ai/ui). Frames do not inherit the desk's, so they are declared
-   here; the runtime redefines them for the theme in force. The environment colours are the plugin's. */
+/* Every colour, font, size, radius and duration comes from the theme's --desk-* tokens (index.html
+   loads their defaults; the runtime sets the theme in force). The environments are categories
+   (chart-5, chart-3, chart-2), leaning toward the body text to read as labels; errors are danger. */
 :root {
-  --desk-background: #141416;
-  --desk-card: #1e1d21;
-  --desk-border: #333136;
-  --desk-text: #f2f0f5;
-  --desk-text-muted: #b0adb7;
-  --desk-accent: #b6a3f5;
-  --db-production: #f29bb0;
-  --db-staging: #e8c98a;
-  --db-development: #7fe0cf;
-  --db-error: #f29bb0;
+  --db-production: color-mix(in srgb, var(--desk-chart-5) 70%, var(--desk-text));
+  --db-staging: var(--desk-chart-3);
+  --db-development: color-mix(in srgb, var(--desk-chart-2) 70%, var(--desk-text));
+  --db-error: var(--desk-danger-text);
   --db-row: 24px;
 }
 
@@ -26,7 +21,7 @@ body {
   margin: 0;
   background: var(--desk-card);
   color: var(--desk-text);
-  font: 13px/1.5 -apple-system, "SUIT", "Inter", system-ui, sans-serif;
+  font: calc(var(--desk-text-sm) - 1px)/1.5 var(--desk-font-sans);
 }
 
 /* A production connection draws a band at the top, so a write there is never a surprise. */
@@ -46,7 +41,7 @@ header {
 h1,
 h2 {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--desk-text-sm);
 }
 
 nav {
@@ -67,14 +62,14 @@ textarea {
 button {
   padding: 2px 8px;
   border: 1px solid var(--desk-border);
-  border-radius: 6px;
+  border-radius: var(--desk-radius-md);
   background: transparent;
   cursor: pointer;
 }
 
 button:hover,
 button:focus-visible {
-  border-color: var(--desk-accent);
+  border-color: var(--desk-ring);
 }
 
 body[data-running="false"] .cancel {
@@ -85,16 +80,16 @@ input,
 select {
   padding: 2px 6px;
   border: 1px solid var(--desk-border);
-  border-radius: 6px;
+  border-radius: var(--desk-radius-md);
   background: var(--desk-background);
 }
 
 .tag {
   padding: 0 6px;
-  border-radius: 8px;
+  border-radius: var(--desk-radius-md);
   border: 1px solid var(--desk-border);
   color: var(--desk-text-muted);
-  font-size: 11px;
+  font-size: var(--desk-text-2xs);
 }
 
 .tag-production {
@@ -154,7 +149,7 @@ main {
 
 .row[aria-selected="true"] {
   background: var(--desk-background);
-  box-shadow: inset 2px 0 0 var(--desk-accent);
+  box-shadow: inset 2px 0 0 var(--desk-primary-text);
 }
 
 .row .caret {
@@ -197,7 +192,7 @@ main {
   border: 0;
   border-bottom: 1px solid var(--desk-border);
   background: var(--desk-background);
-  font: 13px/1.5 ui-monospace, "SF Mono", Menlo, monospace;
+  font: calc(var(--desk-text-sm) - 1px)/1.5 var(--desk-font-mono);
   resize: vertical;
   outline: none;
   tab-size: 2;
@@ -214,7 +209,7 @@ main {
 
 #table-bar input {
   width: 16em;
-  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-family: var(--desk-font-mono);
 }
 
 #tabs {
@@ -225,12 +220,12 @@ main {
 }
 
 #tabs [role="tab"] {
-  border-radius: 6px 6px 0 0;
+  border-radius: var(--desk-radius-md) var(--desk-radius-md) 0 0;
   border-bottom: 0;
 }
 
 #tabs [aria-selected="true"] {
-  border-color: var(--desk-accent);
+  border-color: var(--desk-primary-text);
   background: var(--desk-background);
 }
 
@@ -249,7 +244,7 @@ main {
   position: relative;
   min-width: max-content;
   outline: none;
-  font: 12px/var(--db-row) ui-monospace, "SF Mono", Menlo, monospace;
+  font: var(--desk-text-xs)/var(--db-row) var(--desk-font-mono);
 }
 
 .grid-row {
@@ -308,7 +303,7 @@ main {
 }
 
 .cell.cursor {
-  box-shadow: inset 0 0 0 1px var(--desk-accent);
+  box-shadow: inset 0 0 0 1px var(--desk-ring);
 }
 
 .messages {
@@ -318,7 +313,7 @@ main {
   overflow: auto;
   max-height: 100%;
   box-sizing: border-box;
-  font: 12px/1.6 ui-monospace, "SF Mono", Menlo, monospace;
+  font: var(--desk-text-xs)/1.6 var(--desk-font-mono);
   white-space: pre-wrap;
 }
 
@@ -336,10 +331,10 @@ main {
   width: min(440px, 90%);
   padding: 14px 16px;
   border: 1px solid var(--desk-border);
-  border-radius: 10px;
-  background: var(--desk-card);
+  border-radius: var(--desk-radius-lg);
+  background: var(--desk-popover);
   transform: translateX(-50%);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--desk-shadow-md);
 }
 
 .dialog label {
@@ -360,7 +355,7 @@ main {
 .dialog .hint,
 .note {
   color: var(--desk-text-muted);
-  font-size: 12px;
+  font-size: var(--desk-text-xs);
 }
 
 .dialog .buttons {
@@ -377,7 +372,7 @@ footer {
   padding: 4px 12px 6px;
   border-top: 1px solid var(--desk-border);
   color: var(--desk-text-muted);
-  font-size: 12px;
+  font-size: var(--desk-text-xs);
 }
 
 footer p {

@@ -200,6 +200,7 @@ export type Permission =
   | UiNotifyPermission
   | PluginManagePermission
   | BrainConversePermission
+  | BrainAskPermission
   | CmdInvokePermission
   | CmdAdvisePermission
   | SettingsReadPermission
@@ -210,7 +211,8 @@ export type Permission =
   | ConnectorManagePermission
   | ViewManagePermission
   | ShellOpenPermission
-  | UpdateManagePermission;
+  | UpdateManagePermission
+  | ThemeManagePermission;
 
 /** Search explicitly published plugin documents and installed plugin launchers. */
 export interface SearchReadPermission {
@@ -277,6 +279,11 @@ export interface PluginManagePermission {
 /** Talk to the brain in the desk's session with brain.say, and receive brain.turn events. */
 export interface BrainConversePermission {
   permission: "brain:converse";
+}
+
+/** Ask the brain one question with brain.ask and receive the answer as structured values through a tool, as brain.turn events for the caller only. Each ask runs in a session of its own: it neither reads nor writes the desk's conversation, which stays with brain:converse. */
+export interface BrainAskPermission {
+  permission: "brain:ask";
 }
 
 /** Invoke and list the commands whose ids the patterns cover, whoever provides them. */
@@ -346,6 +353,11 @@ export interface ShellOpenPermission {
 /** See and drive the desk's own updates with update.*: the status, a check, a download, and applying a staged build, which restarts the desk. Receive update.changed. The desk grants it to the runtime and the CLI only; applying stays with the person. */
 export interface UpdateManagePermission {
   permission: "update:manage";
+}
+
+/** Keep the person's own themes with theme.*: save a theme into the desk's user themes folder, import a .desk-theme bundle, export any installed theme as one, and remove a user theme. The desk grants it to the runtime and the CLI only. */
+export interface ThemeManagePermission {
+  permission: "theme:manage";
 }
 
 /** A URL scheme shell.open hands to the system: the browser for http and https, the mail app for mailto. */
@@ -442,6 +454,39 @@ export interface Surface {
 /** Where the compositor puts the surface. */
 export type SurfacePlacement = "center" | "left" | "right" | "bottom" | "overlay" | "floating";
 
+/** One market's index. */
+export interface ThemeIndex {
+  /** The index format and its version. */
+  format: "desk-theme-index/1";
+  /** The market's themes, each id once; built-in themes are never in an index. */
+  themes: ThemeIndexEntry[];
+}
+
+/** One theme of a market: its card and its bundle. The bundle's manifest has the same id, name and version. */
+export interface ThemeIndexEntry {
+  /** The theme plugin's id: market.<name>. */
+  id: string;
+  name: string;
+  version: Version;
+  description?: string;
+  /** Who made it. */
+  author: string;
+  /** An SPDX licence expression for the theme and its assets, for example CC0-1.0 or Apache-2.0. */
+  license: string;
+  /** Words a gallery filters by. */
+  tags?: string[];
+  /** Up to five colours that stand for the theme on its card, the most telling first. */
+  preview: ThemeColor[];
+  url: ThemeIndexUrl;
+  /** The sha256 of the bundle's bytes, lowercase hex: a download that differs is refused. */
+  sha256: string;
+  /** The bundle's size in bytes, 16 MiB at most. */
+  size: number;
+}
+
+/** Where the theme's .desk-theme is: an https URL, or a path relative to the index's own URL without .. segments (paper-dusk.desk-theme), so a market moves by moving its folder. */
+export type ThemeIndexUrl = string;
+
 /** A theme: the layers every scheme shares (type, shape, motion) and one variant per scheme. At least one of light and dark; the desk's own theme stands in for a missing one. */
 export interface ThemePackage {
   /** Who made it. */
@@ -459,6 +504,22 @@ export interface ThemePackage {
   light?: ThemeVariant;
   dark?: ThemeVariant;
 }
+
+/** A theme as one file, a .desk-theme: JSON, 16 MiB at most, holding the theme's plugin.json and the font and image files its theme block names, base64. theme.export writes one and theme.import reads one; the desk checks it as a theme plugin folder before it lands. */
+export interface ThemeBundle {
+  /** The bundle format and its version. */
+  format: "desk-theme/1";
+  /** The theme's plugin.json: a plugin of kind theme. */
+  manifest: PluginManifest;
+  /** The theme's font and image files by their path in its folder, each base64. Only the paths its theme block names. */
+  files: Record<string, ThemeAssetData>;
+}
+
+/** A theme's font (.woff2) or image (.png, .jpg, .jpeg or .webp) file relative to its folder, without .. segments. */
+export type ThemeAssetPath = string;
+
+/** One asset file's bytes in padded base64 (RFC 4648): 2 MiB of bytes at most. */
+export type ThemeAssetData = string;
 
 /** Where a theme came from: the sentence it was described with, and the theme it started from. */
 export interface ThemeOrigin {
@@ -1235,6 +1296,36 @@ export interface BrainSayResult {
   turnId: string;
 }
 
+/** Ask the brain one question and get the answer as structured values: the arguments it calls the caller's tool with. */
+export interface BrainAskRequest {
+  id: RequestId;
+  method: "brain.ask";
+  params: BrainAskParams;
+}
+
+/** Parameters of brain.ask: what to ask and the tool whose arguments are the answer. */
+export interface BrainAskParams {
+  /** The question, with everything the brain needs to answer it. The desk's conversation is not sent. */
+  prompt: string;
+  tool: BrainAskTool;
+  scope: BrainAskPermission;
+}
+
+/** The tool the brain must call to answer, a ToolDefinition of specs/brain/v0. The core never runs it: the arguments go back to the caller. */
+export interface BrainAskTool {
+  /** The tool's name, for example propose_theme. */
+  name: string;
+  /** What the tool is for and when to call it, for the brain. */
+  description: string;
+  /** A JSON Schema 2020-12 of the arguments. Its type is object; it may $ref the desk's own specs by their $id. */
+  schema: Record<string, unknown>;
+}
+
+/** Result of brain.ask: the answer arrives as brain.turn events with this id, for the caller only. */
+export interface BrainAskResult {
+  turnId: string;
+}
+
 /** List the person's agents one page at a time, as the brain's listAgents does. */
 export interface BrainAgentsListRequest {
   id: RequestId;
@@ -1346,17 +1437,19 @@ export interface BrainStatusOffline {
   mode: "offline";
 }
 
-/** Progress of a brain.say turn. */
+/** Progress of a brain.say or brain.ask turn. */
 export interface BrainTurnEvent {
   event: "brain.turn";
   data: BrainTurnData;
 }
 
-/** Payload of brain.turn. delta carries answer text; error and offline carry a sentence for people. */
+/** Payload of brain.turn. delta carries answer text; error and offline carry a sentence for people. A brain.ask turn's completed carries structured when the brain called the tool. */
 export interface BrainTurnData {
   turnId: string;
   kind: BrainTurnKind;
   text?: string;
+  /** brain.ask only, on completed: the arguments the brain called the tool with, checked against its schema. Absent when the brain answered in text instead. */
+  structured?: Record<string, unknown>;
 }
 
 /** started, delta (more text), completed; error (the turn failed, for example read-only after a takeover); offline (the brain is unreachable, the turn waits) and online (it resumed). */
@@ -1406,6 +1499,7 @@ export type BridgeRequest =
   | StoreSetRequest
   | InitGetRequest
   | BrainSayRequest
+  | BrainAskRequest
   | BrainAgentsListRequest
   | BrainAgentsCardRequest
   | BrainSpacesListRequest
@@ -1440,7 +1534,13 @@ export type BridgeRequest =
   | UpdateStatusRequest
   | UpdateCheckRequest
   | UpdateDownloadRequest
-  | UpdateApplyRequest;
+  | UpdateApplyRequest
+  | ThemeSaveRequest
+  | ThemeImportRequest
+  | ThemeExportRequest
+  | ThemeRemoveRequest
+  | ThemeMarketListRequest
+  | ThemeMarketFetchRequest;
 
 /** The answer to one request: a result, or an error. */
 export type BridgeResponse = BridgeSuccess | BridgeFailure;
@@ -2700,6 +2800,163 @@ export interface StoreSetParams {
 /** Result of store.set. */
 export type StoreSetResult = Record<string, never>;
 
+/** One of the theme's font or image files, given inline. */
+export interface ThemeSaveFile {
+  path: ThemeAssetPath;
+  base64: ThemeAssetData;
+}
+
+/** An https URL of a .desk-theme file. Plain http, and a redirect to another host, are refused. */
+export type ThemeBundleUrl = string;
+
+/** The sha256 of a file's bytes, lowercase hex. */
+export type ThemeSha256 = string;
+
+/** Save a theme as the person's own: write its folder in the user themes folder, check it as a theme plugin, then install it. It replaces an earlier user theme of the same id whole; when the check fails nothing is written and the earlier one stays. An id a built-in or any other plugin holds is already_exists. */
+export interface ThemeSaveRequest {
+  id: RequestId;
+  method: "theme.save";
+  params: ThemeSaveParams;
+}
+
+/** Parameters of theme.save. */
+export interface ThemeSaveParams {
+  /** The theme's plugin.json: kind theme, with an id inside local. (for example local.my-paper). */
+  manifest: PluginManifest;
+  /** Font and image files the theme block names, each path once. With the ones copyFrom brings they are the theme folder's only files besides plugin.json. */
+  files?: ThemeSaveFile[];
+  /** An installed theme (built-in, market or local) to copy files from: every font and backdrop image the saved theme block names that files does not give and that exists at the same path in that theme's folder. How a tuned copy keeps the fonts and images of the theme it started from. One that is not an installed theme is not_found. */
+  copyFrom?: PluginId;
+  scope: ThemeManagePermission;
+}
+
+/** Result of theme.save: the theme as installed. */
+export interface ThemeSaveResult {
+  plugin: PluginInfo;
+}
+
+/** Install a .desk-theme bundle as a user theme: given inline, read from a file, or downloaded over https and checked against its sha256 (a mismatch is invalid_params and nothing lands). A bundle whose id is outside local. and market. lands as local.<its name as a slug>. It is checked and replaces an earlier user theme of its id as theme.save does, except that a market. theme downloaded by url replaces an earlier one only while that one is still as its market published it (ADR 0060): one the person changed is already_exists and stays. */
+export interface ThemeImportRequest {
+  id: RequestId;
+  method: "theme.import";
+  params: ThemeImportParams;
+}
+
+/** Parameters of theme.import: exactly one of bundle, path and url, and sha256 with url (market only with url). */
+export interface ThemeImportParams {
+  bundle?: ThemeBundle;
+  /** A .desk-theme file to read. */
+  path?: Path;
+  url?: ThemeBundleUrl;
+  sha256?: ThemeSha256;
+  /** With url, the market index that listed it: kept beside a market. theme with its version and sha256, so theme.market.list tells an update from the person's own changes. */
+  market?: ThemeMarketUrl;
+  scope: ThemeManagePermission;
+}
+
+/** Result of theme.import: the theme as installed, under the id it landed with. */
+export interface ThemeImportResult {
+  plugin: PluginInfo;
+}
+
+/** Make a .desk-theme bundle of any installed theme, built-in ones too: its plugin.json and the font and image files its theme block names. Returned with inline; otherwise written to path, or to <Downloads>/<id>.desk-theme (<id>-2.desk-theme and on when that is taken), and the file's path returned. */
+export interface ThemeExportRequest {
+  id: RequestId;
+  method: "theme.export";
+  params: ThemeExportParams;
+}
+
+/** Parameters of theme.export. inline: true takes no path. */
+export interface ThemeExportParams {
+  theme: PluginId;
+  /** Where to write the bundle; an existing file there is replaced. */
+  path?: Path;
+  /** Return the bundle instead of writing it. */
+  inline?: boolean;
+  scope: ThemeManagePermission;
+}
+
+/** Result of theme.export: the bundle with inline, otherwise the file written. */
+export interface ThemeExportResult {
+  /** The file written, as an absolute path. */
+  path?: string;
+  bundle?: ThemeBundle;
+}
+
+/** Remove a user theme: its folder goes and plugin.changed says removed. Only themes in the user themes folder (local. and market. ids); any other plugin is invalid_params, an id nothing holds not_found. A removed theme that desk.theme.active names leaves the desk's own theme in force. */
+export interface ThemeRemoveRequest {
+  id: RequestId;
+  method: "theme.remove";
+  params: ThemeRemoveParams;
+}
+
+/** Parameters of theme.remove. */
+export interface ThemeRemoveParams {
+  theme: PluginId;
+  scope: ThemeManagePermission;
+}
+
+/** Result of theme.remove. */
+export type ThemeRemoveResult = Record<string, never>;
+
+/** An https URL of a market index (specs/plugin ThemeIndex, desk-theme-index/1). */
+export type ThemeMarketUrl = string;
+
+/** Read every market index desk.theme.markets lists, in order, and merge their themes by id: the first market that lists an id wins. Each index is downloaded over https from its own host only; one that cannot be read or is not a valid index leaves its themes out and says why in problems. Each theme says whether this desk has it. */
+export interface ThemeMarketListRequest {
+  id: RequestId;
+  method: "theme.market.list";
+  params: ThemeMarketListParams;
+}
+
+/** Parameters of theme.market.list. */
+export interface ThemeMarketListParams {
+  scope: ThemeManagePermission;
+}
+
+/** Result of theme.market.list: the merged themes in market order, and the markets that could not be read. */
+export interface ThemeMarketListResult {
+  themes: ThemeMarketTheme[];
+  problems: ThemeMarketProblem[];
+}
+
+/** One theme a market offers: its index entry with url made absolute, the market that listed it, and how it stands on this desk. */
+export interface ThemeMarketTheme {
+  theme: ThemeIndexEntry;
+  market: ThemeMarketUrl;
+  state: ThemeMarketState;
+  /** The version this desk has, when it has the theme. */
+  installed?: Version;
+}
+
+/** available: not installed. installed: installed as the market publishes it now. update: installed from a market and unchanged since, and the market has other bytes now; installing it again replaces it. edited: installed but not as a market published it (changed since, or brought in from a file); an update never replaces it. */
+export type ThemeMarketState = "available" | "installed" | "update" | "edited";
+
+/** A market index that could not be read, and why. */
+export interface ThemeMarketProblem {
+  market: string;
+  message: string;
+}
+
+/** Download a market theme to look at it before installing it: over https from the URL's host only, refused unless its bytes match sha256, and checked as a theme plugin in a temporary folder that goes again. Nothing is installed; the answer is the bundle, which the studio previews. */
+export interface ThemeMarketFetchRequest {
+  id: RequestId;
+  method: "theme.market.fetch";
+  params: ThemeMarketFetchParams;
+}
+
+/** Parameters of theme.market.fetch. */
+export interface ThemeMarketFetchParams {
+  url: ThemeBundleUrl;
+  sha256: ThemeSha256;
+  scope: ThemeManagePermission;
+}
+
+/** Result of theme.market.fetch: the checked bundle. */
+export interface ThemeMarketFetchResult {
+  bundle: ThemeBundle;
+}
+
 /** Open one of the surfaces the caller's manifest declares; the runtime hears ui.surface.opened. */
 export interface UiSurfaceOpenRequest {
   id: RequestId;
@@ -3044,6 +3301,7 @@ export interface BridgeMethodMap {
   "store.set": { params: StoreSetParams; result: StoreSetResult };
   "init.get": { params: InitGetParams; result: InitGetResult };
   "brain.say": { params: BrainSayParams; result: BrainSayResult };
+  "brain.ask": { params: BrainAskParams; result: BrainAskResult };
   "brain.agents.list": { params: BrainAgentsListParams; result: BrainAgentsListResult };
   "brain.agents.card": { params: BrainAgentsCardParams; result: BrainAgentsCardResult };
   "brain.spaces.list": { params: BrainSpacesListParams; result: BrainSpacesListResult };
@@ -3079,6 +3337,12 @@ export interface BridgeMethodMap {
   "update.check": { params: UpdateParams; result: UpdateCheckResult };
   "update.download": { params: UpdateParams; result: UpdateDownloadResult };
   "update.apply": { params: UpdateParams; result: UpdateApplyResult };
+  "theme.save": { params: ThemeSaveParams; result: ThemeSaveResult };
+  "theme.import": { params: ThemeImportParams; result: ThemeImportResult };
+  "theme.export": { params: ThemeExportParams; result: ThemeExportResult };
+  "theme.remove": { params: ThemeRemoveParams; result: ThemeRemoveResult };
+  "theme.market.list": { params: ThemeMarketListParams; result: ThemeMarketListResult };
+  "theme.market.fetch": { params: ThemeMarketFetchParams; result: ThemeMarketFetchResult };
 }
 
 /** A bridge method name. */
@@ -3116,6 +3380,7 @@ export const BRIDGE_METHODS = [
   "store.set",
   "init.get",
   "brain.say",
+  "brain.ask",
   "brain.agents.list",
   "brain.agents.card",
   "brain.spaces.list",
@@ -3151,4 +3416,10 @@ export const BRIDGE_METHODS = [
   "update.check",
   "update.download",
   "update.apply",
+  "theme.save",
+  "theme.import",
+  "theme.export",
+  "theme.remove",
+  "theme.market.list",
+  "theme.market.fetch",
 ] as const satisfies readonly BridgeMethod[];

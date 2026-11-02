@@ -1,0 +1,15 @@
+{
+  "target": "BridgeRequest",
+  "description": "theme.import of a bundle downloaded over https and checked against its sha256",
+  "instance": {
+    "id": 64,
+    "method": "theme.import",
+    "params": {
+      "url": "https://themes.example.com/paper.desk-theme",
+      "sha256": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+      "scope": {
+        "permission": "theme:manage"
+      }
+    }
+  }
+}

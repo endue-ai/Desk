@@ -1,0 +1,151 @@
+{
+  "format": "desk-theme/1",
+  "manifest": {
+    "id": "market.lagoon",
+    "name": "Lagoon",
+    "version": "1.0.0",
+    "kind": "theme",
+    "description": "Shallow water over white sand: teal on a pale shore by day, a deep lagoon at night, round corners and calm motion.",
+    "theme": {
+      "author": "Team endue",
+      "license": "CC0-1.0",
+      "tags": [
+        "teal",
+        "calm",
+        "sea"
+      ],
+      "preview": [
+        "#021c23",
+        "#0f8b8d",
+        "#f4f1e8",
+        "#0b6e70"
+      ],
+      "light": {
+        "colors": {
+          "background": "#f4f1e8",
+          "card": "#f7f6f1",
+          "muted": "#eae7de",
+          "popover": "#f7f6f1",
+          "hover": "#e0ddd4",
+          "border": "#cdcac1",
+          "input": "#838078",
+          "text": "#241f11",
+          "textMuted": "#635d4e",
+          "tooltip": "#322e20",
+          "tooltipText": "#f6f5f0",
+          "primary": "#0b6e70",
+          "primaryForeground": "#ffffff",
+          "primaryHover": "#095e5f",
+          "primaryText": "#0b6e70",
+          "primarySubtle": "rgba(11, 110, 112, 0.08)",
+          "primarySoft": "rgba(11, 110, 112, 0.12)",
+          "primaryBorder": "rgba(11, 110, 112, 0.34)",
+          "ring": "#0b6e70",
+          "accent": "#0b6e70",
+          "success": "#3fa244",
+          "successForeground": "#241f11",
+          "successText": "#29742d",
+          "successSoft": "rgba(63, 162, 68, 0.16)",
+          "successBorder": "rgba(63, 162, 68, 0.4)",
+          "warning": "#cb7c1e",
+          "warningForeground": "#241f11",
+          "warningText": "#945810",
+          "warningSoft": "rgba(203, 124, 30, 0.16)",
+          "warningBorder": "rgba(203, 124, 30, 0.4)",
+          "danger": "#e1696b",
+          "dangerForeground": "#241f11",
+          "dangerText": "#b13e44",
+          "dangerSoft": "rgba(225, 105, 107, 0.16)",
+          "dangerBorder": "rgba(225, 105, 107, 0.4)",
+          "info": "#5091e0",
+          "infoForeground": "#241f11",
+          "infoText": "#2667b3",
+          "infoSoft": "rgba(80, 145, 224, 0.16)",
+          "infoBorder": "rgba(80, 145, 224, 0.4)"
+        },
+        "backdrop": {
+          "gradient": [
+            "#f4f1e8",
+            "#d9efec"
+          ],
+          "angle": 160,
+          "glow": "#7fd3c8"
+        },
+        "material": {
+          "opacity": 0.96,
+          "blur": 10,
+          "shadow": "soft"
+        }
+      },
+      "dark": {
+        "colors": {
+          "background": "#021c23",
+          "card": "#0a242c",
+          "muted": "#0f2931",
+          "popover": "#173139",
+          "hover": "#213b43",
+          "border": "#203a42",
+          "input": "#69868f",
+          "text": "#e8f4f8",
+          "textMuted": "#a3b5ba",
+          "tooltip": "#2d474f",
+          "tooltipText": "#e8f4f8",
+          "primary": "#0f8b8d",
+          "primaryForeground": "#03151b",
+          "primaryHover": "#339c9e",
+          "primaryText": "#33a1a2",
+          "primarySubtle": "rgba(15, 139, 141, 0.08)",
+          "primarySoft": "rgba(15, 139, 141, 0.12)",
+          "primaryBorder": "rgba(15, 139, 141, 0.34)",
+          "ring": "#0f8b8d",
+          "accent": "#0f8b8d",
+          "success": "#5dbe5f",
+          "successForeground": "#021c23",
+          "successText": "#5dbe5f",
+          "successSoft": "rgba(93, 190, 95, 0.16)",
+          "successBorder": "rgba(93, 190, 95, 0.4)",
+          "warning": "#ff9800",
+          "warningForeground": "#021c23",
+          "warningText": "#ff9800",
+          "warningSoft": "rgba(255, 152, 0, 0.16)",
+          "warningBorder": "rgba(255, 152, 0, 0.4)",
+          "danger": "#ff8484",
+          "dangerForeground": "#021c23",
+          "dangerText": "#ff8484",
+          "dangerSoft": "rgba(255, 132, 132, 0.16)",
+          "dangerBorder": "rgba(255, 132, 132, 0.4)",
+          "info": "#6cadff",
+          "infoForeground": "#021c23",
+          "infoText": "#6cadff",
+          "infoSoft": "rgba(108, 173, 255, 0.16)",
+          "infoBorder": "rgba(108, 173, 255, 0.4)"
+        },
+        "backdrop": {
+          "gradient": [
+            "#071d24",
+            "#0b3138"
+          ],
+          "angle": 160,
+          "glow": "#0f8b8d"
+        },
+        "material": {
+          "opacity": 0.94,
+          "blur": 12,
+          "shadow": "soft"
+        }
+      },
+      "type": {
+        "sans": "system-ui, -apple-system, \"Segoe UI\", sans-serif",
+        "scale": 1
+      },
+      "shape": {
+        "radius": "round",
+        "density": "comfortable"
+      },
+      "motion": {
+        "personality": "calm"
+      }
+    }
+  },
+  "files": {}
+}

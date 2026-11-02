@@ -1,12 +1,5 @@
-/* The desk's design tokens (@endue-ai/ui). Frames do not inherit the desk's, so they are declared here. */
-:root {
-  --desk-background: #141416;
-  --desk-card: #1e1d21;
-  --desk-border: #333136;
-  --desk-text: #f2f0f5;
-  --desk-text-muted: #b0adb7;
-  --desk-accent: #b6a3f5;
-}
+/* Every colour, font, size, radius and duration comes from the theme's --desk-* tokens (index.html
+   loads their defaults; the runtime sets the theme in force). */
 
 html,
 body {
@@ -21,7 +14,7 @@ body {
   padding: 8px 0 4px;
   background: var(--desk-card);
   color: var(--desk-text);
-  font: 13px/1.6 -apple-system, "SUIT", "Inter", system-ui, sans-serif;
+  font: calc(var(--desk-text-sm) - 1px)/1.6 var(--desk-font-sans);
 }
 
 header {
@@ -35,7 +28,7 @@ header {
 
 h1 {
   margin: 0;
-  font-size: 13px;
+  font-size: calc(var(--desk-text-sm) - 1px);
   font-weight: 600;
   letter-spacing: 0.02em;
   text-transform: uppercase;
@@ -52,7 +45,7 @@ button {
   height: 24px;
   padding: 0 6px;
   border: 1px solid transparent;
-  border-radius: 6px;
+  border-radius: var(--desk-radius-md);
   background: transparent;
   color: var(--desk-text-muted);
   font: inherit;
@@ -65,7 +58,7 @@ button:hover {
 }
 
 button[aria-pressed="true"] {
-  border-color: var(--desk-accent);
+  border-color: var(--desk-primary-text);
   color: var(--desk-text);
 }
 
@@ -98,7 +91,7 @@ main {
 }
 
 .row[aria-selected="true"] {
-  background: color-mix(in srgb, var(--desk-accent) 18%, var(--desk-card));
+  background: var(--desk-hover);
 }
 
 .twisty {
@@ -132,16 +125,16 @@ main {
 .detail,
 .error {
   flex: none;
-  font-size: 11px;
+  font-size: var(--desk-text-2xs);
   color: var(--desk-text-muted);
 }
 
 .error {
-  color: #e0738a;
+  color: var(--desk-danger-text);
 }
 
 .row[aria-busy="true"] > .twisty {
-  animation: spin 1s linear infinite;
+  animation: spin calc(var(--desk-motion-slow) * 2.5) linear infinite;
 }
 
 #empty,
@@ -155,7 +148,7 @@ main {
 }
 
 :focus-visible {
-  outline: 2px solid var(--desk-accent);
+  outline: 2px solid var(--desk-ring);
   outline-offset: -2px;
 }
 
@@ -185,10 +178,10 @@ main {
 }
 
 .preview-tools { display: flex; align-items: center; gap: 4px; }
-#preview-title { flex: 1; min-width: 0; margin: 0; font-size: 13px; overflow-wrap: anywhere; }
-#preview-detail { margin: 4px 0 8px; color: var(--desk-text-muted); font-size: 11px; overflow-wrap: anywhere; }
+#preview-title { flex: 1; min-width: 0; margin: 0; font-size: calc(var(--desk-text-sm) - 1px); overflow-wrap: anywhere; }
+#preview-detail { margin: 4px 0 8px; color: var(--desk-text-muted); font-size: var(--desk-text-2xs); overflow-wrap: anywhere; }
 #preview-content { color: var(--desk-text-muted); overflow: auto; }
-#preview-content pre { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--desk-text); font: 12px/1.6 ui-monospace, monospace; }
+#preview-content pre { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--desk-text); font: var(--desk-text-xs)/1.6 var(--desk-font-mono); }
 #preview-content p { margin: 0 0 8px; }
 #preview-content img { display: block; max-width: 100%; max-height: 280px; margin: auto; object-fit: contain; }
 
@@ -202,9 +195,9 @@ main {
   overflow: auto;
   padding: 4px;
   border: 1px solid var(--desk-border);
-  border-radius: 8px;
-  background: var(--desk-card);
-  box-shadow: 0 6px 20px #0005;
+  border-radius: var(--desk-radius-md);
+  background: var(--desk-popover);
+  box-shadow: var(--desk-shadow-md);
 }
 .context-menu button {
   display: block;
@@ -216,4 +209,4 @@ main {
   overflow-wrap: anywhere;
   color: var(--desk-text);
 }
-.context-menu button:focus { background: var(--desk-background); }
+.context-menu button:focus { background: var(--desk-hover); }

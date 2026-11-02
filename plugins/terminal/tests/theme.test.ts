@@ -1,42 +1,61 @@
 import { describe, expect, it } from "vitest";
+import { cssVariables, tokens } from "../../../packages/ui/src/tokens";
 import { DEFAULTS } from "../ui/shell.js";
-import { ANSI, MONOSPACE, terminalOptions, withAlpha, xtermTheme } from "../ui/theme.js";
+import { MONOSPACE, THEME_VARIABLES, terminalOptions, withAlpha, xtermTheme } from "../ui/theme.js";
 
 const dark = { scheme: "dark", contrast: "normal", reducedMotion: false, variables: {} } as const;
 
+/** What the page's tokens.css declares for xterm's colours: main.js reads it from the page. */
+const variables = cssVariables(tokens);
+const page = Object.fromEntries(THEME_VARIABLES.map((name) => [name, variables[name] ?? ""]));
+
 describe("the terminal's theme", () => {
-  it("takes the screen, text and cursor from the desk's tokens, with the dark defaults", () => {
-    expect(xtermTheme(dark)).toMatchObject({
+  it("takes the screen, text, cursor and ANSI colours from the desk's tokens, the page's by default", () => {
+    expect(xtermTheme(dark, page)).toMatchObject({
       background: "#141416",
       foreground: "#f2f0f5",
       cursor: "#b6a3f5",
       cursorAccent: "#141416",
       selectionBackground: "#b6a3f559",
-      ...ANSI.dark,
+      black: "#1e1d21",
+      red: "#ff8484",
+      brightWhite: "#ffffff",
     });
-    const themed = xtermTheme({
-      ...dark,
-      scheme: "light",
-      variables: {
-        "--desk-background": "#ffffff",
-        "--desk-text": "#111111",
-        "--desk-accent": "#336699",
+    const themed = xtermTheme(
+      {
+        ...dark,
+        scheme: "light",
+        variables: {
+          "--desk-background": "#ffffff",
+          "--desk-text": "#111111",
+          "--desk-accent": "#336699",
+          "--desk-ansi-1": "#aa0000",
+        },
       },
-    });
+      page,
+    );
     expect(themed).toMatchObject({
       background: "#ffffff",
       foreground: "#111111",
       cursor: "#336699",
       selectionBackground: "#33669959",
-      red: ANSI.light.red,
+      red: "#aa0000",
+      green: "#5dbe5f",
+    });
+  });
+
+  it("leaves a colour that neither the theme nor the page gives to xterm", () => {
+    expect(xtermTheme(dark)).toEqual({});
+    expect(xtermTheme({ ...dark, variables: { "--desk-ansi-4": "#0000ff" } })).toEqual({
+      blue: "#0000ff",
     });
   });
 
   it("selects with the text colour itself in high contrast", () => {
-    const high = xtermTheme({ ...dark, contrast: "high" });
+    const high = xtermTheme({ ...dark, contrast: "high" }, page);
     expect(high.selectionBackground).toBe("#f2f0f5");
     expect(high.selectionForeground).toBe("#141416");
-    expect(xtermTheme(dark).selectionForeground).toBeUndefined();
+    expect(xtermTheme(dark, page).selectionForeground).toBeUndefined();
   });
 
   it("adds an alpha to six-digit hex colours only", () => {
@@ -49,7 +68,7 @@ describe("the terminal's theme", () => {
 
 describe("the terminal's options", () => {
   it("come from the settings and the theme", () => {
-    expect(terminalOptions(DEFAULTS, dark)).toEqual({
+    expect(terminalOptions(DEFAULTS, dark, page)).toEqual({
       allowProposedApi: true,
       cursorBlink: true,
       cursorStyle: "block",
@@ -57,7 +76,7 @@ describe("the terminal's options", () => {
       fontSize: 13,
       scrollback: 10000,
       minimumContrastRatio: 1,
-      theme: xtermTheme(dark),
+      theme: xtermTheme(dark, page),
     });
     expect(
       terminalOptions(

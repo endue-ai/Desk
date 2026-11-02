@@ -31,7 +31,7 @@ pub fn run(remote: Remote, json: bool) -> ExitCode {
     })
 }
 
-enum Problem {
+pub(crate) enum Problem {
     Io(io::Error),
     Request(String),
 }
@@ -43,12 +43,12 @@ impl From<io::Error> for Problem {
 }
 
 /// What the desk answered, and the answer line as it came.
-struct Reply {
-    result: Result<Value, (String, String)>,
-    line: String,
+pub(crate) struct Reply {
+    pub(crate) result: Result<Value, (String, String)>,
+    pub(crate) line: String,
 }
 
-struct Session {
+pub(crate) struct Session {
     client: Client,
     next: u64,
     json: bool,
@@ -106,6 +106,7 @@ impl Session {
                 json!({ "grantId": grant_id, "scope": perm_manage }),
             ),
             Remote::Update(step) => self.update(step),
+            Remote::Theme(step) => self.theme(step),
         }
     }
 
@@ -149,7 +150,7 @@ impl Session {
     }
 
     /// A call whose success prints `ok`.
-    fn done(&mut self, method: &str, params: Value) -> Result<ExitCode, Problem> {
+    pub(crate) fn done(&mut self, method: &str, params: Value) -> Result<ExitCode, Problem> {
         let reply = self.call(method, params)?;
         Ok(self.report(reply, |_| vec!["ok".to_owned()]))
     }
@@ -172,8 +173,21 @@ impl Session {
         }))
     }
 
-    /// cmd.invoke, then wait for the `cmd.answered` of this invocation (other events pass by).
     fn cmd_run(&mut self, id: &str, args: Option<Map<String, Value>>) -> Result<ExitCode, Problem> {
+        let reply = self.invoke_and_wait(id, args)?;
+        Ok(self.report(reply, |result| match result {
+            Value::Null => Vec::new(),
+            value => vec![value.to_string()],
+        }))
+    }
+
+    /// cmd.invoke, then the `cmd.answered` of this invocation (other events pass by); a failed
+    /// cmd.invoke as it came.
+    pub(crate) fn invoke_and_wait(
+        &mut self,
+        id: &str,
+        args: Option<Map<String, Value>>,
+    ) -> Result<Reply, Problem> {
         let mut params = json!({ "id": id, "scope": invoke(&[id]) });
         if let Some(args) = args {
             params["args"] = Value::Object(args);
@@ -184,7 +198,7 @@ impl Session {
                 Some(invocation) => invocation.to_owned(),
                 None => return Err(Problem::Request("cmd.invoke: no invocationId".to_owned())),
             },
-            Err(_) => return Ok(self.report(reply, |_| Vec::new())),
+            Err(_) => return Ok(reply),
         };
         loop {
             let (event, line) = self.client.next_event_line()?;
@@ -202,15 +216,11 @@ impl Session {
                 None if !data.ok => Err(("failed".to_owned(), String::new())),
                 _ => Ok(data.result.unwrap_or(Value::Null)),
             };
-            let reply = Reply { result, line };
-            return Ok(self.report(reply, |result| match result {
-                Value::Null => Vec::new(),
-                value => vec![value.to_string()],
-            }));
+            return Ok(Reply { result, line });
         }
     }
 
-    fn call(&mut self, method: &str, params: Value) -> Result<Reply, Problem> {
+    pub(crate) fn call(&mut self, method: &str, params: Value) -> Result<Reply, Problem> {
         self.next += 1;
         let request: BridgeRequest =
             serde_json::from_value(json!({ "id": self.next, "method": method, "params": params }))
@@ -228,7 +238,11 @@ impl Session {
 
     /// Print the reply: the line as it came with `--json`, otherwise `lines(result)` on stdout or
     /// `desk: <code>: <message>` on stderr. Exit 1 when it failed.
-    fn report(&self, reply: Reply, lines: impl FnOnce(&Value) -> Vec<String>) -> ExitCode {
+    pub(crate) fn report(
+        &self,
+        reply: Reply,
+        lines: impl FnOnce(&Value) -> Vec<String>,
+    ) -> ExitCode {
         if self.json {
             out(&reply.line);
         }
@@ -270,7 +284,7 @@ fn invoke(ids: &[&str]) -> Value {
     json!({ "permission": "cmd:invoke", "ids": ids })
 }
 
-fn text<'a>(value: &'a Value, key: &str) -> &'a str {
+pub(crate) fn text<'a>(value: &'a Value, key: &str) -> &'a str {
     value[key].as_str().unwrap_or_default()
 }
 

@@ -5,6 +5,7 @@
 mod args;
 mod plugin_test;
 mod remote;
+mod theme;
 
 use std::path::Path;
 use std::process::ExitCode;

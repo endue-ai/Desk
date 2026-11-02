@@ -1,0 +1,97 @@
+/* The theme studio's Market tab (market.ts, TS-08): docked to the right like the editor, so the desk
+   shows a previewed theme beside it. Every value is a theme token. */
+
+.theme-market {
+  display: grid;
+  grid-row: 1 / -1;
+  align-content: start;
+  gap: var(--space-3);
+  min-height: 0;
+  overflow: auto;
+}
+.theme-market-title {
+  margin: 0;
+  font-size: var(--text-base);
+  font-weight: 600;
+}
+
+.theme-market-list {
+  display: grid;
+  align-content: start;
+  gap: var(--space-2);
+}
+
+.theme-market-card {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: var(--desk-border-width) solid var(--desk-border);
+  border-radius: var(--radius-lg);
+  background: var(--desk-card);
+}
+.theme-market-card.is-previewing {
+  border-color: var(--desk-ring);
+}
+
+.theme-market-swatches {
+  display: flex;
+  height: var(--space-4);
+  overflow: hidden;
+  border: var(--desk-border-width) solid var(--desk-border);
+  border-radius: var(--radius-sm);
+}
+.theme-market-swatches > span {
+  flex: 1;
+  background: var(--swatch);
+}
+
+.theme-market-text {
+  display: grid;
+  gap: var(--space-1);
+}
+.theme-market-name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+.theme-market-version,
+.theme-market-meta,
+.theme-market-description {
+  color: var(--desk-text-muted);
+  font-size: var(--text-xs);
+  font-weight: 400;
+}
+.theme-market-state {
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-full);
+  background: var(--desk-muted);
+  color: var(--desk-text-muted);
+  font-size: var(--text-2xs);
+  font-weight: 500;
+}
+.theme-market-state.is-installed {
+  background: var(--desk-primary-soft);
+  color: var(--desk-primary-text);
+}
+.theme-market-state.is-update {
+  background: var(--desk-info-soft);
+  color: var(--desk-info-text);
+}
+.theme-market-state.is-edited {
+  background: var(--desk-warning-soft);
+  color: var(--desk-warning-text);
+}
+
+.theme-market-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.theme-market-problem {
+  color: var(--desk-warning-text);
+}

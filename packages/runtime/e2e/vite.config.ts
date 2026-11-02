@@ -45,6 +45,7 @@ const types: Record<string, string> = {
   ".png": "image/png",
   ".webp": "image/webp",
   ".woff2": "font/woff2",
+  ".desk-theme": "application/json",
 };
 
 /**
@@ -72,10 +73,12 @@ export function pluginFiles(): Plugin {
           res.end();
           return;
         }
+        // The fixture theme market (?market=1 on the shell page names it https://market.test/).
+        const market = /^\/market\/(.+)$/.exec(url.pathname)?.[1];
         const match = /^\/plugins\/([^/]+)\/(.+)$/.exec(url.pathname);
-        if (!match) return next();
-        const [, id = "", path = ""] = match;
-        const base = plugins[id];
+        if (!match && market === undefined) return next();
+        const [, id = "", path = market ?? ""] = match ?? [];
+        const base = market === undefined ? plugins[id] : here("./themes/market");
         const file = base ? normalize(join(base, path)) : "";
         if (!base || !file.startsWith(base) || !existsSync(file) || !statSync(file).isFile()) {
           res.statusCode = 404;

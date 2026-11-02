@@ -13,7 +13,7 @@ use std::process::{Command, Output};
 
 use serde_json::Value;
 
-const KINDS: [&str; 5] = ["ui", "logic", "connector", "view", "policy"];
+const KINDS: [&str; 6] = ["ui", "logic", "connector", "view", "policy", "theme"];
 const WASM: [&str; 2] = ["logic", "connector"];
 
 fn repo() -> PathBuf {
@@ -75,13 +75,15 @@ fn wasm_target() -> bool {
     sysroot.join("lib/rustlib/wasm32-wasip2").is_dir()
 }
 
-/// `create-plugin <dir> --kind <kind>` into a fresh folder named after the kind.
+/// `create-plugin <dir> --kind <kind>` into a fresh folder named after the kind. Built outside the
+/// repository, the command learns where it is from `DESK_REPO`: a theme's test imports from it.
 fn scaffold(command: &Path, root: &Path, kind: &str) -> PathBuf {
     let dir = root.join(format!("my-{kind}"));
     run(Command::new("node")
         .arg(command)
         .arg(&dir)
-        .args(["--kind", kind]));
+        .args(["--kind", kind])
+        .env("DESK_REPO", repo()));
     dir
 }
 
@@ -145,7 +147,7 @@ fn every_kind_scaffolds_validates_and_passes_its_test() {
 
 #[test]
 fn the_examples_pass_their_tests() {
-    for example in ["ui", "view", "wasm", "connector"] {
+    for example in ["ui", "view", "wasm", "connector", "theme"] {
         let dir = repo().join(format!("examples/plugin-hello-{example}"));
         desk(&["plugin", "test", dir.to_str().unwrap()]);
     }

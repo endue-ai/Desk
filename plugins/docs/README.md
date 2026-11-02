@@ -31,7 +31,7 @@ jump. `fs.watch` runs `desk.files.changed`. `ui/hwp/` follows Hancom's published
 | `ui/zip.js`, `ui/cfb.js`, `ui/bytes.js`, `ui/xml.js`, `ui/numbers.js` | Containers, deflate (DecompressionStream), XML, list numbers |
 | `ui/ooxml/`, `ui/doc/`, `ui/odf/`, `ui/rtf/`, `ui/hwp/`, `ui/hwpx/`, `ui/abw/` | The full readers |
 | `ui/text/`, `ui/package.js` | WordPerfect and Works text, Pages and .gdoc |
-| `ui/view/` | Pages, renderer, outline and comments, find, links, progress, details |
+| `ui/view/`, `ui/style.css` | Pages, renderer, outline and comments, find, links, progress, details; the theme's `--desk-*` tokens only (`tests/theme.test.ts`), a page's paper, ink and type and a format's palette marked `theme: content` |
 
 ```bash
 pnpm exec vitest run plugins/docs

@@ -10,7 +10,9 @@ both. See [the design system guide](../../docs/design-system.md) and ADR 0022 fo
   `propertyOf(name)`, `tokensCss(theme?)`, `MOTION_TOKENS` and their types, `NAME`.
 - `@endue-ai/ui/theme` (DOM-free, not in `ui.js`): `compileTheme(theme, scheme, url?)` turns a theme
   plugin's block into tokens, fonts and preview colours; `gate(tokens, { high?, fallback? })` checks the
-  contrast pairs and fixes foregrounds by OKLCH lightness; `parseColor`, `contrast`, presets.
+  contrast pairs and fixes foregrounds by OKLCH lightness; `parseColor`, `contrast`, presets;
+  `extractColors({ width, height, data })` finds an image's five main colours (k-means in OKLab, seeded)
+  and `paletteFrom(colors, scheme)` turns them into a gated palette, the most saturated as primary.
 - `@endue-ai/ui/tokens.css`: default values; `@endue-ai/ui/base.css`: page, toolbar and feedback patterns.
 - `@endue-ai/ui/elements`: `defineElements()`, `elements` (by tag name) and their classes:
   `desk-button`, `desk-input`, `desk-list`, `desk-dialog`, `desk-menu`, `desk-toast`, `desk-table`,

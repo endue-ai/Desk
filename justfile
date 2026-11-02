@@ -34,7 +34,7 @@ test-unit:
 test-e2e *args:
     node scripts/e2e.mjs test {{args}}
 
-# Static checks: formatting, lints, types, workflows and specs (the Tauri app has its own recipe)
+# Static checks: formatting, lints, types, workflows, specs and the theme market (not the Tauri app)
 check:
     cargo fmt --all -- --check
     cargo clippy --all-targets --all-features -- -D warnings
@@ -43,6 +43,7 @@ check:
     @if command -v actionlint >/dev/null; then actionlint; else echo "actionlint not installed: skipped here, CI runs it"; fi
     node scripts/spec-lint.mjs
     node scripts/ui-lint.mjs
+    node scripts/theme-market.mjs
     pnpm exec spectral lint specs/brain/v0/openapi.yaml --fail-severity=warn --quiet
 
 # Lint the Tauri app crate (needs the platform webview SDK)

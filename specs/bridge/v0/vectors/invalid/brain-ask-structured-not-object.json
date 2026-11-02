@@ -1,0 +1,12 @@
+{
+  "target": "BridgeEvent",
+  "description": "structured is the tool's arguments, an object",
+  "instance": {
+    "event": "brain.turn",
+    "data": {
+      "turnId": "a1",
+      "kind": "completed",
+      "structured": "Warm Paper"
+    }
+  }
+}

@@ -25,6 +25,10 @@ browsers stay silent.
 Not yet: real endue ID, folder picker and connectors; the account-name question after sign-in; the
 "new device" and later-visit introductions; "Keep captions longer".
 
-Tests: `plugins/onboarding/tests` (vitest), `packages/runtime/e2e/onboarding.spec.ts` and
-`first-run-tour.spec.ts` (render-tree snapshots on a fake clock, every branch). Frame time:
-`just perf-opening`.
+Every colour, font, size, radius and duration comes from the theme's `--desk-*` tokens, so the first
+run follows dark, light and high contrast; Eris's orb takes the `eris*` tokens through
+`eris/soul-text.css`, and the agents wear the category colours `chart-2`, `chart-6` and `chart-5`.
+
+Tests: `plugins/onboarding/tests` (vitest; `theme.test.ts` for the tokens),
+`packages/runtime/e2e/onboarding.spec.ts` and `first-run-tour.spec.ts` (render-tree snapshots on a
+fake clock, every branch). Frame time: `just perf-opening`.

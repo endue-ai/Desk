@@ -31,8 +31,8 @@ const kinds = Object.keys(KINDS) as TemplateKind[];
 describe("the kinds", () => {
   const validate = manifestValidator();
 
-  it("are ui, logic, connector, view and policy, one entry each", () => {
-    expect(kinds).toEqual(["ui", "logic", "connector", "view", "policy"]);
+  it("are ui, logic, connector, view, policy and theme, one entry each", () => {
+    expect(kinds).toEqual(["ui", "logic", "connector", "view", "policy", "theme"]);
   });
 
   it.each(kinds)(
@@ -45,7 +45,7 @@ describe("the kinds", () => {
       expect(manifest.id).toBe("example.my-plugin");
       const tests = Object.keys(files).filter((path) => path.startsWith("tests/"));
       expect(tests).toHaveLength(1);
-      expect(tests[0]).toMatch(/^tests\/[a-z-]+\.test\.(js|json)$/);
+      expect(tests[0]).toMatch(/^tests\/[a-z-]+\.test\.(js|ts|json)$/);
       expect(files["README.md"]).toContain("plugin test");
     },
   );
