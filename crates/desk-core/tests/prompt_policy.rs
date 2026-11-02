@@ -240,12 +240,12 @@ fn a_call_that_asks_by_itself_is_denied_at_once_after_a_refusal() {
     let params = json!({ "target": "~/Documents/hello.md", "reveal": true, "scope": scope });
     let reveal = || call(&core, NOTES, "shell.open", params.clone());
 
-    let (first, prompts) = answering(&core, &deliveries, 1, &reveal, |_| no());
+    let (first, prompts) = answering(&core, &deliveries, 1, reveal, |_| no());
     assert_eq!(prompts.len(), 1);
     let first = first.into_iter().next().unwrap().unwrap_err();
     assert_eq!(first.code, ErrorCode::PermissionDenied);
 
-    let (again, prompts) = answering(&core, &deliveries, 1, &reveal, |_| no());
+    let (again, prompts) = answering(&core, &deliveries, 1, reveal, |_| no());
     assert!(prompts.is_empty(), "{prompts:?}");
     let again = again.into_iter().next().unwrap().unwrap_err();
     assert_eq!(again.code, ErrorCode::PermissionDenied);

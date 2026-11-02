@@ -44,6 +44,7 @@ mod media_types;
 mod paths;
 mod perm;
 mod plugins;
+mod prompt_policy;
 mod secrets;
 mod sessions;
 mod store;
