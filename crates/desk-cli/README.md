@@ -14,7 +14,7 @@ desk plugin list                       # id<TAB>status<TAB>enabled|disabled per 
 desk plugin enable|disable <id>        # prints ok
 desk perm list                         # grantId<TAB>caller<TAB>permission per grant
 desk perm revoke <grantId>             # prints ok
-desk perm log [--agent <id>]           # at, caller, decision, permission, target, reason (ADR 0072)
+desk perm log [--agent <id>]           # at, caller, decision, permission, target, reason or approval
 desk doctor --trace <file>             # a DESK_TRACE=1 trace.json: phases, totals, the five longest
 ```
 
