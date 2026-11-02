@@ -63,6 +63,10 @@ caller id, and it keeps the decision with the person.
   (`Core::grant` to built-in plugins, the runtime and the CLI) are made again at every start and are
   not logged. `desk perm log [--agent <id>]` prints it.
 * **The permissions view** lists agents under their own heading, apart from plugins, as "Agent <id>".
+* **brain.ask is not routed.** A `brain.ask` turn (ADR 0059) runs in a session of its own and its tool
+  call is the asker's answer; the core routes only the desk conversation's turns, so an `agentId` on
+  that call runs nothing. An agent may call `brain.ask`, `theme.*` or `update.*` itself like any
+  bridge method: `brain:ask`, `theme:manage` and `update:manage` are capped as any permission is.
 
 ### Consequences
 
@@ -83,7 +87,7 @@ caller id, and it keeps the decision with the person.
 
 ## More Information
 
-Issue #337, built on #336 (the prompt policy). Code: `crates/desk-core/src/{agents,agent_tools,
+Issue #337, built on #336 (the prompt policy, merged as #371). Code: `crates/desk-core/src/{agents,agent_tools,
 perm_log}.rs`, `Core::check` in `core_perm.rs`, `examples/brain-echo` (`tool <name> as <agent>:`),
 `crates/desk-cli` (`perm log`), `plugins/permissions`. Specs: `specs/bridge/v0` (`CallerId`,
 `RefusalReason`, the `perm` channel), `specs/init/v0` (`agents`), `specs/brain/v0` (`agentId`).
