@@ -118,14 +118,14 @@ describe("an edit", () => {
     const bytes = fixture("mixed-endings.csv");
     const doc = edited("mixed-endings.csv", [
       [2, 1, "20"],
-      [4, 0, "its"],
+      [4, 0, "it is"],
       [5, 0, "empty"],
       [6, 1, "40"],
     ]);
     const after = doc.save().bytes;
     assertMinimalEdit(bytes, after, [
       { find: "beta,2\r", bytes: "beta,20\r" },
-      { find: '"it"s', bytes: '"its"' },
+      { find: '"it"s', bytes: '"it is"' },
       { find: "\n,\r\n", bytes: "\nempty,\r\n" },
       { find: '"4"\r', bytes: '"40"\r' },
     ]);
