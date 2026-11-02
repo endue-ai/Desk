@@ -9,6 +9,7 @@ elsewhere; a binding's `mac` key replaces `key` on macOS.
 | `Mod+K`, `Mod+Shift+P` | `desk.palette.open` (M-x) |
 | `Escape` | `desk.keys.quit` (C-g: hide the palette, dismiss a notification) |
 | `Mod+/` | `desk.keys.list` |
+| `Mod+Shift+/` | `desk.describe.open` (C-h: the next key, or a pick, described) |
 | `Mod+B`, `Mod+W` | `desk.buffers.switch`, `desk.buffers.close` |
 | `Mod+Alt+ArrowRight`, `Mod+Alt+ArrowLeft` | `desk.buffers.next`, `desk.buffers.previous` |
 | `Mod+O`, `Mod+S`, `Mod+Shift+O` | `desk.files.open`, `desk.files.save`, `desk.files.recent` |

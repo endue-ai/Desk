@@ -10,7 +10,7 @@ and `src/` mounts the desk shell (`mountDesk`) and connects the bridge.
 | `src/open-files.ts`, `src-tauri/src/open_files.rs` | Startup and running OS file-open queue, consumed after runtime readiness |
 | `src/shell-bridge.ts` | The shell's `ShellBridge` over the core: store, perm, `brain.*` and the agent directory |
 | `src/startup.ts`, `src-tauri/src/trace.rs` | `DESK_TRACE=1`: the start-up trace in the data folder (`trace.json`, `crates/desk-trace`), the runtime's phases sent with `desk_trace` |
-| `src-tauri/src/lib.rs` | Builds the core; the runtime (`desk`) holds `plugin:manage`, `cmd:invoke`, `brain:converse`, `connector:manage` and `view:manage` |
+| `src-tauri/src/lib.rs` | Builds the core; the runtime (`desk`) holds `plugin:manage`, `cmd:invoke`, `perm:manage` (desk.describe, ADR 0075), `brain:converse`, `connector:manage` and `view:manage` |
 | `src-tauri/src/commands/` | Bridge forwarding, readiness logging (the trace's ready line) and consuming OS file-open paths |
 | `src-tauri/capabilities/` | Main-window bridge/readiness/start-up phases, event listeners and native file picker |
 | `src-tauri/tauri.conf.json` | Window, strict CSP, bundle; identifier `ai.endue.desk` |

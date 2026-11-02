@@ -189,7 +189,8 @@ whether it succeeded, with `bytesWritten` for a write and the `error` when it fa
 say when `cmd.undo` (#276) can take a write back.
 
 **plugin.list** returns every installed plugin with its status (`ready` or `failed` with a reason), whether
-it is enabled and built in, its file revision and its manifest. It needs `plugin:manage`.
+it is enabled and built in, its file revision, its manifest and the folder it was installed from (an
+absolute path, so `desk.describe` can name and reveal its plugin.json). It needs `plugin:manage`.
 
 **plugin.setEnabled** turns a plugin on or off and remembers the choice; the runtime mounts or unmounts
 its surfaces when `plugin.changed` arrives. It needs `plugin:manage`. `plugin.changed` events (installed,
@@ -204,7 +205,8 @@ survive restarts.
 
 **init.get** returns the setup in force from init.yaml: the profile to start in, and the settings whose
 key starts with the caller's id and a dot (`desk.` for the runtime itself). When the file is not in
-force, `problem` says why. Like the store, it needs no scope: callers see only their own settings.
+force, `problem` says why. `file` says where init.yaml is, rooted at `~` inside the home folder. Like
+the store, it needs no scope: callers see only their own settings.
 
 **brain.say** sends what the person typed to the brain in the desk's session and returns a local
 `turnId` at once. The answer arrives as `brain.turn` events with that id: `started`, `delta` (more text),

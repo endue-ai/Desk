@@ -95,13 +95,19 @@ fn init_get_hands_each_caller_only_its_own_settings() {
     )
     .unwrap();
     let core = core().with_init_file(init);
+    // Where init.yaml is goes to every caller alike, rooted at `~` (the core's home is the temp
+    // folder here); the settings differ.
+    let file = format!("~/{}/init.yaml", dir.file_name().unwrap().to_string_lossy());
     let ask = |caller: &str| {
-        call(
+        let mut answer = call(
             &core,
             caller,
             json!({ "id": 1, "method": "init.get", "params": {} }),
         )
-        .unwrap()
+        .unwrap();
+        let named = answer.as_object_mut().unwrap().remove("file");
+        assert_eq!(named, Some(json!(file)), "init.get's file for {caller}");
+        answer
     };
     assert_eq!(
         ask("desk"),
