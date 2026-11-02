@@ -1,5 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
-import { openShell } from "./shell-helpers";
+import { openShell, step } from "./shell-helpers";
 
 // Describe (TS-06, TS-07): a sentence goes to the brain through brain.ask, which the browser core
 // answers as examples/brain-echo does; the proposal is previewed on the whole desk and Apply keeps it
@@ -43,8 +43,11 @@ test("describe a theme in a sentence, see it on the whole desk and apply it", as
   expect(before).not.toBe(CREAM);
 });
 
-test("Eris hands a look request to Describe, which runs it", async ({ page }) => {
+test("Eris hands a look request to Describe, which runs it, and takes it back in one click", async ({
+  page,
+}) => {
   await openShell(page, "?lang=en");
+  const before = await rootVar(page, "--desk-background");
   await page.keyboard.type("make it feel like warm paper");
   // The composer's last choice says it to Eris.
   await page.keyboard.press("ArrowUp");
@@ -58,4 +61,25 @@ test("Eris hands a look request to Describe, which runs it", async ({ page }) =>
   );
   await expect(studio.locator(".theme-proposal")).toContainText("Warm Paper");
   await expect.poll(() => rootVar(page, "--desk-background")).toBe(CREAM);
+
+  // Not what was meant: the sentence goes to Eris's conversation, and the desk is as it was.
+  await studio.locator('[data-key="describe-to-eris"]').click();
+  await expect(studio).toBeHidden();
+  await expect.poll(() => rootVar(page, "--desk-background")).toBe(before);
+  await step(page, 3000);
+  await expect(page.locator(".soul-live")).toHaveText(
+    'I\'ll look into "make it feel like warm paper" and tell you.',
+  );
+});
+
+test("a request about the person's own app stays in Eris's conversation", async ({ page }) => {
+  await openShell(page, "?lang=en");
+  await page.keyboard.type("change the theme of my React app to dark mode");
+  await page.keyboard.press("ArrowUp");
+  await page.keyboard.press("Enter");
+  await step(page, 3000);
+  await expect(page.locator(".soul-live")).toHaveText(
+    'I\'ll look into "change the theme of my React app to dark mode" and tell you.',
+  );
+  await expect(page.getByRole("dialog", { name: "Themes" })).toBeHidden();
 });

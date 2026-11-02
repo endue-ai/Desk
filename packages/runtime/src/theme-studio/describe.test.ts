@@ -112,6 +112,7 @@ function setup(status?: BrainStatusResult) {
   const io: ThemeIo = { save, exportTheme: vi.fn(), importBundle: vi.fn(), remove: vi.fn() };
   const back = vi.fn();
   const tune = vi.fn();
+  const toEris = vi.fn();
   const panel = createDescribe({
     themes,
     lang: () => "en",
@@ -119,11 +120,12 @@ function setup(status?: BrainStatusResult) {
     open: vi.fn(),
     back,
     tune,
+    toEris,
   });
   document.body.replaceChildren(panel.element);
   const turn = (turnId: string, kind: "completed" | "error" | "offline" | "online", more = {}) =>
     stub.emit({ event: "brain.turn", data: { turnId, kind, ...more } });
-  return { panel, asks: asked, turn, stub, themes, hub, style, save, back, tune };
+  return { panel, asks: asked, turn, stub, themes, hub, style, save, back, tune, toEris };
 }
 
 /** Wait for the `n`th ask, and for its answer to reach the panel. */
@@ -253,6 +255,25 @@ describe("Describe", () => {
     key("describe-discard")?.click();
     expect(themes.previewing()).toBeUndefined();
     expect(document.querySelector(".theme-proposal")).toBeNull();
+  });
+
+  it("sends Eris's sentence back to her conversation in one click, dropping the preview", async () => {
+    const { panel, asks, turn, themes, toEris } = setup();
+    panel.start({ text: "make it feel like warm paper", run: true, from: "eris" });
+    await answered(asks, 1);
+    turn("a1", "completed", { structured: WARM });
+    expect(themes.previewing()).toBe("local.draft");
+    say("make it warmer", "describe-refine");
+    await answered(asks, 2);
+    key("describe-to-eris")?.click();
+    expect(toEris).toHaveBeenCalledWith("make it feel like warm paper");
+    expect(themes.previewing()).toBeUndefined();
+    // The refinement still on its way is dropped with it.
+    turn("a2", "completed", { structured: WARM });
+    expect(themes.previewing()).toBeUndefined();
+    // Opened from the gallery, there is no one to send it back to.
+    panel.start({ text: "warm paper" });
+    expect(key("describe-to-eris")).toBeNull();
   });
 
   it("says the brain gave no theme when it answers in words, and previews nothing", async () => {

@@ -11,6 +11,8 @@ describe("a look request said to Eris", () => {
       "따뜻한 느낌으로 바꿔줘",
       "분위기를 차분한 숲처럼 해줘",
       "이끼 느낌으로",
+      "make the desk feel like a rainy café",
+      "데스크를 비 오는 카페 느낌으로",
     ])
       expect(isLookRequest(text), text).toBe(true);
   });
@@ -27,6 +29,21 @@ describe("a look request said to Eris", () => {
       "I feel like pizza",
       "I want to feel better",
       "이 테마 바꿔 줘",
+    ])
+      expect(isLookRequest(text), text).toBe(false);
+  });
+
+  it("is not about something else the person is building: an app, a page, code, a framework, theirs", () => {
+    for (const text of [
+      "make the login page look like Stripe's",
+      "change the theme of my React app to dark mode",
+      "set up a theme provider for my Next.js project",
+      "I want this function to look cleaner",
+      "make the button look more like a link",
+      "이 코드 좀 더 깔끔한 느낌으로 바꿔줘",
+      "랜딩 페이지를 애플 느낌으로 만들어줘",
+      "make our dashboard feel calmer",
+      "우리 서비스를 따뜻한 느낌으로 바꿔줘",
     ])
       expect(isLookRequest(text), text).toBe(false);
   });
