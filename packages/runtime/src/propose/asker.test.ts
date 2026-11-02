@@ -1,4 +1,4 @@
-import { type BridgeEvent, BridgeClient, browserStub, type StubHandlers } from "@endue-ai/bridge";
+import { BridgeClient, type BridgeEvent, browserStub, type StubHandlers } from "@endue-ai/bridge";
 import { describe, expect, it } from "vitest";
 import { browserCore } from "../bridge/core";
 import { type AskRequest, createAsker, jsonIn } from "./asker";
@@ -13,11 +13,15 @@ const request = (prompt = "Make a note about lunch."): AskRequest => ({
   tool: TOOL,
   compact: TOOL.schema,
 });
-const said = (core: { stub: { log: ReadonlyArray<{ request: { method: string; params: unknown } }> } }) =>
+const said = (core: {
+  stub: { log: ReadonlyArray<{ request: { method: string; params: unknown } }> };
+}) =>
   core.stub.log
     .filter((entry) => entry.request.method === "brain.say")
     .map((entry) => (entry.request.params as { text: string }).text);
-const asked = (core: { stub: { log: ReadonlyArray<{ request: { method: string; params: unknown } }> } }) =>
+const asked = (core: {
+  stub: { log: ReadonlyArray<{ request: { method: string; params: unknown } }> };
+}) =>
   core.stub.log
     .filter((entry) => (entry.request.method as string) === "brain.ask")
     .map((entry) => entry.request.params);
@@ -78,7 +82,10 @@ describe("the asker", () => {
   });
 
   it("a brain.turn error rejects with its sentence; turn events that arrive before the call's answer are kept", async () => {
-    const failing = browserCore({ manifests: [], brain: { answer: () => ({ error: "No credits left." }) } });
+    const failing = browserCore({
+      manifests: [],
+      brain: { answer: () => ({ error: "No credits left." }) },
+    });
     await expect(createAsker(failing.client).ask(request())).rejects.toThrow("No credits left.");
 
     // A core whose brain answers before brain.say itself has answered with the turn's id.

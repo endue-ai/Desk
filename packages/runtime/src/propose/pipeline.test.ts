@@ -156,7 +156,8 @@ describe("desk.propose for views", () => {
     expect(second).toContain("Your last proposal");
     expect(second).toContain('"title":"Events this week"');
     expect(m.runs.map((run) => run.id)).toEqual(["desk.views.preview", "desk.views.preview"]);
-    expect((m.runs[1]?.args as { view: { title: string } }).view.title).toBe("Work this week");
+    const again = m.runs[1]?.args as { view: { title: string } } | undefined;
+    expect(again?.view.title).toBe("Work this week");
     expect(m.calls("view.save")).toEqual([]);
     expect(m.said).toEqual([]);
     expect(m.states).toEqual(["thinking", "thinking", "idle"]);
@@ -184,8 +185,13 @@ describe("desk.propose for views", () => {
   it("another proposal while the brain is still answering is refused with a notice", async () => {
     const m = setup([BOARD, BOARD]);
     const first = m.proposals.propose("view", SENTENCE);
-    expect(await m.proposals.propose("view", "make a list of my notes")).toEqual({ status: "busy" });
-    expect(m.notices.at(-1)).toMatchObject({ level: "info", title: "Eris is still making the last one" });
+    expect(await m.proposals.propose("view", "make a list of my notes")).toEqual({
+      status: "busy",
+    });
+    expect(m.notices.at(-1)).toMatchObject({
+      level: "info",
+      title: "Eris is still making the last one",
+    });
     expect(await first).toMatchObject({ status: "applied" });
     await expect(m.proposals.propose("ui", SENTENCE)).rejects.toThrow(/no kind ui/);
   });

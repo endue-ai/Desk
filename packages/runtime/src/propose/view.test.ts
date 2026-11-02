@@ -76,7 +76,11 @@ describe("the view kind", () => {
         "catalog.get": () => ({
           components: ["list", "agenda"],
           connectors: [
-            { id: "desk.fixtures", instances: ["default"], kinds: [{ kind: "event", fields: ["start"] }] },
+            {
+              id: "desk.fixtures",
+              instances: ["default"],
+              kinds: [{ kind: "event", fields: ["start"] }],
+            },
           ],
           commands: [],
         }),

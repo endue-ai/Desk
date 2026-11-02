@@ -5,6 +5,7 @@
 
 import type { CommandInfo } from "../commands";
 import { clamp01, cubicBezier, easeOutExpo } from "../ease";
+import { proposalOf } from "../propose/talk";
 import { match } from "./commands";
 import type { ShellCtx } from "./context";
 import { h, listen, render } from "./dom";
@@ -67,7 +68,10 @@ export function mountComposer(root: HTMLElement, ctx: ShellCtx): () => void {
         const run = () => void ctx.runtime.commands.run(c.id).catch(() => {});
         return { label: c.title, run, ...(key ? { key } : {}) };
       }),
-      { label: ctx.tr("sayTo", { x: text.trim() }), run: () => void send(text) },
+      {
+        label: ctx.tr(proposalOf(text) ? "makeWith" : "sayTo", { x: text.trim() }),
+        run: () => void send(text),
+      },
     ];
   };
 
@@ -135,6 +139,14 @@ export function mountComposer(root: HTMLElement, ctx: ShellCtx): () => void {
       })
       .then(() => ghost.remove());
     ctx.eris.setState("thinking");
+    // "make …", "build …", "show me …" and "/make …": Eris makes it, and says her line when done.
+    const proposal = proposalOf(text);
+    if (proposal && ctx.runtime.commands.has("desk.propose")) {
+      await ctx.runtime.commands
+        .run("desk.propose", proposal)
+        .catch(() => ctx.eris.setState("idle"));
+      return;
+    }
     const reply = await ctx.bridge.brain.say(text);
     ctx.eris.say(reply.text, reply.words);
   };
