@@ -1,0 +1,18 @@
+{
+  "target": "PluginManifest",
+  "description": "a theme with a dark palette only: every other layer keeps its default",
+  "instance": {
+    "id": "example.ember",
+    "version": "0.1.0",
+    "kind": "theme",
+    "name": "Ember",
+    "theme": {
+      "dark": {
+        "colors": {
+          "background": "#1a1210",
+          "primary": "#ff8a4c"
+        }
+      }
+    }
+  }
+}

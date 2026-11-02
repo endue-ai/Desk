@@ -191,12 +191,13 @@ impl PluginRegistry {
     }
 }
 
-/// Whether the plugin is a library: files other plugins import, never turned off.
+/// Whether the plugin is always on: a library (files other plugins import) or a theme (values the
+/// desk.theme.active setting picks, not the enabled flag). Neither runs code, so neither is turned off.
 fn library(entry: &Entry) -> bool {
     entry
         .manifest
         .as_ref()
-        .is_some_and(|manifest| manifest.kind == PluginKind::Library)
+        .is_some_and(|manifest| matches!(manifest.kind, PluginKind::Library | PluginKind::Theme))
 }
 
 /// Whether a plugin's manifest asks to stay off until the desk needs it.

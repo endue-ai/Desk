@@ -401,6 +401,8 @@ export interface PluginManifest {
   /** A view plugin's view files, one View each, relative to the plugin folder. */
   views?: ViewPath[];
   connector?: ConnectorManifest;
+  /** A theme plugin's theme: its layers and the font and image files it brings, relative to the plugin folder. */
+  theme?: ThemePackage;
 }
 
 /** Reverse-domain style id with at least one dot, lowercase, for example endue.eris or example.hello-ui. */
@@ -409,8 +411,16 @@ export type PluginId = string;
 /** Semantic version, for example 0.1.0 or 1.2.3-beta.1. */
 export type Version = string;
 
-/** ui runs in a sandboxed iframe, logic in a Wasm instance, tool as an MCP server inside the VM. policy runs no code: it only contributes data (ADR 0017). library runs no code of its own either: it is files other plugins import, served at /<id>/... like any plugin's, never mounted and never turned off. connector brings an app's data in as items, as a Wasm component or an MCP server; view runs no code either: it is one or more views (ADR 0032). */
-export type PluginKind = "ui" | "logic" | "tool" | "policy" | "library" | "connector" | "view";
+/** ui runs in a sandboxed iframe, logic in a Wasm instance, tool as an MCP server inside the VM. policy runs no code: it only contributes data (ADR 0017). library runs no code of its own either: it is files other plugins import, served at /<id>/... like any plugin's, never mounted and never turned off. connector brings an app's data in as items, as a Wasm component or an MCP server; view runs no code either: it is one or more views (ADR 0032). theme runs no code: it is a theme block and its font and image files, chosen with desk.theme.active (ADR 0056). */
+export type PluginKind =
+  | "ui"
+  | "logic"
+  | "tool"
+  | "policy"
+  | "library"
+  | "connector"
+  | "view"
+  | "theme";
 
 /** Path to the entry file, relative to the plugin folder, without .. segments. */
 export type EntryPath = string;
@@ -431,6 +441,138 @@ export interface Surface {
 
 /** Where the compositor puts the surface. */
 export type SurfacePlacement = "center" | "left" | "right" | "bottom" | "overlay" | "floating";
+
+/** A theme: the layers every scheme shares (type, shape, motion) and one variant per scheme. At least one of light and dark; the desk's own theme stands in for a missing one. */
+export interface ThemePackage {
+  /** Who made it. */
+  author?: string;
+  /** An SPDX licence expression for the theme and its assets, for example CC0-1.0 or OFL-1.1. */
+  license?: string;
+  /** Words a gallery filters by, for example warm, paper or high-contrast. */
+  tags?: string[];
+  origin?: ThemeOrigin;
+  /** Up to five colours that stand for the theme on a gallery card, the most telling first. Taken from the variants when absent. */
+  preview?: ThemeColor[];
+  type?: ThemeType;
+  shape?: ThemeShape;
+  motion?: ThemeMotion;
+  light?: ThemeVariant;
+  dark?: ThemeVariant;
+}
+
+/** Where a theme came from: the sentence it was described with, and the theme it started from. */
+export interface ThemeOrigin {
+  prompt?: string;
+  base?: PluginId;
+}
+
+/** One scheme's values: its palette (and high-contrast palette), material, backdrop and terminal colours. */
+export interface ThemeVariant {
+  colors?: ThemeColors;
+  /** The palette's changes under high contrast. When absent the desk derives them from the palette, so the theme keeps its character at 7:1. */
+  contrast?: ThemeColors;
+  material?: ThemeMaterial;
+  backdrop?: ThemeBackdrop;
+  terminal?: ThemeTerminal;
+}
+
+/** Token name (camelCase, as in @endue-ai/ui: background, text, primary, chart1, the shell's and Eris's tokens) to a value. Missing roles keep the desk's. */
+export type ThemeColors = Record<string, ThemeValue>;
+
+/** A CSS value for one token: a colour, or a shadow for the shadow tokens. No url(), braces, semicolons or angle brackets. */
+export type ThemeValue = string;
+
+/** A CSS colour: #rgb, #rgba, #rrggbb, #rrggbbaa, rgb(), rgba(), hsl(), hsla() or oklch(). */
+export type ThemeColor = string;
+
+/** What surfaces are made of: how opaque, how much they blur what is behind, grain, edge and elevation. */
+export interface ThemeMaterial {
+  /** Surface opacity, 0.6 to 1 (default 1). Below 1 the backdrop shows through, blurred. */
+  opacity?: number;
+  /** Backdrop blur in px, 0 to 24 (default 0). */
+  blur?: number;
+  /** Grain over surfaces, 0 to 0.15 (default 0). */
+  noise?: number;
+  /** Border width in px, 0 to 2 (default 1). */
+  border?: number;
+  shadow?: ThemeShadow;
+}
+
+/** Elevation: none, soft (the default) or strong. Shadow tokens in colors win. */
+export type ThemeShadow = "none" | "soft" | "strong";
+
+/** What the desk shows behind its windows: a colour, a gradient or an image, and the glow at the top. */
+export interface ThemeBackdrop {
+  color?: ThemeColor;
+  /** Two to four colours, drawn as a linear gradient at angle. */
+  gradient?: ThemeColor[];
+  /** The gradient's angle in degrees (default 180). */
+  angle?: number;
+  image?: ThemeImagePath;
+  fit?: ThemeImageFit;
+  glow?: ThemeColor;
+}
+
+/** cover fills the desk with the image; tile repeats it at its own size. */
+export type ThemeImageFit = "cover" | "tile";
+
+/** The terminal's sixteen ANSI colours, black to bright white. */
+export interface ThemeTerminal {
+  ansi: ThemeColor[];
+}
+
+/** Typefaces and the type scale, shared by both schemes. */
+export interface ThemeType {
+  sans?: ThemeFontStack;
+  mono?: ThemeFontStack;
+  /** Multiplies every text size, 0.85 to 1.25 (default 1). */
+  scale?: number;
+  /** Letter spacing of body text in em, -0.02 to 0.05 (default 0). */
+  tracking?: number;
+  /** Font files the theme brings, loaded for the shell and every plugin page. */
+  fonts?: ThemeFont[];
+}
+
+/** A CSS font-family list, for example "Literata", Georgia, serif. */
+export type ThemeFontStack = string;
+
+/** One font file of the theme. */
+export interface ThemeFont {
+  family: string;
+  src: ThemeFontPath;
+  /** A weight or a variable font's range, for example 400 or 200 900. */
+  weight?: string;
+  style?: ThemeFontStyle;
+}
+
+/** normal or italic. */
+export type ThemeFontStyle = "normal" | "italic";
+
+/** A .woff2 file relative to the plugin folder, without .. segments. */
+export type ThemeFontPath = string;
+
+/** A .png, .jpg, .jpeg or .webp file relative to the plugin folder, without .. segments. */
+export type ThemeImagePath = string;
+
+/** Corner and density presets, shared by both schemes. */
+export interface ThemeShape {
+  radius?: ThemeRadius;
+  density?: ThemeDensity;
+}
+
+/** none (square), subtle (2, 4, 6 px), soft (4, 8, 12 px, the default) or round (6, 12, 18 px) for the small, medium and large radius. */
+export type ThemeRadius = "none" | "subtle" | "soft" | "round";
+
+/** Control heights: compact (24 to 44 px), comfortable (28 to 48 px, the default) or spacious (32 to 52 px). */
+export type ThemeDensity = "compact" | "comfortable" | "spacious";
+
+/** How things move, shared by both schemes. Reduced motion still stops everything. */
+export interface ThemeMotion {
+  personality?: ThemeMotionPersonality;
+}
+
+/** snappy (short, sharp), smooth (the default) or calm (long, gentle). */
+export type ThemeMotionPersonality = "snappy" | "smooth" | "calm";
 
 /** What an item is. record is any other shape, described by the JSON Schema it names. */
 export type ItemKind =

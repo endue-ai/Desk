@@ -1,0 +1,22 @@
+{
+  "target": "ThemeType",
+  "description": "a variable font with a weight range and a larger type scale",
+  "instance": {
+    "sans": "\"Inter\", sans-serif",
+    "scale": 1.25,
+    "tracking": -0.02,
+    "fonts": [
+      {
+        "family": "Inter",
+        "src": "fonts/inter.woff2",
+        "weight": "100 900"
+      },
+      {
+        "family": "Inter",
+        "src": "fonts/inter-italic.woff2",
+        "weight": "100 900",
+        "style": "italic"
+      }
+    ]
+  }
+}

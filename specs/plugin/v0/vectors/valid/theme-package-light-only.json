@@ -1,0 +1,16 @@
+{
+  "target": "ThemePackage",
+  "description": "a light variant alone: the desk's dark theme stands in for the other scheme",
+  "instance": {
+    "light": {
+      "colors": {
+        "background": "oklch(0.98 0.01 90)",
+        "text": "rgb(29, 26, 22)"
+      }
+    },
+    "shape": {
+      "radius": "none",
+      "density": "compact"
+    }
+  }
+}

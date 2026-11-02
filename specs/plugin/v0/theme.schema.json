@@ -1,0 +1,277 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://endue.ai/specs/plugin/v0/theme.schema.json",
+  "title": "theme v0",
+  "description": "The theme block of a plugin of kind theme (ADR 0056, docs/ko/theme-requirements.md): six layers of values that the runtime compiles into the desk's --desk-* tokens, plus terminal colours. A theme runs no code and asks for no permission; every layer has a default, so a theme with a palette alone is complete.",
+  "$defs": {
+    "ThemePackage": {
+      "description": "A theme: the layers every scheme shares (type, shape, motion) and one variant per scheme. At least one of light and dark; the desk's own theme stands in for a missing one.",
+      "type": "object",
+      "properties": {
+        "author": {
+          "description": "Who made it.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "license": {
+          "description": "An SPDX licence expression for the theme and its assets, for example CC0-1.0 or OFL-1.1.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "tags": {
+          "description": "Words a gallery filters by, for example warm, paper or high-contrast.",
+          "type": "array",
+          "items": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,31}$" },
+          "maxItems": 12,
+          "uniqueItems": true
+        },
+        "origin": { "$ref": "#/$defs/ThemeOrigin" },
+        "preview": {
+          "description": "Up to five colours that stand for the theme on a gallery card, the most telling first. Taken from the variants when absent.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/ThemeColor" },
+          "minItems": 1,
+          "maxItems": 5
+        },
+        "type": { "$ref": "#/$defs/ThemeType" },
+        "shape": { "$ref": "#/$defs/ThemeShape" },
+        "motion": { "$ref": "#/$defs/ThemeMotion" },
+        "light": { "$ref": "#/$defs/ThemeVariant" },
+        "dark": { "$ref": "#/$defs/ThemeVariant" }
+      },
+      "anyOf": [
+        { "properties": { "light": true }, "required": ["light"] },
+        { "properties": { "dark": true }, "required": ["dark"] }
+      ],
+      "additionalProperties": false
+    },
+    "ThemeOrigin": {
+      "description": "Where a theme came from: the sentence it was described with, and the theme it started from.",
+      "type": "object",
+      "properties": {
+        "prompt": { "type": "string", "minLength": 1, "maxLength": 2000 },
+        "base": { "$ref": "plugin.schema.json#/$defs/PluginId" }
+      },
+      "additionalProperties": false
+    },
+    "ThemeVariant": {
+      "description": "One scheme's values: its palette (and high-contrast palette), material, backdrop and terminal colours.",
+      "type": "object",
+      "properties": {
+        "colors": { "$ref": "#/$defs/ThemeColors" },
+        "contrast": {
+          "description": "The palette's changes under high contrast. When absent the desk derives them from the palette, so the theme keeps its character at 7:1.",
+          "$ref": "#/$defs/ThemeColors"
+        },
+        "material": { "$ref": "#/$defs/ThemeMaterial" },
+        "backdrop": { "$ref": "#/$defs/ThemeBackdrop" },
+        "terminal": { "$ref": "#/$defs/ThemeTerminal" }
+      },
+      "additionalProperties": false
+    },
+    "ThemeColors": {
+      "description": "Token name (camelCase, as in @endue-ai/ui: background, text, primary, chart1, the shell's and Eris's tokens) to a value. Missing roles keep the desk's.",
+      "type": "object",
+      "propertyNames": { "type": "string", "pattern": "^[a-z][a-zA-Z0-9]{0,63}$" },
+      "additionalProperties": { "$ref": "#/$defs/ThemeValue" },
+      "maxProperties": 200
+    },
+    "ThemeValue": {
+      "description": "A CSS value for one token: a colour, or a shadow for the shadow tokens. No url(), braces, semicolons or angle brackets.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200,
+      "pattern": "^(?![\\s\\S]*url\\()[^;{}<>\\\\]+$"
+    },
+    "ThemeColor": {
+      "description": "A CSS colour: #rgb, #rgba, #rrggbb, #rrggbbaa, rgb(), rgba(), hsl(), hsla() or oklch().",
+      "type": "string",
+      "maxLength": 80,
+      "pattern": "^(#[0-9a-fA-F]{3,4}|#[0-9a-fA-F]{6}|#[0-9a-fA-F]{8}|(rgba?|hsla?|oklch)\\([0-9a-zA-Z.,%/ +-]*\\))$"
+    },
+    "ThemeMaterial": {
+      "description": "What surfaces are made of: how opaque, how much they blur what is behind, grain, edge and elevation.",
+      "type": "object",
+      "properties": {
+        "opacity": {
+          "description": "Surface opacity, 0.6 to 1 (default 1). Below 1 the backdrop shows through, blurred.",
+          "type": "number",
+          "minimum": 0.6,
+          "maximum": 1
+        },
+        "blur": {
+          "description": "Backdrop blur in px, 0 to 24 (default 0).",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 24
+        },
+        "noise": {
+          "description": "Grain over surfaces, 0 to 0.15 (default 0).",
+          "type": "number",
+          "minimum": 0,
+          "maximum": 0.15
+        },
+        "border": {
+          "description": "Border width in px, 0 to 2 (default 1).",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2
+        },
+        "shadow": { "$ref": "#/$defs/ThemeShadow" }
+      },
+      "additionalProperties": false
+    },
+    "ThemeShadow": {
+      "description": "Elevation: none, soft (the default) or strong. Shadow tokens in colors win.",
+      "type": "string",
+      "enum": ["none", "soft", "strong"]
+    },
+    "ThemeBackdrop": {
+      "description": "What the desk shows behind its windows: a colour, a gradient or an image, and the glow at the top.",
+      "type": "object",
+      "properties": {
+        "color": { "$ref": "#/$defs/ThemeColor" },
+        "gradient": {
+          "description": "Two to four colours, drawn as a linear gradient at angle.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/ThemeColor" },
+          "minItems": 2,
+          "maxItems": 4
+        },
+        "angle": {
+          "description": "The gradient's angle in degrees (default 180).",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 360
+        },
+        "image": { "$ref": "#/$defs/ThemeImagePath" },
+        "fit": { "$ref": "#/$defs/ThemeImageFit" },
+        "glow": { "$ref": "#/$defs/ThemeColor" }
+      },
+      "additionalProperties": false
+    },
+    "ThemeImageFit": {
+      "description": "cover fills the desk with the image; tile repeats it at its own size.",
+      "type": "string",
+      "enum": ["cover", "tile"]
+    },
+    "ThemeTerminal": {
+      "description": "The terminal's sixteen ANSI colours, black to bright white.",
+      "type": "object",
+      "properties": {
+        "ansi": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ThemeColor" },
+          "minItems": 16,
+          "maxItems": 16
+        }
+      },
+      "required": ["ansi"],
+      "additionalProperties": false
+    },
+    "ThemeType": {
+      "description": "Typefaces and the type scale, shared by both schemes.",
+      "type": "object",
+      "properties": {
+        "sans": { "$ref": "#/$defs/ThemeFontStack" },
+        "mono": { "$ref": "#/$defs/ThemeFontStack" },
+        "scale": {
+          "description": "Multiplies every text size, 0.85 to 1.25 (default 1).",
+          "type": "number",
+          "minimum": 0.85,
+          "maximum": 1.25
+        },
+        "tracking": {
+          "description": "Letter spacing of body text in em, -0.02 to 0.05 (default 0).",
+          "type": "number",
+          "minimum": -0.02,
+          "maximum": 0.05
+        },
+        "fonts": {
+          "description": "Font files the theme brings, loaded for the shell and every plugin page.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/ThemeFont" },
+          "maxItems": 8
+        }
+      },
+      "additionalProperties": false
+    },
+    "ThemeFontStack": {
+      "description": "A CSS font-family list, for example \"Literata\", Georgia, serif.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 300,
+      "pattern": "^[A-Za-z0-9 \"',._-]+$"
+    },
+    "ThemeFont": {
+      "description": "One font file of the theme.",
+      "type": "object",
+      "properties": {
+        "family": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80,
+          "pattern": "^[A-Za-z0-9 ._-]+$"
+        },
+        "src": { "$ref": "#/$defs/ThemeFontPath" },
+        "weight": {
+          "description": "A weight or a variable font's range, for example 400 or 200 900.",
+          "type": "string",
+          "pattern": "^[1-9]00( [1-9]00)?$"
+        },
+        "style": { "$ref": "#/$defs/ThemeFontStyle" }
+      },
+      "required": ["family", "src"],
+      "additionalProperties": false
+    },
+    "ThemeFontStyle": {
+      "description": "normal or italic.",
+      "type": "string",
+      "enum": ["normal", "italic"]
+    },
+    "ThemeFontPath": {
+      "description": "A .woff2 file relative to the plugin folder, without .. segments.",
+      "type": "string",
+      "pattern": "^(?!/)(?!.*(^|/)\\.\\.(/|$))[A-Za-z0-9._/-]+\\.woff2$",
+      "maxLength": 200
+    },
+    "ThemeImagePath": {
+      "description": "A .png, .jpg, .jpeg or .webp file relative to the plugin folder, without .. segments.",
+      "type": "string",
+      "pattern": "^(?!/)(?!.*(^|/)\\.\\.(/|$))[A-Za-z0-9._/-]+\\.(png|jpe?g|webp)$",
+      "maxLength": 200
+    },
+    "ThemeShape": {
+      "description": "Corner and density presets, shared by both schemes.",
+      "type": "object",
+      "properties": {
+        "radius": { "$ref": "#/$defs/ThemeRadius" },
+        "density": { "$ref": "#/$defs/ThemeDensity" }
+      },
+      "additionalProperties": false
+    },
+    "ThemeRadius": {
+      "description": "none (square), subtle (2, 4, 6 px), soft (4, 8, 12 px, the default) or round (6, 12, 18 px) for the small, medium and large radius.",
+      "type": "string",
+      "enum": ["none", "subtle", "soft", "round"]
+    },
+    "ThemeDensity": {
+      "description": "Control heights: compact (24 to 44 px), comfortable (28 to 48 px, the default) or spacious (32 to 52 px).",
+      "type": "string",
+      "enum": ["compact", "comfortable", "spacious"]
+    },
+    "ThemeMotion": {
+      "description": "How things move, shared by both schemes. Reduced motion still stops everything.",
+      "type": "object",
+      "properties": { "personality": { "$ref": "#/$defs/ThemeMotionPersonality" } },
+      "additionalProperties": false
+    },
+    "ThemeMotionPersonality": {
+      "description": "snappy (short, sharp), smooth (the default) or calm (long, gentle).",
+      "type": "string",
+      "enum": ["snappy", "smooth", "calm"]
+    }
+  }
+}
