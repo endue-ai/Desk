@@ -61,9 +61,9 @@ const css = `
 /**
  * `<desk-edit-tier tier="lossless" format="CSV">`: what saving does to this file, shown before the
  * first edit. `tier` is `lossless`, `text` or `read-only` (missing or unknown reads as read-only);
- * `format` prefixes the label ("CSV · Lossless editing"). `label` and `detail` replace the words, for
- * translations. The detail is the label's tooltip; screen readers read the host once, as a note named
- * "CSV: Lossless editing. Saving changes only …".
+ * `format` prefixes the label ("CSV · Lossless editing"). `label` and `detail` replace the words,
+ * for translations. The detail is the label's tooltip; screen readers read the host once, as a note
+ * named "CSV: Lossless editing. Saving changes only …".
  */
 export class DeskEditTier extends Base {
   static readonly styles = css;

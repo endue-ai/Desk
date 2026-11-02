@@ -1,7 +1,7 @@
-// Byte checks for file plugins that edit (ADR 0071). A `lossless` format serializes an unchanged file
-// to the same bytes, and an edit changes only the bytes it must. This file imports nothing, touches no
-// DOM and uses only erasable TypeScript, so vitest, a browser and plain Node (type stripping) load it
-// alike: `import { assertRoundTrip } from ".../plugin-sdk/src/testing/round-trip.ts"`.
+// Byte checks for file plugins that edit (ADR 0071). A `lossless` format serializes an unchanged
+// file to the same bytes, and an edit changes only the bytes it must. This file imports nothing,
+// touches no DOM and uses only erasable TypeScript, so vitest, a browser and plain Node (type
+// stripping) load it alike: `import { assertRoundTrip } from ".../src/testing/round-trip.ts"`.
 
 /** Bytes, or text taken as UTF-8. */
 export type BytesLike = Uint8Array | ArrayBuffer | string;
@@ -60,8 +60,8 @@ export function assertRoundTrip<P, S extends BytesLike | PromiseLike<BytesLike>>
 }
 
 /**
- * Fail unless `after` is `before` with each span of `edit` replaced (by its `bytes`, or by anything)
- * and every other byte the same, in order. Offsets count bytes of `before`. The message names the
+ * Fail unless `after` is `before` with each span of `edit` replaced (by its `bytes`, or by
+ * anything) and every other byte the same, in order. Offsets count bytes of `before`. The message names the
  * first change outside the spans, windows around it and the changes outside, at most eight.
  */
 export function assertMinimalEdit(
@@ -299,7 +299,7 @@ function firstOutside(h: Hunk, spans: readonly Span[]): number {
   return covering ? covering.end : h.bs;
 }
 
-/** Where byte `x` of before is in after: a span's start takes in a change that touches it, its end too. */
+/** Where byte `x` of before is in after; a span's start or end takes in a change touching it. */
 function toAfter(hunks: readonly Hunk[], x: number, side: "start" | "end"): number {
   let shift = 0;
   for (const h of hunks) {
