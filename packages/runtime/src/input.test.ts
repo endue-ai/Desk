@@ -82,6 +82,7 @@ describe("ShortcutRouter", () => {
     const captured: string[] = [];
     router.captureNext((combo) => captured.push(combo));
     expect(router.handle(key("Shift"))).toBe(false);
+    expect(router.handle({ ...key("?", { meta: true, shift: true }), repeat: true })).toBe(true);
     expect(router.handle(key("s", { meta: true }))).toBe(true);
     expect(router.handle(key("s", { meta: true }))).toBe(true);
     expect(captured).toEqual(["Meta+S"]);

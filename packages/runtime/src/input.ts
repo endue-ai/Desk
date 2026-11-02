@@ -7,6 +7,8 @@ export interface KeyLike {
   ctrlKey: boolean;
   altKey: boolean;
   shiftKey: boolean;
+  /** A held key repeating, when the event says so. */
+  repeat?: boolean;
 }
 
 export type Platform = "mac" | "other";
@@ -157,6 +159,8 @@ export class ShortcutRouter {
     const combo = comboOf(event);
     const capture = this.#capture;
     if (capture) {
+      // The chord that started the wait, still held and repeating, is not the next key.
+      if (event.repeat) return true;
       this.#capture = undefined;
       capture(combo);
       return true;
