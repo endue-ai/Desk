@@ -1,0 +1,8 @@
+{
+  "target": "FsWriteResult",
+  "description": "fs.write over a file whose bytes differ answers the version that keeps the old bytes",
+  "instance": {
+    "bytesWritten": 128,
+    "version": "1793520000000-3fa9c1"
+  }
+}

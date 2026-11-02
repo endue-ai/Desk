@@ -200,6 +200,8 @@ impl Core {
             R::FsWrite(r) => (r.id, self.fs_write(caller, r.params)),
             R::FsWatch(r) => (r.id, self.fs_watch(caller, r.params)),
             R::FsUrl(r) => (r.id, self.fs_url(caller, r.params)),
+            R::FsHistory(r) => (r.id, unsupported("fs.history")),
+            R::FsRestore(r) => (r.id, unsupported("fs.restore")),
             R::ProcSpawn(r) => (r.id, self.proc_spawn(caller, r.params)),
             R::ProcWrite(r) => (r.id, self.proc_write(caller, r.params)),
             R::ProcResize(r) => (r.id, self.proc_resize(caller, r.params)),

@@ -61,7 +61,10 @@ impl Core {
                 .map_err(|e| error(ErrorCode::InvalidParams, format!("not base64: {e}")))?,
         };
         let bytes_written = sysfs::write(&path, &bytes, create_dirs).map_err(io_error)?;
-        json(FsWriteResult { bytes_written })
+        json(FsWriteResult {
+            bytes_written,
+            version: None,
+        })
     }
 
     pub(crate) fn fs_watch(&self, caller: &str, params: FsWatchParams) -> Answer {

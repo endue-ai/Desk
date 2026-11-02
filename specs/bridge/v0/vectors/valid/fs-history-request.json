@@ -1,0 +1,17 @@
+{
+  "target": "BridgeRequest",
+  "description": "fs.history lists the kept versions of one note under an fs:read scope",
+  "instance": {
+    "id": 21,
+    "method": "fs.history",
+    "params": {
+      "path": "~/Notes/plan.md",
+      "scope": {
+        "permission": "fs:read",
+        "paths": [
+          "~/Notes/**"
+        ]
+      }
+    }
+  }
+}

@@ -71,6 +71,14 @@ impl fs::Host for State {
     fn write(&mut self, path: String, contents: Vec<u8>, create_dirs: bool) -> Result<u64, Error> {
         self.imports.fs_write(&path, &contents, create_dirs)
     }
+
+    fn history(&mut self, _path: String, _limit: Option<u32>) -> Result<Vec<fs::Version>, Error> {
+        Err(unsupported("fs.history"))
+    }
+
+    fn restore(&mut self, _path: String, _version_id: String) -> Result<u64, Error> {
+        Err(unsupported("fs.restore"))
+    }
 }
 
 impl net::Host for State {
@@ -182,5 +190,13 @@ impl log::Host for State {
         count: Option<u32>,
     ) -> Result<Vec<LogEntry>, Error> {
         self.imports.log_tail(channel.as_deref(), count)
+    }
+}
+
+/// A bridge method the host does not back yet.
+fn unsupported(method: &str) -> Error {
+    Error {
+        code: crate::bindings::ErrorCode::Unsupported,
+        message: format!("{method} is not served to plugins yet"),
     }
 }
