@@ -80,7 +80,13 @@ fn plugin_list_names_each_plugins_folder() {
             ("desk.keys".to_owned(), bridge_path(&keys)),
         ]
     );
-    assert!(folders.iter().all(|(_, folder)| folder.starts_with('/')));
+    // Absolute on every platform (`/…`, or `C:/…` on Windows) and with forward slashes, as the
+    // bridge's `Path` wants.
+    assert!(
+        folders
+            .iter()
+            .all(|(_, folder)| Path::new(folder).is_absolute() && !folder.contains('\\'))
+    );
 }
 
 #[test]
