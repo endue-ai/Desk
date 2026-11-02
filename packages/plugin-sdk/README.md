@@ -37,4 +37,4 @@ What a plugin imports. Layer: Plugins (`docs/architecture.md`). Guide: `docs/plu
   `assertRoundTrip(bytes, parse, serialize)`, `assertMinimalEdit(before, after, edit)` (ADR 0071).
 
 ## Testing
-`pnpm exec vitest run packages/plugin-sdk`
+`pnpm exec vitest run packages/plugin-sdk`; `desk plugin test` runs plugins on `vitest.plugin.config.ts`.

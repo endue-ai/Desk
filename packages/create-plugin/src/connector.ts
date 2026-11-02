@@ -3,24 +3,29 @@
 import type { PluginManifest } from "@endue-ai/bridge";
 import connectorWit from "../../../specs/wit/desk-connector.wit?raw";
 import hostWit from "../../../specs/wit/desk-host.wit?raw";
+import { checkSection, heading } from "./readme";
+import {
+  buildSection,
+  CARGO_CONFIG,
+  cargoToml,
+  crateOf,
+  gitignore,
+  oneLine,
+  rustString,
+} from "./rust";
 import type { PluginOptions } from "./template";
-
-/** The wit-bindgen version examples/plugin-hello-connector builds with. */
-const WIT_BINDGEN = "0.63";
 
 /** Every file of the connector folder, keyed by its path relative to the folder. */
 export function renderConnector(options: PluginOptions): Record<string, string> {
-  // The id's last segment names the Cargo package; the library, and so the component, has `_`.
-  const pkg = options.id.slice(options.id.lastIndexOf(".") + 1);
-  const lib = pkg.replaceAll("-", "_");
-  const entry = `build/wasm32-wasip2/release/${lib}.wasm`;
+  const crate = crateOf(options.id);
   return {
-    "plugin.json": manifest(options, entry),
-    "README.md": readme(options, entry),
-    "Cargo.toml": cargoToml(options, pkg, lib),
+    "plugin.json": manifest(options, crate.entry),
+    "README.md": readme(options, crate.entry),
+    "Cargo.toml": cargoToml(options, crate),
     ".cargo/config.toml": CARGO_CONFIG,
-    ".gitignore": gitignore(lib),
+    ".gitignore": gitignore(crate.lib),
     "src/lib.rs": libRs(options),
+    "tests/sync.test.json": syncTest(options),
     "wit/desk-host.wit": hostWit,
     "wit/desk-connector.wit": connectorWit,
   };
@@ -44,27 +49,28 @@ function manifest({ id, name, description }: PluginOptions, entry: string): stri
   return `${JSON.stringify(value, null, 2)}\n`;
 }
 
-const FENCE = "```";
+/** One sync of a new instance on the harness, which brings the one note. */
+function syncTest({ id, name }: PluginOptions): string {
+  const value = {
+    steps: [{ connect: { instance: "default" } }, { sync: { instance: "default" } }],
+    expect: {
+      items: [
+        {
+          id: "hello",
+          kind: "note",
+          title: `Hello from ${name}`,
+          source: { connector: id, instance: "default" },
+        },
+      ],
+    },
+  };
+  return `${JSON.stringify(value, null, 2)}\n`;
+}
 
-function readme({ id, name, description }: PluginOptions, entry: string): string {
+function readme(options: PluginOptions, entry: string): string {
   return [
-    `# ${name}`,
-    "",
-    description ?? "A Desk connector.",
-    "",
-    `Id: \`${id}\`. Ids are lowercase and reverse-domain; use a domain you own before you publish.`,
-    "",
-    "## Build it",
-    "",
-    "Once, add the Wasm target; then build in this folder:",
-    "",
-    `${FENCE}bash`,
-    "rustup target add wasm32-wasip2",
-    "cargo build --release",
-    FENCE,
-    "",
-    `The component lands in \`${entry}\`, where \`plugin.json\` points.`,
-    "",
+    ...heading(options, "A Desk connector."),
+    ...buildSection(entry),
     "## What it does",
     "",
     "`src/lib.rs` implements the `desk:connector` world in `wit/` (`specs/wit` of the Desk repository).",
@@ -79,65 +85,22 @@ function readme({ id, name, description }: PluginOptions, entry: string): string
     "| --- | --- |",
     "| `plugin.json` | The manifest (specs/plugin v0): kind `connector`, binding `wasm`, one `note` resource, pull |",
     "| `src/lib.rs` | The connector: `sync`, `query`, `act` and `status` |",
+    "| `tests/sync.test.json` | Its test: connect an instance, sync it, expect the note |",
     "| `wit/` | The WIT it builds to: `desk:host` and `desk:connector` |",
     "| `.cargo/config.toml` | Builds for `wasm32-wasip2` into `build/` |",
     "",
-    "## Check it",
-    "",
-    `${FENCE}bash`,
-    "cargo run -p desk-cli -- plugin validate /path/to/this/folder",
-    FENCE,
-    "",
+    ...checkSection(
+      [
+        "`plugin test` runs `tests/*.test.json` on a scripted desk: it connects an instance, syncs it",
+        "and checks the items it brought. Script what your code reads (`fs.list`, `net.fetch`, ...)",
+        'under `answers`, as `{ "method", "params", "result" }`. Build the component first.',
+      ].join("\n"),
+    ),
   ].join("\n");
 }
 
-function cargoToml({ name, description }: PluginOptions, pkg: string, lib: string): string {
-  return `[package]
-name = "${pkg}"
-description = ${JSON.stringify(description ?? name)}
-version = "0.1.0"
-edition = "2024"
-publish = false
-
-[lib]
-name = "${lib}"
-crate-type = ["cdylib"]
-
-[dependencies]
-wit-bindgen = "${WIT_BINDGEN}"
-
-[profile.release]
-opt-level = "s"
-lto = true
-codegen-units = 1
-panic = "abort"
-strip = true
-
-# Its own workspace, so it builds alone wherever the folder lives.
-[workspace]
-`;
-}
-
-const CARGO_CONFIG = `# The README's build command (\`cargo build --release\`) in this folder builds the component
-# plugin.json's entry names.
-[build]
-target = "wasm32-wasip2"
-target-dir = "build"
-`;
-
-function gitignore(lib: string): string {
-  return `# Everything cargo builds except the component the entry names, so the folder installs as it is.
-/build/*
-!/build/wasm32-wasip2/
-/build/wasm32-wasip2/*
-!/build/wasm32-wasip2/release/
-/build/wasm32-wasip2/release/*
-!/build/wasm32-wasip2/release/${lib}.wasm
-`;
-}
-
 function libRs({ name }: PluginOptions): string {
-  return `//! ${name.replaceAll(/\s+/g, " ")}: a Desk connector, a Wasm component of the \`desk:connector\` world (\`wit/\`). Desk
+  return `//! ${oneLine(name)}: a Desk connector, a Wasm component of the \`desk:connector\` world (\`wit/\`). Desk
 //! calls \`sync\` on the manifest's interval and stamps each item's \`source\`.
 
 wit_bindgen::generate!({
@@ -197,16 +160,4 @@ fn unsupported(message: &str) -> Error {
 
 export!(Hello);
 `;
-}
-
-/** `text` as a Rust string literal. */
-function rustString(text: string): string {
-  const escaped = [...text]
-    .map((c) => {
-      if (c === "\\" || c === '"') return `\\${c}`;
-      const code = c.codePointAt(0) ?? 0;
-      return code < 0x20 || code === 0x7f ? `\\u{${code.toString(16)}}` : c;
-    })
-    .join("");
-  return `"${escaped}"`;
 }
