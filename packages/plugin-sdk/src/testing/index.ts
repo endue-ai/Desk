@@ -78,6 +78,8 @@ export interface TestHost {
   readonly ran: ReadonlyArray<{ name: string; args: unknown }>;
   /** Every key the plugin passed on to the desk. */
   readonly keys: readonly KeyPress[];
+  /** How the plugin's start went: `desk:ready`, or `desk:failed` with why (ADR 0061). */
+  readonly started: { ok: true } | { ok: false; message: string } | undefined;
   /** Every setting: the plugin's own by key, other callers' as `owner/key`. */
   readonly settings: Record<string, unknown>;
   /** The plugin's grants, oldest first. */
@@ -163,6 +165,7 @@ export function createTestHost(options: TestHostOptions): TestHost {
   let visible: boolean | undefined;
   let nextCall = 1;
   const keys: KeyPress[] = [];
+  let started: TestHost["started"];
   const replies = new Map<number, { resolve(v: unknown): void; reject(e: unknown): void }>();
 
   const toPlugin = (message: HostMessage) => queueMicrotask(() => handler?.(message));
@@ -184,6 +187,10 @@ export function createTestHost(options: TestHostOptions): TestHost {
         replies.delete(message.call);
         if (message.ok) reply?.resolve(message.result);
         else reply?.reject(new Error(`${message.error?.code}: ${message.error?.message}`));
+      } else if (message.type === "desk:ready") {
+        started ??= { ok: true };
+      } else if (message.type === "desk:failed") {
+        started ??= { ok: false, message: message.message };
       } else {
         batches++;
         calls.push(...message.calls);
@@ -210,6 +217,9 @@ export function createTestHost(options: TestHostOptions): TestHost {
     calls,
     get batches() {
       return batches;
+    },
+    get started() {
+      return started;
     },
     get closed() {
       return closed;

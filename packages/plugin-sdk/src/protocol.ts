@@ -26,7 +26,11 @@ export type PluginMessage =
   | { type: "desk:close" }
   | { type: "desk:visible"; visible: boolean }
   | ({ type: "desk:reply" } & CommandOutcome)
-  | { type: "desk:key"; key: KeyPress };
+  | { type: "desk:key"; key: KeyPress }
+  /** The plugin mounted: its first ready (ADR 0061). */
+  | { type: "desk:ready" }
+  /** The plugin failed to start: mount threw, or the frame did before ready. */
+  | { type: "desk:failed"; message: string };
 
 /** Messages the runtime sends to a plugin frame. */
 export type HostMessage =
