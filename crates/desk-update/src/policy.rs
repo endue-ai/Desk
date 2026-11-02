@@ -10,7 +10,7 @@
 use semver::Version;
 use sha2::{Digest, Sha256};
 
-use crate::manifest::{Index, Listed, Release};
+use crate::manifest::{Index, Listed, Release, rollout};
 
 /// The build to move to next, if any. `bucket` is this desk's rollout bucket for a version (0–99).
 pub fn choose<'a>(
@@ -26,7 +26,7 @@ pub fn choose<'a>(
         .filter(|(version, listed)| {
             version > current
                 && listed.targets.iter().any(|t| targets.contains(t))
-                && bucket(&listed.version) < listed.rollout.min(100)
+                && bucket(&listed.version) < rollout(listed)
         })
         .collect();
     candidates.sort_by(|a, b| b.0.cmp(&a.0));
