@@ -29,3 +29,9 @@ tests run in `just test-unit`.
 `ui-lint.mjs` (in `just check`) keeps every UI on the theme's tokens: no literal colours, fonts, text
 sizes, radii or durations outside `theme: content` marks, as a ratchet over
 `ui-lint-baseline/<target>.json` (`docs/design-system.md`, ADR 0056). Its test runs in `just test-unit`.
+
+`theme-textures.mjs` draws the raster tiles the built-in showcase themes lay behind the desk: a paper tile
+for `plugins/theme-paper` and scanlines for `plugins/theme-amber`, one per scheme, from a seeded
+generator and `node:zlib` only (no downloads). Run `node scripts/theme-textures.mjs` after changing it and
+commit the PNGs; its test, in `just test-unit`, checks that it draws the same bytes twice, writes valid
+PNGs and that the committed tiles hold the pixels it draws.
