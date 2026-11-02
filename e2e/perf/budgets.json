@@ -1,5 +1,5 @@
 {
-  "$comment": "Performance budgets. Baselines are first measurements; nightly fails when a value regresses past allowedRegression. Record with: just perf-opening record",
+  "$comment": "Performance budgets. Baselines are first measurements; a check fails when a value regresses past its section's allowedRegression, and a section without a baseline is reported, not failed. openingFrameTime: just perf-opening (record with: just perf-opening record). startup, idleMemory, inputLatency: just perf-app on the Linux .deb, nightly in the e2e workflow's perf job; their baselines come from the CI runner (just perf-app record, or budgets.json from the job's artifact). targetMs are RT-16's targets, printed beside the values, not gates.",
   "openingFrameTime": {
     "p50Ms": 17,
     "p95Ms": 18,
@@ -8,6 +8,33 @@
     "engine": "WebKit (Playwright)",
     "platform": "darwin-arm64",
     "recorded": "2026-10-28",
+    "allowedRegression": 0.25
+  },
+  "startup": {
+    "readyMs": null,
+    "firstFrameMs": null,
+    "targetMs": 1200,
+    "sessionSurfaces": 6,
+    "runs": 3,
+    "platform": null,
+    "recorded": null,
+    "allowedRegression": 0.25
+  },
+  "idleMemory": {
+    "rssMb": null,
+    "afterMs": 300000,
+    "profile": "default",
+    "platform": null,
+    "recorded": null,
+    "allowedRegression": 0.25
+  },
+  "inputLatency": {
+    "paletteP95Ms": null,
+    "focusP95Ms": null,
+    "tries": 20,
+    "targetMs": 16,
+    "platform": null,
+    "recorded": null,
     "allowedRegression": 0.25
   }
 }

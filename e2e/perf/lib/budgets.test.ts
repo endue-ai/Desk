@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { type Budgets, compare, failed, MEASURES, report, withBaselines } from "./budgets";
 
@@ -118,5 +119,15 @@ describe("budgets", () => {
     expect(after.inputLatency?.focusP95Ms).toBe(20);
     // The input is not changed.
     expect(before.startup?.readyMs).toBeNull();
+  });
+
+  it("the committed budgets.json keeps the opening baseline and gates nothing until recorded", () => {
+    const committed = JSON.parse(
+      readFileSync(new URL("../budgets.json", import.meta.url), "utf8"),
+    ) as Budgets;
+    expect(committed.openingFrameTime).toMatchObject({ p95Ms: 18, allowedRegression: 0.25 });
+    const verdicts = compare(committed, measured);
+    expect(verdicts.map((v) => v.status)).toEqual(Array(5).fill("no-baseline"));
+    expect(verdicts.map((v) => v.target)).toEqual([1200, 1200, null, 16, 16]);
   });
 });
