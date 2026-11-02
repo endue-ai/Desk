@@ -29,6 +29,7 @@ environment values stay masked. A shell opens in the terminal plugin (`endue.ter
 | `ui/logs.js`, `watch.js`, `live.js` | Logs that follow; the event stream and alerts; refreshes and resource use |
 | `ui/docker.js`, `engine.js`, `lists.js`, `desk.js`, `commands.js`, `schemas.js` | The controller, its reads, the desk's commands and the plugin's |
 | `ui/view*.js`, `keys.js`, `dom.js` | The DOM: tabs, a tree with a cursor and folding, the logs pane, the keys |
+| `ui/style.css` | The look, from the theme's `--desk-*` tokens only: states are success, warning, danger (`tests/theme.test.ts`) |
 
 ```bash
 pnpm exec vitest run plugins/docker
