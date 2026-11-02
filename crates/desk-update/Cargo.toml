@@ -28,6 +28,8 @@ name = "https"
 required-features = ["https"]
 
 [dev-dependencies]
+# Judges the specs/update/v0 vectors by their schemas (tests/vectors.rs).
+jsonschema.workspace = true
 # Signs test data with keys made at test time; nothing key-like is committed.
 minisign = "0.9"
 

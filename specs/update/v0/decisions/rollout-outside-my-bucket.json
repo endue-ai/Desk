@@ -1,0 +1,39 @@
+{
+  "description": "0.2.0 reaches 45 % of desks and this desk's bucket for it is 45, so it waits; 0.1.5 reaches everyone",
+  "current": "0.1.0",
+  "targets": ["linux-x86_64-deb", "linux-x86_64"],
+  "salt": "6d0c7e1f42a95b38c4d2e7f01a3b5c6d8e9f0a1b2c3d4e5f60718293a4b5c6d7",
+  "buckets": {
+    "0.2.0": 45,
+    "0.1.5": 52,
+    "0.1.0": 16
+  },
+  "index": {
+    "channel": "stable",
+    "serial": 9,
+    "generated": "2026-11-20T09:15:00Z",
+    "releases": [
+      {
+        "version": "0.2.0",
+        "rollout": 45,
+        "targets": ["linux-x86_64-deb", "linux-x86_64"],
+        "release": "releases/0.2.0/release.json"
+      },
+      {
+        "version": "0.1.5",
+        "rollout": 100,
+        "targets": ["linux-x86_64-deb", "linux-x86_64"],
+        "release": "releases/0.1.5/release.json"
+      },
+      {
+        "version": "0.1.0",
+        "rollout": 100,
+        "targets": ["linux-x86_64-deb", "linux-x86_64"],
+        "release": "releases/0.1.0/release.json"
+      }
+    ]
+  },
+  "expect": {
+    "next": "0.1.5"
+  }
+}

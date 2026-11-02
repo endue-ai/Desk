@@ -1,0 +1,10 @@
+{
+  "target": "ReleaseListing",
+  "description": "a build with no updater artifact for any target is not listed",
+  "instance": {
+    "version": "0.2.0",
+    "rollout": 100,
+    "targets": [],
+    "release": "releases/0.2.0/release.json"
+  }
+}

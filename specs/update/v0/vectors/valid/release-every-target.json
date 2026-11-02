@@ -1,0 +1,72 @@
+{
+  "target": "ReleaseManifest",
+  "description": "a canary build for the four targets, notes on its commit, as scripts/release-manifest.mjs writes it",
+  "instance": {
+    "version": "0.2.1-pre.48",
+    "notes": "https://github.com/endue-ai/Desk/commit/51d0aa7c0b1e2d3f4a5b6c7d8e9f0a1b2c3d4e5f",
+    "pub_date": "2026-11-20T09:12:00Z",
+    "platforms": {
+      "darwin-aarch64": {
+        "url": "https://releases.endue.ai/desk/releases/0.2.1-pre.48/endue-desk_0.2.1-pre.48_darwin-aarch64.app.tar.gz",
+        "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVRZjZMUkNHQTlpNXdDcG45dmVjdG9yc29ubHkwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwPT0KdHJ1c3RlZCBjb21tZW50OiB0aW1lc3RhbXA6MTc2MzYyOTkyMAlmaWxlOmVuZHVlLWRlc2tfMC4yLjBfbGludXgteDg2XzY0LmRlYgl2ZXJzaW9uOjAuMi4wCnZlY3RvcnNvbmx5dmVjdG9yc29ubHl2ZWN0b3Jzb25seXZlY3RvcnNvbmx5dmVjdG9yc29ubHl2ZWN0b3Jzb25seXZlY3RvcnNvbmx5dmVjdG9yc29ubHk9PQo="
+      },
+      "darwin-aarch64-app": {
+        "url": "https://releases.endue.ai/desk/releases/0.2.1-pre.48/endue-desk_0.2.1-pre.48_darwin-aarch64.app.tar.gz",
+        "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVRZjZMUkNHQTlpNXdDcG45dmVjdG9yc29ubHkwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwPT0KdHJ1c3RlZCBjb21tZW50OiB0aW1lc3RhbXA6MTc2MzYyOTkyMAlmaWxlOmVuZHVlLWRlc2tfMC4yLjBfbGludXgteDg2XzY0LmRlYgl2ZXJzaW9uOjAuMi4wCnZlY3RvcnNvbmx5dmVjdG9yc29ubHl2ZWN0b3Jzb25seXZlY3RvcnNvbmx5dmVjdG9yc29ubHl2ZWN0b3Jzb25seXZlY3RvcnNvbmx5dmVjdG9yc29ubHk9PQo="
+      },
+      "darwin-x86_64": {
+        "url": "https://releases.endue.ai/desk/releases/0.2.1-pre.48/endue-desk_0.2.1-pre.48_darwin-x86_64.app.tar.gz",
+        "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVRZjZMUkNHQTlpNXdDcG45dmVjdG9yc29ubHkwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwPT0KdHJ1c3RlZCBjb21tZW50OiB0aW1lc3RhbXA6MTc2MzYyOTkyMAlmaWxlOmVuZHVlLWRlc2tfMC4yLjBfbGludXgteDg2XzY0LmRlYgl2ZXJzaW9uOjAuMi4wCnZlY3RvcnNvbmx5dmVjdG9yc29ubHl2ZWN0b3Jzb25seXZlY3RvcnNvbmx5dmVjdG9yc29ubHl2ZWN0b3Jzb25seXZlY3RvcnNvbmx5dmVjdG9yc29ubHk9PQo="
+      },
+      "darwin-x86_64-app": {
+        "url": "https://releases.endue.ai/desk/releases/0.2.1-pre.48/endue-desk_0.2.1-pre.48_darwin-x86_64.app.tar.gz",
+        "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVRZjZMUkNHQTlpNXdDcG45dmVjdG9yc29ubHkwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwPT0KdHJ1c3RlZCBjb21tZW50OiB0aW1lc3RhbXA6MTc2MzYyOTkyMAlmaWxlOmVuZHVlLWRlc2tfMC4yLjBfbGludXgteDg2XzY0LmRlYgl2ZXJzaW9uOjAuMi4wCnZlY3RvcnNvbmx5dmVjdG9yc29ubHl2ZWN0b3Jzb25seXZlY3RvcnNvbmx5dmVjdG9yc29ubHl2ZWN0b3Jzb25seXZlY3RvcnNvbmx5dmVjdG9yc29ubHk9PQo="
+      },
+      "windows-x86_64-nsis": {
+        "url": "https://releases.endue.ai/desk/releases/0.2.1-pre.48/endue-desk_0.2.1-pre.48_windows-x86_64-setup.exe",
+        "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVRZjZMUkNHQTlpNXdDcG45dmVjdG9yc29ubHkwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwPT0KdHJ1c3RlZCBjb21tZW50OiB0aW1lc3RhbXA6MTc2MzYyOTkyMAlmaWxlOmVuZHVlLWRlc2tfMC4yLjBfbGludXgteDg2XzY0LmRlYgl2ZXJzaW9uOjAuMi4wCnZlY3RvcnNvbmx5dmVjdG9yc29ubHl2ZWN0b3Jzb25seXZlY3RvcnNvbmx5dmVjdG9yc29ubHl2ZWN0b3Jzb25seXZlY3RvcnNvbmx5dmVjdG9yc29ubHk9PQo="
+      },
+      "windows-x86_64": {
+        "url": "https://releases.endue.ai/desk/releases/0.2.1-pre.48/endue-desk_0.2.1-pre.48_windows-x86_64-setup.exe",
+        "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVRZjZMUkNHQTlpNXdDcG45dmVjdG9yc29ubHkwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwPT0KdHJ1c3RlZCBjb21tZW50OiB0aW1lc3RhbXA6MTc2MzYyOTkyMAlmaWxlOmVuZHVlLWRlc2tfMC4yLjBfbGludXgteDg2XzY0LmRlYgl2ZXJzaW9uOjAuMi4wCnZlY3RvcnNvbmx5dmVjdG9yc29ubHl2ZWN0b3Jzb25seXZlY3RvcnNvbmx5dmVjdG9yc29ubHl2ZWN0b3Jzb25seXZlY3RvcnNvbmx5dmVjdG9yc29ubHk9PQo="
+      },
+      "linux-x86_64-deb": {
+        "url": "https://releases.endue.ai/desk/releases/0.2.1-pre.48/endue-desk_0.2.1-pre.48_linux-x86_64.deb",
+        "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVRZjZMUkNHQTlpNXdDcG45dmVjdG9yc29ubHkwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwPT0KdHJ1c3RlZCBjb21tZW50OiB0aW1lc3RhbXA6MTc2MzYyOTkyMAlmaWxlOmVuZHVlLWRlc2tfMC4yLjBfbGludXgteDg2XzY0LmRlYgl2ZXJzaW9uOjAuMi4wCnZlY3RvcnNvbmx5dmVjdG9yc29ubHl2ZWN0b3Jzb25seXZlY3RvcnNvbmx5dmVjdG9yc29ubHl2ZWN0b3Jzb25seXZlY3RvcnNvbmx5dmVjdG9yc29ubHk9PQo="
+      }
+    },
+    "desk": {
+      "commit": "51d0aa7c0b1e2d3f4a5b6c7d8e9f0a1b2c3d4e5f",
+      "artifacts": {
+        "darwin-aarch64": {
+          "sha256": "c64a58c6a5a22d6e941221d6b2265f7ca288435cfe7fd2fb841f7edfcf8bff80",
+          "size": 50000
+        },
+        "darwin-aarch64-app": {
+          "sha256": "c64a58c6a5a22d6e941221d6b2265f7ca288435cfe7fd2fb841f7edfcf8bff80",
+          "size": 50000
+        },
+        "darwin-x86_64": {
+          "sha256": "2cae08fd659f07c92abee985342b78f2a7ddd85cac1b4b31d08ec5a0f3db9529",
+          "size": 49000
+        },
+        "darwin-x86_64-app": {
+          "sha256": "2cae08fd659f07c92abee985342b78f2a7ddd85cac1b4b31d08ec5a0f3db9529",
+          "size": 49000
+        },
+        "windows-x86_64-nsis": {
+          "sha256": "243c2d73de47ff9d736870b396f39a968d5cf4dd693c2bda94f2faa59197e3d3",
+          "size": 49000
+        },
+        "windows-x86_64": {
+          "sha256": "243c2d73de47ff9d736870b396f39a968d5cf4dd693c2bda94f2faa59197e3d3",
+          "size": 49000
+        },
+        "linux-x86_64-deb": {
+          "sha256": "8893423da0636e2e8e75e92d0d1a8d57ba46154a1e1f1ae6fbf7469f7a6fa8a2",
+          "size": 41000
+        }
+      }
+    }
+  }
+}
