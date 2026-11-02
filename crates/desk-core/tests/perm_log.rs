@@ -39,7 +39,10 @@ fn grants_refusals_and_agent_calls_go_to_the_perm_channel() {
         "agents:\n  mira:\n    allow:\n      - { permission: fs:write, paths: [\"~/Notes/**\"] }\n",
     )
     .unwrap();
-    let core = Core::new(roots(&home)).with_init_file(file);
+    // Nobody holds perm:manage, so the Prompter approves the agent's write (ADR 0078).
+    let core = Core::new(roots(&home))
+        .with_prompter(SayYes)
+        .with_init_file(file);
     grant(&core, "desk", json!({ "permission": "log:read" }));
     let notes = json!({ "permission": "fs:write", "paths": ["~/Notes/**"] });
     let granted_id = grant(&core, MIRA, notes.clone());

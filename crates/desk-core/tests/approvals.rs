@@ -216,6 +216,7 @@ fn granted_for(core: &Core, deliveries: &Receiver<Delivery>, caller: &str, permi
 #[test]
 fn a_spawn_shows_its_command_line_and_a_fetch_its_url() {
     let home = home("approve-actions");
+    notes(&home, "a.md", "old\n");
     let (core, deliveries) = core_with(&home, "");
     grant(
         &core,

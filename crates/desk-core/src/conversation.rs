@@ -70,8 +70,11 @@ impl Default for BrainOptions {
 
 /// What runs the tools the brain asks for: the core, once it routes them (CORE-14).
 pub(crate) trait Tools: Send + Sync {
-    /// The tool's output, and whether it failed.
-    fn run(&self, call: &ToolCall) -> (Value, bool);
+    /// The tool's output, and whether it failed. `turn` is the desk's turn the call belongs to.
+    fn run(&self, turn: &str, call: &ToolCall) -> (Value, bool);
+
+    /// The desk's turn `turn` ended.
+    fn ended(&self, _turn: &str) {}
 }
 
 pub(crate) struct Conversation {
@@ -137,7 +140,12 @@ impl Conversation {
         let (this, id, text) = (Arc::clone(self), turn.clone(), text.to_owned());
         let spawned = thread::Builder::new()
             .name("desk-brain-turn".to_owned())
-            .spawn(move || this.run(&id, &text));
+            .spawn(move || {
+                this.run(&id, &text);
+                if let Some(tools) = this.tools.get().and_then(Weak::upgrade) {
+                    tools.ended(&id);
+                }
+            });
         if spawned.is_err() {
             Sink::new(&self.events, &turn).publish(BrainTurnKind::Error, Some(FAILED_LINE));
         }
@@ -273,7 +281,8 @@ impl Conversation {
             .map_err(|f| stop(state, f))?;
         while let Some((turn_id, call)) = sink.pending.take() {
             let routed = self.tools.get().and_then(Weak::upgrade);
-            let (output, failed) = routed.map_or_else(|| echo(&call), |tools| tools.run(&call));
+            let (output, failed) =
+                routed.map_or_else(|| echo(&call), |tools| tools.run(sink.turn, &call));
             let request = ToolResultRequest {
                 lease_id: lease_id.clone(),
                 call_id: call.call_id,

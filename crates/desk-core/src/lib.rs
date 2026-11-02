@@ -7,6 +7,9 @@ pub const NAME: &str = env!("CARGO_PKG_NAME");
 
 mod agent_tools;
 mod agents;
+mod approval_action;
+mod approval_preview;
+mod approvals;
 mod calendar_items;
 mod conversation;
 mod core_ask;
