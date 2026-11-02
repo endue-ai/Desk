@@ -273,7 +273,7 @@ export function createNotes({ bridge, commands, surface }, view) {
   render();
 
   // Unloaded while nobody sees it, notes keeps what it holds and comes back from it (ADR 0070).
-  surface?.onUnload(() => keep([...notes.values()], shown, view.where()));
+  surface?.onUnload?.(() => keep([...notes.values()], shown, view.where()));
   /** Open again what was kept, without asking for grants or taking the focus. */
   const restore = async (/** @type {unknown} */ value) => {
     const kept = readKept(value);
