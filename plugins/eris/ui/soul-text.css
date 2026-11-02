@@ -1,20 +1,32 @@
 /* Soul text and orb styles, ported from docs/reference/eris-opening-prototype.html. Shared by the
    onboarding plugin, which links this file. */
 
+/* Her words are text in the theme's roles (her gold is chart-3), so they read in every scheme. Her
+   body is drawn over the brand art (assets/*.svg): its light and gold take the theme's eris* tokens,
+   which the shell's Eris reads too and the runtime sets on this frame with the rest of the theme;
+   until they arrive, the nearest roles stand in. */
+:root {
+  --eris-gold-light: var(--desk-eris-gold-light, var(--desk-chart-3));
+  --eris-gold-deep: var(--desk-eris-gold-deep, var(--desk-chart-3));
+  --eris-frost: var(--desk-eris-frost, var(--desk-text));
+  --eris-white: var(--desk-eris-white, var(--desk-text));
+  --eris-glow: var(--desk-eris-glow, color-mix(in srgb, var(--desk-text) 35%, transparent));
+}
+
 .ch {
   display: inline-block;
   white-space: pre;
-  color: #f2f0f5;
-  text-shadow: 0 0 16px rgba(233, 237, 244, 0.35);
+  color: var(--desk-text);
+  text-shadow: 0 0 16px var(--eris-glow);
 }
 
 .ch.gold {
-  color: #e8c98a;
-  text-shadow: 0 0 18px rgba(232, 201, 138, 0.45);
+  color: var(--desk-chart-3);
+  text-shadow: 0 0 18px color-mix(in srgb, var(--desk-chart-3) 45%, transparent);
 }
 
 .ch.user {
-  color: #f2f0f5;
+  color: var(--desk-text);
   text-shadow: none;
 }
 
@@ -23,7 +35,7 @@
   width: 100%;
   height: 128px;
   margin-top: 12px;
-  font-size: 40px;
+  font-size: var(--desk-text-4xl);
   font-weight: 400;
   line-height: 1.2;
   letter-spacing: -0.01em;
@@ -79,12 +91,12 @@
 .sphere .core {
   width: 128px;
   height: 128px;
-  border-radius: 64px;
+  border-radius: var(--desk-radius-full);
   background: radial-gradient(
     circle,
-    rgba(255, 255, 255, 0.78) 0%,
-    rgba(233, 237, 244, 0.3) 35%,
-    rgba(233, 237, 244, 0) 70%
+    color-mix(in srgb, var(--eris-white) 78%, transparent) 0%,
+    color-mix(in srgb, var(--eris-frost) 30%, transparent) 35%,
+    transparent 70%
   );
 }
 
@@ -107,12 +119,12 @@
   top: 78px;
   width: 220px;
   height: 220px;
-  border-radius: 110px;
+  border-radius: var(--desk-radius-full);
   background: radial-gradient(
     circle,
-    rgba(255, 255, 255, 0.8) 0%,
-    rgba(233, 237, 244, 0.3) 35%,
-    rgba(233, 237, 244, 0) 70%
+    color-mix(in srgb, var(--eris-white) 80%, transparent) 0%,
+    color-mix(in srgb, var(--eris-frost) 30%, transparent) 35%,
+    transparent 70%
   );
   pointer-events: none;
 }
@@ -128,7 +140,7 @@
 
 @media (max-width: 640px) {
   .cap {
-    font-size: 26px;
+    font-size: calc(var(--desk-text-2xl) + 2px);
   }
 }
 
@@ -140,6 +152,6 @@
   width: 36px;
   height: 40px;
   clip-path: polygon(92.5% 94.5%, 35.6% 8.3%, 8.1% 37.5%);
-  background: linear-gradient(135deg, #f5e2b4, #d4a85f);
+  background: linear-gradient(135deg, var(--eris-gold-light), var(--eris-gold-deep));
   pointer-events: none;
 }
