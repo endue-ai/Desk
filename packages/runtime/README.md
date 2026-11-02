@@ -15,6 +15,7 @@ and DOM (ADR 0010); animations run on an injected clock (ADR 0013). Shell decisi
   `plugin.changed`, carries commands and keys, shares the theme (ADR 0012, 0014). `Owners` routes
   events to their owner (brain turns, fs watches, data subscriptions, processes) or to `*:manage`
   holders, holding those that arrive before the call's answer. A shown overlay goes on top.
+  `frames/` unloads plugin frames out of sight and keeps their state (ADR 0070).
 - Policies: `collect(plugins)`, `Commands` (the core's registry), layered `Settings`, `Keymap` (the
   person's layer `desk.keys.bindings` last; `rebind.ts`), `decide`, `resolveTheme`, `Notifications`,
   `Buffers`; `src/policies/*`, one desk.* policy each. `HostViews` (`views.ts`): focus and buffers.

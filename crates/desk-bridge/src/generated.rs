@@ -4566,6 +4566,32 @@ pub struct UiSurfaceCloseParams {
 #[serde(deny_unknown_fields)]
 pub struct UiSurfaceCloseResult {}
 
+/// The runtime asks a plugin's frame for the state to keep before it unloads a surface that is not visible (ADR 0070). Sent to the frame as a desk request, not to the core: it is not a BridgeRequest. Answering is optional; a frame that does not answer comes back cold.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct UiSurfaceStateRequest {
+    pub id: RequestId,
+    pub method: UiSurfaceStateRequestMethod,
+    pub params: UiSurfaceStateParams,
+}
+
+/// Parameters of ui.surface.state.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct UiSurfaceStateParams {
+    /// The surface id from the plugin's manifest whose frame is about to be unloaded.
+    pub surface: String,
+}
+
+/// A plugin's answer to ui.surface.state. The runtime keeps state in memory for the session, at most 64 KiB as UTF-8 JSON (a bigger one is dropped), and hands it back as restored when the frame loads again.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct UiSurfaceStateResult {
+    /// Any JSON value the plugin needs to come back as it was: what is open, the caret, the scroll. Absent: nothing to keep, the surface comes back cold.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub state: Option<serde_json::Value>,
+}
+
 /// Show a notification.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -5939,6 +5965,14 @@ pub enum UiSurfaceCloseRequestMethod {
     #[default]
     #[serde(rename = "ui.surface.close")]
     UiSurfaceClose,
+}
+
+/// The `method` of [`UiSurfaceStateRequest`]: always `"ui.surface.state"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum UiSurfaceStateRequestMethod {
+    #[default]
+    #[serde(rename = "ui.surface.state")]
+    UiSurfaceState,
 }
 
 /// The `method` of [`UiNotifyRequest`]: always `"ui.notify"`.

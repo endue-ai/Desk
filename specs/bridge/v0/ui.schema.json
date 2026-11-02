@@ -67,6 +67,40 @@
       "properties": {},
       "additionalProperties": false
     },
+    "UiSurfaceStateRequest": {
+      "description": "The runtime asks a plugin's frame for the state to keep before it unloads a surface that is not visible (ADR 0070). Sent to the frame as a desk request, not to the core: it is not a BridgeRequest. Answering is optional; a frame that does not answer comes back cold.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "ui.surface.state" },
+        "params": { "$ref": "#/$defs/UiSurfaceStateParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "UiSurfaceStateParams": {
+      "description": "Parameters of ui.surface.state.",
+      "type": "object",
+      "properties": {
+        "surface": {
+          "description": "The surface id from the plugin's manifest whose frame is about to be unloaded.",
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*$"
+        }
+      },
+      "required": ["surface"],
+      "additionalProperties": false
+    },
+    "UiSurfaceStateResult": {
+      "description": "A plugin's answer to ui.surface.state. The runtime keeps state in memory for the session, at most 64 KiB as UTF-8 JSON (a bigger one is dropped), and hands it back as restored when the frame loads again.",
+      "type": "object",
+      "properties": {
+        "state": {
+          "description": "Any JSON value the plugin needs to come back as it was: what is open, the caret, the scroll. Absent: nothing to keep, the surface comes back cold."
+        }
+      },
+      "additionalProperties": false
+    },
     "UiNotifyRequest": {
       "description": "Show a notification.",
       "type": "object",

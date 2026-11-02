@@ -123,6 +123,16 @@ handle.
 handle the caller does not hold is `not_found`. A caller that unloads has its surfaces closed, each with
 its `ui.surface.closed`; losing `ui:surface` leaves them open.
 
+**ui.surface.state** is the one request that goes the other way: the runtime sends it to a plugin's
+frame, as it sends `desk.files.visit`, never to the core, and it is not a `BridgeRequest`. Before the
+runtime unloads a surface that has not been visible for `desk.display.unload-after`, or the one hidden
+longest once more than `desk.display.live-surfaces` frames are live (ADR 0070), it asks with the
+manifest's `surface` id. A plugin may answer with `state`, any JSON up to 64 KiB as UTF-8; the runtime
+keeps it in memory for the session and hands it back as `restored` in the frame's next `desk:init`,
+when the surface shows again. An answer without `state`, an error, a bigger state, no answer within
+two seconds or a frame that never said hello: the frame is unloaded all the same and comes back cold.
+Answering is optional, and needs no permission.
+
 **ui.notify** shows a notification with a title, an optional body and a level, and returns its id. It
 needs `ui:notify`. The core sends the runtime a `ui.notified` event naming the caller; how long it
 stays, whether do-not-disturb holds it back and how much history is kept is the runtime's notify policy.

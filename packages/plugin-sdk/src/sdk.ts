@@ -20,6 +20,7 @@ import {
 import { dataFor, type PluginData, type PluginViews } from "./data";
 import { type HostMessage, type ThemeState, type Transport, windowTransport } from "./protocol";
 import { type PluginSearch, searchFor } from "./search";
+import { SURFACE_STATE, stateAnswer } from "./surface-state";
 
 /** The bridge as a plugin sees it: calls are checked against the plugin's own grants. */
 export interface PluginBridge {
@@ -45,6 +46,14 @@ export interface PluginSurface {
   /** Show a surface the manifest declares `hidden`; it takes the keyboard focus. */
   show(): void;
   hide(): void;
+  /**
+   * What to keep when the desk unloads this surface while nobody sees it (ui.surface.state, ADR
+   * 0070): JSON up to 64 KiB, handed back as `restored` when it shows again. Without a provider the
+   * surface comes back cold. Returns a function that removes the provider.
+   */
+  onUnload(provider: () => unknown): () => void;
+  /** What `onUnload` kept before the desk last unloaded this surface; undefined on a cold start. */
+  readonly restored: unknown;
 }
 
 /** The desk's theme, also applied to this frame as --desk-* custom properties. */
@@ -132,7 +141,7 @@ export function connect(transport: Transport = windowTransport()): Promise<Plugi
     };
     const commands = commandsFor(bridge as Parameters<typeof commandsFor>[0], mounted);
 
-    const ctxFor = (pluginId: string): PluginContext => {
+    const ctxFor = (pluginId: string, restored: unknown): PluginContext => {
       const { open, ...groups } = contextFor(bridge, pluginId);
       return {
         pluginId,
@@ -152,6 +161,8 @@ export function connect(transport: Transport = windowTransport()): Promise<Plugi
           },
           show: () => transport.send({ type: "desk:visible", visible: true }),
           hide: () => transport.send({ type: "desk:visible", visible: false }),
+          onUnload: (provider) => commands.api.on(SURFACE_STATE, stateAnswer(provider)),
+          restored,
         },
         commands: commands.api,
         search: searchFor(bridge),
@@ -172,7 +183,7 @@ export function connect(transport: Transport = windowTransport()): Promise<Plugi
       switch (message.type) {
         case "desk:init":
           state = message.state;
-          ctx = ctxFor(message.pluginId);
+          ctx = ctxFor(message.pluginId, message.restored);
           mountedHooks.set(ctx, markMounted);
           // Without defineUiPlugin, handlers registered right after connect() count as mounted.
           setTimeout(() => {

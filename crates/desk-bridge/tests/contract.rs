@@ -12,8 +12,8 @@ use desk_bridge::{
     PaletteResults, PermQueryResult, PermRequestResult, Permission, PluginContributes,
     PluginListResult, PluginManifest, RefusalReason, ShellOpenResult, StoreGetResult, ThemeBundle,
     ThemeExportResult, ThemeIndex, ThemeMarketFetchResult, ThemeMarketListResult, ThemePackage,
-    ThemeType, ThemeVariant, View, ViewGetResult, ViewListResult, ViewSource, ViewSummary,
-    manifest_problems, view_problems,
+    ThemeType, ThemeVariant, UiSurfaceStateRequest, UiSurfaceStateResult, View, ViewGetResult,
+    ViewListResult, ViewSource, ViewSummary, manifest_problems, view_problems,
 };
 use serde::Serialize;
 use serde::de::DeserializeOwned;
@@ -233,6 +233,8 @@ fn valid_vectors_roundtrip_through_generated_types() {
                 "StoreGetResult" => roundtrip::<StoreGetResult>(vector),
                 "CatalogGetResult" => roundtrip::<CatalogGetResult>(vector),
                 "ShellOpenResult" => roundtrip::<ShellOpenResult>(vector),
+                "UiSurfaceStateRequest" => roundtrip::<UiSurfaceStateRequest>(vector),
+                "UiSurfaceStateResult" => roundtrip::<UiSurfaceStateResult>(vector),
                 "PluginManifest" => roundtrip::<PluginManifest>(vector),
                 "Permission" => roundtrip::<Permission>(vector),
                 "InitDocument" => roundtrip::<InitDocument>(vector),

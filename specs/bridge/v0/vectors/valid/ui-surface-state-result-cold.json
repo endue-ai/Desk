@@ -1,0 +1,5 @@
+{
+  "target": "UiSurfaceStateResult",
+  "description": "an answer without state keeps nothing: the surface comes back cold",
+  "instance": {}
+}
