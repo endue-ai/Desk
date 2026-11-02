@@ -1,0 +1,15 @@
+{
+  "target": "BridgeResponse",
+  "description": "a caller without brain:ask is refused, whatever else it holds",
+  "instance": {
+    "id": 31,
+    "ok": false,
+    "error": {
+      "code": "permission_denied",
+      "message": "no grant covers the scope",
+      "permission": {
+        "permission": "brain:ask"
+      }
+    }
+  }
+}

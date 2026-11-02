@@ -1,0 +1,22 @@
+{
+  "target": "BridgeEvent",
+  "description": "an ask's completed turn carries the tool's arguments",
+  "instance": {
+    "event": "brain.turn",
+    "data": {
+      "turnId": "a1",
+      "kind": "completed",
+      "structured": {
+        "name": "Warm Paper",
+        "description": "Cream paper with ink-blue accents.",
+        "theme": {
+          "light": {
+            "colors": {
+              "background": "#f6f1e7"
+            }
+          }
+        }
+      }
+    }
+  }
+}

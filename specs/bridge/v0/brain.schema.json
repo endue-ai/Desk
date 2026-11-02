@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://endue.ai/specs/bridge/v0/brain.schema.json",
   "title": "Desk bridge v0: brain",
-  "description": "Talk to the brain through the core: the core holds the session, its lease and the brain client, and streams the answer back as brain.turn events. The core also reads the brain's agent directory (agents, A2A cards, spaces and A2A tasks, specs/brain/v0) and says whether the brain can be reached. Scoped by brain:converse.",
+  "description": "Talk to the brain through the core: the core holds the session, its lease and the brain client, and streams the answer back as brain.turn events. The core also reads the brain's agent directory (agents, A2A cards, spaces and A2A tasks, specs/brain/v0) and says whether the brain can be reached. Scoped by brain:converse; brain.ask, one question answered through a tool in a session of its own, by brain:ask.",
   "$defs": {
     "BrainSayRequest": {
       "description": "Say something to the brain in the desk's current session.",
@@ -29,6 +29,67 @@
     },
     "BrainSayResult": {
       "description": "Result of brain.say: the answer arrives as brain.turn events with this id.",
+      "type": "object",
+      "properties": {
+        "turnId": { "type": "string", "minLength": 1 }
+      },
+      "required": ["turnId"],
+      "additionalProperties": false
+    },
+    "BrainAskRequest": {
+      "description": "Ask the brain one question and get the answer as structured values: the arguments it calls the caller's tool with.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "brain.ask" },
+        "params": { "$ref": "#/$defs/BrainAskParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "BrainAskParams": {
+      "description": "Parameters of brain.ask: what to ask and the tool whose arguments are the answer.",
+      "type": "object",
+      "properties": {
+        "prompt": {
+          "description": "The question, with everything the brain needs to answer it. The desk's conversation is not sent.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 32000
+        },
+        "tool": { "$ref": "#/$defs/BrainAskTool" },
+        "scope": {
+          "$ref": "../../plugin/v0/permission.schema.json#/$defs/BrainAskPermission"
+        }
+      },
+      "required": ["prompt", "tool", "scope"],
+      "additionalProperties": false
+    },
+    "BrainAskTool": {
+      "description": "The tool the brain must call to answer, a ToolDefinition of specs/brain/v0. The core never runs it: the arguments go back to the caller.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "description": "The tool's name, for example propose_theme.",
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{1,64}$"
+        },
+        "description": {
+          "description": "What the tool is for and when to call it, for the brain.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000
+        },
+        "schema": {
+          "description": "A JSON Schema 2020-12 of the arguments. Its type is object; it may $ref the desk's own specs by their $id.",
+          "type": "object"
+        }
+      },
+      "required": ["name", "description", "schema"],
+      "additionalProperties": false
+    },
+    "BrainAskResult": {
+      "description": "Result of brain.ask: the answer arrives as brain.turn events with this id, for the caller only.",
       "type": "object",
       "properties": {
         "turnId": { "type": "string", "minLength": 1 }
@@ -247,7 +308,7 @@
       "additionalProperties": false
     },
     "BrainTurnEvent": {
-      "description": "Progress of a brain.say turn.",
+      "description": "Progress of a brain.say or brain.ask turn.",
       "type": "object",
       "properties": {
         "event": { "const": "brain.turn" },
@@ -257,12 +318,16 @@
       "additionalProperties": false
     },
     "BrainTurnData": {
-      "description": "Payload of brain.turn. delta carries answer text; error and offline carry a sentence for people.",
+      "description": "Payload of brain.turn. delta carries answer text; error and offline carry a sentence for people. A brain.ask turn's completed carries structured when the brain called the tool.",
       "type": "object",
       "properties": {
         "turnId": { "type": "string", "minLength": 1 },
         "kind": { "$ref": "#/$defs/BrainTurnKind" },
-        "text": { "type": "string" }
+        "text": { "type": "string" },
+        "structured": {
+          "description": "brain.ask only, on completed: the arguments the brain called the tool with, checked against its schema. Absent when the brain answered in text instead.",
+          "type": "object"
+        }
       },
       "required": ["turnId", "kind"],
       "additionalProperties": false

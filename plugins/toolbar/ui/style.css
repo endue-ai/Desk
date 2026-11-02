@@ -1,8 +1,8 @@
 body {
   margin: 0;
-  background: #1e1d21;
-  color: #f2f0f5;
-  font: 13px/1.5 -apple-system, "SUIT", "Inter", system-ui, sans-serif;
+  background: var(--desk-card);
+  color: var(--desk-text);
+  font: calc(var(--desk-text-sm) - 1px) / 1.5 var(--desk-font-sans);
 }
 
 #root {
@@ -11,11 +11,11 @@ body {
 
 h1 {
   margin: 0 0 4px;
-  font-size: 11px;
+  font-size: var(--desk-text-2xs);
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: #b0adb7;
+  color: var(--desk-text-muted);
 }
 
 h2 {
@@ -30,7 +30,7 @@ ul {
 }
 
 .drawer {
-  border-bottom: 1px solid #333136;
+  border-bottom: 1px solid var(--desk-border);
 }
 
 .head {
@@ -48,9 +48,9 @@ ul {
 }
 
 .head:focus-visible {
-  outline: 2px solid #b6a3f5;
+  outline: 2px solid var(--desk-ring);
   outline-offset: 2px;
-  border-radius: 4px;
+  border-radius: var(--desk-radius-sm);
 }
 
 .title {
@@ -59,7 +59,7 @@ ul {
 }
 
 .summary {
-  color: #b0adb7;
+  color: var(--desk-text-muted);
 }
 
 /* Something needs a look: a dot before the summary. */
@@ -69,13 +69,13 @@ ul {
   width: 8px;
   height: 8px;
   margin-right: 6px;
-  border-radius: 50%;
-  background: #f2b880;
+  border-radius: var(--desk-radius-full);
+  background: var(--desk-warning);
 }
 
 .chevron {
-  color: #b0adb7;
-  transition: transform 120ms;
+  color: var(--desk-text-muted);
+  transition: transform var(--desk-motion-fast);
 }
 
 .head[aria-expanded="true"] .chevron {
@@ -88,7 +88,7 @@ ul {
 
 .body p {
   margin: 0 0 6px;
-  color: #b0adb7;
+  color: var(--desk-text-muted);
 }
 
 .rows li {
@@ -97,10 +97,10 @@ ul {
 }
 
 .detail {
-  color: #b0adb7;
+  color: var(--desk-text-muted);
   overflow-wrap: anywhere;
 }
 
 .rows li.warning .detail {
-  color: #f2b880;
+  color: var(--desk-warning-text);
 }

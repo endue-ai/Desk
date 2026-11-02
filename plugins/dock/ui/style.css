@@ -1,8 +1,8 @@
 body {
   margin: 0;
-  background: #1e1d21;
-  color: #f2f0f5;
-  font: 13px/1.4 -apple-system, "SUIT", "Inter", system-ui, sans-serif;
+  background: var(--desk-card);
+  color: var(--desk-text);
+  font: calc(var(--desk-text-sm) - 1px) / 1.4 var(--desk-font-sans);
 }
 
 #root {
@@ -22,7 +22,7 @@ body {
 
 #empty {
   margin: 0;
-  color: #b0adb7;
+  color: var(--desk-text-muted);
 }
 
 .tile {
@@ -31,9 +31,9 @@ body {
   gap: 8px;
   height: 40px;
   padding: 0 12px 0 4px;
-  border: 1px solid #333136;
-  border-radius: 8px;
-  background: #26252a;
+  border: 1px solid var(--desk-border);
+  border-radius: var(--desk-radius-md);
+  background: var(--desk-muted);
   color: inherit;
   font: inherit;
   white-space: nowrap;
@@ -41,11 +41,11 @@ body {
 }
 
 .tile:hover {
-  border-color: #4a4750;
+  border-color: color-mix(in srgb, var(--desk-text) 12%, var(--desk-border));
 }
 
 .tile:focus-visible {
-  outline: 2px solid #b6a3f5;
+  outline: 2px solid var(--desk-ring);
   outline-offset: 2px;
 }
 
@@ -54,21 +54,21 @@ body {
   place-items: center;
   width: 32px;
   height: 32px;
-  border-radius: 6px;
-  background: #333136;
+  border-radius: var(--desk-radius-md);
+  background: var(--desk-hover);
   font-weight: 600;
 }
 
 /* Open on the desk. */
 .tile[aria-pressed="true"] .initial {
-  background: #b6a3f5;
-  color: #141416;
+  background: var(--desk-primary);
+  color: var(--desk-primary-foreground);
 }
 
 /* Failed: still listed, so people see why it is missing. */
 .tile.unavailable {
   border-style: dashed;
-  color: #b0adb7;
+  color: var(--desk-text-muted);
   cursor: default;
 }
 

@@ -1,0 +1,14 @@
+{
+  "target": "BridgeRequest",
+  "description": "a market download is checked against its sha256",
+  "instance": {
+    "id": 95,
+    "method": "theme.market.fetch",
+    "params": {
+      "url": "https://raw.githubusercontent.com/endue-ai/Desk/main/market/themes/paper-dusk.desk-theme",
+      "scope": {
+        "permission": "theme:manage"
+      }
+    }
+  }
+}

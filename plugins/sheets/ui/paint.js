@@ -14,13 +14,15 @@ export const place = (/** @type {HTMLElement} */ el, x = 0, y = 0, w = 0, h = 0)
   el.style.height = `${h}px`;
 };
 
-/** Dark text on a light fill, light text on a dark one, when the file names no text colour. */
+/**
+ * Dark text on a light fill, light text on a dark one, when the file names no text colour. The fill
+ * is the file's, so its ink is too: a theme cannot know the fill it has to read on.
+ */
 export const contrast = (/** @type {string} */ fill) => {
   const [r = 0, g = 0, b = 0] = [1, 3, 5].map((i) => Number.parseInt(fill.slice(i, i + 2), 16));
-  return 0.299 * r + 0.587 * g + 0.114 * b > 150 ? "#1b1b1f" : "#f4f2f7";
+  return 0.299 * r + 0.587 * g + 0.114 * b > 150 ? "#1b1b1f" : "#f4f2f7"; // theme: content
 };
 
-const FONT = '-apple-system, "SUIT", "Inter", system-ui, sans-serif';
 /** @type {CanvasRenderingContext2D | null | undefined} */
 let context;
 /** @type {Map<string, number>} */
@@ -46,8 +48,9 @@ function measure(/** @type {string} */ text, /** @type {string} */ font) {
 
 /**
  * @typedef {{
- *   selected: boolean, active: boolean, fixed: boolean, size: number, room: number,
- * }} CellState size: the font size in pixels; room: empty cells to the right that text may run over
+ *   selected: boolean, active: boolean, fixed: boolean, size: number, family: string, room: number,
+ * }} CellState size and family: the grid's font as the theme has it, in pixels; room: empty cells
+ * to the right that text may run over
  */
 
 /**
@@ -70,7 +73,7 @@ export function paintCell(el, sheet, r, c, box, state) {
   const kind = cell?.t;
   const align =
     style?.align ?? (kind === "n" ? "right" : kind === "b" || kind === "e" ? "center" : "left");
-  const font = `${style?.italic ? "italic " : ""}${style?.bold ? "bold " : ""}${state.size}px ${FONT}`;
+  const font = `${style?.italic ? "italic " : ""}${style?.bold ? "bold " : ""}${state.size}px ${state.family}`;
   const room = box[2] - 8;
   let text = sheet.text(r, c);
   let spill = 0;

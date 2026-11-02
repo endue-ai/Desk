@@ -11,22 +11,22 @@ import { attr, find, kid, kids, num, onOff } from "../xml.js";
  */
 
 const HIGHLIGHTS = /** @type {Record<string, string>} */ ({
-  yellow: "#FFFF00",
-  green: "#00FF00",
-  cyan: "#00FFFF",
-  magenta: "#FF00FF",
-  blue: "#0000FF",
-  red: "#FF0000",
-  darkBlue: "#000080",
-  darkCyan: "#008080",
-  darkGreen: "#008000",
-  darkMagenta: "#800080",
-  darkRed: "#800000",
-  darkYellow: "#808000",
-  darkGray: "#808080",
-  lightGray: "#C0C0C0",
-  black: "#000000",
-  white: "#FFFFFF",
+  yellow: "#FFFF00", // theme: content
+  green: "#00FF00", // theme: content
+  cyan: "#00FFFF", // theme: content
+  magenta: "#FF00FF", // theme: content
+  blue: "#0000FF", // theme: content
+  red: "#FF0000", // theme: content
+  darkBlue: "#000080", // theme: content
+  darkCyan: "#008080", // theme: content
+  darkGreen: "#008000", // theme: content
+  darkMagenta: "#800080", // theme: content
+  darkRed: "#800000", // theme: content
+  darkYellow: "#808000", // theme: content
+  darkGray: "#808080", // theme: content
+  lightGray: "#C0C0C0", // theme: content
+  black: "#000000", // theme: content
+  white: "#FFFFFF", // theme: content
 });
 
 const ALIGN = /** @type {Record<string, import("../model.js").Align>} */ ({

@@ -1,0 +1,17 @@
+{
+  "target": "TurnRequest",
+  "description": "tools offers at least one tool",
+  "instance": {
+    "leaseId": "l1",
+    "message": {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "A theme like warm paper."
+        }
+      ]
+    },
+    "tools": []
+  }
+}

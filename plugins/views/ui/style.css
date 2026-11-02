@@ -4,9 +4,9 @@ html,
 body {
   margin: 0;
   height: 100%;
-  background: var(--desk-background, #141416);
-  color: var(--desk-text, #f2f0f5);
-  font: 14px/20px -apple-system, "SUIT", "Inter", system-ui, sans-serif;
+  background: var(--desk-background);
+  color: var(--desk-text);
+  font: var(--desk-text-sm) / 20px var(--desk-font-sans);
 }
 
 #root {
@@ -26,7 +26,7 @@ body {
 
 .bar h1 {
   margin: 0;
-  font-size: 20px;
+  font-size: var(--desk-text-xl);
   line-height: 28px;
 }
 
@@ -36,7 +36,7 @@ body {
 .notice,
 .detail,
 .line .label {
-  color: var(--desk-text-muted, #b0adb7);
+  color: var(--desk-text-muted);
 }
 
 .description {
@@ -82,7 +82,7 @@ body {
 [role="tablist"] {
   display: flex;
   gap: 4px;
-  border-bottom: 1px solid var(--desk-border, #333136);
+  border-bottom: 1px solid var(--desk-border);
 }
 
 [role="tab"] {
@@ -90,18 +90,18 @@ body {
   border: 0;
   border-bottom: 2px solid transparent;
   background: transparent;
-  color: var(--desk-text-muted, #b0adb7);
+  color: var(--desk-text-muted);
   font: inherit;
   cursor: pointer;
 }
 
 [role="tab"][aria-selected="true"] {
-  border-bottom-color: var(--desk-accent, #b6a3f5);
-  color: var(--desk-text, #f2f0f5);
+  border-bottom-color: var(--desk-primary);
+  color: var(--desk-text);
 }
 
 [role="tab"]:focus-visible {
-  outline: 2px solid var(--desk-accent, #b6a3f5);
+  outline: 2px solid var(--desk-ring);
   outline-offset: 2px;
 }
 
@@ -115,10 +115,10 @@ body {
 .component-title,
 .container-title {
   margin: 0;
-  font-size: 13px;
+  font-size: calc(var(--desk-text-sm) - 1px);
   font-weight: 600;
   letter-spacing: 0.02em;
-  color: var(--desk-text-muted, #b0adb7);
+  color: var(--desk-text-muted);
   text-transform: uppercase;
 }
 
@@ -129,7 +129,7 @@ body {
 }
 
 .component[data-state="error"] .status {
-  color: var(--desk-text, #f2f0f5);
+  color: var(--desk-text);
 }
 
 .component desk-button {
@@ -142,7 +142,7 @@ desk-list .title {
 
 desk-list .detail {
   display: block;
-  font-size: 12px;
+  font-size: var(--desk-text-xs);
 }
 
 .line {

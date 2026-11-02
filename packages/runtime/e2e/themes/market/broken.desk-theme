@@ -1,0 +1,32 @@
+{
+  "format": "desk-theme/1",
+  "manifest": {
+    "id": "market.broken",
+    "name": "Broken",
+    "version": "1.0.0",
+    "kind": "theme",
+    "description": "A fixture market theme whose bytes are not the ones its index names.",
+    "theme": {
+      "author": "Team endue",
+      "license": "CC0-1.0",
+      "preview": [
+        "#000000",
+        "#ff0000",
+        "#ffffff"
+      ],
+      "light": {
+        "colors": {
+          "background": "#ffffff",
+          "primary": "#ff0000"
+        }
+      },
+      "dark": {
+        "colors": {
+          "background": "#000000",
+          "primary": "#ff0000"
+        }
+      }
+    }
+  },
+  "files": {}
+}

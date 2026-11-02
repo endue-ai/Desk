@@ -84,7 +84,9 @@ paths:
       description: >-
         Sends one user message and streams the answer as Server-Sent Events. Each event's data is one
         TurnEvent as JSON. The stream ends after turn.completed or turn.error. A turn.completed with
-        stopReason tool_call waits for submitToolResult.
+        stopReason tool_call waits for submitToolResult. tools offers the brain tools for this turn
+        and toolChoice says whether it must call one; a brain that does not know tools answers in
+        text.
       requestBody:
         required: true
         content:
@@ -423,7 +425,65 @@ components:
       properties:
         leaseId: { type: string, minLength: 1 }
         message: { $ref: "#/components/schemas/UserMessage" }
+        tools:
+          description: Tools the brain may call in this turn, besides any it has of its own.
+          type: array
+          items: { $ref: "#/components/schemas/ToolDefinition" }
+          minItems: 1
+          maxItems: 32
+        toolChoice: { $ref: "#/components/schemas/ToolChoice" }
       required: [leaseId, message]
+      additionalProperties: false
+    ToolDefinition:
+      description: >-
+        A tool offered for one turn. The brain calls it with tool.call and arguments that match
+        schema; Desk decides whether it runs.
+      type: object
+      properties:
+        name:
+          description: Unique among the turn's tools, for example propose_theme.
+          type: string
+          pattern: "^[A-Za-z0-9_-]{1,64}$"
+        description:
+          description: What the tool is for and when to call it.
+          type: string
+          minLength: 1
+        schema:
+          description: A JSON Schema 2020-12 of the arguments, whose type is object.
+          type: object
+      required: [name, description, schema]
+      additionalProperties: false
+    ToolChoice:
+      description: >-
+        Whether the brain must call a tool of the turn: auto (it may answer in text, the default),
+        required (one of the tools) or tool (the one named). It needs tools.
+      oneOf:
+        - $ref: "#/components/schemas/AutoToolChoice"
+        - $ref: "#/components/schemas/RequiredToolChoice"
+        - $ref: "#/components/schemas/NamedToolChoice"
+    AutoToolChoice:
+      description: The brain calls a tool or answers in text, as it sees fit.
+      type: object
+      properties:
+        type: { const: auto }
+      required: [type]
+      additionalProperties: false
+    RequiredToolChoice:
+      description: The brain answers by calling one of the turn's tools.
+      type: object
+      properties:
+        type: { const: required }
+      required: [type]
+      additionalProperties: false
+    NamedToolChoice:
+      description: The brain answers by calling the named tool, which must be one of the turn's tools.
+      type: object
+      properties:
+        type: { const: tool }
+        name:
+          type: string
+          pattern: "^[A-Za-z0-9_-]{1,64}$"
+      required: [type, name]
       additionalProperties: false
     UserMessage:
       description: What the person said or typed.
