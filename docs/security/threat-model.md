@@ -46,7 +46,7 @@ slows the desk down is handled by turning it off, not by this model.
 | [Brain and its lease](#brain-and-its-lease) | agent, plugin | Core holds the conversation; one writer per session | No TLS, no token storage (no issue yet) |
 | [Marketplace](#marketplace) | marketplace entry | ADR 0005 only; `plugin-validate` checks this repository's plugins | Index, signing, verification (no issue yet) |
 | [init.yaml sync](#inityaml-sync) | tampered copy | Schema check, both sides kept on conflict, no grants in the file | No authenticity, no real transport (no issue yet) |
-| [The updater](#the-updater) | marketplace entry, network | Nothing: no updater, no signing | Signing, notarisation, updater (no issue yet) |
+| [The updater](#the-updater) | marketplace entry, network | Signed index, manifests and artifacts on R2; release workflows (ADR 0054). No desk installs updates yet | The desk's side (#278, #296, #297), keys and bucket (people), Windows Authenticode, update smoke (no issue yet) |
 | [Local e2e and dev tooling](#local-e2e-and-dev-tooling) | local user, plugin | Read-only container, loopback servers, secret and dependency scans | Default network in the container, dev switches in release builds, file modes (no issue yet) |
 
 ## UI plugin iframe
@@ -195,16 +195,25 @@ Gaps:
 
 ## The updater
 
-On main there is no updater: no Tauri updater configuration, no release workflow, no code signing and
-no notarisation. The install smoke test with its signature check is planned (`docs/qa/TESTING.md`) and
-does not exist yet.
+Design: ADR 0054 and `docs/ko/updater-requirements.md`. Builds are static files on Cloudflare R2. Each
+channel's index, each build's `release.json` and each artifact carry a minisign signature from one
+updater key, which lives only in the `signing` and `stable` environments that AI tokens cannot reach
+(`AGENTS.md`, "Boundaries"). The public key goes into the binary at build time (`DESK_UPDATER_PUBKEY`),
+so a build without it never updates itself. A desk chooses its next build on the device from the
+signed index and installs only bytes whose length, sha256 and signature, bound to the version, it
+checked when it downloaded them and again before installing. Versions only go up, and an index older
+than one the desk has seen is refused, so a stale or replayed copy cannot bring back a build that was
+taken down. A check carries no identifier: it reads static files.
 
-Design (`docs/ko/desk-structure.md`, "GitHub 와 오픈소스 뼈대"): `canary.yml` and `release.yml` build on
-three OSes, sign and notarise, run the install smoke test and publish an updater manifest per channel.
-The signing keys and the updater's private key live in a protected `signing` environment that AI tokens
-cannot reach (`AGENTS.md`, "Boundaries").
+On main: the `update.*` contract with `update:manage` (#274) and the release workflows (`release-build`,
+`canary`, `release`, `promote`, `rollback`; #294), which publish nothing until people provision the R2
+bucket, the updater key and the Apple certificate. Applying a build stays with the person: only the
+runtime and the CLI hold `update:manage`. The desk's side is in flight: the decisions in `desk-update`
+(#278), the core serving `update.*` (#296) and the app's installer over `tauri-plugin-updater` (#297).
 
-Gaps: OS signing, notarisation, the updater and its key. No issue yet (#65 lists them as requirements).
+Gaps: Windows Authenticode, since the certificate type is not chosen (SmartScreen warns on a first
+install); `.deb` and `.rpm` updates ask for a password through pkexec; no update smoke test on three
+OSes yet (UPD-16, no issue yet); rotating the updater key takes two releases.
 
 ## Local e2e and dev tooling
 

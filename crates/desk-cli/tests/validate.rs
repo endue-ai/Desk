@@ -62,7 +62,7 @@ fn plugin_dir(name: &str, manifest: &str) -> PathBuf {
 fn a_broken_plugin_exits_1_and_names_each_problem() {
     let dir = plugin_dir(
         "broken",
-        r#"{ "id": "Bad", "version": "1", "kind": "theme" }"#,
+        r#"{ "id": "Bad", "version": "1", "kind": "gadget" }"#,
     );
     let out = desk(&["plugin", "validate", dir.to_str().unwrap()]);
     assert_eq!(out.status.code(), Some(1));
@@ -70,6 +70,23 @@ fn a_broken_plugin_exits_1_and_names_each_problem() {
     for problem in ["/id", "/version", "/kind", "entry"] {
         assert!(stderr.contains(problem), "missing {problem} in:\n{stderr}");
     }
+}
+
+#[test]
+fn a_theme_plugin_validates_and_says_it_is_a_theme() {
+    let dir = plugin_dir(
+        "theme",
+        r##"{ "id": "example.ember", "version": "0.1.0", "kind": "theme",
+             "theme": { "dark": { "colors": { "background": "#1a1210" } } } }"##,
+    );
+    let out = desk(&["plugin", "validate", dir.to_str().unwrap()]);
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert!(out.status.success(), "{stderr}");
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    assert!(
+        stdout.contains("ok example.ember 0.1.0 (theme plugin)"),
+        "{stdout}"
+    );
 }
 
 const TODAY: &str = r#"{

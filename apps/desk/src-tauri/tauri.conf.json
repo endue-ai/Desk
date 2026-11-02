@@ -24,7 +24,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; frame-src 'self' data: blob: desk-plugin: http://desk-plugin.localhost; connect-src ipc: http://ipc.localhost",
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: desk-plugin: http://desk-plugin.localhost; font-src 'self' desk-plugin: http://desk-plugin.localhost; frame-src 'self' data: blob: desk-plugin: http://desk-plugin.localhost; connect-src ipc: http://ipc.localhost",
       "capabilities": ["default", "palette"]
     }
   },

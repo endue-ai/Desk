@@ -1,0 +1,112 @@
+name: release-build
+
+# Builds one version for the four targets (ADR 0054), called by canary and release. No macOS
+# universal build: darwin-aarch64 and darwin-x86_64 ship apart. Updater artifacts are signed with
+# the updater key, the version in each signature; the public key and the commit go into the binary.
+# macOS is signed and notarised when the Apple secrets are set; Windows ships NSIS only, unsigned
+# until the certificate is chosen. Each target leaves as the artifact desk-<target>, canonical names
+# from scripts/release-collect.mjs.
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: The version to build, without a leading v.
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: build (${{ matrix.target }})
+    environment: signing
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - target: darwin-aarch64
+            os: macos-latest
+            rust: aarch64-apple-darwin
+            bundles: app,dmg
+          - target: darwin-x86_64
+            os: macos-latest
+            rust: x86_64-apple-darwin
+            bundles: app,dmg
+          - target: windows-x86_64
+            os: windows-latest
+            rust: x86_64-pc-windows-msvc
+            bundles: nsis
+          - target: linux-x86_64
+            os: ubuntu-22.04
+            rust: x86_64-unknown-linux-gnu
+            bundles: appimage,deb,rpm
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
+    defaults:
+      run:
+        shell: bash
+    env:
+      VERSION: ${{ inputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install Rust toolchain (rust-toolchain.toml) and the target
+        run: |
+          rustup toolchain install
+          rustup target add "${{ matrix.rust }}"
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: release-${{ matrix.rust }}
+      - name: Configure Ubuntu package downloads
+        if: runner.os == 'Linux'
+        run: sudo "$(command -v node)" scripts/ci-apt.mjs
+      - name: Install the WebKitGTK SDK and the AppImage tools
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev libfuse2
+      - run: pnpm install --frozen-lockfile
+      - name: Sign and notarise on macOS when the Apple secrets are set
+        if: runner.os == 'macOS'
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        # Tauri signs as soon as these are set, even to "", so only set ones reach the build.
+        run: |
+          if [ -z "$APPLE_CERTIFICATE" ] || [ -z "$APPLE_SIGNING_IDENTITY" ]; then
+            echo "::notice::No Apple signing secrets: the macOS build is neither signed nor notarised"
+            exit 0
+          fi
+          for name in APPLE_CERTIFICATE APPLE_CERTIFICATE_PASSWORD APPLE_SIGNING_IDENTITY APPLE_ID APPLE_PASSWORD APPLE_TEAM_ID; do
+            if [ -n "${!name}" ]; then echo "$name=${!name}" >> "$GITHUB_ENV"; fi
+          done
+      - name: Build ${{ matrix.target }} ${{ inputs.version }}
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          DESK_UPDATER_PUBKEY: ${{ vars.DESK_UPDATER_PUBKEY }}
+          DESK_UPDATE_URL: ${{ vars.DESK_RELEASES_URL || 'https://releases.endue.ai/desk' }}
+          DESK_BUILD_COMMIT: ${{ github.sha }}
+        run: |
+          config="$(printf '{"version":"%s","bundle":{"createUpdaterArtifacts":true}}' "$VERSION")"
+          pnpm --filter @endue-ai/desk-app tauri build \
+            --target "${{ matrix.rust }}" --bundles "${{ matrix.bundles }}" --config "$config"
+      - name: Collect the bundles under canonical names
+        run: |
+          node scripts/release-collect.mjs --bundle "target/${{ matrix.rust }}/release/bundle" \
+            --version "$VERSION" --target "${{ matrix.target }}" --out dist
+      - uses: actions/upload-artifact@v7
+        with:
+          name: desk-${{ matrix.target }}
+          path: dist/
+          if-no-files-found: error
+          retention-days: 7

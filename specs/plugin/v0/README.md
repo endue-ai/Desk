@@ -3,7 +3,8 @@
 `plugin.schema.json` is the `plugin.json` manifest every plugin folder carries, built-in and community
 plugins alike. `permission.schema.json` is the permission vocabulary: plugin manifests declare these
 permissions, and every bridge call carries the one that covers it. `contributes.schema.json` is what a
-plugin adds to the desk's policies as data (ADR 0017).
+plugin adds to the desk's policies as data (ADR 0017). `theme.schema.json` is a theme plugin's `theme`
+block (ADR 0056, ADR 0057).
 
 ## Manifest
 
@@ -11,14 +12,15 @@ plugin adds to the desk's policies as data (ADR 0017).
 | --- | --- |
 | `id` | Reverse-domain id with a dot, lowercase: `endue.eris`, `example.hello-ui` |
 | `version` | Semantic version |
-| `kind` | `ui` (sandboxed iframe), `logic` (Wasm), `tool` (MCP inside the VM), `policy` (data only), `library` (files other plugins import), `connector` (items in, actions as commands; Wasm or MCP), `view` (data only) |
-| `entry` | Entry file relative to the plugin folder, never outside it; `policy`, `library` and `view` plugins have none |
+| `kind` | `ui` (sandboxed iframe), `logic` (Wasm), `tool` (MCP inside the VM), `policy` (data only), `library` (files other plugins import), `connector` (items in, actions as commands; Wasm or MCP), `view` (data only), `theme` (a theme's values and files) |
+| `entry` | Entry file relative to the plugin folder, never outside it; `policy`, `library`, `view` and `theme` plugins have none |
 | `permissions` | Everything the plugin may ask for; each is granted by the person at first use; a `library` has none |
 | `surfaces` | Surfaces a UI plugin can open, with a placement (`hidden` until it shows itself); other kinds declare none |
 | `contributes` | Commands, keys, display rules, file openers, themes, settings, profiles and palette providers; required for `policy`, refused for `library` |
 | `autoload` | Off until the desk needs it, like Emacs's autoload: off at start unless a stored flag says on, its file openers count while off; `desk.files` turns it on for a file and off after its last file; default `false`; refused for `library` |
 | `view`, `views` | A `view` plugin's one view inline (`specs/view/v0`), or its view files (`.yaml`, `.yml`, `.json`); exactly one of the two |
 | `connector` | A `connector` plugin's connector block (`specs/connector/v0`); required for that kind, refused for others |
+| `theme` | A `theme` plugin's theme block (`theme.schema.json`); required for that kind, refused for others |
 
 ## Libraries
 
@@ -32,6 +34,22 @@ always reports it enabled. A consumer maps a bare prefix to the library's folder
 map, for `endue.formats`: `{ "imports": { "@endue-ai/formats/": "/endue.formats/lib/" } }`, then
 imports `@endue-ai/formats/<folder>/<file>.js`. Inside a library, modules import each other by
 relative paths.
+
+## Themes
+
+A `theme` plugin is a theme's values and the font and image files they name: no code, so no `entry`,
+contributions, permissions, surfaces or `autoload`. Its `theme` block has the layers every scheme
+shares (`type`: font stacks, `scale`, `tracking`, `fonts`; `shape`: `radius` and `density` presets;
+`motion`: a `personality`) and a `light` and/or `dark` variant (`colors`: token name to value, the
+shell's and Eris's tokens too; `contrast`: its high-contrast changes; `material`: `opacity`, `blur`,
+`noise`, `border`, `shadow`; `backdrop`: `color`, `gradient`, `angle`, `image`, `fit`, `glow`;
+`terminal`: sixteen `ansi` colours). Every layer has a default and a missing scheme falls back to the
+desk's own theme, so a palette alone is a theme. Numbers are bounded and presets are names, so any
+valid theme stays usable. Assets are `.woff2` fonts and `.png`, `.jpg` or `.webp` images (no SVG,
+which can carry script) inside the folder, at most 2 MiB each and 8 MiB together; `desk plugin
+validate` checks them. The desk installs a theme like a library: always on, never mounted, served at
+`/<id>/<path>`; `desk.theme.active` picks the one in force, and installing one does not apply it.
+`contributes.themes` stays what it was: token sets of policy plugins that always layer underneath.
 
 ## Contributions
 

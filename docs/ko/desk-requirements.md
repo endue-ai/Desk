@@ -95,7 +95,7 @@ Tauri 셸과 `desk-sys` 는 드라이버입니다. 검사는 하지 않고 코�
 | SYS-06 | 토큰과 비밀은 OS 키체인(Keychain · Credential Manager · libsecret)에만 | 없음 | 3 |
 | SYS-07 | `endue://` 딥 링크: 로그인 콜백 · 플러그인 설치 링크 · 커맨드 호출(권한 검사 뒤) | 없음 | 3 |
 | SYS-08 | Tauri capability 는 창마다 최소. 셸이 노출하는 커맨드는 `bridge_call` 하나 | 있음 | 1 |
-| SYS-09 | updater: 채널(canary · beta · stable) · 서명 검증 · 재시작 시점 선택 · 롤백 | 없음 | 1 |
+| SYS-09 | updater: 채널(canary · beta · stable) · 서명 검증 · 재시작 시점 선택 · 롤백 | 일부 (ADR 0054, `updater-requirements.md`: #274 계약 · #294 R2 게시 · 롤백. 데스크 쪽은 #278 · #296 · #297) | 1 |
 | SYS-10 | `desk-plugin://` 스킴: 플러그인 파일 서빙 · CSP · 리비전으로 캐시 무효화 | 있음 | 1 |
 
 ### 브리지와 명세 (BR)
@@ -268,7 +268,7 @@ CI · 테스트 층 · 릴리스 파이프라인은 `desk-structure.md` 가 정�
 | DX-03 | 문서 사이트에 명세에서 생성한 API 레퍼런스(BR-08)와 플러그인 가이드 로직 · 도구 편 | 일부 (UI 편 · #71: 명세에서 생성한 API 레퍼런스, `just docs-api`) | 1 · 2 |
 | DX-04 | 예제 완성: hello-ui(있음) · hello-wasm · hello-mcp · hello-theme · hello-pack · brain-echo(있음). 전부 한 명령 | 일부 (hello-ui · brain-echo · #68 hello-wasm. hello-mcp · hello-theme · hello-pack 은 없음) | 2 |
 | DX-05 | 플러그인 테스트 하네스: 로직 · 도구 플러그인, 커맨드 · 키 · 설정 모의, 렌더 트리 스냅샷 | 일부 (UI 만) | 2 |
-| OPS-01 | 3 OS 서명 · 공증 · updater · 설치 스모크 | 일부 | 1 |
+| OPS-01 | 3 OS 서명 · 공증 · updater · 설치 스모크 | 일부 (#294: macOS 서명 · 공증과 updater 서명은 비밀값이 생기면 돈다. Windows Authenticode 미정) | 1 |
 | OPS-02 | 위협 모델 문서: 플러그인 · 에이전트 · 마켓 · 동기화의 경계와 가정. SECURITY.md 에서 링크 | 있음 (#71: `docs/security/threat-model.md`, SECURITY.md 에서 링크) | 1 |
 | OPS-03 | SBOM 과 라이선스 검사(cargo deny 있음) + 플러그인 라이선스 필드 | 일부 | 2 |
 | OPS-04 | 텔레메트리 없음. 크래시는 opt-in(ADR 0007). `desk doctor --bundle` 진단 묶음은 사용자가 직접 보낸다 | 일부 | 1 |

@@ -1,0 +1,7 @@
+{
+  "target": "ThemeColors",
+  "description": "token values carry no url(): images come only through backdrop.image",
+  "instance": {
+    "background": "url(https://example.com/x.png)"
+  }
+}
