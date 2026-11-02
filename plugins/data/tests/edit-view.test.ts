@@ -5,7 +5,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Shown } from "../ui/data.js";
 import { createSession } from "../ui/edit/session.js";
 import { createView } from "../ui/view.js";
+import { openWorker } from "../ui/worker-client.js";
 import { bytesOf, loadPage } from "./harness";
+import { workerHarness } from "./worker-harness";
 
 const $ = <T extends HTMLElement = HTMLElement>(selector: string) =>
   document.querySelector(selector) as T;
@@ -135,10 +137,44 @@ describe("editing in the tree", () => {
 
   it("a double click on a value opens the editor", async () => {
     show("a.yaml", "name: desk\n");
-    const value = rowOf("name").querySelector(".value") as HTMLElement;
-    value.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-    value.dispatchEvent(new MouseEvent("dblclick", { bubbles: true }));
+    const value = () => rowOf("name").querySelector(".value") as HTMLElement;
+    value().dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    // The click drew the rows again: the second click lands on the new one.
+    value().dispatchEvent(new MouseEvent("dblclick", { bubbles: true }));
     await vi.waitFor(() => expect(editor()).not.toBeNull());
     expect(actions.begin).toHaveBeenCalledWith([0, 0]);
+  });
+
+  it("edits a row of a file the worker holds, with the tier the worker said", async () => {
+    const worker = workerHarness();
+    const text = '{"title": "Desk", "items": [1, 2]}';
+    const opened = await openWorker("big.json", bytesOf(text), worker.start, { maskKeys: true });
+    try {
+      view.show({
+        buffer: "file:~/data/big.json",
+        path: "~/data/big.json",
+        name: "big.json",
+        size: text.length,
+        opened,
+        tier: opened.tier,
+        why: opened.why,
+        schema: { state: "none", errors: [] },
+        maskKeys: true,
+      });
+      expect($("#tier").getAttribute("tier")).toBe("lossless");
+      await vi.waitFor(() => expect(rows()).toHaveLength(3));
+      press("ArrowDown");
+      await vi.waitFor(() => expect($("#pointer").textContent).toBe("/title"));
+      actions.begin.mockResolvedValueOnce("Desk");
+      press("Enter");
+      await vi.waitFor(() => expect(editor()).not.toBeNull());
+      expect(actions.begin).toHaveBeenCalledWith([0, 0]);
+      const input = editor() as HTMLInputElement;
+      input.value = "Desk 2";
+      press("Enter", input);
+      expect(actions.edit).toHaveBeenCalledWith([0, 0], "Desk 2");
+    } finally {
+      worker.close();
+    }
   });
 });

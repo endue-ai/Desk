@@ -41,6 +41,7 @@ export function createRemoteTree(doc, el, hooks) {
     value.className = `value kind-${row.kind}${row.masked && row.preview === "••••••••" ? " masked" : ""}`;
     value.textContent = row.preview;
     item.append(twisty, key, sep, value);
+    if (!row.group) hooks.cell?.(row, value);
     for (const text of [
       row.tag,
       row.anchor && `&${row.anchor}`,
@@ -119,6 +120,12 @@ export function createRemoteTree(doc, el, hooks) {
   });
   el.addEventListener("keydown", (event) => {
     if (!source || event.ctrlKey || event.metaKey || event.altKey) return;
+    // Enter on a value, or F2, edits it; Enter on a container still opens it.
+    if (event.key === "F2" || (event.key === "Enter" && selected && !selected.branch)) {
+      event.preventDefault();
+      if (selected) hooks.edit?.(selected);
+      return;
+    }
     if (
       ![
         "ArrowDown",

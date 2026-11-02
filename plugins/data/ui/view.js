@@ -1,9 +1,11 @@
-// The DOM of the data plugin: the file's name and format, the tree and the raw view side by side or
-// one at a time, search (Mod+F, Mod+G), the selected node's pointer and path, the reveal button for
-// one masked value, the problems panel, a details view for files it cannot show, and a status live
-// region. Each open file keeps which nodes are open; a revealed value is masked again on every show.
-// The desk's chords (Mod+S, Mod+O, Mod+W, Mod+K) are never prevented.
+// The DOM of the data plugin: the file's name and edit tier, the tree and the raw view side by side
+// or one at a time, search (Mod+F, Mod+G), the selected node's pointer and path, the reveal button
+// for one masked value, a value's editor in its row (edit/field.js), the problems panel, a details
+// view for files it cannot show, and a status live region. Each open file keeps which nodes are
+// open; a revealed value is masked again on every show. The desk's chords (Mod+S, Mod+O, Mod+W,
+// Mod+K) are never prevented.
 
+import { createEditField, showTier } from "./edit/field.js";
 import { createPanel } from "./panel.js";
 import { createPanes } from "./panes.js";
 import { CHECKED } from "./schemas.js";
@@ -17,7 +19,8 @@ import { MASK } from "./tree-view.js";
  * @typedef {import("./data.js").SchemaState} SchemaState
  * @typedef {import("./tree-view.js").Row} Row
  * @typedef {import("./tree-view.js").TreeState} TreeState
- * @typedef {{ validateWith(): unknown, cancel?(): unknown }} Actions
+ * @typedef {{ validateWith(): unknown, cancel?(): unknown, begin?(path: number[]): Promise<string>,
+ *   edit?(path: number[], text: string): unknown }} Actions
  * @typedef {"tree" | "raw" | "both"} Mode
  */
 
@@ -44,7 +47,7 @@ export function createView(doc, actions) {
   const $ = {
     name: byId("name"),
     path: byId("path"),
-    format: byId("format"),
+    tier: byId("tier"),
     note: byId("note"),
     panes: byId("panes"),
     treePane: byId("tree-pane"),
@@ -133,7 +136,27 @@ export function createView(doc, actions) {
     say(revealed ? `Showing the value of ${row.label}.` : `Hid the value of ${row.label}.`);
   };
 
-  const { tree, raw } = createPanes(doc, $, { select: selectRow, status: say, reveal });
+  const field = createEditField(doc, $.tree, {
+    model: () => model,
+    selected: () => tree.selected(),
+    masked: (row) =>
+      !row.group && (row.masked ?? isMasked(row.chain, maskKeys)) && revealed !== row.key,
+    begin: (path) =>
+      actions.begin
+        ? actions.begin(path)
+        : Promise.reject(new Error("Values are not edited here.")),
+    commit: (path, text) => safely(() => actions.edit?.(path, text)),
+    redraw: () => tree.mask(maskKeys, revealed),
+    focus: () => tree.focus(),
+    say,
+  });
+  const { tree, raw } = createPanes(doc, $, {
+    select: selectRow,
+    status: say,
+    reveal,
+    edit: (row) => field.edit(row),
+    cell: (row, cell) => field.place(row, cell),
+  });
   const panel = createPanel(doc, byId("problems"), {
     line: (line, col) => {
       if (stateOf()?.mode === "tree") setMode("both");
@@ -284,12 +307,13 @@ export function createView(doc, actions) {
     },
     /** @param {Shown | null} next */
     show(next) {
+      field.close();
       model = next;
       revealed = null;
       resetSearch();
       $.name.textContent = next ? next.name : "No file open";
       $.path.textContent = next?.path ?? "";
-      $.format.textContent = next ? next.opened.label : "";
+      showTier($.tier, next);
       $.toolbar.hidden = !next || next.opened.reason !== undefined;
       $.validate.hidden = !next || !CHECKED.has(next.opened.format) || !next.opened.doc;
       $.note.hidden = !next?.opened.note;
