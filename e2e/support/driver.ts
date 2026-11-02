@@ -22,36 +22,48 @@ export interface DriverOptions {
   spec: string;
   /** The init.yaml in e2e/fixtures the app starts with. */
   init: string;
+  /** Variables to set for the app on top of the spec's (undefined leaves one out): e2e/perf. */
+  env?: Record<string, string | undefined>;
 }
 
 let driver: ChildProcess | undefined;
 let home: string | undefined;
 
 /** The runner's environment without XDG_* (so the data folder follows HOME) or DESK_*, plus the spec's. */
-export function appEnv(root: string, appHome: string, init: string): NodeJS.ProcessEnv {
+export function appEnv(
+  root: string,
+  appHome: string,
+  init: string,
+  extra: Record<string, string | undefined> = {},
+): NodeJS.ProcessEnv {
   const env: NodeJS.ProcessEnv = {};
   for (const [key, value] of Object.entries(process.env)) {
     if (!/^(XDG_|DESK_)/.test(key)) env[key] = value;
   }
-  return {
+  const spec: NodeJS.ProcessEnv = {
     ...env,
     HOME: appHome,
     DESK_INIT: join(root, "e2e/fixtures", init),
     DESK_PLUGIN_DIRS: join(root, "plugins"),
     DESK_DEV_PLUGINS: join(root, "e2e/fixtures/plugin-e2e-hello"),
   };
+  for (const [key, value] of Object.entries(extra)) {
+    if (value === undefined) delete spec[key];
+    else spec[key] = value;
+  }
+  return spec;
 }
 
 /** Start tauri-driver for one spec file and wait until it answers. */
 export async function startDriver(options: DriverOptions): Promise<void> {
-  const { root, results, spec, init } = options;
+  const { root, results, spec, init, env } = options;
   home = mkdtempSync(join(tmpdir(), "desk-e2e-"));
   const log = join(results, `${spec}.log`);
   const out = createWriteStream(log);
   const child = spawn(
     "tauri-driver",
     ["--port", String(PORT), "--native-driver", join(root, "e2e/driver/webkit-webdriver.sh")],
-    { env: appEnv(root, home, init), stdio: ["ignore", "pipe", "pipe"] },
+    { env: appEnv(root, home, init, env), stdio: ["ignore", "pipe", "pipe"] },
   );
   driver = child;
   // Both streams go to one log; it ends when the driver does.
@@ -71,6 +83,11 @@ export async function startDriver(options: DriverOptions): Promise<void> {
   });
   gone.catch(() => {});
   await Promise.race([answering(), gone]);
+}
+
+/** The running tauri-driver's pid: the app is a process under it (e2e/perf measures its memory). */
+export function driverPid(): number | undefined {
+  return driver?.pid;
 }
 
 /** tauri-driver forwards /status to WebKitWebDriver: it answers once both are up. */

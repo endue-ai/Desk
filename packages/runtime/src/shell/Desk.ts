@@ -18,6 +18,7 @@ import { pluginWindows } from "../surface/host";
 import { mountSurfaces } from "../surface/Surface";
 import { loadDirectory } from "../system/agents";
 import { mountSystemLayer } from "../system/layer";
+import { timed } from "../timing";
 import { layoutOf } from "./actions";
 import { mountBottom } from "./Bottom";
 import { defineCommands, dismiss } from "./commands";
@@ -158,7 +159,7 @@ export function mountDesk(options: DeskOptions): Desk {
   );
   const ready = (runtime.plugins?.ready ?? runtime.ready)
     .then(() => restored.done())
-    .then(refresh)
+    .then(() => timed("agent directory", refresh))
     .then(() => brain)
     .then(() => runtime.commands.settled());
 

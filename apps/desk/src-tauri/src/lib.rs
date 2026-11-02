@@ -8,11 +8,13 @@ mod palette;
 mod palette_assets;
 mod protocol;
 mod socket;
+mod trace;
 mod tray;
 mod update;
 
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
+use std::time::Instant;
 
 use desk_brain_endue::HttpBrain;
 use desk_bridge::{
@@ -48,6 +50,8 @@ type Watchers = (
 );
 
 pub fn run() {
+    // Process start for the start-up trace (DESK_TRACE=1): its clock reads 0 here.
+    let origin = desk_trace::Origin::now();
     let builder = tauri::Builder::default()
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .manage(open_files::OpenFiles::default())
@@ -65,12 +69,15 @@ pub fn run() {
                 responder.respond(protocol::serve(&app, &request));
             });
         })
-        .setup(|app| {
+        .setup(move |app| {
             app.state::<open_files::OpenFiles>()
                 .push(open_files::argument_paths(
                     std::env::args_os().map(|arg| arg.into_string().unwrap_or_default()),
                 ));
             let data = app.path().app_data_dir()?;
+            let tracing = trace::Tracing::from_env(origin, &data);
+            tracing.phase("tauri start", origin.instant());
+            let started = Instant::now();
             let home = home_dir();
             let init = std::env::var_os("DESK_INIT")
                 .map(PathBuf::from)
@@ -182,6 +189,8 @@ pub fn run() {
                     }),
                 );
             }
+            tracing.phase("core init", started);
+            let started = Instant::now();
             for dir in env_paths("DESK_PLUGIN_DIRS") {
                 core.install_plugins_in(&dir, true);
             }
@@ -194,6 +203,8 @@ pub fn run() {
                 .watch_themes()
                 .map_err(|why| eprintln!("endue Desk: the themes folder is not watched ({why})"))
                 .ok();
+            tracing.phase("plugin registry", started);
+            let started = Instant::now();
             core.start_connectors();
             core.start_connector_scheduler(CONNECTOR_TICK);
             let views = core.watch_views().ok();
@@ -201,6 +212,8 @@ pub fn run() {
                 eprintln!("endue Desk: a view is left out ({problem})");
             }
             app.manage(Watching(Mutex::new((watcher, views, themes))));
+            tracing.phase("connectors and views", started);
+            let started = Instant::now();
 
             // Core events reach the runtime as Tauri events, each with the callers it is for, so the
             // runtime can hand an addressed event (a perm.prompt, a subscribed event) to the plugin it
@@ -225,6 +238,9 @@ pub fn run() {
                 tray::follow(app.handle(), &updater);
                 app.manage(update::Updates(updater));
             }
+            tracing.phase("app services", started);
+            tracing.write();
+            app.manage(tracing);
             Ok(())
         })
         .on_window_event(|window, event| {
@@ -238,6 +254,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::bridge::bridge_call,
             commands::ready::desk_ready,
+            trace::desk_trace,
             palette::palette_hide,
             palette::palette_reveal_main,
             palette::palette_prepare_main,

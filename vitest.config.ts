@@ -18,6 +18,7 @@ export default defineConfig({
       "apps/*/src/**/*.test.ts",
       "plugins/*/tests/**/*.test.ts",
       "examples/*/tests/**/*.test.ts",
+      "e2e/perf/lib/*.test.ts",
     ],
   },
 });
