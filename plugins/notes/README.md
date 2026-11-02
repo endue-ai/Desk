@@ -8,6 +8,8 @@ It answers the desk's `desk.files.visit`, `.save` and `.revert` (`{ buffer, path
 `desk.buffers.show` and `.closed` (`plugins/files`, `plugins/buffers`). Several notes can be open; the
 text area shows one. The first edit after a load or save runs `desk.buffers.update { id, modified: true }`;
 `fs.watch` on each open file runs `desk.files.changed { path }`, and `desk.files.on-change` decides.
+When the desk unloads it out of sight (`ui.surface.state`, ADR 0070) it keeps the open notes, unsaved
+text, watches, the note on screen, caret and scroll, and comes back from them without taking the focus.
 
 A file outside its grants: `fs.read` or `fs.write` is refused, notes asks with `perm.request` for the
 file's folder (`<folder>/**`) and tries once more. A refusal is said in words on its status line and in
@@ -23,6 +25,7 @@ the desk's notice: `Not allowed to read ~/Documents/x.md.`
 | --- | --- |
 | `ui/notes.js` | The desk's requests, fs calls with one ask on refusal, watches, the unsaved mark |
 | `ui/view.js` | The DOM: the file name, path and unsaved mark, the text area, a status live region |
+| `ui/keep.js` | What notes keeps when the desk unloads it, and reading that back |
 | `ui/main.js` | Mounts the plugin and joins the view to the controller |
 
 The text area is the only control and takes focus on show and visit; its name is the file name.

@@ -1,0 +1,9 @@
+{
+  "target": "UiSurfaceStateRequest",
+  "description": "the runtime asks a plugin's frame for the state to keep before it unloads the surface",
+  "instance": {
+    "id": 7,
+    "method": "ui.surface.state",
+    "params": { "surface": "main" }
+  }
+}

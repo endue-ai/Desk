@@ -21,6 +21,7 @@ import {
   type StubHandlers,
   type StubSurface,
   stubCommands,
+  type UiSurfaceStateResult,
 } from "@endue-ai/bridge";
 import type { HostMessage, KeyPress, PluginMessage, ThemeState, Transport } from "../protocol";
 
@@ -31,6 +32,11 @@ export interface TestHostOptions {
   pluginId: string;
   /** State the runtime hands the plugin at init, as after a reload. */
   state?: unknown;
+  /**
+   * What the plugin kept with ui.surface.state, handed back at init as when the desk loads an
+   * unloaded surface again (ctx.surface.restored, ADR 0070).
+   */
+  restored?: unknown;
   /**
    * Bridge methods answered your way, ahead of the stub's copy of the core (cmd.*, perm.*,
    * settings.*, log.*, events.*, ui.surface.*, and the fs.* calls with `files`); they check no
@@ -97,6 +103,8 @@ export interface TestHost {
   emit(event: BridgeEvent): void;
   /** Send the plugin a request by name (desk.files.visit, say) and resolve with its answer. */
   command(name: string, args?: unknown): Promise<unknown>;
+  /** Ask for the state to keep, as the desk does before it unloads the surface (ui.surface.state). */
+  surfaceState(surface?: string): Promise<UiSurfaceStateResult>;
   /** Invoke a command the plugin registered, as the desk would, and resolve with its answer. */
   invoke(id: string, args?: Record<string, unknown>): Promise<unknown>;
   /** Hand the plugin a theme, as the runtime does at start and on every change. */
@@ -171,7 +179,13 @@ export function createTestHost(options: TestHostOptions): TestHost {
   const transport: Transport = {
     send: (message: PluginMessage) => {
       if (message.type === "desk:hello") {
-        toPlugin({ type: "desk:init", pluginId: options.pluginId, state });
+        const { restored } = options;
+        toPlugin({
+          type: "desk:init",
+          pluginId: options.pluginId,
+          state,
+          ...(restored === undefined ? {} : { restored }),
+        });
       } else if (message.type === "desk:state") {
         state = message.state;
       } else if (message.type === "desk:close") {
@@ -206,6 +220,13 @@ export function createTestHost(options: TestHostOptions): TestHost {
     },
   };
 
+  const command = (name: string, args?: unknown) =>
+    new Promise<unknown>((resolve, reject) => {
+      const call = nextCall++;
+      replies.set(call, { resolve, reject });
+      toPlugin({ type: "desk:command", name, args, call });
+    });
+
   return {
     transport,
     calls,
@@ -226,12 +247,9 @@ export function createTestHost(options: TestHostOptions): TestHost {
       );
     },
     keys,
-    command: (name, args) =>
-      new Promise((resolve, reject) => {
-        const call = nextCall++;
-        replies.set(call, { resolve, reject });
-        toPlugin({ type: "desk:command", name, args, call });
-      }),
+    command,
+    surfaceState: (surface = "main") =>
+      command("ui.surface.state", { surface }) as Promise<UiSurfaceStateResult>,
     invoke: async (id, args) => {
       const { invocationId } = await bridge.call("cmd.invoke", {
         id,

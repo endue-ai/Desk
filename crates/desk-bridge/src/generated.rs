@@ -1915,6 +1915,8 @@ pub struct InitDocument {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub settings: Option<InitSettings>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub agents: Option<InitAgents>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub sync: Option<InitSync>,
 }
 
@@ -1935,6 +1937,21 @@ pub type InitSettings = BTreeMap<String, serde_json::Value>;
 
 /// A setting key: lowercase, dotted by owner, for example eris.voice or motion.reduce.
 pub type InitSettingKey = String;
+
+/// What the brain's agents may be granted on this desk, by agent id (the agentId of the brain's tool calls; the caller is agent:<id>). Default none: an agent without an entry asks the person before every first use (ADR 0072).
+pub type InitAgents = BTreeMap<String, InitAgent>;
+
+/// An agent id as the brain names it, for example ag_01JBZ8Q4MR0000000000000001.
+pub type InitAgentId = String;
+
+/// One agent's setup.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct InitAgent {
+    /// The permissions and scopes the agent may be granted. Within them the person is still asked at first use; outside them the agent is refused (outside-allowlist), whatever it holds. Empty or absent: no limit, every first use asks.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub allow: Option<Vec<Permission>>,
+}
 
 /// Syncing init.yaml through the person's endue account.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -2290,7 +2307,7 @@ pub type RequestId = u64;
 /// An absolute path, or one rooted at ~ or at ${plugin}, ${workspace} or ${home}, with forward slashes.
 pub type Path = String;
 
-/// Who makes calls: a plugin id such as endue.eris, or a name of the desk's own such as desk (the web runtime). core names desk-core itself.
+/// Who makes calls: a plugin id such as endue.eris, a name of the desk's own such as desk (the web runtime), or agent:<id> for an agent of the brain whose tool call the core runs (ADR 0072). core names desk-core itself.
 pub type CallerId = String;
 
 /// How binary-safe string content is encoded.
@@ -3395,7 +3412,7 @@ pub enum LogLevel {
     Error,
 }
 
-/// One log entry. channel is the caller that wrote it, or core for desk-core.
+/// One log entry. channel is the caller that wrote it, core for desk-core, or perm for the permission log the core keeps: every grant, every refusal and every call of an agent, with fields caller, permission, scope, decision (granted, allowed, refused or denied), and target, reason, duration and grantId where they apply (ADR 0072).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct LogEntry {
@@ -3563,7 +3580,7 @@ pub enum GrantDuration {
     Always,
 }
 
-/// Result of perm.request. A refusal is a result, not an error. A request that a lasting grant (session or always) already covers is granted at once with that grant.
+/// Result of perm.request. A refusal is a result, not an error. A request that a lasting grant (session or always) already covers is granted at once with that grant, unless the caller is an agent and the grant lies outside its allowlist.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct PermRequestResult {
@@ -3574,11 +3591,13 @@ pub struct PermRequestResult {
     pub reason: Option<RefusalReason>,
 }
 
-/// Why perm.request was refused without asking the person. refused-earlier: the person refused this caller this permission and scope earlier in the session; it holds until the caller is granted a permission that covers it. Absent from a result means the person (or the core's own prompter) refused this request.
+/// Why perm.request was refused without asking the person. refused-earlier: the person refused this caller this permission and scope earlier in the session; it holds until the caller is granted a permission that covers it. outside-allowlist: the caller is an agent (agent:<id>) and no permission in agents.<id>.allow of init.yaml covers the request; an agent is never granted anything outside a non-empty allowlist (ADR 0072). Absent from a result means the person (or the core's own prompter) refused this request.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum RefusalReason {
     #[serde(rename = "refused-earlier")]
     RefusedEarlier,
+    #[serde(rename = "outside-allowlist")]
+    OutsideAllowlist,
 }
 
 /// List the caller's current grants.
@@ -3707,7 +3726,7 @@ pub struct PermAnswerParams {
 #[serde(deny_unknown_fields)]
 pub struct PermAnswerResult {}
 
-/// A caller asked for a permission and the person has to decide. Sent to callers that hold perm:manage.
+/// A caller asked for a permission and the person has to decide. Sent to callers that hold perm:manage. An agent's caller is agent:<id>; it asks only within its allowlist.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct PermPromptEvent {
@@ -3727,7 +3746,7 @@ pub struct PermPromptData {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub reason: Option<String>,
     pub duration: GrantDuration,
-    /// The parent folder the person may grant instead: the same permission over the folder that holds the one asked for, offered when this caller asks for a third folder under it in the session. Never a root, the home folder or a folder holding it, nor a scope the person refused this caller earlier.
+    /// The parent folder the person may grant instead: the same permission over the folder that holds the one asked for, offered when this caller asks for a third folder under it in the session. Never a root, the home folder or a folder holding it, nor a scope the person refused this caller earlier, nor, for an agent, a scope outside its allowlist.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub parent: Option<Permission>,
 }
@@ -4626,6 +4645,32 @@ pub struct UiSurfaceCloseParams {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct UiSurfaceCloseResult {}
+
+/// The runtime asks a plugin's frame for the state to keep before it unloads a surface that is not visible (ADR 0070). Sent to the frame as a desk request, not to the core: it is not a BridgeRequest. Answering is optional; a frame that does not answer comes back cold.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct UiSurfaceStateRequest {
+    pub id: RequestId,
+    pub method: UiSurfaceStateRequestMethod,
+    pub params: UiSurfaceStateParams,
+}
+
+/// Parameters of ui.surface.state.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct UiSurfaceStateParams {
+    /// The surface id from the plugin's manifest whose frame is about to be unloaded.
+    pub surface: String,
+}
+
+/// A plugin's answer to ui.surface.state. The runtime keeps state in memory for the session, at most 64 KiB as UTF-8 JSON (a bigger one is dropped), and hands it back as restored when the frame loads again.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct UiSurfaceStateResult {
+    /// Any JSON value the plugin needs to come back as it was: what is open, the caret, the scroll. Absent: nothing to keep, the surface comes back cold.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub state: Option<serde_json::Value>,
+}
 
 /// Show a notification.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -6016,6 +6061,14 @@ pub enum UiSurfaceCloseRequestMethod {
     #[default]
     #[serde(rename = "ui.surface.close")]
     UiSurfaceClose,
+}
+
+/// The `method` of [`UiSurfaceStateRequest`]: always `"ui.surface.state"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum UiSurfaceStateRequestMethod {
+    #[default]
+    #[serde(rename = "ui.surface.state")]
+    UiSurfaceState,
 }
 
 /// The `method` of [`UiNotifyRequest`]: always `"ui.notify"`.

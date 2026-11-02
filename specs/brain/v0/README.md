@@ -18,6 +18,11 @@ A turn streams `turn.started`, any number of `text.delta`, then `turn.completed`
 When the brain needs a tool it sends `tool.call` and completes with `stopReason: tool_call`; Desk runs
 the tool and posts the result to `submitToolResult`, which streams the rest of the turn.
 
+A call names the agent that makes it (`agentId`). Desk runs it as the caller `agent:<agentId>`: `echo`,
+or any bridge method by its name with the arguments as its params (`cmd.invoke` answers with the
+command's result). The agent's grants are its own and never reach past `agents.<agentId>.allow` in
+init.yaml (ADR 0072). A call without `agentId` gets `echo` only.
+
 `createTurn` may offer `tools` for that turn (`ToolDefinition`: `name`, `description`, and `schema`, a
 JSON Schema of the arguments whose type is object) and say with `toolChoice` whether the brain must call
 one: `auto` (the default: a tool or text), `required` (one of them) or `tool` with its `name`. A

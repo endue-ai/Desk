@@ -131,6 +131,8 @@ pub fn run() {
                 core = core.with_updater(updater.clone());
             }
             let core = Arc::new(core);
+            // The brain's tool calls run in the core, each as the agent that asks (ADR 0072).
+            core.route_tools();
             // The runtime mounts plugins, so it may list and toggle them.
             core.grant(
                 RUNTIME_CALLER,

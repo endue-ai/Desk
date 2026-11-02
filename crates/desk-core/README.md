@@ -14,17 +14,17 @@ its sync, the brain conversation, the integration layer and the bridge handler. 
 - Files: `fs.read` reads ranges; `fs.url` tokens resolve with `file_url(token)` (ADR 0041); with
   `with_history_dir(dir)` each `fs.write` keeps what it replaces for `fs.history` and `fs.restore`
   (ADR 0076). Links (ADR 0047): `with_opener`.
-- Permissions: `Core::grant`, `with_grant_file(path)` (`always`, ADR 0029), `with_prompter` (`RefuseAll`
-  by default); `perm.request`, and `shell.open` without a grant, prompt the `perm:manage` holders
-  (`perm.prompt`). `PermissionEngine`: deny by default; a `once` grant is spent by its call.
+- Permissions: `Core::grant`, `with_grant_file(path)` (ADR 0029), `with_prompter` (`RefuseAll`);
+  `perm.request` and `shell.open` prompt the `perm:manage` holders. Agents (`agent:<id>`, ADR 0072):
+  capped by `agents.<id>.allow`, prompted inside it; grants, refusals, agent calls on the `perm` log.
 - `EventBus`: `subscribe`, `subscribe_addressed`, `publish`, `publish_to`; `subscription_count()`,
   `watch_count()`, `process_count()`, `surface_count()`, `file_url_count()`; `media_type(name)`.
 - Plugins: `with_plugin_store(path)`, `install_plugin(dir, built_in)`, `install_plugins_in`,
   `plugins()`, `plugin_file(id, path)`, `watch_plugins()`, `validate_dir(dir)`. A plugin turned off
   takes its commands, requests, subscriptions, processes, surfaces and URLs; its connectors pause.
 - Storage: `with_store_file(path)`, `with_settings_file(path)`, `with_log_dir(dir)`, `Core::log`.
-  Brain: `with_brain(brain, BrainOptions)`, `open_session(id)`, `brain_session()`, `LeaseClient`,
-  `SessionStore`; `brain.say` streams `brain.turn`; the directory passes the brain's answers through.
+  Brain: `with_brain(brain, BrainOptions)`, `route_tools()` (tool calls as their agent), `open_session`,
+  `brain_session()`; `brain.say` streams `brain.turn`; the directory passes the brain's answers through.
 - init.yaml (ADR 0016): `with_init_file(path)`, `init()`, `init_problem()`, `with_sync(remote,
   state_file)`, `sync_init()`, `resolve_init(Keep)`; `MockRemote` stands in for endue.
 - Integration layer (ADR 0036): `with_index(Arc<dyn ItemIndex>)` (`data.*` under `data:read`),
@@ -36,5 +36,5 @@ its sync, the brain conversation, the integration layer and the bridge handler. 
 ## Testing
 
 `cargo test -p desk-core`. `tests/` covers each side (`proc`'s child is the test binary itself; `net`
-serves from in-process listeners; `conversation`, `directory` and `lease` start `examples/brain-echo`,
+serves from in-process listeners; `conversation`, `agent_tools`, `directory` and `lease` start brain-echo,
 needs Node); the integration layer runs on a temp index, a `FakeCalendar` and a fake clock (`layer`).

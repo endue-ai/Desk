@@ -77,6 +77,12 @@ defineUiPlugin({
 übertragen. Ein abgelehnter Aufruf wird mit einem `BridgeCallError` zurückgewiesen, dessen `code`
 beispielsweise `permission_denied` ist.
 
+Eine Oberfläche, die eine Weile niemand gesehen hat (hinter anderen Fenstern, außerhalb des Bildschirms),
+kann entladen werden, um Speicher zu sparen, und lädt erneut, sobald sie sich zeigt (ADR 0070). Um so
+zurückzukommen, wie sie war, registrieren Sie, was bleiben soll: `surface.onUnload(() => ({ open, caret,
+scroll }))` beantwortet das `ui.surface.state` des Desks mit JSON bis 64 KiB, und die neu geladene Seite
+findet es in `surface.restored`. Ohne Anbieter kommt sie kalt zurück; `state` oben kommt weiterhin zurück.
+
 ## Berechtigungen
 
 Der Frame des Plugins läuft in einer Sandbox, die nur Skripte erlaubt: kein Zugriff auf die Seite von Desk,
