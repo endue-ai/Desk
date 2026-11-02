@@ -1,0 +1,11 @@
+{
+  "id": "local.e2e-paper",
+  "name": "E2E Paper",
+  "version": "1.0.0",
+  "kind": "theme",
+  "description": "The app e2e's user theme: a folder the themes spec puts in <data>/themes/ by hand.",
+  "theme": {
+    "light": { "colors": { "background": "#f6f1e7", "text": "#1d1a16" } },
+    "dark": { "colors": { "background": "#1b1915" } }
+  }
+}
