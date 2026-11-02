@@ -37,8 +37,8 @@ impl Updater {
             .signed(&url)
             .map_err(|e| format!("the channel index: {e}"))?;
         let index = manifest::index(&bytes)?;
-        if index.channel != channel.name() {
-            let named = &index.channel;
+        if index.channel.name() != channel.name() {
+            let named = index.channel.name();
             return Err(format!("the {} index says it is {named}'s", channel.name()));
         }
         if let Some(seen) = self.inner.stage.seen(channel.name())

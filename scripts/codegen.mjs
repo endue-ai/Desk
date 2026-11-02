@@ -3,6 +3,7 @@
 //   bridge, plugin, item, view, connector and init schemas → crates/desk-bridge/src/generated.rs and
 //                           packages/bridge/src/generated.ts
 //   brain openapi.yaml      → crates/desk-brain/src/generated.rs,  packages/bridge/src/brain.generated.ts
+//   update schemas          → crates/desk-update/src/generated.rs (the release origin's documents)
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -17,6 +18,7 @@ export const OUTPUTS = [
   "packages/bridge/src/generated.ts",
   "crates/desk-brain/src/generated.rs",
   "packages/bridge/src/brain.generated.ts",
+  "crates/desk-update/src/generated.rs",
 ];
 
 const header = (from) => [
@@ -62,6 +64,7 @@ export function generate(root = ROOT) {
   const specs = loadAll(root);
   const bridge = buildModel(specs.bridge);
   const brain = buildModel(specs.brain);
+  const update = buildModel(specs.update);
   const bundle = specs.brain[0];
   const bundleJson = JSON.stringify(bundle, null, 2);
   const fromBridge = header(
@@ -96,6 +99,9 @@ export function generate(root = ROOT) {
         ].join("\n"),
       }),
       "packages/bridge/src/brain.generated.ts",
+    ),
+    "crates/desk-update/src/generated.rs": rustfmt(
+      emitRust(update, { header: header("specs/update/v0") }),
     ),
   };
 }

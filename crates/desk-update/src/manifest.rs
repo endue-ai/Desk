@@ -1,86 +1,40 @@
-//! The documents on R2 (ADR 0054): a channel's index, which lists the builds on that channel, and a
-//! build's release manifest, the Tauri updater's static format plus a `desk` block. Both are signed
-//! (`.sig` beside each); `verify` checks them before anything here reads them.
+//! The documents on R2 (ADR 0054), as `specs/update/v0` defines them: a channel's index, which lists
+//! the builds on that channel, and a build's release manifest, the Tauri updater's static format plus
+//! a `desk` block. Both are signed (`.sig` beside each); `verify` checks them before anything here
+//! reads them. The types are generated (`crate::generated`); these names are the crate's own.
 
-use std::collections::BTreeMap;
-
-use serde::Deserialize;
+use crate::generated::{
+    ReleaseArtifact, ReleaseChannel, ReleaseDesk, ReleaseIndex, ReleaseListing, ReleaseManifest,
+    ReleasePlatform,
+};
 
 /// `channels/<channel>/index.json`: the builds on one channel, newest first.
-#[derive(Debug, Clone, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Index {
-    pub channel: String,
-    /// Raised on every write. A desk refuses an index older than one it has seen, so a stale copy
-    /// cannot bring back a build that was taken down.
-    pub serial: u64,
-    #[serde(default)]
-    pub generated: Option<String>,
-    pub releases: Vec<Listed>,
-}
-
+pub type Index = ReleaseIndex;
 /// One build on a channel.
-#[derive(Debug, Clone, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Listed {
-    pub version: String,
-    #[serde(default)]
-    pub commit: Option<String>,
-    #[serde(default)]
-    pub date: Option<String>,
-    /// The lowest version that may move to this build directly; lower ones take an older build first.
-    #[serde(default)]
-    pub min_from: Option<String>,
-    /// The share of desks that see the build, 0 to 100.
-    #[serde(default = "everyone")]
-    pub rollout: u8,
-    /// The targets it has artifacts for: `darwin-aarch64`, `windows-x86_64-nsis`, `linux-x86_64-deb`.
-    pub targets: Vec<String>,
-    /// Its release manifest: absolute, or relative to the base URL.
-    pub release: String,
-}
-
-fn everyone() -> u8 {
-    100
-}
-
+pub type Listed = ReleaseListing;
 /// `releases/<version>/release.json`.
-#[derive(Debug, Clone, Deserialize)]
-pub struct Release {
-    pub version: String,
-    /// Where its notes are: the GitHub release, or the commit for a pre-release.
-    #[serde(default)]
-    pub notes: Option<String>,
-    #[serde(default)]
-    pub pub_date: Option<String>,
-    pub platforms: BTreeMap<String, Platform>,
-    pub desk: DeskBlock,
-}
-
+pub type Release = ReleaseManifest;
 /// One target's artifact as the Tauri updater reads it.
-#[derive(Debug, Clone, Deserialize)]
-pub struct Platform {
-    pub url: String,
-    /// The artifact's minisign signature, base64 as the Tauri CLI writes it.
-    pub signature: String,
-}
-
+pub type Platform = ReleasePlatform;
 /// What Desk adds to the Tauri format.
-#[derive(Debug, Clone, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct DeskBlock {
-    #[serde(default)]
-    pub commit: Option<String>,
-    #[serde(default)]
-    pub min_from: Option<String>,
-    pub artifacts: BTreeMap<String, Artifact>,
+pub type DeskBlock = ReleaseDesk;
+/// An artifact's digest and length, checked before its signature.
+pub type Artifact = ReleaseArtifact;
+
+/// The share of desks a listing reaches: its `rollout`, 100 when absent.
+pub fn rollout(listed: &Listed) -> u8 {
+    listed.rollout.map_or(100, |share| share.min(100) as u8)
 }
 
-/// An artifact's digest and length, checked before its signature.
-#[derive(Debug, Clone, Deserialize)]
-pub struct Artifact {
-    pub sha256: String,
-    pub size: u64,
+impl ReleaseChannel {
+    /// The channel's name in paths and in the index: `canary`, `beta` or `stable`.
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Canary => "canary",
+            Self::Beta => "beta",
+            Self::Stable => "stable",
+        }
+    }
 }
 
 pub fn index(bytes: &[u8]) -> Result<Index, String> {
