@@ -64,6 +64,7 @@ export function loadAll(root = ROOT) {
     view: plugin,
     connector: plugin,
     init,
+    update: loadSchemas(root, "update/v0"),
     brain: [loadBrain(root).bundle],
   };
 }
