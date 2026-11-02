@@ -2,7 +2,8 @@
 // instances (connector.list, asking desk.palette.pick when several match), queries and subscribes
 // every binding (data.query, data.subscribe), re-queries a component when data.changed names it,
 // follows its sources' status (connector.changed) and the view file (view.changed), and answers its
-// commands. It talks only to ctx and to a screen, so the SDK's test host runs it with a recording one.
+// commands. A view can also come inline (a preview, preview.js): no file is read or followed then. It
+// talks only to ctx and to a screen, so the SDK's test host runs it with a recording one.
 
 import { build, queryOf, scopeOf, settle } from "./components.js";
 import { keyOf } from "./present.js";
@@ -20,7 +21,9 @@ import { fill, fillValue } from "./template.js";
  * @typedef {import("./components.js").Live} Live
  * @typedef {import("./resolve.js").Bound} Bound
  * @typedef {import("./template.js").Env} Env
- * @typedef {{ id: string, title: string, description: string, root: NodeModel, env: Env }} ViewModel
+ * @typedef {{ text: string, action?: { title: string, command: string, args?: unknown } }} Notice
+ * @typedef {{ id: string, title: string, description: string, root: NodeModel, env: Env,
+ *   preview?: { note: string }, notice?: Notice }} ViewModel
  * @typedef {{ draw(model: ViewModel | null): void, update(component: ComponentModel, env: Env): void,
  *   notice(text: string): void, toast(text: string): void }} Screen
  * @typedef {{ now?: () => number, zone?: string, locale?: string }} EngineOptions
@@ -47,11 +50,14 @@ export function createEngine(ctx, screen, options = {}) {
   const locale = options.locale ?? Intl.DateTimeFormat().resolvedOptions().locale;
   /** @type {ConnectorInfo[]} */
   let connectors = [];
-  /** The view on screen, or null. @type {{ id: string, view: View, given: Record<string, unknown>,
-   *   params: Record<string, unknown>, bound: Record<string, Bound>, live: Map<string, Live>,
-   *   model: ViewModel } | null} */
+  /** The view on screen, or null; `inline` a view not read from a file, `owner` what opened it.
+   * @type {{ id: string, view: View, given: Record<string, unknown>, params: Record<string,
+   *   unknown>, bound: Record<string, Bound>, live: Map<string, Live>, model: ViewModel,
+   *   inline?: View, owner?: unknown } | null} */
   let current = null;
   let opens = 0;
+  /** Told when the view on screen goes (closed, or another opened). @type {Set<(left: typeof current) => void>} */
+  const leaving = new Set();
 
   /** @returns {Env} */
   const envOf = (/** @type {Record<string, unknown>} */ params) => ({
@@ -113,6 +119,7 @@ export function createEngine(ctx, screen, options = {}) {
 
   /** End every subscription of the view on screen and forget it. */
   const end = () => {
+    for (const listener of leaving) listener(current);
     for (const entry of current?.live.values() ?? []) {
       entry.unsubscribe?.();
       entry.binding = undefined;
@@ -138,21 +145,30 @@ export function createEngine(ctx, screen, options = {}) {
   };
 
   /**
-   * desk.views.open { id, params?, bindings? }: read, bind, draw, query and subscribe, then show.
+   * desk.views.open { id, params?, bindings?, notice? }: read, bind, draw, query and subscribe, then
+   * show. With `view` instead of an id the view is drawn as given (preview.js passes `preview` and
+   * `owner` too); `notice` is drawn above the view with its action.
    * @param {unknown} args
    */
   const open = async (args) => {
     const {
-      id,
+      view: inline,
       params = {},
       bindings = {},
-    } = /** @type {{ id?: unknown, params?: Record<string,
-     *  unknown>, bindings?: Record<string, import("./resolve.js").Binding> }} */ (args ?? {});
+      preview,
+      notice,
+      owner,
+    } = /** @type {{ view?: View, params?: Record<string, unknown>, bindings?: Record<string,
+     *  import("./resolve.js").Binding>, preview?: { note: string }, notice?: Notice,
+     *  owner?: unknown }} */ (args ?? {});
+    const id = inline ? inline.id : /** @type {{ id?: unknown } | undefined} */ (args)?.id;
     if (typeof id !== "string") throw new Error("desk.views.open needs the id of a view.");
     const turn = ++opens;
-    const view = await ctx.views.get(id).catch((error) => {
-      throw new Error(`There is no view ${id}: ${said(error)}`);
-    });
+    const view =
+      inline ??
+      (await ctx.views.get(id).catch((error) => {
+        throw new Error(`There is no view ${id}: ${said(error)}`);
+      }));
     const listed = await ctx.bridge.call("connector.list", { scope: CONNECTORS }).catch(() => null);
     const choice = choose(view, listed?.connectors ?? [], bindings);
     for (const [name, found] of Object.entries(choice.pick)) {
@@ -175,8 +191,20 @@ export function createEngine(ctx, screen, options = {}) {
       description: view.description ?? "",
       root,
       env,
+      ...(preview ? { preview } : {}),
+      ...(notice ? { notice } : {}),
     };
-    current = { id, view, given, params: resolved, bound: choice.bound, live, model };
+    current = {
+      id,
+      view,
+      given,
+      params: resolved,
+      bound: choice.bound,
+      live,
+      model,
+      inline,
+      owner,
+    };
     for (const entry of live.values()) settle(entry, connectors, env, ago);
     screen.draw(model);
     // Each binding's query and subscription leave together, in layout order.
@@ -186,7 +214,10 @@ export function createEngine(ctx, screen, options = {}) {
     return { id, title: model.title };
   };
 
-  const close = () => {
+  /** Close the view, or only the view `id` when one is named. */
+  const close = (/** @type {unknown} */ args) => {
+    const only = /** @type {{ id?: unknown } | undefined} */ (args)?.id;
+    if (typeof only === "string" && only !== current?.id) return;
     end();
     screen.draw(null);
     ctx.surface.hide();
@@ -238,7 +269,7 @@ export function createEngine(ctx, screen, options = {}) {
   };
 
   ctx.commands.on("desk.views.open", open);
-  ctx.commands.on("desk.views.close", () => close());
+  ctx.commands.on("desk.views.close", (args) => close(args));
   ctx.commands.on("desk.views.reconnect", async (args) => {
     const { connector, instance } = /** @type {{ connector?: string, instance?: string }} */ (
       args ?? {}
@@ -275,7 +306,7 @@ export function createEngine(ctx, screen, options = {}) {
       else if (owner && change === "disconnected")
         owner.instances = owner.instances.filter((i) => i !== found);
       for (const entry of current?.live.values() ?? []) show(entry);
-    } else if (event.event === "view.changed" && event.data.id === current?.id) {
+    } else if (event.event === "view.changed" && event.data.id === current?.id && !current.inline) {
       const { given, bound, model } = current;
       if (event.data.change === "saved")
         void open({ id: current.id, params: given, bindings: bound }).catch(() => {});
@@ -289,7 +320,17 @@ export function createEngine(ctx, screen, options = {}) {
 
   return {
     open,
-    close,
+    close: () => close(),
+    /** Hear the view on screen go: closed, or replaced by another. */
+    onLeave: (/** @type {(left: typeof current) => void} */ listener) => {
+      leaving.add(listener);
+    },
+    /** Run the action of the notice above the view (the Undo button). */
+    noticeAction: async () => {
+      const action = current?.model.notice?.action;
+      const args = /** @type {Record<string, unknown>} */ (action?.args ?? {});
+      if (action) await run(action.command, args, `${action.title} did not work.`);
+    },
     /** Reconnect the source a component reads (the Reconnect button). */
     reconnect: async (/** @type {string} */ path) => {
       const instance = at(path).entry?.model.instance;

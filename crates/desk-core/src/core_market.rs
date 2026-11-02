@@ -4,7 +4,8 @@
 //! and as a theme plugin in a temporary folder that goes again. Installing is theme.import by url:
 //! beside a `market.` theme the core keeps where it came from (`.market/<id>.json` in the user themes
 //! folder) with a hash of its folder as it landed, so an update replaces it only while the person has
-//! not changed it. Every download is https, to its URL's host only, through desk-sys `net`.
+//! not changed it. Every download is https, to its URL's host only, through desk-sys `net`. A preview
+//! and an install from a market take only a bundle a market in force lists, under the id it lists.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -13,7 +14,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 
 use desk_bridge::{
-    BridgeError, ErrorCode, PluginKind, PluginManifest, ThemeIndex, ThemeIndexEntry,
+    BridgeError, ErrorCode, PluginKind, PluginManifest, ThemeBundle, ThemeIndex, ThemeIndexEntry,
     ThemeMarketFetchParams, ThemeMarketFetchResult, ThemeMarketListParams, ThemeMarketListResult,
     ThemeMarketProblem, ThemeMarketState, ThemeMarketTheme,
 };
@@ -79,7 +80,7 @@ impl Core {
         params: ThemeMarketFetchParams,
     ) -> Answer {
         self.check_theme(caller, params.scope)?;
-        let bundle = parse(&self.download(&params.url, Some(&params.sha256))?)?;
+        let bundle = self.market_bundle(&params.url, Some(&params.sha256), None)?;
         let manifest = &bundle.manifest;
         if manifest.kind != PluginKind::Theme {
             return Err(invalid(format!("{} is not a theme", manifest.id)));
@@ -148,6 +149,54 @@ impl Core {
         if let Some(path) = self.record_path(id) {
             let _ = fs::remove_file(path);
         }
+    }
+
+    /// The bundle at `url` from a market: `market` for theme.import, or for theme.market.fetch (none)
+    /// the first market in force that lists the url. Refused unless that market lists it, its bytes
+    /// have `sha256`, and its manifest has the id the index lists there (TC-05).
+    pub(crate) fn market_bundle(
+        &self,
+        url: &str,
+        sha256: Option<&str>,
+        market: Option<&str>,
+    ) -> Result<ThemeBundle, BridgeError> {
+        let listed = self.listed_id(url, market)?;
+        let bundle = parse(&self.download(url, sha256)?)?;
+        let id = &bundle.manifest.id;
+        if *id != listed {
+            let why = format!("the bundle at {url} is {id}, not {listed} as its market lists it");
+            return Err(invalid(why));
+        }
+        Ok(bundle)
+    }
+
+    /// The id a market in force lists for the bundle at `url`, `market`'s when one is named. The
+    /// indexes are read again for each call rather than remembered from the last theme.market.list,
+    /// so the answer is what the markets in force say now, before and after any list.
+    fn listed_id(&self, url: &str, market: Option<&str>) -> Result<String, BridgeError> {
+        let mut markets = self.markets();
+        if let Some(named) = market {
+            if !markets.iter().any(|known| known == named) {
+                return Err(invalid(format!("{named} is not in desk.theme.markets")));
+            }
+            markets = vec![named.to_owned()];
+        }
+        let mut unread = String::new();
+        for market in &markets {
+            match self.read_index(market) {
+                Ok(index) => {
+                    let mut entries = index.themes.into_iter();
+                    if let Some(entry) = entries.find(|t| resolve(market, &t.url) == url) {
+                        return Ok(entry.id);
+                    }
+                }
+                Err(why) => unread.push_str(&format!("; {market}: {why}")),
+            }
+        }
+        Err(invalid(match market {
+            Some(market) => format!("{market} does not list {url}{unread}"),
+            None => format!("no market in desk.theme.markets lists {url}{unread}"),
+        }))
     }
 
     /// A bundle by its https URL, refused unless its bytes have `sha256`.

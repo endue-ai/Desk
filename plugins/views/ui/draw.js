@@ -234,3 +234,71 @@ export function drawContainer(doc, container, child) {
   box.append(...heading, list, ...panels);
   return box;
 }
+
+/**
+ * The bar above a proposed view: what it is, a field for what should change, Apply, Try again and
+ * Discard. A choice other than Discard leaves it waiting (its buttons off) for what comes next.
+ * @param {Document} doc
+ * @param {{ note: string }} preview
+ * @param {(choice: string, correction: string) => void} choose
+ */
+export function drawPreview(doc, preview, choose) {
+  const bar = make(doc, "section", { class: "preview-bar", "aria-label": "Preview" });
+  const note = make(doc, "p", { class: "note", role: "status" }, preview.note);
+  const field = /** @type {HTMLElement & { value: string }} */ (
+    make(doc, "desk-input", {
+      class: "correction",
+      "aria-label": "What should change",
+      placeholder: "What should change? Try again sends it to Eris.",
+    })
+  );
+  const buttons = /** @type {const} */ ([
+    ["apply", "Apply"],
+    ["retry", "Try again"],
+    ["discard", "Discard"],
+  ]).map(([choice, label]) =>
+    make(
+      doc,
+      "desk-button",
+      { "data-choice": choice, ...(choice === "apply" ? { variant: "primary" } : {}) },
+      label,
+    ),
+  );
+  const pick = (/** @type {string} */ choice) => {
+    if (bar.dataset.busy) return;
+    if (choice !== "discard") {
+      bar.dataset.busy = choice;
+      for (const el of [...buttons, field]) el.setAttribute("disabled", "");
+      note.textContent = choice === "apply" ? "Saving…" : "Eris is trying again…";
+    }
+    choose(choice, field.value ?? "");
+  };
+  for (const button of buttons)
+    button.addEventListener("click", () => pick(button.dataset.choice ?? "discard"));
+  field.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" || event.isComposing) return;
+    event.preventDefault();
+    pick("retry");
+  });
+  const actions = make(doc, "div", { class: "actions" });
+  actions.append(...buttons);
+  bar.append(make(doc, "span", { class: "badge" }, "Preview"), note, field, actions);
+  return bar;
+}
+
+/**
+ * A notice above a view, with its action (Undo after Eris made it).
+ * @param {Document} doc
+ * @param {import("./engine.js").Notice} notice
+ * @param {() => unknown} act
+ */
+export function drawNotice(doc, notice, act) {
+  const bar = make(doc, "section", { class: "notice-bar", role: "status" });
+  bar.append(make(doc, "p", {}, notice.text));
+  if (notice.action) {
+    const button = make(doc, "desk-button", {}, notice.action.title);
+    button.addEventListener("click", () => void act());
+    bar.append(button);
+  }
+  return bar;
+}

@@ -1,6 +1,7 @@
 # scripts
 
 Scripts that `justfile` recipes call (codegen, sign, release). Run them through `just`, not directly.
+`justfile.test.mjs` dry-runs `just dev`: it must load the `DESK_DEV_PLUGINS` folder, else plugin-hello-ui.
 
 `docs-i18n.mjs` checks that each user-facing document has its ja, zh, fr, de and ko translations under
 `docs/i18n/<lang>/`, linked both ways; its test runs with the other script tests in `just test-unit`.
@@ -23,8 +24,7 @@ addons, from the pinned npm packages into `plugins/terminal/ui/vendor/` (ADR 003
 `release-version.mjs`, `release-collect.mjs`, `release-manifest.mjs` and `release-publish.mjs` are the
 release pipeline's steps (ADR 0054): the build version, each target's bundles under canonical names,
 `release.json` and the channel indexes, and the upload to R2 in the order that keeps every listed build
-whole. The `release-build`, `canary`, `release`, `promote` and `rollback` workflows call them; their
-tests run in `just test-unit`.
+whole. The `release-build`, `canary`, `release`, `promote` and `rollback` workflows call them.
 
 `ui-lint.mjs` (in `just check`) keeps every UI on the theme's tokens: no literal colours, fonts, text
 sizes, radii or durations outside `theme: content` marks, as a ratchet over
