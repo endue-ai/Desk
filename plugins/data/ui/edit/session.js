@@ -91,7 +91,8 @@ const sentence = (/** @type {string} */ why) => `${why[0]?.toUpperCase()}${why.s
  */
 export function createSession(name, original, first = openFile(name, original)) {
   const { tier, why } = tierOf(first, original);
-  let bytes = original;
+  // A read-only file's bytes are not kept: nothing is edited or written from them.
+  let bytes = tier === "read-only" ? new Uint8Array() : original;
   let opened = first;
   /** @type {import("./cst.js").Cst | undefined} */
   let cst;
