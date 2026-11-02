@@ -1,0 +1,10 @@
+{
+  "target": "ReleaseIndex",
+  "description": "every build was taken down: an index that lists nothing",
+  "instance": {
+    "channel": "beta",
+    "serial": 3,
+    "generated": "2026-11-20T09:15:00Z",
+    "releases": []
+  }
+}

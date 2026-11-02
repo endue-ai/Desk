@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://endue.ai/specs/update/v0/release.schema.json",
+  "title": "Desk update v0: the release manifest",
+  "description": "desk/releases/<version>/release.json on the release origin (ADR 0054), signed in release.json.sig: the Tauri updater's static manifest, which tauri-plugin-updater reads as it is, plus a desk block the plugin ignores. Unknown fields are allowed.",
+  "$defs": {
+    "ReleaseManifest": {
+      "description": "One build: where each target's updater artifact is, its signature, and the digest and size a desk checks before the signature.",
+      "type": "object",
+      "properties": {
+        "version": { "$ref": "index.schema.json#/$defs/ReleaseVersion" },
+        "notes": {
+          "description": "Where the release notes are: the GitHub release of a tag, or the commit of a pre-release.",
+          "type": "string",
+          "maxLength": 2048
+        },
+        "pub_date": {
+          "$ref": "index.schema.json#/$defs/ReleaseTime",
+          "description": "When it was published."
+        },
+        "platforms": {
+          "description": "Each target's artifact, as the Tauri updater reads it.",
+          "type": "object",
+          "propertyNames": { "$ref": "index.schema.json#/$defs/ReleaseTarget" },
+          "additionalProperties": { "$ref": "#/$defs/ReleasePlatform" },
+          "minProperties": 1
+        },
+        "desk": { "$ref": "#/$defs/ReleaseDesk" }
+      },
+      "required": ["version", "platforms", "desk"]
+    },
+    "ReleasePlatform": {
+      "description": "One target's updater artifact.",
+      "type": "object",
+      "properties": {
+        "url": {
+          "description": "The artifact, absolute (the Tauri updater needs that): https://releases.endue.ai/desk/releases/0.2.0/endue-desk_0.2.0_linux-x86_64.deb.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2048
+        },
+        "signature": { "$ref": "#/$defs/ReleaseSignature" }
+      },
+      "required": ["url", "signature"]
+    },
+    "ReleaseSignature": {
+      "description": "A minisign signature as the Tauri CLI writes it: the base64 of the .sig file, whose trusted comment names the signed file's version (version:<v>). One updater key signs the index, the manifests and the artifacts.",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9+/]+={0,2}$",
+      "minLength": 16,
+      "maxLength": 4096
+    },
+    "ReleaseDesk": {
+      "description": "What Desk adds to the Tauri format.",
+      "type": "object",
+      "properties": {
+        "commit": { "$ref": "index.schema.json#/$defs/ReleaseCommit" },
+        "minFrom": {
+          "$ref": "index.schema.json#/$defs/ReleaseVersion",
+          "description": "The same as the listing's minFrom."
+        },
+        "artifacts": {
+          "description": "Each target's digest and size, the same keys as platforms.",
+          "type": "object",
+          "propertyNames": { "$ref": "index.schema.json#/$defs/ReleaseTarget" },
+          "additionalProperties": { "$ref": "#/$defs/ReleaseArtifact" },
+          "minProperties": 1
+        }
+      },
+      "required": ["artifacts"]
+    },
+    "ReleaseArtifact": {
+      "description": "An artifact's digest and length, checked when it arrives and again before it is installed.",
+      "type": "object",
+      "properties": {
+        "sha256": {
+          "description": "The lowercase hex SHA-256 of the artifact.",
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "size": {
+          "description": "Its length in bytes.",
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": ["sha256", "size"]
+    }
+  }
+}
