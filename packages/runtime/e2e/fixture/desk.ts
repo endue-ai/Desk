@@ -56,7 +56,7 @@ let notices = 0;
 const store: Record<string, unknown> = JSON.parse(params.get("store") ?? "{}");
 const written: Array<{ path: string; content: string }> = [];
 const clock = new ManualClock();
-const { client, stub } = browserCore({
+const { client, stub, folder } = browserCore({
   // The bare desk: every desk.* policy but the shell's own (views.html has the view engine and the
   // view plugins).
   manifests: [
@@ -114,3 +114,4 @@ const runtime = createRuntime({
 window.__desk = { clock, runtime, stub, commands: [] };
 window.__deskStore = store;
 window.__deskWritten = written;
+window.__deskFolder = folder;

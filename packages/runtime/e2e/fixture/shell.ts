@@ -1,6 +1,6 @@
 /// <reference types="vite/client" />
 // Test page: the desk shell on the browser bridge stubs (the core's and the shell's), a manual clock
-// and in-memory storage. ?lang=en, ?persist=1 (the core's store in localStorage), ?reduced=1
+// and in-memory storage. ?lang=en, ?persist=1 (the core's store and the desk folder in localStorage), ?reduced=1
 // (desk.theme.motion: reduce), ?init={...} (more init.yaml settings), ?themes=1 (the test theme
 // plugin installed), ?studio=1 (the theme studio open once the desk is ready; ?studio=<theme id>
 // previews that theme too; ?edit=<theme id> opens the editor on a copy of it; ?describe=<sentence>
@@ -51,6 +51,8 @@ const testPlugins: PluginManifest[] = [
   },
 ];
 const MARKET = "https://market.test/";
+/** Where ?persist=1 keeps the desk folder's files. */
+const FOLDER = "desk.folder";
 const market = params.has("market");
 const core = browserCore({
   manifests: [
@@ -61,6 +63,14 @@ const core = browserCore({
     ...(params.has("themes") ? [testTheme as PluginManifest] : []),
   ],
   store: params.has("persist") ? localStore("desk.core.") : memoryStore(),
+  // The desk folder (~/.desk: keys.yaml, saved profiles) survives a reload with ?persist=1 too.
+  ...(params.has("persist")
+    ? {
+        files: JSON.parse(localStorage.getItem(FOLDER) ?? "{}") as Record<string, string>,
+        keepFiles: (files: Record<string, string>) =>
+          localStorage.setItem(FOLDER, JSON.stringify(files)),
+      }
+    : {}),
   ask: (prompt, tool) => (tool === "propose_theme" ? proposeTheme(prompt) : undefined),
   ...(market ? { download: fromFixtureMarket } : {}),
   init: {
