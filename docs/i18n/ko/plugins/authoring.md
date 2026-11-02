@@ -3,15 +3,32 @@
 # Desk 플러그인 작성하기
 
 Desk 플러그인은 폴더 하나입니다. 내장 기능도 똑같은 형식을 쓰므로, Desk 자신이 화면에서 하는 일은 무엇이든
-직접 만든 플러그인도 할 수 있습니다. 이 문서는 UI 플러그인(v0)을 다룹니다. 로직(Wasm) 플러그인과 도구(MCP)
-플러그인은 나중에 추가됩니다.
+직접 만든 플러그인도 할 수 있습니다. 이 문서는 플러그인의 종류와 템플릿에서 시작해, UI 플러그인을 자세히
+다룹니다. 도구(MCP) 플러그인은 나중에 추가됩니다.
 
-## 예제에서 시작하기
+## 템플릿에서 시작하기
+
+`create-plugin`은 한 종류의 플러그인 폴더를 만듭니다. 이 폴더는 `desk plugin validate`를 통과하고 테스트를
+하나 갖고 있습니다(패키지가 배포되면 `pnpm create @endue-ai/plugin`).
 
 ```bash
-cp -R examples/plugin-hello-ui ../my-plugin      # then change the id in plugin.json
+pnpm --filter @endue-ai/create-plugin build
+node packages/create-plugin/dist/create-plugin.js ../my-plugin --kind ui
 cargo run -p desk-cli -- plugin validate ../my-plugin
+cargo run -p desk-cli -- plugin test ../my-plugin
 ```
+
+| 종류 | 무엇인가 | 예제 |
+| --- | --- | --- |
+| `ui` | 샌드박스 프레임 안의 페이지, SDK 위에서 동작(이 문서의 나머지 부분) | `examples/plugin-hello-ui` |
+| `logic` | Rust로 작성한 `desk:host` 월드의 Wasm 컴포넌트(ADR 0019) | `examples/plugin-hello-wasm` |
+| `connector` | 항목을 가져오는 `desk:connector` 월드의 Wasm 컴포넌트(ADR 0034) | `examples/plugin-hello-connector` |
+| `view` | 데이터로 된 뷰: 무엇을, 어느 소스에서 보여 줄지. 코드 없음(ADR 0032) | `examples/plugin-hello-view` |
+| `policy` | 데이터로 된 명령, 키와 그 밖의 기여. 코드 없음(ADR 0017) | `plugins/`의 `desk.*` 정책 |
+
+Rust 종류는 언어 자체의 명령으로 빌드합니다. 폴더에서 `wasm32-wasip2` 타깃으로 `cargo build --release`를
+실행합니다(처음 한 번 `rustup target add wasm32-wasip2`). 컴포넌트는 `plugin.json`의 `entry`가 가리키는
+곳에 만들어집니다.
 
 작업 중인 플러그인을 Desk에서 보려면, 그 폴더를 개발용 플러그인으로 지정해 Desk를 실행합니다.
 
@@ -19,8 +36,43 @@ cargo run -p desk-cli -- plugin validate ../my-plugin
 DESK_DEV_PLUGINS=$PWD/../my-plugin just dev
 ```
 
-폴더 안의 파일을 저장하면 해당 플러그인의 서피스만 1초 안에 다시 로드됩니다. Desk의 나머지 부분과 플러그인의
-상태는 그대로 유지됩니다.
+폴더 안의 파일을 저장하면 해당 플러그인만 1초 안에 다시 로드됩니다. Desk의 나머지 부분과 플러그인의 상태는
+그대로 유지됩니다. Desk가 시작할 때 비어 있거나 깨져 있던 폴더도 파일이 들어오거나 고쳐지는 즉시, 다시
+시작하지 않아도 나타납니다.
+
+### `desk plugin test`로 테스트하기
+
+`desk plugin test <folder>`는 `validate`처럼 폴더를 검사한 뒤, 종류에 맞는 호스트에서 `tests/`를 실행합니다.
+
+- `ui`, `view`, `policy`와 Wasm이 없는 나머지 종류: `tests/*.test.js` 또는 `*.test.ts`를 jsdom 페이지
+  안에서 SDK의 테스트 호스트(`@endue-ai/plugin-sdk/testing`, 아래 "테스트" 참고) 위의 vitest로 실행합니다.
+  SDK는 이름으로 가져오고, 테스트하는 코드는 템플릿처럼 SDK를 가져오지 않게 둡니다(`ui/plugin.js`,
+  그리고 `defineUiPlugin(plugin)`을 부르는 `ui/main.js`).
+- `logic`과 Wasm `connector`: 각 `tests/<name>.test.json`을 빌드된 컴포넌트로, 스크립트로 된 데스크인
+  `desk-plugin-host` 하네스 위에서 실행합니다.
+
+```json
+{
+  "steps": ["start", { "command": { "id": "example.my-logic.greet", "args": { "name": "Ada" } } }],
+  "answers": [{ "method": "settings.get", "params": { "key": "greeting" }, "result": "Hi" }],
+  "expect": {
+    "calls": [
+      { "method": "cmd.register", "params": { "id": "example.my-logic.greet" } },
+      { "method": "cmd.answer", "params": { "result": "Hi, Ada!" } }
+    ]
+  }
+}
+```
+
+`steps`는 데스크가 하는 일입니다. 로직 플러그인에는 `start`, `command`(`id`, `args`), `event`(`name`,
+`data`)가, 커넥터에는 `connect`(`instance`, `settings`)와 `sync`(`instance`)가 있습니다. 플러그인이 하는
+임포트 호출은 하나하나 브리지 호출 `{ method, params }`(`fs.read { path }`,
+`cmd.answer { invocationId, result }`)로 기록되고, `answers` 가운데 `method`가 같고 호출이 그 `params`를
+포함하는 첫 항목이 `result`나 `error`(`{ "code": "not_found", "message": "…" }`)로 응답합니다. 아무것도
+응답하지 않는 호출은 빈 응답을 받습니다. 없음, `null`, `[]` 또는 새 id이며, `store.get`은 플러그인이 저장한
+값을 돌려주고, 파일과 네트워크는 `not_found`와 `unsupported`로 응답합니다. `expect.calls`의 호출은 그
+순서대로 일어났어야 하고, 커넥터의 `expect.items`는 동기화가 가져온 항목 가운데 있어야 합니다. 각각은 적힌
+내용을 포함하면 일치합니다. 실패하면 기대한 것과 대신 일어난 것을 보여 줍니다.
 
 ## 폴더 구성
 

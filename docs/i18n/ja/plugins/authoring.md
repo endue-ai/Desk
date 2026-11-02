@@ -2,14 +2,28 @@
 
 # Desk プラグインの作り方
 
-Desk プラグインはひとつのフォルダーです。組み込み機能もまったく同じ形式を使っているため、Desk 自身が画面上で行えることは、どれも自作のプラグインで行えます。このページでは UI プラグイン（v0）を扱います。ロジック（Wasm）プラグインとツール（MCP）プラグインには今後対応します。
+Desk プラグインはひとつのフォルダーです。組み込み機能もまったく同じ形式を使っているため、Desk 自身が画面上で行えることは、どれも自作のプラグインで行えます。このページはプラグインの種類とテンプレートから始め、続いて UI プラグインを詳しく扱います。ツール（MCP）プラグインには今後対応します。
 
-## 例から始める
+## テンプレートから始める
+
+`create-plugin` は、`desk plugin validate` を通過し、テストをひとつ持つ、いずれかの種類のプラグインフォルダーを作ります（パッケージの公開後は `pnpm create @endue-ai/plugin`）。
 
 ```bash
-cp -R examples/plugin-hello-ui ../my-plugin      # then change the id in plugin.json
+pnpm --filter @endue-ai/create-plugin build
+node packages/create-plugin/dist/create-plugin.js ../my-plugin --kind ui
 cargo run -p desk-cli -- plugin validate ../my-plugin
+cargo run -p desk-cli -- plugin test ../my-plugin
 ```
+
+| 種類 | 内容 | 例 |
+| --- | --- | --- |
+| `ui` | サンドボックス化されたフレーム内のページ。SDK の上で動きます（このページの以降の部分） | `examples/plugin-hello-ui` |
+| `logic` | Rust で書いた `desk:host` ワールドの Wasm コンポーネント（ADR 0019） | `examples/plugin-hello-wasm` |
+| `connector` | アイテムを取り込む `desk:connector` ワールドの Wasm コンポーネント（ADR 0034） | `examples/plugin-hello-connector` |
+| `view` | データとしてのビュー。何を、どのソースから表示するか。コードなし（ADR 0032） | `examples/plugin-hello-view` |
+| `policy` | データとしてのコマンド、キー、その他のコントリビューション。コードなし（ADR 0017） | `plugins/` の `desk.*` ポリシー |
+
+Rust の種類は、その言語自身のコマンドでビルドします。フォルダー内で `wasm32-wasip2` ターゲット向けに `cargo build --release` を実行します（最初に一度 `rustup target add wasm32-wasip2`）。コンポーネントは `plugin.json` の `entry` が指す場所にできます。
 
 開発中のプラグインを Desk 上で確認するには、そのフォルダーを開発用プラグインとして指定して Desk を起動します。
 
@@ -17,7 +31,29 @@ cargo run -p desk-cli -- plugin validate ../my-plugin
 DESK_DEV_PLUGINS=$PWD/../my-plugin just dev
 ```
 
-フォルダー内のファイルを保存すると、そのプラグインのサーフェスだけが 1 秒以内にリロードされます。Desk のほかの部分とプラグインの状態は、そのまま保たれます。
+フォルダー内のファイルを保存すると、そのプラグインだけが 1 秒以内にリロードされます。Desk のほかの部分とプラグインの状態は、そのまま保たれます。Desk の起動時に空だった、または壊れていたフォルダーも、ファイルが届くか直された時点で、再起動なしに現れます。
+
+### `desk plugin test` によるテスト
+
+`desk plugin test <folder>` は `validate` と同じようにフォルダーを検査し、その種類に合ったホストで `tests/` を実行します。
+
+- `ui`、`view`、`policy`、そのほか Wasm を持たない種類：`tests/*.test.js` または `*.test.ts` を、jsdom のページ内で、SDK のテストホスト（`@endue-ai/plugin-sdk/testing`、後述の「テスト」を参照）上の vitest で実行します。SDK は名前でインポートし、テストするコードはテンプレートと同じく SDK をインポートしない形にしておきます（`ui/plugin.js` と、`defineUiPlugin(plugin)` を呼ぶ `ui/main.js`）。
+- `logic` と Wasm の `connector`：各 `tests/<name>.test.json` を、ビルド済みのコンポーネントで、スクリプト化されたデスクである `desk-plugin-host` のハーネス上で実行します。
+
+```json
+{
+  "steps": ["start", { "command": { "id": "example.my-logic.greet", "args": { "name": "Ada" } } }],
+  "answers": [{ "method": "settings.get", "params": { "key": "greeting" }, "result": "Hi" }],
+  "expect": {
+    "calls": [
+      { "method": "cmd.register", "params": { "id": "example.my-logic.greet" } },
+      { "method": "cmd.answer", "params": { "result": "Hi, Ada!" } }
+    ]
+  }
+}
+```
+
+`steps` はデスクが行うことです。ロジックプラグインでは `start`、`command`（`id`、`args`）、`event`（`name`、`data`）、コネクターでは `connect`（`instance`、`settings`）と `sync`（`instance`）です。プラグインが行うインポートの呼び出しは、それぞれブリッジ呼び出し `{ method, params }`（`fs.read { path }`、`cmd.answer { invocationId, result }`）として記録され、`answers` のうち `method` が一致し、呼び出しがその `params` を含む最初の項目が、`result` または `error`（`{ "code": "not_found", "message": "…" }`）で応答します。どれも応答しない呼び出しは空の応答を受け取ります。何もなし、`null`、`[]`、または新しい id で、`store.get` はプラグインが保存した値を返し、ファイルとネットワークは `not_found` と `unsupported` を返します。`expect.calls` の呼び出しはその順序で行われていなければならず、コネクターの `expect.items` は同期が取り込んだアイテムの中になければなりません。いずれも、書かれた内容を含んでいれば一致とみなします。失敗すると、期待したものと、代わりに起きたことが示されます。
 
 ## フォルダー
 

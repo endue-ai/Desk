@@ -3,15 +3,32 @@
 # Écrire un plugin Desk
 
 Un plugin Desk est un dossier. Les fonctionnalités intégrées utilisent exactement le même format : tout ce que
-Desk fait lui-même à l'écran, votre plugin peut le faire aussi. Cette page traite des plugins UI (v0) ; les
-plugins de logique (Wasm) et d'outils (MCP) viendront plus tard.
+Desk fait lui-même à l'écran, votre plugin peut le faire aussi. Cette page commence par les types de plugins et
+leurs modèles, puis traite en détail des plugins UI ; les plugins d'outils (MCP) viendront plus tard.
 
-## Partir de l'exemple
+## Partir d'un modèle
+
+`create-plugin` crée un dossier d'un type donné, qui passe `desk plugin validate` et contient un test
+(`pnpm create @endue-ai/plugin` une fois le paquet publié) :
 
 ```bash
-cp -R examples/plugin-hello-ui ../my-plugin      # then change the id in plugin.json
+pnpm --filter @endue-ai/create-plugin build
+node packages/create-plugin/dist/create-plugin.js ../my-plugin --kind ui
 cargo run -p desk-cli -- plugin validate ../my-plugin
+cargo run -p desk-cli -- plugin test ../my-plugin
 ```
+
+| Type | Ce que c'est | Exemple |
+| --- | --- | --- |
+| `ui` | Une page dans un cadre isolé, sur le SDK (le reste de cette page) | `examples/plugin-hello-ui` |
+| `logic` | Un composant Wasm du monde `desk:host`, en Rust (ADR 0019) | `examples/plugin-hello-wasm` |
+| `connector` | Un composant Wasm du monde `desk:connector` qui importe des éléments (ADR 0034) | `examples/plugin-hello-connector` |
+| `view` | Une vue sous forme de données : quoi afficher, depuis quelles sources ; sans code (ADR 0032) | `examples/plugin-hello-view` |
+| `policy` | Des commandes, des touches et les autres contributions sous forme de données ; sans code (ADR 0017) | les politiques `desk.*` de `plugins/` |
+
+Les types en Rust se compilent avec la commande propre au langage : `cargo build --release` dans le dossier,
+pour la cible `wasm32-wasip2` (`rustup target add wasm32-wasip2` une seule fois). Le composant est produit là
+où pointe l'`entry` de `plugin.json`.
 
 Pour voir un plugin dans Desk pendant que vous travaillez dessus, lancez Desk avec votre dossier comme plugin
 de développement :
@@ -20,8 +37,46 @@ de développement :
 DESK_DEV_PLUGINS=$PWD/../my-plugin just dev
 ```
 
-Enregistrez n'importe quel fichier du dossier : seule la surface de votre plugin se recharge, en moins d'une
-seconde. Le reste de Desk, ainsi que l'état de votre plugin, restent tels quels.
+Enregistrez n'importe quel fichier du dossier : seul votre plugin se recharge, en moins d'une seconde. Le reste
+de Desk, ainsi que l'état de votre plugin, restent tels quels. Un dossier vide ou cassé au démarrage de Desk
+apparaît dès que ses fichiers arrivent ou sont corrigés, sans redémarrage.
+
+### Tester avec `desk plugin test`
+
+`desk plugin test <folder>` vérifie le dossier comme le fait `validate`, puis exécute ses `tests/` sur l'hôte
+qui correspond à son type :
+
+- `ui`, `view`, `policy` et les autres types sans Wasm : `tests/*.test.js` ou `*.test.ts` avec vitest sur
+  l'hôte de test du SDK (`@endue-ai/plugin-sdk/testing`, voir Tests plus bas), dans une page jsdom. Importez
+  le SDK par son nom et gardez le code testé sans import du SDK, comme le font les modèles (`ui/plugin.js`,
+  avec `ui/main.js` qui appelle `defineUiPlugin(plugin)`).
+- `logic` et `connector` Wasm : chaque `tests/<name>.test.json` sur un desk scripté, le harnais de
+  `desk-plugin-host`, avec le composant compilé :
+
+```json
+{
+  "steps": ["start", { "command": { "id": "example.my-logic.greet", "args": { "name": "Ada" } } }],
+  "answers": [{ "method": "settings.get", "params": { "key": "greeting" }, "result": "Hi" }],
+  "expect": {
+    "calls": [
+      { "method": "cmd.register", "params": { "id": "example.my-logic.greet" } },
+      { "method": "cmd.answer", "params": { "result": "Hi, Ada!" } }
+    ]
+  }
+}
+```
+
+`steps` décrit ce que fait le desk : `start`, `command` (`id`, `args`) et `event` (`name`, `data`) pour un
+plugin de logique, `connect` (`instance`, `settings`) et `sync` (`instance`) pour un connecteur. Chaque import
+appelé par le plugin est enregistré comme un appel du bridge, `{ method, params }` (`fs.read { path }`,
+`cmd.answer { invocationId, result }`), et reçoit la réponse de la première entrée de `answers` ayant ce
+`method` et dont l'appel contient les `params` : avec `result`, ou avec `error`
+(`{ "code": "not_found", "message": "…" }`). Un appel sans réponse reçoit la réponse vide : rien, `null`,
+`[]` ou un nouvel id ; `store.get` renvoie ce que le plugin a enregistré ; les fichiers et le réseau
+répondent `not_found` et `unsupported`. Les appels de `expect.calls` doivent avoir eu lieu dans cet ordre, et
+les `expect.items` d'un connecteur doivent figurer parmi les éléments apportés par ses synchronisations ;
+chacun correspond dès qu'il contient ce qui est écrit. Un échec nomme ce qui était attendu et liste ce qui est
+venu à la place.
 
 ## Le dossier
 

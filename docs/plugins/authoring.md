@@ -5,15 +5,32 @@ English · [日本語](../i18n/ja/plugins/authoring.md) · [中文](../i18n/zh/p
 [한국어](../i18n/ko/plugins/authoring.md)
 
 A Desk plugin is a folder. Built-in features use exactly the same format, so anything Desk itself does
-on screen, your plugin can do too. This page covers UI plugins (v0); logic (Wasm) and tool (MCP)
-plugins come later.
+on screen, your plugin can do too. This page starts with the kinds of plugin and their templates, then
+covers UI plugins in depth; tool (MCP) plugins come later.
 
-## Start from the example
+## Start from a template
+
+`create-plugin` writes a folder of one kind that passes `desk plugin validate` and carries one test
+(`pnpm create @endue-ai/plugin` once the package is published):
 
 ```bash
-cp -R examples/plugin-hello-ui ../my-plugin      # then change the id in plugin.json
+pnpm --filter @endue-ai/create-plugin build
+node packages/create-plugin/dist/create-plugin.js ../my-plugin --kind ui
 cargo run -p desk-cli -- plugin validate ../my-plugin
+cargo run -p desk-cli -- plugin test ../my-plugin
 ```
+
+| Kind | What it is | Example |
+| --- | --- | --- |
+| `ui` | A page in a sandboxed frame, on the SDK (the rest of this page) | `examples/plugin-hello-ui` |
+| `logic` | A Wasm component of the `desk:host` world, in Rust (ADR 0019) | `examples/plugin-hello-wasm` |
+| `connector` | A Wasm component of the `desk:connector` world that brings items in (ADR 0034) | `examples/plugin-hello-connector` |
+| `view` | A view as data: what to show, from which sources; no code (ADR 0032) | `examples/plugin-hello-view` |
+| `policy` | Commands, keys and the other contributions as data; no code (ADR 0017) | the `desk.*` policies in `plugins/` |
+
+The Rust kinds build with the language's own command: `cargo build --release` in the folder, for the
+`wasm32-wasip2` target (`rustup target add wasm32-wasip2` once). The component lands where
+`plugin.json`'s `entry` points.
 
 To see a plugin on the desk while you work on it, run Desk with your folder as a dev plugin:
 
@@ -21,8 +38,45 @@ To see a plugin on the desk while you work on it, run Desk with your folder as a
 DESK_DEV_PLUGINS=$PWD/../my-plugin just dev
 ```
 
-Save any file in the folder and only your plugin's surface reloads, within a second. The rest of the
-desk, and your plugin's state, stay where they were.
+Save any file in the folder and only your plugin reloads, within a second. The rest of the desk, and
+your plugin's state, stay where they were. A folder that is empty or broken when Desk starts appears
+as soon as its files arrive or are fixed, without a restart.
+
+### Testing with `desk plugin test`
+
+`desk plugin test <folder>` checks the folder as `validate` does, then runs its `tests/` on the host
+that matches its kind:
+
+- `ui`, `view`, `policy` and the other kinds without Wasm: `tests/*.test.js` or `*.test.ts` with
+  vitest on the SDK's test host (`@endue-ai/plugin-sdk/testing`, see Testing below), in a jsdom page.
+  Import the SDK by name, and keep the code you test free of its import, as the templates do
+  (`ui/plugin.js`, with `ui/main.js` calling `defineUiPlugin(plugin)`).
+- `logic` and Wasm `connector`: each `tests/<name>.test.json` on a scripted desk, the `desk-plugin-host`
+  harness, with the built component:
+
+```json
+{
+  "steps": ["start", { "command": { "id": "example.my-logic.greet", "args": { "name": "Ada" } } }],
+  "answers": [{ "method": "settings.get", "params": { "key": "greeting" }, "result": "Hi" }],
+  "expect": {
+    "calls": [
+      { "method": "cmd.register", "params": { "id": "example.my-logic.greet" } },
+      { "method": "cmd.answer", "params": { "result": "Hi, Ada!" } }
+    ]
+  }
+}
+```
+
+`steps` are what the desk does: `start`, `command` (`id`, `args`) and `event` (`name`, `data`) for a
+logic plugin, `connect` (`instance`, `settings`) and `sync` (`instance`) for a connector. Each import
+the plugin makes is recorded as a bridge call, `{ method, params }` (`fs.read { path }`,
+`cmd.answer { invocationId, result }`), and answered by the first of `answers` with that `method` whose
+`params` the call contains: with `result`, or with `error` (`{ "code": "not_found", "message": "…" }`).
+A call nothing answers gets the empty answer: nothing, `null`, `[]` or a fresh id; `store.get` returns
+what the plugin set; files and the network answer `not_found` and `unsupported`. The calls in
+`expect.calls` must have been made in that order, and a connector's `expect.items` must be among the
+items its syncs brought, each matching when it contains what is written. A failure names what was
+expected and lists what came instead.
 
 ## The folder
 
