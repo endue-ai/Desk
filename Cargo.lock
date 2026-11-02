@@ -990,6 +990,7 @@ dependencies = [
  "desk-bridge",
  "desk-core",
  "desk-ipc",
+ "desk-plugin-host",
  "serde_json",
 ]
 

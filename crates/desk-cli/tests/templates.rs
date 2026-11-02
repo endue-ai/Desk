@@ -109,10 +109,20 @@ fn build(dir: &Path) {
     fs::copy(built, entry).unwrap();
 }
 
+/// A folder for the scaffolds, removed when dropped, a failed test's too.
+struct Folders(PathBuf);
+
+impl Drop for Folders {
+    fn drop(&mut self) {
+        let _ = fs::remove_dir_all(&self.0);
+    }
+}
+
 #[test]
 fn every_kind_scaffolds_validates_and_passes_its_test() {
-    let root = scratch().join(format!("templates-{}", std::process::id()));
-    let _ = fs::remove_dir_all(&root);
+    let folders = Folders(scratch().join(format!("templates-{}", std::process::id())));
+    let root = &folders.0;
+    let _ = fs::remove_dir_all(root);
     let wasm = wasm_target();
     assert!(
         wasm || std::env::var_os("CI").is_none(),
@@ -123,7 +133,7 @@ fn every_kind_scaffolds_validates_and_passes_its_test() {
             eprintln!("note: {kind} skipped: `rustup target add wasm32-wasip2` to build it");
             continue;
         }
-        let dir = scaffold(&root, kind);
+        let dir = scaffold(root, kind);
         if WASM.contains(&kind) {
             build(&dir);
         }
@@ -135,7 +145,6 @@ fn every_kind_scaffolds_validates_and_passes_its_test() {
         );
         desk(&["plugin", "test", folder]);
     }
-    fs::remove_dir_all(&root).unwrap();
 }
 
 #[test]

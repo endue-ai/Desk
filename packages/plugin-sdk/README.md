@@ -37,4 +37,4 @@ Layer: Plugins (`docs/architecture.md`). Guide: `docs/plugins/authoring.md`.
   `surfaces`, `call` (as any caller), `emit`, `command`, `invoke`, `theme`, `upsert`, `remove`, `settle`.
 
 ## Testing
-`pnpm exec vitest run packages/plugin-sdk`
+`pnpm exec vitest run packages/plugin-sdk`; `desk plugin test` runs plugins on `vitest.plugin.config.ts`.

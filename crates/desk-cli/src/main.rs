@@ -1,7 +1,9 @@
 //! `desk`: the command line for people and AI agents. Exit codes: 0 ok, 1 check or call failed, 2
-//! usage. `plugin validate` works offline; the other subcommands reach a running desk over its socket.
+//! usage. `plugin validate` and `plugin test` work offline; the other subcommands reach a running
+//! desk over its socket.
 
 mod args;
+mod plugin_test;
 mod remote;
 
 use std::path::Path;
@@ -21,43 +23,55 @@ fn main() -> ExitCode {
             println!("{USAGE}");
             ExitCode::SUCCESS
         }
-        Action::Validate(dir) => validate(&dir),
+        Action::Validate(dir) => match checked(&dir) {
+            Ok(manifest) => {
+                let kind = kind_name(manifest.kind);
+                println!("ok {} {} ({kind} plugin)", manifest.id, manifest.version);
+                ExitCode::SUCCESS
+            }
+            Err(problems) => report(&dir, problems),
+        },
+        // Tests run on a plugin that validates; one that does not says why, as validate does.
+        Action::Test(dir) => match checked(&dir) {
+            Ok(manifest) => plugin_test::run(&dir, &manifest),
+            Err(problems) => report(&dir, problems),
+        },
         Action::Remote(remote) => remote::run(remote, args.json),
     }
 }
 
-fn validate(dir: &Path) -> ExitCode {
-    let checked = desk_core::validate_dir(dir).and_then(|manifest| {
+/// The kind as plugin.json writes it.
+fn kind_name(kind: PluginKind) -> &'static str {
+    match kind {
+        PluginKind::Ui => "ui",
+        PluginKind::Logic => "logic",
+        PluginKind::Tool => "tool",
+        PluginKind::Policy => "policy",
+        PluginKind::Library => "library",
+        PluginKind::Connector => "connector",
+        PluginKind::View => "view",
+        PluginKind::Theme => "theme",
+    }
+}
+
+/// The manifest of the plugin in `dir` when it passes every check, or every problem.
+fn checked(dir: &Path) -> Result<PluginManifest, Vec<String>> {
+    desk_core::validate_dir(dir).and_then(|manifest| {
         let problems = beyond_the_schema(dir, &manifest);
         if problems.is_empty() {
             Ok(manifest)
         } else {
             Err(problems)
         }
-    });
-    match checked {
-        Ok(manifest) => {
-            let kind = match manifest.kind {
-                PluginKind::Ui => "ui",
-                PluginKind::Logic => "logic",
-                PluginKind::Tool => "tool",
-                PluginKind::Policy => "policy",
-                PluginKind::Library => "library",
-                PluginKind::Connector => "connector",
-                PluginKind::View => "view",
-                PluginKind::Theme => "theme",
-            };
-            println!("ok {} {} ({kind} plugin)", manifest.id, manifest.version);
-            ExitCode::SUCCESS
-        }
-        Err(problems) => {
-            eprintln!("{}: {} problem(s)", dir.display(), problems.len());
-            for problem in problems {
-                eprintln!("  - {problem}");
-            }
-            ExitCode::from(1)
-        }
+    })
+}
+
+fn report(dir: &Path, problems: Vec<String>) -> ExitCode {
+    eprintln!("{}: {} problem(s)", dir.display(), problems.len());
+    for problem in problems {
+        eprintln!("  - {problem}");
     }
+    ExitCode::from(1)
 }
 
 /// What the schema cannot check: the names an inline view and a connector's actions use resolve
