@@ -277,6 +277,87 @@
       "properties": {},
       "additionalProperties": false
     },
+    "CmdRecentRequest": {
+      "description": "List the last command invocations the core saw, for an inspector.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "bridge.schema.json#/$defs/RequestId"
+        },
+        "method": {
+          "const": "cmd.recent"
+        },
+        "params": {
+          "$ref": "#/$defs/CmdRecentParams"
+        }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "CmdRecentParams": {
+      "description": "Parameters of cmd.recent.",
+      "type": "object",
+      "properties": {
+        "scope": {
+          "$ref": "../../plugin/v0/permission.schema.json#/$defs/PermManagePermission"
+        }
+      },
+      "required": ["scope"],
+      "additionalProperties": false
+    },
+    "CmdRecentResult": {
+      "description": "Result of cmd.recent: the last 200 invocations at most, oldest first.",
+      "type": "object",
+      "properties": {
+        "invocations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CommandInvocation"
+          },
+          "maxItems": 200
+        }
+      },
+      "required": ["invocations"],
+      "additionalProperties": false
+    },
+    "CommandInvocation": {
+      "description": "One cmd.invoke the core saw: who ran which command, who provided it, when, and once it was answered how long it took and how it ended. One still waiting has no durationMs and no ok.",
+      "type": "object",
+      "properties": {
+        "invocationId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "id": {
+          "$ref": "../../plugin/v0/contributes.schema.json#/$defs/CommandId"
+        },
+        "caller": {
+          "$ref": "bridge.schema.json#/$defs/CallerId"
+        },
+        "provider": {
+          "$ref": "bridge.schema.json#/$defs/CallerId"
+        },
+        "at": {
+          "description": "When it was invoked, RFC 3339 on the core's clock.",
+          "type": "string",
+          "format": "date-time"
+        },
+        "durationMs": {
+          "description": "Milliseconds from cmd.invoke to its answer.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "ok": {
+          "description": "Whether it was answered with a result rather than an error.",
+          "type": "boolean"
+        },
+        "error": {
+          "$ref": "#/$defs/CommandFailureCode"
+        }
+      },
+      "required": ["invocationId", "id", "caller", "provider", "at"],
+      "additionalProperties": false
+    },
     "CommandFailure": {
       "description": "Why an invocation failed.",
       "type": "object",
