@@ -17,9 +17,9 @@ document (over 2 MB a slice at a time with `document.write`), its sheets and ima
 0044) a few milliseconds at a time; a huge page shows its first 30,000 elements and copies the rest
 as it is scrolled to. `<desk-progress>` shows Reading, Opening, Parsing and Drawing; Cancel stops
 them and keeps the file on screen. A bar counts remote resources left out. `#fragment` links
-scroll, local links run `desk.files.open`, http, https and mailto links open with `shell.open`.
-
-It answers `desk.files.visit`, `.revert`, `desk.buffers.show` and `.closed`; `.save` is refused.
+scroll, local links run `desk.files.open`, http, https and mailto links open with `shell.open`. It
+answers `desk.files.visit`, `.revert`, `desk.buffers.show` and `.closed`; `.save` is refused. Its own
+page takes every colour, font, size and radius from the theme (`tests/theme.test.ts`).
 
 | Permission | Why |
 | --- | --- |

@@ -1,0 +1,38 @@
+{
+  "target": "TurnRequest",
+  "description": "toolChoice is auto, required or tool",
+  "instance": {
+    "leaseId": "l1",
+    "message": {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "A theme like warm paper."
+        }
+      ]
+    },
+    "tools": [
+      {
+        "name": "propose_theme",
+        "description": "Propose a desk theme for what the person described.",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": {
+              "type": "string"
+            }
+          },
+          "required": ["name", "description"]
+        }
+      }
+    ],
+    "toolChoice": {
+      "type": "any"
+    }
+  }
+}

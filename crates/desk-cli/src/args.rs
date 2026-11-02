@@ -16,6 +16,11 @@ pub const USAGE: &str = "usage: desk [--json] <command>
   update                                the desk's updates: state, running build, channel, chosen build
   update check                          read the channel index now and print what came of it
   update download | apply               download the chosen build, or restart into the staged one
+  theme list                            the installed themes: id, status, built-in or user, name
+  theme apply <id>                      put an installed theme in force
+  theme import <file>                   install a .desk-theme file as a user theme; prints its id
+  theme export <id> [file]              write a theme as a .desk-theme file (default: in Downloads)
+  theme remove <id>                     delete a user theme
   doctor --trace <file>                 summarize a start-up trace (DESK_TRACE=1): phases, totals,
                                         the five longest
 --json prints the desk's answer line as it is. Exit codes: 0 ok, 1 failed, 2 usage.";
@@ -52,6 +57,8 @@ pub enum Remote {
     },
     /// update.status, or update.check, update.download or update.apply.
     Update(UpdateStep),
+    /// The installed themes and the person's own (ADR 0058).
+    Theme(ThemeStep),
 }
 
 /// What `desk update` asks of the desk's updater (ADR 0054).
@@ -60,6 +67,15 @@ pub enum UpdateStep {
     Check,
     Download,
     Apply,
+}
+
+/// What `desk theme` asks of the desk.
+pub enum ThemeStep {
+    List,
+    Apply(String),
+    Import(PathBuf),
+    Export { id: String, file: Option<PathBuf> },
+    Remove(String),
 }
 
 /// The action the arguments ask for, or `None` for a usage error.
@@ -92,9 +108,29 @@ pub fn parse(args: Vec<String>) -> Option<Args> {
         ["update", "check"] => Action::Remote(Remote::Update(UpdateStep::Check)),
         ["update", "download"] => Action::Remote(Remote::Update(UpdateStep::Download)),
         ["update", "apply"] => Action::Remote(Remote::Update(UpdateStep::Apply)),
+        ["theme", rest @ ..] => Action::Remote(Remote::Theme(theme(rest)?)),
         _ => return None,
     };
     Some(Args { action, json })
+}
+
+/// `theme list | apply <id> | import <file> | export <id> [file] | remove <id>`.
+fn theme(rest: &[&str]) -> Option<ThemeStep> {
+    Some(match rest {
+        ["list"] => ThemeStep::List,
+        ["apply", id] => ThemeStep::Apply(name(id)?),
+        ["import", file] => ThemeStep::Import(PathBuf::from(name(file)?)),
+        ["export", id] => ThemeStep::Export {
+            id: name(id)?,
+            file: None,
+        },
+        ["export", id, file] => ThemeStep::Export {
+            id: name(id)?,
+            file: Some(PathBuf::from(name(file)?)),
+        },
+        ["remove", id] => ThemeStep::Remove(name(id)?),
+        _ => return None,
+    })
 }
 
 /// `cmd run <id> [--args <json object>]`, with `--args` before or after the id.

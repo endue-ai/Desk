@@ -25,8 +25,8 @@ asked for once with `perm.request`; a refusal is said in the terminal: `Not allo
 | File | Purpose |
 | --- | --- |
 | `ui/sessions.js` | Sessions, proc.* calls and events, the asks, buffers, commands, the reload snapshot (no DOM) |
-| `ui/shell.js` · `ui/keys.js` · `ui/theme.js` | The default shell per platform and the settings; which keys the shell, the desk or the clipboard gets; the desk's theme as the terminal's (no DOM) |
-| `ui/view.js` · `ui/main.js` | The tab strip and one xterm.js terminal per session; the entry that joins them |
+| `ui/shell.js` · `ui/keys.js` · `ui/theme.js` | The default shell per platform and the settings; which keys the shell, the desk or the clipboard gets; the theme as the terminal's: screen, text, cursor, selection and the sixteen ANSI colours from the `--desk-*` tokens a theme sets per scheme (`--desk-ansi-0` … `15`), what the page's tokens.css declares where one is missing (no DOM, no colour of its own) |
+| `ui/view.js` · `ui/main.js` · `ui/style.css` | The tab strip and one xterm.js terminal per session, repainted when the theme changes; the entry that joins them and reads the page's tokens; the page's look, from tokens only |
 | `ui/vendor/` | xterm.js 6 with the fit and unicode11 addons (MIT), copied by `just vendor-terminal` |
 
 Inside a terminal Escape and Control chords belong to the shell; the desk's own chords (`keys.js`,

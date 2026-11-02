@@ -1,0 +1,40 @@
+{
+  "format": "desk-theme/1",
+  "manifest": {
+    "id": "market.fern",
+    "name": "Fern",
+    "version": "1.0.0",
+    "kind": "theme",
+    "description": "A fixture market theme: deep greens at night, pale leaves by day.",
+    "theme": {
+      "author": "Team endue",
+      "license": "CC0-1.0",
+      "tags": [
+        "green",
+        "calm"
+      ],
+      "preview": [
+        "#0f1d17",
+        "#7fd1a8",
+        "#f2f7f3"
+      ],
+      "light": {
+        "colors": {
+          "background": "#f2f7f3",
+          "card": "#ffffff",
+          "primary": "#2f7a55",
+          "text": "#14251c"
+        }
+      },
+      "dark": {
+        "colors": {
+          "background": "#0f1d17",
+          "card": "#16271f",
+          "primary": "#7fd1a8",
+          "text": "#e6f2ec"
+        }
+      }
+    }
+  },
+  "files": {}
+}

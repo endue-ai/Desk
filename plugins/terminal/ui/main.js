@@ -6,11 +6,24 @@ import { wireCommands } from "./commands.js";
 import { decide } from "./keys.js";
 import { createTerminals } from "./sessions.js";
 import { DEFAULTS, platformOf } from "./shell.js";
-import { terminalOptions } from "./theme.js";
+import { THEME_VARIABLES, terminalOptions } from "./theme.js";
 import { createView } from "./view.js";
 
 /** The theme before the desk has sent one. */
 const PLAIN = { scheme: "dark", contrast: "normal", reducedMotion: false, variables: {} };
+
+/**
+ * What the page says for the colours a theme left out: tokens.css's defaults, or the theme the desk
+ * applied to this frame's root. Read only when the theme lacks one of xterm's variables.
+ * @param {{ variables: Record<string, string> }} theme
+ */
+function pageColors(theme) {
+  if (THEME_VARIABLES.every((name) => theme.variables[name])) return {};
+  const style = getComputedStyle(document.documentElement);
+  return Object.fromEntries(
+    THEME_VARIABLES.map((name) => [name, style.getPropertyValue(name).trim()]),
+  );
+}
 
 defineUiPlugin({
   async mount(ctx) {
@@ -18,10 +31,13 @@ defineUiPlugin({
     /** @type {ReturnType<typeof createTerminals> | undefined} */
     let app;
     const settings = () => app?.settings() ?? DEFAULTS;
-    const options = () => ({
-      ...terminalOptions(settings(), ctx.theme.get() ?? PLAIN),
-      copyOnSelect: settings().copyOnSelect,
-    });
+    const options = () => {
+      const theme = ctx.theme.get() ?? PLAIN;
+      return {
+        ...terminalOptions(settings(), theme, pageColors(theme)),
+        copyOnSelect: settings().copyOnSelect,
+      };
+    };
     const view = createView(
       document,
       {

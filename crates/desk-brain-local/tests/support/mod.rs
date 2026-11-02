@@ -241,6 +241,8 @@ pub fn said(text: &str, lease: &str) -> TurnRequest {
                 text: text.to_owned(),
             }],
         },
+        tools: None,
+        tool_choice: None,
     }
 }
 

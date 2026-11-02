@@ -32,7 +32,7 @@ the folders, the dotfile choice and the page are settings (`endue.explorer.folde
 | --- | --- |
 | `ui/tree.js` | Paths, the order of entries, the rows on screen, where a key moves the selection |
 | `ui/disk.js` · `ui/desk.js` · `ui/explorer.js` | Scoped disk and desk calls, tree state, commands, store and settings |
-| `ui/view.js` · `ui/main.js` · `ui/context-*.js` | Tree DOM, keyboard menu, selection actions and mount |
+| `ui/view.js` · `ui/main.js` · `ui/context-*.js` · `ui/style.css` | Tree DOM, keyboard menu, selection actions and mount; the look, from the theme's `--desk-*` tokens only |
 | `ui/preview.js` · `ui/preview-view.js` | Bounded preview reads, stale-result protection, URL cleanup and safe DOM |
 ```bash
 pnpm exec vitest run plugins/explorer

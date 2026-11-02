@@ -1,17 +1,12 @@
-/* The desk's design tokens (@endue-ai/ui). Frames do not inherit the desk's, so they are declared
-   here; the runtime redefines them for the theme in force. The state colours are the plugin's own. */
+/* Every colour, font, size, radius and duration comes from the theme's --desk-* tokens (index.html
+   loads their defaults; the runtime sets the theme in force). States are statuses: running is
+   success, paused or starting warning, dead or unhealthy danger; stderr leans danger toward the text. */
 :root {
-  --desk-background: #141416;
-  --desk-card: #1e1d21;
-  --desk-border: #333136;
-  --desk-text: #f2f0f5;
-  --desk-text-muted: #b0adb7;
-  --desk-accent: #b6a3f5;
-  --docker-running: #5fd0be;
-  --docker-paused: #e8c98a;
-  --docker-stopped: #8e8a96;
-  --docker-failed: #f29bb0;
-  --docker-stderr: #f2b8c6;
+  --docker-running: var(--desk-success-text);
+  --docker-paused: var(--desk-warning-text);
+  --docker-stopped: var(--desk-text-muted);
+  --docker-failed: var(--desk-danger-text);
+  --docker-stderr: color-mix(in srgb, var(--desk-danger-text) 70%, var(--desk-text));
 }
 
 html,
@@ -26,7 +21,7 @@ body {
   margin: 0;
   background: var(--desk-card);
   color: var(--desk-text);
-  font: 13px/1.6 -apple-system, "SUIT", "Inter", system-ui, sans-serif;
+  font: calc(var(--desk-text-sm) - 1px)/1.6 var(--desk-font-sans);
 }
 
 header {
@@ -40,7 +35,7 @@ header {
 
 h1 {
   margin: 0;
-  font-size: 15px;
+  font-size: calc(var(--desk-text-sm) + 1px);
 }
 
 #head {
@@ -55,7 +50,7 @@ h1 {
 }
 
 #busy {
-  color: var(--desk-accent);
+  color: var(--desk-primary-text);
 }
 
 #tabs {
@@ -75,14 +70,14 @@ h1 {
 }
 
 #tabs button[aria-selected="true"] {
-  border-bottom-color: var(--desk-accent);
+  border-bottom-color: var(--desk-primary-text);
   color: var(--desk-text);
 }
 
 #problem {
   margin: 0;
   padding: 6px 12px;
-  background: color-mix(in srgb, var(--docker-failed) 14%, transparent);
+  background: var(--desk-danger-soft);
   color: var(--desk-text);
 }
 
@@ -98,8 +93,8 @@ main {
   flex: 1;
   overflow: auto;
   outline: none;
-  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-  font-size: 12px;
+  font-family: var(--desk-font-mono);
+  font-size: var(--desk-text-xs);
 }
 
 #view {
@@ -122,7 +117,7 @@ main {
 
 .row:focus,
 .row[aria-selected="true"] {
-  background: color-mix(in srgb, var(--desk-accent) 16%, transparent);
+  background: var(--desk-hover);
   outline: none;
 }
 
@@ -167,15 +162,15 @@ main {
 }
 
 .row .ports {
-  color: var(--desk-accent);
+  color: var(--desk-primary-text);
 }
 
 .row .tag {
   padding: 0 6px;
   border: 1px solid var(--desk-border);
-  border-radius: 8px;
+  border-radius: var(--desk-radius-md);
   color: var(--desk-text-muted);
-  font-size: 11px;
+  font-size: var(--desk-text-2xs);
 }
 
 .row.dangling .name,
@@ -195,7 +190,7 @@ main {
   width: 8px;
   height: 8px;
   flex: none;
-  border-radius: 50%;
+  border-radius: var(--desk-radius-full);
   background: var(--docker-stopped);
 }
 
@@ -245,7 +240,7 @@ main {
 }
 
 #log-lines:focus-visible {
-  box-shadow: inset 0 0 0 1px var(--desk-accent);
+  box-shadow: inset 0 0 0 1px var(--desk-ring);
 }
 
 .line .time,
@@ -255,7 +250,7 @@ main {
 }
 
 .line .source {
-  color: var(--desk-accent);
+  color: var(--desk-primary-text);
 }
 
 .line.stderr {
@@ -269,7 +264,7 @@ footer {
   padding: 4px 12px;
   border-top: 1px solid var(--desk-border);
   color: var(--desk-text-muted);
-  font-size: 12px;
+  font-size: var(--desk-text-xs);
 }
 
 footer p {
@@ -284,7 +279,7 @@ footer p {
 
 @media (prefers-reduced-motion: no-preference) {
   .row {
-    transition: background-color 80ms linear;
+    transition: background-color var(--desk-motion-fast) linear;
   }
 }
 

@@ -186,7 +186,7 @@
                 "opacity": "1",
                 "transform": "none",
                 "filter": "none",
-                "color": "rgb(159, 216, 203)"
+                "color": "rgb(95, 208, 190)"
               },
               "children": [
                 {
@@ -198,7 +198,7 @@
                     "opacity": "1",
                     "transform": "none",
                     "filter": "none",
-                    "color": "rgb(159, 216, 203)"
+                    "color": "rgb(95, 208, 190)"
                   },
                   "text": "T"
                 },
@@ -211,7 +211,7 @@
                     "opacity": "1",
                     "transform": "none",
                     "filter": "none",
-                    "color": "rgb(159, 216, 203)"
+                    "color": "rgb(95, 208, 190)"
                   }
                 }
               ]
@@ -225,7 +225,7 @@
                 "opacity": "1",
                 "transform": "none",
                 "filter": "none",
-                "color": "rgb(185, 220, 146)"
+                "color": "rgb(143, 211, 107)"
               },
               "children": [
                 {
@@ -237,7 +237,7 @@
                     "opacity": "1",
                     "transform": "none",
                     "filter": "none",
-                    "color": "rgb(185, 220, 146)"
+                    "color": "rgb(143, 211, 107)"
                   },
                   "text": "S"
                 },
@@ -250,7 +250,7 @@
                     "opacity": "1",
                     "transform": "none",
                     "filter": "none",
-                    "color": "rgb(185, 220, 146)"
+                    "color": "rgb(143, 211, 107)"
                   }
                 }
               ]
@@ -264,7 +264,7 @@
                 "opacity": "0.35",
                 "transform": "none",
                 "filter": "none",
-                "color": "rgb(240, 181, 207)"
+                "color": "rgb(224, 115, 138)"
               },
               "children": [
                 {
@@ -276,7 +276,7 @@
                     "opacity": "1",
                     "transform": "none",
                     "filter": "none",
-                    "color": "rgb(240, 181, 207)"
+                    "color": "rgb(224, 115, 138)"
                   },
                   "text": "M"
                 },
@@ -289,7 +289,7 @@
                     "opacity": "1",
                     "transform": "none",
                     "filter": "none",
-                    "color": "rgb(240, 181, 207)"
+                    "color": "rgb(224, 115, 138)"
                   }
                 }
               ]

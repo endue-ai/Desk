@@ -60,6 +60,18 @@ export function mountDesktops(root: HTMLElement, ctx: ShellCtx): () => void {
         },
         icon("plus", 16),
       ),
+      h(
+        "button",
+        {
+          class: "add-button theme-button",
+          type: "button",
+          "data-key": "theme-studio",
+          "aria-label": ctx.tr("themes"),
+          title: ctx.tr("themes"),
+          onClick: () => void ctx.runtime.commands.run("desk.theme.studio").catch(() => {}),
+        },
+        icon("palette", 16),
+      ),
     ]);
   };
   draw();

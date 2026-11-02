@@ -156,7 +156,7 @@ export function readPpt(cfb, format) {
             )
           : null;
       if (!found && m && !m.main && depth < 2) return backgroundOf(mainOf(m), depth + 1);
-      return found ?? { type: "solid", color: scheme[0] ?? "#ffffff" };
+      return found ?? { type: "solid", color: scheme[0] ?? "#ffffff" }; // theme: content
     };
     /** A scope for a drawing on this slide. */
     function scopeFor(

@@ -1,13 +1,7 @@
-/* The desk's design tokens (@endue-ai/ui). Frames do not inherit the desk's, so they are declared
-   here; the runtime redefines them for the theme in force. */
+/* Every colour, font, size, radius and duration is the theme's: the desk's tokens come from
+   /_desk/tokens.css and the runtime redefines them for the theme in force. */
 :root {
-  --desk-background: #141416;
-  --desk-card: #1e1d21;
-  --desk-border: #333136;
-  --desk-text: #f2f0f5;
-  --desk-text-muted: #b0adb7;
-  --desk-accent: #b6a3f5;
-  --archives-warning: #f29bb0;
+  --archives-danger: var(--desk-danger-text);
   --archives-row: 24px;
 }
 
@@ -23,7 +17,7 @@ body {
   margin: 0;
   background: var(--desk-card);
   color: var(--desk-text);
-  font: 13px/1.5 -apple-system, "SUIT", "Inter", system-ui, sans-serif;
+  font: calc(var(--desk-text-sm) - 1px)/1.5 var(--desk-font-sans);
 }
 
 button,
@@ -35,14 +29,14 @@ input {
 button {
   padding: 2px 8px;
   border: 1px solid var(--desk-border);
-  border-radius: 6px;
+  border-radius: var(--desk-radius-md);
   background: transparent;
   cursor: pointer;
 }
 
 button:hover:not(:disabled),
 button:focus-visible {
-  border-color: var(--desk-accent);
+  border-color: var(--desk-ring);
 }
 
 button:disabled {
@@ -53,12 +47,12 @@ button:disabled {
 input {
   padding: 2px 6px;
   border: 1px solid var(--desk-border);
-  border-radius: 6px;
+  border-radius: var(--desk-radius-md);
   background: var(--desk-background);
 }
 
 :focus-visible {
-  outline: 2px solid var(--desk-accent);
+  outline: 2px solid var(--desk-ring);
   outline-offset: 1px;
 }
 
@@ -80,7 +74,7 @@ h1,
 h2 {
   margin: 0;
   overflow: hidden;
-  font-size: 14px;
+  font-size: var(--desk-text-sm);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -228,7 +222,7 @@ main {
 
 .row[aria-selected="true"] {
   background: var(--desk-background);
-  box-shadow: inset 2px 0 0 var(--desk-accent);
+  box-shadow: inset 2px 0 0 var(--desk-ring);
 }
 
 .row .size,
@@ -247,7 +241,7 @@ main {
 }
 
 .mark {
-  color: var(--desk-accent);
+  color: var(--desk-primary-text);
 }
 
 .kind-folder .label {
@@ -256,12 +250,12 @@ main {
 
 .lock {
   margin-left: 6px;
-  color: var(--archives-warning);
+  color: var(--archives-danger);
   vertical-align: -1px;
 }
 
 .row.outside .label {
-  color: var(--archives-warning);
+  color: var(--archives-danger);
 }
 
 #summary {
@@ -292,9 +286,9 @@ main {
   padding: 8px;
   overflow: auto;
   border: 1px solid var(--desk-border);
-  border-radius: 6px;
+  border-radius: var(--desk-radius-md);
   background: var(--desk-background);
-  font: 12px/1.5 ui-monospace, "SF Mono", Menlo, monospace;
+  font: var(--desk-text-xs)/1.5 var(--desk-font-mono);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }

@@ -8,6 +8,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { installNativeFileDrops, pickNativeFile } from "./native-files";
 import { installOpenedFiles } from "./open-files";
+import { sendThemeToPalette } from "./palette-theme";
 import { shellBridge } from "./shell-bridge";
 import { nextPaint, reportStartup } from "./startup";
 import { installUpdates, NOTIFIED, ROW } from "./updates";
@@ -88,6 +89,9 @@ window.addEventListener("pagehide", disposeUpdates, { once: true });
 await desk.ready;
 const ready = performance.now();
 const painted = nextPaint();
+// The native palette window has no runtime of its own: it follows the theme in force here (TH-08).
+const disposePaletteTheme = sendThemeToPalette(desk.runtime);
+window.addEventListener("pagehide", disposePaletteTheme, { once: true });
 // The ready line; the answer says whether the app keeps a start-up trace to report to.
 const tracing = await invoke<boolean>("desk_ready", { status: desk.runtime.status() });
 void reportStartup({

@@ -1,10 +1,12 @@
 /**
  * Bottom centre: the line you talk on. A 2 px line with a hint until focused, then a 48 px input that
- * doubles as the command palette. A sent line rises into the middle of the screen and is absorbed.
+ * doubles as the command palette. A sent line rises into the middle of the screen and is absorbed. A
+ * request to change the look goes to the theme studio's Describe tab instead (eris/look.ts, TS-07).
  */
 
 import type { CommandInfo } from "../commands";
 import { clamp01, cubicBezier, easeOutExpo } from "../ease";
+import { isLookRequest, LOOK_REPLY, SAY_TO_ERIS } from "../eris/look";
 import { match } from "./commands";
 import type { ShellCtx } from "./context";
 import { h, listen, render } from "./dom";
@@ -134,6 +136,17 @@ export function mountComposer(root: HTMLElement, ctx: ShellCtx): () => void {
         ghost.style.opacity = (1 - t).toFixed(3);
       })
       .then(() => ghost.remove());
+    if (isLookRequest(text)) {
+      ctx.eris.say(LOOK_REPLY[ctx.store.get().lang]);
+      const args = { text: text.trim(), from: "eris" };
+      void ctx.runtime.commands.run("desk.theme.describe", args).catch(() => {});
+      return;
+    }
+    await converse(text);
+  };
+
+  /** Eris's conversation: the line goes to the brain and she says its answer. */
+  const converse = async (text: string) => {
     ctx.eris.setState("thinking");
     const reply = await ctx.bridge.brain.say(text);
     ctx.eris.say(reply.text, reply.words);
@@ -176,6 +189,11 @@ export function mountComposer(root: HTMLElement, ctx: ShellCtx): () => void {
         k.preventDefault();
         close();
       }
+    }),
+    // Describe hands back a sentence that was not about the desk's look.
+    listen(document, SAY_TO_ERIS, (e) => {
+      const text = (e as unknown as CustomEvent<{ text?: unknown }>).detail?.text;
+      if (typeof text === "string" && text.trim()) void converse(text);
     }),
     listen(window, "keydown", (e) => {
       const k = e as KeyboardEvent;

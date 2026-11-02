@@ -82,6 +82,7 @@ const rgbOf = (hex) => [0, 2, 4].map((i) => Number.parseInt(hex.slice(i, i + 2),
 /** @param {number[]} rgb @param {number} alpha */
 export function cssOf(rgb, alpha = 1) {
   const [r, g, b] = rgb.map((c) => Math.round(clamp(c) * 255));
+  // theme: content: the deck's own colour, as CSS
   if (alpha < 1) return `rgba(${r}, ${g}, ${b}, ${Math.round(clamp(alpha) * 1000) / 1000})`;
   return `#${[r, g, b].map((c) => (c ?? 0).toString(16).padStart(2, "0")).join("")}`;
 }

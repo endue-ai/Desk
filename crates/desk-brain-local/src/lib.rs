@@ -8,6 +8,7 @@ mod http;
 mod ollama;
 mod store;
 mod time;
+mod tools;
 
 pub use store::STATE_FILE;
 
@@ -75,10 +76,12 @@ pub struct LocalBrain {
 enum Step {
     /// Another call of the same answer goes out.
     Next(ToolCall),
-    /// Every result is in: these messages go to the model, and `prefix` joins the conversation.
+    /// Every result is in: these messages go to the model with the turn's tools (`None`: the
+    /// brain's own), and `prefix` joins the conversation.
     Ask {
         prefix: Vec<Value>,
         messages: Vec<Value>,
+        tools: Option<Vec<Value>>,
     },
 }
 
@@ -148,6 +151,7 @@ impl LocalBrain {
     fn ask(
         &self,
         messages: &[Value],
+        tools: &[Value],
         turn_id: &str,
         start: bool,
         on_event: &mut dyn FnMut(TurnEvent),
@@ -155,7 +159,7 @@ impl LocalBrain {
         ollama::chat(
             &self.endpoint,
             &self.model,
-            &self.tools,
+            tools,
             messages,
             &mut |piece| match piece {
                 Piece::Opened if start => on_event(started(turn_id)),
@@ -166,13 +170,13 @@ impl LocalBrain {
     }
 
     /// Keep what the model answered and end this part of the turn: with the first tool call when
-    /// it asked for tools, otherwise with its stop reason.
+    /// it asked for tools, otherwise with its stop reason. `tools` are the turn's, for its rest.
     fn finish(
         &self,
-        session_id: &str,
-        turn_id: &str,
+        (session_id, turn_id): (&str, &str),
         prefix: Vec<Value>,
         answer: Answer,
+        tools: Option<Vec<Value>>,
         on_event: &mut dyn FnMut(TurnEvent),
     ) -> Result<(), BrainFailure> {
         let first = self.change(|state, now| {
@@ -198,6 +202,7 @@ impl LocalBrain {
                 assistant: ollama::assistant(&answer.text, &answer.calls),
                 calls,
                 results: Vec::new(),
+                tools,
             });
             Ok(Some(first))
         })?;
@@ -239,7 +244,8 @@ impl Brain for LocalBrain {
             .map(|part| part.text.as_str())
             .collect();
         let user = ollama::user(&text);
-        let (turn_id, messages) = self.change(|state, now| {
+        let offer = tools::for_turn(&self.tools, request)?;
+        let (turn_id, mut messages) = self.change(|state, now| {
             state.session(session_id)?.writer(&request.lease_id, now)?;
             let turn_id = state.id("turn");
             let stored = state.session_mut(session_id)?;
@@ -250,8 +256,11 @@ impl Brain for LocalBrain {
             messages.push(user.clone());
             Ok((turn_id, messages))
         })?;
-        let answer = self.ask(&messages, &turn_id, true, on_event)?;
-        self.finish(session_id, &turn_id, vec![user], answer, on_event)
+        // The system line that asks for a tool goes with this request only.
+        messages.splice(0..0, offer.system);
+        let answer = self.ask(&messages, &offer.tools, &turn_id, true, on_event)?;
+        let tools = request.tools.is_some().then_some(offer.tools);
+        self.finish((session_id, &turn_id), vec![user], answer, tools, on_event)
     }
 
     fn submit_tool_result(
@@ -299,7 +308,12 @@ impl Brain for LocalBrain {
             prefix.push(result);
             let mut messages = stored.messages.clone();
             messages.extend(prefix.iter().cloned());
-            Ok(Step::Ask { prefix, messages })
+            let tools = waiting.tools.clone();
+            Ok(Step::Ask {
+                prefix,
+                messages,
+                tools,
+            })
         })?;
         match step {
             Step::Next(call) => {
@@ -307,9 +321,14 @@ impl Brain for LocalBrain {
                 on_event(completed(turn_id, StopReason::ToolCall));
                 Ok(())
             }
-            Step::Ask { prefix, messages } => {
-                let answer = self.ask(&messages, turn_id, false, on_event)?;
-                self.finish(session_id, turn_id, prefix, answer, on_event)
+            Step::Ask {
+                prefix,
+                messages,
+                tools,
+            } => {
+                let offered = tools.as_deref().unwrap_or(&self.tools);
+                let answer = self.ask(&messages, offered, turn_id, false, on_event)?;
+                self.finish((session_id, turn_id), prefix, answer, tools, on_event)
             }
         }
     }
