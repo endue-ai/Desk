@@ -1,9 +1,12 @@
 // The data plugin without its DOM. It answers the desk's file and buffer requests (desk.files.visit,
 // .revert, .save, desk.buffers.show, .closed), reads files in binary ranges with one ask for the file's
 // folder when its grants do not cover it, opens them with formats.js, follows them with fs.watch,
-// checks them against their JSON Schema (schema-check.js), and tells the view what to show. It only
-// talks to ctx and a view, so the SDK's test host runs it with a recording view.
+// checks them against their JSON Schema (schema-check.js), edits and saves them in their edit tier
+// (edit/), and tells the view what to show. It only talks to ctx and a view, so the SDK's test host
+// runs it with a recording view.
 
+import { createEditing } from "./edit/editing.js";
+import { createSession } from "./edit/session.js";
 import { openFile } from "./formats.js";
 import { createSchemaCheck } from "./schema-check.js";
 import { CHECKED, folderOf, join, nameOf, pickedKey } from "./schemas.js";
@@ -15,12 +18,14 @@ import { openWorker } from "./worker-client.js";
  * @typedef {import("@endue-ai/bridge").Permission} Permission
  * @typedef {import("./formats.js").Opened} Opened
  * @typedef {import("./schema-check.js").SchemaState} SchemaState
+ * @typedef {import("./edit/session.js").EditTier} EditTier
  * @typedef {{ buffer: string, path: string, name: string, size: number, opened: Opened,
- *   schema: SchemaState, maskKeys: boolean }} Shown
+ *   schema: SchemaState, maskKeys: boolean, tier?: EditTier, why?: string }} Shown
  * @typedef {{ show(model: Shown | null): void, schema(buffer: string, state: SchemaState): void,
  *   mask(keys: boolean): void, status(text: string): void, focus(): void,
  *   progress?(state: { phase: string, done: number, total: number } | null): void }} View
- * @typedef {Omit<Shown, "maskKeys"> & { watchId?: string }} File
+ * @typedef {Omit<Shown, "maskKeys" | "tier"> & import("./edit/editing.js").EditedFile
+ *   & { watchId?: string }} File
  */
 
 const NAME = "Data";
@@ -76,8 +81,8 @@ export function createData({ bridge, commands, settings }, view, options) {
   });
 
   const modelOf = (/** @type {File} */ file) => {
-    const { buffer, path, name, size, opened, schema } = file;
-    return { buffer, path, name, size, opened, schema, maskKeys };
+    const { buffer, path, name, size, opened, schema, tier, why } = file;
+    return { buffer, path, name, size, opened, schema, maskKeys, tier, why };
   };
   const present = (/** @type {string} */ buffer) => {
     shown = buffer;
@@ -192,7 +197,10 @@ export function createData({ bridge, commands, settings }, view, options) {
       const checked = CHECKED.has(opened.format) && opened.doc !== undefined;
       /** @type {SchemaState} */
       const schema = { state: checked ? "loading" : "none", errors: [] };
-      return /** @type {File} */ ({ buffer, path, name, size, opened, schema });
+      // Above 1 MiB the worker keeps the file and its edits; it said the tier with the rest.
+      const session = opened.remote ? undefined : createSession(name, bytes, opened);
+      const { tier = "read-only", why } = session ?? opened;
+      return /** @type {File} */ ({ buffer, path, name, size, opened, schema, session, tier, why });
     } finally {
       if (loading?.stop === stop) {
         loading = null;
@@ -241,8 +249,24 @@ export function createData({ bridge, commands, settings }, view, options) {
     await runSchema(file);
   });
 
-  answer("desk.files.save", () => {
-    throw new Error(`${NAME} opens files read-only.`);
+  const editing = createEditing(
+    { bridge, commands },
+    {
+      shown: () => (shown === null ? undefined : files.get(shown)),
+      held,
+      say,
+      changed: async (file) => {
+        if (files.get(file.buffer) !== file) return;
+        if (shown === file.buffer) present(file.buffer);
+        say(`Edited ${file.name}.`);
+        await runSchema(file);
+      },
+    },
+  );
+
+  answer("desk.files.save", (args) => {
+    const { buffer, path } = requested(args);
+    return editing.save(buffer, path);
   });
 
   answer("desk.buffers.show", (args) => {
@@ -257,7 +281,7 @@ export function createData({ bridge, commands, settings }, view, options) {
       loading.stop.abort();
       if (!files.has(buffer)) return;
     }
-    held(buffer);
+    editing.closed(held(buffer).path);
     forget(buffer);
     if (shown !== buffer) return;
     // The desk shows the buffer used before this one itself, with desk.buffers.show.
@@ -313,6 +337,8 @@ export function createData({ bridge, commands, settings }, view, options) {
 
   return {
     validateWith,
+    begin: editing.begin,
+    edit: editing.edit,
     cancel() {
       loading?.stop.abort(new DOMException("Opening was cancelled.", "AbortError"));
     },

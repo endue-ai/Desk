@@ -1,14 +1,23 @@
 /**
  * desk.propose and desk.propose.undo in the desk's registry, as the runtime's own commands (ADR 0017,
- * 0073). `desk.propose { kind?, text? }` ("Make with Eris…") makes a view from a sentence and answers
- * with the outcome; without one it asks for it with desk.palette.pick and answers at once. `desk.propose.undo { kind?, id? }` takes back what this
- * session applied, the last one by default: the inverse `cmd.undo` (#276) can point to.
+ * 0073). `desk.propose { kind?, text? }` ("Make with Eris…") makes a view, a profile or key bindings
+ * from a sentence (the kind the sentence asks for when none is given) and answers with the outcome;
+ * without a sentence it asks for one with desk.palette.pick and answers at once.
+ * `desk.propose.undo { kind?, id? }` takes back what this session applied, the last one by default:
+ * the inverse `cmd.undo` (#276) can point to.
  */
 import type { BridgeClient } from "@endue-ai/bridge";
 import type { Commands } from "../commands";
+import type { Platform } from "../input";
 import type { NoticeInput } from "../notify";
+import type { PolicySet } from "../policy";
+import type { Settings } from "../settings";
 import { createAsker } from "./asker";
-import { createProposals, type Eris } from "./pipeline";
+import { createCard } from "./card";
+import { keysKind, settingsKeys } from "./keys";
+import { createProposals, type Eris, type ProposalKind } from "./pipeline";
+import { profileKind } from "./profile";
+import { kindOf } from "./talk";
 import { viewKind } from "./view";
 
 export interface InstallProposalsOptions {
@@ -22,9 +31,15 @@ export interface InstallProposalsOptions {
   eris?: Eris;
   /** Wall-clock milliseconds (default Date.now). */
   now?(): number;
+  /**
+   * Profiles and key bindings: the element their card goes in (inside the theme's tokens), the
+   * settings and policies they change, the keymap's platform. Without it only views are proposed.
+   */
+  desk?: { host: HTMLElement; settings: Settings; policy(): PolicySet; platform: Platform };
 }
 
-const ASK = "Say what to make, for example: show my events this week as a board";
+const ASK =
+  "Say what to make: show my events this week as a board, make a quiet profile, bind Mod+Shift+T to …";
 
 export function installProposals(options: InstallProposalsOptions): () => void {
   const { bridge, commands, eris } = options;
@@ -35,7 +50,22 @@ export function installProposals(options: InstallProposalsOptions): () => void {
     now: options.now ?? (() => Date.now()),
     profile: options.profile,
   });
-  const proposals = createProposals({ asker, kinds: [view], notify: options.notify, eris });
+  const kinds: ProposalKind[] = [view];
+  const card = options.desk ? createCard(options.desk.host) : undefined;
+  if (options.desk && card) {
+    const { settings, policy, platform } = options.desk;
+    const run = (id: string, args?: unknown) => commands.run(id, args);
+    kinds.push(
+      profileKind({ bridge, commands: { run }, settings, declared: () => policy().settings, card }),
+      keysKind({
+        keys: settingsKeys({ settings, policy, commands }, platform),
+        commands: { run },
+        card,
+      }),
+    );
+  }
+  const proposals = createProposals({ asker, kinds, notify: options.notify, eris });
+  const kindFor = (kind: unknown, text: string) => (typeof kind === "string" ? kind : kindOf(text));
 
   /** The sentence the person types into the palette, or "" when they back out. */
   const ask = async () => {
@@ -56,17 +86,17 @@ export function installProposals(options: InstallProposalsOptions): () => void {
   const offs = [
     commands.define("desk.propose", {
       title: "Make with Eris…",
-      keywords: ["make", "build", "create", "view", "dashboard", "eris"],
+      keywords: ["make", "build", "create", "view", "dashboard", "profile", "bind", "keys", "eris"],
       owner: "desk",
       run: async (args) => {
-        const { kind = "view", text } = (args ?? {}) as { kind?: unknown; text?: unknown };
+        const { kind, text } = (args ?? {}) as { kind?: unknown; text?: unknown };
         if (typeof text === "string" && text.trim())
-          return proposals.propose(String(kind), text.trim());
+          return proposals.propose(kindFor(kind, text), text.trim());
         // Asked from the palette: it cannot show its own pick while it waits for this command, so
         // the command answers at once and the rest goes on without the caller (desk.notify.history
         // does the same).
         void ask()
-          .then((said) => (said ? proposals.propose(String(kind), said) : undefined))
+          .then((said) => (said ? proposals.propose(kindFor(kind, said), said) : undefined))
           .catch((error: unknown) =>
             options.notify({
               caller: "desk",
@@ -80,7 +110,7 @@ export function installProposals(options: InstallProposalsOptions): () => void {
     }),
     commands.define("desk.propose.undo", {
       title: "Undo what Eris made",
-      keywords: ["undo", "eris", "view", "remove"],
+      keywords: ["undo", "eris", "view", "profile", "keys", "remove"],
       owner: "desk",
       run: (args) => {
         const { kind, id } = (args ?? {}) as { kind?: unknown; id?: unknown };
@@ -93,5 +123,6 @@ export function installProposals(options: InstallProposalsOptions): () => void {
   ];
   return () => {
     for (const off of offs) off();
+    card?.close();
   };
 }

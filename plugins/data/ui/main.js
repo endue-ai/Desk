@@ -9,10 +9,13 @@ defineUiPlugin({
   mount(ctx) {
     /** @type {ReturnType<typeof createData> | undefined} */
     let app;
+    // The elements of @endue-ai/ui, <desk-edit-tier> among them: the view only sets attributes.
     defineElements();
     const view = createView(document, {
       validateWith: () => app?.validateWith(),
       cancel: () => app?.cancel(),
+      begin: async (path) => (app ? app.begin(path) : ""),
+      edit: (path, text) => app?.edit(path, text),
     });
     app = createData(ctx, view, { readBytes, startWorker });
   },

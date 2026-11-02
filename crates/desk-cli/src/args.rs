@@ -23,6 +23,8 @@ pub const USAGE: &str = "usage: desk [--json] <command>
   theme import <file>                   install a .desk-theme file as a user theme; prints its id
   theme export <id> [file]              write a theme as a .desk-theme file (default: in Downloads)
   theme remove <id>                     delete a user theme
+  doctor --trace <file>                 summarize a start-up trace (DESK_TRACE=1): phases, totals,
+                                        the five longest
 --json prints the desk's answer line as it is. Exit codes: 0 ok, 1 failed, 2 usage.";
 
 pub struct Args {
@@ -33,6 +35,8 @@ pub struct Args {
 pub enum Action {
     Help,
     Validate(PathBuf),
+    /// `doctor --trace <file>`: a start-up trace, summarized offline.
+    Trace(PathBuf),
     Remote(Remote),
 }
 
@@ -92,6 +96,7 @@ pub fn parse(args: Vec<String>) -> Option<Args> {
     let action = match words.as_slice() {
         ["--help" | "-h" | "help"] => Action::Help,
         ["plugin", "validate", dir] => Action::Validate(PathBuf::from(dir)),
+        ["doctor", "--trace", file] => Action::Trace(PathBuf::from(file)),
         ["ping"] => Action::Remote(Remote::Ping),
         ["cmd", "list"] => Action::Remote(Remote::CmdList),
         ["cmd", "run", rest @ ..] => Action::Remote(cmd_run(rest)?),

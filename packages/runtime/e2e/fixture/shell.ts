@@ -8,8 +8,9 @@
 // fixture market, e2e/themes/market served at /market/, as https://market.test/index.json, and
 // ?market=tab opens the studio's Market tab, ?market=<theme id> previews that theme there). brain.ask
 // answers as examples/brain-echo does (propose_theme from the words of the prompt's last line).
-// ?views=1 installs desk.views, and brain.ask answers propose_view for desk.propose as
-// src/propose/fixtures.ts scripts it. Never shipped.
+// ?views=1 installs desk.views, and brain.ask answers propose_view, propose_profile and
+// propose_key_bindings for desk.propose as src/propose/fixtures.ts scripts them. ?apps=1 installs
+// endue.notes and a terminal stand-in, for the profile and key bindings Eris proposes. Never shipped.
 import type { PluginManifest } from "@endue-ai/bridge";
 import "../../src/desk.css";
 import "../../src/shell/styles";
@@ -19,7 +20,7 @@ import { browserCore, localStore, memoryStore } from "../../src/bridge/core";
 import erisReply from "../../src/bridge/envelopes/eris-reply.json";
 import userHello from "../../src/bridge/envelopes/user-hello.json";
 import { ManualClock } from "../../src/clock";
-import { viewFor } from "../../src/propose/fixtures";
+import { proposalFor } from "../../src/propose/fixtures";
 import { mountDesk } from "../../src/shell/Desk";
 import { sampleState } from "../../src/shell/state";
 import testTheme from "../themes/test-theme/plugin.json";
@@ -54,6 +55,24 @@ const testPlugins: PluginManifest[] = [
 ];
 const MARKET = "https://market.test/";
 const market = params.has("market");
+// ?apps=1: the notes plugin, and the counter's page standing in for the terminal with the
+// terminal's name, its two first commands and its key (Mod+Shift+T opens a new one).
+const terminal: PluginManifest = {
+  id: "endue.terminal",
+  name: "Terminal",
+  version: "0.1.0",
+  kind: "ui",
+  entry: "ui/index.html",
+  surfaces: [{ id: "main", title: "Terminal", placement: "center" }],
+  contributes: {
+    commands: [
+      { id: "endue.terminal.new", title: "New terminal" },
+      { id: "endue.terminal.focus", title: "Focus the terminal" },
+    ],
+    keys: [{ key: "Mod+Shift+T", command: "endue.terminal.new" }],
+  },
+};
+const apps = Object.values(manifests).filter((m) => m.id === "endue.notes");
 const core = browserCore({
   manifests: [
     ...Object.values(manifests).filter(
@@ -64,13 +83,14 @@ const core = browserCore({
     ),
     ...(params.has("plugins") ? testPlugins : []),
     ...(params.has("themes") ? [testTheme as PluginManifest] : []),
+    ...(params.has("apps") ? [...apps, terminal] : []),
   ],
   store: params.has("persist") ? localStore("desk.core.") : memoryStore(),
   ask: (prompt, tool) =>
     tool === "propose_theme"
       ? proposeTheme(prompt)
-      : tool === "propose_view" && params.has("views")
-        ? viewFor(prompt)
+      : params.has("views")
+        ? proposalFor(prompt, tool)
         : undefined,
   ...(market ? { download: fromFixtureMarket } : {}),
   init: {

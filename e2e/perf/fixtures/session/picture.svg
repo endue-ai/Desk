@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="180" viewBox="0 0 320 180">
+  <rect width="320" height="180" fill="#f4f1fb"/>
+  <rect x="20" y="40" width="60" height="18" fill="#7c6bd6"/>
+  <rect x="80" y="70" width="140" height="18" fill="#a597e8"/>
+  <rect x="220" y="100" width="80" height="18" fill="#cfc6f4"/>
+  <text x="20" y="150" font-family="sans-serif" font-size="14" fill="#2b2540">start-up phases</text>
+</svg>
