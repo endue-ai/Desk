@@ -1,11 +1,12 @@
 // The files of a new UI plugin, in the same layout as examples/plugin-hello-ui; a connector's are
-// in ./connector.
+// in ./connector, a theme's in ./theme.
 
 import type { PluginManifest } from "@endue-ai/bridge";
 import { renderConnector } from "./connector";
+import { renderTheme } from "./theme";
 
-/** What the folder holds: a UI plugin, or a Wasm connector in Rust. */
-export type TemplateKind = "ui" | "connector";
+/** What the folder holds: a UI plugin, a Wasm connector in Rust, or a theme. */
+export type TemplateKind = "ui" | "connector" | "theme";
 
 export interface PluginOptions {
   /** Manifest id, already checked with `checkId`. */
@@ -16,11 +17,18 @@ export interface PluginOptions {
   description?: string;
   /** `ui` when absent. */
   kind?: TemplateKind;
+  /**
+   * A theme's test imports the theme compiler from the Desk repository: its path relative to the
+   * new folder, with `/`. `../..` (the folder in the repository's `plugins/` or `examples/`) when
+   * absent.
+   */
+  desk?: string;
 }
 
 /** Every file of the plugin folder, keyed by its path relative to the folder. */
 export function renderPlugin(options: PluginOptions): Record<string, string> {
   if (options.kind === "connector") return renderConnector(options);
+  if (options.kind === "theme") return renderTheme(options);
   return {
     "plugin.json": manifest(options),
     "README.md": readme(options),
