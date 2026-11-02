@@ -1,11 +1,13 @@
 /* Soul text and orb styles, ported from docs/reference/eris-opening-prototype.html. Shared by the
    onboarding plugin, which links this file. */
 
-/* Her words are text in the theme's roles (her gold is chart-3), so they read in every scheme. Her
-   body is drawn over the brand art (assets/*.svg): its light and gold take the theme's eris* tokens,
-   which the shell's Eris reads too and the runtime sets on this frame with the rest of the theme;
-   until they arrive, the nearest roles stand in. */
+/* Her colours are the theme's eris* tokens, the ones the shell's Eris reads too: each scheme has its
+   own (desk.shell's for light are a darker frost and gold) and a theme can set them. The runtime sets
+   them on this frame with the rest of the theme; until they arrive, the nearest roles stand in. Her
+   words are the theme's text but for her gold. The orb's core, flash and glint take the tokens; her
+   body and Dysnomia are the brand art (assets/*.svg), drawn as it is. */
 :root {
+  --eris-gold: var(--desk-eris, var(--desk-chart-3));
   --eris-gold-light: var(--desk-eris-gold-light, var(--desk-chart-3));
   --eris-gold-deep: var(--desk-eris-gold-deep, var(--desk-chart-3));
   --eris-frost: var(--desk-eris-frost, var(--desk-text));
@@ -21,8 +23,8 @@
 }
 
 .ch.gold {
-  color: var(--desk-chart-3);
-  text-shadow: 0 0 18px color-mix(in srgb, var(--desk-chart-3) 45%, transparent);
+  color: var(--eris-gold);
+  text-shadow: 0 0 18px color-mix(in srgb, var(--eris-gold) 45%, transparent);
 }
 
 .ch.user {

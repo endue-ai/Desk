@@ -862,7 +862,7 @@
          "hidden": "",
          "style": {
           "display": "none",
-          "background": "rgb(167, 177, 195)",
+          "background": "rgb(110, 120, 144)",
           "color": "rgb(30, 24, 51)",
           "opacity": "0.5"
          }
@@ -873,7 +873,7 @@
          "hidden": "",
          "style": {
           "display": "none",
-          "background": "rgb(167, 177, 195)",
+          "background": "rgb(110, 120, 144)",
           "color": "rgb(30, 24, 51)",
           "opacity": "0.3"
          }
@@ -898,7 +898,7 @@
            "hidden": "",
            "style": {
             "display": "none",
-            "background": "rgb(232, 201, 138)",
+            "background": "rgb(154, 107, 18)",
             "color": "rgb(30, 24, 51)"
            }
           }
