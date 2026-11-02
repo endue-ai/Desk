@@ -1,0 +1,13 @@
+{
+  "target": "ThemeBundle",
+  "description": "a bundle holds a plugin of kind theme",
+  "instance": {
+    "format": "desk-theme/1",
+    "manifest": {
+      "id": "endue.formats",
+      "version": "0.1.0",
+      "kind": "library"
+    },
+    "files": {}
+  }
+}

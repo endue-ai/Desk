@@ -1,0 +1,18 @@
+{
+  "target": "BridgeRequest",
+  "description": "theme.save takes only plugins of kind theme",
+  "instance": {
+    "id": 71,
+    "method": "theme.save",
+    "params": {
+      "manifest": {
+        "id": "local.formats",
+        "version": "0.1.0",
+        "kind": "library"
+      },
+      "scope": {
+        "permission": "theme:manage"
+      }
+    }
+  }
+}

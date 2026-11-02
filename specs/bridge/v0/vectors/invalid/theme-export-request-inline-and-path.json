@@ -1,0 +1,16 @@
+{
+  "target": "BridgeRequest",
+  "description": "theme.export returns the bundle or writes it, not both",
+  "instance": {
+    "id": 78,
+    "method": "theme.export",
+    "params": {
+      "theme": "local.my-paper",
+      "inline": true,
+      "path": "~/paper.desk-theme",
+      "scope": {
+        "permission": "theme:manage"
+      }
+    }
+  }
+}

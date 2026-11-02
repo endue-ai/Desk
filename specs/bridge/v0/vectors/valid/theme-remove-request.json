@@ -1,0 +1,14 @@
+{
+  "target": "BridgeRequest",
+  "description": "theme.remove deletes a user theme",
+  "instance": {
+    "id": 67,
+    "method": "theme.remove",
+    "params": {
+      "theme": "local.my-paper",
+      "scope": {
+        "permission": "theme:manage"
+      }
+    }
+  }
+}

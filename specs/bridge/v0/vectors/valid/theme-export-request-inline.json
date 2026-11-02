@@ -1,0 +1,15 @@
+{
+  "target": "BridgeRequest",
+  "description": "theme.export with inline returns the bundle",
+  "instance": {
+    "id": 66,
+    "method": "theme.export",
+    "params": {
+      "theme": "local.my-paper",
+      "inline": true,
+      "scope": {
+        "permission": "theme:manage"
+      }
+    }
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "target": "BridgeRequest",
+  "description": "a url comes with the sha256 of its bytes",
+  "instance": {
+    "id": 76,
+    "method": "theme.import",
+    "params": {
+      "url": "https://themes.example.com/paper.desk-theme",
+      "scope": {
+        "permission": "theme:manage"
+      }
+    }
+  }
+}

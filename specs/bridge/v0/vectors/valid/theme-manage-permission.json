@@ -1,0 +1,7 @@
+{
+  "target": "Permission",
+  "description": "theme:manage, the permission every theme.* call carries",
+  "instance": {
+    "permission": "theme:manage"
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "target": "ThemeExportResult",
+  "description": "theme.export answers the file it wrote",
+  "instance": {
+    "path": "/Users/dana/Downloads/local.my-paper.desk-theme"
+  }
+}

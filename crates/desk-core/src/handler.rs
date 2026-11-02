@@ -236,7 +236,35 @@ impl Core {
             R::UpdateCheck(r) => (r.id, self.update_check(caller, r.params)),
             R::UpdateDownload(r) => (r.id, self.update_download(caller, r.params)),
             R::UpdateApply(r) => (r.id, self.update_apply(caller, r.params)),
+            R::ThemeSave(r) => (
+                r.id,
+                self.theme_unsupported(caller, r.params.scope, "theme.save"),
+            ),
+            R::ThemeImport(r) => (
+                r.id,
+                self.theme_unsupported(caller, r.params.scope, "theme.import"),
+            ),
+            R::ThemeExport(r) => (
+                r.id,
+                self.theme_unsupported(caller, r.params.scope, "theme.export"),
+            ),
+            R::ThemeRemove(r) => (
+                r.id,
+                self.theme_unsupported(caller, r.params.scope, "theme.remove"),
+            ),
         }
+    }
+
+    /// theme.* (ADR 0058) before the user themes folder exists: the scope is checked like any
+    /// call's, and then nothing is kept yet.
+    fn theme_unsupported(
+        &self,
+        caller: &str,
+        scope: desk_bridge::ThemeManagePermission,
+        method: &str,
+    ) -> Answer {
+        self.check(caller, &Permission::ThemeManage(scope), &Target::None)?;
+        unsupported(method)
     }
 
     /// Check the scope against the caller's grants, then map the bridge path onto the file system.

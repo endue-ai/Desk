@@ -1,0 +1,48 @@
+{
+  "target": "BridgeRequest",
+  "description": "theme.save takes only ids inside local.",
+  "instance": {
+    "id": 70,
+    "method": "theme.save",
+    "params": {
+      "manifest": {
+        "id": "example.paper",
+        "name": "My Paper",
+        "version": "1.0.0",
+        "kind": "theme",
+        "description": "Paper & Ink, warmer.",
+        "theme": {
+          "author": "Dana",
+          "license": "CC0-1.0",
+          "origin": {
+            "base": "endue.theme-paper"
+          },
+          "type": {
+            "sans": "\"Literata\", Georgia, serif",
+            "fonts": [
+              {
+                "family": "Literata",
+                "src": "fonts/literata.woff2",
+                "weight": "200 900"
+              }
+            ]
+          },
+          "light": {
+            "colors": {
+              "background": "#f6f1e7",
+              "text": "#1d1a16",
+              "primary": "#1f3a93"
+            },
+            "backdrop": {
+              "image": "images/paper.png",
+              "fit": "tile"
+            }
+          }
+        }
+      },
+      "scope": {
+        "permission": "theme:manage"
+      }
+    }
+  }
+}

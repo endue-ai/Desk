@@ -315,6 +315,7 @@ pub enum Permission {
     ViewManage(ViewManagePermission),
     ShellOpen(ShellOpenPermission),
     UpdateManage(UpdateManagePermission),
+    ThemeManage(ThemeManagePermission),
 }
 
 /// Search explicitly published plugin documents and installed plugin launchers.
@@ -503,6 +504,13 @@ pub struct UpdateManagePermission {
     pub permission: UpdateManagePermissionPermission,
 }
 
+/// Keep the person's own themes with theme.*: save a theme into the desk's user themes folder, import a .desk-theme bundle, export any installed theme as one, and remove a user theme. The desk grants it to the runtime and the CLI only.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ThemeManagePermission {
+    pub permission: ThemeManagePermissionPermission,
+}
+
 /// A URL scheme shell.open hands to the system: the browser for http and https, the mail app for mailto.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum ShellScheme {
@@ -684,6 +692,24 @@ pub struct ThemePackage {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub dark: Option<ThemeVariant>,
 }
+
+/// A theme as one file, a .desk-theme: JSON, 16 MiB at most, holding the theme's plugin.json and the font and image files its theme block names, base64. theme.export writes one and theme.import reads one; the desk checks it as a theme plugin folder before it lands.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ThemeBundle {
+    /// The bundle format and its version.
+    pub format: ThemeBundleFormat,
+    /// The theme's plugin.json: a plugin of kind theme.
+    pub manifest: PluginManifest,
+    /// The theme's font and image files by their path in its folder, each base64. Only the paths its theme block names.
+    pub files: BTreeMap<String, ThemeAssetData>,
+}
+
+/// A theme's font (.woff2) or image (.png, .jpg, .jpeg or .webp) file relative to its folder, without .. segments.
+pub type ThemeAssetPath = String;
+
+/// One asset file's bytes in padded base64 (RFC 4648): 2 MiB of bytes at most.
+pub type ThemeAssetData = String;
 
 /// Where a theme came from: the sentence it was described with, and the theme it started from.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -2256,6 +2282,10 @@ pub enum BridgeRequest {
     UpdateCheck(UpdateCheckRequest),
     UpdateDownload(UpdateDownloadRequest),
     UpdateApply(UpdateApplyRequest),
+    ThemeSave(ThemeSaveRequest),
+    ThemeImport(ThemeImportRequest),
+    ThemeExport(ThemeExportRequest),
+    ThemeRemove(ThemeRemoveRequest),
 }
 
 /// The answer to one request: a result, or an error.
@@ -4135,6 +4165,139 @@ pub struct StoreSetParams {
 #[serde(deny_unknown_fields)]
 pub struct StoreSetResult {}
 
+/// One of the theme's font or image files, given inline.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ThemeSaveFile {
+    pub path: ThemeAssetPath,
+    pub base64: ThemeAssetData,
+}
+
+/// An https URL of a .desk-theme file. Plain http, and a redirect to another host, are refused.
+pub type ThemeBundleUrl = String;
+
+/// The sha256 of a file's bytes, lowercase hex.
+pub type ThemeSha256 = String;
+
+/// Save a theme as the person's own: write its folder in the user themes folder, check it as a theme plugin, then install it. It replaces an earlier user theme of the same id whole; when the check fails nothing is written and the earlier one stays. An id a built-in or any other plugin holds is already_exists.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ThemeSaveRequest {
+    pub id: RequestId,
+    pub method: ThemeSaveRequestMethod,
+    pub params: ThemeSaveParams,
+}
+
+/// Parameters of theme.save.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ThemeSaveParams {
+    /// The theme's plugin.json: kind theme, with an id inside local. (for example local.my-paper).
+    pub manifest: PluginManifest,
+    /// Font and image files the theme block names, each path once. With the ones copyFrom brings they are the theme folder's only files besides plugin.json.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub files: Option<Vec<ThemeSaveFile>>,
+    /// An installed theme (built-in, market or local) to copy files from: every font and backdrop image the saved theme block names that files does not give and that exists at the same path in that theme's folder. How a tuned copy keeps the fonts and images of the theme it started from. One that is not an installed theme is not_found.
+    #[serde(rename = "copyFrom", default, skip_serializing_if = "Option::is_none")]
+    pub copy_from: Option<PluginId>,
+    pub scope: ThemeManagePermission,
+}
+
+/// Result of theme.save: the theme as installed.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ThemeSaveResult {
+    pub plugin: PluginInfo,
+}
+
+/// Install a .desk-theme bundle as a user theme: given inline, read from a file, or downloaded over https and checked against its sha256 (a mismatch is invalid_params and nothing lands). A bundle whose id is outside local. and market. lands as local.<its name as a slug>. It is checked and replaces an earlier user theme of its id as theme.save does.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ThemeImportRequest {
+    pub id: RequestId,
+    pub method: ThemeImportRequestMethod,
+    pub params: ThemeImportParams,
+}
+
+/// Parameters of theme.import: exactly one of bundle, path and url, and sha256 with url.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ThemeImportParams {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub bundle: Option<ThemeBundle>,
+    /// A .desk-theme file to read.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub path: Option<Path>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub url: Option<ThemeBundleUrl>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sha256: Option<ThemeSha256>,
+    pub scope: ThemeManagePermission,
+}
+
+/// Result of theme.import: the theme as installed, under the id it landed with.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ThemeImportResult {
+    pub plugin: PluginInfo,
+}
+
+/// Make a .desk-theme bundle of any installed theme, built-in ones too: its plugin.json and the font and image files its theme block names. Returned with inline; otherwise written to path, or to <Downloads>/<id>.desk-theme (<id>-2.desk-theme and on when that is taken), and the file's path returned.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ThemeExportRequest {
+    pub id: RequestId,
+    pub method: ThemeExportRequestMethod,
+    pub params: ThemeExportParams,
+}
+
+/// Parameters of theme.export. inline: true takes no path.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ThemeExportParams {
+    pub theme: PluginId,
+    /// Where to write the bundle; an existing file there is replaced.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub path: Option<Path>,
+    /// Return the bundle instead of writing it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub inline: Option<bool>,
+    pub scope: ThemeManagePermission,
+}
+
+/// Result of theme.export: the bundle with inline, otherwise the file written.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ThemeExportResult {
+    /// The file written, as an absolute path.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub path: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub bundle: Option<ThemeBundle>,
+}
+
+/// Remove a user theme: its folder goes and plugin.changed says removed. Only themes in the user themes folder (local. and market. ids); any other plugin is invalid_params, an id nothing holds not_found. A removed theme that desk.theme.active names leaves the desk's own theme in force.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ThemeRemoveRequest {
+    pub id: RequestId,
+    pub method: ThemeRemoveRequestMethod,
+    pub params: ThemeRemoveParams,
+}
+
+/// Parameters of theme.remove.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ThemeRemoveParams {
+    pub theme: PluginId,
+    pub scope: ThemeManagePermission,
+}
+
+/// Result of theme.remove.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ThemeRemoveResult {}
+
 /// Open one of the surfaces the caller's manifest declares; the runtime hears ui.surface.opened.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -4760,6 +4923,22 @@ pub enum UpdateManagePermissionPermission {
     #[default]
     #[serde(rename = "update:manage")]
     UpdateManage,
+}
+
+/// The `permission` of [`ThemeManagePermission`]: always `"theme:manage"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum ThemeManagePermissionPermission {
+    #[default]
+    #[serde(rename = "theme:manage")]
+    ThemeManage,
+}
+
+/// The `format` of [`ThemeBundle`]: always `"desk-theme/1"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum ThemeBundleFormat {
+    #[default]
+    #[serde(rename = "desk-theme/1")]
+    DeskTheme1,
 }
 
 /// The `kind` of [`EventItem`]: always `"event"`.
@@ -5458,6 +5637,38 @@ pub enum StoreSetRequestMethod {
     StoreSet,
 }
 
+/// The `method` of [`ThemeSaveRequest`]: always `"theme.save"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum ThemeSaveRequestMethod {
+    #[default]
+    #[serde(rename = "theme.save")]
+    ThemeSave,
+}
+
+/// The `method` of [`ThemeImportRequest`]: always `"theme.import"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum ThemeImportRequestMethod {
+    #[default]
+    #[serde(rename = "theme.import")]
+    ThemeImport,
+}
+
+/// The `method` of [`ThemeExportRequest`]: always `"theme.export"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum ThemeExportRequestMethod {
+    #[default]
+    #[serde(rename = "theme.export")]
+    ThemeExport,
+}
+
+/// The `method` of [`ThemeRemoveRequest`]: always `"theme.remove"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum ThemeRemoveRequestMethod {
+    #[default]
+    #[serde(rename = "theme.remove")]
+    ThemeRemove,
+}
+
 /// The `method` of [`UiSurfaceOpenRequest`]: always `"ui.surface.open"`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub enum UiSurfaceOpenRequestMethod {
@@ -5740,6 +5951,10 @@ pub const SCHEMAS: &[(&str, &str)] = &[
     (
         "https://endue.ai/specs/bridge/v0/store.schema.json",
         include_str!("../../../specs/bridge/v0/store.schema.json"),
+    ),
+    (
+        "https://endue.ai/specs/bridge/v0/theme.schema.json",
+        include_str!("../../../specs/bridge/v0/theme.schema.json"),
     ),
     (
         "https://endue.ai/specs/bridge/v0/ui.schema.json",
