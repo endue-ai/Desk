@@ -1,0 +1,8 @@
+desk.palette (Palette) is a UI plugin, on.
+What it is: a UI plugin, version 0.1.0, built in
+What it does: System search and the shared picker.
+Folder: /desk/plugins/palette
+Commands: desk.palette.open
+Settings: desk.palette.history
+Grants: g1 run commands (ids: *), for this session
+File: /desk/plugins/palette/plugin.json

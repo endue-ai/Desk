@@ -95,13 +95,16 @@ fn init_get_hands_each_caller_only_its_own_settings() {
     )
     .unwrap();
     let core = core().with_init_file(init);
+    // Where init.yaml is goes to every caller alike (`describe_paths.rs`); the settings differ.
     let ask = |caller: &str| {
-        call(
+        let mut answer = call(
             &core,
             caller,
             json!({ "id": 1, "method": "init.get", "params": {} }),
         )
-        .unwrap()
+        .unwrap();
+        answer.as_object_mut().unwrap().remove("file");
+        answer
     };
     assert_eq!(
         ask("desk"),

@@ -26,6 +26,16 @@ describe("the default keymap", () => {
     expect(map.get("Control+2")).toBe("desk.shell.desktop-2");
   });
 
+  it("binds Mod+Shift+/ to desk.describe.open", () => {
+    for (const [platform, combo] of [
+      ["mac", "Meta+Shift+/"],
+      ["other", "Control+Shift+/"],
+    ] as const) {
+      const map = new Map(resolveKeymap(keys, platform).map((b) => [b.combo, b.command]));
+      expect(map.get(combo)).toBe("desk.describe.open");
+    }
+  });
+
   it("opens the palette with Mod+K and quits with Escape, on every platform", () => {
     for (const [platform, combo] of [
       ["mac", "Meta+K"],
