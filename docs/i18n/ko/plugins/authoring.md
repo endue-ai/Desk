@@ -181,6 +181,11 @@ cargo run -p desk-cli -- theme apply local.my-theme
 않습니다. 적용 중인 테마는 설정 `desk.theme.active` 가 가리키며, 테마 스튜디오(오른쪽 위의 팔레트 버튼, 또는
 커맨드 팔레트의 Themes), `desk.theme.use`, `desk theme apply` 로 고릅니다.
 
+스튜디오에서도 테마를 만듭니다. "Tune a copy"(또는 `desk.theme.edit`)는 고른 테마의 사본으로, "New theme" 은
+endue 테마로 편집기를 엽니다. 글꼴과 배경 이미지까지 모든 층에 조작 요소가 있고, 데스크 전체가 바뀌는 초안을
+그대로 보여 주며, 게이트의 보정 내역이 팔레트 아래에 나오고, Save 는 그 결과를 내 테마(`local.<이름>`)로
+저장합니다. 테마를 레포에 두고, 테스트하고, 공개하는 길은 폴더입니다.
+
 ### theme 블록
 
 `plugin.json` 은 kind `theme` 과 `theme` 블록(`specs/plugin/v0/theme.schema.json`)을 갖고, `entry`,
@@ -264,7 +269,7 @@ cargo run -p desk-cli -- theme import ~/Downloads/dusk.desk-theme
 `.desk-theme` 은 JSON 파일 하나입니다. `format` 은 `desk-theme/1`, `manifest` 는 테마의 `plugin.json`, `files` 는
 블록이 가리키는 파일들의 base64 이며, 16 MiB 를 넘지 않습니다(ADR 0058). 가져오면 테마 플러그인으로 검사한 뒤
 사용자의 테마 폴더에 `local.` 아래 id 로 설치합니다. `desk theme list` 가 보여 주고 `desk theme remove` 가
-지웁니다.
+지웁니다. 스튜디오의 Export 와 Import 도 같은 일을 하고, 스튜디오에 끌어다 놓은 `.desk-theme` 도 받습니다.
 
 ### 마켓
 

@@ -166,6 +166,8 @@ cargo run -p desk-cli -- theme apply local.my-theme
 
 パッケージが公開されれば、これは `pnpm create @endue-ai/plugin my-theme --kind theme` になります。テンプレートには両方の scheme のすべての役割色、既定値のままのほかのレイヤー、それぞれが何を塗るかを説明する README が入っています。`examples/plugin-hello-theme` は、フォントとバックドロップをひとつずつ持つ最小のテーマです。テーマはインストールしても適用されません。適用中のテーマは設定 `desk.theme.active` が指し、テーマスタジオ（右上のパレットボタン、またはコマンドパレットの Themes）、`desk.theme.use`、`desk theme apply` で選びます。
 
+スタジオでもテーマを作れます。「Tune a copy」（または `desk.theme.edit`）は選んだテーマのコピーで、「New theme」は endue のテーマでエディターを開きます。フォントやバックドロップの画像も含め、すべてのレイヤーに操作部品があり、デスク全体が変わっていく下書きをそのまま映し、ゲートの補正はパレットの下に並び、Save で自分のテーマ（`local.<名前>`）として保存します。テーマをリポジトリに置き、テストし、公開するにはフォルダーを使います。
+
 ### theme ブロック
 
 `plugin.json` は kind `theme` と `theme` ブロック（`specs/plugin/v0/theme.schema.json`）を持ち、`entry`、`permissions`、`surfaces`、`contributes`、`autoload` は持ちません。
@@ -232,7 +234,7 @@ cargo run -p desk-cli -- theme export local.my-theme     # local.my-theme.desk-t
 cargo run -p desk-cli -- theme import ~/Downloads/dusk.desk-theme
 ```
 
-`.desk-theme` はひとつの JSON ファイルです。`format` は `desk-theme/1`、`manifest` はテーマの `plugin.json`、`files` はブロックが指すファイルの base64 で、16 MiB までです（ADR 0058）。読み込むとテーマプラグインとして検査され、利用者のテーマフォルダーに `local.` 以下の id でインストールされます。`desk theme list` で一覧でき、`desk theme remove` で削除できます。
+`.desk-theme` はひとつの JSON ファイルです。`format` は `desk-theme/1`、`manifest` はテーマの `plugin.json`、`files` はブロックが指すファイルの base64 で、16 MiB までです（ADR 0058）。読み込むとテーマプラグインとして検査され、利用者のテーマフォルダーに `local.` 以下の id でインストールされます。`desk theme list` で一覧でき、`desk theme remove` で削除できます。スタジオの Export と Import も同じことを行い、スタジオにドロップした `.desk-theme` も受け付けます。
 
 ### マーケット
 

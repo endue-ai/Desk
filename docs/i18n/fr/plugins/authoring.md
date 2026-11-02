@@ -190,6 +190,12 @@ avec une police et un arrière-plan. Installer un thème ne l'applique pas : le 
 désigne celui qui est en vigueur, choisi dans le studio de thèmes (le bouton palette en haut à droite, ou
 Themes dans la palette de commandes), avec `desk.theme.use` ou avec `desk theme apply`.
 
+Le studio crée aussi des thèmes : « Tune a copy » (ou `desk.theme.edit`) ouvre son éditeur sur une copie du
+thème sélectionné, « New theme » sur le thème endue. Chaque couche a ses contrôles, polices et images
+d'arrière-plan comprises ; tout le bureau montre le brouillon à mesure qu'il change, les corrections du
+contrôle sont listées sous la palette, et Save le garde comme votre propre thème (`local.<nom>`). Un dossier
+est la façon de garder un thème dans un dépôt, de le tester et de le publier.
+
 ### Le bloc
 
 `plugin.json` a le kind `theme` et un bloc `theme` (`specs/plugin/v0/theme.schema.json`), et ni
@@ -278,7 +284,8 @@ cargo run -p desk-cli -- theme import ~/Downloads/dusk.desk-theme
 Un `.desk-theme` est un seul fichier JSON : `format` `desk-theme/1`, le `plugin.json` du thème comme
 `manifest`, et les fichiers que son bloc désigne dans `files`, en base64, 16 Mio au plus (ADR 0058).
 L'importer le vérifie comme plugin de thème et l'installe dans le dossier de thèmes de la personne sous un
-id dans `local.` ; `desk theme list` l'affiche et `desk theme remove` le supprime.
+id dans `local.` ; `desk theme list` l'affiche et `desk theme remove` le supprime. Export et Import dans le
+studio font de même, et le studio accepte un `.desk-theme` déposé dessus.
 
 ### Le marché
 

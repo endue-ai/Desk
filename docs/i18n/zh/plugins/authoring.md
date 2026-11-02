@@ -164,6 +164,8 @@ cargo run -p desk-cli -- theme apply local.my-theme
 
 包发布之后，这一步就是 `pnpm create @endue-ai/plugin my-theme --kind theme`。模板包含两种 scheme 下的全部角色颜色、保持默认值的其余各层，以及说明每个值涂在哪里的 README；`examples/plugin-hello-theme` 是带一个字体和一个背景的最小主题。安装主题并不会应用它：当前生效的主题由设置 `desk.theme.active` 指定，可以在主题工作室（右上角的调色板按钮，或命令面板中的 Themes）、通过 `desk.theme.use` 或 `desk theme apply` 选择。
 
+主题工作室也能制作主题：“Tune a copy”（或 `desk.theme.edit`）以所选主题的副本打开编辑器，“New theme”则以 endue 主题打开。每一层都有对应的控件，包括字体和背景图片；整个桌面随草稿实时变化，门禁的修正列在调色板下方，Save 会把结果保存为你自己的主题（`local.<名称>`）。要把主题放进仓库、测试并发布，就用目录。
+
 ### theme 块
 
 `plugin.json` 的 kind 为 `theme`，并带有 `theme` 块（`specs/plugin/v0/theme.schema.json`），没有 `entry`、`permissions`、`surfaces`、`contributes` 和 `autoload`：
@@ -230,7 +232,7 @@ cargo run -p desk-cli -- theme export local.my-theme     # local.my-theme.desk-t
 cargo run -p desk-cli -- theme import ~/Downloads/dusk.desk-theme
 ```
 
-`.desk-theme` 是一个 JSON 文件：`format` 为 `desk-theme/1`，`manifest` 是主题的 `plugin.json`，`files` 是主题块引用的文件的 base64，最大 16 MiB（ADR 0058）。导入时会先按主题插件检查，再以 `local.` 下的 id 安装到用户的主题目录；`desk theme list` 可以列出它，`desk theme remove` 可以删除它。
+`.desk-theme` 是一个 JSON 文件：`format` 为 `desk-theme/1`，`manifest` 是主题的 `plugin.json`，`files` 是主题块引用的文件的 base64，最大 16 MiB（ADR 0058）。导入时会先按主题插件检查，再以 `local.` 下的 id 安装到用户的主题目录；`desk theme list` 可以列出它，`desk theme remove` 可以删除它。主题工作室的 Export 和 Import 做同样的事，也接受拖放到工作室上的 `.desk-theme`。
 
 ### 市场
 

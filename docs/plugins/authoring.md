@@ -186,6 +186,12 @@ Installing a theme does not apply it: the setting `desk.theme.active` names the 
 the theme studio (the palette button at the top right, or Themes in the command palette), with
 `desk.theme.use` or with `desk theme apply`.
 
+The studio makes themes too: "Tune a copy" (or `desk.theme.edit`) opens its editor on a copy of the
+selected theme, "New theme" on the endue theme. Every layer has its controls, fonts and backdrop images
+included; the whole desk shows the draft as it changes, the gate's fixes are listed under the palette,
+and Save keeps it as your own theme (`local.<name>`). A folder is how a theme lives in a repository, is
+tested, and is published.
+
 ### The block
 
 `plugin.json` has kind `theme` and a `theme` block (`specs/plugin/v0/theme.schema.json`), and no
@@ -273,7 +279,8 @@ cargo run -p desk-cli -- theme import ~/Downloads/dusk.desk-theme
 A `.desk-theme` is one JSON file: `format` `desk-theme/1`, the theme's `plugin.json` as `manifest`, and
 the files its block names in `files`, base64, 16 MiB at most (ADR 0058). Importing one checks it as a
 theme plugin and installs it in the person's themes folder under an id inside `local.`; `desk theme list`
-shows it and `desk theme remove` deletes it.
+shows it and `desk theme remove` deletes it. The studio's Export and Import do the same, and it takes a
+`.desk-theme` dropped on it.
 
 ### The market
 

@@ -192,6 +192,12 @@ einem Hintergrund. Ein installiertes Theme ist noch nicht angewendet: Die Einste
 nennt das gültige, gewählt im Theme-Studio (die Paletten-Schaltfläche oben rechts oder Themes in der
 Befehlspalette), mit `desk.theme.use` oder mit `desk theme apply`.
 
+Auch das Studio erstellt Themes: „Tune a copy“ (oder `desk.theme.edit`) öffnet seinen Editor mit einer
+Kopie des gewählten Themes, „New theme“ mit dem endue-Theme. Jede Ebene hat ihre Bedienelemente, Schriften
+und Hintergrundbilder eingeschlossen; der ganze Desk zeigt den Entwurf, während er sich ändert, die
+Korrekturen der Prüfung stehen unter der Palette, und Save behält ihn als Ihr eigenes Theme (`local.<name>`).
+Ein Ordner ist der Weg, ein Theme in einem Repository zu halten, zu testen und zu veröffentlichen.
+
 ### Der Block
 
 `plugin.json` hat das Kind `theme` und einen `theme`-Block (`specs/plugin/v0/theme.schema.json`) und
@@ -280,7 +286,8 @@ cargo run -p desk-cli -- theme import ~/Downloads/dusk.desk-theme
 Eine `.desk-theme` ist eine einzige JSON-Datei: `format` `desk-theme/1`, die `plugin.json` des Themes als
 `manifest` und die Dateien, die sein Block nennt, in `files`, base64, höchstens 16 MiB (ADR 0058). Beim
 Import wird sie als Theme-Plugin geprüft und im Theme-Ordner der Person unter einer id in `local.`
-installiert; `desk theme list` zeigt sie, `desk theme remove` löscht sie.
+installiert; `desk theme list` zeigt sie, `desk theme remove` löscht sie. Export und Import im Studio tun
+dasselbe, und das Studio nimmt eine darauf gezogene `.desk-theme` an.
 
 ### Der Marktplatz
 
