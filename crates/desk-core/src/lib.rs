@@ -12,6 +12,7 @@ mod approval_preview;
 mod approvals;
 mod calendar_items;
 mod conversation;
+mod conversation_sink;
 mod core_ask;
 mod core_brain;
 mod core_builtins;
