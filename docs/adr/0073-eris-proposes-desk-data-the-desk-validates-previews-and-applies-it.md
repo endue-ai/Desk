@@ -95,8 +95,8 @@ card, not in desk.views.
   tool's arguments are an object. A retry after no call repeats each kind's compact schema. The
   profile's context names the installed plugins (name, kind, on or off), the declared scalar settings
   and the profiles; the keys' context names the commands the sentence's words match (at most 20) and
-  their keys in force. With every built-in plugin installed the profile's prompt stays far within
-  brain.ask's 32000 characters.
+  their keys in force. With every built-in plugin installed the profile's prompt is about 4500
+  characters, well within brain.ask's 32000.
 * **Profile.** The desk makes the id from the name (`quiet-night`, `-2` when a profile has it), so
   Apply never replaces a profile. Beyond the schema the desk checks that every plugin is installed,
   every setting declared and of its kind, and the shell's layout (`desk.shell.mode`) in shape. The
