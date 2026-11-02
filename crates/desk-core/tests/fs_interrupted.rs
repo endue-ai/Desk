@@ -8,6 +8,7 @@ use std::collections::BTreeSet;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use desk_bridge::{BridgeRequest, BridgeResponse, ErrorCode, Permission};
@@ -65,12 +66,15 @@ fn write(core: &Core, text: &str) -> Result<Value, ErrorCode> {
     )
 }
 
+/// A folder of its own for each test, also when two start in the same microsecond.
 fn fresh_home() -> PathBuf {
+    static NEXT: AtomicU64 = AtomicU64::new(0);
+    let n = NEXT.fetch_add(1, Ordering::SeqCst);
     let nanos = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap()
         .as_nanos();
-    let dir = std::env::temp_dir().join(format!("desk-kill-{}-{nanos}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("desk-kill-{}-{nanos}-{n}", std::process::id()));
     fs::create_dir_all(dir.join("big")).unwrap();
     dir
 }
