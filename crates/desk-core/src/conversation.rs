@@ -273,10 +273,7 @@ impl Conversation {
             .map_err(|f| stop(state, f))?;
         while let Some((turn_id, call)) = sink.pending.take() {
             let routed = self.tools.get().and_then(Weak::upgrade);
-            let (output, failed) = match routed {
-                Some(tools) => tools.run(&call),
-                None => echo(&call),
-            };
+            let (output, failed) = routed.map_or_else(|| echo(&call), |tools| tools.run(&call));
             let request = ToolResultRequest {
                 lease_id: lease_id.clone(),
                 call_id: call.call_id,
@@ -330,13 +327,11 @@ fn lease_stop(state: &mut State, error: LeaseError) -> Stop {
 
 /// The tool Desk runs for anyone: echo answers with its arguments. Any other is unknown here.
 pub(crate) fn echo(call: &ToolCall) -> (Value, bool) {
-    match call.name.as_str() {
-        "echo" => (Value::Object(call.arguments.clone()), false),
-        other => (
-            json!({ "error": format!("Desk has no tool named {other}") }),
-            true,
-        ),
+    if call.name == "echo" {
+        return (Value::Object(call.arguments.clone()), false);
     }
+    let unknown = format!("Desk has no tool named {}", call.name);
+    (json!({ "error": unknown }), true)
 }
 
 /// Turns brain stream events into brain.turn events for one turn.
