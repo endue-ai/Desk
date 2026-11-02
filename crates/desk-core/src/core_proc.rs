@@ -17,6 +17,7 @@ use desk_bridge::{
 };
 use desk_sys::proc::{self as sysproc, Event, Process, SpawnOptions, Stream};
 
+use crate::approvals::Action;
 use crate::events::EventBus;
 use crate::handler::{Answer, Core, denied, error, json, sys_error};
 use crate::perm::{Denied, Target};
@@ -48,6 +49,12 @@ impl Core {
             }));
         }
         self.check(caller, &scope, &Target::Command(&params.command))?;
+        let args = params.args.as_deref().unwrap_or_default();
+        let spawn = Action::Spawn {
+            command: &params.command,
+            args,
+        };
+        self.hold(caller, &scope, spawn)?;
         let cwd = match &params.cwd {
             Some(path) => self.resolve(path)?,
             None => self.home().to_path_buf(),

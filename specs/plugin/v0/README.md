@@ -69,6 +69,7 @@ order, each layer over the one before: the built-in `desk.*` policy plugins, the
 | --- | --- | --- |
 | `commands` | `defun` + `interactive` | adds commands; ids start with the plugin id |
 | `commands[].runs` | `defalias` | makes the command an alias the desk answers: it runs `runs.command` with `runs.args`, the caller's args merged over them key by key |
+| `commands[].irreversible` | `disabled-command-function` | marks a command that cannot be taken back: an agent's call of it waits for the person's approval every time, a person's never (ADR 0078) |
 | `keys` | `global-map` | rebinds a key; `"command": ""` unbinds it |
 | `display` | `display-buffer-alist` | is asked first; the first matching rule decides |
 | `files` | `auto-mode-alist` | is asked first; the first matching pattern decides |

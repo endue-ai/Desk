@@ -10,7 +10,7 @@
       "enum": ["debug", "info", "warn", "error"]
     },
     "LogEntry": {
-      "description": "One log entry. channel is the caller that wrote it, core for desk-core, or perm for the permission log the core keeps: every grant, every refusal and every call of an agent, with fields caller, permission, scope, decision (granted, allowed, refused or denied), and target, reason, duration and grantId where they apply (ADR 0072).",
+      "description": "One log entry. channel is the caller that wrote it, core for desk-core, or perm for the permission log the core keeps: every grant, every refusal and every call of an agent, with fields caller, permission, scope, decision (granted, allowed, approved, refused or denied), and target, reason, duration and grantId where they apply (ADR 0072). An approved irreversible call of an agent (approved) carries approval (once or task), approvalId and task where there is one; a call the person denied is refused with reason not-approved (ADR 0078).",
       "type": "object",
       "properties": {
         "at": {

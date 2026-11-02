@@ -53,6 +53,7 @@
         { "$ref": "perm.schema.json#/$defs/PermRevokeRequest" },
         { "$ref": "perm.schema.json#/$defs/PermListRequest" },
         { "$ref": "perm.schema.json#/$defs/PermAnswerRequest" },
+        { "$ref": "perm.schema.json#/$defs/PermApproveRequest" },
         { "$ref": "plugins.schema.json#/$defs/PluginListRequest" },
         { "$ref": "plugins.schema.json#/$defs/PluginSetEnabledRequest" },
         { "$ref": "store.schema.json#/$defs/StoreGetRequest" },
@@ -156,7 +157,7 @@
       ]
     },
     "BridgeEvent": {
-      "description": "Something the core reports without being asked: file changes, process output, wake words, permission changes, notifications, surfaces, commands, settings, log entries, changes to items, connectors and views, and the desk's update status.",
+      "description": "Something the core reports without being asked: file changes, process output, wake words, permission changes, prompts and approvals, notifications, surfaces, commands, settings, log entries, changes to items, connectors and views, and the desk's update status.",
       "oneOf": [
         { "$ref": "fs.schema.json#/$defs/FsChangedEvent" },
         { "$ref": "proc.schema.json#/$defs/ProcOutputEvent" },
@@ -164,6 +165,8 @@
         { "$ref": "audio.schema.json#/$defs/AudioWakeEvent" },
         { "$ref": "perm.schema.json#/$defs/PermChangedEvent" },
         { "$ref": "perm.schema.json#/$defs/PermPromptEvent" },
+        { "$ref": "perm.schema.json#/$defs/PermApprovalEvent" },
+        { "$ref": "perm.schema.json#/$defs/PermApprovalDoneEvent" },
         { "$ref": "plugins.schema.json#/$defs/PluginChangedEvent" },
         { "$ref": "ui.schema.json#/$defs/UiNotifiedEvent" },
         { "$ref": "ui.schema.json#/$defs/UiSurfaceOpenedEvent" },

@@ -15,8 +15,8 @@ and its sync, the brain conversation with its session store and lease client, th
 - Files (ADR 0041): `fs.read` reads ranges; `fs.url` makes a 128-bit token that `file_url(token)`
   resolves to a `FileUrl` while its caller runs and holds the grant. Links (ADR 0047): `with_opener`.
 - Permissions: `Core::grant`, `with_grant_file(path)` (ADR 0029), `with_prompter` (`RefuseAll`);
-  `perm.request` and `shell.open` prompt the `perm:manage` holders. Agents (`agent:<id>`, ADR 0072):
-  capped by `agents.<id>.allow`, prompted inside it; grants, refusals, agent calls on the `perm` log.
+  `perm.request` and `shell.open` prompt the `perm:manage` holders. Agents (ADR 0072): capped by
+  `agents.<id>.allow`, prompted inside it, logged on `perm`; irreversible calls held (ADR 0078).
 - `EventBus`: `subscribe`, `subscribe_addressed`, `publish`, `publish_to`; `subscription_count()`,
   `watch_count()`, `process_count()`, `surface_count()`, `file_url_count()`; `media_type(name)`.
 - Plugins: `with_plugin_store(path)`, `install_plugin(dir, built_in)`, `install_plugins_in`,
@@ -36,5 +36,5 @@ and its sync, the brain conversation with its session store and lease client, th
 ## Testing
 
 `cargo test -p desk-core`. `tests/` covers each side (`proc`'s child is the test binary itself; `net`
-serves from in-process listeners; `conversation`, `agent_tools`, `directory` and `lease` start brain-echo,
-needs Node); the integration layer runs on a temp index, a `FakeCalendar` and a fake clock (`layer`).
+serves from in-process listeners; `conversation`, `agent_tools`, `approval_tools`, `directory`, `lease`
+start brain-echo, needs Node); the integration layer runs on a temp index, a fake calendar and clock.

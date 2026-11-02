@@ -1,9 +1,11 @@
 //! The cmd side of `Core`: the one command registry (ADR 0017). Every caller registers its own
 //! commands (the runtime registers the desk's built-in ones as `desk`); cmd.invoke checks the
 //! caller's `cmd:invoke` grant and the args, then the provider hears `cmd.invoked`, runs the command
-//! and answers with cmd.answer, which reaches the caller as `cmd.answered`.
+//! and answers with cmd.answer, which reaches the caller as `cmd.answered`. The registry keeps which
+//! commands their provider's manifest marks `irreversible`: an agent's call of one waits for the
+//! person's approval (`approvals`, ADR 0078).
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::sync::MutexGuard;
 
 use desk_bridge::{
@@ -15,6 +17,7 @@ use desk_bridge::{
 };
 use serde_json::Value;
 
+use crate::approvals::Action;
 use crate::handler::{Answer, Core, error, json};
 use crate::manifest::schema_registry;
 use crate::perm::{Target, star_match};
@@ -32,6 +35,8 @@ pub(crate) struct Commands {
     by_id: BTreeMap<String, CommandInfo>,
     next: u64,
     pending: BTreeMap<String, Invocation>,
+    /// Ids whose provider's manifest marks them `irreversible`.
+    irreversible: BTreeSet<String>,
 }
 
 impl Core {
@@ -61,7 +66,16 @@ impl Core {
                 }
             }
         };
-        self.commands().by_id.insert(params.id.clone(), info);
+        let irreversible = self.declared_irreversible(caller, &params.id);
+        {
+            let mut commands = self.commands();
+            commands.by_id.insert(params.id.clone(), info);
+            if irreversible {
+                commands.irreversible.insert(params.id.clone());
+            } else {
+                commands.irreversible.remove(&params.id);
+            }
+        }
         self.cmd_changed(&params.id, change, caller);
         json(CmdRegisterResult {})
     }
@@ -133,6 +147,11 @@ impl Core {
         if let Some(schema) = &info.args_schema {
             check_args(schema, params.args.as_ref())?;
         }
+        let invoke = Action::Invoke {
+            id: &params.id,
+            args: params.args.as_ref(),
+        };
+        self.hold(caller, &scope, invoke)?;
         let invocation_id = {
             let mut commands = self.commands();
             commands.next += 1;
@@ -224,6 +243,7 @@ impl Core {
         let removed = {
             let mut commands = self.commands();
             commands.order.retain(|other| other != id);
+            commands.irreversible.remove(id);
             commands.by_id.remove(id)
         };
         if let Some(info) = removed {
@@ -250,6 +270,28 @@ impl Core {
                     error,
                 },
             }));
+    }
+
+    /// Whether the registered command `id` is irreversible.
+    pub(crate) fn irreversible_command(&self, id: &str) -> bool {
+        self.commands().irreversible.contains(id)
+    }
+
+    /// Whether `provider`'s manifest marks its command `id` irreversible (`contributes.commands`).
+    fn declared_irreversible(&self, provider: &str, id: &str) -> bool {
+        let plugins = self
+            .plugins
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        let declared = plugins
+            .get(provider)
+            .and_then(|plugin| plugin.manifest)
+            .and_then(|manifest| manifest.contributes)
+            .and_then(|contributes| contributes.commands);
+        declared
+            .unwrap_or_default()
+            .iter()
+            .any(|c| c.id == id && c.irreversible == Some(true))
     }
 
     /// `cmd.changed` for the provider and the callers subscribed to it.

@@ -1,0 +1,21 @@
+{
+  "target": "BridgeEvent",
+  "description": "a preview is a diff, a command line, a URL or args",
+  "instance": {
+    "event": "perm.approval",
+    "data": {
+      "approvalId": "a-4",
+      "caller": "agent:mira",
+      "action": "fs.write",
+      "permission": {
+        "permission": "fs:write",
+        "paths": ["~/Notes/**"]
+      },
+      "target": "~/Notes/a.png",
+      "preview": {
+        "kind": "image",
+        "text": "iVBORw0KGgo="
+      }
+    }
+  }
+}

@@ -191,8 +191,10 @@ impl Core {
         });
     }
 
-    /// With no perm:manage holder left, the Prompter decides every waiting prompt, so no call hangs.
+    /// With no perm:manage holder left, the Prompter decides every waiting prompt and approval, so no
+    /// call hangs.
     pub(crate) fn settle_unheard(&self) {
+        self.settle_approvals();
         let mut prompts = self.prompts();
         if prompts.waiting.is_empty() || !self.holders(&perm_manage()).is_empty() {
             return;

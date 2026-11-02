@@ -2,7 +2,9 @@
 //! (`ToolCall.agentId`) runs as the caller `agent:<id>`: `echo`, or any bridge method by its name with
 //! the call's arguments as its params, so the permission engine, the agent's allowlist, the prompt
 //! and the `perm` log apply as to any caller. `cmd.invoke` waits for the command's answer. A call
-//! that names no agent runs `echo` only. Failures come back as `{ error, reason? }`.
+//! that names no agent runs `echo` only. Failures come back as `{ error, reason? }`. Each call runs
+//! as part of its desk turn, the task an approval's "Allow for this task" lasts for (ADR 0078);
+//! a call the person did not approve says `reason: "not-approved"`.
 
 use std::sync::mpsc::RecvTimeoutError;
 use std::sync::{Arc, Weak};
@@ -13,6 +15,7 @@ use desk_bridge::{BridgeError, BridgeEvent, BridgeRequest, BridgeResponse, Error
 use serde_json::{Value, json};
 
 use crate::agents::agent_caller;
+use crate::approvals::in_task;
 use crate::conversation::{Tools, echo};
 use crate::handler::{Core, error};
 
@@ -30,7 +33,10 @@ impl Core {
     }
 
     /// The tool's output from a bridge failure, with why the agent was refused when it was.
-    fn tool_error(&self, caller: &str, failed: BridgeError) -> (Value, bool) {
+    fn tool_error(&self, caller: &str, failed: BridgeError, denied: bool) -> (Value, bool) {
+        if denied {
+            return (json!({ "error": failed, "reason": "not-approved" }), true);
+        }
         let reason = failed
             .permission
             .as_ref()
@@ -48,12 +54,12 @@ impl Core {
     }
 
     /// cmd.invoke as `caller`, then the command's answer (`cmd.answered`) as the tool's output.
-    fn invoke_for(&self, caller: &str, request: BridgeRequest) -> (Value, bool) {
+    fn invoke_for(&self, turn: &str, caller: &str, request: BridgeRequest) -> (Value, bool) {
         let events = self.events().subscribe();
-        let started = match self.handle(caller, request) {
-            BridgeResponse::BridgeSuccess(ok) => ok.result,
-            BridgeResponse::BridgeFailure(failure) => {
-                return self.tool_error(caller, failure.error);
+        let started = match in_task(turn, || self.handle(caller, request)) {
+            (BridgeResponse::BridgeSuccess(ok), _) => ok.result,
+            (BridgeResponse::BridgeFailure(failure), denied) => {
+                return self.tool_error(caller, failure.error, denied);
             }
         };
         let invocation = started["invocationId"].as_str().unwrap_or_default();
@@ -81,7 +87,7 @@ impl Core {
 }
 
 impl Tools for Core {
-    fn run(&self, call: &ToolCall) -> (Value, bool) {
+    fn run(&self, turn: &str, call: &ToolCall) -> (Value, bool) {
         if call.name == "echo" {
             return echo(call);
         }
@@ -108,11 +114,17 @@ impl Tools for Core {
             }
         };
         if matches!(request, BridgeRequest::CmdInvoke(_)) {
-            return self.invoke_for(&caller, request);
+            return self.invoke_for(turn, &caller, request);
         }
-        match self.handle(&caller, request) {
-            BridgeResponse::BridgeSuccess(ok) => (ok.result, false),
-            BridgeResponse::BridgeFailure(failure) => self.tool_error(&caller, failure.error),
+        match in_task(turn, || self.handle(&caller, request)) {
+            (BridgeResponse::BridgeSuccess(ok), _) => (ok.result, false),
+            (BridgeResponse::BridgeFailure(failure), denied) => {
+                self.tool_error(&caller, failure.error, denied)
+            }
         }
+    }
+
+    fn ended(&self, turn: &str) {
+        self.end_task(turn);
     }
 }
