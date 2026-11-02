@@ -5,7 +5,8 @@
 // plugin installed), ?studio=1 (the theme studio open once the desk is ready; ?studio=<theme id>
 // previews that theme too; ?edit=<theme id> opens the editor on a copy of it; ?describe=<sentence>
 // runs Describe on it; ?say=<sentence> says it to Eris through the composer; ?market=1 lists the
-// fixture market, e2e/themes/market served at /market/, as https://market.test/index.json). brain.ask
+// fixture market, e2e/themes/market served at /market/, as https://market.test/index.json, and
+// ?market=tab opens the studio's Market tab, ?market=<theme id> previews that theme there). brain.ask
 // answers as examples/brain-echo does (propose_theme from the words of the prompt's last line).
 // Never shipped.
 import type { PluginManifest } from "@endue-ai/bridge";
@@ -132,6 +133,20 @@ if (params.has("describe")) {
   void desk.ready.then(() =>
     desk.runtime.commands.run("desk.theme.describe", { text: params.get("describe") }),
   );
+}
+
+const marketView = params.get("market");
+if (marketView && marketView !== "1") {
+  const press = (selector: string, tries = 50): void => {
+    const button = document.querySelector<HTMLElement>(selector);
+    if (button) button.click();
+    else if (tries > 0) setTimeout(() => press(selector, tries - 1), 50);
+  };
+  void desk.ready.then(async () => {
+    await desk.runtime.commands.run("desk.theme.studio");
+    press('[data-key="market"]');
+    if (marketView !== "tab") press(`[data-theme="${marketView}"] [data-key="market-preview"]`);
+  });
 }
 
 if (params.has("say")) {

@@ -136,7 +136,7 @@ export function createMarket(deps: MarketDeps): MarketPanel {
         type: "button",
         class: `btn ${primary ? "btn-primary" : "btn-outline"} btn-xs`,
         "data-key": key,
-        disabled: busy,
+        "aria-disabled": String(busy),
         onClick,
       },
       tr(label),
@@ -196,7 +196,12 @@ export function createMarket(deps: MarketDeps): MarketPanel {
     );
   };
 
+  /** Draw the tab again, focus kept on the same control of the same card. */
   const draw = () => {
+    const active = document.activeElement;
+    const kept = active instanceof HTMLElement && element.contains(active) ? active : undefined;
+    const key = kept?.dataset.key;
+    const owner = kept?.closest<HTMLElement>("[data-theme]")?.dataset.theme;
     const themesListed = listed?.themes ?? [];
     render(element, () => [
       h("h3", { class: "theme-market-title", id: "theme-market-title" }, tr("market")),
@@ -224,13 +229,20 @@ export function createMarket(deps: MarketDeps): MarketPanel {
         button("market-back", "back", () => deps.back()),
       ),
     ]);
+    const within = owner ? `[data-theme="${owner}"] ` : "";
+    if (key) element.querySelector<HTMLElement>(`${within}[data-key="${key}"]`)?.focus();
   };
 
   const start = () => {
     note.textContent = "";
     draw();
-    void read();
-    element.querySelector<HTMLElement>("button")?.focus();
+    element.querySelector<HTMLElement>('[data-key="market-back"]')?.focus();
+    // Once the cards are in, focus moves to the first one's Preview unless the person moved it.
+    void read().then(() => {
+      const back = element.querySelector('[data-key="market-back"]');
+      if (document.activeElement === back)
+        element.querySelector<HTMLElement>('[data-key="market-preview"]')?.focus();
+    });
   };
 
   return {

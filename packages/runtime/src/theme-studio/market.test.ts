@@ -139,8 +139,14 @@ describe("the Market tab", () => {
       problems: [],
     });
     await vi.waitFor(() => expect(card("market.fern")).not.toBeNull());
+    card("market.fern")?.querySelector<HTMLElement>('[data-key="market-preview"]')?.focus();
     press("market.fern", "market-preview");
     await vi.waitFor(() => expect(previewDraft).toHaveBeenCalled());
+    // The card is drawn again, and focus stays on its Preview.
+    await vi.waitFor(() =>
+      expect(document.activeElement?.closest("[data-theme]")).toBe(card("market.fern")),
+    );
+    expect((document.activeElement as HTMLElement).dataset.key).toBe("market-preview");
     expect(fetch).toHaveBeenCalledWith("https://market.test/fern.desk-theme", "a".repeat(64));
     // Fern has a light variant only, so it is previewed in light; its font comes as a data: URL.
     expect(previewDraft).toHaveBeenCalledWith(
