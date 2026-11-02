@@ -3,12 +3,14 @@
  * their view when they show it. Unless its surface had the focus, that would take the keyboard from
  * wherever the person is whenever a window comes back into sight. So focus that moves into such a
  * frame goes back where it was, until the person points at the frame, the desk focuses its surface,
- * or ten seconds have passed. Browsers say so with a focusin on the surface, or only with a blur of
- * the desk's window; both are heard.
+ * or ten seconds have passed. Browsers say so with a focusin on the surface, or a blur of the desk's
+ * window, or (a window in the background, WKWebView) not at all: the focus is also looked at often.
  */
 
 /** The longest a frame loading again may not take the focus. */
 export const SETTLE_MAX_MS = 10_000;
+/** How often the focus is looked at while a frame settles. */
+export const LOOK_MS = 250;
 
 interface Held {
   frame: HTMLIFrameElement;
@@ -68,16 +70,18 @@ export class Settling {
     const onFocus = (event: FocusEvent) => {
       if (!this.#settling(event.target)) this.#before = event.target as Element;
     };
-    const onBlur = () =>
-      setTimeout(() => {
-        for (const [id, held] of this.#held)
-          if (doc.activeElement === held.frame) this.refocus(id, doc);
-      }, 0);
+    const look = () => {
+      for (const [id, held] of this.#held)
+        if (doc.activeElement === held.frame) this.refocus(id, doc);
+    };
+    const onBlur = () => setTimeout(look, 0);
     doc.addEventListener("focusin", onFocus, true);
     win.addEventListener("blur", onBlur);
+    const timer = setInterval(look, LOOK_MS);
     this.#off = () => {
       doc.removeEventListener("focusin", onFocus, true);
       win.removeEventListener("blur", onBlur);
+      clearInterval(timer);
     };
   }
 }

@@ -87,7 +87,9 @@ async function flush(ms = 0): Promise<void> {
 }
 
 async function desk(ids: string[], settings: Record<string, unknown> = {}) {
-  vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "performance"] });
+  vi.useFakeTimers({
+    toFake: ["setTimeout", "clearTimeout", "setInterval", "clearInterval", "performance"],
+  });
   const root = document.createElement("div");
   document.body.replaceChildren(root);
   // desk.display brings desk.display.show and the two settings' defaults.
@@ -239,6 +241,11 @@ describe("hidden surfaces are unloaded and their state kept", () => {
     d.plugins["b.two"]?.frame()?.focus();
     window.dispatchEvent(new FocusEvent("blur"));
     await flush();
+    expect(document.activeElement).toBe(before);
+
+    // In a window in the background no event says so at all (WKWebView): it is looked at often.
+    d.plugins["b.two"]?.frame()?.focus();
+    await flush(300);
     expect(document.activeElement).toBe(before);
 
     // Once the person points at it, they can move into it as into any frame.

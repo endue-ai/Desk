@@ -55,7 +55,8 @@ iframe frees its page, and asking at that moment costs a plugin nothing while it
   unloaded plugin are dropped. The plugin stays mounted and on throughout. Unless its surface had the
   focus, focus that moves into the frame goes back where it was until the person points at the frame
   or the desk focuses it (ten seconds at most): plugins that focus their view as they mount would
-  otherwise pull the keyboard to every window that comes back (`frames/settle.ts`).
+  otherwise pull the keyboard to every window that comes back (`frames/settle.ts`; a window in the
+  background gets no focus events in WKWebView, so the focus is also looked at every 250 ms).
 * Notes is the first to keep its state: open notes, unsaved text, watches, caret and scroll.
 
 ### Consequences
