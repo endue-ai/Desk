@@ -7,14 +7,14 @@ use std::path::{Path, PathBuf};
 
 use desk_bridge::{
     BridgeEvent, BridgeRequest, BridgeResponse, CatalogGetResult, CmdRecentResult,
-    ConnectorInstance, ConnectorManifest, ConnectorStatus, ConnectorSyncResult, FsReadResult,
-    FsUrlResult, InitDocument, InitGetResult, InitSettingKey, Item, ItemChange, ItemPage,
-    ItemQuery, PaletteResults, PermQueryResult, PermRequestResult, Permission, PluginContributes,
-    PluginListResult, PluginManifest, PluginStatsResult, RefusalReason, ShellOpenResult,
-    StoreGetResult, ThemeBundle, ThemeExportResult, ThemeIndex, ThemeMarketFetchResult,
-    ThemeMarketListResult, ThemePackage, ThemeType, ThemeVariant, UiSurfaceStateRequest,
-    UiSurfaceStateResult, View, ViewGetResult, ViewListResult, ViewSource, ViewSummary,
-    manifest_problems, view_problems,
+    ConnectorInstance, ConnectorManifest, ConnectorStatus, ConnectorSyncResult, FsHistoryResult,
+    FsReadResult, FsRestoreResult, FsUrlResult, FsWriteResult, InitDocument, InitGetResult,
+    InitSettingKey, Item, ItemChange, ItemPage, ItemQuery, PaletteResults, PermQueryResult,
+    PermRequestResult, Permission, PluginContributes, PluginListResult, PluginManifest,
+    PluginStatsResult, RefusalReason, ShellOpenResult, StoreGetResult, ThemeBundle,
+    ThemeExportResult, ThemeIndex, ThemeMarketFetchResult, ThemeMarketListResult, ThemePackage,
+    ThemeType, ThemeVariant, UiSurfaceStateRequest, UiSurfaceStateResult, View, ViewGetResult,
+    ViewListResult, ViewSource, ViewSummary, manifest_problems, view_problems,
 };
 use serde::Serialize;
 use serde::de::DeserializeOwned;
@@ -228,6 +228,9 @@ fn valid_vectors_roundtrip_through_generated_types() {
                 "BridgeEvent" => roundtrip::<BridgeEvent>(vector),
                 "FsReadResult" => roundtrip::<FsReadResult>(vector),
                 "FsUrlResult" => roundtrip::<FsUrlResult>(vector),
+                "FsWriteResult" => roundtrip::<FsWriteResult>(vector),
+                "FsHistoryResult" => roundtrip::<FsHistoryResult>(vector),
+                "FsRestoreResult" => roundtrip::<FsRestoreResult>(vector),
                 "PermQueryResult" => roundtrip::<PermQueryResult>(vector),
                 "PermRequestResult" => roundtrip::<PermRequestResult>(vector),
                 "PluginListResult" => roundtrip::<PluginListResult>(vector),

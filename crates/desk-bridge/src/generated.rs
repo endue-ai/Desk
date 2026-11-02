@@ -2335,6 +2335,8 @@ pub enum BridgeRequest {
     FsList(FsListRequest),
     FsWatch(FsWatchRequest),
     FsUrl(FsUrlRequest),
+    FsHistory(FsHistoryRequest),
+    FsRestore(FsRestoreRequest),
     ProcSpawn(ProcSpawnRequest),
     ProcWrite(ProcWriteRequest),
     ProcResize(ProcResizeRequest),
@@ -3234,6 +3236,84 @@ pub struct FsWriteResult {
     /// Bytes written to disk.
     #[serde(rename = "bytesWritten")]
     pub bytes_written: u64,
+    /// The version that keeps what this write replaced, as fs.history lists it. Absent when nothing was kept: a new file, the same bytes, or a desk that keeps no history.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub version: Option<FsVersionId>,
+}
+
+/// List the versions the desk kept of one file: the content each of its writes replaced.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct FsHistoryRequest {
+    pub id: RequestId,
+    pub method: FsHistoryRequestMethod,
+    pub params: FsHistoryParams,
+}
+
+/// Parameters of fs.history.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct FsHistoryParams {
+    pub path: Path,
+    /// The newest versions to list at most; all the desk keeps when absent.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub limit: Option<u64>,
+    pub scope: FsReadPermission,
+}
+
+/// Result of fs.history: newest first, empty when the desk kept nothing of the path (also when the file is gone).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct FsHistoryResult {
+    pub versions: Vec<FsVersion>,
+}
+
+/// One kept version of a file: the bytes a desk write replaced.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct FsVersion {
+    pub id: FsVersionId,
+    /// When the write that replaced these bytes ran: the last moment the file held them. RFC 3339.
+    pub at: String,
+    /// The caller whose write replaced these bytes. The caller that wrote them is the next older version's.
+    pub caller: CallerId,
+    /// The version's size in bytes.
+    pub size: u64,
+    /// The SHA-256 of the version's bytes, lowercase hex.
+    pub sha256: String,
+}
+
+/// A version's id: the Unix time in milliseconds when it was kept, a dash and six hex digits.
+pub type FsVersionId = String;
+
+/// Write a kept version of a file back, as fs.write writes, so what it replaces is kept too.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct FsRestoreRequest {
+    pub id: RequestId,
+    pub method: FsRestoreRequestMethod,
+    pub params: FsRestoreParams,
+}
+
+/// Parameters of fs.restore.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct FsRestoreParams {
+    pub path: Path,
+    pub version: FsVersionId,
+    pub scope: FsWritePermission,
+}
+
+/// Result of fs.restore: what fs.write answers for the same write.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct FsRestoreResult {
+    /// Bytes written to disk.
+    #[serde(rename = "bytesWritten")]
+    pub bytes_written: u64,
+    /// The version that keeps what the restore replaced; absent when nothing was kept.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub version: Option<FsVersionId>,
 }
 
 /// List the entries of a folder.
@@ -5858,6 +5938,22 @@ pub enum FsWriteRequestMethod {
     #[default]
     #[serde(rename = "fs.write")]
     FsWrite,
+}
+
+/// The `method` of [`FsHistoryRequest`]: always `"fs.history"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum FsHistoryRequestMethod {
+    #[default]
+    #[serde(rename = "fs.history")]
+    FsHistory,
+}
+
+/// The `method` of [`FsRestoreRequest`]: always `"fs.restore"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum FsRestoreRequestMethod {
+    #[default]
+    #[serde(rename = "fs.restore")]
+    FsRestore,
 }
 
 /// The `method` of [`FsListRequest`]: always `"fs.list"`.

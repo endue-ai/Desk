@@ -1,0 +1,16 @@
+{
+  "target": "BridgeRequest",
+  "description": "fs.history asks for the five newest versions only",
+  "instance": {
+    "id": 22,
+    "method": "fs.history",
+    "params": {
+      "path": "~/Notes/plan.md",
+      "limit": 5,
+      "scope": {
+        "permission": "fs:read",
+        "paths": ["~/Notes/**"]
+      }
+    }
+  }
+}

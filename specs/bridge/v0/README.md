@@ -82,7 +82,21 @@ is checked on every request, so a `once` grant is spent by the call itself. It n
 missing files are `not_found` and folders `invalid_params`.
 
 **fs.write** creates or overwrites a file with the given content and returns the bytes written. It needs
-an `fs:write` scope; with `createDirs` it also creates missing parent folders inside the same scope.
+an `fs:write` scope; with `createDirs` it also creates missing parent folders inside the same scope. The
+bytes go to a temp file beside the target that is renamed over it, so the file is the old content or the
+new, never a mix. Before it overwrites a file whose bytes differ, the core keeps the old ones as a version
+in its local history and answers that version's id as `version` (ADR 0076); a new file keeps nothing.
+
+**fs.history** lists the versions the core kept of one file, newest first, `limit` at most: each is the
+content a write replaced, with `at` (when that write ran), `caller` (whose write it was), `size` and
+`sha256`. A path the core kept nothing of answers an empty list, also when the file is gone. It needs an
+`fs:read` scope. The history keeps `desk.files.history-max-versions` versions per path (50) and
+`desk.files.history-max-bytes` in all (256 MiB), dropping the oldest first.
+
+**fs.restore** writes a version back as fs.write writes it, so what it replaces is kept as a version in
+turn, and answers what fs.write answers. It needs an `fs:write` scope. A version the path's history does
+not hold is `not_found`; one whose bytes no longer match their `sha256` is `io_error`, and nothing is
+written.
 
 **fs.list** returns the entries of one folder with their kind, for files their size, and `modifiedAt`,
 when the entry last changed (absent when the OS has none). It is not recursive. It needs an `fs:read`

@@ -1,11 +1,10 @@
 # desk-cli
 
-The `desk` CLI: plugin validate and test, doctor --trace, and the commands, plugins, grants and
-permission log of a running desk. The hands AI agents use. Layer: Rust core (`docs/architecture.md`).
-From the repo: `cargo run -p desk-cli -- <command>`; CI validates every plugin folder.
+The `desk` CLI: plugin validate and test, doctor --trace, and a running desk's commands, plugins,
+grants, permission log, files and log. The hands AI agents use. Layer: Rust core. From the repo:
+`cargo run -p desk-cli -- <command>`; CI validates every plugin folder.
 
 ## Commands
-
 ```bash
 desk plugin validate <dir>             # plugin.json against specs/plugin v0; entry and view files exist
 desk plugin test <dir>                 # the folder's tests/ on the host for its kind
@@ -18,6 +17,8 @@ desk perm list | revoke <grantId>      # grantId<TAB>caller<TAB>permission per g
 desk perm log [--agent <id>]           # at, caller, decision, permission, target, reason or approval
 desk describe key|command|setting|plugin|grant <x>   # desk.describe.open's answer, as text (ADR 0075)
 desk inspect [tree|surfaces|commands|grants|settings|plugins|calls]   # the inspector's Export JSON
+desk fs history|restore <path> ...    # [--limit <n>]: id, at, caller, size per version; <version>: ok
+desk log [--count <n>]                 # at<TAB>level<TAB>channel<TAB>message, oldest first
 desk doctor --trace <file>             # a DESK_TRACE=1 trace.json: phases, totals, the five longest
 ```
 
@@ -33,8 +34,7 @@ count). Other kinds: `tests/*.test.{js,ts}` with vitest on the SDK's test host, 
 binary was built in or `DESK_REPO` (`packages/plugin-sdk/vitest.plugin.config.ts`). Tool, MCP: none yet.
 
 ## Testing
-
-`cargo test -p desk-cli`: `tests/socket.rs`, `tests/perm_log.rs`, `tests/describe.rs` (the runtime's
-golden texts) and `tests/inspect.rs` (the inspector's) against a scripted server, `tests/doctor.rs` on
-handmade traces, `tests/round_trip.rs` on a real `desk_ipc::Listener` and `Core`, `tests/plugin_test.rs`
-and `tests/templates.rs` (every create-plugin kind built and tested; needs `node`, `pnpm install`).
+`cargo test -p desk-cli`: `tests/socket.rs`, `perm_log.rs`, `describe.rs` (the runtime's golden texts)
+and `inspect.rs` (the inspector's) on a scripted server, `doctor.rs` on handmade traces, `round_trip.rs`
+and `fs_history.rs` (ADR 0076) on a real `desk_ipc::Listener` and `Core`, `plugin_test.rs` and
+`templates.rs` (every create-plugin kind built and tested; needs `node`, `pnpm install`).

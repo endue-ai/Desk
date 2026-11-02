@@ -1,8 +1,7 @@
 # @endue-ai/bridge
 
-TypeScript client for the Desk bridge, typed from `specs/bridge`, `specs/plugin`, `specs/item`,
-`specs/view`, `specs/connector`, `specs/init` and `specs/brain`. Layer: Desk bridge
-(`docs/architecture.md`).
+TypeScript client for the Desk bridge, typed from `specs/` (bridge, plugin, item, view, connector, init
+and brain). Layer: Desk bridge (`docs/architecture.md`).
 
 ## Public API
 
@@ -22,8 +21,9 @@ TypeScript client for the Desk bridge, typed from `specs/bridge`, `specs/plugin`
   `drop(caller)` ends its commands, surfaces, subscriptions and prompts; `state()` what it holds.
   `data.*`, `connector.*`, `view.*` and `catalog.get` run over the fixture connector `desk.fixtures`
   (`fixtureItems()`); `upsert(item)` and `remove(source, id)` change it and fire `data.changed`. With
-  `files` `fs.read` reads them, ranges too, and `fs.url` answers a `data:` URL. Other `fs.*`,
-  `proc.*`, `net.*`, `audio.*`, `plugin.*`, `store.*`, `init.get`, `brain.say`, `ui.notify` are not.
+  `files`, `fs.read` (ranges too), `fs.url` (a `data:` URL), `fs.write`, `fs.history` and `fs.restore`
+  serve them, a write keeping what it replaces (ADR 0076). `fs.list`, `fs.watch`, `proc.*`, `net.*`,
+  `audio.*`, `plugin.*`, `store.*`, `init.get`, `brain.say`, `ui.notify` are not.
 - Every generated type (`BridgeRequest`, `Permission`, `PluginManifest`, `Item`, `View`, `TurnEvent`,
   ...), `BridgeMethodMap`, `BridgeMethod`, `BRIDGE_METHODS` and `brainSchema`.
 

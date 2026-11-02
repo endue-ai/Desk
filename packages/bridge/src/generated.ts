@@ -1493,6 +1493,8 @@ export type BridgeRequest =
   | FsListRequest
   | FsWatchRequest
   | FsUrlRequest
+  | FsHistoryRequest
+  | FsRestoreRequest
   | ProcSpawnRequest
   | ProcWriteRequest
   | ProcResizeRequest
@@ -2138,6 +2140,66 @@ export interface FsWriteParams {
 export interface FsWriteResult {
   /** Bytes written to disk. */
   bytesWritten: number;
+  /** The version that keeps what this write replaced, as fs.history lists it. Absent when nothing was kept: a new file, the same bytes, or a desk that keeps no history. */
+  version?: FsVersionId;
+}
+
+/** List the versions the desk kept of one file: the content each of its writes replaced. */
+export interface FsHistoryRequest {
+  id: RequestId;
+  method: "fs.history";
+  params: FsHistoryParams;
+}
+
+/** Parameters of fs.history. */
+export interface FsHistoryParams {
+  path: Path;
+  /** The newest versions to list at most; all the desk keeps when absent. */
+  limit?: number;
+  scope: FsReadPermission;
+}
+
+/** Result of fs.history: newest first, empty when the desk kept nothing of the path (also when the file is gone). */
+export interface FsHistoryResult {
+  versions: FsVersion[];
+}
+
+/** One kept version of a file: the bytes a desk write replaced. */
+export interface FsVersion {
+  id: FsVersionId;
+  /** When the write that replaced these bytes ran: the last moment the file held them. RFC 3339. */
+  at: string;
+  /** The caller whose write replaced these bytes. The caller that wrote them is the next older version's. */
+  caller: CallerId;
+  /** The version's size in bytes. */
+  size: number;
+  /** The SHA-256 of the version's bytes, lowercase hex. */
+  sha256: string;
+}
+
+/** A version's id: the Unix time in milliseconds when it was kept, a dash and six hex digits. */
+export type FsVersionId = string;
+
+/** Write a kept version of a file back, as fs.write writes, so what it replaces is kept too. */
+export interface FsRestoreRequest {
+  id: RequestId;
+  method: "fs.restore";
+  params: FsRestoreParams;
+}
+
+/** Parameters of fs.restore. */
+export interface FsRestoreParams {
+  path: Path;
+  version: FsVersionId;
+  scope: FsWritePermission;
+}
+
+/** Result of fs.restore: what fs.write answers for the same write. */
+export interface FsRestoreResult {
+  /** Bytes written to disk. */
+  bytesWritten: number;
+  /** The version that keeps what the restore replaced; absent when nothing was kept. */
+  version?: FsVersionId;
 }
 
 /** List the entries of a folder. */
@@ -3463,6 +3525,8 @@ export interface BridgeMethodMap {
   "fs.list": { params: FsListParams; result: FsListResult };
   "fs.watch": { params: FsWatchParams; result: FsWatchResult };
   "fs.url": { params: FsUrlParams; result: FsUrlResult };
+  "fs.history": { params: FsHistoryParams; result: FsHistoryResult };
+  "fs.restore": { params: FsRestoreParams; result: FsRestoreResult };
   "proc.spawn": { params: ProcSpawnParams; result: ProcSpawnResult };
   "proc.write": { params: ProcWriteParams; result: ProcWriteResult };
   "proc.resize": { params: ProcResizeParams; result: ProcResizeResult };
@@ -3545,6 +3609,8 @@ export const BRIDGE_METHODS = [
   "fs.list",
   "fs.watch",
   "fs.url",
+  "fs.history",
+  "fs.restore",
   "proc.spawn",
   "proc.write",
   "proc.resize",

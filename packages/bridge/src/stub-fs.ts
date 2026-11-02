@@ -1,19 +1,25 @@
 /**
  * The browser stub's files: fs.read (whole or a byte range, with the size) and fs.url over files
  * held in memory by bridge path ("~/Movies/clip.mp4"), as the core answers them
- * (specs/bridge/v0/README.md). fs.url answers a `data:` URL of the whole file: there is no
- * `desk-plugin` scheme here, and `blob:` URLs do not cross into a plugin's frame.
+ * (specs/bridge/v0/README.md), and fs.write, fs.history and fs.restore over the same files
+ * (stub-history.ts). fs.url answers a `data:` URL of the whole file: there is no `desk-plugin`
+ * scheme here, and `blob:` URLs do not cross into a plugin's frame.
  */
 import { StubError, type StubHandlers } from "./adapters";
-import type { FsReadPermission } from "./generated";
+import type { FsReadPermission, FsWritePermission } from "./generated";
+import { type HistoryServed, stubHistory } from "./stub-history";
 
 /** In-memory files by bridge path: text (stored as UTF-8) or bytes. */
 export type StubFiles = Record<string, string | Uint8Array>;
 
 /** The stub's grant check: throws permission_denied unless a grant covers `scope` and `fits`. */
-type Check = (caller: string | undefined, scope: FsReadPermission, fits: boolean) => void;
+type Check = (
+  caller: string | undefined,
+  scope: FsReadPermission | FsWritePermission,
+  fits: boolean,
+) => void;
 
-export type FsServed = "fs.read" | "fs.url";
+export type FsServed = "fs.read" | "fs.url" | HistoryServed;
 
 /** A bridge path pattern as desk-core matches it: `*` and `?` in one segment, `**` across. */
 export function pathMatch(pattern: string, path: string): boolean {
@@ -89,21 +95,33 @@ function base64(bytes: Uint8Array): string {
   return btoa(binary);
 }
 
-/** fs.read and fs.url over `files`, each call checked as `check` says. */
-export function stubFs(files: StubFiles, check: Check): Required<Pick<StubHandlers, FsServed>> {
+/** fs.read, fs.url, fs.write, fs.history and fs.restore over `files`, each call checked as `check`
+ * says; kept versions are stamped with `now`. */
+export function stubFs(
+  files: StubFiles,
+  check: Check,
+  now: () => string = () => new Date().toISOString(),
+): Required<Pick<StubHandlers, FsServed>> {
   const bytes = new Map<string, Uint8Array>(
     Object.entries(files).map(([path, content]) => [
       path,
       typeof content === "string" ? new TextEncoder().encode(content) : content,
     ]),
   );
-  /** The file at `path` once the caller may read it: a grant covers the scope, the scope the path. */
-  const open = (caller: string | undefined, path: string, scope: FsReadPermission) => {
+  /** Whether the caller may: a grant covers the scope, and the scope the path. */
+  const allow = (
+    caller: string | undefined,
+    path: string,
+    scope: FsReadPermission | FsWritePermission,
+  ) =>
     check(
       caller,
       scope,
       scope.paths.some((pattern) => pathMatch(pattern, path)),
     );
+  /** The file at `path` once the caller may read it. */
+  const open = (caller: string | undefined, path: string, scope: FsReadPermission) => {
+    allow(caller, path, scope);
     const file = bytes.get(path);
     if (file) return file;
     if ([...bytes.keys()].some((p) => p.startsWith(`${path}/`)))
@@ -111,6 +129,7 @@ export function stubFs(files: StubFiles, check: Check): Required<Pick<StubHandle
     throw new StubError("not_found", `${path} does not exist`);
   };
   return {
+    ...stubHistory(bytes, allow, now),
     "fs.read": ({ path, encoding = "utf8", offset = 0, length, scope }, caller) => {
       const file = open(caller, path, scope);
       const start = Math.min(offset, file.length);

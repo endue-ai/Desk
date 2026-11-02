@@ -116,6 +116,8 @@ impl Session {
             Remote::PermLog { agent } => self.perm_log(agent.as_deref()),
             Remote::Update(step) => self.update(step),
             Remote::Theme(step) => self.theme(step),
+            Remote::Fs(step) => self.files(step),
+            Remote::Log { count } => self.log(count),
             Remote::Inspect { section } => self.inspect(section),
         }
     }

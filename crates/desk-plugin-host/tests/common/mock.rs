@@ -7,8 +7,9 @@ use std::path::Path;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 
+use desk_plugin_host::NotifyLevel;
 use desk_plugin_host::{Command, CommandInfo, Decision, DirEntry, Duration, EntryKind, Error};
-use desk_plugin_host::{ErrorCode, Failure, Grant, Host, LogEntry, LogLevel, NotifyLevel};
+use desk_plugin_host::{ErrorCode, Failure, FsVersion, Grant, Host, LogEntry, LogLevel};
 use desk_plugin_host::{Request, Response, Setting};
 use serde_json::{Value, json};
 
@@ -150,6 +151,41 @@ impl Host for MockHost {
         let mut files = self.files.lock().unwrap();
         files.insert(path.into(), contents.into());
         Ok(contents.len() as u64)
+    }
+
+    /// One version of every file it holds: as if each had been written over once.
+    fn fs_history(
+        &self,
+        plugin: &str,
+        path: &str,
+        limit: Option<u32>,
+    ) -> Result<Vec<FsVersion>, Error> {
+        let limit = limit.map_or_else(|| "all".to_owned(), |n| n.to_string());
+        self.call(plugin, "fs.history", &format!("{path} {limit}"))?;
+        let files = self.files.lock().unwrap();
+        Ok(files
+            .get(path)
+            .map(|bytes| FsVersion {
+                id: "1-abcdef".into(),
+                at: "2026-11-02T00:00:00Z".into(),
+                caller: plugin.into(),
+                size: bytes.len() as u64,
+                sha256: "0".repeat(64),
+            })
+            .into_iter()
+            .collect())
+    }
+
+    fn fs_restore(&self, plugin: &str, path: &str, version_id: &str) -> Result<u64, Error> {
+        self.call(plugin, "fs.restore", &format!("{path} {version_id}"))?;
+        let files = self.files.lock().unwrap();
+        files
+            .get(path)
+            .map(|bytes| bytes.len() as u64)
+            .ok_or_else(|| Error {
+                code: ErrorCode::NotFound,
+                message: format!("{path} has no version {version_id}"),
+            })
     }
 
     fn net_fetch(&self, plugin: &str, request: Request) -> Result<Response, Error> {

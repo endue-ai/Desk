@@ -10,8 +10,8 @@ pub const NAME: &str = env!("CARGO_PKG_NAME");
 use std::path::PathBuf;
 
 use desk_bridge::{
-    CmdInvokePermission, LogReadPermission, PermManagePermission, Permission,
-    PluginManagePermission, UpdateManagePermission,
+    CmdInvokePermission, FsReadPermission, FsWritePermission, LogReadPermission,
+    PermManagePermission, Permission, PluginManagePermission, UpdateManagePermission,
 };
 
 #[cfg(unix)]
@@ -58,9 +58,11 @@ pub fn socket_path() -> Option<PathBuf> {
 }
 
 /// What the app grants [`CALLER`] at start, session-long: run any command, list and toggle plugins,
-/// see and revoke every grant, read the log (ADR 0030), and drive the desk's updates (ADR 0054). Only
-/// the same OS user can open the socket, and that user can already do all of this through the desk
-/// itself. The app grants `theme:manage` to [`CALLER`] beside these, for `desk theme` (ADR 0058).
+/// see and revoke every grant, read the log (ADR 0030), drive the desk's updates (ADR 0054), and read
+/// and write files, for `desk fs history` and `desk fs restore` (ADR 0076). Only the same OS user can
+/// open the socket, and that user can already do all of this through the desk itself, or read and
+/// write those files directly. The app grants `theme:manage` to [`CALLER`] beside these, for `desk
+/// theme` (ADR 0058).
 pub fn grants() -> Vec<Permission> {
     vec![
         Permission::CmdInvoke(CmdInvokePermission {
@@ -79,5 +81,18 @@ pub fn grants() -> Vec<Permission> {
         Permission::UpdateManage(UpdateManagePermission {
             permission: Default::default(),
         }),
+        Permission::FsRead(FsReadPermission {
+            permission: Default::default(),
+            paths: everywhere(),
+        }),
+        Permission::FsWrite(FsWritePermission {
+            permission: Default::default(),
+            paths: everywhere(),
+        }),
     ]
+}
+
+/// Every path the person's own files can have: absolute ones and those under `~`.
+fn everywhere() -> Vec<String> {
+    vec!["/**".to_owned(), "~/**".to_owned()]
 }

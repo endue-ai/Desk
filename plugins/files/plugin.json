@@ -16,6 +16,16 @@
         "default": "reload",
         "choices": ["reload", "ask", "ignore"],
         "description": "A file changed on disk: reload it when it has no unsaved changes (and ask when it has), always ask, or do nothing."
+      },
+      "desk.files.history-max-bytes": {
+        "kind": "integer",
+        "default": 268435456,
+        "description": "How many bytes the history of earlier versions may hold in all; the oldest versions go first."
+      },
+      "desk.files.history-max-versions": {
+        "kind": "integer",
+        "default": 50,
+        "description": "How many earlier versions of each file the desk keeps; 0 keeps none."
       }
     }
   }

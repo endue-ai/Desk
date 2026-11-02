@@ -4,6 +4,7 @@
 
 mod args;
 mod doctor;
+mod files;
 mod plugin_test;
 mod remote;
 mod theme;

@@ -1,0 +1,16 @@
+{
+  "target": "BridgeRequest",
+  "description": "fs.restore writes, so its scope is fs:write, not fs:read",
+  "instance": {
+    "id": 26,
+    "method": "fs.restore",
+    "params": {
+      "path": "~/Notes/plan.md",
+      "version": "1793520000000-3fa9c1",
+      "scope": {
+        "permission": "fs:read",
+        "paths": ["~/Notes/**"]
+      }
+    }
+  }
+}

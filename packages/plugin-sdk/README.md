@@ -24,14 +24,14 @@ What a plugin imports. Layer: Plugins (`docs/architecture.md`). Guide: `docs/plu
 - `ctx.search.replace(documents)`: searchable documents (500 / 4 MiB; `[]` clears), each may name a command.
 - `ctx.theme`: `get()`, `on(listener)`; the frame gets `--desk-*`, `data-scheme`, `-contrast` and
   `-motion`. Chords (Meta, Control, Alt, Escape) reach the desk unless prevented.
-- `readBytes(ctx, { path, scope }, { onProgress?(done, total), signal? })`: the file as a `Uint8Array`,
-  in 2 MiB `Range` requests to its `fs.url` URL (else `fs.read` ranges); `signal` rejects (`AbortError`).
-  `byteSource(ctx, file)`: `{ size, read(offset, length) }`, cached. `startWorker(url)`: a module worker.
+- `readBytes(ctx, { path, scope }, { onProgress?, signal? })`: the file, in 2 MiB `Range` requests to its
+  `fs.url` URL (else `fs.read` ranges); `signal` rejects. `byteSource(ctx, file)`: `{ size, read(offset,
+  length) }`, cached. `startWorker(url)`. `fileHistory(ctx, file, { limit? })`, `restoreFile(ctx, file, v)`.
 - `connect(transport?)`, `windowTransport()`, the protocol types, `BridgeCallError` and bridge types;
   one tick's calls leave in one message. The app serves `dist/plugin-sdk.js` at `/_desk/plugin-sdk.js`.
 - `@endue-ai/plugin-sdk/testing`: `createTestHost({ pluginId, state?, restored?, handlers?, commands?,
   settings?, grants?, callers?, prompt?, now?, refuse?, files? })` runs a plugin on the stub core
-  (`handlers` override it, `refuse` fails a method, `files` back `fs.read`, `fs.url`): `transport`,
+  (`handlers` override it, `refuse` fails a method, `files` back the `fs.*` calls): `transport`,
   `calls`, `batches`, `state`, `closed`, `visible`, `ran`, `keys`, `settings`, `grants`, `logged`,
   `surfaces`, `call`, `emit`, `command`, `surfaceState`, `invoke`, `theme`, `upsert`, `remove`, `settle`.
   `assertRoundTrip(bytes, parse, serialize)`, `assertMinimalEdit(before, after, edit)` (ADR 0071).

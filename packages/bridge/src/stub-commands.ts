@@ -3,8 +3,8 @@
  * registry (cmd.*, ADR 0017), grants and prompts (perm.*), settings, the log, subscriptions (events.*)
  * and surfaces (ui.surface.*), per caller, with the core's rules (specs/bridge/v0/README.md), plus the
  * items, connectors, views and catalog of stub-data.ts, shell.open of stub-shell.ts, cmd.recent and
- * plugin.stats of stub-recent.ts and, given files, fs.read and fs.url of stub-fs.ts. A plugin caller's
- * scoped call needs a covering grant; the runtime (`desk`) is trusted; cmd.list and cmd.invoke check none.
+ * plugin.stats of stub-recent.ts and, given files, every fs.* of stub-fs.ts. A plugin caller's scoped
+ * call needs a covering grant; the runtime (`desk`) is trusted; cmd.list and cmd.invoke check none.
  */
 import { StubError, type StubHandlers } from "./adapters";
 import { FIXTURE_NOW } from "./fixtures";
@@ -57,7 +57,7 @@ export interface StubOptions {
   /** The core's clock: log entries and grants are stamped with it, and connector syncs, which use
    * `FIXTURE_NOW` (the fixtures' today) when it is absent. */
   now?: () => string;
-  /** Files by bridge path; with them the stub serves fs.read (ranges too) and fs.url (stub-fs.ts). */
+  /** Files by bridge path; with them the stub serves the fs.* of stub-fs.ts (reads, writes, history). */
   files?: StubFiles;
   /** Hears each shell.open the stub let through, after it is recorded (the dev page's window.open). */
   open?: (opened: StubOpened) => void;
@@ -82,7 +82,7 @@ export interface StubState {
 }
 
 export interface StubCommands {
-  /** The methods above, and fs.read and fs.url when the options hold files. */
+  /** The methods above, and the fs.* of stub-fs.ts when the options hold files. */
   handlers: Required<Pick<StubHandlers, Served>> & Pick<StubHandlers, FsServed>;
   /** The caller providing a command, or undefined. */
   providerOf(id: string): string | undefined;
@@ -279,7 +279,7 @@ export function stubCommands(
     handlers: {
       ...data.handlers,
       ...recent.handlers,
-      ...(options.files && stubFs(options.files, check)),
+      ...(options.files && stubFs(options.files, check, now)),
       ...stubShell({ check, may, me, request, opened, open: options.open }),
       ...stubLog({ log, now, me, later, check }),
       "cmd.register": (params, caller) => {

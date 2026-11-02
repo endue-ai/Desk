@@ -8,7 +8,7 @@ use serde_json::Value;
 
 use crate::bindings::{Command, CommandInfo, Decision, DirEntry, Duration, Error, ErrorCode};
 use crate::bindings::{
-    Failure, Grant, LogEntry, LogLevel, NotifyLevel, Request, Response, Setting,
+    Failure, FsVersion, Grant, LogEntry, LogLevel, NotifyLevel, Request, Response, Setting,
 };
 use crate::host::Host;
 
@@ -93,6 +93,16 @@ impl Imports {
         self.needs("fs.write", Needs::FsWrite)?;
         self.host
             .fs_write(&self.plugin, path, contents, create_dirs)
+    }
+
+    pub fn fs_history(&self, path: &str, limit: Option<u32>) -> Result<Vec<FsVersion>, Error> {
+        self.needs("fs.history", Needs::FsRead)?;
+        self.host.fs_history(&self.plugin, path, limit)
+    }
+
+    pub fn fs_restore(&self, path: &str, version_id: &str) -> Result<u64, Error> {
+        self.needs("fs.restore", Needs::FsWrite)?;
+        self.host.fs_restore(&self.plugin, path, version_id)
     }
 
     pub fn net_fetch(&self, request: Request) -> Result<Response, Error> {
