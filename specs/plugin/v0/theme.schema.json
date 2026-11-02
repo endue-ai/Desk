@@ -47,6 +47,41 @@
       ],
       "additionalProperties": false
     },
+    "ThemeBundle": {
+      "description": "A theme as one file, a .desk-theme: JSON, 16 MiB at most, holding the theme's plugin.json and the font and image files its theme block names, base64. theme.export writes one and theme.import reads one; the desk checks it as a theme plugin folder before it lands.",
+      "type": "object",
+      "properties": {
+        "format": { "description": "The bundle format and its version.", "const": "desk-theme/1" },
+        "manifest": {
+          "description": "The theme's plugin.json: a plugin of kind theme.",
+          "$ref": "plugin.schema.json#/$defs/PluginManifest",
+          "type": "object",
+          "properties": { "kind": { "const": "theme" } },
+          "required": ["kind"]
+        },
+        "files": {
+          "description": "The theme's font and image files by their path in its folder, each base64. Only the paths its theme block names.",
+          "type": "object",
+          "propertyNames": { "$ref": "#/$defs/ThemeAssetPath" },
+          "additionalProperties": { "$ref": "#/$defs/ThemeAssetData" },
+          "maxProperties": 10
+        }
+      },
+      "required": ["format", "manifest", "files"],
+      "additionalProperties": false
+    },
+    "ThemeAssetPath": {
+      "description": "A theme's font (.woff2) or image (.png, .jpg, .jpeg or .webp) file relative to its folder, without .. segments.",
+      "type": "string",
+      "pattern": "^(?!/)(?!.*(^|/)\\.\\.(/|$))[A-Za-z0-9._/-]+\\.(woff2|png|jpe?g|webp)$",
+      "maxLength": 200
+    },
+    "ThemeAssetData": {
+      "description": "One asset file's bytes in padded base64 (RFC 4648): 2 MiB of bytes at most.",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9+/]*={0,2}$",
+      "maxLength": 2796204
+    },
     "ThemeOrigin": {
       "description": "Where a theme came from: the sentence it was described with, and the theme it started from.",
       "type": "object",

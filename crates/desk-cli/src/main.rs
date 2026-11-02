@@ -3,6 +3,7 @@
 
 mod args;
 mod remote;
+mod theme;
 
 use std::path::Path;
 use std::process::ExitCode;

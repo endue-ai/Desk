@@ -3,6 +3,7 @@ import type { BridgeEvent, BridgeRequest, BridgeResponse } from "@endue-ai/bridg
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import "./palette.css";
+import { followDeskTheme } from "./palette-theme";
 
 const root = document.getElementById("desk");
 if (!root) throw new Error("No palette root");
@@ -25,8 +26,11 @@ const open = () => {
   frame.focus();
 };
 // Register listeners before loading the frame, including before its first command invocation.
+// The theme the main window keeps styles this window's root now and its frame from desk:hello on.
+const theme = followDeskTheme({ root: document.documentElement, post });
 await listen("palette://open", () => {
   presented = true;
+  theme.refresh();
   open();
 });
 await listen<BridgeEvent>("bridge://event", ({ payload: event }) => {
@@ -40,6 +44,7 @@ window.addEventListener("message", (event: MessageEvent) => {
   if (message?.type === "desk:hello") {
     ready = true;
     post({ type: "desk:init", pluginId: "palette" });
+    theme.hello();
     if (pendingOpen) {
       pendingOpen = false;
       open();

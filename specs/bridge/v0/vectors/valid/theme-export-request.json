@@ -1,0 +1,14 @@
+{
+  "target": "BridgeRequest",
+  "description": "theme.export writes any installed theme to the Downloads folder by default",
+  "instance": {
+    "id": 65,
+    "method": "theme.export",
+    "params": {
+      "theme": "endue.theme-paper",
+      "scope": {
+        "permission": "theme:manage"
+      }
+    }
+  }
+}

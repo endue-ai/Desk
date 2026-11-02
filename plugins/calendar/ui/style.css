@@ -1,12 +1,6 @@
-/* The desk's design tokens (@endue-ai/ui). Frames do not inherit the desk's, so they are declared here;
+/* Colours, type, radii and durations are the desk's tokens: /_desk/tokens.css holds their defaults and
    the SDK sets the theme in force over them. */
 :root {
-  --desk-background: #141416;
-  --desk-card: #1e1d21;
-  --desk-border: #333136;
-  --desk-text: #f2f0f5;
-  --desk-text-muted: #b0adb7;
-  --desk-accent: #b6a3f5;
   --event: color-mix(in srgb, var(--desk-accent) 26%, var(--desk-card));
   --event-border: var(--desk-accent);
   --hour: 48px;
@@ -26,7 +20,7 @@ body {
   padding: 8px 12px;
   background: var(--desk-card);
   color: var(--desk-text);
-  font: 13px/1.5 -apple-system, "SUIT", "Inter", system-ui, sans-serif;
+  font: calc(var(--desk-text-sm) - 1px)/1.5 var(--desk-font-sans);
 }
 
 *,
@@ -53,7 +47,7 @@ textarea {
 button {
   padding: 3px 10px;
   border: 1px solid var(--desk-border);
-  border-radius: 6px;
+  border-radius: var(--desk-radius-md);
   background: transparent;
   cursor: pointer;
 }
@@ -68,18 +62,18 @@ button:disabled {
 }
 
 button.primary {
-  border-color: var(--desk-accent);
-  background: var(--desk-accent);
-  color: var(--desk-background);
+  border-color: var(--desk-primary);
+  background: var(--desk-primary);
+  color: var(--desk-primary-foreground);
 }
 
 button.danger {
-  border-color: #e5747a;
-  color: #e5747a;
+  border-color: var(--desk-danger);
+  color: var(--desk-danger-text);
 }
 
 :focus-visible {
-  outline: 2px solid var(--desk-accent);
+  outline: 2px solid var(--desk-ring);
   outline-offset: 1px;
 }
 
@@ -98,13 +92,13 @@ button.danger {
 
 .modes [aria-checked="true"] {
   border-color: var(--desk-accent);
-  color: var(--desk-accent);
+  color: var(--desk-primary-text);
 }
 
 h1 {
   flex: 1;
   margin: 0;
-  font-size: 15px;
+  font-size: calc(var(--desk-text-sm) + 1px);
 }
 
 #cal-detail,
@@ -115,7 +109,7 @@ h1 {
 
 #cal-mark > [aria-hidden],
 #cal-problems {
-  color: var(--desk-accent);
+  color: var(--desk-primary-text);
 }
 
 #grid {
@@ -125,7 +119,7 @@ h1 {
   min-height: 0;
   overflow: auto;
   border: 1px solid var(--desk-border);
-  border-radius: 6px;
+  border-radius: var(--desk-radius-md);
   background: var(--desk-background);
 }
 
@@ -144,7 +138,7 @@ h1 {
   overflow: hidden;
   border: 0;
   border-left: 3px solid var(--event-border);
-  border-radius: 3px;
+  border-radius: var(--desk-radius-sm);
   background: var(--event);
   text-align: start;
   white-space: nowrap;
@@ -209,10 +203,10 @@ h1 {
 }
 
 .month td.today .date {
-  border-radius: 10px;
+  border-radius: var(--desk-radius-full);
   padding: 0 6px;
-  background: var(--desk-accent);
-  color: var(--desk-background);
+  background: var(--desk-primary);
+  color: var(--desk-primary-foreground);
 }
 
 .month .events {
@@ -255,7 +249,7 @@ h1 {
 }
 
 .head .col.today b {
-  color: var(--desk-accent);
+  color: var(--desk-primary-text);
 }
 
 .all-day {
@@ -272,7 +266,7 @@ h1 {
 .gutter {
   padding: 2px 4px;
   color: var(--desk-text-muted);
-  font-size: 11px;
+  font-size: var(--desk-text-2xs);
 }
 
 .scroll {
@@ -285,7 +279,7 @@ h1 {
   height: var(--hour);
   padding-right: 6px;
   color: var(--desk-text-muted);
-  font-size: 11px;
+  font-size: var(--desk-text-2xs);
   text-align: end;
   transform: translateY(-0.6em);
 }
@@ -326,7 +320,7 @@ h1 {
   right: 0;
   left: 0;
   height: 2px;
-  background: #e5747a;
+  background: var(--desk-danger);
   pointer-events: none;
 }
 
@@ -337,11 +331,11 @@ h1 {
 
 .agenda h2 {
   margin: 12px 0 4px;
-  font-size: 13px;
+  font-size: calc(var(--desk-text-sm) - 1px);
 }
 
 .agenda h2.today {
-  color: var(--desk-accent);
+  color: var(--desk-primary-text);
 }
 
 .agenda ul {
@@ -368,13 +362,13 @@ dialog {
   max-height: 92vh;
   padding: 16px;
   border: 1px solid var(--desk-border);
-  border-radius: 10px;
+  border-radius: var(--desk-radius-lg);
   background: var(--desk-card);
   color: var(--desk-text);
 }
 
 dialog::backdrop {
-  background: rgb(0 0 0 / 0.45);
+  background: var(--desk-scrim);
 }
 
 dialog form {
@@ -384,7 +378,7 @@ dialog form {
 
 dialog h2 {
   margin: 0 0 4px;
-  font-size: 15px;
+  font-size: calc(var(--desk-text-sm) + 1px);
 }
 
 dialog label,
@@ -398,12 +392,12 @@ dialog textarea {
   width: 100%;
   padding: 4px 6px;
   border: 1px solid var(--desk-border);
-  border-radius: 6px;
+  border-radius: var(--desk-radius-md);
   background: var(--desk-background);
 }
 
 dialog [aria-invalid="true"] {
-  border-color: #e5747a;
+  border-color: var(--desk-danger);
 }
 
 fieldset {
@@ -437,7 +431,7 @@ fieldset legend {
 .error {
   flex-basis: 100%;
   margin: 0;
-  color: #e5747a;
+  color: var(--desk-danger-text);
 }
 
 .actions {
@@ -456,6 +450,6 @@ fieldset legend {
 
 @media (prefers-reduced-motion: no-preference) {
   .event {
-    transition: border-color 120ms;
+    transition: border-color var(--desk-motion-fast);
   }
 }

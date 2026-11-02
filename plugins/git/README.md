@@ -24,6 +24,7 @@ desk's notice. Until the core serves `proc.*` (#77) the status line says so.
 | `ui/actions.js` | Stage, unstage, discard, commit (editor), fetch, pull, push, switch, open |
 | `ui/git.js` | The repository, the views as desk buffers, the commands and the desk's requests |
 | `ui/view*.js`, `keys.js` | The DOM: a tree with a cursor and folding, the graph SVG, the editor, the keys |
+| `ui/style.css` | The look, from the theme's `--desk-*` tokens only: lanes and changes are `chart-*` (`tests/theme.test.ts`) |
 
 ```bash
 pnpm exec vitest run plugins/git

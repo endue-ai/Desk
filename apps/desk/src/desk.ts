@@ -8,6 +8,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { installNativeFileDrops, pickNativeFile } from "./native-files";
 import { installOpenedFiles } from "./open-files";
+import { sendThemeToPalette } from "./palette-theme";
 import { shellBridge } from "./shell-bridge";
 import { installUpdates, NOTIFIED, ROW } from "./updates";
 
@@ -80,4 +81,7 @@ const disposeUpdates = installUpdates({
 window.addEventListener("pagehide", disposeUpdates, { once: true });
 
 await desk.ready;
+// The native palette window has no runtime of its own: it follows the theme in force here (TH-08).
+const disposePaletteTheme = sendThemeToPalette(desk.runtime);
+window.addEventListener("pagehide", disposePaletteTheme, { once: true });
 await invoke("desk_ready", { status: desk.runtime.status() });

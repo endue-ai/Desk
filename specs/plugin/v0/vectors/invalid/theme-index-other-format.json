@@ -1,0 +1,8 @@
+{
+  "target": "ThemeIndex",
+  "description": "the index names its format",
+  "instance": {
+    "format": "desk-theme-index/2",
+    "themes": []
+  }
+}

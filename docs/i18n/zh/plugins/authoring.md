@@ -2,7 +2,7 @@
 
 # 编写 Desk 插件
 
-Desk 插件就是一个目录。内置功能使用完全相同的格式，因此 Desk 自身能在屏幕上做的任何事，你的插件也都能做到。本文介绍 UI 插件（v0）；逻辑（Wasm）插件和工具（MCP）插件将在之后推出。
+Desk 插件就是一个目录。内置功能使用完全相同的格式，因此 Desk 自身能在屏幕上做的任何事，你的插件也都能做到。本文介绍 UI 插件（v0）和主题；逻辑（Wasm）插件和工具（MCP）插件将在之后推出。
 
 ## 从示例开始
 
@@ -152,3 +152,107 @@ await host.settle();
 ```
 
 发布之前，必须通过 `desk plugin validate <folder>`；CI 会对 `plugins/` 和 `examples/` 中的每个目录运行该命令。
+
+## 制作主题
+
+主题是 kind 为 `theme` 的插件：只有设计系统的取值以及这些取值引用的字体和图片文件，没有代码，因此不申请任何权限（ADR 0056、ADR 0057）。从模板或示例开始：
+
+```bash
+pnpm --filter @endue-ai/create-plugin build                       # once
+node packages/create-plugin/dist/create-plugin.js ../my-theme --kind theme
+DESK_DEV_PLUGINS=$PWD/../my-theme just dev
+cargo run -p desk-cli -- theme apply local.my-theme
+```
+
+包发布之后，这一步就是 `pnpm create @endue-ai/plugin my-theme --kind theme`。模板包含两种 scheme 下的全部角色颜色、保持默认值的其余各层，以及说明每个值涂在哪里的 README；`examples/plugin-hello-theme` 是带一个字体和一个背景的最小主题。安装主题并不会应用它：当前生效的主题由设置 `desk.theme.active` 指定，可以在主题工作室（右上角的调色板按钮，或命令面板中的 Themes）、通过 `desk.theme.use` 或 `desk theme apply` 选择。
+
+主题工作室也能制作主题：“Tune a copy”（或 `desk.theme.edit`）以所选主题的副本打开编辑器，“New theme”则以 endue 主题打开。每一层都有对应的控件，包括字体和背景图片；整个桌面随草稿实时变化，门禁的修正列在调色板下方，Save 会把结果保存为你自己的主题（`local.<名称>`）。要把主题放进仓库、测试并发布，就用目录。
+
+### theme 块
+
+`plugin.json` 的 kind 为 `theme`，并带有 `theme` 块（`specs/plugin/v0/theme.schema.json`），没有 `entry`、`permissions`、`surfaces`、`contributes` 和 `autoload`：
+
+```json
+{
+  "id": "example.dusk",
+  "name": "Dusk",
+  "version": "0.1.0",
+  "kind": "theme",
+  "theme": {
+    "license": "Apache-2.0 AND OFL-1.1",
+    "type": {
+      "sans": "\"Space Grotesk\", system-ui, sans-serif",
+      "fonts": [{ "family": "Space Grotesk", "src": "fonts/space-grotesk.woff2", "weight": "300 700" }]
+    },
+    "shape": { "radius": "round" },
+    "dark": {
+      "colors": { "background": "#1a1412", "text": "#f6ede6", "primary": "#ff9a62", "primaryForeground": "#2a1206" },
+      "backdrop": { "gradient": ["#2e1c15", "#1a1412"], "glow": "rgba(255, 140, 80, 0.12)" }
+    }
+  }
+}
+```
+
+`author`、`license`（主题及其文件的 SPDX 许可证表达式）、`tags`、`preview`（画廊卡片上最多五种颜色）和 `origin`（描述主题的那句话及其起点主题）用来描述主题。`light` 和 `dark` 各自包含一种 scheme。主题至少需要其中之一，缺少的一方由桌面自己的主题代替。
+
+### 层与预设
+
+主题共六层，每层都有默认值，所以只有调色板也是一个完整的主题：
+
+| 层 | 键 | 取值 |
+| --- | --- | --- |
+| 调色板 | `<scheme>.colors` | 令牌名（camelCase）到 CSS 颜色：`docs/design-system.md` 中的角色，以及外壳和 Eris 的令牌。省略的角色保持桌面的值 |
+| 材质 | `<scheme>.material` | `opacity` 0.6–1、`blur` 0–24 px、`noise` 0–0.15、`border` 0–2 px、`shadow` none、soft 或 strong |
+| 字体排印 | `type` | `sans` 与 `mono` 字体栈、`scale` 0.85–1.25、`tracking` −0.02–0.05 em、`fonts` |
+| 形状 | `shape` | `radius` none、subtle、soft 或 round；`density` compact、comfortable 或 spacious |
+| 动效 | `motion` | `personality` snappy、smooth 或 calm |
+| 背景 | `<scheme>.backdrop` | `color`，按 `angle` 绘制的 2–4 色 `gradient`，或 `fit` 为 cover 或 tile 的 `image`；以及 `glow` |
+
+`<scheme>.terminal.ansi` 为终端提供十六种颜色，`<scheme>.contrast` 给出高对比度下调色板的变化。圆角、密度、动效、字号倍率和阴影都是预设：运行时把每个名称转换成令牌（`docs/design-system.md` 的“Choosing a theme”），因此桌面重新调校预设时主题依然可用。数值都有范围，取值中不能出现 `url()`，所以任何有效的主题都始终可用。
+
+### 门禁
+
+桌面会让它应用的每个主题都通过门禁（`@endue-ai/ui/theme`）：文字相对背景须达到 4.5:1，边框和填充 3:1，高对比度下分别为 7:1 和 4.5:1。达不到的前景色只调整其 OKLCH 明度，且只调到刚好达标；背景色从不改变。没有 `contrast` 调色板时，主题的高对比度也用同样的方法从它自己的颜色推导出来。请在两种 scheme 下检查颜色对，让门禁无需修正。
+
+### 资源与限制
+
+字体为 `.woff2`，图片为 `.png`、`.jpg` 或 `.webp`（不允许可能携带脚本的 SVG），须位于目录内：单个文件最多 2 MiB，合计 8 MiB。在 `license` 中写明字体的许可证，并把许可证文件放在字体旁边；内置主题保留 `fonts/OFL.txt`，以及记录上游地址和校验和的 `fonts/SOURCE.md`。桌面在外壳和每个插件框架中以 `FontFace` 加载主题的字体；背景只由外壳绘制。
+
+### 测试主题
+
+```bash
+cargo run -p desk-cli -- plugin validate ../my-theme
+pnpm exec vitest run --root ../my-theme
+```
+
+`desk plugin validate` 按模式检查主题块，按限制检查文件。模板中的 `tests/theme.test.ts` 像桌面应用主题前那样，用 `compileTheme` 编译两种 scheme，并在 endue 调色板之上用 `gate` 检查；只要门禁需要修正，测试就失败并列出每一处修正。
+
+### 以 `.desk-theme` 分享
+
+```bash
+cargo run -p desk-cli -- theme export local.my-theme     # local.my-theme.desk-theme in Downloads
+cargo run -p desk-cli -- theme import ~/Downloads/dusk.desk-theme
+```
+
+`.desk-theme` 是一个 JSON 文件：`format` 为 `desk-theme/1`，`manifest` 是主题的 `plugin.json`，`files` 是主题块引用的文件的 base64，最大 16 MiB（ADR 0058）。导入时会先按主题插件检查，再安装到用户的主题目录，id 不在 `local.` 或 `market.` 之下时改为 `local.<名称>`；`desk theme list` 可以列出它，`desk theme remove` 可以删除它。主题工作室的 Export 和 Import 做同样的事，也接受拖放到工作室上的 `.desk-theme`。
+
+### 市场
+
+主题工作室的 Market 标签页列出设置 `desk.theme.markets` 以各索引的 https URL 列出的市场中的主题（ADR 0060）。默认是本仓库 `main` 分支上的 `market/themes/index.json`，从 `https://raw.githubusercontent.com/endue-ai/Desk/main/market/themes/index.json` 读取。其他市场的索引可以在 `init.yaml` 中加在它之后；两个市场列出同一个 id 时，以排在前面的为准：
+
+```yaml
+settings:
+  desk.theme.markets:
+    - https://raw.githubusercontent.com/endue-ai/Desk/main/market/themes/index.json
+    - https://themes.example.com/index.json
+```
+
+每张卡片显示主题的预览颜色、名称、作者和许可证，以及它在这台桌面上的状态：Available、Installed、Update available 或 Edited。Preview 会下载 `.desk-theme`、校验其 sha256，并在不安装的情况下把它显示在整个桌面上。Install 通过带 URL 和 sha256 的 `theme.import` 把它装入，id 仍在 `market.` 之下；Apply 让它生效。更新只会替换你没有改动过的市场主题；你改过的主题会保留为你自己的。
+
+要发布主题，请提交一个拉取请求，把它的包和索引条目加入 `market/themes/`：
+
+1. 导出主题（`desk theme export <id> <file>`，或工作室中的 Export），使用 `market.` 之下的 id，并设置版本、`theme.author` 和 `theme.license`（也涵盖其字体和图片的 SPDX 表达式）。
+2. 把文件以 `<name>.desk-theme` 放进 `market/themes/`，并在 `index.json`（`specs/plugin/v0/theme-index.schema.json`）中加入它的条目：`id`、`name`、`version`、`description`、`author`、`license`、`tags`、最多五个 `preview` 颜色、`url`（文件名）、`sha256` 和 `size`。
+3. 运行 `node scripts/theme-market.mjs`。这个市场检查器属于 `just check`，会拒绝哈希或大小不符、缺少许可证、id 重复以及不是有效主题插件的包；另有测试在两种 scheme 下用门禁检查每个市场主题。
+
+更新就是一个新版本，附带新的包、sha256 和大小。`market/themes/README.md` 中有同样的步骤。

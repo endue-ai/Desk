@@ -39,6 +39,7 @@ export function fillOf(el, ctx, group = NO_FILL) {
     }
     case "gradFill": {
       const stops = kids(kid(el, "gsLst"), "gs")
+        // theme: content: a gradient stop with no colour is black
         .map((gs) => ({ pos: num(gs, "pos") / 100000, color: childColor(gs, ctx) ?? "#000000" }))
         .sort((a, b) => a.pos - b.pos);
       if (stops.length === 0) return NO_FILL;

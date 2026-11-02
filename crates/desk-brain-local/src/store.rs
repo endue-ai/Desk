@@ -65,6 +65,10 @@ pub struct Waiting {
     pub calls: Vec<ToolCall>,
     /// The `tool` messages of the calls answered so far, in order.
     pub results: Vec<Value>,
+    /// The tools the turn offered, in Ollama's form, offered again with the results; `None` offers
+    /// the brain's own.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tools: Option<Vec<Value>>,
 }
 
 impl State {

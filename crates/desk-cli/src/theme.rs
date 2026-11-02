@@ -1,0 +1,84 @@
+//! `desk theme` (ADR 0058): the installed themes, the one in force, and the person's own themes as
+//! `.desk-theme` files. `list` reads plugin.list (plugin:manage), `apply` runs the runtime's
+//! `desk.theme.use` (cmd:invoke), and `import`, `export` and `remove` call theme.* (theme:manage).
+
+use std::path::{Path, PathBuf};
+use std::process::ExitCode;
+
+use serde_json::{Map, Value, json};
+
+use crate::args::ThemeStep;
+use crate::remote::{Problem, Reply, Session, text};
+
+impl Session {
+    pub(crate) fn theme(&mut self, step: ThemeStep) -> Result<ExitCode, Problem> {
+        let scope = json!({ "permission": "theme:manage" });
+        match step {
+            ThemeStep::List => {
+                let params = json!({ "scope": { "permission": "plugin:manage" } });
+                let reply = self.call("plugin.list", params)?;
+                Ok(self.report(reply, |result| {
+                    let plugins = result["plugins"].as_array();
+                    plugins
+                        .into_iter()
+                        .flatten()
+                        .filter_map(theme_line)
+                        .collect()
+                }))
+            }
+            ThemeStep::Apply(id) => self.apply(&id),
+            ThemeStep::Import(file) => {
+                let params = json!({ "path": absolute(&file)?, "scope": scope });
+                let reply = self.call("theme.import", params)?;
+                Ok(self.report(reply, |result| {
+                    vec![text(&result["plugin"], "id").to_owned()]
+                }))
+            }
+            ThemeStep::Export { id, file } => {
+                let mut params = json!({ "theme": id, "scope": scope });
+                if let Some(file) = file {
+                    params["path"] = json!(absolute(&file)?);
+                }
+                let reply = self.call("theme.export", params)?;
+                Ok(self.report(reply, |result| vec![text(result, "path").to_owned()]))
+            }
+            ThemeStep::Remove(id) => {
+                self.done("theme.remove", json!({ "theme": id, "scope": scope }))
+            }
+        }
+    }
+
+    /// `desk.theme.use { id }`, which answers the theme now in force: anything but `id` means the
+    /// desk has no such theme.
+    fn apply(&mut self, id: &str) -> Result<ExitCode, Problem> {
+        let mut args = Map::new();
+        args.insert("id".to_owned(), json!(id));
+        let Reply { result, line } = self.invoke_and_wait("desk.theme.use", Some(args))?;
+        let result = match result {
+            Ok(active) if active == id => Ok(active),
+            Ok(_) => Err(("not_found".to_owned(), format!("no installed theme {id}"))),
+            Err(failure) => Err(failure),
+        };
+        Ok(self.report(Reply { result, line }, |_| vec!["ok".to_owned()]))
+    }
+}
+
+/// `id  status  built-in|user  name` for a theme, and for a failed plugin with a user theme's id.
+fn theme_line(plugin: &Value) -> Option<String> {
+    let id = text(plugin, "id");
+    let user = id.starts_with("local.") || id.starts_with("market.");
+    let theme = plugin["manifest"]["kind"] == "theme" || (plugin["status"] == "failed" && user);
+    let source = if plugin["builtIn"] == true {
+        "built-in"
+    } else {
+        "user"
+    };
+    let name = plugin["manifest"]["name"].as_str().unwrap_or("-");
+    theme.then(|| format!("{id}\t{}\t{source}\t{name}", text(plugin, "status")))
+}
+
+/// The bridge path of a file the person named: absolute, with forward slashes.
+fn absolute(file: &Path) -> Result<String, Problem> {
+    let path: PathBuf = std::path::absolute(file).map_err(Problem::Io)?;
+    Ok(path.to_string_lossy().replace('\\', "/"))
+}

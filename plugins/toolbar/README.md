@@ -18,7 +18,7 @@ lists only the caller's own grants.
 | `plugin.json` | id `endue.toolbar`, name Status, kind `ui`, permission `plugin:manage`, one `right` surface |
 | `ui/drawers.js` | The drawers built from `plugin.list` (no DOM, tested); a new drawer is one function |
 | `ui/main.js` | Renders the drawers as buttons with `aria-expanded` and labelled regions |
-| `tests/` | `drawers.test.ts` (vitest); the panel on a desk: `packages/runtime/e2e/toolbar.spec.ts` |
+| `tests/` | `drawers.test.ts`, `theme.test.ts` (only `--desk-*` tokens) (vitest); the panel on a desk: `packages/runtime/e2e/toolbar.spec.ts` |
 
 Later, each waiting for a bridge API: the brain (local, cloud, offline), tasks, attention, other desks,
 the VM, listening, and what the person actually granted (first run, scene 6).

@@ -1,21 +1,16 @@
-/* The desk's design tokens (@endue-ai/ui). Frames do not inherit the desk's, so they are declared
-   here; the runtime redefines them for the theme in force. The token colours mix them. */
+/* Every colour, font, size, radius and duration is the theme's: the desk's tokens come from
+   /_desk/tokens.css and the runtime redefines them for the theme in force. Syntax takes the
+   theme's categorical colours, softened toward the text so they read on its background. */
 :root {
-  --desk-background: #141416;
-  --desk-card: #1e1d21;
-  --desk-border: #333136;
-  --desk-text: #f2f0f5;
-  --desk-text-muted: #b0adb7;
-  --desk-accent: #b6a3f5;
-  --data-key: var(--desk-accent);
-  --data-string: color-mix(in srgb, #7fe0a8 70%, var(--desk-text));
-  --data-number: color-mix(in srgb, #e8c98a 75%, var(--desk-text));
-  --data-literal: color-mix(in srgb, #f29bb0 70%, var(--desk-text));
-  --data-date: color-mix(in srgb, #7fc8e0 70%, var(--desk-text));
-  --data-error: #f29bb0;
-  --data-warn: #e8c98a;
-  --data-current: color-mix(in srgb, var(--desk-accent) 18%, transparent);
-  --data-selected: color-mix(in srgb, var(--desk-accent) 26%, transparent);
+  --data-key: var(--desk-chart-1);
+  --data-string: color-mix(in srgb, var(--desk-chart-2) 70%, var(--desk-text));
+  --data-number: color-mix(in srgb, var(--desk-chart-3) 75%, var(--desk-text));
+  --data-literal: color-mix(in srgb, var(--desk-chart-5) 70%, var(--desk-text));
+  --data-date: color-mix(in srgb, var(--desk-chart-4) 70%, var(--desk-text));
+  --data-error: var(--desk-danger-text);
+  --data-warn: var(--desk-warning-text);
+  --data-current: color-mix(in srgb, var(--desk-primary) 18%, transparent);
+  --data-selected: color-mix(in srgb, var(--desk-primary) 26%, transparent);
   --data-row: 22px;
   --data-line: 18px;
 }
@@ -29,7 +24,7 @@ body {
   margin: 0;
   background: var(--desk-card);
   color: var(--desk-text);
-  font: 13px/1.5 -apple-system, "SUIT", "Inter", system-ui, sans-serif;
+  font: calc(var(--desk-text-sm) - 1px)/1.5 var(--desk-font-sans);
 }
 
 header {
@@ -41,12 +36,12 @@ header {
   border-bottom: 1px solid var(--desk-border);
 }
 
-h1 { margin: 0; font-size: 15px; }
+h1 { margin: 0; font-size: calc(var(--desk-text-sm) + 1px); }
 
 h2 {
   margin: 0 0 4px;
   color: var(--desk-text-muted);
-  font-size: 12px;
+  font-size: var(--desk-text-xs);
 }
 
 #detail { margin: 0; color: var(--desk-text-muted); }
@@ -54,7 +49,7 @@ h2 {
 .format {
   padding: 0 6px;
   border: 1px solid var(--desk-border);
-  border-radius: 6px;
+  border-radius: var(--desk-radius-md);
 }
 
 #toolbar {
@@ -77,26 +72,26 @@ button, input { font: inherit; color: inherit; }
 button {
   padding: 2px 8px;
   border: 1px solid var(--desk-border);
-  border-radius: 6px;
+  border-radius: var(--desk-radius-md);
   background: transparent;
   cursor: pointer;
 }
 
-button[aria-pressed="true"] { border-color: var(--desk-accent); background: var(--data-current); }
+button[aria-pressed="true"] { border-color: var(--desk-ring); background: var(--data-current); }
 
 button:disabled { opacity: 0.5; cursor: default; }
 
-button:hover:not(:disabled), button:focus-visible { border-color: var(--desk-accent); }
+button:hover:not(:disabled), button:focus-visible { border-color: var(--desk-ring); }
 
 input[type="search"] {
   width: 14em;
   padding: 2px 6px;
   border: 1px solid var(--desk-border);
-  border-radius: 6px;
+  border-radius: var(--desk-radius-md);
   background: var(--desk-background);
 }
 
-:focus-visible { outline: 2px solid var(--desk-accent); outline-offset: 1px; }
+:focus-visible { outline: 2px solid var(--desk-ring); outline-offset: 1px; }
 
 #tree:focus-visible, #raw:focus-visible { outline-offset: -2px; }
 
@@ -168,7 +163,7 @@ main[data-mode="tree"] > #tree-pane, main[data-mode="raw"] > #raw-pane { border-
 .row[aria-selected="true"] { background: var(--data-selected); }
 
 #tree:focus-visible .row[aria-selected="true"] {
-  outline: 1px solid var(--desk-accent);
+  outline: 1px solid var(--desk-ring);
   outline-offset: -1px;
 }
 
@@ -199,9 +194,9 @@ main[data-mode="tree"] > #tree-pane, main[data-mode="raw"] > #raw-pane { border-
   margin-left: 6px;
   padding: 0 5px;
   border: 1px solid var(--desk-border);
-  border-radius: 6px;
+  border-radius: var(--desk-radius-md);
   color: var(--desk-text-muted);
-  font-size: 11px;
+  font-size: var(--desk-text-2xs);
 }
 
 .badge.warn { border-color: var(--data-warn); color: var(--data-warn); }
@@ -211,13 +206,13 @@ main[data-mode="tree"] > #tree-pane, main[data-mode="raw"] > #raw-pane { border-
 .row .reveal {
   margin-left: 6px;
   padding: 0 6px;
-  font-size: 11px;
+  font-size: var(--desk-text-2xs);
 }
 
 .line {
   display: flex;
   height: var(--data-line);
-  font: 12px/18px ui-monospace, "SF Mono", Menlo, monospace;
+  font: var(--desk-text-xs)/var(--data-line) var(--desk-font-mono);
   white-space: pre;
 }
 
@@ -253,7 +248,7 @@ main[data-mode="tree"] > #tree-pane, main[data-mode="raw"] > #raw-pane { border-
 
 .tok-comment { font-style: italic; }
 
-.tok-tag { color: color-mix(in srgb, var(--desk-accent) 60%, var(--data-date)); }
+.tok-tag { color: color-mix(in srgb, var(--desk-chart-1) 60%, var(--data-date)); }
 
 #details { flex: 1; padding: 16px; }
 
@@ -280,7 +275,7 @@ footer { border-top: 1px solid var(--desk-border); }
 
 #where .label { color: var(--desk-text-muted); }
 
-#where code { font: 12px ui-monospace, "SF Mono", Menlo, monospace; user-select: text; }
+#where code { font: var(--desk-text-xs) var(--desk-font-mono); user-select: text; }
 
 #where[data-root="true"] #pointer::before, #where[data-root="true"] #dotted::before { content: "(the root)"; color: var(--desk-text-muted); }
 
@@ -308,7 +303,7 @@ footer { border-top: 1px solid var(--desk-border); }
 
 .schema-state.invalid, .schema-state.failed { color: var(--data-error); }
 
-.schema-state.valid { color: var(--data-string); }
+.schema-state.valid { color: var(--desk-success-text); }
 
 #status {
   margin: 0;

@@ -125,15 +125,19 @@ export const SAY = {
   morning: (name) => (name ? `Morning, ${name}.` : "Morning."),
 };
 
+/** A category colour of the theme, as a CSS value. */
+const chart = (n) => `var(--desk-chart-${n})`;
+
 /**
  * endue's agents on a new desk (endue.ai): Tin, the everyday companion, is the one set up first; Seed
- * does research and Muse writes. Two say one line each; the rest wait as dim circles. The colours are
- * placeholders until the design system has persona tokens for them.
+ * does research and Muse writes. Two say one line each; the rest wait as dim circles. Each wears a
+ * category colour of the theme (teal, green, rose; chart-1 and chart-3 are the brand's and Eris's)
+ * until the design system has persona tokens for them.
  */
 export const AGENTS = [
-  { id: "tin", name: "Tin", role: "Everyday companion", color: "#9fd8cb", speaks: true },
-  { id: "seed", name: "Seed", role: "Research", color: "#b9dc92", speaks: true },
-  { id: "muse", name: "Muse", role: "Writing", color: "#f0b5cf", speaks: false },
+  { id: "tin", name: "Tin", role: "Everyday companion", color: chart(2), speaks: true },
+  { id: "seed", name: "Seed", role: "Research", color: chart(6), speaks: true },
+  { id: "muse", name: "Muse", role: "Writing", color: chart(5), speaks: false },
 ];
 
 export const AGENT_SAY = {

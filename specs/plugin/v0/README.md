@@ -4,7 +4,7 @@
 plugins alike. `permission.schema.json` is the permission vocabulary: plugin manifests declare these
 permissions, and every bridge call carries the one that covers it. `contributes.schema.json` is what a
 plugin adds to the desk's policies as data (ADR 0017). `theme.schema.json` is a theme plugin's `theme`
-block (ADR 0056, ADR 0057).
+block (ADR 0056, ADR 0057), and `theme-index.schema.json` a theme market's index (ADR 0060).
 
 ## Manifest
 
@@ -50,6 +50,14 @@ which can carry script) inside the folder, at most 2 MiB each and 8 MiB together
 validate` checks them. The desk installs a theme like a library: always on, never mounted, served at
 `/<id>/<path>`; `desk.theme.active` picks the one in force, and installing one does not apply it.
 `contributes.themes` stays what it was: token sets of policy plugins that always layer underneath.
+
+A theme market is an index (`ThemeIndex`: `format: "desk-theme-index/1"` and `themes`) and the
+`.desk-theme` bundles it lists. Each entry has what a gallery card shows (`id` inside `market.`, `name`,
+`version`, `description`, `author`, `license`, `tags`, up to five `preview` colours) and the bundle's
+`url` (https, or a path relative to the index without `..`), `sha256` and `size` (16 MiB at most).
+`desk.theme.markets` lists the indexes the desk reads, the first market that lists an id winning; the
+first one is `market/themes/index.json` in this repository, where publishing is a pull request that
+`scripts/theme-market.mjs` checks.
 
 ## Contributions
 

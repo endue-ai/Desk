@@ -1,0 +1,14 @@
+{
+  "target": "BridgeRequest",
+  "description": "brain.ask needs the tool that carries the answer",
+  "instance": {
+    "id": 31,
+    "method": "brain.ask",
+    "params": {
+      "prompt": "A warm theme.",
+      "scope": {
+        "permission": "brain:ask"
+      }
+    }
+  }
+}
