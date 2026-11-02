@@ -51,7 +51,7 @@ function readme(options: PluginOptions): string {
     "| File | Purpose |",
     "| --- | --- |",
     "| `plugin.json` | The manifest (specs/plugin v0): id, version, kind `ui`, entry, one surface, one command |",
-    "| `ui/index.html` | The entry page; its import map points `@endue-ai/plugin-sdk` at `/_desk/plugin-sdk.js` |",
+    "| `ui/index.html` | The entry page; its import map points `@endue-ai/plugin-sdk` and `@endue-ai/ui` at `/_desk/` |",
     "| `ui/main.js` | `defineUiPlugin(plugin)`: connects the plugin to the desk |",
     "| `ui/plugin.js` | The plugin's `mount`: state, a button, a command, a bridge call |",
     "| `ui/style.css` | The page's own layout, on the desk's tokens |",
@@ -73,12 +73,12 @@ function indexHtml({ name }: PluginOptions): string {
   <head>
     <meta charset="utf-8" />
     <title>${escapeHtml(name)}</title>
-    <!-- Desk serves these under /_desk/: the design tokens and the base sheet for plugin pages, and
-         the SDK. The import map lets the plugin import the SDK by name. -->
+    <!-- Desk serves these under /_desk/: the design tokens and the base sheet for plugin pages, the SDK
+         and the elements (docs/design-system.md). The import map lets plugins import the two by name. -->
     <link rel="stylesheet" href="/_desk/tokens.css" />
     <link rel="stylesheet" href="/_desk/base.css" />
     <script type="importmap">
-      { "imports": { "@endue-ai/plugin-sdk": "/_desk/plugin-sdk.js" } }
+      { "imports": { "@endue-ai/plugin-sdk": "/_desk/plugin-sdk.js", "@endue-ai/ui": "/_desk/ui.js" } }
     </script>
     <link rel="stylesheet" href="./style.css" />
   </head>
@@ -86,7 +86,7 @@ function indexHtml({ name }: PluginOptions): string {
     <h1>${escapeHtml(name)}</h1>
     <p data-testid="bridge">bridge: waiting</p>
     <p>
-      <button type="button">Count</button>
+      <desk-button variant="primary">Count</desk-button>
       <span data-testid="count">0</span>
     </p>
     <script type="module" src="./main.js"></script>
@@ -103,9 +103,11 @@ function escapeHtml(text: string): string {
     .replaceAll('"', "&quot;");
 }
 
-const MAIN_JS = `// The page's entry: it connects the plugin to the desk. Desk serves the SDK at
-// /_desk/plugin-sdk.js, and the page's import map lets this file import it by name.
+const MAIN_JS = `// The page's entry: it connects the plugin to the desk. Desk serves the SDK and the elements under
+// /_desk/, and the page's import map lets this file import them by name.
 import { defineUiPlugin } from "@endue-ai/plugin-sdk";
+// The elements define themselves on import; the page uses <desk-button>.
+import "@endue-ai/ui";
 import { plugin } from "./plugin.js";
 
 defineUiPlugin(plugin);
@@ -125,7 +127,7 @@ export const plugin = {
       count.textContent = String(value);
       return value;
     };
-    document.querySelector("button").addEventListener("click", add);
+    document.querySelector("desk-button").addEventListener("click", add);
     // The command plugin.json contributes: the palette lists it, and keys and \`desk cmd run\` run it.
     ctx.commands.on(\`\${ctx.pluginId}.count\`, add);
 
@@ -180,7 +182,7 @@ it("counts on a click and on its command, into plugin state", async () => {
 
   const count = document.querySelector("[data-testid=count]");
   expect(count.textContent).toBe("2");
-  document.querySelector("button").click();
+  document.querySelector("desk-button").click();
   expect(count.textContent).toBe("3");
   expect(await host.invoke(\`\${manifest.id}.count\`)).toBe(4);
   expect(host.state).toEqual({ count: 4 });
