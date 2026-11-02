@@ -2,9 +2,10 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { beforeEach, describe, expect, it } from "vitest";
+import type { Section } from "../ui/sections.js";
 import { createView } from "../ui/view.js";
 
-const SECTIONS = [
+const SECTIONS: Array<{ id: Section; label: string }> = [
   { id: "tree", label: "Render tree" },
   { id: "surfaces", label: "Surfaces and buffers" },
   { id: "commands", label: "Commands" },
