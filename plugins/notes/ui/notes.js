@@ -4,14 +4,18 @@
 // unsaved changes and changes on disk. It only talks to ctx.commands, ctx.bridge and a view, so the
 // SDK's test host runs it with a recording view.
 
+import { keep, readKept } from "./keep.js";
+
 /**
  * @typedef {import("@endue-ai/plugin-sdk").PluginContext} PluginContext
  * @typedef {import("@endue-ai/bridge").BridgeEvent} BridgeEvent
  * @typedef {import("@endue-ai/bridge").Permission} Permission
+ * @typedef {import("./keep.js").Place} Place
  * @typedef {"fs:read" | "fs:write"} FsPermission
  * @typedef {{ buffer: string, path: string, name: string, text: string, modified: boolean }} NoteModel
- * @typedef {{ note(model: NoteModel | null): void, status(text: string): void, focus(): void }} View
+ * @typedef {{ note(model: NoteModel | null): void, status(text: string): void, focus(): void, where(): Place, place(at: Place): void }} View
  * @typedef {NoteModel & { reported: boolean, watchId?: string }} Note
+ * @typedef {Pick<PluginContext, "bridge" | "commands"> & { surface?: Pick<PluginContext["surface"], "onUnload" | "restored"> }} NotesContext
  */
 
 /**
@@ -52,10 +56,10 @@ const requested = (/** @type {unknown} */ args) => {
 };
 
 /**
- * @param {Pick<PluginContext, "bridge" | "commands">} ctx
+ * @param {NotesContext} ctx
  * @param {View} view
  */
-export function createNotes({ bridge, commands }, view) {
+export function createNotes({ bridge, commands, surface }, view) {
   /** Open notes by the buffer the desk named them with. @type {Map<string, Note>} */
   const notes = new Map();
   // Only notes opened by the person enter global search, never arbitrary files or private settings.
@@ -268,6 +272,39 @@ export function createNotes({ bridge, commands }, view) {
 
   render();
 
+  // Unloaded while nobody sees it, notes keeps what it holds and comes back from it (ADR 0070).
+  surface?.onUnload(() => keep([...notes.values()], shown, view.where()));
+  /** Open again what was kept, without asking for grants or taking the focus. */
+  const restore = async (/** @type {unknown} */ value) => {
+    const kept = readKept(value);
+    if (!kept) return;
+    for (const { buffer, path, modified, reported, text, watchId } of kept.notes) {
+      const content =
+        text ??
+        (await bridge
+          .call("fs.read", { path, encoding: "utf8", scope: scopeOf("fs:read", path) })
+          .then(({ content }) => content)
+          .catch(() => undefined));
+      if (content === undefined) continue;
+      const note = {
+        buffer,
+        path,
+        name: nameOf(path),
+        text: content,
+        modified,
+        reported: !!reported,
+      };
+      notes.set(buffer, watchId ? { ...note, watchId } : note);
+      if (watchId) watches.set(watchId, buffer);
+    }
+    publish();
+    if (kept.shown === null || !notes.has(kept.shown)) return;
+    shown = kept.shown;
+    render();
+    view.place({ start: kept.caret[0], end: kept.caret[1], scroll: kept.scroll });
+  };
+  const ready = restore(surface?.restored);
+
   /** The person typed in the note on screen. */
   const edit = (/** @type {string} */ text) => {
     const note = shown === null ? undefined : notes.get(shown);
@@ -281,5 +318,5 @@ export function createNotes({ bridge, commands }, view) {
     publish();
   };
 
-  return { edit };
+  return { edit, ready };
 }
