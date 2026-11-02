@@ -76,6 +76,12 @@ defineUiPlugin({
 message. A refused call rejects with a `BridgeCallError` whose `code` is, for example,
 `permission_denied`.
 
+A surface nobody has seen for a while (behind other windows, off the screen) may be unloaded to save
+memory, and it loads again when it shows (ADR 0070). To come back as it was, register what to keep:
+`surface.onUnload(() => ({ open, caret, scroll }))` answers the desk's `ui.surface.state` with JSON up
+to 64 KiB, and the reloaded page finds it in `surface.restored`. Without a provider it comes back cold;
+`state` above still comes back.
+
 ## Permissions
 
 Your frame runs sandboxed with scripts only: no access to the desk's page, no top-level navigation, no
