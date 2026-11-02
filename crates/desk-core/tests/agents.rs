@@ -267,3 +267,56 @@ fn an_agents_always_grant_is_its_own_in_the_grant_file() {
     write(&again, MIRA, "~/Notes/b.md", "~/Notes/**").unwrap();
     assert!(named(&deliveries, "perm.prompt").is_empty());
 }
+
+/// brain.ask, theme.* and update.* (ADR 0059, 0058, 0054) are capped like any other call: outside
+/// the list they are refused without asking, whatever the agent holds; named in it, its grants count.
+#[test]
+fn brain_ask_theme_manage_and_update_manage_are_capped_like_any_other() {
+    let home = home("agent-newer");
+    let (core, deliveries) = core_with(&home, NOTES_ONLY);
+    let ask = json!({ "prompt": "Name a colour",
+        "tool": { "name": "colour", "description": "A colour", "schema": { "type": "object" } } });
+    let calls = [
+        ("brain:ask", "brain.ask", ask),
+        (
+            "theme:manage",
+            "theme.remove",
+            json!({ "theme": "user.gone" }),
+        ),
+        ("update:manage", "update.status", json!({})),
+    ];
+    let with_scope = |params: &Value, permission: &Value| {
+        let mut params = params.clone();
+        params["scope"] = permission.clone();
+        params
+    };
+    for (name, method, params) in &calls {
+        let permission = json!({ "permission": name });
+        grant(&core, MIRA, permission.clone());
+        let refused = call(&core, MIRA, method, with_scope(params, &permission)).unwrap_err();
+        assert_eq!(refused.code, ErrorCode::PermissionDenied, "{method}");
+        assert_eq!(
+            request(&core, MIRA, permission),
+            json!({ "granted": false, "reason": "outside-allowlist" })
+        );
+    }
+    assert!(
+        named(&deliveries, "perm.prompt").is_empty(),
+        "nobody is asked"
+    );
+
+    let allow = "agents:\n  mira:\n    allow:\n      - { permission: brain:ask }\n      - { permission: theme:manage }\n      - { permission: update:manage }\n";
+    fs::write(home.join("init.yaml"), allow).unwrap();
+    for (name, method, params) in &calls {
+        let permission = json!({ "permission": name });
+        let answered = call(&core, MIRA, method, with_scope(params, &permission));
+        // Past the check: no brain, no updater and no such theme here.
+        let code = answered.unwrap_err().code;
+        assert_ne!(code, ErrorCode::PermissionDenied, "{method}");
+        assert_eq!(request(&core, MIRA, permission)["granted"], true, "{name}");
+    }
+    assert!(
+        named(&deliveries, "perm.prompt").is_empty(),
+        "the grants it holds count"
+    );
+}
