@@ -15,7 +15,7 @@ const DOCS_WRITE = { permission: "fs:write", paths: ["~/Documents/**"] } as cons
 
 /** The bytes of every fs.write, decoded. */
 const written = (params: unknown[]) =>
-  params.map(({ content }) => new Uint8Array(Buffer.from(content, "base64")));
+  params.map((p) => new Uint8Array(Buffer.from((p as { content: string }).content, "base64")));
 
 describe("a CSV in UTF-8", () => {
   it("an edit marks the buffer modified once and save writes only that cell's bytes", async () => {
@@ -95,12 +95,14 @@ describe("a CSV in UTF-8", () => {
     let writes = 0;
     const files: Record<string, Uint8Array> = { [A.path]: fixture("crlf-bom-quotes.csv") };
     const handlers = disk(files);
+    const write = handlers["fs.write"];
+    if (!write) throw new Error("the disk has no fs.write");
     const { host, app, params } = await mount({
       handlers: {
         ...handlers,
-        "fs.write": (request) => {
+        "fs.write": (request, caller) => {
           if (++writes === 1) throw denied("fs:write over ~/Documents/cities.csv");
-          return handlers["fs.write"]?.(request);
+          return write(request, caller);
         },
         "perm.request": ({ permission }) => ({
           granted: true,
