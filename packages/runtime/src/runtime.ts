@@ -201,7 +201,7 @@ export function createRuntime(options: RuntimeOptions): Runtime {
       else closeSurface(plugin);
     },
   };
-  const theme = installTheme(ctx, options.themeRoot);
+  const theme = installTheme(ctx, options.themeRoot, options.plugins?.url);
   const keys = installKeys(ctx);
   // Contributed commands with `runs`, and the palette's providers, are the desk's to answer.
   const aliases = installAliases(ctx);

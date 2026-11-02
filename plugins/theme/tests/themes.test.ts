@@ -3,7 +3,8 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { PluginManifest } from "../../../packages/bridge/src/index";
 import { contrast, over, parseColor } from "../../../packages/runtime/src/shell/contrast";
-import { colors } from "../../../packages/ui/src/index";
+import { colors, terminal } from "../../../packages/ui/src/index";
+import { gate } from "../../../packages/ui/src/theme/index";
 
 const manifest = JSON.parse(
   readFileSync(join(import.meta.dirname, "../plugin.json"), "utf8"),
@@ -59,10 +60,23 @@ const ratio = (set: Record<string, string>, fg: string, bg: string, layer?: stri
 };
 
 describe("the endue theme", () => {
-  it("gives light and dark exactly the role colours of @endue-ai/ui; the dark one is the design's", () => {
+  it("gives light and dark exactly the role and terminal colours of @endue-ai/ui; dark is the design's", () => {
+    const names = [...Object.keys(colors), ...Object.keys(terminal)].sort();
     for (const scheme of ["dark", "light"] as const)
-      expect(Object.keys(normal(scheme)).sort(), scheme).toEqual(Object.keys(colors).sort());
-    expect(normal("dark")).toEqual(colors);
+      expect(Object.keys(normal(scheme)).sort(), scheme).toEqual(names);
+    expect(normal("dark")).toEqual({ ...colors, ...terminal });
+  });
+
+  it("passes the theme gate untouched in both schemes, as every theme must (TH-07)", () => {
+    for (const scheme of ["dark", "light"] as const)
+      expect(gate(normal(scheme)).fixes, scheme).toEqual([]);
+  });
+
+  it("declares desk.theme.active, empty for itself", () => {
+    expect(manifest.contributes?.settings?.["desk.theme.active"]).toMatchObject({
+      kind: "string",
+      default: "",
+    });
   });
 
   it("lets the high-contrast layers change role colours only", () => {

@@ -12,6 +12,7 @@ const plugins: Record<string, string> = {
   "test.counter": here("./fixture/plugins/test-counter"),
   "test.echo": here("./fixture/plugins/test-echo"),
   "test.worker": here("./fixture/plugins/test-worker"),
+  "test.theme": here("./themes/test-theme"),
   // The autoload opener of the desk page is the echo plugin under another id.
   "test.lazy": here("./fixture/plugins/test-echo"),
   "desk.palette": join(repo, "plugins/palette"),
@@ -41,6 +42,9 @@ const types: Record<string, string> = {
   ".css": "text/css",
   ".json": "application/json",
   ".svg": "image/svg+xml",
+  ".png": "image/png",
+  ".webp": "image/webp",
+  ".woff2": "font/woff2",
 };
 
 /**
