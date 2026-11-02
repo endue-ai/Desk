@@ -131,6 +131,7 @@ if (params.has("say")) {
     // The last choice says it to Eris.
     for (const key of ["ArrowUp", "Enter"])
       input.dispatchEvent(new KeyboardEvent("keydown", { key }));
-    step(1200);
+    // Once her answer is in, run her clock until she says it.
+    setTimeout(() => step(2500), 100);
   });
 }
