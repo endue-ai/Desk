@@ -74,7 +74,11 @@ export interface BrowserStub extends BridgeAdapter {
   readonly log: ReadonlyArray<{ caller: string | undefined; request: BridgeRequest }>;
 }
 
-export function browserStub(handlers: StubHandlers): BrowserStub {
+/** `observe` hears each call answered, by caller and outcome (stubCommands' `observe` counts them). */
+export function browserStub(
+  handlers: StubHandlers,
+  observe?: (caller: string | undefined, ok: boolean) => void,
+): BrowserStub {
   const listeners = new Set<(event: BridgeEvent) => void>();
   const calls: BridgeRequest[] = [];
   const log: Array<{ caller: string | undefined; request: BridgeRequest }> = [];
@@ -96,12 +100,16 @@ export function browserStub(handlers: StubHandlers): BrowserStub {
         | ((params: unknown, caller: string | undefined) => unknown | Promise<unknown>)
         | undefined;
       if (!handler) {
+        observe?.(caller, false);
         const message = `${request.method} is not served by the browser stub`;
         return { id: request.id, ok: false, error: { code: "unsupported", message } };
       }
       try {
-        return { id: request.id, ok: true, result: await handler(request.params, caller) };
+        const result = await handler(request.params, caller);
+        observe?.(caller, true);
+        return { id: request.id, ok: true, result };
       } catch (error) {
+        observe?.(caller, false);
         const permission = error instanceof StubError ? error.permission : undefined;
         return {
           id: request.id,

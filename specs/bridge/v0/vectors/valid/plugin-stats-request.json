@@ -1,0 +1,11 @@
+{
+  "target": "BridgeRequest",
+  "description": "plugin.stats under a perm:manage scope",
+  "instance": {
+    "id": 42,
+    "method": "plugin.stats",
+    "params": {
+      "scope": { "permission": "perm:manage" }
+    }
+  }
+}

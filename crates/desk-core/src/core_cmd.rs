@@ -166,6 +166,7 @@ impl Core {
             );
             invocation_id
         };
+        self.note_invoked(&invocation_id, &params.id, caller, &info.provider);
         let to = self.recipients(EventName::CmdInvoked, vec![info.provider]);
         self.events().publish_to(
             to,
@@ -258,6 +259,7 @@ impl Core {
         result: Option<Value>,
         error: Option<CommandFailure>,
     ) {
+        self.note_answered(invocation_id, error.as_ref().map(|failure| failure.code));
         self.events()
             .publish(BridgeEvent::CmdAnswered(CmdAnsweredEvent {
                 event: Default::default(),

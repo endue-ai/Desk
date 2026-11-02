@@ -12,6 +12,8 @@ use serde_json::{Map, Value, json};
 
 use crate::args::{Remote, UpdateStep};
 
+mod inspect;
+
 pub fn run(remote: Remote, json: bool) -> ExitCode {
     let Some(path) = desk_ipc::socket_path() else {
         return fail("no data folder to find the desk socket in; set DESK_SOCKET");
@@ -114,6 +116,7 @@ impl Session {
             Remote::PermLog { agent } => self.perm_log(agent.as_deref()),
             Remote::Update(step) => self.update(step),
             Remote::Theme(step) => self.theme(step),
+            Remote::Inspect { section } => self.inspect(section),
         }
     }
 
