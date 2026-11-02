@@ -1,55 +1,67 @@
-// The desk's theme as the terminal's: the screen, text, cursor and selection from the --desk-*
-// custom properties the desk hands every frame, the sixteen ANSI colours from a palette per scheme,
-// and the terminal options that the settings and the theme decide together. No DOM.
+// The desk's theme as the terminal's: the screen, text, cursor, selection and the sixteen ANSI colours
+// from the --desk-* custom properties the desk hands every frame (a theme sets --desk-ansi-0 … 15 per
+// scheme), and the terminal options that the settings and the theme decide together. No DOM.
 
 /** @typedef {import("@endue-ai/plugin-sdk").ThemeState} ThemeState */
 /** @typedef {import("./shell.js").Settings} Settings */
 
-/** The ANSI colours, chosen to read on the desk's dark and light backgrounds. */
-export const ANSI = Object.freeze({
+/** xterm's names for the colours of --desk-ansi-0 … --desk-ansi-15, black to bright white. */
+export const ANSI_NAMES = Object.freeze([
+  "black",
+  "red",
+  "green",
+  "yellow",
+  "blue",
+  "magenta",
+  "cyan",
+  "white",
+  "brightBlack",
+  "brightRed",
+  "brightGreen",
+  "brightYellow",
+  "brightBlue",
+  "brightMagenta",
+  "brightCyan",
+  "brightWhite",
+]);
+
+/**
+ * The tokens when the desk has handed none (before its first theme, or a theme that leaves one out):
+ * @endue-ai/ui's defaults for dark, desk.theme's light set for light. They are copies of the theme's
+ * own values, not colours of the terminal's, so they are kept as 0xRRGGBB numbers rather than colour
+ * strings; tests/theme-tokens.test.ts keeps them equal to those sources.
+ */
+const DEFAULTS = {
   dark: {
-    black: "#1e1d21",
-    red: "#ff8484",
-    green: "#5dbe5f",
-    yellow: "#ffb347",
-    blue: "#6cadff",
-    magenta: "#b6a3f5",
-    cyan: "#5fd0be",
-    white: "#d7d4dc",
-    brightBlack: "#6f6a78",
-    brightRed: "#ffa3a3",
-    brightGreen: "#86d788",
-    brightYellow: "#ffd089",
-    brightBlue: "#9cc9ff",
-    brightMagenta: "#cfc3ff",
-    brightCyan: "#8de0d3",
-    brightWhite: "#ffffff",
+    background: 0x141416,
+    text: 0xf2f0f5,
+    accent: 0xb6a3f5,
+    ansi: [
+      0x1e1d21, 0xff8484, 0x5dbe5f, 0xffb347, 0x6cadff, 0xb6a3f5, 0x5fd0be, 0xd7d4dc, 0x6f6a78,
+      0xffa3a3, 0x86d788, 0xffd089, 0x9cc9ff, 0xcfc3ff, 0x8de0d3, 0xffffff,
+    ],
   },
   light: {
-    black: "#1e1833",
-    red: "#b80012",
-    green: "#006c44",
-    yellow: "#925000",
-    blue: "#005fa3",
-    magenta: "#6b4f9e",
-    cyan: "#0d7a6e",
-    white: "#9b94a3",
-    brightBlack: "#675f70",
-    brightRed: "#d83b3b",
-    brightGreen: "#2a8a5c",
-    brightYellow: "#b5700a",
-    brightBlue: "#2f7fc1",
-    brightMagenta: "#8a6cc0",
-    brightCyan: "#2f9a8e",
-    brightWhite: "#ffffff",
+    background: 0xfaf9fc,
+    text: 0x1e1833,
+    accent: 0x6b4f9e,
+    ansi: [
+      0x1e1833, 0xb80012, 0x006c44, 0x925000, 0x005fa3, 0x6b4f9e, 0x0d7a6e, 0x9b94a3, 0x675f70,
+      0xd83b3b, 0x2a8a5c, 0xb5700a, 0x2f7fc1, 0x8a6cc0, 0x2f9a8e, 0xffffff,
+    ],
   },
-});
-
-/** What the desk's tokens are when a theme leaves one out (desk.theme's dark and light). */
-const FALLBACK = {
-  dark: { background: "#141416", text: "#f2f0f5", accent: "#b6a3f5" },
-  light: { background: "#faf9fc", text: "#1e1833", accent: "#6b4f9e" },
 };
+
+const hex = (/** @type {number} */ value) => `#${value.toString(16).padStart(6, "0")}`;
+
+const named = (/** @type {number[]} */ ansi) =>
+  Object.fromEntries(ANSI_NAMES.map((name, i) => [name, hex(ansi[i])]));
+
+/** The ANSI colours when the theme gives none, by xterm's names, per scheme. */
+export const ANSI = Object.freeze({
+  dark: named(DEFAULTS.dark.ansi),
+  light: named(DEFAULTS.light.ansi),
+});
 
 /** The platform's monospace font, when the settings name none. */
 export const MONOSPACE =
@@ -63,16 +75,17 @@ export function withAlpha(/** @type {string} */ color, /** @type {number} */ alp
 }
 
 /**
- * xterm.js's theme from the desk's. High contrast selects with the text colour itself.
+ * xterm.js's theme from the desk's: each colour from its --desk-* variable, or the default when the
+ * theme leaves it out. High contrast selects with the text colour itself.
  * @param {ThemeState} theme
  */
 export function xtermTheme(theme) {
-  const fallback = FALLBACK[theme.scheme];
-  const token = (/** @type {keyof typeof fallback} */ name) =>
-    theme.variables[`--desk-${name}`] ?? fallback[name];
-  const background = token("background");
-  const text = token("text");
-  const accent = token("accent");
+  const scheme = theme.scheme === "light" ? "light" : "dark";
+  const read = (/** @type {string} */ name, /** @type {string} */ fallback) =>
+    theme.variables[`--desk-${name}`]?.trim() || fallback;
+  const background = read("background", hex(DEFAULTS[scheme].background));
+  const text = read("text", hex(DEFAULTS[scheme].text));
+  const accent = read("accent", hex(DEFAULTS[scheme].accent));
   const high = theme.contrast === "high";
   return {
     background,
@@ -82,7 +95,9 @@ export function xtermTheme(theme) {
     selectionBackground: high ? text : withAlpha(accent, 0.35),
     ...(high ? { selectionForeground: background } : {}),
     selectionInactiveBackground: high ? text : withAlpha(accent, 0.2),
-    ...ANSI[theme.scheme],
+    ...Object.fromEntries(
+      ANSI_NAMES.map((name, i) => [name, read(`ansi-${i}`, ANSI[scheme][name])]),
+    ),
   };
 }
 
