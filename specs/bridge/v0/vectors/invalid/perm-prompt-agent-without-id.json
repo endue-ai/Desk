@@ -1,0 +1,16 @@
+{
+  "target": "BridgeEvent",
+  "description": "agent: needs the agent's id",
+  "instance": {
+    "event": "perm.prompt",
+    "data": {
+      "promptId": "p-4",
+      "caller": "agent:",
+      "permission": {
+        "permission": "fs:read",
+        "paths": ["~/Documents/**"]
+      },
+      "duration": "session"
+    }
+  }
+}

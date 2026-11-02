@@ -12,9 +12,16 @@ h1 {
   font-size: calc(var(--desk-text-sm) + 1px);
 }
 
-h2 {
+h2,
+h3 {
   margin: 12px 0 4px;
   font-size: calc(var(--desk-text-sm) - 1px);
+}
+
+/* Agents (agent:<id>) under their own heading, after the plugins and the desk. */
+#agents-title {
+  margin-top: 20px;
+  color: var(--desk-text-muted);
 }
 
 ul {

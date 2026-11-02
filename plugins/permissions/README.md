@@ -1,8 +1,9 @@
 # plugins/permissions
 
 The person's view of the permission engine, in the community folder format and on the public bridge
-API only. On the right it lists every caller's grants, grouped by caller, and revokes them. It is also
-the prompter: each `perm.prompt` opens the overlay, shows who asks, for what and why, and answers with
+API only. On the right it lists every caller's grants, grouped by caller, and revokes them; the brain's
+agents (`agent:<id>`, ADR 0072) come under their own Agents heading, named "Agent <id>". It is also the
+prompter: each `perm.prompt` opens the overlay, shows who asks, for what and why, and answers with
 `perm.answer`. One prompt at a time; the rest queue. Escape refuses.
 
 | Permission | Why |
