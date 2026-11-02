@@ -32,6 +32,8 @@ import { parseYaml } from "./parse/yaml.js";
  * @property {number} [rootCount]
  * @property {string} [note] Said above the raw view (a .conf that is not INI, a guessed encoding)
  * @property {string} [reason] Why the file opens as details only
+ * @property {import("./edit/session.js").EditTier} [tier] The edit tier, from the worker
+ * @property {string} [why] Why the worker's file is read-only
  * @typedef {{ DOMParser?: typeof DOMParser, onProgress?: (fraction: number) => void }} OpenOptions
  */
 
