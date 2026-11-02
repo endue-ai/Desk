@@ -7,8 +7,6 @@
 // It only talks to ctx.commands, ctx.bridge and a view, so the SDK's test host runs it.
 import { detect, LABELS } from "./detect.js";
 import { createExternal } from "./external.js";
-import { openFile } from "./formats.js";
-import { NoWorker, openInWorker } from "./remote.js";
 
 /**
  * @typedef {import("@endue-ai/plugin-sdk").PluginContext} PluginContext
@@ -25,6 +23,13 @@ import { NoWorker, openInWorker } from "./remote.js";
  * @typedef {{ read: typeof import("@endue-ai/plugin-sdk").readBytes,
  *   startWorker?: import("./remote.js").StartWorker, workerOver?: number }} Options
  */
+
+/**
+ * The readers (formats.js and every format under it) and the worker's client are not part of the
+ * plugin's first load: they start loading once the plugin is mounted (it says hello without them),
+ * and a file waits for them only when it comes first.
+ */
+const readers = () => Promise.all([import("./formats.js"), import("./remote.js")]);
 
 /** Files over this size are opened in a worker when their format needs no DOM. */
 const WORKER_OVER = 8 * 1024 * 1024;
@@ -69,6 +74,7 @@ const visible = ({ buffer, path, name, size, model }) => ({ buffer, path, name, 
  */
 export function createWeb({ bridge, commands }, view, options) {
   const { read: readBytes, startWorker, workerOver = WORKER_OVER } = options;
+  readers().catch(() => {});
   /** Open files by the buffer the desk named them with. @type {Map<string, OpenFile>} */
   const files = new Map();
   /** Watch id -> the buffer it follows. @type {Map<string, string>} */
@@ -183,6 +189,8 @@ export function createWeb({ bridge, commands }, view, options) {
       report("Reading", done, total, bytesText(done, total)),
     );
     const size = bytes.length;
+    const [{ openFile }, { NoWorker, openInWorker }] = await readers();
+    signal.throwIfAborted();
     const disk = { read: resource(path, signal) };
     const format = detect(bytes, path);
     /** @type {OpenFile} */

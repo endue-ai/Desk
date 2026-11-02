@@ -4,7 +4,6 @@
 // not cover it, opens it into the document model (in a worker for a file over 8 MiB) or the details
 // view, follows it on disk, and opens a document's links with shell.open. It only talks to
 // ctx.commands, ctx.bridge and a view, so the SDK's test host runs it with a recording view.
-import { openDocument } from "./open.js";
 import { createLinks } from "./view/links.js";
 
 /**
@@ -17,9 +16,20 @@ import { createLinks } from "./view/links.js";
  * @typedef {{ show(shown: Shown | null): unknown, status(text: string): void, focus(): void,
  *   progress?(value: Progress | null): void }} View
  * @typedef {Shown & { watchId?: string }} Open
+ * @typedef {typeof import("./open.js").openDocument} OpenDocument
  * @typedef {{ read: typeof import("@endue-ai/plugin-sdk").readBytes,
- *   startWorker?: typeof import("@endue-ai/plugin-sdk").startWorker, open?: typeof openDocument }} Options
+ *   startWorker?: typeof import("@endue-ai/plugin-sdk").startWorker, open?: OpenDocument }} Options
  */
+
+/**
+ * The readers, open.js and every format under it, are not part of the plugin's first load: they
+ * start loading once the plugin is mounted (it says hello without them), and a document waits for
+ * them only when it comes first.
+ */
+const readers = () => import("./open.js");
+
+/** @type {OpenDocument} */
+const openDocument = async (bytes, path) => (await readers()).openDocument(bytes, path);
 
 /** Files over this many bytes open in a worker. */
 export const LARGE = 8 * 1024 * 1024;
@@ -99,6 +109,7 @@ export function openInWorker(bytes, path, { signal, startWorker }) {
  */
 export function createDocs({ bridge, commands }, view, options) {
   const { read: readBytes, startWorker, open = openDocument } = options;
+  if (!options.open) readers().catch(() => {});
   /** @type {Map<string, Open>} */
   const docs = new Map();
   /** @type {Map<string, string>} watch id -> buffer */

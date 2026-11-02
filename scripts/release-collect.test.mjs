@@ -91,4 +91,37 @@ describe("release-collect", () => {
       /unknown target/u,
     );
   });
+
+  it("a_pre_release_carries_no_rpm_whose_version_takes_no_hyphen", () => {
+    const linux = bundle({
+      appimage: [
+        "endue Desk_0.2.1-pre.48_amd64.AppImage",
+        "endue Desk_0.2.1-pre.48_amd64.AppImage.sig",
+      ],
+      deb: ["endue Desk_0.2.1-pre.48_amd64.deb", "endue Desk_0.2.1-pre.48_amd64.deb.sig"],
+    });
+    const names = collect({
+      bundle: linux,
+      version: "0.2.1-pre.48",
+      target: "linux-x86_64",
+      out: join(linux, "dist"),
+    });
+    assert.deepEqual(names, [
+      "endue-desk_0.2.1-pre.48_linux-x86_64.AppImage",
+      "endue-desk_0.2.1-pre.48_linux-x86_64.AppImage.sig",
+      "endue-desk_0.2.1-pre.48_linux-x86_64.deb",
+      "endue-desk_0.2.1-pre.48_linux-x86_64.deb.sig",
+    ]);
+    const release = bundle({ appimage: [], deb: [] });
+    assert.throws(
+      () =>
+        collect({
+          bundle: release,
+          version: "0.2.0",
+          target: "linux-x86_64",
+          out: join(release, "d"),
+        }),
+      /expected one \.AppImage/u,
+    );
+  });
 });
