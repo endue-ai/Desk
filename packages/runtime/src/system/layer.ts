@@ -20,6 +20,7 @@ export function mountSystemLayer(root: HTMLElement, ctx: ShellCtx): () => void {
     commands: ctx.runtime.commands,
     lang: () => ctx.store.get().lang,
     fallback: () => root,
+    io: () => ctx.runtime.themes.io(),
   });
   return () => {
     studio.dispose();
