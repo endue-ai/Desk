@@ -73,7 +73,9 @@ describe("plugin.json", () => {
     const kinds = (sheets.permissions ?? []).map((p) => p.permission);
     expect(kinds).not.toContain("fs:read");
     expect(kinds).not.toContain("fs:write");
-    expect(sheets.permissions).toEqual([{ permission: "cmd:invoke", ids: ["desk.files.changed"] }]);
+    expect(sheets.permissions).toEqual([
+      { permission: "cmd:invoke", ids: ["desk.files.changed", "desk.buffers.update"] },
+    ]);
     expect(sheets.contributes?.settings?.["endue.sheets.csv-encoding"]).toMatchObject({
       kind: "string",
       default: "auto",
