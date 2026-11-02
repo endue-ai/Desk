@@ -1,0 +1,13 @@
+{
+  "profile": "default",
+  "surfaces": [
+    "endue.notes",
+    "endue.sheets",
+    "endue.data",
+    "endue.images",
+    "endue.web",
+    "endue.docs"
+  ],
+  "budget": { "secondStartMs": 1200, "inputToScreenMs": 16 },
+  "measured": { "readyMs": null, "firstFrameMs": null }
+}

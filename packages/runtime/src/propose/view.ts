@@ -49,8 +49,8 @@ export interface ViewKindOptions {
   schemas?: Schemas;
 }
 
-/** A view id's last part from its title: ASCII words joined by hyphens, a letter first. */
-export function slugOf(title: string): string {
+/** An id's last part from a title: ASCII words joined by hyphens, a letter first. */
+export function slugOf(title: string, fallback = "view"): string {
   const words = title
     .replace(/\{\{|\}\}/g, " ")
     .replace(/\{([^}|]*)(\|[a-z]+)?\}/g, (_, path: string) => ` ${path.split(".").at(-1) ?? ""} `)
@@ -61,8 +61,8 @@ export function slugOf(title: string): string {
     .replace(/^-+/, "")
     .slice(0, 48)
     .replace(/-+$/, "");
-  if (!words) return "view";
-  return /^[a-z]/.test(words) ? words : `view-${words}`;
+  if (!words) return fallback;
+  return /^[a-z]/.test(words) ? words : `${fallback}-${words}`;
 }
 
 const isObject = (value: unknown): value is Record<string, unknown> =>
