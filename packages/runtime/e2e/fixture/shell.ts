@@ -3,7 +3,8 @@
 // and in-memory storage. ?lang=en, ?persist=1 (the core's store in localStorage), ?reduced=1
 // (desk.theme.motion: reduce), ?init={...} (more init.yaml settings), ?themes=1 (the test theme
 // plugin installed), ?studio=1 (the theme studio open once the desk is ready; ?studio=<theme id>
-// previews that theme too; ?edit=<theme id> opens the editor on a copy of it). brain.ask answers as
+// previews that theme too; ?edit=<theme id> opens the editor on a copy of it; ?describe=<sentence>
+// runs Describe on it; ?say=<sentence> says it to Eris through the composer). brain.ask answers as
 // examples/brain-echo does (propose_theme from the words of the prompt's last line). Never shipped.
 import type { PluginManifest } from "@endue-ai/bridge";
 import "../../src/desk.css";
@@ -112,4 +113,24 @@ if (params.has("edit")) {
   void desk.ready.then(() =>
     desk.runtime.commands.run("desk.theme.edit", { id: params.get("edit") }),
   );
+}
+
+if (params.has("describe")) {
+  void desk.ready.then(() =>
+    desk.runtime.commands.run("desk.theme.describe", { text: params.get("describe") }),
+  );
+}
+
+if (params.has("say")) {
+  void desk.ready.then(() => {
+    const input = document.querySelector<HTMLInputElement>("#composer-input");
+    if (!input) return;
+    input.focus();
+    input.value = params.get("say") ?? "";
+    input.dispatchEvent(new Event("input"));
+    // The last choice says it to Eris.
+    for (const key of ["ArrowUp", "Enter"])
+      input.dispatchEvent(new KeyboardEvent("keydown", { key }));
+    step(1200);
+  });
 }
