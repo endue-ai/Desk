@@ -10,21 +10,23 @@ and its sync, the brain conversation with its session store and lease client, th
   but `audio.capture.*` (`unsupported`). Call it off the UI thread: `perm.request` and others wait.
 - `proc.spawn` passes the permission engine for its command (a PTY only where scope and grant allow
   `pty`); `proc.output` and `proc.exit` reach the caller only; later calls need owner and scope.
-- `net.fetch` checks the URL against the `net:fetch` scope (`Target::Url`), desk-sys every redirect;
-  `ui.surface.open` needs `ui:surface` and a declared surface, and `ui.surface.*` events go to `desk`.
+- `net.fetch` checks the URL (`Target::Url`) and desk-sys every redirect; `ui.surface.open` needs
+  `ui:surface` and a declared surface.
 - Files (ADR 0041): `fs.read` reads ranges; `fs.url` makes a 128-bit token that `file_url(token)`
   resolves to a `FileUrl` while its caller runs and holds the grant. Links (ADR 0047): `with_opener`.
 - Permissions: `Core::grant`, `with_grant_file(path)` (`always`, ADR 0029), `with_prompter` (`RefuseAll`
   by default); `perm.request`, and `shell.open` without a grant, prompt the `perm:manage` holders
   (`perm.prompt`). `PermissionEngine`: deny by default; a `once` grant is spent by its call.
-- `EventBus`: `subscribe`, `subscribe_addressed`, `publish`, `publish_to`; `subscription_count()`,
-  `watch_count()`, `process_count()`, `surface_count()`, `file_url_count()`; `media_type(name)`.
+- `EventBus`: `subscribe`, `subscribe_addressed`, `publish`, `publish_to`; `*_count()`; `media_type`.
 - Plugins: `with_plugin_store(path)`, `install_plugin(dir, built_in)`, `install_plugins_in`,
   `plugins()`, `plugin_file(id, path)`, `watch_plugins()`, `validate_dir(dir)`. A plugin turned off
   takes its commands, requests, subscriptions, processes, surfaces and URLs; its connectors pause.
 - Storage: `with_store_file(path)`, `with_settings_file(path)`, `with_log_dir(dir)`, `Core::log`.
-  Brain: `with_brain(brain, BrainOptions)`, `open_session(id)`, `brain_session()`, `LeaseClient`,
-  `SessionStore`; `brain.say` streams `brain.turn`; the directory passes the brain's answers through.
+  Brain: `with_brain(brain, BrainOptions)`, `open_session(id)`, `brain_session()`, `LeaseClient`.
+- Start (ADR 0061): every state file is screened as it loads; an unreadable one is kept as
+  `<name>.broken` (`keep_broken`, `broken_in`) and listed by `broken_files()`; `with_index_file`,
+  `keep_broken_views`, `report_broken`. `with_safe_mode(SafeReason)` and `safe_mode()` hold all but
+  the desk.* policies off; `plugins.quarantined` in `desk`'s store holds its plugins; `LastStart`.
 - init.yaml (ADR 0016): `with_init_file(path)`, `init()`, `init_problem()`, `with_sync(remote,
   state_file)`, `sync_init()`, `resolve_init(Keep)`; `MockRemote` stands in for endue.
 - Integration layer (ADR 0036): `with_index(Arc<dyn ItemIndex>)` (`data.*` under `data:read`),
@@ -35,6 +37,4 @@ and its sync, the brain conversation with its session store and lease client, th
 
 ## Testing
 
-`cargo test -p desk-core`. `tests/` covers each side (`proc`'s child is the test binary itself; `net`
-serves from in-process listeners; `conversation`, `directory` and `lease` start `examples/brain-echo`,
-needs Node); the integration layer runs on a temp index, a `FakeCalendar` and a fake clock (`layer`).
+`cargo test -p desk-core`: `tests/` per side; the brain tests need Node for `examples/brain-echo`.

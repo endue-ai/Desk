@@ -1,14 +1,13 @@
 # desk-cli
 
-The `desk` CLI: plugin validate, and the commands, plugins and grants of a running desk. The hands AI
-agents use.
-
-Layer: Rust core (see `docs/architecture.md`). Status: the commands below.
+The `desk` CLI: plugin validate, doctor, and the commands, plugins and grants of a running desk. The
+hands AI agents use. Layer: Rust core (see `docs/architecture.md`).
 
 ## Commands
 
 ```bash
 desk plugin validate <dir>             # plugin.json against specs/plugin v0; entry and view files exist
+desk doctor [--data <dir>]             # quarantined plugins and .broken state files (ADR 0061); exits 0
 desk ping                              # a round trip to the running desk; prints ok
 desk cmd list                          # id<TAB>provider<TAB>title per command
 desk cmd run <id> [--args <json>]      # waits for cmd.answered; prints the result as JSON
@@ -18,7 +17,7 @@ desk perm list                         # grantId<TAB>caller<TAB>permission per g
 desk perm revoke <grantId>             # prints ok
 ```
 
-All but `plugin validate` reach the running desk over its socket (`crates/desk-ipc`, ADR 0030) as
+All but `plugin validate` and `doctor` (which read files) reach the running desk over its socket (`crates/desk-ipc`, ADR 0030) as
 the caller `cli`; `DESK_SOCKET` names another socket. `--json`, anywhere among the arguments, prints
 the desk's answer line as it came (for `cmd run`, the `cmd.answered` event line).
 
