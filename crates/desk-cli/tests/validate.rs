@@ -62,7 +62,7 @@ fn plugin_dir(name: &str, manifest: &str) -> PathBuf {
 fn a_broken_plugin_exits_1_and_names_each_problem() {
     let dir = plugin_dir(
         "broken",
-        r#"{ "id": "Bad", "version": "1", "kind": "theme" }"#,
+        r#"{ "id": "Bad", "version": "1", "kind": "gadget" }"#,
     );
     let out = desk(&["plugin", "validate", dir.to_str().unwrap()]);
     assert_eq!(out.status.code(), Some(1));
