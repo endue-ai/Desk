@@ -5,7 +5,8 @@
    own (desk.shell's for light are a darker frost and gold) and a theme can set them. The runtime sets
    them on this frame with the rest of the theme; until they arrive, the nearest roles stand in. Her
    words are the theme's text but for her gold. The orb's core, flash and glint take the tokens; her
-   body and Dysnomia are the brand art (assets/*.svg), drawn as it is. */
+   body and Dysnomia are the brand art (assets/*.svg), drawn as it is, and in the light scheme they
+   sit on her night (below). */
 :root {
   --eris-gold: var(--desk-eris, var(--desk-chart-3));
   --eris-gold-light: var(--desk-eris-gold-light, var(--desk-chart-3));
@@ -13,6 +14,9 @@
   --eris-frost: var(--desk-eris-frost, var(--desk-text));
   --eris-white: var(--desk-eris-white, var(--desk-text));
   --eris-glow: var(--desk-eris-glow, color-mix(in srgb, var(--desk-text) 35%, transparent));
+  /* Her night, the ground her frost art was drawn for: the theme's erisMoonDark, whose alpha is the
+     halo's strength. None until the theme's tokens reach the frame. */
+  --eris-night: var(--desk-eris-moon-dark, transparent);
 }
 
 .ch {
@@ -113,6 +117,26 @@
 .sphere .moon-float {
   width: 44px;
   height: 44px;
+}
+
+/* In the light scheme her body and Dysnomia, frost art drawn for a dark desk and used unmodified
+   (brand/LICENSE), sit on a night of their own: halos of --eris-night, solid past their lines and
+   fading out. They are the float's background, under her core, body and Dysnomia, and orb.js grows
+   each from its centre (hers with her core, Dysnomia's as she arrives); nothing is painted over the
+   art, and the dark scheme has no night. In percent of the float (360x388), so they scale as they
+   grow. Her centre is at 180px 188.5px and her rim 139px from it: solid to 144px, gone at 180px.
+   Dysnomia's centre is at 313px 302px and her facets 18px from it, drifting 8px against the body
+   as both float: solid to 26px, gone at 44px. */
+[data-scheme="light"] .sphere .float {
+  background-image:
+    radial-gradient(
+      ellipse 12.22% 11.34% at 86.94% 77.84%,
+      var(--eris-night) 59.1%,
+      transparent 100%
+    ),
+    radial-gradient(ellipse 50% 46.39% at 50% 48.58%, var(--eris-night) 80%, transparent 100%);
+  background-position: 86.94% 77.84%, 50% 48.58%;
+  background-repeat: no-repeat;
 }
 
 .sphere .flash {

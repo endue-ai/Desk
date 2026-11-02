@@ -1,10 +1,10 @@
 // @vitest-environment jsdom
 // Eris's body and Dysnomia are the brand's frost art (assets/*.svg, brand/LICENSE), drawn for a dark
-// desk. In the light scheme each sits on a night of its own: a halo of the theme's erisMoonDark behind
-// it, solid past her lines and fading out, so her outline reaches 3:1 on what sits directly behind it
-// (#357). The art is used as it is: nothing over it filters, masks or blends it, and the dark scheme is
-// exactly as before. The onboarding's arrival scene and greeting build the orb from orb.js and
-// soul-text.css; the Eris page shows her pose.
+// desk. In the light scheme they sit on a night of their own: halos of the theme's erisMoonDark under
+// the art, solid past her lines and fading out, so her outline reaches 3:1 on what sits directly behind
+// it (#357). The art is used as it is: nothing over it filters, masks or blends it, the night is only
+// ever beneath it, and the dark scheme is exactly as before. The onboarding's arrival scene and greeting
+// build the orb from orb.js and soul-text.css; the Eris page shows her pose.
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
@@ -32,6 +32,8 @@ const ONBOARDING = ["eris/ui/soul-text.css", "onboarding/ui/style.css", "onboard
 const ERIS_PAGE = ["eris/ui/soul-text.css", "eris/ui/style.css"];
 const STATES = ["idle", "listening", "thinking", "done", "heads-up", "oops"];
 const EFFECTS = ["filter", "backdrop-filter", "mask", "mask-image", "-webkit-mask-image"];
+/** How far the body and Dysnomia drift apart as they float (orb.js: 8px each, out of phase). */
+const DRIFT = 8;
 // The orb exactly as orb.js builds it before this change.
 const CURRENT = [
   '<div class="float"><div class="core-wrap"><div class="core"></div></div>',
@@ -58,23 +60,35 @@ function orb(scheme: Scheme): HTMLElement {
   return sphere;
 }
 
-function pose(scheme: Scheme): HTMLElement {
+/** The Eris page's pose, shown as main.js shows one: the figure's data-state and that state's image. */
+function pose(scheme: Scheme, state = "idle"): HTMLElement {
   const html = read("eris/ui/index.html");
   const body = html.slice(html.indexOf("<body>") + 6, html.indexOf("</body>"));
   load(scheme, ERIS_PAGE, body.replace(/<script[\s\S]*?<\/script>/g, ""));
-  return document.querySelector("#pose") as HTMLElement;
+  const figure = document.querySelector("#pose") as HTMLElement;
+  figure.dataset.state = state;
+  figure.querySelector("img")?.setAttribute("src", `./assets/state-${state}.svg`);
+  return figure;
 }
 
-const art = (root: HTMLElement, selector: string) => root.querySelector(selector) as HTMLElement;
 const style = (el: Element) => getComputedStyle(el);
+const num = (value: string) => Number.parseFloat(value) || 0;
+const all = (root: Element) => [root, ...root.querySelectorAll("*")];
 const box = (el: Element) => {
   const s = style(el);
-  return {
-    w: Number.parseFloat(s.width),
-    h: Number.parseFloat(s.height),
-    pad: Number.parseFloat(s.paddingTop) || 0,
-  };
+  return { w: num(s.width), h: num(s.height), pad: num(s.paddingTop) };
 };
+
+/** Where an element's padding box starts within `top`, from the CSS alone (jsdom has no layout). */
+function corner(el: Element, top: Element): Point {
+  let [x, y] = [0, 0];
+  for (let e: Element | null = el; e && e !== top; e = e.parentElement) {
+    const s = style(e);
+    if (s.position === "absolute") [x, y] = [x + num(s.left), y + num(s.top)];
+    [x, y] = [x + num(s.marginLeft), y + num(s.marginTop)];
+  }
+  return [x, y];
+}
 
 /** Her night: the colour soul-text.css's --eris-night takes from desk.shell's light palette. */
 function night(): Rgba | undefined {
@@ -85,7 +99,7 @@ function night(): Rgba | undefined {
     : undefined;
 }
 
-/** The halos of the night on an element: centre and solid radius, in px of its padding box. */
+/** The night's halos an element paints: centre and solid radius, in px of its padding box. */
 function halos(el: Element) {
   const { w, h, pad } = box(el);
   const [width, height] = [w + 2 * pad, h + 2 * pad];
@@ -93,7 +107,11 @@ function halos(el: Element) {
     value.endsWith("%") ? (Number.parseFloat(value) / 100) * of : Number.parseFloat(value);
   const layer =
     /radial-gradient\((?:circle|ellipse ([\d.]+%) ([\d.]+%)) at ([\d.]+(?:px|%)) ([\d.]+(?:px|%)), var\(--eris-night\) ([\d.]+(?:px|%))/g;
-  return [...style(el).backgroundImage.matchAll(layer)].map(([, rx, ry, x, y, solid]) => {
+  // A value with var() comes back as written: make it one space between tokens, none in parentheses.
+  const image = style(el)
+    .backgroundImage.replace(/\s+/g, " ")
+    .replace(/\( | \)/g, (m) => m.trim());
+  return [...image.matchAll(layer)].map(([, rx, ry, x, y, solid]) => {
     const ray = rx && ry ? Math.min(px(rx, width), px(ry, height)) : 0;
     return { x: px(x ?? "", width), y: px(y ?? "", height), solid: px(solid ?? "", ray) };
   });
@@ -121,36 +139,60 @@ function outline(file: string): Rgba {
   const rim = shapes.some((s) => s.tag === "path")
     ? shapes.filter((s) => s.tag === "path")
     : shapes;
-  const all = rim.flatMap((s) => s.points);
+  const points = rim.flatMap((s) => s.points);
   const mid = (i: 0 | 1) =>
-    (Math.min(...all.map((p) => p[i])) + Math.max(...all.map((p) => p[i]))) / 2;
+    (Math.min(...points.map((p) => p[i])) + Math.max(...points.map((p) => p[i]))) / 2;
   const r = (p: Point) => Math.hypot(p[0] - mid(0), p[1] - mid(1));
-  const reach = Math.max(...all.map(r));
+  const reach = Math.max(...points.map(r));
   const outer = rim.filter((s) => s.points.some((p) => r(p) >= reach * 0.98));
   const line = outer.reduce((a, b) => (b.opacity > a.opacity ? b : a));
   const [red, green, blue] = color(line.stroke);
   return [red, green, blue, line.opacity];
 }
 
-/** What sits directly behind every line of `file` drawn by `el`: the night if its halos cover them. */
-function behind(el: Element, file: string, surface: string): Rgba {
+/**
+ * What sits directly behind every line of `file`, drawn by the image `art` within `top`: the night if
+ * the halos painted there cover each line, also when the art floats apart from the halo's element.
+ */
+function behind(art: Element, file: string, top: Element, surface: string): Rgba {
   const { viewBox, shapes } = lines(file);
   const [vx = 0, vy = 0, vw = 1, vh = 1] = viewBox;
-  const { w, h, pad } = box(el);
+  const { w, h, pad } = box(art);
+  const [ax, ay] = corner(art, top);
   const scale = Math.min(w / vw, h / vh);
-  const at = ([x, y]: Point) => [
-    pad + (w - vw * scale) / 2 + (x - vx) * scale,
-    pad + (h - vh * scale) / 2 + (y - vy) * scale,
+  const at = ([x, y]: Point): Point => [
+    ax + pad + (w - vw * scale) / 2 + (x - vx) * scale,
+    ay + pad + (h - vh * scale) / 2 + (y - vy) * scale,
   ];
-  const rings = halos(el);
+  const rings = all(top).flatMap((ground) => {
+    const [gx, gy] = corner(ground, top);
+    const drift = ground.contains(art) ? 0 : DRIFT;
+    return halos(ground).map((o) => ({ x: gx + o.x, y: gy + o.y, solid: o.solid - drift }));
+  });
   const covered = shapes.every((s) =>
     s.points.every((p) => {
-      const [x = 0, y = 0] = at(p);
+      const [x, y] = at(p);
       return rings.some((o) => Math.hypot(x - o.x, y - o.y) + (s.width * scale) / 2 <= o.solid);
     }),
   );
   return (covered && night()) || color(surfaces[surface]);
 }
+
+/** Nothing over the art filters, masks or blends it, and the night is only ever beneath it. */
+function nothingOver(top: Element, art: Element[]) {
+  for (const el of all(top)) {
+    for (const name of EFFECTS) expect(["", "none"]).toContain(style(el).getPropertyValue(name));
+    expect(["", "normal"]).toContain(style(el).getPropertyValue("mix-blend-mode"));
+    expect(["", "auto"]).toContain(style(el).zIndex);
+    if (halos(el).length === 0) continue;
+    for (const image of art) {
+      const beneath = el.contains(image) || !!(el.compareDocumentPosition(image) & 4);
+      expect(beneath, `${el.className} paints its night under ${image.className}`).toBe(true);
+    }
+  }
+}
+
+const grounds = (top: Element) => all(top).filter((el) => halos(el).length > 0);
 
 beforeAll(() => {
   // jsdom has no Web Animations; the orb's timeline is not under test here.
@@ -158,70 +200,63 @@ beforeAll(() => {
 });
 
 describe("Eris's orb in the onboarding (arrival scene and greeting)", () => {
-  it("is exactly the current markup in the dark scheme, with no ground behind the art", () => {
+  it("is exactly the current markup in the dark scheme, with no night", () => {
     const sphere = orb("dark");
     expect(sphere.innerHTML).toBe(CURRENT);
-    for (const selector of [".body", ".moon-float"]) {
-      expect(style(art(sphere, selector)).backgroundImage).toBe("none");
-      expect(box(art(sphere, selector)).pad).toBe(0);
-    }
+    for (const el of all(sphere)) expect(style(el).backgroundImage).not.toContain("--eris-night");
   });
 
   it("keeps the same markup and the brand art in the light scheme", () => {
     expect(orb("light").innerHTML).toBe(CURRENT);
   });
 
-  it("puts a night of the theme's erisMoonDark behind her body and Dysnomia in the light scheme", () => {
+  it("paints a night of the theme's erisMoonDark in the light scheme", () => {
     const sphere = orb("light");
     expect(night()).toEqual(color(shell.erisMoonDark));
-    expect(halos(art(sphere, ".body"))).toHaveLength(1);
-    expect(halos(art(sphere, ".moon-float"))).toHaveLength(1);
+    expect(grounds(sphere).length).toBeGreaterThan(0);
   });
 
   it.each([
     [".body", "eris-balanced.svg"],
     [".moon-float", "dysnomia.svg"],
   ])("gives %s's outline 3:1 on what sits directly behind it", (selector, file) => {
-    const ground = behind(art(orb("light"), selector), file, "background");
-    expect(contrast(outline(file), ground)).toBeGreaterThanOrEqual(3);
+    const sphere = orb("light");
+    const art = sphere.querySelector(selector) as Element;
+    expect(contrast(outline(file), behind(art, file, sphere, "background"))).toBeGreaterThanOrEqual(
+      3,
+    );
   });
 
-  it("puts no filter, mask or blend mode over the art", () => {
+  it("paints nothing over the art", () => {
     for (const scheme of ["light", "dark"] as const) {
       const sphere = orb(scheme);
-      for (const el of [sphere, ...sphere.querySelectorAll("*")]) {
-        for (const name of EFFECTS)
-          expect(["", "none"]).toContain(style(el).getPropertyValue(name));
-        expect(["", "normal"]).toContain(style(el).getPropertyValue("mix-blend-mode"));
-      }
+      nothingOver(sphere, [...sphere.querySelectorAll(".body, .moon-float")]);
     }
   });
 });
 
 describe("Eris's pose on the Eris page", () => {
-  it("has no ground behind the art in the dark scheme", () => {
-    const img = art(pose("dark"), "img");
-    expect(style(img).backgroundImage).toBe("none");
-    expect(box(img).pad).toBe(0);
+  it("has no night in the dark scheme", () => {
+    for (const state of STATES)
+      for (const el of all(pose("dark", state)))
+        expect(style(el).backgroundImage).not.toContain("--eris-night");
   });
 
   it.each(STATES)(
     "gives her %s pose an outline of 3:1 on what sits directly behind it",
     (state) => {
-      const img = art(pose("light"), "img");
-      expect(img.getAttribute("src")).toBe("./assets/state-idle.svg");
+      const figure = pose("light", state);
+      const img = figure.querySelector("img") as Element;
       const file = `state-${state}.svg`;
-      expect(contrast(outline(file), behind(img, file, "card"))).toBeGreaterThanOrEqual(3);
+      expect(contrast(outline(file), behind(img, file, figure, "card"))).toBeGreaterThanOrEqual(3);
     },
   );
 
-  it("puts no filter, mask or blend mode over the art", () => {
+  it("paints nothing over the art", () => {
     for (const scheme of ["light", "dark"] as const) {
-      const figure = pose(scheme);
-      for (const el of [figure, ...figure.querySelectorAll("*")]) {
-        for (const name of EFFECTS)
-          expect(["", "none"]).toContain(style(el).getPropertyValue(name));
-        expect(["", "normal"]).toContain(style(el).getPropertyValue("mix-blend-mode"));
+      for (const state of STATES) {
+        const figure = pose(scheme, state);
+        nothingOver(figure, [...figure.querySelectorAll("img")]);
       }
     }
   });

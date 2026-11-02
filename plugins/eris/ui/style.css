@@ -35,6 +35,34 @@ body {
   height: 80px;
 }
 
+/* In the light scheme her pose, frost art drawn for a dark desk, sits on her night as the orb does
+   in soul-text.css: one halo behind her body, one behind Dysnomia, solid past their lines. The
+   padding is a quarter of the image on each side and the halos are in percent of that box, so the
+   small layout below keeps them. In the state images her centre is at 50% 51.45% of the box and her
+   lines reach 28.2% from it; Dysnomia's facets reach 3.7% from her centre, which moves with the
+   pose. */
+[data-scheme="light"] #pose img {
+  box-sizing: content-box;
+  padding: 20px;
+  margin: -20px;
+  background-image:
+    radial-gradient(ellipse 11% 11% at 74.64% 71.01%, var(--eris-night) 50%, transparent 100%),
+    radial-gradient(ellipse 35% 35% at 50% 51.45%, var(--eris-night) 82%, transparent 100%);
+}
+
+/* Thinking, Dysnomia orbits to her upper left; oops, she sinks a little. */
+[data-scheme="light"] #pose[data-state="thinking"] img {
+  background-image:
+    radial-gradient(ellipse 11% 11% at 27.54% 29.71%, var(--eris-night) 50%, transparent 100%),
+    radial-gradient(ellipse 35% 35% at 50% 51.45%, var(--eris-night) 82%, transparent 100%);
+}
+
+[data-scheme="light"] #pose[data-state="oops"] img {
+  background-image:
+    radial-gradient(ellipse 11% 11% at 74.64% 73.19%, var(--eris-night) 50%, transparent 100%),
+    radial-gradient(ellipse 35% 35% at 50% 51.45%, var(--eris-night) 82%, transparent 100%);
+}
+
 #conversation {
   grid-row: 2;
   min-width: 0;
@@ -179,6 +207,7 @@ body {
 @media (max-height: 450px) {
   #root { padding: 0 8px 8px; }
   #pose img { width: 32px; height: 32px; }
+  [data-scheme="light"] #pose img { padding: 8px; margin: -8px; }
   #pose figcaption, #answer.cap { display: none; }
   .say { max-height: 65vh; overflow-y: auto; margin-top: 4px; gap: 4px; }
   #say-text, .send { grid-row: 1; }
