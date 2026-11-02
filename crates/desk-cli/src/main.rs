@@ -45,6 +45,7 @@ fn validate(dir: &Path) -> ExitCode {
                 PluginKind::Library => "library",
                 PluginKind::Connector => "connector",
                 PluginKind::View => "view",
+                PluginKind::Theme => "theme",
             };
             println!("ok {} {} ({kind} plugin)", manifest.id, manifest.version);
             ExitCode::SUCCESS

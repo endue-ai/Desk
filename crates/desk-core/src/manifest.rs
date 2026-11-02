@@ -4,7 +4,7 @@ use std::fs;
 use std::path::{Component, Path, PathBuf};
 use std::sync::OnceLock;
 
-use desk_bridge::{PluginManifest, SCHEMAS};
+use desk_bridge::{PluginManifest, SCHEMAS, ThemePackage};
 use serde_json::{Value, json};
 
 const MANIFEST_ID: &str = "https://endue.ai/specs/plugin/v0/plugin.schema.json";
@@ -35,8 +35,8 @@ fn validator() -> &'static jsonschema::Validator {
     })
 }
 
-/// Validate the plugin folder `dir`: plugin.json must match the schema and its entry, when it has one
-/// (policy plugins have none), must exist.
+/// Validate the plugin folder `dir`: plugin.json must match the schema, its entry, when it has one
+/// (policy plugins have none), must exist, and so must a theme's font and image files.
 /// Returns every problem found, each prefixed with where it is.
 pub fn validate_dir(dir: &Path) -> Result<PluginManifest, Vec<String>> {
     let text = fs::read_to_string(dir.join("plugin.json"))
@@ -55,6 +55,12 @@ pub fn validate_dir(dir: &Path) -> Result<PluginManifest, Vec<String>> {
             "plugin.json: does not match the manifest type: {e}"
         )]
     })?;
+    if let Some(theme) = &manifest.theme {
+        let problems = theme_assets(dir, theme);
+        if !problems.is_empty() {
+            return Err(problems);
+        }
+    }
     let Some(entry) = manifest.entry.as_deref() else {
         return Ok(manifest);
     };
@@ -62,6 +68,56 @@ pub fn validate_dir(dir: &Path) -> Result<PluginManifest, Vec<String>> {
         Some(file) if file.is_file() => Ok(manifest),
         _ => Err(vec![format!("plugin.json: entry {entry} does not exist")]),
     }
+}
+
+/// A theme asset's size limit, and all of one theme's together (docs/ko/theme-requirements.md TH-09).
+pub const THEME_ASSET_MAX: u64 = 2 << 20;
+pub const THEME_ASSETS_MAX: u64 = 8 << 20;
+
+/// A theme's font and image files: each inside the folder, a file, and within the size limits. The
+/// schema already holds their extensions to .woff2 and .png, .jpg, .jpeg or .webp.
+fn theme_assets(dir: &Path, theme: &ThemePackage) -> Vec<String> {
+    let fonts = theme
+        .r#type
+        .iter()
+        .flat_map(|t| t.fonts.iter().flatten())
+        .map(|font| ("theme.type.fonts", font.src.as_str()));
+    let images = [("light", &theme.light), ("dark", &theme.dark)]
+        .into_iter()
+        .filter_map(|(scheme, variant)| {
+            let image = variant.as_ref()?.backdrop.as_ref()?.image.as_deref()?;
+            Some((
+                if scheme == "light" {
+                    "theme.light.backdrop"
+                } else {
+                    "theme.dark.backdrop"
+                },
+                image,
+            ))
+        });
+    let mut problems = Vec::new();
+    let mut total = 0;
+    for (place, path) in fonts.chain(images) {
+        let size = inside(dir, path).and_then(|file| fs::metadata(file).ok());
+        match size {
+            Some(meta) if meta.is_file() => {
+                total += meta.len();
+                if meta.len() > THEME_ASSET_MAX {
+                    problems.push(format!(
+                        "plugin.json: {place}: {path} is {} bytes, over the {THEME_ASSET_MAX} a theme asset may have",
+                        meta.len()
+                    ));
+                }
+            }
+            _ => problems.push(format!("plugin.json: {place}: {path} does not exist")),
+        }
+    }
+    if total > THEME_ASSETS_MAX {
+        problems.push(format!(
+            "plugin.json: theme: its assets are {total} bytes, over the {THEME_ASSETS_MAX} a theme may bring"
+        ));
+    }
+    problems
 }
 
 /// `dir` joined with the relative `path`, or `None` when the path is absolute or climbs out.

@@ -105,10 +105,21 @@ impl Core {
         if is_library(&before) {
             // Plugins import a library's files at any time: it stays on, and nothing changes.
             if !params.enabled {
-                let why = format!(
-                    "{} is a library other plugins import: it is never turned off",
-                    before.id
-                );
+                let theme = before
+                    .manifest
+                    .as_ref()
+                    .is_some_and(|manifest| manifest.kind == PluginKind::Theme);
+                let why = if theme {
+                    format!(
+                        "{} is a theme: it is never turned off; desk.theme.active picks the theme in force",
+                        before.id
+                    )
+                } else {
+                    format!(
+                        "{} is a library other plugins import: it is never turned off",
+                        before.id
+                    )
+                };
                 return Err(error(ErrorCode::Unsupported, why));
             }
             return json(PluginSetEnabledResult { plugin: before });
@@ -186,9 +197,9 @@ impl Core {
     }
 }
 
-/// Whether the plugin is a library (files other plugins import).
+/// Whether the plugin is always on: a library (files other plugins import) or a theme.
 fn is_library(info: &PluginInfo) -> bool {
     info.manifest
         .as_ref()
-        .is_some_and(|manifest| manifest.kind == PluginKind::Library)
+        .is_some_and(|manifest| matches!(manifest.kind, PluginKind::Library | PluginKind::Theme))
 }
