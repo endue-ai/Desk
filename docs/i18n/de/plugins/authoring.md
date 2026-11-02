@@ -188,6 +188,46 @@ Das Theme erreicht Ihren Frame als CSS-Eigenschaften `--desk-*` und als `ctx.the
 die in Ihrem Frame gedrückt werden, erreichen die Tastenbelegung des Desks, außer Sie rufen
 `preventDefault()` auf. Die Standardrichtlinien und was jede entscheidet, stehen in `plugins/README.md`.
 
+## Dateien bearbeiten: Bearbeitungsstufen
+
+Ein Plugin, das Dateien öffnet, liest zuerst und bearbeitet später (ADR 0045). Sobald es bearbeitet, hat
+jedes Format, das es öffnet, neben seiner Lesestufe eine Bearbeitungsstufe, eine von dreien (ADR 0071):
+
+| Bearbeitungsstufe | Was sie verspricht | Beim Speichern |
+| --- | --- | --- |
+| `lossless` | Eine unveränderte Datei ergibt beim Speichern dieselben Bytes, und eine Änderung ändert nur die Bytes, die sie ändern muss | Überschreibt die Datei |
+| `text` | Der Inhalt bleibt erhalten, die Formatierung vielleicht nicht (Kommentare, Leerraum, Reihenfolge der Schlüssel) | Das erste Speichern jeder Datei fragt: "Save as copy" (die Vorgabe) oder "Overwrite" |
+| `read-only` | Es wird nichts gespeichert | Lehnt `desk.files.save` ab |
+
+Nennen Sie die Stufe jedes Formats in Ihrer README (eine Tabelle der Formate mit Lese- und
+Bearbeitungsstufe) und auf Ihrer Oberfläche vor der ersten Änderung, mit dem Element `desk-edit-tier` aus
+`@endue-ai/ui`. Ein Format, für das Sie keine Stufe nennen, ist `read-only`, ebenso eine Datei, die nicht
+in ihrer vollen Lesestufe öffnet. Versprechen Sie weniger, als Sie tun, nie mehr. Die Attribute `label`
+und `detail` des Elements nehmen Ihre eigenen Worte auf.
+
+```html
+<desk-edit-tier tier="lossless" format="CSV"></desk-edit-tier>   <!-- CSV · Lossless editing -->
+```
+
+`lossless` ist ein Versprechen über Bytes, also belegen Sie es mit den zwei Prüfungen aus
+`@endue-ai/plugin-sdk/testing`, über Fixtures, die die Eigenheiten Ihres Formats enthalten: ein BOM,
+CRLF- und gemischte Zeilenenden, kein abschließender Zeilenumbruch, Anführungszeichen und Escapes.
+
+```ts
+import { assertMinimalEdit, assertRoundTrip } from "@endue-ai/plugin-sdk/testing";
+
+const model = assertRoundTrip(bytes, parse, serialize); // serialize(parse(bytes)) must be bytes
+setCell(model, "B2", "Busan");                           // B2 held "Seoul"
+assertMinimalEdit(bytes, serialize(model), { find: "Seoul", bytes: "Busan" });
+```
+
+`parse` erhält ein `Uint8Array`; Zeichenketten gelten als UTF-8. Ein Bereich ist `{ offset, length }` in
+Bytes der Datei oder `{ find }`, die einzige Stelle, an der diese Bytes vorkommen; `bytes` sagt, was daraus
+werden muss, ohne es darf der Bereich zu allem werden. Ein Fehlschlag nennt das erste abweichende Byte mit
+Zeile und Spalte, Hex und Text darum herum und die Änderungen außerhalb des Bereichs. Die Prüfungen
+importieren nichts, daher kann ein einfacher Node-Test `packages/plugin-sdk/src/testing/round-trip.ts`
+über seinen Pfad importieren.
+
 ## Einträge und Ansichten
 
 Was die Apps enthalten, die eine Person verbindet, kommt als Einträge einer einzigen Form auf den

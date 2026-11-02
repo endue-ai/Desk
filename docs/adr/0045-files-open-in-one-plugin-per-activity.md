@@ -81,11 +81,17 @@ Extensions left out on purpose: `*.ts` (TypeScript far more often than MPEG tran
   touching each other's files.
 * Good, because a community plugin can take over an activity, or add formats to it, by layering
   `contributes.files` rules.
-* Bad, because some code repeats across plugins (a ZIP reader in five of them, a compound-file
-  reader in three). Serving shared readers from the desk is a later decision, as ADR 0037 said of
-  terminal emulators.
-* Bad, because "details only" is still not reading: RAR, DjVu, video codecs WebKit lacks and disk
-  image file systems wait for decoders.
+* Bad, because some code still repeats across plugins: each file plugin keeps its own ZIP reader, and
+  docs, slides and archives their own compound-file readers. Decoders more than one plugin needs moved
+  to the library plugin `endue.formats` (ADR 0049).
+* Update (2026-11-02): formats that first opened as details only now read. RAR (ADR 0051), DjVu, CB7
+  and CBR, the files inside disk images (VHD, VHDX, VMDK, QCOW2, DMG; FAT, exFAT, ext, NTFS, HFS+, APFS),
+  Snaps, AppImages and WIMs go through `endue.formats`; Word 97, HWP 5.0 and PowerPoint 97 show their
+  formatting; video and audio WebKit cannot play are remuxed or decoded in WebAssembly (ADR 0050);
+  large files are read in ranges, worked off the main thread and shown with progress (ADR 0048);
+  external links open through `shell.open` (ADR 0047). Still details only: MSI, ARJ and LHA contents
+  (listed, not extracted), indirect DjVu documents' other files, and entries over 64 MiB, which
+  `fs.write` cannot yet write in parts.
 
 ## More Information
 
@@ -95,5 +101,5 @@ fonts, contacts (vcf), logs and captures (log, har, pcap), certificates and keys
 scores (musicxml), datasets (parquet, arrow), notebooks (ipynb), and a binary viewer that opens
 whatever no other plugin claims.
 
-ADR 0012, ADR 0015, ADR 0029, ADR 0037, ADR 0041, ADR 0042, ADR 0043, ADR 0044, ADR 0046;
+ADR 0012, ADR 0015, ADR 0029, ADR 0037, ADR 0041, ADR 0042, ADR 0043, ADR 0044, ADR 0046, ADR 0047, ADR 0048, ADR 0049, ADR 0050, ADR 0051;
 `plugins/README.md`.

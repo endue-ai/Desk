@@ -152,6 +152,41 @@ defineUiPlugin({
 传到你的框架。在框架里按下的组合键会传到桌面的按键映射，除非你调用了 `preventDefault()`。默认策略及其各自
 决定的内容见 `plugins/README.md`。
 
+## 编辑文件：编辑层级
+
+打开文件的插件先读、后编辑（ADR 0045）。一旦开始编辑，它打开的每种格式除了读取层级，还有一个编辑层级，
+三者取一（ADR 0071）：
+
+| 编辑层级 | 承诺什么 | 保存时 |
+| --- | --- | --- |
+| `lossless` | 保存未修改的文件得到相同的字节，编辑只改变必须改变的字节 | 覆盖文件 |
+| `text` | 内容会保留，格式（注释、空白、键的顺序）可能不会 | 每个文件第一次保存时询问："Save as copy"（默认）或 "Overwrite" |
+| `read-only` | 什么也不保存 | 拒绝 `desk.files.save` |
+
+在 README（列出各格式及其读取层级和编辑层级的表格）中，以及在第一次编辑之前的界面上，说明每种格式的层级；
+界面上用 `@endue-ai/ui` 的 `desk-edit-tier` 元素。没有说明层级的格式是 `read-only`，未能以完整读取层级
+打开的文件也是。可以少承诺，不能多承诺。元素的 `label` 和 `detail` 属性可以换成你自己的文字。
+
+```html
+<desk-edit-tier tier="lossless" format="CSV"></desk-edit-tier>   <!-- CSV · Lossless editing -->
+```
+
+`lossless` 是关于字节的承诺，所以要用 `@endue-ai/plugin-sdk/testing` 中的两个检查来证明，测试夹具要包含
+该格式的各种边角情况：BOM、CRLF 和混合换行、没有末尾换行、引号和转义。
+
+```ts
+import { assertMinimalEdit, assertRoundTrip } from "@endue-ai/plugin-sdk/testing";
+
+const model = assertRoundTrip(bytes, parse, serialize); // serialize(parse(bytes)) must be bytes
+setCell(model, "B2", "Busan");                           // B2 held "Seoul"
+assertMinimalEdit(bytes, serialize(model), { find: "Seoul", bytes: "Busan" });
+```
+
+`parse` 收到的是 `Uint8Array`；字符串按 UTF-8 处理。片段是文件中以字节计的 `{ offset, length }`，或者
+`{ find }`，即这些字节唯一出现的位置；`bytes` 说明它必须变成什么，省略时片段可以变成任何内容。失败时会
+指出第一个不同的字节及其行和列、周围的十六进制和文本，以及片段之外的改动。这些检查不导入任何东西，所以普通的
+Node 测试也可以按路径导入 `packages/plugin-sdk/src/testing/round-trip.ts`。
+
 ## 条目与视图
 
 人们连接的应用中的内容，以同一种形状的条目进入桌面（`specs/item/v0`，ADR 0032）：事件、任务、消息、笔记等，

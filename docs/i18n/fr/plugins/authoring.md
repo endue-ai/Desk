@@ -187,6 +187,47 @@ dans votre cadre sous forme de propriétés CSS `--desk-*` et de `ctx.theme`. Le
 pressées dans votre cadre atteignent le keymap du bureau, sauf si vous appelez `preventDefault()`. Les
 politiques par défaut, et ce que chacune décide, sont listées dans `plugins/README.md`.
 
+## Modifier des fichiers : niveaux d'édition
+
+Un plugin qui ouvre des fichiers lit d'abord et modifie ensuite (ADR 0045). Dès qu'il modifie, chaque
+format qu'il ouvre a un niveau d'édition à côté de son niveau de lecture, l'un de ces trois (ADR 0071) :
+
+| Niveau d'édition | Ce qu'il promet | À l'enregistrement |
+| --- | --- | --- |
+| `lossless` | Enregistrer un fichier inchangé donne les mêmes octets, et une modification ne change que les octets qu'elle doit changer | Écrase le fichier |
+| `text` | Le contenu est conservé ; la mise en forme peut ne pas l'être (commentaires, espaces, ordre des clés) | Le premier enregistrement de chaque fichier demande : "Save as copy" (par défaut) ou "Overwrite" |
+| `read-only` | Rien n'est enregistré | Refuse `desk.files.save` |
+
+Indiquez le niveau de chaque format dans votre README (un tableau des formats avec leurs niveaux de
+lecture et d'édition) et sur votre surface avant la première modification, avec l'élément
+`desk-edit-tier` de `@endue-ai/ui`. Un format pour lequel vous ne donnez aucun niveau est `read-only`,
+de même qu'un fichier qui ne s'ouvre pas à son niveau de lecture complet. Promettez moins que ce que
+vous faites, jamais plus. Les attributs `label` et `detail` de l'élément acceptent vos propres mots.
+
+```html
+<desk-edit-tier tier="lossless" format="CSV"></desk-edit-tier>   <!-- CSV · Lossless editing -->
+```
+
+`lossless` est une promesse sur des octets : prouvez-la avec les deux vérifications de
+`@endue-ai/plugin-sdk/testing`, sur des fixtures qui contiennent les cas limites de votre format : un
+BOM, des fins de ligne CRLF et mélangées, l'absence de saut de ligne final, des guillemets et des
+échappements.
+
+```ts
+import { assertMinimalEdit, assertRoundTrip } from "@endue-ai/plugin-sdk/testing";
+
+const model = assertRoundTrip(bytes, parse, serialize); // serialize(parse(bytes)) must be bytes
+setCell(model, "B2", "Busan");                           // B2 held "Seoul"
+assertMinimalEdit(bytes, serialize(model), { find: "Seoul", bytes: "Busan" });
+```
+
+`parse` reçoit un `Uint8Array` ; les chaînes sont lues en UTF-8. Une plage est `{ offset, length }` en
+octets du fichier, ou `{ find }`, le seul endroit où ces octets apparaissent ; `bytes` dit ce qu'elle doit
+devenir, et sans lui la plage peut devenir n'importe quoi. Un échec donne le premier octet différent avec
+sa ligne et sa colonne, l'hexadécimal et le texte autour, et les changements hors de la plage. Les
+vérifications n'importent rien, donc un test Node ordinaire peut importer
+`packages/plugin-sdk/src/testing/round-trip.ts` par son chemin.
+
 ## Éléments et vues
 
 Ce que contiennent les applications qu'une personne connecte arrive sur le bureau sous forme d'éléments

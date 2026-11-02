@@ -10,6 +10,7 @@
 //   ?jira=1         example.jira is connected too, with the fixture tasks and their deep links
 //   ?empty=1        every fixture item is removed before anything opens
 //   ?resources=event,message,note   desk.fixtures serves only these kinds
+//   ?propose=1      desk.propose on a scripted brain (src/propose/fixtures.ts), as the shell has it
 import {
   type ConnectorInfo,
   type ConnectorStatus,
@@ -25,6 +26,8 @@ import today from "../../../../specs/view/v0/vectors/valid/view-today.json";
 import "../../src/desk.css";
 import { browserCore } from "../../src/bridge/core";
 import { createRuntime, ManualClock } from "../../src/index";
+import { scriptedViews } from "../../src/propose/fixtures";
+import { installProposals } from "../../src/propose/install";
 import empty from "./views/empty.json";
 
 const params = new URLSearchParams(location.search);
@@ -103,6 +106,7 @@ const core = browserCore({
     search,
   ],
   handlers: { "connector.list": () => ({ connectors: listed() }) },
+  ...(params.has("propose") ? { brain: { answer: scriptedViews } } : {}),
 });
 const { client, stub } = core;
 
@@ -167,6 +171,15 @@ const runtime = createRuntime({
   platform: "other",
   plugins: { url: (id, path, revision) => `/plugins/${id}/${path}?v=${revision}` },
 });
+
+if (params.has("propose"))
+  installProposals({
+    bridge: client,
+    commands: runtime.commands,
+    notify: (input) => runtime.notify(input),
+    profile: () => runtime.profiles.active(),
+    now: () => Date.now(),
+  });
 
 window.__desk = { clock, runtime, stub, commands: [] };
 window.__views = {

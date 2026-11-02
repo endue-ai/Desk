@@ -35,6 +35,6 @@ one; `--name` to the folder name as words; `--description` is optional. The Rust
 ## Testing
 
 `pnpm exec vitest run packages/create-plugin` checks every kind's manifest against `specs/plugin/v0`
-with Ajv, the layouts against the examples and `specs/wit`, the theme through the desk's gate in
-both schemes, and runs `examples/plugin-hello-theme`'s test. `cargo test -p desk-cli --test
-templates` scaffolds every kind, builds the Rust ones and runs `desk plugin validate` and `test`.
+with Ajv, the layouts against the examples and `specs/wit`, and the theme through the desk's gate in
+both schemes. `cargo test -p desk-cli --test templates` scaffolds every kind, builds the Rust ones
+and runs `desk plugin validate` and `test`.

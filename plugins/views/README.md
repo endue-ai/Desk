@@ -8,8 +8,9 @@ binding through `data.query` and keeps it live with `data.subscribe`, and draws 
 
 | Command | What it does |
 | --- | --- |
-| `desk.views.open` | `{ id, params?, bindings? }`: opens a view, replacing the one shown; bindings are `{ name: "connector/instance" }` |
-| `desk.views.close` | Ends its subscriptions and hides it (Escape) |
+| `desk.views.open` | `{ id, params?, bindings?, notice? }`: opens a view, replacing the one shown; bindings are `{ name: "connector/instance" }`; `notice` `{ text, action? }` sits above it with a button (Undo) |
+| `desk.views.preview` | `{ view, note? }`: a proposed view drawn as given in a floating card with Apply, Try again (a correction) and Discard; answers `{ choice, correction? }` like a pick; Escape is Discard (ADR 0073) |
+| `desk.views.close` | `{ id? }`: ends its subscriptions and hides it (Escape); with `id`, only that view |
 | `desk.views.reconnect` | `{ connector, instance }`: `connector.sync` (the Reconnect button) |
 | `desk.views.request-access` | `{ kinds, sources }`: `perm.request` for that `data:read`, then queries again |
 | `desk.views.open-original` | `{ url }`: `shell.open` of the item's URL (http, https, mailto); a refusal is said in a toast |
@@ -29,12 +30,9 @@ runs an item's first action; `.` and a right click open its actions. Under 480 p
 
 | File | Purpose |
 | --- | --- |
-| `ui/engine.js` | The controller: open, bind, query, subscribe, events and commands |
+| `ui/engine.js`, `ui/preview.js` | The controller: open, bind, query, subscribe, events, commands; the preview's answer |
 | `ui/components.js`, `ui/present.js` | Layout models and component states; what each element shows |
 | `ui/template.js`, `ui/resolve.js` | Templates and the clock; requires against instances |
 | `ui/draw.js`, `ui/render.js`, `ui/main.js` | The DOM: containers, components, keys, menu, density |
 
-```bash
-pnpm exec vitest run plugins/views
-cargo run -p desk-cli -- plugin validate plugins/views
-```
+`pnpm exec vitest run plugins/views`; `cargo run -p desk-cli -- plugin validate plugins/views`.
