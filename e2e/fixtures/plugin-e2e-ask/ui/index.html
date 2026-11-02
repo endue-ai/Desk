@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>E2E Ask</title>
+    <script type="importmap">
+      { "imports": { "@endue-ai/plugin-sdk": "/_desk/plugin-sdk.js" } }
+    </script>
+  </head>
+  <body>
+    <h1>E2E Ask</h1>
+    <p>
+      <button type="button" id="ask-five">Ask five times for ~/Documents</button>
+      <button type="button" id="ask-again">Ask once more for ~/Documents</button>
+    </p>
+    <p>
+      <button type="button" data-folder="~/Pictures/2024">Ask for ~/Pictures/2024</button>
+      <button type="button" data-folder="~/Pictures/2025">Ask for ~/Pictures/2025</button>
+      <button type="button" data-folder="~/Pictures/2026">Ask for ~/Pictures/2026</button>
+    </p>
+    <p data-testid="waiting">waiting: 0</p>
+    <ol data-testid="answers"></ol>
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>
