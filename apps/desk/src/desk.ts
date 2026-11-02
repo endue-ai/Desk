@@ -1,7 +1,7 @@
 // Bootstrap: mount the desk shell on the Rust core through the Tauri bridge. The runtime under it
 // hosts the core's UI plugins; the shell reaches the brain and its agent directory through the core.
 import { BridgeClient, tauriAdapter } from "@endue-ai/bridge";
-import { mountDesk, realClock } from "@endue-ai/runtime";
+import { mountDesk, phase, realClock } from "@endue-ai/runtime";
 import "@endue-ai/runtime/desk.css";
 import "@endue-ai/runtime/shell.css";
 import { invoke } from "@tauri-apps/api/core";
@@ -9,7 +9,12 @@ import { listen } from "@tauri-apps/api/event";
 import { installNativeFileDrops, pickNativeFile } from "./native-files";
 import { installOpenedFiles } from "./open-files";
 import { shellBridge } from "./shell-bridge";
+import { nextPaint, reportStartup } from "./startup";
 import { installUpdates, NOTIFIED, ROW } from "./updates";
+
+// Start-up phases for the app's trace (DESK_TRACE=1): from the page's time origin to this code.
+const booted = performance.now();
+phase("webview load", 0, booted);
 
 const root = document.getElementById("desk");
 if (!root) throw new Error("index.html has no #desk element");
@@ -34,6 +39,7 @@ const desk = mountDesk({
     if (id === "desk.palette") void invoke("palette_reveal_main");
   },
 });
+void desk.runtime.ready.then(() => phase("desk mount", booted));
 
 const disposeDrops = installNativeFileDrops({
   ready: desk.ready,
@@ -80,4 +86,13 @@ const disposeUpdates = installUpdates({
 window.addEventListener("pagehide", disposeUpdates, { once: true });
 
 await desk.ready;
-await invoke("desk_ready", { status: desk.runtime.status() });
+const ready = performance.now();
+const painted = nextPaint();
+// The ready line; the answer says whether the app keeps a start-up trace to report to.
+const tracing = await invoke<boolean>("desk_ready", { status: desk.runtime.status() });
+void reportStartup({
+  tracing,
+  ready,
+  painted,
+  send: (phases) => invoke("desk_trace", { origin: performance.timeOrigin, phases }),
+});
