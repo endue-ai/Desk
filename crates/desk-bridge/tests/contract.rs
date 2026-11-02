@@ -9,11 +9,11 @@ use desk_bridge::{
     BridgeEvent, BridgeRequest, BridgeResponse, CatalogGetResult, ConnectorInstance,
     ConnectorManifest, ConnectorStatus, ConnectorSyncResult, FsReadResult, FsUrlResult,
     InitDocument, InitGetResult, InitSettingKey, Item, ItemChange, ItemPage, ItemQuery,
-    PaletteResults, PermQueryResult, Permission, PluginContributes, PluginListResult,
-    PluginManifest, ShellOpenResult, StoreGetResult, ThemeBundle, ThemeExportResult, ThemeIndex,
-    ThemeMarketFetchResult, ThemeMarketListResult, ThemePackage, ThemeType, ThemeVariant,
-    UiSurfaceStateRequest, UiSurfaceStateResult, View, ViewGetResult, ViewListResult, ViewSource,
-    ViewSummary, manifest_problems, view_problems,
+    PaletteResults, PermQueryResult, PermRequestResult, Permission, PluginContributes,
+    PluginListResult, PluginManifest, RefusalReason, ShellOpenResult, StoreGetResult, ThemeBundle,
+    ThemeExportResult, ThemeIndex, ThemeMarketFetchResult, ThemeMarketListResult, ThemePackage,
+    ThemeType, ThemeVariant, UiSurfaceStateRequest, UiSurfaceStateResult, View, ViewGetResult,
+    ViewListResult, ViewSource, ViewSummary, manifest_problems, view_problems,
 };
 use serde::Serialize;
 use serde::de::DeserializeOwned;
@@ -228,6 +228,7 @@ fn valid_vectors_roundtrip_through_generated_types() {
                 "FsReadResult" => roundtrip::<FsReadResult>(vector),
                 "FsUrlResult" => roundtrip::<FsUrlResult>(vector),
                 "PermQueryResult" => roundtrip::<PermQueryResult>(vector),
+                "PermRequestResult" => roundtrip::<PermRequestResult>(vector),
                 "PluginListResult" => roundtrip::<PluginListResult>(vector),
                 "StoreGetResult" => roundtrip::<StoreGetResult>(vector),
                 "CatalogGetResult" => roundtrip::<CatalogGetResult>(vector),
@@ -255,6 +256,28 @@ fn valid_vectors_roundtrip_through_generated_types() {
             }
         }
     }
+}
+
+#[test]
+fn perm_request_result_says_why_nobody_was_asked() {
+    let earlier = PermRequestResult {
+        granted: false,
+        grant: None,
+        reason: Some(RefusalReason::RefusedEarlier),
+    };
+    assert_eq!(
+        serde_json::to_value(&earlier).unwrap(),
+        json!({ "granted": false, "reason": "refused-earlier" })
+    );
+    let asked = PermRequestResult {
+        granted: false,
+        grant: None,
+        reason: None,
+    };
+    assert_eq!(
+        serde_json::to_value(&asked).unwrap(),
+        json!({ "granted": false })
+    );
 }
 
 #[test]

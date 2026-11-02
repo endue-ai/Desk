@@ -25,6 +25,7 @@ export function createView(doc, actions) {
   const dialog = byId("prompt");
   const status = byId("status");
   const refuse = /** @type {HTMLButtonElement} */ (dialog.querySelector("[data-answer=refuse]"));
+  const parent = /** @type {HTMLButtonElement} */ (dialog.querySelector("[data-answer=parent]"));
 
   /**
    * @param {string} tag
@@ -143,6 +144,9 @@ export function createView(doc, actions) {
         model.reason ? el("q", {}, model.reason) : "none given",
       );
       byId("prompt-asked").textContent = `Asked for: ${model.duration}`;
+      // The parent folder, when the core offers it, is a second way to allow.
+      parent.hidden = !model.parent;
+      parent.textContent = model.parent?.label ?? "";
       const more =
         model.waiting === 1 ? "1 more request waiting" : `${model.waiting} more requests waiting`;
       byId("prompt-waiting").textContent = model.waiting > 0 ? more : "";

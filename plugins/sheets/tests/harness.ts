@@ -6,7 +6,7 @@ import { StubError } from "../../../packages/bridge/src/index";
 import { defineUiPlugin, readBytes } from "../../../packages/plugin-sdk/src/index";
 import { createTestHost, type TestHost } from "../../../packages/plugin-sdk/src/testing/index";
 import { openBook } from "../ui/book.js";
-import { createSheets, type Open, type Shown } from "../ui/sheets.js";
+import { createSheets, type Open, type Sheets, type Shown } from "../ui/sheets.js";
 
 type Options = Parameters<typeof createTestHost>[0];
 export type Handlers = NonNullable<Options["handlers"]>;
@@ -39,6 +39,8 @@ export function recordingView(): RecordingView {
 export interface Mounted {
   host: TestHost;
   view: RecordingView;
+  /** What the view calls: edits to the file on screen. */
+  app: Sheets;
   /** The params of every call to one bridge method. */
   params(method: string): unknown[];
   /** The args of every run of one desk command. */
@@ -48,7 +50,10 @@ export interface Mounted {
 }
 
 /** The desk commands sheets runs, answered as the desk would. */
-const DESK: Commands = { "desk.files.changed": () => "reloaded" };
+const DESK: Commands = {
+  "desk.files.changed": () => "reloaded",
+  "desk.buffers.update": () => ({}),
+};
 
 export async function mount(
   options: {
@@ -65,11 +70,12 @@ export async function mount(
     settings: options.settings,
   });
   const view = recordingView();
+  let app: Sheets | undefined;
   let mounted = false;
   await defineUiPlugin(
     {
       mount(ctx) {
-        createSheets(ctx, view, { read: readBytes, open: options.open ?? openBook });
+        app = createSheets(ctx, view, { read: readBytes, open: options.open ?? openBook });
         mounted = true;
       },
     },
@@ -83,6 +89,7 @@ export async function mount(
   return {
     host,
     view,
+    app: app as Sheets,
     params: (method) => host.calls.filter((c) => c.method === method).map((c) => c.params),
     ran: (name) => host.ran.filter((r) => r.name === name).map((r) => r.args),
     settle,
@@ -93,7 +100,10 @@ export async function mount(
 export const base64 = (data: Uint8Array | string) =>
   Buffer.from(typeof data === "string" ? new TextEncoder().encode(data) : data).toString("base64");
 
-/** fs.read and fs.watch over an in-memory disk of bytes; files missing from it are not_found. */
+/**
+ * fs.read, fs.write (base64) and fs.watch over an in-memory disk of bytes; files missing from it are
+ * not_found, and a write puts the bytes it was given there.
+ */
 export function disk(files: Record<string, Uint8Array | string>): Handlers {
   let watches = 0;
   return {
@@ -106,6 +116,11 @@ export function disk(files: Record<string, Uint8Array | string>): Handlers {
         encoding: "base64",
         size: bytes.length,
       };
+    },
+    "fs.write": ({ path, content, encoding }) => {
+      if (encoding !== "base64") throw new StubError("invalid_params", "sheets writes base64");
+      files[path] = new Uint8Array(Buffer.from(content, "base64"));
+      return { bytesWritten: files[path].length };
     },
     "fs.watch": () => ({ watchId: `w${++watches}` }),
   };
