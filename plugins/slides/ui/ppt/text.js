@@ -110,7 +110,7 @@ function runProps(
   /** @type {TextContext} */ ctx,
   /** @type {number} */ type,
 ) {
-  const fallback = ctx.scheme[type === 0 || type === 6 ? 3 : 1] ?? "#000000";
+  const fallback = ctx.scheme[type === 0 || type === 6 ? 3 : 1] ?? "#000000"; // theme: content
   return {
     size: cf.size && cf.size > 0 ? cf.size : 18,
     bold: Boolean(cf.bold),

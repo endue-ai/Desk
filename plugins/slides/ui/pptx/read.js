@@ -295,7 +295,7 @@ export async function readPptx(zip, format = "PowerPoint presentation") {
       backgroundOf(path(layout.part.root, "cSld", "bg"), layout.ctx) ??
       backgroundOf(path(master.part.root, "cSld", "bg"), master.ctx) ?? {
         type: "solid",
-        color: "#ffffff",
+        color: "#ffffff", // theme: content
       };
     const heading = elements.find(
       (e) => e.type === "shape" && (e.placeholder === "title" || e.placeholder === "ctrTitle"),
