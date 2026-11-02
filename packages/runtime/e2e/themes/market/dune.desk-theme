@@ -1,0 +1,39 @@
+{
+  "format": "desk-theme/1",
+  "manifest": {
+    "id": "market.dune",
+    "name": "Dune",
+    "version": "1.0.0",
+    "kind": "theme",
+    "description": "A fixture market theme: sand and rust.",
+    "theme": {
+      "author": "Team endue",
+      "license": "Apache-2.0",
+      "tags": [
+        "warm"
+      ],
+      "preview": [
+        "#1d1710",
+        "#e0a36a",
+        "#f5ecdc"
+      ],
+      "light": {
+        "colors": {
+          "background": "#f5ecdc",
+          "card": "#fffaf1",
+          "primary": "#9a4f1c",
+          "text": "#2a1d10"
+        }
+      },
+      "dark": {
+        "colors": {
+          "background": "#1d1710",
+          "card": "#271f16",
+          "primary": "#e0a36a",
+          "text": "#f3e8d8"
+        }
+      }
+    }
+  },
+  "files": {}
+}
