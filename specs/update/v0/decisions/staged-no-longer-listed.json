@@ -1,0 +1,34 @@
+{
+  "description": "0.1.5 was staged and then taken down: it is dropped and 0.1.2 is next",
+  "current": "0.1.0",
+  "targets": ["linux-x86_64-deb", "linux-x86_64"],
+  "salt": "6d0c7e1f42a95b38c4d2e7f01a3b5c6d8e9f0a1b2c3d4e5f60718293a4b5c6d7",
+  "buckets": {
+    "0.1.2": 41,
+    "0.1.0": 16
+  },
+  "index": {
+    "channel": "stable",
+    "serial": 11,
+    "generated": "2026-11-20T09:15:00Z",
+    "releases": [
+      {
+        "version": "0.1.2",
+        "rollout": 100,
+        "targets": ["linux-x86_64-deb", "linux-x86_64"],
+        "release": "releases/0.1.2/release.json"
+      },
+      {
+        "version": "0.1.0",
+        "rollout": 100,
+        "targets": ["linux-x86_64-deb", "linux-x86_64"],
+        "release": "releases/0.1.0/release.json"
+      }
+    ]
+  },
+  "staged": "0.1.5",
+  "expect": {
+    "next": "0.1.2",
+    "staged": "dropped"
+  }
+}

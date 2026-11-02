@@ -1,0 +1,10 @@
+{
+  "target": "ReleaseIndex",
+  "description": "nightly is not a channel",
+  "instance": {
+    "channel": "nightly",
+    "serial": 1,
+    "generated": "2026-11-20T09:15:00Z",
+    "releases": []
+  }
+}
