@@ -6,6 +6,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -13,6 +14,8 @@ use desk_bridge::{BridgeEvent, BridgeRequest, BridgeResponse, Permission};
 use desk_core::{Core, Roots};
 use desk_ipc::{CALLER, Listener};
 use serde_json::{Value, json};
+
+static COUNTER: AtomicU64 = AtomicU64::new(0);
 
 fn call(core: &Core, caller: &str, method: &str, params: Value) -> BridgeResponse {
     let request: BridgeRequest =
@@ -35,10 +38,12 @@ struct Desk {
 
 impl Desk {
     fn start() -> Self {
+        let n = COUNTER.fetch_add(1, Ordering::Relaxed);
         let nanos = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_nanos();
+        let nanos = format!("{nanos}-{n}");
         let home = std::env::temp_dir().join(format!("dcli-theme-{}-{nanos}", std::process::id()));
         fs::create_dir_all(home.join("builtin/ember")).unwrap();
         // The CLI makes relative paths absolute from its working folder, which the OS resolves.
