@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { dirname, join, relative } from "node:path";
+import { dirname, join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { disk, file, mount } from "./harness";
@@ -21,7 +21,8 @@ function firstLoad(entry: string): string[] {
       todo.push(join(dirname(next), found[1] ?? found[2] ?? ""));
     }
   }
-  return [...seen].map((path) => relative(UI, path)).sort();
+  // Named with "/" on every platform: relative() separates with backslashes on Windows.
+  return [...seen].map((path) => relative(UI, path).split(sep).join("/")).sort();
 }
 
 const READERS = /^(open\.js|abw|doc|hwp|hwpx|odf|ooxml|rtf|text)(\/|$)/;

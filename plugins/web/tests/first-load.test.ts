@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { readFileSync } from "node:fs";
-import { dirname, join, relative } from "node:path";
+import { dirname, join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createView } from "../ui/view.js";
@@ -22,7 +22,8 @@ function firstLoad(entry: string): string[] {
       todo.push(join(dirname(next), found[1] ?? found[2] ?? ""));
     }
   }
-  return [...seen].map((path) => relative(UI, path)).sort();
+  // Named with "/" on every platform: relative() separates with backslashes on Windows.
+  return [...seen].map((path) => relative(UI, path).split(sep).join("/")).sort();
 }
 
 /** The readers, the worker's client and the page's preparation: none needed before a file. */
