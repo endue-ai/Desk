@@ -80,7 +80,8 @@ impl Core {
     }
 
     /// Watch the user themes folder until the watcher drops: a theme folder added, changed or deleted
-    /// by hand is installed, refreshed or removed, with `plugin.changed`.
+    /// by hand is installed, refreshed or removed, with `plugin.changed`. `watch_plugins` leaves user
+    /// themes to this watch.
     pub fn watch_themes(self: &Arc<Self>) -> io::Result<ThemeWatcher> {
         let none = || io::Error::new(io::ErrorKind::NotFound, "no user themes folder");
         let root = self.themes.dir.clone().ok_or_else(none)?;
@@ -302,7 +303,8 @@ impl Core {
         self.check(caller, &Permission::ThemeManage(scope), &Target::None)
     }
 
-    fn themes_dir(&self) -> Failed<PathBuf> {
+    /// The user themes folder, or `unsupported` when this desk keeps none.
+    pub(crate) fn themes_dir(&self) -> Failed<PathBuf> {
         let none = "this desk keeps no user themes";
         let dir = self.themes.dir.clone();
         dir.ok_or_else(|| error(ErrorCode::Unsupported, none.into()))
