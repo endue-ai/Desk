@@ -63,4 +63,32 @@ describe("Notifications", () => {
     notifications.clear();
     expect(notifications.history()).toEqual([]);
   });
+
+  it("keeps a notice's actions, in the history too", () => {
+    const { notifications } = center();
+    const actions = [
+      {
+        label: "Show in file manager",
+        command: "desk.files.reveal",
+        args: { path: "/data/store.json.broken" },
+      },
+    ];
+    notifications.push({ caller: "desk", title: "store.json could not be read", actions });
+    expect(notifications.current()?.actions).toEqual(actions);
+    expect(notifications.history()[0]?.actions).toEqual(actions);
+  });
+
+  it("shows a notice with actions again once the newer one ends, until it is dismissed", () => {
+    const { clock, notifications } = center();
+    const action = { label: "Turn on again", command: "desk.plugins.turn-on-again" };
+    notifications.push({ caller: "desk", title: "Quarantined", level: "warning", actions: [action] });
+    notifications.push({ caller: "example.build", title: "Built", level: "success" });
+    expect(notifications.current()?.title).toBe("Built");
+    clock.advance(4000);
+    expect(notifications.current()?.title).toBe("Quarantined");
+    clock.advance(60_000);
+    expect(notifications.current()?.title, "a notice with actions waits").toBe("Quarantined");
+    notifications.dismiss();
+    expect(notifications.current()).toBeNull();
+  });
 });
