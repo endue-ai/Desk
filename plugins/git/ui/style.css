@@ -1,24 +1,19 @@
-/* The desk's design tokens (@endue-ai/ui). Frames do not inherit the desk's, so they are declared
-   here; the runtime redefines them for the theme in force. The lane colours are the plugin's own. */
+/* Every colour, font, size, radius and duration comes from the theme's --desk-* tokens (index.html
+   loads their defaults; the runtime sets the theme in force). Lanes and kinds of change are
+   categories: chart-1 to chart-8. Added and deleted text leans toward the body text to read on its tint. */
 :root {
-  --desk-background: #141416;
-  --desk-card: #1e1d21;
-  --desk-border: #333136;
-  --desk-text: #f2f0f5;
-  --desk-text-muted: #b0adb7;
-  --desk-accent: #b6a3f5;
-  --git-add: rgba(95, 208, 190, 0.18);
-  --git-add-text: #7fe0cf;
-  --git-del: rgba(224, 115, 138, 0.18);
-  --git-del-text: #f29bb0;
-  --git-lane-0: #b6a3f5;
-  --git-lane-1: #5fd0be;
-  --git-lane-2: #e8c98a;
-  --git-lane-3: #5b9bf5;
-  --git-lane-4: #e0738a;
-  --git-lane-5: #8fd36b;
-  --git-lane-6: #f5a35b;
-  --git-lane-7: #a7b1c3;
+  --git-add: color-mix(in srgb, var(--desk-chart-2) 18%, transparent);
+  --git-add-text: color-mix(in srgb, var(--desk-chart-2) 70%, var(--desk-text));
+  --git-del: color-mix(in srgb, var(--desk-chart-5) 18%, transparent);
+  --git-del-text: color-mix(in srgb, var(--desk-chart-5) 70%, var(--desk-text));
+  --git-lane-0: var(--desk-chart-1);
+  --git-lane-1: var(--desk-chart-2);
+  --git-lane-2: var(--desk-chart-3);
+  --git-lane-3: var(--desk-chart-4);
+  --git-lane-4: var(--desk-chart-5);
+  --git-lane-5: var(--desk-chart-6);
+  --git-lane-6: var(--desk-chart-7);
+  --git-lane-7: var(--desk-chart-8);
 }
 
 html,
@@ -33,7 +28,7 @@ body {
   margin: 0;
   background: var(--desk-card);
   color: var(--desk-text);
-  font: 13px/1.6 -apple-system, "SUIT", "Inter", system-ui, sans-serif;
+  font: calc(var(--desk-text-sm) - 1px)/1.6 var(--desk-font-sans);
 }
 
 header {
@@ -47,7 +42,7 @@ header {
 
 h1 {
   margin: 0;
-  font-size: 15px;
+  font-size: calc(var(--desk-text-sm) + 1px);
 }
 
 #head {
@@ -62,7 +57,7 @@ h1 {
 }
 
 #busy {
-  color: var(--desk-accent);
+  color: var(--desk-primary-text);
 }
 
 main {
@@ -77,8 +72,8 @@ main {
   overflow: auto;
   padding: 6px 0;
   outline: none;
-  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-  font-size: 12px;
+  font-family: var(--desk-font-mono);
+  font-size: var(--desk-text-xs);
 }
 
 .row {
@@ -101,7 +96,7 @@ main {
 
 .row:focus,
 .row[aria-selected="true"] {
-  background: color-mix(in srgb, var(--desk-accent) 16%, transparent);
+  background: var(--desk-hover);
   outline: none;
 }
 
@@ -165,15 +160,15 @@ main {
   margin-right: 4px;
   padding: 0 5px;
   border: 1px solid var(--desk-border);
-  border-radius: 8px;
+  border-radius: var(--desk-radius-md);
   color: var(--desk-text-muted);
-  font-size: 11px;
+  font-size: var(--desk-text-2xs);
 }
 
 .ref.current,
 .ref.branch.current {
-  border-color: var(--desk-accent);
-  color: var(--desk-accent);
+  border-color: var(--desk-primary-text);
+  color: var(--desk-primary-text);
 }
 
 .ref.remote {
@@ -277,7 +272,7 @@ main {
 
 #commit h2 {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--desk-text-sm);
 }
 
 #commit-summary,
@@ -291,15 +286,15 @@ main {
   min-height: 120px;
   padding: 8px;
   border: 1px solid var(--desk-border);
-  border-radius: 6px;
+  border-radius: var(--desk-radius-md);
   background: var(--desk-background);
   color: var(--desk-text);
-  font: 13px/1.5 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font: calc(var(--desk-text-sm) - 1px)/1.5 var(--desk-font-mono);
   resize: none;
 }
 
 #commit-message:focus {
-  border-color: var(--desk-accent);
+  border-color: var(--desk-ring);
   outline: none;
 }
 
@@ -313,7 +308,7 @@ footer {
   padding: 4px 12px 8px;
   border-top: 1px solid var(--desk-border);
   color: var(--desk-text-muted);
-  font-size: 12px;
+  font-size: var(--desk-text-xs);
 }
 
 footer p {

@@ -31,7 +31,7 @@ and UPDATE or DELETE without WHERE ask first; an agent's write always asks.
 | `ui/run.js`, `clients.js`, `execute.js` | Processes, finding clients and versions, checks and confirmations before a run |
 | `ui/connections.js`, `manage.js`, `catalog.js`, `explorer.js` | Connections and URIs, the form, the explorer |
 | `ui/consoles.js`, `tabs.js`, `results.js`, `history.js`, `agent.js` | Consoles and tables, results, history, agents |
-| `ui/database.js`, `view*.js`, `keys.js` | The controller, the DOM, the keys |
+| `ui/database.js`, `view*.js`, `keys.js`, `style.css` | The controller, the DOM, the keys; the look, from the theme's `--desk-*` tokens only |
 
 ```bash
 pnpm exec vitest run plugins/database
