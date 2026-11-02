@@ -7,9 +7,7 @@
     "description": "Dark and quiet",
     "settings": {
       "desk.theme.scheme": "dark",
-      "eris.wake-words": [
-        "eris"
-      ],
+      "eris.wake-words": ["eris"],
       "layout.left": {
         "width": 280
       }
