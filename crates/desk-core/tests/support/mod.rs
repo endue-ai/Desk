@@ -199,16 +199,27 @@ pub fn approve_as_desk(core: &Core, approval: &Seen, answer: &str) {
     call(core, "desk", "perm.approve", params).unwrap();
 }
 
-/// Run `act` on another thread and approve, once, the agent's call it waits on (ADR 0078).
+/// Run `act` on another thread, wait for the `perm.approval` the agent's call waits on, answer it
+/// as `desk`, and return both (ADR 0078).
+pub fn held<T: Send>(
+    core: &Core,
+    deliveries: &Receiver<Delivery>,
+    answer: &str,
+    act: impl FnOnce() -> T + Send,
+) -> (Seen, T) {
+    std::thread::scope(|s| {
+        let acting = s.spawn(act);
+        let approval = wait_for(deliveries, "perm.approval");
+        approve_as_desk(core, &approval, answer);
+        (approval, acting.join().unwrap())
+    })
+}
+
+/// `held`, approved once.
 pub fn approved_once<T: Send>(
     core: &Core,
     deliveries: &Receiver<Delivery>,
     act: impl FnOnce() -> T + Send,
 ) -> T {
-    std::thread::scope(|s| {
-        let acting = s.spawn(act);
-        let approval = wait_for(deliveries, "perm.approval");
-        approve_as_desk(core, &approval, "once");
-        acting.join().unwrap()
-    })
+    held(core, deliveries, "once", act).1
 }
