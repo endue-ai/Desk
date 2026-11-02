@@ -1,6 +1,6 @@
 // Checks this theme as the desk checks a theme before it applies one: it compiles for both schemes,
 // passes the contrast gate over the endue palette with no fixes, and brings the files it names.
-// From the Desk repository: cargo run -p desk-cli -- plugin test <this folder>
+// From the Desk repository: pnpm exec vitest run --root <this folder>
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
