@@ -13,6 +13,13 @@ plugins:
 #   eris.voice: true
 settings: {}
 
+# What each agent of the brain may be granted here, by agent id. An agent without an entry asks you
+# before every first use; one with an allow list is never granted anything outside it. Example:
+#   ag_01JBZ8Q4MR0000000000000001:
+#     allow:
+#       - { permission: fs:write, paths: ["~/Documents/Notes/**"] }
+agents: {}
+
 # Keep this file the same on every desk you use, through your endue account.
 sync:
   enabled: false

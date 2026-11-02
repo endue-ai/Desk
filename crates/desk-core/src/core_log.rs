@@ -74,7 +74,7 @@ impl Core {
 
     /// Stamp, mask and keep one entry, then publish it as `log.entry`. The stamp and the ring are
     /// taken under one lock, so write order is time order across channels.
-    fn append(
+    pub(crate) fn append(
         &self,
         channel: &str,
         level: LogLevel,

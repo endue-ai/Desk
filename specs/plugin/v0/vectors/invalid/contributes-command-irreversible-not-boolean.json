@@ -1,0 +1,13 @@
+{
+  "target": "PluginContributes",
+  "description": "irreversible is true or false",
+  "instance": {
+    "commands": [
+      {
+        "id": "example.mail.send",
+        "title": "Send the draft",
+        "irreversible": "yes"
+      }
+    ]
+  }
+}

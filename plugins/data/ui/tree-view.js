@@ -19,7 +19,9 @@ import { createVirtual } from "./virtual.js";
  * @property {number} setsize
  * @property {number} posinset
  * @typedef {{ expanded: Set<string>, selected: string | null }} TreeState
- * @typedef {{ select(row: Row): void, status(text: string): void, reveal(row: Row): void }} TreeHooks
+ * @typedef {{ select(row: Row): void, status(text: string): void, reveal(row: Row): void,
+ *   edit?(row: Row): void, cell?(row: Row, value: HTMLElement): void }} TreeHooks `edit`: Enter
+ *   on a value or F2; `cell`: a row's value was drawn
  */
 
 export const GROUP = 100;
@@ -198,6 +200,7 @@ export function createTreeView(doc, el, hooks) {
     value.className = `value kind-${node.kind}${masked ? " masked" : ""}`;
     value.textContent = masked ? MASK : previewOf(node);
     item.append(sep, value);
+    hooks.cell?.(row, value);
     const badge = (/** @type {string} */ text, /** @type {string} */ kind, title = "") => {
       const b = doc.createElement("span");
       b.className = `badge ${kind}`;
@@ -294,7 +297,8 @@ export function createTreeView(doc, el, hooks) {
         for (let up = i - 1; up >= 0; up--)
           if ((rowOf(up)?.level ?? 0) < row.level) return select(up);
       },
-      Enter: () => toggle(row),
+      Enter: () => (isBranchRow(row) ? toggle(row) : hooks.edit?.(row)),
+      F2: () => hooks.edit?.(row),
       " ": () => toggle(row),
     };
     const act = keys[/** @type {keyof typeof keys} */ (event.key)];

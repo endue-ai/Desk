@@ -1,8 +1,10 @@
 // brain-echo's state: sessions, leases and turns, as specs/brain/v0/openapi.yaml describes them.
 // server.mjs only carries this over HTTP. The answer to a message is the message itself; a message
-// that starts with "tool:" asks Desk to run the echo tool first and answers with what it returned.
-// A turn that offers tools gets a call to the one toolChoice names, or to the first it knows:
-// propose_theme (theme.mjs) and echo.
+// that starts with "tool:" asks Desk to run the echo tool first and answers with what it returned,
+// and "tool <name> as <agent>: <json arguments>" asks for that tool on behalf of that agent. A
+// message of several such calls (one per line, or joined by " then ") asks for each in turn, all in
+// one turn. A turn that offers tools gets a call to the one toolChoice names, or to the first it
+// knows: propose_theme (theme.mjs) and echo.
 import { proposeTheme } from "./theme.mjs";
 
 /** A contract error: the HTTP status and the BrainError body. */
@@ -131,6 +133,46 @@ function deltas(turnId, said) {
   }));
 }
 
+/**
+ * The tool calls a message asks for, in order: one per part when the message is several tool calls,
+ * one per line or joined by " then ", else the one the whole message asks for. Null for any other
+ * message.
+ */
+function toolCalls(said) {
+  const lines = said.split(/\n|\s+then\s+(?=tool[\s:])/).filter((line) => line.trim() !== "");
+  if (lines.length > 1) {
+    const calls = lines.map((line) => toolCall(line.trim()));
+    if (calls.every(Boolean)) return calls;
+  }
+  const call = toolCall(said);
+  return call ? [call] : null;
+}
+
+/**
+ * The tool call a message asks for, without its callId: "tool: <text>" is echo with { text },
+ * "tool <name> [as <agent>]: <arguments>" is <name> with the JSON object (else { text }), for the
+ * agent when one is named. Null for any other message.
+ */
+function toolCall(said) {
+  const echo = /^tool:\s*([\s\S]*)$/.exec(said);
+  if (echo) return { name: "echo", arguments: { text: echo[1] } };
+  const named =
+    /^tool\s+([A-Za-z0-9_.-]+)(?:\s+as\s+([A-Za-z0-9][A-Za-z0-9_.-]*))?:\s*([\s\S]*)$/.exec(said);
+  if (!named) return null;
+  const [, name, agentId, rest] = named;
+  let args;
+  try {
+    args = JSON.parse(rest);
+  } catch {
+    args = null;
+  }
+  return {
+    name,
+    arguments: isObject(args) ? args : { text: rest },
+    ...(agentId ? { agentId } : {}),
+  };
+}
+
 export class EchoBrain {
   #now;
   #sessions = new Map();
@@ -252,8 +294,9 @@ export class EchoBrain {
   }
 
   /**
-   * The events of a new turn. A call to an offered tool, or a "tool:" message, stops at tool_call
-   * until submitToolResult.
+   * The events of a new turn. A call to an offered tool, or a "tool:" or "tool <name>" message, stops
+   * at tool_call until submitToolResult; one of several tool lines asks for the next after each
+   * result.
    */
   startTurn(sessionId, body) {
     check("TurnRequest", body);
@@ -269,23 +312,25 @@ export class EchoBrain {
       ...deltas(turnId, text),
       { type: "turn.completed", turnId, stopReason: "end_turn" },
     ];
-    const ask = (name, args) => {
-      const call = { callId: this.#id("call"), name, arguments: args };
-      session.calls.set(turnId, call);
-      return [
-        started,
-        ...deltas(turnId, `Let me ask the ${name} tool. `),
-        { type: "tool.call", turnId, call },
-        { type: "turn.completed", turnId, stopReason: "tool_call" },
-      ];
-    };
-    if (chosen && KNOWN[chosen]) return ask(chosen, KNOWN[chosen](said));
+    const ask = (calls) => [started, ...this.#ask(session, turnId, calls)];
+    if (chosen && KNOWN[chosen]) return ask([{ name: chosen, arguments: KNOWN[chosen](said) }]);
     if (chosen || (body.toolChoice && body.toolChoice.type !== "auto")) {
       const names = (body.tools ?? []).map((t) => t.name).join(", ");
       return answer(`brain-echo cannot call ${names}, so it answers in words: ${said}`);
     }
-    const tool = /^tool:\s*([\s\S]*)$/.exec(said.trim());
-    return tool ? ask("echo", { text: tool[1] }) : answer(said);
+    const calls = toolCalls(said.trim());
+    return calls ? ask(calls) : answer(said);
+  }
+
+  /** Ask for the first of `calls`; the rest wait for its result. */
+  #ask(session, turnId, [asked, ...rest]) {
+    const call = { callId: this.#id("call"), ...asked };
+    session.calls.set(turnId, { call, rest });
+    return [
+      ...deltas(turnId, `Let me ask the ${call.name} tool. `),
+      { type: "tool.call", turnId, call },
+      { type: "turn.completed", turnId, stopReason: "tool_call" },
+    ];
   }
 
   /** The rest of a turn once the tool's result is in. */
@@ -295,14 +340,17 @@ export class EchoBrain {
     this.#writer(session, body.leaseId);
     const waiting = session.calls.get(turnId);
     if (!waiting) throw notFound(`Turn ${turnId} is not waiting for a tool result.`);
-    if (waiting.callId !== body.callId)
-      throw notFound(`Turn ${turnId} waits for ${waiting.callId}, not ${body.callId}.`);
+    const { call, rest } = waiting;
+    if (call.callId !== body.callId)
+      throw notFound(`Turn ${turnId} waits for ${call.callId}, not ${body.callId}.`);
     session.calls.delete(turnId);
     session.updatedAt = iso(this.#now());
     const output =
       typeof body.output?.text === "string" ? body.output.text : JSON.stringify(body.output);
-    const tool = `The ${waiting.name} tool`;
+    const tool = `The ${call.name} tool`;
     const said = body.isError ? `${tool} failed: ${output}` : `${tool} said: ${output}`;
+    if (rest.length > 0)
+      return [...deltas(turnId, `${said} `), ...this.#ask(session, turnId, rest)];
     return [...deltas(turnId, said), { type: "turn.completed", turnId, stopReason: "end_turn" }];
   }
 }

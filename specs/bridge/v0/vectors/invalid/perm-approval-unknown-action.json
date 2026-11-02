@@ -1,0 +1,17 @@
+{
+  "target": "BridgeEvent",
+  "description": "only fs.write, proc.spawn, net.fetch and cmd.invoke are held",
+  "instance": {
+    "event": "perm.approval",
+    "data": {
+      "approvalId": "a-3",
+      "caller": "agent:mira",
+      "action": "fs.read",
+      "permission": {
+        "permission": "fs:read",
+        "paths": ["~/Notes/**"]
+      },
+      "target": "~/Notes/today.md"
+    }
+  }
+}

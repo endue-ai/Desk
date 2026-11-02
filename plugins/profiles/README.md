@@ -14,13 +14,15 @@ in force. `init.yaml`'s `profile` applies at start; `default` when it names none
 | `focus` | Do not disturb (`desk.notify.dnd`): only errors show |
 | `present` | Light and high contrast, no notifications at all |
 
-Commands: `desk.profiles.switch` (`Mod+Shift+M`, through the palette), `.list`, and `.save`, which keeps
+Commands: `desk.profiles.switch` (`Mod+Shift+M`, through the palette), `.list`, `.save`, which keeps
 the plugins on and off now and this session's settings (not the key bindings: `keys.yaml` holds those)
-as `~/.desk/profiles/<id>.yaml` (ADR 0079; `specs/init/v0/profile.schema.json`). The file name is the id
-and a file shadows a contributed profile of its id. Edit a file and the change applies at once; a file
-that does not check is ignored with a notice naming its line. Profiles an older desk kept in the store
-move to files once. Profiles never turn off `desk.profiles`, `desk.palette` or `desk.keys`, so there
-is always a way back. Other plugins may contribute profiles of their own.
+as `~/.desk/profiles/<id>.yaml` (ADR 0079; `specs/init/v0/profile.schema.json`), and `.remove`, which
+drops a saved one (never the one in force). The file name is the id and a file shadows a contributed
+profile of its id. Edit a file and the change applies at once; a file that does not check is ignored
+with a notice naming its line. Profiles an older desk kept in the store move to files once. Profiles
+never turn off `desk.profiles`, `desk.palette` or `desk.keys`, so there is always a way back. Other
+plugins may contribute profiles of their own. Eris proposes profiles too ("make a quiet night profile
+with only notes and terminal", ADR 0073): previewed as a ghost, kept with `.save`.
 
 The runtime side is `packages/runtime/src/policies/profiles.ts` and `profile-files.ts`.
 

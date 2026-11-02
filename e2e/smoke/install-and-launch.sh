@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Install smoke on Linux: build the .deb (`just bundle-app`), install it with apt, check the signature
-# (a stub for now), launch `endue-desk` from PATH with a temp HOME and e2e/fixtures/init.yaml, wait for
+# Install smoke on Linux: build the .deb (`just bundle-app`), install it with apt, check its signature
+# against the updater key (`verify-signature.sh`; a local or pull-request build has none and says it
+# is unsigned), launch `endue-desk` from PATH with a temp HOME and e2e/fixtures/init.yaml, wait for
 # the ready line it prints (commands/ready.rs), quit it with SIGTERM and remove the package.
 # Exits 0 only when every step passed; otherwise it names the step that failed. `just smoke` runs it;
 # the e2e workflow runs that under xvfb-run, and people on Linux bring their own DISPLAY.

@@ -15,6 +15,7 @@ so a sync sends only what changed, 50 files per round. `query` and `act` answer 
 | `notes/` | Two sample notes, one with a heading and one without |
 | `.cargo/config.toml` | Builds for `wasm32-wasip2` into `build/`, so the component lands where `entry` points |
 | `build/wasm32-wasip2/release/hello_connector.wasm` | The built component, committed so the host's tests run without the Wasm target |
+| `tests/notes.test.json` | Its test on the harness: a folder scripted with `fs.list` and `fs.read`, one sync, the note it brings |
 
 The desk grants `fs:read` for the chosen folder when the person connects it; the manifest only says
 how far the connector may ask.
@@ -23,12 +24,14 @@ how far the connector may ask.
 
 ```bash
 cargo test -p desk-plugin-host --test hello_connector
+cargo run -p desk-cli -- plugin test examples/plugin-hello-connector
 ```
 
 ## Build
 
-Once, `rustup target add wasm32-wasip2`. Then, in this folder (the remap keeps local paths out, so it
-rebuilds alike), and commit the rebuilt `hello_connector.wasm` with any change to `src/` or `specs/wit`:
+`rust-toolchain.toml` lists the `wasm32-wasip2` target (`rustup target add wasm32-wasip2` on an older
+install). Then, in this folder (the remap keeps local paths out, so it rebuilds alike), and commit
+the rebuilt `hello_connector.wasm` with any change to `src/` or `specs/wit`:
 
 ```bash
 RUSTFLAGS="--remap-path-prefix=${CARGO_HOME:-$HOME/.cargo}=/cargo" cargo build --release

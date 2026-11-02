@@ -1,0 +1,14 @@
+{
+  "target": "BridgeRequest",
+  "description": "an agent id has no spaces",
+  "instance": {
+    "id": 7,
+    "method": "perm.list",
+    "params": {
+      "caller": "agent:mira lee",
+      "scope": {
+        "permission": "perm:manage"
+      }
+    }
+  }
+}

@@ -21,6 +21,7 @@ use desk_sys::fs as sysfs;
 use desk_sys::shell::{Opener, SystemOpener};
 use serde::Serialize;
 
+use crate::approvals::Approvals;
 use crate::conversation::Conversation;
 use crate::core_cmd::Commands;
 use crate::core_connectors::Connectors;
@@ -32,6 +33,7 @@ use crate::core_perm::{Prompter, RefuseAll};
 use crate::core_plugin_views::ProvidedViews;
 use crate::core_proc::Processes;
 use crate::core_prompts::Prompts;
+use crate::core_recent::Recent;
 use crate::core_ui::Surfaces;
 use crate::core_views::ViewsSeen;
 use crate::events::EventBus;
@@ -59,6 +61,7 @@ pub struct Core {
     events: EventBus,
     pub(crate) prompter: Box<dyn Prompter>,
     pub(crate) prompts: Mutex<Prompts>,
+    pub(crate) approvals: Mutex<Approvals>,
     pub(crate) subscriptions: Mutex<Subscriptions>,
     pub(crate) plugins: Mutex<PluginRegistry>,
     pub(crate) store: Mutex<Store>,
@@ -69,8 +72,10 @@ pub struct Core {
     pub(crate) sync: Option<Syncer>,
     pub(crate) notifications: AtomicU64,
     pub(crate) watches: Mutex<Watches>,
+    pub(crate) history: Mutex<Option<crate::history::History>>,
     pub(crate) file_urls: Mutex<FileUrls>,
     pub(crate) commands: Mutex<Commands>,
+    pub(crate) recent: Mutex<Recent>,
     pub(crate) search_results: Mutex<crate::core_search::RecentResults>,
     pub(crate) index: Option<Arc<dyn ItemIndex>>,
     pub(crate) calendar: Option<Arc<dyn CalendarSource>>,
@@ -95,6 +100,7 @@ impl Core {
             events: EventBus::new(),
             prompter: Box::new(RefuseAll),
             prompts: Mutex::new(Prompts::default()),
+            approvals: Mutex::default(),
             subscriptions: Mutex::new(Subscriptions::default()),
             plugins: Mutex::new(PluginRegistry::new(None)),
             store: Mutex::new(Store::new(None)),
@@ -105,8 +111,10 @@ impl Core {
             sync: None,
             notifications: AtomicU64::new(0),
             watches: Mutex::new(Watches::default()),
+            history: Mutex::new(None),
             file_urls: Mutex::new(FileUrls::default()),
             commands: Mutex::new(Commands::default()),
+            recent: Mutex::default(),
             search_results: Mutex::default(),
             index: None,
             calendar: None,
@@ -135,6 +143,8 @@ impl Core {
 
     pub fn handle(&self, caller: &str, request: BridgeRequest) -> BridgeResponse {
         let (id, answer) = self.dispatch(caller, request);
+        self.report_approved(&answer);
+        self.count_call(caller, answer.is_ok());
         match answer {
             Ok(result) => BridgeResponse::BridgeSuccess(BridgeSuccess {
                 id,
@@ -180,8 +190,10 @@ impl Core {
             R::PermRevoke(r) => (r.id, self.perm_revoke(caller, r.params)),
             R::PermList(r) => (r.id, self.perm_list(caller, r.params)),
             R::PermAnswer(r) => (r.id, self.perm_answer(caller, r.params)),
+            R::PermApprove(r) => (r.id, self.perm_approve(caller, r.params)),
             R::PluginList(r) => (r.id, self.plugin_list(caller, r.params)),
             R::PluginSetEnabled(r) => (r.id, self.plugin_set_enabled(caller, r.params)),
+            R::PluginStats(r) => (r.id, self.plugin_stats(caller, r.params)),
             R::SearchReplace(r) => (r.id, self.search_replace(caller, r.params)),
             R::SearchQuery(r) => (r.id, self.search_query(caller, r.params)),
             R::SearchSystem(r) => (r.id, self.search_system(caller, r.params)),
@@ -200,6 +212,8 @@ impl Core {
             R::FsWrite(r) => (r.id, self.fs_write(caller, r.params)),
             R::FsWatch(r) => (r.id, self.fs_watch(caller, r.params)),
             R::FsUrl(r) => (r.id, self.fs_url(caller, r.params)),
+            R::FsHistory(r) => (r.id, self.fs_history(caller, r.params)),
+            R::FsRestore(r) => (r.id, self.fs_restore(caller, r.params)),
             R::ProcSpawn(r) => (r.id, self.proc_spawn(caller, r.params)),
             R::ProcWrite(r) => (r.id, self.proc_write(caller, r.params)),
             R::ProcResize(r) => (r.id, self.proc_resize(caller, r.params)),
@@ -214,6 +228,7 @@ impl Core {
             R::CmdList(r) => (r.id, self.cmd_list(caller, r.params)),
             R::CmdInvoke(r) => (r.id, self.cmd_invoke(caller, r.params)),
             R::CmdAnswer(r) => (r.id, self.cmd_answer(caller, r.params)),
+            R::CmdRecent(r) => (r.id, self.cmd_recent(caller, r.params)),
             R::SettingsGet(r) => (r.id, self.settings_get(caller, r.params)),
             R::SettingsSet(r) => (r.id, self.settings_set(caller, r.params)),
             R::SettingsList(r) => (r.id, self.settings_list(caller, r.params)),

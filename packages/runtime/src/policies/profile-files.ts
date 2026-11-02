@@ -12,6 +12,8 @@ import { DESK_DIR, type DeskFolder } from "./desk-folder";
 export const PROFILES_DIR = `${DESK_DIR}/profiles`;
 /** Where an older desk kept saved profiles, in the store. */
 export const PROFILES_KEY = "profiles";
+/** Profile files the person removed, with the text they had: the bridge has no fs.remove yet. */
+export const REMOVED_KEY = "profiles.removed";
 export const PROFILE_ID = /^[a-z0-9][a-z0-9._-]{0,63}$/;
 
 const HEADER = [
@@ -28,6 +30,8 @@ export interface ProfileFiles {
   /** The valid profiles, by file name. */
   saved(): ProfileContribution[];
   save(profile: ProfileContribution): Promise<void>;
+  /** Drop a saved profile. Its file stays (the bridge cannot delete one) but is not read until it is edited. */
+  remove(id: string): Promise<void>;
   /** Hear the id of a profile whose file changed on disk (saved, edited or removed). */
   onChange(listener: (id: string) => void): () => void;
   dispose(): void;
@@ -42,11 +46,19 @@ export function profileFiles(
   /** The text of each file as last read or written, so a change is applied once. */
   const texts = new Map<string, string>();
   const listeners = new Set<(id: string) => void>();
+  /** Removed profiles by id: the text their file had, which stays out until someone edits it. */
+  let removed: Record<string, string> = {};
   let off: (() => void) | undefined;
 
   const pathOf = (id: string) => `${PROFILES_DIR}/${id}.yaml`;
   const problem = (name: string, body: string) =>
     notify({ caller: "desk", title: `profiles/${name} is not in force`, body, level: "warning" });
+
+  const saveRemoved = () =>
+    bridge
+      .call("store.set", { key: REMOVED_KEY, value: Object.keys(removed).length ? removed : null })
+      .then(() => undefined)
+      .catch(() => undefined);
 
   /** Read one file into `profiles`; whether anything changed. */
   const read = async (name: string): Promise<boolean> => {
@@ -62,6 +74,12 @@ export function profileFiles(
       return profiles.delete(id);
     }
     texts.set(id, text);
+    if (removed[id] === text) return profiles.delete(id);
+    if (id in removed) {
+      const { [id]: _gone, ...rest } = removed;
+      removed = rest;
+      void saveRemoved();
+    }
     const parsed = readDeskYaml(`profiles/${name}`, text, checkProfileFile);
     if (!parsed.ok) {
       problem(name, parsed.problem);
@@ -86,6 +104,9 @@ export function profileFiles(
       await bridge.call("store.set", { key: PROFILES_KEY, value: null });
     },
     load: async () => {
+      const stored = await bridge.call("store.get", { key: REMOVED_KEY }).catch(() => ({}));
+      const value = (stored as { value?: unknown }).value;
+      if (value && typeof value === "object") removed = { ...(value as Record<string, string>) };
       for (const name of await folder.list(PROFILES_DIR))
         if (name.endsWith(".yaml") && !name.startsWith(".")) await read(name);
       off ??= folder.onChange((path) => {
@@ -99,9 +120,20 @@ export function profileFiles(
     saved: () => [...profiles.values()],
     save: async (profile) => {
       const text = deskYaml(toFile(profile), HEADER);
+      if (profile.id in removed) {
+        const { [profile.id]: _gone, ...rest } = removed;
+        removed = rest;
+        await saveRemoved();
+      }
       texts.set(profile.id, text);
       profiles.set(profile.id, profile);
       await folder.write(pathOf(profile.id), text);
+    },
+    remove: async (id) => {
+      profiles.delete(id);
+      const text = texts.get(id) ?? (await folder.read(pathOf(id)));
+      if (text !== undefined) removed = { ...removed, [id]: text };
+      await saveRemoved();
     },
     onChange: (listener) => {
       listeners.add(listener);

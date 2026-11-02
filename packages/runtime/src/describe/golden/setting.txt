@@ -1,0 +1,8 @@
+desk.theme.scheme is "light", set in init.yaml.
+What it is: a setting, a string: system, light or dark
+What it does: Light, dark, or the system's.
+Plugin: desk.theme (Theme), /desk/plugins/theme
+Layer: init.yaml, ~/.desk/init.yaml
+Layers: manifest default "dark"; init.yaml "light"
+Who may change it: you, in init.yaml, a profile or this session
+File: ~/.desk/init.yaml

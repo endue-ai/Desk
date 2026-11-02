@@ -41,5 +41,16 @@ export function createView(doc, actions) {
     focus() {
       if (!text.hidden) text.focus();
     },
+
+    /** Where the caret and the scroll are, to come back to (ADR 0070). */
+    where() {
+      return { start: text.selectionStart, end: text.selectionEnd, scroll: text.scrollTop };
+    },
+
+    /** Put the caret and the scroll back, without taking the focus. */
+    place(/** @type {{ start: number, end: number, scroll: number }} */ at) {
+      text.setSelectionRange(at.start, at.end);
+      text.scrollTop = at.scroll;
+    },
   };
 }

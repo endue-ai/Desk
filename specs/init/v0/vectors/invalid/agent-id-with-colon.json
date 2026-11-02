@@ -1,0 +1,11 @@
+{
+  "target": "InitDocument",
+  "description": "an agent id is the brain's id, without the agent: prefix",
+  "instance": {
+    "agents": {
+      "agent:mira": {
+        "allow": []
+      }
+    }
+  }
+}

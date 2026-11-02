@@ -7,7 +7,7 @@ wasmtime::component::bindgen!({
 });
 
 pub use desk::host::cmd::{Command, CommandInfo, Failure, FailureCode};
-pub use desk::host::fs::{DirEntry, EntryKind};
+pub use desk::host::fs::{DirEntry, EntryKind, Version as FsVersion};
 pub use desk::host::log::{Entry as LogEntry, Level as LogLevel};
 pub use desk::host::net::{Request, Response};
 pub use desk::host::perm::{Decision, Duration, Grant};

@@ -12,19 +12,16 @@ line per event, with the event's data as its fields.
 | `src/lib.rs` | The plugin: bindings from `../../specs/wit`, then `start`, `on_command` and `on_event` |
 | `.cargo/config.toml` | Builds for `wasm32-wasip2` into `build/`, so the component lands where `entry` points |
 | `build/wasm32-wasip2/release/hello.wasm` | The built component, committed so the host's tests run without the Wasm target |
+| `tests/greet.test.json` | Its test on the harness: start, greet Ada with `hello.txt` scripted, and the calls that follow |
 
 The command is registered at run time, not listed under `contributes.commands`, so `plugin.json` needs
 no permission for it: `cmd.register`, `cmd.answer` and `log.write` touch only the plugin's own data.
 
 ## Build
 
-Once, add the Wasm target to the toolchain the repository pins (`rust-toolchain.toml` stays as it is):
-
-```bash
-rustup target add wasm32-wasip2
-```
-
-Then, in this folder, one command builds it (the remap keeps local paths out, so it rebuilds alike):
+`rust-toolchain.toml` lists the `wasm32-wasip2` target (`rustup target add wasm32-wasip2` on an older
+install). Then, in this folder, one command builds it (the remap keeps local paths out, so it
+rebuilds alike):
 
 ```bash
 RUSTFLAGS="--remap-path-prefix=${CARGO_HOME:-$HOME/.cargo}=/cargo" cargo build --release
@@ -36,5 +33,6 @@ Commit the rebuilt `hello.wasm` together with the source change.
 
 ```bash
 cargo run -p desk-cli -- plugin validate examples/plugin-hello-wasm
+cargo run -p desk-cli -- plugin test examples/plugin-hello-wasm
 cargo test -p desk-plugin-host --test hello_wasm --test commands --test events
 ```

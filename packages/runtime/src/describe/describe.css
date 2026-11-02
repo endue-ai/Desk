@@ -1,0 +1,93 @@
+/* desk.describe's answer: a dialog over the desk (and the shell), its facts as label-value rows. */
+
+.desk-describe {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal, 30);
+  display: grid;
+  place-items: center;
+  padding: var(--desk-space-6);
+  background: var(--desk-scrim);
+  pointer-events: auto;
+}
+
+.desk-describe-panel {
+  display: grid;
+  gap: var(--desk-space-3);
+  width: min(640px, 100%);
+  max-height: 100%;
+  overflow: auto;
+  padding: var(--desk-space-6);
+  border: 1px solid var(--desk-border);
+  border-radius: var(--desk-radius-lg);
+  background: var(--desk-popover);
+  box-shadow: var(--desk-shadow-lg);
+  color: var(--desk-text);
+  font-family: var(--desk-font-sans);
+  font-size: var(--desk-text-sm);
+  line-height: 1.5;
+  outline: none;
+}
+
+.desk-describe-title {
+  margin: 0;
+  font-size: var(--desk-text-lg);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.desk-describe-facts {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: var(--desk-space-1) var(--desk-space-4);
+  margin: 0;
+}
+
+/* Each row's cells join the grid; the space between them only keeps "Label: value" in the text. */
+.desk-describe-fact {
+  display: contents;
+}
+
+.desk-describe-fact dt {
+  color: var(--desk-text-muted);
+}
+
+.desk-describe-fact dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+
+.desk-describe-status {
+  min-height: 1.5em;
+  margin: 0;
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-xs);
+  overflow-wrap: anywhere;
+}
+
+.desk-describe-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--desk-space-2);
+}
+
+.desk-describe-button {
+  min-height: var(--desk-control-sm);
+  padding: 0 var(--desk-space-4);
+  border: 1px solid var(--desk-border);
+  border-radius: var(--desk-radius-md);
+  background: var(--desk-card);
+  color: var(--desk-text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.desk-describe-button:hover {
+  background: var(--desk-hover);
+}
+
+.desk-describe-button:focus-visible {
+  outline: 2px solid var(--desk-ring);
+  outline-offset: 2px;
+}

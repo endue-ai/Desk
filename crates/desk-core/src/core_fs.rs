@@ -1,7 +1,7 @@
-//! The fs side of `Core` beyond fs.read's answer: reading a byte range, fs.write, and fs.watch with
-//! its `fs.changed` events. A watch reports paths in the caller's own terms (under the path it asked
-//! for) and ends when the caller's grants no longer cover it (after a revoke, or the call that spent
-//! a once grant).
+//! The fs side of `Core` beyond fs.read's answer: reading a byte range, fs.write (which keeps what it
+//! replaces first, `core_history`), and fs.watch with its `fs.changed` events. A watch reports paths
+//! in the caller's own terms (under the path it asked for) and ends when the caller's grants no
+//! longer cover it (after a revoke, or the call that spent a once grant).
 
 use std::collections::BTreeMap;
 use std::fs::File;
@@ -16,6 +16,7 @@ use desk_bridge::{
 };
 use desk_sys::fs as sysfs;
 
+use crate::approvals::Action;
 use crate::handler::{Answer, Core, denied, error, io_error, json};
 use crate::paths::normalize;
 use crate::perm::{Denied, Target, scope_allows};
@@ -60,8 +61,18 @@ impl Core {
                 .decode(params.content)
                 .map_err(|e| error(ErrorCode::InvalidParams, format!("not base64: {e}")))?,
         };
-        let bytes_written = sysfs::write(&path, &bytes, create_dirs).map_err(io_error)?;
-        json(FsWriteResult { bytes_written })
+        let write = Action::Write {
+            path: &params.path,
+            file: &path,
+            bytes: &bytes,
+        };
+        self.hold(caller, &scope, write)?;
+        // The bytes it replaces are kept first (ADR 0076).
+        let (bytes_written, version) = self.write_keeping(caller, &path, &bytes, create_dirs)?;
+        json(FsWriteResult {
+            bytes_written,
+            version,
+        })
     }
 
     pub(crate) fn fs_watch(&self, caller: &str, params: FsWatchParams) -> Answer {

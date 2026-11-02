@@ -2,7 +2,8 @@
  * desk.profiles (init.el, switched while Desk runs): a profile is a plugin set plus settings. The
  * one init.yaml names applies at start; switching applies another: its settings layer over
  * init.yaml's and its plugins turn on and off. People save their own with desk.profiles.save, as
- * files in the desk folder that they may edit (`profile-files.ts`). Autoload plugins are desk.files' to turn on and off (ADR 0046): profiles leave them as they are.
+ * files in the desk folder that they may edit (`profile-files.ts`), and remove them with
+ * desk.profiles.remove (Undo of a profile Eris made, ADR 0073). Autoload plugins are desk.files' to turn on and off (ADR 0046): profiles leave them as they are.
  */
 import type { ProfileContribution } from "@endue-ai/bridge";
 import { CommandError } from "../commands";
@@ -17,7 +18,7 @@ export { PROFILES_KEY } from "./profile-files";
 /** The plugins a profile switch turned off, kept so the next profile that leaves them on brings them back. */
 export const OFF_KEY = "profiles.off";
 /** Never turned off by a profile: there would be no way back. */
-const KEEP_ON = new Set(["desk.profiles", "desk.palette", "desk.keys"]);
+export const KEEP_ON: ReadonlySet<string> = new Set(["desk.profiles", "desk.palette", "desk.keys"]);
 
 export interface ProfilesPolicy extends Installed {
   /** The profile in force, or undefined before the first is applied. */
@@ -146,6 +147,7 @@ export function installProfiles(
       const profile: ProfileContribution = {
         id,
         name: name ?? all().find((p) => p.id === id)?.name ?? id,
+        ...(rest.description ? { description: rest.description } : {}),
         plugins: rest.plugins ?? {
           enabled: plugins.filter((p) => p.enabled).map((p) => p.id),
           disabled: plugins.filter((p) => !p.enabled).map((p) => p.id),
@@ -165,6 +167,21 @@ export function installProfiles(
       return profile;
     },
     ["mode", "init"],
+  );
+  define(
+    "desk.profiles.remove",
+    "Remove a saved profile",
+    async (args) => {
+      const id = idOf(args);
+      if (!id || !files.saved().some((p) => p.id === id))
+        throw new CommandError("failed", `${id} is not a saved profile`);
+      if (id === active)
+        throw new CommandError("failed", `${id} is in force: switch to another profile first`);
+      await files.remove(id);
+      changed();
+      return { id };
+    },
+    ["delete", "forget"],
   );
 
   return {

@@ -1,0 +1,5 @@
+g5 lets example.notes write files (paths: ~/Notes/**), always.
+What it is: a grant of fs:write (paths: ~/Notes/**)
+Who holds it: example.notes (Notes)
+Duration: always, kept in the desk's grant file; granted 2026-11-02T09:00:00Z
+Take it back: desk perm revoke g5

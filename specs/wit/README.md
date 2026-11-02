@@ -7,7 +7,7 @@ connectors build to (below); it has no top-level `package` line, so the folder s
 
 | Interface | Bridge methods |
 | --- | --- |
-| `fs` | `fs.read`, `fs.list`, `fs.write` |
+| `fs` | `fs.read`, `fs.list`, `fs.write`, `fs.history`, `fs.restore` |
 | `net` | `net.fetch` |
 | `ui` | `ui.notify` |
 | `perm` | `perm.query`, `perm.request` |
@@ -30,7 +30,8 @@ not interfaces, because they are not bridge methods.
 Process, audio and watch calls are not available to logic plugins in v0. Nor are `ui.surface.open` and
 `ui.surface.close`: no `<interface>.<function>` name can hold their inner dot, and a logic plugin
 declares no surfaces to open. `fs.list` entries carry `modified-at` (RFC 3339 in UTC), none when the
-desk cannot tell.
+desk cannot tell. `fs.history` answers `version` records (id, `at`, caller, size, sha256) newest first,
+and `fs.restore` writes one back as `fs.write` does (ADR 0076).
 
 ## The connector world
 
