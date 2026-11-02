@@ -95,10 +95,12 @@ impl Core {
     /// Ask the person; the call waits for the answer. A refusal is a result, not an error.
     pub(crate) fn perm_request(&self, caller: &str, params: PermRequestParams) -> Answer {
         let asked = params.duration.unwrap_or(GrantDuration::Session);
-        let grant = self.ask(caller, &params.permission, &params.reason, asked)?;
+        let reason = params.reason.as_deref().unwrap_or_default();
+        let grant = self.ask(caller, &params.permission, reason, asked)?;
         json(PermRequestResult {
             granted: grant.is_some(),
             grant,
+            reason: None,
         })
     }
 

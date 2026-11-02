@@ -120,11 +120,19 @@ its `ui.surface.closed`; losing `ui:surface` leaves them open.
 needs `ui:notify`. The core sends the runtime a `ui.notified` event naming the caller; how long it
 stays, whether do-not-disturb holds it back and how much history is kept is the runtime's notify policy.
 
-**perm.request** asks the person for a permission, showing the reason, and resolves when they answer.
-`duration` says how long the grant should last: `once` (the next call it allows, then it expires),
-`session` (until Desk quits, the default) or `always` (kept on disk across restarts). The person may
-choose another duration, and the grant carries the one they chose. A refusal is `granted: false`, not an
-error. It needs no scope.
+**perm.request** asks the person for a permission, showing the reason when there is one, and resolves
+when they answer. `duration` says how long the grant should last: `once` (the next call it allows, then it
+expires), `session` (until Desk quits, the default) or `always` (kept on disk across restarts). The person
+may choose another duration, and the grant carries the one they chose. A refusal is `granted: false`, not
+an error. It needs no scope.
+
+The core's prompt policy decides when the person is asked. A request that one of the caller's lasting
+grants (`session` or `always`) already covers is granted at once with that grant. Identical requests
+(the same caller and permission, scope included) that wait at the same time share one prompt, and the one
+answer answers them all; a `once` answer gives each its own grant. A refusal the person makes is
+remembered for the session for that caller and that permission: asking again answers `granted: false`
+with `reason: "refused-earlier"` at once, without a prompt, until the caller is granted a permission
+that covers it. `shell.open` answers such a request `permission_denied` at once.
 
 **perm.query** lists the caller's grants, optionally only those covering a given permission.
 
@@ -135,7 +143,11 @@ the person's permissions view. It needs `perm:manage`.
 `perm.prompt` event for each request (who asks, for what, why and for how long) and show it to the person;
 the first `perm.answer` for a `promptId` decides, with `granted` and optionally the `duration` the person
 chose. Answering a prompt that is already decided or withdrawn is `not_found`. Without such a caller the
-core's own prompt decides.
+core's own prompt decides, and its refusals are not remembered. When a caller asks for a third folder
+(`fs:read` or `fs:write` over `<folder>/**`) under the same parent in a session, its prompt carries
+`parent`, the same permission over `<parent>/**`; `parent: true` in the answer grants that instead. The
+parent is never a root, the home folder or a folder holding it, nor a scope the person refused that caller
+earlier; `parent: true` on a prompt without one is `invalid_params`.
 
 **plugin.list** returns every installed plugin with its status (`ready` or `failed` with a reason), whether
 it is enabled and built in, its file revision and its manifest. It needs `plugin:manage`.

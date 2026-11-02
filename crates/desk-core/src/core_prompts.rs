@@ -74,8 +74,9 @@ impl Core {
                     prompt_id: prompt_id.clone(),
                     caller: caller.to_owned(),
                     permission: permission.clone(),
-                    reason: reason.to_owned(),
+                    reason: (!reason.is_empty()).then(|| reason.to_owned()),
                     duration,
+                    parent: None,
                 },
             });
             if self.events().route(holders, event) == 0 {
