@@ -11,11 +11,12 @@ const bucketOf = (n) => {
   return bucket;
 };
 
-export function workerTree(data, snapshot) {
-  const expanded = new Set(
-    (data?.roots.length ?? 0) <= 20 ? data?.roots.map((_, i) => String(i)) : [],
-  );
-  let selected = "0";
+/** `kept`: the open nodes and the selection of the tree this one replaces (after an edit). */
+export function workerTree(data, snapshot, kept) {
+  const expanded =
+    kept?.expanded ??
+    new Set((data?.roots.length ?? 0) <= 20 ? data?.roots.map((_, i) => String(i)) : []);
+  let selected = kept?.selected ?? "0";
   let rows = [];
   let index = new Map();
   let opening = false;
@@ -112,6 +113,7 @@ export function workerTree(data, snapshot) {
   };
   build();
   return {
+    state: () => ({ expanded, selected }),
     rows(from, count) {
       return { count: rows.length, items: rows.slice(from, from + count).map(safe) };
     },

@@ -75,7 +75,10 @@ describe("plugin.json", () => {
   it("declares no paths of its own: every file is asked for when it opens", () => {
     const data = manifest();
     expect(data.permissions).toEqual([
-      { permission: "cmd:invoke", ids: ["desk.files.changed", "desk.palette.pick"] },
+      {
+        permission: "cmd:invoke",
+        ids: ["desk.files.changed", "desk.palette.pick", "desk.buffers.update"],
+      },
     ]);
     const kinds = (data.permissions ?? []).map((p) => p.permission);
     expect(kinds).not.toContain("fs:read");
