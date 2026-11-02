@@ -126,7 +126,11 @@
       "description": "Result of fs.write.",
       "type": "object",
       "properties": {
-        "bytesWritten": { "description": "Bytes written to disk.", "type": "integer", "minimum": 0 },
+        "bytesWritten": {
+          "description": "Bytes written to disk.",
+          "type": "integer",
+          "minimum": 0
+        },
         "version": {
           "description": "The version that keeps what this write replaced, as fs.history lists it. Absent when nothing was kept: a new file, the same bytes, or a desk that keeps no history.",
           "$ref": "#/$defs/FsVersionId"
@@ -225,7 +229,11 @@
       "description": "Result of fs.restore: what fs.write answers for the same write.",
       "type": "object",
       "properties": {
-        "bytesWritten": { "description": "Bytes written to disk.", "type": "integer", "minimum": 0 },
+        "bytesWritten": {
+          "description": "Bytes written to disk.",
+          "type": "integer",
+          "minimum": 0
+        },
         "version": {
           "description": "The version that keeps what the restore replaced; absent when nothing was kept.",
           "$ref": "#/$defs/FsVersionId"
