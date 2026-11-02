@@ -227,6 +227,8 @@ impl Conversation {
                     text: text.to_owned(),
                 }],
             },
+            tools: None,
+            tool_choice: None,
         };
         self.brain
             .create_turn(&session, &request, &mut |event| sink.on(event))
@@ -326,6 +328,7 @@ impl<'a> Sink<'a> {
                 turn_id: self.turn.to_owned(),
                 kind,
                 text: text.map(str::to_owned),
+                structured: None,
             },
         }));
     }
