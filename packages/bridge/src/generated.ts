@@ -2336,19 +2336,23 @@ export interface PermRequestRequest {
 /** Parameters of perm.request. */
 export interface PermRequestParams {
   permission: Permission;
-  /** Shown to the person in the prompt. */
-  reason: string;
+  /** Why the caller asks, shown to the person in the prompt. Optional; a prompt without one says that none was given. */
+  reason?: string;
   duration?: GrantDuration;
 }
 
 /** How long a grant lasts. once: the next call it allows, then it expires. session: until Desk quits. always: kept on disk across restarts. Every grant lasts until revoked at the latest. perm.request defaults to session. */
 export type GrantDuration = "once" | "session" | "always";
 
-/** Result of perm.request. A refusal is a result, not an error. */
+/** Result of perm.request. A refusal is a result, not an error. A request that a lasting grant (session or always) already covers is granted at once with that grant. */
 export interface PermRequestResult {
   granted: boolean;
   grant?: Grant;
+  reason?: RefusalReason;
 }
+
+/** Why perm.request was refused without asking the person. refused-earlier: the person refused this caller this permission and scope earlier in the session; it holds until the caller is granted a permission that covers it. Absent from a result means the person (or the core's own prompter) refused this request. */
+export type RefusalReason = "refused-earlier";
 
 /** List the caller's current grants. */
 export interface PermQueryRequest {
@@ -2430,6 +2434,8 @@ export interface PermAnswerParams {
   promptId: string;
   granted: boolean;
   duration?: GrantDuration;
+  /** true grants the prompt's parent offer instead of the permission asked. Ignored when granted is false; invalid_params on a prompt that offers no parent. */
+  parent?: boolean;
   scope: PermManagePermission;
 }
 
@@ -2447,9 +2453,11 @@ export interface PermPromptData {
   promptId: string;
   caller: CallerId;
   permission: Permission;
-  /** The caller's reason, to show as it is. */
-  reason: string;
+  /** The caller's reason, to show as it is. Absent when the caller gave none. */
+  reason?: string;
   duration: GrantDuration;
+  /** The parent folder the person may grant instead: the same permission over the folder that holds the one asked for, offered when this caller asks for a third folder under it in the session. Never a root, the home folder or a folder holding it, nor a scope the person refused this caller earlier. */
+  parent?: Permission;
 }
 
 /** One of the caller's grants changed. */

@@ -3,7 +3,8 @@
 //! watched. theme.save and theme.import write a folder beside the others, check it with `validate_dir`
 //! and only then put it in place; theme.export makes a `.desk-theme` bundle of any installed theme;
 //! theme.remove deletes a user theme. Every call needs theme:manage; built-in ids and plugins outside
-//! the folder are never replaced. Downloads and what a market theme keeps beside it are core_market's.
+//! the folder are never replaced. Downloads, which market bundles install, and what a market theme
+//! keeps beside it are core_market's.
 
 use std::collections::btree_map::Entry;
 use std::collections::{BTreeMap, BTreeSet};
@@ -128,6 +129,9 @@ impl Core {
                 let file = self.resolve(&path)?;
                 too_big(&path, fs::metadata(&file).map_err(io_error)?.len() as usize)?;
                 parse(&fs::read(&file).map_err(io_error)?)?
+            }
+            (None, None, Some(url)) if params.market.is_some() => {
+                self.market_bundle(&url, sha256, params.market.as_deref())?
             }
             (None, None, Some(url)) => parse(&self.download(&url, sha256)?)?,
             _ => return Err(invalid(SOURCES.into())),

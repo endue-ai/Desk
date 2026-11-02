@@ -21,13 +21,13 @@
       "properties": {
         "permission": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/Permission" },
         "reason": {
-          "description": "Shown to the person in the prompt.",
+          "description": "Why the caller asks, shown to the person in the prompt. Optional; a prompt without one says that none was given.",
           "type": "string",
           "minLength": 1
         },
         "duration": { "$ref": "#/$defs/GrantDuration" }
       },
-      "required": ["permission", "reason"],
+      "required": ["permission"],
       "additionalProperties": false
     },
     "GrantDuration": {
@@ -36,14 +36,20 @@
       "enum": ["once", "session", "always"]
     },
     "PermRequestResult": {
-      "description": "Result of perm.request. A refusal is a result, not an error.",
+      "description": "Result of perm.request. A refusal is a result, not an error. A request that a lasting grant (session or always) already covers is granted at once with that grant.",
       "type": "object",
       "properties": {
         "granted": { "type": "boolean" },
-        "grant": { "$ref": "#/$defs/Grant" }
+        "grant": { "$ref": "#/$defs/Grant" },
+        "reason": { "$ref": "#/$defs/RefusalReason" }
       },
       "required": ["granted"],
       "additionalProperties": false
+    },
+    "RefusalReason": {
+      "description": "Why perm.request was refused without asking the person. refused-earlier: the person refused this caller this permission and scope earlier in the session; it holds until the caller is granted a permission that covers it. Absent from a result means the person (or the core's own prompter) refused this request.",
+      "type": "string",
+      "enum": ["refused-earlier"]
     },
     "PermQueryRequest": {
       "description": "List the caller's current grants.",
@@ -183,6 +189,10 @@
         "promptId": { "type": "string", "minLength": 1 },
         "granted": { "type": "boolean" },
         "duration": { "$ref": "#/$defs/GrantDuration" },
+        "parent": {
+          "description": "true grants the prompt's parent offer instead of the permission asked. Ignored when granted is false; invalid_params on a prompt that offers no parent.",
+          "type": "boolean"
+        },
         "scope": {
           "$ref": "../../plugin/v0/permission.schema.json#/$defs/PermManagePermission"
         }
@@ -213,10 +223,17 @@
         "promptId": { "type": "string", "minLength": 1 },
         "caller": { "$ref": "bridge.schema.json#/$defs/CallerId" },
         "permission": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/Permission" },
-        "reason": { "description": "The caller's reason, to show as it is.", "type": "string" },
-        "duration": { "$ref": "#/$defs/GrantDuration" }
+        "reason": {
+          "description": "The caller's reason, to show as it is. Absent when the caller gave none.",
+          "type": "string"
+        },
+        "duration": { "$ref": "#/$defs/GrantDuration" },
+        "parent": {
+          "description": "The parent folder the person may grant instead: the same permission over the folder that holds the one asked for, offered when this caller asks for a third folder under it in the session. Never a root, the home folder or a folder holding it, nor a scope the person refused this caller earlier.",
+          "$ref": "../../plugin/v0/permission.schema.json#/$defs/Permission"
+        }
       },
-      "required": ["promptId", "caller", "permission", "reason", "duration"],
+      "required": ["promptId", "caller", "permission", "duration"],
       "additionalProperties": false
     },
     "PermChangedEvent": {

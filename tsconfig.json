@@ -11,6 +11,7 @@
     "packages/*/dev",
     "packages/*/*.config.ts",
     "plugins/*/tests",
+    "examples/*/tests",
     "apps/*/src",
     "apps/*/*.config.ts",
     "vitest.config.ts"

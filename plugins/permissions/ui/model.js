@@ -11,8 +11,10 @@ import { broadWarning, describeCaller, describePermission, durationLabel } from 
  *   warning: string | null, revokeLabel: string }} GrantItem
  * @typedef {{ caller: Caller, grants: GrantItem[] }} GrantGroup
  * @typedef {{ summary: string, groups: GrantGroup[] }} GrantList
+ * @typedef {{ scope: string, folder: string, label: string }} ParentOffer
  * @typedef {{ promptId: string, title: string, caller: Caller, permission: string, scope: string,
- *   reason: string, duration: string, warning: string | null, waiting: number }} PromptModel
+ *   reason: string, duration: string, warning: string | null, parent: ParentOffer | null,
+ *   waiting: number }} PromptModel
  */
 
 const count = (/** @type {number} */ n, /** @type {string} */ noun) =>
@@ -54,6 +56,19 @@ export function grantList(grants, plugins) {
 }
 
 /**
+ * The parent folder the core offers with a prompt (a caller's third folder under it), with the words
+ * on its button: the grant would last as long as the one asked for. Null without an offer.
+ * @param {PermPromptData} prompt
+ * @returns {ParentOffer | null}
+ */
+export function parentOffer(prompt) {
+  if (!prompt.parent) return null;
+  const { scope } = describePermission(prompt.parent);
+  const folder = scope.replace(/\/\*\*$/, "");
+  return { scope, folder, label: `Allow all of ${folder} (${durationLabel(prompt.duration)})` };
+}
+
+/**
  * The prompt in front of the queue, with how many wait behind it.
  * @param {PermPromptData} prompt
  * @param {PluginInfo[]} plugins
@@ -69,9 +84,10 @@ export function promptModel(prompt, plugins, waiting) {
     caller,
     permission: label,
     scope,
-    reason: prompt.reason,
+    reason: prompt.reason ?? "",
     duration: durationLabel(prompt.duration),
     warning: broadWarning(prompt.permission),
+    parent: parentOffer(prompt),
     waiting,
   };
 }

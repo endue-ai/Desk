@@ -1,6 +1,8 @@
 // CSV and TSV: the encoding (a byte order mark, then UTF-8, then EUC-KR, or the setting), the
 // delimiter (comma, semicolon, tab or pipe), and the fields as RFC 4180 writes them. The text each
-// field shows is the text in the file; numbers in it are values too, so a range sums.
+// field shows is the text in the file; numbers in it are values too, so a range sums. A file read
+// as UTF-8 also gets its concrete-syntax model (csv-syntax.js), which edits are saved through.
+import { parseSyntax } from "./csv-syntax.js";
 import { createSheet } from "./model.js";
 
 /** The choices of the endue.sheets.csv-encoding setting, and what the details line calls each. */
@@ -106,6 +108,8 @@ export function parseCsv(text, delimiter) {
   let row = [];
   let field = "";
   let i = 0;
+  // Where the record being read starts: a last record of only "" is a record too.
+  let start = 0;
   const n = text.length;
   while (i < n) {
     const ch = text[i];
@@ -146,13 +150,14 @@ export function parseCsv(text, delimiter) {
       row = [];
       field = "";
       i += ch === "\r" && text[i + 1] === "\n" ? 2 : 1;
+      start = i;
     } else {
       const next = nextStop(text, i, delimiter);
       field += text.slice(i, next);
       i = next;
     }
   }
-  if (field !== "" || row.length > 0) {
+  if (start < n) {
     row.push(field);
     rows.push(row);
   }
@@ -193,6 +198,17 @@ export function numberOf(/** @type {string} */ raw) {
 }
 
 /**
+ * The cell a field's text makes: a number when it reads as one, text otherwise, none when empty.
+ * @param {string} text
+ * @returns {import("./model.js").Cell | undefined}
+ */
+export function cellOfText(text) {
+  if (text === "") return undefined;
+  const value = numberOf(text);
+  return value === undefined ? { t: "s", v: text, w: text } : { t: "n", v: value, w: text };
+}
+
+/**
  * Column widths for a format that has none: the longest text in the first rows, from Excel's
  * default width (64 pixels) up to 400. Wide characters (CJK) count twice.
  * @param {string[][]} rows
@@ -215,7 +231,8 @@ export function widthsOf(rows) {
 }
 
 /**
- * One sheet from a CSV or TSV file. Cells are made when the grid asks for them.
+ * One sheet from a CSV or TSV file, the encoding it was read in, and for UTF-8 its syntax model.
+ * Cells are made when the grid asks for them.
  * @param {Uint8Array} bytes
  * @param {{ name: string, encoding?: string }} file
  */
@@ -234,11 +251,11 @@ export function readCsv(bytes, { name, encoding = "auto" }) {
     },
     cellAt: (r, c) => {
       const text = rows[r]?.[c];
-      if (text === undefined || text === "") return undefined;
-      const value = numberOf(text);
-      return value === undefined ? { t: "s", v: text, w: text } : { t: "n", v: value, w: text };
+      return text === undefined ? undefined : cellOfText(text);
     },
   });
   const named = DELIMITER_NAMES[/** @type {keyof typeof DELIMITER_NAMES} */ (delimiter)];
-  return { sheet, detail: `${decoded.encoding}, ${named}` };
+  // The model's bytes are the file's: the grammar's ASCII bytes are never inside a UTF-8 sequence.
+  const syntax = decoded.encoding === "UTF-8" ? parseSyntax(bytes, delimiter) : undefined;
+  return { sheet, detail: `${decoded.encoding}, ${named}`, encoding: decoded.encoding, syntax };
 }
