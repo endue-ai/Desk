@@ -238,4 +238,21 @@ cargo run -p desk-cli -- theme import ~/Downloads/dusk.desk-theme
 
 ### マーケット
 
-テーマのマーケットを準備中です（`docs/ko/theme-requirements.md` の TC-05、TS-08）。`.desk-theme` ファイルとその sha256 を載せたインデックスで、スタジオがそれを一覧し、プレビューし、`market.` 以下の id でインストールします。`theme.import` はすでに `https` の URL とバンドルの `sha256` を受け取り、バイト列が一致しなければ拒否します。マーケットが開くまでは、ファイルそのものを共有してください。
+スタジオの Market タブは、設定 `desk.theme.markets` が各インデックスの https URL で挙げるマーケットのテーマを一覧します（ADR 0060）。既定はこのリポジトリの `main` にある `market/themes/index.json` で、`https://raw.githubusercontent.com/endue-ai/Desk/main/market/themes/index.json` から読みます。ほかのマーケットのインデックスは `init.yaml` でその後ろに加えます。ふたつのマーケットが同じ id を載せていれば、先のマーケットが優先されます。
+
+```yaml
+settings:
+  desk.theme.markets:
+    - https://raw.githubusercontent.com/endue-ai/Desk/main/market/themes/index.json
+    - https://themes.example.com/index.json
+```
+
+カードにはテーマのプレビュー色、名前、作者、ライセンスと、このデスクでの状態（Available、Installed、Update available、Edited）が表示されます。Preview は `.desk-theme` をダウンロードして sha256 を確かめ、インストールせずにデスク全体に表示します。Install は URL と sha256 を渡す `theme.import` で、`market.` 以下の id のまま取り込み、Apply でそのテーマが使われます。アップデートが置き換えるのは、あなたが手を加えていないマーケットのテーマだけです。手を加えたテーマはあなたのものとして残ります。
+
+テーマを公開するには、バンドルとインデックスの項目を `market/themes/` に加えるプルリクエストを開きます。
+
+1. テーマをエクスポートします（`desk theme export <id> <file>`、またはスタジオの Export）。id は `market.` 以下にし、バージョン、`theme.author`、`theme.license`（フォントと画像も含む SPDX 式）を付けます。
+2. ファイルを `market/themes/` に `<name>.desk-theme` として置き、`index.json`（`specs/plugin/v0/theme-index.schema.json`）に項目を加えます。`id`、`name`、`version`、`description`、`author`、`license`、`tags`、最大 5 色の `preview`、`url`（ファイル名）、`sha256`、`size` です。
+3. `node scripts/theme-market.mjs` を実行します。`just check` に含まれるこのマーケットチェッカーは、ハッシュやサイズの不一致、ライセンスの欠落、重複した id、正しいテーマプラグインでないバンドルを拒否します。マーケットのテーマはすべて、テストが両方の scheme でゲートにかけます。
+
+アップデートは新しいバージョンと、その新しいバンドル、sha256、サイズです。同じ手順が `market/themes/README.md` にもあります。

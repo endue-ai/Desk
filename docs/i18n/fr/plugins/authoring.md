@@ -290,7 +290,40 @@ dessus.
 
 ### Le marché
 
-Un marché de thèmes arrive (`docs/ko/theme-requirements.md`, TC-05 et TS-08) : un index de fichiers
-`.desk-theme` avec leur sha256, que le studio liste, prévisualise et installe sous des id dans `market.`.
-`theme.import` accepte déjà une URL `https` avec le `sha256` du paquet et refuse des octets qui ne
-correspondent pas. En attendant l'ouverture du marché, partagez le fichier lui-même.
+L'onglet Market du studio liste les thèmes des marchés que nomme le réglage `desk.theme.markets`, par
+l'URL https de chaque index (ADR 0060). Par défaut, c'est le `market/themes/index.json` de ce dépôt sur
+`main`, lu depuis `https://raw.githubusercontent.com/endue-ai/Desk/main/market/themes/index.json`.
+Ajoutez l'index d'un autre marché après lui dans `init.yaml` ; quand deux marchés listent le même id, le
+premier l'emporte :
+
+```yaml
+settings:
+  desk.theme.markets:
+    - https://raw.githubusercontent.com/endue-ai/Desk/main/market/themes/index.json
+    - https://themes.example.com/index.json
+```
+
+Chaque carte montre les couleurs d'aperçu d'un thème, son nom, son auteur et sa licence, et où il en est
+sur ce desk : Available, Installed, Update available ou Edited. Preview télécharge le `.desk-theme`,
+vérifie son sha256 et l'affiche sur tout le desk sans l'installer. Install le fait entrer par
+`theme.import` avec son URL et son sha256, sous son id dans `market.`, et Apply le met en vigueur. Une
+mise à jour ne remplace un thème du marché que tant que vous ne l'avez pas modifié ; un thème que vous
+avez modifié reste le vôtre.
+
+Pour publier un thème, ouvrez une pull request qui ajoute son paquet et son entrée d'index dans
+`market/themes/` :
+
+1. Exportez le thème (`desk theme export <id> <file>`, ou Export dans le studio) avec un id dans
+   `market.`, une version, `theme.author` et `theme.license` : une expression SPDX qui couvre aussi ses
+   polices et ses images.
+2. Placez le fichier dans `market/themes/` sous le nom `<name>.desk-theme` et ajoutez son entrée à
+   `index.json` (`specs/plugin/v0/theme-index.schema.json`) : `id`, `name`, `version`, `description`,
+   `author`, `license`, `tags`, jusqu'à cinq couleurs `preview`, `url` (le nom du fichier), `sha256` et
+   `size`.
+3. Lancez `node scripts/theme-market.mjs`. Le vérificateur du marché, inclus dans `just check`, refuse
+   un hash ou une taille faux, une licence manquante, un id en double et un paquet qui n'est pas un
+   plugin de thème valide ; un test passe chaque thème du marché au contrôle de contraste dans les deux
+   schémas.
+
+Une mise à jour est une nouvelle version, avec son nouveau paquet, son sha256 et sa taille.
+`market/themes/README.md` reprend les mêmes étapes.
