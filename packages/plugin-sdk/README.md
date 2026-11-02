@@ -1,7 +1,6 @@
 # @endue-ai/plugin-sdk
 
-What a plugin imports: definitions, the bridge client, file reads, workers and a test harness.
-Layer: Plugins (`docs/architecture.md`). Guide: `docs/plugins/authoring.md`.
+What a plugin imports. Layer: Plugins (`docs/architecture.md`). Guide: `docs/plugins/authoring.md`.
 
 ## Public API
 - `defineUiPlugin({ mount(ctx) })`: connect to the runtime, then mount. `ctx` has `pluginId`,
@@ -35,6 +34,7 @@ Layer: Plugins (`docs/architecture.md`). Guide: `docs/plugins/authoring.md`.
   (`handlers` override it, `refuse` fails a method, `files` back `fs.read`, `fs.url`): `transport`,
   `calls`, `batches`, `state`, `closed`, `visible`, `ran`, `keys`, `settings`, `grants`, `logged`,
   `surfaces`, `call`, `emit`, `command`, `surfaceState`, `invoke`, `theme`, `upsert`, `remove`, `settle`.
+  `assertRoundTrip(bytes, parse, serialize)`, `assertMinimalEdit(before, after, edit)` (ADR 0071).
 
 ## Testing
 `pnpm exec vitest run packages/plugin-sdk`

@@ -117,6 +117,44 @@ defineUiPlugin({
 `ctx.theme` として届きます。フレーム内で押したキーの組み合わせは、`preventDefault()` を呼ばない限りデスクの
 キーマップに届きます。既定ポリシーとそれぞれが決めることは `plugins/README.md` にあります。
 
+## ファイルの編集: 編集ティア
+
+ファイルを開くプラグインは、まず読み、編集は後から加えます（ADR 0045）。編集するようになったら、開くすべての
+形式に、読み取りティアと並んで、三つのうちひとつの編集ティアを持たせます（ADR 0071）。
+
+| 編集ティア | 約束すること | 保存するとき |
+| --- | --- | --- |
+| `lossless` | 変更していないファイルを保存すると同じバイトになり、編集は変えるべきバイトだけを変える | ファイルを上書きする |
+| `text` | 内容は残るが、書式（コメント、空白、キーの順序）は残らないことがある | 各ファイルの最初の保存で "Save as copy"（既定）か "Overwrite" かを尋ねる |
+| `read-only` | 何も保存しない | `desk.files.save` を断る |
+
+すべての形式のティアを、README（形式ごとの読み取りティアと編集ティアの表）と、最初の編集より前のサーフェスに
+示します。サーフェスでは `@endue-ai/ui` の `desk-edit-tier` 要素を使います。ティアを挙げていない形式は
+`read-only` で、完全な読み取りティアで開けなかったファイルも同じです。実際より少なく約束するのは構いませんが、
+多く約束してはいけません。要素の `label` と `detail` 属性には自分の言葉を入れられます。
+
+```html
+<desk-edit-tier tier="lossless" format="CSV"></desk-edit-tier>   <!-- CSV · Lossless editing -->
+```
+
+`lossless` はバイトについての約束なので、`@endue-ai/plugin-sdk/testing` の二つのチェックで証明します。
+フィクスチャには、その形式の難しいところを含めます: BOM、CRLF と混在した改行、末尾の改行なし、引用符と
+エスケープ。
+
+```ts
+import { assertMinimalEdit, assertRoundTrip } from "@endue-ai/plugin-sdk/testing";
+
+const model = assertRoundTrip(bytes, parse, serialize); // serialize(parse(bytes)) must be bytes
+setCell(model, "B2", "Busan");                           // B2 held "Seoul"
+assertMinimalEdit(bytes, serialize(model), { find: "Seoul", bytes: "Busan" });
+```
+
+`parse` は `Uint8Array` を受け取り、文字列は UTF-8 として扱われます。スパンは、ファイルのバイト単位の
+`{ offset, length }`、またはそのバイト列がただ一度だけ現れる場所を示す `{ find }` です。`bytes` はそのスパンが
+何になるべきかを示し、省略するとスパンは何になっても構いません。失敗すると、最初に異なるバイトとその行と列、
+前後の 16 進とテキスト、スパンの外の変更を示します。チェックは何も import しないので、素の Node のテストからも
+`packages/plugin-sdk/src/testing/round-trip.ts` をパスで import できます。
+
 ## アイテムとビュー
 
 人が接続したアプリの中身は、ひとつの形のアイテムとしてデスクに届きます（`specs/item/v0`、ADR 0032）。

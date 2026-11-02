@@ -25,6 +25,9 @@ import {
 } from "@endue-ai/bridge";
 import type { HostMessage, KeyPress, PluginMessage, ThemeState, Transport } from "../protocol";
 
+// Byte checks for file plugins that edit (ADR 0071); dependency-free, so plain Node imports the file.
+export { assertMinimalEdit, assertRoundTrip, type BytesLike, type EditSpan } from "./round-trip";
+
 export interface TestHostOptions {
   pluginId: string;
   /** State the runtime hands the plugin at init, as after a reload. */

@@ -134,6 +134,44 @@ work with `desk.buffers.update { id, modified: true }`. The theme reaches your f
 properties and `ctx.theme`. Key chords pressed in your frame reach the desk's keymap unless you call
 `preventDefault()`. The defaults, and what each one decides, are listed in `plugins/README.md`.
 
+## Editing files: edit tiers
+
+A file opener reads first and edits later (ADR 0045). Once it edits, every format it opens has an edit
+tier beside its read tier, one of three (ADR 0071):
+
+| Edit tier | What it promises | On save |
+| --- | --- | --- |
+| `lossless` | Saving an unchanged file gives the same bytes, and an edit changes only the bytes it must | Overwrites the file |
+| `text` | The content survives; the formatting may not (comments, spacing, key order) | The first save of each file asks: "Save as copy" (the default) or "Overwrite" |
+| `read-only` | Nothing is saved | Refuses `desk.files.save` |
+
+Say the tier of every format in your README (a table of formats with their read and edit tiers) and on
+your surface before the first edit, with the `desk-edit-tier` element of `@endue-ai/ui`. A format you
+name no tier for is `read-only`, and so is a file that does not open at its full read tier. Promise
+less than you do, never more. The element's `label` and `detail` attributes take your own words.
+
+```html
+<desk-edit-tier tier="lossless" format="CSV"></desk-edit-tier>   <!-- CSV · Lossless editing -->
+```
+
+`lossless` is a promise about bytes, so prove it with the two checks in `@endue-ai/plugin-sdk/testing`,
+over fixtures that carry your format's corners: a BOM, CRLF and mixed line endings, no final newline,
+quoting and escapes.
+
+```ts
+import { assertMinimalEdit, assertRoundTrip } from "@endue-ai/plugin-sdk/testing";
+
+const model = assertRoundTrip(bytes, parse, serialize); // serialize(parse(bytes)) must be bytes
+setCell(model, "B2", "Busan");                           // B2 held "Seoul"
+assertMinimalEdit(bytes, serialize(model), { find: "Seoul", bytes: "Busan" });
+```
+
+`parse` gets a `Uint8Array`; strings are taken as UTF-8. A span is `{ offset, length }` in bytes of the
+file, or `{ find }`, the only place those bytes occur; `bytes` says what it must become, and without it
+the span may become anything. A failure names the first differing byte with its line and column, the
+hex and text around it, and the changes outside the span. The checks import nothing, so a plain Node
+test can import `packages/plugin-sdk/src/testing/round-trip.ts` by path.
+
 ## Items and views
 
 What the apps a person connects hold reaches the desk as items of one shape (`specs/item/v0`, ADR
