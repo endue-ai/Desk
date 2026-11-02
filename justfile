@@ -2,15 +2,18 @@
 
 set shell := ["bash", "-euo", "pipefail", "-c"]
 
+# Between folders in DESK_PLUGIN_DIRS and DESK_DEV_PLUGINS, as in PATH
+path_sep := if os_family() == "windows" { ";" } else { ":" }
+
 # List recipes
 default:
     @just --list
 
-# Run the desktop app in development mode: built-in plugins from plugins/, plugin-hello-ui as a
-# dev plugin; saving a plugin file reloads only that plugin's surface
+# Run the desktop app in development mode: built-in plugins from plugins/, plugin-hello-ui and
+# plugin-hello-view as dev plugins; saving a plugin file reloads only that plugin
 dev:
     DESK_PLUGIN_DIRS="{{justfile_directory()}}/plugins" \
-    DESK_DEV_PLUGINS="{{justfile_directory()}}/examples/plugin-hello-ui" \
+    DESK_DEV_PLUGINS="{{justfile_directory()}}/examples/plugin-hello-ui{{path_sep}}{{justfile_directory()}}/examples/plugin-hello-view" \
     pnpm --filter @endue-ai/desk-app tauri dev
 
 # Run examples/brain-echo, the smallest brain, where the app looks by default (http://127.0.0.1:8787/v0)
