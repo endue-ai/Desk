@@ -344,3 +344,23 @@ fn an_answer_for_a_parent_that_was_not_offered_is_invalid() {
         "still waiting, then answered"
     );
 }
+
+#[test]
+fn brain_ask_theme_manage_and_update_manage_take_the_same_policy() {
+    let (core, deliveries) = prompted("policy-newer");
+    for name in ["brain:ask", "theme:manage", "update:manage"] {
+        let permission = json!({ "permission": name });
+        let (refused, prompts) = ask(&core, &deliveries, NOTES, &permission, no());
+        assert_eq!((&refused["granted"], prompts.len()), (&json!(false), 1));
+        assert!(prompts[0].get("parent").is_none(), "{prompts:?}");
+        let (again, prompts) = ask(&core, &deliveries, NOTES, &permission, yes());
+        let earlier = json!({ "granted": false, "reason": "refused-earlier" });
+        assert_eq!((again, prompts.len()), (earlier, 0), "{name}");
+
+        // Granted to another caller for the session, it answers that caller's next request.
+        let (granted, prompts) = ask(&core, &deliveries, AGENT, &permission, yes());
+        assert_eq!((&granted["granted"], prompts.len()), (&json!(true), 1));
+        let (covered, prompts) = ask(&core, &deliveries, AGENT, &permission, no());
+        assert_eq!((covered, prompts.len()), (granted, 0), "{name}");
+    }
+}
