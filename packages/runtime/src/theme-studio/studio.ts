@@ -4,8 +4,8 @@
  * focused or hovered card is previewed on the whole desk, Enter or a click applies it, and Escape (or
  * closing) puts back what was in force. Its editor (editor.ts, TS-03 to TS-05) tunes a copy of a theme
  * while the desk previews it; "From an image" (brand.ts, TS-09) starts one from a logo's colours, and
- * Describe (describe.ts, TS-06, TS-07) from a sentence the brain answers. Its commands (commands.ts)
- * open it.
+ * Describe (describe.ts, TS-06, TS-07) from a sentence the brain answers. The Market tab (market.ts,
+ * TS-08) previews and installs themes from the markets. Its commands (commands.ts) open it.
  */
 import type { ThemePackage } from "@endue-ai/bridge";
 import type { Commands } from "../commands";
@@ -15,11 +15,12 @@ import { h, render } from "../shell/dom";
 import { icon } from "../shell/icons";
 import { containModal } from "../shell/modal";
 import { createBrandPanel } from "./brand";
-import { themeCardElement } from "./card";
+import { tagButtons, themeCardElement } from "./card";
 import { defineStudioCommands } from "./commands";
 import { type StudioCopy, type StudioLang, studioText } from "./copy";
 import { createDescribe } from "./describe";
 import { createEditor, type ThemeIo } from "./editor";
+import { createMarket } from "./market";
 import { filterCards, moveIn, type ThemeCard, tagsOf, themeCards } from "./model";
 import { acceptDrops, transferControls } from "./transfer";
 
@@ -47,7 +48,7 @@ export interface ThemeStudio {
 const COLUMNS = 3;
 
 /** What the studio shows: the gallery, or one of the ways to make a theme. */
-type View = "gallery" | "edit" | "brand" | "describe";
+type View = "gallery" | "edit" | "brand" | "describe" | "market";
 
 export function mountThemeStudio(host: HTMLElement, deps: StudioDeps): ThemeStudio {
   const { themes } = deps;
@@ -116,6 +117,7 @@ export function mountThemeStudio(host: HTMLElement, deps: StudioDeps): ThemeStud
     make: (theme, name) => edit(undefined, theme, name),
     describe: (colors) => describing({ colors }),
   });
+  const market = createMarket({ themes, tr, open: () => go("market"), back: (id) => gallery(id) });
   const button = (key: string, label: StudioCopy, onClick: () => void) =>
     h("button", { type: "button", class: "btn btn-outline", "data-key": key, onClick }, tr(label));
   const actions = h(
@@ -125,6 +127,7 @@ export function mountThemeStudio(host: HTMLElement, deps: StudioDeps): ThemeStud
     button("new-theme", "newTheme", () => edit(undefined)),
     brand.entry,
     describe.entry,
+    market.entry,
   );
   const transfer = {
     io: () => deps.io?.(),
@@ -143,10 +146,11 @@ export function mountThemeStudio(host: HTMLElement, deps: StudioDeps): ThemeStud
     edit: () => editor.element,
     brand: () => brand.element,
     describe: () => describe.element,
+    market: () => market.element,
   };
   const layout = () => {
-    // The editor and Describe dock to the right, so the desk shows what they preview.
-    const docked = view === "edit" || view === "describe";
+    // The editor, Describe and the Market dock to the right, so the desk shows what they preview.
+    const docked = view === "edit" || view === "describe" || view === "market";
     scrim?.classList.toggle("is-editing", docked);
     panel?.classList.toggle("is-editing", docked);
     search.hidden = view !== "gallery";
@@ -166,6 +170,7 @@ export function mountThemeStudio(host: HTMLElement, deps: StudioDeps): ThemeStud
   const leave = () => {
     if (view === "edit") editor.stop();
     if (view === "describe") describe.stop();
+    if (view === "market") market.stop();
   };
   const go = (next: View) => {
     leave();
@@ -216,22 +221,10 @@ export function mountThemeStudio(host: HTMLElement, deps: StudioDeps): ThemeStud
     if (!list.some((c) => c.id === selected) && selected !== arriving)
       selected = list[0]?.id ?? selected;
     render(tagsEl, () =>
-      [undefined, ...tagsOf(cards())].map((t) =>
-        h(
-          "button",
-          {
-            type: "button",
-            class: `theme-tag${t === tag ? " is-on" : ""}`,
-            "aria-pressed": String(t === tag),
-            "data-key": `tag-${t ?? "all"}`,
-            onClick: () => {
-              tag = t;
-              draw();
-            },
-          },
-          t ?? tr("all"),
-        ),
-      ),
+      tagButtons(tagsOf(cards()), tag, tr("all"), (t) => {
+        tag = t;
+        draw();
+      }),
     );
     const active = themes.active();
     render(grid, () =>

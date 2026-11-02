@@ -1,7 +1,7 @@
 /**
  * One gallery card: the theme drawn small with its own tokens (a desk, a window, text, a button and
  * the terminal colours), scoped to the card so nothing else changes, then its name, author,
- * description and the colours of both schemes.
+ * description and the colours of both schemes. And the gallery's tag filter above the cards.
  */
 import { h } from "../shell/dom";
 import { type StudioCopy, type StudioLang, studioText } from "./copy";
@@ -76,6 +76,28 @@ export function themeCardElement(card: ThemeCard, state: CardState): HTMLElement
         swatches(card.light, "light"),
         swatches(card.dark, "dark"),
       ),
+    ),
+  );
+}
+
+/** The tag filter: "all" and every tag, the one in force pressed; `pick` chooses one. */
+export function tagButtons(
+  tags: readonly string[],
+  current: string | undefined,
+  all: string,
+  pick: (tag: string | undefined) => void,
+): HTMLElement[] {
+  return [undefined, ...tags].map((t) =>
+    h(
+      "button",
+      {
+        type: "button",
+        class: `theme-tag${t === current ? " is-on" : ""}`,
+        "aria-pressed": String(t === current),
+        "data-key": `tag-${t ?? "all"}`,
+        onClick: () => pick(t),
+      },
+      t ?? all,
     ),
   );
 }
