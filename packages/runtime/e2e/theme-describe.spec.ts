@@ -9,6 +9,15 @@ const rootVar = (page: Page, name: string) =>
     (property) => getComputedStyle(document.documentElement).getPropertyValue(property).trim(),
     name,
   );
+/** What Eris says, read from her live region while the clock runs (her lines queue one after another). */
+const said = (page: Page) =>
+  expect.poll(
+    async () => {
+      await step(page, 1000);
+      return page.locator(".soul-live").textContent();
+    },
+    { timeout: 15_000 },
+  );
 // brain-echo's warm paper: a light theme on a warm cream ground, set in Georgia.
 const CREAM = "#f6f1e7";
 
@@ -66,10 +75,7 @@ test("Eris hands a look request to Describe, which runs it, and takes it back in
   await studio.locator('[data-key="describe-to-eris"]').click();
   await expect(studio).toBeHidden();
   await expect.poll(() => rootVar(page, "--desk-background")).toBe(before);
-  await step(page, 3000);
-  await expect(page.locator(".soul-live")).toHaveText(
-    'I\'ll look into "make it feel like warm paper" and tell you.',
-  );
+  await said(page).toBe('I\'ll look into "make it feel like warm paper" and tell you.');
 });
 
 test("a request about the person's own app stays in Eris's conversation", async ({ page }) => {
@@ -77,8 +83,7 @@ test("a request about the person's own app stays in Eris's conversation", async 
   await page.keyboard.type("change the theme of my React app to dark mode");
   await page.keyboard.press("ArrowUp");
   await page.keyboard.press("Enter");
-  await step(page, 3000);
-  await expect(page.locator(".soul-live")).toHaveText(
+  await said(page).toBe(
     'I\'ll look into "change the theme of my React app to dark mode" and tell you.',
   );
   await expect(page.getByRole("dialog", { name: "Themes" })).toBeHidden();

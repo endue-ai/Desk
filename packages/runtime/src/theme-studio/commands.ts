@@ -8,7 +8,7 @@ import type { Commands } from "../commands";
 export interface StudioOpeners {
   open(): void;
   edit(from: string | undefined): void;
-  describe(text?: string): void;
+  describe(text?: string, from?: "eris"): void;
   /** The theme in force: what desk.theme.edit copies when it names none. */
   active(): string;
 }
@@ -35,7 +35,8 @@ export function defineStudioCommands(commands: Commands, studio: StudioOpeners):
       title: "Describe a theme in a sentence",
       keywords: ["theme", "describe", "sentence", "brain", "테마", "말하기"],
       owner: "desk",
-      run: (args) => studio.describe(field(args, "text")),
+      run: (args) =>
+        studio.describe(field(args, "text"), field(args, "from") === "eris" ? "eris" : undefined),
     }),
   ];
   return () => {

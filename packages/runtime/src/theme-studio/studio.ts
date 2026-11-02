@@ -9,6 +9,7 @@
  */
 import type { ThemePackage } from "@endue-ai/bridge";
 import type { Commands } from "../commands";
+import { SAY_TO_ERIS } from "../eris/look";
 import type { RuntimeThemes } from "../policies/theme";
 import { h, render } from "../shell/dom";
 import { icon } from "../shell/icons";
@@ -36,8 +37,8 @@ export interface ThemeStudio {
   open(): void;
   /** Open the editor on a copy of `from` (an installed theme), or on a new theme. */
   edit(from: string | undefined): void;
-  /** Open Describe with `text` in its field, and run it when there is one. */
-  describe(text?: string): void;
+  /** Open Describe with `text` in its field and run it; `from: "eris"` offers to send it back. */
+  describe(text?: string, from?: "eris"): void;
   close(): void;
   isOpen(): boolean;
   dispose(): void;
@@ -103,6 +104,10 @@ export function mountThemeStudio(host: HTMLElement, deps: StudioDeps): ThemeStud
     open: () => describing(),
     back: (id) => gallery(id),
     tune: (theme, name) => edit(undefined, theme, name),
+    toEris: (text) => {
+      close();
+      host.dispatchEvent(new CustomEvent(SAY_TO_ERIS, { bubbles: true, detail: { text } }));
+    },
   });
   const brand = createBrandPanel({
     tr,
@@ -371,9 +376,9 @@ export function mountThemeStudio(host: HTMLElement, deps: StudioDeps): ThemeStud
       open();
       edit(from);
     },
-    describe(text) {
+    describe(text, from) {
       open();
-      describing(text ? { text, run: true } : {});
+      describing(text ? { text, run: true, ...(from ? { from } : {}) } : {});
     },
     dispose() {
       close();

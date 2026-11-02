@@ -104,6 +104,7 @@ const KO = {
   noTheme: "brain 이 테마를 주지 않았어요. 다른 문장으로 해 보세요.",
   said: "말한 것",
   schemeOnly: "한 모드만 있는 테마라 적용하면 데스크가 그 모드로 바뀌어요",
+  toEris: "Eris 에게 대신 보내기",
 };
 
 const EN: typeof KO = {
@@ -209,6 +210,7 @@ const EN: typeof KO = {
   noTheme: "The brain gave no theme. Try another sentence.",
   said: "Said",
   schemeOnly: "Made for one scheme: Apply switches the desk to it",
+  toEris: "Send to Eris instead",
 };
 
 export type StudioCopy = keyof typeof KO;

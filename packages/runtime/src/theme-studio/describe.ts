@@ -4,7 +4,8 @@
  * and previewed on the whole desk, where the gate fixes what fails, in the scheme it has. The builder
  * applies it (saved as their own theme with the sentences in origin.prompt), refines it with another
  * sentence over it, tunes it in the editor, or discards it. Offline, out of credits or refused,
- * Generate is off and says why; the gallery and the editor keep working.
+ * Generate is off and says why; the gallery and the editor keep working. Opened from Eris's
+ * conversation, "Send to Eris instead" hands a sentence that was not about the desk's look back to her.
  */
 import type { BrainTurnData, ThemePackage } from "@endue-ai/bridge";
 import { compileTheme } from "@endue-ai/ui/theme";
@@ -26,14 +27,24 @@ export interface DescribeDeps {
   back(id?: string): void;
   /** Open the editor on the proposal, named `name`. */
   tune(theme: ThemePackage, name: string): void;
+  /** Close the studio and say `text` to Eris after all, as the composer would have. */
+  toEris(text: string): void;
 }
 
 export interface DescribePanel {
   /** The gallery's Describe button. */
   entry: HTMLElement;
   element: HTMLElement;
-  /** Draw the panel: `text` in the field (the last one kept otherwise), `colors` added to it, run it. */
-  start(options?: { text?: string; colors?: readonly string[]; run?: boolean }): void;
+  /**
+   * Draw the panel: `text` in the field (the last one kept otherwise), `colors` added to it, run it.
+   * `from: "eris"` when Eris handed the sentence over: it can go back to her.
+   */
+  start(options?: {
+    text?: string;
+    colors?: readonly string[];
+    run?: boolean;
+    from?: "eris";
+  }): void;
   /** Leave: an answer still coming is dropped and the preview ends. */
   stop(): void;
 }
@@ -52,6 +63,8 @@ export function createDescribe(deps: DescribeDeps): DescribePanel {
   let line = "";
   let asking = 0;
   let hearing: (() => void) | undefined;
+  /** The sentence Eris handed over, while Describe can send it back to her. */
+  let fromEris: string | undefined;
 
   const element = h("section", {
     class: "theme-describe",
@@ -218,6 +231,14 @@ export function createDescribe(deps: DescribeDeps): DescribePanel {
         "div",
         { class: "theme-describe-actions" },
         button("describe-back", "back", () => deps.back()),
+        fromEris === undefined
+          ? null
+          : button("describe-to-eris", "toEris", () => {
+              const text = fromEris as string;
+              drop();
+              fromEris = undefined;
+              deps.toEris(text);
+            }),
         button("describe-generate", "generate", () => void ask(false), {
           primary: proposal === undefined,
           disabled: blocked !== "",
@@ -256,9 +277,10 @@ export function createDescribe(deps: DescribeDeps): DescribePanel {
       tr("describe"),
     ),
     element,
-    start({ text, colors = [], run = false } = {}) {
+    start({ text, colors = [], run = false, from } = {}) {
       blocked = "";
       line = "";
+      fromEris = from === "eris" ? text : undefined;
       if (text !== undefined) field.value = text;
       if (colors.length > 0)
         field.value = [field.value.trim(), `${tr("colorsWord")}: ${colors.join(" ")}`]
