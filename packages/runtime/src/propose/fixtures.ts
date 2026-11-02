@@ -60,21 +60,10 @@ export const BOARD_WORK = {
  * The view a brain would propose for a prompt: only work after a correction that says so, the board
  * for a sentence about a board, and none otherwise.
  */
-export function viewFor(prompt: string): Record<string, unknown> | undefined {
+function viewFor(prompt: string): Record<string, unknown> | undefined {
   if (/only the work calendar/i.test(prompt)) return BOARD_WORK;
   if (/as a board/i.test(prompt)) return BOARD;
   return undefined;
-}
-
-/**
- * A scripted brain for tests and fixture pages: it calls the tool with viewFor's view, and answers
- * in words, calling nothing, when there is none.
- */
-export function scriptedViews(prompt: string): ScriptedAnswer {
-  const view = viewFor(prompt);
-  return view
-    ? { text: "Here is a view for that.", structured: view }
-    : `I heard: ${prompt.slice(0, 200)}`;
 }
 
 /** The profile sentence of the tests and the live check. */
@@ -127,7 +116,7 @@ export const TERMINAL_KEYS = {
 };
 
 /** The plugins in a prompt's context (`The desk: {...}`), when it carries them. */
-export function pluginsIn(prompt: string): Record<string, string> {
+function pluginsIn(prompt: string): Record<string, string> {
   const line = prompt.split("\n").find((l) => l.startsWith("The desk: "));
   try {
     const desk = JSON.parse(line?.slice("The desk: ".length) ?? "{}") as { plugins?: unknown };
@@ -140,13 +129,23 @@ export function pluginsIn(prompt: string): Record<string, string> {
 }
 
 /**
- * A scripted brain for tests and fixture pages: it calls the tool with the quiet night profile or
- * Mod+Shift+T when asked for them, and answers as scriptedViews otherwise.
+ * What a brain would call `tool` with for `prompt`: viewFor's view, the quiet night profile, or
+ * Mod+Shift+T for the terminal; undefined to answer in words.
  */
-export function scriptedDesk(prompt: string): ScriptedAnswer {
-  if (prompt.startsWith("Make a desk profile") && /quiet night/i.test(prompt))
-    return { text: "Here is a profile for that.", structured: quietNight(pluginsIn(prompt)) };
-  if (prompt.startsWith("Make a desk key binding") && /Mod\+Shift\+T/.test(prompt))
-    return { text: "Here they are.", structured: TERMINAL_KEYS };
-  return scriptedViews(prompt);
+export function proposalFor(prompt: string, tool: string): Record<string, unknown> | undefined {
+  if (tool === "propose_view") return viewFor(prompt);
+  if (tool === "propose_profile")
+    return /quiet night/i.test(prompt) ? quietNight(pluginsIn(prompt)) : undefined;
+  if (tool === "propose_key_bindings")
+    return /Mod\+Shift\+T/.test(prompt) ? TERMINAL_KEYS : undefined;
+  return undefined;
+}
+
+/**
+ * A scripted brain for tests and fixture pages: it calls the tool with proposalFor's arguments, and
+ * answers in words, calling nothing, when there are none.
+ */
+export function scriptedDesk(prompt: string, tool: { name: string }): ScriptedAnswer {
+  const args = proposalFor(prompt, tool.name);
+  return args ? { text: "Here it is.", structured: args } : `I heard: ${prompt.slice(0, 200)}`;
 }

@@ -3,7 +3,7 @@ import { join } from "node:path";
 import type { PluginManifest } from "@endue-ai/bridge";
 import { describe, expect, it } from "vitest";
 import { browserCore, memoryStore } from "../bridge/core";
-import type { ScriptedAnswer } from "../bridge/scripted-brain";
+import type { ScriptedAnswer, ScriptedBrain } from "../bridge/scripted-brain";
 import { PolicyHub } from "../hub";
 import type { DeskContext } from "../policies/context";
 import { installProfiles } from "../policies/profiles";
@@ -46,7 +46,7 @@ function recordingCard(choices: Choice[]) {
  * Morning in force, and the profile kind in the pipeline on a scripted brain.
  */
 async function setup(
-  answer: (prompt: string) => ScriptedAnswer,
+  answer: ScriptedBrain["answer"],
   choices: Choice[] = [{ choice: "apply" }],
   names = [...BUILT_IN, ...APPS],
 ) {
