@@ -9,12 +9,12 @@ use desk_bridge::{
     BridgeEvent, BridgeRequest, BridgeResponse, CatalogGetResult, CmdRecentResult,
     ConnectorInstance, ConnectorManifest, ConnectorStatus, ConnectorSyncResult, FsHistoryResult,
     FsReadResult, FsRestoreResult, FsUrlResult, FsWriteResult, InitDocument, InitGetResult,
-    InitSettingKey, Item, ItemChange, ItemPage, ItemQuery, PaletteResults, PermQueryResult,
-    PermRequestResult, Permission, PluginContributes, PluginListResult, PluginManifest,
-    PluginStatsResult, RefusalReason, ShellOpenResult, StoreGetResult, ThemeBundle,
-    ThemeExportResult, ThemeIndex, ThemeMarketFetchResult, ThemeMarketListResult, ThemePackage,
-    ThemeType, ThemeVariant, UiSurfaceStateRequest, UiSurfaceStateResult, View, ViewGetResult,
-    ViewListResult, ViewSource, ViewSummary, manifest_problems, view_problems,
+    InitSettingKey, Item, ItemChange, ItemPage, ItemQuery, KeysFile, PaletteResults,
+    PermQueryResult, PermRequestResult, Permission, PluginContributes, PluginListResult,
+    PluginManifest, PluginStatsResult, ProfileFile, RefusalReason, ShellOpenResult, StoreGetResult,
+    ThemeBundle, ThemeExportResult, ThemeIndex, ThemeMarketFetchResult, ThemeMarketListResult,
+    ThemePackage, ThemeType, ThemeVariant, UiSurfaceStateRequest, UiSurfaceStateResult, View,
+    ViewGetResult, ViewListResult, ViewSource, ViewSummary, manifest_problems, view_problems,
 };
 use serde::Serialize;
 use serde::de::DeserializeOwned;
@@ -246,6 +246,8 @@ fn valid_vectors_roundtrip_through_generated_types() {
                 "InitDocument" => roundtrip::<InitDocument>(vector),
                 "InitSettingKey" => roundtrip::<InitSettingKey>(vector),
                 "InitGetResult" => roundtrip::<InitGetResult>(vector),
+                "ProfileFile" => roundtrip::<ProfileFile>(vector),
+                "KeysFile" => roundtrip::<KeysFile>(vector),
                 "PluginContributes" => roundtrip::<PluginContributes>(vector),
                 "PaletteResults" => roundtrip::<PaletteResults>(vector),
                 "ViewListResult" => roundtrip::<ViewListResult>(vector),

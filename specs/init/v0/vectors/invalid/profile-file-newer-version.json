@@ -1,0 +1,7 @@
+{
+  "target": "ProfileFile",
+  "description": "a version newer than v0 reads",
+  "instance": {
+    "version": 1
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "target": "KeysFile",
+  "description": "a hand-written file with a version, a macOS key and arguments",
+  "instance": {
+    "version": 0,
+    "bindings": [
+      {
+        "key": "Control+Alt+T",
+        "mac": "Meta+Alt+T",
+        "command": "desk.plugins.open",
+        "args": {
+          "plugin": "endue.terminal"
+        }
+      }
+    ]
+  }
+}

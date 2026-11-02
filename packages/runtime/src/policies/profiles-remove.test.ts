@@ -1,9 +1,8 @@
-import type { ProfileContribution } from "@endue-ai/bridge";
 import { describe, expect, it } from "vitest";
 import { browserCore, memoryStore } from "../bridge/core";
 import { PolicyHub } from "../hub";
 import type { DeskContext } from "./context";
-import { installProfiles, PROFILES_KEY } from "./profiles";
+import { installProfiles } from "./profiles";
 
 const MANAGE = { permission: "plugin:manage" } as const;
 
@@ -34,14 +33,12 @@ async function desk() {
   await hub.commands.settled();
   await profiles.start();
   const run = (id: string, args?: unknown) => hub.commands.run(id, args);
-  const stored = async () =>
-    ((await bridge.call("store.get", { key: PROFILES_KEY })) as { value?: ProfileContribution[] })
-      .value ?? [];
-  return { run, stored, profiles };
+  const file = (id: string) => core.folder.read(`~/.desk/profiles/${id}.yaml`);
+  return { run, file, profiles };
 }
 
 describe("desk.profiles.remove", () => {
-  it("removes a saved profile from the store and the list; save keeps its description", async () => {
+  it("removes a saved profile from the list; save keeps its description", async () => {
     const m = await desk();
     const mine = {
       id: "mine",
@@ -52,12 +49,13 @@ describe("desk.profiles.remove", () => {
     };
     await m.run("desk.profiles.save", mine);
     expect(m.profiles.list().find((p) => p.id === "mine")).toEqual(mine);
-    expect(await m.stored()).toEqual([mine]);
+    expect(await m.file("mine")).toContain("Only what I use.");
     expect(m.profiles.active()).toBe("plain");
 
     expect(await m.run("desk.profiles.remove", { id: "mine" })).toEqual({ id: "mine" });
     expect(m.profiles.list().map((p) => p.id)).toEqual(["plain", "loud"]);
-    expect(await m.stored()).toEqual([]);
+    // The bridge cannot delete the file: it stays, but is not read again until it is edited.
+    expect(await m.file("mine")).toBeDefined();
   });
 
   it("refuses a contributed profile, one nobody saved and the one in force", async () => {

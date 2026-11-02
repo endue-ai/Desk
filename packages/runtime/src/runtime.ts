@@ -23,9 +23,11 @@ import { PluginHost, type PluginHostOptions } from "./plugins";
 import { installAliases } from "./policies/aliases";
 import { installBuffers } from "./policies/buffers";
 import type { DeskContext } from "./policies/context";
+import { deskFolder } from "./policies/desk-folder";
 import { installDisplay } from "./policies/display";
 import { installFiles } from "./policies/files";
-import { installKeys, PERSONAL_KEYS } from "./policies/keys";
+import { installKeys } from "./policies/keys";
+import { installKeysFile } from "./policies/keys-file";
 import { installNotify } from "./policies/notify";
 import { installPalette } from "./policies/palette";
 import { installProfiles } from "./policies/profiles";
@@ -247,7 +249,10 @@ export function createRuntime(options: RuntimeOptions): Runtime {
     notices: () => notify.notifications.history(),
     restoreNotices: (notices) => notify.notifications.restore(notices),
   });
-  const profiles = installProfiles(ctx, (input) => notify.notify(input));
+  // The person's files in ~/.desk (ADR 0079): saved profiles, and key bindings in keys.yaml.
+  const folder = deskFolder(bridge);
+  const profiles = installProfiles(ctx, (input) => notify.notify(input), folder);
+  const keysFile = installKeysFile(ctx, (input) => notify.notify(input), folder);
   const about = installDescribe(ctx, { keys, profile: profiles.active, notify: notify.notify });
   const inspect = installInspect(ctx, { buffers: buffers.buffers, views });
   notify.notifications.onPush(() => session.changed());
@@ -257,14 +262,6 @@ export function createRuntime(options: RuntimeOptions): Runtime {
     session.changed();
   };
   const { settings } = hub;
-  // The person's key bindings come back with the session.
-  session.keep("keys", {
-    save: () => settings.layer("session")[PERSONAL_KEYS] ?? null,
-    restore: (value) => {
-      if (Array.isArray(value)) settings.set(PERSONAL_KEYS, value);
-    },
-    onChange: (listener) => settings.onChange((keys) => keys.includes(PERSONAL_KEYS) && listener()),
-  });
   // The theme the person chose comes back with the session too.
   session.keep("theme", {
     save: () => settings.layer("session")["desk.theme.active"] ?? null,
@@ -337,7 +334,7 @@ export function createRuntime(options: RuntimeOptions): Runtime {
 
   let plugins: RuntimePlugins | undefined;
   // Without plugins there is no desk.session to restore; saving may start at once.
-  if (!options.plugins) void ready.then(() => session.restore());
+  if (!options.plugins) void ready.then(() => keysFile.start()).then(() => session.restore());
   if (options.plugins) {
     const host = new PluginHost(
       {
@@ -375,7 +372,7 @@ export function createRuntime(options: RuntimeOptions): Runtime {
     plugins = {
       // A desk without plugin:manage still works; it just shows no plugins.
       ready: ready
-        .then(() => host.start())
+        .then(() => Promise.all([host.start(), keysFile.start()]))
         // The desk's built-ins are in the registry before profiles and the session run them.
         .then(() => timed("command registry", () => commands.settled()))
         .then(() => timed("profile start", () => profiles.start()))
@@ -418,8 +415,8 @@ export function createRuntime(options: RuntimeOptions): Runtime {
     dispose() {
       frames.dispose();
       routing.dispose();
-      const policies = [profiles, session, files, buffers, display, notify, palette, aliases];
-      for (const policy of [about, inspect, ...policies, keys, theme]) {
+      const policies = [profiles, keysFile, folder, session, files, buffers, display, notify];
+      for (const policy of [about, inspect, ...policies, palette, aliases, keys, theme]) {
         policy.dispose();
       }
       pluginHost?.stop();

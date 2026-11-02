@@ -1240,6 +1240,27 @@ export interface InitSync {
   enabled?: boolean;
 }
 
+/** The whole of keys.yaml. Every key is optional. */
+export interface KeysFile {
+  /** The format version. Default 0. Desk ignores a file with a version newer than it reads. */
+  version?: number;
+  /** The person's bindings, in order: a later one of the same key wins, and "command": "" takes a key away from the plugins. Default none. */
+  bindings?: KeyBinding[];
+}
+
+/** The whole of a profile file. Every key is optional; an empty file is a profile that changes nothing. */
+export interface ProfileFile {
+  /** The format version. Default 0. Desk ignores a file with a version newer than it reads. */
+  version?: number;
+  /** What the profile switcher shows. Default: the file name. */
+  name?: string;
+  /** One line under the name in the switcher. */
+  description?: string;
+  plugins?: ProfilePlugins;
+  /** Settings in force while the profile is, over init.yaml's. */
+  settings?: Record<string, unknown>;
+}
+
 /** Start capturing the microphone. With wakeWord, audio.wake events arrive when the wake word is heard. */
 export interface AudioCaptureStartRequest {
   id: RequestId;

@@ -64,13 +64,11 @@ test.describe("desk.profiles", () => {
     await page.evaluate(() =>
       window.__desk.runtime.commands.run("desk.profiles.save", { id: "quiet", name: "Quiet" }),
     );
-    expect(await page.evaluate(() => window.__deskStore.profiles)).toEqual([
-      expect.objectContaining({
-        id: "quiet",
-        name: "Quiet",
-        plugins: expect.objectContaining({ disabled: ["test.counter"] }),
-      }),
-    ]);
+    // The profile is a file in the desk folder, not a value in the store.
+    const file = await page.evaluate(() => window.__deskFolder.read("~/.desk/profiles/quiet.yaml"));
+    expect(file).toMatch(/^name: Quiet$/m);
+    expect(file).toMatch(/^ {2}disabled:\n {4}- test\.counter$/m);
+    expect(await page.evaluate(() => window.__deskStore.profiles)).toBeUndefined();
     await setEnabled(page, "test.counter", true);
     await expect(page.locator('[data-surface="test.counter"]')).toHaveCount(1);
     await page.evaluate(() =>
