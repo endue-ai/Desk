@@ -1,0 +1,120 @@
+name: release
+
+# A tag v* is a stable release (ADR 0054): built as the tag's version, uploaded to R2, listed on the
+# stable index, and given a GitHub Release with generated notes and links to the R2 downloads, no
+# binaries. Publishing runs in the stable environment, which people approve; it holds the same
+# updater key and R2 credentials as signing.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-stable
+  cancel-in-progress: false
+
+jobs:
+  gate:
+    name: gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: signing
+    outputs:
+      publish: ${{ steps.secrets.outputs.publish }}
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - id: secrets
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          DESK_UPDATER_PUBKEY: ${{ vars.DESK_UPDATER_PUBKEY }}
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        run: |
+          missing=""
+          for name in TAURI_SIGNING_PRIVATE_KEY DESK_UPDATER_PUBKEY R2_ACCOUNT_ID R2_ACCESS_KEY_ID R2_SECRET_ACCESS_KEY; do
+            if [ -z "${!name}" ]; then missing="$missing $name"; fi
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::$GITHUB_REF_NAME is not released:$missing not set (docs/ko/updater-requirements.md)"
+            exit 1
+          fi
+          echo "publish=true" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v7
+      - id: version
+        run: echo "version=$(node scripts/release-version.mjs --tag "$GITHUB_REF_NAME")" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: gate
+    uses: ./.github/workflows/release-build.yml
+    with:
+      version: ${{ needs.gate.outputs.version }}
+    secrets: inherit
+
+  publish:
+    name: publish
+    needs: [gate, build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: stable
+    permissions:
+      contents: write
+    env:
+      VERSION: ${{ needs.gate.outputs.version }}
+      BASE: ${{ vars.DESK_RELEASES_URL || 'https://releases.endue.ai/desk' }}
+      BUCKET: ${{ vars.R2_BUCKET || 'endue-desk-releases' }}
+      ENDPOINT: https://${{ secrets.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com
+      AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: auto
+      TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+      TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: desk-*
+          path: dist
+          merge-multiple: true
+      - name: Write and sign release.json
+        run: |
+          notes="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/tag/$GITHUB_REF_NAME"
+          node scripts/release-manifest.mjs release dist --version "$VERSION" --base "$BASE" \
+            --commit "$GITHUB_SHA" --notes "$notes" > release.json
+          mv release.json dist/release.json
+          (cd dist && sha256sum endue-desk_* > SHA256SUMS)
+          pnpm --filter @endue-ai/desk-app exec tauri signer sign "$PWD/dist/release.json"
+      - name: Upload the build
+        run: node scripts/release-publish.mjs release dist --version "$VERSION" --bucket "$BUCKET" --endpoint "$ENDPOINT"
+      - name: List it on stable
+        run: |
+          if ! out="$(aws s3api get-object --bucket "$BUCKET" --key desk/channels/stable/index.json stable.json --endpoint-url "$ENDPOINT" 2>&1)"; then
+            if grep -q NoSuchKey <<<"$out"; then rm -f stable.json; else echo "$out" >&2; exit 1; fi
+          fi
+          node scripts/release-manifest.mjs list stable.json --channel stable --release dist/release.json > index.json
+          pnpm --filter @endue-ai/desk-app exec tauri signer sign "$PWD/index.json"
+          node scripts/release-publish.mjs index index.json --channel stable --bucket "$BUCKET" --endpoint "$ENDPOINT"
+      - name: Create the GitHub Release with the notes and the downloads
+        run: |
+          {
+            echo "## Download"
+            echo
+            for path in dist/endue-desk_*; do
+              file="${path##*/}"
+              case "$file" in *.sig) continue ;; esac
+              echo "- [$file]($BASE/releases/$VERSION/$file)"
+            done
+            echo
+            echo "Checksums: [SHA256SUMS]($BASE/releases/$VERSION/SHA256SUMS). Installed desks on the stable channel update themselves."
+          } > downloads.md
+          gh release create "$GITHUB_REF_NAME" --verify-tag --title "endue Desk $VERSION" \
+            --generate-notes --notes-file downloads.md
