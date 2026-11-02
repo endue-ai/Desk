@@ -1,23 +1,33 @@
 // The sheets plugin without its DOM. It answers the desk's file and buffer requests
 // (desk.files.visit, .save, .revert, desk.buffers.show, .closed) for the spreadsheets it holds,
 // reads bounded binary ranges, asks with perm.request for a folder its grants do not cover,
-// follows each file on disk, and reads CSV again when the csv-encoding setting changes. It only
-// talks to ctx.commands, ctx.bridge, ctx.settings and a view, so the SDK's test host runs it.
+// follows each file on disk, and reads CSV again when the csv-encoding setting changes. CSV and TSV
+// in UTF-8 are edited and saved byte for byte (save.js); the desk hears of unsaved edits with
+// desk.buffers.update. It only talks to ctx.commands, ctx.bridge, ctx.settings and a view, so the
+// SDK's test host runs it.
 
 import { ENCODINGS } from "./csv.js";
 import { extensionOf } from "./detect.js";
 import { failure } from "./errors.js";
+import { editing, writeFile } from "./save.js";
 
 /**
  * @typedef {import("@endue-ai/plugin-sdk").PluginContext} PluginContext
  * @typedef {import("@endue-ai/bridge").BridgeEvent} BridgeEvent
  * @typedef {import("@endue-ai/bridge").Permission} Permission
  * @typedef {import("./book.js").Book} Book
- * @typedef {{ buffer: string, path: string, name: string, size: number, book: Book }} Shown
+ * @typedef {import("./save.js").Tier} Tier
+ * @typedef {{
+ *   buffer: string, path: string, name: string, size: number, book: Book, tier?: Tier,
+ *   modified?: boolean, editable?: (r: number, c: number) => boolean,
+ * }} Shown tier, modified and editable once the file is open (not while it is a preview)
  * @typedef {(bytes: Uint8Array, file: { name: string, encoding: string }, options: import("./parse.js").ParseOptions) => Book | Promise<Book>} Open
  * @typedef {{ label: string, value: number | null, max: number, detail: string, cancel(): void }} Progress
- * @typedef {{ show(model: Shown | null): void, status(text: string): void, focus(): void, progress?(value: Progress | null): void }} View
- * @typedef {Shown & { watchId?: string }} Held
+ * @typedef {{ show(model: Shown | null): void, status(text: string): void, focus(): void, progress?(value: Progress | null): void, commit?(): void }} View
+ *   commit: the edit in progress on screen becomes an edit before a save
+ * @typedef {Shown & import("./save.js").Editing & { watchId?: string }} Held
+ * @typedef {{ edit(r: number, c: number, text: string): boolean }} Sheets What the view asks of
+ *   the file on screen: set a cell's text; false when the file has no field there or is read-only
  */
 
 export const NAME = "Sheets";
@@ -98,8 +108,8 @@ export function createSheets({ bridge, commands, settings }, view, { open, read:
   /** @returns {Shown | null} */
   const model = (/** @type {Held | undefined} */ held) => {
     if (!held) return null;
-    const { buffer, path, name, size, book } = held;
-    return { buffer, path, name, size, book };
+    const { buffer, path, name, size, book, tier, doc, editable } = held;
+    return { buffer, path, name, size, book, tier, modified: doc?.modified ?? false, editable };
   };
   const render = () => view.show(model(shown === null ? undefined : files.get(shown)));
   const stopOpening = () => {
@@ -266,10 +276,20 @@ export function createSheets({ bridge, commands, settings }, view, { open, read:
     }
   };
 
+  /** Tell the desk when a file's edits leave it unsaved, and when they no longer do. */
+  const report = (/** @type {Held} */ file) => {
+    const modified = file.doc?.modified ?? false;
+    if (modified === file.reported || files.get(file.buffer) !== file) return;
+    file.reported = modified;
+    commands.run("desk.buffers.update", { id: file.buffer, modified }).catch(() => {});
+  };
+
   answer("desk.files.visit", async (args) => {
     const { buffer, path } = requested(args);
     if (!buffer || !path) throw new Error("A visit needs a buffer and a path.");
-    const file = await load(buffer, path);
+    const loaded = await load(buffer, path);
+    /** @type {Held} */
+    const file = { ...loaded, ...editing(loaded) };
     forget(buffer);
     files.set(buffer, file);
     shown = buffer;
@@ -284,13 +304,25 @@ export function createSheets({ bridge, commands, settings }, view, { open, read:
     const before = held(buffer);
     const file = await load(buffer, path ?? before.path, shown === buffer);
     if (files.get(buffer) !== before) return "";
-    Object.assign(before, { ...file, watchId: before.watchId });
+    Object.assign(before, { ...file, ...editing(file), watchId: before.watchId });
     if (shown === buffer) render();
     return summary(before);
   });
 
-  answer("desk.files.save", () => {
-    throw new Error(`${NAME} opens files read-only.`);
+  answer("desk.files.save", async (args) => {
+    const { buffer, path } = requested(args);
+    const file = held(buffer);
+    if (!file.doc) throw new Error(file.tier.refusal ?? `${NAME} opens files read-only.`);
+    if (shown === buffer) view.commit?.();
+    const saving = file.doc.save();
+    await writeFile(bridge, path ?? file.path, saving.bytes);
+    saving.commit();
+    // desk.files clears the list's mark after a save; edits made while it was written stay
+    // unsaved, and the desk hears so once this answer has reached it.
+    file.reported = false;
+    if (shown === buffer) render();
+    if (file.doc.modified) setTimeout(() => report(file), 0);
+    return `Saved ${file.name}.`;
   });
 
   answer("desk.buffers.show", (args) => {
@@ -330,9 +362,11 @@ export function createSheets({ bridge, commands, settings }, view, { open, read:
     const reload = async () => {
       for (const file of files.values()) {
         if (!TEXT.has(extensionOf(file.name))) continue;
+        // Unsaved edits are the person's: the file keeps the encoding it was edited in.
+        if (file.doc?.modified) continue;
         const next = await load(file.buffer, file.path, shown === file.buffer);
         if (files.get(file.buffer) !== file) continue;
-        Object.assign(file, { ...next, watchId: file.watchId });
+        Object.assign(file, { ...next, ...editing(next), watchId: file.watchId });
         if (shown === file.buffer) render();
       }
     };
@@ -340,4 +374,18 @@ export function createSheets({ bridge, commands, settings }, view, { open, read:
   });
 
   render();
+
+  /** @type {Sheets} */
+  return {
+    edit(r, c, text) {
+      const file = shown === null ? undefined : files.get(shown);
+      const result = file?.doc?.set(r, c, text) ?? "outside";
+      if (!file || result === "outside") return false;
+      if (result === "changed") {
+        report(file);
+        render();
+      }
+      return true;
+    },
+  };
 }

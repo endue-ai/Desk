@@ -1,0 +1,8 @@
+{
+  "target": "PermRequestResult",
+  "description": "refused-later is not a refusal reason",
+  "instance": {
+    "granted": false,
+    "reason": "refused-later"
+  }
+}

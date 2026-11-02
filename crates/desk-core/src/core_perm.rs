@@ -2,7 +2,8 @@
 //! perm.query, perm.request, perm.revoke and perm.list, and `perm.changed` for the holder and the
 //! callers subscribed to it. `always` grants live in the grant file (ADR 0029); asking the person
 //! goes through `perm.prompt` (`core_prompts`) or, with nobody to prompt, the `Prompter`, for
-//! perm.request and for the calls that ask by themselves (`check_or_ask`, shell.open).
+//! perm.request and for the calls that ask by themselves (`check_or_ask`, shell.open), as the prompt
+//! policy allows (`prompt_policy`).
 
 use std::path::PathBuf;
 
@@ -10,7 +11,7 @@ use desk_bridge::{
     BridgeError, BridgeEvent, ErrorCode, EventName, Grant, GrantChange, GrantDuration,
     PermChangedData, PermChangedEvent, PermListParams, PermListResult, PermManagePermission,
     PermQueryParams, PermQueryResult, PermRequestParams, PermRequestResult, PermRevokeParams,
-    PermRevokeResult, Permission,
+    PermRevokeResult, Permission, RefusalReason,
 };
 
 use crate::core_prompts::Outcome;
@@ -26,6 +27,12 @@ pub trait Prompter: Send + Sync {
 /// The prompter used until a prompt UI exists: it refuses everything.
 #[derive(Debug, Default)]
 pub struct RefuseAll;
+
+/// What asking decided: a grant, or a refusal, with why nobody was asked when nobody was.
+enum Decision {
+    Granted(Grant),
+    Refused(Option<RefusalReason>),
+}
 
 impl Prompter for RefuseAll {
     fn ask(&self, _caller: &str, _permission: &Permission, _reason: &str) -> bool {
@@ -53,6 +60,7 @@ impl Core {
         duration: GrantDuration,
     ) -> Grant {
         let grant = self.permissions().grant_for(caller, permission, duration);
+        self.forget_refusals(caller, &grant.permission);
         self.changed(caller, &grant.grant_id, GrantChange::Granted);
         grant
     }
@@ -92,13 +100,28 @@ impl Core {
         json(PermQueryResult { grants })
     }
 
-    /// Ask the person; the call waits for the answer. A refusal is a result, not an error.
+    /// Ask the person; the call waits for the answer. A refusal is a result, not an error. A request
+    /// one of the caller's lasting grants covers is answered with that grant, without asking.
     pub(crate) fn perm_request(&self, caller: &str, params: PermRequestParams) -> Answer {
-        let asked = params.duration.unwrap_or(GrantDuration::Session);
-        let grant = self.ask(caller, &params.permission, &params.reason, asked)?;
-        json(PermRequestResult {
-            granted: grant.is_some(),
-            grant,
+        let decided = match self.lasting_grant(caller, &params.permission) {
+            Some(grant) => Decision::Granted(grant),
+            None => {
+                let asked = params.duration.unwrap_or(GrantDuration::Session);
+                let reason = params.reason.as_deref().unwrap_or_default();
+                self.ask(caller, &params.permission, reason, asked)?
+            }
+        };
+        json(match decided {
+            Decision::Granted(grant) => PermRequestResult {
+                granted: true,
+                grant: Some(grant),
+                reason: None,
+            },
+            Decision::Refused(reason) => PermRequestResult {
+                granted: false,
+                grant: None,
+                reason,
+            },
         })
     }
 
@@ -114,8 +137,13 @@ impl Core {
         let held = self.permissions().authorize(caller, scope, target);
         if held.is_err() && scope_allows(scope, target) {
             let asked = self.ask(caller, scope, reason, GrantDuration::Session)?;
-            if asked.is_none() {
-                let reason = format!("the person did not allow {caller} this scope");
+            if let Decision::Refused(why) = asked {
+                let reason = match why {
+                    Some(RefusalReason::RefusedEarlier) => {
+                        format!("the person refused {caller} this scope earlier in the session")
+                    }
+                    None => format!("the person did not allow {caller} this scope"),
+                };
                 return Err(denied(Denied {
                     permission: scope.clone(),
                     reason,
@@ -125,27 +153,30 @@ impl Core {
         self.check(caller, scope, target)
     }
 
-    /// Ask the person for `permission`, through perm.prompt or else the Prompter: the grant they
-    /// made, or none when they refused. `cancelled` when the caller stopped first.
+    /// Ask the person for `permission`, through perm.prompt or else the Prompter, as the prompt
+    /// policy allows: the grant they made, or a refusal. `cancelled` when the caller stopped first.
     fn ask(
         &self,
         caller: &str,
         permission: &Permission,
         reason: &str,
         duration: GrantDuration,
-    ) -> Result<Option<Grant>, BridgeError> {
-        match self.prompt(caller, permission, reason, duration) {
-            Outcome::Granted(grant) => Ok(Some(grant)),
-            Outcome::Refused => Ok(None),
-            Outcome::Withdrawn => Err(error(
-                ErrorCode::Cancelled,
-                format!("{caller} stopped before the person answered"),
-            )),
-            Outcome::Unheard => Ok(self
-                .prompter
-                .ask(caller, permission, reason)
-                .then(|| self.grant_for(caller, permission.clone(), duration))),
-        }
+    ) -> Result<Decision, BridgeError> {
+        Ok(match self.prompt(caller, permission, reason, duration) {
+            Outcome::Granted(grant) => Decision::Granted(grant),
+            Outcome::Refused => Decision::Refused(None),
+            Outcome::RefusedEarlier => Decision::Refused(Some(RefusalReason::RefusedEarlier)),
+            Outcome::Withdrawn => {
+                return Err(error(
+                    ErrorCode::Cancelled,
+                    format!("{caller} stopped before the person answered"),
+                ));
+            }
+            Outcome::Unheard if self.prompter.ask(caller, permission, reason) => {
+                Decision::Granted(self.grant_for(caller, permission.clone(), duration))
+            }
+            Outcome::Unheard => Decision::Refused(None),
+        })
     }
 
     /// Give a grant back: one's own without a scope, anyone's with perm:manage.

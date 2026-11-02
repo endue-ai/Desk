@@ -3,10 +3,12 @@
 
 mod support;
 
+use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::mpsc::Receiver;
 
-use desk_bridge::{BridgeError, ErrorCode};
-use desk_core::{Core, Delivery};
+use desk_bridge::{BridgeError, ErrorCode, Permission};
+use desk_core::{Core, Delivery, Prompter};
 use serde_json::{Value, json};
 use support::*;
 
@@ -115,9 +117,10 @@ fn the_first_answer_decides_and_the_chosen_duration_wins() {
 fn an_answer_without_a_duration_keeps_the_one_asked() {
     let home = home("prompt-duration");
     let (core, deliveries) = prompted(&home, &["desk"]);
-    for (asked, expected) in [(None, "session"), (Some("once"), "once")] {
+    // Two callers: the first one's session grant would answer the second request by itself.
+    for (caller, asked, expected) in [(NOTES, None, "session"), (CALENDAR, Some("once"), "once")] {
         let granted = std::thread::scope(|s| {
-            let asking = s.spawn(|| ask(&core, NOTES, asked));
+            let asking = s.spawn(|| ask(&core, caller, asked));
             let prompt = wait_for(&deliveries, "perm.prompt");
             assert_eq!(prompt.data()["duration"], expected);
             let id = prompt.data()["promptId"].clone();
@@ -127,6 +130,54 @@ fn an_answer_without_a_duration_keeps_the_one_asked() {
         assert_eq!(granted["granted"], true);
         assert_eq!(granted["grant"]["duration"], expected);
     }
+}
+
+/// Says yes, and counts how often it was asked.
+#[derive(Clone, Default)]
+struct Counted(Arc<AtomicUsize>);
+
+impl Counted {
+    fn asked(&self) -> usize {
+        self.0.load(Ordering::SeqCst)
+    }
+}
+
+impl Prompter for Counted {
+    fn ask(&self, _caller: &str, _permission: &Permission, _reason: &str) -> bool {
+        self.0.fetch_add(1, Ordering::SeqCst);
+        true
+    }
+}
+
+#[test]
+fn a_request_a_lasting_grant_covers_is_answered_without_a_prompt() {
+    let home = home("prompt-covered");
+    let person = Counted::default();
+    let core = Core::new(roots(&home)).with_prompter(person.clone());
+    let request = |caller: &str, permission: Value, duration: &str| {
+        let params = json!({ "permission": permission, "reason": "To open your files",
+                             "duration": duration });
+        call(&core, caller, "perm.request", params).unwrap()
+    };
+    let everything = json!({ "permission": "fs:read", "paths": ["~/**"] });
+    for (caller, duration) in [(NOTES, "session"), (CALENDAR, "always")] {
+        let wide = request(caller, everything.clone(), duration);
+        for asked in ["once", "session", "always"] {
+            let covered = request(caller, notes_read(), asked);
+            assert_eq!(covered, wide, "{caller} asking {asked}");
+        }
+    }
+    assert_eq!(
+        person.asked(),
+        2,
+        "asked once per wide grant, never for what it covers"
+    );
+
+    // A once grant answers nothing: each request asks again.
+    let once = request("example.once", notes_read(), "once");
+    let again = request("example.once", notes_read(), "once");
+    assert_ne!(again["grant"]["grantId"], once["grant"]["grantId"]);
+    assert_eq!(person.asked(), 4);
 }
 
 #[test]

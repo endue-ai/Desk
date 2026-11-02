@@ -1,0 +1,21 @@
+{
+  "target": "BridgeEvent",
+  "description": "a caller's third folder under ~/Pictures: the prompt offers the parent folder too",
+  "instance": {
+    "event": "perm.prompt",
+    "data": {
+      "promptId": "p3",
+      "caller": "endue.images",
+      "permission": {
+        "permission": "fs:read",
+        "paths": ["~/Pictures/2026/**"]
+      },
+      "reason": "To show the photos in this folder.",
+      "duration": "session",
+      "parent": {
+        "permission": "fs:read",
+        "paths": ["~/Pictures/**"]
+      }
+    }
+  }
+}
