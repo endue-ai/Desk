@@ -16,9 +16,9 @@
       "pattern": "^(/|~(/|$)|[A-Za-z]:/|\\$\\{(plugin|workspace|home)\\}(/|$))[^\\\\]*$"
     },
     "CallerId": {
-      "description": "Who makes calls: a plugin id such as endue.eris, or a name of the desk's own such as desk (the web runtime). core names desk-core itself.",
+      "description": "Who makes calls: a plugin id such as endue.eris, a name of the desk's own such as desk (the web runtime), or agent:<id> for an agent of the brain whose tool call the core runs (ADR 0072). core names desk-core itself.",
       "type": "string",
-      "pattern": "^[a-z][a-z0-9-]*(\\.[a-z][a-z0-9-]*)*$",
+      "pattern": "^([a-z][a-z0-9-]*(\\.[a-z][a-z0-9-]*)*|agent:[A-Za-z0-9][A-Za-z0-9_.-]*)$",
       "maxLength": 128
     },
     "Encoding": {
@@ -38,6 +38,8 @@
         { "$ref": "fs.schema.json#/$defs/FsListRequest" },
         { "$ref": "fs.schema.json#/$defs/FsWatchRequest" },
         { "$ref": "fs.schema.json#/$defs/FsUrlRequest" },
+        { "$ref": "fs.schema.json#/$defs/FsHistoryRequest" },
+        { "$ref": "fs.schema.json#/$defs/FsRestoreRequest" },
         { "$ref": "proc.schema.json#/$defs/ProcSpawnRequest" },
         { "$ref": "proc.schema.json#/$defs/ProcWriteRequest" },
         { "$ref": "proc.schema.json#/$defs/ProcResizeRequest" },
@@ -53,8 +55,10 @@
         { "$ref": "perm.schema.json#/$defs/PermRevokeRequest" },
         { "$ref": "perm.schema.json#/$defs/PermListRequest" },
         { "$ref": "perm.schema.json#/$defs/PermAnswerRequest" },
+        { "$ref": "perm.schema.json#/$defs/PermApproveRequest" },
         { "$ref": "plugins.schema.json#/$defs/PluginListRequest" },
         { "$ref": "plugins.schema.json#/$defs/PluginSetEnabledRequest" },
+        { "$ref": "plugins.schema.json#/$defs/PluginStatsRequest" },
         { "$ref": "store.schema.json#/$defs/StoreGetRequest" },
         { "$ref": "store.schema.json#/$defs/StoreSetRequest" },
         { "$ref": "init.schema.json#/$defs/InitGetRequest" },
@@ -70,6 +74,7 @@
         { "$ref": "cmd.schema.json#/$defs/CmdListRequest" },
         { "$ref": "cmd.schema.json#/$defs/CmdInvokeRequest" },
         { "$ref": "cmd.schema.json#/$defs/CmdAnswerRequest" },
+        { "$ref": "cmd.schema.json#/$defs/CmdRecentRequest" },
         { "$ref": "settings.schema.json#/$defs/SettingsGetRequest" },
         { "$ref": "settings.schema.json#/$defs/SettingsSetRequest" },
         { "$ref": "settings.schema.json#/$defs/SettingsListRequest" },
@@ -156,7 +161,7 @@
       ]
     },
     "BridgeEvent": {
-      "description": "Something the core reports without being asked: file changes, process output, wake words, permission changes, notifications, surfaces, commands, settings, log entries, changes to items, connectors and views, and the desk's update status.",
+      "description": "Something the core reports without being asked: file changes, process output, wake words, permission changes, prompts and approvals, notifications, surfaces, commands, settings, log entries, changes to items, connectors and views, and the desk's update status.",
       "oneOf": [
         { "$ref": "fs.schema.json#/$defs/FsChangedEvent" },
         { "$ref": "proc.schema.json#/$defs/ProcOutputEvent" },
@@ -164,6 +169,8 @@
         { "$ref": "audio.schema.json#/$defs/AudioWakeEvent" },
         { "$ref": "perm.schema.json#/$defs/PermChangedEvent" },
         { "$ref": "perm.schema.json#/$defs/PermPromptEvent" },
+        { "$ref": "perm.schema.json#/$defs/PermApprovalEvent" },
+        { "$ref": "perm.schema.json#/$defs/PermApprovalDoneEvent" },
         { "$ref": "plugins.schema.json#/$defs/PluginChangedEvent" },
         { "$ref": "ui.schema.json#/$defs/UiNotifiedEvent" },
         { "$ref": "ui.schema.json#/$defs/UiSurfaceOpenedEvent" },

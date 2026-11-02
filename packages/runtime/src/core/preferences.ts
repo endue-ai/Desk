@@ -1,7 +1,10 @@
-/** Durable personal settings, independent of desk.session and every other plugin. */
+/**
+ * Durable personal settings, independent of desk.session and every other plugin. The person's key
+ * bindings are not among them: desk.keys keeps those in ~/.desk/keys.yaml (ADR 0079).
+ */
 import type { BridgeClient } from "@endue-ai/bridge";
 import { fits, type Settings } from "../settings";
-import { CORE_SETTINGS, isBinding, PERSONAL_KEYS } from "./defaults";
+import { CORE_SETTINGS, PERSONAL_KEYS } from "./defaults";
 
 export const PREFERENCES_KEY = "preferences";
 export type SaveState = "loading" | "saving" | "saved" | "error";
@@ -15,9 +18,7 @@ export function validPreferences(value: unknown): Record<string, unknown> {
   return Object.fromEntries(
     Object.entries(value).filter(
       ([key, v]) =>
-        Object.hasOwn(CORE_SETTINGS, key) &&
-        fits(CORE_SETTINGS[key], v) &&
-        (key !== PERSONAL_KEYS || (Array.isArray(v) && v.every(isBinding))),
+        key !== PERSONAL_KEYS && Object.hasOwn(CORE_SETTINGS, key) && fits(CORE_SETTINGS[key], v),
     ),
   );
 }
@@ -54,24 +55,14 @@ export class Preferences {
   async load(): Promise<void> {
     try {
       const { value } = await this.bridge.call("store.get", { key: PREFERENCES_KEY });
-      let values: Record<string, unknown> = {};
-      let migrated = false;
-      if (value === undefined) {
-        const old = await this.bridge.call("store.get", { key: "session" });
-        if (record(old.value) && record(old.value.parts) && Array.isArray(old.value.parts.keys)) {
-          values = validPreferences({ [PERSONAL_KEYS]: old.value.parts.keys });
-          migrated = Object.keys(values).length > 0;
-        }
-      } else if (record(value) && value.version === 1) {
-        values = validPreferences(value.values);
-      }
+      const values = record(value) && value.version === 1 ? validPreferences(value.values) : {};
       if (this.#disposed) return;
       // A user edit made while storage was loading always wins over the stored value.
       const edited = this.#dirty;
       this.settings.setLayer("session", { ...values, ...this.settings.layer("session") });
       this.#loaded = true;
       this.#setState("saved");
-      if (migrated || edited) this.save();
+      if (edited) this.save();
     } catch {
       if (!this.#disposed) {
         this.#loaded = true;

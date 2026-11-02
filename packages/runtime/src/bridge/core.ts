@@ -3,10 +3,12 @@
  * (cmd.*, as the stub keeps it), the installed plugins from their plugin.json, plugin.setEnabled,
  * the store, init.yaml's start profile and settings, perm.query, and the stub's index of fixture items
  * (data.*, connector.*, view.*), and shell.open, which hands links to `open` (window.open on the dev
- * page) and only records reveals. Built-in plugins hold their manifest's permissions, as the core
- * grants them at install. brain.ask answers through `ask`, or through a scripted brain (`brain`) that
- * streams its turns as the core does; the theme market (theme.market.*, theme.import by url) downloads
- * through `download`. More methods come as handlers.
+ * page) and only records reveals, and cmd.recent and plugin.stats over every call it answers.
+ * The desk folder (`~/.desk`) is held in memory (`folder.ts`).
+ * Built-in plugins hold their manifest's permissions, as the core grants them at install. brain.ask
+ * answers through `ask`, or through a scripted brain (`brain`) that streams its turns as the core
+ * does; the theme market (theme.market.*, theme.import by url) downloads through `download`. More
+ * methods come as handlers.
  */
 import {
   type BrainTurnData,
@@ -27,6 +29,7 @@ import {
   type ThemeMarketListResult,
 } from "@endue-ai/bridge";
 import { themeHandlers } from "./core-themes";
+import { type StubFolder, stubFolder } from "./folder";
 import { type ScriptedBrain, scriptedBrain } from "./scripted-brain";
 import { searchHandlers } from "./search";
 
@@ -42,7 +45,7 @@ export interface BrowserCoreOptions {
   /** Installed but turned off. Autoload plugins start off anyway, as the core starts them. */
   off?: Iterable<string>;
   store?: CoreStore;
-  init?: { profile?: string; settings?: Record<string, unknown>; problem?: string };
+  init?: { profile?: string; settings?: Record<string, unknown>; problem?: string; file?: string };
   /**
    * brain.ask and brain.status answered from a script, as the core streams and checks them; it
    * answers brain.ask instead of `ask` when both are given.
@@ -50,6 +53,10 @@ export interface BrowserCoreOptions {
   brain?: ScriptedBrain;
   /** More methods (fs.write, ui.notify, ...), or the ones above answered differently. */
   handlers?: StubHandlers;
+  /** The desk folder's files at start, by bridge path (`~/.desk/keys.yaml`). */
+  files?: Record<string, string>;
+  /** Hears the desk folder's files after every change, to keep them across a reload. */
+  keepFiles?: (files: Record<string, string>) => void;
   /** Where shell.open's links go: a new window by default, nowhere without a window. */
   open?: (url: string) => void;
   /**
@@ -67,6 +74,8 @@ export interface BrowserCoreOptions {
 export interface BrowserCore {
   client: BridgeClient;
   stub: BrowserStub;
+  /** The desk folder (`~/.desk`) the runtime reads and writes, and the person edits by hand. */
+  folder: StubFolder;
   /** plugin.list's answer, changed in place by plugin.setEnabled. */
   plugins: PluginInfo[];
   /** Put an item in the index, or replace it, as a sync would; subscribers hear data.changed. */
@@ -121,7 +130,7 @@ export function browserCore(options: BrowserCoreOptions): BrowserCore {
     },
   });
   const themes = themeHandlers(plugins, (event) => stub.emit(event));
-  const stub = browserStub({
+  const served: StubHandlers = {
     ...registry.handlers,
     ...searchHandlers(plugins, store),
     ...themes,
@@ -155,13 +164,20 @@ export function browserCore(options: BrowserCoreOptions): BrowserCore {
       profile: options.init?.profile ?? "default",
       settings: options.init?.settings ?? {},
       ...(options.init?.problem ? { problem: options.init.problem } : {}),
+      ...(options.init?.file ? { file: options.init.file } : {}),
     }),
     ...(options.brain ? scriptedBrain(options.brain, (event) => stub.emit(event)) : {}),
     ...options.handlers,
-  });
+  };
+  // The runtime's own files under ~/.desk; the rest of fs.* stays the page's.
+  const emit = (event: BridgeEvent) => stub.emit(event);
+  const desk = stubFolder(options.files ?? {}, emit, served, options.keepFiles);
+  // Every call counts for plugin.stats, whoever answers it.
+  const stub = browserStub({ ...served, ...desk.handlers }, registry.observe);
   return {
     client: new BridgeClient(stub),
     stub,
+    folder: desk.folder,
     plugins,
     upsert: registry.upsert,
     remove: registry.remove,

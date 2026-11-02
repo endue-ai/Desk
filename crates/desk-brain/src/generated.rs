@@ -173,6 +173,9 @@ pub struct ToolCall {
     pub name: String,
     /// Tool arguments as a JSON object.
     pub arguments: serde_json::Map<String, serde_json::Value>,
+    /// The agent that asks for the tool. Desk runs the call as the caller agent:<agentId>, with that agent's own grants, capped by agents.<agentId>.allow in init.yaml. Without it Desk runs only the echo tool.
+    #[serde(rename = "agentId", default, skip_serializing_if = "Option::is_none")]
+    pub agent_id: Option<String>,
 }
 
 /// The turn ended.
@@ -916,6 +919,11 @@ pub const BRAIN_SCHEMA_JSON: &str = r##"{
         "arguments": {
           "description": "Tool arguments as a JSON object.",
           "type": "object"
+        },
+        "agentId": {
+          "description": "The agent that asks for the tool. Desk runs the call as the caller agent:<agentId>, with that agent's own grants, capped by agents.<agentId>.allow in init.yaml. Without it Desk runs only the echo tool.",
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,121}$"
         }
       },
       "required": [

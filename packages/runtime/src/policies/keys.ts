@@ -57,7 +57,8 @@ export function installKeys(ctx: DeskContext, language: "ko" | "en" = "en"): Key
   offs.add(
     commands.define("desk.keys.list", {
       title: language === "ko" ? "단축키 목록 보기" : "List key bindings",
-      keywords: ["keys", "shortcuts", "describe"],
+      // Emacs's describe-bindings, but "describe" alone finds desk.describe.open (Describe…) first.
+      keywords: ["keys", "shortcuts", "bindings", "describe-bindings"],
       owner: "desk",
       run: () =>
         keymap.bindings().map((binding) => ({

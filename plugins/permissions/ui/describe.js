@@ -139,8 +139,9 @@ export function broadWarning(permission) {
 const PLUGIN_KINDS = { ui: "UI plugin", logic: "Logic plugin", tool: "Tool plugin" };
 
 /**
- * Who a caller is: an installed plugin by its manifest name and kind, the desk by its own names.
- * The id always travels with the name, so a plugin cannot pass for another by name.
+ * Who a caller is: an installed plugin by its manifest name and kind, the desk by its own names, an
+ * agent of the brain (`agent:<id>`, ADR 0072) by its id. The id always travels with the name, so a
+ * plugin cannot pass for another by name.
  * @param {string} id
  * @param {PluginInfo[]} plugins
  * @returns {Caller}
@@ -151,5 +152,6 @@ export function describeCaller(id, plugins) {
     return { id, name: manifest.name || id, kind: PLUGIN_KINDS[manifest.kind] ?? "Plugin" };
   if (id === "desk") return { id, name: "Desk", kind: "Runtime" };
   if (id === "core") return { id, name: "Desk", kind: "Core" };
+  if (id.startsWith("agent:")) return { id, name: `Agent ${id.slice(6)}`, kind: "Agent" };
   return { id, name: id, kind: id.includes(".") ? "Plugin" : "Desk" };
 }

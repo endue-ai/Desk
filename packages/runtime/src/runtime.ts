@@ -1,17 +1,22 @@
 import type { BridgeClient } from "@endue-ai/bridge";
 import { type Clock, realClock, tween } from "./clock";
 import { Preferences } from "./core/preferences";
+import { installDescribe } from "./describe/install";
 import { Edges, takesCell } from "./edges";
+import { installFrames, type WindowVisibility } from "./frames/install";
 import { PolicyHub } from "./hub";
 import { listenForShortcuts, type Platform, ShortcutRouter } from "./input";
+import { installInspect } from "./inspect/install";
 import { type Layout, type LayoutStorage, loadLayout, move, place, saveLayout } from "./layout";
 import { PluginHost, type PluginHostOptions } from "./plugins";
 import { installAliases } from "./policies/aliases";
 import { installBuffers } from "./policies/buffers";
 import type { DeskContext } from "./policies/context";
+import { deskFolder } from "./policies/desk-folder";
 import { installDisplay } from "./policies/display";
 import { installFiles } from "./policies/files";
 import { installKeys } from "./policies/keys";
+import { installKeysFile } from "./policies/keys-file";
 import { installNotify } from "./policies/notify";
 import { installPalette } from "./policies/palette";
 import { installProfiles } from "./policies/profiles";
@@ -22,6 +27,7 @@ import type { SettingsLanguage } from "./settings-ui/copy";
 import { installSettingsWindow } from "./settings-ui/window";
 import { SurfaceHost, type SurfaceSpec } from "./surfaces";
 import { applyTheme } from "./theme";
+import { timed } from "./timing";
 import { connectViews, type HostViews, type ViewRouting } from "./views";
 
 export type { Runtime, RuntimePlugins, RuntimeProfiles } from "./runtime-api";
@@ -51,7 +57,7 @@ export interface RuntimeOptions {
 }
 
 /** The shell's window host places detached surfaces and removes them when closed (ADR 0040). */
-export interface WindowHost {
+export interface WindowHost extends WindowVisibility {
   adopt(spec: SurfaceSpec, section: HTMLElement): void;
   release(id: string): void;
 }
@@ -168,6 +174,8 @@ export function createRuntime(options: RuntimeOptions): Runtime {
     ],
     focused: () => shortcuts.focused ?? views?.focused() ?? null,
   });
+  // Centre and floating surfaces out of sight are unloaded, their state kept (ADR 0070).
+  const frames = installFrames(ctx, { windows: options.windows, host: () => pluginHost });
   const buffers = installBuffers(ctx, { focus: focusAny });
   routing = connectViews(views, buffers);
   const files = installFiles(ctx, buffers, notify.notify, options.pickFile);
@@ -179,7 +187,12 @@ export function createRuntime(options: RuntimeOptions): Runtime {
     notices: () => notify.notifications.history(),
     restoreNotices: (notices) => notify.notifications.restore(notices),
   });
-  const profiles = installProfiles(ctx, (input) => notify.notify(input));
+  // The person's files in ~/.desk (ADR 0079): saved profiles, and key bindings in keys.yaml.
+  const folder = deskFolder(bridge);
+  const profiles = installProfiles(ctx, (input) => notify.notify(input), folder);
+  const keysFile = installKeysFile(ctx, (input) => notify.notify(input), folder);
+  const about = installDescribe(ctx, { keys, profile: profiles.active, notify: notify.notify });
+  const inspect = installInspect(ctx, { buffers: buffers.buffers, views });
   notify.notifications.onPush(() => session.changed());
   onLayout = () => session.changed();
   onSurfaceFocus = (id) => {
@@ -248,8 +261,10 @@ export function createRuntime(options: RuntimeOptions): Runtime {
     if (decision.focus && !spec.hidden && (decision.area === "overlay" || !modal)) {
       focusSurface(spec.id);
     }
+    frames.opened(placed);
   };
   function closeSurface(id: string) {
+    frames.closed(id);
     surfaces.close(id);
     options.windows?.release(id);
     buffers.surfaceClosed(id);
@@ -258,7 +273,7 @@ export function createRuntime(options: RuntimeOptions): Runtime {
 
   let plugins: RuntimePlugins | undefined;
   // Without plugins there is no desk.session to restore; saving may start at once.
-  if (!options.plugins) void ready.then(() => session.restore());
+  if (!options.plugins) void ready.then(() => keysFile.start()).then(() => session.restore());
   if (options.plugins) {
     const host = new PluginHost(
       {
@@ -277,6 +292,7 @@ export function createRuntime(options: RuntimeOptions): Runtime {
           shortcuts.handle(key);
         },
         listed: (all) => hub.apply(all),
+        wake: (id) => frames.wake(id),
       },
       options.plugins,
     );
@@ -295,10 +311,10 @@ export function createRuntime(options: RuntimeOptions): Runtime {
     plugins = {
       // A desk without plugin:manage still works; it just shows no plugins.
       ready: ready
-        .then(() => host.start())
+        .then(() => Promise.all([host.start(), keysFile.start()]))
         // The desk's built-ins are in the registry before profiles and the session run them.
-        .then(() => commands.settled())
-        .then(() => profiles.start())
+        .then(() => timed("command registry", () => commands.settled()))
+        .then(() => timed("profile start", () => profiles.start()))
         .then(() => session.restore().then(() => files.settle()))
         .then(() => commands.settled())
         .catch(() => {}),
@@ -340,9 +356,10 @@ export function createRuntime(options: RuntimeOptions): Runtime {
     dispose() {
       settingsWindow.dispose();
       preferences.dispose();
+      frames.dispose();
       routing.dispose();
-      const policies = [profiles, session, files, buffers, display, notify, palette, aliases];
-      for (const policy of [...policies, keys, theme]) {
+      const policies = [profiles, keysFile, folder, session, files, buffers, display, notify];
+      for (const policy of [about, inspect, ...policies, palette, aliases, keys, theme]) {
         policy.dispose();
       }
       pluginHost?.stop();

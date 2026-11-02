@@ -43,7 +43,7 @@ describe("core preferences", () => {
     expect(data.preferences).toEqual({ version: 1, values: { "desk.theme.scheme": "light" } });
   });
 
-  it("keeps keys and typed settings without the keys, theme or session plugins", async () => {
+  it("keeps typed settings without the theme or session plugins, and leaves bindings to keys.yaml", async () => {
     const { hub, preferences, data } = setup();
     const shortcuts = new ShortcutRouter({ platform: "mac" });
     const keys = installKeys({ hub, shortcuts } as DeskContext);
@@ -65,9 +65,11 @@ describe("core preferences", () => {
     hub.settings.set("desk.theme.scheme", "light");
     await preferences.settled();
     expect(keys.keymap.keysFor("desk.settings.open")).toEqual(["⇧⌘,"]);
+    // desk.keys keeps the person's bindings in ~/.desk/keys.yaml (ADR 0079), not in this record.
+    expect(data.preferences).toEqual({ version: 1, values: { "desk.theme.scheme": "light" } });
     const reopened = setup(data);
     await reopened.preferences.load();
-    expect(reopened.hub.settings.get(PERSONAL_KEYS)).toEqual(personal);
+    expect(reopened.hub.settings.get(PERSONAL_KEYS)).toEqual([]);
     expect(reopened.hub.settings.get("desk.theme.scheme")).toBe("light");
     expect(preferences.state()).toBe("saved");
     keys.dispose();
@@ -77,17 +79,14 @@ describe("core preferences", () => {
     reopened.hub.commands.dispose();
   });
 
-  it("migrates old session keys once, without resurrecting them after a reset", async () => {
-    const old = [{ key: "Mod+J", command: "desk.keys.list" }];
-    const first = setup({ session: { version: 1, parts: { keys: old } } });
-    await first.preferences.load();
-    expect(first.hub.settings.get(PERSONAL_KEYS)).toEqual(old);
-    first.hub.settings.reset(PERSONAL_KEYS);
-    await first.preferences.settled();
-    const next = setup(first.data);
-    await next.preferences.load();
-    expect(next.hub.settings.get(PERSONAL_KEYS)).toEqual([]);
-    expect(first.data.preferences).toEqual({ version: 1, values: {} });
+  it("leaves the session record's old bindings for keys.yaml to move", async () => {
+    const session = { version: 1, parts: { keys: [{ key: "Mod+J", command: "desk.keys.list" }] } };
+    const { hub, preferences, data } = setup({ session: structuredClone(session) });
+    await preferences.load();
+    await preferences.settled();
+    expect(hub.settings.get(PERSONAL_KEYS)).toEqual([]);
+    expect(data.session).toEqual(session);
+    expect(data.preferences).toBeUndefined();
   });
 
   it("persists an edit or reset even if the effective value stays equal", async () => {
@@ -102,7 +101,7 @@ describe("core preferences", () => {
     expect(data.preferences).toEqual({ version: 1, values: {} });
   });
 
-  it("rejects corrupt values and unsafe binding shapes", () => {
+  it("rejects corrupt values and key bindings", () => {
     expect(
       validPreferences({
         "desk.theme.scheme": "purple",
@@ -114,6 +113,9 @@ describe("core preferences", () => {
       "desk.notify.dnd": true,
       "desk.theme.motion": "reduce",
     });
+    expect(
+      validPreferences({ [PERSONAL_KEYS]: [{ key: "Mod+J", command: "desk.keys.list" }] }),
+    ).toEqual({});
     for (const value of [null, [], "bad", 12]) expect(validPreferences(value)).toEqual({});
   });
 

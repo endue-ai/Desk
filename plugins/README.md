@@ -17,6 +17,7 @@ there were two formats, the API would have holes.
 | `views/` | The view engine (`desk.views`): draws view files (`specs/view/v0`) as surfaces, over the core's `data.*` and `view.*` |
 | `today/` | The day at a glance (`desk.today`): a data-only `view` plugin that `desk.views` draws; `Mod+T` opens it |
 | `item/` | One item in Desk (`desk.item`): the data-only `view` plugin the palette's Open in Desk shows |
+| `inspector/` | What the desk holds now, read-only (`desk.inspector`, autoload): the render tree, surfaces and buffers, the last commands, grants, settings by layer, plugins, bridge calls; `desk inspect` prints its Export JSON |
 
 The desk's default policies (ADR 0017), each a `desk.*` plugin. All but the palette are `policy` plugins:
 no code, only what they contribute in `plugin.json`. Turn one off and another plugin can take its place.

@@ -7,6 +7,8 @@ export interface KeyLike {
   ctrlKey: boolean;
   altKey: boolean;
   shiftKey: boolean;
+  /** A held key repeating, when the event says so. */
+  repeat?: boolean;
 }
 
 export type Platform = "mac" | "other";
@@ -42,9 +44,28 @@ export function comboOf(event: KeyLike): string {
   return [...mods, keyName(event)].join("+");
 }
 
+/** What Shift makes of a punctuation key on a US keyboard, back to the key: ⇧/ arrives as "?". */
+const UNSHIFTED: Record<string, string> = {
+  "?": "/",
+  ">": ".",
+  "<": ",",
+  ":": ";",
+  '"': "'",
+  "{": "[",
+  "}": "]",
+  "|": "\\",
+  _: "-",
+  "+": "=",
+  "~": "`",
+};
+
 function keyName(event: KeyLike): string {
   // The persisted combo grammar has no whitespace; use the named key for Space chords.
   if (event.key === " ") return "Space";
+  // With Shift held a punctuation key is named by the key, so Mod+Shift+/ matches ⌘⇧/ (which
+  // arrives as "?"), in the main window and from a plugin frame alike.
+  const unshifted = event.shiftKey ? UNSHIFTED[event.key] : undefined;
+  if (unshifted) return unshifted;
   // macOS composes Option+letter into another character (⌥D is ∂): with Alt held, a letter or
   // digit key is named by the key itself, so Mod+Alt+D means the same key on every platform.
   const physical = event.altKey ? /^(?:Key([A-Z])|Digit([0-9]))$/.exec(event.code ?? "") : null;
@@ -112,6 +133,7 @@ export class ShortcutRouter {
   readonly #global = new Map<string, Handler>();
   readonly #surfaces = new Map<string, Map<string, Handler>>();
   #focused: string | null = null;
+  #capture: ((combo: string) => void) | undefined;
 
   constructor(options: { platform: Platform }) {
     this.#platform = options.platform;
@@ -131,6 +153,15 @@ export class ShortcutRouter {
     };
   }
 
+  /** Hand the next key press to `handler` instead of its binding (desk.describe.open waits for one
+   * chord this way). Returns a function that stops waiting. */
+  captureNext(handler: (combo: string) => void): () => void {
+    this.#capture = handler;
+    return () => {
+      if (this.#capture === handler) this.#capture = undefined;
+    };
+  }
+
   focus(surface: string | null): void {
     this.#focused = surface;
   }
@@ -143,6 +174,14 @@ export class ShortcutRouter {
   handle(event: KeyLike): boolean {
     if (MODIFIER_KEYS.has(event.key)) return false;
     const combo = comboOf(event);
+    const capture = this.#capture;
+    if (capture) {
+      // The chord that started the wait, still held and repeating, is not the next key.
+      if (event.repeat) return true;
+      this.#capture = undefined;
+      capture(combo);
+      return true;
+    }
     const handler =
       (this.#focused ? this.#surfaces.get(this.#focused)?.get(combo) : undefined) ??
       this.#global.get(combo);

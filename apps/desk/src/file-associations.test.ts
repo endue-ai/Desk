@@ -51,6 +51,7 @@ it("exposes only the named host queue drain to the main window alongside existin
   expect(capability.permissions).toEqual([
     "allow-bridge-call",
     "allow-desk-ready",
+    "allow-desk-trace",
     "allow-take-open-files",
     "core:event:allow-listen",
     "core:event:allow-unlisten",

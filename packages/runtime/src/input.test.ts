@@ -35,6 +35,23 @@ describe("comboOf", () => {
     expect(comboOf({ ...key("¡", { alt: true }), code: "Digit1" })).toBe("Alt+1");
     expect(comboOf({ ...key("é", {}), code: "KeyE" })).toBe("É");
   });
+
+  it("names a shifted punctuation key by its unshifted key", () => {
+    // What a plugin frame forwards for Control+Shift+/ (and WebKit reports for Command+Shift+/).
+    expect(comboOf(key("?", { ctrl: true, shift: true }))).toBe("Control+Shift+/");
+    expect(comboOf(key("?", { meta: true, shift: true }))).toBe("Meta+Shift+/");
+    expect(comboOf(key(">", { meta: true, shift: true }))).toBe("Meta+Shift+.");
+    // A key that is the same either way, and ? without Shift (another layout), stay as they are.
+    expect(comboOf(key("/", { meta: true, shift: true }))).toBe("Meta+Shift+/");
+    expect(comboOf(key("?", { meta: true }))).toBe("Meta+?");
+    const router = new ShortcutRouter({ platform: "mac" });
+    let hits = 0;
+    router.bind("Mod+Shift+/", () => {
+      hits += 1;
+    });
+    expect(router.handle(key("?", { meta: true, shift: true }))).toBe(true);
+    expect(hits).toBe(1);
+  });
 });
 
 describe("ShortcutRouter", () => {
@@ -68,6 +85,24 @@ describe("ShortcutRouter", () => {
     router.bind("Mod+K", () => {});
     expect(router.handle(key("j", { ctrl: true }))).toBe(false);
     expect(router.handle(key("k"))).toBe(false);
+  });
+
+  it("hands the next key to a capture instead of its binding, once", () => {
+    const router = new ShortcutRouter({ platform: "mac" });
+    const hits: string[] = [];
+    router.bind("Mod+S", () => hits.push("save"));
+    const captured: string[] = [];
+    router.captureNext((combo) => captured.push(combo));
+    expect(router.handle(key("Shift"))).toBe(false);
+    expect(router.handle({ ...key("?", { meta: true, shift: true }), repeat: true })).toBe(true);
+    expect(router.handle(key("s", { meta: true }))).toBe(true);
+    expect(router.handle(key("s", { meta: true }))).toBe(true);
+    expect(captured).toEqual(["Meta+S"]);
+    expect(hits).toEqual(["save"]);
+    const cancel = router.captureNext((combo) => captured.push(combo));
+    cancel();
+    router.handle(key("s", { meta: true }));
+    expect(captured).toEqual(["Meta+S"]);
   });
 
   it("unbinds", () => {

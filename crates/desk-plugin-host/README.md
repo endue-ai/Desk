@@ -23,15 +23,16 @@ Layer: Rust core (see `docs/architecture.md`). Decisions: ADR 0019, ADR 0034.
 - `Limits { memory_bytes, time }`: 64 MiB and 1 s per call by default, in epoch `TICK`s of 10 ms.
 - `PluginError`: `Manifest`, `Compile`, `Link`, `TimeLimit`, `MemoryLimit`, `Trap`, `Guest`, `Crashed`,
   `NotInstalled`, `NoInstance`, `Paused`, `Host` (the host refused), `Setup`; and the WIT types.
+- `harness` (`desk plugin test`): `run(dir, &case)` runs one `Case` (a `tests/<name>.test.json`:
+  `steps`, scripted `answers`, `expect`ed calls and items) on a fresh host whose desk is a script;
+  `run_folder(dir)` runs every test, in name order. Every import is recorded as `{ method, params }`
+  and answered by the first matching answer, else the empty one. Format: `docs/plugins/authoring.md`.
 
 Each logic plugin and each connector has its own store, so a trap or a limit stops it alone (every
 instance of a connector goes to `error` until a reload). Guests get WASI 0.2 with nothing behind it.
 
 ## Testing
 
-```bash
-cargo test -p desk-plugin-host
-```
-
-The tests run `examples/plugin-hello-wasm` and `examples/plugin-hello-connector` (their committed
-components) and component WAT (`tests/common`) against a mock `Host`, a recording sink, a fake clock.
+`cargo test -p desk-plugin-host` runs `examples/plugin-hello-wasm` and `examples/plugin-hello-connector`
+(their committed components) and component WAT (`tests/common`) against a mock `Host`, a recording
+sink, a fake clock; `tests/harness.rs` runs the examples on the harness.

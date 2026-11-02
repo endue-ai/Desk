@@ -6,11 +6,13 @@
 //! memory and time limits; every import goes through [`Imports`] to a [`Host`], which desk-core
 //! implements. Wasm connectors are components of the `desk:connector` world: [`ConnectorHost`]
 //! keeps their instances, syncs them on a [`Clock`] and hands what they bring to an [`IndexSink`].
+//! [`harness`] runs either kind's tests against a scripted desk (`desk plugin test`).
 
 mod bindings;
 mod clock;
 mod connector;
 mod connector_bindings;
+pub mod harness;
 mod host;
 mod imports;
 mod limits;
@@ -24,7 +26,7 @@ pub use bindings::{
     Command, CommandInfo, Decision, DirEntry, Duration, EntryKind, Error, ErrorCode,
 };
 pub use bindings::{
-    Failure, FailureCode, Grant, LogEntry, LogLevel, NotifyLevel, Request, Response,
+    Failure, FailureCode, FsVersion, Grant, LogEntry, LogLevel, NotifyLevel, Request, Response,
 };
 pub use clock::{Clock, SystemClock, rfc3339};
 pub use connector::ConnectorHost;

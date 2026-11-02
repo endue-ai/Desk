@@ -5,10 +5,12 @@ use std::collections::BTreeSet;
 use std::path::Path;
 
 /// Every interface function, as the bridge method it is.
-const FUNCTIONS: [&str; 21] = [
+const FUNCTIONS: [&str; 23] = [
     "fs.read",
     "fs.list",
     "fs.write",
+    "fs.history",
+    "fs.restore",
     "net.fetch",
     "ui.notify",
     "perm.query",

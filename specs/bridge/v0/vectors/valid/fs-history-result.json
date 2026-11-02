@@ -1,0 +1,22 @@
+{
+  "target": "FsHistoryResult",
+  "description": "fs.history answers versions newest first, each with when it was replaced, by whom, its size and its sha256",
+  "instance": {
+    "versions": [
+      {
+        "id": "1793520000000-3fa9c1",
+        "at": "2026-11-02T09:20:00Z",
+        "caller": "endue.notes",
+        "size": 42,
+        "sha256": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"
+      },
+      {
+        "id": "1793519400000-0b7e22",
+        "at": "2026-11-02T09:10:00Z",
+        "caller": "cli",
+        "size": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    ]
+  }
+}

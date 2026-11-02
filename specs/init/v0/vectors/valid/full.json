@@ -17,6 +17,23 @@
         "width": 280
       }
     },
+    "agents": {
+      "ag_01JBZ8Q4MR0000000000000001": {
+        "allow": [
+          {
+            "permission": "fs:write",
+            "paths": ["~/Documents/Notes/**"]
+          },
+          {
+            "permission": "cmd:invoke",
+            "ids": ["notes.*"]
+          }
+        ]
+      },
+      "mira": {
+        "allow": []
+      }
+    },
     "sync": {
       "enabled": true
     }

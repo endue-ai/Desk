@@ -12,6 +12,11 @@ are asked first. These defaults add no rule, so files open once a plugin says it
 | --- | --- | --- |
 | `desk.files.recent-max` | 20 | How many recent files to remember (kept with `store.set`) |
 | `desk.files.on-change` | `reload` | Changed on disk: reload when there are no unsaved changes, else ask; `ask`; `ignore` |
+| `desk.files.history-max-bytes` | 268435456 (256 MiB) | What the history of earlier versions holds in all; the oldest go first |
+| `desk.files.history-max-versions` | 50 | Earlier versions kept per file; `0` keeps none |
+
+Every write the desk makes over a file keeps the bytes it replaces first, in the data folder's
+`history/` (ADR 0076): `fs.history` lists them, `fs.restore` and `desk fs restore` put one back.
 
 Commands: `desk.files.open` (`Mod+O`; a path, or one typed in the palette), `.recent` (`Mod+Shift+O`),
 `.save` (`Mod+S`), `.revert`, and `.changed { path }`, which a plugin runs when its `fs.watch` reports a

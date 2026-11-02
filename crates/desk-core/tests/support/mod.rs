@@ -191,3 +191,35 @@ pub fn set_enabled(core: &Core, plugin: &str, enabled: bool) {
     )
     .unwrap();
 }
+
+/// perm.approve as `desk` (ADR 0078): `once`, `task` or `deny`.
+pub fn approve_as_desk(core: &Core, approval: &Seen, answer: &str) {
+    let params = json!({ "approvalId": approval.data()["approvalId"], "answer": answer,
+        "scope": manage() });
+    call(core, "desk", "perm.approve", params).unwrap();
+}
+
+/// Run `act` on another thread, wait for the `perm.approval` the agent's call waits on, answer it
+/// as `desk`, and return both (ADR 0078).
+pub fn held<T: Send>(
+    core: &Core,
+    deliveries: &Receiver<Delivery>,
+    answer: &str,
+    act: impl FnOnce() -> T + Send,
+) -> (Seen, T) {
+    std::thread::scope(|s| {
+        let acting = s.spawn(act);
+        let approval = wait_for(deliveries, "perm.approval");
+        approve_as_desk(core, &approval, answer);
+        (approval, acting.join().unwrap())
+    })
+}
+
+/// `held`, approved once.
+pub fn approved_once<T: Send>(
+    core: &Core,
+    deliveries: &Receiver<Delivery>,
+    act: impl FnOnce() -> T + Send,
+) -> T {
+    held(core, deliveries, "once", act).1
+}

@@ -14,6 +14,8 @@ It listens on `http://127.0.0.1:8787/v0`, which is where Desk looks by default (
 | --- | --- |
 | anything | the same text, one `text.delta` per word |
 | `tool: <text>` | "Let me ask the echo tool.", a `tool.call` to `echo` with `{ "text": <text> }`, a stop at `tool_call`; after the result, "The echo tool said: <text>" |
+| `tool <name> as <agent>: <json>` | the same for the tool `<name>` with the JSON object as arguments and `agentId: <agent>` (without `as <agent>`, no `agentId`); after the result, "The <name> tool said: <output>" or "failed: <output>" |
+| several `tool ...` calls, one per line or joined by ` then ` | one turn that asks for each tool in order: after each result it says what the tool said and asks for the next |
 | any, with `tools` | a `tool.call` to the tool `toolChoice` names, or to the first one offered it knows (`echo`, `propose_theme`), and a stop at `tool_call`; other tools get words |
 
 `propose_theme` (`theme.mjs`) answers `{ name, description, theme }`, a valid theme block made from the
@@ -31,10 +33,8 @@ The directory is fixed sample data. `GET /spaces`: Home and Studio. `GET /agents
 /a2a/tasks`: four hand-overs. Lists filter by `spaceId`, `targetAgentId` and `status`, come newest first,
 and page with `page` (from 1) and `limit` (1 to 100, default 20); bad values are `invalid_request`.
 
-| Variable | Default | Meaning |
-| --- | --- | --- |
-| `BRAIN_ECHO_DELAY_MS` | 40 | pause between streamed events |
-| `BRAIN_ECHO_SECOND_MS` | 1000 | real milliseconds in one lease second (the tests use 20) |
+`BRAIN_ECHO_DELAY_MS` (default 40) is the pause between streamed events, `BRAIN_ECHO_SECOND_MS` (default
+1000) the real milliseconds in one lease second (the tests use 20).
 
 `brain.mjs` is the state machine, `theme.mjs` propose_theme, `directory.mjs` the directory, `server.mjs`
 the HTTP. Tests: `cargo test -p desk-brain --test conformance --test directory -p desk-core --test brain_ask`.

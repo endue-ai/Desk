@@ -219,7 +219,10 @@ test.describe("command bindings", () => {
       .click();
     await page.keyboard.press("Meta+Shift+n");
     await page.getByRole("button", { name: "단축키 옮기기", exact: true }).click();
-    await page.evaluate(() => window.__shell.desk.runtime.preferences.settled());
+    // desk.keys writes the person's bindings to ~/.desk/keys.yaml, which ?persist=1 keeps.
+    await expect
+      .poll(() => page.evaluate(() => localStorage.getItem("desk.folder") ?? ""))
+      .toContain("desk.display.new-surface");
     await openShell(page, "?persist=1");
     await page.keyboard.press("Meta+Shift+n");
     await expect(page.locator('[data-surface="window-1"]')).toBeVisible();

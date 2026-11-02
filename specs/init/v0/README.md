@@ -2,7 +2,10 @@
 
 `init.yaml` is a person's own setup, read at every start the way Emacs reads `init.el`.
 `init.schema.json` describes the data the file holds once its YAML is parsed; `init.template.yaml` is
-the file Desk writes when there is none. Decision: ADR 0016.
+the file Desk writes when there is none. Decision: ADR 0016. The desk folder `~/.desk` holds the
+person's other files too, each with its schema here: saved profiles (`profile.schema.json`) and key
+bindings (`keys.schema.json`). What the person wrote is YAML in the desk folder; what the desk learned
+is JSON in the app's data folder (ADR 0079).
 
 ## The file
 
@@ -20,10 +23,27 @@ the file Desk writes when there is none. Decision: ADR 0016.
 | `profile` | profile name | `default` | The profile to start in (desk.profiles; ADR 0017) |
 | `plugins.disabled` | plugin ids | `[]` | Plugins that start disabled, built-ins included; turning one on while Desk runs lasts until the next start |
 | `settings` | key → any value | `{}` | Settings for the core and plugins; keys are lowercase and dotted by owner (`eris.voice`) |
+| `agents.<id>.allow` | permissions | none | What the brain's agent `<id>` may be granted; outside a non-empty list it is refused, inside it the person is asked (ADR 0072). Read again at every agent call |
 | `sync.enabled` | boolean | `false` | Keep this file the same on every desk, through endue |
 
 Unknown keys are refused, so a typo surfaces instead of being ignored. New keys arrive with a new
 `version`; free-form values belong under `settings`.
+
+## Profiles and key bindings
+
+| File | Schema | Written by | Holds |
+| --- | --- | --- | --- |
+| `~/.desk/profiles/<id>.yaml` | `ProfileFile` | `desk.profiles.save` | `name`, `description`, `plugins.enabled` / `.disabled`, `settings` |
+| `~/.desk/keys.yaml` | `KeysFile` | `desk.keys`, when the person rebinds a key | `bindings`: `key`, `mac`, `command`, `args` |
+
+- A profile's file name is its id (`^[a-z0-9][a-z0-9._-]{0,63}$`), so the file holds none; `name`
+  defaults to the id. A file of a contributed profile's id shadows that profile; removing the file
+  brings the contributed one back.
+- `keys.yaml`'s bindings are the person's layer of the keymap, over every plugin's: a later binding of
+  the same key wins and `command: ""` takes a key away.
+- Both are read at start and again whenever they change on disk, so a hand edit applies at once. Like
+  init.yaml, a file that does not parse or does not match its schema is ignored, never overwritten,
+  and Desk names the file and the line of the problem. Both carry an optional `version` (0).
 
 ## Sync
 

@@ -51,6 +51,25 @@ interface fs {
   /// bridge: fs.write. Creates or overwrites the file and returns the bytes written; with
   /// `create-dirs` it also creates missing parent folders.
   write: func(path: string, contents: list<u8>, create-dirs: bool) -> result<u64, error>;
+
+  /// One version the desk kept of a file: the bytes one of its writes replaced.
+  record version {
+    /// Unix milliseconds, a dash and six hex digits.
+    id: string,
+    /// When the write that replaced these bytes ran, RFC 3339 in UTC.
+    at: string,
+    /// The caller whose write replaced them.
+    caller: string,
+    size: u64,
+    /// SHA-256 of the bytes, lowercase hex.
+    sha256: string,
+  }
+
+  /// bridge: fs.history. Newest first, `limit` at most; empty when the desk kept nothing.
+  history: func(path: string, limit: option<u32>) -> result<list<version>, error>;
+
+  /// bridge: fs.restore. Writes the version back as `write` does and returns the bytes written.
+  restore: func(path: string, version-id: string) -> result<u64, error>;
 }
 
 interface net {

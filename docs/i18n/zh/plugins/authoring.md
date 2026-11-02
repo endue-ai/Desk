@@ -2,14 +2,29 @@
 
 # 编写 Desk 插件
 
-Desk 插件就是一个目录。内置功能使用完全相同的格式，因此 Desk 自身能在屏幕上做的任何事，你的插件也都能做到。本文介绍 UI 插件（v0）和主题；逻辑（Wasm）插件和工具（MCP）插件将在之后推出。
+Desk 插件就是一个目录。内置功能使用完全相同的格式，因此 Desk 自身能在屏幕上做的任何事，你的插件也都能做到。本文先介绍插件的种类及其模板，再详细介绍 UI 插件，最后介绍主题；工具（MCP）插件将在之后推出。
 
-## 从示例开始
+## 从模板开始
+
+`create-plugin` 会生成一个某种类型的插件目录，它能通过 `desk plugin validate`，并带有一个测试（包发布后可使用 `pnpm create @endue-ai/plugin`）：
 
 ```bash
-cp -R examples/plugin-hello-ui ../my-plugin      # then change the id in plugin.json
+pnpm --filter @endue-ai/create-plugin build
+node packages/create-plugin/dist/create-plugin.js ../my-plugin --kind ui
 cargo run -p desk-cli -- plugin validate ../my-plugin
+cargo run -p desk-cli -- plugin test ../my-plugin
 ```
+
+| 种类 | 是什么 | 示例 |
+| --- | --- | --- |
+| `ui` | 沙箱框架中的页面，基于 SDK（本文其余部分） | `examples/plugin-hello-ui` |
+| `logic` | 用 Rust 编写的 `desk:host` world 的 Wasm 组件（ADR 0019） | `examples/plugin-hello-wasm` |
+| `connector` | 导入条目的 `desk:connector` world 的 Wasm 组件（ADR 0034） | `examples/plugin-hello-connector` |
+| `view` | 以数据表示的视图：显示什么、来自哪些来源；没有代码（ADR 0032） | `examples/plugin-hello-view` |
+| `policy` | 以数据表示的命令、按键和其他贡献；没有代码（ADR 0017） | `plugins/` 中的 `desk.*` 策略 |
+| `theme` | 设计系统的取值，以及它们引用的字体和图片；没有代码（见“制作主题”，ADR 0056） | `examples/plugin-hello-theme` |
+
+Rust 类型的插件用该语言自己的命令构建：在目录中针对 `wasm32-wasip2` 目标运行 `cargo build --release`（首次需执行一次 `rustup target add wasm32-wasip2`）。组件会生成在 `plugin.json` 的 `entry` 所指的位置。
 
 如果想在开发插件的同时在 Desk 上看到它，请将你的目录作为开发插件来运行 Desk：
 
@@ -17,7 +32,29 @@ cargo run -p desk-cli -- plugin validate ../my-plugin
 DESK_DEV_PLUGINS=$PWD/../my-plugin just dev
 ```
 
-保存目录中的任意文件后，只有你的插件界面会在一秒内重新加载。Desk 的其余部分以及插件的状态都保持原样。
+保存目录中的任意文件后，只有你的插件会在一秒内重新加载。Desk 的其余部分以及插件的状态都保持原样。Desk 启动时为空或已损坏的目录，在文件到达或被修复后也会立即出现，无需重启。
+
+### 用 `desk plugin test` 测试
+
+`desk plugin test <folder>` 会像 `validate` 一样检查目录，然后在与其种类相符的宿主上运行 `tests/`：
+
+- `ui`、`view`、`policy`、`theme` 以及其他不含 Wasm 的种类：在 jsdom 页面中，用 SDK 测试宿主（`@endue-ai/plugin-sdk/testing`，见下文“测试”）上的 vitest 运行 `tests/*.test.js` 或 `*.test.ts`。按名称导入 SDK，并像模板那样让被测试的代码不导入 SDK（`ui/plugin.js`，由 `ui/main.js` 调用 `defineUiPlugin(plugin)`）。
+- `logic` 和 Wasm `connector`：使用构建好的组件，在脚本化的 desk，即 `desk-plugin-host` 测试工具上运行每个 `tests/<name>.test.json`：
+
+```json
+{
+  "steps": ["start", { "command": { "id": "example.my-logic.greet", "args": { "name": "Ada" } } }],
+  "answers": [{ "method": "settings.get", "params": { "key": "greeting" }, "result": "Hi" }],
+  "expect": {
+    "calls": [
+      { "method": "cmd.register", "params": { "id": "example.my-logic.greet" } },
+      { "method": "cmd.answer", "params": { "result": "Hi, Ada!" } }
+    ]
+  }
+}
+```
+
+`steps` 是 desk 所做的事：逻辑插件有 `start`、`command`（`id`、`args`）和 `event`（`name`、`data`），连接器有 `connect`（`instance`、`settings`）和 `sync`（`instance`）。插件发出的每个导入调用都会记录为一个桥接调用 `{ method, params }`（`fs.read { path }`、`cmd.answer { invocationId, result }`），并由 `answers` 中第一个 `method` 相同、且调用包含其 `params` 的条目应答：返回 `result`，或返回 `error`（`{ "code": "not_found", "message": "…" }`）。没有条目应答的调用会得到空应答：无内容、`null`、`[]` 或新的 id；`store.get` 返回插件存入的值；文件和网络返回 `not_found` 和 `unsupported`。`expect.calls` 中的调用必须按该顺序发生过，连接器的 `expect.items` 必须在其同步带来的条目之中；只要包含所写的内容即视为匹配。失败时会指出期望的内容，并列出实际发生的内容。
 
 ## 目录
 
@@ -68,6 +105,8 @@ defineUiPlugin({
 ```
 
 `bridge.call(method, params)` 用于调用核心。在同一个 tick 内发出的调用会合并成一条消息发送。被拒绝的调用会以 `BridgeCallError` 被 reject，其 `code` 例如为 `permission_denied`。
+
+一段时间内没有人看到的表面（被其他窗口挡住或在屏幕之外）可能会被卸载以节省内存，再次显示时会重新加载（ADR 0070）。要恢复原样，请登记需要保留的内容：`surface.onUnload(() => ({ open, caret, scroll }))` 会以不超过 64 KiB 的 JSON 回应 Desk 的 `ui.surface.state`，重新加载的页面可以在 `surface.restored` 中取回它。没有提供者时会以初始状态恢复；上面的 `state` 仍会恢复。
 
 ## 权限
 
@@ -255,10 +294,10 @@ cargo run -p desk-cli -- theme apply local.my-theme
 
 ```bash
 cargo run -p desk-cli -- plugin validate ../my-theme
-pnpm exec vitest run --root ../my-theme
+cargo run -p desk-cli -- plugin test ../my-theme
 ```
 
-`desk plugin validate` 按模式检查主题块，按限制检查文件。模板中的 `tests/theme.test.ts` 像桌面应用主题前那样，用 `compileTheme` 编译两种 scheme，并在 endue 调色板之上用 `gate` 检查；只要门禁需要修正，测试就失败并列出每一处修正。
+`desk plugin validate` 按模式检查主题块，按限制检查文件。`desk plugin test` 在 SDK 测试宿主上用 vitest 运行模板中的 `tests/theme.test.ts`：它像桌面应用主题前那样，用 `compileTheme` 编译两种 scheme，并在 endue 调色板之上用 `gate` 检查；只要门禁需要修正，测试就失败并列出每一处修正。
 
 ### 以 `.desk-theme` 分享
 

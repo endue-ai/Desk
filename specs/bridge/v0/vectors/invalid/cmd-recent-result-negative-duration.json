@@ -1,0 +1,17 @@
+{
+  "target": "CmdRecentResult",
+  "description": "an invocation cannot take less than no time",
+  "instance": {
+    "invocations": [
+      {
+        "invocationId": "i-7",
+        "id": "desk.files.save",
+        "caller": "desk",
+        "provider": "desk",
+        "at": "2026-11-02T09:00:00Z",
+        "durationMs": -1,
+        "ok": true
+      }
+    ]
+  }
+}

@@ -28,10 +28,11 @@ theme back.
 
 ```bash
 cargo run -p desk-cli -- plugin validate examples/plugin-hello-theme
-pnpm exec vitest run --root examples/plugin-hello-theme
+cargo run -p desk-cli -- plugin test examples/plugin-hello-theme
 ```
 
-`tests/theme.test.ts` compiles both schemes and gates them over the endue palette with no fixes; it is
-the test `pnpm create @endue-ai/plugin --kind theme` writes. Licence `Apache-2.0 AND OFL-1.1`: the
-theme is the repository's, the font is OFL (`fonts/OFL.txt`; source and checksum in `fonts/SOURCE.md`).
+`desk plugin test` runs `tests/theme.test.ts` with vitest: it compiles both schemes and gates them
+over the endue palette with no fixes, and it is the test `pnpm create @endue-ai/plugin --kind theme`
+writes. Licence `Apache-2.0 AND OFL-1.1`: the theme is the repository's, the font is OFL
+(`fonts/OFL.txt`; source and checksum in `fonts/SOURCE.md`).
 Copy this folder to start a theme, or scaffold one; see `docs/plugins/authoring.md` (Making a theme).

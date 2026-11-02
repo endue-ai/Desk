@@ -80,6 +80,41 @@ stay between the brain and the disk, and every kind reuses the same steps.
   change the look (`eris/look.ts`, which opens Describe) that names nothing desk.propose makes or
   names the theme (`propose/route.ts`). `mountDesk` installs it, where Eris's soul text is.
 
+### Profiles and key bindings (#340)
+
+The same pipeline, two more kinds, one new rule: what is not a view is previewed on the runtime's own
+card, not in desk.views.
+
+* **Card.** `propose/card.ts` floats over the desk and the shell with the same Apply, Try again and
+  Discard, and Undo once applied. It is the runtime's because a profile may turn plugins off,
+  desk.views among them, and the way back must outlive the switch; the policies it previews are the
+  runtime's own code anyway (ADR 0017).
+* **Asking.** Both ask through `brain.ask` as views do, each with its own tool: `propose_profile`,
+  whose schema is `ProfileContribution` (specs/plugin/v0) without its id, and `propose_key_bindings`,
+  whose schema is `{ bindings: KeyBinding[] }` (1 to 20), the one schema of the desk's own, since a
+  tool's arguments are an object. A retry after no call repeats each kind's compact schema. The
+  profile's context names the installed plugins (name, kind, on or off), the declared scalar settings
+  and the profiles; the keys' context names the commands the sentence's words match (at most 20) and
+  their keys in force. With every built-in plugin installed the profile's prompt is about 4500
+  characters, well within brain.ask's 32000.
+* **Profile.** The desk makes the id from the name (`quiet-night`, `-2` when a profile has it), so
+  Apply never replaces a profile. Beyond the schema the desk checks that every plugin is installed,
+  every setting declared and of its kind, and the shell's layout (`desk.shell.mode`) in shape. The
+  card shows a ghost of the desktops it lays out, what turns on and off (as desk.profiles' switch
+  would) and which settings change. Apply is `desk.profiles.save` then `desk.profiles.switch`; Undo
+  switches back to the profile in force before and removes it with `desk.profiles.remove`.
+* **Key bindings.** Every binding names a command the desk has. Conflicts are marked, not refused: a
+  key another command has in any layer, two proposals on one key, a binding already there. Apply adds
+  them to the person's layer (`desk.keys.bindings`), replacing the person's own entries on those keys;
+  Undo writes the layer back exactly. The kind reaches the keymap through one port (`PersonalKeys`),
+  so moving keys into the runtime's core (#241) changes one function, and moving saved profiles and
+  bindings to files (#286) changes none.
+* **Words.** The talk line's routes (`propose/route.ts`) decide whether a sentence goes to
+  desk.propose; `propose/talk.ts` picks the kind. "make … profile …" (or build, or `/make`) is a
+  profile; "bind … to …" and a make sentence that names shortcuts or key bindings are key bindings;
+  the rest are views. A sentence that names a profile or shortcuts is not a look request, look words
+  and all. "Make with Eris…" picks the kind the same way when none is given.
+
 ### Consequences
 
 * Good, because nothing reaches the disk that neither the desk nor the core accepted, and the person
@@ -89,8 +124,8 @@ stay between the brain and the disk, and every kind reuses the same steps.
 * Good, because the answer is checked twice, by the core against the tool's schema and by the desk
   against the spec and its names, and the person's conversation with Eris never holds it.
 * Bad, because a brain that cannot call the tool (brain-echo knows `propose_theme` and `echo`, not
-  `propose_view`; a model without tool calls) makes no view at all: the desk says so after two asks
-  instead of guessing.
+  `propose_view`, `propose_profile` or `propose_key_bindings`; a model without tool calls) makes
+  nothing at all: the desk says so after two asks instead of guessing.
 * Bad, because the core drops arguments its schema refuses without saying why, so that retry can only
   repeat the schema, not name the problem; and every ask is a session on the brain (ADR 0059).
 * Bad, because the interpreter must learn any keyword a spec adopts; the comparison with Ajv on the
@@ -99,10 +134,16 @@ stay between the brain and the disk, and every kind reuses the same steps.
   made too, and Undo is offered only for what this session applied.
 * Bad, because the talk line knows English words only; Korean ones are a later change. A sentence that
   is both a look and something to make ("make a board that looks calm") is decided by its words.
+* Bad, because previews live in two places: views in desk.views over live data, profiles and key
+  bindings on the runtime's card.
+* Bad, because Undo of a profile is a switch back: a plugin the proposed profile turned on stays on
+  when the earlier profile does not name it.
 
 ## More Information
 
-Issue #339; #340 adds profiles and key bindings as kinds, #312 describes a theme, #276 adds
-`cmd.undo`. ADR 0014 (the brain conversation), 0017 (commands), 0027 (one Eris), 0032 (views are
-data), 0036 (the core serves `view.*`), 0059 (`brain.ask`). Until `brain.ask` reached main, this
-change asked through `brain.say` with the schema in the prompt; the fallback went with that merge.
+Issue #339; #340 adds profiles and key bindings as kinds, #241 moves keys into the runtime's core,
+#286 moves saved profiles and bindings to files, #312 describes a theme, #276 adds `cmd.undo`. ADR
+0014 (the brain conversation), 0017 (commands), 0027 (one Eris), 0032 (views are data), 0036 (the
+core serves `view.*`), 0059 (`brain.ask`). Until `brain.ask` reached main, this change asked through
+`brain.say` with the schema in the prompt; the fallback went with that merge, and profiles and key
+bindings came after it.

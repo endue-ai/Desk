@@ -12,6 +12,8 @@ use serde_json::{Map, Value, json};
 
 use crate::args::{Remote, UpdateStep};
 
+mod inspect;
+
 pub fn run(remote: Remote, json: bool) -> ExitCode {
     let Some(path) = desk_ipc::socket_path() else {
         return fail("no data folder to find the desk socket in; set DESK_SOCKET");
@@ -74,6 +76,12 @@ impl Session {
                 },
             ),
             Remote::CmdRun { id, args } => self.cmd_run(&id, args),
+            // Key and profile layers are the runtime's: it answers, the CLI prints its text.
+            Remote::Describe { kind, name } => {
+                let args = json!({ "kind": kind, "name": name, "show": false });
+                let reply = self.invoke_and_wait(DESCRIBE, args.as_object().cloned())?;
+                Ok(self.report(reply, |result| vec![text(result, "text").to_owned()]))
+            }
             Remote::PluginList => self.listing(
                 "plugin.list",
                 json!({ "scope": plugin_manage }),
@@ -105,8 +113,12 @@ impl Session {
                 "perm.revoke",
                 json!({ "grantId": grant_id, "scope": perm_manage }),
             ),
+            Remote::PermLog { agent } => self.perm_log(agent.as_deref()),
             Remote::Update(step) => self.update(step),
             Remote::Theme(step) => self.theme(step),
+            Remote::Fs(step) => self.files(step),
+            Remote::Log { count } => self.log(count),
+            Remote::Inspect { section } => self.inspect(section),
         }
     }
 
@@ -147,6 +159,51 @@ impl Session {
             };
             return Ok(self.report(Reply { result, line }, |status| vec![update_line(status)]));
         }
+    }
+
+    /// The latest 1000 entries of the `perm` channel, or `agent:<agent>`'s among them: one line each,
+    /// `at  caller  decision  permission  target-or-scope  [reason or approval]`, or with `--json`
+    /// each entry as one JSON line.
+    fn perm_log(&mut self, agent: Option<&str>) -> Result<ExitCode, Problem> {
+        let params =
+            json!({ "channel": "perm", "count": 1000, "scope": { "permission": "log:read" } });
+        let reply = self.call("log.tail", params)?;
+        let caller = agent.map(|agent| format!("agent:{agent}"));
+        let entries = match &reply.result {
+            Ok(result) => result["entries"].as_array().cloned().unwrap_or_default(),
+            Err(_) => return Ok(self.report(reply, |_| Vec::new())),
+        };
+        for entry in entries {
+            let fields = &entry["fields"];
+            if caller
+                .as_deref()
+                .is_some_and(|caller| fields["caller"] != caller)
+            {
+                continue;
+            }
+            if self.json {
+                out(&entry.to_string());
+                continue;
+            }
+            let target = match fields["target"].as_str() {
+                Some(target) => target.to_owned(),
+                None => fields["scope"].to_string(),
+            };
+            let mut line = format!(
+                "{}\t{}\t{}\t{}\t{target}",
+                text(&entry, "at"),
+                text(fields, "caller"),
+                text(fields, "decision"),
+                text(fields, "permission")
+            );
+            // Why a call was refused, or how an approval was given (ADR 0078).
+            let how = fields["reason"].as_str().or(fields["approval"].as_str());
+            if let Some(how) = how {
+                line.push_str(&format!("\t{how}"));
+            }
+            out(&line);
+        }
+        Ok(ExitCode::SUCCESS)
     }
 
     /// A call whose success prints `ok`.
@@ -279,6 +336,9 @@ fn update_line(status: &Value) -> String {
     }
     line
 }
+
+/// The runtime's describe command (`desk describe`).
+const DESCRIBE: &str = "desk.describe.open";
 
 fn invoke(ids: &[&str]) -> Value {
     json!({ "permission": "cmd:invoke", "ids": ids })

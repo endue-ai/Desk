@@ -16,8 +16,10 @@ plugins installed or enabled. No new bridge method or generated wire type is nee
 - Appearance, accessibility, do not disturb and personal bindings use existing layered
   settings. Core defaults are present even without their former policy plugins.
 - Personal core settings persist as `{ version: 1, values: { ... } }` at the caller `desk`'s
-  `store` key `preferences`. Loading precedes plugin/session restoration. An absent record
-  migrates `session.parts.keys` once; a present empty record never resurrects old bindings.
-  Invalid records/values are ignored and storage failures are shown, not reported as saved.
+  `store` key `preferences`. Loading precedes plugin/session restoration. Invalid records/values
+  are ignored and storage failures are shown, not reported as saved.
+- Personal bindings (`desk.keys.bindings`) are not in that record: the runtime's `desk.keys`
+  keeps them in `~/.desk/keys.yaml` (ADR 0079, `specs/init/v0/keys.schema.json`) and moves
+  `session.parts.keys` there once.
 - Plugins may contribute keys and commands; they do not own or disable the settings UI,
   core bindings, or preference persistence. `desk.keys` is no longer shipped as a plugin.

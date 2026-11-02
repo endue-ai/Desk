@@ -4,8 +4,12 @@ name: release-build
 # universal build: darwin-aarch64 and darwin-x86_64 ship apart. Updater artifacts are signed with
 # the updater key, the version in each signature; the public key and the commit go into the binary.
 # macOS is signed and notarised when the Apple secrets are set; Windows ships NSIS only, unsigned
-# until the certificate is chosen. Each target leaves as the artifact desk-<target>, canonical names
-# from scripts/release-collect.mjs.
+# until the certificate is chosen. Linux builds
+# an AppImage and a .deb, and an .rpm for releases only (RPM takes no hyphen in a version). The .deb
+# is checked against the updater key before it leaves. Each target leaves as the artifact
+# desk-<target>, canonical names from scripts/release-collect.mjs. A dry run (release-dry-run.yml)
+# stays out of the signing environment, signs with the run's throwaway key, embeds no key in the
+# binary and labels its artifacts desk-<target>-unsigned.
 on:
   workflow_call:
     inputs:
@@ -13,6 +17,11 @@ on:
         description: The version to build, without a leading v.
         required: true
         type: string
+      dry-run:
+        description: Sign with the run's throwaway key (artifact dry-run-key) and stay out of signing.
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -20,7 +29,8 @@ permissions:
 jobs:
   build:
     name: build (${{ matrix.target }})
-    environment: signing
+    # An empty name is no environment: a dry run reads no secret and runs on any branch.
+    environment: ${{ !inputs.dry-run && 'signing' || '' }}
     strategy:
       fail-fast: true
       matrix:
@@ -71,8 +81,23 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev libfuse2
       - run: pnpm install --frozen-lockfile
+      - uses: actions/download-artifact@v8
+        if: ${{ inputs.dry-run }}
+        with:
+          name: dry-run-key
+          path: ${{ runner.temp }}/dry-run-key
+      - name: Take the run's throwaway key
+        if: ${{ inputs.dry-run }}
+        env:
+          KEY_DIR: ${{ runner.temp }}/dry-run-key
+        # It signs this run's artifacts only; the build step takes it instead of the secrets.
+        run: |
+          {
+            echo "DRY_RUN_KEY<<DESK_KEY_END"; cat "$KEY_DIR/updater.key"; echo; echo "DESK_KEY_END"
+            echo "DRY_RUN_PUBKEY=$(cat "$KEY_DIR/updater.key.pub")"
+          } >> "$GITHUB_ENV"
       - name: Sign and notarise on macOS when the Apple secrets are set
-        if: runner.os == 'macOS'
+        if: runner.os == 'macOS' && !inputs.dry-run
         env:
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
@@ -90,25 +115,37 @@ jobs:
             if [ -n "${!name}" ]; then echo "$name=${!name}" >> "$GITHUB_ENV"; fi
           done
       - name: Build ${{ matrix.target }} ${{ inputs.version }}
+        # A dry run signs with the run's key and embeds none (empty is none), so its binary never
+        # updates itself.
         env:
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-          DESK_UPDATER_PUBKEY: ${{ vars.DESK_UPDATER_PUBKEY }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ inputs.dry-run && env.DRY_RUN_KEY || secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ inputs.dry-run && 'dry-run' || secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          UPDATER_PUBKEY: ${{ inputs.dry-run && env.DRY_RUN_PUBKEY || vars.DESK_UPDATER_PUBKEY }}
+          DESK_UPDATER_PUBKEY: ${{ !inputs.dry-run && vars.DESK_UPDATER_PUBKEY || '' }}
           DESK_UPDATE_URL: ${{ vars.DESK_RELEASES_URL || 'https://releases.endue.ai/desk' }}
           DESK_BUILD_COMMIT: ${{ github.sha }}
         # createUpdaterArtifacts reads the public key from plugins.updater.pubkey and refuses an empty
         # one; the plugin's own config needs it too.
         run: |
-          config="$(printf '{"version":"%s","bundle":{"createUpdaterArtifacts":true},"plugins":{"updater":{"pubkey":"%s"}}}' "$VERSION" "$DESK_UPDATER_PUBKEY")"
+          config="$(printf '{"version":"%s","bundle":{"createUpdaterArtifacts":true},"plugins":{"updater":{"pubkey":"%s"}}}' "$VERSION" "$UPDATER_PUBKEY")"
+          # RPM refuses a hyphen in the version: pre-releases (canary, beta) build no .rpm, and
+          # desks installed from one follow stable.
+          bundles="${{ matrix.bundles }}"
+          if [[ "$VERSION" == *-* ]]; then bundles="${bundles/,rpm/}"; fi
           pnpm --filter @endue-ai/desk-app tauri build \
-            --target "${{ matrix.rust }}" --bundles "${{ matrix.bundles }}" --config "$config"
+            --target "${{ matrix.rust }}" --bundles "$bundles" --config "$config"
       - name: Collect the bundles under canonical names
         run: |
           node scripts/release-collect.mjs --bundle "target/${{ matrix.rust }}/release/bundle" \
             --version "$VERSION" --target "${{ matrix.target }}" --out dist
+      - name: Check the .deb against the updater key
+        if: runner.os == 'Linux'
+        env:
+          UPDATER_PUBKEY: ${{ inputs.dry-run && env.DRY_RUN_PUBKEY || vars.DESK_UPDATER_PUBKEY }}
+        run: e2e/smoke/verify-signature.sh "dist/endue-desk_${VERSION}_linux-x86_64.deb" "$UPDATER_PUBKEY"
       - uses: actions/upload-artifact@v7
         with:
-          name: desk-${{ matrix.target }}
+          name: desk-${{ matrix.target }}${{ inputs.dry-run && '-unsigned' || '' }}
           path: dist/
           if-no-files-found: error
           retention-days: 7

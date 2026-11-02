@@ -1,0 +1,21 @@
+{
+  "target": "BridgeEvent",
+  "description": "an agent's proc.spawn waits for approval with its command line; outside a turn there is no task",
+  "instance": {
+    "event": "perm.approval",
+    "data": {
+      "approvalId": "a-2",
+      "caller": "agent:theo",
+      "action": "proc.spawn",
+      "permission": {
+        "permission": "proc:spawn",
+        "commands": ["git"]
+      },
+      "target": "git",
+      "preview": {
+        "kind": "command",
+        "text": "git push --force origin 'release 1'"
+      }
+    }
+  }
+}

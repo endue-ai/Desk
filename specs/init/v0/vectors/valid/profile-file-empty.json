@@ -1,0 +1,5 @@
+{
+  "target": "ProfileFile",
+  "description": "an empty file is a profile that changes nothing",
+  "instance": {}
+}

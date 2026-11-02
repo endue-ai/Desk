@@ -29,8 +29,9 @@ plugins must not remove the person's way to configure the desk.
 Chosen option: runtime-owned settings and keys. `createRuntime` always installs the settings window,
 key commands and default keymap. `Mod+,` opens settings; plugin keys layer over core defaults, and
 personal bindings win last. Conflicts require replacement in the editor. The `preferences` record in
-`desk`'s core store keeps typed personal settings independently of session restoration, migrating
-old `session.parts.keys` when no preference record exists. `desk.keys` is no longer shipped.
+`desk`'s core store keeps typed personal settings independently of session restoration. The person's
+bindings are `~/.desk/keys.yaml`, which the runtime's `desk.keys` reads, writes and fills once from
+old `session.parts.keys` (ADR 0079). `desk.keys` is no longer shipped as a plugin.
 
 ### Consequences
 

@@ -3,7 +3,12 @@ import type { KeyBinding, SettingContribution } from "@endue-ai/bridge";
 
 export const PERSONAL_KEYS = "desk.keys.bindings";
 export const CORE_SETTINGS: Record<string, SettingContribution> = {
-  [PERSONAL_KEYS]: { kind: "array", default: [], description: "Personal keyboard shortcuts." },
+  [PERSONAL_KEYS]: {
+    kind: "array",
+    default: [],
+    description:
+      'Personal bindings over the core and plugin keys: { key, command }, and "command": "" takes a key away. The keyboard settings write them; desk.keys keeps them in ~/.desk/keys.yaml.',
+  },
   "desk.theme.scheme": {
     kind: "string",
     default: "dark",

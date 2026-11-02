@@ -3,6 +3,7 @@
 import type { CallerGrant, Permission, PluginInfo } from "../../../packages/bridge/src/index";
 import { defineUiPlugin } from "../../../packages/plugin-sdk/src/index";
 import { createTestHost, type TestHost } from "../../../packages/plugin-sdk/src/testing/index";
+import type { CardModel } from "../ui/approval.js";
 import { createPermissions } from "../ui/controller.js";
 import type { GrantList, PromptModel } from "../ui/model.js";
 
@@ -11,9 +12,11 @@ export type Handlers = NonNullable<Parameters<typeof createTestHost>[0]["handler
 export interface RecordingView {
   lists: GrantList[];
   prompts: Array<PromptModel | null>;
+  approvals: Array<CardModel | null>;
   statuses: string[];
   grants(list: GrantList): void;
   prompt(model: PromptModel | null): void;
+  approval(model: CardModel | null): void;
   status(text: string): void;
 }
 
@@ -21,9 +24,11 @@ export function recordingView(): RecordingView {
   const view: RecordingView = {
     lists: [],
     prompts: [],
+    approvals: [],
     statuses: [],
     grants: (list) => view.lists.push(list),
     prompt: (model) => view.prompts.push(model),
+    approval: (model) => view.approvals.push(model),
     status: (text) => view.statuses.push(text),
   };
   return view;

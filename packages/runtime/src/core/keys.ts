@@ -23,6 +23,11 @@ export const DEFAULT_KEYS: Array<KeyBinding & { owner: string }> = [
     owner: "desk",
   },
   {
+    key: "Mod+Shift+/",
+    command: "desk.describe.open",
+    owner: "desk",
+  },
+  {
     key: "Mod+B",
     command: "desk.buffers.switch",
     owner: "desk",

@@ -1,0 +1,15 @@
+{
+  "target": "FsHistoryResult",
+  "description": "a version's sha256 is 64 lowercase hex digits",
+  "instance": {
+    "versions": [
+      {
+        "id": "1793520000000-3fa9c1",
+        "at": "2026-11-02T09:20:00Z",
+        "caller": "endue.notes",
+        "size": 42,
+        "sha256": "9F86D081"
+      }
+    ]
+  }
+}

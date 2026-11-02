@@ -9,8 +9,9 @@ answers `Unsupported` until the named-pipe task lands.
 
 ## Public API
 
-- `CALLER` (`"cli"`), `grants()`: the four permissions the app grants `cli` at start
-  (`cmd:invoke ["*"]`, `plugin:manage`, `perm:manage`, `log:read`).
+- `CALLER` (`"cli"`), `grants()`: what the app grants `cli` at start (`cmd:invoke ["*"]`,
+  `plugin:manage`, `perm:manage`, `log:read`, `update:manage`, and `fs:read` and `fs:write` over
+  `/**` and `~/**` for `desk fs`, ADR 0076).
 - `socket_path()`: `DESK_SOCKET`, or `desk.sock` in the data folder (`ai.endue.desk` under
   `dirs::data_dir()`, the folder Tauri's `app_data_dir()` names).
 - `Listener::bind(&path, Arc<Core>)`: bind (a stale file is replaced; a live desk gives `AddrInUse`),
@@ -36,4 +37,4 @@ cargo test -p desk-ipc
 ```
 
 `tests/socket.rs` puts an in-process `Core` behind the socket and speaks raw lines (Unix only);
-`tests/grants.rs` checks the four grants and the socket path.
+`tests/grants.rs` checks the grants and the socket path.
