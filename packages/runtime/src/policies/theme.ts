@@ -8,16 +8,33 @@ import {
   type InstalledTheme,
   mediaPreferences,
   resolveTheme,
+  type Scheme,
   type ThemeSettings,
   type ThemeState,
 } from "../theme";
 import { applyThemeFonts, fontHost } from "../theme-fonts";
 import { type DeskContext, disposer, type Installed } from "./context";
 
-export interface ThemePolicy extends Installed {
+export interface ThemePolicy extends Installed, RuntimeThemes {
   state(): ThemeState;
+}
+
+/** The theme system as the main UI drives it (the theme studio, ADR 0056). */
+export interface RuntimeThemes {
   /** The installed theme plugins, in layer order. */
   installed(): InstalledTheme[];
+  /** The theme plugin desk.theme.active names; empty for the endue theme. */
+  active(): string;
+  /** Show a theme on the whole desk without choosing it (`""` the endue theme); undefined ends it. */
+  preview(id: string | undefined): void;
+  /** The theme previewed now, if any. */
+  previewing(): string | undefined;
+  /** Choose a theme (`""` the endue theme): desk.theme.active, kept with the session. */
+  apply(id: string): void;
+  /** What the desk would look like with a theme, under the contrast in force and a scheme. */
+  resolve(id: string, scheme?: Scheme): ThemeState;
+  /** Hear when the theme in force, the preview or the installed themes change. */
+  onChange(listener: () => void): () => void;
 }
 
 /** Where the desk serves a plugin's file: the runtime's plugin URL, or a relative one. */
@@ -44,14 +61,26 @@ export function installTheme(
       ...theme,
       url: (path: string) => url(theme.id, path, revision),
     }));
+  let previewed: string | undefined;
+  const listeners = new Set<() => void>();
+  const known = (id: string) => id === "" || installed().some((t) => t.id === id);
+  const resolve = (id: string, scheme?: Scheme) =>
+    resolveTheme(
+      hub.policy.themes,
+      { ...read(), active: id, ...(scheme ? { scheme } : {}) },
+      media.read(),
+      installed(),
+    );
   let state = resolveTheme(hub.policy.themes, read(), media.read(), installed());
 
   const apply = () => {
-    state = resolveTheme(hub.policy.themes, read(), media.read(), installed());
+    if (previewed !== undefined && !known(previewed)) previewed = undefined;
+    state = previewed === undefined ? resolve(read().active ?? "") : resolve(previewed);
     applyThemeState(target, state);
     applyThemeFonts(fontHost(target.ownerDocument), state.fonts);
     const { scheme, contrast, reducedMotion, variables, fonts } = state;
     ctx.share({ type: "desk:theme", theme: { scheme, contrast, reducedMotion, variables, fonts } });
+    for (const listener of [...listeners]) listener();
   };
 
   offs.add(hub.onPolicy(apply));
@@ -95,7 +124,8 @@ export function installTheme(
     "Use a theme",
     (args: unknown) => {
       const id = (args as { id?: unknown } | undefined)?.id;
-      const next = typeof id === "string" && installed().some((t) => t.id === id) ? id : "";
+      const next = typeof id === "string" && known(id) ? id : "";
+      previewed = undefined;
       settings.set("desk.theme.active", next);
       return next;
     },
@@ -115,6 +145,25 @@ export function installTheme(
   return {
     state: () => state,
     installed,
+    active: () => read().active ?? "",
+    preview(id) {
+      const next = id !== undefined && known(id) ? id : undefined;
+      if (next === previewed) return;
+      previewed = next;
+      apply();
+    },
+    previewing: () => previewed,
+    apply(id) {
+      previewed = undefined;
+      const next = known(id) ? id : "";
+      if (next === (read().active ?? "")) apply();
+      else settings.set("desk.theme.active", next);
+    },
+    resolve,
+    onChange(listener) {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
     dispose: offs.dispose,
   };
 }

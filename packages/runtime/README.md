@@ -10,7 +10,8 @@ not in the brief: `ASSUMPTIONS.md`.
 - `createRuntime({ root, bridge, clock?, storage?, platform?, plugins?, themeRoot?, views?, windows? })` returns a
   `Runtime`: `ready`, `openSurface`, `closeSurface`, `moveSurface`, `focusSurface`, `layout()`,
   `status()`, `shortcuts`, `commands`, `settings`, `keymap`, `buffers`, `profiles`, `policy()`,
-  `notify(notice)`, `theme()`, `onQuit`, `keep(name, part)`, `plugins`, `dispose()`.
+  `notify(notice)`, `theme()`, `themes` (installed, active, preview, apply, resolve: what the theme
+  studio drives, ADR 0056), `onQuit`, `keep(name, part)`, `plugins`, `dispose()`.
 - `PluginHost`: mounts UI plugins, relays their calls as their own caller, reloads a surface on
   `plugin.changed`, carries commands and keys, shares the theme (ADR 0012, 0014); events go to their
   owner (`fs.changed`, `data.changed`) or to `*:manage` holders. A shown overlay goes on top.

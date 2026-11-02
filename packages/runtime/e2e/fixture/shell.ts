@@ -2,7 +2,8 @@
 // Test page: the desk shell on the browser bridge stubs (the core's and the shell's), a manual clock
 // and in-memory storage. ?lang=en, ?persist=1 (the core's store in localStorage), ?reduced=1
 // (desk.theme.motion: reduce), ?init={...} (more init.yaml settings), ?themes=1 (the test theme
-// plugin installed). Never shipped.
+// plugin installed), ?studio=1 (the theme studio open once the desk is ready; ?studio=<theme id>
+// previews that theme too). Never shipped.
 import type { PluginManifest } from "@endue-ai/bridge";
 import "../../src/desk.css";
 import "../../src/shell/styles";
@@ -96,3 +97,10 @@ window.__shell = {
   step,
   envelopes: { user: userHello as Envelope, eris: erisReply as Envelope },
 };
+
+if (params.has("studio")) {
+  const previewed = params.get("studio") ?? "1";
+  void desk.ready
+    .then(() => desk.runtime.commands.run("desk.theme.studio"))
+    .then(() => previewed !== "1" && desk.runtime.themes.preview(previewed));
+}
