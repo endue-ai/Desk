@@ -9,14 +9,27 @@ type Options = Parameters<typeof createTestHost>[0];
 export type Handlers = NonNullable<Options["handlers"]>;
 export type Commands = NonNullable<Options["commands"]>;
 
+/** Where the text area's caret and scroll are. */
+export interface Place {
+  start: number;
+  end: number;
+  scroll: number;
+}
+
 export interface RecordingView {
   notes: Array<NoteModel | null>;
   statuses: string[];
   /** How many times the plugin moved the keyboard focus to its text area. */
   focused: number;
+  /** The caret and scroll `where()` reports, as a person left them. */
+  at: Place;
+  /** Every caret and scroll the plugin put back. */
+  places: Place[];
   note(model: NoteModel | null): void;
   status(text: string): void;
   focus(): void;
+  where(): Place;
+  place(at: Place): void;
 }
 
 export function recordingView(): RecordingView {
@@ -24,11 +37,15 @@ export function recordingView(): RecordingView {
     notes: [],
     statuses: [],
     focused: 0,
+    at: { start: 0, end: 0, scroll: 0 },
+    places: [],
     note: (model) => view.notes.push(model),
     status: (text) => view.statuses.push(text),
     focus: () => {
       view.focused++;
     },
+    where: () => ({ ...view.at }),
+    place: (at) => view.places.push(at),
   };
   return view;
 }
@@ -52,19 +69,21 @@ const DESK: Commands = {
 };
 
 export async function mount(
-  options: { handlers?: Handlers; commands?: Commands } = {},
+  options: { handlers?: Handlers; commands?: Commands; restored?: unknown } = {},
 ): Promise<Mounted> {
   const host = createTestHost({
     pluginId: "endue.notes",
     handlers: options.handlers ?? {},
     commands: { ...DESK, ...options.commands },
+    ...(options.restored === undefined ? {} : { restored: options.restored }),
   });
   const view = recordingView();
   let app: ReturnType<typeof createNotes> | undefined;
   await defineUiPlugin(
     {
-      mount(ctx) {
+      async mount(ctx) {
         app = createNotes(ctx, view);
+        await app.ready;
       },
     },
     host.transport,
