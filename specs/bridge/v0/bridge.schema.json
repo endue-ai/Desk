@@ -98,7 +98,9 @@
         { "$ref": "theme.schema.json#/$defs/ThemeSaveRequest" },
         { "$ref": "theme.schema.json#/$defs/ThemeImportRequest" },
         { "$ref": "theme.schema.json#/$defs/ThemeExportRequest" },
-        { "$ref": "theme.schema.json#/$defs/ThemeRemoveRequest" }
+        { "$ref": "theme.schema.json#/$defs/ThemeRemoveRequest" },
+        { "$ref": "theme.schema.json#/$defs/ThemeMarketListRequest" },
+        { "$ref": "theme.schema.json#/$defs/ThemeMarketFetchRequest" }
       ]
     },
     "BridgeResponse": {

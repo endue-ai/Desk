@@ -243,6 +243,8 @@ impl Core {
             R::ThemeImport(r) => (r.id, self.theme_import(caller, r.params)),
             R::ThemeExport(r) => (r.id, self.theme_export(caller, r.params)),
             R::ThemeRemove(r) => (r.id, self.theme_remove(caller, r.params)),
+            R::ThemeMarketList(r) => (r.id, unsupported("theme.market.list")),
+            R::ThemeMarketFetch(r) => (r.id, unsupported("theme.market.fetch")),
         }
     }
 

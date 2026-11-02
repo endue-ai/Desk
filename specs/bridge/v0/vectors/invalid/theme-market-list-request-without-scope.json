@@ -1,0 +1,9 @@
+{
+  "target": "BridgeRequest",
+  "description": "theme.market.list needs theme:manage",
+  "instance": {
+    "id": 93,
+    "method": "theme.market.list",
+    "params": {}
+  }
+}
