@@ -10,15 +10,17 @@ on the public SDK only. It shows; it never writes a file (`desk.files.save` is r
   HDR and OpenEXR (tone-mapped), ICNS, KTX 1, DICOM, FITS and NIfTI-1 (Up and Down move slices).
 - Camera RAW shows its largest embedded preview; EPS its TIFF or EPSI preview; WMF and EMF their
   bounds and record count. Damaged and unsupported files open as a details view saying why.
-- Viewer: fit by default, `Mod+=` / `Mod+-` / `Mod+0`, `Mod`+wheel around the pointer, drag or
-  arrows to pan when zoomed in, rotate and flip for the view only, the EXIF orientation applied.
-  Left and Right (or Page Up/Down, Home, End) walk the folder in natural order ("4 / 37"), replacing
-  the buffer; Compare splits the surface with another image, zoom and pan shared; Escape ends it.
-- Details: format, pixel size, file size, colour, frames, and EXIF (camera, lens, exposure,
-  aperture, ISO, focal length, date, GPS, software) from JPEG, PNG, WebP, HEIF and TIFF-based RAW.
+- Viewer: fit by default, `Mod+=` / `Mod+-` / `Mod+0`, `Mod`+wheel at the pointer, drag or arrows
+  to pan, rotate and flip for the view only, EXIF orientation applied. Left and Right (Page Up/Down,
+  Home, End) walk the folder in natural order ("4 / 37"); Compare splits the surface (Escape ends).
+- Details: format, pixel and file size, colour, frames, and EXIF (camera, lens, exposure, ISO,
+  date, GPS...) from JPEG, PNG, WebP, HEIF and TIFF-based RAW.
 
-It reads with `fs.read` as base64; outside its grants it asks once for the file's folder
-(`<folder>/**`), then lists that folder with `fs.list`. The manifest declares no fs paths.
+It reads with the SDK's `readBytes` (binary ranges through `fs.url`, ranged `fs.read` without one),
+with a `<desk-progress>` bar (Reading, then Decoding) after 300 ms whose Cancel stops the read and
+the decoder and keeps the image on screen. Files over 8 MiB decode in a worker (`startWorker`);
+images the webview decodes get a `blob:` URL; canvases fill a band at a time. Outside its grants
+it asks once for the file's folder (`<folder>/**`), then lists it with `fs.list`.
 
 | Permission | Why |
 | --- | --- |
@@ -26,11 +28,11 @@ It reads with `fs.read` as base64; outside its grants it asks once for the file'
 
 | File | Purpose |
 | --- | --- |
-| `ui/images.js` | The desk's requests, reads with one ask, the folder, compare; no DOM |
+| `ui/images.js`, `ui/opening.js` | The desk's requests, the folder, compare; reads with one ask, Cancel |
+| `ui/decoding.js`, `ui/worker.js` | In place up to 8 MiB, in a worker above; volumes keep theirs |
 | `ui/decode.js`, `ui/sniff.js` | Format by first bytes then extension; one file to a model |
 | `ui/formats/` | The own decoders, EXIF, RAW previews, TIFF and ISO BMFF readers, header probes |
-| `ui/view.js`, `ui/viewer.js` | The DOM and keys; zoom, pan and turn without the DOM |
-| `ui/paint.js` | The one module that draws (jsdom has no canvas) |
+| `ui/view.js`, `ui/viewer.js`, `ui/paint.js` | The DOM, keys and progress; zoom, pan, turn; drawing in bands |
 
 ```bash
 pnpm exec vitest run plugins/images      # python3 plugins/images/tests/make-fixtures.py rebuilds fixtures

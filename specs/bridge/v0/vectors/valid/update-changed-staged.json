@@ -1,0 +1,23 @@
+{
+  "target": "BridgeEvent",
+  "description": "update.changed once the next stable build is verified and kept on disk, ready to apply",
+  "instance": {
+    "event": "update.changed",
+    "data": {
+      "state": "staged",
+      "current": {
+        "version": "0.1.0",
+        "commit": "fa7a4af"
+      },
+      "channel": "stable",
+      "checkedAt": "2026-11-20T09:14:02Z",
+      "release": {
+        "version": "0.2.0",
+        "commit": "c46d12b",
+        "date": "2026-11-20T09:12:00Z",
+        "notes": "https://github.com/endue-ai/Desk/releases/tag/v0.2.0"
+      },
+      "staged": true
+    }
+  }
+}

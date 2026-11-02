@@ -1,0 +1,123 @@
+name: canary
+
+# Every push to main becomes a canary build on R2 (ADR 0054): built for the four targets as
+# <next patch>-pre.<run>, uploaded in the order that keeps listed builds whole (artifacts, then
+# release.json, then the index), listed on the canary index, and canary builds older than two
+# weeks dropped (files kept while beta or stable lists them). Release notes are the commit page.
+# Without the updater key, its public key or the R2 credentials it says so and stops.
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "docs/**"
+      - "**/*.md"
+      - ".github/ISSUE_TEMPLATE/**"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: canary
+  cancel-in-progress: false
+
+jobs:
+  gate:
+    name: gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: signing
+    outputs:
+      publish: ${{ steps.secrets.outputs.publish }}
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - id: secrets
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          DESK_UPDATER_PUBKEY: ${{ vars.DESK_UPDATER_PUBKEY }}
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        run: |
+          missing=""
+          for name in TAURI_SIGNING_PRIVATE_KEY DESK_UPDATER_PUBKEY R2_ACCOUNT_ID R2_ACCESS_KEY_ID R2_SECRET_ACCESS_KEY; do
+            if [ -z "${!name}" ]; then missing="$missing $name"; fi
+          done
+          if [ -n "$missing" ]; then
+            echo "::notice::No canary build:$missing not set (docs/ko/updater-requirements.md, 이슈 분해)"
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/checkout@v7
+        if: steps.secrets.outputs.publish == 'true'
+        with:
+          fetch-depth: 0
+      - id: version
+        if: steps.secrets.outputs.publish == 'true'
+        run: echo "version=$(node scripts/release-version.mjs --run "$GITHUB_RUN_NUMBER")" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: gate
+    if: needs.gate.outputs.publish == 'true'
+    uses: ./.github/workflows/release-build.yml
+    with:
+      version: ${{ needs.gate.outputs.version }}
+    secrets: inherit
+
+  publish:
+    name: publish
+    needs: [gate, build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: signing
+    env:
+      VERSION: ${{ needs.gate.outputs.version }}
+      BASE: ${{ vars.DESK_RELEASES_URL || 'https://releases.endue.ai/desk' }}
+      BUCKET: ${{ vars.R2_BUCKET || 'endue-desk-releases' }}
+      ENDPOINT: https://${{ secrets.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com
+      AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: auto
+      TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+      TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: desk-*
+          path: dist
+          merge-multiple: true
+      - name: Write and sign release.json
+        run: |
+          node scripts/release-manifest.mjs release dist --version "$VERSION" --base "$BASE" \
+            --commit "$GITHUB_SHA" --notes "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/commit/$GITHUB_SHA" > release.json
+          mv release.json dist/release.json
+          (cd dist && sha256sum endue-desk_* > SHA256SUMS)
+          pnpm --filter @endue-ai/desk-app exec tauri signer sign "$PWD/dist/release.json"
+      - name: Upload the build
+        run: node scripts/release-publish.mjs release dist --version "$VERSION" --bucket "$BUCKET" --endpoint "$ENDPOINT"
+      - name: List it on canary and drop canary builds older than two weeks
+        run: |
+          # The bucket's own copy, never the cached public one; a missing index starts at serial 1.
+          fetch() {
+            if ! out="$(aws s3api get-object --bucket "$BUCKET" --key "desk/channels/$1/index.json" "$1.json" --endpoint-url "$ENDPOINT" 2>&1)"; then
+              if grep -q NoSuchKey <<<"$out"; then rm -f "$1.json"; else echo "$out" >&2; exit 1; fi
+            fi
+          }
+          for channel in canary beta stable; do fetch "$channel"; done
+          node scripts/release-manifest.mjs list canary.json --channel canary --release dist/release.json > listed.json
+          node scripts/release-manifest.mjs prune listed.json --out index.json --days 14 --keep beta.json --keep stable.json > remove.txt
+          pnpm --filter @endue-ai/desk-app exec tauri signer sign "$PWD/index.json"
+          node scripts/release-publish.mjs index index.json --channel canary --bucket "$BUCKET" --endpoint "$ENDPOINT"
+          while read -r old; do
+            if [ -n "$old" ]; then
+              node scripts/release-publish.mjs remove --version "$old" --bucket "$BUCKET" --endpoint "$ENDPOINT"
+            fi
+          done < remove.txt
+          echo "::notice::canary $VERSION is on $BASE/channels/canary/index.json"

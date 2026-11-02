@@ -1,16 +1,17 @@
 // The archives plugin without its DOM. It answers the desk's file and buffer requests for the files
 // it holds, opens each with ranged reads, keeps one tree per archive level (an archive inside one
-// opens a level down), previews the selected entry and runs extractions. It only talks to
-// ctx.commands, ctx.bridge and a view, so the SDK's test host runs it with a recording view.
+// opens a level down), previews the selected entry and runs extractions; long work shows on the
+// progress element with Cancel (jobs.js). It only talks to ctx.commands, ctx.bridge, the SDK's
+// byteSource and startWorker (passed in) and a view, so the SDK's test host runs it.
 
 import { formatSize } from "./bytes.js";
-import { createExtractor, WRITE_LIMIT } from "./extract.js";
+import { createExtractor, MEMORY_LIMIT } from "./extract.js";
 import { createFiles, folderOf, nameOf } from "./files.js";
-import { ENCRYPTED } from "./formats/archive.js";
-import { detectFormat, openDetected } from "./formats/index.js";
-import { HEX_LIMIT, previewOf, TEXT_LIMIT } from "./preview.js";
+import { createJobs } from "./jobs.js";
+import { closeLevels, openLevel } from "./opening.js";
+import { createPreviews } from "./previews.js";
 import { memorySource } from "./source.js";
-import { buildTree, entriesUnder, visibleRows } from "./tree.js";
+import { entriesUnder, visibleRows } from "./tree.js";
 
 /**
  * @typedef {import("@endue-ai/plugin-sdk").PluginContext} PluginContext
@@ -21,6 +22,12 @@ import { buildTree, entriesUnder, visibleRows } from "./tree.js";
  * @typedef {import("./tree.js").Sort} Sort
  * @typedef {import("./preview.js").PreviewModel} PreviewModel
  * @typedef {import("./source.js").Source} Source
+ * @typedef {import("./jobs.js").Progress} Progress
+ * @typedef {import("./opening.js").Level} Level
+ * @typedef {{
+ *   byteSource: import("./files.js").ByteSource,
+ *   startWorker?: import("./library-client.js").StartWorker,
+ * }} Sdk the SDK's functions, passed in so tests run on the workspace's copy
  * @typedef {{
  *   buffer: string, path: string, name: string, format: string, size: number, levels: string[],
  *   details: Detail[], note?: string, refusal?: string, rows: Row[], summary: string,
@@ -28,11 +35,8 @@ import { buildTree, entriesUnder, visibleRows } from "./tree.js";
  * }} ArchiveModel
  * @typedef {{
  *   archive(model: ArchiveModel | null): void, preview(model: PreviewModel | null): void,
- *   status(text: string): void, progress(text: string): void, focus(): void,
+ *   status(text: string): void, progress(progress: Progress | null): void, focus(): void,
  * }} View
- * @typedef {{ name: string, format: string, archive?: Archive, note?: string,
- *   tree: ReturnType<typeof buildTree>, expanded: Set<string>, marked: Set<string>,
- *   selected: string | null }} Level
  * @typedef {{ buffer: string, path: string, name: string, size: number, levels: Level[], watchId?: string }} Held
  */
 
@@ -46,48 +50,17 @@ const requested = (/** @type {unknown} */ args) => {
 };
 const message = (/** @type {unknown} */ error) =>
   error instanceof Error ? error.message : String(error);
-
-/** A level for an opened archive, or for a file shown as details only. @param {string} name @param {string} format @param {Archive} [archive] @param {string} [note] */
-function level(name, format, archive, note) {
-  const tree = buildTree(archive?.entries ?? []);
-  /** @type {Level} */
-  const made = { name, format, tree, expanded: new Set(), marked: new Set(), selected: null };
-  // A lone folder at the top (a project folder, usr/share/doc/...) opens, down to where it branches.
-  for (let node = tree.root; node.children.length === 1 && node.children[0]?.kind === "folder"; ) {
-    node = /** @type {typeof node} */ (node.children[0]);
-    made.expanded.add(node.id);
-  }
-  if (archive) made.archive = archive;
-  const why = note ?? archive?.note;
-  if (why) made.note = why;
-  return made;
-}
-
-/** Open `source` as whatever it is; a file this plugin cannot show becomes a details level. @param {Source} source @param {string} name */
-async function openLevel(source, name) {
-  const kind = await detectFormat(source, name).catch(() => null);
-  if (!kind)
-    return level(
-      name,
-      "Unknown",
-      undefined,
-      "This is not an archive, package or disk image that Archives reads.",
-    );
-  try {
-    const archive = await openDetected(source, name, kind);
-    return level(name, archive.format, archive);
-  } catch (error) {
-    const why = message(error);
-    return level(name, kind.label, undefined, /\.$/.test(why) ? why : `${why}.`);
-  }
-}
+const aborted = (/** @type {unknown} */ error) =>
+  /** @type {{ name?: string } | null} */ (error)?.name === "AbortError";
 
 /**
  * @param {Pick<PluginContext, "bridge" | "commands">} ctx
  * @param {View} view
+ * @param {Sdk} sdk
  */
-export function createArchives({ bridge, commands }, view) {
-  const files = createFiles(bridge);
+export function createArchives({ bridge, commands }, view, { byteSource, startWorker }) {
+  const files = createFiles(bridge, byteSource);
+  const jobs = createJobs((progress) => view.progress(progress));
   /** @type {Map<string, Held>} */
   const held = new Map();
   /** @type {Map<string, string>} */
@@ -98,7 +71,6 @@ export function createArchives({ bridge, commands }, view) {
   let sort = { by: "name", descending: false };
   let filter = "";
   let said = "";
-  let previewed = 0;
 
   const say = (/** @type {string} */ text) => {
     if (text === said) return;
@@ -107,7 +79,8 @@ export function createArchives({ bridge, commands }, view) {
   };
   const extractor = createExtractor({ bridge, commands }, files, {
     say,
-    progress: (text) => view.progress(text),
+    changed: () => render(),
+    jobs,
   });
 
   const current = () => (shown === null ? undefined : held.get(shown));
@@ -146,55 +119,7 @@ export function createArchives({ bridge, commands }, view) {
     view.archive(model);
   };
 
-  /** Preview the selected row: its first bytes, read now. */
-  const preview = async () => {
-    const token = ++previewed;
-    const at = top();
-    const node = at?.selected == null ? undefined : at.tree.byId.get(at.selected);
-    if (!at?.archive || !node) return view.preview(null);
-    const entry = node.entry;
-    const name = node.name;
-    /** @param {PreviewModel} model */
-    const show = (model) => {
-      if (token === previewed) view.preview(model);
-    };
-    if (node.kind === "folder")
-      return show({
-        kind: "folder",
-        name,
-        caption: `${node.files} ${node.files === 1 ? "file" : "files"}, ${formatSize(node.size)}`,
-      });
-    if (!entry) return view.preview(null);
-    if (entry.encrypted) return show({ kind: "message", name, text: ENCRYPTED });
-    if (entry.refusal) return show({ kind: "message", name, text: entry.refusal });
-    if (entry.kind === "link")
-      return show({ kind: "message", name, text: `A link to ${entry.link ?? "a path not read"}.` });
-    try {
-      const big = entry.size > TEXT_LIMIT;
-      const bytes = await at.archive.read(entry, big ? TEXT_LIMIT : Number.POSITIVE_INFINITY);
-      if (token !== previewed) return;
-      const inner = await detectFormat(
-        memorySource(bytes.subarray(0, Math.max(HEX_LIMIT, 64 * 1024))),
-        name,
-      ).catch(() => null);
-      const archive =
-        inner && inner.key !== "img" && inner.key !== "tar"
-          ? inner.label
-          : inner?.key === "tar" && /\.tar$/i.test(name)
-            ? "tar"
-            : "";
-      let shown = bytes;
-      if (
-        !archive &&
-        big &&
-        /^\x89PNG|^\xff\xd8\xff|^GIF8|^RIFF/.test(String.fromCharCode(...bytes.subarray(0, 4)))
-      )
-        shown = await at.archive.read(entry, Math.min(entry.size, 32 * 1024 * 1024));
-      if (token === previewed) show(previewOf(name, entry.size, shown, archive));
-    } catch (error) {
-      show({ kind: "message", name, text: message(error) });
-    }
-  };
+  const { reading, preview } = createPreviews(view, jobs, top);
 
   const present = (/** @type {string} */ buffer) => {
     shown = buffer;
@@ -211,20 +136,41 @@ export function createArchives({ bridge, commands }, view) {
   const forget = (/** @type {string} */ buffer) => {
     const file = held.get(buffer);
     if (file?.watchId) watches.delete(file.watchId);
+    if (file) closeLevels(file.levels);
     held.delete(buffer);
   };
+
+  /**
+   * Open `source` as a level, as a job: the bytes read so far say how far a long listing is.
+   * @param {Source} source @param {string} name
+   */
+  const opening = (source, name) =>
+    jobs.run(`Opening ${name}`, "", async (job) => {
+      let read = 0;
+      let done = false;
+      /** @type {Source} */
+      const counted = {
+        size: source.size,
+        read: async (offset, length) => {
+          const bytes = await source.read(offset, length);
+          read += bytes.length;
+          if (!done) job.report(null, 1, `${formatSize(read)} read`);
+          return bytes;
+        },
+      };
+      try {
+        return await openLevel(counted, name, { startWorker, job });
+      } finally {
+        done = true;
+      }
+    });
 
   /** Read the file and open it as its first level. @param {string} buffer @param {string} path */
   const load = async (buffer, path) => {
     const name = nameOf(path);
-    view.progress(`Opening ${name}…`);
-    try {
-      const { source, size } = await files.open(path);
-      const first = await openLevel(source, name);
-      return { buffer, path, name, size, levels: [first] };
-    } finally {
-      view.progress("");
-    }
+    const { source, size } = await files.open(path);
+    const first = await opening(source, name);
+    return { buffer, path, name, size, levels: [first] };
   };
 
   /**
@@ -265,6 +211,7 @@ export function createArchives({ bridge, commands }, view) {
     const { buffer, path: asked } = requested(args);
     const file = holding(buffer);
     const fresh = await load(buffer, asked ?? file.path);
+    closeLevels(file.levels);
     file.levels = fresh.levels;
     file.size = fresh.size;
     if (shown === buffer) void present(buffer);
@@ -335,32 +282,35 @@ export function createArchives({ bridge, commands }, view) {
     async open(id) {
       const file = current();
       const at = top();
-      const entry = at?.tree.byId.get(id)?.entry;
+      const node = at?.tree.byId.get(id);
+      const entry = node?.entry;
       if (!file || !at?.archive || !entry || entry.kind !== "file") return;
-      if (entry.size > WRITE_LIMIT) return say(`${nameOf(id)} is too large to open here.`);
+      if (entry.size > MEMORY_LIMIT) return say(`${nameOf(id)} is too large to open here.`);
       try {
-        const bytes = await at.archive.read(entry);
-        const inner = await openLevel(memorySource(bytes), nameOf(id));
-        if (current() !== file) return;
+        const bytes = await reading(at.archive, entry, Infinity, `Reading ${nameOf(id)}`);
+        const inner = await opening(memorySource(bytes), nameOf(id));
+        if (current() !== file) return closeLevels([inner]);
         // Only an archive opens a level down; a damaged or plain file says why on the status line.
-        if (!inner.archive)
+        if (!inner.archive) {
+          closeLevels([inner]);
           return say(
             inner.format === "Unknown"
               ? `${nameOf(id)} is not an archive Archives opens.`
               : (inner.note ?? ""),
           );
+        }
         file.levels.push(inner);
         say("");
         void present(file.buffer);
       } catch (error) {
-        say(message(error));
+        say(aborted(error) ? `Opening ${nameOf(id)} was cancelled.` : message(error));
       }
     },
     /** Back to the archive this one is inside. */
     up() {
       const file = current();
       if (!file || file.levels.length < 2) return;
-      file.levels.pop();
+      closeLevels([/** @type {Level} */ (file.levels.pop())]);
       void present(file.buffer);
     },
     /** Extract the marked rows (or the selected one), or everything. @param {"selected" | "all"} which */
@@ -390,9 +340,10 @@ export function createArchives({ bridge, commands }, view) {
       await extractor.extract(at.archive, list, { name, beside: folderOf(file.path) });
       render();
     },
-    /** Stop an extraction between files. */
+    /** Stop what runs: an extraction between files, an opening, a preview's decode. */
     stop() {
       extractor.stop();
+      jobs.cancelAll();
     },
   };
 }

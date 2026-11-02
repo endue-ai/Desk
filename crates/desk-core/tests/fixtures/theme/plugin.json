@@ -1,0 +1,22 @@
+{
+  "id": "example.paper",
+  "name": "Paper",
+  "version": "1.0.0",
+  "kind": "theme",
+  "description": "A fixture theme with a font and a backdrop image.",
+  "theme": {
+    "author": "Team endue",
+    "license": "CC0-1.0",
+    "type": {
+      "sans": "\"Fixture\", Georgia, serif",
+      "fonts": [{ "family": "Fixture", "src": "fonts/fixture.woff2", "weight": "400" }]
+    },
+    "shape": { "radius": "round" },
+    "light": {
+      "colors": { "background": "#f6f1e7", "text": "#1d1a16" },
+      "material": { "noise": 0.06 },
+      "backdrop": { "image": "images/paper.webp", "fit": "tile" }
+    },
+    "dark": { "colors": { "background": "#1b1915" } }
+  }
+}

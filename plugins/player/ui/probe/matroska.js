@@ -39,6 +39,9 @@ const ID = {
   rate: 0xb5,
   channels: 0x9f,
   depth: 0x6264,
+  encodings: 0x6d80,
+  encoding: 0x6240,
+  encryption: 0x5035,
   tags: 0x1254c367,
   tag: 0x7373,
   targets: 0x63c0,
@@ -148,6 +151,13 @@ function trackOf(/** @type {Uint8Array} */ b, /** @type {Element} */ entry) {
   if (language && language !== "und") track.language = language;
   const name = get(ID.name);
   if (name) track.name = text(b, name);
+  const encodings = get(ID.encodings);
+  const encrypted = encodings
+    ? elements(b, encodings.at, encodings.end).some(
+        (e) => e.id === ID.encoding && child(b, e, ID.encryption) !== undefined,
+      )
+    : false;
+  if (encrypted) /** @type {Track & { encrypted?: boolean }} */ (track).encrypted = true;
   const video = get(ID.video);
   if (video) {
     const w = child(b, video, ID.width);
@@ -314,5 +324,9 @@ export async function readMatroska(source, head) {
         end: attachmentBytes.length,
       })
     : undefined;
-  return { container: webm ? "WebM" : "Matroska", duration, tracks, tags, chapters, cover };
+  const drm = tracks.some((t) => /** @type {{ encrypted?: boolean }} */ (t).encrypted)
+    ? "Matroska encryption"
+    : undefined;
+  for (const t of tracks) delete (/** @type {{ encrypted?: boolean }} */ (t).encrypted);
+  return { container: webm ? "WebM" : "Matroska", duration, tracks, tags, chapters, cover, drm };
 }

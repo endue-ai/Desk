@@ -1,0 +1,13 @@
+{
+  "target": "BridgeRequest",
+  "description": "theme.import needs a bundle, a path or a url",
+  "instance": {
+    "id": 75,
+    "method": "theme.import",
+    "params": {
+      "scope": {
+        "permission": "theme:manage"
+      }
+    }
+  }
+}

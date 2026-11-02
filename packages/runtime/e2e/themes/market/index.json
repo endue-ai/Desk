@@ -1,0 +1,43 @@
+{
+  "format": "desk-theme-index/1",
+  "themes": [
+    {
+      "id": "market.fern",
+      "name": "Fern",
+      "version": "1.0.0",
+      "description": "A fixture market theme: deep greens at night, pale leaves by day.",
+      "author": "Team endue",
+      "license": "CC0-1.0",
+      "tags": ["green", "calm"],
+      "preview": ["#0f1d17", "#7fd1a8", "#f2f7f3"],
+      "url": "fern.desk-theme",
+      "sha256": "81a1b5274b626f73a3368aea8ceee3d241561abad37cca0225f696e0b9281fb6",
+      "size": 823
+    },
+    {
+      "id": "market.dune",
+      "name": "Dune",
+      "version": "1.0.0",
+      "description": "A fixture market theme: sand and rust.",
+      "author": "Team endue",
+      "license": "Apache-2.0",
+      "tags": ["warm"],
+      "preview": ["#1d1710", "#e0a36a", "#f5ecdc"],
+      "url": "dune.desk-theme",
+      "sha256": "23c4c890c93e01e3c3e238ed42c7f6cf041974a4cce4407de8706b7b6257ae1e",
+      "size": 782
+    },
+    {
+      "id": "market.broken",
+      "name": "Broken",
+      "version": "1.0.0",
+      "description": "A fixture market theme whose bytes are not the ones its index names.",
+      "author": "Team endue",
+      "license": "CC0-1.0",
+      "preview": ["#000000", "#ff0000", "#ffffff"],
+      "url": "broken.desk-theme",
+      "sha256": "a3ead5eedad5df82318c51685dbc1c147a36d1ff8584fc82de6b08d0bf63a795",
+      "size": 657
+    }
+  ]
+}

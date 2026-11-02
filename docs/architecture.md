@@ -78,7 +78,7 @@ Six principles follow from this:
    community plugins, so the API has no holes and even built-ins can be replaced. The desk's default
    policies (where surfaces go, files, themes, notifications) are data-only `desk.*` plugins too
    (ADR 0017). Settings and default keys are core facilities, always available without plugins
-   ([ADR 0053](adr/0053-core-settings-and-keybindings.md)); plugins may add bindings. The desk shell
+   ([ADR 0055](adr/0055-core-settings-and-keybindings.md)); plugins may add bindings. The desk shell
    (`mountDesk`) is not there yet: it is code in `packages/runtime` (ADR 0025)
    until ADR 0026, still proposed, decides where it lives. Until then Eris exists twice, as `plugins/eris`
    and in the shell (ADR 0027), and so do the desk's edges, as the dock, toolbar and sidebar plugins and

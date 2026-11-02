@@ -1,8 +1,14 @@
 // One compressed stream (.gz, .bz2, .xz, .lzma, .zst, .lz4, .Z): a tar or cpio inside it opens as
 // that archive, anything else is one entry named after the file (gzip's stored name when it has one).
+
+import {
+  CODEC_NAMES,
+  collect,
+  decodedInput,
+  decodeStream,
+} from "@endue-ai/formats/codecs/index.js";
+import { inputFrom } from "@endue-ai/formats/codecs/input.js";
 import { field, u32, u64, unixDate } from "../bytes.js";
-import { CODEC_NAMES, collect, decodedInput, decodeStream } from "../codecs/index.js";
-import { inputFrom } from "../codecs/input.js";
 import { isCpio, openCpio, openCpioIn } from "./cpio.js";
 import { isTar, openTarIn } from "./tar.js";
 

@@ -1,0 +1,241 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://endue.ai/specs/bridge/v0/search.schema.json",
+  "title": "Desk bridge v0: search",
+  "description": "Caller-owned searchable documents, installed plugin launchers and the host OS index. Replacement is atomic, persists across restarts, and an empty list clears it. Only ready, enabled plugins contribute documents. Native paths are kept in the core; search.open accepts only a recent result id issued to that caller.",
+  "$defs": {
+    "SearchDocument": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "detail": {
+          "type": "string",
+          "maxLength": 1024
+        },
+        "text": {
+          "type": "string",
+          "maxLength": 16384
+        },
+        "command": {
+          "$ref": "../../plugin/v0/contributes.schema.json#/$defs/CommandId"
+        },
+        "args": {
+          "type": "object"
+        }
+      },
+      "required": ["id", "title"],
+      "additionalProperties": false,
+      "description": "A plugin explicitly publishes searchable text. command must belong to that plugin; args are sent only after the person opens the result. Do not publish secrets."
+    },
+    "SearchHit": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "detail": {
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/SearchKind"
+        },
+        "plugin": {
+          "type": "string"
+        },
+        "command": {
+          "type": "string"
+        },
+        "args": {
+          "type": "object"
+        }
+      },
+      "required": ["id", "title", "kind"],
+      "additionalProperties": false
+    },
+    "SearchKind": {
+      "type": "string",
+      "enum": ["plugin", "document", "file", "application"]
+    },
+    "SearchReplaceParams": {
+      "type": "object",
+      "properties": {
+        "documents": {
+          "type": "array",
+          "maxItems": 500,
+          "items": {
+            "$ref": "#/$defs/SearchDocument"
+          }
+        }
+      },
+      "required": ["documents"],
+      "additionalProperties": false
+    },
+    "SearchReplaceResult": {
+      "type": "object",
+      "properties": {},
+      "required": [],
+      "additionalProperties": false
+    },
+    "SearchReplaceRequest": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "bridge.schema.json#/$defs/RequestId"
+        },
+        "method": {
+          "const": "search.replace"
+        },
+        "params": {
+          "$ref": "#/$defs/SearchReplaceParams"
+        }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "SearchQueryParams": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "string",
+          "maxLength": 256
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        },
+        "scope": {
+          "$ref": "../../plugin/v0/permission.schema.json#/$defs/SearchReadPermission"
+        }
+      },
+      "required": ["query", "scope"],
+      "additionalProperties": false
+    },
+    "SearchQueryResult": {
+      "type": "object",
+      "properties": {
+        "hits": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SearchHit"
+          }
+        }
+      },
+      "required": ["hits"],
+      "additionalProperties": false
+    },
+    "SearchQueryRequest": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "bridge.schema.json#/$defs/RequestId"
+        },
+        "method": {
+          "const": "search.query"
+        },
+        "params": {
+          "$ref": "#/$defs/SearchQueryParams"
+        }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "SearchSystemParams": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 256
+        },
+        "scope": {
+          "$ref": "../../plugin/v0/permission.schema.json#/$defs/SearchSystemPermission"
+        }
+      },
+      "required": ["query", "scope"],
+      "additionalProperties": false
+    },
+    "SearchSystemResult": {
+      "type": "object",
+      "properties": {
+        "hits": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SearchHit"
+          }
+        }
+      },
+      "required": ["hits"],
+      "additionalProperties": false
+    },
+    "SearchSystemRequest": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "bridge.schema.json#/$defs/RequestId"
+        },
+        "method": {
+          "const": "search.system"
+        },
+        "params": {
+          "$ref": "#/$defs/SearchSystemParams"
+        }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "SearchOpenParams": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        },
+        "scope": {
+          "$ref": "../../plugin/v0/permission.schema.json#/$defs/SearchSystemPermission"
+        }
+      },
+      "required": ["id", "scope"],
+      "additionalProperties": false
+    },
+    "SearchOpenResult": {
+      "type": "object",
+      "properties": {},
+      "required": [],
+      "additionalProperties": false
+    },
+    "SearchOpenRequest": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "bridge.schema.json#/$defs/RequestId"
+        },
+        "method": {
+          "const": "search.open"
+        },
+        "params": {
+          "$ref": "#/$defs/SearchOpenParams"
+        }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    }
+  }
+}

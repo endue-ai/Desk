@@ -19,3 +19,22 @@ addons, from the pinned npm packages into `plugins/terminal/ui/vendor/` (ADR 003
 `lanes.mjs` decides which Task issues may run in parallel (`just lanes`, `just task-start`), and
 `worktree.sh` gives each task its own worktree (ADR 0015). `sync-rulesets.sh` applies
 `.github/rulesets/*.json`; maintainers run it by hand, like `sync-labels.sh`.
+
+`release-version.mjs`, `release-collect.mjs`, `release-manifest.mjs` and `release-publish.mjs` are the
+release pipeline's steps (ADR 0054): the build version, each target's bundles under canonical names,
+`release.json` and the channel indexes, and the upload to R2 in the order that keeps every listed build
+whole. The `release-build`, `canary`, `release`, `promote` and `rollback` workflows call them; their
+tests run in `just test-unit`.
+
+`ui-lint.mjs` (in `just check`) keeps every UI on the theme's tokens: no literal colours, fonts, text
+sizes, radii or durations outside `theme: content` marks, as a ratchet over
+`ui-lint-baseline/<target>.json` (`docs/design-system.md`, ADR 0056). Its test runs in `just test-unit`.
+
+`theme-textures.mjs` draws the raster tiles the built-in showcase themes lay behind the desk: a paper tile
+for `plugins/theme-paper` and scanlines for `plugins/theme-amber`, one per scheme, from a seeded
+generator and `node:zlib` only (no downloads). Run `node scripts/theme-textures.mjs` after changing it and
+commit the PNGs; its test, in `just test-unit`, checks that it draws the same bytes twice, writes valid
+PNGs and that the committed tiles hold the pixels it draws.
+
+`theme-market.mjs` (`just check`, ADR 0060) checks `market/themes`: an index with unique ids, each bundle
+beside it with its sha256, size and licence and a valid theme plugin. Its test runs in `just test-unit`.

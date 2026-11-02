@@ -1,13 +1,8 @@
-/* The desk's design tokens (@endue-ai/ui). Frames do not inherit the desk's, so they are declared
-   here; the runtime redefines them for the theme in force. Inside a slide the file's colours rule. */
+/* Every colour, font, size, radius and duration of the viewer comes from the theme's --desk-* tokens
+   (/_desk/tokens.css, then the runtime's values for the theme in force). Inside a slide the file's
+   colours and faces rule: a slide is white with black text, and in this face, where it names none. */
 :root {
-  --desk-background: #141416;
-  --desk-card: #1e1d21;
-  --desk-border: #333136;
-  --desk-text: #f2f0f5;
-  --desk-text-muted: #b0adb7;
-  --desk-accent: #b6a3f5;
-  --slides-font: -apple-system, "SUIT", "Inter", system-ui, sans-serif;
+  --slides-font: -apple-system, "SUIT", "Inter", system-ui, sans-serif; /* theme: content */
   --slides-rail: 164px;
 }
 
@@ -23,7 +18,7 @@ body {
   margin: 0;
   background: var(--desk-card);
   color: var(--desk-text);
-  font: 13px/1.5 var(--slides-font);
+  font: calc(var(--desk-text-sm) - 1px)/1.5 var(--desk-font-sans);
 }
 
 header {
@@ -37,7 +32,7 @@ header {
 
 h1 {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--desk-text-sm);
 }
 
 #deck-detail {
@@ -50,13 +45,13 @@ h1 {
 #deck-badge {
   padding: 0 6px;
   border: 1px solid var(--desk-border);
-  border-radius: 4px;
+  border-radius: var(--desk-radius-sm);
 }
 
 button {
   padding: 2px 10px;
   border: 1px solid var(--desk-border);
-  border-radius: 6px;
+  border-radius: var(--desk-radius-md);
   background: transparent;
   color: inherit;
   font: inherit;
@@ -65,11 +60,11 @@ button {
 
 button:hover,
 button:focus-visible {
-  border-color: var(--desk-accent);
+  border-color: var(--desk-primary-text);
 }
 
 :focus-visible {
-  outline: 2px solid var(--desk-accent);
+  outline: 2px solid var(--desk-ring);
   outline-offset: 2px;
 }
 
@@ -106,13 +101,13 @@ button:focus-visible {
 }
 
 #rail button[aria-current="true"] {
-  border-color: var(--desk-accent);
+  border-color: var(--desk-primary-text);
 }
 
 #rail .number {
   min-width: 14px;
   color: var(--desk-text-muted);
-  font-size: 11px;
+  font-size: var(--desk-text-2xs);
   text-align: right;
 }
 
@@ -129,7 +124,7 @@ button:focus-visible {
   display: block;
   position: relative;
   overflow: hidden;
-  background: #fff;
+  background: #fff; /* theme: content: a slide that names no background */
   pointer-events: none;
 }
 
@@ -154,7 +149,7 @@ button:focus-visible {
 #player-stage {
   position: relative;
   overflow: hidden;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--desk-shadow-md);
 }
 
 #notes {
@@ -167,7 +162,7 @@ button:focus-visible {
 h2 {
   margin: 0 0 2px;
   color: var(--desk-text-muted);
-  font-size: 12px;
+  font-size: var(--desk-text-xs);
   font-weight: 600;
 }
 
@@ -187,8 +182,8 @@ h2 {
   left: 0;
   overflow: hidden;
   transform-origin: 0 0;
-  background: #fff;
-  color: #000;
+  background: #fff; /* theme: content: a slide that names no background */
+  color: #000; /* theme: content: text that names no colour */
   font-family: var(--slides-font);
   line-height: 1.2;
   text-align: left;
@@ -244,10 +239,10 @@ h2 {
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px dashed rgba(128, 128, 128, 0.7);
-  background: rgba(128, 128, 128, 0.12);
-  color: rgba(80, 80, 80, 0.9);
-  font-size: 14px;
+  border: 1px dashed var(--desk-input);
+  background: color-mix(in srgb, var(--desk-input) 12%, transparent);
+  color: var(--desk-input);
+  font-size: var(--desk-text-sm);
 }
 
 .slide table {
@@ -267,7 +262,7 @@ h2 {
 
 #details h2 {
   color: var(--desk-text);
-  font-size: 15px;
+  font-size: calc(var(--desk-text-sm) + 1px);
 }
 
 #details .why {
@@ -297,9 +292,9 @@ h2 {
   margin: 2px 0 0;
   padding: 6px 8px;
   border: 1px solid var(--desk-border);
-  border-radius: 6px;
+  border-radius: var(--desk-radius-md);
   background: var(--desk-background);
-  font-family: ui-monospace, "SF Mono", monospace;
+  font-family: var(--desk-font-mono);
   overflow-wrap: anywhere;
   user-select: all;
 }
@@ -319,7 +314,7 @@ h2 {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: #000;
+  background: var(--desk-background);
 }
 
 #player-stage {
@@ -331,7 +326,7 @@ h2 {
   gap: 12px;
   align-items: center;
   height: 36px;
-  color: #ccc;
+  color: var(--desk-text-muted);
 }
 
 #player-bar p {
@@ -339,7 +334,7 @@ h2 {
 }
 
 #player-leave {
-  border-color: #555;
+  border-color: color-mix(in srgb, var(--desk-input) 60%, transparent);
 }
 
 #status {
@@ -388,3 +383,6 @@ h2 {
 [hidden] {
   display: none !important;
 }
+
+#opening { flex: none; padding: 8px 12px; }
+.slide .link { cursor: pointer; }

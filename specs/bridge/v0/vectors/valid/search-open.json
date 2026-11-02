@@ -1,0 +1,14 @@
+{
+  "target": "BridgeRequest",
+  "description": "search open",
+  "instance": {
+    "id": 1,
+    "method": "search.open",
+    "params": {
+      "id": "os:1",
+      "scope": {
+        "permission": "search:system"
+      }
+    }
+  }
+}

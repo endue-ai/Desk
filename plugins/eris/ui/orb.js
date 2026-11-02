@@ -10,6 +10,23 @@ const FULL = { core: [200, 1600], body: [600, 1700], moon: [2200, 900], idleAt: 
 const QUICK = { core: [0, 600], body: [200, 900], moon: [700, 500], idleAt: 1200 };
 const ARRIVAL = { core: [400, 1600], body: [1500, 1300], moon: [2500, 600], idleAt: 3000 };
 
+/**
+ * Her night, which soul-text.css paints under her in the light scheme (none in the dark): two halos,
+ * Dysnomia's and her body's, the float's background layers. Her body's grows from her centre with
+ * the core, Dysnomia's from hers as she arrives. Returns the keyframes, their start and duration.
+ */
+function nightFrames({ core: [start, grow], moon: [moonAt, moonFor] }) {
+  const span = moonAt + moonFor - start;
+  const size = (moon, body) => ({ backgroundSize: `${moon}, ${body}` });
+  const keyframes = [
+    { offset: 0, ...size("0% 0%", "0% 0%"), easing: EASE },
+    { offset: grow / span, ...size("0% 0%", "100% 100%") },
+    { offset: (moonAt - start) / span, ...size("0% 0%", "100% 100%"), easing: EASE },
+    { offset: 1, ...size("100% 100%", "100% 100%") },
+  ];
+  return [keyframes, start, span];
+}
+
 function el(doc, tag, className) {
   const node = doc.createElement(tag);
   if (className) node.className = className;
@@ -49,10 +66,14 @@ export function buildOrb(doc, timeline, container, options = {}) {
 
   if (reduced) {
     const fade = [{ opacity: 0 }, { opacity: 1 }];
+    const night = [{ backgroundSize: "0% 0%, 0% 0%" }, { backgroundSize: "100% 100%, 100% 100%" }];
+    play(float, night, 0, 200);
     play(core, fade, 0, 200);
     play(body, fade, 0, 200);
     play(moonWrap, fade, 0, 200);
   } else {
+    const [night, from, span] = nightFrames(plan);
+    play(float, night, from, span, { easing: "linear" });
     play(
       core,
       [

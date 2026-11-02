@@ -1,12 +1,13 @@
 // cpio: the "new" ASCII format (070701, 070702, RPM's payload) and the old portable one (070707,
 // macOS installer payloads), read from a stream as it decodes.
+
+import { inputSeekable } from "@endue-ai/formats/codecs/input.js";
 import { latin1, text, unixDate } from "../bytes.js";
-import { inputSeekable } from "../codecs/input.js";
 import { cleanPath, withFolders } from "./archive.js";
 import { streamedArchive } from "./streamed.js";
 
 /** @typedef {import("../source.js").Source} Source */
-/** @typedef {import("../codecs/input.js").Input} Input */
+/** @typedef {import("@endue-ai/formats/codecs/input.js").Input} Input */
 /** @typedef {import("./streamed.js").Placed} Placed */
 
 /** Whether `head` starts with a cpio header. @param {Uint8Array} head */

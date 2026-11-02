@@ -3,6 +3,7 @@
 
 mod args;
 mod remote;
+mod theme;
 
 use std::path::Path;
 use std::process::ExitCode;
@@ -42,8 +43,10 @@ fn validate(dir: &Path) -> ExitCode {
                 PluginKind::Logic => "logic",
                 PluginKind::Tool => "tool",
                 PluginKind::Policy => "policy",
+                PluginKind::Library => "library",
                 PluginKind::Connector => "connector",
                 PluginKind::View => "view",
+                PluginKind::Theme => "theme",
             };
             println!("ok {} {} ({kind} plugin)", manifest.id, manifest.version);
             ExitCode::SUCCESS

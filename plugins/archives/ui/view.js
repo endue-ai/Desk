@@ -1,13 +1,14 @@
 // The DOM for the archives plugin: the file's name, format and levels, its details, the tree with
-// sort buttons and a name filter, the preview, the extract buttons, a progress line and a status
-// live region. Chords the desk binds are never prevented; Mod+F and Escape inside the surface are
-// the plugin's (Escape only while an extraction runs).
+// sort buttons and a name filter, the preview, the extract buttons, the desk's progress element
+// (with Cancel) and a status live region. Chords the desk binds are never prevented; Mod+F and
+// Escape inside the surface are the plugin's (Escape only while long work runs: it cancels it).
 import { createPreview } from "./view-preview.js";
 import { createTree } from "./view-tree.js";
 
 /**
  * @typedef {import("./archives.js").ArchiveModel} ArchiveModel
  * @typedef {import("./preview.js").PreviewModel} PreviewModel
+ * @typedef {import("./jobs.js").Progress} Progress
  * @typedef {{
  *   select(id: string): unknown, toggle(id: string): unknown, open(id: string): unknown,
  *   up(): unknown, sort(by: "name" | "size" | "date"): unknown, filter(text: string): unknown,
@@ -29,12 +30,15 @@ export function createView(doc, actions) {
   const up = /** @type {HTMLButtonElement} */ (byId("up"));
   const selectedButton = /** @type {HTMLButtonElement} */ (byId("extract-selected"));
   const allButton = /** @type {HTMLButtonElement} */ (byId("extract-all"));
-  const stop = /** @type {HTMLButtonElement} */ (byId("stop"));
-  const progress = byId("progress");
+  const progress = /** @type {import("@endue-ai/ui").DeskProgress | null} */ (
+    /** @type {unknown} */ (doc.querySelector("desk-progress"))
+  );
   const status = byId("status");
   const treeElement = byId("tree");
   /** @type {ArchiveModel | null} */
   let model = null;
+  /** @type {Progress | null} */
+  let working = null;
 
   const tree = createTree(doc, treeElement, actions);
   const preview = createPreview(doc, byId("preview"), {
@@ -45,7 +49,7 @@ export function createView(doc, actions) {
   up.addEventListener("click", () => actions.up());
   selectedButton.addEventListener("click", () => actions.extract("selected"));
   allButton.addEventListener("click", () => actions.extract("all"));
-  stop.addEventListener("click", () => actions.stop());
+  progress?.addEventListener("desk-cancel", () => working?.cancel());
   for (const button of doc.querySelectorAll("button[data-sort]"))
     button.addEventListener("click", () =>
       actions.sort(
@@ -64,7 +68,7 @@ export function createView(doc, actions) {
       event.preventDefault();
       filter.focus();
       filter.select();
-    } else if (event.key === "Escape" && !mod && model?.extracting) {
+    } else if (event.key === "Escape" && !mod && (working || model?.extracting)) {
       event.preventDefault();
       actions.stop();
     } else if (event.key === "Escape" && !mod && doc.activeElement === filter && filter.value) {
@@ -125,7 +129,6 @@ export function createView(doc, actions) {
       allButton.disabled = !listing || !!refused || !!next?.extracting;
       allButton.title = refused ?? "";
       selectedButton.title = refused ?? "";
-      stop.hidden = !next?.extracting;
       tree.render(listing ? (next?.rows ?? []) : [], next?.selected ?? null);
     },
 
@@ -139,15 +142,17 @@ export function createView(doc, actions) {
       status.textContent = words;
     },
 
-    /** @param {string} line */
-    progress(line) {
-      progress.textContent = line;
-      progress.hidden = !line;
-      const running = !!line && line.startsWith("Extracting");
-      if (model) model.extracting = running;
-      stop.hidden = !running;
-      selectedButton.disabled = running || selectedButton.disabled;
-      allButton.disabled = running || allButton.disabled;
+    /** The work that runs, or null when none does. @param {Progress | null} next */
+    progress(next) {
+      working = next;
+      if (!progress) return;
+      progress.hidden = next === null;
+      if (!next) return;
+      progress.label = next.label;
+      progress.value = next.value;
+      progress.max = next.max;
+      progress.detail = next.detail;
+      progress.cancelable = true;
     },
 
     focus() {

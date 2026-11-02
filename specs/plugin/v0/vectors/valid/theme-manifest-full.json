@@ -1,0 +1,98 @@
+{
+  "target": "PluginManifest",
+  "description": "a theme with every layer, a font and a backdrop image",
+  "instance": {
+    "id": "example.paper",
+    "name": "Paper & Ink",
+    "version": "1.0.0",
+    "kind": "theme",
+    "description": "Warm paper, ink-blue accents, soft corners.",
+    "theme": {
+      "author": "Example",
+      "license": "CC0-1.0",
+      "tags": ["light", "warm", "paper"],
+      "origin": {
+        "prompt": "따뜻한 종이 질감에 잉크색 포인트",
+        "base": "desk.theme"
+      },
+      "preview": ["#f6f1e7", "#1d1a16", "#1f3a93"],
+      "type": {
+        "sans": "\"Literata\", Georgia, serif",
+        "mono": "\"JetBrains Mono\", monospace",
+        "scale": 1.05,
+        "tracking": 0.01,
+        "fonts": [
+          {
+            "family": "Literata",
+            "src": "fonts/literata.woff2",
+            "weight": "200 900",
+            "style": "normal"
+          }
+        ]
+      },
+      "shape": {
+        "radius": "soft",
+        "density": "comfortable"
+      },
+      "motion": {
+        "personality": "calm"
+      },
+      "light": {
+        "colors": {
+          "background": "#f6f1e7",
+          "card": "#fbf8f1",
+          "text": "#1d1a16",
+          "primary": "#1f3a93",
+          "primaryForeground": "#ffffff",
+          "shadowMd": "0 8px 24px rgba(60, 40, 10, 0.18)",
+          "erisGlow": "rgba(31, 58, 147, 0.3)"
+        },
+        "contrast": {
+          "text": "#000000",
+          "border": "#4a4033"
+        },
+        "material": {
+          "opacity": 0.96,
+          "blur": 8,
+          "noise": 0.06,
+          "border": 1,
+          "shadow": "soft"
+        },
+        "backdrop": {
+          "gradient": ["#f6f1e7", "#ede4d3"],
+          "angle": 160,
+          "image": "images/paper.webp",
+          "fit": "tile",
+          "glow": "rgba(217, 201, 168, 0.4)"
+        },
+        "terminal": {
+          "ansi": [
+            "#1d1a16",
+            "#a63d40",
+            "#4f7942",
+            "#a0782c",
+            "#1f3a93",
+            "#7a4b8c",
+            "#2f7d7a",
+            "#e8e0cf",
+            "#5a5248",
+            "#c4484b",
+            "#5f8f50",
+            "#b98b33",
+            "#3553b0",
+            "#9160a6",
+            "#3a958f",
+            "#fbf8f1"
+          ]
+        }
+      },
+      "dark": {
+        "colors": {
+          "background": "#1b1915",
+          "text": "#ece4d4",
+          "primary": "#9fb4ff"
+        }
+      }
+    }
+  }
+}

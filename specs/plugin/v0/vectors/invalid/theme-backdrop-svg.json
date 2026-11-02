@@ -1,0 +1,7 @@
+{
+  "target": "ThemeBackdrop",
+  "description": "backdrop images are png, jpg or webp: an SVG can carry script",
+  "instance": {
+    "image": "images/paper.svg"
+  }
+}

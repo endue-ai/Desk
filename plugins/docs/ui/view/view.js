@@ -1,11 +1,13 @@
 // The DOM for the docs plugin: the header (name, format, "Text only"), the toolbar, the outline, the
 // pages on the desk's background, the comments panel, find, zoom, the details view and a status
 // live region. Pages are drawn a few at a time so a long document never freezes the surface.
-// Chords the desk binds (Mod+S, Mod+O, Mod+W, Mod+K) are never prevented.
+// Chords the desk binds (Mod+S, Mod+O, Mod+W, Mod+K) are never prevented. A link goes to
+// `actions.external`; the opening's progress is the page's <desk-progress>.
 import { renderDetails } from "./details.js";
 import { createFind } from "./find.js";
 import { paginate } from "./pages.js";
 import { headingsOf, renderComments, renderOutline } from "./panels.js";
+import { createProgress } from "./progress.js";
 import { renderBlocks } from "./render.js";
 
 /**
@@ -17,8 +19,22 @@ const ZOOMS = [0.25, 0.33, 0.5, 0.67, 0.75, 0.8, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2
 const BATCH = 120;
 const PX = 96 / 72;
 
-/** @param {Document} doc */
-export function createView(doc) {
+/** A turn of the event loop: a message, which a hidden page does not throttle as it does timers. */
+const pause = () =>
+  new Promise((resolve) => {
+    const channel = new MessageChannel();
+    channel.port1.onmessage = () => {
+      channel.port1.close();
+      resolve(undefined);
+    };
+    channel.port2.postMessage(null);
+  });
+
+/**
+ * @param {Document} doc
+ * @param {{ external?(url: string): unknown }} [actions]
+ */
+export function createView(doc, actions = {}) {
   const byId = (/** @type {string} */ id) => /** @type {HTMLElement} */ (doc.getElementById(id));
   const name = byId("doc-name");
   const format = byId("doc-format");
@@ -139,6 +155,8 @@ export function createView(doc) {
       article.setAttribute("aria-label", `Page ${index + 1} of ${pages.length}`);
       article.style.width = `${section.width}pt`;
       article.style.minHeight = `${section.height}pt`;
+      // Pages off screen skip layout and paint until they come near, so a long document stays light.
+      article.style.containIntrinsicSize = `auto ${section.width}pt auto ${section.height}pt`;
       article.style.padding = `${header}pt ${m.right}pt ${footer}pt ${m.left}pt`;
       const ctx = { doc, page: index + 1, pages: pages.length, headings: ids, notes: new Set() };
       const top = part("page-header", Math.max(0, m.top - header));
@@ -154,7 +172,7 @@ export function createView(doc) {
         budget -= Math.min(BATCH, page.blocks.length - at);
         if (budget <= 0) {
           budget = BATCH;
-          await new Promise((resolve) => setTimeout(resolve, 0));
+          await pause();
           if (mine !== token) return;
         }
       }
@@ -265,7 +283,7 @@ export function createView(doc) {
     const link = target.closest?.("a");
     if (link) {
       event.preventDefault();
-      say(`Link: ${link.getAttribute("href") ?? ""}`);
+      actions.external?.(link.getAttribute("href") ?? "");
       return;
     }
     const ref = /** @type {HTMLElement | null} */ (target.closest?.(".noteref"));
@@ -336,6 +354,9 @@ export function createView(doc) {
       commentsPanel.hidden = count === 0 || closed.comments;
       commentsToggle.setAttribute("aria-pressed", String(!commentsPanel.hidden));
       outline.hidden = closed.outline;
+      // The zoom is set before the pages are drawn: changing it afterwards lays every page out again.
+      const fitted = zoomed ? undefined : fitZoom();
+      setZoom(fitted && fitted < 1 ? fitted : zoomed ? zoom : 1);
       drawn = draw(docModel, mine).catch(() => {
         // A model the renderer cannot draw still says so instead of leaving a blank page.
         sheet.replaceChildren();
@@ -354,8 +375,6 @@ export function createView(doc) {
       });
       await drawn;
       if (mine !== token || layout.hidden) return;
-      const fitted = zoomed ? undefined : fitZoom();
-      setZoom(fitted && fitted < 1 ? fitted : zoomed ? zoom : 1);
       if (!findBar.hidden && findText.value) runFind();
       const pages = sheet.childElementCount;
       say(
@@ -364,6 +383,7 @@ export function createView(doc) {
     },
     /** @param {string} words */
     status: say,
+    progress: createProgress(doc),
     focus() {
       if (!layout.hidden) desk.focus();
     },

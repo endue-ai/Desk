@@ -1,0 +1,12 @@
+{
+  "target": "BridgeRequest",
+  "description": "search replace owner",
+  "instance": {
+    "id": 1,
+    "method": "search.replace",
+    "params": {
+      "documents": [],
+      "plugin": "other.plugin"
+    }
+  }
+}

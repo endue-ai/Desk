@@ -1,12 +1,15 @@
 // Opens a file's bytes: picks the format from the first bytes, then the extension, and hands the file
-// to its reader. Whatever happens the answer is something to show: a deck, a Keynote preview, a
-// Google Slides card, or the details view with one sentence saying why.
+// to its reader, then sets the links the PowerPoint and OpenDocument readers leave as colour
+// (render/hyperlinks.js). Whatever happens the answer is something to show: a deck, a Keynote
+// preview, a Google Slides card, or the details view with one sentence saying why. It runs on the
+// main thread or, for a large file, in ui/worker.js.
 import { utf8 } from "./bytes.js";
 import { isCfb, readCfb } from "./cfb.js";
-import { readOdp, readOdpZip } from "./odp/read.js";
+import { readOdp } from "./odp/read.js";
 import { keynotePreview, shortcutCard } from "./other.js";
 import { EncryptedError, readPpt } from "./ppt/read.js";
 import { readPptx } from "./pptx/read.js";
+import { linkOdp, linkPptx } from "./render/hyperlinks.js";
 import { parseXml } from "./xml.js";
 import { isZip, readZip } from "./zip.js";
 
@@ -52,6 +55,13 @@ const formatFor = (
 const why = (/** @type {unknown} */ error) => {
   const message = error instanceof Error ? error.message : String(error);
   return `The file is damaged and cannot be shown (${message}).`;
+};
+
+/** Set a deck's links; one that cannot be found again stays text. @param {() => void} set */
+const linked = (set) => {
+  try {
+    set();
+  } catch {}
 };
 
 /** @param {string} format @param {string} reason @returns {Opened} */
@@ -107,7 +117,10 @@ async function openZip(bytes, ext) {
       "PowerPoint presentation",
     );
     try {
-      return deckOrEmpty(format, await readPptx(zip, format));
+      const deck = await readPptx(zip, format);
+      // A link that cannot be found again stays text: the deck shows as it is.
+      await linkPptx(zip, deck).catch(() => {});
+      return deckOrEmpty(format, deck);
     } catch (error) {
       return details(format, why(error));
     }
@@ -131,7 +144,11 @@ async function openZip(bytes, ext) {
         (zip.has("content.xml") && zip.encrypted("content.xml"))
       )
         return details(format, ENCRYPTED);
-      return deckOrEmpty(format, await readOdpZip(zip, format));
+      const content = parseXml(await zip.text("content.xml"));
+      const styles = zip.has("styles.xml") ? parseXml(await zip.text("styles.xml")) : null;
+      const deck = await readOdp({ content, styles, files: zip }, format);
+      linked(() => linkOdp(content, deck));
+      return deckOrEmpty(format, deck);
     } catch (error) {
       return details(format, why(error));
     }
@@ -175,5 +192,7 @@ async function openXml(bytes, ext) {
       "This XML file is not an OpenDocument presentation.",
     );
   const format = FORMATS.fodp ?? "";
-  return deckOrEmpty(format, await readOdp({ content: root, styles: root, files: null }, format));
+  const deck = await readOdp({ content: root, styles: root, files: null }, format);
+  linked(() => linkOdp(root, deck));
+  return deckOrEmpty(format, deck);
 }

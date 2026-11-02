@@ -1,5 +1,5 @@
-// A small XML reader for the tables of contents and property lists archives carry (xar's TOC, a
-// DMG's plist, a WIM's image list). Elements, attributes and text; no DTDs, no namespaces.
+// A small XML reader for the tables of contents archives carry (xar's TOC). Elements, attributes
+// and text; no DTDs, no namespaces.
 
 /** @typedef {{ name: string, attrs: Record<string, string>, children: XmlNode[], text: string }} XmlNode */
 
@@ -57,37 +57,3 @@ export const child = (node, name) => node?.children.find((c) => c.name === name)
 export const children = (node, name) => node?.children.filter((c) => c.name === name) ?? [];
 /** The trimmed text of the first child named `name`. @param {XmlNode | undefined} node @param {string} name */
 export const textOf = (node, name) => child(node, name)?.text.trim() ?? "";
-
-/**
- * A property list's value as JSON-like data: dict, array, string, integer, real, true, false, date
- * and data (base64 text, kept as a string).
- * @param {XmlNode | undefined} node
- * @returns {unknown}
- */
-export function plistValue(node) {
-  if (!node) return undefined;
-  switch (node.name) {
-    case "plist":
-      return plistValue(node.children[0]);
-    case "dict": {
-      /** @type {Record<string, unknown>} */
-      const out = {};
-      for (let i = 0; i + 1 < node.children.length; i += 2)
-        out[node.children[i]?.text ?? ""] = plistValue(node.children[i + 1]);
-      return out;
-    }
-    case "array":
-      return node.children.map(plistValue);
-    case "integer":
-    case "real":
-      return Number(node.text.trim());
-    case "true":
-      return true;
-    case "false":
-      return false;
-    case "data":
-      return node.text.replace(/\s+/g, "");
-    default:
-      return node.text;
-  }
-}

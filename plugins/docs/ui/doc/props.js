@@ -27,22 +27,22 @@ import { eachSprm } from "./sprm.js";
 /** The Ico palette ([MS-DOC] 2.9.119); 0 is auto. */
 export const ICO = [
   undefined,
-  "#000000",
-  "#0000FF",
-  "#00FFFF",
-  "#00FF00",
-  "#FF00FF",
-  "#FF0000",
-  "#FFFF00",
-  "#FFFFFF",
-  "#000080",
-  "#008080",
-  "#008000",
-  "#800080",
-  "#800000",
-  "#808000",
-  "#808080",
-  "#C0C0C0",
+  "#000000", // theme: content
+  "#0000FF", // theme: content
+  "#00FFFF", // theme: content
+  "#00FF00", // theme: content
+  "#FF00FF", // theme: content
+  "#FF0000", // theme: content
+  "#FFFF00", // theme: content
+  "#FFFFFF", // theme: content
+  "#000080", // theme: content
+  "#008080", // theme: content
+  "#008000", // theme: content
+  "#800080", // theme: content
+  "#800000", // theme: content
+  "#808000", // theme: content
+  "#808080", // theme: content
+  "#C0C0C0", // theme: content
 ];
 
 const hex = (/** @type {number} */ n) => n.toString(16).padStart(2, "0").toUpperCase();
@@ -82,11 +82,11 @@ const PERCENT = /** @type {Record<number, number>} */ ({
 export function shading(fore, back, ipat) {
   if (ipat === 0xffff) return undefined;
   if (ipat === 0) return back;
-  if (ipat === 1) return fore ?? "#000000";
+  if (ipat === 1) return fore ?? "#000000"; // theme: content
   const share = PERCENT[ipat];
   if (share === undefined) return back ?? fore;
-  const f = Number.parseInt((fore ?? "#000000").slice(1), 16);
-  const b = Number.parseInt((back ?? "#FFFFFF").slice(1), 16);
+  const f = Number.parseInt((fore ?? "#000000").slice(1), 16); // theme: content
+  const b = Number.parseInt((back ?? "#FFFFFF").slice(1), 16); // theme: content
   const mix = (/** @type {number} */ shift) =>
     Math.round((((f >> shift) & 255) * share + ((b >> shift) & 255) * (100 - share)) / 100);
   return `#${hex(mix(16))}${hex(mix(8))}${hex(mix(0))}`;

@@ -1,9 +1,19 @@
 // Mounts the archives plugin on the SDK's test host, with a view that records what it was asked to
-// show (or the real DOM view, for the view tests). The SDK is imported by its workspace path.
+// show (or the real DOM view, for the view tests). The SDK is imported by its workspace path. The
+// host answers fs.url with data: URLs, which hold the whole file, so fs.url is refused unless a
+// test asks for it: byteSource then reads by ranged fs.read calls, as it does where the desk gives
+// no URL.
 import { StubError } from "../../../packages/bridge/src/index";
-import { defineUiPlugin } from "../../../packages/plugin-sdk/src/index";
+import { byteSource, defineUiPlugin } from "../../../packages/plugin-sdk/src/index";
 import { createTestHost, type TestHost } from "../../../packages/plugin-sdk/src/testing/index";
-import { type ArchiveModel, createArchives, type PreviewModel, type View } from "../ui/archives.js";
+import {
+  type ArchiveModel,
+  createArchives,
+  type PreviewModel,
+  type Progress,
+  type View,
+} from "../ui/archives.js";
+import type { StartWorker } from "../ui/library-client.js";
 
 type Options = Parameters<typeof createTestHost>[0];
 export type Handlers = NonNullable<Options["handlers"]>;
@@ -14,7 +24,8 @@ export interface RecordingView extends View {
   archives: Array<ArchiveModel | null>;
   previews: Array<PreviewModel | null>;
   statuses: string[];
-  progresses: string[];
+  /** What the progress element was asked to show, null when nothing runs. */
+  progresses: Array<Progress | null>;
   /** How many times the plugin moved the keyboard focus to its tree. */
   focused: number;
 }
@@ -29,7 +40,7 @@ export function recordingView(): RecordingView {
     archive: (model) => view.archives.push(model),
     preview: (model) => view.previews.push(model),
     status: (text) => view.statuses.push(text),
-    progress: (text) => view.progresses.push(text),
+    progress: (progress) => view.progresses.push(progress),
     focus: () => {
       view.focused++;
     },
@@ -59,6 +70,10 @@ export interface MountOptions<V extends View> {
   commands?: Commands;
   /** The view to mount with; a recording view by default. */
   view?: (app: () => App | undefined) => V;
+  /** Serve fs.url (data: URLs) instead of refusing it. */
+  urls?: boolean;
+  /** The SDK's startWorker; without it the library's formats open in the frame. */
+  startWorker?: StartWorker;
 }
 
 export async function mount<V extends View = RecordingView>(
@@ -69,6 +84,7 @@ export async function mount<V extends View = RecordingView>(
     files: options.files,
     grants: options.grants,
     prompt: options.prompt,
+    refuse: options.urls ? {} : { "fs.url": "unsupported" },
     handlers: { "fs.watch": () => ({ watchId: "w1" }), ...options.handlers },
     commands: { ...DESK, ...options.commands },
   });
@@ -77,7 +93,7 @@ export async function mount<V extends View = RecordingView>(
   await defineUiPlugin(
     {
       mount(ctx) {
-        app = createArchives(ctx, view);
+        app = createArchives(ctx, view, { byteSource, startWorker: options.startWorker });
       },
     },
     host.transport,

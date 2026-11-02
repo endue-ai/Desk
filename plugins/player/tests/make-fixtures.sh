@@ -50,6 +50,8 @@ ff "${tone[@]}" -c:a pcm_s16be -write_id3v2 1 "${tags[@]}" tone.aiff
 ff "${tone[@]}" -c:a alac tone.caf
 ff "${tone[@]}" -c:a wavpack "${tags[@]}" tone.wv
 ff "${tone[@]}" -c:a wmav2 -b:a 32k "${tags[@]}" tone.wma
+ff "${tone[@]}" -c:a vorbis -strict -2 -ac 2 "${tags[@]}" tone-vorbis.mka
+ff "${tone[@]}" -c:a aac -b:a 16k "${tags[@]}" tone-aac.mka
 ff "${tone[@]}" -c:a aac -b:a 16k -f adts tone.aac
 ff "${tone[@]}" -c:a pcm_mulaw -f au tone.au
 ff "${tone[@]}" -c:a pcm_alaw -f au tone-alaw.au

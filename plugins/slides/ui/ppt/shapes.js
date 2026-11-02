@@ -331,8 +331,8 @@ function wordArt(
     fill.type === "solid"
       ? fill.color
       : fill.type === "gradient"
-        ? (fill.stops[0]?.color ?? "#000000")
-        : (line?.color ?? "#000000");
+        ? (fill.stops[0]?.color ?? "#000000") // theme: content
+        : (line?.color ?? "#000000"); // theme: content
   const size = Math.max(4, Math.min(fixed(opts, 0x00c3, 36), (box.h / lines.length) * 0.8));
   const run = {
     size,

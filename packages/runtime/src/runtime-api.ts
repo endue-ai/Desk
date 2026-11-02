@@ -8,6 +8,7 @@ import type { Keymap } from "./keymap";
 import type { Cell, Layout } from "./layout";
 import type { Notice, NoticeInput } from "./notify";
 import type { SessionPart } from "./policies/session";
+import type { RuntimeThemes } from "./policies/theme";
 import type { PolicySet } from "./policy";
 import type { Settings } from "./settings";
 import type { SettingsWindow } from "./settings-ui/window";
@@ -58,6 +59,8 @@ export interface Runtime {
   notify(input: NoticeInput): Notice;
   /** The theme in force. */
   theme(): ThemeState;
+  /** The theme system: installed themes, the one in force, preview and apply (ADR 0056). */
+  readonly themes: RuntimeThemes;
   openSurface(spec: SurfaceSpec): void;
   closeSurface(id: string): void;
   moveSurface(id: string, cell: Cell): void;

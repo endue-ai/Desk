@@ -1,5 +1,6 @@
-// The reader plugin: PDFs, e-books and comics in one interface. It uses only the public SDK and
-// bridge API, exactly as a community plugin would; pdf.js is vendored in ui/vendor.
+// The reader plugin: PDFs, e-books, comics and DjVu in one interface. It uses only the public SDK and
+// bridge API, exactly as a community plugin would; pdf.js is vendored in ui/vendor, and RAR, 7z and
+// DjVu come from the library plugin endue.formats through the page's import map.
 import { byteSource, defineUiPlugin, readBytes, startWorker } from "@endue-ai/plugin-sdk";
 import { defineElements } from "@endue-ai/ui";
 import { loadPdfjs } from "./pdfjs.js";
@@ -22,7 +23,12 @@ defineUiPlugin({
       forget: (kind, index) => app?.forget(kind, index),
       unlock: (password) => app?.unlock(password),
     });
-    app = createReader(ctx, view, { byteSource, readBytes, pdfjs: () => loadPdfjs(startWorker) });
+    app = createReader(ctx, view, {
+      byteSource,
+      readBytes,
+      startWorker,
+      pdfjs: () => loadPdfjs(startWorker),
+    });
     // A file that breaks a reader halfway through drawing says so; it never ends as an uncaught error.
     window.addEventListener("unhandledrejection", (event) => {
       event.preventDefault();

@@ -1,0 +1,21 @@
+{
+  "target": "BridgeRequest",
+  "description": "search replace",
+  "instance": {
+    "id": 1,
+    "method": "search.replace",
+    "params": {
+      "documents": [
+        {
+          "id": "note-1",
+          "title": "회의 기록",
+          "text": "서울 출장",
+          "command": "endue.notes.open",
+          "args": {
+            "note": "1"
+          }
+        }
+      ]
+    }
+  }
+}

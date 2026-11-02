@@ -63,6 +63,10 @@ path = "tests/owner_exit.rs"
 name = "instance_lock"
 path = "tests/instance_lock.rs"
 
+[[test]]
+name = "macos_ready"
+path = "tests/macos_ready.rs"
+
 [dependencies.semver]
 version = "1"
 optional = true

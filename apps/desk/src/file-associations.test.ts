@@ -54,6 +54,7 @@ it("exposes only the named host queue drain to the main window alongside existin
     "allow-take-open-files",
     "core:event:allow-listen",
     "core:event:allow-unlisten",
+    "allow-palette-reveal-main",
     "dialog:allow-open",
   ]);
   const build = readFileSync(join(root, "apps/desk/src-tauri/build.rs"), "utf8");

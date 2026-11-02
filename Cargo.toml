@@ -21,6 +21,7 @@ desk-core = { path = "crates/desk-core" }
 desk-index = { path = "crates/desk-index" }
 desk-plugin-host = { path = "crates/desk-plugin-host" }
 desk-sys = { path = "crates/desk-sys" }
+desk-update = { path = "crates/desk-update" }
 base64 = "0.23"
 notify = { version = "8", default-features = false, features = ["macos_fsevent"] }
 serde = { version = "1", features = ["derive"] }

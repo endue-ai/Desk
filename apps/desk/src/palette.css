@@ -1,0 +1,3 @@
+/* The window's chrome is the palette's card, in the theme the main window sends (palette-theme.ts). */
+html, body, #desk { margin: 0; width: 100%; height: 100%; overflow: hidden; background: var(--desk-card, #1e1d21); }
+iframe { display: block; width: 100%; height: 100%; border: 0; }

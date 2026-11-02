@@ -12,6 +12,7 @@ const plugins: Record<string, string> = {
   "test.counter": here("./fixture/plugins/test-counter"),
   "test.echo": here("./fixture/plugins/test-echo"),
   "test.worker": here("./fixture/plugins/test-worker"),
+  "test.theme": here("./themes/test-theme"),
   // The autoload opener of the desk page is the echo plugin under another id.
   "test.lazy": here("./fixture/plugins/test-echo"),
   "desk.palette": join(repo, "plugins/palette"),
@@ -41,6 +42,10 @@ const types: Record<string, string> = {
   ".css": "text/css",
   ".json": "application/json",
   ".svg": "image/svg+xml",
+  ".png": "image/png",
+  ".webp": "image/webp",
+  ".woff2": "font/woff2",
+  ".desk-theme": "application/json",
 };
 
 /**
@@ -68,10 +73,12 @@ export function pluginFiles(): Plugin {
           res.end();
           return;
         }
+        // The fixture theme market (?market=1 on the shell page names it https://market.test/).
+        const market = /^\/market\/(.+)$/.exec(url.pathname)?.[1];
         const match = /^\/plugins\/([^/]+)\/(.+)$/.exec(url.pathname);
-        if (!match) return next();
-        const [, id = "", path = ""] = match;
-        const base = plugins[id];
+        if (!match && market === undefined) return next();
+        const [, id = "", path = market ?? ""] = match ?? [];
+        const base = market === undefined ? plugins[id] : here("./themes/market");
         const file = base ? normalize(join(base, path)) : "";
         if (!base || !file.startsWith(base) || !existsSync(file) || !statSync(file).isFile()) {
           res.statusCode = 404;

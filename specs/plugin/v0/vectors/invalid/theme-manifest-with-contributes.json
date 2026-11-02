@@ -1,0 +1,15 @@
+{
+  "target": "PluginManifest",
+  "description": "a theme contributes nothing: its values are its theme block",
+  "instance": {
+    "id": "example.paper",
+    "version": "1.0.0",
+    "kind": "theme",
+    "contributes": {
+      "themes": []
+    },
+    "theme": {
+      "dark": {}
+    }
+  }
+}

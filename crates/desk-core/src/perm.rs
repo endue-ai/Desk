@@ -223,7 +223,10 @@ pub fn covers(grant: &Permission, scope: &Permission) -> bool {
         (Permission::UiSurface(_), Permission::UiSurface(_)) => true,
         (Permission::UiNotify(_), Permission::UiNotify(_)) => true,
         (Permission::PluginManage(_), Permission::PluginManage(_)) => true,
+        (Permission::SearchRead(_), Permission::SearchRead(_)) => true,
+        (Permission::SearchSystem(_), Permission::SearchSystem(_)) => true,
         (Permission::BrainConverse(_), Permission::BrainConverse(_)) => true,
+        (Permission::BrainAsk(_), Permission::BrainAsk(_)) => true,
         (Permission::CmdInvoke(g), Permission::CmdInvoke(s)) => {
             s.ids.iter().all(|a| g.ids.iter().any(|p| star_match(p, a)))
         }
@@ -244,6 +247,8 @@ pub fn covers(grant: &Permission, scope: &Permission) -> bool {
             .iter()
             .all(|a| g.keys.iter().any(|p| setting_match(p, a))),
         (Permission::LogRead(_), Permission::LogRead(_)) => true,
+        (Permission::UpdateManage(_), Permission::UpdateManage(_)) => true,
+        (Permission::ThemeManage(_), Permission::ThemeManage(_)) => true,
         // shell:open: an absent list covers nothing, and only an absent scope list is covered by it.
         (Permission::ShellOpen(g), Permission::ShellOpen(s)) => {
             s.schemes
@@ -330,11 +335,16 @@ pub(crate) fn scope_allows(scope: &Permission, target: &Target<'_>) -> bool {
             | Permission::UiSurface(_)
             | Permission::UiNotify(_)
             | Permission::PluginManage(_)
+            | Permission::SearchRead(_)
+            | Permission::SearchSystem(_)
             | Permission::BrainConverse(_)
+            | Permission::BrainAsk(_)
             | Permission::PermManage(_)
             | Permission::ConnectorManage(_)
             | Permission::ViewManage(_)
-            | Permission::LogRead(_),
+            | Permission::LogRead(_)
+            | Permission::UpdateManage(_)
+            | Permission::ThemeManage(_),
             Target::None,
         ) => true,
         (Permission::SettingsRead(s), Target::Setting(setting)) => {

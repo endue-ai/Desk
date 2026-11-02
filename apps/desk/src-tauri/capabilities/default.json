@@ -9,6 +9,7 @@
     "allow-take-open-files",
     "core:event:allow-listen",
     "core:event:allow-unlisten",
+    "allow-palette-reveal-main",
     "dialog:allow-open"
   ]
 }

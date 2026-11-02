@@ -1,10 +1,10 @@
 {
   "target": "PluginManifest",
-  "description": "kind is ui, logic or tool",
+  "description": "kind is one of the known kinds",
   "instance": {
-    "id": "example.theme",
+    "id": "example.gadget",
     "version": "0.1.0",
-    "kind": "theme",
-    "entry": "theme.css"
+    "kind": "gadget",
+    "entry": "gadget.js"
   }
 }

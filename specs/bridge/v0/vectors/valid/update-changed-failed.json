@@ -1,0 +1,19 @@
+{
+  "target": "BridgeEvent",
+  "description": "update.changed after a failed install: the reason for people, and the build still staged",
+  "instance": {
+    "event": "update.changed",
+    "data": {
+      "state": "failed",
+      "current": {
+        "version": "0.1.0"
+      },
+      "channel": "stable",
+      "release": {
+        "version": "0.2.0"
+      },
+      "staged": true,
+      "reason": "Desk could not replace the app in /Applications."
+    }
+  }
+}

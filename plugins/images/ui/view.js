@@ -1,5 +1,5 @@
-// The DOM for the images plugin: the header (name, format, place in the folder), the toolbar, one
-// or two panes on the stage, the details panel and a status live region. It keeps the zoom, pan and
+// The DOM for the images plugin: the header (name, format, place in the folder), the toolbar, the
+// opening's progress bar, one or two panes on the stage, the details panel and a status live region. It keeps the zoom, pan and
 // turn (viewer.js), handles the keys and the pointer, and asks the controller for the rest. Chords
 // the desk binds (Mod+S, Mod+O, Mod+W, Mod+K ...) are never prevented.
 import { notice, rows } from "./cards.js";
@@ -30,6 +30,11 @@ export function createView(doc, act, options = {}) {
   const details = byId("details");
   const main = /** @type {HTMLElement} */ (stage.parentElement);
   const status = byId("status");
+  const progress = /** @type {import("@endue-ai/ui").DeskProgress | null} */ (
+    doc.querySelector("desk-progress")
+  );
+  let cancel = () => {};
+  progress?.addEventListener("desk-cancel", () => cancel());
   /** @type {(id: string) => Pane} */
   const paneOf = (id) => {
     const el = byId(id);
@@ -368,6 +373,15 @@ export function createView(doc, act, options = {}) {
       changed();
     },
     status: say,
+    /** @param {import("./opening.js").Progress | null} value */
+    progress(value) {
+      if (!progress) return;
+      progress.hidden = value === null;
+      cancel = value?.cancel ?? (() => {});
+      if (!value) return;
+      Object.assign(progress, { label: value.label, value: value.value, max: value.max });
+      Object.assign(progress, { detail: value.detail, cancelable: true });
+    },
     focus() {
       stage.focus();
     },

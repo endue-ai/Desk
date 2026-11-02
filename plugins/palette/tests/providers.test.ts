@@ -231,6 +231,8 @@ describe("palette providers", () => {
     });
     expect(palette.permissions).toEqual([
       { permission: "cmd:invoke", ids: ["*"] },
+      { permission: "search:read" },
+      { permission: "search:system" },
       { permission: "data:read" },
       { permission: "ui:notify" },
     ]);

@@ -6,15 +6,42 @@
   "entry": "ui/index.html",
   "description": "Opens Markdown and text files in a plain text area, saves and reloads them, and follows changes on disk.",
   "permissions": [
-    { "permission": "fs:read", "paths": ["${home}/Notes/**"] },
-    { "permission": "fs:write", "paths": ["${home}/Notes/**"] },
-    { "permission": "cmd:invoke", "ids": ["desk.files.changed", "desk.buffers.update"] }
+    {
+      "permission": "fs:read",
+      "paths": ["${home}/Notes/**"]
+    },
+    {
+      "permission": "fs:write",
+      "paths": ["${home}/Notes/**"]
+    },
+    {
+      "permission": "cmd:invoke",
+      "ids": ["desk.files.changed", "desk.buffers.update", "desk.files.open", "desk.buffers.switch"]
+    }
   ],
-  "surfaces": [{ "id": "main", "title": "Notes", "placement": "center" }],
+  "surfaces": [
+    {
+      "id": "main",
+      "title": "Notes",
+      "placement": "center"
+    }
+  ],
   "contributes": {
     "files": [
-      { "pattern": "*.md", "plugin": "endue.notes" },
-      { "pattern": "*.txt", "plugin": "endue.notes" }
+      {
+        "pattern": "*.md",
+        "plugin": "endue.notes"
+      },
+      {
+        "pattern": "*.txt",
+        "plugin": "endue.notes"
+      }
+    ],
+    "commands": [
+      {
+        "id": "endue.notes.search-open",
+        "title": "Open a note from search"
+      }
     ]
   }
 }

@@ -1,4 +1,4 @@
-// The allowlist sanitizer (ADR 0044). It walks a tree parsed into an inert document (DOMParser) and
+// The allowlist sanitizer (ADR 0044). It walks a tree parsed into an inert document and
 // builds a new one in the plugin's document from fresh elements: only allowed elements and
 // attributes are copied, every URL passes the policy, and nothing is ever parsed from markup into
 // the live document. What is built is what is drawn, so markup that re-parses differently cannot
@@ -156,17 +156,18 @@ export function sanitizeInto(source, target, into, policy) {
 }
 
 /**
- * The same, a slice at a time: the surface stays responsive while a large page is copied.
+ * The same, a slice at a time: each step copies up to 2000 nodes and yields the number of elements
+ * of `source` visited so far, so a large page is copied between other work.
  * @param {{ childNodes: ArrayLike<Node> }} source @param {Document} target @param {Node} into
- * @param {Policy} policy @param {() => Promise<void>} pause called between slices
+ * @param {Policy} policy
  */
-export async function sanitizeSlowly(source, target, into, policy, pause) {
-  for (const _ of walk(source, target, into, policy, 2000)) await pause();
+export function sanitizeSteps(source, target, into, policy) {
+  return walk(source, target, into, policy, 2000);
 }
 
 /**
- * The walk itself, iterative so deep nesting cannot overflow the stack; it yields after every
- * `slice` nodes.
+ * The walk itself, iterative so deep nesting cannot overflow the stack; it yields the number of
+ * elements visited after every `slice` nodes.
  * @param {{ childNodes: ArrayLike<Node> }} source @param {Document} target @param {Node} into
  * @param {Policy} policy @param {number} slice
  */
@@ -176,14 +177,16 @@ function* walk(source, target, into, policy, slice) {
     .reverse()
     .map((node) => /** @type {[Node, Node]} */ ([node, into]));
   let done = 0;
+  let elements = 0;
   while (stack.length > 0) {
-    if (++done % slice === 0) yield;
+    if (++done % slice === 0) yield elements;
     const [node, parent] = /** @type {[Node, Node]} */ (stack.pop());
     if (node.nodeType === 3 || node.nodeType === 4) {
       parent.appendChild(target.createTextNode(/** @type {CharacterData} */ (node).data));
       continue;
     }
     if (node.nodeType !== 1) continue;
+    elements++;
     const element = /** @type {Element} */ (node);
     const space = spaceOf(element);
     const tag = element.localName.toLowerCase();

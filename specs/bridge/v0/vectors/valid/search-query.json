@@ -1,0 +1,15 @@
+{
+  "target": "BridgeRequest",
+  "description": "search query",
+  "instance": {
+    "id": 1,
+    "method": "search.query",
+    "params": {
+      "query": "회의",
+      "limit": 20,
+      "scope": {
+        "permission": "search:read"
+      }
+    }
+  }
+}

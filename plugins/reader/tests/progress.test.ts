@@ -67,3 +67,23 @@ it("stops decoding and does not let a discarded view overwrite the next opening 
   expect(element.label).toBe("Reading");
   expect(element.hidden).toBe(false);
 });
+
+it("Cancel on decoding stops every page being decoded, not only the one shown", async () => {
+  const { createProgress } = await import("../ui/progress.js");
+  const element = document.createElement("desk-progress") as DeskProgress;
+  const progress = createProgress(element, () => {});
+  const signals: AbortSignal[] = [];
+  const job = (page: string) =>
+    progress
+      .run(page, (signal: AbortSignal) => {
+        signals.push(signal);
+        return new Promise(() => {});
+      })
+      .catch((error) => error);
+  const pages = [job("Page 1"), job("Page 2"), job("Page 3")];
+  expect(element.detail).toBe("Page 3");
+  element.dispatchEvent(new Event("desk-cancel"));
+  for (const page of pages) expect(await page).toMatchObject({ name: "AbortError" });
+  expect(signals.every((signal) => signal.aborted)).toBe(true);
+  expect(element.hidden).toBe(true);
+});

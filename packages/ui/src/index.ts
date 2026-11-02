@@ -4,11 +4,15 @@ export {
   type ColorTokens,
   colors,
   cssVariables,
+  type MaterialTokens,
   MOTION_TOKENS,
+  material,
   propertyOf,
   type ScaleTokens,
   scale,
+  type TerminalTokens,
   type ThemeTokens,
+  terminal,
   tokens,
 } from "./tokens";
 export { tokensCss } from "./tokens-css";

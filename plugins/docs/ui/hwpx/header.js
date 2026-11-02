@@ -54,9 +54,9 @@ export function readHeader(doc) {
     const height = num(el, "height");
     if (height) out.size = pt(height / 100);
     const fg = color(attr(el, "textColor"));
-    if (fg && fg !== "#000000") out.color = fg;
+    if (fg && fg !== "#000000") out.color = fg; // theme: content
     const shade = color(attr(el, "shadeColor"));
-    if (shade && shade !== "#FFFFFF") out.highlight = shade;
+    if (shade && shade !== "#FFFFFF") out.highlight = shade; // theme: content
     if (kid(el, "bold")) out.bold = true;
     if (kid(el, "italic")) out.italic = true;
     const underline = attr(kid(el, "underline"), "type");
@@ -131,7 +131,7 @@ export function readHeader(doc) {
     const face = color(attr(find(el, "winBrush"), "faceColor"));
     fills.set(attr(el, "id") ?? "", {
       border: sides.some((t) => t && t !== "NONE"),
-      fill: face && face !== "#FFFFFF" ? face : undefined,
+      fill: face && face !== "#FFFFFF" ? face : undefined, // theme: content
     });
   }
   /** @type {Map<string, { name: string, para: string, char: string }>} */

@@ -1,7 +1,8 @@
 // Ruby gems: a plain tar holding metadata.gz (the Gem::Specification as YAML, shown as details)
 // and data.tar.gz (the gem's files).
+
+import { decode, decodedInput } from "@endue-ai/formats/codecs/index.js";
 import { text } from "../bytes.js";
-import { decode, decodedInput } from "../codecs/index.js";
 import { sliceSource } from "../source.js";
 import { row } from "./archive.js";
 import { openTar, openTarIn } from "./tar.js";

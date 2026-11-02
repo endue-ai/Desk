@@ -2,9 +2,9 @@
 
 The calls the web runtime (and every plugin through it) makes into the Rust core. JSON Schema 2020-12,
 one file per namespace: `bridge.schema.json` (envelope, errors, shared types), `fs`, `proc`, `net`, `plugins`,
-`store`, `init`, `brain`, `audio`, `ui`, `perm`, `cmd`, `settings`, `log`, `events`, `data`, `connector`,
-`view`, `catalog` and `shell`. Items, views and connectors are the types of `specs/item`, `specs/view` and
-`specs/connector` (ADR 0032). v0 may break on any minor release (ADR 0004).
+`store`, `search`, `init`, `brain`, `audio`, `ui`, `perm`, `cmd`, `settings`, `log`, `events`, `data`, `connector`,
+`view`, `catalog`, `shell`, `update` and `theme`. Items, views and connectors are the types of `specs/item`,
+`specs/view` and `specs/connector` (ADR 0032). v0 may break on any minor release (ADR 0004).
 
 ## Envelope
 
@@ -23,9 +23,16 @@ one call that asks by itself: without a grant that covers its scope, the core as
 scope, through `perm.prompt` as `perm.request` does, and runs the call once they allow it.
 
 Calls that touch only the caller's own data need no scope: `perm.request`, `perm.query`, `perm.revoke` of
-its own grants, `store.*`, `init.get`, `cmd.register`, `cmd.unregister`, `cmd.answer`, `settings.set`,
+its own grants, `store.*`, `search.replace`, `init.get`, `cmd.register`, `cmd.unregister`, `cmd.answer`, `settings.set`,
 `settings.get` and `settings.list` of its own keys, `log.write`, `events.unsubscribe` and
 `data.unsubscribe`. `catalog.get` needs none either: it shows only what the caller's grants already cover.
+
+## Search
+
+`search.replace` atomically publishes the installed caller's documents (500 / 4 MiB), persisted in
+the core. `search.query` needs `search:read`; disabled plugins' documents are excluded. `search.system`
+needs `search:system` and queries the OS index. `search.open` uses the same permission and accepts only
+a recent OS result id belonging to that caller (five-minute expiry), never a supplied path.
 
 ## Callers and events
 
@@ -37,8 +44,9 @@ its processes, `audio.wake` for its captures, `brain.turn` for its turns, `perm.
 `cmd.invoked` for the commands it provides, `cmd.answered` for the commands it invoked and
 `settings.changed` for its own keys and `data.changed` for its data subscriptions. `plugin.changed` goes to
 holders of `plugin:manage`, `perm.prompt` to holders of `perm:manage`, `connector.changed` to holders of
-`connector:manage`, `view.changed` to holders of `view:manage`, and `ui.notified`, `ui.surface.opened` and
-`ui.surface.closed` to the runtime, which shows the notification or mounts and unmounts the surface.
+`connector:manage`, `view.changed` to holders of `view:manage`, `update.changed` to holders of
+`update:manage`, and `ui.notified`, `ui.surface.opened` and `ui.surface.closed` to the runtime, which
+shows the notification or mounts and unmounts the surface.
 Everything else about other callers arrives only through `events.subscribe`.
 
 ## Methods
@@ -153,6 +161,20 @@ force, `problem` says why. Like the store, it needs no scope: callers see only t
 core keeps retrying, and `online` marks the reconnection before the answer continues. `error` ends a
 turn that failed, for example on a desk that became read-only because another desk took the
 session's lease. It needs `brain:converse`; each turn's events go only to the caller that said it.
+
+**brain.ask** asks the brain one question and returns a local `turnId` at once; the answer is the
+arguments the brain calls the caller's `tool` with (ADR 0059). `prompt` is everything the brain gets: the
+desk's conversation is neither sent nor written, because each ask opens a session of its own with its
+own lease, offers the tool with `toolChoice` naming it (`tools` in `specs/brain/v0`), and releases the
+lease once the turn ends. The core never runs the tool and never answers the call. The turn arrives as
+`brain.turn` events addressed to the caller only (`started`, `delta`, `completed`); `completed` carries
+`structured`, the tool call's arguments, when the brain called the tool with arguments that match its
+`schema`, and nothing when it answered in text instead (a brain that does not know tools). `schema` is
+a JSON Schema 2020-12 whose `type` is `object`; it may `$ref` the desk's specs by their `$id`, and one
+that does not compile is `invalid_params`. An unreachable brain gives the same `offline` turn as
+`brain.say`: the ask waits, retries and continues after `online`; a refusal is `error`. It needs
+`brain:ask`, which reaches no session of the desk's: `brain:converse` does not cover it, nor it
+`brain:converse`. A desk without a brain answers `unsupported`.
 
 **brain.agents.list** returns one page of the person's agents, newest first, as the brain contract's
 `listAgents` answers it (`AgentList` in `specs/brain/v0`, passed through): `spaceId` keeps the agents in
@@ -298,6 +320,62 @@ only shown, never opened or run, and a missing one is `not_found`. It needs a `s
 `schemes` hold the URL's scheme, or whose `paths` cover the path; a target the scope does not cover is
 `permission_denied` at once. Without a grant that covers the scope the core asks the person first (see
 Deny by default): a refusal is `permission_denied`, a caller that unloads first `cancelled`.
+
+**update.status**, **update.check**, **update.download** and **update.apply** drive the desk's own
+updates (ADR 0054). Each needs an `update:manage` scope, which the desk grants to the runtime and the
+CLI only, and each answers the same `UpdateStatus`: the `state`, the running build (`current`), the
+`channel` it follows, when the channel index was last read (`checkedAt`) and the build it chose
+(`release`, with `staged` once that build is verified on disk, and `received` and `total` bytes while it
+downloads). The desk reads its channel index by itself (30 s after start, then every four hours);
+`update.check` reads it now, also when `desk.update.check` is off. With `desk.update.auto` on (the
+default) a newer build downloads at once; otherwise the state stays `available` until
+`update.download`, which is `invalid_params` when nothing is available. `update.apply` checks the staged
+build's signature and sha256 again, installs it and restarts the desk; it is `invalid_params` when
+nothing is staged. `check`, `download` and `apply` answer at once; progress and outcomes arrive as
+`update.changed` with the whole status. A failed step leaves `state: failed` with a `reason`, and a
+staged build stays staged. A build that does not update itself (no updater key, a development build, the
+browser stub) answers `unsupported`.
+
+**theme.save**, **theme.import**, **theme.export** and **theme.remove** keep the person's own themes
+(ADR 0058). Each needs a `theme:manage` scope, which the desk grants to the runtime and the CLI only. A
+user theme is a theme plugin (`specs/plugin/v0/theme.schema.json`) in the desk's user themes folder
+(`<data>/themes/<id>/`), installed at start like any plugin but not built in, watched, and announced
+with `plugin.changed`. Which theme is in force stays with `desk.theme.active`: saving or importing one
+does not apply it. `theme.save` takes a manifest of kind `theme` whose id is inside `local.` and its
+font and image files inline (`files`, base64); with `copyFrom` the files the manifest names that `files`
+leaves out are copied from that installed theme's folder at the same paths, which is how a tuned copy
+of a built-in theme keeps its fonts. The folder is written beside the others, checked as a plugin folder
+(the schema, the assets and their limits), and only then put in place: when the check fails the answer
+is `invalid_params` with the problems and nothing changes. A save replaces an earlier user theme of
+the same id whole; an id a built-in or any other plugin holds is `already_exists`. `theme.import`
+installs a `.desk-theme` bundle (`ThemeBundle`: `format: "desk-theme/1"`, the `manifest`, and
+`files` by path, base64; 16 MiB at most) given inline (`bundle`), as a file (`path`), or by `url`:
+`https` only, downloaded by the core with no redirect to another host and refused unless its bytes
+match `sha256`. A bundle whose id is outside `local.` and `market.` lands as `local.<its name as a
+slug>`; the rest is as `theme.save`. `theme.export` makes a bundle of any installed theme, built-in
+ones too: with `inline: true` it is the answer, otherwise it is written to `path` or to
+`<Downloads>/<id>.desk-theme` (`<id>-2.desk-theme` and on when that is taken) and the answer is the
+file's absolute path. The same theme exports to the same bytes, and a bundle imported and exported
+again comes back byte for byte. `theme.remove` deletes a user theme's folder (`local.` and `market.`
+ids only; any other plugin is `invalid_params`, an id nothing holds `not_found`). A desk that keeps no
+user themes folder (the browser stub) answers `unsupported` to `theme.save`, `theme.import` and
+`theme.remove`.
+
+**theme.market.list** and **theme.market.fetch** read the theme markets (ADR 0060), under the same
+`theme:manage`. `theme.market.list` downloads every index the setting `desk.theme.markets` lists
+(`specs/plugin/v0/theme-index.schema.json`), over `https` from each index's own host, and merges their
+themes by id, the first market winning. Each theme comes with its entry (`url` made absolute against
+its index), the `market` that listed it, the version installed if any, and a `state`: `available`,
+`installed` (as the market publishes it now), `update` (installed from a market, unchanged since, and
+the market has other bytes now) or `edited` (installed but changed since, or brought in from a file).
+An index that cannot be read leaves its themes out and is named in `problems`. `theme.market.fetch`
+downloads a bundle to preview it: `https`, refused unless it matches `sha256`, checked as a theme plugin
+in a temporary folder that goes again, and answered as the bundle; nothing is installed. Installing is
+`theme.import` with `url`, `sha256` and `market`: beside a `market.` theme the core keeps where it came
+from (`<data>/themes/.market/<id>.json`: the market, the URL, the version, the sha256 and a hash of
+the folder as it landed). A later import of the same id by `url` replaces it only while its folder still
+has that hash; a theme the person changed is `already_exists` and stays. `theme.remove` forgets the
+record with the folder.
 
 ## Vectors
 

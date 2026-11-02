@@ -293,6 +293,8 @@ pub struct ProfileContribution {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum Permission {
+    SearchRead(SearchReadPermission),
+    SearchSystem(SearchSystemPermission),
     FsRead(FsReadPermission),
     FsWrite(FsWritePermission),
     ProcSpawn(ProcSpawnPermission),
@@ -302,6 +304,7 @@ pub enum Permission {
     UiNotify(UiNotifyPermission),
     PluginManage(PluginManagePermission),
     BrainConverse(BrainConversePermission),
+    BrainAsk(BrainAskPermission),
     CmdInvoke(CmdInvokePermission),
     CmdAdvise(CmdAdvisePermission),
     SettingsRead(SettingsReadPermission),
@@ -312,6 +315,22 @@ pub enum Permission {
     ConnectorManage(ConnectorManagePermission),
     ViewManage(ViewManagePermission),
     ShellOpen(ShellOpenPermission),
+    UpdateManage(UpdateManagePermission),
+    ThemeManage(ThemeManagePermission),
+}
+
+/// Search explicitly published plugin documents and installed plugin launchers.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SearchReadPermission {
+    pub permission: SearchReadPermissionPermission,
+}
+
+/// Query the OS file and application index and open a recent result with its default application.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SearchSystemPermission {
+    pub permission: SearchSystemPermissionPermission,
 }
 
 /// Read files, list folders and watch for changes under the given paths.
@@ -389,6 +408,13 @@ pub struct PluginManagePermission {
 #[serde(deny_unknown_fields)]
 pub struct BrainConversePermission {
     pub permission: BrainConversePermissionPermission,
+}
+
+/// Ask the brain one question with brain.ask and receive the answer as structured values through a tool, as brain.turn events for the caller only. Each ask runs in a session of its own: it neither reads nor writes the desk's conversation, which stays with brain:converse.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct BrainAskPermission {
+    pub permission: BrainAskPermissionPermission,
 }
 
 /// Invoke and list the commands whose ids the patterns cover, whoever provides them.
@@ -479,6 +505,20 @@ pub struct ShellOpenPermission {
     pub paths: Option<Vec<PathPattern>>,
 }
 
+/// See and drive the desk's own updates with update.*: the status, a check, a download, and applying a staged build, which restarts the desk. Receive update.changed. The desk grants it to the runtime and the CLI only; applying stays with the person.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct UpdateManagePermission {
+    pub permission: UpdateManagePermissionPermission,
+}
+
+/// Keep the person's own themes with theme.*: save a theme into the desk's user themes folder, import a .desk-theme bundle, export any installed theme as one, and remove a user theme. The desk grants it to the runtime and the CLI only.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ThemeManagePermission {
+    pub permission: ThemeManagePermissionPermission,
+}
+
 /// A URL scheme shell.open hands to the system: the browser for http and https, the mail app for mailto.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum ShellScheme {
@@ -523,6 +563,8 @@ pub enum EventName {
     SettingsChanged,
     #[serde(rename = "log.entry")]
     LogEntry,
+    #[serde(rename = "update.changed")]
+    UpdateChanged,
 }
 
 /// A plugin manifest (plugin.json).
@@ -559,6 +601,9 @@ pub struct PluginManifest {
     pub views: Option<Vec<ViewPath>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub connector: Option<ConnectorManifest>,
+    /// A theme plugin's theme: its layers and the font and image files it brings, relative to the plugin folder.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub theme: Option<ThemePackage>,
 }
 
 /// Reverse-domain style id with at least one dot, lowercase, for example endue.eris or example.hello-ui.
@@ -567,7 +612,7 @@ pub type PluginId = String;
 /// Semantic version, for example 0.1.0 or 1.2.3-beta.1.
 pub type Version = String;
 
-/// ui runs in a sandboxed iframe, logic in a Wasm instance, tool as an MCP server inside the VM. policy runs no code: it only contributes data (ADR 0017). connector brings an app's data in as items, as a Wasm component or an MCP server; view runs no code either: it is one or more views (ADR 0032).
+/// ui runs in a sandboxed iframe, logic in a Wasm instance, tool as an MCP server inside the VM. policy runs no code: it only contributes data (ADR 0017). library runs no code of its own either: it is files other plugins import, served at /<id>/... like any plugin's, never mounted and never turned off. connector brings an app's data in as items, as a Wasm component or an MCP server; view runs no code either: it is one or more views (ADR 0032). theme runs no code: it is a theme block and its font and image files, chosen with desk.theme.active (ADR 0056).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum PluginKind {
     #[serde(rename = "ui")]
@@ -578,10 +623,14 @@ pub enum PluginKind {
     Tool,
     #[serde(rename = "policy")]
     Policy,
+    #[serde(rename = "library")]
+    Library,
     #[serde(rename = "connector")]
     Connector,
     #[serde(rename = "view")]
     View,
+    #[serde(rename = "theme")]
+    Theme,
 }
 
 /// Path to the entry file, relative to the plugin folder, without .. segments.
@@ -620,6 +669,299 @@ pub enum SurfacePlacement {
     Overlay,
     #[serde(rename = "floating")]
     Floating,
+}
+
+/// One market's index.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ThemeIndex {
+    /// The index format and its version.
+    pub format: ThemeIndexFormat,
+    /// The market's themes, each id once; built-in themes are never in an index.
+    pub themes: Vec<ThemeIndexEntry>,
+}
+
+/// One theme of a market: its card and its bundle. The bundle's manifest has the same id, name and version.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ThemeIndexEntry {
+    /// The theme plugin's id: market.<name>.
+    pub id: String,
+    pub name: String,
+    pub version: Version,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    /// Who made it.
+    pub author: String,
+    /// An SPDX licence expression for the theme and its assets, for example CC0-1.0 or Apache-2.0.
+    pub license: String,
+    /// Words a gallery filters by.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tags: Option<Vec<String>>,
+    /// Up to five colours that stand for the theme on its card, the most telling first.
+    pub preview: Vec<ThemeColor>,
+    pub url: ThemeIndexUrl,
+    /// The sha256 of the bundle's bytes, lowercase hex: a download that differs is refused.
+    pub sha256: String,
+    /// The bundle's size in bytes, 16 MiB at most.
+    pub size: u64,
+}
+
+/// Where the theme's .desk-theme is: an https URL, or a path relative to the index's own URL without .. segments (paper-dusk.desk-theme), so a market moves by moving its folder.
+pub type ThemeIndexUrl = String;
+
+/// A theme: the layers every scheme shares (type, shape, motion) and one variant per scheme. At least one of light and dark; the desk's own theme stands in for a missing one.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ThemePackage {
+    /// Who made it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub author: Option<String>,
+    /// An SPDX licence expression for the theme and its assets, for example CC0-1.0 or OFL-1.1.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub license: Option<String>,
+    /// Words a gallery filters by, for example warm, paper or high-contrast.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tags: Option<Vec<String>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub origin: Option<ThemeOrigin>,
+    /// Up to five colours that stand for the theme on a gallery card, the most telling first. Taken from the variants when absent.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub preview: Option<Vec<ThemeColor>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub r#type: Option<ThemeType>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub shape: Option<ThemeShape>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub motion: Option<ThemeMotion>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub light: Option<ThemeVariant>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub dark: Option<ThemeVariant>,
+}
+
+/// A theme as one file, a .desk-theme: JSON, 16 MiB at most, holding the theme's plugin.json and the font and image files its theme block names, base64. theme.export writes one and theme.import reads one; the desk checks it as a theme plugin folder before it lands.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ThemeBundle {
+    /// The bundle format and its version.
+    pub format: ThemeBundleFormat,
+    /// The theme's plugin.json: a plugin of kind theme.
+    pub manifest: PluginManifest,
+    /// The theme's font and image files by their path in its folder, each base64. Only the paths its theme block names.
+    pub files: BTreeMap<String, ThemeAssetData>,
+}
+
+/// A theme's font (.woff2) or image (.png, .jpg, .jpeg or .webp) file relative to its folder, without .. segments.
+pub type ThemeAssetPath = String;
+
+/// One asset file's bytes in padded base64 (RFC 4648): 2 MiB of bytes at most.
+pub type ThemeAssetData = String;
+
+/// Where a theme came from: the sentence it was described with, and the theme it started from.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ThemeOrigin {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub prompt: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub base: Option<PluginId>,
+}
+
+/// One scheme's values: its palette (and high-contrast palette), material, backdrop and terminal colours.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ThemeVariant {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub colors: Option<ThemeColors>,
+    /// The palette's changes under high contrast. When absent the desk derives them from the palette, so the theme keeps its character at 7:1.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub contrast: Option<ThemeColors>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub material: Option<ThemeMaterial>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub backdrop: Option<ThemeBackdrop>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub terminal: Option<ThemeTerminal>,
+}
+
+/// Token name (camelCase, as in @endue-ai/ui: background, text, primary, chart1, the shell's and Eris's tokens) to a value. Missing roles keep the desk's.
+pub type ThemeColors = BTreeMap<String, ThemeValue>;
+
+/// A CSS value for one token: a colour, or a shadow for the shadow tokens. No url(), braces, semicolons or angle brackets.
+pub type ThemeValue = String;
+
+/// A CSS colour: #rgb, #rgba, #rrggbb, #rrggbbaa, rgb(), rgba(), hsl(), hsla() or oklch().
+pub type ThemeColor = String;
+
+/// What surfaces are made of: how opaque, how much they blur what is behind, grain, edge and elevation.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ThemeMaterial {
+    /// Surface opacity, 0.6 to 1 (default 1). Below 1 the backdrop shows through, blurred.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub opacity: Option<f64>,
+    /// Backdrop blur in px, 0 to 24 (default 0).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub blur: Option<u64>,
+    /// Grain over surfaces, 0 to 0.15 (default 0).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub noise: Option<f64>,
+    /// Border width in px, 0 to 2 (default 1).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub border: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub shadow: Option<ThemeShadow>,
+}
+
+/// Elevation: none, soft (the default) or strong. Shadow tokens in colors win.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum ThemeShadow {
+    #[serde(rename = "none")]
+    None,
+    #[serde(rename = "soft")]
+    Soft,
+    #[serde(rename = "strong")]
+    Strong,
+}
+
+/// What the desk shows behind its windows: a colour, a gradient or an image, and the glow at the top.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ThemeBackdrop {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub color: Option<ThemeColor>,
+    /// Two to four colours, drawn as a linear gradient at angle.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub gradient: Option<Vec<ThemeColor>>,
+    /// The gradient's angle in degrees (default 180).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub angle: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub image: Option<ThemeImagePath>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fit: Option<ThemeImageFit>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub glow: Option<ThemeColor>,
+}
+
+/// cover fills the desk with the image; tile repeats it at its own size.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum ThemeImageFit {
+    #[serde(rename = "cover")]
+    Cover,
+    #[serde(rename = "tile")]
+    Tile,
+}
+
+/// The terminal's sixteen ANSI colours, black to bright white.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ThemeTerminal {
+    pub ansi: Vec<ThemeColor>,
+}
+
+/// Typefaces and the type scale, shared by both schemes.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ThemeType {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sans: Option<ThemeFontStack>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub mono: Option<ThemeFontStack>,
+    /// Multiplies every text size, 0.85 to 1.25 (default 1).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub scale: Option<f64>,
+    /// Letter spacing of body text in em, -0.02 to 0.05 (default 0).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tracking: Option<f64>,
+    /// Font files the theme brings, loaded for the shell and every plugin page.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fonts: Option<Vec<ThemeFont>>,
+}
+
+/// A CSS font-family list, for example "Literata", Georgia, serif.
+pub type ThemeFontStack = String;
+
+/// One font file of the theme.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ThemeFont {
+    pub family: String,
+    pub src: ThemeFontPath,
+    /// A weight or a variable font's range, for example 400 or 200 900.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub weight: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub style: Option<ThemeFontStyle>,
+}
+
+/// normal or italic.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum ThemeFontStyle {
+    #[serde(rename = "normal")]
+    Normal,
+    #[serde(rename = "italic")]
+    Italic,
+}
+
+/// A .woff2 file relative to the plugin folder, without .. segments.
+pub type ThemeFontPath = String;
+
+/// A .png, .jpg, .jpeg or .webp file relative to the plugin folder, without .. segments.
+pub type ThemeImagePath = String;
+
+/// Corner and density presets, shared by both schemes.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ThemeShape {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub radius: Option<ThemeRadius>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub density: Option<ThemeDensity>,
+}
+
+/// none (square), subtle (2, 4, 6 px), soft (4, 8, 12 px, the default) or round (6, 12, 18 px) for the small, medium and large radius.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum ThemeRadius {
+    #[serde(rename = "none")]
+    None,
+    #[serde(rename = "subtle")]
+    Subtle,
+    #[serde(rename = "soft")]
+    Soft,
+    #[serde(rename = "round")]
+    Round,
+}
+
+/// Control heights: compact (24 to 44 px), comfortable (28 to 48 px, the default) or spacious (32 to 52 px).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum ThemeDensity {
+    #[serde(rename = "compact")]
+    Compact,
+    #[serde(rename = "comfortable")]
+    Comfortable,
+    #[serde(rename = "spacious")]
+    Spacious,
+}
+
+/// How things move, shared by both schemes. Reduced motion still stops everything.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ThemeMotion {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub personality: Option<ThemeMotionPersonality>,
+}
+
+/// snappy (short, sharp), smooth (the default) or calm (long, gentle).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum ThemeMotionPersonality {
+    #[serde(rename = "snappy")]
+    Snappy,
+    #[serde(rename = "smooth")]
+    Smooth,
+    #[serde(rename = "calm")]
+    Calm,
 }
 
 /// What an item is. record is any other shape, described by the JSON Schema it names.
@@ -1707,6 +2049,45 @@ pub struct BrainSayResult {
     pub turn_id: String,
 }
 
+/// Ask the brain one question and get the answer as structured values: the arguments it calls the caller's tool with.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct BrainAskRequest {
+    pub id: RequestId,
+    pub method: BrainAskRequestMethod,
+    pub params: BrainAskParams,
+}
+
+/// Parameters of brain.ask: what to ask and the tool whose arguments are the answer.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct BrainAskParams {
+    /// The question, with everything the brain needs to answer it. The desk's conversation is not sent.
+    pub prompt: String,
+    pub tool: BrainAskTool,
+    pub scope: BrainAskPermission,
+}
+
+/// The tool the brain must call to answer, a ToolDefinition of specs/brain/v0. The core never runs it: the arguments go back to the caller.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct BrainAskTool {
+    /// The tool's name, for example propose_theme.
+    pub name: String,
+    /// What the tool is for and when to call it, for the brain.
+    pub description: String,
+    /// A JSON Schema 2020-12 of the arguments. Its type is object; it may $ref the desk's own specs by their $id.
+    pub schema: serde_json::Map<String, serde_json::Value>,
+}
+
+/// Result of brain.ask: the answer arrives as brain.turn events with this id, for the caller only.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct BrainAskResult {
+    #[serde(rename = "turnId")]
+    pub turn_id: String,
+}
+
 /// List the person's agents one page at a time, as the brain's listAgents does.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -1864,7 +2245,7 @@ pub struct BrainStatusOffline {
     pub mode: BrainStatusOfflineMode,
 }
 
-/// Progress of a brain.say turn.
+/// Progress of a brain.say or brain.ask turn.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct BrainTurnEvent {
@@ -1872,7 +2253,7 @@ pub struct BrainTurnEvent {
     pub data: BrainTurnData,
 }
 
-/// Payload of brain.turn. delta carries answer text; error and offline carry a sentence for people.
+/// Payload of brain.turn. delta carries answer text; error and offline carry a sentence for people. A brain.ask turn's completed carries structured when the brain called the tool.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct BrainTurnData {
@@ -1881,6 +2262,9 @@ pub struct BrainTurnData {
     pub kind: BrainTurnKind,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub text: Option<String>,
+    /// brain.ask only, on completed: the arguments the brain called the tool with, checked against its schema. Absent when the brain answered in text instead.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub structured: Option<serde_json::Map<String, serde_json::Value>>,
 }
 
 /// started, delta (more text), completed; error (the turn failed, for example read-only after a takeover); offline (the brain is unreachable, the turn waits) and online (it resumed).
@@ -1922,6 +2306,10 @@ pub enum Encoding {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum BridgeRequest {
+    SearchReplace(SearchReplaceRequest),
+    SearchQuery(SearchQueryRequest),
+    SearchSystem(SearchSystemRequest),
+    SearchOpen(SearchOpenRequest),
     FsRead(FsReadRequest),
     FsWrite(FsWriteRequest),
     FsList(FsListRequest),
@@ -1948,6 +2336,7 @@ pub enum BridgeRequest {
     StoreSet(StoreSetRequest),
     InitGet(InitGetRequest),
     BrainSay(BrainSayRequest),
+    BrainAsk(BrainAskRequest),
     BrainAgentsList(BrainAgentsListRequest),
     BrainAgentsCard(BrainAgentsCardRequest),
     BrainSpacesList(BrainSpacesListRequest),
@@ -1979,6 +2368,16 @@ pub enum BridgeRequest {
     ViewRemove(ViewRemoveRequest),
     CatalogGet(CatalogGetRequest),
     ShellOpen(ShellOpenRequest),
+    UpdateStatus(UpdateStatusRequest),
+    UpdateCheck(UpdateCheckRequest),
+    UpdateDownload(UpdateDownloadRequest),
+    UpdateApply(UpdateApplyRequest),
+    ThemeSave(ThemeSaveRequest),
+    ThemeImport(ThemeImportRequest),
+    ThemeExport(ThemeExportRequest),
+    ThemeRemove(ThemeRemoveRequest),
+    ThemeMarketList(ThemeMarketListRequest),
+    ThemeMarketFetch(ThemeMarketFetchRequest),
 }
 
 /// The answer to one request: a result, or an error.
@@ -2042,7 +2441,7 @@ pub enum ErrorCode {
     Internal,
 }
 
-/// Something the core reports without being asked: file changes, process output, wake words, permission changes, notifications, surfaces, commands, settings, log entries, and changes to items, connectors and views.
+/// Something the core reports without being asked: file changes, process output, wake words, permission changes, notifications, surfaces, commands, settings, log entries, changes to items, connectors and views, and the desk's update status.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum BridgeEvent {
@@ -2065,6 +2464,7 @@ pub enum BridgeEvent {
     DataChanged(DataChangedEvent),
     ConnectorChanged(ConnectorChangedEvent),
     ViewChanged(ViewChangedEvent),
+    UpdateChanged(UpdateChangedEvent),
 }
 
 /// Describe what the caller can bind, show and run.
@@ -3556,6 +3956,131 @@ pub struct ProcExitData {
     pub signal: Option<Signal>,
 }
 
+/// A plugin explicitly publishes searchable text. command must belong to that plugin; args are sent only after the person opens the result. Do not publish secrets.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SearchDocument {
+    pub id: String,
+    pub title: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub detail: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub text: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub command: Option<CommandId>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub args: Option<serde_json::Map<String, serde_json::Value>>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SearchHit {
+    pub id: String,
+    pub title: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub detail: Option<String>,
+    pub kind: SearchKind,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub plugin: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub command: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub args: Option<serde_json::Map<String, serde_json::Value>>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum SearchKind {
+    #[serde(rename = "plugin")]
+    Plugin,
+    #[serde(rename = "document")]
+    Document,
+    #[serde(rename = "file")]
+    File,
+    #[serde(rename = "application")]
+    Application,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SearchReplaceParams {
+    pub documents: Vec<SearchDocument>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SearchReplaceResult {}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SearchReplaceRequest {
+    pub id: RequestId,
+    pub method: SearchReplaceRequestMethod,
+    pub params: SearchReplaceParams,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SearchQueryParams {
+    pub query: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub limit: Option<u64>,
+    pub scope: SearchReadPermission,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SearchQueryResult {
+    pub hits: Vec<SearchHit>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SearchQueryRequest {
+    pub id: RequestId,
+    pub method: SearchQueryRequestMethod,
+    pub params: SearchQueryParams,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SearchSystemParams {
+    pub query: String,
+    pub scope: SearchSystemPermission,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SearchSystemResult {
+    pub hits: Vec<SearchHit>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SearchSystemRequest {
+    pub id: RequestId,
+    pub method: SearchSystemRequestMethod,
+    pub params: SearchSystemParams,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SearchOpenParams {
+    pub id: String,
+    pub scope: SearchSystemPermission,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SearchOpenResult {}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SearchOpenRequest {
+    pub id: RequestId,
+    pub method: SearchOpenRequestMethod,
+    pub params: SearchOpenParams,
+}
+
 /// A key in its owner's namespace, lowercase and dotted: voice, motion.reduce.
 pub type SettingKey = String;
 
@@ -3732,6 +4257,227 @@ pub struct StoreSetParams {
 #[serde(deny_unknown_fields)]
 pub struct StoreSetResult {}
 
+/// One of the theme's font or image files, given inline.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ThemeSaveFile {
+    pub path: ThemeAssetPath,
+    pub base64: ThemeAssetData,
+}
+
+/// An https URL of a .desk-theme file. Plain http, and a redirect to another host, are refused.
+pub type ThemeBundleUrl = String;
+
+/// The sha256 of a file's bytes, lowercase hex.
+pub type ThemeSha256 = String;
+
+/// Save a theme as the person's own: write its folder in the user themes folder, check it as a theme plugin, then install it. It replaces an earlier user theme of the same id whole; when the check fails nothing is written and the earlier one stays. An id a built-in or any other plugin holds is already_exists.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ThemeSaveRequest {
+    pub id: RequestId,
+    pub method: ThemeSaveRequestMethod,
+    pub params: ThemeSaveParams,
+}
+
+/// Parameters of theme.save.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ThemeSaveParams {
+    /// The theme's plugin.json: kind theme, with an id inside local. (for example local.my-paper).
+    pub manifest: PluginManifest,
+    /// Font and image files the theme block names, each path once. With the ones copyFrom brings they are the theme folder's only files besides plugin.json.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub files: Option<Vec<ThemeSaveFile>>,
+    /// An installed theme (built-in, market or local) to copy files from: every font and backdrop image the saved theme block names that files does not give and that exists at the same path in that theme's folder. How a tuned copy keeps the fonts and images of the theme it started from. One that is not an installed theme is not_found.
+    #[serde(rename = "copyFrom", default, skip_serializing_if = "Option::is_none")]
+    pub copy_from: Option<PluginId>,
+    pub scope: ThemeManagePermission,
+}
+
+/// Result of theme.save: the theme as installed.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ThemeSaveResult {
+    pub plugin: PluginInfo,
+}
+
+/// Install a .desk-theme bundle as a user theme: given inline, read from a file, or downloaded over https and checked against its sha256 (a mismatch is invalid_params and nothing lands). A bundle whose id is outside local. and market. lands as local.<its name as a slug>. It is checked and replaces an earlier user theme of its id as theme.save does, except that a market. theme downloaded by url replaces an earlier one only while that one is still as its market published it (ADR 0060): one the person changed is already_exists and stays.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ThemeImportRequest {
+    pub id: RequestId,
+    pub method: ThemeImportRequestMethod,
+    pub params: ThemeImportParams,
+}
+
+/// Parameters of theme.import: exactly one of bundle, path and url, and sha256 with url (market only with url).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ThemeImportParams {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub bundle: Option<ThemeBundle>,
+    /// A .desk-theme file to read.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub path: Option<Path>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub url: Option<ThemeBundleUrl>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sha256: Option<ThemeSha256>,
+    /// With url, the market index that listed it: kept beside a market. theme with its version and sha256, so theme.market.list tells an update from the person's own changes.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub market: Option<ThemeMarketUrl>,
+    pub scope: ThemeManagePermission,
+}
+
+/// Result of theme.import: the theme as installed, under the id it landed with.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ThemeImportResult {
+    pub plugin: PluginInfo,
+}
+
+/// Make a .desk-theme bundle of any installed theme, built-in ones too: its plugin.json and the font and image files its theme block names. Returned with inline; otherwise written to path, or to <Downloads>/<id>.desk-theme (<id>-2.desk-theme and on when that is taken), and the file's path returned.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ThemeExportRequest {
+    pub id: RequestId,
+    pub method: ThemeExportRequestMethod,
+    pub params: ThemeExportParams,
+}
+
+/// Parameters of theme.export. inline: true takes no path.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ThemeExportParams {
+    pub theme: PluginId,
+    /// Where to write the bundle; an existing file there is replaced.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub path: Option<Path>,
+    /// Return the bundle instead of writing it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub inline: Option<bool>,
+    pub scope: ThemeManagePermission,
+}
+
+/// Result of theme.export: the bundle with inline, otherwise the file written.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ThemeExportResult {
+    /// The file written, as an absolute path.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub path: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub bundle: Option<ThemeBundle>,
+}
+
+/// Remove a user theme: its folder goes and plugin.changed says removed. Only themes in the user themes folder (local. and market. ids); any other plugin is invalid_params, an id nothing holds not_found. A removed theme that desk.theme.active names leaves the desk's own theme in force.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ThemeRemoveRequest {
+    pub id: RequestId,
+    pub method: ThemeRemoveRequestMethod,
+    pub params: ThemeRemoveParams,
+}
+
+/// Parameters of theme.remove.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ThemeRemoveParams {
+    pub theme: PluginId,
+    pub scope: ThemeManagePermission,
+}
+
+/// Result of theme.remove.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ThemeRemoveResult {}
+
+/// An https URL of a market index (specs/plugin ThemeIndex, desk-theme-index/1).
+pub type ThemeMarketUrl = String;
+
+/// Read every market index desk.theme.markets lists, in order, and merge their themes by id: the first market that lists an id wins. Each index is downloaded over https from its own host only; one that cannot be read or is not a valid index leaves its themes out and says why in problems. Each theme says whether this desk has it.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ThemeMarketListRequest {
+    pub id: RequestId,
+    pub method: ThemeMarketListRequestMethod,
+    pub params: ThemeMarketListParams,
+}
+
+/// Parameters of theme.market.list.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ThemeMarketListParams {
+    pub scope: ThemeManagePermission,
+}
+
+/// Result of theme.market.list: the merged themes in market order, and the markets that could not be read.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ThemeMarketListResult {
+    pub themes: Vec<ThemeMarketTheme>,
+    pub problems: Vec<ThemeMarketProblem>,
+}
+
+/// One theme a market offers: its index entry with url made absolute, the market that listed it, and how it stands on this desk.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ThemeMarketTheme {
+    pub theme: ThemeIndexEntry,
+    pub market: ThemeMarketUrl,
+    pub state: ThemeMarketState,
+    /// The version this desk has, when it has the theme.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub installed: Option<Version>,
+}
+
+/// available: not installed. installed: installed as the market publishes it now. update: installed from a market and unchanged since, and the market has other bytes now; installing it again replaces it. edited: installed but not as a market published it (changed since, or brought in from a file); an update never replaces it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum ThemeMarketState {
+    #[serde(rename = "available")]
+    Available,
+    #[serde(rename = "installed")]
+    Installed,
+    #[serde(rename = "update")]
+    Update,
+    #[serde(rename = "edited")]
+    Edited,
+}
+
+/// A market index that could not be read, and why.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ThemeMarketProblem {
+    pub market: String,
+    pub message: String,
+}
+
+/// Download a market theme to look at it before installing it: over https from the URL's host only, refused unless its bytes match sha256, and checked as a theme plugin in a temporary folder that goes again. Nothing is installed; the answer is the bundle, which the studio previews.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ThemeMarketFetchRequest {
+    pub id: RequestId,
+    pub method: ThemeMarketFetchRequestMethod,
+    pub params: ThemeMarketFetchParams,
+}
+
+/// Parameters of theme.market.fetch.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ThemeMarketFetchParams {
+    pub url: ThemeBundleUrl,
+    pub sha256: ThemeSha256,
+    pub scope: ThemeManagePermission,
+}
+
+/// Result of theme.market.fetch: the checked bundle.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ThemeMarketFetchResult {
+    pub bundle: ThemeBundle,
+}
+
 /// Open one of the surfaces the caller's manifest declares; the runtime hears ui.surface.opened.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -3889,6 +4635,158 @@ pub struct UiSurfaceClosedData {
     pub surface: String,
 }
 
+/// Which channel index the desk follows: stable (tagged releases), beta (canary builds promoted after a clean run) or canary (every build of main).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum UpdateChannel {
+    #[serde(rename = "stable")]
+    Stable,
+    #[serde(rename = "beta")]
+    Beta,
+    #[serde(rename = "canary")]
+    Canary,
+}
+
+/// What the updater is doing. idle: nothing yet since the start. checking: reading the channel index. up-to-date: no newer build for this desk. available: a newer build was chosen and waits for update.download (desk.update.auto is off). downloading: its bytes are on the way. staged: verified and kept on disk, ready for update.apply. applying: installing it; the desk restarts. failed: the last step failed (reason says why); a staged build stays staged.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum UpdateState {
+    #[serde(rename = "idle")]
+    Idle,
+    #[serde(rename = "checking")]
+    Checking,
+    #[serde(rename = "up-to-date")]
+    UpToDate,
+    #[serde(rename = "available")]
+    Available,
+    #[serde(rename = "downloading")]
+    Downloading,
+    #[serde(rename = "staged")]
+    Staged,
+    #[serde(rename = "applying")]
+    Applying,
+    #[serde(rename = "failed")]
+    Failed,
+}
+
+/// A semantic version without a leading v: 0.2.0, 0.2.1-pre.48.
+pub type UpdateVersion = String;
+
+/// The git commit a build was made from, abbreviated or whole.
+pub type UpdateCommit = String;
+
+/// The build that is running.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct UpdateBuild {
+    pub version: UpdateVersion,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub commit: Option<UpdateCommit>,
+}
+
+/// The build the desk chose to move to.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct UpdateRelease {
+    pub version: UpdateVersion,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub commit: Option<UpdateCommit>,
+    /// When it was published, RFC 3339.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub date: Option<String>,
+    /// Where its release notes are: the GitHub release, or the commit for a pre-release.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub notes: Option<String>,
+}
+
+/// The desk's update status, the answer of every update.* call and the data of update.changed.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct UpdateStatus {
+    pub state: UpdateState,
+    pub current: UpdateBuild,
+    pub channel: UpdateChannel,
+    /// When the channel index was last read successfully, RFC 3339. Absent before the first check.
+    #[serde(rename = "checkedAt", default, skip_serializing_if = "Option::is_none")]
+    pub checked_at: Option<String>,
+    /// The build chosen: present when available, downloading, staged and applying, and when a step for it failed.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub release: Option<UpdateRelease>,
+    /// Whether release is verified and kept on disk, so update.apply can install it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub staged: Option<bool>,
+    /// Bytes of release downloaded so far, while downloading.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub received: Option<u64>,
+    /// Bytes release takes, when known.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub total: Option<u64>,
+    /// Why the last step failed, for people. Present only when failed.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reason: Option<String>,
+}
+
+/// Parameters of every update.* call: the update:manage scope.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct UpdateParams {
+    pub scope: UpdateManagePermission,
+}
+
+/// Read the update status.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct UpdateStatusRequest {
+    pub id: RequestId,
+    pub method: UpdateStatusRequestMethod,
+    pub params: UpdateParams,
+}
+
+/// Result of update.status.
+pub type UpdateStatusResult = UpdateStatus;
+
+/// Read the channel index now, also when desk.update.check is off. Answers at once with state checking (or the state of a check already running); the outcome arrives as update.changed. With desk.update.auto on, a newer build starts downloading by itself.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct UpdateCheckRequest {
+    pub id: RequestId,
+    pub method: UpdateCheckRequestMethod,
+    pub params: UpdateParams,
+}
+
+/// Result of update.check.
+pub type UpdateCheckResult = UpdateStatus;
+
+/// Download the chosen build when the state is available. Answers at once with state downloading; invalid_params when no build is available. Progress and the outcome arrive as update.changed.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct UpdateDownloadRequest {
+    pub id: RequestId,
+    pub method: UpdateDownloadRequestMethod,
+    pub params: UpdateParams,
+}
+
+/// Result of update.download.
+pub type UpdateDownloadResult = UpdateStatus;
+
+/// Install the staged build and restart into it. Its signature and sha256 are checked again first. Answers at once with state applying; invalid_params when nothing is staged. A failure arrives as update.changed with state failed, and the build stays staged.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct UpdateApplyRequest {
+    pub id: RequestId,
+    pub method: UpdateApplyRequestMethod,
+    pub params: UpdateParams,
+}
+
+/// Result of update.apply.
+pub type UpdateApplyResult = UpdateStatus;
+
+/// The update status changed. Sent to holders of update:manage, and to callers subscribed to update.changed.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct UpdateChangedEvent {
+    pub event: UpdateChangedEventEvent,
+    pub data: UpdateStatus,
+}
+
 /// Where a view comes from: plugin, an enabled view plugin's inline view or one of its view files, read-only; file, the person's file in ~/.desk/views.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum ViewSource {
@@ -4031,6 +4929,22 @@ pub enum ViewChange {
     Removed,
 }
 
+/// The `permission` of [`SearchReadPermission`]: always `"search:read"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum SearchReadPermissionPermission {
+    #[default]
+    #[serde(rename = "search:read")]
+    SearchRead,
+}
+
+/// The `permission` of [`SearchSystemPermission`]: always `"search:system"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum SearchSystemPermissionPermission {
+    #[default]
+    #[serde(rename = "search:system")]
+    SearchSystem,
+}
+
 /// The `permission` of [`FsReadPermission`]: always `"fs:read"`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub enum FsReadPermissionPermission {
@@ -4101,6 +5015,14 @@ pub enum BrainConversePermissionPermission {
     #[default]
     #[serde(rename = "brain:converse")]
     BrainConverse,
+}
+
+/// The `permission` of [`BrainAskPermission`]: always `"brain:ask"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum BrainAskPermissionPermission {
+    #[default]
+    #[serde(rename = "brain:ask")]
+    BrainAsk,
 }
 
 /// The `permission` of [`CmdInvokePermission`]: always `"cmd:invoke"`.
@@ -4181,6 +5103,38 @@ pub enum ShellOpenPermissionPermission {
     #[default]
     #[serde(rename = "shell:open")]
     ShellOpen,
+}
+
+/// The `permission` of [`UpdateManagePermission`]: always `"update:manage"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum UpdateManagePermissionPermission {
+    #[default]
+    #[serde(rename = "update:manage")]
+    UpdateManage,
+}
+
+/// The `permission` of [`ThemeManagePermission`]: always `"theme:manage"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum ThemeManagePermissionPermission {
+    #[default]
+    #[serde(rename = "theme:manage")]
+    ThemeManage,
+}
+
+/// The `format` of [`ThemeIndex`]: always `"desk-theme-index/1"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum ThemeIndexFormat {
+    #[default]
+    #[serde(rename = "desk-theme-index/1")]
+    DeskThemeIndex1,
+}
+
+/// The `format` of [`ThemeBundle`]: always `"desk-theme/1"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum ThemeBundleFormat {
+    #[default]
+    #[serde(rename = "desk-theme/1")]
+    DeskTheme1,
 }
 
 /// The `kind` of [`EventItem`]: always `"event"`.
@@ -4333,6 +5287,14 @@ pub enum BrainSayRequestMethod {
     #[default]
     #[serde(rename = "brain.say")]
     BrainSay,
+}
+
+/// The `method` of [`BrainAskRequest`]: always `"brain.ask"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum BrainAskRequestMethod {
+    #[default]
+    #[serde(rename = "brain.ask")]
+    BrainAsk,
 }
 
 /// The `method` of [`BrainAgentsListRequest`]: always `"brain.agents.list"`.
@@ -4791,6 +5753,38 @@ pub enum ProcExitEventEvent {
     ProcExit,
 }
 
+/// The `method` of [`SearchReplaceRequest`]: always `"search.replace"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum SearchReplaceRequestMethod {
+    #[default]
+    #[serde(rename = "search.replace")]
+    SearchReplace,
+}
+
+/// The `method` of [`SearchQueryRequest`]: always `"search.query"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum SearchQueryRequestMethod {
+    #[default]
+    #[serde(rename = "search.query")]
+    SearchQuery,
+}
+
+/// The `method` of [`SearchSystemRequest`]: always `"search.system"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum SearchSystemRequestMethod {
+    #[default]
+    #[serde(rename = "search.system")]
+    SearchSystem,
+}
+
+/// The `method` of [`SearchOpenRequest`]: always `"search.open"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum SearchOpenRequestMethod {
+    #[default]
+    #[serde(rename = "search.open")]
+    SearchOpen,
+}
+
 /// The `method` of [`SettingsGetRequest`]: always `"settings.get"`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub enum SettingsGetRequestMethod {
@@ -4847,6 +5841,54 @@ pub enum StoreSetRequestMethod {
     StoreSet,
 }
 
+/// The `method` of [`ThemeSaveRequest`]: always `"theme.save"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum ThemeSaveRequestMethod {
+    #[default]
+    #[serde(rename = "theme.save")]
+    ThemeSave,
+}
+
+/// The `method` of [`ThemeImportRequest`]: always `"theme.import"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum ThemeImportRequestMethod {
+    #[default]
+    #[serde(rename = "theme.import")]
+    ThemeImport,
+}
+
+/// The `method` of [`ThemeExportRequest`]: always `"theme.export"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum ThemeExportRequestMethod {
+    #[default]
+    #[serde(rename = "theme.export")]
+    ThemeExport,
+}
+
+/// The `method` of [`ThemeRemoveRequest`]: always `"theme.remove"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum ThemeRemoveRequestMethod {
+    #[default]
+    #[serde(rename = "theme.remove")]
+    ThemeRemove,
+}
+
+/// The `method` of [`ThemeMarketListRequest`]: always `"theme.market.list"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum ThemeMarketListRequestMethod {
+    #[default]
+    #[serde(rename = "theme.market.list")]
+    ThemeMarketList,
+}
+
+/// The `method` of [`ThemeMarketFetchRequest`]: always `"theme.market.fetch"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum ThemeMarketFetchRequestMethod {
+    #[default]
+    #[serde(rename = "theme.market.fetch")]
+    ThemeMarketFetch,
+}
+
 /// The `method` of [`UiSurfaceOpenRequest`]: always `"ui.surface.open"`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub enum UiSurfaceOpenRequestMethod {
@@ -4893,6 +5935,46 @@ pub enum UiSurfaceClosedEventEvent {
     #[default]
     #[serde(rename = "ui.surface.closed")]
     UiSurfaceClosed,
+}
+
+/// The `method` of [`UpdateStatusRequest`]: always `"update.status"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum UpdateStatusRequestMethod {
+    #[default]
+    #[serde(rename = "update.status")]
+    UpdateStatus,
+}
+
+/// The `method` of [`UpdateCheckRequest`]: always `"update.check"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum UpdateCheckRequestMethod {
+    #[default]
+    #[serde(rename = "update.check")]
+    UpdateCheck,
+}
+
+/// The `method` of [`UpdateDownloadRequest`]: always `"update.download"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum UpdateDownloadRequestMethod {
+    #[default]
+    #[serde(rename = "update.download")]
+    UpdateDownload,
+}
+
+/// The `method` of [`UpdateApplyRequest`]: always `"update.apply"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum UpdateApplyRequestMethod {
+    #[default]
+    #[serde(rename = "update.apply")]
+    UpdateApply,
+}
+
+/// The `event` of [`UpdateChangedEvent`]: always `"update.changed"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum UpdateChangedEventEvent {
+    #[default]
+    #[serde(rename = "update.changed")]
+    UpdateChanged,
 }
 
 /// The `method` of [`ViewListRequest`]: always `"view.list"`.
@@ -4991,6 +6073,14 @@ pub const SCHEMAS: &[(&str, &str)] = &[
         include_str!("../../../specs/plugin/v0/plugin.schema.json"),
     ),
     (
+        "https://endue.ai/specs/plugin/v0/theme-index.schema.json",
+        include_str!("../../../specs/plugin/v0/theme-index.schema.json"),
+    ),
+    (
+        "https://endue.ai/specs/plugin/v0/theme.schema.json",
+        include_str!("../../../specs/plugin/v0/theme.schema.json"),
+    ),
+    (
         "https://endue.ai/specs/item/v0/item.schema.json",
         include_str!("../../../specs/item/v0/item.schema.json"),
     ),
@@ -5071,6 +6161,10 @@ pub const SCHEMAS: &[(&str, &str)] = &[
         include_str!("../../../specs/bridge/v0/proc.schema.json"),
     ),
     (
+        "https://endue.ai/specs/bridge/v0/search.schema.json",
+        include_str!("../../../specs/bridge/v0/search.schema.json"),
+    ),
+    (
         "https://endue.ai/specs/bridge/v0/settings.schema.json",
         include_str!("../../../specs/bridge/v0/settings.schema.json"),
     ),
@@ -5083,8 +6177,16 @@ pub const SCHEMAS: &[(&str, &str)] = &[
         include_str!("../../../specs/bridge/v0/store.schema.json"),
     ),
     (
+        "https://endue.ai/specs/bridge/v0/theme.schema.json",
+        include_str!("../../../specs/bridge/v0/theme.schema.json"),
+    ),
+    (
         "https://endue.ai/specs/bridge/v0/ui.schema.json",
         include_str!("../../../specs/bridge/v0/ui.schema.json"),
+    ),
+    (
+        "https://endue.ai/specs/bridge/v0/update.schema.json",
+        include_str!("../../../specs/bridge/v0/update.schema.json"),
     ),
     (
         "https://endue.ai/specs/bridge/v0/view.schema.json",

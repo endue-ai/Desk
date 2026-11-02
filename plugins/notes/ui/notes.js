@@ -58,6 +58,31 @@ const requested = (/** @type {unknown} */ args) => {
 export function createNotes({ bridge, commands }, view) {
   /** Open notes by the buffer the desk named them with. @type {Map<string, Note>} */
   const notes = new Map();
+  // Only notes opened by the person enter global search, never arbitrary files or private settings.
+  let publishing = Promise.resolve();
+  const publish = () => {
+    const documents = [...notes.values()].slice(-30).map((note) => ({
+      id: note.path,
+      title: note.name,
+      detail: note.path,
+      text: note.text.slice(0, 16384),
+      command: "endue.notes.search-open",
+      args: { path: note.path },
+    }));
+    publishing = publishing
+      .then(() => bridge.call("search.replace", { documents }))
+      .then(
+        () => {},
+        () => {},
+      );
+  };
+  commands.on("endue.notes.search-open", (args) => {
+    const { path } = requested(args);
+    if (!path) throw new Error("Choose a note to open");
+    const note = [...notes.values()].find((n) => n.path === path);
+    if (note) return commands.run("desk.buffers.switch", { id: note.buffer });
+    return commands.run("desk.files.open", { path });
+  });
   /** Watch id -> the buffer it follows. @type {Map<string, string>} */
   const watches = new Map();
   /** The buffer on screen. @type {string | null} */
@@ -93,6 +118,7 @@ export function createNotes({ bridge, commands }, view) {
     const note = notes.get(buffer);
     if (note?.watchId) watches.delete(note.watchId);
     notes.delete(buffer);
+    publish();
   };
 
   /**
@@ -184,6 +210,7 @@ export function createNotes({ bridge, commands }, view) {
     /** @type {Note} */
     const note = { buffer, path, name: nameOf(path), text, modified: false, reported: false };
     notes.set(buffer, note);
+    publish();
     present(buffer);
     await watch(note);
   });
@@ -208,6 +235,7 @@ export function createNotes({ bridge, commands }, view) {
     const { buffer, path: asked } = requested(args);
     const note = held(buffer);
     note.text = await read(asked ?? note.path);
+    publish();
     note.modified = false;
     note.reported = false;
     if (shown === buffer) render();
@@ -250,6 +278,7 @@ export function createNotes({ bridge, commands }, view) {
       render();
     }
     report(note);
+    publish();
   };
 
   return { edit };

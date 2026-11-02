@@ -1,15 +1,10 @@
-/* The desk's design tokens (@endue-ai/ui). Frames do not inherit the desk's, so they are declared
-   here; the runtime redefines them for the theme in force. The paper colours are the reader's. */
+/* Every colour, font, size, radius and duration of the reader is the theme's: the desk's tokens
+   come from /_desk/tokens.css and the runtime redefines them for the theme in force. The paper and
+   the marks on it are the document's: a page is white in every theme, so its find marks are too. */
 :root {
-  --desk-background: #141416;
-  --desk-card: #1e1d21;
-  --desk-border: #333136;
-  --desk-text: #f2f0f5;
-  --desk-text-muted: #b0adb7;
-  --desk-accent: #b6a3f5;
-  --reader-paper: #ffffff;
-  --reader-hit: rgb(255 200 0 / 0.45);
-  --reader-hit-current: rgb(255 120 0 / 0.6);
+  --reader-paper: #ffffff; /* theme: content */
+  --reader-hit: rgb(255 200 0 / 0.45); /* theme: content */
+  --reader-hit-current: rgb(255 120 0 / 0.6); /* theme: content */
 }
 
 html,
@@ -24,7 +19,7 @@ body {
   margin: 0;
   background: var(--desk-card);
   color: var(--desk-text);
-  font: 13px/1.5 -apple-system, "SUIT", "Inter", system-ui, sans-serif;
+  font: calc(var(--desk-text-sm) - 1px)/1.5 var(--desk-font-sans);
 }
 
 header {
@@ -44,7 +39,7 @@ header {
 h1 {
   margin: 0;
   overflow: hidden;
-  font-size: 14px;
+  font-size: var(--desk-text-sm);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -58,7 +53,7 @@ h1 {
 
 #detail {
   overflow: hidden;
-  font-size: 12px;
+  font-size: var(--desk-text-xs);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -89,13 +84,13 @@ button {
   min-height: 24px;
   padding: 1px 8px;
   border: 1px solid var(--desk-border);
-  border-radius: 6px;
+  border-radius: var(--desk-radius-md);
   background: transparent;
   cursor: pointer;
 }
 
 button:hover:not(:disabled) {
-  border-color: var(--desk-accent);
+  border-color: var(--desk-ring);
 }
 
 button:disabled {
@@ -105,15 +100,15 @@ button:disabled {
 
 button[aria-expanded="true"],
 [role="tab"][aria-selected="true"] {
-  border-color: var(--desk-accent);
-  background: color-mix(in srgb, var(--desk-accent) 18%, transparent);
+  border-color: var(--desk-ring);
+  background: color-mix(in srgb, var(--desk-primary) 18%, transparent);
 }
 
 input,
 textarea {
   box-sizing: border-box;
   border: 1px solid var(--desk-border);
-  border-radius: 6px;
+  border-radius: var(--desk-radius-md);
   background: var(--desk-background);
 }
 
@@ -133,7 +128,7 @@ textarea {
 }
 
 :focus-visible {
-  outline: 2px solid var(--desk-accent);
+  outline: 2px solid var(--desk-ring);
   outline-offset: 2px;
 }
 
@@ -194,7 +189,7 @@ textarea {
 
 #side li button:hover,
 #side li button:focus-visible {
-  border-color: var(--desk-accent);
+  border-color: var(--desk-ring);
 }
 
 #note-form {
@@ -227,7 +222,7 @@ textarea {
    ring is drawn inside it and quieter than a control's. */
 #doc:focus-visible {
   outline: none;
-  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--desk-accent) 45%, transparent);
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--desk-ring) 45%, transparent);
 }
 
 #empty,
@@ -266,7 +261,7 @@ textarea {
 
 #details h2 {
   margin: 0 0 4px;
-  font-size: 15px;
+  font-size: calc(var(--desk-text-sm) + 1px);
 }
 
 #details dl {
@@ -297,7 +292,7 @@ textarea {
   flex: none;
   overflow: hidden;
   background: var(--reader-paper);
-  box-shadow: 0 1px 4px rgb(0 0 0 / 0.45);
+  box-shadow: var(--desk-shadow-sm);
 }
 
 .page > canvas,
@@ -314,16 +309,30 @@ textarea {
   object-fit: contain;
 }
 
+/* A DjVu page's hidden text, for search and screen readers; the library's note on a page. */
+.page > .page-text {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: pre-wrap;
+}
+/* The library gives no word positions: the page holding the current match is outlined instead. */
+.page:has(> .page-text mark.current) { outline: 3px solid var(--reader-hit-current); outline-offset: 3px; }
+.page > .page-note { position: absolute; inset: auto 0 0; margin: 0; padding: 4px 8px; background: var(--desk-card); color: var(--desk-text); font-size: var(--desk-text-xs); }
+
+/* A page that could not be drawn holds the reader's sentence, not the document's paper. */
 .page[data-failed] {
   display: grid;
   place-items: center;
-  color: #6b6870;
+  background: var(--desk-card);
+  color: var(--desk-text-muted);
 }
 
 .textLayer mark.hit {
   background: var(--reader-hit);
   color: transparent;
-  border-radius: 2px;
+  border-radius: var(--desk-radius-sm);
 }
 
 .textLayer mark.hit.current {
@@ -331,12 +340,12 @@ textarea {
 }
 
 .page tspan.hit {
-  fill: #9a3d00;
+  fill: #9a3d00; /* theme: content */
   text-decoration: underline;
 }
 
 .page tspan.hit.current {
-  fill: #d24f00;
+  fill: #d24f00; /* theme: content */
 }
 
 #chapter {
@@ -361,7 +370,7 @@ textarea {
   margin: 0;
   padding: 2px 12px;
   border-top: 1px solid var(--desk-border);
-  font-size: 12px;
+  font-size: var(--desk-text-xs);
 }
 
 [hidden] {

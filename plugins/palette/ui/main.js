@@ -6,6 +6,7 @@
 import { CommandFailed, defineUiPlugin } from "@endue-ai/plugin-sdk";
 import { filter, remember } from "./match.js";
 import { actionOf, createAsker, rows, searchItems } from "./providers.js";
+import { createSearch, openSearchHit, searchEntry } from "./search.js";
 
 const OWN = new Set([
   "desk.palette.open",
@@ -31,6 +32,24 @@ defineUiPlugin({
     let selected = 0;
     let history = [];
     let max = 50;
+    let pluginHits = [];
+    let systemHits = [];
+    let choosing = false;
+    const native = ctx.pluginId === "palette";
+    const status = $("status");
+    const search = createSearch(
+      ctx.bridge,
+      (source, hits) => {
+        const entries = hits.map(searchEntry);
+        if (source === "plugins") pluginHits = entries;
+        else systemHits = entries;
+        render();
+      },
+      (text) => {
+        status.textContent = text;
+      },
+    );
+    if (native) document.body.classList.add("native");
     const asker = createAsker(
       (command, query) => ctx.commands.run(command, query),
       () => {
@@ -102,6 +121,10 @@ defineUiPlugin({
         entries.unshift({ id: typed, label: `Use “${typed}”`, detail: "typed" });
       }
       shown = rows(entries, mode?.kind === "commands" ? asker.groups() : []);
+      if (mode?.kind === "commands") {
+        const plugins = rows(pluginHits, []);
+        shown = typed ? [...plugins, ...shown, ...rows(systemHits, [])] : [...shown, ...plugins];
+      }
       selected = Math.min(selected, Math.max(0, shown.length - 1));
       const children = [];
       /** The group the last result went into, by provider. */
@@ -141,8 +164,15 @@ defineUiPlugin({
       input.placeholder = next.placeholder ?? "";
       input.value = next.query ?? "";
       selected = 0;
+      pluginHits = [];
+      systemHits = [];
+      status.textContent = "";
+      search.cancel();
       render();
-      if (next.kind === "commands") asker.ask(input.value);
+      if (next.kind === "commands") {
+        asker.ask(input.value);
+        search.query(input.value);
+      }
       ctx.surface.show();
       input.focus();
     };
@@ -151,6 +181,7 @@ defineUiPlugin({
       const was = mode;
       mode = null;
       asker.reset([]);
+      search.cancel();
       ctx.surface.hide();
       return was;
     };
@@ -174,37 +205,63 @@ defineUiPlugin({
         .catch(() => {});
     };
 
-    /** Run the selected row: a command, a pick, or a result's first action (its second with mod). */
-    const choose = (mod = false) => {
+    /** Run a command, published document, OS hit, or provider action. */
+    const choose = async (mod = false) => {
       const row = shown[selected];
-      if (!row) return;
-      const was = close();
-      if (row.type === "result") {
-        const action = actionOf(row.result, mod);
-        if (action) {
-          void ctx.commands
-            .run(action.command, action.args ?? {})
-            .catch((error) => report(action.title ?? action.command, error));
-        }
+      if (!row || choosing || !mode) return;
+      const entry = row.entry;
+      if (mode.kind === "pick") {
+        close()?.resolve(entry.id);
         return;
       }
-      const { entry } = row;
-      if (was?.kind === "pick") was.resolve(entry.id);
-      if (was?.kind === "commands") {
-        history = remember(history, entry.id, max);
-        void ctx.bridge.call("store.set", { key: "history", value: history }).catch(() => {});
-        void ctx.commands.run(entry.id).catch((error) => report(entry.label ?? entry.id, error));
+      choosing = true;
+      const was = mode;
+      const action = row.type === "result" ? actionOf(row.result, mod) : null;
+      const label = action?.title ?? entry?.label ?? "Search result";
+      try {
+        if (entry?.hit) {
+          await openSearchHit(ctx, entry.hit);
+          if (native && entry.hit.plugin)
+            window.parent.postMessage({ type: "desk:palette-activated" }, "*");
+          if (mode === was) close();
+        } else {
+          if (!native) close();
+          else window.parent.postMessage({ type: "desk:palette-command" }, "*");
+          await ctx.commands.run(action?.command ?? entry.id, action?.args ?? {});
+          if (native && mode === was) close();
+          if (!action) {
+            history = remember(history, entry.id, max);
+            void ctx.bridge.call("store.set", { key: "history", value: history }).catch(() => {});
+          }
+        }
+      } catch (error) {
+        if (native || entry?.hit) {
+          if (!mode) show(was);
+          status.textContent = error instanceof Error ? error.message : String(error);
+        } else report(label, error);
+      } finally {
+        choosing = false;
       }
     };
 
     const cancel = () => close()?.cancel?.();
 
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) {
+        search.cancel();
+        asker.reset([]);
+      }
+    });
     input.addEventListener("input", () => {
       selected = 0;
-      if (mode?.kind === "commands") asker.ask(input.value);
+      if (mode?.kind === "commands") {
+        asker.ask(input.value);
+        search.query(input.value);
+      }
       render();
     });
     input.addEventListener("keydown", (event) => {
+      if (event.isComposing) return;
       const moves = { ArrowDown: 1, ArrowUp: -1 };
       if (event.key in moves && shown.length > 0) {
         selected = (selected + moves[event.key] + shown.length) % shown.length;
@@ -239,8 +296,8 @@ defineUiPlugin({
       const hidden = new Set([...OWN, ...asked.map((p) => p.command)]);
       show({
         kind: "commands",
-        title: "Run a command",
-        placeholder: "Type a command or search",
+        title: "Search Desk",
+        placeholder: "Search plugins, data, files and applications",
         query: args?.query ?? "",
         providers: asked,
         entries: commands

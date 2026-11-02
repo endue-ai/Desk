@@ -1,8 +1,9 @@
 // xar, and the flat macOS installer packages built on it: a header, a zlib-compressed XML table of
 // contents, then the heap where each file's data sits (gzip as xar names zlib, bzip2, or stored).
+
+import { collect, decode, decodeStream } from "@endue-ai/formats/codecs/index.js";
+import { inputFrom } from "@endue-ai/formats/codecs/input.js";
 import { at, fromBase64, u16be, u64be, utf8 } from "../bytes.js";
-import { collect, decode, decodeStream } from "../codecs/index.js";
-import { inputFrom } from "../codecs/input.js";
 import { sliceSource } from "../source.js";
 import { cleanPath, row, withFolders } from "./archive.js";
 import { child, children, parseXml, textOf } from "./xml.js";

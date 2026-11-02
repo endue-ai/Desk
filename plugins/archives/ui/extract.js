@@ -1,7 +1,7 @@
 // Extraction: the selection or everything, to a folder the person picks in the palette, after
 // perm.request for fs:write on it. Names that would land outside are refused and listed, an existing
-// file asks once for the run (overwrite, skip or stop), a progress line counts files and bytes, and
-// stop() ends the run between files.
+// file asks once for the run (overwrite, skip or stop), the progress element counts files and bytes,
+// and stop() (its Cancel, or Escape) ends the run between files and stops the entry being read.
 import { formatSize, toBase64 } from "./bytes.js";
 import { codeOf, folderOf, scopeUnder } from "./files.js";
 import { safeTarget } from "./safety.js";
@@ -11,12 +11,20 @@ import { safeTarget } from "./safety.js";
  * @typedef {import("./formats/archive.js").Entry} Entry
  * @typedef {import("@endue-ai/plugin-sdk").PluginContext} PluginContext
  * @typedef {ReturnType<typeof import("./files.js").createFiles>} Files
+ * @typedef {ReturnType<typeof import("./jobs.js").createJobs>} Jobs
  */
 
-/** The most one file may hold: fs.write carries it whole, as base64. */
-export const WRITE_LIMIT = 512 * 1024 * 1024;
+/** The most one entry may hold to be read whole into memory (an archive opened one level down). */
+export const MEMORY_LIMIT = 512 * 1024 * 1024;
+/**
+ * The most one extracted file may hold: fs.write carries it whole, as base64, and in the desk's
+ * webview a write of 64 MiB takes seconds while one of 128 MiB never reaches the core.
+ */
+export const EXTRACT_LIMIT = 64 * 1024 * 1024;
 
 const STOP = Symbol("stop");
+const aborted = (/** @type {unknown} */ error) =>
+  /** @type {{ name?: string } | null} */ (error)?.name === "AbortError";
 const plural = (/** @type {number} */ n, /** @type {string} */ word) =>
   `${n} ${word}${n === 1 ? "" : "s"}`;
 
@@ -29,7 +37,7 @@ export function stem(name) {
 /**
  * @param {Pick<PluginContext, "bridge" | "commands">} ctx
  * @param {Files} files
- * @param {{ say(text: string): void, progress(text: string): void }} out
+ * @param {{ say(text: string): void, changed(): void, jobs: Jobs }} out
  */
 export function createExtractor({ bridge, commands }, files, out) {
   let stopping = false;
@@ -74,6 +82,8 @@ export function createExtractor({ bridge, commands }, files, out) {
     const links = [];
     /** @type {string[]} */
     const unread = [];
+    /** @type {string[]} */
+    const large = [];
     for (const entry of chosen) {
       const safe = safeTarget(
         target,
@@ -83,7 +93,8 @@ export function createExtractor({ bridge, commands }, files, out) {
       if ("refused" in safe) refused.push(entry.path);
       else if (entry.encrypted) locked.push(entry.path);
       else if (entry.kind === "link") links.push(entry.path);
-      else if (entry.refusal || entry.size > WRITE_LIMIT) unread.push(entry.path);
+      else if (entry.refusal) unread.push(entry.path);
+      else if (entry.size > EXTRACT_LIMIT) large.push(entry.path);
       else plan.push({ entry, path: safe.path });
     }
     const total = plan.reduce((n, p) => n + Math.max(0, p.entry.size), 0);
@@ -119,8 +130,12 @@ export function createExtractor({ bridge, commands }, files, out) {
         set.has(path.slice(folder.length + 1)),
       );
     };
-    const line = () =>
-      `Extracting ${done} of ${plural(plan.length, "file")}, ${formatSize(bytes)} of ${formatSize(total)}`;
+    const counts = () =>
+      `${done} of ${plural(plan.length, "file")}, ${formatSize(bytes)} of ${formatSize(total)}`;
+    /** @type {import("./jobs.js").Running["report"]} */
+    let report = () => {};
+    const tell = () =>
+      total > 0 ? report(bytes, total, counts()) : report(done, plan.length, counts());
 
     /** @param {{ entry: Entry, path: string }} item @param {Uint8Array} data */
     const put = async (item, data) => {
@@ -162,34 +177,49 @@ export function createExtractor({ bridge, commands }, files, out) {
       }
       done++;
       bytes += data.length;
-      out.progress(line());
+      tell();
       if (stopping) throw STOP;
     };
 
     running = true;
     stopping = false;
+    out.changed();
     out.say(`Extracting ${plural(plan.length, "file")} to ${target}.`);
-    out.progress(line());
     /** @type {string} */
     let ending;
     try {
-      const byEntry = new Map(plan.map((p) => [p.entry, p]));
-      if (archive.each)
-        await archive.each(
-          plan.map((p) => p.entry),
-          (entry, data) => put(/** @type {any} */ (byEntry.get(entry)), data),
-        );
-      else for (const item of plan) await put(item, await archive.read(item.entry));
+      await out.jobs.run(
+        `Extracting ${what.name}`,
+        counts(),
+        async (job) => {
+          report = job.report;
+          tell();
+          const read = { signal: job.signal };
+          const byEntry = new Map(plan.map((p) => [p.entry, p]));
+          if (archive.each)
+            await archive.each(
+              plan.map((p) => p.entry),
+              (entry, data) => put(/** @type {any} */ (byEntry.get(entry)), data),
+              read,
+            );
+          else
+            for (const item of plan) {
+              if (stopping) throw STOP;
+              await put(item, await archive.read(item.entry, undefined, read));
+            }
+        },
+        { cancel: () => stop() },
+      );
       ending = `Extracted ${plural(done, "file")} (${formatSize(bytes)}) to ${target}.`;
     } catch (error) {
       ending =
-        error === STOP
+        error === STOP || (stopping && aborted(error))
           ? `Stopped after ${done} of ${plural(plan.length, "file")}.`
           : `${error instanceof Error ? error.message : String(error)} Stopped after ${done} of ${plural(plan.length, "file")}.`;
     } finally {
       running = false;
       stopping = false;
-      out.progress("");
+      out.changed();
     }
     if (skipped) ending += ` Skipped ${skipped} that already existed.`;
     if (refused.length)
@@ -197,14 +227,18 @@ export function createExtractor({ bridge, commands }, files, out) {
     if (locked.length) ending += ` Encrypted, not extracted: ${locked.join(", ")}.`;
     if (links.length) ending += ` Links are not created: ${links.join(", ")}.`;
     if (unread.length) ending += ` Not readable here: ${unread.join(", ")}.`;
+    if (large.length)
+      ending += ` Larger than ${formatSize(EXTRACT_LIMIT)}, which the desk cannot write in one piece yet: ${large.join(", ")}.`;
     out.say(ending);
+  };
+
+  const stop = () => {
+    if (running) stopping = true;
   };
 
   return {
     extract,
-    stop() {
-      if (running) stopping = true;
-    },
+    stop,
     get running() {
       return running;
     },

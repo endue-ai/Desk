@@ -23,6 +23,13 @@ export interface DrawerItem {
 }
 
 export type RailId = "brain" | "sees" | "tasks" | "attention" | "desks" | "vm" | "listen";
+
+/** Something that needs the person, in the rail; `action` is a button that runs a command. */
+export interface AttentionItem {
+  id: string;
+  text: string;
+  action?: { label: string; command: string };
+}
 export type Popover = RailId | "drawer" | "mode-menu" | "agents-more" | null;
 
 export interface DeskState {
@@ -50,7 +57,7 @@ export interface DeskState {
   drawer: DrawerItem[];
   /** Plugin surfaces the runtime handed to the shell's windows (ADR 0040), in mount order. */
   adopted: { id: string; title: string }[];
-  attention: { id: string; text: string }[];
+  attention: AttentionItem[];
   desks: { id: string; name: string; busy: boolean; here: boolean }[];
   brain: BrainStatus;
   sees: { folders: string[]; calendar: boolean; mail: boolean; mic: boolean };

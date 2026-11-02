@@ -9,9 +9,10 @@ animations use an injected clock (ADR 0013). Shell decisions not in the brief: `
 - `createRuntime({ root, bridge, clock?, storage?, platform?, language?, plugins?, themeRoot?, views?, windows?, pickFile? })`
   returns `Runtime`: `ready`, `openSurface`, `closeSurface`, `moveSurface`, `focusSurface`, `layout()`,
   `status()`, `shortcuts`, `commands`, `settings`, `preferences`, `settingsWindow`, `keymap`, `buffers`,
-  `profiles`, `policy()`, `notify(notice)`, `theme()`, `onQuit`, `keep(name, part)`, `plugins`, `dispose()`.
+  `profiles`, `policy()`, `notify(notice)`, `theme()`, `themes` (installed, active, preview, apply,
+  resolve; ADR 0056), `onQuit`, `keep(name, part)`, `plugins`, `dispose()`.
 - Core: `desk.settings.open` (`Mod+,`) and `desk.settings.keyboard`; settings, keys and the durable
-  `preferences` store work without plugins (ADR 0053). `settingsWindow.open(section?)`.
+  `preferences` store work without plugins (ADR 0055). `settingsWindow.open(section?)`.
 - `PluginHost`: mounts UI plugins, relays calls as their caller, reloads on `plugin.changed`, carries
   commands and keys, shares themes (ADR 0012, 0014); `Owners` routes events to their owner or manage
   holders and holds events arriving before a call's answer. A shown overlay goes on top.

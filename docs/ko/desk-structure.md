@@ -251,11 +251,11 @@ desk/
 │   ├── security.yml         # PR: cargo deny · cargo audit · pnpm audit · gitleaks · dependency-review. CodeQL 은 main 과 주 1회
 │   ├── plugin-validate.yml  # plugins/* · examples/* 변경 때만 (desk plugin validate)
 │   ├── labeler.yml          # 경로 기준 자동 라벨 (area:* · size:*)
-│   ├── canary.yml           # main 마다: 3 OS 빌드 → 서명 → 설치 스모크 → canary 채널 게시 (signing 환경, 사람 없음)
-│   ├── promote.yml          # 주 1회: 최신 canary 가 3일간 스모크 실패 · 새 크래시 없으면 beta 로 자동 승격
-│   ├── release-please.yml   # Conventional Commits → release PR (버전 · CHANGELOG). 사람이 병합 = stable 결정
-│   ├── release.yml          # 태그 v*: 3 OS 빌드 → 서명 · 공증 → 설치 스모크 → updater 매니페스트 → GitHub Release (stable 환경)
-│   ├── rollback.yml         # 수동 실행: 채널 매니페스트를 직전 빌드로 되돌림 (사람만)
+│   ├── release-build.yml    # canary · release 가 부름: 4 target 빌드 → updater 서명 · 공증 → 정규 이름 (ADR 0054)
+│   ├── canary.yml           # main 마다: 빌드 → R2 업로드 → canary 인덱스, 2주 지난 canary 정리 (signing 환경, 사람 없음)
+│   ├── promote.yml          # 주 1회 · 수동: 3일 넘게 canary 에 있던 가장 새 판을 beta 인덱스에 (재빌드 없음)
+│   ├── release.yml          # 태그 v*: 빌드 → R2 → stable 인덱스 → GitHub Release(노트, 바이너리 없음) (stable 환경)
+│   ├── rollback.yml         # 수동 실행: 한 채널 인덱스에서 한 판을 내림 (사람만, 롤포워드로 고침)
 │   └── nightly.yml          # 전체 매트릭스 · 로컬 모델 적합성 · 성능 예산. 실패는 ai:ready 이슈로
 ├── ISSUE_TEMPLATE/
 │   ├── bug_report.yml       # 폼: 재현 · 기대 · OS · 버전 · 로그
@@ -287,8 +287,8 @@ desk/
 저장소 설정 (파일이 아닌 것)
 
 - main 보호: 필수 체크 ci · scope-check · review(코드 변경 때), 스쿼시 병합만, 선형 히스토리. 작업 PR 은 사람 승인 1명 필수이고, 그 한 번이 승인 또는 거절입니다
-- 환경 둘: `signing`(main 과 태그에서만 쓰는 서명 키 · updater 개인키, 사람 승인 없음) · `stable`(태그 v* 게시 단계만). AI 토큰은 둘 다 접근 불가
-- 태그 보호: v* 태그는 release PR 병합으로만 생깁니다. AI 토큰에는 contents:write 가 없습니다
+- 환경 둘: `signing`(main 과 태그에서만 쓰는 서명 키 · updater 개인키 · R2 쓰기 토큰, 사람 승인 없음) · `stable`(태그 v* 게시 단계만, 사람 승인, 같은 키와 토큰). AI 토큰은 둘 다 접근 불가. 배포 원본은 Cloudflare R2 이고 GitHub Release 는 노트의 자리입니다(ADR 0054)
+- 태그 보호: v* 태그는 유지보수자만 만듭니다. AI 토큰에는 contents:write 가 없습니다
 - Secret scanning 과 push protection, Dependabot alerts 켬
 - Discussions 켬: Q&A · 아이디어 · 플러그인 쇼케이스
 - 포크에서 온 PR 에는 secrets 를 주지 않음 (`pull_request` 이벤트만 사용). 검토 AI 도 저장소 안 브랜치에만 돔
@@ -357,7 +357,7 @@ docs/qa/                          # TESTING.md (어떤 변경에 어떤 테스�
  게이트(CI, Linux 15분) ──▶ 검토 AI (다른 세션) ──▶ [사람] 승인 / 거절(한 줄 이유) ──┘
                                                       │ 승인 = 병합
                                                       ▼
- main ──▶ canary (자동) ──▶ beta (3일 깨끗하면 자동) ──▶ [사람] stable = release PR 병합 ──▶ 문제면 rollback (사람)
+ main ──▶ canary (자동) ──▶ beta (3일 지나면 주 1회) ──▶ [사람] stable = 태그 v* ──▶ 문제면 rollback (사람)
 
  사람이 손대는 곳: 요구사항 입력 · PR 승인/거절 · stable 결정 (+ 롤백). 예산을 넘긴 루프만 ai:needs-human 으로 사람을 부른다.
 ```
@@ -366,12 +366,12 @@ docs/qa/                          # TESTING.md (어떤 변경에 어떤 테스�
 
 | 누가 | 하는 일 | 드는 것 |
 | --- | --- | --- |
-| 사람 | 요구사항 한 칸 · PR 승인/거절(As-is/To-be 표를 보고) · stable 결정(release PR 병합) · 롤백 | 하루 몇 분 |
+| 사람 | 요구사항 한 칸 · PR 승인/거절(As-is/To-be 표를 보고) · stable 결정(태그 v*) · 롤백 | 하루 몇 분 |
 | 기획 AI | 요구사항을 계약으로: Scope(허용 경로) · 인수 테스트 · 명세 변경 여부 · 가정. 되돌리기 어려운 갈림길에서만 질문을 모아 처음에 한 번 묻고, 아니면 가정을 적고 진행 | 이슈당 1회 |
 | 저자 AI | 브랜치 `ai/<이슈>-<slug>` · 인수 테스트를 먼저 빨간 상태로 → 구현 → 초록 · codegen · 문서 · ADR 초안 · PR(As-is/To-be 표) | CI 3회 · 검토 2회 예산 |
 | 검토 AI | 저자와 다른 세션. 표와 diff 일치 · 계약 충족 · 테스트가 동작을 검증하는지 · 권한 안전 · 파일 크기. specs · 권한 · 워크플로 변경이면 강한 모델 | 코드 PR 마다 1회 |
 | 게이트 (CI) | scope-check · 정적 · 단위 · red-on-base · 계약 · 런타임 · (경로별) e2e · 크기 제한 | Linux 15분 |
-| 릴리스 | main → canary(자동) → beta(조건 충족 시 자동) → stable(사람이 release PR 병합). 실패는 자동 중단, 되돌리기는 사람 |  |
+| 릴리스 | main → canary(자동) → beta(3일 뒤 주 1회) → stable(사람이 태그). 실패는 자동 중단, 되돌리기는 사람 | R2, 데스크가 스스로 받는다 |
 
 사이클
 
@@ -381,9 +381,9 @@ docs/qa/                          # TESTING.md (어떤 변경에 어떤 테스�
 4. 게이트는 15분 안에 끝납니다. PR 은 Linux 중심이고, 3 OS 와 앱 e2e 는 경로가 걸릴 때와 main 에서 돕니다.
 5. 검토 AI 가 다른 세션에서 봅니다. 수정 요청은 저자가 처리하고, 두 번 왕복해도 안 맞으면 멈추고 `ai:needs-human` 을 달습니다. 저자의 CI 재시도는 세 번까지입니다.
 6. 사람이 PR 을 봅니다. 읽는 건 As-is/To-be 표와 스크린샷, 누르는 건 승인 또는 거절입니다. 거절에는 한 줄 이유를 적고, 저자 AI 가 같은 PR 에서 고칩니다.
-7. 병합되면 canary 가 자동으로 빌드 · 서명 · 스모크 · 게시됩니다. 스모크가 실패하면 게시하지 않고 `ai:ready` 이슈가 생깁니다.
-8. beta 승격은 자동입니다. 최신 canary 가 3일간 스모크 실패와 새 크래시 서명이 없으면 주 1회 올라갑니다.
-9. stable 은 사람의 결정 하나입니다. release-please 가 연 release PR 을 병합하면 태그 · 빌드 · 서명 · 스모크 · 게시가 이어집니다. 문제가 보이면 rollback 으로 직전 빌드로 되돌립니다.
+7. 병합되면 canary 가 자동으로 빌드 · 서명 · 게시됩니다(R2, ADR 0054). canary 를 따르는 데스크는 받아 두었다가 사람이 "Restart to update" 를 누를 때 올라갑니다. 설치 스모크는 e2e 워크플로가 맡고, 3 OS 업데이트 스모크는 다음 단계입니다.
+8. beta 승격은 주 1회입니다. 3일 넘게 canary 에 있던 가장 새 판이 beta 인덱스에 오릅니다. 새 크래시 조건(ADR 0007)은 크래시 리포트가 생기면 더합니다.
+9. stable 은 사람의 결정 하나입니다. 유지보수자가 태그 v* 를 만들면 빌드 · 서명 · 게시 · GitHub Release 가 이어지고, 게시 단계는 `stable` 환경 승인을 기다립니다. 문제가 보이면 rollback 으로 그 판을 인덱스에서 내리고, 고친 판을 위로 냅니다.
 10. 되돌림 경로: 게이트 · 검토 실패와 거절은 저자에게, 스모크 · 야간 · 크래시 실패는 `ai:ready` 이슈로. 모두 예산 안에서만 돌고 넘으면 사람을 부릅니다.
 
 PR 의 모양

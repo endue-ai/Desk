@@ -133,7 +133,25 @@ function body(ctx: ShellCtx, id: RailId, s: DeskState): Child[] {
           ),
         );
     case "attention":
-      return s.attention.map((a) => row(h("span", { class: "dot dot-attention" }), a.text));
+      // An item with an action (the update's Restart to update) gets its button under its row, as
+      // the other popovers place theirs.
+      return s.attention.flatMap((a) => {
+        const item = row(h("span", { class: "dot dot-attention" }), a.text);
+        const action = a.action;
+        if (!action) return [item];
+        const run = () => void ctx.runtime.commands.run(action.command).catch(() => {});
+        const button = h(
+          "button",
+          {
+            class: "btn btn-outline pop-action",
+            type: "button",
+            "data-key": `attention-${a.id}`,
+            onClick: run,
+          },
+          action.label,
+        );
+        return [item, button];
+      });
     case "desks":
       return [
         ...s.desks.map((d) =>

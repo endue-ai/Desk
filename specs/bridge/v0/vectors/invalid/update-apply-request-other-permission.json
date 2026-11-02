@@ -1,0 +1,13 @@
+{
+  "target": "BridgeRequest",
+  "description": "plugin:manage is not the scope update.apply needs",
+  "instance": {
+    "id": 43,
+    "method": "update.apply",
+    "params": {
+      "scope": {
+        "permission": "plugin:manage"
+      }
+    }
+  }
+}

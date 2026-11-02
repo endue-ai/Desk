@@ -1,0 +1,13 @@
+{
+  "target": "UpdateStatus",
+  "description": "the status has no field beyond the ones it names",
+  "instance": {
+    "state": "idle",
+    "current": {
+      "version": "0.1.0",
+      "commit": "fa7a4af"
+    },
+    "channel": "stable",
+    "eta": 30
+  }
+}

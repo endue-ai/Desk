@@ -1,0 +1,10 @@
+{
+  "target": "PluginManifest",
+  "description": "a library is imported, never run, so it has no entry",
+  "instance": {
+    "id": "endue.formats",
+    "version": "0.1.0",
+    "kind": "library",
+    "entry": "lib/index.js"
+  }
+}

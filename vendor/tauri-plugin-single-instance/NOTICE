@@ -5,9 +5,10 @@ Copyright 2019-2023 Tauri Programme within The Commons Conservancy.
 Licensed under Apache-2.0 OR MIT; upstream license texts are included unchanged.
 
 Local changes: Linux uses the maintained zbus 6 async API with explicit connection/runtime cleanup.
-The published Windows/macOS implementations and public API/features are preserved.
+The published Windows implementation and public API/features are preserved.
+macOS binds its socket during setup before scheduling the async listener, preventing a startup race.
 A disconnected owner during forwarding permits one new election without replaying the call.
 Private D-Bus integration checks exercise delivery, owner exit, errors and resource lifetime.
-Package metadata, manifest dependencies, documentation and Linux tests are adapted for this workspace.
+Package metadata, manifest dependencies, documentation and platform tests are adapted for this workspace.
 Remove this local copy when an official Tauri 2 compatible release uses maintained zbus and passes
 these same delivery/lifetime checks. No RustSec advisory suppression is used.

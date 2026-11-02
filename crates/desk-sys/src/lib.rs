@@ -14,5 +14,7 @@ pub mod fs;
 pub mod net;
 #[cfg(feature = "proc")]
 pub mod proc;
+
+pub mod search;
 #[cfg(feature = "shell")]
 pub mod shell;

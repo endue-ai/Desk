@@ -1,8 +1,12 @@
 // The archives plugin: every archive, package and disk image in one browser, with a preview and safe
-// extraction. It uses only the public SDK and bridge API, exactly as a community plugin would.
-import { defineUiPlugin } from "@endue-ai/plugin-sdk";
+// extraction. It uses only the public SDK and bridge API, exactly as a community plugin would; RAR,
+// disk images, DMGs, SquashFS, WIM and 7z come from the library plugin endue.formats.
+import { byteSource, defineUiPlugin, startWorker } from "@endue-ai/plugin-sdk";
+import { defineElements } from "@endue-ai/ui";
 import { createArchives } from "./archives.js";
 import { createView } from "./view.js";
+
+defineElements();
 
 defineUiPlugin({
   mount(ctx) {
@@ -19,6 +23,6 @@ defineUiPlugin({
       extract: (which) => app?.extract(which),
       stop: () => app?.stop(),
     });
-    app = createArchives(ctx, view);
+    app = createArchives(ctx, view, { byteSource, startWorker });
   },
 });

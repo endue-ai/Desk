@@ -99,8 +99,12 @@ function unPredict(/** @type {Uint8Array} */ t) {
   return out;
 }
 
-/** @returns {Promise<import("./pixels.js").Pixels>} */
-export async function decodeExr(/** @type {Uint8Array} */ bytes) {
+/**
+ * @param {Uint8Array} bytes
+ * @param {{ progress?: (done: number, total: number) => void }} [options] rows decoded of all
+ * @returns {Promise<import("./pixels.js").Pixels>}
+ */
+export async function decodeExr(bytes, options = {}) {
   const r = reader(bytes);
   const flags = r.u32(4);
   if (flags & 0x200) fail("It is a tiled OpenEXR; Images reads scanline files.");
@@ -151,6 +155,9 @@ export async function decodeExr(/** @type {Uint8Array} */ bytes) {
   const float = new Float32Array(width * height * 4);
   for (let i = 3; i < float.length; i += 4) float[i] = 1;
   enough(bytes, end, chunks * 8);
+  // About a hundred reports over the file, and the last.
+  const every = Math.max(1, Math.floor(chunks / 100));
+  let done = 0;
   for (let c = 0; c < chunks; c++) {
     const offset = r.u64(end + c * 8);
     const y0 = r.i32(offset) - yMin;
@@ -185,6 +192,9 @@ export async function decodeExr(/** @type {Uint8Array} */ bytes) {
         at += channel.bytes * width;
       }
     }
+    done += rows;
+    if (options.progress && ((c + 1) % every === 0 || c === chunks - 1))
+      options.progress(Math.min(done, height), height);
   }
   const kinds = [...new Set(channels.map((c) => ["UINT", "HALF", "FLOAT"][c.type] ?? "?"))].join(
     ", ",

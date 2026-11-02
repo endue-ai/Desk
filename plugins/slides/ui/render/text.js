@@ -1,6 +1,7 @@
 // Text bodies as HTML: paragraphs with their alignment, margins, spacing and bullets, runs as spans
 // with size, weight, style, decoration, colour and font. Text is set with textContent only, so it
-// stays selectable and nothing from a file is ever parsed as HTML.
+// stays selectable and nothing from a file is ever parsed as HTML. A linked run is marked (links.js).
+import { markLink } from "./links.js";
 
 /**
  * @typedef {import("../deck.js").TextBody} TextBody
@@ -32,6 +33,8 @@ function span(doc, run) {
     s.fontSize = `${run.size * 0.7}px`;
   }
   if (run.highlight) s.backgroundColor = run.highlight;
+  const { link } = /** @type {Run & { link?: string }} */ (run);
+  if (link) markLink(el, link);
   return el;
 }
 

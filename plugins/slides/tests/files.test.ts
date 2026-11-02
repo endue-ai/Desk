@@ -15,11 +15,15 @@ const titles = (shown: unknown) => {
 };
 
 describe("the desk's file requests", () => {
-  it("visit reads the file as base64 from its folder, shows the deck and watches the file", async () => {
+  it("visit reads the file in ranges from its folder, shows the deck and watches the file", async () => {
     const { host, view, params } = await mount({ handlers: disk({ [A.path]: deckA }) });
     await expect(host.command("desk.files.visit", A)).resolves.toBeUndefined();
-    expect(host.calls.map((c) => c.method)).toEqual(["fs.read", "fs.watch"]);
-    expect(params("fs.read")).toEqual([{ path: A.path, encoding: "base64", scope: DECKS }]);
+    // Without fs.url (the test host has none), readBytes asks fs.read for the size, then the bytes.
+    expect(host.calls.map((c) => c.method)).toEqual(["fs.url", "fs.read", "fs.read", "fs.watch"]);
+    expect(params("fs.read")).toEqual([
+      { path: A.path, encoding: "base64", offset: 0, length: 0, scope: DECKS },
+      { path: A.path, encoding: "base64", offset: 0, length: deckA.length, scope: DECKS },
+    ]);
     expect(params("fs.watch")).toEqual([{ path: A.path, scope: DECKS }]);
     expect(view.shown.at(-1)).toMatchObject({
       ...A,
@@ -37,7 +41,7 @@ describe("the desk's file requests", () => {
     await host.command("desk.files.visit", A);
     files[A.path] = deckB;
     await expect(host.command("desk.files.revert", A)).resolves.toBeUndefined();
-    expect(params("fs.read")).toHaveLength(2);
+    expect(params("fs.read")).toHaveLength(4);
     expect(titles(view.shown.at(-1))).toEqual(["Beta", "Gamma"]);
   });
 
@@ -115,12 +119,13 @@ describe("files outside the grants", () => {
 
   it("a granted ask reads again", async () => {
     let reads = 0;
+    const files = disk({ [X.path]: deckA });
     const { host, view, params } = await mount({
       handlers: {
-        "fs.read": () => {
+        "fs.read": (params, caller) => {
           reads++;
           if (reads === 1) throw denied("fs:read over ~/Documents/x.pptx");
-          return { content: Buffer.from(deckA).toString("base64"), encoding: "base64" };
+          return files["fs.read"]?.(params, caller) as never;
         },
         "perm.request": ({ permission }) => ({
           granted: true,
@@ -135,8 +140,12 @@ describe("files outside the grants", () => {
       },
     });
     await expect(host.command("desk.files.visit", X)).resolves.toBeUndefined();
-    const read = { path: X.path, encoding: "base64", scope: DOCS };
-    expect(params("fs.read")).toEqual([read, read]);
+    const read = { path: X.path, encoding: "base64", offset: 0, scope: DOCS };
+    expect(params("fs.read")).toEqual([
+      { ...read, length: 0 },
+      { ...read, length: 0 },
+      { ...read, length: deckA.length },
+    ]);
     expect(params("perm.request")).toHaveLength(1);
     expect(titles(view.shown.at(-1))).toEqual(["Alpha"]);
   });

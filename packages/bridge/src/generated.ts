@@ -189,6 +189,8 @@ export interface ProfileContribution {
 
 /** One permission with its scope. Plugin manifests declare these; bridge calls carry the one that covers them. */
 export type Permission =
+  | SearchReadPermission
+  | SearchSystemPermission
   | FsReadPermission
   | FsWritePermission
   | ProcSpawnPermission
@@ -198,6 +200,7 @@ export type Permission =
   | UiNotifyPermission
   | PluginManagePermission
   | BrainConversePermission
+  | BrainAskPermission
   | CmdInvokePermission
   | CmdAdvisePermission
   | SettingsReadPermission
@@ -207,7 +210,19 @@ export type Permission =
   | DataReadPermission
   | ConnectorManagePermission
   | ViewManagePermission
-  | ShellOpenPermission;
+  | ShellOpenPermission
+  | UpdateManagePermission
+  | ThemeManagePermission;
+
+/** Search explicitly published plugin documents and installed plugin launchers. */
+export interface SearchReadPermission {
+  permission: "search:read";
+}
+
+/** Query the OS file and application index and open a recent result with its default application. */
+export interface SearchSystemPermission {
+  permission: "search:system";
+}
 
 /** Read files, list folders and watch for changes under the given paths. */
 export interface FsReadPermission {
@@ -264,6 +279,11 @@ export interface PluginManagePermission {
 /** Talk to the brain in the desk's session with brain.say, and receive brain.turn events. */
 export interface BrainConversePermission {
   permission: "brain:converse";
+}
+
+/** Ask the brain one question with brain.ask and receive the answer as structured values through a tool, as brain.turn events for the caller only. Each ask runs in a session of its own: it neither reads nor writes the desk's conversation, which stays with brain:converse. */
+export interface BrainAskPermission {
+  permission: "brain:ask";
 }
 
 /** Invoke and list the commands whose ids the patterns cover, whoever provides them. */
@@ -330,6 +350,16 @@ export interface ShellOpenPermission {
   paths?: PathPattern[];
 }
 
+/** See and drive the desk's own updates with update.*: the status, a check, a download, and applying a staged build, which restarts the desk. Receive update.changed. The desk grants it to the runtime and the CLI only; applying stays with the person. */
+export interface UpdateManagePermission {
+  permission: "update:manage";
+}
+
+/** Keep the person's own themes with theme.*: save a theme into the desk's user themes folder, import a .desk-theme bundle, export any installed theme as one, and remove a user theme. The desk grants it to the runtime and the CLI only. */
+export interface ThemeManagePermission {
+  permission: "theme:manage";
+}
+
 /** A URL scheme shell.open hands to the system: the browser for http and https, the mail app for mailto. */
 export type ShellScheme = "http" | "https" | "mailto";
 
@@ -358,7 +388,8 @@ export type EventName =
   | "cmd.changed"
   | "cmd.invoked"
   | "settings.changed"
-  | "log.entry";
+  | "log.entry"
+  | "update.changed";
 
 /** A plugin manifest (plugin.json). */
 export interface PluginManifest {
@@ -382,6 +413,8 @@ export interface PluginManifest {
   /** A view plugin's view files, one View each, relative to the plugin folder. */
   views?: ViewPath[];
   connector?: ConnectorManifest;
+  /** A theme plugin's theme: its layers and the font and image files it brings, relative to the plugin folder. */
+  theme?: ThemePackage;
 }
 
 /** Reverse-domain style id with at least one dot, lowercase, for example endue.eris or example.hello-ui. */
@@ -390,8 +423,16 @@ export type PluginId = string;
 /** Semantic version, for example 0.1.0 or 1.2.3-beta.1. */
 export type Version = string;
 
-/** ui runs in a sandboxed iframe, logic in a Wasm instance, tool as an MCP server inside the VM. policy runs no code: it only contributes data (ADR 0017). connector brings an app's data in as items, as a Wasm component or an MCP server; view runs no code either: it is one or more views (ADR 0032). */
-export type PluginKind = "ui" | "logic" | "tool" | "policy" | "connector" | "view";
+/** ui runs in a sandboxed iframe, logic in a Wasm instance, tool as an MCP server inside the VM. policy runs no code: it only contributes data (ADR 0017). library runs no code of its own either: it is files other plugins import, served at /<id>/... like any plugin's, never mounted and never turned off. connector brings an app's data in as items, as a Wasm component or an MCP server; view runs no code either: it is one or more views (ADR 0032). theme runs no code: it is a theme block and its font and image files, chosen with desk.theme.active (ADR 0056). */
+export type PluginKind =
+  | "ui"
+  | "logic"
+  | "tool"
+  | "policy"
+  | "library"
+  | "connector"
+  | "view"
+  | "theme";
 
 /** Path to the entry file, relative to the plugin folder, without .. segments. */
 export type EntryPath = string;
@@ -412,6 +453,187 @@ export interface Surface {
 
 /** Where the compositor puts the surface. */
 export type SurfacePlacement = "center" | "left" | "right" | "bottom" | "overlay" | "floating";
+
+/** One market's index. */
+export interface ThemeIndex {
+  /** The index format and its version. */
+  format: "desk-theme-index/1";
+  /** The market's themes, each id once; built-in themes are never in an index. */
+  themes: ThemeIndexEntry[];
+}
+
+/** One theme of a market: its card and its bundle. The bundle's manifest has the same id, name and version. */
+export interface ThemeIndexEntry {
+  /** The theme plugin's id: market.<name>. */
+  id: string;
+  name: string;
+  version: Version;
+  description?: string;
+  /** Who made it. */
+  author: string;
+  /** An SPDX licence expression for the theme and its assets, for example CC0-1.0 or Apache-2.0. */
+  license: string;
+  /** Words a gallery filters by. */
+  tags?: string[];
+  /** Up to five colours that stand for the theme on its card, the most telling first. */
+  preview: ThemeColor[];
+  url: ThemeIndexUrl;
+  /** The sha256 of the bundle's bytes, lowercase hex: a download that differs is refused. */
+  sha256: string;
+  /** The bundle's size in bytes, 16 MiB at most. */
+  size: number;
+}
+
+/** Where the theme's .desk-theme is: an https URL, or a path relative to the index's own URL without .. segments (paper-dusk.desk-theme), so a market moves by moving its folder. */
+export type ThemeIndexUrl = string;
+
+/** A theme: the layers every scheme shares (type, shape, motion) and one variant per scheme. At least one of light and dark; the desk's own theme stands in for a missing one. */
+export interface ThemePackage {
+  /** Who made it. */
+  author?: string;
+  /** An SPDX licence expression for the theme and its assets, for example CC0-1.0 or OFL-1.1. */
+  license?: string;
+  /** Words a gallery filters by, for example warm, paper or high-contrast. */
+  tags?: string[];
+  origin?: ThemeOrigin;
+  /** Up to five colours that stand for the theme on a gallery card, the most telling first. Taken from the variants when absent. */
+  preview?: ThemeColor[];
+  type?: ThemeType;
+  shape?: ThemeShape;
+  motion?: ThemeMotion;
+  light?: ThemeVariant;
+  dark?: ThemeVariant;
+}
+
+/** A theme as one file, a .desk-theme: JSON, 16 MiB at most, holding the theme's plugin.json and the font and image files its theme block names, base64. theme.export writes one and theme.import reads one; the desk checks it as a theme plugin folder before it lands. */
+export interface ThemeBundle {
+  /** The bundle format and its version. */
+  format: "desk-theme/1";
+  /** The theme's plugin.json: a plugin of kind theme. */
+  manifest: PluginManifest;
+  /** The theme's font and image files by their path in its folder, each base64. Only the paths its theme block names. */
+  files: Record<string, ThemeAssetData>;
+}
+
+/** A theme's font (.woff2) or image (.png, .jpg, .jpeg or .webp) file relative to its folder, without .. segments. */
+export type ThemeAssetPath = string;
+
+/** One asset file's bytes in padded base64 (RFC 4648): 2 MiB of bytes at most. */
+export type ThemeAssetData = string;
+
+/** Where a theme came from: the sentence it was described with, and the theme it started from. */
+export interface ThemeOrigin {
+  prompt?: string;
+  base?: PluginId;
+}
+
+/** One scheme's values: its palette (and high-contrast palette), material, backdrop and terminal colours. */
+export interface ThemeVariant {
+  colors?: ThemeColors;
+  /** The palette's changes under high contrast. When absent the desk derives them from the palette, so the theme keeps its character at 7:1. */
+  contrast?: ThemeColors;
+  material?: ThemeMaterial;
+  backdrop?: ThemeBackdrop;
+  terminal?: ThemeTerminal;
+}
+
+/** Token name (camelCase, as in @endue-ai/ui: background, text, primary, chart1, the shell's and Eris's tokens) to a value. Missing roles keep the desk's. */
+export type ThemeColors = Record<string, ThemeValue>;
+
+/** A CSS value for one token: a colour, or a shadow for the shadow tokens. No url(), braces, semicolons or angle brackets. */
+export type ThemeValue = string;
+
+/** A CSS colour: #rgb, #rgba, #rrggbb, #rrggbbaa, rgb(), rgba(), hsl(), hsla() or oklch(). */
+export type ThemeColor = string;
+
+/** What surfaces are made of: how opaque, how much they blur what is behind, grain, edge and elevation. */
+export interface ThemeMaterial {
+  /** Surface opacity, 0.6 to 1 (default 1). Below 1 the backdrop shows through, blurred. */
+  opacity?: number;
+  /** Backdrop blur in px, 0 to 24 (default 0). */
+  blur?: number;
+  /** Grain over surfaces, 0 to 0.15 (default 0). */
+  noise?: number;
+  /** Border width in px, 0 to 2 (default 1). */
+  border?: number;
+  shadow?: ThemeShadow;
+}
+
+/** Elevation: none, soft (the default) or strong. Shadow tokens in colors win. */
+export type ThemeShadow = "none" | "soft" | "strong";
+
+/** What the desk shows behind its windows: a colour, a gradient or an image, and the glow at the top. */
+export interface ThemeBackdrop {
+  color?: ThemeColor;
+  /** Two to four colours, drawn as a linear gradient at angle. */
+  gradient?: ThemeColor[];
+  /** The gradient's angle in degrees (default 180). */
+  angle?: number;
+  image?: ThemeImagePath;
+  fit?: ThemeImageFit;
+  glow?: ThemeColor;
+}
+
+/** cover fills the desk with the image; tile repeats it at its own size. */
+export type ThemeImageFit = "cover" | "tile";
+
+/** The terminal's sixteen ANSI colours, black to bright white. */
+export interface ThemeTerminal {
+  ansi: ThemeColor[];
+}
+
+/** Typefaces and the type scale, shared by both schemes. */
+export interface ThemeType {
+  sans?: ThemeFontStack;
+  mono?: ThemeFontStack;
+  /** Multiplies every text size, 0.85 to 1.25 (default 1). */
+  scale?: number;
+  /** Letter spacing of body text in em, -0.02 to 0.05 (default 0). */
+  tracking?: number;
+  /** Font files the theme brings, loaded for the shell and every plugin page. */
+  fonts?: ThemeFont[];
+}
+
+/** A CSS font-family list, for example "Literata", Georgia, serif. */
+export type ThemeFontStack = string;
+
+/** One font file of the theme. */
+export interface ThemeFont {
+  family: string;
+  src: ThemeFontPath;
+  /** A weight or a variable font's range, for example 400 or 200 900. */
+  weight?: string;
+  style?: ThemeFontStyle;
+}
+
+/** normal or italic. */
+export type ThemeFontStyle = "normal" | "italic";
+
+/** A .woff2 file relative to the plugin folder, without .. segments. */
+export type ThemeFontPath = string;
+
+/** A .png, .jpg, .jpeg or .webp file relative to the plugin folder, without .. segments. */
+export type ThemeImagePath = string;
+
+/** Corner and density presets, shared by both schemes. */
+export interface ThemeShape {
+  radius?: ThemeRadius;
+  density?: ThemeDensity;
+}
+
+/** none (square), subtle (2, 4, 6 px), soft (4, 8, 12 px, the default) or round (6, 12, 18 px) for the small, medium and large radius. */
+export type ThemeRadius = "none" | "subtle" | "soft" | "round";
+
+/** Control heights: compact (24 to 44 px), comfortable (28 to 48 px, the default) or spacious (32 to 52 px). */
+export type ThemeDensity = "compact" | "comfortable" | "spacious";
+
+/** How things move, shared by both schemes. Reduced motion still stops everything. */
+export interface ThemeMotion {
+  personality?: ThemeMotionPersonality;
+}
+
+/** snappy (short, sharp), smooth (the default) or calm (long, gentle). */
+export type ThemeMotionPersonality = "snappy" | "smooth" | "calm";
 
 /** What an item is. record is any other shape, described by the JSON Schema it names. */
 export type ItemKind =
@@ -1074,6 +1296,36 @@ export interface BrainSayResult {
   turnId: string;
 }
 
+/** Ask the brain one question and get the answer as structured values: the arguments it calls the caller's tool with. */
+export interface BrainAskRequest {
+  id: RequestId;
+  method: "brain.ask";
+  params: BrainAskParams;
+}
+
+/** Parameters of brain.ask: what to ask and the tool whose arguments are the answer. */
+export interface BrainAskParams {
+  /** The question, with everything the brain needs to answer it. The desk's conversation is not sent. */
+  prompt: string;
+  tool: BrainAskTool;
+  scope: BrainAskPermission;
+}
+
+/** The tool the brain must call to answer, a ToolDefinition of specs/brain/v0. The core never runs it: the arguments go back to the caller. */
+export interface BrainAskTool {
+  /** The tool's name, for example propose_theme. */
+  name: string;
+  /** What the tool is for and when to call it, for the brain. */
+  description: string;
+  /** A JSON Schema 2020-12 of the arguments. Its type is object; it may $ref the desk's own specs by their $id. */
+  schema: Record<string, unknown>;
+}
+
+/** Result of brain.ask: the answer arrives as brain.turn events with this id, for the caller only. */
+export interface BrainAskResult {
+  turnId: string;
+}
+
 /** List the person's agents one page at a time, as the brain's listAgents does. */
 export interface BrainAgentsListRequest {
   id: RequestId;
@@ -1185,17 +1437,19 @@ export interface BrainStatusOffline {
   mode: "offline";
 }
 
-/** Progress of a brain.say turn. */
+/** Progress of a brain.say or brain.ask turn. */
 export interface BrainTurnEvent {
   event: "brain.turn";
   data: BrainTurnData;
 }
 
-/** Payload of brain.turn. delta carries answer text; error and offline carry a sentence for people. */
+/** Payload of brain.turn. delta carries answer text; error and offline carry a sentence for people. A brain.ask turn's completed carries structured when the brain called the tool. */
 export interface BrainTurnData {
   turnId: string;
   kind: BrainTurnKind;
   text?: string;
+  /** brain.ask only, on completed: the arguments the brain called the tool with, checked against its schema. Absent when the brain answered in text instead. */
+  structured?: Record<string, unknown>;
 }
 
 /** started, delta (more text), completed; error (the turn failed, for example read-only after a takeover); offline (the brain is unreachable, the turn waits) and online (it resumed). */
@@ -1215,6 +1469,10 @@ export type Encoding = "utf8" | "base64";
 
 /** Any bridge call. The method field selects the params shape. */
 export type BridgeRequest =
+  | SearchReplaceRequest
+  | SearchQueryRequest
+  | SearchSystemRequest
+  | SearchOpenRequest
   | FsReadRequest
   | FsWriteRequest
   | FsListRequest
@@ -1241,6 +1499,7 @@ export type BridgeRequest =
   | StoreSetRequest
   | InitGetRequest
   | BrainSayRequest
+  | BrainAskRequest
   | BrainAgentsListRequest
   | BrainAgentsCardRequest
   | BrainSpacesListRequest
@@ -1271,7 +1530,17 @@ export type BridgeRequest =
   | ViewSaveRequest
   | ViewRemoveRequest
   | CatalogGetRequest
-  | ShellOpenRequest;
+  | ShellOpenRequest
+  | UpdateStatusRequest
+  | UpdateCheckRequest
+  | UpdateDownloadRequest
+  | UpdateApplyRequest
+  | ThemeSaveRequest
+  | ThemeImportRequest
+  | ThemeExportRequest
+  | ThemeRemoveRequest
+  | ThemeMarketListRequest
+  | ThemeMarketFetchRequest;
 
 /** The answer to one request: a result, or an error. */
 export type BridgeResponse = BridgeSuccess | BridgeFailure;
@@ -1311,7 +1580,7 @@ export type ErrorCode =
   | "unsupported"
   | "internal";
 
-/** Something the core reports without being asked: file changes, process output, wake words, permission changes, notifications, surfaces, commands, settings, log entries, and changes to items, connectors and views. */
+/** Something the core reports without being asked: file changes, process output, wake words, permission changes, notifications, surfaces, commands, settings, log entries, changes to items, connectors and views, and the desk's update status. */
 export type BridgeEvent =
   | FsChangedEvent
   | ProcOutputEvent
@@ -1331,7 +1600,8 @@ export type BridgeEvent =
   | LogEntryEvent
   | DataChangedEvent
   | ConnectorChangedEvent
-  | ViewChangedEvent;
+  | ViewChangedEvent
+  | UpdateChangedEvent;
 
 /** Describe what the caller can bind, show and run. */
 export interface CatalogGetRequest {
@@ -2322,6 +2592,84 @@ export interface ProcExitData {
   signal?: Signal;
 }
 
+/** A plugin explicitly publishes searchable text. command must belong to that plugin; args are sent only after the person opens the result. Do not publish secrets. */
+export interface SearchDocument {
+  id: string;
+  title: string;
+  detail?: string;
+  text?: string;
+  command?: CommandId;
+  args?: Record<string, unknown>;
+}
+
+export interface SearchHit {
+  id: string;
+  title: string;
+  detail?: string;
+  kind: SearchKind;
+  plugin?: string;
+  command?: string;
+  args?: Record<string, unknown>;
+}
+
+export type SearchKind = "plugin" | "document" | "file" | "application";
+
+export interface SearchReplaceParams {
+  documents: SearchDocument[];
+}
+
+export type SearchReplaceResult = Record<string, never>;
+
+export interface SearchReplaceRequest {
+  id: RequestId;
+  method: "search.replace";
+  params: SearchReplaceParams;
+}
+
+export interface SearchQueryParams {
+  query: string;
+  limit?: number;
+  scope: SearchReadPermission;
+}
+
+export interface SearchQueryResult {
+  hits: SearchHit[];
+}
+
+export interface SearchQueryRequest {
+  id: RequestId;
+  method: "search.query";
+  params: SearchQueryParams;
+}
+
+export interface SearchSystemParams {
+  query: string;
+  scope: SearchSystemPermission;
+}
+
+export interface SearchSystemResult {
+  hits: SearchHit[];
+}
+
+export interface SearchSystemRequest {
+  id: RequestId;
+  method: "search.system";
+  params: SearchSystemParams;
+}
+
+export interface SearchOpenParams {
+  id: string;
+  scope: SearchSystemPermission;
+}
+
+export type SearchOpenResult = Record<string, never>;
+
+export interface SearchOpenRequest {
+  id: RequestId;
+  method: "search.open";
+  params: SearchOpenParams;
+}
+
 /** A key in its owner's namespace, lowercase and dotted: voice, motion.reduce. */
 export type SettingKey = string;
 
@@ -2452,6 +2800,163 @@ export interface StoreSetParams {
 /** Result of store.set. */
 export type StoreSetResult = Record<string, never>;
 
+/** One of the theme's font or image files, given inline. */
+export interface ThemeSaveFile {
+  path: ThemeAssetPath;
+  base64: ThemeAssetData;
+}
+
+/** An https URL of a .desk-theme file. Plain http, and a redirect to another host, are refused. */
+export type ThemeBundleUrl = string;
+
+/** The sha256 of a file's bytes, lowercase hex. */
+export type ThemeSha256 = string;
+
+/** Save a theme as the person's own: write its folder in the user themes folder, check it as a theme plugin, then install it. It replaces an earlier user theme of the same id whole; when the check fails nothing is written and the earlier one stays. An id a built-in or any other plugin holds is already_exists. */
+export interface ThemeSaveRequest {
+  id: RequestId;
+  method: "theme.save";
+  params: ThemeSaveParams;
+}
+
+/** Parameters of theme.save. */
+export interface ThemeSaveParams {
+  /** The theme's plugin.json: kind theme, with an id inside local. (for example local.my-paper). */
+  manifest: PluginManifest;
+  /** Font and image files the theme block names, each path once. With the ones copyFrom brings they are the theme folder's only files besides plugin.json. */
+  files?: ThemeSaveFile[];
+  /** An installed theme (built-in, market or local) to copy files from: every font and backdrop image the saved theme block names that files does not give and that exists at the same path in that theme's folder. How a tuned copy keeps the fonts and images of the theme it started from. One that is not an installed theme is not_found. */
+  copyFrom?: PluginId;
+  scope: ThemeManagePermission;
+}
+
+/** Result of theme.save: the theme as installed. */
+export interface ThemeSaveResult {
+  plugin: PluginInfo;
+}
+
+/** Install a .desk-theme bundle as a user theme: given inline, read from a file, or downloaded over https and checked against its sha256 (a mismatch is invalid_params and nothing lands). A bundle whose id is outside local. and market. lands as local.<its name as a slug>. It is checked and replaces an earlier user theme of its id as theme.save does, except that a market. theme downloaded by url replaces an earlier one only while that one is still as its market published it (ADR 0060): one the person changed is already_exists and stays. */
+export interface ThemeImportRequest {
+  id: RequestId;
+  method: "theme.import";
+  params: ThemeImportParams;
+}
+
+/** Parameters of theme.import: exactly one of bundle, path and url, and sha256 with url (market only with url). */
+export interface ThemeImportParams {
+  bundle?: ThemeBundle;
+  /** A .desk-theme file to read. */
+  path?: Path;
+  url?: ThemeBundleUrl;
+  sha256?: ThemeSha256;
+  /** With url, the market index that listed it: kept beside a market. theme with its version and sha256, so theme.market.list tells an update from the person's own changes. */
+  market?: ThemeMarketUrl;
+  scope: ThemeManagePermission;
+}
+
+/** Result of theme.import: the theme as installed, under the id it landed with. */
+export interface ThemeImportResult {
+  plugin: PluginInfo;
+}
+
+/** Make a .desk-theme bundle of any installed theme, built-in ones too: its plugin.json and the font and image files its theme block names. Returned with inline; otherwise written to path, or to <Downloads>/<id>.desk-theme (<id>-2.desk-theme and on when that is taken), and the file's path returned. */
+export interface ThemeExportRequest {
+  id: RequestId;
+  method: "theme.export";
+  params: ThemeExportParams;
+}
+
+/** Parameters of theme.export. inline: true takes no path. */
+export interface ThemeExportParams {
+  theme: PluginId;
+  /** Where to write the bundle; an existing file there is replaced. */
+  path?: Path;
+  /** Return the bundle instead of writing it. */
+  inline?: boolean;
+  scope: ThemeManagePermission;
+}
+
+/** Result of theme.export: the bundle with inline, otherwise the file written. */
+export interface ThemeExportResult {
+  /** The file written, as an absolute path. */
+  path?: string;
+  bundle?: ThemeBundle;
+}
+
+/** Remove a user theme: its folder goes and plugin.changed says removed. Only themes in the user themes folder (local. and market. ids); any other plugin is invalid_params, an id nothing holds not_found. A removed theme that desk.theme.active names leaves the desk's own theme in force. */
+export interface ThemeRemoveRequest {
+  id: RequestId;
+  method: "theme.remove";
+  params: ThemeRemoveParams;
+}
+
+/** Parameters of theme.remove. */
+export interface ThemeRemoveParams {
+  theme: PluginId;
+  scope: ThemeManagePermission;
+}
+
+/** Result of theme.remove. */
+export type ThemeRemoveResult = Record<string, never>;
+
+/** An https URL of a market index (specs/plugin ThemeIndex, desk-theme-index/1). */
+export type ThemeMarketUrl = string;
+
+/** Read every market index desk.theme.markets lists, in order, and merge their themes by id: the first market that lists an id wins. Each index is downloaded over https from its own host only; one that cannot be read or is not a valid index leaves its themes out and says why in problems. Each theme says whether this desk has it. */
+export interface ThemeMarketListRequest {
+  id: RequestId;
+  method: "theme.market.list";
+  params: ThemeMarketListParams;
+}
+
+/** Parameters of theme.market.list. */
+export interface ThemeMarketListParams {
+  scope: ThemeManagePermission;
+}
+
+/** Result of theme.market.list: the merged themes in market order, and the markets that could not be read. */
+export interface ThemeMarketListResult {
+  themes: ThemeMarketTheme[];
+  problems: ThemeMarketProblem[];
+}
+
+/** One theme a market offers: its index entry with url made absolute, the market that listed it, and how it stands on this desk. */
+export interface ThemeMarketTheme {
+  theme: ThemeIndexEntry;
+  market: ThemeMarketUrl;
+  state: ThemeMarketState;
+  /** The version this desk has, when it has the theme. */
+  installed?: Version;
+}
+
+/** available: not installed. installed: installed as the market publishes it now. update: installed from a market and unchanged since, and the market has other bytes now; installing it again replaces it. edited: installed but not as a market published it (changed since, or brought in from a file); an update never replaces it. */
+export type ThemeMarketState = "available" | "installed" | "update" | "edited";
+
+/** A market index that could not be read, and why. */
+export interface ThemeMarketProblem {
+  market: string;
+  message: string;
+}
+
+/** Download a market theme to look at it before installing it: over https from the URL's host only, refused unless its bytes match sha256, and checked as a theme plugin in a temporary folder that goes again. Nothing is installed; the answer is the bundle, which the studio previews. */
+export interface ThemeMarketFetchRequest {
+  id: RequestId;
+  method: "theme.market.fetch";
+  params: ThemeMarketFetchParams;
+}
+
+/** Parameters of theme.market.fetch. */
+export interface ThemeMarketFetchParams {
+  url: ThemeBundleUrl;
+  sha256: ThemeSha256;
+  scope: ThemeManagePermission;
+}
+
+/** Result of theme.market.fetch: the checked bundle. */
+export interface ThemeMarketFetchResult {
+  bundle: ThemeBundle;
+}
+
 /** Open one of the surfaces the caller's manifest declares; the runtime hears ui.surface.opened. */
 export interface UiSurfaceOpenRequest {
   id: RequestId;
@@ -2561,6 +3066,112 @@ export interface UiSurfaceClosedData {
   surface: string;
 }
 
+/** Which channel index the desk follows: stable (tagged releases), beta (canary builds promoted after a clean run) or canary (every build of main). */
+export type UpdateChannel = "stable" | "beta" | "canary";
+
+/** What the updater is doing. idle: nothing yet since the start. checking: reading the channel index. up-to-date: no newer build for this desk. available: a newer build was chosen and waits for update.download (desk.update.auto is off). downloading: its bytes are on the way. staged: verified and kept on disk, ready for update.apply. applying: installing it; the desk restarts. failed: the last step failed (reason says why); a staged build stays staged. */
+export type UpdateState =
+  | "idle"
+  | "checking"
+  | "up-to-date"
+  | "available"
+  | "downloading"
+  | "staged"
+  | "applying"
+  | "failed";
+
+/** A semantic version without a leading v: 0.2.0, 0.2.1-pre.48. */
+export type UpdateVersion = string;
+
+/** The git commit a build was made from, abbreviated or whole. */
+export type UpdateCommit = string;
+
+/** The build that is running. */
+export interface UpdateBuild {
+  version: UpdateVersion;
+  commit?: UpdateCommit;
+}
+
+/** The build the desk chose to move to. */
+export interface UpdateRelease {
+  version: UpdateVersion;
+  commit?: UpdateCommit;
+  /** When it was published, RFC 3339. */
+  date?: string;
+  /** Where its release notes are: the GitHub release, or the commit for a pre-release. */
+  notes?: string;
+}
+
+/** The desk's update status, the answer of every update.* call and the data of update.changed. */
+export interface UpdateStatus {
+  state: UpdateState;
+  current: UpdateBuild;
+  channel: UpdateChannel;
+  /** When the channel index was last read successfully, RFC 3339. Absent before the first check. */
+  checkedAt?: string;
+  /** The build chosen: present when available, downloading, staged and applying, and when a step for it failed. */
+  release?: UpdateRelease;
+  /** Whether release is verified and kept on disk, so update.apply can install it. */
+  staged?: boolean;
+  /** Bytes of release downloaded so far, while downloading. */
+  received?: number;
+  /** Bytes release takes, when known. */
+  total?: number;
+  /** Why the last step failed, for people. Present only when failed. */
+  reason?: string;
+}
+
+/** Parameters of every update.* call: the update:manage scope. */
+export interface UpdateParams {
+  scope: UpdateManagePermission;
+}
+
+/** Read the update status. */
+export interface UpdateStatusRequest {
+  id: RequestId;
+  method: "update.status";
+  params: UpdateParams;
+}
+
+/** Result of update.status. */
+export type UpdateStatusResult = UpdateStatus;
+
+/** Read the channel index now, also when desk.update.check is off. Answers at once with state checking (or the state of a check already running); the outcome arrives as update.changed. With desk.update.auto on, a newer build starts downloading by itself. */
+export interface UpdateCheckRequest {
+  id: RequestId;
+  method: "update.check";
+  params: UpdateParams;
+}
+
+/** Result of update.check. */
+export type UpdateCheckResult = UpdateStatus;
+
+/** Download the chosen build when the state is available. Answers at once with state downloading; invalid_params when no build is available. Progress and the outcome arrive as update.changed. */
+export interface UpdateDownloadRequest {
+  id: RequestId;
+  method: "update.download";
+  params: UpdateParams;
+}
+
+/** Result of update.download. */
+export type UpdateDownloadResult = UpdateStatus;
+
+/** Install the staged build and restart into it. Its signature and sha256 are checked again first. Answers at once with state applying; invalid_params when nothing is staged. A failure arrives as update.changed with state failed, and the build stays staged. */
+export interface UpdateApplyRequest {
+  id: RequestId;
+  method: "update.apply";
+  params: UpdateParams;
+}
+
+/** Result of update.apply. */
+export type UpdateApplyResult = UpdateStatus;
+
+/** The update status changed. Sent to holders of update:manage, and to callers subscribed to update.changed. */
+export interface UpdateChangedEvent {
+  event: "update.changed";
+  data: UpdateStatus;
+}
+
 /** Where a view comes from: plugin, an enabled view plugin's inline view or one of its view files, read-only; file, the person's file in ~/.desk/views. */
 export type ViewSource = "plugin" | "file";
 
@@ -2660,6 +3271,10 @@ export type ViewChange = "saved" | "removed";
 
 /** Params and result of each bridge method. */
 export interface BridgeMethodMap {
+  "search.replace": { params: SearchReplaceParams; result: SearchReplaceResult };
+  "search.query": { params: SearchQueryParams; result: SearchQueryResult };
+  "search.system": { params: SearchSystemParams; result: SearchSystemResult };
+  "search.open": { params: SearchOpenParams; result: SearchOpenResult };
   "fs.read": { params: FsReadParams; result: FsReadResult };
   "fs.write": { params: FsWriteParams; result: FsWriteResult };
   "fs.list": { params: FsListParams; result: FsListResult };
@@ -2686,6 +3301,7 @@ export interface BridgeMethodMap {
   "store.set": { params: StoreSetParams; result: StoreSetResult };
   "init.get": { params: InitGetParams; result: InitGetResult };
   "brain.say": { params: BrainSayParams; result: BrainSayResult };
+  "brain.ask": { params: BrainAskParams; result: BrainAskResult };
   "brain.agents.list": { params: BrainAgentsListParams; result: BrainAgentsListResult };
   "brain.agents.card": { params: BrainAgentsCardParams; result: BrainAgentsCardResult };
   "brain.spaces.list": { params: BrainSpacesListParams; result: BrainSpacesListResult };
@@ -2717,6 +3333,16 @@ export interface BridgeMethodMap {
   "view.remove": { params: ViewRemoveParams; result: ViewRemoveResult };
   "catalog.get": { params: CatalogGetParams; result: CatalogGetResult };
   "shell.open": { params: ShellOpenParams; result: ShellOpenResult };
+  "update.status": { params: UpdateParams; result: UpdateStatusResult };
+  "update.check": { params: UpdateParams; result: UpdateCheckResult };
+  "update.download": { params: UpdateParams; result: UpdateDownloadResult };
+  "update.apply": { params: UpdateParams; result: UpdateApplyResult };
+  "theme.save": { params: ThemeSaveParams; result: ThemeSaveResult };
+  "theme.import": { params: ThemeImportParams; result: ThemeImportResult };
+  "theme.export": { params: ThemeExportParams; result: ThemeExportResult };
+  "theme.remove": { params: ThemeRemoveParams; result: ThemeRemoveResult };
+  "theme.market.list": { params: ThemeMarketListParams; result: ThemeMarketListResult };
+  "theme.market.fetch": { params: ThemeMarketFetchParams; result: ThemeMarketFetchResult };
 }
 
 /** A bridge method name. */
@@ -2724,6 +3350,10 @@ export type BridgeMethod = keyof BridgeMethodMap;
 
 /** Every bridge method, in spec order. */
 export const BRIDGE_METHODS = [
+  "search.replace",
+  "search.query",
+  "search.system",
+  "search.open",
   "fs.read",
   "fs.write",
   "fs.list",
@@ -2750,6 +3380,7 @@ export const BRIDGE_METHODS = [
   "store.set",
   "init.get",
   "brain.say",
+  "brain.ask",
   "brain.agents.list",
   "brain.agents.card",
   "brain.spaces.list",
@@ -2781,4 +3412,14 @@ export const BRIDGE_METHODS = [
   "view.remove",
   "catalog.get",
   "shell.open",
+  "update.status",
+  "update.check",
+  "update.download",
+  "update.apply",
+  "theme.save",
+  "theme.import",
+  "theme.export",
+  "theme.remove",
+  "theme.market.list",
+  "theme.market.fetch",
 ] as const satisfies readonly BridgeMethod[];

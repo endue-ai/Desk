@@ -43,9 +43,12 @@ import { readRiff } from "./riff.js";
  *   tags: Tags,
  *   cover?: Picture,
  *   chapters?: Chapter[],
+ *   drm?: string,
  * }} Info
  * @typedef {{ container?: string, mime?: string, duration?: number, tracks?: Track[], tags?: Tags,
- *   cover?: Picture, chapters?: Chapter[] }} Found
+ *   cover?: Picture, chapters?: Chapter[], drm?: string }} Found
+ *   drm: the protection that keeps the file from being played ("Common Encryption", "FairPlay",
+ *   "Windows Media DRM", "PlayReady", "Matroska encryption").
  * @typedef {(source: import("../source.js").Source, head: Uint8Array) => Promise<Found>} Read
  */
 
@@ -135,6 +138,7 @@ export async function probe(source, name) {
   if (duration !== undefined) info.duration = duration;
   if (found.cover) info.cover = found.cover;
   if (found.chapters?.length) info.chapters = found.chapters;
+  if (found.drm) info.drm = found.drm;
   return info;
 }
 

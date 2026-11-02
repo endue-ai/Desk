@@ -1,0 +1,10 @@
+{
+  "target": "ThemePackage",
+  "description": "a theme has at least one of light and dark",
+  "instance": {
+    "author": "Example",
+    "shape": {
+      "radius": "soft"
+    }
+  }
+}

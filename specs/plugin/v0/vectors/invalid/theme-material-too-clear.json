@@ -1,0 +1,7 @@
+{
+  "target": "ThemeMaterial",
+  "description": "surfaces stay at least 60% opaque",
+  "instance": {
+    "opacity": 0.3
+  }
+}

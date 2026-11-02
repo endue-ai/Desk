@@ -123,9 +123,6 @@ export function formatSize(/** @type {number} */ n) {
 /** "67,125,248 bytes". */
 export const formatBytes = (/** @type {number} */ n) =>
   `${n.toLocaleString("en-US")} ${n === 1 ? "byte" : "bytes"}`;
-/** "64 MiB (67,108,864 bytes)", or just the bytes below 1 KiB. */
-export const sizeDetail = (/** @type {number} */ n) =>
-  n < 1024 ? formatBytes(n) : `${formatSize(n)} (${formatBytes(n)})`;
 
 /** @param {Uint8Array} b */
 export function toBase64(b) {

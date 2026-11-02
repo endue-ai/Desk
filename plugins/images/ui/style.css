@@ -1,13 +1,5 @@
-/* The desk's design tokens (@endue-ai/ui). Frames do not inherit the desk's, so they are declared
-   here; the runtime redefines them for the theme in force. */
-:root {
-  --desk-background: #141416;
-  --desk-card: #1e1d21;
-  --desk-border: #333136;
-  --desk-text: #f2f0f5;
-  --desk-text-muted: #b0adb7;
-  --desk-accent: #b6a3f5;
-}
+/* Every colour, font, size, radius and duration is the theme's: the desk's tokens come from
+   /_desk/tokens.css and the runtime redefines them for the theme in force. */
 
 html,
 body {
@@ -21,7 +13,7 @@ body {
   margin: 0;
   background: var(--desk-card);
   color: var(--desk-text);
-  font: 13px/1.5 -apple-system, "SUIT", "Inter", system-ui, sans-serif;
+  font: calc(var(--desk-text-sm) - 1px)/1.5 var(--desk-font-sans);
 }
 
 header {
@@ -44,7 +36,7 @@ header {
 h1,
 h2 {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--desk-text-sm);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -85,7 +77,7 @@ select {
   min-height: 24px;
   padding: 1px 7px;
   border: 1px solid var(--desk-border);
-  border-radius: 6px;
+  border-radius: var(--desk-radius-md);
   background: var(--desk-background);
   color: var(--desk-text);
   font: inherit;
@@ -96,14 +88,14 @@ button:disabled {
 }
 
 button[aria-pressed="true"] {
-  border-color: var(--desk-accent);
-  color: var(--desk-accent);
+  border-color: var(--desk-primary-text);
+  color: var(--desk-primary-text);
 }
 
 button:focus-visible,
 select:focus-visible,
 #stage:focus-visible {
-  outline: 2px solid var(--desk-accent);
+  outline: 2px solid var(--desk-ring);
   outline-offset: -2px;
 }
 
@@ -122,6 +114,11 @@ select:focus-visible,
 
 #compare-pick span {
   color: var(--desk-text-muted);
+}
+
+#opening {
+  flex: none;
+  padding: 12px 16px;
 }
 
 main {
@@ -181,7 +178,7 @@ figcaption {
   left: 8px;
   bottom: 6px;
   padding: 0 6px;
-  border-radius: 4px;
+  border-radius: var(--desk-radius-sm);
   background: var(--desk-card);
   color: var(--desk-text-muted);
 }
@@ -198,7 +195,7 @@ figcaption:empty {
   width: min(420px, calc(100% - 32px));
   padding: 16px;
   border: 1px solid var(--desk-border);
-  border-radius: 8px;
+  border-radius: var(--desk-radius-md);
   background: var(--desk-card);
   transform: translate(-50%, -50%);
 }

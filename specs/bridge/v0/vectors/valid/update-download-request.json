@@ -1,0 +1,13 @@
+{
+  "target": "BridgeRequest",
+  "description": "update.download fetches the build the desk chose when auto download is off",
+  "instance": {
+    "id": 42,
+    "method": "update.download",
+    "params": {
+      "scope": {
+        "permission": "update:manage"
+      }
+    }
+  }
+}

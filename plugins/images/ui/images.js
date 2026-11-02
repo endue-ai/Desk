@@ -1,11 +1,13 @@
 // The images plugin without its DOM. It answers the desk's file and buffer requests for the images
-// it holds (desk.files.visit, .revert, desk.buffers.show, .closed; .save is refused), reads them as
-// base64 with one ask for the folder when its grants do not cover the file, decodes them, follows
-// them on disk, lists their folder for Left and Right, and loads a second image to compare. It only
-// talks to ctx.commands, ctx.bridge and a view, so the SDK's test host runs it.
-import { fromBase64 } from "./bytes.js";
-import { decode, webviewReason } from "./decode.js";
+// it holds (desk.files.visit, .revert, desk.buffers.show, .closed; .save is refused), opens them
+// (opening.js: ranged reads with progress and Cancel, one ask for the folder, decoding in a worker
+// for large files), follows them on disk, lists their folder for Left and Right, and loads a second
+// image to compare. It only talks to ctx.commands, ctx.bridge and a view, so the SDK's test host
+// runs it.
+import { webviewReason } from "./decode.js";
+import { release } from "./decoding.js";
 import { modelOf, rowsOf } from "./details.js";
+import { createOpening, scopeOf } from "./opening.js";
 
 /**
  * @typedef {import("@endue-ai/plugin-sdk").PluginContext} PluginContext
@@ -16,9 +18,11 @@ import { modelOf, rowsOf } from "./details.js";
  * @typedef {{ path: string, name: string }} Choice
  * @typedef {{ image: ImageModel | null, partner: ImageModel | null,
  *   position: { index: number, count: number } | null, choices: Choice[] }} ImagesState
- * @typedef {{ render(state: ImagesState): void, status(text: string): void, focus(): void }} View
+ * @typedef {{ render(state: ImagesState): void, status(text: string): void, focus(): void,
+ *   progress?(value: import("./opening.js").Progress | null): void }} View
  * @typedef {{ buffer: string, path: string, name: string, size: number, decoded: Decoded,
- *   model: ImageModel, watchId?: string }} Entry
+ *   model: ImageModel, watchId?: string, slice?: number }} Entry
+ *   slice: the slice last asked for, while it decodes.
  */
 
 const PLUGIN = "endue.images";
@@ -37,14 +41,6 @@ const folderOf = (/** @type {string} */ path) => {
   const slash = path.lastIndexOf("/");
   return slash < 0 ? path : path.slice(0, slash);
 };
-/** The scope a read carries: the file's whole folder, so one ask covers its neighbours too. */
-function scopeOf(/** @type {string} */ path) {
-  /** @type {{ permission: "fs:read", paths: string[] }} */
-  const scope = { permission: "fs:read", paths: [`${folderOf(path)}/**`] };
-  return scope;
-}
-const codeOf = (/** @type {unknown} */ error) =>
-  /** @type {{ code?: string }} */ (error)?.code ?? "error";
 const imageName = (/** @type {string} */ name) => {
   const dot = name.lastIndexOf(".");
   return !name.startsWith(".") && dot > 0 && EXTENSIONS.has(name.slice(dot + 1).toLowerCase());
@@ -66,8 +62,10 @@ const requested = (/** @type {unknown} */ args) => {
 /**
  * @param {Pick<PluginContext, "bridge" | "commands">} ctx
  * @param {View} view
+ * @param {import("./opening.js").Options} options the SDK's readBytes, and its startWorker
  */
-export function createImages({ bridge, commands }, view) {
+export function createImages({ bridge, commands }, view, options) {
+  const opening = createOpening(bridge, view, options);
   /** @type {Map<string, Entry>} */
   const images = new Map();
   /** @type {Map<string, string>} */
@@ -119,46 +117,16 @@ export function createImages({ bridge, commands }, view) {
     throw new Error(message);
   }
 
-  /** fs.read as base64; a refusal asks once for the file's folder and tries again. */
-  const read = async (/** @type {string} */ path) => {
-    const scope = scopeOf(path);
-    const refused = new Error(`Not allowed to read ${path}.`);
-    const call = () => bridge.call("fs.read", { path, encoding: "base64", scope });
-    const failed = (/** @type {unknown} */ e) =>
-      codeOf(e) === "permission_denied"
-        ? refused
-        : new Error(`Could not read ${path}: ${codeOf(e)}.`);
-    try {
-      return (await call()).content;
-    } catch (error) {
-      if (codeOf(error) !== "permission_denied") throw failed(error);
-    }
-    const decision = await bridge
-      .call("perm.request", {
-        permission: /** @type {Permission} */ (scope),
-        reason: `To open ${path} in Images`,
-      })
-      .catch(() => ({ granted: false }));
-    if (!decision.granted) throw refused;
-    try {
-      return (await call()).content;
-    } catch (error) {
-      throw failed(error);
-    }
-  };
-
-  /**
-   * Read and decode one file. Decoding never throws: a file it cannot show is a details view. The
-   * bytes and the base64 are let go once the model holds its data URL.
-   */
+  /** Read and decode one file. Decoding never throws: a file it cannot show is a details view. */
   const load = async (/** @type {string} */ buffer, /** @type {string} */ path) => {
-    const content = await read(path);
-    const bytes = fromBase64(content);
-    const decoded = await decode(bytes, path);
-    const file = { buffer, path, name: nameOf(path), size: bytes.length };
-    const model = modelOf({ ...file, content, bytes }, decoded);
-    delete decoded.data;
-    return /** @type {Entry} */ ({ ...file, decoded, model });
+    const { size, decoded } = await opening.load(buffer, path);
+    const file = { buffer, path, name: nameOf(path), size };
+    return /** @type {Entry} */ ({ ...file, decoded, model: modelOf(file, decoded) });
+  };
+  /** Let go of an entry's blob: URL and worker once no buffer and no comparison shows it. */
+  const drop = (/** @type {Entry | null | undefined} */ entry) => {
+    if (!entry || partner === entry || [...images.values()].includes(entry)) return;
+    release(entry.decoded);
   };
 
   /** List the folder of `path`: its images, in natural order. Without a listing there is no walk. */
@@ -188,6 +156,7 @@ export function createImages({ bridge, commands }, view) {
     const entry = images.get(buffer);
     if (entry?.watchId) watches.delete(entry.watchId);
     images.delete(buffer);
+    drop(entry);
   };
 
   /**
@@ -211,8 +180,10 @@ export function createImages({ bridge, commands }, view) {
     const { buffer, path } = requested(args);
     if (!buffer || !path) throw new Error("A visit needs a buffer and a path.");
     const entry = await load(buffer, path);
-    forget(buffer);
+    const old = images.get(buffer);
     images.set(buffer, entry);
+    if (old?.watchId) watches.delete(old.watchId);
+    drop(old);
     shown = buffer;
     render();
     view.focus();
@@ -227,13 +198,16 @@ export function createImages({ bridge, commands }, view) {
     const { buffer, path: asked } = requested(args);
     const old = held(buffer);
     const entry = await load(buffer, asked ?? old.path);
+    if (images.get(buffer) !== old) return drop(entry);
     entry.watchId = old.watchId;
     images.set(buffer, entry);
     if (shown === buffer) render();
+    drop(old);
   });
 
   answer("desk.buffers.show", async (args) => {
     const { buffer } = requested(args);
+    if (opening.pending() !== buffer) opening.stop();
     const entry = held(buffer);
     shown = buffer;
     if (folder?.dir !== folderOf(entry.path)) await list(entry.path);
@@ -243,6 +217,10 @@ export function createImages({ bridge, commands }, view) {
 
   answer("desk.buffers.closed", (args) => {
     const { buffer } = requested(args);
+    if (opening.pending() === buffer) {
+      opening.stop();
+      if (!images.has(buffer)) return;
+    }
     held(buffer);
     forget(buffer);
     if (shown !== buffer) return;
@@ -299,27 +277,39 @@ export function createImages({ bridge, commands }, view) {
     previous: () => go((i) => i - 1),
     first: () => go(() => 0),
     last: () => go((_, n) => n - 1),
-    /** Move through a volume's slices. */
-    slice(/** @type {number} */ delta) {
+    /** Move through a volume's slices; a large volume's worker decodes them. */
+    async slice(/** @type {number} */ delta) {
       const entry = current();
       const slices = entry?.decoded.slices;
       if (!entry || !slices) return;
-      const index = Math.max(0, Math.min(slices.count - 1, slices.index + delta));
-      if (index === slices.index) return;
-      remodel(entry, { ...entry.decoded, rgba: slices.at(index), slices: { ...slices, index } });
-      render();
-      say(`Slice ${index + 1} of ${slices.count}.`);
+      const from = entry.slice ?? slices.index;
+      const index = Math.max(0, Math.min(slices.count - 1, from + delta));
+      if (index === from) return;
+      entry.slice = index;
+      try {
+        const rgba = await slices.at(index);
+        // A later key press, or another image, won while this slice decoded.
+        if (entry.slice !== index || !entry.decoded.slices) return;
+        remodel(entry, { ...entry.decoded, rgba, slices: { ...entry.decoded.slices, index } });
+        if (current() === entry) render();
+        say(`Slice ${index + 1} of ${slices.count}.`);
+      } catch (error) {
+        say(error instanceof Error ? error.message : String(error));
+      }
     },
     /** Split the surface with another image, by path; null ends the comparison. */
     async compare(/** @type {string | null} */ path) {
+      const before = partner;
       if (!path) {
         partner = null;
         render();
+        drop(before);
         return;
       }
       try {
         partner = [...images.values()].find((e) => e.path === path) ?? (await load("", path));
         render();
+        drop(before);
         say(`Comparing with ${partner.name}.`);
       } catch (error) {
         say(error instanceof Error ? error.message : String(error));

@@ -25,8 +25,16 @@ fn main() {
 
     // Declaring the app's commands makes Tauri generate one permission per command, so the
     // capability can allow exactly these three and nothing else.
-    let manifest =
-        tauri_build::AppManifest::new().commands(&["bridge_call", "desk_ready", "take_open_files"]);
+    println!("cargo:rerun-if-changed=../../../plugins/palette/ui");
+    let manifest = tauri_build::AppManifest::new().commands(&[
+        "bridge_call",
+        "desk_ready",
+        "take_open_files",
+        "palette_hide",
+        "palette_reveal_main",
+        "palette_prepare_main",
+        "palette_present",
+    ]);
     tauri_build::try_build(tauri_build::Attributes::new().app_manifest(manifest))
         .expect("tauri build script");
 }

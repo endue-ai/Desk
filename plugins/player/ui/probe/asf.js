@@ -22,6 +22,13 @@ const GUID = {
   video: "BC19EFC0-5B4D-11CF-A8FD-00805F5C442B",
 };
 
+/** The objects that say the content is encrypted, and by what. */
+const PROTECTION = /** @type {Record<string, string>} */ ({
+  "2211B3FB-BD23-11D2-B4B7-00A0C955FC6E": "Windows Media DRM",
+  "298AE614-2622-4C17-B935-DAE07EE9289C": "Windows Media DRM",
+  "43058533-6981-49E6-9B74-AD12CB86D58C": "PlayReady",
+});
+
 /** A GUID as written in ASF (the first three fields little-endian), in its usual text form. */
 function guid(/** @type {Uint8Array} */ b, /** @type {number} */ at) {
   const hex = (/** @type {number[]} */ bytes) =>
@@ -111,7 +118,10 @@ export async function readAsf(source, head) {
   let tags = {};
   /** @type {import("./index.js").Picture | undefined} */
   let cover;
+  /** @type {string | undefined} */
+  let drm;
   for (const object of list) {
+    drm ??= PROTECTION[object.id];
     const c = new Cursor(b, object.at, true);
     if (object.id === GUID.file) {
       c.skip(40);
@@ -149,5 +159,5 @@ export async function readAsf(source, head) {
   }
   // Video first, as every other reader lists them.
   tracks.sort((x, y) => (x.kind === y.kind ? 0 : x.kind === "video" ? -1 : 1));
-  return { duration, tracks, tags, cover };
+  return { duration, tracks, tags, cover, drm };
 }

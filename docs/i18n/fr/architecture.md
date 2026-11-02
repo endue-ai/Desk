@@ -9,7 +9,7 @@ Desk est un OS conçu comme une seule app : un shell Tauri et un petit cœur Rus
 les fonctions au-dessus de ce runtime, hors réglages et raccourcis, sont des plugins. Comme Emacs, le cœur ne garde que des primitives,
 et tout le reste peut être modifié pendant que l'app tourne.
 
-L’interface des réglages, les raccourcis par défaut et la sauvegarde des préférences font partie du cœur du runtime, pas des plugins. Ils restent disponibles sans aucun plugin ; les plugins peuvent ajouter des raccourcis. [ADR 0053](../../adr/0053-core-settings-and-keybindings.md).
+L’interface des réglages, les raccourcis par défaut et la sauvegarde des préférences font partie du cœur du runtime, pas des plugins. Ils restent disponibles sans aucun plugin ; les plugins peuvent ajouter des raccourcis. [ADR 0055](../../adr/0055-core-settings-and-keybindings.md).
 
 ## Vue d'ensemble
 

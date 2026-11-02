@@ -66,12 +66,73 @@ must check their own pairs in both schemes. Status needs a label or icon as well
 - Motion: `--desk-motion-fast`, `base`, `slow`, `theme`. The runtime sets all four to `0ms` under
   reduced motion, including when the user overrides the OS preference inside Desk.
 
+- Tracking and easing: `--desk-tracking` (body letter spacing, `0em`) and `--desk-easing` (the curve the
+  motion tokens move along).
+
 The shell's existing unprefixed scale names alias these tokens. Plugin frames use the prefixed names.
-Theme contributions normally change colors; shared measurements make controls consistent across pages.
+A theme plugin's type, shape and motion layers retune the scale through presets (below), so a page that
+reads the tokens follows a theme's typeface, corners, density and motion without knowing it.
 
-## Replacing a theme
+## Material, backdrop and terminal
 
-Use the existing `contributes.themes` entries of a policy plugin. Tokens are camelCase in manifests:
+- Material, per scheme: `--desk-surface-opacity` (`1`), `--desk-blur` (`0px`), `--desk-noise` (`0`) and
+  `--desk-border-width` (`1px`). A translucent theme also sets `--desk-surface` (the card mixed with
+  transparency) and `--desk-surface-filter` (a blur); the shell's windows read
+  `var(--desk-surface, var(--desk-card))`. `base.css` lays the grain (`--desk-noise`) over every page.
+- Backdrop: `--desk-backdrop` (a background image: `none`, a gradient or a theme image's `url()`),
+  `--desk-backdrop-size` and `--desk-backdrop-repeat`, drawn by the shell behind its windows.
+- Terminal: `--desk-ansi-0` through `--desk-ansi-15`, black to bright white, per scheme.
+
+At their defaults these tokens change nothing on screen.
+
+## Choosing a theme
+
+A theme is a plugin of kind `theme` (`specs/plugin/v0/README.md`, ADR 0056, ADR 0057): six layers of
+values and its font and image files, no code. The setting `desk.theme.active` names the one in force
+(empty for the endue theme); installing a theme does not apply it. The theme studio, a system window
+of the shell (`desk.theme.studio`, or the palette button at the top right), lists the endue theme and
+every installed theme as cards drawn with their own tokens; focusing one previews it on the whole desk,
+Enter or a click applies it, and Escape puts back what was in force. "Tune a copy" (or
+`desk.theme.edit`) docks the studio to the right and opens its editor on a copy of the selected theme:
+every layer has its controls, the whole desk shows the draft as it changes, the gate's fixes are listed
+under the palette, and Save keeps it as the person's own theme (`local.<name>`, through `theme.save`,
+files the copy started with carried over by `copyFrom`). Import takes a `.desk-theme` file (or one
+dropped on the studio) and previews it; Export writes the selected theme as one. Describe (or
+`desk.theme.describe` with `{ "text": "<sentence>" }`, which Eris runs when she is asked to change the
+desk's look, not the look of an app or page the person builds; "Send to Eris instead" hands a misfire
+back to her conversation) sends one sentence to the brain through `brain.ask` with the `propose_theme` tool (ADR 0059): the
+prompt holds the rules (the colour roles, the contrast pairs and the ranges below), the theme block's
+schema, the values in force and the sentence, never files or the screen. The proposal is cleaned,
+previewed on the whole desk through the gate with its fixes listed, and then applied (saved as a
+`local.` theme whose `origin.prompt` holds the sentences), refined with another sentence over it, tuned in
+the editor or discarded. Offline or out of credits Describe says so and Generate is off; the gallery
+and the editor keep working. The commands `desk.theme.use`
+(with `{ "id": "<theme plugin>" }`) and `desk.theme.default` change it too, a profile or `init.yaml`
+can carry it, and the choice comes back with the session. The runtime resolves the tokens in this order: the built-in tokens, the policy plugins'
+`contributes.themes` for the scheme (and their high-contrast layers), the active theme for the scheme,
+then high contrast and reduced motion.
+
+`@endue-ai/ui/theme` compiles a theme block (`compileTheme`) and gates it (`gate`): every pair above
+must reach 4.5:1 for text and 3:1 for borders and fills (7:1 and 4.5:1 under high contrast), and a
+failing foreground moves only its OKLCH lightness, as little as reaches the ratio. Without a variant for
+the scheme a theme keeps its shared layers over the desk's palette; without a `contrast` palette its high
+contrast is derived from its own colours. The presets:
+
+| Layer | Preset | Tokens |
+| --- | --- | --- |
+| `shape.radius` | none, subtle, soft (today), round | `radius-sm/md/lg`: 0, 2/4/6, 4/8/12, 6/12/18 px |
+| `shape.density` | compact, comfortable (today), spacious | `control-xs` to `lg`: 24–44, 28–48, 32–52 px |
+| `motion.personality` | snappy, smooth (today), calm | `motion-fast` 100, 150, 220 ms and the rest in step |
+| `type.scale` | 0.85 to 1.25 | every `text-*`, rounded to whole px |
+| `material.shadow` | none, soft (the scheme's), strong | `shadow-sm/md/lg` |
+
+The runtime loads a theme's fonts as `FontFace` in the shell, and the SDK does in every frame; the
+`desk:theme` message and `ctx.theme` carry them as `fonts`.
+
+## Contributing tokens
+
+A policy plugin's `contributes.themes` entries always layer under the active theme: the shell's own
+tokens come this way. Use them for tokens a plugin adds, not for a theme people choose. Tokens are camelCase in manifests:
 `primaryForeground` becomes `--desk-primary-foreground`, `space3` becomes `--desk-space-3`.
 Unsplit numeric names such as `--desk-space3` remain aliases for existing custom-token consumers.
 Themes for the current scheme layer in contribution order; high-contrast entries layer last when
@@ -104,6 +165,23 @@ updates the primary fill, hover, text and ring, with the old background as the f
 semantic roles in that contribution take precedence. A contribution with `primary` updates the legacy
 `accent` value unless it provides both. New code should use the semantic roles. Desk's legacy accent
 means the brand fill, while the web product's accent means a hover surface: do not interchange them.
+
+## Theme conformance
+
+A theme is the design system's values, so every UI reads colour, font family, text size, corner radius
+and duration from `--desk-*` tokens only: the shell, `@endue-ai/ui`, the examples and every plugin page,
+in stylesheets, `<style>` blocks, `style=""` attributes and the strings scripts paint with (canvas too;
+read a token with `getComputedStyle(document.documentElement).getPropertyValue("--desk-chart-1")`).
+Derived values stay token-based: `color-mix(in srgb, var(--desk-text) 8%, transparent)`,
+`calc(var(--desk-radius-md) - 2px)`, `calc(var(--desk-text-sm) - 1px)`. A file's own colours (a
+document's text, a highlight, an image's checkerboard) are not the theme's: mark them with a
+`theme: content` comment on the line, or on the line that opens the rule.
+
+`node scripts/ui-lint.mjs` checks this in `just check` as a ratchet. `scripts/ui-lint-baseline/<target>.json`
+holds the literals a plugin (or `_runtime`, `_ui`, `_examples`) may still have; more fail, fewer are
+reported until `node scripts/ui-lint.mjs --update` lowers the baseline (or deletes it at zero). `--list` names each
+literal. A plugin with no baseline keeps a `tests/theme.test.ts` that expects `lintPlugin("<folder>")` to
+be empty. The design behind it is `docs/ko/theme-requirements.md` (TP) and ADR 0056.
 
 ## Page and feedback patterns
 

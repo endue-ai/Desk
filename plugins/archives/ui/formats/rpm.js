@@ -1,8 +1,9 @@
 // RPM packages: the lead, the signature header and the main header (name, version, release,
 // summary...), then the cpio payload in whatever stream the header names.
+
+import { decodedInput } from "@endue-ai/formats/codecs/index.js";
+import { inputSeekable } from "@endue-ai/formats/codecs/input.js";
 import { text, u32be } from "../bytes.js";
-import { decodedInput } from "../codecs/index.js";
-import { inputSeekable } from "../codecs/input.js";
 import { sliceSource } from "../source.js";
 import { row } from "./archive.js";
 import { openCpioIn } from "./cpio.js";

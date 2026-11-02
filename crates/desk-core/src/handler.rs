@@ -71,6 +71,7 @@ pub struct Core {
     pub(crate) watches: Mutex<Watches>,
     pub(crate) file_urls: Mutex<FileUrls>,
     pub(crate) commands: Mutex<Commands>,
+    pub(crate) search_results: Mutex<crate::core_search::RecentResults>,
     pub(crate) index: Option<Arc<dyn ItemIndex>>,
     pub(crate) calendar: Option<Arc<dyn CalendarSource>>,
     pub(crate) clock: Arc<dyn Clock>,
@@ -82,6 +83,8 @@ pub struct Core {
     pub(crate) provided_views: Mutex<ProvidedViews>,
     pub(crate) surfaces: Mutex<Surfaces>,
     pub(crate) opener: Box<dyn Opener>,
+    pub(crate) updater: Option<desk_update::Updater>,
+    pub(crate) themes: crate::core_themes::Themes,
 }
 
 impl Core {
@@ -104,6 +107,7 @@ impl Core {
             watches: Mutex::new(Watches::default()),
             file_urls: Mutex::new(FileUrls::default()),
             commands: Mutex::new(Commands::default()),
+            search_results: Mutex::default(),
             index: None,
             calendar: None,
             clock: Arc::new(SystemClock),
@@ -115,6 +119,8 @@ impl Core {
             provided_views: Mutex::new(ProvidedViews::default()),
             surfaces: Mutex::new(Surfaces::default()),
             opener: Box::new(SystemOpener),
+            updater: None,
+            themes: Default::default(),
         }
     }
 
@@ -176,9 +182,14 @@ impl Core {
             R::PermAnswer(r) => (r.id, self.perm_answer(caller, r.params)),
             R::PluginList(r) => (r.id, self.plugin_list(caller, r.params)),
             R::PluginSetEnabled(r) => (r.id, self.plugin_set_enabled(caller, r.params)),
+            R::SearchReplace(r) => (r.id, self.search_replace(caller, r.params)),
+            R::SearchQuery(r) => (r.id, self.search_query(caller, r.params)),
+            R::SearchSystem(r) => (r.id, self.search_system(caller, r.params)),
+            R::SearchOpen(r) => (r.id, self.search_open(caller, r.params)),
             R::StoreGet(r) => (r.id, self.store_get(caller, r.params)),
             R::StoreSet(r) => (r.id, self.store_set(caller, r.params)),
             R::BrainSay(r) => (r.id, self.brain_say(caller, r.params)),
+            R::BrainAsk(r) => (r.id, self.brain_ask(caller, r.params)),
             R::BrainAgentsList(r) => (r.id, self.brain_agents_list(caller, r.params)),
             R::BrainAgentsCard(r) => (r.id, self.brain_agents_card(caller, r.params)),
             R::BrainSpacesList(r) => (r.id, self.brain_spaces_list(caller, r.params)),
@@ -224,6 +235,16 @@ impl Core {
             R::ViewRemove(r) => (r.id, self.view_remove(caller, r.params)),
             R::CatalogGet(r) => (r.id, self.catalog_get(caller)),
             R::ShellOpen(r) => (r.id, self.shell_open(caller, r.params)),
+            R::UpdateStatus(r) => (r.id, self.update_status(caller, r.params)),
+            R::UpdateCheck(r) => (r.id, self.update_check(caller, r.params)),
+            R::UpdateDownload(r) => (r.id, self.update_download(caller, r.params)),
+            R::UpdateApply(r) => (r.id, self.update_apply(caller, r.params)),
+            R::ThemeSave(r) => (r.id, self.theme_save(caller, r.params)),
+            R::ThemeImport(r) => (r.id, self.theme_import(caller, r.params)),
+            R::ThemeExport(r) => (r.id, self.theme_export(caller, r.params)),
+            R::ThemeRemove(r) => (r.id, self.theme_remove(caller, r.params)),
+            R::ThemeMarketList(r) => (r.id, self.theme_market_list(caller, r.params)),
+            R::ThemeMarketFetch(r) => (r.id, self.theme_market_fetch(caller, r.params)),
         }
     }
 

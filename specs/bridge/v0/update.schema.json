@@ -1,0 +1,188 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://endue.ai/specs/bridge/v0/update.schema.json",
+  "title": "Desk bridge v0: update",
+  "description": "The desk's own updates (ADR 0054). The desk finds the next build on its channel, downloads and verifies it at once, keeps it on disk, and switches to it only when asked. Every call needs update:manage and answers the same UpdateStatus; work runs in the background and reports through update.changed. A build that does not update itself answers unsupported.",
+  "$defs": {
+    "UpdateChannel": {
+      "description": "Which channel index the desk follows: stable (tagged releases), beta (canary builds promoted after a clean run) or canary (every build of main).",
+      "type": "string",
+      "enum": ["stable", "beta", "canary"]
+    },
+    "UpdateState": {
+      "description": "What the updater is doing. idle: nothing yet since the start. checking: reading the channel index. up-to-date: no newer build for this desk. available: a newer build was chosen and waits for update.download (desk.update.auto is off). downloading: its bytes are on the way. staged: verified and kept on disk, ready for update.apply. applying: installing it; the desk restarts. failed: the last step failed (reason says why); a staged build stays staged.",
+      "type": "string",
+      "enum": [
+        "idle",
+        "checking",
+        "up-to-date",
+        "available",
+        "downloading",
+        "staged",
+        "applying",
+        "failed"
+      ]
+    },
+    "UpdateVersion": {
+      "description": "A semantic version without a leading v: 0.2.0, 0.2.1-pre.48.",
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?(\\+[0-9A-Za-z.-]+)?$",
+      "maxLength": 64
+    },
+    "UpdateCommit": {
+      "description": "The git commit a build was made from, abbreviated or whole.",
+      "type": "string",
+      "pattern": "^[0-9a-f]{7,40}$"
+    },
+    "UpdateBuild": {
+      "description": "The build that is running.",
+      "type": "object",
+      "properties": {
+        "version": { "$ref": "#/$defs/UpdateVersion" },
+        "commit": { "$ref": "#/$defs/UpdateCommit" }
+      },
+      "required": ["version"],
+      "additionalProperties": false
+    },
+    "UpdateRelease": {
+      "description": "The build the desk chose to move to.",
+      "type": "object",
+      "properties": {
+        "version": { "$ref": "#/$defs/UpdateVersion" },
+        "commit": { "$ref": "#/$defs/UpdateCommit" },
+        "date": {
+          "description": "When it was published, RFC 3339.",
+          "type": "string",
+          "maxLength": 64
+        },
+        "notes": {
+          "description": "Where its release notes are: the GitHub release, or the commit for a pre-release.",
+          "type": "string",
+          "maxLength": 2048
+        }
+      },
+      "required": ["version"],
+      "additionalProperties": false
+    },
+    "UpdateStatus": {
+      "description": "The desk's update status, the answer of every update.* call and the data of update.changed.",
+      "type": "object",
+      "properties": {
+        "state": { "$ref": "#/$defs/UpdateState" },
+        "current": { "$ref": "#/$defs/UpdateBuild" },
+        "channel": { "$ref": "#/$defs/UpdateChannel" },
+        "checkedAt": {
+          "description": "When the channel index was last read successfully, RFC 3339. Absent before the first check.",
+          "type": "string",
+          "maxLength": 64
+        },
+        "release": {
+          "$ref": "#/$defs/UpdateRelease",
+          "description": "The build chosen: present when available, downloading, staged and applying, and when a step for it failed."
+        },
+        "staged": {
+          "description": "Whether release is verified and kept on disk, so update.apply can install it.",
+          "type": "boolean"
+        },
+        "received": {
+          "description": "Bytes of release downloaded so far, while downloading.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "total": {
+          "description": "Bytes release takes, when known.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "reason": {
+          "description": "Why the last step failed, for people. Present only when failed.",
+          "type": "string",
+          "maxLength": 1024
+        }
+      },
+      "required": ["state", "current", "channel"],
+      "additionalProperties": false
+    },
+    "UpdateParams": {
+      "description": "Parameters of every update.* call: the update:manage scope.",
+      "type": "object",
+      "properties": {
+        "scope": {
+          "$ref": "../../plugin/v0/permission.schema.json#/$defs/UpdateManagePermission"
+        }
+      },
+      "required": ["scope"],
+      "additionalProperties": false
+    },
+    "UpdateStatusRequest": {
+      "description": "Read the update status.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "update.status" },
+        "params": { "$ref": "#/$defs/UpdateParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "UpdateStatusResult": {
+      "description": "Result of update.status.",
+      "$ref": "#/$defs/UpdateStatus"
+    },
+    "UpdateCheckRequest": {
+      "description": "Read the channel index now, also when desk.update.check is off. Answers at once with state checking (or the state of a check already running); the outcome arrives as update.changed. With desk.update.auto on, a newer build starts downloading by itself.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "update.check" },
+        "params": { "$ref": "#/$defs/UpdateParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "UpdateCheckResult": {
+      "description": "Result of update.check.",
+      "$ref": "#/$defs/UpdateStatus"
+    },
+    "UpdateDownloadRequest": {
+      "description": "Download the chosen build when the state is available. Answers at once with state downloading; invalid_params when no build is available. Progress and the outcome arrive as update.changed.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "update.download" },
+        "params": { "$ref": "#/$defs/UpdateParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "UpdateDownloadResult": {
+      "description": "Result of update.download.",
+      "$ref": "#/$defs/UpdateStatus"
+    },
+    "UpdateApplyRequest": {
+      "description": "Install the staged build and restart into it. Its signature and sha256 are checked again first. Answers at once with state applying; invalid_params when nothing is staged. A failure arrives as update.changed with state failed, and the build stays staged.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "update.apply" },
+        "params": { "$ref": "#/$defs/UpdateParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "UpdateApplyResult": {
+      "description": "Result of update.apply.",
+      "$ref": "#/$defs/UpdateStatus"
+    },
+    "UpdateChangedEvent": {
+      "description": "The update status changed. Sent to holders of update:manage, and to callers subscribed to update.changed.",
+      "type": "object",
+      "properties": {
+        "event": { "const": "update.changed" },
+        "data": { "$ref": "#/$defs/UpdateStatus" }
+      },
+      "required": ["event", "data"],
+      "additionalProperties": false
+    }
+  }
+}

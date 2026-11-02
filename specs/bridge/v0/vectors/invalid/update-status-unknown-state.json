@@ -1,0 +1,12 @@
+{
+  "target": "UpdateStatus",
+  "description": "paused is not an update state",
+  "instance": {
+    "state": "paused",
+    "current": {
+      "version": "0.1.0",
+      "commit": "fa7a4af"
+    },
+    "channel": "stable"
+  }
+}

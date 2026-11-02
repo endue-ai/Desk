@@ -64,9 +64,9 @@ describe("codegen", () => {
       assert.match(ts, new RegExp(`export type ${name} =`), `${name} in TypeScript`);
     }
     const kinds = /pub enum PluginKind \{[^}]*\}/.exec(rust)?.[0] ?? "";
-    for (const kind of ["connector", "view"])
+    for (const kind of ["connector", "view", "theme"])
       assert.ok(kinds.includes(`#[serde(rename = "${kind}")]`), `PluginKind ${kind} in Rust`);
-    assert.match(ts, /export type PluginKind = [^;]*"connector" \| "view";/);
+    assert.match(ts, /export type PluginKind =[^;]*"connector"\s*\|\s*"view"\s*\|\s*"theme";/);
     for (const file of ["item/v0/item", "item/v0/query", "view/v0/view", "connector/v0/connector"])
       assert.ok(
         rust.includes(`"https://endue.ai/specs/${file}.schema.json"`),

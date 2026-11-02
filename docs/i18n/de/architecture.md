@@ -9,7 +9,7 @@ Desk ist ein OS, gebaut als eine App: Eine Tauri-Shell und ein kleiner Rust-Kern
 und die Funktionen außer Einstellungen und Tastenkürzeln sind Plugins. Wie bei Emacs enthält der Kern nur Primitive, und
 alles andere lässt sich im laufenden Betrieb ändern.
 
-Die Einstellungsoberfläche, Standardtastenkürzel und das Speichern persönlicher Einstellungen gehören zum Runtime-Kern, nicht zu Plugins. Sie bleiben ohne Plugins verfügbar; Plugins können weitere Tastenkürzel beitragen. [ADR 0053](../../adr/0053-core-settings-and-keybindings.md).
+Die Einstellungsoberfläche, Standardtastenkürzel und das Speichern persönlicher Einstellungen gehören zum Runtime-Kern, nicht zu Plugins. Sie bleiben ohne Plugins verfügbar; Plugins können weitere Tastenkürzel beitragen. [ADR 0055](../../adr/0055-core-settings-and-keybindings.md).
 
 ## Auf einen Blick
 

@@ -2,7 +2,8 @@
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
     "allowJs": true,
-    "checkJs": false
+    "checkJs": false,
+    "paths": { "@endue-ai/formats/*": ["./plugins/formats/lib/*"] }
   },
   "include": [
     "packages/*/src",

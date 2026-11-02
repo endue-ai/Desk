@@ -1,0 +1,76 @@
+name: promote
+
+# Beta is canary after three days (ADR 0054): weekly, or by hand, the newest canary build that has
+# been on canary three days is listed on the beta index. Nothing is rebuilt; beta points at the same
+# files. A version given by hand is listed instead. Without the updater key or the R2 credentials it
+# says so and stops.
+on:
+  schedule:
+    - cron: "17 3 * * 1"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: A canary build to list on beta (empty for the newest three days on canary)
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-beta
+  cancel-in-progress: false
+
+jobs:
+  promote:
+    name: promote
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: signing
+    env:
+      BUCKET: ${{ vars.R2_BUCKET || 'endue-desk-releases' }}
+      ENDPOINT: https://${{ secrets.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com
+      AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: auto
+      TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+      TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+      R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+      VERSION: ${{ inputs.version }}
+    steps:
+      - id: secrets
+        run: |
+          if [ -z "$TAURI_SIGNING_PRIVATE_KEY" ] || [ -z "$R2_ACCOUNT_ID" ] || [ -z "$AWS_ACCESS_KEY_ID" ] || [ -z "$AWS_SECRET_ACCESS_KEY" ]; then
+            echo "::notice::Nothing promoted: the updater key or the R2 credentials are not set"
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/checkout@v7
+        if: steps.secrets.outputs.ready == 'true'
+      - uses: pnpm/action-setup@v6
+        if: steps.secrets.outputs.ready == 'true'
+      - uses: actions/setup-node@v7
+        if: steps.secrets.outputs.ready == 'true'
+        with:
+          node-version: 22
+          cache: pnpm
+      - if: steps.secrets.outputs.ready == 'true'
+        run: pnpm install --frozen-lockfile
+      - name: List a canary build on beta
+        if: steps.secrets.outputs.ready == 'true'
+        run: |
+          fetch() {
+            if ! out="$(aws s3api get-object --bucket "$BUCKET" --key "desk/channels/$1/index.json" "$1.json" --endpoint-url "$ENDPOINT" 2>&1)"; then
+              if grep -q NoSuchKey <<<"$out"; then rm -f "$1.json"; else echo "$out" >&2; exit 1; fi
+            fi
+          }
+          fetch canary
+          fetch beta
+          if [ ! -f canary.json ]; then echo "::notice::There is no canary index yet"; exit 0; fi
+          version="${VERSION:-$(node scripts/release-manifest.mjs pick canary.json --days 3)}"
+          if [ -z "$version" ]; then echo "::notice::No canary build has been on canary three days"; exit 0; fi
+          node scripts/release-manifest.mjs list beta.json --channel beta --from canary.json --version "$version" > index.json
+          pnpm --filter @endue-ai/desk-app exec tauri signer sign "$PWD/index.json"
+          node scripts/release-publish.mjs index index.json --channel beta --bucket "$BUCKET" --endpoint "$ENDPOINT"
+          echo "::notice::beta now lists $version"

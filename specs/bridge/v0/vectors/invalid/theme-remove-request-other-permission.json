@@ -1,0 +1,14 @@
+{
+  "target": "BridgeRequest",
+  "description": "plugin:manage is not the scope theme.remove needs",
+  "instance": {
+    "id": 79,
+    "method": "theme.remove",
+    "params": {
+      "theme": "local.my-paper",
+      "scope": {
+        "permission": "plugin:manage"
+      }
+    }
+  }
+}

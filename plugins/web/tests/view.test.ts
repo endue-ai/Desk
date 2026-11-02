@@ -16,7 +16,7 @@ const shadow = () => byId("page").shadowRoot as ShadowRoot;
 
 async function open(files: Record<string, string> = { [PAGE.path]: HTML }) {
   const mounted = await mount({
-    handlers: disk(files),
+    handlers: { ...disk(files), "shell.open": () => ({ opened: true }) },
     view: (actions) => createView(document, actions),
   });
   await mounted.host.command("desk.files.visit", PAGE);
@@ -81,12 +81,18 @@ describe("the page view", () => {
     expect(ran("desk.files.open")).toEqual([{ path: "~/Sites/other.html" }]);
   });
 
-  it("an external link shows its URL on the status line and opens nothing", async () => {
-    const { ran, settle } = await open();
+  it("an external link opens in the browser with shell.open, not on the status line", async () => {
+    const { ran, settle, params } = await open();
     const event = click(shadow().querySelector("a[href^='https:']"));
     expect(event.defaultPrevented).toBe(true);
     await settle();
-    expect(byId("status").textContent).toBe("https://example.com/x?y=1");
+    expect(params("shell.open")).toEqual([
+      {
+        target: "https://example.com/x?y=1",
+        scope: { permission: "shell:open", schemes: ["http", "https", "mailto"] },
+      },
+    ]);
+    expect(byId("status").textContent).not.toContain("https://example.com/x?y=1");
     expect(ran("desk.files.open")).toEqual([]);
   });
 

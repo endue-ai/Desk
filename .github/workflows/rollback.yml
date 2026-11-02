@@ -1,0 +1,57 @@
+name: rollback
+
+# Take one build off one channel's index (ADR 0054), by hand only. Its files stay on R2. Desks that
+# staged it drop it at their next check and never apply it; desks already on it wait for a fixed,
+# newer build (roll forward), since no desk ever moves down. Stable needs the stable environment.
+on:
+  workflow_dispatch:
+    inputs:
+      channel:
+        description: The channel to take the build off
+        required: true
+        type: choice
+        options: [stable, beta, canary]
+      version:
+        description: The version to take off, without a leading v
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ inputs.channel }}
+  cancel-in-progress: false
+
+jobs:
+  rollback:
+    name: rollback
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: ${{ inputs.channel == 'stable' && 'stable' || 'signing' }}
+    env:
+      CHANNEL: ${{ inputs.channel }}
+      VERSION: ${{ inputs.version }}
+      BUCKET: ${{ vars.R2_BUCKET || 'endue-desk-releases' }}
+      ENDPOINT: https://${{ secrets.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com
+      AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: auto
+      TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+      TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Take ${{ inputs.version }} off ${{ inputs.channel }}
+        run: |
+          aws s3api get-object --bucket "$BUCKET" --key "desk/channels/$CHANNEL/index.json" current.json \
+            --endpoint-url "$ENDPOINT" > /dev/null
+          node scripts/release-manifest.mjs unlist current.json --version "$VERSION" > index.json
+          pnpm --filter @endue-ai/desk-app exec tauri signer sign "$PWD/index.json"
+          node scripts/release-publish.mjs index index.json --channel "$CHANNEL" --bucket "$BUCKET" --endpoint "$ENDPOINT"
+          echo "::notice::$VERSION is off the $CHANNEL index; its files stay in releases/$VERSION/"

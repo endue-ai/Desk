@@ -117,7 +117,7 @@ const opacity = (/** @type {Props} */ p) => (p.opacity ? Number.parseFloat(p.opa
 function withAlpha(/** @type {string} */ hex, /** @type {number} */ alpha) {
   if (alpha >= 1 || !/^#[0-9a-f]{6}$/i.test(hex)) return hex.toLowerCase();
   const [r, g, b] = [1, 3, 5].map((i) => Number.parseInt(hex.slice(i, i + 2), 16));
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`; // theme: content
 }
 
 /** A fill from graphic or drawing-page properties. @param {Props} p @param {Styles} index @returns {Fill | undefined} */
@@ -126,12 +126,13 @@ export function fillFrom(p, index) {
   if (kind === undefined) return undefined;
   if (kind === "none") return NO_FILL;
   if (kind === "solid")
+    // theme: content: LibreOffice's default shape fill
     return { type: "solid", color: withAlpha(p["fill-color"] ?? "#729fcf", opacity(p)) };
   if (kind === "gradient") {
     const g = index.named("gradient", p["fill-gradient-name"] ?? null);
-    if (!g) return { type: "solid", color: p["fill-color"] ?? "#729fcf" };
-    const start = attr(g, "start-color") ?? "#000000";
-    const end = attr(g, "end-color") ?? "#ffffff";
+    if (!g) return { type: "solid", color: p["fill-color"] ?? "#729fcf" }; // theme: content
+    const start = attr(g, "start-color") ?? "#000000"; // theme: content
+    const end = attr(g, "end-color") ?? "#ffffff"; // theme: content
     const border = Number.parseFloat(attr(g, "border") ?? "0") / 100 || 0;
     const raw = attr(g, "angle") ?? "0";
     const angle = raw.endsWith("deg")
@@ -180,7 +181,7 @@ export function fillFrom(p, index) {
   }
   if (kind === "hatch")
     return p["fill-hatch-solid"] === "true"
-      ? { type: "solid", color: p["fill-color"] ?? "#ffffff" }
+      ? { type: "solid", color: p["fill-color"] ?? "#ffffff" } // theme: content
       : NO_FILL;
   return undefined;
 }
@@ -188,7 +189,7 @@ export function fillFrom(p, index) {
 /** A line from graphic properties, or null for none. @param {Props} p @returns {Line | null} */
 export function lineFrom(p) {
   if (!p.stroke || p.stroke === "none") return null;
-  const color = p["stroke-color"] ?? "#3465a4";
+  const color = p["stroke-color"] ?? "#3465a4"; // theme: content
   return {
     color: withAlpha(color, p["stroke-opacity"] ? Number.parseFloat(p["stroke-opacity"]) / 100 : 1),
     width: Math.max(0.5, length(p["stroke-width"], 0.75)),

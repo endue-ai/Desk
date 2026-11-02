@@ -4,8 +4,12 @@ mod commands;
 mod events;
 mod file_urls;
 mod open_files;
+mod palette;
+mod palette_assets;
 mod protocol;
 mod socket;
+mod tray;
+mod update;
 
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
@@ -13,11 +17,11 @@ use std::sync::{Arc, Mutex};
 use desk_brain_endue::HttpBrain;
 use desk_bridge::{
     BrainConversePermission, CmdInvokePermission, ConnectorManagePermission, Permission,
-    PluginManagePermission, ViewManagePermission,
+    PluginManagePermission, ThemeManagePermission, UpdateManagePermission, ViewManagePermission,
 };
 use desk_core::{
     BrainMode, BrainOptions, Core, MockRemote, PluginWatcher, Roots, SyncError, SyncOutcome,
-    ViewWatcher,
+    ThemeWatcher, ViewWatcher,
 };
 use desk_index::Index;
 use tauri::{Emitter, Manager};
@@ -34,17 +38,26 @@ pub const INIT_FILE: &str = ".desk/init.yaml";
 /// How often the connector scheduler looks for due syncs.
 const CONNECTOR_TICK: std::time::Duration = std::time::Duration::from_secs(1);
 
-/// Keeps the hot-reload and views watchers alive for the life of the app.
-struct Watching(#[allow(dead_code)] Mutex<(Option<PluginWatcher>, Option<ViewWatcher>)>);
+/// Keeps the hot-reload, views and user themes watchers alive for the life of the app.
+struct Watching(#[allow(dead_code)] Mutex<Watchers>);
+
+type Watchers = (
+    Option<PluginWatcher>,
+    Option<ViewWatcher>,
+    Option<ThemeWatcher>,
+);
 
 pub fn run() {
-    tauri::Builder::default()
+    let builder = tauri::Builder::default()
+        .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .manage(open_files::OpenFiles::default())
         .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
             open_files::deliver(app, open_files::argument_paths(args));
             open_files::focus(app);
         }))
-        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_dialog::init());
+    // The Tauri updater, only when this build updates itself (ADR 0054).
+    update::register(builder)
         .register_asynchronous_uri_scheme_protocol(protocol::SCHEME, |ctx, request, responder| {
             // A file URL reads from disk: answer from the blocking pool, never the main thread.
             let app = ctx.app_handle().clone();
@@ -86,6 +99,9 @@ pub fn run() {
             }
             // Before plugins install, so a setup pulled from another desk applies from this start.
             sync_init(&core);
+            // The person's own themes (ADR 0058): every theme folder in <data>/themes/ is installed
+            // now, not built in, and comes back at every start.
+            core = core.with_themes_dir(data.join("themes"));
             let url =
                 std::env::var("DESK_BRAIN_URL").unwrap_or_else(|_| DEFAULT_BRAIN_URL.to_owned());
             match HttpBrain::new(&url) {
@@ -99,6 +115,11 @@ pub fn run() {
                     core = core.with_brain(Arc::new(brain), options);
                 }
                 Err(why) => eprintln!("endue Desk: no brain ({why}); brain.say is unavailable"),
+            }
+            // The desk's own updates (ADR 0054), when this build carries an updater key.
+            let updater = update::updater(app.handle(), &data);
+            if let Some(updater) = &updater {
+                core = core.with_updater(updater.clone());
             }
             let core = Arc::new(core);
             // The runtime mounts plugins, so it may list and toggle them.
@@ -123,6 +144,13 @@ pub fn run() {
                     permission: Default::default(),
                 }),
             );
+            // The theme studio asks the brain for themes, each ask in a session of its own (ADR 0059).
+            core.grant(
+                RUNTIME_CALLER,
+                Permission::BrainAsk(desk_bridge::BrainAskPermission {
+                    permission: Default::default(),
+                }),
+            );
             // The runtime connects the person's connectors and keeps their views (ADR 0036).
             core.grant(
                 RUNTIME_CALLER,
@@ -136,20 +164,43 @@ pub fn run() {
                     permission: Default::default(),
                 }),
             );
+            // The runtime shows the update and restarts into it when the person asks (ADR 0054).
+            core.grant(
+                RUNTIME_CALLER,
+                Permission::UpdateManage(UpdateManagePermission {
+                    permission: Default::default(),
+                }),
+            );
+            // The person's themes (ADR 0058): the theme studio saves, imports, exports and removes
+            // them as the runtime, and `desk theme` does the same as the CLI (whose other grants
+            // are desk_ipc::grants()).
+            for caller in [RUNTIME_CALLER, desk_ipc::CALLER] {
+                core.grant(
+                    caller,
+                    Permission::ThemeManage(ThemeManagePermission {
+                        permission: Default::default(),
+                    }),
+                );
+            }
             for dir in env_paths("DESK_PLUGIN_DIRS") {
                 core.install_plugins_in(&dir, true);
             }
             for dir in env_paths("DESK_DEV_PLUGINS") {
                 core.install_plugin(&dir, false);
             }
+            // Hot reload leaves user themes to the themes watch, so each change is announced once.
             let watcher = core.watch_plugins().ok();
+            let themes = core
+                .watch_themes()
+                .map_err(|why| eprintln!("endue Desk: the themes folder is not watched ({why})"))
+                .ok();
             core.start_connectors();
             core.start_connector_scheduler(CONNECTOR_TICK);
             let views = core.watch_views().ok();
             for problem in core.view_problems() {
                 eprintln!("endue Desk: a view is left out ({problem})");
             }
-            app.manage(Watching(Mutex::new((watcher, views))));
+            app.manage(Watching(Mutex::new((watcher, views, themes))));
 
             // Core events reach the runtime as Tauri events, each with the callers it is for, so the
             // runtime can hand an addressed event (a perm.prompt, a subscribed event) to the plugin it
@@ -167,12 +218,30 @@ pub fn run() {
             // The desk CLI reaches the core over a same-user socket as `cli`, and hears every core
             // event too (ADR 0030).
             app.manage(socket::serve(&core));
-            app.manage(core);
+            app.manage(Arc::clone(&core));
+            palette::setup(app, &core)?;
+            core.start_updates();
+            if let Some(updater) = updater {
+                tray::follow(app.handle(), &updater);
+                app.manage(update::Updates(updater));
+            }
             Ok(())
+        })
+        .on_window_event(|window, event| {
+            if window.label() == "main"
+                && let tauri::WindowEvent::CloseRequested { api, .. } = event
+            {
+                api.prevent_close();
+                let _ = window.hide();
+            }
         })
         .invoke_handler(tauri::generate_handler![
             commands::bridge::bridge_call,
             commands::ready::desk_ready,
+            palette::palette_hide,
+            palette::palette_reveal_main,
+            palette::palette_prepare_main,
+            palette::palette_present,
             commands::files::take_open_files
         ])
         .build(tauri::generate_context!())

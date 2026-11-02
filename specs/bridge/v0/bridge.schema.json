@@ -29,6 +29,10 @@
     "BridgeRequest": {
       "description": "Any bridge call. The method field selects the params shape.",
       "oneOf": [
+        { "$ref": "search.schema.json#/$defs/SearchReplaceRequest" },
+        { "$ref": "search.schema.json#/$defs/SearchQueryRequest" },
+        { "$ref": "search.schema.json#/$defs/SearchSystemRequest" },
+        { "$ref": "search.schema.json#/$defs/SearchOpenRequest" },
         { "$ref": "fs.schema.json#/$defs/FsReadRequest" },
         { "$ref": "fs.schema.json#/$defs/FsWriteRequest" },
         { "$ref": "fs.schema.json#/$defs/FsListRequest" },
@@ -55,6 +59,7 @@
         { "$ref": "store.schema.json#/$defs/StoreSetRequest" },
         { "$ref": "init.schema.json#/$defs/InitGetRequest" },
         { "$ref": "brain.schema.json#/$defs/BrainSayRequest" },
+        { "$ref": "brain.schema.json#/$defs/BrainAskRequest" },
         { "$ref": "brain.schema.json#/$defs/BrainAgentsListRequest" },
         { "$ref": "brain.schema.json#/$defs/BrainAgentsCardRequest" },
         { "$ref": "brain.schema.json#/$defs/BrainSpacesListRequest" },
@@ -85,7 +90,17 @@
         { "$ref": "view.schema.json#/$defs/ViewSaveRequest" },
         { "$ref": "view.schema.json#/$defs/ViewRemoveRequest" },
         { "$ref": "catalog.schema.json#/$defs/CatalogGetRequest" },
-        { "$ref": "shell.schema.json#/$defs/ShellOpenRequest" }
+        { "$ref": "shell.schema.json#/$defs/ShellOpenRequest" },
+        { "$ref": "update.schema.json#/$defs/UpdateStatusRequest" },
+        { "$ref": "update.schema.json#/$defs/UpdateCheckRequest" },
+        { "$ref": "update.schema.json#/$defs/UpdateDownloadRequest" },
+        { "$ref": "update.schema.json#/$defs/UpdateApplyRequest" },
+        { "$ref": "theme.schema.json#/$defs/ThemeSaveRequest" },
+        { "$ref": "theme.schema.json#/$defs/ThemeImportRequest" },
+        { "$ref": "theme.schema.json#/$defs/ThemeExportRequest" },
+        { "$ref": "theme.schema.json#/$defs/ThemeRemoveRequest" },
+        { "$ref": "theme.schema.json#/$defs/ThemeMarketListRequest" },
+        { "$ref": "theme.schema.json#/$defs/ThemeMarketFetchRequest" }
       ]
     },
     "BridgeResponse": {
@@ -141,7 +156,7 @@
       ]
     },
     "BridgeEvent": {
-      "description": "Something the core reports without being asked: file changes, process output, wake words, permission changes, notifications, surfaces, commands, settings, log entries, and changes to items, connectors and views.",
+      "description": "Something the core reports without being asked: file changes, process output, wake words, permission changes, notifications, surfaces, commands, settings, log entries, changes to items, connectors and views, and the desk's update status.",
       "oneOf": [
         { "$ref": "fs.schema.json#/$defs/FsChangedEvent" },
         { "$ref": "proc.schema.json#/$defs/ProcOutputEvent" },
@@ -161,7 +176,8 @@
         { "$ref": "log.schema.json#/$defs/LogEntryEvent" },
         { "$ref": "data.schema.json#/$defs/DataChangedEvent" },
         { "$ref": "connector.schema.json#/$defs/ConnectorChangedEvent" },
-        { "$ref": "view.schema.json#/$defs/ViewChangedEvent" }
+        { "$ref": "view.schema.json#/$defs/ViewChangedEvent" },
+        { "$ref": "update.schema.json#/$defs/UpdateChangedEvent" }
       ]
     }
   }

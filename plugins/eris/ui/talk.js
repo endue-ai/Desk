@@ -31,12 +31,24 @@ export class Talk {
   #shown = 0;
   #nextAt = 0;
   #index = 100;
+  #completed;
   #conversation;
   #context;
   #question = "";
 
   /** `show(pose)` switches Eris's pose; `style` is the soul text style. */
-  constructor({ doc, bridge, timeline, show, style, reduced, commands, state }) {
+  constructor({
+    doc,
+    bridge,
+    timeline,
+    show,
+    style,
+    reduced,
+    commands,
+    state,
+    completed = () => {},
+  }) {
+    this.#completed = completed;
     this.#doc = doc;
     this.#bridge = bridge;
     this.#timeline = timeline;
@@ -81,6 +93,18 @@ export class Talk {
     }
   }
 
+  showExchange(prompt, answer) {
+    if (this.#busy) throw new Error("Wait for Eris to finish before opening another exchange.");
+    this.#el("say-text").value = prompt;
+    this.#conversation.begin(prompt);
+    this.#conversation.answer(answer, true);
+    this.#begin();
+    this.#text = answer;
+    this.#write(true);
+    this.#announce(answer);
+    this.#show("idle");
+  }
+
   #onEvent(event) {
     if (event.event !== "brain.turn" || !this.#busy) return;
     const { turnId, kind, text } = event.data;
@@ -99,6 +123,7 @@ export class Talk {
         this.#conversation.answer(this.#text);
         break;
       case "completed":
+        this.#completed({ id: turnId, prompt: this.#question, answer: this.#text });
         this.#write(true);
         this.#announce(this.#text.trim());
         this.#conversation.answer(this.#text, true);

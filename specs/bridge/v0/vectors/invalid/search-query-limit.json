@@ -1,0 +1,15 @@
+{
+  "target": "BridgeRequest",
+  "description": "search query limit",
+  "instance": {
+    "id": 1,
+    "method": "search.query",
+    "params": {
+      "query": "notes",
+      "limit": 101,
+      "scope": {
+        "permission": "search:read"
+      }
+    }
+  }
+}

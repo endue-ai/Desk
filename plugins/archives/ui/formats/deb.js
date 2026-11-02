@@ -1,7 +1,8 @@
 // Debian packages: an ar archive with debian-binary, control.tar.* (the control file, shown as
 // details above the files) and data.tar.* (the files the package installs).
+
+import { CODEC_NAMES, decodedInput } from "@endue-ai/formats/codecs/index.js";
 import { text } from "../bytes.js";
-import { CODEC_NAMES, decodedInput } from "../codecs/index.js";
 import { sliceSource } from "../source.js";
 import { arMembers, memberCodec } from "./ar.js";
 import { row } from "./archive.js";

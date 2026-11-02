@@ -1,6 +1,6 @@
 // The details of an image, as label and value rows: format, pixel size, file size, bit depth and
 // colour type, frames, what the format adds, and the EXIF fields. Also the model the view draws.
-import { sizeText, toBase64 } from "./bytes.js";
+import { sizeText } from "./bytes.js";
 
 /**
  * @typedef {import("./decode.js").Decoded} Decoded
@@ -34,8 +34,8 @@ export function rowsOf(d, size, seen = {}) {
 }
 
 /**
- * What the view shows for one file.
- * @param {{ buffer: string, path: string, name: string, size: number, content?: string, bytes?: Uint8Array }} file
+ * What the view shows for one file: an image the webview decodes by its blob: URL (decoding.js).
+ * @param {{ buffer: string, path: string, name: string, size: number }} file
  * @param {Decoded} d
  * @returns {ImageModel}
  */
@@ -57,11 +57,7 @@ export function modelOf(file, d) {
   if (d.label) model.label = d.label;
   if (d.animated) model.animated = true;
   if (d.kind === "details") model.reason = d.reason ?? "Images cannot show it.";
-  if (d.kind === "web" && d.data) {
-    // The file as read is already base64; anything cut out of it or rebuilt is encoded again.
-    const same = d.data === file.bytes && file.content !== undefined;
-    model.src = `data:${d.mime};base64,${same ? file.content : toBase64(d.data)}`;
-  }
+  if (d.kind === "web" && d.url) model.src = d.url;
   if (d.kind === "pixels" && d.rgba && d.width && d.height) {
     model.pixels = { width: d.width, height: d.height, data: d.rgba };
     if (d.slices) model.slice = { index: d.slices.index, count: d.slices.count };

@@ -1,17 +1,41 @@
 // The DOM for the slides plugin: the header (name, format, count, Play), the rail, the slide on screen
 // scaled to fit with its notes under it, play mode, the details view, and a status live region.
 // Arrows, Page Up/Down, Home and End move between slides; F5 plays from the start and Shift+F5 from
-// the slide on screen. Chords (Mod+S, Mod+O, Mod+W, Mod+K) are never prevented.
+// the slide on screen. Chords (Mod+S, Mod+O, Mod+W, Mod+K) are never prevented. A link on the slide
+// (click, or Enter on it) jumps to its slide or goes to `actions.external`; the opening's progress
+// is the page's <desk-progress>.
 import { renderDetails } from "./details.js";
 import { scaleToFit } from "./fit.js";
 import { createPlayer } from "./play.js";
 import { createRail } from "./rail.js";
+import { slideOf } from "./render/links.js";
 import { renderSlide } from "./render/slide.js";
 
 /**
  * @typedef {import("./slides.js").Shown} Shown
  * @typedef {import("./deck.js").Deck} Deck
  */
+
+/**
+ * The opening's progress in the page's <desk-progress> (@endue-ai/ui), which waits 300 ms before it
+ * shows. @param {Document} doc
+ * @returns {(value: import("./slides.js").Progress | null) => void}
+ */
+function createProgress(doc) {
+  const bar = /** @type {(HTMLElement & Record<string, unknown>) | null} */ (
+    doc.querySelector("desk-progress")
+  );
+  let cancel = () => {};
+  bar?.addEventListener("desk-cancel", () => cancel());
+  return (value) => {
+    if (!bar) return;
+    bar.hidden = value === null;
+    cancel = value?.cancel ?? (() => {});
+    if (!value) return;
+    const { label, max, detail } = value;
+    Object.assign(bar, { label, value: value.value, max, detail, cancelable: true });
+  };
+}
 
 /** Whether a key press belongs to a text field. @param {EventTarget | null} target */
 const typing = (target) => {
@@ -21,8 +45,11 @@ const typing = (target) => {
   );
 };
 
-/** @param {Document} doc */
-export function createView(doc) {
+/**
+ * @param {Document} doc
+ * @param {{ external?(url: string): unknown }} [actions]
+ */
+export function createView(doc, actions = {}) {
   const byId = (/** @type {string} */ id) => /** @type {HTMLElement} */ (doc.getElementById(id));
   const name = byId("deck-name");
   const format = byId("deck-format");
@@ -84,6 +111,9 @@ export function createView(doc) {
     const slide = deck.slides[index];
     if (!slide) return;
     frame.replaceChildren(renderSlide(doc, deck, slide));
+    // The slide on screen puts its links in the tab order; thumbnails keep theirs out.
+    const links = /** @type {NodeListOf<HTMLElement>} */ (frame.querySelectorAll("[data-link]"));
+    for (const link of links) link.tabIndex = 0;
     frame.style.aspectRatio = `${deck.size.width} / ${deck.size.height}`;
     fitSlide();
     stage.setAttribute("aria-label", `Slide ${index + 1} of ${deck.slides.length}`);
@@ -97,6 +127,34 @@ export function createView(doc) {
     player.open(deck, from < 0 ? Math.max(0, first) : from);
   };
   play.addEventListener("click", () => startPlay(index));
+
+  /** Follow the link at `target`, if there is one: a slide of this deck, or a URL. */
+  const follow = (/** @type {EventTarget | null} */ target, /** @type {boolean} */ playing) => {
+    const el = /** @type {HTMLElement | null} */ (target)?.closest?.("[data-link]");
+    const link = /** @type {HTMLElement | null} */ (el)?.dataset.link;
+    if (!link || !deck) return false;
+    const to = slideOf(link);
+    if (to === null) actions.external?.(link);
+    else if (playing) player.open(deck, to);
+    else go(to);
+    return true;
+  };
+  frame.addEventListener("click", (event) => {
+    if (follow(event.target, false)) event.preventDefault();
+  });
+  frame.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" || !follow(event.target, false)) return;
+    event.preventDefault();
+    event.stopPropagation();
+  });
+  // In play mode a click goes on to the next slide, unless it is on a link.
+  byId("player-stage").addEventListener(
+    "click",
+    (event) => {
+      if (follow(event.target, true)) event.stopPropagation();
+    },
+    { capture: true },
+  );
 
   doc.addEventListener("keydown", (event) => {
     // A view whose page was replaced (a test's, or a reload's) no longer answers.
@@ -142,6 +200,7 @@ export function createView(doc) {
     },
     /** @param {string} text */
     status: say,
+    progress: createProgress(doc),
     focus() {
       if (deck) stage.focus();
       else if (!details.hidden) details.focus();

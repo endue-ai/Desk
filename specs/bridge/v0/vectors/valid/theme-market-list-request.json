@@ -1,0 +1,13 @@
+{
+  "target": "BridgeRequest",
+  "description": "theme.market.list reads the markets desk.theme.markets lists",
+  "instance": {
+    "id": 90,
+    "method": "theme.market.list",
+    "params": {
+      "scope": {
+        "permission": "theme:manage"
+      }
+    }
+  }
+}
