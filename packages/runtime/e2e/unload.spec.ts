@@ -24,7 +24,7 @@ test("a window wholly under a maximized one is unloaded to a placeholder and loa
   page,
 }) => {
   await expect(frame(page, COUNTER).getByRole("button")).toBeVisible();
-  // Filling the free area, the focused Hello window covers the Counter window beside it.
+  // Filled and focused, Hello is drawn over Counter, which now tiles the free area alone under it.
   await window_(page, HELLO).locator(".surface-title").dblclick();
   await expect(window_(page, HELLO)).toHaveCSS("width", "1232px");
   await expect(inner(page, COUNTER).locator(".desk-surface-placeholder")).toHaveCount(1);
@@ -35,7 +35,7 @@ test("a window wholly under a maximized one is unloaded to a placeholder and loa
     "placeholder.json",
   );
 
-  // Restored to its tile, Hello no longer covers it: the Counter frame loads again.
+  // Restored to its half, Hello no longer covers all of it: the Counter frame loads again.
   await window_(page, HELLO).locator(".surface-title").dblclick();
   await expect(inner(page, COUNTER).locator(".desk-surface-placeholder")).toHaveCount(0);
   await expect(frame(page, COUNTER).getByRole("button")).toBeVisible();
