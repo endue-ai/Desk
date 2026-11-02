@@ -161,4 +161,42 @@ test.describe("desk.propose from the talk line", () => {
     await expect(page.locator(VIEWS)).toBeHidden();
     expect(await fileOf(page, "__shell", ID)).toBe("not_found");
   });
+
+  test("a look request goes to the theme studio, and a sentence that makes a view to desk.propose, look words and all", async ({
+    page,
+  }) => {
+    await openShell(page, "?views=1&lang=en");
+    const studio = page.getByRole("dialog", { name: "Themes" });
+    const LOOK = "make it feel like warm paper";
+    await page.keyboard.type(LOOK);
+    // The composer's last choice sends the line; the ones above it are commands it matches.
+    await expect(page.getByRole("option").last()).toHaveText(`Tell Eris · ${LOOK}`);
+    await page.keyboard.press("ArrowUp");
+    await page.keyboard.press("Enter");
+    await expect(studio).toBeVisible();
+    await expect(studio.locator('[data-key="describe-sentence"]')).toHaveValue(LOOK);
+    await expect(studio.locator(".theme-proposal")).toContainText("Warm Paper");
+    await expect(page.locator(VIEWS)).toBeHidden();
+    await page.keyboard.press("Escape");
+    await expect(studio).toBeHidden();
+
+    const MADE = "make a view that looks calm: the events this week as a board";
+    await page.locator("#composer-input").focus();
+    await page.keyboard.type(MADE);
+    await expect(page.getByRole("option").last()).toHaveText(`Make with Eris · ${MADE}`);
+    await page.keyboard.press("ArrowUp");
+    await page.keyboard.press("Enter");
+    const frame = await viewsFrame(page);
+    await expect(frame.locator(".preview-bar")).toContainText(`Eris made this from “${MADE}”.`);
+    await expect(frame.locator("#view-title")).toHaveText("Events this week");
+    await expect(studio).toBeHidden();
+    const asked = await page.evaluate(() =>
+      window.__shell.stub.log
+        .filter((entry) => entry.request.method === "brain.ask")
+        .map((entry) => (entry.request.params as { tool: { name: string } }).tool.name),
+    );
+    expect(asked).toEqual(["propose_theme", "propose_view"]);
+    await frame.locator('desk-button[data-choice="discard"]').click();
+    await expect(page.locator(VIEWS)).toBeHidden();
+  });
 });
