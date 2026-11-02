@@ -153,5 +153,10 @@
         "desktopTemplate": "linux/desk.desktop"
       }
     }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": ""
+    }
   }
 }

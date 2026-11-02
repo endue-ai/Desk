@@ -8,6 +8,8 @@ mod palette;
 mod palette_assets;
 mod protocol;
 mod socket;
+mod tray;
+mod update;
 
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
@@ -15,7 +17,7 @@ use std::sync::{Arc, Mutex};
 use desk_brain_endue::HttpBrain;
 use desk_bridge::{
     BrainConversePermission, CmdInvokePermission, ConnectorManagePermission, Permission,
-    PluginManagePermission, ViewManagePermission,
+    PluginManagePermission, UpdateManagePermission, ViewManagePermission,
 };
 use desk_core::{
     BrainMode, BrainOptions, Core, MockRemote, PluginWatcher, Roots, SyncError, SyncOutcome,
@@ -40,14 +42,16 @@ const CONNECTOR_TICK: std::time::Duration = std::time::Duration::from_secs(1);
 struct Watching(#[allow(dead_code)] Mutex<(Option<PluginWatcher>, Option<ViewWatcher>)>);
 
 pub fn run() {
-    tauri::Builder::default()
+    let builder = tauri::Builder::default()
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .manage(open_files::OpenFiles::default())
         .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
             open_files::deliver(app, open_files::argument_paths(args));
             open_files::focus(app);
         }))
-        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_dialog::init());
+    // The Tauri updater, only when this build updates itself (ADR 0054).
+    update::register(builder)
         .register_asynchronous_uri_scheme_protocol(protocol::SCHEME, |ctx, request, responder| {
             // A file URL reads from disk: answer from the blocking pool, never the main thread.
             let app = ctx.app_handle().clone();
@@ -103,6 +107,11 @@ pub fn run() {
                 }
                 Err(why) => eprintln!("endue Desk: no brain ({why}); brain.say is unavailable"),
             }
+            // The desk's own updates (ADR 0054), when this build carries an updater key.
+            let updater = update::updater(app.handle(), &data);
+            if let Some(updater) = &updater {
+                core = core.with_updater(updater.clone());
+            }
             let core = Arc::new(core);
             // The runtime mounts plugins, so it may list and toggle them.
             core.grant(
@@ -139,6 +148,13 @@ pub fn run() {
                     permission: Default::default(),
                 }),
             );
+            // The runtime shows the update and restarts into it when the person asks (ADR 0054).
+            core.grant(
+                RUNTIME_CALLER,
+                Permission::UpdateManage(UpdateManagePermission {
+                    permission: Default::default(),
+                }),
+            );
             for dir in env_paths("DESK_PLUGIN_DIRS") {
                 core.install_plugins_in(&dir, true);
             }
@@ -172,6 +188,11 @@ pub fn run() {
             app.manage(socket::serve(&core));
             app.manage(Arc::clone(&core));
             palette::setup(app, &core)?;
+            core.start_updates();
+            if let Some(updater) = updater {
+                tray::follow(app.handle(), &updater);
+                app.manage(update::Updates(updater));
+            }
             Ok(())
         })
         .on_window_event(|window, event| {
