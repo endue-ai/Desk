@@ -1,10 +1,11 @@
 /**
  * The editor's draft: a copy of a theme block to change, the companions a base colour brings along
- * (a primary's hover, text, tints and ring; a status's text, tint and border), and the id a saved
- * draft gets. DOM-free.
+ * (a primary's hover, text, tints and ring; a status's text, tint and border), the id a saved draft
+ * gets, and the save itself, which the editor and Describe share. DOM-free.
  */
 import type { ThemePackage, ThemeVariant } from "@endue-ai/bridge";
 import { formatColor, parseColor, type Rgba } from "@endue-ai/ui/theme";
+import type { RuntimeThemes, ThemeIo } from "../policies/theme";
 
 export type Scheme = "light" | "dark";
 
@@ -85,4 +86,35 @@ export function localId(name: string, taken: readonly string[], keep?: string): 
     const id = `${base}-${n}`;
     if (id === keep || !taken.includes(id)) return id;
   }
+}
+
+/** What a save takes besides the theme: its new files, the theme to copy the rest from, and more. */
+export interface SaveOptions {
+  files?: ReadonlyArray<{ path: string; base64: string }>;
+  copyFrom?: string;
+  /** The id it already has (a theme of the person's own saved again). */
+  keep?: string;
+  /** The scheme to apply it in, when it was previewed in one the desk is not in. */
+  scheme?: Scheme;
+}
+
+/** Save a draft as the person's own theme (theme.save), end its preview and apply it; its id. */
+export async function saveTheme(
+  themes: RuntimeThemes,
+  io: ThemeIo,
+  entry: { name: string; description?: string; theme: ThemePackage },
+  options: SaveOptions = {},
+): Promise<string> {
+  const taken = themes.installed().map((t) => t.id);
+  const id = localId(entry.name, taken, options.keep);
+  const { name, description, theme } = entry;
+  await io.save(
+    description ? { id, name, description, theme } : { id, name, theme },
+    options.files ?? [],
+    options.copyFrom,
+  );
+  themes.previewDraft(undefined);
+  if (options.scheme) themes.apply(id, options.scheme);
+  else themes.apply(id);
+  return id;
 }

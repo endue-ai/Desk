@@ -3,8 +3,9 @@
  * UI, not a plugin. Its gallery shows the endue theme and every installed theme plugin as cards; the
  * focused or hovered card is previewed on the whole desk, Enter or a click applies it, and Escape (or
  * closing) puts back what was in force. Its editor (editor.ts, TS-03 to TS-05) tunes a copy of a theme
- * while the desk previews it; "From an image" (brand.ts, TS-09) starts one from a logo's colours. The
- * command desk.theme.studio opens it.
+ * while the desk previews it; "From an image" (brand.ts, TS-09) starts one from a logo's colours, and
+ * Describe (describe.ts, TS-06, TS-07) from a sentence the brain answers. Its commands (commands.ts)
+ * open it.
  */
 import type { ThemePackage } from "@endue-ai/bridge";
 import type { Commands } from "../commands";
@@ -14,7 +15,9 @@ import { icon } from "../shell/icons";
 import { containModal } from "../shell/modal";
 import { createBrandPanel } from "./brand";
 import { themeCardElement } from "./card";
+import { defineStudioCommands } from "./commands";
 import { type StudioCopy, type StudioLang, studioText } from "./copy";
+import { createDescribe } from "./describe";
 import { createEditor, type ThemeIo } from "./editor";
 import { filterCards, moveIn, type ThemeCard, tagsOf, themeCards } from "./model";
 import { acceptDrops, transferControls } from "./transfer";
@@ -33,12 +36,17 @@ export interface ThemeStudio {
   open(): void;
   /** Open the editor on a copy of `from` (an installed theme), or on a new theme. */
   edit(from: string | undefined): void;
+  /** Open Describe with `text` in its field, and run it when there is one. */
+  describe(text?: string): void;
   close(): void;
   isOpen(): boolean;
   dispose(): void;
 }
 
 const COLUMNS = 3;
+
+/** What the studio shows: the gallery, or one of the ways to make a theme. */
+type View = "gallery" | "edit" | "brand" | "describe";
 
 export function mountThemeStudio(host: HTMLElement, deps: StudioDeps): ThemeStudio {
   const { themes } = deps;
@@ -49,8 +57,7 @@ export function mountThemeStudio(host: HTMLElement, deps: StudioDeps): ThemeStud
   let query = "";
   let tag: string | undefined;
   let selected = "";
-  let editing = false;
-  let branding = false;
+  let view: View = "gallery";
   let panel: HTMLElement | undefined;
   let offDrops: (() => void) | undefined;
   let arriving: string | undefined;
@@ -89,36 +96,30 @@ export function mountThemeStudio(host: HTMLElement, deps: StudioDeps): ThemeStud
     io: () => deps.io?.(),
     back: (id) => gallery(id),
   });
+  const describe = createDescribe({
+    themes,
+    lang: deps.lang,
+    io: () => deps.io?.(),
+    open: () => describing(),
+    back: (id) => gallery(id),
+    tune: (theme, name) => edit(undefined, theme, name),
+  });
   const brand = createBrandPanel({
     tr,
     open: () => fromImage(),
     back: () => gallery(),
     make: (theme, name) => edit(undefined, theme, name),
+    describe: (colors) => describing({ colors }),
   });
+  const button = (key: string, label: StudioCopy, onClick: () => void) =>
+    h("button", { type: "button", class: "btn btn-outline", "data-key": key, onClick }, tr(label));
   const actions = h(
     "div",
     { class: "theme-gallery-actions" },
-    h(
-      "button",
-      {
-        type: "button",
-        class: "btn btn-outline",
-        "data-key": "tune-copy",
-        onClick: () => edit(selected),
-      },
-      tr("tuneCopy"),
-    ),
-    h(
-      "button",
-      {
-        type: "button",
-        class: "btn btn-outline",
-        "data-key": "new-theme",
-        onClick: () => edit(undefined),
-      },
-      tr("newTheme"),
-    ),
+    button("tune-copy", "tuneCopy", () => edit(selected)),
+    button("new-theme", "newTheme", () => edit(undefined)),
     brand.entry,
+    describe.entry,
   );
   const transfer = {
     io: () => deps.io?.(),
@@ -133,42 +134,57 @@ export function mountThemeStudio(host: HTMLElement, deps: StudioDeps): ThemeStud
   const transferEl = h("div", { class: "theme-gallery-actions" });
   const transferNote = h("p", { class: "theme-note theme-transfer-note", "aria-live": "polite" });
   const drawTransfer = () => render(transferEl, () => transferControls(transfer, transferNote));
+  const views: Record<Exclude<View, "gallery">, () => HTMLElement> = {
+    edit: () => editor.element,
+    brand: () => brand.element,
+    describe: () => describe.element,
+  };
   const layout = () => {
-    scrim?.classList.toggle("is-editing", editing);
-    panel?.classList.toggle("is-editing", editing);
-    search.hidden = editing || branding;
-    if (!editing) drawTransfer();
-    if (branding) return render(content, () => [brand.element]);
+    // The editor and Describe dock to the right, so the desk shows what they preview.
+    const docked = view === "edit" || view === "describe";
+    scrim?.classList.toggle("is-editing", docked);
+    panel?.classList.toggle("is-editing", docked);
+    search.hidden = view !== "gallery";
+    if (view !== "edit") drawTransfer();
     render(content, () =>
-      editing
-        ? [editor.element]
-        : [
+      view === "gallery"
+        ? [
             tagsEl,
             grid,
             h("div", { class: "theme-gallery-bar" }, actions, transferEl),
             transferNote,
-          ],
+          ]
+        : [views[view]()],
     );
   };
-  const edit = (from: string | undefined, made?: ThemePackage, name?: string) => {
-    editing = true;
-    branding = false;
+  /** Leave the view in force: the editor and Describe end what they preview. */
+  const leave = () => {
+    if (view === "edit") editor.stop();
+    if (view === "describe") describe.stop();
+  };
+  const go = (next: View) => {
+    leave();
+    view = next;
     themes.preview(undefined);
     layout();
+  };
+  const edit = (from: string | undefined, made?: ThemePackage, name?: string) => {
+    go("edit");
     if (made) editor.startDraft(made, themes.state().scheme, name);
     else editor.start(from || undefined, themes.state().scheme);
     content.querySelector<HTMLElement>("input, select, button")?.focus();
   };
   const fromImage = () => {
-    branding = true;
-    themes.preview(undefined);
-    layout();
+    go("brand");
     brand.start();
   };
+  const describing = (options?: Parameters<typeof describe.start>[0]) => {
+    if (view !== "describe") go("describe");
+    describe.start(options);
+  };
   const gallery = (id?: string) => {
-    editor.stop();
-    editing = false;
-    branding = false;
+    leave();
+    view = "gallery";
     if (id !== undefined) {
       selected = id;
       arriving = id;
@@ -179,7 +195,7 @@ export function mountThemeStudio(host: HTMLElement, deps: StudioDeps): ThemeStud
   };
 
   const draw = () => {
-    if (!scrim || editing) return;
+    if (!scrim || view === "edit") return;
     const list = shown();
     // A theme just saved or imported is selected before plugin.list lists it: keep it until it comes.
     if (arriving !== undefined && list.some((c) => c.id === arriving)) {
@@ -279,9 +295,8 @@ export function mountThemeStudio(host: HTMLElement, deps: StudioDeps): ThemeStud
 
   const close = () => {
     if (!scrim) return;
-    if (editing) editor.stop();
-    editing = false;
-    branding = false;
+    leave();
+    view = "gallery";
     offDrops?.();
     offDrops = undefined;
     themes.preview(undefined);
@@ -301,7 +316,7 @@ export function mountThemeStudio(host: HTMLElement, deps: StudioDeps): ThemeStud
     tag = undefined;
     search.value = "";
     selected = themes.active();
-    editing = false;
+    view = "gallery";
     panel = h(
       "section",
       {
@@ -348,25 +363,7 @@ export function mountThemeStudio(host: HTMLElement, deps: StudioDeps): ThemeStud
     focusSelected();
   };
 
-  const offCommand = deps.commands.define("desk.theme.studio", {
-    title: "Open the theme studio",
-    keywords: ["theme", "themes", "appearance", "gallery", "look", "테마"],
-    owner: "desk",
-    run: () => open(),
-  });
-
-  const offEdit = deps.commands.define("desk.theme.edit", {
-    title: "Tune a copy of a theme",
-    keywords: ["theme", "edit", "tune", "customize", "테마", "편집"],
-    owner: "desk",
-    run: (args) => {
-      const id = (args as { id?: unknown } | undefined)?.id;
-      open();
-      edit(typeof id === "string" ? id : themes.active());
-    },
-  });
-
-  return {
+  const studio: ThemeStudio = {
     open,
     close,
     isOpen: () => scrim !== undefined,
@@ -374,10 +371,15 @@ export function mountThemeStudio(host: HTMLElement, deps: StudioDeps): ThemeStud
       open();
       edit(from);
     },
+    describe(text) {
+      open();
+      describing(text ? { text, run: true } : {});
+    },
     dispose() {
       close();
-      offCommand();
-      offEdit();
+      offCommands();
     },
   };
+  const offCommands = defineStudioCommands(deps.commands, { ...studio, active: themes.active });
+  return studio;
 }

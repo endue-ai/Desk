@@ -3,8 +3,8 @@
  * picked from disk (or dropped on the panel) is decoded and downsampled on the device and read for its
  * five main colours by @endue-ai/ui/theme's extractColors. The image never crosses the bridge or the
  * network; only colours leave this module. "Make a theme" builds a gated palette for both schemes
- * from them and opens the editor on it. `colors()` keeps them for Describe, which adds them to its
- * sentence.
+ * from them and opens the editor on it; "Describe with these" opens Describe with them added to its
+ * sentence (TB-04: the sentence and the extracted colours).
  */
 import type { ThemePackage } from "@endue-ai/bridge";
 import { extractColors, type Pixels, paletteFrom, type Swatch } from "@endue-ai/ui/theme";
@@ -19,6 +19,8 @@ export interface BrandDeps {
   make(theme: ThemePackage, name: string): void;
   /** Back to the gallery. */
   back(): void;
+  /** Open Describe with these colours added to its sentence. */
+  describe(colors: string[]): void;
 }
 
 export interface BrandPanel {
@@ -170,6 +172,17 @@ export function createBrandPanel(deps: BrandDeps): BrandPanel {
         "div",
         { class: "theme-brand-actions" },
         button("brand-back", "back", () => deps.back()),
+        h(
+          "button",
+          {
+            type: "button",
+            class: "btn btn-outline",
+            "data-key": "describe-colors",
+            disabled: swatches.length === 0,
+            onClick: () => deps.describe(swatches.map((s) => s.color)),
+          },
+          tr("describeWith"),
+        ),
         h(
           "button",
           {

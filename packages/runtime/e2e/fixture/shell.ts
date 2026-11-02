@@ -3,10 +3,12 @@
 // and in-memory storage. ?lang=en, ?persist=1 (the core's store in localStorage), ?reduced=1
 // (desk.theme.motion: reduce), ?init={...} (more init.yaml settings), ?themes=1 (the test theme
 // plugin installed), ?studio=1 (the theme studio open once the desk is ready; ?studio=<theme id>
-// previews that theme too; ?edit=<theme id> opens the editor on a copy of it). Never shipped.
+// previews that theme too; ?edit=<theme id> opens the editor on a copy of it). brain.ask answers as
+// examples/brain-echo does (propose_theme from the words of the prompt's last line). Never shipped.
 import type { PluginManifest } from "@endue-ai/bridge";
 import "../../src/desk.css";
 import "../../src/shell/styles";
+import { proposeTheme } from "../../../../examples/brain-echo/theme.mjs";
 import { browserBridge, type Envelope } from "../../src/bridge/browser";
 import { browserCore, localStore, memoryStore } from "../../src/bridge/core";
 import erisReply from "../../src/bridge/envelopes/eris-reply.json";
@@ -53,6 +55,7 @@ const core = browserCore({
     ...(params.has("themes") ? [testTheme as PluginManifest] : []),
   ],
   store: params.has("persist") ? localStore("desk.core.") : memoryStore(),
+  ask: (prompt, tool) => (tool === "propose_theme" ? proposeTheme(prompt) : undefined),
   init: {
     profile: "morning",
     settings: {

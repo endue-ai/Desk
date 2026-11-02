@@ -115,7 +115,13 @@ function setup(status?: BrainStatusResult) {
   document.body.replaceChildren(panel.element);
   const turn = (turnId: string, kind: "completed" | "error" | "offline" | "online", more = {}) =>
     stub.emit({ event: "brain.turn", data: { turnId, kind, ...more } });
-  return { panel, asked, turn, stub, themes, hub, style, save, back, tune };
+  return { panel, asks: asked, turn, stub, themes, hub, style, save, back, tune };
+}
+
+/** Wait for the `n`th ask, and for its answer to reach the panel. */
+async function answered(list: unknown[], n: number) {
+  await vi.waitFor(() => expect(list).toHaveLength(n));
+  await new Promise((done) => setTimeout(done, 0));
 }
 
 const key = <T extends HTMLElement = HTMLButtonElement>(name: string) =>
@@ -130,10 +136,10 @@ const say = (text: string, button: string) => {
 
 describe("Describe", () => {
   it("sends only the schema, the current values, the rules and the sentence, the sentence last", async () => {
-    const { panel, asked, themes } = setup();
+    const { panel, asks, themes } = setup();
     panel.start({ text: "warm paper\n  with grain", run: true });
-    await vi.waitFor(() => expect(asked).toHaveLength(1));
-    const { prompt, tool, scope } = asked[0] as BrainAskParams;
+    await answered(asks, 1);
+    const { prompt, tool, scope } = asks[0] as BrainAskParams;
     expect(scope).toEqual({ permission: "brain:ask" });
     expect(tool).toEqual(PROPOSE_THEME);
     expect((tool.schema.properties as Record<string, unknown>).theme).toEqual({
@@ -156,7 +162,6 @@ describe("Describe", () => {
     // The values in force, and nothing else: no files, no paths.
     const current = themes.resolve("");
     expect(prompt).toContain(`"background":"${current.tokens.background}"`);
-    expect(prompt).not.toMatch(/url\(|\/plugins\//);
     expect(prompt).toBe(
       describePrompt({
         sentence: "warm paper with grain",
@@ -164,12 +169,27 @@ describe("Describe", () => {
       }),
     );
     expect(prompt.length).toBeLessThan(32000);
+    // A theme's image is a path to its files: the values leave it out.
+    const withImage = describePrompt({
+      sentence: "warm paper",
+      current: {
+        name: "Tiles",
+        scheme: "dark",
+        tokens: { background: "#102030", backdrop: 'url("/plugins/test.theme/images/tiles.png")' },
+      },
+    });
+    const values = withImage.slice(
+      withImage.indexOf("## Current theme"),
+      withImage.indexOf("## Sentence"),
+    );
+    expect(values).toContain('"background":"#102030"');
+    expect(values).not.toMatch(/url\(|\/plugins\//);
   });
 
   it("cleans a proposal and previews it on the whole desk through the gate, in the scheme it has", async () => {
-    const { panel, asked, turn, themes, style } = setup();
+    const { panel, asks, turn, themes, style } = setup();
     panel.start({ text: "warm paper", run: true });
-    await vi.waitFor(() => expect(asked).toHaveLength(1));
+    await answered(asks, 1);
     expect(status()).toContain("Asking the brain");
     turn("a1", "completed", { structured: WARM });
     expect(themes.previewing()).toBe("local.draft");
@@ -189,13 +209,13 @@ describe("Describe", () => {
   });
 
   it("refines with the proposal sent back, then applies it as my theme with origin.prompt", async () => {
-    const { panel, asked, turn, hub, save, back } = setup();
+    const { panel, asks, turn, hub, save, back } = setup();
     panel.start({ text: "warm paper", run: true });
-    await vi.waitFor(() => expect(asked).toHaveLength(1));
+    await answered(asks, 1);
     turn("a1", "completed", { structured: WARM });
     say("warmer", "describe-refine");
-    await vi.waitFor(() => expect(asked).toHaveLength(2));
-    const prompt = (asked[1] as BrainAskParams).prompt;
+    await answered(asks, 2);
+    const prompt = (asks[1] as BrainAskParams).prompt;
     expect(prompt).toContain("## Proposal");
     expect(prompt).toContain('"name":"Warm Paper"');
     expect(prompt).toContain('"background":"#f6f1e7"');
@@ -216,9 +236,9 @@ describe("Describe", () => {
   });
 
   it("tunes the proposal in the editor, or discards it and the preview ends", async () => {
-    const { panel, asked, turn, themes, tune } = setup();
+    const { panel, asks, turn, themes, tune } = setup();
     panel.start({ text: "warm paper", run: true });
-    await vi.waitFor(() => expect(asked).toHaveLength(1));
+    await answered(asks, 1);
     turn("a1", "completed", { structured: WARM });
     key("describe-tune")?.click();
     expect(tune).toHaveBeenCalledWith(CLEAN, "Warm Paper");
@@ -228,18 +248,18 @@ describe("Describe", () => {
   });
 
   it("says the brain gave no theme when it answers in words, and previews nothing", async () => {
-    const { panel, asked, turn, themes } = setup();
+    const { panel, asks, turn, themes } = setup();
     panel.start({ text: "warm paper", run: true });
-    await vi.waitFor(() => expect(asked).toHaveLength(1));
+    await answered(asks, 1);
     turn("a1", "completed", { text: "Here is a warm theme for you." });
     expect(status()).toContain("The brain gave no theme");
     expect(themes.previewing()).toBeUndefined();
   });
 
   it("turns Generate off while the brain is offline or refuses, and on again when it is back", async () => {
-    const { panel, asked, turn } = setup();
+    const { panel, asks, turn } = setup();
     panel.start({ text: "warm paper", run: true });
-    await vi.waitFor(() => expect(asked).toHaveLength(1));
+    await answered(asks, 1);
     expect(key("describe-generate")?.disabled).toBe(false);
     turn("a1", "offline", { text: "The brain is not reachable; trying again." });
     expect(key("describe-generate")?.disabled).toBe(true);

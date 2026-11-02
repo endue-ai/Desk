@@ -3,8 +3,9 @@
  * so rgba() and oklch() stay editable), a range, a choice, a text and a file. Every control has a
  * visible label, which screen readers read too.
  */
-import { formatColor, parseColor } from "@endue-ai/ui/theme";
+import { formatColor, type GateFix, parseColor } from "@endue-ai/ui/theme";
 import { h } from "../shell/dom";
+import type { StudioCopy } from "./copy";
 
 let next = 0;
 const fieldId = () => `theme-field-${++next}`;
@@ -141,6 +142,31 @@ export function fileField(
     },
   });
   return row(label, id, input);
+}
+
+/** The contrast gate's fixes, for a `.theme-fixes` section: the editor's and Describe's. */
+export function fixesList(
+  fixes: readonly GateFix[],
+  tr: (key: StudioCopy) => string,
+): HTMLElement[] {
+  return [
+    h("h3", { class: "theme-fixes-title" }, tr("fixes")),
+    fixes.length === 0
+      ? h("p", { class: "theme-note" }, tr("noFixes"))
+      : h(
+          "ul",
+          {},
+          fixes.map((f) =>
+            h(
+              "li",
+              {},
+              h("code", {}, f.token),
+              ` ${f.from} → ${f.to}`,
+              f.against ? ` (${f.ratio}:1 · ${f.against})` : "",
+            ),
+          ),
+        ),
+  ];
 }
 
 /** Bytes as base64, and as a data: URL a preview can load. */
