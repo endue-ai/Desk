@@ -10,9 +10,9 @@ use desk_bridge::{
     ConnectorManifest, ConnectorStatus, ConnectorSyncResult, FsReadResult, FsUrlResult,
     InitDocument, InitGetResult, InitSettingKey, Item, ItemChange, ItemPage, ItemQuery,
     PaletteResults, PermQueryResult, PermRequestResult, Permission, PluginContributes,
-    PluginListResult, PluginManifest, ShellOpenResult, StoreGetResult, ThemePackage, ThemeType,
-    ThemeVariant, View, ViewGetResult, ViewListResult, ViewSource, ViewSummary, manifest_problems,
-    view_problems,
+    PluginListResult, PluginManifest, RefusalReason, ShellOpenResult, StoreGetResult, ThemePackage,
+    ThemeType, ThemeVariant, View, ViewGetResult, ViewListResult, ViewSource, ViewSummary,
+    manifest_problems, view_problems,
 };
 use serde::Serialize;
 use serde::de::DeserializeOwned;
@@ -248,6 +248,28 @@ fn valid_vectors_roundtrip_through_generated_types() {
             }
         }
     }
+}
+
+#[test]
+fn perm_request_result_says_why_nobody_was_asked() {
+    let earlier = PermRequestResult {
+        granted: false,
+        grant: None,
+        reason: Some(RefusalReason::RefusedEarlier),
+    };
+    assert_eq!(
+        serde_json::to_value(&earlier).unwrap(),
+        json!({ "granted": false, "reason": "refused-earlier" })
+    );
+    let asked = PermRequestResult {
+        granted: false,
+        grant: None,
+        reason: None,
+    };
+    assert_eq!(
+        serde_json::to_value(&asked).unwrap(),
+        json!({ "granted": false })
+    );
 }
 
 #[test]
