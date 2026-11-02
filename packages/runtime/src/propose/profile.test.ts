@@ -169,8 +169,6 @@ describe("desk.propose for profiles", () => {
     expect(after.active).toBe("quiet-night");
     expect(after.profiles.find((p) => p.id === "quiet-night")).toEqual({
       id: "quiet-night",
-      name: "Quiet night",
-      description: "Notes and a terminal, and nothing that interrupts.",
       ...quietNight({ "endue.calendar": "Calendar, ui, on", "endue.mail": "Mail, ui, on" }),
     });
     expect([m.enabled("endue.calendar"), m.enabled("endue.mail")]).toEqual([false, false]);

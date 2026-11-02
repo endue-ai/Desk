@@ -3,7 +3,8 @@
  * kind's schema, with the sentence and what the desk has (the kind's context); checks the answer and
  * asks once more with what was wrong; previews it; and applies it when the person says so, keeping
  * what it applied so it can be undone. A kind says what differs: its schema, context, check, preview,
- * apply and undo. Views are the first (`view.ts`); profiles and key bindings follow (#340).
+ * apply and undo. Views are the first (`view.ts`); profiles (`profile.ts`) and key bindings
+ * (`keys.ts`) follow, previewed on the runtime's own card (`card.ts`).
  */
 import type { NoticeInput } from "../notify";
 import type { Asker, AskTool } from "./asker";
@@ -30,6 +31,10 @@ export interface Applied {
   title: string;
   /** Where it went: `~/.desk/views/eris.x.yaml`. */
   where: string;
+  /** Eris's line once it is applied, when the kind says it its own way. */
+  line?: string;
+  /** What undo puts back (the profile in force before, the person's keys). */
+  before?: unknown;
 }
 
 export interface ProposalKind<T = unknown> {
@@ -42,8 +47,8 @@ export interface ProposalKind<T = unknown> {
   tool(): AskTool;
   /** The tool's schema without annotations: a retry repeats it when the brain gave no call it allows. */
   compact(): Record<string, unknown>;
-  /** What the desk has that the brain may use; never the person's items themselves. */
-  context(): Promise<unknown>;
+  /** What the desk has that the brain may use for this request; never the person's items themselves. */
+  context(request: Request): Promise<unknown>;
   /** Fill in the desk's part and check the answer: the value, or each problem as `<pointer>: <what>`. */
   check(answer: unknown, request: Request): Promise<{ value: T } | { problems: string[] }>;
   /** Show it and wait for the person. */
@@ -98,7 +103,7 @@ export function createProposals(options: ProposalsOptions): Proposals {
 
   /** Ask, check, and ask once more with what was wrong. */
   const draft = async <T>(kind: ProposalKind<T>, request: Request) => {
-    const context = await kind.context();
+    const context = await kind.context(request);
     let problems: string[] = [];
     // The core says no more than that the brain gave no call the tool's schema allows.
     let schema: Record<string, unknown> | undefined;
@@ -180,7 +185,7 @@ export function createProposals(options: ProposalsOptions): Proposals {
         }
         applied.push({ kind: kind.kind, done });
         notify(`Eris made “${done.title}”`, "success", done.where);
-        eris?.say(`I made “${done.title}” and saved it in your ${kind.noun}s.`);
+        eris?.say(done.line ?? `I made “${done.title}” and saved it in your ${kind.noun}s.`);
         return { status: "applied", kind: kind.kind, id: done.id };
       }
     },

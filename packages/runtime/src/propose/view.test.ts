@@ -90,7 +90,7 @@ describe("the view kind", () => {
         },
       },
     });
-    expect(await kindOn(core).context()).toEqual({
+    expect(await kindOn(core).context(request)).toEqual({
       components: ["list", "agenda"],
       sources: [
         {
