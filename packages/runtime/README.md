@@ -22,12 +22,13 @@ and DOM (ADR 0010); animations run on an injected clock (ADR 0013). Shell decisi
   layer: profiles, desktops, agent bar; mode layer: Eris, rail, bottom edge, surfaces) over its own
   runtime, whose centre and floating plugin surfaces it holds as its windows (ADR 0040); returns
   `{ store, ticker, eris, runtime, ready, refresh, dispose }` (`plugins/shell`). It installs
-  `desk.propose` (`src/propose`, ADR 0073): a sentence to a view, asked of the brain (`brain.ask` or
-  `brain.say`), checked against the spec's schema, previewed in desk.views, applied with `view.save`.
+  `desk.propose` (`src/propose`, ADR 0073): a sentence to a view, asked of the brain with `brain.ask`
+  (ADR 0059), checked against the spec's schema, previewed in desk.views, applied with `view.save`.
 - `ShellBridge` (audio, the brain's voice, the agent directory of specs/brain/v0, ADR 0024);
   `browserBridge`, `browserCore` (the core's stub: cmd.*, plugins and built-in grants, store, init,
-  fixture items, `upsert`, `remove`, a scripted `brain`) for pages and tests. `ShortcutRouter`,
-  `comboOf`; layout `place`, `move`, `remove`; `realClock`, `ManualClock`, `tween`; `applyTheme`.
+  fixture items, `upsert`, `remove`, `brain.ask` by `ask` or a scripted `brain`) for pages and
+  tests. `ShortcutRouter`, `comboOf`; layout `place`, `move`, `remove`; `realClock`, `ManualClock`,
+  `tween`; `applyTheme`.
 
 ## Run and test
 
