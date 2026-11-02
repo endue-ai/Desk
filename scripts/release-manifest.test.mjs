@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, it } from "node:test";
+import Ajv2020 from "ajv/dist/2020.js";
 import {
   entryFor,
   listed,
@@ -199,3 +200,56 @@ describe("release-manifest", () => {
     assert.equal(promotable(index, { now: "2026-11-16T00:00:00Z", days: 3 }), undefined);
   });
 });
+
+/** specs/update/v0, the formats a desk reads (#319): one validator per document. */
+function updateSpec() {
+  const ajv = new Ajv2020({ strict: true, allErrors: true, validateFormats: false });
+  for (const name of ["index", "release"]) {
+    const url = new URL(`../specs/update/v0/${name}.schema.json`, import.meta.url);
+    ajv.addSchema(JSON.parse(readFileSync(url, "utf8")));
+  }
+  const id = (doc, def) => `https://endue.ai/specs/update/v0/${doc}.schema.json#/$defs/${def}`;
+  const check = (validate, value, what) =>
+    assert.ok(validate(value), `${what}: ${JSON.stringify(validate.errors, null, 2)}`);
+  const index = ajv.getSchema(id("index", "ReleaseIndex"));
+  const release = ajv.getSchema(id("release", "ReleaseManifest"));
+  return {
+    index: (value, what) => check(index, value, what),
+    release: (value, what) => check(release, value, what),
+  };
+}
+
+describe("release-manifest and specs/update/v0", () => {
+  it("release.json and index.json written by the scripts pass specs/update/v0", () => {
+    const spec = updateSpec();
+    const root = mkdtempSync(join(tmpdir(), "release-spec-"));
+    for (const name of [
+      "endue-desk_0.2.0_darwin-aarch64.app.tar.gz",
+      "endue-desk_0.2.0_windows-x86_64-setup.exe",
+      "endue-desk_0.2.0_linux-x86_64.deb",
+    ]) {
+      writeFileSync(join(root, name), `bytes of ${name}`);
+      const signature = Buffer.from(`untrusted comment: signature of ${name}\n`).toString("base64");
+      writeFileSync(join(root, `${name}.sig`), `${signature}\n`);
+    }
+    const release = releaseManifest({
+      version: "0.2.0",
+      base: BASE,
+      notes: "https://github.com/endue-ai/Desk/releases/tag/v0.2.0",
+      commit: "c46d12b7e1a0c46d12b7e1a0c46d12b7e1a0c46d",
+      date: NOW,
+      minFrom: "0.1.0",
+      files: readDist(root, "0.2.0"),
+    });
+    spec.release(release, "release.json");
+    const first = listed(undefined, entryFor(release), { channel: "canary", now: NOW });
+    spec.index(first, "the first canary index");
+    const older = { ...entryFor(release), version: "0.1.9", date: "2026-10-01T09:00:00Z" };
+    const two = listed(first, older, { channel: "canary", now: NOW });
+    spec.index(two, "an index of two");
+    spec.index(unlisted(two, "0.1.9", { now: NOW }), "an index after a rollback");
+    spec.index(pruned(two, { now: NOW, days: 14 }).index, "a pruned index");
+    assert.equal(two.serial, 2);
+  });
+});
+
