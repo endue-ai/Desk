@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://endue.ai/specs/update/v0/index.schema.json",
+  "title": "Desk update v0: the channel index",
+  "description": "desk/channels/<channel>/index.json on the release origin (Cloudflare R2, ADR 0054): the builds on one channel, newest first, signed by the updater key in index.json.sig. A desk reads only this file to choose its next build; release.json then gives the artifact. Unknown fields are allowed, so an installed desk keeps reading what a newer release script writes.",
+  "$defs": {
+    "ReleaseChannel": {
+      "description": "A channel is an index, not a version string: stable lists tagged releases, beta canary builds promoted after three days, canary every build of main.",
+      "type": "string",
+      "enum": ["canary", "beta", "stable"]
+    },
+    "ReleaseVersion": {
+      "description": "A SemVer version without a leading v or build metadata, so its order is SemVer precedence alone: 0.2.0, 0.2.1-pre.48. Every build has its own.",
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(\\.[0-9A-Za-z-]+)*)?$",
+      "maxLength": 64
+    },
+    "ReleaseTarget": {
+      "description": "A Tauri updater target: {os}-{arch}, or {os}-{arch}-{bundle} when the bundle matters (darwin-aarch64, windows-x86_64-nsis, linux-x86_64-deb). A desk looks for the most specific one it runs as first.",
+      "type": "string",
+      "pattern": "^(darwin|windows|linux)-(aarch64|x86_64|i686|armv7)(-[a-z]+)?$"
+    },
+    "ReleaseCommit": {
+      "description": "The git commit the build was made from, abbreviated or whole.",
+      "type": "string",
+      "pattern": "^[0-9a-f]{7,40}$"
+    },
+    "ReleaseTime": {
+      "description": "An RFC 3339 time with an offset: 2026-11-20T09:12:00Z.",
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$"
+    },
+    "ReleaseIndex": {
+      "description": "The builds on one channel. Taking a build down (rollback) removes its listing; a desk then drops it if it had it staged.",
+      "type": "object",
+      "properties": {
+        "channel": {
+          "$ref": "#/$defs/ReleaseChannel",
+          "description": "The channel this index is for. A desk refuses an index served for another channel."
+        },
+        "serial": {
+          "description": "Raised on every write. A desk refuses an index whose serial is below one it has seen for the channel, so a stale copy cannot bring back a build that was taken down.",
+          "type": "integer",
+          "minimum": 1
+        },
+        "generated": {
+          "$ref": "#/$defs/ReleaseTime",
+          "description": "When the release scripts wrote it."
+        },
+        "releases": {
+          "description": "The listed builds, newest first.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/ReleaseListing" }
+        }
+      },
+      "required": ["channel", "serial", "releases"]
+    },
+    "ReleaseListing": {
+      "description": "One build on a channel: what a desk needs to decide whether it is next.",
+      "type": "object",
+      "properties": {
+        "version": { "$ref": "#/$defs/ReleaseVersion" },
+        "commit": { "$ref": "#/$defs/ReleaseCommit" },
+        "date": {
+          "$ref": "#/$defs/ReleaseTime",
+          "description": "When the build was published; canary pruning and beta promotion count from it."
+        },
+        "minFrom": {
+          "$ref": "#/$defs/ReleaseVersion",
+          "description": "The lowest version that may move to this build directly. A lower desk first takes the newest build whose minFrom it meets (a stepping stone), then this one at its next check."
+        },
+        "rollout": {
+          "description": "The share of desks that see the build, 0 to 100; 100 when absent. A desk is in when its bucket for the version is below it.",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "targets": {
+          "description": "The targets the build has updater artifacts for.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/ReleaseTarget" },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "release": {
+          "description": "Its release.json: absolute, or relative to the origin's desk/ folder (releases/0.2.0/release.json).",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2048
+        }
+      },
+      "required": ["version", "targets", "release"]
+    }
+  }
+}

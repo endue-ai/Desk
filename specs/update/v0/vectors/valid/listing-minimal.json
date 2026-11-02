@@ -1,0 +1,12 @@
+{
+  "target": "ReleaseListing",
+  "description": "a listing needs only its version, targets and release; rollout is 100 when absent",
+  "instance": {
+    "version": "0.1.0",
+    "targets": [
+      "windows-x86_64-nsis",
+      "windows-x86_64"
+    ],
+    "release": "https://releases.endue.ai/desk/releases/0.1.0/release.json"
+  }
+}
