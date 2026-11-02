@@ -82,7 +82,19 @@ body {
 }
 
 /* A notice's actions (ADR 0061): small buttons after its text, clickable over the shell's layers. */
-.desk-status-action {
+.desk-status.has-actions {
+  display: flex;
+  align-items: center;
+}
+
+.desk-status-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.desk-status .desk-status-action {
+  flex: none;
   margin-left: var(--desk-space-2);
   padding: 0 var(--desk-space-2);
   font: inherit;

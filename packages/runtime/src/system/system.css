@@ -157,11 +157,11 @@
   pointer-events: auto;
 }
 
-.safe-badge-label {
+.layer-system .safe-badge-label {
   font-weight: 600;
 }
 
-.safe-badge-button {
+.layer-system .safe-badge-button {
   padding: var(--desk-space-1) var(--desk-space-3);
   font: inherit;
   color: var(--desk-warning-foreground);

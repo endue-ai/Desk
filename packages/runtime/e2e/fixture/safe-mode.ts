@@ -2,7 +2,7 @@
 // Test page: the desk shell as a start that found something (ADR 0061), on the stubs. The core's
 // store lives in localStorage, so each page load is one more desk start. ?safe=asked|crash-loop with
 // ?held=a,b; ?broken=store.json,plugins.json (kept under /data); ?throws=1 installs test.throws,
-// which fails to start; ?session=torn stores a session that cannot be put back; ?lang=en.
+// which fails to start; ?session=torn stores a session that cannot be put back; ?failed=N; ?lang=en; ?settle=1.
 // The stub holds off what the core would: every plugin but the desk.* policies in safe mode, and
 // the quarantined plugins at their listed version. Never shipped.
 import type { PluginManifest } from "@endue-ai/bridge";
@@ -38,6 +38,10 @@ const installed = [...manifests, ...(params.has("throws") ? [throws] : [])];
 
 const store = localStore("desk.safe.");
 if (params.get("session") === "torn") store.set("session", { version: 1, layout: "torn" });
+// ?failed=2: test.throws already failed two starts in a row, so this one quarantines it.
+const failed = Number(params.get("failed") ?? 0);
+if (failed > 0)
+  store.set("plugins.failures", { "test.throws": { version: "0.1.0", starts: failed } });
 const safe = params.get("safe");
 const start: StartInfo = {
   broken: list("broken").map((name) => ({ name, path: `/data/${name}.broken` })),
@@ -79,3 +83,9 @@ const desk = mountDesk({
 });
 
 Object.assign(window, { __safe: { desk, clock, core, page, store } });
+// ?settle=1: once ready, run the clock a second so the status line has faded in (for pictures).
+if (params.has("settle")) {
+  void desk.ready.then(() => {
+    for (let ms = 0; ms < 1000; ms += 16) clock.advance(16);
+  });
+}

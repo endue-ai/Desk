@@ -33,7 +33,16 @@ export function installNotify(ctx: DeskContext, statusLine: HTMLElement): Notify
     statusLine.textContent = notice ? noticeText(notice) : base;
     if (notice) statusLine.dataset.level = notice.level;
     else delete statusLine.dataset.level;
-    for (const action of notice?.actions ?? []) {
+    const actions = notice?.actions ?? [];
+    statusLine.classList.toggle("has-actions", actions.length > 0);
+    if (notice && actions.length > 0) {
+      // The text gives way (ellipsis, the whole of it on hover) so the buttons always show.
+      const text = statusLine.ownerDocument.createElement("span");
+      text.className = "desk-status-text";
+      text.textContent = text.title = noticeText(notice);
+      statusLine.replaceChildren(text);
+    }
+    for (const action of actions) {
       const button = statusLine.ownerDocument.createElement("button");
       button.type = "button";
       button.className = "desk-status-action";
