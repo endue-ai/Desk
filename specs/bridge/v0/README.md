@@ -3,8 +3,8 @@
 The calls the web runtime (and every plugin through it) makes into the Rust core. JSON Schema 2020-12,
 one file per namespace: `bridge.schema.json` (envelope, errors, shared types), `fs`, `proc`, `net`, `plugins`,
 `store`, `search`, `init`, `brain`, `audio`, `ui`, `perm`, `cmd`, `settings`, `log`, `events`, `data`, `connector`,
-`view`, `catalog` and `shell`. Items, views and connectors are the types of `specs/item`, `specs/view` and
-`specs/connector` (ADR 0032). v0 may break on any minor release (ADR 0004).
+`view`, `catalog`, `shell` and `update`. Items, views and connectors are the types of `specs/item`,
+`specs/view` and `specs/connector` (ADR 0032). v0 may break on any minor release (ADR 0004).
 
 ## Envelope
 
@@ -44,8 +44,9 @@ its processes, `audio.wake` for its captures, `brain.turn` for its turns, `perm.
 `cmd.invoked` for the commands it provides, `cmd.answered` for the commands it invoked and
 `settings.changed` for its own keys and `data.changed` for its data subscriptions. `plugin.changed` goes to
 holders of `plugin:manage`, `perm.prompt` to holders of `perm:manage`, `connector.changed` to holders of
-`connector:manage`, `view.changed` to holders of `view:manage`, and `ui.notified`, `ui.surface.opened` and
-`ui.surface.closed` to the runtime, which shows the notification or mounts and unmounts the surface.
+`connector:manage`, `view.changed` to holders of `view:manage`, `update.changed` to holders of
+`update:manage`, and `ui.notified`, `ui.surface.opened` and `ui.surface.closed` to the runtime, which
+shows the notification or mounts and unmounts the surface.
 Everything else about other callers arrives only through `events.subscribe`.
 
 ## Methods
@@ -305,6 +306,21 @@ only shown, never opened or run, and a missing one is `not_found`. It needs a `s
 `schemes` hold the URL's scheme, or whose `paths` cover the path; a target the scope does not cover is
 `permission_denied` at once. Without a grant that covers the scope the core asks the person first (see
 Deny by default): a refusal is `permission_denied`, a caller that unloads first `cancelled`.
+
+**update.status**, **update.check**, **update.download** and **update.apply** drive the desk's own
+updates (ADR 0054). Each needs an `update:manage` scope, which the desk grants to the runtime and the
+CLI only, and each answers the same `UpdateStatus`: the `state`, the running build (`current`), the
+`channel` it follows, when the channel index was last read (`checkedAt`) and the build it chose
+(`release`, with `staged` once that build is verified on disk, and `received` and `total` bytes while it
+downloads). The desk reads its channel index by itself (30 s after start, then every four hours);
+`update.check` reads it now, also when `desk.update.check` is off. With `desk.update.auto` on (the
+default) a newer build downloads at once; otherwise the state stays `available` until
+`update.download`, which is `invalid_params` when nothing is available. `update.apply` checks the staged
+build's signature and sha256 again, installs it and restarts the desk; it is `invalid_params` when
+nothing is staged. `check`, `download` and `apply` answer at once; progress and outcomes arrive as
+`update.changed` with the whole status. A failed step leaves `state: failed` with a `reason`, and a
+staged build stays staged. A build that does not update itself (no updater key, a development build, the
+browser stub) answers `unsupported`.
 
 ## Vectors
 

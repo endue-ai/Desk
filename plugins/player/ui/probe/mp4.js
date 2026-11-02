@@ -98,13 +98,20 @@ function sampleEntry(/** @type {Uint8Array} */ stsd, /** @type {string} */ kind)
   // QuickTime sound entries keep their esds inside a wave box.
   const wave = inner.find((b) => b.type === "wave");
   if (wave) inner = [...inner, ...boxesIn(stsd, wave.at + wave.header, wave.end)];
+  // A protected entry (ISO/IEC 23001-7, FairPlay) names the codec in sinf's frma.
+  const drm = protection(stsd, type, inner);
+  if (drm) {
+    track.codec = mp4Codec(drm.original) || track.codec;
+    /** @type {Partial<Track> & { drm?: string }} */ (track).drm = drm.scheme;
+  }
   const avcC = config(inner, "avcC");
   const hvcC = config(inner, "hvcC");
   const vpcC = config(inner, "vpcC");
   const av1C = config(inner, "av1C");
   const esds = config(inner, "esds");
-  if (avcC) track.codecId = avcCodec(type, avcC);
-  else if (hvcC) track.codecId = hevcCodec(type, hvcC);
+  const named = drm?.original || type;
+  if (avcC) track.codecId = avcCodec(named, avcC);
+  else if (hvcC) track.codecId = hevcCodec(named, hvcC);
   else if (vpcC) track.codecId = vp9Codec(vpcC);
   else if (av1C) track.codecId = av1Codec(av1C);
   else if (esds) Object.assign(track, esdsCodec(esds) ?? {});
@@ -121,6 +128,32 @@ function sampleEntry(/** @type {Uint8Array} */ stsd, /** @type {string} */ kind)
     if (id) track.codecId = id;
   }
   return { type, ...track };
+}
+
+/** Whether a sample entry is protected: by which scheme, and the format it stands for. */
+function protection(
+  /** @type {Uint8Array} */ stsd,
+  /** @type {string} */ type,
+  /** @type {Box[]} */ inner,
+) {
+  if (!["encv", "enca", "encs", "enct", "drms", "drmi"].includes(type)) return null;
+  const sinf = inner.find((b) => b.type === "sinf");
+  const parts = sinf ? boxesIn(stsd, sinf.at + sinf.header, sinf.end) : [];
+  const frma = parts.find((b) => b.type === "frma");
+  const schm = parts.find((b) => b.type === "schm");
+  const at = (/** @type {Box | undefined} */ b, skip = 0) =>
+    b ? latin1(stsd.subarray(b.at + b.header + skip, b.at + b.header + skip + 4)) : "";
+  // Without frma, the configuration box says what the entry stands for.
+  const configs = /** @type {Record<string, string>} */ ({
+    avcC: "avc1",
+    hvcC: "hvc1",
+    esds: "mp4a",
+  });
+  const original = at(frma) || (inner.map((b) => configs[b.type]).find(Boolean) ?? "");
+  // schm is a full box: its scheme type follows the version and flags.
+  const scheme = at(schm, 4);
+  const fairplay = type.startsWith("drm") || scheme === "itun";
+  return { original, scheme: fairplay ? "FairPlay" : "Common Encryption" };
 }
 
 /** iTunes-style tags and the cover from an ilst box's content. */
@@ -191,6 +224,8 @@ export async function readMp4(source) {
   }
   /** @type {Track[]} */
   const tracks = [];
+  /** @type {string | undefined} */
+  let drm;
   let longest = 0;
   for (const trak of movie.list.filter((b) => b.type === "trak")) {
     const t = await childrenOf(source, trak);
@@ -211,6 +246,7 @@ export async function readMp4(source) {
     /** @type {Track} */
     const track = { kind, codec: entry?.codec ?? handler };
     if (entry?.codecId) track.codecId = entry.codecId;
+    if (entry?.drm) drm = entry.drm;
     if (kind === "video") {
       const tkhd = t.get("tkhd");
       const shown = tkhd ? trackSize(await contentOf(source, tkhd, 96)) : { width: 0, height: 0 };
@@ -244,5 +280,5 @@ export async function readMp4(source) {
   if (chpl) chapters = neroChapters(await contentOf(source, chpl, 1 << 20));
   const video = tracks.some((t) => t.kind === "video");
   const mime = quicktime ? "video/quicktime" : video ? "video/mp4" : "audio/mp4";
-  return { container, mime, duration, tracks, tags, cover, chapters };
+  return { container, mime, duration, tracks, tags, cover, chapters, drm };
 }

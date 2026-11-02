@@ -314,6 +314,7 @@ pub enum Permission {
     ConnectorManage(ConnectorManagePermission),
     ViewManage(ViewManagePermission),
     ShellOpen(ShellOpenPermission),
+    UpdateManage(UpdateManagePermission),
 }
 
 /// Search explicitly published plugin documents and installed plugin launchers.
@@ -495,6 +496,13 @@ pub struct ShellOpenPermission {
     pub paths: Option<Vec<PathPattern>>,
 }
 
+/// See and drive the desk's own updates with update.*: the status, a check, a download, and applying a staged build, which restarts the desk. Receive update.changed. The desk grants it to the runtime and the CLI only; applying stays with the person.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct UpdateManagePermission {
+    pub permission: UpdateManagePermissionPermission,
+}
+
 /// A URL scheme shell.open hands to the system: the browser for http and https, the mail app for mailto.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum ShellScheme {
@@ -539,6 +547,8 @@ pub enum EventName {
     SettingsChanged,
     #[serde(rename = "log.entry")]
     LogEntry,
+    #[serde(rename = "update.changed")]
+    UpdateChanged,
 }
 
 /// A plugin manifest (plugin.json).
@@ -2242,6 +2252,10 @@ pub enum BridgeRequest {
     ViewRemove(ViewRemoveRequest),
     CatalogGet(CatalogGetRequest),
     ShellOpen(ShellOpenRequest),
+    UpdateStatus(UpdateStatusRequest),
+    UpdateCheck(UpdateCheckRequest),
+    UpdateDownload(UpdateDownloadRequest),
+    UpdateApply(UpdateApplyRequest),
 }
 
 /// The answer to one request: a result, or an error.
@@ -2305,7 +2319,7 @@ pub enum ErrorCode {
     Internal,
 }
 
-/// Something the core reports without being asked: file changes, process output, wake words, permission changes, notifications, surfaces, commands, settings, log entries, and changes to items, connectors and views.
+/// Something the core reports without being asked: file changes, process output, wake words, permission changes, notifications, surfaces, commands, settings, log entries, changes to items, connectors and views, and the desk's update status.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum BridgeEvent {
@@ -2328,6 +2342,7 @@ pub enum BridgeEvent {
     DataChanged(DataChangedEvent),
     ConnectorChanged(ConnectorChangedEvent),
     ViewChanged(ViewChangedEvent),
+    UpdateChanged(UpdateChangedEvent),
 }
 
 /// Describe what the caller can bind, show and run.
@@ -4277,6 +4292,158 @@ pub struct UiSurfaceClosedData {
     pub surface: String,
 }
 
+/// Which channel index the desk follows: stable (tagged releases), beta (canary builds promoted after a clean run) or canary (every build of main).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum UpdateChannel {
+    #[serde(rename = "stable")]
+    Stable,
+    #[serde(rename = "beta")]
+    Beta,
+    #[serde(rename = "canary")]
+    Canary,
+}
+
+/// What the updater is doing. idle: nothing yet since the start. checking: reading the channel index. up-to-date: no newer build for this desk. available: a newer build was chosen and waits for update.download (desk.update.auto is off). downloading: its bytes are on the way. staged: verified and kept on disk, ready for update.apply. applying: installing it; the desk restarts. failed: the last step failed (reason says why); a staged build stays staged.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum UpdateState {
+    #[serde(rename = "idle")]
+    Idle,
+    #[serde(rename = "checking")]
+    Checking,
+    #[serde(rename = "up-to-date")]
+    UpToDate,
+    #[serde(rename = "available")]
+    Available,
+    #[serde(rename = "downloading")]
+    Downloading,
+    #[serde(rename = "staged")]
+    Staged,
+    #[serde(rename = "applying")]
+    Applying,
+    #[serde(rename = "failed")]
+    Failed,
+}
+
+/// A semantic version without a leading v: 0.2.0, 0.2.1-pre.48.
+pub type UpdateVersion = String;
+
+/// The git commit a build was made from, abbreviated or whole.
+pub type UpdateCommit = String;
+
+/// The build that is running.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct UpdateBuild {
+    pub version: UpdateVersion,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub commit: Option<UpdateCommit>,
+}
+
+/// The build the desk chose to move to.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct UpdateRelease {
+    pub version: UpdateVersion,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub commit: Option<UpdateCommit>,
+    /// When it was published, RFC 3339.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub date: Option<String>,
+    /// Where its release notes are: the GitHub release, or the commit for a pre-release.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub notes: Option<String>,
+}
+
+/// The desk's update status, the answer of every update.* call and the data of update.changed.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct UpdateStatus {
+    pub state: UpdateState,
+    pub current: UpdateBuild,
+    pub channel: UpdateChannel,
+    /// When the channel index was last read successfully, RFC 3339. Absent before the first check.
+    #[serde(rename = "checkedAt", default, skip_serializing_if = "Option::is_none")]
+    pub checked_at: Option<String>,
+    /// The build chosen: present when available, downloading, staged and applying, and when a step for it failed.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub release: Option<UpdateRelease>,
+    /// Whether release is verified and kept on disk, so update.apply can install it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub staged: Option<bool>,
+    /// Bytes of release downloaded so far, while downloading.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub received: Option<u64>,
+    /// Bytes release takes, when known.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub total: Option<u64>,
+    /// Why the last step failed, for people. Present only when failed.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reason: Option<String>,
+}
+
+/// Parameters of every update.* call: the update:manage scope.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct UpdateParams {
+    pub scope: UpdateManagePermission,
+}
+
+/// Read the update status.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct UpdateStatusRequest {
+    pub id: RequestId,
+    pub method: UpdateStatusRequestMethod,
+    pub params: UpdateParams,
+}
+
+/// Result of update.status.
+pub type UpdateStatusResult = UpdateStatus;
+
+/// Read the channel index now, also when desk.update.check is off. Answers at once with state checking (or the state of a check already running); the outcome arrives as update.changed. With desk.update.auto on, a newer build starts downloading by itself.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct UpdateCheckRequest {
+    pub id: RequestId,
+    pub method: UpdateCheckRequestMethod,
+    pub params: UpdateParams,
+}
+
+/// Result of update.check.
+pub type UpdateCheckResult = UpdateStatus;
+
+/// Download the chosen build when the state is available. Answers at once with state downloading; invalid_params when no build is available. Progress and the outcome arrive as update.changed.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct UpdateDownloadRequest {
+    pub id: RequestId,
+    pub method: UpdateDownloadRequestMethod,
+    pub params: UpdateParams,
+}
+
+/// Result of update.download.
+pub type UpdateDownloadResult = UpdateStatus;
+
+/// Install the staged build and restart into it. Its signature and sha256 are checked again first. Answers at once with state applying; invalid_params when nothing is staged. A failure arrives as update.changed with state failed, and the build stays staged.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct UpdateApplyRequest {
+    pub id: RequestId,
+    pub method: UpdateApplyRequestMethod,
+    pub params: UpdateParams,
+}
+
+/// Result of update.apply.
+pub type UpdateApplyResult = UpdateStatus;
+
+/// The update status changed. Sent to holders of update:manage, and to callers subscribed to update.changed.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct UpdateChangedEvent {
+    pub event: UpdateChangedEventEvent,
+    pub data: UpdateStatus,
+}
+
 /// Where a view comes from: plugin, an enabled view plugin's inline view or one of its view files, read-only; file, the person's file in ~/.desk/views.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum ViewSource {
@@ -4585,6 +4752,14 @@ pub enum ShellOpenPermissionPermission {
     #[default]
     #[serde(rename = "shell:open")]
     ShellOpen,
+}
+
+/// The `permission` of [`UpdateManagePermission`]: always `"update:manage"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum UpdateManagePermissionPermission {
+    #[default]
+    #[serde(rename = "update:manage")]
+    UpdateManage,
 }
 
 /// The `kind` of [`EventItem`]: always `"event"`.
@@ -5331,6 +5506,46 @@ pub enum UiSurfaceClosedEventEvent {
     UiSurfaceClosed,
 }
 
+/// The `method` of [`UpdateStatusRequest`]: always `"update.status"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum UpdateStatusRequestMethod {
+    #[default]
+    #[serde(rename = "update.status")]
+    UpdateStatus,
+}
+
+/// The `method` of [`UpdateCheckRequest`]: always `"update.check"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum UpdateCheckRequestMethod {
+    #[default]
+    #[serde(rename = "update.check")]
+    UpdateCheck,
+}
+
+/// The `method` of [`UpdateDownloadRequest`]: always `"update.download"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum UpdateDownloadRequestMethod {
+    #[default]
+    #[serde(rename = "update.download")]
+    UpdateDownload,
+}
+
+/// The `method` of [`UpdateApplyRequest`]: always `"update.apply"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum UpdateApplyRequestMethod {
+    #[default]
+    #[serde(rename = "update.apply")]
+    UpdateApply,
+}
+
+/// The `event` of [`UpdateChangedEvent`]: always `"update.changed"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum UpdateChangedEventEvent {
+    #[default]
+    #[serde(rename = "update.changed")]
+    UpdateChanged,
+}
+
 /// The `method` of [`ViewListRequest`]: always `"view.list"`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub enum ViewListRequestMethod {
@@ -5529,6 +5744,10 @@ pub const SCHEMAS: &[(&str, &str)] = &[
     (
         "https://endue.ai/specs/bridge/v0/ui.schema.json",
         include_str!("../../../specs/bridge/v0/ui.schema.json"),
+    ),
+    (
+        "https://endue.ai/specs/bridge/v0/update.schema.json",
+        include_str!("../../../specs/bridge/v0/update.schema.json"),
     ),
     (
         "https://endue.ai/specs/bridge/v0/view.schema.json",

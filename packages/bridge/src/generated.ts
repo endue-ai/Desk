@@ -209,7 +209,8 @@ export type Permission =
   | DataReadPermission
   | ConnectorManagePermission
   | ViewManagePermission
-  | ShellOpenPermission;
+  | ShellOpenPermission
+  | UpdateManagePermission;
 
 /** Search explicitly published plugin documents and installed plugin launchers. */
 export interface SearchReadPermission {
@@ -342,6 +343,11 @@ export interface ShellOpenPermission {
   paths?: PathPattern[];
 }
 
+/** See and drive the desk's own updates with update.*: the status, a check, a download, and applying a staged build, which restarts the desk. Receive update.changed. The desk grants it to the runtime and the CLI only; applying stays with the person. */
+export interface UpdateManagePermission {
+  permission: "update:manage";
+}
+
 /** A URL scheme shell.open hands to the system: the browser for http and https, the mail app for mailto. */
 export type ShellScheme = "http" | "https" | "mailto";
 
@@ -370,7 +376,8 @@ export type EventName =
   | "cmd.changed"
   | "cmd.invoked"
   | "settings.changed"
-  | "log.entry";
+  | "log.entry"
+  | "update.changed";
 
 /** A plugin manifest (plugin.json). */
 export interface PluginManifest {
@@ -1429,7 +1436,11 @@ export type BridgeRequest =
   | ViewSaveRequest
   | ViewRemoveRequest
   | CatalogGetRequest
-  | ShellOpenRequest;
+  | ShellOpenRequest
+  | UpdateStatusRequest
+  | UpdateCheckRequest
+  | UpdateDownloadRequest
+  | UpdateApplyRequest;
 
 /** The answer to one request: a result, or an error. */
 export type BridgeResponse = BridgeSuccess | BridgeFailure;
@@ -1469,7 +1480,7 @@ export type ErrorCode =
   | "unsupported"
   | "internal";
 
-/** Something the core reports without being asked: file changes, process output, wake words, permission changes, notifications, surfaces, commands, settings, log entries, and changes to items, connectors and views. */
+/** Something the core reports without being asked: file changes, process output, wake words, permission changes, notifications, surfaces, commands, settings, log entries, changes to items, connectors and views, and the desk's update status. */
 export type BridgeEvent =
   | FsChangedEvent
   | ProcOutputEvent
@@ -1489,7 +1500,8 @@ export type BridgeEvent =
   | LogEntryEvent
   | DataChangedEvent
   | ConnectorChangedEvent
-  | ViewChangedEvent;
+  | ViewChangedEvent
+  | UpdateChangedEvent;
 
 /** Describe what the caller can bind, show and run. */
 export interface CatalogGetRequest {
@@ -2797,6 +2809,112 @@ export interface UiSurfaceClosedData {
   surface: string;
 }
 
+/** Which channel index the desk follows: stable (tagged releases), beta (canary builds promoted after a clean run) or canary (every build of main). */
+export type UpdateChannel = "stable" | "beta" | "canary";
+
+/** What the updater is doing. idle: nothing yet since the start. checking: reading the channel index. up-to-date: no newer build for this desk. available: a newer build was chosen and waits for update.download (desk.update.auto is off). downloading: its bytes are on the way. staged: verified and kept on disk, ready for update.apply. applying: installing it; the desk restarts. failed: the last step failed (reason says why); a staged build stays staged. */
+export type UpdateState =
+  | "idle"
+  | "checking"
+  | "up-to-date"
+  | "available"
+  | "downloading"
+  | "staged"
+  | "applying"
+  | "failed";
+
+/** A semantic version without a leading v: 0.2.0, 0.2.1-pre.48. */
+export type UpdateVersion = string;
+
+/** The git commit a build was made from, abbreviated or whole. */
+export type UpdateCommit = string;
+
+/** The build that is running. */
+export interface UpdateBuild {
+  version: UpdateVersion;
+  commit?: UpdateCommit;
+}
+
+/** The build the desk chose to move to. */
+export interface UpdateRelease {
+  version: UpdateVersion;
+  commit?: UpdateCommit;
+  /** When it was published, RFC 3339. */
+  date?: string;
+  /** Where its release notes are: the GitHub release, or the commit for a pre-release. */
+  notes?: string;
+}
+
+/** The desk's update status, the answer of every update.* call and the data of update.changed. */
+export interface UpdateStatus {
+  state: UpdateState;
+  current: UpdateBuild;
+  channel: UpdateChannel;
+  /** When the channel index was last read successfully, RFC 3339. Absent before the first check. */
+  checkedAt?: string;
+  /** The build chosen: present when available, downloading, staged and applying, and when a step for it failed. */
+  release?: UpdateRelease;
+  /** Whether release is verified and kept on disk, so update.apply can install it. */
+  staged?: boolean;
+  /** Bytes of release downloaded so far, while downloading. */
+  received?: number;
+  /** Bytes release takes, when known. */
+  total?: number;
+  /** Why the last step failed, for people. Present only when failed. */
+  reason?: string;
+}
+
+/** Parameters of every update.* call: the update:manage scope. */
+export interface UpdateParams {
+  scope: UpdateManagePermission;
+}
+
+/** Read the update status. */
+export interface UpdateStatusRequest {
+  id: RequestId;
+  method: "update.status";
+  params: UpdateParams;
+}
+
+/** Result of update.status. */
+export type UpdateStatusResult = UpdateStatus;
+
+/** Read the channel index now, also when desk.update.check is off. Answers at once with state checking (or the state of a check already running); the outcome arrives as update.changed. With desk.update.auto on, a newer build starts downloading by itself. */
+export interface UpdateCheckRequest {
+  id: RequestId;
+  method: "update.check";
+  params: UpdateParams;
+}
+
+/** Result of update.check. */
+export type UpdateCheckResult = UpdateStatus;
+
+/** Download the chosen build when the state is available. Answers at once with state downloading; invalid_params when no build is available. Progress and the outcome arrive as update.changed. */
+export interface UpdateDownloadRequest {
+  id: RequestId;
+  method: "update.download";
+  params: UpdateParams;
+}
+
+/** Result of update.download. */
+export type UpdateDownloadResult = UpdateStatus;
+
+/** Install the staged build and restart into it. Its signature and sha256 are checked again first. Answers at once with state applying; invalid_params when nothing is staged. A failure arrives as update.changed with state failed, and the build stays staged. */
+export interface UpdateApplyRequest {
+  id: RequestId;
+  method: "update.apply";
+  params: UpdateParams;
+}
+
+/** Result of update.apply. */
+export type UpdateApplyResult = UpdateStatus;
+
+/** The update status changed. Sent to holders of update:manage, and to callers subscribed to update.changed. */
+export interface UpdateChangedEvent {
+  event: "update.changed";
+  data: UpdateStatus;
+}
+
 /** Where a view comes from: plugin, an enabled view plugin's inline view or one of its view files, read-only; file, the person's file in ~/.desk/views. */
 export type ViewSource = "plugin" | "file";
 
@@ -2957,6 +3075,10 @@ export interface BridgeMethodMap {
   "view.remove": { params: ViewRemoveParams; result: ViewRemoveResult };
   "catalog.get": { params: CatalogGetParams; result: CatalogGetResult };
   "shell.open": { params: ShellOpenParams; result: ShellOpenResult };
+  "update.status": { params: UpdateParams; result: UpdateStatusResult };
+  "update.check": { params: UpdateParams; result: UpdateCheckResult };
+  "update.download": { params: UpdateParams; result: UpdateDownloadResult };
+  "update.apply": { params: UpdateParams; result: UpdateApplyResult };
 }
 
 /** A bridge method name. */
@@ -3025,4 +3147,8 @@ export const BRIDGE_METHODS = [
   "view.remove",
   "catalog.get",
   "shell.open",
+  "update.status",
+  "update.check",
+  "update.download",
+  "update.apply",
 ] as const satisfies readonly BridgeMethod[];

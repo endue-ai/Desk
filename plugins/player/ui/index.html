@@ -4,7 +4,12 @@
     <meta charset="utf-8" />
     <title>Player</title>
     <script type="importmap">
-      { "imports": { "@endue-ai/plugin-sdk": "/_desk/plugin-sdk.js" } }
+      {
+        "imports": {
+          "@endue-ai/plugin-sdk": "/_desk/plugin-sdk.js",
+          "@endue-ai/ui": "/_desk/ui.js"
+        }
+      }
     </script>
     <link rel="stylesheet" href="./style.css" />
   </head>
@@ -17,6 +22,7 @@
       <div id="body">
         <section id="stage" aria-label="Player" tabindex="-1" hidden>
           <video id="video" playsinline preload="metadata" hidden></video>
+          <canvas id="screen" role="img" aria-label="Video" hidden></canvas>
           <div id="overlay" aria-hidden="true"></div>
           <div id="card" hidden>
             <img id="cover" alt="Cover" hidden />
@@ -25,6 +31,7 @@
           </div>
           <audio id="audio" preload="metadata" hidden></audio>
           <p id="message" hidden></p>
+          <desk-progress id="progress" cancelable hidden></desk-progress>
         </section>
         <section id="details" aria-labelledby="details-title" hidden>
           <h2 id="details-title">Details</h2>

@@ -1,0 +1,13 @@
+{
+  "target": "BridgeRequest",
+  "description": "update.check reads the channel index now",
+  "instance": {
+    "id": 41,
+    "method": "update.check",
+    "params": {
+      "scope": {
+        "permission": "update:manage"
+      }
+    }
+  }
+}
