@@ -25,7 +25,8 @@ let validators;
 function validator(name) {
   if (!validators) {
     const ajv = new Ajv2020({ strict: true, allErrors: true, validateFormats: false });
-    for (const doc of PLUGIN_FOLDERS.flatMap((folder) => loadSchemas(ROOT, folder))) ajv.addSchema(doc);
+    for (const doc of PLUGIN_FOLDERS.flatMap((folder) => loadSchemas(ROOT, folder)))
+      ajv.addSchema(doc);
     validators = {
       index: ajv.getSchema(`${PLUGIN}theme-index.schema.json#/$defs/ThemeIndex`),
       bundle: ajv.getSchema(`${PLUGIN}theme.schema.json#/$defs/ThemeBundle`),
@@ -52,14 +53,17 @@ function namedFiles(theme) {
 /** Problems of one listed theme's bundle file. */
 function checkBundle(dir, entry) {
   const at = (why) => `${entry.id}: ${why}`;
-  if (/^https:\/\//.test(entry.url)) return [at(`${entry.url}: this market's bundles sit beside index.json`)];
+  if (/^https:\/\//.test(entry.url))
+    return [at(`${entry.url}: this market's bundles sit beside index.json`)];
   const file = join(dir, entry.url);
   if (!existsSync(file)) return [at(`${entry.url} is missing`)];
   const bytes = readFileSync(file);
   const problems = [];
   const sha256 = createHash("sha256").update(bytes).digest("hex");
-  if (sha256 !== entry.sha256) problems.push(at(`sha256 ${sha256}, the index says ${entry.sha256}`));
-  if (bytes.length !== entry.size) problems.push(at(`size ${bytes.length}, the index says ${entry.size}`));
+  if (sha256 !== entry.sha256)
+    problems.push(at(`sha256 ${sha256}, the index says ${entry.sha256}`));
+  if (bytes.length !== entry.size)
+    problems.push(at(`size ${bytes.length}, the index says ${entry.size}`));
   let bundle;
   try {
     bundle = JSON.parse(bytes.toString("utf8"));
@@ -73,7 +77,9 @@ function checkBundle(dir, entry) {
   if (manifest?.id !== entry.id) problems.push(at(`the bundle's id is ${manifest?.id}`));
   for (const field of ["name", "version"])
     if (manifest?.[field] !== entry[field])
-      problems.push(at(`the bundle's ${field} is ${manifest?.[field]}, the index says ${entry[field]}`));
+      problems.push(
+        at(`the bundle's ${field} is ${manifest?.[field]}, the index says ${entry[field]}`),
+      );
   const theme = manifest?.theme;
   if (!theme?.license) problems.push(at("the theme names no licence (theme.license)"));
   for (const field of ["author", "license"])
@@ -114,7 +120,9 @@ export function checkMarket(dir = MARKET) {
     problems.push(...checkBundle(dir, entry));
   }
   const listed = new Set(themes.map((entry) => entry?.url));
-  for (const name of readdirSync(dir).filter((n) => n.endsWith(".desk-theme")).sort())
+  for (const name of readdirSync(dir)
+    .filter((n) => n.endsWith(".desk-theme"))
+    .sort())
     if (!listed.has(name)) problems.push(`${name}: not in index.json`);
   return problems;
 }
