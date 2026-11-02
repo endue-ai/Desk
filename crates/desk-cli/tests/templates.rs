@@ -10,7 +10,6 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
-use std::sync::OnceLock;
 
 use serde_json::Value;
 
@@ -49,19 +48,15 @@ fn desk(args: &[&str]) -> Output {
     run(Command::new(env!("CARGO_BIN_EXE_desk")).args(args))
 }
 
-/// The create-plugin command, built once from packages/create-plugin with its own vite.
-fn create_plugin() -> &'static Path {
-    static BUILT: OnceLock<PathBuf> = OnceLock::new();
-    BUILT.get_or_init(|| {
-        let package = repo().join("packages/create-plugin");
-        let out = scratch().join("create-plugin");
-        run(Command::new("node")
-            .arg(package.join("node_modules/vite/bin/vite.js"))
-            .args(["build", "--logLevel", "warn", "--outDir"])
-            .arg(&out)
-            .current_dir(&package));
-        out.join("create-plugin.js")
-    })
+/// The create-plugin command, built from packages/create-plugin with its own vite into `out`.
+fn create_plugin(out: &Path) -> PathBuf {
+    let package = repo().join("packages/create-plugin");
+    run(Command::new("node")
+        .arg(package.join("node_modules/vite/bin/vite.js"))
+        .args(["build", "--logLevel", "warn", "--outDir"])
+        .arg(out)
+        .current_dir(&package));
+    out.join("create-plugin.js")
 }
 
 /// The toolchain `rust-toolchain.toml` pins, for builds outside the repository.
@@ -81,10 +76,10 @@ fn wasm_target() -> bool {
 }
 
 /// `create-plugin <dir> --kind <kind>` into a fresh folder named after the kind.
-fn scaffold(root: &Path, kind: &str) -> PathBuf {
+fn scaffold(command: &Path, root: &Path, kind: &str) -> PathBuf {
     let dir = root.join(format!("my-{kind}"));
     run(Command::new("node")
-        .arg(create_plugin())
+        .arg(command)
         .arg(&dir)
         .args(["--kind", kind]));
     dir
@@ -123,6 +118,7 @@ fn every_kind_scaffolds_validates_and_passes_its_test() {
     let folders = Folders(scratch().join(format!("templates-{}", std::process::id())));
     let root = &folders.0;
     let _ = fs::remove_dir_all(root);
+    let command = create_plugin(&root.join("create-plugin"));
     let wasm = wasm_target();
     assert!(
         wasm || std::env::var_os("CI").is_none(),
@@ -133,7 +129,7 @@ fn every_kind_scaffolds_validates_and_passes_its_test() {
             eprintln!("note: {kind} skipped: `rustup target add wasm32-wasip2` to build it");
             continue;
         }
-        let dir = scaffold(root, kind);
+        let dir = scaffold(&command, root, kind);
         if WASM.contains(&kind) {
             build(&dir);
         }
