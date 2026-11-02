@@ -12,7 +12,7 @@ use base64::Engine as _;
 use desk_bridge::{
     BridgeError, BridgeFailure, BridgeRequest, BridgeResponse, BridgeSuccess, DirEntry, Encoding,
     EntryKind, ErrorCode, False, FsListResult, FsReadParams, FsReadResult, Permission, RequestId,
-    True,
+    True, UpdateParams,
 };
 use desk_index::ItemIndex;
 use desk_plugin_host::{Clock, SystemClock, rfc3339};
@@ -230,7 +230,34 @@ impl Core {
             R::ViewRemove(r) => (r.id, self.view_remove(caller, r.params)),
             R::CatalogGet(r) => (r.id, self.catalog_get(caller)),
             R::ShellOpen(r) => (r.id, self.shell_open(caller, r.params)),
+            R::UpdateStatus(r) => (
+                r.id,
+                self.update_unsupported(caller, r.params, "update.status"),
+            ),
+            R::UpdateCheck(r) => (
+                r.id,
+                self.update_unsupported(caller, r.params, "update.check"),
+            ),
+            R::UpdateDownload(r) => {
+                let answer = self.update_unsupported(caller, r.params, "update.download");
+                (r.id, answer)
+            }
+            R::UpdateApply(r) => (
+                r.id,
+                self.update_unsupported(caller, r.params, "update.apply"),
+            ),
         }
+    }
+
+    /// update.* (ADR 0054) before the updater exists: the scope is checked like any call's, and then
+    /// no build updates itself yet.
+    fn update_unsupported(&self, caller: &str, params: UpdateParams, method: &str) -> Answer {
+        self.check(
+            caller,
+            &Permission::UpdateManage(params.scope),
+            &Target::None,
+        )?;
+        unsupported(method)
     }
 
     /// Check the scope against the caller's grants, then map the bridge path onto the file system.
