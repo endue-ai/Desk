@@ -20,6 +20,11 @@
         "title": "Open a view",
         "keywords": ["view", "dashboard", "today"]
       },
+      {
+        "id": "desk.views.preview",
+        "title": "Preview a proposed view",
+        "keywords": ["view", "preview", "eris"]
+      },
       { "id": "desk.views.close", "title": "Close the view" },
       {
         "id": "desk.views.reconnect",
