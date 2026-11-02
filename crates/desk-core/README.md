@@ -1,8 +1,7 @@
 # desk-core
 
-Kernel of endue Desk: the permission engine, the event bus, the plugin registry, storage, init.yaml
-and its sync, the brain conversation with its session store and lease client, the integration layer
-(the item index, connectors, views) and the bridge handler. Layer: Rust core (`docs/architecture.md`).
+Kernel of endue Desk: permissions, events, plugins, storage and the history of writes, init.yaml and
+its sync, the brain conversation, the integration layer and the bridge handler. Layer: Rust core.
 
 ## Public API
 
@@ -12,8 +11,9 @@ and its sync, the brain conversation with its session store and lease client, th
   `pty`); `proc.output` and `proc.exit` reach the caller only; later calls need owner and scope.
 - `net.fetch` checks the URL against the `net:fetch` scope (`Target::Url`), desk-sys every redirect;
   `ui.surface.open` needs `ui:surface` and a declared surface, and `ui.surface.*` events go to `desk`.
-- Files (ADR 0041): `fs.read` reads ranges; `fs.url` makes a 128-bit token that `file_url(token)`
-  resolves to a `FileUrl` while its caller runs and holds the grant. Links (ADR 0047): `with_opener`.
+- Files: `fs.read` reads ranges; `fs.url` tokens resolve with `file_url(token)` (ADR 0041); with
+  `with_history_dir(dir)` each `fs.write` keeps what it replaces for `fs.history` and `fs.restore`
+  (ADR 0076). Links (ADR 0047): `with_opener`.
 - Permissions: `Core::grant`, `with_grant_file(path)` (`always`, ADR 0029), `with_prompter` (`RefuseAll`
   by default); `perm.request`, and `shell.open` without a grant, prompt the `perm:manage` holders
   (`perm.prompt`). `PermissionEngine`: deny by default; a `once` grant is spent by its call.

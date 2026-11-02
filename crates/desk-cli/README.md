@@ -1,9 +1,7 @@
 # desk-cli
 
-The `desk` CLI: plugin validate, and the commands, plugins and grants of a running desk. The hands AI
-agents use.
-
-Layer: Rust core (see `docs/architecture.md`). Status: the commands below.
+The `desk` CLI: plugin validate, and the commands, plugins, grants, files and log of a running desk.
+The hands AI agents use. Layer: Rust core (see `docs/architecture.md`).
 
 ## Commands
 
@@ -16,6 +14,9 @@ desk plugin list                       # id<TAB>status<TAB>enabled|disabled per 
 desk plugin enable|disable <id>        # prints ok
 desk perm list                         # grantId<TAB>caller<TAB>permission per grant
 desk perm revoke <grantId>             # prints ok
+desk fs history <path> [--limit <n>]   # id<TAB>at<TAB>caller<TAB>size per kept version (ADR 0076)
+desk fs restore <path> <version>       # writes the version back; prints ok
+desk log [--count <n>]                 # at<TAB>level<TAB>channel<TAB>message, oldest first
 ```
 
 All but `plugin validate` reach the running desk over its socket (`crates/desk-ipc`, ADR 0030) as
@@ -32,9 +33,5 @@ folder with a `plugin.json` in `plugins/` and `examples/` (`.github/workflows/pl
 
 ## Testing
 
-```bash
-cargo test -p desk-cli
-```
-
-`tests/socket.rs` runs the binary against a scripted server; `tests/round_trip.rs` against a real
-`desk_ipc::Listener` and `Core`.
+`cargo test -p desk-cli`. `tests/socket.rs` runs the binary against a scripted server; `tests/round_trip.rs` and
+`tests/fs_history.rs` against a real `desk_ipc::Listener` and `Core`.
