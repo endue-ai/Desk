@@ -87,13 +87,35 @@ p {
   justify-content: center;
 }
 
-body[data-mode="media"] #stage:has(video:not([hidden])) {
+body[data-mode="media"] #stage:has(video:not([hidden])),
+body[data-mode="media"] #stage:has(#screen:not([hidden])) {
   background: var(--player-stage);
 }
 
 video {
   max-width: 100%;
   max-height: 100%;
+}
+
+/* The software player's picture: the frame's own size in pixels, scaled to fit the stage. */
+#screen {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* Opening, starting the decoder or buffering: over the stage, with Cancel. */
+#progress {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  box-sizing: border-box;
+  width: min(360px, 80%);
+  padding: 12px 14px;
+  border: 1px solid var(--desk-border);
+  border-radius: 8px;
+  background: var(--desk-card);
+  transform: translate(-50%, -50%);
 }
 
 #overlay {
