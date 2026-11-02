@@ -46,7 +46,7 @@ slows the desk down is handled by turning it off, not by this model.
 | [Brain and its lease](#brain-and-its-lease) | agent, plugin | Core holds the conversation; one writer per session | No TLS, no token storage (no issue yet) |
 | [Marketplace](#marketplace) | marketplace entry | ADR 0005 only; `plugin-validate` checks this repository's plugins | Index, signing, verification (no issue yet) |
 | [init.yaml sync](#inityaml-sync) | tampered copy | Schema check, both sides kept on conflict, no grants in the file | No authenticity, no real transport (no issue yet) |
-| [The updater](#the-updater) | marketplace entry, network | Signed index, manifests and artifacts on R2; release workflows (ADR 0054). No desk installs updates yet | The desk's side (#278, #296, #297), keys and bucket (people), Windows Authenticode, update smoke (no issue yet) |
+| [The updater](#the-updater) | marketplace entry, network | Signed index, manifests and artifacts on R2; the desk checks length, sha256 and the signature bound to the version before installing; versions only go up (ADR 0054) | Keys and bucket (people), Windows Authenticode, update smoke on three OSes (no issue yet) |
 | [Local e2e and dev tooling](#local-e2e-and-dev-tooling) | local user, plugin | Read-only container, loopback servers, secret and dependency scans | Default network in the container, dev switches in release builds, file modes (no issue yet) |
 
 ## UI plugin iframe
@@ -205,11 +205,14 @@ checked when it downloaded them and again before installing. Versions only go up
 than one the desk has seen is refused, so a stale or replayed copy cannot bring back a build that was
 taken down. A check carries no identifier: it reads static files.
 
-On main: the `update.*` contract with `update:manage` (#274) and the release workflows (`release-build`,
-`canary`, `release`, `promote`, `rollback`; #294), which publish nothing until people provision the R2
-bucket, the updater key and the Apple certificate. Applying a build stays with the person: only the
-runtime and the CLI hold `update:manage`. The desk's side is in flight: the decisions in `desk-update`
-(#278), the core serving `update.*` (#296) and the app's installer over `tauri-plugin-updater` (#297).
+On main: the `update.*` contract with `update:manage` (#274), the decisions in `desk-update` (#292), the
+core serving `update.*` and `desk update` (#303), the app's HTTPS transport and its installer over
+`tauri-plugin-updater` with the shell's Restart to update (#297), and the release workflows
+(`release-build`, `canary`, `release`, `promote`, `rollback`; #298), which publish nothing until people
+provision the R2 bucket, the updater key and the Apple certificate. Applying a build stays with the
+person: only the runtime and the CLI hold `update:manage`, and the runtime asks the person when anyone
+else invokes `desk.update.apply`. The Tauri plugin is registered only in builds with a key, and none of
+its JavaScript commands is in a capability, so a page cannot install anything itself.
 
 Gaps: Windows Authenticode, since the certificate type is not chosen (SmartScreen warns on a first
 install); `.deb` and `.rpm` updates ask for a password through pkexec; no update smoke test on three

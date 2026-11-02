@@ -16,6 +16,8 @@ verify it at once, keep it on disk, and install it only when asked.
 - `verify::verify`: minisign in the Tauri encoding, with the version an artifact was signed for.
 - `stage::Stage`: `<data>/updates`, one staged build, the rollout salt and the index serials seen.
 - `manifest`: `index.json` and `release.json`; `schedule`: 30 s, then 4 h ± 10 %, backing off.
+- `https::Https` (feature `https`): the `Transport` over ureq and rustls, bounded per read, one user
+  agent for every desk.
 
 ## Test
 

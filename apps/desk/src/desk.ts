@@ -9,6 +9,7 @@ import { listen } from "@tauri-apps/api/event";
 import { installNativeFileDrops, pickNativeFile } from "./native-files";
 import { installOpenedFiles } from "./open-files";
 import { shellBridge } from "./shell-bridge";
+import { installUpdates, NOTIFIED, ROW } from "./updates";
 
 const root = document.getElementById("desk");
 if (!root) throw new Error("index.html has no #desk element");
@@ -19,6 +20,7 @@ const pluginBase = navigator.userAgent.includes("Windows")
   : "desk-plugin://localhost";
 
 const core = new BridgeClient(tauriAdapter((command, args) => invoke(command, args), listen));
+const lang = navigator.language.startsWith("ko") ? "ko" : "en";
 const desk = mountDesk({
   root,
   bridge: shellBridge(core),
@@ -26,7 +28,7 @@ const desk = mountDesk({
   plugins: { url: (id, path, revision) => `${pluginBase}/${id}/${path}?v=${revision}` },
   clock: realClock(),
   platform: navigator.userAgent.includes("Macintosh") ? "mac" : "other",
-  lang: navigator.language.startsWith("ko") ? "ko" : "en",
+  lang,
   pickFile: pickNativeFile,
   onSurfaceShown: (id) => {
     if (id === "desk.palette") void invoke("palette_reveal_main");
@@ -58,6 +60,24 @@ const disposeOpened = installOpenedFiles({
     }),
 });
 window.addEventListener("pagehide", disposeOpened, { once: true });
+
+// The desk's own updates: a row in the rail's attention list and the desk.update.* commands.
+const disposeUpdates = installUpdates({
+  core,
+  ready: desk.ready,
+  lang,
+  show: (row) =>
+    desk.store.set((s) => ({
+      attention: [...s.attention.filter((a) => a.id !== ROW), ...(row ? [row] : [])],
+    })),
+  commands: desk.runtime.commands,
+  notify: (input) => desk.runtime.notify(input),
+  memory: {
+    get: () => localStorage.getItem(NOTIFIED),
+    set: (version) => localStorage.setItem(NOTIFIED, version),
+  },
+});
+window.addEventListener("pagehide", disposeUpdates, { once: true });
 
 await desk.ready;
 await invoke("desk_ready", { status: desk.runtime.status() });
