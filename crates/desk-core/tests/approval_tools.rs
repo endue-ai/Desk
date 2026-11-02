@@ -151,3 +151,23 @@ fn a_denied_tool_call_tells_the_brain_why() {
     assert!(said.contains("not-approved"), "{said}");
     assert!(!home.join("Notes/a.md").exists());
 }
+
+#[test]
+fn a_card_answered_after_the_lease_ran_out_does_not_run_the_turn_again() {
+    let echo = Echo::start();
+    let home = home("approve-slow");
+    let (core, deliveries) = core(&echo, &home);
+    let turn = say(&core, &write_line("a.md", "slow"));
+    let approval = wait_for(&deliveries, "perm.approval");
+    // brain-echo's lease second is 20 ms: the desk's 60 s lease runs out while the person reads.
+    std::thread::sleep(Duration::from_millis(1500));
+    approve(&core, &approval, "once");
+    let mut seen = Vec::new();
+    let said = answer(&deliveries, &turn, &mut seen);
+    assert!(said.contains("The fs.write tool said:"), "{said}");
+    assert!(
+        seen.iter().all(|d| d.name() != "perm.approval"),
+        "the call is not asked about again: {seen:?}"
+    );
+    assert_eq!(fs::read_to_string(home.join("Notes/a.md")).unwrap(), "slow");
+}
