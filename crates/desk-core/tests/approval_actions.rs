@@ -5,7 +5,7 @@
 mod support;
 
 use std::fs;
-use std::io::{Read, Write};
+use std::io::{BufRead, BufReader, Read, Write};
 use std::net::TcpListener;
 use std::path::Path;
 use std::sync::mpsc::Receiver;
@@ -44,15 +44,26 @@ fn write(core: &Core, caller: &str, path: &str, content: &str) -> Result<Value, 
     call(core, caller, "fs.write", params)
 }
 
-/// A server on 127.0.0.1 that answers every request `200 ok`.
+/// A server on 127.0.0.1 that answers every request `200 ok` once it has read the whole request:
+/// on Windows, a socket closed with bytes left unread resets the connection before the client reads.
 fn ok_server() -> u16 {
     let listener = TcpListener::bind("127.0.0.1:0").unwrap();
     let port = listener.local_addr().unwrap().port();
     std::thread::spawn(move || {
-        for mut stream in listener.incoming().flatten() {
-            let _ = stream.read(&mut [0; 4096]);
+        for stream in listener.incoming().flatten() {
+            let mut reader = BufReader::new(&stream);
+            let (mut line, mut length) = (String::new(), 0);
+            while reader.read_line(&mut line).is_ok_and(|read| read > 2) {
+                if let Some((name, value)) = line.split_once(':')
+                    && name.eq_ignore_ascii_case("content-length")
+                {
+                    length = value.trim().parse().unwrap_or(0);
+                }
+                line.clear();
+            }
+            let _ = reader.read_exact(&mut vec![0; length]);
             let answer = "HTTP/1.1 200 OK\r\nconnection: close\r\ncontent-length: 2\r\n\r\nok";
-            let _ = stream.write_all(answer.as_bytes());
+            let _ = (&stream).write_all(answer.as_bytes());
         }
     });
     port
