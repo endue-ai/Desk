@@ -1,0 +1,68 @@
+{
+  "id": "example.hello-theme",
+  "name": "Hello theme",
+  "version": "0.1.0",
+  "kind": "theme",
+  "description": "The smallest theme with a font and a backdrop: Space Grotesk, an apricot brand and a sunrise behind the windows.",
+  "theme": {
+    "author": "Team endue",
+    "license": "Apache-2.0 AND OFL-1.1",
+    "tags": ["warm", "example"],
+    "type": {
+      "sans": "\"Space Grotesk\", \"Apple SD Gothic Neo\", \"Noto Sans KR\", system-ui, sans-serif",
+      "fonts": [
+        { "family": "Space Grotesk", "src": "fonts/space-grotesk.woff2", "weight": "300 700" }
+      ]
+    },
+    "light": {
+      "colors": {
+        "background": "#fbf6f1",
+        "card": "#ffffff",
+        "muted": "#f5ede5",
+        "popover": "#ffffff",
+        "hover": "#efe3d8",
+        "text": "#2b211c",
+        "textMuted": "#6c5d53",
+        "primary": "#b8410f",
+        "primaryForeground": "#ffffff",
+        "primaryHover": "#99350b",
+        "primaryText": "#a93c0e",
+        "primarySubtle": "rgba(184, 65, 15, 0.06)",
+        "primarySoft": "rgba(184, 65, 15, 0.1)",
+        "primaryBorder": "rgba(184, 65, 15, 0.3)",
+        "border": "#e8dbcf",
+        "input": "#8f7e71",
+        "ring": "#b8410f"
+      },
+      "backdrop": {
+        "gradient": ["#fde4d0", "#fbf6f1"],
+        "glow": "rgba(255, 190, 140, 0.4)"
+      }
+    },
+    "dark": {
+      "colors": {
+        "background": "#1a1412",
+        "card": "#231c19",
+        "muted": "#2a221e",
+        "popover": "#302723",
+        "hover": "#3b302b",
+        "text": "#f6ede6",
+        "textMuted": "#c0b0a4",
+        "primary": "#ff9a62",
+        "primaryForeground": "#2a1206",
+        "primaryHover": "#ffb48a",
+        "primaryText": "#ff9a62",
+        "primarySubtle": "rgba(255, 154, 98, 0.08)",
+        "primarySoft": "rgba(255, 154, 98, 0.12)",
+        "primaryBorder": "rgba(255, 154, 98, 0.34)",
+        "border": "#3a2f2a",
+        "input": "#8d7b70",
+        "ring": "#ff9a62"
+      },
+      "backdrop": {
+        "gradient": ["#2e1c15", "#1a1412"],
+        "glow": "rgba(255, 140, 80, 0.12)"
+      }
+    }
+  }
+}

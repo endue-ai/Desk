@@ -3,7 +3,7 @@
 // and in-memory storage. ?lang=en, ?persist=1 (the core's store in localStorage), ?reduced=1
 // (desk.theme.motion: reduce), ?init={...} (more init.yaml settings), ?themes=1 (the test theme
 // plugin installed), ?studio=1 (the theme studio open once the desk is ready; ?studio=<theme id>
-// previews that theme too). Never shipped.
+// previews that theme too; ?edit=<theme id> opens the editor on a copy of it). Never shipped.
 import type { PluginManifest } from "@endue-ai/bridge";
 import "../../src/desk.css";
 import "../../src/shell/styles";
@@ -103,4 +103,10 @@ if (params.has("studio")) {
   void desk.ready
     .then(() => desk.runtime.commands.run("desk.theme.studio"))
     .then(() => previewed !== "1" && desk.runtime.themes.preview(previewed));
+}
+
+if (params.has("edit")) {
+  void desk.ready.then(() =>
+    desk.runtime.commands.run("desk.theme.edit", { id: params.get("edit") }),
+  );
 }

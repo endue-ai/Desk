@@ -9,3 +9,4 @@ import "../eris/eris.css";
 import "../surface/surface.css";
 import "../surface/panes.css";
 import "../theme-studio/studio.css";
+import "../theme-studio/editor.css";

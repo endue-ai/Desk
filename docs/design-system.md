@@ -92,7 +92,12 @@ values and its font and image files, no code. The setting `desk.theme.active` na
 (empty for the endue theme); installing a theme does not apply it. The theme studio, a system window
 of the shell (`desk.theme.studio`, or the palette button at the top right), lists the endue theme and
 every installed theme as cards drawn with their own tokens; focusing one previews it on the whole desk,
-Enter or a click applies it, and Escape puts back what was in force. The commands `desk.theme.use`
+Enter or a click applies it, and Escape puts back what was in force. "Tune a copy" (or
+`desk.theme.edit`) docks the studio to the right and opens its editor on a copy of the selected theme:
+every layer has its controls, the whole desk shows the draft as it changes, the gate's fixes are listed
+under the palette, and Save keeps it as the person's own theme (`local.<name>`, through `theme.save`,
+files the copy started with carried over by `copyFrom`). Import takes a `.desk-theme` file (or one
+dropped on the studio) and previews it; Export writes the selected theme as one. The commands `desk.theme.use`
 (with `{ "id": "<theme plugin>" }`) and `desk.theme.default` change it too, a profile or `init.yaml`
 can carry it, and the choice comes back with the session. The runtime resolves the tokens in this order: the built-in tokens, the policy plugins'
 `contributes.themes` for the scheme (and their high-contrast layers), the active theme for the scheme,

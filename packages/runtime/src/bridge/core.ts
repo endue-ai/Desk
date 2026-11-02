@@ -18,7 +18,7 @@ import {
   type StubOpened,
   stubCommands,
 } from "@endue-ai/bridge";
-
+import { themeHandlers } from "./core-themes";
 import { searchHandlers } from "./search";
 
 /** What the core's store holds for the runtime: memory, or localStorage to survive a reload. */
@@ -99,6 +99,7 @@ export function browserCore(options: BrowserCoreOptions): BrowserCore {
   const stub = browserStub({
     ...registry.handlers,
     ...searchHandlers(plugins, store),
+    ...themeHandlers(plugins, (event) => stub.emit(event)),
     "perm.query": () => ({ grants: [] }),
     "plugin.list": () => ({ plugins: structuredClone(plugins) }),
     "plugin.setEnabled": ({ plugin, enabled }) => {

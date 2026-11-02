@@ -3,8 +3,8 @@
 # Écrire un plugin Desk
 
 Un plugin Desk est un dossier. Les fonctionnalités intégrées utilisent exactement le même format : tout ce que
-Desk fait lui-même à l'écran, votre plugin peut le faire aussi. Cette page traite des plugins UI (v0) ; les
-plugins de logique (Wasm) et d'outils (MCP) viendront plus tard.
+Desk fait lui-même à l'écran, votre plugin peut le faire aussi. Cette page traite des plugins UI (v0) et des
+thèmes ; les plugins de logique (Wasm) et d'outils (MCP) viendront plus tard.
 
 ## Partir de l'exemple
 
@@ -169,3 +169,128 @@ await host.settle();
 
 Avant de publier, `desk plugin validate <folder>` doit réussir ; la CI l'exécute pour chaque dossier de
 `plugins/` et `examples/`.
+
+## Créer un thème
+
+Un thème est un plugin de kind `theme` : les valeurs du design system et les fichiers de polices et
+d'images qu'elles désignent, sans code, si bien qu'il ne demande aucune permission (ADR 0056, ADR 0057).
+Partez du modèle ou de l'exemple :
+
+```bash
+pnpm --filter @endue-ai/create-plugin build                       # once
+node packages/create-plugin/dist/create-plugin.js ../my-theme --kind theme
+DESK_DEV_PLUGINS=$PWD/../my-theme just dev
+cargo run -p desk-cli -- theme apply local.my-theme
+```
+
+Une fois le paquet publié, ce sera `pnpm create @endue-ai/plugin my-theme --kind theme`. Le modèle
+contient toutes les couleurs de rôle pour les deux schemes, toutes les autres couches à leur valeur par
+défaut et un README qui dit ce que peint chacune ; `examples/plugin-hello-theme` est le plus petit thème
+avec une police et un arrière-plan. Installer un thème ne l'applique pas : le réglage `desk.theme.active`
+désigne celui qui est en vigueur, choisi dans le studio de thèmes (le bouton palette en haut à droite, ou
+Themes dans la palette de commandes), avec `desk.theme.use` ou avec `desk theme apply`.
+
+Le studio crée aussi des thèmes : « Tune a copy » (ou `desk.theme.edit`) ouvre son éditeur sur une copie du
+thème sélectionné, « New theme » sur le thème endue. Chaque couche a ses contrôles, polices et images
+d'arrière-plan comprises ; tout le bureau montre le brouillon à mesure qu'il change, les corrections du
+contrôle sont listées sous la palette, et Save le garde comme votre propre thème (`local.<nom>`). Un dossier
+est la façon de garder un thème dans un dépôt, de le tester et de le publier.
+
+### Le bloc
+
+`plugin.json` a le kind `theme` et un bloc `theme` (`specs/plugin/v0/theme.schema.json`), et ni
+`entry`, ni `permissions`, ni `surfaces`, ni `contributes`, ni `autoload` :
+
+```json
+{
+  "id": "example.dusk",
+  "name": "Dusk",
+  "version": "0.1.0",
+  "kind": "theme",
+  "theme": {
+    "license": "Apache-2.0 AND OFL-1.1",
+    "type": {
+      "sans": "\"Space Grotesk\", system-ui, sans-serif",
+      "fonts": [{ "family": "Space Grotesk", "src": "fonts/space-grotesk.woff2", "weight": "300 700" }]
+    },
+    "shape": { "radius": "round" },
+    "dark": {
+      "colors": { "background": "#1a1412", "text": "#f6ede6", "primary": "#ff9a62", "primaryForeground": "#2a1206" },
+      "backdrop": { "gradient": ["#2e1c15", "#1a1412"], "glow": "rgba(255, 140, 80, 0.12)" }
+    }
+  }
+}
+```
+
+`author`, `license` (une expression SPDX pour le thème et ses fichiers), `tags`, `preview` (jusqu'à cinq
+couleurs pour sa carte dans la galerie) et `origin` (la phrase qui l'a décrit et le thème dont il est
+parti) le décrivent. `light` et `dark` contiennent chacun un scheme. Un thème en demande un ; le thème
+propre au bureau remplace l'autre.
+
+### Couches et préréglages
+
+Six couches, chacune avec une valeur par défaut, si bien qu'une palette seule fait un thème :
+
+| Couche | Clé | Valeurs |
+| --- | --- | --- |
+| Palette | `<scheme>.colors` | Nom de jeton (camelCase) vers une couleur CSS : les rôles de `docs/design-system.md`, les jetons du shell et d'Eris. Un rôle omis garde celle du bureau |
+| Matière | `<scheme>.material` | `opacity` 0,6–1, `blur` 0–24 px, `noise` 0–0,15, `border` 0–2 px, `shadow` none, soft ou strong |
+| Typographie | `type` | piles de polices `sans` et `mono`, `scale` 0,85–1,25, `tracking` −0,02–0,05 em, `fonts` |
+| Forme | `shape` | `radius` none, subtle, soft ou round ; `density` compact, comfortable ou spacious |
+| Mouvement | `motion` | `personality` snappy, smooth ou calm |
+| Arrière-plan | `<scheme>.backdrop` | Une `color`, un `gradient` de deux à quatre couleurs selon un `angle`, ou une `image` avec `fit` cover ou tile ; un `glow` |
+
+`<scheme>.terminal.ansi` donne au terminal ses seize couleurs et `<scheme>.contrast` les changements de
+la palette en contraste élevé. Arrondi, densité, mouvement, échelle du texte et ombre sont des
+préréglages : le runtime traduit chaque nom en jetons (`docs/design-system.md`, « Choosing a theme »),
+si bien qu'un thème continue de fonctionner quand le bureau les réajuste. Les nombres sont bornés et les
+valeurs ne contiennent pas de `url()`, si bien que tout thème valide reste utilisable.
+
+### Le contrôle de contraste
+
+Le bureau fait passer chaque thème qu'il applique par un contrôle (`@endue-ai/ui/theme`) : le texte atteint
+4,5:1 sur son fond, les bordures et remplissages 3:1, et en contraste élevé 7:1 et 4,5:1. Un premier plan
+qui n'y arrive pas ne change que sa luminosité OKLCH, juste assez pour atteindre le rapport ; un fond ne
+change jamais. Sans palette `contrast`, le contraste élevé d'un thème est dérivé de la même façon de ses
+propres couleurs. Vérifiez vos paires dans les deux schemes, pour que le contrôle n'ait rien à corriger.
+
+### Ressources et limites
+
+Les polices sont des fichiers `.woff2` et les images des `.png`, `.jpg` ou `.webp` (pas de SVG, qui peut
+contenir du script), dans le dossier : 2 Mio chacun et 8 Mio en tout. Indiquez la licence d'une police
+dans `license` et gardez son fichier de licence à côté ; les thèmes intégrés gardent `fonts/OFL.txt` et un
+`fonts/SOURCE.md` avec la source amont et les sommes de contrôle. Le bureau charge les polices d'un thème
+en `FontFace` dans le shell et dans chaque cadre de plugin ; seul le shell dessine l'arrière-plan.
+
+### Tester un thème
+
+```bash
+cargo run -p desk-cli -- plugin validate ../my-theme
+pnpm exec vitest run --root ../my-theme
+```
+
+`desk plugin validate` vérifie le bloc par rapport au schéma et les fichiers par rapport à leurs limites.
+Le `tests/theme.test.ts` du modèle compile les deux schemes avec `compileTheme` et les contrôle avec
+`gate` par-dessus la palette endue, comme le bureau avant d'appliquer un thème, et échoue en listant chaque
+correction que le contrôle ferait.
+
+### Partager en `.desk-theme`
+
+```bash
+cargo run -p desk-cli -- theme export local.my-theme     # local.my-theme.desk-theme in Downloads
+cargo run -p desk-cli -- theme import ~/Downloads/dusk.desk-theme
+```
+
+Un `.desk-theme` est un seul fichier JSON : `format` `desk-theme/1`, le `plugin.json` du thème comme
+`manifest`, et les fichiers que son bloc désigne dans `files`, en base64, 16 Mio au plus (ADR 0058).
+L'importer le vérifie comme plugin de thème et l'installe dans le dossier de thèmes de la personne, où un id
+hors de `local.` et `market.` devient `local.<son nom>` ; `desk theme list` l'affiche et `desk theme remove`
+le supprime. Export et Import dans le studio font de même, et le studio accepte un `.desk-theme` déposé
+dessus.
+
+### Le marché
+
+Un marché de thèmes arrive (`docs/ko/theme-requirements.md`, TC-05 et TS-08) : un index de fichiers
+`.desk-theme` avec leur sha256, que le studio liste, prévisualise et installe sous des id dans `market.`.
+`theme.import` accepte déjà une URL `https` avec le `sha256` du paquet et refuse des octets qui ne
+correspondent pas. En attendant l'ouverture du marché, partagez le fichier lui-même.
