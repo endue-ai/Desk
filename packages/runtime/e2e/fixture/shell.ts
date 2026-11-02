@@ -2,7 +2,7 @@
 // Test page: the desk shell on the browser bridge stubs (the core's and the shell's), a manual clock
 // and in-memory storage. ?lang=en, ?persist=1 (the core's store in localStorage), ?reduced=1
 // (desk.theme.motion: reduce), ?init={...} (more init.yaml settings), ?themes=1 (the test theme
-// plugin installed). Never shipped.
+// plugin installed), ?views=1 (desk.views, and a scripted brain for desk.propose). Never shipped.
 import type { PluginManifest } from "@endue-ai/bridge";
 import "../../src/desk.css";
 import "../../src/shell/styles";
@@ -11,6 +11,7 @@ import { browserCore, localStore, memoryStore } from "../../src/bridge/core";
 import erisReply from "../../src/bridge/envelopes/eris-reply.json";
 import userHello from "../../src/bridge/envelopes/user-hello.json";
 import { ManualClock } from "../../src/clock";
+import { scriptedViews } from "../../src/propose/fixtures";
 import { mountDesk } from "../../src/shell/Desk";
 import { sampleState } from "../../src/shell/state";
 import testTheme from "../themes/test-theme/plugin.json";
@@ -46,12 +47,16 @@ const testPlugins: PluginManifest[] = [
 const core = browserCore({
   manifests: [
     ...Object.values(manifests).filter(
-      (m) => m.id.startsWith("desk.") && m.id !== "desk.views" && m.kind !== "view",
+      (m) =>
+        m.id.startsWith("desk.") &&
+        (m.id !== "desk.views" || params.has("views")) &&
+        m.kind !== "view",
     ),
     ...(params.has("plugins") ? testPlugins : []),
     ...(params.has("themes") ? [testTheme as PluginManifest] : []),
   ],
   store: params.has("persist") ? localStore("desk.core.") : memoryStore(),
+  ...(params.has("views") ? { brain: { answer: scriptedViews } } : {}),
   init: {
     profile: "morning",
     settings: {
