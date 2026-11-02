@@ -48,9 +48,12 @@ R2 에는 정적 파일만 있고, 판단은 전부 기기 안에서 합니다.
   저장소(디스크 · sha256 · `staged.json`), 체크 스케줄, 상태 기계. 전부 `crates/desk-update/tests` 로 검증한다.
 - **desk-core `core_update.rs`**: 브리지 `update.*` 를 답하고 `update.changed` 를 보낸다. 실제로 받고 설치하는 일은
   `Updater` 트레이트 뒤에 둔다(PKG-01: 코어는 트레이트로만 안다, `with_brain` · `with_calendar` 와 같은 꼴).
-- **앱 어댑터 `apps/desk/src-tauri/src/update.rs`**: `tauri-plugin-updater` 로 받기 · 서명 검증 · OS 별 설치 · 재시작.
-  `Updater` 트레이트의 구현체. 채널에 맞는 엔드포인트를 실행 중에 정한다.
-- **런타임**: 레일 attention 행, 알림 한 번, 팔레트 커맨드. **CLI**: `desk update`. **트레이**: "Restart to update".
+- **앱 어댑터 `apps/desk/src-tauri/src/update.rs`**: 받기는 `desk-update` 의 `https`(ureq · rustls), 설치와 재시작은
+  `tauri-plugin-updater`. 플러그인의 업데이트 핸들은 받아 둔 판의 `release.json` 으로 만들고, 바이트는 desk-update 가
+  검증한 것을 넘긴다. 플러그인은 키가 있는 빌드에만 등록하고, 그 JavaScript 커맨드는 어떤 capability 에도 넣지 않는다.
+- **셸**(`apps/desk/src/updates.ts`): 레일 attention 행, 알림 한 번, `desk.update.*` 커맨드. 정책 플러그인은 두지 않는다
+  (릴리스 빌드에는 내장 플러그인이 실리지 않고, 커맨드는 늘 있어야 해서 `desk` 소유다). **CLI**: `desk update`.
+  **트레이**: "Restart to update".
 - **권한**: `update:manage` 하나. 런타임(`desk`)과 `cli` 에만 준다. 플러그인은 `events.subscribe` 로 `update.changed`
   를 들을 수 있을 뿐, 체크도 적용도 못 한다. 런타임의 커맨드 `desk.update.apply` 를 다른 호출자가 `cmd.invoke` 로
   부르면 사람에게 먼저 묻는다(§결정 4).
@@ -223,15 +226,15 @@ idle ──check──▶ checking ──▶ up-to-date ──(4 h)──▶ idl
 
 ## 겉으로 보이는 것
 
-- **레일** attention 행: "Desk 0.2.0 is ready · Restart to update". 누르면 `desk.update.apply`. 받는 중엔
-  "Downloading Desk 0.2.0 · 43 %". 행은 상태가 `staged` 인 동안 남고, 지우는 길은 없다(스누즈 없음).
+- **레일** attention 행: "Desk 0.2.0 is ready" 와 그 아래 "Restart to update" 버튼(`desk.update.apply`). 받는 중엔
+  "Downloading Desk 0.2.0 · 43%", auto 가 꺼져 있으면 "Desk 0.2.0 is available" 과 "Download". 행은 받아 둔 판이 있는
+  동안 남고, 지우는 길은 없다(스누즈 없음).
 - **알림** 한 번(`ui.notified`): `staged` 로 들어갈 때. 재시작 뒤 같은 판에 다시 알리지 않는다.
 - **트레이**: `staged` 일 때만 "Restart to update (0.2.0)" 항목(ADR 0053 의 Search · Open · Quit 옆).
 - **커맨드**: `desk.update.check` · `desk.update.download` · `desk.update.apply` · `desk.update.notes`(GitHub 의 릴리스
   노트를 `shell.open` 으로). 팔레트 · 키 · 레일 · 트레이가 같은 길로 부른다. `desk.update.apply` 를 다른 호출자(플러그인 ·
   에이전트)가 부르면 사람에게 먼저 묻는다.
 - **CLI**: `desk update`(상태) · `desk update check` · `desk update apply`. 소켓 호출자 `cli` 의 `update:manage` 로.
-- **상태 줄**(`desk_ready` 가 찍는 줄): `update: staged 0.2.0` 이 덧붙는다. 스모크가 이 줄을 읽는다.
 - **설정 UI**: 지금은 init.yaml 세 키뿐. SET 의 생성된 설정 UI 가 생기면 거기 따라온다.
 
 ## 릴리스 파이프라인
@@ -243,7 +246,7 @@ idle ──check──▶ checking ──▶ up-to-date ──(4 h)──▶ idl
 
 | 워크플로 | 트리거 | 하는 일 |
 | --- | --- | --- |
-| `release-build.yml` | canary · release 가 부름 | 4 target(`darwin-aarch64` · `darwin-x86_64` · `windows-x86_64` · `linux-x86_64`) `tauri build`(`createUpdaterArtifacts`, 서명에 버전) → macOS codesign + notarize(Apple 비밀값이 있을 때) → 정규 이름으로 모으기. Windows 는 NSIS 만, Authenticode 는 인증서를 정한 뒤 |
+| `release-build.yml` | canary · release 가 부름 | 4 target(`darwin-aarch64` · `darwin-x86_64` · `windows-x86_64` · `linux-x86_64`) `tauri build`(`createUpdaterArtifacts`, 서명에 버전, 설정의 `plugins.updater.pubkey` 에 공개키 — 없으면 CLI 가 서명을 거부한다) → macOS codesign + notarize(Apple 비밀값이 있을 때) → 정규 이름으로 모으기. Windows 는 NSIS 만, Authenticode 는 인증서를 정한 뒤 |
 | `canary.yml` | main push | 빌드 → R2 `releases/<v>/` 업로드(순서대로) → `channels/canary/index.json` 갱신 · 서명 → 2주 지난 canary 정리(§결정 3). 버전은 `<다음>-pre.<run>`, 노트는 커밋 페이지 |
 | `promote.yml` | 주 1회 · 수동 | 3일 넘게 canary 에 있던 가장 새 판을 `channels/beta/index.json` 에 올린다. 재빌드 없음, 포인터만. 새 크래시 조건(ADR 0007)은 크래시 리포트가 생기면 더한다 |
 | `release.yml` | 태그 `v*`(사람) | canary 와 같은 빌드를 태그 버전으로 → `channels/stable/index.json` → GitHub Release(자동 생성 노트, 바이너리 없음, R2 링크). `stable` 환경(사람 승인 단계) |
@@ -278,16 +281,16 @@ idle ──check──▶ checking ──▶ up-to-date ──(4 h)──▶ idl
 | UPD-06 | 롤백: 수동 워크플로가 채널 인덱스에서 한 판을 내린다. 데스크는 받아 둔 그 판을 버린다 | 있음 (#294) | 1 |
 | UPD-20 | canary 보관 2주: 14일 지난 canary 판을 canary 인덱스에서 내리고, 다른 채널 인덱스가 올리지 않은 판이면 R2 의 `releases/<v>/` 도 지운다 | 있음 (#294) | 1 |
 | UPD-07 | 브리지 명세 `update.*`: `update.status` · `update.check` · `update.download` · `update.apply`, 이벤트 `update.changed`, 권한 `update:manage`, 벡터, codegen | 있음 (#274) | 1 |
-| UPD-08 | 정책(`desk-update`): 인덱스 · 매니페스트 파싱과 서명 검증, 후보 → `minFrom` 경로 → 롤아웃 → 다운그레이드 금지, 받아 둔 판의 운명(§데스크의 판단 1–5) | 없음 | 1 |
-| UPD-09 | 스테이징: 받은 바이트를 `<data>/updates/<v>/` 에, sha256 · 길이 비교, `staged.json`, 디스크에 한 판, 버리기 | 없음 | 1 |
-| UPD-10 | 스케줄: 시작 30 s · 4 h 지터 · 수동 · 백오프, 전부 메인 스레드 밖. `desk.update.check: false` 면 네트워크 0 | 없음 | 1 |
-| UPD-11 | 적용: 재검증(sha256 + minisign) → 플러그인 `install` → 재시작. OS 별 경로는 §OS 별 적용. 실패는 `failed{reason}` 로 남고 받아 둔 것은 지운다 | 없음 | 1 |
-| UPD-12 | 앱 어댑터: `tauri-plugin-updater` 등록, 컴파일 시점 `DESK_UPDATER_PUBKEY` · `DESK_BUILD_COMMIT` 내장, 채널별 인덱스 주소, 디버그 `DESK_UPDATE_URL`, 트레이 항목 | 없음 | 1 |
-| UPD-13 | 코어: `Updater` 트레이트 · `core_update.rs` · 설정 `desk.update.{channel,auto,check}` · `desk` 와 `cli` 에 `update:manage` · 로그 채널 `desk.update` | 없음 | 1 |
-| UPD-14 | 런타임: 정책 플러그인 `desk.update`(설정 셋 · 커맨드 넷), 레일 attention 행(받는 중 · 준비됨), 알림 한 번, 상태 줄에 `update:`, 다른 호출자의 `desk.update.apply` 는 사람에게 묻기 | 없음 | 1 |
-| UPD-15 | CLI: `desk update`(상태) · `desk update check` · `desk update apply` | 없음 | 1 |
+| UPD-08 | 정책(`desk-update`): 인덱스 · 매니페스트 파싱과 서명 검증, 후보 → `minFrom` 경로 → 롤아웃 → 다운그레이드 금지, 받아 둔 판의 운명(§데스크의 판단 1–5) | 있음 (#292) | 1 |
+| UPD-09 | 스테이징: 받은 바이트를 `<data>/updates/<v>/` 에, sha256 · 길이 비교, `staged.json`, 디스크에 한 판, 버리기 | 있음 (#292) | 1 |
+| UPD-10 | 스케줄: 시작 30 s · 4 h 지터 · 수동 · 백오프, 전부 메인 스레드 밖. `desk.update.check: false` 면 네트워크 0 | 있음 (#292) | 1 |
+| UPD-11 | 적용: 재검증(sha256 + minisign) → 플러그인 `install` → 재시작. OS 별 경로는 §OS 별 적용. 실패는 `failed{reason}` 로 남고 받아 둔 것은 지운다 | 있음 (#297) | 1 |
+| UPD-12 | 앱 어댑터: `tauri-plugin-updater` 등록, 컴파일 시점 `DESK_UPDATER_PUBKEY` · `DESK_BUILD_COMMIT` 내장, 채널별 인덱스 주소, 디버그 `DESK_UPDATE_URL`, 트레이 항목 | 있음 (#297) | 1 |
+| UPD-13 | 코어: `Updater` 트레이트 · `core_update.rs` · 설정 `desk.update.{channel,auto,check}` · `desk` 와 `cli` 에 `update:manage` · 로그 채널 `desk.update` | 있음 (#303) | 1 |
+| UPD-14 | 셸(`apps/desk/src/updates.ts`): 레일 attention 행(받는 중 · 준비됨 · 버튼), 판마다 알림 한 번, 커맨드 넷, 다른 호출자의 `desk.update.apply` 는 사람에게 묻기 | 있음 (#297) | 1 |
+| UPD-15 | CLI: `desk update`(상태) · `desk update check` · `desk update apply` | 있음 (#303) | 1 |
 | UPD-16 | 업데이트 스모크: 직전 canary `.deb` 설치 → `canary` 채널로 실행 → 상태 줄의 `update: staged` → `desk update apply` → 새 버전 확인. `verify-signature.sh` 를 실제 검사로(minisign `.sig`, `spctl`, `signtool`) | 없음(스텁) | 2 |
-| UPD-17 | 문서: `desk-structure.md` §뼈대(R2), `docs/security/threat-model.md` §The updater, `docs/qa/TESTING.md`, `SECURITY.md` 지원 버전 | 없음 | 1 |
+| UPD-17 | 문서: `desk-structure.md` §뼈대(R2), `docs/security/threat-model.md` §The updater, `docs/qa/TESTING.md`, `SECURITY.md` 지원 버전 | 있음 (#298 · #297) | 1 |
 | UPD-18 | 이어 받기: Range 로 스트리밍 다운로드와 재개, sha256 은 받으면서 | 없음 | 2 |
 | UPD-19 | 종료할 때 적용: `desk.update.apply: on-quit` 설정(기본 꺼짐) | 없음 | 3 |
 | NF-01 | 체크 요청에 식별자 · 쿠키 · 기기 정보가 없다. URL 의 자리표시자는 `{{current_version}}` · `{{target}}` · `{{arch}}` 뿐 | — | 1 |
@@ -313,12 +316,17 @@ idle ──check──▶ checking ──▶ up-to-date ──(4 h)──▶ idl
 | # | 이슈 | 요구사항 | 무엇을 |
 | --- | --- | --- | --- |
 | T1 | #268 `update.*` 계약과 이 문서 · ADR 0054 | UPD-07 | `specs/bridge/v0/update.schema.json`, `update:manage`, `update.changed`, 벡터, codegen, 코어는 `unsupported` |
-| T2 | crate `desk-update` | UPD-08 · 09 · 10 | 인덱스 · 매니페스트 타입, minisign 검증, 정책(후보 · `minFrom` · 롤아웃 · 다운그레이드 금지), 스테이징, 스케줄, 상태 기계. Tauri 를 모른다 |
-| T3 | 코어가 `update.*` 를 섬긴다, CLI `desk update` | UPD-13 · 15 | `core_update.rs`, `desk` · `cli` 에 `update:manage`, 설정 `desk.update.*`, `update.changed` 발행 |
-| T4 | 앱 어댑터와 런타임 | UPD-11 · 12 · 14 | `tauri-plugin-updater` 로 설치 · 재시작, 트레이 항목, 정책 플러그인 `desk.update`, 레일 행 · 알림 · 커맨드 |
-| T5 | 릴리스 파이프라인과 문서 | UPD-01~06 · 17 · 20 | `scripts/release/*.mjs`, `canary` · `release` · `promote` · `rollback` 워크플로, 위협 모델 · 구조 문서 · TESTING.md |
+| T2 | #278 (#292) crate `desk-update` | UPD-08 · 09 · 10 | 인덱스 · 매니페스트 타입, minisign 검증, 정책(후보 · `minFrom` · 롤아웃 · 다운그레이드 금지), 스테이징, 스케줄, 상태 기계. Tauri 를 모른다 |
+| T3 | #296 (#303) 코어가 `update.*` 를 섬긴다, CLI `desk update` | UPD-13 · 15 | `core_update.rs`, `desk` · `cli` 에 `update:manage`, 설정 `desk.update.*`, `update.changed` 발행 |
+| T4 | #297 앱 어댑터와 셸 | UPD-11 · 12 · 14 | `tauri-plugin-updater` 로 설치 · 재시작, 트레이 항목, 정책 플러그인 `desk.update`, 레일 행 · 알림 · 커맨드 |
+| T5 | #294 (#298) 릴리스 파이프라인과 문서 | UPD-01~06 · 17 · 20 | `scripts/release/*.mjs`, `canary` · `release` · `promote` · `rollback` 워크플로, 위협 모델 · 구조 문서 · TESTING.md |
 
 순서: T1 ∥ T2 → T3 → T4, T5 는 T1 뒤 언제든.
+
+**검증 (2026-11-02, macOS)**: 테스트 키로 서명한 0.0.1 · 0.0.2 디버그 번들과, 릴리스 스크립트로 만든 로컬 원본
+(`python3 -m http.server`)으로 전 과정을 돌렸다. 0.0.1 이 `desk update check` 로 0.0.2 를 받아 검증 · 스테이징하고,
+`desk update apply` 에 번들을 바꿔 0.0.2 로 다시 떴으며, 받아 둔 파일은 지워졌다. 3 OS 를 CI 에서 도는 업데이트
+스모크(UPD-16)는 다음 단계다.
 
 ## 가정 (뒤집으려면 한 줄로)
 

@@ -78,38 +78,7 @@ pub fn setup(app: &tauri::App, core: &Core) -> tauri::Result<()> {
             }
         });
     }
-    tray(app)?;
-    Ok(())
-}
-
-fn tray(app: &tauri::App) -> tauri::Result<()> {
-    use tauri::menu::{Menu, MenuItem};
-    use tauri::tray::TrayIconBuilder;
-    let menu = Menu::with_items(
-        app,
-        &[
-            &MenuItem::with_id(app, "search", "Search Desk", true, None::<&str>)?,
-            &MenuItem::with_id(app, "desk", "Open Desk", true, None::<&str>)?,
-            &MenuItem::with_id(app, "quit", "Quit Desk", true, None::<&str>)?,
-        ],
-    )?;
-    let mut tray = TrayIconBuilder::new()
-        .tooltip("endue Desk")
-        .menu(&menu)
-        .on_menu_event(|app, event| match event.id.as_ref() {
-            "search" => {
-                let _ = show(app);
-            }
-            "desk" => {
-                let _ = reveal_main(app);
-            }
-            "quit" => app.exit(0),
-            _ => {}
-        });
-    if let Some(icon) = app.default_window_icon() {
-        tray = tray.icon(icon.clone());
-    }
-    tray.build(app)?;
+    crate::tray::setup(app)?;
     Ok(())
 }
 

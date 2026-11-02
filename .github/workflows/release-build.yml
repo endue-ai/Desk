@@ -96,8 +96,10 @@ jobs:
           DESK_UPDATER_PUBKEY: ${{ vars.DESK_UPDATER_PUBKEY }}
           DESK_UPDATE_URL: ${{ vars.DESK_RELEASES_URL || 'https://releases.endue.ai/desk' }}
           DESK_BUILD_COMMIT: ${{ github.sha }}
+        # createUpdaterArtifacts reads the public key from plugins.updater.pubkey and refuses an empty
+        # one; the plugin's own config needs it too.
         run: |
-          config="$(printf '{"version":"%s","bundle":{"createUpdaterArtifacts":true}}' "$VERSION")"
+          config="$(printf '{"version":"%s","bundle":{"createUpdaterArtifacts":true},"plugins":{"updater":{"pubkey":"%s"}}}' "$VERSION" "$DESK_UPDATER_PUBKEY")"
           pnpm --filter @endue-ai/desk-app tauri build \
             --target "${{ matrix.rust }}" --bundles "${{ matrix.bundles }}" --config "$config"
       - name: Collect the bundles under canonical names

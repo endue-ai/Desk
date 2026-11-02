@@ -12,11 +12,16 @@ publish.workspace = true
 base64.workspace = true
 getrandom = "0.3"
 # The verifier the Tauri updater plugin uses, so both read the same signatures.
-minisign-verify = "0.2"
+minisign-verify = "0.3"
 semver = "1"
 serde.workspace = true
 serde_json.workspace = true
 sha2 = "0.10"
+# The release origin over HTTPS (`https`): the client desk-sys's `net` already uses.
+ureq = { version = "3.1", optional = true, default-features = false, features = ["rustls", "platform-verifier"] }
+
+[features]
+https = ["dep:ureq"]
 
 [dev-dependencies]
 # Signs test data with keys made at test time; nothing key-like is committed.
