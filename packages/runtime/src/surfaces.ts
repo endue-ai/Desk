@@ -1,4 +1,5 @@
 import { type Edges, edgeOf } from "./edges";
+import { Settling } from "./frames/settle";
 import type { Cell } from "./layout";
 
 /** The stacking level of overlays in desk.css; one shown later is raised above it. */
@@ -35,6 +36,7 @@ export class SurfaceHost {
   #raised = 0;
   /** The frames of unloaded surfaces, out of the page until they show again (ADR 0070). */
   readonly #parked = new Map<string, HTMLIFrameElement>();
+  readonly #settling = new Settling();
   readonly #listeners = new Set<() => void>();
 
   /** Without `edges`, edge surfaces sit in `container` like the rest. */
@@ -68,7 +70,9 @@ export class SurfaceHost {
     section.dataset.surface = spec.id;
     section.tabIndex = -1;
     section.hidden = spec.hidden === true;
-    section.addEventListener("focusin", () => this.#onFocus(spec.id));
+    section.addEventListener("focusin", () => {
+      if (!this.#settling.refocus(spec.id, doc)) this.#onFocus(spec.id);
+    });
 
     const title = doc.createElement("header");
     title.className = "desk-surface-title";
@@ -95,6 +99,7 @@ export class SurfaceHost {
     this.#surfaces.get(id)?.remove();
     this.#surfaces.delete(id);
     this.#parked.delete(id);
+    this.#settling.forget(id);
     this.#edges?.prune();
     this.#changed();
   }
@@ -115,17 +120,21 @@ export class SurfaceHost {
     return true;
   }
 
-  /** Put an unloaded surface's frame back: it loads its page again, and keeps the surface's focus. */
+  /**
+   * Put an unloaded surface's frame back: it loads its page again. A surface with the focus gives it
+   * to the frame; otherwise the frame may not take it while it settles (`frames/settle.ts`).
+   */
   remount(id: string): boolean {
     const section = this.#surfaces.get(id);
     const frame = this.#parked.get(id);
     if (!section || !frame) return false;
     this.#parked.delete(id);
-    const focused = section.contains(section.ownerDocument.activeElement);
+    const before = section.ownerDocument.activeElement;
     const placeholder = section.querySelector(".desk-surface-placeholder");
     if (placeholder) placeholder.replaceWith(frame);
     else section.append(frame);
-    if (focused) frame.focus();
+    if (section.contains(before)) frame.focus();
+    else this.#settling.start(id, frame, before);
     return true;
   }
 

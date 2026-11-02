@@ -120,6 +120,13 @@ async function desk(ids: string[], settings: Record<string, unknown> = {}) {
   return { runtime, core, plugins, hide, show, unloaded };
 }
 
+/** What a browser does when a frame's page focuses one of its elements (jsdom leaves the events out). */
+function takeFocus(frame: HTMLIFrameElement | null | undefined): void {
+  if (!frame) throw new Error("no frame");
+  frame.focus();
+  frame.dispatchEvent(new FocusEvent("focusin", { bubbles: true }));
+}
+
 afterEach(() => {
   vi.useRealTimers();
   document.body.replaceChildren();
@@ -211,6 +218,28 @@ describe("hidden surfaces are unloaded and their state kept", () => {
     await d.show("a.one");
     expect(d.unloaded("a.one")).toBe(false);
     expect(d.unloaded("c.three")).toBe(false);
+  });
+
+  it("a frame that focuses itself as it loads again does not take the focus from where it is", async () => {
+    const d = await desk(["a.one", "b.two"], { [UNLOAD]: 60 });
+    d.runtime.focusSurface("a.one");
+    const before = document.activeElement;
+    await d.hide("b.two");
+    await flush(60_000);
+    expect(d.unloaded("b.two")).toBe(true);
+
+    // A request loads it again out of sight; as it mounts it focuses its view, as many plugins do.
+    d.runtime.plugins?.command("b.two", "desk.buffers.show", { buffer: "x" });
+    await flush();
+    takeFocus(d.plugins["b.two"]?.frame());
+    expect(document.activeElement).toBe(before);
+    expect(d.runtime.shortcuts.focused).toBe("a.one");
+
+    // Once it has settled, the person can move into it as into any frame.
+    await flush(5_000);
+    takeFocus(d.plugins["b.two"]?.frame());
+    expect(document.activeElement).toBe(d.plugins["b.two"]?.frame());
+    expect(d.runtime.shortcuts.focused).toBe("b.two");
   });
 
   it("0 keeps hidden surfaces loaded and sets no cap", async () => {

@@ -73,7 +73,12 @@ export function installFrames(
     // Shown again meanwhile, or the desk waits on another answer from it: keep it for now.
     if (!still() || host?.busy(id, SURFACE_STATE)) return false;
     const doc = surfaces.get(id)?.ownerDocument;
-    const stand = doc && placeholder(doc, spec?.title ?? id, () => frames.wake(id));
+    // Pressed, it loads with the focus: the surface takes it first, so the frame gets it.
+    const use = () => {
+      surfaces.get(id)?.focus();
+      frames.wake(id);
+    };
+    const stand = doc && placeholder(doc, spec?.title ?? id, use);
     if (!stand || !surfaces.unload(id, stand)) return false;
     host?.unloaded(id, kept);
     return true;
