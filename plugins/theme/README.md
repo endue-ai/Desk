@@ -9,6 +9,7 @@
 | `desk.theme.contrast` | `system` | `system`, `normal`, `high` |
 | `desk.theme.motion` | `system` | `system`, `reduce`, `full` |
 | `desk.theme.active` | `""` (endue) | the id of an installed theme plugin (kind `theme`, ADR 0056) |
+| `desk.theme.markets` | this repository's `market/themes/index.json` | https URLs of the market indexes the studio's Market tab lists, in order: the first to list an id wins (ADR 0060) |
 
 Themes: `desk.theme.dark` and `desk.theme.light` carry every role colour of the design system, the
 `colors` of `@endue-ai/ui` (`docs/design-system.md`): surfaces, text, the primary action, four statuses
@@ -24,8 +25,9 @@ too) and through `ctx.theme`; reduced motion is `data-motion="reduce"` on the ro
 `--desk-motion-*` tokens.
 
 Commands: `desk.theme.toggle`, `.light`, `.dark`, `.system`, `.contrast`, `.motion`, `.use` (`{ "id" }`,
-an installed theme plugin) and `.default` (back to endue). A change lasts until
-Desk quits; set it for good in `init.yaml` (`settings: { desk.theme.scheme: light }`) or a profile.
+an installed theme plugin) and `.default` (back to endue). The theme chosen (`desk.theme.active`) comes
+back with the session. A scheme, contrast or motion change lasts until Desk quits; set it for good in
+`init.yaml` (`settings: { desk.theme.scheme: light }`) or a profile.
 
 ```bash
 cargo run -p desk-cli -- plugin validate plugins/theme

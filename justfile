@@ -6,11 +6,11 @@ set shell := ["bash", "-euo", "pipefail", "-c"]
 default:
     @just --list
 
-# Run the desktop app in development mode: built-in plugins from plugins/, plugin-hello-ui as a
-# dev plugin; saving a plugin file reloads only that plugin's surface
+# Run the desktop app in development mode: built-in plugins from plugins/ and, as dev plugins, the
+# folders in DESK_DEV_PLUGINS, else plugin-hello-ui; saving a plugin file reloads only its surface
 dev:
     DESK_PLUGIN_DIRS="{{justfile_directory()}}/plugins" \
-    DESK_DEV_PLUGINS="{{justfile_directory()}}/examples/plugin-hello-ui" \
+    DESK_DEV_PLUGINS={{quote(env("DESK_DEV_PLUGINS", justfile_directory() / "examples/plugin-hello-ui"))}} \
     pnpm --filter @endue-ai/desk-app tauri dev
 
 # Run examples/brain-echo, the smallest brain, where the app looks by default (http://127.0.0.1:8787/v0)

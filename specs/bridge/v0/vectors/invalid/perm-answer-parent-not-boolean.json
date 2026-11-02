@@ -1,0 +1,16 @@
+{
+  "target": "BridgeRequest",
+  "description": "perm.answer picks the offered parent with true, never names a scope of its own",
+  "instance": {
+    "id": 69,
+    "method": "perm.answer",
+    "params": {
+      "promptId": "p3",
+      "granted": true,
+      "parent": { "permission": "fs:read", "paths": ["~/**"] },
+      "scope": {
+        "permission": "perm:manage"
+      }
+    }
+  }
+}

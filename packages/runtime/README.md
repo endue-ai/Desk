@@ -21,9 +21,10 @@ animations use an injected clock (ADR 0013). Shell decisions not in the brief: `
   Keys are always on. `HostViews` (`views.ts`) connects host-drawn views to focus and buffers.
 - `mountDesk({ root, bridge, core, plugins, clock?, lang?, platform?, epoch?, seed? })`: the shell over
   its runtime, holding centre and floating plugin surfaces as windows (ADR 0040); returns
-  `{ store, ticker, eris, runtime, ready, refresh, dispose }` (`plugins/shell`).
+  `{ store, ticker, eris, runtime, ready, refresh, dispose }` (`plugins/shell`). It installs
+  `desk.propose` (`src/propose`, ADR 0073): a sentence to a view by `brain.ask` (ADR 0059), previewed.
 - `ShellBridge` (audio, brain voice, agent directory; ADR 0024); `browserBridge`, `browserCore` (cmd.*,
-  plugins, grants, store, init, fixture items, `upsert`, `remove`) for pages and tests.
+  plugins, grants, store, init, fixture items, `upsert`, `remove`, `brain.ask`) for pages and tests.
 - `ShortcutRouter`, `comboOf`, `canonical`, `formatCombo`; layout `place`, `move`, `remove`; clock
   `realClock`, `ManualClock`, `tween`; `SurfaceHost`; `applyTheme`; `desk.css`; edge bars.
 
@@ -35,6 +36,5 @@ just test-e2e                             # Playwright on stubs; macOS uses Linu
 ```
 
 Fixtures: `desk.html` (`?init=`, `?off=`, `?platform=`, `?profile=`, `?rules=`, `?store=`, `?core=1`),
-`shell.html` (`?lang=en`, `?persist=1`, `?reduced=1`, `?init=`), `views.html` (`?status=error`, `?jira=1`).
-Render-tree snapshots (ADR 0011): `just test-e2e --update-snapshots`, then review the JSON.
-Never run Playwright directly (ADR 0018).
+`shell.html` (`?lang=en`, `?persist=1`, `?reduced=1`, `?init=`, `?views=1`), `views.html` (`?status=error`,
+`?jira=1`, `?propose=1`). Render trees (ADR 0011): `just test-e2e --update-snapshots`, review the JSON.

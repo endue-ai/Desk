@@ -1,0 +1,8 @@
+{
+  "target": "PermRequestResult",
+  "description": "the person refused this caller this scope earlier in the session, so nobody was asked",
+  "instance": {
+    "granted": false,
+    "reason": "refused-earlier"
+  }
+}

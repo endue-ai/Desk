@@ -2,18 +2,19 @@
 // the prompter, answering perm.prompt one at a time. It only talks to the bridge and to a view, so the
 // SDK's test host runs it with a recording view.
 import { describeCaller, describePermission, durationLabel } from "./describe.js";
-import { grantList, promptModel } from "./model.js";
+import { grantList, parentOffer, promptModel } from "./model.js";
 
 /**
  * @typedef {import("@endue-ai/plugin-sdk").PluginContext} PluginContext
  * @typedef {import("@endue-ai/bridge").CallerGrant} CallerGrant
+ * @typedef {import("@endue-ai/bridge").GrantDuration} GrantDuration
  * @typedef {import("@endue-ai/bridge").PermPromptData} PermPromptData
  * @typedef {import("@endue-ai/bridge").PluginInfo} PluginInfo
  * @typedef {import("./model.js").GrantList} GrantList
  * @typedef {import("./model.js").PromptModel} PromptModel
  * @typedef {{ grants(list: GrantList): void, prompt(model: PromptModel | null): void,
  *   status(text: string): void }} View
- * @typedef {"once" | "session" | "always" | "refuse"} Choice
+ * @typedef {"once" | "session" | "always" | "parent" | "refuse"} Choice
  */
 
 const MANAGE = { permission: "perm:manage" };
@@ -127,27 +128,33 @@ export function createPermissions({ bridge }, view) {
   };
 
   /**
-   * Answer the prompt on screen. Any failure (decided, withdrawn or refused) still moves on, so the
-   * overlay never traps the person.
+   * Answer the prompt on screen. "parent" grants the parent folder the core offered instead, for the
+   * duration asked. Any failure (decided, withdrawn or refused) still moves on, so the overlay never
+   * traps the person.
    * @param {Choice} choice
    */
   const answer = async (choice) => {
     const [prompt] = queue;
-    if (!prompt || answering || (choice !== "refuse" && !DURATIONS.has(choice))) return;
+    if (!prompt || answering) return;
+    const parent = choice === "parent" ? parentOffer(prompt) : null;
+    if (choice === "parent" ? !parent : choice !== "refuse" && !DURATIONS.has(choice)) return;
     answering = true;
     const granted = choice !== "refuse";
+    const duration = parent ? prompt.duration : /** @type {GrantDuration} */ (choice);
     const { label } = describePermission(prompt.permission);
     const { name } = describeCaller(prompt.caller, plugins);
+    const what = parent ? `${label} in all of ${parent.folder}` : label;
     let said;
     try {
       await bridge.call("perm.answer", {
         promptId: prompt.promptId,
         granted,
-        ...(granted ? { duration: choice } : {}),
+        ...(granted ? { duration } : {}),
+        ...(parent ? { parent: true } : {}),
         scope: MANAGE,
       });
       said = granted
-        ? `Allowed ${name}: ${label} (${durationLabel(choice)}).`
+        ? `Allowed ${name}: ${what} (${durationLabel(duration)}).`
         : `Refused ${name}: ${label}.`;
     } catch (error) {
       said = `Could not answer ${name}: ${codeOf(error)}.`;

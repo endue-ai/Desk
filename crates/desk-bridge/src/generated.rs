@@ -3465,8 +3465,9 @@ pub struct PermRequestRequest {
 #[serde(deny_unknown_fields)]
 pub struct PermRequestParams {
     pub permission: Permission,
-    /// Shown to the person in the prompt.
-    pub reason: String,
+    /// Why the caller asks, shown to the person in the prompt. Optional; a prompt without one says that none was given.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reason: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub duration: Option<GrantDuration>,
 }
@@ -3482,13 +3483,22 @@ pub enum GrantDuration {
     Always,
 }
 
-/// Result of perm.request. A refusal is a result, not an error.
+/// Result of perm.request. A refusal is a result, not an error. A request that a lasting grant (session or always) already covers is granted at once with that grant.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct PermRequestResult {
     pub granted: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub grant: Option<Grant>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reason: Option<RefusalReason>,
+}
+
+/// Why perm.request was refused without asking the person. refused-earlier: the person refused this caller this permission and scope earlier in the session; it holds until the caller is granted a permission that covers it. Absent from a result means the person (or the core's own prompter) refused this request.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum RefusalReason {
+    #[serde(rename = "refused-earlier")]
+    RefusedEarlier,
 }
 
 /// List the caller's current grants.
@@ -3606,6 +3616,9 @@ pub struct PermAnswerParams {
     pub granted: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub duration: Option<GrantDuration>,
+    /// true grants the prompt's parent offer instead of the permission asked. Ignored when granted is false; invalid_params on a prompt that offers no parent.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub parent: Option<bool>,
     pub scope: PermManagePermission,
 }
 
@@ -3630,9 +3643,13 @@ pub struct PermPromptData {
     pub prompt_id: String,
     pub caller: CallerId,
     pub permission: Permission,
-    /// The caller's reason, to show as it is.
-    pub reason: String,
+    /// The caller's reason, to show as it is. Absent when the caller gave none.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reason: Option<String>,
     pub duration: GrantDuration,
+    /// The parent folder the person may grant instead: the same permission over the folder that holds the one asked for, offered when this caller asks for a third folder under it in the session. Never a root, the home folder or a folder holding it, nor a scope the person refused this caller earlier.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub parent: Option<Permission>,
 }
 
 /// One of the caller's grants changed.
