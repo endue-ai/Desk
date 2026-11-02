@@ -256,7 +256,7 @@
        "aria-pressed": "false",
        "data-desktop": "1",
        "box": [
-        1176,
+        1128,
         24,
         44,
         32
@@ -320,7 +320,7 @@
        "aria-pressed": "true",
        "data-desktop": "2",
        "box": [
-        1228,
+        1180,
         24,
         44,
         32
@@ -387,7 +387,7 @@
        "aria-pressed": "false",
        "data-desktop": "3",
        "box": [
-        1280,
+        1232,
         24,
         44,
         32
@@ -452,7 +452,7 @@
        "aria-pressed": "false",
        "data-desktop": "4",
        "box": [
-        1332,
+        1284,
         24,
         44,
         32
@@ -514,7 +514,7 @@
        "class": "add-button desktop-add",
        "aria-label": "빈 데스크톱으로",
        "box": [
-        1384,
+        1336,
         24,
         32,
         32
@@ -526,6 +526,26 @@
         {
          "tag": "svg",
          "icon": "plus"
+        }
+       ]
+      },
+      {
+       "tag": "button",
+       "class": "add-button theme-button",
+       "aria-label": "테마",
+       "box": [
+        1384,
+        24,
+        32,
+        32
+       ],
+       "style": {
+        "border": "solid rgb(51, 49, 54)"
+       },
+       "children": [
+        {
+         "tag": "svg",
+         "icon": "palette"
         }
        ]
       }

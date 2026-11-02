@@ -12,9 +12,9 @@ Eris, the secretary. Built-in UI plugin in the community folder format.
 | `ui/orb.js` | The orb: core of light, body and Dysnomia, assembled on a timeline (full, arrival, quick 1.2 s, reduced); gestures: listen, flash, turn, shrink, heads-up (the gold face lifts) |
 | `ui/voice.js` | Her voice: a female English system voice (Web Speech API), or silence when there is none or the browser is automated; soul text keeps its own timing |
 | `ui/timeline.js` | Paused Web Animations positioned from an injected clock (ADR 0013) |
-| `ui/soul-text.css` | Shared styles for soul text and the orb |
+| `ui/soul-text.css` | Shared styles for soul text and the orb: her words in the theme's roles (her gold is `chart-3`), her body over the brand art in the theme's `eris*` tokens, which the shell's Eris reads too |
 | `ui/assets/` | Copies of `brand/eris/*.svg` (brand licence) |
-| `tests/` | Timing rules (vitest) and the asset copies |
+| `tests/` | Timing rules (vitest), the asset copies, and `theme.test.ts`: every colour, font, size, radius and duration comes from the theme's `--desk-*` tokens |
 
 Other plugins reuse the soul text and the orb by importing them from this folder, for example the
 onboarding plugin's import map maps `eris/` to `../../endue.eris/ui/`.

@@ -57,7 +57,7 @@ export function fallbackSlide(b, outline, number, width, height) {
     number,
     title: title[0] ?? "",
     hidden: false,
-    background: { type: "solid", color: "#ffffff" },
+    background: { type: "solid", color: "#ffffff" }, // theme: content
     elements: [
       shapeOf("title", titleBox, title, Math.round(height * 0.067)),
       shapeOf("body", bodyBox, body, bodySize),

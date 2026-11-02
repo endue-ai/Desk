@@ -11,7 +11,7 @@ dashed and unavailable, with the reason. It uses only the public bridge API (`pl
 | `plugin.json` | id `endue.dock`, kind `ui`, permission `plugin:manage`, one `bottom` surface |
 | `ui/tiles.js` | Which plugins get a tile, their name, initial and state (no DOM, tested) |
 | `ui/main.js` | Renders the tiles; arrow keys, Home and End move between them (roving tabindex) |
-| `tests/` | `tiles.test.ts` (vitest); the dock on a desk: `packages/runtime/e2e/dock.spec.ts` |
+| `tests/` | `tiles.test.ts`, `theme.test.ts` (only `--desk-*` tokens) (vitest); the dock on a desk: `packages/runtime/e2e/dock.spec.ts` |
 
 Later, when the bridge has layout and surface APIs: saved layouts as cards (first run, scene 9),
 put-away surfaces instead of turning plugins off, and running work.

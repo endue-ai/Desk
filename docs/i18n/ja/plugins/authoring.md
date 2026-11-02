@@ -2,7 +2,7 @@
 
 # Desk プラグインの作り方
 
-Desk プラグインはひとつのフォルダーです。組み込み機能もまったく同じ形式を使っているため、Desk 自身が画面上で行えることは、どれも自作のプラグインで行えます。このページでは UI プラグイン（v0）を扱います。ロジック（Wasm）プラグインとツール（MCP）プラグインには今後対応します。
+Desk プラグインはひとつのフォルダーです。組み込み機能もまったく同じ形式を使っているため、Desk 自身が画面上で行えることは、どれも自作のプラグインで行えます。このページでは UI プラグイン（v0）とテーマを扱います。ロジック（Wasm）プラグインとツール（MCP）プラグインには今後対応します。
 
 ## 例から始める
 
@@ -190,3 +190,107 @@ await host.settle();
 ```
 
 公開する前に、`desk plugin validate <folder>` が通る必要があります。CI は `plugins/` と `examples/` 内のすべてのフォルダーに対してこれを実行します。
+
+## テーマを作る
+
+テーマは kind が `theme` のプラグインです。デザインシステムの値と、その値が指すフォント・画像ファイルだけを持ち、コードを持たないため、権限を要求しません（ADR 0056、ADR 0057）。テンプレートか例から始めます。
+
+```bash
+pnpm --filter @endue-ai/create-plugin build                       # once
+node packages/create-plugin/dist/create-plugin.js ../my-theme --kind theme
+DESK_DEV_PLUGINS=$PWD/../my-theme just dev
+cargo run -p desk-cli -- theme apply local.my-theme
+```
+
+パッケージが公開されれば、これは `pnpm create @endue-ai/plugin my-theme --kind theme` になります。テンプレートには両方の scheme のすべての役割色、既定値のままのほかのレイヤー、それぞれが何を塗るかを説明する README が入っています。`examples/plugin-hello-theme` は、フォントとバックドロップをひとつずつ持つ最小のテーマです。テーマはインストールしても適用されません。適用中のテーマは設定 `desk.theme.active` が指し、テーマスタジオ（右上のパレットボタン、またはコマンドパレットの Themes）、`desk.theme.use`、`desk theme apply` で選びます。
+
+スタジオでもテーマを作れます。「Tune a copy」（または `desk.theme.edit`）は選んだテーマのコピーで、「New theme」は endue のテーマでエディターを開きます。フォントやバックドロップの画像も含め、すべてのレイヤーに操作部品があり、デスク全体が変わっていく下書きをそのまま映し、ゲートの補正はパレットの下に並び、Save で自分のテーマ（`local.<名前>`）として保存します。テーマをリポジトリに置き、テストし、公開するにはフォルダーを使います。
+
+### theme ブロック
+
+`plugin.json` は kind `theme` と `theme` ブロック（`specs/plugin/v0/theme.schema.json`）を持ち、`entry`、`permissions`、`surfaces`、`contributes`、`autoload` は持ちません。
+
+```json
+{
+  "id": "example.dusk",
+  "name": "Dusk",
+  "version": "0.1.0",
+  "kind": "theme",
+  "theme": {
+    "license": "Apache-2.0 AND OFL-1.1",
+    "type": {
+      "sans": "\"Space Grotesk\", system-ui, sans-serif",
+      "fonts": [{ "family": "Space Grotesk", "src": "fonts/space-grotesk.woff2", "weight": "300 700" }]
+    },
+    "shape": { "radius": "round" },
+    "dark": {
+      "colors": { "background": "#1a1412", "text": "#f6ede6", "primary": "#ff9a62", "primaryForeground": "#2a1206" },
+      "backdrop": { "gradient": ["#2e1c15", "#1a1412"], "glow": "rgba(255, 140, 80, 0.12)" }
+    }
+  }
+}
+```
+
+`author`、`license`（テーマとそのファイルの SPDX ライセンス式）、`tags`、`preview`（ギャラリーのカードに使う最大 5 色）、`origin`（テーマを言い表した文と、出発点のテーマ）がテーマを説明します。`light` と `dark` はそれぞれひとつの scheme を持ちます。テーマにはどちらかが必要で、ないほうはデスク自身のテーマが代わりを務めます。
+
+### レイヤーとプリセット
+
+レイヤーは 6 つあり、どれにも既定値があるので、パレットだけでもテーマになります。
+
+| レイヤー | キー | 値 |
+| --- | --- | --- |
+| パレット | `<scheme>.colors` | トークン名（camelCase）から CSS の色へ：`docs/design-system.md` の役割、シェルと Eris のトークン。省いた役割はデスクの値のまま |
+| マテリアル | `<scheme>.material` | `opacity` 0.6–1、`blur` 0–24 px、`noise` 0–0.15、`border` 0–2 px、`shadow` none・soft・strong |
+| タイポグラフィ | `type` | `sans` と `mono` のフォントスタック、`scale` 0.85–1.25、`tracking` −0.02–0.05 em、`fonts` |
+| 形 | `shape` | `radius` none・subtle・soft・round、`density` compact・comfortable・spacious |
+| モーション | `motion` | `personality` snappy・smooth・calm |
+| バックドロップ | `<scheme>.backdrop` | `color`、`angle` の向きに描く 2–4 色の `gradient`、または `fit` が cover か tile の `image`。それに `glow` |
+
+`<scheme>.terminal.ansi` はターミナルの 16 色を、`<scheme>.contrast` はハイコントラストでのパレットの変更を決めます。角丸、密度、モーション、文字サイズの倍率、影はプリセットです。ランタイムが名前をトークンに変えるので（`docs/design-system.md` の「Choosing a theme」）、デスクがプリセットを調整し直してもテーマはそのまま動きます。数値には範囲があり、値に `url()` は入らないので、有効なテーマは常に使える状態に保たれます。
+
+### ゲート
+
+デスクは適用するすべてのテーマをゲート（`@endue-ai/ui/theme`）に通します。文字は地に対して 4.5:1、枠線と塗りは 3:1、ハイコントラストでは 7:1 と 4.5:1 に達する必要があります。足りない前景色は OKLCH の明度だけを、比率に届く分だけ動かし、地の色は変えません。`contrast` パレットがなければ、テーマのハイコントラストも同じ方法で自身の色から導かれます。ゲートが直すものがないよう、両方の scheme で色の組を確かめてください。
+
+### アセットと上限
+
+フォントは `.woff2`、画像は `.png`、`.jpg`、`.webp` のファイルで（スクリプトを含みうる SVG は使えません）、フォルダーの中に置き、1 ファイル 2 MiB、合計 8 MiB までです。フォントのライセンスは `license` に書き、ライセンスファイルをそばに置きます。組み込みテーマは `fonts/OFL.txt` と、配布元とチェックサムを記した `fonts/SOURCE.md` を置いています。デスクはテーマのフォントをシェルとすべてのプラグインフレームに `FontFace` として読み込み、バックドロップはシェルだけが描きます。
+
+### テーマのテスト
+
+```bash
+cargo run -p desk-cli -- plugin validate ../my-theme
+pnpm exec vitest run --root ../my-theme
+```
+
+`desk plugin validate` はブロックをスキーマと、ファイルを上限と照らし合わせます。テンプレートの `tests/theme.test.ts` は、デスクがテーマを適用する前と同じく、両方の scheme を `compileTheme` でコンパイルして endue のパレットの上で `gate` にかけ、ゲートが直すものがあればそのすべてを示して失敗します。
+
+### `.desk-theme` で共有する
+
+```bash
+cargo run -p desk-cli -- theme export local.my-theme     # local.my-theme.desk-theme in Downloads
+cargo run -p desk-cli -- theme import ~/Downloads/dusk.desk-theme
+```
+
+`.desk-theme` はひとつの JSON ファイルです。`format` は `desk-theme/1`、`manifest` はテーマの `plugin.json`、`files` はブロックが指すファイルの base64 で、16 MiB までです（ADR 0058）。読み込むとテーマプラグインとして検査され、利用者のテーマフォルダーにインストールされます。id が `local.` と `market.` の外にあれば `local.<名前>` になります。`desk theme list` で一覧でき、`desk theme remove` で削除できます。スタジオの Export と Import も同じことを行い、スタジオにドロップした `.desk-theme` も受け付けます。
+
+### マーケット
+
+スタジオの Market タブは、設定 `desk.theme.markets` が各インデックスの https URL で挙げるマーケットのテーマを一覧します（ADR 0060）。既定はこのリポジトリの `main` にある `market/themes/index.json` で、`https://raw.githubusercontent.com/endue-ai/Desk/main/market/themes/index.json` から読みます。ほかのマーケットのインデックスは `init.yaml` でその後ろに加えます。ふたつのマーケットが同じ id を載せていれば、先のマーケットが優先されます。
+
+```yaml
+settings:
+  desk.theme.markets:
+    - https://raw.githubusercontent.com/endue-ai/Desk/main/market/themes/index.json
+    - https://themes.example.com/index.json
+```
+
+カードにはテーマのプレビュー色、名前、作者、ライセンスと、このデスクでの状態（Available、Installed、Update available、Edited）が表示されます。Preview は `.desk-theme` をダウンロードして sha256 を確かめ、インストールせずにデスク全体に表示します。Install は URL と sha256 を渡す `theme.import` で、`market.` 以下の id のまま取り込み、Apply でそのテーマが使われます。アップデートが置き換えるのは、あなたが手を加えていないマーケットのテーマだけです。手を加えたテーマはあなたのものとして残ります。
+
+テーマを公開するには、バンドルとインデックスの項目を `market/themes/` に加えるプルリクエストを開きます。
+
+1. テーマをエクスポートします（`desk theme export <id> <file>`、またはスタジオの Export）。id は `market.` 以下にし、バージョン、`theme.author`、`theme.license`（フォントと画像も含む SPDX 式）を付けます。
+2. ファイルを `market/themes/` に `<name>.desk-theme` として置き、`index.json`（`specs/plugin/v0/theme-index.schema.json`）に項目を加えます。`id`、`name`、`version`、`description`、`author`、`license`、`tags`、最大 5 色の `preview`、`url`（ファイル名）、`sha256`、`size` です。
+3. `node scripts/theme-market.mjs` を実行します。`just check` に含まれるこのマーケットチェッカーは、ハッシュやサイズの不一致、ライセンスの欠落、重複した id、正しいテーマプラグインでないバンドルを拒否します。マーケットのテーマはすべて、テストが両方の scheme でゲートにかけます。
+
+アップデートは新しいバージョンと、その新しいバンドル、sha256、サイズです。同じ手順が `market/themes/README.md` にもあります。

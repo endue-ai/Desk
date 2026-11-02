@@ -1,0 +1,22 @@
+{
+  "target": "ThemeIndex",
+  "description": "the sha256 is 64 lowercase hex digits",
+  "instance": {
+    "format": "desk-theme-index/1",
+    "themes": [
+      {
+        "id": "market.paper-dusk",
+        "name": "Paper Dusk",
+        "version": "1.0.0",
+        "description": "Warm paper by day, a lamp-lit study by night.",
+        "author": "Team endue",
+        "license": "CC0-1.0",
+        "tags": ["warm", "paper"],
+        "preview": ["#f4ecdd", "#8a4b2a", "#211a14"],
+        "url": "paper-dusk.desk-theme",
+        "sha256": "5F1D8D1C6B9A2E0F8C3E7A4B9D2C1E0F6A5B4C3D2E1F0A9B8C7D6E5F4A3B2C1D",
+        "size": 6144
+      }
+    ]
+  }
+}

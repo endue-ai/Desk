@@ -3,7 +3,7 @@
 # Desk 플러그인 작성하기
 
 Desk 플러그인은 폴더 하나입니다. 내장 기능도 똑같은 형식을 쓰므로, Desk 자신이 화면에서 하는 일은 무엇이든
-직접 만든 플러그인도 할 수 있습니다. 이 문서는 UI 플러그인(v0)을 다룹니다. 로직(Wasm) 플러그인과 도구(MCP)
+직접 만든 플러그인도 할 수 있습니다. 이 문서는 UI 플러그인(v0)과 테마를 다룹니다. 로직(Wasm) 플러그인과 도구(MCP)
 플러그인은 나중에 추가됩니다.
 
 ## 예제에서 시작하기
@@ -199,3 +199,145 @@ await host.settle();
 
 공개하기 전에 `desk plugin validate <folder>`를 통과해야 합니다. CI는 `plugins/`와 `examples/` 안의 모든 폴더에
 대해 이 명령을 실행합니다.
+
+## 테마 만들기
+
+테마는 kind 가 `theme` 인 플러그인입니다. 디자인 시스템의 값과 그 값이 가리키는 글꼴 · 이미지 파일만 담고
+코드는 없으므로, 권한을 요청하지 않습니다(ADR 0056, ADR 0057). 템플릿이나 예제에서 시작합니다.
+
+```bash
+pnpm --filter @endue-ai/create-plugin build                       # once
+node packages/create-plugin/dist/create-plugin.js ../my-theme --kind theme
+DESK_DEV_PLUGINS=$PWD/../my-theme just dev
+cargo run -p desk-cli -- theme apply local.my-theme
+```
+
+패키지가 공개되면 `pnpm create @endue-ai/plugin my-theme --kind theme` 으로 같은 일을 합니다. 템플릿에는
+두 scheme 의 모든 역할 색, 기본값에 둔 나머지 층, 각 값이 무엇을 칠하는지 설명하는 README 가 들어 있습니다.
+`examples/plugin-hello-theme` 은 글꼴 하나와 배경 하나를 가진 가장 작은 테마입니다. 테마를 설치해도 적용되지는
+않습니다. 적용 중인 테마는 설정 `desk.theme.active` 가 가리키며, 테마 스튜디오(오른쪽 위의 팔레트 버튼, 또는
+커맨드 팔레트의 Themes), `desk.theme.use`, `desk theme apply` 로 고릅니다.
+
+스튜디오에서도 테마를 만듭니다. "Tune a copy"(또는 `desk.theme.edit`)는 고른 테마의 사본으로, "New theme" 은 endue
+테마로 편집기를 엽니다. 글꼴과 배경 이미지까지 모든 층에 조작 요소가 있고, 데스크 전체가 바뀌는 초안을 그대로 보여
+주며, 게이트의 보정 내역이 팔레트 아래에 나오고, Save 는 그 결과를 내 테마(`local.<이름>`)로 저장합니다. 테마를
+레포에 두고, 테스트하고, 공개하는 길은 폴더입니다.
+
+### theme 블록
+
+`plugin.json` 은 kind `theme` 과 `theme` 블록(`specs/plugin/v0/theme.schema.json`)을 갖고, `entry`,
+`permissions`, `surfaces`, `contributes`, `autoload` 는 갖지 않습니다.
+
+```json
+{
+  "id": "example.dusk",
+  "name": "Dusk",
+  "version": "0.1.0",
+  "kind": "theme",
+  "theme": {
+    "license": "Apache-2.0 AND OFL-1.1",
+    "type": {
+      "sans": "\"Space Grotesk\", system-ui, sans-serif",
+      "fonts": [{ "family": "Space Grotesk", "src": "fonts/space-grotesk.woff2", "weight": "300 700" }]
+    },
+    "shape": { "radius": "round" },
+    "dark": {
+      "colors": { "background": "#1a1412", "text": "#f6ede6", "primary": "#ff9a62", "primaryForeground": "#2a1206" },
+      "backdrop": { "gradient": ["#2e1c15", "#1a1412"], "glow": "rgba(255, 140, 80, 0.12)" }
+    }
+  }
+}
+```
+
+`author`, `license`(테마와 그 파일들의 SPDX 라이선스 식), `tags`, `preview`(갤러리 카드에 쓰는 색, 다섯 개까지),
+`origin`(테마를 묘사한 문장과 출발한 테마)은 테마를 설명합니다. `light` 와 `dark` 는 scheme 을 하나씩 담습니다.
+테마에는 둘 중 하나가 있어야 하고, 없는 쪽은 데스크 자신의 테마가 대신합니다.
+
+### 층과 프리셋
+
+층은 여섯 개이고 모두 기본값이 있어서, 팔레트만 있어도 테마가 됩니다.
+
+| 층 | 키 | 값 |
+| --- | --- | --- |
+| 팔레트 | `<scheme>.colors` | 토큰 이름(camelCase) → CSS 색. `docs/design-system.md` 의 역할, 셸과 Eris 의 토큰. 빠진 역할은 데스크의 값을 씁니다 |
+| 재질 | `<scheme>.material` | `opacity` 0.6–1, `blur` 0–24 px, `noise` 0–0.15, `border` 0–2 px, `shadow` none · soft · strong |
+| 타이포 | `type` | `sans` · `mono` 글꼴 스택, `scale` 0.85–1.25, `tracking` −0.02–0.05 em, `fonts` |
+| 형태 | `shape` | `radius` none · subtle · soft · round, `density` compact · comfortable · spacious |
+| 모션 | `motion` | `personality` snappy · smooth · calm |
+| 배경 | `<scheme>.backdrop` | `color`, `angle` 방향의 2–4색 `gradient`, 또는 `fit` 이 cover · tile 인 `image`. 그리고 `glow` |
+
+`<scheme>.terminal.ansi` 는 터미널의 16색을, `<scheme>.contrast` 는 고대비에서 바뀌는 팔레트를 정합니다. 모서리,
+밀도, 모션, 글자 크기 배율, 그림자는 프리셋입니다. 런타임이 이름을 토큰으로 바꾸므로(`docs/design-system.md` 의
+"Choosing a theme") 데스크가 프리셋을 다시 조율해도 테마는 그대로 동작합니다. 숫자에는 범위가 있고 값에는
+`url()` 이 들어갈 수 없어서, 유효한 테마는 언제나 쓸 수 있는 상태로 남습니다.
+
+### 게이트
+
+데스크는 적용하는 모든 테마를 게이트(`@endue-ai/ui/theme`)에 통과시킵니다. 글자는 바탕에 대해 4.5:1, 테두리와
+채움은 3:1, 고대비에서는 7:1 과 4.5:1 에 이르러야 합니다. 모자란 전경색은 OKLCH 명도만, 비율에 닿는 만큼만
+움직이고 바탕색은 바꾸지 않습니다. `contrast` 팔레트가 없으면 테마의 고대비도 같은 방법으로 자기 색에서
+유도됩니다. 게이트가 고칠 것이 없도록 두 scheme 모두에서 색 쌍을 확인하세요.
+
+### 자산과 한도
+
+글꼴은 `.woff2`, 이미지는 `.png`, `.jpg`, `.webp` 파일이고(스크립트를 품을 수 있는 SVG 는 안 됩니다) 폴더 안에
+있어야 하며, 파일당 2 MiB, 합쳐서 8 MiB 까지입니다. 글꼴의 라이선스는 `license` 에 적고 라이선스 파일을 옆에
+둡니다. 내장 테마는 `fonts/OFL.txt` 와, 원본 위치와 체크섬을 적은 `fonts/SOURCE.md` 를 둡니다. 데스크는 테마의
+글꼴을 셸과 모든 플러그인 프레임에 `FontFace` 로 불러오고, 배경은 셸만 그립니다.
+
+### 테마 테스트
+
+```bash
+cargo run -p desk-cli -- plugin validate ../my-theme
+pnpm exec vitest run --root ../my-theme
+```
+
+`desk plugin validate` 는 블록을 스키마에, 파일을 한도에 비추어 검사합니다. 템플릿의 `tests/theme.test.ts` 는
+데스크가 테마를 적용하기 전에 하듯 두 scheme 을 `compileTheme` 으로 컴파일하고 endue 팔레트 위에서 `gate` 로
+검사하며, 게이트가 고칠 것이 있으면 그 내역을 모두 보이며 실패합니다.
+
+### `.desk-theme` 으로 나누기
+
+```bash
+cargo run -p desk-cli -- theme export local.my-theme     # local.my-theme.desk-theme in Downloads
+cargo run -p desk-cli -- theme import ~/Downloads/dusk.desk-theme
+```
+
+`.desk-theme` 은 JSON 파일 하나입니다. `format` 은 `desk-theme/1`, `manifest` 는 테마의 `plugin.json`, `files` 는
+블록이 가리키는 파일들의 base64 이며, 16 MiB 를 넘지 않습니다(ADR 0058). 가져오면 테마 플러그인으로 검사한 뒤
+사용자의 테마 폴더에 설치하고, id 가 `local.` 과 `market.` 밖이면 `local.<이름>` 으로 바꿉니다. `desk theme list`
+가 보여 주고 `desk theme remove` 가 지웁니다. 스튜디오의 Export 와 Import 도 같은 일을 하고, 스튜디오에 끌어다
+놓은 `.desk-theme` 도 받습니다.
+
+### 마켓
+
+스튜디오의 Market 탭은 설정 `desk.theme.markets` 가 색인의 https URL 로 가리키는 마켓들의 테마를 보여 줍니다
+(ADR 0060). 기본값은 이 저장소 `main` 의 `market/themes/index.json` 이고,
+`https://raw.githubusercontent.com/endue-ai/Desk/main/market/themes/index.json` 에서 읽습니다. 다른 마켓의
+색인은 `init.yaml` 에서 그 뒤에 덧붙입니다. 두 마켓이 같은 id 를 실으면 앞의 마켓이 이깁니다.
+
+```yaml
+settings:
+  desk.theme.markets:
+    - https://raw.githubusercontent.com/endue-ai/Desk/main/market/themes/index.json
+    - https://themes.example.com/index.json
+```
+
+카드는 테마의 미리보기 색, 이름, 만든 이, 라이선스와 이 데스크에서의 상태(Available, Installed, Update
+available, Edited)를 보여 줍니다. Preview 는 `.desk-theme` 을 받아 sha256 을 확인하고, 설치하지 않은 채 데스크
+전체에 보여 줍니다. Install 은 URL 과 sha256 을 넘기는 `theme.import` 로 `market.` 아래 id 그대로 들여오고,
+Apply 가 그 테마를 적용합니다. 업데이트는 내가 고치지 않은 마켓 테마만 바꿉니다. 내가 고친 테마는 내 것으로
+남습니다.
+
+테마를 올리려면 묶음과 색인 항목을 `market/themes/` 에 더하는 풀 리퀘스트를 엽니다.
+
+1. 테마를 내보냅니다(`desk theme export <id> <file>`, 또는 스튜디오의 Export). id 는 `market.` 아래로 하고,
+   버전과 `theme.author`, `theme.license`(글꼴과 이미지까지 덮는 SPDX 식)를 붙입니다.
+2. 파일을 `market/themes/` 에 `<name>.desk-theme` 으로 두고 `index.json`
+   (`specs/plugin/v0/theme-index.schema.json`)에 항목을 더합니다. `id`, `name`, `version`, `description`,
+   `author`, `license`, `tags`, 다섯 개까지의 `preview` 색, `url`(파일 이름), `sha256`, `size` 입니다.
+3. `node scripts/theme-market.mjs` 를 실행합니다. `just check` 에 들어 있는 이 마켓 검사기는 틀린 해시나
+   크기, 빠진 라이선스, 겹친 id, 올바른 테마 플러그인이 아닌 묶음을 거부하고, 테스트가 모든 마켓 테마를 두
+   scheme 에서 게이트에 통과시킵니다.
+
+업데이트는 새 버전과 그 새 묶음, sha256, 크기입니다. 같은 단계가 `market/themes/README.md` 에도 있습니다.

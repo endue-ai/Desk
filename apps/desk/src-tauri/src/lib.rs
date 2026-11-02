@@ -17,11 +17,11 @@ use std::sync::{Arc, Mutex};
 use desk_brain_endue::HttpBrain;
 use desk_bridge::{
     BrainConversePermission, CmdInvokePermission, ConnectorManagePermission, Permission,
-    PluginManagePermission, UpdateManagePermission, ViewManagePermission,
+    PluginManagePermission, ThemeManagePermission, UpdateManagePermission, ViewManagePermission,
 };
 use desk_core::{
     BrainMode, BrainOptions, Core, MockRemote, PluginWatcher, Roots, SyncError, SyncOutcome,
-    ViewWatcher,
+    ThemeWatcher, ViewWatcher,
 };
 use desk_index::Index;
 use tauri::{Emitter, Manager};
@@ -38,8 +38,14 @@ pub const INIT_FILE: &str = ".desk/init.yaml";
 /// How often the connector scheduler looks for due syncs.
 const CONNECTOR_TICK: std::time::Duration = std::time::Duration::from_secs(1);
 
-/// Keeps the hot-reload and views watchers alive for the life of the app.
-struct Watching(#[allow(dead_code)] Mutex<(Option<PluginWatcher>, Option<ViewWatcher>)>);
+/// Keeps the hot-reload, views and user themes watchers alive for the life of the app.
+struct Watching(#[allow(dead_code)] Mutex<Watchers>);
+
+type Watchers = (
+    Option<PluginWatcher>,
+    Option<ViewWatcher>,
+    Option<ThemeWatcher>,
+);
 
 pub fn run() {
     let builder = tauri::Builder::default()
@@ -93,6 +99,9 @@ pub fn run() {
             }
             // Before plugins install, so a setup pulled from another desk applies from this start.
             sync_init(&core);
+            // The person's own themes (ADR 0058): every theme folder in <data>/themes/ is installed
+            // now, not built in, and comes back at every start.
+            core = core.with_themes_dir(data.join("themes"));
             let url =
                 std::env::var("DESK_BRAIN_URL").unwrap_or_else(|_| DEFAULT_BRAIN_URL.to_owned());
             match HttpBrain::new(&url) {
@@ -135,6 +144,13 @@ pub fn run() {
                     permission: Default::default(),
                 }),
             );
+            // The theme studio asks the brain for themes, each ask in a session of its own (ADR 0059).
+            core.grant(
+                RUNTIME_CALLER,
+                Permission::BrainAsk(desk_bridge::BrainAskPermission {
+                    permission: Default::default(),
+                }),
+            );
             // The runtime connects the person's connectors and keeps their views (ADR 0036).
             core.grant(
                 RUNTIME_CALLER,
@@ -155,20 +171,36 @@ pub fn run() {
                     permission: Default::default(),
                 }),
             );
+            // The person's themes (ADR 0058): the theme studio saves, imports, exports and removes
+            // them as the runtime, and `desk theme` does the same as the CLI (whose other grants
+            // are desk_ipc::grants()).
+            for caller in [RUNTIME_CALLER, desk_ipc::CALLER] {
+                core.grant(
+                    caller,
+                    Permission::ThemeManage(ThemeManagePermission {
+                        permission: Default::default(),
+                    }),
+                );
+            }
             for dir in env_paths("DESK_PLUGIN_DIRS") {
                 core.install_plugins_in(&dir, true);
             }
             for dir in env_paths("DESK_DEV_PLUGINS") {
                 core.install_plugin(&dir, false);
             }
+            // Hot reload leaves user themes to the themes watch, so each change is announced once.
             let watcher = core.watch_plugins().ok();
+            let themes = core
+                .watch_themes()
+                .map_err(|why| eprintln!("endue Desk: the themes folder is not watched ({why})"))
+                .ok();
             core.start_connectors();
             core.start_connector_scheduler(CONNECTOR_TICK);
             let views = core.watch_views().ok();
             for problem in core.view_problems() {
                 eprintln!("endue Desk: a view is left out ({problem})");
             }
-            app.manage(Watching(Mutex::new((watcher, views))));
+            app.manage(Watching(Mutex::new((watcher, views, themes))));
 
             // Core events reach the runtime as Tauri events, each with the callers it is for, so the
             // runtime can hand an addressed event (a perm.prompt, a subscribed event) to the plugin it

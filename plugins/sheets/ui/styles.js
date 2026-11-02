@@ -115,8 +115,9 @@ export function parseStyles(stylesXml, themeXml = "") {
   if (root?.localName !== "styleSheet") return [];
   const theme = themeColors(themeXml);
   const custom = children(child(child(root, "colors"), "indexedColors"), "rgbColor");
+  // The file's own palette, black where it names none.
   const indexed = custom.length
-    ? custom.map((node) => colorOf(node, theme, INDEXED) ?? "#000000")
+    ? custom.map((node) => colorOf(node, theme, INDEXED) ?? "#000000") // theme: content
     : INDEXED;
 
   const fonts = children(child(root, "fonts"), "font").map((font) => {
@@ -127,7 +128,7 @@ export function parseStyles(stylesXml, themeXml = "") {
     if (flag(child(font, "u"))) style.underline = true;
     if (flag(child(font, "strike"))) style.strike = true;
     const color = colorOf(child(font, "color"), theme, indexed);
-    // Black is the automatic text colour: the grid's own text colour shows instead.
+    // Black is the file's automatic text colour (theme: content): the grid's own text colour shows.
     if (color && color !== "#000000") style.color = color;
     return style;
   });

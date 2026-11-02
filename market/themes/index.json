@@ -1,0 +1,31 @@
+{
+  "format": "desk-theme-index/1",
+  "themes": [
+    {
+      "id": "market.lagoon",
+      "name": "Lagoon",
+      "version": "1.0.0",
+      "description": "Shallow water over white sand: teal on a pale shore by day, a deep lagoon at night, round corners and calm motion.",
+      "author": "Team endue",
+      "license": "CC0-1.0",
+      "tags": ["teal", "calm", "sea"],
+      "preview": ["#021c23", "#0f8b8d", "#f4f1e8", "#0b6e70"],
+      "url": "lagoon.desk-theme",
+      "sha256": "a9ae32577310fb7504fc4ac0d9d58c1b0091aba09faf983ae31c37e261548485",
+      "size": 4600
+    },
+    {
+      "id": "market.graphite",
+      "name": "Graphite",
+      "version": "1.0.0",
+      "description": "Pencil greys with one signal orange: square corners, compact controls and snappy motion for long working days.",
+      "author": "Team endue",
+      "license": "Apache-2.0",
+      "tags": ["grey", "orange", "focused"],
+      "preview": ["#17181c", "#ff6a1a", "#f0f0f2", "#dd6935"],
+      "url": "graphite.desk-theme",
+      "sha256": "12133b256baab855521c79d72a2fed6e8951e7bc23a6cd0436dbd5f9c5f2adec",
+      "size": 4305
+    }
+  ]
+}

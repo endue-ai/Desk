@@ -97,17 +97,17 @@
           "dotOutline": "#897f95",
           "glow": "rgba(182, 163, 245, 0.07)",
           "glowEnd": "rgba(182, 163, 245, 0)",
-          "eris": "#e8c98a",
-          "erisFrost": "#e9edf4",
-          "erisShade": "#a7b1c3",
-          "erisGoldLight": "#f5e2b4",
-          "erisGoldDeep": "#d4a85f",
-          "erisGoldDimLight": "#d9c79f",
-          "erisGoldDimDeep": "#a88a58",
+          "eris": "#9a6b12",
+          "erisFrost": "#4a5d7e",
+          "erisShade": "#6e7890",
+          "erisGoldLight": "#d4a85f",
+          "erisGoldDeep": "#8f6414",
+          "erisGoldDimLight": "#c2ad84",
+          "erisGoldDimDeep": "#85704a",
           "erisMoonDark": "#2c2836",
           "erisMoonLit": "#8f87a8",
           "erisWhite": "#ffffff",
-          "erisGlow": "rgba(233, 237, 244, 0.35)"
+          "erisGlow": "rgba(74, 93, 126, 0.2)"
         }
       }
     ],
