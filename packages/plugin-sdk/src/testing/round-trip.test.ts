@@ -30,7 +30,7 @@ describe("assertRoundTrip", () => {
       return parse(bytes);
     };
     expect(assertRoundTrip(CSV, parseSeen, encode)).toBe(CSV);
-    expect(assertRoundTrip(encode("﻿name\n"), parseSeen, encode)).toBe("﻿name\n");
+    expect(assertRoundTrip(encode("\uFEFFname\n"), parseSeen, encode)).toBe("\uFEFFname\n");
     expect(assertRoundTrip(encode("x").buffer, parseSeen, (text) => encode(text).buffer)).toBe("x");
     expect(assertRoundTrip(new Uint8Array(), parseSeen, () => "")).toBe("");
     // parse always gets bytes, whatever came in.
@@ -54,7 +54,7 @@ describe("assertRoundTrip", () => {
     expect(lf.message).toContain('bytes[8..9) "\\r" → result[7..7) ""');
 
     // A decoder that drops the BOM: the first three bytes are gone.
-    const bom = thrown(() => assertRoundTrip("﻿name,age\n", (bytes) => decode(bytes), encode));
+    const bom = thrown(() => assertRoundTrip("\uFEFFname,age\n", (bytes) => decode(bytes), encode));
     expect(bom.message).toMatch(/first difference at byte 0 \(line 1, column 1\)/);
     expect(bom.message).toMatch(/bytes +@0 +\[ef\] bb bf 6e/);
     expect(bom.message).toMatch(/result +@0 +\[6e\] 61 6d 65/);
@@ -162,6 +162,15 @@ describe("assertMinimalEdit", () => {
     expect(lf.message).toContain('before[11..12) "\\r" → after[11..11) ""');
     expect(lf.message).toContain("before[24..25)");
     expect(lf.message).toContain("before[39..40)");
+  });
+
+  it("lets a span without bytes take in a change beside it, and bytes pin it", () => {
+    const crlf = "도시,부산\r\n";
+    assertMinimalEdit("도시,서울\n", crlf, { find: "서울" });
+    const error = thrown(() =>
+      assertMinimalEdit("도시,서울\n", crlf, { find: "서울", bytes: "부산" }),
+    );
+    expect(error.message).toContain('before[7..13) became "부산\\r", not "부산"');
   });
 
   it("caps the list and counts the rest", () => {
