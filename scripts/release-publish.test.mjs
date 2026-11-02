@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { join } from "node:path";
 import { describe, it } from "node:test";
 import {
   contentType,
@@ -38,7 +39,7 @@ describe("release-publish", () => {
       ],
     );
     assert.ok(plan.every((s) => s.cacheControl === IMMUTABLE));
-    assert.equal(plan[0].file, "dist/endue-desk_0.2.0_darwin-aarch64.app.tar.gz");
+    assert.equal(plan[0].file, join("dist", "endue-desk_0.2.0_darwin-aarch64.app.tar.gz"));
     assert.throws(
       () => releasePlan({ dist: "dist", names: ["a.deb"], version: "0.2.0" }),
       /release\.json/u,
@@ -65,7 +66,7 @@ describe("release-publish", () => {
     assert.deepEqual(upload(first, target), [
       "s3",
       "cp",
-      "dist/endue-desk_0.2.0_darwin-aarch64.app.tar.gz",
+      join("dist", "endue-desk_0.2.0_darwin-aarch64.app.tar.gz"),
       "s3://endue-desk-releases/desk/releases/0.2.0/endue-desk_0.2.0_darwin-aarch64.app.tar.gz",
       "--endpoint-url",
       "https://acct.r2.cloudflarestorage.com",
