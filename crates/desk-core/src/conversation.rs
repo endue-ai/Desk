@@ -71,8 +71,11 @@ pub(crate) struct Conversation {
     brain: Arc<dyn Brain>,
     events: EventBus,
     options: BrainOptions,
+    /// This desk as other desks see it in lease conflicts; brain.ask's leases name it too.
+    holder: LeaseHolder,
     state: Mutex<State>,
     turns: AtomicU64,
+    asks: AtomicU64,
 }
 
 struct State {
@@ -98,17 +101,19 @@ impl Conversation {
             desk_id: store.desk_id().to_owned(),
             name: options.desk_name.clone(),
         };
-        let lease = LeaseClient::new(brain.clone(), holder, options.ttl_seconds);
+        let lease = LeaseClient::new(brain.clone(), holder.clone(), options.ttl_seconds);
         Arc::new(Self {
             brain,
             events,
             options,
+            holder,
             state: Mutex::new(State {
                 store,
                 lease,
                 opened: false,
             }),
             turns: AtomicU64::new(0),
+            asks: AtomicU64::new(0),
         })
     }
 
@@ -147,6 +152,25 @@ impl Conversation {
 
     pub(crate) fn mode(&self) -> &BrainMode {
         &self.options.mode
+    }
+
+    /// What brain.ask (core_ask) shares with the conversation: the bus, the options and the holder,
+    /// none of them behind the session's lock.
+    pub(crate) fn events(&self) -> &EventBus {
+        &self.events
+    }
+
+    pub(crate) fn options(&self) -> &BrainOptions {
+        &self.options
+    }
+
+    pub(crate) fn holder(&self) -> &LeaseHolder {
+        &self.holder
+    }
+
+    /// The id of the next brain.ask turn: `a1`, `a2` and on, apart from brain.say's `t` turns.
+    pub(crate) fn next_ask(&self) -> String {
+        format!("a{}", self.asks.fetch_add(1, Ordering::Relaxed) + 1)
     }
 
     fn run(&self, turn: &str, text: &str) {

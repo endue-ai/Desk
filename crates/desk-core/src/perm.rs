@@ -226,6 +226,7 @@ pub fn covers(grant: &Permission, scope: &Permission) -> bool {
         (Permission::SearchRead(_), Permission::SearchRead(_)) => true,
         (Permission::SearchSystem(_), Permission::SearchSystem(_)) => true,
         (Permission::BrainConverse(_), Permission::BrainConverse(_)) => true,
+        (Permission::BrainAsk(_), Permission::BrainAsk(_)) => true,
         (Permission::CmdInvoke(g), Permission::CmdInvoke(s)) => {
             s.ids.iter().all(|a| g.ids.iter().any(|p| star_match(p, a)))
         }
@@ -337,6 +338,7 @@ pub(crate) fn scope_allows(scope: &Permission, target: &Target<'_>) -> bool {
             | Permission::SearchRead(_)
             | Permission::SearchSystem(_)
             | Permission::BrainConverse(_)
+            | Permission::BrainAsk(_)
             | Permission::PermManage(_)
             | Permission::ConnectorManage(_)
             | Permission::ViewManage(_)
