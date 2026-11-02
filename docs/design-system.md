@@ -105,6 +105,23 @@ semantic roles in that contribution take precedence. A contribution with `primar
 `accent` value unless it provides both. New code should use the semantic roles. Desk's legacy accent
 means the brand fill, while the web product's accent means a hover surface: do not interchange them.
 
+## Theme conformance
+
+A theme is the design system's values, so every UI reads colour, font family, text size, corner radius
+and duration from `--desk-*` tokens only: the shell, `@endue-ai/ui`, the examples and every plugin page,
+in stylesheets, `<style>` blocks, `style=""` attributes and the strings scripts paint with (canvas too;
+read a token with `getComputedStyle(document.documentElement).getPropertyValue("--desk-chart-1")`).
+Derived values stay token-based: `color-mix(in srgb, var(--desk-text) 8%, transparent)`,
+`calc(var(--desk-radius-md) - 2px)`, `calc(var(--desk-text-sm) - 1px)`. A file's own colours (a
+document's text, a highlight, an image's checkerboard) are not the theme's: mark them with a
+`theme: content` comment on the line, or on the line that opens the rule.
+
+`node scripts/ui-lint.mjs` checks this in `just check` as a ratchet. `scripts/ui-lint-baseline/<target>.json`
+holds the literals a plugin (or `_runtime`, `_ui`, `_examples`) may still have; more fail, fewer are
+reported until `node scripts/ui-lint.mjs --update` lowers the baseline (or deletes it at zero). `--list` names each
+literal. A plugin with no baseline keeps a `tests/theme.test.ts` that expects `lintPlugin("<folder>")` to
+be empty. The design behind it is `docs/ko/theme-requirements.md` (TP) and ADR 0056.
+
 ## Page and feedback patterns
 
 Use `.desk-bar`, `.desk-bar-title` and `.desk-bar-spacer` for a common toolbar; `.desk-pane` for a

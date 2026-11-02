@@ -39,6 +39,7 @@ check:
     pnpm exec tsc -p tsconfig.json
     @if command -v actionlint >/dev/null; then actionlint; else echo "actionlint not installed: skipped here, CI runs it"; fi
     node scripts/spec-lint.mjs
+    node scripts/ui-lint.mjs
     pnpm exec spectral lint specs/brain/v0/openapi.yaml --fail-severity=warn --quiet
 
 # Lint the Tauri app crate (needs the platform webview SDK)

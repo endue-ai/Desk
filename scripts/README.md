@@ -25,3 +25,7 @@ release pipeline's steps (ADR 0054): the build version, each target's bundles un
 `release.json` and the channel indexes, and the upload to R2 in the order that keeps every listed build
 whole. The `release-build`, `canary`, `release`, `promote` and `rollback` workflows call them; their
 tests run in `just test-unit`.
+
+`ui-lint.mjs` (in `just check`) keeps every UI on the theme's tokens: no literal colours, fonts, text
+sizes, radii or durations outside `theme: content` marks, as a ratchet over
+`ui-lint-baseline/<target>.json` (`docs/design-system.md`, ADR 0056). Its test runs in `just test-unit`.
