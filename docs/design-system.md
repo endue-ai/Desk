@@ -99,7 +99,8 @@ under the palette, and Save keeps it as the person's own theme (`local.<name>`, 
 files the copy started with carried over by `copyFrom`). Import takes a `.desk-theme` file (or one
 dropped on the studio) and previews it; Export writes the selected theme as one. Describe (or
 `desk.theme.describe` with `{ "text": "<sentence>" }`, which Eris runs when she is asked to change the
-look) sends one sentence to the brain through `brain.ask` with the `propose_theme` tool (ADR 0059): the
+desk's look, not the look of an app or page the person builds; "Send to Eris instead" hands a misfire
+back to her conversation) sends one sentence to the brain through `brain.ask` with the `propose_theme` tool (ADR 0059): the
 prompt holds the rules (the colour roles, the contrast pairs and the ranges below), the theme block's
 schema, the values in force and the sentence, never files or the screen. The proposal is cleaned,
 previewed on the whole desk through the gate with its fixes listed, and then applied (saved as a
