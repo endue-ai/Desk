@@ -13,6 +13,7 @@ pub const USAGE: &str = "usage: desk [--json] <command>
   plugin enable <id> | disable <id>     turn a plugin on or off
   perm list                             every grant: grantId, caller, permission
   perm revoke <grantId>                 take a grant back
+  perm log [--agent <id>]               grants, refusals and agents' calls; one agent's only
   describe key|command|setting|plugin|grant <x>
                                         what it is, where it comes from and who may call it
   update                                the desk's updates: state, running build, channel, chosen build
@@ -56,6 +57,10 @@ pub enum Remote {
     PermList,
     PermRevoke {
         grant_id: String,
+    },
+    /// The `perm` log channel, or one agent's entries in it (ADR 0072).
+    PermLog {
+        agent: Option<String>,
     },
     /// update.status, or update.check, update.download or update.apply.
     Update(UpdateStep),
@@ -110,6 +115,10 @@ pub fn parse(args: Vec<String>) -> Option<Args> {
         ["perm", "list"] => Action::Remote(Remote::PermList),
         ["perm", "revoke", grant] => Action::Remote(Remote::PermRevoke {
             grant_id: name(grant)?,
+        }),
+        ["perm", "log"] => Action::Remote(Remote::PermLog { agent: None }),
+        ["perm", "log", "--agent", agent] => Action::Remote(Remote::PermLog {
+            agent: Some(name(agent)?),
         }),
         ["update"] => Action::Remote(Remote::Update(UpdateStep::Status)),
         ["update", "check"] => Action::Remote(Remote::Update(UpdateStep::Check)),

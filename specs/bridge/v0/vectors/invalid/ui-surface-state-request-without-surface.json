@@ -1,0 +1,9 @@
+{
+  "target": "UiSurfaceStateRequest",
+  "description": "ui.surface.state names the manifest's surface whose frame is about to be unloaded",
+  "instance": {
+    "id": 7,
+    "method": "ui.surface.state",
+    "params": {}
+  }
+}

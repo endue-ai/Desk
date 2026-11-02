@@ -5,8 +5,14 @@
 //! own themes (ADR 0058) and the theme markets (ADR 0060).
 pub const NAME: &str = env!("CARGO_PKG_NAME");
 
+mod agent_tools;
+mod agents;
+mod approval_action;
+mod approval_preview;
+mod approvals;
 mod calendar_items;
 mod conversation;
+mod conversation_sink;
 mod core_ask;
 mod core_brain;
 mod core_builtins;
@@ -47,6 +53,7 @@ mod manifest;
 mod media_types;
 mod paths;
 mod perm;
+mod perm_log;
 mod plugins;
 mod prompt_policy;
 mod secrets;

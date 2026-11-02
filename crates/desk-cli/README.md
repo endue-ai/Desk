@@ -1,7 +1,7 @@
 # desk-cli
 
-The `desk` CLI: plugin validate, doctor --trace, and the commands, plugins and grants of a running
-desk, described in words. The hands AI agents use. Layer: Rust core (`docs/architecture.md`). Status: below.
+The `desk` CLI: plugin validate, doctor --trace, and the commands, plugins, grants and permission log
+of a running desk. The hands AI agents use. Layer: Rust core (see `docs/architecture.md`). Status: below.
 
 ## Commands
 
@@ -14,15 +14,15 @@ desk plugin list                       # id<TAB>status<TAB>enabled|disabled per 
 desk plugin enable|disable <id>        # prints ok
 desk perm list                         # grantId<TAB>caller<TAB>permission per grant
 desk perm revoke <grantId>             # prints ok
+desk perm log [--agent <id>]           # at, caller, decision, permission, target, reason or approval
 desk describe key|command|setting|plugin|grant <x>   # the runtime's answer, as text
 desk doctor --trace <file>             # a DESK_TRACE=1 trace.json: phases, totals, the five longest
 ```
 
-All but `plugin validate` and `doctor --trace` reach the running desk over its socket
-(`crates/desk-ipc`, ADR 0030) as the caller `cli`; `DESK_SOCKET` names another socket. `describe` runs
-the runtime's `desk.describe.open` with `show: false` (ADR 0075). `--json`, anywhere among the
-arguments, prints the desk's answer line as it came (for `cmd run` and `describe`, the `cmd.answered`
-event line; for `doctor --trace`, the summary as JSON).
+All but `plugin validate` and `doctor --trace` reach the running desk over its socket (`crates/desk-ipc`,
+ADR 0030) as the caller `cli`; `DESK_SOCKET` names another socket. `describe` runs the runtime's
+`desk.describe.open` with `show: false` (ADR 0075). `--json`, anywhere among the arguments, prints the
+answer as it came (`cmd run` and `describe`: `cmd.answered`; `perm log`: each matching entry; `doctor`: JSON).
 
 Exit codes: 0 ok; 1 a failed check, a bridge error (`desk: <code>: <message>` on stderr), a failed
 or cancelled command, or no desk at the socket; 2 usage. `plugin validate` prints
@@ -34,6 +34,6 @@ folder with a `plugin.json` in `plugins/` and `examples/` (`.github/workflows/pl
 
 ## Testing
 
-`cargo test -p desk-cli`: `tests/socket.rs` and `tests/describe.rs` (the runtime's golden texts) run
-the binary against a scripted server; `tests/round_trip.rs` against a real `desk_ipc::Listener` and
-`Core`; `tests/doctor.rs` on hand-made traces.
+`cargo test -p desk-cli`: `tests/socket.rs`, `tests/perm_log.rs` and `tests/describe.rs` (the runtime's
+golden texts) run the binary against a scripted server; `tests/round_trip.rs` against a real
+`desk_ipc::Listener` and `Core`; `tests/doctor.rs` on hand-made traces.

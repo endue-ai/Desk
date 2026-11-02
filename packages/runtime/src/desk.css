@@ -151,3 +151,26 @@ body {
 .desk-surface--transient {
   background: transparent;
 }
+
+/* An unloaded surface's frame (ADR 0070): its title and a line, until it shows and loads again. */
+.desk-surface-placeholder {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 4px;
+  min-width: 0;
+  min-height: 0;
+  padding: 16px;
+  overflow: hidden;
+  color: var(--desk-text-muted);
+  text-align: center;
+  background: var(--desk-card);
+}
+
+.desk-surface-placeholder p {
+  margin: 0;
+}
+
+.desk-surface-placeholder-title {
+  color: var(--desk-text);
+}

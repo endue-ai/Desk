@@ -21,6 +21,7 @@ use desk_sys::fs as sysfs;
 use desk_sys::shell::{Opener, SystemOpener};
 use serde::Serialize;
 
+use crate::approvals::Approvals;
 use crate::conversation::Conversation;
 use crate::core_cmd::Commands;
 use crate::core_connectors::Connectors;
@@ -59,6 +60,7 @@ pub struct Core {
     events: EventBus,
     pub(crate) prompter: Box<dyn Prompter>,
     pub(crate) prompts: Mutex<Prompts>,
+    pub(crate) approvals: Mutex<Approvals>,
     pub(crate) subscriptions: Mutex<Subscriptions>,
     pub(crate) plugins: Mutex<PluginRegistry>,
     pub(crate) store: Mutex<Store>,
@@ -95,6 +97,7 @@ impl Core {
             events: EventBus::new(),
             prompter: Box::new(RefuseAll),
             prompts: Mutex::new(Prompts::default()),
+            approvals: Mutex::default(),
             subscriptions: Mutex::new(Subscriptions::default()),
             plugins: Mutex::new(PluginRegistry::new(None)),
             store: Mutex::new(Store::new(None)),
@@ -135,6 +138,7 @@ impl Core {
 
     pub fn handle(&self, caller: &str, request: BridgeRequest) -> BridgeResponse {
         let (id, answer) = self.dispatch(caller, request);
+        self.report_approved(&answer);
         match answer {
             Ok(result) => BridgeResponse::BridgeSuccess(BridgeSuccess {
                 id,
@@ -180,6 +184,7 @@ impl Core {
             R::PermRevoke(r) => (r.id, self.perm_revoke(caller, r.params)),
             R::PermList(r) => (r.id, self.perm_list(caller, r.params)),
             R::PermAnswer(r) => (r.id, self.perm_answer(caller, r.params)),
+            R::PermApprove(r) => (r.id, self.perm_approve(caller, r.params)),
             R::PluginList(r) => (r.id, self.plugin_list(caller, r.params)),
             R::PluginSetEnabled(r) => (r.id, self.plugin_set_enabled(caller, r.params)),
             R::SearchReplace(r) => (r.id, self.search_replace(caller, r.params)),

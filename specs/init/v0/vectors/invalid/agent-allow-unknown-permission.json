@@ -1,0 +1,15 @@
+{
+  "target": "InitDocument",
+  "description": "an allowlist holds permissions the plugin spec names",
+  "instance": {
+    "agents": {
+      "mira": {
+        "allow": [
+          {
+            "permission": "fs:everything"
+          }
+        ]
+      }
+    }
+  }
+}

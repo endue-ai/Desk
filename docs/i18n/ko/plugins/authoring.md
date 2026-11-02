@@ -73,6 +73,12 @@ defineUiPlugin({
 `bridge.call(method, params)`는 코어를 호출합니다. 같은 틱에 이루어진 호출은 하나의 메시지로 묶여 전달됩니다.
 거부된 호출은 `BridgeCallError`로 reject되며, 이때 `code`는 예를 들어 `permission_denied`입니다.
 
+한동안 아무도 보지 않은 서피스(다른 창 뒤나 화면 밖)는 메모리를 아끼려고 언로드될 수 있고, 다시
+보이면 다시 로드됩니다(ADR 0070). 원래대로 돌아오려면 남길 것을 등록하세요.
+`surface.onUnload(() => ({ open, caret, scroll }))`가 데스크의 `ui.surface.state`에 64 KiB까지의 JSON으로
+답하고, 다시 로드된 페이지는 `surface.restored`에서 그것을 받습니다. 제공자가 없으면 처음 상태로
+돌아오며, 위의 `state`는 그대로 돌아옵니다.
+
 ## 권한
 
 플러그인 프레임은 스크립트만 허용된 샌드박스에서 실행됩니다. Desk 페이지에 접근할 수 없고, 최상위 내비게이션도,

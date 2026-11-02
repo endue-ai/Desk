@@ -84,7 +84,11 @@ describe("the grant list", () => {
 
   it("says when nobody holds a grant", async () => {
     const { view } = await mount(core([]));
-    expect(view.lists.at(-1)).toEqual({ summary: "Nobody holds a permission.", groups: [] });
+    expect(view.lists.at(-1)).toEqual({
+      summary: "Nobody holds a permission.",
+      groups: [],
+      agents: [],
+    });
   });
 
   it("names callers by id when plugin.list is refused", async () => {

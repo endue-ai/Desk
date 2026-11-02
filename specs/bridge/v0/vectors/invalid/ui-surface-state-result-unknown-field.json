@@ -1,0 +1,8 @@
+{
+  "target": "UiSurfaceStateResult",
+  "description": "the answer carries state and nothing else; restored is what the runtime hands back, not the plugin",
+  "instance": {
+    "state": { "count": 3 },
+    "restored": { "count": 3 }
+  }
+}

@@ -76,6 +76,12 @@ defineUiPlugin({
 seul message. Un appel refusé est rejeté avec une erreur `BridgeCallError` dont le `code` vaut, par exemple,
 `permission_denied`.
 
+Une surface que personne n'a vue depuis un moment (derrière d'autres fenêtres, hors de l'écran) peut être
+déchargée pour économiser la mémoire, puis rechargée dès qu'elle s'affiche (ADR 0070). Pour revenir telle
+quelle, enregistrez ce qu'il faut garder : `surface.onUnload(() => ({ open, caret, scroll }))` répond au
+`ui.surface.state` du bureau avec un JSON d'au plus 64 Kio, et la page rechargée le retrouve dans
+`surface.restored`. Sans fournisseur, elle revient à froid ; `state` ci-dessus revient toujours.
+
 ## Permissions
 
 Votre cadre s'exécute dans une sandbox qui n'autorise que les scripts : aucun accès à la page de Desk, aucune

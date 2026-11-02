@@ -1,0 +1,8 @@
+{
+  "target": "PermRequestResult",
+  "description": "an agent asked for a scope its allowlist does not hold, so nobody was asked",
+  "instance": {
+    "granted": false,
+    "reason": "outside-allowlist"
+  }
+}

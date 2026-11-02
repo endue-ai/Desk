@@ -69,6 +69,8 @@ defineUiPlugin({
 
 `bridge.call(method, params)` 用于调用核心。在同一个 tick 内发出的调用会合并成一条消息发送。被拒绝的调用会以 `BridgeCallError` 被 reject，其 `code` 例如为 `permission_denied`。
 
+一段时间内没有人看到的表面（被其他窗口挡住或在屏幕之外）可能会被卸载以节省内存，再次显示时会重新加载（ADR 0070）。要恢复原样，请登记需要保留的内容：`surface.onUnload(() => ({ open, caret, scroll }))` 会以不超过 64 KiB 的 JSON 回应 Desk 的 `ui.surface.state`，重新加载的页面可以在 `surface.restored` 中取回它。没有提供者时会以初始状态恢复；上面的 `state` 仍会恢复。
+
 ## 权限
 
 你的框架运行在只允许脚本的沙箱中：不能访问 Desk 的页面，不能进行顶层导航，不能使用表单或弹出窗口，也不能自行建立网络连接。每项能力都要经过桥接层，除 `perm.*` 之外的每次桥接调用都携带它所需的权限范围（`params.scope`）。只有当用户授予了覆盖该范围的权限时，核心才会响应。

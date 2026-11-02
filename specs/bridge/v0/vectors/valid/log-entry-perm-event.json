@@ -1,0 +1,24 @@
+{
+  "target": "BridgeEvent",
+  "description": "the perm channel records an agent refused outside its allowlist",
+  "instance": {
+    "event": "log.entry",
+    "data": {
+      "at": "2026-11-02T09:00:00.120Z",
+      "channel": "perm",
+      "level": "warn",
+      "message": "agent:mira refused fs:write ~/Desktop/x.txt (outside-allowlist)",
+      "fields": {
+        "caller": "agent:mira",
+        "permission": "fs:write",
+        "scope": {
+          "permission": "fs:write",
+          "paths": ["~/Desktop/**"]
+        },
+        "decision": "refused",
+        "reason": "outside-allowlist",
+        "target": "~/Desktop/x.txt"
+      }
+    }
+  }
+}

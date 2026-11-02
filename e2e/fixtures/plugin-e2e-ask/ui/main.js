@@ -1,12 +1,20 @@
 // A fixture for checking the core's prompt policy (CORE-03) in the app by hand: each button calls
 // perm.request, the answers are listed in the order they arrive, and the waiting count says how many
-// calls still wait for the person.
+// calls still wait for the person. Its command e2e.ask.note, marked irreversible, writes a note under
+// ~/qa as this plugin: an agent's call of it waits for the person's approval, a person's own call
+// (desk cmd run) runs at once (ADR 0078).
 import { defineUiPlugin } from "@endue-ai/plugin-sdk";
 
 const read = (folder) => ({ permission: "fs:read", paths: [`${folder}/**`] });
+const QA = { permission: "fs:write", paths: ["~/qa/**"] };
 
 defineUiPlugin({
-  async mount({ bridge }) {
+  async mount({ bridge, commands }) {
+    commands.on("e2e.ask.note", (args) => {
+      const { path, text } = args ?? {};
+      return bridge.call("fs.write", { path, content: String(text ?? ""), scope: QA });
+    });
+
     const answers = document.querySelector("[data-testid=answers]");
     const waiting = document.querySelector("[data-testid=waiting]");
     let open = 0;

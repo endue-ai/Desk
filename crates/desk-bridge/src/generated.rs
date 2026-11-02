@@ -56,6 +56,9 @@ pub struct CommandContribution {
     /// Makes the command an alias the desk answers while the plugin is on: it runs this command with these args, the caller's object args merged over them key by key. Data-only plugins (view, policy) offer commands this way.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub runs: Option<CommandCall>,
+    /// The command does something that cannot be taken back (sends, deletes, pays, pushes). An agent's call of it (agent:<id>) waits for the person's approval every time, even with a cmd:invoke grant; a person's own calls never wait (ADR 0078).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub irreversible: Option<bool>,
 }
 
 /// A command's args: an object, as cmd.invoke passes them.
@@ -1915,6 +1918,8 @@ pub struct InitDocument {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub settings: Option<InitSettings>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub agents: Option<InitAgents>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub sync: Option<InitSync>,
 }
 
@@ -1935,6 +1940,21 @@ pub type InitSettings = BTreeMap<String, serde_json::Value>;
 
 /// A setting key: lowercase, dotted by owner, for example eris.voice or motion.reduce.
 pub type InitSettingKey = String;
+
+/// What the brain's agents may be granted on this desk, by agent id (the agentId of the brain's tool calls; the caller is agent:<id>). Default none: an agent without an entry asks the person before every first use (ADR 0072).
+pub type InitAgents = BTreeMap<String, InitAgent>;
+
+/// An agent id as the brain names it, for example ag_01JBZ8Q4MR0000000000000001.
+pub type InitAgentId = String;
+
+/// One agent's setup.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct InitAgent {
+    /// The permissions and scopes the agent may be granted. Within them the person is still asked at first use; outside them the agent is refused (outside-allowlist), whatever it holds. Empty or absent: no limit, every first use asks.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub allow: Option<Vec<Permission>>,
+}
 
 /// Syncing init.yaml through the person's endue account.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -2290,7 +2310,7 @@ pub type RequestId = u64;
 /// An absolute path, or one rooted at ~ or at ${plugin}, ${workspace} or ${home}, with forward slashes.
 pub type Path = String;
 
-/// Who makes calls: a plugin id such as endue.eris, or a name of the desk's own such as desk (the web runtime). core names desk-core itself.
+/// Who makes calls: a plugin id such as endue.eris, a name of the desk's own such as desk (the web runtime), or agent:<id> for an agent of the brain whose tool call the core runs (ADR 0072). core names desk-core itself.
 pub type CallerId = String;
 
 /// How binary-safe string content is encoded.
@@ -2330,6 +2350,7 @@ pub enum BridgeRequest {
     PermRevoke(PermRevokeRequest),
     PermList(PermListRequest),
     PermAnswer(PermAnswerRequest),
+    PermApprove(PermApproveRequest),
     PluginList(PluginListRequest),
     PluginSetEnabled(PluginSetEnabledRequest),
     StoreGet(StoreGetRequest),
@@ -2441,7 +2462,7 @@ pub enum ErrorCode {
     Internal,
 }
 
-/// Something the core reports without being asked: file changes, process output, wake words, permission changes, notifications, surfaces, commands, settings, log entries, changes to items, connectors and views, and the desk's update status.
+/// Something the core reports without being asked: file changes, process output, wake words, permission changes, prompts and approvals, notifications, surfaces, commands, settings, log entries, changes to items, connectors and views, and the desk's update status.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum BridgeEvent {
@@ -2451,6 +2472,8 @@ pub enum BridgeEvent {
     AudioWake(AudioWakeEvent),
     PermChanged(PermChangedEvent),
     PermPrompt(PermPromptEvent),
+    PermApproval(PermApprovalEvent),
+    PermApprovalDone(PermApprovalDoneEvent),
     PluginChanged(PluginChangedEvent),
     UiNotified(UiNotifiedEvent),
     UiSurfaceOpened(UiSurfaceOpenedEvent),
@@ -3318,7 +3341,7 @@ pub enum LogLevel {
     Error,
 }
 
-/// One log entry. channel is the caller that wrote it, or core for desk-core.
+/// One log entry. channel is the caller that wrote it, core for desk-core, or perm for the permission log the core keeps: every grant, every refusal and every call of an agent, with fields caller, permission, scope, decision (granted, allowed, approved, refused or denied), and target, reason, duration and grantId where they apply (ADR 0072). An approved irreversible call of an agent (approved) carries approval (once or task), approvalId and task where there is one; a call the person denied is refused with reason not-approved (ADR 0078).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct LogEntry {
@@ -3486,7 +3509,7 @@ pub enum GrantDuration {
     Always,
 }
 
-/// Result of perm.request. A refusal is a result, not an error. A request that a lasting grant (session or always) already covers is granted at once with that grant.
+/// Result of perm.request. A refusal is a result, not an error. A request that a lasting grant (session or always) already covers is granted at once with that grant, unless the caller is an agent and the grant lies outside its allowlist.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct PermRequestResult {
@@ -3497,11 +3520,13 @@ pub struct PermRequestResult {
     pub reason: Option<RefusalReason>,
 }
 
-/// Why perm.request was refused without asking the person. refused-earlier: the person refused this caller this permission and scope earlier in the session; it holds until the caller is granted a permission that covers it. Absent from a result means the person (or the core's own prompter) refused this request.
+/// Why perm.request was refused without asking the person. refused-earlier: the person refused this caller this permission and scope earlier in the session; it holds until the caller is granted a permission that covers it. outside-allowlist: the caller is an agent (agent:<id>) and no permission in agents.<id>.allow of init.yaml covers the request; an agent is never granted anything outside a non-empty allowlist (ADR 0072). Absent from a result means the person (or the core's own prompter) refused this request.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum RefusalReason {
     #[serde(rename = "refused-earlier")]
     RefusedEarlier,
+    #[serde(rename = "outside-allowlist")]
+    OutsideAllowlist,
 }
 
 /// List the caller's current grants.
@@ -3630,7 +3655,7 @@ pub struct PermAnswerParams {
 #[serde(deny_unknown_fields)]
 pub struct PermAnswerResult {}
 
-/// A caller asked for a permission and the person has to decide. Sent to callers that hold perm:manage.
+/// A caller asked for a permission and the person has to decide. Sent to callers that hold perm:manage. An agent's caller is agent:<id>; it asks only within its allowlist.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct PermPromptEvent {
@@ -3650,9 +3675,139 @@ pub struct PermPromptData {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub reason: Option<String>,
     pub duration: GrantDuration,
-    /// The parent folder the person may grant instead: the same permission over the folder that holds the one asked for, offered when this caller asks for a third folder under it in the session. Never a root, the home folder or a folder holding it, nor a scope the person refused this caller earlier.
+    /// The parent folder the person may grant instead: the same permission over the folder that holds the one asked for, offered when this caller asks for a third folder under it in the session. Never a root, the home folder or a folder holding it, nor a scope the person refused this caller earlier, nor, for an agent, a scope outside its allowlist.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub parent: Option<Permission>,
+}
+
+/// An agent's irreversible call waits for the person's approval, even when a grant covers it (ADR 0078): an fs.write or a net.fetch whose target no always grant of the agent allows, a proc.spawn, or a cmd.invoke of a command its provider's manifest marks irreversible. Sent to callers that hold perm:manage; the first perm.approve decides. A caller that is not an agent is never held.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PermApprovalEvent {
+    pub event: PermApprovalEventEvent,
+    pub data: PermApprovalData,
+}
+
+/// Payload of perm.approval: which agent, what it is about to do, to what, and what it would change.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PermApprovalData {
+    #[serde(rename = "approvalId")]
+    pub approval_id: String,
+    pub caller: CallerId,
+    pub action: ApprovalAction,
+    /// The scope the call carries, which a grant of the agent's covers.
+    pub permission: Permission,
+    /// What the call touches: the path for fs.write, the command for proc.spawn, the URL for net.fetch, the command id for cmd.invoke.
+    pub target: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub preview: Option<ApprovalPreview>,
+    /// fs.write: the bytes it would write.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub size: Option<u64>,
+    /// The task the call belongs to: the desk's brain turn (brain.turn's turnId) whose tool call it is. Present only when there is one; only then may perm.approve answer task.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub task: Option<String>,
+}
+
+/// The bridge method an agent's irreversible call is.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum ApprovalAction {
+    #[serde(rename = "fs.write")]
+    FsWrite,
+    #[serde(rename = "proc.spawn")]
+    ProcSpawn,
+    #[serde(rename = "net.fetch")]
+    NetFetch,
+    #[serde(rename = "cmd.invoke")]
+    CmdInvoke,
+}
+
+/// What the call would do, as text. diff: a unified diff of the file as it is against what the write puts there (a new file is all additions), when both are UTF-8 text and the file is at most 1 MiB; the first 200 changed lines. command: the command line, quoted for a POSIX shell. url: the method and the URL. args: the command's args as JSON. truncated says that the text was cut.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ApprovalPreview {
+    pub kind: ApprovalPreviewKind,
+    pub text: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub truncated: Option<bool>,
+}
+
+/// What a preview's text is: a unified diff, a command line, a method and URL, or a command's args as JSON.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum ApprovalPreviewKind {
+    #[serde(rename = "diff")]
+    Diff,
+    #[serde(rename = "command")]
+    Command,
+    #[serde(rename = "url")]
+    Url,
+    #[serde(rename = "args")]
+    Args,
+}
+
+/// The prompter answers a perm.approval with the person's decision.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PermApproveRequest {
+    pub id: RequestId,
+    pub method: PermApproveRequestMethod,
+    pub params: PermApproveParams,
+}
+
+/// Parameters of perm.approve.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PermApproveParams {
+    #[serde(rename = "approvalId")]
+    pub approval_id: String,
+    pub answer: ApprovalAnswer,
+    pub scope: PermManagePermission,
+}
+
+/// once: this call runs. task: this call runs, and so do the agent's later calls of the same action whose target the approved scope covers, until the task ends (invalid_params on an approval without a task). deny: this call is refused with permission_denied; the next one asks again.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum ApprovalAnswer {
+    #[serde(rename = "once")]
+    Once,
+    #[serde(rename = "task")]
+    Task,
+    #[serde(rename = "deny")]
+    Deny,
+}
+
+/// Result of perm.approve.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PermApproveResult {}
+
+/// An approved call ran: what came of it. Sent to callers that hold perm:manage.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PermApprovalDoneEvent {
+    pub event: PermApprovalDoneEventEvent,
+    pub data: PermApprovalDoneData,
+}
+
+/// Payload of perm.approval.done.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PermApprovalDoneData {
+    #[serde(rename = "approvalId")]
+    pub approval_id: String,
+    pub ok: bool,
+    /// fs.write: the bytes it wrote.
+    #[serde(
+        rename = "bytesWritten",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub bytes_written: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub error: Option<BridgeError>,
+    /// true when cmd.undo can take the write back (#276). Absent while the core does not serve cmd.undo.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub undoable: Option<bool>,
 }
 
 /// One of the caller's grants changed.
@@ -4552,6 +4707,32 @@ pub struct UiSurfaceCloseParams {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct UiSurfaceCloseResult {}
+
+/// The runtime asks a plugin's frame for the state to keep before it unloads a surface that is not visible (ADR 0070). Sent to the frame as a desk request, not to the core: it is not a BridgeRequest. Answering is optional; a frame that does not answer comes back cold.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct UiSurfaceStateRequest {
+    pub id: RequestId,
+    pub method: UiSurfaceStateRequestMethod,
+    pub params: UiSurfaceStateParams,
+}
+
+/// Parameters of ui.surface.state.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct UiSurfaceStateParams {
+    /// The surface id from the plugin's manifest whose frame is about to be unloaded.
+    pub surface: String,
+}
+
+/// A plugin's answer to ui.surface.state. The runtime keeps state in memory for the session, at most 64 KiB as UTF-8 JSON (a bigger one is dropped), and hands it back as restored when the frame loads again.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct UiSurfaceStateResult {
+    /// Any JSON value the plugin needs to come back as it was: what is open, the caret, the scroll. Absent: nothing to keep, the surface comes back cold.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub state: Option<serde_json::Value>,
+}
 
 /// Show a notification.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -5696,6 +5877,30 @@ pub enum PermPromptEventEvent {
     PermPrompt,
 }
 
+/// The `event` of [`PermApprovalEvent`]: always `"perm.approval"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum PermApprovalEventEvent {
+    #[default]
+    #[serde(rename = "perm.approval")]
+    PermApproval,
+}
+
+/// The `method` of [`PermApproveRequest`]: always `"perm.approve"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum PermApproveRequestMethod {
+    #[default]
+    #[serde(rename = "perm.approve")]
+    PermApprove,
+}
+
+/// The `event` of [`PermApprovalDoneEvent`]: always `"perm.approval.done"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum PermApprovalDoneEventEvent {
+    #[default]
+    #[serde(rename = "perm.approval.done")]
+    PermApprovalDone,
+}
+
 /// The `event` of [`PermChangedEvent`]: always `"perm.changed"`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub enum PermChangedEventEvent {
@@ -5926,6 +6131,14 @@ pub enum UiSurfaceCloseRequestMethod {
     #[default]
     #[serde(rename = "ui.surface.close")]
     UiSurfaceClose,
+}
+
+/// The `method` of [`UiSurfaceStateRequest`]: always `"ui.surface.state"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum UiSurfaceStateRequestMethod {
+    #[default]
+    #[serde(rename = "ui.surface.state")]
+    UiSurfaceState,
 }
 
 /// The `method` of [`UiNotifyRequest`]: always `"ui.notify"`.
