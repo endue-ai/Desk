@@ -89,9 +89,12 @@ At their defaults these tokens change nothing on screen.
 
 A theme is a plugin of kind `theme` (`specs/plugin/v0/README.md`, ADR 0056, ADR 0057): six layers of
 values and its font and image files, no code. The setting `desk.theme.active` names the one in force
-(empty for the endue theme); installing a theme does not apply it. The commands `desk.theme.use` (with
-`{ "id": "<theme plugin>" }`) and `desk.theme.default` change it, and a profile or `init.yaml` can carry
-it. The runtime resolves the tokens in this order: the built-in tokens, the policy plugins'
+(empty for the endue theme); installing a theme does not apply it. The theme studio, a system window
+of the shell (`desk.theme.studio`, or the palette button at the top right), lists the endue theme and
+every installed theme as cards drawn with their own tokens; focusing one previews it on the whole desk,
+Enter or a click applies it, and Escape puts back what was in force. The commands `desk.theme.use`
+(with `{ "id": "<theme plugin>" }`) and `desk.theme.default` change it too, a profile or `init.yaml`
+can carry it, and the choice comes back with the session. The runtime resolves the tokens in this order: the built-in tokens, the policy plugins'
 `contributes.themes` for the scheme (and their high-contrast layers), the active theme for the scheme,
 then high contrast and reduced motion.
 
