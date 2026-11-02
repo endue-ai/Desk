@@ -124,6 +124,43 @@ defineUiPlugin({
 `ctx.theme` 으로 전달됩니다. 프레임 안에서 누른 키 조합은 `preventDefault()` 를 부르지 않는 한 데스크의
 키맵에 전달됩니다. 기본 정책과 각각이 정하는 것은 `plugins/README.md` 에 있습니다.
 
+## 파일 편집: 편집 등급
+
+파일을 여는 플러그인은 먼저 읽고, 편집은 나중에 더합니다(ADR 0045). 편집을 시작하면 여는 모든 형식은 읽기
+등급과 함께, 세 가지 중 하나의 편집 등급을 가집니다(ADR 0071).
+
+| 편집 등급 | 약속하는 것 | 저장할 때 |
+| --- | --- | --- |
+| `lossless` | 바꾸지 않은 파일을 저장하면 같은 바이트가 되고, 편집은 바꿔야 하는 바이트만 바꿉니다 | 파일을 덮어씁니다 |
+| `text` | 내용은 남지만 서식(주석, 공백, 키 순서)은 남지 않을 수 있습니다 | 파일마다 처음 저장할 때 "Save as copy"(기본값)와 "Overwrite" 중에서 묻습니다 |
+| `read-only` | 아무것도 저장하지 않습니다 | `desk.files.save` 를 거절합니다 |
+
+모든 형식의 등급을 README(형식별 읽기 등급과 편집 등급 표)와, 첫 편집 전의 화면에 밝힙니다. 화면에는
+`@endue-ai/ui` 의 `desk-edit-tier` 요소를 씁니다. 등급을 밝히지 않은 형식은 `read-only` 이고, 완전한 읽기
+등급으로 열리지 않은 파일도 마찬가지입니다. 하는 것보다 적게 약속하는 것은 괜찮지만, 더 많이 약속해서는 안
+됩니다. 요소의 `label` 과 `detail` 속성에는 직접 쓴 문구를 넣을 수 있습니다.
+
+```html
+<desk-edit-tier tier="lossless" format="CSV"></desk-edit-tier>   <!-- CSV · Lossless editing -->
+```
+
+`lossless` 는 바이트에 대한 약속이므로 `@endue-ai/plugin-sdk/testing` 의 두 검사로 증명합니다. 픽스처에는 그
+형식의 까다로운 경우를 담습니다: BOM, CRLF 와 섞인 줄바꿈, 마지막 줄바꿈 없음, 따옴표와 이스케이프.
+
+```ts
+import { assertMinimalEdit, assertRoundTrip } from "@endue-ai/plugin-sdk/testing";
+
+const model = assertRoundTrip(bytes, parse, serialize); // serialize(parse(bytes)) must be bytes
+setCell(model, "B2", "Busan");                           // B2 held "Seoul"
+assertMinimalEdit(bytes, serialize(model), { find: "Seoul", bytes: "Busan" });
+```
+
+`parse` 는 `Uint8Array` 를 받고, 문자열은 UTF-8 로 다룹니다. 구간은 파일의 바이트 단위 `{ offset, length }`
+이거나, 그 바이트가 단 한 번 나오는 곳인 `{ find }` 입니다. `bytes` 는 그 구간이 무엇이 되어야 하는지를
+정하고, 없으면 구간은 무엇이 되어도 됩니다. 실패하면 처음 달라진 바이트와 그 줄과 열, 주변의 16진수와
+텍스트, 구간 밖의 변경을 알려 줍니다. 검사는 아무것도 import 하지 않으므로, 평범한 Node 테스트도
+`packages/plugin-sdk/src/testing/round-trip.ts` 를 경로로 import 할 수 있습니다.
+
 ## 아이템과 뷰
 
 사람이 연결한 앱의 내용은 하나의 모양을 가진 아이템으로 데스크에 들어옵니다(`specs/item/v0`, ADR 0032).
