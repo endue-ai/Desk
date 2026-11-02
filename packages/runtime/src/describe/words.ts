@@ -139,6 +139,7 @@ const WORDS: Record<Permission["permission"], string> = {
   "ui:notify": "show notifications",
   "plugin:manage": "manage plugins",
   "brain:converse": "talk to the brain",
+  "brain:ask": "ask the brain for structured answers",
   "cmd:invoke": "run commands",
   "cmd:advise": "hook into commands",
   "settings:read": "read settings",
@@ -150,6 +151,7 @@ const WORDS: Record<Permission["permission"], string> = {
   "view:manage": "manage views",
   "shell:open": "open links and show files",
   "update:manage": "manage the desk's updates",
+  "theme:manage": "manage the person's themes",
 };
 
 /** A permission's scope: "paths: ~/Notes/**", or "" when it has none. */
