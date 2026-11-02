@@ -68,8 +68,8 @@ fn grants_refusals_and_agent_calls_go_to_the_perm_channel() {
     assert_eq!(mira["fields"]["duration"], "session");
     assert_eq!(mira["fields"]["grantId"], granted_id.as_str());
     assert!(
-        granted.iter().any(|e| e["fields"]["caller"] == "desk"),
-        "start-up grants are logged too"
+        granted.iter().all(|e| e["fields"]["caller"] != "desk"),
+        "the host's own start-up grants are not"
     );
 
     let allowed = with_decision(&entries, "allowed");

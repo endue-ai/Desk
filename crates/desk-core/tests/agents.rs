@@ -222,8 +222,12 @@ fn an_edit_to_the_allowlist_applies_to_the_next_call() {
     .unwrap();
     let refused = write(&core, MIRA, "~/Notes/b.md", "~/Notes/**").unwrap_err();
     assert_eq!(refused.code, ErrorCode::PermissionDenied);
-    assert!(named(&deliveries, "perm.prompt").is_empty());
-    assert_eq!(named(&deliveries, "ui.notified").len(), 1);
+    let seen: Vec<String> = drain(&deliveries)
+        .iter()
+        .map(|d| d.name().to_owned())
+        .filter(|name| name == "perm.prompt" || name == "ui.notified")
+        .collect();
+    assert_eq!(seen, ["ui.notified"], "a notice, and nobody is asked");
 }
 
 #[test]

@@ -86,7 +86,11 @@ impl Core {
                 Some(waiting) => waiting.replies.push(reply),
                 None => {
                     let offerable = |parent: &str| self.offerable(parent);
-                    let parent = prompts.policy.parent_offer(caller, permission, offerable);
+                    let parent = prompts
+                        .policy
+                        .parent_offer(caller, permission, offerable)
+                        // Never beyond an agent's allowlist (ADR 0072).
+                        .filter(|offer| self.capped(caller, offer).is_none());
                     prompts.next += 1;
                     let prompt_id = format!("p-{}", prompts.next);
                     let event = BridgeEvent::PermPrompt(PermPromptEvent {
@@ -164,6 +168,11 @@ impl Core {
             let _ = reply.send(Outcome::Granted(grant));
         }
         json(PermAnswerResult {})
+    }
+
+    /// Whether the person refused `caller` exactly `permission` earlier in the session.
+    pub(crate) fn refused_earlier(&self, caller: &str, permission: &Permission) -> bool {
+        self.prompts().policy.refused_earlier(caller, permission)
     }
 
     /// `caller` was granted `permission`: the refusals it covers are forgotten.

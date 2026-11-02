@@ -9,7 +9,7 @@ use std::io;
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 
-use desk_bridge::InitDocument;
+use desk_bridge::{InitDocument, Permission};
 use serde_json::{Value, json};
 
 use crate::manifest::schema_registry;
@@ -29,6 +29,8 @@ pub struct Init {
     pub profile: String,
     pub plugins: PluginSetup,
     pub settings: BTreeMap<String, Value>,
+    /// `agents.<id>.allow` by agent id: what each agent may be granted (ADR 0072).
+    pub agents: BTreeMap<String, Vec<Permission>>,
     pub sync: SyncSetup,
 }
 
@@ -69,6 +71,12 @@ impl From<InitDocument> for Init {
                     .unwrap_or_default(),
             },
             settings: document.settings.unwrap_or_default(),
+            agents: document
+                .agents
+                .unwrap_or_default()
+                .into_iter()
+                .map(|(id, agent)| (id, agent.allow.unwrap_or_default()))
+                .collect(),
             sync: SyncSetup {
                 enabled: document.sync.and_then(|sync| sync.enabled).unwrap_or(false),
             },
