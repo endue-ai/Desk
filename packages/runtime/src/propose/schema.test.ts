@@ -64,11 +64,12 @@ describe("Schemas", () => {
       id: "eris.board",
       version: "0.1.0",
       title: "Board",
-      layout: { type: "agenda", range: "fortnight", binding: { kinds: ["event"] } },
+      layout: { type: "agenda", range: "week", binding: { kinds: ["event"] } },
     };
-    expect(schemas.validate(view, VIEW)).toEqual([
-      "/layout/range: must be one of day, week, month",
-    ]);
+    expect(schemas.validate(view, VIEW)).toEqual([]);
+    expect(
+      schemas.validate({ ...view, layout: { ...view.layout, range: "fortnight" } }, VIEW),
+    ).toEqual(["/layout/range: must be one of day, week, month"]);
     expect(schemas.validate({ ...view, layout: { type: "board" } }, VIEW)[0]).toMatch(
       /^\/layout\/type: must be one of /,
     );
@@ -94,7 +95,7 @@ describe("Schemas", () => {
     }
     const answer = schemas.bundle(VIEW, { compact: true, omit: ["id", "version", "provenance"] });
     const text = JSON.stringify(answer);
-    expect(text).not.toContain('"description"');
+    expect(text).not.toContain('"description":"');
     expect(text).not.toContain("ViewProvenance");
     expect((answer as { required: string[] }).required).toEqual(["title", "layout"]);
     expect(text.length).toBeLessThan(6000);

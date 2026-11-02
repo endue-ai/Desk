@@ -4,7 +4,8 @@
  * the store, init.yaml's start profile and settings, perm.query, and the stub's index of fixture items
  * (data.*, connector.*, view.*), and shell.open, which hands links to `open` (window.open on the dev
  * page) and only records reveals. Built-in plugins hold their manifest's permissions, as the core
- * grants them at install. More methods come as handlers.
+ * grants them at install. A scripted brain answers brain.say (and brain.ask) when one is given. More
+ * methods come as handlers.
  */
 import {
   BridgeClient,
@@ -19,6 +20,7 @@ import {
   stubCommands,
 } from "@endue-ai/bridge";
 
+import { type ScriptedBrain, scriptedBrain } from "./scripted-brain";
 import { searchHandlers } from "./search";
 
 /** What the core's store holds for the runtime: memory, or localStorage to survive a reload. */
@@ -34,6 +36,8 @@ export interface BrowserCoreOptions {
   off?: Iterable<string>;
   store?: CoreStore;
   init?: { profile?: string; settings?: Record<string, unknown>; problem?: string };
+  /** brain.say, brain.status and, when it says so, brain.ask answered from a script. */
+  brain?: ScriptedBrain;
   /** More methods (fs.write, ui.notify, ...), or the ones above answered differently. */
   handlers?: StubHandlers;
   /** Where shell.open's links go: a new window by default, nowhere without a window. */
@@ -128,6 +132,7 @@ export function browserCore(options: BrowserCoreOptions): BrowserCore {
       settings: options.init?.settings ?? {},
       ...(options.init?.problem ? { problem: options.init.problem } : {}),
     }),
+    ...(options.brain ? scriptedBrain(options.brain, (event) => stub.emit(event)) : {}),
     ...options.handlers,
   });
   return {
