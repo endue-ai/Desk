@@ -84,6 +84,7 @@ pub struct Core {
     pub(crate) surfaces: Mutex<Surfaces>,
     pub(crate) opener: Box<dyn Opener>,
     pub(crate) updater: Option<desk_update::Updater>,
+    pub(crate) themes: crate::core_themes::Themes,
 }
 
 impl Core {
@@ -119,6 +120,7 @@ impl Core {
             surfaces: Mutex::new(Surfaces::default()),
             opener: Box::new(SystemOpener),
             updater: None,
+            themes: Default::default(),
         }
     }
 
@@ -236,35 +238,11 @@ impl Core {
             R::UpdateCheck(r) => (r.id, self.update_check(caller, r.params)),
             R::UpdateDownload(r) => (r.id, self.update_download(caller, r.params)),
             R::UpdateApply(r) => (r.id, self.update_apply(caller, r.params)),
-            R::ThemeSave(r) => (
-                r.id,
-                self.theme_unsupported(caller, r.params.scope, "theme.save"),
-            ),
-            R::ThemeImport(r) => (
-                r.id,
-                self.theme_unsupported(caller, r.params.scope, "theme.import"),
-            ),
-            R::ThemeExport(r) => (
-                r.id,
-                self.theme_unsupported(caller, r.params.scope, "theme.export"),
-            ),
-            R::ThemeRemove(r) => (
-                r.id,
-                self.theme_unsupported(caller, r.params.scope, "theme.remove"),
-            ),
+            R::ThemeSave(r) => (r.id, self.theme_save(caller, r.params)),
+            R::ThemeImport(r) => (r.id, self.theme_import(caller, r.params)),
+            R::ThemeExport(r) => (r.id, self.theme_export(caller, r.params)),
+            R::ThemeRemove(r) => (r.id, self.theme_remove(caller, r.params)),
         }
-    }
-
-    /// theme.* (ADR 0058) before the user themes folder exists: the scope is checked like any
-    /// call's, and then nothing is kept yet.
-    fn theme_unsupported(
-        &self,
-        caller: &str,
-        scope: desk_bridge::ThemeManagePermission,
-        method: &str,
-    ) -> Answer {
-        self.check(caller, &Permission::ThemeManage(scope), &Target::None)?;
-        unsupported(method)
     }
 
     /// Check the scope against the caller's grants, then map the bridge path onto the file system.

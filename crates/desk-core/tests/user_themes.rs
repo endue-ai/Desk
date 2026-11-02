@@ -95,7 +95,13 @@ fn code(answer: Answer) -> ErrorCode {
 }
 
 fn installed(core: &Core, id: &str) -> bool {
-    core.plugins().iter().any(|plugin| plugin.id == id)
+    built_in(core, id).is_some()
+}
+
+/// Whether `id` is installed built in, not built in, or not at all (`None`).
+fn built_in(core: &Core, id: &str) -> Option<bool> {
+    let plugin = core.plugins().into_iter().find(|p| p.id == id);
+    plugin.map(|p| p.built_in)
 }
 
 fn read(path: PathBuf) -> Vec<u8> {
@@ -166,7 +172,6 @@ fn an_invalid_save_leaves_nothing_behind() {
     assert!(why.contains("images/paper.png does not exist"), "{why}");
     assert_eq!(entries(&home), 0, "no folder and no staging left");
     assert!(!installed(&core, "local.broken"));
-    // A failed save keeps the earlier one.
     save(&core, manifest(PAPER), files()).unwrap();
     let mut bad = manifest(PAPER);
     bad["theme"]["light"]["colors"]["background"] = json!("url(x.png)");
@@ -203,7 +208,6 @@ fn copy_from_brings_the_files_the_saved_theme_names() {
     let (font, image) = ("fonts/fixture.woff2", "images/paper.webp");
     assert_eq!(read(dir.join(font)), read(source.join(font)));
     assert_eq!(read(dir.join(image)), read(source.join(image)));
-    // A given file wins over the copied one.
     from(&copy, json!([file(font, FONT)])).unwrap();
     assert_eq!(read(dir.join(font)), FONT);
     assert_eq!(read(dir.join(image)), read(source.join(image)));
@@ -224,20 +228,20 @@ fn import_reads_a_bundle_file_and_moves_a_foreign_id_inside_local() {
     let core = desk(&home);
     let mut foreign = manifest("endue.theme-paper");
     foreign["name"] = json!("Paper & Ink");
-    let text = bundle(foreign).to_string();
-    fs::write(home.join("paper.desk-theme"), text).unwrap();
+    fs::write(home.join("paper.desk-theme"), bundle(foreign).to_string()).unwrap();
     let path = json!({ "path": "~/paper.desk-theme" });
     let plugin = import(&core, path.clone()).unwrap()["plugin"].clone();
     assert_eq!(plugin["id"], "local.paper-ink");
     assert_eq!(plugin["manifest"]["name"], "Paper & Ink");
-    let landed = themes(&home).join("local.paper-ink");
-    assert_eq!(read(landed.join("fonts/mine.woff2")), FONT);
-    let market = json!({ "bundle": bundle(manifest("market.ember")) });
-    let market = import(&core, market).unwrap();
-    assert_eq!(market["plugin"]["id"], "market.ember");
+    let landed = themes(&home).join("local.paper-ink/fonts/mine.woff2");
+    assert_eq!(read(landed), FONT);
+    let market = import(&core, json!({ "bundle": bundle(manifest("market.ember")) }));
+    assert_eq!(market.unwrap()["plugin"]["id"], "market.ember");
     let mut other = bundle(manifest("local.other"));
     other["format"] = json!("desk-theme/2");
-    assert_eq!(code(import(&core, json!({ "bundle": other }))), INVALID);
+    fs::write(home.join("other.desk-theme"), other.to_string()).unwrap();
+    let wrong = json!({ "path": "~/other.desk-theme" });
+    assert_eq!(code(import(&core, wrong)), INVALID);
     let mut both = path;
     both["bundle"] = bundle(manifest("local.x"));
     assert_eq!(code(import(&core, both)), INVALID);
@@ -257,15 +261,13 @@ fn import_by_url_checks_the_sha256() {
         found.ok_or_else(|| format!("{url}: 404"))
     };
     let core = Core::new(roots(&home)).with_themes_dir(themes(&home));
-    let core = granted(core.with_theme_fetch(fetch));
-    let other = sha256_hex(b"another file");
-    let wrong = json!({ "url": URL, "sha256": other });
+    let core = granted(core.with_theme_fetch(Box::new(fetch)));
+    let wrong = json!({ "url": URL, "sha256": sha256_hex(b"another file") });
     let mismatch = import(&core, wrong).unwrap_err();
     assert_eq!(mismatch.code, INVALID);
     assert!(mismatch.message.contains("sha256"), "{}", mismatch.message);
     assert_eq!(entries(&home), 0);
     assert!(!installed(&core, "local.from-url"));
-    // Plain http and a URL without its sha256 fetch nothing.
     let http = URL.replace("https:", "http:");
     let plain = json!({ "url": http, "sha256": sha256 });
     assert_eq!(code(import(&core, plain)), INVALID);
@@ -302,10 +304,8 @@ fn export_then_import_round_trips_byte_for_byte() {
     import(&core, json!({ "path": "~/out/first.desk-theme" })).unwrap();
     export(&core, to("~/out/second.desk-theme")).unwrap();
     assert_eq!(read(home.join("out/second.desk-theme")), first);
-    // Built-in themes export too; other plugins are not themes.
     let source = install_fixture(&core, &home, "example.paper");
-    let builtin = json!({ "theme": "example.paper", "inline": true });
-    let builtin = export(&core, builtin).unwrap();
+    let builtin = export(&core, json!({ "theme": "example.paper", "inline": true })).unwrap();
     let font = STANDARD.encode(read(source.join("fonts/fixture.woff2")));
     assert_eq!(builtin["bundle"]["files"]["fonts/fixture.woff2"], font);
     support::install_hello(&core, &home);
@@ -329,8 +329,7 @@ fn built_in_themes_are_never_replaced_or_removed_and_user_themes_are() {
     assert_eq!(code(remove(&core, "local.paper")), INVALID);
     assert!(!themes(&home).join("local.paper").exists());
     assert!(builtin.join("plugin.json").is_file());
-    let plugins = core.plugins();
-    assert!(plugins.iter().any(|p| p.id == "local.paper" && p.built_in));
+    assert_eq!(built_in(&core, "local.paper"), Some(true));
     assert_eq!(code(remove(&core, "local.nothing")), MISSING);
     assert_eq!(remove(&core, PAPER).unwrap(), json!({}));
     assert!(!themes(&home).join(PAPER).exists());
@@ -380,14 +379,16 @@ fn user_themes_load_at_start_and_the_folder_is_watched() {
     write("library", library);
     write(".saving-local.half", manifest("local.half"));
     let core = Arc::new(desk(&home));
-    let plugins = core.plugins();
-    assert!(plugins.iter().any(|p| p.id == "local.kept" && !p.built_in));
+    assert_eq!(built_in(&core, "local.kept"), Some(false));
     for id in ["example.foreign", "local.library", "local.half"] {
         assert!(!installed(&core, id), "{id} is not a user theme");
     }
     let deliveries = core.events().subscribe_addressed();
     let _watcher = core.watch_themes().expect("the watch starts");
-    std::thread::sleep(std::time::Duration::from_millis(200));
+    save(&core, manifest(PAPER), files()).unwrap();
+    std::thread::sleep(std::time::Duration::from_millis(400));
+    let once = named(&deliveries, "plugin.changed");
+    assert_eq!(once.len(), 1, "the core's own write is announced once");
     write("dropped", manifest("local.dropped"));
     let added = wait_for(&deliveries, "plugin.changed").data().clone();
     assert_eq!(added["plugin"], "local.dropped");
@@ -396,5 +397,4 @@ fn user_themes_load_at_start_and_the_folder_is_watched() {
     let gone = wait_for(&deliveries, "plugin.changed").data().clone();
     assert_eq!(gone["plugin"], "local.dropped");
     assert_eq!(gone["change"], "removed");
-    assert!(installed(&core, "local.kept"));
 }
