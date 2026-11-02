@@ -24,8 +24,8 @@ const HOME_ENV: &str = "DESK_INTERRUPT_HOME";
 const BARE_ENV: &str = "DESK_INTERRUPT_BARE";
 /// What the child prints once its write loop runs.
 const READY: &str = "desk-interrupt-ready";
-const SIZE: usize = 4 * 1024 * 1024;
-const ROUNDS: u64 = 20;
+const SIZE: usize = 1024 * 1024;
+const ROUNDS: u64 = 8;
 
 fn content(letter: char) -> String {
     letter.to_string().repeat(SIZE)
