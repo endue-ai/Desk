@@ -58,7 +58,7 @@ R2 에는 정적 파일만 있고, 판단은 전부 기기 안에서 합니다.
 
 | 키 | 값 | 기본 | 뜻 |
 | --- | --- | --- | --- |
-| `desk.update.channel` | `stable` · `beta` · `canary` | `stable` | 어느 채널의 인덱스를 보는가 |
+| `desk.update.channel` | `stable` · `beta` · `canary` | 정식 판은 `stable`, 프리릴리스 판(`-pre.<run>`)은 `canary` | 어느 채널의 인덱스를 보는가. beta 는 이 키로 고른다 |
 | `desk.update.auto` | boolean | `true` | 다음 판을 찾으면 묻지 않고 받아 둔다. `false` 면 `available` 에서 멈추고 사람이 `desk.update.download` 를 부른다 |
 | `desk.update.check` | boolean | `true` | `false` 면 체크 자체를 안 한다(네트워크 0). 수동 `update.check` 만 남는다 |
 
@@ -91,13 +91,13 @@ desk/
 ├── releases/<version>/
 │   ├── release.json              # 그 판의 매니페스트: Tauri 정적 형식 + desk 확장
 │   ├── release.json.sig
-│   ├── endue-desk_<v>_aarch64.app.tar.gz   + .sig    # darwin-aarch64
-│   ├── endue-desk_<v>_x86_64.app.tar.gz    + .sig    # darwin-x86_64
-│   ├── endue-desk_<v>_x64-setup.exe        + .sig    # windows-x86_64-nsis
-│   ├── endue-desk_<v>_amd64.AppImage       + .sig    # linux-x86_64-appimage
-│   ├── endue-desk_<v>_amd64.deb            + .sig    # linux-x86_64-deb
-│   ├── endue-desk_<v>_x86_64.rpm           + .sig    # linux-x86_64-rpm
-│   ├── endue-desk_<v>_aarch64.dmg · _x64.dmg         # 첫 설치용 (사람이 받는다, universal 없음)
+│   ├── endue-desk_<v>_darwin-aarch64.app.tar.gz   + .sig   # darwin-aarch64(-app)
+│   ├── endue-desk_<v>_darwin-x86_64.app.tar.gz    + .sig   # darwin-x86_64(-app)
+│   ├── endue-desk_<v>_windows-x86_64-setup.exe    + .sig   # windows-x86_64(-nsis), 첫 설치도 이것
+│   ├── endue-desk_<v>_linux-x86_64.AppImage       + .sig   # linux-x86_64(-appimage)
+│   ├── endue-desk_<v>_linux-x86_64.deb            + .sig   # linux-x86_64-deb
+│   ├── endue-desk_<v>_linux-x86_64.rpm            + .sig   # linux-x86_64-rpm
+│   ├── endue-desk_<v>_darwin-aarch64.dmg · _darwin-x86_64.dmg   # 첫 설치용 (universal 없음)
 │   └── SHA256SUMS
 └── keys/updater.pub              # 사람이 확인하는 용도. 앱은 공개키를 내장한다
 ```
@@ -107,6 +107,8 @@ desk/
 - **올리는 순서가 곧 정합성**이다: 아티팩트 → `release.json`(+sig) → `index.json`(+sig) → `latest.json`. 인덱스에
   오른 판은 그 순간 아티팩트가 이미 있다. 반대 순서는 금지(스크립트가 거부한다).
 - 버전은 빌드마다 유일하다(§릴리스 파이프라인). 같은 경로에 다른 바이트를 다시 올리는 일은 없다.
+- 파일 이름은 Tauri 가 붙인 이름(공백이 든 `endue Desk_…`)이 아니라 `endue-desk_<v>_<target><확장자>` 다
+  (`scripts/release-collect.mjs`). 인덱스는 버킷에서 직접 읽어 고친다(캐시된 공개 주소가 아니라).
 
 ## 매니페스트
 
@@ -236,11 +238,13 @@ idle ──check──▶ checking ──▶ up-to-date ──(4 h)──▶ idl
 
 `desk-structure.md` §GitHub 와 오픈소스 뼈대의 워크플로 계획(canary · promote · release · rollback)을 그대로 두되,
 **게시 대상을 GitHub Release 에서 R2 로** 바꾼다. 바이너리는 R2 에만 있고, GitHub Release 는 릴리스 노트의 자리다
-(§결정 2). 업데이터는 R2 만 본다.
+(§결정 2). 업데이터는 R2 만 본다. `release` 의 게시 단계는 사람이 승인하는 `stable` 환경에서 돌므로, 그 환경에도
+`signing` 과 같은 업데이터 키와 R2 비밀값을 둔다.
 
 | 워크플로 | 트리거 | 하는 일 |
 | --- | --- | --- |
-| `canary.yml` | main push | 4 target(`darwin-aarch64` · `darwin-x86_64` · `windows-x86_64` · `linux-x86_64`) `tauri build`(`createUpdaterArtifacts`) → minisign 서명 · macOS codesign + notarize · Windows Authenticode(비밀값이 있을 때) → R2 `releases/<v>/` 업로드(순서대로) → `channels/canary/index.json` 갱신 · 서명 → 2주 지난 canary 정리(§결정 3). 버전은 `<다음>-pre.<run>` |
+| `release-build.yml` | canary · release 가 부름 | 4 target(`darwin-aarch64` · `darwin-x86_64` · `windows-x86_64` · `linux-x86_64`) `tauri build`(`createUpdaterArtifacts`, 서명에 버전) → macOS codesign + notarize(Apple 비밀값이 있을 때) → 정규 이름으로 모으기. Windows 는 NSIS 만, Authenticode 는 인증서를 정한 뒤 |
+| `canary.yml` | main push | 빌드 → R2 `releases/<v>/` 업로드(순서대로) → `channels/canary/index.json` 갱신 · 서명 → 2주 지난 canary 정리(§결정 3). 버전은 `<다음>-pre.<run>`, 노트는 커밋 페이지 |
 | `promote.yml` | 주 1회 · 수동 | 3일 넘게 canary 에 있던 가장 새 판을 `channels/beta/index.json` 에 올린다. 재빌드 없음, 포인터만. 새 크래시 조건(ADR 0007)은 크래시 리포트가 생기면 더한다 |
 | `release.yml` | 태그 `v*`(사람) | canary 와 같은 빌드를 태그 버전으로 → `channels/stable/index.json` → GitHub Release(자동 생성 노트, 바이너리 없음, R2 링크). `stable` 환경(사람 승인 단계) |
 | `rollback.yml` | 수동(사람만) | 한 채널의 인덱스에서 한 판을 내린다(아티팩트는 남긴다). 받아 둔 데스크는 다음 체크에서 버리고, 이미 올라간 데스크는 고친 판(roll-forward)을 기다린다 |
@@ -252,11 +256,13 @@ idle ──check──▶ checking ──▶ up-to-date ──(4 h)──▶ idl
 - **비밀**: `signing` 환경 — `TAURI_SIGNING_PRIVATE_KEY` · `_PASSWORD`, `APPLE_CERTIFICATE` ·
   `APPLE_CERTIFICATE_PASSWORD` · `APPLE_SIGNING_IDENTITY` · `APPLE_ID` · `APPLE_PASSWORD` · `APPLE_TEAM_ID`, Windows
   서명 인증서, R2 의 `R2_ACCOUNT_ID` · `R2_ACCESS_KEY_ID` · `R2_SECRET_ACCESS_KEY`(버킷 하나, 쓰기). 저장소 변수
-  `DESK_UPDATER_PUBKEY`. 인덱스 서명도 같은 키. 서명 키나 R2 비밀값이 없으면 워크플로는 빌드만 하고 게시를 건너뛴다
-  (한 줄 알림). Apple · Windows 비밀값이 없으면 그 OS 는 서명 없이 빌드한다.
-- **스크립트**(`scripts/release/`, `node --test` 로 검증): `version.mjs`(빌드 버전), `manifest.mjs`(아티팩트 폴더에서
-  `release.json` 생성, 인덱스에 올리기 · 내리기 · 2주 정리), `publish.mjs`(올리는 순서 강제, `Cache-Control` 지정).
-  업로드는 S3 호환 API(`aws s3 cp`, R2 엔드포인트)로 하고, `.sig` 는 `tauri signer sign` 이 만든다.
+  `DESK_UPDATER_PUBKEY`(그리고 바꾸고 싶을 때 `R2_BUCKET` · `DESK_RELEASES_URL`). 인덱스 서명도 같은 키. 업데이터
+  키 · 공개키 · R2 비밀값 중 하나라도 없으면 canary · promote 는 한 줄 알리고 아무것도 하지 않고, 태그의 release 는
+  실패한다. Apple 비밀값이 없으면 macOS 는 서명 · 공증 없이 빌드한다.
+- **스크립트**(`node --test` 로 검증): `scripts/release-version.mjs`(빌드 버전), `release-collect.mjs`(번들 → 정규
+  이름), `release-manifest.mjs`(`release.json` 생성, 인덱스에 올리기 · 내리기 · 2주 정리 · 승격할 판 고르기),
+  `release-publish.mjs`(올리는 순서 강제, `Cache-Control` 지정). 업로드는 S3 호환 API(`aws s3`, R2 엔드포인트)로
+  하고, `.sig` 는 `tauri signer sign` 이 만든다.
 - **개발 루프**: `just release-serve <dir>` 가 가짜 R2 를 `http://127.0.0.1` 로 띄운다. 디버그 빌드만
   `DESK_UPDATE_URL` 로 거기를 본다(플러그인은 디버그에서만 http 를 허용하고 릴리스 빌드는 무시한다).
 
@@ -264,14 +270,14 @@ idle ──check──▶ checking ──▶ up-to-date ──(4 h)──▶ idl
 
 | ID | 요구사항 | 현재 | 단계 |
 | --- | --- | --- | --- |
-| UPD-01 | R2 배치와 매니페스트: `channels/<ch>/index.json`(+sig · latest.json) · `releases/<v>/release.json`(+sig) · 아티팩트 · `SHA256SUMS`. 캐시 정책과 올리는 순서는 §R2 배치 | 없음 | 1 |
-| UPD-02 | 빌드와 서명: 4 target updater 아티팩트(`createUpdaterArtifacts`), minisign(서명에 버전), macOS codesign + notarize, Windows Authenticode, NSIS 사용자별 설치. 키는 `signing` 환경 | 없음 | 1 |
-| UPD-03 | canary 게시: main 마다 빌드 → 서명 → R2 → canary 인덱스. 버전 `<다음>-pre.<run>`. 설치 스모크는 e2e 워크플로가 계속 맡는다 | 없음 | 1 |
-| UPD-04 | stable 게시: 사람이 태그 `v*` → 빌드 → stable 인덱스 → GitHub Release(노트). 첫 판 `0.1.0` | 없음 | 1 |
-| UPD-05 | beta 승격: 주 1회 · 수동, 3일 넘게 canary 에 있던 가장 새 판을 beta 인덱스에(포인터만) | 없음 | 1 |
-| UPD-06 | 롤백: 수동 워크플로가 채널 인덱스에서 한 판을 내린다. 데스크는 받아 둔 그 판을 버린다 | 없음 | 1 |
-| UPD-20 | canary 보관 2주: 14일 지난 canary 판을 canary 인덱스에서 내리고, 다른 채널 인덱스가 올리지 않은 판이면 R2 의 `releases/<v>/` 도 지운다 | 없음 | 1 |
-| UPD-07 | 브리지 명세 `update.*`: `update.status` · `update.check` · `update.download` · `update.apply`, 이벤트 `update.changed`, 권한 `update:manage`, 벡터, codegen | 없음 | 1 |
+| UPD-01 | R2 배치와 매니페스트: `channels/<ch>/index.json`(+sig · latest.json) · `releases/<v>/release.json`(+sig) · 아티팩트 · `SHA256SUMS`. 캐시 정책과 올리는 순서는 §R2 배치 | 있음 (#294) | 1 |
+| UPD-02 | 빌드와 서명: 4 target updater 아티팩트(`createUpdaterArtifacts`), minisign(서명에 버전), macOS codesign + notarize, Windows Authenticode, NSIS 사용자별 설치. 키는 `signing` 환경 | 있음 (#294) | 1 |
+| UPD-03 | canary 게시: main 마다 빌드 → 서명 → R2 → canary 인덱스. 버전 `<다음>-pre.<run>`. 설치 스모크는 e2e 워크플로가 계속 맡는다 | 있음 (#294) | 1 |
+| UPD-04 | stable 게시: 사람이 태그 `v*` → 빌드 → stable 인덱스 → GitHub Release(노트). 첫 판 `0.1.0` | 있음 (#294) | 1 |
+| UPD-05 | beta 승격: 주 1회 · 수동, 3일 넘게 canary 에 있던 가장 새 판을 beta 인덱스에(포인터만) | 있음 (#294) | 1 |
+| UPD-06 | 롤백: 수동 워크플로가 채널 인덱스에서 한 판을 내린다. 데스크는 받아 둔 그 판을 버린다 | 있음 (#294) | 1 |
+| UPD-20 | canary 보관 2주: 14일 지난 canary 판을 canary 인덱스에서 내리고, 다른 채널 인덱스가 올리지 않은 판이면 R2 의 `releases/<v>/` 도 지운다 | 있음 (#294) | 1 |
+| UPD-07 | 브리지 명세 `update.*`: `update.status` · `update.check` · `update.download` · `update.apply`, 이벤트 `update.changed`, 권한 `update:manage`, 벡터, codegen | 있음 (#274) | 1 |
 | UPD-08 | 정책(`desk-update`): 인덱스 · 매니페스트 파싱과 서명 검증, 후보 → `minFrom` 경로 → 롤아웃 → 다운그레이드 금지, 받아 둔 판의 운명(§데스크의 판단 1–5) | 없음 | 1 |
 | UPD-09 | 스테이징: 받은 바이트를 `<data>/updates/<v>/` 에, sha256 · 길이 비교, `staged.json`, 디스크에 한 판, 버리기 | 없음 | 1 |
 | UPD-10 | 스케줄: 시작 30 s · 4 h 지터 · 수동 · 백오프, 전부 메인 스레드 밖. `desk.update.check: false` 면 네트워크 0 | 없음 | 1 |
