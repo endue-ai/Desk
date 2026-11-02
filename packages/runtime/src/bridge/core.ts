@@ -33,7 +33,7 @@ export interface BrowserCoreOptions {
   /** Installed but turned off. Autoload plugins start off anyway, as the core starts them. */
   off?: Iterable<string>;
   store?: CoreStore;
-  init?: { profile?: string; settings?: Record<string, unknown>; problem?: string };
+  init?: { profile?: string; settings?: Record<string, unknown>; problem?: string; file?: string };
   /** More methods (fs.write, ui.notify, ...), or the ones above answered differently. */
   handlers?: StubHandlers;
   /** Where shell.open's links go: a new window by default, nowhere without a window. */
@@ -127,6 +127,7 @@ export function browserCore(options: BrowserCoreOptions): BrowserCore {
       profile: options.init?.profile ?? "default",
       settings: options.init?.settings ?? {},
       ...(options.init?.problem ? { problem: options.init.problem } : {}),
+      ...(options.init?.file ? { file: options.init.file } : {}),
     }),
     ...options.handlers,
   });

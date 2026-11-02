@@ -132,7 +132,7 @@ fn describe_asks_the_runtime_and_prints_its_text() {
             .unwrap_or("?");
         json!({ "ok": true, "result": {
             "kind": args["kind"], "name": args["name"], "summary": text.lines().next(),
-            "facts": [], "text": text
+            "lines": [], "text": text
         } })
     });
     for (kind, name, text) in GOLDEN {

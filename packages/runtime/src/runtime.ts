@@ -2,6 +2,7 @@ import type { BridgeClient, ProfileContribution } from "@endue-ai/bridge";
 import type { Buffers } from "./buffers";
 import { type Clock, realClock, tween } from "./clock";
 import type { Commands } from "./commands";
+import { installDescribe } from "./describe/install";
 import { Edges, takesCell } from "./edges";
 import { PolicyHub } from "./hub";
 import { type Platform, ShortcutRouter } from "./input";
@@ -240,6 +241,7 @@ export function createRuntime(options: RuntimeOptions): Runtime {
     restoreNotices: (notices) => notify.notifications.restore(notices),
   });
   const profiles = installProfiles(ctx, (input) => notify.notify(input));
+  const about = installDescribe(ctx, { keys, profile: profiles.active, notify: notify.notify });
   notify.notifications.onPush(() => session.changed());
   onLayout = () => session.changed();
   onSurfaceFocus = (id) => {
@@ -395,7 +397,7 @@ export function createRuntime(options: RuntimeOptions): Runtime {
     dispose() {
       routing.dispose();
       const policies = [profiles, session, files, buffers, display, notify, palette, aliases];
-      for (const policy of [...policies, keys, theme]) {
+      for (const policy of [about, ...policies, keys, theme]) {
         policy.dispose();
       }
       pluginHost?.stop();

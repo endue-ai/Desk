@@ -42,7 +42,11 @@ const MANAGE = { permission: "perm:manage" } as const;
 type Pick = { args: { title?: string; items: Array<{ id: string; label: string }> } };
 
 /** The keys policy and desk.describe on the stub core, with a stand-in palette that records picks. */
-async function desk(grants: Record<string, Array<{ permission: string; ids?: string[] }>> = {}) {
+async function desk(
+  grants: Record<string, Array<{ permission: string; ids?: string[] }>> = {
+    cli: [{ permission: "cmd:invoke", ids: ["*"] }],
+  },
+) {
   const core = browserCore({
     manifests: MANIFESTS,
     init: { settings: { "desk.theme.scheme": "light" }, file: "~/.desk/init.yaml" },
@@ -54,7 +58,7 @@ async function desk(grants: Record<string, Array<{ permission: string; ids?: str
       await bridge.call(
         "perm.request",
         { permission: permission as never, reason: "test" },
-        caller,
+        { caller },
       );
   const hub = new PolicyHub(bridge);
   const root = document.createElement("div");
@@ -172,9 +176,9 @@ describe("desk.describe.open", () => {
       ]),
     );
     button("Copy")?.click();
-    await vi.waitFor(() => expect(written).toHaveLength(1));
+    await vi.waitFor(() => expect(dialog()?.textContent).toContain("Copied"));
+    expect(written).toHaveLength(1);
     expect(written[0]?.split("\n")[0]).toBe('desk.theme.scheme is "light", set in init.yaml.');
-    expect(dialog()?.textContent).toContain("Copied");
   });
 
   it("grants are left out for a caller that may not list them", async () => {
@@ -190,7 +194,7 @@ describe("desk.describe.open", () => {
           args: { kind: "command", name: "desk.files.save", show: false },
           scope: { permission: "cmd:invoke", ids: ["desk.describe.open"] },
         },
-        caller,
+        { caller },
       );
       return new Promise<Description>((resolve, reject) => {
         const off = core.client.onEvent((event) => {
