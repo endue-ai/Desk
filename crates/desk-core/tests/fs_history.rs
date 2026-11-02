@@ -82,15 +82,12 @@ fn history_lists_newest_first_and_honours_limit() {
     assert_eq!(shas(&all), expected);
     let newest = history(&core, NOTES, "~/notes/a.md", Some(2)).unwrap();
     assert_eq!(shas(&newest), expected[..2]);
-    // The same file named by its absolute path has the same history.
-    let absolute = home.join("notes/a.md").to_string_lossy().into_owned();
-    grant(
-        &core,
-        "example.abs",
-        json!({ "permission": "fs:read", "paths": ["/**"] }),
-    );
-    let params =
-        json!({ "path": absolute, "scope": { "permission": "fs:read", "paths": ["/**"] } });
+    // The same file named by its absolute path (`C:/...` on Windows) has the same history.
+    let absolute = home.join("notes/a.md").to_string_lossy().replace('\\', "/");
+    let folder = format!("{}/**", absolute.rsplit_once('/').unwrap().0);
+    let scope = json!({ "permission": "fs:read", "paths": [folder] });
+    grant(&core, "example.abs", scope.clone());
+    let params = json!({ "path": absolute, "scope": scope });
     let result = call(&core, "example.abs", "fs.history", params).unwrap();
     assert_eq!(result["versions"].as_array().unwrap().len(), 3);
 }
