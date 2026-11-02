@@ -148,3 +148,68 @@ desk-list .detail {
 .line {
   margin: 0;
 }
+
+/* A proposed view (desk.views.preview) floats in a card over a scrim: the desk shows through. */
+body.previewing {
+  background: transparent;
+}
+
+body.previewing::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: var(--desk-scrim);
+}
+
+body.previewing #root {
+  position: fixed;
+  top: 6vh;
+  left: 50%;
+  width: min(960px, calc(100vw - 48px));
+  height: auto;
+  max-height: 88vh;
+  transform: translateX(-50%);
+  background: var(--desk-card);
+  border: var(--desk-border-width) solid var(--desk-primary-border);
+  border-radius: var(--desk-radius-lg);
+  box-shadow: var(--desk-shadow-lg);
+}
+
+.preview-bar,
+.notice-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--desk-space-2) var(--desk-space-3);
+  padding: var(--desk-space-3);
+  border-radius: var(--desk-radius-md);
+  background: var(--desk-primary-soft);
+}
+
+.preview-bar .badge {
+  padding: 0 var(--desk-space-2);
+  border-radius: var(--desk-radius-full);
+  background: var(--desk-primary);
+  color: var(--desk-primary-foreground);
+  font-size: var(--desk-text-xs);
+  font-weight: 600;
+}
+
+.preview-bar .note,
+.notice-bar p {
+  flex: 1 1 240px;
+  margin: 0;
+}
+
+.preview-bar .correction {
+  flex: 1 1 100%;
+}
+
+.preview-bar .actions {
+  display: flex;
+  gap: var(--desk-space-2);
+}
+
+.notice-bar {
+  background: var(--desk-success-soft);
+}

@@ -28,7 +28,9 @@ describe("desk.views.preview", () => {
     // A newer preview replaces one still waiting: the older one counts as discarded.
     const second = m.host.invoke("desk.views.preview", { view: proposed });
     await m.settle();
-    const third = m.host.invoke("desk.views.preview", { view: { ...proposed, title: "Today, again" } });
+    const third = m.host.invoke("desk.views.preview", {
+      view: { ...proposed, title: "Today, again" },
+    });
     await m.settle();
     expect(await second).toEqual({ choice: "discard" });
     expect(m.view.drawn.at(-1)).toMatchObject({ title: "Today, again", preview: { note: "" } });
@@ -75,7 +77,11 @@ describe("desk.views.preview", () => {
 
     const notice = {
       text: "Eris made this view: ~/.desk/views/desk.today.yaml",
-      action: { title: "Undo", command: "desk.propose.undo", args: { kind: "view", id: "desk.today" } },
+      action: {
+        title: "Undo",
+        command: "desk.propose.undo",
+        args: { kind: "view", id: "desk.today" },
+      },
     };
     await m.open({ id: "desk.today", notice });
     const drawn = m.view.drawn.at(-1);
