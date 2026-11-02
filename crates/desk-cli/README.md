@@ -1,7 +1,7 @@
 # desk-cli
 
-The `desk` CLI: plugin validate, and the commands, plugins and grants of a running desk. The hands AI
-agents use.
+The `desk` CLI: plugin validate, and the commands, plugins and grants of a running desk, described in
+words. The hands AI agents use.
 
 Layer: Rust core (see `docs/architecture.md`). Status: the commands below.
 
@@ -16,11 +16,13 @@ desk plugin list                       # id<TAB>status<TAB>enabled|disabled per 
 desk plugin enable|disable <id>        # prints ok
 desk perm list                         # grantId<TAB>caller<TAB>permission per grant
 desk perm revoke <grantId>             # prints ok
+desk describe key|command|setting|plugin|grant <x>   # the runtime's answer, as text
 ```
 
 All but `plugin validate` reach the running desk over its socket (`crates/desk-ipc`, ADR 0030) as
-the caller `cli`; `DESK_SOCKET` names another socket. `--json`, anywhere among the arguments, prints
-the desk's answer line as it came (for `cmd run`, the `cmd.answered` event line).
+the caller `cli`; `DESK_SOCKET` names another socket. `describe` runs the runtime's
+`desk.describe.open` with `show: false` (ADR 0075). `--json`, anywhere among the arguments, prints the
+desk's answer line as it came (for `cmd run` and `describe`, the `cmd.answered` event line).
 
 Exit codes: 0 ok; 1 a failed check, a bridge error (`desk: <code>: <message>` on stderr), a failed
 or cancelled command, or no desk at the socket; 2 usage. `plugin validate` prints
@@ -32,9 +34,6 @@ folder with a `plugin.json` in `plugins/` and `examples/` (`.github/workflows/pl
 
 ## Testing
 
-```bash
-cargo test -p desk-cli
-```
-
-`tests/socket.rs` runs the binary against a scripted server; `tests/round_trip.rs` against a real
+`cargo test -p desk-cli`: `tests/socket.rs` and `tests/describe.rs` run the binary against a scripted
+server (`describe.rs` with the runtime's golden texts); `tests/round_trip.rs` against a real
 `desk_ipc::Listener` and `Core`.

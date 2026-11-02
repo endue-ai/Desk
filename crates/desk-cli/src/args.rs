@@ -13,6 +13,8 @@ pub const USAGE: &str = "usage: desk [--json] <command>
   plugin enable <id> | disable <id>     turn a plugin on or off
   perm list                             every grant: grantId, caller, permission
   perm revoke <grantId>                 take a grant back
+  describe key|command|setting|plugin|grant <x>
+                                        what it is, where it comes from and who may call it
   update                                the desk's updates: state, running build, channel, chosen build
   update check                          read the channel index now and print what came of it
   update download | apply               download the chosen build, or restart into the staged one
@@ -48,6 +50,11 @@ pub enum Remote {
     },
     /// update.status, or update.check, update.download or update.apply.
     Update(UpdateStep),
+    /// What a key, command, setting, plugin or grant is: the runtime's desk.describe.open answers.
+    Describe {
+        kind: &'static str,
+        name: String,
+    },
 }
 
 /// What `desk update` asks of the desk's updater (ADR 0054).
@@ -87,10 +94,17 @@ pub fn parse(args: Vec<String>) -> Option<Args> {
         ["update", "check"] => Action::Remote(Remote::Update(UpdateStep::Check)),
         ["update", "download"] => Action::Remote(Remote::Update(UpdateStep::Download)),
         ["update", "apply"] => Action::Remote(Remote::Update(UpdateStep::Apply)),
+        ["describe", kind, thing] => Action::Remote(Remote::Describe {
+            kind: KINDS.iter().find(|k| *k == kind)?,
+            name: name(thing)?,
+        }),
         _ => return None,
     };
     Some(Args { action, json })
 }
+
+/// What `desk describe` can name.
+const KINDS: [&str; 5] = ["key", "command", "setting", "plugin", "grant"];
 
 /// `cmd run <id> [--args <json object>]`, with `--args` before or after the id.
 fn cmd_run(rest: &[&str]) -> Option<Remote> {

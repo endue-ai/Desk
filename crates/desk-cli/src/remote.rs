@@ -73,7 +73,17 @@ impl Session {
                     )
                 },
             ),
-            Remote::CmdRun { id, args } => self.cmd_run(&id, args),
+            Remote::CmdRun { id, args } => self.cmd_run(&id, args, |result| match result {
+                Value::Null => Vec::new(),
+                value => vec![value.to_string()],
+            }),
+            // Key and profile layers are the runtime's: it answers, the CLI prints its text.
+            Remote::Describe { kind, name } => {
+                let args = json!({ "kind": kind, "name": name, "show": false });
+                self.cmd_run(DESCRIBE, args.as_object().cloned(), |result| {
+                    vec![text(result, "text").to_owned()]
+                })
+            }
             Remote::PluginList => self.listing(
                 "plugin.list",
                 json!({ "scope": plugin_manage }),
@@ -172,8 +182,14 @@ impl Session {
         }))
     }
 
-    /// cmd.invoke, then wait for the `cmd.answered` of this invocation (other events pass by).
-    fn cmd_run(&mut self, id: &str, args: Option<Map<String, Value>>) -> Result<ExitCode, Problem> {
+    /// cmd.invoke, then wait for the `cmd.answered` of this invocation (other events pass by) and
+    /// print `lines` of its result.
+    fn cmd_run(
+        &mut self,
+        id: &str,
+        args: Option<Map<String, Value>>,
+        lines: impl FnOnce(&Value) -> Vec<String>,
+    ) -> Result<ExitCode, Problem> {
         let mut params = json!({ "id": id, "scope": invoke(&[id]) });
         if let Some(args) = args {
             params["args"] = Value::Object(args);
@@ -203,10 +219,7 @@ impl Session {
                 _ => Ok(data.result.unwrap_or(Value::Null)),
             };
             let reply = Reply { result, line };
-            return Ok(self.report(reply, |result| match result {
-                Value::Null => Vec::new(),
-                value => vec![value.to_string()],
-            }));
+            return Ok(self.report(reply, lines));
         }
     }
 
@@ -265,6 +278,9 @@ fn update_line(status: &Value) -> String {
     }
     line
 }
+
+/// The runtime's describe command (`desk describe`).
+const DESCRIBE: &str = "desk.describe.open";
 
 fn invoke(ids: &[&str]) -> Value {
     json!({ "permission": "cmd:invoke", "ids": ids })
