@@ -55,12 +55,29 @@ describe("renderPlugin with kind connector", () => {
       "README.md",
       "plugin.json",
       "src/lib.rs",
+      "tests/sync.test.json",
       "wit/desk-connector.wit",
       "wit/desk-host.wit",
     ]);
     expect(files[".cargo/config.toml"]).toBe(
       read("examples/plugin-hello-connector/.cargo/config.toml"),
     );
+  });
+
+  it("tests a sync on the harness: one note the first time", () => {
+    const test = JSON.parse(render()["tests/sync.test.json"] ?? "null");
+    expect(test.steps).toEqual([
+      { connect: { instance: "default" } },
+      { sync: { instance: "default" } },
+    ]);
+    expect(test.expect.items).toEqual([
+      {
+        id: "hello",
+        kind: "note",
+        title: "Hello from My notes",
+        source: { connector: "example.my-notes", instance: "default" },
+      },
+    ]);
   });
 
   it("carries specs/wit byte for byte", () => {

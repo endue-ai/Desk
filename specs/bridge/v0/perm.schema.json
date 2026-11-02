@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://endue.ai/specs/bridge/v0/perm.schema.json",
   "title": "Desk bridge v0: perm",
-  "description": "Permissions: request, query and revoke grants, and the prompter's side of a request. Asking and looking at one's own grants need no scope; the person decides. Seeing other callers' grants and answering prompts need perm:manage.",
+  "description": "Permissions: request, query and revoke grants, the prompter's side of a request, and the approval an agent's irreversible call waits for. Asking and looking at one's own grants need no scope; the person decides. Seeing other callers' grants and answering prompts and approvals need perm:manage.",
   "$defs": {
     "PermRequestRequest": {
       "description": "Ask the person for a permission. Resolves when they answer.",
@@ -234,6 +234,133 @@
         }
       },
       "required": ["promptId", "caller", "permission", "duration"],
+      "additionalProperties": false
+    },
+    "PermApprovalEvent": {
+      "description": "An agent's irreversible call waits for the person's approval, even when a grant covers it (ADR 0078): an fs.write or a net.fetch whose target no always grant of the agent allows, a proc.spawn, or a cmd.invoke of a command its provider's manifest marks irreversible. Sent to callers that hold perm:manage; the first perm.approve decides. A caller that is not an agent is never held.",
+      "type": "object",
+      "properties": {
+        "event": { "const": "perm.approval" },
+        "data": { "$ref": "#/$defs/PermApprovalData" }
+      },
+      "required": ["event", "data"],
+      "additionalProperties": false
+    },
+    "PermApprovalData": {
+      "description": "Payload of perm.approval: which agent, what it is about to do, to what, and what it would change.",
+      "type": "object",
+      "properties": {
+        "approvalId": { "type": "string", "minLength": 1 },
+        "caller": { "$ref": "bridge.schema.json#/$defs/CallerId" },
+        "action": { "$ref": "#/$defs/ApprovalAction" },
+        "permission": {
+          "description": "The scope the call carries, which a grant of the agent's covers.",
+          "$ref": "../../plugin/v0/permission.schema.json#/$defs/Permission"
+        },
+        "target": {
+          "description": "What the call touches: the path for fs.write, the command for proc.spawn, the URL for net.fetch, the command id for cmd.invoke.",
+          "type": "string",
+          "minLength": 1
+        },
+        "preview": { "$ref": "#/$defs/ApprovalPreview" },
+        "size": {
+          "description": "fs.write: the bytes it would write.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "task": {
+          "description": "The task the call belongs to: the desk's brain turn (brain.turn's turnId) whose tool call it is. Present only when there is one; only then may perm.approve answer task.",
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": ["approvalId", "caller", "action", "permission", "target"],
+      "additionalProperties": false
+    },
+    "ApprovalAction": {
+      "description": "The bridge method an agent's irreversible call is.",
+      "type": "string",
+      "enum": ["fs.write", "proc.spawn", "net.fetch", "cmd.invoke"]
+    },
+    "ApprovalPreview": {
+      "description": "What the call would do, as text. diff: a unified diff of the file as it is against what the write puts there (a new file is all additions), when both are UTF-8 text and the file is at most 1 MiB; the first 200 changed lines. command: the command line, quoted for a POSIX shell. url: the method and the URL. args: the command's args as JSON. truncated says that the text was cut.",
+      "type": "object",
+      "properties": {
+        "kind": { "$ref": "#/$defs/ApprovalPreviewKind" },
+        "text": { "type": "string" },
+        "truncated": { "type": "boolean" }
+      },
+      "required": ["kind", "text"],
+      "additionalProperties": false
+    },
+    "ApprovalPreviewKind": {
+      "description": "What a preview's text is: a unified diff, a command line, a method and URL, or a command's args as JSON.",
+      "type": "string",
+      "enum": ["diff", "command", "url", "args"]
+    },
+    "PermApproveRequest": {
+      "description": "The prompter answers a perm.approval with the person's decision.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "perm.approve" },
+        "params": { "$ref": "#/$defs/PermApproveParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "PermApproveParams": {
+      "description": "Parameters of perm.approve.",
+      "type": "object",
+      "properties": {
+        "approvalId": { "type": "string", "minLength": 1 },
+        "answer": { "$ref": "#/$defs/ApprovalAnswer" },
+        "scope": {
+          "$ref": "../../plugin/v0/permission.schema.json#/$defs/PermManagePermission"
+        }
+      },
+      "required": ["approvalId", "answer", "scope"],
+      "additionalProperties": false
+    },
+    "ApprovalAnswer": {
+      "description": "once: this call runs. task: this call runs, and so do the agent's later calls of the same action whose target the approved scope covers, until the task ends (invalid_params on an approval without a task). deny: this call is refused with permission_denied; the next one asks again.",
+      "type": "string",
+      "enum": ["once", "task", "deny"]
+    },
+    "PermApproveResult": {
+      "description": "Result of perm.approve.",
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "PermApprovalDoneEvent": {
+      "description": "An approved call ran: what came of it. Sent to callers that hold perm:manage.",
+      "type": "object",
+      "properties": {
+        "event": { "const": "perm.approval.done" },
+        "data": { "$ref": "#/$defs/PermApprovalDoneData" }
+      },
+      "required": ["event", "data"],
+      "additionalProperties": false
+    },
+    "PermApprovalDoneData": {
+      "description": "Payload of perm.approval.done.",
+      "type": "object",
+      "properties": {
+        "approvalId": { "type": "string", "minLength": 1 },
+        "ok": { "type": "boolean" },
+        "bytesWritten": {
+          "description": "fs.write: the bytes it wrote.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "error": { "$ref": "bridge.schema.json#/$defs/BridgeError" },
+        "undoable": {
+          "description": "true when cmd.undo can take the write back (#276). Absent while the core does not serve cmd.undo.",
+          "type": "boolean"
+        }
+      },
+      "required": ["approvalId", "ok"],
       "additionalProperties": false
     },
     "PermChangedEvent": {

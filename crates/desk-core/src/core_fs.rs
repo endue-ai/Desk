@@ -16,6 +16,7 @@ use desk_bridge::{
 };
 use desk_sys::fs as sysfs;
 
+use crate::approvals::Action;
 use crate::handler::{Answer, Core, denied, error, io_error, json};
 use crate::paths::normalize;
 use crate::perm::{Denied, Target, scope_allows};
@@ -60,6 +61,12 @@ impl Core {
                 .decode(params.content)
                 .map_err(|e| error(ErrorCode::InvalidParams, format!("not base64: {e}")))?,
         };
+        let write = Action::Write {
+            path: &params.path,
+            file: &path,
+            bytes: &bytes,
+        };
+        self.hold(caller, &scope, write)?;
         // The bytes it replaces are kept first (ADR 0076).
         let (bytes_written, version) = self.write_keeping(caller, &path, &bytes, create_dirs)?;
         json(FsWriteResult {

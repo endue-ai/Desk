@@ -86,8 +86,11 @@ fn an_agent_is_refused_outside_its_allowlist_even_with_a_grant() {
         named(&deliveries, "perm.prompt").is_empty(),
         "nobody is asked"
     );
-    // Inside the allowlist the grant it holds still counts.
-    write(&core, MIRA, "~/Notes/a.md", "~/Notes/**").unwrap();
+    // Inside the allowlist the grant it holds still counts (and the write waits for approval).
+    approved_once(&core, &deliveries, || {
+        write(&core, MIRA, "~/Notes/a.md", "~/Notes/**")
+    })
+    .unwrap();
 }
 
 #[test]
@@ -121,10 +124,15 @@ fn within_the_allowlist_the_person_is_prompted_and_the_answer_is_remembered_per_
             &prompt,
             json!({ "granted": true, "duration": "session" }),
         );
+        let approval = wait_for(&deliveries, "perm.approval");
+        approve_as_desk(&core, &approval, "once");
         writing.join().unwrap().unwrap();
     });
     assert_eq!(fs::read_to_string(home.join("Notes/a.md")).unwrap(), "hi");
-    write(&core, MIRA, "~/Notes/b.md", "~/Notes/**").unwrap();
+    approved_once(&core, &deliveries, || {
+        write(&core, MIRA, "~/Notes/b.md", "~/Notes/**")
+    })
+    .unwrap();
     assert!(named(&deliveries, "perm.prompt").is_empty(), "asked once");
 
     // Another agent holds nothing of mira's: it is asked, and its refusal is its own.
@@ -163,6 +171,8 @@ fn an_empty_allowlist_prompts_on_every_first_use() {
                 &prompt,
                 json!({ "granted": true, "duration": "once" }),
             );
+            let approval = wait_for(&deliveries, "perm.approval");
+            approve_as_desk(&core, &approval, "once");
             writing.join().unwrap().unwrap();
         });
         std::thread::scope(|s| {
@@ -214,7 +224,10 @@ fn an_edit_to_the_allowlist_applies_to_the_next_call() {
     let home = home("agent-edit");
     let (core, deliveries) = core_with(&home, NOTES_ONLY);
     grant(&core, MIRA, fs_write(&["~/Notes/**"]));
-    write(&core, MIRA, "~/Notes/a.md", "~/Notes/**").unwrap();
+    approved_once(&core, &deliveries, || {
+        write(&core, MIRA, "~/Notes/a.md", "~/Notes/**")
+    })
+    .unwrap();
     fs::write(
         home.join("init.yaml"),
         NOTES_ONLY.replace("~/Notes/**", "~/Other/**"),

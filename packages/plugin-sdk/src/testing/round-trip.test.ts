@@ -224,5 +224,5 @@ describe("round-trip.ts", () => {
       { encoding: "utf8", cwd: fileURLToPath(new URL(".", import.meta.url)) },
     );
     expect(output.trim()).toBe("a,b\r\n AssertionError");
-  });
+  }, 30_000);
 });

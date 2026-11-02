@@ -13,6 +13,7 @@ use desk_bridge::{
 };
 use desk_sys::fs as sysfs;
 
+use crate::approval_action::Action;
 use crate::handler::{Answer, Core, error, io_error, json};
 use crate::history::{History, Kept, Limits, real_path};
 
@@ -102,23 +103,27 @@ impl Core {
     }
 
     pub(crate) fn fs_restore(&self, caller: &str, params: FsRestoreParams) -> Answer {
-        let path = self.authorize(caller, &Permission::FsWrite(params.scope), &params.path)?;
-        let (bytes_written, version) = self.restore_version(caller, &path, &params.version)?;
+        let scope = Permission::FsWrite(params.scope);
+        let path = self.authorize(caller, &scope, &params.path)?;
+        let bytes = self.version_bytes(&path, &params.version)?;
+        // A restore writes over the file: an agent's waits for the person as its writes do.
+        let write = Action::Write {
+            path: &params.path,
+            file: &path,
+            bytes: &bytes,
+        };
+        self.hold(caller, &scope, write)?;
+        let (bytes_written, version) = self.write_keeping(caller, &path, &bytes, false)?;
         json(FsRestoreResult {
             bytes_written,
             version,
         })
     }
 
-    /// Write version `id` of `path` back as `caller`, as fs.restore does once authorized.
-    pub(crate) fn restore_version(
-        &self,
-        caller: &str,
-        path: &Path,
-        id: &str,
-    ) -> Result<(u64, Option<String>), BridgeError> {
-        let bytes = self
-            .history()
+    /// The bytes of version `id` of `path`: `not_found` when its history does not hold them,
+    /// `io_error` when they no longer match their sha256.
+    fn version_bytes(&self, path: &Path, id: &str) -> Result<Vec<u8>, BridgeError> {
+        self.history()
             .as_ref()
             .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "this desk keeps no history"))
             .and_then(|history| history.read(&real_path(path), id))
@@ -128,8 +133,7 @@ impl Core {
                     format!("{} has no version {id}", path.display()),
                 ),
                 _ => io_error(why),
-            })?;
-        self.write_keeping(caller, path, &bytes, false)
+            })
     }
 
     /// The bounds in force: desk.files' settings, or their defaults when unset or not a count.

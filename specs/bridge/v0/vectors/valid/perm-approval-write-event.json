@@ -1,0 +1,23 @@
+{
+  "target": "BridgeEvent",
+  "description": "an agent's overwrite of a text file waits for approval, with a diff and the turn it belongs to",
+  "instance": {
+    "event": "perm.approval",
+    "data": {
+      "approvalId": "a-1",
+      "caller": "agent:mira",
+      "action": "fs.write",
+      "permission": {
+        "permission": "fs:write",
+        "paths": ["~/Notes/**"]
+      },
+      "target": "~/Notes/today.md",
+      "preview": {
+        "kind": "diff",
+        "text": "--- ~/Notes/today.md\n+++ ~/Notes/today.md\n@@ -1,2 +1,2 @@\n # Today\n-Buy milk\n+Buy oat milk\n"
+      },
+      "size": 21,
+      "task": "t3"
+    }
+  }
+}

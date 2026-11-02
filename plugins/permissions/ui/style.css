@@ -108,3 +108,49 @@ button:disabled,
 select:disabled {
   cursor: not-allowed;
 }
+
+/* The approval card (ADR 0078): the prompt's look, with the call's preview in a scrolling block. */
+#approval {
+  max-width: 560px;
+  margin: 6vh auto;
+  padding: 16px;
+  border: 1px solid var(--desk-border);
+  border-radius: var(--desk-radius-lg, 12px);
+  background: var(--desk-background);
+}
+
+#approval-body > * {
+  margin: 6px 0;
+}
+
+#approval-waiting {
+  color: var(--desk-text-muted);
+}
+
+.preview {
+  max-height: 40vh;
+  overflow: auto;
+  padding: 6px 8px;
+  border: 1px solid var(--desk-border);
+  border-radius: var(--desk-radius-md, 6px);
+  background: var(--desk-card);
+  font: inherit;
+  white-space: pre;
+}
+
+.preview .line {
+  font: var(--desk-text-xs, 12px) / 1.5 var(--desk-font-mono, ui-monospace, monospace);
+}
+
+.preview .added {
+  color: var(--desk-success-text, var(--desk-accent));
+}
+
+.preview .removed {
+  color: var(--desk-danger-text, var(--desk-text-muted));
+}
+
+.preview .hunk,
+.preview .file {
+  color: var(--desk-text-muted);
+}

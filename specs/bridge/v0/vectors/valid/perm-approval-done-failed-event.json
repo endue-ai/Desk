@@ -1,0 +1,15 @@
+{
+  "target": "BridgeEvent",
+  "description": "an approved fetch failed, with the bridge error",
+  "instance": {
+    "event": "perm.approval.done",
+    "data": {
+      "approvalId": "a-7",
+      "ok": false,
+      "error": {
+        "code": "timeout",
+        "message": "no answer within 30 s"
+      }
+    }
+  }
+}

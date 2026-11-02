@@ -153,8 +153,8 @@ impl Session {
     }
 
     /// The latest 1000 entries of the `perm` channel, or `agent:<agent>`'s among them: one line each,
-    /// `at  caller  decision  permission  target-or-scope  [reason]`, or with `--json` each entry as
-    /// one JSON line.
+    /// `at  caller  decision  permission  target-or-scope  [reason or approval]`, or with `--json`
+    /// each entry as one JSON line.
     fn perm_log(&mut self, agent: Option<&str>) -> Result<ExitCode, Problem> {
         let params =
             json!({ "channel": "perm", "count": 1000, "scope": { "permission": "log:read" } });
@@ -187,8 +187,10 @@ impl Session {
                 text(fields, "decision"),
                 text(fields, "permission")
             );
-            if let Some(reason) = fields["reason"].as_str() {
-                line.push_str(&format!("\t{reason}"));
+            // Why a call was refused, or how an approval was given (ADR 0078).
+            let how = fields["reason"].as_str().or(fields["approval"].as_str());
+            if let Some(how) = how {
+                line.push_str(&format!("\t{how}"));
             }
             out(&line);
         }

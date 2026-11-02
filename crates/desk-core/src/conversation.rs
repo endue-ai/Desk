@@ -11,12 +11,13 @@ use std::thread;
 use std::time::Duration;
 
 use desk_brain::{
-    Brain, BrainErrorCode, BrainFailure, ClientInfo, CreateSessionRequest, LeaseHolder, StopReason,
-    TextPart, ToolCall, ToolResultRequest, TurnEvent, TurnRequest, UserMessage,
+    Brain, BrainErrorCode, BrainFailure, ClientInfo, CreateSessionRequest, LeaseHolder, TextPart,
+    ToolCall, ToolResultRequest, TurnRequest, UserMessage,
 };
-use desk_bridge::{BrainTurnData, BrainTurnEvent, BrainTurnKind, BridgeEvent};
+use desk_bridge::BrainTurnKind;
 use serde_json::{Value, json};
 
+use crate::conversation_sink::Sink;
 use crate::events::EventBus;
 use crate::lease::{LeaseClient, LeaseError};
 use crate::sessions::{SessionStore, Speaker};
@@ -70,8 +71,10 @@ impl Default for BrainOptions {
 
 /// What runs the tools the brain asks for: the core, once it routes them (CORE-14).
 pub(crate) trait Tools: Send + Sync {
-    /// The tool's output, and whether it failed.
-    fn run(&self, call: &ToolCall) -> (Value, bool);
+    /// The tool's output, and whether it failed. `turn` is the desk's turn the call belongs to.
+    fn run(&self, turn: &str, call: &ToolCall) -> (Value, bool);
+    /// The desk's turn `turn` ended.
+    fn ended(&self, _turn: &str) {}
 }
 
 pub(crate) struct Conversation {
@@ -137,7 +140,12 @@ impl Conversation {
         let (this, id, text) = (Arc::clone(self), turn.clone(), text.to_owned());
         let spawned = thread::Builder::new()
             .name("desk-brain-turn".to_owned())
-            .spawn(move || this.run(&id, &text));
+            .spawn(move || {
+                this.run(&id, &text);
+                if let Some(tools) = this.tools.get().and_then(Weak::upgrade) {
+                    tools.ended(&id);
+                }
+            });
         if spawned.is_err() {
             Sink::new(&self.events, &turn).publish(BrainTurnKind::Error, Some(FAILED_LINE));
         }
@@ -273,16 +281,31 @@ impl Conversation {
             .map_err(|f| stop(state, f))?;
         while let Some((turn_id, call)) = sink.pending.take() {
             let routed = self.tools.get().and_then(Weak::upgrade);
-            let (output, failed) = routed.map_or_else(|| echo(&call), |tools| tools.run(&call));
-            let request = ToolResultRequest {
-                lease_id: lease_id.clone(),
-                call_id: call.call_id,
-                output,
+            let (output, failed) =
+                routed.map_or_else(|| echo(&call), |tools| tools.run(sink.turn, &call));
+            let request = |lease_id| ToolResultRequest {
+                lease_id,
+                call_id: call.call_id.clone(),
+                output: output.clone(),
                 is_error: failed.then_some(true),
             };
-            self.brain
-                .submit_tool_result(&session, &turn_id, &request, &mut |event| sink.on(event))
-                .map_err(|f| stop(state, f))?;
+            // A tool may wait for the person (a prompt, an approval) longer than the lease lasts:
+            // its result then goes back under the lease acquired again, not by running the turn again.
+            for again in [false, true] {
+                let lease_id = state.lease.ensure().map_err(|e| lease_stop(state, e))?;
+                match self.brain.submit_tool_result(
+                    &session,
+                    &turn_id,
+                    &request(lease_id),
+                    &mut |event| sink.on(event),
+                ) {
+                    Ok(_) => break,
+                    Err(f) if !again && f.code() == Some(BrainErrorCode::LeaseExpired) => {
+                        state.lease.refused(f);
+                    }
+                    Err(f) => return Err(stop(state, f)),
+                }
+            }
         }
         if sink.completed && !sink.failed {
             Ok(())
@@ -332,69 +355,4 @@ pub(crate) fn echo(call: &ToolCall) -> (Value, bool) {
     }
     let unknown = format!("Desk has no tool named {}", call.name);
     (json!({ "error": unknown }), true)
-}
-
-/// Turns brain stream events into brain.turn events for one turn.
-struct Sink<'a> {
-    events: &'a EventBus,
-    turn: &'a str,
-    offline: bool,
-    pending: Option<(String, ToolCall)>,
-    answer: String,
-    completed: bool,
-    failed: bool,
-}
-
-impl<'a> Sink<'a> {
-    fn new(events: &'a EventBus, turn: &'a str) -> Self {
-        Self {
-            events,
-            turn,
-            offline: false,
-            pending: None,
-            answer: String::new(),
-            completed: false,
-            failed: false,
-        }
-    }
-
-    fn publish(&self, kind: BrainTurnKind, text: Option<&str>) {
-        self.events.publish(BridgeEvent::BrainTurn(BrainTurnEvent {
-            event: Default::default(),
-            data: BrainTurnData {
-                turn_id: self.turn.to_owned(),
-                kind,
-                text: text.map(str::to_owned),
-                structured: None,
-            },
-        }));
-    }
-
-    /// The brain answered: a turn that was waiting offline is back online.
-    fn reached(&mut self) {
-        if mem::take(&mut self.offline) {
-            self.publish(BrainTurnKind::Online, None);
-        }
-    }
-
-    fn on(&mut self, event: TurnEvent) {
-        self.reached();
-        match event {
-            TurnEvent::TurnStarted(_) => {
-                self.answer.clear();
-                self.publish(BrainTurnKind::Started, None);
-            }
-            TurnEvent::TextDelta(delta) => {
-                self.answer.push_str(&delta.text);
-                self.publish(BrainTurnKind::Delta, Some(&delta.text));
-            }
-            TurnEvent::ToolCall(call) => self.pending = Some((call.turn_id, call.call)),
-            TurnEvent::TurnCompleted(done) if done.stop_reason == StopReason::ToolCall => {}
-            TurnEvent::TurnCompleted(_) => {
-                self.completed = true;
-                self.publish(BrainTurnKind::Completed, None);
-            }
-            TurnEvent::TurnError(_) => self.failed = true,
-        }
-    }
 }

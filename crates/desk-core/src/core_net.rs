@@ -10,6 +10,7 @@ use base64::Engine as _;
 use desk_bridge::{Encoding, ErrorCode, HttpMethod, NetFetchParams, NetFetchResult, Permission};
 use desk_sys::net::{self as sysnet, Method, Request};
 
+use crate::approvals::Action;
 use crate::handler::{Answer, Core, error, json, sys_error};
 use crate::perm::Target;
 
@@ -27,9 +28,15 @@ impl Core {
                     .map_err(|e| error(ErrorCode::InvalidParams, format!("not base64: {e}")))?,
             ),
         };
+        let method = params.method.unwrap_or(HttpMethod::GET);
+        let fetch = Action::Fetch {
+            method: method_name(method),
+            url: &params.url,
+        };
+        self.hold(caller, &scope, fetch)?;
         let request = Request {
             url: params.url,
-            method: method_of(params.method.unwrap_or(HttpMethod::GET)),
+            method: method_of(method),
             headers: params.headers.unwrap_or_default(),
             body,
             timeout: params.timeout_ms.map(Duration::from_millis),
@@ -49,6 +56,18 @@ impl Core {
             body,
             body_encoding,
         })
+    }
+}
+
+fn method_name(method: HttpMethod) -> &'static str {
+    match method {
+        HttpMethod::GET => "GET",
+        HttpMethod::HEAD => "HEAD",
+        HttpMethod::POST => "POST",
+        HttpMethod::PUT => "PUT",
+        HttpMethod::PATCH => "PATCH",
+        HttpMethod::DELETE => "DELETE",
+        HttpMethod::OPTIONS => "OPTIONS",
     }
 }
 

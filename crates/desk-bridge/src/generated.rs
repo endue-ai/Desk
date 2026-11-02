@@ -56,6 +56,9 @@ pub struct CommandContribution {
     /// Makes the command an alias the desk answers while the plugin is on: it runs this command with these args, the caller's object args merged over them key by key. Data-only plugins (view, policy) offer commands this way.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub runs: Option<CommandCall>,
+    /// The command does something that cannot be taken back (sends, deletes, pays, pushes). An agent's call of it (agent:<id>) waits for the person's approval every time, even with a cmd:invoke grant; a person's own calls never wait (ADR 0078).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub irreversible: Option<bool>,
 }
 
 /// A command's args: an object, as cmd.invoke passes them.
@@ -2349,6 +2352,7 @@ pub enum BridgeRequest {
     PermRevoke(PermRevokeRequest),
     PermList(PermListRequest),
     PermAnswer(PermAnswerRequest),
+    PermApprove(PermApproveRequest),
     PluginList(PluginListRequest),
     PluginSetEnabled(PluginSetEnabledRequest),
     StoreGet(StoreGetRequest),
@@ -2460,7 +2464,7 @@ pub enum ErrorCode {
     Internal,
 }
 
-/// Something the core reports without being asked: file changes, process output, wake words, permission changes, notifications, surfaces, commands, settings, log entries, changes to items, connectors and views, and the desk's update status.
+/// Something the core reports without being asked: file changes, process output, wake words, permission changes, prompts and approvals, notifications, surfaces, commands, settings, log entries, changes to items, connectors and views, and the desk's update status.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum BridgeEvent {
@@ -2470,6 +2474,8 @@ pub enum BridgeEvent {
     AudioWake(AudioWakeEvent),
     PermChanged(PermChangedEvent),
     PermPrompt(PermPromptEvent),
+    PermApproval(PermApprovalEvent),
+    PermApprovalDone(PermApprovalDoneEvent),
     PluginChanged(PluginChangedEvent),
     UiNotified(UiNotifiedEvent),
     UiSurfaceOpened(UiSurfaceOpenedEvent),
@@ -3412,7 +3418,7 @@ pub enum LogLevel {
     Error,
 }
 
-/// One log entry. channel is the caller that wrote it, core for desk-core, or perm for the permission log the core keeps: every grant, every refusal and every call of an agent, with fields caller, permission, scope, decision (granted, allowed, refused or denied), and target, reason, duration and grantId where they apply (ADR 0072).
+/// One log entry. channel is the caller that wrote it, core for desk-core, or perm for the permission log the core keeps: every grant, every refusal and every call of an agent, with fields caller, permission, scope, decision (granted, allowed, approved, refused or denied), and target, reason, duration and grantId where they apply (ADR 0072). An approved irreversible call of an agent (approved) carries approval (once or task), approvalId and task where there is one; a call the person denied is refused with reason not-approved (ADR 0078).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct LogEntry {
@@ -3749,6 +3755,136 @@ pub struct PermPromptData {
     /// The parent folder the person may grant instead: the same permission over the folder that holds the one asked for, offered when this caller asks for a third folder under it in the session. Never a root, the home folder or a folder holding it, nor a scope the person refused this caller earlier, nor, for an agent, a scope outside its allowlist.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub parent: Option<Permission>,
+}
+
+/// An agent's irreversible call waits for the person's approval, even when a grant covers it (ADR 0078): an fs.write or a net.fetch whose target no always grant of the agent allows, a proc.spawn, or a cmd.invoke of a command its provider's manifest marks irreversible. Sent to callers that hold perm:manage; the first perm.approve decides. A caller that is not an agent is never held.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PermApprovalEvent {
+    pub event: PermApprovalEventEvent,
+    pub data: PermApprovalData,
+}
+
+/// Payload of perm.approval: which agent, what it is about to do, to what, and what it would change.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PermApprovalData {
+    #[serde(rename = "approvalId")]
+    pub approval_id: String,
+    pub caller: CallerId,
+    pub action: ApprovalAction,
+    /// The scope the call carries, which a grant of the agent's covers.
+    pub permission: Permission,
+    /// What the call touches: the path for fs.write, the command for proc.spawn, the URL for net.fetch, the command id for cmd.invoke.
+    pub target: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub preview: Option<ApprovalPreview>,
+    /// fs.write: the bytes it would write.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub size: Option<u64>,
+    /// The task the call belongs to: the desk's brain turn (brain.turn's turnId) whose tool call it is. Present only when there is one; only then may perm.approve answer task.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub task: Option<String>,
+}
+
+/// The bridge method an agent's irreversible call is.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum ApprovalAction {
+    #[serde(rename = "fs.write")]
+    FsWrite,
+    #[serde(rename = "proc.spawn")]
+    ProcSpawn,
+    #[serde(rename = "net.fetch")]
+    NetFetch,
+    #[serde(rename = "cmd.invoke")]
+    CmdInvoke,
+}
+
+/// What the call would do, as text. diff: a unified diff of the file as it is against what the write puts there (a new file is all additions), when both are UTF-8 text and the file is at most 1 MiB; the first 200 changed lines. command: the command line, quoted for a POSIX shell. url: the method and the URL. args: the command's args as JSON. truncated says that the text was cut.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ApprovalPreview {
+    pub kind: ApprovalPreviewKind,
+    pub text: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub truncated: Option<bool>,
+}
+
+/// What a preview's text is: a unified diff, a command line, a method and URL, or a command's args as JSON.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum ApprovalPreviewKind {
+    #[serde(rename = "diff")]
+    Diff,
+    #[serde(rename = "command")]
+    Command,
+    #[serde(rename = "url")]
+    Url,
+    #[serde(rename = "args")]
+    Args,
+}
+
+/// The prompter answers a perm.approval with the person's decision.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PermApproveRequest {
+    pub id: RequestId,
+    pub method: PermApproveRequestMethod,
+    pub params: PermApproveParams,
+}
+
+/// Parameters of perm.approve.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PermApproveParams {
+    #[serde(rename = "approvalId")]
+    pub approval_id: String,
+    pub answer: ApprovalAnswer,
+    pub scope: PermManagePermission,
+}
+
+/// once: this call runs. task: this call runs, and so do the agent's later calls of the same action whose target the approved scope covers, until the task ends (invalid_params on an approval without a task). deny: this call is refused with permission_denied; the next one asks again.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum ApprovalAnswer {
+    #[serde(rename = "once")]
+    Once,
+    #[serde(rename = "task")]
+    Task,
+    #[serde(rename = "deny")]
+    Deny,
+}
+
+/// Result of perm.approve.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PermApproveResult {}
+
+/// An approved call ran: what came of it. Sent to callers that hold perm:manage.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PermApprovalDoneEvent {
+    pub event: PermApprovalDoneEventEvent,
+    pub data: PermApprovalDoneData,
+}
+
+/// Payload of perm.approval.done.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PermApprovalDoneData {
+    #[serde(rename = "approvalId")]
+    pub approval_id: String,
+    pub ok: bool,
+    /// fs.write: the bytes it wrote.
+    #[serde(
+        rename = "bytesWritten",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub bytes_written: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub error: Option<BridgeError>,
+    /// true when cmd.undo can take the write back (#276). Absent while the core does not serve cmd.undo.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub undoable: Option<bool>,
 }
 
 /// One of the caller's grants changed.
@@ -5829,6 +5965,30 @@ pub enum PermPromptEventEvent {
     #[default]
     #[serde(rename = "perm.prompt")]
     PermPrompt,
+}
+
+/// The `event` of [`PermApprovalEvent`]: always `"perm.approval"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum PermApprovalEventEvent {
+    #[default]
+    #[serde(rename = "perm.approval")]
+    PermApproval,
+}
+
+/// The `method` of [`PermApproveRequest`]: always `"perm.approve"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum PermApproveRequestMethod {
+    #[default]
+    #[serde(rename = "perm.approve")]
+    PermApprove,
+}
+
+/// The `event` of [`PermApprovalDoneEvent`]: always `"perm.approval.done"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum PermApprovalDoneEventEvent {
+    #[default]
+    #[serde(rename = "perm.approval.done")]
+    PermApprovalDone,
 }
 
 /// The `event` of [`PermChangedEvent`]: always `"perm.changed"`.

@@ -46,11 +46,17 @@ anything: a call or `perm.request` outside it is refused at once (`perm.request`
 runtime hears a `ui.notified` from `core` naming the agent. Inside it, or with an empty list, an agent's
 call without a grant asks the person for the call's scope, as `shell.open` does.
 
+An agent's irreversible call waits for the person's approval even when a grant covers it (ADR 0078):
+`fs.write` to a path, and `net.fetch` to a host, that no `always` grant of the agent allows;
+`proc.spawn`; and `cmd.invoke` of a command whose provider's manifest marks it `irreversible`. The core
+holds the call after the cap and the permission check and sends `perm.approval` (see **perm.approve**).
+A caller that is not an agent is never held.
+
 An event about the caller's own work reaches it without asking: `fs.changed` for its watches, `proc.*` for
 its processes, `audio.wake` for its captures, `brain.turn` for its turns, `perm.changed` for its grants,
 `cmd.invoked` for the commands it provides, `cmd.answered` for the commands it invoked and
 `settings.changed` for its own keys and `data.changed` for its data subscriptions. `plugin.changed` goes to
-holders of `plugin:manage`, `perm.prompt` to holders of `perm:manage`, `connector.changed` to holders of
+holders of `plugin:manage`, `perm.prompt`, `perm.approval` and `perm.approval.done` to holders of `perm:manage`, `connector.changed` to holders of
 `connector:manage`, `view.changed` to holders of `view:manage`, `update.changed` to holders of
 `update:manage`, and `ui.notified`, `ui.surface.opened` and `ui.surface.closed` to the runtime, which
 shows the notification or mounts and unmounts the surface.
@@ -180,6 +186,22 @@ core's own prompt decides, and its refusals are not remembered. When a caller as
 parent is never a root, the home folder or a folder holding it, nor a scope the person refused that caller
 earlier; `parent: true` on a prompt without one is `invalid_params`.
 
+**perm.approve** is the prompter's answer to `perm.approval`, the card an agent's irreversible call
+waits on. The event names the agent, the `action` (`fs.write`, `proc.spawn`, `net.fetch`,
+`cmd.invoke`), the scope the call carries, its `target` (the path, the command, the URL, the command
+id) and a `preview`: for a write, a unified diff of the file against what the write puts there (a new
+file is all additions) when both are UTF-8 text and the file is at most 1 MiB, the first 200 changed
+lines, with `size`, the bytes it writes; for a spawn its command line, for a fetch the method and the
+URL, for a command its args as JSON. `task` is the desk's brain turn the call belongs to, when there is
+one. The first `perm.approve` decides: `once` runs this call; `task` runs it and lets the agent's later
+calls of the same action through, without asking, for the rest of that turn when the approved scope
+covers their target (a write's `fs:write` scope, a fetch's `net:fetch` scope, the spawn's command, the
+command's id), and is `invalid_params` without a task; `deny` refuses the call `permission_denied` and is
+not remembered. An approval that is already decided is `not_found`. Without a `perm:manage` holder the
+core's own prompt decides, and refuses by default. Once an approved call ran, `perm.approval.done` says
+whether it succeeded, with `bytesWritten` for a write and the `error` when it failed; `undoable` will
+say when `cmd.undo` (#276) can take a write back.
+
 **plugin.list** returns every installed plugin with its status (`ready` or `failed` with a reason), whether
 it is enabled and built in, its file revision and its manifest. It needs `plugin:manage`.
 
@@ -284,7 +306,9 @@ stamps the time. It needs no scope.
 order. `count` is 100 by default and 1000 at most. It needs `log:read`. The core writes the channel
 `perm`: every grant (`decision: granted`), every refusal (`refused`) and every call of an agent
 (`allowed` or `denied`), with `caller`, `permission`, `scope`, and `target` (the path, command or other
-target), `reason`, `duration` and `grantId` where they apply.
+target), `reason`, `duration` and `grantId` where they apply. An agent's irreversible call the person
+approved is `approved`, with `approval` (`once` or `task`), `approvalId` and `task`; one they denied is
+`refused` with `reason: not-approved`.
 
 **events.subscribe** starts delivering named events about every caller, not only the caller's own:
 `plugin.changed`, `perm.changed`, `cmd.changed`, `cmd.invoked`, `settings.changed` and `log.entry`. The

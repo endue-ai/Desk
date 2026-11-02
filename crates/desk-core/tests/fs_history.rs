@@ -223,3 +223,46 @@ fn a_core_without_a_history_folder_keeps_nothing() {
         Err(ErrorCode::NotFound)
     );
 }
+
+/// The person's answer when nobody can be asked through `perm.approval`.
+struct Answer(bool);
+
+impl desk_core::Prompter for Answer {
+    fn ask(&self, _: &str, _: &desk_bridge::Permission, _: &str) -> bool {
+        self.0
+    }
+}
+
+#[test]
+fn an_agents_restore_waits_for_the_person_as_its_writes_do() {
+    for allowed in [false, true] {
+        let home = home();
+        let core = Core::new(Roots { home: home.clone() })
+            .with_history_dir(home.join(".data/history"))
+            .with_prompter(Answer(allowed));
+        grant(
+            &core,
+            NOTES,
+            json!({ "permission": "fs:write", "paths": ["~/notes/**"] }),
+        );
+        let id = write(&core, "~/notes/a.md", "# b\n")["version"]
+            .as_str()
+            .unwrap()
+            .to_owned();
+        let agent = "agent:mira";
+        grant(
+            &core,
+            agent,
+            json!({ "permission": "fs:write", "paths": ["~/notes/**"] }),
+        );
+        let restored = restore(&core, agent, "~/notes/a.md", &id);
+        let on_disk = fs::read_to_string(home.join("notes/a.md")).unwrap();
+        if allowed {
+            assert!(restored.is_ok(), "{restored:?}");
+            assert_eq!(on_disk, "# a\n");
+        } else {
+            assert_eq!(restored, Err(ErrorCode::PermissionDenied));
+            assert_eq!(on_disk, "# b\n");
+        }
+    }
+}

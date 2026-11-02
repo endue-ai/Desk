@@ -1,0 +1,33 @@
+{
+  "steps": [
+    { "connect": { "instance": "default", "settings": { "folder": "/notes" } } },
+    { "sync": { "instance": "default" } }
+  ],
+  "answers": [
+    {
+      "method": "fs.list",
+      "params": { "path": "/notes" },
+      "result": [
+        { "name": "welcome.md", "kind": "file", "size": 25, "modifiedAt": "2026-01-01T09:00:00Z" },
+        { "name": "todo.txt", "kind": "file", "size": 4, "modifiedAt": "2026-01-01T09:00:00Z" }
+      ]
+    },
+    {
+      "method": "fs.read",
+      "params": { "path": "/notes/welcome.md" },
+      "result": "# Welcome to Desk\n\nHello."
+    }
+  ],
+  "expect": {
+    "items": [
+      {
+        "id": "welcome.md",
+        "kind": "note",
+        "title": "Welcome to Desk",
+        "updatedAt": "2026-01-01T09:00:00Z",
+        "body": "# Welcome to Desk\n\nHello.",
+        "source": { "connector": "example.hello-connector", "instance": "default" }
+      }
+    ]
+  }
+}

@@ -114,3 +114,41 @@ fn perm_log_prints_the_perm_channel_and_filters_by_agent() {
     );
     let _ = std::fs::remove_file(&path);
 }
+
+#[test]
+fn perm_log_prints_how_an_approval_was_given() {
+    let write = json!({ "permission": "fs:write", "paths": ["~/Notes/**"] });
+    let entries = json!([
+        entry(
+            "2026-11-02T10:00:00.000Z",
+            json!({ "caller": "agent:mira", "permission": "fs:write", "scope": write,
+            "decision": "approved", "approval": "once", "approvalId": "a-1",
+            "target": "~/Notes/a.md" })
+        ),
+        entry(
+            "2026-11-02T10:00:01.000Z",
+            json!({ "caller": "agent:mira", "permission": "fs:write", "scope": write,
+            "decision": "approved", "approval": "task", "approvalId": "a-2", "task": "t4",
+            "target": "~/Notes/b.md" })
+        ),
+        entry(
+            "2026-11-02T10:00:02.000Z",
+            json!({ "caller": "agent:mira", "permission": "proc:spawn",
+            "scope": { "permission": "proc:spawn", "commands": ["git"] },
+            "decision": "refused", "reason": "not-approved", "approvalId": "a-3",
+            "target": "git" })
+        ),
+    ]);
+    let (path, _) = serve("approvals", entries);
+    let out = desk(&path, &["perm", "log", "--agent", "mira"]);
+    assert_eq!(out.status.code(), Some(0));
+    assert_eq!(
+        String::from_utf8_lossy(&out.stdout),
+        concat!(
+            "2026-11-02T10:00:00.000Z\tagent:mira\tapproved\tfs:write\t~/Notes/a.md\tonce\n",
+            "2026-11-02T10:00:01.000Z\tagent:mira\tapproved\tfs:write\t~/Notes/b.md\ttask\n",
+            "2026-11-02T10:00:02.000Z\tagent:mira\trefused\tproc:spawn\tgit\tnot-approved\n",
+        )
+    );
+    let _ = std::fs::remove_file(&path);
+}

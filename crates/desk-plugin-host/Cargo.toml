@@ -10,6 +10,7 @@ publish.workspace = true
 
 [dependencies]
 desk-bridge.workspace = true
+serde.workspace = true
 serde_json.workspace = true
 wasmtime = { version = "49.0.4", default-features = false, features = ["component-model", "cranelift", "parallel-compilation", "runtime", "std"] }
 wasmtime-wasi = { version = "49.0.4", default-features = false, features = ["p2"] }
