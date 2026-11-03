@@ -31,7 +31,7 @@ required-features = ["https"]
 # Judges the specs/update/v0 vectors by their schemas (tests/vectors.rs).
 jsonschema.workspace = true
 # Signs test data with keys made at test time; nothing key-like is committed.
-minisign = "0.9"
+minisign = "0.10"
 
 [lints]
 workspace = true
