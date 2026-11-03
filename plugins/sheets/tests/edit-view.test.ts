@@ -3,7 +3,7 @@
 // formula bar editing the active cell, the grid showing the edit and the unsaved mark (ADR 0071).
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { defineUiPlugin, readBytes } from "../../../packages/plugin-sdk/src/index";
 import { createTestHost } from "../../../packages/plugin-sdk/src/testing/index";
 import { defineElements } from "../../../packages/ui/src/elements/index";
@@ -119,5 +119,58 @@ describe("a format Sheets only reads", () => {
     expect(press("F2").defaultPrevented).toBe(false);
     press("q");
     expect([bar.readOnly, document.activeElement]).toEqual([true, grid]);
+  });
+});
+
+describe("copying a selection", () => {
+  const bytes = (text: string) => new TextEncoder().encode(text);
+  const copy = (target: Element) => {
+    const setData = vi.fn();
+    const event = new Event("copy", { bubbles: true, cancelable: true });
+    Object.defineProperty(event, "clipboardData", { value: { setData } });
+    target.dispatchEvent(event);
+    return { event, setData };
+  };
+
+  it("copies B2:C3 as tab-separated rows", async () => {
+    const { host, grid, press } = await page({
+      [A.path]: bytes("a1,b1,c1\na2,b2,c2\na3,b3,c3"),
+    });
+    await host.command("desk.files.visit", A);
+    grid.focus();
+    press("ArrowDown");
+    press("ArrowRight");
+    press("ArrowDown", grid, { shiftKey: true });
+    press("ArrowRight", grid, { shiftKey: true });
+    const { event, setData } = copy(grid);
+    expect(setData).toHaveBeenCalledExactlyOnceWith("text/plain", "b2\tc2\nb3\tc3");
+    expect(event.defaultPrevented).toBe(true);
+  });
+
+  it("quotes tabs, quotes and newlines in cell text", async () => {
+    const { host, grid, press } = await page({
+      [A.path]: bytes('"tab\tvalue","say ""hi""","two\nlines"'),
+    });
+    await host.command("desk.files.visit", A);
+    grid.focus();
+    press("ArrowRight", grid, { shiftKey: true });
+    press("ArrowRight", grid, { shiftKey: true });
+    const { event, setData } = copy(grid);
+    expect(setData).toHaveBeenCalledExactlyOnceWith(
+      "text/plain",
+      '"tab\tvalue"\t"say ""hi"""\t"two\nlines"',
+    );
+    expect(event.defaultPrevented).toBe(true);
+  });
+
+  it("leaves copying inside the open cell editor to the editor", async () => {
+    const { host, grid, bar, press } = await page({ [A.path]: bytes("a1,b1") });
+    await host.command("desk.files.visit", A);
+    grid.focus();
+    press("F2");
+    expect(document.activeElement).toBe(bar);
+    const { event, setData } = copy(bar);
+    expect(setData).not.toHaveBeenCalled();
+    expect(event.defaultPrevented).toBe(false);
   });
 });

@@ -30,7 +30,7 @@ export function sizeOf(/** @type {number} */ bytes) {
 
 /** A sum or an average without the float noise of adding many decimals: 15 digits at most. */
 const number = (/** @type {number} */ n) =>
-  Number(n.toPrecision(15)).toLocaleString("en-US", { maximumFractionDigits: 6 });
+  Number(n.toPrecision(15)).toLocaleString(undefined, { maximumFractionDigits: 6 });
 
 /**
  * @param {Document} doc
@@ -121,6 +121,25 @@ export function createView(doc, actions = { edit: () => false }) {
       },
     },
   );
+
+  // A copy event can target the document even while the grid has focus.
+  doc.addEventListener("copy", (event) => {
+    const s = sheet();
+    const selection = grid.selection();
+    if (!root.contains(doc.activeElement) || !s || !selection || !event.clipboardData) return;
+    const { s: start, e: end } = selection.range();
+    const lines = [];
+    for (let r = start.r; r <= end.r; r++) {
+      const cells = [];
+      for (let c = start.c; c <= end.c; c++) {
+        const text = s.text(r, c);
+        cells.push(/[\t\r\n"]/u.test(text) ? `"${text.replace(/"/gu, '""')}"` : text);
+      }
+      lines.push(cells.join("\t"));
+    }
+    event.clipboardData.setData("text/plain", lines.join("\n"));
+    event.preventDefault();
+  });
 
   /** Remember where the person was on the sheet on screen. */
   const keep = () => {
