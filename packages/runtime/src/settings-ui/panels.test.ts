@@ -32,4 +32,8 @@ describe("settings search", () => {
     expect(findSections("  INCREASE   CONTRAST  ")).toContain("accessibility");
     expect(findSections("unfindable setting")).toEqual([]);
   });
+
+  it("selects appearance first when searching for 화면", () => {
+    expect(findSections("화면")[0]).toBe("appearance");
+  });
 });

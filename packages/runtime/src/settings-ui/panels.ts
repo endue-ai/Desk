@@ -20,16 +20,7 @@ const TERMS: Record<SettingsSection, string> = {
   accessibility: "accessibility contrast motion animation 손쉬운 사용 대비 동작 애니메이션",
 };
 const SECTION_COPY: Record<SettingsSection, readonly SettingsCopy[]> = {
-  general: [
-    "general",
-    "generalDescription",
-    "device",
-    "personalization",
-    "appearance",
-    "shortcuts",
-    "accessibility",
-    "local",
-  ],
+  general: ["general", "generalDescription", "device", "personalization", "local"],
   appearance: ["appearance", "appearanceDescription", "light", "dark", "system", "systemHint"],
   keyboard: [
     "keyboard",
