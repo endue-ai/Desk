@@ -85,7 +85,7 @@ beforeEach(() => {
 async function mounted() {
   const host = createTestHost({
     pluginId: "endue.terminal",
-    handlers: { ...processes(), "init.get": () => ({ settings: {} }) },
+    handlers: { ...processes(), "init.get": () => ({ profile: "default", settings: {} }) },
     commands: desk(),
   });
   // The browser supplies the SDK import through an import map. Execute the actual main module's
