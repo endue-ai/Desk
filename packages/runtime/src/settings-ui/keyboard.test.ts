@@ -42,7 +42,7 @@ describe("keyboard settings", () => {
       commands,
       keymap,
       contributed: () => [{ key: "Control+N", command, owner: "desk" }],
-      platform: "linux",
+      platform: "other",
       language: "en",
     });
     document.body.append(keyboard.el);
