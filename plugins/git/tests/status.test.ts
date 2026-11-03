@@ -1,7 +1,9 @@
+// @vitest-environment jsdom
 import { describe, expect, it } from "vitest";
 import { StubError } from "../../../packages/bridge/src/index";
 import { LOG_FORMAT } from "../ui/parse-log.js";
 import { RECENT_FORMAT, STASH_FORMAT } from "../ui/parse-status.js";
+import { mountDom } from "./dom-harness";
 import { CLEAN_STATUS, type GitCall, mount, ROOT, repository, z } from "./harness";
 
 const DIRTY = z(
@@ -18,6 +20,32 @@ const log = (sha: string, parent: string, refs = "") =>
   `${sha}\x1f${parent}\x1fAda\x1f2026-10-30T09:00:00Z\x1f${refs}\x1fcommit ${sha}\x1e\n`;
 
 describe("Git: status", () => {
+  it.each([
+    ["stage", "unstaged.js", "s", "add"],
+    ["unstage", "staged.js", "u", "restore"],
+    ["refresh", "staged.js", "g", "status"],
+  ])("keeps the cursor focused after %s", async (_action, path, press, command) => {
+    const { host, git, settle } = await mountDom(
+      repository({ "status --porcelain": { stdout: DIRTY } }),
+    );
+    await host.command("endue.git.status", { path: ROOT });
+    const files = [...document.querySelectorAll<HTMLElement>(".row.file")];
+    const target = files.find((el) => el.querySelector(".path")?.textContent === path);
+    if (!target) throw new Error("Missing file row");
+    target.click();
+    expect(document.activeElement).toBe(target);
+    const before = git.of(command).length;
+    const statusReads = git.of("status").length;
+    target.dispatchEvent(new KeyboardEvent("keydown", { key: press, bubbles: true }));
+    await settle();
+    expect(git.of(command)).toHaveLength(before + 1);
+    expect(git.of("status")).toHaveLength(statusReads + 1);
+    const selected = document.querySelector('[role="treeitem"][aria-selected="true"]');
+    expect(selected).not.toBeNull();
+    expect(selected).not.toBe(target);
+    expect(document.activeElement).toBe(selected);
+  });
+
   it("opens the repository a path is in and shows its status", async () => {
     const { host, view, git, store, params } = await mount({
       script: repository({ "status --porcelain": { stdout: DIRTY } }),
