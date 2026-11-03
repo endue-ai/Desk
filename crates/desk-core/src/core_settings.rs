@@ -51,6 +51,7 @@ impl Core {
         }
         json(SettingsGetResult {
             value: self.setting_in_force(owner, &params.key),
+            migrated_from: None,
         })
     }
 
@@ -63,6 +64,7 @@ impl Core {
             owner: caller.to_owned(),
             key: params.key,
             value: params.value,
+            migrated_from: None,
         });
         json(SettingsSetResult {})
     }
@@ -88,7 +90,12 @@ impl Core {
             .resolved(caller, patterns.as_deref().unwrap_or_default())
             .into_iter()
             .filter(|((owner, key), _)| listed(owner, key))
-            .map(|((owner, key), value)| Setting { owner, key, value })
+            .map(|((owner, key), value)| Setting {
+                owner,
+                key,
+                value,
+                migrated_from: None,
+            })
             .collect();
         json(SettingsListResult { settings })
     }
