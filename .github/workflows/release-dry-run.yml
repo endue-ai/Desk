@@ -8,6 +8,8 @@ name: release-dry-run
 # the release files, which GitHub cannot dispatch before they are on main.
 on:
   workflow_dispatch:
+  # ci.yml runs it for every pull request into release/vX.Y.Z (ADR 0081).
+  workflow_call:
   pull_request:
     paths:
       - ".github/workflows/release-dry-run.yml"
@@ -21,13 +23,16 @@ on:
 permissions:
   contents: read
 
+# Called from ci, github.workflow is "ci": the call and a run of its own never cancel each other.
 concurrency:
-  group: release-dry-run-${{ github.ref }}
+  group: release-dry-run-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   key:
     name: key
+    # A pull request into release/** runs it through ci; its own run would build everything twice.
+    if: github.workflow != 'release-dry-run' || !startsWith(github.base_ref, 'release/')
     runs-on: ubuntu-latest
     timeout-minutes: 15
     outputs:

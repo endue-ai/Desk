@@ -1,12 +1,13 @@
 name: release
 
-# A tag v* is a stable release (ADR 0054): built as the tag's version, uploaded to R2, listed on the
-# stable index, and given a GitHub Release with generated notes and links to the R2 downloads, no
-# binaries. Publishing runs in the stable environment, which people approve; it holds the same
-# updater key and R2 credentials as signing.
+# Merging a pull request into release/vX.Y.Z is a stable release (ADR 0081, amending ADR 0054): built
+# as X.Y.Z, uploaded to R2, listed on the stable index, tagged vX.Y.Z at the merged commit and given a
+# GitHub Release with generated notes and links to the R2 downloads, no binaries. A version whose tag
+# exists is not built again: the next one is a new release branch. Publishing runs in the stable
+# environment, which people approve; it holds the same updater key and R2 credentials as signing.
 on:
   push:
-    tags: ["v*"]
+    branches: ["release/v*"]
 
 permissions:
   contents: read
@@ -44,7 +45,13 @@ jobs:
           echo "publish=true" >> "$GITHUB_OUTPUT"
       - uses: actions/checkout@v7
       - id: version
-        run: echo "version=$(node scripts/release-version.mjs --tag "$GITHUB_REF_NAME")" >> "$GITHUB_OUTPUT"
+        run: |
+          tag="${GITHUB_REF_NAME#release/}"
+          if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null; then
+            echo "::error::$tag is released already; release the next version from release/vX.Y.Z"
+            exit 1
+          fi
+          echo "version=$(node scripts/release-version.mjs --tag "$tag")" >> "$GITHUB_OUTPUT"
 
   build:
     needs: gate
@@ -87,7 +94,7 @@ jobs:
           merge-multiple: true
       - name: Write and sign release.json
         run: |
-          notes="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/tag/$GITHUB_REF_NAME"
+          notes="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/tag/v$VERSION"
           node scripts/release-manifest.mjs release dist --version "$VERSION" --base "$BASE" \
             --commit "$GITHUB_SHA" --notes "$notes" > release.json
           mv release.json dist/release.json
@@ -116,5 +123,5 @@ jobs:
             echo
             echo "Checksums: [SHA256SUMS]($BASE/releases/$VERSION/SHA256SUMS). Installed desks on the stable channel update themselves."
           } > downloads.md
-          gh release create "$GITHUB_REF_NAME" --verify-tag --title "endue Desk $VERSION" \
+          gh release create "v$VERSION" --target "$GITHUB_SHA" --title "endue Desk $VERSION" \
             --generate-notes --notes-file downloads.md

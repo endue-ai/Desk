@@ -128,6 +128,7 @@ test("runtime and app build install with configured APT while retaining commands
     "app-build",
     "codegen-check",
     "red-on-base",
+    "release-dry-run",
   ]);
 });
 
