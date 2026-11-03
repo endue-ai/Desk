@@ -48,7 +48,8 @@ import { createResume } from "./resume.js";
  *   playlist?: { rows: Row[], index: number }, chapters?: Chapter[],
  * }} Model
  * @typedef {{ show(model: Model | null): void, status(text: string): void, focus(): void,
- *   canPlay(type: string): string, canRemux?(type: string): boolean, software?: boolean }} PlayerView
+ *   canPlay(type: string): string, canRemux?(type: string): boolean, software?: boolean,
+ *   loadVolume?(bridge: PluginContext["bridge"]): Promise<void> }} PlayerView
  *   canRemux: MSE's isTypeSupported; software: whether the decoder worker can run.
  * @typedef {{
  *   objectUrl(bytes: Uint8Array, type: string): string,
@@ -78,7 +79,7 @@ const text = (/** @type {unknown} */ error) =>
 export function createPlayer({ bridge, commands }, view, options) {
   const access = createAccess({ bridge });
   const resume = createResume(bridge, options.now ?? Date.now);
-  const ready = resume.load();
+  const ready = Promise.all([resume.load(), view.loadVolume?.(bridge)]);
   /** Open files by the buffer the desk named them with. @type {Map<string, Entry>} */
   const entries = new Map();
   /** Watch id -> the buffer it follows. @type {Map<string, string>} */
