@@ -87,6 +87,21 @@ export function createView(doc, actions) {
         button.setAttribute("aria-checked", String(button.getAttribute("data-mode") === s.mode));
       /** @type {HTMLButtonElement} */ for (const id of ["prev", "next", "today", "new"])
         byId(id).disabled = !s.calendar || (id === "new" && s.calendar.readOnly);
+      const active = grid.contains(doc.activeElement) ? doc.activeElement : null;
+      const scroll = /** @type {HTMLElement | null} */ (grid.querySelector(".scroll"));
+      const scrollTop = scroll?.scrollTop;
+      const gridTop = grid.scrollTop;
+      const eventId = active?.getAttribute("data-id");
+      const matchingEvents = (/** @type {string} */ id) =>
+        [...grid.querySelectorAll("button.event")].filter(
+          (event) => event.getAttribute("data-id") === id,
+        );
+      const eventIndex = eventId
+        ? matchingEvents(eventId).indexOf(/** @type {Element} */ (active))
+        : -1;
+      const moreIndex = [...grid.querySelectorAll("button.more")].indexOf(
+        /** @type {Element} */ (active),
+      );
       const focused = grid.contains(doc.activeElement)
         ? doc.activeElement?.getAttribute("data-day")
         : null;
@@ -104,6 +119,22 @@ export function createView(doc, actions) {
         /** @type {HTMLElement | null} */ (
           grid.querySelector(`[data-day="${moved ? month.focusDay() : focused}"][role="gridcell"]`)
         )?.focus();
+      else if (!moved && active) {
+        const target =
+          eventId && eventIndex >= 0
+            ? matchingEvents(eventId)[eventIndex]
+            : moreIndex >= 0
+              ? grid.querySelectorAll("button.more")[moreIndex]
+              : active === scroll
+                ? grid.querySelector(".scroll")
+                : null;
+        /** @type {HTMLElement | null | undefined} */ (target)?.focus();
+      }
+      if (!moved) {
+        const nextScroll = /** @type {HTMLElement | null} */ (grid.querySelector(".scroll"));
+        if (nextScroll && scrollTop !== undefined) nextScroll.scrollTop = scrollTop;
+        grid.scrollTop = gridTop;
+      }
     },
 
     /** @param {string} words */
