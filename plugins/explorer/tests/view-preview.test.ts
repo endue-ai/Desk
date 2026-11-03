@@ -16,7 +16,7 @@ const row: Row = {
   hidden: false,
   size: 20,
 };
-let actions: Parameters<typeof createView>[1];
+let actions: Parameters<typeof createView>[1] & { togglePreview: ReturnType<typeof vi.fn> };
 let view: ReturnType<typeof createView>;
 beforeEach(() => {
   document.documentElement.innerHTML = html
@@ -31,6 +31,7 @@ beforeEach(() => {
     newFile: vi.fn(),
     refresh: vi.fn(),
     toggleHidden: vi.fn(),
+    togglePreview: vi.fn(),
   };
   view = createView(document, actions);
   view.tree([row], row.id);
@@ -41,6 +42,33 @@ const show = (model: unknown) =>
   (view as unknown as { preview(value: unknown): void }).preview(model);
 
 describe("Explorer quick preview controls", () => {
+  it("the preview button runs its own toggle action", () => {
+    document.querySelector<HTMLButtonElement>("#toggle-preview")?.click();
+    expect(actions.togglePreview).toHaveBeenCalledOnce();
+    expect(actions.key).not.toHaveBeenCalled();
+  });
+
+  it("gives every row its full path as a title", () => {
+    const rows: Row[] = [
+      { ...row, id: "/", path: "/", name: "/", kind: "dir", depth: 0 },
+      { ...row, id: "/long/folder", path: "/long/folder", name: "folder", kind: "dir" },
+      { ...row, id: "/long/file", path: "/long/file", name: "file", size: 12345 },
+      { ...row, id: "/long/link", path: "/long/link", name: "link", kind: "symlink" },
+      { ...row, id: "more:/long", path: "/long", name: "2 more", kind: "more" },
+    ];
+    view.tree(rows, null);
+    expect(
+      [...document.querySelectorAll<HTMLElement>("[role=treeitem]")].map((item) => item.title),
+    ).toEqual(rows.map((entry) => entry.path));
+  });
+
+  it("uses the tree size format in the preview", () => {
+    view.tree([{ ...row, size: 12345 }], row.id);
+    expect(item().textContent).toContain("12 KB");
+    show({ ...row, size: 12345, kind: "details" });
+    expect(document.querySelector("#preview-detail")?.textContent).toContain("12 KB");
+  });
+
   it("one click only selects a file and double click opens it", () => {
     const original = item();
     item().click();

@@ -57,7 +57,7 @@ const key = (target: Element, name: string, shiftKey = false) => {
 };
 
 describe("Explorer context menu", () => {
-  it("right click selects the target and opens four named menu actions", () => {
+  it("right click selects the target and opens five named menu actions", () => {
     items()[1]?.dispatchEvent(
       new MouseEvent("contextmenu", {
         clientX: 300,
@@ -70,7 +70,13 @@ describe("Explorer context menu", () => {
     expect(menu()?.hidden).toBe(false);
     expect(
       [...document.querySelectorAll("[role=menuitem]")].map((item) => item.textContent),
-    ).toEqual(["Open", "Open terminal here", "Git status here", "Show in system file manager"]);
+    ).toEqual([
+      "Open",
+      "Open terminal here",
+      "Git status here",
+      "Show in system file manager",
+      "Copy path",
+    ]);
     expect(document.activeElement?.textContent).toBe("Open");
   });
 
