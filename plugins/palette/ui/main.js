@@ -276,6 +276,11 @@ defineUiPlugin({
       if (document.hidden) {
         search.cancel();
         asker.reset([]);
+      } else if (mode?.kind === "commands") {
+        asker.reset(mode.providers ?? []);
+        search.query(input.value);
+        asker.ask(input.value);
+        render();
       }
     });
     input.addEventListener("input", () => {

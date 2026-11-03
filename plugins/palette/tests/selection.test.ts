@@ -218,4 +218,34 @@ describe("palette selection while search is pending", () => {
     await vi.advanceTimersByTimeAsync(0);
     expect(palette.list.querySelector(".empty")?.textContent).toBe("No match");
   });
+  it("restarts cancelled searches when the palette becomes visible again", async () => {
+    const old = deferred<{ hits: unknown[] }>();
+    const current = deferred<{ hits: unknown[] }>();
+    const provider = deferred<unknown>();
+    let requests = 0;
+    const palette = await mount(provider.promise, () =>
+      ++requests === 1 ? old.promise : current.promise,
+    );
+    palette.type("nothingmatches");
+    await vi.advanceTimersByTimeAsync(120);
+    palette.system.resolve({ hits: [] });
+    Object.defineProperty(document, "hidden", { configurable: true, value: true });
+    document.dispatchEvent(new Event("visibilitychange"));
+    Object.defineProperty(document, "hidden", { configurable: true, value: false });
+    document.dispatchEvent(new Event("visibilitychange"));
+    await vi.advanceTimersByTimeAsync(120);
+    expect(requests).toBe(2);
+    expect(palette.run.mock.calls.filter(([id]) => id === "example.provider.search")).toHaveLength(
+      2,
+    );
+    old.resolve({ hits: [{ id: "old", kind: "plugin", title: "Old", plugin: "x" }] });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(palette.list.textContent).not.toContain("Old");
+    expect(palette.list.querySelector(".empty")?.textContent).toBe("Searching…");
+    current.resolve({ hits: [] });
+    provider.resolve({ results: [] });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(palette.list.querySelector(".empty")?.textContent).toBe("No match");
+    delete (document as unknown as { hidden?: boolean }).hidden;
+  });
 });
