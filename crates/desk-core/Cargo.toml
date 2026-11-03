@@ -22,7 +22,7 @@ jsonschema.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 # The history's content addresses (ADR 0076); already in the tree through the Wasm host.
-sha2 = "0.10"
+sha2 = "0.11"
 yaml_serde.workspace = true
 
 [dev-dependencies]

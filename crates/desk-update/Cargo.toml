@@ -16,7 +16,7 @@ minisign-verify = "0.3"
 semver = "1"
 serde.workspace = true
 serde_json.workspace = true
-sha2 = "0.10"
+sha2 = "0.11"
 # The release origin over HTTPS (`https`): the client desk-sys's `net` already uses.
 ureq = { version = "3.1", optional = true, default-features = false, features = ["rustls", "platform-verifier"] }
 
