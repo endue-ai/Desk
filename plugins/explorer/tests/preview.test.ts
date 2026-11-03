@@ -14,6 +14,28 @@ const watch = (view: object) => {
 afterEach(() => vi.restoreAllMocks());
 
 describe("quick preview follows the Explorer selection", () => {
+  it("the preview action toggles a folder preview without expanding it; Space still expands", async () => {
+    const d = await mount({ handlers: disk(sample()) });
+    const shown = watch(d.view);
+    d.app.select(`${DOCS}/Work`);
+    const toggle = () =>
+      (d.app as typeof d.app & { togglePreview(): Promise<void> }).togglePreview();
+    await toggle();
+    expect(shown).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        path: `${DOCS}/Work`,
+        reason: "Select a file to preview its contents.",
+      }),
+    );
+    expect(d.view.shown()).toContain("1:dir:Work");
+    expect(d.view.shown()).not.toContain("1:dir:Work+");
+    await toggle();
+    expect(shown).toHaveBeenLastCalledWith(null);
+    expect(d.view.shown()).toContain("1:dir:Work");
+    await d.app.key(" ");
+    expect(d.view.shown()).toContain("1:dir:Work+");
+  });
+
   it("Space previews without opening, arrows replace it, Enter opens once and Escape closes", async () => {
     const d = await mount({ handlers: { ...disk(sample()), "fs.read": ({ path }) => text(path) } });
     const shown = watch(d.view);

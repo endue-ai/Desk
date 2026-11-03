@@ -82,6 +82,7 @@ describe("plugin.json", () => {
       `${ID}.terminal-here`,
       `${ID}.git-here`,
       `${ID}.show-in-file-manager`,
+      `${ID}.copy-path`,
     ]);
     for (const key of contributes?.keys ?? []) expect(ids).toContain(key.command);
     expect(contributes?.keys?.map((k) => k.key)).toEqual(["Mod+Shift+E", "Mod+Shift+R"]);
