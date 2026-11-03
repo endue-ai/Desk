@@ -21,6 +21,7 @@ use crate::watch::{self, PluginWatcher};
 impl Core {
     /// Remember enabled flags in `store` (a JSON file in the app's data folder).
     pub fn with_plugin_store(self, store: PathBuf) -> Self {
+        self.screen_state(&store, crate::plugins::readable);
         *self.registry() = PluginRegistry::new(Some(store));
         self
     }
@@ -32,6 +33,7 @@ impl Core {
         if self.init_disables(&info.id) {
             info = self.registry().hold_off(&info.id).unwrap_or(info);
         }
+        info = self.hold_for_start(info);
         if built_in && info.status == PluginStatus::Ready {
             let permissions = info
                 .manifest
@@ -190,7 +192,7 @@ impl Core {
         );
     }
 
-    fn registry(&self) -> MutexGuard<'_, PluginRegistry> {
+    pub(crate) fn registry(&self) -> MutexGuard<'_, PluginRegistry> {
         self.plugins
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())

@@ -1,10 +1,18 @@
 /**
  * Notifications (desk.notify, like the echo area and *Messages*): one shows in the status line for
  * as long as its level says, every one goes to the history, and do-not-disturb holds back the levels
- * it does not allow until it ends.
+ * it does not allow until it ends. A notice with actions (ADR 0061) stays until it is dismissed or
+ * acted on: a newer notice covers it for its own time, then it shows again.
  */
 import type { NotifyLevel } from "@endue-ai/bridge";
 import type { Clock } from "./clock";
+
+/** A button on a notice: a desk command to run, with its arguments. Plain data, so it is kept. */
+export interface NoticeAction {
+  label: string;
+  command: string;
+  args?: unknown;
+}
 
 export interface Notice {
   id: string;
@@ -17,6 +25,7 @@ export interface Notice {
   at: number;
   /** Held back by do-not-disturb: in the history, never shown. */
   held: boolean;
+  actions?: NoticeAction[];
 }
 
 export interface NotifySettings {
@@ -37,7 +46,7 @@ export const DEFAULT_NOTIFY: NotifySettings = {
 };
 
 export type NoticeInput = Pick<Notice, "caller" | "title"> &
-  Partial<Pick<Notice, "id" | "body" | "level">>;
+  Partial<Pick<Notice, "id" | "body" | "level" | "actions">>;
 
 export class Notifications {
   readonly #clock: Clock;
@@ -45,6 +54,8 @@ export class Notifications {
   #settings: NotifySettings = DEFAULT_NOTIFY;
   #history: Notice[] = [];
   #current: Notice | null = null;
+  /** Notices with actions that a newer one covered, oldest first. */
+  #waiting: Notice[] = [];
   #until = Number.POSITIVE_INFINITY;
   #cancel: (() => void) | undefined;
   #nextId = 1;
@@ -83,6 +94,7 @@ export class Notifications {
       caller: input.caller,
       title: input.title,
       ...(input.body !== undefined ? { body: input.body } : {}),
+      ...(input.actions?.length ? { actions: input.actions } : {}),
       level,
       at: this.#clock.now(),
       held,
@@ -110,7 +122,9 @@ export class Notifications {
     this.#cancel = undefined;
     if (this.#current === null) return;
     this.#current = null;
-    this.#render(null);
+    const next = this.#waiting.shift();
+    if (next) this.#show(next);
+    else this.#render(null);
   }
 
   /** Newest first. */
@@ -134,9 +148,11 @@ export class Notifications {
 
   #show(notice: Notice): void {
     this.#cancel?.();
+    const covered = this.#current;
+    if (covered?.actions && covered !== notice) this.#waiting.push(covered);
     this.#current = notice;
     this.#render(notice);
-    const duration = this.#settings.durations[notice.level];
+    const duration = notice.actions ? 0 : this.#settings.durations[notice.level];
     this.#until = duration > 0 ? notice.at + duration : Number.POSITIVE_INFINITY;
     if (duration <= 0) return;
     const step = (now: number) => {

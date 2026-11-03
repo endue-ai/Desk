@@ -8,6 +8,7 @@ import { PolicyHub } from "./hub";
 import { listenForShortcuts, type Platform, ShortcutRouter } from "./input";
 import { installInspect } from "./inspect/install";
 import { type Layout, type LayoutStorage, loadLayout, move, place, saveLayout } from "./layout";
+import type { Notice } from "./notify";
 import { PluginHost, type PluginHostOptions } from "./plugins";
 import { installAliases } from "./policies/aliases";
 import { installBuffers } from "./policies/buffers";
@@ -20,11 +21,13 @@ import { installKeysFile } from "./policies/keys-file";
 import { installNotify } from "./policies/notify";
 import { installPalette } from "./policies/palette";
 import { installProfiles } from "./policies/profiles";
-import { installSession } from "./policies/session";
+import { installSession, type SessionPart } from "./policies/session";
 import { installTheme } from "./policies/theme";
+import type { PolicySet } from "./policy";
 import type { Runtime, RuntimePlugins } from "./runtime-api";
 import type { SettingsLanguage } from "./settings-ui/copy";
 import { installSettingsWindow } from "./settings-ui/window";
+import { brokenRecordNotice, installStart, type StartInfo } from "./start";
 import { SurfaceHost, type SurfaceSpec } from "./surfaces";
 import { applyTheme } from "./theme";
 import { timed } from "./timing";
@@ -54,6 +57,9 @@ export interface RuntimeOptions {
   windows?: WindowHost;
   /** Native hosts may pick a file; null means the person cancelled. */
   pickFile?: () => Promise<string | null>;
+  /** What the host found at start (ADR 0061), and how it starts the desk again without safe mode. */
+  start?: StartInfo;
+  relaunch?: () => void | Promise<void>;
 }
 
 /** The shell's window host places detached surfaces and removes them when closed (ADR 0040). */
@@ -178,15 +184,19 @@ export function createRuntime(options: RuntimeOptions): Runtime {
   const frames = installFrames(ctx, { windows: options.windows, host: () => pluginHost });
   const buffers = installBuffers(ctx, { focus: focusAny });
   routing = connectViews(views, buffers);
-  const files = installFiles(ctx, buffers, notify.notify, options.pickFile);
-  const session = installSession(ctx, buffers, {
+  const broken = (key: string) => notify.notify(brokenRecordNotice(key, options.start?.dataDir));
+  const files = installFiles(ctx, buffers, notify.notify, options.pickFile, broken);
+  const actions = {
     layout: () => structuredClone(layout),
-    setLayout: (next) => commit(next),
+    setLayout: (next: Layout) => commit(next),
     focus: focusSurface,
     focused: () => shortcuts.focused,
     notices: () => notify.notifications.history(),
-    restoreNotices: (notices) => notify.notifications.restore(notices),
-  });
+    restoreNotices: (notices: Notice[]) => notify.notifications.restore(notices),
+  };
+  const session = installSession(ctx, buffers, actions, { hold: !!options.start?.safe, broken });
+  const { start: info, relaunch } = options;
+  const start = installStart(ctx, { notify: notify.notify, save: session.save, info, relaunch });
   // The person's files in ~/.desk (ADR 0079): saved profiles, and key bindings in keys.yaml.
   const folder = deskFolder(bridge);
   const profiles = installProfiles(ctx, (input) => notify.notify(input), folder);
@@ -292,6 +302,7 @@ export function createRuntime(options: RuntimeOptions): Runtime {
           shortcuts.handle(key);
         },
         listed: (all) => hub.apply(all),
+        outcome: (id, ok) => start.outcome(id, ok),
         wake: (id) => frames.wake(id),
       },
       options.plugins,
@@ -358,7 +369,17 @@ export function createRuntime(options: RuntimeOptions): Runtime {
       preferences.dispose();
       frames.dispose();
       routing.dispose();
-      const policies = [profiles, keysFile, folder, session, files, buffers, display, notify];
+      const policies = [
+        start,
+        profiles,
+        keysFile,
+        folder,
+        session,
+        files,
+        buffers,
+        display,
+        notify,
+      ];
       for (const policy of [about, inspect, ...policies, palette, aliases, keys, theme]) {
         policy.dispose();
       }

@@ -20,13 +20,12 @@ use desk_brain_endue::HttpBrain;
 use desk_bridge::{
     BrainConversePermission, CmdInvokePermission, ConnectorManagePermission, FsReadPermission,
     FsWritePermission, PermManagePermission, Permission, PluginManagePermission,
-    ThemeManagePermission, UpdateManagePermission, ViewManagePermission,
+    ShellOpenPermission, ThemeManagePermission, UpdateManagePermission, ViewManagePermission,
 };
 use desk_core::{
     BrainMode, BrainOptions, Core, MockRemote, PluginWatcher, Roots, SyncError, SyncOutcome,
     ThemeWatcher, ViewWatcher,
 };
-use desk_index::Index;
 use tauri::{Emitter, Manager};
 
 /// The caller id of the web runtime itself. Plugins call under their own ids.
@@ -86,7 +85,7 @@ pub fn run() {
             // endue does not serve sync yet: until it does, a stand-in keeps endue's copy of
             // init.yaml in the data folder.
             let remote = MockRemote::with_file(data.join("sync-mock.json"));
-            let mut core = Core::new(Roots { home })
+            let core = Core::new(Roots { home })
                 .with_init_file(init)
                 .with_sync(Arc::new(remote), Some(data.join("sync.json")))
                 .with_plugin_store(data.join("plugins.json"))
@@ -94,13 +93,17 @@ pub fn run() {
                 .with_secrets_file(data.join("secrets.json"))
                 // Every fs.write keeps the bytes it replaces here first (ADR 0076).
                 .with_history_dir(data.join("history"));
+            // Safe mode, asked for or after two starts that never got ready, holds plugins off as
+            // they install (ADR 0061).
+            let (mut core, last) = commands::start::begin(&data, core);
             if let Some(problem) = core.init_problem() {
                 eprintln!("endue Desk: init.yaml is not in force ({problem}); using the defaults");
             }
             // The item index (ADR 0033): without it data.* answers io_error and syncs fail.
-            match Index::open(data.join("index.sqlite")) {
-                Ok(index) => core = core.with_index(Arc::new(index)),
-                Err(why) => eprintln!("endue Desk: no item index ({why}); data.* is unavailable"),
+            // An index that cannot be opened is kept as index.sqlite.broken and opened fresh.
+            core = core.with_index_file(data.join("index.sqlite"));
+            if let Some(why) = core.index_problem() {
+                eprintln!("endue Desk: no item index ({why}); data.* is unavailable");
             }
             // The OS calendar makes the built-in connectors desk.calendar and desk.reminders. It is
             // macOS only for now; elsewhere there is none, and nothing asks the OS until connect.
@@ -221,6 +224,18 @@ pub fn run() {
                     }),
                 );
             }
+            // "Show in file manager" on a state file kept broken: the data folder and the views only.
+            let views = home_dir().join(".desk").join("views");
+            let paths = [&data, &views]
+                .map(|dir| format!("{}/**", dir.display().to_string().replace('\\', "/")));
+            core.grant(
+                RUNTIME_CALLER,
+                Permission::ShellOpen(ShellOpenPermission {
+                    permission: Default::default(),
+                    schemes: None,
+                    paths: Some(paths.to_vec()),
+                }),
+            );
             tracing.phase("core init", started);
             let started = Instant::now();
             for dir in env_paths("DESK_PLUGIN_DIRS") {
@@ -239,6 +254,8 @@ pub fn run() {
             let started = Instant::now();
             core.start_connectors();
             core.start_connector_scheduler(CONNECTOR_TICK);
+            core.keep_broken_views();
+            app.manage(commands::start::Start::new(&core, &data, last));
             let views = core.watch_views().ok();
             for problem in core.view_problems() {
                 eprintln!("endue Desk: a view is left out ({problem})");
@@ -286,6 +303,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::bridge::bridge_call,
             commands::ready::desk_ready,
+            commands::start::desk_start,
+            commands::start::desk_relaunch,
             trace::desk_trace,
             palette::palette_hide,
             palette::palette_reveal_main,

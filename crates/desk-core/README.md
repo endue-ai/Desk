@@ -25,6 +25,10 @@ its sync, the brain conversation, the integration layer and the bridge handler. 
 - Storage: `with_store_file(path)`, `with_settings_file(path)`, `with_log_dir(dir)`, `Core::log`.
   Brain: `with_brain(brain, BrainOptions)`, `route_tools()` (tool calls as their agent), `open_session`,
   `brain_session()`; `brain.say` streams `brain.turn`; the directory passes the brain's answers through.
+- Start (ADR 0061): every state file is screened as it loads; an unreadable one is kept as
+  `<name>.broken` (`keep_broken`, `broken_in`) and listed by `broken_files()`; `with_index_file`,
+  `keep_broken_views`, `report_broken`. `with_safe_mode(SafeReason)` and `safe_mode()` hold all but
+  the desk.* policies off; `plugins.quarantined` in `desk`'s store holds its plugins; `LastStart`.
 - init.yaml (ADR 0016): `with_init_file(path)`, `init()`, `init_problem()`, `with_sync(remote,
   state_file)`, `sync_init()`, `resolve_init(Keep)`; `MockRemote` stands in for endue.
 - Integration layer (ADR 0036): `with_index(Arc<dyn ItemIndex>)` (`data.*` under `data:read`),

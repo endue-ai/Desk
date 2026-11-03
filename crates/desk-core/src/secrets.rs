@@ -26,6 +26,11 @@ struct SecretsFile {
     secrets: BTreeMap<String, Map<String, Value>>,
 }
 
+/// Whether `bytes` are a secrets file of this version (secrets.json).
+pub(crate) fn readable(bytes: &[u8]) -> bool {
+    serde_json::from_slice::<SecretsFile>(bytes).is_ok_and(|file| file.version == VERSION)
+}
+
 /// The secrets of every instance, by `<connector>/<instance>`, kept in a file or in memory.
 #[derive(Debug, Default)]
 pub(crate) struct Secrets {

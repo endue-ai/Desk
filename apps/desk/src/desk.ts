@@ -10,6 +10,7 @@ import { installNativeFileDrops, pickNativeFile } from "./native-files";
 import { installOpenedFiles } from "./open-files";
 import { sendThemeToPalette } from "./palette-theme";
 import { shellBridge } from "./shell-bridge";
+import { readStart, relauncher } from "./start";
 import { nextPaint, reportStartup } from "./startup";
 import { installUpdates, NOTIFIED, ROW } from "./updates";
 
@@ -26,6 +27,8 @@ const pluginBase = navigator.userAgent.includes("Windows")
   : "desk-plugin://localhost";
 
 const core = new BridgeClient(tauriAdapter((command, args) => invoke(command, args), listen));
+// Safe mode and the state files kept broken (ADR 0061), known before the shell mounts.
+const start = await readStart(invoke);
 const lang = navigator.language.startsWith("ko") ? "ko" : "en";
 const desk = mountDesk({
   root,
@@ -36,6 +39,8 @@ const desk = mountDesk({
   platform: navigator.userAgent.includes("Macintosh") ? "mac" : "other",
   lang,
   pickFile: pickNativeFile,
+  start,
+  relaunch: relauncher(invoke),
   onSurfaceShown: (id) => {
     if (id === "desk.palette") void invoke("palette_reveal_main");
   },

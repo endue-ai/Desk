@@ -27,6 +27,7 @@ pub const USAGE: &str = "usage: desk [--json] <command>
   theme import <file>                   install a .desk-theme file as a user theme; prints its id
   theme export <id> [file]              write a theme as a .desk-theme file (default: in Downloads)
   theme remove <id>                     delete a user theme
+  doctor [--data <dir>]                 offline: quarantined plugins and .broken state files
   fs history <path> [--limit <n>]       the versions the desk kept of a file: id, at, caller, size
   fs restore <path> <version>           write a kept version back (what it replaces is kept too)
   log [--count <n>]                     the desk's log, oldest first: at, level, channel, message
@@ -42,6 +43,8 @@ pub struct Args {
 pub enum Action {
     Help,
     Validate(PathBuf),
+    /// Offline: what the data folder says went wrong (`--data` names another one).
+    Doctor(Option<PathBuf>),
     /// `plugin test <dir>`: the folder's tests, on the harness or the SDK's test host.
     Test(PathBuf),
     /// `doctor --trace <file>`: a start-up trace, summarized offline.
@@ -125,6 +128,8 @@ pub fn parse(args: Vec<String>) -> Option<Args> {
     let action = match words.as_slice() {
         ["--help" | "-h" | "help"] => Action::Help,
         ["plugin", "validate", dir] => Action::Validate(PathBuf::from(dir)),
+        ["doctor"] => Action::Doctor(None),
+        ["doctor", "--data", dir] => Action::Doctor(Some(PathBuf::from(name(dir)?))),
         ["plugin", "test", dir] => Action::Test(PathBuf::from(dir)),
         ["doctor", "--trace", file] => Action::Trace(PathBuf::from(file)),
         ["ping"] => Action::Remote(Remote::Ping),

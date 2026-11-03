@@ -35,6 +35,9 @@ pnpm exec vitest run packages/runtime      # unit: policies, keymap, profiles, m
 just test-e2e                             # Playwright on stubs, never directly; macOS: Linux (ADR 0018)
 ```
 
-Fixtures: `desk.html` (`?init=`, `?off=`, `?platform=`, `?profile=`, `?rules=`, `?store=`, `?core=1`),
-`shell.html` (`?lang=en`, `?persist=1`, `?reduced=1`, `?init=`, `?views=1`, `?apps=1`), `views.html` (`?status=error`,
-`?jira=1`, `?propose=1`). Render trees (ADR 0011): `just test-e2e --update-snapshots`, review the JSON.
+`pnpm dev` (the shell at http://127.0.0.1:5173), `pnpm exec vitest run packages/runtime` (unit), and
+`just test-e2e` (Playwright on the stubs; macOS: a Linux container, ADR 0018). Fixtures: `desk.html` (desk.* policies, test plugins; `?init=`, `?off=`, `?platform=`, `?profile=`,
+`?rules=`, `?store=`, `?core=1`), `shell.html` (`?lang=en`, `?persist=1`, `?reduced=1`, `?init=`, `?views=1`, `?apps=1`),
+`views.html` (desk.views on the fixture items; `?status=error`, `?jira=1`, `?propose=1`), `safe-mode.html`
+(`?safe=`, `?held=`, `?broken=`, `?throws=1`, `?session=torn`; ADR 0061). Render
+trees (ADR 0011): `just test-e2e --update-snapshots`, review the JSON. Never run Playwright directly.

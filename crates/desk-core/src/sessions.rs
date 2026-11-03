@@ -34,6 +34,11 @@ struct Saved {
     transcript: Vec<Said>,
 }
 
+/// Whether `bytes` are a brain session file (brain.json).
+pub(crate) fn readable(bytes: &[u8]) -> bool {
+    crate::state_file::json_as::<Saved>(bytes)
+}
+
 #[derive(Debug)]
 pub struct SessionStore {
     path: Option<PathBuf>,

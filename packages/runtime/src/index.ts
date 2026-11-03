@@ -34,6 +34,7 @@ export type { SettingsLanguage } from "./settings-ui/copy";
 export type { SettingsSection } from "./settings-ui/panels";
 export type { SettingsWindow } from "./settings-ui/window";
 export { type Desk, type DeskOptions, mountDesk } from "./shell/Desk";
+export type { BrokenStateFile, StartInfo } from "./start";
 export { SurfaceHost, type SurfaceSpec } from "./surfaces";
 export { applyTheme } from "./theme";
 export { PHASE_PREFIX, type Phase, phase, phases, timed } from "./timing";

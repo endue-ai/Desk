@@ -19,6 +19,7 @@ import {
 } from "./context";
 import { dataFor, type PluginData, type PluginViews } from "./data";
 import { type HostMessage, type ThemeState, type Transport, windowTransport } from "./protocol";
+import { frameStart } from "./ready";
 import { type PluginSearch, searchFor } from "./search";
 import { SURFACE_STATE, stateAnswer } from "./surface-state";
 
@@ -89,6 +90,19 @@ type Pending = {
   resolve: (value: unknown) => void;
   reject: (e: unknown) => void;
 };
+
+/** This frame's start, watched from the moment the SDK loads (ADR 0061). */
+const start = frameStart();
+
+/** Tell the desk how the start went: through the frame's watch, or the transport outside a frame. */
+function report(transport: Transport, failure?: unknown): void {
+  const message = failure instanceof Error ? failure.message : String(failure);
+  if (start) {
+    if (failure === undefined) start.ready();
+    else start.failed(message);
+  } else if (failure === undefined) transport.send({ type: "desk:ready" });
+  else transport.send({ type: "desk:failed", message });
+}
 
 /** Called by defineUiPlugin once `mount` has finished, so commands that came early get answered. */
 const mountedHooks = new WeakMap<PluginContext, () => void>();
@@ -187,7 +201,9 @@ export function connect(transport: Transport = windowTransport()): Promise<Plugi
           mountedHooks.set(ctx, markMounted);
           // Without defineUiPlugin, handlers registered right after connect() count as mounted.
           setTimeout(() => {
-            if (!usedByDefine.has(ctx)) markMounted();
+            if (usedByDefine.has(ctx)) return;
+            markMounted();
+            report(transport);
           }, 0);
           resolve(ctx);
           break;
@@ -227,8 +243,12 @@ export async function defineUiPlugin(
   usedByDefine.add(ctx);
   try {
     await plugin.mount(ctx);
+  } catch (failure) {
+    report(transport, failure);
+    throw failure;
   } finally {
     mountedHooks.get(ctx)?.();
   }
+  report(transport);
   return ctx;
 }

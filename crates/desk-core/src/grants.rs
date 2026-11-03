@@ -23,6 +23,11 @@ struct GrantFile {
     grants: Vec<CallerGrant>,
 }
 
+/// Whether `bytes` are a grant file of this version (grants.json).
+pub(crate) fn readable(bytes: &[u8]) -> bool {
+    serde_json::from_slice::<GrantFile>(bytes).is_ok_and(|file| file.version == VERSION)
+}
+
 /// The `always` grants in `path` with the id counter, or nothing when it cannot be read.
 pub fn load(path: &Path) -> (u64, Vec<(String, Grant)>) {
     let Some(file) = std::fs::read_to_string(path)
