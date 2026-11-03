@@ -11,9 +11,9 @@ and brain). Layer: Desk bridge (`docs/architecture.md`).
 - `browserStub(handlers, observe?)`: answers the methods it is given, any other `unsupported`; `emit`
   sends events; handlers throw `StubError(code, message, permission?)`; `observe` hears calls. For tests.
 - `stubCommands(emit, { grants?, settings?, prompt?, now?, files?, open? })`: the core's rules, per
-  caller. Its `handlers` serve `cmd.*`, `perm.*`, `settings.*`, `log.*`, `events.*`, `ui.surface.*`,
-  `plugin.stats` (`observe` counts calls) and `shell.open` (refused as the core refuses, asking
-  without a grant, recorded in `state().opened` and handed to `open`; nothing opens). A plugin's
+  caller. Its `handlers` serve `cmd.*` (`cmd.undo`, `cmd.redo`: stub-undo.ts), `perm.*`, `settings.*`,
+  `log.*`, `events.*`, `ui.surface.*`, `plugin.stats` (`observe` counts calls) and `shell.open` (asking
+  without a grant, refusing what the core refuses, recorded in `state().opened`, handed to `open`). A plugin's
   scoped call needs a covering grant, else `permission_denied`; the runtime (`desk`) is trusted and
   `cmd.list`/`cmd.invoke` check no grants. `perm.prompt` goes to `perm:manage` holders and the first
   `perm.answer` decides; without one, `prompt` does (granted by default). `once` grants expire after

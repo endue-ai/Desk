@@ -11,9 +11,9 @@ its sync, the brain conversation, the integration layer and the bridge handler. 
   `pty`); `proc.output` and `proc.exit` reach the caller only; later calls need owner and scope.
 - `net.fetch` checks the URL against the `net:fetch` scope (`Target::Url`), desk-sys every redirect;
   `ui.surface.open` needs `ui:surface` and a declared surface, and `ui.surface.*` events go to `desk`.
-- Files: `fs.read` reads ranges; `fs.url` tokens resolve with `file_url(token)` (ADR 0041); with
-  `with_history_dir(dir)` each `fs.write` keeps what it replaces for `fs.history` and `fs.restore`
-  (ADR 0076). Links (ADR 0047): `with_opener`.
+- Files: `fs.read` ranges, `fs.url` tokens for `file_url(token)` (ADR 0041); `with_history_dir(dir)`:
+  each `fs.write` keeps what it replaces (ADR 0076), undone like an ok answer of a command naming an
+  `undo` through `cmd.undo`/`cmd.redo` on one desk stack (ADR 0077). Links: `with_opener`.
 - Permissions: `Core::grant`, `with_grant_file(path)` (ADR 0029), `with_prompter` (`RefuseAll`);
   `perm.request` and `shell.open` prompt the `perm:manage` holders. Agents (ADR 0072): capped by
   `agents.<id>.allow`, prompted inside it, logged on `perm`; irreversible calls held (ADR 0078).
