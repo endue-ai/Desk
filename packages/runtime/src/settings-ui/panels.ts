@@ -14,14 +14,73 @@ export type SettingsSection = (typeof SECTIONS)[number];
 export const description = (section: SettingsSection): SettingsCopy => `${section}Description`;
 const TERMS: Record<SettingsSection, string> = {
   general: "general desk preferences 일반 설정 정보",
-  appearance: "appearance theme light dark system 화면 테마 라이트 다크 자동",
+  appearance: "appearance theme light dark system dark mode 화면 테마 라이트 다크 자동",
   keyboard: "keyboard keys shortcuts bindings 키보드 단축키 키바인딩",
   notifications: "notifications focus do not disturb 알림 방해금지 집중",
   accessibility: "accessibility contrast motion animation 손쉬운 사용 대비 동작 애니메이션",
 };
+const SECTION_COPY: Record<SettingsSection, readonly SettingsCopy[]> = {
+  general: ["general", "generalDescription", "device", "personalization", "local"],
+  appearance: ["appearance", "appearanceDescription", "light", "dark", "system", "systemHint"],
+  keyboard: [
+    "keyboard",
+    "keyboardDescription",
+    "shortcuts",
+    "shortcutHint",
+    "findCommand",
+    "change",
+    "reset",
+    "resetAll",
+    "restoreConfirm",
+    "restore",
+    "remove",
+    "none",
+    "record",
+    "invalid",
+    "conflict",
+    "replace",
+    "cancel",
+    "moved",
+    "noResults",
+    "trySearch",
+  ],
+  notifications: [
+    "notifications",
+    "notificationsDescription",
+    "behavior",
+    "dnd",
+    "dndHint",
+    "historyHint",
+  ],
+  accessibility: [
+    "accessibility",
+    "accessibilityDescription",
+    "display",
+    "contrast",
+    "contrastHint",
+    "normal",
+    "high",
+    "followSystem",
+    "motion",
+    "motionHint",
+    "reduce",
+    "full",
+  ],
+};
+const SEARCH_TEXT = Object.fromEntries(
+  SECTIONS.map((section) => [
+    section,
+    [
+      TERMS[section],
+      ...SECTION_COPY[section].flatMap((key) => [settingsText("ko", key), settingsText("en", key)]),
+    ]
+      .join(" ")
+      .toLowerCase(),
+  ]),
+) as Record<SettingsSection, string>;
 export function findSections(query: string): SettingsSection[] {
   const words = query.trim().toLowerCase().split(/\s+/);
-  return SECTIONS.filter((section) => words.every((word) => TERMS[section].includes(word)));
+  return SECTIONS.filter((section) => words.every((word) => SEARCH_TEXT[section].includes(word)));
 }
 
 export function settingsPanel(

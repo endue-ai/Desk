@@ -33,36 +33,27 @@ export function mountKeyboard(options: KeyboardOptions): { el: HTMLElement; disp
   });
   const conflict = h("div", { class: "settings-conflict", hidden: true });
   const list = h("ul", { class: "settings-key-list" });
+  let retainedRow: string | null = null;
   const query = h("input", {
     type: "search",
     class: "settings-input",
     placeholder: tr("findCommand"),
     "aria-label": tr("findCommand"),
     onInput: () => {
+      retainedRow = null;
       stop();
       draw();
     },
   });
+  const restoreAll = h(
+    "button",
+    { type: "button", class: "settings-button", onClick: confirmRestore },
+    tr("resetAll"),
+  );
   const el = h(
     "div",
     { class: "settings-keyboard" },
-    h(
-      "div",
-      { class: "settings-key-tools" },
-      query,
-      h(
-        "button",
-        {
-          type: "button",
-          class: "settings-button",
-          onClick: () => {
-            stop();
-            settings.set(PERSONAL_KEYS, []);
-          },
-        },
-        tr("resetAll"),
-      ),
-    ),
+    h("div", { class: "settings-key-tools" }, query, restoreAll),
     note,
     conflict,
     list,
@@ -78,12 +69,55 @@ export function mountKeyboard(options: KeyboardOptions): { el: HTMLElement; disp
     note.textContent = "";
     draw();
   }
+  function confirmRestore() {
+    stop();
+    conflict.replaceChildren(
+      h("p", {}, tr("restoreConfirm")),
+      h(
+        "button",
+        {
+          class: "settings-button",
+          type: "button",
+          onClick: () => {
+            stop();
+            restoreAll.focus();
+          },
+        },
+        tr("cancel"),
+      ),
+      h(
+        "button",
+        {
+          class: "settings-button primary",
+          type: "button",
+          onClick: () => {
+            stop();
+            settings.set(PERSONAL_KEYS, []);
+            restoreAll.focus();
+          },
+        },
+        tr("restore"),
+      ),
+    );
+    conflict.hidden = false;
+    conflict.querySelector("button")?.focus();
+  }
+  const focusChange = (id: string) => {
+    const find = () =>
+      list.querySelector<HTMLElement>(`[data-key="keys-change-${CSS.escape(id)}"]`);
+    if (!find()) {
+      // Keep the edited row visible when its old shortcut was the search match.
+      retainedRow = id;
+      draw();
+    }
+    find()?.focus();
+  };
   const commit = (id: string, combo: string) => {
     const result = rebind(layers(), id, combo);
     stop();
     settings.set(PERSONAL_KEYS, result.personal);
     note.textContent = result.displaced ? tr("moved") : "";
-    list.querySelector<HTMLElement>(`[data-key="keys-change-${CSS.escape(id)}"]`)?.focus();
+    focusChange(id);
   };
   const record = (id: string) => {
     stop();
@@ -153,16 +187,18 @@ export function mountKeyboard(options: KeyboardOptions): { el: HTMLElement; disp
     const current = layers();
     const filtered = commands
       .list()
-      .filter((c) =>
-        [
-          c.title,
-          c.id,
-          ...c.keywords,
-          ...keysOf(current, c.id).map((k) => formatCombo(k, platform)),
-        ]
-          .join(" ")
-          .toLowerCase()
-          .includes(q),
+      .filter(
+        (c) =>
+          c.id === retainedRow ||
+          [
+            c.title,
+            c.id,
+            ...c.keywords,
+            ...keysOf(current, c.id).map((k) => formatCombo(k, platform)),
+          ]
+            .join(" ")
+            .toLowerCase()
+            .includes(q),
       );
     render(list, () =>
       filtered.length
@@ -210,6 +246,7 @@ export function mountKeyboard(options: KeyboardOptions): { el: HTMLElement; disp
                   () => {
                     stop();
                     settings.set(PERSONAL_KEYS, unbind(layers(), c.id));
+                    focusChange(c.id);
                   },
                   keys.length === 0,
                 ),
@@ -218,6 +255,7 @@ export function mountKeyboard(options: KeyboardOptions): { el: HTMLElement; disp
                   () => {
                     stop();
                     settings.set(PERSONAL_KEYS, reset(layers(), c.id));
+                    focusChange(c.id);
                   },
                   isDefault(current, c.id),
                 ),
