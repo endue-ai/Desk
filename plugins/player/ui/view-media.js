@@ -9,6 +9,7 @@ import { createStallWatch } from "./stall.js";
 import { activeAt } from "./subtitles.js";
 import { clock } from "./time.js";
 import { createEngineSlot } from "./view-engine.js";
+import { createVolume } from "./volume.js";
 
 /**
  * @typedef {import("./player.js").Model} Model
@@ -35,8 +36,6 @@ export function createMedia(doc, act, engines) {
   const seek = /** @type {HTMLInputElement} */ (byId("seek"));
   const time = byId("time");
   const length = byId("duration");
-  const mute = byId("mute");
-  const volume = /** @type {HTMLInputElement} */ (byId("volume"));
   const speed = /** @type {HTMLSelectElement} */ (byId("speed"));
   const loop = byId("loop");
   const theatre = byId("theatre");
@@ -52,6 +51,7 @@ export function createMedia(doc, act, engines) {
 
   /** @type {Media | null} */
   let media = null;
+  const volume = createVolume(doc, () => media);
   let loaded = "";
   /** @type {Model | null} */
   let model = null;
@@ -145,16 +145,6 @@ export function createMedia(doc, act, engines) {
     media.currentTime = Math.max(0, total > 0 ? Math.min(total, to) : to);
     drawTime();
   };
-  const setVolume = (/** @type {number} */ to) => {
-    if (!media) return;
-    media.volume = Math.round(Math.max(0, Math.min(1, to)) * 100) / 100;
-    volume.value = String(media.volume);
-  };
-  const setMuted = (/** @type {boolean} */ on) => {
-    if (!media) return;
-    media.muted = on;
-    pressed(mute, on);
-  };
   const setSpeed = (/** @type {number} */ rate) => {
     speed.value = String(rate);
     for (const element of new Set([video, audio, media])) {
@@ -228,8 +218,6 @@ export function createMedia(doc, act, engines) {
 
   play.addEventListener("click", toggle);
   seek.addEventListener("input", () => seekTo(Number(seek.value)));
-  volume.addEventListener("input", () => setVolume(Number(volume.value)));
-  mute.addEventListener("click", () => setMuted(!media?.muted));
   speed.addEventListener("change", () => setSpeed(Number(speed.value)));
   loop.addEventListener("click", () => {
     const on = !video.loop;
@@ -268,9 +256,9 @@ export function createMedia(doc, act, engines) {
     forward5: () => seekTo((media?.currentTime ?? 0) + 5),
     back10: () => seekTo((media?.currentTime ?? 0) - 10),
     forward10: () => seekTo((media?.currentTime ?? 0) + 10),
-    louder: () => setVolume((media?.volume ?? 1) + 0.1),
-    quieter: () => setVolume((media?.volume ?? 1) - 0.1),
-    mute: () => setMuted(!media?.muted),
+    louder: volume.louder,
+    quieter: volume.quieter,
+    mute: volume.toggleMute,
     start: () => seekTo(0),
     end: () => seekTo(duration()),
     theatre: () => setTheatre(!doc.body.classList.contains("theatre")),
@@ -331,6 +319,7 @@ export function createMedia(doc, act, engines) {
         loaded = key;
         retry.hidden = true;
         media = slot.open(next, element, listen);
+        volume.apply();
         media.loop = video.loop;
         media.playbackRate = Number(speed.value);
         pending = next.start ?? 0;
@@ -384,6 +373,7 @@ export function createMedia(doc, act, engines) {
       setTheatre(false);
     },
     seekTo,
+    loadVolume: volume.load,
     /** Hear the position, for the chapter list. */
     onTime(/** @type {(time: number) => void} */ listener) {
       onTime = listener;
