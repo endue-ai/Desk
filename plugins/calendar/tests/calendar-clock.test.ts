@@ -76,6 +76,10 @@ describe("calendar date and clock", () => {
     m.app.show("week");
     const top = () => m.doc.querySelector(".now")?.style.top;
     const before = top();
+    const scroll = m.doc.querySelector(".scroll");
+    if (!scroll) throw new Error("missing timeline");
+    scroll.scrollTop = 413;
+    scroll.focus();
     expect(before).toBeDefined();
     m.clock.now += 29_000;
     m.tick();
@@ -83,6 +87,8 @@ describe("calendar date and clock", () => {
     m.clock.now += 1_000;
     m.tick();
     expect(top()).not.toBe(before);
+    expect(m.doc.querySelector(".scroll")?.scrollTop).toBe(413);
+    expect(m.doc.activeElement).toBe(m.doc.querySelector(".scroll"));
     const renders = m.view.states.length;
     m.app.dispose();
     m.clock.now += 60_000;
