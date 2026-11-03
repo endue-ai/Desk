@@ -7,6 +7,7 @@ import { createAgentCommands } from "./agent.js";
 import { emptyDocument } from "./calendar/edit.js";
 import { localeWeekStart, MODES, span, step } from "./calendar/layout.js";
 import { buildModel, occurrences } from "./calendar/model.js";
+import { dayFrom } from "./date.js";
 import { createEditing } from "./editing.js";
 import { createFiles, nameOf } from "./files.js";
 import { heading } from "./format.js";
@@ -14,6 +15,7 @@ import { formatComponent, parse } from "./ical/component.js";
 import { DAY } from "./ical/values.js";
 import { displayZone } from "./ical/zones.js";
 import { createReminders } from "./remind.js";
+import { createTicker } from "./ticker.js";
 
 /**
  * @typedef {import("@endue-ai/plugin-sdk").PluginContext} PluginContext
@@ -153,6 +155,7 @@ export function createCalendar(ctx, view, options = {}) {
       locale,
     });
   };
+  const ticker = createTicker({ now, render, ...options });
 
   /** Read a file into a calendar; an empty file is a new, empty calendar. */
   const load = (/** @type {Cal} */ cal, /** @type {string} */ text) => {
@@ -188,6 +191,7 @@ export function createCalendar(ctx, view, options = {}) {
     show: (buffer) => {
       shown = buffer;
       render();
+      ticker.show(buffer !== null);
       if (buffer !== null) view.focus();
       reminders.changed();
     },
@@ -260,35 +264,27 @@ export function createCalendar(ctx, view, options = {}) {
     return commands.run("desk.files.open", { path });
   };
 
-  /** A day from words: 2026-11-03, 2026-11, today, tomorrow, yesterday. */
-  const dayFrom = (/** @type {string} */ words) => {
-    const text = words.trim().toLowerCase();
-    const relative = { today: 0, tomorrow: 1, yesterday: -1 }[text];
-    if (relative !== undefined) return todayOf() + relative;
-    const match = /^(\d{4})-(\d{1,2})(?:-(\d{1,2}))?$/.exec(text);
-    if (!match) return undefined;
-    const day = Math.floor(
-      Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3] ?? 1)) / DAY,
-    );
-    return Number.isFinite(day) ? day : undefined;
-  };
-
   /** Go to the day the person names, asking through the palette when no date is given. */
   const askDate = async (/** @type {unknown} */ given) => {
     const words =
       typeof given === "string"
         ? given
-        : await commands.run("desk.palette.pick", {
-            title: "Go to a date",
-            items: [
-              { id: "today", label: "Today" },
-              { id: "tomorrow", label: "Tomorrow" },
-            ],
-            free: true,
-            placeholder: "2026-11-03",
-          });
+        : await commands
+            .run("desk.palette.pick", {
+              title: "Go to a date",
+              items: [
+                { id: "today", label: "Today" },
+                { id: "tomorrow", label: "Tomorrow" },
+              ],
+              free: true,
+              placeholder: "2026-11-03",
+            })
+            .catch((error) => {
+              if (/** @type {{ code?: string }} */ (error)?.code === "cancelled") return null;
+              throw error;
+            });
     if (typeof words !== "string" || words === "") return null;
-    const day = dayFrom(words);
+    const day = dayFrom(words, todayOf());
     if (day === undefined) throw new Error(`"${words}" is not a date; write it as 2026-11-03.`);
     go(day);
     return null;
@@ -375,7 +371,10 @@ export function createCalendar(ctx, view, options = {}) {
       safely(() => editing.save(fields, scope)),
     remove: (/** @type {Scope} */ scope) => safely(() => editing.remove(scope)),
     close: () => editing.close(),
-    /** Stop the reminder timer. */
-    dispose: () => reminders.dispose(),
+    /** Stop the timers. */
+    dispose: () => {
+      ticker.dispose();
+      reminders.dispose();
+    },
   };
 }
