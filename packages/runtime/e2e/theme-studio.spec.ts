@@ -14,7 +14,7 @@ test("the theme studio previews, reverts, applies and keeps the theme, by keyboa
       name,
     );
   const backdrop = () =>
-    page.locator("#desk").evaluate((el) => getComputedStyle(el).backgroundImage);
+    page.locator(".wallpaper").evaluate((el) => getComputedStyle(el).backgroundImage);
   expect(await rootVar("--desk-radius-md")).toBe("8px");
 
   // The way in at the top right.

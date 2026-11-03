@@ -1,6 +1,10 @@
 // @vitest-environment jsdom
 import { afterEach, expect, it } from "vitest";
 import { ManualClock } from "../clock";
+import type { CommandSpec } from "../commands";
+import { DEFAULT_KEYS } from "../core/keys";
+import { listenForShortcuts, ShortcutRouter } from "../input";
+import { Keymap } from "../keymap";
 import { Settings } from "../settings";
 import { mountComposer } from "./Composer";
 import type { ShellCtx } from "./context";
@@ -25,23 +29,38 @@ function setup() {
   const clock = new ManualClock();
   const ticker = new Ticker(clock);
   const store = new Store(emptyState("en"));
+  const defined = new Map<string, CommandSpec>();
+  const commands = {
+    list: () => [],
+    has: (id: string) => defined.has(id),
+    define: (id: string, spec: CommandSpec) => {
+      defined.set(id, spec);
+      return () => defined.delete(id);
+    },
+    run: (id: string) => Promise.resolve(defined.get(id)?.run(undefined, {})),
+  };
+  const shortcuts = new ShortcutRouter({ platform: "mac" });
+  const keymap = new Keymap(shortcuts, commands as never);
+  keymap.apply(DEFAULT_KEYS);
+  cleanups.push(listenForShortcuts(window, shortcuts));
   const ctx = {
     store,
     ticker,
     reduced: () => false,
     platform: "mac",
-    keyOf: () => undefined,
+    keyOf: (id: string) => keymap.keysFor(id)[0],
     tr: (key: Parameters<typeof t>[1]) => t("en", key),
     runtime: {
-      commands: { list: () => [], has: () => false },
+      commands,
       settings: new Settings(),
-      shortcuts: { focused: null },
+      shortcuts,
+      keymap,
       focusSurface: () => {},
     },
     bridge: { agents: { card: async () => ({}) } },
   } as unknown as ShellCtx;
   cleanups.push(mountComposer(root, ctx), mountTalkChrome(root, ctx), () => ticker.dispose());
-  return { root, store, clock, input: get<HTMLInputElement>(root, "input") };
+  return { root, store, clock, keymap, shortcuts, input: get<HTMLInputElement>(root, "input") };
 }
 it("previews on hover without stealing focus, opens on click, and folds on Escape", () => {
   const { root, input } = setup();
@@ -95,5 +114,24 @@ it("opens the selected agent's existing screen and returns focus to the talk lin
   get<HTMLButtonElement>(root, ".talk-agent-list button").click();
   expect(store.get().agentId).toBe("mira");
   expect(store.get().focused).toBe("agent:mira");
+  expect(document.activeElement).toBe(input);
+});
+it("opens from a plugin's forwarded shortcut and honors a personal replacement binding", () => {
+  const { root, input, shortcuts, keymap } = setup();
+  keymap.apply([{ key: "Alt+Enter", command: "desk.shell.talk", owner: "person" }]);
+  expect(root.querySelector(".talk-shortcut")?.textContent).toBe("⌥↩");
+  shortcuts.focus("test.plugin");
+  expect(
+    shortcuts.handle({ key: " ", altKey: true, metaKey: false, ctrlKey: false, shiftKey: false }),
+  ).toBe(false);
+  expect(
+    shortcuts.handle({
+      key: "Enter",
+      altKey: true,
+      metaKey: false,
+      ctrlKey: false,
+      shiftKey: false,
+    }),
+  ).toBe(true);
   expect(document.activeElement).toBe(input);
 });

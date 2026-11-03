@@ -3,6 +3,11 @@ import type { KeyBinding } from "@endue-ai/bridge";
 
 export const DEFAULT_KEYS: Array<KeyBinding & { owner: string }> = [
   {
+    key: "Alt+Space",
+    command: "desk.shell.talk",
+    owner: "desk",
+  },
+  {
     key: "Mod+K",
     command: "desk.palette.open",
     owner: "desk",

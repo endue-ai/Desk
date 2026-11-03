@@ -5,6 +5,8 @@ import type { ShellCtx } from "./context";
 import { h, listen, render } from "./dom";
 import { icon } from "./icons";
 
+const TALK = "desk.shell.talk";
+
 function orb(): SVGSVGElement {
   const mesh = generateMesh({ ...DENSITIES.airy, view: VIEW_IDLE, goldToward: [1, 0] });
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
@@ -49,17 +51,14 @@ export function mountTalkChrome(root: HTMLElement, ctx: ShellCtx): () => void {
       class: "talk-launch",
       type: "button",
       "aria-controls": "composer-input",
+      "aria-keyshortcuts": "Alt+Space",
       onClick: show,
     },
     orb(),
     launchText,
   );
   const preview = h("span", { class: "talk-preview" });
-  const shortcut = h(
-    "kbd",
-    { class: "talk-shortcut", "aria-hidden": "true" },
-    ctx.platform === "mac" ? "⌥Space" : "Alt+Space",
-  );
+  const shortcut = h("kbd", { class: "talk-shortcut", "aria-hidden": "true" });
   const grip = h("span", { class: "talk-grip", "aria-hidden": "true" }, "⠿");
   const agents = h("div", {
     class: "popover talk-agent-list",
@@ -92,6 +91,16 @@ export function mountTalkChrome(root: HTMLElement, ctx: ShellCtx): () => void {
     launch.hidden = open;
     input.tabIndex = open ? 0 : -1;
     input.setAttribute("aria-label", label());
+    shortcut.textContent = ctx.keyOf(TALK) ?? "";
+    shortcut.hidden = !shortcut.textContent;
+    launch.setAttribute(
+      "aria-keyshortcuts",
+      ctx.runtime.keymap
+        .bindings()
+        .filter((b) => b.command === TALK)
+        .map((b) => b.combo)
+        .join(" "),
+    );
     input.placeholder = s.lang === "ko" ? "Eris에게 계속 말해 보세요" : "Keep talking with Eris";
     const available = spaceAgents(s);
     const names = available.map((a) => a.name).join(", ");
@@ -126,6 +135,15 @@ export function mountTalkChrome(root: HTMLElement, ctx: ShellCtx): () => void {
     );
   };
   const offs = [
+    ctx.runtime.commands.define(TALK, {
+      title: ctx.tr("cmdComposer"),
+      owner: "desk.shell",
+      keywords: ["talk", "eris", "말하기"],
+      run: () => {
+        if (!document.querySelector("dialog[open], .scrim")) show();
+      },
+    }),
+    ctx.runtime.keymap.onChange(draw),
     // Moving from the empty input into its agent picker is still editing the same composer.
     listen(
       input,
@@ -167,23 +185,6 @@ export function mountTalkChrome(root: HTMLElement, ctx: ShellCtx): () => void {
       if (picking && !el.contains(e.target as Node)) {
         picking = false;
         draw();
-      }
-    }),
-    listen(window, "keydown", (e) => {
-      const key = e as KeyboardEvent;
-      if (
-        !key.defaultPrevented &&
-        !key.isComposing &&
-        key.altKey &&
-        !key.metaKey &&
-        !key.ctrlKey &&
-        !key.shiftKey &&
-        key.code !== "AltRight" &&
-        key.key === " " &&
-        !document.querySelector("dialog[open]")
-      ) {
-        key.preventDefault();
-        show();
       }
     }),
   ];

@@ -14,6 +14,7 @@
  * Meta on macOS and Control elsewhere, as in the runtime's keymap.
  */
 export const DESK_KEYS = Object.freeze([
+  "Alt+Space",
   "Mod+K",
   "Mod+Shift+P",
   "Mod+/",
@@ -56,7 +57,8 @@ const COMBO = /^((?:(?:Mod|Meta|Control|Ctrl|Cmd|Alt|Option|Shift)\+)*)(.+)$/u;
 /** A press as the runtime's keymap names it: modifiers in a fixed order, a single character upper-cased. */
 export function comboOf(/** @type {KeyPress} */ press) {
   const held = [press.metaKey, press.ctrlKey, press.altKey, press.shiftKey];
-  const key = press.key.length === 1 ? press.key.toUpperCase() : press.key;
+  const key =
+    press.key === " " ? "Space" : press.key.length === 1 ? press.key.toUpperCase() : press.key;
   return [...MODIFIERS.filter((_, i) => held[i]), key].join("+");
 }
 

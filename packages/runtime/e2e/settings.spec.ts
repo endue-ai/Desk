@@ -74,6 +74,8 @@ test.describe("core settings", () => {
     await target.getByRole("button", { name: /지우기/ }).click();
     await expect(target.locator("kbd")).toHaveCount(0);
     await dialog(page).getByRole("button", { name: "모두 기본값으로", exact: true }).click();
+    await expect(target.locator("kbd")).toHaveCount(0);
+    await dialog(page).getByRole("button", { name: "되돌리기", exact: true }).click();
     await expect(target.locator("kbd")).toHaveText("⌘,");
     await expect(row(page, "desk.settings.keyboard").locator("kbd")).toHaveText("⌘/");
     await page.screenshot({ path: info.outputPath("settings-keyboard-dark.png") });

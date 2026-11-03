@@ -42,7 +42,8 @@ Effects are bounded to sixteen, expire after 3.2 seconds, and clear when the sce
 Live updates use the injected ticker, capped at 30 fps, and unsubscribe while hidden or reduced.
 
 The three-state Eris bar wraps the existing composer, preserving its send, command and IME behavior.
-Hover previews directory agents; click or Option/Alt + Space opens input. Its agent picker opens
+Hover previews directory agents; click or Option/Alt + Space opens input through the existing
+rebindable keymap, including keys forwarded from plugin frames and terminals. Its agent picker opens
 the existing agent screens and does not change the conversation's recipient.
 
 ### Consequences

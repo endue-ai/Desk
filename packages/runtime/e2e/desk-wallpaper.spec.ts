@@ -111,6 +111,13 @@ test("plugin side windows use the same normal and floating modes", async ({ page
     await win.getByRole("button", { name: "Floating mode" }).click();
     expect(await win.boundingBox()).toEqual(floating);
   }
+  await page
+    .frameLocator('.surface[data-surface="endue.toolbar"] iframe')
+    .getByRole("button")
+    .first()
+    .focus();
+  await page.keyboard.press("Alt+Space");
+  await expect(page.locator(".composer-input")).toBeFocused();
 });
 
 test("live scenery respects reduced motion", async ({ page }) => {
@@ -118,6 +125,7 @@ test("live scenery respects reduced motion", async ({ page }) => {
   await page.keyboard.press("Meta+n");
   await expect(page.locator(".wallpaper-ripple")).toHaveCount(0);
   await expect(page.locator(".wallpaper")).toHaveAttribute("data-motion", "still");
-  await step(page, 5000);
+  // An idle wallpaper needs only the final clock frame, without a burst of unrelated Eris paints.
+  await page.evaluate(() => window.__shell.clock.advance(5000));
   await expect(page.locator(".wallpaper")).toHaveCSS("--wallpaper-drift", "0px");
 });
