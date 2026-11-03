@@ -127,11 +127,15 @@ export function createView(doc, actions) {
     zoomShown.textContent = `${Math.round(zoom * 100)}%`;
     zoomShown.setAttribute("aria-label", `Zoom ${Math.round(zoom * 100)}%`);
   };
+  const updateZoomButtons = () => {
+    /** @type {HTMLButtonElement} */ (zoomOut).disabled = zoom <= (STEPS[0] ?? 0.25);
+    /** @type {HTMLButtonElement} */ (byId("zoom-in")).disabled = zoom >= (STEPS.at(-1) ?? 5);
+  };
   const setZoom = (/** @type {number} */ next, keep = true) => {
     const z = Math.max(STEPS[0] ?? 0.25, Math.min(STEPS.at(-1) ?? 5, next));
     zoom = reflowed() ? chapters.zoom(z) : pages.zoom(z);
     showZoom();
-    /** @type {HTMLButtonElement} */ (zoomOut).disabled = zoom <= (STEPS[0] ?? 0.25);
+    updateZoomButtons();
     if (keep) actions.zoomed(zoom);
   };
   const zoomBy = (/** @type {1 | -1} */ direction) => {
@@ -295,6 +299,7 @@ export function createView(doc, actions) {
         void chapters.show(b, at.unit, { offset: at.offset });
       }
       showZoom();
+      updateZoomButtons();
       counter(at.unit);
     },
     /** @param {ShownModel} next */

@@ -1,6 +1,6 @@
 // What the reader keeps per file, in its own store (store.get, store.set) under a key made from the
 // file's path, never in the file: the last position and zoom, bookmarks and notes. A moved file
-// loses them. The store holds 64 KiB a key; the oldest notes go first when a file's marks outgrow it.
+// loses them. The store holds 64 KiB a key; marks are refused when they exceed the reader's limit.
 
 /**
  * @typedef {{ unit: number, offset: number }} At
@@ -48,24 +48,27 @@ export async function loadMarks(/** @type {Bridge} */ bridge, /** @type {string}
   return marks;
 }
 
-/** Keep the marks for `path`. Resolves false when the store refused them. */
+const valueFor = (/** @type {string} */ path, /** @type {Marks} */ marks) => ({
+  path,
+  unit: marks.at.unit,
+  offset: Math.round(marks.at.offset * 10000) / 10000,
+  zoom: marks.zoom,
+  bookmarks: marks.bookmarks,
+  notes: marks.notes,
+});
+
+/** Whether the complete value fits, measured in the store's UTF-8 bytes. */
+export const marksFit = (/** @type {string} */ path, /** @type {Marks} */ marks) =>
+  new TextEncoder().encode(JSON.stringify(valueFor(path, marks))).length <= LIMIT;
+
+/** Keep all marks for `path`. Resolves false if they do not fit or the store refused them. */
 export async function saveMarks(
   /** @type {Bridge} */ bridge,
   /** @type {string} */ path,
   /** @type {Marks} */ marks,
 ) {
-  const value = {
-    path,
-    unit: marks.at.unit,
-    offset: Math.round(marks.at.offset * 10000) / 10000,
-    zoom: marks.zoom,
-    bookmarks: marks.bookmarks,
-    notes: marks.notes,
-  };
-  while (value.notes.length > 0 && JSON.stringify(value).length > LIMIT)
-    value.notes = value.notes.slice(1);
-  while (value.bookmarks.length > 0 && JSON.stringify(value).length > LIMIT)
-    value.bookmarks = value.bookmarks.slice(1);
+  if (!marksFit(path, marks)) return false;
+  const value = valueFor(path, marks);
   return bridge.call("store.set", { key: keyFor(path), value }).then(
     () => true,
     () => false,
