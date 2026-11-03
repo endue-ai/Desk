@@ -119,3 +119,75 @@ it("merges updates behind a slow search call into one latest replacement", async
   expect(m.params("search.replace")).toHaveLength(before + 2);
   expect(m.params("search.replace").at(-1)).toMatchObject({ documents: [{ text: "latest 4" }] });
 });
+
+it("waits for the latest edit's pause when a slow search finishes", async () => {
+  const path = "~/Notes/a.md";
+  let release: (() => void) | undefined;
+  let slow = false;
+  const m = await mount({
+    handlers: {
+      ...disk({ [path]: "start" }),
+      "search.replace": () =>
+        slow
+          ? new Promise((resolve) => {
+              release = () => resolve({});
+            })
+          : {},
+    },
+  });
+  await m.host.command("desk.files.visit", note(path));
+  await m.settle();
+  const before = m.params("search.replace").length;
+  vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+  slow = true;
+  m.app.edit("first");
+  await vi.advanceTimersByTimeAsync(500);
+  m.app.edit("second");
+  await vi.advanceTimersByTimeAsync(500);
+  m.app.edit("latest");
+  await vi.advanceTimersByTimeAsync(50);
+  slow = false;
+  expect(release).toBeDefined();
+  release?.();
+  await vi.advanceTimersByTimeAsync(449);
+  expect(m.params("search.replace")).toHaveLength(before + 1);
+  await vi.advanceTimersByTimeAsync(1);
+  expect(m.params("search.replace")).toHaveLength(before + 2);
+  expect(m.params("search.replace").at(-1)).toMatchObject({ documents: [{ text: "latest" }] });
+});
+
+it("sends an immediate close waiting behind a slow search without waiting for later typing", async () => {
+  const a = note("~/Notes/a.md");
+  const b = note("~/Notes/b.md");
+  let release: (() => void) | undefined;
+  let slow = false;
+  const m = await mount({
+    handlers: {
+      ...disk({ [a.path]: "A", [b.path]: "B" }),
+      "search.replace": () =>
+        slow
+          ? new Promise((resolve) => {
+              release = () => resolve({});
+            })
+          : {},
+    },
+  });
+  await m.host.command("desk.files.visit", a);
+  await m.host.command("desk.files.visit", b);
+  await m.settle();
+  const before = m.params("search.replace").length;
+  vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+  slow = true;
+  m.app.edit("first");
+  await vi.advanceTimersByTimeAsync(500);
+  await m.host.command("desk.buffers.closed", a);
+  m.app.edit("latest");
+  slow = false;
+  expect(release).toBeDefined();
+  release?.();
+  await vi.advanceTimersByTimeAsync(0);
+  expect(m.params("search.replace")).toHaveLength(before + 2);
+  expect(m.params("search.replace").at(-1)).toMatchObject({ documents: [{ text: "latest" }] });
+  await vi.advanceTimersByTimeAsync(500);
+  expect(m.params("search.replace")).toHaveLength(before + 2);
+});

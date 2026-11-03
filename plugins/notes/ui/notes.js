@@ -64,12 +64,16 @@ export function createNotes({ bridge, commands, surface }, view) {
   const notes = new Map();
   // Only notes opened by the person enter global search, never arbitrary files or private settings.
   let publishing = false;
-  let pending = false;
+  /** @type {"typing" | "immediate" | undefined} */
+  let pending;
   /** @type {ReturnType<typeof setTimeout> | undefined} */
   let publishTimer;
   const sendSearch = () => {
-    if (publishing || !pending) return;
-    pending = false;
+    if (publishing || !pending || (pending === "typing" && publishTimer !== undefined)) return;
+    // An immediate replacement includes every edit so far, even if its timer was still running.
+    clearTimeout(publishTimer);
+    publishTimer = undefined;
+    pending = undefined;
     publishing = true;
     const documents = [...notes.values()].slice(-30).map((note) => ({
       id: note.path,
@@ -88,12 +92,16 @@ export function createNotes({ bridge, commands, surface }, view) {
   const publish = () => {
     clearTimeout(publishTimer);
     publishTimer = undefined;
-    pending = true;
+    pending = "immediate";
     sendSearch();
   };
   const publishAfterTyping = () => {
     clearTimeout(publishTimer);
-    publishTimer = setTimeout(publish, 500);
+    publishTimer = setTimeout(() => {
+      publishTimer = undefined;
+      pending ??= "typing";
+      sendSearch();
+    }, 500);
   };
   commands.on("endue.notes.search-open", (args) => {
     const { path } = requested(args);
