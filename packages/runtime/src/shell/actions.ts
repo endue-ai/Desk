@@ -10,7 +10,9 @@ import {
   type SurfacePlacement,
 } from "../modes/types";
 import type { Runtime } from "../runtime";
-import { tiles } from "../surface/tiling";
+import { isFloating } from "../surface/coordinates";
+import { slotRect } from "../surface/tiling";
+import { leaves, panesOf } from "../surface/tree";
 import type { DeskState, Store } from "./state";
 import { surfaceTitle, type Titled } from "./titles";
 
@@ -43,8 +45,9 @@ export function dirty(s: DeskState): boolean {
 }
 
 /**
- * Plugin surfaces the runtime handed over that no layout places and the drawer does not hold:
- * tiled in the free area in mount order, until the person moves or resizes one (ADR 0040).
+ * Plugin surfaces the runtime handed over that no layout places and the drawer does not hold: each
+ * in its own slot (`surface/tiling.ts`), until the person moves or resizes one (ADR 0040). A slot
+ * does not depend on the other windows, so none of them moves when one of these does.
  */
 export function autoPlacements(
   s: DeskState,
@@ -52,16 +55,18 @@ export function autoPlacements(
 ): SurfacePlacement[] {
   const placed = new Set(layoutOf(s, desktop).surfaces.map((p) => p.plugin));
   const away = new Set(s.drawer.map((d) => d.placement?.plugin));
-  const free = s.adopted.filter((a) => !placed.has(a.id) && !away.has(a.id));
-  const rects = tiles(free.length);
-  return free.flatMap((a, i) => {
-    const rect = rects[i];
-    if (!rect) return [];
+  return s.adopted.flatMap((a, i) => {
+    if (placed.has(a.id) || away.has(a.id)) return [];
+    // A normal window: its slot on screen as the canvas was when it arrived, then on the canvas.
+    const rect = slotRect(a.slot ?? i);
+    const at = a.at ?? { x: 0, y: 0 };
     return [
       {
         id: a.id,
         plugin: a.id,
         ...rect,
+        x: rect.x - at.x,
+        y: rect.y - at.y,
         pinned: false,
         panes: { kind: "view" as const, id: "p1", view: `plugin:${a.id}` },
       },
@@ -69,9 +74,25 @@ export function autoPlacements(
   });
 }
 
-/** Every window on a desktop: what the layout places, then the tiled plugin surfaces. */
+/**
+ * A placed window that shows nothing but plugins the runtime does not hold now (one that closed
+ * itself, was turned off, or has not mounted yet) is not drawn: an empty window is no window. It
+ * keeps its place in the layout and comes back there when its plugin mounts again.
+ */
+function showsSomething(s: DeskState, p: SurfacePlacement): boolean {
+  return leaves(panesOf(p)).some((leaf) => {
+    if (!leaf.view.startsWith("plugin:")) return true;
+    const id = leaf.view.slice("plugin:".length);
+    return s.adopted.some((a) => a.id === id);
+  });
+}
+
+/** Every window on a desktop: what the layout places, then the plugin surfaces in their slots. */
 export function windowsOf(s: DeskState, desktop: DesktopIndex = s.desktop): SurfacePlacement[] {
-  return [...layoutOf(s, desktop).surfaces, ...autoPlacements(s, desktop)];
+  return [
+    ...layoutOf(s, desktop).surfaces.filter((p) => showsSomething(s, p)),
+    ...autoPlacements(s, desktop),
+  ];
 }
 
 /** A tiled plugin window enters the layout as it is before an edit (a move, a pin, a split). */
@@ -134,6 +155,16 @@ function cascade(placement: SurfacePlacement, others: SurfacePlacement[]): Surfa
   return { ...placement, x, y };
 }
 
+/**
+ * A new normal window opens where the person is looking: its place on screen, as canvas coordinates
+ * at the current pan. A floating one is already in the screen's frame.
+ */
+export function inView(s: DeskState, p: SurfacePlacement): SurfacePlacement {
+  if (isFloating(p)) return p;
+  const pan = s.pan[s.desktop] ?? { x: 0, y: 0 };
+  return { ...p, x: p.x - pan.x, y: p.y - pan.y };
+}
+
 /** Default places, in the 1440×900 reference frame. The centre stays free unless the user moves things. */
 export function defaultPlacement(id: string): SurfacePlacement {
   const base = { id, pinned: false };
@@ -154,7 +185,7 @@ export function openSurface(ctx: Ctx, id: string, placement?: SurfacePlacement):
   if (!layoutOf(s).surfaces.some((p) => p.id === id)) {
     edit(ctx, (l) => ({
       ...l,
-      surfaces: [...l.surfaces, cascade(placement ?? defaultPlacement(id), l.surfaces)],
+      surfaces: [...l.surfaces, cascade(placement ?? inView(s, defaultPlacement(id)), l.surfaces)],
     }));
   }
   ctx.store.set((st) => ({

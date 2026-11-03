@@ -102,7 +102,7 @@
        "tag": "button",
        "class": "icon-button tool",
        "aria-label": "플로팅 모드",
-       "aria-pressed": "true",
+       "aria-pressed": "false",
        "box": [
         849,
         249,

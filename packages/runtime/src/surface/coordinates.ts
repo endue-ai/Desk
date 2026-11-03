@@ -1,12 +1,14 @@
 import type { SurfacePlacement } from "../modes/types";
-import { fromScreen, REF, type Rect, toScreen } from "./geometry";
+import { fromScreen, REF, type Rect, screenArea, toScreen } from "./geometry";
+import { fillRect } from "./snap";
 
 export interface Offset {
   x: number;
   y: number;
 }
 export const ORIGIN: Offset = { x: 0, y: 0 };
-export const isFloating = (p: SurfacePlacement) => p.floating !== false;
+/** Normal windows (the default) sit on the desktop's canvas; floating ones are pinned to the app. */
+export const isFloating = (p: SurfacePlacement) => p.floating === true;
 
 export function appSize() {
   const root = typeof document === "undefined" ? null : document.querySelector(".shell");
@@ -16,9 +18,13 @@ export function appSize() {
   };
 }
 
-/** Floating placements scale with the app; canvas placements retain world coordinates and size. */
+/**
+ * Normal placements keep world coordinates and size, moved by the pan; floating ones scale with the
+ * app, and a filled one takes its part of the app whatever its size.
+ */
 export function screenRect(p: SurfacePlacement, pan: Offset, vw: number, vh: number): Rect {
-  return isFloating(p) ? toScreen(p, vw, vh) : { x: p.x + pan.x, y: p.y + pan.y, w: p.w, h: p.h };
+  if (!isFloating(p)) return { x: p.x + pan.x, y: p.y + pan.y, w: p.w, h: p.h };
+  return p.fill ? fillRect(p.fill, screenArea(vw, vh)) : toScreen(p, vw, vh);
 }
 
 export function storedRect(r: Rect, floating: boolean, pan: Offset, vw: number, vh: number): Rect {

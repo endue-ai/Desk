@@ -1,24 +1,36 @@
 /**
- * Where plugin windows go when no profile places them: tiled in the free area, in the order the
- * runtime handed them over, as many columns as the square root of their number. Pure, so the shell
- * can lay out from state alone and the tests can check it without a DOM.
+ * Where plugin windows go when no profile places them: each into its own slot, given when the
+ * runtime hands its surface over and kept while it stays mounted. A slot's rect never depends on
+ * the other windows, so a window never moves or resizes because another one arrived, moved or
+ * closed. Six slots of one size fill the free area, three by two in reading order; the next six
+ * cascade over them. Pure, so the shell can lay out from state alone and the tests need no DOM.
  */
 import { FREE, type Rect } from "./geometry";
 
 export const GAP = 12;
+const COLS = 3;
+const ROWS = 2;
+/** How far each further six step down and right over the first. */
+export const CASCADE = 32;
 
-/** The rects for `n` unplaced windows, reading order; one window takes the whole area. */
-export function tiles(n: number, area: Rect = FREE): Rect[] {
-  if (n <= 0) return [];
-  if (n === 1) return [{ ...area }];
-  const cols = Math.ceil(Math.sqrt(n));
-  const rows = Math.ceil(n / cols);
-  const w = Math.floor((area.w - GAP * (cols - 1)) / cols);
-  const h = Math.floor((area.h - GAP * (rows - 1)) / rows);
-  return Array.from({ length: n }, (_, i) => ({
-    x: area.x + (i % cols) * (w + GAP),
-    y: area.y + Math.floor(i / cols) * (h + GAP),
+/** The rect of slot `n` (from 0) in `area`. */
+export function slotRect(n: number, area: Rect = FREE): Rect {
+  const w = Math.floor((area.w - GAP * (COLS - 1)) / COLS);
+  const h = Math.floor((area.h - GAP * (ROWS - 1)) / ROWS);
+  const i = n % (COLS * ROWS);
+  const step = Math.floor(n / (COLS * ROWS)) * CASCADE;
+  return {
+    x: area.x + (i % COLS) * (w + GAP) + step,
+    y: area.y + Math.floor(i / COLS) * (h + GAP) + step,
     w,
     h,
-  }));
+  };
+}
+
+/** The first slot none of `taken` holds. */
+export function freeSlot(taken: Iterable<number>): number {
+  const held = new Set(taken);
+  let n = 0;
+  while (held.has(n)) n++;
+  return n;
 }

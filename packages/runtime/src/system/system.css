@@ -38,17 +38,29 @@
   pointer-events: none;
 }
 
-.layer-desk .desk-surface,
-.layer-desk .desk-edge {
+.layer-desk .desk-surface {
   pointer-events: auto;
 }
 
-/* The shell's bottom chrome (drawer button, composer, running chips) sits over the runtime's bottom
-   72px; the side bars stop above it, so their last rows stay clickable (issue 131). */
+/* The runtime's edge bars float like the shell's own bars: above every window, which may lie under
+   them. Only their surfaces take the pointer, so a window under a bar's gaps is still reached. */
+.layer-desk .desk-edge {
+  position: relative;
+  z-index: var(--z-float);
+  pointer-events: none;
+}
+
+/* No bar hides another. The side bars start under the profile switcher and the desktops (24 + 32 +
+   16) and beside the agent bar and the rail (24 + 56 + 12), as margins so a width the display
+   policy sets stays the surfaces' own. The shell's bottom chrome (drawer button, composer, running
+   chips) sits over the runtime's bottom 72px; the side bars stop above it (issue 131). */
 .layer-desk .desk-edge--left,
 .layer-desk .desk-edge--right {
+  margin-top: 60px;
   padding-bottom: 72px;
 }
+.layer-desk .desk-edge--left { margin-left: 80px; }
+.layer-desk .desk-edge--right { margin-right: 80px; }
 
 /* The status line is the echo area: one quiet line at the top, above Eris, between the profiles and
    the desktops. Centred by its margins, not a transform: a translate of -50% would be half the

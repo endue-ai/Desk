@@ -4,8 +4,9 @@ import type { ShellCtx } from "../shell/context";
 import { h } from "../shell/dom";
 import { draggable } from "../shell/drag";
 import { panOf } from "../shell/Pan";
+import { snapTo } from "../shell/windows";
 import { isFloating, screenRect, storedRect } from "./coordinates";
-import { clampRect, freeOnScreen, type Rect, SAFE } from "./geometry";
+import { clampRect, type Rect, screenArea } from "./geometry";
 import { RESIZE_DIRECTIONS, resizeCursor, resizeRect } from "./resize";
 import { snapFor } from "./snap";
 
@@ -16,7 +17,10 @@ export function place(el: HTMLElement, r: Rect): void {
   el.style.height = `${r.h}px`;
 }
 
-/** One pointer lifecycle for moving and all eight resize handles. */
+/**
+ * One pointer lifecycle for moving and all eight resize handles. A floating window moves and grows
+ * over the whole app, under the bars; moving or resizing a filled one ends the fill.
+ */
 export function surfaceInteractions(
   el: HTMLElement,
   bar: HTMLElement,
@@ -36,6 +40,7 @@ export function surfaceInteractions(
     moveSurface(ctx, p.id, {
       ...storedRect(r, isFloating(p), panOf(ctx.store.get()), vw, vh),
       restore: undefined,
+      fill: undefined,
     });
   };
   const cancel = () => {
@@ -50,17 +55,19 @@ export function surfaceInteractions(
   };
   const off = [
     draggable(bar, {
-      accept: (e) => !(e.target as Element).closest("button") && !placement().pinned,
+      // Shift + drag on a title bar pans the canvas instead (Pan.ts).
+      accept: (e) => !e.shiftKey && !(e.target as Element).closest("button") && !placement().pinned,
       start: begin,
       cancel,
       move: (dx, dy) => place(el, moved(dx, dy)),
       end: (dx, dy, e) => {
-        const r = moved(dx, dy);
         const { vw, vh } = size();
-        const snap = isFloating(placement())
-          ? snapFor(r, { x: e.clientX, y: e.clientY }, freeOnScreen(vw, vh))
-          : null;
-        commit(snap ?? r);
+        const fill = snapFor({ x: e.clientX, y: e.clientY }, screenArea(vw, vh));
+        if (!fill) commit(moved(dx, dy));
+        else {
+          el.classList.remove("is-dragging");
+          snapTo(ctx, placement().id, fill);
+        }
       },
     }),
   ];
@@ -74,14 +81,7 @@ export function surfaceInteractions(
     el.append(grip);
     const resized = (dx: number, dy: number) => {
       const { vw, vh } = size();
-      const bounds = isFloating(placement())
-        ? {
-            x: SAFE.left,
-            y: SAFE.top,
-            w: vw - SAFE.left - SAFE.right,
-            h: vh - SAFE.top - SAFE.bottom,
-          }
-        : undefined;
+      const bounds = isFloating(placement()) ? screenArea(vw, vh) : undefined;
       return resizeRect(start, direction, dx, dy, bounds);
     };
     off.push(

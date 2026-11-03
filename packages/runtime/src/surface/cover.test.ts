@@ -20,7 +20,7 @@ const window_ = (id: string, x: number, y: number, w: number, h: number): Surfac
   panes: { kind: "view", id: "p1", view: "launcher" },
 });
 
-/** Two plugin windows tiled side by side (104..714 and 726..1336, 190..812), plus `windows`. */
+/** Two plugin windows in slots 0 and 1 (104..506 and 518..920, 190..495), plus `windows`. */
 function desk(windows: SurfacePlacement[] = [], focused: string | null = null) {
   const store = new Store({
     ...emptyState("en"),
