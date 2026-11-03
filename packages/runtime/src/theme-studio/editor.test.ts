@@ -118,4 +118,63 @@ describe("the theme editor", () => {
       true,
     );
   });
+
+  it("asks before removing a saved theme, lets the user cancel, and removes only on confirmation", async () => {
+    const remove = vi.fn(async () => {});
+    const io: ThemeIo = { save: vi.fn(), exportTheme: vi.fn(), importBundle: vi.fn(), remove };
+    const { editor, themes, back } = setup(io);
+    editor.start("local.my-theme", "dark");
+    const button = (label: string) => {
+      const found = [
+        ...editor.element.querySelectorAll<HTMLButtonElement>(".theme-editor-actions button"),
+      ].find((el) => el.textContent === label);
+      if (!found) throw new Error(`no ${label} button`);
+      return found;
+    };
+
+    editor.element.querySelector<HTMLButtonElement>('[data-key="editor-remove"]')?.click();
+    expect(remove).not.toHaveBeenCalled();
+    expect(themes.apply).not.toHaveBeenCalled();
+    expect(back).not.toHaveBeenCalled();
+    expect(editor.element.querySelector(".theme-editor-actions")?.textContent).toContain(
+      "Remove this theme? It cannot be undone.",
+    );
+    button("Cancel").click();
+    expect(editor.element.querySelector(".theme-editor-actions")?.textContent).not.toContain(
+      "Remove this theme? It cannot be undone.",
+    );
+    expect(remove).not.toHaveBeenCalled();
+
+    editor.element.querySelector<HTMLButtonElement>('[data-key="editor-remove"]')?.click();
+    button("Remove").click();
+    await vi.waitFor(() => expect(remove).toHaveBeenCalledOnce());
+    expect(remove).toHaveBeenCalledWith("local.my-theme");
+    expect(themes.apply).toHaveBeenCalledWith("");
+    expect(back).toHaveBeenCalledWith("");
+  });
+
+  it("cancels the remove confirmation on Escape without closing the studio", () => {
+    const io: ThemeIo = {
+      save: vi.fn(),
+      exportTheme: vi.fn(),
+      importBundle: vi.fn(),
+      remove: vi.fn(),
+    };
+    const { editor } = setup(io);
+    const parentKeydown = vi.fn();
+    document.body.addEventListener("keydown", parentKeydown);
+    editor.start("local.my-theme", "dark");
+    editor.element.querySelector<HTMLButtonElement>('[data-key="editor-remove"]')?.click();
+    expect(editor.element.querySelector(".theme-editor-actions")?.textContent).toContain(
+      "Remove this theme? It cannot be undone.",
+    );
+    editor.element.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    expect(editor.element.querySelector(".theme-editor-actions")?.textContent).not.toContain(
+      "Remove this theme? It cannot be undone.",
+    );
+    expect(editor.element.querySelector('[data-key="editor-remove"]')).not.toBeNull();
+    expect(io.remove).not.toHaveBeenCalled();
+    expect(parentKeydown).not.toHaveBeenCalled();
+    document.body.removeEventListener("keydown", parentKeydown);
+  });
 });
