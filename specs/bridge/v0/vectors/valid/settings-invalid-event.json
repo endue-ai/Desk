@@ -1,0 +1,15 @@
+{
+  "target": "BridgeEvent",
+  "description": "a value in init.yaml outside its setting's choices fell back to the default",
+  "instance": {
+    "event": "settings.invalid",
+    "data": {
+      "owner": "desk.theme",
+      "key": "scheme",
+      "value": "purple",
+      "reason": "\"purple\" is not one of system, light, dark",
+      "file": "~/.desk/init.yaml",
+      "line": 7
+    }
+  }
+}

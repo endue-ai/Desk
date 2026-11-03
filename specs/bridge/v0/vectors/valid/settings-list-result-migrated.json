@@ -1,0 +1,10 @@
+{
+  "target": "SettingsListResult",
+  "description": "a value read under the setting's earlier name says which",
+  "instance": {
+    "settings": [
+      { "owner": "desk.theme", "key": "contrast", "value": "system" },
+      { "owner": "desk.theme", "key": "scheme", "value": "light", "migratedFrom": "desk.theme.mode" }
+    ]
+  }
+}

@@ -15,10 +15,15 @@
       "properties": {
         "owner": { "$ref": "bridge.schema.json#/$defs/CallerId" },
         "key": { "$ref": "#/$defs/SettingKey" },
-        "value": { "description": "Any JSON value." }
+        "value": { "description": "Any JSON value." },
+        "migratedFrom": { "$ref": "#/$defs/MigratedFrom" }
       },
       "required": ["owner", "key", "value"],
       "additionalProperties": false
+    },
+    "MigratedFrom": {
+      "description": "The earlier full name (owner.key, from the setting's renamed list) the value in force was read under, because no layer held one under the setting's own name.",
+      "$ref": "../../plugin/v0/contributes.schema.json#/$defs/SettingName"
     },
     "SettingsGetRequest": {
       "description": "Read one setting: the caller's own, or another caller's under settings:read.",
@@ -48,12 +53,13 @@
       "description": "Result of settings.get. value is absent when the key was never set.",
       "type": "object",
       "properties": {
-        "value": { "description": "Any JSON value." }
+        "value": { "description": "Any JSON value." },
+        "migratedFrom": { "$ref": "#/$defs/MigratedFrom" }
       },
       "additionalProperties": false
     },
     "SettingsSetRequest": {
-      "description": "Write one of the caller's own settings (64 KiB of JSON at most).",
+      "description": "Write one of the caller's own settings (64 KiB of JSON at most). A value that fails the setting's declaration (kind, choices, minimum, maximum, pattern) is refused with invalid_value.",
       "type": "object",
       "properties": {
         "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
@@ -107,6 +113,34 @@
         "settings": { "type": "array", "items": { "$ref": "#/$defs/Setting" } }
       },
       "required": ["settings"],
+      "additionalProperties": false
+    },
+    "InvalidSetting": {
+      "description": "A value a layer holds for a setting that fails its declaration, so the layer below is in force instead (for init.yaml, the default). file and line say where the value is written: init.yaml, a profile file or a plugin.json; a value set through settings.set has neither.",
+      "type": "object",
+      "properties": {
+        "owner": { "$ref": "bridge.schema.json#/$defs/CallerId" },
+        "key": { "$ref": "#/$defs/SettingKey" },
+        "value": { "description": "The value that failed. Any JSON value." },
+        "reason": {
+          "description": "What it fails, for people: \"purple\" is not one of system, light, dark.",
+          "type": "string",
+          "minLength": 1
+        },
+        "file": { "$ref": "bridge.schema.json#/$defs/Path" },
+        "line": { "description": "The line of the setting's name in file, from 1.", "type": "integer", "minimum": 1 }
+      },
+      "required": ["owner", "key", "value", "reason"],
+      "additionalProperties": false
+    },
+    "SettingsInvalidEvent": {
+      "description": "A setting's value fell back. Sent to the setting's owner and to desk (the runtime, which tells the person) when the core first meets the value, and to desk again for every one still in force each time desk calls init.get.",
+      "type": "object",
+      "properties": {
+        "event": { "const": "settings.invalid" },
+        "data": { "$ref": "#/$defs/InvalidSetting" }
+      },
+      "required": ["event", "data"],
       "additionalProperties": false
     },
     "SettingsChangedEvent": {
