@@ -1,12 +1,17 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from "vitest";
-import { findSections, type SettingsSection } from "./panels";
+import { CORE_SETTINGS } from "../core/defaults";
+import { Settings } from "../settings";
+import { findSections, type SettingsSection, settingsPanel } from "./panels";
 
 describe("settings search", () => {
   it.each<[string, SettingsSection]>([
     ["화면 모드", "appearance"],
     ["Auto", "appearance"],
     ["dark mode", "appearance"],
+    ["wallpaper", "appearance"],
+    ["연못", "appearance"],
+    ["Aurora", "appearance"],
     ["increase contrast", "accessibility"],
     ["대비 증가", "accessibility"],
     ["방해금지 모드", "notifications"],
@@ -36,4 +41,16 @@ describe("settings search", () => {
   it("selects appearance first when searching for 화면", () => {
     expect(findSections("화면")[0]).toBe("appearance");
   });
+});
+
+it("offers static and live wallpaper choices in Appearance and saves a selection", () => {
+  const settings = new Settings();
+  settings.setDefaults(CORE_SETTINGS);
+  const el = settingsPanel("appearance", settings, "en", () => {});
+  const select = el.querySelector<HTMLSelectElement>('[aria-label="Wallpaper"]');
+  expect(select).not.toBeNull();
+  expect([...select!.options].map((option) => option.value)).toEqual(["theme", "grid", "pond", "aurora"]);
+  select!.value = "pond";
+  select!.dispatchEvent(new Event("change"));
+  expect(settings.get("desk.wallpaper.scene")).toBe("pond");
 });
