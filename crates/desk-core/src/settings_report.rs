@@ -226,13 +226,15 @@ struct Place<'a> {
 }
 
 impl Place<'_> {
-    /// Check `settings` (full name → value), the `profile`-th contributed profile's when given.
+    /// Check `settings` (full name → value), the `profile`-th contributed profile's when given; what
+    /// fails goes to `out` in line order.
     fn check(
         &self,
         settings: &BTreeMap<String, Value>,
         profile: Option<usize>,
         out: &mut Vec<SettingProblem>,
     ) {
+        let start = out.len();
         for (name, value) in settings {
             let line = || match profile {
                 None if self.layer == Layer::Set => None,
@@ -290,6 +292,8 @@ impl Place<'_> {
                 out.push(problem_at(owner, key, ProblemKind::Unknown { nearest }));
             }
         }
+        // People read a file top to bottom.
+        out[start..].sort_by_key(|problem| problem.line);
     }
 
     /// What is in force instead of a value of this place that fails.
