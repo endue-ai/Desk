@@ -118,6 +118,7 @@ impl Session {
             Remote::Theme(step) => self.theme(step),
             Remote::Fs(step) => self.files(step),
             Remote::Log { count } => self.log(count),
+            Remote::Undo { redo } => self.undo(redo),
             Remote::Inspect { section } => self.inspect(section),
         }
     }

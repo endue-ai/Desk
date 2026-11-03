@@ -1,0 +1,13 @@
+{
+  "target": "PluginContributes",
+  "description": "undo is a command id",
+  "instance": {
+    "commands": [
+      {
+        "id": "example.notes.delete",
+        "title": "Delete the note",
+        "undo": "restore the note"
+      }
+    ]
+  }
+}

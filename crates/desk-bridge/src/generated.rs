@@ -59,6 +59,9 @@ pub struct CommandContribution {
     /// The command does something that cannot be taken back (sends, deletes, pays, pushes). An agent's call of it (agent:<id>) waits for the person's approval every time, even with a cmd:invoke grant; a person's own calls never wait (ADR 0078).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub irreversible: Option<bool>,
+    /// The command that undoes this one, which this plugin provides too. After each invocation the plugin answers ok, the desk keeps it on its undo stack, and cmd.undo runs this command with { args, result } of that invocation (ADR 0077).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub undo: Option<CommandId>,
 }
 
 /// A command's args: an object, as cmd.invoke passes them.
@@ -250,7 +253,7 @@ pub enum SettingKind {
     Object,
 }
 
-/// A setting and its default. init.yaml and profiles set other values.
+/// A setting and its default. init.yaml, profiles and settings.set give other values; the core checks each against kind, choices, minimum, maximum and pattern, and a value that fails falls back to the layer below (ADR 0080).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct SettingContribution {
@@ -262,6 +265,18 @@ pub struct SettingContribution {
     /// The values a string setting may take.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub choices: Option<Vec<String>>,
+    /// The smallest value an integer or number setting may take.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub minimum: Option<f64>,
+    /// The largest value an integer or number setting may take.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub maximum: Option<f64>,
+    /// A regular expression (ECMA-262, as JSON Schema's pattern) a string setting's value must match. It matches anywhere in the value; anchor it with ^ and $ to match the whole.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pattern: Option<String>,
+    /// The setting's earlier full names (owner.key), newest first. A layer with no value under the setting's name gives the value it holds under the first of these instead, and settings.get and settings.list report it as migratedFrom.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub renamed: Option<Vec<SettingName>>,
 }
 
 /// A profile name, as init.yaml names the one to start in.
@@ -562,6 +577,8 @@ pub enum EventName {
     CmdChanged,
     #[serde(rename = "cmd.invoked")]
     CmdInvoked,
+    #[serde(rename = "cmd.undone")]
+    CmdUndone,
     #[serde(rename = "settings.changed")]
     SettingsChanged,
     #[serde(rename = "log.entry")]
@@ -1965,6 +1982,38 @@ pub struct InitSync {
     pub enabled: Option<bool>,
 }
 
+/// The whole of keys.yaml. Every key is optional.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct KeysFile {
+    /// The format version. Default 0. Desk ignores a file with a version newer than it reads.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub version: Option<u64>,
+    /// The person's bindings, in order: a later one of the same key wins, and "command": "" takes a key away from the plugins. Default none.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub bindings: Option<Vec<KeyBinding>>,
+}
+
+/// The whole of a profile file. Every key is optional; an empty file is a profile that changes nothing.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ProfileFile {
+    /// The format version. Default 0. Desk ignores a file with a version newer than it reads.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub version: Option<u64>,
+    /// What the profile switcher shows. Default: the file name.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    /// One line under the name in the switcher.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub plugins: Option<ProfilePlugins>,
+    /// Settings in force while the profile is, over init.yaml's.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub settings: Option<BTreeMap<String, serde_json::Value>>,
+}
+
 /// Start capturing the microphone. With wakeWord, audio.wake events arrive when the wake word is heard.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -2372,6 +2421,8 @@ pub enum BridgeRequest {
     CmdInvoke(CmdInvokeRequest),
     CmdAnswer(CmdAnswerRequest),
     CmdRecent(CmdRecentRequest),
+    CmdUndo(CmdUndoRequest),
+    CmdRedo(CmdRedoRequest),
     SettingsGet(SettingsGetRequest),
     SettingsSet(SettingsSetRequest),
     SettingsList(SettingsListRequest),
@@ -2462,6 +2513,8 @@ pub enum ErrorCode {
     Cancelled,
     #[serde(rename = "unsupported")]
     Unsupported,
+    #[serde(rename = "invalid_value")]
+    InvalidValue,
     #[serde(rename = "internal")]
     Internal,
 }
@@ -2486,7 +2539,9 @@ pub enum BridgeEvent {
     CmdChanged(CmdChangedEvent),
     CmdInvoked(CmdInvokedEvent),
     CmdAnswered(CmdAnsweredEvent),
+    CmdUndone(CmdUndoneEvent),
     SettingsChanged(SettingsChangedEvent),
+    SettingsInvalid(SettingsInvalidEvent),
     LogEntry(LogEntryEvent),
     DataChanged(DataChangedEvent),
     ConnectorChanged(ConnectorChangedEvent),
@@ -2561,6 +2616,9 @@ pub struct CommandInfo {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub when: Option<String>,
     pub provider: CallerId,
+    /// The command that undoes this one: cmd.undo runs it with { args, result } of an invocation. Absent when the command cannot be undone.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub undo: Option<CommandId>,
 }
 
 /// Register one of the caller's commands, or update it.
@@ -2593,6 +2651,9 @@ pub struct CmdRegisterParams {
     /// A context expression, as keybindings use; absent means always available.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub when: Option<String>,
+    /// The command that undoes this one, which the caller provides too. Absent: the one the caller's manifest names for this id in contributes.commands, if any.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub undo: Option<CommandId>,
 }
 
 /// Result of cmd.register.
@@ -2834,6 +2895,103 @@ pub struct CmdAnsweredData {
     pub result: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub error: Option<CommandFailure>,
+}
+
+/// One invocation on the desk's undo stack: what ran, with what, what it answered, who ran it and when, and the command that undoes it.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct UndoEntry {
+    /// The command that ran; fs.write or fs.restore for a write the core kept a version of.
+    pub command: CommandId,
+    /// The args it ran with.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub args: Option<serde_json::Map<String, serde_json::Value>>,
+    /// What it answered. For a write: { version }, the version that keeps the bytes it replaced.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub result: Option<serde_json::Value>,
+    pub caller: CallerId,
+    /// When the answer arrived (for a write, when it ran). RFC 3339.
+    pub at: String,
+    /// The command that undoes it: its `undo`, or fs.restore for a write.
+    pub inverse: CommandId,
+}
+
+/// Undo the newest entry of the desk's undo stack, whoever pushed it: run its inverse with { args, result }.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CmdUndoRequest {
+    pub id: RequestId,
+    pub method: CmdUndoRequestMethod,
+    pub params: CmdUndoParams,
+}
+
+/// Parameters of cmd.undo. The scope must cover the inverse the entry names (fs.restore for a write).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CmdUndoParams {
+    pub scope: CmdInvokePermission,
+}
+
+/// Result of cmd.undo: the entry undone, absent when there was none; for a command, the invocation of its inverse, whose answer reaches the caller as cmd.answered. A write is undone before this answers.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CmdUndoResult {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub undone: Option<UndoEntry>,
+    #[serde(
+        rename = "invocationId",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub invocation_id: Option<String>,
+}
+
+/// Redo the entry cmd.undo undid last: run its command again with its args (a write: put back what the undo replaced).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CmdRedoRequest {
+    pub id: RequestId,
+    pub method: CmdRedoRequestMethod,
+    pub params: CmdRedoParams,
+}
+
+/// Parameters of cmd.redo. The scope must cover the entry's command (fs.restore for a write).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CmdRedoParams {
+    pub scope: CmdInvokePermission,
+}
+
+/// Result of cmd.redo: the entry redone, absent when there was none; for a command, the invocation that runs it again.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CmdRedoResult {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub undone: Option<UndoEntry>,
+    #[serde(
+        rename = "invocationId",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub invocation_id: Option<String>,
+}
+
+/// An entry of the desk's undo stack was undone or redone. Sent to the caller that did it and to callers subscribed to cmd.undone.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CmdUndoneEvent {
+    pub event: CmdUndoneEventEvent,
+    pub data: CmdUndoneData,
+}
+
+/// Payload of cmd.undone.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CmdUndoneData {
+    pub entry: UndoEntry,
+    pub by: CallerId,
+    /// true for cmd.redo, false for cmd.undo.
+    pub redo: bool,
 }
 
 /// An installed connector as connector.list returns it: its instances and the kinds of item it brings in.
@@ -4437,7 +4595,16 @@ pub struct Setting {
     pub key: SettingKey,
     /// Any JSON value.
     pub value: serde_json::Value,
+    #[serde(
+        rename = "migratedFrom",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub migrated_from: Option<MigratedFrom>,
 }
+
+/// The earlier full name (owner.key, from the setting's renamed list) the value in force was read under, because no layer held one under the setting's own name.
+pub type MigratedFrom = SettingName;
 
 /// Read one setting: the caller's own, or another caller's under settings:read.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -4466,9 +4633,15 @@ pub struct SettingsGetResult {
     /// Any JSON value.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub value: Option<serde_json::Value>,
+    #[serde(
+        rename = "migratedFrom",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub migrated_from: Option<MigratedFrom>,
 }
 
-/// Write one of the caller's own settings (64 KiB of JSON at most).
+/// Write one of the caller's own settings (64 KiB of JSON at most). A value that fails the setting's declaration (kind, choices, minimum, maximum, pattern) is refused with invalid_value.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct SettingsSetRequest {
@@ -4513,6 +4686,31 @@ pub struct SettingsListParams {
 #[serde(deny_unknown_fields)]
 pub struct SettingsListResult {
     pub settings: Vec<Setting>,
+}
+
+/// A value a layer holds for a setting that fails its declaration, so the layer below is in force instead (for init.yaml, the default). file and line say where the value is written: init.yaml, a profile file or a plugin.json; a value set through settings.set has neither.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct InvalidSetting {
+    pub owner: CallerId,
+    pub key: SettingKey,
+    /// The value that failed. Any JSON value.
+    pub value: serde_json::Value,
+    /// What it fails, for people: "purple" is not one of system, light, dark.
+    pub reason: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub file: Option<Path>,
+    /// The line of the setting's name in file, from 1.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub line: Option<u64>,
+}
+
+/// A setting's value fell back. Sent to the setting's owner and to desk (the runtime, which tells the person) when the core first meets the value, and to desk again for every one still in force each time desk calls init.get.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SettingsInvalidEvent {
+    pub event: SettingsInvalidEventEvent,
+    pub data: InvalidSetting,
 }
 
 /// A setting changed. Sent to its owner, and to callers subscribed to settings.changed whose settings:read grant covers it.
@@ -5820,6 +6018,30 @@ pub enum CmdAnsweredEventEvent {
     CmdAnswered,
 }
 
+/// The `method` of [`CmdUndoRequest`]: always `"cmd.undo"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum CmdUndoRequestMethod {
+    #[default]
+    #[serde(rename = "cmd.undo")]
+    CmdUndo,
+}
+
+/// The `method` of [`CmdRedoRequest`]: always `"cmd.redo"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum CmdRedoRequestMethod {
+    #[default]
+    #[serde(rename = "cmd.redo")]
+    CmdRedo,
+}
+
+/// The `event` of [`CmdUndoneEvent`]: always `"cmd.undone"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum CmdUndoneEventEvent {
+    #[default]
+    #[serde(rename = "cmd.undone")]
+    CmdUndone,
+}
+
 /// The `method` of [`ConnectorListRequest`]: always `"connector.list"`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub enum ConnectorListRequestMethod {
@@ -6236,6 +6458,14 @@ pub enum SettingsListRequestMethod {
     SettingsList,
 }
 
+/// The `event` of [`SettingsInvalidEvent`]: always `"settings.invalid"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum SettingsInvalidEventEvent {
+    #[default]
+    #[serde(rename = "settings.invalid")]
+    SettingsInvalid,
+}
+
 /// The `event` of [`SettingsChangedEvent`]: always `"settings.changed"`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub enum SettingsChangedEventEvent {
@@ -6534,6 +6764,14 @@ pub const SCHEMAS: &[(&str, &str)] = &[
     (
         "https://endue.ai/specs/init/v0/init.schema.json",
         include_str!("../../../specs/init/v0/init.schema.json"),
+    ),
+    (
+        "https://endue.ai/specs/init/v0/keys.schema.json",
+        include_str!("../../../specs/init/v0/keys.schema.json"),
+    ),
+    (
+        "https://endue.ai/specs/init/v0/profile.schema.json",
+        include_str!("../../../specs/init/v0/profile.schema.json"),
     ),
     (
         "https://endue.ai/specs/bridge/v0/audio.schema.json",

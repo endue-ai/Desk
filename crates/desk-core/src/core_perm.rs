@@ -46,6 +46,7 @@ impl Core {
     /// Keep `always` grants in `path` (a JSON file in the app's data folder, next to plugins.json)
     /// and start with the ones it holds. Call it before granting anything.
     pub fn with_grant_file(self, path: PathBuf) -> Self {
+        self.screen_state(&path, crate::grants::readable);
         *self.permissions() = PermissionEngine::with_file(path);
         self
     }

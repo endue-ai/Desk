@@ -13,6 +13,9 @@ use crate::perm::Target;
 impl Core {
     /// Answer brain.say with `brain`. The session store lives in `options.state_file`.
     pub fn with_brain(mut self, brain: Arc<dyn Brain>, options: BrainOptions) -> Self {
+        if let Some(path) = &options.state_file {
+            self.screen_state(path, crate::sessions::readable);
+        }
         self.conversation = Some(Conversation::new(brain, self.events().clone(), options));
         self
     }

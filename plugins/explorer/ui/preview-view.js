@@ -1,4 +1,5 @@
 // DOM for the quick preview. File text is always textContent, including HTML and source files.
+import { sizeOf } from "./size.js";
 
 /** @param {Document} doc
  * @param {{ open(path: string): unknown, close(): unknown }} actions
@@ -19,7 +20,7 @@ export function previewView(doc, actions) {
     path = model.path;
     title.textContent = model.name;
     const format = model.name.includes(".") ? model.name.split(".").at(-1)?.toUpperCase() : "File";
-    detail.textContent = `${format} · ${model.size === undefined ? "" : `${model.size.toLocaleString()} bytes · `}${model.path}`;
+    detail.textContent = `${format} · ${model.size === undefined ? "" : `${sizeOf(model.size)} · `}${model.path}`;
     root.setAttribute("aria-busy", String(model.kind === "loading"));
     if (model.kind === "image" && model.url) {
       const img = doc.createElement("img");

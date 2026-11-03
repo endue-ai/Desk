@@ -167,6 +167,19 @@ describe("the view", () => {
     expect(grid.textContent).toBe("Nothing on the calendar for the next 30 days.");
   });
 
+  it("keeps an event focused and the timeline scrolled on a same-view redraw", () => {
+    const { doc, view, grid } = setup();
+    view.render(state("week"));
+    const event = grid.querySelector('button[data-id="a"]');
+    const scroll = grid.querySelector(".scroll");
+    if (!event || !scroll) throw new Error("missing event or timeline");
+    event.focus();
+    scroll.scrollTop = 320;
+    view.render(state("week", { now: TODAY * 86_400_000 + 11 * 3_600_000 }));
+    expect(doc.activeElement).toBe(grid.querySelector('button[data-id="a"]'));
+    expect(grid.querySelector(".scroll")?.scrollTop).toBe(320);
+  });
+
   it("plain keys move and switch views; not in a field, and never chords", () => {
     const { doc, view, actions } = setup();
     view.render(state("month"));

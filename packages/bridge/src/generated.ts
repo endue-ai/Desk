@@ -35,6 +35,8 @@ export interface CommandContribution {
   runs?: CommandCall;
   /** The command does something that cannot be taken back (sends, deletes, pays, pushes). An agent's call of it (agent:<id>) waits for the person's approval every time, even with a cmd:invoke grant; a person's own calls never wait (ADR 0078). */
   irreversible?: boolean;
+  /** The command that undoes this one, which this plugin provides too. After each invocation the plugin answers ok, the desk keeps it on its undo stack, and cmd.undo runs this command with { args, result } of that invocation (ADR 0077). */
+  undo?: CommandId;
 }
 
 /** A command's args: an object, as cmd.invoke passes them. */
@@ -160,7 +162,7 @@ export type SettingName = string;
 /** The JSON type a setting's value has. */
 export type SettingKind = "boolean" | "integer" | "number" | "string" | "array" | "object";
 
-/** A setting and its default. init.yaml and profiles set other values. */
+/** A setting and its default. init.yaml, profiles and settings.set give other values; the core checks each against kind, choices, minimum, maximum and pattern, and a value that fails falls back to the layer below (ADR 0080). */
 export interface SettingContribution {
   kind: SettingKind;
   /** The value until a later layer sets one. Any JSON value. */
@@ -168,6 +170,14 @@ export interface SettingContribution {
   description?: string;
   /** The values a string setting may take. */
   choices?: string[];
+  /** The smallest value an integer or number setting may take. */
+  minimum?: number;
+  /** The largest value an integer or number setting may take. */
+  maximum?: number;
+  /** A regular expression (ECMA-262, as JSON Schema's pattern) a string setting's value must match. It matches anywhere in the value; anchor it with ^ and $ to match the whole. */
+  pattern?: string;
+  /** The setting's earlier full names (owner.key), newest first. A layer with no value under the setting's name gives the value it holds under the first of these instead, and settings.get and settings.list report it as migratedFrom. */
+  renamed?: SettingName[];
 }
 
 /** A profile name, as init.yaml names the one to start in. */
@@ -389,6 +399,7 @@ export type EventName =
   | "perm.changed"
   | "cmd.changed"
   | "cmd.invoked"
+  | "cmd.undone"
   | "settings.changed"
   | "log.entry"
   | "update.changed";
@@ -1240,6 +1251,27 @@ export interface InitSync {
   enabled?: boolean;
 }
 
+/** The whole of keys.yaml. Every key is optional. */
+export interface KeysFile {
+  /** The format version. Default 0. Desk ignores a file with a version newer than it reads. */
+  version?: number;
+  /** The person's bindings, in order: a later one of the same key wins, and "command": "" takes a key away from the plugins. Default none. */
+  bindings?: KeyBinding[];
+}
+
+/** The whole of a profile file. Every key is optional; an empty file is a profile that changes nothing. */
+export interface ProfileFile {
+  /** The format version. Default 0. Desk ignores a file with a version newer than it reads. */
+  version?: number;
+  /** What the profile switcher shows. Default: the file name. */
+  name?: string;
+  /** One line under the name in the switcher. */
+  description?: string;
+  plugins?: ProfilePlugins;
+  /** Settings in force while the profile is, over init.yaml's. */
+  settings?: Record<string, unknown>;
+}
+
 /** Start capturing the microphone. With wakeWord, audio.wake events arrive when the wake word is heard. */
 export interface AudioCaptureStartRequest {
   id: RequestId;
@@ -1530,6 +1562,8 @@ export type BridgeRequest =
   | CmdInvokeRequest
   | CmdAnswerRequest
   | CmdRecentRequest
+  | CmdUndoRequest
+  | CmdRedoRequest
   | SettingsGetRequest
   | SettingsSetRequest
   | SettingsListRequest
@@ -1598,6 +1632,7 @@ export type ErrorCode =
   | "timeout"
   | "cancelled"
   | "unsupported"
+  | "invalid_value"
   | "internal";
 
 /** Something the core reports without being asked: file changes, process output, wake words, permission changes, prompts and approvals, notifications, surfaces, commands, settings, log entries, changes to items, connectors and views, and the desk's update status. */
@@ -1618,7 +1653,9 @@ export type BridgeEvent =
   | CmdChangedEvent
   | CmdInvokedEvent
   | CmdAnsweredEvent
+  | CmdUndoneEvent
   | SettingsChangedEvent
+  | SettingsInvalidEvent
   | LogEntryEvent
   | DataChangedEvent
   | ConnectorChangedEvent
@@ -1672,6 +1709,8 @@ export interface CommandInfo {
   /** A context expression the runtime evaluates to offer the command; absent means always. */
   when?: string;
   provider: CallerId;
+  /** The command that undoes this one: cmd.undo runs it with { args, result } of an invocation. Absent when the command cannot be undone. */
+  undo?: CommandId;
 }
 
 /** Register one of the caller's commands, or update it. */
@@ -1692,6 +1731,8 @@ export interface CmdRegisterParams {
   argsSchema?: Record<string, unknown>;
   /** A context expression, as keybindings use; absent means always available. */
   when?: string;
+  /** The command that undoes this one, which the caller provides too. Absent: the one the caller's manifest names for this id in contributes.commands, if any. */
+  undo?: CommandId;
 }
 
 /** Result of cmd.register. */
@@ -1853,6 +1894,71 @@ export interface CmdAnsweredData {
   /** What the command returned, when ok. Any JSON value. */
   result?: unknown;
   error?: CommandFailure;
+}
+
+/** One invocation on the desk's undo stack: what ran, with what, what it answered, who ran it and when, and the command that undoes it. */
+export interface UndoEntry {
+  /** The command that ran; fs.write or fs.restore for a write the core kept a version of. */
+  command: CommandId;
+  /** The args it ran with. */
+  args?: Record<string, unknown>;
+  /** What it answered. For a write: { version }, the version that keeps the bytes it replaced. */
+  result?: unknown;
+  caller: CallerId;
+  /** When the answer arrived (for a write, when it ran). RFC 3339. */
+  at: string;
+  /** The command that undoes it: its `undo`, or fs.restore for a write. */
+  inverse: CommandId;
+}
+
+/** Undo the newest entry of the desk's undo stack, whoever pushed it: run its inverse with { args, result }. */
+export interface CmdUndoRequest {
+  id: RequestId;
+  method: "cmd.undo";
+  params: CmdUndoParams;
+}
+
+/** Parameters of cmd.undo. The scope must cover the inverse the entry names (fs.restore for a write). */
+export interface CmdUndoParams {
+  scope: CmdInvokePermission;
+}
+
+/** Result of cmd.undo: the entry undone, absent when there was none; for a command, the invocation of its inverse, whose answer reaches the caller as cmd.answered. A write is undone before this answers. */
+export interface CmdUndoResult {
+  undone?: UndoEntry;
+  invocationId?: string;
+}
+
+/** Redo the entry cmd.undo undid last: run its command again with its args (a write: put back what the undo replaced). */
+export interface CmdRedoRequest {
+  id: RequestId;
+  method: "cmd.redo";
+  params: CmdRedoParams;
+}
+
+/** Parameters of cmd.redo. The scope must cover the entry's command (fs.restore for a write). */
+export interface CmdRedoParams {
+  scope: CmdInvokePermission;
+}
+
+/** Result of cmd.redo: the entry redone, absent when there was none; for a command, the invocation that runs it again. */
+export interface CmdRedoResult {
+  undone?: UndoEntry;
+  invocationId?: string;
+}
+
+/** An entry of the desk's undo stack was undone or redone. Sent to the caller that did it and to callers subscribed to cmd.undone. */
+export interface CmdUndoneEvent {
+  event: "cmd.undone";
+  data: CmdUndoneData;
+}
+
+/** Payload of cmd.undone. */
+export interface CmdUndoneData {
+  entry: UndoEntry;
+  by: CallerId;
+  /** true for cmd.redo, false for cmd.undo. */
+  redo: boolean;
 }
 
 /** An installed connector as connector.list returns it: its instances and the kinds of item it brings in. */
@@ -2905,7 +3011,11 @@ export interface Setting {
   key: SettingKey;
   /** Any JSON value. */
   value: unknown;
+  migratedFrom?: MigratedFrom;
 }
+
+/** The earlier full name (owner.key, from the setting's renamed list) the value in force was read under, because no layer held one under the setting's own name. */
+export type MigratedFrom = SettingName;
 
 /** Read one setting: the caller's own, or another caller's under settings:read. */
 export interface SettingsGetRequest {
@@ -2925,9 +3035,10 @@ export interface SettingsGetParams {
 export interface SettingsGetResult {
   /** Any JSON value. */
   value?: unknown;
+  migratedFrom?: MigratedFrom;
 }
 
-/** Write one of the caller's own settings (64 KiB of JSON at most). */
+/** Write one of the caller's own settings (64 KiB of JSON at most). A value that fails the setting's declaration (kind, choices, minimum, maximum, pattern) is refused with invalid_value. */
 export interface SettingsSetRequest {
   id: RequestId;
   method: "settings.set";
@@ -2959,6 +3070,25 @@ export interface SettingsListParams {
 /** Result of settings.list, by owner and then key. */
 export interface SettingsListResult {
   settings: Setting[];
+}
+
+/** A value a layer holds for a setting that fails its declaration, so the layer below is in force instead (for init.yaml, the default). file and line say where the value is written: init.yaml, a profile file or a plugin.json; a value set through settings.set has neither. */
+export interface InvalidSetting {
+  owner: CallerId;
+  key: SettingKey;
+  /** The value that failed. Any JSON value. */
+  value: unknown;
+  /** What it fails, for people: "purple" is not one of system, light, dark. */
+  reason: string;
+  file?: Path;
+  /** The line of the setting's name in file, from 1. */
+  line?: number;
+}
+
+/** A setting's value fell back. Sent to the setting's owner and to desk (the runtime, which tells the person) when the core first meets the value, and to desk again for every one still in force each time desk calls init.get. */
+export interface SettingsInvalidEvent {
+  event: "settings.invalid";
+  data: InvalidSetting;
 }
 
 /** A setting changed. Sent to its owner, and to callers subscribed to settings.changed whose settings:read grant covers it. */
@@ -3562,6 +3692,8 @@ export interface BridgeMethodMap {
   "cmd.invoke": { params: CmdInvokeParams; result: CmdInvokeResult };
   "cmd.answer": { params: CmdAnswerParams; result: CmdAnswerResult };
   "cmd.recent": { params: CmdRecentParams; result: CmdRecentResult };
+  "cmd.undo": { params: CmdUndoParams; result: CmdUndoResult };
+  "cmd.redo": { params: CmdRedoParams; result: CmdRedoResult };
   "settings.get": { params: SettingsGetParams; result: SettingsGetResult };
   "settings.set": { params: SettingsSetParams; result: SettingsSetResult };
   "settings.list": { params: SettingsListParams; result: SettingsListResult };
@@ -3646,6 +3778,8 @@ export const BRIDGE_METHODS = [
   "cmd.invoke",
   "cmd.answer",
   "cmd.recent",
+  "cmd.undo",
+  "cmd.redo",
   "settings.get",
   "settings.set",
   "settings.list",

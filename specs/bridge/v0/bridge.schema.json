@@ -75,6 +75,8 @@
         { "$ref": "cmd.schema.json#/$defs/CmdInvokeRequest" },
         { "$ref": "cmd.schema.json#/$defs/CmdAnswerRequest" },
         { "$ref": "cmd.schema.json#/$defs/CmdRecentRequest" },
+        { "$ref": "cmd.schema.json#/$defs/CmdUndoRequest" },
+        { "$ref": "cmd.schema.json#/$defs/CmdRedoRequest" },
         { "$ref": "settings.schema.json#/$defs/SettingsGetRequest" },
         { "$ref": "settings.schema.json#/$defs/SettingsSetRequest" },
         { "$ref": "settings.schema.json#/$defs/SettingsListRequest" },
@@ -157,6 +159,7 @@
         "timeout",
         "cancelled",
         "unsupported",
+        "invalid_value",
         "internal"
       ]
     },
@@ -179,7 +182,9 @@
         { "$ref": "cmd.schema.json#/$defs/CmdChangedEvent" },
         { "$ref": "cmd.schema.json#/$defs/CmdInvokedEvent" },
         { "$ref": "cmd.schema.json#/$defs/CmdAnsweredEvent" },
+        { "$ref": "cmd.schema.json#/$defs/CmdUndoneEvent" },
         { "$ref": "settings.schema.json#/$defs/SettingsChangedEvent" },
+        { "$ref": "settings.schema.json#/$defs/SettingsInvalidEvent" },
         { "$ref": "log.schema.json#/$defs/LogEntryEvent" },
         { "$ref": "data.schema.json#/$defs/DataChangedEvent" },
         { "$ref": "connector.schema.json#/$defs/ConnectorChangedEvent" },

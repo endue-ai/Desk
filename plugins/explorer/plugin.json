@@ -92,6 +92,11 @@
         "id": "endue.explorer.show-in-file-manager",
         "title": "Show Explorer selection in the system file manager",
         "keywords": ["files", "selection", "explorer"]
+      },
+      {
+        "id": "endue.explorer.copy-path",
+        "title": "Copy Explorer selection path",
+        "keywords": ["files", "selection", "explorer", "clipboard"]
       }
     ],
     "keys": [

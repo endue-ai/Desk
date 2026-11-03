@@ -11,24 +11,26 @@ use std::path::PathBuf;
 use std::sync::MutexGuard;
 
 use desk_bridge::{
-    BridgeError, BridgeEvent, ErrorCode, EventName, Permission, PluginInfo, Setting,
-    SettingsChangedEvent, SettingsGetParams, SettingsGetResult, SettingsListParams,
-    SettingsListResult, SettingsReadPermission, SettingsSetParams, SettingsSetResult,
+    BridgeError, BridgeEvent, ErrorCode, EventName, Permission, Setting, SettingsChangedEvent,
+    SettingsGetParams, SettingsGetResult, SettingsListParams, SettingsListResult,
+    SettingsReadPermission, SettingsSetParams, SettingsSetResult,
 };
 use serde_json::Value;
 
 use crate::handler::{Answer, Core, denied, error, json};
 use crate::perm::{Denied, Target, setting_match};
+use crate::settings_check::{Layers, Schemas, is_key, problem};
 use crate::store::Store;
 
-/// Settings by owner and then key, with the value in force.
-type Resolved = BTreeMap<(String, String), Value>;
+/// Settings by owner and then key, with the value in force and the earlier name it was read under.
+type Resolved = BTreeMap<(String, String), (Value, Option<String>)>;
 
 impl Core {
     /// Keep settings.set values in `path` (`settings.json` in the app's data folder, next to
     /// `store.json`), in the store's shape `{ owner: { key: value } }`, written on every set.
     /// Without it they last until the core goes.
     pub fn with_settings_file(self, path: PathBuf) -> Self {
+        self.screen_state(&path, crate::store::readable);
         *self.set_values() = Store::new(Some(path));
         self
     }
@@ -48,13 +50,27 @@ impl Core {
             let scope = Permission::SettingsRead(scope);
             self.check(caller, &scope, &Target::Setting(&setting))?;
         }
+        let (value, migrated_from) = match self.layers().in_force(owner, &params.key) {
+            Some((value, from)) => (Some(value), from),
+            None => (None, None),
+        };
         json(SettingsGetResult {
-            value: self.setting_in_force(owner, &params.key),
+            value,
+            migrated_from,
         })
     }
 
     pub(crate) fn settings_set(&self, caller: &str, params: SettingsSetParams) -> Answer {
         valid_key(&params.key)?;
+        let schemas = Schemas::new(&self.plugins());
+        if let Some(declared) = schemas
+            .get(caller, &params.key)
+            .filter(|d| d.owner == caller)
+            && let Some(reason) = problem(&declared.setting, &params.value)
+        {
+            let message = format!("{caller}.{}: {reason}", params.key);
+            return Err(error(ErrorCode::InvalidValue, message));
+        }
         self.set_values()
             .set(caller, &params.key, params.value.clone())
             .map_err(|message| error(ErrorCode::InvalidParams, message))?;
@@ -62,6 +78,7 @@ impl Core {
             owner: caller.to_owned(),
             key: params.key,
             value: params.value,
+            migrated_from: None,
         });
         json(SettingsSetResult {})
     }
@@ -87,41 +104,49 @@ impl Core {
             .resolved(caller, patterns.as_deref().unwrap_or_default())
             .into_iter()
             .filter(|((owner, key), _)| listed(owner, key))
-            .map(|((owner, key), value)| Setting { owner, key, value })
+            .map(|((owner, key), (value, migrated_from))| Setting {
+                owner,
+                key,
+                value,
+                migrated_from,
+            })
             .collect();
+        self.report_settings(false);
         json(SettingsListResult { settings })
     }
 
     /// The value in force for `owner`'s `key`: the set value, else init.yaml's `owner.key`, else
-    /// the default `owner`'s manifest declares; none when no layer has one.
+    /// the default `owner`'s manifest declares; none when no layer has one. A value that fails the
+    /// declaration is skipped, and an earlier name stands in for an absent one (ADR 0080).
     pub(crate) fn setting_in_force(&self, owner: &str, key: &str) -> Option<Value> {
-        if let Some(value) = self.set_values().get(owner, key) {
-            return Some(value);
-        }
-        let name = format!("{owner}.{key}");
-        if let Some(value) = self.init().settings.remove(&name) {
-            return Some(value);
-        }
-        let plugin = self.plugins().into_iter().find(|p| p.id == owner)?;
-        defaults(&plugin)
-            .find(|(key_of, _)| *key_of == key)
-            .map(|(_, value)| value.clone())
+        self.layers().in_force(owner, key).map(|(value, _)| value)
     }
 
-    /// Every setting some layer holds, layered as `setting_in_force` does. An init.yaml name goes
-    /// to the longest owner it starts with among the known ones: installed plugins, owners of set
-    /// values, `desk`, the caller and owners the `patterns` name without a `*`; one with no known
-    /// owner is left out.
-    fn resolved(&self, caller: &str, patterns: &[String]) -> Resolved {
-        let plugins = self.plugins();
-        let set_values: Vec<(String, String, Value)> = self
+    /// The declarations and the set and init.yaml values, read at once.
+    pub(crate) fn layers(&self) -> Layers {
+        let set = self
             .set_values()
             .all()
-            .map(|(owner, key, value)| (owner.to_owned(), key.to_owned(), value.clone()))
+            .map(|(owner, key, value)| ((owner.to_owned(), key.to_owned()), value.clone()))
             .collect();
+        Layers {
+            set,
+            schemas: Schemas::new(&self.plugins()),
+            init: self.init().settings,
+        }
+    }
+
+    /// Every setting some layer holds, layered as `setting_in_force` does, with the earlier name
+    /// its value was read under. An init.yaml name goes to the setting that declares it or lists it
+    /// as an earlier name, else to the longest owner it starts with among the known ones: installed
+    /// plugins, owners of set values, `desk`, the caller and owners the `patterns` name without a
+    /// `*`; one with no known owner is left out.
+    fn resolved(&self, caller: &str, patterns: &[String]) -> Resolved {
+        let layers = self.layers();
         let mut known: BTreeSet<&str> = BTreeSet::from(["desk", caller]);
+        let plugins = self.plugins();
         known.extend(plugins.iter().map(|p| p.id.as_str()));
-        known.extend(set_values.iter().map(|(owner, _, _)| owner.as_str()));
+        known.extend(layers.set.keys().map(|(owner, _)| owner.as_str()));
         known.extend(
             patterns
                 .iter()
@@ -129,21 +154,30 @@ impl Core {
                 .filter(|owner| !owner.contains('*')),
         );
 
-        let mut resolved = Resolved::new();
-        for plugin in &plugins {
-            for (key, value) in defaults(plugin) {
-                resolved.insert((plugin.id.clone(), key.to_owned()), value.clone());
+        let schemas = &layers.schemas;
+        let mut keys: BTreeSet<(String, String)> = schemas
+            .all()
+            .map(|d| (d.owner.clone(), d.key.clone()))
+            .collect();
+        for name in layers.init.keys() {
+            if schemas.named(name).is_some() || schemas.renamed_to(name).is_some() {
+                continue;
+            }
+            if let Some((owner, key)) = attribute(name, &known) {
+                keys.insert((owner.to_owned(), key.to_owned()));
             }
         }
-        for (name, value) in self.init().settings {
-            if let Some((owner, key)) = attribute(&name, &known) {
-                resolved.insert((owner.to_owned(), key.to_owned()), value);
+        for (owner, key) in layers.set.keys() {
+            if schemas.renamed_to(&format!("{owner}.{key}")).is_none() {
+                keys.insert((owner.clone(), key.clone()));
             }
         }
-        for (owner, key, value) in set_values {
-            resolved.insert((owner, key), value);
-        }
-        resolved
+        keys.into_iter()
+            .filter_map(|(owner, key)| {
+                let found = layers.in_force(&owner, &key)?;
+                Some(((owner, key), found))
+            })
+            .collect()
     }
 
     /// `settings.changed` for the owner and the subscribers whose settings:read grant covers it.
@@ -169,30 +203,11 @@ impl Core {
         );
     }
 
-    fn set_values(&self) -> MutexGuard<'_, Store> {
+    pub(crate) fn set_values(&self) -> MutexGuard<'_, Store> {
         self.settings
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
     }
-}
-
-/// The defaults a plugin's manifest declares for its own keys, as (key, default). Names outside
-/// the plugin's own id are ignored, as the runtime does.
-fn defaults(plugin: &PluginInfo) -> impl Iterator<Item = (&str, &Value)> {
-    let prefix = format!("{}.", plugin.id);
-    let declared = plugin
-        .manifest
-        .as_ref()
-        .and_then(|m| m.contributes.as_ref());
-    let settings = declared.and_then(|c| c.settings.as_ref());
-    settings
-        .into_iter()
-        .flatten()
-        .filter_map(move |(name, setting)| {
-            let key = name.strip_prefix(&prefix)?;
-            valid_key(key).ok()?;
-            Some((key, &setting.default))
-        })
 }
 
 /// The longest known owner `name` starts with (`owner.key`), and the key after it.
@@ -215,12 +230,7 @@ fn settings_read(keys: Vec<String>) -> SettingsReadPermission {
 
 /// A `SettingKey`: `^[a-z0-9][a-z0-9._-]{0,127}$`.
 fn valid_key(key: &str) -> Result<(), BridgeError> {
-    let lower = |c: char| c.is_ascii_lowercase() || c.is_ascii_digit();
-    let mut chars = key.chars();
-    let valid = key.len() <= 128
-        && chars.next().is_some_and(lower)
-        && chars.all(|c| lower(c) || matches!(c, '.' | '_' | '-'));
-    valid.then_some(()).ok_or_else(|| {
+    is_key(key).then_some(()).ok_or_else(|| {
         error(
             ErrorCode::InvalidParams,
             format!("{key:?} is not a setting key (lowercase, dotted, at most 128 characters)"),

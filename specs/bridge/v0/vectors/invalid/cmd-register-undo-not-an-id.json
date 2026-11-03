@@ -1,0 +1,13 @@
+{
+  "target": "BridgeRequest",
+  "description": "undo is a command id: lowercase and dotted",
+  "instance": {
+    "id": 35,
+    "method": "cmd.register",
+    "params": {
+      "id": "example.notes.delete",
+      "title": "Delete the note",
+      "undo": "Restore It"
+    }
+  }
+}

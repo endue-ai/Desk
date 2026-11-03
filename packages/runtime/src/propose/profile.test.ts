@@ -17,7 +17,7 @@ const root = join(import.meta.dirname, "../../../..");
 const MANAGE = { permission: "plugin:manage" } as const;
 const manifest = (name: string) =>
   JSON.parse(readFileSync(join(root, "plugins", name, "plugin.json"), "utf8")) as PluginManifest;
-const BUILT_IN = ["profiles", "shell", "notify", "palette", "keys", "views"];
+const BUILT_IN = ["profiles", "shell", "notify", "palette", "views"];
 const APPS = ["notes", "terminal", "calendar", "mail"];
 /** An answer as a brain gives it through the tool: a few words and the call's arguments. */
 const told = (value: Record<string, unknown>): ScriptedAnswer => ({
@@ -159,7 +159,7 @@ describe("desk.propose for profiles", () => {
             { id: "endue.calendar", name: "Calendar" },
             { id: "endue.mail", name: "Mail" },
           ],
-          same: 7,
+          same: 6,
           settings: [{ name: "desk.notify.dnd", from: false, to: true }],
         },
       },
@@ -205,6 +205,27 @@ describe("desk.propose for profiles", () => {
     expect(second).toContain("/settings/desk.notify.dnd: must be a boolean");
     expect(m.shown).toHaveLength(1);
     expect((await m.listed()).profiles.map((p) => p.id)).not.toContain("quiet-night");
+  });
+
+  it("a core setting needs no plugin to declare it (ADR 0055)", async () => {
+    const m = await setup(
+      scriptedDesk,
+      [],
+      [...BUILT_IN.filter((name) => name !== "notify"), ...APPS],
+    );
+    const request = { text: "make a quiet profile", corrections: [] };
+    const checked = await m.kind.check(
+      { name: "Quiet", settings: { "desk.notify.dnd": true } },
+      request,
+    );
+    expect(checked).toEqual({
+      value: { id: "quiet", name: "Quiet", settings: { "desk.notify.dnd": true } },
+    });
+    const wrong = await m.kind.check(
+      { name: "Loud", settings: { "desk.notify.dnd": "yes" } },
+      request,
+    );
+    expect(wrong).toEqual({ problems: ["/settings/desk.notify.dnd: must be a boolean"] });
   });
 
   it("the desk names the profile from its name, -2 when a profile has that name, and checks the layout", async () => {

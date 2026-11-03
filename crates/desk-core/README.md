@@ -11,9 +11,9 @@ its sync, the brain conversation, the integration layer and the bridge handler. 
   `pty`); `proc.output` and `proc.exit` reach the caller only; later calls need owner and scope.
 - `net.fetch` checks the URL against the `net:fetch` scope (`Target::Url`), desk-sys every redirect;
   `ui.surface.open` needs `ui:surface` and a declared surface, and `ui.surface.*` events go to `desk`.
-- Files: `fs.read` reads ranges; `fs.url` tokens resolve with `file_url(token)` (ADR 0041); with
-  `with_history_dir(dir)` each `fs.write` keeps what it replaces for `fs.history` and `fs.restore`
-  (ADR 0076). Links (ADR 0047): `with_opener`.
+- Files: `fs.read` ranges, `fs.url` tokens for `file_url(token)` (ADR 0041); `with_history_dir(dir)`:
+  each `fs.write` keeps what it replaces (ADR 0076), undone like an ok answer of a command naming an
+  `undo` through `cmd.undo`/`cmd.redo` on one desk stack (ADR 0077). Links: `with_opener`.
 - Permissions: `Core::grant`, `with_grant_file(path)` (ADR 0029), `with_prompter` (`RefuseAll`);
   `perm.request` and `shell.open` prompt the `perm:manage` holders. Agents (ADR 0072): capped by
   `agents.<id>.allow`, prompted inside it, logged on `perm`; irreversible calls held (ADR 0078).
@@ -22,9 +22,14 @@ its sync, the brain conversation, the integration layer and the bridge handler. 
 - Plugins: `with_plugin_store(path)`, `install_plugin(dir, built_in)`, `install_plugins_in`,
   `plugins()`, `plugin_file(id, path)`, `watch_plugins()`, `validate_dir(dir)`. A plugin turned off
   takes its commands, requests, subscriptions, processes, surfaces and URLs; its connectors pause.
-- Storage: `with_store_file(path)`, `with_settings_file(path)`, `with_log_dir(dir)`, `Core::log`.
+- Storage: `with_store_file`, `with_settings_file`, `with_log_dir`, `Core::log`. Settings are checked
+  against their declarations; `settings_problems()` names what fails, by file and line (ADR 0080).
   Brain: `with_brain(brain, BrainOptions)`, `route_tools()` (tool calls as their agent), `open_session`,
   `brain_session()`; `brain.say` streams `brain.turn`; the directory passes the brain's answers through.
+- Start (ADR 0061): every state file is screened as it loads; an unreadable one is kept as
+  `<name>.broken` (`keep_broken`, `broken_in`) and listed by `broken_files()`; `with_index_file`,
+  `keep_broken_views`, `report_broken`. `with_safe_mode(SafeReason)` and `safe_mode()` hold all but
+  the desk.* policies off; `plugins.quarantined` in `desk`'s store holds its plugins; `LastStart`.
 - init.yaml (ADR 0016): `with_init_file(path)`, `init()`, `init_problem()`, `with_sync(remote,
   state_file)`, `sync_init()`, `resolve_init(Keep)`; `MockRemote` stands in for endue.
 - Integration layer (ADR 0036): `with_index(Arc<dyn ItemIndex>)` (`data.*` under `data:read`),

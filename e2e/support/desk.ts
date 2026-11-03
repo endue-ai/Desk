@@ -3,7 +3,7 @@
 // mounts the desk shell (apps/desk/src/main.ts): `#desk.shell` holds the system layer (profiles,
 // desktops, the agent bar) and the mode layer, which holds the runtime (plugin surfaces on its grid
 // and edges, the status line). Selectors follow the runtime e2e (packages/runtime/e2e/shell*.spec.ts).
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { $, browser, expect } from "@wdio/globals";
 import { HOME_VAR, LOG_VAR } from "./driver";
@@ -82,6 +82,13 @@ export function dataFile(name: string): unknown {
   } catch {
     return undefined;
   }
+}
+
+/** Write a JSON file in the app's data folder, as if the app had left it so. */
+export function writeDataFile(name: string, value: unknown): void {
+  const home = process.env[HOME_VAR];
+  if (!home) throw new Error(`${HOME_VAR} is not set: run the specs through just test-app-e2e`);
+  writeFileSync(join(home, ".local/share/ai.endue.desk", name), JSON.stringify(value));
 }
 
 /** Poll a data file until `test` holds, so a relaunch never races the app's own saving. */

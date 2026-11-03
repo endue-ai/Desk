@@ -12,6 +12,7 @@ import type {
   ProfileContribution,
   SettingContribution,
 } from "@endue-ai/bridge";
+import { CORE_SETTINGS } from "../core/defaults";
 import { OFF_KEY } from "../policies/profiles";
 import { autoloads } from "../policy";
 import type { Settings } from "../settings";
@@ -44,7 +45,7 @@ export interface ProfileKindOptions {
   commands: { run(id: string, args?: unknown): Promise<unknown> };
   /** The settings in force and their layers. */
   settings: Pick<Settings, "get" | "layer">;
-  /** The settings the plugins that are on declare. */
+  /** The settings the plugins that are on declare; the core's own (ADR 0055) are added to them. */
   declared(): Record<string, SettingContribution>;
   card: Card;
   schemas?: Schemas;
@@ -60,6 +61,8 @@ const isObject = (value: unknown): value is Record<string, unknown> =>
 
 export function profileKind(options: ProfileKindOptions): ProposalKind<ProfileContribution> {
   const { bridge, commands, card } = options;
+  // The core declares its settings with no plugin on, and its declaration wins, as in PolicyHub.
+  const declared = () => ({ ...options.declared(), ...CORE_SETTINGS });
   let schemas: Schemas | undefined;
   let tool: AskTool | undefined;
   let compact: Record<string, unknown> | undefined;
@@ -85,7 +88,7 @@ export function profileKind(options: ProfileKindOptions): ProposalKind<ProfileCo
       installed: plugins,
       turnedOff: off,
       settings: options.settings,
-      declared: options.declared(),
+      declared: declared(),
     });
     last = { value, model };
     return model;
@@ -112,7 +115,7 @@ export function profileKind(options: ProfileKindOptions): ProposalKind<ProfileCo
     /** The plugins (name, kind, on or off), the scalar settings with their kinds, the profiles. */
     async context() {
       const [profiles, plugins] = await Promise.all([listed(), installed()]);
-      const settings = Object.entries(options.declared())
+      const settings = Object.entries(declared())
         .filter(([, setting]) => SCALAR.has(setting.kind))
         .sort(([a], [b]) => (a < b ? -1 : 1))
         .map(([name, setting]) => [name, setting.choices ?? setting.kind]);
@@ -139,8 +142,7 @@ export function profileKind(options: ProfileKindOptions): ProposalKind<ProfileCo
       for (let n = 2; taken.has(id); n++) id = `${base}-${n}`;
       const value = { id, ...rest } as unknown as ProfileContribution;
       const problems = specs().validate(value, PROFILE);
-      if (problems.length === 0)
-        problems.push(...profileProblems(value, plugins, options.declared()));
+      if (problems.length === 0) problems.push(...profileProblems(value, plugins, declared()));
       return problems.length ? { problems } : { value };
     },
 

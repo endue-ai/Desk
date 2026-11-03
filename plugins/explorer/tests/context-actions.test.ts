@@ -1,8 +1,26 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { StubError } from "../../../packages/bridge/src/index";
 import { DOCS, denied, disk, file, mount, sample } from "./harness";
 
+afterEach(() => vi.unstubAllGlobals());
+
 describe("Explorer selection commands", () => {
+  it("copies the selected path and confirms it, or shows it when clipboard access fails", async () => {
+    const writeText = vi
+      .fn()
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(new Error("denied"));
+    vi.stubGlobal("navigator", { clipboard: { writeText } });
+    const d = await mount({ handlers: disk(sample()) });
+    const path = `${DOCS}/a2.md`;
+    d.app.select(path);
+    await d.host.command("endue.explorer.copy-path");
+    expect(writeText).toHaveBeenCalledWith(path);
+    expect(d.view.statuses.at(-1)).toMatch(/copied/i);
+    await d.host.command("endue.explorer.copy-path");
+    expect(d.view.statuses.at(-1)).toContain(path);
+  });
+
   it("uses the selected folder or the file's parent for terminal and Git", async () => {
     const d = await mount({
       handlers: disk(sample()),

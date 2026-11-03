@@ -50,8 +50,7 @@ const WARM = {
     },
   },
 };
-// The same, cleaned: unsafe tokens, unknown presets, files and the brain's origin gone, numbers in
-// range, and the primary's companions it left out (hover, tints, ring) derived as the editor does.
+// Cleaned of unsafe values, with the primary's missing companions derived as in the editor.
 const CLEAN = {
   shape: { radius: "soft" },
   motion: { personality: "calm" },
@@ -70,7 +69,16 @@ const CLEAN = {
 };
 
 /** The real theme policy over a stub core that serves brain.ask (and brain.status when given). */
-function setup(status?: BrainStatusResult) {
+function setup(
+  status?: BrainStatusResult | (() => BrainStatusResult | Promise<BrainStatusResult>),
+) {
+  let tick: (() => void) | undefined;
+  const every = vi.fn((callback: () => void, _ms: number) => {
+    tick = callback;
+    return () => {
+      tick = undefined;
+    };
+  });
   const asked: BrainAskParams[] = [];
   const stub = browserStub({
     "brain.ask": (params) => {
@@ -81,7 +89,7 @@ function setup(status?: BrainStatusResult) {
       stub.emit({ event: "brain.turn", data: { turnId, kind: "started" } });
       return { turnId };
     },
-    ...(status ? { "brain.status": () => status } : {}),
+    ...(status ? { "brain.status": () => (typeof status === "function" ? status() : status) } : {}),
   });
   const bridge = new BridgeClient(stub);
   const hub = new PolicyHub(bridge);
@@ -113,19 +121,36 @@ function setup(status?: BrainStatusResult) {
   const back = vi.fn();
   const tune = vi.fn();
   const toEris = vi.fn();
-  const panel = createDescribe({
+  const deps = {
     themes,
-    lang: () => "en",
+    lang: () => "en" as const,
     io: () => io,
     open: vi.fn(),
     back,
     tune,
     toEris,
-  });
+    every,
+  } as const;
+  const panel = createDescribe(deps);
   document.body.replaceChildren(panel.element);
   const turn = (turnId: string, kind: "completed" | "error" | "offline" | "online", more = {}) =>
     stub.emit({ event: "brain.turn", data: { turnId, kind, ...more } });
-  return { panel, asks: asked, turn, stub, themes, hub, style, save, back, tune, toEris };
+  return {
+    panel,
+    asks: asked,
+    turn,
+    stub,
+    themes,
+    hub,
+    style,
+    save,
+    back,
+    tune,
+    toEris,
+    every,
+    tick: () => tick?.(),
+    ticking: () => tick !== undefined,
+  };
 }
 
 /** Wait for the `n`th ask, and for its answer to reach the panel. */
@@ -163,13 +188,10 @@ describe("Describe", () => {
       "## Sentence",
     ]);
     expect(lines.at(-1)).toBe("warm paper with grain");
-    // The rules: what the roles are for, the contrast pairs and the ranges.
     expect(prompt).toContain("primaryForeground");
     expect(prompt).toContain("textMuted/background");
     expect(prompt).toContain("opacity 0.6–1");
-    // The theme block's schema, as the desk's spec has it.
     expect(prompt).toContain(JSON.stringify(themeSchema.$defs.ThemeMaterial));
-    // The values in force, and nothing else: no files, no paths.
     const current = themes.resolve("");
     expect(prompt).toContain(`"background":"${current.tokens.background}"`);
     expect(prompt).toBe(
@@ -239,7 +261,6 @@ describe("Describe", () => {
     expect(entry).toMatchObject({ id: "local.warmer-paper", name: "Warmer Paper" });
     expect(entry.theme.origin).toEqual({ prompt: "warm paper → warmer" });
     expect(entry.theme.light).toEqual(CLEAN.light);
-    // Applied as it was previewed: the theme, and the light scheme it has.
     await vi.waitFor(() => expect(back).toHaveBeenCalledWith("local.warmer-paper"));
     expect(hub.settings.get("desk.theme.active", "")).toBe("local.warmer-paper");
     expect(hub.settings.get("desk.theme.scheme", "dark")).toBe("light");
@@ -268,10 +289,8 @@ describe("Describe", () => {
     key("describe-to-eris")?.click();
     expect(toEris).toHaveBeenCalledWith("make it feel like warm paper");
     expect(themes.previewing()).toBeUndefined();
-    // The refinement still on its way is dropped with it.
     turn("a2", "completed", { structured: WARM });
     expect(themes.previewing()).toBeUndefined();
-    // Opened from the gallery, there is no one to send it back to.
     panel.start({ text: "warm paper" });
     expect(key("describe-to-eris")).toBeNull();
   });
@@ -285,7 +304,7 @@ describe("Describe", () => {
     expect(themes.previewing()).toBeUndefined();
   });
 
-  it("turns Generate off while the brain is offline or refuses, and on again when it is back", async () => {
+  it("turns Generate off while offline, and allows another try after an error", async () => {
     const { panel, asks, turn } = setup();
     panel.start({ text: "warm paper", run: true });
     await answered(asks, 1);
@@ -296,8 +315,10 @@ describe("Describe", () => {
     turn("a1", "online");
     expect(key("describe-generate")?.disabled).toBe(false);
     turn("a1", "error", { text: "No credits left." });
-    expect(key("describe-generate")?.disabled).toBe(true);
+    expect(key("describe-generate")?.disabled).toBe(false);
     expect(status()).toContain("No credits left.");
+    say("try again", "describe-generate");
+    await answered(asks, 2);
   });
 
   it("starts with Generate off when the brain is offline or out of credits", async () => {
@@ -310,6 +331,59 @@ describe("Describe", () => {
       await vi.waitFor(() => expect(key("describe-generate")?.disabled).toBe(true));
       expect(status()).toContain(line);
     }
+  });
+
+  it("checks again every 15 seconds while offline and enables Generate when the brain returns", async () => {
+    let release!: (status: BrainStatusResult) => void;
+    const pending = new Promise<BrainStatusResult>((resolve) => {
+      release = resolve;
+    });
+    const brain = vi.fn().mockResolvedValueOnce({ mode: "offline" }).mockReturnValue(pending);
+    const { panel, every, tick, ticking } = setup(brain);
+    panel.start({ text: "warm paper" });
+    await vi.waitFor(() => expect(key("describe-generate")?.disabled).toBe(true));
+    expect(every).toHaveBeenCalledWith(expect.any(Function), 15_000);
+    expect(ticking()).toBe(true);
+    tick();
+    tick();
+    expect(brain).toHaveBeenCalledTimes(2);
+    release({ mode: "local", model: "test" });
+    await vi.waitFor(() => expect(key("describe-generate")?.disabled).toBe(false));
+    expect(ticking()).toBe(false);
+    panel.stop();
+  });
+
+  it("checks on focus while offline and stops checking when Describe closes", async () => {
+    let brain: BrainStatusResult = { mode: "offline" };
+    const { panel, ticking } = setup(() => brain);
+    panel.start({ text: "warm paper" });
+    await vi.waitFor(() => expect(key("describe-generate")?.disabled).toBe(true));
+    brain = { mode: "cloud", credits: 1 };
+    window.dispatchEvent(new Event("focus"));
+    await vi.waitFor(() => expect(key("describe-generate")?.disabled).toBe(false));
+    panel.stop();
+    brain = { mode: "offline" };
+    panel.start();
+    await vi.waitFor(() => expect(key("describe-generate")?.disabled).toBe(true));
+    expect(ticking()).toBe(true);
+    panel.stop();
+    expect(ticking()).toBe(false);
+  });
+
+  it("ignores an older status check after an error turn", async () => {
+    let release!: (status: BrainStatusResult) => void;
+    const pending = new Promise<BrainStatusResult>((resolve) => {
+      release = resolve;
+    });
+    const { panel, asks, turn } = setup(() => pending);
+    panel.start({ text: "warm paper", run: true });
+    await answered(asks, 1);
+    turn("a1", "error", { text: "Try again." });
+    release({ mode: "offline" });
+    await new Promise((done) => setTimeout(done, 0));
+    expect(key("describe-generate")?.disabled).toBe(false);
+    expect(status()).toContain("Try again.");
+    panel.stop();
   });
 
   it("hears only its own turn, from before the answer named it until the turn ends", async () => {

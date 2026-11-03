@@ -4,31 +4,20 @@
 // application/x-desk-path. Desk chords pass through; Escape first closes a visible preview.
 import { contextMenu } from "./context-menu.js";
 import { previewView } from "./preview-view.js";
+import { sizeOf } from "./size.js";
 
 /**
  * @typedef {import("./tree.js").Row} Row
  * @typedef {import("./explorer.js").Header} Header
  * @typedef {{
  *   select(id: string): unknown, activate(id: string): unknown,
- *   key(name: string): unknown, type(letter: string): boolean,
+ *   key(name: string): unknown, type(letter: string): boolean, togglePreview(): unknown,
  *   addFolder(): unknown, newFile(): unknown, refresh(): unknown, toggleHidden(): unknown,
  *   context?(command: string): unknown,
  * }} Actions
  */
 
 export const PATH_TYPE = "application/x-desk-path";
-
-const sizeOf = (/** @type {number} */ bytes) => {
-  if (bytes < 1024) return `${bytes} B`;
-  const units = ["KB", "MB", "GB", "TB"];
-  let value = bytes / 1024;
-  let unit = 0;
-  while (value >= 1024 && unit < units.length - 1) {
-    value /= 1024;
-    unit++;
-  }
-  return `${value < 10 ? value.toFixed(1) : Math.round(value)} ${units[unit]}`;
-};
 
 /**
  * @param {Document} doc
@@ -66,7 +55,7 @@ export function createView(doc, actions) {
     open: (path) => actions.activate(path),
     close: () => actions.key("Escape"),
   });
-  byId("toggle-preview").addEventListener("click", () => actions.key(" "));
+  byId("toggle-preview").addEventListener("click", () => actions.togglePreview());
   doc.body.addEventListener("keydown", (event) => {
     if (
       event.key === "Escape" &&
@@ -182,7 +171,7 @@ export function createView(doc, actions) {
       span.textContent = side;
       item.append(span);
     }
-    if (model.kind === "dir" && model.depth === 0) item.title = model.path;
+    item.title = model.path;
     return item;
   };
 

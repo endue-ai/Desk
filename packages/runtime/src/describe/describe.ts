@@ -58,6 +58,8 @@ export function whoMayCall(id: string, f: Facts): string {
 
 /** The layer a binding comes from, in words, and the file behind it. */
 function bindingLayer(owner: string, f: Facts): { long: string; short: string; file?: string } {
+  // The runtime's own keys (ADR 0055) come before every plugin's and have no manifest.
+  if (owner === "desk") return { long: "core default, desk", short: "core default" };
   if (owner !== "person") {
     const file = manifestFile(owner, f);
     return {

@@ -13,6 +13,18 @@ const key = (
 });
 
 describe("comboOf", () => {
+  it("records Space in a form that saved bindings can route again", () => {
+    const press = key(" ", { ctrl: true, alt: true });
+    const combo = comboOf(press);
+    expect(combo).toBe("Control+Alt+Space");
+    const router = new ShortcutRouter({ platform: "other" });
+    let ran = false;
+    router.bind(combo, () => {
+      ran = true;
+    });
+    expect(router.handle(press)).toBe(true);
+    expect(ran).toBe(true);
+  });
   it("names keys with modifiers in a fixed order", () => {
     expect(comboOf(key("k", { meta: true, shift: true }))).toBe("Meta+Shift+K");
     expect(comboOf(key("Escape"))).toBe("Escape");

@@ -13,6 +13,7 @@ import { Terminal } from "./vendor/xterm.mjs";
  *   input(id: string, data: string): unknown,
  *   resize(id: string, cols: number, rows: number): unknown,
  *   select(id: string): unknown,
+ *   activate(id: string): unknown,
  *   close(id: string): unknown,
  *   retitle(id: string, title: string): unknown,
  *   bell(id: string): unknown,
@@ -91,6 +92,28 @@ export function createView(doc, actions, options) {
     tabs.hidden = items.size < 2;
   };
 
+  tabs.addEventListener("keydown", (event) => {
+    const entries = [...items.entries()];
+    const current = entries.findIndex(([, item]) => item.label === event.target);
+    if (current < 0 || event.metaKey || event.ctrlKey || event.altKey) return;
+    if (event.key === "Enter") {
+      event.preventDefault();
+      actions.activate(entries[current][0]);
+      return;
+    }
+    const to = /** @type {Record<string, number>} */ ({
+      ArrowLeft: current - 1,
+      ArrowRight: current + 1,
+      Home: 0,
+      End: entries.length - 1,
+    })[event.key];
+    if (to === undefined) return;
+    event.preventDefault();
+    const [id, item] = entries[(to + entries.length) % entries.length];
+    actions.select(id);
+    item.label.focus();
+  });
+
   return {
     /** @param {string} id @param {string} title */
     open(id, title) {
@@ -109,7 +132,8 @@ export function createView(doc, actions, options) {
       label.setAttribute("aria-controls", pane.id);
       label.setAttribute("aria-selected", "false");
       label.textContent = title;
-      label.addEventListener("click", () => actions.select(id));
+      label.title = title;
+      label.addEventListener("click", () => actions.activate(id));
       const close = doc.createElement("button");
       close.type = "button";
       close.className = "close";
@@ -184,6 +208,7 @@ export function createView(doc, actions, options) {
       const item = items.get(id);
       if (!item) return;
       item.label.textContent = title;
+      item.label.title = title;
       item.close.setAttribute("aria-label", `Close ${title}`);
     },
 

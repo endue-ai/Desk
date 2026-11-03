@@ -112,9 +112,10 @@ fn doctor_trace_on_a_missing_or_broken_file_exits_1() {
 
 #[test]
 fn doctor_without_a_trace_file_is_a_usage_error() {
-    for args in [&["doctor"][..], &["doctor", "--trace"][..]] {
-        let out = desk(args);
-        assert_eq!(out.status.code(), Some(2), "{args:?}");
-        assert!(String::from_utf8_lossy(&out.stderr).contains("doctor --trace"));
-    }
+    // Bare `doctor` is the state check (tests/health.rs); only `--trace` needs its file.
+    let out = desk(&["doctor", "--trace"]);
+    assert_eq!(out.status.code(), Some(2));
+    assert!(String::from_utf8_lossy(&out.stderr).contains("doctor --trace"));
+    // Bare `doctor` is no usage error any more: it is the state check.
+    assert_ne!(desk(&["doctor"]).status.code(), Some(2));
 }

@@ -1,0 +1,5 @@
+{
+  "target": "KeysFile",
+  "description": "an empty file binds nothing",
+  "instance": {}
+}

@@ -105,6 +105,11 @@ struct Base {
     digest: Option<String>,
 }
 
+/// Whether `bytes` are a sync state file (sync.json).
+pub(crate) fn readable(bytes: &[u8]) -> bool {
+    crate::state_file::json_as::<Base>(bytes)
+}
+
 /// What a sync does, decided from the base, the file here and endue's copy.
 #[derive(Debug, PartialEq)]
 enum Step {

@@ -28,7 +28,8 @@ What a plugin imports. Layer: Plugins (`docs/architecture.md`). Guide: `docs/plu
   `fs.url` URL (else `fs.read` ranges); `signal` rejects. `byteSource(ctx, file)`: `{ size, read(offset,
   length) }`, cached. `startWorker(url)`. `fileHistory(ctx, file, { limit? })`, `restoreFile(ctx, file, v)`.
 - `connect(transport?)`, `windowTransport()`, the protocol types, `BridgeCallError` and bridge types;
-  one tick's calls leave in one message. The app serves `dist/plugin-sdk.js` at `/_desk/plugin-sdk.js`.
+  one tick's calls leave in one message. The frame tells the desk its first `desk:ready`, or
+  `desk:failed` when mount or the frame throws before it (ADR 0061). The app serves `dist/plugin-sdk.js` at `/_desk/plugin-sdk.js`.
 - `@endue-ai/plugin-sdk/testing`: `createTestHost({ pluginId, state?, restored?, handlers?, commands?,
   settings?, grants?, callers?, prompt?, now?, refuse?, files? })` runs a plugin on the stub core
   (`handlers` override it, `refuse` fails a method, `files` back the `fs.*` calls): `transport`,

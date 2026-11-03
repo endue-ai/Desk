@@ -18,7 +18,7 @@ cheap to change.
    window moves or resizes for another. Windows can move, grow and fill over the whole app; every
    bar, the runtime's edge bars included, floats above them and clear of the others. Windows are
    normal by default, on the desktop's canvas, which Shift + drag pans; floating ones stay put above
-   them (ADR 0080).
+   them (ADR 0082).
 4. **Snapshots are render trees** (ADR 0011), not pixels. Boxes are recorded only for elements that CSS
    sizes, never for text-sized ones. The Eris canvas is captured as `data-mesh` (front, back and dot
    counts plus a hash of the rounded frame) and `data-rings` (displacement per ring, % of R).

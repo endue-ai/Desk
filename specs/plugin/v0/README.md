@@ -70,11 +70,12 @@ order, each layer over the one before: the built-in `desk.*` policy plugins, the
 | `commands` | `defun` + `interactive` | adds commands; ids start with the plugin id |
 | `commands[].runs` | `defalias` | makes the command an alias the desk answers: it runs `runs.command` with `runs.args`, the caller's args merged over them key by key |
 | `commands[].irreversible` | `disabled-command-function` | marks a command that cannot be taken back: an agent's call of it waits for the person's approval every time, a person's never (ADR 0078) |
+| `commands[].undo` | `undo` | names the command, also the plugin's, that undoes this one: each `ok` answer lands on the desk's undo stack, and `cmd.undo` runs the inverse with `{ args, result }` (ADR 0077) |
 | `keys` | `global-map` | rebinds a key; `"command": ""` unbinds it |
 | `display` | `display-buffer-alist` | is asked first; the first matching rule decides |
 | `files` | `auto-mode-alist` | is asked first; the first matching pattern decides |
 | `themes` | `load-theme`, `defface` | adds themes; the one for the scheme and contrast in force applies |
-| `settings` | `defcustom` | declares its own keys (they start with the plugin id) with defaults |
+| `settings` | `defcustom` | declares its own keys (they start with the plugin id) with a `kind` and a default, optionally `choices`, `minimum`, `maximum` and `pattern`; `renamed` lists the setting's earlier full names. The core checks every value against them and a value that fails falls back to the layer below (ADR 0080) |
 | `profiles` | `init.el` | adds profiles; a profile with the same id replaces the earlier one |
 | `paletteProviders` | `consult-buffer-sources` | adds a group after the earlier layers' groups; commands start with the plugin id |
 

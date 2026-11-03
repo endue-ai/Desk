@@ -3,8 +3,8 @@
  * the brain through brain.ask with propose_theme (prompt.ts). The proposal is cleaned (proposal.ts)
  * and previewed on the whole desk, where the gate fixes what fails, in the scheme it has. The builder
  * applies it (saved as their own theme with the sentences in origin.prompt), refines it with another
- * sentence over it, tunes it in the editor, or discards it. Offline, out of credits or refused,
- * Generate is off and says why; the gallery and the editor keep working. Opened from Eris's
+ * sentence over it, tunes it in the editor, or discards it. Offline or out of credits, Generate is
+ * off and says why; the gallery and the editor keep working. Opened from Eris's
  * conversation, "Send to Eris instead" hands a sentence that was not about the desk's look back to her.
  */
 import type { BrainTurnData, ThemePackage } from "@endue-ai/bridge";
@@ -21,6 +21,8 @@ export interface DescribeDeps {
   themes: RuntimeThemes;
   lang(): StudioLang;
   io(): ThemeIo | undefined;
+  /** Schedule a recurring check; returns a function that cancels it. */
+  every?(callback: () => void, ms: number): () => void;
   /** Show the panel in the studio (its entry, the Describe button, was pressed). */
   open(): void;
   /** Back to the gallery, the theme `id` selected (after Apply). */
@@ -58,11 +60,29 @@ export function createDescribe(deps: DescribeDeps): DescribePanel {
   /** The sentences the proposal answers, first to last: its origin.prompt. */
   let said: string[] = [];
   let scheme: Scheme = "dark";
-  /** Why Generate is off (offline, no credits, refused); empty while it is on. */
+  /** Why Generate is off (offline or no credits); empty while it is on. */
   let blocked = "";
   let line = "";
   let asking = 0;
   let hearing: (() => void) | undefined;
+  let active = false;
+  let checkVersion = 0;
+  let checking: number | undefined;
+  let stopChecking: (() => void) | undefined;
+  const every =
+    deps.every ??
+    ((callback: () => void, ms: number) => {
+      const timer = setInterval(callback, ms);
+      return () => clearInterval(timer);
+    });
+  const setBlocked = (reason: string) => {
+    blocked = reason;
+    if (active && blocked && !stopChecking) stopChecking = every(() => void check(), 15_000);
+    if (!blocked) {
+      stopChecking?.();
+      stopChecking = undefined;
+    }
+  };
   /** The sentence Eris handed over, while Describe can send it back to her. */
   let fromEris: string | undefined;
 
@@ -95,14 +115,18 @@ export function createDescribe(deps: DescribeDeps): DescribePanel {
   const hear = (id: number, sentences: string[]) => (turn: BrainTurnData) => {
     if (id !== asking) return;
     if (turn.kind === "started" || turn.kind === "online") {
-      blocked = "";
+      checkVersion++;
+      setBlocked("");
       line = tr("asking");
     } else if (turn.kind === "offline") {
-      blocked = tr("offline");
+      checkVersion++;
+      setBlocked(tr("offline"));
       line = blocked;
     } else if (turn.kind === "error") {
-      blocked = tr("refused");
-      line = turn.text ? `${blocked}: ${turn.text}` : blocked;
+      checkVersion++;
+      setBlocked("");
+      const refused = tr("refused");
+      line = turn.text ? `${refused}: ${turn.text}` : refused;
     } else if (turn.kind === "completed") {
       const next = cleanProposal(turn.structured);
       if (next) show(next, sentences);
@@ -257,12 +281,29 @@ export function createDescribe(deps: DescribeDeps): DescribePanel {
 
   /** Whether the brain can answer now: offline or out of credits turns Generate off. */
   const check = async () => {
-    const status = await themes.brain().status();
-    if (status?.mode === "offline") blocked = tr("offline");
-    else if (status?.mode === "cloud" && status.credits === 0) blocked = tr("noCredits");
-    else return;
-    line = blocked;
+    if (!active || checking === checkVersion) return;
+    const version = ++checkVersion;
+    checking = version;
+    const status = await themes
+      .brain()
+      .status()
+      .finally(() => {
+        if (checking === version) checking = undefined;
+      });
+    if (!active || version !== checkVersion || !status) return;
+    const reason =
+      status.mode === "offline"
+        ? tr("offline")
+        : status.mode === "cloud" && status.credits === 0
+          ? tr("noCredits")
+          : "";
+    if (reason) line = reason;
+    else if (blocked && line === blocked) line = "";
+    setBlocked(reason);
     draw();
+  };
+  const onFocus = () => {
+    if (blocked) void check();
   };
 
   return {
@@ -278,7 +319,10 @@ export function createDescribe(deps: DescribeDeps): DescribePanel {
     ),
     element,
     start({ text, colors = [], run = false, from } = {}) {
-      blocked = "";
+      active = true;
+      checkVersion++;
+      setBlocked("");
+      window.addEventListener("focus", onFocus);
       line = "";
       fromEris = from === "eris" ? text : undefined;
       if (text !== undefined) field.value = text;
@@ -292,6 +336,10 @@ export function createDescribe(deps: DescribeDeps): DescribePanel {
       if (run) void ask(false);
     },
     stop() {
+      active = false;
+      checkVersion++;
+      setBlocked("");
+      window.removeEventListener("focus", onFocus);
       drop();
       line = "";
     },

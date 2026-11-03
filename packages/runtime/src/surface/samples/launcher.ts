@@ -35,7 +35,10 @@ export function launcherBody(ctx: ShellCtx, where: Where): Mounted {
             type: "button",
             role: "listitem",
             "data-view": view,
-            onClick: () => showInPane(ctx, where.surface, where.pane, view),
+            onClick: () =>
+              view === "keys"
+                ? ctx.runtime.settingsWindow.open("keyboard")
+                : showInPane(ctx, where.surface, where.pane, view),
           },
           icon(glyph, 16),
           h("span", {}, label),

@@ -41,7 +41,11 @@ body {
 }
 
 .tab [role="tab"] {
+  max-width: 24ch;
+  overflow: hidden;
   padding: 4px 8px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .tab [role="tab"][aria-selected="true"] {

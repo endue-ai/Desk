@@ -1,13 +1,16 @@
 use tauri::State;
 
+use super::start::Start;
 use crate::trace::Tracing;
 
 /// The runtime reports its status line once the bridge answered. Logged so launches can be checked
-/// from the terminal and by smoke tests; a ready line is marked in the start-up trace. Answers
+/// from the terminal and by smoke tests; a ready line is marked in the start-up trace and in
+/// last-start.json: this start made it (ADR 0061). Answers
 /// whether that trace is on, so the runtime sends its phases (`desk_trace`) only then.
 #[tauri::command]
-pub fn desk_ready(status: String, tracing: State<'_, Tracing>) -> bool {
+pub fn desk_ready(status: String, tracing: State<'_, Tracing>, start: State<'_, Start>) -> bool {
     println!("{status}");
+    start.ready();
     if is_ready_line(&status) {
         tracing.instant(desk_trace::READY_LINE);
         tracing.write();

@@ -6,15 +6,16 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use desk_bridge::{
-    BridgeEvent, BridgeRequest, BridgeResponse, CatalogGetResult, CmdRecentResult,
-    ConnectorInstance, ConnectorManifest, ConnectorStatus, ConnectorSyncResult, FsHistoryResult,
-    FsReadResult, FsRestoreResult, FsUrlResult, FsWriteResult, InitDocument, InitGetResult,
-    InitSettingKey, Item, ItemChange, ItemPage, ItemQuery, PaletteResults, PermQueryResult,
-    PermRequestResult, Permission, PluginContributes, PluginListResult, PluginManifest,
-    PluginStatsResult, RefusalReason, ShellOpenResult, StoreGetResult, ThemeBundle,
-    ThemeExportResult, ThemeIndex, ThemeMarketFetchResult, ThemeMarketListResult, ThemePackage,
-    ThemeType, ThemeVariant, UiSurfaceStateRequest, UiSurfaceStateResult, View, ViewGetResult,
-    ViewListResult, ViewSource, ViewSummary, manifest_problems, view_problems,
+    BridgeEvent, BridgeRequest, BridgeResponse, CatalogGetResult, CmdRecentResult, CmdRedoResult,
+    CmdUndoResult, ConnectorInstance, ConnectorManifest, ConnectorStatus, ConnectorSyncResult,
+    FsHistoryResult, FsReadResult, FsRestoreResult, FsUrlResult, FsWriteResult, InitDocument,
+    InitGetResult, InitSettingKey, Item, ItemChange, ItemPage, ItemQuery, KeysFile, PaletteResults,
+    PermQueryResult, PermRequestResult, Permission, PluginContributes, PluginListResult,
+    PluginManifest, PluginStatsResult, ProfileFile, RefusalReason, SettingsListResult,
+    ShellOpenResult, StoreGetResult, ThemeBundle, ThemeExportResult, ThemeIndex,
+    ThemeMarketFetchResult, ThemeMarketListResult, ThemePackage, ThemeType, ThemeVariant,
+    UiSurfaceStateRequest, UiSurfaceStateResult, View, ViewGetResult, ViewListResult, ViewSource,
+    ViewSummary, manifest_problems, view_problems,
 };
 use serde::Serialize;
 use serde::de::DeserializeOwned;
@@ -237,7 +238,10 @@ fn valid_vectors_roundtrip_through_generated_types() {
                 "PluginStatsResult" => roundtrip::<PluginStatsResult>(vector),
                 "CmdRecentResult" => roundtrip::<CmdRecentResult>(vector),
                 "StoreGetResult" => roundtrip::<StoreGetResult>(vector),
+                "SettingsListResult" => roundtrip::<SettingsListResult>(vector),
                 "CatalogGetResult" => roundtrip::<CatalogGetResult>(vector),
+                "CmdUndoResult" => roundtrip::<CmdUndoResult>(vector),
+                "CmdRedoResult" => roundtrip::<CmdRedoResult>(vector),
                 "ShellOpenResult" => roundtrip::<ShellOpenResult>(vector),
                 "UiSurfaceStateRequest" => roundtrip::<UiSurfaceStateRequest>(vector),
                 "UiSurfaceStateResult" => roundtrip::<UiSurfaceStateResult>(vector),
@@ -246,6 +250,8 @@ fn valid_vectors_roundtrip_through_generated_types() {
                 "InitDocument" => roundtrip::<InitDocument>(vector),
                 "InitSettingKey" => roundtrip::<InitSettingKey>(vector),
                 "InitGetResult" => roundtrip::<InitGetResult>(vector),
+                "ProfileFile" => roundtrip::<ProfileFile>(vector),
+                "KeysFile" => roundtrip::<KeysFile>(vector),
                 "PluginContributes" => roundtrip::<PluginContributes>(vector),
                 "PaletteResults" => roundtrip::<PaletteResults>(vector),
                 "ViewListResult" => roundtrip::<ViewListResult>(vector),
@@ -329,4 +335,27 @@ fn typed_view_results_say_where_each_view_came_from() {
     let view = read_json(&vector)["instance"]["view"].take();
     let unnamed = json!({ "view": view, "source": "plugin" });
     assert!(!validator("ViewGetResult").is_valid(&unnamed), "{unnamed}");
+}
+
+#[test]
+fn a_value_that_fell_back_says_where_it_is_and_a_migrated_one_says_its_old_name() {
+    let vector = specs().join("bridge/v0/vectors/valid/settings-invalid-event.json");
+    let event: BridgeEvent = serde_json::from_value(read_json(&vector)["instance"].take()).unwrap();
+    let BridgeEvent::SettingsInvalid(invalid) = event else {
+        panic!("settings.invalid is its own event");
+    };
+    assert_eq!(
+        (invalid.data.file.as_deref(), invalid.data.line),
+        (Some("~/.desk/init.yaml"), Some(7))
+    );
+
+    let vector = specs().join("bridge/v0/vectors/valid/settings-list-result-migrated.json");
+    let listed: SettingsListResult =
+        serde_json::from_value(read_json(&vector)["instance"].take()).unwrap();
+    let migrated: Vec<Option<&str>> = listed
+        .settings
+        .iter()
+        .map(|setting| setting.migrated_from.as_deref())
+        .collect();
+    assert_eq!(migrated, [None, Some("desk.theme.mode")]);
 }

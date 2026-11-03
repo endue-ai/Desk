@@ -6,7 +6,7 @@
 // recording view.
 import { createLinks } from "./links.js";
 import { createLoading } from "./loading.js";
-import { emptyMarks, loadMarks, NOTE_MAX, saveMarks } from "./marks.js";
+import { emptyMarks, loadMarks, marksFit, NOTE_MAX, saveMarks } from "./marks.js";
 
 /**
  * @typedef {import("@endue-ai/plugin-sdk").PluginContext} PluginContext
@@ -210,10 +210,23 @@ export function createReader({ bridge, commands }, view, options) {
   view.show(null);
 
   /** The marks changed: keep them and show the panel again. */
-  const changed = async (/** @type {Open} */ file, /** @type {string} */ said) => {
-    const ok = await keep(file);
-    if (files.get(file.buffer) === file && shown === file.buffer) view.marks(model(file));
-    view.status(ok ? said : "The reader could not keep that: its store refused it.");
+  const changed = async (
+    /** @type {Open} */ file,
+    /** @type {string} */ said,
+    /** @type {() => void} */ undo,
+  ) => {
+    const full = !marksFit(file.path, file);
+    if (full) undo();
+    const ok = !full && (await keep(file));
+    if (files.get(file.buffer) !== file || shown !== file.buffer) return;
+    view.marks(model(file));
+    view.status(
+      ok
+        ? said
+        : full
+          ? "This file's notes are full; remove a note or a bookmark first."
+          : "The reader could not keep that: its store refused it.",
+    );
   };
 
   return {
@@ -248,27 +261,45 @@ export function createReader({ bridge, commands }, view, options) {
     bookmark(/** @type {At} */ at, /** @type {string} */ label) {
       const file = current();
       if (!file) return;
-      file.bookmarks = [
-        ...file.bookmarks,
-        { unit: at.unit, offset: at.offset, label, added: new Date().toISOString() },
-      ].sort((a, b) => a.unit - b.unit || a.offset - b.offset);
-      return changed(file, `Bookmarked ${label}.`);
+      const bookmark = { unit: at.unit, offset: at.offset, label, added: new Date().toISOString() };
+      file.bookmarks = [...file.bookmarks, bookmark].sort(
+        (a, b) => a.unit - b.unit || a.offset - b.offset,
+      );
+      return changed(file, `Bookmarked ${label}.`, () => {
+        file.bookmarks = file.bookmarks.filter((item) => item !== bookmark);
+      });
     },
     note(/** @type {At} */ at, /** @type {string} */ text) {
       const file = current();
       const trimmed = text.trim().slice(0, NOTE_MAX);
       if (!file || !trimmed) return;
-      file.notes = [
-        ...file.notes,
-        { unit: at.unit, offset: at.offset, text: trimmed, added: new Date().toISOString() },
-      ];
-      return changed(file, "Note kept.");
+      const note = {
+        unit: at.unit,
+        offset: at.offset,
+        text: trimmed,
+        added: new Date().toISOString(),
+      };
+      file.notes = [...file.notes, note];
+      return changed(file, "Note kept.", () => {
+        file.notes = file.notes.filter((item) => item !== note);
+      });
     },
     forget(/** @type {"bookmarks" | "notes"} */ kind, /** @type {number} */ index) {
       const file = current();
       if (!file?.[kind][index]) return;
+      const bookmark = kind === "bookmarks" ? file.bookmarks[index] : undefined;
+      const note = kind === "notes" ? file.notes[index] : undefined;
       file[kind] = file[kind].filter((_, i) => i !== index);
-      return changed(file, kind === "bookmarks" ? "Bookmark removed." : "Note removed.");
+      return changed(file, kind === "bookmarks" ? "Bookmark removed." : "Note removed.", () => {
+        if (bookmark && !file.bookmarks.includes(bookmark))
+          file.bookmarks = [
+            ...file.bookmarks.slice(0, index),
+            bookmark,
+            ...file.bookmarks.slice(index),
+          ];
+        if (note && !file.notes.includes(note))
+          file.notes = [...file.notes.slice(0, index), note, ...file.notes.slice(index)];
+      });
     },
     /** Try a locked PDF's password; a wrong one shows the field again with a word about it. */
     async unlock(/** @type {string} */ password) {

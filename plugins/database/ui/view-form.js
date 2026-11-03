@@ -66,17 +66,22 @@ export function createForms(doc, act) {
     readOnly: readOnly.checked,
   });
 
+  // Keep the port as typed when checking for changes, including invalid or padded input.
+  const cancelFields = () => ({ ...fields(), port: input("port").value });
+
   engine.addEventListener("change", fitFields);
   form.addEventListener("submit", (event) => {
     event.preventDefault();
     act("formSave", fields());
   });
   byId("form-test").addEventListener("click", () => act("formTest", fields()));
-  byId("form-cancel").addEventListener("click", () => act("formCancel"));
+  byId("form-cancel").addEventListener("click", () => act("formCancel", cancelFields()));
   form.addEventListener("keydown", (event) => {
-    if (event.key !== "Escape") return;
+    if (event.key !== "Escape" || event.defaultPrevented || event.isComposing) return;
+    // Native select popups have no portable open-state API and can consume their own key events.
+    if (event.target === engine || event.target === ssl || event.target === tag) return;
     event.preventDefault();
-    act("formCancel");
+    act("formCancel", cancelFields());
   });
 
   prompt.addEventListener("submit", (event) => {
@@ -104,17 +109,19 @@ export function createForms(doc, act) {
       if (!model) return;
       title.textContent = model.mode === "edit" ? `Change ${model.fields.name}` : "New connection";
       const conn = model.fields;
-      for (const name of TEXT_FIELDS)
-        input(name).value =
-          name === "port"
-            ? conn.port === null
-              ? ""
-              : String(conn.port)
-            : String(conn[name] ?? "");
-      engine.value = conn.engine;
-      ssl.value = conn.ssl;
-      tag.value = conn.tag;
-      readOnly.checked = conn.readOnly;
+      if (opening) {
+        for (const name of TEXT_FIELDS)
+          input(name).value =
+            name === "port"
+              ? conn.port === null
+                ? ""
+                : String(conn.port)
+              : String(conn[name] ?? "");
+        engine.value = conn.engine;
+        ssl.value = conn.ssl;
+        tag.value = conn.tag;
+        readOnly.checked = conn.readOnly;
+      }
       error.textContent = model.error;
       note.textContent = model.note;
       fitFields();

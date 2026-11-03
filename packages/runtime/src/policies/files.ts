@@ -56,6 +56,8 @@ export function installFiles(
   buffers: BuffersPolicy & BufferEvents,
   notify: (input: NoticeInput) => void,
   pickFile?: () => Promise<string | null>,
+  /** The recent list in the store could not be read; it was kept as `<key>.broken` (ADR 0061). */
+  broken?: (key: string) => void,
 ): FilesPolicy {
   const { hub, bridge } = ctx;
   const { commands, settings } = hub;
@@ -261,6 +263,11 @@ export function installFiles(
       );
       const value = (stored as { value?: unknown }).value;
       if (Array.isArray(value)) recent = value as RecentFile[];
+      else if (value !== undefined && value !== null) {
+        await bridge.call("store.set", { key: `${RECENT_KEY}.broken`, value }).catch(() => {});
+        await bridge.call("store.set", { key: RECENT_KEY, value: [] }).catch(() => {});
+        broken?.(RECENT_KEY);
+      }
       const plugins = (kept as { value?: unknown }).value;
       if (Array.isArray(plugins)) {
         for (const plugin of plugins) if (typeof plugin === "string") autoloaded.add(plugin);

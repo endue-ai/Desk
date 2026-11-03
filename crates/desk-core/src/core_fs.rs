@@ -11,9 +11,11 @@ use std::sync::MutexGuard;
 
 use base64::Engine as _;
 use desk_bridge::{
-    BridgeEvent, Encoding, ErrorCode, FsChange, FsChangedData, FsChangedEvent, FsWatchParams,
-    FsWatchResult, FsWriteParams, FsWriteResult, Permission,
+    BridgeEvent, DirEntry, Encoding, EntryKind, ErrorCode, FsChange, FsChangedData, FsChangedEvent,
+    FsListResult, FsReadResult, FsWatchParams, FsWatchResult, FsWriteParams, FsWriteResult,
+    Permission,
 };
+use desk_plugin_host::rfc3339;
 use desk_sys::fs as sysfs;
 
 use crate::approvals::Action;
@@ -69,6 +71,10 @@ impl Core {
         self.hold(caller, &scope, write)?;
         // The bytes it replaces are kept first (ADR 0076).
         let (bytes_written, version) = self.write_keeping(caller, &path, &bytes, create_dirs)?;
+        if let Some(version) = &version {
+            // Undoable by restoring the version (ADR 0077).
+            self.push_write(caller, "fs.write", &params.path, version.clone());
+        }
         json(FsWriteResult {
             bytes_written,
             version,
@@ -215,4 +221,46 @@ fn bridge_path(root: &Path, base: &str, changed: &Path) -> Option<String> {
     } else {
         format!("{base}/{}", rest.join("/"))
     })
+}
+
+/// fs.read: `length` bytes at most from `offset` (to the end without a length), with the file's size.
+pub(crate) fn read(path: &Path, encoding: Encoding, offset: u64, length: Option<u64>) -> Answer {
+    let (bytes, size) = read_range(path, offset, length).map_err(io_error)?;
+    let content = match encoding {
+        Encoding::Utf8 => String::from_utf8(bytes).map_err(|_| {
+            let what = if offset == 0 && length.is_none() {
+                "the file is"
+            } else {
+                "the range is"
+            };
+            error(
+                ErrorCode::InvalidParams,
+                format!("{what} not UTF-8; read it as base64"),
+            )
+        })?,
+        Encoding::Base64 => base64::engine::general_purpose::STANDARD.encode(bytes),
+    };
+    json(FsReadResult {
+        content,
+        encoding,
+        size: Some(size),
+    })
+}
+
+pub(crate) fn list(path: &Path) -> Answer {
+    let entries = sysfs::list(path)
+        .map_err(io_error)?
+        .into_iter()
+        .map(|entry| DirEntry {
+            name: entry.name,
+            kind: match entry.kind {
+                sysfs::EntryKind::File => EntryKind::File,
+                sysfs::EntryKind::Dir => EntryKind::Dir,
+                sysfs::EntryKind::Symlink => EntryKind::Symlink,
+            },
+            size: entry.size,
+            modified_at: entry.modified.map(rfc3339),
+        })
+        .collect();
+    json(FsListResult { entries })
 }

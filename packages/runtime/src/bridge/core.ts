@@ -4,6 +4,7 @@
  * the store, init.yaml's start profile and settings, perm.query, and the stub's index of fixture items
  * (data.*, connector.*, view.*), and shell.open, which hands links to `open` (window.open on the dev
  * page) and only records reveals, and cmd.recent and plugin.stats over every call it answers.
+ * The desk folder (`~/.desk`) is held in memory (`folder.ts`).
  * Built-in plugins hold their manifest's permissions, as the core grants them at install. brain.ask
  * answers through `ask`, or through a scripted brain (`brain`) that streams its turns as the core
  * does; the theme market (theme.market.*, theme.import by url) downloads through `download`. More
@@ -28,6 +29,7 @@ import {
   type ThemeMarketListResult,
 } from "@endue-ai/bridge";
 import { themeHandlers } from "./core-themes";
+import { type StubFolder, stubFolder } from "./folder";
 import { type ScriptedBrain, scriptedBrain } from "./scripted-brain";
 import { searchHandlers } from "./search";
 
@@ -51,6 +53,10 @@ export interface BrowserCoreOptions {
   brain?: ScriptedBrain;
   /** More methods (fs.write, ui.notify, ...), or the ones above answered differently. */
   handlers?: StubHandlers;
+  /** The desk folder's files at start, by bridge path (`~/.desk/keys.yaml`). */
+  files?: Record<string, string>;
+  /** Hears the desk folder's files after every change, to keep them across a reload. */
+  keepFiles?: (files: Record<string, string>) => void;
   /** Where shell.open's links go: a new window by default, nowhere without a window. */
   open?: (url: string) => void;
   /**
@@ -68,6 +74,8 @@ export interface BrowserCoreOptions {
 export interface BrowserCore {
   client: BridgeClient;
   stub: BrowserStub;
+  /** The desk folder (`~/.desk`) the runtime reads and writes, and the person edits by hand. */
+  folder: StubFolder;
   /** plugin.list's answer, changed in place by plugin.setEnabled. */
   plugins: PluginInfo[];
   /** Put an item in the index, or replace it, as a sync would; subscribers hear data.changed. */
@@ -122,7 +130,7 @@ export function browserCore(options: BrowserCoreOptions): BrowserCore {
     },
   });
   const themes = themeHandlers(plugins, (event) => stub.emit(event));
-  const handlers: StubHandlers = {
+  const served: StubHandlers = {
     ...registry.handlers,
     ...searchHandlers(plugins, store),
     ...themes,
@@ -161,11 +169,15 @@ export function browserCore(options: BrowserCoreOptions): BrowserCore {
     ...(options.brain ? scriptedBrain(options.brain, (event) => stub.emit(event)) : {}),
     ...options.handlers,
   };
+  // The runtime's own files under ~/.desk; the rest of fs.* stays the page's.
+  const emit = (event: BridgeEvent) => stub.emit(event);
+  const desk = stubFolder(options.files ?? {}, emit, served, options.keepFiles);
   // Every call counts for plugin.stats, whoever answers it.
-  const stub = browserStub(handlers, registry.observe);
+  const stub = browserStub({ ...served, ...desk.handlers }, registry.observe);
   return {
     client: new BridgeClient(stub),
     stub,
+    folder: desk.folder,
     plugins,
     upsert: registry.upsert,
     remove: registry.remove,

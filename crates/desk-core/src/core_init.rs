@@ -21,6 +21,9 @@ impl Core {
     /// Sync init.yaml through `remote` (endue, or `MockRemote` until endue serves sync). The last
     /// version both sides agreed on is kept in `state_file`, or in memory.
     pub fn with_sync(mut self, remote: Arc<dyn SyncRemote>, state_file: Option<PathBuf>) -> Self {
+        if let Some(path) = &state_file {
+            self.screen_state(path, crate::sync::readable);
+        }
         self.sync = Some(Syncer::new(remote, state_file));
         self
     }
@@ -56,22 +59,28 @@ impl Core {
 
     /// init.get: the profile to start in, the caller's own settings (keys under `<caller>.`) and
     /// where init.yaml is, rooted at `~` inside the home folder (desk.describe names and shows it).
+    /// A value that fails its setting is left out, and one written under an earlier name is handed
+    /// out under the setting's own (ADR 0080). Each call reports what is new; one from desk sends
+    /// desk every value that fell back again.
     pub(crate) fn init_get(&self, caller: &str) -> Answer {
-        let file = self.init_file();
-        let init = file.init();
         let prefix = format!("{caller}.");
-        let settings = init
-            .settings
-            .iter()
+        let settings = self
+            .layers()
+            .init_in_force()
+            .into_iter()
             .filter(|(key, _)| key.starts_with(&prefix))
-            .map(|(key, value)| (key.clone(), value.clone()))
             .collect();
-        json(InitGetResult {
-            profile: init.profile.clone(),
-            settings,
-            problem: file.problem().map(str::to_owned),
-            file: file.path().map(|path| bridge_path(path, self.home())),
-        })
+        let answer = {
+            let file = self.init_file();
+            InitGetResult {
+                profile: file.init().profile.clone(),
+                settings,
+                problem: file.problem().map(str::to_owned),
+                file: file.path().map(|path| bridge_path(path, self.home())),
+            }
+        };
+        self.report_settings(caller == "desk");
+        json(answer)
     }
 
     pub(crate) fn init_disables(&self, plugin: &str) -> bool {
@@ -95,13 +104,13 @@ impl Core {
         }
     }
 
-    fn init_file(&self) -> MutexGuard<'_, InitFile> {
+    pub(crate) fn init_file(&self) -> MutexGuard<'_, InitFile> {
         lock(&self.init)
     }
 }
 
 /// `path` as the bridge writes paths: `~/...` inside `home`, else as it is, with forward slashes.
-fn bridge_path(path: &Path, home: &Path) -> String {
+pub(crate) fn bridge_path(path: &Path, home: &Path) -> String {
     let slashes = |p: &Path| p.to_string_lossy().replace('\\', "/");
     match path.strip_prefix(home) {
         Ok(rest) if !home.as_os_str().is_empty() => format!("~/{}", slashes(rest)),

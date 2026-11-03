@@ -1,13 +1,15 @@
 //! `desk`: the command line for people and AI agents. Exit codes: 0 ok, 1 check or call failed, 2
-//! usage. `plugin validate`, `plugin test` and `doctor --trace` work offline; the other subcommands
-//! reach a running desk over its socket.
+//! usage. `plugin validate`, `plugin test`, `doctor` and `doctor --trace` work offline; the other
+//! subcommands reach a running desk over its socket.
 
 mod args;
 mod doctor;
 mod files;
+mod health;
 mod plugin_test;
 mod remote;
 mod theme;
+mod undo;
 
 use std::path::Path;
 use std::process::ExitCode;
@@ -40,6 +42,7 @@ fn main() -> ExitCode {
             Err(problems) => report(&dir, problems),
         },
         Action::Trace(file) => doctor::trace(&file, args.json),
+        Action::Doctor(data) => health::run(data, args.json),
         Action::Remote(remote) => remote::run(remote, args.json),
     }
 }

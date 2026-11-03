@@ -1,6 +1,7 @@
 /**
  * desk.notify: the status line is the echo area. ui.notified events and the runtime's own notices
- * show there as the notify settings say, and every one goes to the history (*Messages*).
+ * show there as the notify settings say, and every one goes to the history (*Messages*). A notice's
+ * actions are buttons beside its text: each runs its desk command and dismisses the notice.
  */
 import type { NotifyLevel } from "@endue-ai/bridge";
 import {
@@ -32,6 +33,26 @@ export function installNotify(ctx: DeskContext, statusLine: HTMLElement): Notify
     statusLine.textContent = notice ? noticeText(notice) : base;
     if (notice) statusLine.dataset.level = notice.level;
     else delete statusLine.dataset.level;
+    const actions = notice?.actions ?? [];
+    statusLine.classList.toggle("has-actions", actions.length > 0);
+    if (notice && actions.length > 0) {
+      // The text gives way (ellipsis, the whole of it on hover) so the buttons always show.
+      const text = statusLine.ownerDocument.createElement("span");
+      text.className = "desk-status-text";
+      text.textContent = text.title = noticeText(notice);
+      statusLine.replaceChildren(text);
+    }
+    for (const action of actions) {
+      const button = statusLine.ownerDocument.createElement("button");
+      button.type = "button";
+      button.className = "desk-status-action";
+      button.textContent = action.label;
+      button.addEventListener("click", () => {
+        if (notifications.current() === notice) notifications.dismiss();
+        void commands.run(action.command, action.args).catch(() => {});
+      });
+      statusLine.append(button);
+    }
   };
   const notifications = new Notifications(clock, render);
   offs.add(() => notifications.dispose());

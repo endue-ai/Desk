@@ -12,6 +12,8 @@ const plugins: Record<string, string> = {
   "test.counter": here("./fixture/plugins/test-counter"),
   "test.echo": here("./fixture/plugins/test-echo"),
   "test.worker": here("./fixture/plugins/test-worker"),
+  // Fails to start every time (safe-mode.html, ADR 0061).
+  "test.throws": here("./fixture/plugins/test-throws"),
   "test.theme": here("./themes/test-theme"),
   // The autoload opener of the desk page is the echo plugin under another id.
   "test.lazy": here("./fixture/plugins/test-echo"),

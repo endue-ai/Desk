@@ -16,6 +16,11 @@ pub struct Store {
     data: BTreeMap<String, BTreeMap<String, Value>>,
 }
 
+/// Whether `bytes` are a store file: values by caller and then key.
+pub(crate) fn readable(bytes: &[u8]) -> bool {
+    crate::state_file::json_as::<BTreeMap<String, BTreeMap<String, Value>>>(bytes)
+}
+
 impl Store {
     /// A store backed by `path` (loaded now, written on every set), or by memory only.
     pub fn new(path: Option<PathBuf>) -> Self {

@@ -29,6 +29,8 @@ fn main() {
     let manifest = tauri_build::AppManifest::new().commands(&[
         "bridge_call",
         "desk_ready",
+        "desk_start",
+        "desk_relaunch",
         "desk_trace",
         "take_open_files",
         "palette_hide",

@@ -33,6 +33,11 @@ struct Store {
     enabled: BTreeMap<String, bool>,
 }
 
+/// Whether `bytes` are a plugin store file (plugins.json).
+pub(crate) fn readable(bytes: &[u8]) -> bool {
+    crate::state_file::json_as::<Store>(bytes)
+}
+
 #[derive(Debug, Default)]
 pub struct PluginRegistry {
     entries: Vec<Entry>,
@@ -107,10 +112,10 @@ impl PluginRegistry {
     /// Turn a plugin on or off and remember it. A library stays on and nothing is remembered.
     pub fn set_enabled(&mut self, id: &str, enabled: bool) -> Option<PluginInfo> {
         let index = self.entries.iter().position(|e| e.id == id)?;
+        self.held_off.remove(id);
         if library(&self.entries[index]) {
             return Some(self.info(index));
         }
-        self.held_off.remove(id);
         self.store.enabled.insert(id.to_owned(), enabled);
         self.save();
         Some(self.info(index))
@@ -123,6 +128,13 @@ impl PluginRegistry {
         if !library(&self.entries[index]) {
             self.held_off.insert(id.to_owned());
         }
+        Some(self.info(index))
+    }
+
+    /// Keep a plugin off for this run in safe mode, a library too (ADR 0061). set_enabled ends it.
+    pub fn hold_for_safe_mode(&mut self, id: &str) -> Option<PluginInfo> {
+        let index = self.entries.iter().position(|e| e.id == id)?;
+        self.held_off.insert(id.to_owned());
         Some(self.info(index))
     }
 
@@ -174,9 +186,9 @@ impl PluginRegistry {
             } else {
                 PluginStatus::Failed
             },
-            enabled: library(entry)
-                || (!self.held_off.contains(&entry.id)
-                    && self
+            enabled: !self.held_off.contains(&entry.id)
+                && (library(entry)
+                    || self
                         .store
                         .enabled
                         .get(&entry.id)

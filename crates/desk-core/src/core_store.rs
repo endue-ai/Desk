@@ -11,6 +11,7 @@ use crate::store::Store;
 impl Core {
     /// Keep store.set values in `path` (a JSON file in the app's data folder).
     pub fn with_store_file(self, path: PathBuf) -> Self {
+        self.screen_state(&path, crate::store::readable);
         *self.kv() = Store::new(Some(path));
         self
     }
