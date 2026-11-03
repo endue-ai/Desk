@@ -3,7 +3,7 @@ import { type Clock, realClock, tween } from "./clock";
 import { Preferences } from "./core/preferences";
 import { installDescribe } from "./describe/install";
 import { Edges, takesCell } from "./edges";
-import { installFrames, type WindowVisibility } from "./frames/install";
+import { installFrames } from "./frames/install";
 import { PolicyHub } from "./hub";
 import { listenForShortcuts, type Platform, ShortcutRouter } from "./input";
 import { installInspect } from "./inspect/install";
@@ -21,9 +21,8 @@ import { installKeysFile } from "./policies/keys-file";
 import { installNotify } from "./policies/notify";
 import { installPalette } from "./policies/palette";
 import { installProfiles } from "./policies/profiles";
-import { installSession, type SessionPart } from "./policies/session";
+import { installSession } from "./policies/session";
 import { installTheme } from "./policies/theme";
-import type { PolicySet } from "./policy";
 import type { Runtime, RuntimePlugins } from "./runtime-api";
 import type { SettingsLanguage } from "./settings-ui/copy";
 import { installSettingsWindow } from "./settings-ui/window";
@@ -32,6 +31,7 @@ import { SurfaceHost, type SurfaceSpec } from "./surfaces";
 import { applyTheme } from "./theme";
 import { timed } from "./timing";
 import { connectViews, type HostViews, type ViewRouting } from "./views";
+import type { WindowHost } from "./window-host";
 
 export type { Runtime, RuntimePlugins, RuntimeProfiles } from "./runtime-api";
 
@@ -62,14 +62,9 @@ export interface RuntimeOptions {
   relaunch?: () => void | Promise<void>;
 }
 
-/** The shell's window host places detached surfaces and removes them when closed (ADR 0040). */
-export interface WindowHost extends WindowVisibility {
-  adopt(spec: SurfaceSpec, section: HTMLElement): void;
-  release(id: string): void;
-}
+export type { WindowHost } from "./window-host";
 
 const FADE_MS = 240;
-
 /** Mount the 2D desk: a compositor grid of sandboxed surfaces, edge bars and a status line. */
 export function createRuntime(options: RuntimeOptions): Runtime {
   const { root, bridge } = options;
@@ -124,7 +119,6 @@ export function createRuntime(options: RuntimeOptions): Runtime {
     onLayout();
   };
   applyGrid();
-
   const offKeys = listenForShortcuts(win, shortcuts);
 
   // Built before the policies so they can share messages with plugins and ask them things.
@@ -143,6 +137,8 @@ export function createRuntime(options: RuntimeOptions): Runtime {
         ? pluginHost.request(plugin, command, args)
         : Promise.reject(new Error(`${plugin} is not running`)),
     mounted: (plugin) => pluginHost?.mounted().includes(plugin) ?? false,
+    launch: (plugin) =>
+      pluginHost ? pluginHost.launch(plugin) : Promise.reject(new Error("no plugin host")),
     whenReady: (plugin) =>
       pluginHost ? pluginHost.whenReady(plugin) : Promise.reject(new Error("no plugin host")),
     unmount: (plugin) => {
@@ -161,7 +157,10 @@ export function createRuntime(options: RuntimeOptions): Runtime {
   const notify = installNotify(ctx, statusLine);
   const focusSurface = (id: string | null) => {
     shortcuts.focus(id);
-    if (id) surfaces.get(id)?.focus();
+    if (id) {
+      options.windows?.show?.(id);
+      surfaces.get(id)?.focus();
+    }
   };
   const { views } = options;
   // Set once desk.buffers is installed: which ids are the host's views.
@@ -224,7 +223,6 @@ export function createRuntime(options: RuntimeOptions): Runtime {
     if (commands.has("desk.palette.cancel"))
       void commands.run("desk.palette.cancel").catch(() => {});
   });
-
   const showStatus = (text: string) => {
     notify.setBase(text);
     const durationMs = theme.state().reducedMotion ? 0 : FADE_MS;
@@ -249,7 +247,6 @@ export function createRuntime(options: RuntimeOptions): Runtime {
     },
     () => showStatus(`desk cannot reach the core · bridge: ${bridge.adapterName}`),
   );
-
   const openSurface = (spec: SurfaceSpec) => {
     const decision = display.decide(spec);
     // With a window host, centre and floating surfaces are its windows, not grid cells.
@@ -295,7 +292,10 @@ export function createRuntime(options: RuntimeOptions): Runtime {
         frame: (id) => surfaces.frame(id),
         show: (id, visible) => {
           surfaces.show(id, visible);
-          if (visible) options.onSurfaceShown?.(id);
+          if (visible) {
+            options.windows?.show?.(id);
+            options.onSurfaceShown?.(id);
+          }
         },
         key: (id, key) => {
           shortcuts.focus(id);

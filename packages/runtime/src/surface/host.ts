@@ -18,12 +18,15 @@ export interface PluginWindows extends WindowHost {
   has(id: string): boolean;
 }
 
-export function pluginWindows(store: Store): PluginWindows {
+export function pluginWindows(store: Store, show?: (id: string) => void): PluginWindows {
   const sections = new Map<string, HTMLElement>();
   const containers = new Map<string, HTMLElement>();
   // Covered windows, worked out once per state and screen size (ADR 0070).
   let hidden: { state: DeskState; size: string; ids: Set<string> } | undefined;
   return {
+    show: (id) => {
+      if (sections.has(id)) show?.(id);
+    },
     adopt(spec, section) {
       sections.set(spec.id, section);
       // A pane already waiting for it (a profile placed the plugin before it mounted) takes it now.

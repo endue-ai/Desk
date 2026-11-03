@@ -97,13 +97,13 @@ export function installFiles(
     if (!ctx.mounted(plugin)) {
       const info = hub.plugins.find((p) => p.id === plugin);
       const off = goingOff.delete(plugin) || info?.enabled === false;
-      await bridge.call("plugin.setEnabled", { plugin, enabled: true, scope: MANAGE });
+      await ctx.launch(plugin);
       // Off and autoload: the desk turned it on, so the desk turns it off after its last file.
       if (autoloads(info) && off && !autoloaded.has(plugin)) {
         autoloaded.add(plugin);
         keepAutoloaded();
       }
-    }
+    } else await ctx.launch(plugin);
     await ctx.whenReady(plugin);
   };
 

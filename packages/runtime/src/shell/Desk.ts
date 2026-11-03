@@ -32,6 +32,7 @@ import { paneViews } from "./panes";
 import { mountRail } from "./Rail";
 import { type DeskState, emptyState, Store } from "./state";
 import { Ticker } from "./ticker";
+import { showPlugin } from "./windows";
 
 export interface DeskOptions {
   root: HTMLElement;
@@ -85,7 +86,7 @@ export function mountDesk(options: DeskOptions): Desk {
     say: () => undefined,
     setState: () => undefined,
   };
-  const windows = pluginWindows(store);
+  const windows = pluginWindows(store, (id) => showPlugin(ctx, id));
   // The runtime is created below; nothing reads it before then.
   const ctx: ShellCtx = {
     store,

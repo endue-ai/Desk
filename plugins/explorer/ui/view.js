@@ -74,18 +74,10 @@ export function createView(doc, actions) {
     const item = /** @type {HTMLElement} */ (event.target).closest("[role=treeitem]");
     const id = item instanceof HTMLElement ? item.dataset.id : undefined;
     if (id === undefined) return;
+    // The second click of a double click must not start a second file read or toggle a folder twice.
+    if (event.detail > 1) return;
     actions.select(id);
-    if (item.dataset.kind === "dir" || item.dataset.kind === "more") void actions.activate(id);
-  });
-  tree.addEventListener("dblclick", (event) => {
-    const item = /** @type {HTMLElement} */ (event.target).closest("[role=treeitem]");
-    if (
-      !(item instanceof HTMLElement) ||
-      item.dataset.kind === "dir" ||
-      item.dataset.kind === "more"
-    )
-      return;
-    if (item.dataset.id) void actions.activate(item.dataset.id);
+    void actions.activate(id);
   });
   const TREE_KEYS = [
     "ArrowUp",

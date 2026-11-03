@@ -95,6 +95,10 @@ async function desk({ off = [], on = [], store = {}, listDelay = 0 }: DeskOption
       return null;
     },
     mounted: (plugin: string) => mounted.has(plugin),
+    launch: async (plugin: string) => {
+      if (!mounted.has(plugin))
+        await bridge.call("plugin.setEnabled", { plugin, enabled: true, scope: MANAGE });
+    },
     whenReady: (plugin: string) =>
       mounted.has(plugin)
         ? Promise.resolve()

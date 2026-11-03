@@ -27,6 +27,7 @@ async function desk(pickFile?: () => Promise<string | null>) {
     surfaces: { show: vi.fn() },
     request,
     mounted: () => true,
+    launch: async () => {},
     whenReady: async () => {},
     unmount: vi.fn(),
   } as unknown as DeskContext;

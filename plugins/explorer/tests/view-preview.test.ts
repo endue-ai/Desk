@@ -69,13 +69,14 @@ describe("Explorer quick preview controls", () => {
     expect(document.querySelector("#preview-detail")?.textContent).toContain("12 KB");
   });
 
-  it("one click only selects a file and double click opens it", () => {
+  it("one click selects and opens a file, and a double click does not open it again", () => {
     const original = item();
     item().click();
     view.selection(row.id);
     expect(item()).toBe(original);
     expect(actions.select).toHaveBeenCalledWith(row.id);
-    expect(actions.activate).not.toHaveBeenCalled();
+    expect(actions.activate).toHaveBeenCalledExactlyOnceWith(row.id);
+    item().dispatchEvent(new MouseEvent("click", { bubbles: true, detail: 2 }));
     item().dispatchEvent(new MouseEvent("dblclick", { bubbles: true }));
     expect(actions.activate).toHaveBeenCalledExactlyOnceWith(row.id);
   });

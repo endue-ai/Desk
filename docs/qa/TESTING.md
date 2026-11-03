@@ -6,6 +6,12 @@ catch; until then they are marked "not yet".
 
 ## Layers
 
+Image opening regressions: `just test-e2e image-files.spec.ts` loads the real Images and Explorer
+plugins in the shell under the plugin CSP. It checks JPEG/PNG rendering, single-click opening while
+Images is off, reopening after close, and opening the same or another image from the drawer. The
+runtime's `plugin-reconnect.test.ts` checks requests wait for the recreated frame; Images'
+`files.test.ts` checks surviving buffers reload without reopening buffers already closed.
+
 | Layer | What it checks | Tool and location | When | Status |
 | --- | --- | --- | --- | --- |
 | Static | fmt, clippy `-D warnings`, biome, tsc strict, actionlint, spec lint (Ajv strict compile of every schema, spectral for the OpenAPI), theme conformance (`scripts/ui-lint.mjs` ratchet) | `just check` | every PR (`ci`) | active |

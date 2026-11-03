@@ -24,6 +24,7 @@ import { proposalFor } from "../../src/propose/fixtures";
 import { mountDesk } from "../../src/shell/Desk";
 import { sampleState } from "../../src/shell/state";
 import testTheme from "../themes/test-theme/plugin.json";
+import { fileHandlers, grantFilePlugins } from "./file-viewers";
 
 const root = document.getElementById("desk");
 if (!root) throw new Error("no #desk element");
@@ -86,7 +87,11 @@ const core = browserCore({
     ...(params.has("plugins") ? testPlugins : []),
     ...(params.has("themes") ? [testTheme as PluginManifest] : []),
     ...(params.has("apps") ? [...apps, terminal] : []),
+    ...(params.has("files")
+      ? Object.values(manifests).filter((m) => ["endue.images", "endue.explorer"].includes(m.id))
+      : []),
   ],
+  ...(params.has("files") ? { handlers: fileHandlers } : {}),
   store: params.has("persist") ? localStore("desk.core.") : memoryStore(),
   // The desk folder (~/.desk: keys.yaml, saved profiles) survives a reload with ?persist=1 too.
   ...(params.has("persist")
@@ -114,6 +119,7 @@ const core = browserCore({
     },
   },
 });
+if (params.has("files")) await grantFilePlugins(core);
 // A fixed wall clock and platform, so "4:12 ago" and "⌘N" read the same on every machine.
 const epoch = Date.parse("2026-10-28T09:00:00.000Z");
 const bridge = browserBridge({ now: () => clock.now(), epoch });

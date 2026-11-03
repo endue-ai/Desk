@@ -6,7 +6,7 @@ so the plugin the desk's rules name reads it under its own grants. Space shows a
 
 Keyboard: the WAI-ARIA tree pattern. Arrows move, `→` expands or steps in, `←` collapses or steps out,
 Home/End jump, Space previews, Enter opens, Escape closes the preview; letters jump by name.
-One click selects; double click opens. Right-click or Shift+F10 offers Open, Copy path, terminal, Git and system reveal.
+One click selects and opens a file or toggles a folder. Right-click or Shift+F10 offers Open, Copy path, terminal, Git and system reveal.
 Rows drag as `text/plain` or `application/x-desk-path`. Preview reads the first 64 KiB of UTF-8 text
 or PNG/JPEG/GIF/WebP images up to 8 MiB; other files show details and Open. HTML is displayed as text.
 
