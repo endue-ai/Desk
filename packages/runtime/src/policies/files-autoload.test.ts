@@ -96,6 +96,7 @@ async function desk({ off = [], on = [], store = {}, listDelay = 0 }: DeskOption
     },
     mounted: (plugin: string) => mounted.has(plugin),
     launch: async (plugin: string) => {
+      log.push(`launch ${plugin}`);
       if (!mounted.has(plugin))
         await bridge.call("plugin.setEnabled", { plugin, enabled: true, scope: MANAGE });
     },
@@ -135,6 +136,10 @@ describe("desk.files turns autoload openers on for a file and off after its last
     expect(await d.run("desk.files.open", { path: "~/a.csv" })).toBe("file:~/a.csv");
     expect(d.enabled(SHEETS)).toBe(true);
     expect(d.mounted.has(SHEETS)).toBe(true);
+    expect(d.log.indexOf(`launch ${SHEETS}`)).toBeGreaterThanOrEqual(0);
+    expect(d.log.indexOf(`launch ${SHEETS}`)).toBeLessThan(
+      d.log.indexOf(`${SHEETS} desk.files.visit ~/a.csv`),
+    );
     expect(d.log).toContain(`${SHEETS} desk.files.visit ~/a.csv`);
   });
 

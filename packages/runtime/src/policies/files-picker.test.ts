@@ -21,13 +21,14 @@ async function desk(pickFile?: () => Promise<string | null>) {
   const core = browserCore({ manifests });
   const hub = new PolicyHub(core.client);
   const request = vi.fn(async (_plugin: string, _command: string, _args?: unknown) => null);
+  const launch = vi.fn(async (_plugin: string) => {});
   const ctx = {
     hub,
     bridge: core.client,
     surfaces: { show: vi.fn() },
     request,
     mounted: () => true,
-    launch: async () => {},
+    launch,
     whenReady: async () => {},
     unmount: vi.fn(),
   } as unknown as DeskContext;
@@ -42,6 +43,7 @@ async function desk(pickFile?: () => Promise<string | null>) {
     run: (args?: unknown) => hub.commands.run("desk.files.open", args),
     palette,
     request,
+    launch,
     buffers,
     files,
     notify,
@@ -55,6 +57,7 @@ describe("the host's native picker", () => {
     expect(await d.run()).toBe("file:/chosen/notes.md");
     expect(picker).toHaveBeenCalledOnce();
     expect(d.palette).not.toHaveBeenCalled();
+    expect(d.launch).toHaveBeenCalledExactlyOnceWith("test.notes");
     expect(d.request).toHaveBeenCalledWith("test.notes", "desk.files.visit", {
       buffer: "file:/chosen/notes.md",
       path: "/chosen/notes.md",
