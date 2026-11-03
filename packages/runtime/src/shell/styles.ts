@@ -2,6 +2,7 @@
 import "@endue-ai/ui/tokens.css";
 import "./scale.css";
 import "./shell.css";
+import "../wallpaper/wallpaper.css";
 import "./chrome.css";
 import "./bottom.css";
 import "../system/system.css";

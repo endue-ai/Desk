@@ -1,10 +1,28 @@
 {
  "tag": "div",
- "class": "shell",
+ "class": "shell has-canvas",
  "style": {
   "background": "rgb(20, 20, 22)"
  },
  "children": [
+  {
+   "tag": "div",
+   "class": "wallpaper",
+   "children": [
+    {
+     "tag": "svg",
+     "class": "wallpaper-pond",
+     "icon": null
+    },
+    {
+     "tag": "div",
+     "class": "wallpaper-effects",
+     "style": {
+      "color": "rgb(242, 240, 245)"
+     }
+    }
+   ]
+  },
   {
    "tag": "div",
    "class": "shell-glow",
@@ -1281,9 +1299,12 @@
       },
       {
        "tag": "div",
-       "class": "composer",
+       "class": "composer talk-pill",
+       "data-state": "idle",
        "style": {
-        "transform": "matrix(1, 0, 0, 1, -280, 0)"
+        "background": "rgb(30, 29, 33)",
+        "border": "solid rgba(182, 163, 245, 0.34)",
+        "transform": "matrix(1, 0, 0, 1, -92, 0)"
        },
        "children": [
         {
@@ -1302,6 +1323,7 @@
          "tag": "label",
          "class": "composer-hint",
          "style": {
+          "display": "none",
           "color": "rgb(176, 173, 183)"
          },
          "text": "Hey Eris 라고 말하거나 바로 입력하세요"
@@ -1310,13 +1332,13 @@
          "tag": "div",
          "class": "composer-field",
          "box": [
-          440,
-          878,
-          560,
+          897,
+          865,
+          0,
           2
          ],
          "style": {
-          "background": "rgb(51, 49, 54)",
+          "opacity": "0",
           "height": "2px"
          },
          "children": [
@@ -1330,6 +1352,116 @@
             "color": "rgb(242, 240, 245)"
            },
            "value": ""
+          }
+         ]
+        },
+        {
+         "tag": "button",
+         "class": "talk-launch",
+         "aria-label": "Eris 에게 말하기",
+         "aria-expanded": "false",
+         "children": [
+          {
+           "tag": "svg",
+           "class": "talk-orb",
+           "icon": null
+          },
+          {
+           "tag": "span",
+           "style": {
+            "color": "rgb(242, 240, 245)"
+           },
+           "text": "Eris 에게 말하기"
+          }
+         ]
+        },
+        {
+         "tag": "span",
+         "class": "talk-grip",
+         "style": {
+          "display": "none",
+          "color": "rgb(176, 173, 183)"
+         },
+         "text": "⠿"
+        },
+        {
+         "tag": "button",
+         "class": "talk-agent-button icon-button",
+         "aria-label": "에이전트",
+         "aria-expanded": "false",
+         "hidden": "",
+         "box": [
+          0,
+          0,
+          0,
+          0
+         ],
+         "style": {
+          "display": "none",
+          "border": "solid rgba(0, 0, 0, 0)"
+         },
+         "children": [
+          {
+           "tag": "svg",
+           "icon": "plus"
+          }
+         ]
+        },
+        {
+         "tag": "span",
+         "class": "talk-preview",
+         "style": {
+          "background": "rgb(36, 33, 39)",
+          "color": "rgb(176, 173, 183)",
+          "opacity": "0"
+         },
+         "text": "Mira, Theo, Juno"
+        },
+        {
+         "tag": "kbd",
+         "class": "talk-shortcut",
+         "style": {
+          "color": "rgb(176, 173, 183)",
+          "border": "solid rgb(51, 49, 54)",
+          "opacity": "0"
+         },
+         "text": "⌥Space"
+        },
+        {
+         "tag": "div",
+         "class": "popover talk-agent-list",
+         "role": "group",
+         "aria-label": "에이전트",
+         "hidden": "",
+         "style": {
+          "display": "none",
+          "background": "rgb(43, 39, 49)",
+          "border": "solid rgb(51, 49, 54)"
+         },
+         "children": [
+          {
+           "tag": "button",
+           "class": "menu-item",
+           "style": {
+            "color": "rgb(242, 240, 245)"
+           },
+           "text": "Mira"
+          },
+          {
+           "tag": "button",
+           "class": "menu-item",
+           "style": {
+            "color": "rgb(242, 240, 245)"
+           },
+           "text": "Theo"
+          },
+          {
+           "tag": "button",
+           "class": "menu-item",
+           "style": {
+            "color": "rgb(242, 240, 245)"
+           },
+           "text": "Juno"
           }
          ]
         }

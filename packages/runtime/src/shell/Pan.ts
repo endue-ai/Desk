@@ -1,5 +1,4 @@
-import { isFloating, type Offset, ORIGIN } from "../surface/coordinates";
-import { windowsOf } from "./actions";
+import { type Offset, ORIGIN } from "../surface/coordinates";
 import type { ShellCtx } from "./context";
 import { h, listen } from "./dom";
 import { draggable } from "./drag";
@@ -21,7 +20,6 @@ export function setPan(ctx: ShellCtx, pan: Offset): void {
 export function mountPan(root: HTMLElement, ctx: ShellCtx): () => void {
   let start = ORIGIN;
   let desktop = ctx.store.get().desktop;
-  const hasCanvas = () => windowsOf(ctx.store.get()).some((p) => !isFloating(p));
   const background = (target: EventTarget | null) =>
     target === root || (target instanceof Element && target.classList.contains("shell-glow"));
   const titleBar = (target: EventTarget | null) =>
@@ -42,10 +40,10 @@ export function mountPan(root: HTMLElement, ctx: ShellCtx): () => void {
   );
   const draw = () => {
     const pan = panOf(ctx.store.get());
-    root.classList.toggle("has-canvas", hasCanvas());
+    root.classList.add("has-canvas");
     root.style.setProperty("--pan-x", `${pan.x}px`);
     root.style.setProperty("--pan-y", `${pan.y}px`);
-    root.title = hasCanvas() ? ctx.tr("panHint") : "";
+    root.title = ctx.tr("panHint");
     reset.title = ctx.tr("resetPan");
     reset.setAttribute("aria-label", ctx.tr("resetPan"));
     if (pan.x || pan.y) {
@@ -57,7 +55,7 @@ export function mountPan(root: HTMLElement, ctx: ShellCtx): () => void {
   };
   const off = [
     draggable(root, {
-      accept: (e) => e.shiftKey && hasCanvas() && (background(e.target) || titleBar(e.target)),
+      accept: (e) => e.shiftKey && (background(e.target) || titleBar(e.target)),
       start: () => {
         start = panOf(ctx.store.get());
         desktop = ctx.store.get().desktop;
@@ -73,7 +71,6 @@ export function mountPan(root: HTMLElement, ctx: ShellCtx): () => void {
       "wheel",
       (e) => {
         if (
-          !hasCanvas() ||
           !background(e.target) ||
           e.ctrlKey ||
           root.ownerDocument.documentElement.classList.contains("is-grabbing")
@@ -86,7 +83,7 @@ export function mountPan(root: HTMLElement, ctx: ShellCtx): () => void {
       },
       { passive: false },
     ),
-    ctx.store.watch((s) => [s.pan, s.desktop, s.lang, windowsOf(s)], draw),
+    ctx.store.watch((s) => [s.pan, s.desktop, s.lang], draw),
     listen(window, "keydown", shift),
     listen(window, "keyup", shift),
     listen(window, "blur", shift),

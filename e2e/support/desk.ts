@@ -22,7 +22,7 @@ export const MODE = '#desk.shell [data-layer="mode"]';
  */
 export const surface = (plugin: string) => $(`${MODE} .desk-surface[data-surface="${plugin}"]`);
 
-/** The shell window that holds a plugin's centre surface: its title bar and tools. */
+/** The shell window that holds a plugin's content or side panel: its title bar and tools. */
 export const windowOf = (plugin: string) => $(`${MODE} section.surface[data-surface="${plugin}"]`);
 
 /** The shell's drawer button (bottom edge); `aria-expanded` says whether the drawer is open. */

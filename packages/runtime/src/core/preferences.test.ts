@@ -16,6 +16,20 @@ function setup(data: Record<string, unknown> = {}) {
 }
 
 describe("core preferences", () => {
+  it("keeps wallpaper across restart and rejects unrecognized scenes", async () => {
+    const { hub, preferences, data } = setup();
+    await preferences.load();
+    hub.settings.set("desk.wallpaper.scene", "pond");
+    await preferences.settled();
+    const reopened = setup(data);
+    await reopened.preferences.load();
+    expect(reopened.hub.settings.get("desk.wallpaper.scene")).toBe("pond");
+    expect(validPreferences({ "desk.wallpaper.scene": "remote-script" })).toEqual({});
+    preferences.dispose();
+    reopened.preferences.dispose();
+    hub.commands.dispose();
+    reopened.hub.commands.dispose();
+  });
   it("keeps and saves edits made before a slow initial read finishes", async () => {
     let release = () => {};
     const waiting = new Promise<void>((resolve) => {

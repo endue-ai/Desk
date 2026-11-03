@@ -98,6 +98,11 @@ describe("who gets a key pressed in a terminal", () => {
 });
 
 describe("Desk navigation inside the terminal", () => {
+  it("forwards the Eris chord with the browser's literal Space key on every platform", () => {
+    for (const platform of ["mac", "linux", "windows"] as const) {
+      expect(on(platform, press(" ", { altKey: true }))).toBe("desk");
+    }
+  });
   it("buffer navigation reaches the desk on every platform", () => {
     for (const platform of ["mac", "linux", "windows"] as const) {
       for (const key of ["ArrowLeft", "ArrowRight"]) {

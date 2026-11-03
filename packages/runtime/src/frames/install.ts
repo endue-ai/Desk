@@ -38,8 +38,8 @@ export interface FramesDeps {
 }
 
 export interface Frames {
-  /** A surface opened at its placement: centre and floating ones may be unloaded. */
-  opened(spec: SurfaceSpec): void;
+  /** Content surfaces and hosted side windows may be unloaded when out of sight. */
+  opened(spec: SurfaceSpec, windowed?: boolean): void;
   closed(id: string): void;
   /** Something that may show or hide surfaces happened: look again once it has settled. */
   changed(): void;
@@ -112,8 +112,8 @@ export function installFrames(
   ];
   win.addEventListener("resize", changed);
   const frames: Frames = {
-    opened(spec) {
-      if (spec.placement !== "center" && spec.placement !== "floating") return;
+    opened(spec, windowed) {
+      if (!windowed && spec.placement !== "center" && spec.placement !== "floating") return;
       specs.set(spec.id, spec);
       policy.track(spec.id);
       changed();

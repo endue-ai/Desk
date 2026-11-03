@@ -20,6 +20,7 @@ import { mountSurfaces } from "../surface/Surface";
 import { loadDirectory } from "../system/agents";
 import { mountSystemLayer } from "../system/layer";
 import { timed } from "../timing";
+import { mountWallpaper } from "../wallpaper/wallpaper";
 import { layoutOf } from "./actions";
 import { mountBottom } from "./Bottom";
 import { defineCommands, dismiss } from "./commands";
@@ -127,7 +128,7 @@ export function mountDesk(options: DeskOptions): Desk {
   const { runtime } = ctx;
 
   root.append(glow);
-  const parts = [mountSystemLayer(root, ctx, options.start?.safe)];
+  const parts = [mountWallpaper(root, ctx), mountSystemLayer(root, ctx, options.start?.safe)];
   root.append(modeLayer);
   const eris = mountEris(modeLayer, ctx, () => layoutOf(store.get()).eris);
   pending.say = eris.say;
