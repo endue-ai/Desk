@@ -16,7 +16,7 @@ const row: Row = {
   hidden: false,
   size: 20,
 };
-let actions: Parameters<typeof createView>[1] & { togglePreview: ReturnType<typeof vi.fn> };
+let actions: Parameters<typeof createView>[1];
 let view: ReturnType<typeof createView>;
 beforeEach(() => {
   document.documentElement.innerHTML = html
