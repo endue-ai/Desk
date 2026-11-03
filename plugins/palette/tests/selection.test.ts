@@ -6,31 +6,40 @@ import { filter, remember } from "../ui/match.js";
 import { actionOf, createAsker, rows, searchItems } from "../ui/providers.js";
 import { createSearch, openSearchHit, searchEntry } from "../ui/search.js";
 
-function deferred() {
-  let resolve!: (value: { hits: unknown[] }) => void;
-  const promise = new Promise<{ hits: unknown[] }>((done) => {
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason: Error) => void;
+  const promise = new Promise<T>((done, fail) => {
     resolve = done;
+    reject = fail;
   });
-  return { promise, resolve };
+  return { promise, resolve, reject };
 }
 
-async function mount() {
+async function mount(
+  provider?: Promise<unknown>,
+  pluginSearch?: (query: string) => Promise<{ hits: unknown[] }>,
+) {
   vi.useFakeTimers();
   document.body.innerHTML = `<div data-testid="scrim"></div><div data-testid="title"></div>
     <input data-testid="query"><ul data-testid="results"></ul>
     <div data-testid="actions"></div><div data-testid="status"></div>`;
-  const plugins = deferred();
-  const system = deferred();
+  const plugins = deferred<{ hits: unknown[] }>();
+  const system = deferred<{ hits: unknown[] }>();
   const callbacks = new Map<string, (args?: unknown) => Promise<unknown>>();
   const run = vi.fn(async (id: string) => {
-    if (id === "desk.keys.list" || id === "desk.palette.providers") return [];
+    if (id === "desk.keys.list") return [];
+    if (id === "desk.palette.providers")
+      return provider ? [{ command: "example.provider.search", title: "Provider" }] : [];
+    if (id === "example.provider.search") return provider;
     return undefined;
   });
   const ctx = {
     pluginId: "desk.palette",
     bridge: {
-      call: vi.fn((method: string) => {
-        if (method === "search.query") return plugins.promise;
+      call: vi.fn((method: string, params?: { query?: string }) => {
+        if (method === "search.query")
+          return pluginSearch?.(params?.query ?? "") ?? plugins.promise;
         if (method === "search.system") return system.promise;
         if (method === "init.get") return Promise.resolve({ settings: {} });
         return Promise.resolve({});
@@ -57,11 +66,32 @@ async function mount() {
     registered = definition;
   };
   const load = new Function(
-    "CommandFailed", "defineUiPlugin", "filter", "remember", "actionOf", "createAsker",
-    "rows", "searchItems", "createSearch", "openSearchHit", "searchEntry", source,
+    "CommandFailed",
+    "defineUiPlugin",
+    "filter",
+    "remember",
+    "actionOf",
+    "createAsker",
+    "rows",
+    "searchItems",
+    "createSearch",
+    "openSearchHit",
+    "searchEntry",
+    source,
   );
-  load(Error, define, filter, remember, actionOf, createAsker, rows, searchItems, createSearch,
-    openSearchHit, searchEntry);
+  load(
+    Error,
+    define,
+    filter,
+    remember,
+    actionOf,
+    createAsker,
+    rows,
+    searchItems,
+    createSearch,
+    openSearchHit,
+    searchEntry,
+  );
   if (!registered) throw new Error("palette did not register");
   await registered.mount(ctx);
   await callbacks.get("desk.palette.open")?.({});
@@ -110,6 +140,35 @@ describe("palette selection while search is pending", () => {
     expect(palette.selected()?.dataset.id).toBe("example.alpha");
   });
 
+  it("does not confuse a search hit with a command that has the same id", async () => {
+    const palette = await mount();
+    palette.type("term");
+    expect(palette.selected()?.textContent).toContain("Terminal alpha");
+    await vi.advanceTimersByTimeAsync(120);
+    palette.plugins.resolve({
+      hits: [{ id: "example.alpha", kind: "plugin", title: "A different result", plugin: "x" }],
+    });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(palette.selected()?.textContent).toContain("Terminal alpha");
+    palette.key("Enter");
+    await vi.advanceTimersByTimeAsync(0);
+    expect(palette.run).toHaveBeenCalledWith("example.alpha", {});
+  });
+
+  it("selects the first remaining row if the selected search hit disappears", async () => {
+    const palette = await mount();
+    palette.type("term");
+    await vi.advanceTimersByTimeAsync(120);
+    palette.plugins.resolve({
+      hits: [{ id: "plugin-result", kind: "plugin", title: "Terminal plugin", plugin: "x" }],
+    });
+    await vi.advanceTimersByTimeAsync(0);
+    palette.key("ArrowUp");
+    expect(palette.selected()?.dataset.id).toBe("plugin-result");
+    palette.type("term");
+    expect(palette.selected()?.dataset.id).toBe("example.alpha");
+  });
+
   it("reports searching until both searches have settled, then no match", async () => {
     const palette = await mount();
     palette.type("nothingmatches");
@@ -124,5 +183,39 @@ describe("palette selection while search is pending", () => {
     palette.system.resolve({ hits: [] });
     await vi.advanceTimersByTimeAsync(0);
     expect(empty()?.textContent).toBe("No match");
+  });
+
+  it("waits for a provider that rejects after the two bridge searches finish", async () => {
+    const provider = deferred<unknown>();
+    const palette = await mount(provider.promise);
+    palette.type("nothingmatches");
+    await vi.advanceTimersByTimeAsync(120);
+    palette.plugins.resolve({ hits: [] });
+    palette.system.resolve({ hits: [] });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(palette.list.querySelector(".empty")?.textContent).toBe("Searching…");
+    provider.reject(new Error("provider unavailable"));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(palette.list.querySelector(".empty")?.textContent).toBe("No match");
+  });
+
+  it("does not let a stale search settle or replace the current query", async () => {
+    const old = deferred<{ hits: unknown[] }>();
+    const current = deferred<{ hits: unknown[] }>();
+    const palette = await mount(undefined, (query) =>
+      query === "oldquery" ? old.promise : current.promise,
+    );
+    palette.type("oldquery");
+    await vi.advanceTimersByTimeAsync(120);
+    palette.type("nothingmatches");
+    await vi.advanceTimersByTimeAsync(120);
+    palette.system.resolve({ hits: [] });
+    old.resolve({ hits: [{ id: "old", kind: "plugin", title: "Old result", plugin: "x" }] });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(palette.list.textContent).not.toContain("Old result");
+    expect(palette.list.querySelector(".empty")?.textContent).toBe("Searching…");
+    current.resolve({ hits: [] });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(palette.list.querySelector(".empty")?.textContent).toBe("No match");
   });
 });

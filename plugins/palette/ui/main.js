@@ -30,6 +30,7 @@ defineUiPlugin({
     let mode = null;
     let shown = [];
     let selected = 0;
+    let lastInput = "";
     let history = [];
     let max = 50;
     let pluginHits = [];
@@ -40,13 +41,16 @@ defineUiPlugin({
     const search = createSearch(
       ctx.bridge,
       (source, hits) => {
-        const entries = hits.map(searchEntry);
+        const entries = hits.map((hit) => ({ ...searchEntry(hit), source }));
         if (source === "plugins") pluginHits = entries;
         else systemHits = entries;
         render();
       },
       (text) => {
         status.textContent = text;
+      },
+      () => {
+        if (mode?.kind === "commands") render();
       },
     );
     if (native) document.body.classList.add("native");
@@ -109,7 +113,17 @@ defineUiPlugin({
       );
     };
 
+    const identity = (row) => {
+      if (!row) return null;
+      if (row.type === "result") return JSON.stringify(["provider", row.provider, row.result.id]);
+      const entry = row.entry;
+      return entry.hit
+        ? JSON.stringify(["search", entry.source, entry.hit.plugin ?? entry.hit.kind, entry.id])
+        : JSON.stringify(["command", entry.provider ?? "", entry.id]);
+    };
+
     const render = () => {
+      const previous = identity(shown[selected]);
       const entries = filter(
         input.value,
         mode?.entries ?? [],
@@ -125,7 +139,8 @@ defineUiPlugin({
         const plugins = rows(pluginHits, []);
         shown = typed ? [...plugins, ...shown, ...rows(systemHits, [])] : [...shown, ...plugins];
       }
-      selected = Math.min(selected, Math.max(0, shown.length - 1));
+      const kept = previous === null ? -1 : shown.findIndex((row) => identity(row) === previous);
+      selected = Math.max(0, kept);
       const children = [];
       /** The group the last result went into, by provider. */
       let group = null;
@@ -150,7 +165,16 @@ defineUiPlugin({
         group.inner.append(item);
       });
       list.replaceChildren(...children);
-      if (shown.length === 0) list.append(element("li", { class: "empty" }, "No match"));
+      if (shown.length === 0) {
+        const pending = mode?.kind === "commands" && (search.pending() || asker.pending());
+        list.append(
+          element(
+            "li",
+            { class: "empty", role: "option", "aria-disabled": "true" },
+            pending ? "Searching…" : "No match",
+          ),
+        );
+      }
       input.setAttribute("aria-activedescendant", shown.length ? `option-${selected}` : "");
       document.getElementById(`option-${selected}`)?.scrollIntoView?.({ block: "nearest" });
       showActions();
@@ -164,15 +188,17 @@ defineUiPlugin({
       input.placeholder = next.placeholder ?? "";
       input.value = next.query ?? "";
       selected = 0;
+      shown = [];
+      lastInput = input.value;
       pluginHits = [];
       systemHits = [];
       status.textContent = "";
       search.cancel();
-      render();
       if (next.kind === "commands") {
-        asker.ask(input.value);
         search.query(input.value);
+        asker.ask(input.value);
       }
+      render();
       ctx.surface.show();
       input.focus();
     };
@@ -253,10 +279,14 @@ defineUiPlugin({
       }
     });
     input.addEventListener("input", () => {
-      selected = 0;
+      if (input.value !== lastInput) {
+        selected = 0;
+        shown = [];
+        lastInput = input.value;
+      }
       if (mode?.kind === "commands") {
-        asker.ask(input.value);
         search.query(input.value);
+        asker.ask(input.value);
       }
       render();
     });
@@ -302,7 +332,13 @@ defineUiPlugin({
         providers: asked,
         entries: commands
           .filter((c) => !hidden.has(c.id))
-          .map((c) => ({ id: c.id, label: c.title, keywords: c.keywords, keys: keysOf(c.id) })),
+          .map((c) => ({
+            id: c.id,
+            provider: c.provider,
+            label: c.title,
+            keywords: c.keywords,
+            keys: keysOf(c.id),
+          })),
       });
     });
 

@@ -1,10 +1,16 @@
 // Independent sources keep plugin matches responsive when an OS index is slow. Every query owns
 // its results, so replies from a previous query or a closed palette can never replace the current one.
-export function createSearch(bridge, update, status) {
+export function createSearch(bridge, update, status, changed = () => {}) {
   let generation = 0;
   let timer;
   let systemRunning = false;
   let pendingSystem;
+  let pending = 0;
+  const settled = (current) => {
+    if (current !== generation) return;
+    pending -= 1;
+    changed();
+  };
   const runSystem = async () => {
     if (systemRunning || !pendingSystem) return;
     const { query, current } = pendingSystem;
@@ -21,6 +27,7 @@ export function createSearch(bridge, update, status) {
         status("OS search is unavailable. Check the system search index.");
     } finally {
       systemRunning = false;
+      settled(current);
       void runSystem();
     }
   };
@@ -29,6 +36,7 @@ export function createSearch(bridge, update, status) {
       const current = ++generation;
       clearTimeout(timer);
       pendingSystem = undefined;
+      pending = query.trim().length >= 2 ? 2 : 1;
       update("plugins", []);
       update("system", []);
       status("");
@@ -46,15 +54,20 @@ export function createSearch(bridge, update, status) {
             () => {
               if (current === generation) status("Plugin search is unavailable.");
             },
-          );
+          )
+          .finally(() => settled(current));
         if (query.trim().length >= 2) {
           pendingSystem = { query: query.trim(), current };
           void runSystem();
         }
       }, 120);
     },
+    pending() {
+      return pending > 0;
+    },
     cancel() {
       generation++;
+      pending = 0;
       clearTimeout(timer);
       pendingSystem = undefined;
     },

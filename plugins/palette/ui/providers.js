@@ -157,11 +157,13 @@ export function createAsker(run, changed) {
   let providers = [];
   let asked = "";
   let turn = 0;
+  let pending = 0;
   /** @type {Map<string, PaletteResult[]>} */
   let answers = new Map();
   /** Forget what was asked and answered; true when there were groups to forget. */
   const forget = () => {
     turn += 1;
+    pending = 0;
     asked = "";
     const had = answers.size > 0;
     answers = new Map();
@@ -182,6 +184,7 @@ export function createAsker(run, changed) {
       if (!query) return;
       asked = query.query;
       const mine = turn;
+      pending = providers.length;
       for (const provider of providers) {
         /** @type {Promise<unknown>} */
         let answer;
@@ -190,15 +193,23 @@ export function createAsker(run, changed) {
         } catch (error) {
           answer = Promise.reject(error);
         }
-        answer.then(
-          (value) => {
-            if (mine !== turn || !isResults(value)) return;
-            answers.set(provider.command, value.results.slice(0, query.limit));
+        answer
+          .then(
+            (value) => {
+              if (mine === turn && isResults(value))
+                answers.set(provider.command, value.results.slice(0, query.limit));
+            },
+            () => {},
+          )
+          .then(() => {
+            if (mine !== turn) return;
+            pending -= 1;
             changed();
-          },
-          () => {},
-        );
+          });
       }
+    },
+    pending() {
+      return pending > 0;
     },
     /** The groups with results, in the providers' order. @returns {Group[]} */
     groups() {
