@@ -57,7 +57,7 @@ test.describe("at 1440×900", () => {
     });
   }
 
-  test("every icon button has an aria-label, and tab order runs modes → desktops → bar → Eris → rail → bottom", async ({
+  test("every icon button has an aria-label, and tab order runs modes → desktops → bar → user controls → Eris → rail → bottom", async ({
     page,
   }) => {
     await openShell(page);
@@ -71,7 +71,15 @@ test.describe("at 1440×900", () => {
     // WebKit only tabs to buttons with Safari's "Tab highlights each item" on, so check the
     // sequential focus order the DOM defines (no positive tabindex anywhere) instead of pressing Tab.
     const order = await page.evaluate(() => {
-      const parts = [".modes", ".desktops", ".sidebar", ".eris", ".rail", ".bottom"];
+      const parts = [
+        ".modes",
+        ".desktops",
+        ".sidebar",
+        ".account-bar",
+        ".eris",
+        ".rail",
+        ".bottom",
+      ];
       const focusable = [
         ...document.querySelectorAll<HTMLElement>("#desk button, #desk input, #desk [tabindex]"),
       ].filter((el) => el.tabIndex >= 0 && !el.closest("[inert]"));
@@ -85,7 +93,15 @@ test.describe("at 1440×900", () => {
       );
       return positive ? ["positive tabindex"] : seen;
     });
-    expect(order).toEqual([".modes", ".desktops", ".sidebar", ".eris", ".rail", ".bottom"]);
+    expect(order).toEqual([
+      ".modes",
+      ".desktops",
+      ".sidebar",
+      ".account-bar",
+      ".eris",
+      ".rail",
+      ".bottom",
+    ]);
   });
 
   test("reduced motion: no float, no breathing, soul text only fades", async ({ page }) => {
@@ -113,6 +129,7 @@ test.describe("at 1024 wide", () => {
         ".modes",
         ".desktops",
         ".sidebar",
+        ".account-bar",
         ".rail",
         ".drawer",
         ".composer",

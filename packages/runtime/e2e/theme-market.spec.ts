@@ -1,5 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
-import { openShell } from "./shell-helpers";
+import { openShell, openThemes } from "./shell-helpers";
 
 // The theme studio's Market tab (TS-08, ADR 0060). The browser core reads the fixture market
 // (e2e/themes/market, which the e2e server serves at /market/ and ?market=1 lists in
@@ -19,7 +19,7 @@ const FERN = "#0f1d17";
 test("list the market, preview a theme, install it and apply it", async ({ page }) => {
   await openShell(page, "?market=1&lang=en");
   const before = await rootVar(page, "--desk-background");
-  await page.getByRole("button", { name: "Themes" }).click();
+  await openThemes(page);
   const studio = page.getByRole("dialog", { name: "Themes" });
   await studio.locator('[data-key="market"]').click();
 

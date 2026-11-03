@@ -257,7 +257,7 @@
        "aria-pressed": "false",
        "data-desktop": "1",
        "box": [
-        1128,
+        1176,
         24,
         44,
         32
@@ -322,7 +322,7 @@
        "aria-pressed": "true",
        "data-desktop": "2",
        "box": [
-        1180,
+        1228,
         24,
         44,
         32
@@ -389,7 +389,7 @@
        "aria-pressed": "false",
        "data-desktop": "3",
        "box": [
-        1232,
+        1280,
         24,
         44,
         32
@@ -455,7 +455,7 @@
        "aria-pressed": "false",
        "data-desktop": "4",
        "box": [
-        1284,
+        1332,
         24,
         44,
         32
@@ -518,7 +518,7 @@
        "class": "add-button desktop-add",
        "aria-label": "빈 데스크톱으로",
        "box": [
-        1336,
+        1384,
         24,
         32,
         32
@@ -533,27 +533,6 @@
          "icon": "plus"
         }
        ]
-      },
-      {
-       "tag": "button",
-       "class": "add-button theme-button",
-       "aria-label": "테마",
-       "box": [
-        1384,
-        24,
-        32,
-        32
-       ],
-       "style": {
-        "background": "rgb(255, 255, 255)",
-        "border": "solid rgb(221, 214, 229)"
-       },
-       "children": [
-        {
-         "tag": "svg",
-         "icon": "palette"
-        }
-       ]
       }
      ]
     },
@@ -563,7 +542,7 @@
      "aria-label": "에이전트 · 스페이스",
      "box": [
       24,
-      299,
+      211,
       56,
       303
      ],
@@ -594,7 +573,7 @@
          "aria-pressed": "true",
          "box": [
           34,
-          336,
+          248,
           36,
           36
          ],
@@ -628,7 +607,7 @@
          "aria-pressed": "false",
          "box": [
           34,
-          380,
+          292,
           36,
           36
          ],
@@ -653,7 +632,7 @@
          "aria-pressed": "false",
          "box": [
           34,
-          424,
+          336,
           36,
           36
          ],
@@ -704,7 +683,7 @@
          "aria-pressed": "true",
          "box": [
           34,
-          509,
+          421,
           36,
           36
          ],
@@ -729,7 +708,7 @@
          "aria-pressed": "false",
          "box": [
           34,
-          553,
+          465,
           36,
           36
          ],
@@ -754,6 +733,111 @@
     {
      "tag": "div",
      "class": "agents-more-slot",
+     "style": {
+      "color": "rgb(30, 24, 51)"
+     }
+    },
+    {
+     "tag": "nav",
+     "class": "account-bar float-bar",
+     "aria-label": "사용자 메뉴",
+     "box": [
+      24,
+      714,
+      56,
+      162
+     ],
+     "style": {
+      "background": "rgb(255, 255, 255)",
+      "border": "solid rgb(221, 214, 229)"
+     },
+     "children": [
+      {
+       "tag": "button",
+       "class": "icon-button inbox-button",
+       "aria-label": "인박스 · 2",
+       "aria-expanded": "false",
+       "box": [
+        32,
+        727,
+        40,
+        40
+       ],
+       "style": {
+        "border": "solid rgba(0, 0, 0, 0)"
+       },
+       "children": [
+        {
+         "tag": "svg",
+         "icon": "inbox"
+        },
+        {
+         "tag": "span",
+         "class": "badge",
+         "style": {
+          "background": "rgb(242, 239, 246)",
+          "color": "rgb(30, 24, 51)",
+          "border": "solid rgb(221, 214, 229)"
+         },
+         "text": "2"
+        }
+       ]
+      },
+      {
+       "tag": "button",
+       "class": "icon-button account-settings-button",
+       "aria-label": "설정 열기",
+       "box": [
+        32,
+        775,
+        40,
+        40
+       ],
+       "style": {
+        "border": "solid rgba(0, 0, 0, 0)"
+       },
+       "children": [
+        {
+         "tag": "svg",
+         "icon": "settings"
+        }
+       ]
+      },
+      {
+       "tag": "button",
+       "class": "icon-button account-profile",
+       "aria-label": "사용자 정보",
+       "aria-expanded": "false",
+       "box": [
+        32,
+        823,
+        40,
+        40
+       ],
+       "style": {
+        "border": "solid rgba(0, 0, 0, 0)"
+       },
+       "children": [
+        {
+         "tag": "span",
+         "class": "account-avatar",
+         "style": {
+          "background": "rgb(234, 228, 242)"
+         },
+         "children": [
+          {
+           "tag": "svg",
+           "icon": "user"
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "tag": "div",
+     "class": "account-popover-slot",
      "style": {
       "color": "rgb(30, 24, 51)"
      }
@@ -807,6 +891,7 @@
        "class": "desk-settings-launcher",
        "aria-label": "설정 열기",
        "style": {
+        "display": "none",
         "background": "rgb(255, 255, 255)",
         "border": "solid rgb(221, 214, 229)"
        },
@@ -957,14 +1042,14 @@
      "aria-label": "Status",
      "box": [
       1360,
-      289,
+      311,
       56,
-      322
+      278
      ],
      "style": {
       "background": "rgb(255, 255, 255)",
       "border": "solid rgb(221, 214, 229)",
-      "transform": "matrix(1, 0, 0, 1, 0, -161)"
+      "transform": "matrix(1, 0, 0, 1, 0, -139)"
      },
      "children": [
       {
@@ -975,7 +1060,7 @@
        "data-rail": "brain",
        "box": [
         1368,
-        298,
+        320,
         40,
         40
        ],
@@ -1005,7 +1090,7 @@
        "data-rail": "sees",
        "box": [
         1368,
-        342,
+        364,
         40,
         40
        ],
@@ -1027,7 +1112,7 @@
        "data-rail": "tasks",
        "box": [
         1368,
-        386,
+        408,
         40,
         40
        ],
@@ -1054,52 +1139,12 @@
       {
        "tag": "button",
        "class": "icon-button rail-button",
-       "aria-label": "확인 필요 · 2",
-       "aria-expanded": "false",
-       "data-rail": "attention",
-       "box": [
-        1368,
-        430,
-        40,
-        40
-       ],
-       "style": {
-        "border": "solid rgba(0, 0, 0, 0)"
-       },
-       "children": [
-        {
-         "tag": "svg",
-         "icon": "bell"
-        },
-        {
-         "tag": "span",
-         "class": "dot dot-attention rail-dot",
-         "style": {
-          "background": "rgb(224, 115, 138)",
-          "color": "rgb(30, 24, 51)"
-         }
-        },
-        {
-         "tag": "span",
-         "class": "badge rail-badge",
-         "style": {
-          "background": "rgb(242, 239, 246)",
-          "color": "rgb(30, 24, 51)",
-          "border": "solid rgb(221, 214, 229)"
-         },
-         "text": "2"
-        }
-       ]
-      },
-      {
-       "tag": "button",
-       "class": "icon-button rail-button",
        "aria-label": "다른 데스크 · 1",
        "aria-expanded": "false",
        "data-rail": "desks",
        "box": [
         1368,
-        474,
+        452,
         40,
         40
        ],
@@ -1121,7 +1166,7 @@
        "data-rail": "vm",
        "box": [
         1368,
-        518,
+        496,
         40,
         40
        ],
@@ -1143,7 +1188,7 @@
        "data-rail": "listen",
        "box": [
         1368,
-        562,
+        540,
         40,
         40
        ],
@@ -1206,7 +1251,7 @@
          "aria-label": "서랍 · 3",
          "aria-expanded": "false",
          "box": [
-          24,
+          92,
           840,
           40,
           40

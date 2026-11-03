@@ -22,9 +22,60 @@
 
 .layer-system .modes,
 .layer-system .desktops,
-.layer-system .sidebar {
+.layer-system .sidebar,
+.layer-system .account-bar {
   z-index: var(--z-system);
 }
+
+/* The person's controls stay below the agent bar, including on shorter displays. */
+.layer-system .sidebar {
+  top: calc(50% - 88px);
+  max-height: calc(100% - 320px);
+  overflow-y: auto;
+}
+.account-bar {
+  left: var(--space-6);
+  top: auto;
+  bottom: var(--space-6);
+  transform: none;
+}
+.account-profile { border-radius: var(--radius-full); }
+.account-avatar {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-full);
+  background: var(--desk-secondary);
+  color: var(--desk-secondary-foreground);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+.account-popover {
+  position: absolute;
+  left: 92px;
+  bottom: var(--space-6);
+  display: grid;
+  gap: var(--space-1);
+  width: 280px;
+  max-height: calc(100% - 96px);
+  padding: var(--space-2);
+  overflow-y: auto;
+  overflow-wrap: anywhere;
+}
+.account-identity { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-2); }
+.account-identity > div { min-width: 0; }
+.account-identity strong, .account-identity small { display: block; }
+.account-identity small, .account-empty { color: var(--desk-text-muted); font-size: var(--text-xs); }
+.account-empty { margin: var(--space-2); }
+.inbox-item { padding-bottom: var(--space-2); }
+.inbox-item + .inbox-item { padding-top: var(--space-2); border-top: 1px solid var(--desk-border); }
+.inbox-item .dot { flex: none; }
+/* The shell supplies the single settings entry; the bare runtime keeps its own launcher. */
+.shell .desk-settings-launcher { display: none; }
+.shell .drawer { left: 92px; }
+.shell .canvas-reset { left: 148px; }
 
 .surfaces {
   z-index: 0;

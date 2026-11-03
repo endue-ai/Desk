@@ -9,6 +9,14 @@ export async function openShell(page: Page, query = ""): Promise<void> {
   await page.evaluate(() => window.__shell.desk.ready);
 }
 
+/** The theme studio lives in Settings > Appearance. */
+export async function openThemes(page: Page): Promise<void> {
+  await page.locator(".account-settings-button").click();
+  const settings = page.locator(".desk-settings");
+  await settings.locator('[data-key="settings-appearance"]').click();
+  await settings.locator('[data-key="settings-themes"]').click();
+}
+
 /** Advance the manual clock by `ms` in 16 ms frames. */
 export function step(page: Page, ms: number): Promise<void> {
   return page.evaluate((m) => window.__shell.step(m), ms);

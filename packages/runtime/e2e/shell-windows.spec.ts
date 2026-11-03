@@ -206,6 +206,8 @@ test.describe("command bindings", () => {
       .click();
     await page.keyboard.press("Meta+j");
     await page.getByRole("button", { name: "모두 기본값으로" }).click();
+    await expect(row(page, "desk.display.new-surface").locator("kbd")).toHaveText("⌘J");
+    await page.getByRole("button", { name: "되돌리기", exact: true }).click();
     await expect(row(page, "desk.display.new-surface").locator("kbd")).toHaveText("⌘N");
   });
 

@@ -23,7 +23,7 @@ test.describe("the desk shell", () => {
     ]) {
       await expect(page.locator(selector)).toBeVisible();
     }
-    await expect(page.locator(".rail-button")).toHaveCount(7);
+    await expect(page.locator(".rail-button")).toHaveCount(6);
     await expect(page.locator(".surface")).toHaveCount(0);
     expect(await primaryFills(page)).toBeLessThanOrEqual(1);
     expect(await shellTree(page)).toMatchSnapshot("default.json");

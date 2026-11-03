@@ -1,7 +1,7 @@
 import { fileURLToPath } from "node:url";
 import { expect, test } from "@playwright/test";
 import { paletteFrom } from "../../ui/src/theme/palette";
-import { openShell } from "./shell-helpers";
+import { openShell, openThemes } from "./shell-helpers";
 
 // A theme from a brand (TS-09): the studio reads a logo from disk on the device, shows its five main
 // colours, and "Make a theme" opens the editor on a gated palette built from them, previewed on the
@@ -19,7 +19,7 @@ test("pick a logo, see its five colours, make a theme and tune it in the editor"
       (property) => getComputedStyle(document.documentElement).getPropertyValue(property).trim(),
       name,
     );
-  await page.getByRole("button", { name: "Themes" }).click();
+  await openThemes(page);
   const studio = page.getByRole("dialog", { name: "Themes" });
   await expect(studio).toBeVisible();
 
