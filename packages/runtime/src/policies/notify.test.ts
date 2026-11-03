@@ -6,11 +6,11 @@ import type { DeskContext } from "./context";
 import { installNotify } from "./notify";
 
 /** The status line as a plain object: text, a data-level and a class list; a notice with no actions reads nothing else. */
-function statusLine() {
+function statusLine(toggled: [string, boolean][] = []) {
   return {
     textContent: "",
     dataset: {} as DOMStringMap,
-    classList: { toggle: () => false },
+    classList: { toggle: (name: string, on: boolean) => toggled.push([name, on]) },
   } as unknown as HTMLElement;
 }
 
@@ -32,5 +32,12 @@ describe("desk.notify's status line", () => {
     });
     expect(line.textContent).toBe("No profile nope — init.yaml names it.");
     expect(policy.text()).toBe("desk ready · bridge: browser");
+  });
+
+  it("marks the line only while a notice has actions", () => {
+    const toggled: [string, boolean][] = [];
+    const policy = installNotify(context(), statusLine(toggled));
+    policy.notify({ caller: "desk", title: "Plain notice", level: "info" });
+    expect(toggled.at(-1)).toEqual(["has-actions", false]);
   });
 });
