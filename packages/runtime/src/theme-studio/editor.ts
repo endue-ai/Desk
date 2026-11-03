@@ -56,6 +56,8 @@ export function createEditor(deps: EditorDeps): Editor {
   let own: string | undefined;
   let base: string | undefined;
   let note = "";
+  let confirming = false;
+  let removing = false;
 
   const element = h("div", { class: "theme-editor" });
   const body = h("div", { class: "theme-editor-body" });
@@ -191,57 +193,97 @@ export function createEditor(deps: EditorDeps): Editor {
       h(
         "div",
         { class: "theme-editor-actions" },
-        h(
-          "button",
-          {
-            type: "button",
-            class: "btn btn-outline",
-            "data-key": "editor-back",
-            onClick: () => deps.back(),
-          },
-          tr("back"),
-        ),
-        h(
-          "button",
-          {
-            type: "button",
-            class: "btn btn-primary",
-            "data-key": "editor-save",
-            disabled: !io,
-            onClick: () => void save(),
-          },
-          tr("save"),
-        ),
-        own && io
-          ? h(
-              "button",
-              {
-                type: "button",
-                class: "btn btn-outline",
-                "data-key": "editor-export",
-                onClick: () => void run("exported", () => io.exportTheme(own as string)),
-              },
-              tr("export"),
-            )
-          : null,
-        own && io
-          ? h(
-              "button",
-              {
-                type: "button",
-                class: "btn btn-danger",
-                "data-key": "editor-remove",
-                onClick: () =>
-                  void run("removed", async () => {
-                    await io.remove(own as string);
-                    themes.apply("");
-                    deps.back("");
-                    return undefined;
-                  }),
-              },
-              tr("remove"),
-            )
-          : null,
+        confirming
+          ? [
+              h("p", { class: "theme-editor-confirm" }, tr("removeConfirm")),
+              h(
+                "button",
+                {
+                  type: "button",
+                  class: "btn btn-outline",
+                  "data-key": "editor-cancel-remove",
+                  disabled: removing,
+                  onClick: () => cancelRemove(),
+                },
+                tr("cancel"),
+              ),
+              h(
+                "button",
+                {
+                  type: "button",
+                  class: "btn btn-danger",
+                  disabled: removing,
+                  onClick: () => {
+                    if (!io || !own || removing) return;
+                    removing = true;
+                    draw();
+                    void run("removed", async () => {
+                      await io.remove(own as string);
+                      themes.apply("");
+                      deps.back("");
+                      return undefined;
+                    }).finally(() => {
+                      removing = false;
+                      if (confirming) draw();
+                    });
+                  },
+                },
+                tr("remove"),
+              ),
+            ]
+          : [
+              h(
+                "button",
+                {
+                  type: "button",
+                  class: "btn btn-outline",
+                  "data-key": "editor-back",
+                  onClick: () => deps.back(),
+                },
+                tr("back"),
+              ),
+              h(
+                "button",
+                {
+                  type: "button",
+                  class: "btn btn-primary",
+                  "data-key": "editor-save",
+                  disabled: !io,
+                  onClick: () => void save(),
+                },
+                tr("save"),
+              ),
+              own && io
+                ? h(
+                    "button",
+                    {
+                      type: "button",
+                      class: "btn btn-outline",
+                      "data-key": "editor-export",
+                      onClick: () => void run("exported", () => io.exportTheme(own as string)),
+                    },
+                    tr("export"),
+                  )
+                : null,
+              own && io
+                ? h(
+                    "button",
+                    {
+                      type: "button",
+                      class: "btn btn-danger",
+                      "data-key": "editor-remove",
+                      onClick: () => {
+                        confirming = true;
+                        draw();
+                        element
+                          .querySelector<HTMLButtonElement>('[data-key="editor-cancel-remove"]')
+                          ?.focus();
+                      },
+                    },
+                    tr("remove"),
+                  )
+                : null,
+            ],
         status,
       ),
       io ? null : h("p", { class: "theme-note" }, tr("saveLater")),
@@ -251,11 +293,26 @@ export function createEditor(deps: EditorDeps): Editor {
     drawFixes();
   };
 
+  const cancelRemove = () => {
+    if (removing) return;
+    confirming = false;
+    draw();
+    element.querySelector<HTMLButtonElement>('[data-key="editor-remove"]')?.focus();
+  };
+
+  element.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape" || !confirming) return;
+    event.preventDefault();
+    event.stopPropagation();
+    cancelRemove();
+  });
+
   const begin = (theme: ThemePackage | undefined, start: Scheme) => {
     draft = draftFrom(theme);
     scheme = start;
     files.clear();
     note = "";
+    confirming = false;
     preview();
     draw();
   };
@@ -280,6 +337,7 @@ export function createEditor(deps: EditorDeps): Editor {
       begin(theme, start);
     },
     stop() {
+      confirming = false;
       themes.previewDraft(undefined);
       files.clear();
     },

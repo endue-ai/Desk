@@ -75,7 +75,7 @@ order, each layer over the one before: the built-in `desk.*` policy plugins, the
 | `display` | `display-buffer-alist` | is asked first; the first matching rule decides |
 | `files` | `auto-mode-alist` | is asked first; the first matching pattern decides |
 | `themes` | `load-theme`, `defface` | adds themes; the one for the scheme and contrast in force applies |
-| `settings` | `defcustom` | declares its own keys (they start with the plugin id) with defaults |
+| `settings` | `defcustom` | declares its own keys (they start with the plugin id) with a `kind` and a default, optionally `choices`, `minimum`, `maximum` and `pattern`; `renamed` lists the setting's earlier full names. The core checks every value against them and a value that fails falls back to the layer below (ADR 0080) |
 | `profiles` | `init.el` | adds profiles; a profile with the same id replaces the earlier one |
 | `paletteProviders` | `consult-buffer-sources` | adds a group after the earlier layers' groups; commands start with the plugin id |
 

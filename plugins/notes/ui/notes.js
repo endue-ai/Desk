@@ -63,8 +63,18 @@ export function createNotes({ bridge, commands, surface }, view) {
   /** Open notes by the buffer the desk named them with. @type {Map<string, Note>} */
   const notes = new Map();
   // Only notes opened by the person enter global search, never arbitrary files or private settings.
-  let publishing = Promise.resolve();
-  const publish = () => {
+  let publishing = false;
+  /** @type {"typing" | "immediate" | undefined} */
+  let pending;
+  /** @type {ReturnType<typeof setTimeout> | undefined} */
+  let publishTimer;
+  const sendSearch = () => {
+    if (publishing || !pending || (pending === "typing" && publishTimer !== undefined)) return;
+    // An immediate replacement includes every edit so far, even if its timer was still running.
+    clearTimeout(publishTimer);
+    publishTimer = undefined;
+    pending = undefined;
+    publishing = true;
     const documents = [...notes.values()].slice(-30).map((note) => ({
       id: note.path,
       title: note.name,
@@ -73,12 +83,25 @@ export function createNotes({ bridge, commands, surface }, view) {
       command: "endue.notes.search-open",
       args: { path: note.path },
     }));
-    publishing = publishing
-      .then(() => bridge.call("search.replace", { documents }))
-      .then(
-        () => {},
-        () => {},
-      );
+    const finished = () => {
+      publishing = false;
+      sendSearch();
+    };
+    void bridge.call("search.replace", { documents }).then(finished, finished);
+  };
+  const publish = () => {
+    clearTimeout(publishTimer);
+    publishTimer = undefined;
+    pending = "immediate";
+    sendSearch();
+  };
+  const publishAfterTyping = () => {
+    clearTimeout(publishTimer);
+    publishTimer = setTimeout(() => {
+      publishTimer = undefined;
+      pending ??= "typing";
+      sendSearch();
+    }, 500);
   };
   commands.on("endue.notes.search-open", (args) => {
     const { path } = requested(args);
@@ -122,7 +145,6 @@ export function createNotes({ bridge, commands, surface }, view) {
     const note = notes.get(buffer);
     if (note?.watchId) watches.delete(note.watchId);
     notes.delete(buffer);
-    publish();
   };
 
   /**
@@ -255,6 +277,7 @@ export function createNotes({ bridge, commands, surface }, view) {
     const { buffer } = requested(args);
     held(buffer);
     forget(buffer);
+    publish();
     if (shown !== buffer) return;
     // The desk shows the buffer used before this one itself, with desk.buffers.show.
     shown = null;
@@ -315,7 +338,7 @@ export function createNotes({ bridge, commands, surface }, view) {
       render();
     }
     report(note);
-    publish();
+    publishAfterTyping();
   };
 
   return { edit, ready };

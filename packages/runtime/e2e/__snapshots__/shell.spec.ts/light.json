@@ -1,6 +1,6 @@
 {
  "tag": "div",
- "class": "shell",
+ "class": "shell has-canvas",
  "style": {
   "background": "rgb(250, 249, 252)"
  },
@@ -37,7 +37,7 @@
            "aria-expanded": "false",
            "data-mode": "morning",
            "style": {
-            "background": "rgba(182, 163, 245, 0.12)",
+            "background": "rgb(255, 255, 255)",
             "border": "solid rgb(107, 79, 158)"
            },
            "children": [
@@ -219,6 +219,7 @@
         32
        ],
        "style": {
+        "background": "rgb(255, 255, 255)",
         "border": "dashed rgb(137, 127, 149)"
        },
        "children": [
@@ -262,6 +263,7 @@
         32
        ],
        "style": {
+        "background": "rgb(255, 255, 255)",
         "border": "solid rgb(221, 214, 229)"
        },
        "children": [
@@ -326,7 +328,7 @@
         32
        ],
        "style": {
-        "background": "rgba(182, 163, 245, 0.12)",
+        "background": "rgb(255, 255, 255)",
         "border": "solid rgb(107, 79, 158)"
        },
        "children": [
@@ -393,6 +395,7 @@
         32
        ],
        "style": {
+        "background": "rgb(255, 255, 255)",
         "border": "solid rgb(221, 214, 229)"
        },
        "children": [
@@ -458,6 +461,7 @@
         32
        ],
        "style": {
+        "background": "rgb(255, 255, 255)",
         "border": "solid rgb(221, 214, 229)"
        },
        "children": [
@@ -520,6 +524,7 @@
         32
        ],
        "style": {
+        "background": "rgb(255, 255, 255)",
         "border": "dashed rgb(137, 127, 149)"
        },
        "children": [
@@ -540,6 +545,7 @@
         32
        ],
        "style": {
+        "background": "rgb(255, 255, 255)",
         "border": "solid rgb(221, 214, 229)"
        },
        "children": [
@@ -1525,7 +1531,7 @@
              "tag": "button",
              "class": "icon-button tool",
              "aria-label": "플로팅 모드",
-             "aria-pressed": "true",
+             "aria-pressed": "false",
              "box": [
               569,
               249,
@@ -2099,7 +2105,7 @@
              "tag": "button",
              "class": "icon-button tool",
              "aria-label": "플로팅 모드",
-             "aria-pressed": "true",
+             "aria-pressed": "false",
              "box": [
               1209,
               229,

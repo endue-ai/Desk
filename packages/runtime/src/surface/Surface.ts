@@ -4,12 +4,19 @@
  */
 
 import type { SurfacePlacement } from "../modes/types";
-import { closeSurface, stash, togglePin, windowsOf } from "../shell/actions";
+import { stash, togglePin, windowsOf } from "../shell/actions";
 import type { ShellCtx } from "../shell/context";
 import { h, listen, render } from "../shell/dom";
 import { icon } from "../shell/icons";
 import { panOf } from "../shell/Pan";
-import { focusPane, splitPane, toggleFloating, toggleMaximize } from "../shell/windows";
+import {
+  closeWindow,
+  focusPane,
+  splitPane,
+  toggleFloating,
+  toggleMaximize,
+} from "../shell/windows";
+import { trackTopChrome } from "./clearance";
 import { isFloating, screenRect } from "./coordinates";
 import { zOf } from "./cover";
 import { place, surfaceInteractions } from "./interactions";
@@ -95,14 +102,6 @@ export function mountSurfaces(root: HTMLElement, ctx: ShellCtx): () => void {
       focusPane(ctx, p.id, activeLeaf(ctx, p)?.id);
       splitPane(ctx, dir);
     };
-    /** Close the window: a plugin's surface goes away for the session, a shell view's just closes. */
-    const closeWindow = () => {
-      const view = activeView(ctx, entry.placement);
-      const all = leaves(panesOf(entry.placement));
-      if (view.startsWith("plugin:") && all.length === 1) {
-        ctx.runtime.plugins?.unmount(view.slice("plugin:".length));
-      } else closeSurface(ctx, p.id);
-    };
     const splitRight = tool(
       hint(ctx.tr("splitRight"), "desk.display.split-right"),
       "split-right",
@@ -153,7 +152,7 @@ export function mountSurfaces(root: HTMLElement, ctx: ShellCtx): () => void {
         tool(ctx.tr("stash"), "drawer", () =>
           stash(ctx, p.id, viewOf(ctx, activeView(ctx, entry.placement)).title),
         ),
-        tool(ctx.tr("close"), "close", closeWindow),
+        tool(ctx.tr("close"), "close", () => closeWindow(ctx, p.id)),
       ),
     );
     const body = h("div", { class: "surface-body" });
@@ -254,6 +253,10 @@ export function mountSurfaces(root: HTMLElement, ctx: ShellCtx): () => void {
       );
       entry.el.classList.toggle("is-pinned", p.pinned);
       entry.el.dataset.floating = String(isFloating(p));
+      // A window maximized before fills has a restore but no fill.
+      const fill = p.fill ?? (p.restore ? "full" : undefined);
+      if (fill) entry.el.dataset.fill = fill;
+      else delete entry.el.dataset.fill;
       entry.relabel();
       drawTitle(entry, p);
       // Status/focus updates must not overwrite an in-progress pointer preview.
@@ -285,6 +288,7 @@ export function mountSurfaces(root: HTMLElement, ctx: ShellCtx): () => void {
       for (const entry of live.values()) entry.relabel();
     }),
     listen(window, "resize", draw),
+    trackTopChrome(layer, root.closest(".shell") ?? root),
   ];
   return () => {
     for (const off of offs) off();

@@ -12,13 +12,25 @@ export function setPan(ctx: ShellCtx, pan: Offset): void {
   ctx.store.set((s) => ({ pan: { ...s.pan, [s.desktop]: pan } }));
 }
 
-/** Only empty background handles pan; windows, inputs and plugin scroll areas keep their input. */
+/**
+ * The canvas under the normal windows: Shift + drag on the empty background or on a window's title
+ * bar moves it, and the normal windows with it; floating windows stay where they are. A wheel over
+ * the empty background moves it too. Windows' contents, inputs and plugin scroll areas keep their
+ * input, and a plain drag never pans.
+ */
 export function mountPan(root: HTMLElement, ctx: ShellCtx): () => void {
   let start = ORIGIN;
   let desktop = ctx.store.get().desktop;
   const hasCanvas = () => windowsOf(ctx.store.get()).some((p) => !isFloating(p));
   const background = (target: EventTarget | null) =>
     target === root || (target instanceof Element && target.classList.contains("shell-glow"));
+  const titleBar = (target: EventTarget | null) =>
+    target instanceof Element &&
+    target.closest(".surface-title") !== null &&
+    target.closest("button") === null;
+  /** Holding Shift shows the hand over what a drag would pan. */
+  const shift = (e: KeyboardEvent | FocusEvent) =>
+    root.classList.toggle("pan-ready", e instanceof KeyboardEvent && e.shiftKey);
   const reset = h(
     "button",
     {
@@ -45,7 +57,7 @@ export function mountPan(root: HTMLElement, ctx: ShellCtx): () => void {
   };
   const off = [
     draggable(root, {
-      accept: (e) => hasCanvas() && background(e.target),
+      accept: (e) => e.shiftKey && hasCanvas() && (background(e.target) || titleBar(e.target)),
       start: () => {
         start = panOf(ctx.store.get());
         desktop = ctx.store.get().desktop;
@@ -75,12 +87,15 @@ export function mountPan(root: HTMLElement, ctx: ShellCtx): () => void {
       { passive: false },
     ),
     ctx.store.watch((s) => [s.pan, s.desktop, s.lang, windowsOf(s)], draw),
+    listen(window, "keydown", shift),
+    listen(window, "keyup", shift),
+    listen(window, "blur", shift),
   ];
   draw();
   return () => {
     for (const dispose of off) dispose();
     reset.remove();
-    root.classList.remove("has-canvas");
+    root.classList.remove("has-canvas", "pan-ready");
     root.style.removeProperty("--pan-x");
     root.style.removeProperty("--pan-y");
     root.removeAttribute("title");

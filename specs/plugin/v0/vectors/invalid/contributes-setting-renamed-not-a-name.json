@@ -1,0 +1,13 @@
+{
+  "target": "PluginContributes",
+  "description": "renamed lists full setting names, lowercase and dotted",
+  "instance": {
+    "settings": {
+      "desk.theme.scheme": {
+        "kind": "string",
+        "default": "dark",
+        "renamed": ["Desk Theme Mode"]
+      }
+    }
+  }
+}

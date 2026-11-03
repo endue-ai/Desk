@@ -260,6 +260,11 @@ pub fn run() {
             for problem in core.view_problems() {
                 eprintln!("endue Desk: a view is left out ({problem})");
             }
+            // Setting values that fail their declarations (ADR 0080): the core logs each one and sends
+            // it to the runtime, which tells the person; the terminal and the e2e log name them too.
+            for problem in core.settings_problems() {
+                eprintln!("endue Desk: {problem}");
+            }
             app.manage(Watching(Mutex::new((watcher, views, themes))));
             tracing.phase("connectors and views", started);
             let started = Instant::now();

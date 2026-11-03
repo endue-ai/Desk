@@ -1,8 +1,12 @@
 /**
- * Snapping: a window dropped at the free area's left or right edge takes that half, one dropped at
- * the top takes the whole area. Pure over rects; Surface.ts asks with the pointer's place.
+ * Snapping: a window dropped at the app's left or right edge takes that half, one dropped at the
+ * top fills the whole app. Pure over rects; interactions.ts asks with the pointer's place, and the
+ * window keeps the fill (`SurfacePlacement.fill`) so it still fills after the app is resized.
  */
+import type { SurfacePlacement } from "../modes/types";
 import type { Rect } from "./geometry";
+
+export type Fill = NonNullable<SurfacePlacement["fill"]>;
 
 /** How close to the left or right edge, in pixels, a drop has to be to snap. */
 export const SNAP = 24;
@@ -19,15 +23,19 @@ export function halves(area: Rect): { left: Rect; right: Rect } {
   };
 }
 
-/** Where a window dropped with the pointer at `pointer` snaps to, or null when it stays put. */
+/** The part of `area` a fill takes. */
+export function fillRect(fill: Fill, area: Rect): Rect {
+  return fill === "full" ? { ...area } : halves(area)[fill];
+}
+
+/** Which fill a window dropped with the pointer at `pointer` takes, or null when it stays put. */
 export function snapFor(
-  _rect: Rect,
   pointer: { x: number; y: number },
   area: Rect,
   threshold = SNAP,
-): Rect | null {
-  if (pointer.y <= area.y + Math.min(threshold, SNAP_TOP)) return { ...area };
-  if (pointer.x <= area.x + threshold) return halves(area).left;
-  if (pointer.x >= area.x + area.w - threshold) return halves(area).right;
+): Fill | null {
+  if (pointer.y <= area.y + Math.min(threshold, SNAP_TOP)) return "full";
+  if (pointer.x <= area.x + threshold) return "left";
+  if (pointer.x >= area.x + area.w - threshold) return "right";
   return null;
 }

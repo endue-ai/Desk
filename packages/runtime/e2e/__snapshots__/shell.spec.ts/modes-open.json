@@ -19,7 +19,7 @@
        "aria-expanded": "false",
        "data-mode": "morning",
        "style": {
-        "background": "rgba(182, 163, 245, 0.12)",
+        "background": "rgb(30, 29, 33)",
         "border": "solid rgb(182, 163, 245)"
        },
        "children": [
@@ -200,6 +200,7 @@
     32
    ],
    "style": {
+    "background": "rgb(30, 29, 33)",
     "border": "dashed rgb(131, 121, 145)"
    },
    "children": [

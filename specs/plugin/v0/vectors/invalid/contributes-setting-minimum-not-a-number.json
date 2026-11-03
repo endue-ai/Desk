@@ -1,0 +1,13 @@
+{
+  "target": "PluginContributes",
+  "description": "a setting's minimum is a number",
+  "instance": {
+    "settings": {
+      "desk.notify.history": {
+        "kind": "integer",
+        "default": 200,
+        "minimum": "0"
+      }
+    }
+  }
+}

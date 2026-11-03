@@ -1,5 +1,6 @@
 // Explorer state and commands on the public SDK: bounded previews, folder grants,
 // file opening through desk.files.open, and the remembered tree selection.
+import { commandRegistry } from "./command-registry.js";
 import { contextActions } from "./context-actions.js";
 import { createDeskLink } from "./desk.js";
 import { createDisk } from "./disk.js";
@@ -302,24 +303,7 @@ export function createExplorer({ bridge, commands, settings, surface }, view, op
     if (next) setRoots(next);
   });
 
-  /** @type {Map<string, (args: Record<string, unknown>) => unknown>} */
-  const own = new Map();
-  /** Run a command and report failures. @param {string} name @param {unknown} raw */
-  const command = async (name, raw) => {
-    const handler = own.get(name);
-    if (!handler) throw new Error(`${NAME} has no command ${name}.`);
-    try {
-      return await handler(args(raw));
-    } catch (error) {
-      say(error instanceof Error ? error.message : String(error));
-      throw error;
-    }
-  };
-  /** @type {(name: string, handler: (a: Record<string, unknown>) => unknown) => void} */
-  const answer = (name, handler) => {
-    own.set(name, handler);
-    commands.on(name, (raw) => command(name, raw));
-  };
+  const { command, answer } = commandRegistry(commands, say);
 
   answer("endue.explorer.open", () => {
     if (!rowOf(selected) && list[0]) selected = list[0].id;
@@ -345,6 +329,7 @@ export function createExplorer({ bridge, commands, settings, surface }, view, op
   );
   const context = contextActions(bridge, commands, {
     selected: () => rowOf(selected),
+    say,
     open: async (row) => {
       preview.close();
       return row.kind === "dir" ? expand(row.path) : desk.open(row.path);
@@ -352,9 +337,8 @@ export function createExplorer({ bridge, commands, settings, surface }, view, op
   });
   for (const [id, action] of Object.entries(context))
     answer(id, async () => {
-      const result = await action();
       say("");
-      return result;
+      return action();
     });
 
   const start = async () => {
@@ -389,6 +373,7 @@ export function createExplorer({ bridge, commands, settings, surface }, view, op
     select,
     activate,
     key,
+    togglePreview: () => preview.toggle(rowOf(selected)),
     type,
     command,
     addFolder,

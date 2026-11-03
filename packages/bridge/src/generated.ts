@@ -162,7 +162,7 @@ export type SettingName = string;
 /** The JSON type a setting's value has. */
 export type SettingKind = "boolean" | "integer" | "number" | "string" | "array" | "object";
 
-/** A setting and its default. init.yaml and profiles set other values. */
+/** A setting and its default. init.yaml, profiles and settings.set give other values; the core checks each against kind, choices, minimum, maximum and pattern, and a value that fails falls back to the layer below (ADR 0080). */
 export interface SettingContribution {
   kind: SettingKind;
   /** The value until a later layer sets one. Any JSON value. */
@@ -170,6 +170,14 @@ export interface SettingContribution {
   description?: string;
   /** The values a string setting may take. */
   choices?: string[];
+  /** The smallest value an integer or number setting may take. */
+  minimum?: number;
+  /** The largest value an integer or number setting may take. */
+  maximum?: number;
+  /** A regular expression (ECMA-262, as JSON Schema's pattern) a string setting's value must match. It matches anywhere in the value; anchor it with ^ and $ to match the whole. */
+  pattern?: string;
+  /** The setting's earlier full names (owner.key), newest first. A layer with no value under the setting's name gives the value it holds under the first of these instead, and settings.get and settings.list report it as migratedFrom. */
+  renamed?: SettingName[];
 }
 
 /** A profile name, as init.yaml names the one to start in. */
@@ -1624,6 +1632,7 @@ export type ErrorCode =
   | "timeout"
   | "cancelled"
   | "unsupported"
+  | "invalid_value"
   | "internal";
 
 /** Something the core reports without being asked: file changes, process output, wake words, permission changes, prompts and approvals, notifications, surfaces, commands, settings, log entries, changes to items, connectors and views, and the desk's update status. */
@@ -1646,6 +1655,7 @@ export type BridgeEvent =
   | CmdAnsweredEvent
   | CmdUndoneEvent
   | SettingsChangedEvent
+  | SettingsInvalidEvent
   | LogEntryEvent
   | DataChangedEvent
   | ConnectorChangedEvent
@@ -3001,7 +3011,11 @@ export interface Setting {
   key: SettingKey;
   /** Any JSON value. */
   value: unknown;
+  migratedFrom?: MigratedFrom;
 }
+
+/** The earlier full name (owner.key, from the setting's renamed list) the value in force was read under, because no layer held one under the setting's own name. */
+export type MigratedFrom = SettingName;
 
 /** Read one setting: the caller's own, or another caller's under settings:read. */
 export interface SettingsGetRequest {
@@ -3021,9 +3035,10 @@ export interface SettingsGetParams {
 export interface SettingsGetResult {
   /** Any JSON value. */
   value?: unknown;
+  migratedFrom?: MigratedFrom;
 }
 
-/** Write one of the caller's own settings (64 KiB of JSON at most). */
+/** Write one of the caller's own settings (64 KiB of JSON at most). A value that fails the setting's declaration (kind, choices, minimum, maximum, pattern) is refused with invalid_value. */
 export interface SettingsSetRequest {
   id: RequestId;
   method: "settings.set";
@@ -3055,6 +3070,25 @@ export interface SettingsListParams {
 /** Result of settings.list, by owner and then key. */
 export interface SettingsListResult {
   settings: Setting[];
+}
+
+/** A value a layer holds for a setting that fails its declaration, so the layer below is in force instead (for init.yaml, the default). file and line say where the value is written: init.yaml, a profile file or a plugin.json; a value set through settings.set has neither. */
+export interface InvalidSetting {
+  owner: CallerId;
+  key: SettingKey;
+  /** The value that failed. Any JSON value. */
+  value: unknown;
+  /** What it fails, for people: "purple" is not one of system, light, dark. */
+  reason: string;
+  file?: Path;
+  /** The line of the setting's name in file, from 1. */
+  line?: number;
+}
+
+/** A setting's value fell back. Sent to the setting's owner and to desk (the runtime, which tells the person) when the core first meets the value, and to desk again for every one still in force each time desk calls init.get. */
+export interface SettingsInvalidEvent {
+  event: "settings.invalid";
+  data: InvalidSetting;
 }
 
 /** A setting changed. Sent to its owner, and to callers subscribed to settings.changed whose settings:read grant covers it. */

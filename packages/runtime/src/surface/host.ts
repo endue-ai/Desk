@@ -9,6 +9,7 @@ import { h } from "../shell/dom";
 import type { DeskState, Store } from "../shell/state";
 import { appSize } from "./coordinates";
 import { coveredPlugins } from "./cover";
+import { freeSlot } from "./tiling";
 
 export interface PluginWindows extends WindowHost {
   /** The element a pane shows for plugin surface `id`: the runtime's section, once it arrived. */
@@ -28,9 +29,16 @@ export function pluginWindows(store: Store): PluginWindows {
       // A pane already waiting for it (a profile placed the plugin before it mounted) takes it now.
       const container = containers.get(spec.id);
       if (container && section.parentElement !== container) container.append(section);
-      store.set((s) => ({
-        adopted: [...s.adopted.filter((a) => a.id !== spec.id), { id: spec.id, title: spec.title }],
-      }));
+      store.set((s) => {
+        // A surface handed over again keeps its slot; a new one takes the first slot left free.
+        const kept = s.adopted.find((a) => a.id === spec.id)?.slot;
+        const others = s.adopted.filter((a) => a.id !== spec.id);
+        const slot = kept ?? freeSlot(others.map((a, i) => a.slot ?? i));
+        const at = s.adopted.find((a) => a.id === spec.id)?.at ?? s.pan[s.desktop];
+        return {
+          adopted: [...others, { id: spec.id, title: spec.title, slot, ...(at ? { at } : {}) }],
+        };
+      });
     },
     release(id) {
       sections.delete(id);

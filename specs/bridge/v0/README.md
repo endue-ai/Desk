@@ -318,13 +318,25 @@ answers (a write: the core puts back what the undo replaced). The scope must cov
 
 **settings.get** reads one setting. Keys belong to the caller that sets them, like the store; `owner`
 names another caller, which needs a `settings:read` scope covering `owner/key`. `value` is absent for a
-key that was never set.
+key that was never set. The value in force is the set value, else init.yaml's, else the default the
+owner declares (ADR 0031), each checked against the declaration (`kind`, `choices`, `minimum`,
+`maximum`, `pattern`): a value that fails is skipped, so the layer below shows through. A layer with no
+value under the setting's name gives the one it holds under an earlier name from `renamed`, and
+`migratedFrom` names it (ADR 0080).
 
 **settings.set** writes one of the caller's own settings (64 KiB of JSON at most). Values survive
 restarts, and `settings.changed` tells the owner and subscribers whose `settings:read` grant covers it.
+A value that fails the caller's declaration of the key is refused with `invalid_value`.
 
 **settings.list** returns the caller's own settings, or with a `settings:read` scope every setting it
-covers, whoever owns it, each with its owner.
+covers, whoever owns it, each with its owner and, read under an earlier name, `migratedFrom`.
+
+**settings.invalid** names a value that fell back: owner, key, value, `reason`, and the `file` and
+`line` it is written on (init.yaml, a saved profile, a plugin.json; a set value has neither). The core
+logs each one once per run on its `core` channel and sends the event to the owner and to `desk`; each
+`init.get` from `desk` sends desk every one still in force, so a runtime that starts after the core
+hears them all. It is not an `events.subscribe` name. A name under a plugin that declares settings but
+not this one is a logged warning naming the nearest declared name; a name under any other owner is kept.
 
 **log.write** adds an entry (level, message and structured `fields`) to the caller's own channel. The core
 stamps the time. It needs no scope.

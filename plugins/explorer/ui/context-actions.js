@@ -8,9 +8,9 @@ const codeOf = (/** @type {unknown} */ error) => /** @type {{ code?: string }} *
 /**
  * @param {PluginContext["bridge"]} bridge
  * @param {PluginContext["commands"]} commands
- * @param {{ selected(): Row | undefined, open(row: Row): Promise<unknown> }} deps
+ * @param {{ selected(): Row | undefined, open(row: Row): Promise<unknown>, say(text: string): void }} deps
  */
-export function contextActions(bridge, commands, { selected, open }) {
+export function contextActions(bridge, commands, { selected, open, say }) {
   const picked = () => {
     const row = selected();
     if (!row || row.kind === "more") throw new Error("Select a file or folder first.");
@@ -52,6 +52,15 @@ export function contextActions(bridge, commands, { selected, open }) {
   };
   return {
     "endue.explorer.open-selected": async () => open(picked()),
+    "endue.explorer.copy-path": async () => {
+      const { path } = picked();
+      try {
+        await navigator.clipboard.writeText(path);
+        say("Path copied.");
+      } catch {
+        say(path);
+      }
+    },
     "endue.explorer.terminal-here": async () => {
       const cwd = folder();
       return invoke("Terminal", () => commands.run("endue.terminal.new", { cwd }));

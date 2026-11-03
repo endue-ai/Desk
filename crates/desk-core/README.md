@@ -22,7 +22,8 @@ its sync, the brain conversation, the integration layer and the bridge handler. 
 - Plugins: `with_plugin_store(path)`, `install_plugin(dir, built_in)`, `install_plugins_in`,
   `plugins()`, `plugin_file(id, path)`, `watch_plugins()`, `validate_dir(dir)`. A plugin turned off
   takes its commands, requests, subscriptions, processes, surfaces and URLs; its connectors pause.
-- Storage: `with_store_file(path)`, `with_settings_file(path)`, `with_log_dir(dir)`, `Core::log`.
+- Storage: `with_store_file`, `with_settings_file`, `with_log_dir`, `Core::log`. Settings are checked
+  against their declarations; `settings_problems()` names what fails, by file and line (ADR 0080).
   Brain: `with_brain(brain, BrainOptions)`, `route_tools()` (tool calls as their agent), `open_session`,
   `brain_session()`; `brain.say` streams `brain.turn`; the directory passes the brain's answers through.
 - Start (ADR 0061): every state file is screened as it loads; an unreadable one is kept as

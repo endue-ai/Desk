@@ -7,6 +7,7 @@
 
 import { tableSql } from "./catalog.js";
 import { engineOf } from "./engines/index.js";
+import { formatCount } from "./format.js";
 import { split, statementAt } from "./sql/split.js";
 import { show, summaryOf } from "./tabs.js";
 
@@ -58,9 +59,10 @@ export function createConsoles(deps) {
     clearTimeout(saving.timer);
     const { connection, text } = saving;
     saving = null;
+    if (text.length > TEXT_LIMIT) deps.view.say("Only the first 60 KB of this console is kept");
     void deps.bridge
       .call("store.set", { key: textKey(connection), value: text.slice(0, TEXT_LIMIT) })
-      .catch(() => {});
+      .catch(() => deps.view.say("Could not save this console."));
   };
 
   const render = () => {
@@ -288,7 +290,7 @@ export function createConsoles(deps) {
       if (error) throw new Error(error.message);
       table.count = value === null || value === undefined ? null : Number(value);
       render();
-      return `${table.count} rows`;
+      return `${table.count === null ? "Unknown" : formatCount(table.count)} rows`;
     }
     return refreshPage(shown, conn);
   };

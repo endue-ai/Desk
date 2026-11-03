@@ -5,6 +5,7 @@
 // are never prevented, so the desk's keymap gets them.
 
 import { el } from "./dom.js";
+import { formatCount } from "./format.js";
 import { actionFor, hints, pressOf } from "./keys.js";
 import { createForms } from "./view-form.js";
 import { createGrid } from "./view-grid.js";
@@ -128,8 +129,8 @@ export function createView(doc, act) {
       if (doc.activeElement !== order) order.value = model.table.order;
       const rows = model.shown?.tabs[0]?.set?.rows.length ?? 0;
       const from = rows ? model.table.offset + 1 : 0;
-      const count = model.table.count === null ? "" : ` of ${model.table.count}`;
-      pageEl.textContent = `${from}–${model.table.offset + rows}${count}`;
+      const count = model.table.count === null ? "" : ` of ${formatCount(model.table.count)}`;
+      pageEl.textContent = `${formatCount(from)}–${formatCount(model.table.offset + rows)}${count}`;
     }
     summaryEl.textContent = model?.running ? "Running…" : (model?.shown?.summary ?? "");
     if (!model?.shown) {

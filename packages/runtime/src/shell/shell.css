@@ -53,6 +53,29 @@ body {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.5 0 0 0 0 0.5 0 0 0 0 0.5 0 0 0 1 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
 }
 
+/* Only what a window shows selects and copies: the desk, its bars and the title bars are controls,
+   so a drag across them never paints a selection. Fields stay selectable everywhere. Nothing of the
+   shell's own drags away as an image or a link; a window's content still does. */
+.shell {
+  -webkit-user-select: none;
+  user-select: none;
+}
+.shell .surface-body,
+.shell input,
+.shell textarea,
+.shell [contenteditable]:not([contenteditable="false"]) {
+  -webkit-user-select: text;
+  user-select: text;
+}
+.shell img,
+.shell a {
+  -webkit-user-drag: none;
+}
+.shell .surface-body img,
+.shell .surface-body a {
+  -webkit-user-drag: auto;
+}
+
 .is-grabbing,
 .is-grabbing * {
   cursor: var(--desk-drag-cursor, grabbing) !important;
@@ -340,6 +363,9 @@ body {
 }
 
 /* Canvas windows follow this background; the shell controls and floating windows stay anchored. */
-.shell.has-canvas { cursor: grab; touch-action: none; background-image: radial-gradient(var(--desk-border) 1px, transparent 1px); background-size: 24px 24px; background-position: var(--pan-x, 0px) var(--pan-y, 0px); }
+.shell.has-canvas { touch-action: none; background-image: radial-gradient(var(--desk-border) 1px, transparent 1px); background-size: 24px 24px; background-position: var(--pan-x, 0px) var(--pan-y, 0px); }
+/* Shift held: the empty background and the title bars pan, and show the hand. */
+.shell.has-canvas.pan-ready { cursor: grab; }
 .shell.has-canvas .surface { cursor: auto; }
+.shell.has-canvas.pan-ready .surface-title { cursor: grab; }
 .canvas-reset { position: absolute; left: 104px; bottom: 24px; z-index: 200; width: 32px; height: 32px; background: var(--desk-card); border: 1px solid var(--desk-border); border-radius: var(--radius-sm); }

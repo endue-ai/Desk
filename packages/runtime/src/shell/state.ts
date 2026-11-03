@@ -55,8 +55,12 @@ export interface DeskState {
   tasks: A2ATask[];
   directory: "loading" | "ready" | "offline";
   drawer: DrawerItem[];
-  /** Plugin surfaces the runtime handed to the shell's windows (ADR 0040), in mount order. */
-  adopted: { id: string; title: string }[];
+  /**
+   * Plugin surfaces the runtime handed to the shell's windows (ADR 0040), in mount order, each with
+   * the slot its window takes while no layout places it (`surface/tiling.ts`; absent: its index)
+   * and the canvas's pan when it arrived, so the slot is in sight then (absent: none).
+   */
+  adopted: { id: string; title: string; slot?: number; at?: { x: number; y: number } }[];
   attention: AttentionItem[];
   desks: { id: string; name: string; busy: boolean; here: boolean }[];
   brain: BrainStatus;

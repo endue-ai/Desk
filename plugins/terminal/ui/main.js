@@ -44,6 +44,10 @@ defineUiPlugin({
         input: (id, data) => app?.input(id, data),
         resize: (id, cols, rows) => app?.resize(id, cols, rows),
         select: (id) => app?.show(id),
+        activate: (id) => {
+          app?.show(id);
+          app?.focus(id);
+        },
         close: (id) => app?.close(id),
         retitle: (id, title) => app?.retitle(id, title),
         bell: (id) => app?.bell(id),

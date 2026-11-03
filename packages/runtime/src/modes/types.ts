@@ -21,18 +21,26 @@ export interface ModeManifest {
 export interface SurfacePlacement {
   id: string;
   plugin: string;
-  /** Floating: 1440×900 reference frame. Canvas: world pixels, independent of app size. */
+  /** Normal: world pixels on the desktop's canvas. Floating: the 1440×900 reference frame. */
   x: number;
   y: number;
   w: number;
   h: number;
   pinned: boolean;
-  /** Absent/true: anchored to the app viewport. False: moves with the desktop canvas. */
+  /**
+   * Absent/false: normal mode, on the desktop's canvas, moving with its pan. True: floating mode,
+   * anchored to the app's viewport whatever the pan, and above the normal windows.
+   */
   floating?: boolean;
   /** How the surface is split into panes. Absent: one pane showing the view named by `id`. */
   panes?: PaneNode;
-  /** Where it was before it filled the free area; present only while it fills it. */
+  /** Where it was before it filled the app; present only while it fills it. */
   restore?: { x: number; y: number; w: number; h: number };
+  /**
+   * Fills the whole app or one half of it until moved or resized: a floating window at any app size,
+   * a normal one where it was filled (its world rect).
+   */
+  fill?: "full" | "left" | "right";
 }
 
 /** One pane: shows a view ("calendar", "notes", "agent:<id>", "launcher", ...). */

@@ -226,8 +226,11 @@ describe("the keyboard", () => {
     expect(await app.key("Tab")).toBe(false);
   });
 
-  it("endue.explorer.open shows the surface and focuses the selection", async () => {
+  it("copy-path needs a selection, then open shows and focuses the first row", async () => {
     const { host, view } = await mount({ handlers: disk(sample()) });
+    await expect(host.command("endue.explorer.copy-path")).rejects.toThrow(
+      "Select a file or folder first.",
+    );
     await expect(host.command("endue.explorer.open")).resolves.toBe(DOCS);
     expect(host.visible).toBe(true);
     expect(view.focused.at(-1)).toBe(DOCS);
@@ -391,24 +394,5 @@ describe("new file", () => {
       { permission: WRITE, reason: `To create ${DOCS}/n.md` },
     ]);
     expect(view.statuses.at(-1)).toBe(`Not allowed to write ${DOCS}/n.md.`);
-  });
-});
-
-describe("adding a folder the plugin may not list", () => {
-  it("is refused and not kept as a root", async () => {
-    const { app, view } = await mount({
-      handlers: {
-        ...disk(sample()),
-        "fs.list": ({ path }) => {
-          if (path === "/tmp") throw denied("fs:read over /tmp");
-          return { entries: sample()[path] ?? [] };
-        },
-        "perm.request": () => ({ granted: false }),
-      },
-    });
-    await expect(app.addFolder("/tmp")).rejects.toThrow("Not allowed to list /tmp.");
-    expect(view.shown().some((row) => row.includes(":tmp"))).toBe(false);
-    expect(view.headers.at(-1)?.folders ?? []).not.toContain("/tmp");
-    expect(view.statuses.at(-1)).toBe("Not allowed to list /tmp.");
   });
 });

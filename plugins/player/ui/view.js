@@ -90,6 +90,7 @@ export function createView(doc, act, deps = {}) {
       else title.focus();
     },
 
+    loadVolume: media.loadVolume,
     /** What the webview says about a media type: "", "maybe" or "probably". */
     canPlay: (/** @type {string} */ type) => media.canPlay(type),
     /** Whether Media Source Extensions decode a type. */
