@@ -4,6 +4,7 @@ const ITEMS = [
   ["Open terminal here", "endue.explorer.terminal-here"],
   ["Git status here", "endue.explorer.git-here"],
   ["Show in system file manager", "endue.explorer.show-in-file-manager"],
+  ["Copy path", "endue.explorer.copy-path"],
 ];
 
 /** @param {Document} doc @param {(id: string) => unknown} run @param {() => void} restore */

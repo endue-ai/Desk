@@ -15,6 +15,7 @@ defineUiPlugin({
       select: (id) => app?.select(id),
       activate: (id) => app?.activate(id),
       key: (name) => app?.key(name),
+      togglePreview: () => app?.togglePreview(),
       type: (letter) => app?.type(letter) === true,
       context: (id) => own(id)(),
       addFolder: own("endue.explorer.add-folder"),

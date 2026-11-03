@@ -36,6 +36,7 @@ beforeEach(() => {
         newFile: vi.fn(),
         refresh: vi.fn(),
         toggleHidden: vi.fn(),
+        togglePreview: vi.fn(),
       },
       { context },
     ),
