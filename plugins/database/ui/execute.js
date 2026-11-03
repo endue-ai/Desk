@@ -6,6 +6,7 @@
 import { failedRun } from "./engines/common.js";
 import { engineOf } from "./engines/index.js";
 import { nonce as makeNonce } from "./engines/text.js";
+import { formatCount } from "./format.js";
 import { classify, readsOnly } from "./sql/classify.js";
 import { split } from "./sql/split.js";
 
@@ -133,9 +134,12 @@ export function createExecutor(deps) {
       ...(production ? [`${conn.name} is tagged production.`] : []),
       ...dangerous,
       ...statements.slice(0, 3).map((s) => oneLine(s.text)),
-      ...(statements.length > 3 ? [`and ${statements.length - 3} more statements`] : []),
+      ...(statements.length > 3
+        ? [`and ${formatCount(statements.length - 3)} more statements`]
+        : []),
     ];
-    const count = statements.length === 1 ? "this statement" : `${statements.length} statements`;
+    const count =
+      statements.length === 1 ? "this statement" : `${formatCount(statements.length)} statements`;
     if (!(await deps.confirm(`Run ${count} on ${conn.name}?`, reasons)))
       throw deps.cancelled("Not run.");
   };
