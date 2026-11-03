@@ -192,6 +192,7 @@
   gap: var(--space-2);
 }
 .theme-editor-status,
+.theme-editor-confirm,
 .theme-note {
   margin: 0;
   color: var(--desk-text-muted);

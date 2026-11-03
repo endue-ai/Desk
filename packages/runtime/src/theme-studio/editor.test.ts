@@ -125,9 +125,9 @@ describe("the theme editor", () => {
     const { editor, themes, back } = setup(io);
     editor.start("local.my-theme", "dark");
     const button = (label: string) => {
-      const found = [...editor.element.querySelectorAll(".theme-editor-actions button")].find(
-        (el) => el.textContent === label,
-      );
+      const found = [
+        ...editor.element.querySelectorAll<HTMLButtonElement>(".theme-editor-actions button"),
+      ].find((el) => el.textContent === label);
       if (!found) throw new Error(`no ${label} button`);
       return found;
     };
