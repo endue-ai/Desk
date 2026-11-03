@@ -52,7 +52,7 @@ export interface Mounted {
   view: RecordingView;
   app: ReturnType<typeof createCalendar>;
   clock: { now: number };
-  /** Fire the pending timer, as if its time had come. */
+  /** Fire each timer due at the current clock time. */
   tick(): void;
   params(method: string): unknown[];
   ran(name: string): unknown[];
@@ -71,6 +71,9 @@ export async function mount(
     commands?: Commands;
     settings?: Record<string, unknown>;
     state?: unknown;
+    now?: number;
+    view?: Parameters<typeof createCalendar>[1];
+    paletteError?: Error;
   } = {},
 ): Promise<Mounted> {
   const settings = options.settings ?? { "endue.calendar.time-zone": "Asia/Seoul" };
@@ -85,23 +88,47 @@ export async function mount(
     commands: { ...DESK, ...options.commands },
   });
   const view = recordingView();
-  const clock = { now: NOW };
-  let pending: (() => void) | undefined;
+  const clock = { now: options.now ?? NOW };
+  const pending = new Map<() => void, number>();
+  if (options.view) {
+    const recording = view.render;
+    view.render = (state) => {
+      recording(state);
+      options.view?.render(state);
+    };
+    view.status = (text) => {
+      view.statuses.push(text);
+      options.view?.status(text);
+    };
+    view.focus = () => {
+      view.focused++;
+      options.view?.focus();
+    };
+  }
   let app: ReturnType<typeof createCalendar> | undefined;
   let ids = 0;
   await defineUiPlugin(
     {
       mount(ctx) {
-        app = createCalendar(ctx, view, {
+        const commands = options.paletteError
+          ? {
+              ...ctx.commands,
+              run: async <T>(name: string, args?: Record<string, unknown>): Promise<T> => {
+                if (name === "desk.palette.pick") throw options.paletteError;
+                return ctx.commands.run<T>(name, args);
+              },
+            }
+          : ctx.commands;
+        app = createCalendar({ ...ctx, commands }, view, {
           now: () => clock.now,
           uid: () => `uid-${++ids}@endue.ai`,
           locale: "en-US",
-          setTimer: (run) => {
-            pending = run;
+          setTimer: (run, ms) => {
+            pending.set(run, clock.now + ms);
             return run;
           },
-          clearTimer: () => {
-            pending = undefined;
+          clearTimer: (timer) => {
+            pending.delete(timer as () => void);
           },
         });
       },
@@ -119,9 +146,10 @@ export async function mount(
     app,
     clock,
     tick: () => {
-      const run = pending;
-      pending = undefined;
-      run?.();
+      const due = [...pending].filter(([, at]) => at <= clock.now);
+      for (const [run] of due) {
+        if (pending.delete(run)) run();
+      }
     },
     params: (method) => host.calls.filter((c) => c.method === method).map((c) => c.params),
     ran: (name) => host.ran.filter((r) => r.name === name).map((r) => r.args),
