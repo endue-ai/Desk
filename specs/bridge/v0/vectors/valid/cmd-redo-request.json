@@ -1,0 +1,14 @@
+{
+  "target": "BridgeRequest",
+  "description": "cmd.redo under a scope that covers fs.restore, which a write's redo runs",
+  "instance": {
+    "id": 33,
+    "method": "cmd.redo",
+    "params": {
+      "scope": {
+        "permission": "cmd:invoke",
+        "ids": ["fs.restore"]
+      }
+    }
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "target": "BridgeRequest",
+  "description": "cmd.undo carries its cmd:invoke scope",
+  "instance": {
+    "id": 34,
+    "method": "cmd.undo",
+    "params": {}
+  }
+}

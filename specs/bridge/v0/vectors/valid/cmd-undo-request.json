@@ -1,0 +1,14 @@
+{
+  "target": "BridgeRequest",
+  "description": "cmd.undo under a cmd:invoke scope that covers every inverse",
+  "instance": {
+    "id": 32,
+    "method": "cmd.undo",
+    "params": {
+      "scope": {
+        "permission": "cmd:invoke",
+        "ids": ["*"]
+      }
+    }
+  }
+}

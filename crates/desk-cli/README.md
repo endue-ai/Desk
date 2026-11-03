@@ -19,7 +19,7 @@ desk perm log [--agent <id>]           # at, caller, decision, permission, targe
 desk describe key|command|setting|plugin|grant <x>   # desk.describe.open's answer, as text (ADR 0075)
 desk inspect [tree|surfaces|commands|grants|settings|plugins|calls]   # the inspector's Export JSON
 desk fs history|restore <path> ...    # [--limit <n>]: id, at, caller, size per version; <version>: ok
-desk log [--count <n>]                 # at<TAB>level<TAB>channel<TAB>message, oldest first
+desk log [--count <n>] | undo | redo  # the log, oldest first; or what was undone or redone (ADR 0077)
 desk doctor --trace <file>             # a DESK_TRACE=1 trace.json: phases, totals, the five longest
 ```
 

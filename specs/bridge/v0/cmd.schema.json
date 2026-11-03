@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://endue.ai/specs/bridge/v0/cmd.schema.json",
   "title": "Desk bridge v0: cmd",
-  "description": "The command registry, kept by the core. Clicks, keys, the palette, Eris, agents and the CLI all invoke commands through it, and the desk's built-in commands are registered in it like any other (ADR 0017). Callers register, unregister and answer their own commands without a scope; listing and invoking need cmd:invoke.",
+  "description": "The command registry, kept by the core. Clicks, keys, the palette, Eris, agents and the CLI all invoke commands through it, and the desk's built-in commands are registered in it like any other (ADR 0017). Callers register, unregister and answer their own commands without a scope; listing and invoking need cmd:invoke. Commands that name an `undo` land on the desk's undo stack, which cmd.undo and cmd.redo walk (ADR 0077).",
   "$defs": {
     "CommandInfo": {
       "description": "A registered command as cmd.list returns it.",
@@ -39,6 +39,10 @@
         },
         "provider": {
           "$ref": "bridge.schema.json#/$defs/CallerId"
+        },
+        "undo": {
+          "description": "The command that undoes this one: cmd.undo runs it with { args, result } of an invocation. Absent when the command cannot be undone.",
+          "$ref": "../../plugin/v0/contributes.schema.json#/$defs/CommandId"
         }
       },
       "required": ["id", "title", "provider"],
@@ -96,6 +100,10 @@
           "type": "string",
           "minLength": 1,
           "maxLength": 512
+        },
+        "undo": {
+          "description": "The command that undoes this one, which the caller provides too. Absent: the one the caller's manifest names for this id in contributes.commands, if any.",
+          "$ref": "../../plugin/v0/contributes.schema.json#/$defs/CommandId"
         }
       },
       "required": ["id", "title"],
@@ -488,6 +496,153 @@
         }
       },
       "required": ["invocationId", "id", "caller", "ok"],
+      "additionalProperties": false
+    },
+    "UndoEntry": {
+      "description": "One invocation on the desk's undo stack: what ran, with what, what it answered, who ran it and when, and the command that undoes it.",
+      "type": "object",
+      "properties": {
+        "command": {
+          "description": "The command that ran; fs.write or fs.restore for a write the core kept a version of.",
+          "$ref": "../../plugin/v0/contributes.schema.json#/$defs/CommandId"
+        },
+        "args": {
+          "description": "The args it ran with.",
+          "type": "object"
+        },
+        "result": {
+          "description": "What it answered. For a write: { version }, the version that keeps the bytes it replaced."
+        },
+        "caller": {
+          "$ref": "bridge.schema.json#/$defs/CallerId"
+        },
+        "at": {
+          "description": "When the answer arrived (for a write, when it ran). RFC 3339.",
+          "type": "string",
+          "format": "date-time"
+        },
+        "inverse": {
+          "description": "The command that undoes it: its `undo`, or fs.restore for a write.",
+          "$ref": "../../plugin/v0/contributes.schema.json#/$defs/CommandId"
+        }
+      },
+      "required": ["command", "caller", "at", "inverse"],
+      "additionalProperties": false
+    },
+    "CmdUndoRequest": {
+      "description": "Undo the newest entry of the desk's undo stack, whoever pushed it: run its inverse with { args, result }.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "bridge.schema.json#/$defs/RequestId"
+        },
+        "method": {
+          "const": "cmd.undo"
+        },
+        "params": {
+          "$ref": "#/$defs/CmdUndoParams"
+        }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "CmdUndoParams": {
+      "description": "Parameters of cmd.undo. The scope must cover the inverse the entry names (fs.restore for a write).",
+      "type": "object",
+      "properties": {
+        "scope": {
+          "$ref": "../../plugin/v0/permission.schema.json#/$defs/CmdInvokePermission"
+        }
+      },
+      "required": ["scope"],
+      "additionalProperties": false
+    },
+    "CmdUndoResult": {
+      "description": "Result of cmd.undo: the entry undone, absent when there was none; for a command, the invocation of its inverse, whose answer reaches the caller as cmd.answered. A write is undone before this answers.",
+      "type": "object",
+      "properties": {
+        "undone": {
+          "$ref": "#/$defs/UndoEntry"
+        },
+        "invocationId": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "CmdRedoRequest": {
+      "description": "Redo the entry cmd.undo undid last: run its command again with its args (a write: put back what the undo replaced).",
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "bridge.schema.json#/$defs/RequestId"
+        },
+        "method": {
+          "const": "cmd.redo"
+        },
+        "params": {
+          "$ref": "#/$defs/CmdRedoParams"
+        }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "CmdRedoParams": {
+      "description": "Parameters of cmd.redo. The scope must cover the entry's command (fs.restore for a write).",
+      "type": "object",
+      "properties": {
+        "scope": {
+          "$ref": "../../plugin/v0/permission.schema.json#/$defs/CmdInvokePermission"
+        }
+      },
+      "required": ["scope"],
+      "additionalProperties": false
+    },
+    "CmdRedoResult": {
+      "description": "Result of cmd.redo: the entry redone, absent when there was none; for a command, the invocation that runs it again.",
+      "type": "object",
+      "properties": {
+        "undone": {
+          "$ref": "#/$defs/UndoEntry"
+        },
+        "invocationId": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "CmdUndoneEvent": {
+      "description": "An entry of the desk's undo stack was undone or redone. Sent to the caller that did it and to callers subscribed to cmd.undone.",
+      "type": "object",
+      "properties": {
+        "event": {
+          "const": "cmd.undone"
+        },
+        "data": {
+          "$ref": "#/$defs/CmdUndoneData"
+        }
+      },
+      "required": ["event", "data"],
+      "additionalProperties": false
+    },
+    "CmdUndoneData": {
+      "description": "Payload of cmd.undone.",
+      "type": "object",
+      "properties": {
+        "entry": {
+          "$ref": "#/$defs/UndoEntry"
+        },
+        "by": {
+          "$ref": "bridge.schema.json#/$defs/CallerId"
+        },
+        "redo": {
+          "description": "true for cmd.redo, false for cmd.undo.",
+          "type": "boolean"
+        }
+      },
+      "required": ["entry", "by", "redo"],
       "additionalProperties": false
     }
   }

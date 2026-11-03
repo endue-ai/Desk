@@ -3,7 +3,8 @@
 //! caller's `cmd:invoke` grant and the args, then the provider hears `cmd.invoked`, runs the command
 //! and answers with cmd.answer, which reaches the caller as `cmd.answered`. The registry keeps which
 //! commands their provider's manifest marks `irreversible`: an agent's call of one waits for the
-//! person's approval (`approvals`, ADR 0078).
+//! person's approval (`approvals`, ADR 0078), and lands the ok answers of commands that name an
+//! `undo` on the desk's undo stack (`core_undo`, ADR 0077).
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::MutexGuard;
@@ -12,20 +13,32 @@ use desk_bridge::{
     BridgeEvent, CmdAnswerParams, CmdAnswerResult, CmdAnsweredData, CmdAnsweredEvent,
     CmdChangedData, CmdChangedEvent, CmdInvokeParams, CmdInvokeResult, CmdInvokedData,
     CmdInvokedEvent, CmdListParams, CmdListResult, CmdRegisterParams, CmdRegisterResult,
-    CmdUnregisterParams, CmdUnregisterResult, CommandChange, CommandFailure, CommandFailureCode,
-    CommandInfo, ErrorCode, EventName, Permission,
+    CmdUnregisterParams, CmdUnregisterResult, CommandChange, CommandContribution, CommandFailure,
+    CommandFailureCode, CommandInfo, ErrorCode, EventName, Permission,
 };
-use serde_json::Value;
+use serde_json::{Map, Value};
 
 use crate::approvals::Action;
 use crate::handler::{Answer, Core, error, json};
 use crate::manifest::schema_registry;
 use crate::perm::{Target, star_match};
 
+/// Why an invocation runs: asked for, or the undo stack's inverse or redo (`core_undo`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Kind {
+    Command,
+    Undo,
+    Redo,
+}
+
 struct Invocation {
     id: String,
     caller: String,
     provider: String,
+    args: Option<Map<String, Value>>,
+    /// The command's inverse when it has one: an ok answer lands on the undo stack.
+    undo: Option<String>,
+    kind: Kind,
 }
 
 /// Registered commands in registration order, and the invocations still waiting for an answer.
@@ -49,6 +62,7 @@ impl Core {
             args_schema: params.args_schema,
             when: params.when,
             provider: caller.to_owned(),
+            undo: None,
         };
         let change = {
             let mut commands = self.commands();
@@ -66,10 +80,15 @@ impl Core {
                 }
             }
         };
-        let irreversible = self.declared_irreversible(caller, &params.id);
+        let declared = self.declared(caller, &params.id);
+        let irreversible = declared.as_ref().and_then(|c| c.irreversible) == Some(true);
+        // The manifest's undo when the call names none (ADR 0077).
+        let undo = params.undo.or_else(|| declared.and_then(|c| c.undo));
         {
             let mut commands = self.commands();
-            commands.by_id.insert(params.id.clone(), info);
+            commands
+                .by_id
+                .insert(params.id.clone(), CommandInfo { undo, ..info });
             if irreversible {
                 commands.irreversible.insert(params.id.clone());
             } else {
@@ -138,20 +157,36 @@ impl Core {
     pub(crate) fn cmd_invoke(&self, caller: &str, params: CmdInvokeParams) -> Answer {
         let scope = Permission::CmdInvoke(params.scope);
         self.check(caller, &scope, &Target::CommandId(&params.id))?;
+        let invocation_id =
+            self.start_invocation(caller, &scope, &params.id, params.args, Kind::Command)?;
+        json(CmdInvokeResult { invocation_id })
+    }
+
+    /// Invoke `id` as `caller`, whose `scope` was checked: its args against the command's schema,
+    /// an agent's call held for the person (ADR 0078), then `cmd.invoked` to the provider. Answers
+    /// the invocation id.
+    pub(crate) fn start_invocation(
+        &self,
+        caller: &str,
+        scope: &Permission,
+        id: &str,
+        args: Option<Map<String, Value>>,
+        kind: Kind,
+    ) -> Result<String, desk_bridge::BridgeError> {
         let info = self
             .commands()
             .by_id
-            .get(&params.id)
+            .get(id)
             .cloned()
-            .ok_or_else(|| error(ErrorCode::NotFound, format!("no command {}", params.id)))?;
+            .ok_or_else(|| error(ErrorCode::NotFound, format!("no command {id}")))?;
         if let Some(schema) = &info.args_schema {
-            check_args(schema, params.args.as_ref())?;
+            check_args(schema, args.as_ref())?;
         }
         let invoke = Action::Invoke {
-            id: &params.id,
-            args: params.args.as_ref(),
+            id,
+            args: args.as_ref(),
         };
-        self.hold(caller, &scope, invoke)?;
+        self.hold(caller, scope, invoke)?;
         let invocation_id = {
             let mut commands = self.commands();
             commands.next += 1;
@@ -159,14 +194,17 @@ impl Core {
             commands.pending.insert(
                 invocation_id.clone(),
                 Invocation {
-                    id: params.id.clone(),
+                    id: id.to_owned(),
                     caller: caller.to_owned(),
                     provider: info.provider.clone(),
+                    args: args.clone(),
+                    undo: info.undo.clone(),
+                    kind,
                 },
             );
             invocation_id
         };
-        self.note_invoked(&invocation_id, &params.id, caller, &info.provider);
+        self.note_invoked(&invocation_id, id, caller, &info.provider);
         let to = self.recipients(EventName::CmdInvoked, vec![info.provider]);
         self.events().publish_to(
             to,
@@ -174,13 +212,13 @@ impl Core {
                 event: Default::default(),
                 data: CmdInvokedData {
                     invocation_id: invocation_id.clone(),
-                    id: params.id,
-                    args: params.args,
+                    id: id.to_owned(),
+                    args,
                     caller: caller.to_owned(),
                 },
             }),
         );
-        json(CmdInvokeResult { invocation_id })
+        Ok(invocation_id)
     }
 
     pub(crate) fn cmd_answer(&self, caller: &str, params: CmdAnswerParams) -> Answer {
@@ -260,6 +298,20 @@ impl Core {
         error: Option<CommandFailure>,
     ) {
         self.note_answered(invocation_id, error.as_ref().map(|failure| failure.code));
+        // An ok answer of an undoable command lands on the undo stack; an inverse's does not, and a
+        // redo's leaves what is left to redo (ADR 0077).
+        if let (None, Some(inverse), false) =
+            (&error, &invocation.undo, invocation.kind == Kind::Undo)
+        {
+            let entry = self.command_entry(
+                &invocation.id,
+                invocation.args.clone(),
+                result.clone(),
+                &invocation.caller,
+                inverse,
+            );
+            self.push_undo(entry, invocation.kind == Kind::Command);
+        }
         self.events()
             .publish(BridgeEvent::CmdAnswered(CmdAnsweredEvent {
                 event: Default::default(),
@@ -279,8 +331,8 @@ impl Core {
         self.commands().irreversible.contains(id)
     }
 
-    /// Whether `provider`'s manifest marks its command `id` irreversible (`contributes.commands`).
-    fn declared_irreversible(&self, provider: &str, id: &str) -> bool {
+    /// What `provider`'s manifest declares for its command `id` (`contributes.commands`).
+    fn declared(&self, provider: &str, id: &str) -> Option<CommandContribution> {
         let plugins = self
             .plugins
             .lock()
@@ -292,8 +344,8 @@ impl Core {
             .and_then(|contributes| contributes.commands);
         declared
             .unwrap_or_default()
-            .iter()
-            .any(|c| c.id == id && c.irreversible == Some(true))
+            .into_iter()
+            .find(|c| c.id == id)
     }
 
     /// `cmd.changed` for the provider and the callers subscribed to it.

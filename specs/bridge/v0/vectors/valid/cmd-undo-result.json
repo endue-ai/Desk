@@ -1,0 +1,19 @@
+{
+  "target": "CmdUndoResult",
+  "description": "cmd.undo answers the entry it undid and the invocation of its inverse",
+  "instance": {
+    "undone": {
+      "command": "example.notes.delete",
+      "args": {
+        "name": "draft"
+      },
+      "result": {
+        "kept": "trash/draft.md"
+      },
+      "caller": "desk",
+      "at": "2026-11-03T09:00:00Z",
+      "inverse": "example.notes.restore"
+    },
+    "invocationId": "i-41"
+  }
+}

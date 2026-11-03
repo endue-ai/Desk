@@ -1,0 +1,13 @@
+{
+  "target": "BridgeRequest",
+  "description": "cmd.register names the command that undoes this one",
+  "instance": {
+    "id": 31,
+    "method": "cmd.register",
+    "params": {
+      "id": "example.notes.delete",
+      "title": "Delete the note",
+      "undo": "example.notes.restore"
+    }
+  }
+}

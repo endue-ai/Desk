@@ -19,6 +19,9 @@ export type Allow = (
 
 const MAX_VERSIONS = 50;
 
+/** Hears each write that kept a version, for the undo stack (stub-undo.ts). */
+export type Wrote = (caller: string, command: string, path: string, version: string) => void;
+
 async function sha256(bytes: Uint8Array): Promise<string> {
   const digest = await crypto.subtle.digest("SHA-256", bytes as Uint8Array<ArrayBuffer>);
   return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
@@ -44,6 +47,7 @@ export function stubHistory(
   files: Map<string, Uint8Array>,
   allow: Allow,
   now: () => string,
+  wrote?: Wrote,
 ): Required<Pick<StubHandlers, HistoryServed>> {
   const kept = new Map<string, Array<{ version: FsVersion; bytes: Uint8Array }>>();
   let lastMillis = 0;
@@ -55,7 +59,12 @@ export function stubHistory(
   };
 
   /** Write `bytes` over `path` as `caller`, keeping what it replaces; answers as fs.write. */
-  const write = async (caller: string | undefined, path: string, bytes: Uint8Array) => {
+  const write = async (
+    caller: string | undefined,
+    path: string,
+    bytes: Uint8Array,
+    command: "fs.write" | "fs.restore",
+  ) => {
     if ([...files.keys()].some((p) => p.startsWith(`${path}/`)))
       throw new StubError("invalid_params", `${path} is a folder`);
     const old = files.get(path);
@@ -69,13 +78,14 @@ export function stubHistory(
       sha256: await sha256(old),
     };
     kept.set(path, [{ version, bytes: old }, ...(kept.get(path) ?? [])].slice(0, MAX_VERSIONS));
+    wrote?.(caller ?? "desk", command, path, version.id);
     return { bytesWritten: bytes.length, version: version.id };
   };
 
   return {
     "fs.write": ({ path, content, encoding, scope }, caller) => {
       allow(caller, path, scope);
-      return write(caller, path, decode(content, encoding));
+      return write(caller, path, decode(content, encoding), "fs.write");
     },
     "fs.history": ({ path, limit, scope }, caller) => {
       allow(caller, path, scope);
@@ -86,7 +96,7 @@ export function stubHistory(
       allow(caller, path, scope);
       const found = kept.get(path)?.find((k) => k.version.id === version);
       if (!found) throw new StubError("not_found", `${path} has no version ${version}`);
-      return write(caller, path, found.bytes.slice());
+      return write(caller, path, found.bytes.slice(), "fs.restore");
     },
   };
 }

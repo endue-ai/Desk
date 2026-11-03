@@ -369,6 +369,7 @@
         "perm.changed",
         "cmd.changed",
         "cmd.invoked",
+        "cmd.undone",
         "settings.changed",
         "log.entry",
         "update.changed"

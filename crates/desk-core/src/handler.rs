@@ -8,16 +8,13 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::AtomicU64;
 use std::sync::{Arc, Mutex, MutexGuard};
 
-use base64::Engine as _;
 use desk_bridge::{
-    BridgeError, BridgeFailure, BridgeRequest, BridgeResponse, BridgeSuccess, DirEntry, Encoding,
-    EntryKind, ErrorCode, False, FsListResult, FsReadParams, FsReadResult, Permission, RequestId,
-    True,
+    BridgeError, BridgeFailure, BridgeRequest, BridgeResponse, BridgeSuccess, Encoding, ErrorCode,
+    False, FsReadParams, Permission, RequestId, True,
 };
 use desk_index::ItemIndex;
-use desk_plugin_host::{Clock, SystemClock, rfc3339};
+use desk_plugin_host::{Clock, SystemClock};
 use desk_sys::calendar::CalendarSource;
-use desk_sys::fs as sysfs;
 use desk_sys::shell::{Opener, SystemOpener};
 use serde::Serialize;
 
@@ -27,7 +24,7 @@ use crate::core_cmd::Commands;
 use crate::core_connectors::Connectors;
 use crate::core_data::DataSubscriptions;
 use crate::core_events::Subscriptions;
-use crate::core_fs::{Watches, read_range};
+use crate::core_fs::{Watches, list, read};
 use crate::core_fs_url::FileUrls;
 use crate::core_perm::{Prompter, RefuseAll};
 use crate::core_plugin_views::ProvidedViews;
@@ -73,6 +70,7 @@ pub struct Core {
     pub(crate) notifications: AtomicU64,
     pub(crate) watches: Mutex<Watches>,
     pub(crate) history: Mutex<Option<crate::history::History>>,
+    pub(crate) undo: Mutex<crate::core_undo::Stacks>,
     pub(crate) file_urls: Mutex<FileUrls>,
     pub(crate) commands: Mutex<Commands>,
     pub(crate) recent: Mutex<Recent>,
@@ -113,6 +111,7 @@ impl Core {
             notifications: AtomicU64::new(0),
             watches: Mutex::new(Watches::default()),
             history: Mutex::new(None),
+            undo: Mutex::default(),
             file_urls: Mutex::new(FileUrls::default()),
             commands: Mutex::new(Commands::default()),
             recent: Mutex::default(),
@@ -231,6 +230,8 @@ impl Core {
             R::CmdInvoke(r) => (r.id, self.cmd_invoke(caller, r.params)),
             R::CmdAnswer(r) => (r.id, self.cmd_answer(caller, r.params)),
             R::CmdRecent(r) => (r.id, self.cmd_recent(caller, r.params)),
+            R::CmdUndo(r) => (r.id, self.cmd_undo(caller, r.params)),
+            R::CmdRedo(r) => (r.id, self.cmd_redo(caller, r.params)),
             R::SettingsGet(r) => (r.id, self.settings_get(caller, r.params)),
             R::SettingsSet(r) => (r.id, self.settings_set(caller, r.params)),
             R::SettingsList(r) => (r.id, self.settings_list(caller, r.params)),
@@ -314,48 +315,6 @@ impl Core {
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
     }
-}
-
-/// fs.read: `length` bytes at most from `offset` (to the end without a length), with the file's size.
-fn read(path: &Path, encoding: Encoding, offset: u64, length: Option<u64>) -> Answer {
-    let (bytes, size) = read_range(path, offset, length).map_err(io_error)?;
-    let content = match encoding {
-        Encoding::Utf8 => String::from_utf8(bytes).map_err(|_| {
-            let what = if offset == 0 && length.is_none() {
-                "the file is"
-            } else {
-                "the range is"
-            };
-            error(
-                ErrorCode::InvalidParams,
-                format!("{what} not UTF-8; read it as base64"),
-            )
-        })?,
-        Encoding::Base64 => base64::engine::general_purpose::STANDARD.encode(bytes),
-    };
-    json(FsReadResult {
-        content,
-        encoding,
-        size: Some(size),
-    })
-}
-
-fn list(path: &Path) -> Answer {
-    let entries = sysfs::list(path)
-        .map_err(io_error)?
-        .into_iter()
-        .map(|entry| DirEntry {
-            name: entry.name,
-            kind: match entry.kind {
-                sysfs::EntryKind::File => EntryKind::File,
-                sysfs::EntryKind::Dir => EntryKind::Dir,
-                sysfs::EntryKind::Symlink => EntryKind::Symlink,
-            },
-            size: entry.size,
-            modified_at: entry.modified.map(rfc3339),
-        })
-        .collect();
-    json(FsListResult { entries })
 }
 
 pub(crate) fn json(value: impl Serialize) -> Answer {

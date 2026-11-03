@@ -26,7 +26,6 @@ import type {
   PermRequestParams,
   PermRequestResult,
   Setting,
-  SurfacePlacement,
 } from "./generated";
 import { covers, keyMatch, starMatch } from "./stub-covers";
 import { type DataServed, stubData } from "./stub-data";
@@ -34,6 +33,8 @@ import { type FsServed, type StubFiles, stubFs } from "./stub-fs";
 import { LOG, type LogServed, stubLog } from "./stub-log";
 import { type RecentServed, stubRecent } from "./stub-recent";
 import { type ShellServed, type StubOpened, stubShell } from "./stub-shell";
+import { type StubSurface, type SurfaceServed, stubSurfaces } from "./stub-surfaces";
+import { type InvocationKind, type Invoked, stubUndo, type UndoServed } from "./stub-undo";
 
 /** The methods the stub serves; any other is `unsupported` (adapters.ts). */
 type Served =
@@ -42,7 +43,8 @@ type Served =
   | `settings.${"get" | "set" | "list"}`
   | LogServed
   | `events.${"subscribe" | "unsubscribe"}`
-  | `ui.surface.${"open" | "close"}`
+  | SurfaceServed
+  | UndoServed
   | DataServed
   | ShellServed
   | RecentServed;
@@ -63,13 +65,7 @@ export interface StubOptions {
   open?: (opened: StubOpened) => void;
 }
 
-export interface StubSurface {
-  handle: string;
-  caller: CallerId;
-  surface: string;
-  placement?: SurfacePlacement;
-  title?: string;
-}
+export type { StubSurface } from "./stub-surfaces";
 
 /** What the stub holds, for tests: grants oldest first, settings by owner and key, the whole log. */
 export interface StubState {
@@ -101,7 +97,6 @@ export interface StubCommands {
 }
 
 const MANAGE: Permission = { permission: "perm:manage" };
-const SURFACE: Permission = { permission: "ui:surface" };
 const settingId = (owner: string, key: string) => `${owner}/${key}`;
 type Prompt = { data: PermPromptData; decide(granted: boolean, duration?: GrantDuration): void };
 
@@ -111,14 +106,13 @@ export function stubCommands(
   options: StubOptions = {},
 ): StubCommands {
   const commands = new Map<string, CommandInfo>();
-  const pending = new Map<string, { id: string; caller: string; provider: string }>();
+  const pending = new Map<string, Invoked & { provider: string }>();
   const grants: CallerGrant[] = [];
   const owners = new Map<string, string>();
   const prompts = new Map<string, Prompt>();
   const settings = new Map<string, Setting>();
   const log: LogEntry[] = [];
   const subscriptions = new Map<string, { caller: string; names: EventName[] }>();
-  const surfaces = new Map<string, StubSurface>();
   const opened: StubOpened[] = [];
   const counts = new Map<string, number>();
   const fresh = (prefix: string) => {
@@ -173,6 +167,14 @@ export function stubCommands(
     if (held.grant.duration === "once") take(held.grant.grantId, "expired");
   };
   const recent = stubRecent({ now, me, check });
+  const shown = stubSurfaces({ check: (caller, scope) => check(caller, scope), fresh, me });
+  const surfaces = shown.surfaces;
+  const restore = async (path: string, version: string) => {
+    const scope = { permission: "fs:write" as const, paths: [path] };
+    return (await fs?.["fs.restore"]({ path, version, scope }, undefined))?.version;
+  };
+  const undo = stubUndo({ check, later, now, me, invoke: (...a) => invoke(...a), restore });
+  const fs = options.files && stubFs(options.files, check, now, undo.wrote);
   const data = stubData({
     check: (caller, scope) => check(caller, scope),
     may,
@@ -188,9 +190,26 @@ export function stubCommands(
     const invocation = pending.get(invocationId);
     if (!invocation || !pending.delete(invocationId)) return;
     recent.answered(invocationId, error?.code);
+    undo.answered(invocation, result, !error);
     const { id, caller } = invocation;
     const outcome = error ? { error } : result === undefined ? {} : { result };
     later({ event: "cmd.answered", data: { invocationId, id, caller, ok: !error, ...outcome } });
+  };
+  /** Invoke `id` as `caller`: `cmd.invoked` to its provider, the invocation kept until answered. */
+  const invoke = (
+    caller: string | undefined,
+    id: string,
+    args: Record<string, unknown> | undefined,
+    kind: InvocationKind = "command",
+  ) => {
+    const info = commands.get(id);
+    if (!info) throw new StubError("not_found", `no command ${id}`);
+    const invocationId = fresh("i");
+    const kept = { ...recent.invoked(invocationId, id, me(caller), info.provider), args, kind };
+    pending.set(invocationId, { ...kept, ...(info.undo ? { undo: info.undo } : {}) });
+    const data = { invocationId, id, caller: me(caller), ...(args ? { args } : {}) };
+    later({ event: "cmd.invoked", data });
+    return invocationId;
   };
   const remove = (id: string) => {
     const info = commands.get(id);
@@ -230,6 +249,7 @@ export function stubCommands(
       to.push(commands.get(event.data.id)?.provider, ...subscribers("cmd.invoked"));
     else if (event.event === "cmd.answered") to.push(event.data.caller);
     else if (event.event === "cmd.changed") to.push(...subscribers("cmd.changed"));
+    else if (event.event === "cmd.undone") to.push(event.data.by, ...subscribers("cmd.undone"));
     else if (event.event === "perm.changed")
       to.push(owners.get(event.data.grantId), ...subscribers("perm.changed"));
     else if (event.event === "perm.prompt") to.push(...holders(MANAGE));
@@ -279,7 +299,9 @@ export function stubCommands(
     handlers: {
       ...data.handlers,
       ...recent.handlers,
-      ...(options.files && stubFs(options.files, check, now)),
+      ...fs,
+      ...undo.handlers,
+      ...shown.handlers,
       ...stubShell({ check, may, me, request, opened, open: options.open }),
       ...stubLog({ log, now, me, later, check }),
       "cmd.register": (params, caller) => {
@@ -301,17 +323,7 @@ export function stubCommands(
       "cmd.list": ({ scope }) => ({
         commands: [...commands.values()].filter((c) => scope.ids.some((p) => starMatch(p, c.id))),
       }),
-      "cmd.invoke": ({ id, args }, caller) => {
-        const info = commands.get(id);
-        if (!info) throw new StubError("not_found", `no command ${id}`);
-        const invocationId = fresh("i");
-        pending.set(invocationId, recent.invoked(invocationId, id, me(caller), info.provider));
-        later({
-          event: "cmd.invoked",
-          data: { invocationId, id, caller: me(caller), ...(args ? { args } : {}) },
-        });
-        return { invocationId };
-      },
+      "cmd.invoke": ({ id, args }, caller) => ({ invocationId: invoke(caller, id, args) }),
       "cmd.answer": ({ invocationId, result, error }, caller) => {
         if (pending.get(invocationId)?.provider !== me(caller))
           throw new StubError("not_found", `${me(caller)} has no invocation ${invocationId}`);
@@ -379,20 +391,6 @@ export function stubCommands(
         if (subscriptions.get(subscriptionId)?.caller !== me(caller))
           throw missing(`${me(caller)}'s subscription ${subscriptionId}`);
         subscriptions.delete(subscriptionId);
-        return {};
-      },
-      "ui.surface.open": ({ surface, placement, title, scope }, caller) => {
-        check(caller, scope ?? SURFACE);
-        const handle = fresh("s");
-        const shown = { ...(placement && { placement }), ...(title && { title }) };
-        surfaces.set(handle, { handle, caller: me(caller), surface, ...shown });
-        return { handle };
-      },
-      "ui.surface.close": ({ handle, scope }, caller) => {
-        check(caller, scope ?? SURFACE);
-        if (surfaces.get(handle)?.caller !== me(caller))
-          throw missing(`${me(caller)}'s surface ${handle}`);
-        surfaces.delete(handle);
         return {};
       },
     },
