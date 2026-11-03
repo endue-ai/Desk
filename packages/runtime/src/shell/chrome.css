@@ -73,6 +73,24 @@
   background: var(--desk-primary-soft);
   color: var(--desk-text) !important;
 }
+/* The switcher and the desktops float over the windows: every chip is the opaque card under its
+   tint, so a window under it never shows through and the chip always reads. */
+.modes .mode-chip,
+.modes .add-button,
+.desktops .desktop-button,
+.desktops .add-button {
+  background-color: var(--desk-card);
+}
+.modes .mode-chip:hover,
+.modes .add-button:hover:not(:disabled),
+.desktops .desktop-button:hover,
+.desktops .add-button:hover:not(:disabled) {
+  background: linear-gradient(var(--desk-hover), var(--desk-hover)) var(--desk-card);
+}
+.modes .mode-chip.is-current,
+.desktops .desktop-button.is-active {
+  background: linear-gradient(var(--desk-primary-soft), var(--desk-primary-soft)) var(--desk-card);
+}
 .mini-grid { display: grid; grid-template-columns: 4px 4px; gap: 2px; }
 .mini-dot { width: 4px; height: 4px; border-radius: 1px; border: 1px solid currentColor; }
 .mini-dot.is-on { background: currentColor; }

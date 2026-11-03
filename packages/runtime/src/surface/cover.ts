@@ -7,15 +7,21 @@
 import type { SurfacePlacement } from "../modes/types";
 import { windowsOf } from "../shell/actions";
 import type { DeskState } from "../shell/state";
-import { ORIGIN, screenRect } from "./coordinates";
+import { isFloating, ORIGIN, screenRect } from "./coordinates";
 import type { Rect } from "./geometry";
 import { leaves, panesOf } from "./tree";
 import { resolveView } from "./views";
 
-/** A window's stacking level: the focused one on top, pinned ones above the rest, in desk order. */
+/**
+ * A window's stacking level: floating windows above every normal one, since they stay put while the
+ * canvas moves under them; within each, the focused one on top, pinned ones above the rest, in desk
+ * order.
+ */
 export function zOf(p: SurfacePlacement, index: number, focused: string | null): number {
-  return p.id === focused ? 100 : p.pinned ? 50 + index : 1 + index;
+  const level = p.id === focused ? 100 : p.pinned ? 50 + index : 1 + index;
+  return isFloating(p) ? FLOATING + level : level;
 }
+const FLOATING = 200;
 
 /** The plugin ids out of sight on the current desktop, of those its windows show. */
 export function coveredPlugins(s: DeskState, vw: number, vh: number): Set<string> {

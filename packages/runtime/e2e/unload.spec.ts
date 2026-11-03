@@ -24,9 +24,9 @@ test("a window wholly under a maximized one is unloaded to a placeholder and loa
   page,
 }) => {
   await expect(frame(page, COUNTER).getByRole("button")).toBeVisible();
-  // Filled and focused, Hello is drawn over Counter, which now tiles the free area alone under it.
+  // Filled and focused, Hello is drawn over the whole app, Counter's slot included.
   await window_(page, HELLO).locator(".surface-title").dblclick();
-  await expect(window_(page, HELLO)).toHaveCSS("width", "1232px");
+  await expect(window_(page, HELLO)).toHaveCSS("width", "1440px");
   await expect(inner(page, COUNTER).locator(".desk-surface-placeholder")).toHaveCount(1);
   await expect(inner(page, COUNTER).locator("iframe")).toHaveCount(0);
   // Hello is in sight and keeps its frame.
@@ -35,7 +35,7 @@ test("a window wholly under a maximized one is unloaded to a placeholder and loa
     "placeholder.json",
   );
 
-  // Restored to its half, Hello no longer covers all of it: the Counter frame loads again.
+  // Restored to its slot, Hello no longer covers it: the Counter frame loads again.
   await window_(page, HELLO).locator(".surface-title").dblclick();
   await expect(inner(page, COUNTER).locator(".desk-surface-placeholder")).toHaveCount(0);
   await expect(frame(page, COUNTER).getByRole("button")).toBeVisible();

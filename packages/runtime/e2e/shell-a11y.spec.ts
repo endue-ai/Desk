@@ -104,7 +104,7 @@ test.describe("at 1440×900", () => {
 test.describe("at 1024 wide", () => {
   test.use({ viewport: { width: 1024, height: 768 } });
 
-  test("bars stay, surfaces shrink, nothing overlaps", async ({ page }) => {
+  test("bars stay and nothing overlaps them", async ({ page }) => {
     await openShell(page);
     await page.evaluate(() => window.__shell.desk.store.set({ desktop: 2 }));
     await step(page, 100);
@@ -136,7 +136,8 @@ test.describe("at 1024 wide", () => {
       }
     }
     expect([...new Set(overlaps)]).toEqual([]);
-    expect(boxes.filter((b) => b.sel === ".surface").every((b) => b.w < 560)).toBe(true);
+    // Normal windows keep their size on the canvas; floating ones shrink with the app
+    // (shell-canvas.spec.ts).
     await expect(page.locator(".sidebar")).toBeVisible();
     await expect(page.locator(".rail")).toBeVisible();
   });

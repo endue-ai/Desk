@@ -7,8 +7,8 @@
  "box": [
   104,
   190,
-  1232,
-  622
+  402,
+  305
  ],
  "style": {
   "background": "rgb(30, 29, 33)",
@@ -46,7 +46,7 @@
        "class": "icon-button tool",
        "aria-label": "Split right (⌘D)",
        "box": [
-        1173,
+        343,
         199,
         24,
         24
@@ -66,7 +66,7 @@
        "class": "icon-button tool",
        "aria-label": "Split down (⌥⌘D)",
        "box": [
-        1199,
+        369,
         199,
         24,
         24
@@ -85,9 +85,9 @@
        "tag": "button",
        "class": "icon-button tool",
        "aria-label": "Floating mode",
-       "aria-pressed": "true",
+       "aria-pressed": "false",
        "box": [
-        1225,
+        395,
         199,
         24,
         24
@@ -108,7 +108,7 @@
        "aria-label": "Pin",
        "aria-pressed": "false",
        "box": [
-        1251,
+        421,
         199,
         24,
         24
@@ -128,7 +128,7 @@
        "class": "icon-button tool",
        "aria-label": "Put in drawer",
        "box": [
-        1277,
+        447,
         199,
         24,
         24
@@ -148,7 +148,7 @@
        "class": "icon-button tool",
        "aria-label": "Close",
        "box": [
-        1303,
+        473,
         199,
         24,
         24

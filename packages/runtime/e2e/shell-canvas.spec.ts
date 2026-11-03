@@ -3,11 +3,14 @@ import { DESK, openShell } from "./shell-helpers";
 
 test.use({ viewport: DESK });
 const surface = (page: Page, id = 1) => page.locator(`[data-surface="window-${id}"]`);
-const pan = async (page: Page, dx: number, dy: number) => {
-  await page.mouse.move(1200, 700);
+/** Shift + drag on the empty background, from (x, y): the canvas pans. */
+const pan = async (page: Page, dx: number, dy: number, x = 1200, y = 700) => {
+  await page.keyboard.down("Shift");
+  await page.mouse.move(x, y);
   await page.mouse.down();
-  await page.mouse.move(1200 + dx, 700 + dy, { steps: 8 });
+  await page.mouse.move(x + dx, y + dy, { steps: 8 });
   await page.mouse.up();
+  await page.keyboard.up("Shift");
 };
 
 for (const direction of ["n", "ne", "e", "se", "s", "sw", "w", "nw"]) {
@@ -45,19 +48,28 @@ for (const direction of ["n", "ne", "e", "se", "s", "sw", "w", "nw"]) {
   });
 }
 
-test("canvas follows pan, floating stays anchored, and switching modes preserves position", async ({
+test("a normal window follows the pan, a floating one stays anchored, and switching modes preserves position", async ({
   page,
 }) => {
   await openShell(page, "?lang=en");
   await page.keyboard.press("Meta+n");
   const canvas = surface(page);
-  const before = await canvas.boundingBox();
-  await canvas.getByRole("button", { name: "Floating mode" }).click();
+  // A new window is in normal mode.
   await expect(canvas).toHaveAttribute("data-floating", "false");
-  expect(await canvas.boundingBox()).toEqual(before);
+  const before = await canvas.boundingBox();
   await page.keyboard.press("Meta+n");
   const floating = surface(page, 2);
+  const unfloated = await floating.boundingBox();
+  await floating.getByRole("button", { name: "Floating mode" }).click();
+  await expect(floating).toHaveAttribute("data-floating", "true");
   const fixed = await floating.boundingBox();
+  expect(fixed).toEqual(unfloated);
+  // A plain drag on the background does not pan.
+  await page.mouse.move(1200, 700);
+  await page.mouse.down();
+  await page.mouse.move(1080, 760, { steps: 8 });
+  await page.mouse.up();
+  expect(await canvas.boundingBox()).toEqual(before);
   await pan(page, -120, 60);
   if (!before) throw new Error("no canvas window");
   expect(await canvas.boundingBox()).toEqual({ ...before, x: before.x - 120, y: before.y + 60 });
@@ -81,11 +93,12 @@ test("canvas movement survives redraws, cancellation and per-desktop navigation"
   await openShell(page, "?lang=en");
   await page.keyboard.press("Meta+n");
   const win = surface(page);
-  await win.getByRole("button", { name: "Floating mode" }).click();
   const before = await win.boundingBox();
+  await page.keyboard.down("Shift");
   await page.mouse.move(1200, 700);
   await page.mouse.down();
   await page.mouse.move(1100, 650, { steps: 5 });
+  await page.keyboard.up("Shift");
   const preview = await win.boundingBox();
   await page.evaluate(() => window.__shell.desk.store.set({ tasks: [] }));
   expect(await win.boundingBox()).toEqual(preview);
@@ -105,7 +118,6 @@ test("canvas drag stores world coordinates and restores the panned session", asy
   await openShell(page, "?lang=en&persist=1");
   await page.keyboard.press("Meta+n");
   const win = surface(page);
-  await win.getByRole("button", { name: "Floating mode" }).click();
   await pan(page, -100, -50);
   const title = await win.locator(".surface-name").boundingBox();
   if (!title) throw new Error("no title");
@@ -131,7 +143,6 @@ test("wheel over a pane does not pan, background wheel does", async ({ page }) =
   await openShell(page, "?lang=en");
   await page.keyboard.press("Meta+n");
   const win = surface(page);
-  await win.getByRole("button", { name: "Floating mode" }).click();
   await win.locator('[data-view="notes"]').click();
   const before = await win.boundingBox();
   await win.locator("textarea").hover();
@@ -144,15 +155,35 @@ test("wheel over a pane does not pan, background wheel does", async ({ page }) =
     .toBe(-120);
 });
 
-test("maximize and restore use the visible area of a panned canvas", async ({ page }) => {
+test("maximize and restore use the whole visible area of a panned canvas", async ({ page }) => {
   await openShell(page, "?lang=en");
   await page.keyboard.press("Meta+n");
   const canvas = surface(page);
-  await canvas.getByRole("button", { name: "Floating mode" }).click();
   await pan(page, -100, -50);
   const before = await canvas.boundingBox();
   await canvas.locator(".surface-name").dblclick();
-  expect(await canvas.boundingBox()).toEqual({ x: 104, y: 190, width: 1232, height: 622 });
+  expect(await canvas.boundingBox()).toEqual({ x: 0, y: 0, width: 1440, height: 900 });
   await canvas.locator(".surface-name").dblclick();
   expect(await canvas.boundingBox()).toEqual(before);
+});
+
+test("Shift + drag on a title bar pans the canvas instead of moving the window", async ({
+  page,
+}) => {
+  await openShell(page, "?lang=en");
+  await page.keyboard.press("Meta+n");
+  const win = surface(page);
+  const before = await win.boundingBox();
+  const title = await win.locator(".surface-name").boundingBox();
+  if (!before || !title) throw new Error("no window");
+  await pan(page, 80, 40, title.x + 5, title.y + 5);
+  expect(await win.boundingBox()).toEqual({ ...before, x: before.x + 80, y: before.y + 40 });
+  expect(await page.evaluate(() => window.__shell.desk.store.get().pan[1])).toEqual({
+    x: 80,
+    y: 40,
+  });
+  // The window itself did not move on the canvas.
+  expect(
+    await page.evaluate(() => window.__shell.desk.store.get().session[1]?.surfaces[0]?.x),
+  ).toBe(480);
 });

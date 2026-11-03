@@ -4,8 +4,8 @@
  */
 import type { PaneSplit, SurfacePlacement } from "../modes/types";
 import { appSize, isFloating, screenRect, storedRect } from "../surface/coordinates";
-import { clampRect, FREE, freeOnScreen } from "../surface/geometry";
-import { halves } from "../surface/snap";
+import { clampRect, REF, screenArea } from "../surface/geometry";
+import { type Fill, fillRect } from "../surface/snap";
 import {
   close,
   findLeaf,
@@ -20,9 +20,9 @@ import { resolveView } from "../surface/views";
 import {
   type Ctx,
   closeSurface,
-  defaultPlacement,
   edit,
   ensurePlaced,
+  inView,
   layoutOf,
   openSurface,
   windowsOf,
@@ -75,32 +75,44 @@ export function toggleFloating(ctx: Ctx, id: string, size = appSize()): void {
       ...storedRect(rect, floating, pan, size.vw, size.vh),
       floating,
       restore: undefined,
+      fill: undefined,
     };
   });
 }
 
-function freeArea(ctx: Ctx, p: SurfacePlacement) {
-  if (isFloating(p)) return FREE;
+/**
+ * The whole app, or a half of it, in a window's own coordinates. A floating window keeps filling it
+ * after the app is resized; a normal window takes the part of the canvas in sight and stays there on
+ * the canvas.
+ */
+function filled(ctx: Ctx, p: SurfacePlacement, fill: Fill): Partial<SurfacePlacement> {
+  if (isFloating(p)) return { ...fillRect(fill, screenArea(REF.width, REF.height)), fill };
   const { vw, vh } = appSize();
-  return storedRect(freeOnScreen(vw, vh), false, panOf(ctx.store.get()), vw, vh);
+  const pan = panOf(ctx.store.get());
+  return { ...storedRect(fillRect(fill, screenArea(vw, vh)), false, pan, vw, vh), fill };
 }
 
-/** Fill the free area, keeping the place to come back to; a second call comes back. */
+const rectOf = (p: SurfacePlacement) => ({ x: p.x, y: p.y, w: p.w, h: p.h });
+
+/** Fill the whole app, keeping the place to come back to; a second call comes back. */
 export function toggleMaximize(ctx: Ctx, id: string): void {
   update(ctx, id, (p) => {
-    const { restore, ...rest } = p;
-    if (restore) return { ...rest, ...restore };
-    return { ...rest, restore: { x: p.x, y: p.y, w: p.w, h: p.h }, ...freeArea(ctx, p) };
+    const { restore, fill, ...rest } = p;
+    // Filled (one saved before fills has a restore but no fill): come back.
+    if (restore && (fill === "full" || fill === undefined)) return { ...rest, ...restore };
+    return { ...rest, restore: restore ?? rectOf(p), ...filled(ctx, p, "full") };
   });
 }
 
-/** Snap a window to a half of the free area, or fill it; a snapped window has nothing to restore. */
-export function snapTo(ctx: Ctx, id: string, where: "left" | "right" | "full"): void {
+/**
+ * Snap a window to a half of the app or fill it. Filling keeps the place to come back to, as the
+ * title bar's double-click does; a half has nothing to restore.
+ */
+export function snapTo(ctx: Ctx, id: string, where: Fill): void {
   update(ctx, id, (p) => {
-    const free = freeArea(ctx, p);
-    const rect = where === "full" ? free : halves(free)[where];
-    const { restore: _restore, ...rest } = p;
-    return { ...rest, ...rect };
+    const { restore, fill: _fill, ...rest } = p;
+    const back = where === "full" ? (restore ?? rectOf(p)) : undefined;
+    return { ...rest, ...filled(ctx, p, where), ...(back ? { restore: back } : {}) };
   });
 }
 
@@ -109,7 +121,7 @@ export function focusedWindow(ctx: Ctx): string | undefined {
   return focusedPlacement(ctx)?.id;
 }
 
-/** A new surface with one launcher pane, cascading from the middle of the desk. */
+/** A new surface with one launcher pane, cascading from the middle of what is in sight. */
 export function newWindow(ctx: Ctx): string {
   const s = ctx.store.get();
   const taken = new Set([
@@ -129,7 +141,7 @@ export function newWindow(ctx: Ctx): string {
     pinned: false,
     panes: { kind: "view", id: "p1", view: LAUNCHER },
   };
-  openSurface(ctx, id, placement);
+  openSurface(ctx, id, inView(s, placement));
   focusPane(ctx, id, "p1");
   return id;
 }
@@ -145,7 +157,24 @@ export function splitPane(ctx: Ctx, dir: PaneSplit["dir"]): void {
   focusPane(ctx, p.id, added);
 }
 
-/** Close a pane (the focused one unless named); the last pane closes its surface. */
+/**
+ * Close a window: it leaves the layout, and the plugins it shows unmount for the session (ADR 0040),
+ * so none of them comes back as a window of its own or leaves an empty one behind.
+ */
+export function closeWindow(ctx: Ctx, id: string): void {
+  const s = ctx.store.get();
+  const p = windowsOf(s).find((w) => w.id === id);
+  if (!p) return;
+  const plugins = leaves(panesOf(p))
+    .map((leaf) => resolveView(s, p, leaf.view))
+    .filter((view) => view.startsWith("plugin:"))
+    .map((view) => view.slice("plugin:".length));
+  closeSurface(ctx, id);
+  if (s.focused === id) ctx.store.set({ focused: null, pane: null });
+  for (const plugin of new Set(plugins)) ctx.runtime.plugins?.unmount(plugin);
+}
+
+/** Close a pane (the focused one unless named); the last pane closes its window. */
 export function closePane(ctx: Ctx, surface?: string, pane?: string): void {
   const p = surface
     ? windowsOf(ctx.store.get()).find((q) => q.id === surface)
@@ -155,8 +184,7 @@ export function closePane(ctx: Ctx, surface?: string, pane?: string): void {
   const target = pane ?? ctx.store.get().pane ?? leaves(tree)[0]?.id ?? "p1";
   const next = close(tree, target);
   if (!next) {
-    closeSurface(ctx, p.id);
-    ctx.store.set({ focused: null, pane: null });
+    closeWindow(ctx, p.id);
     return;
   }
   update(ctx, p.id, (q) => ({ ...q, panes: next }));
@@ -199,6 +227,6 @@ export function openView(ctx: Ctx, view: string): void {
     showInPane(ctx, newWindow(ctx), "p1", view);
     return;
   }
-  openSurface(ctx, view, defaultPlacement(view));
+  openSurface(ctx, view);
   focusPane(ctx, view);
 }

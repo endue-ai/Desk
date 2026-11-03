@@ -14,7 +14,11 @@ cheap to change.
 3. **`pnpm dev`** (root or package) starts the shell on the browser stubs (`browserCore` for the core,
    kept in localStorage; `browserBridge` for the shell); `just dev` starts the Tauri app, which mounts
    the shell on the Rust core (#115). Since ADR 0040 the shell's windows hold the plugins' centre and
-   floating surfaces; unplaced ones are tiled in the free area until moved.
+   floating surfaces; unplaced ones take a slot of their own in the free area until moved, so no
+   window moves or resizes for another. Windows can move, grow and fill over the whole app; every
+   bar, the runtime's edge bars included, floats above them and clear of the others. Windows are
+   normal by default, on the desktop's canvas, which Shift + drag pans; floating ones stay put above
+   them (ADR 0080).
 4. **Snapshots are render trees** (ADR 0011), not pixels. Boxes are recorded only for elements that CSS
    sizes, never for text-sized ones. The Eris canvas is captured as `data-mesh` (front, back and dot
    counts plus a hash of the rounded frame) and `data-rings` (displacement per ring, % of R).
