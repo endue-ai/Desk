@@ -336,3 +336,26 @@ fn typed_view_results_say_where_each_view_came_from() {
     let unnamed = json!({ "view": view, "source": "plugin" });
     assert!(!validator("ViewGetResult").is_valid(&unnamed), "{unnamed}");
 }
+
+#[test]
+fn a_value_that_fell_back_says_where_it_is_and_a_migrated_one_says_its_old_name() {
+    let vector = specs().join("bridge/v0/vectors/valid/settings-invalid-event.json");
+    let event: BridgeEvent = serde_json::from_value(read_json(&vector)["instance"].take()).unwrap();
+    let BridgeEvent::SettingsInvalid(invalid) = event else {
+        panic!("settings.invalid is its own event");
+    };
+    assert_eq!(
+        (invalid.data.file.as_deref(), invalid.data.line),
+        (Some("~/.desk/init.yaml"), Some(7))
+    );
+
+    let vector = specs().join("bridge/v0/vectors/valid/settings-list-result-migrated.json");
+    let listed: SettingsListResult =
+        serde_json::from_value(read_json(&vector)["instance"].take()).unwrap();
+    let migrated: Vec<Option<&str>> = listed
+        .settings
+        .iter()
+        .map(|setting| setting.migrated_from.as_deref())
+        .collect();
+    assert_eq!(migrated, [None, Some("desk.theme.mode")]);
+}
