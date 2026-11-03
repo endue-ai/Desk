@@ -1,0 +1,98 @@
+export type SettingsLanguage = "ko" | "en";
+const copy = {
+  title: ["설정", "Settings"],
+  search: ["설정 검색", "Search settings"],
+  general: ["일반", "General"],
+  appearance: ["화면 모드", "Appearance"],
+  keyboard: ["키보드", "Keyboard"],
+  notifications: ["알림", "Notifications"],
+  accessibility: ["손쉬운 사용", "Accessibility"],
+  generalDescription: ["Desk를 나에게 맞게 설정하세요.", "Make Desk your own."],
+  appearanceDescription: [
+    "Desk에서 사용할 화면 모드를 선택하세요.",
+    "Choose how Desk looks on this device.",
+  ],
+  keyboardDescription: [
+    "자주 사용하는 명령의 단축키를 확인하고 변경하세요.",
+    "View and customize shortcuts for the commands you use.",
+  ],
+  notificationsDescription: [
+    "작업에 집중할 수 있도록 알림을 관리하세요.",
+    "Choose when notifications can interrupt your work.",
+  ],
+  accessibilityDescription: [
+    "더 편안하게 보고 사용할 수 있도록 조절하세요.",
+    "Adjust the display for a more comfortable experience.",
+  ],
+  close: ["설정 닫기", "Close settings"],
+  device: ["이 기기의 설정", "Settings for this device"],
+  local: [
+    "변경사항은 자동으로 저장되며 다음에 Desk를 열 때도 유지됩니다.",
+    "Changes are saved automatically and kept the next time you open Desk.",
+  ],
+  shortcuts: ["키보드 단축키", "Keyboard Shortcuts"],
+  shortcutHint: [
+    "키 조합을 기록하여 명령에 지정합니다.",
+    "Record a key combination to assign it to a command.",
+  ],
+  light: ["라이트 모드", "Light"],
+  dark: ["다크 모드", "Dark"],
+  system: ["자동", "Auto"],
+  systemHint: [
+    "자동을 선택하면 시스템의 화면 모드를 따릅니다.",
+    "Auto follows your system appearance.",
+  ],
+  contrast: ["대비", "Contrast"],
+  normal: ["표준", "Standard"],
+  high: ["대비 증가", "Increase contrast"],
+  followSystem: ["시스템 설정 사용", "Follow system"],
+  contrastHint: [
+    "텍스트와 배경의 구분을 더 선명하게 표시합니다.",
+    "Make text and boundaries easier to distinguish.",
+  ],
+  motion: ["동작", "Motion"],
+  reduce: ["동작 줄이기", "Reduce motion"],
+  full: ["전체 동작", "Full motion"],
+  motionHint: [
+    "화면 전환과 애니메이션 효과를 줄입니다.",
+    "Reduce transitions and animation effects.",
+  ],
+  dnd: ["방해금지 모드", "Do Not Disturb"],
+  dndHint: [
+    "일반 알림을 잠시 숨깁니다. 오류 알림은 계속 표시됩니다.",
+    "Pause regular notifications. Error notifications can still appear.",
+  ],
+  historyHint: [
+    "숨긴 알림도 알림 기록에 남습니다.",
+    "Paused notifications remain in your notification history.",
+  ],
+  findCommand: ["명령 또는 단축키 검색", "Search commands or shortcuts"],
+  change: ["바꾸기", "Change"],
+  reset: ["기본값", "Reset"],
+  resetAll: ["모두 기본값으로", "Restore Defaults"],
+  remove: ["지우기", "Clear"],
+  none: ["없음", "None"],
+  record: ["키를 누르세요 · Esc 취소", "Press a shortcut · Esc to cancel"],
+  invalid: [
+    "⌘, Control, Option과 함께 누르거나 기능 키를 사용하세요.",
+    "Use Command, Control or Alt with a key, or a function key.",
+  ],
+  conflict: ["이미 사용 중인 단축키입니다:", "This shortcut is already assigned to:"],
+  replace: ["단축키 옮기기", "Replace Shortcut"],
+  cancel: ["취소", "Cancel"],
+  moved: ["단축키를 옮겼습니다.", "Shortcut reassigned."],
+  noResults: ["검색 결과가 없습니다", "No results found"],
+  trySearch: ["다른 검색어를 입력해 보세요.", "Try a different search."],
+  saved: ["모든 변경사항 저장됨", "All changes saved"],
+  saving: ["저장 중…", "Saving…"],
+  loading: ["설정 불러오는 중…", "Loading settings…"],
+  error: ["설정을 저장하지 못했습니다", "Settings could not be saved"],
+  retry: ["다시 시도", "Retry"],
+  display: ["디스플레이", "Display"],
+  behavior: ["알림 동작", "Notification behavior"],
+  personalization: ["개인화", "Personalization"],
+  openHint: ["설정 열기", "Open settings"],
+} as const;
+export type SettingsCopy = keyof typeof copy;
+export const settingsText = (lang: SettingsLanguage, key: SettingsCopy): string =>
+  copy[key][lang === "ko" ? 0 : 1];

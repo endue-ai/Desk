@@ -24,10 +24,10 @@ const told = (value: unknown): ScriptedAnswer => ({
   structured: value as Record<string, unknown>,
 });
 
-/** desk.keys, the palette and the terminal on the stub core (macOS), the keys kind on a scripted brain. */
+/** Core keys, the palette and the terminal on the stub core (macOS), the keys kind on a scripted brain. */
 async function setup(answers: unknown[], choices: Choice[] = [{ choice: "apply" }]) {
   const core = browserCore({
-    manifests: ["keys", "palette", "terminal"].map(manifest),
+    manifests: ["palette", "terminal"].map(manifest),
     brain: { answer: () => told(answers.shift() ?? {}) },
   });
   const bridge = core.client;
@@ -183,6 +183,22 @@ describe("desk.propose for key bindings", () => {
     ]);
     expect(content?.title).toBe("3 key bindings");
     expect(m.session()).toBeUndefined();
+  });
+
+  it("a key the core binds is taken with no keys plugin installed (ADR 0055)", async () => {
+    const m = await setup(
+      [{ bindings: [{ key: "Mod+K", command: "endue.terminal.focus" }] }],
+      [{ choice: "discard" }],
+    );
+    expect(await m.proposals.propose("keys", BIND)).toEqual({ status: "discarded" });
+    expect(rowsOf(m.shown[0])).toMatchObject([
+      {
+        key: "⌘K",
+        command: "endue.terminal.focus",
+        now: { command: "desk.palette.open", owner: "desk" },
+        marks: ["taken"],
+      },
+    ]);
   });
 
   it("a command the desk does not have is asked again with the problem", async () => {

@@ -1,6 +1,6 @@
 /**
  * desk.describe.open, the runtime's describe command (RT-06, ADR 0075): "Describe…" in the palette
- * and Mod+Shift+/ in desk.keys. Without arguments it offers a picker over commands, settings, plugins
+ * and Mod+Shift+/ in the core's keys. Without arguments it offers a picker over commands, settings, plugins
  * and grants (desk.palette.pick) and waits for one chord at the same time: a chord pressed first is
  * described and the picker goes, a pick is described otherwise; Escape gives up on both. With
  * `{ kind, name }` it describes that thing and answers the description; `show: false` only answers,
@@ -15,7 +15,7 @@ import { describeView } from "./view";
 import { type DescribeKind, type Description, type Facts, KINDS } from "./words";
 
 export interface DescribeDeps {
-  keys: Pick<KeysPolicy, "personal">;
+  keys: Pick<KeysPolicy, "contributed" | "personal">;
   /** The profile in force. */
   profile(): string | undefined;
   notify?(input: NoticeInput): void;
@@ -115,7 +115,10 @@ export function installDescribe(ctx: DeskContext, deps: DescribeDeps): DescribeP
     return {
       platform: shortcuts.platform,
       commands: listed,
-      keys: [...hub.policy.keys, ...deps.keys.personal().map((b) => ({ ...b, owner: "person" }))],
+      keys: [
+        ...deps.keys.contributed(),
+        ...deps.keys.personal().map((b) => ({ ...b, owner: "person" })),
+      ],
       plugins: [...hub.plugins],
       declared: hub.policy.settings,
       layers: {

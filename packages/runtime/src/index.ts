@@ -30,6 +30,9 @@ export {
   type RuntimePlugins,
   type RuntimeProfiles,
 } from "./runtime";
+export type { SettingsLanguage } from "./settings-ui/copy";
+export type { SettingsSection } from "./settings-ui/panels";
+export type { SettingsWindow } from "./settings-ui/window";
 export { type Desk, type DeskOptions, mountDesk } from "./shell/Desk";
 export { SurfaceHost, type SurfaceSpec } from "./surfaces";
 export { applyTheme } from "./theme";

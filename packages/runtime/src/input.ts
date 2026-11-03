@@ -13,6 +13,21 @@ export interface KeyLike {
 
 export type Platform = "mac" | "other";
 
+/** Route window keys while leaving composition and plain text editing to their controls. */
+export function listenForShortcuts(win: Window, shortcuts: ShortcutRouter): () => void {
+  const onKey = (event: KeyboardEvent) => {
+    if (event.defaultPrevented || event.isComposing || event.keyCode === 229) return;
+    const editable = (event.target as Element | null)?.closest?.(
+      "input, textarea, select, [contenteditable]:not([contenteditable=false])",
+    );
+    if (editable && !(event.metaKey || event.ctrlKey || event.altKey) && event.key !== "Escape")
+      return;
+    if (shortcuts.handle(event)) event.preventDefault();
+  };
+  win.addEventListener("keydown", onKey);
+  return () => win.removeEventListener("keydown", onKey);
+}
+
 /** Guess the platform from the browser; tests pass it explicitly. */
 export function detectPlatform(): Platform {
   const nav = typeof navigator === "undefined" ? undefined : navigator;
@@ -45,6 +60,8 @@ const UNSHIFTED: Record<string, string> = {
 };
 
 function keyName(event: KeyLike): string {
+  // The persisted combo grammar has no whitespace; use the named key for Space chords.
+  if (event.key === " ") return "Space";
   // With Shift held a punctuation key is named by the key, so Mod+Shift+/ matches ⌘⇧/ (which
   // arrives as "?"), in the main window and from a plugin frame alike.
   const unshifted = event.shiftKey ? UNSHIFTED[event.key] : undefined;

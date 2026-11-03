@@ -3,6 +3,7 @@ import { join } from "node:path";
 import Ajv2020 from "ajv/dist/2020.js";
 import { describe, expect, it } from "vitest";
 import type { PluginManifest } from "../../../packages/bridge/src/index";
+import { DEFAULT_KEYS } from "../../../packages/runtime/src/core/keys";
 
 const root = join(import.meta.dirname, "../../..");
 const folder = join(root, "plugins/explorer");
@@ -29,7 +30,6 @@ const HOME = "${home}/**";
 const ID = "endue.explorer";
 
 const manifest = () => readJson(join(folder, "plugin.json")) as PluginManifest;
-const keys = () => readJson(join(root, "plugins/keys/plugin.json")) as PluginManifest;
 
 /** `*` in a cmd:invoke pattern matches any run of characters, dots included. */
 const covers = (pattern: string, id: string) =>
@@ -92,7 +92,7 @@ describe("plugin.json", () => {
   });
 
   it("takes no key the desk's default keymap binds", () => {
-    const taken = new Set((keys().contributes?.keys ?? []).map((k) => k.key));
+    const taken = new Set(DEFAULT_KEYS.map((k) => k.key));
     for (const key of manifest().contributes?.keys ?? []) expect(taken.has(key.key)).toBe(false);
   });
 

@@ -1,5 +1,5 @@
 /**
- * Settings in layers (ADR 0017): the defaults plugins declare, init.yaml, the active profile, then
+ * Settings in layers (ADR 0017): the core and plugin defaults, init.yaml, the active profile, then
  * changes made while Desk runs. A value of the wrong kind is skipped, so the layer below shows through.
  */
 import type { SettingContribution } from "@endue-ai/bridge";
@@ -13,6 +13,7 @@ export class Settings {
   #defaults: Record<string, SettingContribution> = {};
   readonly #layers: Record<Layer, Values> = { init: {}, profile: {}, session: {} };
   readonly #listeners = new Set<(keys: string[]) => void>();
+  readonly #edits = new Set<() => void>();
   /** Values skipped because they do not fit their setting, for people. */
   readonly problems: string[] = [];
 
@@ -27,13 +28,15 @@ export class Settings {
     const before = this.all();
     this.#layers[layer] = { ...values };
     this.#emit(before);
+    if (layer === "session") this.#edited();
   }
 
-  /** A change made while Desk runs: it lasts until Desk quits unless a profile saves it. */
+  /** A change made while Desk runs: core preferences persist it; other settings remain in this session. */
   set(key: string, value: unknown): void {
     const before = this.all();
     this.#layers.session = { ...this.#layers.session, [key]: value };
     this.#emit(before);
+    this.#edited();
   }
 
   /** Forget a session change, so init.yaml or the profile shows through again. */
@@ -42,6 +45,7 @@ export class Settings {
     const { [key]: _gone, ...rest } = this.#layers.session;
     this.#layers.session = rest;
     this.#emit(before);
+    this.#edited();
   }
 
   layer(layer: Layer): Values {
@@ -70,6 +74,16 @@ export class Settings {
   onChange(listener: (keys: string[]) => void): () => void {
     this.#listeners.add(listener);
     return () => this.#listeners.delete(listener);
+  }
+
+  /** Personal edits, including a reset to an equal value, must still be persisted. */
+  onEdit(listener: () => void): () => void {
+    this.#edits.add(listener);
+    return () => this.#edits.delete(listener);
+  }
+
+  #edited(): void {
+    for (const listener of this.#edits) listener();
   }
 
   #emit(before: Values): void {
