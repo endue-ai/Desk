@@ -84,6 +84,32 @@ describe("the reader's view", () => {
       expect(press(key, { metaKey: true }).defaultPrevented).toBe(false);
   });
 
+  it("enables zoom out when switching from minimum zoom to another document", async () => {
+    const { host, settle } = await open();
+    await host.command("desk.files.visit", COMIC);
+    await settle();
+    const zoomOut = byId<HTMLButtonElement>("zoom-out");
+    for (let i = 0; i < 10; i++) zoomOut.click();
+    await settle();
+    expect(byId("zoom").textContent).toBe("25%");
+    expect(zoomOut.disabled).toBe(true);
+
+    await host.command("desk.files.visit", BOOK);
+    await settle();
+    expect(byId("zoom").textContent).toBe("100%");
+    expect(zoomOut.disabled).toBe(false);
+  });
+
+  it("disables zoom in at maximum zoom", async () => {
+    const { host, settle } = await open();
+    await host.command("desk.files.visit", COMIC);
+    await settle();
+    const zoomIn = byId<HTMLButtonElement>("zoom-in");
+    for (let i = 0; i < 20; i++) zoomIn.click();
+    expect(byId("zoom").textContent).toBe("500%");
+    expect(zoomIn.disabled).toBe(true);
+  });
+
   it("search with Mod+F and Mod+G moves to the next match, across chapters", async () => {
     const { host, settle } = await open();
     await host.command("desk.files.visit", BOOK);
