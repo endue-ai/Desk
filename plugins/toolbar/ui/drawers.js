@@ -38,16 +38,55 @@ export function pluginsDrawer(plugins) {
 
 /** Permissions in plain words, most sensitive first, with how to show their scope. */
 const KINDS = [
-  ["audio:capture", "Microphone", (p) => (p.wakeWord ? ["wake word"] : [])],
+  ["perm:manage", "Manage permissions", () => []],
+  ["plugin:manage", "Manage plugins", () => []],
+  ["update:manage", "Manage desk updates", () => []],
+  ["connector:manage", "Manage connections", () => []],
+  ["cmd:advise", "Override commands", () => []],
+  [
+    "shell:open",
+    "Open links and show files",
+    (p) => [
+      ...(p.schemes ?? []).map((scheme) => `scheme: ${scheme}`),
+      ...(p.paths ?? []).map((path) => `path: ${path}`),
+    ],
+  ],
+  [
+    "proc:spawn",
+    "Run programs",
+    (p) => [...(p.commands ?? []), ...(p.pty ? ["in a terminal"] : [])],
+  ],
   ["fs:read", "Read files", (p) => p.paths],
   ["fs:write", "Write files", (p) => p.paths],
-  ["proc:spawn", "Run programs", (p) => [...p.commands, ...(p.pty ? ["in a terminal"] : [])]],
+  ["search:system", "Search system files and apps", () => []],
   ["net:fetch", "Network", (p) => p.hosts],
+  ["audio:capture", "Microphone", (p) => (p.wakeWord ? ["wake word"] : [])],
+  [
+    "data:read",
+    "Read indexed data",
+    (p) => [`kinds: ${p.kinds?.join(", ") ?? "all"}`, `sources: ${p.sources?.join(", ") ?? "all"}`],
+  ],
+  ["settings:read", "Read settings", (p) => p.keys],
+  ["log:read", "Read logs", () => []],
+  ["events:subscribe", "Listen for events", (p) => p.names],
+  ["cmd:invoke", "Run commands", (p) => p.ids],
+  ["view:manage", "Manage views", () => []],
+  ["theme:manage", "Manage themes", () => []],
+  ["search:read", "Search published items", () => []],
   ["brain:converse", "Talk to the brain", () => []],
+  ["brain:ask", "Ask the brain", () => []],
   ["ui:notify", "Notifications", () => []],
   ["ui:surface", "Open surfaces", () => []],
-  ["plugin:manage", "Manage plugins", () => []],
 ];
+
+/** Show fields of a permission introduced after this toolbar was released. */
+const unknownScope = (p) =>
+  Object.entries(p)
+    .filter(([key]) => key !== "permission")
+    .map(
+      ([key, value]) =>
+        `${key}: ${Array.isArray(value) ? value.join(", ") : JSON.stringify(value)}`,
+    );
 
 /**
  * What the plugins that are on may ask for, grouped by permission. These come from the manifests:
@@ -58,7 +97,18 @@ const KINDS = [
 export function accessDrawer(plugins) {
   const on = plugins.filter(isOn);
   const rows = [];
-  for (const [permission, label, scopeOf] of KINDS) {
+  const known = new Set(KINDS.map(([permission]) => permission));
+  const unknown = new Set(
+    on.flatMap((plugin) =>
+      (plugin.manifest?.permissions ?? [])
+        .map((p) => p.permission)
+        .filter((permission) => !known.has(permission)),
+    ),
+  );
+  for (const [permission, label, scopeOf] of [
+    ...KINDS,
+    ...[...unknown].map((id) => [id, id, unknownScope]),
+  ]) {
     const askers = on.flatMap((plugin) =>
       (plugin.manifest?.permissions ?? [])
         .filter((p) => p.permission === permission)

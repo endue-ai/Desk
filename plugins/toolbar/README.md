@@ -8,7 +8,7 @@ manifest declares.
 | Drawer | Summary | Rows |
 | --- | --- | --- |
 | Plugins | `5 on · 1 off · 1 failed`, with a warning dot while any failed | failed plugins with their reasons, then the ones that are off |
-| Access | how many permissions the plugins that are on may ask for | each permission in plain words and the plugins that declare it, with paths, programs and hosts |
+| Access | how many permissions the plugins that are on may ask for | each permission and the plugins that declare it, with its scope; unknown permissions use their IDs |
 
 Access reads the manifests, so it shows what plugins may ask for, not what was granted: the bridge
 lists only the caller's own grants.
