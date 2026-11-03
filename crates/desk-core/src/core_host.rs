@@ -363,6 +363,8 @@ fn wit_error(e: BridgeError) -> Error {
         Bridge::Timeout => ErrorCode::Timeout,
         Bridge::Cancelled => ErrorCode::Cancelled,
         Bridge::Unsupported => ErrorCode::Unsupported,
+        // The WIT world has no invalid-value yet: a refused value is a bad parameter there.
+        Bridge::InvalidValue => ErrorCode::InvalidParams,
         Bridge::Internal => ErrorCode::Internal,
     };
     Error {

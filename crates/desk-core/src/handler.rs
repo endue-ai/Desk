@@ -3,6 +3,7 @@
 //! The integration layer (`data.*`, `connector.*`, `view.*`, `catalog.get`) holds the item index
 //! as `Arc<dyn ItemIndex>`, the OS calendar as a `CalendarSource` and one connector host.
 
+use std::collections::BTreeSet;
 use std::io;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::AtomicU64;
@@ -63,6 +64,8 @@ pub struct Core {
     pub(crate) plugins: Mutex<PluginRegistry>,
     pub(crate) store: Mutex<Store>,
     pub(crate) settings: Mutex<Store>,
+    /// The settings problems logged so far (ADR 0080), so each is logged once.
+    pub(crate) settings_reported: Mutex<BTreeSet<String>>,
     pub(crate) log: Mutex<Log>,
     pub(crate) conversation: Option<Arc<Conversation>>,
     pub(crate) init: Mutex<InitFile>,
@@ -104,6 +107,7 @@ impl Core {
             plugins: Mutex::new(PluginRegistry::new(None)),
             store: Mutex::new(Store::new(None)),
             settings: Mutex::new(Store::new(None)),
+            settings_reported: Mutex::default(),
             log: Mutex::new(Log::default()),
             conversation: None,
             init: Mutex::new(InitFile::memory()),

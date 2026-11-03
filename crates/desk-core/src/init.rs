@@ -4,12 +4,14 @@
 //! otherwise replaces the file only when sync pulls a newer copy from endue.
 
 use std::collections::BTreeMap;
+use std::fmt;
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 
 use desk_bridge::{InitDocument, Permission};
+use serde::de::{self, DeserializeSeed, Deserializer, IgnoredAny, MapAccess, SeqAccess, Visitor};
 use serde_json::{Value, json};
 
 use crate::manifest::schema_registry;
@@ -257,6 +259,79 @@ fn write_atomic(path: &Path, text: &str) -> io::Result<()> {
     temporary.push(".tmp");
     fs::write(&temporary, text)?;
     fs::rename(&temporary, path)
+}
+
+/// A step into a YAML document: a mapping key or a sequence index.
+pub(crate) enum Step<'a> {
+    Key(&'a str),
+    Index(usize),
+}
+
+const FOUND: &str = "\u{1}found";
+
+/// The line, from 1, of the last key `path` leads to in `text` (YAML or JSON). yaml_serde puts its
+/// parser's mark on an error a visitor raises, so a seed walks the path and raises one at the key.
+pub(crate) fn line_of(text: &str, path: &[Step]) -> Option<u64> {
+    let document = yaml_serde::Deserializer::from_str(text);
+    let error = Walk::Node(path).deserialize(document).err()?;
+    let at = error
+        .location()
+        .filter(|_| error.to_string().contains(FOUND))?;
+    u64::try_from(at.line()).ok()
+}
+
+/// A node and the rest of the path, or a mapping key: the wanted one (is it the last step?) or none.
+enum Walk<'p, 'a> {
+    Node(&'p [Step<'a>]),
+    Key(Option<(&'a str, bool)>),
+}
+
+impl<'de> DeserializeSeed<'de> for Walk<'_, '_> {
+    type Value = bool;
+    fn deserialize<D: Deserializer<'de>>(self, deserializer: D) -> Result<bool, D::Error> {
+        match self {
+            Walk::Node([]) => deserializer
+                .deserialize_ignored_any(IgnoredAny)
+                .map(|_| false),
+            walk => deserializer.deserialize_any(walk),
+        }
+    }
+}
+
+impl<'de> Visitor<'de> for Walk<'_, '_> {
+    type Value = bool;
+    fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str("a mapping or a sequence")
+    }
+    fn visit_str<E: de::Error>(self, text: &str) -> Result<bool, E> {
+        match self {
+            Walk::Key(Some((wanted, true))) if wanted == text => Err(E::custom(FOUND)),
+            Walk::Key(Some((wanted, false))) => Ok(wanted == text),
+            _ => Ok(false),
+        }
+    }
+    fn visit_map<A: MapAccess<'de>>(self, mut map: A) -> Result<bool, A::Error> {
+        let (wanted, rest) = match self {
+            Walk::Node([Step::Key(key), rest @ ..]) => (Some((*key, rest.is_empty())), rest),
+            _ => (None, &[][..]),
+        };
+        while let Some(matched) = map.next_key_seed(Walk::Key(wanted))? {
+            map.next_value_seed(Walk::Node(if matched { rest } else { &[] }))?;
+        }
+        Ok(false)
+    }
+    fn visit_seq<A: SeqAccess<'de>>(self, mut seq: A) -> Result<bool, A::Error> {
+        let (wanted, rest) = match self {
+            Walk::Node([Step::Index(index), rest @ ..]) => (Some(*index), rest),
+            _ => (None, &[][..]),
+        };
+        let mut index = 0;
+        let next = |index| Walk::Node(if wanted == Some(index) { rest } else { &[] });
+        while seq.next_element_seed(next(index))?.is_some() {
+            index += 1;
+        }
+        Ok(false)
+    }
 }
 
 #[cfg(test)]

@@ -1,0 +1,16 @@
+# e2e fixture for the settings spec: init-no-first-run.yaml with two values that fail their settings
+# (ADR 0080). purple is not one of desk.theme.scheme's choices and "yes" is not a boolean: the desk
+# starts anyway, with each setting's default, and names both lines.
+version: 0
+
+profile: default
+
+plugins:
+  disabled: [endue.onboarding]
+
+settings:
+  desk.theme.scheme: purple
+  desk.notify.dnd: "yes"
+
+sync:
+  enabled: false

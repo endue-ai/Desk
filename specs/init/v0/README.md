@@ -29,6 +29,12 @@ is JSON in the app's data folder (ADR 0079).
 Unknown keys are refused, so a typo surfaces instead of being ignored. New keys arrive with a new
 `version`; free-form values belong under `settings`.
 
+A value under `settings` is checked against the setting its owner declares (`contributes.settings`:
+kind, choices, minimum, maximum, pattern), not against this schema, so a wrong value never keeps the
+file from loading: that one value falls back to its default, and Desk names its file and line
+(`settings.invalid`, ADR 0080). A name the setting lists in `renamed` is read as the setting until the
+file uses the new one. `vectors/valid/bad-values.json` is such a file.
+
 ## Profiles and key bindings
 
 | File | Schema | Written by | Holds |

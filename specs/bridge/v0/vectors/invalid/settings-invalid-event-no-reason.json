@@ -1,0 +1,14 @@
+{
+  "target": "BridgeEvent",
+  "description": "settings.invalid always says why",
+  "instance": {
+    "event": "settings.invalid",
+    "data": {
+      "owner": "desk.theme",
+      "key": "scheme",
+      "value": "purple",
+      "file": "~/.desk/init.yaml",
+      "line": 7
+    }
+  }
+}

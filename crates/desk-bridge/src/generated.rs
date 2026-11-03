@@ -253,7 +253,7 @@ pub enum SettingKind {
     Object,
 }
 
-/// A setting and its default. init.yaml and profiles set other values.
+/// A setting and its default. init.yaml, profiles and settings.set give other values; the core checks each against kind, choices, minimum, maximum and pattern, and a value that fails falls back to the layer below (ADR 0080).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct SettingContribution {
@@ -265,6 +265,18 @@ pub struct SettingContribution {
     /// The values a string setting may take.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub choices: Option<Vec<String>>,
+    /// The smallest value an integer or number setting may take.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub minimum: Option<f64>,
+    /// The largest value an integer or number setting may take.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub maximum: Option<f64>,
+    /// A regular expression (ECMA-262, as JSON Schema's pattern) a string setting's value must match. It matches anywhere in the value; anchor it with ^ and $ to match the whole.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pattern: Option<String>,
+    /// The setting's earlier full names (owner.key), newest first. A layer with no value under the setting's name gives the value it holds under the first of these instead, and settings.get and settings.list report it as migratedFrom.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub renamed: Option<Vec<SettingName>>,
 }
 
 /// A profile name, as init.yaml names the one to start in.
@@ -2501,6 +2513,8 @@ pub enum ErrorCode {
     Cancelled,
     #[serde(rename = "unsupported")]
     Unsupported,
+    #[serde(rename = "invalid_value")]
+    InvalidValue,
     #[serde(rename = "internal")]
     Internal,
 }
@@ -2527,6 +2541,7 @@ pub enum BridgeEvent {
     CmdAnswered(CmdAnsweredEvent),
     CmdUndone(CmdUndoneEvent),
     SettingsChanged(SettingsChangedEvent),
+    SettingsInvalid(SettingsInvalidEvent),
     LogEntry(LogEntryEvent),
     DataChanged(DataChangedEvent),
     ConnectorChanged(ConnectorChangedEvent),
@@ -4580,7 +4595,16 @@ pub struct Setting {
     pub key: SettingKey,
     /// Any JSON value.
     pub value: serde_json::Value,
+    #[serde(
+        rename = "migratedFrom",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub migrated_from: Option<MigratedFrom>,
 }
+
+/// The earlier full name (owner.key, from the setting's renamed list) the value in force was read under, because no layer held one under the setting's own name.
+pub type MigratedFrom = SettingName;
 
 /// Read one setting: the caller's own, or another caller's under settings:read.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -4609,9 +4633,15 @@ pub struct SettingsGetResult {
     /// Any JSON value.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub value: Option<serde_json::Value>,
+    #[serde(
+        rename = "migratedFrom",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub migrated_from: Option<MigratedFrom>,
 }
 
-/// Write one of the caller's own settings (64 KiB of JSON at most).
+/// Write one of the caller's own settings (64 KiB of JSON at most). A value that fails the setting's declaration (kind, choices, minimum, maximum, pattern) is refused with invalid_value.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct SettingsSetRequest {
@@ -4656,6 +4686,31 @@ pub struct SettingsListParams {
 #[serde(deny_unknown_fields)]
 pub struct SettingsListResult {
     pub settings: Vec<Setting>,
+}
+
+/// A value a layer holds for a setting that fails its declaration, so the layer below is in force instead (for init.yaml, the default). file and line say where the value is written: init.yaml, a profile file or a plugin.json; a value set through settings.set has neither.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct InvalidSetting {
+    pub owner: CallerId,
+    pub key: SettingKey,
+    /// The value that failed. Any JSON value.
+    pub value: serde_json::Value,
+    /// What it fails, for people: "purple" is not one of system, light, dark.
+    pub reason: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub file: Option<Path>,
+    /// The line of the setting's name in file, from 1.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub line: Option<u64>,
+}
+
+/// A setting's value fell back. Sent to the setting's owner and to desk (the runtime, which tells the person) when the core first meets the value, and to desk again for every one still in force each time desk calls init.get.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SettingsInvalidEvent {
+    pub event: SettingsInvalidEventEvent,
+    pub data: InvalidSetting,
 }
 
 /// A setting changed. Sent to its owner, and to callers subscribed to settings.changed whose settings:read grant covers it.
@@ -6401,6 +6456,14 @@ pub enum SettingsListRequestMethod {
     #[default]
     #[serde(rename = "settings.list")]
     SettingsList,
+}
+
+/// The `event` of [`SettingsInvalidEvent`]: always `"settings.invalid"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum SettingsInvalidEventEvent {
+    #[default]
+    #[serde(rename = "settings.invalid")]
+    SettingsInvalid,
 }
 
 /// The `event` of [`SettingsChangedEvent`]: always `"settings.changed"`.

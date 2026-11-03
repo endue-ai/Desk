@@ -1,0 +1,21 @@
+{
+  "target": "InitDocument",
+  "description": "setting values that fail the built-in plugins' declarations still load: the core checks each value against the installed plugins, and one that fails falls back to its default with a warning naming its line (ADR 0080); desk.theme.contrast is valid and stays",
+  "instance": {
+    "version": 0,
+    "profile": "default",
+    "plugins": {
+      "disabled": ["endue.onboarding"]
+    },
+    "settings": {
+      "desk.theme.scheme": "purple",
+      "desk.notify.dnd": "yes",
+      "desk.notify.info-ms": 2.5,
+      "desk.notify.dnd-allows": "error",
+      "desk.theme.contrast": "high"
+    },
+    "sync": {
+      "enabled": false
+    }
+  }
+}

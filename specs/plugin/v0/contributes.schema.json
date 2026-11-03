@@ -322,7 +322,7 @@
       "enum": ["boolean", "integer", "number", "string", "array", "object"]
     },
     "SettingContribution": {
-      "description": "A setting and its default. init.yaml and profiles set other values.",
+      "description": "A setting and its default. init.yaml, profiles and settings.set give other values; the core checks each against kind, choices, minimum, maximum and pattern, and a value that fails falls back to the layer below (ADR 0080).",
       "type": "object",
       "properties": {
         "kind": { "$ref": "#/$defs/SettingKind" },
@@ -332,6 +332,27 @@
           "description": "The values a string setting may take.",
           "type": "array",
           "items": { "type": "string" }
+        },
+        "minimum": {
+          "description": "The smallest value an integer or number setting may take.",
+          "type": "number"
+        },
+        "maximum": {
+          "description": "The largest value an integer or number setting may take.",
+          "type": "number"
+        },
+        "pattern": {
+          "description": "A regular expression (ECMA-262, as JSON Schema's pattern) a string setting's value must match. It matches anywhere in the value; anchor it with ^ and $ to match the whole.",
+          "type": "string",
+          "format": "regex",
+          "minLength": 1
+        },
+        "renamed": {
+          "description": "The setting's earlier full names (owner.key), newest first. A layer with no value under the setting's name gives the value it holds under the first of these instead, and settings.get and settings.list report it as migratedFrom.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/SettingName" },
+          "minItems": 1,
+          "uniqueItems": true
         }
       },
       "required": ["kind", "default"],
