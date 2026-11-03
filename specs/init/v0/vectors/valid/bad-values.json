@@ -5,9 +5,7 @@
     "version": 0,
     "profile": "default",
     "plugins": {
-      "disabled": [
-        "endue.onboarding"
-      ]
+      "disabled": ["endue.onboarding"]
     },
     "settings": {
       "desk.theme.scheme": "purple",

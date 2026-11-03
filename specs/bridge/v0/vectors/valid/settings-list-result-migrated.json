@@ -4,7 +4,12 @@
   "instance": {
     "settings": [
       { "owner": "desk.theme", "key": "contrast", "value": "system" },
-      { "owner": "desk.theme", "key": "scheme", "value": "light", "migratedFrom": "desk.theme.mode" }
+      {
+        "owner": "desk.theme",
+        "key": "scheme",
+        "value": "light",
+        "migratedFrom": "desk.theme.mode"
+      }
     ]
   }
 }

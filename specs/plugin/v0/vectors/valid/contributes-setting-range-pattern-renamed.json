@@ -17,15 +17,8 @@
       "desk.theme.scheme": {
         "kind": "string",
         "default": "dark",
-        "choices": [
-          "system",
-          "light",
-          "dark"
-        ],
-        "renamed": [
-          "desk.theme.mode",
-          "desk.scheme"
-        ]
+        "choices": ["system", "light", "dark"],
+        "renamed": ["desk.theme.mode", "desk.scheme"]
       }
     }
   }
