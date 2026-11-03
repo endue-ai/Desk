@@ -165,7 +165,14 @@ export function mountComposer(root: HTMLElement, ctx: ShellCtx): () => void {
   /** Eris's conversation: the line goes to the brain and she says its answer. */
   const converse = async (text: string) => {
     ctx.eris.setState("thinking");
-    const reply = await ctx.bridge.brain.say(text);
+    let reply: Awaited<ReturnType<typeof ctx.bridge.brain.say>>;
+    try {
+      reply = await ctx.bridge.brain.say(text);
+    } catch {
+      ctx.eris.setState("idle");
+      ctx.runtime.notify({ caller: "desk", title: ctx.tr("brainFailed"), level: "error" });
+      return;
+    }
     ctx.eris.say(reply.text, reply.words);
   };
 
@@ -191,6 +198,7 @@ export function mountComposer(root: HTMLElement, ctx: ShellCtx): () => void {
     ),
     listen(input, "keydown", (e) => {
       const k = e as KeyboardEvent;
+      if (k.isComposing || k.keyCode === 229) return;
       const options = drawList();
       const s = ctx.store.get().composer;
       if (k.key === "ArrowDown" || k.key === "ArrowUp") {
