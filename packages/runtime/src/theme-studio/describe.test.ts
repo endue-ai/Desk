@@ -70,7 +70,14 @@ const CLEAN = {
 };
 
 /** The real theme policy over a stub core that serves brain.ask (and brain.status when given). */
-function setup(status?: BrainStatusResult) {
+function setup(status?: BrainStatusResult | (() => BrainStatusResult)) {
+  let tick: (() => void) | undefined;
+  const every = vi.fn((callback: () => void, _ms: number) => {
+    tick = callback;
+    return () => {
+      tick = undefined;
+    };
+  });
   const asked: BrainAskParams[] = [];
   const stub = browserStub({
     "brain.ask": (params) => {
@@ -81,7 +88,7 @@ function setup(status?: BrainStatusResult) {
       stub.emit({ event: "brain.turn", data: { turnId, kind: "started" } });
       return { turnId };
     },
-    ...(status ? { "brain.status": () => status } : {}),
+    ...(status ? { "brain.status": () => (typeof status === "function" ? status() : status) } : {}),
   });
   const bridge = new BridgeClient(stub);
   const hub = new PolicyHub(bridge);
@@ -113,19 +120,36 @@ function setup(status?: BrainStatusResult) {
   const back = vi.fn();
   const tune = vi.fn();
   const toEris = vi.fn();
-  const panel = createDescribe({
+  const deps = {
     themes,
-    lang: () => "en",
+    lang: () => "en" as const,
     io: () => io,
     open: vi.fn(),
     back,
     tune,
     toEris,
-  });
+    every,
+  } as const;
+  const panel = createDescribe(deps);
   document.body.replaceChildren(panel.element);
   const turn = (turnId: string, kind: "completed" | "error" | "offline" | "online", more = {}) =>
     stub.emit({ event: "brain.turn", data: { turnId, kind, ...more } });
-  return { panel, asks: asked, turn, stub, themes, hub, style, save, back, tune, toEris };
+  return {
+    panel,
+    asks: asked,
+    turn,
+    stub,
+    themes,
+    hub,
+    style,
+    save,
+    back,
+    tune,
+    toEris,
+    every,
+    tick: () => tick?.(),
+    ticking: () => tick !== undefined,
+  };
 }
 
 /** Wait for the `n`th ask, and for its answer to reach the panel. */
@@ -285,7 +309,7 @@ describe("Describe", () => {
     expect(themes.previewing()).toBeUndefined();
   });
 
-  it("turns Generate off while the brain is offline or refuses, and on again when it is back", async () => {
+  it("turns Generate off while offline, and allows another try after an error", async () => {
     const { panel, asks, turn } = setup();
     panel.start({ text: "warm paper", run: true });
     await answered(asks, 1);
@@ -296,8 +320,10 @@ describe("Describe", () => {
     turn("a1", "online");
     expect(key("describe-generate")?.disabled).toBe(false);
     turn("a1", "error", { text: "No credits left." });
-    expect(key("describe-generate")?.disabled).toBe(true);
+    expect(key("describe-generate")?.disabled).toBe(false);
     expect(status()).toContain("No credits left.");
+    say("try again", "describe-generate");
+    await answered(asks, 2);
   });
 
   it("starts with Generate off when the brain is offline or out of credits", async () => {
@@ -310,6 +336,37 @@ describe("Describe", () => {
       await vi.waitFor(() => expect(key("describe-generate")?.disabled).toBe(true));
       expect(status()).toContain(line);
     }
+  });
+
+  it("checks again every 15 seconds while offline and enables Generate when the brain returns", async () => {
+    let brain: BrainStatusResult = { mode: "offline" };
+    const { panel, every, tick, ticking } = setup(() => brain);
+    panel.start({ text: "warm paper" });
+    await vi.waitFor(() => expect(key("describe-generate")?.disabled).toBe(true));
+    expect(every).toHaveBeenCalledWith(expect.any(Function), 15_000);
+    expect(ticking()).toBe(true);
+    brain = { mode: "local", model: "test" };
+    tick();
+    await vi.waitFor(() => expect(key("describe-generate")?.disabled).toBe(false));
+    expect(ticking()).toBe(false);
+    panel.stop();
+  });
+
+  it("checks on focus while offline and stops checking when Describe closes", async () => {
+    let brain: BrainStatusResult = { mode: "offline" };
+    const { panel, ticking } = setup(() => brain);
+    panel.start({ text: "warm paper" });
+    await vi.waitFor(() => expect(key("describe-generate")?.disabled).toBe(true));
+    brain = { mode: "cloud", credits: 1 };
+    window.dispatchEvent(new Event("focus"));
+    await vi.waitFor(() => expect(key("describe-generate")?.disabled).toBe(false));
+    panel.stop();
+    brain = { mode: "offline" };
+    panel.start();
+    await vi.waitFor(() => expect(key("describe-generate")?.disabled).toBe(true));
+    expect(ticking()).toBe(true);
+    panel.stop();
+    expect(ticking()).toBe(false);
   });
 
   it("hears only its own turn, from before the answer named it until the turn ends", async () => {
