@@ -10,7 +10,7 @@ publish.workspace = true
 
 [dependencies]
 base64.workspace = true
-getrandom = "0.3"
+getrandom = "0.4"
 # The verifier the Tauri updater plugin uses, so both read the same signatures.
 minisign-verify = "0.3"
 semver = "1"
