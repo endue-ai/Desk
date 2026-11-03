@@ -3,11 +3,11 @@
   "description": "a setting may bound its value, give it a pattern and name what it was called before",
   "instance": {
     "settings": {
-      "desk.notify.history": {
-        "kind": "integer",
-        "default": 200,
-        "minimum": 0,
-        "maximum": 10000
+      "example.reader.zoom": {
+        "kind": "number",
+        "default": 1,
+        "minimum": 0.25,
+        "maximum": 4.5
       },
       "example.notes.slug": {
         "kind": "string",
@@ -17,8 +17,15 @@
       "desk.theme.scheme": {
         "kind": "string",
         "default": "dark",
-        "choices": ["system", "light", "dark"],
-        "renamed": ["desk.theme.mode", "desk.scheme"]
+        "choices": [
+          "system",
+          "light",
+          "dark"
+        ],
+        "renamed": [
+          "desk.theme.mode",
+          "desk.scheme"
+        ]
       }
     }
   }

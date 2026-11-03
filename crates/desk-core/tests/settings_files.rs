@@ -76,7 +76,8 @@ fn line_of(text: &str, needle: &str) -> u64 {
     index.expect("the text holds the needle") as u64 + 1
 }
 
-const BAD: &str = "version: 0\nsettings:\n  desk.theme.scheme: purple\n  desk.notify.dnd: \"yes\"\n";
+const BAD: &str =
+    "version: 0\nsettings:\n  desk.theme.scheme: purple\n  desk.notify.dnd: \"yes\"\n";
 
 #[test]
 fn init_yaml_values_name_owner_key_file_and_line() {
@@ -106,9 +107,19 @@ fn init_yaml_values_name_owner_key_file_and_line() {
         warned.len(),
         "a problem is logged once"
     );
-    let scheme = call(&core, "desk.theme", "settings.get", json!({ "key": "scheme" }));
+    let scheme = call(
+        &core,
+        "desk.theme",
+        "settings.get",
+        json!({ "key": "scheme" }),
+    );
     assert_eq!(scheme.unwrap()["value"], "dark");
-    let dnd = call(&core, "desk.notify", "settings.get", json!({ "key": "dnd" }));
+    let dnd = call(
+        &core,
+        "desk.notify",
+        "settings.get",
+        json!({ "key": "dnd" }),
+    );
     assert_eq!(dnd.unwrap()["value"], false);
 }
 
@@ -182,7 +193,10 @@ fn profile_values_name_their_file_and_line() {
     assert_eq!(seen[1]["file"], "~/plugins/loud/plugin.json");
     assert_eq!(seen[1]["line"], line_of(&manifest, "desk.notify.dnd"));
     for data in &seen {
-        assert_eq!((&data["owner"], &data["key"]), (&json!("desk.notify"), &json!("dnd")));
+        assert_eq!(
+            (&data["owner"], &data["key"]),
+            (&json!("desk.notify"), &json!("dnd"))
+        );
         assert_eq!(data["value"], "yes");
     }
 }
@@ -211,7 +225,13 @@ fn the_bad_values_vector_still_loads() {
     let reported = invalid(&deliveries);
     let names: Vec<String> = reported
         .iter()
-        .map(|(_, data)| format!("{}.{}", data["owner"].as_str().unwrap(), data["key"].as_str().unwrap()))
+        .map(|(_, data)| {
+            format!(
+                "{}.{}",
+                data["owner"].as_str().unwrap(),
+                data["key"].as_str().unwrap()
+            )
+        })
         .collect();
     for name in [
         "desk.theme.scheme",

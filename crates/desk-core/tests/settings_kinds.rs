@@ -66,7 +66,11 @@ fn every_kind_falls_back_to_the_default() {
          example.kinds.mode: c\n  example.kinds.list: one\n  example.kinds.map: [1]\n",
     );
     for (key, default) in defaults() {
-        assert_eq!(value(&core, key), default, "{key} falls back to its default");
+        assert_eq!(
+            value(&core, key),
+            default,
+            "{key} falls back to its default"
+        );
     }
     let init = call(&core, KINDS, "init.get", json!({})).unwrap();
     assert_eq!(
@@ -84,7 +88,11 @@ fn range_and_pattern_fall_back() {
     );
     assert_eq!(value(&outside, "count"), json!(3), "above the maximum");
     assert_eq!(value(&outside, "ratio"), json!(0.5), "below the minimum");
-    assert_eq!(value(&outside, "slug"), json!("notes"), "outside the pattern");
+    assert_eq!(
+        value(&outside, "slug"),
+        json!("notes"),
+        "outside the pattern"
+    );
 
     let inside = with_init(
         "kinds-inside",
@@ -140,7 +148,11 @@ fn settings_set_refuses_an_invalid_value() {
             .filter(|event| matches!(event, BridgeEvent::SettingsChanged(_)))
             .count()
     };
-    assert_eq!(changed(&events), 0, "a refused set sends no settings.changed");
+    assert_eq!(
+        changed(&events),
+        0,
+        "a refused set sends no settings.changed"
+    );
 
     assert_eq!(set("count", json!(5)).unwrap(), json!({}));
     assert_eq!(value(&core, "count"), json!(5));
@@ -156,7 +168,11 @@ fn settings_set_refuses_an_invalid_value() {
 fn a_set_value_that_fails_falls_back() {
     let home = home("kinds-file");
     let file = home.join("settings.json");
-    fs::write(&file, r#"{ "example.kinds": { "count": 99, "mode": "b" } }"#).unwrap();
+    fs::write(
+        &file,
+        r#"{ "example.kinds": { "count": 99, "mode": "b" } }"#,
+    )
+    .unwrap();
     let core = Core::new(roots(&home)).with_settings_file(file);
     install_kinds(&core, &home);
     let deliveries = core.events().subscribe_addressed();

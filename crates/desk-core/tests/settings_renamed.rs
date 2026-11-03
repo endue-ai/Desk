@@ -117,7 +117,11 @@ fn renamed_reads_the_old_key_and_reports_migrated_from() {
         .collect();
     assert_eq!(invalid.len(), 1, "{invalid:?}");
     assert_eq!(
-        (&invalid[0]["owner"], &invalid[0]["key"], &invalid[0]["line"]),
+        (
+            &invalid[0]["owner"],
+            &invalid[0]["key"],
+            &invalid[0]["line"]
+        ),
         (&json!(THEME), &json!("scheme"), &json!(2))
     );
 }
@@ -156,7 +160,8 @@ fn a_key_under_an_unknown_owner_is_kept_silently() {
     let noisy: Vec<(String, String, Value)> = entries(&core)
         .into_iter()
         .filter(|(level, message, _)| {
-            level == "warn" && (message.contains("someone.later") || message.contains("desk.something"))
+            level == "warn"
+                && (message.contains("someone.later") || message.contains("desk.something"))
         })
         .collect();
     assert_eq!(noisy, vec![], "a plugin may be installed later");

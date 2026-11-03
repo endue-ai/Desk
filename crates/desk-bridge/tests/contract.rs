@@ -11,10 +11,11 @@ use desk_bridge::{
     FsHistoryResult, FsReadResult, FsRestoreResult, FsUrlResult, FsWriteResult, InitDocument,
     InitGetResult, InitSettingKey, Item, ItemChange, ItemPage, ItemQuery, KeysFile, PaletteResults,
     PermQueryResult, PermRequestResult, Permission, PluginContributes, PluginListResult,
-    PluginManifest, PluginStatsResult, ProfileFile, RefusalReason, ShellOpenResult, StoreGetResult,
-    ThemeBundle, ThemeExportResult, ThemeIndex, ThemeMarketFetchResult, ThemeMarketListResult,
-    ThemePackage, ThemeType, ThemeVariant, UiSurfaceStateRequest, UiSurfaceStateResult, View,
-    ViewGetResult, ViewListResult, ViewSource, ViewSummary, manifest_problems, view_problems,
+    PluginManifest, PluginStatsResult, ProfileFile, RefusalReason, SettingsListResult,
+    ShellOpenResult, StoreGetResult, ThemeBundle, ThemeExportResult, ThemeIndex,
+    ThemeMarketFetchResult, ThemeMarketListResult, ThemePackage, ThemeType, ThemeVariant,
+    UiSurfaceStateRequest, UiSurfaceStateResult, View, ViewGetResult, ViewListResult, ViewSource,
+    ViewSummary, manifest_problems, view_problems,
 };
 use serde::Serialize;
 use serde::de::DeserializeOwned;
@@ -237,6 +238,7 @@ fn valid_vectors_roundtrip_through_generated_types() {
                 "PluginStatsResult" => roundtrip::<PluginStatsResult>(vector),
                 "CmdRecentResult" => roundtrip::<CmdRecentResult>(vector),
                 "StoreGetResult" => roundtrip::<StoreGetResult>(vector),
+                "SettingsListResult" => roundtrip::<SettingsListResult>(vector),
                 "CatalogGetResult" => roundtrip::<CatalogGetResult>(vector),
                 "CmdUndoResult" => roundtrip::<CmdUndoResult>(vector),
                 "CmdRedoResult" => roundtrip::<CmdRedoResult>(vector),
