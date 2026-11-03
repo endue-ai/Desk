@@ -42,7 +42,10 @@ export function renderLog(doc, model, now = Date.now()) {
     ]);
   });
   if (model.more) {
-    rows.push(row(doc, "more", undefined, 1, [span(doc, "subject", "More commits (press +)")]));
+    rows.push({
+      ...row(doc, "more", undefined, 1, [span(doc, "subject", "More commits (press +)")]),
+      activate: "more",
+    });
   }
   if (rows.length === 0) rows.push(row(doc, "empty", undefined, 1, ["No commits yet."]));
   return rows;

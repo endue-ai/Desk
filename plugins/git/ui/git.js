@@ -31,7 +31,7 @@ import { DEFAULTS, loadSettings } from "./settings.js";
  * @typedef {import("./keys.js").ViewName} ViewName
  * @typedef {{ root: string, name: string }} Repo
  * @typedef {{ repo: Repo | null, branch: string | null, upstream: string | null, ahead: number, behind: number, oid: string | null }} Header
- * @typedef {{ status: StatusModel, stashes: Stash[], recent: RecentCommit[] }} StatusView
+ * @typedef {{ repo: Repo | null, status: StatusModel, stashes: Stash[], recent: RecentCommit[] }} StatusView
  * @typedef {{ commits: Commit[], rows: Row[], more: boolean, all: boolean }} LogView
  * @typedef {{ staged?: boolean, path?: string, sha?: string }} DiffTarget
  * @typedef {{ title: string, files: DiffFile[], target: DiffTarget }} DiffView
@@ -66,9 +66,11 @@ export function createGit({ bridge, commands, state }, view, options = {}) {
   /** @type {ViewName} */
   let current = "status";
   /** @type {StatusView} */
-  let statusView = { status: emptyStatus(), stashes: [], recent: [] };
+  let statusView = { repo: null, status: emptyStatus(), stashes: [], recent: [] };
   /** @type {LogView | null} */
   let logView = null;
+  /** @type {Promise<void> | null} */
+  let loadingMore = null;
   /** @type {DiffView | null} */
   let diffView = null;
   /** The desk buffer each extra view is, once opened. @type {Map<"log" | "diff", string>} */
@@ -80,12 +82,10 @@ export function createGit({ bridge, commands, state }, view, options = {}) {
     said = text;
     view.say(text);
   };
-
   const opened = () => {
     if (!repo) throw new Error("No repository is open: run Git: status with a folder.");
     return repo;
   };
-
   /** @param {string[]} args @param {import("./run.js").RunOptions} [runOptions] */
   const git = (args, runOptions = {}) => runner.run(args, { cwd: opened().root, ...runOptions });
 
@@ -110,7 +110,6 @@ export function createGit({ bridge, commands, state }, view, options = {}) {
     view.focus();
     state.set({ root: repo?.root ?? null, view: name });
   };
-
   const header = () => {
     const { branch, upstream, ahead, behind, oid } = statusView.status.head;
     view.header({ repo, branch, upstream, ahead, behind, oid });
@@ -124,6 +123,7 @@ export function createGit({ bridge, commands, state }, view, options = {}) {
       git(["log", "-n", "10", `--format=${RECENT_FORMAT}`], { ok: [128] }),
     ]);
     statusView = {
+      repo,
       status: parseStatus(status.stdout),
       stashes: parseStashes(stashes.stdout),
       recent: recent.code === 0 ? parseRecent(recent.stdout) : [],
@@ -131,7 +131,6 @@ export function createGit({ bridge, commands, state }, view, options = {}) {
     header();
     view.status(statusView);
   };
-
   const remotes = async () =>
     (await git(["remote"])).stdout.split("\n").filter((line) => line !== "");
 
@@ -155,7 +154,6 @@ export function createGit({ bridge, commands, state }, view, options = {}) {
     logView = { commits, rows: layoutGraph(commits), more: loaded.length === count, all };
     view.log(logView);
   };
-
   /** Each extra view is a desk buffer, so Mod+B and the buffer list reach it. */
   const buffer = async (/** @type {"log" | "diff"} */ key, /** @type {string} */ name) => {
     if (buffers.has(key)) {
@@ -173,16 +171,21 @@ export function createGit({ bridge, commands, state }, view, options = {}) {
     await buffer("log", `git log: ${opened().name}${all ? " (all)" : ""}`);
     show("log");
   };
-
   const more = async () => {
+    if (loadingMore) return loadingMore;
     if (!logView?.more) return;
-    await loadLog({ all: logView.all, skip: logView.commits.length });
+    loadingMore = loadLog({ all: logView.all, skip: logView.commits.length });
+    try {
+      await loadingMore;
+    } finally {
+      loadingMore = null;
+    }
   };
-
   /** What `d` or Git: diff shows for a selection: the file's changes, a commit, or the staged set. */
   const targetOf = (/** @type {DiffTarget | undefined} */ args) => {
     if (args && (args.staged || args.path || args.sha)) return args;
     const item = view.selection();
+    if (current === "log" && item?.kind !== "commit") throw new Error("Select a commit");
     if (item?.kind === "file") {
       if (item.section === "untracked") throw new Error("An untracked file has no diff: stage it.");
       return { path: item.path, staged: item.section === "staged" };
@@ -218,7 +221,6 @@ export function createGit({ bridge, commands, state }, view, options = {}) {
     await buffer("diff", `git diff: ${diffView?.title ?? ""}`);
     show("diff");
   };
-
   const refresh = async () => {
     opened();
     await refreshStatus();
@@ -237,7 +239,6 @@ export function createGit({ bridge, commands, state }, view, options = {}) {
     const next = [root, ...list.filter((path) => path !== root)].slice(0, settings.recentMax);
     await bridge.call("store.set", { key: RECENT_KEY, value: next }).catch(() => {});
   };
-
   const pickRepo = async () => {
     const items = (await recentRepos()).map((p) => ({ id: p, label: nameOf(p), detail: p }));
     return pick("Git: which repository?", items, true, "a folder path");
@@ -354,7 +355,6 @@ export function createGit({ bridge, commands, state }, view, options = {}) {
         say(error instanceof Error ? error.message : String(error));
       }
     };
-
   const ready = (async () => {
     // Read what a reload handed back before show() saves the state anew.
     const saved = /** @type {{ root?: string | null, view?: ViewName } | undefined} */ (
