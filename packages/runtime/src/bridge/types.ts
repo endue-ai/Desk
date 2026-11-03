@@ -56,6 +56,8 @@ export interface TaskQuery {
 }
 
 export interface ShellBridge {
+  /** The local name collected during first run; hosts without user information may omit this. */
+  user?: { info(): Promise<{ name?: string }> };
   storage: {
     get<T>(key: string): Promise<T | undefined>;
     set(key: string, value: unknown): Promise<void>;

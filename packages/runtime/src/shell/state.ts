@@ -22,15 +22,22 @@ export interface DrawerItem {
   placement?: SurfacePlacement;
 }
 
-export type RailId = "brain" | "sees" | "tasks" | "attention" | "desks" | "vm" | "listen";
+export type RailId = "brain" | "sees" | "tasks" | "desks" | "vm" | "listen";
 
-/** Something that needs the person, in the rail; `action` is a button that runs a command. */
+/** Something that needs the person, in the inbox; `action` is a button that runs a command. */
 export interface AttentionItem {
   id: string;
   text: string;
   action?: { label: string; command: string };
 }
-export type Popover = RailId | "drawer" | "mode-menu" | "agents-more" | null;
+export type Popover =
+  | RailId
+  | "attention"
+  | "account"
+  | "drawer"
+  | "mode-menu"
+  | "agents-more"
+  | null;
 
 export interface DeskState {
   lang: Lang;

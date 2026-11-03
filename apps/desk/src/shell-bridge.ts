@@ -87,6 +87,17 @@ function say(core: BridgeClient, text: string): Promise<BrainReply> {
 export function shellBridge(core: BridgeClient): ShellBridge {
   const status = async () => statusOf(await core.call("brain.status", { scope: SCOPE }));
   return {
+    user: {
+      async info() {
+        const { value } = await core.call(
+          "store.get",
+          { key: "first-run" },
+          { caller: "endue.onboarding" },
+        );
+        const name = (value as { name?: unknown } | undefined)?.name;
+        return typeof name === "string" && name.trim() ? { name: name.trim().slice(0, 24) } : {};
+      },
+    },
     storage: {
       async get<T>(key: string) {
         const { value } = await core.call("store.get", { key: PREFIX + key });

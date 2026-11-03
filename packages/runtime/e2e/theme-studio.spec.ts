@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { openShell } from "./shell-helpers";
+import { openShell, openThemes } from "./shell-helpers";
 
 // The theme studio (ADR 0056, TS-01, TS-02): a system window of the shell. Focus previews a theme on
 // the whole desk, Escape puts back what was in force, Enter applies, and the choice comes back with
@@ -17,8 +17,8 @@ test("the theme studio previews, reverts, applies and keeps the theme, by keyboa
     page.locator("#desk").evaluate((el) => getComputedStyle(el).backgroundImage);
   expect(await rootVar("--desk-radius-md")).toBe("8px");
 
-  // The way in at the top right.
-  await page.getByRole("button", { name: "Themes" }).click();
+  // The way in through Settings > Appearance.
+  await openThemes(page);
   const studio = page.getByRole("dialog", { name: "Themes" });
   await expect(studio).toBeVisible();
   const options = studio.getByRole("option");

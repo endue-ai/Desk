@@ -47,6 +47,18 @@ const turn = (turnId: string, kind: BrainTurnKind, text?: string): BridgeEvent =
 const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 describe("the shell bridge over the core", () => {
+  test("shows the stored first-run name without treating onboarding as an authenticated account", async () => {
+    let value: unknown = { name: "  Mira  ", token: "not-a-user-field" };
+    const { bridge, calls, stub } = setup({
+      "store.get": (_, caller) => (caller === "endue.onboarding" ? { value } : {}),
+    });
+    await expect(bridge.user?.info()).resolves.toEqual({ name: "Mira" });
+    expect(calls()).toEqual([{ method: "store.get", params: { key: "first-run" } }]);
+    expect(stub.log[0]?.caller).toBe("endue.onboarding");
+    for (value of [null, {}, { name: 12 }, { name: "   " }])
+      await expect(bridge.user?.info()).resolves.toEqual({});
+  });
+
   test("storage maps get and set onto the desk store under the shell prefix", async () => {
     const data = new Map<string, unknown>();
     const { bridge, calls } = setup({

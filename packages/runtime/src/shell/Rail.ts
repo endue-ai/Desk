@@ -1,4 +1,4 @@
-/** Right status rail: seven icon buttons with a dot and a count, a tooltip on hover, a popover on click. */
+/** Right status rail: six icon buttons with a dot and a count, a tooltip on hover, a popover on click. */
 import { agentName, isOpen } from "../system/agents";
 import { layoutOf } from "./actions";
 import type { ShellCtx } from "./context";
@@ -37,13 +37,6 @@ function items(ctx: ShellCtx, s: DeskState): Item[] {
       icon: "tasks",
       label: ctx.tr("tasks", { r: running, w: waiting }),
       count: open.length,
-    },
-    {
-      id: "attention",
-      icon: "bell",
-      label: ctx.tr("attention", { n: s.attention.length }),
-      count: s.attention.length,
-      dot: s.attention.length ? "attention" : undefined,
     },
     {
       id: "desks",
@@ -132,26 +125,6 @@ function body(ctx: ShellCtx, id: RailId, s: DeskState): Child[] {
             ),
           ),
         );
-    case "attention":
-      // An item with an action (the update's Restart to update) gets its button under its row, as
-      // the other popovers place theirs.
-      return s.attention.flatMap((a) => {
-        const item = row(h("span", { class: "dot dot-attention" }), a.text);
-        const action = a.action;
-        if (!action) return [item];
-        const run = () => void ctx.runtime.commands.run(action.command).catch(() => {});
-        const button = h(
-          "button",
-          {
-            class: "btn btn-outline pop-action",
-            type: "button",
-            "data-key": `attention-${a.id}`,
-            onClick: run,
-          },
-          action.label,
-        );
-        return [item, button];
-      });
     case "desks":
       return [
         ...s.desks.map((d) =>

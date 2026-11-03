@@ -8,6 +8,7 @@ import { type SettingsLanguage, settingsText } from "./copy";
 import { settingsIcon } from "./icons";
 import { mountKeyboard } from "./keyboard";
 import { description, findSections, SECTIONS, type SettingsSection, settingsPanel } from "./panels";
+import { themeSettingsEntry } from "./theme-entry";
 
 export interface SettingsWindow {
   open(section?: SettingsSection): void;
@@ -156,7 +157,10 @@ export function installSettingsWindow(
         });
         return [keyboard.el];
       }
-      return [settingsPanel(selected, settings, language, navigate)];
+      return [
+        settingsPanel(selected, settings, language, navigate),
+        selected === "appearance" ? themeSettingsEntry(commands, close, language) : null,
+      ];
     });
   }
   function open(section?: SettingsSection) {

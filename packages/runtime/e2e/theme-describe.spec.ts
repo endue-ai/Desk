@@ -1,5 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
-import { openShell, step } from "./shell-helpers";
+import { openShell, openThemes, step } from "./shell-helpers";
 
 // Describe (TS-06, TS-07): a sentence goes to the brain through brain.ask, which the browser core
 // answers as examples/brain-echo does; the proposal is previewed on the whole desk and Apply keeps it
@@ -24,7 +24,7 @@ const CREAM = "#f6f1e7";
 test("describe a theme in a sentence, see it on the whole desk and apply it", async ({ page }) => {
   await openShell(page, "?lang=en");
   const before = await rootVar(page, "--desk-background");
-  await page.getByRole("button", { name: "Themes" }).click();
+  await openThemes(page);
   const studio = page.getByRole("dialog", { name: "Themes" });
   await studio.locator('[data-key="describe"]').click();
   await studio.locator('[data-key="describe-sentence"]').fill("warm paper with a grainy texture");
