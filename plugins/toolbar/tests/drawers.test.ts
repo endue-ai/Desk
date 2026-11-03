@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { accessDrawer, drawers, pluginsDrawer } from "../ui/drawers.js";
 
@@ -83,16 +84,90 @@ describe("the Access drawer", () => {
     expect(drawer).toMatchObject({ id: "access", title: "Access", summary: "9 permissions" });
     expect(drawer.warning).toBe(false);
     expect(drawer.rows).toEqual([
-      { label: "Microphone", detail: "Welcome (wake word)" },
+      { label: "Manage plugins", detail: "Plugins, Dock" },
+      { label: "Run programs", detail: "Notes (git, in a terminal)" },
       { label: "Read files", detail: "Notes (~/Notes/**, /srv/shared)" },
       { label: "Write files", detail: "Notes (~/Notes/**)" },
-      { label: "Run programs", detail: "Notes (git, in a terminal)" },
       { label: "Network", detail: "Notes (api.example.com, *.example.org)" },
+      { label: "Microphone", detail: "Welcome (wake word)" },
       { label: "Talk to the brain", detail: "Eris" },
       { label: "Notifications", detail: "Notes" },
       { label: "Open surfaces", detail: "Notes" },
-      { label: "Manage plugins", detail: "Plugins, Dock" },
     ]);
+  });
+
+  it("shows sensitive and unknown permissions, with scopes and a matching count", () => {
+    const drawer = accessDrawer([
+      plugin("example.manager", "Manager", [
+        { permission: "perm:manage" },
+        { permission: "shell:open", schemes: ["https"], paths: ["~/Documents/**"] },
+        { permission: "x:y" },
+      ]),
+    ]);
+    expect(drawer.summary).toBe("3 permissions");
+    expect(drawer.rows).toHaveLength(3);
+    expect(drawer.rows[0]).toEqual({ label: "Manage permissions", detail: "Manager" });
+    expect(drawer.rows[1].label).toBe("Open links and show files");
+    expect(drawer.rows[1].detail).toContain("https");
+    expect(drawer.rows[1].detail).toContain("~/Documents/**");
+    expect(drawer.rows[2]).toEqual({ label: "x:y", detail: "Manager" });
+  });
+
+  it("has a plain-words label for every permission in the schema", () => {
+    const schema = JSON.parse(
+      readFileSync(
+        new URL("../../../specs/plugin/v0/permission.schema.json", import.meta.url),
+        "utf8",
+      ),
+    );
+    const ids: string[] = schema.$defs.Permission.oneOf.map(({ $ref }: { $ref: string }) => {
+      const name = $ref.split("/").at(-1)!;
+      return schema.$defs[name].properties.permission.const;
+    });
+    expect(ids.length).toBeGreaterThan(0);
+    for (const permission of ids) {
+      const drawer = accessDrawer([
+        plugin("example.all", "All", [
+          {
+            permission,
+            paths: ["~/test"],
+            commands: ["git"],
+            hosts: ["example.com"],
+            ids: ["example.*"],
+            keys: ["example/*"],
+            names: ["plugin.changed"],
+            kinds: ["document"],
+            sources: ["example.*"],
+            schemes: ["https"],
+          },
+        ]),
+      ]);
+      expect(drawer.rows, permission).toHaveLength(1);
+      expect(drawer.rows[0].label, permission).not.toBe(permission);
+      expect(drawer.rows[0].label, permission).toBeTruthy();
+    }
+  });
+
+  it("shows the scopes declared for other scoped permissions", () => {
+    const drawer = accessDrawer([
+      plugin("example.scoped", "Scoped", [
+        { permission: "cmd:invoke", ids: ["example.*"] },
+        { permission: "settings:read", keys: ["example/*"] },
+        { permission: "events:subscribe", names: ["plugin.changed"] },
+        { permission: "data:read", kinds: ["document"], sources: ["example.connector"] },
+      ]),
+    ]);
+    expect(drawer.summary).toBe("4 permissions");
+    const details = drawer.rows.map((row) => row.detail).join(" ");
+    for (const scope of [
+      "example.*",
+      "example/*",
+      "plugin.changed",
+      "document",
+      "example.connector",
+    ]) {
+      expect(details).toContain(scope);
+    }
   });
 
   it("is empty when no enabled plugin asks for anything", () => {
