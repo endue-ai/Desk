@@ -10,6 +10,11 @@ import { mountTalkChrome } from "./TalkChrome";
 import { Ticker } from "./ticker";
 
 const cleanups: (() => void)[] = [];
+function get<T extends HTMLElement>(root: HTMLElement, selector: string): T {
+  const el = root.querySelector<T>(selector);
+  if (!el) throw new Error(`Missing ${selector}`);
+  return el;
+}
 afterEach(() => {
   for (const off of cleanups.splice(0)) off();
   document.body.replaceChildren();
@@ -21,17 +26,27 @@ function setup() {
   const ticker = new Ticker(clock);
   const store = new Store(emptyState("en"));
   const ctx = {
-    store, ticker, reduced: () => false, platform: "mac", keyOf: () => undefined,
+    store,
+    ticker,
+    reduced: () => false,
+    platform: "mac",
+    keyOf: () => undefined,
     tr: (key: Parameters<typeof t>[1]) => t("en", key),
-    runtime: { commands: { list: () => [], has: () => false }, settings: new Settings() },
+    runtime: {
+      commands: { list: () => [], has: () => false },
+      settings: new Settings(),
+      shortcuts: { focused: null },
+      focusSurface: () => {},
+    },
+    bridge: { agents: { card: async () => ({}) } },
   } as unknown as ShellCtx;
   cleanups.push(mountComposer(root, ctx), mountTalkChrome(root, ctx), () => ticker.dispose());
-  return { root, store, clock, input: root.querySelector<HTMLInputElement>("input")! };
+  return { root, store, clock, input: get<HTMLInputElement>(root, "input") };
 }
 it("previews on hover without stealing focus, opens on click, and folds on Escape", () => {
   const { root, input } = setup();
-  const pill = root.querySelector<HTMLElement>(".composer")!;
-  const launch = root.querySelector<HTMLButtonElement>(".talk-launch")!;
+  const pill = get(root, ".composer");
+  const launch = get<HTMLButtonElement>(root, ".talk-launch");
   expect(launch.textContent).toContain("Talk to Eris");
   expect(pill.dataset.state).toBe("idle");
   pill.dispatchEvent(new Event("pointerenter"));
@@ -57,12 +72,28 @@ it("opens with the displayed Option-Space shortcut and retains existing input te
 });
 it("shows directory agents and closes its picker on Escape without submitting", () => {
   const { root, store } = setup();
-  store.set({ agents: [{ id: "mira", name: "Mira", slug: "mira", status: "active" } as never], spaceAgents: ["mira"] });
+  store.set({
+    agents: [{ id: "mira", name: "Mira", slug: "mira", status: "active" } as never],
+    spaceAgents: ["mira"],
+  });
   root.querySelector<HTMLButtonElement>(".talk-launch")?.click();
   root.querySelector<HTMLButtonElement>(".talk-agent-button")?.click();
-  const picker = root.querySelector<HTMLElement>(".talk-agent-list")!;
+  const picker = get(root, ".talk-agent-list");
   expect(picker.hidden).toBe(false);
   expect(picker.textContent).toContain("Mira");
   picker.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
   expect(picker.hidden).toBe(true);
+});
+it("opens the selected agent's existing screen and returns focus to the talk line", () => {
+  const { root, store, input } = setup();
+  store.set({
+    agents: [{ id: "mira", name: "Mira", slug: "mira", status: "active" } as never],
+    spaceAgents: ["mira"],
+  });
+  get<HTMLButtonElement>(root, ".talk-launch").click();
+  get<HTMLButtonElement>(root, ".talk-agent-button").click();
+  get<HTMLButtonElement>(root, ".talk-agent-list button").click();
+  expect(store.get().agentId).toBe("mira");
+  expect(store.get().focused).toBe("agent:mira");
+  expect(document.activeElement).toBe(input);
 });

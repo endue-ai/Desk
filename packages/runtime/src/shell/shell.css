@@ -21,10 +21,6 @@ body {
   overflow: hidden;
   /* The theme's backdrop (a gradient or an image, none by default) over its background colour. */
   background-color: var(--desk-background);
-  background-image: var(--desk-backdrop);
-  background-size: var(--desk-backdrop-size);
-  background-repeat: var(--desk-backdrop-repeat);
-  background-position: center;
   color: var(--desk-text);
   font-family: var(--font-primary);
   font-size: var(--text-sm);
@@ -363,7 +359,7 @@ body {
 }
 
 /* Canvas windows follow this background; the shell controls and floating windows stay anchored. */
-.shell.has-canvas { touch-action: none; background-image: radial-gradient(var(--desk-border) 1px, transparent 1px); background-size: 24px 24px; background-position: var(--pan-x, 0px) var(--pan-y, 0px); }
+.shell.has-canvas { touch-action: none; }
 /* Shift held: the empty background and the title bars pan, and show the hand. */
 .shell.has-canvas.pan-ready { cursor: grab; }
 .shell.has-canvas .surface { cursor: auto; }

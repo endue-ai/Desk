@@ -56,8 +56,8 @@ export class SurfaceHost {
     const doc = this.#container.ownerDocument;
     const overlay = spec.placement === "overlay";
     const edges = this.#edges;
-    const edge = edges ? edgeOf(spec.placement) : undefined;
     const windowed = into === null;
+    const edge = edges && !windowed ? edgeOf(spec.placement) : undefined;
     const section = doc.createElement("section");
     section.className = overlay
       ? "desk-surface desk-surface--overlay"

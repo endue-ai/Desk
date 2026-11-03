@@ -14,14 +14,28 @@ export type SettingsSection = (typeof SECTIONS)[number];
 export const description = (section: SettingsSection): SettingsCopy => `${section}Description`;
 const TERMS: Record<SettingsSection, string> = {
   general: "general desk preferences 일반 설정 정보",
-  appearance: "appearance theme light dark system dark mode 화면 테마 라이트 다크 자동",
+  appearance:
+    "appearance theme light dark system dark mode wallpaper live pond aurora 화면 테마 라이트 다크 자동 배경화면 라이브 연못 오로라",
   keyboard: "keyboard keys shortcuts bindings 키보드 단축키 키바인딩",
   notifications: "notifications focus do not disturb 알림 방해금지 집중",
   accessibility: "accessibility contrast motion animation 손쉬운 사용 대비 동작 애니메이션",
 };
 const SECTION_COPY: Record<SettingsSection, readonly SettingsCopy[]> = {
   general: ["general", "generalDescription", "device", "personalization", "local"],
-  appearance: ["appearance", "appearanceDescription", "light", "dark", "system", "systemHint"],
+  appearance: [
+    "appearance",
+    "appearanceDescription",
+    "light",
+    "dark",
+    "system",
+    "systemHint",
+    "wallpaper",
+    "wallpaperHint",
+    "wallpaperTheme",
+    "wallpaperGrid",
+    "wallpaperPond",
+    "wallpaperAurora",
+  ],
   keyboard: [
     "keyboard",
     "keyboardDescription",
@@ -178,6 +192,19 @@ export function settingsPanel(
         ),
       ),
       h("p", { class: "settings-footnote" }, tr("systemHint")),
+      group(
+        "wallpaper",
+        row(
+          "wallpaper",
+          "wallpaperHint",
+          select("desk.wallpaper.scene", "wallpaper", [
+            ["theme", "wallpaperTheme"],
+            ["grid", "wallpaperGrid"],
+            ["pond", "wallpaperPond"],
+            ["aurora", "wallpaperAurora"],
+          ]),
+        ),
+      ),
     );
   } else if (section === "notifications") {
     const enabled = settings.get<boolean>("desk.notify.dnd");

@@ -36,7 +36,7 @@ const manifests = import.meta.glob<PluginManifest>("../../../../plugins/*/plugin
   eager: true,
   import: "default",
 });
-// ?plugins=1 adds the UI test plugins, whose centre surfaces open as the shell's windows.
+// ?plugins=1 adds centre test surfaces; ?edges=1 adds the actual left and right plugin panels.
 const testPlugins: PluginManifest[] = [
   {
     id: "test.counter",
@@ -84,6 +84,9 @@ const core = browserCore({
         m.kind !== "view",
     ),
     ...(params.has("plugins") ? testPlugins : []),
+    ...(params.has("edges")
+      ? Object.values(manifests).filter((m) => ["endue.sidebar", "endue.toolbar"].includes(m.id))
+      : []),
     ...(params.has("themes") ? [testTheme as PluginManifest] : []),
     ...(params.has("apps") ? [...apps, terminal] : []),
   ],

@@ -53,7 +53,7 @@ export interface RuntimeOptions {
   themeRoot?: HTMLElement;
   /** Views a host draws itself (the shell's panes): focus cycling and buffers reach them too. */
   views?: HostViews;
-  /** Where centre and floating surfaces go instead of the grid: the shell's windows. */
+  /** Where normal content and side panels go: the shell's movable windows. */
   windows?: WindowHost;
   /** Native hosts may pick a file; null means the person cancelled. */
   pickFile?: () => Promise<string | null>;
@@ -252,9 +252,9 @@ export function createRuntime(options: RuntimeOptions): Runtime {
 
   const openSurface = (spec: SurfaceSpec) => {
     const decision = display.decide(spec);
-    // With a window host, centre and floating surfaces are its windows, not grid cells.
+    // Content and side panels share the window manager; overlays and the dock keep their roles.
     const windowed =
-      options.windows !== undefined && (decision.area === "center" || decision.area === "floating");
+      options.windows !== undefined && !["overlay", "bottom"].includes(decision.area);
     const placed = { ...spec, placement: decision.area };
     const section = surfaces.open(placed, windowed ? null : undefined);
     if (windowed) options.windows?.adopt(placed, section);
@@ -263,7 +263,7 @@ export function createRuntime(options: RuntimeOptions): Runtime {
       commit(place(layout, spec.id, { colSpan: decision.columns, rowSpan: decision.rows }));
     }
     display.sizeEdge(section, decision);
-    if ((decision.area === "center" || decision.area === "floating") && !spec.hidden) {
+    if ((windowed || takesCell(decision.area)) && !spec.hidden) {
       buffers.surfaceOpened(spec.id, spec.title);
     }
     // A visible overlay is modal: a surface that mounts under it does not take the focus from it.
@@ -271,7 +271,7 @@ export function createRuntime(options: RuntimeOptions): Runtime {
     if (decision.focus && !spec.hidden && (decision.area === "overlay" || !modal)) {
       focusSurface(spec.id);
     }
-    frames.opened(placed);
+    frames.opened(placed, windowed);
   };
   function closeSurface(id: string) {
     frames.closed(id);

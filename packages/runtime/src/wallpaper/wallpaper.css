@@ -1,0 +1,59 @@
+/* Fixed-size tiles share the normal windows' world coordinates, even far from the origin. */
+.wallpaper {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  background-image: var(--desk-backdrop);
+  background-size: var(--desk-backdrop-size);
+  background-repeat: var(--desk-backdrop-repeat);
+  background-position: calc(50% + var(--wallpaper-x, 0px)) calc(50% + var(--wallpaper-y, 0px));
+}
+.wallpaper[data-scene="grid"] {
+  background-image: radial-gradient(var(--desk-input) 1px, transparent 1px);
+  background-size: 32px 32px;
+  background-repeat: repeat;
+  background-position: var(--wallpaper-x) var(--wallpaper-y);
+}
+.wallpaper[data-scene="pond"] {
+  background-color: color-mix(in srgb, var(--desk-status-active) 12%, var(--desk-background));
+  background-image:
+    radial-gradient(ellipse 280px 200px at 320px 260px, color-mix(in srgb, var(--desk-status-active) 16%, transparent), transparent),
+    radial-gradient(ellipse 300px 260px at 860px 620px, color-mix(in srgb, var(--desk-info-fill) 12%, transparent), transparent);
+  background-size: 1200px 900px;
+  background-repeat: repeat;
+  background-position: var(--wallpaper-x) var(--wallpaper-y);
+}
+.wallpaper-pond { position: absolute; inset: 0; display: none; opacity: var(--water-light, 0.6); }
+.wallpaper[data-scene="pond"] .wallpaper-pond { display: block; }
+.pond-leaf {
+  fill: color-mix(in srgb, var(--desk-status-active) 23%, var(--desk-background));
+  stroke: color-mix(in srgb, var(--desk-status-active) 45%, transparent);
+  stroke-width: 1;
+}
+.wallpaper[data-scene="aurora"] {
+  background-image:
+    radial-gradient(ellipse 600px 260px at 650px 320px, color-mix(in srgb, var(--desk-accent) 24%, transparent), transparent),
+    radial-gradient(ellipse 300px 340px at 1200px 740px, color-mix(in srgb, var(--desk-status-active) 18%, transparent), transparent),
+    radial-gradient(var(--desk-text-muted) 0.7px, transparent 0.9px);
+  background-size: 1600px 1100px, 1600px 1100px, 89px 113px;
+  background-repeat: repeat;
+  background-position:
+    calc(var(--wallpaper-x) + var(--wallpaper-drift, 0px)) var(--wallpaper-y),
+    calc(var(--wallpaper-x) - var(--wallpaper-drift, 0px)) var(--wallpaper-y),
+    var(--wallpaper-x) var(--wallpaper-y);
+}
+.wallpaper-effects { position: absolute; inset: 0; }
+.wallpaper-ripple {
+  position: absolute;
+  left: calc(var(--ripple-x) + var(--wallpaper-x));
+  top: calc(var(--ripple-y) + var(--wallpaper-y));
+  width: var(--ripple-size);
+  height: var(--ripple-size);
+  border: 1px solid color-mix(in srgb, var(--desk-status-active) 70%, transparent);
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 12px color-mix(in srgb, var(--desk-status-active) 12%, transparent),
+    0 0 0 25px color-mix(in srgb, var(--desk-status-active) 7%, transparent);
+  transform: translate(-50%, -50%);
+}

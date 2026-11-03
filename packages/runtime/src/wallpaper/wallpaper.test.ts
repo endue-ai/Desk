@@ -25,13 +25,34 @@ function setup() {
   let reduced = false;
   let changed = () => {};
   const ctx = {
-    store, ticker, reduced: () => reduced,
-    runtime: { settings, themes: { onChange: (fn: () => void) => { changed = fn; return () => {}; } } },
+    store,
+    ticker,
+    reduced: () => reduced,
+    runtime: {
+      settings,
+      themes: {
+        onChange: (fn: () => void) => {
+          changed = fn;
+          return () => {};
+        },
+      },
+    },
   } as unknown as ShellCtx;
   const off = mountWallpaper(root, ctx);
   cleanups.push(off, () => ticker.dispose());
   const open = (id: string) => store.set((s) => ({ adopted: [...s.adopted, { id, title: id }] }));
-  return { root, clock, store, settings, open, off, reduce: () => { reduced = true; changed(); } };
+  return {
+    root,
+    clock,
+    store,
+    settings,
+    open,
+    off,
+    reduce: () => {
+      reduced = true;
+      changed();
+    },
+  };
 }
 it("follows pan on an empty desk and restores the theme without replacing it with a grid", () => {
   const { root, store, settings } = setup();
@@ -66,7 +87,9 @@ it("clears transient effects on desktop/scene switches and suppresses motion whe
   settings.set("desk.wallpaper.scene", "aurora");
   expect(root.querySelectorAll(".wallpaper-ripple")).toHaveLength(0);
   clock.advance(1000);
-  const phase = root.querySelector<HTMLElement>(".wallpaper")?.style.getPropertyValue("--wallpaper-drift");
+  const phase = root
+    .querySelector<HTMLElement>(".wallpaper")
+    ?.style.getPropertyValue("--wallpaper-drift");
   expect(phase).toBeTruthy();
   reduce();
   const still = root.innerHTML;
@@ -82,4 +105,24 @@ it("removes listeners and animation updates on disposal", () => {
   open("after-disposal");
   clock.advance(5000);
   expect(root.querySelector(".wallpaper")).toBeNull();
+});
+it("stops unseen live updates and resumes when the document is visible", () => {
+  const { root, open, clock } = setup();
+  const original = Object.getOwnPropertyDescriptor(document, "hidden");
+  try {
+    open("before-hide");
+    Object.defineProperty(document, "hidden", { configurable: true, value: true });
+    document.dispatchEvent(new Event("visibilitychange"));
+    expect(root.querySelectorAll(".wallpaper-ripple")).toHaveLength(0);
+    const still = root.innerHTML;
+    clock.advance(5000);
+    expect(root.innerHTML).toBe(still);
+    Object.defineProperty(document, "hidden", { configurable: true, value: false });
+    document.dispatchEvent(new Event("visibilitychange"));
+    clock.advance(1000);
+    expect(root.innerHTML).not.toBe(still);
+  } finally {
+    if (original) Object.defineProperty(document, "hidden", original);
+    else Reflect.deleteProperty(document, "hidden");
+  }
 });

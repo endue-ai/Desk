@@ -48,9 +48,14 @@ it("offers static and live wallpaper choices in Appearance and saves a selection
   settings.setDefaults(CORE_SETTINGS);
   const el = settingsPanel("appearance", settings, "en", () => {});
   const select = el.querySelector<HTMLSelectElement>('[aria-label="Wallpaper"]');
-  expect(select).not.toBeNull();
-  expect([...select!.options].map((option) => option.value)).toEqual(["theme", "grid", "pond", "aurora"]);
-  select!.value = "pond";
-  select!.dispatchEvent(new Event("change"));
+  if (!select) throw new Error("Wallpaper chooser is missing");
+  expect([...select.options].map((option) => option.value)).toEqual([
+    "theme",
+    "grid",
+    "pond",
+    "aurora",
+  ]);
+  select.value = "pond";
+  select.dispatchEvent(new Event("change"));
   expect(settings.get("desk.wallpaper.scene")).toBe("pond");
 });

@@ -25,6 +25,12 @@ export const CORE_SETTINGS: Record<string, SettingContribution> = {
     choices: ["system", "reduce", "full"],
   },
   "desk.notify.dnd": { kind: "boolean", default: false },
+  "desk.wallpaper.scene": {
+    kind: "string",
+    default: "theme",
+    choices: ["theme", "grid", "pond", "aurora"],
+    description: "The desk's wallpaper: theme, grid, a live pond or a live aurora.",
+  },
 };
 
 const COMBO = /^((Mod|Meta|Control|Ctrl|Cmd|Alt|Option|Shift)\+)*([^+\s]+|\+)$/;

@@ -11,10 +11,17 @@ it("left and right surfaces become ordinary hosted windows, with buffers and no 
   const adopted = new Map<string, HTMLElement>();
   const core = browserCore({ manifests: [] });
   const runtime = createRuntime({
-    root, bridge: core.client, clock: new ManualClock(),
+    root,
+    bridge: core.client,
+    clock: new ManualClock(),
     windows: {
-      adopt: (spec, section) => { adopted.set(spec.id, section); windows.append(section); },
-      release: (id) => { adopted.delete(id); },
+      adopt: (spec, section) => {
+        adopted.set(spec.id, section);
+        windows.append(section);
+      },
+      release: (id) => {
+        adopted.delete(id);
+      },
     },
   });
   try {
@@ -22,7 +29,7 @@ it("left and right surfaces become ordinary hosted windows, with buffers and no 
     for (const placement of ["left", "right"]) {
       runtime.openSurface({ id: placement, title: placement, placement });
       expect(adopted.get(placement)?.classList.contains("desk-surface--windowed")).toBe(true);
-      expect(runtime.buffers.list().some((b) => b.id === placement)).toBe(true);
+      expect(runtime.buffers.list().some((b) => b.plugin === placement && b.surface)).toBe(true);
       expect(runtime.layout().cells[placement]).toBeUndefined();
     }
     expect(root.querySelector(".desk-edge")).toBeNull();
@@ -30,7 +37,9 @@ it("left and right surfaces become ordinary hosted windows, with buffers and no 
       runtime.openSurface({ id: placement, title: placement, placement });
       expect(adopted.has(placement)).toBe(false);
     }
-    expect(root.querySelector('[data-surface="bottom"]')?.classList.contains("desk-surface--edge")).toBe(true);
+    expect(
+      root.querySelector('[data-surface="bottom"]')?.classList.contains("desk-surface--edge"),
+    ).toBe(true);
     runtime.closeSurface("left");
     expect(adopted.has("left")).toBe(false);
   } finally {
