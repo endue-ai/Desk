@@ -56,9 +56,10 @@ export function createView(doc, act) {
   const folded = new Set();
 
   const keyOf = (/** @type {RowSpec | undefined} */ spec) =>
-    spec?.fold ?? (spec?.item ? JSON.stringify(spec.item) : "");
+    spec?.fold ?? spec?.activate ?? (spec?.item ? JSON.stringify(spec.item) : "");
 
   const render = () => {
+    const hadFocus = tree.contains(doc.activeElement);
     const shown = current === "commit" ? "status" : current;
     const model = models[shown];
     if (shown === "status")
@@ -77,6 +78,7 @@ export function createView(doc, act) {
     });
     tree.replaceChildren(...rows.map((spec) => spec.el));
     tree.setAttribute("aria-label", `Git ${shown}`);
+    if (hadFocus) rows[cursor]?.el.focus();
   };
 
   const moveTo = (/** @type {number} */ index) => {
@@ -121,6 +123,9 @@ export function createView(doc, act) {
     event.preventDefault();
     if (MOVES.has(action)) move(action);
     else if (action === "fold") fold();
+    else if (current === "log" && action === "diff" && rows[cursor]?.activate)
+      void act(rows[cursor].activate);
+    else if (current === "log" && action === "diff" && !rows[cursor]?.item) return;
     else void act(action);
   });
   tree.addEventListener("click", (event) => {
@@ -130,8 +135,18 @@ export function createView(doc, act) {
     if (Number.isNaN(index)) return;
     moveTo(index);
     if (rows[index]?.fold && target?.classList.contains("caret")) fold();
+    else if (rows[index]?.activate) void act(rows[index].activate);
   });
-  tree.addEventListener("dblclick", () => {
+  tree.addEventListener("dblclick", (event) => {
+    const target = /** @type {HTMLElement | null} */ (event.target);
+    const rowEl = target?.closest("[role=treeitem]");
+    const index = Number(/** @type {HTMLElement | null} */ (rowEl)?.dataset.index);
+    if (Number.isNaN(index)) return;
+    moveTo(index);
+    if (rows[cursor]?.activate) {
+      void act(rows[cursor].activate);
+      return;
+    }
     const item = rows[cursor]?.item;
     if (item?.kind === "commit") void act("diff");
     else if (item?.kind === "file" || item?.kind === "line") void act("visit");

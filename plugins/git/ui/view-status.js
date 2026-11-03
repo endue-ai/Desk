@@ -2,7 +2,7 @@
 // and untracked files, the stashes and the recent commits, each section foldable.
 
 import { el, row, span } from "./dom.js";
-import { conflictLabel } from "./parse-status.js";
+import { conflictLabel, summary } from "./parse-status.js";
 
 /**
  * @typedef {import("./git.js").StatusView} StatusView
@@ -28,7 +28,9 @@ const LETTERS = {
  * @returns {RowSpec[]}
  */
 export function renderStatus(doc, model, folded) {
-  const { status, stashes, recent } = model;
+  const { repo, status, stashes, recent } = model;
+  if (!repo)
+    return [row(doc, "empty", undefined, 1, ["No repository open. Run Git: status in a folder."])];
   /** @type {RowSpec[]} */
   const rows = [];
   const { head } = status;
@@ -109,6 +111,13 @@ export function renderStatus(doc, model, folded) {
     "Staged changes",
     status.staged.map((entry) => file("staged", entry)),
   );
+  if (
+    [status.conflicts, status.untracked, status.unstaged, status.staged].every(
+      (files) => files.length === 0,
+    )
+  ) {
+    rows.push(row(doc, "empty", undefined, 1, [summary(status)]));
+  }
   section(
     "stashes",
     "Stashes",

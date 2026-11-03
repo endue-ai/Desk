@@ -2,7 +2,7 @@
 
 /**
  * @typedef {import("./actions.js").Item} Item
- * @typedef {{ el: HTMLElement, item: Item | undefined, level: number, fold?: string }} RowSpec
+ * @typedef {{ el: HTMLElement, item: Item | undefined, level: number, fold?: string, activate?: string }} RowSpec
  */
 
 /**
