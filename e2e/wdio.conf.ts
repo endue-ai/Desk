@@ -24,8 +24,14 @@ if (!existsSync(app)) {
 }
 mkdirSync(results, { recursive: true });
 
-/** The init.yaml in e2e/fixtures each spec starts with; only the launch spec wants the first run. */
-const INIT: Record<string, string> = { "launch.spec.ts": "init.yaml" };
+/**
+ * The init.yaml in e2e/fixtures each spec starts with: only the launch spec wants the first run, and
+ * the settings spec starts on values that fail their settings.
+ */
+const INIT: Record<string, string> = {
+  "launch.spec.ts": "init.yaml",
+  "settings.spec.ts": "init-bad-values.yaml",
+};
 const DEFAULT_INIT = "init-no-first-run.yaml";
 
 declare global {
