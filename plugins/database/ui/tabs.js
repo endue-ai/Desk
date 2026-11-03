@@ -3,6 +3,7 @@
 // opens is the error's, else the first result's. Pure, so the tests read it without a DOM.
 
 import { oneLine } from "./execute.js";
+import { formatCount, formatDuration } from "./format.js";
 
 /**
  * @typedef {import("./execute.js").Execution} Execution
@@ -72,7 +73,7 @@ export function show(execution, base = 0) {
       : execution.mode === "transaction"
         ? ", in one transaction"
         : "";
-  const summary = `${failed ? "Failed" : "Done"}: ${ran} of ${statements.length} statement${statements.length === 1 ? "" : "s"} ran in ${result.ms} ms${tail}`;
+  const summary = `${failed ? "Failed" : "Done"}: ${formatCount(ran)} of ${formatCount(statements.length)} statement${statements.length === 1 ? "" : "s"} ran in ${formatDuration(result.ms)}${tail}`;
   tabs.push({ label: "Messages", kind: "messages", statement: -1, lines });
   const open = failed || !tabs.some((t) => t.kind === "rows") ? tabs.length - 1 : 0;
   return { tabs, open, summary, ...(error ? { error } : {}) };
@@ -82,15 +83,15 @@ export function show(execution, base = 0) {
 function done(/** @type {import("./engines/common.js").StatementOutcome} */ outcome) {
   const sets = outcome.sets;
   const warnings = outcome.warnings
-    ? `, ${outcome.warnings} warning${outcome.warnings === 1 ? "" : "s"}`
+    ? `, ${formatCount(outcome.warnings)} warning${outcome.warnings === 1 ? "" : "s"}`
     : "";
   if (sets.length) {
     const rows = sets.reduce((sum, set) => sum + set.rows.length, 0);
     const more = sets.some((set) => set.truncated) ? "+ (more not loaded)" : "";
-    return `${rows}${more} row${rows === 1 && !more ? "" : "s"}${warnings}`;
+    return `${formatCount(rows)}${more} row${rows === 1 && !more ? "" : "s"}${warnings}`;
   }
   if (outcome.affected === null) return `done${warnings}`;
-  return `${outcome.affected} row${outcome.affected === 1 ? "" : "s"} affected${warnings}`;
+  return `${formatCount(outcome.affected)} row${outcome.affected === 1 ? "" : "s"} affected${warnings}`;
 }
 
 /** An error as one line: its code, then its message. */

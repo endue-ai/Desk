@@ -4,7 +4,9 @@ import { formatCount, formatDuration } from "../ui/format.js";
 
 describe("database number formatting", () => {
   it("formats counts in the person's locale", () => {
-    const format = vi.spyOn(Number.prototype, "toLocaleString").mockImplementation(function () {
+    const format = vi.spyOn(Number.prototype, "toLocaleString").mockImplementation(function (
+      this: number,
+    ) {
       return new Intl.NumberFormat("en-US").format(Number(this));
     });
     try {

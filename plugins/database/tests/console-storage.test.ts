@@ -3,6 +3,8 @@ import { createConsoles } from "../ui/consoles.js";
 import { SAVED } from "./harness";
 
 function setup(fail = false) {
+  const connection = SAVED[0];
+  if (!connection) throw new Error("Missing fixture connection");
   const messages: string[] = [];
   const call = vi.fn(async (method: string, params: { key: string; value?: string }) => {
     if (method === "store.set" && fail) throw new Error("Storage unavailable");
@@ -12,18 +14,18 @@ function setup(fail = false) {
   const deps = {
     commands: { run: async () => "buffer" },
     bridge: { call },
-    connection: () => SAVED[0],
+    connection: () => connection,
     settings: () => ({ maxRows: 500 }),
     view: { console: () => {}, say: (message: string) => messages.push(message) },
     changed: () => {},
   } as unknown as Parameters<typeof createConsoles>[0];
-  return { consoles: createConsoles(deps), messages, call };
+  return { consoles: createConsoles(deps), connection, messages, call };
 }
 
 describe("console storage", () => {
   it("warns when 70 KiB of text exceeds the saved limit", async () => {
-    const { consoles, messages, call } = setup();
-    await consoles.open(SAVED[0]!);
+    const { consoles, connection, messages, call } = setup();
+    await consoles.open(connection);
     consoles.edited("x".repeat(70 * 1024));
     await new Promise((resolve) => setTimeout(resolve, 450));
     expect(call).toHaveBeenCalledWith("store.set", {
@@ -34,8 +36,8 @@ describe("console storage", () => {
   });
 
   it("reports a failure to save the console", async () => {
-    const { consoles, messages } = setup(true);
-    await consoles.open(SAVED[0]!);
+    const { consoles, connection, messages } = setup(true);
+    await consoles.open(connection);
     consoles.edited("select 1");
     await new Promise((resolve) => setTimeout(resolve, 450));
     expect(messages.join(" ")).toMatch(/(save|sav(ing|ed)|keep|stor)/iu);

@@ -5,6 +5,7 @@
 
 import { blank, newId, normalize, parseUri, saveConnections } from "./connections.js";
 import { engineOf } from "./engines/index.js";
+import { formatDuration } from "./format.js";
 import { clearHistory } from "./history.js";
 
 /**
@@ -13,7 +14,7 @@ import { clearHistory } from "./history.js";
  * @typedef {{ connection: string, message: string }} PasswordModel
  * @typedef {{
  *   bridge: Pick<import("@endue-ai/plugin-sdk").PluginBridge, "call">,
- *   view: { form(model: FormModel | null): void, password(model: PasswordModel | null): void, say(text: string): void },
+ *   view: { form(model: FormModel | null): void, password(model: PasswordModel | null): void, say(text: string): void, focus(where: "explorer"): void },
  *   pick(title: string, items: { id: string, label: string, detail?: string }[], free?: boolean, placeholder?: string): Promise<string | undefined>,
  *   confirm(title: string, reasons: string[]): Promise<boolean>,
  *   execute: import("./catalog.js").Execute,
@@ -32,6 +33,10 @@ export function createManager(deps) {
   const passwords = new Map();
   /** @type {FormModel | null} */
   let form = null;
+  /** @type {Connection | null} */
+  let opened = null;
+  let formSession = 0;
+  let confirming = 0;
   /** A URI's password, waiting for its connection to be saved. */
   let pending = "";
   /** @type {((value: string | undefined) => void) | null} */
@@ -63,12 +68,15 @@ export function createManager(deps) {
 
   /** Open the form, for a new connection or to change one. */
   const open = (/** @type {"new" | "edit"} */ mode, /** @type {Partial<Connection>} */ fields) => {
+    if (form) deps.view.form(null);
     form = {
       mode,
       fields: { ...blank(fields.engine ?? "postgresql"), ...fields },
       error: "",
       note: "",
     };
+    opened = { ...form.fields };
+    formSession++;
     showForm();
   };
 
@@ -155,7 +163,10 @@ export function createManager(deps) {
       if (pending) passwords.set(conn.id, pending);
       pending = "";
       form = null;
+      opened = null;
+      formSession++;
       showForm();
+      deps.view.focus("explorer");
       await deps.renamed(conn);
       deps.changed();
       deps.view.say(`Saved ${conn.name}.`);
@@ -164,26 +175,55 @@ export function createManager(deps) {
     /** Ask the server its version with the form's fields. */
     async test(/** @type {Partial<Connection>} */ fields) {
       const conn = checked(fields);
+      const session = formSession;
       if (pending) passwords.set(conn.id, pending);
-      form = { .../** @type {FormModel} */ (form), error: "", note: "Testing…" };
+      form = {
+        .../** @type {FormModel} */ (form),
+        fields: { .../** @type {FormModel} */ (form).fields, ...fields },
+        error: "",
+        note: "Testing…",
+      };
       showForm();
       const done = await deps.execute(conn, engineOf(conn.engine).versionSql, { catalog: true });
       const error = done.result.error ?? done.result.statements[0]?.error;
       const version = done.result.statements[0]?.sets[0]?.rows[0]?.[0] ?? "";
-      if (form) {
+      if (form && session === formSession) {
         form = {
           ...form,
           error: error ? error.message : "",
-          note: error ? "" : `Connected in ${done.result.ms} ms: ${version}`,
+          note: error ? "" : `Connected in ${formatDuration(done.result.ms)}: ${version}`,
         };
         showForm();
       }
       return error ? error.message : version;
     },
-    cancelForm() {
+    async cancelForm(/** @type {Omit<Partial<Connection>, "port"> & { port: string }} */ fields) {
+      if (!form || !opened) return;
+      const session = formSession;
+      const original = opened;
+      const changed = Object.entries(fields).some(([key, value]) => {
+        const before = original[/** @type {keyof Connection} */ (key)];
+        return value !== (key === "port" ? String(before ?? "") : before);
+      });
+      if (changed) {
+        if (confirming === session) return;
+        confirming = session;
+        let discard;
+        try {
+          discard = await deps.confirm("Discard changes to this connection?", [
+            "The fields you changed will be lost.",
+          ]);
+        } finally {
+          if (confirming === session) confirming = 0;
+        }
+        if (!discard || session !== formSession || !form) return;
+      }
       form = null;
+      opened = null;
+      formSession++;
       pending = "";
       showForm();
+      deps.view.focus("explorer");
     },
     async remove(/** @type {string | undefined} */ ref) {
       const conn = await choose(ref, "Database: remove which connection?");

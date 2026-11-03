@@ -12,6 +12,7 @@ import { createConsoles } from "./consoles.js";
 import { engineOf } from "./engines/index.js";
 import { createExecutor, oneLine } from "./execute.js";
 import { createExplorer } from "./explorer.js";
+import { formatDuration } from "./format.js";
 import { addHistory, readHistory } from "./history.js";
 import { createManager } from "./manage.js";
 import { FORMATS, formatRows } from "./results.js";
@@ -72,7 +73,7 @@ export function createDatabase({ bridge, commands, state }, view, options = {}) 
   const confirm = async (/** @type {string} */ title, /** @type {string[]} */ reasons) => {
     const [first, ...rest] = reasons;
     const items = [
-      { id: "yes", label: "Yes, run it", ...(first ? { detail: first } : {}) },
+      { id: "yes", label: "Yes", ...(first ? { detail: first } : {}) },
       ...rest.map((reason, i) => ({ id: `why-${i}`, label: reason })),
       { id: "no", label: "No" },
     ];
@@ -258,7 +259,7 @@ export function createDatabase({ bridge, commands, state }, view, options = {}) 
     const error = done.result.error ?? done.result.statements[0]?.error;
     if (error) throw new Error(`${conn.name}: ${error.message}`);
     const version = done.result.statements[0]?.sets[0]?.rows[0]?.[0] ?? "";
-    view.say(`${conn.name}: connected in ${done.result.ms} ms, ${version}`);
+    view.say(`${conn.name}: connected in ${formatDuration(done.result.ms)}, ${version}`);
     return version;
   });
   answer("endue.database.copy-uri", async ({ connection }) => {
@@ -373,7 +374,9 @@ export function createDatabase({ bridge, commands, state }, view, options = {}) 
     refresh: (/** @type {string | undefined} */ id) => explorer.refresh(id),
     formSave: guard((/** @type {Partial<Connection>} */ fields) => manager.save(fields)),
     formTest: guard((/** @type {Partial<Connection>} */ fields) => manager.test(fields)),
-    formCancel: () => manager.cancelForm(),
+    formCancel: guard((/** @type {Parameters<typeof manager.cancelForm>[0]} */ fields) =>
+      manager.cancelForm(fields),
+    ),
     password: (/** @type {string | undefined} */ value) => manager.answered(value),
   };
 }
