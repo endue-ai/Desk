@@ -11,6 +11,7 @@ import { Sleepers } from "./frames/sleepers";
 import type { KeyLike } from "./input";
 import { eventKey, Owners } from "./owners";
 import { PluginCommands } from "./plugin-commands";
+import { type PluginMessage, recipientsOf } from "./plugin-messages";
 import type { SurfaceSpec } from "./surfaces";
 import { now, phase } from "./timing";
 
@@ -39,31 +40,7 @@ export interface PluginHostDeps {
   wake?(id: string): boolean;
 }
 
-type Reply = {
-  call: number;
-  ok: boolean;
-  result?: unknown;
-  error?: { code: string; message: string };
-};
-
-type PluginMessage =
-  | { type: "desk:hello" }
-  | { type: "desk:calls"; calls: BridgeRequest[] }
-  | { type: "desk:state"; state: unknown }
-  | { type: "desk:close" }
-  | { type: "desk:visible"; visible: boolean }
-  | ({ type: "desk:reply" } & Reply)
-  | { type: "desk:key"; key: KeyLike }
-  | { type: "desk:ready" }
-  | { type: "desk:failed"; message?: string };
-
 const MANAGE = { permission: "plugin:manage" } as const;
-
-/** The callers the core addressed an event to (`to` on the Tauri payload), or undefined for everyone. */
-function recipientsOf(event: BridgeEvent): string[] | undefined {
-  const to = (event as { to?: unknown }).to;
-  return Array.isArray(to) ? to.filter((id): id is string => typeof id === "string") : undefined;
-}
 
 /**
  * Mounts UI plugins on surfaces and carries their bridge calls. Plugins are told apart by the
@@ -84,7 +61,7 @@ export class PluginHost {
   #nextCall = 1;
   readonly #shared = new Map<string, unknown>();
   /** Plugins that said hello since they mounted, and callers waiting for one that has not yet. */
-  readonly #greeted = new Set<string>();
+  readonly #greeted = new Map<string, Window | null>();
   readonly #waiting = new Map<string, Array<{ resolve(): void; reject(e: unknown): void }>>();
   /** When each plugin mounting now got its surface: its `mount <id>` phase ends at its hello. */
   readonly #mounting = new Map<string, number>();
@@ -124,8 +101,8 @@ export class PluginHost {
       }));
     }
     this.#mount(info);
-    if (waitForReady) await this.whenReady(id);
     this.#deps.show?.(id, true);
+    if (waitForReady) await this.whenReady(id);
   }
 
   mounted(): string[] {
@@ -144,6 +121,7 @@ export class PluginHost {
   request(id: string, name: string, args?: unknown): Promise<unknown> {
     if (!this.#mounted.has(id))
       return Promise.reject(new CommandError("unknown_command", `${id} is not running`));
+    if (!this.greeted(id)) return this.whenReady(id).then(() => this.request(id, name, args));
     const call = this.#nextCall++;
     return new Promise((resolve, reject) => {
       this.#pending.set(call, { plugin: id, name, resolve, reject });
@@ -153,7 +131,7 @@ export class PluginHost {
 
   /** Resolves once a mounted plugin has connected (said hello); rejects if it stops first. */
   whenReady(id: string): Promise<void> {
-    if (this.#greeted.has(id)) return Promise.resolve();
+    if (this.greeted(id)) return Promise.resolve();
     if (this.#sleepers.asleep(id)) this.#deps.wake?.(id);
     return new Promise((resolve, reject) => {
       const waiting = this.#waiting.get(id) ?? [];
@@ -169,7 +147,7 @@ export class PluginHost {
 
   /** Whether a plugin's frame said hello since it last loaded, so it can answer the desk. */
   greeted(id: string): boolean {
-    return this.#greeted.has(id);
+    return this.#greeted.has(id) && this.#greeted.get(id) === this.#deps.frame(id);
   }
 
   /** Whether the desk waits for an answer from a plugin, besides `except`. */
@@ -362,7 +340,7 @@ export class PluginHost {
         });
         for (const shared of this.#shared.values()) this.#post(id, shared);
         for (const held of waited) this.#post(id, held);
-        this.#greeted.add(id);
+        this.#greeted.set(id, this.#deps.frame(id));
         for (const waiter of this.#waiting.get(id) ?? []) waiter.resolve();
         this.#waiting.delete(id);
         break;

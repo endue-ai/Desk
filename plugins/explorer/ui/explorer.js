@@ -146,7 +146,7 @@ export function createExplorer({ bridge, commands, settings, surface }, view, op
     );
   };
 
-  /** Enter or double click: a folder opens or closes, a file opens, a "more" row shows a page. */
+  /** Enter or click: a folder opens or closes, a file opens, a "more" row shows a page. */
   const activate = async (/** @type {string} */ id) => {
     const row = rowOf(id);
     if (!row) return;

@@ -26,6 +26,8 @@ const plugins: Record<string, string> = {
   "endue.sidebar": join(repo, "plugins/sidebar"),
   "endue.toolbar": join(repo, "plugins/toolbar"),
   "endue.notes": join(repo, "plugins/notes"),
+  "endue.images": join(repo, "plugins/images"),
+  "endue.explorer": join(repo, "plugins/explorer"),
   "endue.dock": join(repo, "plugins/dock"),
 };
 const sdk = join(repo, "packages/plugin-sdk/src/index.ts");

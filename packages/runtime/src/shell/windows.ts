@@ -25,11 +25,30 @@ import {
   inView,
   layoutOf,
   openSurface,
+  raise,
   windowsOf,
 } from "./actions";
 import { panOf } from "./Pan";
 
 const SIZE = { w: 480, h: 320 };
+
+/** Reveal a plugin's existing pane before considering a new window or an empty launcher. */
+export function showPlugin(ctx: Ctx, id: string): void {
+  const paneIn = (p: SurfacePlacement) =>
+    leaves(panesOf(p)).find(
+      (leaf) => resolveView(ctx.store.get(), p, leaf.view) === `plugin:${id}`,
+    );
+  const shown = windowsOf(ctx.store.get()).find((p) => paneIn(p));
+  if (shown) {
+    focusPane(ctx, shown.id, paneIn(shown)?.id);
+    return;
+  }
+  const item = ctx.store.get().drawer.find((d) => d.placement && paneIn(d.placement));
+  if (item?.placement) {
+    raise(ctx, item.id);
+    focusPane(ctx, item.placement.id, paneIn(item.placement)?.id);
+  } else openView(ctx, `plugin:${id}`);
+}
 
 function update(ctx: Ctx, id: string, change: (p: SurfacePlacement) => SurfacePlacement): void {
   ensurePlaced(ctx, id);

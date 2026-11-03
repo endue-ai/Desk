@@ -14,7 +14,7 @@ on the public SDK only. It shows; it never writes a file (`desk.files.save` is r
   to pan, rotate and flip for the view only, EXIF orientation applied. Left and Right (Page Up/Down,
   Home, End) walk the folder in natural order ("4 / 37"); Compare splits the surface (Escape ends).
 - Details: format, pixel and file size, colour, frames, and EXIF (camera, lens, exposure, ISO,
-  date, GPS...) from JPEG, PNG, WebP, HEIF and TIFF-based RAW.
+  date, GPS...) from JPEG, PNG, WebP, HEIF and TIFF-based RAW. A recreated frame reloads an open buffer on show.
 
 It reads with the SDK's `readBytes` (binary ranges through `fs.url`, ranged `fs.read` without one),
 with a `<desk-progress>` bar (Reading, then Decoding) after 300 ms whose Cancel stops the read and

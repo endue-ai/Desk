@@ -4,7 +4,14 @@ import { zOf } from "../surface/cover";
 import { slotRect } from "../surface/tiling";
 import { layoutOf, moveSurface, openSurface, windowsOf } from "./actions";
 import { Store, sampleState } from "./state";
-import { closeWindow, newWindow, snapTo, toggleFloating, toggleMaximize } from "./windows";
+import {
+  closeWindow,
+  newWindow,
+  showPlugin,
+  snapTo,
+  toggleFloating,
+  toggleMaximize,
+} from "./windows";
 
 const epoch = Date.parse("2026-10-28T09:00:00.000Z");
 const WHOLE = { x: 0, y: 0, w: 1440, h: 900 };
@@ -78,6 +85,16 @@ describe("maximize", () => {
 });
 
 describe("plugin windows in their slots", () => {
+  it("revealing a plugin focuses its own window and leaves an empty launcher alone", () => {
+    const c = ctx();
+    adopt(c);
+    const launcher = newWindow(c);
+    showPlugin(c, "p.a");
+    expect(c.store.get().focused).toBe("p.a");
+    expect(windowsOf(c.store.get()).find((p) => p.id === launcher)?.panes).toMatchObject({
+      view: "launcher",
+    });
+  });
   it("moving one leaves every other window where it was, at its size", () => {
     const c = ctx();
     adopt(c);

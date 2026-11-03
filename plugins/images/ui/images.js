@@ -68,6 +68,8 @@ export function createImages({ bridge, commands }, view, options) {
   const opening = createOpening(bridge, view, options);
   /** @type {Map<string, Entry>} */
   const images = new Map();
+  /** Buffers closed in this frame cannot be restored by a late show request. */
+  const forgotten = new Set();
   /** @type {Map<string, string>} */
   const watches = new Map();
   /** @type {string | null} */
@@ -153,6 +155,7 @@ export function createImages({ bridge, commands }, view, options) {
   };
 
   const forget = (/** @type {string} */ buffer) => {
+    forgotten.add(buffer);
     const entry = images.get(buffer);
     if (entry?.watchId) watches.delete(entry.watchId);
     images.delete(buffer);
@@ -180,6 +183,7 @@ export function createImages({ bridge, commands }, view, options) {
     const { buffer, path } = requested(args);
     if (!buffer || !path) throw new Error("A visit needs a buffer and a path.");
     const entry = await load(buffer, path);
+    forgotten.delete(buffer);
     const old = images.get(buffer);
     images.set(buffer, entry);
     if (old?.watchId) watches.delete(old.watchId);
@@ -206,9 +210,16 @@ export function createImages({ bridge, commands }, view, options) {
   });
 
   answer("desk.buffers.show", async (args) => {
-    const { buffer } = requested(args);
+    const { buffer, path } = requested(args);
     if (opening.pending() !== buffer) opening.stop();
-    const entry = held(buffer);
+    // A window put away or unloaded may come back with a fresh frame. Its file buffer survives.
+    let entry = images.get(buffer);
+    if (!entry && path && !forgotten.has(buffer)) {
+      entry = await load(buffer, path);
+      images.set(buffer, entry);
+      await watch(entry);
+    }
+    entry ??= held(buffer);
     shown = buffer;
     if (folder?.dir !== folderOf(entry.path)) await list(entry.path);
     render();

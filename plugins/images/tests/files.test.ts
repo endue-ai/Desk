@@ -9,6 +9,22 @@ const X = image("~/Documents/x.png");
 const SCOPE = folderScope(A.path);
 
 describe("the desk's file requests", () => {
+  it("a fresh frame restores a surviving file buffer on show and watches it once", async () => {
+    const { host, view, params } = await mount({
+      handlers: disk({ [A.path]: fixture("exif.png") }),
+    });
+    await host.command("desk.buffers.show", A);
+    expect(view.states.at(-1)?.image).toMatchObject({
+      buffer: A.buffer,
+      kind: "web",
+      width: 64,
+      height: 48,
+    });
+    const reads = params("fs.read").length;
+    await host.command("desk.buffers.show", A);
+    expect(params("fs.read")).toHaveLength(reads);
+    expect(params("fs.watch")).toHaveLength(1);
+  });
   it("visit reads the file in ranges, shows it, watches it and lists its folder", async () => {
     const files = { [A.path]: fixture("exif.png") };
     const { host, view, params } = await mount({ handlers: disk(files) });
