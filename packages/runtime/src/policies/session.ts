@@ -1,7 +1,7 @@
 /**
  * desk.session (desktop.el, savehist): keep the desk as it was across restarts. The layout, the
  * files open in buffers, the surface in use, the notification history and the parts a host keeps
- * (the person's key bindings, the shell's desktops) are kept with store.set whenever they change,
+ * (the shell's desktops) are kept with store.set whenever they change,
  * and put back after the plugins have mounted. A record that cannot be put back is kept as
  * `session.broken` and the desk starts empty (ADR 0061); in safe mode the record waits untouched.
  */

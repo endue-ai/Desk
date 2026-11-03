@@ -6,11 +6,12 @@
  * keymap, replacing the person's own entries on those keys; Undo puts the layer back exactly.
  *
  * The keymap is reached through one port, `PersonalKeys`. `settingsKeys` is the port over the
- * runtime as it is now (the setting desk.keys.bindings, as the rebinding screen writes it); #241
- * moves keys into packages/runtime/src/core, and only that function changes then.
+ * runtime: the core's default keys and every plugin's, then the setting desk.keys.bindings, as the
+ * keyboard settings write it (ADR 0055) and desk.keys keeps it in ~/.desk/keys.yaml (ADR 0079).
  */
 import type { KeyBinding } from "@endue-ai/bridge";
 import type { Commands } from "../commands";
+import { DEFAULT_KEYS } from "../core/keys";
 import { canonical, formatCombo, type Platform } from "../input";
 import { resolveKeymap } from "../keymap";
 import { PERSONAL_KEYS } from "../policies/keys";
@@ -25,7 +26,7 @@ import { KEYS, specSchemas } from "./specs";
 
 export interface PersonalKeys {
   platform: Platform;
-  /** Every plugin's bindings in layer order, the person's not included. */
+  /** The core's and every plugin's bindings in layer order, the person's not included. */
   contributed(): PolicySet["keys"];
   /** The person's layer in force. */
   personal(): KeyBinding[];
@@ -51,7 +52,7 @@ export function settingsKeys(
   const { settings } = desk;
   return {
     platform,
-    contributed: () => desk.policy().keys,
+    contributed: () => [...DEFAULT_KEYS, ...desk.policy().keys],
     personal: () => {
       const value = settings.get<unknown>(PERSONAL_KEYS, []);
       return Array.isArray(value) ? value.filter(isBinding) : [];

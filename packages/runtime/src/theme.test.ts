@@ -25,6 +25,20 @@ const themes = [
 const os = { dark: false, highContrast: false, reducedMotion: false };
 
 describe("resolveTheme", () => {
+  it("provides light and high contrast colors without a theme plugin", () => {
+    const light = resolveTheme([], { scheme: "light", contrast: "normal", motion: "full" }, os);
+    expect(light.tokens.background).toBe("#faf9fc");
+    expect(light.tokens.text).toBe("#1e1833");
+    expect(light.tokens.popover).toBe("#ffffff");
+    expect(light.tokens.primaryText).toBe("#6b4f9e");
+    expect(light.tokens.dangerForeground).toBe("#ffffff");
+    const high = resolveTheme([], { scheme: "light", contrast: "high", motion: "reduce" }, os);
+    expect(high.tokens.text).toBe("#000000");
+    expect(high.reducedMotion).toBe(true);
+    expect(high.tokens.ring).toBe("#4a2f80");
+    expect(high.tokens.primaryForeground).toBe("#ffffff");
+    expect(high.tokens.motionTheme).toBe("0ms");
+  });
   it("keeps the built-in tokens when no theme is contributed", () => {
     const state = resolveTheme([], { scheme: "dark", contrast: "normal", motion: "full" }, os);
     expect(state.tokens).toEqual(tokens);

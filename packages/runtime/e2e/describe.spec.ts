@@ -30,7 +30,7 @@ test.describe("desk.describe", () => {
     await expect(page.locator(dialog)).toBeVisible();
     await expect(page.locator(palette)).toBeHidden();
     await expect(page.locator(dialog)).toContainText("Ctrl+S runs desk.files.save.");
-    await expect(page.locator(dialog)).toContainText("Layer: manifest default, desk.keys (Keys)");
+    await expect(page.locator(dialog)).toContainText("Layer: core default, desk");
     await page.keyboard.press("Escape");
     await expect(page.locator(dialog)).toBeHidden();
   });

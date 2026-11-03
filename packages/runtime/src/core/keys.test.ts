@@ -1,13 +1,6 @@
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import type { PluginManifest } from "../../../packages/bridge/src/index";
-import { resolveKeymap } from "../../../packages/runtime/src/keymap";
-
-const manifest = JSON.parse(
-  readFileSync(join(import.meta.dirname, "../plugin.json"), "utf8"),
-) as PluginManifest;
-const keys = (manifest.contributes?.keys ?? []).map((key) => ({ ...key, owner: manifest.id }));
+import { resolveKeymap } from "../keymap";
+import { DEFAULT_KEYS as keys } from "./keys";
 
 describe("the default keymap", () => {
   it("binds each key once, to a desk.* command", () => {

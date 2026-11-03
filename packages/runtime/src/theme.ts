@@ -10,6 +10,7 @@
 import type { ThemePackage } from "@endue-ai/bridge";
 import { cssVariables, MOTION_TOKENS, tokens } from "@endue-ai/ui";
 import { compileTheme, type GateFix, gate, type ThemeFontFace } from "@endue-ai/ui/theme";
+import { HIGH_CONTRAST, LIGHT_COLORS } from "./core/colors";
 import type { PolicySet } from "./policy";
 
 export type Scheme = "light" | "dark";
@@ -86,7 +87,11 @@ export function resolveTheme(
     ...ofScheme.filter((theme) => (theme.contrast ?? "normal") === "normal"),
     ...(contrast === "high" && !own ? ofScheme.filter((theme) => theme.contrast === "high") : []),
   ];
-  const merged: Record<string, string> = { ...tokens };
+  const merged: Record<string, string> = {
+    ...tokens,
+    ...(scheme === "light" ? LIGHT_COLORS : {}),
+    ...(contrast === "high" ? HIGH_CONTRAST[scheme] : {}),
+  };
   for (const theme of applied) {
     const values = theme.tokens;
     Object.assign(merged, values);
