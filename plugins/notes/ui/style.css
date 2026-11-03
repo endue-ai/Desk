@@ -31,6 +31,10 @@ p {
   color: var(--desk-primary-text);
 }
 
+#note-count {
+  margin-left: var(--desk-space-2);
+}
+
 textarea {
   flex: 1;
   min-height: 0;
