@@ -1,0 +1,11 @@
+{
+  "target": "BridgeEvent",
+  "description": "cmd.undone names the entry",
+  "instance": {
+    "event": "cmd.undone",
+    "data": {
+      "by": "desk",
+      "redo": false
+    }
+  }
+}

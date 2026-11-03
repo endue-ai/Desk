@@ -1,0 +1,17 @@
+{
+  "target": "PluginContributes",
+  "description": "a command names the command, also the plugin's, that undoes it",
+  "instance": {
+    "commands": [
+      {
+        "id": "example.notes.delete",
+        "title": "Delete the note",
+        "undo": "example.notes.restore"
+      },
+      {
+        "id": "example.notes.restore",
+        "title": "Restore the note"
+      }
+    ]
+  }
+}

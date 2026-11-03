@@ -59,6 +59,9 @@ pub struct CommandContribution {
     /// The command does something that cannot be taken back (sends, deletes, pays, pushes). An agent's call of it (agent:<id>) waits for the person's approval every time, even with a cmd:invoke grant; a person's own calls never wait (ADR 0078).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub irreversible: Option<bool>,
+    /// The command that undoes this one, which this plugin provides too. After each invocation the plugin answers ok, the desk keeps it on its undo stack, and cmd.undo runs this command with { args, result } of that invocation (ADR 0077).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub undo: Option<CommandId>,
 }
 
 /// A command's args: an object, as cmd.invoke passes them.
@@ -562,6 +565,8 @@ pub enum EventName {
     CmdChanged,
     #[serde(rename = "cmd.invoked")]
     CmdInvoked,
+    #[serde(rename = "cmd.undone")]
+    CmdUndone,
     #[serde(rename = "settings.changed")]
     SettingsChanged,
     #[serde(rename = "log.entry")]
@@ -2404,6 +2409,8 @@ pub enum BridgeRequest {
     CmdInvoke(CmdInvokeRequest),
     CmdAnswer(CmdAnswerRequest),
     CmdRecent(CmdRecentRequest),
+    CmdUndo(CmdUndoRequest),
+    CmdRedo(CmdRedoRequest),
     SettingsGet(SettingsGetRequest),
     SettingsSet(SettingsSetRequest),
     SettingsList(SettingsListRequest),
@@ -2518,6 +2525,7 @@ pub enum BridgeEvent {
     CmdChanged(CmdChangedEvent),
     CmdInvoked(CmdInvokedEvent),
     CmdAnswered(CmdAnsweredEvent),
+    CmdUndone(CmdUndoneEvent),
     SettingsChanged(SettingsChangedEvent),
     LogEntry(LogEntryEvent),
     DataChanged(DataChangedEvent),
@@ -2593,6 +2601,9 @@ pub struct CommandInfo {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub when: Option<String>,
     pub provider: CallerId,
+    /// The command that undoes this one: cmd.undo runs it with { args, result } of an invocation. Absent when the command cannot be undone.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub undo: Option<CommandId>,
 }
 
 /// Register one of the caller's commands, or update it.
@@ -2625,6 +2636,9 @@ pub struct CmdRegisterParams {
     /// A context expression, as keybindings use; absent means always available.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub when: Option<String>,
+    /// The command that undoes this one, which the caller provides too. Absent: the one the caller's manifest names for this id in contributes.commands, if any.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub undo: Option<CommandId>,
 }
 
 /// Result of cmd.register.
@@ -2866,6 +2880,103 @@ pub struct CmdAnsweredData {
     pub result: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub error: Option<CommandFailure>,
+}
+
+/// One invocation on the desk's undo stack: what ran, with what, what it answered, who ran it and when, and the command that undoes it.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct UndoEntry {
+    /// The command that ran; fs.write or fs.restore for a write the core kept a version of.
+    pub command: CommandId,
+    /// The args it ran with.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub args: Option<serde_json::Map<String, serde_json::Value>>,
+    /// What it answered. For a write: { version }, the version that keeps the bytes it replaced.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub result: Option<serde_json::Value>,
+    pub caller: CallerId,
+    /// When the answer arrived (for a write, when it ran). RFC 3339.
+    pub at: String,
+    /// The command that undoes it: its `undo`, or fs.restore for a write.
+    pub inverse: CommandId,
+}
+
+/// Undo the newest entry of the desk's undo stack, whoever pushed it: run its inverse with { args, result }.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CmdUndoRequest {
+    pub id: RequestId,
+    pub method: CmdUndoRequestMethod,
+    pub params: CmdUndoParams,
+}
+
+/// Parameters of cmd.undo. The scope must cover the inverse the entry names (fs.restore for a write).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CmdUndoParams {
+    pub scope: CmdInvokePermission,
+}
+
+/// Result of cmd.undo: the entry undone, absent when there was none; for a command, the invocation of its inverse, whose answer reaches the caller as cmd.answered. A write is undone before this answers.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CmdUndoResult {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub undone: Option<UndoEntry>,
+    #[serde(
+        rename = "invocationId",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub invocation_id: Option<String>,
+}
+
+/// Redo the entry cmd.undo undid last: run its command again with its args (a write: put back what the undo replaced).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CmdRedoRequest {
+    pub id: RequestId,
+    pub method: CmdRedoRequestMethod,
+    pub params: CmdRedoParams,
+}
+
+/// Parameters of cmd.redo. The scope must cover the entry's command (fs.restore for a write).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CmdRedoParams {
+    pub scope: CmdInvokePermission,
+}
+
+/// Result of cmd.redo: the entry redone, absent when there was none; for a command, the invocation that runs it again.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CmdRedoResult {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub undone: Option<UndoEntry>,
+    #[serde(
+        rename = "invocationId",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub invocation_id: Option<String>,
+}
+
+/// An entry of the desk's undo stack was undone or redone. Sent to the caller that did it and to callers subscribed to cmd.undone.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CmdUndoneEvent {
+    pub event: CmdUndoneEventEvent,
+    pub data: CmdUndoneData,
+}
+
+/// Payload of cmd.undone.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CmdUndoneData {
+    pub entry: UndoEntry,
+    pub by: CallerId,
+    /// true for cmd.redo, false for cmd.undo.
+    pub redo: bool,
 }
 
 /// An installed connector as connector.list returns it: its instances and the kinds of item it brings in.
@@ -5850,6 +5961,30 @@ pub enum CmdAnsweredEventEvent {
     #[default]
     #[serde(rename = "cmd.answered")]
     CmdAnswered,
+}
+
+/// The `method` of [`CmdUndoRequest`]: always `"cmd.undo"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum CmdUndoRequestMethod {
+    #[default]
+    #[serde(rename = "cmd.undo")]
+    CmdUndo,
+}
+
+/// The `method` of [`CmdRedoRequest`]: always `"cmd.redo"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum CmdRedoRequestMethod {
+    #[default]
+    #[serde(rename = "cmd.redo")]
+    CmdRedo,
+}
+
+/// The `event` of [`CmdUndoneEvent`]: always `"cmd.undone"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum CmdUndoneEventEvent {
+    #[default]
+    #[serde(rename = "cmd.undone")]
+    CmdUndone,
 }
 
 /// The `method` of [`ConnectorListRequest`]: always `"connector.list"`.

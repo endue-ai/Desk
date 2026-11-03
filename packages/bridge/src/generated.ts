@@ -35,6 +35,8 @@ export interface CommandContribution {
   runs?: CommandCall;
   /** The command does something that cannot be taken back (sends, deletes, pays, pushes). An agent's call of it (agent:<id>) waits for the person's approval every time, even with a cmd:invoke grant; a person's own calls never wait (ADR 0078). */
   irreversible?: boolean;
+  /** The command that undoes this one, which this plugin provides too. After each invocation the plugin answers ok, the desk keeps it on its undo stack, and cmd.undo runs this command with { args, result } of that invocation (ADR 0077). */
+  undo?: CommandId;
 }
 
 /** A command's args: an object, as cmd.invoke passes them. */
@@ -389,6 +391,7 @@ export type EventName =
   | "perm.changed"
   | "cmd.changed"
   | "cmd.invoked"
+  | "cmd.undone"
   | "settings.changed"
   | "log.entry"
   | "update.changed";
@@ -1551,6 +1554,8 @@ export type BridgeRequest =
   | CmdInvokeRequest
   | CmdAnswerRequest
   | CmdRecentRequest
+  | CmdUndoRequest
+  | CmdRedoRequest
   | SettingsGetRequest
   | SettingsSetRequest
   | SettingsListRequest
@@ -1639,6 +1644,7 @@ export type BridgeEvent =
   | CmdChangedEvent
   | CmdInvokedEvent
   | CmdAnsweredEvent
+  | CmdUndoneEvent
   | SettingsChangedEvent
   | LogEntryEvent
   | DataChangedEvent
@@ -1693,6 +1699,8 @@ export interface CommandInfo {
   /** A context expression the runtime evaluates to offer the command; absent means always. */
   when?: string;
   provider: CallerId;
+  /** The command that undoes this one: cmd.undo runs it with { args, result } of an invocation. Absent when the command cannot be undone. */
+  undo?: CommandId;
 }
 
 /** Register one of the caller's commands, or update it. */
@@ -1713,6 +1721,8 @@ export interface CmdRegisterParams {
   argsSchema?: Record<string, unknown>;
   /** A context expression, as keybindings use; absent means always available. */
   when?: string;
+  /** The command that undoes this one, which the caller provides too. Absent: the one the caller's manifest names for this id in contributes.commands, if any. */
+  undo?: CommandId;
 }
 
 /** Result of cmd.register. */
@@ -1874,6 +1884,71 @@ export interface CmdAnsweredData {
   /** What the command returned, when ok. Any JSON value. */
   result?: unknown;
   error?: CommandFailure;
+}
+
+/** One invocation on the desk's undo stack: what ran, with what, what it answered, who ran it and when, and the command that undoes it. */
+export interface UndoEntry {
+  /** The command that ran; fs.write or fs.restore for a write the core kept a version of. */
+  command: CommandId;
+  /** The args it ran with. */
+  args?: Record<string, unknown>;
+  /** What it answered. For a write: { version }, the version that keeps the bytes it replaced. */
+  result?: unknown;
+  caller: CallerId;
+  /** When the answer arrived (for a write, when it ran). RFC 3339. */
+  at: string;
+  /** The command that undoes it: its `undo`, or fs.restore for a write. */
+  inverse: CommandId;
+}
+
+/** Undo the newest entry of the desk's undo stack, whoever pushed it: run its inverse with { args, result }. */
+export interface CmdUndoRequest {
+  id: RequestId;
+  method: "cmd.undo";
+  params: CmdUndoParams;
+}
+
+/** Parameters of cmd.undo. The scope must cover the inverse the entry names (fs.restore for a write). */
+export interface CmdUndoParams {
+  scope: CmdInvokePermission;
+}
+
+/** Result of cmd.undo: the entry undone, absent when there was none; for a command, the invocation of its inverse, whose answer reaches the caller as cmd.answered. A write is undone before this answers. */
+export interface CmdUndoResult {
+  undone?: UndoEntry;
+  invocationId?: string;
+}
+
+/** Redo the entry cmd.undo undid last: run its command again with its args (a write: put back what the undo replaced). */
+export interface CmdRedoRequest {
+  id: RequestId;
+  method: "cmd.redo";
+  params: CmdRedoParams;
+}
+
+/** Parameters of cmd.redo. The scope must cover the entry's command (fs.restore for a write). */
+export interface CmdRedoParams {
+  scope: CmdInvokePermission;
+}
+
+/** Result of cmd.redo: the entry redone, absent when there was none; for a command, the invocation that runs it again. */
+export interface CmdRedoResult {
+  undone?: UndoEntry;
+  invocationId?: string;
+}
+
+/** An entry of the desk's undo stack was undone or redone. Sent to the caller that did it and to callers subscribed to cmd.undone. */
+export interface CmdUndoneEvent {
+  event: "cmd.undone";
+  data: CmdUndoneData;
+}
+
+/** Payload of cmd.undone. */
+export interface CmdUndoneData {
+  entry: UndoEntry;
+  by: CallerId;
+  /** true for cmd.redo, false for cmd.undo. */
+  redo: boolean;
 }
 
 /** An installed connector as connector.list returns it: its instances and the kinds of item it brings in. */
@@ -3583,6 +3658,8 @@ export interface BridgeMethodMap {
   "cmd.invoke": { params: CmdInvokeParams; result: CmdInvokeResult };
   "cmd.answer": { params: CmdAnswerParams; result: CmdAnswerResult };
   "cmd.recent": { params: CmdRecentParams; result: CmdRecentResult };
+  "cmd.undo": { params: CmdUndoParams; result: CmdUndoResult };
+  "cmd.redo": { params: CmdRedoParams; result: CmdRedoResult };
   "settings.get": { params: SettingsGetParams; result: SettingsGetResult };
   "settings.set": { params: SettingsSetParams; result: SettingsSetResult };
   "settings.list": { params: SettingsListParams; result: SettingsListResult };
@@ -3667,6 +3744,8 @@ export const BRIDGE_METHODS = [
   "cmd.invoke",
   "cmd.answer",
   "cmd.recent",
+  "cmd.undo",
+  "cmd.redo",
   "settings.get",
   "settings.set",
   "settings.list",

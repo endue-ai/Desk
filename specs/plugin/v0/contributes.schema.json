@@ -76,6 +76,10 @@
         "irreversible": {
           "description": "The command does something that cannot be taken back (sends, deletes, pays, pushes). An agent's call of it (agent:<id>) waits for the person's approval every time, even with a cmd:invoke grant; a person's own calls never wait (ADR 0078).",
           "type": "boolean"
+        },
+        "undo": {
+          "description": "The command that undoes this one, which this plugin provides too. After each invocation the plugin answers ok, the desk keeps it on its undo stack, and cmd.undo runs this command with { args, result } of that invocation (ADR 0077).",
+          "$ref": "#/$defs/CommandId"
         }
       },
       "required": ["id", "title"],

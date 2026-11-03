@@ -1,0 +1,5 @@
+{
+  "target": "CmdUndoResult",
+  "description": "an empty stack answers no entry, not an error",
+  "instance": {}
+}

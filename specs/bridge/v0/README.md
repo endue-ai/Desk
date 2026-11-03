@@ -54,7 +54,8 @@ A caller that is not an agent is never held.
 
 An event about the caller's own work reaches it without asking: `fs.changed` for its watches, `proc.*` for
 its processes, `audio.wake` for its captures, `brain.turn` for its turns, `perm.changed` for its grants,
-`cmd.invoked` for the commands it provides, `cmd.answered` for the commands it invoked and
+`cmd.invoked` for the commands it provides, `cmd.answered` for the commands it invoked, `cmd.undone` for
+the undos and redos it ran, and
 `settings.changed` for its own keys and `data.changed` for its data subscriptions. `plugin.changed` goes to
 holders of `plugin:manage`, `perm.prompt`, `perm.approval` and `perm.approval.done` to holders of `perm:manage`, `connector.changed` to holders of
 `connector:manage`, `view.changed` to holders of `view:manage`, `update.changed` to holders of
@@ -277,7 +278,8 @@ expression that the runtime evaluates to offer it (palette, keys). The caller be
 are unique: an id another caller provides is `already_exists`. Commands end when their provider unloads
 or its plugin is turned off. It needs no scope. The desk's own commands are registered here too, by the
 runtime as `desk`, and the commands a manifest declares (`contributes.commands`) by the runtime for that
-plugin when it mounts (ADR 0017).
+plugin when it mounts (ADR 0017). `undo` names the command that undoes this one (the caller provides it
+too); without it, the `undo` the caller's manifest gives the id, if any. `cmd.list` shows it.
 
 **cmd.unregister** removes one of the caller's commands; an id it does not provide is `not_found`.
 
@@ -299,6 +301,20 @@ answered `cancelled`. It needs no scope.
 command, the caller, the provider, when it was invoked on the core's clock and, once answered, how long it
 took in milliseconds and whether it ended with a result or which error. One still waiting has neither. It
 needs `perm:manage`, like the grants an inspector shows beside it.
+
+**cmd.undo** undoes the newest entry of the desk's undo stack, one stack for the desk whoever pushed it
+(ADR 0077). An entry is pushed when a command that names an `undo` is answered `ok` (`{ command, args,
+result, caller, at, inverse }`), and when `fs.write` or `fs.restore` keeps a version (`inverse` is
+`fs.restore`, `result` is `{ version }`); a new entry clears what `cmd.redo` could redo, and the stack
+keeps 200. The scope must cover the entry's inverse (`permission_denied` otherwise, and the stack stays as
+it was). For a command, the core invokes the inverse with `{ args, result }` and answers its
+`invocationId` (its answer reaches the caller as `cmd.answered`); for a write, it restores the version
+before answering. `undone` is the entry, absent when the stack is empty. `cmd.undone { entry, by, redo }`
+goes to the caller and to subscribers. An inverse run by cmd.undo pushes nothing.
+
+**cmd.redo** runs the entry cmd.undo undid last again: the command with its args, answered as cmd.undo
+answers (a write: the core puts back what the undo replaced). The scope must cover the entry's command
+(`fs.restore` for a write). Its answer pushes the entry again without clearing what is left to redo.
 
 **settings.get** reads one setting. Keys belong to the caller that sets them, like the store; `owner`
 names another caller, which needs a `settings:read` scope covering `owner/key`. `value` is absent for a

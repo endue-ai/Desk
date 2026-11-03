@@ -6,10 +6,10 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use desk_bridge::{
-    BridgeEvent, BridgeRequest, BridgeResponse, CatalogGetResult, CmdRecentResult,
-    ConnectorInstance, ConnectorManifest, ConnectorStatus, ConnectorSyncResult, FsHistoryResult,
-    FsReadResult, FsRestoreResult, FsUrlResult, FsWriteResult, InitDocument, InitGetResult,
-    InitSettingKey, Item, ItemChange, ItemPage, ItemQuery, KeysFile, PaletteResults,
+    BridgeEvent, BridgeRequest, BridgeResponse, CatalogGetResult, CmdRecentResult, CmdRedoResult,
+    CmdUndoResult, ConnectorInstance, ConnectorManifest, ConnectorStatus, ConnectorSyncResult,
+    FsHistoryResult, FsReadResult, FsRestoreResult, FsUrlResult, FsWriteResult, InitDocument,
+    InitGetResult, InitSettingKey, Item, ItemChange, ItemPage, ItemQuery, KeysFile, PaletteResults,
     PermQueryResult, PermRequestResult, Permission, PluginContributes, PluginListResult,
     PluginManifest, PluginStatsResult, ProfileFile, RefusalReason, ShellOpenResult, StoreGetResult,
     ThemeBundle, ThemeExportResult, ThemeIndex, ThemeMarketFetchResult, ThemeMarketListResult,
@@ -238,6 +238,8 @@ fn valid_vectors_roundtrip_through_generated_types() {
                 "CmdRecentResult" => roundtrip::<CmdRecentResult>(vector),
                 "StoreGetResult" => roundtrip::<StoreGetResult>(vector),
                 "CatalogGetResult" => roundtrip::<CatalogGetResult>(vector),
+                "CmdUndoResult" => roundtrip::<CmdUndoResult>(vector),
+                "CmdRedoResult" => roundtrip::<CmdRedoResult>(vector),
                 "ShellOpenResult" => roundtrip::<ShellOpenResult>(vector),
                 "UiSurfaceStateRequest" => roundtrip::<UiSurfaceStateRequest>(vector),
                 "UiSurfaceStateResult" => roundtrip::<UiSurfaceStateResult>(vector),

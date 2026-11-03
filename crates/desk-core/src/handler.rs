@@ -231,6 +231,8 @@ impl Core {
             R::CmdInvoke(r) => (r.id, self.cmd_invoke(caller, r.params)),
             R::CmdAnswer(r) => (r.id, self.cmd_answer(caller, r.params)),
             R::CmdRecent(r) => (r.id, self.cmd_recent(caller, r.params)),
+            R::CmdUndo(r) => (r.id, unsupported("cmd.undo")),
+            R::CmdRedo(r) => (r.id, unsupported("cmd.redo")),
             R::SettingsGet(r) => (r.id, self.settings_get(caller, r.params)),
             R::SettingsSet(r) => (r.id, self.settings_set(caller, r.params)),
             R::SettingsList(r) => (r.id, self.settings_list(caller, r.params)),

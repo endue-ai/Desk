@@ -49,6 +49,7 @@ impl Core {
             args_schema: params.args_schema,
             when: params.when,
             provider: caller.to_owned(),
+            undo: params.undo,
         };
         let change = {
             let mut commands = self.commands();
