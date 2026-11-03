@@ -33,12 +33,14 @@ export function mountKeyboard(options: KeyboardOptions): { el: HTMLElement; disp
   });
   const conflict = h("div", { class: "settings-conflict", hidden: true });
   const list = h("ul", { class: "settings-key-list" });
+  let retainedRow: string | null = null;
   const query = h("input", {
     type: "search",
     class: "settings-input",
     placeholder: tr("findCommand"),
     "aria-label": tr("findCommand"),
     onInput: () => {
+      retainedRow = null;
       stop();
       draw();
     },
@@ -100,8 +102,16 @@ export function mountKeyboard(options: KeyboardOptions): { el: HTMLElement; disp
     conflict.hidden = false;
     conflict.querySelector("button")?.focus();
   }
-  const focusChange = (id: string) =>
-    list.querySelector<HTMLElement>(`[data-key="keys-change-${CSS.escape(id)}"]`)?.focus();
+  const focusChange = (id: string) => {
+    const find = () =>
+      list.querySelector<HTMLElement>(`[data-key="keys-change-${CSS.escape(id)}"]`);
+    if (!find()) {
+      // Keep the edited row visible when its old shortcut was the search match.
+      retainedRow = id;
+      draw();
+    }
+    find()?.focus();
+  };
   const commit = (id: string, combo: string) => {
     const result = rebind(layers(), id, combo);
     stop();
@@ -177,16 +187,18 @@ export function mountKeyboard(options: KeyboardOptions): { el: HTMLElement; disp
     const current = layers();
     const filtered = commands
       .list()
-      .filter((c) =>
-        [
-          c.title,
-          c.id,
-          ...c.keywords,
-          ...keysOf(current, c.id).map((k) => formatCombo(k, platform)),
-        ]
-          .join(" ")
-          .toLowerCase()
-          .includes(q),
+      .filter(
+        (c) =>
+          c.id === retainedRow ||
+          [
+            c.title,
+            c.id,
+            ...c.keywords,
+            ...keysOf(current, c.id).map((k) => formatCombo(k, platform)),
+          ]
+            .join(" ")
+            .toLowerCase()
+            .includes(q),
       );
     render(list, () =>
       filtered.length

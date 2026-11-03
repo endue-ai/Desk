@@ -87,4 +87,19 @@ describe("keyboard settings", () => {
     clicked.click();
     expect(document.activeElement).toBe(button(`[data-key="keys-change-${command}"]`));
   });
+
+  it.each(["remove", "reset"])("keeps a shortcut-filtered row focused after %s", (action) => {
+    const search = keyboard.el.querySelector<HTMLInputElement>('input[type="search"]');
+    if (!search) throw new Error("Missing command search");
+    search.value = "Ctrl+J";
+    search.dispatchEvent(new Event("input", { bubbles: true }));
+    const clicked = button(`[data-key="keys-${action}-${command}"]`);
+    clicked.focus();
+    clicked.click();
+    expect(search.value).toBe("Ctrl+J");
+    expect(document.activeElement).toBe(button(`[data-key="keys-change-${command}"]`));
+    search.value = "unmatched";
+    search.dispatchEvent(new Event("input", { bubbles: true }));
+    expect(keyboard.el.querySelector(`[data-command="${command}"]`)).toBeNull();
+  });
 });
