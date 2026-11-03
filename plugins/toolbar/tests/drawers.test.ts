@@ -107,9 +107,9 @@ describe("the Access drawer", () => {
     expect(drawer.summary).toBe("3 permissions");
     expect(drawer.rows).toHaveLength(3);
     expect(drawer.rows[0]).toEqual({ label: "Manage permissions", detail: "Manager" });
-    expect(drawer.rows[1].label).toBe("Open links and show files");
-    expect(drawer.rows[1].detail).toContain("https");
-    expect(drawer.rows[1].detail).toContain("~/Documents/**");
+    expect(drawer.rows[1]?.label).toBe("Open links and show files");
+    expect(drawer.rows[1]?.detail).toContain("https");
+    expect(drawer.rows[1]?.detail).toContain("~/Documents/**");
     expect(drawer.rows[2]).toEqual({ label: "x:y", detail: "Manager" });
   });
 
@@ -121,7 +121,7 @@ describe("the Access drawer", () => {
       ),
     );
     const ids: string[] = schema.$defs.Permission.oneOf.map(({ $ref }: { $ref: string }) => {
-      const name = $ref.split("/").at(-1)!;
+      const name = $ref.slice($ref.lastIndexOf("/") + 1);
       return schema.$defs[name].properties.permission.const;
     });
     expect(ids.length).toBeGreaterThan(0);
@@ -143,8 +143,8 @@ describe("the Access drawer", () => {
         ]),
       ]);
       expect(drawer.rows, permission).toHaveLength(1);
-      expect(drawer.rows[0].label, permission).not.toBe(permission);
-      expect(drawer.rows[0].label, permission).toBeTruthy();
+      expect(drawer.rows[0]?.label, permission).not.toBe(permission);
+      expect(drawer.rows[0]?.label, permission).toBeTruthy();
     }
   });
 
