@@ -1,8 +1,11 @@
 name: ci
 
-# Linux runs everything; macOS and Windows run check and unit tests; the Tauri app is built on all
-# three only when the shell or the primitives change. The final `ci` job is the required check.
-# The merge queue runs it again on each PR combined with main and the PRs ahead of it (ADR 0015).
+# Every pull request and the merge queue run on Linux: check and unit tests, the runtime e2e, codegen,
+# red-on-base, and the Tauri app's build when the shell or the primitives change. A pull request into
+# release/vX.Y.Z (ADR 0081) also runs check and unit tests on macOS and Windows, the app on all three
+# and the release dry run; merging it publishes the release (release.yml). The final `ci` job is the
+# required check. The merge queue runs it again on each PR combined with main and the PRs ahead of it
+# (ADR 0015).
 on:
   pull_request:
   merge_group:
@@ -101,6 +104,7 @@ jobs:
 
   check-macos:
     name: check (macos)
+    if: startsWith(github.base_ref, 'release/')
     runs-on: macos-latest
     timeout-minutes: 15
     steps:
@@ -122,6 +126,7 @@ jobs:
 
   check-windows:
     name: check (windows)
+    if: startsWith(github.base_ref, 'release/')
     runs-on: windows-latest
     timeout-minutes: 30
     steps:
@@ -144,11 +149,12 @@ jobs:
   app-build:
     name: app-build (${{ matrix.os }})
     needs: changes
-    if: needs.changes.outputs.app == 'true'
+    if: needs.changes.outputs.app == 'true' || startsWith(github.base_ref, 'release/')
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        # Linux for an app change; every OS for a release pull request.
+        os: ${{ fromJSON(startsWith(github.base_ref, 'release/') && '["ubuntu-latest","macos-latest","windows-latest"]' || '["ubuntu-latest"]') }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     steps:
@@ -249,6 +255,11 @@ jobs:
           git show "$BASE:scripts/red-on-base.sh" > "$script" 2>/dev/null || git show "$HEAD:scripts/red-on-base.sh" > "$script"
           bash "$script" "$BASE" "$HEAD"
 
+  release-dry-run:
+    name: release-dry-run
+    if: startsWith(github.base_ref, 'release/')
+    uses: ./.github/workflows/release-dry-run.yml
+
   ci:
     name: ci
     if: always()
@@ -261,6 +272,7 @@ jobs:
       - app-build
       - codegen-check
       - red-on-base
+      - release-dry-run
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:

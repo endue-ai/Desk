@@ -1,17 +1,15 @@
 name: canary
 
-# Every push to main becomes a canary build on R2 (ADR 0054): built for the four targets as
+# Main becomes a canary build on R2 nightly, when it moved since the last canary, or by hand (ADR 0081,
+# amending ADR 0054's build on every push): built for the four targets as
 # <next patch>-pre.<run>, uploaded in the order that keeps listed builds whole (artifacts, then
 # release.json, then the index), listed on the canary index, and canary builds older than two
 # weeks dropped (files kept while beta or stable lists them). Release notes are the commit page.
 # Without the updater key, its public key or the R2 credentials it says so and stops.
 on:
-  push:
-    branches: [main]
-    paths-ignore:
-      - "docs/**"
-      - "**/*.md"
-      - ".github/ISSUE_TEMPLATE/**"
+  schedule:
+    - cron: "29 18 * * *" # 03:29 KST
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -26,8 +24,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     environment: signing
+    permissions:
+      contents: read
+      actions: read
     outputs:
       publish: ${{ steps.secrets.outputs.publish }}
+      moved: ${{ steps.moved.outputs.moved }}
       version: ${{ steps.version.outputs.version }}
     steps:
       - id: secrets
@@ -48,6 +50,20 @@ jobs:
           else
             echo "publish=true" >> "$GITHUB_OUTPUT"
           fi
+      - id: moved
+        name: Has main moved since the last canary?
+        if: steps.secrets.outputs.publish == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          last="$(gh run list --workflow canary --repo "$GITHUB_REPOSITORY" --branch main \
+            --status success --limit 1 --json headSha --jq '.[0].headSha // ""')"
+          if [ "$GITHUB_EVENT_NAME" = "schedule" ] && [ "$last" = "$GITHUB_SHA" ]; then
+            echo "::notice::No canary build: main is still $GITHUB_SHA, the last canary's commit"
+            echo "moved=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "moved=true" >> "$GITHUB_OUTPUT"
+          fi
       - uses: actions/checkout@v7
         if: steps.secrets.outputs.publish == 'true'
         with:
@@ -58,7 +74,7 @@ jobs:
 
   build:
     needs: gate
-    if: needs.gate.outputs.publish == 'true'
+    if: needs.gate.outputs.publish == 'true' && needs.gate.outputs.moved == 'true'
     uses: ./.github/workflows/release-build.yml
     with:
       version: ${{ needs.gate.outputs.version }}
