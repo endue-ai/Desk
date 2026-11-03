@@ -70,6 +70,11 @@ const copy = {
   change: ["바꾸기", "Change"],
   reset: ["기본값", "Reset"],
   resetAll: ["모두 기본값으로", "Restore Defaults"],
+  restoreConfirm: [
+    "개인 단축키를 모두 지우고 기본값으로 되돌릴까요?",
+    "Remove all personal shortcuts and restore the defaults?",
+  ],
+  restore: ["되돌리기", "Restore"],
   remove: ["지우기", "Clear"],
   none: ["없음", "None"],
   record: ["키를 누르세요 · Esc 취소", "Press a shortcut · Esc to cancel"],

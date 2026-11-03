@@ -43,26 +43,15 @@ export function mountKeyboard(options: KeyboardOptions): { el: HTMLElement; disp
       draw();
     },
   });
+  const restoreAll = h(
+    "button",
+    { type: "button", class: "settings-button", onClick: confirmRestore },
+    tr("resetAll"),
+  );
   const el = h(
     "div",
     { class: "settings-keyboard" },
-    h(
-      "div",
-      { class: "settings-key-tools" },
-      query,
-      h(
-        "button",
-        {
-          type: "button",
-          class: "settings-button",
-          onClick: () => {
-            stop();
-            settings.set(PERSONAL_KEYS, []);
-          },
-        },
-        tr("resetAll"),
-      ),
-    ),
+    h("div", { class: "settings-key-tools" }, query, restoreAll),
     note,
     conflict,
     list,
@@ -78,12 +67,47 @@ export function mountKeyboard(options: KeyboardOptions): { el: HTMLElement; disp
     note.textContent = "";
     draw();
   }
+  function confirmRestore() {
+    stop();
+    conflict.replaceChildren(
+      h("p", {}, tr("restoreConfirm")),
+      h(
+        "button",
+        {
+          class: "settings-button",
+          type: "button",
+          onClick: () => {
+            stop();
+            restoreAll.focus();
+          },
+        },
+        tr("cancel"),
+      ),
+      h(
+        "button",
+        {
+          class: "settings-button primary",
+          type: "button",
+          onClick: () => {
+            stop();
+            settings.set(PERSONAL_KEYS, []);
+            restoreAll.focus();
+          },
+        },
+        tr("restore"),
+      ),
+    );
+    conflict.hidden = false;
+    conflict.querySelector("button")?.focus();
+  }
+  const focusChange = (id: string) =>
+    list.querySelector<HTMLElement>(`[data-key="keys-change-${CSS.escape(id)}"]`)?.focus();
   const commit = (id: string, combo: string) => {
     const result = rebind(layers(), id, combo);
     stop();
     settings.set(PERSONAL_KEYS, result.personal);
     note.textContent = result.displaced ? tr("moved") : "";
-    list.querySelector<HTMLElement>(`[data-key="keys-change-${CSS.escape(id)}"]`)?.focus();
+    focusChange(id);
   };
   const record = (id: string) => {
     stop();
@@ -210,6 +234,7 @@ export function mountKeyboard(options: KeyboardOptions): { el: HTMLElement; disp
                   () => {
                     stop();
                     settings.set(PERSONAL_KEYS, unbind(layers(), c.id));
+                    focusChange(c.id);
                   },
                   keys.length === 0,
                 ),
@@ -218,6 +243,7 @@ export function mountKeyboard(options: KeyboardOptions): { el: HTMLElement; disp
                   () => {
                     stop();
                     settings.set(PERSONAL_KEYS, reset(layers(), c.id));
+                    focusChange(c.id);
                   },
                   isDefault(current, c.id),
                 ),
