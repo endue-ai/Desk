@@ -205,7 +205,12 @@ export function installSettingsWindow(
     if (
       dialog.open &&
       selected !== "keyboard" &&
-      changed.some((key) => key.startsWith("desk.theme.") || key === "desk.notify.dnd")
+      changed.some(
+        (key) =>
+          key.startsWith("desk.theme.") ||
+          key === "desk.notify.dnd" ||
+          key === "desk.wallpaper.scene",
+      )
     )
       draw();
   });

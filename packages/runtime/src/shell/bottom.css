@@ -101,6 +101,88 @@
 .composer-option:hover,
 .composer-option.is-selected { background: var(--desk-hover); }
 
+/* The talk bar has a quiet pill, an unfocused hover preview, and a full editing state. */
+.talk-pill {
+  width: 184px;
+  height: 48px;
+  border: 1px solid var(--desk-primary-border);
+  border-radius: var(--radius-full);
+  background: var(--desk-card);
+  box-shadow: var(--desk-shadow-md);
+  transition: width var(--motion-base) ease, height var(--motion-base) ease, border-radius var(--motion-base) ease;
+}
+.talk-pill[data-state="hover"] { width: 400px; border-color: var(--desk-accent); }
+.talk-pill.is-open { width: min(640px, calc(100vw - 280px)); height: 72px; border-radius: var(--radius-lg); border-color: var(--desk-accent); }
+.talk-pill .composer-hint { display: none; }
+.talk-pill .composer-field {
+  position: absolute;
+  left: 268px;
+  right: 76px;
+  bottom: 12px;
+  overflow: visible;
+  border: 0;
+  background: transparent;
+  opacity: 0;
+  pointer-events: none;
+}
+.talk-pill.is-open .composer-field { opacity: 1; pointer-events: auto; border: 0; background: transparent; }
+.talk-pill.is-open .composer-field:focus-within { outline: none; }
+.talk-pill:focus-within { outline: 1px solid var(--desk-accent); outline-offset: 0; }
+.talk-pill .composer-input { padding: 0; font-size: var(--text-base); }
+.talk-pill .composer-input:focus-visible { outline: none; }
+.talk-launch {
+  position: absolute;
+  inset: 0 auto 0 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 158px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  white-space: nowrap;
+}
+.talk-orb { width: 24px; height: 24px; flex: none; fill: none; stroke: var(--desk-eris-frost); stroke-width: 0.22; }
+.talk-preview {
+  position: absolute;
+  left: 150px;
+  right: 82px;
+  top: 13px;
+  height: 22px;
+  padding: 2px 9px;
+  overflow: hidden;
+  border-radius: var(--radius-full);
+  background: var(--desk-muted);
+  color: var(--desk-text-muted);
+  font-size: var(--text-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 0;
+}
+.talk-pill[data-state="hover"] .talk-preview,
+.talk-pill.is-open .talk-preview { opacity: 1; }
+.talk-pill.is-open .talk-preview { left: 68px; right: auto; width: 184px; top: 24px; }
+.talk-shortcut {
+  position: absolute;
+  right: 12px;
+  top: 14px;
+  padding: 0 4px;
+  border: 1px solid var(--desk-border);
+  border-radius: var(--radius-sm);
+  color: var(--desk-text-muted);
+  font: inherit;
+  font-size: var(--text-xs);
+  opacity: 0;
+}
+.talk-pill[data-state="hover"] .talk-shortcut,
+.talk-pill.is-open .talk-shortcut { opacity: 1; }
+.talk-pill.is-open .talk-shortcut { top: 25px; }
+.talk-grip { display: none; position: absolute; left: 14px; top: 24px; color: var(--desk-text-muted); }
+.talk-pill.is-open .talk-grip { display: block; }
+.talk-agent-button { position: absolute; left: 32px; top: 18px; }
+.talk-agent-list { position: absolute; bottom: calc(100% + 12px); left: 0; width: 252px; max-height: 280px; overflow: auto; padding: var(--space-1); }
+
 .running {
   position: absolute;
   right: var(--space-6);
@@ -116,6 +198,7 @@
   list-style: none;
 }
 .running > li { display: flex; min-width: 0; }
+.bottom:has(.composer.is-open) .running { max-width: calc(50% - 360px); }
 .run-chip {
   position: relative;
   min-width: 0;

@@ -5,6 +5,7 @@ import { mountDrawer } from "./Drawer";
 import { h, listen } from "./dom";
 import { icon } from "./icons";
 import { mountRunning } from "./Running";
+import { mountTalkChrome } from "./TalkChrome";
 
 export function mountBottom(root: HTMLElement, ctx: ShellCtx): () => void {
   const el = h("footer", { class: "bottom" });
@@ -16,6 +17,7 @@ export function mountBottom(root: HTMLElement, ctx: ShellCtx): () => void {
   );
   root.append(el, drop);
   const parts = [mountDrawer(el, ctx), mountComposer(el, ctx), mountRunning(el, ctx)];
+  parts.push(mountTalkChrome(el, ctx));
   const inBottomThird = (e: DragEvent) => e.clientY > (window.innerHeight * 2) / 3;
   const hasFiles = (e: DragEvent) => [...(e.dataTransfer?.types ?? [])].includes("Files");
   const offs = [
