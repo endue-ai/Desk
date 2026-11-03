@@ -226,8 +226,11 @@ describe("the keyboard", () => {
     expect(await app.key("Tab")).toBe(false);
   });
 
-  it("endue.explorer.open shows the surface and focuses the selection", async () => {
+  it("copy-path needs a selection, then open shows and focuses the first row", async () => {
     const { host, view } = await mount({ handlers: disk(sample()) });
+    await expect(host.command("endue.explorer.copy-path")).rejects.toThrow(
+      "Select a file or folder first.",
+    );
     await expect(host.command("endue.explorer.open")).resolves.toBe(DOCS);
     expect(host.visible).toBe(true);
     expect(view.focused.at(-1)).toBe(DOCS);
