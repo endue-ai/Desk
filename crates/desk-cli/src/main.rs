@@ -9,6 +9,7 @@ mod health;
 mod plugin_test;
 mod remote;
 mod theme;
+mod undo;
 
 use std::path::Path;
 use std::process::ExitCode;

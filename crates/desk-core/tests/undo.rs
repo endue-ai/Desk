@@ -44,7 +44,8 @@ fn desk(tag: &str) -> (Core, Receiver<Delivery>, std::path::PathBuf) {
 
 /// Invoke `id` as `caller` and answer it as its provider with `answer` (`Err` for a failure).
 fn run(core: &Core, caller: &str, id: &str, args: Value, answer: Result<Value, &str>) {
-    let params = json!({ "id": id, "args": args, "scope": all() });
+    let scope = json!({ "permission": "cmd:invoke", "ids": [id] });
+    let params = json!({ "id": id, "args": args, "scope": scope });
     let invoked = call(core, caller, "cmd.invoke", params).unwrap();
     let invocation = invoked["invocationId"].clone();
     let params = match answer {

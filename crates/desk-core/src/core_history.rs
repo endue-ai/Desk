@@ -114,10 +114,35 @@ impl Core {
         };
         self.hold(caller, &scope, write)?;
         let (bytes_written, version) = self.write_keeping(caller, &path, &bytes, false)?;
+        if let Some(version) = &version {
+            self.push_write(caller, "fs.restore", &params.path, version.clone());
+        }
         json(FsRestoreResult {
             bytes_written,
             version,
         })
+    }
+
+    /// Restore version `id` of the file at `path` (a bridge path) as `caller`, holding an agent's
+    /// write for the person as fs.restore does, for the undo stack: the version that keeps what the
+    /// restore replaced. Nothing is pushed.
+    pub(crate) fn restore_as(
+        &self,
+        caller: &str,
+        scope: &Permission,
+        path: &str,
+        id: &str,
+    ) -> Result<Option<String>, BridgeError> {
+        let file = self.resolve(path)?;
+        let bytes = self.version_bytes(&file, id)?;
+        let write = Action::Write {
+            path,
+            file: &file,
+            bytes: &bytes,
+        };
+        self.hold(caller, scope, write)?;
+        self.write_keeping(caller, &file, &bytes, false)
+            .map(|(_, kept)| kept)
     }
 
     /// The bytes of version `id` of `path`: `not_found` when its history does not hold them,

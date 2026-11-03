@@ -7,7 +7,7 @@
  */
 import { StubError, type StubHandlers } from "./adapters";
 import type { FsReadPermission, FsWritePermission } from "./generated";
-import { type HistoryServed, stubHistory } from "./stub-history";
+import { type HistoryServed, stubHistory, type Wrote } from "./stub-history";
 
 /** In-memory files by bridge path: text (stored as UTF-8) or bytes. */
 export type StubFiles = Record<string, string | Uint8Array>;
@@ -101,6 +101,7 @@ export function stubFs(
   files: StubFiles,
   check: Check,
   now: () => string = () => new Date().toISOString(),
+  wrote?: Wrote,
 ): Required<Pick<StubHandlers, FsServed>> {
   const bytes = new Map<string, Uint8Array>(
     Object.entries(files).map(([path, content]) => [
@@ -129,7 +130,7 @@ export function stubFs(
     throw new StubError("not_found", `${path} does not exist`);
   };
   return {
-    ...stubHistory(bytes, allow, now),
+    ...stubHistory(bytes, allow, now, wrote),
     "fs.read": ({ path, encoding = "utf8", offset = 0, length, scope }, caller) => {
       const file = open(caller, path, scope);
       const start = Math.min(offset, file.length);

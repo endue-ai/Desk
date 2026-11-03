@@ -43,6 +43,7 @@ mod core_state;
 mod core_store;
 mod core_themes;
 mod core_ui;
+mod core_undo;
 mod core_update;
 mod core_views;
 mod core_wasm;
