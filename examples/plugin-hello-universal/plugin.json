@@ -1,0 +1,9 @@
+{
+  "id": "example.hello-universal",
+  "name": "Hello Universal View",
+  "version": "0.1.0",
+  "kind": "ui",
+  "entry": "ui/index.html",
+  "description": "The smallest universal view: a board in a YAML file, drawn as a kanban that switches to a list, a timeline and a calendar.",
+  "surfaces": [{ "id": "main", "title": "Launch board", "placement": "center" }]
+}

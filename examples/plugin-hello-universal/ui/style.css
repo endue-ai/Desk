@@ -1,0 +1,15 @@
+/* The page around the view; <desk-universal-view> styles itself from the desk's tokens. */
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: var(--desk-background);
+  color: var(--desk-text);
+  font: var(--desk-text-sm) / 20px var(--desk-font-sans);
+}
+
+#root {
+  box-sizing: border-box;
+  height: 100%;
+  padding: 16px;
+}
