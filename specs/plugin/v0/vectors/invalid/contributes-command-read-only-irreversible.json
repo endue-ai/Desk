@@ -1,0 +1,15 @@
+{
+  "target": "PluginContributes",
+  "description": "a command that only reads cannot be irreversible",
+  "instance": {
+    "commands": [
+      {
+        "id": "example.mail.send",
+        "title": "Send the draft",
+        "description": "Send the message being written.",
+        "readOnly": true,
+        "irreversible": true
+      }
+    ]
+  }
+}

@@ -154,6 +154,34 @@ defineUiPlugin({
 传到你的框架。在框架里按下的组合键会传到桌面的按键映射，除非你调用了 `preventDefault()`。默认策略及其各自
 决定的内容见 `plugins/README.md`。
 
+## 供代理使用的命令
+
+endue AI 的代理或本地大脑，通过人所运行的同一套命令操作桌面（ADR 0088）。给命令标上 `agent`，并写明它做什么、
+接收什么、返回什么：核心会用 `args` 检查每次调用的参数，在 `cmd.tools` 中列出该命令，并在桌面的大脑轮次中
+把它作为以其 ID 命名的工具（`example_my-plugin_notes`）提供出去：
+
+```json
+"commands": [
+  {
+    "id": "example.my-plugin.notes",
+    "title": "Notes: list",
+    "description": "The notes in a folder, newest first: name, path and when each changed.",
+    "args": { "type": "object", "properties": { "folder": { "type": "string" } }, "additionalProperties": false },
+    "result": { "type": "array", "items": { "type": "object" } },
+    "agent": true,
+    "readOnly": true
+  },
+  { "id": "example.my-plugin.publish", "title": "Notes: publish", "description": "Publish a note to the web.", "agent": true, "irreversible": true }
+]
+```
+
+`readOnly` 表示该命令只返回数据，不改变人所保有的任何东西。命令以你的插件的权限运行，而不是代理的权限，
+所以凡是运行程序、发送、删除或发布的命令，都要标上 `irreversible`：这样代理的调用会先展示参数，再等待人的
+批准。不要把人从命令面板直接运行时会缺少的参数设为必需，改在处理函数中检查。运行时注册的命令可通过
+`cmd.register` 使用相同的字段（`description`、`argsSchema`、`resultSchema`、`agent`、`readOnly`），
+`ctx.commands.tools()` 会列出你的权限覆盖到的代理命令。内置的 git、terminal、docker、calendar 和
+database 插件就是示例。
+
 ## 编辑文件：编辑层级
 
 打开文件的插件先读、后编辑（ADR 0045）。一旦开始编辑，它打开的每种格式除了读取层级，还有一个编辑层级，

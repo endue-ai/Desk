@@ -43,7 +43,7 @@ pub struct PluginContributes {
 /// A command id: lowercase and dotted, with at least two segments, for example eris.say or desk.palette.open. Unique across callers (bridge cmd.*); a plugin's contributed commands start with its own id.
 pub type CommandId = String;
 
-/// A command the palette lists and keys can run.
+/// A command the palette lists, keys can run and, marked agent, agents are offered as a tool.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct CommandContribution {
@@ -62,6 +62,21 @@ pub struct CommandContribution {
     /// The command that undoes this one, which this plugin provides too. After each invocation the plugin answers ok, the desk keeps it on its undo stack, and cmd.undo runs this command with { args, result } of that invocation (ADR 0077).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub undo: Option<CommandId>,
+    /// What the command does and what it answers, in one or two sentences for people and agents. cmd.list shows it; an agent command needs one.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    /// A JSON Schema (2020-12) of the args, whose type is object. The core checks every cmd.invoke against it (argsSchema in cmd.list); absent, the args are not checked.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub args: Option<serde_json::Map<String, serde_json::Value>>,
+    /// A JSON Schema (2020-12) of what the command answers (resultSchema in cmd.list), so an agent knows the data it gets back. The core does not check answers against it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub result: Option<serde_json::Map<String, serde_json::Value>>,
+    /// Offer the command to agents as a tool: cmd.tools lists it and the desk's brain turns offer it (ADR 0088). It needs a description. An agent's call still needs a cmd:invoke grant of its own inside its allowlist, and an irreversible command still waits for approval. Default false.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub agent: Option<bool>,
+    /// The command only reads: it answers data and changes nothing the person keeps (files, settings, items, messages, processes, the remote end); showing a surface is allowed. Agents are told; never true together with irreversible.
+    #[serde(rename = "readOnly", default, skip_serializing_if = "Option::is_none")]
+    pub read_only: Option<bool>,
 }
 
 /// A command's args: an object, as cmd.invoke passes them.
@@ -2621,6 +2636,7 @@ pub enum BridgeRequest {
     CmdList(CmdListRequest),
     CmdInvoke(CmdInvokeRequest),
     CmdAnswer(CmdAnswerRequest),
+    CmdTools(CmdToolsRequest),
     CmdRecent(CmdRecentRequest),
     CmdUndo(CmdUndoRequest),
     CmdRedo(CmdRedoRequest),
@@ -2820,6 +2836,22 @@ pub struct CommandInfo {
     /// The command that undoes this one: cmd.undo runs it with { args, result } of an invocation. Absent when the command cannot be undone.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub undo: Option<CommandId>,
+    /// JSON Schema (2020-12) of what the command answers; absent when it is not described. The core does not check answers.
+    #[serde(
+        rename = "resultSchema",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub result_schema: Option<serde_json::Map<String, serde_json::Value>>,
+    /// Agents are offered the command as a tool (cmd.tools, ADR 0088). Absent means false.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub agent: Option<bool>,
+    /// The command only reads: it answers data and changes nothing the person keeps. Absent means false.
+    #[serde(rename = "readOnly", default, skip_serializing_if = "Option::is_none")]
+    pub read_only: Option<bool>,
+    /// The provider's manifest marks the command irreversible: an agent's call waits for the person's approval (ADR 0078). Absent means false.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub irreversible: Option<bool>,
 }
 
 /// Register one of the caller's commands, or update it.
@@ -2837,12 +2869,13 @@ pub struct CmdRegisterRequest {
 pub struct CmdRegisterParams {
     pub id: CommandId,
     pub title: String,
+    /// What the command does and answers, for people and agents. Absent: the manifest's, if any.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
     /// More words the palette matches.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub keywords: Option<Vec<String>>,
-    /// JSON Schema (2020-12) for the args of cmd.invoke.
+    /// JSON Schema (2020-12) for the args of cmd.invoke. Absent: the manifest's (args), if any.
     #[serde(
         rename = "argsSchema",
         default,
@@ -2855,6 +2888,19 @@ pub struct CmdRegisterParams {
     /// The command that undoes this one, which the caller provides too. Absent: the one the caller's manifest names for this id in contributes.commands, if any.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub undo: Option<CommandId>,
+    /// JSON Schema (2020-12) of what the command answers. Absent: the one the caller's manifest names for this id (result), if any.
+    #[serde(
+        rename = "resultSchema",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub result_schema: Option<serde_json::Map<String, serde_json::Value>>,
+    /// Offer the command to agents as a tool (ADR 0088); it needs a description, here or in the manifest. Absent: the manifest's, else false.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub agent: Option<bool>,
+    /// The command only reads: it answers data and changes nothing the person keeps. Absent: the manifest's, else false. A command the manifest marks irreversible is never read-only.
+    #[serde(rename = "readOnly", default, skip_serializing_if = "Option::is_none")]
+    pub read_only: Option<bool>,
 }
 
 /// Result of cmd.register.
@@ -2959,6 +3005,68 @@ pub struct CmdAnswerParams {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct CmdAnswerResult {}
+
+/// List the commands offered to agents as tools (ADR 0088): what the desk's brain turns offer, and what the desk-tools tool answers.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CmdToolsRequest {
+    pub id: RequestId,
+    pub method: CmdToolsRequestMethod,
+    pub params: CmdToolsParams,
+}
+
+/// Parameters of cmd.tools. It needs no scope: an agent sees the agent commands its allowlist could let it run, any other caller the ones its cmd:invoke grants cover.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CmdToolsParams {
+    /// Words that must each appear, ignoring case, in the command's id, title, description or keywords.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub query: Option<String>,
+    /// How many tools at most; 50 when absent.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub limit: Option<u64>,
+}
+
+/// Result of cmd.tools, in registration order.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CmdToolsResult {
+    pub tools: Vec<CommandTool>,
+}
+
+/// A command offered to agents as a tool: what it does, the args it takes, what it answers, and whether the caller may run it now.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CommandTool {
+    /// The tool's name in a brain turn: the command id with every dot an underscore (endue.git.state is endue_git_state). Absent when the id is longer than 64 characters; desk-run still runs it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    pub command: CommandId,
+    pub title: String,
+    pub description: String,
+    /// JSON Schema (2020-12) of the args; absent means the command takes none.
+    #[serde(
+        rename = "argsSchema",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub args_schema: Option<serde_json::Map<String, serde_json::Value>>,
+    /// JSON Schema (2020-12) of the answer; absent when it is not described.
+    #[serde(
+        rename = "resultSchema",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub result_schema: Option<serde_json::Map<String, serde_json::Value>>,
+    #[serde(rename = "readOnly", default, skip_serializing_if = "Option::is_none")]
+    pub read_only: Option<bool>,
+    /// An agent's call waits for the person's approval, every time (ADR 0078).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub irreversible: Option<bool>,
+    pub provider: CallerId,
+    /// A grant the caller holds covers the command now. An agent's call without one asks the person first.
+    pub granted: bool,
+}
 
 /// List the last command invocations the core saw, for an inspector.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -6193,6 +6301,14 @@ pub enum CmdAnswerRequestMethod {
     #[default]
     #[serde(rename = "cmd.answer")]
     CmdAnswer,
+}
+
+/// The `method` of [`CmdToolsRequest`]: always `"cmd.tools"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum CmdToolsRequestMethod {
+    #[default]
+    #[serde(rename = "cmd.tools")]
+    CmdTools,
 }
 
 /// The `method` of [`CmdRecentRequest`]: always `"cmd.recent"`.

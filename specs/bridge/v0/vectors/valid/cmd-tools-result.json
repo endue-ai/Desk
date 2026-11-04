@@ -1,0 +1,28 @@
+{
+  "target": "CmdToolsResult",
+  "description": "a read-only tool the agent holds a grant for and an irreversible one it would be asked about",
+  "instance": {
+    "tools": [
+      {
+        "name": "endue_git_state",
+        "command": "endue.git.state",
+        "title": "Git: state",
+        "description": "The repository's branch, upstream and changed files.",
+        "argsSchema": { "type": "object", "properties": { "path": { "type": "string" } } },
+        "resultSchema": { "type": "object" },
+        "readOnly": true,
+        "provider": "endue.git",
+        "granted": true
+      },
+      {
+        "name": "endue_git_push",
+        "command": "endue.git.push",
+        "title": "Git: push",
+        "description": "Push the current branch to its upstream.",
+        "irreversible": true,
+        "provider": "endue.git",
+        "granted": false
+      }
+    ]
+  }
+}

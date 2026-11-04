@@ -7,15 +7,16 @@ use std::path::{Path, PathBuf};
 
 use desk_bridge::{
     BridgeEvent, BridgeRequest, BridgeResponse, CatalogGetResult, CmdRecentResult, CmdRedoResult,
-    CmdUndoResult, ConnectorInstance, ConnectorManifest, ConnectorStatus, ConnectorSyncResult,
-    FsHistoryResult, FsReadResult, FsRestoreResult, FsUrlResult, FsWriteResult, InitDocument,
-    InitGetResult, InitSettingKey, Item, ItemChange, ItemPage, ItemQuery, KeysFile, PaletteResults,
-    PermQueryResult, PermRequestResult, Permission, PluginContributes, PluginListResult,
-    PluginManifest, PluginStatsResult, ProfileFile, RefusalReason, SettingsListResult,
-    ShellOpenResult, StoreGetResult, ThemeBundle, ThemeExportResult, ThemeIndex,
-    ThemeMarketFetchResult, ThemeMarketListResult, ThemePackage, ThemeType, ThemeVariant,
-    UiSurfaceStateRequest, UiSurfaceStateResult, UniversalData, UniversalSource, UniversalView,
-    View, ViewGetResult, ViewListResult, ViewSource, ViewSummary, manifest_problems, view_problems,
+    CmdToolsResult, CmdUndoResult, ConnectorInstance, ConnectorManifest, ConnectorStatus,
+    ConnectorSyncResult, FsHistoryResult, FsReadResult, FsRestoreResult, FsUrlResult,
+    FsWriteResult, InitDocument, InitGetResult, InitSettingKey, Item, ItemChange, ItemPage,
+    ItemQuery, KeysFile, PaletteResults, PermQueryResult, PermRequestResult, Permission,
+    PluginContributes, PluginListResult, PluginManifest, PluginStatsResult, ProfileFile,
+    RefusalReason, SettingsListResult, ShellOpenResult, StoreGetResult, ThemeBundle,
+    ThemeExportResult, ThemeIndex, ThemeMarketFetchResult, ThemeMarketListResult, ThemePackage,
+    ThemeType, ThemeVariant, UiSurfaceStateRequest, UiSurfaceStateResult, UniversalData,
+    UniversalSource, UniversalView, View, ViewGetResult, ViewListResult, ViewSource, ViewSummary,
+    manifest_problems, view_problems,
 };
 use serde::Serialize;
 use serde::de::DeserializeOwned;
@@ -266,6 +267,7 @@ fn valid_vectors_roundtrip_through_generated_types() {
                 "CatalogGetResult" => roundtrip::<CatalogGetResult>(vector),
                 "CmdUndoResult" => roundtrip::<CmdUndoResult>(vector),
                 "CmdRedoResult" => roundtrip::<CmdRedoResult>(vector),
+                "CmdToolsResult" => roundtrip::<CmdToolsResult>(vector),
                 "ShellOpenResult" => roundtrip::<ShellOpenResult>(vector),
                 "UiSurfaceStateRequest" => roundtrip::<UiSurfaceStateRequest>(vector),
                 "UiSurfaceStateResult" => roundtrip::<UiSurfaceStateResult>(vector),

@@ -166,3 +166,37 @@ fn a_length_stop_is_max_tokens() {
     result.unwrap();
     assert_eq!(events.last().unwrap()["stopReason"], "max_tokens");
 }
+
+#[test]
+fn a_model_named_for_an_agent_asks_for_its_tools_as_that_agent() {
+    let ollama = FakeOllama::start(vec![Reply::Stream(vec![
+        calls(&[("endue_git_state", json!({}))]),
+        done("stop"),
+    ])]);
+    let folder = Folder::new();
+    let named = LocalBrainOptions::new(MODEL).with_base_url(&ollama.url);
+    let brain = LocalBrain::open(folder.path(), named.with_agent("local")).unwrap();
+    let (session, lease) = open(&brain, "desk-a");
+    let (result, events) = turn(&brain, &session, &lease, "which branch?");
+    result.unwrap();
+    assert_eq!(events[1]["call"]["name"], "endue_git_state");
+    assert_eq!(events[1]["call"]["agentId"], "local");
+
+    let other = Folder::new();
+    let without = FakeOllama::start(vec![Reply::Stream(vec![
+        calls(&[("echo", json!({}))]),
+        done("stop"),
+    ])]);
+    let plain = LocalBrain::open(
+        other.path(),
+        LocalBrainOptions::new(MODEL).with_base_url(&without.url),
+    )
+    .unwrap();
+    let (session, lease) = open(&plain, "desk-a");
+    let (_, events) = turn(&plain, &session, &lease, "hi");
+    assert!(events[1]["call"].get("agentId").is_none(), "{}", events[1]);
+
+    let colon = LocalBrainOptions::new(MODEL).with_agent("agent:x");
+    let bad = LocalBrain::open(other.path(), colon.with_base_url(&ollama.url));
+    assert!(bad.is_err());
+}

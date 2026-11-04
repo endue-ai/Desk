@@ -59,7 +59,7 @@
       "maxLength": 128
     },
     "CommandContribution": {
-      "description": "A command the palette lists and keys can run.",
+      "description": "A command the palette lists, keys can run and, marked agent, agents are offered as a tool.",
       "type": "object",
       "properties": {
         "id": { "$ref": "#/$defs/CommandId" },
@@ -80,10 +80,44 @@
         "undo": {
           "description": "The command that undoes this one, which this plugin provides too. After each invocation the plugin answers ok, the desk keeps it on its undo stack, and cmd.undo runs this command with { args, result } of that invocation (ADR 0077).",
           "$ref": "#/$defs/CommandId"
+        },
+        "description": {
+          "description": "What the command does and what it answers, in one or two sentences for people and agents. cmd.list shows it; an agent command needs one.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000
+        },
+        "args": {
+          "description": "A JSON Schema (2020-12) of the args, whose type is object. The core checks every cmd.invoke against it (argsSchema in cmd.list); absent, the args are not checked.",
+          "type": "object"
+        },
+        "result": {
+          "description": "A JSON Schema (2020-12) of what the command answers (resultSchema in cmd.list), so an agent knows the data it gets back. The core does not check answers against it.",
+          "type": "object"
+        },
+        "agent": {
+          "description": "Offer the command to agents as a tool: cmd.tools lists it and the desk's brain turns offer it (ADR 0088). It needs a description. An agent's call still needs a cmd:invoke grant of its own inside its allowlist, and an irreversible command still waits for approval. Default false.",
+          "type": "boolean"
+        },
+        "readOnly": {
+          "description": "The command only reads: it answers data and changes nothing the person keeps (files, settings, items, messages, processes, the remote end); showing a surface is allowed. Agents are told; never true together with irreversible.",
+          "type": "boolean"
         }
       },
       "required": ["id", "title"],
-      "additionalProperties": false
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": { "properties": { "agent": { "const": true } }, "required": ["agent"] },
+          "then": { "properties": { "description": true }, "required": ["description"] }
+        },
+        {
+          "not": {
+            "properties": { "readOnly": { "const": true }, "irreversible": { "const": true } },
+            "required": ["readOnly", "irreversible"]
+          }
+        }
+      ]
     },
     "CommandArgs": {
       "description": "A command's args: an object, as cmd.invoke passes them.",

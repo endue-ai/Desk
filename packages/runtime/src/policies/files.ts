@@ -6,7 +6,7 @@
  * the desk turned it on, goes off again with its last buffer (ADR 0046).
  */
 import { baseName } from "../buffers";
-import { CommandError } from "../commands";
+import { type AgentSpec, CommandError } from "../commands";
 import type { NoticeInput } from "../notify";
 import { autoloads, globMatch, type PolicySet } from "../policy";
 import type { BufferEvents, BuffersPolicy } from "./buffers";
@@ -167,9 +167,21 @@ export function installFiles(
     return buffer.id;
   };
 
-  const define = (id: string, title: string, run: (args: unknown) => unknown, keywords: string[]) =>
+  const define = (
+    id: string,
+    title: string,
+    run: (args: unknown) => unknown,
+    keywords: string[],
+    agent?: AgentSpec,
+  ) =>
     offs.add(
-      commands.define(id, { title, keywords: ["files", ...keywords], owner: "desk.files", run }),
+      commands.define(id, {
+        title,
+        keywords: ["files", ...keywords],
+        owner: "desk.files",
+        run,
+        ...(agent ? { agent } : {}),
+      }),
     );
 
   define(
@@ -189,6 +201,21 @@ export function installFiles(
       return chosen ? open(chosen, plugin) : null;
     },
     ["find-file"],
+    {
+      description:
+        "Open a file on the desk for the person, in the plugin that opens its kind (plugin names another); answers its buffer id.",
+      args: {
+        type: "object",
+        properties: {
+          path: {
+            type: "string",
+            minLength: 1,
+            description: "A bridge path, such as ~/Notes/a.md",
+          },
+          plugin: { type: "string", minLength: 1 },
+        },
+      },
+    },
   );
   define(
     "desk.files.recent",

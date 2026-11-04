@@ -193,6 +193,37 @@ dans votre cadre sous forme de propriétés CSS `--desk-*` et de `ctx.theme`. Le
 pressées dans votre cadre atteignent le keymap du bureau, sauf si vous appelez `preventDefault()`. Les
 politiques par défaut, et ce que chacune décide, sont listées dans `plugins/README.md`.
 
+## Des commandes pour les agents
+
+Un agent d'endue AI, ou le cerveau local, travaille le bureau avec les mêmes commandes que les personnes
+(ADR 0088). Marquez une commande `agent` et dites ce qu'elle fait, ce qu'elle prend et ce qu'elle répond :
+le cœur vérifie les arguments de chaque appel avec `args`, liste la commande dans `cmd.tools` et l'offre
+dans les tours du cerveau du bureau comme un outil nommé d'après son id (`example_my-plugin_notes`) :
+
+```json
+"commands": [
+  {
+    "id": "example.my-plugin.notes",
+    "title": "Notes: list",
+    "description": "The notes in a folder, newest first: name, path and when each changed.",
+    "args": { "type": "object", "properties": { "folder": { "type": "string" } }, "additionalProperties": false },
+    "result": { "type": "array", "items": { "type": "object" } },
+    "agent": true,
+    "readOnly": true
+  },
+  { "id": "example.my-plugin.publish", "title": "Notes: publish", "description": "Publish a note to the web.", "agent": true, "irreversible": true }
+]
+```
+
+`readOnly` dit que la commande répond des données et ne change rien de ce que la personne garde. Une
+commande s'exécute avec les autorisations de votre plugin, pas celles de l'agent : marquez donc
+`irreversible` tout ce qui lance des programmes, envoie, supprime ou publie ; l'appel d'un agent attend
+alors l'approbation de la personne, arguments affichés. N'exigez aucun argument qu'un lancement nu depuis
+la palette omettrait ; vérifiez-le plutôt dans le gestionnaire. Une commande enregistrée à l'exécution
+prend les mêmes champs (`description`, `argsSchema`, `resultSchema`, `agent`, `readOnly`) avec
+`cmd.register`, et `ctx.commands.tools()` liste les commandes pour agents que vos autorisations couvrent.
+Les plugins intégrés git, terminal, docker, calendar et database en sont des exemples.
+
 ## Modifier des fichiers : niveaux d'édition
 
 Un plugin qui ouvre des fichiers lit d'abord et modifie ensuite (ADR 0045). Dès qu'il modifie, chaque

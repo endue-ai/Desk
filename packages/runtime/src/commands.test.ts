@@ -42,6 +42,30 @@ async function provide(
 }
 
 describe("Commands", () => {
+  it("offers a built-in to agents with what it says of itself (ADR 0088)", async () => {
+    const { commands, client } = setup();
+    commands.define("desk.buffers.list", {
+      title: "List open buffers",
+      owner: "desk",
+      run: () => [],
+      agent: { description: "What is open on the desk.", readOnly: true },
+    });
+    commands.define("desk.keys.quit", { title: "Quit", owner: "desk", run: () => null });
+    await commands.settled();
+    const { tools } = await client.call("cmd.tools", {});
+    expect(tools).toEqual([
+      {
+        name: "desk_buffers_list",
+        command: "desk.buffers.list",
+        title: "List open buffers",
+        description: "What is open on the desk.",
+        readOnly: true,
+        provider: "desk",
+        granted: true,
+      },
+    ]);
+  });
+
   it("registers a built-in while its owner is on, and runs it through the registry", async () => {
     const { commands, registry } = setup();
     commands.define("desk.buffers.next", { title: "Next", owner: "desk.buffers", run: () => 1 });

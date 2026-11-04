@@ -22,9 +22,9 @@ What a plugin imports. Layer: Plugins (`docs/architecture.md`). Guide: `docs/plu
   (needs `log:read`). `ctx.events.subscribe(names, listener)` resolves the function that unsubscribes
   (needs `events:subscribe`). `ctx.perm`: `request(permission, reason, duration?)`, `query(permission?)`.
 - `ctx.commands` (`cmd.*`, ADR 0017): `run(id, args)` is `cmd.invoke` and resolves with the provider's
-  answer (needs `cmd:invoke` for the id); `list()`; `on(name, handler)` answers this plugin's commands
-  and the desk's requests, after `mount`. A failure is a `CommandFailed` (`unknown_command`, `failed`,
-  `cancelled`). `ctx.search.replace(documents)`: searchable documents (500 / 4 MiB; `[]` clears).
+  answer (needs `cmd:invoke` for the id); `list()`; `tools(query?)` (ADR 0088); `on(name, handler)`
+  answers this plugin's commands and the desk's requests, after `mount`. Failures are `CommandFailed`
+  (`unknown_command`, `failed`, `cancelled`). `ctx.search.replace(documents)`: 500 / 4 MiB; `[]` clears.
 - `ctx.theme`: `get()`, `on(listener)` (`--desk-*`, `data-scheme`, `-contrast`, `-motion`). `readBytes(ctx,
   { path, scope }, { onProgress?, signal? })`: 2 MiB `Range` requests to `fs.url` (else `fs.read`);
   `byteSource(ctx, file)` (cached `read(offset, length)`), `startWorker(url)`, `fileHistory`, `restoreFile`.

@@ -11,25 +11,91 @@
       "commands": ["zsh", "bash", "fish", "sh", "pwsh", "powershell", "cmd"],
       "pty": true
     },
-    { "permission": "ui:notify" },
+    {
+      "permission": "ui:notify"
+    },
     {
       "permission": "cmd:invoke",
       "ids": ["desk.buffers.open", "desk.buffers.update", "desk.buffers.close"]
     }
   ],
-  "surfaces": [{ "id": "main", "title": "Terminal", "placement": "center" }],
+  "surfaces": [
+    {
+      "id": "main",
+      "title": "Terminal",
+      "placement": "center"
+    }
+  ],
   "contributes": {
     "commands": [
-      { "id": "endue.terminal.new", "title": "New terminal", "keywords": ["shell", "console"] },
-      { "id": "endue.terminal.focus", "title": "Focus the terminal", "keywords": ["shell"] },
-      { "id": "endue.terminal.close", "title": "Close the terminal", "keywords": ["exit"] },
-      { "id": "endue.terminal.next", "title": "Next terminal" },
-      { "id": "endue.terminal.previous", "title": "Previous terminal" },
-      { "id": "endue.terminal.clear", "title": "Clear the terminal", "keywords": ["cls"] },
+      {
+        "id": "endue.terminal.new",
+        "title": "New terminal",
+        "keywords": ["shell", "console"],
+        "description": "Open a new terminal running the person's shell, in cwd when given; answers its session id.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "cwd": {
+              "type": "string",
+              "minLength": 1,
+              "description": "An absolute or home-relative folder (~/Projects)"
+            }
+          }
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.terminal.focus",
+        "title": "Focus the terminal",
+        "keywords": ["shell"]
+      },
+      {
+        "id": "endue.terminal.close",
+        "title": "Close the terminal",
+        "keywords": ["exit"],
+        "description": "Close a terminal and end its program.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "session": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A terminal's session id, as endue.terminal.sessions lists it; the one on screen when absent"
+            }
+          }
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.terminal.next",
+        "title": "Next terminal"
+      },
+      {
+        "id": "endue.terminal.previous",
+        "title": "Previous terminal"
+      },
+      {
+        "id": "endue.terminal.clear",
+        "title": "Clear the terminal",
+        "keywords": ["cls"]
+      },
       {
         "id": "endue.terminal.interrupt",
         "title": "Interrupt the terminal's program",
-        "keywords": ["sigint", "ctrl-c", "stop"]
+        "keywords": ["sigint", "ctrl-c", "stop"],
+        "description": "Interrupt a terminal's program, as Ctrl-C does.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "session": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A terminal's session id, as endue.terminal.sessions lists it; the one on screen when absent"
+            }
+          }
+        },
+        "agent": true
       },
       {
         "id": "endue.terminal.restart",
@@ -39,18 +105,172 @@
       {
         "id": "endue.terminal.run",
         "title": "Run a program in a new terminal",
-        "keywords": ["exec", "spawn", "command"]
+        "keywords": ["exec", "spawn", "command"],
+        "description": "Run one program with its args, without a shell, in a new terminal; answers the session and process ids. Read what it printed with endue.terminal.output.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "command": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A program's name or path, without arguments"
+            },
+            "args": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "cwd": {
+              "type": "string",
+              "minLength": 1,
+              "description": "An absolute or home-relative folder (~/Projects)"
+            },
+            "title": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "agent": true,
+        "irreversible": true
+      },
+      {
+        "id": "endue.terminal.sessions",
+        "title": "List the terminals",
+        "keywords": ["sessions", "tabs"],
+        "description": "The open terminals: session id, title, the program with its args and folder, whether it still runs, how it ended, and which one is on screen.",
+        "args": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "result": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "session": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "command": {
+                "type": "string"
+              },
+              "args": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "cwd": {
+                "type": "string"
+              },
+              "running": {
+                "type": "boolean"
+              },
+              "exit": {
+                "type": "string"
+              },
+              "shown": {
+                "type": "boolean"
+              }
+            }
+          }
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.terminal.output",
+        "title": "Read the terminal's output",
+        "keywords": ["screen", "scrollback", "log"],
+        "description": "The text a terminal's program printed last, without escape sequences: the last chars characters (4000 by default) of the 32 KiB the terminal keeps.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "session": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A terminal's session id, as endue.terminal.sessions lists it; the one on screen when absent"
+            },
+            "chars": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 32768
+            }
+          },
+          "additionalProperties": false
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "session": {
+              "type": "string"
+            },
+            "text": {
+              "type": "string"
+            },
+            "truncated": {
+              "type": "boolean"
+            },
+            "running": {
+              "type": "boolean"
+            }
+          }
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.terminal.send",
+        "title": "Type into the terminal",
+        "keywords": ["input", "keys", "type"],
+        "description": "Type text into a terminal's program as if the person typed it, then Enter unless enter is false. Whatever the shell makes of it runs, so the person approves every call.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "session": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A terminal's session id, as endue.terminal.sessions lists it; the one on screen when absent"
+            },
+            "text": {
+              "type": "string",
+              "maxLength": 4096
+            },
+            "enter": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true,
+        "irreversible": true
       }
     ],
     "keys": [
-      { "key": "Control+`", "command": "endue.terminal.focus" },
-      { "key": "Mod+Shift+T", "command": "endue.terminal.new" }
+      {
+        "key": "Control+`",
+        "command": "endue.terminal.focus"
+      },
+      {
+        "key": "Mod+Shift+T",
+        "command": "endue.terminal.new"
+      }
     ],
     "display": [
       {
-        "match": { "plugin": "endue.terminal" },
+        "match": {
+          "plugin": "endue.terminal"
+        },
         "area": "center",
-        "size": { "columns": 1, "rows": 1 },
+        "size": {
+          "columns": 1,
+          "rows": 1
+        },
         "focus": true
       }
     ],

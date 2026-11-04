@@ -42,6 +42,7 @@ mod core_shell;
 mod core_state;
 mod core_store;
 mod core_themes;
+mod core_tools;
 mod core_ui;
 mod core_undo;
 mod core_update;

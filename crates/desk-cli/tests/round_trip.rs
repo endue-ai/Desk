@@ -69,6 +69,24 @@ fn the_binary_runs_a_command_through_the_socket_and_the_core() {
         "desk.theme.toggle\tdesk\tSwitch theme\n"
     );
 
+    // An agent command, as agents get it (ADR 0088).
+    let described = json!({ "id": "desk.files.recent", "title": "Recent files", "agent": true,
+        "readOnly": true, "description": "The files opened last." });
+    call(&core, "desk", "cmd.register", described);
+    let out = desk(&path, &["cmd", "tools", "files"]);
+    assert_eq!(
+        out.status.code(),
+        Some(0),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert_eq!(
+        String::from_utf8_lossy(&out.stdout),
+        "desk.files.recent\tdesk\treads\tThe files opened last.\n"
+    );
+    let out = desk(&path, &["cmd", "tools", "nothing"]);
+    assert_eq!(String::from_utf8_lossy(&out.stdout), "");
+
     let out = desk(&path, &["ping"]);
     assert_eq!(out.status.code(), Some(0));
     assert_eq!(String::from_utf8_lossy(&out.stdout), "ok\n");

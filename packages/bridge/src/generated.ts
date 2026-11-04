@@ -24,7 +24,7 @@ export interface PluginContributes {
 /** A command id: lowercase and dotted, with at least two segments, for example eris.say or desk.palette.open. Unique across callers (bridge cmd.*); a plugin's contributed commands start with its own id. */
 export type CommandId = string;
 
-/** A command the palette lists and keys can run. */
+/** A command the palette lists, keys can run and, marked agent, agents are offered as a tool. */
 export interface CommandContribution {
   id: CommandId;
   /** Shown in the palette. */
@@ -37,6 +37,16 @@ export interface CommandContribution {
   irreversible?: boolean;
   /** The command that undoes this one, which this plugin provides too. After each invocation the plugin answers ok, the desk keeps it on its undo stack, and cmd.undo runs this command with { args, result } of that invocation (ADR 0077). */
   undo?: CommandId;
+  /** What the command does and what it answers, in one or two sentences for people and agents. cmd.list shows it; an agent command needs one. */
+  description?: string;
+  /** A JSON Schema (2020-12) of the args, whose type is object. The core checks every cmd.invoke against it (argsSchema in cmd.list); absent, the args are not checked. */
+  args?: Record<string, unknown>;
+  /** A JSON Schema (2020-12) of what the command answers (resultSchema in cmd.list), so an agent knows the data it gets back. The core does not check answers against it. */
+  result?: Record<string, unknown>;
+  /** Offer the command to agents as a tool: cmd.tools lists it and the desk's brain turns offer it (ADR 0088). It needs a description. An agent's call still needs a cmd:invoke grant of its own inside its allowlist, and an irreversible command still waits for approval. Default false. */
+  agent?: boolean;
+  /** The command only reads: it answers data and changes nothing the person keeps (files, settings, items, messages, processes, the remote end); showing a surface is allowed. Agents are told; never true together with irreversible. */
+  readOnly?: boolean;
 }
 
 /** A command's args: an object, as cmd.invoke passes them. */
@@ -1681,6 +1691,7 @@ export type BridgeRequest =
   | CmdListRequest
   | CmdInvokeRequest
   | CmdAnswerRequest
+  | CmdToolsRequest
   | CmdRecentRequest
   | CmdUndoRequest
   | CmdRedoRequest
@@ -1831,6 +1842,14 @@ export interface CommandInfo {
   provider: CallerId;
   /** The command that undoes this one: cmd.undo runs it with { args, result } of an invocation. Absent when the command cannot be undone. */
   undo?: CommandId;
+  /** JSON Schema (2020-12) of what the command answers; absent when it is not described. The core does not check answers. */
+  resultSchema?: Record<string, unknown>;
+  /** Agents are offered the command as a tool (cmd.tools, ADR 0088). Absent means false. */
+  agent?: boolean;
+  /** The command only reads: it answers data and changes nothing the person keeps. Absent means false. */
+  readOnly?: boolean;
+  /** The provider's manifest marks the command irreversible: an agent's call waits for the person's approval (ADR 0078). Absent means false. */
+  irreversible?: boolean;
 }
 
 /** Register one of the caller's commands, or update it. */
@@ -1844,15 +1863,22 @@ export interface CmdRegisterRequest {
 export interface CmdRegisterParams {
   id: CommandId;
   title: string;
+  /** What the command does and answers, for people and agents. Absent: the manifest's, if any. */
   description?: string;
   /** More words the palette matches. */
   keywords?: string[];
-  /** JSON Schema (2020-12) for the args of cmd.invoke. */
+  /** JSON Schema (2020-12) for the args of cmd.invoke. Absent: the manifest's (args), if any. */
   argsSchema?: Record<string, unknown>;
   /** A context expression, as keybindings use; absent means always available. */
   when?: string;
   /** The command that undoes this one, which the caller provides too. Absent: the one the caller's manifest names for this id in contributes.commands, if any. */
   undo?: CommandId;
+  /** JSON Schema (2020-12) of what the command answers. Absent: the one the caller's manifest names for this id (result), if any. */
+  resultSchema?: Record<string, unknown>;
+  /** Offer the command to agents as a tool (ADR 0088); it needs a description, here or in the manifest. Absent: the manifest's, else false. */
+  agent?: boolean;
+  /** The command only reads: it answers data and changes nothing the person keeps. Absent: the manifest's, else false. A command the manifest marks irreversible is never read-only. */
+  readOnly?: boolean;
 }
 
 /** Result of cmd.register. */
@@ -1926,6 +1952,45 @@ export interface CmdAnswerParams {
 
 /** Result of cmd.answer. */
 export type CmdAnswerResult = Record<string, never>;
+
+/** List the commands offered to agents as tools (ADR 0088): what the desk's brain turns offer, and what the desk-tools tool answers. */
+export interface CmdToolsRequest {
+  id: RequestId;
+  method: "cmd.tools";
+  params: CmdToolsParams;
+}
+
+/** Parameters of cmd.tools. It needs no scope: an agent sees the agent commands its allowlist could let it run, any other caller the ones its cmd:invoke grants cover. */
+export interface CmdToolsParams {
+  /** Words that must each appear, ignoring case, in the command's id, title, description or keywords. */
+  query?: string;
+  /** How many tools at most; 50 when absent. */
+  limit?: number;
+}
+
+/** Result of cmd.tools, in registration order. */
+export interface CmdToolsResult {
+  tools: CommandTool[];
+}
+
+/** A command offered to agents as a tool: what it does, the args it takes, what it answers, and whether the caller may run it now. */
+export interface CommandTool {
+  /** The tool's name in a brain turn: the command id with every dot an underscore (endue.git.state is endue_git_state). Absent when the id is longer than 64 characters; desk-run still runs it. */
+  name?: string;
+  command: CommandId;
+  title: string;
+  description: string;
+  /** JSON Schema (2020-12) of the args; absent means the command takes none. */
+  argsSchema?: Record<string, unknown>;
+  /** JSON Schema (2020-12) of the answer; absent when it is not described. */
+  resultSchema?: Record<string, unknown>;
+  readOnly?: boolean;
+  /** An agent's call waits for the person's approval, every time (ADR 0078). */
+  irreversible?: boolean;
+  provider: CallerId;
+  /** A grant the caller holds covers the command now. An agent's call without one asks the person first. */
+  granted: boolean;
+}
 
 /** List the last command invocations the core saw, for an inspector. */
 export interface CmdRecentRequest {
@@ -3811,6 +3876,7 @@ export interface BridgeMethodMap {
   "cmd.list": { params: CmdListParams; result: CmdListResult };
   "cmd.invoke": { params: CmdInvokeParams; result: CmdInvokeResult };
   "cmd.answer": { params: CmdAnswerParams; result: CmdAnswerResult };
+  "cmd.tools": { params: CmdToolsParams; result: CmdToolsResult };
   "cmd.recent": { params: CmdRecentParams; result: CmdRecentResult };
   "cmd.undo": { params: CmdUndoParams; result: CmdUndoResult };
   "cmd.redo": { params: CmdRedoParams; result: CmdRedoResult };
@@ -3897,6 +3963,7 @@ export const BRIDGE_METHODS = [
   "cmd.list",
   "cmd.invoke",
   "cmd.answer",
+  "cmd.tools",
   "cmd.recent",
   "cmd.undo",
   "cmd.redo",
