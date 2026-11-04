@@ -1,0 +1,125 @@
+{
+  "id": "endue.projects",
+  "name": "Projects",
+  "version": "0.1.0",
+  "kind": "ui",
+  "entry": "ui/index.html",
+  "description": "Shows the person's tasks from Jira, Linear, Asana and every other task connector in the desk's index as one set of work, in Kanban, Swimlane, List, Database, Timeline and Calendar views, and moves, reschedules and reprioritizes them through the connectors' commands.",
+  "permissions": [
+    { "permission": "data:read", "kinds": ["task"] },
+    {
+      "permission": "cmd:invoke",
+      "ids": ["*.task.move", "*.task.update", "desk.palette.pick", "desk.connectors.open"]
+    },
+    { "permission": "shell:open", "schemes": ["https"] }
+  ],
+  "surfaces": [{ "id": "main", "title": "Projects", "placement": "center" }],
+  "contributes": {
+    "commands": [
+      {
+        "id": "endue.projects.open",
+        "title": "Show projects",
+        "keywords": ["projects", "tasks", "issues", "jira", "linear", "asana", "board"]
+      },
+      {
+        "id": "endue.projects.view",
+        "title": "Switch the projects view",
+        "keywords": [
+          "kanban",
+          "swimlane",
+          "list",
+          "database",
+          "table",
+          "timeline",
+          "gantt",
+          "calendar"
+        ]
+      },
+      {
+        "id": "endue.projects.group",
+        "title": "Group tasks by a field",
+        "keywords": ["projects", "group", "lanes", "assignee", "priority", "sprint"]
+      },
+      {
+        "id": "endue.projects.search",
+        "title": "Search tasks",
+        "keywords": ["projects", "find", "filter", "search"]
+      },
+      {
+        "id": "endue.projects.source",
+        "title": "Show one source's tasks",
+        "keywords": ["projects", "source", "jira", "linear", "asana", "filter"]
+      },
+      {
+        "id": "endue.projects.show-done",
+        "title": "Show or hide finished tasks",
+        "keywords": ["projects", "done", "completed", "closed"]
+      },
+      {
+        "id": "endue.projects.zoom",
+        "title": "Zoom the timeline",
+        "keywords": ["projects", "timeline", "week", "month", "quarter"]
+      },
+      {
+        "id": "endue.projects.go",
+        "title": "Go to today, or a period back or ahead",
+        "keywords": ["projects", "today", "next", "previous", "timeline", "calendar"]
+      },
+      {
+        "id": "endue.projects.refresh",
+        "title": "Refresh tasks",
+        "keywords": ["projects", "reload", "sync"]
+      },
+      {
+        "id": "endue.projects.connect",
+        "title": "Connect a task source",
+        "keywords": ["projects", "connect", "jira", "linear", "asana", "connector"]
+      },
+      {
+        "id": "endue.projects.show",
+        "title": "Open a task",
+        "keywords": ["projects", "task", "issue", "details"]
+      },
+      {
+        "id": "endue.projects.move",
+        "title": "Move the open task to a status",
+        "keywords": ["projects", "status", "move", "transition", "done", "progress"]
+      },
+      {
+        "id": "endue.projects.update",
+        "title": "Change the open task's dates, priority or assignee",
+        "keywords": ["projects", "due", "start", "schedule", "priority", "assign"]
+      },
+      {
+        "id": "endue.projects.open-original",
+        "title": "Open the task in its original app",
+        "keywords": ["projects", "jira", "linear", "asana", "link", "browser"]
+      }
+    ],
+    "keys": [{ "key": "Mod+Shift+J", "command": "endue.projects.open" }],
+    "settings": {
+      "endue.projects.view": {
+        "kind": "string",
+        "default": "kanban",
+        "choices": ["kanban", "swimlane", "list", "table", "timeline", "calendar"],
+        "description": "The view the plugin opens in until the person picks another."
+      },
+      "endue.projects.week-start": {
+        "kind": "string",
+        "default": "monday",
+        "choices": ["monday", "sunday", "saturday"],
+        "description": "The first day of the week in the timeline and the calendar."
+      },
+      "endue.projects.show-done": {
+        "kind": "boolean",
+        "default": true,
+        "description": "Show finished and cancelled tasks until the person hides them."
+      },
+      "endue.projects.columns": {
+        "kind": "array",
+        "default": ["ref", "title", "status", "assignee", "priority", "due", "source"],
+        "description": "The fields the database view shows, in order: ref, title, status, category, assignee, priority, project, sprint, type, labels, start, due, estimate, source, updated."
+      }
+    }
+  }
+}

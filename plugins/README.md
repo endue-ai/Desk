@@ -14,6 +14,7 @@ there were two formats, the API would have holes.
 | `explorer/` | The folders the person allows as a tree (`endue.explorer`); files open through `desk.files` |
 | `calendar/` | iCalendar (RFC 5545) files in month, week, day and agenda views (`endue.calendar`), with reminders and commands for agents |
 | `mail/` | The person's mail from the index as threads in mailboxes, invitations read and answered (iTIP, iMIP), changes through the connector's commands (`endue.mail`) |
+| `projects/` | Project management over every task source (`endue.projects`): Jira, Linear and Asana work read through adapters (ADR 0084) into Kanban, Swimlane, List, Database, Timeline and Calendar views; moves, dates, priority and assignee through the connectors' `task.move` and `task.update` |
 | `views/` | The view engine (`desk.views`): draws view files (`specs/view/v0`) as surfaces, over the core's `data.*` and `view.*` |
 | `today/` | The day at a glance (`desk.today`): a data-only `view` plugin that `desk.views` draws; `Mod+T` opens it |
 | `item/` | One item in Desk (`desk.item`): the data-only `view` plugin the palette's Open in Desk shows |
