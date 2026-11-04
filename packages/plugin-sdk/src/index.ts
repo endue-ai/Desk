@@ -21,6 +21,11 @@ export type {
   ResultOf,
   Setting,
   SurfacePlacement,
+  UniversalData,
+  UniversalEntry,
+  UniversalSource,
+  UniversalType,
+  UniversalView,
   View,
   ViewComponent,
   ViewNode,
@@ -70,7 +75,22 @@ export {
   type PluginTheme,
   type UiPlugin,
 } from "./sdk";
+export {
+  fillArgs,
+  type PluginUniversal,
+  type UniversalHandle,
+  type UniversalOpenOptions,
+  type UniversalViewElement,
+} from "./universal";
+export {
+  assetUrl,
+  entriesFromItems,
+  parseUniversal,
+  UniversalError,
+  universalData,
+} from "./universal-load";
 export { startWorker } from "./worker";
+export { parseYaml, YamlError } from "./yaml";
 
 export const NAME = "@endue-ai/plugin-sdk";
 
