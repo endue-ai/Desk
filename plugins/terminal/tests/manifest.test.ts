@@ -59,6 +59,9 @@ describe("plugin.json", () => {
       "endue.terminal.interrupt",
       "endue.terminal.restart",
       "endue.terminal.run",
+      "endue.terminal.sessions",
+      "endue.terminal.output",
+      "endue.terminal.send",
     ]);
     for (const key of contributes?.keys ?? []) expect(commands).toContain(key.command);
     expect(contributes?.display).toEqual([

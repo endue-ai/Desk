@@ -1,0 +1,31 @@
+{
+  "target": "PluginContributes",
+  "description": "an agent command that reads, with a description and schemas of its args and its answer",
+  "instance": {
+    "commands": [
+      {
+        "id": "example.git.state",
+        "title": "Git: state",
+        "description": "The repository's branch, upstream and changed files.",
+        "args": {
+          "type": "object",
+          "properties": { "path": { "type": "string" } },
+          "additionalProperties": false
+        },
+        "result": {
+          "type": "object",
+          "properties": { "branch": { "type": "string" } }
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "example.git.push",
+        "title": "Git: push",
+        "description": "Push the current branch to its upstream.",
+        "agent": true,
+        "irreversible": true
+      }
+    ]
+  }
+}

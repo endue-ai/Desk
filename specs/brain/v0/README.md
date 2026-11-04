@@ -20,8 +20,26 @@ the tool and posts the result to `submitToolResult`, which streams the rest of t
 
 A call names the agent that makes it (`agentId`). Desk runs it as the caller `agent:<agentId>`: `echo`,
 or any bridge method by its name with the arguments as its params (`cmd.invoke` answers with the
-command's result). The agent's grants are its own and never reach past `agents.<agentId>.allow` in
-init.yaml (ADR 0072). A call without `agentId` gets `echo` only.
+command's result), or a command (ADR 0084). The agent's grants are its own and never reach past
+`agents.<agentId>.allow` in init.yaml (ADR 0072). A call without `agentId` gets `echo` only.
+
+## Desk's tools
+
+Plugins mark the commands agents may use (`agent` in `contributes.commands`, ADR 0084). Once a desk has
+any, each of its turns offers them in `tools`:
+
+| Tool | Arguments | Runs |
+| --- | --- | --- |
+| `desk-tools` | `{ query?, limit? }` | the bridge's `cmd.tools`: every agent command with its tool name, args and result schemas, `readOnly`, `irreversible` and `granted` |
+| `desk-run` | `{ command, args? }` | the command `command` names, with `args`, answering what its provider answers |
+| `<tool name>` | the command's args | that command: its id with every dot an underscore (`endue_git_state`) |
+
+The commands are offered by name only when all of them fit in the turn (30 besides the two); else the
+brain finds them with `desk-tools`. A call by a command's tool name or its id works either way, and a
+bridge method of the same name wins. Each runs `cmd.invoke` under the `cmd:invoke` scope of that one
+command: the allowlist caps it, a first use asks the person, and a command its manifest marks
+`irreversible` waits for the person's approval every time (ADR 0078). A turn of a desk without agent
+commands offers no tools.
 
 `createTurn` may offer `tools` for that turn (`ToolDefinition`: `name`, `description`, and `schema`, a
 JSON Schema of the arguments whose type is object) and say with `toolChoice` whether the brain must call

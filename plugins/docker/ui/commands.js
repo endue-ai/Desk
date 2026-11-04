@@ -5,7 +5,7 @@ import { hints, LISTS } from "./keys.js";
 import { statsFor } from "./parse-engine.js";
 import { containerTarget, projectName } from "./refs.js";
 import { globalFlags } from "./run.js";
-import { registerSchemas } from "./schemas.js";
+import { registerSchemas } from "./tools.js";
 
 /**
  * @typedef {import("@endue-ai/plugin-sdk").PluginCommands} PluginCommands

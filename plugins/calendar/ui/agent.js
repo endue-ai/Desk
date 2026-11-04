@@ -1,6 +1,7 @@
 // Commands for agents, Eris and other plugins: the events of a time span as specs/item/v0 items, the
 // busy events that overlap, and adding an event. They are registered with cmd.register and an argument
-// schema, so callers see what to send; every action goes through the command registry (ADR 0032).
+// schema, so callers see what to send, and as agents' tools, the two reads marked so (ADR 0084);
+// every action goes through the command registry (ADR 0032).
 // Reads cover the open calendars, or the calendar file the settings name when none is open.
 import { createEvent } from "./calendar/edit.js";
 import { conflicts, instanceName, toItem } from "./calendar/items.js";
@@ -17,6 +18,8 @@ import { ianaZone } from "./ical/zones.js";
  */
 
 const PLUGIN = "endue.calendar";
+/** The commands that only read the calendars. */
+const READS = new Set(["endue.calendar.events", "endue.calendar.conflicts"]);
 /** The longest span one call reads. */
 const MAX_DAYS = 366;
 
@@ -84,6 +87,8 @@ export function createAgentCommands(ctx, host) {
         description,
         keywords: ["calendar", "agenda"],
         argsSchema,
+        agent: true,
+        ...(READS.has(id) ? { readOnly: true } : {}),
       })
       .catch(() => {});
     ctx.commands.on(id, (args) => run(/** @type {Record<string, unknown>} */ (args ?? {})));

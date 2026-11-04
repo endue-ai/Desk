@@ -189,6 +189,36 @@ work with `desk.buffers.update { id, modified: true }`. The theme reaches your f
 properties and `ctx.theme`. Key chords pressed in your frame reach the desk's keymap unless you call
 `preventDefault()`. The defaults, and what each one decides, are listed in `plugins/README.md`.
 
+## Commands for agents
+
+An agent of endue AI, or the local brain, works the desk through the same commands people run (ADR
+0084). Mark a command `agent` and say what it does, what it takes and what it answers; the core checks
+every invocation's args against `args`, lists the command in `cmd.tools`, and offers it in the desk's
+brain turns as a tool named after its id (`example_my-plugin_notes`):
+
+```json
+"commands": [
+  {
+    "id": "example.my-plugin.notes",
+    "title": "Notes: list",
+    "description": "The notes in a folder, newest first: name, path and when each changed.",
+    "args": { "type": "object", "properties": { "folder": { "type": "string" } }, "additionalProperties": false },
+    "result": { "type": "array", "items": { "type": "object" } },
+    "agent": true,
+    "readOnly": true
+  },
+  { "id": "example.my-plugin.publish", "title": "Notes: publish", "description": "Publish a note to the web.", "agent": true, "irreversible": true }
+]
+```
+
+`readOnly` says the command answers data and changes nothing the person keeps. A command runs with your
+plugin's grants, not the agent's, so mark `irreversible` whatever runs programs, sends, deletes or
+publishes: an agent's call then waits for the person's approval with its args shown. Require no arg a
+person's bare run from the palette leaves out; check it in the handler instead. A command you register
+at run time takes the same fields (`description`, `argsSchema`, `resultSchema`, `agent`, `readOnly`) with
+`cmd.register`, and `ctx.commands.tools()` lists the agent commands your grants cover. The built-in
+git, terminal, docker, calendar and database plugins are examples.
+
 ## Editing files: edit tiers
 
 A file opener reads first and edits later (ADR 0045). Once it edits, every format it opens has an edit

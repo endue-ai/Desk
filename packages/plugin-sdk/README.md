@@ -18,8 +18,8 @@ What a plugin imports. Layer: Plugins (`docs/architecture.md`). Guide: `docs/plu
   (needs `log:read`). `ctx.events.subscribe(names, listener)` resolves the function that unsubscribes
   (needs `events:subscribe`). `ctx.perm`: `request(permission, reason, duration?)`, `query(permission?)`.
 - `ctx.commands` (bridge `cmd.*`, ADR 0017): `run(id, args)` is `cmd.invoke` and resolves with the
-  provider's `cmd.answered` (needs a `cmd:invoke` grant covering the id); `list()` is `cmd.list`;
-  `on(name, handler)` answers this plugin's commands (`cmd.invoked`) and the desk's requests by name,
+  provider's `cmd.answered` (needs a `cmd:invoke` grant covering the id); `list()` is `cmd.list`,
+  `tools(query?)` `cmd.tools` (ADR 0084); `on(name, handler)` answers this plugin's commands and the desk's requests by name,
   after `mount`. A failure is a `CommandFailed` (`unknown_command`, `failed`, `cancelled`).
 - `ctx.search.replace(documents)`: searchable documents (500 / 4 MiB; `[]` clears), each may name a command.
 - `ctx.theme`: `get()`, `on(listener)`; the frame gets `--desk-*`, `data-scheme`, `-contrast` and

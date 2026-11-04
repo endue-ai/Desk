@@ -25,7 +25,9 @@ scope, through `perm.prompt` as `perm.request` does, and runs the call once they
 Calls that touch only the caller's own data need no scope: `perm.request`, `perm.query`, `perm.revoke` of
 its own grants, `store.*`, `search.replace`, `init.get`, `cmd.register`, `cmd.unregister`, `cmd.answer`, `settings.set`,
 `settings.get` and `settings.list` of its own keys, `log.write`, `events.unsubscribe` and
-`data.unsubscribe`. `catalog.get` needs none either: it shows only what the caller's grants already cover.
+`data.unsubscribe`. `catalog.get` needs none either: it shows only what the caller's grants already cover;
+nor does `cmd.tools`, which shows an agent what its allowlist could let it run and anyone else what its
+grants cover.
 
 ## Search
 
@@ -279,12 +281,24 @@ are unique: an id another caller provides is `already_exists`. Commands end when
 or its plugin is turned off. It needs no scope. The desk's own commands are registered here too, by the
 runtime as `desk`, and the commands a manifest declares (`contributes.commands`) by the runtime for that
 plugin when it mounts (ADR 0017). `undo` names the command that undoes this one (the caller provides it
-too); without it, the `undo` the caller's manifest gives the id, if any. `cmd.list` shows it.
+too); without it, the `undo` the caller's manifest gives the id, if any. `cmd.list` shows it. So do
+`description`, `argsSchema`, `resultSchema`, `agent` and `readOnly` (ADR 0084): each the call's, else what
+the caller's manifest declares for the id (`description`, `args`, `result`, `agent`, `readOnly`), and
+`irreversible`, which only the manifest says. A command marked `agent` without a description, or
+`readOnly` while the manifest marks it irreversible, is `invalid_params`.
 
 **cmd.unregister** removes one of the caller's commands; an id it does not provide is `not_found`.
 
 **cmd.list** returns the registered commands the `cmd:invoke` scope covers, with their providers, in
 registration order. `cmd.changed` events (registered, updated, unregistered) go to subscribers.
+
+**cmd.tools** lists the registered commands marked `agent`, the tools agents are offered (ADR 0084), in
+registration order: each with its tool `name` (the id with every dot an underscore, absent past 64
+characters), title, description, args and result schemas, `readOnly`, `irreversible`, provider, and
+`granted`, whether a grant of the caller covers it now. An agent sees every one its allowlist could let it
+run (all of them with an empty allowlist); any other caller those its `cmd:invoke` grants cover. Every
+word of `query` must appear, ignoring case, in the id, title, description or keywords; `limit` is 50 when
+absent, 200 at most. It needs no scope and spends no grant.
 
 **cmd.invoke** runs a command, whoever provides it, under a `cmd:invoke` scope whose ids cover it. `args`
 must match the command's argument schema (`invalid_params` otherwise). It returns an `invocationId` at

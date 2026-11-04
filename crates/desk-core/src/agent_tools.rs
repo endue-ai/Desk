@@ -1,22 +1,25 @@
 //! The brain's tool calls, run by the core (CORE-14, ADR 0072). A call that names its agent
-//! (`ToolCall.agentId`) runs as the caller `agent:<id>`: `echo`, or any bridge method by its name with
-//! the call's arguments as its params, so the permission engine, the agent's allowlist, the prompt
-//! and the `perm` log apply as to any caller. `cmd.invoke` waits for the command's answer. A call
-//! that names no agent runs `echo` only. Failures come back as `{ error, reason? }`. Each call runs
-//! as part of its desk turn, the task an approval's "Allow for this task" lasts for (ADR 0078);
-//! a call the person did not approve says `reason: "not-approved"`.
+//! (`ToolCall.agentId`) runs as the caller `agent:<id>`: `echo`, any bridge method by its name with
+//! the call's arguments as its params, or a command (ADR 0084): `desk-tools` answers cmd.tools,
+//! `desk-run` runs `{ command, args }`, and a command's id or tool name runs it with the arguments
+//! as its args, under the `cmd:invoke` scope of that one command. So the permission engine, the
+//! agent's allowlist, the prompt and the `perm` log apply as to any caller. A command waits for its
+//! answer. A call that names no agent runs `echo` only. Failures come back as `{ error, reason? }`.
+//! Each call runs as part of its desk turn, the task an approval's "Allow for this task" lasts for
+//! (ADR 0078); a call the person did not approve says `reason: "not-approved"`.
 
 use std::sync::mpsc::RecvTimeoutError;
 use std::sync::{Arc, Weak};
 use std::time::{Duration, Instant};
 
-use desk_brain::ToolCall;
+use desk_brain::{ToolCall, ToolDefinition};
 use desk_bridge::{BridgeError, BridgeEvent, BridgeRequest, BridgeResponse, ErrorCode};
-use serde_json::{Value, json};
+use serde_json::{Map, Value, json};
 
 use crate::agents::agent_caller;
 use crate::approvals::in_task;
 use crate::conversation::{Tools, echo};
+use crate::core_tools::{DESK_RUN, DESK_TOOLS};
 use crate::handler::{Core, error};
 
 /// How long a command run from a tool call may take to answer.
@@ -84,6 +87,48 @@ impl Core {
             }
         }
     }
+
+    /// The bridge request a tool call makes: the bridge method it names, cmd.tools for desk-tools,
+    /// or cmd.invoke of the command desk-run or the call's name names.
+    fn tool_request(&self, call: &ToolCall) -> Result<BridgeRequest, String> {
+        let arguments = Value::Object(call.arguments.clone());
+        if call.name == DESK_TOOLS {
+            let request = json!({ "id": 0, "method": "cmd.tools", "params": arguments });
+            let bad = "desk-tools takes { query?, limit? }";
+            return serde_json::from_value(request).map_err(|_| bad.to_owned());
+        }
+        if call.name == DESK_RUN {
+            let command = call.arguments.get("command").and_then(Value::as_str);
+            let args = call.arguments.get("args").cloned().unwrap_or(json!({}));
+            let only = call.arguments.keys().all(|k| k == "command" || k == "args");
+            return match (command, args) {
+                (Some(id), Value::Object(args)) if only => match self.command_named(id) {
+                    Some(id) => invoke(&id, args),
+                    None => Err(format!("Desk has no command {id}")),
+                },
+                _ => Err("desk-run takes { command, args? }, args an object".to_owned()),
+            };
+        }
+        let request = json!({ "id": 0, "method": call.name, "params": arguments });
+        if let Ok(request) = serde_json::from_value::<BridgeRequest>(request) {
+            return Ok(request);
+        }
+        match self.command_named(&call.name) {
+            Some(id) => invoke(&id, call.arguments.clone()),
+            None => Err(format!(
+                "Desk has no tool named {} that takes these arguments",
+                call.name
+            )),
+        }
+    }
+}
+
+/// cmd.invoke of `id` with `args`, under the `cmd:invoke` scope of that one command.
+fn invoke(id: &str, args: Map<String, Value>) -> Result<BridgeRequest, String> {
+    let scope = json!({ "permission": "cmd:invoke", "ids": [id] });
+    let request = json!({ "id": 0, "method": "cmd.invoke",
+        "params": { "id": id, "args": args, "scope": scope } });
+    serde_json::from_value(request).map_err(|e| format!("Desk cannot run {id}: {e}"))
 }
 
 impl Tools for Core {
@@ -99,14 +144,9 @@ impl Tools for Core {
             let failed = error(ErrorCode::PermissionDenied, anonymous);
             return (json!({ "error": failed }), true);
         };
-        let request = json!({ "id": 0, "method": call.name, "params": call.arguments });
-        let request = match serde_json::from_value::<BridgeRequest>(request) {
+        let request = match self.tool_request(call) {
             Ok(request) => request,
-            Err(_) => {
-                let unknown = format!(
-                    "Desk has no tool named {} that takes these arguments",
-                    call.name
-                );
+            Err(unknown) => {
                 return (
                     json!({ "error": error(ErrorCode::InvalidParams, unknown) }),
                     true,
@@ -126,5 +166,9 @@ impl Tools for Core {
 
     fn ended(&self, turn: &str) {
         self.end_task(turn);
+    }
+
+    fn offer(&self) -> Option<Vec<ToolDefinition>> {
+        Core::offer(self)
     }
 }

@@ -10,8 +10,10 @@ Layer: Rust core (see `docs/architecture.md`). Contract: `specs/brain/v0`.
 - `LocalBrain::open(folder, options)`: state (sessions, leases, conversations) lives in
   `folder/STATE_FILE` (`local-brain.json`), written through a temporary file on every change.
   `with_clock(ms)` replaces the system clock, for tests.
-- `LocalBrainOptions::new(model)`: `base_url` (`DEFAULT_BASE_URL`, `http://127.0.0.1:11434`) and the
-  `tools` offered to the model, in Ollama's format (`with_base_url`, `with_tools`).
+- `LocalBrainOptions::new(model)`: `base_url` (`DEFAULT_BASE_URL`, `http://127.0.0.1:11434`), the
+  `tools` offered to the model, in Ollama's format, and the `agent` its tool calls speak for, so the
+  desk runs them as `agent:<id>` (ADR 0072, 0084); without one it runs only echo (`with_base_url`,
+  `with_tools`, `with_agent`).
 - `Brain` methods: turns stream `turn.started`, `text.delta`, `tool.call` and `turn.completed`.
   Tool calls go out one at a time; once every result is in, they go back to the model.
 - Leases follow `examples/brain-echo`: `lease_held`, `lease_lost` after a takeover, `lease_expired`.

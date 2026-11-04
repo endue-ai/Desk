@@ -1,9 +1,11 @@
 // The Git plugin without its DOM: which repository is open, the status, log and diff views and the
-// desk buffers they are, the plugin's commands (endue.git.*) and the desk's requests. It talks only
+// desk buffers they are, the plugin's commands (endue.git.*), endue.git.state for agents, and the
+// desk's requests. It talks only
 // to ctx.bridge, ctx.commands, ctx.state and a view, so the SDK's test host runs it with a recording
 // view and a scripted git.
 
 import { createActions } from "./actions.js";
+import { snapshot } from "./agent.js";
 import { hints } from "./keys.js";
 import { parseDiff } from "./parse-diff.js";
 import { LOG_FORMAT, layoutGraph, parseLog } from "./parse-log.js";
@@ -15,6 +17,7 @@ import {
   RECENT_FORMAT,
   STASH_FORMAT,
 } from "./parse-status.js";
+import { createRecent, nameOf } from "./recent.js";
 import { createRunner } from "./run.js";
 import { DEFAULTS, loadSettings } from "./settings.js";
 
@@ -48,8 +51,6 @@ import { DEFAULTS, loadSettings } from "./settings.js";
  *   selection(): Item | undefined,
  * }} View
  */
-
-const RECENT_KEY = "recent";
 
 /**
  * @param {Pick<PluginContext, "bridge" | "commands" | "state">} ctx
@@ -228,21 +229,7 @@ export function createGit({ bridge, commands, state }, view, options = {}) {
     if (current === "diff" && diffView) await loadDiff(diffView.target);
   };
 
-  /** The repositories opened before, most recent first, from the plugin's store. */
-  const recentRepos = async () => {
-    const kept = await bridge.call("store.get", { key: RECENT_KEY }).catch(() => ({}));
-    return Array.isArray(kept.value) ? kept.value.filter((v) => typeof v === "string") : [];
-  };
-
-  const remember = async (/** @type {string} */ root) => {
-    const list = await recentRepos();
-    const next = [root, ...list.filter((path) => path !== root)].slice(0, settings.recentMax);
-    await bridge.call("store.set", { key: RECENT_KEY, value: next }).catch(() => {});
-  };
-  const pickRepo = async () => {
-    const items = (await recentRepos()).map((p) => ({ id: p, label: nameOf(p), detail: p }));
-    return pick("Git: which repository?", items, true, "a folder path");
-  };
+  const { remember, pickRepo } = createRecent(bridge, () => settings.recentMax, pick);
 
   /**
    * Open the repository `path` is in (or the one picked), then show its status.
@@ -314,6 +301,12 @@ export function createGit({ bridge, commands, state }, view, options = {}) {
     return repo.root;
   });
   answer("endue.git.refresh", refresh);
+  // What an agent reads (ADR 0084): the repository `path` is in, else the open one, as data.
+  answer("endue.git.state", async ({ path }) => {
+    if (typeof path === "string" && path !== "" && path !== repo?.root) await open(path);
+    await refresh();
+    return snapshot(opened(), statusView);
+  });
   answer("endue.git.log", showLog);
   answer("endue.git.diff", showDiff);
   answer("endue.git.stage", actions.stage);
@@ -388,12 +381,6 @@ export function createGit({ bridge, commands, state }, view, options = {}) {
     diff: guard(showDiff),
     help: () => say(hints(current)),
   };
-}
-
-/** The last segment of a path: `/Users/me/Project/Desk` → `Desk`. */
-export function nameOf(/** @type {string} */ path) {
-  const trimmed = path.replace(/\/+$/, "");
-  return trimmed.slice(trimmed.lastIndexOf("/") + 1) || trimmed;
 }
 
 /** The bridge or command code an error carries, if any. */

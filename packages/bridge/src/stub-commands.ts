@@ -3,8 +3,9 @@
  * registry (cmd.*, ADR 0017), grants and prompts (perm.*), settings, the log, subscriptions (events.*)
  * and surfaces (ui.surface.*), per caller, with the core's rules (specs/bridge/v0/README.md), plus the
  * items, connectors, views and catalog of stub-data.ts, shell.open of stub-shell.ts, cmd.recent and
- * plugin.stats of stub-recent.ts and, given files, every fs.* of stub-fs.ts. A plugin caller's scoped
- * call needs a covering grant; the runtime (`desk`) is trusted; cmd.list and cmd.invoke check none.
+ * plugin.stats of stub-recent.ts, cmd.list and cmd.tools of stub-tools.ts and, given files, every fs.* of
+ * stub-fs.ts. A plugin caller's scoped call needs a covering grant; the runtime (`desk`) is trusted;
+ * cmd.list and cmd.invoke check none.
  */
 import { StubError, type StubHandlers } from "./adapters";
 import { FIXTURE_NOW } from "./fixtures";
@@ -27,18 +28,19 @@ import type {
   PermRequestResult,
   Setting,
 } from "./generated";
-import { covers, keyMatch, starMatch } from "./stub-covers";
+import { covers, keyMatch } from "./stub-covers";
 import { type DataServed, stubData } from "./stub-data";
 import { type FsServed, type StubFiles, stubFs } from "./stub-fs";
 import { LOG, type LogServed, stubLog } from "./stub-log";
 import { type RecentServed, stubRecent } from "./stub-recent";
 import { type ShellServed, type StubOpened, stubShell } from "./stub-shell";
 import { type StubSurface, type SurfaceServed, stubSurfaces } from "./stub-surfaces";
+import { checkDescribed, stubTools, type ToolsServed } from "./stub-tools";
 import { type InvocationKind, type Invoked, stubUndo, type UndoServed } from "./stub-undo";
 
 /** The methods the stub serves; any other is `unsupported` (adapters.ts). */
 type Served =
-  | `cmd.${"register" | "unregister" | "list" | "invoke" | "answer"}`
+  | `cmd.${"register" | "unregister" | "invoke" | "answer"}`
   | `perm.${"request" | "query" | "revoke" | "list" | "answer"}`
   | `settings.${"get" | "set" | "list"}`
   | LogServed
@@ -47,7 +49,8 @@ type Served =
   | UndoServed
   | DataServed
   | ShellServed
-  | RecentServed;
+  | RecentServed
+  | ToolsServed;
 
 export interface StubOptions {
   /** Grants each caller holds from the start, as `session` grants with ids g-<n>. */
@@ -299,6 +302,7 @@ export function stubCommands(
     handlers: {
       ...data.handlers,
       ...recent.handlers,
+      ...stubTools({ commands, may }).handlers,
       ...fs,
       ...undo.handlers,
       ...shown.handlers,
@@ -309,6 +313,7 @@ export function stubCommands(
         const existing = commands.get(params.id);
         if (existing && existing.provider !== provider)
           throw new StubError("already_exists", `${params.id} is provided by ${existing.provider}`);
+        checkDescribed(params);
         commands.set(params.id, { ...params, provider });
         const change = existing ? "updated" : "registered";
         later({ event: "cmd.changed", data: { id: params.id, change, provider } });
@@ -320,9 +325,6 @@ export function stubCommands(
         remove(id);
         return {};
       },
-      "cmd.list": ({ scope }) => ({
-        commands: [...commands.values()].filter((c) => scope.ids.some((p) => starMatch(p, c.id))),
-      }),
       "cmd.invoke": ({ id, args }, caller) => ({ invocationId: invoke(caller, id, args) }),
       "cmd.answer": ({ invocationId, result, error }, caller) => {
         if (pending.get(invocationId)?.provider !== me(caller))

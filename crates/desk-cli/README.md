@@ -10,7 +10,7 @@ desk plugin validate <dir>             # plugin.json against specs/plugin v0; en
 desk doctor [--data <dir>]             # quarantined plugins and .broken state files (ADR 0061); exits 0
 desk plugin test <dir>                 # the folder's tests/ on the host for its kind
 desk ping                              # a round trip to the running desk; prints ok
-desk cmd list                          # id<TAB>provider<TAB>title per command
+desk cmd list | tools [<words>]        # id<TAB>provider<TAB>title; tools: agents' (ADR 0084), reads|acts|irreversible
 desk cmd run <id> [--args <json>]      # waits for cmd.answered; prints the result as JSON
 desk plugin list                       # id<TAB>status<TAB>enabled|disabled per plugin
 desk plugin enable|disable <id>        # prints ok

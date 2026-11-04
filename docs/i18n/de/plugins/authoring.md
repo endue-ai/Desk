@@ -194,6 +194,39 @@ Das Theme erreicht Ihren Frame als CSS-Eigenschaften `--desk-*` und als `ctx.the
 die in Ihrem Frame gedrückt werden, erreichen die Tastenbelegung des Desks, außer Sie rufen
 `preventDefault()` auf. Die Standardrichtlinien und was jede entscheidet, stehen in `plugins/README.md`.
 
+## Befehle für Agenten
+
+Ein Agent von endue AI oder das lokale Gehirn arbeitet auf dem Desk mit denselben Befehlen, die Menschen
+ausführen (ADR 0084). Markieren Sie einen Befehl mit `agent` und sagen Sie, was er tut, was er nimmt und
+was er antwortet: Der Kern prüft die Argumente jedes Aufrufs gegen `args`, führt den Befehl in
+`cmd.tools` auf und bietet ihn in den Gehirn-Runden des Desks als Werkzeug an, benannt nach seiner Id
+(`example_my-plugin_notes`):
+
+```json
+"commands": [
+  {
+    "id": "example.my-plugin.notes",
+    "title": "Notes: list",
+    "description": "The notes in a folder, newest first: name, path and when each changed.",
+    "args": { "type": "object", "properties": { "folder": { "type": "string" } }, "additionalProperties": false },
+    "result": { "type": "array", "items": { "type": "object" } },
+    "agent": true,
+    "readOnly": true
+  },
+  { "id": "example.my-plugin.publish", "title": "Notes: publish", "description": "Publish a note to the web.", "agent": true, "irreversible": true }
+]
+```
+
+`readOnly` sagt, dass der Befehl Daten antwortet und nichts ändert, was die Person behält. Ein Befehl läuft
+mit den Berechtigungen Ihres Plugins, nicht mit denen des Agenten; markieren Sie deshalb alles als
+`irreversible`, was Programme startet, sendet, löscht oder veröffentlicht: Der Aufruf eines Agenten wartet
+dann auf die Zustimmung der Person, mit den Argumenten im Blick. Verlangen Sie kein Argument, das ein
+blanker Aufruf aus der Palette weglässt; prüfen Sie es stattdessen im Handler. Ein zur Laufzeit
+registrierter Befehl nimmt dieselben Felder (`description`, `argsSchema`, `resultSchema`, `agent`,
+`readOnly`) mit `cmd.register`, und `ctx.commands.tools()` listet die Agenten-Befehle, die Ihre
+Berechtigungen abdecken. Die eingebauten Plugins git, terminal, docker, calendar und database sind
+Beispiele.
+
 ## Dateien bearbeiten: Bearbeitungsstufen
 
 Ein Plugin, das Dateien öffnet, liest zuerst und bearbeitet später (ADR 0045). Sobald es bearbeitet, hat

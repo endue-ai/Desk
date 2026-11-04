@@ -10,6 +10,7 @@ pub const USAGE: &str = "usage: desk [--json] <command>
   ping                                  a round trip to the running desk
   cmd list                              the commands the desk has: id, provider, title
   cmd run <id> [--args <json object>]   run a command and print its result
+  cmd tools [<words>]                   the commands agents get as tools: id, provider, reads or acts
   plugin list                           the installed plugins: id, status, enabled
   plugin enable <id> | disable <id>     turn a plugin on or off
   perm list                             every grant: grantId, caller, permission
@@ -57,6 +58,10 @@ pub enum Action {
 pub enum Remote {
     Ping,
     CmdList,
+    /// `cmd tools [<words>]`: cmd.tools, narrowed by the words when there are any.
+    CmdTools {
+        query: Option<String>,
+    },
     CmdRun {
         id: String,
         args: Option<Map<String, Value>>,
@@ -139,6 +144,9 @@ pub fn parse(args: Vec<String>) -> Option<Args> {
         ["doctor", "--trace", file] => Action::Trace(PathBuf::from(file)),
         ["ping"] => Action::Remote(Remote::Ping),
         ["cmd", "list"] => Action::Remote(Remote::CmdList),
+        ["cmd", "tools", words @ ..] => Action::Remote(Remote::CmdTools {
+            query: (!words.is_empty()).then(|| words.join(" ")),
+        }),
         ["cmd", "run", rest @ ..] => Action::Remote(cmd_run(rest)?),
         ["plugin", "list"] => Action::Remote(Remote::PluginList),
         ["plugin", toggle @ ("enable" | "disable"), id] => {

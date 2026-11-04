@@ -1,7 +1,8 @@
 //! Conversations with the brain for brain.say. The core opens the desk's session, holds its lease,
 //! streams each turn back as brain.turn events and runs the tools the brain asks for, through the
-//! core once it routes them (`Tools`, `agent_tools`), else echo alone. While the brain is
-//! unreachable the turn waits with the offline line, and it resumes on reconnection.
+//! core once it routes them (`Tools`, `agent_tools`), else echo alone. Once routed, each turn offers
+//! the desk's tools (ADR 0084). While the brain is unreachable the turn waits with the offline line,
+//! and it resumes on reconnection.
 
 use std::mem;
 use std::path::PathBuf;
@@ -12,7 +13,7 @@ use std::time::Duration;
 
 use desk_brain::{
     Brain, BrainErrorCode, BrainFailure, ClientInfo, CreateSessionRequest, LeaseHolder, TextPart,
-    ToolCall, ToolResultRequest, TurnRequest, UserMessage,
+    ToolCall, ToolDefinition, ToolResultRequest, TurnRequest, UserMessage,
 };
 use desk_bridge::BrainTurnKind;
 use serde_json::{Value, json};
@@ -75,6 +76,10 @@ pub(crate) trait Tools: Send + Sync {
     fn run(&self, turn: &str, call: &ToolCall) -> (Value, bool);
     /// The desk's turn `turn` ended.
     fn ended(&self, _turn: &str) {}
+    /// The tools a turn offers the brain; `None` offers none.
+    fn offer(&self) -> Option<Vec<ToolDefinition>> {
+        None
+    }
 }
 
 pub(crate) struct Conversation {
@@ -273,7 +278,11 @@ impl Conversation {
                     text: text.to_owned(),
                 }],
             },
-            tools: None,
+            tools: self
+                .tools
+                .get()
+                .and_then(Weak::upgrade)
+                .and_then(|tools| tools.offer()),
             tool_choice: None,
         };
         self.brain

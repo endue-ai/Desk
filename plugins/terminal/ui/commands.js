@@ -1,5 +1,6 @@
-// The plugin's commands (endue.terminal.*, from the palette, keys, Eris and agents) and the desk's
-// buffer requests, answered on the sessions. No DOM.
+// The plugin's commands (endue.terminal.*, from the palette, keys, Eris and agents; agent.js the
+// ones only agents need) and the desk's buffer requests, answered on the sessions. No DOM.
+import { wireAgent } from "./agent.js";
 import { basename, isShell } from "./shell.js";
 
 /**
@@ -96,6 +97,8 @@ export function wireCommands(commands, app) {
     if (!session.procId) throw new Error(session.exit ?? `Could not start ${command}.`);
     return { session: session.id, procId: session.procId };
   });
+
+  wireAgent(commands, app);
 
   // The desk's buffer list: a switch shows the terminal, a close (already decided) forgets it.
   const bufferOf = (/** @type {unknown} */ args) =>

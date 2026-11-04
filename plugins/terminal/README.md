@@ -13,14 +13,14 @@ buffer (`desk.buffers.open`), so `Mod+B` and `Mod+W` work on them. The requireme
 | `ui:notify` | The terminal bell, when `endue.terminal.bell` is `notify` |
 | `cmd:invoke` (`desk.buffers.open`, `.update`, `.close`) | One desk buffer per terminal, renamed when the shell sets a title |
 
-A shell outside those grants (`endue.terminal.shell`, or a program `endue.terminal.run` names) is
-asked for once with `perm.request`; a refusal is said in the terminal: `Not allowed to run fish.`
+A shell outside those grants (`endue.terminal.shell`, or a program `endue.terminal.run` names) is asked for once with `perm.request`; a refusal is said in the terminal: `Not allowed to run fish.`
 
 | Command | What it does |
 | --- | --- |
 | `endue.terminal.new { cwd? }` (`Mod+Shift+T`), `.focus` (`` Control+` ``), `.close`, `.next`, `.previous` | New uses the configured shell and arguments in `cwd` (defaults to settings); `.close` sends a hang-up |
 | `endue.terminal.clear`, `.interrupt`, `.restart` | Clear the screen; send `int`; start the shell again (Enter after an exit does too) |
 | `endue.terminal.run { command, args?, cwd?, title? }` | A program of its own in a new terminal, without a shell; answers `{ session, procId }`. A shell with arguments is refused, so a caller cannot slip past the person |
+| `endue.terminal.sessions`, `.output { session?, chars? }`, `.send { session?, text, enter? }` (`ui/agent.js`) | Agents' tools (ADR 0084): the terminals; a program's last output as plain text; typing into it. `.run` and `.send` wait for the person's approval of an agent's every call |
 
 | File | Purpose |
 | --- | --- |
