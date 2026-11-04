@@ -34,6 +34,9 @@ pub const USAGE: &str = "usage: desk [--json] <command>
   undo | redo                           the desk's undo stack: what was undone or redone, if anything
   doctor --trace <file>                 summarize a start-up trace (DESK_TRACE=1): phases, totals,
                                         the five longest
+  mcp [--agent <id>] [--plugin <id>]... serve the running desk to another app over MCP on stdin and
+                                        stdout, as the agent <id> (mcp); each --plugin (or *) gives
+                                        that plugin's commands tools of their own
 --json prints the desk's answer line as it is. Exit codes: 0 ok, 1 failed, 2 usage.";
 
 pub struct Args {
@@ -50,6 +53,11 @@ pub enum Action {
     Test(PathBuf),
     /// `doctor --trace <file>`: a start-up trace, summarized offline.
     Trace(PathBuf),
+    /// `mcp`: an MCP server on stdin and stdout for another app, as an agent (ADR 0086).
+    Mcp {
+        agent: Option<String>,
+        plugins: Vec<String>,
+    },
     Remote(Remote),
 }
 
@@ -137,6 +145,7 @@ pub fn parse(args: Vec<String>) -> Option<Args> {
         ["doctor", "--data", dir] => Action::Doctor(Some(PathBuf::from(name(dir)?))),
         ["plugin", "test", dir] => Action::Test(PathBuf::from(dir)),
         ["doctor", "--trace", file] => Action::Trace(PathBuf::from(file)),
+        ["mcp", rest @ ..] => mcp(rest)?,
         ["ping"] => Action::Remote(Remote::Ping),
         ["cmd", "list"] => Action::Remote(Remote::CmdList),
         ["cmd", "run", rest @ ..] => Action::Remote(cmd_run(rest)?),
@@ -227,6 +236,24 @@ fn fs(rest: &[&str]) -> Option<FsStep> {
         },
         _ => return None,
     })
+}
+
+/// `mcp [--agent <id>] [--plugin <id>]...`, the flags in any order; the agent id as Desk names one.
+fn mcp(mut rest: &[&str]) -> Option<Action> {
+    let mut agent = None;
+    let mut plugins = Vec::new();
+    while let [flag, value, more @ ..] = rest {
+        match *flag {
+            "--agent" if agent.is_none() => {
+                desk_core::agent_caller(value)?;
+                agent = Some((*value).to_owned());
+            }
+            "--plugin" => plugins.push(name(value)?),
+            _ => return None,
+        }
+        rest = more;
+    }
+    rest.is_empty().then_some(Action::Mcp { agent, plugins })
 }
 
 /// A count of 1 or more.
