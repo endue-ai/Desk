@@ -13,6 +13,7 @@ import { DeskProgress } from "./progress";
 import { DeskStat } from "./stat";
 import { DeskTable } from "./table";
 import { DeskToast } from "./toast";
+import { DeskUniversalView } from "./universal";
 
 export type { DeskAgendaEvent, DeskAgendaSelectDetail } from "./agenda";
 export type { DeskSelectDetail } from "./base";
@@ -24,6 +25,14 @@ export type {
   DeskTableRow,
   DeskTableSelectDetail,
 } from "./table";
+export type {
+  DeskUniversalMoveDetail,
+  DeskUniversalRangeDetail,
+  DeskUniversalSelectDetail,
+  DeskUniversalSendDetail,
+  DeskUniversalTypeDetail,
+  DeskUniversalViewSpec,
+} from "./universal";
 export type { EditTier };
 export {
   DeskAgenda,
@@ -39,6 +48,7 @@ export {
   DeskStat,
   DeskTable,
   DeskToast,
+  DeskUniversalView,
   EDIT_TIERS,
 };
 
@@ -57,6 +67,7 @@ export const elements = {
   "desk-card": DeskCard,
   "desk-progress": DeskProgress,
   "desk-edit-tier": DeskEditTier,
+  "desk-universal-view": DeskUniversalView,
 } as const;
 
 /** Define every element that is not defined yet; safe to call more than once. */
@@ -81,5 +92,6 @@ declare global {
     "desk-card": DeskCard;
     "desk-progress": DeskProgress;
     "desk-edit-tier": DeskEditTier;
+    "desk-universal-view": DeskUniversalView;
   }
 }

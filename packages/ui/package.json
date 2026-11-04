@@ -9,6 +9,7 @@
     ".": "./src/index.ts",
     "./theme": "./src/theme/index.ts",
     "./elements": "./src/elements/index.ts",
+    "./universal": "./src/universal/index.ts",
     "./tokens.css": "./src/tokens.css",
     "./base.css": "./src/base.css"
   },
