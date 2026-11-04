@@ -12,7 +12,7 @@ test("the drawers open from the keyboard, one at a time", async ({ page }) => {
   const plugins = bar.getByRole("button", { name: /^Plugins/ });
   const access = bar.getByRole("button", { name: /^Access/ });
   await expect(plugins).toContainText("6 on");
-  await expect(access).toContainText("3 permissions");
+  await expect(access).toContainText("4 permissions");
   await expect(plugins).toHaveAttribute("aria-expanded", "false");
 
   await plugins.focus();
@@ -26,6 +26,8 @@ test("the drawers open from the keyboard, one at a time", async ({ page }) => {
   const region = bar.getByRole("region", { name: /^Access/ });
   await expect(region).toContainText("Talk to the brain");
   await expect(region).toContainText("Read files");
+  await expect(region).toContainText("Run commands");
+  await expect(region).toContainText("Eris (desk.buffers.list, desk.palette.pick)");
   await expect(region).toContainText("Eris (${home}/**)");
   await expect(region).toContainText("Manage plugins");
   await expect(region).toContainText("Dock, Plugins, Status");
