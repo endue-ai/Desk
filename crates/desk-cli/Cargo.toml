@@ -1,6 +1,6 @@
 [package]
 name = "desk-cli"
-description = "The desk CLI: plugin validate and test, doctor --trace, and commands, plugins and grants of a running desk over its socket. The hands AI agents use."
+description = "The desk CLI: plugin validate and test, doctor --trace, commands, plugins and grants of a running desk over its socket, and an MCP server for other apps. The hands AI agents use."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -18,6 +18,7 @@ desk-core.workspace = true
 desk-trace.workspace = true
 # Not in [workspace.dependencies] yet: a later chore moves it there.
 desk-ipc = { path = "../desk-ipc" }
+desk-mcp = { path = "../desk-mcp" }
 desk-plugin-host.workspace = true
 serde_json.workspace = true
 

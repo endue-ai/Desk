@@ -25,8 +25,9 @@ pub(crate) fn agent_of(caller: &str) -> Option<&str> {
     caller.strip_prefix(AGENT)
 }
 
-/// The caller an agent id calls as, when it is an id Desk can name (`specs/brain/v0`, `agentId`).
-pub(crate) fn agent_caller(id: &str) -> Option<String> {
+/// The caller an agent id calls as, when it is an id Desk can name (`specs/brain/v0`, `agentId`):
+/// a brain's tool call, or a desk socket connection that calls as an agent (ADR 0086).
+pub fn agent_caller(id: &str) -> Option<String> {
     let mut chars = id.chars();
     let first = chars.next().is_some_and(|c| c.is_ascii_alphanumeric());
     let rest = chars.all(|c| c.is_ascii_alphanumeric() || matches!(c, '_' | '.' | '-'));

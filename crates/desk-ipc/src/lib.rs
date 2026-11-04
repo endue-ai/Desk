@@ -1,7 +1,9 @@
 //! The desk socket (ADR 0030): the desk CLI and scripts reach a running desk over a local socket that
 //! only the same OS user can open. Each line is one `specs/bridge/v0` document: a `BridgeRequest` in,
 //! its `BridgeResponse` and every core `BridgeEvent` out, on the same connection. Every request goes
-//! through `Core::handle` as the caller [`CALLER`], so the permission engine applies.
+//! through `Core::handle` as the caller [`CALLER`], so the permission engine applies, or as the agent
+//! a connection asked to call as with [`AGENT_METHOD`] (ADR 0086): an MCP server for another app
+//! does, so that app's calls are an agent's.
 //!
 //! Unix sockets only for now: on Windows `Listener::bind` and `Client::connect` answer
 //! `io::ErrorKind::Unsupported` with [`UNSUPPORTED`].
@@ -27,6 +29,8 @@ mod wire;
 
 #[cfg(unix)]
 pub use client::Client;
+/// The socket's own request that makes a connection call as an agent (ADR 0086).
+pub const AGENT_METHOD: &str = "socket.agent";
 #[cfg(unix)]
 pub use listener::Listener;
 #[cfg(not(unix))]
