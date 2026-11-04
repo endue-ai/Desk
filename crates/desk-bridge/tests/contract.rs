@@ -14,8 +14,8 @@ use desk_bridge::{
     PluginManifest, PluginStatsResult, ProfileFile, RefusalReason, SettingsListResult,
     ShellOpenResult, StoreGetResult, ThemeBundle, ThemeExportResult, ThemeIndex,
     ThemeMarketFetchResult, ThemeMarketListResult, ThemePackage, ThemeType, ThemeVariant,
-    UiSurfaceStateRequest, UiSurfaceStateResult, View, ViewGetResult, ViewListResult, ViewSource,
-    ViewSummary, manifest_problems, view_problems,
+    UiSurfaceStateRequest, UiSurfaceStateResult, UniversalData, UniversalSource, UniversalView,
+    View, ViewGetResult, ViewListResult, ViewSource, ViewSummary, manifest_problems, view_problems,
 };
 use serde::Serialize;
 use serde::de::DeserializeOwned;
@@ -166,6 +166,8 @@ fn item_view_and_connector_vectors_are_judged_as_their_folders_say() {
                 "ItemPage" => roundtrip::<ItemPage>(vector),
                 "ItemChange" => roundtrip::<ItemChange>(vector),
                 "View" => roundtrip::<View>(vector),
+                "UniversalView" => roundtrip::<UniversalView>(vector),
+                "UniversalData" => roundtrip::<UniversalData>(vector),
                 "ConnectorManifest" => roundtrip::<ConnectorManifest>(vector),
                 "ConnectorInstance" => roundtrip::<ConnectorInstance>(vector),
                 "ConnectorStatus" => roundtrip::<ConnectorStatus>(vector),
@@ -206,6 +208,28 @@ fn the_rules_beyond_the_schemas_name_what_does_not_resolve() {
         manifest_problems(&manifest),
         ["/connector/resources/0/actions/1: example.tasks.move is not in contributes.commands"]
     );
+}
+
+#[test]
+fn a_universal_source_is_the_one_its_key_names() {
+    let source = |value: Value| serde_json::from_value::<UniversalSource>(value).unwrap();
+    let data = json!({ "data": { "entries": [{ "title": "One" }] } });
+    assert!(matches!(source(data), UniversalSource::UniversalInline(_)));
+    let asset = json!({ "asset": "data/board.yaml" });
+    assert!(matches!(source(asset), UniversalSource::UniversalAsset(_)));
+    let url = json!({ "url": "https://example.com/board.yaml" });
+    assert!(matches!(source(url), UniversalSource::UniversalUrl(_)));
+    let file = json!({ "file": "~/board.yaml" });
+    assert!(matches!(source(file), UniversalSource::UniversalFile(_)));
+    let command = json!({ "command": "example.board.data", "args": { "board": "launch" } });
+    assert!(matches!(
+        source(command),
+        UniversalSource::UniversalCommand(_)
+    ));
+    let items = json!({ "items": { "kinds": ["task"] } });
+    assert!(matches!(source(items), UniversalSource::UniversalItems(_)));
+    let both = json!({ "url": "https://example.com/a.yaml", "file": "~/a.yaml" });
+    assert!(serde_json::from_value::<UniversalSource>(both).is_err());
 }
 
 fn roundtrip<T: DeserializeOwned + Serialize>(vector: &Vector) {

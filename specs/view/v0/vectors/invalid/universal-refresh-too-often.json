@@ -1,0 +1,9 @@
+{
+  "target": "UniversalView",
+  "description": "a source is loaded again every five seconds at most",
+  "instance": {
+    "type": "agent",
+    "source": { "url": "https://agents.example.com/run.yaml" },
+    "refresh": 1
+  }
+}

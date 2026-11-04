@@ -39,4 +39,29 @@ Each has an optional `title`, `binding`, `fields` (`{ label?, value }`), `action
 Two rules go beyond the schema: every `$name` is a `requires` entry and every `{params.<name>}` a
 declared param. `desk_bridge::view_problems` checks them; the contract tests judge the vectors with it.
 
+## Universal views
+
+`universal.schema.json` is the universal view (ADR 0084): one presentation of entries from any source
+that serves the universal data format, so the same view works whatever holds the data. `@endue-ai/ui`
+draws it (`<desk-universal-view>`), `ctx.universal` in the plugin SDK loads its source, and the built-in
+`desk.universal` opens one by command.
+
+| `UniversalView` | Meaning |
+| --- | --- |
+| `type`, `types` | `timeline`, `calendar`, `kanban`, `list`, `text`, `chat` or `agent`; `types` are the ones the person may switch between |
+| `source` | One of `data` (inline), `asset` (a file in the plugin's folder), `url` (http/https, `net.fetch`), `file` (`fs.read`), `command` (`cmd.invoke`: another plugin serves it) or `items` (an `ItemQuery` on the desk's index, live) |
+| `map` | Which entry field plays which role (`start: due`, `group: column`); a role left out reads its own name |
+| `options` | `groups` (kanban columns), `range` (calendar), `order`, `zone`, `me` (chat), `placeholder` |
+| `actions`, `move`, `send` | Commands, as in a view: on an entry (`{id}`), on a kanban move (`{move.from}`, `{move.to}`), on sent text (`{send.text}`) |
+| `refresh`, `empty`, `provenance` | Load the source again every so many seconds (5 at least); the empty text; who made it |
+
+`UniversalData` is the format every source but `items` answers, as YAML or JSON: `entries` (free-form
+objects, 10 000 at most) and optionally `universal: v0`, `title`, `description`, `updatedAt` and a `map`
+of its own, which a view's `map` overrides. A YAML document that is a bare list is its entries. The roles
+are `id`, `title`, `text` (Markdown), `detail`, `start` and `end` (RFC 3339 with an offset, or a
+`YYYY-MM-DD` day), `group`, `author`, `role`, `status` (`pending`, `running`, `done`, `failed`,
+`waiting` or any word), `tags` and `url`; every other field travels with the entry to its actions.
+Items become entries with their kind's fields in their roles: an event's `start`, `end` and `allDay`,
+a task's `due` as its `start` and `status` as its `group`, a message's sender as its `author`.
+
 `vectors/` holds valid and invalid views for the contract tests.

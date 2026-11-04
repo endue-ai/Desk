@@ -1,0 +1,5 @@
+{
+  "target": "UniversalView",
+  "description": "a URL source is http or https, which net.fetch can reach",
+  "instance": { "type": "list", "source": { "url": "ftp://example.com/board.yaml" } }
+}

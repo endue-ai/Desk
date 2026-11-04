@@ -1,0 +1,5 @@
+{
+  "target": "UniversalView",
+  "description": "an asset stays inside the plugin's folder",
+  "instance": { "type": "text", "source": { "asset": "../other-plugin/secrets.yaml" } }
+}

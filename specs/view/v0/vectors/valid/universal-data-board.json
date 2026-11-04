@@ -1,0 +1,27 @@
+{
+  "target": "UniversalData",
+  "description": "a universal data document as a server answers it: free fields, a map that says which play which role, whole-day and timed dates",
+  "instance": {
+    "universal": "v0",
+    "title": "Launch tasks",
+    "updatedAt": "2026-11-04T08:00:00Z",
+    "map": { "group": "column", "start": "due" },
+    "entries": [
+      {
+        "id": "t1",
+        "title": "Write the spec",
+        "column": "done",
+        "due": "2026-11-02",
+        "tags": ["spec"]
+      },
+      {
+        "id": "t2",
+        "title": "Build the element",
+        "column": "doing",
+        "due": "2026-11-06T18:00:00+09:00",
+        "owner": "Mina"
+      },
+      { "id": "t3", "title": "Ship", "column": "todo", "estimate": 3 }
+    ]
+  }
+}
