@@ -1,0 +1,253 @@
+/* Every colour, font, size, radius and duration comes from the theme's --desk-* tokens (index.html
+   loads their defaults; the runtime sets the theme in force). States are statuses: ready and done
+   are success, running and waiting the primary colour, checking and stopped muted, failed and broken
+   danger, missing warning. */
+:root {
+  --agents-ok: var(--desk-success-text);
+  --agents-busy: var(--desk-primary-text);
+  --agents-idle: var(--desk-text-muted);
+  --agents-bad: var(--desk-danger-text);
+  --agents-warn: var(--desk-warning-text);
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  margin: 0;
+  background: var(--desk-card);
+  color: var(--desk-text);
+  font: calc(var(--desk-text-sm) - 1px)/1.55 var(--desk-font-sans);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: inherit;
+}
+
+header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  padding: 8px 12px 0;
+  border-bottom: 1px solid var(--desk-border);
+}
+
+h1 {
+  margin: 0;
+  font-size: calc(var(--desk-text-sm) + 1px);
+}
+
+h2 {
+  margin: 0 0 6px;
+  font-size: var(--desk-text-sm);
+}
+
+h3 {
+  margin: 10px 0 4px;
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+#head {
+  display: flex;
+  gap: 10px;
+  margin: 0;
+  color: var(--desk-text-muted);
+}
+
+#access.safe {
+  color: var(--agents-ok);
+}
+
+#access.open {
+  color: var(--agents-warn);
+}
+
+#busy {
+  color: var(--agents-busy);
+}
+
+#tabs {
+  display: flex;
+  flex-basis: 100%;
+  gap: 2px;
+}
+
+#tabs button {
+  padding: 2px 10px 4px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--desk-text-muted);
+  font: inherit;
+  cursor: pointer;
+}
+
+#tabs button[aria-selected="true"] {
+  border-bottom-color: var(--desk-primary-text);
+  color: var(--desk-text);
+}
+
+main {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+}
+
+.view {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 12px;
+}
+
+.view[hidden] {
+  display: none;
+}
+
+button {
+  padding: 2px 10px;
+  border: 1px solid var(--desk-border);
+  border-radius: var(--desk-radius-sm);
+  background: var(--desk-background);
+  color: var(--desk-text);
+  font: inherit;
+  cursor: pointer;
+}
+
+button:hover:not(:disabled) {
+  background: var(--desk-hover);
+}
+
+button[aria-pressed="true"] {
+  border-color: var(--desk-primary-border);
+  background: var(--desk-primary-soft);
+}
+
+button.danger {
+  border-color: var(--desk-danger-border);
+  color: var(--desk-danger-text);
+}
+
+button:disabled {
+  color: var(--desk-text-muted);
+  cursor: default;
+}
+
+:focus-visible {
+  outline: 2px solid var(--desk-ring);
+  outline-offset: 1px;
+}
+
+.bar,
+.picker,
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+}
+
+.note {
+  margin: 0;
+  color: var(--desk-text-muted);
+}
+
+.problem {
+  margin: 4px 0 0;
+  padding: 4px 8px;
+  border-radius: var(--desk-radius-sm);
+  background: var(--desk-danger-soft);
+  color: var(--desk-text);
+}
+
+code,
+pre.plain {
+  font-family: var(--desk-font-mono);
+  font-size: var(--desk-text-xs);
+}
+
+pre.plain {
+  margin: 0;
+  padding: 6px 8px;
+  border-radius: var(--desk-radius-sm);
+  background: var(--desk-muted);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.badge {
+  padding: 0 6px;
+  border-radius: var(--desk-radius-full);
+  background: var(--desk-muted);
+  color: var(--agents-idle);
+  font-size: var(--desk-text-xs);
+  white-space: nowrap;
+}
+
+.badge.ready,
+.badge.done {
+  color: var(--agents-ok);
+}
+
+.badge.running,
+.badge.waiting {
+  color: var(--agents-busy);
+}
+
+.badge.failed,
+.badge.broken,
+.badge.denied,
+.badge.unsupported {
+  color: var(--agents-bad);
+}
+
+.badge.missing {
+  color: var(--agents-warn);
+}
+
+.meta,
+.facts,
+.origin {
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-xs);
+}
+
+.facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 2px 0;
+}
+
+footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 12px;
+  border-top: 1px solid var(--desk-border);
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-xs);
+}
+
+footer p {
+  margin: 0;
+}
+
+#status {
+  color: var(--desk-text);
+}
