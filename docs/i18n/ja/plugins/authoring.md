@@ -214,6 +214,28 @@ await ctx.commands.run("desk.views.open", { id: "desk.today" });
 インポートマップ（`"@endue-ai/ui": "/_desk/ui.js"`）で同じ要素を読み込めます。現在はランタイムのテスト
 サーバーが配信しています。
 
+### ユニバーサルビュー
+
+ユニバーサルビュー（`specs/view/v0/universal.schema.json`、ADR 0084）は、ひとつの YAML 形式、つまりユニバーサル
+データ形式を返す出所なら何からでもエントリーを受け取り、タイムライン、カレンダー、カンバン、リスト、テキスト、
+チャット、エージェントの実行として表示します。ビューはデータとして持ち、`ctx.universal` で開きます。出所は
+インラインのデータ、プラグインのフォルダーのファイル（`asset`、権限は不要）、URL（`net:fetch`）、デスクのファイル
+（`fs:read`）、ほかのプラグインのコマンド、デスクのアイテムのどれでもよく、ビューは変わりません。
+
+```js
+const board = ctx.universal.open(document.getElementById("root"), {
+  type: "kanban",
+  types: ["kanban", "list", "timeline", "calendar"],
+  source: { asset: "data/board.yaml" },
+  map: { group: "column", start: "due" },
+  move: { command: "example.board.move", args: { id: "{id}", to: "{move.to}" } },
+});
+```
+
+描画するのは `@endue-ai/ui` の `<desk-universal-view>` です。`ctx.universal.load(source)` と
+`ctx.universal.parse(text)` はドキュメントそのものを返します。自分のプラグインがなくても、
+`desk.universal.open` コマンドで開けます。いちばん小さな例は `examples/plugin-hello-universal` です。
+
 ## テスト
 
 `@endue-ai/plugin-sdk/testing` を使うと、ブラウザーを使わずに、モックのブリッジを相手にプラグインを実行できます。

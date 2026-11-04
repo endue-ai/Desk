@@ -249,6 +249,28 @@ A view is data, not code (`specs/view/v0`): the built-in `desk.views` draws it w
 same elements (`"@endue-ai/ui": "/_desk/ui.js"` in its import map) once the app serves them; the
 runtime's test server does today.
 
+### Universal views
+
+A universal view (`specs/view/v0/universal.schema.json`, ADR 0084) shows entries from any source that
+serves one YAML format, the universal data format, as a timeline, calendar, kanban, list, text, chat or
+agent run. Keep the view as data and open it with `ctx.universal`. Its source can be inline data, a file
+in your plugin's folder (`asset`, no permission), a URL (`net:fetch`), a desk file (`fs:read`), another
+plugin's command or the desk's items, and the view stays the same:
+
+```js
+const board = ctx.universal.open(document.getElementById("root"), {
+  type: "kanban",
+  types: ["kanban", "list", "timeline", "calendar"],
+  source: { asset: "data/board.yaml" },
+  map: { group: "column", start: "due" },
+  move: { command: "example.board.move", args: { id: "{id}", to: "{move.to}" } },
+});
+```
+
+`<desk-universal-view>` from `@endue-ai/ui` draws it; `ctx.universal.load(source)` and
+`ctx.universal.parse(text)` give you the document itself. Without a plugin of your own,
+`desk.universal.open` opens one by command. `examples/plugin-hello-universal` is the smallest.
+
 ## Testing
 
 `@endue-ai/plugin-sdk/testing` runs your plugin without a browser, against a mock bridge:

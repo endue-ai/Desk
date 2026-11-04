@@ -62,7 +62,7 @@ Emacs 在小型 C 核心之上用 Elisp 运行几乎所有功能，而且可以�
 | 窗口管理器 | 窗口管理器 | frame · window | 3D 画布合成器 |
 | Shell | 终端 shell | M-x | Eris · 命令面板 |
 | 应用 | 应用程序 | 包（Elisp） | 插件（UI · Wasm · MCP） |
-| 接入的数据 | 挂载的文件系统 · 搜索索引 | Gnus 后端 · Org agenda | 连接器 · 汇集在同一个索引中的条目 · 视图（ADR 0032） |
+| 接入的数据 | 挂载的文件系统 · 搜索索引 | Gnus 后端 · Org agenda | 连接器 · 汇集在同一个索引中的条目 · 视图（ADR 0032） · 绘制同一种 YAML 格式任意来源的通用视图（ADR 0084） |
 | 启动配置 | init | init.el | `init.yaml`（配置档 + 插件 + 设置） |
 | 包管理器 | apt · brew | package.el · MELPA | 插件市场 |
 | 行为覆盖 | 无 | advice · hook | 事件钩子 · 命令覆盖 |

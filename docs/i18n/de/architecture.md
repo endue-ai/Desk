@@ -66,7 +66,7 @@ Desk übernimmt diese Form und benennt die Teile so, wie es ein Betriebssystem t
 | Fenstermanager | Fenstermanager | Frames · Windows | 3D-Canvas-Compositor |
 | Shell | Terminal-Shell | M-x | Eris · Befehlspalette |
 | Apps | Anwendungen | Pakete (Elisp) | Plugins (UI · Wasm · MCP) |
-| Verbundene Daten | eingehängte Dateisysteme · Suchindex | Gnus-Backends · Org-Agenda | Konnektoren · Einträge in einem gemeinsamen Index · Ansichten (ADR 0032) |
+| Verbundene Daten | eingehängte Dateisysteme · Suchindex | Gnus-Backends · Org-Agenda | Konnektoren · Einträge in einem gemeinsamen Index · Ansichten (ADR 0032) · universelle Ansichten über jede Quelle eines YAML-Formats (ADR 0084) |
 | Boot-Konfiguration | init | init.el | `init.yaml` (Profil + Plugins + Einstellungen) |
 | Paketmanager | apt · brew | package.el · MELPA | Marktplatz |
 | Verhalten überschreiben | keine | Advice · Hooks | Event-Hooks · Befehls-Overrides |

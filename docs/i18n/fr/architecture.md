@@ -66,7 +66,7 @@ tourne. Desk adopte la même forme et nomme ses parties comme le ferait un syst�
 | Gestionnaire de fenêtres | gestionnaire de fenêtres | frames · windows | compositeur de canevas 3D |
 | Shell | shell de terminal | M-x | Eris · palette de commandes |
 | Applications | applications | paquets (Elisp) | plugins (UI · Wasm · MCP) |
-| Données connectées | systèmes de fichiers montés · index de recherche | backends de Gnus · Org agenda | connecteurs · éléments réunis dans un seul index · vues (ADR 0032) |
+| Données connectées | systèmes de fichiers montés · index de recherche | backends de Gnus · Org agenda | connecteurs · éléments réunis dans un seul index · vues (ADR 0032) · vues universelles sur toute source d'un même format YAML (ADR 0084) |
 | Configuration de démarrage | init | init.el | `init.yaml` (profil + plugins + réglages) |
 | Gestionnaire de paquets | apt · brew | package.el · MELPA | place de marché |
 | Surcharge de comportement | aucune | advice · hooks | hooks d'événements · surcharges de commandes |
