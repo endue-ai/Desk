@@ -1,6 +1,7 @@
 //! The wire (ADR 0030): one compact JSON document per `\n`-terminated UTF-8 line, no handshake and no
 //! wrapper. A request line is a `BridgeRequest`, an answer line a `BridgeResponse`, an event line a
-//! `BridgeEvent`; a reader tells the last two apart by `id` versus `event`.
+//! `BridgeEvent`; a reader tells the last two apart by `id` versus `event`. One request is the
+//! socket's own, not the bridge's: [`AGENT_METHOD`] makes the connection call as an agent (ADR 0086).
 
 use std::io;
 
@@ -8,28 +9,64 @@ use desk_bridge::{
     BridgeError, BridgeEvent, BridgeFailure, BridgeRequest, BridgeResponse, ErrorCode, False,
     RequestId,
 };
-use serde_json::Value;
+use serde_json::{Value, json};
+
+use crate::AGENT_METHOD;
+
+/// What one request line asks for.
+pub(crate) enum Asked {
+    Bridge(Box<BridgeRequest>),
+    /// [`AGENT_METHOD`]: call as this agent id from now on.
+    Agent {
+        id: RequestId,
+        agent: String,
+    },
+    /// The `invalid_params` answer for a line that is not a request.
+    Invalid(BridgeResponse),
+}
 
 /// The request on one line, or the `invalid_params` answer for a line that is not one (with the
 /// line's `id` when it can be read, `0` otherwise). `None` for an empty line, which gets no answer.
-pub(crate) fn request(line: &[u8]) -> Option<Result<BridgeRequest, BridgeResponse>> {
+pub(crate) fn request(line: &[u8]) -> Option<Asked> {
     let line = line.trim_ascii();
     if line.is_empty() {
         return None;
     }
     let value: Value = match serde_json::from_slice(line) {
         Ok(value) => value,
-        Err(why) => return Some(Err(invalid(0, format!("not a JSON line: {why}")))),
+        Err(why) => {
+            let invalid = invalid(0, format!("not a JSON line: {why}"));
+            return Some(Asked::Invalid(invalid));
+        }
     };
     let id = value.get("id").and_then(Value::as_u64).unwrap_or(0);
-    let message = match value.get("method").and_then(Value::as_str) {
+    let method = value.get("method").and_then(Value::as_str);
+    if method == Some(AGENT_METHOD) {
+        return Some(match value["params"]["agent"].as_str() {
+            Some(agent) => Asked::Agent {
+                id,
+                agent: agent.to_owned(),
+            },
+            None => Asked::Invalid(invalid(id, format!("{AGENT_METHOD} needs params.agent"))),
+        });
+    }
+    let message = match method {
         Some(method) => format!("not a bridge request: no method {method} with these params"),
         None => "not a bridge request: it needs an id, a method and params".to_owned(),
     };
-    Some(serde_json::from_value(value).map_err(|_| invalid(id, message)))
+    Some(match serde_json::from_value(value) {
+        Ok(request) => Asked::Bridge(Box::new(request)),
+        Err(_) => Asked::Invalid(invalid(id, message)),
+    })
 }
 
-fn invalid(id: RequestId, message: String) -> BridgeResponse {
+/// An [`AGENT_METHOD`] request as one line, `\n` included.
+pub(crate) fn agent_line(id: RequestId, agent: &str) -> String {
+    let line = json!({ "id": id, "method": AGENT_METHOD, "params": { "agent": agent } });
+    terminated(line.to_string())
+}
+
+pub(crate) fn invalid(id: RequestId, message: String) -> BridgeResponse {
     BridgeResponse::BridgeFailure(BridgeFailure {
         id,
         ok: False,

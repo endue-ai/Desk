@@ -75,6 +75,7 @@ mod time;
 mod views_watch;
 mod watch;
 
+pub use agents::agent_caller;
 pub use conversation::{BrainMode, BrainOptions, FAILED_LINE, OFFLINE_LINE, READ_ONLY_LINE};
 pub use core_fs_url::FileUrl;
 pub use core_perm::{Prompter, RefuseAll};

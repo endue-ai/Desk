@@ -6,7 +6,7 @@ use std::io::{self, BufRead, BufReader, Write};
 use std::os::unix::net::UnixStream;
 use std::path::Path;
 
-use desk_bridge::{BridgeEvent, BridgeRequest, BridgeResponse};
+use desk_bridge::{BridgeEvent, BridgeRequest, BridgeResponse, RequestId};
 
 use crate::wire::{self, Incoming};
 
@@ -38,6 +38,20 @@ impl Client {
         let id = wire::request_id(&request);
         self.writer
             .write_all(wire::request_line(&request)?.as_bytes())?;
+        self.answer(id)
+    }
+
+    /// Call as `agent:<agent>` from now on, with that agent's grants, allowlist, prompts and
+    /// approvals (ADR 0086). The desk answers `{ caller }`, or `invalid_params` for an id it cannot
+    /// name and for a connection that calls as an agent already.
+    pub fn become_agent(&mut self, id: RequestId, agent: &str) -> io::Result<BridgeResponse> {
+        self.writer
+            .write_all(wire::agent_line(id, agent).as_bytes())?;
+        self.answer(id).map(|(answer, _)| answer)
+    }
+
+    /// The answer with `id`; events that arrive first are kept for `next_event`.
+    fn answer(&mut self, id: RequestId) -> io::Result<(BridgeResponse, String)> {
         loop {
             match self.receive()? {
                 Incoming::Answer(answer, line) if wire::answer_id(&answer) == id => {
