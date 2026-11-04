@@ -16,6 +16,7 @@ there were two formats, the API would have holes.
 | `mail/` | The person's mail from the index as threads in mailboxes, invitations read and answered (iTIP, iMIP), changes through the connector's commands (`endue.mail`) |
 | `chat/` | Every chat service in one interface (`endue.chat`): Slack, Discord, Teams and any chat connector's messages by service and workspace, threads, reactions, replies, edits; four layouts (Conversation, Inbox, Timeline, Columns), changes through each connector's `chat.*` commands |
 | `chat-digest/` | Chats at a glance (`endue.chat-digest`): a data-only `view` plugin that `desk.views` draws, unread counts, mentions, direct messages and the latest across every service |
+| `projects/` | Project management over every task source (`endue.projects`): Jira, Linear and Asana work read through adapters (ADR 0085) into Kanban, Swimlane, List, Database, Timeline and Calendar views; moves, dates, priority and assignee through the connectors' `task.move` and `task.update` |
 | `views/` | The view engine (`desk.views`): draws view files (`specs/view/v0`) as surfaces, over the core's `data.*` and `view.*` |
 | `today/` | The day at a glance (`desk.today`): a data-only `view` plugin that `desk.views` draws; `Mod+T` opens it |
 | `item/` | One item in Desk (`desk.item`): the data-only `view` plugin the palette's Open in Desk shows |
