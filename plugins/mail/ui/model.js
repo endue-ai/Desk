@@ -35,6 +35,12 @@ const NOT_IN = (/** @type {string[]} */ roles) =>
 const IN = (/** @type {string} */ role) =>
   /** @type {ItemCondition} */ ({ field: "raw.mailbox", op: "eq", value: role });
 const UNREAD = /** @type {ItemCondition} */ ({ field: "unread", op: "eq", value: true });
+/** A chat message names its channel (endue.chat's profile); no mailbox shows one. */
+export const NOT_CHAT = /** @type {ItemCondition} */ ({
+  field: "raw.channel",
+  op: "exists",
+  value: false,
+});
 const FLAGGED = /** @type {ItemCondition} */ ({ field: "raw.flagged", op: "eq", value: true });
 
 /** The mailboxes, in the order the navigation shows them. */
@@ -42,16 +48,21 @@ export const MAILBOXES = /** @type {Mailbox[]} */ ([
   {
     id: "inbox",
     title: "Inbox",
-    where: NOT_IN(["archive", "sent", "drafts", "trash", "junk"]),
+    where: [...NOT_IN(["archive", "sent", "drafts", "trash", "junk"]), NOT_CHAT],
     live: true,
   },
-  { id: "unread", title: "Unread", where: [UNREAD, ...NOT_IN(["trash", "junk"])], live: true },
-  { id: "flagged", title: "Flagged", where: [FLAGGED, ...NOT_IN(["trash"])], live: true },
-  { id: "sent", title: "Sent", where: [IN("sent")], live: true },
+  {
+    id: "unread",
+    title: "Unread",
+    where: [UNREAD, ...NOT_IN(["trash", "junk"]), NOT_CHAT],
+    live: true,
+  },
+  { id: "flagged", title: "Flagged", where: [FLAGGED, ...NOT_IN(["trash"]), NOT_CHAT], live: true },
+  { id: "sent", title: "Sent", where: [IN("sent"), NOT_CHAT], live: true },
   { id: "drafts", title: "Drafts", where: [], live: false },
-  { id: "archive", title: "Archive", where: [IN("archive")], live: true },
-  { id: "trash", title: "Trash", where: [IN("trash")], live: true },
-  { id: "junk", title: "Junk", where: [IN("junk")], live: true },
+  { id: "archive", title: "Archive", where: [IN("archive"), NOT_CHAT], live: true },
+  { id: "trash", title: "Trash", where: [IN("trash"), NOT_CHAT], live: true },
+  { id: "junk", title: "Junk", where: [IN("junk"), NOT_CHAT], live: true },
 ]);
 
 /** @param {string} id */
@@ -100,7 +111,8 @@ const at = (/** @type {unknown} */ value, /** @type {string} */ path) => {
 
 /**
  * Whether one condition holds for an item, the way the index judges it (specs/item/v0: `ne` holds
- * for a missing field, `eq` never does). Only the operators the mailboxes use.
+ * for a missing field, `eq` never does, `exists false` only does). Only the operators the
+ * mailboxes use.
  * @param {MessageItem} item
  * @param {ItemCondition} condition
  */
@@ -108,6 +120,7 @@ function holds(item, { field, op, value }) {
   const actual = at(item, field);
   if (op === "eq") return actual !== undefined && JSON.stringify(actual) === JSON.stringify(value);
   if (op === "ne") return actual === undefined || JSON.stringify(actual) !== JSON.stringify(value);
+  if (op === "exists") return (actual !== undefined) === (value !== false);
   return true;
 }
 
