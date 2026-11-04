@@ -43,6 +43,13 @@ The base plugins a person works with from the first day (requirements, BASE):
 | `database/` (`endue.database`) | A client for PostgreSQL, MySQL / MariaDB and SQLite through their own command-line clients (ADR 0038): connections, an explorer, SQL consoles, exact results, guards for read-only and production connections |
 | `docker/` (`endue.docker`) | Containers, Compose projects, images, volumes and networks: logs that follow, a container's detail, a shell, clean-up; every operation a command |
 
+The agent programs a person already has, attached as a plugin (AG-09) and off until the person turns
+it on (`autoload`: Claude and Codex are not on by default, ADR 0084):
+
+| Plugin | Role |
+| --- | --- |
+| `local-agents/` (`endue.local-agents`) | Claude Code, Codex, Gemini CLI, Grok CLI, Qwen Code, Copilot CLI, Cursor Agent and OpenCode, found by their versions and asked through their non-interactive modes, read-only by default: the agents found, a chat with one, answers compared side by side, a kanban board of tasks they work through, the activity; every operation a command |
+
 The file plugins: one plugin per thing a person does with a file, every format of that kind in one
 interface (ADR 0045). Each reads; none edits yet. Each autoloads: off at start, on when a file it
 claims opens, off when its last buffer closes (ADR 0046). A file a plugin cannot draw opens as its
