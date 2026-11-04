@@ -12,7 +12,7 @@ test("the drawers open from the keyboard, one at a time", async ({ page }) => {
   const plugins = bar.getByRole("button", { name: /^Plugins/ });
   const access = bar.getByRole("button", { name: /^Access/ });
   await expect(plugins).toContainText("6 on");
-  await expect(access).toContainText("3 permissions");
+  await expect(access).toContainText("4 permissions");
   await expect(plugins).toHaveAttribute("aria-expanded", "false");
 
   await plugins.focus();
@@ -29,6 +29,9 @@ test("the drawers open from the keyboard, one at a time", async ({ page }) => {
   await expect(region).toContainText("Eris (${home}/**)");
   await expect(region).toContainText("Manage plugins");
   await expect(region).toContainText("Dock, Plugins, Status");
+  // Every permission a plugin asks for is listed (#423): Eris's cmd:invoke too.
+  await expect(region).toContainText("Run commands");
+  await expect(region).toContainText("Eris (desk.buffers.list, desk.palette.pick)");
 
   await access.press("Enter");
   await expect(access).toHaveAttribute("aria-expanded", "false");
