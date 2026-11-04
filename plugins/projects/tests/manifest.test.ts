@@ -83,7 +83,7 @@ describe("plugin.json", () => {
       ].map((name) => `${ID}.${name}`),
     );
     for (const key of contributes?.keys ?? []) expect(ids).toContain(key.command);
-    expect(contributes?.keys?.map((k) => k.key)).toEqual(["Mod+Shift+J"]);
+    expect(contributes?.keys?.map((k) => k.key)).toEqual(["Mod+Shift+U"]);
     const settings = contributes?.settings ?? {};
     expect(Object.keys(settings)).toEqual(
       ["view", "week-start", "show-done", "columns"].map((k) => `${ID}.${k}`),

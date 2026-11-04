@@ -96,7 +96,7 @@
         "keywords": ["projects", "jira", "linear", "asana", "link", "browser"]
       }
     ],
-    "keys": [{ "key": "Mod+Shift+J", "command": "endue.projects.open" }],
+    "keys": [{ "key": "Mod+Shift+U", "command": "endue.projects.open" }],
     "settings": {
       "endue.projects.view": {
         "kind": "string",
