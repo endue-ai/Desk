@@ -1,0 +1,8 @@
+{
+  "target": "UniversalView",
+  "description": "a source is one of the six: a URL and a file together are neither",
+  "instance": {
+    "type": "list",
+    "source": { "url": "https://example.com/a.yaml", "file": "~/a.yaml" }
+  }
+}

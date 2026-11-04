@@ -948,6 +948,126 @@ export interface ItemRemoved {
   id: ItemId;
 }
 
+/** One universal view: what it shows (type), where its entries come from (source), which entry field plays which role (map), and the commands it runs. */
+export interface UniversalView {
+  id?: ViewId;
+  /** Shown above the view; the data's title when absent. */
+  title?: string;
+  /** One sentence about what the view shows. */
+  description?: string;
+  type: UniversalType;
+  /** The presentations the person may switch between over the same entries, in the switcher's order; absent, only type. */
+  types?: UniversalType[];
+  source: UniversalSource;
+  map?: UniversalMap;
+  options?: UniversalOptions;
+  /** Commands offered on an entry; the first runs on Enter or a click. Strings in args are templates over the entry ({id}, {title}, {raw.owner}). */
+  actions?: ViewAction[];
+  /** kanban: the command run when the person moves an entry to another column; {move.from} and {move.to} are the columns, the rest of the args read the entry. */
+  move?: ViewAction;
+  /** chat and agent: the command run when the person sends text from the composer; {send.text} is what they wrote. Without it there is no composer. */
+  send?: ViewAction;
+  /** Shown when the source has no entries. */
+  empty?: string;
+  /** Load an asset, file, URL or command source again this often, in seconds; an items source is live without it. */
+  refresh?: number;
+  provenance?: ViewProvenance;
+}
+
+/** timeline: entries in time order along a line, by day. calendar: a month (or week, or day) of dates with the entries that fall on them. kanban: a column per group. list: one row per entry. text: the entries as one document. chat: messages from authors, the person's own on the other side. agent: an agent's run, step by step with each step's status. */
+export type UniversalType = "timeline" | "calendar" | "kanban" | "list" | "text" | "chat" | "agent";
+
+/** Where the entries come from. Every source but items answers a UniversalData document (YAML or JSON); items are the desk's index, turned into entries. */
+export type UniversalSource =
+  | UniversalInlineSource
+  | UniversalAssetSource
+  | UniversalUrlSource
+  | UniversalFileSource
+  | UniversalCommandSource
+  | UniversalItemsSource;
+
+/** The data, written in the view itself. */
+export interface UniversalInlineSource {
+  data: UniversalData;
+}
+
+/** A file in the folder of the plugin that opens the view, fetched by its own frame: no permission. */
+export interface UniversalAssetSource {
+  /** A path relative to the plugin's folder, with forward slashes and no ..: data/board.yaml. */
+  asset: string;
+}
+
+/** A document served over HTTP(S), fetched with net.fetch under a net:fetch grant for its host. */
+export interface UniversalUrlSource {
+  /** An http or https URL that answers a UniversalData document as YAML or JSON. */
+  url: string;
+}
+
+/** A file on the desk, read with fs.read under an fs:read grant for its path. */
+export interface UniversalFileSource {
+  /** An absolute path, or one rooted at ~, ${workspace} or ${home}, with forward slashes. */
+  file: string;
+}
+
+/** A command another plugin provides, run with cmd.invoke under a cmd:invoke grant: its answer is the UniversalData document, as an object or as YAML text. */
+export interface UniversalCommandSource {
+  command: CommandId;
+  args?: CommandArgs;
+}
+
+/** The desk's item index (data.query under data:read), live: each item becomes an entry with its kind's fields in the roles they play (an event's start and end, a task's status as its group, a message's sender as its author). */
+export interface UniversalItemsSource {
+  items: ItemQuery;
+}
+
+/** Which entry field plays which role, as a dotted path: map a source's own names (due, owner, column) onto the roles the views draw. A role left out reads the field of its own name. */
+export interface UniversalMap {
+  id?: FieldPath;
+  title?: FieldPath;
+  text?: FieldPath;
+  detail?: FieldPath;
+  start?: FieldPath;
+  end?: FieldPath;
+  group?: FieldPath;
+  author?: FieldPath;
+  role?: FieldPath;
+  status?: FieldPath;
+  tags?: FieldPath;
+  url?: FieldPath;
+}
+
+/** Earliest first (asc) or latest first (desc). */
+export type UniversalOrder = "asc" | "desc";
+
+/** How a presentation draws. Each type reads the options it knows and ignores the rest, so one set serves every type in types. */
+export interface UniversalOptions {
+  /** kanban: the columns in order, shown even when empty; entries of other groups follow in the order they first appear. */
+  groups?: string[];
+  range?: CalendarRange;
+  order?: UniversalOrder;
+  /** The IANA time zone days and times are drawn in; the desk's when absent. */
+  zone?: string;
+  /** chat: the author or role whose messages are the person's own, drawn on the other side; me and user are when absent. */
+  me?: string;
+  /** chat and agent: the composer's hint. */
+  placeholder?: string;
+}
+
+/** The universal data format: what every source but items answers. A YAML file, an HTTP response, a command's answer and inline data are all this document. */
+export interface UniversalData {
+  /** The format's version, v0; absent means v0. */
+  universal?: "v0";
+  title?: string;
+  description?: string;
+  updatedAt?: Timestamp;
+  /** The roles the data's own fields play, so any view on it draws without a map of its own; a view's map wins. */
+  map?: UniversalMap;
+  entries: UniversalEntry[];
+}
+
+/** One entry: any fields the source has. By name (or through a map) id, title, text (Markdown), detail, start and end (RFC 3339 with an offset, or a YYYY-MM-DD date for a whole day), group, author, role, status (pending, running, done, failed, waiting, or any other word), tags (a list of strings) and url play the roles the views draw; the rest travels with the entry to its actions. */
+export type UniversalEntry = Record<string, unknown>;
+
 /** One view file. */
 export interface View {
   id: ViewId;

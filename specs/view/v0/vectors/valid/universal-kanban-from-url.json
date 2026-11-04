@@ -1,0 +1,20 @@
+{
+  "target": "UniversalView",
+  "description": "a kanban over a board another server serves as YAML, its own field names mapped onto the roles, switchable to a list and a timeline, with a move command",
+  "instance": {
+    "id": "example.launch-board",
+    "title": "Launch",
+    "type": "kanban",
+    "types": ["kanban", "list", "timeline"],
+    "source": { "url": "https://tasks.example.com/launch.yaml" },
+    "map": { "group": "column", "start": "due", "author": "owner" },
+    "options": { "groups": ["todo", "doing", "done"] },
+    "actions": [{ "command": "example.tasks.open", "title": "Open", "args": { "id": "{id}" } }],
+    "move": {
+      "command": "example.tasks.move",
+      "args": { "id": "{id}", "from": "{move.from}", "to": "{move.to}" }
+    },
+    "empty": "Nothing planned yet.",
+    "refresh": 60
+  }
+}

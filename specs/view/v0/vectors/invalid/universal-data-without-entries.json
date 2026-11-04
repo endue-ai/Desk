@@ -1,0 +1,5 @@
+{
+  "target": "UniversalData",
+  "description": "a data document always has its entries, even when there are none",
+  "instance": { "universal": "v0", "title": "Empty" }
+}

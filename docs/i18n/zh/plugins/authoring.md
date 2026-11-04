@@ -209,6 +209,27 @@ await ctx.commands.run("desk.views.open", { id: "desk.today" });
 `{tomorrow}`）。等应用开始提供这些元素后，你的页面也可以通过导入映射（`"@endue-ai/ui": "/_desk/ui.js"`）
 引入同样的元素；目前由运行时的测试服务器提供。
 
+### 通用视图
+
+通用视图（`specs/view/v0/universal.schema.json`，ADR 0087）把任何提供同一种 YAML 格式（即通用数据格式）的来源中的
+条目，显示为时间线、日历、看板、列表、文本、聊天或智能体的运行过程。视图以数据保存，用 `ctx.universal` 打开。
+来源可以是内联数据、插件文件夹中的文件（`asset`，无需权限）、URL（`net:fetch`）、桌面上的文件（`fs:read`）、
+其他插件的命令或桌面的条目，视图本身不变：
+
+```js
+const board = ctx.universal.open(document.getElementById("root"), {
+  type: "kanban",
+  types: ["kanban", "list", "timeline", "calendar"],
+  source: { asset: "data/board.yaml" },
+  map: { group: "column", start: "due" },
+  move: { command: "example.board.move", args: { id: "{id}", to: "{move.to}" } },
+});
+```
+
+绘制它的是 `@endue-ai/ui` 的 `<desk-universal-view>`；`ctx.universal.load(source)` 和
+`ctx.universal.parse(text)` 返回文档本身。即使没有自己的插件，也可以用 `desk.universal.open` 命令打开。
+最小的示例是 `examples/plugin-hello-universal`。
+
 ## 测试
 
 `@endue-ai/plugin-sdk/testing` 无需浏览器即可运行你的插件，并以模拟的桥接层作为对端：

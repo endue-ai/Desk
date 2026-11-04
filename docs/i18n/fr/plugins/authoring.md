@@ -257,6 +257,29 @@ les éléments de `@endue-ai/ui` (`desk-list`, `desk-table`, `desk-agenda`, `des
 importer les mêmes éléments (`"@endue-ai/ui": "/_desk/ui.js"` dans sa carte d'import) dès que
 l'application les servira ; le serveur de test du runtime le fait déjà.
 
+### Vues universelles
+
+Une vue universelle (`specs/view/v0/universal.schema.json`, ADR 0087) montre les entrées de toute source
+qui sert un même format YAML, le format de données universel, sous forme de frise chronologique, de
+calendrier, de kanban, de liste, de texte, de discussion ou d'exécution d'agent. Gardez la vue comme des
+données et ouvrez-la avec `ctx.universal`. Sa source peut être des données en ligne, un fichier du dossier
+de votre plugin (`asset`, sans permission), une URL (`net:fetch`), un fichier du bureau (`fs:read`), la
+commande d'un autre plugin ou les éléments du bureau, et la vue reste la même :
+
+```js
+const board = ctx.universal.open(document.getElementById("root"), {
+  type: "kanban",
+  types: ["kanban", "list", "timeline", "calendar"],
+  source: { asset: "data/board.yaml" },
+  map: { group: "column", start: "due" },
+  move: { command: "example.board.move", args: { id: "{id}", to: "{move.to}" } },
+});
+```
+
+`<desk-universal-view>` de `@endue-ai/ui` la dessine ; `ctx.universal.load(source)` et
+`ctx.universal.parse(text)` vous donnent le document lui-même. Sans plugin à vous, la commande
+`desk.universal.open` en ouvre une. `examples/plugin-hello-universal` est le plus petit exemple.
+
 ## Tests
 
 `@endue-ai/plugin-sdk/testing` exécute votre plugin sans navigateur, avec un pont simulé :

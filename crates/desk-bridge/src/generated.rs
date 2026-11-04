@@ -1455,6 +1455,207 @@ pub struct ItemRemoved {
     pub id: ItemId,
 }
 
+/// One universal view: what it shows (type), where its entries come from (source), which entry field plays which role (map), and the commands it runs.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct UniversalView {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub id: Option<ViewId>,
+    /// Shown above the view; the data's title when absent.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
+    /// One sentence about what the view shows.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    pub r#type: UniversalType,
+    /// The presentations the person may switch between over the same entries, in the switcher's order; absent, only type.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub types: Option<Vec<UniversalType>>,
+    pub source: UniversalSource,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub map: Option<UniversalMap>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub options: Option<UniversalOptions>,
+    /// Commands offered on an entry; the first runs on Enter or a click. Strings in args are templates over the entry ({id}, {title}, {raw.owner}).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub actions: Option<Vec<ViewAction>>,
+    /// kanban: the command run when the person moves an entry to another column; {move.from} and {move.to} are the columns, the rest of the args read the entry.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub r#move: Option<ViewAction>,
+    /// chat and agent: the command run when the person sends text from the composer; {send.text} is what they wrote. Without it there is no composer.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub send: Option<ViewAction>,
+    /// Shown when the source has no entries.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub empty: Option<String>,
+    /// Load an asset, file, URL or command source again this often, in seconds; an items source is live without it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub refresh: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub provenance: Option<ViewProvenance>,
+}
+
+/// timeline: entries in time order along a line, by day. calendar: a month (or week, or day) of dates with the entries that fall on them. kanban: a column per group. list: one row per entry. text: the entries as one document. chat: messages from authors, the person's own on the other side. agent: an agent's run, step by step with each step's status.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum UniversalType {
+    #[serde(rename = "timeline")]
+    Timeline,
+    #[serde(rename = "calendar")]
+    Calendar,
+    #[serde(rename = "kanban")]
+    Kanban,
+    #[serde(rename = "list")]
+    List,
+    #[serde(rename = "text")]
+    Text,
+    #[serde(rename = "chat")]
+    Chat,
+    #[serde(rename = "agent")]
+    Agent,
+}
+
+/// Where the entries come from. Every source but items answers a UniversalData document (YAML or JSON); items are the desk's index, turned into entries.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum UniversalSource {
+    UniversalInline(UniversalInlineSource),
+    UniversalAsset(UniversalAssetSource),
+    UniversalUrl(UniversalUrlSource),
+    UniversalFile(UniversalFileSource),
+    UniversalCommand(UniversalCommandSource),
+    UniversalItems(UniversalItemsSource),
+}
+
+/// The data, written in the view itself.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct UniversalInlineSource {
+    pub data: UniversalData,
+}
+
+/// A file in the folder of the plugin that opens the view, fetched by its own frame: no permission.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct UniversalAssetSource {
+    /// A path relative to the plugin's folder, with forward slashes and no ..: data/board.yaml.
+    pub asset: String,
+}
+
+/// A document served over HTTP(S), fetched with net.fetch under a net:fetch grant for its host.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct UniversalUrlSource {
+    /// An http or https URL that answers a UniversalData document as YAML or JSON.
+    pub url: String,
+}
+
+/// A file on the desk, read with fs.read under an fs:read grant for its path.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct UniversalFileSource {
+    /// An absolute path, or one rooted at ~, ${workspace} or ${home}, with forward slashes.
+    pub file: String,
+}
+
+/// A command another plugin provides, run with cmd.invoke under a cmd:invoke grant: its answer is the UniversalData document, as an object or as YAML text.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct UniversalCommandSource {
+    pub command: CommandId,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub args: Option<CommandArgs>,
+}
+
+/// The desk's item index (data.query under data:read), live: each item becomes an entry with its kind's fields in the roles they play (an event's start and end, a task's status as its group, a message's sender as its author).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct UniversalItemsSource {
+    pub items: ItemQuery,
+}
+
+/// Which entry field plays which role, as a dotted path: map a source's own names (due, owner, column) onto the roles the views draw. A role left out reads the field of its own name.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct UniversalMap {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub id: Option<FieldPath>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub title: Option<FieldPath>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub text: Option<FieldPath>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub detail: Option<FieldPath>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub start: Option<FieldPath>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub end: Option<FieldPath>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub group: Option<FieldPath>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub author: Option<FieldPath>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub role: Option<FieldPath>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub status: Option<FieldPath>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tags: Option<FieldPath>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub url: Option<FieldPath>,
+}
+
+/// Earliest first (asc) or latest first (desc).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum UniversalOrder {
+    #[serde(rename = "asc")]
+    Asc,
+    #[serde(rename = "desc")]
+    Desc,
+}
+
+/// How a presentation draws. Each type reads the options it knows and ignores the rest, so one set serves every type in types.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct UniversalOptions {
+    /// kanban: the columns in order, shown even when empty; entries of other groups follow in the order they first appear.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub groups: Option<Vec<String>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub range: Option<CalendarRange>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub order: Option<UniversalOrder>,
+    /// The IANA time zone days and times are drawn in; the desk's when absent.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub zone: Option<String>,
+    /// chat: the author or role whose messages are the person's own, drawn on the other side; me and user are when absent.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub me: Option<String>,
+    /// chat and agent: the composer's hint.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub placeholder: Option<String>,
+}
+
+/// The universal data format: what every source but items answers. A YAML file, an HTTP response, a command's answer and inline data are all this document.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct UniversalData {
+    /// The format's version, v0; absent means v0.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub universal: Option<UniversalDataUniversal>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    #[serde(rename = "updatedAt", default, skip_serializing_if = "Option::is_none")]
+    pub updated_at: Option<Timestamp>,
+    /// The roles the data's own fields play, so any view on it draws without a map of its own; a view's map wins.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub map: Option<UniversalMap>,
+    pub entries: Vec<UniversalEntry>,
+}
+
+/// One entry: any fields the source has. By name (or through a map) id, title, text (Markdown), detail, start and end (RFC 3339 with an offset, or a YYYY-MM-DD date for a whole day), group, author, role, status (pending, running, done, failed, waiting, or any other word), tags (a list of strings) and url play the roles the views draw; the rest travels with the entry to its actions.
+pub type UniversalEntry = serde_json::Map<String, serde_json::Value>;
+
 /// One view file.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -5794,6 +5995,14 @@ pub enum ItemRemovedChange {
     Removed,
 }
 
+/// The `universal` of [`UniversalData`]: always `"v0"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum UniversalDataUniversal {
+    #[default]
+    #[serde(rename = "v0")]
+    V0,
+}
+
 /// The `kind` of [`StringParam`]: always `"string"`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub enum StringParamKind {
@@ -6752,6 +6961,10 @@ pub const SCHEMAS: &[(&str, &str)] = &[
     (
         "https://endue.ai/specs/item/v0/query.schema.json",
         include_str!("../../../specs/item/v0/query.schema.json"),
+    ),
+    (
+        "https://endue.ai/specs/view/v0/universal.schema.json",
+        include_str!("../../../specs/view/v0/universal.schema.json"),
     ),
     (
         "https://endue.ai/specs/view/v0/view.schema.json",

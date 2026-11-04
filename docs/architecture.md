@@ -65,7 +65,7 @@ takes the same shape and names the parts the way an operating system would.
 | Window manager | window manager | frames · windows | 3D canvas compositor |
 | Shell | terminal shell | M-x | Eris · command palette |
 | Apps | applications | packages (Elisp) | plugins (UI · Wasm · MCP) |
-| Connected data | mounted file systems · search index | Gnus back ends · Org agenda | connectors · items in one index · views (ADR 0032) |
+| Connected data | mounted file systems · search index | Gnus back ends · Org agenda | connectors · items in one index · views (ADR 0032) · universal views over any source of one YAML format (ADR 0087) |
 | Boot config | init | init.el | `init.yaml` (profile + plugins + settings) |
 | Package manager | apt · brew | package.el · MELPA | marketplace |
 | Behaviour override | none | advice · hooks | event hooks · command overrides |
