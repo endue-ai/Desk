@@ -2,7 +2,8 @@
  * The shell's own parts as the default providers of their roles (ADR 0104): its rail fills
  * `role:rail`, its agent bar `role:agents`, its bottom edge `role:dock`. A part is mounted once and
  * shown only while the `desk.roles` setting leaves its role to the shell; naming another provider
- * hides it at once, and naming the shell (or nobody) again brings it back where it was.
+ * hides it at once (`data-role-yielded`, shell.css), and naming the shell (or nobody) again brings it
+ * back where it was.
  */
 import { chosenOf, ownsRole, ROLES_SETTING, type Role } from "../roles";
 
@@ -25,12 +26,10 @@ export function byRole(
   const before = new Set(Array.from(root.children));
   const off = mount(root);
   const added = Array.from(root.children).filter((child) => !before.has(child)) as HTMLElement[];
+  // An attribute, not `hidden`: the part shows and hides its own pieces (a tooltip) as it did.
   const apply = () => {
     const owned = ownsRole(role, chosenOf(settings.get(ROLES_SETTING)));
-    for (const el of added) {
-      el.hidden = !owned;
-      el.toggleAttribute("data-role-yielded", !owned);
-    }
+    for (const el of added) el.toggleAttribute("data-role-yielded", !owned);
   };
   apply();
   const stop = settings.onChange((keys) => {

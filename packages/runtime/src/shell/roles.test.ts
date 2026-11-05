@@ -33,22 +33,23 @@ describe("the shell's parts by role", () => {
       };
     });
     const rail = root.querySelector<HTMLElement>(".rail");
-    expect(rail?.hidden).toBe(false);
-    expect(root.querySelector("main")?.hidden).toBe(false);
+    const yielded = (el: Element | null | undefined) => el?.hasAttribute("data-role-yielded");
+    expect(yielded(rail)).toBe(false);
 
     s.set("desk.roles", { "role:rail": "test.rail" });
-    expect(rail?.hidden).toBe(true);
-    expect(rail?.hasAttribute("data-role-yielded")).toBe(true);
+    expect(yielded(rail)).toBe(true);
+    // Only what the part added: the layer's own children stay as they are.
+    expect(yielded(root.querySelector("main"))).toBe(false);
     // Another role's provider leaves the rail alone.
     s.set("desk.roles", { "role:dock": "endue.dock" });
-    expect(rail?.hidden).toBe(false);
+    expect(yielded(rail)).toBe(false);
     s.set("desk.roles", { "role:rail": "desk.shell" });
-    expect(rail?.hidden).toBe(false);
+    expect(yielded(rail)).toBe(false);
 
     off();
     expect(stopped).toBe(true);
     s.set("desk.roles", { "role:rail": "test.rail" });
-    expect(rail?.hidden).toBe(false);
+    expect(yielded(rail)).toBe(false);
   });
 
   it("starts hidden when the setting already names another provider", () => {
@@ -58,6 +59,6 @@ describe("the shell's parts by role", () => {
       at.append(Object.assign(document.createElement("aside"), { className: "sidebar" }));
       return () => {};
     });
-    expect(root.querySelector<HTMLElement>(".sidebar")?.hidden).toBe(true);
+    expect(root.querySelector(".sidebar")?.hasAttribute("data-role-yielded")).toBe(true);
   });
 });

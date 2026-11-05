@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 date: 2026-10-30
 decision-makers: Team endue
 ---
@@ -75,6 +75,13 @@ and `dock` (SYSP); whether the folders and ids follow is left to each move.
 * Bad, because the shell's bars float over the desk while edge surfaces sit in bars beside the grid
   (`packages/runtime/src/edges.ts`); one look has to give way.
 * Bad, because the agent bar, in a frame, needs the system layer in the plugin API before it can move.
+
+### Accepted (#477, 2026-11-05)
+
+Accepted as recommended: `plugins/{dock,toolbar,sidebar}` stay and declare `role:dock`, `role:rail`
+and `role:agents` (ADR 0104). Naming one in `desk.roles` gives it the edge alone; the shell's part
+yields and comes back when the role is named for the shell again. The sample profiles still turn the
+three plugins off, so the desk looks as it did until a role is named.
 
 ## More Information
 
