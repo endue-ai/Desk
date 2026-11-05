@@ -209,6 +209,265 @@ export interface ProfileContribution {
   settings?: Record<string, unknown>;
 }
 
+/** A design system: who made it and what it changes, per component. */
+export interface DesignSystemPackage {
+  /** Who made it. */
+  author?: string;
+  /** An SPDX licence expression, for example CC0-1.0 or Apache-2.0. */
+  license?: string;
+  /** Words a gallery filters by, for example square, soft or compact. */
+  tags?: string[];
+  origin?: DesignSystemOrigin;
+  components: DesignComponents;
+}
+
+/** Where a design system came from: the sentence it was described with, and the design system it started from. */
+export interface DesignSystemOrigin {
+  prompt?: string;
+  base?: PluginId;
+}
+
+/** The choices per component; a component or property left out keeps the endue design system's. */
+export interface DesignComponents {
+  button?: DesignButton;
+  iconButton?: DesignIconButton;
+  field?: DesignField;
+  check?: DesignCheck;
+  tabs?: DesignTabs;
+  card?: DesignCard;
+  row?: DesignRow;
+  menu?: DesignMenu;
+  dialog?: DesignDialog;
+  toast?: DesignToast;
+  badge?: DesignBadge;
+  tooltip?: DesignTooltip;
+  table?: DesignTable;
+  progress?: DesignProgress;
+  focus?: DesignFocus;
+}
+
+/** A push button. primary is how the main action fills, and danger (destructive) fills the same way in its own colours; secondary is how every other button shows; quiet toolbar buttons are always ghosts. shape, size, weight, case, padding and elevation apply to all of them. */
+export interface DesignButton {
+  /** Default: md. */
+  shape?: DesignShape;
+  /** Default: sm. */
+  size?: DesignSize;
+  /** Default: medium. */
+  weight?: DesignWeight;
+  /** Default: none. */
+  case?: DesignCase;
+  /** Default: normal. */
+  padding?: DesignPadding;
+  /** Default: solid. */
+  primary?: DesignTone;
+  /** Default: outline. */
+  secondary?: DesignFill;
+  /** Default: none. */
+  elevation?: DesignElevation;
+}
+
+/** A button drawn with an icon alone. */
+export interface DesignIconButton {
+  /** Default: md. */
+  shape?: DesignShape;
+  /** Default: md. */
+  size?: DesignSize;
+  /** Default: ghost. */
+  style?: DesignFill;
+}
+
+/** A text input, select or text area. */
+export interface DesignField {
+  /** Default: outline. */
+  style?: DesignFieldStyle;
+  /** Default: md. */
+  shape?: DesignShape;
+  /** Default: md. */
+  size?: DesignSize;
+  /** Default: ring. */
+  focus?: DesignFieldFocus;
+}
+
+/** A checkbox or radio button. */
+export interface DesignCheck {
+  /** Default: primary. */
+  accent?: DesignCheckAccent;
+  /** Default: md. */
+  size?: DesignSize;
+}
+
+/** Tabs and segmented controls: one choice among a few. */
+export interface DesignTabs {
+  /** Default: boxed. */
+  style?: DesignTabsStyle;
+  /** Default: md. */
+  shape?: DesignShape;
+  /** Default: sm. */
+  size?: DesignSize;
+}
+
+/** A panel that groups content. */
+export interface DesignCard {
+  /** Default: outline. */
+  style?: DesignCardStyle;
+  /** Default: md. */
+  shape?: DesignShape;
+  /** Default: normal. */
+  padding?: DesignPadding;
+}
+
+/** A row of a list, menu or tree: how the active row and the selected row show. */
+export interface DesignRow {
+  /** Default: fill. */
+  selection?: DesignRowSelection;
+  /** Default: md. */
+  shape?: DesignShape;
+  /** Default: sm. */
+  size?: DesignSize;
+}
+
+/** A floating menu or popover. */
+export interface DesignMenu {
+  /** Default: md. */
+  shape?: DesignShape;
+  /** Default: md. */
+  elevation?: DesignElevation;
+  /** Default: outline. */
+  border?: DesignMenuBorder;
+}
+
+/** A modal dialog and the scrim behind it. */
+export interface DesignDialog {
+  /** Default: lg. */
+  shape?: DesignShape;
+  /** Default: lg. */
+  elevation?: DesignElevation;
+  /** Default: blur. */
+  scrim?: DesignScrim;
+  /** Default: roomy. */
+  padding?: DesignPadding;
+}
+
+/** A short notice in a corner. */
+export interface DesignToast {
+  /** Default: outline. */
+  style?: DesignToastStyle;
+  /** Default: lg. */
+  shape?: DesignShape;
+  /** Default: md. */
+  elevation?: DesignElevation;
+}
+
+/** A badge, chip, tag or count. */
+export interface DesignBadge {
+  /** Default: soft. */
+  style?: DesignBadgeStyle;
+  /** Default: full. */
+  shape?: DesignShape;
+  /** Default: none. */
+  case?: DesignCase;
+}
+
+/** A tooltip. */
+export interface DesignTooltip {
+  /** Default: md. */
+  shape?: DesignShape;
+  /** Default: sm. */
+  elevation?: DesignElevation;
+}
+
+/** A table's rows, header and cell spacing. */
+export interface DesignTable {
+  /** Default: lines. */
+  rows?: DesignTableRows;
+  /** Default: muted. */
+  header?: DesignTableHeader;
+  /** Default: sm. */
+  size?: DesignSize;
+}
+
+/** A progress bar. */
+export interface DesignProgress {
+  /** Default: normal. */
+  thickness?: DesignThickness;
+  /** Default: full. */
+  shape?: DesignShape;
+}
+
+/** The keyboard focus ring every component shows. */
+export interface DesignFocus {
+  /** Default: normal. */
+  width?: DesignThickness;
+  /** Default: near. */
+  offset?: DesignFocusOffset;
+}
+
+/** A corner: square, a theme's radius step, or a pill. */
+export type DesignShape = "none" | "sm" | "md" | "lg" | "full";
+
+/** A height or spacing step of the theme's controls. */
+export type DesignSize = "xs" | "sm" | "md" | "lg";
+
+/** No shadow, or a theme's shadow step. */
+export type DesignElevation = "none" | "sm" | "md" | "lg";
+
+/** Inner space: tight, normal or roomy. */
+export type DesignPadding = "tight" | "normal" | "roomy";
+
+/** Label case: as written or uppercase. */
+export type DesignCase = "none" | "uppercase";
+
+/** A label's font weight: 400, 500, 600 or 700. */
+export type DesignWeight = "regular" | "medium" | "semibold" | "bold";
+
+/** How a tone fills: solid fill with its ink, a soft tint with its text colour, or an outline. */
+export type DesignTone = "solid" | "soft" | "outline";
+
+/** How a neutral control shows: outlined, a soft fill, or only on hover (ghost). */
+export type DesignFill = "outline" | "soft" | "ghost";
+
+/** A field: an outlined box, a filled box without a border, or a bottom line only. */
+export type DesignFieldStyle = "outline" | "filled" | "underline";
+
+/** Focus on a field: the focus ring, or the border in the ring's colour. */
+export type DesignFieldFocus = "ring" | "border";
+
+/** A check's colour: the brand's or the text's. */
+export type DesignCheckAccent = "primary" | "text";
+
+/** Tabs: outlined boxes, pills on a track, or an underline under the selected one. */
+export type DesignTabsStyle = "boxed" | "pill" | "underline";
+
+/** A card: outlined, raised with a shadow, filled, or plain. */
+export type DesignCardStyle = "outline" | "elevated" | "filled" | "plain";
+
+/** The active row: a hover fill, a soft brand tint, or a fill with a brand bar at its start. */
+export type DesignRowSelection = "fill" | "soft" | "bar";
+
+/** A menu with an outline or without. */
+export type DesignMenuBorder = "outline" | "none";
+
+/** Behind a dialog: the scrim, blurred or only dimmed. */
+export type DesignScrim = "blur" | "dim";
+
+/** A toast: an outlined card, a soft fill, or inverse like a tooltip. */
+export type DesignToastStyle = "outline" | "soft" | "inverse";
+
+/** A badge: a soft fill, the brand's solid fill, or an outline. */
+export type DesignBadgeStyle = "soft" | "solid" | "outline";
+
+/** A table's body rows: divided by lines, striped, or plain. */
+export type DesignTableRows = "lines" | "striped" | "plain";
+
+/** A table's header row: muted or plain. */
+export type DesignTableHeader = "muted" | "plain";
+
+/** A line's thickness: thin, normal or thick. */
+export type DesignThickness = "thin" | "normal" | "thick";
+
+/** The focus ring's distance: none, near or far. */
+export type DesignFocusOffset = "none" | "near" | "far";
+
 /** One permission with its scope. Plugin manifests declare these; bridge calls carry the one that covers them. */
 export type Permission =
   | SearchReadPermission
@@ -438,6 +697,8 @@ export interface PluginManifest {
   connector?: ConnectorManifest;
   /** A theme plugin's theme: its layers and the font and image files it brings, relative to the plugin folder. */
   theme?: ThemePackage;
+  /** A design-system plugin's design system: what each component of the desk is made of (ADR 0090). */
+  designSystem?: DesignSystemPackage;
 }
 
 /** Reverse-domain style id with at least one dot, lowercase, for example endue.eris or example.hello-ui. */
@@ -446,7 +707,7 @@ export type PluginId = string;
 /** Semantic version, for example 0.1.0 or 1.2.3-beta.1. */
 export type Version = string;
 
-/** ui runs in a sandboxed iframe, logic in a Wasm instance, tool as an MCP server inside the VM. policy runs no code: it only contributes data (ADR 0017). library runs no code of its own either: it is files other plugins import, served at /<id>/... like any plugin's, never mounted and never turned off. connector brings an app's data in as items, as a Wasm component or an MCP server; view runs no code either: it is one or more views (ADR 0032). theme runs no code: it is a theme block and its font and image files, chosen with desk.theme.active (ADR 0056). */
+/** ui runs in a sandboxed iframe, logic in a Wasm instance, tool as an MCP server inside the VM. policy runs no code: it only contributes data (ADR 0017). library runs no code of its own either: it is files other plugins import, served at /<id>/... like any plugin's, never mounted and never turned off. connector brings an app's data in as items, as a Wasm component or an MCP server; view runs no code either: it is one or more views (ADR 0032). theme runs no code: it is a theme block and its font and image files, chosen with desk.theme.active (ADR 0056). design-system runs no code either: it is a designSystem block of component recipes, chosen with desk.design.active (ADR 0090). */
 export type PluginKind =
   | "ui"
   | "logic"
@@ -455,7 +716,8 @@ export type PluginKind =
   | "library"
   | "connector"
   | "view"
-  | "theme";
+  | "theme"
+  | "design-system";
 
 /** Path to the entry file, relative to the plugin folder, without .. segments. */
 export type EntryPath = string;
@@ -491,6 +753,8 @@ export interface ThemeIndexEntry {
   id: string;
   name: string;
   version: Version;
+  /** What the bundle holds; the bundle's manifest has the same kind. Default theme. */
+  kind?: ThemeIndexKind;
   description?: string;
   /** Who made it. */
   author: string;
@@ -507,7 +771,10 @@ export interface ThemeIndexEntry {
   size: number;
 }
 
-/** Where the theme's .desk-theme is: an https URL, or a path relative to the index's own URL without .. segments (paper-dusk.desk-theme), so a market moves by moving its folder. */
+/** What a market entry's bundle holds: a theme (a .desk-theme) or a design system (a .desk-design, ADR 0091). */
+export type ThemeIndexKind = "theme" | "design-system";
+
+/** Where the theme's .desk-theme (or the design system's .desk-design) is: an https URL, or a path relative to the index's own URL without .. segments (paper-dusk.desk-theme), so a market moves by moving its folder. */
 export type ThemeIndexUrl = string;
 
 /** A theme: the layers every scheme shares (type, shape, motion) and one variant per scheme. At least one of light and dark; the desk's own theme stands in for a missing one. */
@@ -528,11 +795,11 @@ export interface ThemePackage {
   dark?: ThemeVariant;
 }
 
-/** A theme as one file, a .desk-theme: JSON, 16 MiB at most, holding the theme's plugin.json and the font and image files its theme block names, base64. theme.export writes one and theme.import reads one; the desk checks it as a theme plugin folder before it lands. */
+/** A theme as one file, a .desk-theme: JSON, 16 MiB at most, holding the theme's plugin.json and the font and image files its theme block names, base64. theme.export writes one and theme.import reads one; the desk checks it as a theme plugin folder before it lands. A design system travels in the same format as a .desk-design, its manifest of kind design-system and no files (ADR 0091). */
 export interface ThemeBundle {
   /** The bundle format and its version. */
   format: "desk-theme/1";
-  /** The theme's plugin.json: a plugin of kind theme. */
+  /** The theme's plugin.json: a plugin of kind theme, or of kind design-system for a .desk-design. */
   manifest: PluginManifest;
   /** The theme's font and image files by their path in its folder, each base64. Only the paths its theme block names. */
   files: Record<string, ThemeAssetData>;
@@ -3347,7 +3614,7 @@ export interface ThemeSaveFile {
   base64: ThemeAssetData;
 }
 
-/** An https URL of a .desk-theme file. Plain http, and a redirect to another host, are refused. */
+/** An https URL of a .desk-theme (or .desk-design) file. Plain http, and a redirect to another host, are refused. */
 export type ThemeBundleUrl = string;
 
 /** The sha256 of a file's bytes, lowercase hex. */
@@ -3362,7 +3629,7 @@ export interface ThemeSaveRequest {
 
 /** Parameters of theme.save. */
 export interface ThemeSaveParams {
-  /** The theme's plugin.json: kind theme, with an id inside local. (for example local.my-paper). */
+  /** The theme's plugin.json: kind theme, or kind design-system for a design system (ADR 0091), with an id inside local. (for example local.my-paper). */
   manifest: PluginManifest;
   /** Font and image files the theme block names, each path once. With the ones copyFrom brings they are the theme folder's only files besides plugin.json. */
   files?: ThemeSaveFile[];
@@ -3386,7 +3653,7 @@ export interface ThemeImportRequest {
 /** Parameters of theme.import: exactly one of bundle, path and url, and sha256 with url (market only with url). */
 export interface ThemeImportParams {
   bundle?: ThemeBundle;
-  /** A .desk-theme file to read. */
+  /** A .desk-theme or .desk-design file to read. */
   path?: Path;
   url?: ThemeBundleUrl;
   sha256?: ThemeSha256;
@@ -3400,7 +3667,7 @@ export interface ThemeImportResult {
   plugin: PluginInfo;
 }
 
-/** Make a .desk-theme bundle of any installed theme, built-in ones too: its plugin.json and the font and image files its theme block names. Returned with inline; otherwise written to path, or to <Downloads>/<id>.desk-theme (<id>-2.desk-theme and on when that is taken), and the file's path returned. */
+/** Make a .desk-theme bundle of any installed theme, built-in ones too: its plugin.json and the font and image files its theme block names. A design system is bundled the same way, as <id>.desk-design. Returned with inline; otherwise written to path, or to <Downloads>/<id>.desk-theme (<id>-2.desk-theme and on when that is taken; .desk-design for a design system), and the file's path returned. */
 export interface ThemeExportRequest {
   id: RequestId;
   method: "theme.export";

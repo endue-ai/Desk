@@ -1,0 +1,331 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://endue.ai/specs/plugin/v0/design-system.schema.json",
+  "title": "design system v0",
+  "description": "The designSystem block of a plugin of kind design-system (ADR 0090, docs/ko/design-system-requirements.md): what each component of the desk is made of, as named options the runtime compiles into --desk-<component>-* tokens over the theme's tokens. A design system runs no code, asks for no permission and holds no values of its own; every component and property has a default (the endue design system), so a design system that names one property is complete. @endue-ai/ui/design (catalogue.ts) holds the same catalogue; a test keeps them equal.",
+  "$defs": {
+    "DesignSystemPackage": {
+      "description": "A design system: who made it and what it changes, per component.",
+      "type": "object",
+      "properties": {
+        "author": {
+          "description": "Who made it.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "license": {
+          "description": "An SPDX licence expression, for example CC0-1.0 or Apache-2.0.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "tags": {
+          "description": "Words a gallery filters by, for example square, soft or compact.",
+          "type": "array",
+          "items": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,31}$" },
+          "maxItems": 12,
+          "uniqueItems": true
+        },
+        "origin": { "$ref": "#/$defs/DesignSystemOrigin" },
+        "components": { "$ref": "#/$defs/DesignComponents" }
+      },
+      "required": ["components"],
+      "additionalProperties": false
+    },
+    "DesignSystemOrigin": {
+      "description": "Where a design system came from: the sentence it was described with, and the design system it started from.",
+      "type": "object",
+      "properties": {
+        "prompt": { "type": "string", "minLength": 1, "maxLength": 2000 },
+        "base": { "$ref": "plugin.schema.json#/$defs/PluginId" }
+      },
+      "additionalProperties": false
+    },
+    "DesignComponents": {
+      "description": "The choices per component; a component or property left out keeps the endue design system's.",
+      "type": "object",
+      "properties": {
+        "button": { "$ref": "#/$defs/DesignButton" },
+        "iconButton": { "$ref": "#/$defs/DesignIconButton" },
+        "field": { "$ref": "#/$defs/DesignField" },
+        "check": { "$ref": "#/$defs/DesignCheck" },
+        "tabs": { "$ref": "#/$defs/DesignTabs" },
+        "card": { "$ref": "#/$defs/DesignCard" },
+        "row": { "$ref": "#/$defs/DesignRow" },
+        "menu": { "$ref": "#/$defs/DesignMenu" },
+        "dialog": { "$ref": "#/$defs/DesignDialog" },
+        "toast": { "$ref": "#/$defs/DesignToast" },
+        "badge": { "$ref": "#/$defs/DesignBadge" },
+        "tooltip": { "$ref": "#/$defs/DesignTooltip" },
+        "table": { "$ref": "#/$defs/DesignTable" },
+        "progress": { "$ref": "#/$defs/DesignProgress" },
+        "focus": { "$ref": "#/$defs/DesignFocus" }
+      },
+      "additionalProperties": false
+    },
+    "DesignButton": {
+      "description": "A push button. primary is how the main action fills, and danger (destructive) fills the same way in its own colours; secondary is how every other button shows; quiet toolbar buttons are always ghosts. shape, size, weight, case, padding and elevation apply to all of them.",
+      "type": "object",
+      "properties": {
+        "shape": { "description": "Default: md.", "$ref": "#/$defs/DesignShape" },
+        "size": { "description": "Default: sm.", "$ref": "#/$defs/DesignSize" },
+        "weight": { "description": "Default: medium.", "$ref": "#/$defs/DesignWeight" },
+        "case": { "description": "Default: none.", "$ref": "#/$defs/DesignCase" },
+        "padding": { "description": "Default: normal.", "$ref": "#/$defs/DesignPadding" },
+        "primary": { "description": "Default: solid.", "$ref": "#/$defs/DesignTone" },
+        "secondary": { "description": "Default: outline.", "$ref": "#/$defs/DesignFill" },
+        "elevation": { "description": "Default: none.", "$ref": "#/$defs/DesignElevation" }
+      },
+      "additionalProperties": false
+    },
+    "DesignIconButton": {
+      "description": "A button drawn with an icon alone.",
+      "type": "object",
+      "properties": {
+        "shape": { "description": "Default: md.", "$ref": "#/$defs/DesignShape" },
+        "size": { "description": "Default: md.", "$ref": "#/$defs/DesignSize" },
+        "style": { "description": "Default: ghost.", "$ref": "#/$defs/DesignFill" }
+      },
+      "additionalProperties": false
+    },
+    "DesignField": {
+      "description": "A text input, select or text area.",
+      "type": "object",
+      "properties": {
+        "style": { "description": "Default: outline.", "$ref": "#/$defs/DesignFieldStyle" },
+        "shape": { "description": "Default: md.", "$ref": "#/$defs/DesignShape" },
+        "size": { "description": "Default: md.", "$ref": "#/$defs/DesignSize" },
+        "focus": { "description": "Default: ring.", "$ref": "#/$defs/DesignFieldFocus" }
+      },
+      "additionalProperties": false
+    },
+    "DesignCheck": {
+      "description": "A checkbox or radio button.",
+      "type": "object",
+      "properties": {
+        "accent": { "description": "Default: primary.", "$ref": "#/$defs/DesignCheckAccent" },
+        "size": { "description": "Default: md.", "$ref": "#/$defs/DesignSize" }
+      },
+      "additionalProperties": false
+    },
+    "DesignTabs": {
+      "description": "Tabs and segmented controls: one choice among a few.",
+      "type": "object",
+      "properties": {
+        "style": { "description": "Default: boxed.", "$ref": "#/$defs/DesignTabsStyle" },
+        "shape": { "description": "Default: md.", "$ref": "#/$defs/DesignShape" },
+        "size": { "description": "Default: sm.", "$ref": "#/$defs/DesignSize" }
+      },
+      "additionalProperties": false
+    },
+    "DesignCard": {
+      "description": "A panel that groups content.",
+      "type": "object",
+      "properties": {
+        "style": { "description": "Default: outline.", "$ref": "#/$defs/DesignCardStyle" },
+        "shape": { "description": "Default: md.", "$ref": "#/$defs/DesignShape" },
+        "padding": { "description": "Default: normal.", "$ref": "#/$defs/DesignPadding" }
+      },
+      "additionalProperties": false
+    },
+    "DesignRow": {
+      "description": "A row of a list, menu or tree: how the active row and the selected row show.",
+      "type": "object",
+      "properties": {
+        "selection": { "description": "Default: fill.", "$ref": "#/$defs/DesignRowSelection" },
+        "shape": { "description": "Default: md.", "$ref": "#/$defs/DesignShape" },
+        "size": { "description": "Default: sm.", "$ref": "#/$defs/DesignSize" }
+      },
+      "additionalProperties": false
+    },
+    "DesignMenu": {
+      "description": "A floating menu or popover.",
+      "type": "object",
+      "properties": {
+        "shape": { "description": "Default: md.", "$ref": "#/$defs/DesignShape" },
+        "elevation": { "description": "Default: md.", "$ref": "#/$defs/DesignElevation" },
+        "border": { "description": "Default: outline.", "$ref": "#/$defs/DesignMenuBorder" }
+      },
+      "additionalProperties": false
+    },
+    "DesignDialog": {
+      "description": "A modal dialog and the scrim behind it.",
+      "type": "object",
+      "properties": {
+        "shape": { "description": "Default: lg.", "$ref": "#/$defs/DesignShape" },
+        "elevation": { "description": "Default: lg.", "$ref": "#/$defs/DesignElevation" },
+        "scrim": { "description": "Default: blur.", "$ref": "#/$defs/DesignScrim" },
+        "padding": { "description": "Default: roomy.", "$ref": "#/$defs/DesignPadding" }
+      },
+      "additionalProperties": false
+    },
+    "DesignToast": {
+      "description": "A short notice in a corner.",
+      "type": "object",
+      "properties": {
+        "style": { "description": "Default: outline.", "$ref": "#/$defs/DesignToastStyle" },
+        "shape": { "description": "Default: lg.", "$ref": "#/$defs/DesignShape" },
+        "elevation": { "description": "Default: md.", "$ref": "#/$defs/DesignElevation" }
+      },
+      "additionalProperties": false
+    },
+    "DesignBadge": {
+      "description": "A badge, chip, tag or count.",
+      "type": "object",
+      "properties": {
+        "style": { "description": "Default: soft.", "$ref": "#/$defs/DesignBadgeStyle" },
+        "shape": { "description": "Default: full.", "$ref": "#/$defs/DesignShape" },
+        "case": { "description": "Default: none.", "$ref": "#/$defs/DesignCase" }
+      },
+      "additionalProperties": false
+    },
+    "DesignTooltip": {
+      "description": "A tooltip.",
+      "type": "object",
+      "properties": {
+        "shape": { "description": "Default: md.", "$ref": "#/$defs/DesignShape" },
+        "elevation": { "description": "Default: sm.", "$ref": "#/$defs/DesignElevation" }
+      },
+      "additionalProperties": false
+    },
+    "DesignTable": {
+      "description": "A table's rows, header and cell spacing.",
+      "type": "object",
+      "properties": {
+        "rows": { "description": "Default: lines.", "$ref": "#/$defs/DesignTableRows" },
+        "header": { "description": "Default: muted.", "$ref": "#/$defs/DesignTableHeader" },
+        "size": { "description": "Default: sm.", "$ref": "#/$defs/DesignSize" }
+      },
+      "additionalProperties": false
+    },
+    "DesignProgress": {
+      "description": "A progress bar.",
+      "type": "object",
+      "properties": {
+        "thickness": { "description": "Default: normal.", "$ref": "#/$defs/DesignThickness" },
+        "shape": { "description": "Default: full.", "$ref": "#/$defs/DesignShape" }
+      },
+      "additionalProperties": false
+    },
+    "DesignFocus": {
+      "description": "The keyboard focus ring every component shows.",
+      "type": "object",
+      "properties": {
+        "width": { "description": "Default: normal.", "$ref": "#/$defs/DesignThickness" },
+        "offset": { "description": "Default: near.", "$ref": "#/$defs/DesignFocusOffset" }
+      },
+      "additionalProperties": false
+    },
+    "DesignShape": {
+      "description": "A corner: square, a theme's radius step, or a pill.",
+      "type": "string",
+      "enum": ["none", "sm", "md", "lg", "full"]
+    },
+    "DesignSize": {
+      "description": "A height or spacing step of the theme's controls.",
+      "type": "string",
+      "enum": ["xs", "sm", "md", "lg"]
+    },
+    "DesignElevation": {
+      "description": "No shadow, or a theme's shadow step.",
+      "type": "string",
+      "enum": ["none", "sm", "md", "lg"]
+    },
+    "DesignPadding": {
+      "description": "Inner space: tight, normal or roomy.",
+      "type": "string",
+      "enum": ["tight", "normal", "roomy"]
+    },
+    "DesignCase": {
+      "description": "Label case: as written or uppercase.",
+      "type": "string",
+      "enum": ["none", "uppercase"]
+    },
+    "DesignWeight": {
+      "description": "A label's font weight: 400, 500, 600 or 700.",
+      "type": "string",
+      "enum": ["regular", "medium", "semibold", "bold"]
+    },
+    "DesignTone": {
+      "description": "How a tone fills: solid fill with its ink, a soft tint with its text colour, or an outline.",
+      "type": "string",
+      "enum": ["solid", "soft", "outline"]
+    },
+    "DesignFill": {
+      "description": "How a neutral control shows: outlined, a soft fill, or only on hover (ghost).",
+      "type": "string",
+      "enum": ["outline", "soft", "ghost"]
+    },
+    "DesignFieldStyle": {
+      "description": "A field: an outlined box, a filled box without a border, or a bottom line only.",
+      "type": "string",
+      "enum": ["outline", "filled", "underline"]
+    },
+    "DesignFieldFocus": {
+      "description": "Focus on a field: the focus ring, or the border in the ring's colour.",
+      "type": "string",
+      "enum": ["ring", "border"]
+    },
+    "DesignCheckAccent": {
+      "description": "A check's colour: the brand's or the text's.",
+      "type": "string",
+      "enum": ["primary", "text"]
+    },
+    "DesignTabsStyle": {
+      "description": "Tabs: outlined boxes, pills on a track, or an underline under the selected one.",
+      "type": "string",
+      "enum": ["boxed", "pill", "underline"]
+    },
+    "DesignCardStyle": {
+      "description": "A card: outlined, raised with a shadow, filled, or plain.",
+      "type": "string",
+      "enum": ["outline", "elevated", "filled", "plain"]
+    },
+    "DesignRowSelection": {
+      "description": "The active row: a hover fill, a soft brand tint, or a fill with a brand bar at its start.",
+      "type": "string",
+      "enum": ["fill", "soft", "bar"]
+    },
+    "DesignMenuBorder": {
+      "description": "A menu with an outline or without.",
+      "type": "string",
+      "enum": ["outline", "none"]
+    },
+    "DesignScrim": {
+      "description": "Behind a dialog: the scrim, blurred or only dimmed.",
+      "type": "string",
+      "enum": ["blur", "dim"]
+    },
+    "DesignToastStyle": {
+      "description": "A toast: an outlined card, a soft fill, or inverse like a tooltip.",
+      "type": "string",
+      "enum": ["outline", "soft", "inverse"]
+    },
+    "DesignBadgeStyle": {
+      "description": "A badge: a soft fill, the brand's solid fill, or an outline.",
+      "type": "string",
+      "enum": ["soft", "solid", "outline"]
+    },
+    "DesignTableRows": {
+      "description": "A table's body rows: divided by lines, striped, or plain.",
+      "type": "string",
+      "enum": ["lines", "striped", "plain"]
+    },
+    "DesignTableHeader": {
+      "description": "A table's header row: muted or plain.",
+      "type": "string",
+      "enum": ["muted", "plain"]
+    },
+    "DesignThickness": {
+      "description": "A line's thickness: thin, normal or thick.",
+      "type": "string",
+      "enum": ["thin", "normal", "thick"]
+    },
+    "DesignFocusOffset": {
+      "description": "The focus ring's distance: none, near or far.",
+      "type": "string",
+      "enum": ["none", "near", "far"]
+    }
+  }
+}

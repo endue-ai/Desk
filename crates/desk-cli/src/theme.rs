@@ -67,7 +67,9 @@ impl Session {
 fn theme_line(plugin: &Value) -> Option<String> {
     let id = text(plugin, "id");
     let user = id.starts_with("local.") || id.starts_with("market.");
-    let theme = plugin["manifest"]["kind"] == "theme" || (plugin["status"] == "failed" && user);
+    let kind = &plugin["manifest"]["kind"];
+    let theme =
+        kind == "theme" || kind == "design-system" || (plugin["status"] == "failed" && user);
     let source = if plugin["builtIn"] == true {
         "built-in"
     } else {
