@@ -1,10 +1,11 @@
 name: release
 
-# Merging a pull request into release/vX.Y.Z is a stable release (ADR 0081, amending ADR 0054): built
-# as X.Y.Z, uploaded to R2, listed on the stable index, tagged vX.Y.Z at the merged commit and given a
-# GitHub Release with generated notes and links to the R2 downloads, no binaries. A version whose tag
-# exists is not built again: the next one is a new release branch. Publishing runs in the stable
-# environment, which people approve; it holds the same updater key and R2 credentials as signing.
+# A push to a release line release/vX.Y builds its next candidate (ADR 0092, amending ADR 0081): check
+# and unit tests on every OS, the four targets built and signed as X.Y.Z-rc.<run>, uploaded to R2 and
+# listed on beta. release-cut.yml's new branch builds the line's first candidate; each merged
+# cherry-pick builds the next. Stable comes from release-final.yml once a candidate has been on beta
+# three days. A branch that is not a line (release/vX.Y.Z) builds nothing, and without the updater key,
+# its public key or the R2 credentials the run fails: a line is meant to ship.
 on:
   push:
     branches: ["release/v*"]
@@ -12,8 +13,10 @@ on:
 permissions:
   contents: read
 
+# One build per line at a time. Beta's index is written under release-index, like every writer of
+# the beta and stable indexes.
 concurrency:
-  group: release-stable
+  group: release-${{ github.ref_name }}
   cancel-in-progress: false
 
 jobs:
@@ -23,10 +26,15 @@ jobs:
     timeout-minutes: 5
     environment: signing
     outputs:
-      publish: ${{ steps.secrets.outputs.publish }}
       version: ${{ steps.version.outputs.version }}
     steps:
-      - id: secrets
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - id: version
+        name: The candidate's version
+        run: echo "version=$(node scripts/release-version.mjs --line "$GITHUB_REF_NAME" --run "$GITHUB_RUN_NUMBER")" >> "$GITHUB_OUTPUT"
+      - name: The updater key, its public key and the R2 credentials are set
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           DESK_UPDATER_PUBKEY: ${{ vars.DESK_UPDATER_PUBKEY }}
@@ -39,22 +47,40 @@ jobs:
             if [ -z "${!name}" ]; then missing="$missing $name"; fi
           done
           if [ -n "$missing" ]; then
-            echo "::error::$GITHUB_REF_NAME is not released:$missing not set (docs/ko/updater-requirements.md)"
+            echo "::error::$GITHUB_REF_NAME builds no candidate:$missing not set (docs/releasing.md)"
             exit 1
           fi
-          echo "publish=true" >> "$GITHUB_OUTPUT"
+
+  check:
+    name: check (${{ matrix.os }})
+    needs: gate
+    strategy:
+      fail-fast: true
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
       - uses: actions/checkout@v7
-      - id: version
-        run: |
-          tag="${GITHUB_REF_NAME#release/}"
-          if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null; then
-            echo "::error::$tag is released already; release the next version from release/vX.Y.Z"
-            exit 1
-          fi
-          echo "version=$(node scripts/release-version.mjs --tag "$tag")" >> "$GITHUB_OUTPUT"
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install Rust toolchain (rust-toolchain.toml)
+        run: rustup toolchain install
+      - uses: Swatinem/rust-cache@v2
+        with:
+          save-if: false
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: just
+      - run: pnpm install --frozen-lockfile
+      - run: just check
+      - run: just test-unit
 
   build:
-    needs: gate
+    needs: [gate, check]
     uses: ./.github/workflows/release-build.yml
     with:
       version: ${{ needs.gate.outputs.version }}
@@ -65,9 +91,14 @@ jobs:
     needs: [gate, build]
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    environment: stable
+    environment: signing
+    concurrency:
+      group: release-index
+      cancel-in-progress: false
     permissions:
-      contents: write
+      contents: read
+      id-token: write
+      attestations: write
     env:
       VERSION: ${{ needs.gate.outputs.version }}
       BASE: ${{ vars.DESK_RELEASES_URL || 'https://releases.endue.ai/desk' }}
@@ -78,7 +109,6 @@ jobs:
       AWS_DEFAULT_REGION: auto
       TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
       TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-      GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6
@@ -92,36 +122,25 @@ jobs:
           pattern: desk-*
           path: dist
           merge-multiple: true
+      - uses: actions/attest-build-provenance@v3
+        with:
+          subject-path: dist/endue-desk_*
       - name: Write and sign release.json
         run: |
-          notes="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/tag/v$VERSION"
           node scripts/release-manifest.mjs release dist --version "$VERSION" --base "$BASE" \
-            --commit "$GITHUB_SHA" --notes "$notes" > release.json
+            --commit "$GITHUB_SHA" --notes "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/commit/$GITHUB_SHA" > release.json
           mv release.json dist/release.json
           (cd dist && sha256sum endue-desk_* > SHA256SUMS)
           pnpm --filter @endue-ai/desk-app exec tauri signer sign "$PWD/dist/release.json"
       - name: Upload the build
         run: node scripts/release-publish.mjs release dist --version "$VERSION" --bucket "$BUCKET" --endpoint "$ENDPOINT"
-      - name: List it on stable
+      - name: List it on beta
         run: |
-          if ! out="$(aws s3api get-object --bucket "$BUCKET" --key desk/channels/stable/index.json stable.json --endpoint-url "$ENDPOINT" 2>&1)"; then
-            if grep -q NoSuchKey <<<"$out"; then rm -f stable.json; else echo "$out" >&2; exit 1; fi
+          # The bucket's own copy, never the cached public one; a missing index starts at serial 1.
+          if ! out="$(aws s3api get-object --bucket "$BUCKET" --key desk/channels/beta/index.json beta.json --endpoint-url "$ENDPOINT" 2>&1)"; then
+            if grep -q NoSuchKey <<<"$out"; then rm -f beta.json; else echo "$out" >&2; exit 1; fi
           fi
-          node scripts/release-manifest.mjs list stable.json --channel stable --release dist/release.json > index.json
+          node scripts/release-manifest.mjs list beta.json --channel beta --release dist/release.json > index.json
           pnpm --filter @endue-ai/desk-app exec tauri signer sign "$PWD/index.json"
-          node scripts/release-publish.mjs index index.json --channel stable --bucket "$BUCKET" --endpoint "$ENDPOINT"
-      - name: Create the GitHub Release with the notes and the downloads
-        run: |
-          {
-            echo "## Download"
-            echo
-            for path in dist/endue-desk_*; do
-              file="${path##*/}"
-              case "$file" in *.sig) continue ;; esac
-              echo "- [$file]($BASE/releases/$VERSION/$file)"
-            done
-            echo
-            echo "Checksums: [SHA256SUMS]($BASE/releases/$VERSION/SHA256SUMS). Installed desks on the stable channel update themselves."
-          } > downloads.md
-          gh release create "v$VERSION" --target "$GITHUB_SHA" --title "endue Desk $VERSION" \
-            --generate-notes --notes-file downloads.md
+          node scripts/release-publish.mjs index index.json --channel beta --bucket "$BUCKET" --endpoint "$ENDPOINT"
+          echo "::notice::candidate $VERSION of $GITHUB_REF_NAME is on $BASE/channels/beta/index.json"

@@ -8,6 +8,7 @@ import "./chrome.css";
 import "./bottom.css";
 import "../system/system.css";
 import "../eris/eris.css";
+import "../eris/errand.css";
 import "../surface/surface.css";
 import "../surface/panes.css";
 import "../theme-studio/studio.css";

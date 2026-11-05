@@ -894,6 +894,7 @@ pub enum Permission {
     ShellOpen(ShellOpenPermission),
     UpdateManage(UpdateManagePermission),
     ThemeManage(ThemeManagePermission),
+    AccountManage(AccountManagePermission),
 }
 
 /// Search explicitly published plugin documents and installed plugin launchers.
@@ -1096,6 +1097,13 @@ pub struct ThemeManagePermission {
     pub permission: ThemeManagePermissionPermission,
 }
 
+/// Sign the desk in to endue ID and out again with account.*, and see whether it is signed in. Receive account.changed. The token itself never crosses the bridge. The desk grants it to the runtime only (ADR 0089).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AccountManagePermission {
+    pub permission: AccountManagePermissionPermission,
+}
+
 /// A URL scheme shell.open hands to the system: the browser for http and https, the mail app for mailto.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum ShellScheme {
@@ -1169,6 +1177,9 @@ pub struct PluginManifest {
     pub surfaces: Option<Vec<Surface>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub contributes: Option<PluginContributes>,
+    /// The roles this plugin can fill (BR-05, ADR 0104): role:rail, role:agents and role:dock are the desk's three edges, role:palette the command palette, role:settings-ui the settings window. The desk.roles setting chooses each role's provider among the plugins that provide it; a provider that is not chosen does not mount that role's surfaces.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub provides: Option<Vec<Role>>,
     /// Installed but off until the desk needs it, like Emacs's autoload. With no stored enabled flag the plugin starts off, and its file openers count while it is off: desk.files turns it on to open a file and off again when its last file closes; profiles leave it as it is. Default false.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub autoload: Option<bool>,
@@ -1194,6 +1205,9 @@ pub struct PluginManifest {
 
 /// Reverse-domain style id with at least one dot, lowercase, for example endue.eris or example.hello-ui.
 pub type PluginId = String;
+
+/// A role a plugin fills: role: and a lowercase name.
+pub type Role = String;
 
 /// Semantic version, for example 0.1.0 or 1.2.3-beta.1.
 pub type Version = String;
@@ -2826,6 +2840,101 @@ pub struct ProfileFile {
     pub settings: Option<BTreeMap<String, serde_json::Value>>,
 }
 
+/// signed-out: no endue ID on this desk. signing-in: a code waits for the person in the browser. signed-in: the desk holds a token and the brain gets it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum AccountState {
+    #[serde(rename = "signed-out")]
+    SignedOut,
+    #[serde(rename = "signing-in")]
+    SigningIn,
+    #[serde(rename = "signed-in")]
+    SignedIn,
+}
+
+/// Where and with which code the person finishes signing in, while the state is signing-in.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AccountSignIn {
+    /// The code to enter at verificationUri, for example WDJB-MJHT.
+    #[serde(rename = "userCode")]
+    pub user_code: String,
+    /// The page where the person enters the code.
+    #[serde(rename = "verificationUri")]
+    pub verification_uri: String,
+    /// The same page with the code already in it, when endue ID offers one: the link to open.
+    #[serde(
+        rename = "verificationUriComplete",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub verification_uri_complete: Option<String>,
+    /// When the code stops working.
+    #[serde(rename = "expiresAt")]
+    pub expires_at: String,
+}
+
+/// The account as it is now. signIn is there while signing-in; problem says, for people, why the last sign-in did not go through.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AccountStatus {
+    pub state: AccountState,
+    #[serde(rename = "signIn", default, skip_serializing_if = "Option::is_none")]
+    pub sign_in: Option<AccountSignIn>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub problem: Option<String>,
+}
+
+/// Parameters of every account.* call: the scope alone.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AccountParams {
+    pub scope: AccountManagePermission,
+}
+
+/// The account as it is now.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AccountStatusRequest {
+    pub id: RequestId,
+    pub method: AccountStatusRequestMethod,
+    pub params: AccountParams,
+}
+
+/// Start signing in: the answer is signing-in with the code and the page to open. A sign-in already under way answers as it is; one on a desk that is signed in starts over.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AccountSignInRequest {
+    pub id: RequestId,
+    pub method: AccountSignInRequestMethod,
+    pub params: AccountParams,
+}
+
+/// Forget the token on this desk and stop any sign-in under way. The brain gets no token after it.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AccountSignOutRequest {
+    pub id: RequestId,
+    pub method: AccountSignOutRequestMethod,
+    pub params: AccountParams,
+}
+
+/// Result of account.status.
+pub type AccountStatusResult = AccountStatus;
+
+/// Result of account.signIn: signing-in with the code, or why it could not start (problem).
+pub type AccountSignInResult = AccountStatus;
+
+/// Result of account.signOut: signed-out.
+pub type AccountSignOutResult = AccountStatus;
+
+/// The account changed: a sign-in began, finished or failed, or the desk signed out. Sent to holders of account:manage.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AccountChangedEvent {
+    pub event: AccountChangedEventEvent,
+    pub data: AccountStatus,
+}
+
 /// Start capturing the microphone. With wakeWord, audio.wake events arrive when the wake word is heard.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -3101,12 +3210,28 @@ pub enum BrainStatusResult {
     BrainStatusOffline(BrainStatusOffline),
 }
 
-/// A brain on this machine, named by the model it runs.
+/// A brain the desk can choose for Eris (ADR 0094): endue (endue AI), local (Ollama on this machine) or echo (examples/brain-echo).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum BrainName {
+    #[serde(rename = "endue")]
+    Endue,
+    #[serde(rename = "local")]
+    Local,
+    #[serde(rename = "echo")]
+    Echo,
+}
+
+/// A brain on this machine, named by the model it runs. fallback is true when it answers in place of the chosen brain, which cannot be reached now (ADR 0094).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct BrainStatusLocal {
     pub mode: BrainStatusLocalMode,
     pub model: String,
+    /// The brain the desk chose. Absent from desks that cannot choose.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub brain: Option<BrainName>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fallback: Option<bool>,
 }
 
 /// A brain over the network, such as endue AI. credits is left out while the brain reports none.
@@ -3117,6 +3242,9 @@ pub struct BrainStatusCloud {
     /// Credits left.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub credits: Option<u64>,
+    /// The brain the desk chose. Absent from desks that cannot choose.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub brain: Option<BrainName>,
 }
 
 /// The brain cannot be reached now, or the desk has none.
@@ -3124,6 +3252,9 @@ pub struct BrainStatusCloud {
 #[serde(deny_unknown_fields)]
 pub struct BrainStatusOffline {
     pub mode: BrainStatusOfflineMode,
+    /// The brain the desk chose, which cannot be reached now. Absent from desks that cannot choose.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub brain: Option<BrainName>,
 }
 
 /// Progress of a brain.say or brain.ask turn.
@@ -3134,7 +3265,7 @@ pub struct BrainTurnEvent {
     pub data: BrainTurnData,
 }
 
-/// Payload of brain.turn. delta carries answer text; error and offline carry a sentence for people. A brain.ask turn's completed carries structured when the brain called the tool.
+/// Payload of brain.turn. delta carries answer text; error and offline carry a sentence for people. A brain.ask turn's completed carries structured when the brain called the tool. tool and tool-result carry tool: a brain.say turn's hand-off to a plugin command and its return (ADR 0089).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct BrainTurnData {
@@ -3146,9 +3277,11 @@ pub struct BrainTurnData {
     /// brain.ask only, on completed: the arguments the brain called the tool with, checked against its schema. Absent when the brain answered in text instead.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub structured: Option<serde_json::Map<String, serde_json::Value>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tool: Option<BrainTurnTool>,
 }
 
-/// started, delta (more text), completed; error (the turn failed, for example read-only after a takeover); offline (the brain is unreachable, the turn waits) and online (it resumed).
+/// started, delta (more text), completed; error (the turn failed, for example read-only after a takeover); offline (the brain is unreachable, the turn waits) and online (it resumed); tool (Eris hands work to a plugin command: the core runs the brain's call) and tool-result (the command answered and its answer went back to the brain).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum BrainTurnKind {
     #[serde(rename = "started")]
@@ -3163,6 +3296,28 @@ pub enum BrainTurnKind {
     Offline,
     #[serde(rename = "online")]
     Online,
+    #[serde(rename = "tool")]
+    Tool,
+    #[serde(rename = "tool-result")]
+    ToolResult,
+}
+
+/// tool and tool-result only: the command a brain.say turn's tool call runs, so the desk can show Eris going to its plugin and coming back (ADR 0089).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct BrainTurnTool {
+    /// The brain's tool call id; a tool-result names the call it ends.
+    #[serde(rename = "callId")]
+    pub call_id: String,
+    pub command: CommandId,
+    /// Who provides the command: a plugin id, or desk for the runtime's own.
+    pub provider: CallerId,
+    /// The command's title, for people.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
+    /// tool-result only: whether the command answered without an error.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ok: Option<bool>,
 }
 
 /// Chosen by the caller, unique among its requests in flight. The response repeats it.
@@ -3261,6 +3416,9 @@ pub enum BridgeRequest {
     UpdateCheck(UpdateCheckRequest),
     UpdateDownload(UpdateDownloadRequest),
     UpdateApply(UpdateApplyRequest),
+    AccountStatus(AccountStatusRequest),
+    AccountSignIn(AccountSignInRequest),
+    AccountSignOut(AccountSignOutRequest),
     ThemeSave(ThemeSaveRequest),
     ThemeImport(ThemeImportRequest),
     ThemeExport(ThemeExportRequest),
@@ -3332,7 +3490,7 @@ pub enum ErrorCode {
     Internal,
 }
 
-/// Something the core reports without being asked: file changes, process output, wake words, permission changes, prompts and approvals, notifications, surfaces, commands, settings, log entries, changes to items, connectors and views, and the desk's update status.
+/// Something the core reports without being asked: file changes, process output, wake words, permission changes, prompts and approvals, notifications, surfaces, commands, settings, log entries, changes to items, connectors and views, the desk's update status, and its endue ID account.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum BridgeEvent {
@@ -3360,6 +3518,7 @@ pub enum BridgeEvent {
     ConnectorChanged(ConnectorChangedEvent),
     ViewChanged(ViewChangedEvent),
     UpdateChanged(UpdateChangedEvent),
+    AccountChanged(AccountChangedEvent),
 }
 
 /// Describe what the caller can bind, show and run.
@@ -6270,15 +6429,27 @@ pub enum ViewSource {
     File,
 }
 
-/// A view as view.list returns it: where it comes from and, for a plugin's view, the plugin.
+/// A view in either language: an item view of specs/view/v0 (layouts of components over the desk's items, ADR 0032) or a universal view (one presentation of entries from any source, ADR 0087). A universal view saved in ~/.desk/views must have its id.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum AnyView {
+    View(View),
+    Universal(UniversalView),
+}
+
+/// A view as view.list returns it: where it comes from and, for a plugin's view, the plugin. An item view has a version; a universal view has its type instead, and its title is its id when it has none.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ViewSummary {
     pub id: ViewId,
-    pub version: Version,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub version: Option<Version>,
     pub title: Template,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
+    /// A universal view's presentation; absent for an item view.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub r#type: Option<UniversalType>,
     pub source: ViewSource,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub plugin: Option<PluginId>,
@@ -6328,7 +6499,7 @@ pub struct ViewGetParams {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ViewGetResult {
-    pub view: View,
+    pub view: AnyView,
     pub source: ViewSource,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub plugin: Option<PluginId>,
@@ -6343,11 +6514,11 @@ pub struct ViewSaveRequest {
     pub params: ViewSaveParams,
 }
 
-/// Parameters of view.save. The view must pass specs/view/v0 and its names must resolve.
+/// Parameters of view.save. An item view must pass specs/view/v0 and its names must resolve; a universal view must pass universal.schema.json and have its id.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ViewSaveParams {
-    pub view: View,
+    pub view: AnyView,
     pub scope: ViewManagePermission,
 }
 
@@ -6595,6 +6766,14 @@ pub enum ThemeManagePermissionPermission {
     ThemeManage,
 }
 
+/// The `permission` of [`AccountManagePermission`]: always `"account:manage"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum AccountManagePermissionPermission {
+    #[default]
+    #[serde(rename = "account:manage")]
+    AccountManage,
+}
+
 /// The `format` of [`ThemeIndex`]: always `"desk-theme-index/1"`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub enum ThemeIndexFormat {
@@ -6737,6 +6916,38 @@ pub enum EnumParamKind {
     #[default]
     #[serde(rename = "enum")]
     Enum,
+}
+
+/// The `method` of [`AccountStatusRequest`]: always `"account.status"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum AccountStatusRequestMethod {
+    #[default]
+    #[serde(rename = "account.status")]
+    AccountStatus,
+}
+
+/// The `method` of [`AccountSignInRequest`]: always `"account.signIn"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum AccountSignInRequestMethod {
+    #[default]
+    #[serde(rename = "account.signIn")]
+    AccountSignIn,
+}
+
+/// The `method` of [`AccountSignOutRequest`]: always `"account.signOut"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum AccountSignOutRequestMethod {
+    #[default]
+    #[serde(rename = "account.signOut")]
+    AccountSignOut,
+}
+
+/// The `event` of [`AccountChangedEvent`]: always `"account.changed"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum AccountChangedEventEvent {
+    #[default]
+    #[serde(rename = "account.changed")]
+    AccountChanged,
 }
 
 /// The `method` of [`AudioCaptureStartRequest`]: always `"audio.capture.start"`.
@@ -7701,6 +7912,10 @@ pub const SCHEMAS: &[(&str, &str)] = &[
     (
         "https://endue.ai/specs/init/v0/profile.schema.json",
         include_str!("../../../specs/init/v0/profile.schema.json"),
+    ),
+    (
+        "https://endue.ai/specs/bridge/v0/account.schema.json",
+        include_str!("../../../specs/bridge/v0/account.schema.json"),
     ),
     (
         "https://endue.ai/specs/bridge/v0/audio.schema.json",

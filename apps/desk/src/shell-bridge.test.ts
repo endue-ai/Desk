@@ -152,18 +152,103 @@ describe("the shell bridge over the core", () => {
     expect(refused.listening()).toBe(0);
   });
 
-  test("brain.status maps brain.status and brain.use answers it unchanged", async () => {
-    let status: BrainStatusResult = { mode: "cloud", credits: 12 };
+  test("brain.say hands each of Eris's errands to onStep as it happens (ADR 0089)", async () => {
+    const { stub, bridge } = setup({ "brain.say": () => ({ turnId: "t7" }) });
+    const steps: unknown[] = [];
+    const reply = bridge.brain.say("check my mail", (step) => steps.push(step));
+    await tick();
+    const tool = { callId: "c1", command: "endue.mail.latest", provider: "endue.mail" };
+    stub.emit(turn("t7", "started"));
+    stub.emit({
+      event: "brain.turn",
+      data: { turnId: "t7", kind: "tool", tool: { ...tool, title: "Latest mail" } },
+    });
+    stub.emit({ event: "brain.turn", data: { turnId: "t8", kind: "tool", tool } });
+    stub.emit({
+      event: "brain.turn",
+      data: { turnId: "t7", kind: "tool-result", tool: { ...tool, ok: true } },
+    });
+    stub.emit(turn("t7", "delta", "Two new messages."));
+    stub.emit(turn("t7", "completed"));
+    await expect(reply).resolves.toEqual({ text: "Two new messages." });
+    expect(steps).toEqual([
+      { kind: "tool", ...tool, title: "Latest mail" },
+      { kind: "tool-result", ...tool, ok: true },
+    ]);
+  });
+
+  test("account.* runs under account:manage and never hands the runtime when the code expires", async () => {
+    const signIn = {
+      userCode: "WDJB-MJHT",
+      verificationUri: "https://id.endue.ai/device",
+      expiresAt: "2026-11-05T09:15:00Z",
+    };
+    const { stub, bridge, calls } = setup({
+      "account.status": () => ({ state: "signed-out" }),
+      "account.signIn": () => ({ state: "signing-in", signIn }),
+      "account.signOut": () => ({ state: "signed-out" }),
+    });
+    const account = bridge.account;
+    if (!account) throw new Error("the app's shell bridge serves the account");
+    await expect(account.status()).resolves.toEqual({ state: "signed-out" });
+    await expect(account.signIn()).resolves.toEqual({
+      state: "signing-in",
+      signIn: { userCode: "WDJB-MJHT", verificationUri: "https://id.endue.ai/device" },
+    });
+    await account.signOut();
+    const scope = { scope: { permission: "account:manage" } };
+    expect(calls()).toEqual(
+      ["account.status", "account.signIn", "account.signOut"].map((method) => ({
+        method,
+        params: scope,
+      })),
+    );
+    const heard: unknown[] = [];
+    const off = account.onChange((status) => heard.push(status));
+    stub.emit({ event: "account.changed", data: { state: "signed-in" } });
+    off();
+    stub.emit({ event: "account.changed", data: { state: "signed-out" } });
+    expect(heard).toEqual([{ state: "signed-in" }]);
+  });
+
+  test("brain.status maps brain.status with the brain the desk chose and a local fallback", async () => {
+    let status: BrainStatusResult = { mode: "cloud", credits: 12, brain: "endue" };
     const { bridge, calls } = setup({ "brain.status": () => status });
-    await expect(bridge.brain.status()).resolves.toEqual({ mode: "cloud", credits: 12 });
+    await expect(bridge.brain.status()).resolves.toEqual({
+      mode: "cloud",
+      credits: 12,
+      brain: "endue",
+    });
     status = { mode: "cloud" };
     await expect(bridge.brain.status()).resolves.toEqual({ mode: "cloud", credits: 0 });
-    await expect(bridge.brain.use("local")).resolves.toEqual({ mode: "cloud", credits: 0 });
-    status = { mode: "local", model: "llama-3.2-3b" };
+    status = { mode: "local", model: "llama3.2", brain: "echo", fallback: true };
     await expect(bridge.brain.status()).resolves.toEqual(status);
-    status = { mode: "offline" };
-    await expect(bridge.brain.use("cloud")).resolves.toEqual({ mode: "offline" });
-    expect(calls()).toEqual(Array(5).fill({ method: "brain.status", params: { scope: SCOPE } }));
+    status = { mode: "offline", brain: "local" };
+    await expect(bridge.brain.status()).resolves.toEqual(status);
+    expect(calls()).toEqual(Array(4).fill({ method: "brain.status", params: { scope: SCOPE } }));
+  });
+
+  test("brain.use sets the runtime's brain.use setting and answers brain.status (ADR 0094)", async () => {
+    let chosen: unknown;
+    const { bridge, calls } = setup({
+      "settings.set": ({ value }) => {
+        chosen = value;
+        return {};
+      },
+      "brain.status": () =>
+        chosen === "local"
+          ? { mode: "local", model: "llama3.2", brain: "local" }
+          : { mode: "offline", brain: "endue" },
+    });
+    await expect(bridge.brain.use("local")).resolves.toEqual({
+      mode: "local",
+      model: "llama3.2",
+      brain: "local",
+    });
+    expect(calls()).toEqual([
+      { method: "settings.set", params: { key: "brain.use", value: "local" } },
+      { method: "brain.status", params: { scope: SCOPE } },
+    ]);
   });
 
   test("audio.levels is nine silent bands for both voices", () => {

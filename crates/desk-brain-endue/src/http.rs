@@ -1,5 +1,5 @@
 //! A small HTTP/1.1 client on std's TcpStream: one request per connection, JSON bodies, chunked or
-//! sized responses and Server-Sent Events. Plain http only; TLS arrives with the real endue AI.
+//! sized responses and Server-Sent Events. An https endpoint goes over TLS instead (`tls.rs`).
 
 use std::io::{self, BufRead, BufReader, Read, Write};
 use std::net::{TcpStream, ToSocketAddrs};
@@ -11,9 +11,10 @@ const CONNECT_TIMEOUT: Duration = Duration::from_secs(3);
 /// How long a response may stay silent; turn streams send events well within it.
 const READ_TIMEOUT: Duration = Duration::from_secs(60);
 
-/// Where a brain lives: `http://host:port/prefix`.
+/// Where a brain lives: `http://host:port/prefix` or `https://host:port/prefix`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Endpoint {
+    secure: bool,
     host: String,
     port: u16,
     prefix: String,
@@ -21,11 +22,9 @@ pub struct Endpoint {
 
 impl Endpoint {
     pub fn parse(base_url: &str) -> Result<Self, String> {
-        let rest = match base_url.split_once("://") {
-            Some(("http", rest)) => rest,
-            Some(("https", _)) => {
-                return Err("https needs TLS, which this client does not have yet".to_owned());
-            }
+        let (secure, rest) = match base_url.split_once("://") {
+            Some(("http", rest)) => (false, rest),
+            Some(("https", rest)) => (true, rest),
             _ => return Err(format!("not an http URL: {base_url}")),
         };
         let (authority, path) = rest.split_at(rest.find('/').unwrap_or(rest.len()));
@@ -35,12 +34,13 @@ impl Endpoint {
                 port.parse()
                     .map_err(|_| format!("not a port: {port} in {base_url}"))?,
             ),
-            None => (authority, 80),
+            None => (authority, if secure { 443 } else { 80 }),
         };
         if host.is_empty() {
             return Err(format!("no host in {base_url}"));
         }
         Ok(Self {
+            secure,
             host: host.to_owned(),
             port,
             prefix: path.trim_end_matches('/').to_owned(),
@@ -48,7 +48,12 @@ impl Endpoint {
     }
 
     pub fn url(&self) -> String {
-        format!("http://{}:{}{}", self.host, self.port, self.prefix)
+        let scheme = if self.secure { "https" } else { "http" };
+        format!("{scheme}://{}:{}{}", self.host, self.port, self.prefix)
+    }
+
+    pub fn is_secure(&self) -> bool {
+        self.secure
     }
 }
 
@@ -60,6 +65,14 @@ pub struct Response {
 }
 
 impl Response {
+    pub(crate) fn new(status: u16, content_type: String, body: Box<dyn BufRead + Send>) -> Self {
+        Self {
+            status,
+            content_type,
+            body,
+        }
+    }
+
     pub fn is_event_stream(&self) -> bool {
         self.content_type.starts_with("text/event-stream")
     }
@@ -91,6 +104,9 @@ pub fn send(
     path: &str,
     body: Option<&Value>,
 ) -> io::Result<Response> {
+    if endpoint.secure {
+        return crate::tls::send(endpoint, token, method, path, body);
+    }
     let address = (endpoint.host.as_str(), endpoint.port)
         .to_socket_addrs()?
         .next()
@@ -265,7 +281,9 @@ mod tests {
             Endpoint::parse("http://brain").unwrap().url(),
             "http://brain:80"
         );
-        assert!(Endpoint::parse("https://endue.ai/v0").is_err());
+        let secure = Endpoint::parse("https://endue.ai/v0").unwrap();
+        assert!(secure.is_secure());
+        assert_eq!(secure.url(), "https://endue.ai:443/v0");
         assert!(Endpoint::parse("ftp://x").is_err());
     }
 

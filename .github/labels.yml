@@ -86,3 +86,6 @@
 - name: "dependencies"
   color: "0366d6"
   description: "Dependency update"
+- name: "release-blocker"
+  color: "b60205"
+  description: "Holds back the final of the release line in its milestone (ADR 0092)"

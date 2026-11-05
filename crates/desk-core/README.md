@@ -24,14 +24,16 @@ its sync, the brain conversation, the integration layer and the bridge handler. 
   takes its commands, requests, subscriptions, processes, surfaces and URLs; its connectors pause.
 - Storage: `with_store_file`, `with_settings_file`, `with_log_dir`, `Core::log`. Settings are checked
   against their declarations; `settings_problems()` names what fails, by file and line (ADR 0080).
-  Brain: `with_brain(brain, BrainOptions)`, `route_tools()` (tool calls as their agent), `open_session`,
-  `brain_session()`; `brain.say` streams `brain.turn`; the directory passes the brain's answers through.
+  Brain: `with_brain(brain, BrainOptions)` or `with_brains(Brains)` (the runtime's `brain.use` picks
+  endue, local or echo; an unreachable remote falls back to local, ADR 0094), `route_tools()` (calls as
+  their agent, or as Eris; each hand-off is a `tool` step, ADR 0089), `open_session`. endue ID:
+  `account::Account` (device grant, token file 0600), `with_account`, `start_account` (account.*).
 - Start (ADR 0061): every state file is screened as it loads; an unreadable one is kept as
   `<name>.broken` (`keep_broken`, `broken_in`) and listed by `broken_files()`; `with_index_file`,
   `keep_broken_views`, `report_broken`. `with_safe_mode(SafeReason)` and `safe_mode()` hold all but
   the desk.* policies off; `plugins.quarantined` in `desk`'s store holds its plugins; `LastStart`.
-- init.yaml (ADR 0016): `with_init_file(path)`, `init()`, `init_problem()`, `with_sync(remote,
-  state_file)`, `sync_init()`, `resolve_init(Keep)`; `MockRemote` stands in for endue.
+- init.yaml (ADR 0016): `with_init_file`, `init()`, `init_problem()`, `with_sync`, `sync_init()`,
+  `resolve_init(Keep)`, `MockRemote` for endue; `desk_files(home, data)` checks the desk's files (#288).
 - Integration layer (ADR 0036): `with_index(Arc<dyn ItemIndex>)` (`data.*` under `data:read`),
   `with_calendar(source)` (the built-ins `desk.calendar` and `desk.reminders`), `with_clock`,
   `with_secrets_file(path)`; then `start_connectors()` (Wasm connectors on `desk-plugin-host`),

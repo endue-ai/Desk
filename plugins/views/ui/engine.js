@@ -164,11 +164,17 @@ export function createEngine(ctx, screen, options = {}) {
     const id = inline ? inline.id : /** @type {{ id?: unknown } | undefined} */ (args)?.id;
     if (typeof id !== "string") throw new Error("desk.views.open needs the id of a view.");
     const turn = ++opens;
-    const view =
+    const found =
       inline ??
       (await ctx.views.get(id).catch((error) => {
         throw new Error(`There is no view ${id}: ${said(error)}`);
       }));
+    // A universal view (ADR 0102) is desk.universal's to draw.
+    if (!("layout" in found)) {
+      await ctx.commands.run("desk.universal.open", { id, ...(notice ? { notice } : {}) });
+      return { id, universal: true };
+    }
+    const view = /** @type {View} */ (found);
     const listed = await ctx.bridge.call("connector.list", { scope: CONNECTORS }).catch(() => null);
     const choice = choose(view, listed?.connectors ?? [], bindings);
     for (const [name, found] of Object.entries(choice.pick)) {

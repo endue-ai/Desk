@@ -68,6 +68,8 @@ pub struct Core {
     pub(crate) settings_reported: Mutex<BTreeSet<String>>,
     pub(crate) log: Mutex<Log>,
     pub(crate) conversation: Option<Arc<Conversation>>,
+    /// The brains the runtime's setting chooses from (ADR 0094), when the desk has more than one.
+    pub(crate) choice: Option<Arc<crate::brain_choice::BrainChoice>>,
     pub(crate) init: Mutex<InitFile>,
     pub(crate) sync: Option<Syncer>,
     pub(crate) notifications: AtomicU64,
@@ -90,6 +92,7 @@ pub struct Core {
     pub(crate) surfaces: Mutex<Surfaces>,
     pub(crate) opener: Box<dyn Opener>,
     pub(crate) updater: Option<desk_update::Updater>,
+    pub(crate) account: Option<Arc<crate::account::Account>>,
     pub(crate) themes: crate::core_themes::Themes,
     pub(crate) start: Mutex<crate::core_state::StartState>,
 }
@@ -110,6 +113,7 @@ impl Core {
             settings_reported: Mutex::default(),
             log: Mutex::new(Log::default()),
             conversation: None,
+            choice: None,
             init: Mutex::new(InitFile::memory()),
             sync: None,
             notifications: AtomicU64::new(0),
@@ -132,6 +136,7 @@ impl Core {
             surfaces: Mutex::new(Surfaces::default()),
             opener: Box::new(SystemOpener),
             updater: None,
+            account: None,
             themes: Default::default(),
             start: Mutex::default(),
         }
@@ -262,6 +267,9 @@ impl Core {
             R::UpdateCheck(r) => (r.id, self.update_check(caller, r.params)),
             R::UpdateDownload(r) => (r.id, self.update_download(caller, r.params)),
             R::UpdateApply(r) => (r.id, self.update_apply(caller, r.params)),
+            R::AccountStatus(r) => (r.id, self.account_status(caller, r.params)),
+            R::AccountSignIn(r) => (r.id, self.account_sign_in(caller, r.params)),
+            R::AccountSignOut(r) => (r.id, self.account_sign_out(caller, r.params)),
             R::ThemeSave(r) => (r.id, self.theme_save(caller, r.params)),
             R::ThemeImport(r) => (r.id, self.theme_import(caller, r.params)),
             R::ThemeExport(r) => (r.id, self.theme_export(caller, r.params)),

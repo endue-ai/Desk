@@ -3,6 +3,7 @@
   "name": "Palette",
   "version": "0.1.0",
   "kind": "ui",
+  "provides": ["role:palette"],
   "entry": "ui/index.html",
   "description": "System search for plugin data, installed plugins, commands, OS files and applications; also the shared picker.",
   "permissions": [

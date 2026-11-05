@@ -69,6 +69,10 @@
 .account-identity strong, .account-identity small { display: block; }
 .account-identity small, .account-empty { color: var(--desk-text-muted); font-size: var(--text-xs); }
 .account-empty { margin: var(--space-2); }
+/* The endue ID the brain thinks with (system/endue-id.ts, ADR 0089). */
+.account-code, .account-problem { margin: 0 var(--space-2) var(--space-2); font-size: var(--text-xs); }
+.account-code { color: var(--desk-text); }
+.account-problem { color: var(--desk-danger); }
 .inbox-item { padding-bottom: var(--space-2); }
 .inbox-item + .inbox-item { padding-top: var(--space-2); border-top: 1px solid var(--desk-border); }
 .inbox-item .dot { flex: none; }

@@ -38,6 +38,8 @@ export interface PluginHostDeps {
   outcome?(id: string, ok: boolean): void;
   /** Load a frame the runtime unloaded again (ADR 0070); true when it was unloaded. */
   wake?(id: string): boolean;
+  /** False when a role the plugin provides went to another plugin (ADR 0104). */
+  mayMount?(info: PluginInfo): boolean;
 }
 
 const MANAGE = { permission: "plugin:manage" } as const;
@@ -114,10 +116,7 @@ export class PluginHost {
     if (this.#mounted.has(id)) this.#post(id, { type: "desk:command", name, args });
   }
 
-  /**
-   * Ask one plugin something and wait for its answer, like desk.files.visit. These requests are not
-   * registry commands: only the desk sends them, to the one plugin they are about.
-   */
+  /** Ask one plugin something and wait for its answer (desk.files.visit): the desk's, not commands. */
   request(id: string, name: string, args?: unknown): Promise<unknown> {
     if (!this.#mounted.has(id))
       return Promise.reject(new CommandError("unknown_command", `${id} is not running`));
@@ -184,10 +183,18 @@ export class PluginHost {
     return plugins;
   }
 
+  /** Mount and unmount as `mayMount` says now: the roles setting changed (ADR 0104). */
+  async reconcile(): Promise<void> {
+    for (const info of await this.#list())
+      if (this.#deps.mayMount?.(info) === false) this.#unmount(info.id);
+      else this.#mount(info);
+  }
+
   #mount(info: PluginInfo): void {
     const manifest = info.manifest;
     if (info.status !== "ready" || !info.enabled || manifest?.kind !== "ui") return;
     if (this.#mounted.has(info.id)) return;
+    if (this.#deps.mayMount?.(info) === false) return;
     const surface = manifest.surfaces?.[0];
     this.#mounted.set(info.id, info);
     this.#mounting.set(info.id, now());
@@ -289,10 +296,7 @@ export class PluginHost {
     }
   }
 
-  /**
-   * An event for the plugins whose manifest asks for `manage`: plugin.changed to the ones that manage
-   * plugins (the sidebar), connector.changed and view.changed to the ones that manage those.
-   */
+  /** An event for the plugins that manage what it is about (plugin, connector or view:manage). */
   #broadcast(event: BridgeEvent, manage: Permission["permission"] = "plugin:manage"): void {
     for (const [id, info] of this.#mounted) {
       const manages = info.manifest?.permissions?.some((p) => p.permission === manage);

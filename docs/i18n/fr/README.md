@@ -13,6 +13,34 @@ audio, fenêtres), et tout le reste est du code que vous pouvez modifier sans re
 
 <!-- Capture d'écran : ajoutée avec la scène du premier lancement. -->
 
+## Pourquoi Desk
+
+Imaginez le garage d'un bâtisseur : une seule pièce où le bâtisseur travaille au centre, un assistant se
+souvient et demande, des bras robotisés font le travail, et chaque mur montre le travail dans la forme
+que le bâtisseur veut. Desk est ce garage, sur votre ordinateur.
+
+- **Un outil quotidien.** Les bâtisseurs l'ouvrent chaque jour ; il s'installe, démarre et répond avant
+  toute autre chose.
+- **Natif pour les agents.** Eris, la secrétaire résidente, garde sa propre mémoire sur cet ordinateur et
+  orchestre les agents locaux et externes. Les agents ont des mains ; la personne décide.
+- **Les vues d'abord.** Organisez les données une fois et dessinez-les dans n'importe quelle forme :
+  faites votre propre vue, laissez Eris en faire une à partir d'une phrase, ou installez-en une depuis le
+  marché.
+- **À vous.** Le système de design, la disposition et les intégrations appartiennent au bâtisseur, qui
+  les choisit et les remplace.
+
+Desk est un assistant pour les bâtisseurs : il met en place un environnement stable pour construire,
+les laisse libres de le façonner, et leur permet de faire le meilleur produit avec une qualité qui ne
+faiblit pas. Où en est Desk et où il va se trouve dans `docs/roadmap.md`.
+
+### Votre bureau est un dossier
+
+Tout ce que vous façonnez vit dans `~/.desk` : `init.yaml`, vos profils, `keys.yaml`, vos vues et
+`plugins.lock`, de simples fichiers à lire, modifier et garder dans git. `desk export <dossier|fichier.zip>`
+les emporte vers un autre ordinateur (`--with-data` ajoute l'état propre du bureau, jamais les secrets),
+`desk import` les ramène sans écraser votre `init.yaml`, et `desk doctor` liste chaque fichier en disant
+s'il se lit comme le veut sa spécification.
+
 ## Compilation
 
 ```bash
@@ -36,6 +64,7 @@ explicite et désactivés par défaut.
 
 - `docs/architecture.md` : comment les couches s'articulent
 - `docs/adr/` : les décisions difficilement réversibles, et pourquoi
+- `docs/roadmap.md` : pourquoi Desk existe, où il en est et où il va
 - `AGENTS.md` : la carte du dépôt, les commandes et les règles (pour les humains comme pour les agents IA)
 - `CONTRIBUTING.md` : comment proposer une modification
 

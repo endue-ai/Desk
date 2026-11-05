@@ -6,17 +6,17 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use desk_bridge::{
-    BridgeEvent, BridgeRequest, BridgeResponse, CatalogGetResult, CmdRecentResult, CmdRedoResult,
-    CmdToolsResult, CmdUndoResult, ConnectorInstance, ConnectorManifest, ConnectorStatus,
-    ConnectorSyncResult, DesignSystemPackage, FsHistoryResult, FsReadResult, FsRestoreResult,
-    FsUrlResult, FsWriteResult, InitDocument, InitGetResult, InitSettingKey, Item, ItemChange,
-    ItemPage, ItemQuery, KeysFile, PaletteResults, PermQueryResult, PermRequestResult, Permission,
-    PluginContributes, PluginListResult, PluginManifest, PluginStatsResult, ProfileFile,
-    RefusalReason, SettingsListResult, ShellOpenResult, StoreGetResult, ThemeBundle,
-    ThemeExportResult, ThemeIndex, ThemeMarketFetchResult, ThemeMarketListResult, ThemePackage,
-    ThemeType, ThemeVariant, UiSurfaceStateRequest, UiSurfaceStateResult, UniversalData,
-    UniversalSource, UniversalView, View, ViewGetResult, ViewListResult, ViewSource, ViewSummary,
-    manifest_problems, view_problems,
+    AccountStatusResult, BridgeEvent, BridgeRequest, BridgeResponse, CatalogGetResult,
+    CmdRecentResult, CmdRedoResult, CmdToolsResult, CmdUndoResult, ConnectorInstance,
+    ConnectorManifest, ConnectorStatus, ConnectorSyncResult, DesignSystemPackage, FsHistoryResult,
+    FsReadResult, FsRestoreResult, FsUrlResult, FsWriteResult, InitDocument, InitGetResult,
+    InitSettingKey, Item, ItemChange, ItemPage, ItemQuery, KeysFile, PaletteResults,
+    PermQueryResult, PermRequestResult, Permission, PluginContributes, PluginListResult,
+    PluginManifest, PluginStatsResult, ProfileFile, RefusalReason, SettingsListResult,
+    ShellOpenResult, StoreGetResult, ThemeBundle, ThemeExportResult, ThemeIndex,
+    ThemeMarketFetchResult, ThemeMarketListResult, ThemePackage, ThemeType, ThemeVariant,
+    UiSurfaceStateRequest, UiSurfaceStateResult, UniversalData, UniversalSource, UniversalView,
+    View, ViewGetResult, ViewListResult, ViewSource, ViewSummary, manifest_problems, view_problems,
 };
 use serde::Serialize;
 use serde::de::DeserializeOwned;
@@ -269,6 +269,7 @@ fn valid_vectors_roundtrip_through_generated_types() {
                 "CmdRedoResult" => roundtrip::<CmdRedoResult>(vector),
                 "CmdToolsResult" => roundtrip::<CmdToolsResult>(vector),
                 "ShellOpenResult" => roundtrip::<ShellOpenResult>(vector),
+                "AccountStatusResult" => roundtrip::<AccountStatusResult>(vector),
                 "UiSurfaceStateRequest" => roundtrip::<UiSurfaceStateRequest>(vector),
                 "UiSurfaceStateResult" => roundtrip::<UiSurfaceStateResult>(vector),
                 "PluginManifest" => roundtrip::<PluginManifest>(vector),
@@ -340,7 +341,8 @@ fn typed_view_results_say_where_each_view_came_from() {
     let validator = validators(&docs);
     let summary = |id: &str, source, plugin: Option<&str>| ViewSummary {
         id: id.to_owned(),
-        version: "0.1.0".to_owned(),
+        version: Some("0.1.0".to_owned()),
+        r#type: None,
         title: "Today".to_owned(),
         description: None,
         source,

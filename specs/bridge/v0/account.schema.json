@@ -1,0 +1,121 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://endue.ai/specs/bridge/v0/account.schema.json",
+  "title": "Desk bridge v0: account",
+  "description": "The person's endue ID on this desk (ADR 0089). Signing in follows the OAuth 2.0 device authorization grant (RFC 8628): the desk asks endue ID for a code, the person enters it in the browser, and the desk waits for the token in the background. The core keeps the token and sends it to the brain as its bearer token; it never crosses the bridge. Every call needs account:manage and answers the same AccountStatus; changes arrive as account.changed.",
+  "$defs": {
+    "AccountState": {
+      "description": "signed-out: no endue ID on this desk. signing-in: a code waits for the person in the browser. signed-in: the desk holds a token and the brain gets it.",
+      "type": "string",
+      "enum": ["signed-out", "signing-in", "signed-in"]
+    },
+    "AccountSignIn": {
+      "description": "Where and with which code the person finishes signing in, while the state is signing-in.",
+      "type": "object",
+      "properties": {
+        "userCode": {
+          "description": "The code to enter at verificationUri, for example WDJB-MJHT.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "verificationUri": {
+          "description": "The page where the person enters the code.",
+          "type": "string",
+          "format": "uri",
+          "minLength": 1
+        },
+        "verificationUriComplete": {
+          "description": "The same page with the code already in it, when endue ID offers one: the link to open.",
+          "type": "string",
+          "format": "uri",
+          "minLength": 1
+        },
+        "expiresAt": {
+          "description": "When the code stops working.",
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["userCode", "verificationUri", "expiresAt"],
+      "additionalProperties": false
+    },
+    "AccountStatus": {
+      "description": "The account as it is now. signIn is there while signing-in; problem says, for people, why the last sign-in did not go through.",
+      "type": "object",
+      "properties": {
+        "state": { "$ref": "#/$defs/AccountState" },
+        "signIn": { "$ref": "#/$defs/AccountSignIn" },
+        "problem": { "type": "string", "minLength": 1, "maxLength": 500 }
+      },
+      "required": ["state"],
+      "additionalProperties": false
+    },
+    "AccountParams": {
+      "description": "Parameters of every account.* call: the scope alone.",
+      "type": "object",
+      "properties": {
+        "scope": {
+          "$ref": "../../plugin/v0/permission.schema.json#/$defs/AccountManagePermission"
+        }
+      },
+      "required": ["scope"],
+      "additionalProperties": false
+    },
+    "AccountStatusRequest": {
+      "description": "The account as it is now.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "account.status" },
+        "params": { "$ref": "#/$defs/AccountParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "AccountSignInRequest": {
+      "description": "Start signing in: the answer is signing-in with the code and the page to open. A sign-in already under way answers as it is; one on a desk that is signed in starts over.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "account.signIn" },
+        "params": { "$ref": "#/$defs/AccountParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "AccountSignOutRequest": {
+      "description": "Forget the token on this desk and stop any sign-in under way. The brain gets no token after it.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "account.signOut" },
+        "params": { "$ref": "#/$defs/AccountParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "AccountStatusResult": {
+      "description": "Result of account.status.",
+      "$ref": "#/$defs/AccountStatus"
+    },
+    "AccountSignInResult": {
+      "description": "Result of account.signIn: signing-in with the code, or why it could not start (problem).",
+      "$ref": "#/$defs/AccountStatus"
+    },
+    "AccountSignOutResult": {
+      "description": "Result of account.signOut: signed-out.",
+      "$ref": "#/$defs/AccountStatus"
+    },
+    "AccountChangedEvent": {
+      "description": "The account changed: a sign-in began, finished or failed, or the desk signed out. Sent to holders of account:manage.",
+      "type": "object",
+      "properties": {
+        "event": { "const": "account.changed" },
+        "data": { "$ref": "#/$defs/AccountStatus" }
+      },
+      "required": ["event", "data"],
+      "additionalProperties": false
+    }
+  }
+}

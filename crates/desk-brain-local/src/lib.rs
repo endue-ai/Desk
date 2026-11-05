@@ -20,7 +20,7 @@ use std::sync::{Mutex, MutexGuard};
 
 use desk_brain::{
     Brain, BrainFailure, CreateSessionRequest, Lease, LeaseAcquireRequest, LeaseRenewRequest,
-    Session, StopReason, ToolCall, ToolResultRequest, TurnEvent, TurnRequest,
+    Session, SpaceList, StopReason, ToolCall, ToolResultRequest, TurnEvent, TurnRequest,
 };
 use serde_json::Value;
 
@@ -356,6 +356,13 @@ impl Brain for LocalBrain {
 
     fn release_lease(&self, session_id: &str, lease_id: &str) -> Result<(), BrainFailure> {
         self.change(|state, now| state.session_mut(session_id)?.release(lease_id, now))
+    }
+
+    /// No spaces on this machine, but asking reaches Ollama: `Unreachable` while it does not
+    /// answer, which is how the desk knows whether the local brain can stand in (ADR 0094).
+    fn list_spaces(&self) -> Result<SpaceList, BrainFailure> {
+        ollama::version(&self.endpoint)?;
+        Ok(SpaceList { items: Vec::new() })
     }
 }
 

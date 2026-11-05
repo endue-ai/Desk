@@ -1,0 +1,5 @@
+{
+  "target": "AccountStatusResult",
+  "description": "the desk holds a token; the token itself is not in the answer",
+  "instance": { "state": "signed-in" }
+}

@@ -1,0 +1,61 @@
+/* Eris's errands (eris/errand.ts, ADR 0089): the spark that carries a hand-off to a plugin and back. */
+.errand {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: var(--z-float-top);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+
+.errand-spark {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  border-radius: var(--radius-full);
+  background: radial-gradient(
+    circle,
+    var(--desk-eris-white) 0%,
+    var(--desk-eris-gold-light) 38%,
+    color-mix(in srgb, var(--desk-eris) 40%, transparent) 62%,
+    transparent 72%
+  );
+  box-shadow: 0 0 18px color-mix(in srgb, var(--desk-eris) 55%, transparent);
+}
+.errand[data-leg="there"] .errand-spark { animation: errand-work var(--motion-slow) ease-in-out infinite alternate; }
+.errand[data-ok="false"] .errand-spark { filter: grayscale(0.8); }
+
+.errand-label {
+  display: inline-flex;
+  flex-direction: column;
+  padding: 3px 10px;
+  border: 1px solid color-mix(in srgb, var(--desk-eris) 45%, var(--desk-border));
+  border-radius: var(--radius-lg);
+  background: var(--desk-popover);
+  color: var(--desk-text);
+  font-size: var(--text-xs);
+  line-height: 1.3;
+  white-space: nowrap;
+}
+.errand-label small { color: var(--desk-text-muted); font-size: var(--text-xs); }
+.errand[data-leg="back"] .errand-label { opacity: 0.7; }
+
+/* The plugin's window while Eris waits on it. */
+.is-eris-visiting {
+  outline: 2px solid color-mix(in srgb, var(--desk-eris) 70%, transparent);
+  outline-offset: 2px;
+  box-shadow: 0 0 28px color-mix(in srgb, var(--desk-eris) 35%, transparent);
+  transition: box-shadow var(--motion-fast) ease, outline-color var(--motion-fast) ease;
+}
+
+@keyframes errand-work {
+  from { transform: scale(0.85); }
+  to { transform: scale(1.15); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .errand[data-leg="there"] .errand-spark { animation: none; }
+}

@@ -952,7 +952,9 @@ dependencies = [
 name = "desk-app"
 version = "0.0.0"
 dependencies = [
+ "desk-brain",
  "desk-brain-endue",
+ "desk-brain-local",
  "desk-bridge",
  "desk-core",
  "desk-index",
@@ -987,6 +989,7 @@ dependencies = [
  "desk-brain",
  "serde",
  "serde_json",
+ "ureq",
 ]
 
 [[package]]
@@ -1019,7 +1022,9 @@ dependencies = [
  "desk-mcp",
  "desk-plugin-host",
  "desk-trace",
+ "flate2",
  "serde_json",
+ "zip",
 ]
 
 [[package]]
@@ -1029,6 +1034,7 @@ dependencies = [
  "base64 0.23.1",
  "desk-brain",
  "desk-brain-endue",
+ "desk-brain-local",
  "desk-bridge",
  "desk-index",
  "desk-plugin-host",
@@ -7173,6 +7179,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "848dad21639597378c3be94c59fd4de683f0f6d8a5387575896e1245737d4f37"
 dependencies = [
  "crc32fast",
+ "flate2",
  "getrandom 0.4.3",
  "indexmap 2.14.2",
  "memchr",
