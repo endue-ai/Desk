@@ -73,6 +73,6 @@ the person's to-dos.
 ## More Information
 
 Issue #470. Specs: `specs/agent/v0`, `specs/item/v0` (`RunItem`), `specs/bridge/v0/agent.schema.json`.
-Code: `crates/desk-core/src/{agent_runs,core_agents}.rs`, the hooks in `core_cmd.rs`, `approvals.rs` and
+Code: `crates/desk-core/src/{agent_runs,agent_registry}.rs`, the hooks in `core_cmd.rs`, `approvals.rs` and
 `core_directory.rs`; `entriesFromItems` in `packages/plugin-sdk`; `plugins/fleet`; `plugins/permissions/ui/runs.js`;
 `plugins/local-agents/ui/report.js`. Builds on ADR 0032, 0072, 0078, 0084, 0087, 0089 and 0099.

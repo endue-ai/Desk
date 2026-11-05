@@ -3,7 +3,7 @@
 //! `running` from cmd.invoke, `waiting` while held for the person's approval (with the approval's
 //! id), and ends `done`, `failed` or `cancelled` with its answer cut short. The brain directory's A2A
 //! tasks become runs of their target agent when brain.tasks.list answers, and a plugin reports the
-//! runs of the agents it runs with agent.report (`core_agents`). This session's runs live here and,
+//! runs of the agents it runs with agent.report (`agent_registry`). This session's runs live here and,
 //! when the desk has one, in the item index too.
 
 use std::cell::RefCell;
