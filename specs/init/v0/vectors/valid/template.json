@@ -9,6 +9,7 @@
     },
     "settings": {},
     "agents": {},
+    "mcp": {},
     "sync": {
       "enabled": false
     }
