@@ -10,6 +10,7 @@ and `src/` mounts the desk shell (`mountDesk`) and connects the bridge.
 | `src/open-files.ts`, `src-tauri/src/open_files.rs` | Startup and running OS file-open queue, consumed after runtime readiness |
 | `src/shell-bridge.ts` | The shell's `ShellBridge` over the core: store, perm, `brain.*` and the agent directory |
 | `src/startup.ts`, `src-tauri/src/trace.rs` | `DESK_TRACE=1`: the start-up trace in the data folder (`trace.json`, `crates/desk-trace`), the runtime's phases sent with `desk_trace` |
+| `src/crashes.ts`, `src-tauri/src/crash.rs` | Local crash reports (#322, `crates/desk-crash`): the panic hook and the window's uncaught errors (`desk_crash`) write `crashes/*.json`, redacted; the next start's card shows the newest once (`take_last_crash`); `DESK_E2E_PANIC=1` panics after the ready line |
 | `src-tauri/src/lib.rs` | Builds the core; the runtime (`desk`) holds `plugin:manage`, `cmd:invoke`, `perm:manage` (desk.describe, ADR 0075), `brain:converse`, `connector:manage` and `view:manage` |
 | `src-tauri/src/commands/` | Bridge forwarding, readiness logging (the trace's ready line; marks last-start.json), consuming OS file-open paths, and the start (ADR 0061): `--safe`/`DESK_SAFE=1` or a crash loop starts safe mode, `desk_start` tells the shell, `desk_relaunch` starts again without it |
 | `src-tauri/capabilities/` | Main-window bridge/readiness/start-up phases, event listeners and native file picker |
