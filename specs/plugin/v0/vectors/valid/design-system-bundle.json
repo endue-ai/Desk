@@ -9,7 +9,10 @@
       "version": "1.0.0",
       "kind": "design-system",
       "designSystem": {
-        "components": { "button": { "shape": "full", "primary": "soft" }, "badge": { "style": "solid" } }
+        "components": {
+          "button": { "shape": "full", "primary": "soft" },
+          "badge": { "style": "solid" }
+        }
       }
     },
     "files": {}

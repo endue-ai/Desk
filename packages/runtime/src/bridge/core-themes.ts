@@ -64,7 +64,8 @@ export function themeHandlers(
       return install(manifest, { ...bundle.files });
     },
     "theme.export": ({ theme, inline }) => {
-      const kind = (p: PluginInfo) => p.manifest?.kind === "theme" || p.manifest?.kind === "design-system";
+      const kind = (p: PluginInfo) =>
+        p.manifest?.kind === "theme" || p.manifest?.kind === "design-system";
       const info = plugins.find((p) => p.id === theme && kind(p));
       if (!info?.manifest) throw new Error(`no theme ${theme}`);
       const ext = info.manifest.kind === "design-system" ? "desk-design" : "desk-theme";

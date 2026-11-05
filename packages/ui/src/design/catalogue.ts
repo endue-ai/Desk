@@ -27,7 +27,7 @@ export const VOCABULARY = {
   DesignToastStyle: ["outline", "soft", "inverse"],
   DesignBadgeStyle: ["soft", "solid", "outline"],
   DesignTableRows: ["lines", "striped", "plain"],
-  DesignTableHeader: ["muted", "plain"],
+  DesignTableHeader: ["plain", "muted"],
   DesignThickness: ["thin", "normal", "thick"],
   DesignFocusOffset: ["none", "near", "far"],
 } as const;
@@ -102,7 +102,7 @@ export const CATALOGUE = {
   tooltip: { shape: p("DesignShape", "md"), elevation: p("DesignElevation", "sm") },
   table: {
     rows: p("DesignTableRows", "lines"),
-    header: p("DesignTableHeader", "muted"),
+    header: p("DesignTableHeader", "plain"),
     size: p("DesignSize", "sm"),
   },
   progress: { thickness: p("DesignThickness", "normal"), shape: p("DesignShape", "full") },

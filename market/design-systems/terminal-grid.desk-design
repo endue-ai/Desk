@@ -1,0 +1,82 @@
+{
+  "format": "desk-theme/1",
+  "manifest": {
+    "id": "market.terminal-grid",
+    "name": "Terminal grid",
+    "version": "1.0.0",
+    "kind": "design-system",
+    "description": "Square and dense like a tiling window manager: ghost buttons, underlined tabs, a bar on the active row, no shadows.",
+    "designSystem": {
+      "author": "Team endue",
+      "license": "CC0-1.0",
+      "tags": [
+        "square",
+        "dense",
+        "keyboard"
+      ],
+      "components": {
+        "button": {
+          "shape": "none",
+          "size": "xs",
+          "padding": "tight",
+          "secondary": "ghost"
+        },
+        "iconButton": {
+          "shape": "none",
+          "size": "sm"
+        },
+        "field": {
+          "shape": "none",
+          "size": "sm"
+        },
+        "tabs": {
+          "style": "underline",
+          "size": "xs"
+        },
+        "card": {
+          "shape": "none",
+          "padding": "tight"
+        },
+        "row": {
+          "selection": "bar",
+          "shape": "none",
+          "size": "xs"
+        },
+        "menu": {
+          "shape": "none",
+          "elevation": "none"
+        },
+        "dialog": {
+          "shape": "none",
+          "elevation": "md",
+          "scrim": "dim",
+          "padding": "normal"
+        },
+        "toast": {
+          "shape": "none",
+          "elevation": "none"
+        },
+        "badge": {
+          "shape": "none",
+          "style": "outline"
+        },
+        "tooltip": {
+          "shape": "none",
+          "elevation": "none"
+        },
+        "table": {
+          "size": "xs"
+        },
+        "progress": {
+          "thickness": "thin",
+          "shape": "none"
+        },
+        "focus": {
+          "width": "thin",
+          "offset": "none"
+        }
+      }
+    }
+  },
+  "files": {}
+}

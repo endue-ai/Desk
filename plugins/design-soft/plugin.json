@@ -58,8 +58,7 @@
         "shape": "full"
       },
       "table": {
-        "rows": "striped",
-        "header": "plain"
+        "rows": "striped"
       },
       "progress": {
         "thickness": "thick"

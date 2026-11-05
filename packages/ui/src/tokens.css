@@ -213,7 +213,7 @@
   --desk-card-bg: var(--desk-card);
   --desk-card-border: var(--desk-border);
   --desk-card-shadow: none;
-  --desk-row-radius: var(--desk-radius-md);
+  --desk-row-radius: var(--desk-radius-sm);
   --desk-row-padding-y: 6px;
   --desk-row-padding-x: 10px;
   --desk-row-active-bg: var(--desk-hover);
@@ -246,10 +246,10 @@
   --desk-badge-tracking: normal;
   --desk-table-row-border: var(--desk-border);
   --desk-table-stripe-bg: transparent;
-  --desk-table-header-bg: var(--desk-muted);
+  --desk-table-header-bg: transparent;
   --desk-table-cell-padding-y: 6px;
   --desk-table-cell-padding-x: 10px;
-  --desk-progress-thickness: 4px;
+  --desk-progress-thickness: 6px;
   --desk-progress-radius: var(--desk-radius-full);
   --desk-focus-width: 2px;
   --desk-focus-offset: 2px;

@@ -194,7 +194,7 @@
       "type": "object",
       "properties": {
         "rows": { "description": "Default: lines.", "$ref": "#/$defs/DesignTableRows" },
-        "header": { "description": "Default: muted.", "$ref": "#/$defs/DesignTableHeader" },
+        "header": { "description": "Default: plain.", "$ref": "#/$defs/DesignTableHeader" },
         "size": { "description": "Default: sm.", "$ref": "#/$defs/DesignSize" }
       },
       "additionalProperties": false
@@ -313,9 +313,9 @@
       "enum": ["lines", "striped", "plain"]
     },
     "DesignTableHeader": {
-      "description": "A table's header row: muted or plain.",
+      "description": "A table's header row: plain or muted.",
       "type": "string",
-      "enum": ["muted", "plain"]
+      "enum": ["plain", "muted"]
     },
     "DesignThickness": {
       "description": "A line's thickness: thin, normal or thick.",

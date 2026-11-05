@@ -23,9 +23,9 @@
   box-shadow: var(--desk-shadow-lg);
 }
 
-/* `.shell button { color: inherit }` outranks `.btn-primary`: the studio's filled buttons keep their ink. */
+/* The studio's main buttons keep the design system's ink for the main action. */
 .theme-studio .btn-primary {
-  color: var(--desk-primary-foreground);
+  color: var(--desk-button-primary-fg);
 }
 
 .theme-studio-head {

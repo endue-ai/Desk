@@ -73,7 +73,7 @@ export function mountDesignStudio(host: HTMLElement, deps: DesignStudioDeps): De
   const note = h("p", { class: "theme-note", "aria-live": "polite" });
   const transferEl = h("div", { class: "theme-gallery-actions" });
   const search = h("input", {
-    class: "theme-search",
+    class: "input theme-search",
     type: "search",
     "aria-label": tr("search"),
     placeholder: tr("search"),

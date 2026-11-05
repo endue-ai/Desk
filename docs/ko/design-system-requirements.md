@@ -71,7 +71,7 @@
 | 토스트 | `toast` | `style` outline · soft · inverse, `shape` lg · none · sm · md · full, `elevation` md · none · sm · lg | `<desk-toast>` |
 | 배지 | `badge` | `style` soft · solid · outline, `shape` full · none · sm · md, `case` none · uppercase | `.badge` · `.desk-badge` |
 | 툴팁 | `tooltip` | `shape` md · none · sm · full, `elevation` sm · none · md | `.tooltip` · `.desk-tooltip` |
-| 표 | `table` | `rows` lines · striped · plain, `header` muted · plain, `size` sm · xs · md | `<desk-table>` · `.desk-table` |
+| 표 | `table` | `rows` lines · striped · plain, `header` plain · muted, `size` sm · xs · md | `<desk-table>` · `.desk-table` |
 | 진행 | `progress` | `thickness` normal · thin · thick, `shape` full · none | `<desk-progress>` · `.desk-progress` |
 | 포커스 | `focus` | `width` normal · thin · thick, `offset` near · none · far | 모든 컴포넌트의 `:focus-visible` |
 

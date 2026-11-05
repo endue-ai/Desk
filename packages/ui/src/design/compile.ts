@@ -213,7 +213,7 @@ function marks(r: FullRecipe, out: Tokens) {
   const [y, x] = SPACING[t.size] as string[];
   out.tableCellPaddingY = y as string;
   out.tableCellPaddingX = x as string;
-  out.progressThickness = { thin: "2px", normal: "4px", thick: "8px" }[
+  out.progressThickness = { thin: "3px", normal: "6px", thick: "10px" }[
     r.progress.thickness
   ] as string;
   out.progressRadius = RADIUS[r.progress.shape] as string;

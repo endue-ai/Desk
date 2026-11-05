@@ -18,20 +18,52 @@
         "case": "uppercase",
         "primary": "outline"
       },
-      "iconButton": { "shape": "none", "style": "outline" },
-      "field": { "style": "underline" },
-      "check": { "accent": "text" },
-      "tabs": { "style": "underline" },
-      "card": { "shape": "none" },
-      "row": { "selection": "bar", "shape": "none" },
-      "menu": { "shape": "none", "elevation": "sm" },
-      "dialog": { "shape": "none", "scrim": "dim" },
-      "toast": { "shape": "none" },
-      "badge": { "style": "outline", "shape": "none", "case": "uppercase" },
-      "tooltip": { "shape": "none" },
-      "table": { "header": "plain" },
-      "progress": { "thickness": "thin", "shape": "none" },
-      "focus": { "offset": "none" }
+      "iconButton": {
+        "shape": "none",
+        "style": "outline"
+      },
+      "field": {
+        "style": "underline"
+      },
+      "check": {
+        "accent": "text"
+      },
+      "tabs": {
+        "style": "underline"
+      },
+      "card": {
+        "shape": "none"
+      },
+      "row": {
+        "selection": "bar",
+        "shape": "none"
+      },
+      "menu": {
+        "shape": "none",
+        "elevation": "sm"
+      },
+      "dialog": {
+        "shape": "none",
+        "scrim": "dim"
+      },
+      "toast": {
+        "shape": "none"
+      },
+      "badge": {
+        "style": "outline",
+        "shape": "none",
+        "case": "uppercase"
+      },
+      "tooltip": {
+        "shape": "none"
+      },
+      "progress": {
+        "thickness": "thin",
+        "shape": "none"
+      },
+      "focus": {
+        "offset": "none"
+      }
     }
   }
 }

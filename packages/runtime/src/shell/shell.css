@@ -94,8 +94,11 @@ body {
 
 .shell button {
   font: inherit;
-  color: inherit;
   cursor: pointer;
+}
+/* Without specificity of its own, so the design system's kit (kit.css) colours its buttons. */
+:where(.shell) button {
+  color: inherit;
 }
 
 .shell :focus-visible {

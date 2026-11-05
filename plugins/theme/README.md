@@ -9,7 +9,7 @@
 | `desk.theme.contrast` | `system` | `system`, `normal`, `high` |
 | `desk.theme.motion` | `system` | `system`, `reduce`, `full` |
 | `desk.theme.active` | `""` (endue) | the id of an installed theme plugin (kind `theme`, ADR 0056) |
-| `desk.theme.markets` | this repository's `market/themes/index.json` | https URLs of the market indexes the studio's Market tab lists, in order: the first to list an id wins (ADR 0060) |
+| `desk.theme.markets` | this repository's `market/themes/index.json` and `market/design-systems/index.json` | https URLs of the look market indexes the theme and design system studios' Market tabs list, in order: the first to list an id wins (ADR 0060, ADR 0091) |
 
 Themes: `desk.theme.dark` and `desk.theme.light` carry every role colour of the design system, the
 `colors` of `@endue-ai/ui` (`docs/design-system.md`): surfaces, text, the primary action, four statuses
