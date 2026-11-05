@@ -276,18 +276,44 @@ describe("the shell bridge over the core", () => {
     ]);
   });
 
-  test("brain.status maps brain.status and brain.use answers it unchanged", async () => {
-    let status: BrainStatusResult = { mode: "cloud", credits: 12 };
+  test("brain.status maps brain.status with the brain the desk chose and a local fallback", async () => {
+    let status: BrainStatusResult = { mode: "cloud", credits: 12, brain: "endue" };
     const { bridge, calls } = setup({ "brain.status": () => status });
-    await expect(bridge.brain.status()).resolves.toEqual({ mode: "cloud", credits: 12 });
+    await expect(bridge.brain.status()).resolves.toEqual({
+      mode: "cloud",
+      credits: 12,
+      brain: "endue",
+    });
     status = { mode: "cloud" };
     await expect(bridge.brain.status()).resolves.toEqual({ mode: "cloud", credits: 0 });
-    await expect(bridge.brain.use("local")).resolves.toEqual({ mode: "cloud", credits: 0 });
-    status = { mode: "local", model: "llama-3.2-3b" };
+    status = { mode: "local", model: "llama3.2", brain: "echo", fallback: true };
     await expect(bridge.brain.status()).resolves.toEqual(status);
-    status = { mode: "offline" };
-    await expect(bridge.brain.use("cloud")).resolves.toEqual({ mode: "offline" });
-    expect(calls()).toEqual(Array(5).fill({ method: "brain.status", params: { scope: SCOPE } }));
+    status = { mode: "offline", brain: "local" };
+    await expect(bridge.brain.status()).resolves.toEqual(status);
+    expect(calls()).toEqual(Array(4).fill({ method: "brain.status", params: { scope: SCOPE } }));
+  });
+
+  test("brain.use sets the runtime's brain.use setting and answers brain.status (ADR 0094)", async () => {
+    let chosen: unknown;
+    const { bridge, calls } = setup({
+      "settings.set": ({ value }) => {
+        chosen = value;
+        return {};
+      },
+      "brain.status": () =>
+        chosen === "local"
+          ? { mode: "local", model: "llama3.2", brain: "local" }
+          : { mode: "offline", brain: "endue" },
+    });
+    await expect(bridge.brain.use("local")).resolves.toEqual({
+      mode: "local",
+      model: "llama3.2",
+      brain: "local",
+    });
+    expect(calls()).toEqual([
+      { method: "settings.set", params: { key: "brain.use", value: "local" } },
+      { method: "brain.status", params: { scope: SCOPE } },
+    ]);
   });
 
   test("audio.levels is nine silent bands for both voices", () => {

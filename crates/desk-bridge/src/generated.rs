@@ -3598,12 +3598,28 @@ pub enum BrainStatusResult {
     BrainStatusOffline(BrainStatusOffline),
 }
 
-/// A brain on this machine, named by the model it runs.
+/// A brain the desk can choose for Eris (ADR 0094): endue (endue AI), local (Ollama on this machine) or echo (examples/brain-echo).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum BrainName {
+    #[serde(rename = "endue")]
+    Endue,
+    #[serde(rename = "local")]
+    Local,
+    #[serde(rename = "echo")]
+    Echo,
+}
+
+/// A brain on this machine, named by the model it runs. fallback is true when it answers in place of the chosen brain, which cannot be reached now (ADR 0094).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct BrainStatusLocal {
     pub mode: BrainStatusLocalMode,
     pub model: String,
+    /// The brain the desk chose. Absent from desks that cannot choose.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub brain: Option<BrainName>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fallback: Option<bool>,
 }
 
 /// A brain over the network, such as endue AI. credits is left out while the brain reports none.
@@ -3614,6 +3630,9 @@ pub struct BrainStatusCloud {
     /// Credits left.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub credits: Option<u64>,
+    /// The brain the desk chose. Absent from desks that cannot choose.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub brain: Option<BrainName>,
 }
 
 /// The brain cannot be reached now, or the desk has none.
@@ -3621,6 +3640,9 @@ pub struct BrainStatusCloud {
 #[serde(deny_unknown_fields)]
 pub struct BrainStatusOffline {
     pub mode: BrainStatusOfflineMode,
+    /// The brain the desk chose, which cannot be reached now. Absent from desks that cannot choose.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub brain: Option<BrainName>,
 }
 
 /// Progress of a brain.say or brain.ask turn.

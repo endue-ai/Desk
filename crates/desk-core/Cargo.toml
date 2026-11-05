@@ -29,6 +29,7 @@ yaml_serde.workspace = true
 
 [dev-dependencies]
 desk-brain-endue.workspace = true
+desk-brain-local.workspace = true
 
 [lints]
 workspace = true

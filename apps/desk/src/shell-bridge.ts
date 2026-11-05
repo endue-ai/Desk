@@ -50,7 +50,9 @@ function permissionOf(scope: string): { permission: Permission; reason: string }
 
 /** The runtime's BrainStatus from the core's: credits the brain does not report count as none. */
 function statusOf(status: BrainStatusResult): BrainStatus {
-  return status.mode === "cloud" ? { mode: "cloud", credits: status.credits ?? 0 } : status;
+  if (status.mode !== "cloud") return status;
+  const { credits, brain } = status;
+  return { mode: "cloud", credits: credits ?? 0, ...(brain ? { brain } : {}) };
 }
 
 /** A directory answer, which the bridge passes through as the brain contract's type. */
@@ -200,8 +202,11 @@ export function shellBridge(core: BridgeClient): ShellBridge {
     },
     brain: {
       status,
-      // Switching brains is not served yet: the desk keeps the brain it has.
-      use: () => status(),
+      // The choice is the runtime's own setting, which the core reads every turn (ADR 0094).
+      async use(brain) {
+        await core.call("settings.set", { key: "brain.use", value: brain });
+        return status();
+      },
       say: (text, onStep) => say(core, text, onStep),
     },
     account: {

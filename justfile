@@ -20,7 +20,7 @@ dev:
     DESK_DEV_PLUGINS={{quote(env("DESK_DEV_PLUGINS", dev_examples))}} \
     pnpm --filter @endue-ai/desk-app tauri dev
 
-# Run examples/brain-echo, the smallest brain, where the app looks by default (http://127.0.0.1:8787/v0)
+# Run examples/brain-echo, the smallest brain, where the app's echo brain looks (http://127.0.0.1:8787/v0)
 brain-echo port="8787":
     node examples/brain-echo/server.mjs --port {{port}}
 

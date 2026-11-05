@@ -1,5 +1,6 @@
 //! The Tauri shell: windows, the webview and the plugin URL scheme. Everything else lives in desk-core.
 
+mod brains;
 mod commands;
 mod events;
 mod file_urls;
@@ -16,7 +17,6 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
-use desk_brain_endue::HttpBrain;
 use desk_bridge::{
     AccountManagePermission, AgentsManagePermission, BrainConversePermission, CmdInvokePermission,
     ConnectorManagePermission, FsReadPermission, FsWritePermission, PermManagePermission,
@@ -25,16 +25,13 @@ use desk_bridge::{
 };
 use desk_core::account::{Account, AccountOptions, DEFAULT_ID_URL, NetIdClient};
 use desk_core::{
-    BrainMode, BrainOptions, Core, LocalAgents, LocalAgentsOptions, MockRemote, PluginWatcher,
-    Roots, SyncError, SyncOutcome, ThemeWatcher, ViewWatcher,
+    Core, LocalAgents, LocalAgentsOptions, MockRemote, PluginWatcher, Roots, SyncError,
+    SyncOutcome, ThemeWatcher, ViewWatcher,
 };
 use tauri::{Emitter, Manager};
 
 /// The caller id of the web runtime itself. Plugins call under their own ids.
 pub const RUNTIME_CALLER: &str = "desk";
-
-/// Where the brain lives unless `DESK_BRAIN_URL` says otherwise: examples/brain-echo (`just brain-echo`).
-pub const DEFAULT_BRAIN_URL: &str = "http://127.0.0.1:8787/v0";
 
 /// Where init.yaml lives under home unless `DESK_INIT` names another file, like `~/.emacs.d/init.el`.
 pub const INIT_FILE: &str = ".desk/init.yaml";
@@ -127,21 +124,9 @@ pub fn run() {
             // read from their own folders, imported ones kept in <data>/agents.
             let agents = LocalAgentsOptions::new(&home_dir(), Some(data.join("agents")));
             core = core.with_local_agents(LocalAgents::new(agents));
-            let url =
-                std::env::var("DESK_BRAIN_URL").unwrap_or_else(|_| DEFAULT_BRAIN_URL.to_owned());
-            match HttpBrain::new(&url) {
-                Ok(brain) => {
-                    let brain = brain.with_token_source(Arc::new(move || account.token()));
-                    // An HTTP brain is endue AI or brain-echo: brain.status names it cloud.
-                    let options = BrainOptions {
-                        state_file: Some(data.join("brain.json")),
-                        mode: BrainMode::Cloud,
-                        ..BrainOptions::default()
-                    };
-                    core = core.with_brain(Arc::new(brain), options);
-                }
-                Err(why) => eprintln!("endue Desk: no brain ({why}); brain.say is unavailable"),
-            }
+            // Eris's brain is the one the runtime's setting chooses, endue AI by default, and the
+            // local brain stands in while a remote one cannot be reached (ADR 0094).
+            core = core.with_brains(brains::brains(&data, account));
             // The desk's own updates (ADR 0054), when this build carries an updater key.
             let updater = update::updater(app.handle(), &data);
             if let Some(updater) = &updater {

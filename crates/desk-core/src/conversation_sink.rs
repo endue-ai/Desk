@@ -17,6 +17,8 @@ pub(crate) struct Sink<'a> {
     pub(crate) answer: String,
     pub(crate) completed: bool,
     pub(crate) failed: bool,
+    /// Said first, once the brain starts its answer (the fallback line, ADR 0094).
+    pub(crate) prefix: Option<String>,
 }
 
 impl<'a> Sink<'a> {
@@ -29,6 +31,7 @@ impl<'a> Sink<'a> {
             answer: String::new(),
             completed: false,
             failed: false,
+            prefix: None,
         }
     }
 
@@ -72,6 +75,11 @@ impl<'a> Sink<'a> {
             TurnEvent::TurnStarted(_) => {
                 self.answer.clear();
                 self.publish(BrainTurnKind::Started, None);
+                if let Some(prefix) = self.prefix.take() {
+                    let said = format!("{prefix} ");
+                    self.answer.push_str(&said);
+                    self.publish(BrainTurnKind::Delta, Some(&said));
+                }
             }
             TurnEvent::TextDelta(delta) => {
                 self.answer.push_str(&delta.text);

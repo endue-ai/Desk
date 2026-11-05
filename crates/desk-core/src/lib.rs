@@ -13,6 +13,8 @@ mod agents;
 mod approval_action;
 mod approval_preview;
 mod approvals;
+mod brain_choice;
+mod brain_options;
 mod calendar_items;
 mod conversation;
 mod conversation_sink;
@@ -53,6 +55,7 @@ mod core_undo;
 mod core_update;
 mod core_views;
 mod core_wasm;
+mod eris_lines;
 mod events;
 mod grants;
 mod handler;
@@ -83,14 +86,16 @@ mod views_watch;
 mod watch;
 
 pub use agents::agent_caller;
-pub use conversation::{
-    BrainMode, BrainOptions, FAILED_LINE, MAX_STEPS, OFFLINE_LINE, READ_ONLY_LINE, SIGN_IN_LINE,
-    TOO_MANY_LINE,
-};
+pub use brain_choice::{Brains, DEFAULT_LOCAL_MODEL, LocalBrains};
+pub use brain_options::{BrainMode, BrainOptions};
 pub use core_fs_url::FileUrl;
 pub use core_perm::{Prompter, RefuseAll};
 pub use core_state::{QUARANTINED_KEY, SafeMode, SafeReason};
 pub use core_themes::{ThemeFetch, ThemeWatcher};
+pub use eris_lines::{
+    FAILED_LINE, FALLBACK_LINE, MAX_STEPS, OFFLINE_LINE, READ_ONLY_LINE, SIGN_IN_LINE,
+    TOO_MANY_LINE,
+};
 pub use events::{Delivery, EventBus};
 pub use handler::{Core, Roots};
 pub use init::{INIT_TEMPLATE, INIT_VERSION, Init, PluginSetup, SyncSetup};

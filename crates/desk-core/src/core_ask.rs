@@ -28,12 +28,19 @@ use crate::perm::Target;
 impl Core {
     pub(crate) fn brain_ask(&self, caller: &str, params: BrainAskParams) -> Answer {
         self.check(caller, &Permission::BrainAsk(params.scope), &Target::None)?;
-        let conversation = self.conversation.as_ref().ok_or_else(|| {
+        let picked = self.talking().ok_or_else(|| {
             error(
                 ErrorCode::Unsupported,
                 "no brain is configured for this desk".to_owned(),
             )
         })?;
+        // An ask goes to the local brain while the chosen one is out of reach (ADR 0094).
+        let conversation = match picked.fallback {
+            Some(fallback) if !picked.conversation.reachable() && fallback.to.reachable() => {
+                fallback.to
+            }
+            _ => picked.conversation,
+        };
         let prompt = params.prompt.trim();
         if prompt.is_empty() {
             return Err(error(
@@ -43,7 +50,7 @@ impl Core {
         }
         let schema = compile(&params.tool.schema)?;
         let ask = Ask {
-            conversation: Arc::clone(conversation),
+            conversation: Arc::clone(&conversation),
             caller: caller.to_owned(),
             turn: conversation.next_ask(),
             prompt: prompt.to_owned(),

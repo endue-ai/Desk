@@ -153,8 +153,11 @@ export function browserBridge(options: BrowserBridgeOptions): BrowserBridge {
       async status() {
         return brain;
       },
-      async use(mode) {
-        brain = mode === "local" ? { mode, model: "llama-3.2-3b" } : { mode, credits: 1200 };
+      async use(chosen) {
+        brain =
+          chosen === "local"
+            ? { mode: "local", model: "llama-3.2-3b", brain: chosen }
+            : { mode: "cloud", credits: 1200, brain: chosen };
         return brain;
       },
       async say(text, onStep): Promise<BrainReply> {

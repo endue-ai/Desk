@@ -1,4 +1,5 @@
-//! The brain side of `Core`: brain.say, and opening a session on this desk.
+//! The brain side of `Core`: brain.say, and opening a session on this desk. A desk has one brain
+//! (`with_brain`) or chooses among several (`with_brains`, brain_choice.rs, ADR 0094).
 
 use std::sync::Arc;
 
@@ -23,15 +24,15 @@ impl Core {
     /// Continue `session_id` on this desk, taking its lease over from any other desk. The desk that
     /// held it becomes read-only.
     pub fn open_session(&self, session_id: &str) -> Result<(), LeaseError> {
-        self.conversation
-            .as_ref()
+        self.talking()
             .ok_or(LeaseError::NoSession)?
+            .conversation
             .open(session_id)
     }
 
     /// The brain session this desk continues, once it has one.
     pub fn brain_session(&self) -> Option<String> {
-        self.conversation.as_ref()?.session_id()
+        self.talking()?.conversation.session_id()
     }
 
     pub(crate) fn brain_say(&self, caller: &str, params: BrainSayParams) -> Answer {
@@ -40,7 +41,7 @@ impl Core {
             &Permission::BrainConverse(params.scope),
             &Target::None,
         )?;
-        let conversation = self.conversation.as_ref().ok_or_else(|| {
+        let picked = self.talking().ok_or_else(|| {
             error(
                 ErrorCode::Unsupported,
                 "no brain is configured for this desk".to_owned(),
@@ -54,7 +55,7 @@ impl Core {
             ));
         }
         json(BrainSayResult {
-            turn_id: conversation.say(text),
+            turn_id: picked.conversation.say(text, picked.fallback),
         })
     }
 }
