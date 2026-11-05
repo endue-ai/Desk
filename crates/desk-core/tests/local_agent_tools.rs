@@ -172,7 +172,7 @@ fn brain_echo_asks_the_local_agent_a_line_names() {
     let tool = steps
         .iter()
         .find(|s| s["kind"] == "tool")
-        .expect("a hand-off");
+        .unwrap_or_else(|| panic!("no hand-off in {steps:?}"));
     assert_eq!(tool["tool"]["command"], ASK);
     assert!(steps.iter().any(|s| s["kind"] == "tool-result"));
     let text: String = steps.iter().filter_map(|s| s["text"].as_str()).collect();

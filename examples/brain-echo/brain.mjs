@@ -145,7 +145,7 @@ function namedTool(body, said) {
 }
 
 /** The local agents a message may name (plugins/local-agents), and the command that asks one. */
-const LOCAL_AGENT = /(claude|codex|gemini|grok|qwen|copilot|cursor|opencode)/i;
+const LOCAL_AGENT = /\b(claude|codex|gemini|grok|qwen|copilot|cursor|opencode)\b/i;
 const ASK_LOCAL = "endue_local-agents_ask";
 
 /** A call of the offered ask command for the local agent the message names, the whole message as
