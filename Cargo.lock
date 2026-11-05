@@ -957,6 +957,7 @@ dependencies = [
  "desk-core",
  "desk-index",
  "desk-ipc",
+ "desk-mcp-client",
  "desk-sys",
  "desk-trace",
  "desk-update",
@@ -1068,6 +1069,16 @@ dependencies = [
  "desk-bridge",
  "desk-core",
  "desk-ipc",
+ "serde_json",
+]
+
+[[package]]
+name = "desk-mcp-client"
+version = "0.0.0"
+dependencies = [
+ "desk-bridge",
+ "desk-core",
+ "jsonschema",
  "serde_json",
 ]
 

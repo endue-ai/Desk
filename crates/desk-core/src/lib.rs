@@ -82,6 +82,7 @@ pub use core_fs_url::FileUrl;
 pub use core_perm::{Prompter, RefuseAll};
 pub use core_state::{QUARANTINED_KEY, SafeMode, SafeReason};
 pub use core_themes::{ThemeFetch, ThemeWatcher};
+pub use core_tools::mcp_caller;
 pub use events::{Delivery, EventBus};
 pub use handler::{Core, Roots};
 pub use init::{INIT_TEMPLATE, INIT_VERSION, Init, PluginSetup, SyncSetup};

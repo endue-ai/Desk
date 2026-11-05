@@ -1928,7 +1928,7 @@ export type RequestId = number;
 /** An absolute path, or one rooted at ~ or at ${plugin}, ${workspace} or ${home}, with forward slashes. */
 export type Path = string;
 
-/** Who makes calls: a plugin id such as endue.eris, a name of the desk's own such as desk (the web runtime), or agent:<id> for an agent of the brain whose tool call the core runs (ADR 0072). core names desk-core itself. */
+/** Who makes calls: a plugin id such as endue.eris, a name of the desk's own such as desk (the web runtime), agent:<id> for an agent of the brain whose tool call the core runs (ADR 0072), or mcp:<name> for an MCP server init.yaml lists (ADR 0098). core names desk-core itself. */
 export type CallerId = string;
 
 /** How binary-safe string content is encoded. */
