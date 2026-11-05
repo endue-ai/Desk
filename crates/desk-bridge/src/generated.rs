@@ -1177,6 +1177,9 @@ pub struct PluginManifest {
     pub surfaces: Option<Vec<Surface>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub contributes: Option<PluginContributes>,
+    /// The roles this plugin can fill (BR-05, ADR 0104): role:rail, role:agents and role:dock are the desk's three edges, role:palette the command palette, role:settings-ui the settings window. The desk.roles setting chooses each role's provider among the plugins that provide it; a provider that is not chosen does not mount that role's surfaces.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub provides: Option<Vec<Role>>,
     /// Installed but off until the desk needs it, like Emacs's autoload. With no stored enabled flag the plugin starts off, and its file openers count while it is off: desk.files turns it on to open a file and off again when its last file closes; profiles leave it as it is. Default false.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub autoload: Option<bool>,
@@ -1202,6 +1205,9 @@ pub struct PluginManifest {
 
 /// Reverse-domain style id with at least one dot, lowercase, for example endue.eris or example.hello-ui.
 pub type PluginId = String;
+
+/// A role a plugin fills: role: and a lowercase name.
+pub type Role = String;
 
 /// Semantic version, for example 0.1.0 or 1.2.3-beta.1.
 pub type Version = String;

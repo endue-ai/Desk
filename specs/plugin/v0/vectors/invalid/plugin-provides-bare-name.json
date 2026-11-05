@@ -1,0 +1,11 @@
+{
+  "target": "PluginManifest",
+  "description": "a role is role: and a lowercase name, not a bare word",
+  "instance": {
+    "id": "example.rail",
+    "version": "0.1.0",
+    "kind": "ui",
+    "entry": "ui/index.html",
+    "provides": ["rail"]
+  }
+}

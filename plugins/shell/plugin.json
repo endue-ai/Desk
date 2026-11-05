@@ -6,6 +6,11 @@
   "description": "The desk shell's own policy: what a profile lays out on desktops 1-4, Eris's mesh and soul text, the shell's colours on top of desk.theme, and the sample profiles.",
   "contributes": {
     "settings": {
+      "desk.roles": {
+        "kind": "object",
+        "default": {},
+        "description": "Who fills each role (ADR 0104), role to plugin id: role:rail, role:agents and role:dock are the shell's edges, role:palette the palette, role:settings-ui the settings window. A role left out keeps its default; a provider named here that is off leaves its role empty."
+      },
       "desk.shell.mode": {
         "kind": "object",
         "default": {

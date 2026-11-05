@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 date: 2026-10-30
 decision-makers: Team endue
 ---
@@ -99,6 +99,16 @@ system layer. The three edge plugins' READMEs already list the shell's parts as 
 * Bad, because chrome in frames costs an iframe each plus bridge messages, the risk the design's stack
   table already names for UI plugins.
 * Bad, because chrome placement, a layer and role slots widen the v0 plugin API (ADR 0004).
+
+### Accepted (#477, 2026-11-05)
+
+Accepted as recommended. The role slot this ADR names as missing landed first (ADR 0104): a plugin
+declares `provides`, `desk.roles` chooses each role's provider, and the shell's rail, agent bar and
+bottom edge are the default providers of `role:rail`, `role:agents` and `role:dock`, yielding to a
+named plugin. Moving each part's content into `plugins/toolbar`, `plugins/sidebar` and `plugins/dock`
+follows one part at a time; each still needs the API in the table above (popovers through
+`ui.surface`, a system-layer placement for the agent bar, raising another plugin's surface for the
+bottom edge).
 
 ## More Information
 
