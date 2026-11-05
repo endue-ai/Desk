@@ -76,10 +76,10 @@ export async function showLastCrash(
   );
   const show = el(
     "button",
-    { type: "button", class: "btn", "aria-expanded": "false" },
+    { type: "button", class: "btn btn-outline", "aria-expanded": "false" },
     "Show report",
   );
-  const copyButton = el("button", { type: "button", class: "btn" }, "Copy");
+  const copyButton = el("button", { type: "button", class: "btn btn-outline" }, "Copy");
   const close = el(
     "button",
     { type: "button", class: "icon-button crash-close", "aria-label": "Close" },
