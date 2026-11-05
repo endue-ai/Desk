@@ -2,31 +2,47 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://endue.ai/specs/bridge/v0/view.schema.json",
   "title": "Desk bridge v0: view",
-  "description": "The views on this desk (ADR 0032): the person's, the YAML files in ~/.desk/views, which can be listed, read, saved and removed, and the enabled view plugins', which can be listed and read but neither saved nor removed. A person's file shadows a plugin's view of its id. A saved view is checked like one installed from a plugin. Every call needs view:manage.",
+  "description": "The views on this desk: the person's, the YAML files in ~/.desk/views, which can be listed, read, saved and removed, and the enabled view plugins', which can be listed and read but neither saved nor removed. A person's file holds an item view (ADR 0032) or a universal view (ADR 0087, ADR 0102). A person's file shadows a plugin's view of its id. A saved view is checked like one installed from a plugin. Every call needs view:manage.",
   "$defs": {
     "ViewSource": {
       "description": "Where a view comes from: plugin, an enabled view plugin's inline view or one of its view files, read-only; file, the person's file in ~/.desk/views.",
       "type": "string",
       "enum": ["plugin", "file"]
     },
+    "AnyView": {
+      "description": "A view in either language: an item view of specs/view/v0 (layouts of components over the desk's items, ADR 0032) or a universal view (one presentation of entries from any source, ADR 0087). A universal view saved in ~/.desk/views must have its id.",
+      "oneOf": [
+        { "$ref": "../../view/v0/view.schema.json#/$defs/View" },
+        { "$ref": "../../view/v0/universal.schema.json#/$defs/UniversalView" }
+      ]
+    },
     "ViewSummary": {
-      "description": "A view as view.list returns it: where it comes from and, for a plugin's view, the plugin.",
+      "description": "A view as view.list returns it: where it comes from and, for a plugin's view, the plugin. An item view has a version; a universal view has its type instead, and its title is its id when it has none.",
       "type": "object",
       "properties": {
         "id": { "$ref": "../../view/v0/view.schema.json#/$defs/ViewId" },
         "version": { "$ref": "../../plugin/v0/plugin.schema.json#/$defs/Version" },
         "title": { "$ref": "../../view/v0/view.schema.json#/$defs/Template" },
         "description": { "type": "string" },
+        "type": {
+          "description": "A universal view's presentation; absent for an item view.",
+          "$ref": "../../view/v0/universal.schema.json#/$defs/UniversalType"
+        },
         "source": { "$ref": "#/$defs/ViewSource" },
         "plugin": { "$ref": "../../plugin/v0/plugin.schema.json#/$defs/PluginId" }
       },
-      "required": ["id", "version", "title", "source"],
+      "required": ["id", "title", "source"],
       "additionalProperties": false,
       "allOf": [
         {
           "if": { "properties": { "source": { "const": "plugin" } } },
           "then": { "properties": { "plugin": true }, "required": ["plugin"] },
           "else": { "properties": { "plugin": false } }
+        },
+        {
+          "if": { "required": ["type"] },
+          "then": { "properties": { "version": false } },
+          "else": { "required": ["version"] }
         }
       ]
     },
@@ -84,7 +100,7 @@
       "description": "Result of view.get: the view, where it comes from and, for a plugin's view, the plugin.",
       "type": "object",
       "properties": {
-        "view": { "$ref": "../../view/v0/view.schema.json#/$defs/View" },
+        "view": { "$ref": "#/$defs/AnyView" },
         "source": { "$ref": "#/$defs/ViewSource" },
         "plugin": { "$ref": "../../plugin/v0/plugin.schema.json#/$defs/PluginId" }
       },
@@ -110,10 +126,10 @@
       "additionalProperties": false
     },
     "ViewSaveParams": {
-      "description": "Parameters of view.save. The view must pass specs/view/v0 and its names must resolve.",
+      "description": "Parameters of view.save. An item view must pass specs/view/v0 and its names must resolve; a universal view must pass universal.schema.json and have its id.",
       "type": "object",
       "properties": {
-        "view": { "$ref": "../../view/v0/view.schema.json#/$defs/View" },
+        "view": { "$ref": "#/$defs/AnyView" },
         "scope": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/ViewManagePermission" }
       },
       "required": ["view", "scope"],
