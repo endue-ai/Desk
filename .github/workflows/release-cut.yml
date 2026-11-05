@@ -1,0 +1,96 @@
+name: release-cut
+
+# Cut a release line (ADR 0090), by hand only: the branch release/vX.Y at the commit of the newest
+# canary build that has been on canary three days, or at a main commit given here. The line defaults
+# to the one after the newest line or tag, and must be above every line that exists. The release app
+# creates the branch, so its push starts release.yml, which builds the line's first candidate for
+# beta (a push made with GITHUB_TOKEN would start nothing, and the release ruleset refuses it). The
+# milestone vX.Y collects the line's release-blocker issues. A person approves the run in stable.
+on:
+  workflow_dispatch:
+    inputs:
+      line:
+        description: The line to cut, release/vX.Y (empty for the one after the newest)
+        required: false
+        type: string
+      commit:
+        description: The main commit to cut at (empty for the newest canary build three days old)
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-cut
+  cancel-in-progress: false
+
+jobs:
+  cut:
+    name: cut
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: stable
+    env:
+      LINE: ${{ inputs.line }}
+      COMMIT: ${{ inputs.commit }}
+      BASE: ${{ vars.DESK_RELEASES_URL || 'https://releases.endue.ai/desk' }}
+    steps:
+      - name: The release app is set
+        env:
+          RELEASE_APP_ID: ${{ vars.RELEASE_APP_ID }}
+          RELEASE_APP_KEY: ${{ secrets.RELEASE_APP_KEY }}
+        run: |
+          if [ -z "$RELEASE_APP_ID" ] || [ -z "$RELEASE_APP_KEY" ]; then
+            echo "::error::RELEASE_APP_ID or RELEASE_APP_KEY is not set in stable (docs/releasing.md)"
+            exit 1
+          fi
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+          fetch-depth: 0
+      - id: choose
+        name: Choose the line and the commit
+        run: |
+          line="$(node scripts/release-version.mjs --new-line "${LINE:-$(node scripts/release-version.mjs --next-line)}")"
+          commit="$COMMIT"
+          if [ -z "$commit" ]; then
+            # The public canary index is enough to choose from; nothing is written.
+            curl -fsSL "$BASE/channels/canary/index.json" -o canary.json
+            version="$(node scripts/release-manifest.mjs pick canary.json --days 3)"
+            if [ -z "$version" ]; then
+              echo "::error::No canary build has been on canary three days; give a commit"
+              exit 1
+            fi
+            commit="$(jq -r --arg v "$version" '.releases[] | select(.version == $v) | .commit' canary.json)"
+            echo "::notice::Cutting at $commit, the commit of canary $version"
+          fi
+          commit="$(git rev-parse --verify "$commit^{commit}")"
+          if ! git merge-base --is-ancestor "$commit" origin/main; then
+            echo "::error::$commit is not on main"
+            exit 1
+          fi
+          { echo "line=$line"; echo "commit=$commit"; } | tee -a "$GITHUB_OUTPUT"
+      - uses: actions/create-github-app-token@v2
+        id: app
+        with:
+          app-id: ${{ vars.RELEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_APP_KEY }}
+      - name: Create ${{ steps.choose.outputs.line }} and its milestone
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          NEW_LINE: ${{ steps.choose.outputs.line }}
+          AT: ${{ steps.choose.outputs.commit }}
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/git/refs" -f ref="refs/heads/$NEW_LINE" -f sha="$AT" > /dev/null
+          milestone="v${NEW_LINE#release/v}"
+          if ! gh api "repos/$GITHUB_REPOSITORY/milestones?state=all&per_page=100" --jq '.[].title' | grep -qx "$milestone"; then
+            gh api "repos/$GITHUB_REPOSITORY/milestones" -f title="$milestone" \
+              -f description="Release line $NEW_LINE: release-blocker issues here hold its finals back" > /dev/null
+          fi
+          {
+            echo "## $NEW_LINE"
+            echo
+            echo "Cut at \`$AT\`. release.yml now builds its first candidate for beta."
+            echo "Fixes reach it as cherry-picks of main commits (docs/releasing.md); its final is release-final.yml on $NEW_LINE."
+          } >> "$GITHUB_STEP_SUMMARY"

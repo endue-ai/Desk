@@ -1,14 +1,23 @@
 #!/usr/bin/env node
-// The version a release build carries (ADR 0054). A tag v0.2.0 builds 0.2.0. A main build is the
-// next patch after the latest tag with -pre.<run> (0.2.1-pre.48), or 0.1.0-pre.<run> before any tag:
-// a semver pre-release, unique per run, above the last release and below the next one.
-//   node scripts/release-version.mjs --tag v0.2.0
-//   node scripts/release-version.mjs --run 48 [--latest v0.2.0]   (latest: the newest v* tag)
+// The version a release build carries (ADR 0054, ADR 0090). A release line is a branch release/vX.Y;
+// its candidates are X.Y.Z-rc.<run>, Z the patch after the line's newest tag vX.Y.Z, and its final is
+// the candidate without the suffix. A main (canary) build is the minor after the newest line or tag
+// with -pre.<run> (0.5.0-pre.212 once release/v0.4 exists), or 0.1.0-pre.<run> before any: semver
+// pre-releases, unique per run, above every line that exists.
+//   node scripts/release-version.mjs --run 212 [--refs release/v0.4,v0.4.0]      canary
+//   node scripts/release-version.mjs --line release/v0.4 --run 7 [--refs ...]   candidate
+//   node scripts/release-version.mjs --final 0.4.0-rc.7                         final
+//   node scripts/release-version.mjs --next-line [--refs ...]                   prints release/vX.Y
+//   node scripts/release-version.mjs --new-line release/v0.5 [--refs ...]       fails unless newest
+//   node scripts/release-version.mjs --notes-start 0.4.1 [--refs ...]           prints the tag notes start at
+// Without --refs the refs are this checkout's release/v* branches on origin and its v* tags.
 import { execFileSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
 
 const SEMVER =
   /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+[0-9A-Za-z.-]+)?$/u;
+const LINE = /^release\/v(0|[1-9]\d*)\.(0|[1-9]\d*)$/u;
+const RC = /^(\d+\.\d+\.\d+)-rc\.(0|[1-9]\d*)$/u;
 
 /** `{ major, minor, patch, pre }` of a version without a leading v, or null. */
 export function parse(version) {
@@ -36,28 +45,110 @@ export function compare(a, b) {
   return 0;
 }
 
-/** The build version for a tag, or for main run `run` after the tag `latest` (none: no tag yet). */
-export function buildVersion({ tag, run, latest }) {
-  if (tag) {
-    const version = String(tag).replace(/^v/u, "");
-    const parsed = parse(version);
-    if (!parsed || parsed.pre.length) throw new Error(`${tag} is not a release tag (vX.Y.Z)`);
-    return version;
-  }
-  if (!Number.isInteger(run) || run < 1) throw new Error("a main build needs its run number");
-  const last = latest ? parse(latest) : null;
-  if (latest && (!last || last.pre.length)) throw new Error(`${latest} is not a release tag`);
-  const next = last ? `${last.major}.${last.minor}.${last.patch + 1}` : "0.1.0";
-  return `${next}-pre.${run}`;
+/** A release tag vX.Y.Z (no pre-release) as its version, or null. */
+function releaseTag(ref) {
+  if (!String(ref).startsWith("v")) return null;
+  const parsed = parse(ref);
+  return parsed && !parsed.pre.length ? parsed : null;
 }
 
-/** The newest vX.Y.Z tag in this checkout, or undefined. */
-export function latestTag() {
-  const tags = execFileSync("git", ["tag", "--list", "v*"], { encoding: "utf8" })
+/** The line `{ major, minor }` a ref belongs to: a branch release/vX.Y or a tag vX.Y.Z; else null. */
+export function lineOf(ref) {
+  const branch = LINE.exec(String(ref));
+  if (branch) return { major: +branch[1], minor: +branch[2] };
+  const tag = releaseTag(ref);
+  return tag ? { major: tag.major, minor: tag.minor } : null;
+}
+
+/** The line after the newest one among `refs`: release/v0.1 when there is none. */
+export function nextLine(refs = []) {
+  const lines = refs.map(lineOf).filter(Boolean);
+  if (!lines.length) return "release/v0.1";
+  const newest = lines.reduce((a, b) =>
+    b.major > a.major || (b.major === a.major && b.minor > a.minor) ? b : a,
+  );
+  return `release/v${newest.major}.${newest.minor + 1}`;
+}
+
+/** `line` itself when it is a release line above every line among `refs`; otherwise it throws. */
+export function newLine(line, refs = []) {
+  const want = LINE.exec(String(line));
+  if (!want) throw new Error(`${line} is not a release line (release/vX.Y)`);
+  const next = lineOf(nextLine(refs));
+  const [major, minor] = [+want[1], +want[2]];
+  if (major < next.major || (major === next.major && minor < next.minor)) {
+    throw new Error(
+      `${line} is not above every line that exists; the next one is ${nextLine(refs)}`,
+    );
+  }
+  return line;
+}
+
+/**
+ * The tag a final's generated notes start at: the patch before it on its line, or for a line's .0
+ * the newest .0 of an earlier line. Undefined for the first release.
+ */
+export function notesStart(version, refs = []) {
+  const v = parse(version);
+  if (!v || v.pre.length) throw new Error(`${version} is not a release version`);
+  const tags = refs.map((ref) => [ref, releaseTag(ref)]).filter(([, t]) => t);
+  const earlier = tags.filter(([, t]) =>
+    v.patch > 0
+      ? t.major === v.major && t.minor === v.minor && t.patch < v.patch
+      : t.patch === 0 && (t.major < v.major || (t.major === v.major && t.minor < v.minor)),
+  );
+  return earlier
+    .map(([ref]) => ref)
+    .sort(compare)
+    .at(-1);
+}
+
+const runOf = (run) => {
+  if (!Number.isInteger(run) || run < 1) throw new Error("a build needs its run number");
+  return run;
+};
+
+/** The canary version of run `run`: the next line's .0 with -pre.<run>. */
+export function canaryVersion({ run, refs = [] }) {
+  const { major, minor } = lineOf(nextLine(refs));
+  return `${major}.${minor}.0-pre.${runOf(run)}`;
+}
+
+/** A candidate of `line` (release/vX.Y) for run `run`: the patch after the line's newest tag. */
+export function candidateVersion({ line, run, refs = [] }) {
+  const m = LINE.exec(String(line));
+  if (!m) throw new Error(`${line} is not a release line (release/vX.Y)`);
+  const [major, minor] = [+m[1], +m[2]];
+  const patches = refs
+    .map(releaseTag)
+    .filter((t) => t && t.major === major && t.minor === minor)
+    .map((t) => t.patch);
+  const patch = patches.length ? Math.max(...patches) + 1 : 0;
+  return `${major}.${minor}.${patch}-rc.${runOf(run)}`;
+}
+
+/** The final version of candidate `rc`: X.Y.Z-rc.N is X.Y.Z. */
+export function finalVersion(rc) {
+  const m = RC.exec(String(rc).replace(/^v/u, ""));
+  if (!m) throw new Error(`${rc} is not a release candidate (X.Y.Z-rc.N)`);
+  return m[1];
+}
+
+/** This checkout's release/v* branches on origin and its v* tags. */
+export function localRefs() {
+  return execFileSync(
+    "git",
+    ["for-each-ref", "--format=%(refname)", "refs/remotes/origin/release/", "refs/tags/"],
+    { encoding: "utf8" },
+  )
     .split("\n")
-    .map((t) => t.trim())
-    .filter((t) => parse(t) && !parse(t).pre.length);
-  return tags.sort(compare).at(-1);
+    .map((ref) =>
+      ref
+        .trim()
+        .replace(/^refs\/remotes\/origin\//u, "")
+        .replace(/^refs\/tags\//u, ""),
+    )
+    .filter(Boolean);
 }
 
 function main(args) {
@@ -65,10 +156,20 @@ function main(args) {
     const at = args.indexOf(name);
     return at >= 0 ? args[at + 1] : undefined;
   };
-  const tag = value("--tag");
-  const run = value("--run");
-  const latest = tag ? undefined : (value("--latest") ?? latestTag());
-  console.log(buildVersion({ tag, run: run === undefined ? undefined : Number(run), latest }));
+  const final = value("--final");
+  if (final) return console.log(finalVersion(final));
+  const listed = value("--refs");
+  const refs = listed === undefined ? localRefs() : listed.split(",").filter(Boolean);
+  if (args.includes("--next-line")) return console.log(nextLine(refs));
+  if (value("--new-line")) return console.log(newLine(value("--new-line"), refs));
+  if (value("--notes-start")) {
+    const tag = notesStart(value("--notes-start"), refs);
+    if (tag) console.log(tag);
+    return;
+  }
+  const run = value("--run") === undefined ? undefined : Number(value("--run"));
+  const line = value("--line");
+  console.log(line ? candidateVersion({ line, run, refs }) : canaryVersion({ run, refs }));
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {

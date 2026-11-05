@@ -1,6 +1,7 @@
 name: release-build
 
-# Builds one version for the four targets (ADR 0054), called by canary and release. No macOS
+# Builds one version for the four targets (ADR 0054), called by canary, release and release-final
+# (which builds a candidate's commit again, given as ref; ADR 0090). No macOS
 # universal build: darwin-aarch64 and darwin-x86_64 ship apart. Updater artifacts are signed with
 # the updater key, the version in each signature; the public key and the commit go into the binary.
 # macOS is signed and notarised when the Apple secrets are set; Windows ships NSIS only, unsigned
@@ -17,6 +18,11 @@ on:
         description: The version to build, without a leading v.
         required: true
         type: string
+      ref:
+        description: The commit to build (empty for the commit that started the run).
+        required: false
+        type: string
+        default: ""
       dry-run:
         description: Sign with the run's throwaway key (artifact dry-run-key) and stay out of signing.
         required: false
@@ -60,6 +66,8 @@ jobs:
       VERSION: ${{ inputs.version }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref }}
       - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v7
         with:
@@ -69,9 +77,11 @@ jobs:
         run: |
           rustup toolchain install
           rustup target add "${{ matrix.rust }}"
+      # A signed build reads the cache and never writes it: what it signs leans on no cache it made.
       - uses: Swatinem/rust-cache@v2
         with:
           key: release-${{ matrix.rust }}
+          save-if: ${{ inputs.dry-run }}
       - name: Configure Ubuntu package downloads
         if: runner.os == 'Linux'
         run: sudo "$(command -v node)" scripts/ci-apt.mjs
@@ -102,18 +112,32 @@ jobs:
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+          APPLE_API_KEY_P8: ${{ secrets.APPLE_API_KEY_P8 }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-        # Tauri signs as soon as these are set, even to "", so only set ones reach the build.
+        # Tauri signs as soon as these are set, even to "", so only set ones reach the build. It
+        # notarises with an App Store Connect API key when one is set (no person's Apple ID or
+        # two-factor prompt behind it), else with the Apple ID and its app password.
         run: |
           if [ -z "$APPLE_CERTIFICATE" ] || [ -z "$APPLE_SIGNING_IDENTITY" ]; then
             echo "::notice::No Apple signing secrets: the macOS build is neither signed nor notarised"
             exit 0
           fi
-          for name in APPLE_CERTIFICATE APPLE_CERTIFICATE_PASSWORD APPLE_SIGNING_IDENTITY APPLE_ID APPLE_PASSWORD APPLE_TEAM_ID; do
+          for name in APPLE_CERTIFICATE APPLE_CERTIFICATE_PASSWORD APPLE_SIGNING_IDENTITY; do
             if [ -n "${!name}" ]; then echo "$name=${!name}" >> "$GITHUB_ENV"; fi
           done
+          if [ -n "$APPLE_API_KEY_P8" ] && [ -n "$APPLE_API_KEY" ] && [ -n "$APPLE_API_ISSUER" ]; then
+            key="$RUNNER_TEMP/AuthKey_$APPLE_API_KEY.p8"
+            printf '%s\n' "$APPLE_API_KEY_P8" > "$key"
+            { echo "APPLE_API_ISSUER=$APPLE_API_ISSUER"; echo "APPLE_API_KEY=$APPLE_API_KEY"; echo "APPLE_API_KEY_PATH=$key"; } >> "$GITHUB_ENV"
+          else
+            for name in APPLE_ID APPLE_PASSWORD APPLE_TEAM_ID; do
+              if [ -n "${!name}" ]; then echo "$name=${!name}" >> "$GITHUB_ENV"; fi
+            done
+          fi
       - name: Build ${{ matrix.target }} ${{ inputs.version }}
         # A dry run signs with the run's key and embeds none (empty is none), so its binary never
         # updates itself.
@@ -123,7 +147,7 @@ jobs:
           UPDATER_PUBKEY: ${{ inputs.dry-run && env.DRY_RUN_PUBKEY || vars.DESK_UPDATER_PUBKEY }}
           DESK_UPDATER_PUBKEY: ${{ !inputs.dry-run && vars.DESK_UPDATER_PUBKEY || '' }}
           DESK_UPDATE_URL: ${{ vars.DESK_RELEASES_URL || 'https://releases.endue.ai/desk' }}
-          DESK_BUILD_COMMIT: ${{ github.sha }}
+          DESK_BUILD_COMMIT: ${{ inputs.ref || github.sha }}
         # createUpdaterArtifacts reads the public key from plugins.updater.pubkey and refuses an empty
         # one; the plugin's own config needs it too.
         run: |

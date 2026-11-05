@@ -8,7 +8,7 @@ name: release-dry-run
 # the release files, which GitHub cannot dispatch before they are on main.
 on:
   workflow_dispatch:
-  # ci.yml runs it for every pull request into release/vX.Y.Z (ADR 0081).
+  # ci.yml runs it for a pull request into a release line that changes these files (ADR 0090).
   workflow_call:
   pull_request:
     paths:
@@ -16,6 +16,7 @@ on:
       - ".github/workflows/release-build.yml"
       - ".github/workflows/canary.yml"
       - ".github/workflows/release.yml"
+      - ".github/workflows/release-final.yml"
       - "scripts/release-*.mjs"
       - "e2e/smoke/verify-signature.sh"
       - "apps/desk/src-tauri/tauri.conf.json"

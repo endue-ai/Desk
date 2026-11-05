@@ -2,7 +2,8 @@ name: rollback
 
 # Take one build off one channel's index (ADR 0054), by hand only. Its files stay on R2. Desks that
 # staged it drop it at their next check and never apply it; desks already on it wait for a fixed,
-# newer build (roll forward), since no desk ever moves down. Stable needs the stable environment.
+# newer build (roll forward), since no desk ever moves down. Stable needs the stable environment. To
+# stop a stable build reaching more desks without taking it off, set its rollout to 0 (rollout.yml).
 on:
   workflow_dispatch:
     inputs:
@@ -19,16 +20,16 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: release-${{ inputs.channel }}
-  cancel-in-progress: false
-
 jobs:
   rollback:
     name: rollback
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment: ${{ inputs.channel == 'stable' && 'stable' || 'signing' }}
+    # The canary index is canary.yml's; beta and stable share one writer at a time (ADR 0090).
+    concurrency:
+      group: ${{ inputs.channel == 'canary' && 'canary' || 'release-index' }}
+      cancel-in-progress: false
     env:
       CHANNEL: ${{ inputs.channel }}
       VERSION: ${{ inputs.version }}

@@ -2,9 +2,10 @@ name: ci
 
 # Every pull request and the merge queue run on Linux: check and unit tests, the runtime e2e, codegen,
 # red-on-base, and the Tauri app's build when the shell or the primitives change. A pull request into
-# release/vX.Y.Z (ADR 0081) also runs check and unit tests on macOS and Windows, the app on all three
-# and the release dry run; merging it publishes the release (release.yml). The final `ci` job is the
-# required check. The merge queue runs it again on each PR combined with main and the PRs ahead of it
+# a release line release/vX.Y (ADR 0081, ADR 0090), a cherry-pick of main commits, also runs check and
+# unit tests on macOS and Windows and the app on all three, and the release dry run when it changes
+# the release files; merging it builds the line's next candidate (release.yml). The final `ci` job is
+# the required check. The merge queue runs it again on each PR combined with main and the PRs ahead of it
 # (ADR 0015).
 on:
   pull_request:
@@ -29,6 +30,7 @@ jobs:
     timeout-minutes: 5
     outputs:
       app: ${{ steps.filter.outputs.app }}
+      release: ${{ steps.filter.outputs.release }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -44,7 +46,10 @@ jobs:
             files="apps/desk/src-tauri/"
           fi
           if grep -qE '^(apps/desk/src-tauri/|crates/desk-sys/|vendor/tauri-plugin-single-instance/)' <<<"$files"; then app=true; else app=false; fi
+          # The files the release dry run proves (its own pull_request paths).
+          if grep -qE '^(\.github/workflows/(release|release-build|release-dry-run|release-final|canary)\.yml|scripts/release-[^/]*\.mjs|e2e/smoke/verify-signature\.sh|apps/desk/src-tauri/tauri\.conf\.json)$' <<<"$files"; then release=true; else release=false; fi
           echo "app=$app" | tee -a "$GITHUB_OUTPUT"
+          echo "release=$release" | tee -a "$GITHUB_OUTPUT"
 
   check-linux:
     name: check (linux)
@@ -257,7 +262,9 @@ jobs:
 
   release-dry-run:
     name: release-dry-run
-    if: startsWith(github.base_ref, 'release/')
+    needs: changes
+    # The merge builds every target anyway; the dry run is for a change to how they are built.
+    if: startsWith(github.base_ref, 'release/') && needs.changes.outputs.release == 'true'
     uses: ./.github/workflows/release-dry-run.yml
 
   ci:
