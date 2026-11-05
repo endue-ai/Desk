@@ -8,8 +8,9 @@
 // fixture market, e2e/themes/market served at /market/, as https://market.test/index.json, and
 // ?market=tab opens the studio's Market tab, ?market=<theme id> previews that theme there). brain.ask
 // answers as examples/brain-echo does (propose_theme from the words of the prompt's last line).
-// ?views=1 installs desk.views, and brain.ask answers propose_view, propose_profile and
-// propose_key_bindings for desk.propose as src/propose/fixtures.ts scripts them. ?apps=1 installs
+// ?views=1 installs desk.views and desk.universal, and brain.ask answers propose_universal_view,
+// propose_view, propose_profile and propose_key_bindings for desk.propose as
+// src/propose/fixtures.ts scripts them. ?apps=1 installs
 // endue.notes and a terminal stand-in, for the profile and key bindings Eris proposes. Never shipped.
 import type { PluginManifest } from "@endue-ai/bridge";
 import "../../src/desk.css";
@@ -31,8 +32,8 @@ if (!root) throw new Error("no #desk element");
 const params = new URLSearchParams(location.search);
 const clock = new ManualClock();
 // The desk.* policies (the shell's own included) and the palette: the plugin chrome the shell
-// replaces (dock, toolbar, sidebar) is not installed here, nor the view engines (desk.views, which
-// ?views=1 adds, and desk.universal) and the view plugins (views.html has them).
+// replaces (dock, toolbar, sidebar) is not installed here, nor the view engines (desk.views and
+// desk.universal, which ?views=1 adds) and the view plugins (views.html has them).
 const manifests = import.meta.glob<PluginManifest>("../../../../plugins/*/plugin.json", {
   eager: true,
   import: "default",
@@ -81,8 +82,7 @@ const core = browserCore({
     ...Object.values(manifests).filter(
       (m) =>
         m.id.startsWith("desk.") &&
-        m.id !== "desk.universal" &&
-        (m.id !== "desk.views" || params.has("views")) &&
+        ((m.id !== "desk.views" && m.id !== "desk.universal") || params.has("views")) &&
         m.kind !== "view",
     ),
     ...(params.has("plugins") ? testPlugins : []),

@@ -26,6 +26,9 @@ describe("the talk line's routes", () => {
       "show me a dashboard that looks like a cockpit",
       "show me my events this week",
       "make a list of my notes",
+      "show this repo's issues as a board",
+      "show ~/notes as a timeline",
+      "show me a calendar of the releases",
     ])
       expect(to(text), text).toBe("propose");
     expect(routeOf("/make show my events this week as a board")).toEqual({
