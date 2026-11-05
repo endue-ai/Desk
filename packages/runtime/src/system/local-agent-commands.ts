@@ -119,6 +119,8 @@ export function defineLocalAgentCommands(
   ctx: ShellCtx,
   options: LocalCommandOptions = {},
 ): () => void {
+  // A desk without local agents (a host with no core, the fixtures) offers none of these tools.
+  if (!ctx.bridge.localAgents) return () => undefined;
   const { commands } = ctx.runtime;
   const waitMs = options.waitMs ?? WAIT_MS;
   const local = (): LocalAgentsBridge => {
@@ -249,7 +251,7 @@ export function defineLocalAgentCommands(
     define(
       "desk.agents.dispatch",
       "Local agents: hand several agents work at once",
-      ["dispatch", "parallel", "split", "compare", "orchestrate"],
+      ["dispatch", "parallel", "orchestrate", "fan out"],
       schemas.dispatch,
       async (args, from) => ({
         results: await Promise.all(

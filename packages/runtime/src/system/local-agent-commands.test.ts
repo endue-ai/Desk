@@ -56,6 +56,15 @@ describe("desk.agents.* as Eris's tools", () => {
     expect(defined.size).toBe(0);
   });
 
+  it("offers nothing on a desk without local agents", () => {
+    const store = new Store(emptyState("en"));
+    const defined = new Map<string, CommandSpec>();
+    const commands = { define: (id: string, spec: CommandSpec) => defined.set(id, spec) };
+    const ctx = { store, bridge: {}, runtime: { commands } } as unknown as ShellCtx;
+    defineLocalAgentCommands(ctx)();
+    expect(defined.size).toBe(0);
+  });
+
   it("lists the agents and one agent's sessions, short", async () => {
     const { run } = setup();
     const listed = (await run("desk.agents.list", {})) as { agents: { id: string }[] };
