@@ -1,0 +1,14 @@
+{
+  "target": "Item",
+  "description": "a run the local-agents plugin reports for Claude Code",
+  "instance": {
+    "id": "r12",
+    "source": { "connector": "endue.local-agents", "instance": "default" },
+    "kind": "run",
+    "title": "Which tests fail?",
+    "updatedAt": "2026-11-05T09:32:10Z",
+    "agent": "endue.local-agents/claude",
+    "state": "running",
+    "startedAt": "2026-11-05T09:32:00Z"
+  }
+}

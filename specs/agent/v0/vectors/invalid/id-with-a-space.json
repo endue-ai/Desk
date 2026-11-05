@@ -1,0 +1,5 @@
+{
+  "target": "AgentRecord",
+  "description": "an id has no spaces",
+  "instance": { "id": "mira lee", "name": "Mira", "source": "init", "state": "idle" }
+}

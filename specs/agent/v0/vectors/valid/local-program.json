@@ -1,0 +1,12 @@
+{
+  "target": "AgentRecord",
+  "description": "a local agent program the local-agents plugin runs, waiting for the person",
+  "instance": {
+    "id": "endue.local-agents/claude",
+    "name": "Claude Code",
+    "source": "local",
+    "brain": "claude",
+    "state": "waiting",
+    "runs": 1
+  }
+}

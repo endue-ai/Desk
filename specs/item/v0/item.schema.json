@@ -5,9 +5,20 @@
   "description": "The one shape every connector brings data in as, the index keeps and every view shows: an envelope all kinds share, plus the fields of eight kinds and record (ADR 0032). query.schema.json carries items in queries, pages and changes.",
   "$defs": {
     "ItemKind": {
-      "description": "What an item is. record is any other shape, described by the JSON Schema it names.",
+      "description": "What an item is. run is one piece of an agent's work (ADR 0100). record is any other shape, described by the JSON Schema it names.",
       "type": "string",
-      "enum": ["event", "message", "task", "note", "file", "person", "entry", "metric", "record"]
+      "enum": [
+        "event",
+        "message",
+        "task",
+        "note",
+        "file",
+        "person",
+        "entry",
+        "metric",
+        "run",
+        "record"
+      ]
     },
     "Item": {
       "description": "One item: the shared envelope (id, source, kind, title, updatedAt; createdAt, deepLink, body and raw when there are) plus the fields of its kind.",
@@ -20,6 +31,7 @@
         { "$ref": "#/$defs/PersonItem" },
         { "$ref": "#/$defs/EntryItem" },
         { "$ref": "#/$defs/MetricItem" },
+        { "$ref": "#/$defs/RunItem" },
         { "$ref": "#/$defs/RecordItem" }
       ]
     },
@@ -298,6 +310,47 @@
         }
       },
       "required": ["id", "source", "kind", "title", "updatedAt", "series", "points"],
+      "additionalProperties": false
+    },
+    "RunState": {
+      "description": "Where a run stands: running, waiting for the person's approval, or ended done, failed or cancelled.",
+      "type": "string",
+      "enum": ["running", "waiting", "done", "failed", "cancelled"]
+    },
+    "RunItem": {
+      "description": "One piece of an agent's work (ADR 0100): a command an agent asked for, a task of the brain's directory, or a run of a program a plugin runs. Its title says what was asked.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "#/$defs/ItemId" },
+        "source": { "$ref": "#/$defs/ItemSource" },
+        "kind": { "const": "run" },
+        "title": { "$ref": "#/$defs/ItemTitle" },
+        "updatedAt": { "$ref": "#/$defs/Timestamp" },
+        "createdAt": { "$ref": "#/$defs/Timestamp" },
+        "deepLink": { "$ref": "#/$defs/DeepLink" },
+        "body": { "$ref": "#/$defs/ItemBody" },
+        "raw": { "$ref": "#/$defs/ItemRaw" },
+        "agent": { "$ref": "../../agent/v0/agent.schema.json#/$defs/AgentId" },
+        "state": { "$ref": "#/$defs/RunState" },
+        "startedAt": { "$ref": "#/$defs/Timestamp" },
+        "endedAt": { "$ref": "#/$defs/Timestamp" },
+        "result": {
+          "description": "What it answered or why it failed, short; the whole answer stays with whoever ran it.",
+          "type": "string",
+          "maxLength": 500
+        },
+        "command": {
+          "description": "The command the run is, when it is one.",
+          "$ref": "../../plugin/v0/contributes.schema.json#/$defs/CommandId"
+        },
+        "approval": {
+          "description": "The approval it waits for (perm.approval's approvalId), while waiting.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        }
+      },
+      "required": ["id", "source", "kind", "title", "updatedAt", "agent", "state", "startedAt"],
       "additionalProperties": false
     },
     "RecordItem": {

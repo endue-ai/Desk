@@ -6,17 +6,18 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use desk_bridge::{
-    AccountStatusResult, BridgeEvent, BridgeRequest, BridgeResponse, CatalogGetResult,
-    CmdRecentResult, CmdRedoResult, CmdToolsResult, CmdUndoResult, ConnectorInstance,
-    ConnectorManifest, ConnectorStatus, ConnectorSyncResult, DesignSystemPackage, FsHistoryResult,
-    FsReadResult, FsRestoreResult, FsUrlResult, FsWriteResult, InitDocument, InitGetResult,
-    InitSettingKey, Item, ItemChange, ItemPage, ItemQuery, KeysFile, PaletteResults,
-    PermQueryResult, PermRequestResult, Permission, PluginContributes, PluginListResult,
-    PluginManifest, PluginStatsResult, ProfileFile, RefusalReason, SettingsListResult,
-    ShellOpenResult, StoreGetResult, ThemeBundle, ThemeExportResult, ThemeIndex,
-    ThemeMarketFetchResult, ThemeMarketListResult, ThemePackage, ThemeType, ThemeVariant,
-    UiSurfaceStateRequest, UiSurfaceStateResult, UniversalData, UniversalSource, UniversalView,
-    View, ViewGetResult, ViewListResult, ViewSource, ViewSummary, manifest_problems, view_problems,
+    AccountStatusResult, AgentListResult, AgentRecord, BridgeEvent, BridgeRequest, BridgeResponse,
+    CatalogGetResult, CmdRecentResult, CmdRedoResult, CmdToolsResult, CmdUndoResult,
+    ConnectorInstance, ConnectorManifest, ConnectorStatus, ConnectorSyncResult,
+    DesignSystemPackage, FsHistoryResult, FsReadResult, FsRestoreResult, FsUrlResult,
+    FsWriteResult, InitDocument, InitGetResult, InitSettingKey, Item, ItemChange, ItemPage,
+    ItemQuery, KeysFile, PaletteResults, PermQueryResult, PermRequestResult, Permission,
+    PluginContributes, PluginListResult, PluginManifest, PluginStatsResult, ProfileFile,
+    RefusalReason, SettingsListResult, ShellOpenResult, StoreGetResult, ThemeBundle,
+    ThemeExportResult, ThemeIndex, ThemeMarketFetchResult, ThemeMarketListResult, ThemePackage,
+    ThemeType, ThemeVariant, UiSurfaceStateRequest, UiSurfaceStateResult, UniversalData,
+    UniversalSource, UniversalView, View, ViewGetResult, ViewListResult, ViewSource, ViewSummary,
+    manifest_problems, view_problems,
 };
 use serde::Serialize;
 use serde::de::DeserializeOwned;
@@ -33,10 +34,16 @@ fn read_json(path: &Path) -> Value {
 
 /// The plugin manifest and the specs it references, which reference it back: one set of documents.
 fn plugin_schemas() -> Vec<Value> {
-    ["plugin/v0", "item/v0", "view/v0", "connector/v0"]
-        .iter()
-        .flat_map(|folder| schemas(folder))
-        .collect()
+    [
+        "plugin/v0",
+        "item/v0",
+        "view/v0",
+        "connector/v0",
+        "agent/v0",
+    ]
+    .iter()
+    .flat_map(|folder| schemas(folder))
+    .collect()
 }
 
 fn schemas(folder: &str) -> Vec<Value> {
@@ -152,7 +159,7 @@ fn init_vectors_are_judged_as_their_folder_says() {
 #[test]
 fn item_view_and_connector_vectors_are_judged_as_their_folders_say() {
     let docs = plugin_schemas();
-    for spec in ["item", "view", "connector"] {
+    for spec in ["item", "view", "connector", "agent"] {
         let all = vectors(spec);
         let valid = all.iter().filter(|v| v.valid).count();
         assert!(
@@ -173,6 +180,7 @@ fn item_view_and_connector_vectors_are_judged_as_their_folders_say() {
                 "ConnectorInstance" => roundtrip::<ConnectorInstance>(vector),
                 "ConnectorStatus" => roundtrip::<ConnectorStatus>(vector),
                 "ConnectorSyncResult" => roundtrip::<ConnectorSyncResult>(vector),
+                "AgentRecord" => roundtrip::<AgentRecord>(vector),
                 other => panic!("{}: no Rust type mapped for {other}", vector.file),
             }
         }
@@ -270,6 +278,7 @@ fn valid_vectors_roundtrip_through_generated_types() {
                 "CmdToolsResult" => roundtrip::<CmdToolsResult>(vector),
                 "ShellOpenResult" => roundtrip::<ShellOpenResult>(vector),
                 "AccountStatusResult" => roundtrip::<AccountStatusResult>(vector),
+                "AgentListResult" => roundtrip::<AgentListResult>(vector),
                 "UiSurfaceStateRequest" => roundtrip::<UiSurfaceStateRequest>(vector),
                 "UiSurfaceStateResult" => roundtrip::<UiSurfaceStateResult>(vector),
                 "PluginManifest" => roundtrip::<PluginManifest>(vector),
