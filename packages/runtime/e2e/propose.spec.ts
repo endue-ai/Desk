@@ -199,7 +199,7 @@ test.describe("desk.propose from the talk line", () => {
     const frame = await universalFrame(page);
     const bar = frame.locator(".bar");
     await expect(bar).toContainText(`Eris made this from “${MADE}”.`);
-    await expect(frame.locator("desk-universal-view")).toHaveAttribute("state", "ready");
+    await expect(frame.locator("#root > desk-universal-view")).toHaveAttribute("state", "ready");
     await expect(studio).toBeHidden();
     const asked = await page.evaluate(() =>
       window.__shell.stub.log

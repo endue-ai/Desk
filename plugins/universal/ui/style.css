@@ -10,13 +10,15 @@ body {
   font: var(--desk-text-sm) / 20px var(--desk-font-sans);
 }
 
+/* Inset past the shell's floating chrome (its top bar, rails, talk line and errands float over a
+   desk-wide overlay), so the bar's buttons and the switcher stay reachable. */
 #root {
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
   gap: 12px;
   height: 100%;
-  padding: 20px 24px;
+  padding: 88px 96px 96px;
 }
 
 desk-universal-view {
@@ -231,6 +233,10 @@ desk-universal-view {
 }
 
 @media (max-width: 720px) {
+  #root {
+    padding: 72px 24px 80px;
+  }
+
   .builder {
     grid-template-columns: 1fr;
   }

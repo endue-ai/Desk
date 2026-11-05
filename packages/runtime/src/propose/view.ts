@@ -39,6 +39,8 @@ const GUIDE = [
 ].join(" ");
 
 export interface ViewKindOptions {
+  /** The kind's name in desk.propose: `view`, or `item-view` beside universal views (ADR 0102). */
+  kind?: string;
   bridge: BridgeClient;
   /** desk.views.preview, desk.views.open and desk.views.close go through the registry. */
   commands: { run(id: string, args?: unknown): Promise<unknown> };
@@ -62,8 +64,9 @@ export function viewKind(options: ViewKindOptions): ProposalKind<View> {
     return schemas;
   };
 
+  const name = options.kind ?? "view";
   return {
-    kind: "view",
+    kind: name,
     noun: "view",
     guide: GUIDE,
     tool() {
@@ -138,7 +141,7 @@ export function viewKind(options: ViewKindOptions): ProposalKind<View> {
     async apply(view): Promise<Applied> {
       await bridge.call("view.save", { view, scope: VIEWS });
       const where = `~/.desk/views/${view.id}.yaml`;
-      const undo = { kind: "view", id: view.id };
+      const undo = { kind: name, id: view.id };
       const notice = {
         text: `Eris made this view: ${where}`,
         action: { title: "Undo", command: "desk.propose.undo", args: undo },

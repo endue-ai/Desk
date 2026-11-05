@@ -77,7 +77,7 @@ test.describe("say it, see it", () => {
     const bar = frame.locator(".bar");
     await expect(bar).toHaveAttribute("data-mode", "preview");
     await expect(bar).toContainText(`Eris made this from “${SENTENCE}”.`);
-    const view = frame.locator("desk-universal-view");
+    const view = frame.locator("#root > desk-universal-view");
     await expect(view).toHaveAttribute("state", "ready");
     await expect(view.locator(".column-title .name")).toHaveText(["open", "done", "cancelled"]);
     await expect(view.locator(".column[data-group='open'] .entry-title").first()).toBeVisible();
@@ -88,7 +88,7 @@ test.describe("say it, see it", () => {
     await bar.getByRole("button", { name: "Apply" }).click();
     await expect(bar).toHaveAttribute("data-mode", "notice");
     await expect(bar).toContainText(`Eris made this view: ~/.desk/views/${ID}.yaml`);
-    await expect(frame.locator("desk-universal-view[data-mark='drawn']")).toHaveCount(1);
+    await expect(frame.locator("#root > desk-universal-view[data-mark='drawn']")).toHaveCount(1);
     expect(await fileOf(page, "__desk", ID)).toMatchObject({
       id: ID,
       title: "Issues board",
@@ -112,10 +112,10 @@ test.describe("say it, see it", () => {
     const builder = frame.locator(".builder");
     await expect(builder).toBeVisible();
     await expect(builder.locator('[data-source="file"]')).toHaveAttribute("aria-selected", "true");
-    await builder.getByLabel("Where").fill("~/boards/launch.yaml");
+    await builder.locator('input[aria-label="Where"]').fill("~/boards/launch.yaml");
     await builder.getByRole("button", { name: "Load" }).click();
     await expect(builder.locator(".build-status")).toContainText("4 entries");
-    await expect(builder.getByLabel("Name")).toHaveValue("Launch");
+    await expect(builder.locator('input[aria-label="Name"]')).toHaveValue("Launch");
 
     await builder.locator('[data-shape="kanban"]').click();
     const preview = builder.locator("desk-universal-view");
@@ -139,7 +139,7 @@ test.describe("say it, see it", () => {
       map: { title: "name", group: "column", start: "due" },
     });
 
-    const view = frame.locator("desk-universal-view");
+    const view = frame.locator("#root > desk-universal-view");
     await expect(view.locator(".column-title .name")).toHaveText(["doing", "todo", "done"]);
     const reads = await page.evaluate(() => window.__views.reads.length);
     await view.locator('[role="tab"][data-type="timeline"]').click();

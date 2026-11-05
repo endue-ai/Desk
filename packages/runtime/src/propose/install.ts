@@ -53,7 +53,7 @@ export function installProposals(options: InstallProposalsOptions): () => void {
     profile: options.profile,
   };
   // A view is a universal view (ADR 0102); the item view kind answers to its name only.
-  const kinds: ProposalKind[] = [universalKind(views), { ...viewKind(views), kind: "item-view" }];
+  const kinds: ProposalKind[] = [universalKind(views), viewKind({ ...views, kind: "item-view" })];
   const card = options.desk ? createCard(options.desk.host) : undefined;
   if (options.desk && card) {
     const { settings, policy, platform } = options.desk;
