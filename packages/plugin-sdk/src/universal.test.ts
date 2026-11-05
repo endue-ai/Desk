@@ -176,6 +176,51 @@ describe("the helpers", () => {
       text: "Lunch?",
     });
   });
+
+  it("give a run its state as its column, its agent as its author and its approval (ADR 0100)", () => {
+    const source = { connector: "desk.agents", instance: "default" };
+    const items: Item[] = [
+      {
+        kind: "run",
+        id: "run-4",
+        source,
+        title: "Local agents: hand an agent a task",
+        updatedAt: "2026-11-05T09:31:00Z",
+        agent: "eris",
+        state: "waiting",
+        startedAt: "2026-11-05T09:31:00Z",
+        command: "endue.local-agents.work",
+        approval: "a-7",
+      },
+      {
+        kind: "run",
+        id: "run-3",
+        source,
+        title: "Latest mail",
+        updatedAt: "2026-11-05T09:30:05Z",
+        agent: "eris",
+        state: "done",
+        startedAt: "2026-11-05T09:30:01Z",
+        endedAt: "2026-11-05T09:30:05Z",
+        result: "2 new messages",
+      },
+    ];
+    const [waiting, done] = entriesFromItems(items);
+    expect(waiting).toMatchObject({
+      group: "waiting",
+      status: "waiting",
+      author: "eris",
+      start: "2026-11-05T09:31:00Z",
+      approval: "a-7",
+      tags: ["endue.local-agents.work"],
+    });
+    expect(done).toMatchObject({
+      group: "done",
+      end: "2026-11-05T09:30:05Z",
+      detail: "2 new messages",
+    });
+    expect(done).not.toHaveProperty("approval");
+  });
 });
 
 describe("ctx.universal.open", () => {

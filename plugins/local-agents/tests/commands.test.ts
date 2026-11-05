@@ -129,3 +129,37 @@ describe("the commands", () => {
     expect(again.app.ui).toMatchObject({ view: "board", compare: ["codex"], chatAgent: "claude" });
   });
 });
+
+describe("runs in the desk's agent registry (ADR 0100)", () => {
+  const reports = (m: Awaited<ReturnType<typeof mount>>) =>
+    m.host.calls
+      .filter((c) => c.method === "agent.report")
+      .map((c) => c.params as unknown as Record<string, unknown>);
+
+  it("reports every run when it starts and when it ends", async () => {
+    const m = await mount({ handlers: { "agent.report": () => ({}) } });
+    await m.host.invoke("endue.local-agents.ask", { agent: "codex", prompt: "What is here?" });
+    const sent = reports(m);
+    expect(sent.map((r) => r.state)).toEqual(["running", "done"]);
+    expect(sent[0]).toMatchObject({
+      agent: { id: "codex", name: "Codex", brain: "codex" },
+      title: "What is here?",
+    });
+    expect(sent[1]).toMatchObject({ id: sent[0]?.id, result: "Three files." });
+    expect(typeof sent[1]?.endedAt).toBe("string");
+  });
+
+  it("stops a run when the desk says agent.cancelled", async () => {
+    const m = await mount({
+      script: computer({ claude: { hang: true } }),
+      handlers: { "agent.report": () => ({}) },
+    });
+    const pending = m.talk.send("slow");
+    await m.settle();
+    const runId = String(reports(m)[0]?.id);
+    m.host.emit({ event: "agent.cancelled", data: { runId } });
+    expect(await pending).toMatchObject({ ending: "stopped" });
+    await m.settle();
+    expect(reports(m).at(-1)).toMatchObject({ id: runId, state: "cancelled" });
+  });
+});
