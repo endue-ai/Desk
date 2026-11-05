@@ -1,0 +1,12 @@
+{
+  "target": "AgentRecord",
+  "description": "an agent init.yaml names, capped to two commands, with nothing under way",
+  "instance": {
+    "id": "mira",
+    "name": "Mira",
+    "source": "init",
+    "caller": "agent:mira",
+    "tools": ["desk.files.open", "endue.git.*"],
+    "state": "idle"
+  }
+}

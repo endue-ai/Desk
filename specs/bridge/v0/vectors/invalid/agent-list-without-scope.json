@@ -1,0 +1,5 @@
+{
+  "target": "BridgeRequest",
+  "description": "agent.list needs perm:manage",
+  "instance": { "id": 43, "method": "agent.list", "params": {} }
+}

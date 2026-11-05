@@ -15,6 +15,8 @@ const plugins: Record<string, string> = {
   // Fails to start every time (safe-mode.html, ADR 0061).
   "test.throws": here("./fixture/plugins/test-throws"),
   "test.theme": here("./themes/test-theme"),
+  // Another provider of role:dock on the edges page (ADR 0104) is the counter under another id.
+  "test.dock": here("./fixture/plugins/test-counter"),
   // The autoload opener of the desk page is the echo plugin under another id.
   "test.lazy": here("./fixture/plugins/test-echo"),
   // The shell page's terminal (?apps=1) is the counter under the terminal's id.

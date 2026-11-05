@@ -61,17 +61,6 @@ button:disabled {
   cursor: default;
 }
 
-button.primary {
-  border-color: var(--desk-primary);
-  background: var(--desk-primary);
-  color: var(--desk-primary-foreground);
-}
-
-button.danger {
-  border-color: var(--desk-danger);
-  color: var(--desk-danger-text);
-}
-
 :focus-visible {
   outline: 2px solid var(--desk-ring);
   outline-offset: 1px;
@@ -390,10 +379,6 @@ dialog input:not([type="checkbox"], [type="radio"]),
 dialog select,
 dialog textarea {
   width: 100%;
-  padding: 4px 6px;
-  border: 1px solid var(--desk-border);
-  border-radius: var(--desk-radius-md);
-  background: var(--desk-background);
 }
 
 dialog [aria-invalid="true"] {

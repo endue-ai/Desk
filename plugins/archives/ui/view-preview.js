@@ -43,6 +43,7 @@ export function createPreview(doc, pane, actions) {
     } else if (model.kind === "archive") {
       const open = doc.createElement("button");
       open.type = "button";
+      open.className = "desk-btn";
       open.textContent = `Open ${model.name}`;
       open.addEventListener("click", () => actions.open());
       pane.append(open);

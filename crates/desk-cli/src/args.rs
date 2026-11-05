@@ -29,8 +29,11 @@ pub const USAGE: &str = "usage: desk [--json] <command>
   theme import <file>                   install a .desk-theme file as a user theme; prints its id
   theme export <id> [file]              write a theme as a .desk-theme file (default: in Downloads)
   theme remove <id>                     delete a user theme
-  doctor [--data <dir>]                 offline: quarantined plugins, .broken state files and crashes
+  doctor [--data <dir>]                 offline: quarantined plugins, .broken state files, crash
+                                        reports, and every desk and data file with its owner, size, state
   doctor --last-crash [--data <dir>]    the newest crash report (--json: the file as it is)
+  export <dir|file.zip> [--with-data]   copy the desk folder (and the safe data files) with desk.json
+  import <dir|file.zip> [--with-data]   restore an export into this HOME; keeps an existing init.yaml
   fs history <path> [--limit <n>]       the versions the desk kept of a file: id, at, caller, size
   fs restore <path> <version>           write a kept version back (what it replaces is kept too)
   log [--count <n>]                     the desk's log, oldest first: at, level, channel, message
@@ -58,6 +61,18 @@ pub enum Action {
     Test(PathBuf),
     /// `doctor --trace <file>`: a start-up trace, summarized offline.
     Trace(PathBuf),
+    /// `export <dir|file.zip>`: the desk folder, and with `with_data` the data files, as files.
+    Export {
+        target: PathBuf,
+        with_data: bool,
+        data: Option<PathBuf>,
+    },
+    /// `import <dir|file.zip>`: an export restored into this HOME.
+    Import {
+        source: PathBuf,
+        with_data: bool,
+        data: Option<PathBuf>,
+    },
     /// `mcp`: an MCP server on stdin and stdout for another app, as an agent (ADR 0086).
     Mcp {
         agent: Option<String>,
@@ -160,6 +175,22 @@ pub fn parse(args: Vec<String>) -> Option<Args> {
         }
         ["plugin", "test", dir] => Action::Test(PathBuf::from(dir)),
         ["doctor", "--trace", file] => Action::Trace(PathBuf::from(file)),
+        ["export", target, rest @ ..] => {
+            let (with_data, data) = carry(rest)?;
+            Action::Export {
+                target: PathBuf::from(target),
+                with_data,
+                data,
+            }
+        }
+        ["import", source, rest @ ..] => {
+            let (with_data, data) = carry(rest)?;
+            Action::Import {
+                source: PathBuf::from(source),
+                with_data,
+                data,
+            }
+        }
         ["mcp", rest @ ..] => mcp(rest)?,
         ["ping"] => Action::Remote(Remote::Ping),
         ["cmd", "list"] => Action::Remote(Remote::CmdList),
@@ -210,6 +241,20 @@ pub fn parse(args: Vec<String>) -> Option<Args> {
         _ => return None,
     };
     Some(Args { action, json })
+}
+
+/// `[--with-data] [--data <dir>]` in either order, for export and import.
+fn carry(rest: &[&str]) -> Option<(bool, Option<PathBuf>)> {
+    let (mut with_data, mut data) = (false, None);
+    let mut words = rest.iter();
+    while let Some(word) = words.next() {
+        match *word {
+            "--with-data" if !with_data => with_data = true,
+            "--data" if data.is_none() => data = Some(PathBuf::from(name(words.next()?)?)),
+            _ => return None,
+        }
+    }
+    Some((with_data, data))
 }
 
 /// What `desk describe` can name.

@@ -7,6 +7,7 @@
       { "imports": { "@endue-ai/plugin-sdk": "/_desk/plugin-sdk.js", "@endue-ai/ui": "/_desk/ui.js" } }
     </script>
     <link rel="stylesheet" href="/_desk/tokens.css" />
+    <link rel="stylesheet" href="/_desk/base.css" />
     <link rel="stylesheet" href="./style.css" />
     <link rel="stylesheet" href="./views.css" />
   </head>
@@ -18,7 +19,7 @@
         <span id="access"></span>
         <span id="busy" role="img" hidden></span>
       </p>
-      <nav id="tabs" role="tablist" aria-label="Local agents views"></nav>
+      <nav id="tabs" class="desk-tabs" role="tablist" aria-label="Local agents views"></nav>
     </header>
     <main>
       <section id="view-agents" class="view" role="tabpanel" aria-labelledby="tab-agents">
@@ -29,25 +30,25 @@
         <div id="chat-bar" class="bar"></div>
         <div id="chat-log" role="log" aria-label="Conversation" tabindex="0"></div>
         <form id="chat-form" class="composer">
-          <textarea id="chat-input" rows="3" aria-label="Message" placeholder="Ask, then press Enter"></textarea>
-          <button type="submit" id="chat-send">Send</button>
+          <textarea id="chat-input" rows="3" aria-label="Message" placeholder="Ask, then press Enter" class="desk-field"></textarea>
+          <button type="submit" id="chat-send" class="desk-btn desk-btn-primary">Send</button>
         </form>
       </section>
       <section id="view-compare" class="view" role="tabpanel" aria-labelledby="tab-compare" hidden>
         <div id="compare-bar" class="bar" role="group" aria-label="Agents to ask"></div>
         <form id="compare-form" class="composer">
-          <textarea id="compare-input" rows="2" aria-label="Question for every agent" placeholder="One question for every agent picked"></textarea>
-          <button type="submit" id="compare-send">Ask</button>
+          <textarea id="compare-input" rows="2" aria-label="Question for every agent" placeholder="One question for every agent picked" class="desk-field"></textarea>
+          <button type="submit" id="compare-send" class="desk-btn desk-btn-primary">Ask</button>
         </form>
         <div id="compare-panes" aria-label="Answers side by side"></div>
       </section>
       <section id="view-board" class="view" role="tabpanel" aria-labelledby="tab-board" hidden>
         <form id="card-form" class="composer">
-          <input id="card-title" type="text" aria-label="Card title" placeholder="Title (optional)" />
-          <textarea id="card-prompt" rows="2" aria-label="Card prompt" placeholder="What the agent should do"></textarea>
-          <select id="card-agent" aria-label="Agent for the card"></select>
-          <button type="submit" id="card-add">Add</button>
-          <button type="button" id="card-add-run">Add and run</button>
+          <input id="card-title" type="text" aria-label="Card title" placeholder="Title (optional)" class="desk-field" />
+          <textarea id="card-prompt" rows="2" aria-label="Card prompt" placeholder="What the agent should do" class="desk-field"></textarea>
+          <select id="card-agent" aria-label="Agent for the card" class="desk-field"></select>
+          <button type="submit" id="card-add" class="desk-btn desk-btn-primary">Add</button>
+          <button type="button" id="card-add-run" class="desk-btn">Add and run</button>
         </form>
         <div id="board-body">
           <div id="board-columns"></div>

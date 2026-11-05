@@ -54,6 +54,7 @@ export function createRail(doc, list, pick) {
       }
       deck.slides.forEach((slide, i) => {
         const item = doc.createElement("li");
+        // ds: own (a thumbnail of the slide itself, drawn from the file)
         const button = doc.createElement("button");
         button.type = "button";
         button.tabIndex = -1;

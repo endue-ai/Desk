@@ -41,7 +41,18 @@ impl Core {
         let declared = self.declared(caller, &params.id);
         let declared = declared.as_ref();
         let field = |pick: fn(&CommandContribution) -> Option<bool>| declared.and_then(pick);
-        let irreversible = field(|c| c.irreversible) == Some(true);
+        let irreversible = match mcp_server_of(caller) {
+            // An MCP server has no manifest: what it says changes nothing is read-only, and the
+            // rest is irreversible (ADR 0098). It keeps to its own ids.
+            Some(server) => {
+                if !params.id.starts_with(&format!("mcp.{server}.")) {
+                    let why = format!("{caller} registers only mcp.{server}.* commands");
+                    return Err(error(ErrorCode::InvalidParams, why));
+                }
+                params.read_only != Some(true)
+            }
+            None => field(|c| c.irreversible) == Some(true),
+        };
         let info = CommandInfo {
             description: params
                 .description
@@ -179,6 +190,23 @@ impl Core {
             .into_iter()
             .find(|c| c.id == id)
     }
+}
+
+/// What an MCP server's caller id starts with (ADR 0098).
+const MCP: &str = "mcp:";
+
+/// The caller an MCP server named in init.yaml (`mcp.servers.<name>`) runs as, when the name is
+/// one Desk can use: a letter, then lowercase letters, digits or dashes, 32 characters at most.
+pub fn mcp_caller(server: &str) -> Option<String> {
+    let mut chars = server.chars();
+    let first = chars.next().is_some_and(|c| c.is_ascii_lowercase());
+    let rest = chars.all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-');
+    (first && rest && server.len() <= 32).then(|| format!("{MCP}{server}"))
+}
+
+/// The server name of an `mcp:<name>` caller.
+fn mcp_server_of(caller: &str) -> Option<&str> {
+    caller.strip_prefix(MCP)
 }
 
 /// The `cmd:invoke` scope of one command.

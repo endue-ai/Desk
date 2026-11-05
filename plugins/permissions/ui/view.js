@@ -110,7 +110,11 @@ export function createView(doc, actions) {
       el("span", { className: "permission" }, item.permission),
     );
     if (item.scope) what.append(" ", el("code", { className: "scope" }, item.scope));
-    const revoke = el("button", { type: "button", className: "revoke", textContent: "Revoke" });
+    const revoke = el("button", {
+      type: "button",
+      className: "desk-btn desk-btn-quiet revoke",
+      textContent: "Revoke",
+    });
     revoke.setAttribute("aria-label", item.revokeLabel);
     revoke.addEventListener("click", () => actions.revoke(item.grantId));
     const li = el("li", { className: "grant" }, what);

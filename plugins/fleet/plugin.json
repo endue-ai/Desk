@@ -1,0 +1,68 @@
+{
+  "id": "desk.fleet",
+  "name": "Fleet",
+  "version": "0.1.0",
+  "kind": "policy",
+  "description": "The control center for agents (ADR 0100): one board of every agent's runs, from Eris's errands to local agents and apps over MCP, with what waits for your approval first. The board is a universal view, so you can change it.",
+  "contributes": {
+    "commands": [
+      {
+        "id": "desk.fleet.open",
+        "title": "Fleet: open the agents' board",
+        "keywords": ["agents", "runs", "approvals", "control center", "fleet"],
+        "runs": {
+          "command": "desk.universal.open",
+          "args": {
+            "view": {
+              "id": "desk.fleet",
+              "title": "Fleet",
+              "description": "Every agent's runs: what waits for your approval, what runs, what finished and what it answered.",
+              "type": "kanban",
+              "types": ["kanban", "list", "timeline"],
+              "source": {
+                "items": {
+                  "kinds": ["run"],
+                  "sort": [
+                    {
+                      "field": "startedAt",
+                      "dir": "desc"
+                    }
+                  ],
+                  "limit": 500
+                }
+              },
+              "options": {
+                "groups": ["waiting", "running", "done", "failed", "cancelled"]
+              },
+              "actions": [
+                {
+                  "command": "endue.permissions.approve",
+                  "title": "Approve",
+                  "args": {
+                    "approval": "{approval}"
+                  }
+                },
+                {
+                  "command": "endue.permissions.deny",
+                  "title": "Deny",
+                  "args": {
+                    "approval": "{approval}"
+                  }
+                },
+                {
+                  "command": "endue.permissions.cancel-run",
+                  "title": "Stop",
+                  "args": {
+                    "run": "{id}",
+                    "source": "{source}"
+                  }
+                }
+              ],
+              "empty": "No agent has run anything yet. When Eris, a local agent or an app over MCP works, it shows here."
+            }
+          }
+        }
+      }
+    ]
+  }
+}

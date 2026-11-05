@@ -237,3 +237,8 @@ body {
 .shell.has-canvas .surface { cursor: auto; }
 .shell.has-canvas.pan-ready .surface-title { cursor: grab; }
 .canvas-reset { position: absolute; left: 104px; bottom: 24px; z-index: 200; width: 32px; height: 32px; background: var(--desk-card); border: 1px solid var(--desk-border); border-radius: var(--radius-sm); }
+
+/* A shell part whose role another plugin holds (ADR 0104, shell/roles.ts). */
+[data-role-yielded] {
+  display: none !important;
+}

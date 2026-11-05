@@ -157,7 +157,13 @@ impl Core {
             id,
             args: args.as_ref(),
         };
-        self.hold(caller, scope, invoke)?;
+        // An agent's call is a run from here on (ADR 0100), waiting while it is held.
+        let run = self.run_started(caller, id, args.as_ref());
+        let held = self.held_as(run.as_deref(), || self.hold(caller, scope, invoke));
+        if let (Some(run), Err(refused)) = (&run, &held) {
+            self.run_went_on(run, Err(&refused.message));
+        }
+        held?;
         let invocation_id = {
             let mut commands = self.commands();
             commands.next += 1;
@@ -175,6 +181,9 @@ impl Core {
             );
             invocation_id
         };
+        if let Some(run) = &run {
+            self.run_went_on(run, Ok(&invocation_id));
+        }
         self.note_invoked(&invocation_id, id, caller, &info.provider);
         let to = self.recipients(EventName::CmdInvoked, vec![info.provider]);
         self.events().publish_to(
@@ -268,6 +277,10 @@ impl Core {
         error: Option<CommandFailure>,
     ) {
         self.note_answered(invocation_id, error.as_ref().map(|failure| failure.code));
+        let failure = error
+            .as_ref()
+            .map(|f| (f.code == CommandFailureCode::Cancelled, f.message.as_str()));
+        self.run_answered(invocation_id, result.as_ref(), failure);
         // An ok answer of an undoable command lands on the undo stack; an inverse's does not, and a
         // redo's leaves what is left to redo (ADR 0077).
         if let (None, Some(inverse), false) =
@@ -294,6 +307,17 @@ impl Core {
                     error,
                 },
             }));
+    }
+
+    /// Answer the waiting invocation `invocation_id` with `failure` for its provider (agent.cancel):
+    /// its caller hears it cancelled, and a late answer from the provider finds nothing.
+    pub(crate) fn cancel_invocation(&self, invocation_id: &str, failure: CommandFailure) -> bool {
+        let invocation = self.commands().pending.remove(invocation_id);
+        let Some(invocation) = invocation else {
+            return false;
+        };
+        self.answered(invocation_id, invocation, None, Some(failure));
+        true
     }
 
     /// Whether the registered command `id` is irreversible.

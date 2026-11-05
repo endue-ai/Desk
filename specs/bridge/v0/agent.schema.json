@@ -1,0 +1,135 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://endue.ai/specs/bridge/v0/agent.schema.json",
+  "title": "Desk bridge v0: agent",
+  "description": "One registry for every agent and its runs (ADR 0100). agent.list answers the registry (specs/agent/v0) and agent.cancel stops a run, both under perm:manage: they show and stop what agents do with their grants. Runs are items of kind run (specs/item/v0), so data.query and views read them: the core records one for every command an agent caller asks for and for the brain directory's tasks, and a plugin reports the runs of the agents it runs with agent.report. agent.cancelled tells the reporter to stop a run.",
+  "$defs": {
+    "AgentListParams": {
+      "description": "Parameters of agent.list.",
+      "type": "object",
+      "properties": {
+        "scope": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/PermManagePermission" }
+      },
+      "required": ["scope"],
+      "additionalProperties": false
+    },
+    "AgentListRequest": {
+      "description": "Every agent the desk knows, with its state now.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "agent.list" },
+        "params": { "$ref": "#/$defs/AgentListParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "AgentListResult": {
+      "description": "Result of agent.list: Eris first, then by name.",
+      "type": "object",
+      "properties": {
+        "agents": {
+          "type": "array",
+          "items": { "$ref": "../../agent/v0/agent.schema.json#/$defs/AgentRecord" }
+        }
+      },
+      "required": ["agents"],
+      "additionalProperties": false
+    },
+    "AgentCancelParams": {
+      "description": "Parameters of agent.cancel: the run's item id, and its source when it is not the core's own (desk.agents).",
+      "type": "object",
+      "properties": {
+        "runId": { "$ref": "../../item/v0/item.schema.json#/$defs/ItemId" },
+        "source": { "$ref": "../../item/v0/item.schema.json#/$defs/ItemSource" },
+        "scope": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/PermManagePermission" }
+      },
+      "required": ["runId", "scope"],
+      "additionalProperties": false
+    },
+    "AgentCancelRequest": {
+      "description": "Stop a run: a waiting one is refused its approval, a running command is answered cancelled to its caller, and a reported run's reporter hears agent.cancelled. An ended run is left as it is.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "agent.cancel" },
+        "params": { "$ref": "#/$defs/AgentCancelParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "AgentCancelResult": {
+      "description": "Result of agent.cancel: whether the run was still under way.",
+      "type": "object",
+      "properties": {
+        "cancelled": { "type": "boolean" }
+      },
+      "required": ["cancelled"],
+      "additionalProperties": false
+    },
+    "AgentReported": {
+      "description": "The agent a reported run belongs to: the reporter's own id for it (claude), its name and what thinks for it. The registry lists it as <reporter>/<id>.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$"
+        },
+        "name": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "brain": { "type": "string", "minLength": 1, "maxLength": 64 }
+      },
+      "required": ["id", "name"],
+      "additionalProperties": false
+    },
+    "AgentReportParams": {
+      "description": "Parameters of agent.report: one run of an agent the caller runs, as it is now. Report it when it starts and again when it changes or ends; the same id updates it.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "../../item/v0/item.schema.json#/$defs/ItemId" },
+        "agent": { "$ref": "#/$defs/AgentReported" },
+        "title": { "$ref": "../../item/v0/item.schema.json#/$defs/ItemTitle" },
+        "state": { "$ref": "../../item/v0/item.schema.json#/$defs/RunState" },
+        "startedAt": { "$ref": "../../item/v0/item.schema.json#/$defs/Timestamp" },
+        "endedAt": { "$ref": "../../item/v0/item.schema.json#/$defs/Timestamp" },
+        "result": { "type": "string", "maxLength": 500 }
+      },
+      "required": ["id", "agent", "title", "state", "startedAt"],
+      "additionalProperties": false
+    },
+    "AgentReportRequest": {
+      "description": "Report a run of an agent the caller runs (a plugin's local agent programs). It needs no scope: a caller reports only under its own source, { connector: <caller>, instance: default }.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "agent.report" },
+        "params": { "$ref": "#/$defs/AgentReportParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "AgentReportResult": {
+      "description": "Result of agent.report.",
+      "type": "object",
+      "additionalProperties": false
+    },
+    "AgentCancelledData": {
+      "description": "Payload of agent.cancelled: the reported run the person asked to stop.",
+      "type": "object",
+      "properties": {
+        "runId": { "$ref": "../../item/v0/item.schema.json#/$defs/ItemId" }
+      },
+      "required": ["runId"],
+      "additionalProperties": false
+    },
+    "AgentCancelledEvent": {
+      "description": "The person asked to stop a run the caller reported. Sent to that reporter only; it stops the run and reports it cancelled.",
+      "type": "object",
+      "properties": {
+        "event": { "const": "agent.cancelled" },
+        "data": { "$ref": "#/$defs/AgentCancelledData" }
+      },
+      "required": ["event", "data"],
+      "additionalProperties": false
+    }
+  }
+}

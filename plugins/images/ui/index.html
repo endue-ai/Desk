@@ -7,6 +7,7 @@
       { "imports": { "@endue-ai/plugin-sdk": "/_desk/plugin-sdk.js", "@endue-ai/ui": "/_desk/ui.js" } }
     </script>
     <link rel="stylesheet" href="/_desk/tokens.css" />
+    <link rel="stylesheet" href="/_desk/base.css" />
     <link rel="stylesheet" href="./style.css" />
   </head>
   <body>
@@ -19,27 +20,27 @@
         </p>
       </div>
       <div id="toolbar" role="toolbar" aria-label="Image" aria-controls="stage">
-        <button type="button" id="previous" aria-label="Previous image" title="Previous image (Left)">‹</button>
-        <button type="button" id="next" aria-label="Next image" title="Next image (Right)">›</button>
+        <button type="button" id="previous" class="desk-icon-btn" aria-label="Previous image" title="Previous image (Left)">‹</button>
+        <button type="button" id="next" class="desk-icon-btn" aria-label="Next image" title="Next image (Right)">›</button>
         <span class="gap" aria-hidden="true"></span>
-        <button type="button" id="zoom-out" aria-label="Zoom out" title="Zoom out (Mod+-)">−</button>
+        <button type="button" id="zoom-out" class="desk-icon-btn" aria-label="Zoom out" title="Zoom out (Mod+-)">−</button>
         <output id="zoom-level" aria-label="Zoom">100%</output>
-        <button type="button" id="zoom-in" aria-label="Zoom in" title="Zoom in (Mod+=)">+</button>
-        <button type="button" id="zoom-fit" title="Fit to the surface (Mod+0)">Fit</button>
-        <button type="button" id="zoom-actual" title="Actual pixels">100%</button>
+        <button type="button" id="zoom-in" class="desk-icon-btn" aria-label="Zoom in" title="Zoom in (Mod+=)">+</button>
+        <button type="button" id="zoom-fit" class="desk-btn desk-btn-quiet" title="Fit to the surface (Mod+0)">Fit</button>
+        <button type="button" id="zoom-actual" class="desk-btn desk-btn-quiet" title="Actual pixels">100%</button>
         <span class="gap" aria-hidden="true"></span>
-        <button type="button" id="rotate-left" aria-label="Rotate left" title="Rotate left">⟲</button>
-        <button type="button" id="rotate-right" aria-label="Rotate right" title="Rotate right">⟳</button>
-        <button type="button" id="flip" aria-label="Flip" aria-pressed="false" title="Flip horizontally">⇋</button>
+        <button type="button" id="rotate-left" class="desk-icon-btn" aria-label="Rotate left" title="Rotate left">⟲</button>
+        <button type="button" id="rotate-right" class="desk-icon-btn" aria-label="Rotate right" title="Rotate right">⟳</button>
+        <button type="button" id="flip" class="desk-icon-btn" aria-label="Flip" aria-pressed="false" title="Flip horizontally">⇋</button>
         <span class="gap" aria-hidden="true"></span>
-        <button type="button" id="compare" aria-pressed="false" title="Compare with another image">Compare</button>
+        <button type="button" id="compare" class="desk-btn desk-btn-quiet" aria-pressed="false" title="Compare with another image">Compare</button>
         <label id="compare-pick" hidden>
           <span>with</span>
-          <select id="compare-with" aria-label="Compare with">
+          <select id="compare-with" class="desk-field" aria-label="Compare with">
             <option value="">Choose an image</option>
           </select>
         </label>
-        <button type="button" id="details-toggle" aria-expanded="false" aria-controls="details">Details</button>
+        <button type="button" id="details-toggle" class="desk-btn desk-btn-quiet" aria-expanded="false" aria-controls="details">Details</button>
       </div>
     </header>
     <desk-progress id="opening" hidden></desk-progress>

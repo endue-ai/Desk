@@ -14,5 +14,60 @@
   "surfaces": [
     { "id": "main", "title": "Permissions", "placement": "right" },
     { "id": "prompt", "title": "Permission request", "placement": "overlay" }
-  ]
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "id": "endue.permissions.approve",
+        "title": "Permissions: approve the run",
+        "keywords": ["agents", "approval", "fleet"],
+        "description": "Approve the approval an agent's run waits for (its approval id, from the fleet board), once or, with answer task, for the rest of the task.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "approval": {
+              "type": "string"
+            },
+            "answer": {
+              "enum": ["once", "task"]
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      {
+        "id": "endue.permissions.deny",
+        "title": "Permissions: deny the run",
+        "keywords": ["agents", "approval", "fleet"],
+        "description": "Deny the approval an agent's run waits for (its approval id, from the fleet board).",
+        "args": {
+          "type": "object",
+          "properties": {
+            "approval": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      {
+        "id": "endue.permissions.cancel-run",
+        "title": "Permissions: stop the run",
+        "keywords": ["agents", "stop", "cancel", "fleet"],
+        "description": "Stop an agent's run by its item id (run) and source: a waiting run is denied, a running command is answered cancelled, a plugin's run is stopped by the plugin.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "run": {
+              "type": "string"
+            },
+            "source": {
+              "type": "object"
+            }
+          },
+          "additionalProperties": false
+        }
+      }
+    ]
+  }
 }

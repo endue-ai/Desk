@@ -22,6 +22,7 @@ export function contextMenu(doc, run, restore) {
   const buttons = ITEMS.map(([title, command]) => {
     const button = doc.createElement("button");
     button.type = "button";
+    button.className = "desk-row";
     button.setAttribute("role", "menuitem");
     button.tabIndex = -1;
     button.textContent = title;

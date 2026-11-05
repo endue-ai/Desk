@@ -126,6 +126,7 @@ export function createPages(doc, host, scroller, hooks) {
         box.replaceChildren(doc.createTextNode(`${target.format} decoding stopped. `));
         const retry = doc.createElement("button");
         retry.type = "button";
+        retry.className = "desk-btn";
         retry.textContent = "Reload document";
         retry.addEventListener("click", () => hooks.reload?.());
         box.append(retry);
