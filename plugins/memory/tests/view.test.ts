@@ -50,7 +50,7 @@ describe("the memory inspector's page", () => {
     expect(labels(items[0] as Element)).toEqual(["Edit", "Forget"]);
     expect(labels(items[1] as Element)).toEqual(["Forget"]);
     expect(items[1]?.querySelector(".text")?.textContent).toBe("“check my latest mail”");
-    (items[1]?.querySelector("button") as HTMLButtonElement).click();
+    ((items[1] as Element).querySelector("button") as HTMLButtonElement).click();
     expect(actions.forget).toHaveBeenCalledWith("ep_0002");
     for (const control of document.querySelectorAll("button, input, textarea"))
       expect(control.className).toMatch(/desk-(btn|field|tab)/);
