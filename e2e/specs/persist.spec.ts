@@ -19,19 +19,29 @@ type Settings = { desk?: Record<string, unknown> };
 /** Whether grants.json holds a grant naming FOLDER (only lasting grants are written there). */
 const granted = (value: unknown) => JSON.stringify(value ?? "").includes(FOLDER);
 
+/**
+ * Press a button by its selector in the current frame. The desk lays every plugin of the Default
+ * profile out at once, so windows overlap: a pointer click can land on the window on top. The
+ * element's own click reaches the button wherever it is drawn.
+ */
+async function press(selector: string): Promise<void> {
+  await $(selector).waitForExist();
+  await browser.execute((s: string) => {
+    (document.querySelector(s) as HTMLElement | null)?.click();
+  }, selector);
+}
+
 /** Ask for FOLDER from e2e.ask. */
 async function ask(): Promise<void> {
-  await inFrame(ASK, async () => {
-    await $(`button[data-folder="${FOLDER}"]`).click();
-  });
+  await inFrame(ASK, () => press(`button[data-folder="${FOLDER}"]`));
 }
 
 const answers = () => inFrame(ASK, () => $("[data-testid=answers]").getText());
 
 async function pickBrain(brain: string): Promise<void> {
   const popover = $(`${MODE} [data-popover=brain]`);
-  if (!(await popover.isExisting())) await $(`${MODE} [data-key=rail-brain]`).click();
-  await $(`${MODE} [data-popover=brain] [data-key=brain-${brain}]`).click();
+  if (!(await popover.isExisting())) await press(`${MODE} [data-key=rail-brain]`);
+  await press(`${MODE} [data-popover=brain] [data-key=brain-${brain}]`);
 }
 
 describe("persist: grants and settings across a relaunch", () => {
@@ -40,9 +50,8 @@ describe("persist: grants and settings across a relaunch", () => {
 
     await ask();
     await inFrame(PERMISSIONS, async () => {
-      const always = $("button[data-answer=always]");
-      await always.waitForDisplayed({ timeout: 15_000 });
-      await always.click();
+      await $("button[data-answer=always]").waitForDisplayed({ timeout: 15_000 });
+      await press("button[data-answer=always]");
     });
     await waitForData("grants.json", granted, `an always grant of ${FOLDER}`);
     await browser.waitUntil(async () => (await answers()).includes('"granted":true'), {
@@ -69,7 +78,7 @@ describe("persist: grants and settings across a relaunch", () => {
       await expect($("button[data-answer=always]")).not.toBeDisplayed();
     });
 
-    await $(`${MODE} [data-key=rail-brain]`).click();
+    await press(`${MODE} [data-key=rail-brain]`);
     await expect($(`${MODE} [data-popover=brain] [data-key=brain-echo]`)).toHaveAttribute(
       "aria-checked",
       "true",

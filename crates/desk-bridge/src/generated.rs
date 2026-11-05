@@ -6704,15 +6704,27 @@ pub enum ViewSource {
     File,
 }
 
-/// A view as view.list returns it: where it comes from and, for a plugin's view, the plugin.
+/// A view in either language: an item view of specs/view/v0 (layouts of components over the desk's items, ADR 0032) or a universal view (one presentation of entries from any source, ADR 0087). A universal view saved in ~/.desk/views must have its id.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum AnyView {
+    View(View),
+    Universal(UniversalView),
+}
+
+/// A view as view.list returns it: where it comes from and, for a plugin's view, the plugin. An item view has a version; a universal view has its type instead, and its title is its id when it has none.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ViewSummary {
     pub id: ViewId,
-    pub version: Version,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub version: Option<Version>,
     pub title: Template,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
+    /// A universal view's presentation; absent for an item view.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub r#type: Option<UniversalType>,
     pub source: ViewSource,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub plugin: Option<PluginId>,
@@ -6762,7 +6774,7 @@ pub struct ViewGetParams {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ViewGetResult {
-    pub view: View,
+    pub view: AnyView,
     pub source: ViewSource,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub plugin: Option<PluginId>,
@@ -6777,11 +6789,11 @@ pub struct ViewSaveRequest {
     pub params: ViewSaveParams,
 }
 
-/// Parameters of view.save. The view must pass specs/view/v0 and its names must resolve.
+/// Parameters of view.save. An item view must pass specs/view/v0 and its names must resolve; a universal view must pass universal.schema.json and have its id.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ViewSaveParams {
-    pub view: View,
+    pub view: AnyView,
     pub scope: ViewManagePermission,
 }
 

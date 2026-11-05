@@ -1,6 +1,7 @@
-// What desk.universal.open opens, from its arguments: a view as given, a desk file that holds a view
-// or data, a URL's data, or inline data (specs/view/v0/universal.schema.json). Data opened without a
-// view shows as a list that switches to every other presentation. Pure but for `io`.
+// What desk.universal.open opens, from its arguments: a view as given, one of the person's saved
+// views by id (view.get, ADR 0102), a desk file that holds a view or data, a URL's data, or inline
+// data (specs/view/v0/universal.schema.json). Data opened without a view shows as a list that
+// switches to every other presentation. Pure but for `io`.
 
 /** Every presentation, in the switcher's order, for data opened without a view. */
 export const ALL = /** @type {const} */ ([
@@ -18,9 +19,10 @@ const TYPES = new Set(/** @type {readonly string[]} */ (ALL));
  * @typedef {import("../../../packages/bridge/src/index").UniversalView} UniversalView
  * @typedef {import("../../../packages/bridge/src/index").UniversalData} UniversalData
  * @typedef {import("../../../packages/bridge/src/index").UniversalType} UniversalType
- * @typedef {{ view?: unknown, file?: string, url?: string, data?: UniversalData, type?: string,
- *   title?: string }} OpenArgs
- * @typedef {{ parse(text: string): unknown, read(path: string): Promise<string> }} OpenIo
+ * @typedef {{ view?: unknown, id?: string, file?: string, url?: string, data?: UniversalData,
+ *   type?: string, title?: string }} OpenArgs
+ * @typedef {{ parse(text: string): unknown, read(path: string): Promise<string>,
+ *   get?(id: string): Promise<unknown> }} OpenIo
  */
 
 /**
@@ -55,6 +57,11 @@ export async function viewOf(args, io) {
       throw new Error("view: not a universal view (it needs a type and a source)");
     return shown(args.view);
   }
+  if (args.id !== undefined) {
+    const saved = io.get ? await io.get(args.id) : undefined;
+    if (!isView(saved)) throw new Error(`${args.id} is not a universal view`);
+    return shown(saved);
+  }
   if (args.data !== undefined) return over({ data: args.data });
   if (args.url !== undefined) {
     if (!/^https?:\/\//.test(args.url)) throw new Error("url: only http and https");
@@ -64,7 +71,7 @@ export async function viewOf(args, io) {
     const value = io.parse(await io.read(args.file));
     return isView(value) ? shown(value) : over({ file: args.file });
   }
-  throw new Error("Open what? Give a view, a file, a url or data.");
+  throw new Error("Open what? Give a view, an id, a file, a url or data.");
 }
 
 /**

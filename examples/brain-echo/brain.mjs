@@ -4,10 +4,12 @@
 // and "tool <name> as <agent>: <json arguments>" asks for that tool on behalf of that agent. A
 // message of several such calls (one per line, or joined by " then ") asks for each in turn, all in
 // one turn. A turn that offers tools gets a call to the one toolChoice names, or to the first it
-// knows: propose_theme (theme.mjs) and echo; else to an offered command the message names by the
-// words of its tool name (Eris's loop, ADR 0089: "check my latest mail" calls endue_mail_latest);
-// "remember that <fact>" calls the desk's desk-remember when offered (ADR 0096).
+// knows: propose_theme (theme.mjs), propose_universal_view (universal.mjs) and echo; else to an
+// offered command the message names by the words of its tool name (Eris's loop, ADR 0089: "check my
+// latest mail" calls endue_mail_latest); "remember that <fact>" calls the desk's desk-remember when
+// offered (ADR 0096).
 import { proposeTheme } from "./theme.mjs";
+import { proposeUniversalView } from "./universal.mjs";
 
 /** A contract error: the HTTP status and the BrainError body. */
 export class BrainError extends Error {
@@ -95,6 +97,7 @@ function rememberCall(body, said) {
 /** The tools brain-echo can call: each makes the arguments from what was said. */
 const KNOWN = {
   propose_theme: (said) => proposeTheme(said),
+  propose_universal_view: (said) => proposeUniversalView(said),
   echo: (said) => ({ text: said }),
 };
 
