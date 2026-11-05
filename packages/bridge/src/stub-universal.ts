@@ -32,7 +32,8 @@ export function universalProblems(view: UniversalView): string[] {
   const problems: string[] = [];
   if (v.id === undefined) problems.push("/id: a universal view needs its id to be saved");
   else if (typeof v.id !== "string" || !VIEW_ID.test(v.id)) problems.push("/id: not a view id");
-  if (!TYPES.includes(String(v.type))) problems.push(`/type: ${String(v.type)} is not a presentation`);
+  if (!TYPES.includes(String(v.type)))
+    problems.push(`/type: ${String(v.type)} is not a presentation`);
   const source = v.source as Record<string, unknown> | undefined;
   const keys = source && typeof source === "object" ? Object.keys(source) : [];
   const kinds = keys.filter((key) => SOURCES.includes(key));

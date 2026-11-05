@@ -35,7 +35,10 @@ describe("brain-echo's propose_universal_view", () => {
     const file = ask("show ~/plans/q4.yaml as a calendar");
     expect(file).toMatchObject({ type: "calendar", source: { file: "~/plans/q4.yaml" } });
     const url = ask("show https://status.example.test/feed.yaml");
-    expect(url).toMatchObject({ type: "list", source: { url: "https://status.example.test/feed.yaml" } });
+    expect(url).toMatchObject({
+      type: "list",
+      source: { url: "https://status.example.test/feed.yaml" },
+    });
     for (const view of [folder, file, url]) expect(valid(view)).toEqual([]);
   });
 

@@ -117,7 +117,9 @@ export function universalKind(options: UniversalKindOptions): ProposalKind<Unive
     },
 
     async drafting(request) {
-      await commands.run("desk.universal.drafting", { note: `Making a view from “${request.text}”…` });
+      await commands.run("desk.universal.drafting", {
+        note: `Making a view from “${request.text}”…`,
+      });
     },
 
     async check(answer, request) {

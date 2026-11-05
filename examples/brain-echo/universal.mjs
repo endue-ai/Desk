@@ -39,7 +39,10 @@ export function saidIn(prompt) {
     .map((line) => line.trim())
     .filter(Boolean);
   const quoted = (line) => [...line.matchAll(/“([^”]*)”/g)].map((m) => m[1]);
-  const said = [...quoted(lines[0] ?? ""), ...(/^Then they asked/.test(lines[1] ?? "") ? quoted(lines[1]) : [])];
+  const said = [
+    ...quoted(lines[0] ?? ""),
+    ...(/^Then they asked/.test(lines[1] ?? "") ? quoted(lines[1]) : []),
+  ];
   return said.length ? said : [lines.at(-1) ?? ""];
 }
 
@@ -76,7 +79,9 @@ function sourceOf(said) {
   const words = wordsOf(all);
   const kinds = KINDS.filter((k) => k.words.some((w) => words.has(w)));
   if (kinds.length === 0) return { source: { items: {} }, what: "everything" };
-  const named = kinds.map((k) => k.words.find((w) => words.has(w) && w.endsWith("s")) ?? `${k.kind}s`);
+  const named = kinds.map(
+    (k) => k.words.find((w) => words.has(w) && w.endsWith("s")) ?? `${k.kind}s`,
+  );
   return { source: { items: { kinds: kinds.map((k) => k.kind) } }, what: named.join(" and ") };
 }
 

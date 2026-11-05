@@ -105,7 +105,12 @@ export function viewKind(options: ViewKindOptions): ProposalKind<View> {
       const brain = await brainName(bridge);
       const value = {
         ...rest,
-        id: await freeId(bridge, PREFIX, typeof rest.title === "string" ? rest.title : "", options.now),
+        id: await freeId(
+          bridge,
+          PREFIX,
+          typeof rest.title === "string" ? rest.title : "",
+          options.now,
+        ),
         version: "0.1.0",
         provenance: {
           author: "eris",

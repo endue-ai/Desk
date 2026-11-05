@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "kind": "ui",
   "entry": "ui/index.html",
-  "description": "Opens a universal view: entries from inline data, a file, a URL, another plugin or the desk's items, drawn as a timeline, calendar, board, list, text, chat or agent run.",
+  "description": "Opens and builds universal views: entries from inline data, a file, a folder, a URL, another plugin or the desk's items, drawn as a timeline, calendar, board, list, text, chat or agent run; Eris previews the ones she makes here.",
   "permissions": [
     {
       "permission": "data:read"
@@ -16,6 +16,9 @@
     {
       "permission": "cmd:invoke",
       "ids": ["*"]
+    },
+    {
+      "permission": "view:manage"
     }
   ],
   "surfaces": [
@@ -44,6 +47,21 @@
         ]
       },
       {
+        "id": "desk.universal.build",
+        "title": "Build a view…",
+        "keywords": [
+          "view",
+          "builder",
+          "make",
+          "board",
+          "timeline",
+          "calendar",
+          "list",
+          "source",
+          "map"
+        ]
+      },
+      {
         "id": "desk.universal.close",
         "title": "Close the universal view"
       },
@@ -51,6 +69,21 @@
         "id": "desk.universal.allow",
         "title": "Allow the universal view's source",
         "keywords": ["permission", "access"]
+      },
+      {
+        "id": "desk.universal.drafting",
+        "title": "Show that Eris is making a view",
+        "keywords": ["eris", "view", "draft"]
+      },
+      {
+        "id": "desk.universal.preview",
+        "title": "Preview a proposed universal view",
+        "keywords": ["eris", "view", "preview"]
+      },
+      {
+        "id": "desk.universal.folder",
+        "title": "A folder as universal data",
+        "keywords": ["folder", "files", "timeline"]
       }
     ]
   }
