@@ -1,6 +1,6 @@
 name: rollout
 
-# Widen or stop a stable build's rollout (ADR 0090), by hand only: the share of desks that see it, 10
+# Widen or stop a stable build's rollout (ADR 0092), by hand only: the share of desks that see it, 10
 # when release-final.yml lists it, then 50 and 100; 0 stops new desks from taking it. A desk's bucket
 # for a version never changes, so a wider share only adds desks. Taking a build off every desk that
 # staged it is rollback.yml. Runs in the stable environment, which people approve.

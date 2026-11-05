@@ -1,6 +1,6 @@
 name: release-cut
 
-# Cut a release line (ADR 0090), by hand only: the branch release/vX.Y at the commit of the newest
+# Cut a release line (ADR 0092), by hand only: the branch release/vX.Y at the commit of the newest
 # canary build that has been on canary three days, or at a main commit given here. The line defaults
 # to the one after the newest line or tag, and must be above every line that exists. The release app
 # creates the branch, so its push starts release.yml, which builds the line's first candidate for

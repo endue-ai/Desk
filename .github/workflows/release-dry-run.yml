@@ -8,7 +8,7 @@ name: release-dry-run
 # the release files, which GitHub cannot dispatch before they are on main.
 on:
   workflow_dispatch:
-  # ci.yml runs it for a pull request into a release line that changes these files (ADR 0090).
+  # ci.yml runs it for a pull request into a release line that changes these files (ADR 0092).
   workflow_call:
   pull_request:
     paths:

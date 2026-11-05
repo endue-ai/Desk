@@ -1,4 +1,4 @@
-// Which workflows run when (ADR 0081, ADR 0090): pull requests into main and the merge queue run the
+// Which workflows run when (ADR 0081, ADR 0092): pull requests into main and the merge queue run the
 // Linux gates; a pull request into a release line release/vX.Y also runs macOS, Windows and the app on
 // every OS; a push to a line builds a candidate for beta; a final, by hand, tags it and lists it on
 // stable for a tenth of the desks; canary builds nightly or by hand, with macOS and Windows checks.

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// The version a release build carries (ADR 0054, ADR 0090). A release line is a branch release/vX.Y;
+// The version a release build carries (ADR 0054, ADR 0092). A release line is a branch release/vX.Y;
 // its candidates are X.Y.Z-rc.<run>, Z the patch after the line's newest tag vX.Y.Z, and its final is
 // the candidate without the suffix. A main (canary) build is the minor after the newest line or tag
 // with -pre.<run> (0.5.0-pre.212 once release/v0.4 exists), or 0.1.0-pre.<run> before any: semver

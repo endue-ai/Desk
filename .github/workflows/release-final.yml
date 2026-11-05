@@ -1,6 +1,6 @@
 name: release-final
 
-# A line's final (ADR 0090). Dispatched on release/vX.Y, by hand: the line's newest candidate must have
+# A line's final (ADR 0092). Dispatched on release/vX.Y, by hand: the line's newest candidate must have
 # been on beta three days (fewer when a person says so for an urgent fix) with no open release-blocker
 # issue on the milestone vX.Y. The candidate's commit is built again as X.Y.Z, since the version is in
 # the binary and in every signature. A person approves the publish in the stable environment; then it

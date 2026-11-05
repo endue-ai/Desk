@@ -2,7 +2,7 @@ name: ci
 
 # Every pull request and the merge queue run on Linux: check and unit tests, the runtime e2e, codegen,
 # red-on-base, and the Tauri app's build when the shell or the primitives change. A pull request into
-# a release line release/vX.Y (ADR 0081, ADR 0090), a cherry-pick of main commits, also runs check and
+# a release line release/vX.Y (ADR 0081, ADR 0092), a cherry-pick of main commits, also runs check and
 # unit tests on macOS and Windows and the app on all three, and the release dry run when it changes
 # the release files; merging it builds the line's next candidate (release.yml). The final `ci` job is
 # the required check. The merge queue runs it again on each PR combined with main and the PRs ahead of it

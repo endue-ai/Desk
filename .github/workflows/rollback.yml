@@ -26,7 +26,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment: ${{ inputs.channel == 'stable' && 'stable' || 'signing' }}
-    # The canary index is canary.yml's; beta and stable share one writer at a time (ADR 0090).
+    # The canary index is canary.yml's; beta and stable share one writer at a time (ADR 0092).
     concurrency:
       group: ${{ inputs.channel == 'canary' && 'canary' || 'release-index' }}
       cancel-in-progress: false

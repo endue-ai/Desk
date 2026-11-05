@@ -1,7 +1,7 @@
 name: release-build
 
 # Builds one version for the four targets (ADR 0054), called by canary, release and release-final
-# (which builds a candidate's commit again, given as ref; ADR 0090). No macOS
+# (which builds a candidate's commit again, given as ref; ADR 0092). No macOS
 # universal build: darwin-aarch64 and darwin-x86_64 ship apart. Updater artifacts are signed with
 # the updater key, the version in each signature; the public key and the commit go into the binary.
 # macOS is signed and notarised when the Apple secrets are set; Windows ships NSIS only, unsigned

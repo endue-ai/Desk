@@ -151,7 +151,7 @@ export function promotable(index, { now, days = 3 }) {
 }
 
 /**
- * The candidate a line's final builds (ADR 0090): the line's newest X.Y.Z-rc.N on `index`, once it has
+ * The candidate a line's final builds (ADR 0092): the line's newest X.Y.Z-rc.N on `index`, once it has
  * been listed `days`. Undefined while there is none or it is younger; a newer candidate restarts the wait.
  */
 export function soakedCandidate(index, { line, now, days = 3 }) {

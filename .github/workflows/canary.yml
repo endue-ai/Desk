@@ -2,11 +2,11 @@ name: canary
 
 # Main becomes a canary build on R2 nightly, when it moved since the last canary, or by hand (ADR 0081,
 # amending ADR 0054's build on every push): built for the four targets as the next line's .0 with
-# -pre.<run> (ADR 0090: 0.5.0-pre.212 once release/v0.4 exists), uploaded in the order that keeps
+# -pre.<run> (ADR 0092: 0.5.0-pre.212 once release/v0.4 exists), uploaded in the order that keeps
 # listed builds whole (artifacts, then release.json, then the index), listed on the canary index, and
 # canary builds older than two weeks dropped (files kept while beta or stable lists them). Release
 # notes are the commit page. The same night runs check and unit tests on macOS and Windows, which pull
-# requests skip (ADR 0090), even before the secrets exist; a failure fails the run, so the next night
+# requests skip (ADR 0092), even before the secrets exist; a failure fails the run, so the next night
 # runs again. Without the updater key, its public key or the R2 credentials nothing is built.
 on:
   schedule:

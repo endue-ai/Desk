@@ -1,7 +1,7 @@
 # Releasing endue Desk
 
 How a build reaches installed desks, and what a maintainer does at each step. The decisions are ADR
-0054 (R2, signed indexes, the staging updater), ADR 0081 (which OS runs where) and ADR 0090 (release
+0054 (R2, signed indexes, the staging updater), ADR 0081 (which OS runs where) and ADR 0092 (release
 lines, candidates on beta, stable in steps). Agents stop at the cherry-pick pull request: every run
 below waits for a person in the `stable` environment.
 

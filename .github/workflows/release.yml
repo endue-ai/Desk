@@ -1,6 +1,6 @@
 name: release
 
-# A push to a release line release/vX.Y builds its next candidate (ADR 0090, amending ADR 0081): check
+# A push to a release line release/vX.Y builds its next candidate (ADR 0092, amending ADR 0081): check
 # and unit tests on every OS, the four targets built and signed as X.Y.Z-rc.<run>, uploaded to R2 and
 # listed on beta. release-cut.yml's new branch builds the line's first candidate; each merged
 # cherry-pick builds the next. Stable comes from release-final.yml once a candidate has been on beta

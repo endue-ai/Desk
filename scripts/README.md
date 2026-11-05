@@ -22,7 +22,7 @@ addons, from the pinned npm packages into `plugins/terminal/ui/vendor/` (ADR 003
 `.github/rulesets/*.json`; maintainers run it by hand, like `sync-labels.sh`.
 
 `release-version.mjs`, `release-collect.mjs`, `release-manifest.mjs` and `release-publish.mjs` are the
-release pipeline's steps (ADR 0054, ADR 0090): the build version of a canary, a line's candidate or its
+release pipeline's steps (ADR 0054, ADR 0092): the build version of a canary, a line's candidate or its
 final, each target's bundles under canonical names, `release.json`, the channel indexes and their rollout
 shares, and the upload to R2 in the order that keeps every listed build whole. The `release-build`,
 `canary`, `release-cut`, `release`, `release-final`, `rollout` and `rollback` workflows call them

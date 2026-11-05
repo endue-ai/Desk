@@ -2,7 +2,7 @@
 # Create or update every ruleset in .github/rulesets/*.json with the gh CLI, then drop the classic
 # branch protection on main, which the "main" ruleset replaces (ADR 0015). Maintainers run it by hand,
 # after the workflows that answer merge_group events are on main; otherwise the queue never merges.
-# A ruleset that names "$RELEASE_APP_ID" as a bypass actor (release, protect-release-tags; ADR 0090)
+# A ruleset that names "$RELEASE_APP_ID" as a bypass actor (release, protect-release-tags; ADR 0092)
 # takes the release GitHub App's id from the environment.
 # usage: RELEASE_APP_ID=<id> ORG=endue-ai REPO=Desk scripts/sync-rulesets.sh   (default: the gh repository)
 set -euo pipefail
