@@ -143,16 +143,18 @@ impl Session {
     /// update.* (ADR 0054), one status line. `check` waits for the `update.changed` that ends the
     /// check, and exits 1 when it failed.
     fn update(&mut self, step: UpdateStep) -> Result<ExitCode, Problem> {
-        let method = match step {
-            UpdateStep::Status => "update.status",
-            UpdateStep::Check => "update.check",
-            UpdateStep::Download => "update.download",
-            UpdateStep::Apply => "update.apply",
+        let scope = json!({ "permission": "update:manage" });
+        let (method, params) = match step {
+            UpdateStep::Status => ("update.status", json!({ "scope": scope })),
+            UpdateStep::Check => ("update.check", json!({ "scope": scope })),
+            UpdateStep::Download => ("update.download", json!({ "scope": scope })),
+            UpdateStep::Apply => ("update.apply", json!({ "scope": scope })),
+            UpdateStep::Channel(channel) => (
+                "update.setChannel",
+                json!({ "channel": channel, "scope": scope }),
+            ),
         };
-        let reply = self.call(
-            method,
-            json!({ "scope": { "permission": "update:manage" } }),
-        )?;
+        let reply = self.call(method, params)?;
         let checking = matches!(step, UpdateStep::Check)
             && reply
                 .result

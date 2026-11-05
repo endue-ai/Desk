@@ -270,6 +270,7 @@ impl Core {
             R::UpdateCheck(r) => (r.id, self.update_check(caller, r.params)),
             R::UpdateDownload(r) => (r.id, self.update_download(caller, r.params)),
             R::UpdateApply(r) => (r.id, self.update_apply(caller, r.params)),
+            R::UpdateSetChannel(r) => (r.id, self.update_set_channel(caller, r.params)),
             R::AccountStatus(r) => (r.id, self.account_status(caller, r.params)),
             R::AccountSignIn(r) => (r.id, self.account_sign_in(caller, r.params)),
             R::AccountSignOut(r) => (r.id, self.account_sign_out(caller, r.params)),

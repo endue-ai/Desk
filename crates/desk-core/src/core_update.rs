@@ -7,8 +7,9 @@
 use std::sync::Arc;
 
 use desk_bridge::{
-    BridgeError, BridgeEvent, ErrorCode, EventName, Permission, UpdateBuild, UpdateChangedEvent,
-    UpdateChannel, UpdateManagePermission, UpdateParams, UpdateRelease, UpdateState, UpdateStatus,
+    BridgeError, BridgeEvent, ErrorCode, EventName, Permission, SettingsSetParams, UpdateBuild,
+    UpdateChangedEvent, UpdateChannel, UpdateManagePermission, UpdateParams, UpdateRelease,
+    UpdateSetChannelParams, UpdateState, UpdateStatus,
 };
 use desk_update::{Channel, Prefs, State, Status, Updater};
 use serde_json::Value;
@@ -18,6 +19,8 @@ use crate::perm::Target;
 
 /// The policy plugin that declares the update settings (`plugins/update`).
 const OWNER: &str = "desk.update";
+/// The runtime, whose own `update.channel` is the person's choice (`desk.update.channel`).
+const RUNTIME: &str = "desk";
 
 impl Core {
     /// Serve update.* from `updater`.
@@ -68,6 +71,31 @@ impl Core {
         let updater = self.updater_for(caller, params, "update.apply")?;
         let status = updater.apply().map_err(invalid)?;
         json(bridge_status(&status))
+    }
+
+    /// update.setChannel: the person's `desk.update.channel` (the runtime's own `update.channel`),
+    /// which the next check reads; answers the status on the new channel.
+    pub(crate) fn update_set_channel(
+        &self,
+        caller: &str,
+        params: UpdateSetChannelParams,
+    ) -> Answer {
+        let scope = UpdateParams {
+            scope: params.scope,
+        };
+        let updater = self.updater_for(caller, scope, "update.setChannel")?;
+        let name = match params.channel {
+            UpdateChannel::Stable => "stable",
+            UpdateChannel::Beta => "beta",
+            UpdateChannel::Canary => "canary",
+        };
+        let set = SettingsSetParams {
+            key: "update.channel".to_owned(),
+            value: Value::from(name),
+        };
+        self.settings_set(RUNTIME, set)?;
+        updater.follow(self.update_prefs());
+        json(bridge_status(&updater.status()))
     }
 
     /// The person's update settings. Without a channel, a release build follows stable and a

@@ -47,7 +47,13 @@ export interface UpdatesHost {
     has(id: string): boolean;
     run(id: string, args?: unknown): Promise<unknown>;
   };
-  notify(input: { caller: string; title: string; body?: string; level?: "info" }): void;
+  notify(input: {
+    caller: string;
+    title: string;
+    body?: string;
+    level?: "info" | "warning";
+    actions?: Array<{ label: string; command: string }>;
+  }): void;
   /** The version last announced, kept across restarts. */
   memory: { get(): string | null; set(version: string): void };
 }
@@ -66,6 +72,13 @@ const COPY = {
     confirm: "{caller} asks to restart Desk into {v}",
     restartNow: "Restart now",
     notNow: "Not now",
+    later: "Later",
+    refused: "Desk {v} was not installed",
+    about: "endue Desk {v}",
+    channel: "Channel: {c}.",
+    stagedAbout: "Desk {v} is ready: restart to update.",
+    upToDate: "Up to date.",
+    noUpdates: "This build does not update itself.",
   },
   ko: {
     downloading: "Desk {v} 받는 중 · {p}%",
@@ -80,6 +93,13 @@ const COPY = {
     confirm: "{caller} 가 Desk 를 {v} 로 다시 시작하려 합니다",
     restartNow: "지금 다시 시작",
     notNow: "나중에",
+    later: "나중에",
+    refused: "Desk {v} 를 설치하지 않았습니다",
+    about: "endue Desk {v}",
+    channel: "채널: {c}.",
+    stagedAbout: "Desk {v} 준비됨: 다시 시작하면 업데이트됩니다.",
+    upToDate: "최신입니다.",
+    noUpdates: "이 빌드는 스스로 업데이트하지 않습니다.",
   },
 } as const;
 
@@ -120,11 +140,23 @@ export function rowFor(status: UpdateStatus, lang: Lang): UpdateRow | null {
   }
 }
 
+/** About Desk: the running build, the channel it follows and a build waiting to install. */
+export function aboutText(status: UpdateStatus, lang: Lang): { title: string; body: string } {
+  const copy = COPY[lang];
+  const { version, commit } = status.current;
+  const title = fill(copy.about, { v: commit ? `${version} (${commit})` : version });
+  const v = status.release?.version;
+  const waiting = status.staged && v ? fill(copy.stagedAbout, { v }) : copy.upToDate;
+  return { title, body: `${fill(copy.channel, { c: status.channel })} ${waiting}` };
+}
+
 export function installUpdates(host: UpdatesHost): () => void {
   const copy = COPY[host.lang];
   const offs: Array<() => void> = [];
   let active = true;
   let latest: UpdateStatus | undefined;
+  /** The last refusal announced, so one reason is said once. */
+  let refused: string | undefined;
   const call = (method: "update.status" | "update.check" | "update.download" | "update.apply") =>
     host.core.call(method, SCOPE);
 
@@ -135,7 +167,23 @@ export function installUpdates(host: UpdatesHost): () => void {
     if (status.state === "staged" && status.staged && v && host.memory.get() !== v) {
       host.memory.set(v);
       const title = fill(copy.ready, { v });
-      host.notify({ caller: "desk", title, body: copy.readyBody, level: "info" });
+      // Later closes the notice; the rail keeps its row and the build stays staged.
+      const actions = [
+        { label: copy.restart, command: "desk.update.apply" },
+        { label: copy.later, command: "desk.update.later" },
+      ];
+      host.notify({ caller: "desk", title, body: copy.readyBody, level: "info", actions });
+    }
+    // A build the desk refused (a bad signature or sha256) is said once, with why.
+    const why = status.reason;
+    if (status.state === "failed" && !status.staged && v && why && refused !== `${v} ${why}`) {
+      refused = `${v} ${why}`;
+      host.notify({
+        caller: "desk",
+        title: fill(copy.refused, { v }),
+        body: why,
+        level: "warning",
+      });
     }
   };
 
@@ -180,6 +228,12 @@ export function installUpdates(host: UpdatesHost): () => void {
     define("desk.update.apply", "Restart to update Desk", async (from) => {
       if (!(await confirmed(from))) throw new Error("The person did not agree to restart Desk");
       return call("update.apply");
+    });
+    define("desk.update.later", "Install the Desk update later", async () => latest);
+    define("desk.update.about", "About Desk", async () => {
+      const shown = aboutText(latest ?? status, host.lang);
+      host.notify({ caller: "desk", ...shown, level: "info" });
+      return latest ?? status;
     });
     define("desk.update.notes", "Show the Desk release notes", async () => {
       const target = latest?.release?.notes;

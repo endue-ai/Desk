@@ -23,6 +23,7 @@ pub const USAGE: &str = "usage: desk [--json] <command>
   update                                the desk's updates: state, running build, channel, chosen build
   update check                          read the channel index now and print what came of it
   update download | apply               download the chosen build, or restart into the staged one
+  update channel <stable|beta|canary>   follow another channel from the next check on
   theme list                            the installed themes: id, status, built-in or user, name
   theme apply <id>                      put an installed theme in force
   theme import <file>                   install a .desk-theme file as a user theme; prints its id
@@ -127,6 +128,8 @@ pub enum UpdateStep {
     Check,
     Download,
     Apply,
+    /// update.setChannel: stable, beta or canary.
+    Channel(&'static str),
 }
 
 /// What `desk theme` asks of the desk.
@@ -183,6 +186,11 @@ pub fn parse(args: Vec<String>) -> Option<Args> {
         ["update", "check"] => Action::Remote(Remote::Update(UpdateStep::Check)),
         ["update", "download"] => Action::Remote(Remote::Update(UpdateStep::Download)),
         ["update", "apply"] => Action::Remote(Remote::Update(UpdateStep::Apply)),
+        ["update", "channel", name] => Action::Remote(Remote::Update(UpdateStep::Channel(
+            ["stable", "beta", "canary"]
+                .into_iter()
+                .find(|channel| channel == name)?,
+        ))),
         ["describe", kind, thing] => Action::Remote(Remote::Describe {
             kind: KINDS.iter().find(|k| *k == kind)?,
             name: name(thing)?,
