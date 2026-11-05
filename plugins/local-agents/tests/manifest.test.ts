@@ -56,13 +56,36 @@ describe("plugin.json", () => {
   it("contributes the commands the plugin registers, with the same titles and keywords", () => {
     const { contributes } = manifest();
     expect(contributes?.commands).toEqual(
-      COMMANDS.map(({ id, title, keywords }) => ({ id, title, ...(keywords ? { keywords } : {}) })),
+      COMMANDS.map(({ id, title, keywords, description, args, agent, readOnly, irreversible }) => ({
+        id,
+        title,
+        ...(keywords ? { keywords } : {}),
+        ...(agent ? { description, ...(args ? { args } : {}), agent } : {}),
+        ...(readOnly ? { readOnly } : {}),
+        ...(irreversible ? { irreversible } : {}),
+      })),
     );
     for (const command of COMMANDS) {
       expect(command.title).toMatch(/^Local agents: /);
       expect(command.description.length).toBeGreaterThan(10);
     }
     expect(contributes?.keys).toEqual([{ key: "Mod+Shift+A", command: "endue.local-agents.open" }]);
+  });
+
+  it("offers agents list, ask, work and add-card", () => {
+    const offered = (manifest().contributes?.commands ?? []).filter((c) => c.agent);
+    expect(offered.map((c) => [c.id, c.readOnly ?? false, c.irreversible ?? false])).toEqual([
+      ["endue.local-agents.list", true, false],
+      ["endue.local-agents.ask", true, false],
+      ["endue.local-agents.work", false, true],
+      ["endue.local-agents.add-card", false, false],
+    ]);
+    for (const command of offered) expect(command.description?.length).toBeGreaterThan(40);
+    const props = (id: string) =>
+      Object.keys((offered.find((c) => c.id === id)?.args?.properties ?? {}) as object);
+    expect(props("endue.local-agents.ask")).toEqual(["prompt", "agent", "model", "folder"]);
+    expect(props("endue.local-agents.work")).toEqual(["prompt", "agent", "model", "folder"]);
+    expect(props("endue.local-agents.add-card")).not.toContain("run");
   });
 
   it("gives every command's args a schema a desk can compile", () => {

@@ -11,7 +11,7 @@ import { detectAll, unknown } from "./detect.js";
 import { viewModel } from "./model.js";
 import { createRunner, systemTimers } from "./run.js";
 import { createRuns } from "./runs.js";
-import { DEFAULTS, loadSettings } from "./settings.js";
+import { DEFAULTS, inside, loadSettings } from "./settings.js";
 import { load, save } from "./store.js";
 
 /**
@@ -211,20 +211,23 @@ export function createApp(ctx, view, options = {}) {
   }
 
   /**
-   * A question as the settings say: read-only or not, the folder, the time it may take.
+   * A question as the settings say: read-only or not, the folder (or `folder` inside it), the time
+   * it may take.
    * @param {Agent} agent
    * @param {string} prompt
-   * @param {Partial<import("./ask.js").Question>} [extra]
+   * @param {Partial<import("./ask.js").Question> & { folder?: unknown }} [extra]
    * @returns {import("./ask.js").Question}
    */
   function question(agent, prompt, extra = {}) {
+    const { folder, ...rest } = extra;
+    const cwd = folder === undefined ? settings.folder : inside(settings.folder, folder);
     return {
       agent,
       prompt,
       readOnly: settings.access === "read-only",
-      ...(settings.folder ? { cwd: settings.folder } : {}),
+      ...(cwd ? { cwd } : {}),
       timeoutMs: settings.timeout * 1000,
-      ...extra,
+      ...rest,
     };
   }
 
