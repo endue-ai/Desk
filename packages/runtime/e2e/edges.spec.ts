@@ -1,11 +1,11 @@
 import { expect, type Page, test } from "@playwright/test";
 import { renderTree } from "./render-tree";
 
-async function open(page: Page) {
-  await page.goto("/edges.html");
+async function open(page: Page, query = "") {
+  await page.goto(`/edges.html${query}`);
   await page.waitForFunction(() => window.__desk !== undefined);
   await page.evaluate(() => window.__desk.runtime.plugins?.ready);
-  await expect(page.locator(".desk-surface")).toHaveCount(6);
+  await expect(page.locator(".desk-surface")).toHaveCount(query ? 7 : 6);
   await page.evaluate(() => window.__desk.clock.advance(1000));
 }
 
@@ -57,4 +57,35 @@ test("an edge goes away with its last surface, and the grid takes the room back"
   const after = await page.locator(".desk-compositor").boundingBox();
   expect(after?.height).toBeGreaterThan(before?.height ?? Number.POSITIVE_INFINITY);
   await expect(page.locator(".desk-edge--right .desk-surface")).toHaveCount(2);
+});
+
+test("a plugin named in desk.roles takes its edge's place alone, and turning it off removes that edge", async ({
+  page,
+}) => {
+  await open(page, "?roles=1");
+  // Nobody named: every enabled provider of role:dock mounts, as before roles.
+  await expect(page.locator('.desk-edge--bottom [data-surface="endue.dock"]')).toHaveCount(1);
+  await expect(page.locator('.desk-edge--bottom [data-surface="test.dock"]')).toHaveCount(1);
+
+  await page.evaluate(() =>
+    window.__desk.runtime.settings.set("desk.roles", { "role:dock": "test.dock" }),
+  );
+  await expect(page.locator('[data-surface="endue.dock"]')).toHaveCount(0);
+  await expect(page.locator('.desk-edge--bottom [data-surface="test.dock"]')).toHaveCount(1);
+
+  // The named provider turned off: its edge goes, and the other provider does not come back.
+  await page.evaluate(async () => {
+    const info = window.__deskPlugins.find((p) => p.id === "test.dock");
+    if (info) info.enabled = false;
+    window.__desk.stub.emit({
+      event: "plugin.changed",
+      data: { plugin: "test.dock", change: "disabled", revision: 1 },
+    });
+  });
+  await expect(page.locator(".desk-edge--bottom")).toHaveCount(0);
+  await expect(page.locator('[data-surface="endue.dock"]')).toHaveCount(0);
+
+  // Naming nobody again gives the role back to whoever is enabled.
+  await page.evaluate(() => window.__desk.runtime.settings.set("desk.roles", {}));
+  await expect(page.locator('.desk-edge--bottom [data-surface="endue.dock"]')).toHaveCount(1);
 });

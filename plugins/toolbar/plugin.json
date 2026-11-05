@@ -3,6 +3,7 @@
   "name": "Status",
   "version": "0.1.0",
   "kind": "ui",
+  "provides": ["role:rail"],
   "entry": "ui/index.html",
   "description": "The right status panel: a list of drawers that say how the desk is doing.",
   "permissions": [{ "permission": "plugin:manage" }],

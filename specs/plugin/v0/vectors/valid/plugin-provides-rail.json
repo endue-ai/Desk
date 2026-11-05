@@ -1,0 +1,12 @@
+{
+  "target": "PluginManifest",
+  "description": "a UI plugin on the right edge that provides the rail role (ADR 0104)",
+  "instance": {
+    "id": "example.rail",
+    "version": "0.1.0",
+    "kind": "ui",
+    "entry": "ui/index.html",
+    "provides": ["role:rail"],
+    "surfaces": [{ "id": "main", "title": "Rail", "placement": "right" }]
+  }
+}

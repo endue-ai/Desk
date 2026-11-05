@@ -31,6 +31,7 @@ import { keepShell, syncProfiles } from "./link";
 import { mountPan } from "./Pan";
 import { paneViews } from "./panes";
 import { mountRail } from "./Rail";
+import { byRole } from "./roles";
 import { type DeskState, emptyState, Store } from "./state";
 import { Ticker } from "./ticker";
 import { showPlugin } from "./windows";
@@ -134,7 +135,13 @@ export function mountDesk(options: DeskOptions): Desk {
   pending.say = eris.say;
   pending.setState = eris.setState;
   parts.push(mountPan(root, ctx));
-  parts.push(mountRail(modeLayer, ctx), mountBottom(modeLayer, ctx), mountSurfaces(modeLayer, ctx));
+  // The rail and the bottom edge fill their roles until desk.roles names another provider (ADR 0104).
+  const settings = ctx.runtime.settings;
+  parts.push(
+    byRole(modeLayer, "role:rail", settings, (at) => mountRail(at, ctx)),
+    byRole(modeLayer, "role:dock", settings, (at) => mountBottom(at, ctx)),
+    mountSurfaces(modeLayer, ctx),
+  );
 
   const restored = keepShell(ctx);
   const offs = [

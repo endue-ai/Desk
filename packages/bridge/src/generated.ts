@@ -706,6 +706,8 @@ export interface PluginManifest {
   /** Surfaces a UI plugin can open. Only UI plugins declare surfaces. */
   surfaces?: Surface[];
   contributes?: PluginContributes;
+  /** The roles this plugin can fill (BR-05, ADR 0104): role:rail, role:agents and role:dock are the desk's three edges, role:palette the command palette, role:settings-ui the settings window. The desk.roles setting chooses each role's provider among the plugins that provide it; a provider that is not chosen does not mount that role's surfaces. */
+  provides?: Role[];
   /** Installed but off until the desk needs it, like Emacs's autoload. With no stored enabled flag the plugin starts off, and its file openers count while it is off: desk.files turns it on to open a file and off again when its last file closes; profiles leave it as it is. Default false. */
   autoload?: boolean;
   /** A view plugin's one view, inline. */
@@ -721,6 +723,9 @@ export interface PluginManifest {
 
 /** Reverse-domain style id with at least one dot, lowercase, for example endue.eris or example.hello-ui. */
 export type PluginId = string;
+
+/** A role a plugin fills: role: and a lowercase name. */
+export type Role = string;
 
 /** Semantic version, for example 0.1.0 or 1.2.3-beta.1. */
 export type Version = string;
