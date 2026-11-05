@@ -119,3 +119,71 @@ fn doctor_without_a_trace_file_is_a_usage_error() {
     // Bare `doctor` is no usage error any more: it is the state check.
     assert_ne!(desk(&["doctor"]).status.code(), Some(2));
 }
+
+/// A fresh data folder with `crashes/` holding `reports`, written by desk-crash as the app does.
+fn crashed(reports: &[&str]) -> PathBuf {
+    let n = COUNTER.fetch_add(1, Ordering::Relaxed);
+    let data = std::env::temp_dir().join(format!("desk-cli-crash-{}-{n}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&data);
+    std::fs::create_dir_all(&data).unwrap();
+    let crashes = desk_crash::Crashes::in_data(&data);
+    let context = desk_crash::Context::new("0.1.0", None, None);
+    for message in reports {
+        crashes
+            .write(&desk_crash::Report::webview(message, "at x", &context))
+            .unwrap();
+    }
+    data
+}
+
+#[test]
+fn doctor_last_crash_prints_the_newest_report() {
+    let data = crashed(&["first", "second"]);
+    let data_arg = data.display().to_string();
+    let out = desk(&["doctor", "--last-crash", "--data", &data_arg]);
+    assert!(out.status.success(), "{out:?}");
+    let text = String::from_utf8(out.stdout).unwrap();
+    assert!(text.contains("\"message\": \"second\""), "{text}");
+    assert!(!text.contains("first"), "{text}");
+
+    let out = desk(&["doctor", "--data", &data_arg, "--last-crash", "--json"]);
+    let report: Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert_eq!(report["kind"], "webview");
+    assert_eq!(report["message"], "second");
+}
+
+#[test]
+fn doctor_last_crash_says_when_there_is_none() {
+    let data = crashed(&[]);
+    let out = desk(&[
+        "doctor",
+        "--last-crash",
+        "--data",
+        &data.display().to_string(),
+    ]);
+    assert_eq!(out.status.code(), Some(0));
+    let text = String::from_utf8(out.stdout).unwrap();
+    assert!(text.starts_with("no crash reports in "), "{text}");
+}
+
+#[test]
+fn doctor_counts_the_reports() {
+    let data = crashed(&["one", "two", "three"]);
+    let data_arg = data.display().to_string();
+    let out = desk(&["doctor", "--data", &data_arg]);
+    assert!(out.status.success(), "{out:?}");
+    let text = String::from_utf8(out.stdout).unwrap();
+    let line = text
+        .lines()
+        .find(|l| l.starts_with("crashes\t"))
+        .expect(&text);
+    let fields: Vec<&str> = line.split('\t').collect();
+    assert_eq!(fields[1], "3");
+    assert!(fields[2].ends_with('Z'), "{line}");
+    assert_eq!(fields[3], "webview");
+
+    let out = desk(&["doctor", "--data", &data_arg, "--json"]);
+    let doctor: Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert_eq!(doctor["crashes"]["count"], 3);
+    assert_eq!(doctor["crashes"]["newest"]["kind"], "webview");
+}
