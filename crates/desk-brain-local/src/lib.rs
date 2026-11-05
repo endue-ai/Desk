@@ -3,6 +3,7 @@
 //! the caller chooses; every turn streams the events of `specs/brain/v0`.
 pub const NAME: &str = env!("CARGO_PKG_NAME");
 
+mod context;
 mod events;
 mod http;
 mod ollama;
@@ -230,7 +231,10 @@ impl Brain for LocalBrain {
             messages.push(user.clone());
             Ok((turn_id, messages))
         })?;
-        // The system line that asks for a tool goes with this request only.
+        // The desk's background (ADR 0096) and the line that asks for a tool go with this request only.
+        if let Some(background) = context::message(request.context.as_ref()) {
+            messages.insert(messages.len() - 1, background);
+        }
         messages.splice(0..0, offer.system);
         let answer = self.ask(&messages, &offer.tools, &turn_id, true, on_event)?;
         let tools = request.tools.is_some().then_some(offer.tools);

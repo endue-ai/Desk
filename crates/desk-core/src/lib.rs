@@ -54,6 +54,7 @@ mod core_undo;
 mod core_update;
 mod core_views;
 mod core_wasm;
+mod eris_context;
 mod eris_lines;
 mod events;
 mod grants;

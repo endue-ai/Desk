@@ -13,9 +13,9 @@ use std::sync::mpsc::RecvTimeoutError;
 use std::sync::{Arc, Weak};
 use std::time::{Duration, Instant};
 
-use desk_brain::{ToolCall, ToolDefinition};
+use desk_brain::{ToolCall, ToolDefinition, TurnContext};
 use desk_bridge::{
-    BrainTurnTool, BridgeError, BridgeEvent, BridgeRequest, BridgeResponse, ErrorCode,
+    BrainTurnTool, BridgeError, BridgeEvent, BridgeRequest, BridgeResponse, ErrorCode, MemoryStep,
 };
 use serde_json::{Map, Value, json};
 
@@ -23,6 +23,7 @@ use crate::agents::agent_caller;
 use crate::approvals::in_task;
 use crate::conversation::Tools;
 use crate::core_tools::{DESK_RUN, DESK_TOOLS};
+use crate::eris_context::{DESK_REMEMBER, remember_request};
 use crate::handler::{Core, error};
 
 /// How long a command run from a tool call may take to answer.

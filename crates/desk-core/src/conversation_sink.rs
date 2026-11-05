@@ -57,7 +57,10 @@ impl<'a> Sink<'a> {
     pub(crate) fn step(&mut self, kind: BrainTurnKind, tool: BrainTurnTool) {
         if kind == BrainTurnKind::ToolResult {
             let ok = tool.ok.unwrap_or(true);
-            self.steps.push(MemoryStep { command: tool.command.clone(), ok });
+            self.steps.push(MemoryStep {
+                command: tool.command.clone(),
+                ok,
+            });
         }
         self.events.publish(BridgeEvent::BrainTurn(BrainTurnEvent {
             event: Default::default(),

@@ -5,7 +5,8 @@
 // message of several such calls (one per line, or joined by " then ") asks for each in turn, all in
 // one turn. A turn that offers tools gets a call to the one toolChoice names, or to the first it
 // knows: propose_theme (theme.mjs) and echo; else to an offered command the message names by the
-// words of its tool name (Eris's loop, ADR 0089: "check my latest mail" calls endue_mail_latest).
+// words of its tool name (Eris's loop, ADR 0089: "check my latest mail" calls endue_mail_latest);
+// "remember that <fact>" calls the desk's desk-remember when offered (ADR 0096).
 import { proposeTheme } from "./theme.mjs";
 
 /** A contract error: the HTTP status and the BrainError body. */
@@ -73,6 +74,24 @@ const toolChoice = (v) =>
   (((v.type === "auto" || v.type === "required") && only(v, ["type"])) ||
     (v.type === "tool" && only(v, ["type", "name"]) && toolName(v.name)));
 
+/** What the desk tells a turn (Desk ADR 0096): facts, episodes and working context; read, not used. */
+const turnContext = (v) =>
+  isObject(v) &&
+  only(v, ["facts", "episodes", "working"]) &&
+  optional(v.facts, Array.isArray) &&
+  optional(v.episodes, Array.isArray) &&
+  optional(v.working, (w) => isObject(w) && typeof w.now === "string");
+
+/**
+ * "remember that <fact>" on a turn that offers the desk's desk-remember: the call that keeps the
+ * fact (Desk ADR 0096), so tests can script Eris remembering.
+ */
+function rememberCall(body, said) {
+  const fact = /^remember that\s+([\s\S]+)$/i.exec(said.trim());
+  const offered = (body.tools ?? []).some((t) => t.name === "desk-remember");
+  return fact && offered ? { name: "desk-remember", arguments: { text: fact[1].trim() } } : null;
+}
+
 /** The tools brain-echo can call: each makes the arguments from what was said. */
 const KNOWN = {
   propose_theme: (said) => proposeTheme(said),
@@ -94,11 +113,12 @@ const BODIES = {
     optional(b.takeover, (v) => typeof v === "boolean"),
   LeaseRenewRequest: (b) => only(b, ["ttlSeconds"]) && optional(b.ttlSeconds, ttl),
   TurnRequest: (b) =>
-    only(b, ["leaseId", "message", "tools", "toolChoice"]) &&
+    only(b, ["leaseId", "message", "tools", "toolChoice", "context"]) &&
     id(b.leaseId) &&
     message(b.message) &&
     optional(b.tools, tools) &&
-    optional(b.toolChoice, toolChoice),
+    optional(b.toolChoice, toolChoice) &&
+    optional(b.context, turnContext),
   ToolResultRequest: (b) =>
     only(b, ["leaseId", "callId", "output", "isError"]) &&
     id(b.leaseId) &&
@@ -334,6 +354,8 @@ export class EchoBrain {
       const names = (body.tools ?? []).map((t) => t.name).join(", ");
       return answer(`brain-echo cannot call ${names}, so it answers in words: ${said}`);
     }
+    const remember = rememberCall(body, said);
+    if (remember) return ask([remember]);
     const calls = toolCalls(said.trim());
     if (calls) return ask(calls);
     const named = namedTool(body, said);

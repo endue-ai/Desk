@@ -8,8 +8,8 @@ use desk_brain::{ContextEpisode, ContextFact, ToolDefinition, TurnContext, Worki
 use desk_bridge::{BridgeRequest, MemoryEntry, MemoryKind, MemoryStep, PluginStatus};
 use serde_json::{Value, json};
 
-use crate::agents::agent_caller;
 use crate::agent_tools::ERIS;
+use crate::agents::agent_caller;
 use crate::handler::Core;
 use crate::time::rfc3339_millis;
 
@@ -44,7 +44,10 @@ impl Core {
             .unwrap_or_default()
             .into_iter()
             .filter_map(|entry| match entry {
-                MemoryEntry::MemoryFact(fact) => Some(ContextFact { id: fact.id, text: fact.text }),
+                MemoryEntry::MemoryFact(fact) => Some(ContextFact {
+                    id: fact.id,
+                    text: fact.text,
+                }),
                 MemoryEntry::MemoryEpisode(_) => None,
             })
             .collect();
@@ -64,7 +67,11 @@ impl Core {
             .plugins()
             .into_iter()
             .filter(|p| p.enabled && p.status == PluginStatus::Ready)
-            .filter_map(|p| p.manifest.filter(|m| m.surfaces.is_some()).map(|m| m.name))
+            .filter_map(|p| {
+                p.manifest
+                    .filter(|m| m.surfaces.is_some())
+                    .and_then(|m| m.name)
+            })
             .take(SURFACES)
             .collect();
         let commands = self.recent_commands(COMMANDS);
@@ -108,7 +115,9 @@ pub(crate) fn desk_remember() -> ToolDefinition {
 }
 
 /// The memory.remember request a desk-remember call makes, under memory:write.
-pub(crate) fn remember_request(arguments: &serde_json::Map<String, Value>) -> Result<BridgeRequest, String> {
+pub(crate) fn remember_request(
+    arguments: &serde_json::Map<String, Value>,
+) -> Result<BridgeRequest, String> {
     let mut params = arguments.clone();
     params.insert("scope".to_owned(), json!({ "permission": "memory:write" }));
     let request = json!({ "id": 0, "method": "memory.remember", "params": params });

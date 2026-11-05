@@ -15,6 +15,7 @@ use desk_bridge::{
 };
 use desk_memory::{Memory, MemoryEpisode, MemoryError, MemoryStep};
 
+use crate::approvals::Action;
 use crate::handler::{Answer, Core, error, json};
 use crate::perm::Target;
 
@@ -92,7 +93,10 @@ impl Core {
     }
 
     pub(crate) fn memory_remember(&self, caller: &str, params: MemoryRememberParams) -> Answer {
+        let scope = Permission::MemoryWrite(params.scope.clone());
         let memory = self.writing(caller, params.scope)?;
+        // An agent's fact waits for the person, unless an always grant lets it remember (ADR 0096).
+        self.hold(caller, &scope, Action::Remember { text: &params.text })?;
         let (fact, change) = match &params.id {
             Some(id) => (
                 memory.edit(id, &params.text, params.tags),

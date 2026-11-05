@@ -24,6 +24,8 @@ const ACTIONS = {
   "proc.spawn": { verb: "run a program", label: "Run a program" },
   "net.fetch": { verb: "send a web request", label: "Send a web request" },
   "cmd.invoke": { verb: "run a command", label: "Run a command" },
+  // Eris keeping a fact in the person's memory (ADR 0096): the card asks before she remembers.
+  "memory.remember": { verb: "remember this", label: "Remember this?" },
 };
 
 const actionOf = (/** @type {string} */ action) =>
@@ -76,6 +78,7 @@ function taskLabel(data) {
   const what = {
     "fs.write": `its other writes in ${scope}`,
     "net.fetch": `its other requests to ${scope}`,
+    "memory.remember": "the other facts it keeps",
   }[data.action];
   const covered = what ?? `running ${data.target} again`;
   return `Allow for this task: ${covered} until this turn ends.`;

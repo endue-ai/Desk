@@ -111,10 +111,18 @@ impl Core {
     /// desk-run, and every agent command by name when all of them fit in the turn.
     pub(crate) fn offer(&self) -> Option<Vec<ToolDefinition>> {
         let commands = self.agent_commands();
-        if commands.is_empty() {
+        // Eris keeps facts on a desk with memory, whether or not plugins offer commands (ADR 0096).
+        let remember = self.memory().is_some();
+        if commands.is_empty() && !remember {
             return None;
         }
-        let mut tools = vec![desk_tools(), desk_run()];
+        let mut tools = Vec::new();
+        if !commands.is_empty() {
+            tools.extend([desk_tools(), desk_run()]);
+        }
+        if remember {
+            tools.push(crate::eris_context::desk_remember());
+        }
         let direct: Vec<ToolDefinition> = commands.iter().filter_map(direct).collect();
         if direct.len() <= TURN_TOOLS - tools.len() {
             tools.extend(direct);

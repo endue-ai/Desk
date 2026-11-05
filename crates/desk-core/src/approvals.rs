@@ -213,7 +213,8 @@ impl Core {
     /// allows, any spawn, a command marked irreversible.
     fn irreversible(&self, caller: &str, action: &Action<'_>) -> bool {
         match action {
-            Action::Write { .. } | Action::Fetch { .. } => {
+            // An always grant lets an agent write files, fetch and remember freely (ADR 0096).
+            Action::Write { .. } | Action::Fetch { .. } | Action::Remember { .. } => {
                 let target = action.target();
                 !self.permissions().grants(caller).iter().any(|grant| {
                     grant.duration == GrantDuration::Always

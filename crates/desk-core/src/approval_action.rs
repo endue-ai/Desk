@@ -1,5 +1,5 @@
 //! What an approval is about (ADR 0078): the agent's call (`fs.write`, `proc.spawn`, `net.fetch`,
-//! `cmd.invoke`), its target, what a `task` answer approves for the rest of the task, and the
+//! `cmd.invoke`, `memory.remember`), its target, what a `task` answer approves for the rest of the task, and the
 //! `perm.approval` it shows, with its preview (`approval_preview`).
 
 use std::path::Path;
@@ -7,7 +7,9 @@ use std::path::Path;
 use desk_bridge::{ApprovalAction, CmdInvokePermission, PermApprovalData, Permission};
 use serde_json::{Map, Value};
 
-use crate::approval_preview::{args_preview, command_preview, url_preview, write_preview};
+use crate::approval_preview::{
+    args_preview, command_preview, fact_preview, url_preview, write_preview,
+};
 use crate::perm::Target;
 
 /// An agent's call that may need the person's approval, with what its preview is made of.
@@ -29,6 +31,10 @@ pub(crate) enum Action<'a> {
         id: &'a str,
         args: Option<&'a Map<String, Value>>,
     },
+    /// memory.remember: a fact to keep in the person's memory (ADR 0096).
+    Remember {
+        text: &'a str,
+    },
 }
 
 impl<'a> Action<'a> {
@@ -38,6 +44,7 @@ impl<'a> Action<'a> {
             Self::Spawn { .. } => ApprovalAction::ProcSpawn,
             Self::Fetch { .. } => ApprovalAction::NetFetch,
             Self::Invoke { .. } => ApprovalAction::CmdInvoke,
+            Self::Remember { .. } => ApprovalAction::MemoryRemember,
         }
     }
 
@@ -47,6 +54,7 @@ impl<'a> Action<'a> {
             Self::Spawn { command, .. } => Target::Command(command),
             Self::Fetch { url, .. } => Target::Url(url),
             Self::Invoke { id, .. } => Target::CommandId(id),
+            Self::Remember { .. } => Target::None,
         }
     }
 
@@ -56,6 +64,7 @@ impl<'a> Action<'a> {
             Self::Spawn { command, .. } => command,
             Self::Fetch { url, .. } => url,
             Self::Invoke { id, .. } => id,
+            Self::Remember { text } => text,
         }
     }
 
@@ -66,6 +75,7 @@ impl<'a> Action<'a> {
             ApprovalAction::ProcSpawn => "proc.spawn",
             ApprovalAction::NetFetch => "net.fetch",
             ApprovalAction::CmdInvoke => "cmd.invoke",
+            ApprovalAction::MemoryRemember => "memory.remember",
         }
     }
 
@@ -100,6 +110,7 @@ impl<'a> Action<'a> {
             Self::Spawn { command, args } => (Some(command_preview(command, args)), None),
             Self::Fetch { method, url } => (Some(url_preview(method, url)), None),
             Self::Invoke { args, .. } => (Some(args_preview(args)), None),
+            Self::Remember { text } => (Some(fact_preview(text)), None),
         };
         PermApprovalData {
             approval_id: id.to_owned(),

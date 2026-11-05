@@ -60,6 +60,18 @@ impl Core {
         json(CmdRecentResult { invocations })
     }
 
+    /// The ids of the last `n` commands run, newest first (Eris's working context, ADR 0096).
+    pub(crate) fn recent_commands(&self, n: usize) -> Vec<String> {
+        let recent = self.recent();
+        recent
+            .invocations
+            .iter()
+            .rev()
+            .take(n)
+            .map(|noted| noted.invocation.id.clone())
+            .collect()
+    }
+
     pub(crate) fn plugin_stats(&self, caller: &str, params: PluginStatsParams) -> Answer {
         self.check(caller, &Permission::PermManage(params.scope), &Target::None)?;
         let now = seconds(self.clock.now());

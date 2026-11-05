@@ -59,6 +59,11 @@ pub(crate) fn args_preview(args: Option<&Map<String, Value>>) -> ApprovalPreview
     )
 }
 
+/// The fact memory.remember would keep, in the person's words (ADR 0096).
+pub(crate) fn fact_preview(text: &str) -> ApprovalPreview {
+    preview(ApprovalPreviewKind::Fact, text.to_owned(), false, MAX_SHORT)
+}
+
 /// A fetch's method and URL.
 pub(crate) fn url_preview(method: &str, url: &str) -> ApprovalPreview {
     preview(
