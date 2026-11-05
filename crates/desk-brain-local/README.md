@@ -1,7 +1,8 @@
 # desk-brain-local
 
 Local brain adapter: `LocalBrain` implements `desk_brain::Brain` on Ollama's `/api/chat` (streamed), so a
-desk works without endue AI. llama.cpp comes later.
+desk works without endue AI. The app offers it as the `local` brain and falls back to it offline (ADR
+0094). llama.cpp comes later.
 
 Layer: Rust core (see `docs/architecture.md`). Contract: `specs/brain/v0`.
 
@@ -17,6 +18,7 @@ Layer: Rust core (see `docs/architecture.md`). Contract: `specs/brain/v0`.
 - `Brain` methods: turns stream `turn.started`, `text.delta`, `tool.call` and `turn.completed`.
   Tool calls go out one at a time; once every result is in, they go back to the model.
 - Leases follow `examples/brain-echo`: `lease_held`, `lease_lost` after a takeover, `lease_expired`.
+- `list_spaces` answers no spaces, after asking Ollama's `/api/version`: `Unreachable` while it is down.
 - Failures: no connection or a stream cut short → `Unreachable`; an error status or `{"error"}` →
   `Refused` (404 `not_found`, 400 `invalid_request`, otherwise `internal`); a line that is not
   Ollama's JSON → `Protocol`.

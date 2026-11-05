@@ -32,10 +32,11 @@ impl Core {
     /// Run the brain's tool calls through this core from now on, each as the agent that asks for
     /// it. Without it the brain gets `echo` only. Call it once the core is shared.
     pub fn route_tools(self: &Arc<Self>) {
+        let tools: Weak<dyn Tools> = Arc::downgrade(self) as Weak<Core>;
         if let Some(conversation) = &self.conversation {
-            let tools: Weak<dyn Tools> = Arc::downgrade(self) as Weak<Core>;
-            conversation.route(tools);
+            conversation.route(tools.clone());
         }
+        self.route_choice(tools);
     }
 
     /// The tool's output from a bridge failure, with why the agent was refused when it was.

@@ -1,0 +1,25 @@
+{
+  "target": "BridgeRequest",
+  "description": "view.save: a universal board over the desk's tasks, made by Eris from one sentence",
+  "instance": {
+    "id": 47,
+    "method": "view.save",
+    "params": {
+      "view": {
+        "id": "eris.issues-as-a-board",
+        "title": "Issues as a board",
+        "type": "kanban",
+        "types": ["kanban", "list", "timeline", "calendar"],
+        "source": { "items": { "kinds": ["task"] } },
+        "map": { "group": "status", "start": "due" },
+        "options": { "groups": ["todo", "doing", "done"] },
+        "provenance": {
+          "author": "eris",
+          "createdAt": "2026-10-30T09:00:00+09:00",
+          "words": "show this repo's issues as a board"
+        }
+      },
+      "scope": { "permission": "view:manage" }
+    }
+  }
+}

@@ -1,4 +1,5 @@
 /** Right status rail: six icon buttons with a dot and a count, a tooltip on hover, a popover on click. */
+import type { BrainName } from "../bridge/types";
 import { agentName, isOpen } from "../system/agents";
 import { layoutOf } from "./actions";
 import type { ShellCtx } from "./context";
@@ -58,33 +59,42 @@ function items(ctx: ShellCtx, s: DeskState): Item[] {
   ];
 }
 
+/** The brains the popover offers, in its order. */
+const BRAINS: readonly BrainName[] = ["endue", "local", "echo"];
+
 const row = (...children: Child[]) => h("div", { class: "pop-row" }, ...children);
 const muted = (text: string) => h("span", { class: "pop-muted" }, text);
 
 function body(ctx: ShellCtx, id: RailId, s: DeskState): Child[] {
   const set = (patch: Partial<DeskState>) => ctx.store.set(patch);
   switch (id) {
-    case "brain":
+    case "brain": {
+      // The brain the desk chose (ADR 0094); a host that cannot say is on endue or the local one.
+      const chosen = s.brain.brain ?? (s.brain.mode === "local" ? "local" : "endue");
       return [
         h(
           "div",
           { class: "segmented", role: "radiogroup", "aria-label": ctx.tr("brain") },
-          (["local", "cloud"] as const).map((mode) =>
+          BRAINS.map((brain) =>
             h(
               "button",
               {
-                class: `segment${s.brain.mode === mode ? " is-selected" : ""}`,
+                class: `segment${chosen === brain ? " is-selected" : ""}`,
                 type: "button",
                 role: "radio",
-                "aria-checked": String(s.brain.mode === mode),
-                "data-key": `brain-${mode}`,
-                onClick: async () => set({ brain: await ctx.bridge.brain.use(mode) }),
+                "aria-checked": String(chosen === brain),
+                "data-key": `brain-${brain}`,
+                onClick: async () => set({ brain: await ctx.bridge.brain.use(brain) }),
               },
-              ctx.tr(mode),
+              ctx.tr(brain),
             ),
           ),
         ),
+        s.brain.mode === "local" && s.brain.fallback
+          ? h("p", { class: "pop-muted brain-fallback" }, ctx.tr("brainFallback"))
+          : null,
       ];
+    }
     case "sees":
       return [
         ...s.sees.folders.map((f) => row(icon("file", 16), f)),

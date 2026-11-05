@@ -58,6 +58,7 @@ describe("viewOf", () => {
       source: { file: "~/boards/launch.yaml" },
     });
     await expect(viewOf({}, io({}))).rejects.toThrow("Open what?");
+    await expect(viewOf({ id: "eris.board" }, io({}))).rejects.toThrow("not a universal view");
   });
 
   it("names the permission each source is read under", () => {
@@ -110,6 +111,7 @@ describe("the screen", () => {
     expect(handle.data?.entries.map((entry) => entry.id)).toEqual(["a", "b"]);
     expect(notice.hidden).toBe(true);
     screen.close();
-    expect(page.children).toHaveLength(1);
+    const left = [...(page.children as unknown as HTMLElement[])].map((child) => child.localName);
+    expect(left).not.toContain("desk-universal-view");
   });
 });

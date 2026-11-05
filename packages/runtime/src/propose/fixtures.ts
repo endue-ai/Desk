@@ -1,8 +1,10 @@
 /**
- * Scripted brain answers for tests and fixture pages (never shipped): views a brain would propose for
- * "show my events this week as a board" over the stub's fixture events, without the parts the desk
- * writes itself (id, version, provenance); the quiet night profile; Mod+Shift+T for the terminal.
+ * Scripted brain answers for tests and fixture pages (never shipped): universal views as brain-echo
+ * proposes them (examples/brain-echo/universal.mjs); item views a brain would propose for "show my
+ * events this week as a board" over the stub's fixture events, without the parts the desk writes
+ * itself (id, version, provenance); the quiet night profile; Mod+Shift+T for the terminal.
  */
+import { proposeUniversalView } from "../../../../examples/brain-echo/universal.mjs";
 import type { ScriptedAnswer } from "../bridge/scripted-brain";
 
 const agenda = (title: string, calendar: string, empty: string) => ({
@@ -129,10 +131,11 @@ function pluginsIn(prompt: string): Record<string, string> {
 }
 
 /**
- * What a brain would call `tool` with for `prompt`: viewFor's view, the quiet night profile, or
- * Mod+Shift+T for the terminal; undefined to answer in words.
+ * What a brain would call `tool` with for `prompt`: brain-echo's universal view, viewFor's item
+ * view, the quiet night profile, or Mod+Shift+T for the terminal; undefined to answer in words.
  */
 export function proposalFor(prompt: string, tool: string): Record<string, unknown> | undefined {
+  if (tool === "propose_universal_view") return proposeUniversalView(prompt);
   if (tool === "propose_view") return viewFor(prompt);
   if (tool === "propose_profile")
     return /quiet night/i.test(prompt) ? quietNight(pluginsIn(prompt)) : undefined;

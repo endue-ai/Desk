@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 date: 2026-11-02
 decision-makers: Team endue
 ---
@@ -115,6 +115,24 @@ card, not in desk.views.
   the rest are views. A sentence that names a profile or shortcuts is not a look request, look words
   and all. "Make with Eris…" picks the kind the same way when none is given.
 
+### Universal views (#472)
+
+Accepted on 2026-11-05 with views retargeted (ADR 0102): the same pipeline, the `view` kind now a
+universal view (ADR 0087).
+
+* **Kind.** `propose/universal.ts` asks `propose_universal_view` with `UniversalView` bundled without
+  `id` and `provenance`; the desk names it `eris.<slug>` and puts its `type` first in `types`. The
+  item view kind of this page stays as `item-view`, reachable by name only. brain-echo knows
+  `propose_universal_view`, so the whole flow runs without endue AI.
+* **Drafting.** A kind may show at once that it is drafting (`drafting`), before the brain answers:
+  `desk.universal.drafting` opens the surface with Eris's line and a ghost of rows, and Try again
+  dims the last proposal under it.
+* **Preview and Apply.** `desk.universal.preview { view, note }` draws it over its live source with
+  Apply, Try again (with what should change) and Discard. Apply saves with `view.save`, then
+  `desk.universal.open { id, notice }` keeps the drawn element and its data and turns the bar into
+  the notice with Undo. Undo closes it by id and removes the file.
+* **Words.** "show … as a board" (or on a calendar, in a document, …) goes to desk.propose too.
+
 ### Consequences
 
 * Good, because nothing reaches the disk that neither the desk nor the core accepted, and the person
@@ -123,9 +141,10 @@ card, not in desk.views.
   and an inverse, not a pipeline.
 * Good, because the answer is checked twice, by the core against the tool's schema and by the desk
   against the spec and its names, and the person's conversation with Eris never holds it.
-* Bad, because a brain that cannot call the tool (brain-echo knows `propose_theme` and `echo`, not
-  `propose_view`, `propose_profile` or `propose_key_bindings`; a model without tool calls) makes
-  nothing at all: the desk says so after two asks instead of guessing.
+* Bad, because a brain that cannot call the tool (brain-echo knows `propose_theme`,
+  `propose_universal_view` and `echo`, not `propose_view`, `propose_profile` or
+  `propose_key_bindings`; a model without tool calls) makes nothing at all: the desk says so after two
+  asks instead of guessing.
 * Bad, because the core drops arguments its schema refuses without saying why, so that retry can only
   repeat the schema, not name the problem; and every ask is a session on the brain (ADR 0059).
 * Bad, because the interpreter must learn any keyword a spec adopts; the comparison with Ajv on the
@@ -134,8 +153,8 @@ card, not in desk.views.
   made too, and Undo is offered only for what this session applied.
 * Bad, because the talk line knows English words only; Korean ones are a later change. A sentence that
   is both a look and something to make ("make a board that looks calm") is decided by its words.
-* Bad, because previews live in two places: views in desk.views over live data, profiles and key
-  bindings on the runtime's card.
+* Bad, because previews live in three places: views in desk.universal, item views in desk.views,
+  profiles and key bindings on the runtime's card.
 * Bad, because Undo of a profile is a switch back: a plugin the proposed profile turned on stays on
   when the earlier profile does not name it.
 

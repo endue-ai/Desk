@@ -1,0 +1,8 @@
+{
+  "target": "BrainStatusResult",
+  "description": "gpt is not a brain the desk can choose",
+  "instance": {
+    "mode": "cloud",
+    "brain": "gpt"
+  }
+}

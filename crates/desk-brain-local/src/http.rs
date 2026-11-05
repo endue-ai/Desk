@@ -1,5 +1,5 @@
-//! A small HTTP/1.1 client on std's TcpStream, written the way desk-brain-endue's is: one POST per
-//! connection with a JSON body, and the answer read as text or line by line (Ollama streams
+//! A small HTTP/1.1 client on std's TcpStream, written the way desk-brain-endue's is: one request per
+//! connection, a POST with a JSON body or a GET, and the answer read as text or line by line (Ollama streams
 //! newline-delimited JSON), chunked or sized. Plain http only: Ollama listens on localhost.
 
 use std::io::{self, BufRead, BufReader, Read, Write};
@@ -76,16 +76,34 @@ impl Response {
     }
 }
 
-/// POST `body` as JSON to `path`, which follows the endpoint's prefix (for example `/api/chat`).
-pub fn post(endpoint: &Endpoint, path: &str, body: &Value) -> io::Result<Response> {
+/// GET `path`, which follows the endpoint's prefix (for example `/api/version`), waiting for the
+/// answer no longer than it waits to connect.
+pub fn get(endpoint: &Endpoint, path: &str) -> io::Result<Response> {
+    let mut stream = connect(endpoint, CONNECT_TIMEOUT)?;
+    let head = format!(
+        "GET {}{path} HTTP/1.1\r\nHost: {}:{}\r\nUser-Agent: endue-desk\r\n\
+         Accept: application/json\r\nConnection: close\r\n\r\n",
+        endpoint.prefix, endpoint.host, endpoint.port
+    );
+    stream.write_all(head.as_bytes())?;
+    stream.flush()?;
+    read_response(BufReader::new(stream))
+}
+
+fn connect(endpoint: &Endpoint, read: Duration) -> io::Result<TcpStream> {
     let address = (endpoint.host.as_str(), endpoint.port)
         .to_socket_addrs()?
         .next()
         .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "the host has no address"))?;
-    let mut stream = TcpStream::connect_timeout(&address, CONNECT_TIMEOUT)?;
-    stream.set_read_timeout(Some(READ_TIMEOUT))?;
+    let stream = TcpStream::connect_timeout(&address, CONNECT_TIMEOUT)?;
+    stream.set_read_timeout(Some(read))?;
     stream.set_write_timeout(Some(CONNECT_TIMEOUT))?;
+    Ok(stream)
+}
 
+/// POST `body` as JSON to `path`, which follows the endpoint's prefix (for example `/api/chat`).
+pub fn post(endpoint: &Endpoint, path: &str, body: &Value) -> io::Result<Response> {
+    let mut stream = connect(endpoint, READ_TIMEOUT)?;
     let payload = body.to_string();
     let head = format!(
         "POST {}{path} HTTP/1.1\r\nHost: {}:{}\r\nUser-Agent: endue-desk\r\n\

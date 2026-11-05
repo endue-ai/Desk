@@ -1932,10 +1932,16 @@ export interface BrainStatusParams {
 /** Result of brain.status: a brain on this machine with its model, a brain in the cloud, or offline. */
 export type BrainStatusResult = BrainStatusLocal | BrainStatusCloud | BrainStatusOffline;
 
-/** A brain on this machine, named by the model it runs. */
+/** A brain the desk can choose for Eris (ADR 0094): endue (endue AI), local (Ollama on this machine) or echo (examples/brain-echo). */
+export type BrainName = "endue" | "local" | "echo";
+
+/** A brain on this machine, named by the model it runs. fallback is true when it answers in place of the chosen brain, which cannot be reached now (ADR 0094). */
 export interface BrainStatusLocal {
   mode: "local";
   model: string;
+  /** The brain the desk chose. Absent from desks that cannot choose. */
+  brain?: BrainName;
+  fallback?: boolean;
 }
 
 /** A brain over the network, such as endue AI. credits is left out while the brain reports none. */
@@ -1943,11 +1949,15 @@ export interface BrainStatusCloud {
   mode: "cloud";
   /** Credits left. */
   credits?: number;
+  /** The brain the desk chose. Absent from desks that cannot choose. */
+  brain?: BrainName;
 }
 
 /** The brain cannot be reached now, or the desk has none. */
 export interface BrainStatusOffline {
   mode: "offline";
+  /** The brain the desk chose, which cannot be reached now. Absent from desks that cannot choose. */
+  brain?: BrainName;
 }
 
 /** Progress of a brain.say or brain.ask turn. */
@@ -4097,12 +4107,17 @@ export interface UpdateChangedEvent {
 /** Where a view comes from: plugin, an enabled view plugin's inline view or one of its view files, read-only; file, the person's file in ~/.desk/views. */
 export type ViewSource = "plugin" | "file";
 
-/** A view as view.list returns it: where it comes from and, for a plugin's view, the plugin. */
+/** A view in either language: an item view of specs/view/v0 (layouts of components over the desk's items, ADR 0032) or a universal view (one presentation of entries from any source, ADR 0087). A universal view saved in ~/.desk/views must have its id. */
+export type AnyView = View | UniversalView;
+
+/** A view as view.list returns it: where it comes from and, for a plugin's view, the plugin. An item view has a version; a universal view has its type instead, and its title is its id when it has none. */
 export interface ViewSummary {
   id: ViewId;
-  version: Version;
+  version?: Version;
   title: Template;
   description?: string;
+  /** A universal view's presentation; absent for an item view. */
+  type?: UniversalType;
   source: ViewSource;
   plugin?: PluginId;
 }
@@ -4139,7 +4154,7 @@ export interface ViewGetParams {
 
 /** Result of view.get: the view, where it comes from and, for a plugin's view, the plugin. */
 export interface ViewGetResult {
-  view: View;
+  view: AnyView;
   source: ViewSource;
   plugin?: PluginId;
 }
@@ -4151,9 +4166,9 @@ export interface ViewSaveRequest {
   params: ViewSaveParams;
 }
 
-/** Parameters of view.save. The view must pass specs/view/v0 and its names must resolve. */
+/** Parameters of view.save. An item view must pass specs/view/v0 and its names must resolve; a universal view must pass universal.schema.json and have its id. */
 export interface ViewSaveParams {
-  view: View;
+  view: AnyView;
   scope: ViewManagePermission;
 }
 

@@ -1,0 +1,15 @@
+{
+  "target": "ViewListResult",
+  "description": "A universal view's summary has its type and no version",
+  "instance": {
+    "views": [
+      {
+        "id": "eris.issues-as-a-board",
+        "version": "0.1.0",
+        "title": "Issues as a board",
+        "type": "kanban",
+        "source": "file"
+      }
+    ]
+  }
+}

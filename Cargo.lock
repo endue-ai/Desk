@@ -952,7 +952,9 @@ dependencies = [
 name = "desk-app"
 version = "0.0.0"
 dependencies = [
+ "desk-brain",
  "desk-brain-endue",
+ "desk-brain-local",
  "desk-bridge",
  "desk-core",
  "desk-index",
@@ -1031,6 +1033,7 @@ dependencies = [
  "base64 0.23.1",
  "desk-brain",
  "desk-brain-endue",
+ "desk-brain-local",
  "desk-bridge",
  "desk-index",
  "desk-plugin-host",

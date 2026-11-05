@@ -21,6 +21,7 @@ const plugins: Record<string, string> = {
   "endue.terminal": here("./fixture/plugins/test-counter"),
   "desk.palette": join(repo, "plugins/palette"),
   "desk.views": join(repo, "plugins/views"),
+  "desk.universal": join(repo, "plugins/universal"),
   "endue.eris": join(repo, "plugins/eris"),
   "endue.onboarding": join(repo, "plugins/onboarding"),
   "endue.sidebar": join(repo, "plugins/sidebar"),
