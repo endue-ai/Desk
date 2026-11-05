@@ -68,7 +68,8 @@ export function hasKit(text) {
 
 /**
  * What says how a made control is classed: for `h("button", { … })` and its kind, the props object;
- * for `x = createElement("button")`, its line and the next lines that set `x.` something.
+ * for `element("button", "a b")`, a class string as the second argument; for
+ * `x = createElement("button")`, its line and the next lines that set `x.` something.
  */
 function callWindow(source, at, call) {
   const rest = source.slice(at + call.length);
@@ -76,6 +77,8 @@ function callWindow(source, at, call) {
     const comma = rest.search(/\S/);
     if (rest[comma] !== ",") return "";
     const brace = comma + 1 + rest.slice(comma + 1).search(/\S/);
+    const quoted = /^(["'`])((?:\\.|(?!\1).)*)\1/.exec(rest.slice(brace));
+    if (quoted) return `className: ${quoted[0]}`;
     if (rest[brace] !== "{") return "";
     let depth = 0;
     for (let i = brace; i < rest.length; i++) {
@@ -86,7 +89,7 @@ function callWindow(source, at, call) {
   }
   const start = source.lastIndexOf("\n", at) + 1;
   const [line = "", ...next] = source.slice(start).split("\n").slice(0, 7);
-  const name = /(\w+)\s*=\s*(?:document\.)?createElement/.exec(line)?.[1];
+  const name = /(\w+)\s*=\s*(?:\w+\.)?createElement/.exec(line)?.[1];
   const set = name ? next.filter((l) => new RegExp(`\\b${name}\\.`).test(l)) : [];
   return [line, ...set].join("\n");
 }
