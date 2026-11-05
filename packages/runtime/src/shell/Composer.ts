@@ -7,7 +7,7 @@
 
 import type { CommandInfo } from "../commands";
 import { clamp01, cubicBezier, easeOutExpo } from "../ease";
-import { LOOK_REPLY, SAY_TO_ERIS } from "../eris/look";
+import { DESIGN_REPLY, LOOK_REPLY, SAY_TO_ERIS } from "../eris/look";
 import { routeOf } from "../propose/route";
 import { match } from "./commands";
 import type { ShellCtx } from "./context";
@@ -145,10 +145,12 @@ export function mountComposer(root: HTMLElement, ctx: ShellCtx): () => void {
       })
       .then(() => ghost.remove());
     const to = route(text);
-    if (to.to === "look") {
-      ctx.eris.say(LOOK_REPLY[ctx.store.get().lang]);
+    if (to.to === "look" || to.to === "design") {
+      const design = to.to === "design";
+      ctx.eris.say((design ? DESIGN_REPLY : LOOK_REPLY)[ctx.store.get().lang]);
       const args = { text: text.trim(), from: "eris" };
-      void ctx.runtime.commands.run("desk.theme.describe", args).catch(() => {});
+      const command = design ? "desk.design.describe" : "desk.theme.describe";
+      void ctx.runtime.commands.run(command, args).catch(() => {});
       return;
     }
     if (to.to === "propose") {

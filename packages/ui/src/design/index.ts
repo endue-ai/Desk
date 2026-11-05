@@ -12,6 +12,7 @@ export {
   defaultRecipe,
   type FullRecipe,
   fillRecipe,
+  mergeRecipe,
   type OptionOf,
   optionsOf,
   type PropertyName,

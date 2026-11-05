@@ -1,7 +1,8 @@
 /**
- * theme.* on the browser core (the fixtures and the dev page): user themes kept in memory beside
- * plugin.list, as the native core keeps them in <data>/themes (#302). Saves and imports install a
- * theme plugin and announce it; exports return a .desk-theme bundle; removes take user themes only.
+ * theme.* on the browser core (the fixtures and the dev page): user themes and design systems kept in
+ * memory beside plugin.list, as the native core keeps them in <data>/themes (#302, ADR 0091). Saves and
+ * imports install a theme or design-system plugin and announce it; exports return a .desk-theme bundle
+ * (.desk-design for a design system); removes take user ones only.
  */
 import type {
   BridgeEvent,
@@ -24,7 +25,10 @@ export function themeHandlers(
 ): StubHandlers {
   const files = new Map<string, Record<string, string>>();
   const install = (manifest: PluginManifest, assets: Record<string, string>) => {
-    if (manifest.kind !== "theme" || !manifest.theme) throw new Error("not a theme plugin");
+    const look =
+      (manifest.kind === "theme" && manifest.theme) ||
+      (manifest.kind === "design-system" && manifest.designSystem);
+    if (!look) throw new Error("not a theme or design-system plugin");
     const at = plugins.findIndex((p) => p.id === manifest.id);
     const before = plugins[at];
     if (before && !user(before.id)) throw new Error(`${manifest.id} is not a user theme`);
@@ -60,14 +64,16 @@ export function themeHandlers(
       return install(manifest, { ...bundle.files });
     },
     "theme.export": ({ theme, inline }) => {
-      const info = plugins.find((p) => p.id === theme && p.manifest?.kind === "theme");
+      const kind = (p: PluginInfo) => p.manifest?.kind === "theme" || p.manifest?.kind === "design-system";
+      const info = plugins.find((p) => p.id === theme && kind(p));
       if (!info?.manifest) throw new Error(`no theme ${theme}`);
+      const ext = info.manifest.kind === "design-system" ? "desk-design" : "desk-theme";
       const bundle: ThemeBundle = {
         format: "desk-theme/1",
         manifest: info.manifest,
         files: { ...files.get(theme) },
       };
-      return inline ? { bundle } : { path: `~/Downloads/${theme}.desk-theme` };
+      return inline ? { bundle } : { path: `~/Downloads/${theme}.${ext}` };
     },
     "theme.remove": ({ theme }) => {
       const at = plugins.findIndex((p) => p.id === theme);

@@ -1,0 +1,73 @@
+{
+  "id": "endue.design-soft",
+  "name": "Soft",
+  "version": "0.1.0",
+  "kind": "design-system",
+  "description": "Pebbles: pill buttons with a soft tint for the main action, filled fields, pill tabs, raised cards and solid badges.",
+  "designSystem": {
+    "author": "Team endue",
+    "license": "Apache-2.0",
+    "tags": ["round", "soft", "friendly"],
+    "origin": {
+      "prompt": "soft and friendly, like pebbles: pills, tints and filled fields"
+    },
+    "components": {
+      "button": {
+        "shape": "full",
+        "primary": "soft",
+        "secondary": "soft",
+        "padding": "roomy"
+      },
+      "iconButton": {
+        "shape": "full",
+        "style": "soft"
+      },
+      "field": {
+        "style": "filled",
+        "shape": "lg"
+      },
+      "tabs": {
+        "style": "pill"
+      },
+      "card": {
+        "style": "elevated",
+        "shape": "lg",
+        "padding": "roomy"
+      },
+      "row": {
+        "selection": "soft",
+        "shape": "lg"
+      },
+      "menu": {
+        "shape": "lg",
+        "border": "none",
+        "elevation": "lg"
+      },
+      "dialog": {
+        "scrim": "dim",
+        "padding": "normal"
+      },
+      "toast": {
+        "style": "soft",
+        "shape": "full"
+      },
+      "badge": {
+        "style": "solid"
+      },
+      "tooltip": {
+        "shape": "full"
+      },
+      "table": {
+        "rows": "striped",
+        "header": "plain"
+      },
+      "progress": {
+        "thickness": "thick"
+      },
+      "focus": {
+        "width": "thick",
+        "offset": "far"
+      }
+    }
+  }
+}

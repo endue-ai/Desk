@@ -17,7 +17,9 @@ const SHADOW = /^0 \d+px \d+px rgba\(0, 0, 0, 0\.\d+\)$/;
 describe("design tokens", () => {
   it("are the scale, the role colours, the material, the terminal and the component tokens, under distinct names", () => {
     expect(tokens).toEqual({ ...scale, ...colors, ...material, ...terminal, ...components });
-    const groups = [scale, colors, material, terminal, components].map((group) => Object.keys(group));
+    const groups = [scale, colors, material, terminal, components].map((group) =>
+      Object.keys(group),
+    );
     const all = groups.flat();
     expect(new Set(all).size).toBe(all.length);
   });

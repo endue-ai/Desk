@@ -134,7 +134,7 @@
       "type": "object",
       "properties": {
         "selection": { "description": "Default: fill.", "$ref": "#/$defs/DesignRowSelection" },
-        "shape": { "description": "Default: md.", "$ref": "#/$defs/DesignShape" },
+        "shape": { "description": "Default: sm.", "$ref": "#/$defs/DesignShape" },
         "size": { "description": "Default: sm.", "$ref": "#/$defs/DesignSize" }
       },
       "additionalProperties": false

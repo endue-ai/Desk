@@ -14,13 +14,13 @@ const css = `
   box-sizing: border-box;
   max-width: min(420px, calc(100vw - 32px));
   padding: 10px 10px 10px 16px;
-  border: 1px solid var(--desk-border);
-  border-radius: 10px;
-  background: var(--desk-card);
-  color: var(--desk-text);
+  border: 1px solid var(--desk-toast-border);
+  border-radius: var(--desk-toast-radius);
+  background: var(--desk-toast-bg);
+  color: var(--desk-toast-fg);
   font: inherit;
   font-size: var(--desk-text-sm);
-  box-shadow: 0 8px 24px var(--desk-background);
+  box-shadow: var(--desk-toast-shadow);
 }
 :host([open]) {
   display: flex;
@@ -38,20 +38,19 @@ button {
   height: 24px;
   padding: 0;
   border: none;
-  border-radius: var(--desk-radius-md);
-  background: var(--desk-card);
-  color: var(--desk-text-muted);
+  border-radius: var(--desk-icon-button-radius);
+  background: transparent;
+  color: inherit;
   font: inherit;
-  font-size: 16px;
+  font-size: var(--desk-text-base);
   line-height: 1;
   cursor: pointer;
 }
 button:hover {
-  background: var(--desk-border);
-  color: var(--desk-text);
+  background: var(--desk-icon-button-hover-bg);
 }
 button:focus-visible {
-  outline: 2px solid var(--desk-ring);
+  outline: var(--desk-focus-width) solid var(--desk-ring);
   outline-offset: 1px;
 }
 :host([hidden]) {

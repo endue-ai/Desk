@@ -4,9 +4,10 @@ const css = `
 :host {
   display: block;
   box-sizing: border-box;
-  border: 1px solid var(--desk-border);
-  border-radius: var(--desk-radius-md);
-  background: var(--desk-card);
+  border: 1px solid var(--desk-card-border);
+  border-radius: var(--desk-card-radius);
+  background: var(--desk-card-bg);
+  box-shadow: var(--desk-card-shadow);
   color: var(--desk-text);
   font: inherit;
   font-size: var(--desk-text-sm);
@@ -18,7 +19,7 @@ section {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  padding: 12px 14px;
+  padding: var(--desk-card-padding) calc(var(--desk-card-padding) + 2px);
 }
 h2 {
   margin: 0;

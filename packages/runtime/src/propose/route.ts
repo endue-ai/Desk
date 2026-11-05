@@ -1,16 +1,18 @@
 /**
  * Where a sentence said on the talk line goes: to desk.propose when it asks Eris to make something
- * (talk.ts), to the theme studio's Describe when it asks to change the desk's look (eris/look.ts), or
- * to Eris's conversation. `/make` always goes to desk.propose. A sentence both could take ("make it
+ * (talk.ts), to the design system studio's Describe when it asks to change the desk's design system,
+ * to the theme studio's Describe when it asks to change the desk's look (eris/look.ts), or to Eris's
+ * conversation. `/make` always goes to desk.propose. A sentence both could take ("make it
  * feel like warm paper", "make a board that looks calm") is a look, unless it names something
  * desk.propose makes (a view or one of its kinds of layout, a profile, shortcuts) and not the theme.
  */
-import { isLookRequest } from "../eris/look";
+import { isDesignRequest, isLookRequest } from "../eris/look";
 import { proposalOf } from "./talk";
 
 export type Route =
   | { to: "propose"; args: NonNullable<ReturnType<typeof proposalOf>> }
   | { to: "look" }
+  | { to: "design" }
   | { to: "talk" };
 
 const SLASH = /^\s*\/make\b/i;
@@ -22,6 +24,8 @@ const MADE =
 export function routeOf(text: string, proposing = true): Route {
   const args = proposing ? proposalOf(text) : null;
   if (args && SLASH.test(text)) return { to: "propose", args };
+  // "디자인 시스템을 각지게 바꿔줘": the components, not the theme's values (ADR 0090).
+  if (isDesignRequest(text)) return { to: "design" };
   if (isLookRequest(text) && !(args && MADE.test(text) && !THEME.test(text))) return { to: "look" };
   return args ? { to: "propose", args } : { to: "talk" };
 }

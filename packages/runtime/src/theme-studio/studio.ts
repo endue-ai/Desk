@@ -128,6 +128,11 @@ export function mountThemeStudio(host: HTMLElement, deps: StudioDeps): ThemeStud
     brand.entry,
     describe.entry,
     market.entry,
+    // The design system studio, beside this one (ADR 0090).
+    button("design-systems", "designSystems", () => {
+      close();
+      void deps.commands.run("desk.design.studio").catch(() => {});
+    }),
   );
   const transfer = {
     io: () => deps.io?.(),

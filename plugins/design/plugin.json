@@ -1,0 +1,16 @@
+{
+  "id": "desk.design",
+  "name": "Design system",
+  "version": "0.1.0",
+  "kind": "policy",
+  "description": "Which design system the desk's components are made of: the endue design system, or an installed plugin of kind design-system that desk.design.active names (ADR 0090). The design system studio and the desk.design.* commands change it.",
+  "contributes": {
+    "settings": {
+      "desk.design.active": {
+        "kind": "string",
+        "default": "",
+        "description": "The design system plugin in force, by id (a plugin of kind design-system, ADR 0090); empty for the endue design system. Installing a design system does not apply it."
+      }
+    }
+  }
+}

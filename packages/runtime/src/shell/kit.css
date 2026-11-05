@@ -1,0 +1,195 @@
+/*
+ * The shell's component kit: its buttons, fields, rows, segmented controls, tooltips and dialogs, drawn
+ * from the design system's component tokens (ADR 0090), as @endue-ai/ui's elements and base.css's
+ * kit classes are, so the design system in force restyles the shell and every plugin page alike.
+ */
+
+/* Buttons: the design system's button and icon button (ADR 0090). */
+
+.icon-button {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: var(--desk-icon-button-size);
+  height: var(--desk-icon-button-size);
+  padding: 0;
+  border: 1px solid var(--desk-icon-button-border);
+  border-radius: var(--desk-icon-button-radius);
+  background: var(--desk-icon-button-bg);
+  color: var(--desk-icon-button-fg);
+  transition: background-color var(--motion-fast) ease;
+}
+.icon-button:hover:not(:disabled),
+.icon-button.is-open { background: var(--desk-icon-button-hover-bg); }
+
+.add-button {
+  display: grid;
+  place-items: center;
+  width: var(--control-sm);
+  height: var(--control-sm);
+  padding: 0;
+  border: 1px dashed var(--desk-input);
+  border-radius: var(--desk-icon-button-radius);
+  background: transparent;
+  color: var(--desk-text-muted);
+  transition: background-color var(--motion-fast) ease;
+}
+.add-button:hover:not(:disabled) { background: var(--desk-hover); color: var(--desk-text); }
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  height: var(--desk-button-height);
+  padding: 0 var(--desk-button-padding-x);
+  border: 1px solid var(--desk-button-quiet-border);
+  border-radius: var(--desk-button-radius);
+  background: var(--desk-button-quiet-bg);
+  color: var(--desk-button-quiet-fg);
+  box-shadow: var(--desk-button-shadow);
+  font-size: var(--text-sm);
+  font-weight: var(--desk-button-weight);
+  text-transform: var(--desk-button-case);
+  letter-spacing: var(--desk-button-tracking);
+  white-space: nowrap;
+  transition: background-color var(--motion-fast) ease, border-color var(--motion-fast) ease;
+}
+.btn:hover:not(:disabled) { background: var(--desk-button-quiet-hover-bg); }
+.btn-xs { height: var(--control-xs); padding: 0 var(--space-2); font-size: var(--text-xs); }
+.btn-primary {
+  border-color: var(--desk-button-primary-border);
+  background: var(--desk-button-primary-bg);
+  color: var(--desk-button-primary-fg);
+}
+.btn-primary:hover:not(:disabled) {
+  border-color: var(--desk-button-primary-hover-border);
+  background: var(--desk-button-primary-hover-bg);
+  color: var(--desk-button-primary-hover-fg);
+}
+.btn-danger {
+  border-color: var(--desk-button-danger-border);
+  background: var(--desk-button-danger-bg);
+  color: var(--desk-button-danger-fg);
+}
+.btn-danger:hover:not(:disabled) {
+  border-color: var(--desk-button-danger-hover-border);
+  background: var(--desk-button-danger-hover-bg);
+  color: var(--desk-button-danger-hover-fg);
+}
+.btn-outline {
+  border-color: var(--desk-button-border);
+  background: var(--desk-button-bg);
+  color: var(--desk-button-fg);
+}
+.btn-outline:hover:not(:disabled) {
+  border-color: var(--desk-button-hover-border);
+  background: var(--desk-button-hover-bg);
+  color: var(--desk-button-hover-fg);
+}
+
+/* A field: the design system's text input. */
+.input {
+  width: 100%;
+  height: var(--desk-field-height);
+  padding: 0 var(--desk-field-padding-x);
+  border-style: solid;
+  border-color: var(--desk-field-border-color);
+  border-width: var(--desk-field-border-width);
+  border-radius: var(--desk-field-radius);
+  background: var(--desk-field-bg);
+  color: var(--desk-text);
+  font: inherit;
+  font-size: var(--text-base);
+}
+.input:focus-visible {
+  border-color: var(--desk-field-focus-border);
+  outline: var(--desk-focus-width) solid var(--desk-field-focus-ring);
+  outline-offset: 1px;
+}
+
+/* A row of a menu or list: the design system's row. */
+.menu-item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: var(--control-sm);
+  padding: 0 var(--space-3);
+  border: 0;
+  border-radius: var(--desk-row-radius);
+  background: transparent;
+  text-align: left;
+  white-space: nowrap;
+  transition: background-color var(--motion-fast) ease;
+}
+.menu-item:hover:not(:disabled),
+.menu-item.is-selected {
+  background: var(--desk-row-active-bg);
+  color: var(--desk-row-active-fg);
+  box-shadow: var(--desk-row-active-shadow);
+}
+
+/* A segmented control: the design system's tabs. */
+.segmented {
+  display: flex;
+  gap: var(--desk-tabs-gap);
+  padding: 0 var(--space-2);
+  border-radius: var(--desk-tabs-radius);
+  background: var(--desk-tabs-bg);
+}
+.segment {
+  flex: 1;
+  height: var(--desk-tab-height);
+  border: 1px solid var(--desk-tab-border);
+  border-radius: var(--desk-tab-radius);
+  background: transparent;
+  color: var(--desk-tab-fg);
+  transition: background-color var(--motion-fast) ease;
+}
+.segment:hover:not(:disabled) { background: var(--desk-tab-hover-bg); }
+.segment.is-selected {
+  border-color: var(--desk-tab-selected-border);
+  background: var(--desk-tab-selected-bg);
+  color: var(--desk-tab-selected-fg);
+  box-shadow: var(--desk-tab-selected-shadow);
+}
+
+.tooltip {
+  position: absolute;
+  right: 92px;
+  z-index: var(--z-tooltip);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--desk-tooltip-radius);
+  background: var(--desk-tooltip);
+  color: var(--desk-tooltip-text);
+  font-size: var(--text-xs);
+  line-height: 20px;
+  white-space: nowrap;
+  transform: translateY(-50%);
+  pointer-events: none;
+  box-shadow: var(--desk-tooltip-shadow);
+}
+
+/* A modal: the design system's dialog and its scrim. */
+.scrim {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal-scrim);
+  display: grid;
+  place-items: center;
+  background: var(--desk-dialog-scrim);
+  backdrop-filter: var(--desk-dialog-scrim-filter);
+  -webkit-backdrop-filter: var(--desk-dialog-scrim-filter);
+}
+
+.dialog {
+  z-index: var(--z-modal);
+  display: grid;
+  gap: var(--space-2);
+  width: 360px;
+  padding: var(--desk-dialog-padding);
+  border: 1px solid var(--desk-dialog-border);
+  border-radius: var(--desk-dialog-radius);
+  background: var(--desk-dialog-bg);
+  box-shadow: var(--desk-dialog-shadow);
+}

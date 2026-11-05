@@ -61,7 +61,7 @@ a {
   cursor: pointer;
 }
 a:focus-visible {
-  outline: 2px solid var(--desk-ring);
+  outline: var(--desk-focus-width) solid var(--desk-ring);
   outline-offset: 2px;
 }
 .alt {

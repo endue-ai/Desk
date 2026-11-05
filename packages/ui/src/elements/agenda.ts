@@ -21,7 +21,7 @@ const css = `
   outline: none;
 }
 [role="listbox"]:focus-visible {
-  outline: 2px solid var(--desk-ring);
+  outline: var(--desk-focus-width) solid var(--desk-ring);
   outline-offset: -2px;
 }
 [role="option"] {

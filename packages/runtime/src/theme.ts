@@ -8,7 +8,7 @@
  * for contrast (@endue-ai/ui/theme); with none, the result is the layers alone.
  */
 import type { ThemePackage } from "@endue-ai/bridge";
-import { cssVariables, MOTION_TOKENS, tokens } from "@endue-ai/ui";
+import { components, cssVariables, MOTION_TOKENS, tokens } from "@endue-ai/ui";
 import { compileTheme, type GateFix, gate, type ThemeFontFace } from "@endue-ai/ui/theme";
 import { HIGH_CONTRAST, LIGHT_COLORS } from "./core/colors";
 import type { PolicySet } from "./policy";
@@ -44,6 +44,8 @@ export interface InstalledTheme {
 
 export interface ThemeState {
   scheme: Scheme;
+  /** The design system in force (ADR 0090): empty for the endue design system. */
+  design?: string;
   contrast: Contrast;
   reducedMotion: boolean;
   /** The themes applied, lowest first; empty when only the built-in tokens apply. */
@@ -66,11 +68,16 @@ export const DEFAULT_THEME_SETTINGS: ThemeSettings = {
   active: "",
 };
 
+/**
+ * `design` is the design system in force: its component tokens go over everything a theme sets, so
+ * a theme's colours can never reach what the components are made of (DH-06).
+ */
 export function resolveTheme(
   themes: PolicySet["themes"],
   settings: ThemeSettings,
   media: MediaPreferences,
   installed: readonly InstalledTheme[] = [],
+  design?: { id: string; tokens: Readonly<Record<string, string>> },
 ): ThemeState {
   const scheme: Scheme =
     settings.scheme === "system" ? (media.dark ? "dark" : "light") : settings.scheme;
@@ -119,10 +126,12 @@ export function resolveTheme(
       fixes = gated.fixes;
     }
   }
+  result = { ...result, ...(design?.tokens ?? components) };
   // The motion tokens are inline on each root, so a stylesheet rule could not zero them.
   if (reducedMotion) for (const name of MOTION_TOKENS) result[name] = "0ms";
   return {
     scheme,
+    ...(design?.id ? { design: design.id } : {}),
     contrast,
     reducedMotion,
     themes: [...applied.map((theme) => theme.id), ...(chosen ? [chosen.id] : [])],

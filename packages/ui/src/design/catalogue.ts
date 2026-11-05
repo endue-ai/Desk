@@ -75,7 +75,7 @@ export const CATALOGUE = {
   },
   row: {
     selection: p("DesignRowSelection", "fill"),
-    shape: p("DesignShape", "md"),
+    shape: p("DesignShape", "sm"),
     size: p("DesignSize", "sm"),
   },
   menu: {
@@ -178,6 +178,21 @@ export function fillRecipe(recipe: unknown): FullRecipe {
       if (typeof value === "string" && optionsOf(component, property).includes(value)) {
         target[property] = value;
       }
+    }
+  }
+  return full as unknown as FullRecipe;
+}
+
+/** `changes` over `base`, property by property: what is left out of `changes` stays as in `base`. */
+export function mergeRecipe(base: unknown, changes: unknown): FullRecipe {
+  const full = fillRecipe(base) as unknown as Record<string, Record<string, string>>;
+  const over = fillRecipe({}) as unknown as Record<string, Record<string, string>>;
+  if (!changes || typeof changes !== "object") return full as unknown as FullRecipe;
+  for (const [component, props] of Object.entries(changes as Record<string, unknown>)) {
+    if (!full[component] || !over[component] || !props || typeof props !== "object") continue;
+    for (const [property, value] of Object.entries(props as Record<string, unknown>)) {
+      if (typeof value === "string" && optionsOf(component, property).includes(value))
+        full[component][property] = value;
     }
   }
   return full as unknown as FullRecipe;

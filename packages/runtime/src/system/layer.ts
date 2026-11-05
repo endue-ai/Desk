@@ -4,6 +4,8 @@
  * above everything a mode lays out. Modes decide the layer below: surfaces, Eris, the rail, the drawer.
  * In safe mode a badge sits top centre (ADR 0061).
  */
+
+import { mountDesignStudio } from "../design-studio/studio";
 import type { ShellCtx } from "../shell/context";
 import { mountDesktops } from "../shell/Desktops";
 import { h } from "../shell/dom";
@@ -36,7 +38,16 @@ export function mountSystemLayer(
     fallback: () => layer.querySelector<HTMLElement>(".account-settings-button") ?? root,
     io: () => ctx.runtime.themes.io(),
   });
+  // The design system studio beside it (ADR 0090); desk.design.studio opens it.
+  const designStudio = mountDesignStudio(root, {
+    designs: ctx.runtime.designs,
+    commands: ctx.runtime.commands,
+    lang: () => ctx.store.get().lang,
+    fallback: () => layer.querySelector<HTMLElement>(".account-settings-button") ?? root,
+    brain: () => ctx.runtime.themes.brain(),
+  });
   return () => {
+    designStudio.dispose();
     studio.dispose();
     for (const off of parts) off();
     layer.remove();
