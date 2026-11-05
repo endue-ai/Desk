@@ -5,14 +5,17 @@
 // write raises so a desk can refuse a stale copy. Signing and uploading happen elsewhere.
 //   release <dist> --version V --base URL --notes URL --commit SHA [--min-from V] [--date ISO]
 //   list <index.json> --channel C (--release <release.json> | --from <index.json> --version V)
+//        [--rollout N]
+//   rollout <index.json> --version V --percent N                           a listed build's share
 //   unlist <index.json> --version V
 //   prune <index.json> --out <file> [--days 14] [--keep <index.json>]...   prints versions to delete
 //   pick <index.json> [--days 3]                                            prints a version or nothing
+//   pick-candidate <index.json> --line release/vX.Y [--days 3]              prints "version commit"
 import { createHash } from "node:crypto";
 import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
-import { compare } from "./release-version.mjs";
+import { compare, lineOf, parse } from "./release-version.mjs";
 
 const DAY = 24 * 60 * 60 * 1000;
 
@@ -94,6 +97,27 @@ export function listed(index, entry, { channel, now }) {
   return next(index, channel, [entry, ...others], now);
 }
 
+/** A share of desks: an integer from 0 to 100. */
+function share(percent) {
+  const value = Number(percent);
+  if (!Number.isInteger(value) || value < 0 || value > 100) {
+    throw new Error(`${percent} is not a rollout share (0 to 100)`);
+  }
+  return value;
+}
+
+/** `entry` reaching `percent` of the desks. */
+export function withRollout(entry, percent) {
+  return { ...entry, rollout: share(percent) };
+}
+
+/** `index` with the listed `version` reaching `percent` of the desks, serial raised. */
+export function rolledOut(index, version, percent, { now }) {
+  const entry = index.releases.find((r) => r.version === version);
+  if (!entry) throw new Error(`${version} is not on the ${index.channel} index`);
+  return listed(index, withRollout(entry, percent), { channel: index.channel, now });
+}
+
 /** `index` without `version`; it must be there. */
 export function unlisted(index, version, { now }) {
   if (!index.releases.some((r) => r.version === version)) {
@@ -124,6 +148,23 @@ export function pruned(index, { now, days = 14, keep = [] }) {
 export function promotable(index, { now, days = 3 }) {
   const cutoff = Date.parse(now) - days * DAY;
   return sorted(index.releases).find((r) => Date.parse(r.date) <= cutoff)?.version;
+}
+
+/**
+ * The candidate a line's final builds (ADR 0092): the line's newest X.Y.Z-rc.N on `index`, once it has
+ * been listed `days`. Undefined while there is none or it is younger; a newer candidate restarts the wait.
+ */
+export function soakedCandidate(index, { line, now, days = 3 }) {
+  const want = lineOf(line);
+  if (!want || !String(line).startsWith("release/"))
+    throw new Error(`${line} is not a release line`);
+  const candidates = sorted(index?.releases ?? []).filter((r) => {
+    const v = parse(r.version);
+    return v && v.major === want.major && v.minor === want.minor && v.pre[0] === "rc";
+  });
+  const newest = candidates[0];
+  if (!newest || Date.parse(newest.date) > Date.parse(now) - days * DAY) return undefined;
+  return newest;
 }
 
 const readJson = (path) => JSON.parse(readFileSync(path, "utf8"));
@@ -160,8 +201,12 @@ function main([command, path, ...args]) {
         ? entryFor(readJson(release))
         : readJson(need("--from")).releases.find((r) => r.version === need("--version"));
       if (!entry) throw new Error(`${value("--version")} is not on ${value("--from")}`);
-      return print(listed(index, entry, { channel: need("--channel"), now }));
+      const rollout = value("--rollout");
+      const placed = rollout === undefined ? entry : withRollout(entry, rollout);
+      return print(listed(index, placed, { channel: need("--channel"), now }));
     }
+    case "rollout":
+      return print(rolledOut(readJson(path), need("--version"), need("--percent"), { now }));
     case "unlist":
       return print(unlisted(readJson(path), need("--version"), { now }));
     case "prune": {
@@ -176,8 +221,17 @@ function main([command, path, ...args]) {
       if (version) console.log(version);
       return;
     }
+    case "pick-candidate": {
+      const index = existsSync(path) ? readJson(path) : undefined;
+      const days = Number(value("--days", 3));
+      const found = soakedCandidate(index, { line: need("--line"), now, days });
+      if (found) console.log(`${found.version} ${found.commit}`);
+      return;
+    }
     default:
-      throw new Error("usage: release-manifest.mjs release|list|unlist|prune|pick <path> ...");
+      throw new Error(
+        "usage: release-manifest.mjs release|list|rollout|unlist|prune|pick|pick-candidate <path> ...",
+      );
   }
 }
 

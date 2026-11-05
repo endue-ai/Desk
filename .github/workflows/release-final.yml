@@ -1,0 +1,219 @@
+name: release-final
+
+# A line's final (ADR 0092). Dispatched on release/vX.Y, by hand: the line's newest candidate must have
+# been on beta three days (fewer when a person says so for an urgent fix) with no open release-blocker
+# issue on the milestone vX.Y. The candidate's commit is built again as X.Y.Z, since the version is in
+# the binary and in every signature. A person approves the publish in the stable environment; then it
+# is uploaded, tagged vX.Y.Z with its GitHub Release by the release app, and only then listed: on
+# stable to a tenth of the desks (rollout.yml widens it), on beta to all. A step that fails leaves
+# nothing listed, and re-running the publish job picks up where it stopped.
+on:
+  workflow_dispatch:
+    inputs:
+      soak-days:
+        description: Days the newest candidate must have been on beta
+        required: false
+        type: number
+        default: 3
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  gate:
+    name: gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: signing
+    permissions:
+      contents: read
+      issues: read
+    outputs:
+      version: ${{ steps.pick.outputs.version }}
+      commit: ${{ steps.pick.outputs.commit }}
+      candidate: ${{ steps.pick.outputs.candidate }}
+      notes-start: ${{ steps.pick.outputs.notes-start }}
+    env:
+      LINE: ${{ github.ref_name }}
+      SOAK_DAYS: ${{ inputs.soak-days }}
+      BUCKET: ${{ vars.R2_BUCKET || 'endue-desk-releases' }}
+      ENDPOINT: https://${{ secrets.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com
+      AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: auto
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: The updater key, its public key and the R2 credentials are set
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          DESK_UPDATER_PUBKEY: ${{ vars.DESK_UPDATER_PUBKEY }}
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+        run: |
+          missing=""
+          for name in TAURI_SIGNING_PRIVATE_KEY DESK_UPDATER_PUBKEY R2_ACCOUNT_ID AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY; do
+            if [ -z "${!name}" ]; then missing="$missing $name"; fi
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::$LINE has no final:$missing not set (docs/releasing.md)"
+            exit 1
+          fi
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - id: pick
+        name: The candidate that has been on beta long enough
+        run: |
+          # A line, not main or a version branch: candidateVersion refuses anything else.
+          node scripts/release-version.mjs --line "$LINE" --run 1 > /dev/null
+          if ! out="$(aws s3api get-object --bucket "$BUCKET" --key desk/channels/beta/index.json beta.json --endpoint-url "$ENDPOINT" 2>&1)"; then
+            if grep -q NoSuchKey <<<"$out"; then rm -f beta.json; else echo "$out" >&2; exit 1; fi
+          fi
+          read -r candidate commit <<<"$(node scripts/release-manifest.mjs pick-candidate beta.json --line "$LINE" --days "$SOAK_DAYS")"
+          if [ -z "$candidate" ]; then
+            echo "::error::No candidate of $LINE has been on beta $SOAK_DAYS days; a newer candidate restarts the wait"
+            exit 1
+          fi
+          version="$(node scripts/release-version.mjs --final "$candidate")"
+          if git ls-remote --exit-code --tags origin "refs/tags/v$version" > /dev/null; then
+            echo "::error::v$version is released already; the next final needs a newer candidate"
+            exit 1
+          fi
+          if ! git merge-base --is-ancestor "$commit" "origin/$LINE"; then
+            echo "::error::$candidate was built from $commit, which is not on $LINE"
+            exit 1
+          fi
+          milestone="v${LINE#release/v}"
+          blockers="$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --label release-blocker \
+            --search "milestone:\"$milestone\"" --json number --jq 'map("#\(.number)") | join(" ")')"
+          if [ -n "$blockers" ]; then
+            echo "::error::Open release-blocker issues on $milestone: $blockers"
+            exit 1
+          fi
+          {
+            echo "candidate=$candidate"
+            echo "commit=$commit"
+            echo "version=$version"
+            echo "notes-start=$(node scripts/release-version.mjs --notes-start "$version")"
+          } | tee -a "$GITHUB_OUTPUT"
+
+  build:
+    needs: gate
+    uses: ./.github/workflows/release-build.yml
+    with:
+      version: ${{ needs.gate.outputs.version }}
+      ref: ${{ needs.gate.outputs.commit }}
+    secrets: inherit
+
+  publish:
+    name: publish
+    needs: [gate, build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: stable
+    concurrency:
+      group: release-index
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    env:
+      VERSION: ${{ needs.gate.outputs.version }}
+      COMMIT: ${{ needs.gate.outputs.commit }}
+      CANDIDATE: ${{ needs.gate.outputs.candidate }}
+      NOTES_START: ${{ needs.gate.outputs.notes-start }}
+      BASE: ${{ vars.DESK_RELEASES_URL || 'https://releases.endue.ai/desk' }}
+      BUCKET: ${{ vars.R2_BUCKET || 'endue-desk-releases' }}
+      ENDPOINT: https://${{ secrets.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com
+      AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: auto
+      TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+      TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+    steps:
+      - name: The release app is set
+        env:
+          RELEASE_APP_ID: ${{ vars.RELEASE_APP_ID }}
+          RELEASE_APP_KEY: ${{ secrets.RELEASE_APP_KEY }}
+        run: |
+          if [ -z "$RELEASE_APP_ID" ] || [ -z "$RELEASE_APP_KEY" ]; then
+            echo "::error::RELEASE_APP_ID or RELEASE_APP_KEY is not set in stable: nothing can tag v$VERSION (docs/releasing.md)"
+            exit 1
+          fi
+      - uses: actions/create-github-app-token@v2
+        id: app
+        with:
+          app-id: ${{ vars.RELEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_APP_KEY }}
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: desk-*
+          path: dist
+          merge-multiple: true
+      - uses: actions/attest-build-provenance@v3
+        with:
+          subject-path: dist/endue-desk_*
+      - name: Write and sign release.json
+        run: |
+          notes="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/tag/v$VERSION"
+          node scripts/release-manifest.mjs release dist --version "$VERSION" --base "$BASE" \
+            --commit "$COMMIT" --notes "$notes" > release.json
+          mv release.json dist/release.json
+          (cd dist && sha256sum endue-desk_* > SHA256SUMS)
+          pnpm --filter @endue-ai/desk-app exec tauri signer sign "$PWD/dist/release.json"
+      - name: Upload the build (listed nowhere yet)
+        run: node scripts/release-publish.mjs release dist --version "$VERSION" --bucket "$BUCKET" --endpoint "$ENDPOINT"
+      - name: Tag v${{ needs.gate.outputs.version }} and create its GitHub Release
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+        run: |
+          if gh release view "v$VERSION" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            echo "::notice::v$VERSION has its GitHub Release already (a re-run)"
+            exit 0
+          fi
+          {
+            echo "Built from $CANDIDATE, which ran on beta first."
+            echo
+            echo "## Download"
+            echo
+            for path in dist/endue-desk_*; do
+              file="${path##*/}"
+              case "$file" in *.sig) continue ;; esac
+              echo "- [$file]($BASE/releases/$VERSION/$file)"
+            done
+            echo
+            echo "Checksums: [SHA256SUMS]($BASE/releases/$VERSION/SHA256SUMS). Provenance: \`gh attestation verify <file> --repo $GITHUB_REPOSITORY\`."
+            echo "Installed desks on the stable channel update themselves as the rollout widens."
+          } > downloads.md
+          args=(--repo "$GITHUB_REPOSITORY" --target "$COMMIT" --title "endue Desk $VERSION" --generate-notes --notes-file downloads.md)
+          if [ -n "$NOTES_START" ]; then args+=(--notes-start-tag "$NOTES_START"); fi
+          gh release create "v$VERSION" "${args[@]}"
+      - name: List it on stable to a tenth of the desks, and on beta
+        run: |
+          fetch() {
+            if ! out="$(aws s3api get-object --bucket "$BUCKET" --key "desk/channels/$1/index.json" "$1.json" --endpoint-url "$ENDPOINT" 2>&1)"; then
+              if grep -q NoSuchKey <<<"$out"; then rm -f "$1.json"; else echo "$out" >&2; exit 1; fi
+            fi
+          }
+          fetch stable
+          fetch beta
+          node scripts/release-manifest.mjs list stable.json --channel stable --release dist/release.json --rollout 10 > stable-index.json
+          node scripts/release-manifest.mjs list beta.json --channel beta --release dist/release.json > beta-index.json
+          for channel in stable beta; do
+            pnpm --filter @endue-ai/desk-app exec tauri signer sign "$PWD/$channel-index.json"
+            mv "$channel-index.json" index.json
+            mv "$channel-index.json.sig" index.json.sig
+            node scripts/release-publish.mjs index index.json --channel "$channel" --bucket "$BUCKET" --endpoint "$ENDPOINT"
+          done
+          echo "::notice::$VERSION is on stable for 10% of the desks; widen it with rollout.yml"
