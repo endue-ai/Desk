@@ -1,0 +1,11 @@
+{
+  "target": "BridgeRequest",
+  "description": "memory.remember needs its memory:write scope",
+  "instance": {
+    "id": 44,
+    "method": "memory.remember",
+    "params": {
+      "text": "Likes tea."
+    }
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "target": "MemoryFact",
+  "description": "a fact Eris kept, edited later, with two tags",
+  "instance": {
+    "kind": "fact",
+    "id": "fact_01jc8x7p2q8r",
+    "text": "Prefers pnpm over npm in every repository.",
+    "by": "eris",
+    "at": "2026-11-04T18:02:11Z",
+    "updated": "2026-11-05T08:00:00Z",
+    "tags": ["tools", "work"]
+  }
+}

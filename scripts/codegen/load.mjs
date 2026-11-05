@@ -51,7 +51,7 @@ export function brainBundle(openapi) {
  * The plugin manifest and the integration specs it references (permissions name item kinds, view
  * plugins carry views, connector plugins their connector block), which reference it back: one set.
  */
-export const PLUGIN_FOLDERS = ["plugin/v0", "item/v0", "view/v0", "connector/v0"];
+export const PLUGIN_FOLDERS = ["plugin/v0", "item/v0", "view/v0", "connector/v0", "memory/v0"];
 
 /** Every spec document, keyed by spec name: each set holds what its vectors need to resolve. */
 export function loadAll(root = ROOT) {
@@ -63,6 +63,7 @@ export function loadAll(root = ROOT) {
     item: plugin,
     view: plugin,
     connector: plugin,
+    memory: plugin,
     init,
     update: loadSchemas(root, "update/v0"),
     brain: [loadBrain(root).bundle],

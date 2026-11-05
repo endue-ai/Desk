@@ -1,0 +1,10 @@
+{
+  "target": "MemoryFact",
+  "description": "a fact needs its words",
+  "instance": {
+    "kind": "fact",
+    "id": "fact_01jc8x2k9m4n",
+    "by": "person",
+    "at": "2026-11-05T09:12:00+09:00"
+  }
+}

@@ -895,6 +895,8 @@ pub enum Permission {
     UpdateManage(UpdateManagePermission),
     ThemeManage(ThemeManagePermission),
     AccountManage(AccountManagePermission),
+    MemoryRead(MemoryReadPermission),
+    MemoryWrite(MemoryWritePermission),
 }
 
 /// Search explicitly published plugin documents and installed plugin launchers.
@@ -1102,6 +1104,20 @@ pub struct ThemeManagePermission {
 #[serde(deny_unknown_fields)]
 pub struct AccountManagePermission {
     pub permission: AccountManagePermissionPermission,
+}
+
+/// Read Eris's memory with memory.list, memory.get and memory.search, and receive memory.changed (ADR 0095). The desk grants it to the runtime; Eris and the memory inspector are asked like any caller.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct MemoryReadPermission {
+    pub permission: MemoryReadPermissionPermission,
+}
+
+/// Keep and edit facts in Eris's memory with memory.remember, and forget entries with memory.forget (ADR 0095). The caller is recorded as the writer.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct MemoryWritePermission {
+    pub permission: MemoryWritePermissionPermission,
 }
 
 /// A URL scheme shell.open hands to the system: the browser for http and https, the mail app for mailto.
@@ -2710,6 +2726,107 @@ pub struct ConnectorSyncResult {
     pub done: bool,
 }
 
+/// A fact or preference, or an episode.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum MemoryKind {
+    #[serde(rename = "fact")]
+    Fact,
+    #[serde(rename = "episode")]
+    Episode,
+}
+
+/// fact_ or ep_ and a time-ordered random suffix, so two desks never pick the same id.
+pub type MemoryId = String;
+
+/// Who wrote an entry: person (through the desk's own screens), eris, a plugin id, or agent:<id> for an agent of the brain (ADR 0072).
+pub type MemoryWriter = String;
+
+/// A word to group facts by, for example work or tools.
+pub type MemoryTag = String;
+
+/// A fact or preference, in words a person reads: "Reviews PRs in the morning". updated is there once it was edited.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct MemoryFact {
+    pub kind: MemoryFactKind,
+    pub id: MemoryId,
+    pub text: String,
+    pub by: MemoryWriter,
+    /// When it was first kept.
+    pub at: String,
+    /// When it was last edited.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub updated: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tags: Option<Vec<MemoryTag>>,
+}
+
+/// One hand-off of the turn an episode records: the command Eris ran and whether it answered (ADR 0089).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct MemoryStep {
+    pub command: String,
+    pub ok: bool,
+}
+
+/// What was asked, what was done and what was answered in one turn, kept beyond its session.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct MemoryEpisode {
+    pub kind: MemoryEpisodeKind,
+    pub id: MemoryId,
+    /// When the turn ended.
+    pub at: String,
+    pub by: MemoryWriter,
+    pub asked: String,
+    pub answered: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub steps: Option<Vec<MemoryStep>>,
+}
+
+/// A fact or an episode.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum MemoryEntry {
+    MemoryFact(MemoryFact),
+    MemoryEpisode(MemoryEpisode),
+}
+
+/// An entry search found, with the words around the match.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct MemoryHit {
+    pub entry: MemoryEntry,
+    pub snippet: String,
+}
+
+/// A fact as facts.yaml holds it. Only text is needed: a fact a person adds by hand gets an id, a writer (person) and a time when the desk next reads the file, and is written back with them.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct MemoryFactLine {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub id: Option<MemoryId>,
+    pub text: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub by: Option<MemoryWriter>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub at: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub updated: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tags: Option<Vec<MemoryTag>>,
+}
+
+/// facts.yaml in the memory folder: the format version and the facts, oldest first.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct MemoryFactsFile {
+    /// The format version, 0. The desk refuses a file with a version newer than it reads.
+    pub version: u64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub facts: Option<Vec<MemoryFactLine>>,
+}
+
 /// The whole of init.yaml. Every key is optional; a missing key takes its default.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -3382,6 +3499,11 @@ pub enum BridgeRequest {
     AccountStatus(AccountStatusRequest),
     AccountSignIn(AccountSignInRequest),
     AccountSignOut(AccountSignOutRequest),
+    MemoryList(MemoryListRequest),
+    MemoryGet(MemoryGetRequest),
+    MemoryRemember(MemoryRememberRequest),
+    MemoryForget(MemoryForgetRequest),
+    MemorySearch(MemorySearchRequest),
     ThemeSave(ThemeSaveRequest),
     ThemeImport(ThemeImportRequest),
     ThemeExport(ThemeExportRequest),
@@ -3482,6 +3604,7 @@ pub enum BridgeEvent {
     ViewChanged(ViewChangedEvent),
     UpdateChanged(UpdateChangedEvent),
     AccountChanged(AccountChangedEvent),
+    MemoryChanged(MemoryChangedEvent),
 }
 
 /// Describe what the caller can bind, show and run.
@@ -4728,6 +4851,191 @@ pub struct LogTailResult {
 pub struct LogEntryEvent {
     pub event: LogEntryEventEvent,
     pub data: LogEntry,
+}
+
+/// Entries newest first, a page at a time.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct MemoryListRequest {
+    pub id: RequestId,
+    pub method: MemoryListRequestMethod,
+    pub params: MemoryListParams,
+}
+
+/// kind keeps one kind; cursor continues where the last page's next left off. limit is 50 by default.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct MemoryListParams {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub kind: Option<MemoryKind>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub limit: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cursor: Option<String>,
+    pub scope: MemoryReadPermission,
+}
+
+/// Result of memory.list: the page, and next when there is more.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct MemoryListResult {
+    pub entries: Vec<MemoryEntry>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub next: Option<String>,
+}
+
+/// One entry by its id; not_found when there is none.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct MemoryGetRequest {
+    pub id: RequestId,
+    pub method: MemoryGetRequestMethod,
+    pub params: MemoryGetParams,
+}
+
+/// Parameters of memory.get.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct MemoryGetParams {
+    pub id: MemoryId,
+    pub scope: MemoryReadPermission,
+}
+
+/// Result of memory.get.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct MemoryGetResult {
+    pub entry: MemoryEntry,
+}
+
+/// Keep a fact in words, or, with the id of a fact, change its words and tags. The caller is its writer: person for the desk's own screens.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct MemoryRememberRequest {
+    pub id: RequestId,
+    pub method: MemoryRememberRequestMethod,
+    pub params: MemoryRememberParams,
+}
+
+/// Parameters of memory.remember. id names a fact to edit; without it a new fact is kept.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct MemoryRememberParams {
+    pub text: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub id: Option<MemoryId>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tags: Option<Vec<MemoryTag>>,
+    pub scope: MemoryWritePermission,
+}
+
+/// Result of memory.remember: the fact as kept.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct MemoryRememberResult {
+    pub fact: MemoryFact,
+}
+
+/// Forget one entry by its id, or every entry (all, of one kind when kind is given). Gone from the disk and from search when it answers.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct MemoryForgetRequest {
+    pub id: RequestId,
+    pub method: MemoryForgetRequestMethod,
+    pub params: MemoryForgetParams,
+}
+
+/// Parameters of memory.forget: an id, or all (true) with an optional kind.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum MemoryForgetParams {
+    MemoryForgetOne(MemoryForgetOne),
+    MemoryForgetAll(MemoryForgetAll),
+}
+
+/// Forget the entry with this id.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct MemoryForgetOne {
+    pub id: MemoryId,
+    pub scope: MemoryWritePermission,
+}
+
+/// Forget every entry, or every entry of kind.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct MemoryForgetAll {
+    pub all: True,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub kind: Option<MemoryKind>,
+    pub scope: MemoryWritePermission,
+}
+
+/// Result of memory.forget: how many entries went.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct MemoryForgetResult {
+    pub forgotten: u64,
+}
+
+/// Entries whose words match the query (full-text search), best first.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct MemorySearchRequest {
+    pub id: RequestId,
+    pub method: MemorySearchRequestMethod,
+    pub params: MemorySearchParams,
+}
+
+/// Parameters of memory.search. The query is words, not a search syntax. limit is 20 by default.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct MemorySearchParams {
+    pub query: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub kind: Option<MemoryKind>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub limit: Option<u64>,
+    pub scope: MemoryReadPermission,
+}
+
+/// Result of memory.search.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct MemorySearchResult {
+    pub hits: Vec<MemoryHit>,
+}
+
+/// What changed: a fact kept, a fact edited, an episode kept, entries forgotten.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum MemoryChange {
+    #[serde(rename = "remembered")]
+    Remembered,
+    #[serde(rename = "edited")]
+    Edited,
+    #[serde(rename = "recorded")]
+    Recorded,
+    #[serde(rename = "forgotten")]
+    Forgotten,
+}
+
+/// Memory changed. ids are the entries it touched; absent when every entry (of kind) was forgotten. Sent to holders of memory:read.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct MemoryChangedEvent {
+    pub event: MemoryChangedEventEvent,
+    pub data: MemoryChangedData,
+}
+
+/// Payload of memory.changed.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct MemoryChangedData {
+    pub change: MemoryChange,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ids: Option<Vec<MemoryId>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub kind: Option<MemoryKind>,
 }
 
 /// Make one HTTP(S) request and return the whole response.
@@ -6725,6 +7033,22 @@ pub enum AccountManagePermissionPermission {
     AccountManage,
 }
 
+/// The `permission` of [`MemoryReadPermission`]: always `"memory:read"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum MemoryReadPermissionPermission {
+    #[default]
+    #[serde(rename = "memory:read")]
+    MemoryRead,
+}
+
+/// The `permission` of [`MemoryWritePermission`]: always `"memory:write"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum MemoryWritePermissionPermission {
+    #[default]
+    #[serde(rename = "memory:write")]
+    MemoryWrite,
+}
+
 /// The `format` of [`ThemeIndex`]: always `"desk-theme-index/1"`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub enum ThemeIndexFormat {
@@ -6867,6 +7191,22 @@ pub enum EnumParamKind {
     #[default]
     #[serde(rename = "enum")]
     Enum,
+}
+
+/// The `kind` of [`MemoryFact`]: always `"fact"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum MemoryFactKind {
+    #[default]
+    #[serde(rename = "fact")]
+    Fact,
+}
+
+/// The `kind` of [`MemoryEpisode`]: always `"episode"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum MemoryEpisodeKind {
+    #[default]
+    #[serde(rename = "episode")]
+    Episode,
 }
 
 /// The `method` of [`AccountStatusRequest`]: always `"account.status"`.
@@ -7315,6 +7655,54 @@ pub enum LogEntryEventEvent {
     #[default]
     #[serde(rename = "log.entry")]
     LogEntry,
+}
+
+/// The `method` of [`MemoryListRequest`]: always `"memory.list"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum MemoryListRequestMethod {
+    #[default]
+    #[serde(rename = "memory.list")]
+    MemoryList,
+}
+
+/// The `method` of [`MemoryGetRequest`]: always `"memory.get"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum MemoryGetRequestMethod {
+    #[default]
+    #[serde(rename = "memory.get")]
+    MemoryGet,
+}
+
+/// The `method` of [`MemoryRememberRequest`]: always `"memory.remember"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum MemoryRememberRequestMethod {
+    #[default]
+    #[serde(rename = "memory.remember")]
+    MemoryRemember,
+}
+
+/// The `method` of [`MemoryForgetRequest`]: always `"memory.forget"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum MemoryForgetRequestMethod {
+    #[default]
+    #[serde(rename = "memory.forget")]
+    MemoryForget,
+}
+
+/// The `method` of [`MemorySearchRequest`]: always `"memory.search"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum MemorySearchRequestMethod {
+    #[default]
+    #[serde(rename = "memory.search")]
+    MemorySearch,
+}
+
+/// The `event` of [`MemoryChangedEvent`]: always `"memory.changed"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum MemoryChangedEventEvent {
+    #[default]
+    #[serde(rename = "memory.changed")]
+    MemoryChanged,
 }
 
 /// The `method` of [`NetFetchRequest`]: always `"net.fetch"`.
@@ -7853,6 +8241,10 @@ pub const SCHEMAS: &[(&str, &str)] = &[
         include_str!("../../../specs/connector/v0/connector.schema.json"),
     ),
     (
+        "https://endue.ai/specs/memory/v0/memory.schema.json",
+        include_str!("../../../specs/memory/v0/memory.schema.json"),
+    ),
+    (
         "https://endue.ai/specs/init/v0/init.schema.json",
         include_str!("../../../specs/init/v0/init.schema.json"),
     ),
@@ -7911,6 +8303,10 @@ pub const SCHEMAS: &[(&str, &str)] = &[
     (
         "https://endue.ai/specs/bridge/v0/log.schema.json",
         include_str!("../../../specs/bridge/v0/log.schema.json"),
+    ),
+    (
+        "https://endue.ai/specs/bridge/v0/memory.schema.json",
+        include_str!("../../../specs/bridge/v0/memory.schema.json"),
     ),
     (
         "https://endue.ai/specs/bridge/v0/net.schema.json",

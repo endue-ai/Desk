@@ -494,7 +494,9 @@ export type Permission =
   | ShellOpenPermission
   | UpdateManagePermission
   | ThemeManagePermission
-  | AccountManagePermission;
+  | AccountManagePermission
+  | MemoryReadPermission
+  | MemoryWritePermission;
 
 /** Search explicitly published plugin documents and installed plugin launchers. */
 export interface SearchReadPermission {
@@ -645,6 +647,16 @@ export interface ThemeManagePermission {
 /** Sign the desk in to endue ID and out again with account.*, and see whether it is signed in. Receive account.changed. The token itself never crosses the bridge. The desk grants it to the runtime only (ADR 0089). */
 export interface AccountManagePermission {
   permission: "account:manage";
+}
+
+/** Read Eris's memory with memory.list, memory.get and memory.search, and receive memory.changed (ADR 0095). The desk grants it to the runtime; Eris and the memory inspector are asked like any caller. */
+export interface MemoryReadPermission {
+  permission: "memory:read";
+}
+
+/** Keep and edit facts in Eris's memory with memory.remember, and forget entries with memory.forget (ADR 0095). The caller is recorded as the writer. */
+export interface MemoryWritePermission {
+  permission: "memory:write";
 }
 
 /** A URL scheme shell.open hands to the system: the browser for http and https, the mail app for mailto. */
@@ -1610,6 +1622,75 @@ export interface ConnectorSyncResult {
   done: boolean;
 }
 
+/** A fact or preference, or an episode. */
+export type MemoryKind = "fact" | "episode";
+
+/** fact_ or ep_ and a time-ordered random suffix, so two desks never pick the same id. */
+export type MemoryId = string;
+
+/** Who wrote an entry: person (through the desk's own screens), eris, a plugin id, or agent:<id> for an agent of the brain (ADR 0072). */
+export type MemoryWriter = string;
+
+/** A word to group facts by, for example work or tools. */
+export type MemoryTag = string;
+
+/** A fact or preference, in words a person reads: "Reviews PRs in the morning". updated is there once it was edited. */
+export interface MemoryFact {
+  kind: "fact";
+  id: MemoryId;
+  text: string;
+  by: MemoryWriter;
+  /** When it was first kept. */
+  at: string;
+  /** When it was last edited. */
+  updated?: string;
+  tags?: MemoryTag[];
+}
+
+/** One hand-off of the turn an episode records: the command Eris ran and whether it answered (ADR 0089). */
+export interface MemoryStep {
+  command: string;
+  ok: boolean;
+}
+
+/** What was asked, what was done and what was answered in one turn, kept beyond its session. */
+export interface MemoryEpisode {
+  kind: "episode";
+  id: MemoryId;
+  /** When the turn ended. */
+  at: string;
+  by: MemoryWriter;
+  asked: string;
+  answered: string;
+  steps?: MemoryStep[];
+}
+
+/** A fact or an episode. */
+export type MemoryEntry = MemoryFact | MemoryEpisode;
+
+/** An entry search found, with the words around the match. */
+export interface MemoryHit {
+  entry: MemoryEntry;
+  snippet: string;
+}
+
+/** A fact as facts.yaml holds it. Only text is needed: a fact a person adds by hand gets an id, a writer (person) and a time when the desk next reads the file, and is written back with them. */
+export interface MemoryFactLine {
+  id?: MemoryId;
+  text: string;
+  by?: MemoryWriter;
+  at?: string;
+  updated?: string;
+  tags?: MemoryTag[];
+}
+
+/** facts.yaml in the memory folder: the format version and the facts, oldest first. */
+export interface MemoryFactsFile {
+  /** The format version, 0. The desk refuses a file with a version newer than it reads. */
+  version: number;
+  facts?: MemoryFactLine[];
+}
+
 /** The whole of init.yaml. Every key is optional; a missing key takes its default. */
 export interface InitDocument {
   /** The format version. Default 0. Desk refuses a file with a version newer than it reads. */
@@ -2091,6 +2172,11 @@ export type BridgeRequest =
   | AccountStatusRequest
   | AccountSignInRequest
   | AccountSignOutRequest
+  | MemoryListRequest
+  | MemoryGetRequest
+  | MemoryRememberRequest
+  | MemoryForgetRequest
+  | MemorySearchRequest
   | ThemeSaveRequest
   | ThemeImportRequest
   | ThemeExportRequest
@@ -2163,7 +2249,8 @@ export type BridgeEvent =
   | ConnectorChangedEvent
   | ViewChangedEvent
   | UpdateChangedEvent
-  | AccountChangedEvent;
+  | AccountChangedEvent
+  | MemoryChangedEvent;
 
 /** Describe what the caller can bind, show and run. */
 export interface CatalogGetRequest {
@@ -3011,6 +3098,129 @@ export interface LogTailResult {
 export interface LogEntryEvent {
   event: "log.entry";
   data: LogEntry;
+}
+
+/** Entries newest first, a page at a time. */
+export interface MemoryListRequest {
+  id: RequestId;
+  method: "memory.list";
+  params: MemoryListParams;
+}
+
+/** kind keeps one kind; cursor continues where the last page's next left off. limit is 50 by default. */
+export interface MemoryListParams {
+  kind?: MemoryKind;
+  limit?: number;
+  cursor?: string;
+  scope: MemoryReadPermission;
+}
+
+/** Result of memory.list: the page, and next when there is more. */
+export interface MemoryListResult {
+  entries: MemoryEntry[];
+  next?: string;
+}
+
+/** One entry by its id; not_found when there is none. */
+export interface MemoryGetRequest {
+  id: RequestId;
+  method: "memory.get";
+  params: MemoryGetParams;
+}
+
+/** Parameters of memory.get. */
+export interface MemoryGetParams {
+  id: MemoryId;
+  scope: MemoryReadPermission;
+}
+
+/** Result of memory.get. */
+export interface MemoryGetResult {
+  entry: MemoryEntry;
+}
+
+/** Keep a fact in words, or, with the id of a fact, change its words and tags. The caller is its writer: person for the desk's own screens. */
+export interface MemoryRememberRequest {
+  id: RequestId;
+  method: "memory.remember";
+  params: MemoryRememberParams;
+}
+
+/** Parameters of memory.remember. id names a fact to edit; without it a new fact is kept. */
+export interface MemoryRememberParams {
+  text: string;
+  id?: MemoryId;
+  tags?: MemoryTag[];
+  scope: MemoryWritePermission;
+}
+
+/** Result of memory.remember: the fact as kept. */
+export interface MemoryRememberResult {
+  fact: MemoryFact;
+}
+
+/** Forget one entry by its id, or every entry (all, of one kind when kind is given). Gone from the disk and from search when it answers. */
+export interface MemoryForgetRequest {
+  id: RequestId;
+  method: "memory.forget";
+  params: MemoryForgetParams;
+}
+
+/** Parameters of memory.forget: an id, or all (true) with an optional kind. */
+export type MemoryForgetParams = MemoryForgetOne | MemoryForgetAll;
+
+/** Forget the entry with this id. */
+export interface MemoryForgetOne {
+  id: MemoryId;
+  scope: MemoryWritePermission;
+}
+
+/** Forget every entry, or every entry of kind. */
+export interface MemoryForgetAll {
+  all: true;
+  kind?: MemoryKind;
+  scope: MemoryWritePermission;
+}
+
+/** Result of memory.forget: how many entries went. */
+export interface MemoryForgetResult {
+  forgotten: number;
+}
+
+/** Entries whose words match the query (full-text search), best first. */
+export interface MemorySearchRequest {
+  id: RequestId;
+  method: "memory.search";
+  params: MemorySearchParams;
+}
+
+/** Parameters of memory.search. The query is words, not a search syntax. limit is 20 by default. */
+export interface MemorySearchParams {
+  query: string;
+  kind?: MemoryKind;
+  limit?: number;
+  scope: MemoryReadPermission;
+}
+
+/** Result of memory.search. */
+export interface MemorySearchResult {
+  hits: MemoryHit[];
+}
+
+/** What changed: a fact kept, a fact edited, an episode kept, entries forgotten. */
+export type MemoryChange = "remembered" | "edited" | "recorded" | "forgotten";
+
+/** Memory changed. ids are the entries it touched; absent when every entry (of kind) was forgotten. Sent to holders of memory:read. */
+export interface MemoryChangedEvent {
+  event: "memory.changed";
+  data: MemoryChangedData;
+}
+
+/** Payload of memory.changed. */
+export interface MemoryChangedData {
+  change: MemoryChange;
+  ids?: MemoryId[];
+  kind?: MemoryKind;
 }
 
 /** Make one HTTP(S) request and return the whole response. */
@@ -4280,6 +4490,11 @@ export interface BridgeMethodMap {
   "account.status": { params: AccountParams; result: AccountStatusResult };
   "account.signIn": { params: AccountParams; result: AccountSignInResult };
   "account.signOut": { params: AccountParams; result: AccountSignOutResult };
+  "memory.list": { params: MemoryListParams; result: MemoryListResult };
+  "memory.get": { params: MemoryGetParams; result: MemoryGetResult };
+  "memory.remember": { params: MemoryRememberParams; result: MemoryRememberResult };
+  "memory.forget": { params: MemoryForgetParams; result: MemoryForgetResult };
+  "memory.search": { params: MemorySearchParams; result: MemorySearchResult };
   "theme.save": { params: ThemeSaveParams; result: ThemeSaveResult };
   "theme.import": { params: ThemeImportParams; result: ThemeImportResult };
   "theme.export": { params: ThemeExportParams; result: ThemeExportResult };
@@ -4370,6 +4585,11 @@ export const BRIDGE_METHODS = [
   "account.status",
   "account.signIn",
   "account.signOut",
+  "memory.list",
+  "memory.get",
+  "memory.remember",
+  "memory.forget",
+  "memory.search",
   "theme.save",
   "theme.import",
   "theme.export",

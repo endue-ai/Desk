@@ -1,0 +1,330 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://endue.ai/specs/bridge/v0/memory.schema.json",
+  "title": "Desk bridge v0: memory",
+  "description": "Eris's memory on this computer (specs/memory/v0, ADR 0095): list, get and search it under memory:read; remember a fact or edit one, and forget entries, under memory:write. A forgotten entry leaves the disk and the search index in the same call. Changes arrive as memory.changed.",
+  "$defs": {
+    "MemoryListRequest": {
+      "description": "Entries newest first, a page at a time.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "bridge.schema.json#/$defs/RequestId"
+        },
+        "method": {
+          "const": "memory.list"
+        },
+        "params": {
+          "$ref": "#/$defs/MemoryListParams"
+        }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "MemoryListParams": {
+      "description": "kind keeps one kind; cursor continues where the last page's next left off. limit is 50 by default.",
+      "type": "object",
+      "properties": {
+        "kind": {
+          "$ref": "../../memory/v0/memory.schema.json#/$defs/MemoryKind"
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 500
+        },
+        "cursor": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "scope": {
+          "$ref": "../../plugin/v0/permission.schema.json#/$defs/MemoryReadPermission"
+        }
+      },
+      "required": ["scope"],
+      "additionalProperties": false
+    },
+    "MemoryListResult": {
+      "description": "Result of memory.list: the page, and next when there is more.",
+      "type": "object",
+      "properties": {
+        "entries": {
+          "type": "array",
+          "items": {
+            "$ref": "../../memory/v0/memory.schema.json#/$defs/MemoryEntry"
+          }
+        },
+        "next": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        }
+      },
+      "required": ["entries"],
+      "additionalProperties": false
+    },
+    "MemoryGetRequest": {
+      "description": "One entry by its id; not_found when there is none.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "bridge.schema.json#/$defs/RequestId"
+        },
+        "method": {
+          "const": "memory.get"
+        },
+        "params": {
+          "$ref": "#/$defs/MemoryGetParams"
+        }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "MemoryGetParams": {
+      "description": "Parameters of memory.get.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "../../memory/v0/memory.schema.json#/$defs/MemoryId"
+        },
+        "scope": {
+          "$ref": "../../plugin/v0/permission.schema.json#/$defs/MemoryReadPermission"
+        }
+      },
+      "required": ["id", "scope"],
+      "additionalProperties": false
+    },
+    "MemoryGetResult": {
+      "description": "Result of memory.get.",
+      "type": "object",
+      "properties": {
+        "entry": {
+          "$ref": "../../memory/v0/memory.schema.json#/$defs/MemoryEntry"
+        }
+      },
+      "required": ["entry"],
+      "additionalProperties": false
+    },
+    "MemoryRememberRequest": {
+      "description": "Keep a fact in words, or, with the id of a fact, change its words and tags. The caller is its writer: person for the desk's own screens.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "bridge.schema.json#/$defs/RequestId"
+        },
+        "method": {
+          "const": "memory.remember"
+        },
+        "params": {
+          "$ref": "#/$defs/MemoryRememberParams"
+        }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "MemoryRememberParams": {
+      "description": "Parameters of memory.remember. id names a fact to edit; without it a new fact is kept.",
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000
+        },
+        "id": {
+          "$ref": "../../memory/v0/memory.schema.json#/$defs/MemoryId"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "$ref": "../../memory/v0/memory.schema.json#/$defs/MemoryTag"
+          },
+          "maxItems": 16,
+          "uniqueItems": true
+        },
+        "scope": {
+          "$ref": "../../plugin/v0/permission.schema.json#/$defs/MemoryWritePermission"
+        }
+      },
+      "required": ["text", "scope"],
+      "additionalProperties": false
+    },
+    "MemoryRememberResult": {
+      "description": "Result of memory.remember: the fact as kept.",
+      "type": "object",
+      "properties": {
+        "fact": {
+          "$ref": "../../memory/v0/memory.schema.json#/$defs/MemoryFact"
+        }
+      },
+      "required": ["fact"],
+      "additionalProperties": false
+    },
+    "MemoryForgetRequest": {
+      "description": "Forget one entry by its id, or every entry (all, of one kind when kind is given). Gone from the disk and from search when it answers.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "bridge.schema.json#/$defs/RequestId"
+        },
+        "method": {
+          "const": "memory.forget"
+        },
+        "params": {
+          "$ref": "#/$defs/MemoryForgetParams"
+        }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "MemoryForgetParams": {
+      "description": "Parameters of memory.forget: an id, or all (true) with an optional kind.",
+      "oneOf": [
+        {
+          "$ref": "#/$defs/MemoryForgetOne"
+        },
+        {
+          "$ref": "#/$defs/MemoryForgetAll"
+        }
+      ]
+    },
+    "MemoryForgetOne": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "../../memory/v0/memory.schema.json#/$defs/MemoryId"
+        },
+        "scope": {
+          "$ref": "../../plugin/v0/permission.schema.json#/$defs/MemoryWritePermission"
+        }
+      },
+      "required": ["id", "scope"],
+      "additionalProperties": false,
+      "description": "Forget the entry with this id."
+    },
+    "MemoryForgetAll": {
+      "type": "object",
+      "properties": {
+        "all": {
+          "const": true
+        },
+        "kind": {
+          "$ref": "../../memory/v0/memory.schema.json#/$defs/MemoryKind"
+        },
+        "scope": {
+          "$ref": "../../plugin/v0/permission.schema.json#/$defs/MemoryWritePermission"
+        }
+      },
+      "required": ["all", "scope"],
+      "additionalProperties": false,
+      "description": "Forget every entry, or every entry of kind."
+    },
+    "MemoryForgetResult": {
+      "description": "Result of memory.forget: how many entries went.",
+      "type": "object",
+      "properties": {
+        "forgotten": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": ["forgotten"],
+      "additionalProperties": false
+    },
+    "MemorySearchRequest": {
+      "description": "Entries whose words match the query (full-text search), best first.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "bridge.schema.json#/$defs/RequestId"
+        },
+        "method": {
+          "const": "memory.search"
+        },
+        "params": {
+          "$ref": "#/$defs/MemorySearchParams"
+        }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "MemorySearchParams": {
+      "description": "Parameters of memory.search. The query is words, not a search syntax. limit is 20 by default.",
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "kind": {
+          "$ref": "../../memory/v0/memory.schema.json#/$defs/MemoryKind"
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        },
+        "scope": {
+          "$ref": "../../plugin/v0/permission.schema.json#/$defs/MemoryReadPermission"
+        }
+      },
+      "required": ["query", "scope"],
+      "additionalProperties": false
+    },
+    "MemorySearchResult": {
+      "description": "Result of memory.search.",
+      "type": "object",
+      "properties": {
+        "hits": {
+          "type": "array",
+          "items": {
+            "$ref": "../../memory/v0/memory.schema.json#/$defs/MemoryHit"
+          }
+        }
+      },
+      "required": ["hits"],
+      "additionalProperties": false
+    },
+    "MemoryChange": {
+      "description": "What changed: a fact kept, a fact edited, an episode kept, entries forgotten.",
+      "type": "string",
+      "enum": ["remembered", "edited", "recorded", "forgotten"]
+    },
+    "MemoryChangedEvent": {
+      "description": "Memory changed. ids are the entries it touched; absent when every entry (of kind) was forgotten. Sent to holders of memory:read.",
+      "type": "object",
+      "properties": {
+        "event": {
+          "const": "memory.changed"
+        },
+        "data": {
+          "$ref": "#/$defs/MemoryChangedData"
+        }
+      },
+      "required": ["event", "data"],
+      "additionalProperties": false
+    },
+    "MemoryChangedData": {
+      "type": "object",
+      "properties": {
+        "change": {
+          "$ref": "#/$defs/MemoryChange"
+        },
+        "ids": {
+          "type": "array",
+          "items": {
+            "$ref": "../../memory/v0/memory.schema.json#/$defs/MemoryId"
+          }
+        },
+        "kind": {
+          "$ref": "../../memory/v0/memory.schema.json#/$defs/MemoryKind"
+        }
+      },
+      "required": ["change"],
+      "additionalProperties": false,
+      "description": "Payload of memory.changed."
+    }
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "target": "BridgeRequest",
+  "description": "memory.search needs words to look for",
+  "instance": {
+    "id": 46,
+    "method": "memory.search",
+    "params": {
+      "query": "",
+      "scope": {
+        "permission": "memory:read"
+      }
+    }
+  }
+}

@@ -10,13 +10,14 @@ use desk_bridge::{
     CmdRecentResult, CmdRedoResult, CmdToolsResult, CmdUndoResult, ConnectorInstance,
     ConnectorManifest, ConnectorStatus, ConnectorSyncResult, DesignSystemPackage, FsHistoryResult,
     FsReadResult, FsRestoreResult, FsUrlResult, FsWriteResult, InitDocument, InitGetResult,
-    InitSettingKey, Item, ItemChange, ItemPage, ItemQuery, KeysFile, PaletteResults,
-    PermQueryResult, PermRequestResult, Permission, PluginContributes, PluginListResult,
-    PluginManifest, PluginStatsResult, ProfileFile, RefusalReason, SettingsListResult,
-    ShellOpenResult, StoreGetResult, ThemeBundle, ThemeExportResult, ThemeIndex,
-    ThemeMarketFetchResult, ThemeMarketListResult, ThemePackage, ThemeType, ThemeVariant,
-    UiSurfaceStateRequest, UiSurfaceStateResult, UniversalData, UniversalSource, UniversalView,
-    View, ViewGetResult, ViewListResult, ViewSource, ViewSummary, manifest_problems, view_problems,
+    InitSettingKey, Item, ItemChange, ItemPage, ItemQuery, KeysFile, MemoryEntry, MemoryEpisode,
+    MemoryFact, MemoryFactsFile, MemoryHit, PaletteResults, PermQueryResult, PermRequestResult,
+    Permission, PluginContributes, PluginListResult, PluginManifest, PluginStatsResult,
+    ProfileFile, RefusalReason, SettingsListResult, ShellOpenResult, StoreGetResult, ThemeBundle,
+    ThemeExportResult, ThemeIndex, ThemeMarketFetchResult, ThemeMarketListResult, ThemePackage,
+    ThemeType, ThemeVariant, UiSurfaceStateRequest, UiSurfaceStateResult, UniversalData,
+    UniversalSource, UniversalView, View, ViewGetResult, ViewListResult, ViewSource, ViewSummary,
+    manifest_problems, view_problems,
 };
 use serde::Serialize;
 use serde::de::DeserializeOwned;
@@ -33,10 +34,16 @@ fn read_json(path: &Path) -> Value {
 
 /// The plugin manifest and the specs it references, which reference it back: one set of documents.
 fn plugin_schemas() -> Vec<Value> {
-    ["plugin/v0", "item/v0", "view/v0", "connector/v0"]
-        .iter()
-        .flat_map(|folder| schemas(folder))
-        .collect()
+    [
+        "plugin/v0",
+        "item/v0",
+        "view/v0",
+        "connector/v0",
+        "memory/v0",
+    ]
+    .iter()
+    .flat_map(|folder| schemas(folder))
+    .collect()
 }
 
 fn schemas(folder: &str) -> Vec<Value> {
@@ -150,9 +157,9 @@ fn init_vectors_are_judged_as_their_folder_says() {
 }
 
 #[test]
-fn item_view_and_connector_vectors_are_judged_as_their_folders_say() {
+fn item_view_connector_and_memory_vectors_are_judged_as_their_folders_say() {
     let docs = plugin_schemas();
-    for spec in ["item", "view", "connector"] {
+    for spec in ["item", "view", "connector", "memory"] {
         let all = vectors(spec);
         let valid = all.iter().filter(|v| v.valid).count();
         assert!(
@@ -173,6 +180,11 @@ fn item_view_and_connector_vectors_are_judged_as_their_folders_say() {
                 "ConnectorInstance" => roundtrip::<ConnectorInstance>(vector),
                 "ConnectorStatus" => roundtrip::<ConnectorStatus>(vector),
                 "ConnectorSyncResult" => roundtrip::<ConnectorSyncResult>(vector),
+                "MemoryFact" => roundtrip::<MemoryFact>(vector),
+                "MemoryEpisode" => roundtrip::<MemoryEpisode>(vector),
+                "MemoryEntry" => roundtrip::<MemoryEntry>(vector),
+                "MemoryHit" => roundtrip::<MemoryHit>(vector),
+                "MemoryFactsFile" => roundtrip::<MemoryFactsFile>(vector),
                 other => panic!("{}: no Rust type mapped for {other}", vector.file),
             }
         }

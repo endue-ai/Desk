@@ -31,7 +31,9 @@
         { "$ref": "#/$defs/ShellOpenPermission" },
         { "$ref": "#/$defs/UpdateManagePermission" },
         { "$ref": "#/$defs/ThemeManagePermission" },
-        { "$ref": "#/$defs/AccountManagePermission" }
+        { "$ref": "#/$defs/AccountManagePermission" },
+        { "$ref": "#/$defs/MemoryReadPermission" },
+        { "$ref": "#/$defs/MemoryWritePermission" }
       ]
     },
     "SearchReadPermission": {
@@ -326,6 +328,20 @@
       "description": "Sign the desk in to endue ID and out again with account.*, and see whether it is signed in. Receive account.changed. The token itself never crosses the bridge. The desk grants it to the runtime only (ADR 0089).",
       "type": "object",
       "properties": { "permission": { "const": "account:manage" } },
+      "required": ["permission"],
+      "additionalProperties": false
+    },
+    "MemoryReadPermission": {
+      "description": "Read Eris's memory with memory.list, memory.get and memory.search, and receive memory.changed (ADR 0095). The desk grants it to the runtime; Eris and the memory inspector are asked like any caller.",
+      "type": "object",
+      "properties": { "permission": { "const": "memory:read" } },
+      "required": ["permission"],
+      "additionalProperties": false
+    },
+    "MemoryWritePermission": {
+      "description": "Keep and edit facts in Eris's memory with memory.remember, and forget entries with memory.forget (ADR 0095). The caller is recorded as the writer.",
+      "type": "object",
+      "properties": { "permission": { "const": "memory:write" } },
       "required": ["permission"],
       "additionalProperties": false
     },

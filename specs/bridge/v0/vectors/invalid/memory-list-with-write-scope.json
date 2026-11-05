@@ -1,0 +1,13 @@
+{
+  "target": "BridgeRequest",
+  "description": "memory.list reads under memory:read",
+  "instance": {
+    "id": 47,
+    "method": "memory.list",
+    "params": {
+      "scope": {
+        "permission": "memory:write"
+      }
+    }
+  }
+}
