@@ -2,7 +2,8 @@
 //! the log, the session lease client, init.yaml with its sync, the bridge handler with the file URLs
 //! it hands frames (ADR 0041), links handed to the system (ADR 0047), and the integration layer (the
 //! item index, connectors and views; ADR 0036), the desk's own updates (ADR 0054), the person's
-//! own themes (ADR 0058) and the theme markets (ADR 0060).
+//! own themes (ADR 0058), the theme markets (ADR 0060) and the agent programs on this computer
+//! (ADR 0110).
 pub const NAME: &str = env!("CARGO_PKG_NAME");
 
 pub mod account;
@@ -16,6 +17,7 @@ mod calendar_items;
 mod conversation;
 mod conversation_sink;
 mod core_account;
+mod core_agents;
 mod core_ask;
 mod core_brain;
 mod core_builtins;
@@ -59,6 +61,7 @@ mod history_index;
 mod init;
 mod last_start;
 mod lease;
+mod local_agents;
 mod log;
 mod manifest;
 mod media_types;
@@ -93,6 +96,7 @@ pub use handler::{Core, Roots};
 pub use init::{INIT_TEMPLATE, INIT_VERSION, Init, PluginSetup, SyncSetup};
 pub use last_start::{Begun, CRASH_LOOP, LastStart, READY_WITHIN};
 pub use lease::{LeaseClient, LeaseError};
+pub use local_agents::{LocalAgents, LocalAgentsOptions};
 pub use manifest::validate_dir;
 pub use media_types::media_type;
 pub use perm::{Denied, PermissionEngine, Target};
