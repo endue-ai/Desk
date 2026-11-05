@@ -152,6 +152,7 @@ const WORDS: Record<Permission["permission"], string> = {
   "shell:open": "open links and show files",
   "update:manage": "manage the desk's updates",
   "theme:manage": "manage the person's themes",
+  "account:manage": "sign the desk in to endue ID",
 };
 
 /** A permission's scope: "paths: ~/Notes/**", or "" when it has none. */

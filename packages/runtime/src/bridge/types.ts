@@ -39,6 +39,31 @@ export interface BrainReply {
   words?: WordTime[];
 }
 
+/**
+ * One hand-off of Eris's agentic loop (ADR 0084), as brain.turn's tool and tool-result say it: she
+ * goes to the command's plugin (`tool`) and comes back with its answer (`tool-result`).
+ */
+export interface BrainStep {
+  kind: "tool" | "tool-result";
+  callId: string;
+  /** The command the brain's call runs, `endue.mail.latest`. */
+  command: string;
+  /** Who provides it: a plugin id, or `desk`. */
+  provider: string;
+  title?: string;
+  /** tool-result only: whether the command answered without an error. */
+  ok?: boolean;
+}
+
+/** The desk's endue ID, as account.* answers it; the token never reaches the runtime. */
+export interface AccountStatus {
+  state: "signed-out" | "signing-in" | "signed-in";
+  /** While signing in: the code the person enters, and where. */
+  signIn?: { userCode: string; verificationUri: string; verificationUriComplete?: string };
+  /** Why the last sign-in did not go through, for people. */
+  problem?: string;
+}
+
 /** Query of listAgents (specs/brain/v0): one space, one status, one page. */
 export interface AgentQuery {
   spaceId?: string;
@@ -73,7 +98,16 @@ export interface ShellBridge {
   brain: {
     status(): Promise<BrainStatus>;
     use(mode: "local" | "cloud"): Promise<BrainStatus>;
-    say(text: string): Promise<BrainReply>;
+    /** One turn of Eris's loop: its hand-offs reach `onStep` as they happen, then the reply. */
+    say(text: string, onStep?: (step: BrainStep) => void): Promise<BrainReply>;
+  };
+  /** The endue ID the brain thinks with (ADR 0084); hosts without one leave it out. */
+  account?: {
+    status(): Promise<AccountStatus>;
+    signIn(): Promise<AccountStatus>;
+    signOut(): Promise<AccountStatus>;
+    /** Hear every change, a sign-in finishing in the browser among them; returns the unsubscribe. */
+    onChange(listener: (status: AccountStatus) => void): () => void;
   };
   /** The agent directory of specs/brain/v0, which endue AI serves from its agent and A2A APIs. */
   agents: {

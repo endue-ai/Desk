@@ -29,10 +29,14 @@ export class PluginCommands {
       (c) => c.id.startsWith(`${info.id}.`) && !c.runs,
     );
     for (const command of own) {
+      // A tool for Eris (ADR 0084) says what it does, and cmd.invoke checks its args.
+      const tool = command.tool;
       const params = {
         id: command.id,
         title: command.title,
         ...(command.keywords ? { keywords: command.keywords } : {}),
+        ...(tool ? { description: tool.description } : {}),
+        ...(tool?.args ? { argsSchema: tool.args } : {}),
       };
       void this.#bridge
         .call("cmd.register", params, { caller: info.id })

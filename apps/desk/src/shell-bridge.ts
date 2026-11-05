@@ -1,5 +1,6 @@
 // The shell's host over the core: what mountDesk asks of its ShellBridge, answered with bridge calls
-// as the runtime (`desk`). Audio levels are silent until the core captures audio.
+// as the runtime (`desk`). Audio levels are silent until the core captures audio. A turn's tool steps
+// (Eris's errands, ADR 0084) reach the shell as they happen; account.* is the desk's endue ID.
 import type {
   A2ATaskList,
   AgentCard,
@@ -7,14 +8,16 @@ import type {
   BrainStatusResult,
   BrainTurnData,
   BridgeClient,
+  AccountStatus as CoreAccount,
   Permission,
   SpaceList,
 } from "@endue-ai/bridge";
-import type { BrainStatus, ShellBridge } from "@endue-ai/runtime";
+import type { AccountStatus, BrainStatus, BrainStep, ShellBridge } from "@endue-ai/runtime";
 
 type BrainReply = Awaited<ReturnType<ShellBridge["brain"]["say"]>>;
 
 const SCOPE = { permission: "brain:converse" } as const;
+const ACCOUNT = { scope: { permission: "account:manage" } } as const;
 /** The shell's keys in the runtime's store, apart from the runtime's own (session, profiles). */
 const PREFIX = "shell.";
 const SILENT = Object.freeze([0, 0, 0, 0, 0, 0, 0, 0, 0]);
@@ -45,8 +48,46 @@ function statusOf(status: BrainStatusResult): BrainStatus {
 /** A directory answer, which the bridge passes through as the brain contract's type. */
 const passed = <T>(value: unknown) => value as T;
 
+/** The runtime's AccountStatus from the core's: the same fields, without when the code expires. */
+function accountOf(status: CoreAccount): AccountStatus {
+  const { state, signIn, problem } = status;
+  return {
+    state,
+    ...(signIn
+      ? {
+          signIn: {
+            userCode: signIn.userCode,
+            verificationUri: signIn.verificationUri,
+            ...(signIn.verificationUriComplete
+              ? { verificationUriComplete: signIn.verificationUriComplete }
+              : {}),
+          },
+        }
+      : {}),
+    ...(problem ? { problem } : {}),
+  };
+}
+
+/** A tool step of the turn, as the shell draws it. */
+function stepOf(data: BrainTurnData): BrainStep | undefined {
+  if ((data.kind !== "tool" && data.kind !== "tool-result") || !data.tool) return undefined;
+  const { callId, command, provider, title, ok } = data.tool;
+  return {
+    kind: data.kind,
+    callId,
+    command,
+    provider,
+    ...(title ? { title } : {}),
+    ...(ok === undefined ? {} : { ok }),
+  };
+}
+
 /** brain.say, then that turn's brain.turn events until it completes or fails: one reply. */
-function say(core: BridgeClient, text: string): Promise<BrainReply> {
+function say(
+  core: BridgeClient,
+  text: string,
+  onStep?: (step: BrainStep) => void,
+): Promise<BrainReply> {
   return new Promise((resolve, reject) => {
     let turnId: string | undefined;
     let answer = "";
@@ -64,6 +105,10 @@ function say(core: BridgeClient, text: string): Promise<BrainReply> {
       else if (data.kind === "delta") answer += data.text ?? "";
       else if (data.kind === "completed") finish({ text: answer });
       else if (data.kind === "error") finish({ text: data.text ?? "" });
+      else {
+        const step = stepOf(data);
+        if (step) onStep?.(step);
+      }
       // offline and online: the core retries, so the reply keeps waiting.
     };
     const off = core.onEvent((event) => {
@@ -122,7 +167,16 @@ export function shellBridge(core: BridgeClient): ShellBridge {
       status,
       // Switching brains is not served yet: the desk keeps the brain it has.
       use: () => status(),
-      say: (text) => say(core, text),
+      say: (text, onStep) => say(core, text, onStep),
+    },
+    account: {
+      status: async () => accountOf(await core.call("account.status", ACCOUNT)),
+      signIn: async () => accountOf(await core.call("account.signIn", ACCOUNT)),
+      signOut: async () => accountOf(await core.call("account.signOut", ACCOUNT)),
+      onChange: (listener) =>
+        core.onEvent((event) => {
+          if (event.event === "account.changed") listener(accountOf(event.data));
+        }),
     },
     agents: {
       list: async (query) =>
