@@ -53,7 +53,10 @@ impl Core {
             page: params.page,
             limit: params.limit,
         };
-        json(brain.list_a2a_tasks(&query).map_err(failed)?)
+        let tasks = brain.list_a2a_tasks(&query).map_err(failed)?;
+        // The tasks are runs of their target agents too (ADR 0100).
+        self.runs_from_tasks(&tasks.items);
+        json(tasks)
     }
 
     /// Which brain the desk talks to. The brain is asked for its spaces on every call: one it cannot

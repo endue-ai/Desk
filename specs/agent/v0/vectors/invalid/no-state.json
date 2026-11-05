@@ -1,0 +1,5 @@
+{
+  "target": "AgentRecord",
+  "description": "every record says its state",
+  "instance": { "id": "eris", "name": "Eris", "source": "eris" }
+}

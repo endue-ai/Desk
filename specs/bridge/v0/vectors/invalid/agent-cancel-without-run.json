@@ -1,0 +1,9 @@
+{
+  "target": "BridgeRequest",
+  "description": "agent.cancel names the run",
+  "instance": {
+    "id": 44,
+    "method": "agent.cancel",
+    "params": { "scope": { "permission": "perm:manage" } }
+  }
+}

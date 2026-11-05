@@ -2,6 +2,7 @@
 // an overlay. It uses only the public bridge API, exactly as a community plugin with perm:manage would.
 import { defineUiPlugin } from "@endue-ai/plugin-sdk";
 import { createPermissions } from "./controller.js";
+import { wireRuns } from "./runs.js";
 import { createView } from "./view.js";
 
 defineUiPlugin({
@@ -14,6 +15,8 @@ defineUiPlugin({
       key: (key) => app?.key(key) ?? false,
     });
     app = createPermissions(ctx, view);
+    // The fleet board's Approve, Deny and Stop (ADR 0100).
+    wireRuns(ctx);
     await app.ready;
   },
 });
