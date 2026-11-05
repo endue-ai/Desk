@@ -43,7 +43,9 @@ pub(crate) fn read_view(path: &Path) -> io::Result<ViewFile> {
     Ok(match checked {
         Ok((view, text)) => match id_of(&view) {
             Some(id) if id == stem => ViewFile::Valid(Box::new(view), text),
-            Some(id) => ViewFile::Invalid(format!("{name}: its id is {id}; name the file {id}.yaml")),
+            Some(id) => {
+                ViewFile::Invalid(format!("{name}: its id is {id}; name the file {id}.yaml"))
+            }
             None => ViewFile::Invalid(format!("{name}: a universal view needs its id ({stem})")),
         },
         Err(problem) => ViewFile::Invalid(problem),

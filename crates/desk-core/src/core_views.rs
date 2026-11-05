@@ -58,7 +58,11 @@ impl Core {
             .collect();
         for (id, (plugin, view)) in self.plugin_views() {
             if !shadowed.contains(&id) {
-                views.push(summary(AnyView::View(view), ViewSource::Plugin, Some(plugin)));
+                views.push(summary(
+                    AnyView::View(view),
+                    ViewSource::Plugin,
+                    Some(plugin),
+                ));
             }
         }
         views.sort_by(|a, b| a.id.cmp(&b.id));

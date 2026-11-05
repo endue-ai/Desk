@@ -70,7 +70,10 @@ fn a_universal_view_is_saved_read_listed_and_removed_like_an_item_view() {
         "id": ID, "title": "Issues as a board", "type": "kanban", "source": "file",
     });
     assert_eq!(listed, json!({ "views": [summary] }));
-    assert!(desk.core.view_problems().is_empty(), "a universal file is a view");
+    assert!(
+        desk.core.view_problems().is_empty(),
+        "a universal file is a view"
+    );
 
     let removed = desk.call(
         "desk",

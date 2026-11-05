@@ -64,4 +64,8 @@ are `id`, `title`, `text` (Markdown), `detail`, `start` and `end` (RFC 3339 with
 Items become entries with their kind's fields in their roles: an event's `start`, `end` and `allDay`,
 a task's `due` as its `start` and `status` as its `group`, a message's sender as its `author`.
 
+A person keeps universal views in `~/.desk/views/<id>.yaml` beside item views, through the same `view.*`
+methods (ADR 0102): one saved there needs its `id`. Eris makes one from a sentence (`desk.propose`), and
+`desk.universal.build` makes the same file by hand.
+
 `vectors/` holds valid and invalid views for the contract tests.

@@ -409,14 +409,17 @@ to holders of `connector:manage`.
 
 **view.list** returns the views by id, with their version, title, description and `source`: `file` for
 the person's (`~/.desk/views`), `plugin` with the `plugin` id for an enabled view plugin's inline `view`
-or `views` files, which are read-only. Each id is listed once: the person's file shadows a plugin's view
+or `views` files, which are read-only. The person's files hold item views and universal views (`AnyView`,
+ADR 0102): a universal view's line has its `type` and no `version`, and its id for a title when it has
+none. Each id is listed once: the person's file shadows a plugin's view
 of its id, then the plugins count in `plugin.list` order. It needs `view:manage`.
 
 **view.get** returns one view whole, with the same `source` and `plugin`; an unknown id is `not_found`.
 
-**view.save** writes one of the person's views, new or replacing the one with its id. It must pass
-`specs/view/v0` and its names must resolve (`desk_bridge::view_problems`: every `$name` a `requires`
-entry, every param a template reads declared); otherwise it is `invalid_params` and nothing is written.
+**view.save** writes one of the person's views, new or replacing the one with its id. An item view must
+pass `specs/view/v0` and its names must resolve (`desk_bridge::view_problems`: every `$name` a `requires`
+entry, every param a template reads declared); a universal view (a `type` or a `source`, no `layout`)
+must pass `universal.schema.json` and have its id; otherwise it is `invalid_params` and nothing is written.
 An id an enabled view plugin provides is `invalid_params` too ("owned by plugin ..."), unless the
 person's file of that id exists, which it then replaces.
 
