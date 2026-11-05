@@ -217,7 +217,7 @@ export function createTreeView(doc, el, hooks) {
     if (masked) {
       const reveal = doc.createElement("button");
       reveal.type = "button";
-      reveal.className = "reveal";
+      reveal.className = "desk-btn desk-btn-quiet reveal";
       reveal.tabIndex = -1;
       reveal.textContent = "Reveal";
       reveal.setAttribute("aria-label", `Reveal the value of ${row.label}`);
