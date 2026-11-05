@@ -25,7 +25,7 @@ const ACTIONS = {
   "net.fetch": { verb: "send a web request", label: "Send a web request" },
   "cmd.invoke": { verb: "run a command", label: "Run a command" },
   // Eris keeping a fact in the person's memory (ADR 0096): the card asks before she remembers.
-  "memory.remember": { verb: "remember this", label: "Remember this?" },
+  "memory.remember": { verb: "remember this", label: "Remember" },
 };
 
 const actionOf = (/** @type {string} */ action) =>
