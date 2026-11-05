@@ -19,6 +19,20 @@ const BREATH_MS = 6000;
 const BREATH_STEP_MS = 140;
 const ACTIVE = 0.08;
 
+/**
+ * What Eris is doing besides sound, which shapes the rings while it is quiet. "listen": she waits to
+ * hear; after a quiet moment soft ripples run in from the rim, as if drawing the voice in. "think":
+ * a slow wave rolls from the core outwards, strongest in the inner rings, while she works out the
+ * answer. Sound always wins over a cue.
+ */
+export type Cue = "none" | "listen" | "think";
+/** Waiting to hear: ripples start after this long without sound and fade in over CUE_FADE_MS. */
+export const LISTEN_WAIT_MS = 800;
+export const LISTEN_RIPPLE_MS = 1500;
+/** Thinking: one roll of the wave from the core to the rim. */
+export const THINK_MS = 1600;
+export const CUE_FADE_MS = 500;
+
 /** Band edges in Hz: 80–250 → bands 0–2, 250–2k → 3–6, 2k–8k → 7–8, log-spaced inside each range. */
 export const BAND_EDGES: readonly number[] = (() => {
   const split = (lo: number, hi: number, n: number) =>
@@ -55,7 +69,7 @@ export interface RingFrame {
   glow: number[];
   /** Core scale (1 = rest). */
   core: number;
-  mode: "idle" | "listening" | "speaking" | "both";
+  mode: "idle" | "listening" | "thinking" | "speaking" | "both";
   /** Both voices at once for 150 ms: Eris takes it as a signal to stop. */
   interrupted: boolean;
 }
@@ -82,6 +96,9 @@ export class Voice {
   #history: Sample[] = [];
   #pulses: { at: number; amp: number }[] = [];
   #overlapSince: number | undefined;
+  #cue: Cue = "none";
+  #cueSince = 0;
+  #lastLoud = Number.NEGATIVE_INFINITY;
 
   /** Schedule Eris pulses at absolute clock times (one per syllable or word). */
   speak(times: number[], amplitude = 1): void {
@@ -93,12 +110,17 @@ export class Voice {
     this.#pulses = this.#pulses.filter((p) => p.at <= now);
   }
 
-  update(now: number, levels: AudioLevels, reducedMotion = false): RingFrame {
+  update(now: number, levels: AudioLevels, reducedMotion = false, cue: Cue = "none"): RingFrame {
+    if (cue !== this.#cue) {
+      this.#cue = cue;
+      this.#cueSince = now;
+    }
     const dt = this.#last === undefined ? 16 : now - this.#last;
     this.#last = now;
     this.#user = this.#user.map((v, k) => follow(v, levels.user[k] ?? 0, dt));
     this.#eris = follow(this.#eris, mean(levels.eris), dt);
     const loud = mean(this.#user);
+    if (loud > ACTIVE) this.#lastLoud = now;
     this.#history.push({ t: now, user: [...this.#user], loud });
     while (this.#history.length > 2 && (this.#history[0]?.t ?? now) < now - 1200) {
       this.#history.shift();
@@ -113,10 +135,7 @@ export class Voice {
     for (let k = 0; k < 9; k++) {
       let d = (inward.disp[k] ?? 0) + (outward[k] ?? 0);
       if (listening && speaking) d *= 1 - Math.exp(-(((k - 4) / 1.3) ** 2));
-      if (!listening && !speaking) {
-        const phase = (2 * Math.PI * (now - BREATH_STEP_MS * k)) / BREATH_MS;
-        d = 0.3 * MAX_DISPLACEMENT * 0.5 * (1 - Math.cos(phase));
-      }
+      if (!listening && !speaking) d = this.#quiet(now, k);
       disp.push(d);
     }
     const userNow = loud > ACTIVE;
@@ -127,14 +146,52 @@ export class Voice {
 
     const flash = this.#pulses.reduce((a, p) => a + 0.18 * p.amp * pulse(now - p.at) ** 2, 0);
     const glow = disp.map((d) => Math.min(1, Math.abs(d) / MAX_DISPLACEMENT));
+    const thinking = this.#cue === "think" && !listening && !speaking;
+    // Thinking: the core swells a little with each roll of the wave.
+    const roll = 0.5 + 0.5 * Math.sin((2 * Math.PI * now) / THINK_MS);
+    const mull = thinking ? 0.06 * this.#cueIn(now) * roll : 0;
     return {
       disp: reducedMotion ? disp.map(() => 0) : disp,
       glow,
-      core: reducedMotion ? 1 : 1 + inward.core + Math.min(0.18, flash),
+      core: reducedMotion ? 1 : 1 + inward.core + Math.min(0.18, flash) + mull,
       mode:
-        listening && speaking ? "both" : listening ? "listening" : speaking ? "speaking" : "idle",
+        listening && speaking
+          ? "both"
+          : listening
+            ? "listening"
+            : speaking
+              ? "speaking"
+              : thinking
+                ? "thinking"
+                : "idle",
       interrupted: this.#overlapSince !== undefined && now - this.#overlapSince >= 150,
     };
+  }
+
+  /** How far the current cue has faded in: 0 when it starts, 1 after CUE_FADE_MS. */
+  #cueIn(now: number): number {
+    return Math.min(1, Math.max(0, (now - this.#cueSince) / CUE_FADE_MS));
+  }
+
+  /** The rings while nobody speaks: the breath, crossfaded into the cue's own motion. */
+  #quiet(now: number, k: number): number {
+    const phase = (2 * Math.PI * (now - BREATH_STEP_MS * k)) / BREATH_MS;
+    const breath = 0.3 * MAX_DISPLACEMENT * 0.5 * (1 - Math.cos(phase));
+    if (this.#cue === "listen") {
+      // Rim first, 70 ms per ring, a quick pull in and a slow release; it waits for a quiet moment.
+      const since = Math.max(this.#cueSince, this.#lastLoud);
+      const wait = Math.min(1, Math.max(0, (now - since - LISTEN_WAIT_MS) / CUE_FADE_MS));
+      const t = now - INWARD_STEP_MS * (8 - k);
+      const tau = ((t % LISTEN_RIPPLE_MS) + LISTEN_RIPPLE_MS) % LISTEN_RIPPLE_MS;
+      const pull = tau < 240 ? tau / 240 : Math.exp(-(tau - 240) / 320);
+      return breath * (1 - wait) - 0.45 * MAX_DISPLACEMENT * pull * wait;
+    }
+    if (this.#cue === "think") {
+      const fade = this.#cueIn(now);
+      const roll = Math.sin((2 * Math.PI * now) / THINK_MS - (k * Math.PI) / 4.5);
+      return breath * (1 - fade) + 0.5 * MAX_DISPLACEMENT * (1 - k / 12) * roll * fade;
+    }
+    return breath;
   }
 
   #at(t: number): Sample | undefined {

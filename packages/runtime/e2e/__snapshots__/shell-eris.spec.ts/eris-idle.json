@@ -1,7 +1,7 @@
 {
  "tag": "div",
  "class": "eris",
- "role": "img",
+ "role": "button",
  "aria-label": "Eris",
  "data-state": "idle",
  "box": [

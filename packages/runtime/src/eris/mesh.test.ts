@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { BODY, digest, frameModel } from "./draw";
+import { BODY, digest, frameModel, type Palette, paint } from "./draw";
 import { DENSITIES, generateMesh, ringCounts, ringRadii, VIEW_IDLE } from "./mesh";
 import { ERIS_STATES, LOOKS } from "./states";
 
@@ -79,5 +79,50 @@ describe("the Eris mesh", () => {
   test("heads-up outlines the gold face where it was", () => {
     expect(model("heads-up").goldOutline).toBeDefined();
     expect(model("idle").goldOutline).toBeUndefined();
+  });
+
+  test("her body is opaque: the ground fills the disc first and follows the rim in", () => {
+    const look = LOOKS.idle;
+    const mesh = balanced();
+    const at = (rim: number) =>
+      frameModel({
+        mesh,
+        look,
+        geometry: BODY,
+        spin: 0,
+        disp: [...flat.slice(0, 8), rim],
+        glow: flat,
+        goldMoves: false,
+      });
+    expect(at(0).ground).toEqual({ x: BODY.cx, y: BODY.cy, r: BODY.R });
+    expect(at(-0.05).ground.r).toBeCloseTo(BODY.R * 0.95);
+    expect(at(0.05).ground.r).toBe(BODY.R);
+
+    // The first fill is the ground, fully opaque, before any translucent frost.
+    const fills: { style: unknown; alpha: number }[] = [];
+    const ctx = new Proxy(
+      { globalAlpha: 1, fillStyle: "" as unknown },
+      {
+        get(target, key) {
+          if (key === "fill")
+            return () => fills.push({ style: target.fillStyle, alpha: target.globalAlpha });
+          if (key === "createLinearGradient") return () => ({ addColorStop: () => {} });
+          if (key in target) return target[key as keyof typeof target];
+          return () => {};
+        },
+        set(target, key, value) {
+          (target as Record<string | symbol, unknown>)[key] = value;
+          return true;
+        },
+      },
+    ) as unknown as CanvasRenderingContext2D;
+    const palette = { frost: "#e9edf4", ground: "#141416", gold: "#e8c98a" } as Palette;
+    paint(ctx, at(0), look, palette, BODY);
+    expect(fills[0]).toEqual({ style: "#141416", alpha: 1 });
+    const firstFrost = fills.findIndex((f) => f.style === "#e9edf4");
+    expect(firstFrost).toBeGreaterThan(0);
+    expect(fills.slice(0, firstFrost).every((f) => f.style === "#141416" && f.alpha === 1)).toBe(
+      true,
+    );
   });
 });
