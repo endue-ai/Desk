@@ -79,7 +79,9 @@ const person = (who: { name?: string; email?: string } | undefined) =>
  * The entries of items: the envelope (id, source, kind, title, url, the text in body) plus each
  * kind's fields in the roles they play. An event's start and end; a task's due as its start and its
  * status as its group and status; a message's sender as its author and its time as its start; a
- * file's, note's or record's last change as its start.
+ * file's, note's or record's last change as its start; a run's state as its group and status, its
+ * agent as its author, its start and end, its result as its detail and the approval it waits for
+ * (ADR 0100).
  */
 export function entriesFromItems(items: readonly Item[]): UniversalEntry[] {
   return items.map((item) => {
@@ -136,6 +138,19 @@ export function entriesFromItems(items: readonly Item[]): UniversalEntry[] {
       }
       case "person":
         return { ...base, detail: item.org ?? item.emails?.[0] ?? "" };
+      case "run":
+        return {
+          ...base,
+          group: item.state,
+          status: item.state,
+          author: item.agent,
+          agent: item.agent,
+          start: item.startedAt,
+          ...(item.endedAt ? { end: item.endedAt } : {}),
+          ...(item.result ? { detail: item.result } : {}),
+          ...(item.command ? { command: item.command, tags: [item.command] } : {}),
+          ...(item.approval ? { approval: item.approval } : {}),
+        };
       default:
         return { ...base, start: item.updatedAt };
     }

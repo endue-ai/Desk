@@ -9,6 +9,7 @@ import { AGENTS, agentById } from "./catalog.js";
 import { createChats } from "./chat.js";
 import { detectAll, unknown } from "./detect.js";
 import { viewModel } from "./model.js";
+import { createReports } from "./report.js";
 import { createRunner, systemTimers } from "./run.js";
 import { createRuns } from "./runs.js";
 import { DEFAULTS, loadSettings } from "./settings.js";
@@ -58,12 +59,17 @@ export function createApp(ctx, view, options = {}) {
   const confirmed = new Set();
   const chats = createChats(bridge, { now, id });
   const board = createBoard(bridge, { now, id });
+  const reports = createReports(bridge);
   const runs = createRuns(runner, {
     now,
     id,
-    onChange: () => schedule(),
+    onChange: (run) => {
+      reports.report(run);
+      schedule();
+    },
     ...(options.plain ? { plain: options.plain } : {}),
   });
+  reports.onCancelled((runId) => runs.stop(runId));
   /** @type {Ui} */
   const ui = {
     view: "agents",

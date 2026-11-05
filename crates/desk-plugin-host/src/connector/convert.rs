@@ -60,8 +60,19 @@ pub(crate) fn query(query: &ItemQuery) -> Result<GuestQuery, Error> {
             LIMIT.1
         )));
     }
+    // Runs are the desk's own (ADR 0100): a connector holds none, so a query for runs alone
+    // asks it nothing rather than everything.
+    let kinds: Vec<ItemKind> = query
+        .kinds
+        .iter()
+        .flatten()
+        .filter_map(|&k| kind(k))
+        .collect();
+    if kinds.is_empty() && query.kinds.as_ref().is_some_and(|k| !k.is_empty()) {
+        return Err(invalid("a connector holds no runs".to_owned()));
+    }
     Ok(GuestQuery {
-        kinds: query.kinds.iter().flatten().map(|&k| kind(k)).collect(),
+        kinds,
         text: query.text.clone(),
         // Generated types always serialize.
         conditions: query
@@ -131,8 +142,8 @@ fn kind_name(kind: ItemKind) -> &'static str {
     }
 }
 
-fn kind(kind: JsonKind) -> ItemKind {
-    match kind {
+fn kind(kind: JsonKind) -> Option<ItemKind> {
+    Some(match kind {
         JsonKind::Event => ItemKind::Event,
         JsonKind::Message => ItemKind::Message,
         JsonKind::Task => ItemKind::Task,
@@ -142,7 +153,8 @@ fn kind(kind: JsonKind) -> ItemKind {
         JsonKind::Entry => ItemKind::Entry,
         JsonKind::Metric => ItemKind::Metric,
         JsonKind::Record => ItemKind::Record,
-    }
+        JsonKind::Run => return None,
+    })
 }
 
 #[cfg(test)]
