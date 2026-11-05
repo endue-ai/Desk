@@ -1,0 +1,5 @@
+{
+  "target": "AgentRecord",
+  "description": "a source is one of the five",
+  "instance": { "id": "x", "name": "X", "source": "cloud", "state": "idle" }
+}

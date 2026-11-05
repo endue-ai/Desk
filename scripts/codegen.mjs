@@ -68,7 +68,7 @@ export function generate(root = ROOT) {
   const bundle = specs.brain[0];
   const bundleJson = JSON.stringify(bundle, null, 2);
   const fromBridge = header(
-    "specs/bridge/v0, specs/plugin/v0, specs/item/v0, specs/view/v0, specs/connector/v0 and specs/init/v0",
+    "specs/bridge/v0, specs/plugin/v0, specs/item/v0, specs/view/v0, specs/connector/v0, specs/agent/v0 and specs/init/v0",
   );
   const fromBrain = header("specs/brain/v0/openapi.yaml");
   return {

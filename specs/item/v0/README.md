@@ -26,6 +26,7 @@ Times are RFC 3339 with an offset (`Z`, `+09:00`). Kinds keep few fields of thei
 | `person` | `emails?`, `phones?`, `org?` |
 | `entry` | A feed entry: `url`, `feed`, `publishedAt`, `summary?` |
 | `metric` | A time series: `series`, `unit?`, `points` (`{ t, v }`, oldest first) |
+| `run` | One piece of an agent's work (ADR 0100): `agent` (an `AgentId`, `specs/agent/v0`), `state` (`running`, `waiting`, `done`, `failed`, `cancelled`), `startedAt`, `endedAt?`, `result?` (500 characters at most), `command?`, `approval?` (while waiting) |
 | `record` | Any other shape: `schema` (the URI of the JSON Schema it follows) and `fields` |
 
 `ItemQuery` narrows by `kinds`, `sources` (a connector id, `connector/instance`, or `$name` in a view

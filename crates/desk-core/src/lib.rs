@@ -7,6 +7,8 @@ pub const NAME: &str = env!("CARGO_PKG_NAME");
 
 pub mod account;
 mod account_client;
+mod agent_registry;
+mod agent_runs;
 mod agent_tools;
 mod agents;
 mod approval_action;
@@ -18,6 +20,7 @@ mod calendar_items;
 mod conversation;
 mod conversation_sink;
 mod core_account;
+
 mod core_ask;
 mod core_brain;
 mod core_builtins;
@@ -93,6 +96,7 @@ pub use core_fs_url::FileUrl;
 pub use core_perm::{Prompter, RefuseAll};
 pub use core_state::{QUARANTINED_KEY, SafeMode, SafeReason};
 pub use core_themes::{ThemeFetch, ThemeWatcher};
+pub use core_tools::mcp_caller;
 pub use desk_files::{
     DATA_FILES, DESK_FILES, DESK_FOLDERS, DeskFile, FileState, Owner, check_desk_file, desk_files,
     desk_folder_files,

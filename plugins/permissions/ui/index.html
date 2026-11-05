@@ -7,6 +7,7 @@
       { "imports": { "@endue-ai/plugin-sdk": "/_desk/plugin-sdk.js" } }
     </script>
     <link rel="stylesheet" href="/_desk/tokens.css" />
+    <link rel="stylesheet" href="/_desk/base.css" />
     <link rel="stylesheet" href="./style.css" />
   </head>
   <body>
@@ -36,11 +37,11 @@
         <p id="prompt-asked"></p>
       </div>
       <div class="actions">
-        <button type="button" data-answer="once">Allow once</button>
-        <button type="button" data-answer="session">Allow this session</button>
-        <button type="button" data-answer="always">Always allow</button>
-        <button type="button" data-answer="parent" hidden></button>
-        <button type="button" data-answer="refuse">Don't allow</button>
+        <button type="button" data-answer="once" class="desk-btn">Allow once</button>
+        <button type="button" data-answer="session" class="desk-btn">Allow this session</button>
+        <button type="button" data-answer="always" class="desk-btn">Always allow</button>
+        <button type="button" data-answer="parent" hidden class="desk-btn"></button>
+        <button type="button" data-answer="refuse" class="desk-btn">Don't allow</button>
       </div>
       <p id="prompt-waiting"></p>
     </section>
@@ -62,13 +63,13 @@
         <p id="approval-task"></p>
       </div>
       <div class="actions" data-for="approval">
-        <button type="button" data-answer="once">Allow once</button>
-        <button type="button" data-answer="task">Allow for this task</button>
-        <button type="button" data-answer="deny">Deny</button>
+        <button type="button" data-answer="once" class="desk-btn">Allow once</button>
+        <button type="button" data-answer="task" class="desk-btn">Allow for this task</button>
+        <button type="button" data-answer="deny" class="desk-btn">Deny</button>
       </div>
       <div class="actions" data-for="result" hidden>
-        <button type="button" data-answer="undo" hidden>Undo</button>
-        <button type="button" data-answer="done">Done</button>
+        <button type="button" data-answer="undo" hidden class="desk-btn">Undo</button>
+        <button type="button" data-answer="done" class="desk-btn">Done</button>
       </div>
       <p id="approval-waiting"></p>
     </section>

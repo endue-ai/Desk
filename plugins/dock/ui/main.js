@@ -30,7 +30,8 @@ defineUiPlugin({
     const button = (tile) => {
       const item = document.createElement("button");
       item.type = "button";
-      item.className = tile.available ? "tile" : "tile unavailable";
+      item.className = "desk-btn tile";
+      if (!tile.available) item.classList.add("unavailable");
       item.dataset.plugin = tile.id;
       item.tabIndex = tile.id === current ? 0 : -1;
       item.setAttribute("aria-pressed", String(tile.open));

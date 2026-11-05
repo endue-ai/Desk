@@ -44,6 +44,7 @@ export function renderOutline(doc, listEl, empty, go) {
         li.style.setProperty("--level", String(h.level));
         const button = doc.createElement("button");
         button.type = "button";
+        button.className = "desk-row";
         button.textContent = h.text;
         button.addEventListener("click", () => go(h.id));
         li.append(button);
@@ -77,7 +78,7 @@ export function renderComments(doc, listEl, select) {
     buttons = comments.map((c) => {
       const button = doc.createElement("button");
       button.type = "button";
-      button.className = "comment";
+      button.className = "desk-row comment";
       button.dataset.comment = c.id;
       button.setAttribute("aria-pressed", "false");
       const head = doc.createElement("span");

@@ -143,7 +143,11 @@ export function createView(doc, actions) {
       ) {
         tablist.replaceChildren(
           ...list.map((s) => {
-            const tab = el("button", { type: "button", id: `tab-${s.id}` }, s.label);
+            const tab = el(
+              "button",
+              { type: "button", id: `tab-${s.id}`, className: "desk-tab" },
+              s.label,
+            );
             tab.setAttribute("role", "tab");
             tab.setAttribute("aria-controls", "panel");
             tab.dataset.section = s.id;

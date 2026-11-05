@@ -1,0 +1,16 @@
+{
+  "target": "Item",
+  "description": "a local agent asked to work, waiting for the person's approval",
+  "instance": {
+    "id": "run-4",
+    "source": { "connector": "desk.agents", "instance": "default" },
+    "kind": "run",
+    "title": "Run the tests and fix them",
+    "updatedAt": "2026-11-05T09:31:00Z",
+    "agent": "eris",
+    "state": "waiting",
+    "startedAt": "2026-11-05T09:31:00Z",
+    "command": "endue.local-agents.work",
+    "approval": "a-7"
+  }
+}
