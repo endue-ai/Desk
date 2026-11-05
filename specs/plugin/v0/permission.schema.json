@@ -30,7 +30,8 @@
         { "$ref": "#/$defs/ViewManagePermission" },
         { "$ref": "#/$defs/ShellOpenPermission" },
         { "$ref": "#/$defs/UpdateManagePermission" },
-        { "$ref": "#/$defs/ThemeManagePermission" }
+        { "$ref": "#/$defs/ThemeManagePermission" },
+        { "$ref": "#/$defs/AccountManagePermission" }
       ]
     },
     "SearchReadPermission": {
@@ -318,6 +319,13 @@
       "description": "Keep the person's own themes with theme.*: save a theme into the desk's user themes folder, import a .desk-theme bundle, export any installed theme as one, and remove a user theme. The desk grants it to the runtime and the CLI only.",
       "type": "object",
       "properties": { "permission": { "const": "theme:manage" } },
+      "required": ["permission"],
+      "additionalProperties": false
+    },
+    "AccountManagePermission": {
+      "description": "Sign the desk in to endue ID and out again with account.*, and see whether it is signed in. Receive account.changed. The token itself never crosses the bridge. The desk grants it to the runtime only (ADR 0084).",
+      "type": "object",
+      "properties": { "permission": { "const": "account:manage" } },
       "required": ["permission"],
       "additionalProperties": false
     },

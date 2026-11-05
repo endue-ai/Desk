@@ -1,0 +1,13 @@
+{
+  "target": "PluginContributes",
+  "description": "a tool says what the command does",
+  "instance": {
+    "commands": [
+      {
+        "id": "example.notes.recent",
+        "title": "Recent notes",
+        "tool": { "args": { "type": "object" } }
+      }
+    ]
+  }
+}

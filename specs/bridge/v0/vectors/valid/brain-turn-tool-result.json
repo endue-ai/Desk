@@ -1,0 +1,17 @@
+{
+  "target": "BridgeEvent",
+  "description": "the command answered and its answer went back to the brain",
+  "instance": {
+    "event": "brain.turn",
+    "data": {
+      "turnId": "t1",
+      "kind": "tool-result",
+      "tool": {
+        "callId": "call1",
+        "command": "endue.mail.latest",
+        "provider": "endue.mail",
+        "ok": true
+      }
+    }
+  }
+}

@@ -80,9 +80,31 @@
         "undo": {
           "description": "The command that undoes this one, which this plugin provides too. After each invocation the plugin answers ok, the desk keeps it on its undo stack, and cmd.undo runs this command with { args, result } of that invocation (ADR 0077).",
           "$ref": "#/$defs/CommandId"
+        },
+        "tool": {
+          "description": "Makes the command a tool Eris may call by herself while she answers the person: her agentic loop offers it to the brain, runs the call as agent:eris and hands the command's answer back as the tool's output (ADR 0084). Answer with data the brain can read, not only a change on screen.",
+          "$ref": "#/$defs/CommandTool"
         }
       },
       "required": ["id", "title"],
+      "additionalProperties": false
+    },
+    "CommandTool": {
+      "description": "What the brain reads to decide when Eris calls a command, and with which args.",
+      "type": "object",
+      "properties": {
+        "description": {
+          "description": "What the command does and what it answers with, for the brain: one to three sentences.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000
+        },
+        "args": {
+          "description": "A JSON Schema 2020-12 of the command's args, whose type is object. Absent: the command takes none.",
+          "type": "object"
+        }
+      },
+      "required": ["description"],
       "additionalProperties": false
     },
     "CommandArgs": {

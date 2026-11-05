@@ -1,0 +1,5 @@
+{
+  "target": "AccountStatus",
+  "description": "the token never crosses the bridge",
+  "instance": { "state": "signed-in", "token": "eyJhbGciOi" }
+}

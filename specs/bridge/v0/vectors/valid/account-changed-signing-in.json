@@ -1,0 +1,16 @@
+{
+  "target": "BridgeEvent",
+  "description": "a code waits for the person in the browser",
+  "instance": {
+    "event": "account.changed",
+    "data": {
+      "state": "signing-in",
+      "signIn": {
+        "userCode": "WDJB-MJHT",
+        "verificationUri": "https://id.endue.ai/device",
+        "verificationUriComplete": "https://id.endue.ai/device?user_code=WDJB-MJHT",
+        "expiresAt": "2026-11-05T09:15:00Z"
+      }
+    }
+  }
+}

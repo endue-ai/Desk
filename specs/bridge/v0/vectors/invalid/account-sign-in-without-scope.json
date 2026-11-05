@@ -1,0 +1,5 @@
+{
+  "target": "BridgeRequest",
+  "description": "account.signIn needs account:manage",
+  "instance": { "id": 1, "method": "account.signIn", "params": {} }
+}

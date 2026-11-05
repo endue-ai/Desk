@@ -37,6 +37,16 @@ export interface CommandContribution {
   irreversible?: boolean;
   /** The command that undoes this one, which this plugin provides too. After each invocation the plugin answers ok, the desk keeps it on its undo stack, and cmd.undo runs this command with { args, result } of that invocation (ADR 0077). */
   undo?: CommandId;
+  /** Makes the command a tool Eris may call by herself while she answers the person: her agentic loop offers it to the brain, runs the call as agent:eris and hands the command's answer back as the tool's output (ADR 0084). Answer with data the brain can read, not only a change on screen. */
+  tool?: CommandTool;
+}
+
+/** What the brain reads to decide when Eris calls a command, and with which args. */
+export interface CommandTool {
+  /** What the command does and what it answers with, for the brain: one to three sentences. */
+  description: string;
+  /** A JSON Schema 2020-12 of the command's args, whose type is object. Absent: the command takes none. */
+  args?: Record<string, unknown>;
 }
 
 /** A command's args: an object, as cmd.invoke passes them. */
@@ -224,7 +234,8 @@ export type Permission =
   | ViewManagePermission
   | ShellOpenPermission
   | UpdateManagePermission
-  | ThemeManagePermission;
+  | ThemeManagePermission
+  | AccountManagePermission;
 
 /** Search explicitly published plugin documents and installed plugin launchers. */
 export interface SearchReadPermission {
@@ -370,6 +381,11 @@ export interface UpdateManagePermission {
 /** Keep the person's own themes with theme.*: save a theme into the desk's user themes folder, import a .desk-theme bundle, export any installed theme as one, and remove a user theme. The desk grants it to the runtime and the CLI only. */
 export interface ThemeManagePermission {
   permission: "theme:manage";
+}
+
+/** Sign the desk in to endue ID and out again with account.*, and see whether it is signed in. Receive account.changed. The token itself never crosses the bridge. The desk grants it to the runtime only (ADR 0084). */
+export interface AccountManagePermission {
+  permission: "account:manage";
 }
 
 /** A URL scheme shell.open hands to the system: the browser for http and https, the mail app for mailto. */
@@ -1272,6 +1288,69 @@ export interface ProfileFile {
   settings?: Record<string, unknown>;
 }
 
+/** signed-out: no endue ID on this desk. signing-in: a code waits for the person in the browser. signed-in: the desk holds a token and the brain gets it. */
+export type AccountState = "signed-out" | "signing-in" | "signed-in";
+
+/** Where and with which code the person finishes signing in, while the state is signing-in. */
+export interface AccountSignIn {
+  /** The code to enter at verificationUri, for example WDJB-MJHT. */
+  userCode: string;
+  /** The page where the person enters the code. */
+  verificationUri: string;
+  /** The same page with the code already in it, when endue ID offers one: the link to open. */
+  verificationUriComplete?: string;
+  /** When the code stops working. */
+  expiresAt: string;
+}
+
+/** The account as it is now. signIn is there while signing-in; problem says, for people, why the last sign-in did not go through. */
+export interface AccountStatus {
+  state: AccountState;
+  signIn?: AccountSignIn;
+  problem?: string;
+}
+
+/** Parameters of every account.* call: the scope alone. */
+export interface AccountParams {
+  scope: AccountManagePermission;
+}
+
+/** The account as it is now. */
+export interface AccountStatusRequest {
+  id: RequestId;
+  method: "account.status";
+  params: AccountParams;
+}
+
+/** Start signing in: the answer is signing-in with the code and the page to open. A sign-in already under way answers as it is; one on a desk that is signed in starts over. */
+export interface AccountSignInRequest {
+  id: RequestId;
+  method: "account.signIn";
+  params: AccountParams;
+}
+
+/** Forget the token on this desk and stop any sign-in under way. The brain gets no token after it. */
+export interface AccountSignOutRequest {
+  id: RequestId;
+  method: "account.signOut";
+  params: AccountParams;
+}
+
+/** Result of account.status. */
+export type AccountStatusResult = AccountStatus;
+
+/** Result of account.signIn: signing-in with the code, or why it could not start (problem). */
+export type AccountSignInResult = AccountStatus;
+
+/** Result of account.signOut: signed-out. */
+export type AccountSignOutResult = AccountStatus;
+
+/** The account changed: a sign-in began, finished or failed, or the desk signed out. Sent to holders of account:manage. */
+export interface AccountChangedEvent {
+  event: "account.changed";
+  data: AccountStatus;
+}
+
 /** Start capturing the microphone. With wakeWord, audio.wake events arrive when the wake word is heard. */
 export interface AudioCaptureStartRequest {
   id: RequestId;
@@ -1490,17 +1569,39 @@ export interface BrainTurnEvent {
   data: BrainTurnData;
 }
 
-/** Payload of brain.turn. delta carries answer text; error and offline carry a sentence for people. A brain.ask turn's completed carries structured when the brain called the tool. */
+/** Payload of brain.turn. delta carries answer text; error and offline carry a sentence for people. A brain.ask turn's completed carries structured when the brain called the tool. tool and tool-result carry tool: a brain.say turn's hand-off to a plugin command and its return (ADR 0084). */
 export interface BrainTurnData {
   turnId: string;
   kind: BrainTurnKind;
   text?: string;
   /** brain.ask only, on completed: the arguments the brain called the tool with, checked against its schema. Absent when the brain answered in text instead. */
   structured?: Record<string, unknown>;
+  tool?: BrainTurnTool;
 }
 
-/** started, delta (more text), completed; error (the turn failed, for example read-only after a takeover); offline (the brain is unreachable, the turn waits) and online (it resumed). */
-export type BrainTurnKind = "started" | "delta" | "completed" | "error" | "offline" | "online";
+/** started, delta (more text), completed; error (the turn failed, for example read-only after a takeover); offline (the brain is unreachable, the turn waits) and online (it resumed); tool (Eris hands work to a plugin command: the core runs the brain's call) and tool-result (the command answered and its answer went back to the brain). */
+export type BrainTurnKind =
+  | "started"
+  | "delta"
+  | "completed"
+  | "error"
+  | "offline"
+  | "online"
+  | "tool"
+  | "tool-result";
+
+/** tool and tool-result only: the command a brain.say turn's tool call runs, so the desk can show Eris going to its plugin and coming back (ADR 0084). */
+export interface BrainTurnTool {
+  /** The brain's tool call id; a tool-result names the call it ends. */
+  callId: string;
+  command: CommandId;
+  /** Who provides the command: a plugin id, or desk for the runtime's own. */
+  provider: CallerId;
+  /** The command's title, for people. */
+  title?: string;
+  /** tool-result only: whether the command answered without an error. */
+  ok?: boolean;
+}
 
 /** Chosen by the caller, unique among its requests in flight. The response repeats it. */
 export type RequestId = number;
@@ -1589,6 +1690,9 @@ export type BridgeRequest =
   | UpdateCheckRequest
   | UpdateDownloadRequest
   | UpdateApplyRequest
+  | AccountStatusRequest
+  | AccountSignInRequest
+  | AccountSignOutRequest
   | ThemeSaveRequest
   | ThemeImportRequest
   | ThemeExportRequest
@@ -1635,7 +1739,7 @@ export type ErrorCode =
   | "invalid_value"
   | "internal";
 
-/** Something the core reports without being asked: file changes, process output, wake words, permission changes, prompts and approvals, notifications, surfaces, commands, settings, log entries, changes to items, connectors and views, and the desk's update status. */
+/** Something the core reports without being asked: file changes, process output, wake words, permission changes, prompts and approvals, notifications, surfaces, commands, settings, log entries, changes to items, connectors and views, the desk's update status, and its endue ID account. */
 export type BridgeEvent =
   | FsChangedEvent
   | ProcOutputEvent
@@ -1660,7 +1764,8 @@ export type BridgeEvent =
   | DataChangedEvent
   | ConnectorChangedEvent
   | ViewChangedEvent
-  | UpdateChangedEvent;
+  | UpdateChangedEvent
+  | AccountChangedEvent;
 
 /** Describe what the caller can bind, show and run. */
 export interface CatalogGetRequest {
@@ -3719,6 +3824,9 @@ export interface BridgeMethodMap {
   "update.check": { params: UpdateParams; result: UpdateCheckResult };
   "update.download": { params: UpdateParams; result: UpdateDownloadResult };
   "update.apply": { params: UpdateParams; result: UpdateApplyResult };
+  "account.status": { params: AccountParams; result: AccountStatusResult };
+  "account.signIn": { params: AccountParams; result: AccountSignInResult };
+  "account.signOut": { params: AccountParams; result: AccountSignOutResult };
   "theme.save": { params: ThemeSaveParams; result: ThemeSaveResult };
   "theme.import": { params: ThemeImportParams; result: ThemeImportResult };
   "theme.export": { params: ThemeExportParams; result: ThemeExportResult };
@@ -3805,6 +3913,9 @@ export const BRIDGE_METHODS = [
   "update.check",
   "update.download",
   "update.apply",
+  "account.status",
+  "account.signIn",
+  "account.signOut",
   "theme.save",
   "theme.import",
   "theme.export",
