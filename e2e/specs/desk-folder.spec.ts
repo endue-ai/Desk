@@ -117,7 +117,7 @@ describe("a desk from a folder", () => {
     await browser.reloadSession();
     await shellReady();
     await until(
-      (now) => now.keys.some((k) => k.startsWith(KEY)),
+      (now) => now.keys.some((k) => k.endsWith(MINE)),
       "the imported key binding never came back",
     );
     expect(snapshot()).toEqual(before);
