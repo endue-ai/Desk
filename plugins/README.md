@@ -22,6 +22,7 @@ there were two formats, the API would have holes.
 | `today/` | The day at a glance (`desk.today`): a data-only `view` plugin that `desk.views` draws; `Mod+T` opens it |
 | `item/` | One item in Desk (`desk.item`): the data-only `view` plugin the palette's Open in Desk shows |
 | `inspector/` | What the desk holds now, read-only (`desk.inspector`, autoload): the render tree, surfaces and buffers, the last commands, grants, settings by layer, plugins, bridge calls; `desk inspect` prints its Export JSON |
+| `memory/` | What Eris knows, kept on this computer (`endue.memory`, autoload): facts and conversations, search, edit a fact, forget one or everything (ADR 0095) |
 
 The desk's default policies (ADR 0017), each a `desk.*` plugin. All but the palette are `policy` plugins:
 no code, only what they contribute in `plugin.json`. Turn one off and another plugin can take its place.
