@@ -13,11 +13,10 @@ use desk_bridge::{
     InitSettingKey, Item, ItemChange, ItemPage, ItemQuery, KeysFile, PaletteResults,
     PermQueryResult, PermRequestResult, Permission, PluginContributes, PluginListResult,
     PluginManifest, PluginStatsResult, ProfileFile, RefusalReason, SettingsListResult,
-    ShellOpenResult, StoreGetResult, ThemeBundle,
-    ThemeExportResult, ThemeIndex, ThemeMarketFetchResult, ThemeMarketListResult, ThemePackage,
-    ThemeType, ThemeVariant, UiSurfaceStateRequest, UiSurfaceStateResult, UniversalData,
-    UniversalSource, UniversalView, View, ViewGetResult, ViewListResult, ViewSource, ViewSummary,
-    manifest_problems, view_problems,
+    ShellOpenResult, StoreGetResult, ThemeBundle, ThemeExportResult, ThemeIndex,
+    ThemeMarketFetchResult, ThemeMarketListResult, ThemePackage, ThemeType, ThemeVariant,
+    UiSurfaceStateRequest, UiSurfaceStateResult, UniversalData, UniversalSource, UniversalView,
+    View, ViewGetResult, ViewListResult, ViewSource, ViewSummary, manifest_problems, view_problems,
 };
 use serde::Serialize;
 use serde::de::DeserializeOwned;
