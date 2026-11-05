@@ -51,6 +51,7 @@ mod core_undo;
 mod core_update;
 mod core_views;
 mod core_wasm;
+mod desk_files;
 mod events;
 mod grants;
 mod handler;
@@ -88,6 +89,10 @@ pub use core_fs_url::FileUrl;
 pub use core_perm::{Prompter, RefuseAll};
 pub use core_state::{QUARANTINED_KEY, SafeMode, SafeReason};
 pub use core_themes::{ThemeFetch, ThemeWatcher};
+pub use desk_files::{
+    DATA_FILES, DESK_FILES, DESK_FOLDERS, DeskFile, FileState, Owner, check_desk_file, desk_files,
+    desk_folder_files,
+};
 pub use events::{Delivery, EventBus};
 pub use handler::{Core, Roots};
 pub use init::{INIT_TEMPLATE, INIT_VERSION, Init, PluginSetup, SyncSetup};
@@ -102,5 +107,6 @@ pub use settings_report::{Layer, ProblemKind, SettingProblem};
 pub use state_file::{BrokenFile, broken_in, keep_broken};
 pub use sync::{Keep, RemoteFailure, Snapshot, SyncError, SyncOutcome, SyncRemote};
 pub use sync_mock::MockRemote;
+pub use time::rfc3339_now;
 pub use views_watch::ViewWatcher;
 pub use watch::PluginWatcher;
