@@ -4,7 +4,7 @@
 use std::mem;
 
 use desk_brain::{StopReason, ToolCall, TurnEvent};
-use desk_bridge::{BrainTurnData, BrainTurnEvent, BrainTurnKind, BridgeEvent};
+use desk_bridge::{BrainTurnData, BrainTurnEvent, BrainTurnKind, BrainTurnTool, BridgeEvent};
 
 use crate::events::EventBus;
 
@@ -40,6 +40,21 @@ impl<'a> Sink<'a> {
                 kind,
                 text: text.map(str::to_owned),
                 structured: None,
+                tool: None,
+            },
+        }));
+    }
+
+    /// A tool step: Eris hands work to a command (`Tool`), or its answer went back (`ToolResult`).
+    pub(crate) fn step(&self, kind: BrainTurnKind, tool: BrainTurnTool) {
+        self.events.publish(BridgeEvent::BrainTurn(BrainTurnEvent {
+            event: Default::default(),
+            data: BrainTurnData {
+                turn_id: self.turn.to_owned(),
+                kind,
+                text: None,
+                structured: None,
+                tool: Some(tool),
             },
         }));
     }

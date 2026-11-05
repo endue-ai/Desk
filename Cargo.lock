@@ -986,6 +986,7 @@ dependencies = [
  "desk-brain",
  "serde",
  "serde_json",
+ "ureq",
 ]
 
 [[package]]

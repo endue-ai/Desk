@@ -103,6 +103,9 @@
         { "$ref": "update.schema.json#/$defs/UpdateCheckRequest" },
         { "$ref": "update.schema.json#/$defs/UpdateDownloadRequest" },
         { "$ref": "update.schema.json#/$defs/UpdateApplyRequest" },
+        { "$ref": "account.schema.json#/$defs/AccountStatusRequest" },
+        { "$ref": "account.schema.json#/$defs/AccountSignInRequest" },
+        { "$ref": "account.schema.json#/$defs/AccountSignOutRequest" },
         { "$ref": "theme.schema.json#/$defs/ThemeSaveRequest" },
         { "$ref": "theme.schema.json#/$defs/ThemeImportRequest" },
         { "$ref": "theme.schema.json#/$defs/ThemeExportRequest" },
@@ -165,7 +168,7 @@
       ]
     },
     "BridgeEvent": {
-      "description": "Something the core reports without being asked: file changes, process output, wake words, permission changes, prompts and approvals, notifications, surfaces, commands, settings, log entries, changes to items, connectors and views, and the desk's update status.",
+      "description": "Something the core reports without being asked: file changes, process output, wake words, permission changes, prompts and approvals, notifications, surfaces, commands, settings, log entries, changes to items, connectors and views, the desk's update status, and its endue ID account.",
       "oneOf": [
         { "$ref": "fs.schema.json#/$defs/FsChangedEvent" },
         { "$ref": "proc.schema.json#/$defs/ProcOutputEvent" },
@@ -190,7 +193,8 @@
         { "$ref": "data.schema.json#/$defs/DataChangedEvent" },
         { "$ref": "connector.schema.json#/$defs/ConnectorChangedEvent" },
         { "$ref": "view.schema.json#/$defs/ViewChangedEvent" },
-        { "$ref": "update.schema.json#/$defs/UpdateChangedEvent" }
+        { "$ref": "update.schema.json#/$defs/UpdateChangedEvent" },
+        { "$ref": "account.schema.json#/$defs/AccountChangedEvent" }
       ]
     }
   }

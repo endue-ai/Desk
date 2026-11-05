@@ -70,7 +70,7 @@ describe("the talk line", () => {
       }
       expect(store.get().eris.state).toBe("thinking");
       await vi.waitFor(() => expect(store.get().eris.state).toBe("idle"));
-      expect(brainSay).toHaveBeenCalledExactlyOnceWith("hello");
+      expect(brainSay).toHaveBeenCalledExactlyOnceWith("hello", expect.any(Function));
       expect(erisSay).not.toHaveBeenCalled();
       expect(notify).toHaveBeenCalledOnce();
       expect(notify).toHaveBeenCalledWith(
@@ -102,7 +102,7 @@ describe("the talk line", () => {
   it("sends the line on a plain Enter", () => {
     type("hello");
     expect(key("Enter").defaultPrevented).toBe(true);
-    expect(brainSay).toHaveBeenCalledExactlyOnceWith("hello");
+    expect(brainSay).toHaveBeenCalledExactlyOnceWith("hello", expect.any(Function));
     expect(input.value).toBe("");
   });
 

@@ -1,0 +1,9 @@
+{
+  "target": "BridgeRequest",
+  "description": "the runtime starts signing the desk in to endue ID",
+  "instance": {
+    "id": 1,
+    "method": "account.signIn",
+    "params": { "scope": { "permission": "account:manage" } }
+  }
+}

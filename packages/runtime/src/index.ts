@@ -6,7 +6,14 @@ export {
   localStore,
   memoryStore,
 } from "./bridge/core";
-export type { AudioLevels, Bands, BrainStatus, ShellBridge } from "./bridge/types";
+export type {
+  AccountStatus,
+  AudioLevels,
+  Bands,
+  BrainStatus,
+  BrainStep,
+  ShellBridge,
+} from "./bridge/types";
 export { type Clock, ManualClock, realClock, type Tween, tween } from "./clock";
 export { comboOf, type KeyLike, type Platform, ShortcutRouter } from "./input";
 export {

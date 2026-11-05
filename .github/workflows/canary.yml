@@ -1,11 +1,13 @@
 name: canary
 
 # Main becomes a canary build on R2 nightly, when it moved since the last canary, or by hand (ADR 0081,
-# amending ADR 0054's build on every push): built for the four targets as
-# <next patch>-pre.<run>, uploaded in the order that keeps listed builds whole (artifacts, then
-# release.json, then the index), listed on the canary index, and canary builds older than two
-# weeks dropped (files kept while beta or stable lists them). Release notes are the commit page.
-# Without the updater key, its public key or the R2 credentials it says so and stops.
+# amending ADR 0054's build on every push): built for the four targets as the next line's .0 with
+# -pre.<run> (ADR 0092: 0.5.0-pre.212 once release/v0.4 exists), uploaded in the order that keeps
+# listed builds whole (artifacts, then release.json, then the index), listed on the canary index, and
+# canary builds older than two weeks dropped (files kept while beta or stable lists them). Release
+# notes are the commit page. The same night runs check and unit tests on macOS and Windows, which pull
+# requests skip (ADR 0092), even before the secrets exist; a failure fails the run, so the next night
+# runs again. Without the updater key, its public key or the R2 credentials nothing is built.
 on:
   schedule:
     - cron: "29 18 * * *" # 03:29 KST
@@ -45,14 +47,13 @@ jobs:
             if [ -z "${!name}" ]; then missing="$missing $name"; fi
           done
           if [ -n "$missing" ]; then
-            echo "::notice::No canary build:$missing not set (docs/ko/updater-requirements.md, 이슈 분해)"
+            echo "::notice::No canary build:$missing not set (docs/releasing.md)"
             echo "publish=false" >> "$GITHUB_OUTPUT"
           else
             echo "publish=true" >> "$GITHUB_OUTPUT"
           fi
       - id: moved
         name: Has main moved since the last canary?
-        if: steps.secrets.outputs.publish == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -71,6 +72,33 @@ jobs:
       - id: version
         if: steps.secrets.outputs.publish == 'true'
         run: echo "version=$(node scripts/release-version.mjs --run "$GITHUB_RUN_NUMBER")" >> "$GITHUB_OUTPUT"
+
+  check:
+    name: check (${{ matrix.os }})
+    needs: gate
+    if: needs.gate.outputs.moved == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install Rust toolchain (rust-toolchain.toml)
+        run: rustup toolchain install
+      - uses: Swatinem/rust-cache@v2
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: just
+      - run: pnpm install --frozen-lockfile
+      - run: just check
+      - run: just test-unit
 
   build:
     needs: gate

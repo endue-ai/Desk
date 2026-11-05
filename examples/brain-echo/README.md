@@ -16,6 +16,7 @@ It listens on `http://127.0.0.1:8787/v0`, which is where Desk looks by default (
 | `tool <name> as <agent>: <json>` | the same for the tool `<name>` with the JSON object as arguments and `agentId: <agent>` (without `as <agent>`, no `agentId`); after the result, "The <name> tool said: <output>" or "failed: <output>" |
 | several `tool ...` calls, one per line or joined by ` then ` | one turn that asks for each tool in order: after each result it says what the tool said and asks for the next |
 | any, with `tools` | a `tool.call` to the tool `toolChoice` names, or to the first one offered it knows (`echo`, `propose_theme`, `propose_universal_view`), and a stop at `tool_call`; other tools get words |
+| words that name an offered command | Eris's loop (ADR 0089): a `tool.call` with `{}` to the command tool whose name's words after the first are all in the message ("check my latest mail" calls `endue_mail_latest`); after the result, "The <name> tool said: <output>", the output's `text` when it has one |
 
 `propose_theme` (`theme.mjs`) answers `{ name, description, theme }` from the words in the message's last
 line, English or Korean: warm, amber, ocean, forest and pastel pick the colours; night, paper, grain, glass
@@ -24,9 +25,8 @@ and terminal the rest (따뜻, 호박, 바다, 숲, 파스텔, 밤, 종이, 질�
 calendar, chat, document or run its type; a URL, a data file, a folder or item kinds (issues, events,
 notes, …) its source. "show this repo's issues as a board" is a kanban over task items.
 
-Leases follow the contract: `lease_held` (with the holder) when another desk has the session, `takeover`
-ends that lease and its holder gets `lease_lost`, a lease past `expiresAt` gives `lease_expired`. Any bearer
-token is accepted.
+Leases follow the contract: `lease_held` when another desk has the session, `takeover` ends it (its holder
+gets `lease_lost`), a lease past `expiresAt` is `lease_expired`. Any bearer token is accepted.
 
 The directory is fixed sample data: `GET /spaces` (Home, Studio), `GET /agents` (Mira, Theo, Juno inactive;
 Kai, Lena), `GET /agents/{agentId}/card`, `GET /a2a/tasks` (four hand-overs). Lists filter by `spaceId`,

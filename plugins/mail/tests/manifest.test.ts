@@ -59,6 +59,7 @@ describe("plugin.json", () => {
       `${ID}.mailbox`,
       `${ID}.search`,
       `${ID}.refresh`,
+      `${ID}.latest`,
       `${ID}.compose`,
       `${ID}.reply`,
       `${ID}.forward`,
