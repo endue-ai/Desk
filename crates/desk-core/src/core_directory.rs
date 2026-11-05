@@ -62,6 +62,7 @@ impl Core {
         self.converse(caller, params.scope)?;
         let offline = BrainStatusResult::BrainStatusOffline(BrainStatusOffline {
             mode: Default::default(),
+            brain: None,
         });
         let Some(conversation) = &self.conversation else {
             return json(offline);
@@ -73,10 +74,13 @@ impl Core {
             BrainMode::Cloud => BrainStatusResult::BrainStatusCloud(BrainStatusCloud {
                 mode: Default::default(),
                 credits: None,
+                brain: None,
             }),
             BrainMode::Local { model } => BrainStatusResult::BrainStatusLocal(BrainStatusLocal {
                 mode: Default::default(),
                 model: model.clone(),
+                brain: None,
+                fallback: None,
             }),
         })
     }
