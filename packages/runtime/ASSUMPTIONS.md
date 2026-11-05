@@ -146,3 +146,11 @@ cheap to change.
     flip halfway, and the same mesh turns from one view to the next with its gold face changing halfway.
     While she listens and it is quiet, ripples run in from the rim after 0.8 s; while she thinks, a wave
     rolls from the core outwards (1.6 s), strongest in the inner rings. Sound always wins over both.
+48. **Local agents sit first in the agent bar** (ADR 0110), under "Local": every program the core found
+    (Claude Code, Codex) registers itself there, above the directory's agents, so they are there with no
+    endue ID and offline. Their avatars carry two letters (CC, Cx) because both names start with a C;
+    one lights while a run of it goes on. A click opens its screen as the view `local:<id>` in an
+    820×600 window; the search field and the work request are built once, so a redraw never loses what
+    the person types. A work request continues the session on screen, or starts one in a folder after
+    New session; it is read-only until the person picks Allow edits, and Eris's `desk.agents.*` tools
+    always run read-only. A tool waits four minutes for a run, then answers that it goes on.

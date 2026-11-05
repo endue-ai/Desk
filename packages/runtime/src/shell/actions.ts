@@ -174,6 +174,8 @@ export function defaultPlacement(id: string): SurfacePlacement {
   if (id === "notes") return { ...base, plugin: "endue.notes", x: 140, y: 260, w: 380, h: 300 };
   if (id.startsWith("agent:"))
     return { ...base, plugin: "endue.agent", x: 520, y: 260, w: 400, h: 340 };
+  if (id.startsWith("local:"))
+    return { ...base, plugin: "desk.agents", x: 360, y: 120, w: 820, h: 600 };
   if (id === "keys") return { ...base, plugin: "endue.keys", x: 480, y: 200, w: 480, h: 440 };
   if (id.startsWith("recent:"))
     return { ...base, plugin: "endue.eris", x: 980, y: 300, w: 320, h: 240 };

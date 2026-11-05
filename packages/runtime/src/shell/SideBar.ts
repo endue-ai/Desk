@@ -1,10 +1,14 @@
 /**
- * The agent bar (system layer, left): the current space's agents from the agent directory above, the
- * spaces below. An agent with a working A2A task carries the working dot; an inactive one waits at
- * the edge, dashed and dimmed. Past six agents, the last place opens the rest in a popover.
+ * The agent bar (system layer, left): the agent programs on this computer first (Claude Code, Codex:
+ * every one the core found registers itself, ADR 0110), then the current space's agents from the
+ * agent directory, the spaces below. An agent with a working A2A task, or a local agent with a run
+ * going on, carries the working dot; an inactive one waits at the edge, dashed and dimmed. Past six
+ * agents, the last place opens the rest in a popover.
  */
-import type { Agent } from "@endue-ai/bridge";
+import type { Agent, LocalAgent } from "@endue-ai/bridge";
+import { localText } from "../surface/local-agent/copy";
 import { presenceOf, selectAgent, selectSpace, spaceAgents } from "../system/agents";
+import { badgeOf, LOCAL_VIEW, localPresence, selectLocalAgent } from "../system/local-agents";
 import type { ShellCtx } from "./context";
 import { h, render } from "./dom";
 import { icon } from "./icons";
@@ -50,6 +54,29 @@ export function mountSideBar(root: HTMLElement, ctx: ShellCtx): () => void {
     );
   };
 
+  const local = (a: LocalAgent) => {
+    const s = ctx.store.get();
+    const working = localPresence(a.id, s.localRuns) === "working";
+    const label = localText(s.lang, working ? "working" : "idle", { name: a.name });
+    const open = s.focused === `${LOCAL_VIEW}${a.id}`;
+    return h(
+      "button",
+      {
+        class: `icon-button avatar local-avatar${open ? " is-selected" : ""}`,
+        type: "button",
+        "data-key": `local-${a.id}`,
+        "data-local-agent": a.id,
+        "data-presence": working ? "working" : "idle",
+        "aria-label": label,
+        "aria-pressed": String(open),
+        title: label,
+        onClick: () => selectLocalAgent(ctx, a.id),
+      },
+      h("span", { "aria-hidden": "true" }, badgeOf(a.id)),
+      working ? h("span", { class: "dot dot-active avatar-dot" }) : null,
+    );
+  };
+
   const draw = () => {
     const s = ctx.store.get();
     const agents = spaceAgents(s);
@@ -57,6 +84,22 @@ export function mountSideBar(root: HTMLElement, ctx: ShellCtx): () => void {
     const hidden = agents.slice(shown.length);
     const moreLabel = ctx.tr("moreAgents", { n: hidden.length });
     render(el, () => [
+      s.localAgents.length
+        ? [
+            h("div", { class: "rail-label", "aria-hidden": "true" }, localText(s.lang, "group")),
+            h(
+              "div",
+              {
+                class: "bar-group",
+                role: "group",
+                "aria-label": localText(s.lang, "groupLabel"),
+                "data-local-agents": "",
+              },
+              s.localAgents.map(local),
+            ),
+            h("div", { class: "bar-divider", role: "separator" }),
+          ]
+        : null,
       h("div", { class: "rail-label", "aria-hidden": "true" }, ctx.tr("agents")),
       h(
         "div",
@@ -166,6 +209,9 @@ export function mountSideBar(root: HTMLElement, ctx: ShellCtx): () => void {
       s.directory,
       s.popover === "agents-more",
       s.lang,
+      s.localAgents,
+      s.localRuns.filter((r) => r.state === "running").map((r) => r.agent),
+      s.focused?.startsWith(LOCAL_VIEW) ? s.focused : null,
     ],
     draw,
   );

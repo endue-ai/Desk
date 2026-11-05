@@ -6,6 +6,8 @@ import type { SurfacePlacement } from "../modes/types";
 import type { ShellCtx } from "../shell/context";
 import { h } from "../shell/dom";
 import type { DeskState } from "../shell/state";
+import { isLocalAgent, LOCAL_VIEW, localName } from "../system/local-ids";
+import { localAgentBody } from "./local-agent/screen";
 import { agentBody } from "./samples/agent";
 import { calendarBody } from "./samples/calendar";
 import { keysBody } from "./samples/keys";
@@ -107,6 +109,17 @@ export function viewOf(ctx: ShellCtx, view: string): View {
         byEris: false,
         mount: () => keysBody(ctx),
       };
+  }
+  if (view.startsWith(LOCAL_VIEW) && isLocalAgent(view.slice(LOCAL_VIEW.length))) {
+    const id = view.slice(LOCAL_VIEW.length) as Parameters<typeof localAgentBody>[1];
+    const running = s.localRuns.find((r) => r.agent === id && r.state === "running");
+    return {
+      icon: "user",
+      title: ctx.tr("agentScreen", { name: localName(s.localAgents, id) }),
+      sub: running?.prompt ?? "",
+      byEris: running ? s.erisRuns.includes(running.runId) : false,
+      mount: () => localAgentBody(ctx, id),
+    };
   }
   if (view.startsWith("agent:")) {
     const id = view.slice(6);

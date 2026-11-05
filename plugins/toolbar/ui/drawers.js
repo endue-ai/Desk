@@ -42,6 +42,7 @@ const KINDS = [
   ["plugin:manage", "Manage plugins", () => []],
   ["update:manage", "Manage desk updates", () => []],
   ["account:manage", "Sign the desk in to endue ID", () => []],
+  ["agents:manage", "Read local agents' sessions and hand them work", () => []],
   ["connector:manage", "Manage connections", () => []],
   ["cmd:advise", "Override commands", () => []],
   [

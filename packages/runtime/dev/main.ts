@@ -15,7 +15,7 @@ import { sampleState } from "../src/shell/state";
 const root = document.getElementById("desk");
 if (!root) throw new Error("no #desk element");
 const clock = realClock();
-const bridge = browserBridge({ now: () => clock.now() });
+const bridge = browserBridge({ now: () => clock.now(), localAgents: {} });
 const params = new URLSearchParams(location.search);
 const manifests = import.meta.glob<PluginManifest>("../../../plugins/*/plugin.json", {
   eager: true,

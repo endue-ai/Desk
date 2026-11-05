@@ -211,6 +211,71 @@ describe("the shell bridge over the core", () => {
     expect(heard).toEqual([{ state: "signed-in" }]);
   });
 
+  test("agents.* runs under agents:manage and hands the shell each run step and import", async () => {
+    const run = {
+      runId: "run-1",
+      agent: "claude",
+      caller: "desk",
+      prompt: "Run the tests",
+      cwd: "/home/person/work/app",
+      access: "read-only",
+      state: "running",
+      startedAt: "2026-11-05T09:00:00Z",
+      text: "",
+      tools: 0,
+    } as const;
+    const session = {
+      id: "5b1c2d3e-0f1a-4b2c-9d3e-4f5a6b7c8d9e",
+      agent: "claude",
+      title: "Fix the flaky upload test",
+      updatedAt: "2026-11-04T11:30:00Z",
+      archived: false,
+      imported: false,
+      size: 48213,
+    } as const;
+    const { stub, bridge, calls } = setup({
+      "agents.list": () => ({ agents: [] }),
+      "agents.sessions": () => ({ sessions: [session], total: 1 }),
+      "agents.transcript": () => ({ session, messages: [], truncated: false }),
+      "agents.import": () => ({ imported: 1, unchanged: 0, failed: 0 }),
+      "agents.ask": () => ({ run }),
+      "agents.runs": () => ({ runs: [run] }),
+      "agents.stop": () => ({ run: { ...run, state: "stopped" } }),
+    });
+    const local = bridge.localAgents;
+    if (!local) throw new Error("the app's shell bridge serves the local agents");
+    await expect(local.list()).resolves.toEqual([]);
+    await local.sessions("codex", { from: "archive", limit: 5 });
+    await local.transcript("claude", session.id);
+    await local.import("codex", "archive");
+    await expect(local.ask({ agent: "claude", prompt: "Run the tests" })).resolves.toEqual(run);
+    await expect(local.runs("claude")).resolves.toEqual([run]);
+    await expect(local.stop("run-1")).resolves.toMatchObject({ state: "stopped" });
+    const scope = { permission: "agents:manage" };
+    expect(calls()).toEqual([
+      { method: "agents.list", params: { scope } },
+      { method: "agents.sessions", params: { agent: "codex", from: "archive", limit: 5, scope } },
+      { method: "agents.transcript", params: { agent: "claude", sessionId: session.id, scope } },
+      { method: "agents.import", params: { agent: "codex", from: "archive", scope } },
+      { method: "agents.ask", params: { agent: "claude", prompt: "Run the tests", scope } },
+      { method: "agents.runs", params: { agent: "claude", scope } },
+      { method: "agents.stop", params: { runId: "run-1", scope } },
+    ]);
+    const heard: unknown[] = [];
+    const off = local.onEvent((event) => heard.push(event));
+    stub.emit({
+      event: "agents.run",
+      data: { runId: "run-1", agent: "claude", kind: "tool", tool: "Bash" },
+    });
+    stub.emit({ event: "agents.changed", data: { agent: "codex" } });
+    stub.emit({ event: "account.changed", data: { state: "signed-in" } });
+    off();
+    expect(heard).toEqual([
+      { kind: "run", data: { runId: "run-1", agent: "claude", kind: "tool", tool: "Bash" } },
+      { kind: "changed", agent: "codex" },
+    ]);
+  });
+
   test("brain.status maps brain.status and brain.use answers it unchanged", async () => {
     let status: BrainStatusResult = { mode: "cloud", credits: 12 };
     const { bridge, calls } = setup({ "brain.status": () => status });

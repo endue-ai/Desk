@@ -4,6 +4,15 @@ import type {
   AgentCard,
   AgentList,
   AgentStatus,
+  AgentsImportResult,
+  AgentsSessionsResult,
+  AgentsTranscriptResult,
+  LocalAgent,
+  LocalAgentAccess,
+  LocalAgentId,
+  LocalAgentRun,
+  LocalAgentRunData,
+  LocalAgentSource,
   SpaceList,
 } from "@endue-ai/bridge";
 
@@ -80,6 +89,54 @@ export interface TaskQuery {
   limit?: number;
 }
 
+/** Which sessions of a local agent, and one page of them (agents.sessions). */
+export interface LocalSessionQuery {
+  from?: LocalAgentSource;
+  query?: string;
+  offset?: number;
+  limit?: number;
+}
+
+/** A work request to a local agent (agents.ask): new, or continuing `sessionId`. */
+export interface LocalAsk {
+  agent: LocalAgentId;
+  prompt: string;
+  sessionId?: string;
+  /** A bridge path (`~/work/app`); the session's folder, else home, when absent. */
+  cwd?: string;
+  access?: LocalAgentAccess;
+  model?: string;
+}
+
+/** What the core reports about local agents: a step of a run, or an agent whose imports changed. */
+export type LocalAgentEvent =
+  | { kind: "run"; data: LocalAgentRunData }
+  | { kind: "changed"; agent: LocalAgentId };
+
+/**
+ * The agent programs on this computer, as the core finds and reads them (agents.*, ADR 0110):
+ * Claude Code and Codex, their sessions from their own files, imports into the desk, and runs.
+ */
+export interface LocalAgentsBridge {
+  list(): Promise<LocalAgent[]>;
+  sessions(agent: LocalAgentId, query?: LocalSessionQuery): Promise<AgentsSessionsResult>;
+  transcript(
+    agent: LocalAgentId,
+    sessionId: string,
+    limit?: number,
+  ): Promise<AgentsTranscriptResult>;
+  import(
+    agent: LocalAgentId,
+    from: Exclude<LocalAgentSource, "desk">,
+    sessionIds?: string[],
+  ): Promise<AgentsImportResult>;
+  ask(ask: LocalAsk): Promise<LocalAgentRun>;
+  runs(agent?: LocalAgentId): Promise<LocalAgentRun[]>;
+  stop(runId: string): Promise<LocalAgentRun>;
+  /** Hear every run step and import; returns the unsubscribe. */
+  onEvent(listener: (event: LocalAgentEvent) => void): () => void;
+}
+
 export interface ShellBridge {
   /** The local name collected during first run; hosts without user information may omit this. */
   user?: { info(): Promise<{ name?: string }> };
@@ -109,6 +166,8 @@ export interface ShellBridge {
     /** Hear every change, a sign-in finishing in the browser among them; returns the unsubscribe. */
     onChange(listener: (status: AccountStatus) => void): () => void;
   };
+  /** The agent programs on this computer (ADR 0110); hosts without a core leave it out. */
+  localAgents?: LocalAgentsBridge;
   /** The agent directory of specs/brain/v0, which endue AI serves from its agent and A2A APIs. */
   agents: {
     list(query?: AgentQuery): Promise<AgentList>;

@@ -1,6 +1,7 @@
 // The shell's host over the core: what mountDesk asks of its ShellBridge, answered with bridge calls
 // as the runtime (`desk`). Audio levels are silent until the core captures audio. A turn's tool steps
-// (Eris's errands, ADR 0089) reach the shell as they happen; account.* is the desk's endue ID.
+// (Eris's errands, ADR 0089) reach the shell as they happen; account.* is the desk's endue ID, and
+// agents.* the agent programs on this computer (ADR 0110).
 import type {
   A2ATaskList,
   AgentCard,
@@ -12,12 +13,19 @@ import type {
   Permission,
   SpaceList,
 } from "@endue-ai/bridge";
-import type { AccountStatus, BrainStatus, BrainStep, ShellBridge } from "@endue-ai/runtime";
+import type {
+  AccountStatus,
+  BrainStatus,
+  BrainStep,
+  LocalAgentsBridge,
+  ShellBridge,
+} from "@endue-ai/runtime";
 
 type BrainReply = Awaited<ReturnType<ShellBridge["brain"]["say"]>>;
 
 const SCOPE = { permission: "brain:converse" } as const;
 const ACCOUNT = { scope: { permission: "account:manage" } } as const;
+const AGENTS = { scope: { permission: "agents:manage" } } as const;
 /** The shell's keys in the runtime's store, apart from the runtime's own (session, profiles). */
 const PREFIX = "shell.";
 const SILENT = Object.freeze([0, 0, 0, 0, 0, 0, 0, 0, 0]);
@@ -129,6 +137,33 @@ function say(
   });
 }
 
+/** agents.* as the runtime: every call under agents:manage, steps and imports as one listener. */
+function localAgents(core: BridgeClient): LocalAgentsBridge {
+  return {
+    list: async () => (await core.call("agents.list", AGENTS)).agents,
+    sessions: (agent, query = {}) => core.call("agents.sessions", { agent, ...query, ...AGENTS }),
+    transcript: (agent, sessionId, limit) =>
+      core.call("agents.transcript", {
+        agent,
+        sessionId,
+        ...(limit === undefined ? {} : { limit }),
+        ...AGENTS,
+      }),
+    import: (agent, from, sessionIds) =>
+      core.call("agents.import", { agent, from, ...(sessionIds ? { sessionIds } : {}), ...AGENTS }),
+    ask: async (ask) => (await core.call("agents.ask", { ...ask, ...AGENTS })).run,
+    runs: async (agent) =>
+      (await core.call("agents.runs", { ...(agent ? { agent } : {}), ...AGENTS })).runs,
+    stop: async (runId) => (await core.call("agents.stop", { runId, ...AGENTS })).run,
+    onEvent: (listener) =>
+      core.onEvent((event) => {
+        if (event.event === "agents.run") listener({ kind: "run", data: event.data });
+        else if (event.event === "agents.changed")
+          listener({ kind: "changed", agent: event.data.agent });
+      }),
+  };
+}
+
 export function shellBridge(core: BridgeClient): ShellBridge {
   const status = async () => statusOf(await core.call("brain.status", { scope: SCOPE }));
   return {
@@ -178,6 +213,7 @@ export function shellBridge(core: BridgeClient): ShellBridge {
           if (event.event === "account.changed") listener(accountOf(event.data));
         }),
     },
+    localAgents: localAgents(core),
     agents: {
       list: async (query) =>
         passed<AgentList>(await core.call("brain.agents.list", { ...query, scope: SCOPE })),
