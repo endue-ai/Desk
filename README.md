@@ -14,6 +14,24 @@ else is code you can change without restarting.
 
 <!-- Screenshot: added with the first-run scene. -->
 
+## Why Desk
+
+Picture a builder's garage: one room where the builder works in the middle, an assistant remembers and
+asks, robot arms do the work, and every wall shows the work in the shape the builder wants. Desk is that
+garage, on your computer.
+
+- **A daily tool.** Builders open it every day, so it installs, starts and answers before it does anything
+  else.
+- **Agent-native.** Eris, the resident secretary, keeps her own memory on this computer and orchestrates
+  local and external agents. Agents have hands; the person decides.
+- **Views first.** Organise data once and draw it in any shape: make your own view, let Eris make one from
+  a sentence, or install one from the market.
+- **Yours.** The design system, the layout and the integrations are the builder's to choose and replace.
+
+Desk is a helper for builders: it sets up a stable environment to build in, leaves them free to shape it,
+and lets them make the best product at a quality that does not waver. Where Desk stands and where it goes
+is in `docs/roadmap.md`.
+
 ## Build
 
 ```bash
@@ -35,6 +53,7 @@ Desk has no telemetry. Crash reports, when they arrive, are opt-in and off by de
 
 - `docs/architecture.md`: how the layers fit together
 - `docs/adr/`: decisions that are hard to reverse, and why
+- `docs/roadmap.md`: why Desk exists, where it stands and where it goes
 - `AGENTS.md`: the repository map, commands and rules (for people and AI agents)
 - `CONTRIBUTING.md`: how to send a change
 
