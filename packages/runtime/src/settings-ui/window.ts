@@ -4,6 +4,7 @@ import { canonical, comboOf } from "../input";
 import type { DeskContext } from "../policies/context";
 import type { KeysPolicy } from "../policies/keys";
 import { h, render } from "../shell/dom";
+import { type ConnectionsFocus, mountConnections } from "./connections";
 import { type SettingsLanguage, settingsText } from "./copy";
 import { settingsIcon } from "./icons";
 import { mountKeyboard } from "./keyboard";
@@ -27,6 +28,8 @@ export function installSettingsWindow(
   let selected: SettingsSection = "general";
   let lastFocus: HTMLElement | null = null;
   let keyboard: ReturnType<typeof mountKeyboard> | undefined;
+  let connections: ReturnType<typeof mountConnections> | undefined;
+  let focus: ConnectionsFocus = {};
   const close = () => {
     if (dialog.open) dialog.close();
   };
@@ -117,6 +120,8 @@ export function installSettingsWindow(
   function draw() {
     keyboard?.dispose();
     keyboard = undefined;
+    connections?.dispose();
+    connections = undefined;
     const sections = findSections(search.value);
     render(nav, () =>
       sections.map((section) =>
@@ -157,6 +162,10 @@ export function installSettingsWindow(
         });
         return [keyboard.el];
       }
+      if (selected === "connections") {
+        connections = mountConnections({ bridge: ctx.bridge, language, focus });
+        return [connections.el];
+      }
       return [
         settingsPanel(selected, settings, language, navigate),
         selected === "appearance" ? themeSettingsEntry(commands, close, language) : null,
@@ -185,6 +194,8 @@ export function installSettingsWindow(
   dialog.addEventListener("close", () => {
     keyboard?.dispose();
     keyboard = undefined;
+    connections?.dispose();
+    connections = undefined;
     dialog.remove();
     lastFocus?.isConnected && lastFocus.focus();
   });
@@ -229,6 +240,15 @@ export function installSettingsWindow(
       open(section && SECTIONS.includes(section) ? section : undefined);
     }),
     define("desk.settings.keyboard", tr("shortcuts"), () => open("keyboard")),
+    // Projects, views and connectors lead here to connect a source (ADR 0106).
+    define("desk.connectors.open", tr("connections"), (args) => {
+      const given = (args ?? {}) as { connector?: unknown; kinds?: unknown };
+      focus = {
+        ...(typeof given.connector === "string" ? { connector: given.connector } : {}),
+        ...(Array.isArray(given.kinds) ? { kinds: given.kinds.map(String) } : {}),
+      };
+      open("connections");
+    }),
     define(
       "desk.shell.open-keys",
       language === "ko" ? "설정 · 단축키" : "Settings · keyboard shortcuts",
@@ -241,6 +261,7 @@ export function installSettingsWindow(
     dispose: () => {
       close();
       keyboard?.dispose();
+      connections?.dispose();
       for (const off of offs) off();
       launcher.remove();
       dialog.remove();

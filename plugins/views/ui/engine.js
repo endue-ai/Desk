@@ -350,8 +350,15 @@ export function createEngine(ctx, screen, options = {}) {
     connect: async (/** @type {string} */ path) => {
       const { entry } = at(path);
       if (!entry || !current) return;
+      // A require that names its connector (desk.today's GitHub) leads straight to that connector.
+      const sources = entry.model.node.binding?.sources ?? [];
+      const unbound = sources.find((s) => s.startsWith("$") && !current?.bound[s.slice(1)]);
+      const connector = unbound ? current.view.requires?.[unbound.slice(1)]?.connector : undefined;
       try {
-        await ctx.commands.run("desk.connectors.open", { kinds: entry.model.kinds ?? [] });
+        await ctx.commands.run("desk.connectors.open", {
+          ...(connector ? { connector } : {}),
+          kinds: entry.model.kinds ?? [],
+        });
       } catch (error) {
         entry.model.message =
           codeOf(error) === "unknown_command" ? "Connecting a source comes later." : said(error);

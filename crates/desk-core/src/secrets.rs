@@ -1,7 +1,8 @@
 //! Connector secrets until Desk uses the OS keychain (ADR 0036): one JSON file in the data folder,
 //! readable by this user only (mode 0600 on Unix; the profile folder's ACL on Windows), rewritten
 //! whole through a temp file and a rename. Secrets are never listed and never handed to a guest;
-//! disconnecting an instance removes its own. Nothing reads them yet.
+//! disconnecting an instance removes its own. Only the core reads one: an http connector's token,
+//! which it sends to the connector's base URL itself (ADR 0106).
 //!
 //! ```json
 //! { "version": 1, "note": "...", "secrets": { "<connector>/<instance>": { "<setting>": "<value>" } } }
@@ -63,6 +64,12 @@ impl Secrets {
         }
         self.secrets.insert(key(connector, instance), values);
         self.save()
+    }
+
+    /// The instance's secret setting `name`, as text: what only the core sends (ADR 0106).
+    pub(crate) fn get(&self, connector: &str, instance: &str, name: &str) -> Option<String> {
+        let values = self.secrets.get(&key(connector, instance))?;
+        values.get(name)?.as_str().map(str::to_owned)
     }
 
     /// Forget the instance's secrets.

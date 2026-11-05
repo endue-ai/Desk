@@ -63,7 +63,10 @@ describe("Settings, Connections", () => {
     expect(JSON.stringify(listed)).not.toContain("s3cret");
     await settle();
     await panel.idle();
-    expect(rows(panel.el).map(([id]) => id)).toEqual(["desk.fixtures/default", "desk.fixtures/work"]);
+    expect(rows(panel.el).map(([id]) => id)).toEqual([
+      "desk.fixtures/default",
+      "desk.fixtures/work",
+    ]);
     expect(panel.el.textContent).not.toContain("s3cret");
     panel.dispose();
   });

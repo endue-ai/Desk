@@ -264,7 +264,7 @@ describe("the stub's views and connectors", () => {
     expect(core.audience(changed[0] as BridgeEvent)).toEqual(["example.views"]);
   });
 
-  it("connector.list names the fixture connector with its instance and status", async () => {
+  it("connector.list names the fixture connector with its instance, status and what it takes", async () => {
     const { client } = setup();
     await expect(client.call("connector.list", { scope: CONNECTORS }, OTHER)).rejects.toMatchObject(
       { code: "permission_denied", permission: CONNECTORS },
@@ -273,6 +273,12 @@ describe("the stub's views and connectors", () => {
     expect(connectors).toEqual([
       {
         id: "desk.fixtures",
+        title: "Fixtures",
+        auth: { kind: "token", title: "Access token" },
+        instanceSettings: {
+          folder: { kind: "string", title: "Folder" },
+          token: { kind: "string", title: "Access token", secret: true },
+        },
         instances: [
           {
             connector: "desk.fixtures",

@@ -13,7 +13,7 @@
         {
           "tag": "p",
           "class": "description",
-          "text": "Today's events, the tasks due by tonight, unread messages and the notes touched last."
+          "text": "Today's events, the tasks due by tonight, unread messages, the notes touched last and your open GitHub work."
         }
       ]
     },
@@ -310,6 +310,42 @@
                           "text": "6 days ago"
                         }
                       ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "div",
+          "class": "pane",
+          "children": [
+            {
+              "tag": "section",
+              "class": "component",
+              "data-component": "list",
+              "data-state": "unbound",
+              "children": [
+                {
+                  "tag": "h2",
+                  "class": "component-title",
+                  "text": "GitHub"
+                },
+                {
+                  "tag": "p",
+                  "class": "status",
+                  "text": "No source is connected for this yet."
+                },
+                {
+                  "tag": "desk-button",
+                  "role": "button",
+                  "tabindex": "0",
+                  "density": "regular",
+                  "text": "Connect a source",
+                  "shadow": [
+                    {
+                      "tag": "slot"
                     }
                   ]
                 }

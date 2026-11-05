@@ -207,12 +207,24 @@ export function sample(): TaskItem[] {
  * (plugins/github/plugin.json) and the search record whole in `raw`, from the fixture pages the
  * connector's own tests serve.
  */
+type GitHubRecord = Record<string, unknown> & {
+  node_id: string;
+  state: string;
+  title: string;
+  updated_at: string;
+  created_at: string;
+  repository_url: string;
+  html_url: string;
+  body: string | null;
+  milestone: { due_on: string | null } | null;
+};
+
 export function githubItem(nodeId: string): TaskItem {
   const dir = join(import.meta.dirname, "../../github/tests/fixtures");
   const pages = ["assigned-1.json", "assigned-2.json", "review-requested.json", "authored.json"];
   const records = pages.flatMap(
     (name) =>
-      (JSON.parse(readFileSync(join(dir, name), "utf8")) as { items: Record<string, any>[] }).items,
+      (JSON.parse(readFileSync(join(dir, name), "utf8")) as { items: GitHubRecord[] }).items,
   );
   const raw = records.find((r) => r.node_id === nodeId);
   if (!raw) throw new Error(`no fixture record ${nodeId}`);

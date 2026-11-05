@@ -7,6 +7,7 @@ const copy = {
   keyboard: ["키보드", "Keyboard"],
   notifications: ["알림", "Notifications"],
   accessibility: ["손쉬운 사용", "Accessibility"],
+  connections: ["연결", "Connections"],
   generalDescription: ["Desk를 나에게 맞게 설정하세요.", "Make Desk your own."],
   appearanceDescription: [
     "Desk에서 사용할 화면 모드를 선택하세요.",
@@ -19,6 +20,10 @@ const copy = {
   notificationsDescription: [
     "작업에 집중할 수 있도록 알림을 관리하세요.",
     "Choose when notifications can interrupt your work.",
+  ],
+  connectionsDescription: [
+    "Desk로 데이터를 가져오는 서비스를 연결하세요. 토큰은 이 컴퓨터에만 보관됩니다.",
+    "Connect the services Desk brings data in from. Tokens stay on this computer.",
   ],
   accessibilityDescription: [
     "더 편안하게 보고 사용할 수 있도록 조절하세요.",

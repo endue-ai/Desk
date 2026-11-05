@@ -197,7 +197,7 @@ describe("the GitHub adapter", () => {
     expect(workOf(closed)).toMatchObject({ status: "Closed", category: "done" });
     const merged = githubItem("PR_kwDOFixture021");
     merged.status = "done";
-    const raw = merged.raw as Record<string, any>;
+    const raw = merged.raw as { state: string; pull_request: { merged_at: string | null } };
     raw.state = "closed";
     raw.pull_request.merged_at = "2026-10-30T01:00:00Z";
     expect(workOf(merged)).toMatchObject({ status: "Merged", category: "done" });
@@ -207,7 +207,10 @@ describe("the GitHub adapter", () => {
   });
 
   it("is recognized by its record under a connector of another name", () => {
-    const item = { ...githubItem("I_kwDOFixture012"), source: { connector: "acme.gh", instance: "x" } };
+    const item = {
+      ...githubItem("I_kwDOFixture012"),
+      source: { connector: "acme.gh", instance: "x" },
+    };
     expect(adapterOf(item)?.system).toBe("github");
   });
 });
