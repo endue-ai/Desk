@@ -48,15 +48,15 @@
       "additionalProperties": false
     },
     "ThemeBundle": {
-      "description": "A theme as one file, a .desk-theme: JSON, 16 MiB at most, holding the theme's plugin.json and the font and image files its theme block names, base64. theme.export writes one and theme.import reads one; the desk checks it as a theme plugin folder before it lands.",
+      "description": "A theme as one file, a .desk-theme: JSON, 16 MiB at most, holding the theme's plugin.json and the font and image files its theme block names, base64. theme.export writes one and theme.import reads one; the desk checks it as a theme plugin folder before it lands. A design system travels in the same format as a .desk-design, its manifest of kind design-system and no files (ADR 0091).",
       "type": "object",
       "properties": {
         "format": { "description": "The bundle format and its version.", "const": "desk-theme/1" },
         "manifest": {
-          "description": "The theme's plugin.json: a plugin of kind theme.",
+          "description": "The theme's plugin.json: a plugin of kind theme, or of kind design-system for a .desk-design.",
           "$ref": "plugin.schema.json#/$defs/PluginManifest",
           "type": "object",
-          "properties": { "kind": { "const": "theme" } },
+          "properties": { "kind": { "enum": ["theme", "design-system"] } },
           "required": ["kind"]
         },
         "files": {

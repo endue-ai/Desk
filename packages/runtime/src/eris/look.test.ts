@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isLookRequest } from "./look";
+import { isDesignRequest, isLookRequest } from "./look";
 
 describe("a look request said to Eris", () => {
   it("is the theme, look or feel with a feeling, in English or Korean", () => {
@@ -46,5 +46,25 @@ describe("a look request said to Eris", () => {
       "우리 서비스를 따뜻한 느낌으로 바꿔줘",
     ])
       expect(isLookRequest(text), text).toBe(false);
+  });
+
+  it("tells a request to change the desk's design system, and leaves one for an app in the chat", () => {
+    for (const text of [
+      "디자인 시스템을 각지게 바꿔줘",
+      "디자인시스템을 둥글고 부드럽게 만들어줘",
+      "change the design system to square corners and caps on buttons",
+      "make the desk's design system feel compact",
+      "switch the design-system to pills and soft fills",
+    ])
+      expect(isDesignRequest(text), text).toBe(true);
+    for (const text of [
+      "디자인 시스템이 뭐야?",
+      "what is a design system",
+      "우리 서비스 디자인 시스템 만들어줘",
+      "make a design system for my React app",
+      "build a design system page for the landing site",
+      "테마를 따뜻하게 바꿔줘",
+    ])
+      expect(isDesignRequest(text), text).toBe(false);
   });
 });

@@ -4,7 +4,7 @@ import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, it } from "node:test";
-import { checkMarket, MARKET } from "./theme-market.mjs";
+import { checkMarket, DESIGN_MARKET, MARKET } from "./theme-market.mjs";
 
 /** A market theme's bundle: a palette in both schemes and nothing else. */
 function bundle(id, { license = "CC0-1.0", colors = {} } = {}) {
@@ -53,6 +53,14 @@ const has = (problems, pattern) =>
 describe("theme-market", () => {
   it("passes this repository's market, which has at least two themes", () => {
     assert.deepEqual(checkMarket(MARKET), []);
+  });
+
+  it("passes this repository's design system market, and refuses a bundle of another kind", () => {
+    assert.deepEqual(checkMarket(DESIGN_MARKET), []);
+    const text = bundle("market.dusk");
+    const listed = entry("market.dusk", text, { kind: "design-system", url: "dusk.desk-design" });
+    const problems = checkMarket(market({ "dusk.desk-design": text }, [listed]));
+    has(problems, /market\.dusk: the bundle is a theme, the index says design-system/);
   });
 
   it("passes a market whose index matches its bundles", () => {

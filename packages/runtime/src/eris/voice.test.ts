@@ -2,7 +2,16 @@ import { describe, expect, test } from "vitest";
 import { sampleEnvelope } from "../bridge/browser";
 import erisReply from "../bridge/envelopes/eris-reply.json";
 import userHello from "../bridge/envelopes/user-hello.json";
-import { BAND_EDGES, bandsFromSpectrum, follow, MAX_DISPLACEMENT, Voice } from "./voice";
+import {
+  BAND_EDGES,
+  bandsFromSpectrum,
+  CUE_FADE_MS,
+  type Cue,
+  follow,
+  LISTEN_WAIT_MS,
+  MAX_DISPLACEMENT,
+  Voice,
+} from "./voice";
 
 const silent = new Array(9).fill(0);
 /** Innermost and outermost ring with a visible displacement. */
@@ -90,5 +99,57 @@ describe("sound enters through the rings", () => {
     const f = voice.update(100, { user: silent, eris: silent }, true);
     expect(f.disp.every((d) => d === 0)).toBe(true);
     expect(Math.max(...f.glow)).toBeGreaterThan(0);
+  });
+});
+
+describe("cues shape the quiet rings", () => {
+  const quiet = (cue: Cue, until: number) => {
+    const voice = new Voice();
+    let frame = voice.update(0, { user: silent, eris: silent }, false, cue);
+    for (let t = 10; t <= until; t += 10) {
+      frame = voice.update(t, { user: silent, eris: silent }, false, cue);
+    }
+    return frame;
+  };
+
+  test("listening: the breath at first, then ripples pulled in from the rim once it stays quiet", () => {
+    const early = quiet("listen", LISTEN_WAIT_MS - 100);
+    expect(Math.min(...early.disp)).toBeGreaterThanOrEqual(0);
+    let inward = 0;
+    const voice = new Voice();
+    for (let t = 0; t <= LISTEN_WAIT_MS + CUE_FADE_MS + 1500; t += 10) {
+      const f = voice.update(t, { user: silent, eris: silent }, false, "listen");
+      if (t > LISTEN_WAIT_MS + CUE_FADE_MS) inward = Math.min(inward, ...f.disp);
+    }
+    expect(inward).toBeLessThan(-0.3 * MAX_DISPLACEMENT);
+    expect(inward).toBeGreaterThanOrEqual(-MAX_DISPLACEMENT);
+  });
+
+  test("thinking: a wave rolls out from the core, inner rings moving most", () => {
+    const voice = new Voice();
+    const peak = new Array<number>(9).fill(0);
+    let mode = "";
+    for (let t = 0; t <= 4000; t += 10) {
+      const f = voice.update(t, { user: silent, eris: silent }, false, "think");
+      if (t > CUE_FADE_MS) {
+        f.disp.forEach((d, k) => {
+          peak[k] = Math.max(peak[k] ?? 0, Math.abs(d));
+        });
+      }
+      mode = f.mode;
+    }
+    expect(mode).toBe("thinking");
+    expect(peak[0]).toBeGreaterThan(peak[8] ?? 1);
+    expect(peak[0]).toBeLessThanOrEqual(0.5 * MAX_DISPLACEMENT + 1e-9);
+  });
+
+  test("sound wins over a cue: the user's voice still flows inward while she thinks", () => {
+    const voice = new Voice();
+    let frame = voice.update(0, { user: silent, eris: silent }, false, "think");
+    for (let t = 10; t <= 500; t += 10) {
+      frame = voice.update(t, { user: sampleEnvelope(userHello, t), eris: silent }, false, "think");
+    }
+    expect(frame.mode).toBe("listening");
+    expect(Math.max(...frame.disp)).toBeLessThanOrEqual(0);
   });
 });

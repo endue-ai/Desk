@@ -13,8 +13,16 @@ vi.mock("./draw", async (original) => ({
 }));
 const { mountEris } = await import("./Eris");
 
-const DARK = { "--desk-eris": "#e8c98a", "--desk-eris-frost": "#e9edf4" };
-const LIGHT = { "--desk-eris": "#9a6b12", "--desk-eris-frost": "#4a5d7e" };
+const DARK = {
+  "--desk-eris": "#e8c98a",
+  "--desk-eris-frost": "#e9edf4",
+  "--desk-background": "#141416",
+};
+const LIGHT = {
+  "--desk-eris": "#9a6b12",
+  "--desk-eris-frost": "#4a5d7e",
+  "--desk-background": "#faf9fc",
+};
 const setTokens = (set: Record<string, string>) => {
   for (const [name, value] of Object.entries(set))
     document.documentElement.style.setProperty(name, value);
@@ -41,7 +49,10 @@ function shell() {
     },
     reduced: () => true,
     tr: (key: string) => key,
-    bridge: { audio: { levels: () => ({ user: [], eris: [] }) } },
+    bridge: {
+      audio: { levels: () => ({ user: [], eris: [] }) },
+      perm: { request: async () => false },
+    },
     runtime: {
       settings: { onChange: subscribe(settings) },
       themes: { onChange: subscribe(themes) },
@@ -75,12 +86,30 @@ describe("Eris's palette", () => {
     const eris = mountEris(document.body, ctx, () => null);
     setTokens(LIGHT);
     themeChanged();
-    expect(painted.body.at(-1)).toMatchObject({ gold: "#9a6b12", frost: "#4a5d7e" });
+    expect(painted.body.at(-1)).toMatchObject({
+      gold: "#9a6b12",
+      frost: "#4a5d7e",
+      ground: "#faf9fc",
+    });
     expect(painted.moon.at(-1)).toMatchObject({ frost: "#4a5d7e" });
     eris.dispose();
     const [body, moon] = [painted.body.length, painted.moon.length];
     setTokens(DARK);
     themeChanged();
     expect([painted.body.length, painted.moon.length]).toEqual([body, moon]);
+  });
+
+  it("is a button: a click or Enter starts listening, Escape ends the turn", () => {
+    const { ctx } = shell();
+    const eris = mountEris(document.body, ctx, () => null);
+    const el = document.querySelector<HTMLElement>(".eris");
+    expect(el?.getAttribute("role")).toBe("button");
+    el?.click();
+    expect(ctx.store.get().eris.state).toBe("listening");
+    el?.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    expect(ctx.store.get().eris.state).toBe("idle");
+    el?.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+    expect(ctx.store.get().eris.state).toBe("listening");
+    eris.dispose();
   });
 });

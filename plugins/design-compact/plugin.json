@@ -1,0 +1,73 @@
+{
+  "id": "endue.design-compact",
+  "name": "Compact",
+  "version": "0.1.0",
+  "kind": "design-system",
+  "description": "A cockpit for long days: small controls, tight padding, ghost buttons, dense rows and tables, thin rings.",
+  "designSystem": {
+    "author": "Team endue",
+    "license": "Apache-2.0",
+    "tags": ["dense", "compact", "pro"],
+    "origin": {
+      "prompt": "dense like a cockpit: small controls, tight rows, little chrome"
+    },
+    "components": {
+      "button": {
+        "shape": "sm",
+        "size": "xs",
+        "padding": "tight",
+        "secondary": "ghost"
+      },
+      "iconButton": {
+        "shape": "sm",
+        "size": "sm"
+      },
+      "field": {
+        "shape": "sm",
+        "size": "sm"
+      },
+      "check": {
+        "size": "sm"
+      },
+      "tabs": {
+        "shape": "sm",
+        "size": "xs"
+      },
+      "card": {
+        "shape": "sm",
+        "padding": "tight"
+      },
+      "row": {
+        "size": "xs"
+      },
+      "menu": {
+        "shape": "sm",
+        "elevation": "sm"
+      },
+      "dialog": {
+        "shape": "md",
+        "elevation": "md",
+        "padding": "normal"
+      },
+      "toast": {
+        "shape": "md",
+        "elevation": "sm"
+      },
+      "badge": {
+        "shape": "sm"
+      },
+      "tooltip": {
+        "shape": "sm"
+      },
+      "table": {
+        "size": "xs"
+      },
+      "progress": {
+        "thickness": "thin"
+      },
+      "focus": {
+        "width": "thin"
+      }
+    }
+  }
+}

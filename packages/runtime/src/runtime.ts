@@ -13,6 +13,7 @@ import { PluginHost, type PluginHostOptions } from "./plugins";
 import { installAliases } from "./policies/aliases";
 import { installBuffers } from "./policies/buffers";
 import type { DeskContext } from "./policies/context";
+import { keepLooks } from "./policies/design";
 import { deskFolder } from "./policies/desk-folder";
 import { installDisplay } from "./policies/display";
 import { installFiles } from "./policies/files";
@@ -208,16 +209,7 @@ export function createRuntime(options: RuntimeOptions): Runtime {
     buffers.focused(id);
     session.changed();
   };
-  const { settings } = hub;
-  // The theme the person chose comes back with the session.
-  session.keep("theme", {
-    save: () => settings.layer("session")["desk.theme.active"] ?? null,
-    restore: (value) => {
-      if (typeof value === "string") settings.set("desk.theme.active", value);
-    },
-    onChange: (listener) =>
-      settings.onChange((changed) => changed.includes("desk.theme.active") && listener()),
-  });
+  keepLooks(session, hub.settings);
   keys.onQuit(() => notify.notifications.dismiss());
   keys.onQuit(() => {
     if (commands.has("desk.palette.cancel"))
@@ -356,6 +348,7 @@ export function createRuntime(options: RuntimeOptions): Runtime {
     notify: (input) => notify.notify(input),
     theme: () => theme.state(),
     themes: theme,
+    designs: theme.designs,
     openSurface,
     closeSurface,
     moveSurface(id, cell) {

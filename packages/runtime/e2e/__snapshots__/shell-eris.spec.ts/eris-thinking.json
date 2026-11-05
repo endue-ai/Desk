@@ -1,7 +1,7 @@
 {
  "tag": "div",
  "class": "eris",
- "role": "img",
+ "role": "button",
  "aria-label": "Eris",
  "data-state": "thinking",
  "box": [
@@ -40,9 +40,9 @@
     {
      "tag": "canvas",
      "class": "eris-mesh",
-     "data-mesh": "faces=532 back=253 dots=182 h=9ce9bc4f",
-     "data-rings": "0.90 0.77 0.64 0.52 0.40 0.30 0.21 0.13 0.07",
-     "data-voice": "idle",
+     "data-mesh": "faces=528 back=250 dots=182 h=17dbb9ae",
+     "data-rings": "-1.08 -2.34 -2.34 -1.31 0.10 1.15 1.45 1.02 0.29",
+     "data-voice": "thinking",
      "style": {
       "color": "rgb(242, 240, 245)"
      }
@@ -53,7 +53,7 @@
      "style": {
       "color": "rgb(242, 240, 245)",
       "opacity": "0.705",
-      "transform": "matrix(1, 0, 0, 1, -24, -24)"
+      "transform": "matrix(1.018, 0, 0, 1.018, -24, -24)"
      }
     },
     {

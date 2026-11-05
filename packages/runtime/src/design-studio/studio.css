@@ -1,0 +1,134 @@
+/*
+ * The design system studio (DS): the theme studio's window, grid and cards (theme-studio/*.css), with
+ * a specimen in each card instead of a theme mock-up. The specimen is drawn with the shell's own kit
+ * (kit.css) under the card's design system, set as component tokens on .design-specimen only.
+ */
+.design-specimen {
+  display: grid;
+  align-content: start;
+  gap: var(--desk-space-2);
+  height: 148px;
+  padding: var(--desk-space-3);
+  overflow: hidden;
+  border-radius: var(--desk-radius-md);
+  background: var(--desk-background);
+  color: var(--desk-text);
+  font-family: var(--desk-font-sans);
+  pointer-events: none;
+}
+.design-specimen-line {
+  display: flex;
+  align-items: center;
+  gap: var(--desk-space-2);
+  min-width: 0;
+}
+.design-specimen .btn {
+  height: var(--desk-control-xs);
+  font-size: var(--desk-text-xs);
+}
+.design-specimen-field {
+  display: flex;
+  align-items: center;
+  height: var(--desk-control-xs);
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-xs);
+}
+.design-specimen-badge {
+  display: inline-grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border: 1px solid var(--desk-badge-border);
+  border-radius: var(--desk-badge-radius);
+  background: var(--desk-badge-bg);
+  color: var(--desk-badge-fg);
+  font-size: var(--desk-text-2xs);
+  font-weight: 600;
+  text-transform: var(--desk-badge-case);
+}
+.design-specimen-tabs {
+  padding: 0;
+}
+.design-specimen-tabs .segment {
+  display: grid;
+  place-items: center;
+  height: var(--desk-control-xs);
+  font-size: var(--desk-text-xs);
+}
+.design-specimen-rows {
+  display: grid;
+  gap: 2px;
+}
+.design-specimen-rows .menu-item {
+  gap: var(--desk-space-2);
+  height: 24px;
+  font-size: var(--desk-text-xs);
+}
+.design-specimen-check {
+  width: var(--desk-check-size);
+  height: var(--desk-check-size);
+  border: 2px solid var(--desk-check-accent);
+  border-radius: var(--desk-radius-sm);
+  background: var(--desk-check-accent);
+}
+
+/* The editor, Describe and the Market, docked to the right. */
+.design-editor,
+.design-describe,
+.design-market {
+  display: grid;
+  align-content: start;
+  gap: var(--desk-space-3);
+  min-height: 0;
+  overflow: auto;
+}
+.design-editor-meta,
+.design-editor-sections {
+  display: grid;
+  gap: var(--desk-space-2);
+}
+.design-editor-component {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--desk-space-2);
+  margin: 0;
+  padding: var(--desk-space-2) var(--desk-space-3) var(--desk-space-3);
+  border: var(--desk-border-width) solid var(--desk-border);
+  border-radius: var(--desk-card-radius);
+}
+.design-editor-component legend {
+  padding: 0 var(--desk-space-1);
+  font-weight: 600;
+}
+.design-editor-choice {
+  display: grid;
+  gap: var(--desk-space-1);
+}
+.design-editor-select {
+  height: var(--desk-control-sm);
+  font-size: var(--desk-text-sm);
+}
+.design-describe-text {
+  height: auto;
+  min-height: 72px;
+  padding-block: var(--desk-space-2);
+  resize: vertical;
+}
+.design-describe-result {
+  display: grid;
+  gap: var(--desk-space-2);
+}
+.design-describe-result p {
+  margin: 0;
+}
+.design-market-list {
+  display: grid;
+  gap: var(--desk-space-2);
+}
+.design-market-item {
+  cursor: default;
+}
+.design-market-specimen:empty {
+  display: none;
+}

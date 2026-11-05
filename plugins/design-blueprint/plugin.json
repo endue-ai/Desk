@@ -1,0 +1,69 @@
+{
+  "id": "endue.design-blueprint",
+  "name": "Blueprint",
+  "version": "0.1.0",
+  "kind": "design-system",
+  "description": "A drafting table: square corners, semibold caps on buttons, outlined actions, underlined fields and tabs, a brand bar on the active row.",
+  "designSystem": {
+    "author": "Team endue",
+    "license": "Apache-2.0",
+    "tags": ["square", "outline", "editorial"],
+    "origin": {
+      "prompt": "a drafting table: square, outlined, caps on buttons, underlined fields"
+    },
+    "components": {
+      "button": {
+        "shape": "none",
+        "weight": "semibold",
+        "case": "uppercase",
+        "primary": "outline"
+      },
+      "iconButton": {
+        "shape": "none",
+        "style": "outline"
+      },
+      "field": {
+        "style": "underline"
+      },
+      "check": {
+        "accent": "text"
+      },
+      "tabs": {
+        "style": "underline"
+      },
+      "card": {
+        "shape": "none"
+      },
+      "row": {
+        "selection": "bar",
+        "shape": "none"
+      },
+      "menu": {
+        "shape": "none",
+        "elevation": "sm"
+      },
+      "dialog": {
+        "shape": "none",
+        "scrim": "dim"
+      },
+      "toast": {
+        "shape": "none"
+      },
+      "badge": {
+        "style": "outline",
+        "shape": "none",
+        "case": "uppercase"
+      },
+      "tooltip": {
+        "shape": "none"
+      },
+      "progress": {
+        "thickness": "thin",
+        "shape": "none"
+      },
+      "focus": {
+        "offset": "none"
+      }
+    }
+  }
+}

@@ -126,3 +126,23 @@ cheap to change.
     `desk.theme.motion` (the fixture sets `full`, or `reduce` with `?reduced=1`).
 44. **The palette** (`desk.palette`, M-x) is the one UI plugin the shell's pages install. `@endue-ai/ui`'s
     tokens (#72) use the same `--desk-*` names, so its elements fit the shell.
+45. **Eris's body is opaque.** Her faces are translucent frost, so over a window the UI behind showed
+    through and she was hard to see. `paint` lays the theme's `background` under the disc and every face
+    first; the disc follows the rim in when the user's voice pulls it, so no band of ground shows outside
+    her. On the desk's own background she looks as before.
+46. **Talking to Eris** (`eris/talk.ts`): a click or Enter on her starts a spoken turn, a click while she
+    listens answers at once, a click while she thinks or speaks starts over, Escape ends it. Listening
+    ends after 1.1 s of quiet following speech, 8 s with nothing heard, or 15 s; thinking shows at least
+    1.1 s. Until the core captures audio (`audio.capture.*` exists in the contract, `levels()` is still
+    silent), the shell hears through the webview: after `perm.request("mic")`, `getUserMedia` into an
+    AnalyserNode (fftSize 256, −90 to −25 dBFS) and the nine bands; words come from the platform's
+    speech recognition when the page has one. Without a microphone she listens to the recorded sample
+    voice (`user-hello.json`). Recognised words go to `brain.say` like typed ones; otherwise she answers
+    with a short sample line. She says the answer with the platform's speech synthesis, timed at
+    140 ms (ko) or 62 ms (en) per character when it gives no timestamps, one pulse per syllable at
+    0.75 strength so close pulses stay distinct at the rim. A signed macOS build needs the
+    `com.apple.security.device.audio-input` entitlement under the hardened runtime.
+47. **Her states glide** over 420 ms (`LookTween`): numbers move, switches (gold lines, halo, tail)
+    flip halfway, and the same mesh turns from one view to the next with its gold face changing halfway.
+    While she listens and it is quiet, ripples run in from the rim after 0.8 s; while she thinks, a wave
+    rolls from the core outwards (1.6 s), strongest in the inner rings. Sound always wins over both.

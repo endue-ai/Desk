@@ -47,6 +47,7 @@ check:
     @if command -v actionlint >/dev/null; then actionlint; else echo "actionlint not installed: skipped here, CI runs it"; fi
     node scripts/spec-lint.mjs
     node scripts/ui-lint.mjs
+    node scripts/ds-lint.mjs
     node scripts/theme-market.mjs
     pnpm exec spectral lint specs/brain/v0/openapi.yaml --fail-severity=warn --quiet
 

@@ -1,0 +1,11 @@
+{
+  "target": "PluginManifest",
+  "description": "only a design-system plugin carries a designSystem block",
+  "instance": {
+    "id": "example.mixed",
+    "version": "0.1.0",
+    "kind": "theme",
+    "theme": { "dark": { "colors": { "primary": "#ff8a4c" } } },
+    "designSystem": { "components": {} }
+  }
+}

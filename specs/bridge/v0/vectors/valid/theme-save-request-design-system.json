@@ -1,0 +1,21 @@
+{
+  "target": "BridgeRequest",
+  "description": "theme.save writes a local design system, which has no files",
+  "instance": {
+    "id": 61,
+    "method": "theme.save",
+    "params": {
+      "manifest": {
+        "id": "local.square-caps",
+        "name": "Square caps",
+        "version": "1.0.0",
+        "kind": "design-system",
+        "designSystem": {
+          "origin": { "base": "endue.design-blueprint" },
+          "components": { "button": { "shape": "none", "case": "uppercase" } }
+        }
+      },
+      "scope": { "permission": "theme:manage" }
+    }
+  }
+}

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { cssVariables } from "../tokens";
 import { elements } from "./index";
-import { contrast, parseRules, tokenOf } from "./test-css";
+import { contrast, parseRules, resolveToken, tokenOf } from "./test-css";
 
 const values = cssVariables();
 // What an element without a background of its own sits on: the page, or a card such as a dialog.
@@ -17,7 +17,11 @@ function pairs(css: string): { selector: string; text: string; background: strin
     const text = tokenOf(declarations.color);
     const background = tokenOf(declarations.background ?? declarations["background-color"]);
     if (!text && !background) return [];
-    const backgrounds = background ? [background] : hostBackground ? [hostBackground] : SURFACES;
+    // A transparent fill (a ghost or outlined component) shows what is under it.
+    const solid = (token: string | undefined) =>
+      token && resolveToken(values, token) !== "transparent" ? token : undefined;
+    const own = solid(background) ?? solid(hostBackground);
+    const backgrounds = own ? [own] : SURFACES;
     return backgrounds.map((under) => ({
       selector,
       text: text ?? hostText ?? "--desk-text",
@@ -39,8 +43,13 @@ describe("contrast", () => {
       const failing = found
         .map((pair) => ({
           ...pair,
-          ratio: contrast(values[pair.text] ?? "", values[pair.background] ?? ""),
+          ratio: contrast(
+            resolveToken(values, pair.text) ?? "",
+            resolveToken(values, pair.background) ?? "",
+          ),
         }))
+        // A scrim or another translucent overlay carries no text of its own.
+        .filter((pair) => /^#[0-9a-f]{6}$/i.test(resolveToken(values, pair.background) ?? ""))
         .filter((pair) => !(pair.ratio >= 4.5));
       expect(failing).toEqual([]);
     });

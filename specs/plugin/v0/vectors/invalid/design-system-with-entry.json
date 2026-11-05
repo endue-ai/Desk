@@ -1,0 +1,11 @@
+{
+  "target": "PluginManifest",
+  "description": "a design system runs no code: no entry",
+  "instance": {
+    "id": "example.code",
+    "version": "0.1.0",
+    "kind": "design-system",
+    "entry": "main.js",
+    "designSystem": { "components": {} }
+  }
+}
