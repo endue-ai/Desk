@@ -54,6 +54,7 @@ mod core_ui;
 mod core_undo;
 mod core_update;
 mod core_views;
+mod core_views_check;
 mod core_wasm;
 mod eris_lines;
 mod events;

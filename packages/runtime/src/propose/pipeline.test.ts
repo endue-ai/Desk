@@ -225,4 +225,44 @@ describe("desk.propose for views", () => {
     expect(await first).toMatchObject({ status: "applied" });
     await expect(m.proposals.propose("ui", SENTENCE)).rejects.toThrow(/no kind ui/);
   });
+
+  it("a kind's drafting shows before the brain answers, so its preview opens at once, and a failure takes it away", async () => {
+    const order: string[] = [];
+    let answer: (value: ScriptedAnswer) => void = () => {};
+    const core = browserCore({
+      manifests,
+      brain: {
+        answer: () => {
+          order.push("asked");
+          return new Promise<ScriptedAnswer>((resolve) => {
+            answer = resolve;
+          });
+        },
+      },
+    });
+    const kind = {
+      ...viewKind({
+        bridge: core.client,
+        commands: { run: async () => ({}) },
+        now: () => Date.parse(FIXTURE_NOW),
+        profile: () => undefined,
+      }),
+      drafting: async () => void order.push("drafting"),
+      dismiss: async () => void order.push("dismissed"),
+    };
+    const proposals = createProposals({
+      asker: createAsker(core.client),
+      kinds: [kind],
+      notify: () => {},
+    });
+    const done = proposals.propose("view", SENTENCE);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(order[0]).toBe("drafting");
+    for (let n = 0; n < 2; n++) {
+      await expect.poll(() => order.filter((o) => o === "asked").length).toBe(n + 1);
+      answer("Not a view.");
+    }
+    expect(await done).toMatchObject({ status: "failed" });
+    expect(order.at(-1)).toBe("dismissed");
+  });
 });

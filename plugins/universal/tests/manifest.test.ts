@@ -23,7 +23,7 @@ function manifestValidator() {
 }
 
 describe("plugin.json", () => {
-  it("is a UI plugin on one hidden overlay that opens, closes and allows universal views", () => {
+  it("is a UI plugin on one hidden overlay that opens, builds, closes, allows and previews universal views", () => {
     const validate = manifestValidator();
     const manifest = readJson(join(folder, "plugin.json")) as PluginManifest;
     expect(validate(manifest), JSON.stringify(validate.errors)).toBe(true);
@@ -37,11 +37,17 @@ describe("plugin.json", () => {
       // biome-ignore lint/suspicious/noTemplateCurlyInString: a desk path rooted at ${home}, not a template
       { permission: "fs:read", paths: ["${home}/**"] },
       { permission: "cmd:invoke", ids: ["*"] },
+      // Saved views: open by id, the builder's Save (ADR 0102).
+      { permission: "view:manage" },
     ]);
     expect(manifest.contributes?.commands?.map((command) => command.id)).toEqual([
       "desk.universal.open",
+      "desk.universal.build",
       "desk.universal.close",
       "desk.universal.allow",
+      "desk.universal.drafting",
+      "desk.universal.preview",
+      "desk.universal.folder",
     ]);
   });
 });
