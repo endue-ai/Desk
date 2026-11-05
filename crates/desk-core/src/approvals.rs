@@ -167,6 +167,13 @@ impl Core {
         answer(PermApproveResult {})
     }
 
+    /// Deny the waiting approval `id`, as a person's `deny` would (agent.cancel of a waiting run).
+    /// False when nothing waits under that id.
+    pub(crate) fn deny_approval(&self, id: &str) -> bool {
+        let waiting = self.approvals().waiting.remove(id);
+        waiting.is_some_and(|w| w.reply.send(Verdict::Deny).is_ok())
+    }
+
     /// The call on this thread ended with `result`: when it ran under an approval the person gave
     /// on a card, the perm:manage holders hear `perm.approval.done`.
     pub(crate) fn report_approved(&self, result: &Answer) {
@@ -258,6 +265,7 @@ impl Core {
                 .insert(id.clone(), Waiting { task, reply });
             (id, answered)
         };
+        self.run_waits(&id);
         let event = BridgeEvent::PermApproval(PermApprovalEvent {
             event: Default::default(),
             data: action.data(caller, scope, &id, task),

@@ -325,4 +325,22 @@ describe("desk.views", () => {
     await m.settle();
     expect(m.view.toasts).toEqual(["Desk could not open the link."]);
   });
+
+  it("open hands a universal view to desk.universal.open, with its notice, and draws nothing itself", async () => {
+    const opened: unknown[] = [];
+    const m = await mount({
+      commands: { "desk.universal.open": (args) => void opened.push(args) },
+    });
+    const board = {
+      id: "eris.issues-board",
+      type: "kanban" as const,
+      source: { items: { kinds: ["task" as const] } },
+    };
+    await m.host.call("view.save", { view: board, scope: VIEWS });
+    const notice = { text: "Eris made this view." };
+    expect(await m.open({ id: board.id, notice })).toEqual({ id: board.id, universal: true });
+    expect(opened).toEqual([{ id: board.id, notice }]);
+    expect(m.view.drawn).toEqual([]);
+    expect(m.params("data.query")).toEqual([]);
+  });
 });

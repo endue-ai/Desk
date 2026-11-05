@@ -5,9 +5,11 @@ import { viewTree } from "./view-tree";
 
 // Eris proposes a view (desk.propose, ADR 0073) with a scripted brain (src/propose/fixtures.ts): on
 // the views page's fixture items (views.html?propose=1) at the stub's clock, Friday 30 October 2026,
-// 9 in the morning in Seoul, and from the shell's talk line (shell.html?views=1).
+// 9 in the morning in Seoul, and from the shell's talk line (shell.html?views=1). A view is a
+// universal view now (ADR 0102, universal.spec.ts); the item view kind, `item-view`, still previews
+// in desk.views.
 const VIEWS = '[data-surface="desk.views"]';
-const PALETTE = '[data-surface="desk.palette"]';
+const UNIVERSAL = '[data-surface="desk.universal"]';
 const SENTENCE = "show my events this week as a board";
 const ID = "eris.events-this-week";
 
@@ -19,10 +21,21 @@ async function load(page: Page): Promise<void> {
   await page.waitForFunction(() => window.__views !== undefined);
   await page.evaluate(() => window.__views.ready);
   await page.evaluate(() => window.__desk.runtime.plugins?.ready);
-  for (const id of ["desk.propose", "desk.views.preview", "desk.palette.pick"])
+  for (const id of ["desk.propose", "desk.views.preview", "desk.universal.preview"])
     await expect
       .poll(() => page.evaluate((c) => window.__desk.runtime.commands.has(c), id))
       .toBe(true);
+}
+
+/** The universal view the scripted brain makes of SENTENCE (examples/brain-echo/universal.mjs). */
+const BOARD = "eris.events-board";
+
+/** desk.universal's frame, once its surface shows. */
+async function universalFrame(page: Page): Promise<Frame> {
+  await expect(page.locator(UNIVERSAL)).toBeVisible();
+  const frame = await (await page.locator(`${UNIVERSAL} iframe`).elementHandle())?.contentFrame();
+  if (!frame) throw new Error("no universal frame");
+  return frame;
 }
 
 /** The views frame, once its surface shows. */
@@ -63,21 +76,14 @@ const deskCalls = (page: Page, method: string) =>
   );
 
 test.describe("desk.propose", () => {
-  test("Make with Eris… previews a view over the fixture events; Apply keeps the file and shows it with Undo; Undo removes both", async ({
+  test("an item view previews over the fixture events; Apply keeps the file and shows it with Undo; Undo removes both", async ({
     page,
   }) => {
     await load(page);
-    await page.keyboard.press("Control+K");
-    const palette = page.frameLocator(`${PALETTE} iframe`);
-    await expect(palette.getByTestId("query")).toBeFocused();
-    await page.keyboard.type("Make with Eris");
-    await expect(palette.getByRole("option").first()).toContainText("Make with Eris…");
-    await page.keyboard.press("Enter");
-    // The command asks for the sentence in the palette's free-text pick.
-    await expect(palette.getByTestId("title")).toHaveText("Make with Eris");
-    await page.keyboard.type(SENTENCE);
-    await page.keyboard.press("Enter");
-
+    void page.evaluate(
+      (text) => window.__desk.runtime.commands.run("desk.propose", { kind: "item-view", text }),
+      SENTENCE,
+    );
     const frame = await viewsFrame(page);
     const bar = frame.locator(".preview-bar");
     await expect(bar).toContainText(`Eris made this from “${SENTENCE}”.`);
@@ -121,7 +127,7 @@ test.describe("desk.propose", () => {
   }) => {
     await load(page);
     const outcome = page.evaluate(
-      (text) => window.__desk.runtime.commands.run("desk.propose", { kind: "view", text }),
+      (text) => window.__desk.runtime.commands.run("desk.propose", { kind: "item-view", text }),
       SENTENCE,
     );
     const frame = await viewsFrame(page);
@@ -140,26 +146,30 @@ test.describe("desk.propose", () => {
 test.describe("desk.propose from the talk line", () => {
   test.use({ viewport: DESK });
 
-  test("/make on the talk line previews the view, and Eris says what she made after Apply", async ({
+  test("/make on the talk line previews the view in desk.universal, and Eris says what she made after Apply", async ({
     page,
   }) => {
     await openShell(page, "?views=1&lang=en");
     await page.keyboard.type(`/make ${SENTENCE}`);
     await expect(page.getByRole("option").last()).toHaveText(`Make with Eris · /make ${SENTENCE}`);
     await page.keyboard.press("Enter");
-    const frame = await viewsFrame(page);
-    await expect(frame.locator(".preview-bar")).toContainText(`Eris made this from “${SENTENCE}”.`);
-    await frame.locator('desk-button[data-choice="apply"]').click();
-    await expect(frame.locator(".notice-bar")).toContainText(`~/.desk/views/${ID}.yaml`);
-    expect(await fileOf(page, "__shell", ID)).toMatchObject({ id: ID, title: "Events this week" });
+    const frame = await universalFrame(page);
+    const bar = frame.locator(".bar");
+    await expect(bar).toContainText(`Eris made this from “${SENTENCE}”.`);
+    await bar.getByRole("button", { name: "Apply" }).click();
+    await expect(bar).toContainText(`~/.desk/views/${BOARD}.yaml`);
+    expect(await fileOf(page, "__shell", BOARD)).toMatchObject({
+      id: BOARD,
+      title: "Events board",
+    });
     await step(page, 3000);
     await expect(page.locator(".eris")).toHaveAttribute(
       "aria-label",
-      "Eris: I made “Events this week” and saved it in your views.",
+      "Eris: I made “Events board” and saved it in your views.",
     );
     await page.evaluate(() => window.__shell.desk.runtime.commands.run("desk.propose.undo"));
-    await expect(page.locator(VIEWS)).toBeHidden();
-    expect(await fileOf(page, "__shell", ID)).toBe("not_found");
+    await expect(page.locator(UNIVERSAL)).toBeHidden();
+    expect(await fileOf(page, "__shell", BOARD)).toBe("not_found");
   });
 
   test("a look request goes to the theme studio, and a sentence that makes a view to desk.propose, look words and all", async ({
@@ -186,18 +196,19 @@ test.describe("desk.propose from the talk line", () => {
     await expect(page.getByRole("option").last()).toHaveText(`Make with Eris · ${MADE}`);
     await page.keyboard.press("ArrowUp");
     await page.keyboard.press("Enter");
-    const frame = await viewsFrame(page);
-    await expect(frame.locator(".preview-bar")).toContainText(`Eris made this from “${MADE}”.`);
-    await expect(frame.locator("#view-title")).toHaveText("Events this week");
+    const frame = await universalFrame(page);
+    const bar = frame.locator(".bar");
+    await expect(bar).toContainText(`Eris made this from “${MADE}”.`);
+    await expect(frame.locator("#root > desk-universal-view")).toHaveAttribute("state", "ready");
     await expect(studio).toBeHidden();
     const asked = await page.evaluate(() =>
       window.__shell.stub.log
         .filter((entry) => entry.request.method === "brain.ask")
         .map((entry) => (entry.request.params as { tool: { name: string } }).tool.name),
     );
-    expect(asked).toEqual(["propose_theme", "propose_view"]);
-    await frame.locator('desk-button[data-choice="discard"]').click();
-    await expect(page.locator(VIEWS)).toBeHidden();
+    expect(asked).toEqual(["propose_theme", "propose_universal_view"]);
+    await bar.getByRole("button", { name: "Discard" }).click();
+    await expect(page.locator(UNIVERSAL)).toBeHidden();
   });
 });
 

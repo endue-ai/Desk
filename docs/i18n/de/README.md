@@ -13,6 +13,32 @@ Netzwerk, Audio, Fenster), und alles andere ist Code, der sich ohne Neustart än
 
 <!-- Screenshot: wird mit der Szene für den ersten Start ergänzt. -->
 
+## Warum Desk
+
+Stellen Sie sich die Garage eines Builders vor: ein Raum, in dem der Builder in der Mitte arbeitet, ein
+Assistent sich erinnert und nachfragt, Roboterarme die Arbeit tun und jede Wand die Arbeit in der Form
+zeigt, die der Builder will. Desk ist diese Garage, auf Ihrem Rechner.
+
+- **Ein tägliches Werkzeug.** Builder öffnen es jeden Tag, also lässt es sich vor allem anderen
+  installieren, starten und antwortet.
+- **Agenten-nativ.** Eris, die ständige Sekretärin, hat ihr eigenes Gedächtnis auf diesem Rechner und
+  koordiniert lokale und externe Agenten. Agenten haben Hände; der Mensch entscheidet.
+- **Ansichten zuerst.** Daten einmal ordnen und in jeder Form zeichnen: eine eigene Ansicht bauen, Eris
+  eine aus einem Satz machen lassen oder eine aus dem Markt installieren.
+- **Deins.** Designsystem, Anordnung und Integrationen wählt und ersetzt der Builder.
+
+Desk ist ein Helfer für Builder: Es richtet eine stabile Umgebung zum Bauen ein, lässt sie diese frei
+gestalten und ermöglicht ihnen, das beste Produkt in gleichbleibend höchster Qualität zu bauen. Wo Desk
+steht und wohin es geht, steht in `docs/roadmap.md`.
+
+### Ihr Desk ist ein Ordner
+
+Alles, was Sie gestalten, liegt in `~/.desk`: `init.yaml`, Ihre Profile, `keys.yaml`, Ihre Ansichten und
+`plugins.lock`, einfache Dateien zum Lesen, Bearbeiten und Versionieren mit git. `desk export
+<Ordner|Datei.zip>` nimmt sie auf einen anderen Computer mit (`--with-data` auch den eigenen Zustand des
+Desks, nie Geheimnisse), `desk import` holt sie zurück, ohne Ihre `init.yaml` zu überschreiben, und `desk
+doctor` listet jede Datei und ob sie sich so liest, wie ihre Spezifikation es sagt.
+
 ## Bauen
 
 ```bash
@@ -36,6 +62,7 @@ ausgeschaltet.
 
 - `docs/architecture.md`: wie die Schichten zusammenspielen
 - `docs/adr/`: schwer umkehrbare Entscheidungen und ihre Begründung
+- `docs/roadmap.md`: warum es Desk gibt, wo es steht und wohin es geht
 - `AGENTS.md`: Übersicht über das Repository, Befehle und Regeln (für Menschen und KI-Agenten)
 - `CONTRIBUTING.md`: wie sich eine Änderung einreichen lässt
 

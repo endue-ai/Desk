@@ -117,11 +117,6 @@
 .composer textarea,
 .composer input,
 .composer select {
-  padding: 4px 8px;
-  border: 1px solid var(--desk-input);
-  border-radius: var(--desk-radius-sm);
-  background: var(--desk-background);
-  color: var(--desk-text);
   font: inherit;
 }
 

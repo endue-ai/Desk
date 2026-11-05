@@ -1,0 +1,15 @@
+{
+  "target": "BridgeRequest",
+  "description": "the reporter names its agent by its own id; the registry adds the reporter",
+  "instance": {
+    "id": 46,
+    "method": "agent.report",
+    "params": {
+      "id": "r12",
+      "agent": { "id": "endue.local-agents/claude", "name": "Claude Code" },
+      "title": "x",
+      "state": "running",
+      "startedAt": "2026-11-05T09:32:00Z"
+    }
+  }
+}

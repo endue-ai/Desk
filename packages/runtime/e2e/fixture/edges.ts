@@ -2,6 +2,8 @@
 // toolbar (right), the dock (bottom) and two plugins on the grid. Manifests are read from the plugin
 // folders, so the page shows what `just dev` installs. Never shipped.
 //   ?broken=<id>    plugin.list reports that plugin as failed
+//   ?roles=1        test.dock is installed too: another provider of role:dock (ADR 0104), the
+//                   counter under that id on the bottom edge
 import { BridgeClient, browserStub, type PluginInfo, type PluginManifest } from "@endue-ai/bridge";
 import "../../src/desk.css";
 import { createRuntime, ManualClock } from "../../src/index";
@@ -18,18 +20,29 @@ const ids = [
   "endue.toolbar",
   "example.hello-ui",
   "test.counter",
+  ...(query.has("roles") ? ["test.dock"] : []),
 ];
 const manifest = async (id: string): Promise<PluginManifest> =>
-  id === "test.counter"
+  id === "test.dock"
     ? {
         id,
-        name: "Counter",
+        name: "Test dock",
         version: "0.1.0",
         kind: "ui",
         entry: "ui/index.html",
-        surfaces: [{ id: "main", title: "Counter", placement: "center" }],
+        provides: ["role:dock"],
+        surfaces: [{ id: "main", title: "Test dock", placement: "bottom" }],
       }
-    : ((await (await fetch(`/plugins/${id}/plugin.json`)).json()) as PluginManifest);
+    : id === "test.counter"
+      ? {
+          id,
+          name: "Counter",
+          version: "0.1.0",
+          kind: "ui",
+          entry: "ui/index.html",
+          surfaces: [{ id: "main", title: "Counter", placement: "center" }],
+        }
+      : ((await (await fetch(`/plugins/${id}/plugin.json`)).json()) as PluginManifest);
 
 const plugins: PluginInfo[] = await Promise.all(
   ids.map(async (id) => ({

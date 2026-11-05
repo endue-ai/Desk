@@ -7,6 +7,7 @@
       { "imports": { "@endue-ai/plugin-sdk": "/_desk/plugin-sdk.js" } }
     </script>
     <link rel="stylesheet" href="/_desk/tokens.css" />
+    <link rel="stylesheet" href="/_desk/base.css" />
     <link rel="stylesheet" href="./style.css" />
     <link rel="stylesheet" href="./messages.css" />
     <link rel="stylesheet" href="./layouts.css" />
@@ -14,17 +15,18 @@
   <body data-layout="conversation" data-density="comfortable" data-thread="closed">
     <header id="bar">
       <h1 id="title">Chat</h1>
-      <div id="layouts" role="tablist" aria-label="Layout"></div>
+      <div id="layouts" class="desk-tabs" role="tablist" aria-label="Layout"></div>
       <input
         id="search"
+        class="desk-field"
         type="search"
         placeholder="Search every chat (/)"
         aria-label="Search every chat"
         autocomplete="off"
       />
       <div class="bar-tools" role="toolbar" aria-label="Chat tools">
-        <button id="read-all" type="button" title="Mark everything read">Mark all read</button>
-        <button id="refresh" type="button" title="Refresh" aria-label="Refresh">
+        <button id="read-all" class="desk-btn desk-btn-quiet" type="button" title="Mark everything read">Mark all read</button>
+        <button id="refresh" class="desk-icon-btn" type="button" title="Refresh" aria-label="Refresh">
           <span aria-hidden="true">↻</span>
         </button>
       </div>

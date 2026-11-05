@@ -14,6 +14,7 @@ import {
   fixtureItems,
 } from "./fixtures";
 import type {
+  AnyView,
   BridgeEvent,
   CallerId,
   CatalogConnector,
@@ -26,12 +27,11 @@ import type {
   ItemQuery,
   ItemSource,
   Permission,
-  View,
-  ViewSummary,
 } from "./generated";
 import { starMatch } from "./stub-covers";
 import { checkSources, fieldsOf, matches, page } from "./stub-query";
-import { COMPONENTS, viewProblems } from "./stub-views";
+import { anyViewProblems, idOf, summaryOf } from "./stub-universal";
+import { COMPONENTS } from "./stub-views";
 
 /** The methods this part of the stub serves. */
 export type DataServed =
@@ -81,7 +81,7 @@ export function stubData(ctx: DataContext): StubData {
   const connectors = new Map<string, FixtureConnector>([[FIXTURE_CONNECTOR, fixtureConnector()]]);
   type Subscription = { caller: string; scope: DataReadPermission; query: ItemQuery };
   const subscriptions = new Map<string, Subscription>();
-  const views = new Map<string, View>();
+  const views = new Map<string, AnyView>();
   const missing = (what: string) => new StubError("not_found", `${what} does not exist`);
   const invalid = (why: string) => new StubError("invalid_params", why);
 
@@ -138,13 +138,6 @@ export function stubData(ctx: DataContext): StubData {
       if (setting.required && !(name in given)) throw invalid(`${connector.id} needs ${name}`);
     return kept;
   };
-  const summary = ({ id, version, title, description }: View): ViewSummary => ({
-    id,
-    version,
-    title,
-    ...(description === undefined ? {} : { description }),
-    source: "file",
-  });
 
   return {
     upsert,
@@ -244,7 +237,8 @@ export function stubData(ctx: DataContext): StubData {
       },
       "view.list": ({ scope }, caller) => {
         ctx.check(caller, scope);
-        return { views: structuredClone([...views.values()].sort(byId).map(summary)) };
+        const listed = [...views.values()].map(summaryOf).sort(byId);
+        return { views: structuredClone(listed) };
       },
       "view.get": ({ id, scope }, caller) => {
         ctx.check(caller, scope);
@@ -254,10 +248,10 @@ export function stubData(ctx: DataContext): StubData {
       },
       "view.save": ({ view, scope }, caller) => {
         ctx.check(caller, scope);
-        const problems = viewProblems(view);
+        const problems = anyViewProblems(view);
         if (problems.length > 0) throw invalid(`the view is not valid: ${problems.join("; ")}`);
-        views.set(view.id, structuredClone(view));
-        ctx.later({ event: "view.changed", data: { id: view.id, change: "saved" } });
+        views.set(idOf(view), structuredClone(view));
+        ctx.later({ event: "view.changed", data: { id: idOf(view), change: "saved" } });
         return {};
       },
       "view.remove": ({ id, scope }, caller) => {

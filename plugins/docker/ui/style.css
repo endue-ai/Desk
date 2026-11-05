@@ -59,20 +59,6 @@ h1 {
   gap: 2px;
 }
 
-#tabs button {
-  padding: 2px 10px 4px;
-  border: 0;
-  border-bottom: 2px solid transparent;
-  background: none;
-  color: var(--desk-text-muted);
-  font: inherit;
-  cursor: pointer;
-}
-
-#tabs button[aria-selected="true"] {
-  border-bottom-color: var(--desk-primary-text);
-  color: var(--desk-text);
-}
 
 #problem {
   margin: 0;

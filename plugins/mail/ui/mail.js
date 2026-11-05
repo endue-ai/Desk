@@ -7,6 +7,7 @@
 import { createActions } from "./actions.js";
 import { registerCommands } from "./commands.js";
 import { NO_ACCOUNT } from "./compose.js";
+import { latestOf, latestQuery } from "./latest.js";
 import {
   MAILBOXES,
   mailboxOf,
@@ -294,6 +295,14 @@ export function createMail({ bridge, commands, settings, surface }, view, option
       pick: actions.pick,
       setFlags: sync.setFlags,
       moveTo: sync.moveTo,
+      latest: async (args) => {
+        const { box, query } = latestQuery(args);
+        const result = await actions.query(query);
+        const items = /** @type {MessageItem[]} */ (
+          result.items.filter((i) => i.kind === "message")
+        );
+        return latestOf(box, items);
+      },
     },
   });
 

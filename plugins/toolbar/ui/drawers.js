@@ -41,6 +41,7 @@ const KINDS = [
   ["perm:manage", "Manage permissions", () => []],
   ["plugin:manage", "Manage plugins", () => []],
   ["update:manage", "Manage desk updates", () => []],
+  ["account:manage", "Sign the desk in to endue ID", () => []],
   ["connector:manage", "Manage connections", () => []],
   ["cmd:advise", "Override commands", () => []],
   [

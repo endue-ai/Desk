@@ -129,3 +129,86 @@ describe("the commands", () => {
     expect(again.app.ui).toMatchObject({ view: "board", compare: ["codex"], chatAgent: "claude" });
   });
 });
+
+describe("runs in the desk's agent registry (ADR 0100)", () => {
+  const reports = (m: Awaited<ReturnType<typeof mount>>) =>
+    m.host.calls
+      .filter((c) => c.method === "agent.report")
+      .map((c) => c.params as unknown as Record<string, unknown>);
+
+  it("reports every run when it starts and when it ends", async () => {
+    const m = await mount({ handlers: { "agent.report": () => ({}) } });
+    await m.host.invoke("endue.local-agents.ask", { agent: "codex", prompt: "What is here?" });
+    const sent = reports(m);
+    expect(sent.map((r) => r.state)).toEqual(["running", "done"]);
+    expect(sent[0]).toMatchObject({
+      agent: { id: "codex", name: "Codex", brain: "codex" },
+      title: "What is here?",
+    });
+    expect(sent[1]).toMatchObject({ id: sent[0]?.id, result: "Three files." });
+    expect(typeof sent[1]?.endedAt).toBe("string");
+  });
+
+  it("stops a run when the desk says agent.cancelled", async () => {
+    const m = await mount({
+      script: computer({ claude: { hang: true } }),
+      handlers: { "agent.report": () => ({}) },
+    });
+    const pending = m.talk.send("slow");
+    await m.settle();
+    const runId = String(reports(m)[0]?.id);
+    m.host.emit({ event: "agent.cancelled", data: { runId } });
+    expect(await pending).toMatchObject({ ending: "stopped" });
+    await m.settle();
+    expect(reports(m).at(-1)).toMatchObject({ id: runId, state: "cancelled" });
+  });
+});
+
+describe("commands for agents (ADR 0088, 0099)", () => {
+  const work = { "endue.local-agents.folder": "~/work" };
+
+  it("ask is read-only whatever the access setting, in a folder inside the work folder", async () => {
+    const m = await mount({ init: { ...work, "endue.local-agents.access": "agent" } });
+    const args = { agent: "codex", prompt: "Which tests fail?", folder: "desk" };
+    expect(await m.host.invoke("endue.local-agents.ask", args)).toMatchObject({
+      agent: "codex",
+      answer: "Three files.",
+    });
+    const call = m.programs.asked("codex")[0];
+    expect(call?.args.join(" ")).toContain("--sandbox read-only");
+    expect(call?.cwd).toBe("~/work/desk");
+    for (const folder of ["../x", "/etc", "~/other", "a/../../b", "C:\\x"])
+      await expect(m.host.invoke("endue.local-agents.ask", { ...args, folder })).rejects.toThrow(
+        /inside the work folder/,
+      );
+    expect(m.programs.asked("codex")).toHaveLength(1);
+  });
+
+  it("work runs with agent access in the folder and answers", async () => {
+    const m = await mount({ init: work });
+    const args = { agent: "codex", prompt: "Run the tests and fix them", folder: "desk" };
+    expect(await m.host.invoke("endue.local-agents.work", args)).toMatchObject({
+      agent: "codex",
+      answer: "Three files.",
+      ending: "done",
+    });
+    const call = m.programs.asked("codex")[0];
+    expect(call?.args).not.toContain("read-only");
+    expect(call?.cwd).toBe("~/work/desk");
+    expect(m.view.latest().activity.runs[0]).toMatchObject({ origin: "command" });
+  });
+
+  it("an agent puts a task on the board without running it", async () => {
+    const m = await mount();
+    const card = await m.host.invoke("endue.local-agents.add-card", {
+      prompt: "Write the release notes",
+      agent: "claude",
+    });
+    expect(card).toMatchObject({ column: "todo", agent: "claude" });
+    await m.host
+      .invoke("endue.local-agents.add-card", { prompt: "Ship it", run: true })
+      .catch(() => undefined);
+    await m.settle();
+    expect(m.programs.asked("claude")).toHaveLength(0);
+  });
+});

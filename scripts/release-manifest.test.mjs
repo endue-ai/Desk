@@ -12,8 +12,11 @@ import {
   pruned,
   readDist,
   releaseManifest,
+  rolledOut,
+  soakedCandidate,
   targetsOf,
   unlisted,
+  withRollout,
 } from "./release-manifest.mjs";
 
 const BASE = "https://releases.example.test/desk";
@@ -199,6 +202,79 @@ describe("release-manifest", () => {
     assert.equal(promotable(index, { now: NOW, days: 3 }), "0.2.1-pre.6");
     assert.equal(promotable(index, { now: "2026-11-16T00:00:00Z", days: 3 }), undefined);
   });
+
+  it("rollout sets a listed build's share and raises the serial; nothing else moves", () => {
+    const index = listed(
+      listed(undefined, entry("0.4.0", NOW), { channel: "stable", now: NOW }),
+      withRollout(entry("0.4.1", NOW), 10),
+      { channel: "stable", now: NOW },
+    );
+    assert.deepEqual(
+      index.releases.map((r) => [r.version, r.rollout]),
+      [
+        ["0.4.1", 10],
+        ["0.4.0", 100],
+      ],
+    );
+    const wider = rolledOut(index, "0.4.1", 50, { now: NOW });
+    assert.equal(wider.serial, index.serial + 1);
+    assert.deepEqual(
+      wider.releases.map((r) => [r.version, r.rollout]),
+      [
+        ["0.4.1", 50],
+        ["0.4.0", 100],
+      ],
+    );
+    assert.equal(
+      rolledOut(wider, "0.4.1", 0, { now: NOW }).releases[0].rollout,
+      0,
+      "0 stops new desks",
+    );
+    assert.throws(() => rolledOut(index, "0.3.0", 50, { now: NOW }), /not on the stable index/u);
+    for (const bad of [101, -1, 12.5, "half"]) {
+      assert.throws(
+        () => withRollout(entry("0.4.1", NOW), bad),
+        /not a rollout share/u,
+        String(bad),
+      );
+    }
+  });
+
+  it("a line's final waits for its newest candidate to have been on beta three days", () => {
+    const at = (version, date, commit) => ({ ...entry(version, date), commit });
+    let beta;
+    for (const build of [
+      at("0.4.0-rc.30", "2026-11-10T00:00:00Z", "aaa"),
+      at("0.4.0", "2026-11-14T00:00:00Z", "aaa"),
+      at("0.4.1-rc.41", "2026-11-16T00:00:00Z", "bbb"),
+      at("0.3.4-rc.42", "2026-11-12T00:00:00Z", "ccc"),
+    ]) {
+      beta = listed(beta, build, { channel: "beta", now: NOW });
+    }
+    const line = "release/v0.4";
+    assert.deepEqual(
+      [soakedCandidate(beta, { line, now: NOW, days: 3 })].map((r) => [r.version, r.commit]),
+      [["0.4.1-rc.41", "bbb"]],
+      "the final 0.4.0 is not a candidate; 0.3's candidate is not 0.4's",
+    );
+    assert.equal(
+      soakedCandidate(beta, { line, now: "2026-11-18T00:00:00Z" }),
+      undefined,
+      "too young",
+    );
+    const newer = listed(beta, at("0.4.1-rc.50", "2026-11-19T00:00:00Z", "ddd"), {
+      channel: "beta",
+      now: NOW,
+    });
+    assert.equal(
+      soakedCandidate(newer, { line, now: NOW }),
+      undefined,
+      "a newer candidate restarts the wait",
+    );
+    assert.equal(soakedCandidate(undefined, { line, now: NOW }), undefined, "no beta index yet");
+    assert.equal(soakedCandidate(beta, { line: "release/v0.3", now: NOW }).version, "0.3.4-rc.42");
+    assert.throws(() => soakedCandidate(beta, { line: "v0.4.0", now: NOW }), /not a release line/u);
+  });
 });
 
 /** specs/update/v0, the formats a desk reads (#319): one validator per document. */
@@ -249,6 +325,8 @@ describe("release-manifest and specs/update/v0", () => {
     spec.index(two, "an index of two");
     spec.index(unlisted(two, "0.1.9", { now: NOW }), "an index after a rollback");
     spec.index(pruned(two, { now: NOW, days: 14 }).index, "a pruned index");
+    spec.index(rolledOut(two, "0.2.0", 10, { now: NOW }), "an index rolling out to a tenth");
+    spec.index(rolledOut(two, "0.2.0", 0, { now: NOW }), "an index with a stopped rollout");
     assert.equal(two.serial, 2);
   });
 });

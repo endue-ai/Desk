@@ -9,8 +9,10 @@ plugins:
   # Plugin ids to keep off at start, built-in plugins included. Example: [endue.sidebar]
   disabled: []
 
-# Settings by key, for the core and plugins. Example:
+# Settings by key, for the core and plugins. Examples:
 #   eris.voice: true
+#   desk.brain.use: local      # Eris's brain: endue (default), local (Ollama) or echo
+#   desk.brain.model: llama3.2 # the Ollama model of the local brain
 settings: {}
 
 # What each agent of the brain may be granted here, by agent id. An agent without an entry asks you
@@ -19,6 +21,16 @@ settings: {}
 #     allow:
 #       - { permission: fs:write, paths: ["~/Documents/Notes/**"] }
 agents: {}
+
+# MCP servers whose tools agents may call, by name. Each one starts when you allow it to run its
+# command; env names variables to pass from Desk's environment (never write their values here).
+# Example:
+#   servers:
+#     github:
+#       command: npx
+#       args: ["-y", "@modelcontextprotocol/server-github"]
+#       env: [GITHUB_PERSONAL_ACCESS_TOKEN]
+mcp: {}
 
 # Keep this file the same on every desk you use, through your endue account.
 sync:

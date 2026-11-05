@@ -61,7 +61,7 @@ function validatorFor(docs: Schema[]) {
 }
 
 /** The plugin manifest and the specs it references, which reference it back: one set. */
-const plugin = ["plugin/v0", "item/v0", "view/v0", "connector/v0"].flatMap(schemas);
+const plugin = ["plugin/v0", "item/v0", "view/v0", "connector/v0", "agent/v0"].flatMap(schemas);
 
 const sets: Record<string, Schema[]> = {
   bridge: [...plugin, ...schemas("bridge/v0")],
@@ -192,7 +192,7 @@ describe.each(Object.entries(sets))("%s vectors", (spec, docs) => {
 
 describe("item, view and connector vectors are judged as their folders say", () => {
   it("each spec has five valid and five invalid vectors at least", () => {
-    for (const spec of ["item", "view", "connector"]) {
+    for (const spec of ["item", "view", "connector", "agent"]) {
       const all = vectors(spec);
       const valid = all.filter((v) => v.valid).length;
       expect(valid, spec).toBeGreaterThanOrEqual(5);

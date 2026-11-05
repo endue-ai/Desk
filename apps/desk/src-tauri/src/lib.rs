@@ -1,8 +1,11 @@
 //! The Tauri shell: windows, the webview and the plugin URL scheme. Everything else lives in desk-core.
 
+mod brains;
 mod commands;
+mod core_files;
 mod events;
 mod file_urls;
+mod mcp;
 mod open_files;
 mod palette;
 mod palette_assets;
@@ -16,23 +19,20 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
-use desk_brain_endue::HttpBrain;
 use desk_bridge::{
-    BrainConversePermission, CmdInvokePermission, ConnectorManagePermission, FsReadPermission,
-    FsWritePermission, PermManagePermission, Permission, PluginManagePermission,
-    ShellOpenPermission, ThemeManagePermission, UpdateManagePermission, ViewManagePermission,
+    AccountManagePermission, BrainConversePermission, CmdInvokePermission,
+    ConnectorManagePermission, FsReadPermission, FsWritePermission, PermManagePermission,
+    Permission, PluginManagePermission, ShellOpenPermission, ThemeManagePermission,
+    UpdateManagePermission, ViewManagePermission,
 };
+use desk_core::account::{Account, AccountOptions, DEFAULT_ID_URL, NetIdClient};
 use desk_core::{
-    BrainMode, BrainOptions, Core, MockRemote, PluginWatcher, Roots, SyncError, SyncOutcome,
-    ThemeWatcher, ViewWatcher,
+    Core, MockRemote, PluginWatcher, Roots, SyncError, SyncOutcome, ThemeWatcher, ViewWatcher,
 };
 use tauri::{Emitter, Manager};
 
 /// The caller id of the web runtime itself. Plugins call under their own ids.
 pub const RUNTIME_CALLER: &str = "desk";
-
-/// Where the brain lives unless `DESK_BRAIN_URL` says otherwise: examples/brain-echo (`just brain-echo`).
-pub const DEFAULT_BRAIN_URL: &str = "http://127.0.0.1:8787/v0";
 
 /// Where init.yaml lives under home unless `DESK_INIT` names another file, like `~/.emacs.d/init.el`.
 pub const INIT_FILE: &str = ".desk/init.yaml";
@@ -87,12 +87,9 @@ pub fn run() {
             let remote = MockRemote::with_file(data.join("sync-mock.json"));
             let core = Core::new(Roots { home })
                 .with_init_file(init)
-                .with_sync(Arc::new(remote), Some(data.join("sync.json")))
-                .with_plugin_store(data.join("plugins.json"))
-                .with_store_file(data.join("store.json"))
-                .with_secrets_file(data.join("secrets.json"))
-                // Every fs.write keeps the bytes it replaces here first (ADR 0076).
-                .with_history_dir(data.join("history"));
+                .with_sync(Arc::new(remote), Some(data.join("sync.json")));
+            // Everything that outlives a quit: grants, settings, the log and the rest (#351).
+            let core = core_files::open(core, &data);
             // Safe mode, asked for or after two starts that never got ready, holds plugins off as
             // they install (ADR 0061).
             let (mut core, last) = commands::start::begin(&data, core);
@@ -115,28 +112,25 @@ pub fn run() {
             // The person's own themes (ADR 0058): every theme folder in <data>/themes/ is installed
             // now, not built in, and comes back at every start.
             core = core.with_themes_dir(data.join("themes"));
-            let url =
-                std::env::var("DESK_BRAIN_URL").unwrap_or_else(|_| DEFAULT_BRAIN_URL.to_owned());
-            match HttpBrain::new(&url) {
-                Ok(brain) => {
-                    // An HTTP brain is endue AI or brain-echo: brain.status names it cloud.
-                    let options = BrainOptions {
-                        state_file: Some(data.join("brain.json")),
-                        mode: BrainMode::Cloud,
-                        ..BrainOptions::default()
-                    };
-                    core = core.with_brain(Arc::new(brain), options);
-                }
-                Err(why) => eprintln!("endue Desk: no brain ({why}); brain.say is unavailable"),
-            }
+            // The person's endue ID (ADR 0089): signing in hands the brain its bearer token.
+            let id_url = std::env::var("DESK_ID_URL").unwrap_or_else(|_| DEFAULT_ID_URL.to_owned());
+            let mut account = AccountOptions::new(id_url);
+            account.file = Some(data.join("account.json"));
+            let account = Account::open(account, NetIdClient);
+            core = core.with_account(account.clone());
+            // Eris's brain is the one the runtime's setting chooses, endue AI by default, and the
+            // local brain stands in while a remote one cannot be reached (ADR 0094).
+            core = core.with_brains(brains::brains(&data, account));
             // The desk's own updates (ADR 0054), when this build carries an updater key.
             let updater = update::updater(app.handle(), &data);
             if let Some(updater) = &updater {
                 core = core.with_updater(updater.clone());
             }
             let core = Arc::new(core);
-            // The brain's tool calls run in the core, each as the agent that asks (ADR 0072).
+            // The brain's tool calls run in the core, each as the agent that asks (ADR 0072), and
+            // every turn offers Eris the commands plugins mark as tools (ADR 0089).
             core.route_tools();
+            core.start_account();
             // The runtime mounts plugins, so it may list and toggle them.
             core.grant(
                 RUNTIME_CALLER,
@@ -213,6 +207,13 @@ pub fn run() {
                     permission: Default::default(),
                 }),
             );
+            // The runtime signs the desk in to endue ID and out again (ADR 0089).
+            core.grant(
+                RUNTIME_CALLER,
+                Permission::AccountManage(AccountManagePermission {
+                    permission: Default::default(),
+                }),
+            );
             // The person's themes (ADR 0058): the theme studio saves, imports, exports and removes
             // them as the runtime, and `desk theme` does the same as the CLI (whose other grants
             // are desk_ipc::grants()).
@@ -286,6 +287,8 @@ pub fn run() {
             // event too (ADR 0030).
             app.manage(socket::serve(&core));
             app.manage(Arc::clone(&core));
+            // MCP servers from init.yaml attach once the runtime is ready (ADR 0098).
+            app.manage(mcp::McpServers::new(&core, home_dir()));
             palette::setup(app, &core)?;
             core.start_updates();
             if let Some(updater) = updater {

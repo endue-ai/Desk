@@ -1,0 +1,23 @@
+{
+  "target": "AgentListResult",
+  "description": "Eris working and a local program waiting",
+  "instance": {
+    "agents": [
+      {
+        "id": "eris",
+        "name": "Eris",
+        "source": "eris",
+        "caller": "agent:eris",
+        "state": "working",
+        "runs": 2
+      },
+      {
+        "id": "endue.local-agents/claude",
+        "name": "Claude Code",
+        "source": "local",
+        "brain": "claude",
+        "state": "waiting"
+      }
+    ]
+  }
+}

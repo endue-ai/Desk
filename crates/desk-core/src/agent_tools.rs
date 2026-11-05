@@ -4,7 +4,8 @@
 //! `desk-run` runs `{ command, args }`, and a command's id or tool name runs it with the arguments
 //! as its args, under the `cmd:invoke` scope of that one command. So the permission engine, the
 //! agent's allowlist, the prompt and the `perm` log apply as to any caller. A command waits for its
-//! answer. A call that names no agent runs `echo` only. Failures come back as `{ error, reason? }`.
+//! answer. A call that names no agent runs `echo`, or a desk tool as Eris (`agent:eris`, ADR 0089),
+//! never a bridge method. Failures come back as `{ error, reason? }`.
 //! Each call runs as part of its desk turn, the task an approval's "Allow for this task" lasts for
 //! (ADR 0078); a call the person did not approve says `reason: "not-approved"`.
 
@@ -13,12 +14,14 @@ use std::sync::{Arc, Weak};
 use std::time::{Duration, Instant};
 
 use desk_brain::{ToolCall, ToolDefinition};
-use desk_bridge::{BridgeError, BridgeEvent, BridgeRequest, BridgeResponse, ErrorCode};
+use desk_bridge::{
+    BrainTurnTool, BridgeError, BridgeEvent, BridgeRequest, BridgeResponse, ErrorCode,
+};
 use serde_json::{Map, Value, json};
 
 use crate::agents::agent_caller;
 use crate::approvals::in_task;
-use crate::conversation::{Tools, echo};
+use crate::conversation::Tools;
 use crate::core_tools::{DESK_RUN, DESK_TOOLS};
 use crate::handler::{Core, error};
 
@@ -29,10 +32,11 @@ impl Core {
     /// Run the brain's tool calls through this core from now on, each as the agent that asks for
     /// it. Without it the brain gets `echo` only. Call it once the core is shared.
     pub fn route_tools(self: &Arc<Self>) {
+        let tools: Weak<dyn Tools> = Arc::downgrade(self) as Weak<Core>;
         if let Some(conversation) = &self.conversation {
-            let tools: Weak<dyn Tools> = Arc::downgrade(self) as Weak<Core>;
-            conversation.route(tools);
+            conversation.route(tools.clone());
         }
+        self.route_choice(tools);
     }
 
     /// The tool's output from a bridge failure, with why the agent was refused when it was.
@@ -57,7 +61,12 @@ impl Core {
     }
 
     /// cmd.invoke as `caller`, then the command's answer (`cmd.answered`) as the tool's output.
-    fn invoke_for(&self, turn: &str, caller: &str, request: BridgeRequest) -> (Value, bool) {
+    pub(crate) fn invoke_for(
+        &self,
+        turn: &str,
+        caller: &str,
+        request: BridgeRequest,
+    ) -> (Value, bool) {
         let events = self.events().subscribe();
         let started = match in_task(turn, || self.handle(caller, request)) {
             (BridgeResponse::BridgeSuccess(ok), _) => ok.result,
@@ -132,11 +141,37 @@ fn invoke(id: &str, args: Map<String, Value>) -> Result<BridgeRequest, String> {
 }
 
 impl Tools for Core {
+    fn step(&self, call: &ToolCall) -> Option<BrainTurnTool> {
+        let named = if call.name == DESK_RUN {
+            call.arguments.get("command")?.as_str()?
+        } else {
+            call.name.as_str()
+        };
+        // A bridge method of the same name wins (ADR 0088): it is no hand-off to a plugin.
+        if call.name != DESK_RUN && self.tool_request(call).is_ok_and(|r| !is_invoke(&r)) {
+            return None;
+        }
+        let info = self.command(&self.command_named(named)?)?;
+        Some(BrainTurnTool {
+            call_id: call.call_id.clone(),
+            command: info.id,
+            provider: info.provider,
+            title: Some(info.title),
+            ok: None,
+        })
+    }
+
     fn run(&self, turn: &str, call: &ToolCall) -> (Value, bool) {
         if call.name == "echo" {
             return echo(call);
         }
-        let Some(caller) = call.agent_id.as_deref().and_then(agent_caller) else {
+        // A brain.say call that names no agent is Eris's (ADR 0089): she may use the desk's tools
+        // (desk-tools, desk-run and the commands), never a bridge method on her own.
+        let agent = call
+            .agent_id
+            .as_deref()
+            .or_else(|| self.for_eris(call).then_some(ERIS));
+        let Some(caller) = agent.and_then(agent_caller) else {
             let anonymous = format!(
                 "{} runs only for a tool call that names its agent; this one names none Desk can use",
                 call.name
@@ -153,7 +188,7 @@ impl Tools for Core {
                 );
             }
         };
-        if matches!(request, BridgeRequest::CmdInvoke(_)) {
+        if is_invoke(&request) {
             return self.invoke_for(turn, &caller, request);
         }
         match in_task(turn, || self.handle(&caller, request)) {
@@ -171,4 +206,31 @@ impl Tools for Core {
     fn offer(&self) -> Option<Vec<ToolDefinition>> {
         Core::offer(self)
     }
+}
+
+/// The agent a brain.say call that names none runs as: Eris (ADR 0089).
+pub(crate) const ERIS: &str = "eris";
+
+impl Core {
+    /// Whether a call that names no agent is one of the desk's tools, which Eris runs.
+    fn for_eris(&self, call: &ToolCall) -> bool {
+        call.name == DESK_TOOLS
+            || call.name == DESK_RUN
+            || self
+                .tool_request(call)
+                .is_ok_and(|r| is_invoke(&r) && call.name != "cmd.invoke")
+    }
+}
+
+fn is_invoke(request: &BridgeRequest) -> bool {
+    matches!(request, BridgeRequest::CmdInvoke(_))
+}
+
+/// The tool Desk runs for anyone: echo answers with its arguments. Any other is unknown here.
+pub(crate) fn echo(call: &ToolCall) -> (Value, bool) {
+    if call.name == "echo" {
+        return (Value::Object(call.arguments.clone()), false);
+    }
+    let unknown = format!("Desk has no tool named {}", call.name);
+    (json!({ "error": unknown }), true)
 }

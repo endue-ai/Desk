@@ -1,0 +1,13 @@
+{
+  "target": "InitDocument",
+  "description": "a server name is lowercase, so it fits the caller mcp:<name> and command ids",
+  "instance": {
+    "mcp": {
+      "servers": {
+        "GitHub": {
+          "command": "npx"
+        }
+      }
+    }
+  }
+}

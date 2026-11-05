@@ -19,7 +19,9 @@ path = "src/main.rs"
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
+desk-brain.workspace = true
 desk-brain-endue.workspace = true
+desk-brain-local.workspace = true
 desk-bridge.workspace = true
 desk-core.workspace = true
 desk-index.workspace = true
@@ -28,6 +30,7 @@ desk-trace.workspace = true
 desk-update = { workspace = true, features = ["https"] }
 # Not in [workspace.dependencies] yet: a later chore moves it there.
 desk-ipc = { path = "../../../crates/desk-ipc" }
+desk-mcp-client = { path = "../../../crates/desk-mcp-client" }
 serde_json.workspace = true
 tauri = { version = "2", features = ["tray-icon"] }
 tauri-plugin-global-shortcut = "2"

@@ -31,17 +31,6 @@ body {
   gap: 8px;
   height: 40px;
   padding: 0 12px 0 4px;
-  border: 1px solid var(--desk-border);
-  border-radius: var(--desk-radius-md);
-  background: var(--desk-muted);
-  color: inherit;
-  font: inherit;
-  white-space: nowrap;
-  cursor: pointer;
-}
-
-.tile:hover {
-  border-color: color-mix(in srgb, var(--desk-text) 12%, var(--desk-border));
 }
 
 .tile:focus-visible {

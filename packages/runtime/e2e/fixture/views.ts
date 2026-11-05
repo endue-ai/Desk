@@ -13,6 +13,8 @@
 //   ?resources=event,message,note   desk.fixtures serves only these kinds
 //   ?propose=1      desk.propose on a scripted brain (src/propose/fixtures.ts), as the shell has it,
 //                   with the card for profiles and key bindings
+// fs.read serves the fixture board ~/boards/launch.yaml and fs.list the folder ~/notes, for
+// desk.universal's builder and folder source (fixture/universal-files.ts).
 import {
   type ConnectorInfo,
   type ConnectorStatus,
@@ -31,6 +33,7 @@ import { createRuntime, ManualClock } from "../../src/index";
 import { scriptedDesk } from "../../src/propose/fixtures";
 import { installProposals } from "../../src/propose/install";
 import { github, githubItems } from "./github";
+import { universalFiles } from "./universal-files";
 import empty from "./views/empty.json";
 
 const params = new URLSearchParams(location.search);
@@ -112,7 +115,7 @@ const core = browserCore({
     ...Object.values(manifests).filter((m) => m.id.startsWith("desk.") && m.id !== "desk.shell"),
     search,
   ],
-  handlers: { "connector.list": () => ({ connectors: listed() }) },
+  handlers: { "connector.list": () => ({ connectors: listed() }), ...universalFiles.handlers },
   ...(params.has("propose") ? { brain: { answer: scriptedDesk } } : {}),
 });
 const { client, stub } = core;
@@ -199,6 +202,7 @@ if (params.has("propose"))
 window.__desk = { clock, runtime, stub, commands: [] };
 window.__views = {
   ready,
+  reads: universalFiles.reads,
   invoked,
   search: searched,
   upsert: (item: Item) => core.upsert(item),

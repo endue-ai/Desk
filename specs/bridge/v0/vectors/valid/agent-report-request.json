@@ -1,0 +1,15 @@
+{
+  "target": "BridgeRequest",
+  "description": "a plugin reports a run of Claude Code it started",
+  "instance": {
+    "id": 42,
+    "method": "agent.report",
+    "params": {
+      "id": "r12",
+      "agent": { "id": "claude", "name": "Claude Code", "brain": "claude" },
+      "title": "Which tests fail?",
+      "state": "running",
+      "startedAt": "2026-11-05T09:32:00Z"
+    }
+  }
+}

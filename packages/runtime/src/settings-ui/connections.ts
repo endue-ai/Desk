@@ -65,6 +65,7 @@ const KINDS: Record<ItemKind, [string, string]> = {
   entry: ["기록", "entries"],
   metric: ["지표", "metrics"],
   record: ["레코드", "records"],
+  run: ["실행", "runs"],
 };
 
 /** An instance id from the name the person gave: lowercase words joined by `-`, or `default`. */

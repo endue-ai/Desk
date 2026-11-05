@@ -4,7 +4,7 @@
 use std::mem;
 
 use desk_brain::{StopReason, ToolCall, TurnEvent};
-use desk_bridge::{BrainTurnData, BrainTurnEvent, BrainTurnKind, BridgeEvent};
+use desk_bridge::{BrainTurnData, BrainTurnEvent, BrainTurnKind, BrainTurnTool, BridgeEvent};
 
 use crate::events::EventBus;
 
@@ -17,6 +17,8 @@ pub(crate) struct Sink<'a> {
     pub(crate) answer: String,
     pub(crate) completed: bool,
     pub(crate) failed: bool,
+    /// Said first, once the brain starts its answer (the fallback line, ADR 0094).
+    pub(crate) prefix: Option<String>,
 }
 
 impl<'a> Sink<'a> {
@@ -29,6 +31,7 @@ impl<'a> Sink<'a> {
             answer: String::new(),
             completed: false,
             failed: false,
+            prefix: None,
         }
     }
 
@@ -40,6 +43,21 @@ impl<'a> Sink<'a> {
                 kind,
                 text: text.map(str::to_owned),
                 structured: None,
+                tool: None,
+            },
+        }));
+    }
+
+    /// A tool step: Eris hands work to a command (`Tool`), or its answer went back (`ToolResult`).
+    pub(crate) fn step(&self, kind: BrainTurnKind, tool: BrainTurnTool) {
+        self.events.publish(BridgeEvent::BrainTurn(BrainTurnEvent {
+            event: Default::default(),
+            data: BrainTurnData {
+                turn_id: self.turn.to_owned(),
+                kind,
+                text: None,
+                structured: None,
+                tool: Some(tool),
             },
         }));
     }
@@ -57,6 +75,11 @@ impl<'a> Sink<'a> {
             TurnEvent::TurnStarted(_) => {
                 self.answer.clear();
                 self.publish(BrainTurnKind::Started, None);
+                if let Some(prefix) = self.prefix.take() {
+                    let said = format!("{prefix} ");
+                    self.answer.push_str(&said);
+                    self.publish(BrainTurnKind::Delta, Some(&said));
+                }
             }
             TurnEvent::TextDelta(delta) => {
                 self.answer.push_str(&delta.text);

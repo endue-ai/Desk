@@ -162,4 +162,12 @@ describe("callers", () => {
     });
     expect(describeCaller("cli", [])).toEqual({ id: "cli", name: "cli", kind: "Desk" });
   });
+
+  it("names an MCP server caller", () => {
+    expect(describeCaller("mcp:github", [])).toEqual({
+      id: "mcp:github",
+      name: "MCP server github",
+      kind: "MCP server",
+    });
+  });
 });

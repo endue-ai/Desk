@@ -11,6 +11,7 @@ import { h, listen } from "../shell/dom";
 import { draggable } from "../shell/drag";
 import { BODY, digest, type FrameModel, frameModel, type Palette, paint, paintMoon } from "./draw";
 import { audioContext, openMic, sampleEar } from "./ear";
+import { mountErrands } from "./errand";
 import { basisFor, DENSITIES, type DensityName, generateMesh, type Mesh } from "./mesh";
 import { speakAloud } from "./mouth";
 import { SoulText } from "./SoulText";
@@ -130,6 +131,10 @@ export function mountEris(
   const setState = (state: ErisState) => {
     ctx.store.set((s) => ({ eris: { ...s.eris, state } }));
   };
+  const errands = mountErrands(
+    () => (root.closest(".shell") as HTMLElement | null) ?? document.body,
+    ctx,
+  );
   const talk = new Talk({
     lang: () => ctx.store.get().lang,
     openEar: async () => {
@@ -141,7 +146,15 @@ export function mountEris(
       return null;
     },
     sampleEar: (at) => sampleEar(userHello, at),
-    answer: (text) => ctx.bridge.brain.say(text),
+    // A spoken line runs the same agentic loop as a typed one, so its hand-offs are drawn too
+    // (ADR 0089), and she speaks once every errand is back.
+    answer: async (text) => {
+      try {
+        return await ctx.bridge.brain.say(text, (step) => errands.step(step));
+      } finally {
+        await errands.finish();
+      }
+    },
     line: (text, words, pulses) => speakLine(text, words, pulses),
     voice: speakAloud,
     setState,
@@ -306,6 +319,7 @@ export function mountEris(
     },
     dispose() {
       talk.dispose();
+      errands.dispose();
       for (const off of offs) off();
       el.remove();
       soul.live.remove();

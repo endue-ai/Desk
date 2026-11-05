@@ -42,6 +42,25 @@
         "keywords": ["mail", "reload", "sync"]
       },
       {
+        "id": "endue.mail.latest",
+        "title": "Latest mail",
+        "keywords": ["mail", "latest", "newest", "recent", "inbox", "check"],
+        "description": "The newest messages of a mailbox (the inbox unless mailbox names another), newest first: who sent each, its subject, when it arrived, whether it is unread and its first line, with text, a one-line summary. Read it to answer questions about the person's mail; the screen stays as it is.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "mailbox": {
+              "enum": ["inbox", "unread", "flagged", "sent", "drafts", "archive", "trash", "junk"]
+            },
+            "limit": { "type": "integer", "minimum": 1, "maximum": 20 },
+            "unread": { "type": "boolean" }
+          },
+          "additionalProperties": false
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
         "id": "endue.mail.compose",
         "title": "New message",
         "keywords": ["mail", "write", "compose", "email", "send"]

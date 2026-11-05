@@ -16,9 +16,9 @@
       "pattern": "^(/|~(/|$)|[A-Za-z]:/|\\$\\{(plugin|workspace|home)\\}(/|$))[^\\\\]*$"
     },
     "CallerId": {
-      "description": "Who makes calls: a plugin id such as endue.eris, a name of the desk's own such as desk (the web runtime), or agent:<id> for an agent of the brain whose tool call the core runs (ADR 0072). core names desk-core itself.",
+      "description": "Who makes calls: a plugin id such as endue.eris, a name of the desk's own such as desk (the web runtime), agent:<id> for an agent of the brain whose tool call the core runs (ADR 0072), or mcp:<name> for an MCP server init.yaml lists (ADR 0098). core names desk-core itself.",
       "type": "string",
-      "pattern": "^([a-z][a-z0-9-]*(\\.[a-z][a-z0-9-]*)*|agent:[A-Za-z0-9][A-Za-z0-9_.-]*)$",
+      "pattern": "^([a-z][a-z0-9-]*(\\.[a-z][a-z0-9-]*)*|agent:[A-Za-z0-9][A-Za-z0-9_.-]*|mcp:[a-z][a-z0-9-]{0,31})$",
       "maxLength": 128
     },
     "Encoding": {
@@ -103,6 +103,12 @@
         { "$ref": "update.schema.json#/$defs/UpdateCheckRequest" },
         { "$ref": "update.schema.json#/$defs/UpdateDownloadRequest" },
         { "$ref": "update.schema.json#/$defs/UpdateApplyRequest" },
+        { "$ref": "account.schema.json#/$defs/AccountStatusRequest" },
+        { "$ref": "account.schema.json#/$defs/AccountSignInRequest" },
+        { "$ref": "account.schema.json#/$defs/AccountSignOutRequest" },
+        { "$ref": "agent.schema.json#/$defs/AgentListRequest" },
+        { "$ref": "agent.schema.json#/$defs/AgentCancelRequest" },
+        { "$ref": "agent.schema.json#/$defs/AgentReportRequest" },
         { "$ref": "theme.schema.json#/$defs/ThemeSaveRequest" },
         { "$ref": "theme.schema.json#/$defs/ThemeImportRequest" },
         { "$ref": "theme.schema.json#/$defs/ThemeExportRequest" },
@@ -165,7 +171,7 @@
       ]
     },
     "BridgeEvent": {
-      "description": "Something the core reports without being asked: file changes, process output, wake words, permission changes, prompts and approvals, notifications, surfaces, commands, settings, log entries, changes to items, connectors and views, and the desk's update status.",
+      "description": "Something the core reports without being asked: file changes, process output, wake words, permission changes, prompts and approvals, notifications, surfaces, commands, settings, log entries, changes to items, connectors and views, the desk's update status, its endue ID account, and runs to stop.",
       "oneOf": [
         { "$ref": "fs.schema.json#/$defs/FsChangedEvent" },
         { "$ref": "proc.schema.json#/$defs/ProcOutputEvent" },
@@ -190,7 +196,9 @@
         { "$ref": "data.schema.json#/$defs/DataChangedEvent" },
         { "$ref": "connector.schema.json#/$defs/ConnectorChangedEvent" },
         { "$ref": "view.schema.json#/$defs/ViewChangedEvent" },
-        { "$ref": "update.schema.json#/$defs/UpdateChangedEvent" }
+        { "$ref": "update.schema.json#/$defs/UpdateChangedEvent" },
+        { "$ref": "account.schema.json#/$defs/AccountChangedEvent" },
+        { "$ref": "agent.schema.json#/$defs/AgentCancelledEvent" }
       ]
     }
   }

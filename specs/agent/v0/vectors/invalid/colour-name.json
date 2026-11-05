@@ -1,0 +1,11 @@
+{
+  "target": "AgentRecord",
+  "description": "a colour is #rrggbb in lowercase",
+  "instance": {
+    "id": "eris",
+    "name": "Eris",
+    "source": "eris",
+    "colour": "violet",
+    "state": "idle"
+  }
+}
