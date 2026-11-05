@@ -14,6 +14,7 @@ import {
   viewProblems,
 } from "@endue-ai/bridge";
 import type { AskTool } from "./asker";
+import { brainName, freeId } from "./names";
 import type { Applied, Choice, ProposalKind, Request } from "./pipeline";
 import type { Schemas } from "./schema";
 import { specSchemas, VIEW } from "./specs";
@@ -21,7 +22,6 @@ import { specSchemas, VIEW } from "./specs";
 const VIEWS = { permission: "view:manage" } as const;
 const CONNECTORS = { permission: "connector:manage" } as const;
 const PLUGINS = { permission: "plugin:manage" } as const;
-const CONVERSE = { permission: "brain:converse" } as const;
 /** What the desk writes into a proposed view; the brain is not asked for it. */
 const DESKS = ["id", "version", "provenance"];
 /** Where the views Eris makes are named: `eris.events-this-week`. */
@@ -39,6 +39,8 @@ const GUIDE = [
 ].join(" ");
 
 export interface ViewKindOptions {
+  /** The kind's name in desk.propose: `view`, or `item-view` beside universal views (ADR 0102). */
+  kind?: string;
   bridge: BridgeClient;
   /** desk.views.preview, desk.views.open and desk.views.close go through the registry. */
   commands: { run(id: string, args?: unknown): Promise<unknown> };
@@ -47,22 +49,6 @@ export interface ViewKindOptions {
   /** The profile in force. */
   profile(): string | undefined;
   schemas?: Schemas;
-}
-
-/** An id's last part from a title: ASCII words joined by hyphens, a letter first. */
-export function slugOf(title: string, fallback = "view"): string {
-  const words = title
-    .replace(/\{\{|\}\}/g, " ")
-    .replace(/\{([^}|]*)(\|[a-z]+)?\}/g, (_, path: string) => ` ${path.split(".").at(-1) ?? ""} `)
-    .normalize("NFKD")
-    .replace(/[̀-ͯ]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+/, "")
-    .slice(0, 48)
-    .replace(/-+$/, "");
-  if (!words) return fallback;
-  return /^[a-z]/.test(words) ? words : `${fallback}-${words}`;
 }
 
 const isObject = (value: unknown): value is Record<string, unknown> =>
@@ -78,30 +64,9 @@ export function viewKind(options: ViewKindOptions): ProposalKind<View> {
     return schemas;
   };
 
-  /** The id for a title: eris.<slug>, or eris.<slug>-2 and on when a view has it. */
-  const freeId = async (title: string) => {
-    const base = `${PREFIX}.${slugOf(title)}`;
-    for (let n = 1; n < 100; n++) {
-      const id = n === 1 ? base : `${base}-${n}`;
-      const taken = await bridge.call("view.get", { id, scope: VIEWS }).then(
-        () => true,
-        (error: { code?: string }) => error.code !== "not_found",
-      );
-      if (!taken) return id;
-    }
-    return `${base}-${options.now()}`;
-  };
-
-  /** The brain that wrote it: its model, or where it runs. */
-  const brainName = () =>
-    bridge.call("brain.status", { scope: CONVERSE }).then(
-      (status) =>
-        status.mode === "local" ? status.model : status.mode === "cloud" ? "cloud" : undefined,
-      () => undefined,
-    );
-
+  const name = options.kind ?? "view";
   return {
-    kind: "view",
+    kind: name,
     noun: "view",
     guide: GUIDE,
     tool() {
@@ -140,10 +105,15 @@ export function viewKind(options: ViewKindOptions): ProposalKind<View> {
     async check(answer, request) {
       if (!isObject(answer)) return { problems: ["/: the answer is not a JSON object"] };
       const rest = Object.fromEntries(Object.entries(answer).filter(([k]) => !DESKS.includes(k)));
-      const brain = await brainName();
+      const brain = await brainName(bridge);
       const value = {
         ...rest,
-        id: await freeId(typeof rest.title === "string" ? rest.title : ""),
+        id: await freeId(
+          bridge,
+          PREFIX,
+          typeof rest.title === "string" ? rest.title : "",
+          options.now,
+        ),
         version: "0.1.0",
         provenance: {
           author: "eris",
@@ -171,7 +141,7 @@ export function viewKind(options: ViewKindOptions): ProposalKind<View> {
     async apply(view): Promise<Applied> {
       await bridge.call("view.save", { view, scope: VIEWS });
       const where = `~/.desk/views/${view.id}.yaml`;
-      const undo = { kind: "view", id: view.id };
+      const undo = { kind: name, id: view.id };
       const notice = {
         text: `Eris made this view: ${where}`,
         action: { title: "Undo", command: "desk.propose.undo", args: undo },
@@ -190,12 +160,14 @@ export function viewKind(options: ViewKindOptions): ProposalKind<View> {
   };
 }
 
+export { slugOf } from "./names";
+
 /**
  * Each connector with instances, its kinds and the fields the catalog knows for them: the catalog
  * lists only what the caller may read (`data:read`, which the runtime does not hold), connector.list
  * every connector and the kinds it brings in.
  */
-function sourcesOf(catalog: CatalogConnector[], listed: ConnectorInfo[]) {
+export function sourcesOf(catalog: CatalogConnector[], listed: ConnectorInfo[]) {
   const ids = [...new Set([...catalog.map((c) => c.id), ...listed.map((c) => c.id)])];
   return ids.flatMap((connector) => {
     const known = catalog.find((c) => c.id === connector);

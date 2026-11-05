@@ -29,6 +29,8 @@ declare global {
     /** The views fixture (views.html): its views saved, the test callers' runs, the index changed. */
     __views: {
       ready: Promise<void>;
+      /** The paths fs.read served the fixture files from, in order (fixture/universal-files.ts). */
+      reads: string[];
       invoked: Array<{ id: string; args: unknown; caller: string }>;
       /** What test.search's commands (test.search.find, test.search.record) were run with. */
       search: Array<{ id: string; args: unknown; caller: string }>;
