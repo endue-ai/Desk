@@ -17,6 +17,7 @@ import { asArgs, asString } from "./state.js";
  *     refresh(): Promise<void>, pick(title: string, placeholder: string): Promise<string | undefined>,
  *     setFlags(message: Message, flags: { unread?: boolean, flagged?: boolean }): Promise<void>,
  *     moveTo(message: Message, role: string): Promise<void>,
+ *     latest(args: Record<string, unknown>): Promise<unknown>,
  *   },
  *   writing: ReturnType<typeof import("./writing.js").createWriting>,
  * }} Deps
@@ -73,6 +74,8 @@ export function registerCommands({ commands, surface, view, say, app, writing })
     return text === undefined ? app.search() : app.setSearch(text);
   });
   answer("endue.mail.refresh", () => app.refresh());
+  // Eris's tool (ADR 0084): data for the brain, and the screen left as it is.
+  answer("endue.mail.latest", (a) => app.latest(a));
   answer("endue.mail.compose", (a) => composing(writing.compose(a)));
   answer("endue.mail.reply", (a) => composing(writing.reply(a.all === true)));
   answer("endue.mail.forward", () => composing(writing.forward()));
