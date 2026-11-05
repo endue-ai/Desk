@@ -77,6 +77,16 @@ describe("agent commands", () => {
       expect(r.description.length).toBeGreaterThan(20);
       expect(r.argsSchema).toMatchObject({ type: "object" });
     }
+    // Agents get all three as tools; only the two reads read only (ADR 0088).
+    const flags = (registered as Array<{ agent?: boolean; readOnly?: boolean }>).map((r) => [
+      r.agent,
+      r.readOnly ?? false,
+    ]);
+    expect(flags).toEqual([
+      [true, true],
+      [true, true],
+      [true, false],
+    ]);
   });
 
   it("events answers item/v0 items for the span, in the person's zone", async () => {

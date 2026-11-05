@@ -21,22 +21,25 @@ export class PluginCommands {
   }
 
   /**
-   * Register the commands a mounting plugin's manifest declares under its own id. A command with
-   * `runs` is an alias the desk answers (policies/aliases.ts), so it is not the plugin's.
+   * Register the commands a mounting plugin's manifest declares under its own id, with what agents
+   * read of them (ADR 0088): the description, the args and result schemas, `agent` and `readOnly`.
+   * A command with `runs` is an alias the desk answers (policies/aliases.ts), so it is not the
+   * plugin's.
    */
   mounted(info: PluginInfo): void {
     const own = (info.manifest?.contributes?.commands ?? []).filter(
       (c) => c.id.startsWith(`${info.id}.`) && !c.runs,
     );
     for (const command of own) {
-      // A tool for Eris (ADR 0084) says what it does, and cmd.invoke checks its args.
-      const tool = command.tool;
       const params = {
         id: command.id,
         title: command.title,
         ...(command.keywords ? { keywords: command.keywords } : {}),
-        ...(tool ? { description: tool.description } : {}),
-        ...(tool?.args ? { argsSchema: tool.args } : {}),
+        ...(command.description ? { description: command.description } : {}),
+        ...(command.args ? { argsSchema: command.args } : {}),
+        ...(command.result ? { resultSchema: command.result } : {}),
+        ...(command.agent ? { agent: true } : {}),
+        ...(command.readOnly ? { readOnly: true } : {}),
       };
       void this.#bridge
         .call("cmd.register", params, { caller: info.id })

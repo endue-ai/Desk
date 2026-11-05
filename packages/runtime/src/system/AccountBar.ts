@@ -19,7 +19,7 @@ export function mountAccountBar(root: HTMLElement, ctx: ShellCtx): () => void {
   let generation = 0;
   const tr = (key: Parameters<typeof accountText>[1]) => accountText(ctx.store.get().lang, key);
   const run = (command: string) => void ctx.runtime.commands.run(command).catch(() => {});
-  // The endue ID the brain thinks with (ADR 0084), under the person's name.
+  // The endue ID the brain thinks with (ADR 0089), under the person's name.
   const endue = mountEndueId(ctx, () => draw());
   const readUser = async () => {
     const current = ++generation;

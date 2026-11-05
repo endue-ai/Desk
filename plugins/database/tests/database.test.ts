@@ -244,11 +244,11 @@ describe("agents", () => {
     });
     const registered = m.host.calls
       .filter((c) => c.method === "cmd.register")
-      .map((c) => (c.params as { id: string }).id);
-    expect(registered).toEqual([
-      "endue.database.connections",
-      "endue.database.schema",
-      "endue.database.query",
+      .map((c) => c.params as { id: string; agent?: boolean; readOnly?: boolean });
+    expect(registered.map((r) => [r.id, r.agent, r.readOnly ?? false])).toEqual([
+      ["endue.database.connections", true, true],
+      ["endue.database.schema", true, true],
+      ["endue.database.query", true, false],
     ]);
     const listed = (await m.host.invoke("endue.database.connections")) as Array<
       Record<string, unknown>

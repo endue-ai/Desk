@@ -59,7 +59,19 @@ describe("plugin.json", () => {
   it("contributes the commands the plugin registers, with the same titles and keywords", () => {
     const { contributes } = manifest();
     expect(contributes?.commands).toEqual(
-      COMMANDS.map(({ id, title, keywords }) => ({ id, title, ...(keywords ? { keywords } : {}) })),
+      COMMANDS.map(({ id, title, keywords, irreversible }) => ({
+        id,
+        title,
+        ...(keywords ? { keywords } : {}),
+        ...(irreversible ? { irreversible } : {}),
+      })),
+    );
+    // What cannot be taken back, or runs an image's code, waits for the person when an agent asks.
+    expect(contributes?.commands?.filter((c) => c.irreversible).map((c) => c.id)).toEqual(
+      [
+        ...["kill", "remove", "run", "remove-image", "prune-images", "remove-volume"],
+        ...["prune-volumes", "remove-network", "prune-networks", "down", "prune"],
+      ].map((name) => `endue.docker.${name}`),
     );
     for (const command of COMMANDS) {
       expect(command.title).toMatch(/^Docker: /);

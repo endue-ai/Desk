@@ -4,17 +4,19 @@
 //! and answers with cmd.answer, which reaches the caller as `cmd.answered`. The registry keeps which
 //! commands their provider's manifest marks `irreversible`: an agent's call of one waits for the
 //! person's approval (`approvals`, ADR 0078), and lands the ok answers of commands that name an
-//! `undo` on the desk's undo stack (`core_undo`, ADR 0077).
+//! `undo` on the desk's undo stack (`core_undo`, ADR 0077). What a registration leaves out comes
+//! from the manifest (`core_tools::described`), and commands marked `agent` are agents' tools
+//! (`core_tools`, ADR 0088).
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 use std::sync::MutexGuard;
 
 use desk_bridge::{
     BridgeEvent, CmdAnswerParams, CmdAnswerResult, CmdAnsweredData, CmdAnsweredEvent,
     CmdChangedData, CmdChangedEvent, CmdInvokeParams, CmdInvokeResult, CmdInvokedData,
     CmdInvokedEvent, CmdListParams, CmdListResult, CmdRegisterParams, CmdRegisterResult,
-    CmdUnregisterParams, CmdUnregisterResult, CommandChange, CommandContribution, CommandFailure,
-    CommandFailureCode, CommandInfo, ErrorCode, EventName, Permission,
+    CmdUnregisterParams, CmdUnregisterResult, CommandChange, CommandFailure, CommandFailureCode,
+    CommandInfo, ErrorCode, EventName, Permission,
 };
 use serde_json::{Map, Value};
 
@@ -44,58 +46,34 @@ struct Invocation {
 /// Registered commands in registration order, and the invocations still waiting for an answer.
 #[derive(Default)]
 pub(crate) struct Commands {
-    pub(crate) order: Vec<String>,
-    pub(crate) by_id: BTreeMap<String, CommandInfo>,
+    order: Vec<String>,
+    by_id: BTreeMap<String, CommandInfo>,
     next: u64,
     pending: BTreeMap<String, Invocation>,
-    /// Ids whose provider's manifest marks them `irreversible`.
-    irreversible: BTreeSet<String>,
 }
 
 impl Core {
     pub(crate) fn cmd_register(&self, caller: &str, params: CmdRegisterParams) -> Answer {
-        let info = CommandInfo {
-            id: params.id.clone(),
-            title: params.title,
-            description: params.description,
-            keywords: params.keywords,
-            args_schema: params.args_schema,
-            when: params.when,
-            provider: caller.to_owned(),
-            undo: None,
-        };
+        let info = self.described(caller, params)?;
         let change = {
             let mut commands = self.commands();
-            match commands.by_id.get(&params.id) {
+            match commands.by_id.get(&info.id) {
                 Some(existing) if existing.provider != caller => {
                     return Err(error(
                         ErrorCode::AlreadyExists,
-                        format!("{} is provided by {}", params.id, existing.provider),
+                        format!("{} is provided by {}", info.id, existing.provider),
                     ));
                 }
                 Some(_) => CommandChange::Updated,
                 None => {
-                    commands.order.push(params.id.clone());
+                    commands.order.push(info.id.clone());
                     CommandChange::Registered
                 }
             }
         };
-        let declared = self.declared(caller, &params.id);
-        let irreversible = declared.as_ref().and_then(|c| c.irreversible) == Some(true);
-        // The manifest's undo when the call names none (ADR 0077).
-        let undo = params.undo.or_else(|| declared.and_then(|c| c.undo));
-        {
-            let mut commands = self.commands();
-            commands
-                .by_id
-                .insert(params.id.clone(), CommandInfo { undo, ..info });
-            if irreversible {
-                commands.irreversible.insert(params.id.clone());
-            } else {
-                commands.irreversible.remove(&params.id);
-            }
-        }
-        self.cmd_changed(&params.id, change, caller);
+        let id = info.id.clone();
+        self.commands().by_id.insert(id.clone(), info);
+        self.cmd_changed(&id, change, caller);
         json(CmdRegisterResult {})
     }
 
@@ -132,14 +110,7 @@ impl Core {
     /// The registered commands a `cmd:invoke` grant of the caller covers, in registration order,
     /// as cmd.list lists them. No grant is spent.
     pub(crate) fn commands_covered(&self, caller: &str) -> Vec<CommandInfo> {
-        let registered: Vec<CommandInfo> = {
-            let commands = self.commands();
-            let all = commands
-                .order
-                .iter()
-                .filter_map(|id| commands.by_id.get(id));
-            all.cloned().collect()
-        };
+        let registered = self.registered();
         let permissions = self.permissions();
         registered
             .into_iter()
@@ -282,7 +253,6 @@ impl Core {
         let removed = {
             let mut commands = self.commands();
             commands.order.retain(|other| other != id);
-            commands.irreversible.remove(id);
             commands.by_id.remove(id)
         };
         if let Some(info) = removed {
@@ -328,24 +298,22 @@ impl Core {
 
     /// Whether the registered command `id` is irreversible.
     pub(crate) fn irreversible_command(&self, id: &str) -> bool {
-        self.commands().irreversible.contains(id)
+        self.command(id).and_then(|c| c.irreversible) == Some(true)
     }
 
-    /// What `provider`'s manifest declares for its command `id` (`contributes.commands`).
-    pub(crate) fn declared(&self, provider: &str, id: &str) -> Option<CommandContribution> {
-        let plugins = self
-            .plugins
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner());
-        let declared = plugins
-            .get(provider)
-            .and_then(|plugin| plugin.manifest)
-            .and_then(|manifest| manifest.contributes)
-            .and_then(|contributes| contributes.commands);
-        declared
-            .unwrap_or_default()
-            .into_iter()
-            .find(|c| c.id == id)
+    /// The registered command `id`.
+    pub(crate) fn command(&self, id: &str) -> Option<CommandInfo> {
+        self.commands().by_id.get(id).cloned()
+    }
+
+    /// The registered commands, in registration order.
+    pub(crate) fn registered(&self) -> Vec<CommandInfo> {
+        let commands = self.commands();
+        let all = commands
+            .order
+            .iter()
+            .filter_map(|id| commands.by_id.get(id));
+        all.cloned().collect()
     }
 
     /// `cmd.changed` for the provider and the callers subscribed to it.
@@ -364,7 +332,7 @@ impl Core {
         );
     }
 
-    pub(crate) fn commands(&self) -> MutexGuard<'_, Commands> {
+    fn commands(&self) -> MutexGuard<'_, Commands> {
         self.commands
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())

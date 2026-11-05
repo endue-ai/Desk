@@ -1,0 +1,316 @@
+/* Cards, the board and swimlanes, the list and the database table (time.css has the timeline and
+   the calendar). A category has one colour everywhere: backlog muted, to do info, in progress
+   warning, done success, cancelled danger; every value is a desk token. */
+.backlog {
+  --tone: var(--desk-text-muted);
+  --tone-soft: var(--desk-muted);
+}
+
+.todo {
+  --tone: var(--desk-info);
+  --tone-soft: var(--desk-info-soft);
+}
+
+.doing {
+  --tone: var(--desk-warning);
+  --tone-soft: var(--desk-warning-soft);
+}
+
+.done {
+  --tone: var(--desk-success);
+  --tone-soft: var(--desk-success-soft);
+}
+
+.cancelled {
+  --tone: var(--desk-danger);
+  --tone-soft: var(--desk-danger-soft);
+}
+
+.card {
+  display: grid;
+  gap: 4px;
+  padding: 6px 8px;
+  border: 1px solid var(--desk-border);
+  border-left: 3px solid var(--tone);
+  border-radius: var(--desk-radius-md);
+  background: var(--desk-card);
+  box-shadow: var(--desk-shadow-sm);
+  cursor: pointer;
+}
+
+.card[aria-current="true"],
+.row[aria-current="true"],
+tr[aria-current="true"],
+.tline[aria-current="true"] {
+  outline: 2px solid var(--desk-ring);
+  outline-offset: -1px;
+}
+
+.card.dragging {
+  opacity: 0.5;
+}
+
+.card.done .card-title,
+.card.cancelled .card-title {
+  color: var(--desk-text-muted);
+  text-decoration: line-through;
+}
+
+.card-head,
+.card-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.card-head .system {
+  margin-left: auto;
+}
+
+.card-title {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.card.compact {
+  padding: 1px 6px;
+  font-size: var(--desk-text-xs);
+  box-shadow: none;
+}
+
+.card.compact .card-title {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.card.late {
+  border-color: var(--desk-danger-border);
+}
+
+.labels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.label,
+.priority,
+.estimate,
+.due,
+.pill {
+  padding: 0 6px;
+  border-radius: var(--desk-radius-full);
+  background: var(--desk-muted);
+  font-size: var(--desk-text-2xs);
+  white-space: nowrap;
+}
+
+.pill {
+  background: var(--tone-soft);
+  color: var(--desk-text);
+}
+
+.priority.p1 {
+  background: var(--desk-danger-soft);
+  color: var(--desk-danger-text);
+}
+
+.priority.p2 {
+  background: var(--desk-warning-soft);
+  color: var(--desk-warning-text);
+}
+
+.due.late {
+  background: var(--desk-danger-soft);
+  color: var(--desk-danger-text);
+}
+
+.avatar {
+  display: inline-grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  margin-left: auto;
+  border-radius: var(--desk-radius-full);
+  background: var(--desk-primary-soft);
+  color: var(--desk-primary-text);
+  font-size: var(--desk-text-2xs);
+  font-weight: 600;
+}
+
+.avatar.none {
+  background: transparent;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--desk-radius-full);
+  background: var(--tone);
+}
+
+.drop-over {
+  outline: 2px dashed var(--desk-primary-border);
+  outline-offset: -2px;
+  background: var(--desk-primary-subtle);
+}
+
+/* Kanban */
+.board {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-height: 100%;
+}
+
+.column {
+  display: flex;
+  flex: 0 0 260px;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 100%;
+  padding: 6px;
+  border-radius: var(--desk-radius-lg);
+  background: var(--desk-background);
+}
+
+.column-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 4px;
+}
+
+.cards {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 40px;
+  border-radius: var(--desk-radius-md);
+}
+
+/* Swimlane */
+.lanes {
+  display: grid;
+  grid-template-columns: 160px repeat(var(--columns, 4), minmax(220px, 1fr));
+  gap: 6px;
+  align-items: stretch;
+}
+
+.lane-corner,
+.lane-column {
+  position: sticky;
+  top: -10px;
+  z-index: 1;
+  padding: 4px;
+  background: var(--desk-card);
+}
+
+.lane-title {
+  display: grid;
+  align-content: start;
+  padding: 6px;
+  border-top: 1px solid var(--desk-border);
+}
+
+.cell {
+  padding: 6px;
+  border-top: 1px solid var(--desk-border);
+  background: var(--desk-background);
+}
+
+/* List */
+.group + .group {
+  margin-top: 12px;
+}
+
+.group-head {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+  padding: 4px 0;
+}
+
+.rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 110px auto 1fr auto 24px 90px;
+  gap: 8px;
+  align-items: center;
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--desk-border);
+  cursor: pointer;
+}
+
+.row:hover,
+.db tbody tr:hover {
+  background: var(--desk-hover);
+}
+
+.row .pill {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.row-title {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.row.done .row-title,
+.row.cancelled .row-title {
+  color: var(--desk-text-muted);
+}
+
+/* Database */
+.db {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.db th {
+  position: sticky;
+  top: -10px;
+  background: var(--desk-card);
+  text-align: left;
+}
+
+.db th button {
+  width: 100%;
+  padding: 0 4px;
+  color: var(--desk-text-muted);
+  font-weight: 600;
+  text-align: left;
+}
+
+.db td,
+.db th {
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--desk-border);
+}
+
+.db tbody tr {
+  cursor: pointer;
+}
+
+.db .f-title {
+  min-width: 240px;
+}
+
+.db .f-ref {
+  font-family: var(--desk-font-mono);
+  font-size: var(--desk-text-xs);
+  color: var(--desk-text-muted);
+}
+
+.db tfoot td {
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-xs);
+}

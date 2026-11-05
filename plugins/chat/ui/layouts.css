@@ -1,0 +1,218 @@
+/* The four layouts' areas and the thread: panes, Inbox cards, the Timeline and Columns. Colours,
+   type, spacing and radii are the desk's tokens. */
+#main {
+  grid-area: main;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+#thread {
+  grid-area: thread;
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  border-left: var(--desk-border-width) solid var(--desk-border);
+  background: var(--desk-card);
+}
+
+.pane {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.pane-head {
+  display: flex;
+  align-items: center;
+  gap: var(--desk-space-3);
+  min-height: 52px;
+  padding: var(--desk-space-2) var(--desk-space-4);
+  border-bottom: var(--desk-border-width) solid var(--desk-border);
+}
+
+.pane-head .mark {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--desk-radius-md);
+}
+
+.pane-title {
+  flex: 1;
+  min-width: 0;
+}
+
+.pane-title p,
+.pane-title h2,
+.pane-title h3 {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pane-title p {
+  font-size: var(--desk-text-xs);
+}
+
+.pane-tools {
+  display: flex;
+  gap: var(--desk-space-1);
+}
+
+.pane-tool {
+  border-color: var(--desk-border);
+  font-size: var(--desk-text-xs);
+}
+
+.pane-tool.icon {
+  min-width: var(--desk-control-xs);
+  padding: 0;
+}
+
+.pane-tool[aria-pressed="true"] {
+  border-color: var(--desk-primary-border);
+  color: var(--desk-primary-text);
+}
+
+.pane-foot:empty {
+  display: none;
+}
+
+.empty,
+.empty-state p {
+  margin: var(--desk-space-8) auto;
+  max-width: 36ch;
+  color: var(--desk-text-muted);
+  text-align: center;
+}
+
+.empty-state {
+  display: grid;
+  flex: 1;
+  place-items: center;
+}
+
+.layout-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--desk-space-3);
+  padding: var(--desk-space-3) var(--desk-space-4);
+  border-bottom: var(--desk-border-width) solid var(--desk-border);
+}
+
+/* Inbox: cards of unread conversations */
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  align-content: start;
+  gap: var(--desk-space-3);
+  padding: var(--desk-space-3);
+  overflow: auto;
+}
+
+.pane.card {
+  flex: none;
+  border: var(--desk-border-width) solid var(--desk-border);
+  border-radius: var(--desk-radius-lg);
+  background: var(--desk-card);
+  box-shadow: var(--desk-shadow-sm);
+}
+
+.pane.card .pane-head {
+  min-height: 44px;
+  padding: var(--desk-space-2) var(--desk-space-3);
+}
+
+.pane.card .log {
+  flex: none;
+  max-height: 260px;
+}
+
+.pane.card .msg {
+  padding-left: var(--desk-space-3);
+  padding-right: var(--desk-space-3);
+}
+
+.pane.card .composer {
+  margin: 0 var(--desk-space-2) var(--desk-space-2);
+}
+
+/* Timeline: one stream of every conversation, newest first */
+.pane.timeline .pane-head {
+  min-height: 44px;
+}
+
+.pane.timeline .msg {
+  margin-top: var(--desk-space-2);
+}
+
+/* Columns: conversations side by side */
+.columns {
+  display: grid;
+  grid-auto-columns: minmax(300px, 1fr);
+  grid-auto-flow: column;
+  flex: 1;
+  gap: var(--desk-space-2);
+  min-height: 0;
+  padding: var(--desk-space-2);
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+}
+
+.pane.column {
+  min-width: 300px;
+  border: var(--desk-border-width) solid var(--desk-border);
+  border-radius: var(--desk-radius-lg);
+  background: var(--desk-card);
+  scroll-snap-align: start;
+}
+
+.pane.column .pane-head {
+  min-height: 44px;
+  padding: var(--desk-space-2) var(--desk-space-3);
+}
+
+.pane.column .msg {
+  grid-template-columns: 28px minmax(0, 1fr);
+  padding-left: var(--desk-space-3);
+  padding-right: var(--desk-space-3);
+}
+
+.pane.column .avatar {
+  width: 28px;
+  height: 28px;
+}
+
+.pane.column .composer {
+  margin: 0 var(--desk-space-2) var(--desk-space-2);
+}
+
+/* The thread */
+.pane.thread .msg.root {
+  margin: 0 0 var(--desk-space-2);
+  padding-bottom: var(--desk-space-3);
+  border-bottom: var(--desk-border-width) solid var(--desk-border);
+}
+
+.pane.thread .msg {
+  grid-template-columns: 28px minmax(0, 1fr);
+  padding-left: var(--desk-space-3);
+  padding-right: var(--desk-space-3);
+}
+
+.pane.thread .avatar {
+  width: 28px;
+  height: 28px;
+}
+
+body[data-connected="false"] #nav #filters,
+body[data-connected="false"] #layouts {
+  visibility: hidden;
+}
+
+.pane.column .composer-tools .hint {
+  visibility: hidden;
+}

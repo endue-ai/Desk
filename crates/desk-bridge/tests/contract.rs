@@ -7,15 +7,16 @@ use std::path::{Path, PathBuf};
 
 use desk_bridge::{
     AccountStatusResult, BridgeEvent, BridgeRequest, BridgeResponse, CatalogGetResult,
-    CmdRecentResult, CmdRedoResult, CmdUndoResult, ConnectorInstance, ConnectorManifest,
-    ConnectorStatus, ConnectorSyncResult, FsHistoryResult, FsReadResult, FsRestoreResult,
-    FsUrlResult, FsWriteResult, InitDocument, InitGetResult, InitSettingKey, Item, ItemChange,
-    ItemPage, ItemQuery, KeysFile, PaletteResults, PermQueryResult, PermRequestResult, Permission,
-    PluginContributes, PluginListResult, PluginManifest, PluginStatsResult, ProfileFile,
-    RefusalReason, SettingsListResult, ShellOpenResult, StoreGetResult, ThemeBundle,
+    CmdRecentResult, CmdRedoResult, CmdToolsResult, CmdUndoResult, ConnectorInstance,
+    ConnectorManifest, ConnectorStatus, ConnectorSyncResult, FsHistoryResult, FsReadResult,
+    FsRestoreResult, FsUrlResult, FsWriteResult, InitDocument, InitGetResult, InitSettingKey, Item,
+    ItemChange, ItemPage, ItemQuery, KeysFile, PaletteResults, PermQueryResult, PermRequestResult,
+    Permission, PluginContributes, PluginListResult, PluginManifest, PluginStatsResult,
+    ProfileFile, RefusalReason, SettingsListResult, ShellOpenResult, StoreGetResult, ThemeBundle,
     ThemeExportResult, ThemeIndex, ThemeMarketFetchResult, ThemeMarketListResult, ThemePackage,
-    ThemeType, ThemeVariant, UiSurfaceStateRequest, UiSurfaceStateResult, View, ViewGetResult,
-    ViewListResult, ViewSource, ViewSummary, manifest_problems, view_problems,
+    ThemeType, ThemeVariant, UiSurfaceStateRequest, UiSurfaceStateResult, UniversalData,
+    UniversalSource, UniversalView, View, ViewGetResult, ViewListResult, ViewSource, ViewSummary,
+    manifest_problems, view_problems,
 };
 use serde::Serialize;
 use serde::de::DeserializeOwned;
@@ -166,6 +167,8 @@ fn item_view_and_connector_vectors_are_judged_as_their_folders_say() {
                 "ItemPage" => roundtrip::<ItemPage>(vector),
                 "ItemChange" => roundtrip::<ItemChange>(vector),
                 "View" => roundtrip::<View>(vector),
+                "UniversalView" => roundtrip::<UniversalView>(vector),
+                "UniversalData" => roundtrip::<UniversalData>(vector),
                 "ConnectorManifest" => roundtrip::<ConnectorManifest>(vector),
                 "ConnectorInstance" => roundtrip::<ConnectorInstance>(vector),
                 "ConnectorStatus" => roundtrip::<ConnectorStatus>(vector),
@@ -208,6 +211,28 @@ fn the_rules_beyond_the_schemas_name_what_does_not_resolve() {
     );
 }
 
+#[test]
+fn a_universal_source_is_the_one_its_key_names() {
+    let source = |value: Value| serde_json::from_value::<UniversalSource>(value).unwrap();
+    let data = json!({ "data": { "entries": [{ "title": "One" }] } });
+    assert!(matches!(source(data), UniversalSource::UniversalInline(_)));
+    let asset = json!({ "asset": "data/board.yaml" });
+    assert!(matches!(source(asset), UniversalSource::UniversalAsset(_)));
+    let url = json!({ "url": "https://example.com/board.yaml" });
+    assert!(matches!(source(url), UniversalSource::UniversalUrl(_)));
+    let file = json!({ "file": "~/board.yaml" });
+    assert!(matches!(source(file), UniversalSource::UniversalFile(_)));
+    let command = json!({ "command": "example.board.data", "args": { "board": "launch" } });
+    assert!(matches!(
+        source(command),
+        UniversalSource::UniversalCommand(_)
+    ));
+    let items = json!({ "items": { "kinds": ["task"] } });
+    assert!(matches!(source(items), UniversalSource::UniversalItems(_)));
+    let both = json!({ "url": "https://example.com/a.yaml", "file": "~/a.yaml" });
+    assert!(serde_json::from_value::<UniversalSource>(both).is_err());
+}
+
 fn roundtrip<T: DeserializeOwned + Serialize>(vector: &Vector) {
     let typed: T = serde_json::from_value(vector.instance.clone())
         .unwrap_or_else(|e| panic!("{} does not deserialize: {e}", vector.file));
@@ -242,6 +267,7 @@ fn valid_vectors_roundtrip_through_generated_types() {
                 "CatalogGetResult" => roundtrip::<CatalogGetResult>(vector),
                 "CmdUndoResult" => roundtrip::<CmdUndoResult>(vector),
                 "CmdRedoResult" => roundtrip::<CmdRedoResult>(vector),
+                "CmdToolsResult" => roundtrip::<CmdToolsResult>(vector),
                 "ShellOpenResult" => roundtrip::<ShellOpenResult>(vector),
                 "AccountStatusResult" => roundtrip::<AccountStatusResult>(vector),
                 "UiSurfaceStateRequest" => roundtrip::<UiSurfaceStateRequest>(vector),

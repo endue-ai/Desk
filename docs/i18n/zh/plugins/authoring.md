@@ -154,6 +154,34 @@ defineUiPlugin({
 传到你的框架。在框架里按下的组合键会传到桌面的按键映射，除非你调用了 `preventDefault()`。默认策略及其各自
 决定的内容见 `plugins/README.md`。
 
+## 供代理使用的命令
+
+endue AI 的代理或本地大脑，通过人所运行的同一套命令操作桌面（ADR 0088）。给命令标上 `agent`，并写明它做什么、
+接收什么、返回什么：核心会用 `args` 检查每次调用的参数，在 `cmd.tools` 中列出该命令，并在桌面的大脑轮次中
+把它作为以其 ID 命名的工具（`example_my-plugin_notes`）提供出去：
+
+```json
+"commands": [
+  {
+    "id": "example.my-plugin.notes",
+    "title": "Notes: list",
+    "description": "The notes in a folder, newest first: name, path and when each changed.",
+    "args": { "type": "object", "properties": { "folder": { "type": "string" } }, "additionalProperties": false },
+    "result": { "type": "array", "items": { "type": "object" } },
+    "agent": true,
+    "readOnly": true
+  },
+  { "id": "example.my-plugin.publish", "title": "Notes: publish", "description": "Publish a note to the web.", "agent": true, "irreversible": true }
+]
+```
+
+`readOnly` 表示该命令只返回数据，不改变人所保有的任何东西。命令以你的插件的权限运行，而不是代理的权限，
+所以凡是运行程序、发送、删除或发布的命令，都要标上 `irreversible`：这样代理的调用会先展示参数，再等待人的
+批准。不要把人从命令面板直接运行时会缺少的参数设为必需，改在处理函数中检查。运行时注册的命令可通过
+`cmd.register` 使用相同的字段（`description`、`argsSchema`、`resultSchema`、`agent`、`readOnly`），
+`ctx.commands.tools()` 会列出你的权限覆盖到的代理命令。内置的 git、terminal、docker、calendar 和
+database 插件就是示例。
+
 ## 编辑文件：编辑层级
 
 打开文件的插件先读、后编辑（ADR 0045）。一旦开始编辑，它打开的每种格式除了读取层级，还有一个编辑层级，
@@ -208,6 +236,27 @@ await ctx.commands.run("desk.views.open", { id: "desk.today" });
 `desk-table`、`desk-agenda`、`desk-stat`、`desk-markdown`、`desk-card`）绘制它，模板知道时钟（`{today}`、
 `{tomorrow}`）。等应用开始提供这些元素后，你的页面也可以通过导入映射（`"@endue-ai/ui": "/_desk/ui.js"`）
 引入同样的元素；目前由运行时的测试服务器提供。
+
+### 通用视图
+
+通用视图（`specs/view/v0/universal.schema.json`，ADR 0087）把任何提供同一种 YAML 格式（即通用数据格式）的来源中的
+条目，显示为时间线、日历、看板、列表、文本、聊天或智能体的运行过程。视图以数据保存，用 `ctx.universal` 打开。
+来源可以是内联数据、插件文件夹中的文件（`asset`，无需权限）、URL（`net:fetch`）、桌面上的文件（`fs:read`）、
+其他插件的命令或桌面的条目，视图本身不变：
+
+```js
+const board = ctx.universal.open(document.getElementById("root"), {
+  type: "kanban",
+  types: ["kanban", "list", "timeline", "calendar"],
+  source: { asset: "data/board.yaml" },
+  map: { group: "column", start: "due" },
+  move: { command: "example.board.move", args: { id: "{id}", to: "{move.to}" } },
+});
+```
+
+绘制它的是 `@endue-ai/ui` 的 `<desk-universal-view>`；`ctx.universal.load(source)` 和
+`ctx.universal.parse(text)` 返回文档本身。即使没有自己的插件，也可以用 `desk.universal.open` 命令打开。
+最小的示例是 `examples/plugin-hello-universal`。
 
 ## 测试
 

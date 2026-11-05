@@ -1,0 +1,17 @@
+{
+  "target": "UniversalView",
+  "description": "a month calendar over the desk's events and tasks, switchable to a timeline and a list",
+  "instance": {
+    "title": "This month",
+    "type": "calendar",
+    "types": ["calendar", "timeline", "list"],
+    "source": {
+      "items": {
+        "kinds": ["event", "task"],
+        "sort": [{ "field": "start", "dir": "asc" }],
+        "limit": 500
+      }
+    },
+    "options": { "range": "month", "zone": "Asia/Seoul" }
+  }
+}

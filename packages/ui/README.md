@@ -9,21 +9,21 @@ both. See [the design system guide](../../docs/design-system.md) and ADR 0022 fo
 - `@endue-ai/ui` (DOM-free): `tokens`, `colors`, `scale`, `material`, `terminal`, `cssVariables(theme?)`,
   `propertyOf(name)`, `tokensCss(theme?)`, `MOTION_TOKENS` and their types, `NAME`.
 - `@endue-ai/ui/theme` (DOM-free, not in `ui.js`): `compileTheme(theme, scheme, url?)` turns a theme
-  plugin's block into tokens, fonts and preview colours; `gate(tokens, { high?, fallback? })` checks the
-  contrast pairs and fixes foregrounds by OKLCH lightness; `parseColor`, `contrast`, presets;
-  `extractColors({ width, height, data })` finds an image's five main colours (k-means in OKLab, seeded)
-  and `paletteFrom(colors, scheme)` turns them into a gated palette, the most saturated as primary.
+  block into tokens, fonts and preview colours; `gate(tokens, { high?, fallback? })` fixes contrast by
+  OKLCH lightness; `parseColor`, `contrast`, presets; `extractColors({ width, height, data })` (k-means in
+  OKLab) and `paletteFrom(colors, scheme)` make a gated palette, the most saturated as primary.
 - `@endue-ai/ui/tokens.css`: default values; `@endue-ai/ui/base.css`: page, toolbar and feedback patterns.
 - `@endue-ai/ui/elements`: `defineElements()`, `elements` (by tag name) and their classes:
   `desk-button`, `desk-input`, `desk-list`, `desk-dialog`, `desk-menu`, `desk-toast`, `desk-table`,
-  `desk-agenda`, `desk-stat`, `desk-card`, `desk-markdown`, `desk-progress`, `desk-edit-tier`. Elements keep native roles and keyboard behavior.
-- `desk-progress`: `label`, `value`, `max`, `detail`, `cancelable`, `delay` (300ms default); `desk-cancel`
-  asks the caller to abort. Reduced motion follows the OS and Desk's preference.
-- `desk-edit-tier`: `tier` (`lossless`, `text`, `read-only`; `EDIT_TIERS`), `format`, `label`, `detail`;
-  what saving does to a file, shown before the first edit (ADR 0071). Unknown or missing is read-only.
-- `just build-ui`: builds `dist/ui.js`, `ui.iife.js`, `tokens.css`, `base.css`; refreshes source token CSS.
-
-The app serves the ES module and sheets at `/_desk/ui.js`, `/_desk/tokens.css`, `/_desk/base.css`.
+  `desk-agenda`, `desk-stat`, `desk-card`, `desk-markdown`, `desk-progress`, `desk-edit-tier`,
+  `desk-universal-view`. Elements keep native roles and keyboard behavior.
+- Universal views (ADR 0087, `specs/view/v0/universal.schema.json`): `@endue-ai/ui/universal` (also in
+  the root) reads entries into rows (`rowsOf`, a map's roles) and models `timelineOf`, `calendarOf`,
+  `kanbanOf`, `listOf`, `textOf`, `chatOf`, `agentOf`. `<desk-universal-view>` draws them: `view`,
+  `data`, `type`, `time-zone`, `state`; fires `desk-select`, `desk-move`, `desk-send`, `desk-type`.
+- `desk-progress`: `label`, `value`, `max`, `detail`, `cancelable`, `delay` (300ms), fires `desk-cancel`;
+  `desk-edit-tier`: `tier` (`EDIT_TIERS`), `format`, `label`, `detail` (ADR 0071). `just build-ui` builds
+  `dist/ui.js`, `ui.iife.js`, `tokens.css`, `base.css` (served under `/_desk/`) and the source tokens.
 
 ```html
 <link rel="stylesheet" href="/_desk/tokens.css" />
@@ -35,6 +35,6 @@ The app serves the ES module and sheets at `/_desk/ui.js`, `/_desk/tokens.css`, 
 
 ## Testing
 
-`pnpm exec vitest run packages/ui` checks tokens, the theme compiler and gate, sheet generation, builds
-and elements on a small DOM fake. `just test-e2e packages/runtime/e2e/design-system.spec.ts` checks the shared sheets and live
-preferences in a sandboxed Notes frame. `demo/index.html` shows the elements after a build.
+`pnpm exec vitest run packages/ui` checks tokens, the theme compiler and gate, sheets, builds, the
+universal models and elements on a small DOM fake. `just test-e2e packages/runtime/e2e/design-system.spec.ts`
+checks the sheets and live preferences in a Notes frame. `demo/index.html` shows the elements built.

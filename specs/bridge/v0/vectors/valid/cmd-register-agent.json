@@ -1,0 +1,17 @@
+{
+  "target": "BridgeRequest",
+  "description": "cmd.register offers a command to agents, with what it answers",
+  "instance": {
+    "id": 62,
+    "method": "cmd.register",
+    "params": {
+      "id": "endue.calendar.events",
+      "title": "Calendar: events",
+      "description": "The events of a time span, as items.",
+      "argsSchema": { "type": "object" },
+      "resultSchema": { "type": "array" },
+      "agent": true,
+      "readOnly": true
+    }
+  }
+}

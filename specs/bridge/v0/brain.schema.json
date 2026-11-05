@@ -318,7 +318,7 @@
       "additionalProperties": false
     },
     "BrainTurnData": {
-      "description": "Payload of brain.turn. delta carries answer text; error and offline carry a sentence for people. A brain.ask turn's completed carries structured when the brain called the tool. tool and tool-result carry tool: a brain.say turn's hand-off to a plugin command and its return (ADR 0084).",
+      "description": "Payload of brain.turn. delta carries answer text; error and offline carry a sentence for people. A brain.ask turn's completed carries structured when the brain called the tool. tool and tool-result carry tool: a brain.say turn's hand-off to a plugin command and its return (ADR 0089).",
       "type": "object",
       "properties": {
         "turnId": { "type": "string", "minLength": 1 },
@@ -339,7 +339,7 @@
       "enum": ["started", "delta", "completed", "error", "offline", "online", "tool", "tool-result"]
     },
     "BrainTurnTool": {
-      "description": "tool and tool-result only: the command a brain.say turn's tool call runs, so the desk can show Eris going to its plugin and coming back (ADR 0084).",
+      "description": "tool and tool-result only: the command a brain.say turn's tool call runs, so the desk can show Eris going to its plugin and coming back (ADR 0089).",
       "type": "object",
       "properties": {
         "callId": {

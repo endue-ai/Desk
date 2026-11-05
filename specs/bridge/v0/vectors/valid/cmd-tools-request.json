@@ -1,0 +1,9 @@
+{
+  "target": "BridgeRequest",
+  "description": "cmd.tools needs no scope; query and limit narrow it",
+  "instance": {
+    "id": 61,
+    "method": "cmd.tools",
+    "params": { "query": "git branch", "limit": 10 }
+  }
+}

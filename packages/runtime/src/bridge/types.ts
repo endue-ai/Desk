@@ -40,7 +40,7 @@ export interface BrainReply {
 }
 
 /**
- * One hand-off of Eris's agentic loop (ADR 0084), as brain.turn's tool and tool-result say it: she
+ * One hand-off of Eris's agentic loop (ADR 0089), as brain.turn's tool and tool-result say it: she
  * goes to the command's plugin (`tool`) and comes back with its answer (`tool-result`).
  */
 export interface BrainStep {
@@ -101,7 +101,7 @@ export interface ShellBridge {
     /** One turn of Eris's loop: its hand-offs reach `onStep` as they happen, then the reply. */
     say(text: string, onStep?: (step: BrainStep) => void): Promise<BrainReply>;
   };
-  /** The endue ID the brain thinks with (ADR 0084); hosts without one leave it out. */
+  /** The endue ID the brain thinks with (ADR 0089); hosts without one leave it out. */
   account?: {
     status(): Promise<AccountStatus>;
     signIn(): Promise<AccountStatus>;

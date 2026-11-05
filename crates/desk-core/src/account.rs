@@ -1,4 +1,4 @@
-//! The person's endue ID on this desk (ADR 0084). Signing in follows the OAuth 2.0 device
+//! The person's endue ID on this desk (ADR 0089). Signing in follows the OAuth 2.0 device
 //! authorization grant (RFC 8628): endue ID hands out a code, the person enters it in the browser,
 //! and a thread polls the token endpoint until the token comes, the person says no, or the code
 //! expires. The token is kept in one file readable by this user only until Desk uses the OS keychain

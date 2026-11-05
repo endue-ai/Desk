@@ -74,7 +74,7 @@ export function registerCommands({ commands, surface, view, say, app, writing })
     return text === undefined ? app.search() : app.setSearch(text);
   });
   answer("endue.mail.refresh", () => app.refresh());
-  // Eris's tool (ADR 0084): data for the brain, and the screen left as it is.
+  // Eris's tool (ADR 0089): data for the brain, and the screen left as it is.
   answer("endue.mail.latest", (a) => app.latest(a));
   answer("endue.mail.compose", (a) => composing(writing.compose(a)));
   answer("endue.mail.reply", (a) => composing(writing.reply(a.all === true)));

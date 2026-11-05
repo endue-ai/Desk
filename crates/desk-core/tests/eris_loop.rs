@@ -1,7 +1,7 @@
-//! Eris's agentic loop (ADR 0084): every brain.say turn offers the commands plugins mark as tools,
-//! the core runs the brain's call of one as `agent:eris` through cmd.invoke, the command's answer
-//! goes back to the brain, and the turn shows each hand-off as `tool` and `tool-result` steps. The
-//! brain here is examples/brain-echo for sessions and leases, with scripted turns.
+//! Eris's agentic loop (ADR 0089): every brain.say turn offers the agent commands (ADR 0088), the
+//! core runs a call of one that names no agent as `agent:eris` through cmd.invoke, its answer goes
+//! back to the brain, and the turn shows each hand-off as `tool` and `tool-result` steps. The brain
+//! here is examples/brain-echo for sessions and leases, with scripted turns.
 
 mod common;
 mod support;
@@ -133,9 +133,9 @@ fn core_on(brain: Arc<dyn Brain>, home: &Path) -> (Arc<Core>, Receiver<Delivery>
     let manifest = json!({
         "id": MAIL, "version": "0.1.0", "kind": "ui", "entry": "ui/index.html",
         "contributes": { "commands": [
-            { "id": LATEST, "title": "Latest mail", "tool": {
+            { "id": LATEST, "title": "Latest mail", "agent": true, "readOnly": true,
                 "description": "The newest messages in the inbox.",
-                "args": { "type": "object", "properties": { "limit": { "type": "integer" } } } } },
+                "args": { "type": "object", "properties": { "limit": { "type": "integer" } } } },
             { "id": "example.mail.compose", "title": "New message" },
         ] },
     });
@@ -220,14 +220,15 @@ fn a_turn_offers_the_commands_plugins_mark_as_tools() {
     play(&core, &deliveries, &turn);
     let offered = brain.offered.lock().unwrap().remove(0);
     let names: Vec<&str> = offered.iter().map(|t| t.name.as_str()).collect();
-    assert_eq!(names, ["example_mail_latest"]);
+    // The desk's two tools, then the agent command by name; the palette-only one is not offered.
+    assert_eq!(names, ["desk-tools", "desk-run", "example_mail_latest"]);
+    let latest = &offered[2];
     assert!(
-        offered[0]
+        latest
             .description
             .contains("The newest messages in the inbox.")
     );
-    assert!(offered[0].description.contains("Latest mail"));
-    assert_eq!(offered[0].schema["properties"]["limit"]["type"], "integer");
+    assert_eq!(latest.schema["properties"]["limit"]["type"], "integer");
 }
 
 #[test]

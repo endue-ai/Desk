@@ -30,7 +30,7 @@ function setup() {
   return { bridge, commands, say, el, endue };
 }
 
-describe("the desk's endue ID (ADR 0084)", () => {
+describe("the desk's endue ID (ADR 0089)", () => {
   it("signs in from a command: the code to enter, said once, then the line when it is done", async () => {
     const { bridge, commands, say, el, endue } = setup();
     await vi.waitFor(() => expect(el.textContent).toContain("Not signed in"));

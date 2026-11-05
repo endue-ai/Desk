@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   inMailbox,
+  MAILBOXES,
   mailboxOf,
   merged,
   messageOf,
@@ -24,11 +25,14 @@ describe("mailboxes", () => {
     const query = queryFor(inbox(), { page: 50 });
     expect(query).toEqual({
       kinds: ["message"],
-      where: ["archive", "sent", "drafts", "trash", "junk"].map((role) => ({
-        field: "raw.mailbox",
-        op: "ne",
-        value: role,
-      })),
+      where: [
+        ...["archive", "sent", "drafts", "trash", "junk"].map((role) => ({
+          field: "raw.mailbox",
+          op: "ne",
+          value: role,
+        })),
+        { field: "raw.channel", op: "exists", value: false },
+      ],
       sort: [{ field: "receivedAt", dir: "desc" }],
       limit: 50,
     });
@@ -152,8 +156,19 @@ describe("messages", () => {
     expect(move([], null, "ArrowDown")).toBeUndefined();
   });
 
+  it("no mailbox shows a chat message: one that names its channel is endue.chat's", () => {
+    const [lunch] = sample();
+    const slack = { ...lunch, raw: { channel: "C1", workspace: "Acme" }, unread: true };
+    for (const box of MAILBOXES.filter((b) => b.live))
+      expect(inMailbox(slack as never, box, {}), box.id).toBe(false);
+    expect(inMailbox(lunch as never, inbox())).toBe(true);
+  });
+
   it("the sent and archive mailboxes use eq on the role", () => {
-    expect(mailboxOf("sent")?.where).toEqual([{ field: "raw.mailbox", op: "eq", value: "sent" }]);
+    expect(mailboxOf("sent")?.where).toEqual([
+      { field: "raw.mailbox", op: "eq", value: "sent" },
+      { field: "raw.channel", op: "exists", value: false },
+    ]);
     expect(SOURCE.connector).toBe("acme.imap");
   });
 });

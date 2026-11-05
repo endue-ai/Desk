@@ -4,8 +4,8 @@
 // and "tool <name> as <agent>: <json arguments>" asks for that tool on behalf of that agent. A
 // message of several such calls (one per line, or joined by " then ") asks for each in turn, all in
 // one turn. A turn that offers tools gets a call to the one toolChoice names, or to the first it
-// knows: propose_theme (theme.mjs) and echo; else to an offered tool the message names by the words
-// of its name (Eris's tools, ADR 0084: "check my latest mail" calls endue_mail_latest).
+// knows: propose_theme (theme.mjs) and echo; else to an offered command the message names by the
+// words of its tool name (Eris's loop, ADR 0089: "check my latest mail" calls endue_mail_latest).
 import { proposeTheme } from "./theme.mjs";
 
 /** A contract error: the HTTP status and the BrainError body. */
@@ -126,15 +126,16 @@ function chosenTool(body) {
 }
 
 /**
- * An offered tool the message names: every word of its name after the first, the publisher, is in
- * the message ("latest" and "mail" of endue_mail_latest). Only when the turn leaves the choice to
- * the brain.
+ * An offered command the message names: every word of its tool name after the first, the
+ * publisher, is in the message ("latest" and "mail" of endue_mail_latest). Command tools are named
+ * with underscores (ADR 0088), so desk-tools and desk-run never match. Only when the turn leaves the
+ * choice to the brain.
  */
 function namedTool(body, said) {
   if (body.toolChoice && body.toolChoice.type !== "auto") return undefined;
   const words = new Set(said.toLowerCase().match(/[a-z0-9]+/g) ?? []);
   return (body.tools ?? []).find((t) => {
-    const parts = t.name.toLowerCase().split(/[_-]+/).slice(1);
+    const parts = t.name.toLowerCase().split("_").slice(1);
     return parts.length > 0 && parts.every((part) => words.has(part));
   })?.name;
 }

@@ -152,7 +152,7 @@ describe("the shell bridge over the core", () => {
     expect(refused.listening()).toBe(0);
   });
 
-  test("brain.say hands each of Eris's errands to onStep as it happens (ADR 0084)", async () => {
+  test("brain.say hands each of Eris's errands to onStep as it happens (ADR 0089)", async () => {
     const { stub, bridge } = setup({ "brain.say": () => ({ turnId: "t7" }) });
     const steps: unknown[] = [];
     const reply = bridge.brain.say("check my mail", (step) => steps.push(step));

@@ -70,8 +70,9 @@ order, each layer over the one before: the built-in `desk.*` policy plugins, the
 | `commands` | `defun` + `interactive` | adds commands; ids start with the plugin id |
 | `commands[].runs` | `defalias` | makes the command an alias the desk answers: it runs `runs.command` with `runs.args`, the caller's args merged over them key by key |
 | `commands[].irreversible` | `disabled-command-function` | marks a command that cannot be taken back: an agent's call of it waits for the person's approval every time, a person's never (ADR 0078) |
-| `commands[].tool` | none | makes the command a tool Eris may call while she answers: `description` for the brain and `args` (JSON Schema); the command's answer is the tool's output (ADR 0084) |
 | `commands[].undo` | `undo` | names the command, also the plugin's, that undoes this one: each `ok` answer lands on the desk's undo stack, and `cmd.undo` runs the inverse with `{ args, result }` (ADR 0077) |
+| `commands[].description`, `args`, `result` | docstring, `interactive` spec | say what the command does, a JSON Schema of its args (the core checks every `cmd.invoke` against it) and one of its answer; `cmd.list` shows them |
+| `commands[].agent`, `readOnly` | none | offer the command to agents as a tool (`cmd.tools`, the desk's brain turns; it needs a description), and say it only reads; never `readOnly` with `irreversible` (ADR 0088) |
 | `keys` | `global-map` | rebinds a key; `"command": ""` unbinds it |
 | `display` | `display-buffer-alist` | is asked first; the first matching rule decides |
 | `files` | `auto-mode-alist` | is asked first; the first matching pattern decides |

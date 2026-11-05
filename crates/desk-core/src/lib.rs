@@ -45,12 +45,12 @@ mod core_shell;
 mod core_state;
 mod core_store;
 mod core_themes;
+mod core_tools;
 mod core_ui;
 mod core_undo;
 mod core_update;
 mod core_views;
 mod core_wasm;
-mod eris_tools;
 mod events;
 mod grants;
 mod handler;
@@ -79,6 +79,7 @@ mod time;
 mod views_watch;
 mod watch;
 
+pub use agents::agent_caller;
 pub use conversation::{
     BrainMode, BrainOptions, FAILED_LINE, MAX_STEPS, OFFLINE_LINE, READ_ONLY_LINE, SIGN_IN_LINE,
     TOO_MANY_LINE,

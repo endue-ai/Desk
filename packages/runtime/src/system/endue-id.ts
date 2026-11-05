@@ -1,5 +1,5 @@
 /**
- * The desk's endue ID in the person's controls (ADR 0084): what the account popover shows, the
+ * The desk's endue ID in the person's controls (ADR 0089): what the account popover shows, the
  * commands that sign in and out, and Eris's lines while the person finishes signing in in the
  * browser. The brain thinks with the token the core keeps; the runtime only ever sees the state.
  */

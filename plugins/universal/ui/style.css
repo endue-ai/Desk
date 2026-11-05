@@ -1,0 +1,49 @@
+/* desk.universal: one universal view over the desk. Colours, type and corners come from the desk's
+   theme; <desk-universal-view> styles itself from the same tokens. */
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: var(--desk-background);
+  color: var(--desk-text);
+  font: var(--desk-text-sm) / 20px var(--desk-font-sans);
+}
+
+#root {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  height: 100%;
+  padding: 20px 24px;
+}
+
+desk-universal-view {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.notice {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  border: 1px solid var(--desk-warning-border);
+  border-radius: var(--desk-radius-md);
+  background: var(--desk-card);
+  color: var(--desk-warning-text);
+}
+
+.notice[hidden] {
+  display: none;
+}
+
+.notice span {
+  flex: 1 1 auto;
+}
+
+@media (max-width: 480px) {
+  #root {
+    padding: 10px 12px;
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "target": "PluginContributes",
+  "description": "args is a JSON Schema object",
+  "instance": {
+    "commands": [{ "id": "example.git.state", "title": "Git: state", "args": "path" }]
+  }
+}

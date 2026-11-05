@@ -1,4 +1,4 @@
-//! The desk's endue ID (ADR 0084): account.* signs in by the device authorization grant (RFC 8628)
+//! The desk's endue ID (ADR 0089): account.* signs in by the device authorization grant (RFC 8628)
 //! against a scripted endue ID, keeps the token in a file only this user reads, refreshes it once it
 //! has expired, and tells holders of account:manage about every change. The token never crosses
 //! the bridge.
@@ -137,7 +137,11 @@ fn signing_in_shows_the_code_opens_the_page_and_keeps_the_token() {
     assert!(posts[2].contains("grant_type=urn:ietf:params:oauth:grant-type:device_code"));
     assert!(posts[2].contains("device_code=dev1"));
 
-    let changed = named(&deliveries, "account.changed");
+    // The state changes before its event goes out: wait for both events.
+    let changed = [
+        wait_for(&deliveries, "account.changed"),
+        wait_for(&deliveries, "account.changed"),
+    ];
     assert!(changed.iter().all(|d| d.is_for("desk")));
     let states: Vec<&Value> = changed.iter().map(|d| &d.data()["state"]).collect();
     assert_eq!(states, ["signing-in", "signed-in"]);

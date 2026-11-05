@@ -1,4 +1,4 @@
-// endue.mail.latest, the mail plugin's tool for Eris (ADR 0084): the newest messages of a mailbox
+// endue.mail.latest, the mail plugin's tool for Eris (ADR 0089): the newest messages of a mailbox
 // as data the brain reads, with one line for people. It reads the index and leaves the screen as it
 // is: asking Eris about mail does not move the person's own place in it.
 import { MAILBOXES, mailboxOf, messageOf, queryFor } from "./model.js";

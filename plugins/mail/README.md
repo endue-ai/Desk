@@ -31,7 +31,7 @@ Keyboard: `j` `k` or arrows move, Enter opens, `r` `a` `f` reply, reply all and 
 | `cmd:invoke` (`*.mail.send`, `*.mail.move`, `*.mail.flag`, `desk.palette.pick`) | Act through the connector; ask for search words |
 | `ui:notify` | Say that new mail arrived, when `endue.mail.notify` is on |
 
-Eris's tool `endue.mail.latest { mailbox, limit, unread }` answers the newest messages (ADR 0084).
+Eris's tool `endue.mail.latest { mailbox, limit, unread }` answers the newest messages (ADR 0089).
 Settings `endue.mail.{page,notify,mark-read,signature,addresses}`; the store keeps `view`, `drafts`, `answers`.
 
 ```bash

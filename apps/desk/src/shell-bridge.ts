@@ -1,6 +1,6 @@
 // The shell's host over the core: what mountDesk asks of its ShellBridge, answered with bridge calls
 // as the runtime (`desk`). Audio levels are silent until the core captures audio. A turn's tool steps
-// (Eris's errands, ADR 0084) reach the shell as they happen; account.* is the desk's endue ID.
+// (Eris's errands, ADR 0089) reach the shell as they happen; account.* is the desk's endue ID.
 import type {
   A2ATaskList,
   AgentCard,

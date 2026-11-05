@@ -89,7 +89,7 @@ describe("Schemas", () => {
     const full = schemas.bundle(VIEW);
     expect(JSON.stringify(full)).not.toMatch(/"\$ref":"(?!#\/\$defs\/)/);
     const validate = new Ajv2020({ strict: false, validateFormats: false }).compile(full);
-    for (const vector of vectors("view")) {
+    for (const vector of vectors("view").filter((v) => v.target === "View")) {
       const viaAjv = ajv().getSchema(refOf(vector.target));
       expect(validate(vector.instance), vector.file).toBe(viaAjv?.(vector.instance));
     }
@@ -100,5 +100,20 @@ describe("Schemas", () => {
     expect((answer as { required: string[] }).required).toEqual(["title", "layout"]);
     // A quarter of brain.ask's 32000 characters at most, so the context still fits beside it.
     expect(text.length).toBeLessThan(8000);
+  });
+
+  it("bundles a universal view and its data the same way, each judging its own vectors as Ajv does", () => {
+    const schemas = new Schemas(documents);
+    for (const target of ["UniversalView", "UniversalData"]) {
+      const bundled = schemas.bundle(refOf(target));
+      expect(JSON.stringify(bundled)).not.toMatch(/"\$ref":"(?!#\/\$defs\/)/);
+      const validate = new Ajv2020({ strict: false, validateFormats: false }).compile(bundled);
+      const own = vectors("view").filter((v) => v.target === target);
+      expect(own.length, target).toBeGreaterThan(0);
+      for (const vector of own) {
+        const viaAjv = ajv().getSchema(refOf(target));
+        expect(validate(vector.instance), vector.file).toBe(viaAjv?.(vector.instance));
+      }
+    }
   });
 });

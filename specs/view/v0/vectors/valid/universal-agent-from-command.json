@@ -1,0 +1,18 @@
+{
+  "target": "UniversalView",
+  "description": "an agent's run, served by another plugin's command and loaded again every ten seconds, with a composer that instructs the agent",
+  "instance": {
+    "id": "example.research-run",
+    "title": "Research agent",
+    "type": "agent",
+    "source": { "command": "example.agent.run-log", "args": { "run": "latest" } },
+    "options": { "placeholder": "Tell the agent what to do next" },
+    "send": { "command": "example.agent.instruct", "args": { "text": "{send.text}" } },
+    "refresh": 10,
+    "provenance": {
+      "author": "eris",
+      "createdAt": "2026-11-04T10:00:00+09:00",
+      "words": "show me what the research agent is doing"
+    }
+  }
+}

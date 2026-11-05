@@ -8,11 +8,13 @@ import { mount } from "./harness";
 const manifest = () =>
   JSON.parse(readFileSync(join(import.meta.dirname, "../plugin.json"), "utf8")) as PluginManifest;
 
-describe("endue.mail.latest, Eris's tool (ADR 0084)", () => {
-  it("is declared as a tool whose args are the ones the command reads", () => {
+describe("endue.mail.latest, Eris's tool (ADR 0089)", () => {
+  it("is offered to agents, only reads, and declares the args the command reads (ADR 0088)", () => {
     const latest = manifest().contributes?.commands?.find((c) => c.id === "endue.mail.latest");
-    expect(latest?.tool?.description).toMatch(/newest messages/);
-    expect(latest?.tool?.args).toEqual(LATEST_ARGS);
+    expect(latest?.description).toMatch(/newest messages/);
+    expect(latest?.args).toEqual(LATEST_ARGS);
+    expect(latest?.agent).toBe(true);
+    expect(latest?.readOnly).toBe(true);
     expect(latest?.irreversible).toBeUndefined();
   });
 

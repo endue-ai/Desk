@@ -1,7 +1,7 @@
 /**
  * Bottom centre: the line you talk on. A 2 px line with a hint until focused, then a 48 px input that
  * doubles as the command palette. A sent line flies into Eris wherever she floats and is absorbed;
- * her hand-offs to plugins while she answers are drawn as errands (eris/errand.ts, ADR 0084). A
+ * her hand-offs to plugins while she answers are drawn as errands (eris/errand.ts, ADR 0089). A
  * request to change the look goes to the theme studio's Describe tab instead (eris/look.ts, TS-07),
  * and one to make something to desk.propose (ADR 0073); propose/route.ts decides which.
  */

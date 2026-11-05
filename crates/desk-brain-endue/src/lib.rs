@@ -1,6 +1,6 @@
 //! endue AI client, built only against the public `specs/brain` contract. `HttpBrain` takes the
 //! brain's base URL from configuration (examples/brain-echo in development) and, for endue AI, the
-//! person's endue ID token on every request (ADR 0084).
+//! person's endue ID token on every request (ADR 0089).
 pub const NAME: &str = env!("CARGO_PKG_NAME");
 
 pub mod http;

@@ -323,7 +323,7 @@
       "additionalProperties": false
     },
     "AccountManagePermission": {
-      "description": "Sign the desk in to endue ID and out again with account.*, and see whether it is signed in. Receive account.changed. The token itself never crosses the bridge. The desk grants it to the runtime only (ADR 0084).",
+      "description": "Sign the desk in to endue ID and out again with account.*, and see whether it is signed in. Receive account.changed. The token itself never crosses the bridge. The desk grants it to the runtime only (ADR 0089).",
       "type": "object",
       "properties": { "permission": { "const": "account:manage" } },
       "required": ["permission"],

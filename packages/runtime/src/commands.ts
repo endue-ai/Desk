@@ -19,6 +19,16 @@ export interface CommandSpec {
   /** The policy plugin the command belongs to; `desk` is the runtime itself and is always on. */
   owner: string;
   run: CommandHandler;
+  /** What agents read of the command when it is one of their tools (ADR 0088). */
+  agent?: AgentSpec;
+}
+
+/** A built-in command as agents' tool: what it does, its args and answer, and whether it only reads. */
+export interface AgentSpec {
+  description: string;
+  args?: Record<string, unknown>;
+  result?: Record<string, unknown>;
+  readOnly?: boolean;
 }
 
 export interface CommandInfo {
@@ -243,10 +253,15 @@ export class Commands {
     );
     await Promise.all(
       due.map(async ([id, spec]) => {
+        const agent = spec.agent;
         const params = {
           id,
           title: spec.title,
           ...(spec.keywords ? { keywords: spec.keywords } : {}),
+          ...(agent ? { agent: true, description: agent.description } : {}),
+          ...(agent?.args ? { argsSchema: agent.args } : {}),
+          ...(agent?.result ? { resultSchema: agent.result } : {}),
+          ...(agent?.readOnly ? { readOnly: true } : {}),
         };
         // A core without cmd.* (an older one, a bare stub) leaves the command unregistered.
         const ok = await this.#bridge.call("cmd.register", params).then(

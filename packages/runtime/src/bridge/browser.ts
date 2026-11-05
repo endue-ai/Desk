@@ -27,7 +27,7 @@ export interface BrowserBridgeOptions {
   /** Wall-clock time the sample directory's timestamps are relative to (default: now). */
   epoch?: number;
   /**
-   * The errands Eris runs for a line before she answers (ADR 0084), or undefined for none; the
+   * The errands Eris runs for a line before she answers (ADR 0089), or undefined for none; the
    * default sends a line about mail to the mail plugin (`sampleErrand`).
    */
   errand?: (text: string) => { steps: BrainStep[]; reply: string } | undefined;

@@ -6,10 +6,12 @@ pub const NAME: &str = env!("CARGO_PKG_NAME");
 mod events;
 mod http;
 mod ollama;
+mod options;
 mod store;
 mod time;
 mod tools;
 
+pub use options::{DEFAULT_BASE_URL, LocalBrainOptions};
 pub use store::STATE_FILE;
 
 use std::fs;
@@ -28,45 +30,13 @@ use crate::ollama::{Answer, Piece};
 use crate::store::{State, Waiting, invalid, not_found};
 use crate::time::rfc3339;
 
-/// Where Ollama listens unless told otherwise.
-pub const DEFAULT_BASE_URL: &str = "http://127.0.0.1:11434";
-
-/// Which Ollama to talk to and what to ask it for.
-#[derive(Debug, Clone, PartialEq)]
-pub struct LocalBrainOptions {
-    /// Ollama's base URL, `http://127.0.0.1:11434` by default.
-    pub base_url: String,
-    /// The model every turn uses, for example `llama3.2`. It must already be pulled.
-    pub model: String,
-    /// Tool definitions offered to the model, in Ollama's format. Without any, it calls no tools.
-    pub tools: Vec<Value>,
-}
-
-impl LocalBrainOptions {
-    pub fn new(model: impl Into<String>) -> Self {
-        Self {
-            base_url: DEFAULT_BASE_URL.to_owned(),
-            model: model.into(),
-            tools: Vec::new(),
-        }
-    }
-
-    pub fn with_base_url(mut self, base_url: impl Into<String>) -> Self {
-        self.base_url = base_url.into();
-        self
-    }
-
-    pub fn with_tools(mut self, tools: Vec<Value>) -> Self {
-        self.tools = tools;
-        self
-    }
-}
-
 /// A brain on this machine: Ollama for the answers, a JSON file for everything else.
 pub struct LocalBrain {
     endpoint: Endpoint,
     model: String,
     tools: Vec<Value>,
+    /// The agent the model speaks for, when the desk runs its tool calls (`with_agent`).
+    agent: Option<String>,
     folder: PathBuf,
     state: Mutex<State>,
     clock: Box<dyn Fn() -> u64 + Send + Sync>,
@@ -92,6 +62,7 @@ impl LocalBrain {
             return Err("LocalBrainOptions names no model".to_owned());
         }
         let endpoint = Endpoint::parse(&options.base_url)?;
+        options.check_agent()?;
         let folder = folder.as_ref().to_path_buf();
         fs::create_dir_all(&folder)
             .map_err(|e| format!("{} cannot be created: {e}", folder.display()))?;
@@ -100,6 +71,7 @@ impl LocalBrain {
             endpoint,
             model: options.model,
             tools: options.tools,
+            agent: options.agent,
             folder,
             state: Mutex::new(state),
             clock: Box::new(time::now_ms),
@@ -187,8 +159,8 @@ impl LocalBrain {
                     call_id: state.id("call"),
                     name: call.name.clone(),
                     arguments: call.arguments.clone(),
-                    // A local model speaks for no agent of endue AI: Desk runs only echo for it.
-                    agent_id: None,
+                    // The agent the person named for the model; with none, Desk runs only echo.
+                    agent_id: self.agent.clone(),
                 })
                 .collect();
             let stored = state.session_mut(session_id)?;

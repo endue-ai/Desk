@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://endue.ai/specs/bridge/v0/account.schema.json",
   "title": "Desk bridge v0: account",
-  "description": "The person's endue ID on this desk (ADR 0084). Signing in follows the OAuth 2.0 device authorization grant (RFC 8628): the desk asks endue ID for a code, the person enters it in the browser, and the desk waits for the token in the background. The core keeps the token and sends it to the brain as its bearer token; it never crosses the bridge. Every call needs account:manage and answers the same AccountStatus; changes arrive as account.changed.",
+  "description": "The person's endue ID on this desk (ADR 0089). Signing in follows the OAuth 2.0 device authorization grant (RFC 8628): the desk asks endue ID for a code, the person enters it in the browser, and the desk waits for the token in the background. The core keeps the token and sends it to the brain as its bearer token; it never crosses the bridge. Every call needs account:manage and answers the same AccountStatus; changes arrive as account.changed.",
   "$defs": {
     "AccountState": {
       "description": "signed-out: no endue ID on this desk. signing-in: a code waits for the person in the browser. signed-in: the desk holds a token and the brain gets it.",

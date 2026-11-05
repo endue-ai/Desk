@@ -11,7 +11,7 @@ and brain). Layer: Desk bridge (`docs/architecture.md`).
 - `browserStub(handlers, observe?)`: answers the methods it is given, any other `unsupported`; `emit`
   sends events; handlers throw `StubError(code, message, permission?)`; `observe` hears calls. For tests.
 - `stubCommands(emit, { grants?, settings?, prompt?, now?, files?, open? })`: the core's rules, per
-  caller. Its `handlers` serve `cmd.*` (`cmd.undo`, `cmd.redo`: stub-undo.ts), `perm.*`, `settings.*`,
+  caller. Its `handlers` serve `cmd.*` (`cmd.undo`, `cmd.redo`: stub-undo.ts; `cmd.list`, `cmd.tools`: stub-tools.ts), `perm.*`, `settings.*`,
   `log.*`, `events.*`, `ui.surface.*`, `plugin.stats` (`observe` counts calls) and `shell.open` (asking
   without a grant, refusing what the core refuses, recorded in `state().opened`, handed to `open`). A plugin's
   scoped call needs a covering grant, else `permission_denied`; the runtime (`desk`) is trusted and

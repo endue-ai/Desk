@@ -1,0 +1,7 @@
+{
+  "target": "PluginContributes",
+  "description": "an agent command needs a description",
+  "instance": {
+    "commands": [{ "id": "example.git.state", "title": "Git: state", "agent": true }]
+  }
+}

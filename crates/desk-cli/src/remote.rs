@@ -75,6 +75,23 @@ impl Session {
                     )
                 },
             ),
+            Remote::CmdTools { query } => self.listing(
+                "cmd.tools",
+                match query {
+                    Some(query) => json!({ "query": query, "limit": 200 }),
+                    None => json!({ "limit": 200 }),
+                },
+                "tools",
+                |t| {
+                    let does = match (&t["readOnly"], &t["irreversible"]) {
+                        (Value::Bool(true), _) => "reads",
+                        (_, Value::Bool(true)) => "irreversible",
+                        _ => "acts",
+                    };
+                    let (id, provider) = (text(t, "command"), text(t, "provider"));
+                    format!("{id}\t{provider}\t{does}\t{}", text(t, "description"))
+                },
+            ),
             Remote::CmdRun { id, args } => self.cmd_run(&id, args),
             // Key and profile layers are the runtime's: it answers, the CLI prints its text.
             Remote::Describe { kind, name } => {

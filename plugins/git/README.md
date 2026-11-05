@@ -5,7 +5,8 @@ One `center` surface shows a repository's status (head, unmerged, untracked, uns
 recent commits), its log as a graph of lanes, and diffs; single letters do the work (`s` stage,
 `u` unstage, `k` discard, `c` commit, `l` log, `d` diff, `f`/`F`/`P` fetch/pull/push, `b` switch).
 Every operation is a command (`endue.git.*`), so the palette, Eris and agents run the same ones;
-`Mod+Shift+G` is `endue.git.status`. Design and requirements: `docs/ko/git-plugin-requirements.md`.
+`Mod+Shift+G` is `endue.git.status`. Agents get `endue.git.state` (the repository as data) and the
+operations as tools (ADR 0088); push and discard wait for the person's approval. Design and requirements: `docs/ko/git-plugin-requirements.md`.
 
 Git runs through `proc.spawn` without a shell, `--` before every path, `GIT_TERMINAL_PROMPT=0` so a
 missing credential fails at once instead of waiting. What cannot be undone (discard, force push) asks

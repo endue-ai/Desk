@@ -117,7 +117,7 @@ pub fn run() {
             // The person's own themes (ADR 0058): every theme folder in <data>/themes/ is installed
             // now, not built in, and comes back at every start.
             core = core.with_themes_dir(data.join("themes"));
-            // The person's endue ID (ADR 0084): signing in hands the brain its bearer token.
+            // The person's endue ID (ADR 0089): signing in hands the brain its bearer token.
             let id_url = std::env::var("DESK_ID_URL").unwrap_or_else(|_| DEFAULT_ID_URL.to_owned());
             let mut account = AccountOptions::new(id_url);
             account.file = Some(data.join("account.json"));
@@ -145,7 +145,7 @@ pub fn run() {
             }
             let core = Arc::new(core);
             // The brain's tool calls run in the core, each as the agent that asks (ADR 0072), and
-            // every turn offers Eris the commands plugins mark as tools (ADR 0084).
+            // every turn offers Eris the commands plugins mark as tools (ADR 0089).
             core.route_tools();
             core.start_account();
             // The runtime mounts plugins, so it may list and toggle them.
@@ -224,7 +224,7 @@ pub fn run() {
                     permission: Default::default(),
                 }),
             );
-            // The runtime signs the desk in to endue ID and out again (ADR 0084).
+            // The runtime signs the desk in to endue ID and out again (ADR 0089).
             core.grant(
                 RUNTIME_CALLER,
                 Permission::AccountManage(AccountManagePermission {

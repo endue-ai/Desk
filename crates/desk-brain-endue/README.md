@@ -4,7 +4,7 @@ endue AI client, built only against the public `specs/brain` contract. The base 
 configuration (`DESK_BRAIN_URL` in the app); in development it points at `examples/brain-echo`.
 
 Layer: Rust core (see `docs/architecture.md`). http on std's `TcpStream`; https over rustls with the
-system's roots (`ureq`, as desk-sys). endue AI gets the signed-in endue ID token (ADR 0084).
+system's roots (`ureq`, as desk-sys). endue AI gets the signed-in endue ID token (ADR 0089).
 
 ## Public API
 

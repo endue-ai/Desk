@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { page } from "../../../packages/bridge/src/stub-query";
-import { ACCOUNT, CONNECTOR, denied, ME, mount, READ, SOURCE, sample } from "./harness";
+import { ACCOUNT, CONNECTOR, denied, ME, message, mount, READ, SOURCE, sample } from "./harness";
 
 const LUNCH = `${ACCOUNT}#t-lunch`;
 const INVITE_THREAD = `${ACCOUNT}#m-invite`;
@@ -65,6 +65,21 @@ describe("the mailbox", () => {
     await app.more();
     expect(view.shown()).toHaveLength(3);
     expect(view.lists.at(-1)?.state.more).toBe(false);
+  });
+
+  it("leaves chat messages, which name their channel, to the chat plugin", async () => {
+    const standup = message({
+      id: "c-standup",
+      title: "Standup in 5",
+      updatedAt: "2026-10-30T08:59:00+09:00",
+      from: { name: "Jun" },
+      receivedAt: "2026-10-30T08:59:00+09:00",
+      unread: true,
+      raw: { channel: "C1", workspace: "Acme" },
+    });
+    const { view } = await mount({ items: [...sample(), standup] });
+    expect(view.shown()).toHaveLength(3);
+    expect(view.navs.at(-1)?.mailboxes.find((b) => b.id === "inbox")?.count).toBe("2");
   });
 
   it("says so when no account brings messages in", async () => {

@@ -128,6 +128,11 @@ On main:
 - Grants last for the session and live in memory; `once` and `always` are refused, and so is revoking
   another caller's grant.
 - Paths are normalised lexically, and `..` above a root is rejected (`crates/desk-core/src/paths.rs`).
+- Other apps reach the desk over MCP with `desk mcp` (ADR 0086, `crates/desk-mcp`) on the desk socket.
+  Its connections ask `socket.agent` once, so every call the app asks for runs as `agent:<id>`, never
+  as `cli`: the agent's own grants, the allowlist, prompts, approvals and the `perm` log apply as for
+  the brain's agents (below). A connection that became an agent never goes back to `cli`. Only the
+  catalog (plugin and command names, manifests) is read as `cli`.
 - `store.*` keeps one namespace per caller. Methods the core does not serve yet (`fs.write`, `proc.*`,
   `net.fetch`, `audio.*`, `ui.*`, `cmd.*`, `settings.*`, `log.*`, `events.*`, `perm.list`, `perm.answer`)
   answer `unsupported`.
@@ -142,6 +147,9 @@ Gaps:
 - The core splits bridge paths on `/` only and does not enforce the schema's no-backslash rule, so on
   Windows a segment with backslashes can name a folder other than the one the scope was checked
   against. No issue yet.
+- An MCP client's agent id is its own word (`desk mcp --agent`): two apps that pass the same id share
+  that agent's grants, and every client sees every installed plugin and command, granted or not. No
+  issue yet.
 - Every plugin under `DESK_PLUGIN_DIRS` installs as built-in with its declared permissions granted, in
   release builds too. Grants are keyed by plugin id, so a plugin installed later under a built-in's id
   holds that id's grants. No issue yet.

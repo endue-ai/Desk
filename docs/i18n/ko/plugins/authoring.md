@@ -183,6 +183,36 @@ defineUiPlugin({
 `ctx.theme` 으로 전달됩니다. 프레임 안에서 누른 키 조합은 `preventDefault()` 를 부르지 않는 한 데스크의
 키맵에 전달됩니다. 기본 정책과 각각이 정하는 것은 `plugins/README.md` 에 있습니다.
 
+## 에이전트를 위한 커맨드
+
+endue AI 의 에이전트나 로컬 두뇌는 사람이 실행하는 것과 같은 커맨드로 데스크를 다룹니다(ADR 0088). 커맨드에
+`agent` 를 표시하고, 무엇을 하는지, 무엇을 받고 무엇을 돌려주는지 적으세요. 코어는 모든 호출의 인자를 `args`
+로 검사하고, 커맨드를 `cmd.tools` 에 올리며, 데스크의 두뇌 턴에서 id 를 딴 이름의 도구
+(`example_my-plugin_notes`)로 제공합니다.
+
+```json
+"commands": [
+  {
+    "id": "example.my-plugin.notes",
+    "title": "Notes: list",
+    "description": "The notes in a folder, newest first: name, path and when each changed.",
+    "args": { "type": "object", "properties": { "folder": { "type": "string" } }, "additionalProperties": false },
+    "result": { "type": "array", "items": { "type": "object" } },
+    "agent": true,
+    "readOnly": true
+  },
+  { "id": "example.my-plugin.publish", "title": "Notes: publish", "description": "Publish a note to the web.", "agent": true, "irreversible": true }
+]
+```
+
+`readOnly` 는 커맨드가 데이터만 돌려주고 사람이 가진 것을 아무것도 바꾸지 않는다는 뜻입니다. 커맨드는
+에이전트가 아니라 플러그인의 권한으로 돌기 때문에, 프로그램을 실행하거나 보내거나 지우거나 게시하는 것에는
+`irreversible` 를 표시하세요. 그러면 에이전트의 호출은 인자를 보여 준 뒤 사람의 승인을 기다립니다. 팔레트에서
+인자 없이 실행할 때 빠지는 인자는 필수로 두지 말고 핸들러에서 검사하세요. 실행 중에 등록하는 커맨드도
+`cmd.register` 로 같은 필드(`description`, `argsSchema`, `resultSchema`, `agent`, `readOnly`)를 받고,
+`ctx.commands.tools()` 는 내 권한이 닿는 에이전트 커맨드를 나열합니다. 내장 git, terminal, docker,
+calendar, database 플러그인이 예시입니다.
+
 ## 파일 편집: 편집 등급
 
 파일을 여는 플러그인은 먼저 읽고, 편집은 나중에 더합니다(ADR 0045). 편집을 시작하면 여는 모든 형식은 읽기
@@ -241,6 +271,28 @@ await ctx.commands.run("desk.views.open", { id: "desk.today" });
 시계를 압니다(`{today}`, `{tomorrow}`). 앱이 이 요소들을 제공하게 되면 여러분의 페이지도 import map
 (`"@endue-ai/ui": "/_desk/ui.js"`)으로 같은 요소를 불러올 수 있습니다. 지금은 런타임의 테스트 서버가
 제공합니다.
+
+### 유니버설 뷰
+
+유니버설 뷰(`specs/view/v0/universal.schema.json`, ADR 0087)는 한 가지 YAML 형식, 곧 유니버설 데이터 형식을
+내주는 출처라면 어디에서든 엔트리를 받아 타임라인, 캘린더, 칸반, 리스트, 텍스트, 채팅, 에이전트 실행으로
+보여 줍니다. 뷰는 데이터로 두고 `ctx.universal` 로 엽니다. 출처는 인라인 데이터, 플러그인 폴더의 파일
+(`asset`, 권한 없음), URL(`net:fetch`), 데스크의 파일(`fs:read`), 다른 플러그인의 커맨드, 데스크의 아이템
+중 무엇이든 되고, 뷰는 그대로입니다.
+
+```js
+const board = ctx.universal.open(document.getElementById("root"), {
+  type: "kanban",
+  types: ["kanban", "list", "timeline", "calendar"],
+  source: { asset: "data/board.yaml" },
+  map: { group: "column", start: "due" },
+  move: { command: "example.board.move", args: { id: "{id}", to: "{move.to}" } },
+});
+```
+
+그리는 것은 `@endue-ai/ui` 의 `<desk-universal-view>` 입니다. `ctx.universal.load(source)` 와
+`ctx.universal.parse(text)` 는 문서 자체를 돌려줍니다. 플러그인을 직접 만들지 않아도
+`desk.universal.open` 커맨드로 열 수 있습니다. 가장 작은 예는 `examples/plugin-hello-universal` 입니다.
 
 ## 테스트
 

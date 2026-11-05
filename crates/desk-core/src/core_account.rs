@@ -1,4 +1,4 @@
-//! account.* (ADR 0084): the desk's endue ID, served from the `Account` the app hands the core.
+//! account.* (ADR 0089): the desk's endue ID, served from the `Account` the app hands the core.
 //! Every call checks `account:manage`; without an account it answers `unsupported`. Signing in
 //! opens the page where the person enters the code in the system's browser, and every change goes
 //! out as `account.changed` to the holders of `account:manage`.

@@ -1,5 +1,5 @@
 /**
- * Eris's errands (ADR 0084): each hand-off of her agentic loop drawn on the desk. On `tool` a spark
+ * Eris's errands (ADR 0089): each hand-off of her agentic loop drawn on the desk. On `tool` a spark
  * leaves her body, labelled with the plugin it goes to, and flies to that plugin's window (or, with
  * no window on screen, to a place beside her); the window glows while the plugin works. On
  * `tool-result` the spark flies back with what it got and sinks into her. With reduced motion the

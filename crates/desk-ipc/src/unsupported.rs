@@ -6,7 +6,7 @@ use std::io;
 use std::path::Path;
 use std::sync::Arc;
 
-use desk_bridge::{BridgeEvent, BridgeRequest, BridgeResponse};
+use desk_bridge::{BridgeEvent, BridgeRequest, BridgeResponse, RequestId};
 use desk_core::Core;
 
 use crate::UNSUPPORTED;
@@ -45,6 +45,10 @@ impl Client {
     }
 
     pub fn call_line(&mut self, _request: BridgeRequest) -> io::Result<(BridgeResponse, String)> {
+        match self.never {}
+    }
+
+    pub fn become_agent(&mut self, _id: RequestId, _agent: &str) -> io::Result<BridgeResponse> {
         match self.never {}
     }
 

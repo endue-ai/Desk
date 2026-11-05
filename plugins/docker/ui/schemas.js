@@ -2,7 +2,7 @@
 // Schema for its args. The ids, titles and keywords are the manifest's (a test keeps them equal);
 // registering them again with cmd.register adds the description and schema, as the calendar does.
 
-/** @typedef {{ id: string, title: string, keywords?: string[], description: string, args?: object }} CommandSpec */
+/** @typedef {{ id: string, title: string, keywords?: string[], irreversible?: boolean, description: string, args?: object }} CommandSpec */
 
 const CONTAINER = { type: "string", description: "A container's name or id" };
 const PROJECT = { type: "string", description: "A Compose project's name" };
@@ -113,6 +113,7 @@ export const COMMANDS = [
   {
     id: "endue.docker.kill",
     title: "Docker: kill the container",
+    irreversible: true,
     keywords: ["sigkill"],
     description: "Kill a container's processes at once. Asks first.",
     args: onContainer,
@@ -120,6 +121,7 @@ export const COMMANDS = [
   {
     id: "endue.docker.remove",
     title: "Docker: remove the container",
+    irreversible: true,
     keywords: ["rm", "delete"],
     description: "Remove a container, stopping it first when it runs. Asks first.",
     args: object({
@@ -183,6 +185,7 @@ export const COMMANDS = [
   {
     id: "endue.docker.run",
     title: "Docker: run a container from an image",
+    irreversible: true,
     keywords: ["create", "new"],
     description: "Start a new container in the background from an image.",
     args: object(
@@ -208,6 +211,7 @@ export const COMMANDS = [
   {
     id: "endue.docker.remove-image",
     title: "Docker: remove the image",
+    irreversible: true,
     keywords: ["rmi", "delete"],
     description: "Remove an image no container uses. Asks first.",
     args: object({ image: { type: "string" } }),
@@ -215,6 +219,7 @@ export const COMMANDS = [
   {
     id: "endue.docker.prune-images",
     title: "Docker: remove dangling images",
+    irreversible: true,
     keywords: ["prune", "clean"],
     description: "Remove dangling images, or every unused one with all. Asks first.",
     args: object({ all: { type: "boolean" } }),
@@ -222,6 +227,7 @@ export const COMMANDS = [
   {
     id: "endue.docker.remove-volume",
     title: "Docker: remove the volume",
+    irreversible: true,
     keywords: ["delete"],
     description: "Remove a volume and its data. Asks first.",
     args: object({ volume: { type: "string" } }),
@@ -229,6 +235,7 @@ export const COMMANDS = [
   {
     id: "endue.docker.prune-volumes",
     title: "Docker: remove unused volumes",
+    irreversible: true,
     keywords: ["prune", "clean"],
     description: "Remove anonymous volumes no container uses, named ones too with all. Asks first.",
     args: object({ all: { type: "boolean" } }),
@@ -236,6 +243,7 @@ export const COMMANDS = [
   {
     id: "endue.docker.remove-network",
     title: "Docker: remove the network",
+    irreversible: true,
     keywords: ["delete"],
     description: "Remove a network. Asks first.",
     args: object({ network: { type: "string" } }),
@@ -243,6 +251,7 @@ export const COMMANDS = [
   {
     id: "endue.docker.prune-networks",
     title: "Docker: remove unused networks",
+    irreversible: true,
     keywords: ["prune", "clean"],
     description: "Remove every network no container uses. Asks first.",
   },
@@ -256,6 +265,7 @@ export const COMMANDS = [
   {
     id: "endue.docker.down",
     title: "Docker: Compose down",
+    irreversible: true,
     keywords: ["compose", "teardown"],
     description:
       "Stop and remove a project's containers and networks; its volumes too with volumes. Asks first.",
@@ -299,6 +309,7 @@ export const COMMANDS = [
   {
     id: "endue.docker.prune",
     title: "Docker: clean up",
+    irreversible: true,
     keywords: ["system", "prune", "disk"],
     description:
       "Remove stopped containers, unused networks, dangling images and the build cache; unused images with all, anonymous volumes with volumes. Asks first.",
@@ -319,22 +330,3 @@ export const COMMANDS = [
     description: "Stop a pull, Compose up or other command still running.",
   },
 ];
-
-/**
- * Register every command again with its description and schema. The manifest already declares
- * them, so this updates the plugin's own entries; a desk that refuses keeps the manifest's.
- * @param {Pick<import("@endue-ai/plugin-sdk").PluginBridge, "call">} bridge
- */
-export function registerSchemas(bridge) {
-  for (const { id, title, keywords, description, args } of COMMANDS) {
-    void bridge
-      .call("cmd.register", {
-        id,
-        title,
-        description,
-        ...(keywords ? { keywords } : {}),
-        argsSchema: args ?? object({}),
-      })
-      .catch(() => {});
-  }
-}
