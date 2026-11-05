@@ -111,12 +111,16 @@ fn local_on(ollama: &str, folder: &Path, models: Arc<Mutex<Vec<String>>>) -> Bra
     })
 }
 
+/// A shared core on `brains`, reading `home/.desk/init.yaml` as the app does.
 fn core_on(brains: Brains, home: &Path) -> (Arc<Core>, Receiver<Delivery>) {
     let options = BrainOptions {
         retry: Duration::from_millis(50),
         ..BrainOptions::default()
     };
-    let core = Arc::new(Core::new(roots(home)).with_brains(brains.with_options(options)));
+    let core = Core::new(roots(home))
+        .with_init_file(home.join(".desk/init.yaml"))
+        .with_brains(brains.with_options(options));
+    let core = Arc::new(core);
     core.route_tools();
     grant(&core, "desk", json!({ "permission": "brain:converse" }));
     let deliveries = core.events().subscribe_addressed();
@@ -226,7 +230,10 @@ fn an_unreachable_remote_brain_falls_back_to_the_local_brain_and_eris_says_so_on
     let (kinds, first) = turn(&core, &deliveries, "hi");
     assert!(!kinds.contains(&"offline".to_owned()), "{kinds:?}");
     assert!(first.starts_with(FALLBACK_LINE), "{first:?}");
-    assert!(first.ends_with(&format!("Hi from {DEFAULT_LOCAL_MODEL}")), "{first:?}");
+    assert!(
+        first.ends_with(&format!("Hi from {DEFAULT_LOCAL_MODEL}")),
+        "{first:?}"
+    );
 
     let (_, second) = turn(&core, &deliveries, "and now?");
     assert_eq!(second, format!("Hi from {DEFAULT_LOCAL_MODEL}"));
@@ -249,7 +256,10 @@ fn a_local_choice_never_falls_back_to_a_remote_brain() {
 
     let (kinds, _) = turn(&core, &deliveries, "hi");
     assert_eq!(kinds.last().map(String::as_str), Some("offline"));
-    assert_eq!(status(&core), json!({ "mode": "offline", "brain": "local" }));
+    assert_eq!(
+        status(&core),
+        json!({ "mode": "offline", "brain": "local" })
+    );
     assert_eq!(endue.turns.load(Ordering::SeqCst), 0);
 }
 
@@ -260,5 +270,8 @@ fn a_desk_without_a_local_brain_stays_offline_when_the_remote_is_down() {
 
     let (kinds, _) = turn(&core, &deliveries, "hi");
     assert_eq!(kinds.last().map(String::as_str), Some("offline"));
-    assert_eq!(status(&core), json!({ "mode": "offline", "brain": "endue" }));
+    assert_eq!(
+        status(&core),
+        json!({ "mode": "offline", "brain": "endue" })
+    );
 }

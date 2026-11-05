@@ -6,14 +6,14 @@ use std::sync::Arc;
 
 use desk_brain::{AgentQuery, Brain, BrainFailure, TaskQuery};
 use desk_bridge::{
-    BrainAgentsCardParams, BrainAgentsListParams, BrainConversePermission, BrainSpacesListParams,
-    BrainStatusCloud, BrainStatusLocal, BrainStatusOffline, BrainStatusParams, BrainStatusResult,
-    BrainTasksListParams, BridgeError, ErrorCode, Permission,
+    BrainAgentsCardParams, BrainAgentsListParams, BrainConversePermission, BrainName,
+    BrainSpacesListParams, BrainStatusCloud, BrainStatusLocal, BrainStatusOffline,
+    BrainStatusParams, BrainStatusResult, BrainTasksListParams, BridgeError, ErrorCode, Permission,
 };
 use serde::de::DeserializeOwned;
 use serde_json::Value;
 
-use crate::conversation::BrainMode;
+use crate::conversation::{BrainMode, Conversation};
 use crate::handler::{Answer, Core, error, json};
 use crate::perm::Target;
 
@@ -57,32 +57,22 @@ impl Core {
     }
 
     /// Which brain the desk talks to. The brain is asked for its spaces on every call: one it cannot
-    /// reach is offline, one that answers anything is the mode the desk was given.
+    /// reach is offline, one that answers anything is the mode the desk was given. On a desk that
+    /// chooses (ADR 0094), `brain` names the choice, and a reachable local brain standing in for an
+    /// unreachable choice answers with `fallback`.
     pub(crate) fn brain_status(&self, caller: &str, params: BrainStatusParams) -> Answer {
         self.converse(caller, params.scope)?;
-        let offline = BrainStatusResult::BrainStatusOffline(BrainStatusOffline {
-            mode: Default::default(),
-            brain: None,
-        });
-        let Some(conversation) = &self.conversation else {
-            return json(offline);
+        let Some(picked) = self.talking() else {
+            return json(offline(None));
         };
-        if let Err(BrainFailure::Unreachable(_)) = conversation.brain().list_spaces() {
-            return json(offline);
+        let chosen = picked.chosen;
+        if picked.conversation.reachable() {
+            return json(answering(&picked.conversation, chosen, None));
         }
-        json(match conversation.mode() {
-            BrainMode::Cloud => BrainStatusResult::BrainStatusCloud(BrainStatusCloud {
-                mode: Default::default(),
-                credits: None,
-                brain: None,
-            }),
-            BrainMode::Local { model } => BrainStatusResult::BrainStatusLocal(BrainStatusLocal {
-                mode: Default::default(),
-                model: model.clone(),
-                brain: None,
-                fallback: None,
-            }),
-        })
+        match picked.fallback.filter(|fallback| fallback.to.reachable()) {
+            Some(fallback) => json(answering(&fallback.to, chosen, Some(true))),
+            None => json(offline(chosen)),
+        }
     }
 
     fn converse(&self, caller: &str, scope: BrainConversePermission) -> Result<(), BridgeError> {
@@ -96,13 +86,13 @@ impl Core {
         scope: BrainConversePermission,
     ) -> Result<Arc<dyn Brain>, BridgeError> {
         self.converse(caller, scope)?;
-        let conversation = self.conversation.as_ref().ok_or_else(|| {
+        let picked = self.talking().ok_or_else(|| {
             error(
                 ErrorCode::Unsupported,
                 "no brain is configured for this desk".to_owned(),
             )
         })?;
-        Ok(Arc::clone(conversation.brain()))
+        Ok(Arc::clone(picked.conversation.brain()))
     }
 }
 
@@ -127,4 +117,32 @@ fn failed(failure: BrainFailure) -> BridgeError {
         BrainFailure::Refused { .. } | BrainFailure::Protocol(_) => ErrorCode::Internal,
     };
     error(code, failure.to_string())
+}
+
+fn offline(brain: Option<BrainName>) -> BrainStatusResult {
+    BrainStatusResult::BrainStatusOffline(BrainStatusOffline {
+        mode: Default::default(),
+        brain,
+    })
+}
+
+/// The status of a brain that answers: in the cloud, or on this machine with its model.
+fn answering(
+    conversation: &Conversation,
+    brain: Option<BrainName>,
+    fallback: Option<bool>,
+) -> BrainStatusResult {
+    match conversation.mode() {
+        BrainMode::Cloud => BrainStatusResult::BrainStatusCloud(BrainStatusCloud {
+            mode: Default::default(),
+            credits: None,
+            brain,
+        }),
+        BrainMode::Local { model } => BrainStatusResult::BrainStatusLocal(BrainStatusLocal {
+            mode: Default::default(),
+            model: model.clone(),
+            brain,
+            fallback,
+        }),
+    }
 }

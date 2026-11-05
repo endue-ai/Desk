@@ -35,10 +35,11 @@ test("fake audio replays an envelope on the injected clock", () => {
   expect(sampleEnvelope(envelope, -1)[0]).toBe(0);
 });
 
-test("brain status switches between local and cloud; permission requests are recorded", async () => {
+test("brain status switches between the brains; permission requests are recorded", async () => {
   const bridge = browserBridge({ now: () => 0, storage: memory(), grant: (s) => s !== "mail" });
   expect(await bridge.brain.status()).toEqual({ mode: "local", model: "llama-3.2-3b" });
-  expect(await bridge.brain.use("cloud")).toEqual({ mode: "cloud", credits: 1200 });
+  const endue = { mode: "cloud", credits: 1200, brain: "endue" };
+  expect(await bridge.brain.use("endue")).toEqual(endue);
   expect(await bridge.perm.request("mail")).toBe(false);
   expect(bridge.fake.requests).toEqual(["mail"]);
 });
