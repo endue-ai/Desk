@@ -81,7 +81,7 @@ describe("the approval card (ADR 0078)", () => {
     });
   });
 
-  it("asks Remember this? before Eris keeps a fact, with the fact as its preview (ADR 0096)", async () => {
+  it("asks before Eris remembers a fact, with the fact as its preview (ADR 0096)", async () => {
     const fact: PermApprovalData = {
       approvalId: "a-7",
       caller: "agent:eris",
@@ -95,7 +95,7 @@ describe("the approval card (ADR 0078)", () => {
     expect(view.approvals.at(-1)).toMatchObject({
       kind: "approval",
       approvalId: "a-7",
-      action: "Remember this?",
+      action: "Remember",
       target: "Prefers pnpm over npm",
       task: "Allow for this task: the other facts it keeps until this turn ends.",
     });

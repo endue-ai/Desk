@@ -1,0 +1,14 @@
+{
+  "target": "InitDocument",
+  "description": "env names variables to pass; it never holds their values, since init.yaml may sync",
+  "instance": {
+    "mcp": {
+      "servers": {
+        "github": {
+          "command": "npx",
+          "env": ["GITHUB_TOKEN=ghp_example"]
+        }
+      }
+    }
+  }
+}

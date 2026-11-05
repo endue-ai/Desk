@@ -1,0 +1,17 @@
+{
+  "target": "Item",
+  "description": "Eris's errand to the mail plugin, done, with a short result",
+  "instance": {
+    "id": "run-3",
+    "source": { "connector": "desk.agents", "instance": "default" },
+    "kind": "run",
+    "title": "endue.mail.latest",
+    "updatedAt": "2026-11-05T09:30:05Z",
+    "agent": "eris",
+    "state": "done",
+    "startedAt": "2026-11-05T09:30:01Z",
+    "endedAt": "2026-11-05T09:30:05Z",
+    "result": "2 new messages",
+    "command": "endue.mail.latest"
+  }
+}

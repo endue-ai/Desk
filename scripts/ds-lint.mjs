@@ -68,27 +68,35 @@ export function hasKit(text) {
 
 /**
  * What says how a made control is classed: for `h("button", { … })` and its kind, the props object;
- * for `x = createElement("button")`, its line and the next lines that set `x.` something.
+ * for `element("button", "a b")`, a class string as the second argument; and for a control assigned
+ * to a name (`x = createElement("button")`, `x = el("button", label)`), its line and the next lines
+ * that set `x.` something.
  */
 function callWindow(source, at, call) {
   const rest = source.slice(at + call.length);
+  let given = "";
   if (!call.startsWith("createElement")) {
     const comma = rest.search(/\S/);
-    if (rest[comma] !== ",") return "";
-    const brace = comma + 1 + rest.slice(comma + 1).search(/\S/);
-    if (rest[brace] !== "{") return "";
-    let depth = 0;
-    for (let i = brace; i < rest.length; i++) {
-      if (rest[i] === "{") depth++;
-      else if (rest[i] === "}" && --depth === 0) return rest.slice(brace, i + 1);
+    if (rest[comma] === ",") {
+      const brace = comma + 1 + rest.slice(comma + 1).search(/\S/);
+      const quoted = /^(["'`])((?:\\.|(?!\1).)*)\1/.exec(rest.slice(brace));
+      if (quoted) given = `className: ${quoted[0]}`;
+      else if (rest[brace] === "{") {
+        let depth = 0;
+        for (let i = brace; i < rest.length && !given; i++) {
+          if (rest[i] === "{") depth++;
+          else if (rest[i] === "}" && --depth === 0) given = rest.slice(brace, i + 1);
+        }
+        if (!given) given = rest.slice(brace);
+        return given;
+      }
     }
-    return rest.slice(brace);
   }
   const start = source.lastIndexOf("\n", at) + 1;
   const [line = "", ...next] = source.slice(start).split("\n").slice(0, 7);
-  const name = /(\w+)\s*=\s*(?:document\.)?createElement/.exec(line)?.[1];
+  const name = /(\w+)\s*=\s*[^=]*?(?:createElement|\b(?:h|el|element|make|node))\(/.exec(line)?.[1];
   const set = name ? next.filter((l) => new RegExp(`\\b${name}\\.`).test(l)) : [];
-  return [line, ...set].join("\n");
+  return [given, line, ...set].join("\n");
 }
 
 /** Findings in one file's source: { line, rule: "control", text }. */

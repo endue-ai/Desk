@@ -24,6 +24,7 @@ is JSON in the app's data folder (ADR 0079).
 | `plugins.disabled` | plugin ids | `[]` | Plugins that start disabled, built-ins included; turning one on while Desk runs lasts until the next start |
 | `settings` | key → any value | `{}` | Settings for the core and plugins; keys are lowercase and dotted by owner (`eris.voice`) |
 | `agents.<id>.allow` | permissions | none | What the brain's agent `<id>` may be granted; outside a non-empty list it is refused, inside it the person is asked (ADR 0072). Read again at every agent call |
+| `mcp.servers.<name>` | `command`, `args`, `env` | none | MCP servers whose tools agents may call, as the commands `mcp.<name>.<tool>` (ADR 0098). Each starts over stdio as the caller `mcp:<name>` once the person grants it `proc:spawn` for `command`; `env` names variables to pass from the desk's environment, never values. Read at start |
 | `sync.enabled` | boolean | `false` | Keep this file the same on every desk, through endue |
 
 Unknown keys are refused, so a typo surfaces instead of being ignored. New keys arrive with a new

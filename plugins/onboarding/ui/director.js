@@ -216,12 +216,14 @@ export class Director {
       const id = `ask-${token}`;
       const tag = element("label", "", label);
       tag.htmlFor = id;
-      const input = element("input");
+      const input = element("input", "desk-field");
       Object.assign(input, { id, type: "text", autocomplete, maxLength: 80, placeholder });
       field.append(tag, input);
       form.append(
         field,
-        Object.assign(element("button", "btn primary", "Send"), { type: "submit" }),
+        Object.assign(element("button", "btn primary desk-btn desk-btn-primary", "Send"), {
+          type: "submit",
+        }),
       );
       form.addEventListener("submit", (event) => {
         event.preventDefault();
@@ -254,7 +256,8 @@ export class Director {
   /** Buttons along the bottom edge (choices never sit in the centre). Returns them. */
   edge(choices, className = "btn") {
     const buttons = choices.map(({ label, pick, pressed }) => {
-      const button = element("button", className, label);
+      const quiet = className.includes("quiet") ? "desk-btn-quiet" : "";
+      const button = element("button", `desk-btn ${quiet} ${className}`, label);
       button.type = "button";
       if (pressed !== undefined) button.setAttribute("aria-pressed", String(pressed));
       button.addEventListener("click", () => pick(button));

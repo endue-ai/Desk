@@ -9,9 +9,10 @@ import { AGENTS, agentById } from "./catalog.js";
 import { createChats } from "./chat.js";
 import { detectAll, unknown } from "./detect.js";
 import { viewModel } from "./model.js";
+import { createReports } from "./report.js";
 import { createRunner, systemTimers } from "./run.js";
 import { createRuns } from "./runs.js";
-import { DEFAULTS, loadSettings } from "./settings.js";
+import { DEFAULTS, inside, loadSettings } from "./settings.js";
 import { load, save } from "./store.js";
 
 /**
@@ -58,12 +59,17 @@ export function createApp(ctx, view, options = {}) {
   const confirmed = new Set();
   const chats = createChats(bridge, { now, id });
   const board = createBoard(bridge, { now, id });
+  const reports = createReports(bridge);
   const runs = createRuns(runner, {
     now,
     id,
-    onChange: () => schedule(),
+    onChange: (run) => {
+      reports.report(run);
+      schedule();
+    },
     ...(options.plain ? { plain: options.plain } : {}),
   });
+  reports.onCancelled((runId) => runs.stop(runId));
   /** @type {Ui} */
   const ui = {
     view: "agents",
@@ -211,20 +217,23 @@ export function createApp(ctx, view, options = {}) {
   }
 
   /**
-   * A question as the settings say: read-only or not, the folder, the time it may take.
+   * A question as the settings say: read-only or not, the folder (or `folder` inside it), the time
+   * it may take.
    * @param {Agent} agent
    * @param {string} prompt
-   * @param {Partial<import("./ask.js").Question>} [extra]
+   * @param {Partial<import("./ask.js").Question> & { folder?: unknown }} [extra]
    * @returns {import("./ask.js").Question}
    */
   function question(agent, prompt, extra = {}) {
+    const { folder, ...rest } = extra;
+    const cwd = folder === undefined ? settings.folder : inside(settings.folder, folder);
     return {
       agent,
       prompt,
       readOnly: settings.access === "read-only",
-      ...(settings.folder ? { cwd: settings.folder } : {}),
+      ...(cwd ? { cwd } : {}),
       timeoutMs: settings.timeout * 1000,
-      ...extra,
+      ...rest,
     };
   }
 

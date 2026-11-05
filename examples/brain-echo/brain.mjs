@@ -4,10 +4,11 @@
 // and "tool <name> as <agent>: <json arguments>" asks for that tool on behalf of that agent. A
 // message of several such calls (one per line, or joined by " then ") asks for each in turn, all in
 // one turn. A turn that offers tools gets a call to the one toolChoice names, or to the first it
-// knows: propose_theme (theme.mjs), propose_universal_view (universal.mjs) and echo; else to an
-// offered command the message names by the words of its tool name (Eris's loop, ADR 0089: "check my
-// latest mail" calls endue_mail_latest); "remember that <fact>" calls the desk's desk-remember when
-// offered (ADR 0096).
+// knows: propose_theme (theme.mjs), propose_universal_view (universal.mjs) and echo; else to the
+// local-agents ask command when the message names a local agent ("ask Claude to run the tests", ADR
+// 0099); else to an offered command the message names by the words of its tool name (Eris's loop,
+// ADR 0089: "check my latest mail" calls endue_mail_latest); "remember that <fact>" calls the desk's
+// desk-remember when offered (ADR 0096).
 import { proposeTheme } from "./theme.mjs";
 import { proposeUniversalView } from "./universal.mjs";
 
@@ -161,6 +162,19 @@ function namedTool(body, said) {
     const parts = t.name.toLowerCase().split("_").slice(1);
     return parts.length > 0 && parts.every((part) => words.has(part));
   })?.name;
+}
+
+/** The local agents a message may name (plugins/local-agents), and the command that asks one. */
+const LOCAL_AGENT = /\b(claude|codex|gemini|grok|qwen|copilot|cursor|opencode)\b/i;
+const ASK_LOCAL = "endue_local-agents_ask";
+
+/** A call of the offered ask command for the local agent the message names, the whole message as
+ * the prompt. Only when the turn leaves the choice to the brain. */
+function localAgentCall(body, said) {
+  if (body.toolChoice && body.toolChoice.type !== "auto") return undefined;
+  if (!(body.tools ?? []).some((t) => t.name === ASK_LOCAL)) return undefined;
+  const agent = LOCAL_AGENT.exec(said)?.[1]?.toLowerCase();
+  return agent && { name: ASK_LOCAL, arguments: { agent, prompt: said.trim() } };
 }
 
 /** Answer text as stream events: one text.delta per word, spaces kept. */
@@ -361,6 +375,8 @@ export class EchoBrain {
     if (remember) return ask([remember]);
     const calls = toolCalls(said.trim());
     if (calls) return ask(calls);
+    const delegated = localAgentCall(body, said);
+    if (delegated) return ask([delegated]);
     const named = namedTool(body, said);
     return named ? ask([{ name: named, arguments: {} }]) : answer(said);
   }

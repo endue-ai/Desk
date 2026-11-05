@@ -74,3 +74,20 @@ export function fromValues(values) {
   }
   return /** @type {Settings} */ (settings);
 }
+
+/**
+ * The folder a command's run works in: `folder` inside `base` (the folder setting, home when empty),
+ * relative to it. A path that would leave it (absolute, from ~, a drive, or with ..) is refused.
+ * An empty or "." folder is the work folder itself.
+ * @param {string} base
+ * @param {unknown} folder
+ * @returns {string}
+ */
+export function inside(base, folder) {
+  if (typeof folder !== "string") throw new Error("folder is a path relative to the work folder.");
+  const parts = folder.split(/[\\/]+/).filter((part) => part !== "" && part !== ".");
+  if (/^([\\/~]|[A-Za-z]:)/.test(folder) || parts.includes(".."))
+    throw new Error(`${folder} is not inside the work folder: give a folder relative to it.`);
+  if (parts.length === 0) return base;
+  return [(base || "~").replace(/[\\/]+$/, ""), ...parts].join("/");
+}

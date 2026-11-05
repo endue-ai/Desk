@@ -43,6 +43,7 @@ export function createPanel(doc, el, hooks) {
       const li = doc.createElement("li");
       const button = doc.createElement("button");
       button.type = "button";
+      button.className = "desk-row";
       button.textContent = item.text;
       button.addEventListener("click", item.go);
       li.append(button);

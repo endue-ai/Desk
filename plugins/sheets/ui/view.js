@@ -172,6 +172,7 @@ export function createView(doc, actions = { edit: () => false }) {
       ...names.map((label, i) => {
         const tab = doc.createElement("button");
         tab.type = "button";
+        tab.className = "desk-tab";
         tab.setAttribute("role", "tab");
         tab.setAttribute("aria-controls", "grid");
         tab.textContent = label;

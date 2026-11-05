@@ -1,0 +1,13 @@
+{
+  "target": "BridgeRequest",
+  "description": "stop a run the local-agents plugin reported",
+  "instance": {
+    "id": 41,
+    "method": "agent.cancel",
+    "params": {
+      "runId": "r12",
+      "source": { "connector": "endue.local-agents", "instance": "default" },
+      "scope": { "permission": "perm:manage" }
+    }
+  }
+}

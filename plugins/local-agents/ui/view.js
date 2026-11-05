@@ -54,6 +54,7 @@ export function createView(doc, act) {
   for (const [key, name] of Object.entries(VIEW_KEYS)) {
     const tab = doc.createElement("button");
     tab.type = "button";
+    tab.className = "desk-tab";
     tab.id = `tab-${name}`;
     tab.setAttribute("role", "tab");
     tab.setAttribute("aria-controls", `view-${name}`);

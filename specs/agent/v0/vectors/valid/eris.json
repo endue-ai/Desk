@@ -1,0 +1,15 @@
+{
+  "target": "AgentRecord",
+  "description": "Eris, working on an errand, with her grants",
+  "instance": {
+    "id": "eris",
+    "name": "Eris",
+    "colour": "#7c5cff",
+    "source": "eris",
+    "caller": "agent:eris",
+    "brain": "endue",
+    "grants": [{ "permission": "cmd:invoke", "ids": ["endue.mail.latest"] }],
+    "state": "working",
+    "runs": 3
+  }
+}

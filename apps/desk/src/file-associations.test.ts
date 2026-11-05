@@ -55,6 +55,8 @@ it("exposes only the named host queue drain to the main window alongside existin
     "allow-desk-relaunch",
     "allow-desk-trace",
     "allow-take-open-files",
+    "allow-desk-crash",
+    "allow-take-last-crash",
     "core:event:allow-listen",
     "core:event:allow-unlisten",
     "allow-palette-reveal-main",
