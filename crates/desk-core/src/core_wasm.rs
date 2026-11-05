@@ -97,6 +97,9 @@ impl Core {
             let resources = connector.resources.clone();
             infos.push(ConnectorInfo {
                 id: info.id.clone(),
+                title: info.manifest.as_ref().and_then(|m| m.name.clone()),
+                auth: Some(connector.auth.clone()),
+                instance_settings: connector.instance_settings.clone(),
                 instances,
                 resources,
             });

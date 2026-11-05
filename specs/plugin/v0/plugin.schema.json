@@ -67,9 +67,34 @@
           "if": {
             "properties": {
               "kind": { "not": { "enum": ["policy", "view", "library", "theme", "design-system"] } }
+            },
+            "not": {
+              "properties": {
+                "kind": { "const": "connector" },
+                "connector": {
+                  "type": "object",
+                  "properties": { "binding": { "const": "http" } },
+                  "required": ["binding"]
+                }
+              },
+              "required": ["kind", "connector"]
             }
           },
           "then": { "properties": { "entry": true }, "required": ["entry"] }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": { "const": "connector" },
+              "connector": {
+                "type": "object",
+                "properties": { "binding": { "const": "http" } },
+                "required": ["binding"]
+              }
+            },
+            "required": ["kind", "connector"]
+          },
+          "then": { "properties": { "entry": false } }
         },
         {
           "if": { "properties": { "kind": { "const": "library" } } },
@@ -147,7 +172,7 @@
       "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?(\\+[0-9A-Za-z.-]+)?$"
     },
     "PluginKind": {
-      "description": "ui runs in a sandboxed iframe, logic in a Wasm instance, tool as an MCP server inside the VM. policy runs no code: it only contributes data (ADR 0017). library runs no code of its own either: it is files other plugins import, served at /<id>/... like any plugin's, never mounted and never turned off. connector brings an app's data in as items, as a Wasm component or an MCP server; view runs no code either: it is one or more views (ADR 0032). theme runs no code: it is a theme block and its font and image files, chosen with desk.theme.active (ADR 0056). design-system runs no code either: it is a designSystem block of component recipes, chosen with desk.design.active (ADR 0090).",
+      "description": "ui runs in a sandboxed iframe, logic in a Wasm instance, tool as an MCP server inside the VM. policy runs no code: it only contributes data (ADR 0017). library runs no code of its own either: it is files other plugins import, served at /<id>/... like any plugin's, never mounted and never turned off. connector brings an app's data in as items, as a Wasm component, an MCP server or an http block the core runs (no entry; ADR 0106); view runs no code either: it is one or more views (ADR 0032). theme runs no code: it is a theme block and its font and image files, chosen with desk.theme.active (ADR 0056). design-system runs no code either: it is a designSystem block of component recipes, chosen with desk.design.active (ADR 0090).",
       "type": "string",
       "enum": [
         "ui",

@@ -1,0 +1,32 @@
+{
+  "target": "ConnectorListResult",
+  "description": "connector.list: GitHub connected once, with how it signs in and what an instance takes, never the token",
+  "instance": {
+    "connectors": [
+      {
+        "id": "desk.github",
+        "title": "GitHub",
+        "instances": [
+          {
+            "connector": "desk.github",
+            "instance": "default",
+            "title": "Work",
+            "settings": {},
+            "status": { "state": "connected", "lastSyncAt": "2026-10-30T09:00:00+09:00" }
+          }
+        ],
+        "resources": [{ "kind": "task" }],
+        "auth": { "kind": "token", "title": "Personal access token" },
+        "instanceSettings": {
+          "token": {
+            "kind": "string",
+            "title": "Personal access token",
+            "description": "A token that reads your issues and pull requests: fine-grained with read access to Issues and Pull requests, or classic with repo. Desk keeps it on this computer and sends it only to api.github.com.",
+            "secret": true,
+            "required": true
+          }
+        }
+      }
+    ]
+  }
+}
