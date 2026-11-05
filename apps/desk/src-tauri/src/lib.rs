@@ -2,6 +2,7 @@
 
 mod brains;
 mod commands;
+mod core_files;
 mod events;
 mod file_urls;
 mod open_files;
@@ -85,12 +86,9 @@ pub fn run() {
             let remote = MockRemote::with_file(data.join("sync-mock.json"));
             let core = Core::new(Roots { home })
                 .with_init_file(init)
-                .with_sync(Arc::new(remote), Some(data.join("sync.json")))
-                .with_plugin_store(data.join("plugins.json"))
-                .with_store_file(data.join("store.json"))
-                .with_secrets_file(data.join("secrets.json"))
-                // Every fs.write keeps the bytes it replaces here first (ADR 0076).
-                .with_history_dir(data.join("history"));
+                .with_sync(Arc::new(remote), Some(data.join("sync.json")));
+            // Everything that outlives a quit: grants, settings, the log and the rest (#351).
+            let core = core_files::open(core, &data);
             // Safe mode, asked for or after two starts that never got ready, holds plugins off as
             // they install (ADR 0061).
             let (mut core, last) = commands::start::begin(&data, core);
