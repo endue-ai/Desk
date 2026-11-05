@@ -71,6 +71,7 @@ export function createView(doc, act) {
   for (const [index, name] of LISTS.entries()) {
     const button = doc.createElement("button");
     button.type = "button";
+    button.className = "desk-tab";
     button.setAttribute("role", "tab");
     button.id = `tab-${name}`;
     button.textContent = `${index + 1} ${TITLES[name]}`;
