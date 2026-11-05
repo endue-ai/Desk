@@ -3,12 +3,15 @@
 // server return it, Linear's an issue as its GraphQL API returns it (and one as its MCP server lists
 // it, flattened), Asana's a task as its REST API returns it; one more comes from a connector the
 // plugin knows nothing about.
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import type { TaskItem } from "../../../packages/bridge/src/index";
 
 export const JIRA = "acme.jira";
 export const LINEAR = "acme.linear";
 export const ASANA = "acme.asana";
 export const OTHER = "acme.todo";
+export const GITHUB = "desk.github";
 
 export const jiraIssue = (
   over: Partial<TaskItem> = {},
@@ -197,4 +200,36 @@ export function sample(): TaskItem[] {
     const copy = JSON.parse(JSON.stringify(item)) as TaskItem;
     return copy;
   });
+}
+
+/**
+ * A GitHub issue or pull request as desk.github brings it in: the envelope its http map makes
+ * (plugins/github/plugin.json) and the search record whole in `raw`, from the fixture pages the
+ * connector's own tests serve.
+ */
+export function githubItem(nodeId: string): TaskItem {
+  const dir = join(import.meta.dirname, "../../github/tests/fixtures");
+  const pages = ["assigned-1.json", "assigned-2.json", "review-requested.json", "authored.json"];
+  const records = pages.flatMap(
+    (name) =>
+      (JSON.parse(readFileSync(join(dir, name), "utf8")) as { items: Record<string, any>[] }).items,
+  );
+  const raw = records.find((r) => r.node_id === nodeId);
+  if (!raw) throw new Error(`no fixture record ${nodeId}`);
+  return JSON.parse(
+    JSON.stringify({
+      kind: "task",
+      id: raw.node_id,
+      source: { connector: GITHUB, instance: "work" },
+      title: raw.title,
+      status: raw.state === "open" ? "open" : "done",
+      updatedAt: raw.updated_at,
+      createdAt: raw.created_at,
+      due: raw.milestone?.due_on ?? undefined,
+      project: String(raw.repository_url).split("/repos/")[1],
+      deepLink: raw.html_url,
+      body: raw.body ?? undefined,
+      raw,
+    }),
+  ) as TaskItem;
 }

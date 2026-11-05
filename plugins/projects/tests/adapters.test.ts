@@ -5,6 +5,8 @@ import { adapterOf, workOf } from "../ui/adapters/index.js";
 import {
   ASANA,
   asanaTask,
+  GITHUB,
+  githubItem,
   JIRA,
   jiraIssue,
   LINEAR,
@@ -148,6 +150,65 @@ describe("the Asana adapter", () => {
       ),
     );
     expect(milestone).toMatchObject({ type: "Milestone", due: "2026-11-09" });
+  });
+});
+
+describe("the GitHub adapter", () => {
+  it("reads GitHub issues and pull requests as desk.github keeps them", () => {
+    const issue = workOf(githubItem("I_kwDOFixture012"));
+    expect(issue).toMatchObject({
+      key: `${GITHUB}/work#I_kwDOFixture012`,
+      system: "github",
+      ref: "garage#12",
+      title: "Calendar drops all-day events",
+      url: "https://github.com/acme/garage/issues/12",
+      status: "Open",
+      category: "todo",
+      type: "Issue",
+      priority: null,
+      assignee: { name: "octo-builder" },
+      labels: ["bug"],
+      project: "acme/garage",
+      sprint: "0.1 Daily",
+      due: "2026-10-30",
+      createdAt: "2026-10-20T01:00:00Z",
+    });
+    const pull = workOf(githubItem("PR_kwDOFixture018"));
+    expect(pull).toMatchObject({
+      system: "github",
+      ref: "garage#18",
+      type: "Pull request",
+      status: "In review",
+      category: "doing",
+      url: "https://github.com/acme/garage/pull/18",
+    });
+    expect(pull.assignee).toBeUndefined();
+    expect(workOf(githubItem("I_kwDOFixtureW03"))).toMatchObject({
+      ref: "workshop#3",
+      project: "acme/workshop",
+      labels: ["design"],
+    });
+  });
+
+  it("names a closed issue and a merged pull request Done", () => {
+    const closed = githubItem("I_kwDOFixture015");
+    closed.status = "done";
+    (closed.raw as Record<string, unknown>).state = "closed";
+    expect(workOf(closed)).toMatchObject({ status: "Closed", category: "done" });
+    const merged = githubItem("PR_kwDOFixture021");
+    merged.status = "done";
+    const raw = merged.raw as Record<string, any>;
+    raw.state = "closed";
+    raw.pull_request.merged_at = "2026-10-30T01:00:00Z";
+    expect(workOf(merged)).toMatchObject({ status: "Merged", category: "done" });
+    const draft = githubItem("PR_kwDOFixture021");
+    (draft.raw as Record<string, unknown>).draft = true;
+    expect(workOf(draft)).toMatchObject({ status: "Draft", category: "doing" });
+  });
+
+  it("is recognized by its record under a connector of another name", () => {
+    const item = { ...githubItem("I_kwDOFixture012"), source: { connector: "acme.gh", instance: "x" } };
+    expect(adapterOf(item)?.system).toBe("github");
   });
 });
 
