@@ -15,7 +15,8 @@ Layer: Rust core (see `docs/architecture.md`). Contract: `specs/brain/v0`.
   `tools` offered to the model, in Ollama's format, and the `agent` its tool calls speak for, so the
   desk runs them as `agent:<id>` (ADR 0072, 0088); without one it runs only echo (`with_base_url`,
   `with_tools`, `with_agent`).
-- `Brain` methods: turns stream `turn.started`, `text.delta`, `tool.call` and `turn.completed`.
+- `Brain` methods: turns stream `turn.started`, `text.delta`, `tool.call` and `turn.completed`. A
+  turn's `context` (ADR 0096) goes to the model as one system message for that turn only.
   Tool calls go out one at a time; once every result is in, they go back to the model.
 - Leases follow `examples/brain-echo`: `lease_held`, `lease_lost` after a takeover, `lease_expired`.
 - `list_spaces` answers no spaces, after asking Ollama's `/api/version`: `Unreachable` while it is down.
