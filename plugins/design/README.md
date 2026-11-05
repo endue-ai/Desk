@@ -6,6 +6,7 @@ code, only `contributes.settings` (ADR 0017).
 | Setting | Default | Choices |
 | --- | --- | --- |
 | `desk.design.active` | `""` (endue) | the id of an installed design system plugin (kind `design-system`) |
+| `desk.design.markets` | this repository's `market/design-systems/index.json` | https URLs of the design system market indexes the studio's Market tab lists, after `desk.theme.markets` (ADR 0091) |
 
 A theme decides what the tokens hold (colours, the radius and size steps); a design system decides what
 each component is made of (which step, which fill, which border). The runtime compiles the design system

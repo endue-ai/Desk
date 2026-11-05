@@ -502,7 +502,7 @@ pub struct DesignRow {
     /// Default: fill.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub selection: Option<DesignRowSelection>,
-    /// Default: md.
+    /// Default: sm.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub shape: Option<DesignShape>,
     /// Default: sm.
@@ -592,7 +592,7 @@ pub struct DesignTable {
     /// Default: lines.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub rows: Option<DesignTableRows>,
-    /// Default: muted.
+    /// Default: plain.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub header: Option<DesignTableHeader>,
     /// Default: sm.
@@ -835,13 +835,13 @@ pub enum DesignTableRows {
     Plain,
 }
 
-/// A table's header row: muted or plain.
+/// A table's header row: plain or muted.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum DesignTableHeader {
-    #[serde(rename = "muted")]
-    Muted,
     #[serde(rename = "plain")]
     Plain,
+    #[serde(rename = "muted")]
+    Muted,
 }
 
 /// A line's thickness: thin, normal or thick.
@@ -5813,7 +5813,7 @@ pub struct ThemeRemoveResult {}
 /// An https URL of a market index (specs/plugin ThemeIndex, desk-theme-index/1).
 pub type ThemeMarketUrl = String;
 
-/// Read every market index desk.theme.markets lists, in order, and merge their themes by id: the first market that lists an id wins. Each index is downloaded over https from its own host only; one that cannot be read or is not a valid index leaves its themes out and says why in problems. Each theme says whether this desk has it.
+/// Read every market index desk.theme.markets and then desk.design.markets list (ADR 0091), in order, and merge their themes by id: the first market that lists an id wins. Each index is downloaded over https from its own host only; one that cannot be read or is not a valid index leaves its themes out and says why in problems. Each theme says whether this desk has it.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ThemeMarketListRequest {

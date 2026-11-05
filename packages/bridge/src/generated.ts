@@ -320,7 +320,7 @@ export interface DesignCard {
 export interface DesignRow {
   /** Default: fill. */
   selection?: DesignRowSelection;
-  /** Default: md. */
+  /** Default: sm. */
   shape?: DesignShape;
   /** Default: sm. */
   size?: DesignSize;
@@ -380,7 +380,7 @@ export interface DesignTooltip {
 export interface DesignTable {
   /** Default: lines. */
   rows?: DesignTableRows;
-  /** Default: muted. */
+  /** Default: plain. */
   header?: DesignTableHeader;
   /** Default: sm. */
   size?: DesignSize;
@@ -459,8 +459,8 @@ export type DesignBadgeStyle = "soft" | "solid" | "outline";
 /** A table's body rows: divided by lines, striped, or plain. */
 export type DesignTableRows = "lines" | "striped" | "plain";
 
-/** A table's header row: muted or plain. */
-export type DesignTableHeader = "muted" | "plain";
+/** A table's header row: plain or muted. */
+export type DesignTableHeader = "plain" | "muted";
 
 /** A line's thickness: thin, normal or thick. */
 export type DesignThickness = "thin" | "normal" | "thick";
@@ -3710,7 +3710,7 @@ export type ThemeRemoveResult = Record<string, never>;
 /** An https URL of a market index (specs/plugin ThemeIndex, desk-theme-index/1). */
 export type ThemeMarketUrl = string;
 
-/** Read every market index desk.theme.markets lists, in order, and merge their themes by id: the first market that lists an id wins. Each index is downloaded over https from its own host only; one that cannot be read or is not a valid index leaves its themes out and says why in problems. Each theme says whether this desk has it. */
+/** Read every market index desk.theme.markets and then desk.design.markets list (ADR 0091), in order, and merge their themes by id: the first market that lists an id wins. Each index is downloaded over https from its own host only; one that cannot be read or is not a valid index leaves its themes out and says why in problems. Each theme says whether this desk has it. */
 export interface ThemeMarketListRequest {
   id: RequestId;
   method: "theme.market.list";

@@ -3,8 +3,8 @@
 The desk's first design system market (ADR 0091): `index.json`, a `ThemeIndex`
 (`specs/plugin/v0/theme-index.schema.json`) whose entries are of `kind: design-system`, and the
 `.desk-design` bundles it lists. Desks read it from
-`https://raw.githubusercontent.com/endue-ai/Desk/main/market/design-systems/index.json`, which is in the
-default of `desk.theme.markets` (the look markets), and the design system studio's Market tab shows its
+`https://raw.githubusercontent.com/endue-ai/Desk/main/market/design-systems/index.json`, the default of
+the setting `desk.design.markets`, and the design system studio's Market tab shows its
 design systems: Preview downloads one and shows it on the whole desk, Install brings it in with its
 sha256 checked.
 

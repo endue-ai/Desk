@@ -1,5 +1,5 @@
-//! The default look markets (ADR 0060, ADR 0091): desk.theme's default of desk.theme.markets is this
-//! repository's two indexes, themes and design systems, and every theme and design system in them
+//! The default look markets (ADR 0060, ADR 0091): the defaults of desk.theme.markets and
+//! desk.design.markets are this repository's two indexes, themes and design systems, and every one in them
 //! lists, installs as the kind its index says, and reads installed afterwards. A bundle of another kind
 //! than its index says is refused. The network is a map the test fills from the repository.
 
@@ -51,8 +51,10 @@ fn desk(name: &str, pages: Arc<Mutex<BTreeMap<String, Vec<u8>>>>) -> Core {
     grant(&core, RUNTIME, json!({ "permission": "theme:manage" }));
     grant(&core, RUNTIME, plugin_manage());
     let repo = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let policy = core.install_plugin(&repo.join("plugins/theme"), true);
-    assert!(policy.error.is_none(), "{:?}", policy.error);
+    for policy in ["plugins/theme", "plugins/design"] {
+        let installed = core.install_plugin(&repo.join(policy), true);
+        assert!(installed.error.is_none(), "{policy}: {:?}", installed.error);
+    }
     core
 }
 

@@ -10,6 +10,13 @@
         "kind": "string",
         "default": "",
         "description": "The design system plugin in force, by id (a plugin of kind design-system, ADR 0090); empty for the endue design system. Installing a design system does not apply it."
+      },
+      "desk.design.markets": {
+        "kind": "array",
+        "default": [
+          "https://raw.githubusercontent.com/endue-ai/Desk/main/market/design-systems/index.json"
+        ],
+        "description": "The design system markets the design system studio's Market tab lists, by the https URL of each index (ADR 0091), after desk.theme.markets: the first market that lists an id wins. The default is this repository's market/design-systems."
       }
     }
   }

@@ -24,8 +24,7 @@ second pipeline, or share this one?
 ## Considered Options
 
 * Share the pipeline: `theme.*` and markets take kind `design-system` too, in the same user folder
-* A parallel pipeline: `design.*` methods, a `design:manage` permission, a `<data>/designs` folder and
-  a `desk.design.markets` setting
+* A parallel pipeline: `design.*` methods, a `design:manage` permission and a `<data>/designs` folder
 
 ## Decision Outcome
 
@@ -38,8 +37,8 @@ put it in place, watch it, bundle it, download it) and a second copy would drift
 * A design system travels as a `.desk-design` file: the same bundle format (`desk-theme/1`) whose
   manifest is of kind `design-system`. It has no files.
 * A market index entry has an optional `kind` (`theme` by default); a bundle's kind must match it. The
-  first design system market lives in this repository (`market/design-systems/index.json`) and is in the
-  default of `desk.theme.markets`, the list of look markets.
+  core reads the indexes `desk.theme.markets` and then `desk.design.markets` list (`desk.design`'s
+  default is this repository's `market/design-systems/index.json`), and `theme.market.list` merges them.
 * The runtime keeps kinds apart: `desk.theme.active` names only themes, `desk.design.active` only design
   systems, and each studio lists only its own kind.
 
@@ -47,7 +46,7 @@ put it in place, watch it, bundle it, download it) and a second copy would drift
 
 * Good, because saving, importing, exporting, removing, watching, downloading and the CLI work for
   design systems with a few lines of change, under tests that already exist
-* Good, because one permission and one market list cover the desk's whole look
+* Good, because one permission and one market listing cover the desk's whole look
 * Bad, because the names say "theme" for a pipeline that carries design systems too
 * Bad, because a market index mixes kinds, so each studio filters what it lists
 

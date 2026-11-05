@@ -150,7 +150,7 @@
 | --- | --- | --- |
 | DT-01 | 사용자 디자인 시스템은 사용자 테마 폴더(`<data>/themes/<id>/`)에 산다. `theme.save` · `theme.import` · `theme.export` · `theme.remove` 가 kind `design-system` 도 받는다 (ADR 0091) | 없음 |
 | DT-02 | `.desk-design`: `.desk-theme` 과 같은 묶음 형식(`desk-theme/1`), 매니페스트의 kind 가 `design-system`. 자산이 없다 | 없음 |
-| DT-03 | 마켓 색인 항목의 `kind`(기본 `theme`). 첫 마켓은 이 레포의 `market/design-systems/index.json` 이고 `desk.theme.markets` 기본값에 들어간다. `scripts/theme-market.mjs` 가 검사한다 | 없음 |
+| DT-03 | 마켓 색인 항목의 `kind`(기본 `theme`). 설정 `desk.design.markets`(기본: 이 레포의 `market/design-systems/index.json`)를 코어가 `desk.theme.markets` 다음에 읽고 `theme.market.list` 가 합친다. `scripts/theme-market.mjs` 가 검사한다 | 없음 |
 | DT-04 | 기본 제공 디자인 시스템: endue(기본값) 와 쇼케이스 둘 이상(`plugins/design-*`) | 없음 |
 
 ### 이주 (DM)

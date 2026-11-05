@@ -189,7 +189,7 @@ impl Core {
         let mut markets = self.markets();
         if let Some(named) = market {
             if !markets.iter().any(|known| known == named) {
-                return Err(invalid(format!("{named} is not in desk.theme.markets")));
+                return Err(invalid(format!("{named} is not a market in force")));
             }
             markets = vec![named.to_owned()];
         }
@@ -207,7 +207,7 @@ impl Core {
         }
         Err(invalid(match market {
             Some(market) => format!("{market} does not list {url}{unread}"),
-            None => format!("no market in desk.theme.markets lists {url}{unread}"),
+            None => format!("no market in force lists {url}{unread}"),
         }))
     }
 
@@ -227,16 +227,20 @@ impl Core {
         Ok(bytes)
     }
 
-    /// The market indexes in force: the runtime's `theme.markets`, init.yaml's
-    /// `desk.theme.markets`, or the `desk.theme` manifest's default; each once, in order.
+    /// The market indexes in force: the theme markets (the runtime's `theme.markets`, init.yaml's
+    /// `desk.theme.markets`, or the `desk.theme` manifest's default), then the design system markets
+    /// (`desk.design.markets` the same way, ADR 0091); each once, in order.
     fn markets(&self) -> Vec<String> {
-        let value = self.setting_in_force("desk", "theme.markets");
-        let value = value.or_else(|| self.setting_in_force("desk.theme", "markets"));
+        let list = |policy: &str, key: &str| {
+            let value = self.setting_in_force("desk", &format!("{key}.markets"));
+            value.or_else(|| self.setting_in_force(policy, "markets"))
+        };
+        let values = [list("desk.theme", "theme"), list("desk.design", "design")];
         let mut markets: Vec<String> = Vec::new();
-        for url in value
-            .as_ref()
-            .and_then(Value::as_array)
-            .into_iter()
+        for url in values
+            .iter()
+            .flatten()
+            .filter_map(Value::as_array)
             .flatten()
         {
             let url = url.as_str().map(str::to_owned);

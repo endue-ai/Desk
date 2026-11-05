@@ -222,7 +222,8 @@ design system, the built-in ones (`plugins/design-*`), the person's own and inst
 drawn with their own component tokens: focus previews on the whole desk, Enter applies, Escape restores.
 "Tune a copy" edits every component's options with the desk previewing them and saves `local.<name>`;
 Describe sends one sentence to the brain (`propose_design_system`); Import and Export move `.desk-design`
-files; the Market tab lists the look markets' design systems (`market/design-systems`). They travel
+files; the Market tab lists the design systems of the markets `desk.design.markets` names (by default
+`market/design-systems`), after `desk.theme.markets`. They travel
 through the theme pipeline: `theme.save`, `theme.import`, `theme.export`, `theme.remove` and
 `theme.market.*` take kind `design-system` (ADR 0091). Eris and other agents use the same commands as
 tools (ADR 0088): `desk.design.list`, `.get`, `.use`, `.default`, `.set` (`{ "components": { … } }`,

@@ -96,8 +96,8 @@ body {
   font: inherit;
   cursor: pointer;
 }
-/* Without specificity of its own, so the design system's kit (kit.css) colours its buttons. */
-:where(.shell) button {
+/* The design system's kit (kit.css) colours its own buttons; every other button takes its parent's. */
+.shell button:not(.btn, .icon-button, .segment) {
   color: inherit;
 }
 

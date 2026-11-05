@@ -118,6 +118,7 @@
   border: 0;
   border-radius: var(--desk-row-radius);
   background: transparent;
+  color: inherit;
   text-align: left;
   white-space: nowrap;
   transition: background-color var(--motion-fast) ease;

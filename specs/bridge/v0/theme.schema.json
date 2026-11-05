@@ -198,7 +198,7 @@
       "maxLength": 2048
     },
     "ThemeMarketListRequest": {
-      "description": "Read every market index desk.theme.markets lists, in order, and merge their themes by id: the first market that lists an id wins. Each index is downloaded over https from its own host only; one that cannot be read or is not a valid index leaves its themes out and says why in problems. Each theme says whether this desk has it.",
+      "description": "Read every market index desk.theme.markets and then desk.design.markets list (ADR 0091), in order, and merge their themes by id: the first market that lists an id wins. Each index is downloaded over https from its own host only; one that cannot be read or is not a valid index leaves its themes out and says why in problems. Each theme says whether this desk has it.",
       "type": "object",
       "properties": {
         "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },

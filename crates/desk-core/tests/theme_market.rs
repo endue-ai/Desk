@@ -23,6 +23,8 @@ const GONE: &str = "https://gone.example.com/index.json";
 const BAD: &str = "https://bad.example.com/index.json";
 const PLAIN: &str = "http://plain.example.com/index.json";
 const DUSK: &str = "https://one.example.com/themes/dusk.desk-theme";
+const DEFAULT: &str =
+    "https://raw.githubusercontent.com/endue-ai/Desk/main/market/themes/index.json";
 
 type Answer = Result<Value, BridgeError>;
 
@@ -227,6 +229,40 @@ fn indexes_are_fetched_in_order_and_merged_by_id_the_first_market_winning() {
     let scope = json!({ "scope": { "permission": "theme:manage" } });
     let other = call(&core, "example.plugin", "theme.market.list", scope);
     assert_eq!(code(other), ErrorCode::PermissionDenied);
+}
+
+#[test]
+fn the_default_market_is_this_repositorys_index_and_every_theme_in_it_installs() {
+    let home = home("market-default");
+    let repo = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let web = Web::default();
+    let base = DEFAULT.trim_end_matches("index.json");
+    for file in fs::read_dir(repo.join("market/themes")).unwrap().flatten() {
+        let name = file.file_name().to_string_lossy().into_owned();
+        web.put(&format!("{base}{name}"), fs::read(file.path()).unwrap());
+    }
+    let core = desk(&home, &web);
+    let policy = core.install_plugin(&repo.join("plugins/theme"), true);
+    assert!(policy.error.is_none(), "{:?}", policy.error);
+
+    let all = list(&core);
+    assert_eq!(all["problems"], json!([]));
+    let themes = all["themes"].as_array().unwrap().clone();
+    assert!(themes.len() >= 2, "{all}");
+    for listed in &themes {
+        let id = listed["theme"]["id"].as_str().unwrap();
+        assert!(id.starts_with("market."), "{id}");
+        assert_eq!(
+            (&listed["market"], &listed["state"]),
+            (&json!(DEFAULT), &json!("available"))
+        );
+        let plugin = install(&core, id).unwrap_or_else(|e| panic!("{id}: {}", e.message));
+        assert_eq!(plugin["plugin"]["id"], id);
+    }
+    for listed in list(&core)["themes"].as_array().unwrap() {
+        assert_eq!(listed["state"], "installed");
+        assert_eq!(listed["installed"], listed["theme"]["version"]);
+    }
 }
 
 #[test]
