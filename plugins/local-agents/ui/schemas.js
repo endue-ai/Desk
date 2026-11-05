@@ -6,12 +6,24 @@ import { VIEWS } from "./agents.js";
 import { COLUMNS } from "./board.js";
 import { AGENT_IDS } from "./catalog.js";
 
-/** @typedef {{ id: string, title: string, keywords?: string[], description: string, args?: object }} CommandSpec */
+/**
+ * A command and what agents see of it (ADR 0088): `agent` offers it as a tool, `readOnly` says it
+ * changes nothing the person keeps, `irreversible` (the manifest's alone) makes an agent's call
+ * wait for the person's approval (ADR 0078).
+ * @typedef {{ id: string, title: string, keywords?: string[], description: string, args?: object,
+ *   agent?: boolean, readOnly?: boolean, irreversible?: boolean }} CommandSpec
+ */
 
 const AGENT = { enum: [...AGENT_IDS], description: "An agent's id" };
 const PROMPT = { type: "string", minLength: 1, description: "What to ask, as text" };
 const MODEL = { type: "string", description: "A model name the program knows; empty: its default" };
 const CARD = { type: "string", description: "A card's id; the selected card when absent" };
+const FOLDER = {
+  type: "string",
+  maxLength: 1024,
+  description:
+    "A folder inside the work folder (endue.local-agents.folder, else home), relative to it, for example projects/desk; absent: the work folder",
+};
 const object = (
   /** @type {Record<string, object>} */ properties,
   /** @type {string[]} */ required = [],
@@ -44,14 +56,28 @@ export const COMMANDS = [
     keywords: ["installed", "versions"],
     description:
       "Return every known agent with its state (ready, missing, broken), version and how it is kept read-only.",
+    agent: true,
+    readOnly: true,
   },
   {
     id: "endue.local-agents.ask",
     title: "Local agents: ask an agent",
     keywords: ["query", "question", "prompt"],
     description:
-      "Ask one agent one question with no conversation and return its answer. Asks for the prompt when absent; the chat's agent when agent is absent.",
-    args: object({ prompt: PROMPT, agent: AGENT, model: MODEL }),
+      "Ask one agent program on this computer (Claude Code, Codex, Gemini CLI and others) one question with no conversation, read-only whatever the access setting, in the work folder or a folder inside it, and return its answer. Asks for the prompt when absent; the chat's agent when agent is absent.",
+    args: object({ prompt: PROMPT, agent: AGENT, model: MODEL, folder: FOLDER }),
+    agent: true,
+    readOnly: true,
+  },
+  {
+    id: "endue.local-agents.work",
+    title: "Local agents: hand an agent a task",
+    keywords: ["delegate", "task", "edit", "run"],
+    description:
+      "Hand one agent program a task it may act on: it runs with its own permission settings (agent access) in the work folder or a folder inside it, may change files there and run commands, and returns its answer. Asks for the prompt when absent; the chat's agent when agent is absent.",
+    args: object({ prompt: PROMPT, agent: AGENT, model: MODEL, folder: FOLDER }),
+    agent: true,
+    irreversible: true,
   },
   {
     id: "endue.local-agents.chat",
@@ -101,13 +127,9 @@ export const COMMANDS = [
     title: "Local agents: add a card",
     keywords: ["task", "new", "kanban"],
     description:
-      "Add a card to To do: a prompt for one agent. With run, it goes to Running at once. Asks for the prompt when absent.",
-    args: object({
-      prompt: PROMPT,
-      title: { type: "string" },
-      agent: AGENT,
-      run: { type: "boolean" },
-    }),
+      "Add a card to the board's To do and return it: a prompt for one agent, which runs when the person moves it to Running. Asks for the prompt when absent.",
+    args: object({ prompt: PROMPT, title: { type: "string" }, agent: AGENT }),
+    agent: true,
   },
   {
     id: "endue.local-agents.run-card",
@@ -159,7 +181,7 @@ export const COMMANDS = [
  * @param {Pick<import("@endue-ai/plugin-sdk").PluginBridge, "call">} bridge
  */
 export function registerSchemas(bridge) {
-  for (const { id, title, keywords, description, args } of COMMANDS) {
+  for (const { id, title, keywords, description, args, agent, readOnly } of COMMANDS) {
     void bridge
       .call("cmd.register", {
         id,
@@ -167,6 +189,8 @@ export function registerSchemas(bridge) {
         description,
         ...(keywords ? { keywords } : {}),
         argsSchema: args ?? object({}),
+        ...(agent ? { agent } : {}),
+        ...(readOnly ? { readOnly } : {}),
       })
       .catch(() => {});
   }

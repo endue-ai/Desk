@@ -180,18 +180,19 @@ export function createTalk(app) {
   };
 
   /**
-   * One question with no conversation; the Activity view shows it.
-   * @param {unknown} text
-   * @param {unknown} [agentId]
-   * @param {unknown} [model]
-   * @returns {Promise<Answer>}
+   * One question with no conversation, in the work folder or `folder` inside it; the Activity view
+   * shows it. `ask` is read-only whatever the access setting; `work` runs with agent access, so
+   * the program may act (an agent's call of it waits for the person's approval, ADR 0078).
+   * @param {boolean} readOnly
+   * @returns {(text: unknown, agentId?: unknown, model?: unknown, folder?: unknown) => Promise<Answer>}
    */
-  const ask = async (text, agentId, model) => {
+  const once = (readOnly) => async (text, agentId, model, folder) => {
     const prompt = promptOf(text);
     const agent = await app.usable(agentId === undefined ? chatAgentOf(undefined) : agentId);
     if (model !== undefined && !isValue(model)) throw new Error("model is a name with no spaces.");
+    const extra = { readOnly, ...(typeof model === "string" ? { model } : {}) };
     const { run, done } = runs.start(
-      app.question(agent, prompt, typeof model === "string" ? { model } : {}),
+      app.question(agent, prompt, folder === undefined ? extra : { ...extra, folder }),
       "command",
     );
     ui.run = run.id;
@@ -199,6 +200,8 @@ export function createTalk(app) {
     app.paint();
     return answerOf(result, agent);
   };
+  const ask = once(true);
+  const work = once(false);
 
   return {
     useAgent,
@@ -210,6 +213,7 @@ export function createTalk(app) {
     toggleCompared,
     compare,
     ask,
+    work,
     chatting: (/** @type {string} */ agent) => chatting.has(agent),
   };
 }
