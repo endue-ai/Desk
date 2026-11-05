@@ -200,6 +200,14 @@ describe("item, view and connector vectors are judged as their folders say", () 
     }
   });
 
+  it("judges the http binding's vectors (ADR 0106), the names of its block included", () => {
+    const files = vectors("connector").map((v) => v.file);
+    expect(files).toContain("connector/valid/manifest-http-token.json");
+    expect(files).toContain("connector/invalid/manifest-http-plain-http-base.json");
+    const plugin = vectors("plugin").map((v) => v.file);
+    expect(plugin).toContain("plugin/invalid/manifest-connector-http-unknown-map.json");
+  });
+
   it("the rules beyond the schemas name what does not resolve", () => {
     const view = {
       id: "example.mail",
