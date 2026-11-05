@@ -32,9 +32,10 @@ describe("the brain popover (ADR 0094)", () => {
   });
 
   const segments = () =>
-    [...root.querySelectorAll<HTMLButtonElement>("[data-popover=brain] [role=radio]")].map(
-      (b) => [b.dataset.key, b.getAttribute("aria-checked")],
-    );
+    [...root.querySelectorAll<HTMLButtonElement>("[data-popover=brain] [role=radio]")].map((b) => [
+      b.dataset.key,
+      b.getAttribute("aria-checked"),
+    ]);
 
   it("offers endue AI, local and echo and marks the brain the desk chose", () => {
     expect(segments()).toEqual([

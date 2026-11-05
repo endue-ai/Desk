@@ -18,7 +18,7 @@ pub const DEFAULT_ECHO_URL: &str = "http://127.0.0.1:8787/v0";
 
 /// Every brain this desk can reach, keeping their sessions in `data`. endue AI asks `account` for
 /// its token on every request; Ollama is at `DESK_OLLAMA_URL` (its own default otherwise).
-pub fn brains(data: &Path, account: Account) -> Brains {
+pub fn brains(data: &Path, account: Arc<Account>) -> Brains {
     let mut brains = Brains::default().with_folder(data);
     let endue = url("DESK_BRAIN_URL", DEFAULT_BRAIN_URL);
     match HttpBrain::new(&endue) {
