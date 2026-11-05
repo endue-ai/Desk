@@ -20,11 +20,13 @@ label {
 input {
   box-sizing: border-box;
   width: 100%;
-  min-height: var(--desk-control-sm);
-  padding: 0 var(--desk-space-3);
-  border: 1px solid var(--desk-input);
-  border-radius: var(--desk-radius-md);
-  background: var(--desk-background);
+  min-height: var(--desk-field-height);
+  padding: 0 var(--desk-field-padding-x);
+  border-style: solid;
+  border-color: var(--desk-field-border-color);
+  border-width: var(--desk-field-border-width);
+  border-radius: var(--desk-field-radius);
+  background: var(--desk-field-bg);
   color: var(--desk-text);
   font: inherit;
 }
@@ -32,7 +34,8 @@ input::placeholder {
   color: var(--desk-text-muted);
 }
 input:focus-visible {
-  outline: 2px solid var(--desk-ring);
+  border-color: var(--desk-field-focus-border);
+  outline: var(--desk-focus-width) solid var(--desk-field-focus-ring);
   outline-offset: 1px;
 }
 :host([disabled]) {

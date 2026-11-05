@@ -2,6 +2,7 @@
 import "@endue-ai/ui/tokens.css";
 import "./scale.css";
 import "./shell.css";
+import "./kit.css";
 import "../wallpaper/wallpaper.css";
 import "./chrome.css";
 import "./bottom.css";
@@ -12,3 +13,4 @@ import "../surface/surface.css";
 import "../surface/panes.css";
 import "../theme-studio/studio.css";
 import "../theme-studio/editor.css";
+import "../design-studio/studio.css";

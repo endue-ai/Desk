@@ -21,9 +21,26 @@ export function parseRules(css: string): Rule[] {
   return rules;
 }
 
+/**
+ * A custom property's value in `values`, following `var(--other)` references (the design system's
+ * component tokens point at the theme's), or undefined.
+ */
+export function resolveToken(
+  values: Readonly<Record<string, string>>,
+  name: string | undefined,
+): string | undefined {
+  let value = name ? values[name] : undefined;
+  for (let i = 0; i < 8 && value; i++) {
+    const next = tokenOf(value);
+    if (!next) return value;
+    value = values[next];
+  }
+  return value;
+}
+
 /** The custom property a value reads when it is exactly `var(--name)`, else undefined. */
 export function tokenOf(value: string | undefined): string | undefined {
-  return value?.match(/^var\((--[a-z-]+)\)$/)?.[1];
+  return value?.match(/^var\((--[a-z0-9-]+)\)$/)?.[1];
 }
 
 /** The WCAG 2 contrast ratio between two `#rrggbb` colours, from 1 to 21. */

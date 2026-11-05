@@ -94,13 +94,16 @@ body {
 
 .shell button {
   font: inherit;
-  color: inherit;
   cursor: pointer;
+}
+/* The design system's kit (kit.css) colours its own buttons; every other button takes its parent's. */
+.shell button:not(.btn, .icon-button, .segment) {
+  color: inherit;
 }
 
 .shell :focus-visible {
-  outline: 2px solid var(--desk-accent);
-  outline-offset: 2px;
+  outline: var(--desk-focus-width) solid var(--desk-ring);
+  outline-offset: var(--desk-focus-offset);
 }
 
 .shell button:disabled {
@@ -133,81 +136,16 @@ body {
   min-width: 18px;
   height: 18px;
   padding: 0 5px;
-  border: 1px solid var(--desk-border);
-  border-radius: var(--radius-full);
-  background: var(--desk-muted);
-  color: var(--desk-text);
+  border: 1px solid var(--desk-badge-border);
+  border-radius: var(--desk-badge-radius);
+  background: var(--desk-badge-bg);
+  color: var(--desk-badge-fg);
   font-size: var(--text-2xs);
   font-weight: 600;
+  text-transform: var(--desk-badge-case);
   line-height: 16px;
   text-align: center;
   font-variant-numeric: tabular-nums;
-}
-
-/* Buttons */
-
-.icon-button {
-  position: relative;
-  display: grid;
-  place-items: center;
-  width: var(--control-md);
-  height: var(--control-md);
-  padding: 0;
-  border: 1px solid transparent;
-  border-radius: var(--radius-md);
-  background: transparent;
-  color: var(--desk-text);
-  transition: background-color var(--motion-fast) ease;
-}
-.icon-button:hover:not(:disabled),
-.icon-button.is-open { background: var(--desk-hover); }
-
-.add-button {
-  display: grid;
-  place-items: center;
-  width: var(--control-sm);
-  height: var(--control-sm);
-  padding: 0;
-  border: 1px dashed var(--desk-input);
-  border-radius: var(--radius-md);
-  background: transparent;
-  color: var(--desk-text-muted);
-  transition: background-color var(--motion-fast) ease;
-}
-.add-button:hover:not(:disabled) { background: var(--desk-hover); color: var(--desk-text); }
-
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-2);
-  height: var(--control-sm);
-  padding: 0 var(--space-3);
-  border: 1px solid transparent;
-  border-radius: var(--radius-md);
-  background: transparent;
-  font-size: var(--text-sm);
-  font-weight: 500;
-  white-space: nowrap;
-  transition: background-color var(--motion-fast) ease;
-}
-.btn-xs { height: var(--control-xs); padding: 0 var(--space-2); font-size: var(--text-xs); }
-.btn-primary { background: var(--desk-primary); color: var(--desk-primary-foreground); }
-.btn-primary:hover:not(:disabled) { background: var(--desk-primary-hover); }
-.btn-outline { border-color: var(--desk-input); color: var(--desk-text); }
-.btn-outline:hover:not(:disabled),
-.btn-ghost:hover:not(:disabled) { background: var(--desk-hover); }
-
-.input {
-  width: 100%;
-  height: var(--control-md);
-  padding: 0 var(--space-3);
-  border: 1px solid var(--desk-input);
-  border-radius: var(--radius-md);
-  background: var(--desk-card);
-  color: var(--desk-text);
-  font: inherit;
-  font-size: var(--text-base);
 }
 
 /* Floating bars */
@@ -273,72 +211,6 @@ body {
 
 .pop-action { margin: var(--space-2) var(--space-2) 0; }
 
-.menu-item {
-  display: flex;
-  align-items: center;
-  width: 100%;
-  height: var(--control-sm);
-  padding: 0 var(--space-3);
-  border: 0;
-  border-radius: var(--radius-sm);
-  background: transparent;
-  text-align: left;
-  white-space: nowrap;
-  transition: background-color var(--motion-fast) ease;
-}
-.menu-item:hover:not(:disabled),
-.menu-item.is-selected { background: var(--desk-hover); }
-
-.segmented { display: flex; gap: var(--space-1); padding: 0 var(--space-2); }
-.segment {
-  flex: 1;
-  height: var(--control-sm);
-  border: 1px solid var(--desk-border);
-  border-radius: var(--radius-md);
-  background: transparent;
-  transition: background-color var(--motion-fast) ease;
-}
-.segment:hover:not(:disabled) { background: var(--desk-hover); }
-.segment.is-selected { border-color: var(--desk-accent); background: var(--desk-primary-soft); }
-
-.tooltip {
-  position: absolute;
-  right: 92px;
-  z-index: var(--z-tooltip);
-  padding: var(--space-1) var(--space-2);
-  border-radius: var(--radius-md);
-  background: var(--desk-tooltip);
-  color: var(--desk-tooltip-text);
-  font-size: var(--text-xs);
-  line-height: 20px;
-  white-space: nowrap;
-  transform: translateY(-50%);
-  pointer-events: none;
-  box-shadow: var(--desk-shadow-sm);
-}
-
-.scrim {
-  position: fixed;
-  inset: 0;
-  z-index: var(--z-modal-scrim);
-  display: grid;
-  place-items: center;
-  background: var(--desk-scrim);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-}
-
-.dialog {
-  z-index: var(--z-modal);
-  display: grid;
-  gap: var(--space-2);
-  width: 360px;
-  padding: var(--space-6);
-  border: 1px solid var(--desk-border);
-  border-radius: var(--radius-lg);
-  background: var(--desk-popover);
-  box-shadow: var(--desk-shadow-lg);
-}
 .dialog-title {
   margin: 0;
   font-size: var(--text-lg);

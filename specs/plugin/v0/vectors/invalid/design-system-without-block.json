@@ -1,0 +1,5 @@
+{
+  "target": "PluginManifest",
+  "description": "a design-system plugin must carry its designSystem block",
+  "instance": { "id": "example.empty", "version": "0.1.0", "kind": "design-system" }
+}

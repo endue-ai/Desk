@@ -23,8 +23,12 @@ import {
 } from "../theme";
 import { applyThemeFonts, fontHost } from "../theme-fonts";
 import { type DeskContext, disposer, type Installed } from "./context";
+import { installDesign, type RuntimeDesigns } from "./design";
 
-export interface ThemePolicy extends Installed, RuntimeThemes {}
+export interface ThemePolicy extends Installed, RuntimeThemes {
+  /** The design systems (ADR 0090): their component tokens go over the theme's, in one apply. */
+  readonly designs: RuntimeDesigns;
+}
 
 /** The theme system as the main UI drives it (the theme studio, ADR 0056). */
 export interface RuntimeThemes {
@@ -129,6 +133,8 @@ export function installTheme(
   let draft: InstalledTheme | undefined;
   let draftScheme: Scheme | undefined;
   const listeners = new Set<() => void>();
+  const designs = installDesign(ctx);
+  offs.add(designs.dispose);
   const withDraft = () => (draft ? [...installed(), draft] : installed());
   const known = (id: string) => id === "" || withDraft().some((t) => t.id === id);
   const resolve = (id: string, scheme?: Scheme) =>
@@ -137,8 +143,9 @@ export function installTheme(
       { ...read(), active: id, ...(scheme ? { scheme } : {}) },
       media.read(),
       withDraft(),
+      designs.state(),
     );
-  let state = resolveTheme(hub.policy.themes, read(), media.read(), installed());
+  let state = resolveTheme(hub.policy.themes, read(), media.read(), installed(), designs.state());
 
   const apply = () => {
     if (previewed !== undefined && !known(previewed)) previewed = undefined;
@@ -156,6 +163,7 @@ export function installTheme(
   offs.add(hub.onPolicy(apply));
   offs.add(settings.onChange((keys) => keys.some((k) => k.startsWith("desk.theme.")) && apply()));
   offs.add(media.onChange(apply));
+  offs.add(designs.onChange(apply));
 
   const define = (
     id: string,
@@ -213,6 +221,7 @@ export function installTheme(
   );
 
   return {
+    designs,
     state: () => state,
     installed,
     active: () => read().active ?? "",
@@ -315,7 +324,7 @@ function themeMarket(ctx: DeskContext): ThemeMarket {
 const EARLY = 64;
 
 /** brain.ask and brain.status on the core, as the runtime (which holds brain:ask) calls them. */
-function themeBrain(ctx: DeskContext): ThemeBrain {
+export function themeBrain(ctx: DeskContext): ThemeBrain {
   return {
     async ask(prompt, tool, hear) {
       let turnId: string | undefined;

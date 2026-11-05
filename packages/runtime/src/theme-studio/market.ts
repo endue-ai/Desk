@@ -81,7 +81,9 @@ export function createMarket(deps: MarketDeps): MarketPanel {
     draw();
     try {
       const result = await themes.market().list();
-      if (read === reads) listed = result;
+      // The look markets list design systems too; the design system studio shows those (ADR 0091).
+      const own = result.themes.filter((entry) => (entry.theme.kind ?? "theme") === "theme");
+      if (read === reads) listed = { ...result, themes: own };
     } catch (error) {
       if (read === reads) note.textContent = `${tr("failed")}: ${message(error)}`;
     }

@@ -7,6 +7,7 @@ import type { ShortcutRouter } from "./input";
 import type { Keymap } from "./keymap";
 import type { Cell, Layout } from "./layout";
 import type { Notice, NoticeInput } from "./notify";
+import type { RuntimeDesigns } from "./policies/design";
 import type { SessionPart } from "./policies/session";
 import type { RuntimeThemes } from "./policies/theme";
 import type { PolicySet } from "./policy";
@@ -61,6 +62,8 @@ export interface Runtime {
   theme(): ThemeState;
   /** The theme system: installed themes, the one in force, preview and apply (ADR 0056). */
   readonly themes: RuntimeThemes;
+  /** The design systems: installed ones, the one in force, preview, apply and change (ADR 0090). */
+  readonly designs: RuntimeDesigns;
   openSurface(spec: SurfaceSpec): void;
   closeSurface(id: string): void;
   moveSurface(id: string, cell: Cell): void;

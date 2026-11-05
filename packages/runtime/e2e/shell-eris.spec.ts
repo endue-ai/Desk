@@ -108,6 +108,43 @@ test("speaking: pulses leave the core and reach the rim with each word (0.3 s)",
   expect(await shellTree(page, ".eris")).toMatchSnapshot("speaking-300ms.json");
 });
 
+test("a click on Eris listens, thinks and speaks, the mesh moving with each", async ({ page }) => {
+  // No microphone and no platform voice here: she listens to the sample voice and answers the sample.
+  await page.evaluate(() => {
+    Object.defineProperty(navigator, "mediaDevices", { value: undefined, configurable: true });
+    Object.defineProperty(window, "speechSynthesis", { value: undefined, configurable: true });
+  });
+  const eris = page.locator(".eris");
+  await expect(eris).toHaveAttribute("role", "button");
+  await eris.click();
+  await step(page, 16);
+  await expect(eris).toHaveAttribute("data-talk", "listening");
+  await expect(eris).toHaveAttribute("data-state", "listening");
+  await expect(eris).toHaveAttribute("aria-label", "Eris: 듣는 중");
+  // The sample voice starts 500 ms in and pulls the rings in from the rim.
+  await step(page, 1200);
+  await expect(page.locator(".eris-mesh")).toHaveAttribute("data-voice", "listening");
+  expect(Math.min(...(await rings(page)))).toBeLessThan(0);
+  // 1.4 s of voice, then 1.1 s of quiet: she stops listening and thinks.
+  await step(page, 2000);
+  await expect(eris).toHaveAttribute("data-talk", "thinking");
+  await expect(eris).toHaveAttribute("data-state", "thinking");
+  await step(page, 600);
+  await expect(page.locator(".eris-mesh")).toHaveAttribute("data-voice", "thinking");
+  // At least 1.1 s of thinking, then the line, one pulse per syllable leaving the core.
+  await step(page, 600);
+  await step(page, 300);
+  await expect(eris).toHaveAttribute("data-talk", "speaking");
+  await expect(page.locator(".soul-live")).toHaveText("샘플 목소리를 들었어요. 이렇게 말해요.");
+  await step(page, 300);
+  await expect(page.locator(".eris-mesh")).toHaveAttribute("data-voice", "speaking");
+  expect(Math.max(...(await rings(page)))).toBeGreaterThan(0);
+  // Escape ends the turn.
+  await eris.press("Escape");
+  await step(page, 16);
+  await expect(eris).not.toHaveAttribute("data-talk");
+});
+
 test("talking over Eris stops her", async ({ page }) => {
   await page.evaluate(() => {
     const { desk, bridge, envelopes } = window.__shell;

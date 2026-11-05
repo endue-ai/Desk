@@ -322,6 +322,550 @@ pub struct ProfileContribution {
     pub settings: Option<BTreeMap<String, serde_json::Value>>,
 }
 
+/// A design system: who made it and what it changes, per component.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DesignSystemPackage {
+    /// Who made it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub author: Option<String>,
+    /// An SPDX licence expression, for example CC0-1.0 or Apache-2.0.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub license: Option<String>,
+    /// Words a gallery filters by, for example square, soft or compact.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tags: Option<Vec<String>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub origin: Option<DesignSystemOrigin>,
+    pub components: DesignComponents,
+}
+
+/// Where a design system came from: the sentence it was described with, and the design system it started from.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DesignSystemOrigin {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub prompt: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub base: Option<PluginId>,
+}
+
+/// The choices per component; a component or property left out keeps the endue design system's.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DesignComponents {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub button: Option<DesignButton>,
+    #[serde(
+        rename = "iconButton",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub icon_button: Option<DesignIconButton>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub field: Option<DesignField>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub check: Option<DesignCheck>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tabs: Option<DesignTabs>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub card: Option<DesignCard>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub row: Option<DesignRow>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub menu: Option<DesignMenu>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub dialog: Option<DesignDialog>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub toast: Option<DesignToast>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub badge: Option<DesignBadge>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tooltip: Option<DesignTooltip>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub table: Option<DesignTable>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub progress: Option<DesignProgress>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub focus: Option<DesignFocus>,
+}
+
+/// A push button. primary is how the main action fills, and danger (destructive) fills the same way in its own colours; secondary is how every other button shows; quiet toolbar buttons are always ghosts. shape, size, weight, case, padding and elevation apply to all of them.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DesignButton {
+    /// Default: md.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub shape: Option<DesignShape>,
+    /// Default: sm.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub size: Option<DesignSize>,
+    /// Default: medium.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub weight: Option<DesignWeight>,
+    /// Default: none.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub case: Option<DesignCase>,
+    /// Default: normal.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub padding: Option<DesignPadding>,
+    /// Default: solid.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub primary: Option<DesignTone>,
+    /// Default: outline.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub secondary: Option<DesignFill>,
+    /// Default: none.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub elevation: Option<DesignElevation>,
+}
+
+/// A button drawn with an icon alone.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DesignIconButton {
+    /// Default: md.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub shape: Option<DesignShape>,
+    /// Default: md.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub size: Option<DesignSize>,
+    /// Default: ghost.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub style: Option<DesignFill>,
+}
+
+/// A text input, select or text area.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DesignField {
+    /// Default: outline.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub style: Option<DesignFieldStyle>,
+    /// Default: md.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub shape: Option<DesignShape>,
+    /// Default: md.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub size: Option<DesignSize>,
+    /// Default: ring.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub focus: Option<DesignFieldFocus>,
+}
+
+/// A checkbox or radio button.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DesignCheck {
+    /// Default: primary.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub accent: Option<DesignCheckAccent>,
+    /// Default: md.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub size: Option<DesignSize>,
+}
+
+/// Tabs and segmented controls: one choice among a few.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DesignTabs {
+    /// Default: boxed.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub style: Option<DesignTabsStyle>,
+    /// Default: md.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub shape: Option<DesignShape>,
+    /// Default: sm.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub size: Option<DesignSize>,
+}
+
+/// A panel that groups content.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DesignCard {
+    /// Default: outline.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub style: Option<DesignCardStyle>,
+    /// Default: md.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub shape: Option<DesignShape>,
+    /// Default: normal.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub padding: Option<DesignPadding>,
+}
+
+/// A row of a list, menu or tree: how the active row and the selected row show.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DesignRow {
+    /// Default: fill.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub selection: Option<DesignRowSelection>,
+    /// Default: sm.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub shape: Option<DesignShape>,
+    /// Default: sm.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub size: Option<DesignSize>,
+}
+
+/// A floating menu or popover.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DesignMenu {
+    /// Default: md.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub shape: Option<DesignShape>,
+    /// Default: md.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub elevation: Option<DesignElevation>,
+    /// Default: outline.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub border: Option<DesignMenuBorder>,
+}
+
+/// A modal dialog and the scrim behind it.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DesignDialog {
+    /// Default: lg.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub shape: Option<DesignShape>,
+    /// Default: lg.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub elevation: Option<DesignElevation>,
+    /// Default: blur.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub scrim: Option<DesignScrim>,
+    /// Default: roomy.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub padding: Option<DesignPadding>,
+}
+
+/// A short notice in a corner.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DesignToast {
+    /// Default: outline.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub style: Option<DesignToastStyle>,
+    /// Default: lg.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub shape: Option<DesignShape>,
+    /// Default: md.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub elevation: Option<DesignElevation>,
+}
+
+/// A badge, chip, tag or count.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DesignBadge {
+    /// Default: soft.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub style: Option<DesignBadgeStyle>,
+    /// Default: full.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub shape: Option<DesignShape>,
+    /// Default: none.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub case: Option<DesignCase>,
+}
+
+/// A tooltip.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DesignTooltip {
+    /// Default: md.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub shape: Option<DesignShape>,
+    /// Default: sm.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub elevation: Option<DesignElevation>,
+}
+
+/// A table's rows, header and cell spacing.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DesignTable {
+    /// Default: lines.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub rows: Option<DesignTableRows>,
+    /// Default: plain.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub header: Option<DesignTableHeader>,
+    /// Default: sm.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub size: Option<DesignSize>,
+}
+
+/// A progress bar.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DesignProgress {
+    /// Default: normal.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub thickness: Option<DesignThickness>,
+    /// Default: full.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub shape: Option<DesignShape>,
+}
+
+/// The keyboard focus ring every component shows.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DesignFocus {
+    /// Default: normal.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub width: Option<DesignThickness>,
+    /// Default: near.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub offset: Option<DesignFocusOffset>,
+}
+
+/// A corner: square, a theme's radius step, or a pill.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum DesignShape {
+    #[serde(rename = "none")]
+    None,
+    #[serde(rename = "sm")]
+    Sm,
+    #[serde(rename = "md")]
+    Md,
+    #[serde(rename = "lg")]
+    Lg,
+    #[serde(rename = "full")]
+    Full,
+}
+
+/// A height or spacing step of the theme's controls.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum DesignSize {
+    #[serde(rename = "xs")]
+    Xs,
+    #[serde(rename = "sm")]
+    Sm,
+    #[serde(rename = "md")]
+    Md,
+    #[serde(rename = "lg")]
+    Lg,
+}
+
+/// No shadow, or a theme's shadow step.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum DesignElevation {
+    #[serde(rename = "none")]
+    None,
+    #[serde(rename = "sm")]
+    Sm,
+    #[serde(rename = "md")]
+    Md,
+    #[serde(rename = "lg")]
+    Lg,
+}
+
+/// Inner space: tight, normal or roomy.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum DesignPadding {
+    #[serde(rename = "tight")]
+    Tight,
+    #[serde(rename = "normal")]
+    Normal,
+    #[serde(rename = "roomy")]
+    Roomy,
+}
+
+/// Label case: as written or uppercase.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum DesignCase {
+    #[serde(rename = "none")]
+    None,
+    #[serde(rename = "uppercase")]
+    Uppercase,
+}
+
+/// A label's font weight: 400, 500, 600 or 700.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum DesignWeight {
+    #[serde(rename = "regular")]
+    Regular,
+    #[serde(rename = "medium")]
+    Medium,
+    #[serde(rename = "semibold")]
+    Semibold,
+    #[serde(rename = "bold")]
+    Bold,
+}
+
+/// How a tone fills: solid fill with its ink, a soft tint with its text colour, or an outline.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum DesignTone {
+    #[serde(rename = "solid")]
+    Solid,
+    #[serde(rename = "soft")]
+    Soft,
+    #[serde(rename = "outline")]
+    Outline,
+}
+
+/// How a neutral control shows: outlined, a soft fill, or only on hover (ghost).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum DesignFill {
+    #[serde(rename = "outline")]
+    Outline,
+    #[serde(rename = "soft")]
+    Soft,
+    #[serde(rename = "ghost")]
+    Ghost,
+}
+
+/// A field: an outlined box, a filled box without a border, or a bottom line only.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum DesignFieldStyle {
+    #[serde(rename = "outline")]
+    Outline,
+    #[serde(rename = "filled")]
+    Filled,
+    #[serde(rename = "underline")]
+    Underline,
+}
+
+/// Focus on a field: the focus ring, or the border in the ring's colour.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum DesignFieldFocus {
+    #[serde(rename = "ring")]
+    Ring,
+    #[serde(rename = "border")]
+    Border,
+}
+
+/// A check's colour: the brand's or the text's.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum DesignCheckAccent {
+    #[serde(rename = "primary")]
+    Primary,
+    #[serde(rename = "text")]
+    Text,
+}
+
+/// Tabs: outlined boxes, pills on a track, or an underline under the selected one.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum DesignTabsStyle {
+    #[serde(rename = "boxed")]
+    Boxed,
+    #[serde(rename = "pill")]
+    Pill,
+    #[serde(rename = "underline")]
+    Underline,
+}
+
+/// A card: outlined, raised with a shadow, filled, or plain.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum DesignCardStyle {
+    #[serde(rename = "outline")]
+    Outline,
+    #[serde(rename = "elevated")]
+    Elevated,
+    #[serde(rename = "filled")]
+    Filled,
+    #[serde(rename = "plain")]
+    Plain,
+}
+
+/// The active row: a hover fill, a soft brand tint, or a fill with a brand bar at its start.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum DesignRowSelection {
+    #[serde(rename = "fill")]
+    Fill,
+    #[serde(rename = "soft")]
+    Soft,
+    #[serde(rename = "bar")]
+    Bar,
+}
+
+/// A menu with an outline or without.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum DesignMenuBorder {
+    #[serde(rename = "outline")]
+    Outline,
+    #[serde(rename = "none")]
+    None,
+}
+
+/// Behind a dialog: the scrim, blurred or only dimmed.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum DesignScrim {
+    #[serde(rename = "blur")]
+    Blur,
+    #[serde(rename = "dim")]
+    Dim,
+}
+
+/// A toast: an outlined card, a soft fill, or inverse like a tooltip.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum DesignToastStyle {
+    #[serde(rename = "outline")]
+    Outline,
+    #[serde(rename = "soft")]
+    Soft,
+    #[serde(rename = "inverse")]
+    Inverse,
+}
+
+/// A badge: a soft fill, the brand's solid fill, or an outline.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum DesignBadgeStyle {
+    #[serde(rename = "soft")]
+    Soft,
+    #[serde(rename = "solid")]
+    Solid,
+    #[serde(rename = "outline")]
+    Outline,
+}
+
+/// A table's body rows: divided by lines, striped, or plain.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum DesignTableRows {
+    #[serde(rename = "lines")]
+    Lines,
+    #[serde(rename = "striped")]
+    Striped,
+    #[serde(rename = "plain")]
+    Plain,
+}
+
+/// A table's header row: plain or muted.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum DesignTableHeader {
+    #[serde(rename = "plain")]
+    Plain,
+    #[serde(rename = "muted")]
+    Muted,
+}
+
+/// A line's thickness: thin, normal or thick.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum DesignThickness {
+    #[serde(rename = "thin")]
+    Thin,
+    #[serde(rename = "normal")]
+    Normal,
+    #[serde(rename = "thick")]
+    Thick,
+}
+
+/// The focus ring's distance: none, near or far.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum DesignFocusOffset {
+    #[serde(rename = "none")]
+    None,
+    #[serde(rename = "near")]
+    Near,
+    #[serde(rename = "far")]
+    Far,
+}
+
 /// One permission with its scope. Plugin manifests declare these; bridge calls carry the one that covers them.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
@@ -647,6 +1191,13 @@ pub struct PluginManifest {
     /// A theme plugin's theme: its layers and the font and image files it brings, relative to the plugin folder.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub theme: Option<ThemePackage>,
+    /// A design-system plugin's design system: what each component of the desk is made of (ADR 0090).
+    #[serde(
+        rename = "designSystem",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub design_system: Option<DesignSystemPackage>,
 }
 
 /// Reverse-domain style id with at least one dot, lowercase, for example endue.eris or example.hello-ui.
@@ -655,7 +1206,7 @@ pub type PluginId = String;
 /// Semantic version, for example 0.1.0 or 1.2.3-beta.1.
 pub type Version = String;
 
-/// ui runs in a sandboxed iframe, logic in a Wasm instance, tool as an MCP server inside the VM. policy runs no code: it only contributes data (ADR 0017). library runs no code of its own either: it is files other plugins import, served at /<id>/... like any plugin's, never mounted and never turned off. connector brings an app's data in as items, as a Wasm component or an MCP server; view runs no code either: it is one or more views (ADR 0032). theme runs no code: it is a theme block and its font and image files, chosen with desk.theme.active (ADR 0056).
+/// ui runs in a sandboxed iframe, logic in a Wasm instance, tool as an MCP server inside the VM. policy runs no code: it only contributes data (ADR 0017). library runs no code of its own either: it is files other plugins import, served at /<id>/... like any plugin's, never mounted and never turned off. connector brings an app's data in as items, as a Wasm component or an MCP server; view runs no code either: it is one or more views (ADR 0032). theme runs no code: it is a theme block and its font and image files, chosen with desk.theme.active (ADR 0056). design-system runs no code either: it is a designSystem block of component recipes, chosen with desk.design.active (ADR 0090).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum PluginKind {
     #[serde(rename = "ui")]
@@ -674,6 +1225,8 @@ pub enum PluginKind {
     View,
     #[serde(rename = "theme")]
     Theme,
+    #[serde(rename = "design-system")]
+    DesignSystem,
 }
 
 /// Path to the entry file, relative to the plugin folder, without .. segments.
@@ -732,6 +1285,9 @@ pub struct ThemeIndexEntry {
     pub id: String,
     pub name: String,
     pub version: Version,
+    /// What the bundle holds; the bundle's manifest has the same kind. Default theme.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub kind: Option<ThemeIndexKind>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
     /// Who made it.
@@ -750,7 +1306,16 @@ pub struct ThemeIndexEntry {
     pub size: u64,
 }
 
-/// Where the theme's .desk-theme is: an https URL, or a path relative to the index's own URL without .. segments (paper-dusk.desk-theme), so a market moves by moving its folder.
+/// What a market entry's bundle holds: a theme (a .desk-theme) or a design system (a .desk-design, ADR 0091).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum ThemeIndexKind {
+    #[serde(rename = "theme")]
+    Theme,
+    #[serde(rename = "design-system")]
+    DesignSystem,
+}
+
+/// Where the theme's .desk-theme (or the design system's .desk-design) is: an https URL, or a path relative to the index's own URL without .. segments (paper-dusk.desk-theme), so a market moves by moving its folder.
 pub type ThemeIndexUrl = String;
 
 /// A theme: the layers every scheme shares (type, shape, motion) and one variant per scheme. At least one of light and dark; the desk's own theme stands in for a missing one.
@@ -783,13 +1348,13 @@ pub struct ThemePackage {
     pub dark: Option<ThemeVariant>,
 }
 
-/// A theme as one file, a .desk-theme: JSON, 16 MiB at most, holding the theme's plugin.json and the font and image files its theme block names, base64. theme.export writes one and theme.import reads one; the desk checks it as a theme plugin folder before it lands.
+/// A theme as one file, a .desk-theme: JSON, 16 MiB at most, holding the theme's plugin.json and the font and image files its theme block names, base64. theme.export writes one and theme.import reads one; the desk checks it as a theme plugin folder before it lands. A design system travels in the same format as a .desk-design, its manifest of kind design-system and no files (ADR 0091).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ThemeBundle {
     /// The bundle format and its version.
     pub format: ThemeBundleFormat,
-    /// The theme's plugin.json: a plugin of kind theme.
+    /// The theme's plugin.json: a plugin of kind theme, or of kind design-system for a .desk-design.
     pub manifest: PluginManifest,
     /// The theme's font and image files by their path in its folder, each base64. Only the paths its theme block names.
     pub files: BTreeMap<String, ThemeAssetData>,
@@ -5248,7 +5813,7 @@ pub struct ThemeSaveFile {
     pub base64: ThemeAssetData,
 }
 
-/// An https URL of a .desk-theme file. Plain http, and a redirect to another host, are refused.
+/// An https URL of a .desk-theme (or .desk-design) file. Plain http, and a redirect to another host, are refused.
 pub type ThemeBundleUrl = String;
 
 /// The sha256 of a file's bytes, lowercase hex.
@@ -5267,7 +5832,7 @@ pub struct ThemeSaveRequest {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ThemeSaveParams {
-    /// The theme's plugin.json: kind theme, with an id inside local. (for example local.my-paper).
+    /// The theme's plugin.json: kind theme, or kind design-system for a design system (ADR 0091), with an id inside local. (for example local.my-paper).
     pub manifest: PluginManifest,
     /// Font and image files the theme block names, each path once. With the ones copyFrom brings they are the theme folder's only files besides plugin.json.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -5300,7 +5865,7 @@ pub struct ThemeImportRequest {
 pub struct ThemeImportParams {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub bundle: Option<ThemeBundle>,
-    /// A .desk-theme file to read.
+    /// A .desk-theme or .desk-design file to read.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub path: Option<Path>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -5320,7 +5885,7 @@ pub struct ThemeImportResult {
     pub plugin: PluginInfo,
 }
 
-/// Make a .desk-theme bundle of any installed theme, built-in ones too: its plugin.json and the font and image files its theme block names. Returned with inline; otherwise written to path, or to <Downloads>/<id>.desk-theme (<id>-2.desk-theme and on when that is taken), and the file's path returned.
+/// Make a .desk-theme bundle of any installed theme, built-in ones too: its plugin.json and the font and image files its theme block names. A design system is bundled the same way, as <id>.desk-design. Returned with inline; otherwise written to path, or to <Downloads>/<id>.desk-theme (<id>-2.desk-theme and on when that is taken; .desk-design for a design system), and the file's path returned.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ThemeExportRequest {
@@ -5379,7 +5944,7 @@ pub struct ThemeRemoveResult {}
 /// An https URL of a market index (specs/plugin ThemeIndex, desk-theme-index/1).
 pub type ThemeMarketUrl = String;
 
-/// Read every market index desk.theme.markets lists, in order, and merge their themes by id: the first market that lists an id wins. Each index is downloaded over https from its own host only; one that cannot be read or is not a valid index leaves its themes out and says why in problems. Each theme says whether this desk has it.
+/// Read every market index desk.theme.markets and then desk.design.markets list (ADR 0091), in order, and merge their themes by id: the first market that lists an id wins. Each index is downloaded over https from its own host only; one that cannot be read or is not a valid index leaves its themes out and says why in problems. Each theme says whether this desk has it.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ThemeMarketListRequest {
@@ -7224,6 +7789,10 @@ pub const SCHEMAS: &[(&str, &str)] = &[
     (
         "https://endue.ai/specs/plugin/v0/contributes.schema.json",
         include_str!("../../../specs/plugin/v0/contributes.schema.json"),
+    ),
+    (
+        "https://endue.ai/specs/plugin/v0/design-system.schema.json",
+        include_str!("../../../specs/plugin/v0/design-system.schema.json"),
     ),
     (
         "https://endue.ai/specs/plugin/v0/permission.schema.json",

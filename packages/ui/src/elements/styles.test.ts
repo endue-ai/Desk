@@ -78,10 +78,11 @@ describe("element styles", () => {
 
     if (UNFOCUSED.has(name)) continue;
     it(`${name} draws a visible focus ring in the ring token`, () => {
+      // The design system's focus width (ADR 0090), in the theme's ring colour.
+      const RING = /^var\(--desk-focus-width\) solid var\(--desk-(ring|field-focus-ring)\)$/;
       const rings = rules.filter(
         (rule) =>
-          rule.selector.includes(":focus-visible") &&
-          rule.declarations.outline === "2px solid var(--desk-ring)",
+          rule.selector.includes(":focus-visible") && RING.test(rule.declarations.outline ?? ""),
       );
       expect(rings.length).toBeGreaterThan(0);
     });

@@ -15,8 +15,8 @@ use std::time::Duration;
 
 use desk_bridge::{
     BridgeError, ErrorCode, PluginKind, PluginManifest, ThemeBundle, ThemeIndex, ThemeIndexEntry,
-    ThemeMarketFetchParams, ThemeMarketFetchResult, ThemeMarketListParams, ThemeMarketListResult,
-    ThemeMarketProblem, ThemeMarketState, ThemeMarketTheme,
+    ThemeIndexKind, ThemeMarketFetchParams, ThemeMarketFetchResult, ThemeMarketListParams,
+    ThemeMarketListResult, ThemeMarketProblem, ThemeMarketState, ThemeMarketTheme,
 };
 use desk_update::verify::sha256_hex;
 use serde::{Deserialize, Serialize};
@@ -82,8 +82,11 @@ impl Core {
         self.check_theme(caller, params.scope)?;
         let bundle = self.market_bundle(&params.url, Some(&params.sha256), None)?;
         let manifest = &bundle.manifest;
-        if manifest.kind != PluginKind::Theme {
-            return Err(invalid(format!("{} is not a theme", manifest.id)));
+        if !crate::plugins::is_look(manifest.kind) {
+            return Err(invalid(format!(
+                "{} is not a theme or design system",
+                manifest.id
+            )));
         }
         let files = decode(manifest, bundle.files.clone().into_iter().collect())?;
         static PREVIEWS: AtomicU64 = AtomicU64::new(0);
@@ -153,31 +156,40 @@ impl Core {
 
     /// The bundle at `url` from a market: `market` for theme.import, or for theme.market.fetch (none)
     /// the first market in force that lists the url. Refused unless that market lists it, its bytes
-    /// have `sha256`, and its manifest has the id the index lists there (TC-05).
+    /// have `sha256`, and its manifest has the id and the kind the index lists there (TC-05, DT-03).
     pub(crate) fn market_bundle(
         &self,
         url: &str,
         sha256: Option<&str>,
         market: Option<&str>,
     ) -> Result<ThemeBundle, BridgeError> {
-        let listed = self.listed_id(url, market)?;
+        let (listed, kind) = self.listed_id(url, market)?;
         let bundle = parse(&self.download(url, sha256)?)?;
         let id = &bundle.manifest.id;
         if *id != listed {
             let why = format!("the bundle at {url} is {id}, not {listed} as its market lists it");
             return Err(invalid(why));
         }
+        let design = bundle.manifest.kind == PluginKind::DesignSystem;
+        if design != (kind == Some(ThemeIndexKind::DesignSystem)) {
+            let why = format!("the bundle at {url} is not of the kind its market lists");
+            return Err(invalid(why));
+        }
         Ok(bundle)
     }
 
-    /// The id a market in force lists for the bundle at `url`, `market`'s when one is named. The
+    /// The id and kind a market in force lists for the bundle at `url`, `market`'s when one is named. The
     /// indexes are read again for each call rather than remembered from the last theme.market.list,
     /// so the answer is what the markets in force say now, before and after any list.
-    fn listed_id(&self, url: &str, market: Option<&str>) -> Result<String, BridgeError> {
+    fn listed_id(
+        &self,
+        url: &str,
+        market: Option<&str>,
+    ) -> Result<(String, Option<ThemeIndexKind>), BridgeError> {
         let mut markets = self.markets();
         if let Some(named) = market {
             if !markets.iter().any(|known| known == named) {
-                return Err(invalid(format!("{named} is not in desk.theme.markets")));
+                return Err(invalid(format!("{named} is not a market in force")));
             }
             markets = vec![named.to_owned()];
         }
@@ -187,7 +199,7 @@ impl Core {
                 Ok(index) => {
                     let mut entries = index.themes.into_iter();
                     if let Some(entry) = entries.find(|t| resolve(market, &t.url) == url) {
-                        return Ok(entry.id);
+                        return Ok((entry.id, entry.kind));
                     }
                 }
                 Err(why) => unread.push_str(&format!("; {market}: {why}")),
@@ -195,7 +207,7 @@ impl Core {
         }
         Err(invalid(match market {
             Some(market) => format!("{market} does not list {url}{unread}"),
-            None => format!("no market in desk.theme.markets lists {url}{unread}"),
+            None => format!("no market in force lists {url}{unread}"),
         }))
     }
 
@@ -215,16 +227,20 @@ impl Core {
         Ok(bytes)
     }
 
-    /// The market indexes in force: the runtime's `theme.markets`, init.yaml's
-    /// `desk.theme.markets`, or the `desk.theme` manifest's default; each once, in order.
+    /// The market indexes in force: the theme markets (the runtime's `theme.markets`, init.yaml's
+    /// `desk.theme.markets`, or the `desk.theme` manifest's default), then the design system markets
+    /// (`desk.design.markets` the same way, ADR 0091); each once, in order.
     fn markets(&self) -> Vec<String> {
-        let value = self.setting_in_force("desk", "theme.markets");
-        let value = value.or_else(|| self.setting_in_force("desk.theme", "markets"));
+        let list = |policy: &str, key: &str| {
+            let value = self.setting_in_force("desk", &format!("{key}.markets"));
+            value.or_else(|| self.setting_in_force(policy, "markets"))
+        };
+        let values = [list("desk.theme", "theme"), list("desk.design", "design")];
         let mut markets: Vec<String> = Vec::new();
-        for url in value
-            .as_ref()
-            .and_then(Value::as_array)
-            .into_iter()
+        for url in values
+            .iter()
+            .flatten()
+            .filter_map(Value::as_array)
             .flatten()
         {
             let url = url.as_str().map(str::to_owned);

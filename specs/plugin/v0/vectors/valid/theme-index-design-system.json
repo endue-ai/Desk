@@ -1,0 +1,22 @@
+{
+  "target": "ThemeIndex",
+  "description": "a market index entry for a design system, its bundle a .desk-design beside the index",
+  "instance": {
+    "format": "desk-theme-index/1",
+    "themes": [
+      {
+        "id": "market.blueprint",
+        "name": "Blueprint",
+        "version": "1.0.0",
+        "kind": "design-system",
+        "description": "Square, outlined and compact.",
+        "author": "Team endue",
+        "license": "CC0-1.0",
+        "preview": ["#1e1d21", "#b6a3f5"],
+        "url": "blueprint.desk-design",
+        "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "size": 400
+      }
+    ]
+  }
+}

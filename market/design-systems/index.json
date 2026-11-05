@@ -1,0 +1,33 @@
+{
+  "format": "desk-theme-index/1",
+  "themes": [
+    {
+      "id": "market.terminal-grid",
+      "name": "Terminal grid",
+      "version": "1.0.0",
+      "kind": "design-system",
+      "description": "Square and dense like a tiling window manager: ghost buttons, underlined tabs, a bar on the active row, no shadows.",
+      "author": "Team endue",
+      "license": "CC0-1.0",
+      "tags": ["square", "dense", "keyboard"],
+      "preview": ["#1e1d21", "#b6a3f5", "#f2f0f5"],
+      "url": "terminal-grid.desk-design",
+      "sha256": "fa0edb3ad96a368bec851a068128475d856bd03ffbb835ef5bbda9774d9f3c00",
+      "size": 1818
+    },
+    {
+      "id": "market.bubble",
+      "name": "Bubble",
+      "version": "1.0.0",
+      "kind": "design-system",
+      "description": "Round and playful: pill buttons with a soft main action, filled pill fields, pill tabs and raised cards.",
+      "author": "Team endue",
+      "license": "CC0-1.0",
+      "tags": ["round", "playful", "soft"],
+      "preview": ["#1e1d21", "#b6a3f5", "#f2f0f5"],
+      "url": "bubble.desk-design",
+      "sha256": "c7d5c4ecf95e359cca67bc4ac93e1b55c3d9b1a2c53df6617b95b4c40fab055c",
+      "size": 1783
+    }
+  ]
+}
