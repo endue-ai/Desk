@@ -2934,6 +2934,32 @@ pub struct KeysFile {
     pub bindings: Option<Vec<KeyBinding>>,
 }
 
+/// The whole of plugins.lock.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PluginsLock {
+    /// The format version. Desk refuses a lock newer than it reads.
+    pub version: u64,
+    /// Every installed plugin that validates, sorted by id.
+    pub plugins: Vec<LockedPlugin>,
+}
+
+/// One installed plugin, pinned.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct LockedPlugin {
+    pub id: PluginId,
+    pub version: Version,
+    pub source: LockSource,
+    /// The folder digest: every regular file under the plugin folder whose path has no part starting with a dot, in byte order of its path relative to the folder (forward slashes), each fed as path, NUL, decimal length, NUL, bytes; lowercase hex.
+    pub sha256: String,
+    /// Whether it is on, as its persisted flag says (init.yaml's start-only holds aside).
+    pub enabled: bool,
+}
+
+/// Where the plugin came from: builtin (shipped with Desk), folder:<path> (a folder on this computer, ~ for the home folder) or url:<https URL> (the market, later).
+pub type LockSource = String;
+
 /// The whole of a profile file. Every key is optional; an empty file is a profile that changes nothing.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -8174,6 +8200,10 @@ pub const SCHEMAS: &[(&str, &str)] = &[
     (
         "https://endue.ai/specs/init/v0/keys.schema.json",
         include_str!("../../../specs/init/v0/keys.schema.json"),
+    ),
+    (
+        "https://endue.ai/specs/init/v0/lock.schema.json",
+        include_str!("../../../specs/init/v0/lock.schema.json"),
     ),
     (
         "https://endue.ai/specs/init/v0/profile.schema.json",

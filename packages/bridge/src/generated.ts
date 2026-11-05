@@ -1749,6 +1749,28 @@ export interface KeysFile {
   bindings?: KeyBinding[];
 }
 
+/** The whole of plugins.lock. */
+export interface PluginsLock {
+  /** The format version. Desk refuses a lock newer than it reads. */
+  version: number;
+  /** Every installed plugin that validates, sorted by id. */
+  plugins: LockedPlugin[];
+}
+
+/** One installed plugin, pinned. */
+export interface LockedPlugin {
+  id: PluginId;
+  version: Version;
+  source: LockSource;
+  /** The folder digest: every regular file under the plugin folder whose path has no part starting with a dot, in byte order of its path relative to the folder (forward slashes), each fed as path, NUL, decimal length, NUL, bytes; lowercase hex. */
+  sha256: string;
+  /** Whether it is on, as its persisted flag says (init.yaml's start-only holds aside). */
+  enabled: boolean;
+}
+
+/** Where the plugin came from: builtin (shipped with Desk), folder:<path> (a folder on this computer, ~ for the home folder) or url:<https URL> (the market, later). */
+export type LockSource = string;
+
 /** The whole of a profile file. Every key is optional; an empty file is a profile that changes nothing. */
 export interface ProfileFile {
   /** The format version. Default 0. Desk ignores a file with a version newer than it reads. */

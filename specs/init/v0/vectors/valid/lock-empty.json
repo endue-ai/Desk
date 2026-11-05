@@ -1,0 +1,5 @@
+{
+  "target": "PluginsLock",
+  "description": "a desk with no plugins",
+  "instance": { "version": 0, "plugins": [] }
+}
