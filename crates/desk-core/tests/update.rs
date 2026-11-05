@@ -207,3 +207,61 @@ fn download_and_apply_refuse_when_nothing_waits() {
     );
     assert_eq!(stranger.unwrap_err().code, ErrorCode::PermissionDenied);
 }
+
+#[test]
+fn set_channel_changes_the_index_the_next_check_reads() {
+    let home = home("update-set-channel");
+    let (core, origin) = desk(&home, "0.1.0", None);
+    assert_eq!(update(&core, "update.status").unwrap()["channel"], "stable");
+    let params = json!({ "channel": "beta", "scope": manage() });
+    let answer = call(&core, "desk", "update.setChannel", params).unwrap();
+    assert_eq!(answer["channel"], "beta");
+    // The person's setting, as settings.get reads it.
+    let setting = call(
+        &core,
+        "desk",
+        "settings.get",
+        json!({ "key": "update.channel" }),
+    )
+    .unwrap();
+    assert_eq!(setting["value"], "beta");
+
+    update(&core, "update.check").unwrap();
+    let started = Instant::now();
+    while origin.0.lock().unwrap().is_empty() {
+        assert!(
+            started.elapsed() < Duration::from_secs(10),
+            "the check never reached the origin"
+        );
+        std::thread::sleep(Duration::from_millis(10));
+    }
+    let asked = origin.0.lock().unwrap().clone();
+    assert_eq!(
+        asked[0],
+        "https://releases.example.test/desk/channels/beta/index.json"
+    );
+
+    // Only a holder of update:manage may switch.
+    let params = json!({ "channel": "canary", "scope": manage() });
+    let refused = call(&core, "example.notes", "update.setChannel", params).unwrap_err();
+    assert_eq!(refused.code, ErrorCode::PermissionDenied);
+    assert_eq!(update(&core, "update.status").unwrap()["channel"], "beta");
+}
+
+#[test]
+fn later_keeps_the_staged_build_across_a_restart() {
+    let home = home("update-later");
+    stage_build(&home.join("updates"));
+    {
+        let (core, _) = desk(&home, "0.1.0", None);
+        let status = update(&core, "update.status").unwrap();
+        assert_eq!(status["state"], "staged");
+        assert_eq!(status["release"]["version"], "0.2.0");
+    }
+    // "Later" leaves the build where it is: the next start finds it staged again.
+    let (core, _) = desk(&home, "0.1.0", None);
+    let status = update(&core, "update.status").unwrap();
+    assert_eq!(status["state"], "staged");
+    assert_eq!(status["release"]["version"], "0.2.0");
+    assert_eq!(status["staged"], true);
+}

@@ -449,3 +449,20 @@ fn new_usage_errors_exit_2() {
         );
     }
 }
+
+#[test]
+fn desk_update_channel_sets_it() {
+    let beta = json!({ "state": "idle", "current": { "version": "0.1.0", "commit": "fa7a4af" },
+        "channel": "beta" });
+    let server = Server::start(move |r| vec![ok(r, beta.clone())]);
+    let out = server.desk(&["update", "channel", "beta"]);
+    assert_eq!(out.status.code(), Some(0), "{}", stderr(&out));
+    assert_eq!(stdout(&out), "idle\t0.1.0\tbeta\t-\n");
+    assert_eq!(server.last()["method"], "update.setChannel");
+    assert_eq!(
+        server.last()["params"],
+        json!({ "channel": "beta", "scope": { "permission": "update:manage" } })
+    );
+    let usage = server.desk(&["update", "channel", "nightly"]);
+    assert_eq!(usage.status.code(), Some(2));
+}

@@ -1,6 +1,13 @@
 import type { BridgeEvent, UpdateStatus } from "@endue-ai/bridge";
 import { describe, expect, it, vi } from "vitest";
-import { installUpdates, ROW, rowFor, type UpdateRow, type UpdatesHost } from "./updates";
+import {
+  aboutText,
+  installUpdates,
+  ROW,
+  rowFor,
+  type UpdateRow,
+  type UpdatesHost,
+} from "./updates";
 
 const status = (state: UpdateStatus["state"], extra: Partial<UpdateStatus> = {}): UpdateStatus => ({
   state,
@@ -94,9 +101,11 @@ describe("updates", () => {
       expect.objectContaining({ title: "Desk 0.2.0 is ready" }),
     );
     expect([...h.defined.keys()].sort()).toEqual([
+      "desk.update.about",
       "desk.update.apply",
       "desk.update.check",
       "desk.update.download",
+      "desk.update.later",
       "desk.update.notes",
     ]);
   });
@@ -174,5 +183,63 @@ describe("updates", () => {
     ).toBe("desk.update.download");
     expect(rowFor(status("up-to-date"), "en")).toBeNull();
     expect(rowFor(staged, "ko")?.text).toBe("Desk 0.2.0 준비됨");
+  });
+
+  it("later_hides_the_notice_and_keeps_the_rail_row", async () => {
+    const { h } = host(staged);
+    installUpdates(h);
+    await settle();
+    expect(h.notify).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: "Desk 0.2.0 is ready",
+        actions: [
+          { label: "Restart to update", command: "desk.update.apply" },
+          { label: "Later", command: "desk.update.later" },
+        ],
+      }),
+    );
+    const rows = h.rows.length;
+    await h.defined.get("desk.update.later")?.(undefined, {});
+    // Later asks the core for nothing: the build stays staged, the rail keeps its row.
+    expect(h.calls.map((c) => c.method)).toEqual(["update.status"]);
+    expect(h.rows).toHaveLength(rows);
+    expect(h.rows.at(-1)?.action?.command).toBe("desk.update.apply");
+  });
+
+  it("a_refused_artifact_shows_a_notice_with_the_reason", async () => {
+    const { h, emit } = host(status("downloading", { release: { version: "0.2.0" } }));
+    installUpdates(h);
+    await settle();
+    const refused = status("failed", {
+      release: { version: "0.2.0" },
+      staged: false,
+      reason: "the signature does not match the updater key",
+    });
+    emit(refused);
+    emit(refused);
+    expect(h.notify).toHaveBeenCalledTimes(1);
+    expect(h.notify).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: "Desk 0.2.0 was not installed",
+        body: "the signature does not match the updater key",
+        level: "warning",
+      }),
+    );
+  });
+
+  it("about_shows_version_channel_and_the_staged_build", async () => {
+    const { h } = host({ ...staged, channel: "beta" });
+    h.memory.set("0.2.0");
+    installUpdates(h);
+    await settle();
+    await h.defined.get("desk.update.about")?.(undefined, {});
+    expect(h.notify).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: "endue Desk 0.1.0 (fa7a4af)",
+        body: "Channel: beta. Desk 0.2.0 is ready: restart to update.",
+        level: "info",
+      }),
+    );
+    expect(aboutText(status("up-to-date"), "en").body).toBe("Channel: stable. Up to date.");
   });
 });
