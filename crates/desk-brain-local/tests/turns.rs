@@ -3,6 +3,7 @@
 
 mod support;
 
+use desk_brain::Brain;
 use desk_brain_local::{LocalBrain, LocalBrainOptions};
 use serde_json::json;
 use support::{
@@ -199,4 +200,59 @@ fn a_model_named_for_an_agent_asks_for_its_tools_as_that_agent() {
     let colon = LocalBrainOptions::new(MODEL).with_agent("agent:x");
     let bad = LocalBrain::open(other.path(), colon.with_base_url(&ollama.url));
     assert!(bad.is_err());
+}
+
+#[test]
+fn the_turn_context_reaches_the_model_as_a_system_message() {
+    let ollama = FakeOllama::start(vec![Reply::Stream(vec![say("pnpm"), done("stop")])]);
+    let folder = Folder::new();
+    let brain = brain(&ollama.url, &folder);
+    let (session, lease) = open(&brain, "desk-a");
+    let mut request = support::said("which package manager do I use?", &lease);
+    request.context = Some(
+        serde_json::from_value(json!({
+            "facts": [{ "id": "fact_01", "text": "Prefers pnpm over npm" }],
+            "episodes": [{ "at": "2026-11-04T10:30:00.000Z", "asked": "check my mail",
+                "answered": "Two new messages." }],
+            "working": { "now": "2026-11-05T09:00:00.000Z", "surfaces": ["Notes"],
+                "commands": ["endue.mail.latest"] }
+        }))
+        .unwrap(),
+    );
+    brain.create_turn(&session, &request, &mut |_| {}).unwrap();
+
+    let (_, body) = &ollama.requests()[0];
+    let messages = body["messages"].as_array().unwrap();
+    assert_eq!(messages.len(), 2, "{messages:?}");
+    assert_eq!(messages[0]["role"], "system");
+    let background = messages[0]["content"].as_str().unwrap();
+    for part in [
+        "Prefers pnpm over npm",
+        "check my mail",
+        "Two new messages.",
+        "Notes",
+        "endue.mail.latest",
+        "2026-11-05T09:00:00.000Z",
+    ] {
+        assert!(background.contains(part), "{part} in {background}");
+    }
+    assert_eq!(
+        messages[1],
+        json!({ "role": "user", "content": "which package manager do I use?" })
+    );
+
+    // The background goes with its turn only: the next turn's history holds none of it.
+    let next = FakeOllama::start(vec![Reply::Stream(vec![say("ok"), done("stop")])]);
+    let again = support::brain(&next.url, &folder);
+    let (result, _) = turn(&again, &session, &lease, "thanks");
+    result.unwrap();
+    let (_, body) = &next.requests()[0];
+    assert!(
+        body["messages"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|m| m["role"] != "system"),
+        "{body}"
+    );
 }

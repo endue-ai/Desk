@@ -81,6 +81,32 @@ describe("the approval card (ADR 0078)", () => {
     });
   });
 
+  it("asks Remember this? before Eris keeps a fact, with the fact as its preview (ADR 0096)", async () => {
+    const fact: PermApprovalData = {
+      approvalId: "a-7",
+      caller: "agent:eris",
+      action: "memory.remember",
+      permission: { permission: "memory:write" },
+      target: "Prefers pnpm over npm",
+      preview: { kind: "fact", text: "Prefers pnpm over npm" },
+      task: "t3",
+    };
+    const { view } = await held(core(), fact);
+    expect(view.approvals.at(-1)).toMatchObject({
+      kind: "approval",
+      approvalId: "a-7",
+      action: "Remember this?",
+      target: "Prefers pnpm over npm",
+      task: "Allow for this task: the other facts it keeps until this turn ends.",
+    });
+    expect(view.approvals.at(-1)?.title).toMatch(/wants to remember this$/);
+    expect(view.approvals.at(-1)).toHaveProperty("preview", {
+      kind: "fact",
+      truncated: false,
+      lines: [{ text: "Prefers pnpm over npm", change: "same" }],
+    });
+  });
+
   it("answers Allow once, Allow for this task and Deny with perm.approve", async () => {
     const mounted = await held(core(), write("a-1"), write("a-2"), write("a-3"));
     const { app, view, params, settle } = mounted;
