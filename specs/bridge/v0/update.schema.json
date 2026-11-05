@@ -174,6 +174,33 @@
       "description": "Result of update.apply.",
       "$ref": "#/$defs/UpdateStatus"
     },
+    "UpdateSetChannelRequest": {
+      "description": "Follow another channel: the person's setting desk.update.channel, which the next check reads. Answers the status on the new channel. An unknown channel is invalid_params.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "update.setChannel" },
+        "params": { "$ref": "#/$defs/UpdateSetChannelParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "UpdateSetChannelParams": {
+      "description": "Parameters of update.setChannel.",
+      "type": "object",
+      "properties": {
+        "channel": { "$ref": "#/$defs/UpdateChannel" },
+        "scope": {
+          "$ref": "../../plugin/v0/permission.schema.json#/$defs/UpdateManagePermission"
+        }
+      },
+      "required": ["channel", "scope"],
+      "additionalProperties": false
+    },
+    "UpdateSetChannelResult": {
+      "description": "Result of update.setChannel: the status on the new channel.",
+      "$ref": "#/$defs/UpdateStatus"
+    },
     "UpdateChangedEvent": {
       "description": "The update status changed. Sent to holders of update:manage, and to callers subscribed to update.changed.",
       "type": "object",

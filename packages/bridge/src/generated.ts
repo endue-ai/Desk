@@ -2169,6 +2169,7 @@ export type BridgeRequest =
   | UpdateCheckRequest
   | UpdateDownloadRequest
   | UpdateApplyRequest
+  | UpdateSetChannelRequest
   | AccountStatusRequest
   | AccountSignInRequest
   | AccountSignOutRequest
@@ -4313,6 +4314,22 @@ export interface UpdateApplyRequest {
 /** Result of update.apply. */
 export type UpdateApplyResult = UpdateStatus;
 
+/** Follow another channel: the person's setting desk.update.channel, which the next check reads. Answers the status on the new channel. An unknown channel is invalid_params. */
+export interface UpdateSetChannelRequest {
+  id: RequestId;
+  method: "update.setChannel";
+  params: UpdateSetChannelParams;
+}
+
+/** Parameters of update.setChannel. */
+export interface UpdateSetChannelParams {
+  channel: UpdateChannel;
+  scope: UpdateManagePermission;
+}
+
+/** Result of update.setChannel: the status on the new channel. */
+export type UpdateSetChannelResult = UpdateStatus;
+
 /** The update status changed. Sent to holders of update:manage, and to callers subscribed to update.changed. */
 export interface UpdateChangedEvent {
   event: "update.changed";
@@ -4497,6 +4514,7 @@ export interface BridgeMethodMap {
   "update.check": { params: UpdateParams; result: UpdateCheckResult };
   "update.download": { params: UpdateParams; result: UpdateDownloadResult };
   "update.apply": { params: UpdateParams; result: UpdateApplyResult };
+  "update.setChannel": { params: UpdateSetChannelParams; result: UpdateSetChannelResult };
   "account.status": { params: AccountParams; result: AccountStatusResult };
   "account.signIn": { params: AccountParams; result: AccountSignInResult };
   "account.signOut": { params: AccountParams; result: AccountSignOutResult };
@@ -4592,6 +4610,7 @@ export const BRIDGE_METHODS = [
   "update.check",
   "update.download",
   "update.apply",
+  "update.setChannel",
   "account.status",
   "account.signIn",
   "account.signOut",

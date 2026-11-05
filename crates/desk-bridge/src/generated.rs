@@ -3496,6 +3496,7 @@ pub enum BridgeRequest {
     UpdateCheck(UpdateCheckRequest),
     UpdateDownload(UpdateDownloadRequest),
     UpdateApply(UpdateApplyRequest),
+    UpdateSetChannel(UpdateSetChannelRequest),
     AccountStatus(AccountStatusRequest),
     AccountSignIn(AccountSignInRequest),
     AccountSignOut(AccountSignOutRequest),
@@ -6687,6 +6688,26 @@ pub struct UpdateApplyRequest {
 /// Result of update.apply.
 pub type UpdateApplyResult = UpdateStatus;
 
+/// Follow another channel: the person's setting desk.update.channel, which the next check reads. Answers the status on the new channel. An unknown channel is invalid_params.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct UpdateSetChannelRequest {
+    pub id: RequestId,
+    pub method: UpdateSetChannelRequestMethod,
+    pub params: UpdateSetChannelParams,
+}
+
+/// Parameters of update.setChannel.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct UpdateSetChannelParams {
+    pub channel: UpdateChannel,
+    pub scope: UpdateManagePermission,
+}
+
+/// Result of update.setChannel: the status on the new channel.
+pub type UpdateSetChannelResult = UpdateStatus;
+
 /// The update status changed. Sent to holders of update:manage, and to callers subscribed to update.changed.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -8119,6 +8140,14 @@ pub enum UpdateApplyRequestMethod {
     #[default]
     #[serde(rename = "update.apply")]
     UpdateApply,
+}
+
+/// The `method` of [`UpdateSetChannelRequest`]: always `"update.setChannel"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum UpdateSetChannelRequestMethod {
+    #[default]
+    #[serde(rename = "update.setChannel")]
+    UpdateSetChannel,
 }
 
 /// The `event` of [`UpdateChangedEvent`]: always `"update.changed"`.
