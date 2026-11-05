@@ -15,6 +15,7 @@ path = "src/main.rs"
 [dependencies]
 desk-bridge.workspace = true
 desk-core.workspace = true
+desk-crash.workspace = true
 desk-trace.workspace = true
 # Not in [workspace.dependencies] yet: a later chore moves it there.
 desk-ipc = { path = "../desk-ipc" }

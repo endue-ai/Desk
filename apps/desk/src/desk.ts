@@ -6,6 +6,8 @@ import "@endue-ai/runtime/desk.css";
 import "@endue-ai/runtime/shell.css";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import { reportCrashes, showLastCrash } from "./crashes";
+import "./crashes.css";
 import { installNativeFileDrops, pickNativeFile } from "./native-files";
 import { installOpenedFiles } from "./open-files";
 import { sendThemeToPalette } from "./palette-theme";
@@ -13,6 +15,10 @@ import { shellBridge } from "./shell-bridge";
 import { readStart, relauncher } from "./start";
 import { nextPaint, reportStartup } from "./startup";
 import { installUpdates, NOTIFIED, ROW } from "./updates";
+
+// The shell window's uncaught errors become local crash reports from here on (#322).
+const stopCrashReports = reportCrashes(window, (command, args) => invoke(command, args));
+window.addEventListener("pagehide", stopCrashReports, { once: true });
 
 // Start-up phases for the app's trace (DESK_TRACE=1): from the page's time origin to this code.
 const booted = performance.now();
@@ -99,6 +105,12 @@ const disposePaletteTheme = sendThemeToPalette(desk.runtime);
 window.addEventListener("pagehide", disposePaletteTheme, { once: true });
 // The ready line; the answer says whether the app keeps a start-up trace to report to.
 const tracing = await invoke<boolean>("desk_ready", { status: desk.runtime.status() });
+// Last time's crash, once: a card with the report, kept on this computer (#322).
+void showLastCrash(
+  document.body,
+  (command, args) => invoke(command, args),
+  (text) => navigator.clipboard.writeText(text),
+);
 void reportStartup({
   tracing,
   ready,

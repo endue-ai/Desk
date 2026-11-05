@@ -19,6 +19,7 @@ desk-brain = { path = "crates/desk-brain" }
 desk-brain-endue = { path = "crates/desk-brain-endue" }
 desk-brain-local = { path = "crates/desk-brain-local" }
 desk-core = { path = "crates/desk-core" }
+desk-crash = { path = "crates/desk-crash" }
 desk-index = { path = "crates/desk-index" }
 desk-memory = { path = "crates/desk-memory" }
 desk-plugin-host = { path = "crates/desk-plugin-host" }

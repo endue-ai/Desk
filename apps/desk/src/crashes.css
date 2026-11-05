@@ -1,0 +1,51 @@
+/* The card for last time's crash (#322): over the shell, bottom right, the desk's tokens only. */
+.crash-card {
+  position: fixed;
+  right: var(--desk-space-4);
+  bottom: var(--desk-space-4);
+  z-index: 60;
+  display: grid;
+  gap: var(--desk-space-2);
+  width: min(28rem, calc(100vw - 2 * var(--desk-space-4)));
+  max-height: 70vh;
+  padding: var(--desk-space-3) var(--desk-space-4);
+  border: var(--desk-border-width) solid var(--desk-border);
+  border-radius: var(--desk-radius-lg);
+  background: var(--desk-card);
+  color: var(--desk-text);
+  box-shadow: var(--desk-shadow-lg);
+}
+
+.crash-title {
+  margin: 0;
+  font-weight: 600;
+}
+
+.crash-detail {
+  margin: 0;
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-sm);
+}
+
+.crash-actions {
+  display: flex;
+  gap: var(--desk-space-2);
+}
+
+.crash-close {
+  position: absolute;
+  top: var(--desk-space-2);
+  right: var(--desk-space-2);
+}
+
+.crash-report {
+  overflow: auto;
+  max-height: 40vh;
+  margin: 0;
+  padding: var(--desk-space-2);
+  border-radius: var(--desk-radius-md);
+  background: var(--desk-muted);
+  font-family: var(--desk-font-mono);
+  font-size: var(--desk-text-xs);
+  white-space: pre-wrap;
+}

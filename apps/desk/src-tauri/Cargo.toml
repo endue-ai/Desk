@@ -24,6 +24,7 @@ desk-brain-endue.workspace = true
 desk-brain-local.workspace = true
 desk-bridge.workspace = true
 desk-core.workspace = true
+desk-crash.workspace = true
 desk-index.workspace = true
 desk-sys = { workspace = true, features = ["calendar"] }
 desk-trace.workspace = true

@@ -43,6 +43,7 @@ fn main() -> ExitCode {
         },
         Action::Trace(file) => doctor::trace(&file, args.json),
         Action::Doctor(data) => health::run(data, args.json),
+        Action::LastCrash(data) => health::last_crash(data, args.json),
         Action::Remote(remote) => remote::run(remote, args.json),
         Action::Mcp { agent, plugins } => mcp(agent, plugins),
     }

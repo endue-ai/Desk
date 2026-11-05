@@ -957,6 +957,7 @@ dependencies = [
  "desk-brain-local",
  "desk-bridge",
  "desk-core",
+ "desk-crash",
  "desk-index",
  "desk-ipc",
  "desk-sys",
@@ -1017,6 +1018,7 @@ version = "0.0.0"
 dependencies = [
  "desk-bridge",
  "desk-core",
+ "desk-crash",
  "desk-ipc",
  "desk-mcp",
  "desk-plugin-host",
@@ -1044,6 +1046,14 @@ dependencies = [
  "serde_json",
  "sha2 0.11.1",
  "yaml_serde",
+]
+
+[[package]]
+name = "desk-crash"
+version = "0.0.0"
+dependencies = [
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

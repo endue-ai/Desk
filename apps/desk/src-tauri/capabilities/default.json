@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "The main window may call the bridge, report readiness and its start-up phases (kept only under DESK_TRACE), read what this start found and start the desk again without safe mode, drain OS file-open paths, hear core/native events and show the file picker. File data still goes through bridge_call and the core permission engine.",
+  "description": "The main window may call the bridge, report readiness and its start-up phases (kept only under DESK_TRACE), read what this start found and start the desk again without safe mode, drain OS file-open paths, report its uncaught errors and take last time's crash report, hear core/native events and show the file picker. File data still goes through bridge_call and the core permission engine.",
   "windows": ["main"],
   "permissions": [
     "allow-bridge-call",
@@ -10,6 +10,8 @@
     "allow-desk-relaunch",
     "allow-desk-trace",
     "allow-take-open-files",
+    "allow-desk-crash",
+    "allow-take-last-crash",
     "core:event:allow-listen",
     "core:event:allow-unlisten",
     "allow-palette-reveal-main",

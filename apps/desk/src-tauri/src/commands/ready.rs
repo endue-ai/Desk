@@ -14,6 +14,10 @@ pub fn desk_ready(status: String, tracing: State<'_, Tracing>, start: State<'_, 
     if is_ready_line(&status) {
         tracing.instant(desk_trace::READY_LINE);
         tracing.write();
+        // A crash on purpose, so a live check can see the report on any build (#322).
+        if crate::crash::forced_panic(std::env::var("DESK_E2E_PANIC").ok().as_deref()) {
+            panic!("DESK_E2E_PANIC=1: a crash on purpose after the ready line");
+        }
     }
     tracing.on()
 }

@@ -3,6 +3,7 @@
 mod brains;
 mod commands;
 mod core_files;
+mod crash;
 mod events;
 mod file_urls;
 mod open_files;
@@ -74,6 +75,9 @@ pub fn run() {
                     std::env::args_os().map(|arg| arg.into_string().unwrap_or_default()),
                 ));
             let data = app.path().app_data_dir()?;
+            // A panic from here on leaves a redacted report in <data>/crashes (#322).
+            let version = app.package_info().version.to_string();
+            let crash = crash::install(&version, &data, Some(&home_dir()));
             let tracing = trace::Tracing::from_env(origin, &data);
             tracing.phase("tauri start", origin.instant());
             let started = Instant::now();
@@ -267,6 +271,10 @@ pub fn run() {
             core.start_connector_scheduler(CONNECTOR_TICK);
             core.keep_broken_views();
             app.manage(commands::start::Start::new(&core, &data, last));
+            // A report names the plugins that are on: now, and again whenever one turns on or off.
+            crash::note_plugins(&core, &crash.context);
+            crash::follow_plugins(&core, Arc::clone(&crash.context));
+            app.manage(crash);
             let views = core.watch_views().ok();
             for problem in core.view_problems() {
                 eprintln!("endue Desk: a view is left out ({problem})");
@@ -326,7 +334,9 @@ pub fn run() {
             palette::palette_reveal_main,
             palette::palette_prepare_main,
             palette::palette_present,
-            commands::files::take_open_files
+            commands::files::take_open_files,
+            crash::desk_crash,
+            crash::take_last_crash
         ])
         .build(tauri::generate_context!())
         .expect("endue Desk failed to start")

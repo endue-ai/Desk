@@ -33,6 +33,8 @@ fn main() {
         "desk_relaunch",
         "desk_trace",
         "take_open_files",
+        "desk_crash",
+        "take_last_crash",
         "palette_hide",
         "palette_reveal_main",
         "palette_prepare_main",
