@@ -1,0 +1,14 @@
+{
+  "target": "BridgeRequest",
+  "description": "an MCP server's name is lowercase, as init.yaml's mcp.servers takes it",
+  "instance": {
+    "id": 9,
+    "method": "perm.list",
+    "params": {
+      "caller": "mcp:GitHub",
+      "scope": {
+        "permission": "perm:manage"
+      }
+    }
+  }
+}
