@@ -14,6 +14,7 @@ defineUiPlugin({
       const label = document.createElement("label");
       const toggle = document.createElement("input");
       toggle.type = "checkbox";
+      toggle.className = "desk-check";
       toggle.checked = plugin.enabled;
       // The list cannot turn itself off; there would be no way back.
       toggle.disabled = plugin.status !== "ready" || plugin.id === pluginId;

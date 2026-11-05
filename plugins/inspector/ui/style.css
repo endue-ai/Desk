@@ -38,31 +38,8 @@ h2 {
   margin-left: auto;
 }
 
-button,
-input {
-  padding: var(--desk-space-1) var(--desk-space-2);
-  border: var(--desk-border-width) solid var(--desk-border);
-  border-radius: var(--desk-radius-md);
-  background: var(--desk-background);
-}
-
 input {
   min-width: 14em;
-  border-color: var(--desk-input);
-}
-
-button:not(:disabled) {
-  cursor: pointer;
-}
-
-button:hover {
-  background: var(--desk-hover);
-}
-
-[role="tab"][aria-selected="true"] {
-  border-color: var(--desk-primary-border);
-  background: var(--desk-primary-soft);
-  color: var(--desk-primary-text);
 }
 
 #panel {

@@ -95,11 +95,6 @@ button:disabled {
 
 input[type="search"] {
   min-width: 0;
-  height: var(--desk-control-xs);
-  padding: 0 var(--desk-space-3);
-  border: var(--desk-border-width) solid var(--desk-border);
-  border-radius: var(--desk-radius-full);
-  background: var(--desk-background);
 }
 
 .muted {
@@ -147,17 +142,7 @@ input[type="search"] {
 }
 
 #layouts {
-  display: flex;
-  gap: 2px;
   padding: 2px;
-  border-radius: var(--desk-radius-md);
-  background: var(--desk-muted);
-}
-
-#layouts button[aria-selected="true"] {
-  background: var(--desk-card);
-  box-shadow: var(--desk-shadow-sm);
-  font-weight: 600;
 }
 
 #search {

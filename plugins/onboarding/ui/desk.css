@@ -194,13 +194,7 @@
   min-width: 112px;
   height: 56px;
   padding: 0 16px;
-  border-radius: var(--desk-radius-lg);
-  border: 1px solid var(--desk-input);
-  background: var(--desk-card);
-  color: var(--desk-text);
-  font-family: inherit;
   font-size: calc(var(--desk-text-sm) + 1px);
-  cursor: pointer;
 }
 
 .card[aria-pressed="true"] {

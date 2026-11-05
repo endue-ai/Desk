@@ -103,7 +103,7 @@ export function signIn(d, at) {
 
 /** Offline, the browser is not opened: Eris says so, and the button comes back with the connection. */
 function button(d, line, failures) {
-  const open = element("button", "btn primary", "Sign in with endue ID");
+  const open = element("button", "btn primary desk-btn desk-btn-primary", "Sign in with endue ID");
   open.type = "button";
   open.addEventListener("click", () => {
     const now = d.timeline.time;
@@ -140,7 +140,7 @@ function stub(d, failures, waiting) {
     ["Failure", "failure"],
     ["Outside the US", "region"],
   ]) {
-    const choice = element("button", "btn", label);
+    const choice = element("button", "btn desk-btn", label);
     choice.type = "button";
     choice.addEventListener("click", () => {
       waiting.done = true;
@@ -159,7 +159,7 @@ function signedIn(d, outcome, failures) {
     failures.count += 1;
     const line = d.say(SAY.failure, now + 300, { stay: true });
     d.timeline.at(now + 300, () => {
-      const again = element("button", "btn", "Open it again");
+      const again = element("button", "btn desk-btn", "Open it again");
       again.type = "button";
       again.addEventListener("click", () => {
         const at = d.timeline.time;
