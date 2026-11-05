@@ -1,0 +1,20 @@
+{
+  "target": "ThemeBundle",
+  "description": "a .desk-design: the theme bundle format holding a design system and no files",
+  "instance": {
+    "format": "desk-theme/1",
+    "manifest": {
+      "id": "local.soft-pill",
+      "name": "Soft pill",
+      "version": "1.0.0",
+      "kind": "design-system",
+      "designSystem": {
+        "components": {
+          "button": { "shape": "full", "primary": "soft" },
+          "badge": { "style": "solid" }
+        }
+      }
+    },
+    "files": {}
+  }
+}

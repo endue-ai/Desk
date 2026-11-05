@@ -69,4 +69,11 @@ describe("the talk line's routes", () => {
       expect(to(text), text).toBe("talk");
     expect(to("bind Mod+Shift+T to open the terminal", false)).toBe("talk");
   });
+
+  it("sends a sentence about the desk's design system to its studio, before the theme", () => {
+    expect(routeOf("디자인 시스템을 각지게 바꿔줘")).toEqual({ to: "design" });
+    expect(routeOf("change the design system to feel calm and round")).toEqual({ to: "design" });
+    expect(to("make the theme feel calm")).toBe("look");
+    expect(to("make a design system for my app")).not.toBe("design");
+  });
 });

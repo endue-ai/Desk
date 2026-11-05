@@ -90,6 +90,10 @@ const core = browserCore({
       ? Object.values(manifests).filter((m) => ["endue.sidebar", "endue.toolbar"].includes(m.id))
       : []),
     ...(params.has("themes") ? [testTheme as PluginManifest] : []),
+    // ?designs=1: the built-in design systems (ADR 0090).
+    ...(params.has("designs")
+      ? Object.values(manifests).filter((m) => m.kind === "design-system")
+      : []),
     ...(params.has("apps") ? [...apps, terminal] : []),
     ...(params.has("files")
       ? Object.values(manifests).filter((m) => ["endue.images", "endue.explorer"].includes(m.id))

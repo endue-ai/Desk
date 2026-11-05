@@ -1,5 +1,7 @@
 #!/usr/bin/env node
-// theme-market: check a theme market folder (ADR 0060), this repository's market/themes by default.
+// theme-market: check a look market folder (ADR 0060, ADR 0091), this repository's market/themes and
+// market/design-systems by default. A design system's entry has kind design-system and its bundle is a
+// .desk-design: a design-system plugin with no files.
 // Its index.json must be a ThemeIndex (specs/plugin/v0/theme-index.schema.json) whose ids are unique;
 // every entry's bundle must sit beside it with the sha256 and size the index names, be a .desk-theme
 // whose manifest is a valid theme plugin with the entry's id, name, version, author and licence, and
@@ -16,6 +18,7 @@ import Ajv2020 from "ajv/dist/2020.js";
 import { loadSchemas, PLUGIN_FOLDERS, ROOT } from "./codegen/load.mjs";
 
 export const MARKET = join(ROOT, "market/themes");
+export const DESIGN_MARKET = join(ROOT, "market/design-systems");
 const PLUGIN = "https://endue.ai/specs/plugin/v0/";
 /** A theme's asset files: 2 MiB each and 8 MiB together, as `desk plugin validate` holds them. */
 const ASSET_MAX = 2 << 20;
@@ -71,6 +74,11 @@ function checkBundle(dir, entry) {
     return [...problems, at(`${entry.url} is not JSON: ${error.message}`)];
   }
   const manifest = bundle?.manifest;
+  const kind = entry.kind ?? "theme";
+  if (manifest?.kind !== kind)
+    problems.push(at(`the bundle is a ${manifest?.kind}, the index says ${kind}`));
+  const ext = kind === "design-system" ? ".desk-design" : ".desk-theme";
+  if (!entry.url.endsWith(ext)) problems.push(at(`a ${kind}'s bundle is a ${ext}`));
   problems.push(...schemaProblems(validator("manifest"), manifest, at("plugin.json")));
   // The manifest's own problems are told once, as plugin.json's.
   problems.push(...schemaProblems(validator("bundle"), bundle, at(entry.url), "/manifest"));
@@ -80,12 +88,13 @@ function checkBundle(dir, entry) {
       problems.push(
         at(`the bundle's ${field} is ${manifest?.[field]}, the index says ${entry[field]}`),
       );
-  const theme = manifest?.theme;
-  if (!theme?.license) problems.push(at("the theme names no licence (theme.license)"));
+  const theme = kind === "design-system" ? manifest?.designSystem : manifest?.theme;
+  const block = kind === "design-system" ? "designSystem" : "theme";
+  if (!theme?.license) problems.push(at(`the ${kind} names no licence (${block}.license)`));
   for (const field of ["author", "license"])
     if (theme?.[field] && entry[field] && theme[field] !== entry[field])
       problems.push(at(`the theme's ${field} is ${theme[field]}, the index says ${entry[field]}`));
-  const named = namedFiles(theme);
+  const named = kind === "design-system" ? new Set() : namedFiles(theme);
   const files = Object.entries(bundle?.files ?? {});
   let total = 0;
   for (const [path, base64] of files) {
@@ -121,17 +130,22 @@ export function checkMarket(dir = MARKET) {
   }
   const listed = new Set(themes.map((entry) => entry?.url));
   for (const name of readdirSync(dir)
-    .filter((n) => n.endsWith(".desk-theme"))
+    .filter((n) => n.endsWith(".desk-theme") || n.endsWith(".desk-design"))
     .sort())
     if (!listed.has(name)) problems.push(`${name}: not in index.json`);
   return problems;
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
-  const dir = process.argv[2] ?? MARKET;
-  const problems = checkMarket(dir);
-  for (const problem of problems) console.error(`theme-market: ${problem}`);
-  if (problems.length > 0) process.exit(1);
-  const count = JSON.parse(readFileSync(join(dir, "index.json"), "utf8")).themes.length;
-  console.log(`theme-market: ${count} themes check out`);
+  const dirs = process.argv[2] ? [process.argv[2]] : [MARKET, DESIGN_MARKET];
+  let failed = false;
+  for (const dir of dirs) {
+    const problems = checkMarket(dir);
+    for (const problem of problems) console.error(`theme-market: ${problem}`);
+    failed ||= problems.length > 0;
+    if (problems.length > 0) continue;
+    const count = JSON.parse(readFileSync(join(dir, "index.json"), "utf8")).themes.length;
+    console.log(`theme-market: ${dir.slice(ROOT.length)}: ${count} check out`);
+  }
+  if (failed) process.exit(1);
 }

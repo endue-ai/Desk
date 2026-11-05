@@ -8,6 +8,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./theme": "./src/theme/index.ts",
+    "./design": "./src/design/index.ts",
     "./elements": "./src/elements/index.ts",
     "./universal": "./src/universal/index.ts",
     "./tokens.css": "./src/tokens.css",

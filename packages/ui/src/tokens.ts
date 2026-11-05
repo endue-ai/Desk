@@ -8,6 +8,8 @@
  * `@endue-ai/ui/theme`.
  */
 
+import { componentTokens } from "./design/compile";
+
 /** Role colours, with the dark scheme's values. A theme redefines any of them; none is a literal elsewhere. */
 export const colors = {
   // Surfaces: the page, a card or panel, a sunken track, a floating layer, the hover and selected row.
@@ -153,14 +155,22 @@ export const terminal = {
   ansi15: "#ffffff",
 } as const;
 
+/**
+ * The endue design system's component tokens (ADR 0090): what each component is made of, as references
+ * to the tokens above. A design system (`@endue-ai/ui/design`) replaces them; a theme never does.
+ */
+export const components: Readonly<Record<string, string>> = componentTokens;
+
 /** Every token: what `tokens.css` declares and what the runtime applies to each frame as `--desk-*`. */
-export const tokens = { ...scale, ...colors, ...material, ...terminal } as const;
+export const tokens = { ...scale, ...colors, ...material, ...terminal, ...components } as const;
 
 export type ColorTokens = { readonly [K in keyof typeof colors]: string };
 export type ScaleTokens = { readonly [K in keyof typeof scale]: string };
 export type MaterialTokens = { readonly [K in keyof typeof material]: string };
 export type TerminalTokens = { readonly [K in keyof typeof terminal]: string };
-export type ThemeTokens = { readonly [K in keyof typeof tokens]: string };
+export type ThemeTokens = { readonly [K in keyof typeof tokens]: string } & Readonly<
+  Record<string, string>
+>;
 
 /** The tokens the runtime zeroes under reduced motion. */
 export const MOTION_TOKENS = ["motionFast", "motionBase", "motionSlow", "motionTheme"] as const;

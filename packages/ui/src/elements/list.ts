@@ -5,8 +5,8 @@ const css = `
   display: block;
   box-sizing: border-box;
   padding: 4px;
-  border: 1px solid var(--desk-border);
-  border-radius: var(--desk-radius-md);
+  border: 1px solid var(--desk-card-border);
+  border-radius: var(--desk-card-radius);
   background: var(--desk-card);
   color: var(--desk-text);
   font: inherit;
@@ -14,27 +14,28 @@ const css = `
   overflow: auto;
 }
 :host(:focus-visible) {
-  outline: 2px solid var(--desk-ring);
-  outline-offset: 2px;
+  outline: var(--desk-focus-width) solid var(--desk-ring);
+  outline-offset: var(--desk-focus-offset);
 }
 ::slotted(*) {
-  padding: 6px 10px;
-  border-radius: var(--desk-radius-md);
+  padding: var(--desk-row-padding-y) var(--desk-row-padding-x);
+  border-radius: var(--desk-row-radius);
   color: var(--desk-text);
   cursor: pointer;
 }
 ::slotted([data-active]) {
-  background: var(--desk-border);
-  color: var(--desk-text);
+  background: var(--desk-row-active-bg);
+  color: var(--desk-row-active-fg);
+  box-shadow: var(--desk-row-active-shadow);
 }
 ::slotted([aria-selected="true"]) {
   background: var(--desk-card);
-  color: var(--desk-primary-text);
+  color: var(--desk-row-selected-fg);
   font-weight: 600;
 }
 ::slotted([data-active][aria-selected="true"]) {
-  background: var(--desk-border);
-  color: var(--desk-primary-text);
+  background: var(--desk-row-active-bg);
+  color: var(--desk-row-selected-fg);
 }
 :host([hidden]) {
   display: none;

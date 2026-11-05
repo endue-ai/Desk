@@ -3,6 +3,7 @@
 export {
   type ColorTokens,
   colors,
+  components,
   cssVariables,
   type MaterialTokens,
   MOTION_TOKENS,

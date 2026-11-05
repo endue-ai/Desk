@@ -35,6 +35,7 @@ no code, only what they contribute in `plugin.json`. Turn one off and another pl
 | `session/` (`desk.session`) | `desktop.el`, `savehist` | Putting the layout, open files, focus and history back at start |
 | `notify/` (`desk.notify`) | the echo area, `*Messages*` | How long notifications stay by level, do not disturb, history |
 | `theme/` (`desk.theme`) | `load-theme`, `defface` | Light or dark, following the OS, high contrast, reduced motion |
+| `design/` (`desk.design`) | `defface` per widget | Which design system the components are made of (`desk.design.active`, ADR 0090) |
 | `profiles/` (`desk.profiles`) | `init.el` | Profiles: a plugin set plus settings, switched and saved (formerly `modes/`) |
 | `shell/` (`desk.shell`) | a frame's parameters | What a profile lays out in the shell (desktops 1–4), Eris's mesh and soul, the shell's colours, the sample profiles |
 
@@ -94,10 +95,20 @@ smallest; `docs/plugins/authoring.md` (Making a theme) says how to make one.
 | `theme-glass/` (`endue.theme-glass`) | Glass: translucent panes that blur an aurora behind them, round corners, deep shadows |
 | `theme-fjord/` (`endue.theme-fjord`) | Fjord: cool northern blues, a gradient of deep water or mist, subtle corners, roomy controls |
 
+The built-in design systems: plugins of kind `design-system` (ADR 0090), named choices per component over
+any theme, no code. `desk.design.active` names the one in force, set from the design system studio or
+`desk.design.use`.
+
+| Plugin | Role |
+| --- | --- |
+| `design-blueprint/` (`endue.design-blueprint`) | Blueprint: square corners, semibold caps on buttons, outlined actions, underlined fields and tabs, a brand bar on the active row |
+| `design-soft/` (`endue.design-soft`) | Soft: pill buttons with a soft tint, filled fields, pill tabs, raised cards, solid badges |
+| `design-compact/` (`endue.design-compact`) | Compact: small controls, tight padding, ghost buttons, dense rows and tables, thin rings |
+
 Every plugin folder holds `plugin.json`, `README.md`, and as needed `ui/`, `logic/`, `tool/` and `tests/`
 (a theme: `fonts/`, `images/` and `tests/`).
 
-Status: `sidebar`, `eris`, `onboarding`, `toolbar`, `dock`, `terminal` and the nine `desk.*` policies work. With the
+Status: `sidebar`, `eris`, `onboarding`, `toolbar`, `dock`, `terminal` and the ten `desk.*` policies work. With the
 shell (`mountDesk`, ADR 0025), the agent bar, the rail and the bottom edge hold the places of `sidebar`,
 `toolbar` and `dock`, and the shell's profiles turn those three off. The runtime puts `left`, `right` and
 `bottom` surfaces on the desk's edges, as `desk.display` says. The first run still draws its own frame of

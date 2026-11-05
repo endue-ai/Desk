@@ -32,9 +32,9 @@ const css = `
 .track {
   position: relative;
   flex: 1;
-  height: 6px;
+  height: var(--desk-progress-thickness);
   overflow: hidden;
-  border-radius: 3px;
+  border-radius: var(--desk-progress-radius);
   background: var(--desk-border);
 }
 .fill {
@@ -43,7 +43,7 @@ const css = `
   bottom: 0;
   left: 0;
   width: 100%;
-  border-radius: 3px;
+  border-radius: var(--desk-progress-radius);
   background: var(--desk-primary);
   color: var(--desk-background);
   transform: scaleX(0);
@@ -63,20 +63,24 @@ button {
   flex: none;
   min-height: var(--desk-control-xs);
   padding: 0 10px;
-  border: 1px solid var(--desk-border);
-  border-radius: var(--desk-radius-md);
-  background: var(--desk-card);
-  color: var(--desk-text);
+  border: 1px solid var(--desk-button-border);
+  border-radius: var(--desk-button-radius);
+  background: var(--desk-button-bg);
+  color: var(--desk-button-fg);
   font: inherit;
   font-size: var(--desk-text-xs);
+  font-weight: var(--desk-button-weight);
+  text-transform: var(--desk-button-case);
+  letter-spacing: var(--desk-button-tracking);
   cursor: pointer;
 }
 button:hover {
-  background: var(--desk-border);
-  color: var(--desk-text);
+  border-color: var(--desk-button-hover-border);
+  background: var(--desk-button-hover-bg);
+  color: var(--desk-button-hover-fg);
 }
 button:focus-visible {
-  outline: 2px solid var(--desk-ring);
+  outline: var(--desk-focus-width) solid var(--desk-ring);
   outline-offset: 1px;
 }
 [hidden] {

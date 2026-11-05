@@ -9,13 +9,13 @@ const css = `
   min-width: 160px;
   max-width: 320px;
   padding: 4px;
-  border: 1px solid var(--desk-border);
-  border-radius: var(--desk-radius-md);
-  background: var(--desk-card);
+  border: 1px solid var(--desk-menu-border);
+  border-radius: var(--desk-menu-radius);
+  background: var(--desk-menu-bg);
   color: var(--desk-text);
   font: inherit;
   font-size: var(--desk-text-sm);
-  box-shadow: 0 8px 24px var(--desk-background);
+  box-shadow: var(--desk-menu-shadow);
 }
 :host([open]) {
   display: block;
@@ -24,19 +24,20 @@ const css = `
   outline: none;
 }
 ::slotted(*) {
-  padding: 6px 10px;
-  border-radius: var(--desk-radius-md);
+  padding: var(--desk-row-padding-y) var(--desk-row-padding-x);
+  border-radius: var(--desk-row-radius);
   color: var(--desk-text);
   cursor: pointer;
   outline: none;
 }
 ::slotted(:focus) {
-  background: var(--desk-border);
-  color: var(--desk-text);
+  background: var(--desk-row-active-bg);
+  color: var(--desk-row-active-fg);
+  box-shadow: var(--desk-row-active-shadow);
 }
 ::slotted(:focus-visible) {
-  outline: 2px solid var(--desk-ring);
-  outline-offset: -2px;
+  outline: var(--desk-focus-width) solid var(--desk-ring);
+  outline-offset: calc(0px - var(--desk-focus-width));
 }
 ::slotted([role="separator"]) {
   height: 1px;

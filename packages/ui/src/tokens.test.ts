@@ -1,14 +1,25 @@
 import { describe, expect, it } from "vitest";
-import { colors, cssVariables, material, propertyOf, scale, terminal, tokens } from "./index";
+import {
+  colors,
+  components,
+  cssVariables,
+  material,
+  propertyOf,
+  scale,
+  terminal,
+  tokens,
+} from "./index";
 
 const HEX = /^#[0-9a-f]{6}$/;
 const RGBA = /^rgba\(\d{1,3}, \d{1,3}, \d{1,3}, 0(\.\d+)?\)$/;
 const SHADOW = /^0 \d+px \d+px rgba\(0, 0, 0, 0\.\d+\)$/;
 
 describe("design tokens", () => {
-  it("are the scale, the role colours, the material and the terminal colours, under distinct names", () => {
-    expect(tokens).toEqual({ ...scale, ...colors, ...material, ...terminal });
-    const groups = [scale, colors, material, terminal].map((group) => Object.keys(group));
+  it("are the scale, the role colours, the material, the terminal and the component tokens, under distinct names", () => {
+    expect(tokens).toEqual({ ...scale, ...colors, ...material, ...terminal, ...components });
+    const groups = [scale, colors, material, terminal, components].map((group) =>
+      Object.keys(group),
+    );
     const all = groups.flat();
     expect(new Set(all).size).toBe(all.length);
   });
