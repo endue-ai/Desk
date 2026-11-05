@@ -2,7 +2,7 @@
 
 `endue.explorer`, the folder view on the public SDK, uses one `left` surface for allowed folders:
 first in natural order, dotfiles on request, 500 entries a page. A file opens through `desk.files.open`,
-so the plugin the desk's rules name reads it under its own grants. Space shows a bounded quick preview.
+so the plugin the desk's rules name reads it under its own grants. Space shows a bounded quick preview. Each row's icon says what it is (folder, code, image, archive, ...) in the theme's colours.
 
 Keyboard: the WAI-ARIA tree pattern. Arrows move, `→` expands or steps in, `←` collapses or steps out,
 Home/End jump, Space previews, Enter opens, Escape closes the preview; letters jump by name.
@@ -30,7 +30,7 @@ the folders, the dotfile choice and the page are settings (`endue.explorer.folde
 | `.open-selected` · `.copy-path` · `.terminal-here` · `.git-here` · `.show-in-file-manager` | Shift+F10 menu | Act on selection; terminal/Git use a file's parent. Missing providers and refused grants are reported |
 | File | Purpose |
 | --- | --- |
-| `ui/tree.js` | Paths, the order of entries, the rows on screen, where a key moves the selection |
+| `ui/tree.js` · `ui/file-icons.js` · `ui/glyphs.js` | Paths, the order of entries, the rows on screen, where a key moves the selection; each row's icon (glyph and theme tone by kind, name and extension) as inline SVG |
 | `ui/disk.js` · `ui/desk.js` · `ui/explorer.js` · `ui/command-registry.js` | Scoped disk and desk calls, tree state, commands, store and settings |
 | `ui/view.js` · `ui/main.js` · `ui/context-*.js` · `ui/size.js` · `ui/style.css` | Tree DOM, keyboard menu, selection actions and mount; the look, from the theme's `--desk-*` tokens only |
 | `ui/preview.js` · `ui/preview-view.js` | Bounded preview reads, stale-result protection, URL cleanup and safe DOM |
