@@ -33,8 +33,15 @@ describe("ds-lint", () => {
       'const pick = h("input", { type: "file", class: "sr-only" });',
       "// ds: own",
       'const cell = el("input", { class: "cell-editor" });',
+      'const send = element("button", "desk-btn desk-btn-primary", "Send");',
+      'const plain = element("button", "pill", "Later");',
+      'const tab = doc.createElement("button");',
+      'tab.className = "desk-tab";',
+      'const b = el("button", words);',
+      'b.className = "desk-btn";',
+      'const c = make("button", label);',
     ].join("\n");
-    assert.deepEqual(lines(script), [3, 6]);
+    assert.deepEqual(lines(script), [3, 6, 11, 16]);
   });
 
   it("reads class names out of attributes, className, classList and class props", () => {
