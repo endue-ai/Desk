@@ -16,6 +16,7 @@ It listens on `http://127.0.0.1:8787/v0`, which is where Desk looks by default (
 | `tool <name> as <agent>: <json>` | the same for the tool `<name>` with the JSON object as arguments and `agentId: <agent>` (without `as <agent>`, no `agentId`); after the result, "The <name> tool said: <output>" or "failed: <output>" |
 | several `tool ...` calls, one per line or joined by ` then ` | one turn that asks for each tool in order: after each result it says what the tool said and asks for the next |
 | any, with `tools` | a `tool.call` to the tool `toolChoice` names, or to the first one offered it knows (`echo`, `propose_theme`, `propose_universal_view`), and a stop at `tool_call`; other tools get words |
+| a local agent's name (Claude, Codex, Gemini, Grok, Qwen, Copilot, Cursor, OpenCode) when `endue_local-agents_ask` is offered | Eris hands work to a local agent (ADR 0099): a `tool.call` to it with `{ agent, prompt }`, the whole message as the prompt; after the result, "The <name> tool said: <output>" |
 | words that name an offered command | Eris's loop (ADR 0089): a `tool.call` with `{}` to the command tool whose name's words after the first are all in the message ("check my latest mail" calls `endue_mail_latest`); after the result, "The <name> tool said: <output>", the output's `text` when it has one |
 
 `propose_theme` (`theme.mjs`) answers `{ name, description, theme }` from the words in the message's last
@@ -32,8 +33,7 @@ The directory is fixed sample data: `GET /spaces` (Home, Studio), `GET /agents` 
 Kai, Lena), `GET /agents/{agentId}/card`, `GET /a2a/tasks` (four hand-overs). Lists filter by `spaceId`,
 `targetAgentId` and `status`, newest first, paged by `page` and `limit` (1 to 100, default 20).
 
-`BRAIN_ECHO_DELAY_MS` (default 40) is the pause between events, `BRAIN_ECHO_SECOND_MS` (default 1000) the
-real milliseconds in one lease second (the tests use 20).
+`BRAIN_ECHO_DELAY_MS` (40) paces events; `BRAIN_ECHO_SECOND_MS` (1000) is a lease second in ms (tests: 20).
 
 `brain.mjs` is the state machine, `theme.mjs` and `universal.mjs` the tools, `directory.mjs` the directory,
 `server.mjs` the HTTP. Tests: `cargo test -p desk-brain --test conformance --test directory -p desk-core

@@ -161,5 +161,52 @@ describe("runs in the desk's agent registry (ADR 0100)", () => {
     expect(await pending).toMatchObject({ ending: "stopped" });
     await m.settle();
     expect(reports(m).at(-1)).toMatchObject({ id: runId, state: "cancelled" });
+
+describe("commands for agents (ADR 0088, 0099)", () => {
+  const work = { "endue.local-agents.folder": "~/work" };
+
+  it("ask is read-only whatever the access setting, in a folder inside the work folder", async () => {
+    const m = await mount({ init: { ...work, "endue.local-agents.access": "agent" } });
+    const args = { agent: "codex", prompt: "Which tests fail?", folder: "desk" };
+    expect(await m.host.invoke("endue.local-agents.ask", args)).toMatchObject({
+      agent: "codex",
+      answer: "Three files.",
+    });
+    const call = m.programs.asked("codex")[0];
+    expect(call?.args.join(" ")).toContain("--sandbox read-only");
+    expect(call?.cwd).toBe("~/work/desk");
+    for (const folder of ["../x", "/etc", "~/other", "a/../../b", "C:\\x"])
+      await expect(m.host.invoke("endue.local-agents.ask", { ...args, folder })).rejects.toThrow(
+        /inside the work folder/,
+      );
+    expect(m.programs.asked("codex")).toHaveLength(1);
+  });
+
+  it("work runs with agent access in the folder and answers", async () => {
+    const m = await mount({ init: work });
+    const args = { agent: "codex", prompt: "Run the tests and fix them", folder: "desk" };
+    expect(await m.host.invoke("endue.local-agents.work", args)).toMatchObject({
+      agent: "codex",
+      answer: "Three files.",
+      ending: "done",
+    });
+    const call = m.programs.asked("codex")[0];
+    expect(call?.args).not.toContain("read-only");
+    expect(call?.cwd).toBe("~/work/desk");
+    expect(m.view.latest().activity.runs[0]).toMatchObject({ origin: "command" });
+  });
+
+  it("an agent puts a task on the board without running it", async () => {
+    const m = await mount();
+    const card = await m.host.invoke("endue.local-agents.add-card", {
+      prompt: "Write the release notes",
+      agent: "claude",
+    });
+    expect(card).toMatchObject({ column: "todo", agent: "claude" });
+    await m.host
+      .invoke("endue.local-agents.add-card", { prompt: "Ship it", run: true })
+      .catch(() => undefined);
+    await m.settle();
+    expect(m.programs.asked("claude")).toHaveLength(0);
   });
 });

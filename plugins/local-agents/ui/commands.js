@@ -76,8 +76,16 @@ export function wireCommands({ commands, bridge }, app, talk, tasks) {
     await app.ready;
     return app.statuses();
   });
-  answer(`${p}.ask`, async ({ prompt, agent, model }) =>
-    talk.ask(await textOr(prompt, `Local agents: ask ${nameOf(agent)}`), agent, model),
+  answer(`${p}.ask`, async ({ prompt, agent, model, folder }) =>
+    talk.ask(await textOr(prompt, `Local agents: ask ${nameOf(agent)}`), agent, model, folder),
+  );
+  answer(`${p}.work`, async ({ prompt, agent, model, folder }) =>
+    talk.work(
+      await textOr(prompt, `Local agents: a task for ${nameOf(agent)}`),
+      agent,
+      model,
+      folder,
+    ),
   );
   answer(`${p}.chat`, async ({ agent, prompt }) => {
     if (agent !== undefined) await talk.useAgent(agent);
@@ -102,12 +110,12 @@ export function wireCommands({ commands, bridge }, app, talk, tasks) {
     app.show("board");
     return tasks.cards();
   });
-  answer(`${p}.add-card`, async ({ prompt, title, agent, run }) =>
+  // An agent may put a task on the board; running it stays the person's (ADR 0099).
+  answer(`${p}.add-card`, async ({ prompt, title, agent }) =>
     tasks.addCard({
       prompt: await textOr(prompt, "Local agents: a new card's prompt"),
       title,
       agent,
-      run,
     }),
   );
   answer(`${p}.run-card`, ({ card }) => tasks.runCard(card));

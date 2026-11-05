@@ -5,6 +5,7 @@ mod commands;
 mod core_files;
 mod events;
 mod file_urls;
+mod mcp;
 mod open_files;
 mod palette;
 mod palette_assets;
@@ -286,6 +287,8 @@ pub fn run() {
             // event too (ADR 0030).
             app.manage(socket::serve(&core));
             app.manage(Arc::clone(&core));
+            // MCP servers from init.yaml attach once the runtime is ready (ADR 0098).
+            app.manage(mcp::McpServers::new(&core, home_dir()));
             palette::setup(app, &core)?;
             core.start_updates();
             if let Some(updater) = updater {

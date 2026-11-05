@@ -140,3 +140,25 @@ fn plugins_init_yaml_disables_start_disabled_until_enabled() {
     let after = core(&path).with_plugin_store(store);
     assert!(after.install_plugin(&hello(&dir), true).enabled);
 }
+
+#[test]
+fn reads_mcp_servers() {
+    let dir = temp_dir("mcp");
+    let path = dir.join("init.yaml");
+    let text = "mcp:\n  servers:\n    github:\n      command: npx\n      args: [-y, server-github]\n      env: [GITHUB_TOKEN]\n    notes: { command: /opt/notes-mcp }\n";
+    fs::write(&path, text).unwrap();
+    let init = core(&path).init();
+    let github = &init.mcp["github"];
+    assert_eq!(github.command, "npx");
+    assert_eq!(
+        github.args.as_deref(),
+        Some(&["-y".to_owned(), "server-github".to_owned()][..])
+    );
+    assert_eq!(
+        github.env.as_deref(),
+        Some(&["GITHUB_TOKEN".to_owned()][..])
+    );
+    assert_eq!(init.mcp["notes"].args, None);
+    assert!(Init::parse("mcp: { servers: { x: { command: a, env: [\"A=b\"] } } }\n").is_err());
+    assert!(Init::default().mcp.is_empty());
+}
