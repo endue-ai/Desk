@@ -1,10 +1,14 @@
 //! endue AI client, built only against the public `specs/brain` contract. `HttpBrain` takes the
-//! brain's base URL from configuration; until endue AI is connected it points at examples/brain-echo.
+//! brain's base URL from configuration (examples/brain-echo in development) and, for endue AI, the
+//! person's endue ID token on every request (ADR 0084).
 pub const NAME: &str = env!("CARGO_PKG_NAME");
 
 pub mod http;
+mod tls;
 
+use std::fmt;
 use std::io;
+use std::sync::Arc;
 
 use desk_brain::{
     A2ATaskList, AgentCard, AgentList, AgentQuery, Brain, BrainError, BrainFailure,
@@ -17,11 +21,23 @@ use serde_json::Value;
 
 use crate::http::{Endpoint, Response, send};
 
-/// The brain at a base URL such as `http://127.0.0.1:8787/v0`.
-#[derive(Debug, Clone)]
+/// Where a request's bearer token comes from, asked again for every request.
+pub type TokenSource = Arc<dyn Fn() -> Option<String> + Send + Sync>;
+
+/// The brain at a base URL such as `http://127.0.0.1:8787/v0` or `https://…/v0`.
+#[derive(Clone)]
 pub struct HttpBrain {
     endpoint: Endpoint,
-    token: Option<String>,
+    token: Option<TokenSource>,
+}
+
+impl fmt::Debug for HttpBrain {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("HttpBrain")
+            .field("endpoint", &self.endpoint)
+            .field("token", &self.token.as_ref().map(|_| "…"))
+            .finish()
+    }
 }
 
 impl HttpBrain {
@@ -33,8 +49,15 @@ impl HttpBrain {
     }
 
     /// Send `token` as a bearer token (an endue ID token for endue AI).
-    pub fn with_token(mut self, token: impl Into<String>) -> Self {
-        self.token = Some(token.into());
+    pub fn with_token(self, token: impl Into<String>) -> Self {
+        let token = token.into();
+        self.with_token_source(Arc::new(move || Some(token.clone())))
+    }
+
+    /// Send what `source` answers as the bearer token of each request, none while it answers
+    /// `None`: the signed-in endue ID's token, refreshed when it has expired.
+    pub fn with_token_source(mut self, source: TokenSource) -> Self {
+        self.token = Some(source);
         self
     }
 
@@ -48,8 +71,9 @@ impl HttpBrain {
         path: &str,
         body: Option<&Value>,
     ) -> Result<Response, BrainFailure> {
+        let token = self.token.as_ref().and_then(|source| source());
         let response =
-            send(&self.endpoint, self.token.as_deref(), method, path, body).map_err(unreachable)?;
+            send(&self.endpoint, token.as_deref(), method, path, body).map_err(unreachable)?;
         if response.status < 300 {
             return Ok(response);
         }
@@ -273,125 +297,4 @@ impl Brain for HttpBrain {
 }
 
 #[cfg(test)]
-mod tests {
-    use std::io::{BufRead, BufReader, Read, Write};
-    use std::net::TcpListener;
-    use std::thread;
-
-    use desk_brain::{
-        A2ATaskStatus, AgentStatus, NamedToolChoice, TextPart, ToolChoice, ToolDefinition,
-        UserMessage,
-    };
-    use serde_json::json;
-
-    use super::*;
-
-    /// A brain that takes one request, answers a two-event turn and hands back what it was sent.
-    fn one_turn() -> (String, thread::JoinHandle<(String, Value)>) {
-        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
-        let url = format!("http://{}/v0", listener.local_addr().unwrap());
-        let server = thread::spawn(move || {
-            let (stream, _) = listener.accept().unwrap();
-            let mut reader = BufReader::new(stream.try_clone().unwrap());
-            let (mut first, mut length) = (String::new(), 0);
-            reader.read_line(&mut first).unwrap();
-            loop {
-                let mut line = String::new();
-                reader.read_line(&mut line).unwrap();
-                if line == "\r\n" {
-                    break;
-                }
-                if let Some(value) = line.to_ascii_lowercase().strip_prefix("content-length:") {
-                    length = value.trim().parse().unwrap();
-                }
-            }
-            let mut body = vec![0; length];
-            reader.read_exact(&mut body).unwrap();
-            let events = concat!(
-                "data: {\"type\":\"turn.started\",\"turnId\":\"t1\"}\n\n",
-                "data: {\"type\":\"turn.completed\",\"turnId\":\"t1\",\"stopReason\":\"end_turn\"}\n\n",
-            );
-            let head = "HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\nConnection: close";
-            let length = events.len();
-            write!(
-                &stream,
-                "{head}\r\nContent-Length: {length}\r\n\r\n{events}"
-            )
-            .unwrap();
-            (first, serde_json::from_slice(&body).unwrap())
-        });
-        (url, server)
-    }
-
-    #[test]
-    fn a_turn_sends_its_tools_and_tool_choice_in_the_contract_form() {
-        let (url, server) = one_turn();
-        let schema = json!({ "type": "object", "required": ["name"] });
-        let request = TurnRequest {
-            lease_id: "l1".to_owned(),
-            message: UserMessage {
-                role: Default::default(),
-                content: vec![TextPart {
-                    r#type: Default::default(),
-                    text: "warm paper".to_owned(),
-                }],
-            },
-            tools: Some(vec![ToolDefinition {
-                name: "propose_theme".to_owned(),
-                description: "Propose a desk theme.".to_owned(),
-                schema: schema.as_object().unwrap().clone(),
-            }]),
-            tool_choice: Some(ToolChoice::NamedTool(NamedToolChoice {
-                r#type: Default::default(),
-                name: "propose_theme".to_owned(),
-            })),
-        };
-        let mut events = 0;
-        let brain = HttpBrain::new(&url).unwrap();
-        brain
-            .create_turn("s1", &request, &mut |_| events += 1)
-            .unwrap();
-        let (first, body) = server.join().unwrap();
-        assert!(
-            first.starts_with("POST /v0/sessions/s1/turns HTTP/1.1"),
-            "{first}"
-        );
-        assert_eq!(events, 2);
-        let tools = json!([{ "name": "propose_theme", "description": "Propose a desk theme.", "schema": schema }]);
-        assert_eq!(body["tools"], tools);
-        assert_eq!(
-            body["toolChoice"],
-            json!({ "type": "tool", "name": "propose_theme" })
-        );
-        assert_eq!(body["leaseId"], "l1");
-    }
-
-    #[test]
-    fn query_strings_leave_absent_parameters_out() {
-        assert_eq!(agents_path(&AgentQuery::default()).unwrap(), "/agents");
-        assert_eq!(tasks_path(&TaskQuery::default()).unwrap(), "/a2a/tasks");
-        let agents = AgentQuery {
-            status: Some(AgentStatus::Inactive),
-            page: Some(2),
-            ..AgentQuery::default()
-        };
-        assert_eq!(
-            agents_path(&agents).unwrap(),
-            "/agents?status=inactive&page=2"
-        );
-    }
-
-    #[test]
-    fn query_values_are_encoded_and_enums_spelled_as_the_contract_does() {
-        let tasks = TaskQuery {
-            target_agent_id: Some("ag 1&page=9".to_owned()),
-            status: Some(A2ATaskStatus::InputRequired),
-            page: None,
-            limit: Some(5),
-        };
-        assert_eq!(
-            tasks_path(&tasks).unwrap(),
-            "/a2a/tasks?targetAgentId=ag%201%26page%3D9&status=input_required&limit=5"
-        );
-    }
-}
+mod tests;

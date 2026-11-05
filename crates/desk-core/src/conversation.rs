@@ -12,11 +12,12 @@ use std::time::Duration;
 
 use desk_brain::{
     Brain, BrainErrorCode, BrainFailure, ClientInfo, CreateSessionRequest, LeaseHolder, TextPart,
-    ToolCall, ToolResultRequest, TurnRequest, UserMessage,
+    ToolCall, ToolDefinition, ToolResultRequest, TurnRequest, UserMessage,
 };
-use desk_bridge::BrainTurnKind;
-use serde_json::{Value, json};
+use desk_bridge::{BrainTurnKind, BrainTurnTool};
+use serde_json::Value;
 
+use crate::agent_tools::echo;
 use crate::conversation_sink::Sink;
 use crate::events::EventBus;
 use crate::lease::{LeaseClient, LeaseError};
@@ -30,6 +31,14 @@ pub const READ_ONLY_LINE: &str =
     "This conversation is open on another desk now, so this one is read-only.";
 /// What Eris says when a turn failed for any other reason.
 pub const FAILED_LINE: &str = "Something went wrong on my side. Try that again in a moment.";
+/// What Eris says when the brain wants an endue ID token the desk does not have (ADR 0084).
+pub const SIGN_IN_LINE: &str =
+    "Sign in to endue so I can think with it: your account is at the bottom left.";
+/// What Eris says when the brain kept calling tools past `MAX_STEPS` in one turn.
+pub const TOO_MANY_LINE: &str =
+    "I went back and forth too many times on that one. Try asking another way.";
+/// The most tool calls one brain.say turn runs (ADR 0084); past it the turn ends.
+pub const MAX_STEPS: usize = 12;
 
 /// Which kind of brain the desk talks to, as brain.status reports it while the brain answers.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -69,8 +78,17 @@ impl Default for BrainOptions {
     }
 }
 
-/// What runs the tools the brain asks for: the core, once it routes them (CORE-14).
+/// What runs the tools the brain asks for: the core, once it routes them (CORE-14), and the tools
+/// Eris offers the brain on every turn (ADR 0084).
 pub(crate) trait Tools: Send + Sync {
+    /// The tools a turn offers the brain; none leaves the brain to its own.
+    fn offer(&self) -> Vec<ToolDefinition> {
+        Vec::new()
+    }
+    /// The step the desk shows for a call of one of the offered tools.
+    fn step(&self, _call: &ToolCall) -> Option<BrainTurnTool> {
+        None
+    }
     /// The tool's output, and whether it failed. `turn` is the desk's turn the call belongs to.
     fn run(&self, turn: &str, call: &ToolCall) -> (Value, bool);
     /// The desk's turn `turn` ended.
@@ -103,6 +121,10 @@ enum Stop {
     /// The session or lease is gone (the brain restarted, the lease expired): try again at once.
     Again,
     Failed,
+    /// The brain called tools past `MAX_STEPS` in one turn.
+    TooMany,
+    /// The brain wants an endue ID token: nobody is signed in, or the token is no longer good.
+    SignedOut,
 }
 
 impl Conversation {
@@ -223,6 +245,14 @@ impl Conversation {
                     sink.publish(BrainTurnKind::Error, Some(READ_ONLY_LINE));
                     return;
                 }
+                Err(Stop::TooMany) => {
+                    sink.publish(BrainTurnKind::Error, Some(TOO_MANY_LINE));
+                    return;
+                }
+                Err(Stop::SignedOut) => {
+                    sink.publish(BrainTurnKind::Error, Some(SIGN_IN_LINE));
+                    return;
+                }
                 Err(Stop::Again | Stop::Failed) => {
                     sink.publish(BrainTurnKind::Error, Some(FAILED_LINE));
                     return;
@@ -264,6 +294,11 @@ impl Conversation {
         state.opened = true;
         sink.reached();
 
+        let routed = self.tools.get().and_then(Weak::upgrade);
+        let offered = routed
+            .as_ref()
+            .map(|tools| tools.offer())
+            .unwrap_or_default();
         let request = TurnRequest {
             lease_id: lease_id.clone(),
             message: UserMessage {
@@ -273,16 +308,31 @@ impl Conversation {
                     text: text.to_owned(),
                 }],
             },
-            tools: None,
+            tools: (!offered.is_empty()).then_some(offered),
             tool_choice: None,
         };
         self.brain
             .create_turn(&session, &request, &mut |event| sink.on(event))
             .map_err(|f| stop(state, f))?;
+        // Eris's agentic loop: each call runs on the desk and its result goes back to the brain,
+        // until the brain answers in words or the turn has made MAX_STEPS calls.
+        let mut steps = 0;
         while let Some((turn_id, call)) = sink.pending.take() {
-            let routed = self.tools.get().and_then(Weak::upgrade);
-            let (output, failed) =
-                routed.map_or_else(|| echo(&call), |tools| tools.run(sink.turn, &call));
+            steps += 1;
+            if steps > MAX_STEPS {
+                return Err(Stop::TooMany);
+            }
+            let step = routed.as_ref().and_then(|tools| tools.step(&call));
+            if let Some(tool) = &step {
+                sink.step(BrainTurnKind::Tool, tool.clone());
+            }
+            let (output, failed) = routed
+                .as_ref()
+                .map_or_else(|| echo(&call), |tools| tools.run(sink.turn, &call));
+            if let Some(tool) = step {
+                let ok = Some(!failed);
+                sink.step(BrainTurnKind::ToolResult, BrainTurnTool { ok, ..tool });
+            }
             let request = |lease_id| ToolResultRequest {
                 lease_id,
                 call_id: call.call_id.clone(),
@@ -336,6 +386,7 @@ fn stop(state: &mut State, failure: BrainFailure) -> Stop {
             let error = state.lease.refused(failure);
             lease_stop(state, error)
         }
+        Some(BrainErrorCode::Unauthorized) => Stop::SignedOut,
         _ => Stop::Failed,
     }
 }
@@ -346,13 +397,4 @@ fn lease_stop(state: &mut State, error: LeaseError) -> Stop {
         LeaseError::Expired | LeaseError::NoSession => Stop::Again,
         LeaseError::Brain(failure) => stop(state, failure),
     }
-}
-
-/// The tool Desk runs for anyone: echo answers with its arguments. Any other is unknown here.
-pub(crate) fn echo(call: &ToolCall) -> (Value, bool) {
-    if call.name == "echo" {
-        return (Value::Object(call.arguments.clone()), false);
-    }
-    let unknown = format!("Desk has no tool named {}", call.name);
-    (json!({ "error": unknown }), true)
 }

@@ -44,8 +44,8 @@ struct Invocation {
 /// Registered commands in registration order, and the invocations still waiting for an answer.
 #[derive(Default)]
 pub(crate) struct Commands {
-    order: Vec<String>,
-    by_id: BTreeMap<String, CommandInfo>,
+    pub(crate) order: Vec<String>,
+    pub(crate) by_id: BTreeMap<String, CommandInfo>,
     next: u64,
     pending: BTreeMap<String, Invocation>,
     /// Ids whose provider's manifest marks them `irreversible`.
@@ -332,7 +332,7 @@ impl Core {
     }
 
     /// What `provider`'s manifest declares for its command `id` (`contributes.commands`).
-    fn declared(&self, provider: &str, id: &str) -> Option<CommandContribution> {
+    pub(crate) fn declared(&self, provider: &str, id: &str) -> Option<CommandContribution> {
         let plugins = self
             .plugins
             .lock()
@@ -364,7 +364,7 @@ impl Core {
         );
     }
 
-    fn commands(&self) -> MutexGuard<'_, Commands> {
+    pub(crate) fn commands(&self) -> MutexGuard<'_, Commands> {
         self.commands
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())

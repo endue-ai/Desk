@@ -10,13 +10,15 @@ use std::sync::mpsc::RecvTimeoutError;
 use std::sync::{Arc, Weak};
 use std::time::{Duration, Instant};
 
-use desk_brain::ToolCall;
-use desk_bridge::{BridgeError, BridgeEvent, BridgeRequest, BridgeResponse, ErrorCode};
+use desk_brain::{ToolCall, ToolDefinition};
+use desk_bridge::{
+    BrainTurnTool, BridgeError, BridgeEvent, BridgeRequest, BridgeResponse, ErrorCode,
+};
 use serde_json::{Value, json};
 
 use crate::agents::agent_caller;
 use crate::approvals::in_task;
-use crate::conversation::{Tools, echo};
+use crate::conversation::Tools;
 use crate::handler::{Core, error};
 
 /// How long a command run from a tool call may take to answer.
@@ -54,7 +56,12 @@ impl Core {
     }
 
     /// cmd.invoke as `caller`, then the command's answer (`cmd.answered`) as the tool's output.
-    fn invoke_for(&self, turn: &str, caller: &str, request: BridgeRequest) -> (Value, bool) {
+    pub(crate) fn invoke_for(
+        &self,
+        turn: &str,
+        caller: &str,
+        request: BridgeRequest,
+    ) -> (Value, bool) {
         let events = self.events().subscribe();
         let started = match in_task(turn, || self.handle(caller, request)) {
             (BridgeResponse::BridgeSuccess(ok), _) => ok.result,
@@ -87,9 +94,25 @@ impl Core {
 }
 
 impl Tools for Core {
+    fn offer(&self) -> Vec<ToolDefinition> {
+        self.eris_tools()
+            .into_iter()
+            .map(|tool| tool.definition)
+            .collect()
+    }
+
+    fn step(&self, call: &ToolCall) -> Option<BrainTurnTool> {
+        self.eris_tool(call)
+            .map(|tool| tool.step(&call.call_id, None))
+    }
+
     fn run(&self, turn: &str, call: &ToolCall) -> (Value, bool) {
         if call.name == "echo" {
             return echo(call);
+        }
+        // Eris's tools, the commands plugins offer her (ADR 0084).
+        if let Some(tool) = self.eris_tool(call) {
+            return self.run_eris_tool(turn, call, &tool);
         }
         let Some(caller) = call.agent_id.as_deref().and_then(agent_caller) else {
             let anonymous = format!(
@@ -127,4 +150,13 @@ impl Tools for Core {
     fn ended(&self, turn: &str) {
         self.end_task(turn);
     }
+}
+
+/// The tool Desk runs for anyone: echo answers with its arguments. Any other is unknown here.
+pub(crate) fn echo(call: &ToolCall) -> (Value, bool) {
+    if call.name == "echo" {
+        return (Value::Object(call.arguments.clone()), false);
+    }
+    let unknown = format!("Desk has no tool named {}", call.name);
+    (json!({ "error": unknown }), true)
 }

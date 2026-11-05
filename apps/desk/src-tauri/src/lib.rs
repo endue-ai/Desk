@@ -18,10 +18,12 @@ use std::time::Instant;
 
 use desk_brain_endue::HttpBrain;
 use desk_bridge::{
-    BrainConversePermission, CmdInvokePermission, ConnectorManagePermission, FsReadPermission,
-    FsWritePermission, PermManagePermission, Permission, PluginManagePermission,
-    ShellOpenPermission, ThemeManagePermission, UpdateManagePermission, ViewManagePermission,
+    AccountManagePermission, BrainConversePermission, CmdInvokePermission,
+    ConnectorManagePermission, FsReadPermission, FsWritePermission, PermManagePermission,
+    Permission, PluginManagePermission, ShellOpenPermission, ThemeManagePermission,
+    UpdateManagePermission, ViewManagePermission,
 };
+use desk_core::account::{Account, AccountOptions, DEFAULT_ID_URL, NetIdClient};
 use desk_core::{
     BrainMode, BrainOptions, Core, MockRemote, PluginWatcher, Roots, SyncError, SyncOutcome,
     ThemeWatcher, ViewWatcher,
@@ -115,10 +117,17 @@ pub fn run() {
             // The person's own themes (ADR 0058): every theme folder in <data>/themes/ is installed
             // now, not built in, and comes back at every start.
             core = core.with_themes_dir(data.join("themes"));
+            // The person's endue ID (ADR 0084): signing in hands the brain its bearer token.
+            let id_url = std::env::var("DESK_ID_URL").unwrap_or_else(|_| DEFAULT_ID_URL.to_owned());
+            let mut account = AccountOptions::new(id_url);
+            account.file = Some(data.join("account.json"));
+            let account = Account::open(account, NetIdClient);
+            core = core.with_account(account.clone());
             let url =
                 std::env::var("DESK_BRAIN_URL").unwrap_or_else(|_| DEFAULT_BRAIN_URL.to_owned());
             match HttpBrain::new(&url) {
                 Ok(brain) => {
+                    let brain = brain.with_token_source(Arc::new(move || account.token()));
                     // An HTTP brain is endue AI or brain-echo: brain.status names it cloud.
                     let options = BrainOptions {
                         state_file: Some(data.join("brain.json")),
@@ -135,8 +144,10 @@ pub fn run() {
                 core = core.with_updater(updater.clone());
             }
             let core = Arc::new(core);
-            // The brain's tool calls run in the core, each as the agent that asks (ADR 0072).
+            // The brain's tool calls run in the core, each as the agent that asks (ADR 0072), and
+            // every turn offers Eris the commands plugins mark as tools (ADR 0084).
             core.route_tools();
+            core.start_account();
             // The runtime mounts plugins, so it may list and toggle them.
             core.grant(
                 RUNTIME_CALLER,
@@ -210,6 +221,13 @@ pub fn run() {
             core.grant(
                 RUNTIME_CALLER,
                 Permission::UpdateManage(UpdateManagePermission {
+                    permission: Default::default(),
+                }),
+            );
+            // The runtime signs the desk in to endue ID and out again (ADR 0084).
+            core.grant(
+                RUNTIME_CALLER,
+                Permission::AccountManage(AccountManagePermission {
                     permission: Default::default(),
                 }),
             );
