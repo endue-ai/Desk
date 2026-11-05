@@ -106,6 +106,9 @@ impl Core {
             let bad = "desk-tools takes { query?, limit? }";
             return serde_json::from_value(request).map_err(|_| bad.to_owned());
         }
+        if call.name == DESK_REMEMBER {
+            return remember_request(&call.arguments);
+        }
         if call.name == DESK_RUN {
             let command = call.arguments.get("command").and_then(Value::as_str);
             let args = call.arguments.get("args").cloned().unwrap_or(json!({}));
@@ -206,6 +209,14 @@ impl Tools for Core {
     fn offer(&self) -> Option<Vec<ToolDefinition>> {
         Core::offer(self)
     }
+
+    fn context(&self, line: &str) -> Option<TurnContext> {
+        self.turn_context(line)
+    }
+
+    fn finished(&self, asked: &str, answered: &str, steps: Vec<MemoryStep>) {
+        self.keep_turn(asked, answered, steps);
+    }
 }
 
 /// The agent a brain.say call that names none runs as: Eris (ADR 0089).
@@ -216,6 +227,7 @@ impl Core {
     fn for_eris(&self, call: &ToolCall) -> bool {
         call.name == DESK_TOOLS
             || call.name == DESK_RUN
+            || call.name == DESK_REMEMBER
             || self
                 .tool_request(call)
                 .is_ok_and(|r| is_invoke(&r) && call.name != "cmd.invoke")

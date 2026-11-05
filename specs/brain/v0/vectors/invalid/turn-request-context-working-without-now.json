@@ -1,0 +1,21 @@
+{
+  "target": "TurnRequest",
+  "description": "working context says when it was taken",
+  "instance": {
+    "leaseId": "l1",
+    "message": {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "hi"
+        }
+      ]
+    },
+    "context": {
+      "working": {
+        "surfaces": ["Notes"]
+      }
+    }
+  }
+}

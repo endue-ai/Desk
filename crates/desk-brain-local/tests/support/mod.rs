@@ -243,6 +243,7 @@ pub fn said(text: &str, lease: &str) -> TurnRequest {
         },
         tools: None,
         tool_choice: None,
+        context: None,
     }
 }
 

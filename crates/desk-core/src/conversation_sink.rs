@@ -4,7 +4,9 @@
 use std::mem;
 
 use desk_brain::{StopReason, ToolCall, TurnEvent};
-use desk_bridge::{BrainTurnData, BrainTurnEvent, BrainTurnKind, BrainTurnTool, BridgeEvent};
+use desk_bridge::{
+    BrainTurnData, BrainTurnEvent, BrainTurnKind, BrainTurnTool, BridgeEvent, MemoryStep,
+};
 
 use crate::events::EventBus;
 
@@ -19,6 +21,8 @@ pub(crate) struct Sink<'a> {
     pub(crate) failed: bool,
     /// Said first, once the brain starts its answer (the fallback line, ADR 0094).
     pub(crate) prefix: Option<String>,
+    /// The commands the turn's errands ran, for its episode (ADR 0096).
+    pub(crate) steps: Vec<MemoryStep>,
 }
 
 impl<'a> Sink<'a> {
@@ -32,6 +36,7 @@ impl<'a> Sink<'a> {
             completed: false,
             failed: false,
             prefix: None,
+            steps: Vec::new(),
         }
     }
 
@@ -49,7 +54,11 @@ impl<'a> Sink<'a> {
     }
 
     /// A tool step: Eris hands work to a command (`Tool`), or its answer went back (`ToolResult`).
-    pub(crate) fn step(&self, kind: BrainTurnKind, tool: BrainTurnTool) {
+    pub(crate) fn step(&mut self, kind: BrainTurnKind, tool: BrainTurnTool) {
+        if kind == BrainTurnKind::ToolResult {
+            let ok = tool.ok.unwrap_or(true);
+            self.steps.push(MemoryStep { command: tool.command.clone(), ok });
+        }
         self.events.publish(BridgeEvent::BrainTurn(BrainTurnEvent {
             event: Default::default(),
             data: BrainTurnData {

@@ -258,7 +258,7 @@
           "$ref": "../../plugin/v0/permission.schema.json#/$defs/Permission"
         },
         "target": {
-          "description": "What the call touches: the path for fs.write, the command for proc.spawn, the URL for net.fetch, the command id for cmd.invoke.",
+          "description": "What the call touches: the path for fs.write, the command for proc.spawn, the URL for net.fetch, the command id for cmd.invoke, the fact for memory.remember.",
           "type": "string",
           "minLength": 1
         },
@@ -278,12 +278,12 @@
       "additionalProperties": false
     },
     "ApprovalAction": {
-      "description": "The bridge method an agent's irreversible call is.",
+      "description": "The bridge method an agent's irreversible call is. memory.remember is an agent keeping a fact in the person's memory: its target is the fact (ADR 0096).",
       "type": "string",
-      "enum": ["fs.write", "proc.spawn", "net.fetch", "cmd.invoke"]
+      "enum": ["fs.write", "proc.spawn", "net.fetch", "cmd.invoke", "memory.remember"]
     },
     "ApprovalPreview": {
-      "description": "What the call would do, as text. diff: a unified diff of the file as it is against what the write puts there (a new file is all additions), when both are UTF-8 text and the file is at most 1 MiB; the first 200 changed lines. command: the command line, quoted for a POSIX shell. url: the method and the URL. args: the command's args as JSON. truncated says that the text was cut.",
+      "description": "What the call would do, as text. diff: a unified diff of the file as it is against what the write puts there (a new file is all additions), when both are UTF-8 text and the file is at most 1 MiB; the first 200 changed lines. command: the command line, quoted for a POSIX shell. url: the method and the URL. args: the command's args as JSON. fact: the fact memory.remember would keep. truncated says that the text was cut.",
       "type": "object",
       "properties": {
         "kind": { "$ref": "#/$defs/ApprovalPreviewKind" },
@@ -294,9 +294,9 @@
       "additionalProperties": false
     },
     "ApprovalPreviewKind": {
-      "description": "What a preview's text is: a unified diff, a command line, a method and URL, or a command's args as JSON.",
+      "description": "What a preview's text is: a unified diff, a command line, a method and URL, a command's args as JSON, or a fact to remember in the person's words.",
       "type": "string",
-      "enum": ["diff", "command", "url", "args"]
+      "enum": ["diff", "command", "url", "args", "fact"]
     },
     "PermApproveRequest": {
       "description": "The prompter answers a perm.approval with the person's decision.",

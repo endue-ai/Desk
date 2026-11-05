@@ -3400,7 +3400,7 @@ export interface PermApprovalData {
   action: ApprovalAction;
   /** The scope the call carries, which a grant of the agent's covers. */
   permission: Permission;
-  /** What the call touches: the path for fs.write, the command for proc.spawn, the URL for net.fetch, the command id for cmd.invoke. */
+  /** What the call touches: the path for fs.write, the command for proc.spawn, the URL for net.fetch, the command id for cmd.invoke, the fact for memory.remember. */
   target: string;
   preview?: ApprovalPreview;
   /** fs.write: the bytes it would write. */
@@ -3409,18 +3409,23 @@ export interface PermApprovalData {
   task?: string;
 }
 
-/** The bridge method an agent's irreversible call is. */
-export type ApprovalAction = "fs.write" | "proc.spawn" | "net.fetch" | "cmd.invoke";
+/** The bridge method an agent's irreversible call is. memory.remember is an agent keeping a fact in the person's memory: its target is the fact (ADR 0096). */
+export type ApprovalAction =
+  | "fs.write"
+  | "proc.spawn"
+  | "net.fetch"
+  | "cmd.invoke"
+  | "memory.remember";
 
-/** What the call would do, as text. diff: a unified diff of the file as it is against what the write puts there (a new file is all additions), when both are UTF-8 text and the file is at most 1 MiB; the first 200 changed lines. command: the command line, quoted for a POSIX shell. url: the method and the URL. args: the command's args as JSON. truncated says that the text was cut. */
+/** What the call would do, as text. diff: a unified diff of the file as it is against what the write puts there (a new file is all additions), when both are UTF-8 text and the file is at most 1 MiB; the first 200 changed lines. command: the command line, quoted for a POSIX shell. url: the method and the URL. args: the command's args as JSON. fact: the fact memory.remember would keep. truncated says that the text was cut. */
 export interface ApprovalPreview {
   kind: ApprovalPreviewKind;
   text: string;
   truncated?: boolean;
 }
 
-/** What a preview's text is: a unified diff, a command line, a method and URL, or a command's args as JSON. */
-export type ApprovalPreviewKind = "diff" | "command" | "url" | "args";
+/** What a preview's text is: a unified diff, a command line, a method and URL, a command's args as JSON, or a fact to remember in the person's words. */
+export type ApprovalPreviewKind = "diff" | "command" | "url" | "args" | "fact";
 
 /** The prompter answers a perm.approval with the person's decision. */
 export interface PermApproveRequest {

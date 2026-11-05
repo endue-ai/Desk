@@ -63,6 +63,51 @@ pub struct TurnRequest {
         skip_serializing_if = "Option::is_none"
     )]
     pub tool_choice: Option<ToolChoice>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub context: Option<TurnContext>,
+}
+
+/// What the desk tells the brain before a turn, in the same shape for every brain (Desk ADR 0096): the facts it keeps that bear on the line, its newest episodes, and what is open on the desk now. The brain reads it as background, not as the person's words.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct TurnContext {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub facts: Option<Vec<ContextFact>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub episodes: Option<Vec<ContextEpisode>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub working: Option<WorkingContext>,
+}
+
+/// A fact or preference the desk keeps about the person, in their words.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ContextFact {
+    pub id: String,
+    pub text: String,
+}
+
+/// An earlier turn the desk kept, newest first.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ContextEpisode {
+    pub at: String,
+    pub asked: String,
+    pub answered: String,
+}
+
+/// What is open on the desk when the turn starts.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct WorkingContext {
+    /// The desk's time.
+    pub now: String,
+    /// The surfaces on screen, by their titles.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub surfaces: Option<Vec<String>>,
+    /// The commands run last, newest first, by id.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub commands: Option<Vec<String>>,
 }
 
 /// A tool offered for one turn. The brain calls it with tool.call and arguments that match schema; Desk decides whether it runs.
@@ -692,11 +737,114 @@ pub const BRAIN_SCHEMA_JSON: &str = r##"{
         },
         "toolChoice": {
           "$ref": "#/$defs/ToolChoice"
+        },
+        "context": {
+          "$ref": "#/$defs/TurnContext"
         }
       },
       "required": [
         "leaseId",
         "message"
+      ],
+      "additionalProperties": false
+    },
+    "TurnContext": {
+      "description": "What the desk tells the brain before a turn, in the same shape for every brain (Desk ADR 0096): the facts it keeps that bear on the line, its newest episodes, and what is open on the desk now. The brain reads it as background, not as the person's words.",
+      "type": "object",
+      "properties": {
+        "facts": {
+          "type": "array",
+          "maxItems": 32,
+          "items": {
+            "$ref": "#/$defs/ContextFact"
+          }
+        },
+        "episodes": {
+          "type": "array",
+          "maxItems": 16,
+          "items": {
+            "$ref": "#/$defs/ContextEpisode"
+          }
+        },
+        "working": {
+          "$ref": "#/$defs/WorkingContext"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ContextFact": {
+      "description": "A fact or preference the desk keeps about the person, in their words.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000
+        }
+      },
+      "required": [
+        "id",
+        "text"
+      ],
+      "additionalProperties": false
+    },
+    "ContextEpisode": {
+      "description": "An earlier turn the desk kept, newest first.",
+      "type": "object",
+      "properties": {
+        "at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "asked": {
+          "type": "string",
+          "minLength": 1
+        },
+        "answered": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "at",
+        "asked",
+        "answered"
+      ],
+      "additionalProperties": false
+    },
+    "WorkingContext": {
+      "description": "What is open on the desk when the turn starts.",
+      "type": "object",
+      "properties": {
+        "now": {
+          "description": "The desk's time.",
+          "type": "string",
+          "format": "date-time"
+        },
+        "surfaces": {
+          "description": "The surfaces on screen, by their titles.",
+          "type": "array",
+          "maxItems": 32,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "commands": {
+          "description": "The commands run last, newest first, by id.",
+          "type": "array",
+          "maxItems": 16,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "required": [
+        "now"
       ],
       "additionalProperties": false
     },

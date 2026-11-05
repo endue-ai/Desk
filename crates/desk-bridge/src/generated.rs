@@ -5321,7 +5321,7 @@ pub struct PermApprovalData {
     pub action: ApprovalAction,
     /// The scope the call carries, which a grant of the agent's covers.
     pub permission: Permission,
-    /// What the call touches: the path for fs.write, the command for proc.spawn, the URL for net.fetch, the command id for cmd.invoke.
+    /// What the call touches: the path for fs.write, the command for proc.spawn, the URL for net.fetch, the command id for cmd.invoke, the fact for memory.remember.
     pub target: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub preview: Option<ApprovalPreview>,
@@ -5333,7 +5333,7 @@ pub struct PermApprovalData {
     pub task: Option<String>,
 }
 
-/// The bridge method an agent's irreversible call is.
+/// The bridge method an agent's irreversible call is. memory.remember is an agent keeping a fact in the person's memory: its target is the fact (ADR 0096).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum ApprovalAction {
     #[serde(rename = "fs.write")]
@@ -5344,9 +5344,11 @@ pub enum ApprovalAction {
     NetFetch,
     #[serde(rename = "cmd.invoke")]
     CmdInvoke,
+    #[serde(rename = "memory.remember")]
+    MemoryRemember,
 }
 
-/// What the call would do, as text. diff: a unified diff of the file as it is against what the write puts there (a new file is all additions), when both are UTF-8 text and the file is at most 1 MiB; the first 200 changed lines. command: the command line, quoted for a POSIX shell. url: the method and the URL. args: the command's args as JSON. truncated says that the text was cut.
+/// What the call would do, as text. diff: a unified diff of the file as it is against what the write puts there (a new file is all additions), when both are UTF-8 text and the file is at most 1 MiB; the first 200 changed lines. command: the command line, quoted for a POSIX shell. url: the method and the URL. args: the command's args as JSON. fact: the fact memory.remember would keep. truncated says that the text was cut.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ApprovalPreview {
@@ -5356,7 +5358,7 @@ pub struct ApprovalPreview {
     pub truncated: Option<bool>,
 }
 
-/// What a preview's text is: a unified diff, a command line, a method and URL, or a command's args as JSON.
+/// What a preview's text is: a unified diff, a command line, a method and URL, a command's args as JSON, or a fact to remember in the person's words.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum ApprovalPreviewKind {
     #[serde(rename = "diff")]
@@ -5367,6 +5369,8 @@ pub enum ApprovalPreviewKind {
     Url,
     #[serde(rename = "args")]
     Args,
+    #[serde(rename = "fact")]
+    Fact,
 }
 
 /// The prompter answers a perm.approval with the person's decision.

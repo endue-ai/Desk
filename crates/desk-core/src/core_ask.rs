@@ -172,6 +172,7 @@ impl Ask {
             },
             tools: Some(vec![tool]),
             tool_choice: Some(ToolChoice::NamedTool(choice)),
+            context: None,
         }
     }
 }

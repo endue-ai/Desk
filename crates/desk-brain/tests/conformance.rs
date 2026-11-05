@@ -253,6 +253,7 @@ fn the_http_client_holds_a_conversation() {
         },
         tools: None,
         tool_choice: None,
+        context: None,
     };
     let mut answer = String::new();
     let mut last = None;

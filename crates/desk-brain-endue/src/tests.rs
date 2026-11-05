@@ -70,6 +70,7 @@ fn a_turn_sends_its_tools_and_tool_choice_in_the_contract_form() {
             r#type: Default::default(),
             name: "propose_theme".to_owned(),
         })),
+        context: None,
     };
     let mut events = 0;
     let brain = HttpBrain::new(&url).unwrap();

@@ -33,6 +33,37 @@ export interface TurnRequest {
   /** Tools the brain may call in this turn, besides any it has of its own. */
   tools?: ToolDefinition[];
   toolChoice?: ToolChoice;
+  context?: TurnContext;
+}
+
+/** What the desk tells the brain before a turn, in the same shape for every brain (Desk ADR 0096): the facts it keeps that bear on the line, its newest episodes, and what is open on the desk now. The brain reads it as background, not as the person's words. */
+export interface TurnContext {
+  facts?: ContextFact[];
+  episodes?: ContextEpisode[];
+  working?: WorkingContext;
+}
+
+/** A fact or preference the desk keeps about the person, in their words. */
+export interface ContextFact {
+  id: string;
+  text: string;
+}
+
+/** An earlier turn the desk kept, newest first. */
+export interface ContextEpisode {
+  at: string;
+  asked: string;
+  answered: string;
+}
+
+/** What is open on the desk when the turn starts. */
+export interface WorkingContext {
+  /** The desk's time. */
+  now: string;
+  /** The surfaces on screen, by their titles. */
+  surfaces?: string[];
+  /** The commands run last, newest first, by id. */
+  commands?: string[];
 }
 
 /** A tool offered for one turn. The brain calls it with tool.call and arguments that match schema; Desk decides whether it runs. */
@@ -403,8 +434,103 @@ export const brainSchema = {
         toolChoice: {
           $ref: "#/$defs/ToolChoice",
         },
+        context: {
+          $ref: "#/$defs/TurnContext",
+        },
       },
       required: ["leaseId", "message"],
+      additionalProperties: false,
+    },
+    TurnContext: {
+      description:
+        "What the desk tells the brain before a turn, in the same shape for every brain (Desk ADR 0096): the facts it keeps that bear on the line, its newest episodes, and what is open on the desk now. The brain reads it as background, not as the person's words.",
+      type: "object",
+      properties: {
+        facts: {
+          type: "array",
+          maxItems: 32,
+          items: {
+            $ref: "#/$defs/ContextFact",
+          },
+        },
+        episodes: {
+          type: "array",
+          maxItems: 16,
+          items: {
+            $ref: "#/$defs/ContextEpisode",
+          },
+        },
+        working: {
+          $ref: "#/$defs/WorkingContext",
+        },
+      },
+      additionalProperties: false,
+    },
+    ContextFact: {
+      description: "A fact or preference the desk keeps about the person, in their words.",
+      type: "object",
+      properties: {
+        id: {
+          type: "string",
+          minLength: 1,
+        },
+        text: {
+          type: "string",
+          minLength: 1,
+          maxLength: 2000,
+        },
+      },
+      required: ["id", "text"],
+      additionalProperties: false,
+    },
+    ContextEpisode: {
+      description: "An earlier turn the desk kept, newest first.",
+      type: "object",
+      properties: {
+        at: {
+          type: "string",
+          format: "date-time",
+        },
+        asked: {
+          type: "string",
+          minLength: 1,
+        },
+        answered: {
+          type: "string",
+        },
+      },
+      required: ["at", "asked", "answered"],
+      additionalProperties: false,
+    },
+    WorkingContext: {
+      description: "What is open on the desk when the turn starts.",
+      type: "object",
+      properties: {
+        now: {
+          description: "The desk's time.",
+          type: "string",
+          format: "date-time",
+        },
+        surfaces: {
+          description: "The surfaces on screen, by their titles.",
+          type: "array",
+          maxItems: 32,
+          items: {
+            type: "string",
+            minLength: 1,
+          },
+        },
+        commands: {
+          description: "The commands run last, newest first, by id.",
+          type: "array",
+          maxItems: 16,
+          items: {
+            type: "string",
+            minLength: 1,
+          },
+        },
+      },
+      required: ["now"],
       additionalProperties: false,
     },
     ToolDefinition: {

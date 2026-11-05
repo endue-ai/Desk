@@ -11,9 +11,9 @@ use std::thread;
 
 use desk_brain::{
     Brain, BrainErrorCode, BrainFailure, ClientInfo, CreateSessionRequest, LeaseHolder, TextPart,
-    ToolCall, ToolDefinition, ToolResultRequest, TurnRequest, UserMessage,
+    ToolCall, ToolDefinition, ToolResultRequest, TurnContext, TurnRequest, UserMessage,
 };
-use desk_bridge::{BrainTurnKind, BrainTurnTool};
+use desk_bridge::{BrainTurnKind, BrainTurnTool, MemoryStep};
 use serde_json::Value;
 
 use crate::agent_tools::echo;
@@ -40,6 +40,12 @@ pub(crate) trait Tools: Send + Sync {
     fn offer(&self) -> Option<Vec<ToolDefinition>> {
         None
     }
+    /// What the brain is told before a turn on `line` (ADR 0096).
+    fn context(&self, _line: &str) -> Option<TurnContext> {
+        None
+    }
+    /// A turn ended in words: what was asked, the answer and the commands its errands ran.
+    fn finished(&self, _asked: &str, _answered: &str, _steps: Vec<MemoryStep>) {}
 }
 
 pub(crate) struct Conversation {
@@ -202,6 +208,9 @@ impl Conversation {
                 Ok(()) => {
                     let answer = mem::take(&mut sink.answer);
                     state.store.record(Speaker::Eris, &answer);
+                    if let Some(tools) = self.tools.get().and_then(Weak::upgrade) {
+                        tools.finished(text, &answer, mem::take(&mut sink.steps));
+                    }
                     if let Some(fallback) = fallback {
                         fallback.said.store(false, Ordering::SeqCst);
                     }
@@ -295,6 +304,7 @@ impl Conversation {
             },
             tools: routed.as_ref().and_then(|tools| tools.offer()),
             tool_choice: None,
+            context: routed.as_ref().and_then(|tools| tools.context(text)),
         };
         self.brain
             .create_turn(&session, &request, &mut |event| sink.on(event))

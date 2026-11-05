@@ -192,6 +192,7 @@ fn bad_requests_are_invalid_and_unknown_sessions_not_found() {
         },
         tools: None,
         tool_choice: None,
+        context: None,
     };
     assert_eq!(
         refused(brain.create_turn(&session, &empty, &mut |_| {})),
