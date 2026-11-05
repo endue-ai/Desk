@@ -959,6 +959,7 @@ dependencies = [
  "desk-core",
  "desk-index",
  "desk-ipc",
+ "desk-mcp-client",
  "desk-sys",
  "desk-trace",
  "desk-update",
@@ -1036,7 +1037,6 @@ dependencies = [
  "desk-brain-local",
  "desk-bridge",
  "desk-index",
- "desk-memory",
  "desk-plugin-host",
  "desk-sys",
  "desk-update",
@@ -1079,15 +1079,13 @@ dependencies = [
 ]
 
 [[package]]
-name = "desk-memory"
+name = "desk-mcp-client"
 version = "0.0.0"
 dependencies = [
  "desk-bridge",
- "getrandom 0.4.3",
- "rusqlite",
- "serde",
+ "desk-core",
+ "jsonschema",
  "serde_json",
- "yaml_serde",
 ]
 
 [[package]]

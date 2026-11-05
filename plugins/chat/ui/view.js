@@ -68,6 +68,7 @@ export function createView(doc, actions) {
     ...LAYOUTS.map((l) => {
       const b = doc.createElement("button");
       b.type = "button";
+      b.className = "desk-tab";
       b.dataset.layout = l.id;
       b.setAttribute("role", "tab");
       b.title = `${l.title} (${l.key})`;

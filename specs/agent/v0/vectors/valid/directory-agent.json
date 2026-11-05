@@ -1,0 +1,10 @@
+{
+  "target": "AgentRecord",
+  "description": "an agent of the brain directory whose last task failed",
+  "instance": {
+    "id": "ag_01JBZ8Q4MR0000000000000001",
+    "name": "Theo",
+    "source": "directory",
+    "state": "error"
+  }
+}

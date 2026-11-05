@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://endue.ai/specs/agent/v0/agent.schema.json",
+  "title": "Desk agent v0",
+  "description": "One record for every agent the desk knows, wherever it comes from: Eris, the agents init.yaml names, agents that call the desk (the brain's agents, apps over MCP), agents of the brain's directory and the local agent programs a plugin runs (ADR 0100). What an agent does is a run, an item of kind run (specs/item/v0).",
+  "$defs": {
+    "AgentId": {
+      "description": "An agent's id in the registry: eris, the agent id of an agent:<id> caller or of the brain's directory, or <plugin>/<id> for an agent a plugin runs (endue.local-agents/claude).",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:/-]{0,159}$"
+    },
+    "AgentSource": {
+      "description": "Where the desk knows the agent from. eris: the desk's own secretary. init: init.yaml's agents.<id>. caller: it called the desk as agent:<id> (a brain's tool call, an app over MCP). directory: the brain's agent directory (A2A tasks). local: a program a plugin runs on this computer.",
+      "type": "string",
+      "enum": ["eris", "init", "caller", "directory", "local"]
+    },
+    "AgentState": {
+      "description": "idle: nothing under way. working: a run is running. waiting: a run waits for the person's approval. error: its last run failed.",
+      "type": "string",
+      "enum": ["idle", "working", "waiting", "error"]
+    },
+    "AgentRecord": {
+      "description": "One agent as the registry lists it now.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "#/$defs/AgentId" },
+        "name": {
+          "description": "The name people see.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "colour": {
+          "description": "The agent's colour, when it has one.",
+          "type": "string",
+          "pattern": "^#[0-9a-f]{6}$"
+        },
+        "source": { "$ref": "#/$defs/AgentSource" },
+        "caller": {
+          "description": "The caller it calls the desk as, when it calls: agent:<id>.",
+          "type": "string",
+          "pattern": "^agent:[A-Za-z0-9][A-Za-z0-9_.-]{0,121}$"
+        },
+        "brain": {
+          "description": "What thinks for it, in a word: endue, local, echo, or the program a plugin runs (claude, codex).",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "tools": {
+          "description": "The commands it may be granted: the cmd:invoke ids of its allowlist (init.yaml), or of its grants when it has no allowlist. Absent: none named.",
+          "type": "array",
+          "items": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/CommandPattern" },
+          "maxItems": 200
+        },
+        "grants": {
+          "description": "The permissions it holds now.",
+          "type": "array",
+          "items": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/Permission" },
+          "maxItems": 200
+        },
+        "state": { "$ref": "#/$defs/AgentState" },
+        "runs": {
+          "description": "How many runs the desk has seen of it since it started.",
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": ["id", "name", "source", "state"],
+      "additionalProperties": false
+    }
+  }
+}

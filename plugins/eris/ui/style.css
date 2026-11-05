@@ -128,12 +128,6 @@ body {
 
 .say input {
   min-width: 0;
-  padding: 8px 10px;
-  border: 1px solid var(--desk-input);
-  border-radius: var(--desk-radius-md);
-  background: var(--desk-muted);
-  color: var(--desk-text);
-  font: inherit;
 }
 
 .say :focus-visible,
@@ -142,29 +136,10 @@ body {
   outline-offset: 1px;
 }
 
-.send {
-  padding: 8px 14px;
-  border: 0;
-  border-radius: var(--desk-radius-md);
-  background: var(--desk-primary);
-  color: var(--desk-primary-foreground);
-  font: inherit;
-  font-weight: 600;
-}
-
-.send:disabled {
-  opacity: 0.45;
-}
 
 #attach-file,
 #remove-attachment {
   justify-self: start;
-  padding: 4px 0;
-  border: 0;
-  background: transparent;
-  color: var(--desk-primary-text);
-  font: inherit;
-  cursor: pointer;
 }
 
 #attachment,

@@ -127,6 +127,7 @@ export function createView(doc, actions, options) {
       tab.setAttribute("role", "presentation");
       const label = doc.createElement("button");
       label.type = "button";
+      label.className = "desk-tab";
       label.id = `tab-${id}`;
       label.setAttribute("role", "tab");
       label.setAttribute("aria-controls", pane.id);
@@ -136,7 +137,7 @@ export function createView(doc, actions, options) {
       label.addEventListener("click", () => actions.activate(id));
       const close = doc.createElement("button");
       close.type = "button";
-      close.className = "close";
+      close.className = "desk-icon-btn close";
       close.setAttribute("aria-label", `Close ${title}`);
       close.textContent = "×";
       close.addEventListener("click", () => actions.close(id));

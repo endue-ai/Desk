@@ -42,6 +42,7 @@ export function createSide(doc, hooks) {
   ) => {
     const b = /** @type {HTMLButtonElement} */ (el("button", words));
     b.type = "button";
+    b.className = "desk-btn desk-btn-quiet";
     if (name) b.setAttribute("aria-label", name);
     b.addEventListener("click", action);
     return b;

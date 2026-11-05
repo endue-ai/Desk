@@ -1,0 +1,9 @@
+{
+  "target": "BridgeRequest",
+  "description": "the registry, for the permissions view",
+  "instance": {
+    "id": 40,
+    "method": "agent.list",
+    "params": { "scope": { "permission": "perm:manage" } }
+  }
+}

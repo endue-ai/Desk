@@ -3,7 +3,7 @@
 The calls the web runtime (and every plugin through it) makes into the Rust core. JSON Schema 2020-12,
 one file per namespace: `bridge.schema.json` (envelope, errors, shared types), `fs`, `proc`, `net`, `plugins`,
 `store`, `search`, `init`, `brain`, `audio`, `ui`, `perm`, `cmd`, `settings`, `log`, `events`, `data`, `connector`,
-`view`, `catalog`, `shell`, `update`, `theme` and `account`. Items, views and connectors are the types of `specs/item`,
+`view`, `catalog`, `shell`, `update`, `theme`, `account` and `agent`. Items, views and connectors are the types of `specs/item`,
 `specs/view` and `specs/connector` (ADR 0032). v0 may break on any minor release (ADR 0004).
 
 ## Envelope
@@ -455,6 +455,14 @@ Each needs `account:manage`, which the desk grants to the runtime only, and answ
 `account.signIn` starts the device authorization grant (RFC 8628), opens the page where the code is
 entered and answers `signing-in` with `signIn`; `account.changed` reports `signed-in`, or `signed-out`
 with a `problem`. The core gives the token to the brain as its bearer token; it never crosses the bridge.
+
+**agent.list**, **agent.cancel** and **agent.report** are the agent registry (ADR 0100). `agent.list`
+answers every agent the desk knows as an `AgentRecord` (`specs/agent/v0`) with its state, Eris first;
+`agent.cancel` stops a run by its item id (and `source` when it is not `desk.agents`): a waiting run is
+denied, a running command answered `cancelled`, a reported run's reporter hears `agent.cancelled`. Both
+need `perm:manage`. `agent.report` keeps a run of an agent the caller runs, under the caller's own source;
+it needs no scope. Runs are items of kind `run`: the core records one for every command an agent caller
+asks for and for the brain directory's tasks.
 
 **update.status**, **update.check**, **update.download** and **update.apply** drive the desk's own
 updates (ADR 0054). Each needs an `update:manage` scope, which the desk grants to the runtime and the

@@ -1,0 +1,13 @@
+{
+  "target": "InitDocument",
+  "description": "a server needs the program to start",
+  "instance": {
+    "mcp": {
+      "servers": {
+        "github": {
+          "args": ["server.js"]
+        }
+      }
+    }
+  }
+}

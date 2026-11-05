@@ -1,0 +1,12 @@
+{
+  "target": "AgentRecord",
+  "description": "an app over MCP that called the desk as its own agent",
+  "instance": {
+    "id": "claude-code",
+    "name": "claude-code",
+    "source": "caller",
+    "caller": "agent:claude-code",
+    "state": "idle",
+    "runs": 0
+  }
+}

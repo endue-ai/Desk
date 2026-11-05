@@ -1,0 +1,5 @@
+{
+  "target": "BridgeEvent",
+  "description": "the person asked the reporter to stop its run",
+  "instance": { "event": "agent.cancelled", "data": { "runId": "r12" } }
+}

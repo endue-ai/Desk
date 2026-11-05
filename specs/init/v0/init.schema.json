@@ -19,6 +19,7 @@
         "plugins": { "$ref": "#/$defs/InitPlugins" },
         "settings": { "$ref": "#/$defs/InitSettings" },
         "agents": { "$ref": "#/$defs/InitAgents" },
+        "mcp": { "$ref": "#/$defs/InitMcp" },
         "sync": { "$ref": "#/$defs/InitSync" }
       },
       "additionalProperties": false
@@ -74,6 +75,54 @@
         }
       },
       "additionalProperties": false
+    },
+    "InitMcp": {
+      "description": "MCP servers the desk attaches as tools (ADR 0098). Each one runs as the caller mcp:<name>, starts only under a proc:spawn grant the person gave it, and offers its tools to agents as the commands mcp.<name>.<tool>.",
+      "type": "object",
+      "properties": {
+        "servers": {
+          "description": "The servers by name. Default none. Read at every start.",
+          "type": "object",
+          "propertyNames": { "$ref": "#/$defs/InitMcpServerName" },
+          "additionalProperties": { "$ref": "#/$defs/InitMcpServer" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "InitMcpServerName": {
+      "description": "A server's name: the caller mcp:<name> and the middle of its command ids. Lowercase, for example github.",
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]{0,31}$"
+    },
+    "InitMcpServer": {
+      "description": "One MCP server, started over stdio.",
+      "type": "object",
+      "properties": {
+        "command": {
+          "description": "The program: a name looked up on PATH or an absolute path, without arguments. The proc:spawn grant names it.",
+          "$ref": "../../plugin/v0/permission.schema.json#/$defs/Command"
+        },
+        "args": {
+          "description": "The program's arguments. Default none.",
+          "type": "array",
+          "items": { "type": "string", "maxLength": 4096 },
+          "maxItems": 64
+        },
+        "env": {
+          "description": "Names of environment variables to pass from the desk's own environment, never their values (this file may sync). The server gets these and the usual HOME, LOGNAME, PATH, SHELL, TERM and USER (the Windows equivalents there), nothing else. Default none.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/InitEnvName" },
+          "uniqueItems": true,
+          "maxItems": 64
+        }
+      },
+      "required": ["command"],
+      "additionalProperties": false
+    },
+    "InitEnvName": {
+      "description": "An environment variable's name, for example GITHUB_TOKEN.",
+      "type": "string",
+      "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,127}$"
     },
     "InitSync": {
       "description": "Syncing init.yaml through the person's endue account.",

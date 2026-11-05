@@ -175,7 +175,6 @@ main {
 
 .columns button {
   padding: 0 4px;
-  border-color: transparent;
 }
 
 .columns [aria-sort="ascending"] button::after {

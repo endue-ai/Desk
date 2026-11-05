@@ -156,19 +156,8 @@ input {
   width: 240px;
   height: 40px;
   box-sizing: border-box;
-  padding: 0 12px;
-  border-radius: var(--desk-radius-md);
-  border: 1px solid var(--desk-input);
-  background: var(--desk-card);
-  color: var(--desk-text);
   font-family: inherit;
   font-size: var(--desk-text-base);
-}
-
-input:focus {
-  outline: none;
-  border-color: var(--desk-ring);
-  box-shadow: 0 0 0 1px var(--desk-ring);
 }
 
 #formslot p {
@@ -197,26 +186,11 @@ input:focus {
 .btn {
   height: 32px;
   padding: 0 12px;
-  border-radius: var(--desk-radius-md);
-  border: 1px solid var(--desk-input);
-  background: transparent;
-  color: var(--desk-text);
-  font-family: inherit;
-  font-size: var(--desk-text-sm);
-  cursor: pointer;
-}
-
-.btn.quiet {
-  color: var(--desk-text-muted);
 }
 
 .btn.primary {
   height: 40px;
   padding: 0 16px;
-  border: none;
-  background: var(--desk-primary);
-  color: var(--desk-primary-foreground);
-  font-weight: 500;
 }
 
 button:focus-visible {
