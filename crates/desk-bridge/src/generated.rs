@@ -2718,6 +2718,8 @@ pub struct InitDocument {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub agents: Option<InitAgents>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub mcp: Option<InitMcp>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub sync: Option<InitSync>,
 }
 
@@ -2753,6 +2755,35 @@ pub struct InitAgent {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub allow: Option<Vec<Permission>>,
 }
+
+/// MCP servers the desk attaches as tools (ADR 0098). Each one runs as the caller mcp:<name>, starts only under a proc:spawn grant the person gave it, and offers its tools to agents as the commands mcp.<name>.<tool>.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct InitMcp {
+    /// The servers by name. Default none. Read at every start.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub servers: Option<BTreeMap<String, InitMcpServer>>,
+}
+
+/// A server's name: the caller mcp:<name> and the middle of its command ids. Lowercase, for example github.
+pub type InitMcpServerName = String;
+
+/// One MCP server, started over stdio.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct InitMcpServer {
+    /// The program: a name looked up on PATH or an absolute path, without arguments. The proc:spawn grant names it.
+    pub command: Command,
+    /// The program's arguments. Default none.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub args: Option<Vec<String>>,
+    /// Names of environment variables to pass from the desk's own environment, never their values (this file may sync). The server gets these and the usual HOME, LOGNAME, PATH, SHELL, TERM and USER (the Windows equivalents there), nothing else. Default none.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub env: Option<Vec<InitEnvName>>,
+}
+
+/// An environment variable's name, for example GITHUB_TOKEN.
+pub type InitEnvName = String;
 
 /// Syncing init.yaml through the person's endue account.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

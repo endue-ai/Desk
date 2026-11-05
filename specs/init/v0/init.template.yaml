@@ -20,6 +20,16 @@ settings: {}
 #       - { permission: fs:write, paths: ["~/Documents/Notes/**"] }
 agents: {}
 
+# MCP servers whose tools agents may call, by name. Each one starts when you allow it to run its
+# command; env names variables to pass from Desk's environment (never write their values here).
+# Example:
+#   servers:
+#     github:
+#       command: npx
+#       args: ["-y", "@modelcontextprotocol/server-github"]
+#       env: [GITHUB_PERSONAL_ACCESS_TOKEN]
+mcp: {}
+
 # Keep this file the same on every desk you use, through your endue account.
 sync:
   enabled: false

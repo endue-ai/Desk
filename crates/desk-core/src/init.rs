@@ -10,7 +10,7 @@ use std::io;
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 
-use desk_bridge::{InitDocument, Permission};
+use desk_bridge::{InitDocument, InitMcpServer, Permission};
 use serde::de::{self, DeserializeSeed, Deserializer, IgnoredAny, MapAccess, SeqAccess, Visitor};
 use serde_json::{Value, json};
 
@@ -33,6 +33,8 @@ pub struct Init {
     pub settings: BTreeMap<String, Value>,
     /// `agents.<id>.allow` by agent id: what each agent may be granted (ADR 0072).
     pub agents: BTreeMap<String, Vec<Permission>>,
+    /// `mcp.servers` by name: the MCP servers to attach, each as the caller `mcp:<name>` (ADR 0098).
+    pub mcp: BTreeMap<String, InitMcpServer>,
     pub sync: SyncSetup,
 }
 
@@ -50,14 +52,8 @@ pub struct SyncSetup {
 
 impl Default for Init {
     fn default() -> Self {
-        Self::from(InitDocument {
-            version: None,
-            profile: None,
-            plugins: None,
-            settings: None,
-            agents: None,
-            sync: None,
-        })
+        let empty = serde_json::from_value::<InitDocument>(json!({}));
+        Self::from(empty.expect("{} is an init document"))
     }
 }
 
@@ -79,6 +75,7 @@ impl From<InitDocument> for Init {
                 .into_iter()
                 .map(|(id, agent)| (id, agent.allow.unwrap_or_default()))
                 .collect(),
+            mcp: document.mcp.and_then(|mcp| mcp.servers).unwrap_or_default(),
             sync: SyncSetup {
                 enabled: document.sync.and_then(|sync| sync.enabled).unwrap_or(false),
             },

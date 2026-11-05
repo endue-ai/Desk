@@ -1612,6 +1612,7 @@ export interface InitDocument {
   plugins?: InitPlugins;
   settings?: InitSettings;
   agents?: InitAgents;
+  mcp?: InitMcp;
   sync?: InitSync;
 }
 
@@ -1641,6 +1642,28 @@ export interface InitAgent {
   /** The permissions and scopes the agent may be granted. Within them the person is still asked at first use; outside them the agent is refused (outside-allowlist), whatever it holds. Empty or absent: no limit, every first use asks. */
   allow?: Permission[];
 }
+
+/** MCP servers the desk attaches as tools (ADR 0098). Each one runs as the caller mcp:<name>, starts only under a proc:spawn grant the person gave it, and offers its tools to agents as the commands mcp.<name>.<tool>. */
+export interface InitMcp {
+  /** The servers by name. Default none. Read at every start. */
+  servers?: Record<string, InitMcpServer>;
+}
+
+/** A server's name: the caller mcp:<name> and the middle of its command ids. Lowercase, for example github. */
+export type InitMcpServerName = string;
+
+/** One MCP server, started over stdio. */
+export interface InitMcpServer {
+  /** The program: a name looked up on PATH or an absolute path, without arguments. The proc:spawn grant names it. */
+  command: Command;
+  /** The program's arguments. Default none. */
+  args?: string[];
+  /** Names of environment variables to pass from the desk's own environment, never their values (this file may sync). The server gets these and the usual HOME, LOGNAME, PATH, SHELL, TERM and USER (the Windows equivalents there), nothing else. Default none. */
+  env?: InitEnvName[];
+}
+
+/** An environment variable's name, for example GITHUB_TOKEN. */
+export type InitEnvName = string;
 
 /** Syncing init.yaml through the person's endue account. */
 export interface InitSync {
