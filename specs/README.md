@@ -13,6 +13,7 @@ items, views and connectors of the integration layer.
 | `view/v0/` | Views, surfaces written as data: requires, params, a layout of containers and components, actions as commands |
 | `connector/v0/` | What a connector plugin declares, its status and sync results, and the MCP profile of a Desk-aware server |
 | `init/v0/` | `init.yaml`, a person's setup: schema, the template Desk writes, and the sync rules |
+| `memory/v0/` | Eris's memory on this computer: facts, episodes, search hits and the `facts.yaml` file (ADR 0095) |
 | `runtime/v0/` | Core settings UI, key-binding precedence and preference persistence (no new wire types) |
 | `wit/` | Wasm interfaces: the host interface logic plugins import (`desk:host`) and the world Wasm connectors build to (`desk:connector`) |
 
