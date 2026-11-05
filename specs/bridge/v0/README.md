@@ -468,8 +468,10 @@ default) a newer build downloads at once; otherwise the state stays `available` 
 build's signature and sha256 again, installs it and restarts the desk; it is `invalid_params` when
 nothing is staged. `check`, `download` and `apply` answer at once; progress and outcomes arrive as
 `update.changed` with the whole status. A failed step leaves `state: failed` with a `reason`, and a
-staged build stays staged. A build that does not update itself (no updater key, a development build, the
-browser stub) answers `unsupported`.
+staged build stays staged. **update.setChannel** `{ channel }` follows another channel: it sets the
+person's `desk.update.channel` (the runtime's own `update.channel`), which the next check reads, and
+answers the status on the new channel. A build that does not update itself (no updater key, a development
+build, the browser stub) answers `unsupported`.
 
 **theme.save**, **theme.import**, **theme.export** and **theme.remove** keep the person's own themes
 (ADR 0058). Each needs a `theme:manage` scope, which the desk grants to the runtime and the CLI only. A
