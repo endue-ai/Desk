@@ -330,7 +330,11 @@
         "deepLink": { "$ref": "#/$defs/DeepLink" },
         "body": { "$ref": "#/$defs/ItemBody" },
         "raw": { "$ref": "#/$defs/ItemRaw" },
-        "agent": { "$ref": "../../agent/v0/agent.schema.json#/$defs/AgentId" },
+        "agent": {
+          "description": "Whose run it is: an AgentId of specs/agent/v0 (eris, an agent id, or <plugin>/<id>).",
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:/-]{0,159}$"
+        },
         "state": { "$ref": "#/$defs/RunState" },
         "startedAt": { "$ref": "#/$defs/Timestamp" },
         "endedAt": { "$ref": "#/$defs/Timestamp" },

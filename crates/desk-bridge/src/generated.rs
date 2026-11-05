@@ -1943,7 +1943,8 @@ pub struct RunItem {
     pub body: Option<ItemBody>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub raw: Option<ItemRaw>,
-    pub agent: AgentId,
+    /// Whose run it is: an AgentId of specs/agent/v0 (eris, an agent id, or <plugin>/<id>).
+    pub agent: String,
     pub state: RunState,
     #[serde(rename = "startedAt")]
     pub started_at: Timestamp,

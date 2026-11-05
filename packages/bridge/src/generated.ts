@@ -1169,7 +1169,8 @@ export interface RunItem {
   deepLink?: DeepLink;
   body?: ItemBody;
   raw?: ItemRaw;
-  agent: AgentId;
+  /** Whose run it is: an AgentId of specs/agent/v0 (eris, an agent id, or <plugin>/<id>). */
+  agent: string;
   state: RunState;
   startedAt: Timestamp;
   endedAt?: Timestamp;
