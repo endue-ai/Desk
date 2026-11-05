@@ -107,13 +107,15 @@ impl Core {
         if is_library(&before) {
             // Plugins import a library's files at any time: it stays on, and nothing changes.
             if !params.enabled {
-                let theme = before
-                    .manifest
-                    .as_ref()
-                    .is_some_and(|manifest| manifest.kind == PluginKind::Theme);
-                let why = if theme {
+                let kind = before.manifest.as_ref().map(|manifest| manifest.kind);
+                let why = if kind == Some(PluginKind::Theme) {
                     format!(
                         "{} is a theme: it is never turned off; desk.theme.active picks the theme in force",
+                        before.id
+                    )
+                } else if kind == Some(PluginKind::DesignSystem) {
+                    format!(
+                        "{} is a design system: it is never turned off; desk.design.active picks the one in force",
                         before.id
                     )
                 } else {
@@ -199,9 +201,9 @@ impl Core {
     }
 }
 
-/// Whether the plugin is always on: a library (files other plugins import) or a theme.
+/// Whether the plugin is always on: a library (files other plugins import), a theme or a design system.
 fn is_library(info: &PluginInfo) -> bool {
-    info.manifest
-        .as_ref()
-        .is_some_and(|manifest| matches!(manifest.kind, PluginKind::Library | PluginKind::Theme))
+    info.manifest.as_ref().is_some_and(|manifest| {
+        manifest.kind == PluginKind::Library || crate::plugins::is_look(manifest.kind)
+    })
 }

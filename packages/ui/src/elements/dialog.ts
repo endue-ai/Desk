@@ -22,8 +22,8 @@ const css = `
 .backdrop {
   position: absolute;
   inset: 0;
-  background: var(--desk-background);
-  opacity: 0.72;
+  background: var(--desk-dialog-scrim);
+  backdrop-filter: var(--desk-dialog-scrim-filter);
 }
 .panel {
   position: relative;
@@ -31,16 +31,16 @@ const css = `
   width: min(480px, 100%);
   max-height: 100%;
   overflow: auto;
-  padding: 20px;
-  border: 1px solid var(--desk-border);
-  border-radius: 12px;
-  background: var(--desk-card);
+  padding: var(--desk-dialog-padding);
+  border: 1px solid var(--desk-dialog-border);
+  border-radius: var(--desk-dialog-radius);
+  background: var(--desk-dialog-bg);
   color: var(--desk-text);
-  box-shadow: 0 16px 48px var(--desk-background);
+  box-shadow: var(--desk-dialog-shadow);
 }
 :host(:focus-visible) .panel {
-  outline: 2px solid var(--desk-ring);
-  outline-offset: 2px;
+  outline: var(--desk-focus-width) solid var(--desk-ring);
+  outline-offset: var(--desk-focus-offset);
 }
 :host([hidden]) {
   display: none;

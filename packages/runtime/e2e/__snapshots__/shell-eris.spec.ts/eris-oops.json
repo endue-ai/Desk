@@ -1,7 +1,7 @@
 {
  "tag": "div",
  "class": "eris",
- "role": "img",
+ "role": "button",
  "aria-label": "Eris",
  "data-state": "oops",
  "box": [
@@ -40,7 +40,7 @@
     {
      "tag": "canvas",
      "class": "eris-mesh",
-     "data-mesh": "faces=528 back=248 dots=182 h=400534ce",
+     "data-mesh": "faces=528 back=248 dots=182 h=85adbb8b",
      "data-rings": "1.80 1.79 1.76 1.71 1.65 1.57 1.47 1.37 1.25",
      "data-voice": "idle",
      "style": {

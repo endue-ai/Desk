@@ -1,8 +1,9 @@
 # Desk design system
 
 Desk keeps its design system in this repository. The shell and sandboxed plugin pages use the same
-four layers: **tokens → base page styles → elements → plugin layout**. Themes replace values in the
-first layer; a plugin does not need separate light and dark CSS.
+layers: **theme tokens → component tokens → components → plugin layout**. A theme replaces values in
+the first layer; a design system decides the second, what each component is made of (ADR 0090). A
+plugin needs neither separate light and dark CSS nor its own button styles.
 
 ## Sources and loading
 
@@ -182,6 +183,52 @@ holds the literals a plugin (or `_runtime`, `_ui`, `_examples`) may still have; 
 reported until `node scripts/ui-lint.mjs --update` lowers the baseline (or deletes it at zero). `--list` names each
 literal. A plugin with no baseline keeps a `tests/theme.test.ts` that expects `lintPlugin("<folder>")` to
 be empty. The design behind it is `docs/ko/theme-requirements.md` (TP) and ADR 0056.
+
+## Design systems and components
+
+A design system is a plugin of kind `design-system` (`specs/plugin/v0/design-system.schema.json`,
+ADR 0090): for each component of the catalogue (`@endue-ai/ui/design`), named options, no values and no
+code. `desk.design.active` names the one in force (empty for the endue design system, today's look); a
+theme and a design system are chosen apart and go together in any combination.
+
+| Component | Options (the endue design system's first) |
+| --- | --- |
+| `button` | `shape` md, `size` sm, `weight` medium, `case` none, `padding` normal, `primary` solid / soft / outline, `secondary` outline / soft / ghost, `elevation` none |
+| `iconButton`, `field`, `check`, `tabs` | shape and size; `style` ghost / soft / outline, outline / filled / underline, boxed / pill / underline; `focus` ring / border; `accent` primary / text |
+| `card`, `row`, `menu`, `dialog`, `toast` | shape, padding or size, elevation; `style`, `selection` fill / soft / bar, `border`, `scrim` blur / dim |
+| `badge`, `tooltip`, `table`, `progress`, `focus` | shape, `style`, `case`; `rows` lines / striped / plain, `header`; `thickness`; focus `width` and `offset` |
+
+`shape` names a theme's radius step (or none or full), `size` a control height step, `elevation` a
+shadow step. `compileDesignSystem` turns a recipe into component tokens, `--desk-<component>-<part>`,
+whose values are references to theme tokens (`--desk-button-radius: var(--desk-radius-full)`) or bounded
+constants, with colour pairs only from those the theme gate checks: a design system cannot break
+contrast. The runtime lays them over the theme's tokens; `tokens.css` carries the endue defaults.
+
+Every control is a component, drawn one of three ways that read the same component tokens:
+
+| Where | Components |
+| --- | --- |
+| Plugin pages, elements | `<desk-button>` (variant `primary`, `danger` or `quiet`), `<desk-input>`, `<desk-list>`, `<desk-menu>`, `<desk-dialog>`, `<desk-toast>`, `<desk-table>`, `<desk-card>`, `<desk-progress>` |
+| Plugin pages, `base.css` kit | `.desk-btn` (+ `-primary`, `-danger`, `-quiet`), `.desk-icon-btn`, `.desk-field`, `.desk-check`, `.desk-tabs` / `.desk-tab`, `.desk-card`, `.desk-row`, `.desk-menu`, `.desk-dialog`, `.desk-scrim`, `.desk-badge`, `.desk-tooltip`, `.desk-table`, `.desk-progress` |
+| The shell (`shell/kit.css`) | `.btn` (+ `-primary`, `-outline`, `-danger`), `.icon-button`, `.input`, `.segmented` / `.segment`, `.menu-item`, `.badge`, `.tooltip`, `.dialog`, `.scrim` |
+
+Choose the semantic variant (the main action is primary, a destructive one danger, a toolbar's quiet);
+leave its look to the design system. `node scripts/ds-lint.mjs` (in `just check`) counts native
+`button`, `input`, `select` and `textarea` without a kit class per target, as a ratchet with baselines in
+`scripts/ds-lint-baseline/`; `ds: own` marks a control that draws a file's own content.
+
+The design system studio (`desk.design.studio`, or "Design systems" in the theme studio) lists the endue
+design system, the built-in ones (`plugins/design-*`), the person's own and installed ones as cards
+drawn with their own component tokens: focus previews on the whole desk, Enter applies, Escape restores.
+"Tune a copy" edits every component's options with the desk previewing them and saves `local.<name>`;
+Describe sends one sentence to the brain (`propose_design_system`); Import and Export move `.desk-design`
+files; the Market tab lists the design systems of the markets `desk.design.markets` names (by default
+`market/design-systems`), after `desk.theme.markets`. They travel
+through the theme pipeline: `theme.save`, `theme.import`, `theme.export`, `theme.remove` and
+`theme.market.*` take kind `design-system` (ADR 0091). Eris and other agents use the same commands as
+tools (ADR 0088): `desk.design.list`, `.get`, `.use`, `.default`, `.set` (`{ "components": { … } }`,
+which copies a design system that is not the person's), `.export` and `.import`; a sentence to Eris that
+names the desk's design system opens Describe with it.
 
 ## Page and feedback patterns
 

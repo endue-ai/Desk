@@ -220,13 +220,20 @@ fn folder(dir: &Path) -> String {
     absolute.to_string_lossy().replace('\\', "/")
 }
 
-/// Whether the plugin is always on: a library (files other plugins import) or a theme (values the
-/// desk.theme.active setting picks, not the enabled flag). Neither runs code, so neither is turned off.
+/// Whether the plugin is always on: a library (files other plugins import), a theme or a design system
+/// (values desk.theme.active and desk.design.active pick, not the enabled flag). None runs code, so none
+/// is turned off.
 fn library(entry: &Entry) -> bool {
     entry
         .manifest
         .as_ref()
-        .is_some_and(|manifest| matches!(manifest.kind, PluginKind::Library | PluginKind::Theme))
+        .is_some_and(|manifest| manifest.kind == PluginKind::Library || is_look(manifest.kind))
+}
+
+/// Whether a kind is one of the desk's looks (ADR 0091): a theme or a design system, both data the
+/// theme pipeline saves, bundles and installs.
+pub fn is_look(kind: PluginKind) -> bool {
+    matches!(kind, PluginKind::Theme | PluginKind::DesignSystem)
 }
 
 /// Whether a plugin's manifest asks to stay off until the desk needs it.

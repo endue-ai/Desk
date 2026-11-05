@@ -1,0 +1,5 @@
+{
+  "target": "DesignSystemPackage",
+  "description": "a design system that changes nothing is the endue design system",
+  "instance": { "components": {} }
+}

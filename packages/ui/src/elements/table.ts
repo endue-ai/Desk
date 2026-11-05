@@ -5,8 +5,8 @@ const css = `
 :host {
   display: block;
   box-sizing: border-box;
-  border: 1px solid var(--desk-border);
-  border-radius: var(--desk-radius-md);
+  border: 1px solid var(--desk-card-border);
+  border-radius: var(--desk-card-radius);
   background: var(--desk-card);
   color: var(--desk-text);
   font: inherit;
@@ -22,7 +22,7 @@ const css = `
   outline: none;
 }
 [role="grid"]:focus-visible {
-  outline: 2px solid var(--desk-ring);
+  outline: var(--desk-focus-width) solid var(--desk-ring);
   outline-offset: -2px;
 }
 [role="rowgroup"] {
@@ -34,14 +34,18 @@ const css = `
 [role="columnheader"],
 [role="gridcell"] {
   display: table-cell;
-  padding: 6px 10px;
-  border-bottom: 1px solid var(--desk-border);
+  padding: var(--desk-table-cell-padding-y) var(--desk-table-cell-padding-x);
+  border-bottom: 1px solid var(--desk-table-row-border);
   text-align: left;
   white-space: nowrap;
 }
 [role="columnheader"] {
+  background: var(--desk-table-header-bg);
   color: var(--desk-text-muted);
   font-weight: 600;
+}
+.body [role="row"]:nth-child(even) {
+  background: var(--desk-table-stripe-bg);
 }
 button {
   padding: 0;
@@ -52,18 +56,19 @@ button {
   cursor: pointer;
 }
 button:focus-visible {
-  outline: 2px solid var(--desk-ring);
+  outline: var(--desk-focus-width) solid var(--desk-ring);
   outline-offset: 2px;
 }
 .body [role="row"] {
   cursor: pointer;
 }
 .body [data-active] {
-  background: var(--desk-border);
-  color: var(--desk-text);
+  background: var(--desk-row-active-bg);
+  color: var(--desk-row-active-fg);
+  box-shadow: var(--desk-row-active-shadow);
 }
 .body [aria-selected="true"] {
-  color: var(--desk-primary-text);
+  color: var(--desk-row-selected-fg);
 }
 :host([density="compact"]) [role="columnheader"],
 :host([density="compact"]) [role="gridcell"] {

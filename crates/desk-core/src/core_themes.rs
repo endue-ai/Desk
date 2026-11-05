@@ -27,7 +27,8 @@ use crate::handler::{Answer, Core, error, io_error};
 use crate::manifest::THEME_ASSET_MAX;
 use crate::perm::Target;
 use crate::plugins::{
-    Landing, declared, fingerprint, folder_in, land_folder, local_id, plugin_dirs, theme_files,
+    Landing, declared, fingerprint, folder_in, is_look, land_folder, local_id, plugin_dirs,
+    theme_files,
 };
 
 /// The largest `.desk-theme` bundle (and market index), in bytes.
@@ -97,8 +98,10 @@ impl Core {
         self.check_theme(caller, params.scope)?;
         let manifest = params.manifest;
         let id = &manifest.id;
-        if manifest.kind != PluginKind::Theme || !id.starts_with("local.") {
-            return Err(invalid(format!("not a theme inside local.: {id}")));
+        if !is_look(manifest.kind) || !id.starts_with("local.") {
+            return Err(invalid(format!(
+                "not a theme or design system inside local.: {id}"
+            )));
         }
         let given = params.files.unwrap_or_default().into_iter();
         let mut files = decode(&manifest, given.map(|f| (f.path, f.base64)).collect())?;
@@ -137,8 +140,11 @@ impl Core {
             _ => return Err(invalid(SOURCES.into())),
         };
         let mut manifest = bundle.manifest;
-        if manifest.kind != PluginKind::Theme {
-            return Err(invalid(format!("{} is not a theme", manifest.id)));
+        if !is_look(manifest.kind) {
+            return Err(invalid(format!(
+                "{} is not a theme or design system",
+                manifest.id
+            )));
         }
         if !user_id(&manifest.id) {
             let name = manifest.name.as_deref().unwrap_or_default();
@@ -154,6 +160,7 @@ impl Core {
     pub(crate) fn theme_export(&self, caller: &str, params: ThemeExportParams) -> Answer {
         self.check_theme(caller, params.scope)?;
         let (id, manifest) = (&params.theme, self.installed_theme(&params.theme)?);
+        let ext = extension(manifest.kind);
         let mut files = BTreeMap::new();
         for path in theme_files(&manifest) {
             let bytes = self.plugin_file(id, &path).map_err(io_error)?;
@@ -169,7 +176,7 @@ impl Core {
             (Some(true), None) => return Ok(json!({ "bundle": bundle })),
             (Some(true), Some(_)) => return Err(invalid("inline takes no path".into())),
             (_, Some(path)) => self.resolve(&path)?,
-            (_, None) => free_name(&self.home().join("Downloads"), id),
+            (_, None) => free_name(&self.home().join("Downloads"), id, ext),
         };
         let mut text = serde_json::to_vec_pretty(&bundle).map_err(internal)?;
         text.push(b'\n');
@@ -240,12 +247,14 @@ impl Core {
             }
             let why = match declared(&folder) {
                 Some((id, _)) if known.iter().any(|(other, _)| *other == id) => "its id is taken",
-                Some((id, kind)) if kind == "theme" && user_id(&id) => {
+                Some((id, kind))
+                    if (kind == "theme" || kind == "design-system") && user_id(&id) =>
+                {
                     landing.insert(folder.clone(), fingerprint(&folder));
                     self.install_plugin(&folder, false);
                     continue;
                 }
-                _ => "not a theme with an id inside local. or market.",
+                _ => "not a theme or design system with an id inside local. or market.",
             };
             let message = format!("{} is not a user theme: {why}", folder.display());
             self.log(LogLevel::Warn, message, None);
@@ -284,8 +293,9 @@ impl Core {
         let info = self.plugins().into_iter().find(|plugin| plugin.id == id);
         let theme = info
             .and_then(|info| info.manifest)
-            .filter(|m| m.kind == PluginKind::Theme);
-        theme.ok_or_else(|| error(ErrorCode::NotFound, format!("no installed theme {id}")))
+            .filter(|m| is_look(m.kind));
+        let none = format!("no installed theme or design system {id}");
+        theme.ok_or_else(|| error(ErrorCode::NotFound, none))
     }
 
     pub(crate) fn check_theme(&self, caller: &str, scope: ThemeManagePermission) -> Failed<()> {
@@ -344,11 +354,20 @@ fn user_id(id: &str) -> bool {
     id.starts_with("local.") || id.starts_with("market.")
 }
 
-/// `<dir>/<id>.desk-theme`, or `<id>-2.desk-theme` and on when that is taken.
-fn free_name(dir: &Path, id: &str) -> PathBuf {
+/// The file extension a look of `kind` travels under: `.desk-design` for a design system.
+pub(crate) fn extension(kind: PluginKind) -> &'static str {
+    if kind == PluginKind::DesignSystem {
+        "desk-design"
+    } else {
+        "desk-theme"
+    }
+}
+
+/// `<dir>/<id>.<ext>`, or `<id>-2.<ext>` and on when that is taken.
+fn free_name(dir: &Path, id: &str, ext: &str) -> PathBuf {
     let name = |n: u32| match n {
-        1 => dir.join(format!("{id}.desk-theme")),
-        n => dir.join(format!("{id}-{n}.desk-theme")),
+        1 => dir.join(format!("{id}.{ext}")),
+        n => dir.join(format!("{id}-{n}.{ext}")),
     };
     let mut names = (1..).map(name);
     names.find(|path| !path.exists()).expect("a free name")

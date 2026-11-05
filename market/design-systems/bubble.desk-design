@@ -1,0 +1,82 @@
+{
+  "format": "desk-theme/1",
+  "manifest": {
+    "id": "market.bubble",
+    "name": "Bubble",
+    "version": "1.0.0",
+    "kind": "design-system",
+    "description": "Round and playful: pill buttons with a soft main action, filled pill fields, pill tabs and raised cards.",
+    "designSystem": {
+      "author": "Team endue",
+      "license": "CC0-1.0",
+      "tags": [
+        "round",
+        "playful",
+        "soft"
+      ],
+      "components": {
+        "button": {
+          "shape": "full",
+          "weight": "semibold",
+          "primary": "soft",
+          "secondary": "soft",
+          "padding": "roomy",
+          "size": "md"
+        },
+        "iconButton": {
+          "shape": "full",
+          "style": "soft"
+        },
+        "field": {
+          "style": "filled",
+          "shape": "full"
+        },
+        "check": {
+          "size": "lg"
+        },
+        "tabs": {
+          "style": "pill",
+          "shape": "full",
+          "size": "md"
+        },
+        "card": {
+          "style": "elevated",
+          "shape": "lg",
+          "padding": "roomy"
+        },
+        "row": {
+          "selection": "soft",
+          "shape": "full",
+          "size": "md"
+        },
+        "menu": {
+          "shape": "lg",
+          "border": "none",
+          "elevation": "lg"
+        },
+        "toast": {
+          "style": "soft",
+          "shape": "full"
+        },
+        "badge": {
+          "style": "solid"
+        },
+        "tooltip": {
+          "shape": "full"
+        },
+        "table": {
+          "rows": "striped",
+          "size": "md"
+        },
+        "progress": {
+          "thickness": "thick"
+        },
+        "focus": {
+          "width": "thick",
+          "offset": "far"
+        }
+      }
+    }
+  },
+  "files": {}
+}

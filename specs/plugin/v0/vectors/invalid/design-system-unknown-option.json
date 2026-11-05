@@ -1,0 +1,5 @@
+{
+  "target": "DesignSystemPackage",
+  "description": "an option the catalogue does not name is refused",
+  "instance": { "components": { "button": { "shape": "blob" } } }
+}

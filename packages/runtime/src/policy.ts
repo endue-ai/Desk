@@ -7,6 +7,7 @@
  */
 import type {
   CommandContribution,
+  DesignSystemPackage,
   DisplayRule,
   FileOpener,
   KeyBinding,
@@ -42,6 +43,14 @@ export interface PolicySet {
     revision: number;
     theme: ThemePackage;
   }>;
+  /** Installed design system plugins (always on): desk.design.active picks one (ADR 0090). */
+  installedDesigns: Array<{
+    id: string;
+    name: string;
+    description?: string;
+    revision: number;
+    designSystem: DesignSystemPackage;
+  }>;
   /** Contributions dropped because they reach outside their plugin's id, for people. */
   ignored: string[];
 }
@@ -58,6 +67,7 @@ export function emptyPolicy(): PolicySet {
     profiles: [],
     paletteProviders: [],
     installedThemes: [],
+    installedDesigns: [],
     ignored: [],
   };
 }
@@ -119,15 +129,18 @@ export function collect(plugins: readonly PluginInfo[]): PolicySet {
   }
   set.profiles = [...profiles.values()];
   for (const plugin of ordered(plugins, () => true)) {
-    const theme = plugin.manifest?.kind === "theme" ? plugin.manifest.theme : undefined;
-    if (!theme) continue;
-    set.installedThemes.push({
+    const manifest = plugin.manifest;
+    const named = {
       id: plugin.id,
-      name: plugin.manifest?.name ?? plugin.id,
-      ...(plugin.manifest?.description ? { description: plugin.manifest.description } : {}),
+      name: manifest?.name ?? plugin.id,
+      ...(manifest?.description ? { description: manifest.description } : {}),
       revision: plugin.revision,
-      theme,
-    });
+    };
+    if (manifest?.kind === "theme" && manifest.theme) {
+      set.installedThemes.push({ ...named, theme: manifest.theme });
+    } else if (manifest?.kind === "design-system" && manifest.designSystem) {
+      set.installedDesigns.push({ ...named, designSystem: manifest.designSystem });
+    }
   }
   return set;
 }

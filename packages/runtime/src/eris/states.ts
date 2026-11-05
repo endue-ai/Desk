@@ -1,3 +1,4 @@
+import { clamp01, cubicBezier } from "../ease";
 import { type Vec3, VIEW_IDLE, VIEW_THINKING } from "./mesh";
 
 export const ERIS_STATES = ["idle", "listening", "thinking", "done", "heads-up", "oops"] as const;
@@ -70,6 +71,93 @@ export const LOOKS: Record<ErisState, Look> = {
     spin: 0,
   },
 };
+
+/** Moving from one state's look to the next takes this long; reduced motion jumps. */
+export const LOOK_MS = 420;
+const glide = cubicBezier(0.2, 0.7, 0.2, 1);
+const mix = (a: number, b: number, t: number) => a + (b - a) * t;
+
+/** A look between `a` and `b` (t in 0..1): numbers glide, switches flip halfway. */
+export function mixLook(a: Look, b: Look, t: number): Look {
+  if (t <= 0) return a;
+  if (t >= 1) return b;
+  const flip = t < 0.5 ? a : b;
+  return {
+    view: [
+      mix(a.view[0], b.view[0], t),
+      mix(a.view[1], b.view[1], t),
+      mix(a.view[2], b.view[2], t),
+    ],
+    goldToward: flip.goldToward,
+    brightness: mix(a.brightness, b.brightness, t),
+    push: mix(a.push, b.push, t),
+    goldPop: mix(a.goldPop, b.goldPop, t),
+    jitterPx: mix(a.jitterPx, b.jitterPx, t),
+    lines: flip.lines,
+    gold: flip.gold,
+    halo: flip.halo,
+    core: {
+      scale: mix(a.core.scale, b.core.scale, t),
+      opacity: mix(a.core.opacity, b.core.opacity, t),
+      breathe: flip.core.breathe,
+    },
+    spin: mix(a.spin, b.spin, t),
+    dysnomia: {
+      x: mix(a.dysnomia.x, b.dysnomia.x, t),
+      y: mix(a.dysnomia.y, b.dysnomia.y, t),
+      tail: flip.dysnomia.tail,
+      spark: flip.dysnomia.spark,
+    },
+  };
+}
+
+export interface LookFrame {
+  look: Look;
+  /** The state whose gold face shows: the old one for the first half of a change. */
+  goldOf: ErisState;
+  /** How much of the core's breath shows (0..1); glides like the rest. */
+  breath: number;
+}
+
+/**
+ * Eris's look over time: a new state glides in from wherever she is, even halfway through the last
+ * change, so listening, thinking and speaking flow into each other instead of cutting.
+ */
+export class LookTween {
+  #from: Look;
+  #fromBreath: number;
+  #fromGold: ErisState;
+  #to: ErisState;
+  #since = Number.NEGATIVE_INFINITY;
+  #last: LookFrame;
+
+  constructor(state: ErisState) {
+    const look = LOOKS[state];
+    this.#from = look;
+    this.#fromBreath = look.core.breathe ? 1 : 0;
+    this.#fromGold = state;
+    this.#to = state;
+    this.#last = { look, goldOf: state, breath: this.#fromBreath };
+  }
+
+  at(state: ErisState, now: number, reduced: boolean): LookFrame {
+    if (state !== this.#to) {
+      this.#from = this.#last.look;
+      this.#fromBreath = this.#last.breath;
+      this.#fromGold = this.#last.goldOf;
+      this.#to = state;
+      this.#since = now;
+    }
+    const to = LOOKS[state];
+    const t = reduced ? 1 : glide(clamp01((now - this.#since) / LOOK_MS));
+    this.#last = {
+      look: mixLook(this.#from, to, t),
+      goldOf: t < 0.5 ? this.#fromGold : state,
+      breath: mix(this.#fromBreath, to.core.breathe ? 1 : 0, t),
+    };
+    return this.#last;
+  }
+}
 
 /** Core breath: opacity between .55 and 1 on a 5 s cycle. */
 export function coreBreath(t: number): number {

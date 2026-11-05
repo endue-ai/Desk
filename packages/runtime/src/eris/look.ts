@@ -47,6 +47,31 @@ export function isLookRequest(text: string): boolean {
   return english.length + korean.length > 0;
 }
 
+/** Words that name the desk's design system (ADR 0090): what its components are made of. */
+const DESIGN = /\bdesign[- ]?systems?\b|디자인\s*시스템/i;
+
+/**
+ * Whether `text` asks to change the desk's design system (DE-03): it names the design system and asks
+ * for a change, about the desk itself. A design system for something the person builds ("my app's
+ * design system", "우리 서비스 디자인 시스템") stays in Eris's conversation, as a look does.
+ */
+export function isDesignRequest(text: string): boolean {
+  if (!DESIGN.test(text) || !ASK.test(text) || THEIRS.test(text)) return false;
+  if (/앱|페이지|사이트|서비스|프로젝트|레포/.test(text)) return false;
+  // Components are what a design system shapes; the rest names something the person builds.
+  const words = (text.toLowerCase().match(/[a-z][a-z0-9.]*/g) ?? []).map((w) =>
+    w.replace(/\.+$/, ""),
+  );
+  const shaped = (w: string) => /^(component|button)s?$/.test(w);
+  return !words.some((w) => !shaped(w) && (BUILDING.has(w) || BUILDING.has(w.replace(/s$/, ""))));
+}
+
+/** What Eris says as she opens the design system studio on it. */
+export const DESIGN_REPLY = {
+  ko: "디자인 시스템으로 만들어 볼게요.",
+  en: "Let me make it a design system.",
+} as const;
+
 /** The event the studio raises (bubbling, `detail.text`) to say a sentence to Eris after all. */
 export const SAY_TO_ERIS = "desk:say-to-eris";
 

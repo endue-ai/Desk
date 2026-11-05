@@ -29,6 +29,11 @@ export interface FrameModel {
   dots: { x: number; y: number; alpha: number }[];
   /** Where the gold face sat before heads-up pushed it out. */
   goldOutline?: [number, number, number, number, number, number];
+  /**
+   * The opaque disc under the mesh: her body hides whatever UI sits behind it. It shrinks with the
+   * rim when the user's voice pulls the rim in, so no band of ground shows outside her.
+   */
+  ground: { x: number; y: number; r: number };
 }
 
 export interface FrameInput {
@@ -95,7 +100,9 @@ export function frameModel(input: FrameInput): FrameModel {
       const [x, y] = project(position(mesh, v, spin), [0, 0, 0], [0, 0]);
       return { x, y, alpha: Math.min(1, 0.8 * v.s * look.brightness) };
     });
-  return goldOutline ? { tris, dots, goldOutline } : { tris, dots };
+  const rim = Math.min(0, input.disp[8] ?? 0);
+  const ground = { x: g.cx, y: g.cy, r: g.R * (1 + rim) };
+  return goldOutline ? { tris, dots, goldOutline, ground } : { tris, dots, ground };
 }
 
 /** Colours read from the theme tokens (--desk-eris-*) once per mount and again per theme. */
@@ -110,6 +117,8 @@ export interface Palette {
   moonDark: string;
   moonLit: string;
   shade: string;
+  /** The desk's background: the opaque ground her translucent faces are blended over. */
+  ground: string;
 }
 
 export function paint(
@@ -131,6 +140,30 @@ export function paint(
     ctx.lineTo(p[4], p[5]);
     ctx.closePath();
   };
+  // Her body is opaque: the ground under the disc and under every face (faces pushed past the rim
+  // included), then the faces' own translucent frost on top. The UI behind her never shows through.
+  if (palette.ground) {
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = palette.ground;
+    ctx.beginPath();
+    ctx.arc(model.ground.x, model.ground.y, Math.max(0, model.ground.r), 0, 2 * Math.PI);
+    // One path, one fill: every face wound the way the arc runs, so nonzero filling unions them
+    // with no seams, at the cost of a single draw call per frame.
+    for (const t of model.tris) {
+      const [x0, y0, x1, y1, x2, y2] = t.pts;
+      const turn = (x1 - x0) * (y2 - y0) - (y1 - y0) * (x2 - x0);
+      ctx.moveTo(x0, y0);
+      if (turn >= 0) {
+        ctx.lineTo(x1, y1);
+        ctx.lineTo(x2, y2);
+      } else {
+        ctx.lineTo(x2, y2);
+        ctx.lineTo(x1, y1);
+      }
+      ctx.closePath();
+    }
+    ctx.fill();
+  }
   for (const t of model.tris) {
     path(t.pts);
     if (t.kind === "gold") {

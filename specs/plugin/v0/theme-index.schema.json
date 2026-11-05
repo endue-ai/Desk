@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://endue.ai/specs/plugin/v0/theme-index.schema.json",
   "title": "theme index v0",
-  "description": "A theme market's index (ADR 0060, docs/ko/theme-requirements.md TC-05): the themes one market offers, each with what its gallery card shows and where its .desk-theme bundle is, with the bundle's sha256 and size. The desk reads the indexes the setting desk.theme.markets lists; the first market lives in this repository (market/themes/index.json).",
+  "description": "A theme market's index (ADR 0060, docs/ko/theme-requirements.md TC-05): the themes (and design systems, ADR 0091) one market offers, each with what its gallery card shows and where its .desk-theme bundle is, with the bundle's sha256 and size. The desk reads the indexes the setting desk.theme.markets lists; the first market lives in this repository (market/themes/index.json).",
   "$defs": {
     "ThemeIndex": {
       "description": "One market's index.",
@@ -34,6 +34,10 @@
         },
         "name": { "type": "string", "minLength": 1, "maxLength": 80 },
         "version": { "$ref": "plugin.schema.json#/$defs/Version" },
+        "kind": {
+          "description": "What the bundle holds; the bundle's manifest has the same kind. Default theme.",
+          "$ref": "#/$defs/ThemeIndexKind"
+        },
         "description": { "type": "string", "minLength": 1, "maxLength": 300 },
         "author": {
           "description": "Who made it.",
@@ -87,11 +91,16 @@
       ],
       "additionalProperties": false
     },
+    "ThemeIndexKind": {
+      "description": "What a market entry's bundle holds: a theme (a .desk-theme) or a design system (a .desk-design, ADR 0091).",
+      "type": "string",
+      "enum": ["theme", "design-system"]
+    },
     "ThemeIndexUrl": {
-      "description": "Where the theme's .desk-theme is: an https URL, or a path relative to the index's own URL without .. segments (paper-dusk.desk-theme), so a market moves by moving its folder.",
+      "description": "Where the theme's .desk-theme (or the design system's .desk-design) is: an https URL, or a path relative to the index's own URL without .. segments (paper-dusk.desk-theme), so a market moves by moving its folder.",
       "type": "string",
       "maxLength": 2048,
-      "pattern": "^(https://[^\\s]+|(?!/)(?!.*(^|/)\\.\\.(/|$))[A-Za-z0-9._/-]+\\.desk-theme)$"
+      "pattern": "^(https://[^\\s]+|(?!/)(?!.*(^|/)\\.\\.(/|$))[A-Za-z0-9._/-]+\\.desk-(theme|design))$"
     }
   }
 }
