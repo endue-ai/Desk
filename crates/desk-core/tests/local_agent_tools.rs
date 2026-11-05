@@ -48,7 +48,11 @@ fn core(tag: &str) -> (Core, Receiver<Delivery>) {
     core.install_plugin(&plugin_dir(), true);
     register(&core);
     grant(&core, "desk", manage());
-    grant(&core, ERIS, json!({ "permission": "cmd:invoke", "ids": [ASK, WORK] }));
+    grant(
+        &core,
+        ERIS,
+        json!({ "permission": "cmd:invoke", "ids": [ASK, WORK] }),
+    );
     let deliveries = core.events().subscribe_addressed();
     (core, deliveries)
 }
@@ -115,7 +119,10 @@ fn eris_waits_for_approval_before_a_local_agent_works() {
     let (_, refused) = held(&core, &deliveries, "deny", work);
     assert!(refused.is_err(), "a refused call fails");
     std::thread::sleep(Duration::from_millis(50));
-    assert!(named(&deliveries, "cmd.invoked").is_empty(), "the plugin never hears it");
+    assert!(
+        named(&deliveries, "cmd.invoked").is_empty(),
+        "the plugin never hears it"
+    );
 }
 
 #[test]
@@ -162,7 +169,10 @@ fn brain_echo_asks_the_local_agent_a_line_names() {
             }
         }
     }
-    let tool = steps.iter().find(|s| s["kind"] == "tool").expect("a hand-off");
+    let tool = steps
+        .iter()
+        .find(|s| s["kind"] == "tool")
+        .expect("a hand-off");
     assert_eq!(tool["tool"]["command"], ASK);
     assert!(steps.iter().any(|s| s["kind"] == "tool-result"));
     let text: String = steps.iter().filter_map(|s| s["text"].as_str()).collect();
