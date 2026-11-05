@@ -2,6 +2,7 @@
 // 0032). Reads carry a data:read scope, the narrowest the query allows unless the plugin passes one;
 // views carry view:manage. The core checks both against the plugin's own grants.
 import type {
+  AnyView,
   BridgeEvent,
   BridgeMethod,
   DataReadPermission,
@@ -12,7 +13,6 @@ import type {
   ItemSource,
   ParamsOf,
   ResultOf,
-  View,
   ViewManagePermission,
   ViewSummary,
 } from "@endue-ai/bridge";
@@ -38,12 +38,15 @@ export interface PluginData {
   ): Promise<() => void>;
 }
 
-/** The person's views (view.*); every call needs a `view:manage` grant. */
+/**
+ * The person's views (view.*), item views and universal views alike (a universal view has a `type`
+ * and a `source`, ADR 0102); every call needs a `view:manage` grant.
+ */
 export interface PluginViews {
   list(): Promise<ViewSummary[]>;
-  get(id: string): Promise<View>;
+  get(id: string): Promise<AnyView>;
   /** Write a view, new or replacing the one with its id; an invalid one is invalid_params. */
-  save(view: View): Promise<void>;
+  save(view: AnyView): Promise<void>;
   remove(id: string): Promise<void>;
 }
 

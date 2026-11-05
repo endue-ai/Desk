@@ -40,9 +40,9 @@
           "else": { "properties": { "plugin": false } }
         },
         {
-          "if": { "required": ["type"] },
+          "if": { "properties": { "type": true }, "required": ["type"] },
           "then": { "properties": { "version": false } },
-          "else": { "required": ["version"] }
+          "else": { "properties": { "version": true }, "required": ["version"] }
         }
       ]
     },

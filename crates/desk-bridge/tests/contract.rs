@@ -340,7 +340,8 @@ fn typed_view_results_say_where_each_view_came_from() {
     let validator = validators(&docs);
     let summary = |id: &str, source, plugin: Option<&str>| ViewSummary {
         id: id.to_owned(),
-        version: "0.1.0".to_owned(),
+        version: Some("0.1.0".to_owned()),
+        r#type: None,
         title: "Today".to_owned(),
         description: None,
         source,
