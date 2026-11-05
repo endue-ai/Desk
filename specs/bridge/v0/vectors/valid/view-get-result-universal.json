@@ -1,0 +1,15 @@
+{
+  "target": "ViewGetResult",
+  "description": "view.get answered with the person's universal view: a timeline of a notes file",
+  "instance": {
+    "view": {
+      "id": "my.notes-timeline",
+      "title": "Notes timeline",
+      "type": "timeline",
+      "types": ["timeline", "list", "calendar"],
+      "source": { "file": "~/notes/log.yaml" },
+      "map": { "start": "date", "title": "headline" }
+    },
+    "source": "file"
+  }
+}

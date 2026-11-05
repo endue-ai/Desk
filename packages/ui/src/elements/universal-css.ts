@@ -11,6 +11,10 @@ export const universalCss = `
 :host([hidden]) {
   display: none;
 }
+/* A part laid out as flex still hides: the composer without send, the switcher of one type. */
+[hidden] {
+  display: none !important;
+}
 .view {
   display: flex;
   flex-direction: column;
