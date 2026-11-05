@@ -318,7 +318,7 @@
       "additionalProperties": false
     },
     "BrainTurnData": {
-      "description": "Payload of brain.turn. delta carries answer text; error and offline carry a sentence for people. A brain.ask turn's completed carries structured when the brain called the tool.",
+      "description": "Payload of brain.turn. delta carries answer text; error and offline carry a sentence for people. A brain.ask turn's completed carries structured when the brain called the tool. tool and tool-result carry tool: a brain.say turn's hand-off to a plugin command and its return (ADR 0089).",
       "type": "object",
       "properties": {
         "turnId": { "type": "string", "minLength": 1 },
@@ -327,15 +327,39 @@
         "structured": {
           "description": "brain.ask only, on completed: the arguments the brain called the tool with, checked against its schema. Absent when the brain answered in text instead.",
           "type": "object"
-        }
+        },
+        "tool": { "$ref": "#/$defs/BrainTurnTool" }
       },
       "required": ["turnId", "kind"],
       "additionalProperties": false
     },
     "BrainTurnKind": {
-      "description": "started, delta (more text), completed; error (the turn failed, for example read-only after a takeover); offline (the brain is unreachable, the turn waits) and online (it resumed).",
+      "description": "started, delta (more text), completed; error (the turn failed, for example read-only after a takeover); offline (the brain is unreachable, the turn waits) and online (it resumed); tool (Eris hands work to a plugin command: the core runs the brain's call) and tool-result (the command answered and its answer went back to the brain).",
       "type": "string",
-      "enum": ["started", "delta", "completed", "error", "offline", "online"]
+      "enum": ["started", "delta", "completed", "error", "offline", "online", "tool", "tool-result"]
+    },
+    "BrainTurnTool": {
+      "description": "tool and tool-result only: the command a brain.say turn's tool call runs, so the desk can show Eris going to its plugin and coming back (ADR 0089).",
+      "type": "object",
+      "properties": {
+        "callId": {
+          "description": "The brain's tool call id; a tool-result names the call it ends.",
+          "type": "string",
+          "minLength": 1
+        },
+        "command": { "$ref": "../../plugin/v0/contributes.schema.json#/$defs/CommandId" },
+        "provider": {
+          "description": "Who provides the command: a plugin id, or desk for the runtime's own.",
+          "$ref": "bridge.schema.json#/$defs/CallerId"
+        },
+        "title": { "description": "The command's title, for people.", "type": "string" },
+        "ok": {
+          "description": "tool-result only: whether the command answered without an error.",
+          "type": "boolean"
+        }
+      },
+      "required": ["callId", "command", "provider"],
+      "additionalProperties": false
     }
   }
 }

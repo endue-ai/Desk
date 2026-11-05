@@ -10,6 +10,22 @@ const copy = {
   local: ["이 기기에서 사용 중", "On this device"],
   profile: ["프로필", "Profile"],
   space: ["스페이스", "Space"],
+  endueId: ["endue ID", "endue ID"],
+  signedOut: ["로그인 안 됨", "Not signed in"],
+  signingIn: ["브라우저에서 기다리는 중", "Waiting for the browser"],
+  signedIn: ["로그인됨", "Signed in"],
+  withEndue: ["endue ID 로 로그인됨", "Signed in with endue ID"],
+  signIn: ["endue ID 로 로그인", "Sign in with endue ID"],
+  signOut: ["로그아웃", "Sign out"],
+  enterCode: [
+    "{page} 에서 {code} 를 입력하세요. 페이지를 열어 두었어요.",
+    "Enter {code} at {page}. I opened the page for you.",
+  ],
+  signedInLine: [
+    "로그인됐어요. 이제 endue 와 함께 생각할게요.",
+    "You're signed in. I'll think with endue from now on.",
+  ],
+  signInFailed: ["로그인을 시작하지 못했어요.", "Signing in did not start."],
 } as const;
 
 export const accountText = (lang: Lang, key: keyof typeof copy): string =>

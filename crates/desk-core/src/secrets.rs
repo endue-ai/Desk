@@ -92,7 +92,7 @@ fn key(connector: &str, instance: &str) -> String {
 }
 
 /// Write `bytes` to a temp file only this user can read, then rename it over `path`.
-fn write_private(path: &Path, bytes: &[u8]) -> io::Result<()> {
+pub(crate) fn write_private(path: &Path, bytes: &[u8]) -> io::Result<()> {
     let parent = path.parent().unwrap_or(Path::new("."));
     fs::create_dir_all(parent)?;
     let name = path.file_name().unwrap_or_default().to_string_lossy();

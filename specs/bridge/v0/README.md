@@ -3,7 +3,7 @@
 The calls the web runtime (and every plugin through it) makes into the Rust core. JSON Schema 2020-12,
 one file per namespace: `bridge.schema.json` (envelope, errors, shared types), `fs`, `proc`, `net`, `plugins`,
 `store`, `search`, `init`, `brain`, `audio`, `ui`, `perm`, `cmd`, `settings`, `log`, `events`, `data`, `connector`,
-`view`, `catalog`, `shell`, `update` and `theme`. Items, views and connectors are the types of `specs/item`,
+`view`, `catalog`, `shell`, `update`, `theme` and `account`. Items, views and connectors are the types of `specs/item`,
 `specs/view` and `specs/connector` (ADR 0032). v0 may break on any minor release (ADR 0004).
 
 ## Envelope
@@ -61,7 +61,7 @@ the undos and redos it ran, and
 `settings.changed` for its own keys and `data.changed` for its data subscriptions. `plugin.changed` goes to
 holders of `plugin:manage`, `perm.prompt`, `perm.approval` and `perm.approval.done` to holders of `perm:manage`, `connector.changed` to holders of
 `connector:manage`, `view.changed` to holders of `view:manage`, `update.changed` to holders of
-`update:manage`, and `ui.notified`, `ui.surface.opened` and `ui.surface.closed` to the runtime, which
+`update:manage`, `account.changed` to holders of `account:manage`, and `ui.notified`, `ui.surface.opened` and `ui.surface.closed` to the runtime, which
 shows the notification or mounts and unmounts the surface.
 Everything else about other callers arrives only through `events.subscribe`.
 
@@ -235,6 +235,9 @@ the store, it needs no scope: callers see only their own settings.
 core keeps retrying, and `online` marks the reconnection before the answer continues. `error` ends a
 turn that failed, for example on a desk that became read-only because another desk took the
 session's lease. It needs `brain:converse`; each turn's events go only to the caller that said it.
+Eris's loop (ADR 0089): a call of one of the desk's tools that names no agent runs as `agent:eris`,
+up to 12 calls a turn, and `tool` and `tool-result` (with `tool: { callId, command, provider, title,
+ok }`) mark each hand-off to a command and its return.
 
 **brain.ask** asks the brain one question and returns a local `turnId` at once; the answer is the
 arguments the brain calls the caller's `tool` with (ADR 0059). `prompt` is everything the brain gets: the
@@ -443,6 +446,12 @@ only shown, never opened or run, and a missing one is `not_found`. It needs a `s
 `schemes` hold the URL's scheme, or whose `paths` cover the path; a target the scope does not cover is
 `permission_denied` at once. Without a grant that covers the scope the core asks the person first (see
 Deny by default): a refusal is `permission_denied`, a caller that unloads first `cancelled`.
+
+**account.status**, **account.signIn** and **account.signOut** are the desk's endue ID (ADR 0089).
+Each needs `account:manage`, which the desk grants to the runtime only, and answers `AccountStatus`.
+`account.signIn` starts the device authorization grant (RFC 8628), opens the page where the code is
+entered and answers `signing-in` with `signIn`; `account.changed` reports `signed-in`, or `signed-out`
+with a `problem`. The core gives the token to the brain as its bearer token; it never crosses the bridge.
 
 **update.status**, **update.check**, **update.download** and **update.apply** drive the desk's own
 updates (ADR 0054). Each needs an `update:manage` scope, which the desk grants to the runtime and the

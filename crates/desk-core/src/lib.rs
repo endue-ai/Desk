@@ -5,6 +5,8 @@
 //! own themes (ADR 0058) and the theme markets (ADR 0060).
 pub const NAME: &str = env!("CARGO_PKG_NAME");
 
+pub mod account;
+mod account_client;
 mod agent_tools;
 mod agents;
 mod approval_action;
@@ -13,6 +15,7 @@ mod approvals;
 mod calendar_items;
 mod conversation;
 mod conversation_sink;
+mod core_account;
 mod core_ask;
 mod core_brain;
 mod core_builtins;
@@ -77,7 +80,10 @@ mod views_watch;
 mod watch;
 
 pub use agents::agent_caller;
-pub use conversation::{BrainMode, BrainOptions, FAILED_LINE, OFFLINE_LINE, READ_ONLY_LINE};
+pub use conversation::{
+    BrainMode, BrainOptions, FAILED_LINE, MAX_STEPS, OFFLINE_LINE, READ_ONLY_LINE, SIGN_IN_LINE,
+    TOO_MANY_LINE,
+};
 pub use core_fs_url::FileUrl;
 pub use core_perm::{Prompter, RefuseAll};
 pub use core_state::{QUARANTINED_KEY, SafeMode, SafeReason};

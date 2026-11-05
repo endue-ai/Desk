@@ -4,6 +4,7 @@ import { h, render } from "../shell/dom";
 import { icon } from "../shell/icons";
 import { initial } from "../shell/state";
 import { accountText } from "./account-copy";
+import { mountEndueId } from "./endue-id";
 
 export function mountAccountBar(root: HTMLElement, ctx: ShellCtx): () => void {
   const bar = h("nav", {
@@ -18,6 +19,8 @@ export function mountAccountBar(root: HTMLElement, ctx: ShellCtx): () => void {
   let generation = 0;
   const tr = (key: Parameters<typeof accountText>[1]) => accountText(ctx.store.get().lang, key);
   const run = (command: string) => void ctx.runtime.commands.run(command).catch(() => {});
+  // The endue ID the brain thinks with (ADR 0089), under the person's name.
+  const endue = mountEndueId(ctx, () => draw());
   const readUser = async () => {
     const current = ++generation;
     try {
@@ -133,8 +136,9 @@ export function mountAccountBar(root: HTMLElement, ctx: ShellCtx): () => void {
                     { class: "account-avatar", "aria-hidden": "true" },
                     name ? initial(name) : icon("user", 18),
                   ),
-                  h("div", {}, h("strong", {}, userName), h("small", {}, tr("local"))),
+                  h("div", {}, h("strong", {}, userName), h("small", {}, endue.where())),
                 ),
+                ...endue.rows(),
                 profile
                   ? h(
                       "div",
@@ -183,6 +187,7 @@ export function mountAccountBar(root: HTMLElement, ctx: ShellCtx): () => void {
   return () => {
     generation++;
     off();
+    endue.dispose();
     for (const undo of commands) undo();
     bar.remove();
     slot.remove();

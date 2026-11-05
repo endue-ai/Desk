@@ -1,12 +1,14 @@
 /**
  * Bottom centre: the line you talk on. A 2 px line with a hint until focused, then a 48 px input that
- * doubles as the command palette. A sent line rises into the middle of the screen and is absorbed. A
+ * doubles as the command palette. A sent line flies into Eris wherever she floats and is absorbed;
+ * her hand-offs to plugins while she answers are drawn as errands (eris/errand.ts, ADR 0089). A
  * request to change the look goes to the theme studio's Describe tab instead (eris/look.ts, TS-07),
  * and one to make something to desk.propose (ADR 0073); propose/route.ts decides which.
  */
 
 import type { CommandInfo } from "../commands";
 import { clamp01, cubicBezier, easeOutExpo } from "../ease";
+import { mountErrands } from "../eris/errand";
 import { DESIGN_REPLY, LOOK_REPLY, SAY_TO_ERIS } from "../eris/look";
 import { routeOf } from "../propose/route";
 import { match } from "./commands";
@@ -47,6 +49,9 @@ export function mountComposer(root: HTMLElement, ctx: ShellCtx): () => void {
   let height = 2;
   let animation = 0;
   let found: CommandInfo[] = [];
+  // Errands fly over the whole desk, so they live on the shell, as the sent line does.
+  const shell = () => (root.closest(".shell") as HTMLElement | null) ?? document.body;
+  const errands = mountErrands(shell, ctx);
 
   const fold = (open: boolean) => {
     const id = ++animation;
@@ -124,22 +129,26 @@ export function mountComposer(root: HTMLElement, ctx: ShellCtx): () => void {
     close();
   };
 
-  /** The sent line floats up from the input and dissolves into the centre: soul text in reverse. */
+  /** The sent line floats from the input into Eris and dissolves there: soul text in reverse. */
   const send = async (text: string) => {
-    // The line rises over the whole desk, so it lives on the shell, not inside the bottom edge.
-    const host = (root.closest(".shell") as HTMLElement | null) ?? document.body;
+    // The line crosses the whole desk, so it lives on the shell, not inside the bottom edge.
+    const host = shell();
     const frame = host.getBoundingClientRect();
     const rect = field.getBoundingClientRect();
     const ghost = h("div", { class: "absorb", "aria-hidden": "true" }, text);
+    const x = rect.left + rect.width / 2 - frame.left;
     const y = rect.top + rect.height / 2 - frame.top;
-    ghost.style.left = `${rect.left + rect.width / 2 - frame.left}px`;
+    ghost.style.left = `${x}px`;
     ghost.style.top = `${y}px`;
     host.append(ghost);
-    const rise = frame.height / 2 - y;
+    // Into her body where she floats now; without her, into the middle of the screen.
+    const body = host.querySelector(".eris-body")?.getBoundingClientRect();
+    const dx = body ? body.left + body.width / 2 - frame.left - x : 0;
+    const dy = body ? body.top + body.height / 2 - frame.top - y : frame.height / 2 - y;
     void ctx.ticker
       .animate(ctx.reduced() ? 200 : ABSORB_MS, ctx.reduced() ? (t) => t : absorbEase, (t) => {
         const move = ctx.reduced() ? 0 : t;
-        ghost.style.transform = `translate(-50%, calc(-50% + ${(rise * move).toFixed(1)}px)) scale(${(1 - 0.6 * move).toFixed(3)})`;
+        ghost.style.transform = `translate(calc(-50% + ${(dx * move).toFixed(1)}px), calc(-50% + ${(dy * move).toFixed(1)}px)) scale(${(1 - 0.6 * move).toFixed(3)})`;
         ghost.style.filter = `blur(${(10 * move).toFixed(2)}px)`;
         ghost.style.opacity = (1 - t).toFixed(3);
       })
@@ -164,17 +173,21 @@ export function mountComposer(root: HTMLElement, ctx: ShellCtx): () => void {
     await converse(text);
   };
 
-  /** Eris's conversation: the line goes to the brain and she says its answer. */
+  /**
+   * Eris's conversation: the line goes to the brain, her agentic loop runs plugin commands on the
+   * desk (each one an errand on screen), and she says the answer once every errand is back.
+   */
   const converse = async (text: string) => {
     ctx.eris.setState("thinking");
     let reply: Awaited<ReturnType<typeof ctx.bridge.brain.say>>;
     try {
-      reply = await ctx.bridge.brain.say(text);
+      reply = await ctx.bridge.brain.say(text, (step) => errands.step(step));
     } catch {
       ctx.eris.setState("idle");
       ctx.runtime.notify({ caller: "desk", title: ctx.tr("brainFailed"), level: "error" });
       return;
     }
+    await errands.finish();
     ctx.eris.say(reply.text, reply.words);
   };
 
@@ -243,6 +256,7 @@ export function mountComposer(root: HTMLElement, ctx: ShellCtx): () => void {
   ];
   return () => {
     for (const off of offs) off();
+    errands.dispose();
     el.remove();
   };
 }
