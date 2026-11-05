@@ -92,5 +92,8 @@ fn doctor_says_ok_when_there_is_nothing_to_report() {
     let out = doctor(&home, &home.join("no-data-yet"), true);
     assert!(out.status.success(), "a desk that never ran is fine too");
     let answer: Value = serde_json::from_slice(&out.stdout).unwrap();
-    assert_eq!(answer, json!({ "quarantined": [], "broken": [] }));
+    assert_eq!(
+        answer,
+        json!({ "quarantined": [], "broken": [], "files": [] })
+    );
 }

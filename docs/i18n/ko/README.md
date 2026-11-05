@@ -28,6 +28,13 @@ Desk 는 빌더의 조력자입니다. 안정적으로 무언가를 만들 환�
 않는 최고의 품질로 최고의 제품을 만들게 받칩니다. Desk 가 지금 어디에 있고 어디로 가는지는 `docs/roadmap.md`
 (한국어 원본은 `docs/ko/desk-roadmap.md`)에 있습니다.
 
+### 데스크는 폴더다
+
+여러분이 다듬은 모든 것은 `~/.desk` 에 있습니다. `init.yaml`, 프로필, `keys.yaml`, 뷰와 `plugins.lock` 은
+읽고 고치고 git 으로 관리할 수 있는 평범한 파일입니다. `desk export <폴더|file.zip>` 으로 다른 컴퓨터에
+옮기고(`--with-data` 는 데스크 자체의 상태도 함께, 비밀은 빼고), `desk import` 로 `init.yaml` 을 덮어쓰지
+않고 되돌리며, `desk doctor` 는 모든 파일과 각 파일이 스펙대로 읽히는지를 보여 줍니다.
+
 ## 빌드
 
 ```bash

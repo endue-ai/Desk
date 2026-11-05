@@ -24,6 +24,13 @@
 Desk 是构建者的助手：它搭建一个稳定的构建环境，让构建者自由塑造，并以始终如一的最高品质做出最好的产品。
 Desk 现在在哪里、要去哪里，见 `docs/roadmap.md`。
 
+### 你的桌面就是一个文件夹
+
+你塑造的一切都在 `~/.desk` 里：`init.yaml`、你的配置档、`keys.yaml`、你的视图和 `plugins.lock`，都是可以
+阅读、编辑并放进 git 的普通文件。`desk export <文件夹|file.zip>` 把它们带到另一台电脑（`--with-data` 还带上
+桌面自身的状态，但从不包含机密），`desk import` 把它们带回且不覆盖你的 `init.yaml`，`desk doctor` 列出每个
+文件以及它是否符合规范。
+
 ## 构建
 
 ```bash

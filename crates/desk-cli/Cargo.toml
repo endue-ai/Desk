@@ -21,6 +21,10 @@ desk-ipc = { path = "../desk-ipc" }
 desk-mcp = { path = "../desk-mcp" }
 desk-plugin-host.workspace = true
 serde_json.workspace = true
+# Already in the tree: desk export writes stored entries, import reads stored and deflated ones.
+zip = { version = "9.2.1", default-features = false, features = ["deflate-flate2"] }
+# zip's deflate needs a flate2 backend: the default one, miniz_oxide, already in the tree.
+flate2 = "1.1.10"
 
 [lints]
 workspace = true
