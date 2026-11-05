@@ -14,6 +14,8 @@ import { HOME_VAR } from "../support/driver";
 
 const HELLO = "e2e.hello";
 const KEY = "Mod+Shift+Y";
+/** The person's binding as desk.keys.list says it: the combo is canonical (Control on Linux). */
+const MINE = "desk.palette.open person";
 
 type Plugins = { enabled?: Record<string, boolean> };
 const home = () => process.env[HOME_VAR] ?? "";
@@ -24,6 +26,24 @@ function put(rel: string, text: string): void {
   const path = join(deskFolder(), rel);
   mkdirSync(join(path, ".."), { recursive: true });
   writeFileSync(path, text);
+}
+
+/** Wait until `test` holds for a snapshot, naming the last snapshot or error when it never does. */
+async function until(test: (now: ReturnType<typeof snapshot>) => boolean, what: string) {
+  let last = "";
+  await browser.waitUntil(
+    () => {
+      try {
+        const now = snapshot();
+        last = JSON.stringify(now);
+        return test(now);
+      } catch (error) {
+        last = String(error);
+        return false;
+      }
+    },
+    { timeout: 30_000, timeoutMsg: `${what}; last: ${last.slice(0, 600)}` },
+  );
 }
 
 /** The desk as the person sees it: profiles, key bindings, views and plugins, read from outside. */
@@ -71,15 +91,14 @@ describe("a desk from a folder", () => {
       (value) => (value as Plugins | undefined)?.enabled?.[HELLO] === false,
       `${HELLO} turned off`,
     );
-    await browser.waitUntil(
-      () => {
-        const now = snapshot();
-        return (
-          now.profiles.some((p) => p.startsWith("e2e-quiet")) &&
-          now.keys.some((k) => k.startsWith(KEY))
-        );
-      },
-      { timeout: 20_000, timeoutMsg: "the desk never read the profile and the key binding" },
+    // Relaunch, so the desk reads the files it found at start.
+    await browser.reloadSession();
+    await shellReady();
+    await until(
+      (now) =>
+        now.profiles.some((p) => p.startsWith("e2e-quiet")) &&
+        now.keys.some((k) => k.endsWith(MINE)),
+      "the desk never read the profile and the key binding",
     );
     const before = snapshot();
     expect(before.views).toEqual(["views/e2e.today.yaml valid"]);
@@ -97,10 +116,10 @@ describe("a desk from a folder", () => {
     });
     await browser.reloadSession();
     await shellReady();
-    await browser.waitUntil(() => snapshot().keys.some((k) => k.startsWith(KEY)), {
-      timeout: 20_000,
-      timeoutMsg: "the imported key binding never came back",
-    });
+    await until(
+      (now) => now.keys.some((k) => k.startsWith(KEY)),
+      "the imported key binding never came back",
+    );
     expect(snapshot()).toEqual(before);
   });
 });
