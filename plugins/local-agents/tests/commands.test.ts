@@ -161,6 +161,8 @@ describe("runs in the desk's agent registry (ADR 0100)", () => {
     expect(await pending).toMatchObject({ ending: "stopped" });
     await m.settle();
     expect(reports(m).at(-1)).toMatchObject({ id: runId, state: "cancelled" });
+  });
+});
 
 describe("commands for agents (ADR 0088, 0099)", () => {
   const work = { "endue.local-agents.folder": "~/work" };
