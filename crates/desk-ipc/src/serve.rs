@@ -10,10 +10,12 @@ use std::sync::mpsc::{self, Receiver, SyncSender, TrySendError};
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::{io, thread};
 
-use desk_bridge::BridgeEvent;
+use desk_bridge::{BridgeEvent, BridgeResponse, BridgeSuccess, RequestId, True};
 use desk_core::Core;
+use serde_json::json;
 
-use crate::{CALLER, wire};
+use crate::CALLER;
+use crate::wire::{self, Asked};
 
 /// Lines that may wait for one client before it is dropped.
 pub(crate) const QUEUE: usize = 1000;
@@ -129,10 +131,12 @@ fn write(mut stream: UnixStream, lines: Receiver<Line>) {
     let _ = stream.shutdown(Shutdown::Both);
 }
 
-/// Answer each line through `Core::handle` as [`CALLER`] until the client hangs up.
+/// Answer each line through `Core::handle` until the client hangs up: as [`CALLER`], or as the agent
+/// the connection asked to call as (ADR 0086).
 fn read(stream: UnixStream, core: &Core, queue: &SyncSender<Line>) {
     let mut reader = BufReader::new(stream);
     let mut line = Vec::new();
+    let mut caller = CALLER.to_owned();
     loop {
         line.clear();
         match reader.read_until(b'\n', &mut line) {
@@ -141,8 +145,9 @@ fn read(stream: UnixStream, core: &Core, queue: &SyncSender<Line>) {
         }
         let answer = match wire::request(&line) {
             None => continue,
-            Some(Ok(request)) => core.handle(CALLER, request),
-            Some(Err(invalid)) => invalid,
+            Some(Asked::Bridge(request)) => core.handle(&caller, *request),
+            Some(Asked::Agent { id, agent }) => become_agent(&mut caller, id, &agent),
+            Some(Asked::Invalid(invalid)) => invalid,
         };
         let Some(answer) = wire::answer_line(&answer) else {
             continue;
@@ -153,4 +158,26 @@ fn read(stream: UnixStream, core: &Core, queue: &SyncSender<Line>) {
             break;
         }
     }
+}
+
+/// `socket.agent`: from now on the connection calls as `agent:<agent>`, with that agent's grants,
+/// allowlist, prompts and approvals (ADR 0072, 0078). Only a `cli` connection may: an agent stays the
+/// agent it became, so a connection can narrow what it may do but never widen it.
+fn become_agent(caller: &mut String, id: RequestId, agent: &str) -> BridgeResponse {
+    if caller != CALLER {
+        return wire::invalid(id, format!("this connection already calls as {caller}"));
+    }
+    let Some(named) = desk_core::agent_caller(agent) else {
+        let why = format!(
+            "{agent:?} is not an agent id: a letter or digit, then letters, digits, _ . or -, \
+             122 characters at most"
+        );
+        return wire::invalid(id, why);
+    };
+    *caller = named;
+    BridgeResponse::BridgeSuccess(BridgeSuccess {
+        id,
+        ok: True,
+        result: json!({ "caller": caller }),
+    })
 }

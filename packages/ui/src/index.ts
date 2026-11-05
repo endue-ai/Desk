@@ -16,5 +16,6 @@ export {
   tokens,
 } from "./tokens";
 export { tokensCss } from "./tokens-css";
+export * from "./universal";
 
 export const NAME = "@endue-ai/ui";

@@ -1,0 +1,30 @@
+# Universal data (specs/view/v0/universal.schema.json): any source that answers this document, a file
+# here, a URL, another plugin's command, draws the same. The map says which field plays which role.
+universal: v0
+title: Launch
+map:
+  group: column
+  start: due
+  author: owner
+entries:
+  - id: spec
+    title: Write the spec
+    column: done
+    due: 2026-11-02
+    tags: [spec]
+  - id: element
+    title: Build the element
+    column: doing
+    owner: Mina
+    due: 2026-11-04T18:00:00+09:00
+    text: |
+      Seven presentations over one document: **timeline**, **calendar**, **kanban**,
+      **list**, **text**, **chat** and **agent**.
+  - id: example
+    title: Ship this example
+    column: todo
+    due: 2026-11-06
+  - id: docs
+    title: Write the guide
+    column: todo
+    owner: Jun

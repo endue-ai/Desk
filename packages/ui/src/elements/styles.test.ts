@@ -11,10 +11,18 @@ const PLAIN = /^(-?[\d.]+(px|%|em|rem)?|solid|none|inherit|transparent|currentco
 
 // What takes no focus: a number, a card and an edit tier show, they are not controls.
 const UNFOCUSED = new Set(["desk-stat", "desk-card", "desk-edit-tier"]);
-const DENSE = ["desk-list", "desk-table", "desk-agenda", "desk-stat", "desk-markdown", "desk-card"];
+const DENSE = [
+  "desk-list",
+  "desk-table",
+  "desk-agenda",
+  "desk-stat",
+  "desk-markdown",
+  "desk-card",
+  "desk-universal-view",
+];
 
 describe("element styles", () => {
-  it("cover the thirteen elements", () => {
+  it("cover the fourteen elements", () => {
     expect(Object.keys(elements)).toEqual([
       "desk-button",
       "desk-input",
@@ -29,10 +37,11 @@ describe("element styles", () => {
       "desk-card",
       "desk-progress",
       "desk-edit-tier",
+      "desk-universal-view",
     ]);
   });
 
-  it("desk-list and the five new elements style a compact density", () => {
+  it("desk-list, the five data elements and the universal view style a compact density", () => {
     const styles = elements as Record<string, { styles: string }>;
     for (const name of DENSE) {
       const rules = parseRules(styles[name]?.styles ?? "");

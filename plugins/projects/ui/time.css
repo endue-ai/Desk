@@ -1,0 +1,181 @@
+/* The timeline and the calendar: the views laid out along days. Every value is a desk token; a
+   category's colour (--tone) comes from views.css. */
+/* Timeline */
+.timeline {
+  --name: 240px;
+  min-width: 720px;
+}
+
+.scale,
+.tline {
+  display: grid;
+  grid-template-columns: var(--name) 1fr;
+}
+
+.scale {
+  position: sticky;
+  top: -10px;
+  z-index: 1;
+  background: var(--desk-card);
+  border-bottom: 1px solid var(--desk-border);
+}
+
+.ticks {
+  display: grid;
+  grid-template-columns: repeat(var(--days, 42), 1fr);
+}
+
+.tick {
+  display: grid;
+  min-height: 32px;
+  align-content: end;
+  justify-items: center;
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-2xs);
+}
+
+.tick b {
+  color: var(--desk-text);
+}
+
+.tick.weekend {
+  background: var(--desk-muted);
+}
+
+.tick.today {
+  color: var(--desk-primary-text);
+  font-weight: 600;
+}
+
+.tgroup {
+  padding: 8px 4px 2px;
+  color: var(--desk-text-muted);
+}
+
+.tline {
+  align-items: center;
+  min-height: 26px;
+  border-bottom: 1px solid var(--desk-border);
+  cursor: pointer;
+}
+
+.tline:hover {
+  background: var(--desk-hover);
+}
+
+.tname {
+  display: flex;
+  gap: 6px;
+  padding: 0 6px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.track {
+  position: relative;
+  height: 20px;
+}
+
+.bar {
+  position: absolute;
+  top: 2px;
+  height: 16px;
+  min-width: 6px;
+  overflow: hidden;
+  border-radius: var(--desk-radius-sm);
+  background: var(--tone);
+  color: var(--desk-card);
+  font-size: var(--desk-text-2xs);
+  line-height: 16px;
+  white-space: nowrap;
+}
+
+.bar-text {
+  padding: 0 4px;
+}
+
+.bar.cut-start {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+
+.bar.cut-end {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.bar.late {
+  outline: 2px solid var(--desk-danger);
+}
+
+.bar.milestone {
+  width: 12px;
+  height: 12px;
+  min-width: 0;
+  margin-top: 2px;
+  transform: rotate(45deg);
+}
+
+.today-line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--desk-primary);
+}
+
+/* Calendar */
+.weekdays,
+.week {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
+.weekdays span {
+  padding: 2px 6px;
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-xs);
+}
+
+.weeks {
+  border-top: 1px solid var(--desk-border);
+  border-left: 1px solid var(--desk-border);
+}
+
+.day {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-height: 96px;
+  padding: 2px 4px 4px;
+  border-right: 1px solid var(--desk-border);
+  border-bottom: 1px solid var(--desk-border);
+  overflow: hidden;
+}
+
+.day.weekend {
+  background: var(--desk-background);
+}
+
+.day.out .date {
+  color: var(--desk-text-muted);
+  opacity: 0.6;
+}
+
+.day .date {
+  font-size: var(--desk-text-xs);
+}
+
+.day.today .date {
+  align-self: flex-start;
+  padding: 0 6px;
+  border-radius: var(--desk-radius-full);
+  background: var(--desk-primary);
+  color: var(--desk-primary-foreground);
+}
+
+.day .more {
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-2xs);
+}

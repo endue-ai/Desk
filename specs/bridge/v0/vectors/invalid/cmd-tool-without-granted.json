@@ -1,0 +1,10 @@
+{
+  "target": "CommandTool",
+  "description": "a tool says whether the caller may run it now",
+  "instance": {
+    "command": "endue.git.state",
+    "title": "Git: state",
+    "description": "The repository's state.",
+    "provider": "endue.git"
+  }
+}

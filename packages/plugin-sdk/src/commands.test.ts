@@ -47,6 +47,28 @@ describe("commands", () => {
     expect(failure).toMatchObject({ code: "unknown_command" });
     expect(host.ran.map((r) => r.name)).toEqual(["desk.theme.toggle", "desk.nope.run"]);
   });
+
+  it("lists the agent commands its grants cover as tools (cmd.tools, ADR 0088)", async () => {
+    const host = createTestHost({
+      pluginId: "endue.git",
+      grants: [{ permission: "cmd:invoke", ids: ["endue.git.*"] }],
+    });
+    const ctx = await defineUiPlugin({ mount() {} }, host.transport);
+    const state = {
+      id: "endue.git.state",
+      title: "Git: state",
+      description: "The branch and the changed files.",
+      agent: true,
+      readOnly: true,
+    };
+    await ctx.bridge.call("cmd.register", state);
+    await ctx.bridge.call("cmd.register", { id: "endue.git.open", title: "Git: open" });
+    const tools = await ctx.commands.tools();
+    expect(tools.map((t) => [t.name, t.readOnly, t.granted])).toEqual([
+      ["endue_git_state", true, true],
+    ]);
+    expect(await ctx.commands.tools("push")).toEqual([]);
+  });
 });
 
 describe("surface and theme", () => {

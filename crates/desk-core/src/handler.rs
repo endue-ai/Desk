@@ -233,6 +233,7 @@ impl Core {
             R::CmdList(r) => (r.id, self.cmd_list(caller, r.params)),
             R::CmdInvoke(r) => (r.id, self.cmd_invoke(caller, r.params)),
             R::CmdAnswer(r) => (r.id, self.cmd_answer(caller, r.params)),
+            R::CmdTools(r) => (r.id, self.cmd_tools(caller, r.params)),
             R::CmdRecent(r) => (r.id, self.cmd_recent(caller, r.params)),
             R::CmdUndo(r) => (r.id, self.cmd_undo(caller, r.params)),
             R::CmdRedo(r) => (r.id, self.cmd_redo(caller, r.params)),

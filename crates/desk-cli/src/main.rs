@@ -1,6 +1,6 @@
 //! `desk`: the command line for people and AI agents. Exit codes: 0 ok, 1 check or call failed, 2
 //! usage. `plugin validate`, `plugin test`, `doctor` and `doctor --trace` work offline; the other
-//! subcommands reach a running desk over its socket.
+//! subcommands reach a running desk over its socket, `mcp` for another app (ADR 0086).
 
 mod args;
 mod doctor;
@@ -44,6 +44,25 @@ fn main() -> ExitCode {
         Action::Trace(file) => doctor::trace(&file, args.json),
         Action::Doctor(data) => health::run(data, args.json),
         Action::Remote(remote) => remote::run(remote, args.json),
+        Action::Mcp { agent, plugins } => mcp(agent, plugins),
+    }
+}
+
+/// `desk mcp`: serve the running desk to another app over MCP until it closes stdin (ADR 0086).
+/// Only MCP goes to stdout; what goes wrong goes to stderr.
+fn mcp(agent: Option<String>, plugins: Vec<String>) -> ExitCode {
+    let defaults = desk_mcp::Options::default();
+    let options = desk_mcp::Options {
+        agent: agent.unwrap_or(defaults.agent),
+        plugins,
+        ..defaults
+    };
+    match desk_mcp::serve(std::io::stdin().lock(), std::io::stdout(), options) {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(why) => {
+            eprintln!("desk: mcp: {why}");
+            ExitCode::from(1)
+        }
     }
 }
 

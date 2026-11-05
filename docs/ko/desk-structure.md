@@ -173,6 +173,8 @@ desk/
 │   ├── permissions/          # grant 목록 · 회수 · 프롬프트 창 (endue.permissions, #69)
 │   ├── explorer/             # 허락한 폴더 트리 · 열기는 desk.files 로 · 감시 (endue.explorer, docs/ko/explorer-requirements.md)
 │   ├── mail/                 # 색인의 message 항목을 메일함 · 스레드로, 초대장(iTIP) 읽기 · 답하기, 변경은 커넥터 커맨드로 (endue.mail, docs/ko/mail-requirements.md)
+│   ├── chat/                 # Slack · Discord · Teams 등 모든 채팅을 한 화면에: 서비스 · 워크스페이스 · 대화, 스레드 · 반응, 뷰 4개, 변경은 커넥터의 chat.* 커맨드로 (endue.chat, docs/ko/chat-requirements.md)
+│   ├── chat-digest/          # 채팅 한눈에 endue.chat-digest: 데이터만 가진 view 플러그인, desk.views 가 그림
 │   ├── views/                # 뷰 엔진 desk.views: 뷰 파일(specs/view)을 화면으로. data.query 로 묶고 data.subscribe 로 살려 두며 @endue-ai/ui 로 그림 (ADR 0032)
 │   ├── today/                # 오늘 한눈에 desk.today: 데이터만 가진 view 플러그인, desk.views 가 그림 (Mod+T)
 │   ├── item/                 # 항목 하나 desk.item: 팔레트의 Open in Desk 가 여는 view 플러그인

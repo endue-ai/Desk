@@ -1,0 +1,9 @@
+{
+  "target": "BridgeRequest",
+  "description": "cmd.tools takes no scope",
+  "instance": {
+    "id": 63,
+    "method": "cmd.tools",
+    "params": { "scope": { "permission": "cmd:invoke", "ids": ["*"] } }
+  }
+}

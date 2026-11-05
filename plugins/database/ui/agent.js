@@ -1,7 +1,8 @@
-// Commands for Eris and agents, registered with an argument schema: the connections (never a
-// password), what a connection holds, and a query. A query that only reads runs as asked; one that
-// writes runs only after the person says yes, whatever the connection's tag, and a read-only
-// connection refuses it as always. An agent is never shown a password prompt.
+// Commands for Eris and agents, registered with an argument schema as agents' tools (ADR 0088): the
+// connections (never a password) and what a connection holds, which only read, and a query. A
+// query that only reads runs as asked; one that writes runs only after the person says yes,
+// whatever the connection's tag, and a read-only connection refuses it as always. An agent is
+// never shown a password prompt.
 
 /**
  * @typedef {import("./engines/common.js").Connection} Connection
@@ -30,8 +31,11 @@ export function createAgentCommands(deps) {
    * @param {(args: Record<string, unknown>) => unknown} run
    */
   const provide = (id, title, description, argsSchema, run) => {
+    const reads = id !== "endue.database.query";
+    const keywords = ["database", "sql"];
+    const params = { id, title, description, keywords, argsSchema, agent: true };
     void deps.bridge
-      .call("cmd.register", { id, title, description, keywords: ["database", "sql"], argsSchema })
+      .call("cmd.register", reads ? { ...params, readOnly: true } : params)
       .catch(() => {});
     deps.commands.on(id, (args) => run(/** @type {Record<string, unknown>} */ (args ?? {})));
   };

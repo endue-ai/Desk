@@ -43,7 +43,7 @@ pub struct PluginContributes {
 /// A command id: lowercase and dotted, with at least two segments, for example eris.say or desk.palette.open. Unique across callers (bridge cmd.*); a plugin's contributed commands start with its own id.
 pub type CommandId = String;
 
-/// A command the palette lists and keys can run.
+/// A command the palette lists, keys can run and, marked agent, agents are offered as a tool.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct CommandContribution {
@@ -62,6 +62,21 @@ pub struct CommandContribution {
     /// The command that undoes this one, which this plugin provides too. After each invocation the plugin answers ok, the desk keeps it on its undo stack, and cmd.undo runs this command with { args, result } of that invocation (ADR 0077).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub undo: Option<CommandId>,
+    /// What the command does and what it answers, in one or two sentences for people and agents. cmd.list shows it; an agent command needs one.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    /// A JSON Schema (2020-12) of the args, whose type is object. The core checks every cmd.invoke against it (argsSchema in cmd.list); absent, the args are not checked.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub args: Option<serde_json::Map<String, serde_json::Value>>,
+    /// A JSON Schema (2020-12) of what the command answers (resultSchema in cmd.list), so an agent knows the data it gets back. The core does not check answers against it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub result: Option<serde_json::Map<String, serde_json::Value>>,
+    /// Offer the command to agents as a tool: cmd.tools lists it and the desk's brain turns offer it (ADR 0088). It needs a description. An agent's call still needs a cmd:invoke grant of its own inside its allowlist, and an irreversible command still waits for approval. Default false.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub agent: Option<bool>,
+    /// The command only reads: it answers data and changes nothing the person keeps (files, settings, items, messages, processes, the remote end); showing a surface is allowed. Agents are told; never true together with irreversible.
+    #[serde(rename = "readOnly", default, skip_serializing_if = "Option::is_none")]
+    pub read_only: Option<bool>,
 }
 
 /// A command's args: an object, as cmd.invoke passes them.
@@ -1455,6 +1470,207 @@ pub struct ItemRemoved {
     pub id: ItemId,
 }
 
+/// One universal view: what it shows (type), where its entries come from (source), which entry field plays which role (map), and the commands it runs.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct UniversalView {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub id: Option<ViewId>,
+    /// Shown above the view; the data's title when absent.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
+    /// One sentence about what the view shows.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    pub r#type: UniversalType,
+    /// The presentations the person may switch between over the same entries, in the switcher's order; absent, only type.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub types: Option<Vec<UniversalType>>,
+    pub source: UniversalSource,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub map: Option<UniversalMap>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub options: Option<UniversalOptions>,
+    /// Commands offered on an entry; the first runs on Enter or a click. Strings in args are templates over the entry ({id}, {title}, {raw.owner}).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub actions: Option<Vec<ViewAction>>,
+    /// kanban: the command run when the person moves an entry to another column; {move.from} and {move.to} are the columns, the rest of the args read the entry.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub r#move: Option<ViewAction>,
+    /// chat and agent: the command run when the person sends text from the composer; {send.text} is what they wrote. Without it there is no composer.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub send: Option<ViewAction>,
+    /// Shown when the source has no entries.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub empty: Option<String>,
+    /// Load an asset, file, URL or command source again this often, in seconds; an items source is live without it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub refresh: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub provenance: Option<ViewProvenance>,
+}
+
+/// timeline: entries in time order along a line, by day. calendar: a month (or week, or day) of dates with the entries that fall on them. kanban: a column per group. list: one row per entry. text: the entries as one document. chat: messages from authors, the person's own on the other side. agent: an agent's run, step by step with each step's status.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum UniversalType {
+    #[serde(rename = "timeline")]
+    Timeline,
+    #[serde(rename = "calendar")]
+    Calendar,
+    #[serde(rename = "kanban")]
+    Kanban,
+    #[serde(rename = "list")]
+    List,
+    #[serde(rename = "text")]
+    Text,
+    #[serde(rename = "chat")]
+    Chat,
+    #[serde(rename = "agent")]
+    Agent,
+}
+
+/// Where the entries come from. Every source but items answers a UniversalData document (YAML or JSON); items are the desk's index, turned into entries.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum UniversalSource {
+    UniversalInline(UniversalInlineSource),
+    UniversalAsset(UniversalAssetSource),
+    UniversalUrl(UniversalUrlSource),
+    UniversalFile(UniversalFileSource),
+    UniversalCommand(UniversalCommandSource),
+    UniversalItems(UniversalItemsSource),
+}
+
+/// The data, written in the view itself.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct UniversalInlineSource {
+    pub data: UniversalData,
+}
+
+/// A file in the folder of the plugin that opens the view, fetched by its own frame: no permission.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct UniversalAssetSource {
+    /// A path relative to the plugin's folder, with forward slashes and no ..: data/board.yaml.
+    pub asset: String,
+}
+
+/// A document served over HTTP(S), fetched with net.fetch under a net:fetch grant for its host.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct UniversalUrlSource {
+    /// An http or https URL that answers a UniversalData document as YAML or JSON.
+    pub url: String,
+}
+
+/// A file on the desk, read with fs.read under an fs:read grant for its path.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct UniversalFileSource {
+    /// An absolute path, or one rooted at ~, ${workspace} or ${home}, with forward slashes.
+    pub file: String,
+}
+
+/// A command another plugin provides, run with cmd.invoke under a cmd:invoke grant: its answer is the UniversalData document, as an object or as YAML text.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct UniversalCommandSource {
+    pub command: CommandId,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub args: Option<CommandArgs>,
+}
+
+/// The desk's item index (data.query under data:read), live: each item becomes an entry with its kind's fields in the roles they play (an event's start and end, a task's status as its group, a message's sender as its author).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct UniversalItemsSource {
+    pub items: ItemQuery,
+}
+
+/// Which entry field plays which role, as a dotted path: map a source's own names (due, owner, column) onto the roles the views draw. A role left out reads the field of its own name.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct UniversalMap {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub id: Option<FieldPath>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub title: Option<FieldPath>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub text: Option<FieldPath>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub detail: Option<FieldPath>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub start: Option<FieldPath>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub end: Option<FieldPath>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub group: Option<FieldPath>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub author: Option<FieldPath>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub role: Option<FieldPath>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub status: Option<FieldPath>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tags: Option<FieldPath>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub url: Option<FieldPath>,
+}
+
+/// Earliest first (asc) or latest first (desc).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum UniversalOrder {
+    #[serde(rename = "asc")]
+    Asc,
+    #[serde(rename = "desc")]
+    Desc,
+}
+
+/// How a presentation draws. Each type reads the options it knows and ignores the rest, so one set serves every type in types.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct UniversalOptions {
+    /// kanban: the columns in order, shown even when empty; entries of other groups follow in the order they first appear.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub groups: Option<Vec<String>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub range: Option<CalendarRange>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub order: Option<UniversalOrder>,
+    /// The IANA time zone days and times are drawn in; the desk's when absent.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub zone: Option<String>,
+    /// chat: the author or role whose messages are the person's own, drawn on the other side; me and user are when absent.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub me: Option<String>,
+    /// chat and agent: the composer's hint.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub placeholder: Option<String>,
+}
+
+/// The universal data format: what every source but items answers. A YAML file, an HTTP response, a command's answer and inline data are all this document.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct UniversalData {
+    /// The format's version, v0; absent means v0.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub universal: Option<UniversalDataUniversal>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    #[serde(rename = "updatedAt", default, skip_serializing_if = "Option::is_none")]
+    pub updated_at: Option<Timestamp>,
+    /// The roles the data's own fields play, so any view on it draws without a map of its own; a view's map wins.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub map: Option<UniversalMap>,
+    pub entries: Vec<UniversalEntry>,
+}
+
+/// One entry: any fields the source has. By name (or through a map) id, title, text (Markdown), detail, start and end (RFC 3339 with an offset, or a YYYY-MM-DD date for a whole day), group, author, role, status (pending, running, done, failed, waiting, or any other word), tags (a list of strings) and url play the roles the views draw; the rest travels with the entry to its actions.
+pub type UniversalEntry = serde_json::Map<String, serde_json::Value>;
+
 /// One view file.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -2420,6 +2636,7 @@ pub enum BridgeRequest {
     CmdList(CmdListRequest),
     CmdInvoke(CmdInvokeRequest),
     CmdAnswer(CmdAnswerRequest),
+    CmdTools(CmdToolsRequest),
     CmdRecent(CmdRecentRequest),
     CmdUndo(CmdUndoRequest),
     CmdRedo(CmdRedoRequest),
@@ -2619,6 +2836,22 @@ pub struct CommandInfo {
     /// The command that undoes this one: cmd.undo runs it with { args, result } of an invocation. Absent when the command cannot be undone.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub undo: Option<CommandId>,
+    /// JSON Schema (2020-12) of what the command answers; absent when it is not described. The core does not check answers.
+    #[serde(
+        rename = "resultSchema",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub result_schema: Option<serde_json::Map<String, serde_json::Value>>,
+    /// Agents are offered the command as a tool (cmd.tools, ADR 0088). Absent means false.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub agent: Option<bool>,
+    /// The command only reads: it answers data and changes nothing the person keeps. Absent means false.
+    #[serde(rename = "readOnly", default, skip_serializing_if = "Option::is_none")]
+    pub read_only: Option<bool>,
+    /// The provider's manifest marks the command irreversible: an agent's call waits for the person's approval (ADR 0078). Absent means false.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub irreversible: Option<bool>,
 }
 
 /// Register one of the caller's commands, or update it.
@@ -2636,12 +2869,13 @@ pub struct CmdRegisterRequest {
 pub struct CmdRegisterParams {
     pub id: CommandId,
     pub title: String,
+    /// What the command does and answers, for people and agents. Absent: the manifest's, if any.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
     /// More words the palette matches.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub keywords: Option<Vec<String>>,
-    /// JSON Schema (2020-12) for the args of cmd.invoke.
+    /// JSON Schema (2020-12) for the args of cmd.invoke. Absent: the manifest's (args), if any.
     #[serde(
         rename = "argsSchema",
         default,
@@ -2654,6 +2888,19 @@ pub struct CmdRegisterParams {
     /// The command that undoes this one, which the caller provides too. Absent: the one the caller's manifest names for this id in contributes.commands, if any.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub undo: Option<CommandId>,
+    /// JSON Schema (2020-12) of what the command answers. Absent: the one the caller's manifest names for this id (result), if any.
+    #[serde(
+        rename = "resultSchema",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub result_schema: Option<serde_json::Map<String, serde_json::Value>>,
+    /// Offer the command to agents as a tool (ADR 0088); it needs a description, here or in the manifest. Absent: the manifest's, else false.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub agent: Option<bool>,
+    /// The command only reads: it answers data and changes nothing the person keeps. Absent: the manifest's, else false. A command the manifest marks irreversible is never read-only.
+    #[serde(rename = "readOnly", default, skip_serializing_if = "Option::is_none")]
+    pub read_only: Option<bool>,
 }
 
 /// Result of cmd.register.
@@ -2758,6 +3005,68 @@ pub struct CmdAnswerParams {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct CmdAnswerResult {}
+
+/// List the commands offered to agents as tools (ADR 0088): what the desk's brain turns offer, and what the desk-tools tool answers.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CmdToolsRequest {
+    pub id: RequestId,
+    pub method: CmdToolsRequestMethod,
+    pub params: CmdToolsParams,
+}
+
+/// Parameters of cmd.tools. It needs no scope: an agent sees the agent commands its allowlist could let it run, any other caller the ones its cmd:invoke grants cover.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CmdToolsParams {
+    /// Words that must each appear, ignoring case, in the command's id, title, description or keywords.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub query: Option<String>,
+    /// How many tools at most; 50 when absent.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub limit: Option<u64>,
+}
+
+/// Result of cmd.tools, in registration order.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CmdToolsResult {
+    pub tools: Vec<CommandTool>,
+}
+
+/// A command offered to agents as a tool: what it does, the args it takes, what it answers, and whether the caller may run it now.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CommandTool {
+    /// The tool's name in a brain turn: the command id with every dot an underscore (endue.git.state is endue_git_state). Absent when the id is longer than 64 characters; desk-run still runs it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    pub command: CommandId,
+    pub title: String,
+    pub description: String,
+    /// JSON Schema (2020-12) of the args; absent means the command takes none.
+    #[serde(
+        rename = "argsSchema",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub args_schema: Option<serde_json::Map<String, serde_json::Value>>,
+    /// JSON Schema (2020-12) of the answer; absent when it is not described.
+    #[serde(
+        rename = "resultSchema",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub result_schema: Option<serde_json::Map<String, serde_json::Value>>,
+    #[serde(rename = "readOnly", default, skip_serializing_if = "Option::is_none")]
+    pub read_only: Option<bool>,
+    /// An agent's call waits for the person's approval, every time (ADR 0078).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub irreversible: Option<bool>,
+    pub provider: CallerId,
+    /// A grant the caller holds covers the command now. An agent's call without one asks the person first.
+    pub granted: bool,
+}
 
 /// List the last command invocations the core saw, for an inspector.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -5794,6 +6103,14 @@ pub enum ItemRemovedChange {
     Removed,
 }
 
+/// The `universal` of [`UniversalData`]: always `"v0"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum UniversalDataUniversal {
+    #[default]
+    #[serde(rename = "v0")]
+    V0,
+}
+
 /// The `kind` of [`StringParam`]: always `"string"`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub enum StringParamKind {
@@ -5984,6 +6301,14 @@ pub enum CmdAnswerRequestMethod {
     #[default]
     #[serde(rename = "cmd.answer")]
     CmdAnswer,
+}
+
+/// The `method` of [`CmdToolsRequest`]: always `"cmd.tools"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum CmdToolsRequestMethod {
+    #[default]
+    #[serde(rename = "cmd.tools")]
+    CmdTools,
 }
 
 /// The `method` of [`CmdRecentRequest`]: always `"cmd.recent"`.
@@ -6752,6 +7077,10 @@ pub const SCHEMAS: &[(&str, &str)] = &[
     (
         "https://endue.ai/specs/item/v0/query.schema.json",
         include_str!("../../../specs/item/v0/query.schema.json"),
+    ),
+    (
+        "https://endue.ai/specs/view/v0/universal.schema.json",
+        include_str!("../../../specs/view/v0/universal.schema.json"),
     ),
     (
         "https://endue.ai/specs/view/v0/view.schema.json",

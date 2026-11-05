@@ -28,6 +28,7 @@ const manifest = () => readJson(join(folder, "plugin.json")) as PluginManifest;
 
 const COMMANDS = [
   "status",
+  "state",
   "refresh",
   "stage",
   "unstage",

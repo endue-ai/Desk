@@ -14,7 +14,11 @@ there were two formats, the API would have holes.
 | `explorer/` | The folders the person allows as a tree (`endue.explorer`); files open through `desk.files` |
 | `calendar/` | iCalendar (RFC 5545) files in month, week, day and agenda views (`endue.calendar`), with reminders and commands for agents |
 | `mail/` | The person's mail from the index as threads in mailboxes, invitations read and answered (iTIP, iMIP), changes through the connector's commands (`endue.mail`) |
+| `chat/` | Every chat service in one interface (`endue.chat`): Slack, Discord, Teams and any chat connector's messages by service and workspace, threads, reactions, replies, edits; four layouts (Conversation, Inbox, Timeline, Columns), changes through each connector's `chat.*` commands |
+| `chat-digest/` | Chats at a glance (`endue.chat-digest`): a data-only `view` plugin that `desk.views` draws, unread counts, mentions, direct messages and the latest across every service |
+| `projects/` | Project management over every task source (`endue.projects`): Jira, Linear and Asana work read through adapters (ADR 0085) into Kanban, Swimlane, List, Database, Timeline and Calendar views; moves, dates, priority and assignee through the connectors' `task.move` and `task.update` |
 | `views/` | The view engine (`desk.views`): draws view files (`specs/view/v0`) as surfaces, over the core's `data.*` and `view.*` |
+| `universal/` | Universal View (`desk.universal`): opens a universal view (`specs/view/v0/universal.schema.json`) of inline data, a file, a URL, another plugin's command or the index, as a timeline, calendar, board, list, text, chat or agent run (ADR 0087) |
 | `today/` | The day at a glance (`desk.today`): a data-only `view` plugin that `desk.views` draws; `Mod+T` opens it |
 | `item/` | One item in Desk (`desk.item`): the data-only `view` plugin the palette's Open in Desk shows |
 | `inspector/` | What the desk holds now, read-only (`desk.inspector`, autoload): the render tree, surfaces and buffers, the last commands, grants, settings by layer, plugins, bridge calls; `desk inspect` prints its Export JSON |
@@ -42,6 +46,13 @@ The base plugins a person works with from the first day (requirements, BASE):
 | `git/` (`endue.git`) | A keyboard-first front for Git: status, staging, commits, the log as a graph, diffs; every operation a command |
 | `database/` (`endue.database`) | A client for PostgreSQL, MySQL / MariaDB and SQLite through their own command-line clients (ADR 0038): connections, an explorer, SQL consoles, exact results, guards for read-only and production connections |
 | `docker/` (`endue.docker`) | Containers, Compose projects, images, volumes and networks: logs that follow, a container's detail, a shell, clean-up; every operation a command |
+
+The agent programs a person already has, attached as a plugin (AG-09) and off until the person turns
+it on (`autoload`: Claude and Codex are not on by default, ADR 0084):
+
+| Plugin | Role |
+| --- | --- |
+| `local-agents/` (`endue.local-agents`) | Claude Code, Codex, Gemini CLI, Grok CLI, Qwen Code, Copilot CLI, Cursor Agent and OpenCode, found by their versions and asked through their non-interactive modes, read-only by default: the agents found, a chat with one, answers compared side by side, a kanban board of tasks they work through, the activity; every operation a command |
 
 The file plugins: one plugin per thing a person does with a file, every format of that kind in one
 interface (ADR 0045). Each reads; none edits yet. Each autoloads: off at start, on when a file it

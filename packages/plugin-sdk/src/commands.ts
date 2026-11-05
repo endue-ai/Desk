@@ -1,7 +1,8 @@
 // ctx.commands: the plugin's side of the core's command registry (bridge cmd.*, ADR 0017). `run`
-// is cmd.invoke and waits for cmd.answered; `list` is cmd.list; `on` answers this plugin's commands
-// when cmd.invoked arrives (with cmd.answer), and the desk's requests to it (desk.files.visit, ...).
-import type { BridgeEvent, CmdAnsweredData, ParamsOf } from "@endue-ai/bridge";
+// is cmd.invoke and waits for cmd.answered; `list` is cmd.list; `tools` is cmd.tools, the agent
+// commands the plugin's grants cover (ADR 0088); `on` answers this plugin's commands when
+// cmd.invoked arrives (with cmd.answer), and the desk's requests to it (desk.files.visit, ...).
+import type { BridgeEvent, CmdAnsweredData, CommandTool, ParamsOf } from "@endue-ai/bridge";
 import type { CommandOutcome } from "./protocol";
 
 /** A registered command, as `ctx.commands.list()` returns it. */
@@ -31,6 +32,8 @@ export interface PluginCommands {
   /** Run any registered command (needs a `cmd:invoke` grant covering it) and get its answer. */
   run<T = unknown>(name: string, args?: Record<string, unknown>): Promise<T>;
   list(): Promise<CommandInfo[]>;
+  /** The commands offered to agents as tools that this plugin's grants cover (cmd.tools). */
+  tools(query?: string): Promise<CommandTool[]>;
 }
 
 /** The bridge calls the commands need, as the plugin makes them. */
@@ -49,6 +52,7 @@ interface Calls {
     }>;
   }>;
   call(method: "cmd.answer", params: ParamsOf<"cmd.answer">): Promise<unknown>;
+  call(method: "cmd.tools", params: ParamsOf<"cmd.tools">): Promise<{ tools: CommandTool[] }>;
 }
 
 type Outcome = Omit<CommandOutcome, "call">;
@@ -123,6 +127,7 @@ export function commandsFor(
         ...(c.description ? { description: c.description } : {}),
       }));
     },
+    tools: async (query) => (await bridge.call("cmd.tools", query ? { query } : {})).tools,
   };
 
   return {

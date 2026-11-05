@@ -1,0 +1,20 @@
+[package]
+name = "desk-mcp"
+description = "An MCP server over the desk socket: other apps and their AI agents list a running desk's plugins and commands and run them, as an agent of their own."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+desk-bridge.workspace = true
+desk-ipc = { path = "../desk-ipc" }
+serde_json.workspace = true
+
+[dev-dependencies]
+desk-core.workspace = true
+
+[lints]
+workspace = true

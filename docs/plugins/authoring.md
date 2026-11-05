@@ -189,6 +189,36 @@ work with `desk.buffers.update { id, modified: true }`. The theme reaches your f
 properties and `ctx.theme`. Key chords pressed in your frame reach the desk's keymap unless you call
 `preventDefault()`. The defaults, and what each one decides, are listed in `plugins/README.md`.
 
+## Commands for agents
+
+An agent of endue AI, or the local brain, works the desk through the same commands people run (ADR
+0088). Mark a command `agent` and say what it does, what it takes and what it answers; the core checks
+every invocation's args against `args`, lists the command in `cmd.tools`, and offers it in the desk's
+brain turns as a tool named after its id (`example_my-plugin_notes`):
+
+```json
+"commands": [
+  {
+    "id": "example.my-plugin.notes",
+    "title": "Notes: list",
+    "description": "The notes in a folder, newest first: name, path and when each changed.",
+    "args": { "type": "object", "properties": { "folder": { "type": "string" } }, "additionalProperties": false },
+    "result": { "type": "array", "items": { "type": "object" } },
+    "agent": true,
+    "readOnly": true
+  },
+  { "id": "example.my-plugin.publish", "title": "Notes: publish", "description": "Publish a note to the web.", "agent": true, "irreversible": true }
+]
+```
+
+`readOnly` says the command answers data and changes nothing the person keeps. A command runs with your
+plugin's grants, not the agent's, so mark `irreversible` whatever runs programs, sends, deletes or
+publishes: an agent's call then waits for the person's approval with its args shown. Require no arg a
+person's bare run from the palette leaves out; check it in the handler instead. A command you register
+at run time takes the same fields (`description`, `argsSchema`, `resultSchema`, `agent`, `readOnly`) with
+`cmd.register`, and `ctx.commands.tools()` lists the agent commands your grants cover. The built-in
+git, terminal, docker, calendar and database plugins are examples.
+
 ## Editing files: edit tiers
 
 A file opener reads first and edits later (ADR 0045). Once it edits, every format it opens has an edit
@@ -248,6 +278,28 @@ A view is data, not code (`specs/view/v0`): the built-in `desk.views` draws it w
 `desk-card`), and its templates know the clock (`{today}`, `{tomorrow}`). Your page can import the
 same elements (`"@endue-ai/ui": "/_desk/ui.js"` in its import map) once the app serves them; the
 runtime's test server does today.
+
+### Universal views
+
+A universal view (`specs/view/v0/universal.schema.json`, ADR 0087) shows entries from any source that
+serves one YAML format, the universal data format, as a timeline, calendar, kanban, list, text, chat or
+agent run. Keep the view as data and open it with `ctx.universal`. Its source can be inline data, a file
+in your plugin's folder (`asset`, no permission), a URL (`net:fetch`), a desk file (`fs:read`), another
+plugin's command or the desk's items, and the view stays the same:
+
+```js
+const board = ctx.universal.open(document.getElementById("root"), {
+  type: "kanban",
+  types: ["kanban", "list", "timeline", "calendar"],
+  source: { asset: "data/board.yaml" },
+  map: { group: "column", start: "due" },
+  move: { command: "example.board.move", args: { id: "{id}", to: "{move.to}" } },
+});
+```
+
+`<desk-universal-view>` from `@endue-ai/ui` draws it; `ctx.universal.load(source)` and
+`ctx.universal.parse(text)` give you the document itself. Without a plugin of your own,
+`desk.universal.open` opens one by command. `examples/plugin-hello-universal` is the smallest.
 
 ## Testing
 

@@ -154,6 +154,36 @@ defineUiPlugin({
 `ctx.theme` として届きます。フレーム内で押したキーの組み合わせは、`preventDefault()` を呼ばない限りデスクの
 キーマップに届きます。既定ポリシーとそれぞれが決めることは `plugins/README.md` にあります。
 
+## エージェント向けのコマンド
+
+endue AI のエージェントやローカルの頭脳は、人が実行するのと同じコマンドでデスクを操作します（ADR
+0088）。コマンドに `agent` を付け、何をするか、何を受け取り何を返すかを書いてください。コアはすべての呼び出しの
+引数を `args` で検査し、コマンドを `cmd.tools` に載せ、デスクの頭脳ターンで ID に因んだ名前のツール
+（`example_my-plugin_notes`）として提示します。
+
+```json
+"commands": [
+  {
+    "id": "example.my-plugin.notes",
+    "title": "Notes: list",
+    "description": "The notes in a folder, newest first: name, path and when each changed.",
+    "args": { "type": "object", "properties": { "folder": { "type": "string" } }, "additionalProperties": false },
+    "result": { "type": "array", "items": { "type": "object" } },
+    "agent": true,
+    "readOnly": true
+  },
+  { "id": "example.my-plugin.publish", "title": "Notes: publish", "description": "Publish a note to the web.", "agent": true, "irreversible": true }
+]
+```
+
+`readOnly` は、そのコマンドがデータを返すだけで、人が持つものを何も変えないことを示します。コマンドは
+エージェントではなくプラグインの権限で動くので、プログラムを実行するもの、送信・削除・公開するものには
+`irreversible` を付けてください。エージェントの呼び出しは、引数を見せたうえで人の承認を待ちます。パレットから
+引数なしで実行されるときに欠ける引数は必須にせず、ハンドラーで検査してください。実行時に登録するコマンドは
+`cmd.register` で同じ項目（`description`、`argsSchema`、`resultSchema`、`agent`、`readOnly`）を
+受け取り、`ctx.commands.tools()` は自分の権限が及ぶエージェント向けコマンドを一覧します。組み込みの git、
+terminal、docker、calendar、database プラグインが例です。
+
 ## ファイルの編集: 編集ティア
 
 ファイルを開くプラグインは、まず読み、編集は後から加えます（ADR 0045）。編集するようになったら、開くすべての
@@ -213,6 +243,28 @@ await ctx.commands.run("desk.views.open", { id: "desk.today" });
 時計を知っています（`{today}`、`{tomorrow}`）。アプリがこれらの要素を配信するようになれば、あなたのページも
 インポートマップ（`"@endue-ai/ui": "/_desk/ui.js"`）で同じ要素を読み込めます。現在はランタイムのテスト
 サーバーが配信しています。
+
+### ユニバーサルビュー
+
+ユニバーサルビュー（`specs/view/v0/universal.schema.json`、ADR 0087）は、ひとつの YAML 形式、つまりユニバーサル
+データ形式を返す出所なら何からでもエントリーを受け取り、タイムライン、カレンダー、カンバン、リスト、テキスト、
+チャット、エージェントの実行として表示します。ビューはデータとして持ち、`ctx.universal` で開きます。出所は
+インラインのデータ、プラグインのフォルダーのファイル（`asset`、権限は不要）、URL（`net:fetch`）、デスクのファイル
+（`fs:read`）、ほかのプラグインのコマンド、デスクのアイテムのどれでもよく、ビューは変わりません。
+
+```js
+const board = ctx.universal.open(document.getElementById("root"), {
+  type: "kanban",
+  types: ["kanban", "list", "timeline", "calendar"],
+  source: { asset: "data/board.yaml" },
+  map: { group: "column", start: "due" },
+  move: { command: "example.board.move", args: { id: "{id}", to: "{move.to}" } },
+});
+```
+
+描画するのは `@endue-ai/ui` の `<desk-universal-view>` です。`ctx.universal.load(source)` と
+`ctx.universal.parse(text)` はドキュメントそのものを返します。自分のプラグインがなくても、
+`desk.universal.open` コマンドで開けます。いちばん小さな例は `examples/plugin-hello-universal` です。
 
 ## テスト
 

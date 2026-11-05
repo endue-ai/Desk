@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://endue.ai/specs/bridge/v0/cmd.schema.json",
   "title": "Desk bridge v0: cmd",
-  "description": "The command registry, kept by the core. Clicks, keys, the palette, Eris, agents and the CLI all invoke commands through it, and the desk's built-in commands are registered in it like any other (ADR 0017). Callers register, unregister and answer their own commands without a scope; listing and invoking need cmd:invoke. Commands that name an `undo` land on the desk's undo stack, which cmd.undo and cmd.redo walk (ADR 0077).",
+  "description": "The command registry, kept by the core. Clicks, keys, the palette, Eris, agents and the CLI all invoke commands through it, and the desk's built-in commands are registered in it like any other (ADR 0017). Callers register, unregister and answer their own commands without a scope; listing and invoking need cmd:invoke. Commands marked agent are offered to agents as tools (cmd.tools, ADR 0088). Commands that name an `undo` land on the desk's undo stack, which cmd.undo and cmd.redo walk (ADR 0077).",
   "$defs": {
     "CommandInfo": {
       "description": "A registered command as cmd.list returns it.",
@@ -43,6 +43,22 @@
         "undo": {
           "description": "The command that undoes this one: cmd.undo runs it with { args, result } of an invocation. Absent when the command cannot be undone.",
           "$ref": "../../plugin/v0/contributes.schema.json#/$defs/CommandId"
+        },
+        "resultSchema": {
+          "description": "JSON Schema (2020-12) of what the command answers; absent when it is not described. The core does not check answers.",
+          "type": "object"
+        },
+        "agent": {
+          "description": "Agents are offered the command as a tool (cmd.tools, ADR 0088). Absent means false.",
+          "type": "boolean"
+        },
+        "readOnly": {
+          "description": "The command only reads: it answers data and changes nothing the person keeps. Absent means false.",
+          "type": "boolean"
+        },
+        "irreversible": {
+          "description": "The provider's manifest marks the command irreversible: an agent's call waits for the person's approval (ADR 0078). Absent means false.",
+          "type": "boolean"
         }
       },
       "required": ["id", "title", "provider"],
@@ -78,6 +94,7 @@
           "maxLength": 128
         },
         "description": {
+          "description": "What the command does and answers, for people and agents. Absent: the manifest's, if any.",
           "type": "string",
           "maxLength": 1000
         },
@@ -92,7 +109,7 @@
           "maxItems": 32
         },
         "argsSchema": {
-          "description": "JSON Schema (2020-12) for the args of cmd.invoke.",
+          "description": "JSON Schema (2020-12) for the args of cmd.invoke. Absent: the manifest's (args), if any.",
           "type": "object"
         },
         "when": {
@@ -104,6 +121,18 @@
         "undo": {
           "description": "The command that undoes this one, which the caller provides too. Absent: the one the caller's manifest names for this id in contributes.commands, if any.",
           "$ref": "../../plugin/v0/contributes.schema.json#/$defs/CommandId"
+        },
+        "resultSchema": {
+          "description": "JSON Schema (2020-12) of what the command answers. Absent: the one the caller's manifest names for this id (result), if any.",
+          "type": "object"
+        },
+        "agent": {
+          "description": "Offer the command to agents as a tool (ADR 0088); it needs a description, here or in the manifest. Absent: the manifest's, else false.",
+          "type": "boolean"
+        },
+        "readOnly": {
+          "description": "The command only reads: it answers data and changes nothing the person keeps. Absent: the manifest's, else false. A command the manifest marks irreversible is never read-only.",
+          "type": "boolean"
         }
       },
       "required": ["id", "title"],
@@ -283,6 +312,102 @@
       "description": "Result of cmd.answer.",
       "type": "object",
       "properties": {},
+      "additionalProperties": false
+    },
+    "CmdToolsRequest": {
+      "description": "List the commands offered to agents as tools (ADR 0088): what the desk's brain turns offer, and what the desk-tools tool answers.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "bridge.schema.json#/$defs/RequestId"
+        },
+        "method": {
+          "const": "cmd.tools"
+        },
+        "params": {
+          "$ref": "#/$defs/CmdToolsParams"
+        }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "CmdToolsParams": {
+      "description": "Parameters of cmd.tools. It needs no scope: an agent sees the agent commands its allowlist could let it run, any other caller the ones its cmd:invoke grants cover.",
+      "type": "object",
+      "properties": {
+        "query": {
+          "description": "Words that must each appear, ignoring case, in the command's id, title, description or keywords.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "limit": {
+          "description": "How many tools at most; 50 when absent.",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 200
+        }
+      },
+      "additionalProperties": false
+    },
+    "CmdToolsResult": {
+      "description": "Result of cmd.tools, in registration order.",
+      "type": "object",
+      "properties": {
+        "tools": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CommandTool"
+          },
+          "maxItems": 200
+        }
+      },
+      "required": ["tools"],
+      "additionalProperties": false
+    },
+    "CommandTool": {
+      "description": "A command offered to agents as a tool: what it does, the args it takes, what it answers, and whether the caller may run it now.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "description": "The tool's name in a brain turn: the command id with every dot an underscore (endue.git.state is endue_git_state). Absent when the id is longer than 64 characters; desk-run still runs it.",
+          "type": "string",
+          "pattern": "^[a-z0-9_-]{1,64}$"
+        },
+        "command": {
+          "$ref": "../../plugin/v0/contributes.schema.json#/$defs/CommandId"
+        },
+        "title": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1
+        },
+        "argsSchema": {
+          "description": "JSON Schema (2020-12) of the args; absent means the command takes none.",
+          "type": "object"
+        },
+        "resultSchema": {
+          "description": "JSON Schema (2020-12) of the answer; absent when it is not described.",
+          "type": "object"
+        },
+        "readOnly": {
+          "type": "boolean"
+        },
+        "irreversible": {
+          "description": "An agent's call waits for the person's approval, every time (ADR 0078).",
+          "type": "boolean"
+        },
+        "provider": {
+          "$ref": "bridge.schema.json#/$defs/CallerId"
+        },
+        "granted": {
+          "description": "A grant the caller holds covers the command now. An agent's call without one asks the person first.",
+          "type": "boolean"
+        }
+      },
+      "required": ["command", "title", "description", "provider", "granted"],
       "additionalProperties": false
     },
     "CmdRecentRequest": {

@@ -101,12 +101,14 @@
       {
         "id": "endue.docker.kill",
         "title": "Docker: kill the container",
-        "keywords": ["sigkill"]
+        "keywords": ["sigkill"],
+        "irreversible": true
       },
       {
         "id": "endue.docker.remove",
         "title": "Docker: remove the container",
-        "keywords": ["rm", "delete"]
+        "keywords": ["rm", "delete"],
+        "irreversible": true
       },
       {
         "id": "endue.docker.logs",
@@ -136,7 +138,8 @@
       {
         "id": "endue.docker.run",
         "title": "Docker: run a container from an image",
-        "keywords": ["create", "new"]
+        "keywords": ["create", "new"],
+        "irreversible": true
       },
       {
         "id": "endue.docker.pull",
@@ -146,32 +149,38 @@
       {
         "id": "endue.docker.remove-image",
         "title": "Docker: remove the image",
-        "keywords": ["rmi", "delete"]
+        "keywords": ["rmi", "delete"],
+        "irreversible": true
       },
       {
         "id": "endue.docker.prune-images",
         "title": "Docker: remove dangling images",
-        "keywords": ["prune", "clean"]
+        "keywords": ["prune", "clean"],
+        "irreversible": true
       },
       {
         "id": "endue.docker.remove-volume",
         "title": "Docker: remove the volume",
-        "keywords": ["delete"]
+        "keywords": ["delete"],
+        "irreversible": true
       },
       {
         "id": "endue.docker.prune-volumes",
         "title": "Docker: remove unused volumes",
-        "keywords": ["prune", "clean"]
+        "keywords": ["prune", "clean"],
+        "irreversible": true
       },
       {
         "id": "endue.docker.remove-network",
         "title": "Docker: remove the network",
-        "keywords": ["delete"]
+        "keywords": ["delete"],
+        "irreversible": true
       },
       {
         "id": "endue.docker.prune-networks",
         "title": "Docker: remove unused networks",
-        "keywords": ["prune", "clean"]
+        "keywords": ["prune", "clean"],
+        "irreversible": true
       },
       {
         "id": "endue.docker.up",
@@ -181,7 +190,8 @@
       {
         "id": "endue.docker.down",
         "title": "Docker: Compose down",
-        "keywords": ["compose", "teardown"]
+        "keywords": ["compose", "teardown"],
+        "irreversible": true
       },
       {
         "id": "endue.docker.compose-start",
@@ -211,7 +221,8 @@
       {
         "id": "endue.docker.prune",
         "title": "Docker: clean up",
-        "keywords": ["system", "prune", "disk"]
+        "keywords": ["system", "prune", "disk"],
+        "irreversible": true
       },
       {
         "id": "endue.docker.context",

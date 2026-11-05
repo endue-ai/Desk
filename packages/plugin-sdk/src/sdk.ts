@@ -22,6 +22,7 @@ import { type HostMessage, type ThemeState, type Transport, windowTransport } fr
 import { frameStart } from "./ready";
 import { type PluginSearch, searchFor } from "./search";
 import { SURFACE_STATE, stateAnswer } from "./surface-state";
+import { type PluginUniversal, universalFor } from "./universal";
 
 /** The bridge as a plugin sees it: calls are checked against the plugin's own grants. */
 export interface PluginBridge {
@@ -79,6 +80,8 @@ export interface PluginContext {
   data: PluginData;
   /** The person's views (view.*), under view:manage. */
   views: PluginViews;
+  /** Universal views: load any source of the universal data format and draw it (ADR 0087). */
+  universal: PluginUniversal;
 }
 
 export interface UiPlugin {
@@ -157,6 +160,14 @@ export function connect(transport: Transport = windowTransport()): Promise<Plugi
 
     const ctxFor = (pluginId: string, restored: unknown): PluginContext => {
       const { open, ...groups } = contextFor(bridge, pluginId);
+      const { data, views } = dataFor(bridge);
+      const universal = universalFor({
+        pluginId,
+        call: (method, params) => bridge.call(method, params),
+        run: (id, args) => commands.api.run(id, args),
+        query: (query) => data.query(query),
+        subscribe: (query, listener) => data.subscribe(query, () => listener()),
+      });
       return {
         pluginId,
         bridge,
@@ -180,7 +191,9 @@ export function connect(transport: Transport = windowTransport()): Promise<Plugi
         },
         commands: commands.api,
         search: searchFor(bridge),
-        ...dataFor(bridge),
+        data,
+        views,
+        universal,
         theme: {
           get: () => theme,
           on: (listener) => {

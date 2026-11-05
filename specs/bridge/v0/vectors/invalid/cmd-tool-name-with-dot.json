@@ -1,0 +1,12 @@
+{
+  "target": "CommandTool",
+  "description": "a tool name has no dots",
+  "instance": {
+    "name": "endue.git.state",
+    "command": "endue.git.state",
+    "title": "Git: state",
+    "description": "The repository's state.",
+    "provider": "endue.git",
+    "granted": true
+  }
+}

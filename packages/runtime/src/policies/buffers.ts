@@ -4,7 +4,7 @@
  * Plugins open, rename and mark their own buffers with desk.buffers.open and desk.buffers.update.
  */
 import { type Buffer, Buffers } from "../buffers";
-import { CommandError } from "../commands";
+import { type AgentSpec, CommandError } from "../commands";
 import { type DeskContext, disposer, type Installed } from "./context";
 
 export interface BuffersPolicy extends Installed {
@@ -103,6 +103,7 @@ export function installBuffers(
     title: string,
     run: (args: unknown, caller: string | undefined) => unknown,
     keywords: string[] = [],
+    agent?: AgentSpec,
   ) =>
     offs.add(
       commands.define(id, {
@@ -110,11 +111,16 @@ export function installBuffers(
         keywords: ["buffers", ...keywords],
         owner: "desk.buffers",
         run: (args, from) => run(args, from.caller),
+        ...(agent ? { agent } : {}),
       }),
     );
   const idOf = (args: unknown) => (args as { id?: string; buffer?: string } | undefined)?.id;
 
-  define("desk.buffers.list", "List open buffers", () => buffers.list(), ["ibuffer"]);
+  define("desk.buffers.list", "List open buffers", () => buffers.list(), ["ibuffer"], {
+    description:
+      "What is open on the desk, most recently used first: each buffer's id, name, plugin, file path, and whether it has unsaved changes.",
+    readOnly: true,
+  });
   define(
     "desk.buffers.switch",
     "Switch to a buffer",

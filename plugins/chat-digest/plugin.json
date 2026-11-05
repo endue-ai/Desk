@@ -1,0 +1,186 @@
+{
+  "id": "endue.chat-digest",
+  "name": "Chat digest",
+  "version": "0.1.0",
+  "kind": "view",
+  "description": "Every chat at a glance: what is unread, who mentioned you, the direct messages waiting and the latest across every service, drawn by desk.views.",
+  "view": {
+    "id": "endue.chat-digest",
+    "version": "0.1.0",
+    "title": "Chats at a glance",
+    "description": "Unread chat messages, mentions and direct messages waiting, and the latest messages across every chat service.",
+    "layout": {
+      "type": "stack",
+      "direction": "vertical",
+      "children": [
+        {
+          "type": "grid",
+          "columns": 3,
+          "children": [
+            {
+              "type": "stat",
+              "title": "Unread",
+              "binding": {
+                "kinds": ["message"],
+                "where": [
+                  { "field": "raw.channel", "op": "exists" },
+                  { "field": "unread", "op": "eq", "value": true }
+                ],
+                "limit": 500
+              },
+              "empty": "All caught up."
+            },
+            {
+              "type": "stat",
+              "title": "Mentions",
+              "binding": {
+                "kinds": ["message"],
+                "where": [
+                  { "field": "raw.channel", "op": "exists" },
+                  { "field": "unread", "op": "eq", "value": true },
+                  { "field": "raw.mentioned", "op": "eq", "value": true }
+                ],
+                "limit": 500
+              },
+              "empty": "No one is waiting on you."
+            },
+            {
+              "type": "stat",
+              "title": "Direct",
+              "binding": {
+                "kinds": ["message"],
+                "where": [
+                  { "field": "raw.channel", "op": "exists" },
+                  { "field": "unread", "op": "eq", "value": true },
+                  { "field": "raw.channelKind", "op": "in", "value": ["dm", "group"] }
+                ],
+                "limit": 500
+              },
+              "empty": "No direct messages waiting."
+            }
+          ]
+        },
+        {
+          "type": "grid",
+          "columns": 2,
+          "children": [
+            {
+              "type": "list",
+              "title": "Mentions",
+              "binding": {
+                "kinds": ["message"],
+                "where": [
+                  { "field": "raw.channel", "op": "exists" },
+                  { "field": "unread", "op": "eq", "value": true },
+                  { "field": "raw.mentioned", "op": "eq", "value": true }
+                ],
+                "sort": [{ "field": "receivedAt", "dir": "desc" }],
+                "limit": 10
+              },
+              "fields": [
+                { "value": "{from.name} in #{raw.channelName}" },
+                { "value": "{title}" },
+                { "value": "{raw.workspace} · {receivedAt|relative}" }
+              ],
+              "actions": [
+                {
+                  "command": "endue.chat.show",
+                  "title": "Open in Chat",
+                  "args": {
+                    "source": {
+                      "connector": "{source.connector}",
+                      "instance": "{source.instance}"
+                    },
+                    "id": "{id}"
+                  }
+                },
+                {
+                  "command": "endue.chat.reply",
+                  "title": "Reply in thread",
+                  "args": {
+                    "source": {
+                      "connector": "{source.connector}",
+                      "instance": "{source.instance}"
+                    },
+                    "id": "{id}"
+                  }
+                }
+              ],
+              "empty": "No one is waiting on you."
+            },
+            {
+              "type": "list",
+              "title": "Direct messages",
+              "binding": {
+                "kinds": ["message"],
+                "where": [
+                  { "field": "raw.channel", "op": "exists" },
+                  { "field": "unread", "op": "eq", "value": true },
+                  { "field": "raw.channelKind", "op": "in", "value": ["dm", "group"] }
+                ],
+                "sort": [{ "field": "receivedAt", "dir": "desc" }],
+                "limit": 10
+              },
+              "fields": [
+                { "value": "{from.name}" },
+                { "value": "{title}" },
+                { "value": "{raw.workspace} · {receivedAt|relative}" }
+              ],
+              "actions": [
+                {
+                  "command": "endue.chat.show",
+                  "title": "Open in Chat",
+                  "args": {
+                    "source": {
+                      "connector": "{source.connector}",
+                      "instance": "{source.instance}"
+                    },
+                    "id": "{id}"
+                  }
+                }
+              ],
+              "empty": "No direct messages waiting."
+            }
+          ]
+        },
+        {
+          "type": "table",
+          "title": "Latest across every chat",
+          "binding": {
+            "kinds": ["message"],
+            "where": [{ "field": "raw.channel", "op": "exists" }],
+            "sort": [{ "field": "receivedAt", "dir": "desc" }],
+            "limit": 25
+          },
+          "fields": [
+            { "label": "When", "value": "{receivedAt|time}" },
+            { "label": "Where", "value": "{raw.workspace} › {raw.channelName}" },
+            { "label": "Who", "value": "{from.name}" },
+            { "label": "Message", "value": "{title}" }
+          ],
+          "actions": [
+            {
+              "command": "endue.chat.show",
+              "title": "Open in Chat",
+              "args": {
+                "source": { "connector": "{source.connector}", "instance": "{source.instance}" },
+                "id": "{id}"
+              }
+            }
+          ],
+          "empty": "No chat messages yet. Connect Slack, Discord or another chat connector."
+        }
+      ]
+    }
+  },
+  "contributes": {
+    "commands": [
+      {
+        "id": "endue.chat-digest.open",
+        "title": "Open the chat digest",
+        "keywords": ["chat", "digest", "glance", "dashboard", "unread", "mentions"],
+        "runs": { "command": "desk.views.open", "args": { "id": "endue.chat-digest" } }
+      }
+    ]
+  }
+}

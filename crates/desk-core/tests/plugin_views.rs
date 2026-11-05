@@ -349,7 +349,7 @@ fn two_plugins_with_one_view_id_list_the_first_and_report_the_other() {
 }
 
 #[test]
-fn the_built_in_plugins_list_desk_today_and_desk_item() {
+fn the_built_in_plugins_list_desk_today_desk_item_and_the_chat_digest() {
     let desk = Desk::new("plugin-views-built-in", None);
     desk.grant("desk", view_manage());
     let repo = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../plugins");
@@ -371,7 +371,8 @@ fn the_built_in_plugins_list_desk_today_and_desk_item() {
         found,
         [
             ("desk.item", "plugin", "desk.item"),
-            ("desk.today", "plugin", "desk.today")
+            ("desk.today", "plugin", "desk.today"),
+            ("endue.chat-digest", "plugin", "endue.chat-digest")
         ]
     );
     let text = fs::read_to_string(repo.join("today/plugin.json")).unwrap();

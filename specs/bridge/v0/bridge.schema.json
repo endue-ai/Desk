@@ -74,6 +74,7 @@
         { "$ref": "cmd.schema.json#/$defs/CmdListRequest" },
         { "$ref": "cmd.schema.json#/$defs/CmdInvokeRequest" },
         { "$ref": "cmd.schema.json#/$defs/CmdAnswerRequest" },
+        { "$ref": "cmd.schema.json#/$defs/CmdToolsRequest" },
         { "$ref": "cmd.schema.json#/$defs/CmdRecentRequest" },
         { "$ref": "cmd.schema.json#/$defs/CmdUndoRequest" },
         { "$ref": "cmd.schema.json#/$defs/CmdRedoRequest" },

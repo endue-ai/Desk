@@ -42,6 +42,7 @@ mod core_shell;
 mod core_state;
 mod core_store;
 mod core_themes;
+mod core_tools;
 mod core_ui;
 mod core_undo;
 mod core_update;
@@ -75,6 +76,7 @@ mod time;
 mod views_watch;
 mod watch;
 
+pub use agents::agent_caller;
 pub use conversation::{BrainMode, BrainOptions, FAILED_LINE, OFFLINE_LINE, READ_ONLY_LINE};
 pub use core_fs_url::FileUrl;
 pub use core_perm::{Prompter, RefuseAll};

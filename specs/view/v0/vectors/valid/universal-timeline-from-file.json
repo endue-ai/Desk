@@ -1,0 +1,12 @@
+{
+  "target": "UniversalView",
+  "description": "a timeline of a YAML file on the desk, latest first, read again every five minutes",
+  "instance": {
+    "title": "Release history",
+    "type": "timeline",
+    "source": { "file": "~/Projects/desk/releases.yaml" },
+    "map": { "start": "date", "detail": "summary" },
+    "options": { "order": "desc" },
+    "refresh": 300
+  }
+}
