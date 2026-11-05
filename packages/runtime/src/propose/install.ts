@@ -1,8 +1,9 @@
 /**
  * desk.propose and desk.propose.undo in the desk's registry, as the runtime's own commands (ADR 0017,
- * 0073). `desk.propose { kind?, text? }` ("Make with Eris…") makes a view, a profile or key bindings
- * from a sentence (the kind the sentence asks for when none is given) and answers with the outcome;
- * without a sentence it asks for one with desk.palette.pick and answers at once.
+ * 0073). `desk.propose { kind?, text? }` ("Make with Eris…") makes a view (a universal view; an item
+ * view with `kind: "item-view"`), a profile or key bindings from a sentence (the kind the sentence
+ * asks for when none is given) and answers with the outcome; without a sentence it asks for one
+ * with desk.palette.pick and answers at once.
  * `desk.propose.undo { kind?, id? }` takes back what this session applied, the last one by default:
  * the inverse `cmd.undo` (#276) can point to.
  */
@@ -18,6 +19,7 @@ import { keysKind, settingsKeys } from "./keys";
 import { createProposals, type Eris, type ProposalKind } from "./pipeline";
 import { profileKind } from "./profile";
 import { kindOf } from "./talk";
+import { universalKind } from "./universal";
 import { viewKind } from "./view";
 
 export interface InstallProposalsOptions {
@@ -39,18 +41,19 @@ export interface InstallProposalsOptions {
 }
 
 const ASK =
-  "Say what to make: show my events this week as a board, make a quiet profile, bind Mod+Shift+T to …";
+  "Say what to make: show this repo's issues as a board, make a quiet profile, bind Mod+Shift+T to …";
 
 export function installProposals(options: InstallProposalsOptions): () => void {
   const { bridge, commands, eris } = options;
   const asker = createAsker(bridge, { onOffline: (text) => eris?.say(text) });
-  const view = viewKind({
+  const views = {
     bridge,
-    commands: { run: (id, args) => commands.run(id, args) },
+    commands: { run: (id: string, args?: unknown) => commands.run(id, args) },
     now: options.now ?? (() => Date.now()),
     profile: options.profile,
-  });
-  const kinds: ProposalKind[] = [view];
+  };
+  // A view is a universal view (ADR 0102); the item view kind answers to its name only.
+  const kinds: ProposalKind[] = [universalKind(views), viewKind({ ...views, kind: "item-view" })];
   const card = options.desk ? createCard(options.desk.host) : undefined;
   if (options.desk && card) {
     const { settings, policy, platform } = options.desk;
@@ -86,7 +89,19 @@ export function installProposals(options: InstallProposalsOptions): () => void {
   const offs = [
     commands.define("desk.propose", {
       title: "Make with Eris…",
-      keywords: ["make", "build", "create", "view", "dashboard", "profile", "bind", "keys", "eris"],
+      keywords: [
+        "make",
+        "build",
+        "create",
+        "view",
+        "board",
+        "timeline",
+        "dashboard",
+        "profile",
+        "bind",
+        "keys",
+        "eris",
+      ],
       owner: "desk",
       run: async (args) => {
         const { kind, text } = (args ?? {}) as { kind?: unknown; text?: unknown };

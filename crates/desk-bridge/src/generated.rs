@@ -1177,6 +1177,9 @@ pub struct PluginManifest {
     pub surfaces: Option<Vec<Surface>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub contributes: Option<PluginContributes>,
+    /// The roles this plugin can fill (BR-05, ADR 0104): role:rail, role:agents and role:dock are the desk's three edges, role:palette the command palette, role:settings-ui the settings window. The desk.roles setting chooses each role's provider among the plugins that provide it; a provider that is not chosen does not mount that role's surfaces.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub provides: Option<Vec<Role>>,
     /// Installed but off until the desk needs it, like Emacs's autoload. With no stored enabled flag the plugin starts off, and its file openers count while it is off: desk.files turns it on to open a file and off again when its last file closes; profiles leave it as it is. Default false.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub autoload: Option<bool>,
@@ -1202,6 +1205,9 @@ pub struct PluginManifest {
 
 /// Reverse-domain style id with at least one dot, lowercase, for example endue.eris or example.hello-ui.
 pub type PluginId = String;
+
+/// A role a plugin fills: role: and a lowercase name.
+pub type Role = String;
 
 /// Semantic version, for example 0.1.0 or 1.2.3-beta.1.
 pub type Version = String;
@@ -3173,12 +3179,28 @@ pub enum BrainStatusResult {
     BrainStatusOffline(BrainStatusOffline),
 }
 
-/// A brain on this machine, named by the model it runs.
+/// A brain the desk can choose for Eris (ADR 0094): endue (endue AI), local (Ollama on this machine) or echo (examples/brain-echo).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum BrainName {
+    #[serde(rename = "endue")]
+    Endue,
+    #[serde(rename = "local")]
+    Local,
+    #[serde(rename = "echo")]
+    Echo,
+}
+
+/// A brain on this machine, named by the model it runs. fallback is true when it answers in place of the chosen brain, which cannot be reached now (ADR 0094).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct BrainStatusLocal {
     pub mode: BrainStatusLocalMode,
     pub model: String,
+    /// The brain the desk chose. Absent from desks that cannot choose.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub brain: Option<BrainName>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fallback: Option<bool>,
 }
 
 /// A brain over the network, such as endue AI. credits is left out while the brain reports none.
@@ -3189,6 +3211,9 @@ pub struct BrainStatusCloud {
     /// Credits left.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub credits: Option<u64>,
+    /// The brain the desk chose. Absent from desks that cannot choose.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub brain: Option<BrainName>,
 }
 
 /// The brain cannot be reached now, or the desk has none.
@@ -3196,6 +3221,9 @@ pub struct BrainStatusCloud {
 #[serde(deny_unknown_fields)]
 pub struct BrainStatusOffline {
     pub mode: BrainStatusOfflineMode,
+    /// The brain the desk chose, which cannot be reached now. Absent from desks that cannot choose.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub brain: Option<BrainName>,
 }
 
 /// Progress of a brain.say or brain.ask turn.
@@ -6370,15 +6398,27 @@ pub enum ViewSource {
     File,
 }
 
-/// A view as view.list returns it: where it comes from and, for a plugin's view, the plugin.
+/// A view in either language: an item view of specs/view/v0 (layouts of components over the desk's items, ADR 0032) or a universal view (one presentation of entries from any source, ADR 0087). A universal view saved in ~/.desk/views must have its id.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum AnyView {
+    View(View),
+    Universal(UniversalView),
+}
+
+/// A view as view.list returns it: where it comes from and, for a plugin's view, the plugin. An item view has a version; a universal view has its type instead, and its title is its id when it has none.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ViewSummary {
     pub id: ViewId,
-    pub version: Version,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub version: Option<Version>,
     pub title: Template,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
+    /// A universal view's presentation; absent for an item view.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub r#type: Option<UniversalType>,
     pub source: ViewSource,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub plugin: Option<PluginId>,
@@ -6428,7 +6468,7 @@ pub struct ViewGetParams {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ViewGetResult {
-    pub view: View,
+    pub view: AnyView,
     pub source: ViewSource,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub plugin: Option<PluginId>,
@@ -6443,11 +6483,11 @@ pub struct ViewSaveRequest {
     pub params: ViewSaveParams,
 }
 
-/// Parameters of view.save. The view must pass specs/view/v0 and its names must resolve.
+/// Parameters of view.save. An item view must pass specs/view/v0 and its names must resolve; a universal view must pass universal.schema.json and have its id.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ViewSaveParams {
-    pub view: View,
+    pub view: AnyView,
     pub scope: ViewManagePermission,
 }
 

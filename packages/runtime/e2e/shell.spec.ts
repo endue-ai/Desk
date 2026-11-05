@@ -124,7 +124,7 @@ test.describe("the desk shell", () => {
       "두뇌 · 로컬 · llama-3.2-3b",
     );
     await page.click('[data-rail="brain"]');
-    await page.getByRole("radio", { name: "클라우드" }).click();
+    await page.getByRole("radio", { name: "endue AI" }).click();
     await expect(page.locator('[data-rail="brain"]')).toHaveAttribute(
       "aria-label",
       "두뇌 · 클라우드 · 크레딧 1200",

@@ -9,8 +9,10 @@ plugins:
   # Plugin ids to keep off at start, built-in plugins included. Example: [endue.sidebar]
   disabled: []
 
-# Settings by key, for the core and plugins. Example:
+# Settings by key, for the core and plugins. Examples:
 #   eris.voice: true
+#   desk.brain.use: local      # Eris's brain: endue (default), local (Ollama) or echo
+#   desk.brain.model: llama3.2 # the Ollama model of the local brain
 settings: {}
 
 # What each agent of the brain may be granted here, by agent id. An agent without an entry asks you

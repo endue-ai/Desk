@@ -18,7 +18,7 @@ export type Route =
 const SLASH = /^\s*\/make\b/i;
 const THEME = /\bthemes?\b|테마/i;
 const MADE =
-  /\b(views?|dashboards?|boards?|lists?|tables?|agendas?|kanban|charts?|graphs?|timelines?|profiles?|shortcuts?)\b/i;
+  /\b(views?|dashboards?|boards?|lists?|tables?|agendas?|kanban|charts?|graphs?|timelines?|calendars?|documents?|chats?|profiles?|shortcuts?)\b/i;
 
 /** The route for `text`; `proposing` says whether desk.propose is there to take it. */
 export function routeOf(text: string, proposing = true): Route {

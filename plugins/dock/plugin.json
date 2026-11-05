@@ -3,6 +3,7 @@
   "name": "Dock",
   "version": "0.1.0",
   "kind": "ui",
+  "provides": ["role:dock"],
   "entry": "ui/index.html",
   "description": "The bottom dock: the plugins that open on the desk, to open and put away.",
   "permissions": [{ "permission": "plugin:manage" }],

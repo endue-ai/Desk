@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import "./test-dom";
 import { type DeskUniversalViewSpec, defineElements } from "./index";
 import { focused, press, queryAll, reset } from "./test-dom";
+import { universalCss } from "./universal-css";
 
 defineElements();
 
@@ -202,6 +203,8 @@ describe("desk-universal-view", () => {
     expect(compose.hidden).toBe(true);
     element.setAttribute("compose", "");
     expect(compose.hidden).toBe(false);
+    // Laid out as flex, a hidden part still hides: the shadow sheet says so (#472).
+    expect(universalCss).toMatch(/\[hidden\] \{\s*display: none !important;/);
   });
 
   it("draws an agent's run: its state, each step's status and duration", () => {

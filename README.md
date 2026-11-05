@@ -32,6 +32,14 @@ Desk is a helper for builders: it sets up a stable environment to build in, leav
 and lets them make the best product at a quality that does not waver. Where Desk stands and where it goes
 is in `docs/roadmap.md`.
 
+### Your desk is a folder
+
+Everything you shape lives in `~/.desk`: `init.yaml`, your profiles, `keys.yaml`, your views and
+`plugins.lock`, plain files you can read, edit and keep in git. `desk export <folder|file.zip>` carries
+them to another computer (`--with-data` adds the desk's own state, never secrets), `desk import` brings
+them back without overwriting your `init.yaml`, and `desk doctor` lists every file with whether it reads
+as its spec says.
+
 ## Build
 
 ```bash

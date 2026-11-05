@@ -10,6 +10,7 @@ import type { ShellCtx } from "../shell/context";
 import { mountDesktops } from "../shell/Desktops";
 import { h } from "../shell/dom";
 import { mountModes } from "../shell/Modes";
+import { byRole } from "../shell/roles";
 import { mountSideBar } from "../shell/SideBar";
 import type { StartInfo } from "../start";
 import { mountThemeStudio } from "../theme-studio/studio";
@@ -26,7 +27,7 @@ export function mountSystemLayer(
   const parts = [
     mountModes(layer, ctx),
     mountDesktops(layer, ctx),
-    mountSideBar(layer, ctx),
+    byRole(layer, "role:agents", ctx.runtime.settings, (at) => mountSideBar(at, ctx)),
     mountAccountBar(layer, ctx),
   ];
   parts.push(mountSafeBadge(layer, ctx, safe));

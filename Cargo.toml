@@ -17,6 +17,7 @@ publish = false
 desk-bridge = { path = "crates/desk-bridge" }
 desk-brain = { path = "crates/desk-brain" }
 desk-brain-endue = { path = "crates/desk-brain-endue" }
+desk-brain-local = { path = "crates/desk-brain-local" }
 desk-core = { path = "crates/desk-core" }
 desk-index = { path = "crates/desk-index" }
 desk-plugin-host = { path = "crates/desk-plugin-host" }

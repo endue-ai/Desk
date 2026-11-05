@@ -24,6 +24,7 @@ import { installPalette } from "./policies/palette";
 import { installProfiles } from "./policies/profiles";
 import { installSession } from "./policies/session";
 import { installTheme } from "./policies/theme";
+import { chosenOf, mayMount, ROLES_SETTING } from "./roles";
 import type { Runtime, RuntimePlugins } from "./runtime-api";
 import type { SettingsLanguage } from "./settings-ui/copy";
 import { installSettingsWindow } from "./settings-ui/window";
@@ -296,10 +297,13 @@ export function createRuntime(options: RuntimeOptions): Runtime {
         listed: (all) => hub.apply(all),
         outcome: (id, ok) => start.outcome(id, ok),
         wake: (id) => frames.wake(id),
+        // A role named in desk.roles is its provider's alone (ADR 0104).
+        mayMount: (info) => mayMount(info, chosenOf(hub.settings.get(ROLES_SETTING))),
       },
       options.plugins,
     );
     pluginHost = host;
+    hub.settings.onChange((keys) => keys.includes(ROLES_SETTING) && void host.reconcile());
     commands.define("desk.plugins.open", {
       title: "Open a plugin",
       owner: "desk",

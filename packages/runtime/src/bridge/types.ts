@@ -22,10 +22,17 @@ export interface AudioLevels {
   eris: Bands;
 }
 
+/** A brain the desk can choose for Eris (ADR 0094). */
+export type BrainName = "endue" | "local" | "echo";
+
+/**
+ * Which brain answers. `brain` is the one the desk chose, where it can choose; `fallback` marks the
+ * local brain answering in place of a chosen one that cannot be reached.
+ */
 export type BrainStatus =
-  | { mode: "local"; model: string }
-  | { mode: "cloud"; credits: number }
-  | { mode: "offline" };
+  | { mode: "local"; model: string; brain?: BrainName; fallback?: boolean }
+  | { mode: "cloud"; credits: number; brain?: BrainName }
+  | { mode: "offline"; brain?: BrainName };
 
 export interface WordTime {
   word: string;
@@ -97,7 +104,8 @@ export interface ShellBridge {
   };
   brain: {
     status(): Promise<BrainStatus>;
-    use(mode: "local" | "cloud"): Promise<BrainStatus>;
+    /** Choose Eris's brain; answers the status once the desk switched. */
+    use(brain: BrainName): Promise<BrainStatus>;
     /** One turn of Eris's loop: its hand-offs reach `onStep` as they happen, then the reply. */
     say(text: string, onStep?: (step: BrainStep) => void): Promise<BrainReply>;
   };

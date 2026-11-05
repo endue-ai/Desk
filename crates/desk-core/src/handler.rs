@@ -68,6 +68,8 @@ pub struct Core {
     pub(crate) settings_reported: Mutex<BTreeSet<String>>,
     pub(crate) log: Mutex<Log>,
     pub(crate) conversation: Option<Arc<Conversation>>,
+    /// The brains the runtime's setting chooses from (ADR 0094), when the desk has more than one.
+    pub(crate) choice: Option<Arc<crate::brain_choice::BrainChoice>>,
     pub(crate) init: Mutex<InitFile>,
     pub(crate) sync: Option<Syncer>,
     pub(crate) notifications: AtomicU64,
@@ -111,6 +113,7 @@ impl Core {
             settings_reported: Mutex::default(),
             log: Mutex::new(Log::default()),
             conversation: None,
+            choice: None,
             init: Mutex::new(InitFile::memory()),
             sync: None,
             notifications: AtomicU64::new(0),

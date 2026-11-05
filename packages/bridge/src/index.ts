@@ -33,6 +33,7 @@ export {
 } from "./stub-commands";
 export { mediaType, pathMatch, type StubFiles, stubFs } from "./stub-fs";
 export { type StubOpened, shellLink } from "./stub-shell";
+export { anyViewProblems, isUniversal, universalProblems } from "./stub-universal";
 export { viewProblems } from "./stub-views";
 
 export const NAME = "@endue-ai/bridge";

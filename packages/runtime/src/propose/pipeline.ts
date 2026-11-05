@@ -3,8 +3,9 @@
  * kind's schema, with the sentence and what the desk has (the kind's context); checks the answer and
  * asks once more with what was wrong; previews it; and applies it when the person says so, keeping
  * what it applied so it can be undone. A kind says what differs: its schema, context, check, preview,
- * apply and undo. Views are the first (`view.ts`); profiles (`profile.ts`) and key bindings
- * (`keys.ts`) follow, previewed on the runtime's own card (`card.ts`).
+ * apply and undo. Views are universal views (`universal.ts`, ADR 0102), shown drafting at once and
+ * previewed in desk.universal; item views stay as `item-view` (`view.ts`); profiles (`profile.ts`)
+ * and key bindings (`keys.ts`) follow, previewed on the runtime's own card (`card.ts`).
  */
 import type { NoticeInput } from "../notify";
 import type { Asker, AskTool } from "./asker";
@@ -51,6 +52,11 @@ export interface ProposalKind<T = unknown> {
   context(request: Request): Promise<unknown>;
   /** Fill in the desk's part and check the answer: the value, or each problem as `<pointer>: <what>`. */
   check(answer: unknown, request: Request): Promise<{ value: T } | { problems: string[] }>;
+  /**
+   * Show at once that Eris is making it, before the brain answers, where the preview will be: the
+   * person sees the sentence taken. A kind without it shows nothing until the preview.
+   */
+  drafting?(request: Request): Promise<void>;
   /** Show it and wait for the person. */
   preview(value: T, request: Request): Promise<Choice>;
   /** Take a preview away (the pipeline gave up after Try again). */
@@ -146,6 +152,10 @@ export function createProposals(options: ProposalsOptions): Proposals {
       let shown = false;
       for (;;) {
         eris?.setState("thinking");
+        if (kind.drafting) {
+          shown = true;
+          void kind.drafting(request).catch(() => {});
+        }
         drafting = true;
         let drafted: { value: unknown } | { problems: string[] };
         try {

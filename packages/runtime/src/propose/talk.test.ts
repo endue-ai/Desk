@@ -43,4 +43,17 @@ describe("the kind a sentence asks for", () => {
     });
     expect(kindOf("my events this week as a board")).toBe("view");
   });
+
+  it("show … as a board, a timeline, a calendar, a list, a chat or a document is a view", () => {
+    for (const text of [
+      "show this repo's issues as a board",
+      "Show ~/notes as a timeline",
+      "show https://status.example.test/feed.yaml as a list",
+      "show my meetings on a calendar",
+      "show the deploy log in a document",
+    ])
+      expect(proposalOf(text), text).toEqual({ kind: "view", text });
+    for (const kept of ["show the time", "show my events this week", "showcase the board"])
+      expect(proposalOf(kept), kept).toBeNull();
+  });
 });

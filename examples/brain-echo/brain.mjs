@@ -4,11 +4,12 @@
 // and "tool <name> as <agent>: <json arguments>" asks for that tool on behalf of that agent. A
 // message of several such calls (one per line, or joined by " then ") asks for each in turn, all in
 // one turn. A turn that offers tools gets a call to the one toolChoice names, or to the first it
-// knows: propose_theme (theme.mjs) and echo; else to the local-agents ask command when the message
-// names a local agent ("ask Claude to run the tests", ADR 0099); else to an offered command the
-// message names by the words of its tool name (ADR 0089: "check my latest mail" calls
-// endue_mail_latest).
+// knows: propose_theme (theme.mjs), propose_universal_view (universal.mjs) and echo; else to the
+// local-agents ask command when the message names a local agent ("ask Claude to run the tests", ADR
+// 0099); else to an offered command the message names by the words of its tool name (Eris's loop,
+// ADR 0089: "check my latest mail" calls endue_mail_latest).
 import { proposeTheme } from "./theme.mjs";
+import { proposeUniversalView } from "./universal.mjs";
 
 /** A contract error: the HTTP status and the BrainError body. */
 export class BrainError extends Error {
@@ -78,6 +79,7 @@ const toolChoice = (v) =>
 /** The tools brain-echo can call: each makes the arguments from what was said. */
 const KNOWN = {
   propose_theme: (said) => proposeTheme(said),
+  propose_universal_view: (said) => proposeUniversalView(said),
   echo: (said) => ({ text: said }),
 };
 
@@ -142,17 +144,8 @@ function namedTool(body, said) {
   })?.name;
 }
 
-/** The local agents a message may name (plugins/local-agents) and the command that asks one. */
-const LOCAL_AGENTS = new Set([
-  "claude",
-  "codex",
-  "gemini",
-  "grok",
-  "qwen",
-  "copilot",
-  "cursor",
-  "opencode",
-]);
+/** The local agents a message may name (plugins/local-agents), and the command that asks one. */
+const LOCAL_AGENT = /(claude|codex|gemini|grok|qwen|copilot|cursor|opencode)/i;
 const ASK_LOCAL = "endue_local-agents_ask";
 
 /** A call of the offered ask command for the local agent the message names, the whole message as
@@ -160,7 +153,7 @@ const ASK_LOCAL = "endue_local-agents_ask";
 function localAgentCall(body, said) {
   if (body.toolChoice && body.toolChoice.type !== "auto") return undefined;
   if (!(body.tools ?? []).some((t) => t.name === ASK_LOCAL)) return undefined;
-  const agent = (said.toLowerCase().match(/[a-z0-9]+/g) ?? []).find((w) => LOCAL_AGENTS.has(w));
+  const agent = LOCAL_AGENT.exec(said)?.[1]?.toLowerCase();
   return agent && { name: ASK_LOCAL, arguments: { agent, prompt: said.trim() } };
 }
 

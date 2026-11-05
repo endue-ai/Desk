@@ -1,6 +1,8 @@
 //! The Tauri shell: windows, the webview and the plugin URL scheme. Everything else lives in desk-core.
 
+mod brains;
 mod commands;
+mod core_files;
 mod events;
 mod file_urls;
 mod open_files;
@@ -16,7 +18,6 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
-use desk_brain_endue::HttpBrain;
 use desk_bridge::{
     AccountManagePermission, BrainConversePermission, CmdInvokePermission,
     ConnectorManagePermission, FsReadPermission, FsWritePermission, PermManagePermission,
@@ -25,16 +26,12 @@ use desk_bridge::{
 };
 use desk_core::account::{Account, AccountOptions, DEFAULT_ID_URL, NetIdClient};
 use desk_core::{
-    BrainMode, BrainOptions, Core, MockRemote, PluginWatcher, Roots, SyncError, SyncOutcome,
-    ThemeWatcher, ViewWatcher,
+    Core, MockRemote, PluginWatcher, Roots, SyncError, SyncOutcome, ThemeWatcher, ViewWatcher,
 };
 use tauri::{Emitter, Manager};
 
 /// The caller id of the web runtime itself. Plugins call under their own ids.
 pub const RUNTIME_CALLER: &str = "desk";
-
-/// Where the brain lives unless `DESK_BRAIN_URL` says otherwise: examples/brain-echo (`just brain-echo`).
-pub const DEFAULT_BRAIN_URL: &str = "http://127.0.0.1:8787/v0";
 
 /// Where init.yaml lives under home unless `DESK_INIT` names another file, like `~/.emacs.d/init.el`.
 pub const INIT_FILE: &str = ".desk/init.yaml";
@@ -89,12 +86,9 @@ pub fn run() {
             let remote = MockRemote::with_file(data.join("sync-mock.json"));
             let core = Core::new(Roots { home })
                 .with_init_file(init)
-                .with_sync(Arc::new(remote), Some(data.join("sync.json")))
-                .with_plugin_store(data.join("plugins.json"))
-                .with_store_file(data.join("store.json"))
-                .with_secrets_file(data.join("secrets.json"))
-                // Every fs.write keeps the bytes it replaces here first (ADR 0076).
-                .with_history_dir(data.join("history"));
+                .with_sync(Arc::new(remote), Some(data.join("sync.json")));
+            // Everything that outlives a quit: grants, settings, the log and the rest (#351).
+            let core = core_files::open(core, &data);
             // Safe mode, asked for or after two starts that never got ready, holds plugins off as
             // they install (ADR 0061).
             let (mut core, last) = commands::start::begin(&data, core);
@@ -123,21 +117,9 @@ pub fn run() {
             account.file = Some(data.join("account.json"));
             let account = Account::open(account, NetIdClient);
             core = core.with_account(account.clone());
-            let url =
-                std::env::var("DESK_BRAIN_URL").unwrap_or_else(|_| DEFAULT_BRAIN_URL.to_owned());
-            match HttpBrain::new(&url) {
-                Ok(brain) => {
-                    let brain = brain.with_token_source(Arc::new(move || account.token()));
-                    // An HTTP brain is endue AI or brain-echo: brain.status names it cloud.
-                    let options = BrainOptions {
-                        state_file: Some(data.join("brain.json")),
-                        mode: BrainMode::Cloud,
-                        ..BrainOptions::default()
-                    };
-                    core = core.with_brain(Arc::new(brain), options);
-                }
-                Err(why) => eprintln!("endue Desk: no brain ({why}); brain.say is unavailable"),
-            }
+            // Eris's brain is the one the runtime's setting chooses, endue AI by default, and the
+            // local brain stands in while a remote one cannot be reached (ADR 0094).
+            core = core.with_brains(brains::brains(&data, account));
             // The desk's own updates (ADR 0054), when this build carries an updater key.
             let updater = update::updater(app.handle(), &data);
             if let Some(updater) = &updater {

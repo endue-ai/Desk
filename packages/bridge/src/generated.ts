@@ -694,6 +694,8 @@ export interface PluginManifest {
   /** Surfaces a UI plugin can open. Only UI plugins declare surfaces. */
   surfaces?: Surface[];
   contributes?: PluginContributes;
+  /** The roles this plugin can fill (BR-05, ADR 0104): role:rail, role:agents and role:dock are the desk's three edges, role:palette the command palette, role:settings-ui the settings window. The desk.roles setting chooses each role's provider among the plugins that provide it; a provider that is not chosen does not mount that role's surfaces. */
+  provides?: Role[];
   /** Installed but off until the desk needs it, like Emacs's autoload. With no stored enabled flag the plugin starts off, and its file openers count while it is off: desk.files turns it on to open a file and off again when its last file closes; profiles leave it as it is. Default false. */
   autoload?: boolean;
   /** A view plugin's one view, inline. */
@@ -709,6 +711,9 @@ export interface PluginManifest {
 
 /** Reverse-domain style id with at least one dot, lowercase, for example endue.eris or example.hello-ui. */
 export type PluginId = string;
+
+/** A role a plugin fills: role: and a lowercase name. */
+export type Role = string;
 
 /** Semantic version, for example 0.1.0 or 1.2.3-beta.1. */
 export type Version = string;
@@ -1932,10 +1937,16 @@ export interface BrainStatusParams {
 /** Result of brain.status: a brain on this machine with its model, a brain in the cloud, or offline. */
 export type BrainStatusResult = BrainStatusLocal | BrainStatusCloud | BrainStatusOffline;
 
-/** A brain on this machine, named by the model it runs. */
+/** A brain the desk can choose for Eris (ADR 0094): endue (endue AI), local (Ollama on this machine) or echo (examples/brain-echo). */
+export type BrainName = "endue" | "local" | "echo";
+
+/** A brain on this machine, named by the model it runs. fallback is true when it answers in place of the chosen brain, which cannot be reached now (ADR 0094). */
 export interface BrainStatusLocal {
   mode: "local";
   model: string;
+  /** The brain the desk chose. Absent from desks that cannot choose. */
+  brain?: BrainName;
+  fallback?: boolean;
 }
 
 /** A brain over the network, such as endue AI. credits is left out while the brain reports none. */
@@ -1943,11 +1954,15 @@ export interface BrainStatusCloud {
   mode: "cloud";
   /** Credits left. */
   credits?: number;
+  /** The brain the desk chose. Absent from desks that cannot choose. */
+  brain?: BrainName;
 }
 
 /** The brain cannot be reached now, or the desk has none. */
 export interface BrainStatusOffline {
   mode: "offline";
+  /** The brain the desk chose, which cannot be reached now. Absent from desks that cannot choose. */
+  brain?: BrainName;
 }
 
 /** Progress of a brain.say or brain.ask turn. */
@@ -4097,12 +4112,17 @@ export interface UpdateChangedEvent {
 /** Where a view comes from: plugin, an enabled view plugin's inline view or one of its view files, read-only; file, the person's file in ~/.desk/views. */
 export type ViewSource = "plugin" | "file";
 
-/** A view as view.list returns it: where it comes from and, for a plugin's view, the plugin. */
+/** A view in either language: an item view of specs/view/v0 (layouts of components over the desk's items, ADR 0032) or a universal view (one presentation of entries from any source, ADR 0087). A universal view saved in ~/.desk/views must have its id. */
+export type AnyView = View | UniversalView;
+
+/** A view as view.list returns it: where it comes from and, for a plugin's view, the plugin. An item view has a version; a universal view has its type instead, and its title is its id when it has none. */
 export interface ViewSummary {
   id: ViewId;
-  version: Version;
+  version?: Version;
   title: Template;
   description?: string;
+  /** A universal view's presentation; absent for an item view. */
+  type?: UniversalType;
   source: ViewSource;
   plugin?: PluginId;
 }
@@ -4139,7 +4159,7 @@ export interface ViewGetParams {
 
 /** Result of view.get: the view, where it comes from and, for a plugin's view, the plugin. */
 export interface ViewGetResult {
-  view: View;
+  view: AnyView;
   source: ViewSource;
   plugin?: PluginId;
 }
@@ -4151,9 +4171,9 @@ export interface ViewSaveRequest {
   params: ViewSaveParams;
 }
 
-/** Parameters of view.save. The view must pass specs/view/v0 and its names must resolve. */
+/** Parameters of view.save. An item view must pass specs/view/v0 and its names must resolve; a universal view must pass universal.schema.json and have its id. */
 export interface ViewSaveParams {
-  view: View;
+  view: AnyView;
   scope: ViewManagePermission;
 }
 
