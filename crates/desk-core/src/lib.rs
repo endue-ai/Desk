@@ -34,6 +34,7 @@ mod core_host;
 mod core_init;
 mod core_log;
 mod core_market;
+mod core_memory;
 mod core_net;
 mod core_perm;
 mod core_plugin_views;

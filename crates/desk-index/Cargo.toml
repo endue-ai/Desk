@@ -14,8 +14,8 @@ publish.workspace = true
 [dependencies]
 base64.workspace = true
 desk-bridge.workspace = true
-# bundled: SQLite is compiled in, with FTS5 and the JSON functions. functions: scope.rs's matcher in SQL.
-rusqlite = { version = "0.41", default-features = false, features = ["bundled", "functions"] }
+# functions: scope.rs's matcher in SQL (the workspace's rusqlite has it).
+rusqlite.workspace = true
 serde_json.workspace = true
 
 [lints]

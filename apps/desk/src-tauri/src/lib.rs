@@ -20,9 +20,9 @@ use std::time::Instant;
 
 use desk_bridge::{
     AccountManagePermission, BrainConversePermission, CmdInvokePermission,
-    ConnectorManagePermission, FsReadPermission, FsWritePermission, PermManagePermission,
-    Permission, PluginManagePermission, ShellOpenPermission, ThemeManagePermission,
-    UpdateManagePermission, ViewManagePermission,
+    ConnectorManagePermission, FsReadPermission, FsWritePermission, MemoryReadPermission,
+    MemoryWritePermission, PermManagePermission, Permission, PluginManagePermission,
+    ShellOpenPermission, ThemeManagePermission, UpdateManagePermission, ViewManagePermission,
 };
 use desk_core::account::{Account, AccountOptions, DEFAULT_ID_URL, NetIdClient};
 use desk_core::{
@@ -167,6 +167,17 @@ pub fn run() {
                     permission: Default::default(),
                 }),
             );
+            // The desk's own screens read and keep Eris's memory for the person (ADR 0095).
+            for scope in [
+                Permission::MemoryRead(MemoryReadPermission {
+                    permission: Default::default(),
+                }),
+                Permission::MemoryWrite(MemoryWritePermission {
+                    permission: Default::default(),
+                }),
+            ] {
+                core.grant(RUNTIME_CALLER, scope);
+            }
             // The runtime connects the person's connectors and keeps their views (ADR 0036).
             core.grant(
                 RUNTIME_CALLER,

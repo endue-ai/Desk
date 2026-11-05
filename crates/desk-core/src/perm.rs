@@ -250,6 +250,8 @@ pub fn covers(grant: &Permission, scope: &Permission) -> bool {
         (Permission::UpdateManage(_), Permission::UpdateManage(_)) => true,
         (Permission::ThemeManage(_), Permission::ThemeManage(_)) => true,
         (Permission::AccountManage(_), Permission::AccountManage(_)) => true,
+        (Permission::MemoryRead(_), Permission::MemoryRead(_)) => true,
+        (Permission::MemoryWrite(_), Permission::MemoryWrite(_)) => true,
         // shell:open: an absent list covers nothing, and only an absent scope list is covered by it.
         (Permission::ShellOpen(g), Permission::ShellOpen(s)) => {
             s.schemes
@@ -346,7 +348,9 @@ pub(crate) fn scope_allows(scope: &Permission, target: &Target<'_>) -> bool {
             | Permission::LogRead(_)
             | Permission::UpdateManage(_)
             | Permission::ThemeManage(_)
-            | Permission::AccountManage(_),
+            | Permission::AccountManage(_)
+            | Permission::MemoryRead(_)
+            | Permission::MemoryWrite(_),
             Target::None,
         ) => true,
         (Permission::SettingsRead(s), Target::Setting(setting)) => {

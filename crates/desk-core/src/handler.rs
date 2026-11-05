@@ -70,6 +70,8 @@ pub struct Core {
     pub(crate) conversation: Option<Arc<Conversation>>,
     /// The brains the runtime's setting chooses from (ADR 0094), when the desk has more than one.
     pub(crate) choice: Option<Arc<crate::brain_choice::BrainChoice>>,
+    /// Eris's memory (ADR 0095), when the desk keeps one.
+    pub(crate) memory: Option<Arc<desk_memory::Memory>>,
     pub(crate) init: Mutex<InitFile>,
     pub(crate) sync: Option<Syncer>,
     pub(crate) notifications: AtomicU64,
@@ -114,6 +116,7 @@ impl Core {
             log: Mutex::new(Log::default()),
             conversation: None,
             choice: None,
+            memory: None,
             init: Mutex::new(InitFile::memory()),
             sync: None,
             notifications: AtomicU64::new(0),
@@ -270,6 +273,11 @@ impl Core {
             R::AccountStatus(r) => (r.id, self.account_status(caller, r.params)),
             R::AccountSignIn(r) => (r.id, self.account_sign_in(caller, r.params)),
             R::AccountSignOut(r) => (r.id, self.account_sign_out(caller, r.params)),
+            R::MemoryList(r) => (r.id, self.memory_list(caller, r.params)),
+            R::MemoryGet(r) => (r.id, self.memory_get(caller, r.params)),
+            R::MemoryRemember(r) => (r.id, self.memory_remember(caller, r.params)),
+            R::MemoryForget(r) => (r.id, self.memory_forget(caller, r.params)),
+            R::MemorySearch(r) => (r.id, self.memory_search(caller, r.params)),
             R::ThemeSave(r) => (r.id, self.theme_save(caller, r.params)),
             R::ThemeImport(r) => (r.id, self.theme_import(caller, r.params)),
             R::ThemeExport(r) => (r.id, self.theme_export(caller, r.params)),
