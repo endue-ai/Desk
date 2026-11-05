@@ -1,0 +1,15 @@
+{
+  "target": "BridgeRequest",
+  "description": "sessionIds, when given, names at least one",
+  "instance": {
+    "id": 6,
+    "method": "agents.import",
+    "params": {
+      "agent": "codex",
+      "sessionIds": [],
+      "scope": {
+        "permission": "agents:manage"
+      }
+    }
+  }
+}

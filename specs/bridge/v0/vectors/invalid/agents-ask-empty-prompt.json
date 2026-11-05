@@ -1,0 +1,15 @@
+{
+  "target": "BridgeRequest",
+  "description": "an ask needs something to ask",
+  "instance": {
+    "id": 3,
+    "method": "agents.ask",
+    "params": {
+      "agent": "claude",
+      "prompt": "",
+      "scope": {
+        "permission": "agents:manage"
+      }
+    }
+  }
+}

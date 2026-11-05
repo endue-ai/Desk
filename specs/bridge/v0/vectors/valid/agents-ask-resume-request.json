@@ -1,0 +1,17 @@
+{
+  "target": "BridgeRequest",
+  "description": "continue a Claude Code session read-only",
+  "instance": {
+    "id": 6,
+    "method": "agents.ask",
+    "params": {
+      "agent": "claude",
+      "prompt": "Run the tests and tell me what fails",
+      "sessionId": "5b1c2d3e-0f1a-4b2c-9d3e-4f5a6b7c8d9e",
+      "access": "read-only",
+      "scope": {
+        "permission": "agents:manage"
+      }
+    }
+  }
+}

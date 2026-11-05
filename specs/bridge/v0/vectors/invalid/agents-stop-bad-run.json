@@ -1,0 +1,14 @@
+{
+  "target": "BridgeRequest",
+  "description": "run ids are the core's",
+  "instance": {
+    "id": 7,
+    "method": "agents.stop",
+    "params": {
+      "runId": "p-1",
+      "scope": {
+        "permission": "agents:manage"
+      }
+    }
+  }
+}

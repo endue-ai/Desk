@@ -1,0 +1,14 @@
+{
+  "target": "BridgeRequest",
+  "description": "the core knows claude and codex only",
+  "instance": {
+    "id": 2,
+    "method": "agents.sessions",
+    "params": {
+      "agent": "gemini",
+      "scope": {
+        "permission": "agents:manage"
+      }
+    }
+  }
+}
