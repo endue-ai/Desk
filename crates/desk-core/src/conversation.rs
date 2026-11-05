@@ -5,11 +5,9 @@
 //! and it resumes on reconnection.
 
 use std::mem;
-use std::path::PathBuf;
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard, OnceLock, Weak};
 use std::thread;
-use std::time::Duration;
 
 use desk_brain::{
     Brain, BrainErrorCode, BrainFailure, ClientInfo, CreateSessionRequest, LeaseHolder, TextPart,
@@ -24,60 +22,8 @@ use crate::events::EventBus;
 use crate::lease::{LeaseClient, LeaseError};
 use crate::sessions::{SessionStore, Speaker};
 
-/// What Eris says while the brain is unreachable (docs/ko/first-run-scenario.md).
-pub const OFFLINE_LINE: &str =
-    "I can't reach endue right now. Check your connection, and I'll pick up where we left off.";
-/// What Eris says on a desk whose session another desk took over.
-pub const READ_ONLY_LINE: &str =
-    "This conversation is open on another desk now, so this one is read-only.";
-/// What Eris says when a turn failed for any other reason.
-pub const FAILED_LINE: &str = "Something went wrong on my side. Try that again in a moment.";
-/// What Eris says when the brain wants an endue ID token the desk does not have (ADR 0089).
-pub const SIGN_IN_LINE: &str =
-    "Sign in to endue so I can think with it: your account is at the bottom left.";
-/// What Eris says when the brain kept calling tools past `MAX_STEPS` in one turn.
-pub const TOO_MANY_LINE: &str =
-    "I went back and forth too many times on that one. Try asking another way.";
-/// The most tool calls one brain.say turn runs (ADR 0089); past it the turn ends.
-pub const MAX_STEPS: usize = 12;
-
-/// Which kind of brain the desk talks to, as brain.status reports it while the brain answers.
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
-pub enum BrainMode {
-    /// A brain over the network, such as endue AI or examples/brain-echo.
-    #[default]
-    Cloud,
-    /// A brain on this machine, running `model`.
-    Local { model: String },
-}
-
-/// How the core talks to its brain.
-#[derive(Debug, Clone)]
-pub struct BrainOptions {
-    /// The session store file; `None` keeps it in memory.
-    pub state_file: Option<PathBuf>,
-    /// The name other desks see in lease conflicts. `None` shows only the random desk id.
-    pub desk_name: Option<String>,
-    pub ttl_seconds: u64,
-    /// The first wait before retrying an unreachable brain. It doubles up to `max_retry`.
-    pub retry: Duration,
-    pub max_retry: Duration,
-    /// What brain.status names while the brain answers.
-    pub mode: BrainMode,
-}
-
-impl Default for BrainOptions {
-    fn default() -> Self {
-        Self {
-            state_file: None,
-            desk_name: None,
-            ttl_seconds: 60,
-            retry: Duration::from_secs(1),
-            max_retry: Duration::from_secs(15),
-            mode: BrainMode::Cloud,
-        }
-    }
-}
+pub use crate::brain_options::{BrainMode, BrainOptions};
+pub use crate::eris_lines::*;
 
 /// What runs the tools the brain asks for: the core, once it routes them (CORE-14, ADR 0088), and
 /// the step the desk shows for each command call of Eris's loop (ADR 0089).
@@ -103,9 +49,18 @@ pub(crate) struct Conversation {
     /// This desk as other desks see it in lease conflicts; brain.ask's leases name it too.
     holder: LeaseHolder,
     state: Mutex<State>,
-    turns: AtomicU64,
-    asks: AtomicU64,
+    /// Turn and ask numbers, shared by every brain a desk chooses from, so ids never repeat.
+    turns: Arc<AtomicU64>,
+    asks: Arc<AtomicU64>,
     tools: OnceLock<Weak<dyn Tools>>,
+}
+
+/// Where a turn goes when its brain cannot be reached (ADR 0094): the local brain, and whether
+/// Eris has said so since the chosen brain last answered.
+#[derive(Clone)]
+pub(crate) struct Fallback {
+    pub to: Arc<Conversation>,
+    pub said: Arc<AtomicBool>,
 }
 
 struct State {
@@ -130,6 +85,17 @@ enum Stop {
 
 impl Conversation {
     pub(crate) fn new(brain: Arc<dyn Brain>, events: EventBus, options: BrainOptions) -> Arc<Self> {
+        Self::counted(brain, events, options, Arc::default(), Arc::default())
+    }
+
+    /// A conversation numbering its turns and asks with `turns` and `asks`.
+    pub(crate) fn counted(
+        brain: Arc<dyn Brain>,
+        events: EventBus,
+        options: BrainOptions,
+        turns: Arc<AtomicU64>,
+        asks: Arc<AtomicU64>,
+    ) -> Arc<Self> {
         let store = SessionStore::open(options.state_file.clone());
         let holder = LeaseHolder {
             desk_id: store.desk_id().to_owned(),
@@ -146,8 +112,8 @@ impl Conversation {
                 lease,
                 opened: false,
             }),
-            turns: AtomicU64::new(0),
-            asks: AtomicU64::new(0),
+            turns,
+            asks,
             tools: OnceLock::new(),
         })
     }
@@ -157,14 +123,15 @@ impl Conversation {
         let _ = self.tools.set(tools);
     }
 
-    /// Start a turn; its events follow as brain.turn with the returned id.
-    pub(crate) fn say(self: &Arc<Self>, text: &str) -> String {
+    /// Start a turn; its events follow as brain.turn with the returned id. While the brain cannot
+    /// be reached, a reachable `fallback` answers the turn instead.
+    pub(crate) fn say(self: &Arc<Self>, text: &str, fallback: Option<Fallback>) -> String {
         let turn = format!("t{}", self.turns.fetch_add(1, Ordering::Relaxed) + 1);
         let (this, id, text) = (Arc::clone(self), turn.clone(), text.to_owned());
         let spawned = thread::Builder::new()
             .name("desk-brain-turn".to_owned())
             .spawn(move || {
-                this.run(&id, &text);
+                this.run(&id, &text, fallback.as_ref(), None);
                 if let Some(tools) = this.tools.get().and_then(Weak::upgrade) {
                     tools.ended(&id);
                 }
@@ -195,6 +162,11 @@ impl Conversation {
         &self.brain
     }
 
+    /// Whether the brain answers at all now: anything but `Unreachable` from its spaces.
+    pub(crate) fn reachable(&self) -> bool {
+        !matches!(self.brain.list_spaces(), Err(BrainFailure::Unreachable(_)))
+    }
+
     pub(crate) fn mode(&self) -> &BrainMode {
         &self.options.mode
     }
@@ -218,19 +190,35 @@ impl Conversation {
         format!("a{}", self.asks.fetch_add(1, Ordering::Relaxed) + 1)
     }
 
-    fn run(&self, turn: &str, text: &str) {
+    /// Run turn `turn`; `prefix` is said first, before the brain's answer.
+    fn run(&self, turn: &str, text: &str, fallback: Option<&Fallback>, prefix: Option<&str>) {
         let mut state = self.lock();
         state.store.record(Speaker::Person, text);
         let mut sink = Sink::new(&self.events, turn);
+        sink.prefix = prefix.map(str::to_owned);
         let (mut wait, mut again) = (self.options.retry, 0);
         loop {
             match self.attempt(&mut state, &mut sink, text) {
                 Ok(()) => {
                     let answer = mem::take(&mut sink.answer);
                     state.store.record(Speaker::Eris, &answer);
+                    if let Some(fallback) = fallback {
+                        fallback.said.store(false, Ordering::SeqCst);
+                    }
                     return;
                 }
                 Err(Stop::Again) if again < 3 => again += 1,
+                // The chosen brain is out of reach and the local brain is not (ADR 0094).
+                Err(Stop::Unreachable) if fallback.is_some_and(|f| f.to.reachable()) => {
+                    sink.reached();
+                    drop(state);
+                    let fallback = fallback.expect("checked above");
+                    let first = !fallback.said.swap(true, Ordering::SeqCst);
+                    fallback
+                        .to
+                        .run(turn, text, None, first.then_some(FALLBACK_LINE));
+                    return;
+                }
                 Err(Stop::Unreachable) => {
                     if !sink.offline {
                         sink.offline = true;

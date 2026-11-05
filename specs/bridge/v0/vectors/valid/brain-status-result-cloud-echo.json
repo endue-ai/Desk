@@ -1,0 +1,12 @@
+{
+  "target": "BridgeResponse",
+  "description": "the desk chose brain-echo, and it answers",
+  "instance": {
+    "id": 25,
+    "ok": true,
+    "result": {
+      "mode": "cloud",
+      "brain": "echo"
+    }
+  }
+}

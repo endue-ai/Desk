@@ -7,7 +7,7 @@ use desk_brain::{BrainError, BrainErrorCode, BrainFailure, StopReason};
 use serde::Deserialize;
 use serde_json::{Map, Value, json};
 
-use crate::http::{Endpoint, post};
+use crate::http::{Endpoint, get, post};
 
 /// One tool invocation the model asked for.
 #[derive(Debug, Clone, PartialEq)]
@@ -87,6 +87,17 @@ pub fn chat(
     Err(BrainFailure::Unreachable(
         "Ollama's stream ended before the answer did".to_owned(),
     ))
+}
+
+/// Whether Ollama answers at all: its `/api/version`, without loading a model.
+pub fn version(endpoint: &Endpoint) -> Result<(), BrainFailure> {
+    let response = get(endpoint, "/api/version").map_err(unreachable)?;
+    if response.status >= 300 {
+        let status = response.status;
+        let text = response.text().map_err(unreachable)?;
+        return Err(refused(status, error_message(status, &text)));
+    }
+    Ok(())
 }
 
 /// A user message: the parts of what the person typed, joined.

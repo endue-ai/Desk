@@ -24,9 +24,9 @@ its sync, the brain conversation, the integration layer and the bridge handler. 
   takes its commands, requests, subscriptions, processes, surfaces and URLs; its connectors pause.
 - Storage: `with_store_file`, `with_settings_file`, `with_log_dir`, `Core::log`. Settings are checked
   against their declarations; `settings_problems()` names what fails, by file and line (ADR 0080).
-  Brain: `with_brain(brain, BrainOptions)`, `route_tools()` (tool calls as their agent, or as Eris when
-  they name none; each hand-off to a command is a `tool` step, ADR 0089),
-  `open_session`, `brain_session()`; the directory passes the brain's answers through. endue ID:
+  Brain: `with_brain(brain, BrainOptions)` or `with_brains(Brains)` (the runtime's `brain.use` picks
+  endue, local or echo; an unreachable remote falls back to local, ADR 0094), `route_tools()` (calls as
+  their agent, or as Eris; each hand-off is a `tool` step, ADR 0089), `open_session`. endue ID:
   `account::Account` (device grant, token file 0600), `with_account`, `start_account` (account.*).
 - Start (ADR 0061): every state file is screened as it loads; an unreadable one is kept as
   `<name>.broken` (`keep_broken`, `broken_in`) and listed by `broken_files()`; `with_index_file`,

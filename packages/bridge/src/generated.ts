@@ -1932,10 +1932,16 @@ export interface BrainStatusParams {
 /** Result of brain.status: a brain on this machine with its model, a brain in the cloud, or offline. */
 export type BrainStatusResult = BrainStatusLocal | BrainStatusCloud | BrainStatusOffline;
 
-/** A brain on this machine, named by the model it runs. */
+/** A brain the desk can choose for Eris (ADR 0094): endue (endue AI), local (Ollama on this machine) or echo (examples/brain-echo). */
+export type BrainName = "endue" | "local" | "echo";
+
+/** A brain on this machine, named by the model it runs. fallback is true when it answers in place of the chosen brain, which cannot be reached now (ADR 0094). */
 export interface BrainStatusLocal {
   mode: "local";
   model: string;
+  /** The brain the desk chose. Absent from desks that cannot choose. */
+  brain?: BrainName;
+  fallback?: boolean;
 }
 
 /** A brain over the network, such as endue AI. credits is left out while the brain reports none. */
@@ -1943,11 +1949,15 @@ export interface BrainStatusCloud {
   mode: "cloud";
   /** Credits left. */
   credits?: number;
+  /** The brain the desk chose. Absent from desks that cannot choose. */
+  brain?: BrainName;
 }
 
 /** The brain cannot be reached now, or the desk has none. */
 export interface BrainStatusOffline {
   mode: "offline";
+  /** The brain the desk chose, which cannot be reached now. Absent from desks that cannot choose. */
+  brain?: BrainName;
 }
 
 /** Progress of a brain.say or brain.ask turn. */

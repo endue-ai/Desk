@@ -278,12 +278,22 @@
         { "$ref": "#/$defs/BrainStatusOffline" }
       ]
     },
+    "BrainName": {
+      "description": "A brain the desk can choose for Eris (ADR 0094): endue (endue AI), local (Ollama on this machine) or echo (examples/brain-echo).",
+      "type": "string",
+      "enum": ["endue", "local", "echo"]
+    },
     "BrainStatusLocal": {
-      "description": "A brain on this machine, named by the model it runs.",
+      "description": "A brain on this machine, named by the model it runs. fallback is true when it answers in place of the chosen brain, which cannot be reached now (ADR 0094).",
       "type": "object",
       "properties": {
         "mode": { "const": "local" },
-        "model": { "type": "string", "minLength": 1 }
+        "model": { "type": "string", "minLength": 1 },
+        "brain": {
+          "description": "The brain the desk chose. Absent from desks that cannot choose.",
+          "$ref": "#/$defs/BrainName"
+        },
+        "fallback": { "type": "boolean" }
       },
       "required": ["mode", "model"],
       "additionalProperties": false
@@ -293,7 +303,11 @@
       "type": "object",
       "properties": {
         "mode": { "const": "cloud" },
-        "credits": { "description": "Credits left.", "type": "integer", "minimum": 0 }
+        "credits": { "description": "Credits left.", "type": "integer", "minimum": 0 },
+        "brain": {
+          "description": "The brain the desk chose. Absent from desks that cannot choose.",
+          "$ref": "#/$defs/BrainName"
+        }
       },
       "required": ["mode"],
       "additionalProperties": false
@@ -302,7 +316,11 @@
       "description": "The brain cannot be reached now, or the desk has none.",
       "type": "object",
       "properties": {
-        "mode": { "const": "offline" }
+        "mode": { "const": "offline" },
+        "brain": {
+          "description": "The brain the desk chose, which cannot be reached now. Absent from desks that cannot choose.",
+          "$ref": "#/$defs/BrainName"
+        }
       },
       "required": ["mode"],
       "additionalProperties": false
