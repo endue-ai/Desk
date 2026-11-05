@@ -170,6 +170,7 @@ export function createPanels(doc, act, seek) {
           if (row.state === "remote" || row.state === "missing") item.append(make("span", label));
           else {
             const button = make("button", label);
+            button.className = "desk-row";
             button.setAttribute("type", "button");
             if (row.state === "playing") button.setAttribute("aria-current", "true");
             button.addEventListener("click", () => act("pick", index));
@@ -184,6 +185,7 @@ export function createPanels(doc, act, seek) {
         chapterList = marks;
         chapterButtons = marks.map((chapter) => {
           const button = make("button", `${chapter.title} · ${clock(chapter.start)}`);
+          button.className = "desk-row";
           button.setAttribute("type", "button");
           button.addEventListener("click", () => seek(chapter.start));
           return button;

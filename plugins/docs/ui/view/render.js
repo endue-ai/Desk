@@ -134,6 +134,7 @@ function renderInline(inline, ctx) {
     case "image":
       return renderImage(inline, ctx);
     case "noteref": {
+      // ds: own (a note mark inside the document's own text)
       const button = doc.createElement("button");
       button.type = "button";
       button.className = "noteref";

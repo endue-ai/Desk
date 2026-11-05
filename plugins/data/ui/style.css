@@ -71,18 +71,12 @@ button {
   cursor: pointer;
 }
 
-button[aria-pressed="true"] { border-color: var(--desk-ring); background: var(--data-current); }
-
 button:disabled { opacity: 0.5; cursor: default; }
 
 button:hover:not(:disabled), button:focus-visible { border-color: var(--desk-ring); }
 
 input[type="search"] {
   width: 14em;
-  padding: 2px 6px;
-  border: 1px solid var(--desk-border);
-  border-radius: var(--desk-radius-md);
-  background: var(--desk-background);
 }
 
 :focus-visible { outline: 2px solid var(--desk-ring); outline-offset: 1px; }
@@ -303,8 +297,6 @@ footer { border-top: 1px solid var(--desk-border); }
 
 #problems li button {
   width: 100%;
-  padding: 1px 4px;
-  border: 0;
   text-align: left;
 }
 
