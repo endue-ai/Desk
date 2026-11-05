@@ -1,5 +1,5 @@
 //! The desk's files (#288, ADR 0079): each file of `~/.desk` is judged by its spec (init.yaml,
-//! profiles, keys.yaml by specs/init/v0, views as the core reads them), problems
+//! profiles, keys.yaml by specs/init/v0, views as the core reads them, in either language), problems
 //! naming the line; plugins.lock waits for its schema (#287); the data folder's JSON parses.
 
 use std::fs;
@@ -49,6 +49,8 @@ fn each_desk_file_is_checked_against_its_schema() {
     let view = "id: my.today\nversion: 0.1.0\ntitle: Today\nlayout:\n  type: list\n  binding:\n    kinds: [event]\n";
     fs::write(desk.join("views/my.today.yaml"), view).unwrap();
     fs::write(desk.join("views/my.misnamed.yaml"), view).unwrap();
+    let board = "id: my.launch\ntype: kanban\nsource:\n  file: ~/boards/launch.yaml\n";
+    fs::write(desk.join("views/my.launch.yaml"), board).unwrap();
     fs::write(desk.join("plugins.lock"), "plugins: []\n").unwrap();
     fs::write(data.join("store.json"), "{}").unwrap();
     fs::write(data.join("grants.json"), "{\n  \"grants\": [\n").unwrap();
@@ -60,6 +62,11 @@ fn each_desk_file_is_checked_against_its_schema() {
     assert_eq!(state_of(&files, ".desk/keys.yaml"), FileState::Valid);
     assert_eq!(state_of(&files, "profiles/quiet.yaml"), FileState::Valid);
     assert_eq!(state_of(&files, "views/my.today.yaml"), FileState::Valid);
+    assert_eq!(
+        state_of(&files, "views/my.launch.yaml"),
+        FileState::Valid,
+        "a universal view"
+    );
     let FileState::Invalid(misnamed) = state_of(&files, "views/my.misnamed.yaml") else {
         panic!("my.misnamed.yaml is not invalid");
     };
