@@ -101,6 +101,40 @@ main {
   text-align: center;
 }
 
+/* The entry's icon (file-icons.js, glyphs.js): its tone is a theme colour, its body a faint wash of it. */
+.icon {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin-right: 2px;
+  color: var(--desk-text-muted);
+}
+
+.icon .body {
+  fill: currentColor;
+  fill-opacity: 0.16;
+}
+
+.icon[data-glyph="more"] {
+  stroke-width: 3;
+}
+
+.icon[data-tone="accent"] { color: var(--desk-primary-text); }
+.icon[data-tone="warning"] { color: var(--desk-warning-text); }
+.icon[data-tone="1"] { color: var(--desk-chart-1); }
+.icon[data-tone="2"] { color: var(--desk-chart-2); }
+.icon[data-tone="3"] { color: var(--desk-chart-3); }
+.icon[data-tone="4"] { color: var(--desk-chart-4); }
+.icon[data-tone="5"] { color: var(--desk-chart-5); }
+.icon[data-tone="6"] { color: var(--desk-chart-6); }
+.icon[data-tone="7"] { color: var(--desk-chart-7); }
+.icon[data-tone="8"] { color: var(--desk-chart-8); }
+
+.is-hidden > .icon,
+.kind-symlink > .icon {
+  opacity: 0.6;
+}
+
 .name {
   flex: 1;
   min-width: 0;

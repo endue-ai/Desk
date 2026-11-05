@@ -1,8 +1,11 @@
 // The DOM for the explorer: a header with the folder tools, one flat list with role=tree whose rows
-// carry their level (the WAI-ARIA tree pattern, roving tabindex), and a status live region for
+// carry their level (the WAI-ARIA tree pattern, roving tabindex) and an icon for what each entry
+// is (file-icons.js), and a status live region for
 // refusals and errors. Rows are draggable: a drop target reads the path as text/plain or
 // application/x-desk-path. Desk chords pass through; Escape first closes a visible preview.
 import { contextMenu } from "./context-menu.js";
+import { iconOf } from "./file-icons.js";
+import { drawIcon } from "./glyphs.js";
 import { previewView } from "./preview-view.js";
 import { sizeOf } from "./size.js";
 
@@ -153,7 +156,7 @@ export function createView(doc, actions) {
     const name = doc.createElement("span");
     name.className = "name";
     name.textContent = model.kind === "more" ? `Show ${model.name}` : model.name;
-    item.append(twisty, name);
+    item.append(twisty, drawIcon(doc, iconOf(model)), name);
 
     const detail = model.error ?? (model.kind === "symlink" ? "link" : undefined);
     const side = detail ?? (model.size === undefined ? undefined : sizeOf(model.size));
