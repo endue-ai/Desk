@@ -55,6 +55,7 @@
 .settings-category-icon.notifications { background: var(--desk-danger); }
 .settings-category-icon.accessibility { background: var(--desk-info); }
 .settings-category-icon.connections { background: var(--desk-chart-2); }
+.settings-category-icon.market { background: var(--desk-chart-4); }
 .settings-detail { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
 .settings-heading { padding: 27px 28px 20px; }
 .settings-heading h1 { font-size: var(--desk-text-2xl); font-weight: 700; letter-spacing: -.04em; }
@@ -138,6 +139,14 @@
 .connection-field small { color: var(--settings-muted); font-size: var(--desk-text-2xs); }
 .connection-alert:empty { display: none; }
 .connection-alert { color: var(--desk-danger); font-size: var(--desk-text-2xs); }
+/* Market: a group per kind, a row per entry, the permissions asked before an install. */
+.settings-market h2 { margin: 0 2px 7px; font-size: var(--desk-text-sm); font-weight: 650; }
+.settings-market .btn { height: auto; min-height: 25px; padding: 3px 10px; border-radius: var(--desk-radius-sm); font-size: var(--desk-text-2xs); }
+.market-entry .settings-row-label p + p { max-width: 460px; }
+.market-badge { font-weight: 600; color: var(--desk-warning); }
+.market-badge.verified { color: var(--desk-success); }
+.market-ask { margin-top: 8px; padding: 8px 10px; border: 1px solid var(--settings-accent); border-radius: var(--desk-radius-md); font-size: var(--desk-text-xs); }
+.market-ask ul { margin: 4px 0 8px; padding-left: 18px; }
 .settings-empty h2 { font-size: var(--desk-text-base); margin-bottom: 6px; }
 @media (max-width: 640px) {
   .desk-settings { width: calc(100vw - 16px); height: calc(100dvh - 24px); }
