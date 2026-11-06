@@ -28,6 +28,7 @@ use crate::logic::PluginError;
 use crate::sink::IndexSink;
 use crate::state::{self, State};
 use instances::{INSTANCES, Instance, cursor_key, invalid};
+pub use instances::{check_id as check_instance_id, check_settings as check_instance_settings};
 use schedule::Scheduler;
 use shared::{crashes, failure, listing, lock, read, source};
 

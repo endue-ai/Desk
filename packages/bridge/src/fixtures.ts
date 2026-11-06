@@ -4,6 +4,7 @@
  * same way in every test (specs/item/v0).
  */
 import type {
+  ConnectorAuth,
   ConnectorInstance,
   ConnectorResource,
   ConnectorSetting,
@@ -18,6 +19,8 @@ export const FIXTURE_CONNECTOR = "desk.fixtures";
 /** An installed connector as the stub keeps it: what it brings in, what an instance takes. */
 export interface FixtureConnector {
   id: string;
+  title: string;
+  auth: ConnectorAuth;
   resources: ConnectorResource[];
   instanceSettings: Record<string, ConnectorSetting>;
   instances: ConnectorInstance[];
@@ -27,6 +30,8 @@ export interface FixtureConnector {
 export function fixtureConnector(): FixtureConnector {
   return {
     id: FIXTURE_CONNECTOR,
+    title: "Fixtures",
+    auth: { kind: "token", title: "Access token" },
     resources: [{ kind: "event" }, { kind: "task" }, { kind: "note" }, { kind: "message" }],
     instanceSettings: {
       folder: { kind: "string", title: "Folder" },

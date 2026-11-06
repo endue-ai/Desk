@@ -9,6 +9,7 @@ export const SECTIONS = [
   "keyboard",
   "notifications",
   "accessibility",
+  "connections",
 ] as const;
 export type SettingsSection = (typeof SECTIONS)[number];
 export const description = (section: SettingsSection): SettingsCopy => `${section}Description`;
@@ -19,6 +20,8 @@ const TERMS: Record<SettingsSection, string> = {
   keyboard: "keyboard keys shortcuts bindings 키보드 단축키 키바인딩",
   notifications: "notifications focus do not disturb 알림 방해금지 집중",
   accessibility: "accessibility contrast motion animation 손쉬운 사용 대비 동작 애니메이션",
+  connections:
+    "connections connectors accounts token github sources sync 연결 커넥터 계정 토큰 동기화 소스",
 };
 const SECTION_COPY: Record<SettingsSection, readonly SettingsCopy[]> = {
   general: ["general", "generalDescription", "device", "personalization", "local"],
@@ -80,6 +83,7 @@ const SECTION_COPY: Record<SettingsSection, readonly SettingsCopy[]> = {
     "reduce",
     "full",
   ],
+  connections: ["connections", "connectionsDescription"],
 };
 const SEARCH_TEXT = Object.fromEntries(
   SECTIONS.map((section) => [

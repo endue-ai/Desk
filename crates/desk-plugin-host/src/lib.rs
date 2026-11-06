@@ -29,7 +29,7 @@ pub use bindings::{
     Failure, FailureCode, FsVersion, Grant, LogEntry, LogLevel, NotifyLevel, Request, Response,
 };
 pub use clock::{Clock, SystemClock, rfc3339};
-pub use connector::ConnectorHost;
+pub use connector::{ConnectorHost, check_instance_id, check_instance_settings};
 pub use host::Host;
 pub use imports::Imports;
 pub use limits::{Limits, TICK};

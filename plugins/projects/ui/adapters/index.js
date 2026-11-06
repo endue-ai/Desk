@@ -1,8 +1,9 @@
-// The adapters: one per source the plugin knows by name (Jira, Linear, Asana), each recognizing its
+// The adapters: one per source the plugin knows by name (Jira, Linear, Asana, GitHub), each recognizing its
 // items by their connector's id or the shape of their `raw`, and the envelope for every other task
 // connector. Whichever source an item came from, it leaves here as one Work.
 import * as asana from "./asana.js";
 import { categoryOfName, dateOf, envelopeOf, objectOf, over, personOf, textOf } from "./common.js";
+import * as github from "./github.js";
 import * as jira from "./jira.js";
 import * as linear from "./linear.js";
 
@@ -18,9 +19,10 @@ export const ADAPTERS = [
   { system: "jira", title: "Jira", ...jira },
   { system: "linear", title: "Linear", ...linear },
   { system: "asana", title: "Asana", ...asana },
+  { system: "github", title: "GitHub", ...github },
 ];
 
-/** What a source is called on screen: Jira, Linear, Asana, or the connector's own id. */
+/** What a source is called on screen: Jira, Linear, Asana, GitHub, or the connector's own id. */
 export const systemTitle = (/** @type {System} */ system, /** @type {string} */ connector) =>
   ADAPTERS.find((a) => a.system === system)?.title ?? connector;
 

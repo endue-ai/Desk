@@ -4,6 +4,7 @@
 pub const NAME: &str = env!("CARGO_PKG_NAME");
 
 mod generated;
+mod http_names;
 mod names;
 pub use generated::*;
 pub use names::{manifest_problems, view_problems};

@@ -5,6 +5,7 @@ const paths: Record<string, string> = {
   keyboard: "M3 5h18v14H3V5Zm3 4h1m3 0h1m3 0h1m3 0h1M6 12h1m3 0h1m3 0h1m3 0h1M7 16h10",
   notifications: "M6 10a6 6 0 0 1 12 0v5l2 3H4l2-3v-5Zm4 11h4M11 2h2",
   accessibility: "M12 3a2 2 0 1 0 0 4 2 2 0 0 0 0-4ZM4 9l8 2 8-2M12 11v5m0 0-4 6m4-6 4 6",
+  connections: "M9 7V3m6 4V3M7 7h10v4a5 5 0 0 1-10 0V7Zm5 9v5",
   search: "M10 3a7 7 0 1 0 0 14 7 7 0 0 0 0-14Zm5 12 6 6",
   close: "m6 6 12 12M18 6 6 18",
   chevron: "m9 5 7 7-7 7",

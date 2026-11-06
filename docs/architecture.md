@@ -19,7 +19,7 @@ the Rust core keeps primitives while plugins can be changed while the app is run
  the user's computer               │                           cost of change
  ┌─────────────────────────────────┴──────────────────────────────┐
  │ Plugins      UI (iframe) · logic (Wasm) · tools (MCP, in a VM) │  instant
- │              · connectors (Wasm · MCP) · views (data)          │
+ │              · connectors (Wasm · MCP · http) · views (data)   │
  ├────────────────────────────────────────────────────────────────┤
  │ Web runtime  compositor (3D/2D) · surfaces · input · layout    │  restart
  │              · UI plugin host · desk shell (until ADR 0026)    │
@@ -48,7 +48,7 @@ device. Everything else runs on the user's computer.
 | Plugins | `plugins/` · `packages/plugin-sdk` · `specs/plugin` · `specs/wit` · `examples/` |
 | Web runtime | `packages/runtime`: the compositor, the UI plugin host (ADR 0012) and, until ADR 0026 is decided, the desk shell (ADR 0025) · `packages/ui` |
 | Desk bridge | `specs/bridge` · `specs/item`, `specs/view` and `specs/connector`, the integration layer's contracts (ADR 0032) · `packages/bridge` · `crates/desk-bridge` (types generated from these and `specs/plugin`) |
-| Rust core | `crates/desk-core`, which also serves the integration layer (`data.*`, `connector.*`, `view.*`, `catalog.get`) and defines the built-in connectors `desk.calendar` and `desk.reminders` over the OS calendar (ADR 0036, proposed) · `crates/desk-index`, the item index in one SQLite file (ADR 0033) · `crates/desk-plugin-host`, which runs logic plugins (ADR 0019) and Wasm connectors (ADR 0034, proposed) on Wasmtime · `crates/desk-vm` · `crates/desk-brain*` |
+| Rust core | `crates/desk-core`, which also serves the integration layer (`data.*`, `connector.*`, `view.*`, `catalog.get`) and defines the built-in connectors `desk.calendar` and `desk.reminders` over the OS calendar (ADR 0036, proposed), and runs http connectors from their manifests, reading their tokens itself (ADR 0106) · `crates/desk-index`, the item index in one SQLite file (ADR 0033) · `crates/desk-plugin-host`, which runs logic plugins (ADR 0019) and Wasm connectors (ADR 0034, proposed) on Wasmtime · `crates/desk-vm` · `crates/desk-brain*` |
 | Tauri shell | `apps/desk/src-tauri` · `crates/desk-sys` |
 | OS | `apps/desk/src-tauri/capabilities` · release workflow (signing, notarisation) |
 

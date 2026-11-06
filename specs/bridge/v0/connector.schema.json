@@ -5,10 +5,22 @@
   "description": "The connections of the installed connectors (ADR 0032): list them with their status, connect and disconnect instances, and sync one now. Every call needs connector:manage. An instance is named by its connector and its id, which is unique only within the connector.",
   "$defs": {
     "ConnectorInfo": {
-      "description": "An installed connector as connector.list returns it: its instances and the kinds of item it brings in.",
+      "description": "An installed connector as connector.list returns it: its instances, the kinds of item it brings in, and what connecting one asks for (how it signs in and its settings, never their values).",
       "type": "object",
       "properties": {
         "id": { "$ref": "../../plugin/v0/plugin.schema.json#/$defs/PluginId" },
+        "title": { "description": "The connector's name: GitHub.", "type": "string" },
+        "auth": { "$ref": "../../connector/v0/connector.schema.json#/$defs/ConnectorAuth" },
+        "instanceSettings": {
+          "description": "What a new instance takes, by name, as the manifest declares it.",
+          "type": "object",
+          "propertyNames": {
+            "$ref": "../../connector/v0/connector.schema.json#/$defs/ConnectorSettingName"
+          },
+          "additionalProperties": {
+            "$ref": "../../connector/v0/connector.schema.json#/$defs/ConnectorSetting"
+          }
+        },
         "instances": {
           "type": "array",
           "items": { "$ref": "../../connector/v0/connector.schema.json#/$defs/ConnectorInstance" }

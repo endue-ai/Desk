@@ -9,10 +9,11 @@ view is inline in `plugin.json` (`specs/view/v0`). `desk.views` draws it; nothin
 | Due | `list` | open tasks of `$tasks` with `due lt {tomorrow}` (today's and overdue), earliest due first, 10 | Nothing due. |
 | Unread | `list` | messages of `$messages` with `unread eq true`, newest first, 10 | No unread messages. |
 | Last touched | `list` | notes of `$notes`, last updated first, 5 | No notes yet. |
+| GitHub | `list` | open tasks of `$github` (`desk.github`, ADR 0106), last updated first, 10 | No open GitHub work. |
 
-Requires: `calendar` (events), and `tasks`, `messages` and `notes`, whose titles say "(optional)": a
-require with no connected source leaves its section `unbound` with Connect a source, so the view
-renders with the OS calendar alone. `{today}` and `{tomorrow}` are the engine's clock, local midnights
+Requires: `calendar` (events), and `tasks`, `messages`, `notes` and `github` (tasks of `desk.github`),
+whose titles say "(optional)": a require with no connected source leaves its section `unbound` with
+Connect a source, so the view renders with the OS calendar alone. `{today}` and `{tomorrow}` are the engine's clock, local midnights
 in the view's zone. Each binding is whole on its own, so another reader (Eris's "Three things matter
 today": the first of Schedule, Due and Unread) runs it with the clock filled and the require bound.
 

@@ -74,7 +74,7 @@ impl Instance {
 }
 
 /// The manifest's `instanceSettings`.
-pub(crate) type Settings = BTreeMap<String, ConnectorSetting>;
+pub type Settings = BTreeMap<String, ConnectorSetting>;
 
 /// A status in `state`, with the last sync and an error message when there is one.
 pub(crate) fn status(
@@ -130,9 +130,9 @@ pub(crate) fn load(
     loaded
 }
 
-/// Check an instance id: 1 to 64 of lowercase letters, digits, `_` and `-`, starting with a letter
+/// Check an instance id (desk-core checks http connectors' instances with it too): 1 to 64 of lowercase letters, digits, `_` and `-`, starting with a letter
 /// or a digit (`InstanceId` in specs/item/v0).
-pub(crate) fn check_id(name: &str) -> Result<(), Error> {
+pub fn check_id(name: &str) -> Result<(), Error> {
     let mut chars = name.chars();
     let first = chars
         .next()
@@ -149,7 +149,7 @@ pub(crate) fn check_id(name: &str) -> Result<(), Error> {
 /// Check `settings` against `declared`: an object, every field declared and of its kind, every
 /// required one present (or defaulted). Returns them without the secret ones, which the host
 /// never stores nor hands to the guest.
-pub(crate) fn check_settings(
+pub fn check_settings(
     declared: Option<&Settings>,
     settings: &Value,
 ) -> Result<Map<String, Value>, Error> {

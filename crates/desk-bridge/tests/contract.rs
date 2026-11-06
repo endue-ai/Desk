@@ -8,10 +8,10 @@ use std::path::{Path, PathBuf};
 use desk_bridge::{
     AccountStatusResult, AgentListResult, AgentRecord, BridgeEvent, BridgeRequest, BridgeResponse,
     CatalogGetResult, CmdRecentResult, CmdRedoResult, CmdToolsResult, CmdUndoResult,
-    ConnectorInstance, ConnectorManifest, ConnectorStatus, ConnectorSyncResult,
-    DesignSystemPackage, FsHistoryResult, FsReadResult, FsRestoreResult, FsUrlResult,
-    FsWriteResult, InitDocument, InitGetResult, InitSettingKey, Item, ItemChange, ItemPage,
-    ItemQuery, KeysFile, PaletteResults, PermQueryResult, PermRequestResult, Permission,
+    ConnectorInstance, ConnectorListResult, ConnectorManifest, ConnectorStatus,
+    ConnectorSyncResult, DesignSystemPackage, FsHistoryResult, FsReadResult, FsRestoreResult,
+    FsUrlResult, FsWriteResult, InitDocument, InitGetResult, InitSettingKey, Item, ItemChange,
+    ItemPage, ItemQuery, KeysFile, PaletteResults, PermQueryResult, PermRequestResult, Permission,
     PluginContributes, PluginListResult, PluginManifest, PluginStatsResult, PluginsLock,
     ProfileFile, RefusalReason, SettingsListResult, ShellOpenResult, StoreGetResult, ThemeBundle,
     ThemeExportResult, ThemeIndex, ThemeMarketFetchResult, ThemeMarketListResult, ThemePackage,
@@ -220,6 +220,35 @@ fn the_rules_beyond_the_schemas_name_what_does_not_resolve() {
 }
 
 #[test]
+fn the_rules_beyond_the_schemas_name_what_an_http_block_does_not_resolve() {
+    let manifest: PluginManifest = serde_json::from_value(json!({
+        "id": "example.tracker", "version": "0.1.0", "kind": "connector",
+        "connector": {
+            "binding": "http", "auth": { "kind": "none" }, "sync": { "mode": "pull" },
+            "resources": [{ "kind": "task" }],
+            "instanceSettings": { "key": { "kind": "string", "title": "Key" } },
+            "http": {
+                "baseUrl": "https://tracker.example.com",
+                "auth": { "setting": "key" },
+                "requests": [{ "path": "/tickets", "items": "", "map": "tickets" }],
+                "maps": { "ticket": { "kind": "event", "fields": { "id": "/id" } } }
+            }
+        }
+    }))
+    .unwrap();
+    assert_eq!(
+        manifest_problems(&manifest),
+        [
+            "/connector/auth/kind: an http block with auth signs in with a token",
+            "/connector/http/auth/setting: key is not a secret instance setting",
+            "/connector/http/maps/ticket/fields: no title",
+            "/connector/http/maps/ticket/kind: \"event\" is not a kind in resources",
+            "/connector/http/requests/0/map: tickets is not one of the http block's maps",
+        ]
+    );
+}
+
+#[test]
 fn a_universal_source_is_the_one_its_key_names() {
     let source = |value: Value| serde_json::from_value::<UniversalSource>(value).unwrap();
     let data = json!({ "data": { "entries": [{ "title": "One" }] } });
@@ -273,6 +302,7 @@ fn valid_vectors_roundtrip_through_generated_types() {
                 "StoreGetResult" => roundtrip::<StoreGetResult>(vector),
                 "SettingsListResult" => roundtrip::<SettingsListResult>(vector),
                 "CatalogGetResult" => roundtrip::<CatalogGetResult>(vector),
+                "ConnectorListResult" => roundtrip::<ConnectorListResult>(vector),
                 "CmdUndoResult" => roundtrip::<CmdUndoResult>(vector),
                 "CmdRedoResult" => roundtrip::<CmdRedoResult>(vector),
                 "CmdToolsResult" => roundtrip::<CmdToolsResult>(vector),

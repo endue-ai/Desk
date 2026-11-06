@@ -16,11 +16,12 @@ there were two formats, the API would have holes.
 | `mail/` | The person's mail from the index as threads in mailboxes, invitations read and answered (iTIP, iMIP), changes through the connector's commands (`endue.mail`) |
 | `chat/` | Every chat service in one interface (`endue.chat`): Slack, Discord, Teams and any chat connector's messages by service and workspace, threads, reactions, replies, edits; four layouts (Conversation, Inbox, Timeline, Columns), changes through each connector's `chat.*` commands |
 | `chat-digest/` | Chats at a glance (`endue.chat-digest`): a data-only `view` plugin that `desk.views` draws, unread counts, mentions, direct messages and the latest across every service |
-| `projects/` | Project management over every task source (`endue.projects`): Jira, Linear and Asana work read through adapters (ADR 0085) into Kanban, Swimlane, List, Database, Timeline and Calendar views; moves, dates, priority and assignee through the connectors' `task.move` and `task.update` |
+| `projects/` | Project management over every task source (`endue.projects`): Jira, Linear, Asana and GitHub work read through adapters (ADR 0085) into Kanban, Swimlane, List, Database, Timeline and Calendar views; moves, dates, priority and assignee through the connectors' `task.move` and `task.update` |
 | `views/` | The view engine (`desk.views`): draws view files (`specs/view/v0`) as surfaces, over the core's `data.*` and `view.*` |
 | `universal/` | Universal View (`desk.universal`): opens a universal view (`specs/view/v0/universal.schema.json`) of inline data, a file, a URL, another plugin's command or the index, as a timeline, calendar, board, list, text, chat or agent run (ADR 0087) |
 | `fleet/` | The control center for agents (`desk.fleet`, ADR 0100): a data-only `policy` plugin whose command opens a universal kanban of every agent's runs, the ones waiting for approval first, with Approve, Deny and Stop |
 | `today/` | The day at a glance (`desk.today`): a data-only `view` plugin that `desk.views` draws; `Mod+T` opens it |
+| `github/` | Your GitHub work as tasks (`desk.github`): an http connector the core runs (ADR 0106), the issues assigned to you, the reviews you owe and your own pull requests; the token stays in the core |
 | `item/` | One item in Desk (`desk.item`): the data-only `view` plugin the palette's Open in Desk shows |
 | `inspector/` | What the desk holds now, read-only (`desk.inspector`, autoload): the render tree, surfaces and buffers, the last commands, grants, settings by layer, plugins, bridge calls; `desk inspect` prints its Export JSON |
 
