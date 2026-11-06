@@ -41,7 +41,9 @@ describe("desk.pack-github", () => {
     const view = (id: string) => {
       const command = commands.find((c) => c.id === id);
       expect(command?.runs?.command).toBe("desk.universal.open");
-      return (command?.runs?.args as { view: UniversalView }).view;
+      const args = command?.runs?.args as { view: UniversalView } | undefined;
+      if (!args) throw new Error(`${id} opens nothing`);
+      return args.view;
     };
     const validate = validator(
       "https://endue.ai/specs/view/v0/universal.schema.json#/$defs/UniversalView",
