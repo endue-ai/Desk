@@ -50,7 +50,10 @@ test.describe("desk.today", () => {
       "Due",
       "Unread",
       "Last touched",
+      "GitHub",
     ]);
+    // GitHub is optional: with no desk.github connected its section offers to connect one.
+    await expect(section(frame, "GitHub")).toHaveAttribute("data-state", "unbound");
     const schedule = section(frame, "Schedule");
     await expect(schedule).toHaveAttribute("data-component", "agenda");
     for (const title of ["Schedule", "Due", "Unread", "Last touched"])
@@ -77,9 +80,10 @@ test.describe("desk.today", () => {
     await load(page, "?empty=1");
     const frame = await openToday(page);
     const components = frame.locator("[data-component]");
-    await expect(components).toHaveCount(4);
-    for (const component of await components.all())
+    await expect(components).toHaveCount(5);
+    for (const component of (await components.all()).slice(0, 4))
       await expect(component).toHaveAttribute("data-state", "empty");
+    await expect(section(frame, "GitHub")).toHaveAttribute("data-state", "unbound");
     await expect(frame.locator("[data-component] p.empty")).toHaveText([
       "Nothing on the calendar today.",
       "Nothing due.",
@@ -110,6 +114,29 @@ test.describe("desk.today", () => {
     );
     expect(picks).toEqual([]);
     expect(await viewTree(frame)).toMatchSnapshot("today-no-tasks.json");
+  });
+
+  test("with GitHub connected, its open work fills the GitHub section and its milestones are due", async ({
+    page,
+  }) => {
+    await load(page, "?github=1&resources=event,message,note");
+    const frame = await openToday(page);
+    const github = section(frame, "GitHub");
+    await expect(github).toHaveAttribute("data-state", "ready");
+    // Open work, the last updated first.
+    await expect(github.getByRole("option")).toHaveText([
+      /Today shows GitHub work.*acme\/garage/,
+      /Stage the updater's rollout.*acme\/garage/,
+      /Calendar drops all-day events.*acme\/garage/,
+      /Write the release notes for 0\.1.*acme\/garage/,
+      /Sketch the arc keyboard layout.*acme\/workshop/,
+    ]);
+    // The only task source is GitHub, so Due reads it too: the work its milestone makes due today.
+    const due = section(frame, "Due");
+    await expect(due).toHaveAttribute("data-state", "ready");
+    await expect(due.getByRole("option")).toHaveCount(2);
+    await expect(due).toContainText("Calendar drops all-day events");
+    await expect(due).toContainText("Today shows GitHub work");
   });
 
   test("Mod+T opens today, and the palette lists Open today with its key", async ({ page }) => {

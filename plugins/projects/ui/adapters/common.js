@@ -7,7 +7,7 @@
  * @typedef {import("@endue-ai/bridge").TaskItem} TaskItem
  * @typedef {import("@endue-ai/bridge").ItemSource} ItemSource
  * @typedef {"backlog" | "todo" | "doing" | "done" | "cancelled"} Category
- * @typedef {"jira" | "linear" | "asana" | "other"} System
+ * @typedef {"jira" | "linear" | "asana" | "github" | "other"} System
  * @typedef {{ name?: string, email?: string }} Person
  * @typedef {{
  *   key: string, id: string, source: ItemSource, system: System,

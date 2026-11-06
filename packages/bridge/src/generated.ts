@@ -718,7 +718,7 @@ export type Role = string;
 /** Semantic version, for example 0.1.0 or 1.2.3-beta.1. */
 export type Version = string;
 
-/** ui runs in a sandboxed iframe, logic in a Wasm instance, tool as an MCP server inside the VM. policy runs no code: it only contributes data (ADR 0017). library runs no code of its own either: it is files other plugins import, served at /<id>/... like any plugin's, never mounted and never turned off. connector brings an app's data in as items, as a Wasm component or an MCP server; view runs no code either: it is one or more views (ADR 0032). theme runs no code: it is a theme block and its font and image files, chosen with desk.theme.active (ADR 0056). design-system runs no code either: it is a designSystem block of component recipes, chosen with desk.design.active (ADR 0090). */
+/** ui runs in a sandboxed iframe, logic in a Wasm instance, tool as an MCP server inside the VM. policy runs no code: it only contributes data (ADR 0017). library runs no code of its own either: it is files other plugins import, served at /<id>/... like any plugin's, never mounted and never turned off. connector brings an app's data in as items, as a Wasm component, an MCP server or an http block the core runs (no entry; ADR 0106); view runs no code either: it is one or more views (ADR 0032). theme runs no code: it is a theme block and its font and image files, chosen with desk.theme.active (ADR 0056). design-system runs no code either: it is a designSystem block of component recipes, chosen with desk.design.active (ADR 0090). */
 export type PluginKind =
   | "ui"
   | "logic"
@@ -1541,6 +1541,7 @@ export interface ViewProvenance {
 /** What a kind connector plugin declares under connector in plugin.json. */
 export interface ConnectorManifest {
   binding: ConnectorBinding;
+  http?: HttpBinding;
   auth: ConnectorAuth;
   /** The kinds of item the connector brings in, one entry per kind. */
   resources: ConnectorResource[];
@@ -1549,13 +1550,13 @@ export interface ConnectorManifest {
   instanceSettings?: Record<string, ConnectorSetting>;
 }
 
-/** How the connector runs: wasm, a component the plugin's entry names (no VM to boot); mcp, an MCP server inside the VM that follows the Desk profile in the README. */
-export type ConnectorBinding = "wasm" | "mcp";
+/** How the connector runs: wasm, a component the plugin's entry names (no VM to boot); mcp, an MCP server inside the VM that follows the Desk profile in the README; http, requests and a mapping the core runs from the http block, with no code of the plugin's own (ADR 0106). */
+export type ConnectorBinding = "wasm" | "mcp" | "http";
 
 /** none (local files, the OS's own data), token (a key the person pastes) or oauth. */
 export type ConnectorAuthKind = "none" | "token" | "oauth";
 
-/** How an instance signs in. Tokens are kept by the core and never handed to the connector's code. No v0 method starts an OAuth flow yet. */
+/** How an instance signs in. Tokens are kept by the core and never handed to the connector's code; with binding http the core itself sends the token (http.auth). No v0 method starts an OAuth flow yet. */
 export interface ConnectorAuth {
   kind: ConnectorAuthKind;
   /** What the person is asked for: Personal access token. */
@@ -1567,6 +1568,91 @@ export interface ConnectorAuth {
 
 /** An https URL. */
 export type HttpsUrl = string;
+
+/** A connector as data (binding http): GET requests against one base URL, each response's pages followed, and every record mapped into an item. The core runs it, reads the token from the instance's secret setting and sends it only to the base URL's origin; the token never crosses the bridge. Each sync reads every page again and removes the items that left (ADR 0106). */
+export interface HttpBinding {
+  baseUrl: HttpBaseUrl;
+  /** Sent with every request: Accept, an API version. Never Authorization (auth says how the token goes) and never a secret. */
+  headers?: Record<string, string>;
+  auth?: HttpAuth;
+  /** What one sync asks for, in order. The same item from two requests is one item, the last one read. */
+  requests: HttpRequest[];
+  /** How a record becomes an item, by name; each request names one. */
+  maps: Record<string, HttpItemMap>;
+}
+
+/** Where every request goes: an https URL, or http on this computer (127.0.0.1, localhost) for a local service. No query and no trailing slash; request paths follow it. */
+export type HttpBaseUrl = string;
+
+/** An HTTP header name other than Authorization, Cookie and Host. */
+export type HttpHeaderName = string;
+
+/** How the core sends the instance's token: the secret setting it reads, in a header with a prefix. Authorization: Bearer <token> when header and prefix are absent. */
+export interface HttpAuth {
+  /** A secret instance setting (secret: true), required: the token. */
+  setting: ConnectorSettingName;
+  /** Authorization when absent. */
+  header?: string;
+  /** Bearer and a space when absent; empty sends the token alone. */
+  prefix?: string;
+}
+
+/** One GET request and the pages after it. */
+export interface HttpRequest {
+  /** After the base URL: /search/issues. */
+  path: string;
+  /** Query parameters, encoded by the core. */
+  query?: Record<string, string>;
+  /** Where the records are in the response: a JSON pointer to an array; empty for a response that is the array. */
+  items: JsonPointer;
+  pagination?: HttpPagination;
+  /** Pages read at most; 10 when absent. */
+  maxPages?: number;
+  /** The name of the map in maps that makes its records items. */
+  map: HttpMapName;
+}
+
+/** link: the Link header's rel="next"; body: a URL in the response. */
+export type HttpPageNext = "link" | "body";
+
+/** Where the next page is: link, the URL of rel="next" in the Link header (RFC 8288); body, the URL at pointer in the response. A next URL on another origin ends the request. Absent: one page. */
+export interface HttpPagination {
+  next: HttpPageNext;
+  pointer?: JsonPointer;
+}
+
+/** A map's name: issue, event. */
+export type HttpMapName = string;
+
+/** A JSON pointer (RFC 6901): empty for the whole value, else /name/0/name. */
+export type JsonPointer = string;
+
+/** How one record becomes an item of kind: each item field (specs/item/v0) from a value of the record. The core sets source; a record whose item does not fit specs/item/v0 is skipped. */
+export interface HttpItemMap {
+  kind: ItemKind;
+  /** By item field: id and title always, then updatedAt, status, due, project, deepLink, raw. */
+  fields: Record<string, HttpValue>;
+}
+
+/** One item field's value: a JSON pointer into the record (empty is the whole record), or an object that reads one and shapes it. A null or missing value leaves the field out, unless default gives one. */
+export type HttpValue = JsonPointer | HttpRead | HttpConst;
+
+/** Read the value at pointer and shape it. */
+export interface HttpRead {
+  pointer: JsonPointer;
+  /** Keep the text after the last occurrence of this text; a value without it is missing. */
+  after?: string;
+  /** Replace the value, as text, by the one it names; one it does not name is missing. */
+  values?: Record<string, unknown>;
+  /** The value when the pointer reads nothing, or nothing that values or after keep. */
+  default?: unknown;
+}
+
+/** The same value for every record. */
+export interface HttpConst {
+  /** This value for every record. */
+  const: unknown;
+}
 
 /** One kind of item the connector brings in, and the commands that act on it. */
 export interface ConnectorResource {
@@ -2767,9 +2853,14 @@ export interface CmdUndoneData {
   redo: boolean;
 }
 
-/** An installed connector as connector.list returns it: its instances and the kinds of item it brings in. */
+/** An installed connector as connector.list returns it: its instances, the kinds of item it brings in, and what connecting one asks for (how it signs in and its settings, never their values). */
 export interface ConnectorInfo {
   id: PluginId;
+  /** The connector's name: GitHub. */
+  title?: string;
+  auth?: ConnectorAuth;
+  /** What a new instance takes, by name, as the manifest declares it. */
+  instanceSettings?: Record<string, ConnectorSetting>;
   instances: ConnectorInstance[];
   resources: ConnectorResource[];
 }

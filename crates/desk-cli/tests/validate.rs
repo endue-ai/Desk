@@ -32,6 +32,18 @@ fn the_examples_and_built_in_plugins_validate() {
 }
 
 #[test]
+fn the_github_connector_validates_as_an_http_connector_without_an_entry() {
+    let dir = repo().join("plugins/github");
+    let out = desk(&["plugin", "validate", dir.to_str().unwrap()]);
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert!(out.status.success(), "{stderr}");
+    assert_eq!(
+        String::from_utf8_lossy(&out.stdout),
+        "ok desk.github 0.1.0 (connector plugin)\n"
+    );
+}
+
+#[test]
 fn hello_connector_validates_as_a_connector_plugin() {
     let dir = repo().join("examples/plugin-hello-connector");
     let out = desk(&["plugin", "validate", dir.to_str().unwrap()]);
@@ -102,7 +114,7 @@ const TODAY: &str = r#"{
 const FOLDER: &str = r#"{
   "id": "example.folder", "version": "0.1.0", "kind": "connector", "entry": "connector.wasm",
   "connector": {
-    "binding": "http", "auth": { "kind": "none" }, "sync": { "mode": "pull" },
+    "binding": "grpc", "auth": { "kind": "none" }, "sync": { "mode": "pull" },
     "resources": [{ "kind": "note" }]
   }
 }"#;
@@ -126,7 +138,7 @@ fn a_view_manifest_without_an_entry_validates_and_a_connector_manifest_with_an_u
     let stderr = String::from_utf8_lossy(&out.stderr);
     assert!(stderr.contains("/connector/binding"), "{stderr}");
 
-    let fixed = plugin_dir("connector-wasm", &FOLDER.replace("http", "wasm"));
+    let fixed = plugin_dir("connector-wasm", &FOLDER.replace("grpc", "wasm"));
     fs::write(fixed.join("connector.wasm"), b"\0asm").unwrap();
     let out = desk(&["plugin", "validate", fixed.to_str().unwrap()]);
     assert_eq!(

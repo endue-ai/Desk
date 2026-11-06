@@ -3,17 +3,18 @@
   "name": "Today",
   "version": "0.1.0",
   "kind": "view",
-  "description": "The day at a glance: today's events, the tasks due, unread messages and the notes touched last.",
+  "description": "The day at a glance: today's events, the tasks due, unread messages, the notes touched last and your open GitHub work.",
   "view": {
     "id": "desk.today",
     "version": "0.1.0",
     "title": "Today",
-    "description": "Today's events, the tasks due by tonight, unread messages and the notes touched last.",
+    "description": "Today's events, the tasks due by tonight, unread messages, the notes touched last and your open GitHub work.",
     "requires": {
       "calendar": { "kinds": ["event"], "title": "A calendar" },
       "tasks": { "kinds": ["task"], "title": "A task list (optional)" },
       "messages": { "kinds": ["message"], "title": "Messages (optional)" },
-      "notes": { "kinds": ["note"], "title": "Notes (optional)" }
+      "notes": { "kinds": ["note"], "title": "Notes (optional)" },
+      "github": { "kinds": ["task"], "connector": "desk.github", "title": "GitHub (optional)" }
     },
     "layout": {
       "type": "grid",
@@ -75,6 +76,19 @@
           },
           "fields": [{ "value": "{title}" }, { "value": "{updatedAt|relative}" }],
           "empty": "No notes yet."
+        },
+        {
+          "type": "list",
+          "title": "GitHub",
+          "binding": {
+            "kinds": ["task"],
+            "sources": ["$github"],
+            "where": [{ "field": "status", "op": "eq", "value": "open" }],
+            "sort": [{ "field": "updatedAt", "dir": "desc" }],
+            "limit": 10
+          },
+          "fields": [{ "value": "{title}" }, { "value": "{project} · {updatedAt|relative}" }],
+          "empty": "No open GitHub work."
         }
       ]
     }
