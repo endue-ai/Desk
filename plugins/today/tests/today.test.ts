@@ -109,19 +109,21 @@ describe("desk.today", () => {
     expect(plugin.contributes?.keys).toEqual([{ key: "Mod+T", command: "desk.today.open" }]);
   });
 
-  it("binds each section to its own require: a calendar, then tasks, messages and notes", () => {
+  it("binds each section to its own require: a calendar, then tasks, messages, notes and GitHub", () => {
     const { view, sections } = today();
     expect(view.requires).toEqual({
       calendar: { kinds: ["event"], title: "A calendar" },
       tasks: { kinds: ["task"], title: "A task list (optional)" },
       messages: { kinds: ["message"], title: "Messages (optional)" },
       notes: { kinds: ["note"], title: "Notes (optional)" },
+      github: { kinds: ["task"], connector: "desk.github", title: "GitHub (optional)" },
     });
     expect(sections.map((s) => [s.type, s.title, s.binding?.kinds, s.binding?.sources])).toEqual([
       ["agenda", "Schedule", ["event"], ["$calendar"]],
       ["list", "Due", ["task"], ["$tasks"]],
       ["list", "Unread", ["message"], ["$messages"]],
       ["list", "Last touched", ["note"], ["$notes"]],
+      ["list", "GitHub", ["task"], ["$github"]],
     ]);
     for (const section of sections) {
       const [source = ""] = section.binding?.sources ?? [];
@@ -134,13 +136,14 @@ describe("desk.today", () => {
       "Nothing due.",
       "No unread messages.",
       "No notes yet.",
+      "No open GitHub work.",
     ]);
   });
 
   it("every section's binding answers the fixture items through data.query without the engine", async () => {
     const query = reader();
     const [schedule, due, unread, touched] = today().sections.map((s) => bound(s.binding ?? {}));
-    if (!schedule || !due || !unread || !touched) throw new Error("four sections");
+    if (!schedule || !due || !unread || !touched) throw new Error("five sections");
 
     // Today's events, earliest first; the all-day hike is tomorrow's.
     const events = await query(schedule);
@@ -166,6 +169,27 @@ describe("desk.today", () => {
     expect(notes.every((item) => item.kind === "note")).toBe(true);
     expect(touched.limit).toBe(5);
     const times = notes.map((note) => at(note, "updatedAt"));
+    expect(times).toEqual([...times].sort((a, b) => b - a));
+  });
+
+  it("shows GitHub work in a section of its own: open, the last updated first", async () => {
+    const { sections } = today();
+    const github = sections.find((s) => s.title === "GitHub");
+    expect(github?.binding).toEqual({
+      kinds: ["task"],
+      sources: ["$github"],
+      where: [{ field: "status", op: "eq", value: "open" }],
+      sort: [{ field: "updatedAt", dir: "desc" }],
+      limit: 10,
+    });
+    expect(github?.fields).toEqual([
+      { value: "{title}" },
+      { value: "{project} · {updatedAt|relative}" },
+    ]);
+    const tasks = await reader()(bound(github?.binding ?? {}));
+    expect(tasks.length).toBeGreaterThan(0);
+    for (const task of tasks) expect(task).toMatchObject({ kind: "task", status: "open" });
+    const times = tasks.map((task) => at(task, "updatedAt"));
     expect(times).toEqual([...times].sort((a, b) => b - a));
   });
 });

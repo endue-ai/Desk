@@ -33,7 +33,14 @@ impl Core {
     /// Install the plugin into the connector host when it is a ready Wasm connector and the
     /// connectors have started; its instances then follow the plugin, paused while it is off.
     pub(crate) fn install_connector(&self, info: &PluginInfo) {
-        if self.connectors.me.get().is_none() || wasm(info).is_none() {
+        if self.connectors.me.get().is_none() {
+            return;
+        }
+        if let Some(connector) = listed(info).filter(|c| c.binding == ConnectorBinding::Http) {
+            self.load_http(&info.id, connector);
+            return;
+        }
+        if wasm(info).is_none() {
             return;
         }
         let folders = self.plugin_folders();
@@ -68,6 +75,10 @@ impl Core {
 
     /// The plugin was turned on or off: its instances resume or pause.
     pub(crate) fn connector_toggled(&self, id: &str) {
+        if self.is_http(id) {
+            self.http_toggled(id);
+            return;
+        }
         let Some(host) = self.connector_host() else {
             return;
         };
@@ -89,6 +100,7 @@ impl Core {
                 (Some(host), ConnectorBinding::Wasm) => {
                     host.instances(&info.id).unwrap_or_default()
                 }
+                (_, ConnectorBinding::Http) => self.http_instances(&info.id),
                 _ => Vec::new(),
             };
             for instance in &mut instances {
@@ -97,6 +109,9 @@ impl Core {
             let resources = connector.resources.clone();
             infos.push(ConnectorInfo {
                 id: info.id.clone(),
+                title: info.manifest.as_ref().and_then(|m| m.name.clone()),
+                auth: Some(connector.auth.clone()),
+                instance_settings: connector.instance_settings.clone(),
                 instances,
                 resources,
             });
@@ -217,7 +232,7 @@ impl Core {
 }
 
 /// A ready connector plugin that is not a built-in's: its connector block.
-fn listed(info: &PluginInfo) -> Option<&ConnectorManifest> {
+pub(crate) fn listed(info: &PluginInfo) -> Option<&ConnectorManifest> {
     let manifest = info.manifest.as_ref()?;
     let reserved = info.id == CALENDAR || info.id == REMINDERS;
     let ready = info.status == PluginStatus::Ready && manifest.kind == PluginKind::Connector;

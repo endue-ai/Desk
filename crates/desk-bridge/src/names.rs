@@ -35,8 +35,9 @@ pub fn view_problems(view: &View) -> Vec<String> {
     problems
 }
 
-/// The problems of an inline view (under `/view`), and every action of a connector resource that is
-/// not a command the plugin declares in `contributes.commands`, sorted.
+/// The problems of an inline view (under `/view`), every action of a connector resource that is not
+/// a command the plugin declares in `contributes.commands`, and the names an http block uses that
+/// do not resolve (`http_names`), sorted.
 pub fn manifest_problems(manifest: &PluginManifest) -> Vec<String> {
     let mut problems: Vec<String> = manifest
         .view
@@ -59,6 +60,7 @@ pub fn manifest_problems(manifest: &PluginManifest) -> Vec<String> {
                 }
             }
         }
+        problems.extend(crate::http_names::http_problems(connector));
     }
     problems.sort();
     problems

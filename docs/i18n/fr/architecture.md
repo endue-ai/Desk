@@ -20,7 +20,7 @@ L’interface des réglages, les raccourcis par défaut et la sauvegarde des pr�
  the user's computer               │                           cost of change
  ┌─────────────────────────────────┴──────────────────────────────┐
  │ Plugins      UI (iframe) · logic (Wasm) · tools (MCP, in a VM) │  instant
- │              · connectors (Wasm · MCP) · views (data)          │
+ │              · connectors (Wasm · MCP · http) · views (data)   │
  ├────────────────────────────────────────────────────────────────┤
  │ Web runtime  compositor (3D/2D) · surfaces · input · layout    │  restart
  │              · UI plugin host · desk shell (until ADR 0026)    │
@@ -49,7 +49,7 @@ jour de l'app. Seul endue AI vit hors de l'appareil. Tout le reste s'exécute su
 | Plugins | `plugins/` · `packages/plugin-sdk` · `specs/plugin` · `specs/wit` · `examples/` |
 | Runtime web | `packages/runtime` : le compositeur, l'hôte des plugins UI (ADR 0012) et, jusqu'à la décision de l'ADR 0026, le shell du bureau (ADR 0025) · `packages/ui` |
 | Pont Desk | `specs/bridge` · `specs/item`, `specs/view` et `specs/connector`, les contrats de la couche d'intégration (ADR 0032) · `packages/bridge` · `crates/desk-bridge` (types générés depuis ces contrats et `specs/plugin`) |
-| Cœur Rust | `crates/desk-core`, qui sert aussi la couche d'intégration (`data.*`, `connector.*`, `view.*`, `catalog.get`) et définit les connecteurs intégrés `desk.calendar` et `desk.reminders` sur le calendrier de l'OS (ADR 0036, à l'état de proposition) · `crates/desk-index`, l'index des éléments dans un seul fichier SQLite (ADR 0033) · `crates/desk-plugin-host`, qui exécute les plugins logiques (ADR 0019) et les connecteurs Wasm (ADR 0034, à l'état de proposition) sur Wasmtime · `crates/desk-vm` · `crates/desk-brain*` |
+| Cœur Rust | `crates/desk-core`, qui sert aussi la couche d'intégration (`data.*`, `connector.*`, `view.*`, `catalog.get`) et définit les connecteurs intégrés `desk.calendar` et `desk.reminders` sur le calendrier de l'OS (ADR 0036, à l'état de proposition), et exécute les connecteurs http d'après leur manifeste, en lisant lui-même leurs jetons (ADR 0106) · `crates/desk-index`, l'index des éléments dans un seul fichier SQLite (ADR 0033) · `crates/desk-plugin-host`, qui exécute les plugins logiques (ADR 0019) et les connecteurs Wasm (ADR 0034, à l'état de proposition) sur Wasmtime · `crates/desk-vm` · `crates/desk-brain*` |
 | Shell Tauri | `apps/desk/src-tauri` · `crates/desk-sys` |
 | OS | `apps/desk/src-tauri/capabilities` · workflow de publication (signature, notarisation) |
 

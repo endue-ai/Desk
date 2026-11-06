@@ -160,6 +160,25 @@ describe("desk.views", () => {
     });
   });
 
+  it("Connect a source on a require that names its connector leads to that connector", async () => {
+    const github: View = {
+      ...today,
+      id: "test.github",
+      requires: { github: { kinds: ["task"], connector: "desk.github", title: "GitHub" } },
+      layout: { type: "list", title: "GitHub", binding: { kinds: ["task"], sources: ["$github"] } },
+    };
+    const m = await mount({ views: [github] });
+    await m.open({ id: "test.github" });
+    const [list] = m.shown();
+    expect(list?.state).toBe("unbound");
+    await m.engine.connect(list?.path ?? "");
+    await m.settle();
+    expect(m.host.ran.at(-1)).toEqual({
+      name: "desk.connectors.open",
+      args: { connector: "desk.github", kinds: ["task"] },
+    });
+  });
+
   it("a data.changed re-queries only the component it names, keeping its items until the answer", async () => {
     const m = await mount({ views: [today] });
     await m.open({ id: "desk.today" });

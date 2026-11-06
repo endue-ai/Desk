@@ -1212,7 +1212,7 @@ pub type Role = String;
 /// Semantic version, for example 0.1.0 or 1.2.3-beta.1.
 pub type Version = String;
 
-/// ui runs in a sandboxed iframe, logic in a Wasm instance, tool as an MCP server inside the VM. policy runs no code: it only contributes data (ADR 0017). library runs no code of its own either: it is files other plugins import, served at /<id>/... like any plugin's, never mounted and never turned off. connector brings an app's data in as items, as a Wasm component or an MCP server; view runs no code either: it is one or more views (ADR 0032). theme runs no code: it is a theme block and its font and image files, chosen with desk.theme.active (ADR 0056). design-system runs no code either: it is a designSystem block of component recipes, chosen with desk.design.active (ADR 0090).
+/// ui runs in a sandboxed iframe, logic in a Wasm instance, tool as an MCP server inside the VM. policy runs no code: it only contributes data (ADR 0017). library runs no code of its own either: it is files other plugins import, served at /<id>/... like any plugin's, never mounted and never turned off. connector brings an app's data in as items, as a Wasm component, an MCP server or an http block the core runs (no entry; ADR 0106); view runs no code either: it is one or more views (ADR 0032). theme runs no code: it is a theme block and its font and image files, chosen with desk.theme.active (ADR 0056). design-system runs no code either: it is a designSystem block of component recipes, chosen with desk.design.active (ADR 0090).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum PluginKind {
     #[serde(rename = "ui")]
@@ -2575,6 +2575,8 @@ pub struct ViewProvenance {
 #[serde(deny_unknown_fields)]
 pub struct ConnectorManifest {
     pub binding: ConnectorBinding,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub http: Option<HttpBinding>,
     pub auth: ConnectorAuth,
     /// The kinds of item the connector brings in, one entry per kind.
     pub resources: Vec<ConnectorResource>,
@@ -2588,13 +2590,15 @@ pub struct ConnectorManifest {
     pub instance_settings: Option<BTreeMap<String, ConnectorSetting>>,
 }
 
-/// How the connector runs: wasm, a component the plugin's entry names (no VM to boot); mcp, an MCP server inside the VM that follows the Desk profile in the README.
+/// How the connector runs: wasm, a component the plugin's entry names (no VM to boot); mcp, an MCP server inside the VM that follows the Desk profile in the README; http, requests and a mapping the core runs from the http block, with no code of the plugin's own (ADR 0106).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum ConnectorBinding {
     #[serde(rename = "wasm")]
     Wasm,
     #[serde(rename = "mcp")]
     Mcp,
+    #[serde(rename = "http")]
+    Http,
 }
 
 /// none (local files, the OS's own data), token (a key the person pastes) or oauth.
@@ -2608,7 +2612,7 @@ pub enum ConnectorAuthKind {
     Oauth,
 }
 
-/// How an instance signs in. Tokens are kept by the core and never handed to the connector's code. No v0 method starts an OAuth flow yet.
+/// How an instance signs in. Tokens are kept by the core and never handed to the connector's code; with binding http the core itself sends the token (http.auth). No v0 method starts an OAuth flow yet.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ConnectorAuth {
@@ -2630,6 +2634,129 @@ pub struct ConnectorAuth {
 
 /// An https URL.
 pub type HttpsUrl = String;
+
+/// A connector as data (binding http): GET requests against one base URL, each response's pages followed, and every record mapped into an item. The core runs it, reads the token from the instance's secret setting and sends it only to the base URL's origin; the token never crosses the bridge. Each sync reads every page again and removes the items that left (ADR 0106).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct HttpBinding {
+    #[serde(rename = "baseUrl")]
+    pub base_url: HttpBaseUrl,
+    /// Sent with every request: Accept, an API version. Never Authorization (auth says how the token goes) and never a secret.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub headers: Option<BTreeMap<String, String>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub auth: Option<HttpAuth>,
+    /// What one sync asks for, in order. The same item from two requests is one item, the last one read.
+    pub requests: Vec<HttpRequest>,
+    /// How a record becomes an item, by name; each request names one.
+    pub maps: BTreeMap<String, HttpItemMap>,
+}
+
+/// Where every request goes: an https URL, or http on this computer (127.0.0.1, localhost) for a local service. No query and no trailing slash; request paths follow it.
+pub type HttpBaseUrl = String;
+
+/// An HTTP header name other than Authorization, Cookie and Host.
+pub type HttpHeaderName = String;
+
+/// How the core sends the instance's token: the secret setting it reads, in a header with a prefix. Authorization: Bearer <token> when header and prefix are absent.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct HttpAuth {
+    /// A secret instance setting (secret: true), required: the token.
+    pub setting: ConnectorSettingName,
+    /// Authorization when absent.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub header: Option<String>,
+    /// Bearer and a space when absent; empty sends the token alone.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub prefix: Option<String>,
+}
+
+/// One GET request and the pages after it.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct HttpRequest {
+    /// After the base URL: /search/issues.
+    pub path: String,
+    /// Query parameters, encoded by the core.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub query: Option<BTreeMap<String, String>>,
+    /// Where the records are in the response: a JSON pointer to an array; empty for a response that is the array.
+    pub items: JsonPointer,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pagination: Option<HttpPagination>,
+    /// Pages read at most; 10 when absent.
+    #[serde(rename = "maxPages", default, skip_serializing_if = "Option::is_none")]
+    pub max_pages: Option<u64>,
+    /// The name of the map in maps that makes its records items.
+    pub map: HttpMapName,
+}
+
+/// link: the Link header's rel="next"; body: a URL in the response.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum HttpPageNext {
+    #[serde(rename = "link")]
+    Link,
+    #[serde(rename = "body")]
+    Body,
+}
+
+/// Where the next page is: link, the URL of rel="next" in the Link header (RFC 8288); body, the URL at pointer in the response. A next URL on another origin ends the request. Absent: one page.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct HttpPagination {
+    pub next: HttpPageNext,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pointer: Option<JsonPointer>,
+}
+
+/// A map's name: issue, event.
+pub type HttpMapName = String;
+
+/// A JSON pointer (RFC 6901): empty for the whole value, else /name/0/name.
+pub type JsonPointer = String;
+
+/// How one record becomes an item of kind: each item field (specs/item/v0) from a value of the record. The core sets source; a record whose item does not fit specs/item/v0 is skipped.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct HttpItemMap {
+    pub kind: ItemKind,
+    /// By item field: id and title always, then updatedAt, status, due, project, deepLink, raw.
+    pub fields: BTreeMap<String, HttpValue>,
+}
+
+/// One item field's value: a JSON pointer into the record (empty is the whole record), or an object that reads one and shapes it. A null or missing value leaves the field out, unless default gives one.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum HttpValue {
+    JsonPointer(JsonPointer),
+    HttpRead(HttpRead),
+    HttpConst(HttpConst),
+}
+
+/// Read the value at pointer and shape it.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct HttpRead {
+    pub pointer: JsonPointer,
+    /// Keep the text after the last occurrence of this text; a value without it is missing.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub after: Option<String>,
+    /// Replace the value, as text, by the one it names; one it does not name is missing.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub values: Option<serde_json::Map<String, serde_json::Value>>,
+    /// The value when the pointer reads nothing, or nothing that values or after keep.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub default: Option<serde_json::Value>,
+}
+
+/// The same value for every record.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct HttpConst {
+    /// This value for every record.
+    pub r#const: serde_json::Value,
+}
 
 /// One kind of item the connector brings in, and the commands that act on it.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -4280,11 +4407,23 @@ pub struct CmdUndoneData {
     pub redo: bool,
 }
 
-/// An installed connector as connector.list returns it: its instances and the kinds of item it brings in.
+/// An installed connector as connector.list returns it: its instances, the kinds of item it brings in, and what connecting one asks for (how it signs in and its settings, never their values).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ConnectorInfo {
     pub id: PluginId,
+    /// The connector's name: GitHub.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub auth: Option<ConnectorAuth>,
+    /// What a new instance takes, by name, as the manifest declares it.
+    #[serde(
+        rename = "instanceSettings",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub instance_settings: Option<BTreeMap<String, ConnectorSetting>>,
     pub instances: Vec<ConnectorInstance>,
     pub resources: Vec<ConnectorResource>,
 }

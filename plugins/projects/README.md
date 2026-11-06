@@ -11,7 +11,8 @@ Adapters (`ui/adapters/`, ADR 0085) read each source's own record, which its con
 `raw`, into one shape (status and its category, type, priority, assignee, labels, project, sprint,
 parent, start, due, estimate, link): Jira issues as its REST API and the Atlassian MCP server return
 them, Linear issues from its GraphQL API or its MCP server, Asana tasks from its REST API or its MCP
-server. A source is known by its connector's id or its record's shape; any other task connector shows
+server, GitHub issues and pull requests as `desk.github` keeps them (open, draft, in review, closed,
+merged; the milestone is the sprint and its due date the due). A source is known by its connector's id or its record's shape; any other task connector shows
 as the item's envelope says. "To Do" from Jira and "Todo" from Linear are one column.
 
 The plugin reads but never writes the index: changes go through the task connector's commands. A

@@ -1,0 +1,98 @@
+{
+  "total_count": 4,
+  "incomplete_results": false,
+  "items": [
+    {
+      "url": "https://api.github.com/repos/acme/garage/issues/12",
+      "repository_url": "https://api.github.com/repos/acme/garage",
+      "html_url": "https://github.com/acme/garage/issues/12",
+      "id": 900012,
+      "node_id": "I_kwDOFixture012",
+      "number": 12,
+      "title": "Calendar drops all-day events",
+      "user": {
+        "login": "garage-mate",
+        "id": 1002,
+        "type": "User",
+        "html_url": "https://github.com/garage-mate"
+      },
+      "labels": [{ "name": "bug", "color": "d73a4a" }],
+      "state": "open",
+      "locked": false,
+      "assignee": {
+        "login": "octo-builder",
+        "id": 1001,
+        "type": "User",
+        "html_url": "https://github.com/octo-builder"
+      },
+      "assignees": [
+        {
+          "login": "octo-builder",
+          "id": 1001,
+          "type": "User",
+          "html_url": "https://github.com/octo-builder"
+        }
+      ],
+      "milestone": {
+        "url": "https://api.github.com/repos/acme/garage/milestones/1",
+        "number": 1,
+        "title": "0.1 Daily",
+        "state": "open",
+        "due_on": "2026-10-30T07:00:00Z"
+      },
+      "comments": 2,
+      "created_at": "2026-10-20T01:00:00Z",
+      "updated_at": "2026-10-29T08:30:00Z",
+      "closed_at": null,
+      "author_association": "MEMBER",
+      "body": "All-day events vanish from the agenda after a sync.",
+      "score": 1.0
+    },
+    {
+      "url": "https://api.github.com/repos/acme/garage/issues/15",
+      "repository_url": "https://api.github.com/repos/acme/garage",
+      "html_url": "https://github.com/acme/garage/issues/15",
+      "id": 900015,
+      "node_id": "I_kwDOFixture015",
+      "number": 15,
+      "title": "Write the release notes for 0.1",
+      "user": {
+        "login": "octo-builder",
+        "id": 1001,
+        "type": "User",
+        "html_url": "https://github.com/octo-builder"
+      },
+      "labels": [{ "name": "docs", "color": "0075ca" }],
+      "state": "open",
+      "locked": false,
+      "assignee": {
+        "login": "octo-builder",
+        "id": 1001,
+        "type": "User",
+        "html_url": "https://github.com/octo-builder"
+      },
+      "assignees": [
+        {
+          "login": "octo-builder",
+          "id": 1001,
+          "type": "User",
+          "html_url": "https://github.com/octo-builder"
+        }
+      ],
+      "milestone": {
+        "url": "https://api.github.com/repos/acme/garage/milestones/2",
+        "number": 2,
+        "title": "0.2 Remembers",
+        "state": "open",
+        "due_on": null
+      },
+      "comments": 0,
+      "created_at": "2026-10-22T02:00:00Z",
+      "updated_at": "2026-10-28T05:00:00Z",
+      "closed_at": null,
+      "author_association": "MEMBER",
+      "body": null,
+      "score": 1.0
+    }
+  ]
+}
