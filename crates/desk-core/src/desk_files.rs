@@ -150,7 +150,7 @@ pub fn check_desk_file(rel: &Path, path: &Path) -> FileState {
                 Err(e) => FileState::Invalid(e.to_string()),
             };
         }
-        // plugins.lock gets its schema with the lock itself (#287).
+        "plugins.lock" => "https://endue.ai/specs/init/v0/lock.schema.json#/$defs/PluginsLock",
         _ => return FileState::Unchecked,
     };
     yaml_state(&text, schema)
@@ -205,10 +205,13 @@ fn validator(schema: &str) -> &'static jsonschema::Validator {
     static INIT: OnceLock<jsonschema::Validator> = OnceLock::new();
     static KEYS: OnceLock<jsonschema::Validator> = OnceLock::new();
     static PROFILE: OnceLock<jsonschema::Validator> = OnceLock::new();
+    static LOCK: OnceLock<jsonschema::Validator> = OnceLock::new();
     let cell = if schema.contains("/keys.") {
         &KEYS
     } else if schema.contains("/profile.") {
         &PROFILE
+    } else if schema.contains("/lock.") {
+        &LOCK
     } else {
         &INIT
     };

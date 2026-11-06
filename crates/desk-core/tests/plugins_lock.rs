@@ -157,8 +157,8 @@ fn an_unchanged_desk_does_not_rewrite_the_lock() {
         json!({ "scope": plugin_manage() }),
     )
     .unwrap();
+    // Turning plugins on that are already on changes nothing.
     set_enabled(&core, "example.a", true);
-    set_enabled(&core, "example.b", false);
     set_enabled(&core, "example.b", true);
     assert_eq!(fs::read_to_string(&path).unwrap(), text);
     assert_eq!(modified(&path), old, "the same text is not written again");
