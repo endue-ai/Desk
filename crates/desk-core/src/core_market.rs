@@ -14,9 +14,9 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 
 use desk_bridge::{
-    BridgeError, ErrorCode, PluginKind, PluginManifest, ThemeBundle, ThemeIndex, ThemeIndexEntry,
-    ThemeIndexKind, ThemeMarketFetchParams, ThemeMarketFetchResult, ThemeMarketListParams,
-    ThemeMarketListResult, ThemeMarketProblem, ThemeMarketState, ThemeMarketTheme,
+    BridgeError, ErrorCode, PluginKind, PluginManifest, ThemeBundle, ThemeIndex, ThemeIndexKind,
+    ThemeMarketFetchParams, ThemeMarketFetchResult, ThemeMarketListParams, ThemeMarketListResult,
+    ThemeMarketProblem, ThemeMarketState, ThemeMarketTheme,
 };
 use desk_update::verify::sha256_hex;
 use serde::{Deserialize, Serialize};
@@ -60,7 +60,7 @@ impl Core {
                     continue;
                 }
                 theme.url = resolve(&market, &theme.url);
-                let (state, installed) = self.market_state(&theme);
+                let (state, installed) = self.market_state(&theme.id, &theme.sha256);
                 let market = market.clone();
                 let listed = ThemeMarketTheme {
                     theme,
@@ -230,7 +230,7 @@ impl Core {
     /// The market indexes in force: the theme markets (the runtime's `theme.markets`, init.yaml's
     /// `desk.theme.markets`, or the `desk.theme` manifest's default), then the design system markets
     /// (`desk.design.markets` the same way, ADR 0091); each once, in order.
-    fn markets(&self) -> Vec<String> {
+    pub(crate) fn markets(&self) -> Vec<String> {
         let list = |policy: &str, key: &str| {
             let value = self.setting_in_force("desk", &format!("{key}.markets"));
             value.or_else(|| self.setting_in_force(policy, "markets"))
@@ -252,7 +252,7 @@ impl Core {
     }
 
     /// A market's index, downloaded and checked against `ThemeIndex`, or why not.
-    fn read_index(&self, market: &str) -> Result<ThemeIndex, String> {
+    pub(crate) fn read_index(&self, market: &str) -> Result<ThemeIndex, String> {
         if https_host(market).is_none() {
             return Err(format!("{market} is not an https URL"));
         }
@@ -268,13 +268,17 @@ impl Core {
     }
 
     /// How a listed theme stands on this desk, and the version installed.
-    fn market_state(&self, theme: &ThemeIndexEntry) -> (ThemeMarketState, Option<String>) {
-        let plugin = self.plugins().into_iter().find(|p| p.id == theme.id);
+    pub(crate) fn market_state(
+        &self,
+        id: &str,
+        sha256: &str,
+    ) -> (ThemeMarketState, Option<String>) {
+        let plugin = self.plugins().into_iter().find(|p| p.id == id);
         let Some(version) = plugin.and_then(|p| p.manifest).map(|m| m.version) else {
             return (ThemeMarketState::Available, None);
         };
-        let state = match self.unchanged(&theme.id) {
-            Some(record) if record.sha256 == theme.sha256 => ThemeMarketState::Installed,
+        let state = match self.unchanged(id) {
+            Some(record) if record.sha256 == sha256 => ThemeMarketState::Installed,
             Some(_) => ThemeMarketState::Update,
             None => ThemeMarketState::Edited,
         };
@@ -296,7 +300,7 @@ impl Core {
     }
 
     /// The bytes at `url`: the fetch a test gave, else desk-sys `net`.
-    fn get(&self, url: &str) -> Result<Vec<u8>, String> {
+    pub(crate) fn get(&self, url: &str) -> Result<Vec<u8>, String> {
         match &self.themes.fetch {
             Some(fetch) => fetch(url),
             None => https_fetch(url),
@@ -317,7 +321,7 @@ fn index_validator() -> &'static jsonschema::Validator {
 
 /// An index entry's bundle url made absolute: an https one as it is, a relative one against the
 /// folder of the index's URL.
-fn resolve(index: &str, url: &str) -> String {
+pub(crate) fn resolve(index: &str, url: &str) -> String {
     if url.starts_with("https://") {
         return url.to_owned();
     }
@@ -357,7 +361,7 @@ fn folder_hash(dir: &Path) -> String {
 }
 
 /// `host:port` of an https URL (443 when it names none): the only host its download may reach.
-fn https_host(url: &str) -> Option<String> {
+pub(crate) fn https_host(url: &str) -> Option<String> {
     let rest = url.strip_prefix("https://")?;
     let host = rest.split(['/', '?', '#']).next()?.to_ascii_lowercase();
     let usable = !host.is_empty() && !host.contains(['@', '[', ' ']);

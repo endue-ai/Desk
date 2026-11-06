@@ -100,7 +100,7 @@ fn market_list_and_install_through_the_socket() {
     assert_eq!(out.status.code(), Some(1), "it asks first");
     let stdout = String::from_utf8_lossy(&out.stdout).into_owned();
     assert!(
-        stdout.contains("asks\t{\"permission\":\"data:read\",\"kinds\":[\"task\"]}"),
+        stdout.contains("asks\tdata:read\t{\"kinds\":[\"task\"]}"),
         "{stdout}"
     );
     assert!(stdout.contains("--accept"), "{stdout}");
