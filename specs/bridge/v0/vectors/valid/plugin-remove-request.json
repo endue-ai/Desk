@@ -1,0 +1,9 @@
+{
+  "target": "BridgeRequest",
+  "description": "plugin.remove of a market plugin",
+  "instance": {
+    "id": 73,
+    "method": "plugin.remove",
+    "params": { "plugin": "market.week-ahead", "scope": { "permission": "plugin:manage" } }
+  }
+}

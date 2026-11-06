@@ -1,0 +1,146 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://endue.ai/specs/bridge/v0/market.schema.json",
+  "title": "Desk bridge v0: market",
+  "description": "The market for every kind (ADR 0107): list what the markets offer, install from them and remove what they installed. Every call needs plugin:manage.",
+  "$defs": {
+    "MarketListRequest": {
+      "description": "List what the markets offer, every kind (ADR 0107).",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "market.list" },
+        "params": { "$ref": "#/$defs/MarketListParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "MarketListParams": {
+      "description": "Parameters of market.list.",
+      "type": "object",
+      "properties": {
+        "scope": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/PluginManagePermission" }
+      },
+      "required": ["scope"],
+      "additionalProperties": false
+    },
+    "MarketListResult": {
+      "description": "Result of market.list: every entry of every market in force, the first market that lists an id winning, and the markets that could not be read.",
+      "type": "object",
+      "properties": {
+        "entries": { "type": "array", "items": { "$ref": "#/$defs/MarketListing" } },
+        "problems": { "type": "array", "items": { "$ref": "#/$defs/MarketProblem" } }
+      },
+      "required": ["entries", "problems"],
+      "additionalProperties": false
+    },
+    "MarketListing": {
+      "description": "One entry as this desk sees it.",
+      "type": "object",
+      "properties": {
+        "market": {
+          "description": "The index it came from, by URL.",
+          "type": "string",
+          "minLength": 1
+        },
+        "entry": { "$ref": "../../market/v0/market.schema.json#/$defs/MarketEntry" },
+        "verified": {
+          "description": "It comes from the endue index. Code plugins install only when it does; anything else is shown as not verified (signatures later, ADR 0005).",
+          "type": "boolean"
+        },
+        "state": { "$ref": "#/$defs/MarketState" },
+        "installed": {
+          "description": "The installed version, when there is one.",
+          "$ref": "../../plugin/v0/plugin.schema.json#/$defs/Version"
+        },
+        "added": {
+          "description": "The permissions it asks that the installed version was not given: all of them for a new install. Shown before installing; plugin.install needs them accepted.",
+          "type": "array",
+          "items": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/Permission" }
+        }
+      },
+      "required": ["market", "entry", "verified", "state", "added"],
+      "additionalProperties": false
+    },
+    "MarketState": {
+      "description": "available: not installed; installed: this version is; update: an older version is.",
+      "type": "string",
+      "enum": ["available", "installed", "update"]
+    },
+    "MarketProblem": {
+      "description": "A market that could not be read.",
+      "type": "object",
+      "properties": {
+        "market": { "type": "string" },
+        "message": { "type": "string", "minLength": 1 }
+      },
+      "required": ["market", "message"],
+      "additionalProperties": false
+    },
+    "PluginInstallRequest": {
+      "description": "Install or update a plugin from a market (ADR 0107).",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "plugin.install" },
+        "params": { "$ref": "#/$defs/PluginInstallParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "PluginInstallParams": {
+      "description": "Parameters of plugin.install: the entry by id (in the first market that lists it, or in market), and the permissions the person accepted, which must hold every permission the entry asks.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "../../plugin/v0/plugin.schema.json#/$defs/PluginId" },
+        "market": {
+          "description": "The index to take it from, by URL; the first that lists it when absent.",
+          "type": "string",
+          "minLength": 1
+        },
+        "accept": {
+          "description": "The permissions the person accepted; the plugin is granted them.",
+          "type": "array",
+          "items": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/Permission" }
+        },
+        "scope": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/PluginManagePermission" }
+      },
+      "required": ["id", "accept", "scope"],
+      "additionalProperties": false
+    },
+    "PluginInstallResult": {
+      "description": "Result of plugin.install: the plugin as installed.",
+      "type": "object",
+      "properties": { "plugin": { "$ref": "plugins.schema.json#/$defs/PluginInfo" } },
+      "required": ["plugin"],
+      "additionalProperties": false
+    },
+    "PluginRemoveRequest": {
+      "description": "Remove a plugin a market installed: its folder, its grants and its lock line.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "plugin.remove" },
+        "params": { "$ref": "#/$defs/PluginRemoveParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "PluginRemoveParams": {
+      "description": "Parameters of plugin.remove.",
+      "type": "object",
+      "properties": {
+        "plugin": { "$ref": "../../plugin/v0/plugin.schema.json#/$defs/PluginId" },
+        "scope": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/PluginManagePermission" }
+      },
+      "required": ["plugin", "scope"],
+      "additionalProperties": false
+    },
+    "PluginRemoveResult": {
+      "description": "Result of plugin.remove.",
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    }
+  }
+}

@@ -520,6 +520,17 @@ the folder as it landed). A later import of the same id by `url` replaces it onl
 has that hash; a theme the person changed is `already_exists` and stays. `theme.remove` forgets the
 record with the folder.
 
+**market.list**, **plugin.install** and **plugin.remove** are the market for every kind (ADR 0107,
+`specs/market/v0`), under `plugin:manage`. `market.list` reads the indexes `desk.market.indexes` lists and
+the theme markets, and answers every entry once (the first market wins) with its `market`, `verified`
+(it comes from the endue index), a `state` (`available`, `installed`, `update`), the version installed
+and `added`, the permissions it asks that the installed version was not given. `plugin.install { id,
+market?, accept }` downloads the entry's bundle (https, its sha256 and size), checks it as a plugin folder
+of the entry's id, version and kind, lands it in the market folder and grants it the permissions in
+`accept`, which must hold every permission the entry asks (`permission_denied` names the rest). A
+`plugin` entry installs only from the endue index; themes and design systems go through `theme.import`.
+`plugin.remove` removes what the market installed: its folder, its record, its grants and its lock line.
+
 ## Vectors
 
 `vectors/valid` and `vectors/invalid` hold `{ target, description, instance }` files. Rust

@@ -2830,6 +2830,89 @@ pub struct AgentRecord {
     pub runs: Option<u64>,
 }
 
+/// One market's index, as JSON.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct MarketIndex {
+    /// The index format and its version.
+    pub format: MarketIndexFormat,
+    /// What the market offers, each id once.
+    pub entries: Vec<MarketEntry>,
+}
+
+/// What an entry's bundle holds: a theme or a design system (their own bundles, ADR 0060 and 0091), a view plugin, a pack, or any other plugin (code: ui, logic, tool, connector, policy, library).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum MarketKind {
+    #[serde(rename = "theme")]
+    Theme,
+    #[serde(rename = "design-system")]
+    DesignSystem,
+    #[serde(rename = "view")]
+    View,
+    #[serde(rename = "pack")]
+    Pack,
+    #[serde(rename = "plugin")]
+    Plugin,
+}
+
+/// One thing a market offers: its card, its bundle and what it asks.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct MarketEntry {
+    pub id: PluginId,
+    pub kind: MarketKind,
+    pub name: String,
+    pub version: Version,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    /// Who publishes it.
+    pub publisher: String,
+    /// An SPDX licence expression for the bundle and its assets.
+    pub license: String,
+    /// Words a gallery filters by.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tags: Option<Vec<String>>,
+    pub url: MarketUrl,
+    /// The sha256 of the bundle's bytes, lowercase hex: a download that differs is refused.
+    pub sha256: String,
+    /// The bundle's size in bytes, 16 MiB at most.
+    pub size: u64,
+    /// What the plugin asks, as its manifest does: shown before an install, asked again when an update adds one.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub permissions: Option<Vec<Permission>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub engines: Option<MarketEngines>,
+}
+
+/// The desks the bundle runs on.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct MarketEngines {
+    /// The Desk versions, as a minimum: >=0.1.0.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub desk: Option<String>,
+}
+
+/// Where the bundle is: a path relative to the index (views/today-plus.desk-plugin) or an https URL.
+pub type MarketUrl = String;
+
+/// A plugin as one file, a .desk-plugin: JSON, 16 MiB at most, holding its plugin.json and every file of its folder, base64. Themes and design systems travel as .desk-theme and .desk-design (ThemeBundle).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PluginBundle {
+    /// The bundle format and its version.
+    pub format: PluginBundleFormat,
+    pub manifest: PluginManifest,
+    /// The plugin's files by their path in its folder (forward slashes, no .. and no dot files), each base64; plugin.json is the manifest.
+    pub files: BTreeMap<String, BundleData>,
+}
+
+/// A file's path in the plugin folder.
+pub type BundlePath = String;
+
+/// A file's bytes, base64.
+pub type BundleData = String;
+
 /// The whole of init.yaml. Every key is optional; a missing key takes its default.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -3616,6 +3699,9 @@ pub enum BridgeRequest {
     PluginList(PluginListRequest),
     PluginSetEnabled(PluginSetEnabledRequest),
     PluginStats(PluginStatsRequest),
+    MarketList(MarketListRequest),
+    PluginInstall(PluginInstallRequest),
+    PluginRemove(PluginRemoveRequest),
     StoreGet(StoreGetRequest),
     StoreSet(StoreSetRequest),
     InitGet(InitGetRequest),
@@ -5014,6 +5100,117 @@ pub struct LogEntryEvent {
     pub event: LogEntryEventEvent,
     pub data: LogEntry,
 }
+
+/// List what the markets offer, every kind (ADR 0107).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct MarketListRequest {
+    pub id: RequestId,
+    pub method: MarketListRequestMethod,
+    pub params: MarketListParams,
+}
+
+/// Parameters of market.list.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct MarketListParams {
+    pub scope: PluginManagePermission,
+}
+
+/// Result of market.list: every entry of every market in force, the first market that lists an id winning, and the markets that could not be read.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct MarketListResult {
+    pub entries: Vec<MarketListing>,
+    pub problems: Vec<MarketProblem>,
+}
+
+/// One entry as this desk sees it.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct MarketListing {
+    /// The index it came from, by URL.
+    pub market: String,
+    pub entry: MarketEntry,
+    /// It comes from the endue index. Code plugins install only when it does; anything else is shown as not verified (signatures later, ADR 0005).
+    pub verified: bool,
+    pub state: MarketState,
+    /// The installed version, when there is one.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub installed: Option<Version>,
+    /// The permissions it asks that the installed version was not given: all of them for a new install. Shown before installing; plugin.install needs them accepted.
+    pub added: Vec<Permission>,
+}
+
+/// available: not installed; installed: this version is; update: an older version is.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum MarketState {
+    #[serde(rename = "available")]
+    Available,
+    #[serde(rename = "installed")]
+    Installed,
+    #[serde(rename = "update")]
+    Update,
+}
+
+/// A market that could not be read.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct MarketProblem {
+    pub market: String,
+    pub message: String,
+}
+
+/// Install or update a plugin from a market (ADR 0107).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PluginInstallRequest {
+    pub id: RequestId,
+    pub method: PluginInstallRequestMethod,
+    pub params: PluginInstallParams,
+}
+
+/// Parameters of plugin.install: the entry by id (in the first market that lists it, or in market), and the permissions the person accepted, which must hold every permission the entry asks.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PluginInstallParams {
+    pub id: PluginId,
+    /// The index to take it from, by URL; the first that lists it when absent.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub market: Option<String>,
+    /// The permissions the person accepted; the plugin is granted them.
+    pub accept: Vec<Permission>,
+    pub scope: PluginManagePermission,
+}
+
+/// Result of plugin.install: the plugin as installed.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PluginInstallResult {
+    pub plugin: PluginInfo,
+}
+
+/// Remove a plugin a market installed: its folder, its grants and its lock line.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PluginRemoveRequest {
+    pub id: RequestId,
+    pub method: PluginRemoveRequestMethod,
+    pub params: PluginRemoveParams,
+}
+
+/// Parameters of plugin.remove.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PluginRemoveParams {
+    pub plugin: PluginId,
+    pub scope: PluginManagePermission,
+}
+
+/// Result of plugin.remove.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PluginRemoveResult {}
 
 /// Make one HTTP(S) request and return the whole response.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -7174,6 +7371,22 @@ pub enum EnumParamKind {
     Enum,
 }
 
+/// The `format` of [`MarketIndex`]: always `"desk-market-index/1"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum MarketIndexFormat {
+    #[default]
+    #[serde(rename = "desk-market-index/1")]
+    DeskMarketIndex1,
+}
+
+/// The `format` of [`PluginBundle`]: always `"desk-plugin/1"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum PluginBundleFormat {
+    #[default]
+    #[serde(rename = "desk-plugin/1")]
+    DeskPlugin1,
+}
+
 /// The `method` of [`AccountStatusRequest`]: always `"account.status"`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub enum AccountStatusRequestMethod {
@@ -7652,6 +7865,30 @@ pub enum LogEntryEventEvent {
     #[default]
     #[serde(rename = "log.entry")]
     LogEntry,
+}
+
+/// The `method` of [`MarketListRequest`]: always `"market.list"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum MarketListRequestMethod {
+    #[default]
+    #[serde(rename = "market.list")]
+    MarketList,
+}
+
+/// The `method` of [`PluginInstallRequest`]: always `"plugin.install"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum PluginInstallRequestMethod {
+    #[default]
+    #[serde(rename = "plugin.install")]
+    PluginInstall,
+}
+
+/// The `method` of [`PluginRemoveRequest`]: always `"plugin.remove"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum PluginRemoveRequestMethod {
+    #[default]
+    #[serde(rename = "plugin.remove")]
+    PluginRemove,
 }
 
 /// The `method` of [`NetFetchRequest`]: always `"net.fetch"`.
@@ -8194,6 +8431,10 @@ pub const SCHEMAS: &[(&str, &str)] = &[
         include_str!("../../../specs/agent/v0/agent.schema.json"),
     ),
     (
+        "https://endue.ai/specs/market/v0/market.schema.json",
+        include_str!("../../../specs/market/v0/market.schema.json"),
+    ),
+    (
         "https://endue.ai/specs/init/v0/init.schema.json",
         include_str!("../../../specs/init/v0/init.schema.json"),
     ),
@@ -8260,6 +8501,10 @@ pub const SCHEMAS: &[(&str, &str)] = &[
     (
         "https://endue.ai/specs/bridge/v0/log.schema.json",
         include_str!("../../../specs/bridge/v0/log.schema.json"),
+    ),
+    (
+        "https://endue.ai/specs/bridge/v0/market.schema.json",
+        include_str!("../../../specs/bridge/v0/market.schema.json"),
     ),
     (
         "https://endue.ai/specs/bridge/v0/net.schema.json",

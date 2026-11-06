@@ -1,0 +1,60 @@
+{
+  "target": "MarketListResult",
+  "description": "a view to install from the endue index, a code plugin not verified from another one, and a market that could not be read",
+  "instance": {
+    "entries": [
+      {
+        "market": "https://raw.githubusercontent.com/endue-ai/Desk/main/market/views/index.json",
+        "entry": {
+          "id": "market.week-ahead",
+          "kind": "view",
+          "name": "Week ahead",
+          "version": "1.0.0",
+          "description": "The next seven days: events as an agenda and the tasks due before the week ends.",
+          "publisher": "Team endue",
+          "license": "CC0-1.0",
+          "tags": ["calendar", "tasks", "week"],
+          "url": "week-ahead.desk-plugin",
+          "sha256": "8b1c6de7b93fdc3ec926fde3a23a30d079c496298346a4fa40f185f6f5ad0526",
+          "size": 2376,
+          "permissions": [],
+          "engines": { "desk": ">=0.1.0" }
+        },
+        "verified": true,
+        "state": "available",
+        "added": []
+      },
+      {
+        "market": "https://market.acme.test/index.json",
+        "entry": {
+          "id": "acme.tracker",
+          "kind": "plugin",
+          "name": "Tracker",
+          "version": "2.1.0",
+          "description": "Tickets from Acme Tracker as tasks, with commands to move them.",
+          "publisher": "Acme",
+          "license": "Apache-2.0",
+          "tags": ["tasks"],
+          "url": "https://market.acme.test/tracker-2.1.0.desk-plugin",
+          "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+          "size": 48211,
+          "permissions": [
+            { "permission": "net:fetch", "hosts": ["api.acme.test"] },
+            { "permission": "data:read", "kinds": ["task"] }
+          ],
+          "engines": { "desk": ">=0.1.0" }
+        },
+        "verified": false,
+        "state": "update",
+        "installed": "2.0.0",
+        "added": [{ "permission": "data:read", "kinds": ["task"] }]
+      }
+    ],
+    "problems": [
+      {
+        "market": "https://market.down.test/index.json",
+        "message": "not a market index: expected value at line 1 column 1"
+      }
+    ]
+  }
+}
