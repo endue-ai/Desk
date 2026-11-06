@@ -43,6 +43,7 @@ mod core_log;
 mod core_market;
 mod core_marketplace;
 mod core_net;
+mod core_packs;
 mod core_perm;
 mod core_plugin_views;
 mod core_plugins;

@@ -44,6 +44,8 @@ impl Core {
                 self.grant(&info.id, permission);
             }
         }
+        // A pack's nested plugins install with it (ADR 0108).
+        info = self.install_pack(info, dir, built_in);
         self.plugin_changed(&info.id, PluginChange::Installed, info.revision);
         self.plugin_views_changed(&info);
         self.install_connector(&info);

@@ -63,6 +63,7 @@ impl Core {
         let Some(mut info) = self.registry().get(id) else {
             return false;
         };
+        self.remove_pack_plugins(&info);
         self.unloaded(id);
         if let Some(host) = self.connector_host() {
             host.remove(id);

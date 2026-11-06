@@ -218,6 +218,24 @@
   font-weight: 600;
 }
 
+/* What a pack brings (ADR 0108): label and value per line. */
+.proposal-pack {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: var(--desk-space-1) var(--desk-space-3);
+  margin: 0;
+}
+
+.proposal-pack dt {
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-xs);
+  font-weight: 600;
+}
+
+.proposal-pack dd {
+  margin: 0;
+}
+
 .proposal-keys kbd {
   padding: 0 var(--desk-space-1);
   border: 1px solid var(--desk-border);

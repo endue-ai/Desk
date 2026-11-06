@@ -80,7 +80,9 @@ export function mountComposer(root: HTMLElement, ctx: ShellCtx): () => void {
         return { label: c.title, run, ...(key ? { key } : {}) };
       }),
       {
-        label: ctx.tr(route(text).to === "propose" ? "makeWith" : "sayTo", { x: text.trim() }),
+        label: ctx.tr(["propose", "pack"].includes(route(text).to) ? "makeWith" : "sayTo", {
+          x: text.trim(),
+        }),
         run: () => void send(text),
       },
     ];
@@ -160,6 +162,11 @@ export function mountComposer(root: HTMLElement, ctx: ShellCtx): () => void {
       const args = { text: text.trim(), from: "eris" };
       const command = design ? "desk.design.describe" : "desk.theme.describe";
       void ctx.runtime.commands.run(command, args).catch(() => {});
+      return;
+    }
+    if (to.to === "pack") {
+      // "Set up GitHub": the pack for the service, on Eris's card (ADR 0108).
+      await ctx.runtime.commands.run("desk.pack.setup", { service: to.service }).catch(() => {});
       return;
     }
     if (to.to === "propose") {

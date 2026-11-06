@@ -138,6 +138,13 @@ impl PluginRegistry {
         Some(self.info(index))
     }
 
+    /// Mark an installed plugin failed with `why` (a pack that names a plugin nobody has).
+    pub(crate) fn fail(&mut self, id: &str, why: String) -> Option<PluginInfo> {
+        let index = self.entries.iter().position(|e| e.id == id)?;
+        self.entries[index].error = Some(why);
+        Some(self.info(index))
+    }
+
     /// On or off as the persisted flag says, this run's holds aside (plugins.lock, ADR 0079).
     pub(crate) fn kept_enabled(&self, id: &str) -> Option<bool> {
         let entry = self.entries.iter().find(|e| e.id == id)?;

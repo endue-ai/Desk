@@ -8,7 +8,7 @@ keeps serving themes and design systems as it does. v0 may break on any minor re
 | --- | --- |
 | `MarketIndex` | A market's `index.json`: `format: desk-market-index/1` and its `entries`, each id once |
 | `MarketEntry` | `id`, `kind`, `name`, `version`, `description`, `publisher`, `license` (SPDX), `tags`, `url` (relative to the index, or https), `sha256` and `size` of the bundle, `permissions` it asks, `engines.desk` (`>=0.1.0`) |
-| `MarketKind` | `theme`, `design-system`, `view`, `pack` or `plugin` (anything that runs code) |
+| `MarketKind` | `theme`, `design-system`, `view`, `pack` (ADR 0108: its nested plugins come with it) or `plugin` (anything that runs code) |
 | `PluginBundle` | A `.desk-plugin`: JSON, 16 MiB at most, `format: desk-plugin/1`, the `manifest` and every other file of the folder base64 by its path (no dot files) |
 
 - A desk reads the indexes the setting `desk.market.indexes` lists (default: this repository's
