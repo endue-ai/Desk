@@ -19,7 +19,8 @@ its sync, the brain conversation, the integration layer and the bridge handler. 
   `agents.<id>.allow`, prompted inside it, logged on `perm`; irreversible calls held (ADR 0078).
 - `EventBus`: `subscribe`, `subscribe_addressed`, `publish`, `publish_to`; `subscription_count()`,
   `watch_count()`, `process_count()`, `surface_count()`, `file_url_count()`; `media_type(name)`.
-- Plugins: `with_plugin_store(path)`, `install_plugin(dir, built_in)`, `install_plugins_in`,
+- Plugins: `with_plugin_store(path)`, `with_lock_file(path)` (plugins.lock, `lock::{folder_sha256,
+  parse, render, plan}`), `install_plugin(dir, built_in)`, `install_plugins_in`, `remove_plugin(id)`,
   `plugins()`, `plugin_file(id, path)`, `watch_plugins()`, `validate_dir(dir)`. A plugin turned off
   takes its commands, requests, subscriptions, processes, surfaces and URLs; its connectors pause.
 - Storage: `with_store_file`, `with_settings_file`, `with_log_dir`, `Core::log`. Settings are checked

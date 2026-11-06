@@ -13,6 +13,7 @@ use serde_json::{Map, Value, json};
 use crate::args::{Remote, UpdateStep};
 
 mod inspect;
+mod sync;
 
 pub fn run(remote: Remote, json: bool) -> ExitCode {
     let Some(path) = desk_ipc::socket_path() else {
@@ -112,6 +113,7 @@ impl Session {
                     format!("{}\t{}\t{enabled}", text(p, "id"), text(p, "status"))
                 },
             ),
+            Remote::PluginSync => self.sync(),
             Remote::PluginSetEnabled { id, enabled } => self.done(
                 "plugin.setEnabled",
                 json!({ "plugin": id, "enabled": enabled, "scope": plugin_manage }),

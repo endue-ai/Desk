@@ -1,0 +1,23 @@
+{
+  "target": "PluginsLock",
+  "description": "a sha256 that is not 64 lowercase hex digits",
+  "instance": {
+    "version": 0,
+    "plugins": [
+      {
+        "id": "desk.keys",
+        "version": "0.1.0",
+        "source": "builtin",
+        "sha256": "9F2C",
+        "enabled": true
+      },
+      {
+        "id": "example.hello-ui",
+        "version": "0.2.0-beta.1",
+        "source": "folder:~/plugins/hello-ui",
+        "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+        "enabled": false
+      }
+    ]
+  }
+}

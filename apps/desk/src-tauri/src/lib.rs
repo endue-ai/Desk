@@ -85,8 +85,11 @@ pub fn run() {
             // endue does not serve sync yet: until it does, a stand-in keeps endue's copy of
             // init.yaml in the data folder.
             let remote = MockRemote::with_file(data.join("sync-mock.json"));
+            // plugins.lock: the plugin set, rewritten on every install and turn on or off (ADR 0079).
+            let lock = home.join(".desk").join("plugins.lock");
             let core = Core::new(Roots { home })
                 .with_init_file(init)
+                .with_lock_file(lock)
                 .with_sync(Arc::new(remote), Some(data.join("sync.json")));
             // Everything that outlives a quit: grants, settings, the log and the rest (#351).
             let core = core_files::open(core, &data);

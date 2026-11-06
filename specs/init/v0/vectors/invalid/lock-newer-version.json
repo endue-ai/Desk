@@ -1,0 +1,5 @@
+{
+  "target": "PluginsLock",
+  "description": "a version newer than v0",
+  "instance": { "version": 1, "plugins": [] }
+}

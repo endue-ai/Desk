@@ -12,8 +12,8 @@ desk plugin test <dir>                 # the folder's tests/ on the host for its
 desk ping                              # a round trip to the running desk; prints ok
 desk cmd list | tools [<words>]        # id<TAB>provider<TAB>title; tools: agents' (ADR 0088), reads|acts|irreversible
 desk cmd run <id> [--args <json>]      # waits for cmd.answered; prints the result as JSON
-desk plugin list                       # id<TAB>status<TAB>enabled|disabled per plugin
-desk plugin enable|disable <id>        # prints ok
+desk plugin list [--lock]              # id<TAB>status<TAB>enabled|disabled; --lock: ~/.desk/plugins.lock
+desk plugin enable|disable <id> | sync # ok; sync: on and off as plugins.lock says, missing ones exit 1
 desk perm list | revoke <grantId>      # grantId<TAB>caller<TAB>permission per grant; revoke prints ok
 desk perm log [--agent <id>]           # at, caller, decision, permission, target, reason or approval
 desk describe key|command|setting|plugin|grant <x>   # desk.describe.open's answer, as text (ADR 0075)
@@ -24,7 +24,7 @@ desk doctor --trace <file>             # a DESK_TRACE=1 trace.json: phases, tota
 desk mcp [--agent <id>] [--plugin <id>]...   # an MCP server on stdio as agent:<id> (crates/desk-mcp)
 ```
 
-All but `plugin validate`, `plugin test`, `doctor`, `export` and `import` reach the running desk over its
+All but `plugin validate`, `plugin test`, `plugin list --lock`, `doctor`, `export` and `import` reach the running desk over its
 socket (`crates/desk-ipc`, ADR 0030) as `cli`; `mcp` runs its client's calls as an agent (ADR 0086).
 `DESK_SOCKET` names another socket. `--json` prints the answer as it came (`cmd run`, `describe`:
 `cmd.answered`; `perm log`: each entry; `doctor`: JSON); `inspect` prints JSON either way. Exit codes: 0

@@ -132,7 +132,7 @@ fn desk_home(tag: &str) -> (PathBuf, PathBuf) {
     std::fs::create_dir_all(&data).unwrap();
     std::fs::write(home.join(".desk/init.yaml"), "profile: morning\n").unwrap();
     std::fs::write(home.join(".desk/profiles/quiet.yaml"), "name: Quiet\n").unwrap();
-    std::fs::write(home.join(".desk/plugins.lock"), "plugins: []\n").unwrap();
+    std::fs::write(home.join(".desk/plugins.lock"), "version: 0\nplugins: []\n").unwrap();
     std::fs::write(data.join("store.json"), "{}").unwrap();
     (home, data)
 }
@@ -179,7 +179,7 @@ fn doctor_lists_every_desk_and_data_file() {
         rows,
         [
             ("init.yaml".to_owned(), "person", "17", "valid"),
-            ("plugins.lock".to_owned(), "desk", "12", "unchecked"),
+            ("plugins.lock".to_owned(), "desk", "23", "valid"),
             ("profiles/quiet.yaml".to_owned(), "person", "12", "valid"),
             ("store.json".to_owned(), "desk", "2", "valid"),
         ]

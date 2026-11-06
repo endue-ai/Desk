@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://endue.ai/specs/init/v0/lock.schema.json",
+  "title": "plugins.lock v0",
+  "description": "The plugin set of a desk, ~/.desk/plugins.lock (ADR 0079): one line per installed plugin, rewritten by the core on every install, removal, version change and turn on or off. `desk plugin list --lock` prints it and `desk plugin sync` turns plugins on and off as it says. The file is YAML; this schema describes the data it holds once parsed.",
+  "$ref": "#/$defs/PluginsLock",
+  "$defs": {
+    "PluginsLock": {
+      "description": "The whole of plugins.lock.",
+      "type": "object",
+      "properties": {
+        "version": {
+          "description": "The format version. Desk refuses a lock newer than it reads.",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 0
+        },
+        "plugins": {
+          "description": "Every installed plugin that validates, sorted by id.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/LockedPlugin" }
+        }
+      },
+      "required": ["version", "plugins"],
+      "additionalProperties": false
+    },
+    "LockedPlugin": {
+      "description": "One installed plugin, pinned.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "../../plugin/v0/plugin.schema.json#/$defs/PluginId" },
+        "version": { "$ref": "../../plugin/v0/plugin.schema.json#/$defs/Version" },
+        "source": { "$ref": "#/$defs/LockSource" },
+        "sha256": {
+          "description": "The folder digest: every regular file under the plugin folder whose path has no part starting with a dot, in byte order of its path relative to the folder (forward slashes), each fed as path, NUL, decimal length, NUL, bytes; lowercase hex.",
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "enabled": {
+          "description": "Whether it is on, as its persisted flag says (init.yaml's start-only holds aside).",
+          "type": "boolean"
+        }
+      },
+      "required": ["id", "version", "source", "sha256", "enabled"],
+      "additionalProperties": false
+    },
+    "LockSource": {
+      "description": "Where the plugin came from: builtin (shipped with Desk), folder:<path> (a folder on this computer, ~ for the home folder) or url:<https URL> (the market, later).",
+      "type": "string",
+      "pattern": "^(builtin|folder:\\S.*|url:https://\\S+)$",
+      "maxLength": 2048
+    }
+  }
+}

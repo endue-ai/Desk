@@ -62,6 +62,8 @@ pub struct Core {
     pub(crate) approvals: Mutex<Approvals>,
     pub(crate) subscriptions: Mutex<Subscriptions>,
     pub(crate) plugins: Mutex<PluginRegistry>,
+    /// plugins.lock: its path, the digests it pins, the text last written (ADR 0079).
+    pub(crate) plugins_lock: Mutex<crate::core_lock::LockState>,
     pub(crate) store: Mutex<Store>,
     pub(crate) settings: Mutex<Store>,
     /// The settings problems logged so far (ADR 0080), so each is logged once.
@@ -109,6 +111,7 @@ impl Core {
             approvals: Mutex::default(),
             subscriptions: Mutex::new(Subscriptions::default()),
             plugins: Mutex::new(PluginRegistry::new(None)),
+            plugins_lock: Mutex::default(),
             store: Mutex::new(Store::new(None)),
             settings: Mutex::new(Store::new(None)),
             settings_reported: Mutex::default(),

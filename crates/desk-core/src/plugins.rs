@@ -138,6 +138,13 @@ impl PluginRegistry {
         Some(self.info(index))
     }
 
+    /// On or off as the persisted flag says, this run's holds aside (plugins.lock, ADR 0079).
+    pub(crate) fn kept_enabled(&self, id: &str) -> Option<bool> {
+        let entry = self.entries.iter().find(|e| e.id == id)?;
+        let flag = self.store.enabled.get(id).copied();
+        Some(library(entry) || flag.unwrap_or(!autoload(entry)))
+    }
+
     pub fn list(&self) -> Vec<PluginInfo> {
         (0..self.entries.len()).map(|i| self.info(i)).collect()
     }
