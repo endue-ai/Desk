@@ -866,6 +866,31 @@ pub enum DesignFocusOffset {
     Far,
 }
 
+/// What a pack brings and does when it is applied.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PackBlock {
+    /// The plugins it brings, by id: each nested in the pack folder under plugins/<folder>/ (installed and removed with the pack) or a plugin the desk has. Connectors first: Apply opens Settings, Connections on the first connector.
+    pub plugins: Vec<PluginId>,
+    /// Commands Apply runs once the pack is on, in order: a board, a timeline.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub opens: Option<Vec<PackCommand>>,
+    /// The profile it contributes (contributes.profiles) that Apply switches to: its layout.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub profile: Option<ProfileId>,
+    /// The words a person names the service by: github, 깃허브. Make with Eris finds the pack by them.
+    pub services: Vec<String>,
+}
+
+/// One command Apply runs, with its arguments.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PackCommand {
+    pub command: CommandId,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub args: Option<serde_json::Map<String, serde_json::Value>>,
+}
+
 /// One permission with its scope. Plugin manifests declare these; bridge calls carry the one that covers them.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
@@ -1183,14 +1208,17 @@ pub struct PluginManifest {
     /// Installed but off until the desk needs it, like Emacs's autoload. With no stored enabled flag the plugin starts off, and its file openers count while it is off: desk.files turns it on to open a file and off again when its last file closes; profiles leave it as it is. Default false.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub autoload: Option<bool>,
-    /// A view plugin's one view, inline.
+    /// A view plugin's one view, inline; a pack's own view too.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub view: Option<View>,
-    /// A view plugin's view files, one View each, relative to the plugin folder.
+    /// A view plugin's view files, one View each, relative to the plugin folder; a pack's too.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub views: Option<Vec<ViewPath>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub connector: Option<ConnectorManifest>,
+    /// A pack's pack block: what it brings and does when applied (ADR 0108).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pack: Option<PackBlock>,
     /// A theme plugin's theme: its layers and the font and image files it brings, relative to the plugin folder.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub theme: Option<ThemePackage>,
@@ -1212,7 +1240,7 @@ pub type Role = String;
 /// Semantic version, for example 0.1.0 or 1.2.3-beta.1.
 pub type Version = String;
 
-/// ui runs in a sandboxed iframe, logic in a Wasm instance, tool as an MCP server inside the VM. policy runs no code: it only contributes data (ADR 0017). library runs no code of its own either: it is files other plugins import, served at /<id>/... like any plugin's, never mounted and never turned off. connector brings an app's data in as items, as a Wasm component, an MCP server or an http block the core runs (no entry; ADR 0106); view runs no code either: it is one or more views (ADR 0032). theme runs no code: it is a theme block and its font and image files, chosen with desk.theme.active (ADR 0056). design-system runs no code either: it is a designSystem block of component recipes, chosen with desk.design.active (ADR 0090).
+/// ui runs in a sandboxed iframe, logic in a Wasm instance, tool as an MCP server inside the VM. policy runs no code: it only contributes data (ADR 0017). library runs no code of its own either: it is files other plugins import, served at /<id>/... like any plugin's, never mounted and never turned off. connector brings an app's data in as items, as a Wasm component, an MCP server or an http block the core runs (no entry; ADR 0106); view runs no code either: it is one or more views (ADR 0032). theme runs no code: it is a theme block and its font and image files, chosen with desk.theme.active (ADR 0056). design-system runs no code either: it is a designSystem block of component recipes, chosen with desk.design.active (ADR 0090). pack runs no code either: a pack block naming the plugins it brings (nested in its folder or on the desk), its own views and its contributed layout (ADR 0108).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum PluginKind {
     #[serde(rename = "ui")]
@@ -1233,6 +1261,8 @@ pub enum PluginKind {
     Theme,
     #[serde(rename = "design-system")]
     DesignSystem,
+    #[serde(rename = "pack")]
+    Pack,
 }
 
 /// Path to the entry file, relative to the plugin folder, without .. segments.
@@ -8528,6 +8558,10 @@ pub const SCHEMAS: &[(&str, &str)] = &[
     (
         "https://endue.ai/specs/plugin/v0/design-system.schema.json",
         include_str!("../../../specs/plugin/v0/design-system.schema.json"),
+    ),
+    (
+        "https://endue.ai/specs/plugin/v0/pack.schema.json",
+        include_str!("../../../specs/plugin/v0/pack.schema.json"),
     ),
     (
         "https://endue.ai/specs/plugin/v0/permission.schema.json",

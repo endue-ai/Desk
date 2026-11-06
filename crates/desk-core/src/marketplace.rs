@@ -89,6 +89,7 @@ pub(crate) fn kind_of(kind: PluginKind) -> MarketKind {
         PluginKind::Theme => MarketKind::Theme,
         PluginKind::DesignSystem => MarketKind::DesignSystem,
         PluginKind::View => MarketKind::View,
+        PluginKind::Pack => MarketKind::Pack,
         _ => MarketKind::Plugin,
     }
 }

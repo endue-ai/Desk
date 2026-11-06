@@ -40,11 +40,11 @@
           "type": "boolean"
         },
         "view": {
-          "description": "A view plugin's one view, inline.",
+          "description": "A view plugin's one view, inline; a pack's own view too.",
           "$ref": "../../view/v0/view.schema.json#/$defs/View"
         },
         "views": {
-          "description": "A view plugin's view files, one View each, relative to the plugin folder.",
+          "description": "A view plugin's view files, one View each, relative to the plugin folder; a pack's too.",
           "type": "array",
           "items": { "$ref": "#/$defs/ViewPath" },
           "minItems": 1,
@@ -52,6 +52,10 @@
         },
         "connector": {
           "$ref": "../../connector/v0/connector.schema.json#/$defs/ConnectorManifest"
+        },
+        "pack": {
+          "description": "A pack's pack block: what it brings and does when applied (ADR 0108).",
+          "$ref": "pack.schema.json#/$defs/PackBlock"
         },
         "theme": {
           "description": "A theme plugin's theme: its layers and the font and image files it brings, relative to the plugin folder.",
@@ -72,7 +76,9 @@
         {
           "if": {
             "properties": {
-              "kind": { "not": { "enum": ["policy", "view", "library", "theme", "design-system"] } }
+              "kind": {
+                "not": { "enum": ["policy", "view", "library", "theme", "design-system", "pack"] }
+              }
             },
             "not": {
               "properties": {
@@ -121,14 +127,8 @@
           }
         },
         {
-          "if": { "properties": { "kind": { "const": "view" } } },
-          "then": {
-            "properties": { "entry": false, "view": true, "views": true },
-            "oneOf": [
-              { "properties": { "view": true }, "required": ["view"] },
-              { "properties": { "views": true }, "required": ["views"] }
-            ]
-          },
+          "if": { "properties": { "kind": { "enum": ["view", "pack"] } } },
+          "then": { "properties": { "entry": false, "view": true, "views": true } },
           "else": { "properties": { "view": false, "views": false } }
         },
         {
@@ -163,6 +163,20 @@
             "required": ["designSystem"]
           },
           "else": { "properties": { "designSystem": false } }
+        },
+        {
+          "if": { "properties": { "kind": { "const": "view" } } },
+          "then": {
+            "oneOf": [
+              { "properties": { "view": true }, "required": ["view"] },
+              { "properties": { "views": true }, "required": ["views"] }
+            ]
+          }
+        },
+        {
+          "if": { "properties": { "kind": { "const": "pack" } } },
+          "then": { "properties": { "pack": true, "entry": false }, "required": ["pack"] },
+          "else": { "properties": { "pack": false } }
         }
       ]
     },
@@ -184,7 +198,7 @@
       "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?(\\+[0-9A-Za-z.-]+)?$"
     },
     "PluginKind": {
-      "description": "ui runs in a sandboxed iframe, logic in a Wasm instance, tool as an MCP server inside the VM. policy runs no code: it only contributes data (ADR 0017). library runs no code of its own either: it is files other plugins import, served at /<id>/... like any plugin's, never mounted and never turned off. connector brings an app's data in as items, as a Wasm component, an MCP server or an http block the core runs (no entry; ADR 0106); view runs no code either: it is one or more views (ADR 0032). theme runs no code: it is a theme block and its font and image files, chosen with desk.theme.active (ADR 0056). design-system runs no code either: it is a designSystem block of component recipes, chosen with desk.design.active (ADR 0090).",
+      "description": "ui runs in a sandboxed iframe, logic in a Wasm instance, tool as an MCP server inside the VM. policy runs no code: it only contributes data (ADR 0017). library runs no code of its own either: it is files other plugins import, served at /<id>/... like any plugin's, never mounted and never turned off. connector brings an app's data in as items, as a Wasm component, an MCP server or an http block the core runs (no entry; ADR 0106); view runs no code either: it is one or more views (ADR 0032). theme runs no code: it is a theme block and its font and image files, chosen with desk.theme.active (ADR 0056). design-system runs no code either: it is a designSystem block of component recipes, chosen with desk.design.active (ADR 0090). pack runs no code either: a pack block naming the plugins it brings (nested in its folder or on the desk), its own views and its contributed layout (ADR 0108).",
       "type": "string",
       "enum": [
         "ui",
@@ -195,7 +209,8 @@
         "connector",
         "view",
         "theme",
-        "design-system"
+        "design-system",
+        "pack"
       ]
     },
     "EntryPath": {

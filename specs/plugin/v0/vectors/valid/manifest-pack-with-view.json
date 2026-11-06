@@ -1,0 +1,16 @@
+{
+  "target": "PluginManifest",
+  "description": "a pack with its own view and a nested connector it brings",
+  "instance": {
+    "id": "acme.pack",
+    "version": "0.1.0",
+    "kind": "pack",
+    "pack": { "services": ["acme"], "plugins": ["acme.tickets"] },
+    "view": {
+      "id": "acme.pack.home",
+      "version": "0.1.0",
+      "title": "Acme",
+      "layout": { "type": "list", "binding": { "kinds": ["task"] } }
+    }
+  }
+}
