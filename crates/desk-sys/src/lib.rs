@@ -1,5 +1,6 @@
 //! Primitives: fs (notify), proc (portable-pty), net, shell (links and files handed to the system),
-//! calendar (EventKit) and audio (cpal, wake word), each behind a cargo feature.
+//! calendar (EventKit), notification (UserNotifications, toasts, freedesktop) and audio (cpal, wake
+//! word), each behind a cargo feature.
 //! No permission checks happen here: desk-core authorizes every call first.
 pub const NAME: &str = env!("CARGO_PKG_NAME");
 
@@ -12,6 +13,8 @@ pub mod calendar;
 pub mod fs;
 #[cfg(feature = "net")]
 pub mod net;
+#[cfg(feature = "notification")]
+pub mod notification;
 #[cfg(feature = "proc")]
 pub mod proc;
 
