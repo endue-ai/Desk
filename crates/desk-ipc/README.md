@@ -8,9 +8,9 @@ Layer: Rust core. Status: Unix sockets on macOS and Linux; Windows answers `Unsu
 
 ## Public API
 
-- `CALLER` (`"cli"`), `grants()`: what the app grants `cli` at start (`cmd:invoke ["*"]`,
-  `plugin:manage`, `perm:manage`, `log:read`, `update:manage`, and `fs:read` and `fs:write` over
-  `/**` and `~/**` for `desk fs`, ADR 0076).
+- `CALLER` (`"cli"`), `grants()`: everything the app grants `cli` at start, the one list of what
+  the CLI may do: run any command, manage plugins, grants, updates and themes, read the log, and
+  read and write files over `/**` and `~/**` for `desk fs` (ADR 0030, 0054, 0058, 0076).
 - `socket_path()`: `DESK_SOCKET`, or `desk.sock` in the data folder (`ai.endue.desk` under
   `dirs::data_dir()`, the folder Tauri's `app_data_dir()` names).
 - `Listener::bind(&path, Arc<Core>)`: bind (a stale file is replaced; a live desk gives `AddrInUse`),
