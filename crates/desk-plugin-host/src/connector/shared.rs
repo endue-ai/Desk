@@ -18,6 +18,7 @@ use crate::imports::Imports;
 use crate::logic::{PluginError, code_name, stopped};
 use crate::manifest;
 use crate::state::{self, State};
+use crate::usage::Usage;
 
 impl Shared {
     /// Compile `bytes` and instantiate them in a new store, under the limits.
@@ -49,8 +50,9 @@ impl Shared {
         f(installed)
     }
 
-    /// Call the guest under the time limit. A trap or a limit marks the connector crashed and every
-    /// instance of it `error`; an error the guest returns leaves the store usable.
+    /// Call the guest under the time limit, counted in the connector's usage. A trap or a limit
+    /// marks the connector crashed and every instance of it `error`; an error the guest returns
+    /// leaves the store usable.
     pub(super) fn call<R>(
         &self,
         id: &str,
@@ -62,7 +64,7 @@ impl Shared {
             Run::Crashed(why) => return Err(PluginError::Crashed(why.clone())),
         };
         store.set_epoch_deadline(self.limits.ticks());
-        match f(guest, store) {
+        match installed.meter.call(store, |store| f(guest, store)) {
             Ok(Ok(answer)) => Ok(answer),
             Ok(Err(error)) => Err(PluginError::Guest(error)),
             Err(trap) => {
@@ -132,6 +134,14 @@ impl Shared {
 }
 
 impl Installed {
+    pub(super) fn usage(&self) -> Usage {
+        let store = match &self.run {
+            Run::Ready { store, .. } => Some(&**store),
+            Run::Crashed(_) => None,
+        };
+        self.meter.usage(store)
+    }
+
     pub(super) fn instance(&mut self, id: &str, name: &str) -> Result<&mut Instance, PluginError> {
         let missing = || PluginError::NoInstance(format!("{id}/{name}"));
         self.instances.get_mut(name).ok_or_else(missing)

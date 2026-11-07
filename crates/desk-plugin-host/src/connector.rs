@@ -27,6 +27,7 @@ use crate::limits::{Limits, Ticker};
 use crate::logic::PluginError;
 use crate::sink::IndexSink;
 use crate::state::{self, State};
+use crate::usage::{Meter, Usage};
 use instances::{INSTANCES, Instance, cursor_key, invalid};
 pub use instances::{check_id as check_instance_id, check_settings as check_instance_settings};
 use schedule::Scheduler;
@@ -58,6 +59,8 @@ struct Installed {
     connector: ConnectorManifest,
     run: Run,
     instances: BTreeMap<String, Instance>,
+    /// What the connector used since install, every instance's calls together.
+    meter: Meter,
 }
 
 enum Run {
@@ -122,6 +125,7 @@ impl ConnectorHost {
             connector,
             run,
             instances,
+            meter: Meter::default(),
         };
         lock(&shared.plugins).insert(id.clone(), installed);
         Ok(id)
@@ -162,6 +166,19 @@ impl ConnectorHost {
     /// The installed connectors' ids, sorted.
     pub fn installed(&self) -> Vec<String> {
         lock(&self.shared.plugins).keys().cloned().collect()
+    }
+
+    /// What the connector uses, all its instances together since they share one store: as
+    /// `LogicHost::usage`. It takes the lock, so it may wait for a call in progress.
+    pub fn usage(&self, id: &str) -> Result<Usage, PluginError> {
+        self.shared.with(id, |installed| Ok(installed.usage()))
+    }
+
+    /// The usage of every installed connector, sorted by id.
+    pub fn usages(&self) -> Vec<(String, Usage)> {
+        let plugins = lock(&self.shared.plugins);
+        let all = plugins.iter().map(|(id, i)| (id.clone(), i.usage()));
+        all.collect()
     }
 
     /// Add the instance `name` with `settings`, checked against the manifest's `instanceSettings`;
