@@ -1137,6 +1137,7 @@ dependencies = [
  "ureq",
  "url",
  "windows",
+ "windows-registry",
  "zbus",
 ]
 

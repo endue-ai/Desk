@@ -1,8 +1,8 @@
 # desk-sys
 
-Primitives: fs (notify), proc (portable-pty), net, shell, calendar (EventKit), notification and audio
-(cpal, wake word; later), each behind a cargo feature. No permission checks: desk-core authorizes every
-call first. Calls return `Error { code, message }` with the bridge `ErrorCode`; fs returns `io::Error`s
+Primitives: fs (notify), proc (portable-pty), net, shell, calendar (EventKit), notification, login and
+audio (cpal, wake word; later), each behind a cargo feature. No permission checks: desk-core authorizes
+every call first. Calls return `Error { code, message }` (bridge `ErrorCode`); fs returns `io::Error`s
 that `Error::from` maps (OS permission errors are `io_error`). Layer: Tauri shell. `NAME`: crate name.
 
 ## Features and public API
@@ -28,13 +28,13 @@ that `Error::from` maps (OS permission errors are `io_error`). Layer: Tauri shel
   on Linux (`freedesktop::Freedesktop::new(connection, app_name)` too); `fake::FakeNotifier`.
 - `shell` (ADR 0047): `link` takes http, https and mailto URLs only; `SystemOpener` (`Opener`) runs
   `open_plan` or `reveal_plan` per `Os`, one argument and no shell: `open`, `xdg-open`, `ShellExecuteW`.
+- `login`: `apply(items, wanted, &desk(program)) -> Change` writes only on a difference; `check(..)` is
+  `Status { registered, wanted, matches }`. `os(ID)`: a LaunchAgent (macOS), the Run key, XDG autostart;
+  `fake::FakeLoginItems`. `launched_at_login` reads `BACKGROUND`; `program()`: the exe or `$APPIMAGE`.
 
 ## Testing
 
-```bash
-cargo test -p desk-sys --all-features
-```
-
-Each `tests/<feature>*.rs` needs its feature. proc and Linux trash tests run the test binary as the
-child (`DESK_SYS_TEST_CHILD`); net serves in-process; shell launches nothing; calendar and notification
-use fakes (freedesktop: a server on a socket pair). EventKit, Mac and Windows trash: `-- --ignored`.
+`cargo test -p desk-sys --all-features`; each `tests/<feature>*.rs` needs its feature. proc and Linux
+trash tests run the test binary as the child (`DESK_SYS_TEST_CHILD`); net serves in-process; shell
+launches nothing; calendar, notification and login use fakes (freedesktop: a server on a socket pair;
+login: temp folders, the Run key on Windows only). EventKit, Mac and Windows trash: `-- --ignored`.
