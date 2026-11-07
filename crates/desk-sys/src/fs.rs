@@ -1,14 +1,17 @@
 //! File primitives. No permission checks happen here: desk-core authorizes every call first.
 //! Errors are `io::Error`s whose kind carries the bridge code: `desk_sys::Error::from` maps them.
+//! No operation follows a symlink at its own path, and none deletes anything for good.
 
 use std::ffi::{OsStr, OsString};
-use std::fs::{OpenOptions, Permissions};
+use std::fs::{FileType, OpenOptions, Permissions};
 use std::io::{self, Write as _};
 use std::path::Path;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::SystemTime;
 
+mod ops;
 mod watch;
+pub use ops::{Stat, mkdir, rename, stat};
 pub use watch::{Change, Changed, Watch, WatchOptions, watch, watch_changes, watch_debounced};
 
 /// What a folder entry is. Symlinks are reported as such, never followed.
@@ -30,6 +33,17 @@ pub struct Entry {
     pub modified: Option<SystemTime>,
 }
 
+/// A symlink is `Symlink`, never followed; anything that is neither a link nor a folder is `File`.
+fn kind_of(file_type: FileType) -> EntryKind {
+    if file_type.is_symlink() {
+        EntryKind::Symlink
+    } else if file_type.is_dir() {
+        EntryKind::Dir
+    } else {
+        EntryKind::File
+    }
+}
+
 /// Read a whole file.
 pub fn read(path: &Path) -> io::Result<Vec<u8>> {
     std::fs::read(path)
@@ -41,14 +55,7 @@ pub fn list(path: &Path) -> io::Result<Vec<Entry>> {
     let mut entries = Vec::new();
     for entry in std::fs::read_dir(path)? {
         let entry = entry?;
-        let file_type = entry.file_type()?;
-        let kind = if file_type.is_symlink() {
-            EntryKind::Symlink
-        } else if file_type.is_dir() {
-            EntryKind::Dir
-        } else {
-            EntryKind::File
-        };
+        let kind = kind_of(entry.file_type()?);
         let (size, modified) = match kind {
             EntryKind::File => {
                 let metadata = entry.metadata()?;
