@@ -16,6 +16,7 @@ use crate::imports::Imports;
 use crate::limits::{Limits, Ticker};
 use crate::manifest;
 use crate::state::{self, State};
+use crate::usage::{Meter, Usage};
 
 /// Why a plugin could not be installed or did not run to the end.
 #[derive(Debug, Clone, PartialEq)]
@@ -76,6 +77,18 @@ impl std::error::Error for PluginError {}
 struct Installed {
     dir: PathBuf,
     run: Run,
+    /// What the plugin used since install, across reloads and traps.
+    meter: Meter,
+}
+
+impl Installed {
+    fn usage(&self) -> Usage {
+        let store = match &self.run {
+            Run::Ready { store, .. } => Some(&**store),
+            Run::Crashed(_) => None,
+        };
+        self.meter.usage(store)
+    }
 }
 
 enum Run {
@@ -121,8 +134,9 @@ impl LogicHost {
         let (manifest, bytes) = manifest::read(dir, PluginKind::Logic)?;
         let run = self.instantiate(&manifest, &bytes)?;
         let id = manifest.id;
-        let dir = dir.to_path_buf();
-        self.plugins.insert(id.clone(), Installed { dir, run });
+        let (dir, meter) = (dir.to_path_buf(), Meter::default());
+        let installed = Installed { dir, run, meter };
+        self.plugins.insert(id.clone(), installed);
         Ok(id)
     }
 
@@ -190,8 +204,24 @@ impl LogicHost {
         self.plugins.keys().cloned().collect()
     }
 
-    /// Call one export under the time limit. An error the guest returns leaves the instance
-    /// usable; a trap or a limit marks the plugin crashed until it is reloaded.
+    /// What the plugin uses: the memory its store holds now, and since install its guest's time,
+    /// its calls and its imports.
+    pub fn usage(&self, id: &str) -> Result<Usage, PluginError> {
+        let installed = self.plugins.get(id);
+        let installed = installed.ok_or_else(|| PluginError::NotInstalled(id.to_owned()))?;
+        Ok(installed.usage())
+    }
+
+    /// The usage of every installed plugin, sorted by id.
+    pub fn usages(&self) -> Vec<(String, Usage)> {
+        let all = self.plugins.iter();
+        all.map(|(id, installed)| (id.clone(), installed.usage()))
+            .collect()
+    }
+
+    /// Call one export under the time limit, counted in the plugin's usage. An error the guest
+    /// returns leaves the instance usable; a trap or a limit marks the plugin crashed until it is
+    /// reloaded.
     fn call(
         &mut self,
         id: &str,
@@ -204,7 +234,7 @@ impl LogicHost {
             Run::Crashed(why) => return Err(PluginError::Crashed(why.clone())),
         };
         store.set_epoch_deadline(ticks);
-        match export(plugin, store) {
+        match installed.meter.call(store, |store| export(plugin, store)) {
             Ok(Ok(())) => Ok(()),
             Ok(Err(error)) => Err(PluginError::Guest(error)),
             Err(trap) => {

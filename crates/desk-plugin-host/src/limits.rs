@@ -39,10 +39,12 @@ impl Limits {
 }
 
 /// Refuses memory and tables past the limits, and remembers that it did, so a trap that follows can
-/// be reported as the memory limit rather than as a guest bug.
+/// be reported as the memory limit rather than as a guest bug. It also counts the linear memory the
+/// store holds, for `Usage`.
 pub(crate) struct Limiter {
     memory_bytes: usize,
     pub(crate) exceeded: bool,
+    held: usize,
 }
 
 impl Limiter {
@@ -50,20 +52,31 @@ impl Limiter {
         Self {
             memory_bytes: limits.memory_bytes,
             exceeded: false,
+            held: 0,
         }
+    }
+
+    /// Every linear memory of the store together, in bytes. Wasm memory never shrinks.
+    pub(crate) fn held(&self) -> usize {
+        self.held
     }
 }
 
 impl ResourceLimiter for Limiter {
+    /// Called with `current` 0 when instantiation allocates a memory, and for every growth after.
     fn memory_growing(
         &mut self,
-        _current: usize,
+        current: usize,
         desired: usize,
-        _maximum: Option<usize>,
+        maximum: Option<usize>,
     ) -> wasmtime::Result<bool> {
         if desired > self.memory_bytes {
             self.exceeded = true;
             wasmtime::bail!("memory limit of {} bytes reached", self.memory_bytes);
+        }
+        // Wasmtime refuses a growth past the memory's own maximum after asking; it adds nothing.
+        if maximum.is_none_or(|maximum| desired <= maximum) {
+            self.held = self.held.saturating_add(desired.saturating_sub(current));
         }
         Ok(true)
     }

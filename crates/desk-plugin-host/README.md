@@ -21,6 +21,8 @@ Layer: Rust core (see `docs/architecture.md`). Decisions: ADR 0019, ADR 0034.
   declare and for store keys under `desk.`, which hold a connector's instances and cursors. JSON
   crosses the WIT as text (`invalid-params` when it is not JSON).
 - `Limits { memory_bytes, time }`: 64 MiB and 1 s per call by default, in epoch `TICK`s of 10 ms.
+- `usage(id)`, `usages()` on both hosts: `Usage { memory_bytes, cpu_time, calls, imports }`, the
+  store's linear memory now and, from install on, guest time less imports, export calls, imports.
 - `PluginError`: `Manifest`, `Compile`, `Link`, `TimeLimit`, `MemoryLimit`, `Trap`, `Guest`, `Crashed`,
   `NotInstalled`, `NoInstance`, `Paused`, `Host` (the host refused), `Setup`; and the WIT types.
 - `harness` (`desk plugin test`): `run(dir, &case)` runs one `Case` (a `tests/<name>.test.json`:
