@@ -41,6 +41,9 @@ notification = [
   "dep:zbus",
   "dep:futures-core",
 ]
+## Start at login: register or remove the desk as a login item (a LaunchAgent on macOS, the Run key
+## on Windows, an XDG autostart entry on Linux) and check it against the setting, and a fake.
+login = []
 
 [dependencies]
 desk-bridge.workspace = true
@@ -151,6 +154,10 @@ required-features = ["notification"]
 [[test]]
 name = "notification_freedesktop"
 required-features = ["notification"]
+
+[[test]]
+name = "login"
+required-features = ["login"]
 
 [[test]]
 name = "shell"
