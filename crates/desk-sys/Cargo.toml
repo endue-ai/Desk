@@ -1,6 +1,6 @@
 [package]
 name = "desk-sys"
-description = "Primitives: fs (notify, trash), proc (portable-pty), net, calendar (EventKit), notification (UserNotifications, toasts, freedesktop) and audio (cpal, wake word), each behind a cargo feature."
+description = "Primitives: fs (notify, trash), proc (portable-pty), net, shell, calendar (EventKit), notification (UserNotifications, toasts, freedesktop), login (LaunchAgent, Run key, XDG autostart) and audio (cpal, wake word), each behind a cargo feature."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -43,7 +43,7 @@ notification = [
 ]
 ## Start at login: register or remove the desk as a login item (a LaunchAgent on macOS, the Run key
 ## on Windows, an XDG autostart entry on Linux) and check it against the setting, and a fake.
-login = []
+login = ["dep:windows-registry"]
 
 [dependencies]
 desk-bridge.workspace = true
@@ -109,9 +109,14 @@ objc2-user-notifications = { version = "0.3.2", optional = true, default-feature
   "UNUserNotificationCenter",
 ] }
 
-# WinRT toasts, for `notification` on Windows.
+# WinRT toasts, for `notification` on Windows; the Run key, for `login`.
 [target.'cfg(windows)'.dependencies]
 windows = { version = "0.62", optional = true, features = ["Data_Xml_Dom", "Foundation", "UI_Notifications"] }
+windows-registry = { version = "0.6", optional = true }
+
+# The login test's own key, deleted after it.
+[target.'cfg(windows)'.dev-dependencies]
+windows-registry = "0.6"
 
 # D-Bus, for `notification` on Linux. One zbus with the vendored single-instance plugin's features, so
 # the app builds it once on one runtime.
