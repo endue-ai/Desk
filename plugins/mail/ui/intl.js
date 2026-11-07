@@ -1,8 +1,11 @@
 // ICU formatter construction can block mail reading, especially on Windows. Reuse explicit
 // locale/zone/options pairs, with bounded caches because documents supply time-zone names.
-// The system's current zone is never cached here: callers resolve it for each render.
+// The system's current zone and locale are never cached here: callers resolve them for each render.
 
 const LIMIT = 64;
+
+/** The system's locale, as Intl resolves it now: the default for dates on screen. */
+export const systemLocale = () => Intl.DateTimeFormat().resolvedOptions().locale;
 /** @type {Map<string, Intl.DateTimeFormat>} */
 const formats = new Map();
 /** @type {Map<string, boolean>} */

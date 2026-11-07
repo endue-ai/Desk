@@ -1,7 +1,7 @@
 // Words and times for the screen: people, dates relative to today, and when an invitation is, in the
 // person's zone and, when it differs, the zone the organizer wrote. Pure functions over Intl.
 import { localZone, toWall } from "./ical/values.js";
-import { dateTimeFormat } from "./intl.js";
+import { dateTimeFormat, systemLocale } from "./intl.js";
 
 /**
  * @typedef {{ name?: string, email?: string }} PersonRef
@@ -38,7 +38,7 @@ export function listTime(iso, clock = {}) {
   if (Number.isNaN(at.getTime())) return "";
   const now = new Date(clock.now ?? Date.now());
   const zone = clock.zone ?? localZone();
-  const locale = clock.locale ?? "en-US";
+  const locale = clock.locale ?? systemLocale();
   if (sameDay(at, now, zone))
     return dateTimeFormat(locale, { timeZone: zone, hour: "2-digit", minute: "2-digit" }).format(
       at,
@@ -59,7 +59,7 @@ export function listTime(iso, clock = {}) {
 export function fullTime(iso, clock = {}) {
   const at = new Date(iso);
   if (Number.isNaN(at.getTime())) return iso;
-  return dateTimeFormat(clock.locale ?? "en-US", {
+  return dateTimeFormat(clock.locale ?? systemLocale(), {
     timeZone: clock.zone ?? localZone(),
     weekday: "short",
     year: "numeric",
@@ -94,7 +94,7 @@ const wallClock = (/** @type {number} */ wall, /** @type {string} */ locale) =>
  * @returns {{ line: string, elsewhere?: string, note?: string }}
  */
 export function whenLine({ start, end, allDay }, clock = {}) {
-  const locale = clock.locale ?? "en-US";
+  const locale = clock.locale ?? systemLocale();
   const zone = clock.zone ?? localZone();
   if (allDay) {
     const last = end.wall - 86_400_000;

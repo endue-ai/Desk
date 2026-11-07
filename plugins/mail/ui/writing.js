@@ -49,6 +49,18 @@ import { localZone } from "./ical/values.js";
  * }} Deps
  */
 
+/** Whether a draft holds anything worth asking about: text in a recipient, the subject or the body. */
+const written = (/** @type {Draft} */ d) =>
+  [d.to, d.cc, d.bcc, d.subject, d.body].some((field) => (field ?? "").trim() !== "");
+
+const DISCARD = {
+  title: "Discard this draft?",
+  items: [
+    { id: "discard", label: "Discard" },
+    { id: "keep", label: "Keep" },
+  ],
+};
+
 const STATUSES = /** @type {Record<string, Answer>} */ ({
   accepted: "ACCEPTED",
   tentative: "TENTATIVE",
@@ -144,6 +156,15 @@ export function createWriting(deps) {
     if (!message) throw new Error("Open a message first.");
     return message;
   };
+  const discard = () => {
+    if (!draft) return false;
+    clearTimeout(saving);
+    drafts.remove(draft.id);
+    draft = null;
+    show();
+    deps.changed();
+    return true;
+  };
 
   return {
     composing: () => draft,
@@ -224,15 +245,29 @@ export function createWriting(deps) {
       return result;
     },
 
-    /** Close the composer and drop the draft. */
-    discard: () => {
+    /** Close the composer and drop the draft, without asking: endue.mail.discard, for agents. */
+    discard,
+
+    /**
+     * The person's Discard: a draft with text goes only once they pick Discard in the palette; Keep
+     * or a closed palette keeps it. An empty draft goes without a question. Agents run discard(),
+     * which never asks, because their own approval path already did.
+     */
+    confirmDiscard: async () => {
       if (!draft) return false;
-      clearTimeout(saving);
-      drafts.remove(draft.id);
-      draft = null;
-      show();
-      deps.changed();
-      return true;
+      if (written(draft)) {
+        const asked = draft.id;
+        let answer;
+        try {
+          answer = await actions.choose(DISCARD.title, DISCARD.items);
+        } catch (error) {
+          say(error instanceof Error ? error.message : String(error));
+          return false;
+        }
+        // The draft on screen may have changed while the palette was open: only that one goes.
+        if (answer !== "discard" || draft?.id !== asked) return false;
+      }
+      return discard();
     },
 
     /** Put the composer away, keeping the draft. */

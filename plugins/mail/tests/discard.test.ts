@@ -39,14 +39,16 @@ describe("discarding a draft", () => {
     const { app, view, asked } = await writing("keep", { subject: "Lunch" });
     expect(await app.writing.confirmDiscard()).toBe(false);
     expect(asked).toEqual([QUESTION]);
-    expect(view.draft()).toMatchObject({ subject: "Lunch" });
+    expect(view.draft()).not.toBeNull();
+    expect(app.writing.composing()).toMatchObject({ subject: "Lunch" });
   });
 
   it("closing the palette is Keep", async () => {
     const { app, view, asked } = await writing(undefined, { body: "Hello" });
     expect(await app.writing.confirmDiscard()).toBe(false);
     expect(asked).toHaveLength(1);
-    expect(view.draft()).toMatchObject({ body: "Hello" });
+    expect(view.draft()).not.toBeNull();
+    expect(app.writing.composing()).toMatchObject({ body: "Hello" });
   });
 
   it("an empty draft goes without a question", async () => {

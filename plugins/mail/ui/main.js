@@ -22,7 +22,8 @@ defineUiPlugin({
       openMessage: (key) => app?.command("endue.mail.show", keyArgs(key)).catch(() => {}),
       edit: (fields) => app?.writing.edit(fields),
       send: () => app?.command("endue.mail.send", {}).catch(() => {}),
-      discard: () => app?.command("endue.mail.discard", {}).catch(() => {}),
+      // The person's Discard asks before a written draft goes; endue.mail.discard is for agents.
+      discard: () => app?.writing.confirmDiscard(),
       closeComposer: () => app?.writing.close(),
     });
     app = createMail(ctx, view);
