@@ -35,6 +35,7 @@ no code, only what they contribute in `plugin.json`. Turn one off and another pl
 | `buffers/` (`desk.buffers`) | `buffer.el`, `ibuffer` | The buffer list, switching, asking before closing unsaved work, what shows next |
 | `files/` (`desk.files`) | `files.el`, `auto-mode-alist` | Which plugin opens a file, recent files, saving, changes on disk |
 | `session/` (`desk.session`) | `desktop.el`, `savehist` | Putting the layout, open files, focus and history back at start |
+| `market/` (`desk.market`) | `package.el`'s archives | Which market indexes Settings, Market lists beside the theme markets (`desk.market.indexes`, ADR 0107) |
 | `notify/` (`desk.notify`) | the echo area, `*Messages*` | How long notifications stay by level, do not disturb, history |
 | `theme/` (`desk.theme`) | `load-theme`, `defface` | Light or dark, following the OS, high contrast, reduced motion |
 | `design/` (`desk.design`) | `defface` per widget | Which design system the components are made of (`desk.design.active`, ADR 0090) |

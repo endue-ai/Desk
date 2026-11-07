@@ -13,6 +13,7 @@ use serde_json::{Map, Value, json};
 use crate::args::{Remote, UpdateStep};
 
 mod inspect;
+mod market;
 mod sync;
 
 pub fn run(remote: Remote, json: bool) -> ExitCode {
@@ -54,7 +55,7 @@ pub(crate) struct Reply {
 pub(crate) struct Session {
     client: Client,
     next: u64,
-    json: bool,
+    pub(crate) json: bool,
 }
 
 impl Session {
@@ -114,6 +115,8 @@ impl Session {
                 },
             ),
             Remote::PluginSync => self.sync(),
+            Remote::MarketList => self.market_list(),
+            Remote::MarketInstall { id, accept } => self.market_install(&id, accept),
             Remote::PluginSetEnabled { id, enabled } => self.done(
                 "plugin.setEnabled",
                 json!({ "plugin": id, "enabled": enabled, "scope": plugin_manage }),

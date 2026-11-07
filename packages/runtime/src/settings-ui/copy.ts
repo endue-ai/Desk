@@ -8,6 +8,7 @@ const copy = {
   notifications: ["알림", "Notifications"],
   accessibility: ["손쉬운 사용", "Accessibility"],
   connections: ["연결", "Connections"],
+  market: ["마켓", "Market"],
   generalDescription: ["Desk를 나에게 맞게 설정하세요.", "Make Desk your own."],
   appearanceDescription: [
     "Desk에서 사용할 화면 모드를 선택하세요.",
@@ -20,6 +21,10 @@ const copy = {
   notificationsDescription: [
     "작업에 집중할 수 있도록 알림을 관리하세요.",
     "Choose when notifications can interrupt your work.",
+  ],
+  marketDescription: [
+    "뷰, 팩, 플러그인, 테마와 디자인 시스템을 설치하세요. 설치 전에 허락할 권한을 보여 줍니다.",
+    "Install views, packs, plugins, themes and design systems. What each would be allowed is shown first.",
   ],
   connectionsDescription: [
     "Desk로 데이터를 가져오는 서비스를 연결하세요. 토큰은 이 컴퓨터에만 보관됩니다.",

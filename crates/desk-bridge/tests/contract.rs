@@ -11,13 +11,14 @@ use desk_bridge::{
     ConnectorInstance, ConnectorListResult, ConnectorManifest, ConnectorStatus,
     ConnectorSyncResult, DesignSystemPackage, FsHistoryResult, FsReadResult, FsRestoreResult,
     FsUrlResult, FsWriteResult, InitDocument, InitGetResult, InitSettingKey, Item, ItemChange,
-    ItemPage, ItemQuery, KeysFile, PaletteResults, PermQueryResult, PermRequestResult, Permission,
-    PluginContributes, PluginListResult, PluginManifest, PluginStatsResult, PluginsLock,
-    ProfileFile, RefusalReason, SettingsListResult, ShellOpenResult, StoreGetResult, ThemeBundle,
-    ThemeExportResult, ThemeIndex, ThemeMarketFetchResult, ThemeMarketListResult, ThemePackage,
-    ThemeType, ThemeVariant, UiSurfaceStateRequest, UiSurfaceStateResult, UniversalData,
-    UniversalSource, UniversalView, View, ViewGetResult, ViewListResult, ViewSource, ViewSummary,
-    manifest_problems, view_problems,
+    ItemPage, ItemQuery, KeysFile, MarketEntry, MarketIndex, MarketListResult, PaletteResults,
+    PermQueryResult, PermRequestResult, Permission, PluginBundle, PluginContributes,
+    PluginListResult, PluginManifest, PluginStatsResult, PluginsLock, ProfileFile, RefusalReason,
+    SettingsListResult, ShellOpenResult, StoreGetResult, ThemeBundle, ThemeExportResult,
+    ThemeIndex, ThemeMarketFetchResult, ThemeMarketListResult, ThemePackage, ThemeType,
+    ThemeVariant, UiSurfaceStateRequest, UiSurfaceStateResult, UniversalData, UniversalSource,
+    UniversalView, View, ViewGetResult, ViewListResult, ViewSource, ViewSummary, manifest_problems,
+    view_problems,
 };
 use serde::Serialize;
 use serde::de::DeserializeOwned;
@@ -40,6 +41,7 @@ fn plugin_schemas() -> Vec<Value> {
         "view/v0",
         "connector/v0",
         "agent/v0",
+        "market/v0",
     ]
     .iter()
     .flat_map(|folder| schemas(folder))
@@ -188,6 +190,26 @@ fn item_view_and_connector_vectors_are_judged_as_their_folders_say() {
 }
 
 #[test]
+fn market_vectors_are_judged_as_their_folder_says() {
+    let docs = plugin_schemas();
+    let all = vectors("market");
+    let valid = all.iter().filter(|v| v.valid).count();
+    assert!(
+        valid >= 3 && all.len() - valid >= 3,
+        "market: too few vectors"
+    );
+    assert_eq!(judge(&docs, "market"), Vec::<String>::new());
+    for vector in all.iter().filter(|v| v.valid) {
+        match vector.target.as_str() {
+            "MarketIndex" => roundtrip::<MarketIndex>(vector),
+            "MarketEntry" => roundtrip::<MarketEntry>(vector),
+            "PluginBundle" => roundtrip::<PluginBundle>(vector),
+            other => panic!("{}: no Rust type mapped for {other}", vector.file),
+        }
+    }
+}
+
+#[test]
 fn the_rules_beyond_the_schemas_name_what_does_not_resolve() {
     let view: View = serde_json::from_value(json!({
         "id": "example.mail", "version": "0.1.0", "title": "Last {params.days} days",
@@ -302,6 +324,7 @@ fn valid_vectors_roundtrip_through_generated_types() {
                 "StoreGetResult" => roundtrip::<StoreGetResult>(vector),
                 "SettingsListResult" => roundtrip::<SettingsListResult>(vector),
                 "CatalogGetResult" => roundtrip::<CatalogGetResult>(vector),
+                "MarketListResult" => roundtrip::<MarketListResult>(vector),
                 "ConnectorListResult" => roundtrip::<ConnectorListResult>(vector),
                 "CmdUndoResult" => roundtrip::<CmdUndoResult>(vector),
                 "CmdRedoResult" => roundtrip::<CmdRedoResult>(vector),

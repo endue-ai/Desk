@@ -9,6 +9,7 @@
 //   ?status=error   connector.list answers desk.fixtures/default in error until it syncs
 //   ?jira=1         example.jira is connected too, with the fixture tasks and their deep links
 //   ?github=1       desk.github is connected too, with its fixture issues and pull requests
+//   market.list, plugin.install and plugin.remove answer from fixture/market.ts
 //   ?empty=1        every fixture item is removed before anything opens
 //   ?resources=event,message,note   desk.fixtures serves only these kinds
 //   ?propose=1      desk.propose on a scripted brain (src/propose/fixtures.ts), as the shell has it,
@@ -33,6 +34,7 @@ import { createRuntime, ManualClock } from "../../src/index";
 import { scriptedDesk } from "../../src/propose/fixtures";
 import { installProposals } from "../../src/propose/install";
 import { github, githubItems } from "./github";
+import { marketHandlers } from "./market";
 import { universalFiles } from "./universal-files";
 import empty from "./views/empty.json";
 
@@ -115,7 +117,11 @@ const core = browserCore({
     ...Object.values(manifests).filter((m) => m.id.startsWith("desk.") && m.id !== "desk.shell"),
     search,
   ],
-  handlers: { "connector.list": () => ({ connectors: listed() }), ...universalFiles.handlers },
+  handlers: {
+    "connector.list": () => ({ connectors: listed() }),
+    ...universalFiles.handlers,
+    ...marketHandlers(),
+  },
   ...(params.has("propose") ? { brain: { answer: scriptedDesk } } : {}),
 });
 const { client, stub } = core;

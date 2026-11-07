@@ -61,7 +61,9 @@ function validatorFor(docs: Schema[]) {
 }
 
 /** The plugin manifest and the specs it references, which reference it back: one set. */
-const plugin = ["plugin/v0", "item/v0", "view/v0", "connector/v0", "agent/v0"].flatMap(schemas);
+const plugin = ["plugin/v0", "item/v0", "view/v0", "connector/v0", "agent/v0", "market/v0"].flatMap(
+  schemas,
+);
 
 const sets: Record<string, Schema[]> = {
   bridge: [...plugin, ...schemas("bridge/v0")],
@@ -69,6 +71,7 @@ const sets: Record<string, Schema[]> = {
   item: plugin,
   view: plugin,
   connector: plugin,
+  market: plugin,
   init: [...plugin, ...schemas("init/v0")],
   brain: [brainSchema as Schema],
 };

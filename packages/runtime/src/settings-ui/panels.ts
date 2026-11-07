@@ -10,6 +10,7 @@ export const SECTIONS = [
   "notifications",
   "accessibility",
   "connections",
+  "market",
 ] as const;
 export type SettingsSection = (typeof SECTIONS)[number];
 export const description = (section: SettingsSection): SettingsCopy => `${section}Description`;
@@ -22,6 +23,7 @@ const TERMS: Record<SettingsSection, string> = {
   accessibility: "accessibility contrast motion animation 손쉬운 사용 대비 동작 애니메이션",
   connections:
     "connections connectors accounts token github sources sync 연결 커넥터 계정 토큰 동기화 소스",
+  market: "market install views packs plugins themes store 마켓 설치 뷰 팩 플러그인 테마",
 };
 const SECTION_COPY: Record<SettingsSection, readonly SettingsCopy[]> = {
   general: ["general", "generalDescription", "device", "personalization", "local"],
@@ -84,6 +86,7 @@ const SECTION_COPY: Record<SettingsSection, readonly SettingsCopy[]> = {
     "full",
   ],
   connections: ["connections", "connectionsDescription"],
+  market: ["market", "marketDescription"],
 };
 const SEARCH_TEXT = Object.fromEntries(
   SECTIONS.map((section) => [

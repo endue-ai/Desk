@@ -1,0 +1,139 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://endue.ai/specs/market/v0/market.schema.json",
+  "title": "Desk market v0",
+  "description": "One market format for every kind a desk installs (ADR 0107): an index of entries, each a theme, design system, view, pack or plugin with its version, bundle, sha256, size, permissions, engines, publisher and licence, and the .desk-plugin bundle an entry points at. It generalises the theme market (ADR 0060).",
+  "$defs": {
+    "MarketIndex": {
+      "description": "One market's index, as JSON.",
+      "type": "object",
+      "properties": {
+        "format": {
+          "description": "The index format and its version.",
+          "const": "desk-market-index/1"
+        },
+        "entries": {
+          "description": "What the market offers, each id once.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/MarketEntry" },
+          "maxItems": 1000
+        }
+      },
+      "required": ["format", "entries"],
+      "additionalProperties": false
+    },
+    "MarketKind": {
+      "description": "What an entry's bundle holds: a theme or a design system (their own bundles, ADR 0060 and 0091), a view plugin, a pack, or any other plugin (code: ui, logic, tool, connector, policy, library).",
+      "type": "string",
+      "enum": ["theme", "design-system", "view", "pack", "plugin"]
+    },
+    "MarketEntry": {
+      "description": "One thing a market offers: its card, its bundle and what it asks.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "../../plugin/v0/plugin.schema.json#/$defs/PluginId" },
+        "kind": { "$ref": "#/$defs/MarketKind" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "version": { "$ref": "../../plugin/v0/plugin.schema.json#/$defs/Version" },
+        "description": { "type": "string", "minLength": 1, "maxLength": 300 },
+        "publisher": {
+          "description": "Who publishes it.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "license": {
+          "description": "An SPDX licence expression for the bundle and its assets.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "tags": {
+          "description": "Words a gallery filters by.",
+          "type": "array",
+          "items": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,31}$" },
+          "maxItems": 12,
+          "uniqueItems": true
+        },
+        "url": { "$ref": "#/$defs/MarketUrl" },
+        "sha256": {
+          "description": "The sha256 of the bundle's bytes, lowercase hex: a download that differs is refused.",
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "size": {
+          "description": "The bundle's size in bytes, 16 MiB at most.",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 16777216
+        },
+        "permissions": {
+          "description": "What the plugin asks, as its manifest does: shown before an install, asked again when an update adds one.",
+          "type": "array",
+          "items": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/Permission" },
+          "maxItems": 64
+        },
+        "engines": { "$ref": "#/$defs/MarketEngines" }
+      },
+      "required": [
+        "id",
+        "kind",
+        "name",
+        "version",
+        "publisher",
+        "license",
+        "url",
+        "sha256",
+        "size"
+      ],
+      "additionalProperties": false
+    },
+    "MarketEngines": {
+      "description": "The desks the bundle runs on.",
+      "type": "object",
+      "properties": {
+        "desk": {
+          "description": "The Desk versions, as a minimum: >=0.1.0.",
+          "type": "string",
+          "pattern": "^>=(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"
+        }
+      },
+      "additionalProperties": false
+    },
+    "MarketUrl": {
+      "description": "Where the bundle is: a path relative to the index (views/today-plus.desk-plugin) or an https URL.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 2048,
+      "pattern": "^(https://[^\\s]+|[A-Za-z0-9][A-Za-z0-9._/-]*)$"
+    },
+    "PluginBundle": {
+      "description": "A plugin as one file, a .desk-plugin: JSON, 16 MiB at most, holding its plugin.json and every file of its folder, base64. Themes and design systems travel as .desk-theme and .desk-design (ThemeBundle).",
+      "type": "object",
+      "properties": {
+        "format": { "description": "The bundle format and its version.", "const": "desk-plugin/1" },
+        "manifest": { "$ref": "../../plugin/v0/plugin.schema.json#/$defs/PluginManifest" },
+        "files": {
+          "description": "The plugin's files by their path in its folder (forward slashes, no .. and no dot files), each base64; plugin.json is the manifest.",
+          "type": "object",
+          "propertyNames": { "$ref": "#/$defs/BundlePath" },
+          "additionalProperties": { "$ref": "#/$defs/BundleData" },
+          "maxProperties": 500
+        }
+      },
+      "required": ["format", "manifest", "files"],
+      "additionalProperties": false
+    },
+    "BundlePath": {
+      "description": "A file's path in the plugin folder.",
+      "type": "string",
+      "pattern": "^(?!.*(^|/)\\.)(?!plugin\\.json$)[A-Za-z0-9_][A-Za-z0-9._ -]*(/[A-Za-z0-9_][A-Za-z0-9._ -]*)*$",
+      "maxLength": 512
+    },
+    "BundleData": {
+      "description": "A file's bytes, base64.",
+      "type": "string",
+      "contentEncoding": "base64"
+    }
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "target": "BridgeRequest",
+  "description": "plugin.install with the permissions the person accepted",
+  "instance": {
+    "id": 72,
+    "method": "plugin.install",
+    "params": {
+      "id": "acme.tracker",
+      "market": "https://market.acme.test/index.json",
+      "accept": [
+        { "permission": "net:fetch", "hosts": ["api.acme.test"] },
+        { "permission": "data:read", "kinds": ["task"] }
+      ],
+      "scope": { "permission": "plugin:manage" }
+    }
+  }
+}

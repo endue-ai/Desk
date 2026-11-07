@@ -64,6 +64,8 @@ pub struct Core {
     pub(crate) plugins: Mutex<PluginRegistry>,
     /// plugins.lock: its path, the digests it pins, the text last written (ADR 0079).
     pub(crate) plugins_lock: Mutex<crate::core_lock::LockState>,
+    /// The market for every kind: where its installs land, the endue index (ADR 0107).
+    pub(crate) market: crate::core_marketplace::Market,
     pub(crate) store: Mutex<Store>,
     pub(crate) settings: Mutex<Store>,
     /// The settings problems logged so far (ADR 0080), so each is logged once.
@@ -112,6 +114,7 @@ impl Core {
             subscriptions: Mutex::new(Subscriptions::default()),
             plugins: Mutex::new(PluginRegistry::new(None)),
             plugins_lock: Mutex::default(),
+            market: Default::default(),
             store: Mutex::new(Store::new(None)),
             settings: Mutex::new(Store::new(None)),
             settings_reported: Mutex::default(),
@@ -208,6 +211,9 @@ impl Core {
             R::PermApprove(r) => (r.id, self.perm_approve(caller, r.params)),
             R::PluginList(r) => (r.id, self.plugin_list(caller, r.params)),
             R::PluginSetEnabled(r) => (r.id, self.plugin_set_enabled(caller, r.params)),
+            R::MarketList(r) => (r.id, self.market_list(caller, r.params)),
+            R::PluginInstall(r) => (r.id, self.plugin_install(caller, r.params)),
+            R::PluginRemove(r) => (r.id, self.plugin_remove(caller, r.params)),
             R::PluginStats(r) => (r.id, self.plugin_stats(caller, r.params)),
             R::SearchReplace(r) => (r.id, self.search_replace(caller, r.params)),
             R::SearchQuery(r) => (r.id, self.search_query(caller, r.params)),

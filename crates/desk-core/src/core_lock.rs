@@ -99,7 +99,9 @@ impl Core {
             let Some(sha256) = self.digest(&info.id, info.revision, Path::new(folder)) else {
                 continue;
             };
-            let source = if info.built_in {
+            let source = if let Some(source) = self.market_source(&info.id) {
+                source
+            } else if info.built_in {
                 "builtin".to_owned()
             } else {
                 folder_source(Path::new(folder), self.home())

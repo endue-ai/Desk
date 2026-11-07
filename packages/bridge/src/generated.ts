@@ -1760,6 +1760,64 @@ export interface AgentRecord {
   runs?: number;
 }
 
+/** One market's index, as JSON. */
+export interface MarketIndex {
+  /** The index format and its version. */
+  format: "desk-market-index/1";
+  /** What the market offers, each id once. */
+  entries: MarketEntry[];
+}
+
+/** What an entry's bundle holds: a theme or a design system (their own bundles, ADR 0060 and 0091), a view plugin, a pack, or any other plugin (code: ui, logic, tool, connector, policy, library). */
+export type MarketKind = "theme" | "design-system" | "view" | "pack" | "plugin";
+
+/** One thing a market offers: its card, its bundle and what it asks. */
+export interface MarketEntry {
+  id: PluginId;
+  kind: MarketKind;
+  name: string;
+  version: Version;
+  description?: string;
+  /** Who publishes it. */
+  publisher: string;
+  /** An SPDX licence expression for the bundle and its assets. */
+  license: string;
+  /** Words a gallery filters by. */
+  tags?: string[];
+  url: MarketUrl;
+  /** The sha256 of the bundle's bytes, lowercase hex: a download that differs is refused. */
+  sha256: string;
+  /** The bundle's size in bytes, 16 MiB at most. */
+  size: number;
+  /** What the plugin asks, as its manifest does: shown before an install, asked again when an update adds one. */
+  permissions?: Permission[];
+  engines?: MarketEngines;
+}
+
+/** The desks the bundle runs on. */
+export interface MarketEngines {
+  /** The Desk versions, as a minimum: >=0.1.0. */
+  desk?: string;
+}
+
+/** Where the bundle is: a path relative to the index (views/today-plus.desk-plugin) or an https URL. */
+export type MarketUrl = string;
+
+/** A plugin as one file, a .desk-plugin: JSON, 16 MiB at most, holding its plugin.json and every file of its folder, base64. Themes and design systems travel as .desk-theme and .desk-design (ThemeBundle). */
+export interface PluginBundle {
+  /** The bundle format and its version. */
+  format: "desk-plugin/1";
+  manifest: PluginManifest;
+  /** The plugin's files by their path in its folder (forward slashes, no .. and no dot files), each base64; plugin.json is the manifest. */
+  files: Record<string, BundleData>;
+}
+
+/** A file's path in the plugin folder. */
+export type BundlePath = string;
+
+/** A file's bytes, base64. */
+export type BundleData = string;
+
 /** The whole of init.yaml. Every key is optional; a missing key takes its default. */
 export interface InitDocument {
   /** The format version. Default 0. Desk refuses a file with a version newer than it reads. */
@@ -2314,6 +2372,9 @@ export type BridgeRequest =
   | PluginListRequest
   | PluginSetEnabledRequest
   | PluginStatsRequest
+  | MarketListRequest
+  | PluginInstallRequest
+  | PluginRemoveRequest
   | StoreGetRequest
   | StoreSetRequest
   | InitGetRequest
@@ -3291,6 +3352,85 @@ export interface LogEntryEvent {
   event: "log.entry";
   data: LogEntry;
 }
+
+/** List what the markets offer, every kind (ADR 0107). */
+export interface MarketListRequest {
+  id: RequestId;
+  method: "market.list";
+  params: MarketListParams;
+}
+
+/** Parameters of market.list. */
+export interface MarketListParams {
+  scope: PluginManagePermission;
+}
+
+/** Result of market.list: every entry of every market in force, the first market that lists an id winning, and the markets that could not be read. */
+export interface MarketListResult {
+  entries: MarketListing[];
+  problems: MarketProblem[];
+}
+
+/** One entry as this desk sees it. */
+export interface MarketListing {
+  /** The index it came from, by URL. */
+  market: string;
+  entry: MarketEntry;
+  /** It comes from the endue index. Code plugins install only when it does; anything else is shown as not verified (signatures later, ADR 0005). */
+  verified: boolean;
+  state: MarketState;
+  /** The installed version, when there is one. */
+  installed?: Version;
+  /** The permissions it asks that the installed version was not given: all of them for a new install. Shown before installing; plugin.install needs them accepted. */
+  added: Permission[];
+}
+
+/** available: not installed; installed: this version is; update: an older version is. */
+export type MarketState = "available" | "installed" | "update";
+
+/** A market that could not be read. */
+export interface MarketProblem {
+  market: string;
+  message: string;
+}
+
+/** Install or update a plugin from a market (ADR 0107). */
+export interface PluginInstallRequest {
+  id: RequestId;
+  method: "plugin.install";
+  params: PluginInstallParams;
+}
+
+/** Parameters of plugin.install: the entry by id (in the first market that lists it, or in market), and the permissions the person accepted, which must hold every permission the entry asks. */
+export interface PluginInstallParams {
+  id: PluginId;
+  /** The index to take it from, by URL; the first that lists it when absent. */
+  market?: string;
+  /** The permissions the person accepted; the plugin is granted them. */
+  accept: Permission[];
+  scope: PluginManagePermission;
+}
+
+/** Result of plugin.install: the plugin as installed. */
+export interface PluginInstallResult {
+  plugin: PluginInfo;
+}
+
+/** Remove a plugin a market installed: its folder, its grants and its lock line. */
+export interface PluginRemoveRequest {
+  id: RequestId;
+  method: "plugin.remove";
+  params: PluginRemoveParams;
+}
+
+/** Parameters of plugin.remove. */
+export interface PluginRemoveParams {
+  plugin: PluginId;
+  scope: PluginManagePermission;
+}
+
+/** Result of plugin.remove. */
+export type PluginRemoveResult = Record<string, never>;
 
 /** Make one HTTP(S) request and return the whole response. */
 export interface NetFetchRequest {
@@ -4517,6 +4657,9 @@ export interface BridgeMethodMap {
   "plugin.list": { params: PluginListParams; result: PluginListResult };
   "plugin.setEnabled": { params: PluginSetEnabledParams; result: PluginSetEnabledResult };
   "plugin.stats": { params: PluginStatsParams; result: PluginStatsResult };
+  "market.list": { params: MarketListParams; result: MarketListResult };
+  "plugin.install": { params: PluginInstallParams; result: PluginInstallResult };
+  "plugin.remove": { params: PluginRemoveParams; result: PluginRemoveResult };
   "store.get": { params: StoreGetParams; result: StoreGetResult };
   "store.set": { params: StoreSetParams; result: StoreSetResult };
   "init.get": { params: InitGetParams; result: InitGetResult };
@@ -4610,6 +4753,9 @@ export const BRIDGE_METHODS = [
   "plugin.list",
   "plugin.setEnabled",
   "plugin.stats",
+  "market.list",
+  "plugin.install",
+  "plugin.remove",
   "store.get",
   "store.set",
   "init.get",

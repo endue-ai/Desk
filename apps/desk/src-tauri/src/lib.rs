@@ -115,6 +115,9 @@ pub fn run() {
             // The person's own themes (ADR 0058): every theme folder in <data>/themes/ is installed
             // now, not built in, and comes back at every start.
             core = core.with_themes_dir(data.join("themes"));
+            // What the market installed (ADR 0107): views and plugins in <data>/plugins/, each with
+            // the record of where it came from and what it was granted.
+            core = core.with_market_dir(data.join("plugins"));
             // The person's endue ID (ADR 0089): signing in hands the brain its bearer token.
             let id_url = std::env::var("DESK_ID_URL").unwrap_or_else(|_| DEFAULT_ID_URL.to_owned());
             let mut account = AccountOptions::new(id_url);
@@ -248,6 +251,7 @@ pub fn run() {
             for dir in env_paths("DESK_DEV_PLUGINS") {
                 core.install_plugin(&dir, false);
             }
+            core.install_market_plugins();
             // Hot reload leaves user themes to the themes watch, so each change is announced once.
             let watcher = core.watch_plugins().ok();
             let themes = core
