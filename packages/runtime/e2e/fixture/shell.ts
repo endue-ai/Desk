@@ -83,7 +83,9 @@ const core = browserCore({
       (m) =>
         m.id.startsWith("desk.") &&
         ((m.id !== "desk.views" && m.id !== "desk.universal") || params.has("views")) &&
-        m.kind !== "view",
+        // View plugins and packs are views.html's, where the view engines are (ADR 0108).
+        m.kind !== "view" &&
+        m.kind !== "pack",
     ),
     ...(params.has("plugins") ? testPlugins : []),
     ...(params.has("edges")
