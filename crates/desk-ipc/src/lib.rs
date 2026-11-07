@@ -13,7 +13,8 @@ use std::path::PathBuf;
 
 use desk_bridge::{
     CmdInvokePermission, FsReadPermission, FsWritePermission, LogReadPermission,
-    PermManagePermission, Permission, PluginManagePermission, UpdateManagePermission,
+    PermManagePermission, Permission, PluginManagePermission, ThemeManagePermission,
+    UpdateManagePermission,
 };
 
 #[cfg(unix)]
@@ -69,11 +70,10 @@ pub fn data_dir() -> Option<PathBuf> {
 }
 
 /// What the app grants [`CALLER`] at start, session-long: run any command, list and toggle plugins,
-/// see and revoke every grant, read the log (ADR 0030), drive the desk's updates (ADR 0054), and read
-/// and write files, for `desk fs history` and `desk fs restore` (ADR 0076). Only the same OS user can
-/// open the socket, and that user can already do all of this through the desk itself, or read and
-/// write those files directly. The app grants `theme:manage` to [`CALLER`] beside these, for `desk
-/// theme` (ADR 0058).
+/// see and revoke every grant, read the log (ADR 0030), drive the desk's updates (ADR 0054), manage
+/// the person's themes for `desk theme` (ADR 0058), and read and write files, for `desk fs history`
+/// and `desk fs restore` (ADR 0076). Only the same OS user can open the socket, and that user can
+/// already do all of this through the desk itself, or read and write those files directly.
 pub fn grants() -> Vec<Permission> {
     vec![
         Permission::CmdInvoke(CmdInvokePermission {
@@ -90,6 +90,9 @@ pub fn grants() -> Vec<Permission> {
             permission: Default::default(),
         }),
         Permission::UpdateManage(UpdateManagePermission {
+            permission: Default::default(),
+        }),
+        Permission::ThemeManage(ThemeManagePermission {
             permission: Default::default(),
         }),
         Permission::FsRead(FsReadPermission {

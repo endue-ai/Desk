@@ -234,16 +234,13 @@ pub fn run() {
                 }),
             );
             // The person's themes (ADR 0058): the theme studio saves, imports, exports and removes
-            // them as the runtime, and `desk theme` does the same as the CLI (whose other grants
-            // are desk_ipc::grants()).
-            for caller in [RUNTIME_CALLER, desk_ipc::CALLER] {
-                core.grant(
-                    caller,
-                    Permission::ThemeManage(ThemeManagePermission {
-                        permission: Default::default(),
-                    }),
-                );
-            }
+            // them as the runtime. `desk theme` does the same as the CLI, through desk_ipc::grants().
+            core.grant(
+                RUNTIME_CALLER,
+                Permission::ThemeManage(ThemeManagePermission {
+                    permission: Default::default(),
+                }),
+            );
             // "Show in file manager" on a state file kept broken: the data folder and the views only.
             let views = home_dir().join(".desk").join("views");
             let paths = [&data, &views]
