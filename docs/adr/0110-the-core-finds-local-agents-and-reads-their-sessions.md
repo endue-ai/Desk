@@ -62,8 +62,11 @@ Chosen option: "the core serves `agents.*`".
 * Good, because a run Eris starts is the same run the person sees, stops and continues.
 * Bad, because the session formats are the programs' own and undocumented; a format change empties the
   list until the readers follow. The Claude app's archive flag is read from its private metadata.
-* Bad, because two paths now ask local agents: this one and `endue.local-agents` (ADR 0084, #469). The
-  plugin keeps its chat, compare and board; the agent registry (#470) should take both runs as one.
+* Bad, because two paths now ask local agents: this one and `endue.local-agents` (ADR 0084, ADR 0099).
+  The plugin keeps its chat, compare, board and its own ask and work tools. The agent registry (ADR 0100)
+  records Eris's calls to `desk.agents.*` as runs under `desk.agents`, like any agent command, but the
+  runs a person starts from the screen are not reported to it, and it does not list the agents this core
+  finds; joining the two is left to a later change.
 * Bad, because reading every session file on a large history costs time on the first list; the cache
   keeps later ones cheap.
 
@@ -72,5 +75,5 @@ Chosen option: "the core serves `agents.*`".
 Spec: `specs/bridge/v0/agents.schema.json`, `AgentsManagePermission` in
 `specs/plugin/v0/permission.schema.json`. Core: `crates/desk-core/src/local_agents/`. Runtime:
 `system/local-agents.ts`, `system/local-agent-commands.ts`, `surface/local-agent/`, `shell/SideBar.ts`,
-`eris/errand.ts`. Builds on ADR 0084, 0088 and 0089. `docs/ko/desk-structure.md` should list the local
-agents beside the agent directory once this is accepted.
+`eris/errand.ts`. Builds on ADR 0084, 0088 and 0089; sits beside ADR 0099 and 0100.
+`docs/ko/desk-structure.md` should list the local agents beside the agent directory once this is accepted.
