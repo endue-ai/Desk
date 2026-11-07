@@ -42,6 +42,7 @@ const KINDS = [
   ["plugin:manage", "Manage plugins", () => []],
   ["update:manage", "Manage desk updates", () => []],
   ["account:manage", "Sign the desk in to endue ID", () => []],
+  ["agents:manage", "Read local agents' sessions and hand them work", () => []],
   ["memory:read", "Read Eris's memory", () => []],
   ["memory:write", "Keep and forget what Eris remembers", () => []],
   ["connector:manage", "Manage connections", () => []],

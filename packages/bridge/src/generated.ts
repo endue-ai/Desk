@@ -468,6 +468,24 @@ export type DesignThickness = "thin" | "normal" | "thick";
 /** The focus ring's distance: none, near or far. */
 export type DesignFocusOffset = "none" | "near" | "far";
 
+/** What a pack brings and does when it is applied. */
+export interface PackBlock {
+  /** The plugins it brings, by id: each nested in the pack folder under plugins/<folder>/ (installed and removed with the pack) or a plugin the desk has. Connectors first: Apply opens Settings, Connections on the first connector. */
+  plugins: PluginId[];
+  /** Commands Apply runs once the pack is on, in order: a board, a timeline. */
+  opens?: PackCommand[];
+  /** The profile it contributes (contributes.profiles) that Apply switches to: its layout. */
+  profile?: ProfileId;
+  /** The words a person names the service by: github, 깃허브. Make with Eris finds the pack by them. */
+  services: string[];
+}
+
+/** One command Apply runs, with its arguments. */
+export interface PackCommand {
+  command: CommandId;
+  args?: Record<string, unknown>;
+}
+
 /** One permission with its scope. Plugin manifests declare these; bridge calls carry the one that covers them. */
 export type Permission =
   | SearchReadPermission
@@ -495,6 +513,7 @@ export type Permission =
   | UpdateManagePermission
   | ThemeManagePermission
   | AccountManagePermission
+  | AgentsManagePermission
   | MemoryReadPermission
   | MemoryWritePermission;
 
@@ -649,6 +668,11 @@ export interface AccountManagePermission {
   permission: "account:manage";
 }
 
+/** Find the agent programs on this computer (Claude Code, Codex), read their sessions from the files they keep, import sessions into the desk, and ask them for work with agents.*. Receive agents.run and agents.changed. The desk grants it to the runtime only (ADR 0110). */
+export interface AgentsManagePermission {
+  permission: "agents:manage";
+}
+
 /** Read Eris's memory with memory.list, memory.get and memory.search, and receive memory.changed (ADR 0095). The desk grants it to the runtime; Eris and the memory inspector are asked like any caller. */
 export interface MemoryReadPermission {
   permission: "memory:read";
@@ -710,11 +734,13 @@ export interface PluginManifest {
   provides?: Role[];
   /** Installed but off until the desk needs it, like Emacs's autoload. With no stored enabled flag the plugin starts off, and its file openers count while it is off: desk.files turns it on to open a file and off again when its last file closes; profiles leave it as it is. Default false. */
   autoload?: boolean;
-  /** A view plugin's one view, inline. */
+  /** A view plugin's one view, inline; a pack's own view too. */
   view?: View;
-  /** A view plugin's view files, one View each, relative to the plugin folder. */
+  /** A view plugin's view files, one View each, relative to the plugin folder; a pack's too. */
   views?: ViewPath[];
   connector?: ConnectorManifest;
+  /** A pack's pack block: what it brings and does when applied (ADR 0108). */
+  pack?: PackBlock;
   /** A theme plugin's theme: its layers and the font and image files it brings, relative to the plugin folder. */
   theme?: ThemePackage;
   /** A design-system plugin's design system: what each component of the desk is made of (ADR 0090). */
@@ -730,7 +756,7 @@ export type Role = string;
 /** Semantic version, for example 0.1.0 or 1.2.3-beta.1. */
 export type Version = string;
 
-/** ui runs in a sandboxed iframe, logic in a Wasm instance, tool as an MCP server inside the VM. policy runs no code: it only contributes data (ADR 0017). library runs no code of its own either: it is files other plugins import, served at /<id>/... like any plugin's, never mounted and never turned off. connector brings an app's data in as items, as a Wasm component or an MCP server; view runs no code either: it is one or more views (ADR 0032). theme runs no code: it is a theme block and its font and image files, chosen with desk.theme.active (ADR 0056). design-system runs no code either: it is a designSystem block of component recipes, chosen with desk.design.active (ADR 0090). */
+/** ui runs in a sandboxed iframe, logic in a Wasm instance, tool as an MCP server inside the VM. policy runs no code: it only contributes data (ADR 0017). library runs no code of its own either: it is files other plugins import, served at /<id>/... like any plugin's, never mounted and never turned off. connector brings an app's data in as items, as a Wasm component, an MCP server or an http block the core runs (no entry; ADR 0106); view runs no code either: it is one or more views (ADR 0032). theme runs no code: it is a theme block and its font and image files, chosen with desk.theme.active (ADR 0056). design-system runs no code either: it is a designSystem block of component recipes, chosen with desk.design.active (ADR 0090). pack runs no code either: a pack block naming the plugins it brings (nested in its folder or on the desk), its own views and its contributed layout (ADR 0108). */
 export type PluginKind =
   | "ui"
   | "logic"
@@ -740,7 +766,8 @@ export type PluginKind =
   | "connector"
   | "view"
   | "theme"
-  | "design-system";
+  | "design-system"
+  | "pack";
 
 /** Path to the entry file, relative to the plugin folder, without .. segments. */
 export type EntryPath = string;
@@ -1553,6 +1580,7 @@ export interface ViewProvenance {
 /** What a kind connector plugin declares under connector in plugin.json. */
 export interface ConnectorManifest {
   binding: ConnectorBinding;
+  http?: HttpBinding;
   auth: ConnectorAuth;
   /** The kinds of item the connector brings in, one entry per kind. */
   resources: ConnectorResource[];
@@ -1561,13 +1589,13 @@ export interface ConnectorManifest {
   instanceSettings?: Record<string, ConnectorSetting>;
 }
 
-/** How the connector runs: wasm, a component the plugin's entry names (no VM to boot); mcp, an MCP server inside the VM that follows the Desk profile in the README. */
-export type ConnectorBinding = "wasm" | "mcp";
+/** How the connector runs: wasm, a component the plugin's entry names (no VM to boot); mcp, an MCP server inside the VM that follows the Desk profile in the README; http, requests and a mapping the core runs from the http block, with no code of the plugin's own (ADR 0106). */
+export type ConnectorBinding = "wasm" | "mcp" | "http";
 
 /** none (local files, the OS's own data), token (a key the person pastes) or oauth. */
 export type ConnectorAuthKind = "none" | "token" | "oauth";
 
-/** How an instance signs in. Tokens are kept by the core and never handed to the connector's code. No v0 method starts an OAuth flow yet. */
+/** How an instance signs in. Tokens are kept by the core and never handed to the connector's code; with binding http the core itself sends the token (http.auth). No v0 method starts an OAuth flow yet. */
 export interface ConnectorAuth {
   kind: ConnectorAuthKind;
   /** What the person is asked for: Personal access token. */
@@ -1579,6 +1607,91 @@ export interface ConnectorAuth {
 
 /** An https URL. */
 export type HttpsUrl = string;
+
+/** A connector as data (binding http): GET requests against one base URL, each response's pages followed, and every record mapped into an item. The core runs it, reads the token from the instance's secret setting and sends it only to the base URL's origin; the token never crosses the bridge. Each sync reads every page again and removes the items that left (ADR 0106). */
+export interface HttpBinding {
+  baseUrl: HttpBaseUrl;
+  /** Sent with every request: Accept, an API version. Never Authorization (auth says how the token goes) and never a secret. */
+  headers?: Record<string, string>;
+  auth?: HttpAuth;
+  /** What one sync asks for, in order. The same item from two requests is one item, the last one read. */
+  requests: HttpRequest[];
+  /** How a record becomes an item, by name; each request names one. */
+  maps: Record<string, HttpItemMap>;
+}
+
+/** Where every request goes: an https URL, or http on this computer (127.0.0.1, localhost) for a local service. No query and no trailing slash; request paths follow it. */
+export type HttpBaseUrl = string;
+
+/** An HTTP header name other than Authorization, Cookie and Host. */
+export type HttpHeaderName = string;
+
+/** How the core sends the instance's token: the secret setting it reads, in a header with a prefix. Authorization: Bearer <token> when header and prefix are absent. */
+export interface HttpAuth {
+  /** A secret instance setting (secret: true), required: the token. */
+  setting: ConnectorSettingName;
+  /** Authorization when absent. */
+  header?: string;
+  /** Bearer and a space when absent; empty sends the token alone. */
+  prefix?: string;
+}
+
+/** One GET request and the pages after it. */
+export interface HttpRequest {
+  /** After the base URL: /search/issues. */
+  path: string;
+  /** Query parameters, encoded by the core. */
+  query?: Record<string, string>;
+  /** Where the records are in the response: a JSON pointer to an array; empty for a response that is the array. */
+  items: JsonPointer;
+  pagination?: HttpPagination;
+  /** Pages read at most; 10 when absent. */
+  maxPages?: number;
+  /** The name of the map in maps that makes its records items. */
+  map: HttpMapName;
+}
+
+/** link: the Link header's rel="next"; body: a URL in the response. */
+export type HttpPageNext = "link" | "body";
+
+/** Where the next page is: link, the URL of rel="next" in the Link header (RFC 8288); body, the URL at pointer in the response. A next URL on another origin ends the request. Absent: one page. */
+export interface HttpPagination {
+  next: HttpPageNext;
+  pointer?: JsonPointer;
+}
+
+/** A map's name: issue, event. */
+export type HttpMapName = string;
+
+/** A JSON pointer (RFC 6901): empty for the whole value, else /name/0/name. */
+export type JsonPointer = string;
+
+/** How one record becomes an item of kind: each item field (specs/item/v0) from a value of the record. The core sets source; a record whose item does not fit specs/item/v0 is skipped. */
+export interface HttpItemMap {
+  kind: ItemKind;
+  /** By item field: id and title always, then updatedAt, status, due, project, deepLink, raw. */
+  fields: Record<string, HttpValue>;
+}
+
+/** One item field's value: a JSON pointer into the record (empty is the whole record), or an object that reads one and shapes it. A null or missing value leaves the field out, unless default gives one. */
+export type HttpValue = JsonPointer | HttpRead | HttpConst;
+
+/** Read the value at pointer and shape it. */
+export interface HttpRead {
+  pointer: JsonPointer;
+  /** Keep the text after the last occurrence of this text; a value without it is missing. */
+  after?: string;
+  /** Replace the value, as text, by the one it names; one it does not name is missing. */
+  values?: Record<string, unknown>;
+  /** The value when the pointer reads nothing, or nothing that values or after keep. */
+  default?: unknown;
+}
+
+/** The same value for every record. */
+export interface HttpConst {
+  /** This value for every record. */
+  const: unknown;
+}
 
 /** One kind of item the connector brings in, and the commands that act on it. */
 export interface ConnectorResource {
@@ -1755,6 +1868,64 @@ export interface AgentRecord {
   runs?: number;
 }
 
+/** One market's index, as JSON. */
+export interface MarketIndex {
+  /** The index format and its version. */
+  format: "desk-market-index/1";
+  /** What the market offers, each id once. */
+  entries: MarketEntry[];
+}
+
+/** What an entry's bundle holds: a theme or a design system (their own bundles, ADR 0060 and 0091), a view plugin, a pack, or any other plugin (code: ui, logic, tool, connector, policy, library). */
+export type MarketKind = "theme" | "design-system" | "view" | "pack" | "plugin";
+
+/** One thing a market offers: its card, its bundle and what it asks. */
+export interface MarketEntry {
+  id: PluginId;
+  kind: MarketKind;
+  name: string;
+  version: Version;
+  description?: string;
+  /** Who publishes it. */
+  publisher: string;
+  /** An SPDX licence expression for the bundle and its assets. */
+  license: string;
+  /** Words a gallery filters by. */
+  tags?: string[];
+  url: MarketUrl;
+  /** The sha256 of the bundle's bytes, lowercase hex: a download that differs is refused. */
+  sha256: string;
+  /** The bundle's size in bytes, 16 MiB at most. */
+  size: number;
+  /** What the plugin asks, as its manifest does: shown before an install, asked again when an update adds one. */
+  permissions?: Permission[];
+  engines?: MarketEngines;
+}
+
+/** The desks the bundle runs on. */
+export interface MarketEngines {
+  /** The Desk versions, as a minimum: >=0.1.0. */
+  desk?: string;
+}
+
+/** Where the bundle is: a path relative to the index (views/today-plus.desk-plugin) or an https URL. */
+export type MarketUrl = string;
+
+/** A plugin as one file, a .desk-plugin: JSON, 16 MiB at most, holding its plugin.json and every file of its folder, base64. Themes and design systems travel as .desk-theme and .desk-design (ThemeBundle). */
+export interface PluginBundle {
+  /** The bundle format and its version. */
+  format: "desk-plugin/1";
+  manifest: PluginManifest;
+  /** The plugin's files by their path in its folder (forward slashes, no .. and no dot files), each base64; plugin.json is the manifest. */
+  files: Record<string, BundleData>;
+}
+
+/** A file's path in the plugin folder. */
+export type BundlePath = string;
+
+/** A file's bytes, base64. */
+export type BundleData = string;
+
 /** The whole of init.yaml. Every key is optional; a missing key takes its default. */
 export interface InitDocument {
   /** The format version. Default 0. Desk refuses a file with a version newer than it reads. */
@@ -1829,6 +2000,28 @@ export interface KeysFile {
   /** The person's bindings, in order: a later one of the same key wins, and "command": "" takes a key away from the plugins. Default none. */
   bindings?: KeyBinding[];
 }
+
+/** The whole of plugins.lock. */
+export interface PluginsLock {
+  /** The format version. Desk refuses a lock newer than it reads. */
+  version: number;
+  /** Every installed plugin that validates, sorted by id. */
+  plugins: LockedPlugin[];
+}
+
+/** One installed plugin, pinned. */
+export interface LockedPlugin {
+  id: PluginId;
+  version: Version;
+  source: LockSource;
+  /** The folder digest: every regular file under the plugin folder whose path has no part starting with a dot, in byte order of its path relative to the folder (forward slashes), each fed as path, NUL, decimal length, NUL, bytes; lowercase hex. */
+  sha256: string;
+  /** Whether it is on, as its persisted flag says (init.yaml's start-only holds aside). */
+  enabled: boolean;
+}
+
+/** Where the plugin came from: builtin (shipped with Desk), folder:<path> (a folder on this computer, ~ for the home folder) or url:<https URL> (the market, later). */
+export type LockSource = string;
 
 /** The whole of a profile file. Every key is optional; an empty file is a profile that changes nothing. */
 export interface ProfileFile {
@@ -1979,6 +2172,267 @@ export interface AgentCancelledData {
 export interface AgentCancelledEvent {
   event: "agent.cancelled";
   data: AgentCancelledData;
+}
+
+/** A program the core knows: claude (Claude Code, Anthropic) or codex (Codex, OpenAI). */
+export type LocalAgentId = "claude" | "codex";
+
+/** A session's id as its program names it: a UUID for both programs today. */
+export type LocalAgentSessionId = string;
+
+/** read-only: the program runs in its read-only mode (Claude Code's plan mode, Codex's read-only sandbox). agent: the program uses its own permission settings and may change files. No flag that widens a program's permissions beyond its own settings is ever passed. */
+export type LocalAgentAccess = "read-only" | "agent";
+
+/** Which sessions: local (the program's sessions on this computer that are not archived), archive (the ones archived), desk (the ones imported into the desk). */
+export type LocalAgentSource = "local" | "archive" | "desk";
+
+/** One agent program found on this computer. program is where it runs from when it is on the PATH (or in a folder its installer uses); without it the desk reads its sessions but cannot ask it. version is the one its newest session recorded; finding an agent never starts it. */
+export interface LocalAgent {
+  id: LocalAgentId;
+  name: string;
+  vendor: string;
+  /** The program's absolute path. */
+  program?: string;
+  version?: string;
+  /** The program's own data folder, an absolute path (~/.claude, ~/.codex). */
+  home?: string;
+  /** How many sessions it keeps that are not archived. */
+  sessions: number;
+  /** How many of its sessions are archived. */
+  archived: number;
+  /** How many of its sessions the desk imported. */
+  imported: number;
+  /** How many runs of it are going on now. */
+  running: number;
+}
+
+/** One session as the program's files say it: its title (the program's own, else the first thing the person asked), the folder it worked in, the branch there, when it started and was last active, and the program's version and model. imported says whether the desk holds a copy; importedAt when it was made. */
+export interface LocalAgentSession {
+  id: LocalAgentSessionId;
+  agent: LocalAgentId;
+  title: string;
+  /** The folder the session worked in, an absolute path. */
+  cwd?: string;
+  branch?: string;
+  startedAt?: string;
+  updatedAt: string;
+  archived: boolean;
+  imported: boolean;
+  importedAt?: string;
+  /** The bytes of the session's file. */
+  size: number;
+  version?: string;
+  model?: string;
+}
+
+/** Who a turn is: the person (user), the agent (assistant), or a tool the agent used (tool). */
+export type LocalAgentRole = "user" | "assistant" | "tool";
+
+/** One turn of a session: what the person said (user), what the agent answered (assistant), or a tool it used (tool, with the tool's name and the start of its input). Text past 8000 characters is cut and says so with cut. */
+export interface LocalAgentMessage {
+  role: LocalAgentRole;
+  text: string;
+  name?: string;
+  at?: string;
+  cut?: boolean;
+}
+
+/** running until the program ends: done when it answered, failed when it could not, stopped when agents.stop ended it. */
+export type LocalAgentRunState = "running" | "done" | "failed" | "stopped";
+
+/** One run of agents.ask: who asked (caller), what, where, in which session, with what access, and how it stands. text is the answer so far (the final answer once done), cut at 8000 characters; tools counts the tools the agent used. The core keeps the last 50 runs while it runs. */
+export interface LocalAgentRun {
+  runId: LocalAgentRunId;
+  agent: LocalAgentId;
+  caller: CallerId;
+  prompt: string;
+  cwd: string;
+  sessionId?: LocalAgentSessionId;
+  access: LocalAgentAccess;
+  state: LocalAgentRunState;
+  startedAt: string;
+  endedAt?: string;
+  text: string;
+  tools: number;
+  error?: string;
+}
+
+/** A run's id, given by the core. */
+export type LocalAgentRunId = string;
+
+/** Parameters of agents.list: the scope alone. */
+export interface AgentsParams {
+  scope: AgentsManagePermission;
+}
+
+/** The agent programs found on this computer: each one whose data folder or program is there, with its counts. Nothing is started. */
+export interface AgentsListRequest {
+  id: RequestId;
+  method: "agents.list";
+  params: AgentsParams;
+}
+
+/** Result of agents.list: the agents found, Claude Code first. None found is an empty list. */
+export interface AgentsListResult {
+  agents: LocalAgent[];
+}
+
+/** One agent's sessions from one source, the most recently active first. */
+export interface AgentsSessionsRequest {
+  id: RequestId;
+  method: "agents.sessions";
+  params: AgentsSessionsParams;
+}
+
+/** Parameters of agents.sessions. from is local unless given. query keeps the sessions whose title, folder or branch hold every one of its words (any case). offset and limit page through them; limit is 50 unless given. */
+export interface AgentsSessionsParams {
+  agent: LocalAgentId;
+  from?: LocalAgentSource;
+  query?: string;
+  offset?: number;
+  limit?: number;
+  scope: AgentsManagePermission;
+}
+
+/** Result of agents.sessions: one page, and how many sessions match in all. */
+export interface AgentsSessionsResult {
+  sessions: LocalAgentSession[];
+  total: number;
+}
+
+/** One session's turns: from the program's file while it is there, else from the desk's copy. A session neither holds is not_found. */
+export interface AgentsTranscriptRequest {
+  id: RequestId;
+  method: "agents.transcript";
+  params: AgentsTranscriptParams;
+}
+
+/** Parameters of agents.transcript: the last limit turns (200 unless given). */
+export interface AgentsTranscriptParams {
+  agent: LocalAgentId;
+  sessionId: LocalAgentSessionId;
+  limit?: number;
+  scope: AgentsManagePermission;
+}
+
+/** Result of agents.transcript: the session, its last turns in order, and whether earlier ones were left out (truncated). */
+export interface AgentsTranscriptResult {
+  session: LocalAgentSession;
+  messages: LocalAgentMessage[];
+  truncated: boolean;
+}
+
+/** Copy sessions into the desk's own folder: the ones sessionIds names, else the newest 500 of the source from names (local unless given). Each copy holds the session and its last 1000 turns, so it stays readable when the program drops or compresses its file. A session imported before is copied again only when its file changed. agents.changed follows. */
+export interface AgentsImportRequest {
+  id: RequestId;
+  method: "agents.import";
+  params: AgentsImportParams;
+}
+
+/** Parameters of agents.import. from is local or archive; desk is invalid_params. */
+export interface AgentsImportParams {
+  agent: LocalAgentId;
+  from?: LocalAgentSource;
+  sessionIds?: LocalAgentSessionId[];
+  scope: AgentsManagePermission;
+}
+
+/** Result of agents.import: how many sessions were copied, how many were already up to date, and how many could not be read. */
+export interface AgentsImportResult {
+  imported: number;
+  unchanged: number;
+  failed: number;
+}
+
+/** Ask an agent for work: the core runs its program once, without a shell, in its non-interactive mode, in cwd (the session's folder when sessionId resumes one, else the home folder), continuing sessionId when given. The prompt is one argument that a leading dash cannot turn into an option. The answer is the run's id at once; the run reports itself as agents.run events and agents.runs. An agent the core found no program for is unsupported. */
+export interface AgentsAskRequest {
+  id: RequestId;
+  method: "agents.ask";
+  params: AgentsAskParams;
+}
+
+/** Parameters of agents.ask. access is read-only unless given. model is passed as the program's --model. */
+export interface AgentsAskParams {
+  agent: LocalAgentId;
+  prompt: string;
+  sessionId?: LocalAgentSessionId;
+  cwd?: Path;
+  access?: LocalAgentAccess;
+  model?: string;
+  scope: AgentsManagePermission;
+}
+
+/** Result of agents.ask: the run as it starts. */
+export interface AgentsAskResult {
+  run: LocalAgentRun;
+}
+
+/** The runs the core keeps (the last 50), the newest first: every agent's, or one's. */
+export interface AgentsRunsRequest {
+  id: RequestId;
+  method: "agents.runs";
+  params: AgentsRunsParams;
+}
+
+/** Parameters of agents.runs. */
+export interface AgentsRunsParams {
+  agent?: LocalAgentId;
+  scope: AgentsManagePermission;
+}
+
+/** Result of agents.runs. */
+export interface AgentsRunsResult {
+  runs: LocalAgentRun[];
+}
+
+/** End a run that is going on: its program is ended and the run is stopped. A run that already ended, or one the core does not keep, is not_found. */
+export interface AgentsStopRequest {
+  id: RequestId;
+  method: "agents.stop";
+  params: AgentsStopParams;
+}
+
+/** Parameters of agents.stop. */
+export interface AgentsStopParams {
+  runId: LocalAgentRunId;
+  scope: AgentsManagePermission;
+}
+
+/** Result of agents.stop: the run, stopped. */
+export interface AgentsStopResult {
+  run: LocalAgentRun;
+}
+
+/** What happened in a run: started; text (a block of the agent's answer); tool (it used one); done, failed or stopped, its end, which carries the whole run. */
+export type LocalAgentRunKind = "started" | "text" | "tool" | "done" | "failed" | "stopped";
+
+/** One step of a run. text is the block a text step adds; tool names the tool a tool step used, with the start of its input in detail; sessionId is there once the program said which session it is in. run is the whole run on started and on its end. */
+export interface LocalAgentRunData {
+  runId: LocalAgentRunId;
+  agent: LocalAgentId;
+  kind: LocalAgentRunKind;
+  text?: string;
+  tool?: string;
+  detail?: string;
+  sessionId?: LocalAgentSessionId;
+  run?: LocalAgentRun;
+}
+
+/** A step of a run of agents.ask. Sent to holders of agents:manage. */
+export interface AgentsRunEvent {
+  event: "agents.run";
+  data: LocalAgentRunData;
+}
+
+/** Which agent's imported sessions changed. */
+export interface AgentsChangedData {
+  agent: LocalAgentId;
+}
+
+/** agents.import changed what the desk holds of an agent. Sent to holders of agents:manage. */
+export interface AgentsChangedEvent {
+  event: "agents.changed";
+  data: AgentsChangedData;
 }
 
 /** Start capturing the microphone. With wakeWord, audio.wake events arrive when the wake word is heard. */
@@ -2287,6 +2741,9 @@ export type BridgeRequest =
   | PluginListRequest
   | PluginSetEnabledRequest
   | PluginStatsRequest
+  | MarketListRequest
+  | PluginInstallRequest
+  | PluginRemoveRequest
   | StoreGetRequest
   | StoreSetRequest
   | InitGetRequest
@@ -2334,6 +2791,13 @@ export type BridgeRequest =
   | AccountStatusRequest
   | AccountSignInRequest
   | AccountSignOutRequest
+  | AgentsListRequest
+  | AgentsSessionsRequest
+  | AgentsTranscriptRequest
+  | AgentsImportRequest
+  | AgentsAskRequest
+  | AgentsRunsRequest
+  | AgentsStopRequest
   | MemoryListRequest
   | MemoryGetRequest
   | MemoryRememberRequest
@@ -2388,7 +2852,7 @@ export type ErrorCode =
   | "invalid_value"
   | "internal";
 
-/** Something the core reports without being asked: file changes, process output, wake words, permission changes, prompts and approvals, notifications, surfaces, commands, settings, log entries, changes to items, connectors and views, the desk's update status, its endue ID account, and runs to stop. */
+/** Something the core reports without being asked: file changes, process output, wake words, permission changes, prompts and approvals, notifications, surfaces, commands, settings, log entries, changes to items, connectors and views, the desk's update status, its endue ID account, runs to stop, and the runs of the agent programs on this computer. */
 export type BridgeEvent =
   | FsChangedEvent
   | ProcOutputEvent
@@ -2415,6 +2879,8 @@ export type BridgeEvent =
   | ViewChangedEvent
   | UpdateChangedEvent
   | AccountChangedEvent
+  | AgentsRunEvent
+  | AgentsChangedEvent
   | MemoryChangedEvent
   | AgentCancelledEvent;
 
@@ -2771,9 +3237,14 @@ export interface CmdUndoneData {
   redo: boolean;
 }
 
-/** An installed connector as connector.list returns it: its instances and the kinds of item it brings in. */
+/** An installed connector as connector.list returns it: its instances, the kinds of item it brings in, and what connecting one asks for (how it signs in and its settings, never their values). */
 export interface ConnectorInfo {
   id: PluginId;
+  /** The connector's name: GitHub. */
+  title?: string;
+  auth?: ConnectorAuth;
+  /** What a new instance takes, by name, as the manifest declares it. */
+  instanceSettings?: Record<string, ConnectorSetting>;
   instances: ConnectorInstance[];
   resources: ConnectorResource[];
 }
@@ -3265,6 +3736,85 @@ export interface LogEntryEvent {
   event: "log.entry";
   data: LogEntry;
 }
+
+/** List what the markets offer, every kind (ADR 0107). */
+export interface MarketListRequest {
+  id: RequestId;
+  method: "market.list";
+  params: MarketListParams;
+}
+
+/** Parameters of market.list. */
+export interface MarketListParams {
+  scope: PluginManagePermission;
+}
+
+/** Result of market.list: every entry of every market in force, the first market that lists an id winning, and the markets that could not be read. */
+export interface MarketListResult {
+  entries: MarketListing[];
+  problems: MarketProblem[];
+}
+
+/** One entry as this desk sees it. */
+export interface MarketListing {
+  /** The index it came from, by URL. */
+  market: string;
+  entry: MarketEntry;
+  /** It comes from the endue index. Code plugins install only when it does; anything else is shown as not verified (signatures later, ADR 0005). */
+  verified: boolean;
+  state: MarketState;
+  /** The installed version, when there is one. */
+  installed?: Version;
+  /** The permissions it asks that the installed version was not given: all of them for a new install. Shown before installing; plugin.install needs them accepted. */
+  added: Permission[];
+}
+
+/** available: not installed; installed: this version is; update: an older version is. */
+export type MarketState = "available" | "installed" | "update";
+
+/** A market that could not be read. */
+export interface MarketProblem {
+  market: string;
+  message: string;
+}
+
+/** Install or update a plugin from a market (ADR 0107). */
+export interface PluginInstallRequest {
+  id: RequestId;
+  method: "plugin.install";
+  params: PluginInstallParams;
+}
+
+/** Parameters of plugin.install: the entry by id (in the first market that lists it, or in market), and the permissions the person accepted, which must hold every permission the entry asks. */
+export interface PluginInstallParams {
+  id: PluginId;
+  /** The index to take it from, by URL; the first that lists it when absent. */
+  market?: string;
+  /** The permissions the person accepted; the plugin is granted them. */
+  accept: Permission[];
+  scope: PluginManagePermission;
+}
+
+/** Result of plugin.install: the plugin as installed. */
+export interface PluginInstallResult {
+  plugin: PluginInfo;
+}
+
+/** Remove a plugin a market installed: its folder, its grants and its lock line. */
+export interface PluginRemoveRequest {
+  id: RequestId;
+  method: "plugin.remove";
+  params: PluginRemoveParams;
+}
+
+/** Parameters of plugin.remove. */
+export interface PluginRemoveParams {
+  plugin: PluginId;
+  scope: PluginManagePermission;
+}
+
+/** Result of plugin.remove. */
+export type PluginRemoveResult = Record<string, never>;
 
 /** Entries newest first, a page at a time. */
 export interface MemoryListRequest {
@@ -4614,6 +5164,9 @@ export interface BridgeMethodMap {
   "plugin.list": { params: PluginListParams; result: PluginListResult };
   "plugin.setEnabled": { params: PluginSetEnabledParams; result: PluginSetEnabledResult };
   "plugin.stats": { params: PluginStatsParams; result: PluginStatsResult };
+  "market.list": { params: MarketListParams; result: MarketListResult };
+  "plugin.install": { params: PluginInstallParams; result: PluginInstallResult };
+  "plugin.remove": { params: PluginRemoveParams; result: PluginRemoveResult };
   "store.get": { params: StoreGetParams; result: StoreGetResult };
   "store.set": { params: StoreSetParams; result: StoreSetResult };
   "init.get": { params: InitGetParams; result: InitGetResult };
@@ -4661,6 +5214,13 @@ export interface BridgeMethodMap {
   "account.status": { params: AccountParams; result: AccountStatusResult };
   "account.signIn": { params: AccountParams; result: AccountSignInResult };
   "account.signOut": { params: AccountParams; result: AccountSignOutResult };
+  "agents.list": { params: AgentsParams; result: AgentsListResult };
+  "agents.sessions": { params: AgentsSessionsParams; result: AgentsSessionsResult };
+  "agents.transcript": { params: AgentsTranscriptParams; result: AgentsTranscriptResult };
+  "agents.import": { params: AgentsImportParams; result: AgentsImportResult };
+  "agents.ask": { params: AgentsAskParams; result: AgentsAskResult };
+  "agents.runs": { params: AgentsRunsParams; result: AgentsRunsResult };
+  "agents.stop": { params: AgentsStopParams; result: AgentsStopResult };
   "memory.list": { params: MemoryListParams; result: MemoryListResult };
   "memory.get": { params: MemoryGetParams; result: MemoryGetResult };
   "memory.remember": { params: MemoryRememberParams; result: MemoryRememberResult };
@@ -4712,6 +5272,9 @@ export const BRIDGE_METHODS = [
   "plugin.list",
   "plugin.setEnabled",
   "plugin.stats",
+  "market.list",
+  "plugin.install",
+  "plugin.remove",
   "store.get",
   "store.set",
   "init.get",
@@ -4759,6 +5322,13 @@ export const BRIDGE_METHODS = [
   "account.status",
   "account.signIn",
   "account.signOut",
+  "agents.list",
+  "agents.sessions",
+  "agents.transcript",
+  "agents.import",
+  "agents.ask",
+  "agents.runs",
+  "agents.stop",
   "memory.list",
   "memory.get",
   "memory.remember",

@@ -1,0 +1,19 @@
+{
+  "target": "MarketEntry",
+  "description": "a pack, relative to its index, asking to reach GitHub",
+  "instance": {
+    "id": "desk.pack-github",
+    "kind": "pack",
+    "name": "GitHub",
+    "version": "0.1.0",
+    "description": "The GitHub connector, a board and a timeline of issues and pull requests, and a builder's morning layout.",
+    "publisher": "Team endue",
+    "license": "Apache-2.0",
+    "tags": ["github", "pack"],
+    "url": "packs/github.desk-plugin",
+    "sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+    "size": 9120,
+    "permissions": [{ "permission": "net:fetch", "hosts": ["api.github.com"] }],
+    "engines": { "desk": ">=0.2.0" }
+  }
+}

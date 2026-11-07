@@ -1,6 +1,7 @@
 #!/usr/bin/env node
-// theme-market: check a look market folder (ADR 0060, ADR 0091), this repository's market/themes and
-// market/design-systems by default. A design system's entry has kind design-system and its bundle is a
+// theme-market: check a market folder: a look market (ADR 0060, ADR 0091), this repository's
+// market/themes and market/design-systems, or a market of every kind (ADR 0107, specs/market/v0),
+// market/views, whose bundles are .desk-plugin files checked against their entries. A design system's entry has kind design-system and its bundle is a
 // .desk-design: a design-system plugin with no files.
 // Its index.json must be a ThemeIndex (specs/plugin/v0/theme-index.schema.json) whose ids are unique;
 // every entry's bundle must sit beside it with the sha256 and size the index names, be a .desk-theme
@@ -19,7 +20,9 @@ import { loadSchemas, PLUGIN_FOLDERS, ROOT } from "./codegen/load.mjs";
 
 export const MARKET = join(ROOT, "market/themes");
 export const DESIGN_MARKET = join(ROOT, "market/design-systems");
+export const VIEW_MARKET = join(ROOT, "market/views");
 const PLUGIN = "https://endue.ai/specs/plugin/v0/";
+const MARKET_SPEC = "https://endue.ai/specs/market/v0/market.schema.json#/$defs/";
 /** A theme's asset files: 2 MiB each and 8 MiB together, as `desk plugin validate` holds them. */
 const ASSET_MAX = 2 << 20;
 const ASSETS_MAX = 8 << 20;
@@ -34,6 +37,8 @@ function validator(name) {
       index: ajv.getSchema(`${PLUGIN}theme-index.schema.json#/$defs/ThemeIndex`),
       bundle: ajv.getSchema(`${PLUGIN}theme.schema.json#/$defs/ThemeBundle`),
       manifest: ajv.getSchema(`${PLUGIN}plugin.schema.json`),
+      marketIndex: ajv.getSchema(`${MARKET_SPEC}MarketIndex`),
+      pluginBundle: ajv.getSchema(`${MARKET_SPEC}PluginBundle`),
     };
   }
   return validators[name];
@@ -109,6 +114,68 @@ function checkBundle(dir, entry) {
   return problems;
 }
 
+/** The market kind a plugin kind installs as (specs/market/v0 MarketKind). */
+const kindOf = (kind) =>
+  ["theme", "design-system", "view", "pack"].includes(kind) ? kind : "plugin";
+
+/** Problems of one entry's .desk-plugin in a market of every kind. */
+function checkPluginBundle(dir, entry) {
+  const at = (why) => `${entry.id}: ${why}`;
+  if (/^https:\/\//.test(entry.url))
+    return [at(`${entry.url}: this market's bundles sit beside index.json`)];
+  if (!entry.url.endsWith(".desk-plugin")) return [at(`${entry.url}: a bundle is a .desk-plugin`)];
+  const file = join(dir, entry.url);
+  if (!existsSync(file)) return [at(`${entry.url} is missing`)];
+  const bytes = readFileSync(file);
+  const problems = [];
+  const sha256 = createHash("sha256").update(bytes).digest("hex");
+  if (sha256 !== entry.sha256)
+    problems.push(at(`sha256 ${sha256}, the index says ${entry.sha256}`));
+  if (bytes.length !== entry.size)
+    problems.push(at(`size ${bytes.length}, the index says ${entry.size}`));
+  let bundle;
+  try {
+    bundle = JSON.parse(bytes.toString("utf8"));
+  } catch (error) {
+    return [...problems, at(`${entry.url} is not JSON: ${error.message}`)];
+  }
+  const manifest = bundle?.manifest;
+  problems.push(...schemaProblems(validator("manifest"), manifest, at("plugin.json")));
+  problems.push(...schemaProblems(validator("pluginBundle"), bundle, at(entry.url), "/manifest"));
+  if (manifest?.id !== entry.id) problems.push(at(`the bundle's id is ${manifest?.id}`));
+  for (const field of ["name", "version"])
+    if (manifest?.[field] !== entry[field])
+      problems.push(
+        at(`the bundle's ${field} is ${manifest?.[field]}, the index says ${entry[field]}`),
+      );
+  const kind = kindOf(manifest?.kind);
+  if (kind !== entry.kind)
+    problems.push(at(`the bundle is a ${manifest?.kind}, the index says ${entry.kind}`));
+  const asked = JSON.stringify(manifest?.permissions ?? []);
+  if (asked !== JSON.stringify(entry.permissions ?? []))
+    problems.push(at("the index's permissions are not the ones the manifest asks"));
+  return problems;
+}
+
+/** Every problem of a market of every kind (desk-market-index/1) in `dir`. */
+function checkKindMarket(dir, index) {
+  const problems = schemaProblems(validator("marketIndex"), index, "index.json: ");
+  const entries = Array.isArray(index?.entries) ? index.entries : [];
+  const seen = new Set();
+  for (const entry of entries) {
+    if (typeof entry?.id !== "string" || typeof entry.url !== "string") continue;
+    if (seen.has(entry.id)) problems.push(`${entry.id}: listed twice`);
+    seen.add(entry.id);
+    problems.push(...checkPluginBundle(dir, entry));
+  }
+  const listed = new Set(entries.map((entry) => entry?.url));
+  for (const name of readdirSync(dir)
+    .filter((n) => n.endsWith(".desk-plugin"))
+    .sort())
+    if (!listed.has(name)) problems.push(`${name}: not in index.json`);
+  return problems;
+}
+
 /** Every problem of the market in `dir`, as lines; none when it checks out. */
 export function checkMarket(dir = MARKET) {
   const path = join(dir, "index.json");
@@ -119,6 +186,7 @@ export function checkMarket(dir = MARKET) {
   } catch (error) {
     return [`index.json is not JSON: ${error.message}`];
   }
+  if (index?.format === "desk-market-index/1") return checkKindMarket(dir, index);
   const problems = schemaProblems(validator("index"), index, "index.json: ");
   const themes = Array.isArray(index?.themes) ? index.themes : [];
   const seen = new Set();
@@ -137,14 +205,15 @@ export function checkMarket(dir = MARKET) {
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
-  const dirs = process.argv[2] ? [process.argv[2]] : [MARKET, DESIGN_MARKET];
+  const dirs = process.argv[2] ? [process.argv[2]] : [MARKET, DESIGN_MARKET, VIEW_MARKET];
   let failed = false;
   for (const dir of dirs) {
     const problems = checkMarket(dir);
     for (const problem of problems) console.error(`theme-market: ${problem}`);
     failed ||= problems.length > 0;
     if (problems.length > 0) continue;
-    const count = JSON.parse(readFileSync(join(dir, "index.json"), "utf8")).themes.length;
+    const index = JSON.parse(readFileSync(join(dir, "index.json"), "utf8"));
+    const count = (index.themes ?? index.entries).length;
     console.log(`theme-market: ${dir.slice(ROOT.length)}: ${count} check out`);
   }
   if (failed) process.exit(1);

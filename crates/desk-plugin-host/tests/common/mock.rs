@@ -1,6 +1,6 @@
 //! A mock `Host`: it records every call as (plugin, bridge method, main argument) and keeps what a
 //! desk would keep (files, the store, commands, answers, settings, the log) in memory. Absolute
-//! paths are files on disk (`disk`).
+//! paths are files on disk (`disk`). A method can be made to wait before it answers (`delay`).
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
@@ -28,6 +28,7 @@ pub type Line = (String, LogLevel, String, Option<Value>);
 pub struct MockHost {
     files: Mutex<BTreeMap<String, Vec<u8>>>,
     refused: Mutex<BTreeSet<String>>,
+    delays: Mutex<BTreeMap<String, std::time::Duration>>,
     calls: Mutex<Vec<Call>>,
     notes: Mutex<Vec<Note>>,
     store: Mutex<BTreeMap<(String, String), Value>>,
@@ -55,6 +56,11 @@ impl MockHost {
     /// Answer `method` (for example "fs.read") with permission-denied from now on.
     pub fn refuse(&self, method: &str) {
         self.refused.lock().unwrap().insert(method.into());
+    }
+
+    /// Wait `by` in every call of `method` from now on, after recording it.
+    pub fn delay(&self, method: &str, by: std::time::Duration) {
+        self.delays.lock().unwrap().insert(method.into(), by);
     }
 
     pub fn calls(&self) -> Vec<Call> {
@@ -86,6 +92,10 @@ impl MockHost {
     fn call(&self, plugin: &str, method: &str, arg: &str) -> Result<(), Error> {
         let call = (plugin.to_owned(), method.to_owned(), arg.to_owned());
         self.calls.lock().unwrap().push(call);
+        let delay = self.delays.lock().unwrap().get(method).copied();
+        if let Some(by) = delay {
+            std::thread::sleep(by);
+        }
         if self.refused.lock().unwrap().contains(method) {
             return Err(Error {
                 code: ErrorCode::PermissionDenied,

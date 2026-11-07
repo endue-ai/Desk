@@ -57,7 +57,7 @@ impl Client {
                 Incoming::Answer(answer, line) if wire::answer_id(&answer) == id => {
                     return Ok((answer, line));
                 }
-                Incoming::Event(event, line) => self.events.push_back((event, line)),
+                Incoming::Event(event, line) => self.events.push_back((*event, line)),
                 Incoming::Answer(..) | Incoming::Skipped => {}
             }
         }
@@ -75,7 +75,7 @@ impl Client {
         }
         loop {
             if let Incoming::Event(event, line) = self.receive()? {
-                return Ok((event, line));
+                return Ok((*event, line));
             }
         }
     }

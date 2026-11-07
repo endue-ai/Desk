@@ -866,6 +866,31 @@ pub enum DesignFocusOffset {
     Far,
 }
 
+/// What a pack brings and does when it is applied.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PackBlock {
+    /// The plugins it brings, by id: each nested in the pack folder under plugins/<folder>/ (installed and removed with the pack) or a plugin the desk has. Connectors first: Apply opens Settings, Connections on the first connector.
+    pub plugins: Vec<PluginId>,
+    /// Commands Apply runs once the pack is on, in order: a board, a timeline.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub opens: Option<Vec<PackCommand>>,
+    /// The profile it contributes (contributes.profiles) that Apply switches to: its layout.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub profile: Option<ProfileId>,
+    /// The words a person names the service by: github, 깃허브. Make with Eris finds the pack by them.
+    pub services: Vec<String>,
+}
+
+/// One command Apply runs, with its arguments.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PackCommand {
+    pub command: CommandId,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub args: Option<serde_json::Map<String, serde_json::Value>>,
+}
+
 /// One permission with its scope. Plugin manifests declare these; bridge calls carry the one that covers them.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
@@ -895,6 +920,7 @@ pub enum Permission {
     UpdateManage(UpdateManagePermission),
     ThemeManage(ThemeManagePermission),
     AccountManage(AccountManagePermission),
+    AgentsManage(AgentsManagePermission),
     MemoryRead(MemoryReadPermission),
     MemoryWrite(MemoryWritePermission),
 }
@@ -1106,6 +1132,13 @@ pub struct AccountManagePermission {
     pub permission: AccountManagePermissionPermission,
 }
 
+/// Find the agent programs on this computer (Claude Code, Codex), read their sessions from the files they keep, import sessions into the desk, and ask them for work with agents.*. Receive agents.run and agents.changed. The desk grants it to the runtime only (ADR 0110).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AgentsManagePermission {
+    pub permission: AgentsManagePermissionPermission,
+}
+
 /// Read Eris's memory with memory.list, memory.get and memory.search, and receive memory.changed (ADR 0095). The desk grants it to the runtime; Eris and the memory inspector are asked like any caller.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -1199,14 +1232,17 @@ pub struct PluginManifest {
     /// Installed but off until the desk needs it, like Emacs's autoload. With no stored enabled flag the plugin starts off, and its file openers count while it is off: desk.files turns it on to open a file and off again when its last file closes; profiles leave it as it is. Default false.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub autoload: Option<bool>,
-    /// A view plugin's one view, inline.
+    /// A view plugin's one view, inline; a pack's own view too.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub view: Option<View>,
-    /// A view plugin's view files, one View each, relative to the plugin folder.
+    /// A view plugin's view files, one View each, relative to the plugin folder; a pack's too.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub views: Option<Vec<ViewPath>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub connector: Option<ConnectorManifest>,
+    /// A pack's pack block: what it brings and does when applied (ADR 0108).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pack: Option<PackBlock>,
     /// A theme plugin's theme: its layers and the font and image files it brings, relative to the plugin folder.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub theme: Option<ThemePackage>,
@@ -1228,7 +1264,7 @@ pub type Role = String;
 /// Semantic version, for example 0.1.0 or 1.2.3-beta.1.
 pub type Version = String;
 
-/// ui runs in a sandboxed iframe, logic in a Wasm instance, tool as an MCP server inside the VM. policy runs no code: it only contributes data (ADR 0017). library runs no code of its own either: it is files other plugins import, served at /<id>/... like any plugin's, never mounted and never turned off. connector brings an app's data in as items, as a Wasm component or an MCP server; view runs no code either: it is one or more views (ADR 0032). theme runs no code: it is a theme block and its font and image files, chosen with desk.theme.active (ADR 0056). design-system runs no code either: it is a designSystem block of component recipes, chosen with desk.design.active (ADR 0090).
+/// ui runs in a sandboxed iframe, logic in a Wasm instance, tool as an MCP server inside the VM. policy runs no code: it only contributes data (ADR 0017). library runs no code of its own either: it is files other plugins import, served at /<id>/... like any plugin's, never mounted and never turned off. connector brings an app's data in as items, as a Wasm component, an MCP server or an http block the core runs (no entry; ADR 0106); view runs no code either: it is one or more views (ADR 0032). theme runs no code: it is a theme block and its font and image files, chosen with desk.theme.active (ADR 0056). design-system runs no code either: it is a designSystem block of component recipes, chosen with desk.design.active (ADR 0090). pack runs no code either: a pack block naming the plugins it brings (nested in its folder or on the desk), its own views and its contributed layout (ADR 0108).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum PluginKind {
     #[serde(rename = "ui")]
@@ -1249,6 +1285,8 @@ pub enum PluginKind {
     Theme,
     #[serde(rename = "design-system")]
     DesignSystem,
+    #[serde(rename = "pack")]
+    Pack,
 }
 
 /// Path to the entry file, relative to the plugin folder, without .. segments.
@@ -2591,6 +2629,8 @@ pub struct ViewProvenance {
 #[serde(deny_unknown_fields)]
 pub struct ConnectorManifest {
     pub binding: ConnectorBinding,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub http: Option<HttpBinding>,
     pub auth: ConnectorAuth,
     /// The kinds of item the connector brings in, one entry per kind.
     pub resources: Vec<ConnectorResource>,
@@ -2604,13 +2644,15 @@ pub struct ConnectorManifest {
     pub instance_settings: Option<BTreeMap<String, ConnectorSetting>>,
 }
 
-/// How the connector runs: wasm, a component the plugin's entry names (no VM to boot); mcp, an MCP server inside the VM that follows the Desk profile in the README.
+/// How the connector runs: wasm, a component the plugin's entry names (no VM to boot); mcp, an MCP server inside the VM that follows the Desk profile in the README; http, requests and a mapping the core runs from the http block, with no code of the plugin's own (ADR 0106).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum ConnectorBinding {
     #[serde(rename = "wasm")]
     Wasm,
     #[serde(rename = "mcp")]
     Mcp,
+    #[serde(rename = "http")]
+    Http,
 }
 
 /// none (local files, the OS's own data), token (a key the person pastes) or oauth.
@@ -2624,7 +2666,7 @@ pub enum ConnectorAuthKind {
     Oauth,
 }
 
-/// How an instance signs in. Tokens are kept by the core and never handed to the connector's code. No v0 method starts an OAuth flow yet.
+/// How an instance signs in. Tokens are kept by the core and never handed to the connector's code; with binding http the core itself sends the token (http.auth). No v0 method starts an OAuth flow yet.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ConnectorAuth {
@@ -2646,6 +2688,129 @@ pub struct ConnectorAuth {
 
 /// An https URL.
 pub type HttpsUrl = String;
+
+/// A connector as data (binding http): GET requests against one base URL, each response's pages followed, and every record mapped into an item. The core runs it, reads the token from the instance's secret setting and sends it only to the base URL's origin; the token never crosses the bridge. Each sync reads every page again and removes the items that left (ADR 0106).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct HttpBinding {
+    #[serde(rename = "baseUrl")]
+    pub base_url: HttpBaseUrl,
+    /// Sent with every request: Accept, an API version. Never Authorization (auth says how the token goes) and never a secret.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub headers: Option<BTreeMap<String, String>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub auth: Option<HttpAuth>,
+    /// What one sync asks for, in order. The same item from two requests is one item, the last one read.
+    pub requests: Vec<HttpRequest>,
+    /// How a record becomes an item, by name; each request names one.
+    pub maps: BTreeMap<String, HttpItemMap>,
+}
+
+/// Where every request goes: an https URL, or http on this computer (127.0.0.1, localhost) for a local service. No query and no trailing slash; request paths follow it.
+pub type HttpBaseUrl = String;
+
+/// An HTTP header name other than Authorization, Cookie and Host.
+pub type HttpHeaderName = String;
+
+/// How the core sends the instance's token: the secret setting it reads, in a header with a prefix. Authorization: Bearer <token> when header and prefix are absent.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct HttpAuth {
+    /// A secret instance setting (secret: true), required: the token.
+    pub setting: ConnectorSettingName,
+    /// Authorization when absent.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub header: Option<String>,
+    /// Bearer and a space when absent; empty sends the token alone.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub prefix: Option<String>,
+}
+
+/// One GET request and the pages after it.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct HttpRequest {
+    /// After the base URL: /search/issues.
+    pub path: String,
+    /// Query parameters, encoded by the core.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub query: Option<BTreeMap<String, String>>,
+    /// Where the records are in the response: a JSON pointer to an array; empty for a response that is the array.
+    pub items: JsonPointer,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pagination: Option<HttpPagination>,
+    /// Pages read at most; 10 when absent.
+    #[serde(rename = "maxPages", default, skip_serializing_if = "Option::is_none")]
+    pub max_pages: Option<u64>,
+    /// The name of the map in maps that makes its records items.
+    pub map: HttpMapName,
+}
+
+/// link: the Link header's rel="next"; body: a URL in the response.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum HttpPageNext {
+    #[serde(rename = "link")]
+    Link,
+    #[serde(rename = "body")]
+    Body,
+}
+
+/// Where the next page is: link, the URL of rel="next" in the Link header (RFC 8288); body, the URL at pointer in the response. A next URL on another origin ends the request. Absent: one page.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct HttpPagination {
+    pub next: HttpPageNext,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pointer: Option<JsonPointer>,
+}
+
+/// A map's name: issue, event.
+pub type HttpMapName = String;
+
+/// A JSON pointer (RFC 6901): empty for the whole value, else /name/0/name.
+pub type JsonPointer = String;
+
+/// How one record becomes an item of kind: each item field (specs/item/v0) from a value of the record. The core sets source; a record whose item does not fit specs/item/v0 is skipped.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct HttpItemMap {
+    pub kind: ItemKind,
+    /// By item field: id and title always, then updatedAt, status, due, project, deepLink, raw.
+    pub fields: BTreeMap<String, HttpValue>,
+}
+
+/// One item field's value: a JSON pointer into the record (empty is the whole record), or an object that reads one and shapes it. A null or missing value leaves the field out, unless default gives one.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum HttpValue {
+    JsonPointer(JsonPointer),
+    HttpRead(HttpRead),
+    HttpConst(HttpConst),
+}
+
+/// Read the value at pointer and shape it.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct HttpRead {
+    pub pointer: JsonPointer,
+    /// Keep the text after the last occurrence of this text; a value without it is missing.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub after: Option<String>,
+    /// Replace the value, as text, by the one it names; one it does not name is missing.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub values: Option<serde_json::Map<String, serde_json::Value>>,
+    /// The value when the pointer reads nothing, or nothing that values or after keep.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub default: Option<serde_json::Value>,
+}
+
+/// The same value for every record.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct HttpConst {
+    /// This value for every record.
+    pub r#const: serde_json::Value,
+}
 
 /// One kind of item the connector brings in, and the commands that act on it.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -2947,6 +3112,89 @@ pub struct AgentRecord {
     pub runs: Option<u64>,
 }
 
+/// One market's index, as JSON.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct MarketIndex {
+    /// The index format and its version.
+    pub format: MarketIndexFormat,
+    /// What the market offers, each id once.
+    pub entries: Vec<MarketEntry>,
+}
+
+/// What an entry's bundle holds: a theme or a design system (their own bundles, ADR 0060 and 0091), a view plugin, a pack, or any other plugin (code: ui, logic, tool, connector, policy, library).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum MarketKind {
+    #[serde(rename = "theme")]
+    Theme,
+    #[serde(rename = "design-system")]
+    DesignSystem,
+    #[serde(rename = "view")]
+    View,
+    #[serde(rename = "pack")]
+    Pack,
+    #[serde(rename = "plugin")]
+    Plugin,
+}
+
+/// One thing a market offers: its card, its bundle and what it asks.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct MarketEntry {
+    pub id: PluginId,
+    pub kind: MarketKind,
+    pub name: String,
+    pub version: Version,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    /// Who publishes it.
+    pub publisher: String,
+    /// An SPDX licence expression for the bundle and its assets.
+    pub license: String,
+    /// Words a gallery filters by.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tags: Option<Vec<String>>,
+    pub url: MarketUrl,
+    /// The sha256 of the bundle's bytes, lowercase hex: a download that differs is refused.
+    pub sha256: String,
+    /// The bundle's size in bytes, 16 MiB at most.
+    pub size: u64,
+    /// What the plugin asks, as its manifest does: shown before an install, asked again when an update adds one.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub permissions: Option<Vec<Permission>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub engines: Option<MarketEngines>,
+}
+
+/// The desks the bundle runs on.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct MarketEngines {
+    /// The Desk versions, as a minimum: >=0.1.0.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub desk: Option<String>,
+}
+
+/// Where the bundle is: a path relative to the index (views/today-plus.desk-plugin) or an https URL.
+pub type MarketUrl = String;
+
+/// A plugin as one file, a .desk-plugin: JSON, 16 MiB at most, holding its plugin.json and every file of its folder, base64. Themes and design systems travel as .desk-theme and .desk-design (ThemeBundle).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PluginBundle {
+    /// The bundle format and its version.
+    pub format: PluginBundleFormat,
+    pub manifest: PluginManifest,
+    /// The plugin's files by their path in its folder (forward slashes, no .. and no dot files), each base64; plugin.json is the manifest.
+    pub files: BTreeMap<String, BundleData>,
+}
+
+/// A file's path in the plugin folder.
+pub type BundlePath = String;
+
+/// A file's bytes, base64.
+pub type BundleData = String;
+
 /// The whole of init.yaml. Every key is optional; a missing key takes its default.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -3050,6 +3298,32 @@ pub struct KeysFile {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub bindings: Option<Vec<KeyBinding>>,
 }
+
+/// The whole of plugins.lock.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PluginsLock {
+    /// The format version. Desk refuses a lock newer than it reads.
+    pub version: u64,
+    /// Every installed plugin that validates, sorted by id.
+    pub plugins: Vec<LockedPlugin>,
+}
+
+/// One installed plugin, pinned.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct LockedPlugin {
+    pub id: PluginId,
+    pub version: Version,
+    pub source: LockSource,
+    /// The folder digest: every regular file under the plugin folder whose path has no part starting with a dot, in byte order of its path relative to the folder (forward slashes), each fed as path, NUL, decimal length, NUL, bytes; lowercase hex.
+    pub sha256: String,
+    /// Whether it is on, as its persisted flag says (init.yaml's start-only holds aside).
+    pub enabled: bool,
+}
+
+/// Where the plugin came from: builtin (shipped with Desk), folder:<path> (a folder on this computer, ~ for the home folder) or url:<https URL> (the market, later).
+pub type LockSource = String;
 
 /// The whole of a profile file. Every key is optional; an empty file is a profile that changes nothing.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -3268,6 +3542,423 @@ pub struct AgentCancelledData {
 pub struct AgentCancelledEvent {
     pub event: AgentCancelledEventEvent,
     pub data: AgentCancelledData,
+}
+
+/// A program the core knows: claude (Claude Code, Anthropic) or codex (Codex, OpenAI).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum LocalAgentId {
+    #[serde(rename = "claude")]
+    Claude,
+    #[serde(rename = "codex")]
+    Codex,
+}
+
+/// A session's id as its program names it: a UUID for both programs today.
+pub type LocalAgentSessionId = String;
+
+/// read-only: the program runs in its read-only mode (Claude Code's plan mode, Codex's read-only sandbox). agent: the program uses its own permission settings and may change files. No flag that widens a program's permissions beyond its own settings is ever passed.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum LocalAgentAccess {
+    #[serde(rename = "read-only")]
+    ReadOnly,
+    #[serde(rename = "agent")]
+    Agent,
+}
+
+/// Which sessions: local (the program's sessions on this computer that are not archived), archive (the ones archived), desk (the ones imported into the desk).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum LocalAgentSource {
+    #[serde(rename = "local")]
+    Local,
+    #[serde(rename = "archive")]
+    Archive,
+    #[serde(rename = "desk")]
+    Desk,
+}
+
+/// One agent program found on this computer. program is where it runs from when it is on the PATH (or in a folder its installer uses); without it the desk reads its sessions but cannot ask it. version is the one its newest session recorded; finding an agent never starts it.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct LocalAgent {
+    pub id: LocalAgentId,
+    pub name: String,
+    pub vendor: String,
+    /// The program's absolute path.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub program: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub version: Option<String>,
+    /// The program's own data folder, an absolute path (~/.claude, ~/.codex).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub home: Option<String>,
+    /// How many sessions it keeps that are not archived.
+    pub sessions: u64,
+    /// How many of its sessions are archived.
+    pub archived: u64,
+    /// How many of its sessions the desk imported.
+    pub imported: u64,
+    /// How many runs of it are going on now.
+    pub running: u64,
+}
+
+/// One session as the program's files say it: its title (the program's own, else the first thing the person asked), the folder it worked in, the branch there, when it started and was last active, and the program's version and model. imported says whether the desk holds a copy; importedAt when it was made.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct LocalAgentSession {
+    pub id: LocalAgentSessionId,
+    pub agent: LocalAgentId,
+    pub title: String,
+    /// The folder the session worked in, an absolute path.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cwd: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub branch: Option<String>,
+    #[serde(rename = "startedAt", default, skip_serializing_if = "Option::is_none")]
+    pub started_at: Option<String>,
+    #[serde(rename = "updatedAt")]
+    pub updated_at: String,
+    pub archived: bool,
+    pub imported: bool,
+    #[serde(
+        rename = "importedAt",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub imported_at: Option<String>,
+    /// The bytes of the session's file.
+    pub size: u64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub version: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub model: Option<String>,
+}
+
+/// Who a turn is: the person (user), the agent (assistant), or a tool the agent used (tool).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum LocalAgentRole {
+    #[serde(rename = "user")]
+    User,
+    #[serde(rename = "assistant")]
+    Assistant,
+    #[serde(rename = "tool")]
+    Tool,
+}
+
+/// One turn of a session: what the person said (user), what the agent answered (assistant), or a tool it used (tool, with the tool's name and the start of its input). Text past 8000 characters is cut and says so with cut.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct LocalAgentMessage {
+    pub role: LocalAgentRole,
+    pub text: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub at: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cut: Option<bool>,
+}
+
+/// running until the program ends: done when it answered, failed when it could not, stopped when agents.stop ended it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum LocalAgentRunState {
+    #[serde(rename = "running")]
+    Running,
+    #[serde(rename = "done")]
+    Done,
+    #[serde(rename = "failed")]
+    Failed,
+    #[serde(rename = "stopped")]
+    Stopped,
+}
+
+/// One run of agents.ask: who asked (caller), what, where, in which session, with what access, and how it stands. text is the answer so far (the final answer once done), cut at 8000 characters; tools counts the tools the agent used. The core keeps the last 50 runs while it runs.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct LocalAgentRun {
+    #[serde(rename = "runId")]
+    pub run_id: LocalAgentRunId,
+    pub agent: LocalAgentId,
+    pub caller: CallerId,
+    pub prompt: String,
+    pub cwd: String,
+    #[serde(rename = "sessionId", default, skip_serializing_if = "Option::is_none")]
+    pub session_id: Option<LocalAgentSessionId>,
+    pub access: LocalAgentAccess,
+    pub state: LocalAgentRunState,
+    #[serde(rename = "startedAt")]
+    pub started_at: String,
+    #[serde(rename = "endedAt", default, skip_serializing_if = "Option::is_none")]
+    pub ended_at: Option<String>,
+    pub text: String,
+    pub tools: u64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
+}
+
+/// A run's id, given by the core.
+pub type LocalAgentRunId = String;
+
+/// Parameters of agents.list: the scope alone.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AgentsParams {
+    pub scope: AgentsManagePermission,
+}
+
+/// The agent programs found on this computer: each one whose data folder or program is there, with its counts. Nothing is started.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AgentsListRequest {
+    pub id: RequestId,
+    pub method: AgentsListRequestMethod,
+    pub params: AgentsParams,
+}
+
+/// Result of agents.list: the agents found, Claude Code first. None found is an empty list.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AgentsListResult {
+    pub agents: Vec<LocalAgent>,
+}
+
+/// One agent's sessions from one source, the most recently active first.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AgentsSessionsRequest {
+    pub id: RequestId,
+    pub method: AgentsSessionsRequestMethod,
+    pub params: AgentsSessionsParams,
+}
+
+/// Parameters of agents.sessions. from is local unless given. query keeps the sessions whose title, folder or branch hold every one of its words (any case). offset and limit page through them; limit is 50 unless given.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AgentsSessionsParams {
+    pub agent: LocalAgentId,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub from: Option<LocalAgentSource>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub query: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub offset: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub limit: Option<u64>,
+    pub scope: AgentsManagePermission,
+}
+
+/// Result of agents.sessions: one page, and how many sessions match in all.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AgentsSessionsResult {
+    pub sessions: Vec<LocalAgentSession>,
+    pub total: u64,
+}
+
+/// One session's turns: from the program's file while it is there, else from the desk's copy. A session neither holds is not_found.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AgentsTranscriptRequest {
+    pub id: RequestId,
+    pub method: AgentsTranscriptRequestMethod,
+    pub params: AgentsTranscriptParams,
+}
+
+/// Parameters of agents.transcript: the last limit turns (200 unless given).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AgentsTranscriptParams {
+    pub agent: LocalAgentId,
+    #[serde(rename = "sessionId")]
+    pub session_id: LocalAgentSessionId,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub limit: Option<u64>,
+    pub scope: AgentsManagePermission,
+}
+
+/// Result of agents.transcript: the session, its last turns in order, and whether earlier ones were left out (truncated).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AgentsTranscriptResult {
+    pub session: LocalAgentSession,
+    pub messages: Vec<LocalAgentMessage>,
+    pub truncated: bool,
+}
+
+/// Copy sessions into the desk's own folder: the ones sessionIds names, else the newest 500 of the source from names (local unless given). Each copy holds the session and its last 1000 turns, so it stays readable when the program drops or compresses its file. A session imported before is copied again only when its file changed. agents.changed follows.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AgentsImportRequest {
+    pub id: RequestId,
+    pub method: AgentsImportRequestMethod,
+    pub params: AgentsImportParams,
+}
+
+/// Parameters of agents.import. from is local or archive; desk is invalid_params.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AgentsImportParams {
+    pub agent: LocalAgentId,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub from: Option<LocalAgentSource>,
+    #[serde(
+        rename = "sessionIds",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub session_ids: Option<Vec<LocalAgentSessionId>>,
+    pub scope: AgentsManagePermission,
+}
+
+/// Result of agents.import: how many sessions were copied, how many were already up to date, and how many could not be read.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AgentsImportResult {
+    pub imported: u64,
+    pub unchanged: u64,
+    pub failed: u64,
+}
+
+/// Ask an agent for work: the core runs its program once, without a shell, in its non-interactive mode, in cwd (the session's folder when sessionId resumes one, else the home folder), continuing sessionId when given. The prompt is one argument that a leading dash cannot turn into an option. The answer is the run's id at once; the run reports itself as agents.run events and agents.runs. An agent the core found no program for is unsupported.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AgentsAskRequest {
+    pub id: RequestId,
+    pub method: AgentsAskRequestMethod,
+    pub params: AgentsAskParams,
+}
+
+/// Parameters of agents.ask. access is read-only unless given. model is passed as the program's --model.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AgentsAskParams {
+    pub agent: LocalAgentId,
+    pub prompt: String,
+    #[serde(rename = "sessionId", default, skip_serializing_if = "Option::is_none")]
+    pub session_id: Option<LocalAgentSessionId>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cwd: Option<Path>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub access: Option<LocalAgentAccess>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub model: Option<String>,
+    pub scope: AgentsManagePermission,
+}
+
+/// Result of agents.ask: the run as it starts.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AgentsAskResult {
+    pub run: LocalAgentRun,
+}
+
+/// The runs the core keeps (the last 50), the newest first: every agent's, or one's.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AgentsRunsRequest {
+    pub id: RequestId,
+    pub method: AgentsRunsRequestMethod,
+    pub params: AgentsRunsParams,
+}
+
+/// Parameters of agents.runs.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AgentsRunsParams {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub agent: Option<LocalAgentId>,
+    pub scope: AgentsManagePermission,
+}
+
+/// Result of agents.runs.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AgentsRunsResult {
+    pub runs: Vec<LocalAgentRun>,
+}
+
+/// End a run that is going on: its program is ended and the run is stopped. A run that already ended, or one the core does not keep, is not_found.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AgentsStopRequest {
+    pub id: RequestId,
+    pub method: AgentsStopRequestMethod,
+    pub params: AgentsStopParams,
+}
+
+/// Parameters of agents.stop.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AgentsStopParams {
+    #[serde(rename = "runId")]
+    pub run_id: LocalAgentRunId,
+    pub scope: AgentsManagePermission,
+}
+
+/// Result of agents.stop: the run, stopped.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AgentsStopResult {
+    pub run: LocalAgentRun,
+}
+
+/// What happened in a run: started; text (a block of the agent's answer); tool (it used one); done, failed or stopped, its end, which carries the whole run.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum LocalAgentRunKind {
+    #[serde(rename = "started")]
+    Started,
+    #[serde(rename = "text")]
+    Text,
+    #[serde(rename = "tool")]
+    Tool,
+    #[serde(rename = "done")]
+    Done,
+    #[serde(rename = "failed")]
+    Failed,
+    #[serde(rename = "stopped")]
+    Stopped,
+}
+
+/// One step of a run. text is the block a text step adds; tool names the tool a tool step used, with the start of its input in detail; sessionId is there once the program said which session it is in. run is the whole run on started and on its end.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct LocalAgentRunData {
+    #[serde(rename = "runId")]
+    pub run_id: LocalAgentRunId,
+    pub agent: LocalAgentId,
+    pub kind: LocalAgentRunKind,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub text: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tool: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub detail: Option<String>,
+    #[serde(rename = "sessionId", default, skip_serializing_if = "Option::is_none")]
+    pub session_id: Option<LocalAgentSessionId>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub run: Option<LocalAgentRun>,
+}
+
+/// A step of a run of agents.ask. Sent to holders of agents:manage.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AgentsRunEvent {
+    pub event: AgentsRunEventEvent,
+    pub data: LocalAgentRunData,
+}
+
+/// Which agent's imported sessions changed.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AgentsChangedData {
+    pub agent: LocalAgentId,
+}
+
+/// agents.import changed what the desk holds of an agent. Sent to holders of agents:manage.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AgentsChangedEvent {
+    pub event: AgentsChangedEventEvent,
+    pub data: AgentsChangedData,
 }
 
 /// Start capturing the microphone. With wakeWord, audio.wake events arrive when the wake word is heard.
@@ -3707,6 +4398,9 @@ pub enum BridgeRequest {
     PluginList(PluginListRequest),
     PluginSetEnabled(PluginSetEnabledRequest),
     PluginStats(PluginStatsRequest),
+    MarketList(MarketListRequest),
+    PluginInstall(PluginInstallRequest),
+    PluginRemove(PluginRemoveRequest),
     StoreGet(StoreGetRequest),
     StoreSet(StoreSetRequest),
     InitGet(InitGetRequest),
@@ -3754,6 +4448,13 @@ pub enum BridgeRequest {
     AccountStatus(AccountStatusRequest),
     AccountSignIn(AccountSignInRequest),
     AccountSignOut(AccountSignOutRequest),
+    AgentsList(AgentsListRequest),
+    AgentsSessions(AgentsSessionsRequest),
+    AgentsTranscript(AgentsTranscriptRequest),
+    AgentsImport(AgentsImportRequest),
+    AgentsAsk(AgentsAskRequest),
+    AgentsRuns(AgentsRunsRequest),
+    AgentsStop(AgentsStopRequest),
     MemoryList(MemoryListRequest),
     MemoryGet(MemoryGetRequest),
     MemoryRemember(MemoryRememberRequest),
@@ -3833,7 +4534,7 @@ pub enum ErrorCode {
     Internal,
 }
 
-/// Something the core reports without being asked: file changes, process output, wake words, permission changes, prompts and approvals, notifications, surfaces, commands, settings, log entries, changes to items, connectors and views, the desk's update status, its endue ID account, and runs to stop.
+/// Something the core reports without being asked: file changes, process output, wake words, permission changes, prompts and approvals, notifications, surfaces, commands, settings, log entries, changes to items, connectors and views, the desk's update status, its endue ID account, runs to stop, and the runs of the agent programs on this computer.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum BridgeEvent {
@@ -3862,6 +4563,8 @@ pub enum BridgeEvent {
     ViewChanged(ViewChangedEvent),
     UpdateChanged(UpdateChangedEvent),
     AccountChanged(AccountChangedEvent),
+    AgentsRun(AgentsRunEvent),
+    AgentsChanged(AgentsChangedEvent),
     MemoryChanged(MemoryChangedEvent),
     AgentCancelled(AgentCancelledEvent),
 }
@@ -4403,11 +5106,23 @@ pub struct CmdUndoneData {
     pub redo: bool,
 }
 
-/// An installed connector as connector.list returns it: its instances and the kinds of item it brings in.
+/// An installed connector as connector.list returns it: its instances, the kinds of item it brings in, and what connecting one asks for (how it signs in and its settings, never their values).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ConnectorInfo {
     pub id: PluginId,
+    /// The connector's name: GitHub.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub auth: Option<ConnectorAuth>,
+    /// What a new instance takes, by name, as the manifest declares it.
+    #[serde(
+        rename = "instanceSettings",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub instance_settings: Option<BTreeMap<String, ConnectorSetting>>,
     pub instances: Vec<ConnectorInstance>,
     pub resources: Vec<ConnectorResource>,
 }
@@ -5111,6 +5826,117 @@ pub struct LogEntryEvent {
     pub event: LogEntryEventEvent,
     pub data: LogEntry,
 }
+
+/// List what the markets offer, every kind (ADR 0107).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct MarketListRequest {
+    pub id: RequestId,
+    pub method: MarketListRequestMethod,
+    pub params: MarketListParams,
+}
+
+/// Parameters of market.list.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct MarketListParams {
+    pub scope: PluginManagePermission,
+}
+
+/// Result of market.list: every entry of every market in force, the first market that lists an id winning, and the markets that could not be read.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct MarketListResult {
+    pub entries: Vec<MarketListing>,
+    pub problems: Vec<MarketProblem>,
+}
+
+/// One entry as this desk sees it.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct MarketListing {
+    /// The index it came from, by URL.
+    pub market: String,
+    pub entry: MarketEntry,
+    /// It comes from the endue index. Code plugins install only when it does; anything else is shown as not verified (signatures later, ADR 0005).
+    pub verified: bool,
+    pub state: MarketState,
+    /// The installed version, when there is one.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub installed: Option<Version>,
+    /// The permissions it asks that the installed version was not given: all of them for a new install. Shown before installing; plugin.install needs them accepted.
+    pub added: Vec<Permission>,
+}
+
+/// available: not installed; installed: this version is; update: an older version is.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum MarketState {
+    #[serde(rename = "available")]
+    Available,
+    #[serde(rename = "installed")]
+    Installed,
+    #[serde(rename = "update")]
+    Update,
+}
+
+/// A market that could not be read.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct MarketProblem {
+    pub market: String,
+    pub message: String,
+}
+
+/// Install or update a plugin from a market (ADR 0107).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PluginInstallRequest {
+    pub id: RequestId,
+    pub method: PluginInstallRequestMethod,
+    pub params: PluginInstallParams,
+}
+
+/// Parameters of plugin.install: the entry by id (in the first market that lists it, or in market), and the permissions the person accepted, which must hold every permission the entry asks.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PluginInstallParams {
+    pub id: PluginId,
+    /// The index to take it from, by URL; the first that lists it when absent.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub market: Option<String>,
+    /// The permissions the person accepted; the plugin is granted them.
+    pub accept: Vec<Permission>,
+    pub scope: PluginManagePermission,
+}
+
+/// Result of plugin.install: the plugin as installed.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PluginInstallResult {
+    pub plugin: PluginInfo,
+}
+
+/// Remove a plugin a market installed: its folder, its grants and its lock line.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PluginRemoveRequest {
+    pub id: RequestId,
+    pub method: PluginRemoveRequestMethod,
+    pub params: PluginRemoveParams,
+}
+
+/// Parameters of plugin.remove.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PluginRemoveParams {
+    pub plugin: PluginId,
+    pub scope: PluginManagePermission,
+}
+
+/// Result of plugin.remove.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PluginRemoveResult {}
 
 /// Entries newest first, a page at a time.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -7304,6 +8130,14 @@ pub enum AccountManagePermissionPermission {
     AccountManage,
 }
 
+/// The `permission` of [`AgentsManagePermission`]: always `"agents:manage"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum AgentsManagePermissionPermission {
+    #[default]
+    #[serde(rename = "agents:manage")]
+    AgentsManage,
+}
+
 /// The `permission` of [`MemoryReadPermission`]: always `"memory:read"`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub enum MemoryReadPermissionPermission {
@@ -7488,6 +8322,22 @@ pub enum MemoryEpisodeKind {
     Episode,
 }
 
+/// The `format` of [`MarketIndex`]: always `"desk-market-index/1"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum MarketIndexFormat {
+    #[default]
+    #[serde(rename = "desk-market-index/1")]
+    DeskMarketIndex1,
+}
+
+/// The `format` of [`PluginBundle`]: always `"desk-plugin/1"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum PluginBundleFormat {
+    #[default]
+    #[serde(rename = "desk-plugin/1")]
+    DeskPlugin1,
+}
+
 /// The `method` of [`AccountStatusRequest`]: always `"account.status"`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub enum AccountStatusRequestMethod {
@@ -7550,6 +8400,78 @@ pub enum AgentCancelledEventEvent {
     #[default]
     #[serde(rename = "agent.cancelled")]
     AgentCancelled,
+}
+
+/// The `method` of [`AgentsListRequest`]: always `"agents.list"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum AgentsListRequestMethod {
+    #[default]
+    #[serde(rename = "agents.list")]
+    AgentsList,
+}
+
+/// The `method` of [`AgentsSessionsRequest`]: always `"agents.sessions"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum AgentsSessionsRequestMethod {
+    #[default]
+    #[serde(rename = "agents.sessions")]
+    AgentsSessions,
+}
+
+/// The `method` of [`AgentsTranscriptRequest`]: always `"agents.transcript"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum AgentsTranscriptRequestMethod {
+    #[default]
+    #[serde(rename = "agents.transcript")]
+    AgentsTranscript,
+}
+
+/// The `method` of [`AgentsImportRequest`]: always `"agents.import"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum AgentsImportRequestMethod {
+    #[default]
+    #[serde(rename = "agents.import")]
+    AgentsImport,
+}
+
+/// The `method` of [`AgentsAskRequest`]: always `"agents.ask"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum AgentsAskRequestMethod {
+    #[default]
+    #[serde(rename = "agents.ask")]
+    AgentsAsk,
+}
+
+/// The `method` of [`AgentsRunsRequest`]: always `"agents.runs"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum AgentsRunsRequestMethod {
+    #[default]
+    #[serde(rename = "agents.runs")]
+    AgentsRuns,
+}
+
+/// The `method` of [`AgentsStopRequest`]: always `"agents.stop"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum AgentsStopRequestMethod {
+    #[default]
+    #[serde(rename = "agents.stop")]
+    AgentsStop,
+}
+
+/// The `event` of [`AgentsRunEvent`]: always `"agents.run"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum AgentsRunEventEvent {
+    #[default]
+    #[serde(rename = "agents.run")]
+    AgentsRun,
+}
+
+/// The `event` of [`AgentsChangedEvent`]: always `"agents.changed"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum AgentsChangedEventEvent {
+    #[default]
+    #[serde(rename = "agents.changed")]
+    AgentsChanged,
 }
 
 /// The `method` of [`AudioCaptureStartRequest`]: always `"audio.capture.start"`.
@@ -7966,6 +8888,30 @@ pub enum LogEntryEventEvent {
     #[default]
     #[serde(rename = "log.entry")]
     LogEntry,
+}
+
+/// The `method` of [`MarketListRequest`]: always `"market.list"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum MarketListRequestMethod {
+    #[default]
+    #[serde(rename = "market.list")]
+    MarketList,
+}
+
+/// The `method` of [`PluginInstallRequest`]: always `"plugin.install"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum PluginInstallRequestMethod {
+    #[default]
+    #[serde(rename = "plugin.install")]
+    PluginInstall,
+}
+
+/// The `method` of [`PluginRemoveRequest`]: always `"plugin.remove"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum PluginRemoveRequestMethod {
+    #[default]
+    #[serde(rename = "plugin.remove")]
+    PluginRemove,
 }
 
 /// The `method` of [`MemoryListRequest`]: always `"memory.list"`.
@@ -8516,6 +9462,10 @@ pub const SCHEMAS: &[(&str, &str)] = &[
         include_str!("../../../specs/plugin/v0/design-system.schema.json"),
     ),
     (
+        "https://endue.ai/specs/plugin/v0/pack.schema.json",
+        include_str!("../../../specs/plugin/v0/pack.schema.json"),
+    ),
+    (
         "https://endue.ai/specs/plugin/v0/permission.schema.json",
         include_str!("../../../specs/plugin/v0/permission.schema.json"),
     ),
@@ -8560,12 +9510,20 @@ pub const SCHEMAS: &[(&str, &str)] = &[
         include_str!("../../../specs/agent/v0/agent.schema.json"),
     ),
     (
+        "https://endue.ai/specs/market/v0/market.schema.json",
+        include_str!("../../../specs/market/v0/market.schema.json"),
+    ),
+    (
         "https://endue.ai/specs/init/v0/init.schema.json",
         include_str!("../../../specs/init/v0/init.schema.json"),
     ),
     (
         "https://endue.ai/specs/init/v0/keys.schema.json",
         include_str!("../../../specs/init/v0/keys.schema.json"),
+    ),
+    (
+        "https://endue.ai/specs/init/v0/lock.schema.json",
+        include_str!("../../../specs/init/v0/lock.schema.json"),
     ),
     (
         "https://endue.ai/specs/init/v0/profile.schema.json",
@@ -8578,6 +9536,10 @@ pub const SCHEMAS: &[(&str, &str)] = &[
     (
         "https://endue.ai/specs/bridge/v0/agent.schema.json",
         include_str!("../../../specs/bridge/v0/agent.schema.json"),
+    ),
+    (
+        "https://endue.ai/specs/bridge/v0/agents.schema.json",
+        include_str!("../../../specs/bridge/v0/agents.schema.json"),
     ),
     (
         "https://endue.ai/specs/bridge/v0/audio.schema.json",
@@ -8622,6 +9584,10 @@ pub const SCHEMAS: &[(&str, &str)] = &[
     (
         "https://endue.ai/specs/bridge/v0/log.schema.json",
         include_str!("../../../specs/bridge/v0/log.schema.json"),
+    ),
+    (
+        "https://endue.ai/specs/bridge/v0/market.schema.json",
+        include_str!("../../../specs/bridge/v0/market.schema.json"),
     ),
     (
         "https://endue.ai/specs/bridge/v0/memory.schema.json",

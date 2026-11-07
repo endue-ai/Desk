@@ -2,7 +2,8 @@
 //! the log, the session lease client, init.yaml with its sync, the bridge handler with the file URLs
 //! it hands frames (ADR 0041), links handed to the system (ADR 0047), and the integration layer (the
 //! item index, connectors and views; ADR 0036), the desk's own updates (ADR 0054), the person's
-//! own themes (ADR 0058) and the theme markets (ADR 0060).
+//! own themes (ADR 0058), the theme markets (ADR 0060) and the agent programs on this computer
+//! (ADR 0110).
 pub const NAME: &str = env!("CARGO_PKG_NAME");
 
 pub mod account;
@@ -20,6 +21,8 @@ mod calendar_items;
 mod conversation;
 mod conversation_sink;
 mod core_account;
+mod core_agents;
+pub mod lock;
 
 mod core_ask;
 mod core_brain;
@@ -34,11 +37,16 @@ mod core_fs;
 mod core_fs_url;
 mod core_history;
 mod core_host;
+mod core_http;
+mod core_http_sync;
 mod core_init;
+mod core_lock;
 mod core_log;
 mod core_market;
+mod core_marketplace;
 mod core_memory;
 mod core_net;
+mod core_packs;
 mod core_perm;
 mod core_plugin_views;
 mod core_plugins;
@@ -65,11 +73,14 @@ mod grants;
 mod handler;
 mod history;
 mod history_index;
+mod http_binding;
 mod init;
 mod last_start;
 mod lease;
+mod local_agents;
 mod log;
 mod manifest;
+mod marketplace;
 mod media_types;
 mod paths;
 mod perm;
@@ -109,7 +120,10 @@ pub use handler::{Core, Roots};
 pub use init::{INIT_TEMPLATE, INIT_VERSION, Init, PluginSetup, SyncSetup};
 pub use last_start::{Begun, CRASH_LOOP, LastStart, READY_WITHIN};
 pub use lease::{LeaseClient, LeaseError};
+pub use local_agents::{LocalAgents, LocalAgentsOptions};
+pub use lock::folder_sha256;
 pub use manifest::validate_dir;
+pub use marketplace::ENDUE_MARKET;
 pub use media_types::media_type;
 pub use perm::{Denied, PermissionEngine, Target};
 pub use plugins::PluginRegistry;

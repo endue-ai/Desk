@@ -20,6 +20,8 @@ desk-update.workspace = true
 # fs.url tokens (ADR 0041); jsonschema already brings it in.
 getrandom = "0.4"
 jsonschema.workspace = true
+# Codex compresses older sessions with zstd (ADR 0110); pure Rust, decoder and a small encoder.
+ruzstd = "0.9"
 serde.workspace = true
 serde_json.workspace = true
 # The history's content addresses (ADR 0076); already in the tree through the Wasm host.

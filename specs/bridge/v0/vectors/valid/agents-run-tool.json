@@ -1,0 +1,14 @@
+{
+  "target": "BridgeEvent",
+  "description": "the agent used a tool",
+  "instance": {
+    "event": "agents.run",
+    "data": {
+      "runId": "run-3",
+      "agent": "claude",
+      "kind": "tool",
+      "tool": "Bash",
+      "detail": "pnpm test"
+    }
+  }
+}

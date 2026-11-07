@@ -3,7 +3,7 @@
 The calls the web runtime (and every plugin through it) makes into the Rust core. JSON Schema 2020-12,
 one file per namespace: `bridge.schema.json` (envelope, errors, shared types), `fs`, `proc`, `net`, `plugins`,
 `store`, `search`, `init`, `brain`, `audio`, `ui`, `perm`, `cmd`, `settings`, `log`, `events`, `data`, `connector`,
-`view`, `catalog`, `shell`, `update`, `theme`, `account` and `agent`. Items, views and connectors are the types of `specs/item`,
+`view`, `catalog`, `shell`, `update`, `theme`, `account`, `agent` and `agents`. Items, views and connectors are the types of `specs/item`,
 `specs/view` and `specs/connector` (ADR 0032). v0 may break on any minor release (ADR 0004).
 
 ## Envelope
@@ -61,7 +61,7 @@ the undos and redos it ran, and
 `settings.changed` for its own keys and `data.changed` for its data subscriptions. `plugin.changed` goes to
 holders of `plugin:manage`, `perm.prompt`, `perm.approval` and `perm.approval.done` to holders of `perm:manage`, `connector.changed` to holders of
 `connector:manage`, `view.changed` to holders of `view:manage`, `update.changed` to holders of
-`update:manage`, `account.changed` to holders of `account:manage`, and `ui.notified`, `ui.surface.opened` and `ui.surface.closed` to the runtime, which
+`update:manage`, `account.changed` to holders of `account:manage`, `agents.run` and `agents.changed` to holders of `agents:manage`, and `ui.notified`, `ui.surface.opened` and `ui.surface.closed` to the runtime, which
 shows the notification or mounts and unmounts the surface.
 Everything else about other callers arrives only through `events.subscribe`.
 
@@ -464,6 +464,25 @@ need `perm:manage`. `agent.report` keeps a run of an agent the caller runs, unde
 it needs no scope. Runs are items of kind `run`: the core records one for every command an agent caller
 asks for and for the brain directory's tasks.
 
+**agents.list**, **agents.sessions**, **agents.transcript**, **agents.import**, **agents.ask**,
+**agents.runs** and **agents.stop** are the agent programs on this computer (ADR 0110): Claude Code
+(`claude`) and Codex (`codex`), not the brain's agent directory. Each needs `agents:manage`, which the
+desk grants to the runtime only. `agents.list` names each program whose data folder (`~/.claude`,
+`~/.codex`, or `CLAUDE_CONFIG_DIR` and `CODEX_HOME`) or program is there, with its counts; finding one
+never starts it, and `program` is absent when it is not on the PATH or in a folder its installer uses.
+`agents.sessions` reads the sessions from the program's own files, newest first: `from: local` (the
+default) the ones not archived, `archive` the archived ones (Codex's `archived_sessions`, and the Claude
+Code sessions the Claude app marks archived), `desk` the ones imported. `agents.transcript` reads one
+session's last turns, from the program's file while it is there, else from the desk's copy.
+`agents.import` copies sessions, with their last 1000 turns, into the desk's own folder and sends
+`agents.changed`; a copy whose source did not change since is `unchanged`. `agents.ask` runs the
+program once, without a shell, in its non-interactive mode (`claude -p`, `codex exec`), continuing
+`sessionId` in that session's folder or starting a new session in `cwd` (home when absent), and answers
+the run at once; read-only unless `access: agent` (Claude Code's plan mode, Codex's read-only sandbox),
+and no flag that widens the program's own permission settings is ever passed. Each step arrives as
+`agents.run` (`started`, `text`, `tool`, then `done`, `failed` or `stopped` with the whole run);
+`agents.runs` lists the last 50 runs and `agents.stop` ends one. Session text never goes to the log.
+
 **update.status**, **update.check**, **update.download** and **update.apply** drive the desk's own
 updates (ADR 0054). Each needs an `update:manage` scope, which the desk grants to the runtime and the
 CLI only, and each answers the same `UpdateStatus`: the `state`, the running build (`current`), the
@@ -519,6 +538,17 @@ from (`<data>/themes/.market/<id>.json`: the market, the URL, the version, the s
 the folder as it landed). A later import of the same id by `url` replaces it only while its folder still
 has that hash; a theme the person changed is `already_exists` and stays. `theme.remove` forgets the
 record with the folder.
+
+**market.list**, **plugin.install** and **plugin.remove** are the market for every kind (ADR 0107,
+`specs/market/v0`), under `plugin:manage`. `market.list` reads the indexes `desk.market.indexes` lists and
+the theme markets, and answers every entry once (the first market wins) with its `market`, `verified`
+(it comes from the endue index), a `state` (`available`, `installed`, `update`), the version installed
+and `added`, the permissions it asks that the installed version was not given. `plugin.install { id,
+market?, accept }` downloads the entry's bundle (https, its sha256 and size), checks it as a plugin folder
+of the entry's id, version and kind, lands it in the market folder and grants it the permissions in
+`accept`, which must hold every permission the entry asks (`permission_denied` names the rest). A
+`plugin` entry installs only from the endue index; themes and design systems go through `theme.import`.
+`plugin.remove` removes what the market installed: its folder, its record, its grants and its lock line.
 
 ## Vectors
 

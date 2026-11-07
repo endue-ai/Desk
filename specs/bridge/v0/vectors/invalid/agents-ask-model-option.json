@@ -1,0 +1,16 @@
+{
+  "target": "BridgeRequest",
+  "description": "a model is never an option of the program",
+  "instance": {
+    "id": 4,
+    "method": "agents.ask",
+    "params": {
+      "agent": "claude",
+      "prompt": "hi",
+      "model": "--dangerously-skip-permissions",
+      "scope": {
+        "permission": "agents:manage"
+      }
+    }
+  }
+}

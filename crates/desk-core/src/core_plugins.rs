@@ -44,6 +44,8 @@ impl Core {
                 self.grant(&info.id, permission);
             }
         }
+        // A pack's nested plugins install with it (ADR 0108).
+        info = self.install_pack(info, dir, built_in);
         self.plugin_changed(&info.id, PluginChange::Installed, info.revision);
         self.plugin_views_changed(&info);
         self.install_connector(&info);
@@ -52,6 +54,8 @@ impl Core {
 
     /// Install every plugin folder under `parent`.
     pub fn install_plugins_in(&self, parent: &Path, built_in: bool) -> Vec<PluginInfo> {
+        // plugins.lock is written once, for the whole folder.
+        let _hold = self.hold_lock();
         let mut dirs: Vec<PathBuf> = std::fs::read_dir(parent)
             .map(|read| read.flatten().map(|entry| entry.path()).collect())
             .unwrap_or_default();
@@ -156,7 +160,7 @@ impl Core {
     /// A plugin that stops provides no commands, waits for no answer, hears no subscriptions, runs
     /// no processes, shows no surfaces and serves no file URLs; if it was the last perm:manage
     /// holder, the Prompter decides what waits.
-    fn unloaded(&self, id: &str) {
+    pub(crate) fn unloaded(&self, id: &str) {
         self.drop_provider(id);
         self.withdraw_prompts(id);
         self.drop_subscriber(id);
@@ -176,7 +180,7 @@ impl Core {
     }
 
     /// `plugin.changed` for the plugin:manage holders and the callers subscribed to it.
-    fn plugin_changed(&self, id: &str, change: PluginChange, revision: u64) {
+    pub(crate) fn plugin_changed(&self, id: &str, change: PluginChange, revision: u64) {
         let managers = self.holders(&Permission::PluginManage(PluginManagePermission {
             permission: Default::default(),
         }));
@@ -192,6 +196,8 @@ impl Core {
                 },
             }),
         );
+        // Every install, removal, version change and turn on or off ends in plugins.lock.
+        self.write_lock();
     }
 
     pub(crate) fn registry(&self) -> MutexGuard<'_, PluginRegistry> {

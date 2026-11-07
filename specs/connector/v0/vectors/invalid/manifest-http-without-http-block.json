@@ -1,0 +1,13 @@
+{
+  "target": "ConnectorManifest",
+  "description": "binding http without the http block it runs",
+  "instance": {
+    "binding": "http",
+    "auth": { "kind": "token", "title": "API key" },
+    "resources": [{ "kind": "task" }],
+    "sync": { "mode": "pull", "intervalSeconds": 600 },
+    "instanceSettings": {
+      "apiKey": { "kind": "string", "title": "API key", "secret": true, "required": true }
+    }
+  }
+}

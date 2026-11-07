@@ -1,0 +1,22 @@
+{
+  "target": "MarketEntry",
+  "description": "a code plugin from another market with the permissions it asks",
+  "instance": {
+    "id": "acme.tracker",
+    "kind": "plugin",
+    "name": "Tracker",
+    "version": "2.1.0",
+    "description": "Tickets from Acme Tracker as tasks, with commands to move them.",
+    "publisher": "Acme",
+    "license": "Apache-2.0",
+    "tags": ["tasks"],
+    "url": "https://market.acme.test/tracker-2.1.0.desk-plugin",
+    "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+    "size": 48211,
+    "permissions": [
+      { "permission": "net:fetch", "hosts": ["api.acme.test"] },
+      { "permission": "data:read", "kinds": ["task"] }
+    ],
+    "engines": { "desk": ">=0.1.0" }
+  }
+}

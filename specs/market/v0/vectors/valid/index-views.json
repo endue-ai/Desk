@@ -1,0 +1,39 @@
+{
+  "target": "MarketIndex",
+  "description": "the endue market's two sample views",
+  "instance": {
+    "format": "desk-market-index/1",
+    "entries": [
+      {
+        "id": "market.week-ahead",
+        "kind": "view",
+        "name": "Week ahead",
+        "version": "1.0.0",
+        "description": "The next seven days: events as an agenda and the tasks due before the week ends.",
+        "publisher": "Team endue",
+        "license": "CC0-1.0",
+        "tags": ["calendar", "tasks", "week"],
+        "url": "week-ahead.desk-plugin",
+        "sha256": "8b1c6de7b93fdc3ec926fde3a23a30d079c496298346a4fa40f185f6f5ad0526",
+        "size": 2376,
+        "permissions": [],
+        "engines": { "desk": ">=0.1.0" }
+      },
+      {
+        "id": "market.review-queue",
+        "kind": "view",
+        "name": "Review queue",
+        "version": "1.0.0",
+        "description": "Open work across your task sources, the last updated first, with the project it belongs to.",
+        "publisher": "Team endue",
+        "license": "CC0-1.0",
+        "tags": ["tasks", "review"],
+        "url": "review-queue.desk-plugin",
+        "sha256": "e2fb56b4f5aa714d45d0c3338c78a3c017e3ed206626c1b77ba0cb94357a9d1c",
+        "size": 1465,
+        "permissions": [],
+        "engines": { "desk": ">=0.1.0" }
+      }
+    ]
+  }
+}

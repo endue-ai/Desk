@@ -1,0 +1,18 @@
+{
+  "target": "BridgeRequest",
+  "description": "a new Codex session in a folder, with agent access and a model",
+  "instance": {
+    "id": 7,
+    "method": "agents.ask",
+    "params": {
+      "agent": "codex",
+      "prompt": "Rename the config loader",
+      "cwd": "~/work/app",
+      "access": "agent",
+      "model": "gpt-6",
+      "scope": {
+        "permission": "agents:manage"
+      }
+    }
+  }
+}

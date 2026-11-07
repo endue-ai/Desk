@@ -6,14 +6,16 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use desk_bridge::{
-    AccountStatusResult, AgentListResult, AgentRecord, BridgeEvent, BridgeRequest, BridgeResponse,
-    CatalogGetResult, CmdRecentResult, CmdRedoResult, CmdToolsResult, CmdUndoResult,
-    ConnectorInstance, ConnectorManifest, ConnectorStatus, ConnectorSyncResult,
-    DesignSystemPackage, FsHistoryResult, FsReadResult, FsRestoreResult, FsUrlResult,
-    FsWriteResult, InitDocument, InitGetResult, InitSettingKey, Item, ItemChange, ItemPage,
-    ItemQuery, KeysFile, MemoryEntry, MemoryEpisode, MemoryFact, MemoryFactsFile, MemoryHit,
-    PaletteResults, PermQueryResult, PermRequestResult, Permission, PluginContributes,
-    PluginListResult, PluginManifest, PluginStatsResult, ProfileFile, RefusalReason,
+    AccountStatusResult, AgentListResult, AgentRecord, AgentsAskResult, AgentsImportResult,
+    AgentsListResult, AgentsRunsResult, AgentsSessionsResult, AgentsTranscriptResult, BridgeEvent,
+    BridgeRequest, BridgeResponse, CatalogGetResult, CmdRecentResult, CmdRedoResult,
+    CmdToolsResult, CmdUndoResult, ConnectorInstance, ConnectorListResult, ConnectorManifest,
+    ConnectorStatus, ConnectorSyncResult, DesignSystemPackage, FsHistoryResult, FsReadResult,
+    FsRestoreResult, FsUrlResult, FsWriteResult, InitDocument, InitGetResult, InitSettingKey, Item,
+    ItemChange, ItemPage, ItemQuery, KeysFile, MarketEntry, MarketIndex, MarketListResult,
+    MemoryEntry, MemoryEpisode, MemoryFact, MemoryFactsFile, MemoryHit, PaletteResults,
+    PermQueryResult, PermRequestResult, Permission, PluginBundle, PluginContributes,
+    PluginListResult, PluginManifest, PluginStatsResult, PluginsLock, ProfileFile, RefusalReason,
     SettingsListResult, ShellOpenResult, StoreGetResult, ThemeBundle, ThemeExportResult,
     ThemeIndex, ThemeMarketFetchResult, ThemeMarketListResult, ThemePackage, ThemeType,
     ThemeVariant, UiSurfaceStateRequest, UiSurfaceStateResult, UniversalData, UniversalSource,
@@ -42,6 +44,7 @@ fn plugin_schemas() -> Vec<Value> {
         "connector/v0",
         "memory/v0",
         "agent/v0",
+        "market/v0",
     ]
     .iter()
     .flat_map(|folder| schemas(folder))
@@ -195,6 +198,26 @@ fn item_view_connector_and_memory_vectors_are_judged_as_their_folders_say() {
 }
 
 #[test]
+fn market_vectors_are_judged_as_their_folder_says() {
+    let docs = plugin_schemas();
+    let all = vectors("market");
+    let valid = all.iter().filter(|v| v.valid).count();
+    assert!(
+        valid >= 3 && all.len() - valid >= 3,
+        "market: too few vectors"
+    );
+    assert_eq!(judge(&docs, "market"), Vec::<String>::new());
+    for vector in all.iter().filter(|v| v.valid) {
+        match vector.target.as_str() {
+            "MarketIndex" => roundtrip::<MarketIndex>(vector),
+            "MarketEntry" => roundtrip::<MarketEntry>(vector),
+            "PluginBundle" => roundtrip::<PluginBundle>(vector),
+            other => panic!("{}: no Rust type mapped for {other}", vector.file),
+        }
+    }
+}
+
+#[test]
 fn the_rules_beyond_the_schemas_name_what_does_not_resolve() {
     let view: View = serde_json::from_value(json!({
         "id": "example.mail", "version": "0.1.0", "title": "Last {params.days} days",
@@ -223,6 +246,35 @@ fn the_rules_beyond_the_schemas_name_what_does_not_resolve() {
     assert_eq!(
         manifest_problems(&manifest),
         ["/connector/resources/0/actions/1: example.tasks.move is not in contributes.commands"]
+    );
+}
+
+#[test]
+fn the_rules_beyond_the_schemas_name_what_an_http_block_does_not_resolve() {
+    let manifest: PluginManifest = serde_json::from_value(json!({
+        "id": "example.tracker", "version": "0.1.0", "kind": "connector",
+        "connector": {
+            "binding": "http", "auth": { "kind": "none" }, "sync": { "mode": "pull" },
+            "resources": [{ "kind": "task" }],
+            "instanceSettings": { "key": { "kind": "string", "title": "Key" } },
+            "http": {
+                "baseUrl": "https://tracker.example.com",
+                "auth": { "setting": "key" },
+                "requests": [{ "path": "/tickets", "items": "", "map": "tickets" }],
+                "maps": { "ticket": { "kind": "event", "fields": { "id": "/id" } } }
+            }
+        }
+    }))
+    .unwrap();
+    assert_eq!(
+        manifest_problems(&manifest),
+        [
+            "/connector/auth/kind: an http block with auth signs in with a token",
+            "/connector/http/auth/setting: key is not a secret instance setting",
+            "/connector/http/maps/ticket/fields: no title",
+            "/connector/http/maps/ticket/kind: \"event\" is not a kind in resources",
+            "/connector/http/requests/0/map: tickets is not one of the http block's maps",
+        ]
     );
 }
 
@@ -280,12 +332,20 @@ fn valid_vectors_roundtrip_through_generated_types() {
                 "StoreGetResult" => roundtrip::<StoreGetResult>(vector),
                 "SettingsListResult" => roundtrip::<SettingsListResult>(vector),
                 "CatalogGetResult" => roundtrip::<CatalogGetResult>(vector),
+                "MarketListResult" => roundtrip::<MarketListResult>(vector),
+                "ConnectorListResult" => roundtrip::<ConnectorListResult>(vector),
                 "CmdUndoResult" => roundtrip::<CmdUndoResult>(vector),
                 "CmdRedoResult" => roundtrip::<CmdRedoResult>(vector),
                 "CmdToolsResult" => roundtrip::<CmdToolsResult>(vector),
                 "ShellOpenResult" => roundtrip::<ShellOpenResult>(vector),
                 "AccountStatusResult" => roundtrip::<AccountStatusResult>(vector),
                 "AgentListResult" => roundtrip::<AgentListResult>(vector),
+                "AgentsListResult" => roundtrip::<AgentsListResult>(vector),
+                "AgentsSessionsResult" => roundtrip::<AgentsSessionsResult>(vector),
+                "AgentsTranscriptResult" => roundtrip::<AgentsTranscriptResult>(vector),
+                "AgentsImportResult" => roundtrip::<AgentsImportResult>(vector),
+                "AgentsAskResult" => roundtrip::<AgentsAskResult>(vector),
+                "AgentsRunsResult" => roundtrip::<AgentsRunsResult>(vector),
                 "UiSurfaceStateRequest" => roundtrip::<UiSurfaceStateRequest>(vector),
                 "UiSurfaceStateResult" => roundtrip::<UiSurfaceStateResult>(vector),
                 "PluginManifest" => roundtrip::<PluginManifest>(vector),
@@ -295,6 +355,7 @@ fn valid_vectors_roundtrip_through_generated_types() {
                 "InitGetResult" => roundtrip::<InitGetResult>(vector),
                 "ProfileFile" => roundtrip::<ProfileFile>(vector),
                 "KeysFile" => roundtrip::<KeysFile>(vector),
+                "PluginsLock" => roundtrip::<PluginsLock>(vector),
                 "PluginContributes" => roundtrip::<PluginContributes>(vector),
                 "PaletteResults" => roundtrip::<PaletteResults>(vector),
                 "ViewListResult" => roundtrip::<ViewListResult>(vector),

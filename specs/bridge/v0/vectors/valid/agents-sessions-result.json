@@ -1,0 +1,24 @@
+{
+  "target": "AgentsSessionsResult",
+  "description": "one session, imported into the desk",
+  "instance": {
+    "total": 1,
+    "sessions": [
+      {
+        "id": "5b1c2d3e-0f1a-4b2c-9d3e-4f5a6b7c8d9e",
+        "agent": "claude",
+        "title": "Fix the flaky upload test",
+        "cwd": "/home/person/work/app",
+        "branch": "main",
+        "startedAt": "2026-11-04T10:00:00Z",
+        "updatedAt": "2026-11-04T11:30:00Z",
+        "archived": false,
+        "imported": true,
+        "importedAt": "2026-11-05T08:00:00Z",
+        "size": 48213,
+        "version": "2.4.1",
+        "model": "claude-opus-5-5"
+      }
+    ]
+  }
+}

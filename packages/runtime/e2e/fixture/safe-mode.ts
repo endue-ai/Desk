@@ -25,7 +25,10 @@ const manifests = Object.values(
     eager: true,
     import: "default",
   }),
-).filter((m) => m.id.startsWith("desk.") && m.id !== "desk.views" && m.kind !== "view");
+).filter(
+  (m) =>
+    m.id.startsWith("desk.") && m.id !== "desk.views" && m.kind !== "view" && m.kind !== "pack",
+);
 const throws: PluginManifest = {
   id: "test.throws",
   name: "Throws",

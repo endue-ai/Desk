@@ -1,0 +1,17 @@
+{
+  "target": "PluginManifest",
+  "description": "a pack with an entry, which nothing would run",
+  "instance": {
+    "id": "acme.pack",
+    "version": "0.1.0",
+    "kind": "pack",
+    "pack": { "services": ["acme"], "plugins": ["acme.tickets"] },
+    "view": {
+      "id": "acme.pack.home",
+      "version": "0.1.0",
+      "title": "Acme",
+      "layout": { "type": "list", "binding": { "kinds": ["task"] } }
+    },
+    "entry": "ui/index.html"
+  }
+}

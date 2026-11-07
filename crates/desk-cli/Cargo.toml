@@ -26,5 +26,8 @@ zip = { version = "9.2.1", default-features = false, features = ["deflate-flate2
 # zip's deflate needs a flate2 backend: the default one, miniz_oxide, already in the tree.
 flate2 = "1.1.10"
 
+[dev-dependencies]
+desk-update.workspace = true
+
 [lints]
 workspace = true

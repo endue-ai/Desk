@@ -8,6 +8,7 @@ mod doctor;
 mod export;
 mod files;
 mod health;
+mod lock;
 mod plugin_test;
 mod remote;
 mod theme;
@@ -45,6 +46,7 @@ fn main() -> ExitCode {
         },
         Action::Trace(file) => doctor::trace(&file, args.json),
         Action::Doctor(data) => health::run(data, args.json),
+        Action::Lock => lock::list(args.json),
         Action::Export {
             target,
             with_data,
@@ -88,6 +90,7 @@ fn kind_name(kind: PluginKind) -> &'static str {
         PluginKind::Library => "library",
         PluginKind::Connector => "connector",
         PluginKind::View => "view",
+        PluginKind::Pack => "pack",
         PluginKind::Theme => "theme",
         PluginKind::DesignSystem => "design-system",
     }

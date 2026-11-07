@@ -20,14 +20,15 @@ use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
 use desk_bridge::{
-    AccountManagePermission, BrainConversePermission, CmdInvokePermission,
+    AccountManagePermission, AgentsManagePermission, BrainConversePermission, CmdInvokePermission,
     ConnectorManagePermission, FsReadPermission, FsWritePermission, MemoryReadPermission,
     MemoryWritePermission, PermManagePermission, Permission, PluginManagePermission,
     ShellOpenPermission, ThemeManagePermission, UpdateManagePermission, ViewManagePermission,
 };
 use desk_core::account::{Account, AccountOptions, DEFAULT_ID_URL, NetIdClient};
 use desk_core::{
-    Core, MockRemote, PluginWatcher, Roots, SyncError, SyncOutcome, ThemeWatcher, ViewWatcher,
+    Core, LocalAgents, LocalAgentsOptions, MockRemote, PluginWatcher, Roots, SyncError,
+    SyncOutcome, ThemeWatcher, ViewWatcher,
 };
 use tauri::{Emitter, Manager};
 
@@ -85,8 +86,11 @@ pub fn run() {
             // endue does not serve sync yet: until it does, a stand-in keeps endue's copy of
             // init.yaml in the data folder.
             let remote = MockRemote::with_file(data.join("sync-mock.json"));
+            // plugins.lock: the plugin set, rewritten on every install and turn on or off (ADR 0079).
+            let lock = home.join(".desk").join("plugins.lock");
             let core = Core::new(Roots { home })
                 .with_init_file(init)
+                .with_lock_file(lock)
                 .with_sync(Arc::new(remote), Some(data.join("sync.json")));
             // Everything that outlives a quit: grants, settings, the log and the rest (#351).
             let core = core_files::open(core, &data);
@@ -112,12 +116,19 @@ pub fn run() {
             // The person's own themes (ADR 0058): every theme folder in <data>/themes/ is installed
             // now, not built in, and comes back at every start.
             core = core.with_themes_dir(data.join("themes"));
+            // What the market installed (ADR 0107): views and plugins in <data>/plugins/, each with
+            // the record of where it came from and what it was granted.
+            core = core.with_market_dir(data.join("plugins"));
             // The person's endue ID (ADR 0089): signing in hands the brain its bearer token.
             let id_url = std::env::var("DESK_ID_URL").unwrap_or_else(|_| DEFAULT_ID_URL.to_owned());
             let mut account = AccountOptions::new(id_url);
             account.file = Some(data.join("account.json"));
             let account = Account::open(account, NetIdClient);
             core = core.with_account(account.clone());
+            // The agent programs on this computer (ADR 0110): Claude Code and Codex, their sessions
+            // read from their own folders, imported ones kept in <data>/agents.
+            let agents = LocalAgentsOptions::new(&home_dir(), Some(data.join("agents")));
+            core = core.with_local_agents(LocalAgents::new(agents));
             // Eris's brain is the one the runtime's setting chooses, endue AI by default, and the
             // local brain stands in while a remote one cannot be reached (ADR 0094).
             core = core.with_brains(brains::brains(&data, account));
@@ -225,6 +236,14 @@ pub fn run() {
                     permission: Default::default(),
                 }),
             );
+            // The shell lists the agent programs on this computer, imports their sessions and asks
+            // them for work (ADR 0110).
+            core.grant(
+                RUNTIME_CALLER,
+                Permission::AgentsManage(AgentsManagePermission {
+                    permission: Default::default(),
+                }),
+            );
             // The person's themes (ADR 0058): the theme studio saves, imports, exports and removes
             // them as the runtime, and `desk theme` does the same as the CLI (whose other grants
             // are desk_ipc::grants()).
@@ -256,6 +275,7 @@ pub fn run() {
             for dir in env_paths("DESK_DEV_PLUGINS") {
                 core.install_plugin(&dir, false);
             }
+            core.install_market_plugins();
             // Hot reload leaves user themes to the themes watch, so each change is announced once.
             let watcher = core.watch_plugins().ok();
             let themes = core

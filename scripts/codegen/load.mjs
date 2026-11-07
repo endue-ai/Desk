@@ -58,6 +58,7 @@ export const PLUGIN_FOLDERS = [
   "connector/v0",
   "memory/v0",
   "agent/v0",
+  "market/v0",
 ];
 
 /** Every spec document, keyed by spec name: each set holds what its vectors need to resolve. */
@@ -71,6 +72,7 @@ export function loadAll(root = ROOT) {
     view: plugin,
     connector: plugin,
     memory: plugin,
+    market: plugin,
     init,
     update: loadSchemas(root, "update/v0"),
     brain: [loadBrain(root).bundle],

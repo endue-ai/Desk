@@ -1,0 +1,44 @@
+{
+  "target": "ConnectorManifest",
+  "description": "an Authorization header written into the manifest instead of auth naming a secret setting",
+  "instance": {
+    "binding": "http",
+    "http": {
+      "baseUrl": "https://tracker.example.com/api",
+      "headers": { "Authorization": "Bearer abc" },
+      "auth": { "setting": "apiKey", "header": "X-Api-Key", "prefix": "" },
+      "requests": [
+        {
+          "path": "/tickets",
+          "query": { "assignee": "me" },
+          "items": "/data",
+          "pagination": { "next": "body", "pointer": "/links/next" },
+          "map": "ticket"
+        }
+      ],
+      "maps": {
+        "ticket": {
+          "kind": "task",
+          "fields": {
+            "id": "/id",
+            "title": "/summary",
+            "status": {
+              "pointer": "/done",
+              "values": { "true": "done", "false": "open" },
+              "default": "open"
+            },
+            "updatedAt": "/updated",
+            "priority": { "const": 2 },
+            "raw": ""
+          }
+        }
+      }
+    },
+    "auth": { "kind": "token", "title": "API key" },
+    "resources": [{ "kind": "task" }],
+    "sync": { "mode": "pull", "intervalSeconds": 600 },
+    "instanceSettings": {
+      "apiKey": { "kind": "string", "title": "API key", "secret": true, "required": true }
+    }
+  }
+}

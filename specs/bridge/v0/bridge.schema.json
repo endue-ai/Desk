@@ -59,6 +59,9 @@
         { "$ref": "plugins.schema.json#/$defs/PluginListRequest" },
         { "$ref": "plugins.schema.json#/$defs/PluginSetEnabledRequest" },
         { "$ref": "plugins.schema.json#/$defs/PluginStatsRequest" },
+        { "$ref": "market.schema.json#/$defs/MarketListRequest" },
+        { "$ref": "market.schema.json#/$defs/PluginInstallRequest" },
+        { "$ref": "market.schema.json#/$defs/PluginRemoveRequest" },
         { "$ref": "store.schema.json#/$defs/StoreGetRequest" },
         { "$ref": "store.schema.json#/$defs/StoreSetRequest" },
         { "$ref": "init.schema.json#/$defs/InitGetRequest" },
@@ -106,6 +109,13 @@
         { "$ref": "account.schema.json#/$defs/AccountStatusRequest" },
         { "$ref": "account.schema.json#/$defs/AccountSignInRequest" },
         { "$ref": "account.schema.json#/$defs/AccountSignOutRequest" },
+        { "$ref": "agents.schema.json#/$defs/AgentsListRequest" },
+        { "$ref": "agents.schema.json#/$defs/AgentsSessionsRequest" },
+        { "$ref": "agents.schema.json#/$defs/AgentsTranscriptRequest" },
+        { "$ref": "agents.schema.json#/$defs/AgentsImportRequest" },
+        { "$ref": "agents.schema.json#/$defs/AgentsAskRequest" },
+        { "$ref": "agents.schema.json#/$defs/AgentsRunsRequest" },
+        { "$ref": "agents.schema.json#/$defs/AgentsStopRequest" },
         { "$ref": "memory.schema.json#/$defs/MemoryListRequest" },
         { "$ref": "memory.schema.json#/$defs/MemoryGetRequest" },
         { "$ref": "memory.schema.json#/$defs/MemoryRememberRequest" },
@@ -176,7 +186,7 @@
       ]
     },
     "BridgeEvent": {
-      "description": "Something the core reports without being asked: file changes, process output, wake words, permission changes, prompts and approvals, notifications, surfaces, commands, settings, log entries, changes to items, connectors and views, the desk's update status, its endue ID account, and runs to stop.",
+      "description": "Something the core reports without being asked: file changes, process output, wake words, permission changes, prompts and approvals, notifications, surfaces, commands, settings, log entries, changes to items, connectors and views, the desk's update status, its endue ID account, runs to stop, and the runs of the agent programs on this computer.",
       "oneOf": [
         { "$ref": "fs.schema.json#/$defs/FsChangedEvent" },
         { "$ref": "proc.schema.json#/$defs/ProcOutputEvent" },
@@ -203,6 +213,8 @@
         { "$ref": "view.schema.json#/$defs/ViewChangedEvent" },
         { "$ref": "update.schema.json#/$defs/UpdateChangedEvent" },
         { "$ref": "account.schema.json#/$defs/AccountChangedEvent" },
+        { "$ref": "agents.schema.json#/$defs/AgentsRunEvent" },
+        { "$ref": "agents.schema.json#/$defs/AgentsChangedEvent" },
         { "$ref": "memory.schema.json#/$defs/MemoryChangedEvent" },
         { "$ref": "agent.schema.json#/$defs/AgentCancelledEvent" }
       ]

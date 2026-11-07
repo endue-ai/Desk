@@ -1,0 +1,16 @@
+{
+  "target": "BridgeRequest",
+  "description": "the last 50 turns of one session",
+  "instance": {
+    "id": 3,
+    "method": "agents.transcript",
+    "params": {
+      "agent": "claude",
+      "sessionId": "5b1c2d3e-0f1a-4b2c-9d3e-4f5a6b7c8d9e",
+      "limit": 50,
+      "scope": {
+        "permission": "agents:manage"
+      }
+    }
+  }
+}

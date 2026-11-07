@@ -1,0 +1,13 @@
+{
+  "target": "BridgeRequest",
+  "description": "the runtime looks for the agent programs on this computer",
+  "instance": {
+    "id": 1,
+    "method": "agents.list",
+    "params": {
+      "scope": {
+        "permission": "agents:manage"
+      }
+    }
+  }
+}

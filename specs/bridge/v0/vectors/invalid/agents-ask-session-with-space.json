@@ -1,0 +1,16 @@
+{
+  "target": "BridgeRequest",
+  "description": "a session id holds no spaces",
+  "instance": {
+    "id": 5,
+    "method": "agents.ask",
+    "params": {
+      "agent": "codex",
+      "prompt": "hi",
+      "sessionId": "a b",
+      "scope": {
+        "permission": "agents:manage"
+      }
+    }
+  }
+}

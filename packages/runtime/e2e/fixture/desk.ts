@@ -67,7 +67,8 @@ const { client, stub, folder } = browserCore({
             m.id.startsWith("desk.") &&
             m.id !== "desk.shell" &&
             m.id !== "desk.views" &&
-            m.kind !== "view",
+            m.kind !== "view" &&
+            m.kind !== "pack",
         ),
         echo,
         counter,

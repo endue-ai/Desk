@@ -2,6 +2,7 @@
  * What a surface is called where people read it: the drawer, the title bar, the launcher. One
  * place for the sample views, the launcher windows, the agent screens and the drawer's own items.
  */
+import { LOCAL_VIEW, localName } from "../system/local-ids";
 import type { CopyKey } from "./copy";
 import type { Store } from "./state";
 
@@ -21,6 +22,9 @@ export function surfaceTitle(ctx: Titled, id: string): string {
   if (id === "notes") return tr("surfaceNotes");
   if (id === "keys") return tr("keysTitle");
   if (id === "launcher" || /^window-\d+$/.test(id)) return tr("launcherTitle");
+  if (id.startsWith(LOCAL_VIEW)) {
+    return tr("agentScreen", { name: localName(s.localAgents, id.slice(LOCAL_VIEW.length)) });
+  }
   if (id.startsWith("agent:")) {
     const agentId = id.slice("agent:".length);
     const name = s.agents.find((a) => a.id === agentId)?.name ?? agentId;

@@ -4,7 +4,7 @@ import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, it } from "node:test";
-import { checkMarket, DESIGN_MARKET, MARKET } from "./theme-market.mjs";
+import { checkMarket, DESIGN_MARKET, MARKET, VIEW_MARKET } from "./theme-market.mjs";
 
 /** A market theme's bundle: a palette in both schemes and nothing else. */
 function bundle(id, { license = "CC0-1.0", colors = {} } = {}) {
@@ -112,5 +112,50 @@ describe("theme-market", () => {
     );
     has(problems, /market\.dusk: .*dusk\.desk-theme/);
     has(problems, /stray\.desk-theme: not in index\.json/);
+  });
+
+  it("passes this repository's views market (specs/market/v0), and refuses a view bundle that is not its entry", () => {
+    assert.deepEqual(checkMarket(VIEW_MARKET), []);
+    const view = {
+      id: "market.board",
+      name: "Board",
+      version: "1.0.0",
+      kind: "view",
+      view: {
+        id: "market.board",
+        version: "1.0.0",
+        title: "Board",
+        layout: { type: "list", binding: { kinds: ["task"] } },
+      },
+    };
+    const text = `${JSON.stringify({ format: "desk-plugin/1", manifest: view, files: {} })}\n`;
+    const listed = {
+      id: "market.board",
+      kind: "view",
+      name: "Board",
+      version: "1.0.0",
+      publisher: "Team endue",
+      license: "CC0-1.0",
+      url: "board.desk-plugin",
+      sha256: sha256(text),
+      size: Buffer.byteLength(text),
+    };
+    const dir = mkdtempSync(join(tmpdir(), "view-market-"));
+    writeFileSync(join(dir, "board.desk-plugin"), text);
+    const write = (entries) =>
+      writeFileSync(
+        join(dir, "index.json"),
+        JSON.stringify({ format: "desk-market-index/1", entries }),
+      );
+    write([listed]);
+    assert.deepEqual(checkMarket(dir), []);
+    write([{ ...listed, version: "1.1.0", sha256: "0".repeat(64) }]);
+    const problems = checkMarket(dir);
+    has(problems, /market\.board: sha256 /);
+    has(problems, /market\.board: the bundle's version is 1\.0\.0, the index says 1\.1\.0/);
+    write([{ ...listed, kind: "plugin" }]);
+    has(checkMarket(dir), /market\.board: the bundle is a view, the index says plugin/);
+    writeFileSync(join(dir, "stray.desk-plugin"), text);
+    has(checkMarket(dir), /stray\.desk-plugin: not in index\.json/);
   });
 });

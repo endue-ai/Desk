@@ -1,0 +1,9 @@
+{
+  "target": "BridgeRequest",
+  "description": "plugin.install must say what the person accepted",
+  "instance": {
+    "id": 74,
+    "method": "plugin.install",
+    "params": { "id": "acme.tracker", "scope": { "permission": "plugin:manage" } }
+  }
+}

@@ -119,7 +119,12 @@ impl Core {
     }
 
     pub(crate) fn theme_import(&self, caller: &str, params: ThemeImportParams) -> Answer {
-        self.check_theme(caller, params.scope)?;
+        self.check_theme(caller, params.scope.clone())?;
+        self.import_theme(params)
+    }
+
+    /// theme.import once its caller is checked; plugin.install of a theme or design system too.
+    pub(crate) fn import_theme(&self, params: ThemeImportParams) -> Answer {
         let sha256 = params.sha256.as_deref();
         let url = params.url.clone();
         let bundle = match (params.bundle, params.path, params.url) {

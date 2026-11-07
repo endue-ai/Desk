@@ -1,0 +1,12 @@
+{
+  "target": "BridgeEvent",
+  "description": "a run step is one of the known kinds",
+  "instance": {
+    "event": "agents.run",
+    "data": {
+      "runId": "run-1",
+      "agent": "claude",
+      "kind": "thinking"
+    }
+  }
+}

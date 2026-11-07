@@ -1,0 +1,16 @@
+{
+  "target": "PluginsLock",
+  "description": "a plugin from the market, by its https URL",
+  "instance": {
+    "version": 0,
+    "plugins": [
+      {
+        "id": "acme.board",
+        "version": "1.4.2",
+        "source": "url:https://market.endue.ai/plugins/acme.board-1.4.2.desk-plugin",
+        "sha256": "9f2c00000000000000000000000000000000000000000000000000000000a1b2",
+        "enabled": true
+      }
+    ]
+  }
+}

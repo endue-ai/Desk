@@ -12,6 +12,11 @@ pub const USAGE: &str = "usage: desk [--json] <command>
   cmd run <id> [--args <json object>]   run a command and print its result
   cmd tools [<words>]                   the commands agents get as tools: id, provider, reads or acts
   plugin list                           the installed plugins: id, status, enabled
+  plugin list --lock                    ~/.desk/plugins.lock as it is (no desk needed)
+  plugin sync                           turn plugins on and off as plugins.lock says; report the
+                                        ones it names that are not installed
+  market list                           what the markets offer: kind, id, version, state, verified
+  market install <id> [--accept]        install from a market; --accept takes the permissions it asks
   plugin enable <id> | disable <id>     turn a plugin on or off
   perm list                             every grant: grantId, caller, permission
   perm revoke <grantId>                 take a grant back
@@ -53,6 +58,8 @@ pub enum Action {
     Validate(PathBuf),
     /// Offline: what the data folder says went wrong (`--data` names another one).
     Doctor(Option<PathBuf>),
+    /// `plugin list --lock`: `~/.desk/plugins.lock` from disk.
+    Lock,
     /// `plugin test <dir>`: the folder's tests, on the harness or the SDK's test host.
     Test(PathBuf),
     /// `doctor --trace <file>`: a start-up trace, summarized offline.
@@ -90,6 +97,14 @@ pub enum Remote {
         args: Option<Map<String, Value>>,
     },
     PluginList,
+    /// `plugin sync`: on and off as `~/.desk/plugins.lock` says (ADR 0079).
+    PluginSync,
+    /// `market list` and `market install <id> [--accept]` (ADR 0107).
+    MarketList,
+    MarketInstall {
+        id: String,
+        accept: bool,
+    },
     PluginSetEnabled {
         id: String,
         enabled: bool,
@@ -189,6 +204,17 @@ pub fn parse(args: Vec<String>) -> Option<Args> {
         }),
         ["cmd", "run", rest @ ..] => Action::Remote(cmd_run(rest)?),
         ["plugin", "list"] => Action::Remote(Remote::PluginList),
+        ["plugin", "list", "--lock"] => Action::Lock,
+        ["plugin", "sync"] => Action::Remote(Remote::PluginSync),
+        ["market", "list"] => Action::Remote(Remote::MarketList),
+        ["market", "install", id] => Action::Remote(Remote::MarketInstall {
+            id: name(id)?,
+            accept: false,
+        }),
+        ["market", "install", id, "--accept"] => Action::Remote(Remote::MarketInstall {
+            id: name(id)?,
+            accept: true,
+        }),
         ["plugin", toggle @ ("enable" | "disable"), id] => {
             Action::Remote(Remote::PluginSetEnabled {
                 id: name(id)?,

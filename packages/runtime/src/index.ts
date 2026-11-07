@@ -12,6 +12,10 @@ export type {
   Bands,
   BrainStatus,
   BrainStep,
+  LocalAgentEvent,
+  LocalAgentsBridge,
+  LocalAsk,
+  LocalSessionQuery,
   ShellBridge,
 } from "./bridge/types";
 export { type Clock, ManualClock, realClock, type Tween, tween } from "./clock";

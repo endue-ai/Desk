@@ -1,0 +1,15 @@
+{
+  "target": "MarketEntry",
+  "description": "a theme with only what an entry needs: no permissions, no engines",
+  "instance": {
+    "id": "market.lagoon",
+    "kind": "theme",
+    "name": "Lagoon",
+    "version": "1.0.0",
+    "publisher": "Team endue",
+    "license": "CC0-1.0",
+    "url": "https://raw.githubusercontent.com/endue-ai/Desk/main/market/themes/lagoon.desk-theme",
+    "sha256": "a9ae32577310fb7504fc4ac0d9d58c1b0091aba09faf983ae31c37e261548485",
+    "size": 4600
+  }
+}

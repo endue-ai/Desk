@@ -1,0 +1,118 @@
+{
+  "id": "desk.pack-github",
+  "name": "GitHub",
+  "version": "0.1.0",
+  "kind": "pack",
+  "description": "Your GitHub work set up in one go: the GitHub connector, a board and a timeline of your issues and pull requests, and a Builder morning layout.",
+  "pack": {
+    "services": ["github", "git hub", "깃허브", "깃헙"],
+    "plugins": ["desk.github"],
+    "opens": [{ "command": "desk.pack-github.board" }],
+    "profile": "builder-morning"
+  },
+  "contributes": {
+    "commands": [
+      {
+        "id": "desk.pack-github.board",
+        "title": "GitHub board",
+        "keywords": ["github", "board", "issues", "pull requests", "kanban"],
+        "runs": {
+          "command": "desk.universal.open",
+          "args": {
+            "view": {
+              "id": "desk.pack-github.board",
+              "type": "kanban",
+              "types": ["kanban", "list", "timeline"],
+              "title": "GitHub board",
+              "source": {
+                "items": {
+                  "kinds": ["task"],
+                  "sources": ["desk.github"],
+                  "where": [{ "field": "status", "op": "eq", "value": "open" }],
+                  "sort": [{ "field": "updatedAt", "dir": "desc" }],
+                  "limit": 200
+                }
+              },
+              "map": { "group": "project", "detail": "project" },
+              "empty": "No open GitHub work. Connect GitHub in Settings, Connections."
+            }
+          }
+        }
+      },
+      {
+        "id": "desk.pack-github.timeline",
+        "title": "GitHub timeline",
+        "keywords": ["github", "timeline", "issues", "pull requests"],
+        "runs": {
+          "command": "desk.universal.open",
+          "args": {
+            "view": {
+              "id": "desk.pack-github.timeline",
+              "type": "timeline",
+              "types": ["timeline", "list", "kanban"],
+              "title": "GitHub timeline",
+              "source": {
+                "items": {
+                  "kinds": ["task"],
+                  "sources": ["desk.github"],
+                  "sort": [{ "field": "updatedAt", "dir": "desc" }],
+                  "limit": 200
+                }
+              },
+              "map": { "start": "createdAt", "end": "updatedAt", "group": "project" },
+              "empty": "No GitHub work yet."
+            }
+          }
+        }
+      }
+    ],
+    "profiles": [
+      {
+        "id": "builder-morning",
+        "name": "Builder morning",
+        "description": "GitHub work, today and your projects, the day's first hour.",
+        "plugins": {
+          "enabled": [
+            "desk.github",
+            "desk.pack-github",
+            "desk.today",
+            "endue.projects",
+            "desk.universal"
+          ]
+        },
+        "settings": {
+          "desk.shell.mode": {
+            "icon": "sunrise",
+            "author": "endue",
+            "version": "1.0.0",
+            "desktops": {
+              "1": {
+                "surfaces": [
+                  {
+                    "id": "projects",
+                    "plugin": "endue.projects",
+                    "x": 80,
+                    "y": 120,
+                    "w": 720,
+                    "h": 520,
+                    "pinned": false
+                  },
+                  {
+                    "id": "github",
+                    "plugin": "desk.universal",
+                    "x": 840,
+                    "y": 120,
+                    "w": 520,
+                    "h": 520,
+                    "pinned": false
+                  }
+                ]
+              }
+            },
+            "triggers": { "manual": true, "time": "07:00-10:00" }
+          }
+        }
+      }
+    ]
+  }
+}

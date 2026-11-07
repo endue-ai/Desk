@@ -19,6 +19,8 @@ import { pluginWindows } from "../surface/host";
 import { mountSurfaces } from "../surface/Surface";
 import { loadDirectory } from "../system/agents";
 import { mountSystemLayer } from "../system/layer";
+import { defineLocalAgentCommands } from "../system/local-agent-commands";
+import { loadLocalAgents, watchLocalAgents } from "../system/local-agents";
 import { timed } from "../timing";
 import { mountWallpaper } from "../wallpaper/wallpaper";
 import { layoutOf } from "./actions";
@@ -146,6 +148,10 @@ export function mountDesk(options: DeskOptions): Desk {
   const restored = keepShell(ctx);
   const offs = [
     defineCommands(ctx),
+    // The agent programs on this computer (ADR 0110): the agent bar lists them, and their
+    // desk.agents.* commands are Eris's tools.
+    defineLocalAgentCommands(ctx),
+    watchLocalAgents(ctx),
     // desk.propose: Eris makes views, profiles and key bindings from a sentence and says what she
     // made (ADR 0073). Its provenance takes the wall clock (Date.now), not the frame loop's time;
     // the card for profiles and keys sits over the whole shell.
@@ -168,7 +174,11 @@ export function mountDesk(options: DeskOptions): Desk {
     }),
   ];
 
-  const refresh = () => loadDirectory(ctx);
+  // The local agents come in on their own: reading their sessions never holds the desk's start.
+  const refresh = () => {
+    void loadLocalAgents(ctx);
+    return loadDirectory(ctx);
+  };
   // The rail shows the brain the core has; a host without one leaves it offline.
   const brain = options.bridge.brain.status().then(
     (status) => store.set({ brain: status }),
