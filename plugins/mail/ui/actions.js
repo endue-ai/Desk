@@ -142,6 +142,21 @@ export function createActions({ bridge, commands }) {
       }
     },
 
+    /**
+     * The person picks one of `items` in the palette: its id, or undefined when they closed it.
+     * @param {string} title
+     * @param {Array<{ id: string, label: string }>} items
+     */
+    choose: async (title, items) => {
+      try {
+        const answer = await commands.run("desk.palette.pick", { title, items });
+        return typeof answer === "string" ? answer : undefined;
+      } catch (error) {
+        if (codeOf(error) !== "unknown_command") return undefined;
+        throw new Error(`${title}: the palette is not available.`);
+      }
+    },
+
     /** Tell the person something outside the surface; silently nothing without ui:notify. */
     notify: (/** @type {string} */ title, /** @type {string} */ body) =>
       bridge

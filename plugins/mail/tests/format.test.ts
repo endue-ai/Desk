@@ -90,3 +90,22 @@ it("resolves the current zone again when the person changes it", async () => {
   zone = "Europe/Berlin";
   expect(whenLine(span, { locale: "en-GB" }).line).toBe("Tue, 3 Nov 2026, 08:00 – 09:00");
 });
+
+it("formats in the system's locale when no locale is given, resolved again each time", async () => {
+  const resolved = Intl.DateTimeFormat.prototype.resolvedOptions;
+  let locale = "en-GB";
+  vi.spyOn(Intl.DateTimeFormat.prototype, "resolvedOptions").mockImplementation(function (
+    this: Intl.DateTimeFormat,
+  ) {
+    return { ...resolved.call(this), locale };
+  });
+  const { listTime, fullTime, whenLine } = await import("../ui/format.js");
+  const iso = new Date(START).toISOString();
+  const clock = { zone: "Asia/Seoul", now: END };
+  expect(listTime(iso, clock)).toBe("16:00");
+  expect(fullTime(iso, clock)).toBe("Tue, 3 Nov 2026, 16:00");
+  expect(whenLine(span, { zone: "Asia/Seoul" }).line).toBe("Tue, 3 Nov 2026, 16:00 – 17:00");
+  locale = "en-US";
+  expect(listTime(iso, clock)).toBe("04:00 PM");
+  expect(fullTime(iso, clock)).toBe("Tue, Nov 3, 2026, 04:00 PM");
+});
