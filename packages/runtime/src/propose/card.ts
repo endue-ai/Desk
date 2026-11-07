@@ -111,7 +111,9 @@ export function createCard(host: HTMLElement): Card {
       field.type = "text";
       field.setAttribute("aria-label", "What should change");
       field.placeholder = "What should change? Try again sends it to Eris.";
-      const buttons = CHOICES.map(([choice, label]) =>
+      // A pack is data the desk has: there is nothing for Eris to try again (ADR 0108).
+      const offered = CHOICES.filter(([choice]) => content.kind !== "pack" || choice !== "retry");
+      const buttons = offered.map(([choice, label]) =>
         button(label, { choice }, choice === "apply"),
       );
       pick = (choice) => {
@@ -139,7 +141,8 @@ export function createCard(host: HTMLElement): Card {
       });
       const actions = make("div", "proposal-actions");
       actions.append(...buttons);
-      card.append(field, actions);
+      if (content.kind !== "pack") card.append(field);
+      card.append(actions);
       const answer = new Promise<Choice>((resolve) => {
         waiting = resolve;
       });

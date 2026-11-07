@@ -118,6 +118,7 @@ describe("packs in Make with Eris", () => {
     await apply(host);
     const card = host.querySelector('[data-proposal="pack"]');
     expect(card?.textContent).toContain("GitHub");
+    expect(card?.querySelector('[data-choice="retry"]'), "nothing to try again").toBeNull();
     const outcome = await done;
     expect(outcome).toEqual({ status: "applied", id: "desk.pack-github" });
     expect(host.textContent).toContain("Builder morning");
