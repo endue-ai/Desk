@@ -3,7 +3,9 @@
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { deflateRawSync, gunzipSync } from "node:zlib";
+// zlib's crc32 is ZIP's CRC-32 in native code: a byte loop in JavaScript took seconds over the
+// 64 MiB entry of extract.test.ts on a loaded Windows runner (#342).
+import { crc32, deflateRawSync, gunzipSync } from "node:zlib";
 import { openArchive } from "../ui/formats/index.js";
 import { memorySource } from "../ui/source.js";
 
@@ -69,17 +71,6 @@ export interface ZipFile {
   /** Mark the entry encrypted (general purpose bit 0). */
   encrypted?: boolean;
 }
-
-const crcTable = Array.from({ length: 256 }, (_, n) => {
-  let c = n;
-  for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
-  return c >>> 0;
-});
-const crc32 = (bytes: Uint8Array) => {
-  let c = 0xffffffff;
-  for (const b of bytes) c = (crcTable[(c ^ b) & 0xff] ?? 0) ^ (c >>> 8);
-  return (c ^ 0xffffffff) >>> 0;
-};
 
 /** A ZIP written the plain way (local headers, central directory, end record), UTF-8 names. */
 export function zipOf(entries: ZipFile[]): Uint8Array {
