@@ -11,7 +11,9 @@ use std::time::SystemTime;
 
 mod copy;
 mod ops;
+mod trash;
 mod watch;
+pub use self::trash::trash;
 pub use copy::copy;
 pub use ops::{Stat, mkdir, rename, stat};
 pub use watch::{Change, Changed, Watch, WatchOptions, watch, watch_changes, watch_debounced};

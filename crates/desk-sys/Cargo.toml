@@ -1,6 +1,6 @@
 [package]
 name = "desk-sys"
-description = "Primitives: fs (notify), proc (portable-pty), net, calendar (EventKit) and audio (cpal, wake word), each behind a cargo feature."
+description = "Primitives: fs (notify, trash), proc (portable-pty), net, calendar (EventKit) and audio (cpal, wake word), each behind a cargo feature."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -12,8 +12,9 @@ publish.workspace = true
 # crate needs them.
 
 [features]
-## File primitives: read, list, atomic write and watch.
-fs = ["dep:notify"]
+## File primitives: read, list, stat, atomic write, mkdir, rename, copy, trash (the trash crate) and
+## watch.
+fs = ["dep:notify", "dep:trash"]
 ## Processes: spawn without a shell, in pipes or a PTY, write, resize, signals.
 proc = ["dep:portable-pty", "dep:shared_child", "dep:libc"]
 ## HTTP(S) fetch over rustls, with a host allowlist checked on every redirect.
@@ -33,6 +34,7 @@ calendar = [
 [dependencies]
 desk-bridge.workspace = true
 notify = { workspace = true, optional = true }
+trash = { version = "5.3", optional = true }
 portable-pty = { version = "0.9", optional = true }
 shared_child = { version = "1.1", optional = true, default-features = false }
 ureq = { version = "3.1", optional = true, default-features = false, features = ["rustls", "platform-verifier"] }
