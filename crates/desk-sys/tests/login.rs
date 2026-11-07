@@ -24,120 +24,112 @@ const PROGRAM: &str = "/Applications/endue Desk.app/Contents/MacOS/endue-desk";
 /// Tests run in parallel threads: the counter keeps their folders apart.
 static NEXT: AtomicU32 = AtomicU32::new(0);
 
-/// A fresh folder name under the temp folder; the folder itself is not made.
-fn temp_dir() -> PathBuf {
+/// `<a fresh folder under the temp folder>/missing`; neither folder is made.
+fn missing_dir() -> PathBuf {
     let nanos = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap()
         .as_nanos();
-    let n = NEXT.fetch_add(1, Ordering::Relaxed);
-    std::env::temp_dir().join(format!("desk-sys-login-{}-{nanos}-{n}", std::process::id()))
+    let (pid, n) = (std::process::id(), NEXT.fetch_add(1, Ordering::Relaxed));
+    let name = format!("desk-sys-login-{pid}-{nanos}-{n}");
+    std::env::temp_dir().join(name).join("missing")
 }
 
 fn names(dir: &Path) -> Vec<String> {
-    let mut names: Vec<String> = fs::read_dir(dir)
-        .unwrap()
+    let entries = fs::read_dir(dir).unwrap();
+    let mut names: Vec<String> = entries
         .map(|entry| entry.unwrap().file_name().to_string_lossy().into_owned())
         .collect();
     names.sort();
     names
 }
 
-/// The file's lines trimmed and joined, so tags can be matched whatever the indentation.
-fn compact(text: &str) -> String {
-    text.lines().map(str::trim).collect()
-}
-
-fn status(registered: bool, wanted: bool, matches: bool) -> Status {
-    Status {
-        registered,
-        wanted,
-        matches,
+fn registration(program: &str, args: &[&str]) -> Registration {
+    let args = args.iter().map(|arg| (*arg).to_owned()).collect();
+    Registration {
+        program: PathBuf::from(program),
+        args,
     }
 }
 
 #[test]
 fn apply_registers_the_desk_when_wanted_and_removes_it_when_not() {
-    assert_eq!(BACKGROUND, "--background");
-    assert_eq!(ID, "ai.endue.desk");
-    let registration = desk(PROGRAM);
-    assert_eq!(
-        registration,
-        Registration {
-            program: PathBuf::from(PROGRAM),
-            args: vec!["--background".to_owned()],
-        }
-    );
+    assert_eq!((BACKGROUND, ID), ("--background", "ai.endue.desk"));
+    let desk_program = desk(PROGRAM);
+    assert_eq!(desk_program, registration(PROGRAM, &["--background"]));
     let fake = FakeLoginItems::new();
 
-    assert_eq!(apply(&fake, true, &registration), Ok(Change::Registered));
-    assert_eq!(fake.registration(), Some(registration.clone()));
+    assert_eq!(apply(&fake, true, &desk_program), Ok(Change::Registered));
+    assert_eq!(fake.registration(), Some(desk_program.clone()));
 
-    assert_eq!(apply(&fake, false, &registration), Ok(Change::Removed));
+    assert_eq!(apply(&fake, false, &desk_program), Ok(Change::Removed));
     assert_eq!(fake.registration(), None);
     assert_eq!(fake.writes(), 2);
 }
 
 #[test]
 fn apply_writes_nothing_when_the_registration_already_matches() {
-    let registration = desk(PROGRAM);
     let fake = FakeLoginItems::new();
-    assert_eq!(apply(&fake, true, &registration), Ok(Change::Registered));
+    assert_eq!(apply(&fake, true, &desk(PROGRAM)), Ok(Change::Registered));
 
-    assert_eq!(apply(&fake, true, &registration), Ok(Change::Unchanged));
+    assert_eq!(apply(&fake, true, &desk(PROGRAM)), Ok(Change::Unchanged));
     assert_eq!(fake.writes(), 1);
-    assert_eq!(fake.registration(), Some(registration.clone()));
+    assert_eq!(fake.registration(), Some(desk(PROGRAM)));
 
     let empty = FakeLoginItems::new();
-    assert_eq!(apply(&empty, false, &registration), Ok(Change::Unchanged));
+    assert_eq!(apply(&empty, false, &desk(PROGRAM)), Ok(Change::Unchanged));
     assert_eq!(empty.writes(), 0);
 }
 
 #[test]
 fn apply_replaces_the_registration_of_another_program() {
-    let old = desk("/old/endue-desk");
     let new = desk(PROGRAM);
-    let fake = FakeLoginItems::new().with_registration(old);
+    let fake = FakeLoginItems::new().with_registration(desk("/old/endue-desk"));
+    let status = |registered, wanted, matches| {
+        Ok(Status {
+            registered,
+            wanted,
+            matches,
+        })
+    };
 
-    assert_eq!(check(&fake, true, &new), Ok(status(true, true, false)));
+    assert_eq!(check(&fake, true, &new), status(true, true, false));
     assert_eq!(apply(&fake, true, &new), Ok(Change::Registered));
     assert_eq!(fake.registration(), Some(new.clone()));
-    assert_eq!(check(&fake, true, &new), Ok(status(true, true, true)));
+    assert_eq!(check(&fake, true, &new), status(true, true, true));
 
-    let without_argument = Registration {
-        program: PathBuf::from(PROGRAM),
-        args: Vec::new(),
-    };
-    let fake = FakeLoginItems::new().with_registration(without_argument);
+    let fake = FakeLoginItems::new().with_registration(registration(PROGRAM, &[]));
+    let change = apply(&fake, true, &new);
     assert_eq!(
-        apply(&fake, true, &new),
+        change,
         Ok(Change::Registered),
-        "the same program with other arguments is another registration"
+        "other arguments are another registration"
     );
     assert_eq!(fake.registration(), Some(new));
 }
 
 #[test]
 fn check_says_whether_the_registration_matches_the_setting() {
-    let registration = desk(PROGRAM);
-    let registered = || FakeLoginItems::new().with_registration(registration.clone());
-
-    assert_eq!(
-        check(&registered(), true, &registration),
-        Ok(status(true, true, true))
-    );
-    assert_eq!(
-        check(&FakeLoginItems::new(), true, &registration),
-        Ok(status(false, true, false))
-    );
-    assert_eq!(
-        check(&registered(), false, &registration),
-        Ok(status(true, false, false))
-    );
-    assert_eq!(
-        check(&FakeLoginItems::new(), false, &registration),
-        Ok(status(false, false, true))
-    );
+    let desk_program = desk(PROGRAM);
+    // (wanted, registered) and the `matches` it gives.
+    for (wanted, registered, matches) in [
+        (true, true, true),
+        (true, false, false),
+        (false, true, false),
+        (false, false, true),
+    ] {
+        let mut fake = FakeLoginItems::new();
+        if registered {
+            fake = fake.with_registration(desk_program.clone());
+        }
+        let expected = Status {
+            registered,
+            wanted,
+            matches,
+        };
+        assert_eq!(check(&fake, wanted, &desk_program), Ok(expected));
+        assert_eq!(fake.writes(), 0, "check only reads");
+    }
 }
 
 #[test]
@@ -159,7 +151,7 @@ fn a_failing_backend_is_an_io_error_and_changes_nothing() {
 
 #[test]
 fn the_launch_agent_starts_the_program_in_the_background_at_login() {
-    let dir = temp_dir().join("missing");
+    let dir = missing_dir();
     let agent = LaunchAgent::in_dir(&dir, ID);
     let path = dir.join("ai.endue.desk.plist");
     assert_eq!(agent.path(), path);
@@ -167,23 +159,20 @@ fn the_launch_agent_starts_the_program_in_the_background_at_login() {
 
     agent.register(&desk(PROGRAM)).unwrap();
     let text = fs::read_to_string(&path).unwrap();
-    assert!(
-        text.starts_with("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE plist "),
-        "{text}"
-    );
-    let tags = compact(&text);
+    let head = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE plist ";
+    assert!(text.starts_with(head), "{text}");
+    // The lines trimmed and joined, so tags match whatever the indentation.
+    let tags: String = text.lines().map(str::trim).collect();
     for expected in [
-        "<plist version=\"1.0\"><dict>".to_owned(),
-        "<key>Label</key><string>ai.endue.desk</string>".to_owned(),
-        format!(
-            "<key>ProgramArguments</key><array><string>{PROGRAM}</string>\
-             <string>--background</string></array>"
-        ),
-        "<key>RunAtLoad</key><true/>".to_owned(),
-        "<key>LimitLoadToSessionType</key><string>Aqua</string>".to_owned(),
-        "</dict></plist>".to_owned(),
+        "<plist version=\"1.0\"><dict>",
+        "<key>Label</key><string>ai.endue.desk</string>",
+        &format!("<key>ProgramArguments</key><array><string>{PROGRAM}</string>"),
+        "<string>--background</string></array>",
+        "<key>RunAtLoad</key><true/>",
+        "<key>LimitLoadToSessionType</key><string>Aqua</string>",
+        "</dict></plist>",
     ] {
-        assert!(tags.contains(&expected), "{expected} in {text}");
+        assert!(tags.contains(expected), "{expected} in {text}");
     }
     assert_eq!(agent.registered(), Ok(Some(desk(PROGRAM))));
     #[cfg(unix)]
@@ -196,13 +185,8 @@ fn the_launch_agent_starts_the_program_in_the_background_at_login() {
     let odd = desk("/Users/a b/Apps & Tools/<endue> Desk.app/Contents/MacOS/endue-desk");
     agent.register(&odd).unwrap();
     let text = fs::read_to_string(&path).unwrap();
-    assert!(
-        text.contains(
-            "<string>/Users/a b/Apps &amp; Tools/&lt;endue&gt; Desk.app/Contents/MacOS/endue-desk\
-             </string>"
-        ),
-        "{text}"
-    );
+    let escaped = "<string>/Users/a b/Apps &amp; Tools/&lt;endue&gt; Desk.app/";
+    assert!(text.contains(escaped), "{text}");
     assert_eq!(agent.registered(), Ok(Some(odd.clone())));
     #[cfg(target_os = "macos")]
     plutil_reads(&path, &odd.program);
@@ -233,12 +217,8 @@ fn the_launch_agent_starts_the_program_in_the_background_at_login() {
 #[cfg(target_os = "macos")]
 fn plutil_reads(path: &Path, program: &Path) {
     use std::process::Command;
-    let lint = Command::new("plutil")
-        .arg("-lint")
-        .arg(path)
-        .output()
-        .unwrap();
-    assert!(lint.status.success(), "{lint:?}");
+    let lint = Command::new("plutil").arg("-lint").arg(path).output();
+    assert!(lint.as_ref().unwrap().status.success(), "{lint:?}");
     let first = Command::new("plutil")
         .args(["-extract", "ProgramArguments.0", "raw", "-o", "-"])
         .arg(path)
@@ -251,7 +231,7 @@ fn plutil_reads(path: &Path, program: &Path) {
 
 #[test]
 fn the_autostart_entry_quotes_the_program_and_reads_back() {
-    let dir = temp_dir().join("missing");
+    let dir = missing_dir();
     let autostart = XdgAutostart::in_dir(&dir, ID);
     let path = dir.join("ai.endue.desk.desktop");
     assert_eq!(autostart.path(), path);
@@ -260,8 +240,9 @@ fn the_autostart_entry_quotes_the_program_and_reads_back() {
     let plain = desk("/opt/endue-desk/endue-desk");
     autostart.register(&plain).unwrap();
     let text = fs::read_to_string(&path).unwrap();
+    let lines: Vec<&str> = text.lines().collect();
     assert_eq!(
-        text.lines().collect::<Vec<_>>(),
+        lines,
         [
             "[Desktop Entry]",
             "Type=Application",
@@ -270,44 +251,25 @@ fn the_autostart_entry_quotes_the_program_and_reads_back() {
             "X-GNOME-Autostart-enabled=true",
         ]
     );
-    assert_eq!(autostart.registered(), Ok(Some(plain)));
+    assert_eq!(autostart.registered(), Ok(Some(plain.clone())));
 
     let odd = desk("/home/a b/$HOME/endue\\desk`x`/100% \"real\".AppImage");
     autostart.register(&odd).unwrap();
     let text = fs::read_to_string(&path).unwrap();
-    assert!(
-        text.contains(
-            r#"Exec="/home/a b/\\$HOME/endue\\\\desk\\`x\\`/100%% \\"real\\".AppImage" --background"#
-        ),
-        "{text}"
-    );
+    let exec =
+        r#"Exec="/home/a b/\\$HOME/endue\\\\desk\\`x\\`/100%% \\"real\\".AppImage" --background"#;
+    assert!(text.contains(exec), "{text}");
     assert_eq!(autostart.registered(), Ok(Some(odd)));
-    let with_arguments = Registration {
-        program: PathBuf::from("/opt/endue-desk/endue-desk"),
-        args: vec![
-            BACKGROUND.to_owned(),
-            "two words".to_owned(),
-            "50%".to_owned(),
-        ],
-    };
-    autostart.register(&with_arguments).unwrap();
-    assert_eq!(autostart.registered(), Ok(Some(with_arguments)));
-    assert_eq!(
-        names(&dir),
-        ["ai.endue.desk.desktop"],
-        "no temp file is left"
-    );
 
-    fs::write(
-        &path,
-        "# written by hand\n[Desktop Entry]\nName=endue Desk\nExec = /opt/endue-desk/endue-desk --background\n",
-    )
-    .unwrap();
-    assert_eq!(
-        autostart.registered(),
-        Ok(Some(desk("/opt/endue-desk/endue-desk"))),
-        "an unquoted Exec reads back too"
-    );
+    let with_args = registration("/opt/endue-desk/endue-desk", &[BACKGROUND, "a b", "50%"]);
+    autostart.register(&with_args).unwrap();
+    assert_eq!(autostart.registered(), Ok(Some(with_args)));
+    assert_eq!(names(&dir), ["ai.endue.desk.desktop"], "no temp file");
+
+    let by_hand = "# by hand\n[Desktop Entry]\nName=endue Desk\nExec = /opt/endue-desk/endue-desk --background\n";
+    fs::write(&path, by_hand).unwrap();
+    let read = autostart.registered();
+    assert_eq!(read, Ok(Some(plain)), "an unquoted Exec reads back too");
 
     autostart.unregister().unwrap();
     assert!(!path.exists());
@@ -318,27 +280,20 @@ fn the_autostart_entry_quotes_the_program_and_reads_back() {
 
 #[test]
 fn the_run_key_command_line_quotes_the_program_and_reads_back() {
-    let registration = desk(r"C:\Program Files\endue Desk\endue-desk.exe");
-    let line = run_key::command_line(&registration);
-    assert_eq!(
-        line,
-        r#""C:\Program Files\endue Desk\endue-desk.exe" --background"#
-    );
-    assert_eq!(run_key::parse(&line), registration);
+    let desk_program = desk(r"C:\Program Files\endue Desk\endue-desk.exe");
+    let line = run_key::command_line(&desk_program);
+    let expected = r#""C:\Program Files\endue Desk\endue-desk.exe" --background"#;
+    assert_eq!(line, expected);
+    assert_eq!(run_key::parse(&line), desk_program);
 
-    let odd = Registration {
-        program: PathBuf::from(r"C:\endue\endue-desk.exe"),
-        args: vec![
-            BACKGROUND.to_owned(),
-            "two words".to_owned(),
-            r#"say "hi""#.to_owned(),
-            r"C:\a folder\".to_owned(),
-            String::new(),
-        ],
-    };
+    let odd = registration(
+        r"C:\endue\endue-desk.exe",
+        &[BACKGROUND, "two words", r#"say "hi""#, r"C:\a folder\", ""],
+    );
     assert_eq!(run_key::parse(&run_key::command_line(&odd)), odd);
+    let unquoted = run_key::parse(r"C:\endue\endue-desk.exe --background");
     assert_eq!(
-        run_key::parse(r"C:\endue\endue-desk.exe --background"),
+        unquoted,
         desk(r"C:\endue\endue-desk.exe"),
         "an unquoted program reads back too"
     );
@@ -349,10 +304,8 @@ fn a_login_start_is_told_by_the_background_argument() {
     assert!(login::launched_at_login(["endue-desk", "--background"]));
     assert!(!login::launched_at_login(["endue-desk"]));
     assert!(!login::launched_at_login(["endue-desk", "/tmp/a.md"]));
-    assert!(login::launched_at_login([
-        OsString::from("endue-desk"),
-        OsString::from(BACKGROUND),
-    ]));
+    let args_os = [OsString::from("endue-desk"), OsString::from(BACKGROUND)];
+    assert!(login::launched_at_login(args_os));
 }
 
 #[test]
@@ -360,10 +313,8 @@ fn the_program_is_the_appimage_when_the_desk_runs_from_one() {
     let exe = PathBuf::from("/tmp/.mount_endue/usr/bin/endue-desk");
     let appimage = OsString::from("/home/a/Apps/endue-desk.AppImage");
 
-    assert_eq!(
-        login::program_from(exe.clone(), Some(appimage)),
-        PathBuf::from("/home/a/Apps/endue-desk.AppImage")
-    );
+    let program = login::program_from(exe.clone(), Some(appimage));
+    assert_eq!(program, PathBuf::from("/home/a/Apps/endue-desk.AppImage"));
     assert_eq!(login::program_from(exe.clone(), None), exe);
     assert_eq!(login::program_from(exe.clone(), Some(OsString::new())), exe);
     if std::env::var_os("APPIMAGE").is_none() {
@@ -371,61 +322,43 @@ fn the_program_is_the_appimage_when_the_desk_runs_from_one() {
     }
 }
 
+#[cfg(any(target_os = "macos", windows, target_os = "linux"))]
 #[test]
 fn os_names_the_platform_backend() {
-    #[cfg(any(target_os = "macos", target_os = "linux"))]
-    let expected = expected_file();
-    #[cfg(any(target_os = "macos", target_os = "linux"))]
-    let existed = (expected.exists(), expected.parent().unwrap().exists());
+    let (name, location) = expected_backend();
+    let file = Path::new(&location);
+    let state = || (file.exists(), file.parent().is_some_and(Path::exists));
+    let before = state();
 
-    let items = match login::os(ID) {
-        Ok(items) => items,
-        Err(err) => {
-            assert!(cfg!(not(any(
-                target_os = "macos",
-                windows,
-                target_os = "linux"
-            ))));
-            assert_eq!(err.code, ErrorCode::Unsupported);
-            return;
-        }
-    };
-    let location = items.location();
+    let items = login::os(ID).unwrap();
 
-    #[cfg(target_os = "macos")]
-    assert_eq!(items.name(), "launch-agent");
-    #[cfg(target_os = "linux")]
-    assert_eq!(items.name(), "xdg-autostart");
-    #[cfg(any(target_os = "macos", target_os = "linux"))]
-    {
-        assert_eq!(Path::new(&location), expected);
-        let now = (expected.exists(), expected.parent().unwrap().exists());
-        assert_eq!(now, existed, "naming the backend writes nothing");
-    }
-    #[cfg(windows)]
-    {
-        assert_eq!(items.name(), "run-key");
-        assert_eq!(
-            location,
-            r"HKCU\Software\Microsoft\Windows\CurrentVersion\Run\ai.endue.desk"
-        );
-    }
+    assert_eq!((items.name(), items.location()), (name, location.clone()));
+    assert_eq!(state(), before, "naming the backend writes nothing");
 }
 
-/// Where the OS backend keeps the registration, worked out from the environment.
+/// The backend's name and where it keeps the registration, worked out from the environment.
 #[cfg(target_os = "macos")]
-fn expected_file() -> PathBuf {
-    PathBuf::from(std::env::var_os("HOME").unwrap())
-        .join("Library/LaunchAgents/ai.endue.desk.plist")
+fn expected_backend() -> (&'static str, String) {
+    let home = PathBuf::from(std::env::var_os("HOME").unwrap());
+    let plist = home.join("Library/LaunchAgents/ai.endue.desk.plist");
+    ("launch-agent", plist.display().to_string())
+}
+
+#[cfg(windows)]
+fn expected_backend() -> (&'static str, String) {
+    let value = r"HKCU\Software\Microsoft\Windows\CurrentVersion\Run\ai.endue.desk";
+    ("run-key", value.to_owned())
 }
 
 #[cfg(target_os = "linux")]
-fn expected_file() -> PathBuf {
+fn expected_backend() -> (&'static str, String) {
+    let home = || PathBuf::from(std::env::var_os("HOME").unwrap()).join(".config");
     let config = std::env::var_os("XDG_CONFIG_HOME")
         .map(PathBuf::from)
-        .filter(|path| path.is_absolute())
-        .unwrap_or_else(|| PathBuf::from(std::env::var_os("HOME").unwrap()).join(".config"));
-    config.join("autostart/ai.endue.desk.desktop")
+        .filter(|config| config.is_absolute())
+        .unwrap_or_else(home);
+    let entry = config.join("autostart/ai.endue.desk.desktop");
+    ("xdg-autostart", entry.display().to_string())
 }
 
 #[cfg(windows)]
@@ -447,23 +380,19 @@ fn on_windows_the_run_key_registers_and_removes_a_value() {
     assert_eq!(items.registered(), Ok(None));
     assert_eq!(items.unregister(), Ok(()), "nothing to remove is fine");
 
-    let registration = desk(r"C:\Program Files\endue Desk\endue-desk.exe");
-    items.register(&registration).unwrap();
-    let value = windows_registry::CURRENT_USER
-        .open(&key)
-        .unwrap()
-        .get_string(ID)
-        .unwrap();
-    assert_eq!(
-        value,
-        r#""C:\Program Files\endue Desk\endue-desk.exe" --background"#
-    );
-    assert_eq!(items.registered(), Ok(Some(registration.clone())));
-    assert_eq!(apply(&items, true, &registration), Ok(Change::Unchanged));
+    let desk_program = desk(r"C:\Program Files\endue Desk\endue-desk.exe");
+    items.register(&desk_program).unwrap();
+    let run = windows_registry::CURRENT_USER.open(&key).unwrap();
+    let value = run.get_string(ID).unwrap();
+    let expected = r#""C:\Program Files\endue Desk\endue-desk.exe" --background"#;
+    assert_eq!(value, expected);
+    assert_eq!(items.registered(), Ok(Some(desk_program.clone())));
+    assert_eq!(apply(&items, true, &desk_program), Ok(Change::Unchanged));
 
-    assert_eq!(apply(&items, false, &registration), Ok(Change::Removed));
+    assert_eq!(apply(&items, false, &desk_program), Ok(Change::Removed));
     assert_eq!(items.registered(), Ok(None));
     assert_eq!(items.unregister(), Ok(()));
+    drop(run);
     drop(cleanup);
     assert!(windows_registry::CURRENT_USER.open(&key).is_err());
 }
