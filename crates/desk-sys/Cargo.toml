@@ -84,6 +84,14 @@ name = "fs"
 required-features = ["fs"]
 
 [[test]]
+name = "fs_ops"
+required-features = ["fs"]
+
+[[test]]
+name = "fs_trash"
+required-features = ["fs"]
+
+[[test]]
 name = "proc"
 required-features = ["proc"]
 
