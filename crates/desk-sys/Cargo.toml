@@ -44,6 +44,10 @@ notification = [
 ## Start at login: register or remove the desk as a login item (a LaunchAgent on macOS, the Run key
 ## on Windows, an XDG autostart entry on Linux) and check it against the setting, and a fake.
 login = ["dep:windows-registry"]
+## Text on the clipboard: read, write, change detection and a watch, with the concealed and transient
+## marks password managers set. NSPasteboard on macOS, user32 on Windows, `unsupported` on Linux, and
+## a fake.
+clipboard = []
 
 [dependencies]
 desk-bridge.workspace = true
@@ -163,6 +167,10 @@ required-features = ["notification"]
 [[test]]
 name = "login"
 required-features = ["login"]
+
+[[test]]
+name = "clipboard"
+required-features = ["clipboard"]
 
 [[test]]
 name = "shell"
