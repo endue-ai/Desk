@@ -9,8 +9,10 @@ use std::path::Path;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::SystemTime;
 
+mod copy;
 mod ops;
 mod watch;
+pub use copy::copy;
 pub use ops::{Stat, mkdir, rename, stat};
 pub use watch::{Change, Changed, Watch, WatchOptions, watch, watch_changes, watch_debounced};
 
