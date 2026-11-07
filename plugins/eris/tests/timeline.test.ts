@@ -31,6 +31,7 @@ function manualClock() {
   return {
     frame: (callback: (at: number) => void) => {
       next = callback;
+      return 0;
     },
     tick(at: number) {
       const run = next;
@@ -59,7 +60,7 @@ afterEach(() => {
 describe("the timeline lets go", () => {
   it("of animations whose targets left the document", () => {
     const clock = manualClock();
-    const timeline = new Timeline(clock, 0);
+    const timeline = new Timeline(clock);
     const targets = [];
     for (let i = 0; i < 500; i++) {
       const { target, animation } = animationOn(10_000);
@@ -76,7 +77,7 @@ describe("the timeline lets go", () => {
 
   it("of a finite animation once it ends, with its final state applied", () => {
     const clock = manualClock();
-    const timeline = new Timeline(clock, 0);
+    const timeline = new Timeline(clock);
     timeline.add(animationOn(1000).animation);
     const [held] = FakeAnimation.made;
     clock.tick(0);
@@ -93,17 +94,17 @@ describe("the timeline lets go", () => {
 
   it("but never of an endless animation on a connected target", () => {
     const clock = manualClock();
-    const timeline = new Timeline(clock, 0);
+    const timeline = new Timeline(clock);
     timeline.add(animationOn(Number.POSITIVE_INFINITY).animation);
     const [held] = FakeAnimation.made;
     for (let at = 0; at <= 600_000; at += 16) clock.tick(at);
     expect(timeline.size).toBe(1);
-    expect(held?.currentTime).toBe(599_984);
+    expect(held?.currentTime).toBe(600_000);
     expect(held?.cancelled).toBe(false);
   });
 
   it("and size is read-only", () => {
-    const timeline = new Timeline(manualClock(), 0);
+    const timeline = new Timeline(manualClock());
     expect(() => {
       (timeline as unknown as { size: number }).size = 5;
     }).toThrow(TypeError);

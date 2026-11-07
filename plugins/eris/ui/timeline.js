@@ -31,6 +31,11 @@ export class Timeline {
     return this.#frame === null ? 0 : this.#frame - this.#origin;
   }
 
+  /** How many animations the timeline still holds and positions on every frame. */
+  get size() {
+    return this.#animations.length;
+  }
+
   /**
    * Take over an animation: its effect moves to an animation without a document timeline, which never
    * advances on its own. (`pause()` is not enough: WebKit settles a pending pause on a later rendering
@@ -62,7 +67,28 @@ export class Timeline {
     this.#frame = at;
     const now = this.time;
     while (this.#cues.length > 0 && this.#cues[0].ms <= now) this.#cues.shift().fn(now);
-    for (const animation of this.#animations) animation.currentTime = Math.max(0, now);
+    this.#animations = this.#animations.filter((animation) => this.#hold(animation, now));
     this.#clock.frame((next) => this.#tick(next));
+  }
+
+  /**
+   * Position one animation at `now`, and say whether to keep holding it. One whose target left the
+   * document is cancelled and let go: nothing shows it any more. A finite one that reached its end
+   * gets its final time once and is let go; it is not cancelled, so its fill keeps that state.
+   * Endless ones on connected targets stay held.
+   */
+  #hold(animation, now) {
+    const target = animation.effect?.target;
+    if (target && !target.isConnected) {
+      animation.cancel();
+      return false;
+    }
+    const end = Math.max(0, animation.effect?.getComputedTiming().endTime ?? 0);
+    if (now >= end) {
+      animation.currentTime = end;
+      return false;
+    }
+    animation.currentTime = Math.max(0, now);
+    return true;
   }
 }
