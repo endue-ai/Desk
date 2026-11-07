@@ -251,7 +251,7 @@ export function defineLocalAgentCommands(
     define(
       "desk.agents.dispatch",
       "Local agents: hand several agents work at once",
-      ["dispatch", "parallel", "orchestrate", "fan out"],
+      ["dispatch", "parallel", "orchestrate"],
       schemas.dispatch,
       async (args, from) => ({
         results: await Promise.all(
