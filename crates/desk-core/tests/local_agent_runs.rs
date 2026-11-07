@@ -129,7 +129,8 @@ fn a_work_request_runs_the_program_read_only_and_reports_each_step() {
 fn a_run_that_is_stopped_ends_stopped_and_one_that_fails_says_why() {
     let home = home("agents-stop");
     let bin = home.join("bin");
-    program(&bin, "codex", "#!/bin/sh\nexec sleep 30\n");
+    // The run's PATH is only `bin`, so the program names sleep by its path.
+    program(&bin, "codex", "#!/bin/sh\nexec /bin/sleep 30\n");
     program(
         &bin,
         "claude",
@@ -142,6 +143,10 @@ fn a_run_that_is_stopped_ends_stopped_and_one_that_fails_says_why() {
     let started = agents(&core, "agents.ask", ask).unwrap();
     let run_id = started["run"]["runId"].as_str().unwrap().to_owned();
     assert_eq!(started["run"]["access"], "agent");
+    // Still going a moment later: a program that cannot start would have ended by now.
+    std::thread::sleep(std::time::Duration::from_millis(300));
+    let going = agents(&core, "agents.runs", json!({ "agent": "codex" })).unwrap();
+    assert_eq!(going["runs"][0]["state"], "running");
     let stopped = agents(&core, "agents.stop", json!({ "runId": run_id })).unwrap();
     assert_eq!(stopped["run"]["state"], "stopped");
     let end = loop {
