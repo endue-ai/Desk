@@ -136,24 +136,14 @@ fn connect(server: Server) -> (Connection, Connection) {
 }
 
 fn action_invoked(server: &Connection, id: u32, action: &str) {
-    let signal = server.emit_signal(
-        None::<&str>,
-        PATH,
-        INTERFACE,
-        "ActionInvoked",
-        &(id, action),
-    );
+    let args = (id, action);
+    let signal = server.emit_signal(None::<&str>, PATH, INTERFACE, "ActionInvoked", &args);
     zbus::block_on(signal).unwrap();
 }
 
 fn notification_closed(server: &Connection, id: u32, reason: u32) {
-    let signal = server.emit_signal(
-        None::<&str>,
-        PATH,
-        INTERFACE,
-        "NotificationClosed",
-        &(id, reason),
-    );
+    let args = (id, reason);
+    let signal = server.emit_signal(None::<&str>, PATH, INTERFACE, "NotificationClosed", &args);
     zbus::block_on(signal).unwrap();
 }
 

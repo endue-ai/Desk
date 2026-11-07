@@ -8,7 +8,9 @@ use std::sync::{Arc, Mutex};
 
 use desk_sys::ErrorCode;
 use desk_sys::notification::fake::FakeNotifier;
-use desk_sys::notification::{Authorization, Click, Notification, Notifier, NotifyLevel};
+use desk_sys::notification::{
+    Authorization, Click, ClickHandler, Notification, Notifier, NotifyLevel,
+};
 
 fn notification(id: &str, body: Option<&str>, level: NotifyLevel) -> Notification {
     Notification {
@@ -20,7 +22,7 @@ fn notification(id: &str, body: Option<&str>, level: NotifyLevel) -> Notificatio
 }
 
 /// A click handler that keeps every click it is called with.
-fn recorder() -> (Arc<Mutex<Vec<Click>>>, Box<dyn Fn(Click) + Send + Sync>) {
+fn recorder() -> (Arc<Mutex<Vec<Click>>>, ClickHandler) {
     let clicks = Arc::new(Mutex::new(Vec::new()));
     let kept = Arc::clone(&clicks);
     let handler = Box::new(move |click: Click| kept.lock().unwrap().push(click));
