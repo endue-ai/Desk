@@ -7,6 +7,7 @@
       { "imports": { "@endue-ai/plugin-sdk": "/_desk/plugin-sdk.js", "@endue-ai/ui": "/_desk/ui.js" } }
     </script>
     <link rel="stylesheet" href="/_desk/tokens.css" />
+    <link rel="stylesheet" href="/_desk/base.css" />
     <link rel="stylesheet" href="./style.css" />
   </head>
   <body>
@@ -19,26 +20,26 @@
         </p>
       </div>
       <div id="tools" role="toolbar" aria-label="Document" hidden>
-        <button type="button" id="outline-toggle" aria-pressed="true" aria-controls="outline">
+        <button type="button" id="outline-toggle" class="desk-btn desk-btn-quiet" aria-pressed="true" aria-controls="outline">
           Outline
         </button>
-        <button type="button" id="comments-toggle" aria-pressed="false" aria-controls="comments">
+        <button type="button" id="comments-toggle" class="desk-btn desk-btn-quiet" aria-pressed="false" aria-controls="comments">
           Comments
         </button>
-        <button type="button" id="find-open" aria-controls="find">Find</button>
-        <button type="button" id="zoom-out" aria-label="Zoom out">−</button>
+        <button type="button" id="find-open" class="desk-btn desk-btn-quiet" aria-controls="find">Find</button>
+        <button type="button" id="zoom-out" class="desk-icon-btn" aria-label="Zoom out">−</button>
         <span id="zoom-level" aria-label="Zoom">100%</span>
-        <button type="button" id="zoom-in" aria-label="Zoom in">+</button>
-        <button type="button" id="zoom-fit">Fit width</button>
+        <button type="button" id="zoom-in" class="desk-icon-btn" aria-label="Zoom in">+</button>
+        <button type="button" id="zoom-fit" class="desk-btn desk-btn-quiet">Fit width</button>
       </div>
     </header>
     <desk-progress id="opening" hidden></desk-progress>
     <div id="find" role="search" aria-label="Find in document" hidden>
-      <input id="find-text" type="search" aria-label="Find in document" autocomplete="off" />
-      <button type="button" id="find-prev" aria-label="Previous match">↑</button>
-      <button type="button" id="find-next" aria-label="Next match">↓</button>
+      <input id="find-text" class="desk-field" type="search" aria-label="Find in document" autocomplete="off" />
+      <button type="button" id="find-prev" class="desk-icon-btn" aria-label="Previous match">↑</button>
+      <button type="button" id="find-next" class="desk-icon-btn" aria-label="Next match">↓</button>
       <span id="find-count"></span>
-      <button type="button" id="find-close" aria-label="Close find">×</button>
+      <button type="button" id="find-close" class="desk-icon-btn" aria-label="Close find">×</button>
     </div>
     <div id="layout" hidden>
       <nav id="outline" aria-label="Outline">

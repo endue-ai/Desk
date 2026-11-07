@@ -3,7 +3,7 @@
 // involved (ADR 0018). Spec files run one after another, each in its own WebDriver session and app
 // process with a fresh HOME (support/driver.ts). A display comes from outside (`xvfb-run` in CI).
 import { existsSync, mkdirSync } from "node:fs";
-import { basename, dirname, join, resolve } from "node:path";
+import { basename, delimiter, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { browser } from "@wdio/globals";
 import { PORT, saveData, startDriver, stopDriver } from "./support/driver";
@@ -33,6 +33,16 @@ const INIT: Record<string, string> = {
   "settings.spec.ts": "init-bad-values.yaml",
 };
 const DEFAULT_INIT = "init-no-first-run.yaml";
+
+/** The app's environment a spec adds: persist.spec.ts asks for permissions from e2e.ask too. */
+const ENV: Record<string, Record<string, string>> = {
+  "persist.spec.ts": {
+    DESK_DEV_PLUGINS: [
+      join(root, "e2e/fixtures/plugin-e2e-hello"),
+      join(root, "e2e/fixtures/plugin-e2e-ask"),
+    ].join(delimiter),
+  },
+};
 
 declare global {
   namespace WebdriverIO {
@@ -76,7 +86,7 @@ export const config: WebdriverIO.Config = {
 
   async beforeSession(_config, _capabilities, specs) {
     spec = specName(specs[0]);
-    await startDriver({ root, results, spec, init: INIT[spec] ?? DEFAULT_INIT });
+    await startDriver({ root, results, spec, init: INIT[spec] ?? DEFAULT_INIT, env: ENV[spec] });
   },
   async afterTest(test, _context, { passed }) {
     if (passed) return;

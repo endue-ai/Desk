@@ -16,9 +16,9 @@
       "pattern": "^(/|~(/|$)|[A-Za-z]:/|\\$\\{(plugin|workspace|home)\\}(/|$))[^\\\\]*$"
     },
     "CallerId": {
-      "description": "Who makes calls: a plugin id such as endue.eris, a name of the desk's own such as desk (the web runtime), or agent:<id> for an agent of the brain whose tool call the core runs (ADR 0072). core names desk-core itself.",
+      "description": "Who makes calls: a plugin id such as endue.eris, a name of the desk's own such as desk (the web runtime), agent:<id> for an agent of the brain whose tool call the core runs (ADR 0072), or mcp:<name> for an MCP server init.yaml lists (ADR 0098). core names desk-core itself.",
       "type": "string",
-      "pattern": "^([a-z][a-z0-9-]*(\\.[a-z][a-z0-9-]*)*|agent:[A-Za-z0-9][A-Za-z0-9_.-]*)$",
+      "pattern": "^([a-z][a-z0-9-]*(\\.[a-z][a-z0-9-]*)*|agent:[A-Za-z0-9][A-Za-z0-9_.-]*|mcp:[a-z][a-z0-9-]{0,31})$",
       "maxLength": 128
     },
     "Encoding": {
@@ -59,6 +59,9 @@
         { "$ref": "plugins.schema.json#/$defs/PluginListRequest" },
         { "$ref": "plugins.schema.json#/$defs/PluginSetEnabledRequest" },
         { "$ref": "plugins.schema.json#/$defs/PluginStatsRequest" },
+        { "$ref": "market.schema.json#/$defs/MarketListRequest" },
+        { "$ref": "market.schema.json#/$defs/PluginInstallRequest" },
+        { "$ref": "market.schema.json#/$defs/PluginRemoveRequest" },
         { "$ref": "store.schema.json#/$defs/StoreGetRequest" },
         { "$ref": "store.schema.json#/$defs/StoreSetRequest" },
         { "$ref": "init.schema.json#/$defs/InitGetRequest" },
@@ -113,6 +116,9 @@
         { "$ref": "agents.schema.json#/$defs/AgentsAskRequest" },
         { "$ref": "agents.schema.json#/$defs/AgentsRunsRequest" },
         { "$ref": "agents.schema.json#/$defs/AgentsStopRequest" },
+        { "$ref": "agent.schema.json#/$defs/AgentListRequest" },
+        { "$ref": "agent.schema.json#/$defs/AgentCancelRequest" },
+        { "$ref": "agent.schema.json#/$defs/AgentReportRequest" },
         { "$ref": "theme.schema.json#/$defs/ThemeSaveRequest" },
         { "$ref": "theme.schema.json#/$defs/ThemeImportRequest" },
         { "$ref": "theme.schema.json#/$defs/ThemeExportRequest" },
@@ -175,7 +181,7 @@
       ]
     },
     "BridgeEvent": {
-      "description": "Something the core reports without being asked: file changes, process output, wake words, permission changes, prompts and approvals, notifications, surfaces, commands, settings, log entries, changes to items, connectors and views, the desk's update status, its endue ID account, and the runs of the agent programs on this computer.",
+      "description": "Something the core reports without being asked: file changes, process output, wake words, permission changes, prompts and approvals, notifications, surfaces, commands, settings, log entries, changes to items, connectors and views, the desk's update status, its endue ID account, runs to stop, and the runs of the agent programs on this computer.",
       "oneOf": [
         { "$ref": "fs.schema.json#/$defs/FsChangedEvent" },
         { "$ref": "proc.schema.json#/$defs/ProcOutputEvent" },
@@ -203,7 +209,8 @@
         { "$ref": "update.schema.json#/$defs/UpdateChangedEvent" },
         { "$ref": "account.schema.json#/$defs/AccountChangedEvent" },
         { "$ref": "agents.schema.json#/$defs/AgentsRunEvent" },
-        { "$ref": "agents.schema.json#/$defs/AgentsChangedEvent" }
+        { "$ref": "agents.schema.json#/$defs/AgentsChangedEvent" },
+        { "$ref": "agent.schema.json#/$defs/AgentCancelledEvent" }
       ]
     }
   }

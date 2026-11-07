@@ -290,18 +290,8 @@ main {
 #commit-message {
   flex: 1;
   min-height: 120px;
-  padding: 8px;
-  border: 1px solid var(--desk-border);
-  border-radius: var(--desk-radius-md);
-  background: var(--desk-background);
-  color: var(--desk-text);
   font: calc(var(--desk-text-sm) - 1px)/1.5 var(--desk-font-mono);
   resize: none;
-}
-
-#commit-message:focus {
-  border-color: var(--desk-ring);
-  outline: none;
 }
 
 #commit .options {

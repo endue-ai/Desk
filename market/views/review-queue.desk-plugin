@@ -1,0 +1,66 @@
+{
+  "format": "desk-plugin/1",
+  "manifest": {
+    "id": "market.review-queue",
+    "name": "Review queue",
+    "version": "1.0.0",
+    "kind": "view",
+    "description": "Open work across your task sources, the last updated first, with the project it belongs to.",
+    "view": {
+      "id": "market.review-queue",
+      "version": "1.0.0",
+      "title": "Review queue",
+      "description": "Open work, the last updated first.",
+      "requires": {
+        "tasks": {
+          "kinds": [
+            "task"
+          ],
+          "title": "A task source"
+        }
+      },
+      "layout": {
+        "type": "table",
+        "title": "Open work",
+        "binding": {
+          "kinds": [
+            "task"
+          ],
+          "sources": [
+            "$tasks"
+          ],
+          "where": [
+            {
+              "field": "status",
+              "op": "eq",
+              "value": "open"
+            }
+          ],
+          "sort": [
+            {
+              "field": "updatedAt",
+              "dir": "desc"
+            }
+          ],
+          "limit": 50
+        },
+        "fields": [
+          {
+            "label": "Title",
+            "value": "{title}"
+          },
+          {
+            "label": "Project",
+            "value": "{project}"
+          },
+          {
+            "label": "Updated",
+            "value": "{updatedAt|relative}"
+          }
+        ],
+        "empty": "Nothing open."
+      }
+    }
+  },
+  "files": {}
+}

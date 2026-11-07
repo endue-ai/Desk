@@ -1,6 +1,6 @@
 /**
  * The runtime's own card for what Eris proposes that is not a view (ADR 0073): a profile drawn as a
- * ghost, key bindings as a table. It floats over the desk with Apply, Try again (with what should
+ * ghost, key bindings as a table, a pack as what it brings (ADR 0108). It floats over the desk with Apply, Try again (with what should
  * change) and Discard, and answers with the person's choice as desk.views.preview does. Once applied
  * it says so with Undo. It belongs to the runtime, not to a plugin, because a profile may turn the
  * plugins off, desk.views among them, and the way back must outlive the switch. Escape is Discard
@@ -12,7 +12,8 @@ import type { Choice } from "./pipeline";
 
 export type CardContent =
   | { kind: "profile"; title: string; model: ProfileModel }
-  | { kind: "keys"; title: string; rows: KeyRow[] };
+  | { kind: "keys"; title: string; rows: KeyRow[] }
+  | { kind: "pack"; title: string; rows: Array<[string, string]> };
 
 export interface Card {
   /** Show a proposal and wait for the person's choice. */
@@ -75,7 +76,11 @@ export function createCard(host: HTMLElement): Card {
     said.setAttribute("role", "status");
     const body = make("div", "proposal-body");
     body.append(
-      content.kind === "profile" ? drawProfile(doc, content.model) : drawKeys(doc, content.rows),
+      content.kind === "profile"
+        ? drawProfile(doc, content.model)
+        : content.kind === "keys"
+          ? drawKeys(doc, content.rows)
+          : drawPack(content.rows),
     );
     card.append(head, said, body);
     card.addEventListener("keydown", (event) => {
@@ -90,6 +95,13 @@ export function createCard(host: HTMLElement): Card {
     return { card, said };
   };
 
+  /** What a pack brings, as a list of label and value (ADR 0108). */
+  const drawPack = (rows: Array<[string, string]>) => {
+    const list = make("dl", "proposal-pack");
+    for (const [label, value] of rows) list.append(make("dt", "", label), make("dd", "", value));
+    return list;
+  };
+
   return {
     preview(content, note) {
       settle(DISCARD);
@@ -99,7 +111,9 @@ export function createCard(host: HTMLElement): Card {
       field.type = "text";
       field.setAttribute("aria-label", "What should change");
       field.placeholder = "What should change? Try again sends it to Eris.";
-      const buttons = CHOICES.map(([choice, label]) =>
+      // A pack is data the desk has: there is nothing for Eris to try again (ADR 0108).
+      const offered = CHOICES.filter(([choice]) => content.kind !== "pack" || choice !== "retry");
+      const buttons = offered.map(([choice, label]) =>
         button(label, { choice }, choice === "apply"),
       );
       pick = (choice) => {
@@ -127,7 +141,8 @@ export function createCard(host: HTMLElement): Card {
       });
       const actions = make("div", "proposal-actions");
       actions.append(...buttons);
-      card.append(field, actions);
+      if (content.kind !== "pack") card.append(field);
+      card.append(actions);
       const answer = new Promise<Choice>((resolve) => {
         waiting = resolve;
       });

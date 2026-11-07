@@ -24,6 +24,7 @@ is JSON in the app's data folder (ADR 0079).
 | `plugins.disabled` | plugin ids | `[]` | Plugins that start disabled, built-ins included; turning one on while Desk runs lasts until the next start |
 | `settings` | key → any value | `{}` | Settings for the core and plugins; keys are lowercase and dotted by owner (`eris.voice`) |
 | `agents.<id>.allow` | permissions | none | What the brain's agent `<id>` may be granted; outside a non-empty list it is refused, inside it the person is asked (ADR 0072). Read again at every agent call |
+| `mcp.servers.<name>` | `command`, `args`, `env` | none | MCP servers whose tools agents may call, as the commands `mcp.<name>.<tool>` (ADR 0098). Each starts over stdio as the caller `mcp:<name>` once the person grants it `proc:spawn` for `command`; `env` names variables to pass from the desk's environment, never values. Read at start |
 | `sync.enabled` | boolean | `false` | Keep this file the same on every desk, through endue |
 
 Unknown keys are refused, so a typo surfaces instead of being ignored. New keys arrive with a new
@@ -50,6 +51,30 @@ file uses the new one. `vectors/valid/bad-values.json` is such a file.
 - Both are read at start and again whenever they change on disk, so a hand edit applies at once. Like
   init.yaml, a file that does not parse or does not match its schema is ignored, never overwritten,
   and Desk names the file and the line of the problem. Both carry an optional `version` (0).
+
+## plugins.lock
+
+`~/.desk/plugins.lock` (`PluginsLock`, `lock.schema.json`) is the plugin set, written by the core alone on
+every install, removal, version change and turn on or off, and only when its text changes. It is YAML:
+a comment header, `version: 0` and `plugins:`, one flow mapping per plugin sorted by id, so each plugin
+is one line in a diff:
+
+```yaml
+version: 0
+plugins:
+  - { id: desk.keys, version: 0.1.0, source: builtin, sha256: 9f2c…a1b2, enabled: true }
+```
+
+- `source` is `builtin`, `folder:<path>` (`~` for the home folder, so a lock reads the same on another
+  computer) or `url:<https URL>` (market installs, later). A plugin that does not validate has no
+  version to pin and is left out.
+- `sha256` is the folder digest: every regular file under the plugin folder whose path has no part
+  starting with `.`, in byte order of its path relative to the folder (forward slashes), each fed as
+  path, NUL, decimal length, NUL, bytes; lowercase hex.
+- `enabled` is the plugin's persisted flag; init.yaml's start-only holds do not change it.
+- `desk plugin list --lock` prints the file; `desk plugin sync` turns plugins on and off as it says,
+  leaves the ones it does not name alone and reports the ones it names that are not installed. A lock
+  with a `version` newer than 0 is refused.
 
 ## Sync
 

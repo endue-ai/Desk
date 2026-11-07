@@ -47,9 +47,12 @@ export async function shellReady(): Promise<void> {
   );
 }
 
-/** Run `body` inside a plugin's sandboxed frame, then return to the shell. */
+/**
+ * Run `body` inside a plugin's sandboxed frame, then return to the shell. The frame is looked up in
+ * any layer: endue.permissions' prompt is an overlay surface.
+ */
 export async function inFrame<T>(plugin: string, body: () => Promise<T>): Promise<T> {
-  const frame = $(`${MODE} .desk-surface[data-surface="${plugin}"] iframe`);
+  const frame = $(`#desk.shell .desk-surface[data-surface="${plugin}"] iframe`);
   await frame.waitForExist();
   await browser.switchFrame(frame);
   try {

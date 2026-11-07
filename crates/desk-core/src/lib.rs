@@ -8,6 +8,8 @@ pub const NAME: &str = env!("CARGO_PKG_NAME");
 
 pub mod account;
 mod account_client;
+mod agent_registry;
+mod agent_runs;
 mod agent_tools;
 mod agents;
 mod approval_action;
@@ -20,6 +22,8 @@ mod conversation;
 mod conversation_sink;
 mod core_account;
 mod core_agents;
+pub mod lock;
+
 mod core_ask;
 mod core_brain;
 mod core_builtins;
@@ -33,10 +37,15 @@ mod core_fs;
 mod core_fs_url;
 mod core_history;
 mod core_host;
+mod core_http;
+mod core_http_sync;
 mod core_init;
+mod core_lock;
 mod core_log;
 mod core_market;
+mod core_marketplace;
 mod core_net;
+mod core_packs;
 mod core_perm;
 mod core_plugin_views;
 mod core_plugins;
@@ -56,18 +65,21 @@ mod core_update;
 mod core_views;
 mod core_views_check;
 mod core_wasm;
+mod desk_files;
 mod eris_lines;
 mod events;
 mod grants;
 mod handler;
 mod history;
 mod history_index;
+mod http_binding;
 mod init;
 mod last_start;
 mod lease;
 mod local_agents;
 mod log;
 mod manifest;
+mod marketplace;
 mod media_types;
 mod paths;
 mod perm;
@@ -93,6 +105,11 @@ pub use core_fs_url::FileUrl;
 pub use core_perm::{Prompter, RefuseAll};
 pub use core_state::{QUARANTINED_KEY, SafeMode, SafeReason};
 pub use core_themes::{ThemeFetch, ThemeWatcher};
+pub use core_tools::mcp_caller;
+pub use desk_files::{
+    DATA_FILES, DESK_FILES, DESK_FOLDERS, DeskFile, FileState, Owner, check_desk_file, desk_files,
+    desk_folder_files,
+};
 pub use eris_lines::{
     FAILED_LINE, FALLBACK_LINE, MAX_STEPS, OFFLINE_LINE, READ_ONLY_LINE, SIGN_IN_LINE,
     TOO_MANY_LINE,
@@ -103,7 +120,9 @@ pub use init::{INIT_TEMPLATE, INIT_VERSION, Init, PluginSetup, SyncSetup};
 pub use last_start::{Begun, CRASH_LOOP, LastStart, READY_WITHIN};
 pub use lease::{LeaseClient, LeaseError};
 pub use local_agents::{LocalAgents, LocalAgentsOptions};
+pub use lock::folder_sha256;
 pub use manifest::validate_dir;
+pub use marketplace::ENDUE_MARKET;
 pub use media_types::media_type;
 pub use perm::{Denied, PermissionEngine, Target};
 pub use plugins::PluginRegistry;
@@ -112,5 +131,6 @@ pub use settings_report::{Layer, ProblemKind, SettingProblem};
 pub use state_file::{BrokenFile, broken_in, keep_broken};
 pub use sync::{Keep, RemoteFailure, Snapshot, SyncError, SyncOutcome, SyncRemote};
 pub use sync_mock::MockRemote;
+pub use time::rfc3339_now;
 pub use views_watch::ViewWatcher;
 pub use watch::PluginWatcher;

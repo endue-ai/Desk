@@ -121,7 +121,7 @@ impl Core {
         let manifest = info
             .manifest
             .as_ref()
-            .filter(|m| m.kind == PluginKind::View);
+            .filter(|m| m.kind == PluginKind::View || m.kind == PluginKind::Pack);
         let Some(manifest) = manifest.filter(|_| counts) else {
             return provided;
         };

@@ -3,7 +3,7 @@
 The calls the web runtime (and every plugin through it) makes into the Rust core. JSON Schema 2020-12,
 one file per namespace: `bridge.schema.json` (envelope, errors, shared types), `fs`, `proc`, `net`, `plugins`,
 `store`, `search`, `init`, `brain`, `audio`, `ui`, `perm`, `cmd`, `settings`, `log`, `events`, `data`, `connector`,
-`view`, `catalog`, `shell`, `update`, `theme`, `account` and `agents`. Items, views and connectors are the types of `specs/item`,
+`view`, `catalog`, `shell`, `update`, `theme`, `account`, `agent` and `agents`. Items, views and connectors are the types of `specs/item`,
 `specs/view` and `specs/connector` (ADR 0032). v0 may break on any minor release (ADR 0004).
 
 ## Envelope
@@ -456,6 +456,14 @@ Each needs `account:manage`, which the desk grants to the runtime only, and answ
 entered and answers `signing-in` with `signIn`; `account.changed` reports `signed-in`, or `signed-out`
 with a `problem`. The core gives the token to the brain as its bearer token; it never crosses the bridge.
 
+**agent.list**, **agent.cancel** and **agent.report** are the agent registry (ADR 0100). `agent.list`
+answers every agent the desk knows as an `AgentRecord` (`specs/agent/v0`) with its state, Eris first;
+`agent.cancel` stops a run by its item id (and `source` when it is not `desk.agents`): a waiting run is
+denied, a running command answered `cancelled`, a reported run's reporter hears `agent.cancelled`. Both
+need `perm:manage`. `agent.report` keeps a run of an agent the caller runs, under the caller's own source;
+it needs no scope. Runs are items of kind `run`: the core records one for every command an agent caller
+asks for and for the brain directory's tasks.
+
 **agents.list**, **agents.sessions**, **agents.transcript**, **agents.import**, **agents.ask**,
 **agents.runs** and **agents.stop** are the agent programs on this computer (ADR 0110): Claude Code
 (`claude`) and Codex (`codex`), not the brain's agent directory. Each needs `agents:manage`, which the
@@ -530,6 +538,17 @@ from (`<data>/themes/.market/<id>.json`: the market, the URL, the version, the s
 the folder as it landed). A later import of the same id by `url` replaces it only while its folder still
 has that hash; a theme the person changed is `already_exists` and stays. `theme.remove` forgets the
 record with the folder.
+
+**market.list**, **plugin.install** and **plugin.remove** are the market for every kind (ADR 0107,
+`specs/market/v0`), under `plugin:manage`. `market.list` reads the indexes `desk.market.indexes` lists and
+the theme markets, and answers every entry once (the first market wins) with its `market`, `verified`
+(it comes from the endue index), a `state` (`available`, `installed`, `update`), the version installed
+and `added`, the permissions it asks that the installed version was not given. `plugin.install { id,
+market?, accept }` downloads the entry's bundle (https, its sha256 and size), checks it as a plugin folder
+of the entry's id, version and kind, lands it in the market folder and grants it the permissions in
+`accept`, which must hold every permission the entry asks (`permission_denied` names the rest). A
+`plugin` entry installs only from the endue index; themes and design systems go through `theme.import`.
+`plugin.remove` removes what the market installed: its folder, its record, its grants and its lock line.
 
 ## Vectors
 

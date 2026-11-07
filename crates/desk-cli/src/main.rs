@@ -1,11 +1,14 @@
 //! `desk`: the command line for people and AI agents. Exit codes: 0 ok, 1 check or call failed, 2
-//! usage. `plugin validate`, `plugin test`, `doctor` and `doctor --trace` work offline; the other
-//! subcommands reach a running desk over its socket, `mcp` for another app (ADR 0086).
+//! usage. `plugin validate`, `plugin test`, `doctor`, `doctor --trace`, `export` and `import` work
+//! offline; the other subcommands reach a running desk over its socket, `mcp` for another app (ADR
+//! 0086).
 
 mod args;
 mod doctor;
+mod export;
 mod files;
 mod health;
+mod lock;
 mod plugin_test;
 mod remote;
 mod theme;
@@ -43,6 +46,17 @@ fn main() -> ExitCode {
         },
         Action::Trace(file) => doctor::trace(&file, args.json),
         Action::Doctor(data) => health::run(data, args.json),
+        Action::Lock => lock::list(args.json),
+        Action::Export {
+            target,
+            with_data,
+            data,
+        } => export::export(&target, with_data, data),
+        Action::Import {
+            source,
+            with_data,
+            data,
+        } => export::import(&source, with_data, data),
         Action::Remote(remote) => remote::run(remote, args.json),
         Action::Mcp { agent, plugins } => mcp(agent, plugins),
     }
@@ -76,6 +90,7 @@ fn kind_name(kind: PluginKind) -> &'static str {
         PluginKind::Library => "library",
         PluginKind::Connector => "connector",
         PluginKind::View => "view",
+        PluginKind::Pack => "pack",
         PluginKind::Theme => "theme",
         PluginKind::DesignSystem => "design-system",
     }

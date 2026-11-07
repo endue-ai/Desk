@@ -13,11 +13,11 @@
   <body>
     <header id="bar">
       <h1>Inspector</h1>
-      <div id="sections" role="tablist" aria-label="Sections"></div>
+      <div id="sections" class="desk-tabs" role="tablist" aria-label="Sections"></div>
       <div id="tools">
         <label for="filter">Filter</label>
-        <input id="filter" type="search" placeholder="Rows that contain… (/)" aria-keyshortcuts="/" />
-        <button id="export" type="button">Export JSON</button>
+        <input id="filter" class="desk-field" type="search" placeholder="Rows that contain… (/)" aria-keyshortcuts="/" />
+        <button id="export" class="desk-btn" type="button">Export JSON</button>
       </div>
     </header>
     <main id="panel" role="tabpanel" tabindex="0">
@@ -32,10 +32,10 @@
       hidden
     >
       <h2 id="export-title">Export JSON</h2>
-      <textarea id="export-text" aria-labelledby="export-title" readonly spellcheck="false"></textarea>
+      <textarea id="export-text" class="desk-field" aria-labelledby="export-title" readonly spellcheck="false"></textarea>
       <div id="export-actions">
-        <button id="copy" type="button">Copy</button>
-        <button id="close" type="button">Close</button>
+        <button id="copy" class="desk-btn desk-btn-primary" type="button">Copy</button>
+        <button id="close" class="desk-btn" type="button">Close</button>
       </div>
     </section>
     <p id="status" role="status"></p>

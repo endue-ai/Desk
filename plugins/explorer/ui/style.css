@@ -238,9 +238,7 @@ main {
   width: 100%;
   height: auto;
   min-height: 30px;
-  padding: 4px 8px;
   text-align: left;
   overflow-wrap: anywhere;
-  color: var(--desk-text);
 }
 .context-menu button:focus { background: var(--desk-hover); }

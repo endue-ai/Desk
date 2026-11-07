@@ -17,7 +17,7 @@ Desk はひとつのアプリとして作られたひとつの OS です。Tauri
  the user's computer               │                           cost of change
  ┌─────────────────────────────────┴──────────────────────────────┐
  │ Plugins      UI (iframe) · logic (Wasm) · tools (MCP, in a VM) │  instant
- │              · connectors (Wasm · MCP) · views (data)          │
+ │              · connectors (Wasm · MCP · http) · views (data)   │
  ├────────────────────────────────────────────────────────────────┤
  │ Web runtime  compositor (3D/2D) · surfaces · input · layout    │  restart
  │              · UI plugin host · desk shell (until ADR 0026)    │
@@ -45,7 +45,7 @@ Desk はひとつのアプリとして作られたひとつの OS です。Tauri
 | プラグイン | `plugins/` · `packages/plugin-sdk` · `specs/plugin` · `specs/wit` · `examples/` |
 | Web ランタイム | `packages/runtime`：コンポジター、UI プラグインのホスト（ADR 0012）、そして ADR 0026 が決まるまではデスクシェル（ADR 0025） · `packages/ui` |
 | Desk ブリッジ | `specs/bridge` · 統合レイヤーの契約である `specs/item`、`specs/view`、`specs/connector`（ADR 0032） · `packages/bridge` · `crates/desk-bridge`（これらと `specs/plugin` から生成した型） |
-| Rust コア | `crates/desk-core`（統合レイヤーの `data.*`、`connector.*`、`view.*`、`catalog.get` も提供し、OS のカレンダーの上に組み込みコネクター `desk.calendar` と `desk.reminders` を定義、ADR 0036、提案中） · `crates/desk-index`（ひとつの SQLite ファイルに置くアイテムのインデックス、ADR 0033） · `crates/desk-plugin-host`（ロジックプラグインと Wasm コネクターを Wasmtime で実行、ADR 0019、ADR 0034 は提案中） · `crates/desk-vm` · `crates/desk-brain*` |
+| Rust コア | `crates/desk-core`（統合レイヤーの `data.*`、`connector.*`、`view.*`、`catalog.get` も提供し、OS のカレンダーの上に組み込みコネクター `desk.calendar` と `desk.reminders` を定義、ADR 0036、提案中。http コネクターはマニフェストどおりにコア自身が実行し、トークンもコアだけが読む、ADR 0106） · `crates/desk-index`（ひとつの SQLite ファイルに置くアイテムのインデックス、ADR 0033） · `crates/desk-plugin-host`（ロジックプラグインと Wasm コネクターを Wasmtime で実行、ADR 0019、ADR 0034 は提案中） · `crates/desk-vm` · `crates/desk-brain*` |
 | Tauri シェル | `apps/desk/src-tauri` · `crates/desk-sys` |
 | OS | `apps/desk/src-tauri/capabilities` · リリースワークフロー（署名、公証） |
 

@@ -1,0 +1,14 @@
+{
+  "target": "BridgeRequest",
+  "description": "the grants of an MCP server that init.yaml lists, by its caller mcp:<name> (ADR 0098)",
+  "instance": {
+    "id": 8,
+    "method": "perm.list",
+    "params": {
+      "caller": "mcp:github",
+      "scope": {
+        "permission": "perm:manage"
+      }
+    }
+  }
+}

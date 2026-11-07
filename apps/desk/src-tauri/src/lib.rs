@@ -2,8 +2,10 @@
 
 mod brains;
 mod commands;
+mod core_files;
 mod events;
 mod file_urls;
+mod mcp;
 mod open_files;
 mod palette;
 mod palette_assets;
@@ -84,14 +86,14 @@ pub fn run() {
             // endue does not serve sync yet: until it does, a stand-in keeps endue's copy of
             // init.yaml in the data folder.
             let remote = MockRemote::with_file(data.join("sync-mock.json"));
+            // plugins.lock: the plugin set, rewritten on every install and turn on or off (ADR 0079).
+            let lock = home.join(".desk").join("plugins.lock");
             let core = Core::new(Roots { home })
                 .with_init_file(init)
-                .with_sync(Arc::new(remote), Some(data.join("sync.json")))
-                .with_plugin_store(data.join("plugins.json"))
-                .with_store_file(data.join("store.json"))
-                .with_secrets_file(data.join("secrets.json"))
-                // Every fs.write keeps the bytes it replaces here first (ADR 0076).
-                .with_history_dir(data.join("history"));
+                .with_lock_file(lock)
+                .with_sync(Arc::new(remote), Some(data.join("sync.json")));
+            // Everything that outlives a quit: grants, settings, the log and the rest (#351).
+            let core = core_files::open(core, &data);
             // Safe mode, asked for or after two starts that never got ready, holds plugins off as
             // they install (ADR 0061).
             let (mut core, last) = commands::start::begin(&data, core);
@@ -114,6 +116,9 @@ pub fn run() {
             // The person's own themes (ADR 0058): every theme folder in <data>/themes/ is installed
             // now, not built in, and comes back at every start.
             core = core.with_themes_dir(data.join("themes"));
+            // What the market installed (ADR 0107): views and plugins in <data>/plugins/, each with
+            // the record of where it came from and what it was granted.
+            core = core.with_market_dir(data.join("plugins"));
             // The person's endue ID (ADR 0089): signing in hands the brain its bearer token.
             let id_url = std::env::var("DESK_ID_URL").unwrap_or_else(|_| DEFAULT_ID_URL.to_owned());
             let mut account = AccountOptions::new(id_url);
@@ -259,6 +264,7 @@ pub fn run() {
             for dir in env_paths("DESK_DEV_PLUGINS") {
                 core.install_plugin(&dir, false);
             }
+            core.install_market_plugins();
             // Hot reload leaves user themes to the themes watch, so each change is announced once.
             let watcher = core.watch_plugins().ok();
             let themes = core
@@ -301,6 +307,8 @@ pub fn run() {
             // event too (ADR 0030).
             app.manage(socket::serve(&core));
             app.manage(Arc::clone(&core));
+            // MCP servers from init.yaml attach once the runtime is ready (ADR 0098).
+            app.manage(mcp::McpServers::new(&core, home_dir()));
             palette::setup(app, &core)?;
             core.start_updates();
             if let Some(updater) = updater {

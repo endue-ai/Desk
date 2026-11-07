@@ -133,6 +133,12 @@ On main:
   as `cli`: the agent's own grants, the allowlist, prompts, approvals and the `perm` log apply as for
   the brain's agents (below). A connection that became an agent never goes back to `cli`. Only the
   catalog (plugin and command names, manifests) is read as `cli`.
+- MCP servers init.yaml lists (ADR 0098, `crates/desk-mcp-client`) run as `mcp:<name>` only after the
+  person grants that caller `proc:spawn` of the server's command, asked with the command line and the
+  variable names; a synced init.yaml alone starts nothing. A server gets a cleared environment plus the
+  variables `env` names, and its tools are commands `mcp.<name>.*` that the core makes irreversible
+  unless the server marks them read-only, so an agent's call waits for approval. Revoking the grant
+  stops the server and removes its commands.
 - `store.*` keeps one namespace per caller. Methods the core does not serve yet (`fs.write`, `proc.*`,
   `net.fetch`, `audio.*`, `ui.*`, `cmd.*`, `settings.*`, `log.*`, `events.*`, `perm.list`, `perm.answer`)
   answer `unsupported`.
@@ -150,6 +156,9 @@ Gaps:
 - An MCP client's agent id is its own word (`desk mcp --agent`): two apps that pass the same id share
   that agent's grants, and every client sees every installed plugin and command, granted or not. No
   issue yet.
+- An MCP server runs in process with the person's rights until the VM (ADR 0002): the grant decides
+  whether it runs, not what it does. The grant names the program, not its args, and `readOnlyHint` is
+  the server's word. No issue yet.
 - Every plugin under `DESK_PLUGIN_DIRS` installs as built-in with its declared permissions granted, in
   release builds too. Grants are keyed by plugin id, so a plugin installed later under a built-in's id
   holds that id's grants. No issue yet.

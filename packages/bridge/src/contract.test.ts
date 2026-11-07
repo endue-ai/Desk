@@ -61,7 +61,9 @@ function validatorFor(docs: Schema[]) {
 }
 
 /** The plugin manifest and the specs it references, which reference it back: one set. */
-const plugin = ["plugin/v0", "item/v0", "view/v0", "connector/v0"].flatMap(schemas);
+const plugin = ["plugin/v0", "item/v0", "view/v0", "connector/v0", "agent/v0", "market/v0"].flatMap(
+  schemas,
+);
 
 const sets: Record<string, Schema[]> = {
   bridge: [...plugin, ...schemas("bridge/v0")],
@@ -69,6 +71,7 @@ const sets: Record<string, Schema[]> = {
   item: plugin,
   view: plugin,
   connector: plugin,
+  market: plugin,
   init: [...plugin, ...schemas("init/v0")],
   brain: [brainSchema as Schema],
 };
@@ -147,7 +150,30 @@ function manifestProblems(manifest: PluginManifest): string[] {
         problems.push(
           `/connector/resources/${r}/actions/${a}: ${id} is not in contributes.commands`,
         );
+  problems.push(...httpProblems(manifest));
   return problems.sort();
+}
+
+/** An http block's names (ADR 0106), as desk-bridge's http_names checks them. */
+function httpProblems(manifest: PluginManifest): string[] {
+  const connector = manifest.connector;
+  const http = connector?.http;
+  if (!connector || !http) return [];
+  const problems: string[] = [];
+  if (http.auth) {
+    if (connector.instanceSettings?.[http.auth.setting]?.secret !== true)
+      problems.push(`/connector/http/auth/setting: ${http.auth.setting} is not a secret setting`);
+    if (connector.auth.kind !== "token") problems.push("/connector/auth/kind: not token");
+  }
+  for (const [r, request] of http.requests.entries())
+    if (!(request.map in http.maps)) problems.push(`/connector/http/requests/${r}/map`);
+  for (const [name, map] of Object.entries(http.maps)) {
+    if (!connector.resources.some((r) => r.kind === map.kind))
+      problems.push(`/connector/http/maps/${name}/kind`);
+    for (const field of ["id", "title"])
+      if (!(field in map.fields)) problems.push(`/connector/http/maps/${name}/fields: no ${field}`);
+  }
+  return problems;
 }
 
 function namesResolve(target: string, instance: unknown): boolean {
@@ -169,12 +195,20 @@ describe.each(Object.entries(sets))("%s vectors", (spec, docs) => {
 
 describe("item, view and connector vectors are judged as their folders say", () => {
   it("each spec has five valid and five invalid vectors at least", () => {
-    for (const spec of ["item", "view", "connector"]) {
+    for (const spec of ["item", "view", "connector", "agent"]) {
       const all = vectors(spec);
       const valid = all.filter((v) => v.valid).length;
       expect(valid, spec).toBeGreaterThanOrEqual(5);
       expect(all.length - valid, spec).toBeGreaterThanOrEqual(5);
     }
+  });
+
+  it("judges the http binding's vectors (ADR 0106), the names of its block included", () => {
+    const files = vectors("connector").map((v) => v.file);
+    expect(files).toContain("connector/valid/manifest-http-token.json");
+    expect(files).toContain("connector/invalid/manifest-http-plain-http-base.json");
+    const plugin = vectors("plugin").map((v) => v.file);
+    expect(plugin).toContain("plugin/invalid/manifest-connector-http-unknown-map.json");
   });
 
   it("the rules beyond the schemas name what does not resolve", () => {

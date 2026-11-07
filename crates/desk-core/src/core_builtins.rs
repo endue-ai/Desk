@@ -78,23 +78,36 @@ impl Core {
             return Vec::new();
         }
         let builtins = self.builtins();
-        [(CALENDAR, ItemKind::Event), (REMINDERS, ItemKind::Task)]
-            .into_iter()
-            .map(|(id, kind)| ConnectorInfo {
-                id: id.to_owned(),
-                instances: builtins
-                    .0
-                    .get(id)
-                    .map(|b| self.listing(id, b))
-                    .into_iter()
-                    .collect(),
-                resources: vec![ConnectorResource {
-                    kind,
-                    actions: None,
-                    live: None,
-                }],
-            })
-            .collect()
+        let none = || desk_bridge::ConnectorAuth {
+            kind: desk_bridge::ConnectorAuthKind::None,
+            title: None,
+            authorization_url: None,
+            token_url: None,
+            scopes: None,
+        };
+        [
+            (CALENDAR, "Calendar", ItemKind::Event),
+            (REMINDERS, "Reminders", ItemKind::Task),
+        ]
+        .into_iter()
+        .map(|(id, title, kind)| ConnectorInfo {
+            id: id.to_owned(),
+            title: Some(title.to_owned()),
+            auth: Some(none()),
+            instance_settings: None,
+            instances: builtins
+                .0
+                .get(id)
+                .map(|b| self.listing(id, b))
+                .into_iter()
+                .collect(),
+            resources: vec![ConnectorResource {
+                kind,
+                actions: None,
+                live: None,
+            }],
+        })
+        .collect()
     }
 
     /// connector.connect of a built-in: asks the OS when it never was, on this thread.

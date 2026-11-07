@@ -959,6 +959,7 @@ dependencies = [
  "desk-core",
  "desk-index",
  "desk-ipc",
+ "desk-mcp-client",
  "desk-sys",
  "desk-trace",
  "desk-update",
@@ -1021,7 +1022,10 @@ dependencies = [
  "desk-mcp",
  "desk-plugin-host",
  "desk-trace",
+ "desk-update",
+ "flate2",
  "serde_json",
+ "zip",
 ]
 
 [[package]]
@@ -1073,6 +1077,16 @@ dependencies = [
  "desk-bridge",
  "desk-core",
  "desk-ipc",
+ "serde_json",
+]
+
+[[package]]
+name = "desk-mcp-client"
+version = "0.0.0"
+dependencies = [
+ "desk-bridge",
+ "desk-core",
+ "jsonschema",
  "serde_json",
 ]
 
@@ -7182,6 +7196,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "848dad21639597378c3be94c59fd4de683f0f6d8a5387575896e1245737d4f37"
 dependencies = [
  "crc32fast",
+ "flate2",
  "getrandom 0.4.3",
  "indexmap 2.14.2",
  "memchr",

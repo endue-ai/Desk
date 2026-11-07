@@ -8,6 +8,8 @@
 // both record what they get. Never shipped.
 //   ?status=error   connector.list answers desk.fixtures/default in error until it syncs
 //   ?jira=1         example.jira is connected too, with the fixture tasks and their deep links
+//   ?github=1       desk.github is connected too, with its fixture issues and pull requests
+//   market.list, plugin.install and plugin.remove answer from fixture/market.ts
 //   ?empty=1        every fixture item is removed before anything opens
 //   ?resources=event,message,note   desk.fixtures serves only these kinds
 //   ?propose=1      desk.propose on a scripted brain (src/propose/fixtures.ts), as the shell has it,
@@ -31,6 +33,8 @@ import { browserCore } from "../../src/bridge/core";
 import { createRuntime, ManualClock } from "../../src/index";
 import { scriptedDesk } from "../../src/propose/fixtures";
 import { installProposals } from "../../src/propose/install";
+import { github, githubItems } from "./github";
+import { marketHandlers } from "./market";
 import { universalFiles } from "./universal-files";
 import empty from "./views/empty.json";
 
@@ -69,7 +73,11 @@ const jira: ConnectorInfo = {
 const listed = (): ConnectorInfo[] => {
   const { id, resources: served, instances } = fixtureConnector();
   const resources = kinds ? served.filter((r) => kinds.includes(r.kind)) : served;
-  const all = [{ id, resources, instances }, ...(params.has("jira") ? [jira] : [])];
+  const all = [
+    { id, resources, instances },
+    ...(params.has("jira") ? [jira] : []),
+    ...(params.has("github") ? [github] : []),
+  ];
   return all.map((c) => ({
     ...c,
     instances: c.instances.map((i) => ({
@@ -109,7 +117,11 @@ const core = browserCore({
     ...Object.values(manifests).filter((m) => m.id.startsWith("desk.") && m.id !== "desk.shell"),
     search,
   ],
-  handlers: { "connector.list": () => ({ connectors: listed() }), ...universalFiles.handlers },
+  handlers: {
+    "connector.list": () => ({ connectors: listed() }),
+    ...universalFiles.handlers,
+    ...marketHandlers(),
+  },
   ...(params.has("propose") ? { brain: { answer: scriptedDesk } } : {}),
 });
 const { client, stub } = core;
@@ -157,6 +169,7 @@ const ready = (async () => {
   );
   for (const view of [vector, table.instance, empty, ...plugins])
     await client.call("view.save", { view: view as View, scope: VIEWS });
+  if (params.has("github")) for (const item of githubItems()) core.upsert(item);
   // example.jira brings in the fixture tasks, each with the way back to it.
   if (params.has("jira"))
     for (const item of fixtureItems().filter((i) => i.kind === "task"))

@@ -48,7 +48,7 @@ export const readOnlyText = (/** @type {Shown} */ model) =>
 export function createEditField(doc, tree, hooks) {
   const input = doc.createElement("input");
   input.type = "text";
-  input.className = "edit";
+  input.className = "desk-field edit";
   input.spellcheck = false;
   input.autocomplete = "off";
   /** @type {{ key: string, path: number[], initial: string } | null} */

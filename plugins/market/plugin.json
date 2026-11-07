@@ -1,0 +1,16 @@
+{
+  "id": "desk.market",
+  "name": "Market",
+  "version": "0.1.0",
+  "kind": "policy",
+  "description": "Where the market for every kind reads from: views, packs and plugins, beside the theme and design system markets (ADR 0107).",
+  "contributes": {
+    "settings": {
+      "desk.market.indexes": {
+        "kind": "array",
+        "default": ["https://raw.githubusercontent.com/endue-ai/Desk/main/market/views/index.json"],
+        "description": "The markets Settings, Market lists besides the theme markets, by the https URL of each index (specs/market/v0), in order: the first that lists an id wins. Code installs only from the endue index; the default is this repository's market/views."
+      }
+    }
+  }
+}

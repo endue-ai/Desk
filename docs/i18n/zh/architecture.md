@@ -18,7 +18,7 @@ Desk 是以一个应用构建的一个操作系统：Tauri 外壳和小型 Rust 
  the user's computer               │                           cost of change
  ┌─────────────────────────────────┴──────────────────────────────┐
  │ Plugins      UI (iframe) · logic (Wasm) · tools (MCP, in a VM) │  instant
- │              · connectors (Wasm · MCP) · views (data)          │
+ │              · connectors (Wasm · MCP · http) · views (data)   │
  ├────────────────────────────────────────────────────────────────┤
  │ Web runtime  compositor (3D/2D) · surfaces · input · layout    │  restart
  │              · UI plugin host · desk shell (until ADR 0026)    │
@@ -46,7 +46,7 @@ Desk 是以一个应用构建的一个操作系统：Tauri 外壳和小型 Rust 
 | 插件 | `plugins/` · `packages/plugin-sdk` · `specs/plugin` · `specs/wit` · `examples/` |
 | Web 运行时 | `packages/runtime`：合成器、UI 插件宿主（ADR 0012），以及在 ADR 0026 决定之前的桌面外壳（ADR 0025） · `packages/ui` |
 | Desk 桥接层 | `specs/bridge` · 集成层的契约 `specs/item`、`specs/view` 和 `specs/connector`（ADR 0032） · `packages/bridge` · `crates/desk-bridge`（由这些契约和 `specs/plugin` 生成的类型） |
-| Rust 核心 | `crates/desk-core`（还提供集成层的 `data.*`、`connector.*`、`view.*`、`catalog.get`，并基于操作系统日历定义内置连接器 `desk.calendar` 和 `desk.reminders`，ADR 0036，仍处于提议阶段） · `crates/desk-index`（存放在一个 SQLite 文件中的条目索引，ADR 0033） · `crates/desk-plugin-host`（在 Wasmtime 上运行逻辑插件和 Wasm 连接器，ADR 0019；ADR 0034 仍处于提议阶段） · `crates/desk-vm` · `crates/desk-brain*` |
+| Rust 核心 | `crates/desk-core`（还提供集成层的 `data.*`、`connector.*`、`view.*`、`catalog.get`，并基于操作系统日历定义内置连接器 `desk.calendar` 和 `desk.reminders`，ADR 0036，仍处于提议阶段；http 连接器按清单由核心自己运行，令牌也只由核心读取，ADR 0106） · `crates/desk-index`（存放在一个 SQLite 文件中的条目索引，ADR 0033） · `crates/desk-plugin-host`（在 Wasmtime 上运行逻辑插件和 Wasm 连接器，ADR 0019；ADR 0034 仍处于提议阶段） · `crates/desk-vm` · `crates/desk-brain*` |
 | Tauri 外壳 | `apps/desk/src-tauri` · `crates/desk-sys` |
 | 操作系统 | `apps/desk/src-tauri/capabilities` · 发布工作流（签名、公证） |
 

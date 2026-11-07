@@ -47,12 +47,92 @@
       {
         "id": "endue.local-agents.list",
         "title": "Local agents: list the agents",
-        "keywords": ["installed", "versions"]
+        "keywords": ["installed", "versions"],
+        "description": "Return every known agent with its state (ready, missing, broken), version and how it is kept read-only.",
+        "agent": true,
+        "readOnly": true
       },
       {
         "id": "endue.local-agents.ask",
         "title": "Local agents: ask an agent",
-        "keywords": ["query", "question", "prompt"]
+        "keywords": ["query", "question", "prompt"],
+        "description": "Ask one agent program on this computer (Claude Code, Codex, Gemini CLI and others) one question with no conversation, read-only whatever the access setting, in the work folder or a folder inside it, and return its answer. Asks for the prompt when absent; the chat's agent when agent is absent.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "prompt": {
+              "type": "string",
+              "minLength": 1,
+              "description": "What to ask, as text"
+            },
+            "agent": {
+              "enum": [
+                "claude",
+                "codex",
+                "gemini",
+                "grok",
+                "qwen",
+                "copilot",
+                "cursor",
+                "opencode"
+              ],
+              "description": "An agent's id"
+            },
+            "model": {
+              "type": "string",
+              "description": "A model name the program knows; empty: its default"
+            },
+            "folder": {
+              "type": "string",
+              "maxLength": 1024,
+              "description": "A folder inside the work folder (endue.local-agents.folder, else home), relative to it, for example projects/desk; absent: the work folder"
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.local-agents.work",
+        "title": "Local agents: hand an agent a task",
+        "keywords": ["delegate", "task", "edit", "run"],
+        "description": "Hand one agent program a task it may act on: it runs with its own permission settings (agent access) in the work folder or a folder inside it, may change files there and run commands, and returns its answer. Asks for the prompt when absent; the chat's agent when agent is absent.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "prompt": {
+              "type": "string",
+              "minLength": 1,
+              "description": "What to ask, as text"
+            },
+            "agent": {
+              "enum": [
+                "claude",
+                "codex",
+                "gemini",
+                "grok",
+                "qwen",
+                "copilot",
+                "cursor",
+                "opencode"
+              ],
+              "description": "An agent's id"
+            },
+            "model": {
+              "type": "string",
+              "description": "A model name the program knows; empty: its default"
+            },
+            "folder": {
+              "type": "string",
+              "maxLength": 1024,
+              "description": "A folder inside the work folder (endue.local-agents.folder, else home), relative to it, for example projects/desk; absent: the work folder"
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true,
+        "irreversible": true
       },
       {
         "id": "endue.local-agents.chat",
@@ -87,7 +167,36 @@
       {
         "id": "endue.local-agents.add-card",
         "title": "Local agents: add a card",
-        "keywords": ["task", "new", "kanban"]
+        "keywords": ["task", "new", "kanban"],
+        "description": "Add a card to the board's To do and return it: a prompt for one agent, which runs when the person moves it to Running. Asks for the prompt when absent.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "prompt": {
+              "type": "string",
+              "minLength": 1,
+              "description": "What to ask, as text"
+            },
+            "title": {
+              "type": "string"
+            },
+            "agent": {
+              "enum": [
+                "claude",
+                "codex",
+                "gemini",
+                "grok",
+                "qwen",
+                "copilot",
+                "cursor",
+                "opencode"
+              ],
+              "description": "An agent's id"
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
       },
       {
         "id": "endue.local-agents.run-card",

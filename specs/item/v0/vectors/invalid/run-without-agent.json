@@ -1,0 +1,13 @@
+{
+  "target": "Item",
+  "description": "a run names its agent",
+  "instance": {
+    "id": "run-1",
+    "source": { "connector": "desk.agents", "instance": "default" },
+    "kind": "run",
+    "title": "x",
+    "updatedAt": "2026-11-05T09:30:05Z",
+    "state": "done",
+    "startedAt": "2026-11-05T09:30:01Z"
+  }
+}

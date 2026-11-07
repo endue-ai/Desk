@@ -1,0 +1,9 @@
+{
+  "target": "BridgeRequest",
+  "description": "market.list under plugin:manage",
+  "instance": {
+    "id": 71,
+    "method": "market.list",
+    "params": { "scope": { "permission": "plugin:manage" } }
+  }
+}

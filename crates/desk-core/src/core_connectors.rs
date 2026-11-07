@@ -1,6 +1,6 @@
 //! The connector side of `Core`: connector.list, connect, disconnect and sync under
-//! `connector:manage`, over the built-in connectors (`core_builtins`) and the connector host for
-//! Wasm connectors (`core_wasm`). Every status change reaches the `connector:manage` holders as
+//! `connector:manage`, over the built-in connectors (`core_builtins`), the http connectors the core
+//! runs itself (`core_http`) and the connector host for Wasm connectors (`core_wasm`). Every status change reaches the `connector:manage` holders as
 //! `connector.changed`, once. One scheduler thread ticks both (`tick_connectors`); tests tick
 //! themselves. The core never holds a lock of its own across a connector host call: the host calls
 //! back into it.
@@ -40,6 +40,8 @@ pub(crate) struct Connectors {
     /// Made when the first Wasm connector is installed.
     pub(crate) host: Mutex<Option<Arc<ConnectorHost>>>,
     pub(crate) builtins: Mutex<BuiltIns>,
+    /// The http connectors' instances (ADR 0106).
+    pub(crate) http: Mutex<crate::core_http::HttpConnectors>,
     feed: Mutex<Feed>,
     scheduler: Mutex<Option<Scheduler>>,
 }
@@ -90,6 +92,7 @@ impl Core {
     /// instance) pairs it ran.
     pub fn tick_connectors(&self) -> Vec<(String, String)> {
         let mut ran = self.tick_builtins();
+        ran.extend(self.tick_http());
         if let Some(host) = self.connector_host() {
             ran.extend(host.tick());
         }
@@ -118,6 +121,9 @@ impl Core {
         if self.is_builtin(&params.connector) {
             return self.connect_builtin(params);
         }
+        if self.is_http(&params.connector) {
+            return self.connect_http(params);
+        }
         self.connect_wasm(params)
     }
 
@@ -131,6 +137,9 @@ impl Core {
         if self.is_builtin(id) {
             return self.disconnect_builtin(id, instance);
         }
+        if self.is_http(id) {
+            return self.disconnect_http(id, instance);
+        }
         self.disconnect_wasm(id, instance)
     }
 
@@ -139,6 +148,9 @@ impl Core {
         let (id, instance) = (params.connector.as_str(), params.instance.as_str());
         if self.is_builtin(id) {
             return self.sync_builtin_now(id, instance);
+        }
+        if self.is_http(id) {
+            return self.sync_http_now(id, instance);
         }
         self.sync_wasm(id, instance)
     }

@@ -184,11 +184,16 @@ export function stubData(ctx: DataContext): StubData {
       },
       "connector.list": ({ scope }, caller) => {
         ctx.check(caller, scope);
-        const list = installed().map(({ id, instances, resources }) => ({
-          id,
-          instances,
-          resources,
-        }));
+        const list = installed().map(
+          ({ id, title, auth, instanceSettings, instances, resources }) => ({
+            id,
+            title,
+            auth,
+            instanceSettings,
+            instances,
+            resources,
+          }),
+        );
         return { connectors: structuredClone(list) };
       },
       "connector.connect": (params, caller) => {

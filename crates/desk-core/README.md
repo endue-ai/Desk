@@ -19,7 +19,8 @@ its sync, the brain conversation, the integration layer and the bridge handler. 
   `agents.<id>.allow`, prompted inside it, logged on `perm`; irreversible calls held (ADR 0078).
 - `EventBus`: `subscribe`, `subscribe_addressed`, `publish`, `publish_to`; `subscription_count()`,
   `watch_count()`, `process_count()`, `surface_count()`, `file_url_count()`; `media_type(name)`.
-- Plugins: `with_plugin_store(path)`, `install_plugin(dir, built_in)`, `install_plugins_in`,
+- Plugins: `with_plugin_store(path)`, `with_lock_file(path)` (plugins.lock, `lock::{folder_sha256,
+  parse, render, plan}`), `install_plugin(dir, built_in)`, `install_plugins_in`, `remove_plugin(id)`,
   `plugins()`, `plugin_file(id, path)`, `watch_plugins()`, `validate_dir(dir)`. A plugin turned off
   takes its commands, requests, subscriptions, processes, surfaces and URLs; its connectors pause.
 - Storage: `with_store_file`, `with_settings_file`, `with_log_dir`, `Core::log`. Settings are checked
@@ -34,8 +35,8 @@ its sync, the brain conversation, the integration layer and the bridge handler. 
   `<name>.broken` (`keep_broken`, `broken_in`) and listed by `broken_files()`; `with_index_file`,
   `keep_broken_views`, `report_broken`. `with_safe_mode(SafeReason)` and `safe_mode()` hold all but
   the desk.* policies off; `plugins.quarantined` in `desk`'s store holds its plugins; `LastStart`.
-- init.yaml (ADR 0016): `with_init_file(path)`, `init()`, `init_problem()`, `with_sync(remote,
-  state_file)`, `sync_init()`, `resolve_init(Keep)`; `MockRemote` stands in for endue.
+- init.yaml (ADR 0016): `with_init_file`, `init()`, `init_problem()`, `with_sync`, `sync_init()`,
+  `resolve_init(Keep)`, `MockRemote` for endue; `desk_files(home, data)` checks the desk's files (#288).
 - Integration layer (ADR 0036): `with_index(Arc<dyn ItemIndex>)` (`data.*` under `data:read`),
   `with_calendar(source)` (the built-ins `desk.calendar` and `desk.reminders`), `with_clock`,
   `with_secrets_file(path)`; then `start_connectors()` (Wasm connectors on `desk-plugin-host`),
