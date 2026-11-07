@@ -920,6 +920,7 @@ pub enum Permission {
     UpdateManage(UpdateManagePermission),
     ThemeManage(ThemeManagePermission),
     AccountManage(AccountManagePermission),
+    AgentsManage(AgentsManagePermission),
 }
 
 /// Search explicitly published plugin documents and installed plugin launchers.
@@ -1127,6 +1128,13 @@ pub struct ThemeManagePermission {
 #[serde(deny_unknown_fields)]
 pub struct AccountManagePermission {
     pub permission: AccountManagePermissionPermission,
+}
+
+/// Find the agent programs on this computer (Claude Code, Codex), read their sessions from the files they keep, import sessions into the desk, and ask them for work with agents.*. Receive agents.run and agents.changed. The desk grants it to the runtime only (ADR 0110).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AgentsManagePermission {
+    pub permission: AgentsManagePermissionPermission,
 }
 
 /// A URL scheme shell.open hands to the system: the browser for http and https, the mail app for mailto.
@@ -3419,6 +3427,423 @@ pub struct AgentCancelledEvent {
     pub data: AgentCancelledData,
 }
 
+/// A program the core knows: claude (Claude Code, Anthropic) or codex (Codex, OpenAI).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum LocalAgentId {
+    #[serde(rename = "claude")]
+    Claude,
+    #[serde(rename = "codex")]
+    Codex,
+}
+
+/// A session's id as its program names it: a UUID for both programs today.
+pub type LocalAgentSessionId = String;
+
+/// read-only: the program runs in its read-only mode (Claude Code's plan mode, Codex's read-only sandbox). agent: the program uses its own permission settings and may change files. No flag that widens a program's permissions beyond its own settings is ever passed.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum LocalAgentAccess {
+    #[serde(rename = "read-only")]
+    ReadOnly,
+    #[serde(rename = "agent")]
+    Agent,
+}
+
+/// Which sessions: local (the program's sessions on this computer that are not archived), archive (the ones archived), desk (the ones imported into the desk).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum LocalAgentSource {
+    #[serde(rename = "local")]
+    Local,
+    #[serde(rename = "archive")]
+    Archive,
+    #[serde(rename = "desk")]
+    Desk,
+}
+
+/// One agent program found on this computer. program is where it runs from when it is on the PATH (or in a folder its installer uses); without it the desk reads its sessions but cannot ask it. version is the one its newest session recorded; finding an agent never starts it.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct LocalAgent {
+    pub id: LocalAgentId,
+    pub name: String,
+    pub vendor: String,
+    /// The program's absolute path.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub program: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub version: Option<String>,
+    /// The program's own data folder, an absolute path (~/.claude, ~/.codex).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub home: Option<String>,
+    /// How many sessions it keeps that are not archived.
+    pub sessions: u64,
+    /// How many of its sessions are archived.
+    pub archived: u64,
+    /// How many of its sessions the desk imported.
+    pub imported: u64,
+    /// How many runs of it are going on now.
+    pub running: u64,
+}
+
+/// One session as the program's files say it: its title (the program's own, else the first thing the person asked), the folder it worked in, the branch there, when it started and was last active, and the program's version and model. imported says whether the desk holds a copy; importedAt when it was made.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct LocalAgentSession {
+    pub id: LocalAgentSessionId,
+    pub agent: LocalAgentId,
+    pub title: String,
+    /// The folder the session worked in, an absolute path.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cwd: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub branch: Option<String>,
+    #[serde(rename = "startedAt", default, skip_serializing_if = "Option::is_none")]
+    pub started_at: Option<String>,
+    #[serde(rename = "updatedAt")]
+    pub updated_at: String,
+    pub archived: bool,
+    pub imported: bool,
+    #[serde(
+        rename = "importedAt",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub imported_at: Option<String>,
+    /// The bytes of the session's file.
+    pub size: u64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub version: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub model: Option<String>,
+}
+
+/// Who a turn is: the person (user), the agent (assistant), or a tool the agent used (tool).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum LocalAgentRole {
+    #[serde(rename = "user")]
+    User,
+    #[serde(rename = "assistant")]
+    Assistant,
+    #[serde(rename = "tool")]
+    Tool,
+}
+
+/// One turn of a session: what the person said (user), what the agent answered (assistant), or a tool it used (tool, with the tool's name and the start of its input). Text past 8000 characters is cut and says so with cut.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct LocalAgentMessage {
+    pub role: LocalAgentRole,
+    pub text: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub at: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cut: Option<bool>,
+}
+
+/// running until the program ends: done when it answered, failed when it could not, stopped when agents.stop ended it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum LocalAgentRunState {
+    #[serde(rename = "running")]
+    Running,
+    #[serde(rename = "done")]
+    Done,
+    #[serde(rename = "failed")]
+    Failed,
+    #[serde(rename = "stopped")]
+    Stopped,
+}
+
+/// One run of agents.ask: who asked (caller), what, where, in which session, with what access, and how it stands. text is the answer so far (the final answer once done), cut at 8000 characters; tools counts the tools the agent used. The core keeps the last 50 runs while it runs.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct LocalAgentRun {
+    #[serde(rename = "runId")]
+    pub run_id: LocalAgentRunId,
+    pub agent: LocalAgentId,
+    pub caller: CallerId,
+    pub prompt: String,
+    pub cwd: String,
+    #[serde(rename = "sessionId", default, skip_serializing_if = "Option::is_none")]
+    pub session_id: Option<LocalAgentSessionId>,
+    pub access: LocalAgentAccess,
+    pub state: LocalAgentRunState,
+    #[serde(rename = "startedAt")]
+    pub started_at: String,
+    #[serde(rename = "endedAt", default, skip_serializing_if = "Option::is_none")]
+    pub ended_at: Option<String>,
+    pub text: String,
+    pub tools: u64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
+}
+
+/// A run's id, given by the core.
+pub type LocalAgentRunId = String;
+
+/// Parameters of agents.list: the scope alone.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AgentsParams {
+    pub scope: AgentsManagePermission,
+}
+
+/// The agent programs found on this computer: each one whose data folder or program is there, with its counts. Nothing is started.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AgentsListRequest {
+    pub id: RequestId,
+    pub method: AgentsListRequestMethod,
+    pub params: AgentsParams,
+}
+
+/// Result of agents.list: the agents found, Claude Code first. None found is an empty list.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AgentsListResult {
+    pub agents: Vec<LocalAgent>,
+}
+
+/// One agent's sessions from one source, the most recently active first.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AgentsSessionsRequest {
+    pub id: RequestId,
+    pub method: AgentsSessionsRequestMethod,
+    pub params: AgentsSessionsParams,
+}
+
+/// Parameters of agents.sessions. from is local unless given. query keeps the sessions whose title, folder or branch hold every one of its words (any case). offset and limit page through them; limit is 50 unless given.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AgentsSessionsParams {
+    pub agent: LocalAgentId,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub from: Option<LocalAgentSource>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub query: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub offset: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub limit: Option<u64>,
+    pub scope: AgentsManagePermission,
+}
+
+/// Result of agents.sessions: one page, and how many sessions match in all.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AgentsSessionsResult {
+    pub sessions: Vec<LocalAgentSession>,
+    pub total: u64,
+}
+
+/// One session's turns: from the program's file while it is there, else from the desk's copy. A session neither holds is not_found.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AgentsTranscriptRequest {
+    pub id: RequestId,
+    pub method: AgentsTranscriptRequestMethod,
+    pub params: AgentsTranscriptParams,
+}
+
+/// Parameters of agents.transcript: the last limit turns (200 unless given).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AgentsTranscriptParams {
+    pub agent: LocalAgentId,
+    #[serde(rename = "sessionId")]
+    pub session_id: LocalAgentSessionId,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub limit: Option<u64>,
+    pub scope: AgentsManagePermission,
+}
+
+/// Result of agents.transcript: the session, its last turns in order, and whether earlier ones were left out (truncated).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AgentsTranscriptResult {
+    pub session: LocalAgentSession,
+    pub messages: Vec<LocalAgentMessage>,
+    pub truncated: bool,
+}
+
+/// Copy sessions into the desk's own folder: the ones sessionIds names, else the newest 500 of the source from names (local unless given). Each copy holds the session and its last 1000 turns, so it stays readable when the program drops or compresses its file. A session imported before is copied again only when its file changed. agents.changed follows.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AgentsImportRequest {
+    pub id: RequestId,
+    pub method: AgentsImportRequestMethod,
+    pub params: AgentsImportParams,
+}
+
+/// Parameters of agents.import. from is local or archive; desk is invalid_params.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AgentsImportParams {
+    pub agent: LocalAgentId,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub from: Option<LocalAgentSource>,
+    #[serde(
+        rename = "sessionIds",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub session_ids: Option<Vec<LocalAgentSessionId>>,
+    pub scope: AgentsManagePermission,
+}
+
+/// Result of agents.import: how many sessions were copied, how many were already up to date, and how many could not be read.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AgentsImportResult {
+    pub imported: u64,
+    pub unchanged: u64,
+    pub failed: u64,
+}
+
+/// Ask an agent for work: the core runs its program once, without a shell, in its non-interactive mode, in cwd (the session's folder when sessionId resumes one, else the home folder), continuing sessionId when given. The prompt is one argument that a leading dash cannot turn into an option. The answer is the run's id at once; the run reports itself as agents.run events and agents.runs. An agent the core found no program for is unsupported.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AgentsAskRequest {
+    pub id: RequestId,
+    pub method: AgentsAskRequestMethod,
+    pub params: AgentsAskParams,
+}
+
+/// Parameters of agents.ask. access is read-only unless given. model is passed as the program's --model.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AgentsAskParams {
+    pub agent: LocalAgentId,
+    pub prompt: String,
+    #[serde(rename = "sessionId", default, skip_serializing_if = "Option::is_none")]
+    pub session_id: Option<LocalAgentSessionId>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cwd: Option<Path>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub access: Option<LocalAgentAccess>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub model: Option<String>,
+    pub scope: AgentsManagePermission,
+}
+
+/// Result of agents.ask: the run as it starts.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AgentsAskResult {
+    pub run: LocalAgentRun,
+}
+
+/// The runs the core keeps (the last 50), the newest first: every agent's, or one's.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AgentsRunsRequest {
+    pub id: RequestId,
+    pub method: AgentsRunsRequestMethod,
+    pub params: AgentsRunsParams,
+}
+
+/// Parameters of agents.runs.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AgentsRunsParams {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub agent: Option<LocalAgentId>,
+    pub scope: AgentsManagePermission,
+}
+
+/// Result of agents.runs.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AgentsRunsResult {
+    pub runs: Vec<LocalAgentRun>,
+}
+
+/// End a run that is going on: its program is ended and the run is stopped. A run that already ended, or one the core does not keep, is not_found.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AgentsStopRequest {
+    pub id: RequestId,
+    pub method: AgentsStopRequestMethod,
+    pub params: AgentsStopParams,
+}
+
+/// Parameters of agents.stop.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AgentsStopParams {
+    #[serde(rename = "runId")]
+    pub run_id: LocalAgentRunId,
+    pub scope: AgentsManagePermission,
+}
+
+/// Result of agents.stop: the run, stopped.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AgentsStopResult {
+    pub run: LocalAgentRun,
+}
+
+/// What happened in a run: started; text (a block of the agent's answer); tool (it used one); done, failed or stopped, its end, which carries the whole run.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum LocalAgentRunKind {
+    #[serde(rename = "started")]
+    Started,
+    #[serde(rename = "text")]
+    Text,
+    #[serde(rename = "tool")]
+    Tool,
+    #[serde(rename = "done")]
+    Done,
+    #[serde(rename = "failed")]
+    Failed,
+    #[serde(rename = "stopped")]
+    Stopped,
+}
+
+/// One step of a run. text is the block a text step adds; tool names the tool a tool step used, with the start of its input in detail; sessionId is there once the program said which session it is in. run is the whole run on started and on its end.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct LocalAgentRunData {
+    #[serde(rename = "runId")]
+    pub run_id: LocalAgentRunId,
+    pub agent: LocalAgentId,
+    pub kind: LocalAgentRunKind,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub text: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tool: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub detail: Option<String>,
+    #[serde(rename = "sessionId", default, skip_serializing_if = "Option::is_none")]
+    pub session_id: Option<LocalAgentSessionId>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub run: Option<LocalAgentRun>,
+}
+
+/// A step of a run of agents.ask. Sent to holders of agents:manage.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AgentsRunEvent {
+    pub event: AgentsRunEventEvent,
+    pub data: LocalAgentRunData,
+}
+
+/// Which agent's imported sessions changed.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AgentsChangedData {
+    pub agent: LocalAgentId,
+}
+
+/// agents.import changed what the desk holds of an agent. Sent to holders of agents:manage.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AgentsChangedEvent {
+    pub event: AgentsChangedEventEvent,
+    pub data: AgentsChangedData,
+}
+
 /// Start capturing the microphone. With wakeWord, audio.wake events arrive when the wake word is heard.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -3906,6 +4331,13 @@ pub enum BridgeRequest {
     AccountStatus(AccountStatusRequest),
     AccountSignIn(AccountSignInRequest),
     AccountSignOut(AccountSignOutRequest),
+    AgentsList(AgentsListRequest),
+    AgentsSessions(AgentsSessionsRequest),
+    AgentsTranscript(AgentsTranscriptRequest),
+    AgentsImport(AgentsImportRequest),
+    AgentsAsk(AgentsAskRequest),
+    AgentsRuns(AgentsRunsRequest),
+    AgentsStop(AgentsStopRequest),
     AgentList(AgentListRequest),
     AgentCancel(AgentCancelRequest),
     AgentReport(AgentReportRequest),
@@ -3980,7 +4412,7 @@ pub enum ErrorCode {
     Internal,
 }
 
-/// Something the core reports without being asked: file changes, process output, wake words, permission changes, prompts and approvals, notifications, surfaces, commands, settings, log entries, changes to items, connectors and views, the desk's update status, its endue ID account, and runs to stop.
+/// Something the core reports without being asked: file changes, process output, wake words, permission changes, prompts and approvals, notifications, surfaces, commands, settings, log entries, changes to items, connectors and views, the desk's update status, its endue ID account, runs to stop, and the runs of the agent programs on this computer.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum BridgeEvent {
@@ -4009,6 +4441,8 @@ pub enum BridgeEvent {
     ViewChanged(ViewChangedEvent),
     UpdateChanged(UpdateChangedEvent),
     AccountChanged(AccountChangedEvent),
+    AgentsRun(AgentsRunEvent),
+    AgentsChanged(AgentsChangedEvent),
     AgentCancelled(AgentCancelledEvent),
 }
 
@@ -7388,6 +7822,14 @@ pub enum AccountManagePermissionPermission {
     AccountManage,
 }
 
+/// The `permission` of [`AgentsManagePermission`]: always `"agents:manage"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum AgentsManagePermissionPermission {
+    #[default]
+    #[serde(rename = "agents:manage")]
+    AgentsManage,
+}
+
 /// The `format` of [`ThemeIndex`]: always `"desk-theme-index/1"`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub enum ThemeIndexFormat {
@@ -7618,6 +8060,78 @@ pub enum AgentCancelledEventEvent {
     #[default]
     #[serde(rename = "agent.cancelled")]
     AgentCancelled,
+}
+
+/// The `method` of [`AgentsListRequest`]: always `"agents.list"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum AgentsListRequestMethod {
+    #[default]
+    #[serde(rename = "agents.list")]
+    AgentsList,
+}
+
+/// The `method` of [`AgentsSessionsRequest`]: always `"agents.sessions"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum AgentsSessionsRequestMethod {
+    #[default]
+    #[serde(rename = "agents.sessions")]
+    AgentsSessions,
+}
+
+/// The `method` of [`AgentsTranscriptRequest`]: always `"agents.transcript"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum AgentsTranscriptRequestMethod {
+    #[default]
+    #[serde(rename = "agents.transcript")]
+    AgentsTranscript,
+}
+
+/// The `method` of [`AgentsImportRequest`]: always `"agents.import"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum AgentsImportRequestMethod {
+    #[default]
+    #[serde(rename = "agents.import")]
+    AgentsImport,
+}
+
+/// The `method` of [`AgentsAskRequest`]: always `"agents.ask"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum AgentsAskRequestMethod {
+    #[default]
+    #[serde(rename = "agents.ask")]
+    AgentsAsk,
+}
+
+/// The `method` of [`AgentsRunsRequest`]: always `"agents.runs"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum AgentsRunsRequestMethod {
+    #[default]
+    #[serde(rename = "agents.runs")]
+    AgentsRuns,
+}
+
+/// The `method` of [`AgentsStopRequest`]: always `"agents.stop"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum AgentsStopRequestMethod {
+    #[default]
+    #[serde(rename = "agents.stop")]
+    AgentsStop,
+}
+
+/// The `event` of [`AgentsRunEvent`]: always `"agents.run"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum AgentsRunEventEvent {
+    #[default]
+    #[serde(rename = "agents.run")]
+    AgentsRun,
+}
+
+/// The `event` of [`AgentsChangedEvent`]: always `"agents.changed"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum AgentsChangedEventEvent {
+    #[default]
+    #[serde(rename = "agents.changed")]
+    AgentsChanged,
 }
 
 /// The `method` of [`AudioCaptureStartRequest`]: always `"audio.capture.start"`.
@@ -8630,6 +9144,10 @@ pub const SCHEMAS: &[(&str, &str)] = &[
     (
         "https://endue.ai/specs/bridge/v0/agent.schema.json",
         include_str!("../../../specs/bridge/v0/agent.schema.json"),
+    ),
+    (
+        "https://endue.ai/specs/bridge/v0/agents.schema.json",
+        include_str!("../../../specs/bridge/v0/agents.schema.json"),
     ),
     (
         "https://endue.ai/specs/bridge/v0/audio.schema.json",

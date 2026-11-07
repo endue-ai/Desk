@@ -1,0 +1,9 @@
+{
+  "target": "AgentsImportResult",
+  "description": "three copied, one up to date, one unreadable",
+  "instance": {
+    "imported": 3,
+    "unchanged": 1,
+    "failed": 1
+  }
+}

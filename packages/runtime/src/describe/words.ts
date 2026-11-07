@@ -153,6 +153,7 @@ const WORDS: Record<Permission["permission"], string> = {
   "update:manage": "manage the desk's updates",
   "theme:manage": "manage the person's themes",
   "account:manage": "sign the desk in to endue ID",
+  "agents:manage": "read the agent programs' sessions on this computer and hand them work",
 };
 
 /** A permission's scope: "paths: ~/Notes/**", or "" when it has none. */

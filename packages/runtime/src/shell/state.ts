@@ -3,7 +3,7 @@
  * page and the fixtures start with. Profiles, the
  * moved desktops and Eris's settings mirror the runtime's (link.ts); the theme is desk.theme's.
  */
-import type { A2ATask, Agent, AgentCard, Space } from "@endue-ai/bridge";
+import type { A2ATask, Agent, AgentCard, LocalAgent, LocalAgentRun, Space } from "@endue-ai/bridge";
 import type { BrainStatus } from "../bridge/types";
 import type { DensityName } from "../eris/mesh";
 import type { SoulStyle } from "../eris/soul";
@@ -61,6 +61,12 @@ export interface DeskState {
   /** A2A tasks: working ones run in the bottom right and light the agent's dot. */
   tasks: A2ATask[];
   directory: "loading" | "ready" | "offline";
+  /** The agent programs on this computer (ADR 0110), from agents.list: the agent bar lists them. */
+  localAgents: LocalAgent[];
+  /** Their runs, newest first, as agents.runs and agents.run events tell them. */
+  localRuns: LocalAgentRun[];
+  /** The runs Eris handed out with her desk.agents.* tools, so their screens say so. */
+  erisRuns: string[];
   drawer: DrawerItem[];
   /**
    * Plugin surfaces the runtime handed to the shell's windows (ADR 0040), in mount order, each with
@@ -141,6 +147,9 @@ export function emptyState(lang: Lang): DeskState {
     cards: {},
     tasks: [],
     directory: "loading",
+    localAgents: [],
+    localRuns: [],
+    erisRuns: [],
     drawer: [],
     adopted: [],
     attention: [],

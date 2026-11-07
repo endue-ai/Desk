@@ -1,0 +1,33 @@
+{
+  "target": "AgentsTranscriptResult",
+  "description": "a question, a tool and the answer",
+  "instance": {
+    "truncated": false,
+    "session": {
+      "id": "5b1c2d3e-0f1a-4b2c-9d3e-4f5a6b7c8d9e",
+      "agent": "claude",
+      "title": "Fix the flaky upload test",
+      "updatedAt": "2026-11-04T11:30:00Z",
+      "archived": false,
+      "imported": false,
+      "size": 48213
+    },
+    "messages": [
+      {
+        "role": "user",
+        "text": "Why does the upload test fail on CI?",
+        "at": "2026-11-04T10:00:00Z"
+      },
+      {
+        "role": "tool",
+        "name": "Bash",
+        "text": "pnpm test upload"
+      },
+      {
+        "role": "assistant",
+        "text": "It waits on a timer the CI runner never fires.",
+        "at": "2026-11-04T10:02:00Z"
+      }
+    ]
+  }
+}

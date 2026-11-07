@@ -1,0 +1,30 @@
+{
+  "target": "AgentsListResult",
+  "description": "Claude Code with its program and sessions, Codex with only its data folder",
+  "instance": {
+    "agents": [
+      {
+        "id": "claude",
+        "name": "Claude Code",
+        "vendor": "Anthropic",
+        "program": "/usr/local/bin/claude",
+        "version": "2.4.1",
+        "home": "/home/person/.claude",
+        "sessions": 12,
+        "archived": 3,
+        "imported": 2,
+        "running": 1
+      },
+      {
+        "id": "codex",
+        "name": "Codex",
+        "vendor": "OpenAI",
+        "home": "/home/person/.codex",
+        "sessions": 4,
+        "archived": 1,
+        "imported": 0,
+        "running": 0
+      }
+    ]
+  }
+}

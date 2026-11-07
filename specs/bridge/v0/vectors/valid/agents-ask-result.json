@@ -1,0 +1,19 @@
+{
+  "target": "AgentsAskResult",
+  "description": "the run as it starts",
+  "instance": {
+    "run": {
+      "runId": "run-3",
+      "agent": "claude",
+      "caller": "desk",
+      "prompt": "Run the tests and tell me what fails",
+      "cwd": "/home/person/work/app",
+      "sessionId": "5b1c2d3e-0f1a-4b2c-9d3e-4f5a6b7c8d9e",
+      "access": "read-only",
+      "state": "running",
+      "startedAt": "2026-11-05T09:00:00Z",
+      "text": "",
+      "tools": 0
+    }
+  }
+}

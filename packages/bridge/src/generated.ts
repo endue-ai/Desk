@@ -512,7 +512,8 @@ export type Permission =
   | ShellOpenPermission
   | UpdateManagePermission
   | ThemeManagePermission
-  | AccountManagePermission;
+  | AccountManagePermission
+  | AgentsManagePermission;
 
 /** Search explicitly published plugin documents and installed plugin launchers. */
 export interface SearchReadPermission {
@@ -663,6 +664,11 @@ export interface ThemeManagePermission {
 /** Sign the desk in to endue ID and out again with account.*, and see whether it is signed in. Receive account.changed. The token itself never crosses the bridge. The desk grants it to the runtime only (ADR 0089). */
 export interface AccountManagePermission {
   permission: "account:manage";
+}
+
+/** Find the agent programs on this computer (Claude Code, Codex), read their sessions from the files they keep, import sessions into the desk, and ask them for work with agents.*. Receive agents.run and agents.changed. The desk grants it to the runtime only (ADR 0110). */
+export interface AgentsManagePermission {
+  permission: "agents:manage";
 }
 
 /** A URL scheme shell.open hands to the system: the browser for http and https, the mail app for mailto. */
@@ -2087,6 +2093,267 @@ export interface AgentCancelledEvent {
   data: AgentCancelledData;
 }
 
+/** A program the core knows: claude (Claude Code, Anthropic) or codex (Codex, OpenAI). */
+export type LocalAgentId = "claude" | "codex";
+
+/** A session's id as its program names it: a UUID for both programs today. */
+export type LocalAgentSessionId = string;
+
+/** read-only: the program runs in its read-only mode (Claude Code's plan mode, Codex's read-only sandbox). agent: the program uses its own permission settings and may change files. No flag that widens a program's permissions beyond its own settings is ever passed. */
+export type LocalAgentAccess = "read-only" | "agent";
+
+/** Which sessions: local (the program's sessions on this computer that are not archived), archive (the ones archived), desk (the ones imported into the desk). */
+export type LocalAgentSource = "local" | "archive" | "desk";
+
+/** One agent program found on this computer. program is where it runs from when it is on the PATH (or in a folder its installer uses); without it the desk reads its sessions but cannot ask it. version is the one its newest session recorded; finding an agent never starts it. */
+export interface LocalAgent {
+  id: LocalAgentId;
+  name: string;
+  vendor: string;
+  /** The program's absolute path. */
+  program?: string;
+  version?: string;
+  /** The program's own data folder, an absolute path (~/.claude, ~/.codex). */
+  home?: string;
+  /** How many sessions it keeps that are not archived. */
+  sessions: number;
+  /** How many of its sessions are archived. */
+  archived: number;
+  /** How many of its sessions the desk imported. */
+  imported: number;
+  /** How many runs of it are going on now. */
+  running: number;
+}
+
+/** One session as the program's files say it: its title (the program's own, else the first thing the person asked), the folder it worked in, the branch there, when it started and was last active, and the program's version and model. imported says whether the desk holds a copy; importedAt when it was made. */
+export interface LocalAgentSession {
+  id: LocalAgentSessionId;
+  agent: LocalAgentId;
+  title: string;
+  /** The folder the session worked in, an absolute path. */
+  cwd?: string;
+  branch?: string;
+  startedAt?: string;
+  updatedAt: string;
+  archived: boolean;
+  imported: boolean;
+  importedAt?: string;
+  /** The bytes of the session's file. */
+  size: number;
+  version?: string;
+  model?: string;
+}
+
+/** Who a turn is: the person (user), the agent (assistant), or a tool the agent used (tool). */
+export type LocalAgentRole = "user" | "assistant" | "tool";
+
+/** One turn of a session: what the person said (user), what the agent answered (assistant), or a tool it used (tool, with the tool's name and the start of its input). Text past 8000 characters is cut and says so with cut. */
+export interface LocalAgentMessage {
+  role: LocalAgentRole;
+  text: string;
+  name?: string;
+  at?: string;
+  cut?: boolean;
+}
+
+/** running until the program ends: done when it answered, failed when it could not, stopped when agents.stop ended it. */
+export type LocalAgentRunState = "running" | "done" | "failed" | "stopped";
+
+/** One run of agents.ask: who asked (caller), what, where, in which session, with what access, and how it stands. text is the answer so far (the final answer once done), cut at 8000 characters; tools counts the tools the agent used. The core keeps the last 50 runs while it runs. */
+export interface LocalAgentRun {
+  runId: LocalAgentRunId;
+  agent: LocalAgentId;
+  caller: CallerId;
+  prompt: string;
+  cwd: string;
+  sessionId?: LocalAgentSessionId;
+  access: LocalAgentAccess;
+  state: LocalAgentRunState;
+  startedAt: string;
+  endedAt?: string;
+  text: string;
+  tools: number;
+  error?: string;
+}
+
+/** A run's id, given by the core. */
+export type LocalAgentRunId = string;
+
+/** Parameters of agents.list: the scope alone. */
+export interface AgentsParams {
+  scope: AgentsManagePermission;
+}
+
+/** The agent programs found on this computer: each one whose data folder or program is there, with its counts. Nothing is started. */
+export interface AgentsListRequest {
+  id: RequestId;
+  method: "agents.list";
+  params: AgentsParams;
+}
+
+/** Result of agents.list: the agents found, Claude Code first. None found is an empty list. */
+export interface AgentsListResult {
+  agents: LocalAgent[];
+}
+
+/** One agent's sessions from one source, the most recently active first. */
+export interface AgentsSessionsRequest {
+  id: RequestId;
+  method: "agents.sessions";
+  params: AgentsSessionsParams;
+}
+
+/** Parameters of agents.sessions. from is local unless given. query keeps the sessions whose title, folder or branch hold every one of its words (any case). offset and limit page through them; limit is 50 unless given. */
+export interface AgentsSessionsParams {
+  agent: LocalAgentId;
+  from?: LocalAgentSource;
+  query?: string;
+  offset?: number;
+  limit?: number;
+  scope: AgentsManagePermission;
+}
+
+/** Result of agents.sessions: one page, and how many sessions match in all. */
+export interface AgentsSessionsResult {
+  sessions: LocalAgentSession[];
+  total: number;
+}
+
+/** One session's turns: from the program's file while it is there, else from the desk's copy. A session neither holds is not_found. */
+export interface AgentsTranscriptRequest {
+  id: RequestId;
+  method: "agents.transcript";
+  params: AgentsTranscriptParams;
+}
+
+/** Parameters of agents.transcript: the last limit turns (200 unless given). */
+export interface AgentsTranscriptParams {
+  agent: LocalAgentId;
+  sessionId: LocalAgentSessionId;
+  limit?: number;
+  scope: AgentsManagePermission;
+}
+
+/** Result of agents.transcript: the session, its last turns in order, and whether earlier ones were left out (truncated). */
+export interface AgentsTranscriptResult {
+  session: LocalAgentSession;
+  messages: LocalAgentMessage[];
+  truncated: boolean;
+}
+
+/** Copy sessions into the desk's own folder: the ones sessionIds names, else the newest 500 of the source from names (local unless given). Each copy holds the session and its last 1000 turns, so it stays readable when the program drops or compresses its file. A session imported before is copied again only when its file changed. agents.changed follows. */
+export interface AgentsImportRequest {
+  id: RequestId;
+  method: "agents.import";
+  params: AgentsImportParams;
+}
+
+/** Parameters of agents.import. from is local or archive; desk is invalid_params. */
+export interface AgentsImportParams {
+  agent: LocalAgentId;
+  from?: LocalAgentSource;
+  sessionIds?: LocalAgentSessionId[];
+  scope: AgentsManagePermission;
+}
+
+/** Result of agents.import: how many sessions were copied, how many were already up to date, and how many could not be read. */
+export interface AgentsImportResult {
+  imported: number;
+  unchanged: number;
+  failed: number;
+}
+
+/** Ask an agent for work: the core runs its program once, without a shell, in its non-interactive mode, in cwd (the session's folder when sessionId resumes one, else the home folder), continuing sessionId when given. The prompt is one argument that a leading dash cannot turn into an option. The answer is the run's id at once; the run reports itself as agents.run events and agents.runs. An agent the core found no program for is unsupported. */
+export interface AgentsAskRequest {
+  id: RequestId;
+  method: "agents.ask";
+  params: AgentsAskParams;
+}
+
+/** Parameters of agents.ask. access is read-only unless given. model is passed as the program's --model. */
+export interface AgentsAskParams {
+  agent: LocalAgentId;
+  prompt: string;
+  sessionId?: LocalAgentSessionId;
+  cwd?: Path;
+  access?: LocalAgentAccess;
+  model?: string;
+  scope: AgentsManagePermission;
+}
+
+/** Result of agents.ask: the run as it starts. */
+export interface AgentsAskResult {
+  run: LocalAgentRun;
+}
+
+/** The runs the core keeps (the last 50), the newest first: every agent's, or one's. */
+export interface AgentsRunsRequest {
+  id: RequestId;
+  method: "agents.runs";
+  params: AgentsRunsParams;
+}
+
+/** Parameters of agents.runs. */
+export interface AgentsRunsParams {
+  agent?: LocalAgentId;
+  scope: AgentsManagePermission;
+}
+
+/** Result of agents.runs. */
+export interface AgentsRunsResult {
+  runs: LocalAgentRun[];
+}
+
+/** End a run that is going on: its program is ended and the run is stopped. A run that already ended, or one the core does not keep, is not_found. */
+export interface AgentsStopRequest {
+  id: RequestId;
+  method: "agents.stop";
+  params: AgentsStopParams;
+}
+
+/** Parameters of agents.stop. */
+export interface AgentsStopParams {
+  runId: LocalAgentRunId;
+  scope: AgentsManagePermission;
+}
+
+/** Result of agents.stop: the run, stopped. */
+export interface AgentsStopResult {
+  run: LocalAgentRun;
+}
+
+/** What happened in a run: started; text (a block of the agent's answer); tool (it used one); done, failed or stopped, its end, which carries the whole run. */
+export type LocalAgentRunKind = "started" | "text" | "tool" | "done" | "failed" | "stopped";
+
+/** One step of a run. text is the block a text step adds; tool names the tool a tool step used, with the start of its input in detail; sessionId is there once the program said which session it is in. run is the whole run on started and on its end. */
+export interface LocalAgentRunData {
+  runId: LocalAgentRunId;
+  agent: LocalAgentId;
+  kind: LocalAgentRunKind;
+  text?: string;
+  tool?: string;
+  detail?: string;
+  sessionId?: LocalAgentSessionId;
+  run?: LocalAgentRun;
+}
+
+/** A step of a run of agents.ask. Sent to holders of agents:manage. */
+export interface AgentsRunEvent {
+  event: "agents.run";
+  data: LocalAgentRunData;
+}
+
+/** Which agent's imported sessions changed. */
+export interface AgentsChangedData {
+  agent: LocalAgentId;
+}
+
+/** agents.import changed what the desk holds of an agent. Sent to holders of agents:manage. */
+export interface AgentsChangedEvent {
+  event: "agents.changed";
+  data: AgentsChangedData;
+}
+
 /** Start capturing the microphone. With wakeWord, audio.wake events arrive when the wake word is heard. */
 export interface AudioCaptureStartRequest {
   id: RequestId;
@@ -2443,6 +2710,13 @@ export type BridgeRequest =
   | AccountStatusRequest
   | AccountSignInRequest
   | AccountSignOutRequest
+  | AgentsListRequest
+  | AgentsSessionsRequest
+  | AgentsTranscriptRequest
+  | AgentsImportRequest
+  | AgentsAskRequest
+  | AgentsRunsRequest
+  | AgentsStopRequest
   | AgentListRequest
   | AgentCancelRequest
   | AgentReportRequest
@@ -2492,7 +2766,7 @@ export type ErrorCode =
   | "invalid_value"
   | "internal";
 
-/** Something the core reports without being asked: file changes, process output, wake words, permission changes, prompts and approvals, notifications, surfaces, commands, settings, log entries, changes to items, connectors and views, the desk's update status, its endue ID account, and runs to stop. */
+/** Something the core reports without being asked: file changes, process output, wake words, permission changes, prompts and approvals, notifications, surfaces, commands, settings, log entries, changes to items, connectors and views, the desk's update status, its endue ID account, runs to stop, and the runs of the agent programs on this computer. */
 export type BridgeEvent =
   | FsChangedEvent
   | ProcOutputEvent
@@ -2519,6 +2793,8 @@ export type BridgeEvent =
   | ViewChangedEvent
   | UpdateChangedEvent
   | AccountChangedEvent
+  | AgentsRunEvent
+  | AgentsChangedEvent
   | AgentCancelledEvent;
 
 /** Describe what the caller can bind, show and run. */
@@ -4728,6 +5004,13 @@ export interface BridgeMethodMap {
   "account.status": { params: AccountParams; result: AccountStatusResult };
   "account.signIn": { params: AccountParams; result: AccountSignInResult };
   "account.signOut": { params: AccountParams; result: AccountSignOutResult };
+  "agents.list": { params: AgentsParams; result: AgentsListResult };
+  "agents.sessions": { params: AgentsSessionsParams; result: AgentsSessionsResult };
+  "agents.transcript": { params: AgentsTranscriptParams; result: AgentsTranscriptResult };
+  "agents.import": { params: AgentsImportParams; result: AgentsImportResult };
+  "agents.ask": { params: AgentsAskParams; result: AgentsAskResult };
+  "agents.runs": { params: AgentsRunsParams; result: AgentsRunsResult };
+  "agents.stop": { params: AgentsStopParams; result: AgentsStopResult };
   "agent.list": { params: AgentListParams; result: AgentListResult };
   "agent.cancel": { params: AgentCancelParams; result: AgentCancelResult };
   "agent.report": { params: AgentReportParams; result: AgentReportResult };
@@ -4824,6 +5107,13 @@ export const BRIDGE_METHODS = [
   "account.status",
   "account.signIn",
   "account.signOut",
+  "agents.list",
+  "agents.sessions",
+  "agents.transcript",
+  "agents.import",
+  "agents.ask",
+  "agents.runs",
+  "agents.stop",
   "agent.list",
   "agent.cancel",
   "agent.report",

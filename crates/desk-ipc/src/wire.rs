@@ -103,7 +103,8 @@ fn terminated(mut line: String) -> String {
 /// One line the desk sent, with the line itself (without its `\n`) for callers that print it.
 pub(crate) enum Incoming {
     Answer(BridgeResponse, String),
-    Event(BridgeEvent, String),
+    /// Boxed: some events (a whole agent run) are far larger than an answer.
+    Event(Box<BridgeEvent>, String),
     /// An event this build does not know (a newer desk), or an empty line.
     Skipped,
 }
@@ -118,7 +119,7 @@ pub(crate) fn incoming(mut line: String) -> io::Result<Incoming> {
     let value: Value = serde_json::from_str(&line).map_err(bad_line)?;
     if value.get("event").is_some() {
         return Ok(match serde_json::from_value(value) {
-            Ok(event) => Incoming::Event(event, line),
+            Ok(event) => Incoming::Event(Box::new(event), line),
             Err(_) => Incoming::Skipped,
         });
     }

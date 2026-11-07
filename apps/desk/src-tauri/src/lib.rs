@@ -20,14 +20,15 @@ use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
 use desk_bridge::{
-    AccountManagePermission, BrainConversePermission, CmdInvokePermission,
+    AccountManagePermission, AgentsManagePermission, BrainConversePermission, CmdInvokePermission,
     ConnectorManagePermission, FsReadPermission, FsWritePermission, PermManagePermission,
     Permission, PluginManagePermission, ShellOpenPermission, ThemeManagePermission,
     UpdateManagePermission, ViewManagePermission,
 };
 use desk_core::account::{Account, AccountOptions, DEFAULT_ID_URL, NetIdClient};
 use desk_core::{
-    Core, MockRemote, PluginWatcher, Roots, SyncError, SyncOutcome, ThemeWatcher, ViewWatcher,
+    Core, LocalAgents, LocalAgentsOptions, MockRemote, PluginWatcher, Roots, SyncError,
+    SyncOutcome, ThemeWatcher, ViewWatcher,
 };
 use tauri::{Emitter, Manager};
 
@@ -124,6 +125,10 @@ pub fn run() {
             account.file = Some(data.join("account.json"));
             let account = Account::open(account, NetIdClient);
             core = core.with_account(account.clone());
+            // The agent programs on this computer (ADR 0110): Claude Code and Codex, their sessions
+            // read from their own folders, imported ones kept in <data>/agents.
+            let agents = LocalAgentsOptions::new(&home_dir(), Some(data.join("agents")));
+            core = core.with_local_agents(LocalAgents::new(agents));
             // Eris's brain is the one the runtime's setting chooses, endue AI by default, and the
             // local brain stands in while a remote one cannot be reached (ADR 0094).
             core = core.with_brains(brains::brains(&data, account));
@@ -217,6 +222,14 @@ pub fn run() {
             core.grant(
                 RUNTIME_CALLER,
                 Permission::AccountManage(AccountManagePermission {
+                    permission: Default::default(),
+                }),
+            );
+            // The shell lists the agent programs on this computer, imports their sessions and asks
+            // them for work (ADR 0110).
+            core.grant(
+                RUNTIME_CALLER,
+                Permission::AgentsManage(AgentsManagePermission {
                     permission: Default::default(),
                 }),
             );

@@ -1,0 +1,10 @@
+{
+  "target": "BridgeEvent",
+  "description": "the desk imported Codex sessions",
+  "instance": {
+    "event": "agents.changed",
+    "data": {
+      "agent": "codex"
+    }
+  }
+}

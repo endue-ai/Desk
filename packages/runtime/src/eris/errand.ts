@@ -62,6 +62,26 @@ export function windowOf(host: ParentNode, provider: string): HTMLElement | null
   return null;
 }
 
+/** The desk's commands for the agent programs on this computer (ADR 0110). */
+const LOCAL_AGENTS = "desk.agents.";
+
+/**
+ * Where a step's errand goes: the plugin's window, or for the desk's local agent tools a local
+ * agent's screen, else their group in the agent bar.
+ */
+export function targetOf(host: ParentNode, step: Pick<BrainStep, "provider" | "command">) {
+  if (!step.command.startsWith(LOCAL_AGENTS)) return windowOf(host, step.provider);
+  const screen = windowOf(host, "local");
+  if (screen) return screen;
+  const group = host.querySelector<HTMLElement>("[data-local-agents]");
+  return group && group.getClientRects().length > 0 ? group : null;
+}
+
+/** Who a step goes to, as people read it: `endue.mail` is Mail, the local agent tools Agents. */
+export function labelOf(step: Pick<BrainStep, "provider" | "command">): string {
+  return step.command.startsWith(LOCAL_AGENTS) ? "Agents" : nameOf(step.provider);
+}
+
 /** The plugin's name as people read it: `endue.mail` is Mail, `desk` is Desk. */
 export function nameOf(provider: string): string {
   const last = provider.split(".").pop() ?? provider;
@@ -108,7 +128,7 @@ export function mountErrands(shell: () => HTMLElement, ctx: ShellCtx): Errands {
     const label = h(
       "span",
       { class: "errand-label" },
-      h("strong", {}, nameOf(step.provider)),
+      h("strong", {}, labelOf(step)),
       step.title ? h("small", {}, step.title) : null,
     );
     const el = h(
@@ -125,7 +145,7 @@ export function mountErrands(shell: () => HTMLElement, ctx: ShellCtx): Errands {
     );
     host.append(el);
     const from = erisAt(host);
-    const window = windowOf(host, step.provider);
+    const window = targetOf(host, step);
     const to = ctx.reduced()
       ? { x: from.x + BESIDE.x, y: from.y + BESIDE.y }
       : window

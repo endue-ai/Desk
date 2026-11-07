@@ -1,0 +1,14 @@
+{
+  "target": "BridgeRequest",
+  "description": "the runs of Claude Code",
+  "instance": {
+    "id": 8,
+    "method": "agents.runs",
+    "params": {
+      "agent": "claude",
+      "scope": {
+        "permission": "agents:manage"
+      }
+    }
+  }
+}

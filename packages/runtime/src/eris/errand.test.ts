@@ -4,7 +4,7 @@ import type { BrainStep } from "../bridge/types";
 import { mountComposer } from "../shell/Composer";
 import type { ShellCtx } from "../shell/context";
 import { Store, sampleState } from "../shell/state";
-import { mountErrands, nameOf, windowOf } from "./errand";
+import { labelOf, mountErrands, nameOf, targetOf, windowOf } from "./errand";
 
 const TOOL: BrainStep = {
   kind: "tool",
@@ -83,6 +83,26 @@ describe("Eris's errands", () => {
     shell.append(other, hidden, mail);
     expect(windowOf(shell, "endue.mail")).toBe(mail);
     expect(windowOf(shell, "endue.notes")).toBeNull();
+  });
+
+  it("sends a local agent tool to the agent's screen, else to the agent bar's group", () => {
+    const step = { provider: "desk", command: "desk.agents.ask" };
+    const group = at(document.createElement("div"), { left: 0, top: 200, width: 40, height: 90 });
+    group.dataset.localAgents = "";
+    shell.append(group);
+    expect(targetOf(shell, step)).toBe(group);
+    const screen = at(document.createElement("section"), {
+      left: 300,
+      top: 100,
+      width: 800,
+      height: 600,
+    });
+    screen.dataset.surface = "local:claude";
+    shell.append(screen);
+    expect(targetOf(shell, step)).toBe(screen);
+    expect(labelOf(step)).toBe("Agents");
+    expect(labelOf(TOOL)).toBe("Mail");
+    expect(targetOf(shell, TOOL)).toBeNull();
   });
 
   it("flies from Eris to the plugin's window, which glows until the spark flies home", async () => {

@@ -3,7 +3,7 @@
 The calls the web runtime (and every plugin through it) makes into the Rust core. JSON Schema 2020-12,
 one file per namespace: `bridge.schema.json` (envelope, errors, shared types), `fs`, `proc`, `net`, `plugins`,
 `store`, `search`, `init`, `brain`, `audio`, `ui`, `perm`, `cmd`, `settings`, `log`, `events`, `data`, `connector`,
-`view`, `catalog`, `shell`, `update`, `theme`, `account` and `agent`. Items, views and connectors are the types of `specs/item`,
+`view`, `catalog`, `shell`, `update`, `theme`, `account`, `agent` and `agents`. Items, views and connectors are the types of `specs/item`,
 `specs/view` and `specs/connector` (ADR 0032). v0 may break on any minor release (ADR 0004).
 
 ## Envelope
@@ -61,7 +61,7 @@ the undos and redos it ran, and
 `settings.changed` for its own keys and `data.changed` for its data subscriptions. `plugin.changed` goes to
 holders of `plugin:manage`, `perm.prompt`, `perm.approval` and `perm.approval.done` to holders of `perm:manage`, `connector.changed` to holders of
 `connector:manage`, `view.changed` to holders of `view:manage`, `update.changed` to holders of
-`update:manage`, `account.changed` to holders of `account:manage`, and `ui.notified`, `ui.surface.opened` and `ui.surface.closed` to the runtime, which
+`update:manage`, `account.changed` to holders of `account:manage`, `agents.run` and `agents.changed` to holders of `agents:manage`, and `ui.notified`, `ui.surface.opened` and `ui.surface.closed` to the runtime, which
 shows the notification or mounts and unmounts the surface.
 Everything else about other callers arrives only through `events.subscribe`.
 
@@ -463,6 +463,25 @@ denied, a running command answered `cancelled`, a reported run's reporter hears 
 need `perm:manage`. `agent.report` keeps a run of an agent the caller runs, under the caller's own source;
 it needs no scope. Runs are items of kind `run`: the core records one for every command an agent caller
 asks for and for the brain directory's tasks.
+
+**agents.list**, **agents.sessions**, **agents.transcript**, **agents.import**, **agents.ask**,
+**agents.runs** and **agents.stop** are the agent programs on this computer (ADR 0110): Claude Code
+(`claude`) and Codex (`codex`), not the brain's agent directory. Each needs `agents:manage`, which the
+desk grants to the runtime only. `agents.list` names each program whose data folder (`~/.claude`,
+`~/.codex`, or `CLAUDE_CONFIG_DIR` and `CODEX_HOME`) or program is there, with its counts; finding one
+never starts it, and `program` is absent when it is not on the PATH or in a folder its installer uses.
+`agents.sessions` reads the sessions from the program's own files, newest first: `from: local` (the
+default) the ones not archived, `archive` the archived ones (Codex's `archived_sessions`, and the Claude
+Code sessions the Claude app marks archived), `desk` the ones imported. `agents.transcript` reads one
+session's last turns, from the program's file while it is there, else from the desk's copy.
+`agents.import` copies sessions, with their last 1000 turns, into the desk's own folder and sends
+`agents.changed`; a copy whose source did not change since is `unchanged`. `agents.ask` runs the
+program once, without a shell, in its non-interactive mode (`claude -p`, `codex exec`), continuing
+`sessionId` in that session's folder or starting a new session in `cwd` (home when absent), and answers
+the run at once; read-only unless `access: agent` (Claude Code's plan mode, Codex's read-only sandbox),
+and no flag that widens the program's own permission settings is ever passed. Each step arrives as
+`agents.run` (`started`, `text`, `tool`, then `done`, `failed` or `stopped` with the whole run);
+`agents.runs` lists the last 50 runs and `agents.stop` ends one. Session text never goes to the log.
 
 **update.status**, **update.check**, **update.download** and **update.apply** drive the desk's own
 updates (ADR 0054). Each needs an `update:manage` scope, which the desk grants to the runtime and the

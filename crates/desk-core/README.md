@@ -29,6 +29,8 @@ its sync, the brain conversation, the integration layer and the bridge handler. 
   endue, local or echo; an unreachable remote falls back to local, ADR 0094), `route_tools()` (calls as
   their agent, or as Eris; each hand-off is a `tool` step, ADR 0089), `open_session`. endue ID:
   `account::Account` (device grant, token file 0600), `with_account`, `start_account` (account.*).
+  Local agents (ADR 0110): `with_local_agents(LocalAgents::new(LocalAgentsOptions::new(home, data)))`
+  serves agents.* (`agents:manage`): Claude Code's and Codex's sessions, copies, runs (`agents.run`).
 - Start (ADR 0061): every state file is screened as it loads; an unreadable one is kept as
   `<name>.broken` (`keep_broken`, `broken_in`) and listed by `broken_files()`; `with_index_file`,
   `keep_broken_views`, `report_broken`. `with_safe_mode(SafeReason)` and `safe_mode()` hold all but
@@ -45,4 +47,5 @@ its sync, the brain conversation, the integration layer and the bridge handler. 
 
 `cargo test -p desk-core`. `tests/` covers each side (`proc`'s child is the test binary itself; `net`
 serves from in-process listeners; `conversation`, `agent_tools`, `approval_tools`, `directory`, `lease`
-start brain-echo, needs Node); the integration layer runs on a temp index, a fake calendar and clock.
+start brain-echo, needs Node); the integration layer runs on a temp index, a fake calendar and clock;
+`local_agents` reads fixture folders, `local_agent_runs` runs shell scripts as the programs (Unix).

@@ -1,0 +1,438 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://endue.ai/specs/bridge/v0/agents.schema.json",
+  "title": "Desk bridge v0: agents",
+  "description": "The agent programs on this computer, served by the core (ADR 0110): Claude Code and Codex, found by their own data folders and programs, their sessions read from the files the programs keep, imported into the desk, and asked for work through their non-interactive modes. agents.list, agents.sessions and agents.transcript only read; agents.import copies sessions into the desk's own folder; agents.ask runs the program, read-only unless the call asks for agent access, and reports the run as agents.run events. Every call needs agents:manage, which the desk grants to the runtime only; agents.run and agents.changed go to its holders. Not the brain's agent directory, which brain.agents.* serves.",
+  "$defs": {
+    "LocalAgentId": {
+      "description": "A program the core knows: claude (Claude Code, Anthropic) or codex (Codex, OpenAI).",
+      "type": "string",
+      "enum": ["claude", "codex"]
+    },
+    "LocalAgentSessionId": {
+      "description": "A session's id as its program names it: a UUID for both programs today.",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+    },
+    "LocalAgentAccess": {
+      "description": "read-only: the program runs in its read-only mode (Claude Code's plan mode, Codex's read-only sandbox). agent: the program uses its own permission settings and may change files. No flag that widens a program's permissions beyond its own settings is ever passed.",
+      "type": "string",
+      "enum": ["read-only", "agent"]
+    },
+    "LocalAgentSource": {
+      "description": "Which sessions: local (the program's sessions on this computer that are not archived), archive (the ones archived), desk (the ones imported into the desk).",
+      "type": "string",
+      "enum": ["local", "archive", "desk"]
+    },
+    "LocalAgent": {
+      "description": "One agent program found on this computer. program is where it runs from when it is on the PATH (or in a folder its installer uses); without it the desk reads its sessions but cannot ask it. version is the one its newest session recorded; finding an agent never starts it.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "#/$defs/LocalAgentId" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "vendor": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "program": {
+          "description": "The program's absolute path.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "version": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "home": {
+          "description": "The program's own data folder, an absolute path (~/.claude, ~/.codex).",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "sessions": {
+          "description": "How many sessions it keeps that are not archived.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "archived": {
+          "description": "How many of its sessions are archived.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "imported": {
+          "description": "How many of its sessions the desk imported.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "running": {
+          "description": "How many runs of it are going on now.",
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": ["id", "name", "vendor", "sessions", "archived", "imported", "running"],
+      "additionalProperties": false
+    },
+    "LocalAgentSession": {
+      "description": "One session as the program's files say it: its title (the program's own, else the first thing the person asked), the folder it worked in, the branch there, when it started and was last active, and the program's version and model. imported says whether the desk holds a copy; importedAt when it was made.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "#/$defs/LocalAgentSessionId" },
+        "agent": { "$ref": "#/$defs/LocalAgentId" },
+        "title": { "type": "string", "maxLength": 200 },
+        "cwd": {
+          "description": "The folder the session worked in, an absolute path.",
+          "type": "string",
+          "maxLength": 4096
+        },
+        "branch": { "type": "string", "maxLength": 256 },
+        "startedAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "archived": { "type": "boolean" },
+        "imported": { "type": "boolean" },
+        "importedAt": { "type": "string", "format": "date-time" },
+        "size": {
+          "description": "The bytes of the session's file.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "version": { "type": "string", "maxLength": 80 },
+        "model": { "type": "string", "maxLength": 128 }
+      },
+      "required": ["id", "agent", "title", "updatedAt", "archived", "imported", "size"],
+      "additionalProperties": false
+    },
+    "LocalAgentRole": {
+      "description": "Who a turn is: the person (user), the agent (assistant), or a tool the agent used (tool).",
+      "type": "string",
+      "enum": ["user", "assistant", "tool"]
+    },
+    "LocalAgentMessage": {
+      "description": "One turn of a session: what the person said (user), what the agent answered (assistant), or a tool it used (tool, with the tool's name and the start of its input). Text past 8000 characters is cut and says so with cut.",
+      "type": "object",
+      "properties": {
+        "role": { "$ref": "#/$defs/LocalAgentRole" },
+        "text": { "type": "string", "maxLength": 8000 },
+        "name": { "type": "string", "maxLength": 128 },
+        "at": { "type": "string", "format": "date-time" },
+        "cut": { "type": "boolean" }
+      },
+      "required": ["role", "text"],
+      "additionalProperties": false
+    },
+    "LocalAgentRunState": {
+      "description": "running until the program ends: done when it answered, failed when it could not, stopped when agents.stop ended it.",
+      "type": "string",
+      "enum": ["running", "done", "failed", "stopped"]
+    },
+    "LocalAgentRun": {
+      "description": "One run of agents.ask: who asked (caller), what, where, in which session, with what access, and how it stands. text is the answer so far (the final answer once done), cut at 8000 characters; tools counts the tools the agent used. The core keeps the last 50 runs while it runs.",
+      "type": "object",
+      "properties": {
+        "runId": { "$ref": "#/$defs/LocalAgentRunId" },
+        "agent": { "$ref": "#/$defs/LocalAgentId" },
+        "caller": { "$ref": "bridge.schema.json#/$defs/CallerId" },
+        "prompt": { "type": "string", "maxLength": 500 },
+        "cwd": { "type": "string", "maxLength": 4096 },
+        "sessionId": { "$ref": "#/$defs/LocalAgentSessionId" },
+        "access": { "$ref": "#/$defs/LocalAgentAccess" },
+        "state": { "$ref": "#/$defs/LocalAgentRunState" },
+        "startedAt": { "type": "string", "format": "date-time" },
+        "endedAt": { "type": "string", "format": "date-time" },
+        "text": { "type": "string", "maxLength": 8000 },
+        "tools": { "type": "integer", "minimum": 0 },
+        "error": { "type": "string", "maxLength": 2000 }
+      },
+      "required": [
+        "runId",
+        "agent",
+        "caller",
+        "prompt",
+        "cwd",
+        "access",
+        "state",
+        "startedAt",
+        "text",
+        "tools"
+      ],
+      "additionalProperties": false
+    },
+    "LocalAgentRunId": {
+      "description": "A run's id, given by the core.",
+      "type": "string",
+      "pattern": "^run-[0-9]+$"
+    },
+    "AgentsParams": {
+      "description": "Parameters of agents.list: the scope alone.",
+      "type": "object",
+      "properties": {
+        "scope": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/AgentsManagePermission" }
+      },
+      "required": ["scope"],
+      "additionalProperties": false
+    },
+    "AgentsListRequest": {
+      "description": "The agent programs found on this computer: each one whose data folder or program is there, with its counts. Nothing is started.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "agents.list" },
+        "params": { "$ref": "#/$defs/AgentsParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "AgentsListResult": {
+      "description": "Result of agents.list: the agents found, Claude Code first. None found is an empty list.",
+      "type": "object",
+      "properties": {
+        "agents": { "type": "array", "items": { "$ref": "#/$defs/LocalAgent" } }
+      },
+      "required": ["agents"],
+      "additionalProperties": false
+    },
+    "AgentsSessionsRequest": {
+      "description": "One agent's sessions from one source, the most recently active first.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "agents.sessions" },
+        "params": { "$ref": "#/$defs/AgentsSessionsParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "AgentsSessionsParams": {
+      "description": "Parameters of agents.sessions. from is local unless given. query keeps the sessions whose title, folder or branch hold every one of its words (any case). offset and limit page through them; limit is 50 unless given.",
+      "type": "object",
+      "properties": {
+        "agent": { "$ref": "#/$defs/LocalAgentId" },
+        "from": { "$ref": "#/$defs/LocalAgentSource" },
+        "query": { "type": "string", "maxLength": 200 },
+        "offset": { "type": "integer", "minimum": 0 },
+        "limit": { "type": "integer", "minimum": 1, "maximum": 200 },
+        "scope": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/AgentsManagePermission" }
+      },
+      "required": ["agent", "scope"],
+      "additionalProperties": false
+    },
+    "AgentsSessionsResult": {
+      "description": "Result of agents.sessions: one page, and how many sessions match in all.",
+      "type": "object",
+      "properties": {
+        "sessions": { "type": "array", "items": { "$ref": "#/$defs/LocalAgentSession" } },
+        "total": { "type": "integer", "minimum": 0 }
+      },
+      "required": ["sessions", "total"],
+      "additionalProperties": false
+    },
+    "AgentsTranscriptRequest": {
+      "description": "One session's turns: from the program's file while it is there, else from the desk's copy. A session neither holds is not_found.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "agents.transcript" },
+        "params": { "$ref": "#/$defs/AgentsTranscriptParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "AgentsTranscriptParams": {
+      "description": "Parameters of agents.transcript: the last limit turns (200 unless given).",
+      "type": "object",
+      "properties": {
+        "agent": { "$ref": "#/$defs/LocalAgentId" },
+        "sessionId": { "$ref": "#/$defs/LocalAgentSessionId" },
+        "limit": { "type": "integer", "minimum": 1, "maximum": 1000 },
+        "scope": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/AgentsManagePermission" }
+      },
+      "required": ["agent", "sessionId", "scope"],
+      "additionalProperties": false
+    },
+    "AgentsTranscriptResult": {
+      "description": "Result of agents.transcript: the session, its last turns in order, and whether earlier ones were left out (truncated).",
+      "type": "object",
+      "properties": {
+        "session": { "$ref": "#/$defs/LocalAgentSession" },
+        "messages": { "type": "array", "items": { "$ref": "#/$defs/LocalAgentMessage" } },
+        "truncated": { "type": "boolean" }
+      },
+      "required": ["session", "messages", "truncated"],
+      "additionalProperties": false
+    },
+    "AgentsImportRequest": {
+      "description": "Copy sessions into the desk's own folder: the ones sessionIds names, else the newest 500 of the source from names (local unless given). Each copy holds the session and its last 1000 turns, so it stays readable when the program drops or compresses its file. A session imported before is copied again only when its file changed. agents.changed follows.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "agents.import" },
+        "params": { "$ref": "#/$defs/AgentsImportParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "AgentsImportParams": {
+      "description": "Parameters of agents.import. from is local or archive; desk is invalid_params.",
+      "type": "object",
+      "properties": {
+        "agent": { "$ref": "#/$defs/LocalAgentId" },
+        "from": { "$ref": "#/$defs/LocalAgentSource" },
+        "sessionIds": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/LocalAgentSessionId" },
+          "minItems": 1,
+          "maxItems": 500,
+          "uniqueItems": true
+        },
+        "scope": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/AgentsManagePermission" }
+      },
+      "required": ["agent", "scope"],
+      "additionalProperties": false
+    },
+    "AgentsImportResult": {
+      "description": "Result of agents.import: how many sessions were copied, how many were already up to date, and how many could not be read.",
+      "type": "object",
+      "properties": {
+        "imported": { "type": "integer", "minimum": 0 },
+        "unchanged": { "type": "integer", "minimum": 0 },
+        "failed": { "type": "integer", "minimum": 0 }
+      },
+      "required": ["imported", "unchanged", "failed"],
+      "additionalProperties": false
+    },
+    "AgentsAskRequest": {
+      "description": "Ask an agent for work: the core runs its program once, without a shell, in its non-interactive mode, in cwd (the session's folder when sessionId resumes one, else the home folder), continuing sessionId when given. The prompt is one argument that a leading dash cannot turn into an option. The answer is the run's id at once; the run reports itself as agents.run events and agents.runs. An agent the core found no program for is unsupported.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "agents.ask" },
+        "params": { "$ref": "#/$defs/AgentsAskParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "AgentsAskParams": {
+      "description": "Parameters of agents.ask. access is read-only unless given. model is passed as the program's --model.",
+      "type": "object",
+      "properties": {
+        "agent": { "$ref": "#/$defs/LocalAgentId" },
+        "prompt": { "type": "string", "minLength": 1, "maxLength": 100000 },
+        "sessionId": { "$ref": "#/$defs/LocalAgentSessionId" },
+        "cwd": { "$ref": "bridge.schema.json#/$defs/Path" },
+        "access": { "$ref": "#/$defs/LocalAgentAccess" },
+        "model": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/@+-]{0,127}$" },
+        "scope": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/AgentsManagePermission" }
+      },
+      "required": ["agent", "prompt", "scope"],
+      "additionalProperties": false
+    },
+    "AgentsAskResult": {
+      "description": "Result of agents.ask: the run as it starts.",
+      "type": "object",
+      "properties": { "run": { "$ref": "#/$defs/LocalAgentRun" } },
+      "required": ["run"],
+      "additionalProperties": false
+    },
+    "AgentsRunsRequest": {
+      "description": "The runs the core keeps (the last 50), the newest first: every agent's, or one's.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "agents.runs" },
+        "params": { "$ref": "#/$defs/AgentsRunsParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "AgentsRunsParams": {
+      "description": "Parameters of agents.runs.",
+      "type": "object",
+      "properties": {
+        "agent": { "$ref": "#/$defs/LocalAgentId" },
+        "scope": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/AgentsManagePermission" }
+      },
+      "required": ["scope"],
+      "additionalProperties": false
+    },
+    "AgentsRunsResult": {
+      "description": "Result of agents.runs.",
+      "type": "object",
+      "properties": {
+        "runs": { "type": "array", "items": { "$ref": "#/$defs/LocalAgentRun" } }
+      },
+      "required": ["runs"],
+      "additionalProperties": false
+    },
+    "AgentsStopRequest": {
+      "description": "End a run that is going on: its program is ended and the run is stopped. A run that already ended, or one the core does not keep, is not_found.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "agents.stop" },
+        "params": { "$ref": "#/$defs/AgentsStopParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "AgentsStopParams": {
+      "description": "Parameters of agents.stop.",
+      "type": "object",
+      "properties": {
+        "runId": { "$ref": "#/$defs/LocalAgentRunId" },
+        "scope": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/AgentsManagePermission" }
+      },
+      "required": ["runId", "scope"],
+      "additionalProperties": false
+    },
+    "AgentsStopResult": {
+      "description": "Result of agents.stop: the run, stopped.",
+      "type": "object",
+      "properties": { "run": { "$ref": "#/$defs/LocalAgentRun" } },
+      "required": ["run"],
+      "additionalProperties": false
+    },
+    "LocalAgentRunKind": {
+      "description": "What happened in a run: started; text (a block of the agent's answer); tool (it used one); done, failed or stopped, its end, which carries the whole run.",
+      "type": "string",
+      "enum": ["started", "text", "tool", "done", "failed", "stopped"]
+    },
+    "LocalAgentRunData": {
+      "description": "One step of a run. text is the block a text step adds; tool names the tool a tool step used, with the start of its input in detail; sessionId is there once the program said which session it is in. run is the whole run on started and on its end.",
+      "type": "object",
+      "properties": {
+        "runId": { "$ref": "#/$defs/LocalAgentRunId" },
+        "agent": { "$ref": "#/$defs/LocalAgentId" },
+        "kind": { "$ref": "#/$defs/LocalAgentRunKind" },
+        "text": { "type": "string", "maxLength": 8000 },
+        "tool": { "type": "string", "maxLength": 128 },
+        "detail": { "type": "string", "maxLength": 500 },
+        "sessionId": { "$ref": "#/$defs/LocalAgentSessionId" },
+        "run": { "$ref": "#/$defs/LocalAgentRun" }
+      },
+      "required": ["runId", "agent", "kind"],
+      "additionalProperties": false
+    },
+    "AgentsRunEvent": {
+      "description": "A step of a run of agents.ask. Sent to holders of agents:manage.",
+      "type": "object",
+      "properties": {
+        "event": { "const": "agents.run" },
+        "data": { "$ref": "#/$defs/LocalAgentRunData" }
+      },
+      "required": ["event", "data"],
+      "additionalProperties": false
+    },
+    "AgentsChangedData": {
+      "description": "Which agent's imported sessions changed.",
+      "type": "object",
+      "properties": { "agent": { "$ref": "#/$defs/LocalAgentId" } },
+      "required": ["agent"],
+      "additionalProperties": false
+    },
+    "AgentsChangedEvent": {
+      "description": "agents.import changed what the desk holds of an agent. Sent to holders of agents:manage.",
+      "type": "object",
+      "properties": {
+        "event": { "const": "agents.changed" },
+        "data": { "$ref": "#/$defs/AgentsChangedData" }
+      },
+      "required": ["event", "data"],
+      "additionalProperties": false
+    }
+  }
+}

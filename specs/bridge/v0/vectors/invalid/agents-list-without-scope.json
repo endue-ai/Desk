@@ -1,0 +1,9 @@
+{
+  "target": "BridgeRequest",
+  "description": "agents.list needs agents:manage",
+  "instance": {
+    "id": 1,
+    "method": "agents.list",
+    "params": {}
+  }
+}

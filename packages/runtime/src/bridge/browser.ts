@@ -1,4 +1,5 @@
 import { agentCard, type Directory, listAgents, listTasks, sampleDirectory } from "./directory";
+import { type LocalStub, type LocalStubOptions, localAgentsStub } from "./local-agents";
 import type {
   AccountStatus,
   AudioLevels,
@@ -31,11 +32,17 @@ export interface BrowserBridgeOptions {
    * default sends a line about mail to the mail plugin (`sampleErrand`).
    */
   errand?: (text: string) => { steps: BrainStep[]; reply: string } | undefined;
+  /**
+   * The agent programs on this computer (ADR 0110): fixture ones when given (the dev page), none
+   * otherwise, so the shell fixtures keep their agent bar.
+   */
+  localAgents?: Partial<Omit<LocalStubOptions, "epoch">>;
 }
 
 /** The stub plus the knobs tests and the dev page turn. */
 export interface BrowserBridge extends ShellBridge {
   account: NonNullable<ShellBridge["account"]>;
+  localAgents?: LocalStub;
   fake: {
     /** Replay `envelope` as the user's microphone (or Eris's voice) from `at` (default now). */
     play(source: keyof AudioLevels, envelope: Envelope, at?: number): void;
@@ -118,7 +125,12 @@ export function browserBridge(options: BrowserBridgeOptions): BrowserBridge {
     return p ? sampleEnvelope(p.envelope, options.now() - p.at) : SILENT;
   };
 
+  const local = options.localAgents
+    ? localAgentsStub({ epoch: options.epoch ?? Date.now(), ...options.localAgents })
+    : undefined;
+
   return {
+    ...(local ? { localAgents: local } : {}),
     storage: {
       async get<T>(key: string) {
         const raw = store.getItem(PREFIX + key);
