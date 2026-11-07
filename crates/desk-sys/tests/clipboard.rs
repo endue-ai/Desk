@@ -94,11 +94,17 @@ fn marks_from_another_app_are_reported_without_reading_the_text() {
     let state = fake.state().unwrap();
     assert!(state.has_text);
     assert_eq!(state.marks, CONCEALED);
-    assert_eq!(changes.poll(&fake).unwrap().map(|s| s.marks), Some(CONCEALED));
+    assert_eq!(
+        changes.poll(&fake).unwrap().map(|s| s.marks),
+        Some(CONCEALED)
+    );
 
     fake.copy("one-time code 123456", TRANSIENT);
     assert_eq!(fake.state().unwrap().marks, TRANSIENT);
-    assert_eq!(changes.poll(&fake).unwrap().map(|s| s.marks), Some(TRANSIENT));
+    assert_eq!(
+        changes.poll(&fake).unwrap().map(|s| s.marks),
+        Some(TRANSIENT)
+    );
     assert_eq!(fake.text_reads(), 0);
 
     fake.write_text("plain", Marks::default()).unwrap();
@@ -144,7 +150,10 @@ fn changes_report_each_new_state_once() {
 
     fake.copy("two", TRANSIENT);
     fake.copy("three", CONCEALED);
-    let state = changes.poll(&fake).unwrap().expect("two copies are one change");
+    let state = changes
+        .poll(&fake)
+        .unwrap()
+        .expect("two copies are one change");
     assert_eq!(state.count, fake.state().unwrap().count);
     assert_eq!(state.marks, CONCEALED);
     assert_eq!(changes.poll(&fake).unwrap(), None);
@@ -157,7 +166,10 @@ fn a_failed_poll_answers_the_error_and_keeps_the_last_count() {
     fake.copy("one", PLAIN);
     fake.fail_next(1);
     assert_eq!(changes.poll(&fake).unwrap_err().code, ErrorCode::IoError);
-    let state = changes.poll(&fake).unwrap().expect("the copy is still a change");
+    let state = changes
+        .poll(&fake)
+        .unwrap()
+        .expect("the copy is still a change");
     assert_eq!(state.count, fake.state().unwrap().count);
     assert_eq!(changes.poll(&fake).unwrap(), None);
 }
