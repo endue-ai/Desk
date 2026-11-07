@@ -90,6 +90,7 @@ fn kind_name(kind: PluginKind) -> &'static str {
         PluginKind::Library => "library",
         PluginKind::Connector => "connector",
         PluginKind::View => "view",
+        PluginKind::Pack => "pack",
         PluginKind::Theme => "theme",
         PluginKind::DesignSystem => "design-system",
     }

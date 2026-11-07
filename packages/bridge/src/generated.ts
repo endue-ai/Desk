@@ -468,6 +468,24 @@ export type DesignThickness = "thin" | "normal" | "thick";
 /** The focus ring's distance: none, near or far. */
 export type DesignFocusOffset = "none" | "near" | "far";
 
+/** What a pack brings and does when it is applied. */
+export interface PackBlock {
+  /** The plugins it brings, by id: each nested in the pack folder under plugins/<folder>/ (installed and removed with the pack) or a plugin the desk has. Connectors first: Apply opens Settings, Connections on the first connector. */
+  plugins: PluginId[];
+  /** Commands Apply runs once the pack is on, in order: a board, a timeline. */
+  opens?: PackCommand[];
+  /** The profile it contributes (contributes.profiles) that Apply switches to: its layout. */
+  profile?: ProfileId;
+  /** The words a person names the service by: github, 깃허브. Make with Eris finds the pack by them. */
+  services: string[];
+}
+
+/** One command Apply runs, with its arguments. */
+export interface PackCommand {
+  command: CommandId;
+  args?: Record<string, unknown>;
+}
+
 /** One permission with its scope. Plugin manifests declare these; bridge calls carry the one that covers them. */
 export type Permission =
   | SearchReadPermission
@@ -698,11 +716,13 @@ export interface PluginManifest {
   provides?: Role[];
   /** Installed but off until the desk needs it, like Emacs's autoload. With no stored enabled flag the plugin starts off, and its file openers count while it is off: desk.files turns it on to open a file and off again when its last file closes; profiles leave it as it is. Default false. */
   autoload?: boolean;
-  /** A view plugin's one view, inline. */
+  /** A view plugin's one view, inline; a pack's own view too. */
   view?: View;
-  /** A view plugin's view files, one View each, relative to the plugin folder. */
+  /** A view plugin's view files, one View each, relative to the plugin folder; a pack's too. */
   views?: ViewPath[];
   connector?: ConnectorManifest;
+  /** A pack's pack block: what it brings and does when applied (ADR 0108). */
+  pack?: PackBlock;
   /** A theme plugin's theme: its layers and the font and image files it brings, relative to the plugin folder. */
   theme?: ThemePackage;
   /** A design-system plugin's design system: what each component of the desk is made of (ADR 0090). */
@@ -718,7 +738,7 @@ export type Role = string;
 /** Semantic version, for example 0.1.0 or 1.2.3-beta.1. */
 export type Version = string;
 
-/** ui runs in a sandboxed iframe, logic in a Wasm instance, tool as an MCP server inside the VM. policy runs no code: it only contributes data (ADR 0017). library runs no code of its own either: it is files other plugins import, served at /<id>/... like any plugin's, never mounted and never turned off. connector brings an app's data in as items, as a Wasm component, an MCP server or an http block the core runs (no entry; ADR 0106); view runs no code either: it is one or more views (ADR 0032). theme runs no code: it is a theme block and its font and image files, chosen with desk.theme.active (ADR 0056). design-system runs no code either: it is a designSystem block of component recipes, chosen with desk.design.active (ADR 0090). */
+/** ui runs in a sandboxed iframe, logic in a Wasm instance, tool as an MCP server inside the VM. policy runs no code: it only contributes data (ADR 0017). library runs no code of its own either: it is files other plugins import, served at /<id>/... like any plugin's, never mounted and never turned off. connector brings an app's data in as items, as a Wasm component, an MCP server or an http block the core runs (no entry; ADR 0106); view runs no code either: it is one or more views (ADR 0032). theme runs no code: it is a theme block and its font and image files, chosen with desk.theme.active (ADR 0056). design-system runs no code either: it is a designSystem block of component recipes, chosen with desk.design.active (ADR 0090). pack runs no code either: a pack block naming the plugins it brings (nested in its folder or on the desk), its own views and its contributed layout (ADR 0108). */
 export type PluginKind =
   | "ui"
   | "logic"
@@ -728,7 +748,8 @@ export type PluginKind =
   | "connector"
   | "view"
   | "theme"
-  | "design-system";
+  | "design-system"
+  | "pack";
 
 /** Path to the entry file, relative to the plugin folder, without .. segments. */
 export type EntryPath = string;

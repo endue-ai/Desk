@@ -70,11 +70,10 @@ impl Core {
         let _hold = self.hold_lock();
         for folder in crate::plugins::plugin_dirs(&dir) {
             let info = self.install_plugin(&folder, false);
-            for permission in self
-                .market_record(&info.id)
-                .map(|r| r.permissions)
-                .unwrap_or_default()
-            {
+            let granted = self.market_record(&info.id).map(|r| r.permissions);
+            let granted = granted.unwrap_or_default();
+            self.grant_pack(&info.id, &granted);
+            for permission in granted {
                 self.grant(&info.id, permission);
             }
         }
@@ -106,13 +105,6 @@ impl Core {
             return answer(PluginInstallResult {
                 plugin: serde_json::from_value(landed["plugin"].clone()).map_err(internal)?,
             });
-        }
-        if entry.kind == MarketKind::Pack {
-            let why = format!(
-                "{} is a pack: this desk installs packs once it has the kind",
-                entry.id
-            );
-            return Err(error(ErrorCode::Unsupported, why));
         }
         if entry.kind == MarketKind::Plugin && !found.verified {
             let why = format!(
@@ -146,6 +138,15 @@ impl Core {
         let (bundle, files) =
             read_bundle(&bytes).map_err(|why| error(ErrorCode::InvalidParams, why))?;
         let manifest = &bundle.manifest;
+        if manifest.kind == desk_bridge::PluginKind::Pack {
+            let nested = crate::core_packs::nested_manifests(&files);
+            crate::core_packs::check_nested_code(
+                &entry.id,
+                &found.market,
+                found.verified,
+                &nested,
+            )?;
+        }
         let same = manifest.id == entry.id && manifest.version == entry.version;
         if !same || kind_of(manifest.kind) != entry.kind {
             let why = format!(
@@ -169,6 +170,7 @@ impl Core {
         self.keep_record(&entry.id, &record)?;
         self.revoke_all(&entry.id);
         let plugin = self.install_plugin(&target, false);
+        self.grant_pack(&entry.id, &asked);
         for permission in asked {
             self.grant(&entry.id, permission);
         }
