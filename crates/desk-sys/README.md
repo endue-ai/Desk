@@ -8,11 +8,11 @@ Tauri shell (see `docs/architecture.md`). Status: fs, proc, net, shell and calen
 
 ## Features and public API
 
-- `fs`: `read`, `list` (sorted; `EntryKind` file, dir or symlink; `size` of files, `modified` of
-  files and folders), `write(path, bytes, create_dirs)` (temp file + rename, keeps permissions,
-  refuses folders and symlinks), `watch_debounced(path, WatchOptions { recursive, debounce },
-  on_changes)` (one batch of `Changed { path, change }` per quiet period, created/modified/removed),
-  and the raw `watch_changes(path, recursive, on_change)` and `watch`. Dropping a `Watch` stops it.
+- `fs`: `read`, `list` (sorted `Entry`s) and `stat` (`Stat { kind, size, modified, readonly }`), links
+  never followed; `write(path, bytes, create_dirs)` and `copy(from, to) -> bytes` (temp + rename, keep
+  permissions, links copied as links); `mkdir(path, parents)` (the folders made); `rename(from, to)`;
+  `copy` and `rename` never overwrite; `trash(path)` (trash crate, NSFileManager on macOS, no delete);
+  `watch_debounced(path, WatchOptions, on_changes)`, `watch_changes` and `watch` (dropping stops it).
 - `proc`: `spawn(&SpawnOptions { program, args, cwd, env, pty }, on_event) -> Process`, no shell,
   program looked up on PATH. `on_event` gets `Event::Output { stream, data }` (stdout, stderr or
   pty) and then `Event::Exit(Exit { code, signal })`, always last. `Process::write`, `resize` (PTY
@@ -35,6 +35,6 @@ Tauri shell (see `docs/architecture.md`). Status: fs, proc, net, shell and calen
 cargo test -p desk-sys --all-features
 ```
 
-Each `tests/<feature>.rs` needs its feature. proc tests run the test binary itself as the child
-(`DESK_SYS_TEST_CHILD`); net tests serve from in-process listeners, never the network; shell tests
-check the plans and launch nothing; calendar tests use the fake (EventKit's: `-- --ignored` on a Mac).
+Each `tests/<feature>*.rs` needs its feature. proc and Linux trash tests run the test binary as the
+child (`DESK_SYS_TEST_CHILD`); net tests serve in-process, never the network; shell tests launch
+nothing; calendar tests use the fake. EventKit, and the Mac and Windows trash: `-- --ignored`.
