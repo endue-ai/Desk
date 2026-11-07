@@ -1,9 +1,8 @@
 # desk-sys
 
-Primitives: fs (notify), proc (portable-pty), net, shell, calendar (EventKit), notification, login and
-audio (cpal, wake word; later), each behind a cargo feature. No permission checks: desk-core authorizes
-every call first. Calls return `Error { code, message }` (bridge `ErrorCode`); fs returns `io::Error`s
-that `Error::from` maps (OS permission errors are `io_error`). Layer: Tauri shell. `NAME`: crate name.
+Primitives behind cargo features (audio, with cpal and a wake word, later). Layer: Tauri shell. No
+permission checks: desk-core authorizes every call first. Calls return `Error { code, message }` (bridge
+`ErrorCode`); `Error::from` maps fs `io::Error`s, OS permission ones to `io_error`. `NAME`: crate name.
 
 ## Features and public API
 
@@ -31,10 +30,11 @@ that `Error::from` maps (OS permission errors are `io_error`). Layer: Tauri shel
 - `login`: `apply(items, wanted, &desk(program)) -> Change` writes only on a difference; `check(..)` is
   `Status { registered, wanted, matches }`. `os(ID)`: a LaunchAgent (macOS), the Run key, XDG autostart;
   `fake::FakeLoginItems`. `launched_at_login` reads `BACKGROUND`; `program()`: the exe or `$APPIMAGE`.
+- `clipboard`: `Clipboard` (`state` reads no text: `State { count, has_text, marks }`; `read_text`;
+  `write_text(.., Marks { concealed, transient })`); `Changes`, `watch`; `os()`; `fake::FakeClipboard`.
 
 ## Testing
 
-`cargo test -p desk-sys --all-features`; each `tests/<feature>*.rs` needs its feature. proc and Linux
-trash tests run the test binary as the child (`DESK_SYS_TEST_CHILD`); net serves in-process; shell
-launches nothing; calendar, notification and login use fakes (freedesktop: a server on a socket pair;
-login: temp folders, the Run key on Windows only). EventKit, Mac and Windows trash: `-- --ignored`.
+`cargo test -p desk-sys --all-features`; the desk-sys row of `docs/qa/TESTING.md` says what each file
+proves. proc and Linux trash run the test binary as the child (`DESK_SYS_TEST_CHILD`); the rest use
+fakes, in-process servers, temp folders, a test key; ignored: EventKit, OS clipboard, Mac/Windows trash.
