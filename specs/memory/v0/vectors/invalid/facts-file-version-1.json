@@ -1,0 +1,8 @@
+{
+  "target": "MemoryFactsFile",
+  "description": "v0 reads version 0 only",
+  "instance": {
+    "version": 1,
+    "facts": []
+  }
+}

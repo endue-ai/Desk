@@ -1,7 +1,8 @@
 //! The core's files in the app's data folder: what outlives a quit. Plugins on or off
 //! (`plugins.json`), the plugins' store (`store.json`), connector secrets (`secrets.json`), the
 //! person's lasting grants (`grants.json`, ADR 0029), set values (`settings.json`, ADR 0031), the log
-//! (`logs/desk.log` and `desk.log.1`, ADR 0031) and what each fs.write replaced (`history/`, ADR 0076).
+//! (`logs/desk.log` and `desk.log.1`, ADR 0031), what each fs.write replaced (`history/`, ADR 0076)
+//! and Eris's memory (`memory/`, ADR 0095).
 
 use std::path::Path;
 
@@ -17,6 +18,7 @@ pub fn open(core: Core, data: &Path) -> Core {
         .with_log_dir(data.join("logs"))
         // Every fs.write keeps the bytes it replaces here first (ADR 0076).
         .with_history_dir(data.join("history"))
+        .with_memory_dir(data.join("memory"))
 }
 
 #[cfg(test)]

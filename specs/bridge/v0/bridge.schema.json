@@ -116,6 +116,11 @@
         { "$ref": "agents.schema.json#/$defs/AgentsAskRequest" },
         { "$ref": "agents.schema.json#/$defs/AgentsRunsRequest" },
         { "$ref": "agents.schema.json#/$defs/AgentsStopRequest" },
+        { "$ref": "memory.schema.json#/$defs/MemoryListRequest" },
+        { "$ref": "memory.schema.json#/$defs/MemoryGetRequest" },
+        { "$ref": "memory.schema.json#/$defs/MemoryRememberRequest" },
+        { "$ref": "memory.schema.json#/$defs/MemoryForgetRequest" },
+        { "$ref": "memory.schema.json#/$defs/MemorySearchRequest" },
         { "$ref": "agent.schema.json#/$defs/AgentListRequest" },
         { "$ref": "agent.schema.json#/$defs/AgentCancelRequest" },
         { "$ref": "agent.schema.json#/$defs/AgentReportRequest" },
@@ -210,6 +215,7 @@
         { "$ref": "account.schema.json#/$defs/AccountChangedEvent" },
         { "$ref": "agents.schema.json#/$defs/AgentsRunEvent" },
         { "$ref": "agents.schema.json#/$defs/AgentsChangedEvent" },
+        { "$ref": "memory.schema.json#/$defs/MemoryChangedEvent" },
         { "$ref": "agent.schema.json#/$defs/AgentCancelledEvent" }
       ]
     }

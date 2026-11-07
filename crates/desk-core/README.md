@@ -23,8 +23,8 @@ its sync, the brain conversation, the integration layer and the bridge handler. 
   parse, render, plan}`), `install_plugin(dir, built_in)`, `install_plugins_in`, `remove_plugin(id)`,
   `plugins()`, `plugin_file(id, path)`, `watch_plugins()`, `validate_dir(dir)`. A plugin turned off
   takes its commands, requests, subscriptions, processes, surfaces and URLs; its connectors pause.
-- Storage: `with_store_file`, `with_settings_file`, `with_log_dir`, `Core::log`. Settings are checked
-  against their declarations; `settings_problems()` names what fails, by file and line (ADR 0080).
+- Storage: `with_store_file`, `with_settings_file`, `with_log_dir`, `Core::log`; `with_memory_dir`
+  (`memory.*`, `record_episode`, ADR 0095). `settings_problems()` names what fails (ADR 0080).
   Brain: `with_brain(brain, BrainOptions)` or `with_brains(Brains)` (the runtime's `brain.use` picks
   endue, local or echo; an unreachable remote falls back to local, ADR 0094), `route_tools()` (calls as
   their agent, or as Eris; each hand-off is a `tool` step, ADR 0089), `open_session`. endue ID:

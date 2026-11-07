@@ -1,0 +1,15 @@
+{
+  "target": "BridgeRequest",
+  "description": "memory.forget takes an id or all, not both",
+  "instance": {
+    "id": 45,
+    "method": "memory.forget",
+    "params": {
+      "id": "fact_01jc8x2k9m4n",
+      "all": true,
+      "scope": {
+        "permission": "memory:write"
+      }
+    }
+  }
+}

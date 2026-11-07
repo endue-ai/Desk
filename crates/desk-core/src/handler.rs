@@ -74,6 +74,8 @@ pub struct Core {
     pub(crate) conversation: Option<Arc<Conversation>>,
     /// The brains the runtime's setting chooses from (ADR 0094), when the desk has more than one.
     pub(crate) choice: Option<Arc<crate::brain_choice::BrainChoice>>,
+    /// Eris's memory (ADR 0095), when the desk keeps one.
+    pub(crate) memory: Option<Arc<desk_memory::Memory>>,
     pub(crate) init: Mutex<InitFile>,
     pub(crate) sync: Option<Syncer>,
     pub(crate) notifications: AtomicU64,
@@ -122,6 +124,7 @@ impl Core {
             log: Mutex::new(Log::default()),
             conversation: None,
             choice: None,
+            memory: None,
             init: Mutex::new(InitFile::memory()),
             sync: None,
             notifications: AtomicU64::new(0),
@@ -290,6 +293,11 @@ impl Core {
             R::AgentsAsk(r) => (r.id, self.agents_ask(caller, r.params)),
             R::AgentsRuns(r) => (r.id, self.agents_runs(caller, r.params)),
             R::AgentsStop(r) => (r.id, self.agents_stop(caller, r.params)),
+            R::MemoryList(r) => (r.id, self.memory_list(caller, r.params)),
+            R::MemoryGet(r) => (r.id, self.memory_get(caller, r.params)),
+            R::MemoryRemember(r) => (r.id, self.memory_remember(caller, r.params)),
+            R::MemoryForget(r) => (r.id, self.memory_forget(caller, r.params)),
+            R::MemorySearch(r) => (r.id, self.memory_search(caller, r.params)),
             R::AgentList(r) => (r.id, self.agent_list(caller, r.params)),
             R::AgentCancel(r) => (r.id, self.agent_cancel(caller, r.params)),
             R::AgentReport(r) => (r.id, self.agent_report(caller, r.params)),

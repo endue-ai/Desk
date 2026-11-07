@@ -211,9 +211,10 @@ impl Account {
             inner.signing = None;
             inner.token = None;
             inner.problem = None;
-        }
-        if let Some(path) = &self.options.file {
-            let _ = fs::remove_file(path);
+            // Under the lock, so a sign-in that ends now never writes the file back (#494).
+            if let Some(path) = &self.options.file {
+                let _ = fs::remove_file(path);
+            }
         }
         self.changed();
         self.status()
@@ -297,15 +298,18 @@ impl Account {
             if token.is_some() || inner.problem.as_deref() == Some(RAN_OUT) {
                 inner.token = token.clone();
             }
-        }
-        if let Some(token) = token {
-            self.save(&token);
+            // Saved while the generation still holds: a sign-out waits for the file, then removes
+            // it, instead of removing nothing and leaving this write behind (#494).
+            if let Some(token) = &token {
+                self.save(token);
+            }
         }
         self.changed();
     }
 
     fn keep(&self, token: TokenFile) {
-        self.lock().token = Some(token.clone());
+        let mut inner = self.lock();
+        inner.token = Some(token.clone());
         self.save(&token);
     }
 

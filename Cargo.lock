@@ -1038,6 +1038,7 @@ dependencies = [
  "desk-brain-local",
  "desk-bridge",
  "desk-index",
+ "desk-memory",
  "desk-plugin-host",
  "desk-sys",
  "desk-update",
@@ -1088,6 +1089,18 @@ dependencies = [
  "desk-core",
  "jsonschema",
  "serde_json",
+]
+
+[[package]]
+name = "desk-memory"
+version = "0.0.0"
+dependencies = [
+ "desk-bridge",
+ "getrandom 0.4.3",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "yaml_serde",
 ]
 
 [[package]]

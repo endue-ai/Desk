@@ -1,0 +1,18 @@
+{
+  "target": "MemoryEpisode",
+  "description": "an episode: what was asked, the command Eris ran, and her answer",
+  "instance": {
+    "kind": "episode",
+    "id": "ep_01jc8xa1b2c3",
+    "at": "2026-11-05T09:30:05Z",
+    "by": "eris",
+    "asked": "check my latest mail",
+    "answered": "You have 2 new messages. The newest is from Mina: Lunch today?",
+    "steps": [
+      {
+        "command": "endue.mail.latest",
+        "ok": true
+      }
+    ]
+  }
+}

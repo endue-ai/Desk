@@ -1,0 +1,16 @@
+{
+  "target": "BridgeRequest",
+  "description": "memory.remember with the id of a fact edits its words and tags",
+  "instance": {
+    "id": 41,
+    "method": "memory.remember",
+    "params": {
+      "id": "fact_01jc8x7p2q8r",
+      "text": "Prefers pnpm over npm.",
+      "tags": ["tools"],
+      "scope": {
+        "permission": "memory:write"
+      }
+    }
+  }
+}

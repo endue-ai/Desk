@@ -1,0 +1,7 @@
+{
+  "target": "MemoryFactsFile",
+  "description": "an empty memory: only the version",
+  "instance": {
+    "version": 0
+  }
+}

@@ -32,7 +32,9 @@
         { "$ref": "#/$defs/UpdateManagePermission" },
         { "$ref": "#/$defs/ThemeManagePermission" },
         { "$ref": "#/$defs/AccountManagePermission" },
-        { "$ref": "#/$defs/AgentsManagePermission" }
+        { "$ref": "#/$defs/AgentsManagePermission" },
+        { "$ref": "#/$defs/MemoryReadPermission" },
+        { "$ref": "#/$defs/MemoryWritePermission" }
       ]
     },
     "SearchReadPermission": {
@@ -334,6 +336,20 @@
       "description": "Find the agent programs on this computer (Claude Code, Codex), read their sessions from the files they keep, import sessions into the desk, and ask them for work with agents.*. Receive agents.run and agents.changed. The desk grants it to the runtime only (ADR 0110).",
       "type": "object",
       "properties": { "permission": { "const": "agents:manage" } },
+      "required": ["permission"],
+      "additionalProperties": false
+    },
+    "MemoryReadPermission": {
+      "description": "Read Eris's memory with memory.list, memory.get and memory.search, and receive memory.changed (ADR 0095). The desk grants it to the runtime; Eris and the memory inspector are asked like any caller.",
+      "type": "object",
+      "properties": { "permission": { "const": "memory:read" } },
+      "required": ["permission"],
+      "additionalProperties": false
+    },
+    "MemoryWritePermission": {
+      "description": "Keep and edit facts in Eris's memory with memory.remember, and forget entries with memory.forget (ADR 0095). The caller is recorded as the writer.",
+      "type": "object",
+      "properties": { "permission": { "const": "memory:write" } },
       "required": ["permission"],
       "additionalProperties": false
     },

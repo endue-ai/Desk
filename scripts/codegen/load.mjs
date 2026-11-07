@@ -56,6 +56,7 @@ export const PLUGIN_FOLDERS = [
   "item/v0",
   "view/v0",
   "connector/v0",
+  "memory/v0",
   "agent/v0",
   "market/v0",
 ];
@@ -70,6 +71,7 @@ export function loadAll(root = ROOT) {
     item: plugin,
     view: plugin,
     connector: plugin,
+    memory: plugin,
     market: plugin,
     init,
     update: loadSchemas(root, "update/v0"),
