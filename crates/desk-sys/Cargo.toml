@@ -1,6 +1,6 @@
 [package]
 name = "desk-sys"
-description = "Primitives: fs (notify, trash), proc (portable-pty), net, shell, calendar (EventKit), notification (UserNotifications, toasts, freedesktop), login (LaunchAgent, Run key, XDG autostart) and audio (cpal, wake word), each behind a cargo feature."
+description = "Primitives: fs (notify, trash), proc (portable-pty), net, shell, calendar (EventKit), notification (UserNotifications, toasts, freedesktop), login (LaunchAgent, Run key, XDG autostart), clipboard (NSPasteboard, user32) and audio (cpal, wake word), each behind a cargo feature."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -44,6 +44,10 @@ notification = [
 ## Start at login: register or remove the desk as a login item (a LaunchAgent on macOS, the Run key
 ## on Windows, an XDG autostart entry on Linux) and check it against the setting, and a fake.
 login = ["dep:windows-registry"]
+## Text on the clipboard: read, write, change detection and a watch, with the concealed and transient
+## marks password managers set. NSPasteboard on macOS, user32 on Windows, `unsupported` on Linux, and
+## a fake.
+clipboard = ["dep:objc2", "dep:objc2-app-kit", "dep:objc2-foundation"]
 
 [dependencies]
 desk-bridge.workspace = true
@@ -58,7 +62,7 @@ time = { version = "0.3.47", optional = true, default-features = false, features
 [target.'cfg(unix)'.dependencies]
 libc = { version = "0.2", optional = true }
 
-# EventKit, for `calendar` on macOS; AppKit only for a calendar's color.
+# EventKit, for `calendar` on macOS; AppKit for a calendar's color and, for `clipboard`, NSPasteboard.
 [target.'cfg(target_os = "macos")'.dependencies]
 block2 = { version = "0.6", optional = true }
 objc2 = { version = "0.6.2", optional = true }
@@ -66,6 +70,7 @@ objc2-app-kit = { version = "0.3.2", optional = true, default-features = false, 
   "std",
   "NSColor",
   "NSColorSpace",
+  "NSPasteboard",
   "objc2-core-foundation",
 ] }
 objc2-event-kit = { version = "0.3.2", optional = true, default-features = false, features = [
@@ -163,6 +168,10 @@ required-features = ["notification"]
 [[test]]
 name = "login"
 required-features = ["login"]
+
+[[test]]
+name = "clipboard"
+required-features = ["clipboard"]
 
 [[test]]
 name = "shell"
