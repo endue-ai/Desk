@@ -35,8 +35,8 @@ tests; `just check-app` lints the Tauri app crate, which the default commands le
 ## Rules
 
 1. One entry point: `AGENTS.md`. It holds the repository map (one line per top-level folder), three
-   commands (`just dev` · `just test` · `just check`), the rules, and the boundaries (no secrets, `brand/`
-   is not Apache, closed services stay outside the repository).
+   commands (`just dev` · `just test` · `just check`), the rules, and the boundaries (one commit identity,
+   no secrets, `brand/` is not Apache, closed services stay outside the repository).
 2. Spec first. Change `specs/`, run `just codegen`, then implement. Generated files are committed and start
    with a GENERATED header, so types can be read without a build. CI catches drift between generated files
    and specs.
@@ -54,6 +54,13 @@ tests; `just check-app` lints the Tauri app crate, which the default commands le
 
 ## Boundaries
 
+- One commit identity, without exception. A commit's author and committer, and every name or email
+  in its message (`Signed-off-by`, `Co-authored-by` and any other line), is `endue-team <team@endue.ai>`
+  or Claude (`<noreply@anthropic.com>`). No other person, email address or account may appear in a
+  commit, ever. Before committing, `git config user.email` must answer `team@endue.ai`; before every
+  push, read `git log --format='%an <%ae> | %cn <%ce>%n%B' origin/main..` and remove anything else. A
+  squash merge adds `Co-authored-by` for every author of the PR's commits, so merge only branches whose
+  commits all pass this rule.
 - No secrets. Never commit tokens, keys, certificates, `.env` files or personal data. Signing keys live in
   protected GitHub environments that AI tokens cannot reach.
 - `brand/` is not Apache-2.0. Use the assets as they are; never edit or relicense them. Forks replace them.
@@ -107,5 +114,6 @@ Several agents work at once on one trunk (ADR 0015).
   `docs/i18n/<lang>/`. English is the source: a PR that changes one updates all five translations, and
   `scripts/docs-i18n.test.mjs` fails otherwise. `docs/ko/` holds the Korean design sources, not
   translations.
-- Commits: Conventional Commits with a DCO sign-off (`git commit -s`), author taken from git config.
+- Commits: Conventional Commits with a DCO sign-off (`git commit -s`) as `endue-team <team@endue.ai>`;
+  only that identity and Claude's may appear in a commit (see Boundaries).
 - Branches: one branch per task, `ai/<issue>-<slug>`; `main` changes only through the merge queue.
