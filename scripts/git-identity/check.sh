@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # The endue commit identity (AGENTS.md, Boundaries) as git hooks for every repository under one
 # folder (install.sh). A repository whose remote is GitHub's endue-ai is strict: author, committer and
-# every email in a message are team@endue.ai or Claude (noreply@anthropic.com). Any other repository
-# refuses only identities git guessed (an address ending in .local) and the strings in this machine's
-# `endue.block` config. `endue.blockStrict` strings are refused in strict repositories too. Neither
-# list lives in the repository: install.sh writes them to the machine's own config.
+# every email in a message are team@endue.ai or Claude (noreply@anthropic.com), and none of the strings
+# in this machine's `endue.block` config appears. The list never lives in a repository: install.sh
+# writes it to the machine's own config. Any other repository (GitLab) refuses only identities git
+# guessed from the host name (an address ending in .local).
 #
 # usage: check.sh pre-commit | commit-msg <file> | pre-push <remote> <url>   (stdin as git gives it)
 set -uf -o pipefail
@@ -20,14 +20,13 @@ strict_url() { printf '%s\n' "$1" | grep -qiE 'github\.com[:/]endue-ai/'; }
 mode_here() {
   local urls
   urls="$(git remote -v 2>/dev/null | awk '{ print $2 }')"
-  if [ -z "$urls" ] || strict_url "$urls"; then echo strict; else echo personal; fi
+  if [ -z "$urls" ] || strict_url "$urls"; then echo strict; else echo lenient; fi
 }
 
 # Records on stdin: "I<TAB>label<TAB>Name <email>" or "M<TAB>label<TAB>message line".
 # Prints each refused record and exits 1 when there is one.
 scan() {
   ENDUE_BLOCK="$(git config --get-all endue.block 2>/dev/null)" \
-    ENDUE_BLOCK_STRICT="$(git config --get-all endue.blockStrict 2>/dev/null)" \
     awk -F '\t' -v mode="$1" '
       function listed(s, list,   n, i, item) {
         n = split(list, item, "\n")
@@ -38,14 +37,14 @@ scan() {
         allowed = "^(team@endue\\.ai|noreply@anthropic\\.com)$"
         email = "[][a-z0-9._%+-]+@[a-z0-9.-]+\\.[a-z]+"
         guessed = "@[a-z0-9.-]+\\.local([^a-z0-9.-]|$)"
-        block = ENVIRON["ENDUE_BLOCK"]; strict = ENVIRON["ENDUE_BLOCK_STRICT"]
+        block = ENVIRON["ENDUE_BLOCK"]
       }
       {
         text = $3
         for (i = 4; i <= NF; i++) text = text "\t" $i
         low = tolower(text); why = ""
-        if (listed(low, block) || low ~ guessed) why = "a personal or guessed identity"
-        else if (mode == "strict" && listed(low, strict)) why = "a personal name"
+        if (low ~ guessed) why = "an identity git guessed from the host name"
+        else if (mode == "strict" && listed(low, block)) why = "a personal identity"
         else if (mode == "strict" && $1 == "I") {
           e = low; sub(/.*</, "", e); sub(/>.*/, "", e)
           if (e !~ allowed) why = "not team@endue.ai or Claude"
@@ -66,7 +65,7 @@ refuse() {
   {
     echo "endue identity ($1): $2 refused. Commits here may name only endue-team <team@endue.ai>"
     [ "$1" = strict ] && echo "or Claude <noreply@anthropic.com>, in the author, committer and message."
-    [ "$1" = strict ] || echo "or an identity that is neither personal nor guessed by git."
+    [ "$1" = strict ] || echo "or an identity of your own, never one git guessed from the host name."
     echo "Fix the commits (git commit --amend --reset-author, or a rebase) instead of skipping the check."
   } >&2
   exit 1
@@ -96,7 +95,7 @@ case "$hook" in
     ;;
   pre-push)
     remote="$1" url="$2" failed=0 input="$(cat)"
-    if strict_url "$url"; then mode=strict; else mode=personal; fi
+    if strict_url "$url"; then mode=strict; else mode=lenient; fi
     while read -r _ lsha rref rsha; do
       [ -n "${lsha:-}" ] || continue
       case "$lsha" in *[!0]*) ;; *) continue ;; esac # a deleted ref pushes no commit
@@ -105,8 +104,8 @@ case "$hook" in
         *[!0]*) git cat-file -e "$rsha^{commit}" 2>/dev/null && revs+=("^$rsha") ;;
       esac
       # Strict checks the whole history the remote does not hold, whatever this clone tracks: an old
-      # branch's commits must never reach a strict repository. Personal skips what the remote holds.
-      if [ "$mode" = personal ]; then
+      # branch's commits must never reach a strict repository. Lenient skips what the remote holds.
+      if [ "$mode" = lenient ]; then
         if git config --get "remote.$remote.url" >/dev/null; then revs+=(--not "--remotes=$remote")
         else revs+=(--not --remotes); fi
       fi

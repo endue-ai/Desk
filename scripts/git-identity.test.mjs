@@ -32,7 +32,7 @@ function repo(url) {
   if (url) git(["remote", "add", "origin", url]);
   git(["config", "endue.block", "someone@personal.example"]);
   git(["config", "--add", "endue.block", "personal-handle"]);
-  git(["config", "endue.blockStrict", "Firstname"]);
+  git(["config", "--add", "endue.block", "Firstname"]);
   const commit = (who, message = "feat: a change") =>
     git(["commit", "-q", "--allow-empty", "-m", message], committer(who));
   const run = (args, who = TEAM, input = "") =>
@@ -54,6 +54,7 @@ test("GitHub endue-ai takes only the team and Claude as author and committer", (
   const refused = r.run(["pre-commit"], OTHER);
   assert.equal(refused.status, 1);
   assert.match(refused.stderr.toString(), /not team@endue\.ai or Claude/);
+  assert.equal(r.run(["pre-commit"], PERSONAL).status, 1);
   assert.equal(r.run(["pre-commit"], { ...TEAM, GIT_AUTHOR_NAME: "Firstname" }).status, 1);
 });
 
@@ -72,14 +73,14 @@ test("GitHub endue-ai refuses any other email in a message, but not Claude's or 
   assert.equal(message(`${ok}${scissors}+ mail me at colleague@company.example\n`), 0);
 });
 
-test("GitLab refuses only the personal and guessed identities", () => {
+test("GitLab refuses only an identity git guessed from the host name", () => {
   const r = repo(GITLAB);
   assert.equal(r.run(["pre-commit"], OTHER).status, 0);
-  assert.equal(r.run(["pre-commit"], PERSONAL).status, 1);
+  assert.equal(r.run(["pre-commit"], PERSONAL).status, 0);
   assert.equal(r.run(["pre-commit"], GUESSED).status, 1);
   const file = join(r.dir, "MSG");
   writeFileSync(file, "feat: x\n\nCo-authored-by: Someone <someone@personal.example>\n");
-  assert.equal(r.run(["commit-msg", file]).status, 1);
+  assert.equal(r.run(["commit-msg", file]).status, 0);
 });
 
 test("a push to GitHub endue-ai checks the whole branch, even commits this clone tracks", () => {
@@ -98,15 +99,15 @@ test("a push to GitHub endue-ai checks the whole branch, even commits this clone
   assert.match(push.stderr.toString(), /old history|colleague@company\.example/);
 });
 
-test("a push to GitLab skips what the remote holds and refuses a new personal commit", () => {
+test("a push to GitLab skips what the remote holds and refuses only a new guessed identity", () => {
   const r = repo(GITLAB);
-  r.commit(PERSONAL, "feat: already on the server");
+  r.commit(GUESSED, "feat: already on the server");
   r.git(["update-ref", "refs/remotes/origin/main", "HEAD"]);
-  r.commit(OTHER);
+  r.commit(PERSONAL);
   const line = (sha) => `refs/heads/main ${sha} refs/heads/main ${"0".repeat(40)}\n`;
   const head = () => r.git(["rev-parse", "HEAD"]).trim();
   assert.equal(r.run(["pre-push", "origin", GITLAB], TEAM, line(head())).status, 0);
-  r.commit(PERSONAL);
+  r.commit(GUESSED);
   assert.equal(r.run(["pre-push", "origin", GITLAB], TEAM, line(head())).status, 1);
 });
 

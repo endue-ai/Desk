@@ -10,8 +10,8 @@ folder of a machine. `install.sh` sets, through an `includeIf` in the global git
 
 | Repository | Refused |
 | --- | --- |
-| remote on GitHub `endue-ai/*`, or no remote | any author, committer or email in a message other than `team@endue.ai` and Claude (`noreply@anthropic.com`), plus `endue.blockStrict` strings |
-| any other (GitLab) | identities git guessed (`…@<host>.local`) and `endue.block` strings |
+| remote on GitHub `endue-ai/*`, or no remote | any author, committer or email in a message other than `team@endue.ai` and Claude (`noreply@anthropic.com`), and any `endue.block` string |
+| any other (GitLab) | only identities git guessed from the host name (`…@<host>.local`) |
 
 `pre-push` checks every commit and annotated tag the push sends that the remote does not hold. For a
 strict remote that is the branch's whole history, whatever the clone tracks, so an old branch can
@@ -21,7 +21,7 @@ The strings to refuse are personal, so they live only in the machine's config
 (`~/.config/git/endue.gitconfig`), never in a repository:
 
 ```bash
-scripts/git-identity/install.sh --block '<personal email>' --block '<account>' --block-strict '<name>'
+scripts/git-identity/install.sh --block '<personal email>' --block '<account>' --block '<name>'
 ```
 
 Run it on every machine that commits to an endue repository. `git commit --no-verify` skips the
