@@ -1,5 +1,4 @@
 import type { BridgeClient } from "@endue-ai/bridge";
-import { OPEN_PLUGIN } from "./agent-specs";
 import { type Clock, realClock, tween } from "./clock";
 import { Preferences } from "./core/preferences";
 import { installDescribe } from "./describe/install";
@@ -12,6 +11,7 @@ import { installInspect } from "./inspect/install";
 import { type Layout, type LayoutStorage, loadLayout, move, place, saveLayout } from "./layout";
 import type { Notice } from "./notify";
 import { PluginHost, type PluginHostOptions } from "./plugins";
+import { defineOpenPlugin } from "./plugins-open";
 import { installAliases } from "./policies/aliases";
 import { installBuffers } from "./policies/buffers";
 import type { DeskContext } from "./policies/context";
@@ -307,18 +307,11 @@ export function createRuntime(options: RuntimeOptions): Runtime {
     );
     pluginHost = host;
     hub.settings.onChange((keys) => keys.includes(ROLES_SETTING) && void host.reconcile());
-    commands.define("desk.plugins.open", {
-      title: "Open a plugin",
-      owner: "desk",
-      keywords: ["launch", "application"],
-      run: async (args) => {
-        const id = (args as { plugin?: unknown })?.plugin;
-        if (typeof id !== "string") throw new Error("Choose a plugin to open");
-        await host.launch(id, (args as { waitForReady?: unknown }).waitForReady === true);
-        focusSurface(id);
-      },
-      // Eris brings a plugin up before working in it, or when the person asks (ADR 0109).
-      agent: OPEN_PLUGIN,
+    defineOpenPlugin({
+      commands,
+      bridge,
+      launch: (id, waitForReady) => host.launch(id, waitForReady),
+      focus: focusSurface,
     });
     plugins = {
       // A desk without plugin:manage still works: it shows no plugins and says why (start.failed).

@@ -6,7 +6,7 @@ import type { AgentSpec } from "./commands";
 
 export const OPEN_PLUGIN: AgentSpec = {
   description:
-    "Open a plugin's window and give it the focus: the window that shows it, else the one in the drawer, else a new one. A plugin the person turned off is turned on. Use it when the person asks to open, show or switch to a plugin, or before working in one they cannot see; plugin is its id, as the desk's windows name it.",
+    "Open a plugin's window and give it the focus: the window that shows it, else the one in the drawer, else a new one. A plugin the person turned off is turned on. A data-only plugin, such as desk.today or desk.fleet, opens what its own open command shows; one with nothing to show answers that it has no window. Use it when the person asks to open, show or switch to a plugin, or before working in one they cannot see; plugin is its id, as the desk's windows name it.",
   args: {
     type: "object",
     properties: {
