@@ -4,7 +4,7 @@
 
 use serde_json::Value;
 
-use crate::{PluginManifest, View, ViewNode};
+use crate::{PluginManifest, PluginView, View, ViewNode};
 
 /// Every `$name` source of a binding that is not one of the view's `requires`, and every
 /// `{params.<name>}` a template reads that is not one of its `params`, sorted.
@@ -35,13 +35,17 @@ pub fn view_problems(view: &View) -> Vec<String> {
     problems
 }
 
-/// The problems of an inline view (under `/view`), every action of a connector resource that is not
+/// The problems of an inline item view (under `/view`; a universal view's are the core's), every action of a connector resource that is not
 /// a command the plugin declares in `contributes.commands`, and the names an http block uses that
 /// do not resolve (`http_names`), sorted.
 pub fn manifest_problems(manifest: &PluginManifest) -> Vec<String> {
     let mut problems: Vec<String> = manifest
         .view
         .iter()
+        .filter_map(|view| match view {
+            PluginView::View(view) => Some(view),
+            PluginView::Universal(_) | PluginView::UniversalPage(_) => None,
+        })
         .flat_map(view_problems)
         .map(|problem| format!("/view{problem}"))
         .collect();

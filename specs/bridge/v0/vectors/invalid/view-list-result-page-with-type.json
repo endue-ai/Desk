@@ -1,0 +1,9 @@
+{
+  "target": "ViewListResult",
+  "description": "a summary is a universal view's (type) or a page's (sections), never both",
+  "instance": {
+    "views": [
+      { "id": "example.today", "title": "Today", "type": "list", "sections": 2, "source": "file" }
+    ]
+  }
+}

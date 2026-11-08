@@ -12,6 +12,9 @@ export const ALL = /** @type {const} */ ([
   "text",
   "chat",
   "agent",
+  "chart",
+  "stat",
+  "detail",
 ]);
 const TYPES = new Set(/** @type {readonly string[]} */ (ALL));
 
@@ -26,13 +29,15 @@ const TYPES = new Set(/** @type {readonly string[]} */ (ALL));
  */
 
 /**
- * Whether a value has the shape of a universal view: a known type and a source.
+ * Whether a value has the shape of a universal view (a known type and a source) or of a page of
+ * them (sections, ADR 0103).
  * @param {unknown} value
  * @returns {value is UniversalView}
  */
 export function isView(value) {
   if (!value || typeof value !== "object") return false;
-  const view = /** @type {{ type?: unknown, source?: unknown }} */ (value);
+  const view = /** @type {{ type?: unknown, source?: unknown, sections?: unknown }} */ (value);
+  if (Array.isArray(view.sections)) return view.sections.length > 0 && view.sections.every(isView);
   return TYPES.has(String(view.type)) && !!view.source && typeof view.source === "object";
 }
 

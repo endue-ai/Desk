@@ -169,9 +169,10 @@ export function createEngine(ctx, screen, options = {}) {
       (await ctx.views.get(id).catch((error) => {
         throw new Error(`There is no view ${id}: ${said(error)}`);
       }));
-    // A universal view (ADR 0102) is desk.universal's to draw.
+    // A universal view or page (ADR 0102, ADR 0103) is desk.universal's to draw, with its params.
     if (!("layout" in found)) {
-      await ctx.commands.run("desk.universal.open", { id, ...(notice ? { notice } : {}) });
+      const given = Object.keys(params ?? {}).length ? { id, params } : { id };
+      await ctx.commands.run("desk.universal.open", { ...given, ...(notice ? { notice } : {}) });
       return { id, universal: true };
     }
     const view = /** @type {View} */ (found);

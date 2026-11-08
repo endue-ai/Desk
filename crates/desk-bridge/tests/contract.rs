@@ -24,7 +24,7 @@ use desk_bridge::{
     StudioCatalogRecommendResult, StudioCatalogUseResult, StudioConversationsListResult,
     StudioSpacesGetResult, StudioSpacesListResult, ThemeBundle, ThemeExportResult, ThemeIndex,
     ThemeMarketFetchResult, ThemeMarketListResult, ThemePackage, ThemeType, ThemeVariant,
-    UiSurfaceStateRequest, UiSurfaceStateResult, UniversalData, UniversalSource, UniversalView,
+    UiSurfaceStateRequest, UiSurfaceStateResult, UniversalData, UniversalPage, UniversalSource, UniversalView,
     View, ViewGetResult, ViewListResult, ViewSource, ViewSummary, manifest_problems, view_problems,
 };
 use serde::Serialize;
@@ -185,6 +185,7 @@ fn item_view_connector_and_memory_vectors_are_judged_as_their_folders_say() {
                 "ItemChange" => roundtrip::<ItemChange>(vector),
                 "View" => roundtrip::<View>(vector),
                 "UniversalView" => roundtrip::<UniversalView>(vector),
+                "UniversalPage" => roundtrip::<UniversalPage>(vector),
                 "UniversalData" => roundtrip::<UniversalData>(vector),
                 "ConnectorManifest" => roundtrip::<ConnectorManifest>(vector),
                 "ConnectorInstance" => roundtrip::<ConnectorInstance>(vector),
@@ -449,6 +450,7 @@ fn typed_view_results_say_where_each_view_came_from() {
         id: id.to_owned(),
         version: Some("0.1.0".to_owned()),
         r#type: None,
+        sections: None,
         title: "Today".to_owned(),
         description: None,
         source,

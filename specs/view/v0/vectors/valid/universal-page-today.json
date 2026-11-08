@@ -1,0 +1,41 @@
+{
+  "target": "UniversalPage",
+  "description": "today as a page: the day's schedule and the tasks due by tonight, side by side",
+  "instance": {
+    "id": "example.today",
+    "title": "Today",
+    "columns": 2,
+    "sections": [
+      {
+        "title": "Schedule",
+        "type": "timeline",
+        "source": {
+          "items": {
+            "kinds": ["event"],
+            "where": [
+              { "field": "start", "op": "lt", "value": "{tomorrow}" },
+              { "field": "end", "op": "gt", "value": "{today}" }
+            ],
+            "sort": [{ "field": "start", "dir": "asc" }]
+          }
+        },
+        "empty": "Nothing on the calendar today."
+      },
+      {
+        "title": "Due",
+        "type": "list",
+        "source": {
+          "items": {
+            "kinds": ["task"],
+            "where": [
+              { "field": "status", "op": "eq", "value": "open" },
+              { "field": "due", "op": "lt", "value": "{tomorrow}" }
+            ],
+            "limit": 10
+          }
+        },
+        "empty": "Nothing due."
+      }
+    ]
+  }
+}

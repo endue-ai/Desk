@@ -1280,8 +1280,8 @@ pub struct PluginManifest {
     pub autoload: Option<bool>,
     /// A view plugin's one view, inline; a pack's own view too.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub view: Option<View>,
-    /// A view plugin's view files, one View each, relative to the plugin folder; a pack's too.
+    pub view: Option<PluginView>,
+    /// A view plugin's view files, one PluginView each, relative to the plugin folder; a pack's too.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub views: Option<Vec<ViewPath>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -1337,6 +1337,15 @@ pub enum PluginKind {
 
 /// Path to the entry file, relative to the plugin folder, without .. segments.
 pub type EntryPath = String;
+
+/// A view a plugin provides: a universal view or a page of them (ADR 0087, ADR 0103), with its id, or an item view (ADR 0032; deprecated, read through v0).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum PluginView {
+    View(View),
+    Universal(UniversalView),
+    UniversalPage(UniversalPage),
+}
 
 /// A view file relative to the plugin folder, without .. segments: YAML (.yaml, .yml) or JSON (.json).
 pub type ViewPath = String;
@@ -2215,6 +2224,8 @@ pub struct UniversalView {
     /// One sentence about what the view shows.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub params: Option<UniversalParams>,
     pub r#type: UniversalType,
     /// The presentations the person may switch between over the same entries, in the switcher's order; absent, only type.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -2243,7 +2254,35 @@ pub struct UniversalView {
     pub provenance: Option<ViewProvenance>,
 }
 
-/// timeline: entries in time order along a line, by day. calendar: a month (or week, or day) of dates with the entries that fall on them. kanban: a column per group. list: one row per entry. text: the entries as one document. chat: messages from authors, the person's own on the other side. agent: an agent's run, step by step with each step's status.
+/// Values the person or a caller gives when opening the view, as an item view's params (ADR 0032): read as {params.<name>} in an items source's query and in the title.
+pub type UniversalParams = BTreeMap<String, ViewParam>;
+
+/// Several universal views laid out together, each over its own source: what a layout of components was in an item view (Today, a digest), ADR 0103. Its params reach every section.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct UniversalPage {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub id: Option<ViewId>,
+    /// Shown above the sections.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub params: Option<UniversalParams>,
+    /// How many sections sit side by side; one when absent, fewer on a narrow surface.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub columns: Option<u64>,
+    /// The views, in reading order; none has an id, params or provenance of its own.
+    pub sections: Vec<UniversalSection>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub provenance: Option<ViewProvenance>,
+}
+
+/// One section of a page: a universal view; the page's id, params and provenance stand for all, so a section has none of its own (the desk refuses one that does).
+pub type UniversalSection = UniversalView;
+
+/// timeline: entries in time order along a line, by day. calendar: a month (or week, or day) of dates with the entries that fall on them. kanban: a column per group. list: one row per entry. text: the entries as one document. chat: messages from authors, the person's own on the other side. agent: an agent's run, step by step with each step's status. chart: the entries' value role over time or per group as bars, a line or a sparkline, or counts per group without one. stat: one number: the entries counted, their value summed, or the latest. detail: one entry's fields, the first or the one selected.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum UniversalType {
     #[serde(rename = "timeline")]
@@ -2260,6 +2299,12 @@ pub enum UniversalType {
     Chat,
     #[serde(rename = "agent")]
     Agent,
+    #[serde(rename = "chart")]
+    Chart,
+    #[serde(rename = "stat")]
+    Stat,
+    #[serde(rename = "detail")]
+    Detail,
 }
 
 /// Where the entries come from. Every source but items answers a UniversalData document (YAML or JSON); items are the desk's index, turned into entries.
@@ -2314,7 +2359,7 @@ pub struct UniversalCommandSource {
     pub args: Option<CommandArgs>,
 }
 
-/// The desk's item index (data.query under data:read), live: each item becomes an entry with its kind's fields in the roles they play (an event's start and end, a task's status as its group, a message's sender as its author).
+/// The desk's item index (data.query under data:read), live: each item becomes an entry with its kind's fields in the roles they play (an event's start and end, a task's status as its group, a message's sender as its author). Strings in its query's where values may read {today}, {tomorrow} and {now} (the clock, as in item views) and {params.<name>}, filled when it loads.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct UniversalItemsSource {
@@ -2349,6 +2394,19 @@ pub struct UniversalMap {
     pub tags: Option<FieldPath>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub url: Option<FieldPath>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub value: Option<FieldPath>,
+}
+
+/// stat: count the entries (the default), sum their value, or show the latest value by start.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum UniversalAggregate {
+    #[serde(rename = "count")]
+    Count,
+    #[serde(rename = "sum")]
+    Sum,
+    #[serde(rename = "latest")]
+    Latest,
 }
 
 /// Earliest first (asc) or latest first (desc).
@@ -2380,6 +2438,11 @@ pub struct UniversalOptions {
     /// chat and agent: the composer's hint.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub placeholder: Option<String>,
+    /// chart: bar (the default), line or sparkline.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub chart: Option<ChartKind>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub aggregate: Option<UniversalAggregate>,
 }
 
 /// The universal data format: what every source but items answers. A YAML file, an HTTP response, a command's answer and inline data are all this document.
@@ -2401,10 +2464,10 @@ pub struct UniversalData {
     pub entries: Vec<UniversalEntry>,
 }
 
-/// One entry: any fields the source has. By name (or through a map) id, title, text (Markdown), detail, start and end (RFC 3339 with an offset, or a YYYY-MM-DD date for a whole day), group, author, role, status (pending, running, done, failed, waiting, or any other word), tags (a list of strings) and url play the roles the views draw; the rest travels with the entry to its actions.
+/// One entry: any fields the source has. By name (or through a map) id, title, text (Markdown), detail, start and end (RFC 3339 with an offset, or a YYYY-MM-DD date for a whole day), group, author, role, status (pending, running, done, failed, waiting, or any other word), tags (a list of strings), url and value (a number, for charts and stats) play the roles the views draw; the rest travels with the entry to its actions.
 pub type UniversalEntry = serde_json::Map<String, serde_json::Value>;
 
-/// One view file.
+/// Deprecated (ADR 0103): an item view, read through v0 and never written by the desk; a universal view (universal.schema.json) or a page of them is the view language. One view file.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct View {
@@ -10445,15 +10508,16 @@ pub enum ViewSource {
     File,
 }
 
-/// A view in either language: an item view of specs/view/v0 (layouts of components over the desk's items, ADR 0032) or a universal view (one presentation of entries from any source, ADR 0087). A universal view saved in ~/.desk/views must have its id.
+/// A view in either language: an item view of specs/view/v0 (layouts of components over the desk's items, ADR 0032; deprecated, ADR 0103), a universal view (one presentation of entries from any source, ADR 0087) or a page of universal views. One saved in ~/.desk/views must have its id.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum AnyView {
     View(View),
     Universal(UniversalView),
+    UniversalPage(UniversalPage),
 }
 
-/// A view as view.list returns it: where it comes from and, for a plugin's view, the plugin. An item view has a version; a universal view has its type instead, and its title is its id when it has none.
+/// A view as view.list returns it: where it comes from and, for a plugin's view, the plugin. An item view has a version; a universal view has its type instead and a page its number of sections, and either's title is its id when it has none.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ViewSummary {
@@ -10463,9 +10527,12 @@ pub struct ViewSummary {
     pub title: Template,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
-    /// A universal view's presentation; absent for an item view.
+    /// A universal view's presentation; absent for an item view and a page.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub r#type: Option<UniversalType>,
+    /// How many views a page lays out; absent for anything but a page.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sections: Option<u64>,
     pub source: ViewSource,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub plugin: Option<PluginId>,

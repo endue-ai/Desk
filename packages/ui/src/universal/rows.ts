@@ -18,6 +18,7 @@ export const UNIVERSAL_ROLES = [
   "status",
   "tags",
   "url",
+  "value",
 ] as const;
 
 /** A step's or a task's state, as the views colour it. */
@@ -49,6 +50,8 @@ export interface UniversalRow {
   tone: UniversalTone;
   tags: string[];
   url: string;
+  /** The value role as a number (charts and stats); absent when it is none. */
+  value?: number;
   /** The entry as the source gave it, for actions and templates. */
   entry: UniversalEntry;
 }
@@ -83,6 +86,12 @@ function textOf(value: unknown): string {
   if (typeof value === "number" || typeof value === "boolean") return String(value);
   if (Array.isArray(value) && value.every((v) => typeof v === "string")) return value.join(", ");
   return "";
+}
+
+/** A finite number, or a numeric string read as one. */
+function numberOf(value: unknown): number | undefined {
+  const n = typeof value === "string" && value.trim() ? Number(value) : value;
+  return typeof n === "number" && Number.isFinite(n) ? n : undefined;
 }
 
 function tagsOf(value: unknown): string[] {
@@ -132,6 +141,7 @@ export function rowsOf(
     if (end === undefined && start?.day) end = dayStart(addDays(start.day, 1), options.zone);
     if (start && end !== undefined && end < start.at) end = undefined;
     const status = textOf(read("status")).trim().toLowerCase();
+    const value = numberOf(read("value"));
     return {
       key: count === 1 ? base : `${base}#${count}`,
       index,
@@ -149,6 +159,7 @@ export function rowsOf(
       tone: toneOf(status),
       tags: tagsOf(read("tags")),
       url: textOf(read("url")),
+      ...(value === undefined ? {} : { value }),
       entry,
     };
   });

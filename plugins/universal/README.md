@@ -1,12 +1,12 @@
 # plugins/universal
 
-`desk.universal`, Universal View (ADR 0087, ADR 0102): opens, previews and builds universal views
+`desk.universal`, Universal View (ADR 0087, ADR 0102, ADR 0103): opens, previews and builds universal views
 (`specs/view/v0/universal.schema.json`) on a hidden overlay, with the public SDK only, as a community
 plugin would. The desk, Eris, agents and the palette use it by command instead of writing a plugin.
 
 | Command | What it does |
 | --- | --- |
-| `desk.universal.open` | `{ view }`, `{ id }` (a saved view), `{ file }`, `{ url }` or `{ data }`; `type`, `title` and `notice` (a line with an action, such as Undo). Opened again under the id it is drawn with, it keeps the element and data |
+| `desk.universal.open` | `{ view }`, `{ id }` (a saved or a plugin's view, or a page of them: ADR 0103), `{ file }`, `{ url }` or `{ data }`; `type`, `title`, `params` (what `{params.<name>}` reads) and `notice` (a line with an action, such as Undo). Opened again under the id and params it is drawn with, it keeps the element and data |
 | `desk.universal.build` | The view builder: a source (file, URL, command, items), a shape, the field each role reads, a live preview, then Save as `~/.desk/views/my.<slug>.yaml` (view.save); `{ id }` edits a saved one |
 | `desk.universal.drafting`, `desk.universal.preview` | Eris's (ADR 0073): the drafting state at once, then `{ view, note }` with Apply, Try again and Discard, answering the choice |
 | `desk.universal.folder` | `{ path }`: a folder as universal data (fs.list), newest first |

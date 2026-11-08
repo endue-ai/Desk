@@ -1,0 +1,42 @@
+{
+  "target": "PluginManifest",
+  "description": "a view plugin whose view is a page of universal views (ADR 0103): sections side by side, each over its own items query",
+  "instance": {
+    "id": "example.day",
+    "name": "Day",
+    "version": "0.1.0",
+    "kind": "view",
+    "description": "Today's events and open tasks.",
+    "view": {
+      "id": "example.day",
+      "title": "Day",
+      "columns": 2,
+      "sections": [
+        {
+          "title": "Schedule",
+          "type": "calendar",
+          "source": {
+            "items": {
+              "kinds": ["event"],
+              "where": [
+                { "field": "start", "op": "lt", "value": "{tomorrow}" },
+                { "field": "end", "op": "gt", "value": "{today}" }
+              ]
+            }
+          },
+          "options": { "range": "day" }
+        },
+        {
+          "title": "Open",
+          "type": "stat",
+          "source": {
+            "items": {
+              "kinds": ["task"],
+              "where": [{ "field": "status", "op": "eq", "value": "open" }]
+            }
+          }
+        }
+      ]
+    }
+  }
+}

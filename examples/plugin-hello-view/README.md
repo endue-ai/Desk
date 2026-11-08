@@ -1,9 +1,9 @@
 # examples/plugin-hello-view
 
-The smallest view plugin: a view as data in `plugin.json` (`specs/view/v0`, ADR 0032), no code.
-It lists the notes touched last, newest first, from whichever connected source the person picks
-for its `notes` requirement, and offers `example.hello-view.open`, an alias of `desk.views.open`.
-`pnpm create @endue-ai/plugin --kind view` writes the same folder.
+The smallest view plugin: a universal view as data in `plugin.json` (`specs/view/v0`, ADR 0087,
+ADR 0103), no code. It lists the notes touched last, newest first, from every connected source, as
+a list that switches to a timeline, and offers `example.hello-view.open`, an alias of
+`desk.views.open`. `pnpm create @endue-ai/plugin --kind view` writes the same folder.
 
 ## Run it
 
@@ -19,7 +19,7 @@ just dev
 | File | Purpose |
 | --- | --- |
 | `plugin.json` | The manifest (specs/plugin v0): kind `view`, the view inline, one command |
-| `tests/view.test.js` | Its test on the SDK's test host: `view.save` checks the view as the desk does, and its list's query runs on items the test puts in the index |
+| `tests/view.test.js` | Its test on the SDK's test host: `view.save` checks the view as the desk does, and its source's query runs on items the test puts in the index |
 
 ## Check and test it
 

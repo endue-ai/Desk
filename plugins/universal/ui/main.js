@@ -1,6 +1,6 @@
 // desk.universal: universal views (ADR 0087) on one overlay, with the public SDK only, as a
-// community plugin would. desk.universal.open { view | id | file | url | data, type?, title?, notice? }
-// draws one; desk.universal.drafting and desk.universal.preview are Eris's (ADR 0073, 0102): the
+// community plugin would. desk.universal.open { view | id | file | url | data, type?, title?, params?,
+// notice? } draws one, or a page of them (ADR 0103); desk.universal.drafting and desk.universal.preview are Eris's (ADR 0073, 0102): the
 // drafting state at once, then the preview's choice; desk.universal.build opens the view builder;
 // desk.universal.folder { path } answers a folder as universal data.
 import "@endue-ai/ui";
@@ -57,9 +57,16 @@ defineUiPlugin({
           ? screen.view
           : await viewOf(/** @type {import("./open.js").OpenArgs} */ (given), io);
       mode(false);
-      screen.open(view, given.notice ? { notice: given.notice } : {});
+      const params = given.params && typeof given.params === "object" ? given.params : undefined;
+      screen.open(view, {
+        ...(given.notice ? { notice: given.notice } : {}),
+        ...(params ? { params } : {}),
+      });
       ctx.surface.show();
-      return { opened: true, type: view.type };
+      return {
+        opened: true,
+        ...("sections" in view ? { sections: view.sections.length } : { type: view.type }),
+      };
     });
     ctx.commands.on("desk.universal.close", (args) => {
       const { id } = argsOf(args);

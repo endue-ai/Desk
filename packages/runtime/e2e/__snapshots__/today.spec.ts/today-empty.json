@@ -1,46 +1,255 @@
 {
   "tag": "main",
-  "data-density": "regular",
+  "aria-label": "Universal View",
   "children": [
     {
-      "tag": "header",
-      "class": "bar",
+      "tag": "div",
+      "role": "alert",
+      "hidden": "",
+      "class": "notice",
       "children": [
         {
-          "tag": "h1",
-          "text": "Today"
+          "tag": "span"
         },
         {
-          "tag": "p",
-          "class": "description",
-          "text": "Today's events, the tasks due by tonight, unread messages, the notes touched last and your open GitHub work."
+          "tag": "button",
+          "class": "desk-btn",
+          "text": "Allow"
         }
       ]
     },
     {
       "tag": "div",
-      "class": "container grid",
-      "data-direction": "horizontal",
+      "role": "region",
+      "aria-label": "Eris's view",
+      "hidden": "",
+      "class": "bar",
+      "children": [
+        {
+          "tag": "span",
+          "role": "status",
+          "class": "bar-text"
+        },
+        {
+          "tag": "input",
+          "aria-label": "What should change",
+          "hidden": "",
+          "class": "desk-field bar-change"
+        },
+        {
+          "tag": "span",
+          "class": "bar-buttons"
+        }
+      ]
+    },
+    {
+      "tag": "div",
+      "aria-hidden": "true",
+      "hidden": "",
+      "class": "ghost",
+      "children": [
+        {
+          "tag": "span"
+        },
+        {
+          "tag": "span"
+        },
+        {
+          "tag": "span"
+        },
+        {
+          "tag": "span"
+        }
+      ]
+    },
+    {
+      "tag": "section",
+      "aria-label": "View builder",
+      "hidden": "",
+      "class": "builder",
       "children": [
         {
           "tag": "div",
-          "class": "pane",
+          "class": "build-form",
           "children": [
             {
-              "tag": "section",
-              "class": "component",
-              "data-component": "agenda",
-              "data-state": "empty",
+              "tag": "fieldset",
+              "class": "build-step",
               "children": [
                 {
-                  "tag": "h2",
-                  "class": "component-title",
-                  "text": "Schedule"
+                  "tag": "legend",
+                  "text": "Source"
+                },
+                {
+                  "tag": "div",
+                  "role": "tablist",
+                  "aria-label": "Source",
+                  "class": "desk-tabs"
+                },
+                {
+                  "tag": "input",
+                  "aria-label": "Where",
+                  "class": "desk-field"
+                },
+                {
+                  "tag": "textarea",
+                  "aria-label": "Arguments (JSON)",
+                  "class": "desk-field"
+                },
+                {
+                  "tag": "div",
+                  "class": "build-kinds",
+                  "children": [
+                    {
+                      "tag": "label",
+                      "class": "build-kind",
+                      "text": "task",
+                      "children": [
+                        {
+                          "tag": "input",
+                          "class": "desk-check",
+                          "value": "task"
+                        }
+                      ]
+                    },
+                    {
+                      "tag": "label",
+                      "class": "build-kind",
+                      "text": "event",
+                      "children": [
+                        {
+                          "tag": "input",
+                          "class": "desk-check",
+                          "value": "event"
+                        }
+                      ]
+                    },
+                    {
+                      "tag": "label",
+                      "class": "build-kind",
+                      "text": "note",
+                      "children": [
+                        {
+                          "tag": "input",
+                          "class": "desk-check",
+                          "value": "note"
+                        }
+                      ]
+                    },
+                    {
+                      "tag": "label",
+                      "class": "build-kind",
+                      "text": "message",
+                      "children": [
+                        {
+                          "tag": "input",
+                          "class": "desk-check",
+                          "value": "message"
+                        }
+                      ]
+                    },
+                    {
+                      "tag": "label",
+                      "class": "build-kind",
+                      "text": "file",
+                      "children": [
+                        {
+                          "tag": "input",
+                          "class": "desk-check",
+                          "value": "file"
+                        }
+                      ]
+                    },
+                    {
+                      "tag": "label",
+                      "class": "build-kind",
+                      "text": "person",
+                      "children": [
+                        {
+                          "tag": "input",
+                          "class": "desk-check",
+                          "value": "person"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "tag": "button",
+                  "class": "desk-btn",
+                  "text": "Load"
                 },
                 {
                   "tag": "p",
-                  "class": "empty",
-                  "text": "Nothing on the calendar today."
+                  "role": "status",
+                  "class": "build-status"
+                },
+                {
+                  "tag": "button",
+                  "hidden": "",
+                  "class": "desk-btn",
+                  "text": "Allow"
+                }
+              ]
+            },
+            {
+              "tag": "fieldset",
+              "class": "build-step",
+              "children": [
+                {
+                  "tag": "legend",
+                  "text": "Shape"
+                },
+                {
+                  "tag": "div",
+                  "role": "group",
+                  "aria-label": "Shape",
+                  "class": "desk-tabs"
+                }
+              ]
+            },
+            {
+              "tag": "fieldset",
+              "class": "build-step",
+              "children": [
+                {
+                  "tag": "legend",
+                  "text": "Fields"
+                },
+                {
+                  "tag": "div",
+                  "class": "build-roles"
+                }
+              ]
+            },
+            {
+              "tag": "fieldset",
+              "class": "build-step",
+              "children": [
+                {
+                  "tag": "legend",
+                  "text": "Name"
+                },
+                {
+                  "tag": "input",
+                  "aria-label": "Name",
+                  "class": "desk-field"
+                }
+              ]
+            },
+            {
+              "tag": "div",
+              "class": "build-actions",
+              "children": [
+                {
+                  "tag": "button",
+                  "class": "desk-btn desk-btn-primary",
+                  "text": "Save view"
+                },
+                {
+                  "tag": "button",
+                  "class": "desk-btn desk-btn-quiet",
+                  "text": "Cancel"
                 }
               ]
             }
@@ -48,95 +257,510 @@
         },
         {
           "tag": "div",
-          "class": "pane",
+          "class": "build-preview",
           "children": [
             {
-              "tag": "section",
-              "class": "component",
-              "data-component": "list",
-              "data-state": "empty",
-              "children": [
+              "tag": "desk-universal-view",
+              "label": "Preview",
+              "shadow": [
                 {
-                  "tag": "h2",
-                  "class": "component-title",
-                  "text": "Due"
-                },
-                {
-                  "tag": "p",
-                  "class": "empty",
-                  "text": "Nothing due."
+                  "tag": "div",
+                  "class": "view",
+                  "children": [
+                    {
+                      "tag": "div",
+                      "class": "head",
+                      "children": [
+                        {
+                          "tag": "h2",
+                          "class": "title",
+                          "text": "Preview"
+                        },
+                        {
+                          "tag": "div",
+                          "role": "tablist",
+                          "aria-label": "Show as",
+                          "hidden": "",
+                          "class": "switch",
+                          "children": [
+                            {
+                              "tag": "button",
+                              "role": "tab",
+                              "aria-selected": "true",
+                              "tabindex": "0",
+                              "text": "List"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "tag": "div",
+                      "role": "status",
+                      "class": "status",
+                      "data-state": "empty",
+                      "text": "Nothing here"
+                    },
+                    {
+                      "tag": "div",
+                      "hidden": "",
+                      "class": "body",
+                      "children": [
+                        {
+                          "tag": "div",
+                          "role": "list",
+                          "class": "list"
+                        }
+                      ]
+                    },
+                    {
+                      "tag": "div",
+                      "hidden": "",
+                      "class": "compose",
+                      "children": [
+                        {
+                          "tag": "textarea",
+                          "aria-label": "Write a message"
+                        },
+                        {
+                          "tag": "button",
+                          "class": "send",
+                          "text": "Send"
+                        }
+                      ]
+                    }
+                  ]
                 }
               ]
             }
           ]
+        }
+      ]
+    },
+    {
+      "tag": "div",
+      "aria-label": "Today",
+      "class": "desk-universal-page",
+      "children": [
+        {
+          "tag": "h2",
+          "class": "desk-universal-page-title",
+          "text": "Today"
         },
         {
-          "tag": "div",
-          "class": "pane",
-          "children": [
+          "tag": "desk-universal-view",
+          "shadow": [
             {
-              "tag": "section",
-              "class": "component",
-              "data-component": "list",
-              "data-state": "empty",
+              "tag": "div",
+              "class": "view",
               "children": [
                 {
-                  "tag": "h2",
-                  "class": "component-title",
-                  "text": "Unread"
+                  "tag": "div",
+                  "class": "head",
+                  "children": [
+                    {
+                      "tag": "h2",
+                      "class": "title",
+                      "text": "Schedule"
+                    },
+                    {
+                      "tag": "div",
+                      "role": "tablist",
+                      "aria-label": "Show as",
+                      "hidden": "",
+                      "class": "switch",
+                      "children": [
+                        {
+                          "tag": "button",
+                          "role": "tab",
+                          "aria-selected": "true",
+                          "tabindex": "0",
+                          "text": "Calendar"
+                        }
+                      ]
+                    }
+                  ]
                 },
                 {
-                  "tag": "p",
-                  "class": "empty",
-                  "text": "No unread messages."
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "tag": "div",
-          "class": "pane",
-          "children": [
-            {
-              "tag": "section",
-              "class": "component",
-              "data-component": "list",
-              "data-state": "empty",
-              "children": [
-                {
-                  "tag": "h2",
-                  "class": "component-title",
-                  "text": "Last touched"
-                },
-                {
-                  "tag": "p",
-                  "class": "empty",
-                  "text": "No notes yet."
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "tag": "div",
-          "class": "pane",
-          "children": [
-            {
-              "tag": "section",
-              "class": "component",
-              "data-component": "list",
-              "data-state": "unbound",
-              "children": [
-                {
-                  "tag": "h2",
-                  "class": "component-title",
-                  "text": "GitHub"
-                },
-                {
-                  "tag": "p",
+                  "tag": "div",
+                  "role": "status",
                   "class": "status",
-                  "text": "desk.github is not installed."
+                  "data-state": "empty",
+                  "text": "Nothing on the calendar today."
+                },
+                {
+                  "tag": "div",
+                  "class": "body",
+                  "children": [
+                    {
+                      "tag": "div",
+                      "class": "calendar-view",
+                      "children": [
+                        {
+                          "tag": "div",
+                          "class": "head",
+                          "children": [
+                            {
+                              "tag": "h3",
+                              "aria-live": "polite",
+                              "class": "title",
+                              "text": "Fri, Oct 30"
+                            },
+                            {
+                              "tag": "div",
+                              "class": "nav",
+                              "children": [
+                                {
+                                  "tag": "button",
+                                  "text": "Previous"
+                                },
+                                {
+                                  "tag": "button",
+                                  "text": "Today"
+                                },
+                                {
+                                  "tag": "button",
+                                  "text": "Next"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "tag": "div",
+                          "class": "calendar",
+                          "children": [
+                            {
+                              "tag": "span",
+                              "class": "weekday",
+                              "text": "Fri"
+                            },
+                            {
+                              "tag": "div",
+                              "role": "list",
+                              "aria-label": "Fri, Oct 30",
+                              "class": "cell",
+                              "children": [
+                                {
+                                  "tag": "span",
+                                  "class": "number",
+                                  "text": "30"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "tag": "div",
+                  "hidden": "",
+                  "class": "compose",
+                  "children": [
+                    {
+                      "tag": "textarea",
+                      "aria-label": "Write a message"
+                    },
+                    {
+                      "tag": "button",
+                      "class": "send",
+                      "text": "Send"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "desk-universal-view",
+          "shadow": [
+            {
+              "tag": "div",
+              "class": "view",
+              "children": [
+                {
+                  "tag": "div",
+                  "class": "head",
+                  "children": [
+                    {
+                      "tag": "h2",
+                      "class": "title",
+                      "text": "Due"
+                    },
+                    {
+                      "tag": "div",
+                      "role": "tablist",
+                      "aria-label": "Show as",
+                      "hidden": "",
+                      "class": "switch",
+                      "children": [
+                        {
+                          "tag": "button",
+                          "role": "tab",
+                          "aria-selected": "true",
+                          "tabindex": "0",
+                          "text": "List"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "tag": "div",
+                  "role": "status",
+                  "class": "status",
+                  "data-state": "empty",
+                  "text": "Nothing due."
+                },
+                {
+                  "tag": "div",
+                  "hidden": "",
+                  "class": "body",
+                  "children": [
+                    {
+                      "tag": "div",
+                      "role": "list",
+                      "class": "list"
+                    }
+                  ]
+                },
+                {
+                  "tag": "div",
+                  "hidden": "",
+                  "class": "compose",
+                  "children": [
+                    {
+                      "tag": "textarea",
+                      "aria-label": "Write a message"
+                    },
+                    {
+                      "tag": "button",
+                      "class": "send",
+                      "text": "Send"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "desk-universal-view",
+          "shadow": [
+            {
+              "tag": "div",
+              "class": "view",
+              "children": [
+                {
+                  "tag": "div",
+                  "class": "head",
+                  "children": [
+                    {
+                      "tag": "h2",
+                      "class": "title",
+                      "text": "Unread"
+                    },
+                    {
+                      "tag": "div",
+                      "role": "tablist",
+                      "aria-label": "Show as",
+                      "hidden": "",
+                      "class": "switch",
+                      "children": [
+                        {
+                          "tag": "button",
+                          "role": "tab",
+                          "aria-selected": "true",
+                          "tabindex": "0",
+                          "text": "List"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "tag": "div",
+                  "role": "status",
+                  "class": "status",
+                  "data-state": "empty",
+                  "text": "No unread messages."
+                },
+                {
+                  "tag": "div",
+                  "hidden": "",
+                  "class": "body",
+                  "children": [
+                    {
+                      "tag": "div",
+                      "role": "list",
+                      "class": "list"
+                    }
+                  ]
+                },
+                {
+                  "tag": "div",
+                  "hidden": "",
+                  "class": "compose",
+                  "children": [
+                    {
+                      "tag": "textarea",
+                      "aria-label": "Write a message"
+                    },
+                    {
+                      "tag": "button",
+                      "class": "send",
+                      "text": "Send"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "desk-universal-view",
+          "shadow": [
+            {
+              "tag": "div",
+              "class": "view",
+              "children": [
+                {
+                  "tag": "div",
+                  "class": "head",
+                  "children": [
+                    {
+                      "tag": "h2",
+                      "class": "title",
+                      "text": "Last touched"
+                    },
+                    {
+                      "tag": "div",
+                      "role": "tablist",
+                      "aria-label": "Show as",
+                      "hidden": "",
+                      "class": "switch",
+                      "children": [
+                        {
+                          "tag": "button",
+                          "role": "tab",
+                          "aria-selected": "true",
+                          "tabindex": "0",
+                          "text": "List"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "tag": "div",
+                  "role": "status",
+                  "class": "status",
+                  "data-state": "empty",
+                  "text": "No notes yet."
+                },
+                {
+                  "tag": "div",
+                  "hidden": "",
+                  "class": "body",
+                  "children": [
+                    {
+                      "tag": "div",
+                      "role": "list",
+                      "class": "list"
+                    }
+                  ]
+                },
+                {
+                  "tag": "div",
+                  "hidden": "",
+                  "class": "compose",
+                  "children": [
+                    {
+                      "tag": "textarea",
+                      "aria-label": "Write a message"
+                    },
+                    {
+                      "tag": "button",
+                      "class": "send",
+                      "text": "Send"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "desk-universal-view",
+          "shadow": [
+            {
+              "tag": "div",
+              "class": "view",
+              "children": [
+                {
+                  "tag": "div",
+                  "class": "head",
+                  "children": [
+                    {
+                      "tag": "h2",
+                      "class": "title",
+                      "text": "GitHub"
+                    },
+                    {
+                      "tag": "div",
+                      "role": "tablist",
+                      "aria-label": "Show as",
+                      "hidden": "",
+                      "class": "switch",
+                      "children": [
+                        {
+                          "tag": "button",
+                          "role": "tab",
+                          "aria-selected": "true",
+                          "tabindex": "0",
+                          "text": "List"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "tag": "div",
+                  "role": "status",
+                  "class": "status",
+                  "data-state": "empty",
+                  "text": "No open GitHub work."
+                },
+                {
+                  "tag": "div",
+                  "hidden": "",
+                  "class": "body",
+                  "children": [
+                    {
+                      "tag": "div",
+                      "role": "list",
+                      "class": "list"
+                    }
+                  ]
+                },
+                {
+                  "tag": "div",
+                  "hidden": "",
+                  "class": "compose",
+                  "children": [
+                    {
+                      "tag": "textarea",
+                      "aria-label": "Write a message"
+                    },
+                    {
+                      "tag": "button",
+                      "class": "send",
+                      "text": "Send"
+                    }
+                  ]
                 }
               ]
             }

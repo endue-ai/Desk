@@ -304,4 +304,64 @@ textarea {
 :host([density="compact"]) .cell {
   min-height: 56px;
 }
+.chart {
+  display: flex;
+  flex-direction: column;
+  gap: var(--desk-space-2);
+  margin: 0;
+}
+.chart svg {
+  width: 100%;
+  height: 160px;
+  overflow: visible;
+}
+.chart .bar {
+  fill: var(--desk-primary);
+}
+.chart .line {
+  stroke: var(--desk-primary);
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+.chart-labels {
+  display: flex;
+  gap: var(--desk-space-1);
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-xs);
+}
+.chart-label {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--desk-space-1);
+  padding: var(--desk-space-3);
+}
+.stat-value {
+  font-size: var(--desk-text-3xl);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.stat-note {
+  color: var(--desk-text-muted);
+}
+.detail-fields {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: var(--desk-space-1) var(--desk-space-3);
+  margin: var(--desk-space-2) 0 0;
+}
+.detail-fields dt {
+  color: var(--desk-text-muted);
+}
+.detail-fields dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
 `;

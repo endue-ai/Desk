@@ -280,4 +280,40 @@ describe("desk-universal-view", () => {
     expect(focused()?.getAttribute("data-key")).toBe("t3");
     expect(element.entryOf(focused())?.title).toBe("Ship");
   });
+
+  it("draws a chart, a stat and a detail, and switches to them from its tabs", () => {
+    const metrics: UniversalData = {
+      map: { value: "minutes" },
+      entries: [
+        { id: "a", title: "Mon", minutes: 30 },
+        { id: "b", title: "Tue", minutes: 45 },
+      ],
+    };
+    const { element, root, all, tabs } = mount(
+      { type: "chart", types: ["chart", "stat", "detail"], options: { chart: "bar" } },
+      metrics,
+    );
+    const rects = queryAll(root, (el) => el.getAttribute("class") === "bar");
+    expect(rects).toHaveLength(2);
+    expect(all("chart-label").map((el) => el.textContent)).toEqual(["Mon", "Tue"]);
+    expect(tabs().map((tab) => tab.textContent)).toEqual(["Chart", "Stat", "Detail"]);
+
+    (tabs()[1] as HTMLElement).click();
+    expect(element.type).toBe("stat");
+    expect(all("stat-value")[0]?.textContent).toBe("2");
+    element.view = { type: "stat", options: { aggregate: "sum" } };
+    expect(all("stat-value")[0]?.textContent).toBe("75");
+
+    element.view = { type: "detail" };
+    element.type = "detail";
+    expect(all("entry-title")[0]?.textContent).toBe("Mon");
+    const terms = queryAll(root, (el) => el.localName === "dt").map((el) => el.textContent);
+    expect(terms).toEqual(["Value", "Minutes"]);
+  });
+
+  it("says a stat's empty text when there is nothing to count", () => {
+    const { all } = mount({ type: "stat", empty: "All caught up." }, { entries: [] });
+    expect(all("stat-value")[0]?.textContent).toBe("0");
+    expect(all("stat-note")[0]?.textContent).toBe("All caught up.");
+  });
 });

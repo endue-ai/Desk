@@ -11,7 +11,7 @@ for (const finish of ["drop", "Escape"] as const) {
     await page.keyboard.press("Meta+n");
     const surface = page.locator('[data-surface="window-1"]');
     await surface.locator('[data-view="notes"]').click();
-    const notes = surface.locator("textarea");
+    const notes = surface.locator("textarea.notes-input");
     await notes.fill("Ordinary note text remains selectable after moving a window.");
     const title = await surface.locator(".surface-name").boundingBox();
     if (!title) throw new Error("no title");

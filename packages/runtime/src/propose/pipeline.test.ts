@@ -4,46 +4,52 @@ import { browserCore } from "../bridge/core";
 import type { ScriptedAnswer } from "../bridge/scripted-brain";
 import type { NoticeInput } from "../notify";
 import { createAsker } from "./asker";
-import { BOARD, BOARD_WORK } from "./fixtures";
 import { type Choice, createProposals } from "./pipeline";
-import { viewKind } from "./view";
+import { universalKind } from "./universal";
 
+// desk.propose's pipeline (ADR 0073) on its view kind, a universal view (ADR 0102, 0103), over the
+// stub core with a scripted brain that answers brain.ask as the core does.
 const VIEWS = { permission: "view:manage" } as const;
 const SENTENCE = "show my events this week as a board";
 const ID = "eris.events-this-week";
 const manifests: PluginManifest[] = [
-  { id: "desk.views", version: "0.1.0", kind: "ui", entry: "ui/index.html" },
-  { id: "endue.notes", version: "0.1.0", kind: "ui", entry: "ui/index.html" },
+  { id: "desk.universal", version: "0.1.0", kind: "ui", entry: "ui/index.html" },
 ];
+const BOARD = {
+  title: "Events this week",
+  description: "This week's events, one column per calendar.",
+  type: "kanban",
+  source: { items: { kinds: ["event"] } },
+  map: { group: "calendar" },
+};
+const BOARD_WORK = {
+  ...BOARD,
+  title: "Work this week",
+  source: { items: { kinds: ["event"], where: [{ field: "calendar", op: "eq", value: "Work" }] } },
+};
 /** An answer as a brain gives it through brain.ask: a few words and the tool's arguments. */
 const called = (structured: Record<string, unknown>) => ({ text: "Here is the view.", structured });
-/** Arguments propose_view's schema refuses: the core leaves them out of the turn. */
-const invalid = called({ ...BOARD, layout: { type: "board", children: [] } });
-/** Arguments the schema allows but the desk does not: a source the view does not require. */
-const unknownSource = called({
-  ...BOARD_WORK,
-  layout: { ...BOARD_WORK.layout, binding: { ...BOARD_WORK.layout.binding, sources: ["$cal"] } },
-});
+/** Arguments the tool's schema refuses: the core leaves them out of the turn. */
+const invalid = called({ ...BOARD, type: "board" });
+/** Arguments the schema allows but the desk does not: a command the desk does not have. */
+const unknownCommand = called({ ...BOARD, actions: [{ command: "example.nope" }] });
 
-/** The pipeline for views on the stub core, its brain answering `answers` in order, desk.views recorded. */
+/** The pipeline on the stub core, its brain answering `answers` in order, desk.universal recorded. */
 function setup(answers: ScriptedAnswer[], choices: Choice[] = [{ choice: "apply" }]) {
-  const core = browserCore({
-    manifests,
-    off: ["endue.notes"],
-    brain: { answer: () => answers.shift() ?? "" },
-  });
+  const core = browserCore({ manifests, brain: { answer: () => answers.shift() ?? "" } });
   const runs: Array<{ id: string; args: unknown }> = [];
   const commands = {
     run: async (id: string, args?: unknown) => {
       runs.push({ id, args });
-      if (id === "desk.views.preview") return choices.shift() ?? { choice: "discard" };
+      if (id === "desk.universal.preview") return choices.shift() ?? { choice: "discard" };
       return {};
     },
+    has: (id: string) => id.startsWith("desk."),
   };
   const said: string[] = [];
   const states: string[] = [];
   const notices: NoticeInput[] = [];
-  const view = viewKind({
+  const view = universalKind({
     bridge: core.client,
     commands,
     now: () => Date.parse(FIXTURE_NOW),
@@ -62,7 +68,8 @@ function setup(answers: ScriptedAnswer[], choices: Choice[] = [{ choice: "apply"
   const prompts = () => asks().map((params) => params.prompt);
   const calls = (method: string) =>
     core.stub.log.filter((entry) => entry.request.method === method).map((e) => e.request.params);
-  return { core, runs, said, states, notices, proposals, asks, prompts, calls };
+  const previews = () => runs.filter((run) => run.id === "desk.universal.preview");
+  return { core, runs, previews, said, states, notices, proposals, asks, prompts, calls };
 }
 
 describe("desk.propose for views", () => {
@@ -73,28 +80,24 @@ describe("desk.propose for views", () => {
 
     const [asked] = m.asks();
     expect(m.asks()).toHaveLength(1);
-    expect(m.calls("brain.say")).toEqual([]);
     const prompt = asked?.prompt ?? "";
     expect(prompt).toContain(SENTENCE);
-    // The context: the kinds and sources in the index, the plugins that are on, the profile.
+    // The context: the presentations, the kinds and sources in the index, the profile.
     expect(prompt).toContain('"connector":"desk.fixtures"');
     expect(prompt).toContain('"kind":"event"');
-    expect(prompt).toContain('"plugins":["desk.views"]');
+    expect(prompt).toContain('"presentations":["list"');
     expect(prompt).toContain('"profile":"morning"');
-    // The View schema is the tool's, without the parts the desk writes; the prompt does not repeat it.
+    // The UniversalView schema is the tool's, without the parts the desk writes.
     expect(asked?.scope).toEqual({ permission: "brain:ask" });
-    expect(asked?.tool.name).toBe("propose_view");
-    const schema = JSON.stringify(asked?.tool.schema);
-    expect(asked?.tool.schema.type).toBe("object");
-    expect(schema).toContain('"ViewComponent"');
-    expect(schema).not.toContain('"ViewProvenance"');
-    expect(asked?.tool.schema.required).toEqual(["title", "layout"]);
-    expect(prompt).not.toContain('"ViewComponent"');
+    expect(asked?.tool.name).toBe("propose_universal_view");
+    expect(asked?.tool.schema.required).toEqual(["type", "source"]);
+    expect(JSON.stringify(asked?.tool.schema)).not.toContain('"ViewProvenance"');
+    expect(prompt).not.toContain('"UniversalSource"');
 
     const made = {
       ...BOARD,
+      types: ["kanban", "list", "timeline", "calendar"],
       id: ID,
-      version: "0.1.0",
       provenance: {
         author: "eris",
         createdAt: "2026-10-30T00:00:00.000Z",
@@ -102,23 +105,17 @@ describe("desk.propose for views", () => {
         brain: "scripted",
       },
     };
-    expect(m.runs.map((run) => run.id)).toEqual(["desk.views.preview", "desk.views.open"]);
-    expect(m.runs[0]?.args).toEqual({
-      view: made,
-      note: `Eris made this from “${SENTENCE}”.`,
-    });
+    expect(m.runs.map((run) => run.id)).toEqual([
+      "desk.universal.drafting",
+      "desk.universal.preview",
+      "desk.universal.open",
+    ]);
+    expect(m.runs[1]?.args).toEqual({ view: made, note: `Eris made this from “${SENTENCE}”.` });
     expect(await m.core.client.call("view.get", { id: ID, scope: VIEWS })).toMatchObject({
       view: made,
       source: "file",
     });
     expect(m.calls("view.save")).toEqual([{ view: made, scope: VIEWS }]);
-    expect(m.runs[1]?.args).toEqual({
-      id: ID,
-      notice: {
-        text: `Eris made this view: ~/.desk/views/${ID}.yaml`,
-        action: { title: "Undo", command: "desk.propose.undo", args: { kind: "view", id: ID } },
-      },
-    });
     expect(m.said).toEqual(["I made “Events this week” and saved it in your views."]);
     expect(m.states).toEqual(["thinking"]);
     expect(m.notices).toEqual([
@@ -131,16 +128,16 @@ describe("desk.propose for views", () => {
     ]);
   });
 
-  it("an invalid answer is asked again once with the validation error, then the valid one is previewed", async () => {
-    const m = setup([unknownSource, called(BOARD)]);
+  it("an answer the desk refuses is asked again once with what was wrong, then the valid one is previewed", async () => {
+    const m = setup([unknownCommand, called(BOARD)]);
     expect(await m.proposals.propose("view", SENTENCE)).toMatchObject({ status: "applied" });
     const [first = "", second = ""] = m.prompts();
     expect(m.prompts()).toHaveLength(2);
     expect(first).not.toContain("was not valid");
     expect(second).toContain("Your last answer was not valid");
-    expect(second).toContain("/layout/binding/sources/0: $cal is not one of the view's requires");
+    expect(second).toContain("/actions/0/command: example.nope is not a command on this desk");
     expect(second).not.toContain("JSON Schema");
-    expect(m.runs.filter((run) => run.id === "desk.views.preview")).toHaveLength(1);
+    expect(m.previews()).toHaveLength(1);
   });
 
   it("an answer that was no call the tool's schema allows is asked again with the schema in the prompt", async () => {
@@ -149,30 +146,32 @@ describe("desk.propose for views", () => {
     const [first = "", second = ""] = m.prompts();
     expect(first).not.toContain("JSON Schema");
     expect(second).toContain(
-      "/: the answer was not a call of propose_view with arguments its schema allows",
+      "/: the answer was not a call of propose_universal_view with arguments its schema allows",
     );
     expect(second).toContain("The arguments must match this JSON Schema: {");
-    expect(second).toContain('"ViewComponent"');
+    expect(second).toContain('"UniversalSource"');
     expect(second.length).toBeLessThanOrEqual(32000);
   });
 
-  it("two invalid answers stop with a notice naming the problem, and nothing is previewed or saved", async () => {
-    const m = setup([unknownSource, unknownSource]);
+  it("two refused answers stop with a notice naming the problem, and nothing is previewed or saved", async () => {
+    const m = setup([unknownCommand, unknownCommand]);
     const outcome = await m.proposals.propose("view", SENTENCE);
     expect(outcome).toMatchObject({ status: "failed" });
     expect(m.prompts()).toHaveLength(2);
-    expect(m.runs).toEqual([]);
+    expect(m.runs.map((run) => run.id)).toEqual([
+      "desk.universal.drafting",
+      "desk.universal.close",
+    ]);
     expect(m.calls("view.save")).toEqual([]);
     expect(m.notices).toEqual([
       expect.objectContaining({
         caller: "desk",
         title: "Eris could not make that view",
         level: "error",
-        body: expect.stringContaining("/layout/binding/sources/0: $cal is not one of"),
+        body: expect.stringContaining("example.nope is not a command on this desk"),
       }),
     ]);
     expect(m.said).toEqual(["I couldn't make a view from that. Try saying it another way."]);
-    expect(m.states).toEqual(["thinking"]);
   });
 
   it("Try again sends the person's correction with the last proposal; Discard saves nothing", async () => {
@@ -185,8 +184,8 @@ describe("desk.propose for views", () => {
     expect(second).toContain("only the work calendar");
     expect(second).toContain("Your last proposal");
     expect(second).toContain('"title":"Events this week"');
-    expect(m.runs.map((run) => run.id)).toEqual(["desk.views.preview", "desk.views.preview"]);
-    const again = m.runs[1]?.args as { view: { title: string } } | undefined;
+    expect(m.previews()).toHaveLength(2);
+    const again = m.previews()[1]?.args as { view: { title: string } } | undefined;
     expect(again?.view.title).toBe("Work this week");
     expect(m.calls("view.save")).toEqual([]);
     expect(m.said).toEqual([]);
@@ -197,11 +196,7 @@ describe("desk.propose for views", () => {
     const m = setup([called(BOARD)]);
     await m.proposals.propose("view", SENTENCE);
     await m.proposals.undo({ kind: "view", id: ID });
-    expect(m.runs.map((run) => run.id)).toEqual([
-      "desk.views.preview",
-      "desk.views.open",
-      "desk.views.close",
-    ]);
+    expect(m.runs.at(-1)).toEqual({ id: "desk.universal.close", args: { id: ID } });
     expect(m.calls("view.remove")).toEqual([{ id: ID, scope: VIEWS }]);
     await expect(m.core.client.call("view.get", { id: ID, scope: VIEWS })).rejects.toMatchObject({
       code: "not_found",
@@ -241,7 +236,7 @@ describe("desk.propose for views", () => {
       },
     });
     const kind = {
-      ...viewKind({
+      ...universalKind({
         bridge: core.client,
         commands: { run: async () => ({}) },
         now: () => Date.parse(FIXTURE_NOW),

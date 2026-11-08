@@ -16,6 +16,8 @@ use crate::manifest::schema_registry;
 const VIEW_SCHEMA: &str = "https://endue.ai/specs/view/v0/view.schema.json#/$defs/View";
 const UNIVERSAL_SCHEMA: &str =
     "https://endue.ai/specs/view/v0/universal.schema.json#/$defs/UniversalView";
+const PAGE_SCHEMA: &str =
+    "https://endue.ai/specs/view/v0/universal.schema.json#/$defs/UniversalPage";
 
 /// A view file as read from disk.
 pub(crate) enum ViewFile {
@@ -29,6 +31,7 @@ pub(crate) fn id_of(view: &AnyView) -> Option<&str> {
     match view {
         AnyView::View(view) => Some(&view.id),
         AnyView::Universal(view) => view.id.as_deref(),
+        AnyView::UniversalPage(page) => page.id.as_deref(),
     }
 }
 
@@ -52,11 +55,15 @@ pub(crate) fn read_view(path: &Path) -> io::Result<ViewFile> {
     })
 }
 
-/// Parse one item view, JSON when `json` and YAML otherwise, and check it; returns it with its
-/// text. Every problem starts with `name`.
-pub(crate) fn parse_view(name: &str, bytes: Vec<u8>, json: bool) -> Result<(View, String), String> {
+/// Parse one view in either language, JSON when `json` and YAML otherwise, and check it; returns
+/// it with its text. Every problem starts with `name`.
+pub(crate) fn parse_any_view(
+    name: &str,
+    bytes: Vec<u8>,
+    json: bool,
+) -> Result<(AnyView, String), String> {
     let text = text_of(name, bytes)?;
-    Ok((check_view(name, value_of(name, &text, json)?)?, text))
+    Ok((check_any_view(name, value_of(name, &text, json)?)?, text))
 }
 
 fn text_of(name: &str, bytes: Vec<u8>) -> Result<String, String> {
@@ -81,7 +88,7 @@ fn named(name: &str, problems: &[String]) -> String {
 /// Check one item view: the schema, then `desk_bridge::view_problems`. Every problem starts with
 /// `name`, followed by where it is.
 pub(crate) fn check_view(name: &str, value: Value) -> Result<View, String> {
-    let problems = schema_problems(&value, false);
+    let problems = schema_problems(&value, Language::Item);
     if !problems.is_empty() {
         return Err(named(name, &problems));
     }
@@ -99,12 +106,29 @@ pub(crate) fn is_universal(value: &Value) -> bool {
     value.get("layout").is_none() && (value.get("type").is_some() || value.get("source").is_some())
 }
 
+/// Whether a value is written as a page of universal views: sections, and no layout (ADR 0103).
+pub(crate) fn is_page(value: &Value) -> bool {
+    value.get("layout").is_none() && value.get("sections").is_some()
+}
+
 /// Check a view in either language, by how it is written.
 pub(crate) fn check_any_view(name: &str, value: Value) -> Result<AnyView, String> {
+    if is_page(&value) {
+        let mut problems = schema_problems(&value, Language::Page);
+        if problems.is_empty() {
+            problems = section_problems(&value);
+        }
+        if !problems.is_empty() {
+            return Err(named(name, &problems));
+        }
+        return serde_json::from_value(value)
+            .map(AnyView::UniversalPage)
+            .map_err(|e| format!("{name}: not a page: {e}"));
+    }
     if !is_universal(&value) {
         return check_view(name, value).map(AnyView::View);
     }
-    let problems = schema_problems(&value, true);
+    let problems = schema_problems(&value, Language::Universal);
     if !problems.is_empty() {
         return Err(named(name, &problems));
     }
@@ -113,14 +137,29 @@ pub(crate) fn check_any_view(name: &str, value: Value) -> Result<AnyView, String
         .map_err(|e| format!("{name}: not a universal view: {e}"))
 }
 
-/// view.list's line for a view: an item view's version, a universal view's type (and its id for a
-/// title when it has none).
+/// A page's sections hold no id, params or provenance of their own: the page's stand for all.
+fn section_problems(value: &Value) -> Vec<String> {
+    let sections = value["sections"].as_array().cloned().unwrap_or_default();
+    let mut problems = Vec::new();
+    for (i, section) in sections.iter().enumerate() {
+        for own in ["id", "params", "provenance"] {
+            if section.get(own).is_some() {
+                problems.push(format!("/sections/{i}/{own}: the page's, not a section's"));
+            }
+        }
+    }
+    problems
+}
+
+/// view.list's line for a view: an item view's version, a universal view's type, a page's
+/// sections (and either's id for a title when it has none).
 pub(crate) fn summary(view: AnyView, source: ViewSource, plugin: Option<String>) -> ViewSummary {
     match view {
         AnyView::View(view) => ViewSummary {
             id: view.id,
             version: Some(view.version),
             r#type: None,
+            sections: None,
             title: view.title,
             description: view.description,
             source,
@@ -133,7 +172,21 @@ pub(crate) fn summary(view: AnyView, source: ViewSource, plugin: Option<String>)
                 id,
                 version: None,
                 r#type: Some(view.r#type),
+                sections: None,
                 description: view.description,
+                source,
+                plugin,
+            }
+        }
+        AnyView::UniversalPage(page) => {
+            let id = page.id.unwrap_or_default();
+            ViewSummary {
+                title: page.title.unwrap_or_else(|| id.clone()),
+                id,
+                version: None,
+                r#type: None,
+                sections: Some(page.sections.len() as u64),
+                description: page.description,
                 source,
                 plugin,
             }
@@ -141,14 +194,23 @@ pub(crate) fn summary(view: AnyView, source: ViewSource, plugin: Option<String>)
     }
 }
 
+/// Which schema a view is checked against.
+#[derive(Clone, Copy)]
+enum Language {
+    Item,
+    Universal,
+    Page,
+}
+
 /// Where `value` breaks its language's schema, each as `<pointer>: <problem>`.
-fn schema_problems(value: &Value, universal: bool) -> Vec<String> {
+fn schema_problems(value: &Value, language: Language) -> Vec<String> {
     static VIEW: OnceLock<jsonschema::Validator> = OnceLock::new();
     static UNIVERSAL: OnceLock<jsonschema::Validator> = OnceLock::new();
-    let (cell, schema) = if universal {
-        (&UNIVERSAL, UNIVERSAL_SCHEMA)
-    } else {
-        (&VIEW, VIEW_SCHEMA)
+    static PAGE: OnceLock<jsonschema::Validator> = OnceLock::new();
+    let (cell, schema) = match language {
+        Language::Item => (&VIEW, VIEW_SCHEMA),
+        Language::Universal => (&UNIVERSAL, UNIVERSAL_SCHEMA),
+        Language::Page => (&PAGE, PAGE_SCHEMA),
     };
     let validator = cell.get_or_init(|| {
         jsonschema::options()

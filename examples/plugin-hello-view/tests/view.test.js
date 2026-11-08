@@ -12,13 +12,14 @@ const note = (id, title, updatedAt) => ({ id, source, kind: "note", title, updat
 
 it("is a view the desk keeps, and lists the notes newest first", async () => {
   const host = createTestHost({ pluginId: manifest.id });
-  // view.save checks the view as the desk does: its layout, and every $name and param it reads.
+  // view.save checks the view as the desk does: its type, its source and its map.
   await host.call("view.save", { view, scope: { permission: "view:manage" } });
 
   host.upsert(note("older", "Older note", "2026-01-01T09:00:00Z"));
   host.upsert(note("newer", "Newer note", "2026-01-02T09:00:00Z"));
-  // Opening the view binds $notes to an instance: here, the one the notes came from.
-  const query = { ...view.layout.binding, sources: [`${source.connector}/${source.instance}`] };
+  // The view's source is an items query, which the desk runs when the view opens; the test host
+  // holds fixture notes too, so read only the source these came from.
+  const query = { ...view.source.items, sources: [`${source.connector}/${source.instance}`] };
   const { items } = await host.call("data.query", { query, scope: { permission: "data:read" } });
   expect(items.map((item) => item.title)).toEqual(["Newer note", "Older note"]);
 });

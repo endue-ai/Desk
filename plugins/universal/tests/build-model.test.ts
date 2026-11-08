@@ -63,7 +63,11 @@ describe("the builder's model", () => {
       "text",
       "chat",
       "agent",
+      "chart",
+      "stat",
+      "detail",
     ]);
+    expect(ROLES.chart[0]).toBe("value");
     expect(ROLES.kanban.slice(0, 2)).toEqual(["title", "group"]);
     expect(ROLES.timeline.slice(0, 2)).toEqual(["title", "start"]);
     expect(ROLES.chat[0]).toBe("author");
@@ -98,7 +102,18 @@ describe("the builder's model", () => {
     expect(view).toEqual({
       title: "Launch board",
       type: "kanban",
-      types: ["kanban", "list", "timeline", "calendar", "text", "chat", "agent"],
+      types: [
+        "kanban",
+        "list",
+        "timeline",
+        "calendar",
+        "text",
+        "chat",
+        "agent",
+        "chart",
+        "stat",
+        "detail",
+      ],
       source: { file: "~/boards/launch.yaml" },
       map: { title: "name", group: "column" },
     });

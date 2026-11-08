@@ -355,29 +355,50 @@ fn the_built_in_plugins_list_desk_today_desk_item_and_the_chat_digest() {
     let repo = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../plugins");
     desk.core.install_plugins_in(&repo, true);
     let listed = list(&desk);
-    let found: Vec<(&str, &str, &str)> = listed
-        .as_array()
-        .unwrap()
-        .iter()
-        .map(|v| {
-            (
-                v["id"].as_str().unwrap(),
-                v["source"].as_str().unwrap(),
-                v["plugin"].as_str().unwrap(),
-            )
-        })
-        .collect();
-    assert_eq!(
-        found,
-        [
-            ("desk.item", "plugin", "desk.item"),
-            ("desk.today", "plugin", "desk.today"),
-            ("endue.chat-digest", "plugin", "endue.chat-digest")
-        ]
-    );
+    let line = |v: &Value| (v["id"].clone(), v["plugin"].clone(), v["type"].clone());
+    let found: Vec<_> = listed.as_array().unwrap().iter().map(line).collect();
+    // Universal views since ADR 0103: the item card is a detail, Today and the digest are pages.
+    let page = Value::Null;
+    let expected = [
+        (json!("desk.item"), json!("desk.item"), json!("detail")),
+        (json!("desk.today"), json!("desk.today"), page.clone()),
+        (json!("endue.chat-digest"), json!("endue.chat-digest"), page),
+    ];
+    assert_eq!(found, expected);
+    assert!(listed[1]["sections"].as_u64() > Some(1) && listed[2]["sections"].as_u64() > Some(1));
     let text = fs::read_to_string(repo.join("today/plugin.json")).unwrap();
     let manifest: Value = serde_json::from_str(&text).unwrap();
     let answer = json!({ "view": manifest["view"], "source": "plugin", "plugin": "desk.today" });
     assert_eq!(get(&desk, "desk.today").unwrap(), answer);
     assert_eq!(desk.core.view_problems(), Vec::<String>::new());
+}
+
+#[test]
+fn a_view_plugins_universal_views_are_listed_with_their_type_and_opened_by_view_get() {
+    let (desk, plugins) = desk("plugin-views-universal");
+    let source = json!({ "items": { "kinds": ["task"] } });
+    let section = json!({ "type": "stat", "source": source });
+    let page = json!({ "id": "example.day", "title": "Day", "sections": [section] });
+    let board = json!({ "id": "example.tasks", "type": "kanban", "source": source });
+    let nameless = json!({ "type": "list", "source": source }).to_string();
+    let (day, tasks) = (
+        ("v/day.json", page.to_string()),
+        ("v/tasks.yaml", yaml(&board)),
+    );
+    let files = [day, tasks, ("v/nameless.json", nameless)];
+    let fields = json!({ "views": ["v/day.json", "v/tasks.yaml", "v/nameless.json"] });
+    desk.core
+        .install_plugin(&plugin(&plugins, "example.day", fields, &files), false);
+    let mine = |mut line: Value| {
+        (line["source"], line["plugin"]) = (json!("plugin"), json!("example.day"));
+        line
+    };
+    let day = mine(json!({ "id": "example.day", "title": "Day", "sections": 1 }));
+    let tasks = mine(json!({ "id": "example.tasks", "title": "example.tasks", "type": "kanban" }));
+    assert_eq!(list(&desk), json!([day, tasks]));
+    let from = |view: &Value| json!({ "view": view, "source": "plugin", "plugin": "example.day" });
+    assert_eq!(get(&desk, "example.day").unwrap(), from(&page));
+    assert_eq!(get(&desk, "example.tasks").unwrap(), from(&board));
+    let why = "example.day: v/nameless.json: a plugin's universal view needs its id";
+    assert_eq!(desk.core.view_problems(), [why]);
 }

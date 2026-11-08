@@ -1,0 +1,9 @@
+{
+  "target": "UniversalView",
+  "description": "a stat aggregates by count, sum or latest only",
+  "instance": {
+    "type": "stat",
+    "source": { "items": { "kinds": ["task"] } },
+    "options": { "aggregate": "median" }
+  }
+}

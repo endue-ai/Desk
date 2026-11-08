@@ -10,14 +10,15 @@
       "enum": ["plugin", "file"]
     },
     "AnyView": {
-      "description": "A view in either language: an item view of specs/view/v0 (layouts of components over the desk's items, ADR 0032) or a universal view (one presentation of entries from any source, ADR 0087). A universal view saved in ~/.desk/views must have its id.",
+      "description": "A view in either language: an item view of specs/view/v0 (layouts of components over the desk's items, ADR 0032; deprecated, ADR 0103), a universal view (one presentation of entries from any source, ADR 0087) or a page of universal views. One saved in ~/.desk/views must have its id.",
       "oneOf": [
         { "$ref": "../../view/v0/view.schema.json#/$defs/View" },
-        { "$ref": "../../view/v0/universal.schema.json#/$defs/UniversalView" }
+        { "$ref": "../../view/v0/universal.schema.json#/$defs/UniversalView" },
+        { "$ref": "../../view/v0/universal.schema.json#/$defs/UniversalPage" }
       ]
     },
     "ViewSummary": {
-      "description": "A view as view.list returns it: where it comes from and, for a plugin's view, the plugin. An item view has a version; a universal view has its type instead, and its title is its id when it has none.",
+      "description": "A view as view.list returns it: where it comes from and, for a plugin's view, the plugin. An item view has a version; a universal view has its type instead and a page its number of sections, and either's title is its id when it has none.",
       "type": "object",
       "properties": {
         "id": { "$ref": "../../view/v0/view.schema.json#/$defs/ViewId" },
@@ -25,8 +26,13 @@
         "title": { "$ref": "../../view/v0/view.schema.json#/$defs/Template" },
         "description": { "type": "string" },
         "type": {
-          "description": "A universal view's presentation; absent for an item view.",
+          "description": "A universal view's presentation; absent for an item view and a page.",
           "$ref": "../../view/v0/universal.schema.json#/$defs/UniversalType"
+        },
+        "sections": {
+          "description": "How many views a page lays out; absent for anything but a page.",
+          "type": "integer",
+          "minimum": 1
         },
         "source": { "$ref": "#/$defs/ViewSource" },
         "plugin": { "$ref": "../../plugin/v0/plugin.schema.json#/$defs/PluginId" }
@@ -40,9 +46,20 @@
           "else": { "properties": { "plugin": false } }
         },
         {
-          "if": { "properties": { "type": true }, "required": ["type"] },
+          "if": {
+            "anyOf": [
+              { "properties": { "type": true }, "required": ["type"] },
+              { "properties": { "sections": true }, "required": ["sections"] }
+            ]
+          },
           "then": { "properties": { "version": false } },
           "else": { "properties": { "version": true }, "required": ["version"] }
+        },
+        {
+          "not": {
+            "properties": { "type": true, "sections": true },
+            "required": ["type", "sections"]
+          }
         }
       ]
     },

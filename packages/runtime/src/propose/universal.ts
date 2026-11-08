@@ -10,11 +10,10 @@
  */
 import type { BridgeClient, UniversalType, UniversalView } from "@endue-ai/bridge";
 import type { AskTool } from "./asker";
-import { brainName, freeId } from "./names";
+import { brainName, freeId, sourcesOf } from "./names";
 import type { Applied, Choice, ProposalKind, Request } from "./pipeline";
 import type { Schemas } from "./schema";
 import { specSchemas, UNIVERSAL } from "./specs";
-import { sourcesOf } from "./view";
 
 const VIEWS = { permission: "view:manage" } as const;
 const CONNECTORS = { permission: "connector:manage" } as const;
@@ -51,7 +50,7 @@ const GUIDE = [
 export interface UniversalKindOptions {
   bridge: BridgeClient;
   /** desk.universal.drafting, preview, open and close go through the registry. */
-  commands: { run(id: string, args?: unknown): Promise<unknown> };
+  commands: { run(id: string, args?: unknown): Promise<unknown>; has?(id: string): boolean };
   /** Wall-clock milliseconds, for provenance. */
   now(): number;
   /** The profile in force. */
@@ -140,6 +139,7 @@ export function universalKind(options: UniversalKindOptions): ProposalKind<Unive
         },
       };
       const problems = specs().validate(value, UNIVERSAL);
+      if (problems.length === 0) problems.push(...unknownCommands(value, commands.has));
       return problems.length ? { problems } : { value: value as unknown as UniversalView };
     },
 
@@ -173,4 +173,22 @@ export function universalKind(options: UniversalKindOptions): ProposalKind<Unive
       });
     },
   };
+}
+
+/** The commands a view names (its source, actions, move and send) that the desk does not have. */
+export function unknownCommands(
+  view: Record<string, unknown>,
+  has: ((id: string) => boolean) | undefined,
+): string[] {
+  if (!has) return [];
+  const named: Array<[string, unknown]> = [
+    ["/source/command", (view.source as { command?: unknown })?.command],
+  ];
+  for (const [i, action] of (Array.isArray(view.actions) ? view.actions : []).entries())
+    named.push([`/actions/${i}/command`, (action as { command?: unknown })?.command]);
+  for (const key of ["move", "send"])
+    named.push([`/${key}/command`, (view[key] as { command?: unknown } | undefined)?.command]);
+  return named
+    .filter(([, id]) => typeof id === "string" && !has(id))
+    .map(([at, id]) => `${at}: ${String(id)} is not a command on this desk`);
 }

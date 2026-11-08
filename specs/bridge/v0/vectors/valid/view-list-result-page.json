@@ -1,0 +1,15 @@
+{
+  "target": "ViewListResult",
+  "description": "view.list answered with a page of universal views: its number of sections, no version and no type",
+  "instance": {
+    "views": [
+      {
+        "id": "desk.today",
+        "title": "Today",
+        "sections": 4,
+        "source": "plugin",
+        "plugin": "desk.today"
+      }
+    ]
+  }
+}

@@ -62,6 +62,8 @@ files it already loads, and a source only has to answer one YAML document to be 
   `fs:read` for its path, asked when refused; an asset in the plugin's own folder needs none.
 * Bad, because there are two view languages: layouts of item components (ADR 0032) and universal
   views. A later ADR may let a layout embed a universal view or redraw its components with these.
+  ADR 0103 made universal views the one language: they gained chart, stat, detail, params and pages,
+  and item views are read, never written, through v0.
 * Bad, because entries are free-form: the schema checks the document's shape, not its fields, and a
   role the data lacks is drawn empty rather than refused.
 * Bad, because the YAML reader is ours to keep correct; what it refuses must stay out of the format.

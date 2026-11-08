@@ -5,13 +5,11 @@ import { describe, expect, it } from "vitest";
 import type {
   Item,
   PluginManifest,
-  View,
-  ViewComponent,
-  ViewContainer,
-  ViewNode,
+  UniversalPage,
+  UniversalView,
 } from "../../../packages/bridge/src/index";
 import { page } from "../../../packages/bridge/src/stub-query";
-import { viewProblems } from "../../../packages/bridge/src/stub-views";
+import { pageProblems } from "../../../packages/bridge/src/stub-universal";
 import { sample } from "../../chat/tests/chat-fixtures";
 
 const root = join(import.meta.dirname, "../../..");
@@ -33,28 +31,26 @@ function manifestValidator() {
   return validate;
 }
 
-/** Every component of the view, in reading order. */
-function components(node: ViewNode): ViewComponent[] {
-  if ("children" in node) return (node as ViewContainer).children.flatMap(components);
-  return [node as ViewComponent];
-}
-const view = () => manifest().view as View;
-const sections = () => components(view().layout);
-/** A binding's items from the chat fixtures (three services and one mail message). */
-const answer = (c: ViewComponent): Item[] => (c.binding ? page(sample(), c.binding).items : []);
+const view = () => manifest().view as UniversalPage;
+const sections = () => view().sections;
+/** A section's items query, if it has one. */
+const query = (s: UniversalView) => ("items" in s.source ? s.source.items : undefined);
+/** A section's items from the chat fixtures (three services and one mail message). */
+const answer = (s: UniversalView): Item[] => {
+  const items = query(s);
+  return items ? page(sample(), items).items : [];
+};
 
 describe("endue.chat-digest", () => {
-  it("is a data-only view plugin with one inline view and an alias that opens it", () => {
+  it("is a data-only view plugin with one inline page and an alias that opens it", () => {
     const validate = manifestValidator();
     const plugin = manifest();
     expect(validate(plugin), JSON.stringify(validate.errors)).toBe(true);
     expect(plugin).toMatchObject({ id: "endue.chat-digest", kind: "view" });
     expect(plugin.entry).toBeUndefined();
-    expect(viewProblems(view())).toEqual([]);
-    expect(view()).toMatchObject({
-      id: "endue.chat-digest",
-      layout: { type: "stack", direction: "vertical" },
-    });
+    expect(pageProblems(view())).toEqual([]);
+    // Three counts in a row over the three lists, as the item view's two grids had them.
+    expect(view()).toMatchObject({ id: "endue.chat-digest", columns: 3 });
     expect(plugin.contributes?.commands).toEqual([
       expect.objectContaining({
         id: "endue.chat-digest.open",
@@ -63,25 +59,25 @@ describe("endue.chat-digest", () => {
     ]);
   });
 
-  it("draws three counts, two lists and a table, every one over chat messages only", () => {
+  it("draws three counts and three lists, every one over chat messages only", () => {
     expect(sections().map((s) => `${s.type}:${s.title}`)).toEqual([
       "stat:Unread",
       "stat:Mentions",
       "stat:Direct",
       "list:Mentions",
       "list:Direct messages",
-      "table:Latest across every chat",
+      "list:Latest across every chat",
     ]);
     for (const s of sections()) {
-      expect(s.binding?.kinds, s.title).toEqual(["message"]);
-      expect(s.binding?.where?.[0], s.title).toEqual({ field: "raw.channel", op: "exists" });
-      // No requires: one digest covers every chat account at once.
-      expect(s.binding?.sources, s.title).toBeUndefined();
+      expect(query(s)?.kinds, s.title).toEqual(["message"]);
+      expect(query(s)?.where?.[0], s.title).toEqual({ field: "raw.channel", op: "exists" });
+      // No sources named: one digest covers every chat account at once.
+      expect(query(s)?.sources, s.title).toBeUndefined();
       expect(s.empty, s.title).toBeTruthy();
     }
   });
 
-  it("each binding answers the chat fixtures as the chat plugin counts them, mail left out", () => {
+  it("each section answers the chat fixtures as the chat plugin counts them, mail left out", () => {
     const [unread, mentions, direct, mentionList, dmList, latest] = sections().map(answer);
     expect(unread?.map((i) => i.id).sort()).toEqual(["d-2", "s-3", "s-4", "s-6", "s-7"]);
     expect(mentions?.map((i) => i.id)).toEqual(["s-6"]);

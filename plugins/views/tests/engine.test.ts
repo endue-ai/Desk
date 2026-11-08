@@ -326,7 +326,7 @@ describe("desk.views", () => {
     expect(m.view.toasts).toEqual(["Desk could not open the link."]);
   });
 
-  it("open hands a universal view to desk.universal.open, with its notice, and draws nothing itself", async () => {
+  it("open hands a universal view to desk.universal.open, with its notice and params, and draws nothing itself", async () => {
     const opened: unknown[] = [];
     const m = await mount({
       commands: { "desk.universal.open": (args) => void opened.push(args) },
@@ -340,6 +340,10 @@ describe("desk.views", () => {
     const notice = { text: "Eris made this view." };
     expect(await m.open({ id: board.id, notice })).toEqual({ id: board.id, universal: true });
     expect(opened).toEqual([{ id: board.id, notice }]);
+    // A page or a view with params (desk.item, ADR 0103) gets them as given.
+    const params = { id: "task-groceries" };
+    await m.open({ id: board.id, params });
+    expect(opened[1]).toEqual({ id: board.id, params });
     expect(m.view.drawn).toEqual([]);
     expect(m.params("data.query")).toEqual([]);
   });

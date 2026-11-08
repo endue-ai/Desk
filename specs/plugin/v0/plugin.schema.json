@@ -41,10 +41,10 @@
         },
         "view": {
           "description": "A view plugin's one view, inline; a pack's own view too.",
-          "$ref": "../../view/v0/view.schema.json#/$defs/View"
+          "$ref": "#/$defs/PluginView"
         },
         "views": {
-          "description": "A view plugin's view files, one View each, relative to the plugin folder; a pack's too.",
+          "description": "A view plugin's view files, one PluginView each, relative to the plugin folder; a pack's too.",
           "type": "array",
           "items": { "$ref": "#/$defs/ViewPath" },
           "minItems": 1,
@@ -218,6 +218,14 @@
       "type": "string",
       "minLength": 1,
       "pattern": "^(?!/)(?!.*(^|/)\\.\\.(/|$))[^\\\\]+$"
+    },
+    "PluginView": {
+      "description": "A view a plugin provides: a universal view or a page of them (ADR 0087, ADR 0103), with its id, or an item view (ADR 0032; deprecated, read through v0).",
+      "oneOf": [
+        { "$ref": "../../view/v0/view.schema.json#/$defs/View" },
+        { "$ref": "../../view/v0/universal.schema.json#/$defs/UniversalView" },
+        { "$ref": "../../view/v0/universal.schema.json#/$defs/UniversalPage" }
+      ]
     },
     "ViewPath": {
       "description": "A view file relative to the plugin folder, without .. segments: YAML (.yaml, .yml) or JSON (.json).",

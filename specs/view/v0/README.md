@@ -3,8 +3,10 @@
 A view is a surface that shows items, written as data instead of code (ADR 0032). Like a policy plugin
 (ADR 0017) it is validated at install and shared without review. A person's views are YAML files,
 `~/.desk/views/<id>.yaml`; a plugin of kind `view` carries one inline (`view`) or as files in its folder
-(`views`); on the wire a view is JSON of the same shape, `View` in `view.schema.json`. v0 may break on
-any minor release (ADR 0004).
+(`views`); on the wire a view is JSON of the same shape. v0 may break on any minor release (ADR 0004).
+
+Universal views (below) are the view language (ADR 0103). The item view, `View` in
+`view.schema.json`, is deprecated: the desk reads item views through v0 and writes none.
 
 | Field | Meaning |
 | --- | --- |
@@ -48,10 +50,11 @@ draws it (`<desk-universal-view>`), `ctx.universal` in the plugin SDK loads its 
 
 | `UniversalView` | Meaning |
 | --- | --- |
-| `type`, `types` | `timeline`, `calendar`, `kanban`, `list`, `text`, `chat` or `agent`; `types` are the ones the person may switch between |
+| `type`, `types` | `timeline`, `calendar`, `kanban`, `list`, `text`, `chat`, `agent`, `chart`, `stat` or `detail`; `types` are the ones the person may switch between |
+| `params` | Values given when it opens, as an item view's: read as `{params.<name>}` in an items query |
 | `source` | One of `data` (inline), `asset` (a file in the plugin's folder), `url` (http/https, `net.fetch`), `file` (`fs.read`), `command` (`cmd.invoke`: another plugin serves it) or `items` (an `ItemQuery` on the desk's index, live) |
 | `map` | Which entry field plays which role (`start: due`, `group: column`); a role left out reads its own name |
-| `options` | `groups` (kanban columns), `range` (calendar), `order`, `zone`, `me` (chat), `placeholder` |
+| `options` | `groups` (kanban columns), `range` (calendar), `order`, `zone`, `me` (chat), `placeholder`, `chart` (`bar`, `line`, `sparkline`), `aggregate` (stat: `count`, `sum`, `latest`) |
 | `actions`, `move`, `send` | Commands, as in a view: on an entry (`{id}`), on a kanban move (`{move.from}`, `{move.to}`), on sent text (`{send.text}`) |
 | `refresh`, `empty`, `provenance` | Load the source again every so many seconds (5 at least); the empty text; who made it |
 
@@ -60,9 +63,20 @@ objects, 10 000 at most) and optionally `universal: v0`, `title`, `description`,
 of its own, which a view's `map` overrides. A YAML document that is a bare list is its entries. The roles
 are `id`, `title`, `text` (Markdown), `detail`, `start` and `end` (RFC 3339 with an offset, or a
 `YYYY-MM-DD` day), `group`, `author`, `role`, `status` (`pending`, `running`, `done`, `failed`,
-`waiting` or any word), `tags` and `url`; every other field travels with the entry to its actions.
-Items become entries with their kind's fields in their roles: an event's `start`, `end` and `allDay`,
-a task's `due` as its `start` and `status` as its `group`, a message's sender as its `author`.
+`waiting` or any word), `tags`, `url` and `value` (a number, for a chart or a stat); every other
+field travels with the entry to its actions. Items become entries with their kind's fields in their
+roles: an event's `start`, `end` and `allDay`, a task's `due` as its `start` and `status` as its
+`group`, a message's sender as its `author`.
+
+An `items` source's `where` values read the clock and the params, filled when it loads: `{now}`,
+`{today}`, `{tomorrow}` and `{yesterday}` as in item views, and `{params.<name>}`. Its `sources` name
+connectors (`desk.github`) or instances; a universal view has no `requires`, so without `sources` it
+reads every source of its kinds.
+
+A `UniversalPage` lays several universal views out together (Today, a digest): `title`, `description`,
+`params` (reaching every section), `columns` (1 to 4) and `sections`, each a universal view without an
+`id`, `params` or `provenance` of its own. A view plugin's `view` and `views` hold a universal view or
+page with its `id` (`PluginView` in `specs/plugin/v0`), or a deprecated item view.
 
 A person keeps universal views in `~/.desk/views/<id>.yaml` beside item views, through the same `view.*`
 methods (ADR 0102): one saved there needs its `id`. Eris makes one from a sentence (`desk.propose`), and

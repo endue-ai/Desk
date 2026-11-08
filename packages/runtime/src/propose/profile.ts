@@ -19,11 +19,11 @@ import type { Settings } from "../settings";
 import type { AskTool } from "./asker";
 import type { Card } from "./card";
 import type { ProfileModel } from "./ghost";
+import { slugOf } from "./names";
 import type { Applied, ProposalKind } from "./pipeline";
 import { nameOf, profileModel, profileProblems } from "./profile-model";
 import type { Schemas } from "./schema";
 import { PROFILE, specSchemas } from "./specs";
-import { slugOf } from "./view";
 
 const PLUGINS = { permission: "plugin:manage" } as const;
 const SCALAR = new Set(["boolean", "integer", "number", "string"]);

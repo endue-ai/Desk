@@ -39,6 +39,28 @@ function setup(answer: (id: string, args: unknown) => unknown = () => ({})) {
 }
 
 describe("the universal view kind", () => {
+  it("refuses a view naming a command the desk does not have", async () => {
+    const core = browserCore({ manifests, brain: { answer: () => "" } });
+    const kind = universalKind({
+      bridge: core.client,
+      commands: { run: async () => ({}), has: (id) => id === "desk.universal.open" },
+      now: () => Date.parse(FIXTURE_NOW),
+      profile: () => undefined,
+    });
+    const odd = {
+      ...BOARD,
+      source: { command: "example.feed" },
+      actions: [{ command: "desk.universal.open" }],
+      send: { command: "example.say" },
+    };
+    expect(await kind.check(odd, request)).toEqual({
+      problems: [
+        "/source/command: example.feed is not a command on this desk",
+        "/send/command: example.say is not a command on this desk",
+      ],
+    });
+  });
+
   it("asks through propose_universal_view with UniversalView bundled without id and provenance", () => {
     const { kind } = setup();
     const tool = kind.tool();
@@ -133,7 +155,7 @@ describe("the universal view kind", () => {
     ).rejects.toMatchObject({ code: "not_found" });
   });
 
-  it("desk.propose makes a universal view by default and an item view only as item-view", async () => {
+  it("desk.propose makes universal views and no item views (ADR 0103)", async () => {
     const core = browserCore({ manifests, brain: { answer: () => "" } });
     const defined = new Map<string, (args: unknown) => unknown>();
     const commands = {
@@ -151,7 +173,7 @@ describe("the universal view kind", () => {
     });
     const propose = defined.get("desk.propose") as (args: unknown) => Promise<unknown>;
     const refused = await propose({ kind: "nope", text: SENTENCE }).catch((e: Error) => e.message);
-    expect(refused).toBe("desk.propose: no kind nope (kinds: view,item-view)");
+    expect(refused).toBe("desk.propose: no kind nope (kinds: view)");
     off();
   });
 });

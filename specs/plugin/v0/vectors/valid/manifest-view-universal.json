@@ -1,0 +1,20 @@
+{
+  "target": "PluginManifest",
+  "description": "a view plugin whose view is one universal view with params, read in its items query",
+  "instance": {
+    "id": "example.card",
+    "name": "Card",
+    "version": "0.1.0",
+    "kind": "view",
+    "description": "One item.",
+    "view": {
+      "id": "example.card",
+      "title": "Card",
+      "params": { "id": { "kind": "string", "title": "Item" } },
+      "type": "detail",
+      "source": {
+        "items": { "where": [{ "field": "id", "op": "eq", "value": "{params.id}" }], "limit": 1 }
+      }
+    }
+  }
+}

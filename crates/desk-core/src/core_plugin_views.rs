@@ -1,5 +1,6 @@
-//! The view plugins' views (ADR 0032), beside the person's files in `core_views`. An enabled,
-//! ready plugin of kind `view` provides its inline `view` and its `views` files, read through the
+//! The view plugins' views (ADR 0032, ADR 0103), beside the person's files in `core_views`. An
+//! enabled, ready plugin of kind `view` provides its inline `view` and its `views` files, universal
+//! views and pages of them (each with its id) or item views, read through the
 //! registry (the folder check `desk-plugin://` uses, never a grant) when it is installed, turned on
 //! or reloaded, and kept until its next change. They pass the same checks as the person's files,
 //! but a file's name need not match its id; one that fails is left out and reported, and the
@@ -10,9 +11,10 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::MutexGuard;
 
-use desk_bridge::{PluginInfo, PluginKind, PluginStatus, View, ViewChange};
+use desk_bridge::{AnyView, PluginInfo, PluginKind, PluginStatus, ViewChange};
 
-use crate::core_views::{check_view, parse_view, shown};
+use crate::core_views::shown;
+use crate::core_views_check::{check_any_view, id_of, parse_any_view};
 use crate::handler::Core;
 
 /// What each view plugin provides, by plugin id, as last read.
@@ -23,12 +25,12 @@ pub(crate) struct ProvidedViews(BTreeMap<String, Provided>);
 /// its file), and what is wrong with the others.
 #[derive(Default)]
 struct Provided {
-    views: Vec<(String, View)>,
+    views: Vec<(String, AnyView, String)>,
     problems: Vec<String>,
 }
 
 /// The plugin views that count, by view id: the plugin that provides it, and the view.
-pub(crate) type PluginViews = BTreeMap<String, (String, View)>;
+pub(crate) type PluginViews = BTreeMap<String, (String, AnyView)>;
 
 impl Core {
     /// Read again the views of the plugin `info` describes, then announce each id whose view.get
@@ -71,7 +73,7 @@ impl Core {
     }
 
     /// The plugin view of `id` that counts, with its plugin.
-    pub(crate) fn plugin_view(&self, id: &str) -> Option<(String, View)> {
+    pub(crate) fn plugin_view(&self, id: &str) -> Option<(String, AnyView)> {
         self.plugin_views().remove(id)
     }
 
@@ -98,14 +100,13 @@ impl Core {
             let Some(provided) = provided.0.get(&plugin) else {
                 continue;
             };
-            for (place, view) in &provided.views {
-                if let Some((first, _)) = views.get(&view.id) {
-                    let id = &view.id;
+            for (place, view, id) in &provided.views {
+                if let Some((first, _)) = views.get(id) {
                     taken.push(format!(
                         "{plugin}: {place}: view {id} is left out: plugin {first} provides it first"
                     ));
                 } else {
-                    views.insert(view.id.clone(), (plugin.clone(), view.clone()));
+                    views.insert(id.clone(), (plugin.clone(), view.clone()));
                 }
             }
         }
@@ -128,21 +129,24 @@ impl Core {
         let mut found = Vec::new();
         if let Some(view) = &manifest.view {
             let value = serde_json::to_value(view).unwrap_or_default();
-            found.push((
-                "plugin.json".to_owned(),
-                check_view("plugin.json/view", value),
-            ));
+            let name = "plugin.json/view";
+            found.push(("plugin.json".to_owned(), name, check_any_view(name, value)));
         }
         for path in manifest.views.iter().flatten() {
             let checked = match self.plugin_file(&info.id, path) {
-                Ok(bytes) => parse_view(path, bytes, path.ends_with(".json")).map(|(v, _)| v),
+                Ok(bytes) => parse_any_view(path, bytes, path.ends_with(".json")).map(|(v, _)| v),
                 Err(e) => Err(format!("{path}: cannot be read: {e}")),
             };
-            found.push((path.clone(), checked));
+            found.push((path.clone(), path, checked));
         }
-        for (place, checked) in found {
+        for (place, name, checked) in found {
+            // A universal view or page needs its id here as in the person's folder.
+            let checked = checked.and_then(|view| match id_of(&view).map(str::to_owned) {
+                Some(id) => Ok((view, id)),
+                None => Err(format!("{name}: a plugin's universal view needs its id")),
+            });
             match checked {
-                Ok(view) => provided.views.push((place, view)),
+                Ok((view, id)) => provided.views.push((place, view, id)),
                 Err(problem) => provided.problems.push(format!("{}: {problem}", info.id)),
             }
         }

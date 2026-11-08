@@ -6,21 +6,13 @@
   "description": "The smallest view plugin: the notes touched last, newest first, with a command that opens it.",
   "view": {
     "id": "example.hello-view",
-    "version": "0.1.0",
     "title": "Hello view",
     "description": "The notes touched last, newest first.",
-    "requires": {
-      "notes": {
+    "type": "list",
+    "types": ["list", "timeline"],
+    "source": {
+      "items": {
         "kinds": ["note"],
-        "title": "Notes"
-      }
-    },
-    "layout": {
-      "type": "list",
-      "title": "Notes",
-      "binding": {
-        "kinds": ["note"],
-        "sources": ["$notes"],
         "sort": [
           {
             "field": "updatedAt",
@@ -28,17 +20,9 @@
           }
         ],
         "limit": 20
-      },
-      "fields": [
-        {
-          "value": "{title}"
-        },
-        {
-          "value": "{updatedAt|relative}"
-        }
-      ],
-      "empty": "No notes yet."
-    }
+      }
+    },
+    "empty": "No notes yet."
   },
   "contributes": {
     "commands": [

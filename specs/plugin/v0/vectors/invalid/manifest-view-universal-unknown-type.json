@@ -1,0 +1,16 @@
+{
+  "target": "PluginManifest",
+  "description": "a universal view of a type the desk does not draw is no view",
+  "instance": {
+    "id": "example.gallery",
+    "name": "Gallery",
+    "version": "0.1.0",
+    "kind": "view",
+    "description": "Pictures.",
+    "view": {
+      "id": "example.gallery",
+      "type": "gallery",
+      "source": { "items": { "kinds": ["note"] } }
+    }
+  }
+}

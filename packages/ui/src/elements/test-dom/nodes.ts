@@ -300,6 +300,11 @@ export class FakeDocument extends FakeNode {
     return name === "input" ? new FakeInput() : new FakeElement(name);
   }
 
+  /** SVG and MathML nodes are plain elements here: the tests read their attributes. */
+  createElementNS(_namespace: string, name: string): FakeElement {
+    return new FakeElement(name);
+  }
+
   createTextNode(data: string): FakeText {
     return new FakeText(data);
   }

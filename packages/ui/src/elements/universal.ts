@@ -3,11 +3,14 @@ import {
   agentOf,
   type CalendarRange,
   calendarOf,
+  chartOf,
   chatOf,
+  detailOf,
   kanbanOf,
   listOf,
   movedTo,
   rowsOf,
+  statOf,
   textOf,
   timelineOf,
   type UniversalEnv,
@@ -25,6 +28,7 @@ import {
   drawText,
   drawTimeline,
 } from "./universal-draw";
+import { drawChart, drawDetail, drawStat, LABELS } from "./universal-figures";
 import { keyMove } from "./universal-keys";
 
 /** A view as the element reads it: everything a UniversalView says but where the entries come from. */
@@ -41,15 +45,6 @@ export type DeskUniversalTypeDetail = { type: UniversalType };
 /** `desk-range`: the calendar moved to another period. */
 export type DeskUniversalRangeDetail = { anchor: string; range: CalendarRange };
 
-const LABELS: Record<UniversalType, string> = {
-  timeline: "Timeline",
-  calendar: "Calendar",
-  kanban: "Board",
-  list: "List",
-  text: "Text",
-  chat: "Chat",
-  agent: "Agent",
-};
 const MESSAGES: Record<string, string> = {
   loading: "Loading…",
   error: "The source did not answer.",
@@ -260,6 +255,12 @@ export class DeskUniversalView extends Base {
         return drawChat(chatOf(rows, env, options.me), d);
       case "agent":
         return drawAgent(agentOf(rows, env), d);
+      case "chart":
+        return drawChart(chartOf(rows, env, options.chart));
+      case "stat":
+        return drawStat(statOf(rows, options.aggregate), this.#view?.empty);
+      case "detail":
+        return drawDetail(detailOf(rows, env, this.#active), d);
       default:
         return drawList(listOf(rows, options.order), d);
     }

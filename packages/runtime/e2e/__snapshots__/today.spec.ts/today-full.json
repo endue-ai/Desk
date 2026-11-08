@@ -1,341 +1,925 @@
 {
   "tag": "main",
-  "data-density": "regular",
+  "aria-label": "Universal View",
   "children": [
     {
-      "tag": "header",
-      "class": "bar",
+      "tag": "div",
+      "role": "alert",
+      "hidden": "",
+      "class": "notice",
       "children": [
         {
-          "tag": "h1",
-          "text": "Today"
+          "tag": "span"
         },
         {
-          "tag": "p",
-          "class": "description",
-          "text": "Today's events, the tasks due by tonight, unread messages, the notes touched last and your open GitHub work."
+          "tag": "button",
+          "class": "desk-btn",
+          "text": "Allow"
         }
       ]
     },
     {
       "tag": "div",
-      "class": "container grid",
-      "data-direction": "horizontal",
+      "role": "region",
+      "aria-label": "Eris's view",
+      "hidden": "",
+      "class": "bar",
+      "children": [
+        {
+          "tag": "span",
+          "role": "status",
+          "class": "bar-text"
+        },
+        {
+          "tag": "input",
+          "aria-label": "What should change",
+          "hidden": "",
+          "class": "desk-field bar-change"
+        },
+        {
+          "tag": "span",
+          "class": "bar-buttons"
+        }
+      ]
+    },
+    {
+      "tag": "div",
+      "aria-hidden": "true",
+      "hidden": "",
+      "class": "ghost",
+      "children": [
+        {
+          "tag": "span"
+        },
+        {
+          "tag": "span"
+        },
+        {
+          "tag": "span"
+        },
+        {
+          "tag": "span"
+        }
+      ]
+    },
+    {
+      "tag": "section",
+      "aria-label": "View builder",
+      "hidden": "",
+      "class": "builder",
       "children": [
         {
           "tag": "div",
-          "class": "pane",
+          "class": "build-form",
           "children": [
             {
-              "tag": "section",
-              "class": "component",
-              "data-component": "agenda",
-              "data-state": "ready",
+              "tag": "fieldset",
+              "class": "build-step",
               "children": [
                 {
-                  "tag": "h2",
-                  "class": "component-title",
-                  "text": "Schedule"
+                  "tag": "legend",
+                  "text": "Source"
                 },
                 {
-                  "tag": "desk-agenda",
-                  "density": "regular",
-                  "label": "Schedule",
-                  "time-zone": "Asia/Seoul",
-                  "now": "2026-10-30T09:00:00+09:00",
-                  "shadow": [
-                    {
-                      "tag": "div",
-                      "role": "listbox",
-                      "aria-label": "Schedule",
-                      "tabindex": "0",
-                      "children": [
-                        {
-                          "tag": "div",
-                          "role": "separator",
-                          "aria-label": "Now, 09:00",
-                          "class": "now"
-                        },
-                        {
-                          "tag": "div",
-                          "role": "option",
-                          "aria-selected": "false",
-                          "children": [
-                            {
-                              "tag": "span",
-                              "class": "time",
-                              "text": "10:00"
-                            },
-                            {
-                              "tag": "span",
-                              "class": "title",
-                              "text": "10:00 Team standup"
-                            },
-                            {
-                              "tag": "span",
-                              "class": "detail",
-                              "text": "Room 3"
-                            }
-                          ]
-                        },
-                        {
-                          "tag": "div",
-                          "role": "option",
-                          "aria-selected": "false",
-                          "children": [
-                            {
-                              "tag": "span",
-                              "class": "time",
-                              "text": "12:30"
-                            },
-                            {
-                              "tag": "span",
-                              "class": "title",
-                              "text": "12:30 Lunch with Mina"
-                            },
-                            {
-                              "tag": "span",
-                              "class": "detail",
-                              "text": "Bistro Seoul"
-                            }
-                          ]
-                        },
-                        {
-                          "tag": "div",
-                          "role": "option",
-                          "aria-selected": "false",
-                          "children": [
-                            {
-                              "tag": "span",
-                              "class": "time",
-                              "text": "16:00"
-                            },
-                            {
-                              "tag": "span",
-                              "class": "title",
-                              "text": "16:00 Design review"
-                            },
-                            {
-                              "tag": "span",
-                              "class": "detail",
-                              "text": "Room 1"
-                            }
-                          ]
-                        }
-                      ]
-                    }
-                  ]
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "tag": "div",
-          "class": "pane",
-          "children": [
-            {
-              "tag": "section",
-              "class": "component",
-              "data-component": "list",
-              "data-state": "ready",
-              "children": [
-                {
-                  "tag": "h2",
-                  "class": "component-title",
-                  "text": "Due"
+                  "tag": "div",
+                  "role": "tablist",
+                  "aria-label": "Source",
+                  "class": "desk-tabs"
                 },
                 {
-                  "tag": "desk-list",
-                  "role": "listbox",
-                  "aria-label": "Due",
-                  "tabindex": "0",
-                  "density": "regular",
-                  "label": "Due",
-                  "shadow": [
-                    {
-                      "tag": "slot"
-                    }
-                  ],
+                  "tag": "input",
+                  "aria-label": "Where",
+                  "class": "desk-field"
+                },
+                {
+                  "tag": "textarea",
+                  "aria-label": "Arguments (JSON)",
+                  "class": "desk-field"
+                },
+                {
+                  "tag": "div",
+                  "class": "build-kinds",
                   "children": [
                     {
-                      "tag": "div",
-                      "role": "option",
-                      "aria-selected": "false",
+                      "tag": "label",
+                      "class": "build-kind",
+                      "text": "task",
                       "children": [
                         {
-                          "tag": "span",
-                          "class": "title",
-                          "text": "Send the weekly report"
-                        },
-                        {
-                          "tag": "span",
-                          "class": "detail",
-                          "text": "Due in 8 hours"
-                        }
-                      ]
-                    }
-                  ]
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "tag": "div",
-          "class": "pane",
-          "children": [
-            {
-              "tag": "section",
-              "class": "component",
-              "data-component": "list",
-              "data-state": "ready",
-              "children": [
-                {
-                  "tag": "h2",
-                  "class": "component-title",
-                  "text": "Unread"
-                },
-                {
-                  "tag": "desk-list",
-                  "role": "listbox",
-                  "aria-label": "Unread",
-                  "tabindex": "0",
-                  "density": "regular",
-                  "label": "Unread",
-                  "shadow": [
-                    {
-                      "tag": "slot"
-                    }
-                  ],
-                  "children": [
-                    {
-                      "tag": "div",
-                      "role": "option",
-                      "aria-selected": "false",
-                      "children": [
-                        {
-                          "tag": "span",
-                          "class": "title",
-                          "text": "Lunch today?"
-                        },
-                        {
-                          "tag": "span",
-                          "class": "detail",
-                          "text": "Mina · 48 minutes ago"
+                          "tag": "input",
+                          "class": "desk-check",
+                          "value": "task"
                         }
                       ]
                     },
                     {
-                      "tag": "div",
-                      "role": "option",
-                      "aria-selected": "false",
+                      "tag": "label",
+                      "class": "build-kind",
+                      "text": "event",
                       "children": [
                         {
-                          "tag": "span",
-                          "class": "title",
-                          "text": "Boiler check on Monday"
-                        },
-                        {
-                          "tag": "span",
-                          "class": "detail",
-                          "text": "Mr. Park · 16 hours ago"
-                        }
-                      ]
-                    }
-                  ]
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "tag": "div",
-          "class": "pane",
-          "children": [
-            {
-              "tag": "section",
-              "class": "component",
-              "data-component": "list",
-              "data-state": "ready",
-              "children": [
-                {
-                  "tag": "h2",
-                  "class": "component-title",
-                  "text": "Last touched"
-                },
-                {
-                  "tag": "desk-list",
-                  "role": "listbox",
-                  "aria-label": "Last touched",
-                  "tabindex": "0",
-                  "density": "regular",
-                  "label": "Last touched",
-                  "shadow": [
-                    {
-                      "tag": "slot"
-                    }
-                  ],
-                  "children": [
-                    {
-                      "tag": "div",
-                      "role": "option",
-                      "aria-selected": "false",
-                      "children": [
-                        {
-                          "tag": "span",
-                          "class": "title",
-                          "text": "Ideas for the offsite"
-                        },
-                        {
-                          "tag": "span",
-                          "class": "detail",
-                          "text": "4 days ago"
+                          "tag": "input",
+                          "class": "desk-check",
+                          "value": "event"
                         }
                       ]
                     },
                     {
-                      "tag": "div",
-                      "role": "option",
-                      "aria-selected": "false",
+                      "tag": "label",
+                      "class": "build-kind",
+                      "text": "note",
                       "children": [
                         {
-                          "tag": "span",
-                          "class": "title",
-                          "text": "Kimchi stew"
-                        },
+                          "tag": "input",
+                          "class": "desk-check",
+                          "value": "note"
+                        }
+                      ]
+                    },
+                    {
+                      "tag": "label",
+                      "class": "build-kind",
+                      "text": "message",
+                      "children": [
                         {
-                          "tag": "span",
-                          "class": "detail",
-                          "text": "6 days ago"
+                          "tag": "input",
+                          "class": "desk-check",
+                          "value": "message"
+                        }
+                      ]
+                    },
+                    {
+                      "tag": "label",
+                      "class": "build-kind",
+                      "text": "file",
+                      "children": [
+                        {
+                          "tag": "input",
+                          "class": "desk-check",
+                          "value": "file"
+                        }
+                      ]
+                    },
+                    {
+                      "tag": "label",
+                      "class": "build-kind",
+                      "text": "person",
+                      "children": [
+                        {
+                          "tag": "input",
+                          "class": "desk-check",
+                          "value": "person"
                         }
                       ]
                     }
                   ]
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "tag": "div",
-          "class": "pane",
-          "children": [
-            {
-              "tag": "section",
-              "class": "component",
-              "data-component": "list",
-              "data-state": "unbound",
-              "children": [
+                },
                 {
-                  "tag": "h2",
-                  "class": "component-title",
-                  "text": "GitHub"
+                  "tag": "button",
+                  "class": "desk-btn",
+                  "text": "Load"
                 },
                 {
                   "tag": "p",
+                  "role": "status",
+                  "class": "build-status"
+                },
+                {
+                  "tag": "button",
+                  "hidden": "",
+                  "class": "desk-btn",
+                  "text": "Allow"
+                }
+              ]
+            },
+            {
+              "tag": "fieldset",
+              "class": "build-step",
+              "children": [
+                {
+                  "tag": "legend",
+                  "text": "Shape"
+                },
+                {
+                  "tag": "div",
+                  "role": "group",
+                  "aria-label": "Shape",
+                  "class": "desk-tabs"
+                }
+              ]
+            },
+            {
+              "tag": "fieldset",
+              "class": "build-step",
+              "children": [
+                {
+                  "tag": "legend",
+                  "text": "Fields"
+                },
+                {
+                  "tag": "div",
+                  "class": "build-roles"
+                }
+              ]
+            },
+            {
+              "tag": "fieldset",
+              "class": "build-step",
+              "children": [
+                {
+                  "tag": "legend",
+                  "text": "Name"
+                },
+                {
+                  "tag": "input",
+                  "aria-label": "Name",
+                  "class": "desk-field"
+                }
+              ]
+            },
+            {
+              "tag": "div",
+              "class": "build-actions",
+              "children": [
+                {
+                  "tag": "button",
+                  "class": "desk-btn desk-btn-primary",
+                  "text": "Save view"
+                },
+                {
+                  "tag": "button",
+                  "class": "desk-btn desk-btn-quiet",
+                  "text": "Cancel"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "div",
+          "class": "build-preview",
+          "children": [
+            {
+              "tag": "desk-universal-view",
+              "label": "Preview",
+              "shadow": [
+                {
+                  "tag": "div",
+                  "class": "view",
+                  "children": [
+                    {
+                      "tag": "div",
+                      "class": "head",
+                      "children": [
+                        {
+                          "tag": "h2",
+                          "class": "title",
+                          "text": "Preview"
+                        },
+                        {
+                          "tag": "div",
+                          "role": "tablist",
+                          "aria-label": "Show as",
+                          "hidden": "",
+                          "class": "switch",
+                          "children": [
+                            {
+                              "tag": "button",
+                              "role": "tab",
+                              "aria-selected": "true",
+                              "tabindex": "0",
+                              "text": "List"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "tag": "div",
+                      "role": "status",
+                      "class": "status",
+                      "data-state": "empty",
+                      "text": "Nothing here"
+                    },
+                    {
+                      "tag": "div",
+                      "hidden": "",
+                      "class": "body",
+                      "children": [
+                        {
+                          "tag": "div",
+                          "role": "list",
+                          "class": "list"
+                        }
+                      ]
+                    },
+                    {
+                      "tag": "div",
+                      "hidden": "",
+                      "class": "compose",
+                      "children": [
+                        {
+                          "tag": "textarea",
+                          "aria-label": "Write a message"
+                        },
+                        {
+                          "tag": "button",
+                          "class": "send",
+                          "text": "Send"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "div",
+      "aria-label": "Today",
+      "class": "desk-universal-page",
+      "children": [
+        {
+          "tag": "h2",
+          "class": "desk-universal-page-title",
+          "text": "Today"
+        },
+        {
+          "tag": "desk-universal-view",
+          "shadow": [
+            {
+              "tag": "div",
+              "class": "view",
+              "children": [
+                {
+                  "tag": "div",
+                  "class": "head",
+                  "children": [
+                    {
+                      "tag": "h2",
+                      "class": "title",
+                      "text": "Schedule"
+                    },
+                    {
+                      "tag": "div",
+                      "role": "tablist",
+                      "aria-label": "Show as",
+                      "hidden": "",
+                      "class": "switch",
+                      "children": [
+                        {
+                          "tag": "button",
+                          "role": "tab",
+                          "aria-selected": "true",
+                          "tabindex": "0",
+                          "text": "Calendar"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "tag": "div",
+                  "role": "status",
+                  "hidden": "",
+                  "class": "status"
+                },
+                {
+                  "tag": "div",
+                  "class": "body",
+                  "children": [
+                    {
+                      "tag": "div",
+                      "class": "calendar-view",
+                      "children": [
+                        {
+                          "tag": "div",
+                          "class": "head",
+                          "children": [
+                            {
+                              "tag": "h3",
+                              "aria-live": "polite",
+                              "class": "title",
+                              "text": "Fri, Oct 30"
+                            },
+                            {
+                              "tag": "div",
+                              "class": "nav",
+                              "children": [
+                                {
+                                  "tag": "button",
+                                  "text": "Previous"
+                                },
+                                {
+                                  "tag": "button",
+                                  "text": "Today"
+                                },
+                                {
+                                  "tag": "button",
+                                  "text": "Next"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "tag": "div",
+                          "class": "calendar",
+                          "children": [
+                            {
+                              "tag": "span",
+                              "class": "weekday",
+                              "text": "Fri"
+                            },
+                            {
+                              "tag": "div",
+                              "role": "list",
+                              "aria-label": "Fri, Oct 30",
+                              "class": "cell",
+                              "children": [
+                                {
+                                  "tag": "span",
+                                  "class": "number",
+                                  "text": "30"
+                                },
+                                {
+                                  "tag": "div",
+                                  "role": "listitem",
+                                  "tabindex": "0",
+                                  "class": "entry",
+                                  "children": [
+                                    {
+                                      "tag": "span",
+                                      "class": "time",
+                                      "text": "10:00"
+                                    },
+                                    {
+                                      "tag": "span",
+                                      "class": "entry-title",
+                                      "text": "Team standup"
+                                    }
+                                  ]
+                                },
+                                {
+                                  "tag": "div",
+                                  "role": "listitem",
+                                  "tabindex": "-1",
+                                  "class": "entry",
+                                  "children": [
+                                    {
+                                      "tag": "span",
+                                      "class": "time",
+                                      "text": "12:30"
+                                    },
+                                    {
+                                      "tag": "span",
+                                      "class": "entry-title",
+                                      "text": "Lunch with Mina"
+                                    }
+                                  ]
+                                },
+                                {
+                                  "tag": "div",
+                                  "role": "listitem",
+                                  "tabindex": "-1",
+                                  "class": "entry",
+                                  "children": [
+                                    {
+                                      "tag": "span",
+                                      "class": "time",
+                                      "text": "16:00"
+                                    },
+                                    {
+                                      "tag": "span",
+                                      "class": "entry-title",
+                                      "text": "Design review"
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "tag": "div",
+                  "hidden": "",
+                  "class": "compose",
+                  "children": [
+                    {
+                      "tag": "textarea",
+                      "aria-label": "Write a message"
+                    },
+                    {
+                      "tag": "button",
+                      "class": "send",
+                      "text": "Send"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "desk-universal-view",
+          "shadow": [
+            {
+              "tag": "div",
+              "class": "view",
+              "children": [
+                {
+                  "tag": "div",
+                  "class": "head",
+                  "children": [
+                    {
+                      "tag": "h2",
+                      "class": "title",
+                      "text": "Due"
+                    },
+                    {
+                      "tag": "div",
+                      "role": "tablist",
+                      "aria-label": "Show as",
+                      "hidden": "",
+                      "class": "switch",
+                      "children": [
+                        {
+                          "tag": "button",
+                          "role": "tab",
+                          "aria-selected": "true",
+                          "tabindex": "0",
+                          "text": "List"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "tag": "div",
+                  "role": "status",
+                  "hidden": "",
+                  "class": "status"
+                },
+                {
+                  "tag": "div",
+                  "class": "body",
+                  "children": [
+                    {
+                      "tag": "div",
+                      "role": "list",
+                      "class": "list",
+                      "children": [
+                        {
+                          "tag": "div",
+                          "role": "listitem",
+                          "tabindex": "0",
+                          "class": "entry",
+                          "children": [
+                            {
+                              "tag": "span",
+                              "class": "entry-title",
+                              "text": "Send the weekly report"
+                            },
+                            {
+                              "tag": "span",
+                              "class": "entry-detail",
+                              "text": "Work"
+                            },
+                            {
+                              "tag": "span",
+                              "class": "tags",
+                              "children": [
+                                {
+                                  "tag": "span",
+                                  "class": "tag",
+                                  "text": "Work"
+                                }
+                              ]
+                            },
+                            {
+                              "tag": "span",
+                              "class": "badge",
+                              "text": "open"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "tag": "div",
+                  "hidden": "",
+                  "class": "compose",
+                  "children": [
+                    {
+                      "tag": "textarea",
+                      "aria-label": "Write a message"
+                    },
+                    {
+                      "tag": "button",
+                      "class": "send",
+                      "text": "Send"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "desk-universal-view",
+          "shadow": [
+            {
+              "tag": "div",
+              "class": "view",
+              "children": [
+                {
+                  "tag": "div",
+                  "class": "head",
+                  "children": [
+                    {
+                      "tag": "h2",
+                      "class": "title",
+                      "text": "Unread"
+                    },
+                    {
+                      "tag": "div",
+                      "role": "tablist",
+                      "aria-label": "Show as",
+                      "hidden": "",
+                      "class": "switch",
+                      "children": [
+                        {
+                          "tag": "button",
+                          "role": "tab",
+                          "aria-selected": "true",
+                          "tabindex": "0",
+                          "text": "List"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "tag": "div",
+                  "role": "status",
+                  "hidden": "",
+                  "class": "status"
+                },
+                {
+                  "tag": "div",
+                  "class": "body",
+                  "children": [
+                    {
+                      "tag": "div",
+                      "role": "list",
+                      "class": "list",
+                      "children": [
+                        {
+                          "tag": "div",
+                          "role": "listitem",
+                          "tabindex": "0",
+                          "class": "entry",
+                          "children": [
+                            {
+                              "tag": "span",
+                              "class": "entry-title",
+                              "text": "Lunch today?"
+                            },
+                            {
+                              "tag": "span",
+                              "class": "entry-detail",
+                              "text": "Still on for 12:30 at the bistro?"
+                            },
+                            {
+                              "tag": "span",
+                              "class": "badge",
+                              "text": "unread"
+                            }
+                          ]
+                        },
+                        {
+                          "tag": "div",
+                          "role": "listitem",
+                          "tabindex": "-1",
+                          "class": "entry",
+                          "children": [
+                            {
+                              "tag": "span",
+                              "class": "entry-title",
+                              "text": "Boiler check on Monday"
+                            },
+                            {
+                              "tag": "span",
+                              "class": "entry-detail",
+                              "text": "The technician comes on Monday at 10."
+                            },
+                            {
+                              "tag": "span",
+                              "class": "badge",
+                              "text": "unread"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "tag": "div",
+                  "hidden": "",
+                  "class": "compose",
+                  "children": [
+                    {
+                      "tag": "textarea",
+                      "aria-label": "Write a message"
+                    },
+                    {
+                      "tag": "button",
+                      "class": "send",
+                      "text": "Send"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "desk-universal-view",
+          "shadow": [
+            {
+              "tag": "div",
+              "class": "view",
+              "children": [
+                {
+                  "tag": "div",
+                  "class": "head",
+                  "children": [
+                    {
+                      "tag": "h2",
+                      "class": "title",
+                      "text": "Last touched"
+                    },
+                    {
+                      "tag": "div",
+                      "role": "tablist",
+                      "aria-label": "Show as",
+                      "hidden": "",
+                      "class": "switch",
+                      "children": [
+                        {
+                          "tag": "button",
+                          "role": "tab",
+                          "aria-selected": "true",
+                          "tabindex": "0",
+                          "text": "List"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "tag": "div",
+                  "role": "status",
+                  "hidden": "",
+                  "class": "status"
+                },
+                {
+                  "tag": "div",
+                  "class": "body",
+                  "children": [
+                    {
+                      "tag": "div",
+                      "role": "list",
+                      "class": "list",
+                      "children": [
+                        {
+                          "tag": "div",
+                          "role": "listitem",
+                          "tabindex": "0",
+                          "class": "entry",
+                          "children": [
+                            {
+                              "tag": "span",
+                              "class": "entry-title",
+                              "text": "Ideas for the offsite"
+                            }
+                          ]
+                        },
+                        {
+                          "tag": "div",
+                          "role": "listitem",
+                          "tabindex": "-1",
+                          "class": "entry",
+                          "children": [
+                            {
+                              "tag": "span",
+                              "class": "entry-title",
+                              "text": "Kimchi stew"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "tag": "div",
+                  "hidden": "",
+                  "class": "compose",
+                  "children": [
+                    {
+                      "tag": "textarea",
+                      "aria-label": "Write a message"
+                    },
+                    {
+                      "tag": "button",
+                      "class": "send",
+                      "text": "Send"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "desk-universal-view",
+          "shadow": [
+            {
+              "tag": "div",
+              "class": "view",
+              "children": [
+                {
+                  "tag": "div",
+                  "class": "head",
+                  "children": [
+                    {
+                      "tag": "h2",
+                      "class": "title",
+                      "text": "GitHub"
+                    },
+                    {
+                      "tag": "div",
+                      "role": "tablist",
+                      "aria-label": "Show as",
+                      "hidden": "",
+                      "class": "switch",
+                      "children": [
+                        {
+                          "tag": "button",
+                          "role": "tab",
+                          "aria-selected": "true",
+                          "tabindex": "0",
+                          "text": "List"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "tag": "div",
+                  "role": "status",
                   "class": "status",
-                  "text": "desk.github is not installed."
+                  "data-state": "empty",
+                  "text": "No open GitHub work."
+                },
+                {
+                  "tag": "div",
+                  "hidden": "",
+                  "class": "body",
+                  "children": [
+                    {
+                      "tag": "div",
+                      "role": "list",
+                      "class": "list"
+                    }
+                  ]
+                },
+                {
+                  "tag": "div",
+                  "hidden": "",
+                  "class": "compose",
+                  "children": [
+                    {
+                      "tag": "textarea",
+                      "aria-label": "Write a message"
+                    },
+                    {
+                      "tag": "button",
+                      "class": "send",
+                      "text": "Send"
+                    }
+                  ]
                 }
               ]
             }

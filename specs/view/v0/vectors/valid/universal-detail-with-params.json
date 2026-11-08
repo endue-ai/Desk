@@ -1,0 +1,21 @@
+{
+  "target": "UniversalView",
+  "description": "one item's fields, the item named by the params the opener gives",
+  "instance": {
+    "title": "Item",
+    "params": {
+      "connector": { "kind": "string", "title": "Connector" },
+      "id": { "kind": "string", "title": "Item" }
+    },
+    "type": "detail",
+    "source": {
+      "items": {
+        "where": [
+          { "field": "source.connector", "op": "eq", "value": "{params.connector}" },
+          { "field": "id", "op": "eq", "value": "{params.id}" }
+        ],
+        "limit": 1
+      }
+    }
+  }
+}

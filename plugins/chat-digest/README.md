@@ -1,21 +1,21 @@
 # plugins/chat-digest
 
-`endue.chat-digest`, every chat at a glance: a `view` plugin, data only, whose one view is inline in
-`plugin.json` (`specs/view/v0`). `desk.views` draws it; nothing here runs. It is the dashboard
-companion of `endue.chat` (`plugins/chat`): the same chat messages (`message` items with
-`raw.channel`), from every service at once.
+`endue.chat-digest`, every chat at a glance: a `view` plugin, data only, whose one view is a page of
+universal views inline in `plugin.json` (`UniversalPage`, `specs/view/v0`, ADR 0103).
+`desk.universal` draws it; nothing here runs. It is the dashboard companion of `endue.chat`
+(`plugins/chat`): the same chat messages (`message` items with `raw.channel`), from every service.
 
-| Section | Component | Binding | Empty |
+| Section | Presentation | Items query | Empty |
 | --- | --- | --- | --- |
 | Unread · Mentions · Direct | three `stat`s | unread chat messages; those with `raw.mentioned`; those whose `raw.channelKind` is `dm` or `group` (500 counted) | All caught up. · No one is waiting on you. · No direct messages waiting. |
-| Mentions | `list` | unread mentions, newest first, 10 | No one is waiting on you. |
+| Mentions | `list` | unread mentions, newest first, 10, the channel as detail | No one is waiting on you. |
 | Direct messages | `list` | unread direct and group messages, newest first, 10 | No direct messages waiting. |
-| Latest across every chat | `table` | every chat message, newest first, 25 | No chat messages yet. |
+| Latest across every chat | `list` | every chat message, newest first, 25 | No chat messages yet. |
 
-It declares no `requires`: each binding reads every account the person allows, so one digest covers
-Slack, Discord and the rest together instead of one instance picked per view. Every item's actions
-are `endue.chat`'s commands with the item's `{ source, id }`: Open in Chat (`endue.chat.show`) and,
-for a mention, Reply in thread (`endue.chat.reply`); Enter runs the first.
+Three columns: the counts over the lists. No query names a source, so one digest covers Slack,
+Discord and the rest together. Every entry's actions are `endue.chat`'s commands with the item's
+`{ source, id }`: Open in Chat (`endue.chat.show`) and, for a mention, Reply in thread
+(`endue.chat.reply`); Enter runs the first.
 
 | Contribution | What it does |
 | --- | --- |

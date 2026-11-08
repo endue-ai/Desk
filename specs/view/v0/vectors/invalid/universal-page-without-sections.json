@@ -1,0 +1,5 @@
+{
+  "target": "UniversalPage",
+  "description": "a page holds at least one section",
+  "instance": { "id": "example.today", "title": "Today", "sections": [] }
+}

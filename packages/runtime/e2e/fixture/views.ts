@@ -1,7 +1,7 @@
 /// <reference types="vite/client" />
-// Test page: desk.views over the desk.* policies, desk.palette and the view plugins desk.today and
-// desk.item, on the core's stub with the fixture connector desk.fixtures and its items
-// (packages/bridge/src/fixtures.ts). At start it saves the spec's view-today (as test.view-today:
+// Test page: desk.views and desk.universal over the desk.* policies, desk.palette and the view
+// plugins desk.today and desk.item (universal views since ADR 0103), on the core's stub with the
+// fixture connector desk.fixtures and its items (packages/bridge/src/fixtures.ts). At start it saves the spec's view-today (as test.view-today:
 // desk.today is the plugin's) and view-table-with-actions, fixture/views/empty.json and each view
 // plugin's inline view, as the core will. It plays two test callers: example.jira provides the
 // table's action commands, and test.search, a policy plugin, a palette provider ("Test results");
@@ -11,12 +11,13 @@
 //   ?github=1       desk.github is connected too, with its fixture issues and pull requests
 //   market.list, plugin.install and plugin.remove answer from fixture/market.ts
 //   ?empty=1        every fixture item is removed before anything opens
-//   ?resources=event,message,note   desk.fixtures serves only these kinds
+//   ?resources=event,message,note   desk.fixtures serves and indexes only these kinds
 //   ?propose=1      desk.propose on a scripted brain (src/propose/fixtures.ts), as the shell has it,
 //                   with the card for profiles and key bindings
 // fs.read serves the fixture board ~/boards/launch.yaml and fs.list the folder ~/notes, for
 // desk.universal's builder and folder source (fixture/universal-files.ts).
 import {
+  type AnyView,
   type ConnectorInfo,
   type ConnectorStatus,
   fixtureConnector,
@@ -24,7 +25,6 @@ import {
   type Item,
   type ItemSource,
   type PluginManifest,
-  type View,
 } from "@endue-ai/bridge";
 import table from "../../../../specs/view/v0/vectors/valid/view-table-with-actions.json";
 import today from "../../../../specs/view/v0/vectors/valid/view-today.json";
@@ -163,12 +163,16 @@ const ready = (async () => {
   const record = { id: `${SEARCH}.record`, title: "Record a test result", keywords: ["groceries"] };
   await client.call("cmd.register", record, { caller: SEARCH });
   if (params.has("empty")) for (const item of fixtureItems()) core.remove(item.source, item.id);
+  // A source that serves only some kinds has indexed nothing of the others.
+  if (kinds)
+    for (const item of fixtureItems())
+      if (!kinds.includes(item.kind)) core.remove(item.source, item.id);
   const vector = { ...today.instance, id: "test.view-today" };
   const plugins = Object.values(manifests).flatMap((m) =>
     m.kind === "view" && m.view ? [m.view] : [],
   );
   for (const view of [vector, table.instance, empty, ...plugins])
-    await client.call("view.save", { view: view as View, scope: VIEWS });
+    await client.call("view.save", { view: view as AnyView, scope: VIEWS });
   if (params.has("github")) for (const item of githubItems()) core.upsert(item);
   // example.jira brings in the fixture tasks, each with the way back to it.
   if (params.has("jira"))

@@ -13,7 +13,8 @@ import { scopeOf } from "./open.js";
  * @typedef {import("../../../packages/plugin-sdk/src/index").UniversalHandle} UniversalHandle
  * @typedef {{ readonly handle: UniversalHandle | undefined, readonly view: UniversalView | undefined,
  *   readonly bar: ReturnType<typeof createBar>,
- *   open(view: UniversalView, options?: { notice?: Notice }): UniversalHandle,
+ *   open(view: UniversalView, options?: { notice?: Notice, params?: Record<string, unknown> }):
+ *     UniversalHandle,
  *   drafting(note: string): void, preview(view: UniversalView, note: string): Promise<Choice>,
  *   allow(): Promise<{ granted: boolean }>, close(id?: string): boolean }} Screen
  */
@@ -70,6 +71,8 @@ export function createScreen(host, ctx) {
   let view;
   /** @type {import("../../../packages/bridge/src/index").Permission | undefined} */
   let needed;
+  /** The params the drawn view was opened with. @type {Record<string, unknown>} */
+  let params = {};
 
   /** @param {unknown} error */
   const failed = (error) => {
@@ -95,7 +98,10 @@ export function createScreen(host, ctx) {
     bar,
     open(next, options = {}) {
       settled();
-      const same = view !== undefined && (next === view || canonical(next) === canonical(view));
+      const same =
+        view !== undefined &&
+        (next === view || canonical(next) === canonical(view)) &&
+        canonical(options.params ?? {}) === canonical(params);
       if (handle && same) {
         if (options.notice) bar.notice(options.notice);
         else bar.hide();
@@ -103,9 +109,10 @@ export function createScreen(host, ctx) {
       }
       handle?.close();
       view = next;
+      params = options.params ?? {};
       needed = undefined;
       notice.hidden = true;
-      handle = ctx.universal.open(host, next, { onError: failed });
+      handle = ctx.universal.open(host, next, { onError: failed, params });
       if (options.notice) bar.notice(options.notice);
       else bar.hide();
       return handle;

@@ -41,6 +41,7 @@ const LABELS = /** @type {Record<string, string>} */ ({
   group: "Column",
   text: "Text",
   author: "Author",
+  value: "Value",
 });
 
 /**

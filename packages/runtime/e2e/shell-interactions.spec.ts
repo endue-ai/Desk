@@ -58,7 +58,7 @@ test("closing a window during a drag releases the pointer and the next window wo
   await page.mouse.up();
   await page.keyboard.press("Meta+n");
   await surface.locator('[data-view="notes"]').click();
-  await expect(surface.locator("textarea")).toBeVisible();
+  await expect(surface.locator("textarea.notes-input")).toBeVisible();
 });
 
 test("split dividers keep keyboard focus across repeated arrow adjustments", async ({ page }) => {

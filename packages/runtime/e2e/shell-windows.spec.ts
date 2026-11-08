@@ -104,7 +104,7 @@ test.describe("surfaces as windows", () => {
 
   test("typing in a pane is not a command, but chords still are", async ({ page }) => {
     await newSurfaceWith(page, "notes");
-    const notes = surface(page).locator("textarea");
+    const notes = surface(page).locator("textarea.notes-input");
     await notes.click();
     await page.keyboard.type("d");
     await expect(panes(page)).toHaveCount(1);

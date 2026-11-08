@@ -113,54 +113,23 @@
   background: linear-gradient(135deg, transparent 50%, var(--desk-input) 50%, var(--desk-input) 58%, transparent 58%, transparent 72%, var(--desk-input) 72%, var(--desk-input) 80%, transparent 80%);
 }
 
-.cal { display: grid; grid-template-rows: 28px minmax(0, 1fr); height: 100%; font-size: var(--text-xs); }
-.cal-head,
-.cal-grid { display: grid; grid-template-columns: 32px repeat(5, minmax(0, 1fr)); }
-.cal-head { align-items: center; border-bottom: 1px solid var(--desk-border); color: var(--desk-text-muted); }
-.cal-day { padding-left: var(--space-2); font-weight: 600; }
-.cal-grid { min-height: 0; }
-.cal-hours { display: grid; grid-template-rows: repeat(8, 1fr); color: var(--desk-text-muted); font-variant-numeric: tabular-nums; }
-.cal-hour { padding: 2px var(--space-1) 0; text-align: right; }
-.cal-col {
-  position: relative;
-  border-left: 1px solid var(--desk-border);
-  background: repeating-linear-gradient(to bottom, transparent 0, transparent calc(12.5% - 1px), var(--desk-border) calc(12.5% - 1px), var(--desk-border) 12.5%);
-}
-.cal-event {
-  position: absolute;
-  left: 3px;
-  right: 3px;
-  display: grid;
-  align-content: start;
-  padding: 2px var(--space-1);
-  overflow: hidden;
+/* The calendar, tomorrow and notes samples: universal views (ADR 0103) that fill their pane. */
+.sample-view { display: block; height: 100%; overflow: auto; }
+.notes { display: grid; grid-template-rows: minmax(0, 1fr) auto; height: 100%; }
+.notes-input {
+  margin: var(--space-2) var(--space-3) var(--space-3);
+  padding: var(--space-2);
   border: 1px solid var(--desk-border);
   border-radius: var(--radius-sm);
-  background: var(--desk-muted);
-}
-.cal-event.is-overlap { border-color: var(--desk-status-attention); background: var(--desk-status-attention-soft); }
-.cal-event.is-lane-0 { right: calc(50% + 1px); }
-.cal-event.is-lane-1 { left: calc(50% + 1px); }
-.cal-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.cal-flag { color: var(--desk-status-attention-text); font-size: var(--text-2xs); font-weight: 600; }
-
-.list-body { margin: 0; padding: var(--space-2) var(--space-3); list-style: none; }
-.list-row { display: flex; gap: var(--space-3); margin: 0; padding: var(--space-2) 0; border-bottom: 1px solid var(--desk-border); }
-.list-index { color: var(--desk-accent); font-variant-numeric: tabular-nums; }
-
-.notes-body {
-  width: 100%;
-  height: 100%;
-  padding: var(--space-3);
-  border: 0;
   resize: none;
   background: transparent;
   color: var(--desk-text);
   font: inherit;
   font-size: var(--text-base);
-  line-height: 1.5;
 }
-.notes-body:focus-visible { outline-offset: -2px; }
+
+.list-body { margin: 0; padding: var(--space-2) var(--space-3); list-style: none; }
+.list-row { display: flex; gap: var(--space-3); margin: 0; padding: var(--space-2) 0; border-bottom: 1px solid var(--desk-border); }
 
 /* Where a dragged window will snap (ADR 0128): the part of the app, under the window, while the
    pointer aims at an edge or a corner. It grows out of the window's box and moves from one part to

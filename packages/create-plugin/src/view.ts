@@ -1,7 +1,8 @@
-// The files of a new view plugin: a view as data in plugin.json (specs/view/v0, ADR 0032), a
-// command that opens it, and a test. No code: the desk's built-in desk.views draws it.
+// The files of a new view plugin: a universal view as data in plugin.json (specs/view/v0, ADR 0087,
+// ADR 0103), a command that opens it, and a test. No code: the desk's built-in desk.universal draws
+// it. Nothing here writes an item view (ADR 0032): those are read, never written, through v0.
 
-import type { PluginManifest, View } from "@endue-ai/bridge";
+import type { PluginManifest, UniversalView } from "@endue-ai/bridge";
 import { checkSection, devSection, heading } from "./readme";
 import type { PluginOptions } from "./template";
 
@@ -15,24 +16,16 @@ export function renderView(options: PluginOptions): Record<string, string> {
 }
 
 function manifest({ id, name, description }: PluginOptions): string {
-  const view: View = {
+  const view: UniversalView = {
     id,
-    version: "0.1.0",
     title: name,
     description: "The notes touched last, newest first.",
-    requires: { notes: { kinds: ["note"], title: "Notes" } },
-    layout: {
-      type: "list",
-      title: "Notes",
-      binding: {
-        kinds: ["note"],
-        sources: ["$notes"],
-        sort: [{ field: "updatedAt", dir: "desc" }],
-        limit: 20,
-      },
-      fields: [{ value: "{title}" }, { value: "{updatedAt|relative}" }],
-      empty: "No notes yet.",
+    type: "list",
+    types: ["list", "timeline"],
+    source: {
+      items: { kinds: ["note"], sort: [{ field: "updatedAt", dir: "desc" }], limit: 20 },
     },
+    empty: "No notes yet.",
   };
   const value: PluginManifest = {
     id,
@@ -60,15 +53,16 @@ function readme(options: PluginOptions): string {
     ...heading(options, "A Desk view: the notes touched last, newest first."),
     ...devSection(
       [
-        `Open it from the palette (Open ${options.name}) or with \`desk cmd run ${open}\`. The desk asks`,
-        "which connected source gives its notes. Save `plugin.json` and the view follows.",
+        `Open it from the palette (Open ${options.name}) or with \`desk cmd run ${open}\`. It shows`,
+        "the notes of every connected source. Save `plugin.json` and the view follows.",
       ].join("\n"),
     ),
     "## What it is",
     "",
-    "A view is data, not code (`specs/view/v0`): `view` in `plugin.json` names the sources it",
-    "`requires`, and its `layout` binds components (`list`, `table`, `agenda`, `stat`, ...) to item",
-    `queries over them. \`${open}\` is an alias: the desk runs \`desk.views.open\` with this view's id.`,
+    "A view is data, not code (`specs/view/v0/universal.schema.json`): `view` in `plugin.json` is a",
+    "universal view, one presentation (`list`, `kanban`, `calendar`, `chart`, `stat`, ...) over a",
+    "source, here the desk's notes. A page of them (`sections`) lays several out together.",
+    `\`${open}\` is an alias: the desk runs \`desk.views.open\` with this view's id.`,
     "",
     "## Files",
     "",
@@ -80,8 +74,8 @@ function readme(options: PluginOptions): string {
     ...checkSection(
       [
         "`plugin test` runs `tests/*.test.js` with vitest on the SDK's test host: the test saves the",
-        "view there, which checks it as the desk does, and runs its list's query on items it puts in",
-        "the test host's index.",
+        "view there, which checks it as the desk does, and runs its source's query on items it puts",
+        "in the test host's index.",
       ].join("\n"),
     ),
   ].join("\n");
@@ -101,13 +95,14 @@ const note = (id, title, updatedAt) => ({ id, source, kind: "note", title, updat
 
 it("is a view the desk keeps, and lists the notes newest first", async () => {
   const host = createTestHost({ pluginId: manifest.id });
-  // view.save checks the view as the desk does: its layout, and every $name and param it reads.
+  // view.save checks the view as the desk does: its type, its source and its map.
   await host.call("view.save", { view, scope: { permission: "view:manage" } });
 
   host.upsert(note("older", "Older note", "2026-01-01T09:00:00Z"));
   host.upsert(note("newer", "Newer note", "2026-01-02T09:00:00Z"));
-  // Opening the view binds $notes to an instance: here, the one the notes came from.
-  const query = { ...view.layout.binding, sources: [\`\${source.connector}/\${source.instance}\`] };
+  // The view's source is an items query, which the desk runs when the view opens; the test host
+  // holds fixture notes too, so read only the source these came from.
+  const query = { ...view.source.items, sources: [\`\${source.connector}/\${source.instance}\`] };
   const { items } = await host.call("data.query", { query, scope: { permission: "data:read" } });
   expect(items.map((item) => item.title)).toEqual(["Newer note", "Older note"]);
 });

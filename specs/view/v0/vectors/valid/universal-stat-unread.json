@@ -1,0 +1,12 @@
+{
+  "target": "UniversalView",
+  "description": "how many unread messages there are, counted",
+  "instance": {
+    "title": "Unread",
+    "type": "stat",
+    "source": {
+      "items": { "kinds": ["message"], "where": [{ "field": "unread", "op": "eq", "value": true }] }
+    },
+    "empty": "All caught up."
+  }
+}

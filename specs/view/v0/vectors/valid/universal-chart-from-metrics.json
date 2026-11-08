@@ -1,0 +1,12 @@
+{
+  "target": "UniversalView",
+  "description": "a line chart of a metric's values over time, switchable to a stat of the latest value",
+  "instance": {
+    "title": "Build time",
+    "type": "chart",
+    "types": ["chart", "stat", "list"],
+    "source": { "items": { "kinds": ["metric"], "sort": [{ "field": "at", "dir": "asc" }] } },
+    "map": { "start": "at", "value": "value" },
+    "options": { "chart": "line", "aggregate": "latest" }
+  }
+}

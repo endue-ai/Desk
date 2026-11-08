@@ -24,6 +24,9 @@ export const SHAPES = /** @type {const} */ ([
   { type: "text", label: "Document" },
   { type: "chat", label: "Chat" },
   { type: "agent", label: "Run" },
+  { type: "chart", label: "Chart" },
+  { type: "stat", label: "Stat" },
+  { type: "detail", label: "Detail" },
 ]);
 
 /** The roles each shape draws, the most telling first. */
@@ -35,6 +38,9 @@ export const ROLES = /** @type {Record<UniversalType, readonly string[]>} */ ({
   text: ["title", "text"],
   chat: ["author", "text", "start"],
   agent: ["title", "status", "text", "start", "end"],
+  chart: ["value", "start", "group", "title"],
+  stat: ["value", "start"],
+  detail: ["title", "detail", "status", "start", "url"],
 });
 
 /** The item kinds the builder offers for an items source. */
@@ -52,6 +58,7 @@ const LIKELY = /** @type {Record<string, string[]>} */ ({
   detail: ["description", "summary", "notes", "location", "owner"],
   tags: ["labels", "categories", "topics"],
   url: ["link", "href", "web"],
+  value: ["count", "amount", "total", "score", "minutes", "seconds", "size", "points"],
 });
 const DATE = /^\d{4}-\d{2}-\d{2}([T ][\d:.]+(Z|[+-]\d{2}:?\d{2})?)?$/;
 

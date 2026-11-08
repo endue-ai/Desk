@@ -3,7 +3,7 @@ import {
   browserStub,
   type PluginManifest,
   stubCommands,
-  type View,
+  type UniversalView,
 } from "@endue-ai/bridge";
 import { describe, expect, it } from "vitest";
 import { renderPlugin } from "./template";
@@ -20,14 +20,18 @@ describe("renderPlugin with kind view", () => {
     expect(manifest.entry).toBeUndefined();
   });
 
-  it("writes a view the desk keeps: view.save checks its layout and the names it reads", async () => {
-    const view = manifest.view as View;
-    expect(view).toMatchObject({ id: "example.my-view", title: "My view" });
+  it("writes a universal view the desk keeps, never an item view (ADR 0103)", async () => {
+    const view = manifest.view as UniversalView;
+    expect(view).toMatchObject({ id: "example.my-view", title: "My view", type: "list" });
+    expect(view.source).toEqual({
+      items: { kinds: ["note"], sort: [{ field: "updatedAt", dir: "desc" }], limit: 20 },
+    });
+    expect("layout" in view || "version" in view).toBe(false);
     const desk = new BridgeClient(browserStub(stubCommands(() => {}).handlers));
     const scope = { permission: "view:manage" } as const;
     await expect(desk.call("view.save", { view, scope })).resolves.toBeDefined();
     const { views } = await desk.call("view.list", { scope });
-    expect(views.map((v) => v.id)).toContain("example.my-view");
+    expect(views.find((v) => v.id === "example.my-view")).toMatchObject({ type: "list" });
   });
 
   it("offers a command that opens the view", () => {

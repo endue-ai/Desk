@@ -1,24 +1,39 @@
 // @vitest-environment jsdom
-// desk.today is data only: desk.views draws it (plugins/views). A section whose require has no
-// connected source names the installed connectors that could bring it, with Connect a source, or
-// says plainly that no installed connector brings it, with no button that leads nowhere.
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
+// An item view's section whose require has no connected source (desk.views draws item views, ADR
+// 0032; deprecated by ADR 0103 but read through v0) names the installed connectors that could bring
+// it, with Connect a source, or says plainly that no installed connector brings it, with no button
+// that leads nowhere. The view here has the requires desk.today's item view had.
 import { describe, expect, it } from "vitest";
-import {
-  fixtureConnector,
-  type ItemKind,
-  type PluginManifest,
-  type View,
-} from "../../../packages/bridge/src/index";
-import { mount } from "../../views/tests/harness";
-import { drawComponent } from "../../views/ui/draw.js";
-import type { ComponentModel } from "../../views/ui/engine.js";
+import { fixtureConnector, type ItemKind, type View } from "../../../packages/bridge/src/index";
+import { drawComponent } from "../ui/draw.js";
+import type { ComponentModel } from "../ui/engine.js";
+import { mount } from "./harness";
 
-const root = join(import.meta.dirname, "../../..");
-const today = () =>
-  (JSON.parse(readFileSync(join(root, "plugins/today/plugin.json"), "utf8")) as PluginManifest)
-    .view as View;
+const list = (title: string, kind: ItemKind, source: string) => ({
+  type: "list" as const,
+  title,
+  binding: { kinds: [kind], sources: [source] },
+  fields: [{ value: "{title}" }],
+});
+const day: View = {
+  id: "test.day",
+  version: "0.1.0",
+  title: "Day",
+  requires: {
+    tasks: { kinds: ["task"], title: "A task list (optional)" },
+    messages: { kinds: ["message"], title: "Messages (optional)" },
+    github: { kinds: ["task"], connector: "desk.github", title: "GitHub (optional)" },
+  },
+  layout: {
+    type: "grid",
+    columns: 3,
+    children: [
+      list("Due", "task", "$tasks"),
+      list("Unread", "message", "$messages"),
+      list("GitHub", "task", "$github"),
+    ],
+  },
+};
 
 /**
  * connector.list: desk.fixtures connected with events, tasks and notes (no messages), and the
@@ -37,10 +52,10 @@ const listing = (...more: Array<[string, string, ItemKind]>) => ({
   },
 });
 
-/** desk.today opened by desk.views: each section by its title, and the buttons each draws. */
+/** The view opened by desk.views: each section by its title, and the buttons each draws. */
 async function opened(handlers: ReturnType<typeof listing>) {
-  const m = await mount({ views: [today()], handlers });
-  await m.open({ id: "desk.today" });
+  const m = await mount({ views: [day], handlers });
+  await m.open({ id: "test.day" });
   const env = m.view.drawn.at(-1)?.env;
   if (!env) throw new Error("nothing was drawn");
   const none = () => undefined;
@@ -52,7 +67,7 @@ async function opened(handlers: ReturnType<typeof listing>) {
   return new Map(m.shown().map((c) => [c.title, { ...c, buttons: drawn(c) }]));
 }
 
-describe("desk.today's sections with nothing connected", () => {
+describe("an item view's sections with nothing connected", () => {
   it("an unbound section names the installed connectors that bring its kind and offers Connect a source", async () => {
     const sections = await opened(
       listing(["acme.slack", "Slack", "message"], ["desk.github", "GitHub", "task"]),

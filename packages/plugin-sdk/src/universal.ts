@@ -7,10 +7,12 @@ import type {
   BridgeCallError,
   UniversalData,
   UniversalEntry,
+  UniversalPage,
   UniversalSource,
   UniversalView,
   ViewAction,
 } from "@endue-ai/bridge";
+import { fillQuery } from "./universal-clock";
 import { loadUniversal, parseUniversal, type UniversalHost } from "./universal-load";
 
 /** The element `open` draws in, as far as the SDK uses it (`DeskUniversalView` of @endue-ai/ui). */
@@ -23,6 +25,12 @@ export interface UniversalViewElement extends HTMLElement {
 export interface UniversalOpenOptions {
   /** Before the element is added: set attributes (time-zone, density) or listen to its events. */
   setup?(element: UniversalViewElement): void;
+  /** Values for the view's `{params.<name>}` (ADR 0103). */
+  params?: Record<string, unknown>;
+  /** The clock an items query's `{today}`, `{tomorrow}` and `{now}` read; Date.now by default. */
+  now?(): number;
+  /** The zone they are read in; the system's when absent. */
+  zone?: string;
   /** A load or a command failed; the view already says so where it can. */
   onError?(error: unknown): void;
 }
@@ -44,8 +52,15 @@ export interface PluginUniversal {
   parse(text: string): UniversalData;
   /** The document a source answers, under the plugin's own grants. */
   load(source: UniversalSource): Promise<UniversalData>;
-  /** Draw `view` into `host`, load its source and keep it current. */
-  open(host: Element, view: UniversalView, options?: UniversalOpenOptions): UniversalHandle;
+  /**
+   * Draw `view` into `host`, load its source and keep it current. A page (sections) draws each
+   * section the same way, side by side in its columns; its handle's element holds them all.
+   */
+  open(
+    host: Element,
+    view: UniversalView | UniversalPage,
+    options?: UniversalOpenOptions,
+  ): UniversalHandle;
 }
 
 const PLACEHOLDER = /\{\{|\}\}|\{([A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z0-9_-]+)*)\}/g;
@@ -97,7 +112,9 @@ export function universalFor(host: UniversalHost): PluginUniversal {
   const universal: PluginUniversal = {
     parse: parseUniversal,
     load: (source) => loadUniversal(host, source),
-    open: (target, view, options = {}) => {
+    open: (target, given, options = {}) => {
+      if ("sections" in given) return openPage(target, given, options, universal.open);
+      const view = given;
       const element = document.createElement("desk-universal-view") as UniversalViewElement;
       const { source, ...shown } = view;
       element.view = shown;
@@ -111,10 +128,21 @@ export function universalFor(host: UniversalHost): PluginUniversal {
       };
       // Only the latest load draws: one that answers after a newer one began is dropped.
       let loads = 0;
+      // An items query reads the clock and the params when it loads (ADR 0103).
+      const filled = (): UniversalSource =>
+        "items" in source
+          ? {
+              items: fillQuery(source.items, {
+                now: options.now?.() ?? Date.now(),
+                ...(options.zone ? { zone: options.zone } : {}),
+                params: paramsOf(view.params, options.params),
+              }),
+            }
+          : source;
       const reload = async () => {
         const mine = ++loads;
         try {
-          const loaded = await universal.load(source);
+          const loaded = await universal.load(filled());
           if (!open || mine !== loads) return;
           data = loaded;
           element.data = loaded;
@@ -165,7 +193,7 @@ export function universalFor(host: UniversalHost): PluginUniversal {
       void reload();
       if ("items" in source) {
         host
-          .subscribe?.(source.items, () => void reload())
+          .subscribe?.((filled() as { items: typeof source.items }).items, () => void reload())
           .then((off) => {
             if (open) unsubscribe = off;
             else off();
@@ -190,4 +218,61 @@ export function universalFor(host: UniversalHost): PluginUniversal {
     },
   };
   return universal;
+}
+
+/**
+ * A page of universal views (ADR 0103): a grid of its sections in `columns`, each opened as a view of
+ * its own under the page's params; the handle reloads and closes them all.
+ */
+function openPage(
+  target: Element,
+  page: UniversalPage,
+  options: UniversalOpenOptions,
+  open: (host: Element, view: UniversalView, options: UniversalOpenOptions) => UniversalHandle,
+): UniversalHandle {
+  const grid = document.createElement("div") as unknown as UniversalViewElement;
+  grid.setAttribute("class", "desk-universal-page");
+  grid.setAttribute("data-columns", String(page.columns ?? 1));
+  grid.setAttribute(
+    "style",
+    `display:grid;gap:12px;grid-template-columns:repeat(${page.columns ?? 1},minmax(0,1fr))`,
+  );
+  if (page.title) {
+    grid.setAttribute("aria-label", page.title);
+    // The page's title over its sections, across every column.
+    const heading = document.createElement("h2");
+    heading.setAttribute("class", "desk-universal-page-title");
+    heading.setAttribute("style", "grid-column:1/-1;margin:0");
+    heading.textContent = page.title;
+    grid.append(heading);
+  }
+  target.append(grid);
+  const params = paramsOf(page.params, options.params);
+  const handles = page.sections.map((section) => open(grid, section, { ...options, params }));
+  return {
+    element: grid,
+    get data() {
+      return null;
+    },
+    reload: async () => {
+      await Promise.all(handles.map((handle) => handle.reload()));
+    },
+    close: () => {
+      for (const handle of handles) handle.close();
+      grid.remove();
+    },
+  };
+}
+
+/** The params a view reads: each declared one's default, then what the opener gave. */
+function paramsOf(
+  declared: UniversalView["params"],
+  given: Record<string, unknown> | undefined,
+): Record<string, unknown> {
+  const defaults = Object.fromEntries(
+    Object.entries(declared ?? {}).flatMap(([name, param]) =>
+      "default" in param && param.default !== undefined ? [[name, param.default]] : [],
+    ),
+  );
+  return { ...defaults, ...(given ?? {}) };
 }

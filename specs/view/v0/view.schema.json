@@ -5,7 +5,7 @@
   "description": "A view: a surface that shows items, written as data instead of code, so it is validated at install and shared without review (ADR 0032). The person's views live as YAML files in ~/.desk/views, one per view and named by its id (desk.today.yaml); on the wire a view is JSON of the same shape.",
   "$defs": {
     "View": {
-      "description": "One view file.",
+      "description": "Deprecated (ADR 0103): an item view, read through v0 and never written by the desk; a universal view (universal.schema.json) or a page of them is the view language. One view file.",
       "type": "object",
       "properties": {
         "id": { "$ref": "#/$defs/ViewId" },

@@ -1,72 +1,10 @@
 /**
  * Scripted brain answers for tests and fixture pages (never shipped): universal views as brain-echo
- * proposes them (examples/brain-echo/universal.mjs); item views a brain would propose for "show my
- * events this week as a board" over the stub's fixture events, without the parts the desk writes
- * itself (id, version, provenance); the quiet night profile; Mod+Shift+T for the terminal.
+ * proposes them (examples/brain-echo/universal.mjs); the quiet night profile; Mod+Shift+T for the
+ * terminal.
  */
 import { proposeUniversalView } from "../../../../examples/brain-echo/universal.mjs";
 import type { ScriptedAnswer } from "../bridge/scripted-brain";
-
-const agenda = (title: string, calendar: string, empty: string) => ({
-  type: "agenda",
-  title,
-  range: "week",
-  binding: {
-    kinds: ["event"],
-    sources: ["$calendar"],
-    where: [{ field: "calendar", op: "eq", value: calendar }],
-    sort: [{ field: "start", dir: "asc" }],
-  },
-  fields: [{ value: "{start|time} {title}" }, { value: "{location}" }],
-  empty,
-});
-
-/** This week's events as a board: one column per calendar, and how many there are. */
-export const BOARD = {
-  title: "Events this week",
-  description: "This week's events, one column per calendar.",
-  requires: { calendar: { kinds: ["event"], title: "A calendar" } },
-  layout: {
-    type: "stack",
-    children: [
-      {
-        type: "stat",
-        title: "Coming up",
-        binding: {
-          kinds: ["event"],
-          sources: ["$calendar"],
-          where: [{ field: "start", op: "gte", value: "{today}" }],
-        },
-      },
-      {
-        type: "grid",
-        columns: 2,
-        children: [
-          agenda("Work", "Work", "No work events this week."),
-          agenda("Personal", "Personal", "Nothing personal this week."),
-        ],
-      },
-    ],
-  },
-};
-
-/** The same board after "only the work calendar". */
-export const BOARD_WORK = {
-  title: "Work this week",
-  description: "This week's work events.",
-  requires: BOARD.requires,
-  layout: agenda("Work", "Work", "No work events this week."),
-};
-
-/**
- * The view a brain would propose for a prompt: only work after a correction that says so, the board
- * for a sentence about a board, and none otherwise.
- */
-function viewFor(prompt: string): Record<string, unknown> | undefined {
-  if (/only the work calendar/i.test(prompt)) return BOARD_WORK;
-  if (/as a board/i.test(prompt)) return BOARD;
-  return undefined;
-}
 
 /** The profile sentence of the tests and the live check. */
 export const QUIET = "make a quiet night profile with only notes and terminal";
@@ -131,12 +69,11 @@ function pluginsIn(prompt: string): Record<string, string> {
 }
 
 /**
- * What a brain would call `tool` with for `prompt`: brain-echo's universal view, viewFor's item
- * view, the quiet night profile, or Mod+Shift+T for the terminal; undefined to answer in words.
+ * What a brain would call `tool` with for `prompt`: brain-echo's universal view, the quiet night
+ * profile, or Mod+Shift+T for the terminal; undefined to answer in words.
  */
 export function proposalFor(prompt: string, tool: string): Record<string, unknown> | undefined {
   if (tool === "propose_universal_view") return proposeUniversalView(prompt);
-  if (tool === "propose_view") return viewFor(prompt);
   if (tool === "propose_profile")
     return /quiet night/i.test(prompt) ? quietNight(pluginsIn(prompt)) : undefined;
   if (tool === "propose_key_bindings")

@@ -1,22 +1,22 @@
 # plugins/today
 
 `desk.today`, the day at a glance (the requirements' DL-01): a `view` plugin, data only, whose one
-view is inline in `plugin.json` (`specs/view/v0`). `desk.views` draws it; nothing here runs.
+view is a page of universal views inline in `plugin.json` (`UniversalPage`, `specs/view/v0`, ADR
+0103). `desk.views.open` hands it to `desk.universal`, which draws it; nothing here runs.
 
-| Section | Component | Binding | Empty |
+| Section | Presentation | Items query | Empty |
 | --- | --- | --- | --- |
-| Schedule | `agenda`, `range: day` | events of `$calendar` with `start lt {tomorrow}` and `end gt {today}`, earliest first | Nothing on the calendar today. |
-| Due | `list` | open tasks of `$tasks` with `due lt {tomorrow}` (today's and overdue), earliest due first, 10 | Nothing due. |
-| Unread | `list` | messages of `$messages` with `unread eq true`, newest first, 10 | No unread messages. |
-| Last touched | `list` | notes of `$notes`, last updated first, 5 | No notes yet. |
-| GitHub | `list` | open tasks of `$github` (`desk.github`, ADR 0106), last updated first, 10 | No open GitHub work. |
+| Schedule | `calendar`, `range: day` | events with `start lt {tomorrow}` and `end gt {today}`, earliest first | Nothing on the calendar today. |
+| Due | `list` | open tasks with `due lt {tomorrow}` (today's and overdue), earliest due first, 10 | Nothing due. |
+| Unread | `list` | messages with `unread eq true`, newest first, 10 | No unread messages. |
+| Last touched | `list` | notes, last updated first, 5 | No notes yet. |
+| GitHub | `list` | open tasks of `desk.github` (ADR 0106), last updated first, 10 | No open GitHub work. |
 
-Requires: `calendar` (events), and `tasks`, `messages`, `notes` and `github` (tasks of `desk.github`),
-whose titles say "(optional)": a require with no connected source leaves its section `unbound`, naming
-the installed connectors that bring it with Connect a source, or saying no installed connector brings
-it (`tests/unbound.test.ts`), so the view renders with the OS calendar alone. `{today}` and `{tomorrow}` are the engine's clock, local midnights
-in the view's zone. Each binding is whole on its own, so another reader (Eris's "Three things matter
-today": the first of Schedule, Due and Unread) runs it with the clock filled and the require bound.
+Two columns. Each query reads every source of its kinds the desk lets `desk.universal` read, so the
+page renders with the OS calendar alone and nobody picks a source; a kind nothing serves draws its
+empty text. `{today}` and `{tomorrow}` are the starts of this day and the next in the view's zone,
+filled when a section loads. Each query is whole on its own, so another reader runs it with the
+clock filled.
 
 | Contribution | What it does |
 | --- | --- |

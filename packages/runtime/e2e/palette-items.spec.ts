@@ -2,7 +2,8 @@ import { expect, type FrameLocator, type Locator, type Page, test } from "@playw
 
 // desk.palette's providers on views.html: its own item search (desk.palette.items over the stub's
 // fixture items) and the test caller test.search's "Test results", after the commands.
-const VIEWS = '[data-surface="desk.views"]';
+// desk.item is a universal detail view (ADR 0103): desk.views hands it to desk.universal.
+const UNIVERSAL = '[data-surface="desk.universal"]';
 const PALETTE = '[data-surface="desk.palette"]';
 // A word from one fixture item's title ("Buy groceries", packages/bridge/src/fixtures.ts); the page
 // gives test.search.record it as a keyword, so a command matches it too.
@@ -82,15 +83,22 @@ test.describe("desk.palette providers", () => {
     await expect(palette.getByTestId("actions")).toContainText("Open in Desk");
     await page.keyboard.press("Enter");
     await expect(page.locator(PALETTE)).toBeHidden();
-    await expect(page.locator(VIEWS)).toBeVisible();
-    const views = page.frameLocator(`${VIEWS} iframe`);
-    await expect(views.locator('[data-component="card"]')).toContainText("Buy groceries");
+    await expect(page.locator(UNIVERSAL)).toBeVisible();
+    const detail = page.frameLocator(`${UNIVERSAL} iframe`).locator("#root > desk-universal-view");
+    await expect(detail).toContainText("Buy groceries");
+    const shown = await detail.evaluate(
+      (el) => (el as unknown as { view: { type: string } }).view.type,
+    );
+    expect(shown).toBe("detail");
     const opened = await page.evaluate(() =>
       window.__desk.stub.log
-        .filter((e) => e.caller === "desk.views" && e.request.method === "view.get")
-        .map((e) => (e.request.params as { id?: string }).id),
+        .filter((e) => e.request.method === "view.get")
+        .map((e) => [e.caller, (e.request.params as { id?: string }).id]),
     );
-    expect(opened).toEqual(["desk.item"]);
+    expect(opened).toEqual([
+      ["desk.views", "desk.item"],
+      ["desk.universal", "desk.item"],
+    ]);
   });
 
   test("another plugin's provider is asked the same way and its actions run", async ({ page }) => {
@@ -136,6 +144,6 @@ test.describe("desk.palette providers", () => {
     );
     expect(new Set(ran)).toEqual(new Set(["desk.keys.list", "desk.palette.providers"]));
     expect(await page.evaluate(() => window.__views.search)).toEqual([]);
-    await expect(page.locator(VIEWS)).toBeHidden();
+    await expect(page.locator(UNIVERSAL)).toBeHidden();
   });
 });

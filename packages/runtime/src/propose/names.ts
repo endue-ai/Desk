@@ -1,8 +1,8 @@
 /**
- * The desk's part of a view Eris proposes, in either language (ADR 0073, ADR 0102): a free id under
- * `eris.` from its title, and the brain that wrote it, for provenance.
+ * The desk's part of a view Eris proposes (ADR 0073, ADR 0102): a free id under `eris.` from its
+ * title, the brain that wrote it, for provenance, and the sources the desk has, for the context.
  */
-import type { BridgeClient } from "@endue-ai/bridge";
+import type { BridgeClient, CatalogConnector, ConnectorInfo } from "@endue-ai/bridge";
 
 const VIEWS = { permission: "view:manage" } as const;
 const CONVERSE = { permission: "brain:converse" } as const;
@@ -49,4 +49,26 @@ export function brainName(bridge: BridgeClient): Promise<string | undefined> {
       status.mode === "local" ? status.model : status.mode === "cloud" ? "cloud" : undefined,
     () => undefined,
   );
+}
+
+/**
+ * Each connector with instances, its kinds and the fields the catalog knows for them: the catalog
+ * lists only what the caller may read (`data:read`, which the runtime does not hold), connector.list
+ * every connector and the kinds it brings in.
+ */
+export function sourcesOf(catalog: CatalogConnector[], listed: ConnectorInfo[]) {
+  const ids = [...new Set([...catalog.map((c) => c.id), ...listed.map((c) => c.id)])];
+  return ids.flatMap((connector) => {
+    const known = catalog.find((c) => c.id === connector);
+    const info = listed.find((c) => c.id === connector);
+    const instances = info ? info.instances.map((i) => i.instance) : (known?.instances ?? []);
+    if (instances.length === 0) return [];
+    const kinds: Array<{ kind: string; fields?: string[] }> = (known?.kinds ?? []).map((k) => ({
+      kind: k.kind,
+      fields: [...k.fields],
+    }));
+    for (const { kind } of info?.resources ?? [])
+      if (!kinds.some((k) => k.kind === kind)) kinds.push({ kind });
+    return [{ connector, instances, kinds }];
+  });
 }

@@ -1,6 +1,7 @@
 /**
  * Views: what a pane can show. Each has a title for the title bar and a body that may keep itself
  * up to date (the agent screen follows its A2A card and tasks; the shortcut list follows the keymap).
+ * The calendar, tomorrow and notes samples are universal views with inline data (ADR 0103).
  */
 import type { SurfacePlacement } from "../modes/types";
 import type { ShellCtx } from "../shell/context";
@@ -14,11 +15,12 @@ import { presenceText } from "./endue/model";
 import { endueSpaceBody } from "./endue/space";
 import { localAgentBody } from "./local-agent/screen";
 import { agentBody } from "./samples/agent";
-import { calendarBody } from "./samples/calendar";
+import { calendarView } from "./samples/calendar";
 import { keysBody } from "./samples/keys";
 import { launcherBody } from "./samples/launcher";
 import { notesBody } from "./samples/notes";
-import { tomorrowBody } from "./samples/tomorrow";
+import { tomorrowView } from "./samples/tomorrow";
+import { universalBody } from "./samples/universal";
 
 /** Where a view is shown: its surface and pane. */
 export interface Where {
@@ -80,7 +82,7 @@ export function viewOf(ctx: ShellCtx, view: string): View {
         title: ctx.tr("surfaceCalendar"),
         sub: ctx.tr("thisWeek"),
         byEris: false,
-        mount: () => still(calendarBody(ctx)),
+        mount: () => still(universalBody(ctx, calendarView(ctx.wall(), ctx.tr("overlap")))),
       };
     case "tomorrow":
       return {
@@ -88,7 +90,7 @@ export function viewOf(ctx: ShellCtx, view: string): View {
         title: ctx.tr("surfaceTomorrow"),
         sub: ctx.tr("forTomorrow"),
         byEris: true,
-        mount: () => still(tomorrowBody(ctx)),
+        mount: () => still(universalBody(ctx, tomorrowView(s.lang))),
       };
     case "notes":
       return {

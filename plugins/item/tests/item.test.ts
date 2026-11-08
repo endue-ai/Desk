@@ -6,13 +6,13 @@ import {
   BridgeClient,
   browserStub,
   fixtureItems,
-  type ItemQuery,
   type PluginManifest,
   stubCommands,
-  type View,
-  type ViewComponent,
+  type UniversalView,
 } from "../../../packages/bridge/src/index";
-import { viewProblems } from "../../../packages/bridge/src/stub-views";
+import { universalProblems } from "../../../packages/bridge/src/stub-universal";
+import { fillQuery } from "../../../packages/plugin-sdk/src/universal-clock";
+import { entriesFromItems } from "../../../packages/plugin-sdk/src/universal-load";
 
 const root = join(import.meta.dirname, "../../..");
 const readJson = (path: string): unknown => JSON.parse(readFileSync(path, "utf8"));
@@ -33,31 +33,16 @@ function manifestValidator() {
   return validate;
 }
 
-/** `{params.<name>}` in a binding's where values filled by hand, as desk.views fills them. */
-function filled(binding: ItemQuery, params: Record<string, string>): ItemQuery {
-  return {
-    ...binding,
-    where: (binding.where ?? []).map((condition) => ({
-      ...condition,
-      value: String(condition.value).replace(
-        /^\{params\.([a-zA-Z0-9]+)\}$/,
-        (_, name) => params[name] ?? "",
-      ),
-    })),
-  };
-}
-
 describe("desk.item", () => {
-  it("is a view plugin whose card binds the one item its params name", () => {
+  it("is a view plugin whose detail view reads the one item its params name", () => {
     const validate = manifestValidator();
     const plugin = manifest();
     expect(validate(plugin), JSON.stringify(validate.errors)).toBe(true);
     expect(plugin).toMatchObject({ id: "desk.item", name: "Item", kind: "view" });
     expect(plugin.entry).toBeUndefined();
-    const view = plugin.view as View;
-    expect(view).toMatchObject({ id: "desk.item", version: "0.1.0" });
-    expect(viewProblems(view)).toEqual([]);
-    expect(view.requires).toBeUndefined();
+    const view = plugin.view as UniversalView;
+    expect(view).toMatchObject({ id: "desk.item", title: "Item", type: "detail" });
+    expect(universalProblems(view)).toEqual([]);
     expect(
       Object.entries(view.params ?? {}).map(([name, param]) => [
         name,
@@ -69,27 +54,20 @@ describe("desk.item", () => {
       ["instance", "string", false],
       ["id", "string", false],
     ]);
-    const card = view.layout as ViewComponent;
-    expect(card.type).toBe("card");
-    expect(card.binding).toEqual({
-      where: [
-        { field: "source.connector", op: "eq", value: "{params.connector}" },
-        { field: "source.instance", op: "eq", value: "{params.instance}" },
-        { field: "id", op: "eq", value: "{params.id}" },
-      ],
-      limit: 1,
+    expect(view.source).toEqual({
+      items: {
+        where: [
+          { field: "source.connector", op: "eq", value: "{params.connector}" },
+          { field: "source.instance", op: "eq", value: "{params.instance}" },
+          { field: "id", op: "eq", value: "{params.id}" },
+        ],
+        limit: 1,
+      },
     });
-    expect(card.fields).toEqual([
-      { value: "{title}" },
-      { label: "Kind", value: "{kind}" },
-      { label: "From", value: "{source.connector}" },
-      { label: "Updated", value: "{updatedAt|relative}" },
-      { value: "{body}" },
-    ]);
-    expect(card.empty).toBe("This item is not in Desk any more.");
+    expect(view.empty).toBe("This item is not in Desk any more.");
   });
 
-  it("with its params filled, the binding answers exactly that fixture item", async () => {
+  it("with its params filled, the source answers exactly that fixture item, as one entry", async () => {
     const READER = "test.item";
     const core = stubCommands(() => {}, { grants: { [READER]: [{ permission: "data:read" }] } });
     const client = new BridgeClient(browserStub(core.handlers));
@@ -98,29 +76,26 @@ describe("desk.item", () => {
     if (!groceries) throw new Error("no fixture task-groceries");
     core.upsert({ ...groceries, source: { connector: "desk.fixtures", instance: "work" } });
 
-    const binding = ((manifest().view as View).layout as ViewComponent).binding ?? {};
-    const query = filled(binding, {
-      connector: "desk.fixtures",
-      instance: "default",
-      id: "task-groceries",
-    });
-    const { items } = await client.call(
-      "data.query",
-      { query, scope: { permission: "data:read" } },
-      { caller: READER },
-    );
+    const source = (manifest().view as UniversalView).source;
+    if (!("items" in source)) throw new Error("an items source");
+    const read = async (id: string) => {
+      const params = { connector: "desk.fixtures", instance: "default", id };
+      const query = fillQuery(source.items, { now: Date.now(), params });
+      const scope = { permission: "data:read" } as const;
+      return (await client.call("data.query", { query, scope }, { caller: READER })).items;
+    };
+    const items = await read("task-groceries");
     expect(items).toEqual([groceries]);
-
-    const gone = filled(binding, {
-      connector: "desk.fixtures",
-      instance: "default",
-      id: "task-gone",
-    });
-    const none = await client.call(
-      "data.query",
-      { query: gone, scope: { permission: "data:read" } },
-      { caller: READER },
-    );
-    expect(none.items).toEqual([]);
+    // What the card showed (title, kind, source, update time, body) travels on the entry.
+    expect(entriesFromItems(items)).toEqual([
+      expect.objectContaining({
+        id: "task-groceries",
+        title: groceries.title,
+        kind: "task",
+        source: groceries.source,
+        updatedAt: groceries.updatedAt,
+      }),
+    ]);
+    expect(await read("task-gone")).toEqual([]);
   });
 });

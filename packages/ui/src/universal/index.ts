@@ -1,6 +1,17 @@
 // The universal views without a DOM (ADR 0087): entries read through a map into rows, and each
 // presentation's model. `<desk-universal-view>` (@endue-ai/ui/elements) draws them; plugins and tests
 // may use them directly.
+
+export {
+  type ChartModel,
+  type ChartPoint,
+  chartOf,
+  type DetailField,
+  type DetailModel,
+  detailOf,
+  type StatModel,
+  statOf,
+} from "./figures";
 export {
   type CalendarCell,
   type CalendarEntry,
@@ -59,4 +70,7 @@ export const UNIVERSAL_TYPES = [
   "text",
   "chat",
   "agent",
+  "chart",
+  "stat",
+  "detail",
 ] as const;

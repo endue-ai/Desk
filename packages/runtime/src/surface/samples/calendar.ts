@@ -1,6 +1,8 @@
-/** Sample surface: a week grid. Events that overlap get the attention outline and say so in words. */
-import type { ShellCtx } from "../../shell/context";
-import { h } from "../../shell/dom";
+/**
+ * Sample surface: this week's calendar as a universal view with inline data (ADR 0103): six events
+ * from Monday to Friday, two of them overlapping on Wednesday and tagged so.
+ */
+import type { UniversalView } from "@endue-ai/bridge";
 
 interface Event {
   day: number;
@@ -18,9 +20,6 @@ export const EVENTS: Event[] = [
   { day: 4, start: 13, end: 14, title: "Focus" },
 ];
 
-const FIRST = 9;
-const LAST = 17;
-
 export function overlaps(events: Event[]): Set<number> {
   const out = new Set<number>();
   events.forEach((a, i) => {
@@ -31,56 +30,33 @@ export function overlaps(events: Event[]): Set<number> {
   return out;
 }
 
-export function calendarBody(ctx: ShellCtx): HTMLElement {
-  const days =
-    ctx.store.get().lang === "ko"
-      ? ["월", "화", "수", "목", "금"]
-      : ["Mon", "Tue", "Wed", "Thu", "Fri"];
+const HOUR = 3_600_000;
+
+/** Monday 00:00 UTC of the week `now` falls in. */
+function monday(now: number): number {
+  const d = new Date(now);
+  return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - ((d.getUTCDay() + 6) % 7));
+}
+
+/**
+ * The week of `now` (in UTC, so the sample reads the same on every machine) with the events in
+ * it; `overlap` is the tag the overlapping ones carry.
+ */
+export function calendarView(now: number, overlap: string): UniversalView {
+  const base = monday(now);
+  const at = (day: number, hour: number) =>
+    new Date(base + (day * 24 + hour) * HOUR).toISOString().replace(".000Z", "Z");
   const clash = overlaps(EVENTS);
-  const span = LAST - FIRST;
-  // Overlapping events sit side by side: the earlier one left, the later one right.
-  const lane = (i: number) =>
-    EVENTS.some((e, j) => j < i && clash.has(j) && e.day === EVENTS[i]?.day) ? 1 : 0;
-  return h(
-    "div",
-    { class: "cal" },
-    h(
-      "div",
-      { class: "cal-head" },
-      h("span"),
-      days.map((d) => h("span", { class: "cal-day" }, d)),
-    ),
-    h(
-      "div",
-      { class: "cal-grid" },
-      h(
-        "div",
-        { class: "cal-hours", "aria-hidden": "true" },
-        Array.from({ length: span }, (_, i) => h("span", { class: "cal-hour" }, String(FIRST + i))),
-      ),
-      days.map((d, day) =>
-        h(
-          "div",
-          { class: "cal-col", role: "list", "aria-label": d },
-          EVENTS.map((e, i) => ({ e, i }))
-            .filter(({ e }) => e.day === day)
-            .map(({ e, i }) =>
-              h(
-                "div",
-                {
-                  class: `cal-event${clash.has(i) ? ` is-overlap is-lane-${lane(i)}` : ""}`,
-                  role: "listitem",
-                  style: {
-                    top: `${((e.start - FIRST) / span) * 100}%`,
-                    height: `${((e.end - e.start) / span) * 100}%`,
-                  },
-                },
-                h("span", { class: "cal-title" }, e.title),
-                clash.has(i) ? h("span", { class: "cal-flag" }, ctx.tr("overlap")) : null,
-              ),
-            ),
-        ),
-      ),
-    ),
-  );
+  const entries = EVENTS.map((e, i) => ({
+    id: `event-${i + 1}`,
+    title: e.title,
+    start: at(e.day, e.start),
+    end: at(e.day, e.end),
+    ...(clash.has(i) ? { tags: [overlap] } : {}),
+  }));
+  return {
+    type: "calendar",
+    options: { range: "week", zone: "UTC" },
+    source: { data: { entries } },
+  };
 }

@@ -341,4 +341,61 @@ describe("ctx.universal.open", () => {
     expect(said).toEqual(["Hello"]);
     expect(handle.data?.entries).toEqual([{ author: "me", text: "Hello" }]);
   });
+
+  it("fills an items query's clock and params before it asks the index (ADR 0103)", async () => {
+    const { host, ctx } = await mounted({ grants: [{ permission: "data:read" }] });
+    const handle = ctx.universal.open(
+      document.body,
+      {
+        type: "list",
+        params: { owner: { kind: "string", title: "Owner", default: "Mina" } },
+        source: {
+          items: {
+            kinds: ["task"],
+            where: [
+              { field: "due", op: "lt", value: "{tomorrow}" },
+              { field: "updatedAt", op: "gte", value: "{today}" },
+              { field: "raw.owner", op: "eq", value: "{params.owner}" },
+              { field: "title", op: "eq", value: "{unknown}" },
+            ],
+          },
+        },
+      },
+      { now: () => Date.parse("2026-10-30T09:00:00+09:00"), zone: "Asia/Seoul" },
+    );
+    await flush(host);
+    const asked = host.calls.filter((call) => call.method === "data.query");
+    const last = asked.at(-1);
+    if (!last) throw new Error("no data.query");
+    const where = (last.params as { query: { where: Array<{ value: unknown }> } }).query.where;
+    expect(where.map((w) => w.value)).toEqual([
+      "2026-10-31T00:00:00+09:00",
+      "2026-10-30T00:00:00+09:00",
+      "Mina",
+      "{unknown}",
+    ]);
+    handle.close();
+  });
+
+  it("opens a page's sections side by side, each over its own source, and closes them all", async () => {
+    const { host, ctx } = await mounted({ grants: [{ permission: "data:read" }] });
+    const handle = ctx.universal.open(document.body, {
+      title: "Today",
+      columns: 2,
+      sections: [
+        { type: "list", source: { items: { kinds: ["task"] } } },
+        { type: "stat", source: { data: { entries: [{ id: "a" }, { id: "b" }] } } },
+      ],
+    });
+    await flush(host);
+    const grid = handle.element;
+    expect(grid.getAttribute("data-columns")).toBe("2");
+    const [title, ...views] = (grid as unknown as { children: Element[] }).children;
+    // The page's title heads its sections.
+    expect([title?.localName, title?.textContent]).toEqual(["h2", "Today"]);
+    expect(views.map((el) => el.localName)).toEqual(["desk-universal-view", "desk-universal-view"]);
+    expect((views[1] as unknown as { data: { entries: unknown[] } }).data.entries).toHaveLength(2);
+    handle.close();
+    expect(grid.isConnected).toBe(false);
+  });
 });

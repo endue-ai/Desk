@@ -19,6 +19,7 @@
           "description": "One sentence about what the view shows.",
           "type": "string"
         },
+        "params": { "$ref": "#/$defs/UniversalParams" },
         "type": { "$ref": "#/$defs/UniversalType" },
         "types": {
           "description": "The presentations the person may switch between over the same entries, in the switcher's order; absent, only type.",
@@ -59,10 +60,62 @@
       "required": ["type", "source"],
       "additionalProperties": false
     },
+    "UniversalParams": {
+      "description": "Values the person or a caller gives when opening the view, as an item view's params (ADR 0032): read as {params.<name>} in an items source's query and in the title.",
+      "type": "object",
+      "propertyNames": { "$ref": "view.schema.json#/$defs/ParamName" },
+      "additionalProperties": { "$ref": "view.schema.json#/$defs/ViewParam" }
+    },
+    "UniversalPage": {
+      "description": "Several universal views laid out together, each over its own source: what a layout of components was in an item view (Today, a digest), ADR 0103. Its params reach every section.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "view.schema.json#/$defs/ViewId" },
+        "title": {
+          "description": "Shown above the sections.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "description": { "type": "string" },
+        "params": { "$ref": "#/$defs/UniversalParams" },
+        "columns": {
+          "description": "How many sections sit side by side; one when absent, fewer on a narrow surface.",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4
+        },
+        "sections": {
+          "description": "The views, in reading order; none has an id, params or provenance of its own.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/UniversalSection" },
+          "minItems": 1,
+          "maxItems": 12
+        },
+        "provenance": { "$ref": "view.schema.json#/$defs/ViewProvenance" }
+      },
+      "required": ["sections"],
+      "additionalProperties": false
+    },
+    "UniversalSection": {
+      "description": "One section of a page: a universal view; the page's id, params and provenance stand for all, so a section has none of its own (the desk refuses one that does).",
+      "$ref": "#/$defs/UniversalView"
+    },
     "UniversalType": {
-      "description": "timeline: entries in time order along a line, by day. calendar: a month (or week, or day) of dates with the entries that fall on them. kanban: a column per group. list: one row per entry. text: the entries as one document. chat: messages from authors, the person's own on the other side. agent: an agent's run, step by step with each step's status.",
+      "description": "timeline: entries in time order along a line, by day. calendar: a month (or week, or day) of dates with the entries that fall on them. kanban: a column per group. list: one row per entry. text: the entries as one document. chat: messages from authors, the person's own on the other side. agent: an agent's run, step by step with each step's status. chart: the entries' value role over time or per group as bars, a line or a sparkline, or counts per group without one. stat: one number: the entries counted, their value summed, or the latest. detail: one entry's fields, the first or the one selected.",
       "type": "string",
-      "enum": ["timeline", "calendar", "kanban", "list", "text", "chat", "agent"]
+      "enum": [
+        "timeline",
+        "calendar",
+        "kanban",
+        "list",
+        "text",
+        "chat",
+        "agent",
+        "chart",
+        "stat",
+        "detail"
+      ]
     },
     "UniversalSource": {
       "description": "Where the entries come from. Every source but items answers a UniversalData document (YAML or JSON); items are the desk's index, turned into entries.",
@@ -136,7 +189,7 @@
       "additionalProperties": false
     },
     "UniversalItemsSource": {
-      "description": "The desk's item index (data.query under data:read), live: each item becomes an entry with its kind's fields in the roles they play (an event's start and end, a task's status as its group, a message's sender as its author).",
+      "description": "The desk's item index (data.query under data:read), live: each item becomes an entry with its kind's fields in the roles they play (an event's start and end, a task's status as its group, a message's sender as its author). Strings in its query's where values may read {today}, {tomorrow} and {now} (the clock, as in item views) and {params.<name>}, filled when it loads.",
       "type": "object",
       "properties": {
         "items": { "$ref": "../../item/v0/query.schema.json#/$defs/ItemQuery" }
@@ -159,9 +212,15 @@
         "role": { "$ref": "../../item/v0/query.schema.json#/$defs/FieldPath" },
         "status": { "$ref": "../../item/v0/query.schema.json#/$defs/FieldPath" },
         "tags": { "$ref": "../../item/v0/query.schema.json#/$defs/FieldPath" },
-        "url": { "$ref": "../../item/v0/query.schema.json#/$defs/FieldPath" }
+        "url": { "$ref": "../../item/v0/query.schema.json#/$defs/FieldPath" },
+        "value": { "$ref": "../../item/v0/query.schema.json#/$defs/FieldPath" }
       },
       "additionalProperties": false
+    },
+    "UniversalAggregate": {
+      "description": "stat: count the entries (the default), sum their value, or show the latest value by start.",
+      "type": "string",
+      "enum": ["count", "sum", "latest"]
     },
     "UniversalOrder": {
       "description": "Earliest first (asc) or latest first (desc).",
@@ -195,7 +254,12 @@
           "description": "chat and agent: the composer's hint.",
           "type": "string",
           "minLength": 1
-        }
+        },
+        "chart": {
+          "description": "chart: bar (the default), line or sparkline.",
+          "$ref": "view.schema.json#/$defs/ChartKind"
+        },
+        "aggregate": { "$ref": "#/$defs/UniversalAggregate" }
       },
       "additionalProperties": false
     },
@@ -224,7 +288,7 @@
       "additionalProperties": false
     },
     "UniversalEntry": {
-      "description": "One entry: any fields the source has. By name (or through a map) id, title, text (Markdown), detail, start and end (RFC 3339 with an offset, or a YYYY-MM-DD date for a whole day), group, author, role, status (pending, running, done, failed, waiting, or any other word), tags (a list of strings) and url play the roles the views draw; the rest travels with the entry to its actions.",
+      "description": "One entry: any fields the source has. By name (or through a map) id, title, text (Markdown), detail, start and end (RFC 3339 with an offset, or a YYYY-MM-DD date for a whole day), group, author, role, status (pending, running, done, failed, waiting, or any other word), tags (a list of strings), url and value (a number, for charts and stats) play the roles the views draw; the rest travels with the entry to its actions.",
       "type": "object",
       "propertyNames": {
         "type": "string",

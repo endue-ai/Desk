@@ -771,8 +771,8 @@ export interface PluginManifest {
   /** Installed but off until the desk needs it, like Emacs's autoload. With no stored enabled flag the plugin starts off, and its file openers count while it is off: desk.files turns it on to open a file and off again when its last file closes; profiles leave it as it is. Default false. */
   autoload?: boolean;
   /** A view plugin's one view, inline; a pack's own view too. */
-  view?: View;
-  /** A view plugin's view files, one View each, relative to the plugin folder; a pack's too. */
+  view?: PluginView;
+  /** A view plugin's view files, one PluginView each, relative to the plugin folder; a pack's too. */
   views?: ViewPath[];
   connector?: ConnectorManifest;
   /** A pack's pack block: what it brings and does when applied (ADR 0108). */
@@ -807,6 +807,9 @@ export type PluginKind =
 
 /** Path to the entry file, relative to the plugin folder, without .. segments. */
 export type EntryPath = string;
+
+/** A view a plugin provides: a universal view or a page of them (ADR 0087, ADR 0103), with its id, or an item view (ADR 0032; deprecated, read through v0). */
+export type PluginView = View | UniversalView | UniversalPage;
 
 /** A view file relative to the plugin folder, without .. segments: YAML (.yaml, .yml) or JSON (.json). */
 export type ViewPath = string;
@@ -1347,6 +1350,7 @@ export interface UniversalView {
   title?: string;
   /** One sentence about what the view shows. */
   description?: string;
+  params?: UniversalParams;
   type: UniversalType;
   /** The presentations the person may switch between over the same entries, in the switcher's order; absent, only type. */
   types?: UniversalType[];
@@ -1366,8 +1370,38 @@ export interface UniversalView {
   provenance?: ViewProvenance;
 }
 
-/** timeline: entries in time order along a line, by day. calendar: a month (or week, or day) of dates with the entries that fall on them. kanban: a column per group. list: one row per entry. text: the entries as one document. chat: messages from authors, the person's own on the other side. agent: an agent's run, step by step with each step's status. */
-export type UniversalType = "timeline" | "calendar" | "kanban" | "list" | "text" | "chat" | "agent";
+/** Values the person or a caller gives when opening the view, as an item view's params (ADR 0032): read as {params.<name>} in an items source's query and in the title. */
+export type UniversalParams = Record<string, ViewParam>;
+
+/** Several universal views laid out together, each over its own source: what a layout of components was in an item view (Today, a digest), ADR 0103. Its params reach every section. */
+export interface UniversalPage {
+  id?: ViewId;
+  /** Shown above the sections. */
+  title?: string;
+  description?: string;
+  params?: UniversalParams;
+  /** How many sections sit side by side; one when absent, fewer on a narrow surface. */
+  columns?: number;
+  /** The views, in reading order; none has an id, params or provenance of its own. */
+  sections: UniversalSection[];
+  provenance?: ViewProvenance;
+}
+
+/** One section of a page: a universal view; the page's id, params and provenance stand for all, so a section has none of its own (the desk refuses one that does). */
+export type UniversalSection = UniversalView;
+
+/** timeline: entries in time order along a line, by day. calendar: a month (or week, or day) of dates with the entries that fall on them. kanban: a column per group. list: one row per entry. text: the entries as one document. chat: messages from authors, the person's own on the other side. agent: an agent's run, step by step with each step's status. chart: the entries' value role over time or per group as bars, a line or a sparkline, or counts per group without one. stat: one number: the entries counted, their value summed, or the latest. detail: one entry's fields, the first or the one selected. */
+export type UniversalType =
+  | "timeline"
+  | "calendar"
+  | "kanban"
+  | "list"
+  | "text"
+  | "chat"
+  | "agent"
+  | "chart"
+  | "stat"
+  | "detail";
 
 /** Where the entries come from. Every source but items answers a UniversalData document (YAML or JSON); items are the desk's index, turned into entries. */
 export type UniversalSource =
@@ -1407,7 +1441,7 @@ export interface UniversalCommandSource {
   args?: CommandArgs;
 }
 
-/** The desk's item index (data.query under data:read), live: each item becomes an entry with its kind's fields in the roles they play (an event's start and end, a task's status as its group, a message's sender as its author). */
+/** The desk's item index (data.query under data:read), live: each item becomes an entry with its kind's fields in the roles they play (an event's start and end, a task's status as its group, a message's sender as its author). Strings in its query's where values may read {today}, {tomorrow} and {now} (the clock, as in item views) and {params.<name>}, filled when it loads. */
 export interface UniversalItemsSource {
   items: ItemQuery;
 }
@@ -1426,7 +1460,11 @@ export interface UniversalMap {
   status?: FieldPath;
   tags?: FieldPath;
   url?: FieldPath;
+  value?: FieldPath;
 }
+
+/** stat: count the entries (the default), sum their value, or show the latest value by start. */
+export type UniversalAggregate = "count" | "sum" | "latest";
 
 /** Earliest first (asc) or latest first (desc). */
 export type UniversalOrder = "asc" | "desc";
@@ -1443,6 +1481,9 @@ export interface UniversalOptions {
   me?: string;
   /** chat and agent: the composer's hint. */
   placeholder?: string;
+  /** chart: bar (the default), line or sparkline. */
+  chart?: ChartKind;
+  aggregate?: UniversalAggregate;
 }
 
 /** The universal data format: what every source but items answers. A YAML file, an HTTP response, a command's answer and inline data are all this document. */
@@ -1457,10 +1498,10 @@ export interface UniversalData {
   entries: UniversalEntry[];
 }
 
-/** One entry: any fields the source has. By name (or through a map) id, title, text (Markdown), detail, start and end (RFC 3339 with an offset, or a YYYY-MM-DD date for a whole day), group, author, role, status (pending, running, done, failed, waiting, or any other word), tags (a list of strings) and url play the roles the views draw; the rest travels with the entry to its actions. */
+/** One entry: any fields the source has. By name (or through a map) id, title, text (Markdown), detail, start and end (RFC 3339 with an offset, or a YYYY-MM-DD date for a whole day), group, author, role, status (pending, running, done, failed, waiting, or any other word), tags (a list of strings), url and value (a number, for charts and stats) play the roles the views draw; the rest travels with the entry to its actions. */
 export type UniversalEntry = Record<string, unknown>;
 
-/** One view file. */
+/** Deprecated (ADR 0103): an item view, read through v0 and never written by the desk; a universal view (universal.schema.json) or a page of them is the view language. One view file. */
 export interface View {
   id: ViewId;
   version: Version;
@@ -6725,17 +6766,19 @@ export interface UpdateChangedEvent {
 /** Where a view comes from: plugin, an enabled view plugin's inline view or one of its view files, read-only; file, the person's file in ~/.desk/views. */
 export type ViewSource = "plugin" | "file";
 
-/** A view in either language: an item view of specs/view/v0 (layouts of components over the desk's items, ADR 0032) or a universal view (one presentation of entries from any source, ADR 0087). A universal view saved in ~/.desk/views must have its id. */
-export type AnyView = View | UniversalView;
+/** A view in either language: an item view of specs/view/v0 (layouts of components over the desk's items, ADR 0032; deprecated, ADR 0103), a universal view (one presentation of entries from any source, ADR 0087) or a page of universal views. One saved in ~/.desk/views must have its id. */
+export type AnyView = View | UniversalView | UniversalPage;
 
-/** A view as view.list returns it: where it comes from and, for a plugin's view, the plugin. An item view has a version; a universal view has its type instead, and its title is its id when it has none. */
+/** A view as view.list returns it: where it comes from and, for a plugin's view, the plugin. An item view has a version; a universal view has its type instead and a page its number of sections, and either's title is its id when it has none. */
 export interface ViewSummary {
   id: ViewId;
   version?: Version;
   title: Template;
   description?: string;
-  /** A universal view's presentation; absent for an item view. */
+  /** A universal view's presentation; absent for an item view and a page. */
   type?: UniversalType;
+  /** How many views a page lays out; absent for anything but a page. */
+  sections?: number;
   source: ViewSource;
   plugin?: PluginId;
 }

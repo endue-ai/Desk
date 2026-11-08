@@ -1,6 +1,5 @@
-/** Sample surface Eris made: tomorrow's list. */
-import type { ShellCtx } from "../../shell/context";
-import { h } from "../../shell/dom";
+/** Sample surface Eris made: tomorrow's list, as a universal list view with inline data (ADR 0103). */
+import type { UniversalView } from "@endue-ai/bridge";
 
 const ITEMS = {
   ko: [
@@ -17,17 +16,7 @@ const ITEMS = {
   ],
 };
 
-export function tomorrowBody(ctx: ShellCtx): HTMLElement {
-  return h(
-    "ol",
-    { class: "list-body" },
-    ITEMS[ctx.store.get().lang].map((text, i) =>
-      h(
-        "li",
-        { class: "list-row" },
-        h("span", { class: "list-index" }, i + 1),
-        h("span", {}, text),
-      ),
-    ),
-  );
+export function tomorrowView(lang: "ko" | "en"): UniversalView {
+  const entries = ITEMS[lang].map((title, i) => ({ id: `tomorrow-${i + 1}`, title }));
+  return { type: "list", source: { data: { entries } } };
 }

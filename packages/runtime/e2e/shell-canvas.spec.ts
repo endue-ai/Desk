@@ -145,7 +145,7 @@ test("wheel over a pane does not pan, background wheel does", async ({ page }) =
   const win = surface(page);
   await win.locator('[data-view="notes"]').click();
   const before = await win.boundingBox();
-  await win.locator("textarea").hover();
+  await win.locator("textarea.notes-input").hover();
   await page.mouse.wheel(0, 120);
   expect(await win.boundingBox()).toEqual(before);
   await page.mouse.move(1200, 700);

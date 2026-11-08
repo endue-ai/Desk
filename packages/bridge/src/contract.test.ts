@@ -147,9 +147,10 @@ function viewProblems(view: View): string[] {
   return problems.sort();
 }
 
-/** What plugin.schema.json cannot say: an inline view's names resolve, actions are commands. */
+/** What plugin.schema.json cannot say: an inline item view's names resolve, actions are commands. */
 function manifestProblems(manifest: PluginManifest): string[] {
-  const problems = manifest.view ? viewProblems(manifest.view).map((p) => `/view${p}`) : [];
+  const item = manifest.view && "layout" in manifest.view ? manifest.view : undefined;
+  const problems = item ? viewProblems(item).map((p) => `/view${p}`) : [];
   const commands = (manifest.contributes?.commands ?? []).map((c) => c.id);
   for (const [r, resource] of (manifest.connector?.resources ?? []).entries())
     for (const [a, id] of (resource.actions ?? []).entries())

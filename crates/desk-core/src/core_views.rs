@@ -13,13 +13,12 @@ use std::path::PathBuf;
 use std::sync::MutexGuard;
 
 use desk_bridge::{
-    AnyView, BridgeError, BridgeEvent, ErrorCode, Permission, ViewChange, ViewChangedData,
-    ViewChangedEvent, ViewGetParams, ViewGetResult, ViewListParams, ViewListResult,
-    ViewManagePermission, ViewRemoveParams, ViewRemoveResult, ViewSaveParams, ViewSaveResult,
-    ViewSource, ViewSummary,
+    BridgeError, BridgeEvent, ErrorCode, Permission, ViewChange, ViewChangedData, ViewChangedEvent,
+    ViewGetParams, ViewGetResult, ViewListParams, ViewListResult, ViewManagePermission,
+    ViewRemoveParams, ViewRemoveResult, ViewSaveParams, ViewSaveResult, ViewSource, ViewSummary,
 };
 
-pub(crate) use crate::core_views_check::{ViewFile, check_view, parse_view, read_view};
+pub(crate) use crate::core_views_check::{ViewFile, read_view};
 use crate::core_views_check::{check_any_view, id_of, summary};
 use crate::handler::{Answer, Core, error, io_error, json as answer};
 use crate::perm::Target;
@@ -58,11 +57,7 @@ impl Core {
             .collect();
         for (id, (plugin, view)) in self.plugin_views() {
             if !shadowed.contains(&id) {
-                views.push(summary(
-                    AnyView::View(view),
-                    ViewSource::Plugin,
-                    Some(plugin),
-                ));
+                views.push(summary(view, ViewSource::Plugin, Some(plugin)));
             }
         }
         views.sort_by(|a, b| a.id.cmp(&b.id));
@@ -80,7 +75,7 @@ impl Core {
             Ok(ViewFile::Invalid(problem)) => Err(error(ErrorCode::InvalidParams, problem)),
             Err(e) if e.kind() == io::ErrorKind::NotFound => match self.plugin_view(&params.id) {
                 Some((plugin, view)) => answer(ViewGetResult {
-                    view: AnyView::View(view),
+                    view,
                     source: ViewSource::Plugin,
                     plugin: Some(plugin),
                 }),
