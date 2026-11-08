@@ -257,6 +257,8 @@ export function installSettingsWindow(
     offSave,
     offSettings,
     offPolicy,
+    // desk.keys.quit from the CLI, an agent or Eris: no key reaches the window's own handler.
+    keys.onQuit(close),
     define("desk.settings.open", tr("title"), (args) => {
       const section = (args as { section?: SettingsSection } | undefined)?.section;
       open(section && SECTIONS.includes(section) ? section : undefined);

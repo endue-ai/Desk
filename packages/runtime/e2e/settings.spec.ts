@@ -49,6 +49,17 @@ test.describe("core settings", () => {
     await expect(page.locator("#desk")).toHaveAttribute("data-scheme", "light");
   });
 
+  test("desk.keys.quit closes the window as Escape does, from any caller", async ({ page }) => {
+    await open(page);
+    await page.getByRole("button", { name: "설정 열기", exact: true }).focus();
+    await page.keyboard.press("Meta+,");
+    await expect(dialog(page)).toBeVisible();
+    // The CLI, an agent or Eris runs the command; no key reaches the window's own handler.
+    await page.evaluate(() => window.__desk.runtime.commands.run("desk.keys.quit"));
+    await expect(dialog(page)).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "설정 열기", exact: true })).toBeFocused();
+  });
+
   test("records, confirms conflicts, clears and resets core bindings", async ({ page }, info) => {
     await open(page);
     await page.keyboard.press("Meta+,");
