@@ -82,6 +82,21 @@ describe("a permission prompt for an unloaded prompter (ADR 0070)", () => {
     plugins.stop();
   });
 
+  it("keeps the prompt while the frame cannot load: the person may open the window later (#1)", async () => {
+    const { stub, plugins, frame, wake, hello, events } = await host();
+    wake.mockReturnValue(false);
+    plugins.unloaded(permissions.id, undefined);
+    frame.postMessage.mockClear();
+
+    stub.emit(prompt);
+    expect(wake).toHaveBeenCalledWith(permissions.id);
+    expect(events()).toEqual([]);
+
+    hello();
+    expect(events()).toEqual(["perm.prompt"]);
+    plugins.stop();
+  });
+
   it("wakes it for an agent's approval too, and still drops what needs no answer", async () => {
     const { stub, plugins, frame, wake, hello, events } = await host();
     plugins.unloaded(permissions.id, undefined);

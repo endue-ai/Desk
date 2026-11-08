@@ -4,7 +4,8 @@
  * invocation, a permission prompt or an agent's approval needs the plugin's answer, so it waits and
  * wakes the frame; anything else is dropped, since the plugin reads what it needs again when it loads.
  * A plugin can also start asleep (#590): it has no surface yet, and waking it opens one. When no
- * frame can load, what needs an answer is not kept: the host answers it (#1).
+ * frame can load, a command invocation is not kept: the host answers it (#1). A prompt or a desk
+ * command still waits, since the person may open the plugin's window later.
  */
 import type { BridgeEvent } from "@endue-ai/bridge";
 
@@ -71,15 +72,16 @@ export class Sleepers {
   }
 
   /**
-   * Keep a message that needs the plugin's answer and load its frame for it. A message whose frame
-   * cannot load is `stuck` and not kept; anything else is dropped.
+   * Keep a message that needs the plugin's answer and load its frame for it. A command invocation
+   * whose frame cannot load is `stuck` and not kept, so the host answers its caller; a prompt or a
+   * desk command waits for a frame the person may still open. Anything else is dropped.
    */
   hold(id: string, message: unknown): Hold {
     const waiting = this.#waiting.get(id);
     const m = message as { type?: string; event?: BridgeEvent };
     const answered = m.type === "desk:command" || ANSWERED.has(m.event?.event ?? "");
     if (!waiting || !answered) return "dropped";
-    if (!this.rouse(id)) return "stuck";
+    if (!this.rouse(id) && m.event?.event === "cmd.invoked") return "stuck";
     waiting.push(message);
     return "held";
   }
