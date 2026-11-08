@@ -24,8 +24,9 @@ use desk_bridge::{
     StudioCatalogRecommendResult, StudioCatalogUseResult, StudioConversationsListResult,
     StudioSpacesGetResult, StudioSpacesListResult, ThemeBundle, ThemeExportResult, ThemeIndex,
     ThemeMarketFetchResult, ThemeMarketListResult, ThemePackage, ThemeType, ThemeVariant,
-    UiSurfaceStateRequest, UiSurfaceStateResult, UniversalData, UniversalPage, UniversalSource, UniversalView,
-    View, ViewGetResult, ViewListResult, ViewSource, ViewSummary, manifest_problems, view_problems,
+    UiSurfaceStateRequest, UiSurfaceStateResult, UniversalData, UniversalPage, UniversalSource,
+    UniversalView, View, ViewGetResult, ViewListResult, ViewSource, ViewSummary, manifest_problems,
+    view_problems,
 };
 use serde::Serialize;
 use serde::de::DeserializeOwned;
