@@ -292,11 +292,14 @@ On main:
   `127.0.0.1`, the app's dev server on `localhost`. brain-echo accepts any token, which is fine only
   because it is local.
 - CI scans dependencies and secrets on every PR (`.github/workflows/security.yml`: cargo-deny,
-  cargo-audit, `pnpm audit`, gitleaks), and Dependabot proposes updates.
+  cargo-audit, `pnpm audit`, gitleaks). Dependabot is off; dependency updates come from the team's
+  own pull requests.
 - An agent hook blocks direct Playwright commands (`scripts/agent-hook.mjs`).
 
 Gaps:
 
+- Nothing proposes dependency updates on a schedule since Dependabot is off: a vulnerable version
+  stays until the scans above flag it or someone updates it. No issue yet.
 - The e2e container keeps Docker's default network, though the tests serve their fixtures inside it.
   No issue yet.
 - `DESK_PLUGIN_DIRS`, `DESK_DEV_PLUGINS`, `DESK_BRAIN_URL` and `DESK_INIT` work in release builds too.
