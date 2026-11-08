@@ -101,6 +101,20 @@ test.describe("the desk shell", () => {
     await expect(page.locator(".drawer-button .badge")).toHaveText("5");
   });
 
+  test("switching back takes the surfaces the profile places out of the drawer", async ({
+    page,
+  }) => {
+    await page.click('[data-desktop="2"]');
+    for (const mode of ["deep-work", "morning"]) {
+      await page.hover(".mode-chip.is-current");
+      await step(page, 400);
+      await page.click(`[data-mode="${mode}"]`);
+      await expect(page.locator(".mode-chip.is-current")).toHaveAttribute("data-mode", mode);
+    }
+    await expect(page.locator(".surface")).toHaveCount(2);
+    await expect(page.locator(".drawer-button .badge")).toHaveText("3");
+  });
+
   test("desktops switch by click and by ⌃1–⌃4, and show which are empty", async ({ page }) => {
     await expect(page.locator('[data-desktop="1"]')).toHaveAttribute("aria-pressed", "true");
     await expect(page.locator('[data-desktop="2"] .mini-dot.is-on')).toHaveCount(2);

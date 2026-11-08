@@ -11,6 +11,7 @@ import type { ErisState } from "../eris/states";
 import type { Session } from "../modes/model";
 import { baseMode } from "../modes/profiles";
 import type { Desktop, DesktopId, DesktopRef, Mode, SurfacePlacement } from "../modes/types";
+import { keepAway } from "./away";
 import type { Lang } from "./copy";
 
 export interface DrawerItem {
@@ -77,6 +78,7 @@ export interface DeskState {
   localRuns: LocalAgentRun[];
   /** The runs Eris handed out with her desk.agents.* tools, so their screens say so. */
   erisRuns: string[];
+  /** What is put away: never a surface that a desktop places (away.ts, #4). */
   drawer: DrawerItem[];
   /**
    * Plugin surfaces the runtime handed to the shell's windows (ADR 0040), in mount order, each with
@@ -102,12 +104,13 @@ export interface DeskState {
 
 type Listener = (state: DeskState, previous: DeskState) => void;
 
+/** The shell's state; every change keeps the drawer to what is away (away.ts). */
 export class Store {
   #state: DeskState;
   #listeners = new Set<Listener>();
 
   constructor(initial: DeskState) {
-    this.#state = initial;
+    this.#state = keepAway(initial);
   }
 
   get(): DeskState {
@@ -117,7 +120,7 @@ export class Store {
   set(patch: Partial<DeskState> | ((s: DeskState) => Partial<DeskState>)): void {
     const previous = this.#state;
     const change = typeof patch === "function" ? patch(previous) : patch;
-    this.#state = { ...previous, ...change };
+    this.#state = keepAway({ ...previous, ...change }, previous);
     for (const listener of [...this.#listeners]) listener(this.#state, previous);
   }
 

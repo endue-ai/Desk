@@ -218,11 +218,8 @@ export function openSurface(ctx: Ctx, id: string, placement?: SurfacePlacement):
       surfaces: [...l.surfaces, cascade(placement ?? inView(s, defaultPlacement(id)), l.surfaces)],
     }));
   }
-  ctx.store.set((st) => ({
-    focused: id,
-    pane: null,
-    drawer: st.drawer.filter((d) => d.placement?.id !== id),
-  }));
+  // Placed now, it leaves the drawer by the store's rule (away.ts).
+  ctx.store.set({ focused: id, pane: null });
 }
 
 export function raise(ctx: Ctx, itemId: string): void {
