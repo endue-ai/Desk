@@ -11,7 +11,7 @@ desk export|import <dir|file.zip> [--with-data]   # a desk as files; import keep
 desk plugin test <dir>                 # the folder's tests/ on the host for its kind
 desk ping                              # a round trip to the running desk; prints ok
 desk cmd list | tools [<words>]        # id<TAB>provider<TAB>title; tools: agents' (ADR 0088), reads|acts|irreversible
-desk cmd run <id> [--args <json>]      # waits for cmd.answered; prints the result as JSON
+desk cmd run <id> [--args <json>] [--timeout <s>]   # waits for cmd.answered (at most <s> s: exit 1); prints the result as JSON
 desk plugin list [--lock]              # id<TAB>status<TAB>enabled|disabled; --lock: ~/.desk/plugins.lock
 desk plugin enable|disable <id> | sync # ok; sync: on and off as plugins.lock says, missing ones exit 1
 desk perm list | revoke <grantId>      # grantId<TAB>caller<TAB>permission per grant; revoke prints ok
@@ -29,7 +29,7 @@ socket (`crates/desk-ipc`, ADR 0030) as `cli`; `mcp` runs its client's calls as 
 `DESK_SOCKET` names another socket. `--json` prints the answer as it came (`cmd run`, `describe`:
 `cmd.answered`; `perm log`: each entry; `doctor`: JSON); `inspect` prints JSON either way. Exit codes: 0
 ok; 1 a failed check or test, an invalid desk file, a refused import, a bridge error (`desk: <code>:
-<message>`), a failed command or no desk at the socket; 2 usage. `plugin validate` prints `ok <id>
+<message>`), a failed command, no answer within `--timeout` or no desk at the socket; 2 usage. `plugin validate` prints `ok <id>
 <version> (<kind> plugin)` or every problem. `plugin test` runs a valid plugin's tests: `tests/<name>.test.json`
 on the desk-plugin-host harness for logic plugins and Wasm connectors, `tests/*.test.{js,ts}` with vitest on
 the SDK's test host for the others (`packages/plugin-sdk/vitest.plugin.config.ts`, or in `DESK_REPO`).

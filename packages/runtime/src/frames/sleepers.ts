@@ -3,7 +3,8 @@
  * kept for it (ui.surface.state), and the messages that wait for it. A request, a command
  * invocation, a permission prompt or an agent's approval needs the plugin's answer, so it waits and
  * wakes the frame; anything else is dropped, since the plugin reads what it needs again when it loads.
- * A plugin can also start asleep (#590): it has no surface yet, and waking it opens one.
+ * A plugin can also start asleep (#590): it has no surface yet, and waking it opens one. When no
+ * frame can load, what needs an answer is not kept: the host answers it (#1).
  */
 import type { BridgeEvent } from "@endue-ai/bridge";
 
@@ -13,15 +14,27 @@ import type { BridgeEvent } from "@endue-ai/bridge";
  */
 const ANSWERED = new Set(["cmd.invoked", "perm.prompt", "perm.approval"]);
 
+/** What became of a message for a sleeping plugin: dropped, kept for its frame, or stuck. */
+export type Hold = "dropped" | "held" | "stuck";
+
 export class Sleepers {
   readonly #waiting = new Map<string, unknown[]>();
   readonly #restored = new Map<string, unknown>();
   /** Plugins that started asleep, with what opens their surface. */
   readonly #dozing = new Map<string, () => void>();
+  /** Plugins whose frame loads for what waits, until its hello. */
+  readonly #rousing = new Set<string>();
+  /** Loads an unloaded frame again (the frame policy's wake); true when its frame is live after. */
+  readonly #load: (id: string) => boolean;
+
+  constructor(load: (id: string) => boolean = () => false) {
+    this.#load = load;
+  }
 
   /** The plugin's frame is gone; `state` goes to its next init. */
   sleep(id: string, state: unknown): void {
     this.#restored.delete(id);
+    this.#rousing.delete(id);
     if (state !== undefined) this.#restored.set(id, state);
     if (!this.#waiting.has(id)) this.#waiting.set(id, []);
   }
@@ -37,8 +50,15 @@ export class Sleepers {
     const open = this.#dozing.get(id);
     if (!open) return false;
     this.#dozing.delete(id);
+    this.#rousing.add(id);
     open();
     return true;
+  }
+
+  /** Load a sleeping plugin's frame for what waits; true when it loads, now or already. */
+  rouse(id: string): boolean {
+    if (this.#rousing.has(id) || this.rise(id) || this.#load(id)) this.#rousing.add(id);
+    return this.#rousing.has(id);
   }
 
   /** Whether a plugin started asleep and has had no surface since. */
@@ -50,14 +70,18 @@ export class Sleepers {
     return this.#waiting.has(id);
   }
 
-  /** Keep a message for a sleeping plugin; true when the frame should load for it. */
-  hold(id: string, message: unknown): boolean {
+  /**
+   * Keep a message that needs the plugin's answer and load its frame for it. A message whose frame
+   * cannot load is `stuck` and not kept; anything else is dropped.
+   */
+  hold(id: string, message: unknown): Hold {
     const waiting = this.#waiting.get(id);
     const m = message as { type?: string; event?: BridgeEvent };
     const answered = m.type === "desk:command" || ANSWERED.has(m.event?.event ?? "");
-    if (!waiting || !answered) return false;
+    if (!waiting || !answered) return "dropped";
+    if (!this.rouse(id)) return "stuck";
     waiting.push(message);
-    return true;
+    return "held";
   }
 
   /** The plugin's new frame said hello: what it kept and what waited, now delivered. */
@@ -72,5 +96,6 @@ export class Sleepers {
     this.#waiting.delete(id);
     this.#restored.delete(id);
     this.#dozing.delete(id);
+    this.#rousing.delete(id);
   }
 }

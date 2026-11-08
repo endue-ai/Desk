@@ -9,7 +9,9 @@ pub const USAGE: &str = "usage: desk [--json] <command>
   plugin test <dir>                     run a plugin folder's tests on the host for its kind
   ping                                  a round trip to the running desk
   cmd list                              the commands the desk has: id, provider, title
-  cmd run <id> [--args <json object>]   run a command and print its result
+  cmd run <id> [--args <json object>] [--timeout <seconds>]
+                                        run a command and print its result; with --timeout, stop
+                                        waiting for it after that many seconds and exit 1
   cmd tools [<words>]                   the commands agents get as tools: id, provider, reads or acts
   plugin list                           the installed plugins: id, status, enabled
   plugin list --lock                    ~/.desk/plugins.lock as it is (no desk needed)
@@ -99,6 +101,8 @@ pub enum Remote {
     CmdRun {
         id: String,
         args: Option<Map<String, Value>>,
+        /// `--timeout`: the seconds to wait for the answer at most.
+        timeout: Option<u64>,
     },
     PluginList,
     /// `plugin sync`: on and off as `~/.desk/plugins.lock` says (ADR 0079).
@@ -355,16 +359,30 @@ fn number(word: &str) -> Option<u64> {
     word.parse().ok().filter(|n| *n > 0)
 }
 
-/// `cmd run <id> [--args <json object>]`, with `--args` before or after the id.
-fn cmd_run(rest: &[&str]) -> Option<Remote> {
-    let (id, args) = match rest {
-        [id] => (id, None),
-        [id, "--args", args] | ["--args", args, id] => (id, Some(object(args)?)),
-        _ => return None,
-    };
+/// `cmd run <id> [--args <json object>] [--timeout <seconds>]`, each flag once, before or after the id.
+fn cmd_run(mut rest: &[&str]) -> Option<Remote> {
+    let (mut id, mut args, mut timeout) = (None, None, None);
+    while let [word, more @ ..] = rest {
+        rest = match (*word, more) {
+            ("--args", [value, more @ ..]) if args.is_none() => {
+                args = Some(object(value)?);
+                more
+            }
+            ("--timeout", [value, more @ ..]) if timeout.is_none() => {
+                timeout = Some(number(value)?);
+                more
+            }
+            (word, more) if id.is_none() => {
+                id = Some(name(word)?);
+                more
+            }
+            _ => return None,
+        };
+    }
     Some(Remote::CmdRun {
-        id: name(id)?,
+        id: id?,
         args,
+        timeout,
     })
 }
 

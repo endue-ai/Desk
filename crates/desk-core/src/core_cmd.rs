@@ -90,6 +90,9 @@ impl Core {
             ));
         }
         self.remove_command(&params.id);
+        // Its provider took it back: what still waits on it would wait forever.
+        let message = format!("{} was unregistered before it answered", params.id);
+        self.cancel_waiting(|i| i.provider == caller && i.id == params.id, &message);
         json(CmdUnregisterResult {})
     }
 
@@ -237,12 +240,18 @@ impl Core {
         for id in ids {
             self.remove_command(&id);
         }
+        let message = format!("{provider} stopped before it answered");
+        self.cancel_waiting(|i| i.provider == provider, &message);
+    }
+
+    /// Answer every waiting invocation `which` picks `cancelled`, with `message`.
+    fn cancel_waiting(&self, which: impl Fn(&Invocation) -> bool, message: &str) {
         let waiting: Vec<(String, Invocation)> = {
             let mut commands = self.commands();
             let keys: Vec<String> = commands
                 .pending
                 .iter()
-                .filter(|(_, i)| i.provider == provider)
+                .filter(|(_, i)| which(i))
                 .map(|(k, _)| k.clone())
                 .collect();
             keys.into_iter()
@@ -252,7 +261,7 @@ impl Core {
         for (invocation_id, invocation) in waiting {
             let failure = CommandFailure {
                 code: CommandFailureCode::Cancelled,
-                message: format!("{provider} stopped before it answered"),
+                message: message.to_owned(),
             };
             self.answered(&invocation_id, invocation, None, Some(failure));
         }

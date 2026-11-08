@@ -275,3 +275,66 @@ fn a_plugin_turned_off_takes_its_commands_and_cancels_what_waited_on_it() {
     let listed = call(&core, "desk", "cmd.list", json!({ "scope": scope(&["*"]) })).unwrap();
     assert_eq!(listed, json!({ "commands": [] }));
 }
+
+#[test]
+fn unregistering_a_command_cancels_what_waited_on_it() {
+    let core = core();
+    grant(&core, "desk", &["*"]);
+    for id in ["example.mail.open", "example.mail.send"] {
+        call(
+            &core,
+            "example.mail",
+            "cmd.register",
+            json!({ "id": id, "title": id }),
+        )
+        .unwrap();
+    }
+    let invoke = |id: &str| {
+        call(
+            &core,
+            "desk",
+            "cmd.invoke",
+            json!({ "id": id, "scope": scope(&["*"]) }),
+        )
+        .unwrap()["invocationId"]
+            .clone()
+    };
+    let open = invoke("example.mail.open");
+    let send = invoke("example.mail.send");
+    let events = core.events().subscribe();
+    call(
+        &core,
+        "example.mail",
+        "cmd.unregister",
+        json!({ "id": "example.mail.open" }),
+    )
+    .unwrap();
+    let answered = drain(&events, "cmd.answered");
+    assert_eq!(answered.len(), 1, "{answered:?}");
+    assert_eq!(answered[0]["invocationId"], open);
+    assert_eq!(answered[0]["ok"], json!(false));
+    assert_eq!(answered[0]["error"]["code"], json!("cancelled"));
+    let message = answered[0]["error"]["message"].as_str().unwrap();
+    assert!(message.contains("example.mail.open"), "{message}");
+    // The other command's invocation still waits, and its answer still reaches the caller.
+    call(
+        &core,
+        "example.mail",
+        "cmd.answer",
+        json!({ "invocationId": send, "result": "sent" }),
+    )
+    .unwrap();
+    let answered = drain(&events, "cmd.answered");
+    assert_eq!(answered.len(), 1, "{answered:?}");
+    assert_eq!(answered[0]["invocationId"], send);
+    // A late answer to the cancelled one finds nothing.
+    assert_eq!(
+        call(
+            &core,
+            "example.mail",
+            "cmd.answer",
+            json!({ "invocationId": open, "result": "opened" }),
+        ),
+        Err(ErrorCode::NotFound)
+    );
+}

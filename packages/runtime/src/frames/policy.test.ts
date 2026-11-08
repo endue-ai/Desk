@@ -116,7 +116,9 @@ describe("FramePolicy", () => {
     expect(f.log.at(-1)).toBe("remount a");
     expect(f.policy.wake("b")).toBe(true);
     expect(f.unloaded).toEqual(new Set());
-    expect(f.policy.wake("b")).toBe(false);
+    // Live already (loaded by showing it, say): nothing to load, and what waits for it waits (#1).
+    expect(f.policy.wake("b")).toBe(true);
+    expect(f.log.filter((line) => line === "remount b")).toHaveLength(1);
     // Woken while hidden, it is unloaded again after the same time.
     await f.timers.advance(5 * MINUTE);
     expect(f.unloaded).toEqual(new Set(["b"]));

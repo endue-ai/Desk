@@ -44,7 +44,7 @@ export class PluginHost {
   #unready = new Set<string>();
   #offEvents: (() => void) | undefined;
   /** Plugins whose frame the runtime unloaded, until the next one says hello (ADR 0070). */
-  readonly #sleepers = new Sleepers();
+  readonly #sleepers = new Sleepers((id) => this.#deps.wake?.(id) === true);
   readonly #dnd: Dnd;
 
   constructor(deps: PluginHostDeps, options: PluginHostOptions) {
@@ -118,7 +118,7 @@ export class PluginHost {
   /** Resolves once a mounted plugin has connected (said hello); rejects if it stops first. */
   whenReady(id: string): Promise<void> {
     if (this.greeted(id)) return Promise.resolve();
-    if (this.#sleepers.asleep(id) && !this.#sleepers.rise(id)) this.#deps.wake?.(id);
+    if (this.#sleepers.asleep(id)) this.#sleepers.rouse(id);
     return new Promise((resolve, reject) => {
       const waiting = this.#waiting.get(id) ?? [];
       waiting.push({ resolve, reject });
@@ -245,8 +245,8 @@ export class PluginHost {
     }
     if (event.event === "cmd.invoked" || event.event === "cmd.answered") {
       // The provider hears its invocations; a caller hears its answers. The desk's own go nowhere.
-      const plugin = this.#commands.route(event);
-      if (plugin && this.#mounted.has(plugin)) this.#post(plugin, { type: "desk:event", event });
+      const plugin = this.#commands.route(event, this.#mounted);
+      if (plugin) this.#post(plugin, { type: "desk:event", event });
       return;
     }
     if (event.event !== "plugin.changed") {
@@ -322,7 +322,8 @@ export class PluginHost {
 
   #post(id: string, message: unknown): void {
     if (!this.#sleepers.asleep(id)) this.#deps.frame(id)?.postMessage(message, "*");
-    else if (this.#sleepers.hold(id, message) && !this.#sleepers.rise(id)) this.#deps.wake?.(id);
+    else if (this.#sleepers.hold(id, message) === "stuck")
+      this.#commands.refuse(message, id, `${id} is asleep and its frame cannot load`);
   }
 
   readonly #onMessage = (event: MessageEvent): void => {

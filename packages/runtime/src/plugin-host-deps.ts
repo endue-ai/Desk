@@ -24,7 +24,7 @@ export interface PluginHostDeps {
   listed?(plugins: PluginInfo[]): void;
   /** A frame reported its start: its first ready, or that it failed to start (ADR 0061). */
   outcome?(id: string, ok: boolean): void;
-  /** Load a frame the runtime unloaded again (ADR 0070); true when it was unloaded. */
+  /** Load a frame the runtime unloaded again (ADR 0070); true when its frame is live after. */
   wake?(id: string): boolean;
   /** False when a role the plugin provides went to another plugin (ADR 0104). */
   mayMount?(info: PluginInfo): boolean;

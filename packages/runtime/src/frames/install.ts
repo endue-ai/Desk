@@ -43,7 +43,7 @@ export interface Frames {
   closed(id: string): void;
   /** Something that may show or hide surfaces happened: look again once it has settled. */
   changed(): void;
-  /** Load an unloaded frame again (the plugin host's `wake`); true when it was unloaded. */
+  /** Load an unloaded frame again (the plugin host's `wake`); true when its frame is live after. */
   wake(id: string): boolean;
   dispose(): void;
 }

@@ -82,14 +82,18 @@ export class FramePolicy {
     return this.#entries.get(id)?.phase === "unloaded";
   }
 
-  /** Load an unloaded frame again, visible or not (something needs its answer); true when it was. */
+  /**
+   * Load an unloaded frame again, visible or not (something needs its answer). True when its frame
+   * is live after: loaded now, or already. False for one being unloaded or not counted in.
+   */
   wake(id: string): boolean {
     const entry = this.#entries.get(id);
     if (entry?.phase === "unloading") entry.cancelled = true;
-    if (entry?.phase !== "unloaded") return false;
-    this.#remount(id, entry);
-    this.check();
-    return true;
+    if (entry?.phase === "unloaded") {
+      this.#remount(id, entry);
+      this.check();
+    }
+    return entry?.phase === "live";
   }
 
   /** Look at every surface again: what shows loads, what hid too long or too many goes. */

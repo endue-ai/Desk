@@ -1,6 +1,6 @@
 //! The subcommands a running desk answers over its socket (desk-ipc, ADR 0030). The CLI is the
 //! caller `cli`: what it may do is what the desk granted it. Exit codes: 0 ok, 1 a bridge error, a
-//! failed or cancelled command, or no desk at the socket.
+//! failed or cancelled command, no answer within `cmd run --timeout`, or no desk at the socket.
 
 use std::io::{self, Write};
 use std::path::Path;
@@ -12,6 +12,7 @@ use serde_json::{Map, Value, json};
 
 use crate::args::{Remote, UpdateStep};
 
+mod cmd;
 mod inspect;
 mod market;
 mod sync;
@@ -94,7 +95,7 @@ impl Session {
                     format!("{id}\t{provider}\t{does}\t{}", text(t, "description"))
                 },
             ),
-            Remote::CmdRun { id, args } => self.cmd_run(&id, args),
+            Remote::CmdRun { id, args, timeout } => self.cmd_run(&id, args, timeout),
             // Key and profile layers are the runtime's: it answers, the CLI prints its text.
             Remote::Describe { kind, name } => {
                 let args = json!({ "kind": kind, "name": name, "show": false });
@@ -252,14 +253,6 @@ impl Session {
                 .map(Vec::as_slice)
                 .unwrap_or_default();
             items.iter().map(&item).collect()
-        }))
-    }
-
-    fn cmd_run(&mut self, id: &str, args: Option<Map<String, Value>>) -> Result<ExitCode, Problem> {
-        let reply = self.invoke_and_wait(id, args)?;
-        Ok(self.report(reply, |result| match result {
-            Value::Null => Vec::new(),
-            value => vec![value.to_string()],
         }))
     }
 
