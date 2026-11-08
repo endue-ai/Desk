@@ -18,7 +18,11 @@ body {
   position: fixed;
   inset: 0;
   min-width: 1024px;
+  /* Clip, never scroll (#2): a hidden overflow is still a scroll container, so focusing or revealing
+     a control in a window under an edge scrolled the whole shell, bars and all, with no way back.
+     The canvas pan is the only way the view moves. hidden stays for an engine without clip. */
   overflow: hidden;
+  overflow: clip;
   /* The theme's backdrop (a gradient or an image, none by default) over its background colour. */
   background-color: var(--desk-background);
   color: var(--desk-text);

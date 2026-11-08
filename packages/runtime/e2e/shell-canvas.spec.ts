@@ -187,3 +187,31 @@ test("Shift + drag on a title bar pans the canvas instead of moving the window",
     await page.evaluate(() => window.__shell.desk.store.get().session[1]?.surfaces[0]?.x),
   ).toBe(480);
 });
+
+// #2: the canvas pan is the only way the view moves. Focusing a control under an edge, revealing
+// it, or a script setting scrollTop leaves the shell and every bar where they are.
+test("the shell never scrolls: revealing a control under the edge moves no bar", async ({
+  page,
+}) => {
+  await openShell(page, "?lang=en");
+  await page.keyboard.press("Meta+n");
+  const win = surface(page);
+  await expect(win).toBeVisible();
+  const rail = page.locator(".rail");
+  const before = await rail.boundingBox();
+  await pan(page, 0, 500, 1200, 250);
+  const under = win.locator(".launcher button").last();
+  expect((await under.boundingBox())?.y).toBeGreaterThan(DESK.height);
+  await under.evaluate((el) => (el as HTMLElement).focus());
+  await under.evaluate((el) => el.scrollIntoView());
+  await page.evaluate(() => {
+    const shell = document.querySelector(".shell");
+    if (shell) shell.scrollTop = 300;
+  });
+  const scrolled = await page.evaluate(() => {
+    const shell = document.querySelector(".shell");
+    return [shell?.scrollTop, shell?.scrollLeft, document.scrollingElement?.scrollTop];
+  });
+  expect(scrolled).toEqual([0, 0, 0]);
+  expect(await rail.boundingBox()).toEqual(before);
+});
