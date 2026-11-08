@@ -148,7 +148,7 @@ export function mountDesk(options: DeskOptions): Desk {
   );
 
   const restored = keepShell(ctx);
-  // A plugin that started asleep (#590) wakes when a window of the desktop in front places it.
+  // A plugin that started asleep (ADR 0070) wakes when a window of the desktop in front places it.
   const placed = wakePlaced(ctx);
   const offs = [
     defineCommands(ctx),

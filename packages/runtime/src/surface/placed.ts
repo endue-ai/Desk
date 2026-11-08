@@ -1,5 +1,5 @@
 /**
- * The plugins the windows of the desktop in front place wake (#590): a plugin that started asleep
+ * The plugins the windows of the desktop in front place wake (ADR 0070): a plugin that started asleep
  * has no surface until its first use, and a window showing nothing but plugins the runtime does not
  * hold is not drawn (`shell/actions.ts`). A profile's window named after its surface shows the
  * plugin it names (`surface/views.ts`), so its plugin is placed too.
