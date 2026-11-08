@@ -126,9 +126,17 @@ doctor:
 lanes *args="status":
     node scripts/lanes.mjs {{args}}
 
-# Claim an ai:ready issue and start it in .claude/worktrees/ai-<issue> on ai/<issue>-<slug>
+# For every repository under ~/Project/endue (`--root <folder>` for another); `--block '<text>'` adds a
+# personal string to refuse, kept in this machine's config only. Sessions and task-start check it too.
+# Install the commit identity endue-team and its hooks on this machine (AGENTS.md, Boundaries)
+[positional-arguments]
+identity *args:
+    scripts/git-identity/install.sh "$@"
+
+# Claim an ai:ready issue and start it in .claude/worktrees/ai-<issue> on ai/<issue>-<slug>, identity first
 task-start issue:
     node scripts/doctor.mjs
+    scripts/git-identity/ensure.sh
     branch="$(node scripts/lanes.mjs claim {{issue}})" && scripts/worktree.sh start {{issue}} "$branch"
 
 # Remove task worktrees whose PR merged and that hold no uncommitted work

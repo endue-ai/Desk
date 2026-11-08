@@ -117,3 +117,53 @@ test("a deleted ref pushes nothing to check", () => {
   const input = `(delete) ${zero} refs/heads/old ${"a".repeat(40)}\n`;
   assert.equal(r.run(["pre-push", "origin", GITHUB], TEAM, input).status, 0);
 });
+
+const ensure = fileURLToPath(new URL("./git-identity/ensure.sh", import.meta.url));
+
+/** A machine of its own: a HOME, a global config with a personal identity, and a Desk checkout. */
+function machine() {
+  const home = mkdtempSync(join(tmpdir(), "git-identity-home-"));
+  dirs.push(home);
+  const env = { ...process.env, HOME: home, GIT_CONFIG_NOSYSTEM: "1" };
+  env.GIT_CONFIG_GLOBAL = join(home, ".gitconfig");
+  writeFileSync(
+    env.GIT_CONFIG_GLOBAL,
+    "[user]\n\tname = Someone\n\temail = someone@personal.example\n",
+  );
+  const dir = join(home, "work", "Desk");
+  execFileSync("git", ["init", "-q", "-b", "main", dir], { env });
+  execFileSync("git", ["remote", "add", "origin", GITHUB], { cwd: dir, env });
+  const git = (args) => execFileSync("git", args, { cwd: dir, env, encoding: "utf8" }).trim();
+  const run = (team) =>
+    spawnSync("bash", [ensure], {
+      cwd: dir,
+      env: { ...env, ENDUE_IDENTITY_TEAM: team },
+      encoding: "utf8",
+    });
+  return { home, git, run };
+}
+
+test("ensure installs on a team machine for this repository, then stays quiet", () => {
+  const m = machine();
+  assert.match(m.run("1").stdout, /installed for .*Desk: commits as endue-team/);
+  assert.equal(m.git(["config", "user.email"]), "team@endue.ai");
+  assert.equal(m.git(["config", "core.hooksPath"]), join(m.home, ".config/git/endue-hooks"));
+  assert.equal(m.run("1").stdout, "");
+});
+
+test("ensure puts a newer check in place of an older one, never the other way", () => {
+  const m = machine();
+  m.run("1");
+  const installed = join(m.home, ".config/git/endue-hooks/check.sh");
+  writeFileSync(installed, "IDENTITY_VERSION=1\n");
+  assert.match(m.run("1").stdout, /now run version \d+/);
+  writeFileSync(installed, "IDENTITY_VERSION=999\n");
+  assert.equal(m.run("1").stdout, "");
+});
+
+test("ensure on a machine outside the team only says how and changes nothing", () => {
+  const m = machine();
+  assert.match(m.run("0").stdout, /just identity/);
+  assert.equal(m.git(["config", "user.email"]), "someone@personal.example");
+  assert.throws(() => m.git(["config", "core.hooksPath"]));
+});

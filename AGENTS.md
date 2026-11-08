@@ -30,7 +30,8 @@ just check   # formatting, lints and types; must be green before every push
 ```
 
 `just codegen` regenerates the Rust and TypeScript types from `specs/`. `just test-unit` skips the browser
-tests; `just check-app` lints the Tauri app crate, which the default commands leave out.
+tests; `just check-app` lints the Tauri app crate, which the default commands leave out. `just identity`
+installs the commit identity and its hooks on a machine (see Boundaries).
 
 ## Rules
 
@@ -60,7 +61,9 @@ tests; `just check-app` lints the Tauri app crate, which the default commands le
   commit, ever. Before committing, `git config user.email` must answer `team@endue.ai`; before every
   push, read `git log --format='%an <%ae> | %cn <%ce>%n%B' origin/main..` and remove anything else. A
   squash merge adds `Co-authored-by` for every author of the PR's commits, so merge only branches whose
-  commits all pass this rule.
+  commits all pass this rule. Work starts with the identity in place: every Claude Code session and
+  `just task-start` run `scripts/git-identity/ensure.sh`, which installs it on a team machine and keeps
+  its hooks current; elsewhere run `just identity` once. Never skip the hooks with `--no-verify`.
 - No secrets. Never commit tokens, keys, certificates, `.env` files or personal data. Signing keys live in
   protected GitHub environments that AI tokens cannot reach.
 - `brand/` is not Apache-2.0. Use the assets as they are; never edit or relicense them. Forks replace them.

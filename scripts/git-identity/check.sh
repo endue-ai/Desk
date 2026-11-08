@@ -10,6 +10,9 @@
 set -uf -o pipefail
 export LC_ALL=C
 
+# ensure.sh installs this file over an older one only; raise it with every change.
+IDENTITY_VERSION=2
+
 hook="${1:?usage: check.sh pre-commit | commit-msg <file> | pre-push <remote> <url>}"
 shift
 

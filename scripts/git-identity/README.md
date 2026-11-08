@@ -24,8 +24,10 @@ The strings to refuse are personal, so they live only in the machine's config
 scripts/git-identity/install.sh --block '<personal email>' --block '<account>' --block '<name>'
 ```
 
-Run it on every machine that commits to an endue repository. `git commit --no-verify` skips the
-hooks; don't.
+Run it on every machine that commits to an endue repository (`just identity`). `ensure.sh` does it at
+the start of work, from every Claude Code session and `just task-start`: on a team machine (gh can
+push to `endue-ai/Desk`) it installs for this repository, and it keeps the hooks at this checkout's
+`IDENTITY_VERSION`; elsewhere it only says how. `git commit --no-verify` skips the hooks; don't.
 
 ```bash
 node --test scripts/git-identity.test.mjs
