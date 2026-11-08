@@ -1821,308 +1821,11 @@
                "class": "pane-body",
                "children": [
                 {
-                 "tag": "div",
-                 "class": "cal",
-                 "children": [
-                  {
-                   "tag": "div",
-                   "class": "cal-head",
-                   "children": [
-                    {
-                     "tag": "span",
-                     "style": {
-                      "color": "rgb(176, 173, 183)"
-                     }
-                    },
-                    {
-                     "tag": "span",
-                     "class": "cal-day",
-                     "style": {
-                      "color": "rgb(176, 173, 183)"
-                     },
-                     "text": "Mon"
-                    },
-                    {
-                     "tag": "span",
-                     "class": "cal-day",
-                     "style": {
-                      "color": "rgb(176, 173, 183)"
-                     },
-                     "text": "Tue"
-                    },
-                    {
-                     "tag": "span",
-                     "class": "cal-day",
-                     "style": {
-                      "color": "rgb(176, 173, 183)"
-                     },
-                     "text": "Wed"
-                    },
-                    {
-                     "tag": "span",
-                     "class": "cal-day",
-                     "style": {
-                      "color": "rgb(176, 173, 183)"
-                     },
-                     "text": "Thu"
-                    },
-                    {
-                     "tag": "span",
-                     "class": "cal-day",
-                     "style": {
-                      "color": "rgb(176, 173, 183)"
-                     },
-                     "text": "Fri"
-                    }
-                   ]
-                  },
-                  {
-                   "tag": "div",
-                   "class": "cal-grid",
-                   "children": [
-                    {
-                     "tag": "div",
-                     "class": "cal-hours",
-                     "children": [
-                      {
-                       "tag": "span",
-                       "class": "cal-hour",
-                       "style": {
-                        "color": "rgb(176, 173, 183)"
-                       },
-                       "text": "9"
-                      },
-                      {
-                       "tag": "span",
-                       "class": "cal-hour",
-                       "style": {
-                        "color": "rgb(176, 173, 183)"
-                       },
-                       "text": "10"
-                      },
-                      {
-                       "tag": "span",
-                       "class": "cal-hour",
-                       "style": {
-                        "color": "rgb(176, 173, 183)"
-                       },
-                       "text": "11"
-                      },
-                      {
-                       "tag": "span",
-                       "class": "cal-hour",
-                       "style": {
-                        "color": "rgb(176, 173, 183)"
-                       },
-                       "text": "12"
-                      },
-                      {
-                       "tag": "span",
-                       "class": "cal-hour",
-                       "style": {
-                        "color": "rgb(176, 173, 183)"
-                       },
-                       "text": "13"
-                      },
-                      {
-                       "tag": "span",
-                       "class": "cal-hour",
-                       "style": {
-                        "color": "rgb(176, 173, 183)"
-                       },
-                       "text": "14"
-                      },
-                      {
-                       "tag": "span",
-                       "class": "cal-hour",
-                       "style": {
-                        "color": "rgb(176, 173, 183)"
-                       },
-                       "text": "15"
-                      },
-                      {
-                       "tag": "span",
-                       "class": "cal-hour",
-                       "style": {
-                        "color": "rgb(176, 173, 183)"
-                       },
-                       "text": "16"
-                      }
-                     ]
-                    },
-                    {
-                     "tag": "div",
-                     "class": "cal-col",
-                     "role": "list",
-                     "aria-label": "Mon",
-                     "children": [
-                      {
-                       "tag": "div",
-                       "class": "cal-event",
-                       "role": "listitem",
-                       "style": {
-                        "background": "rgb(36, 33, 39)",
-                        "border": "solid rgb(51, 49, 54)"
-                       },
-                       "children": [
-                        {
-                         "tag": "span",
-                         "class": "cal-title",
-                         "style": {
-                          "color": "rgb(242, 240, 245)"
-                         },
-                         "text": "Standup"
-                        }
-                       ]
-                      }
-                     ]
-                    },
-                    {
-                     "tag": "div",
-                     "class": "cal-col",
-                     "role": "list",
-                     "aria-label": "Tue",
-                     "children": [
-                      {
-                       "tag": "div",
-                       "class": "cal-event",
-                       "role": "listitem",
-                       "style": {
-                        "background": "rgb(36, 33, 39)",
-                        "border": "solid rgb(51, 49, 54)"
-                       },
-                       "children": [
-                        {
-                         "tag": "span",
-                         "class": "cal-title",
-                         "style": {
-                          "color": "rgb(242, 240, 245)"
-                         },
-                         "text": "Design review"
-                        }
-                       ]
-                      }
-                     ]
-                    },
-                    {
-                     "tag": "div",
-                     "class": "cal-col",
-                     "role": "list",
-                     "aria-label": "Wed",
-                     "children": [
-                      {
-                       "tag": "div",
-                       "class": "cal-event is-overlap is-lane-0",
-                       "role": "listitem",
-                       "style": {
-                        "background": "rgba(224, 115, 138, 0.14)",
-                        "border": "solid rgb(224, 115, 138)"
-                       },
-                       "children": [
-                        {
-                         "tag": "span",
-                         "class": "cal-title",
-                         "style": {
-                          "color": "rgb(242, 240, 245)"
-                         },
-                         "text": "Client call"
-                        },
-                        {
-                         "tag": "span",
-                         "class": "cal-flag",
-                         "style": {
-                          "color": "rgb(250, 138, 161)"
-                         },
-                         "text": "Overlap"
-                        }
-                       ]
-                      },
-                      {
-                       "tag": "div",
-                       "class": "cal-event is-overlap is-lane-1",
-                       "role": "listitem",
-                       "style": {
-                        "background": "rgba(224, 115, 138, 0.14)",
-                        "border": "solid rgb(224, 115, 138)"
-                       },
-                       "children": [
-                        {
-                         "tag": "span",
-                         "class": "cal-title",
-                         "style": {
-                          "color": "rgb(242, 240, 245)"
-                         },
-                         "text": "Budget sync"
-                        },
-                        {
-                         "tag": "span",
-                         "class": "cal-flag",
-                         "style": {
-                          "color": "rgb(250, 138, 161)"
-                         },
-                         "text": "Overlap"
-                        }
-                       ]
-                      }
-                     ]
-                    },
-                    {
-                     "tag": "div",
-                     "class": "cal-col",
-                     "role": "list",
-                     "aria-label": "Thu",
-                     "children": [
-                      {
-                       "tag": "div",
-                       "class": "cal-event",
-                       "role": "listitem",
-                       "style": {
-                        "background": "rgb(36, 33, 39)",
-                        "border": "solid rgb(51, 49, 54)"
-                       },
-                       "children": [
-                        {
-                         "tag": "span",
-                         "class": "cal-title",
-                         "style": {
-                          "color": "rgb(242, 240, 245)"
-                         },
-                         "text": "1:1 Theo"
-                        }
-                       ]
-                      }
-                     ]
-                    },
-                    {
-                     "tag": "div",
-                     "class": "cal-col",
-                     "role": "list",
-                     "aria-label": "Fri",
-                     "children": [
-                      {
-                       "tag": "div",
-                       "class": "cal-event",
-                       "role": "listitem",
-                       "style": {
-                        "background": "rgb(36, 33, 39)",
-                        "border": "solid rgb(51, 49, 54)"
-                       },
-                       "children": [
-                        {
-                         "tag": "span",
-                         "class": "cal-title",
-                         "style": {
-                          "color": "rgb(242, 240, 245)"
-                         },
-                         "text": "Focus"
-                        }
-                       ]
-                      }
-                     ]
-                    }
-                   ]
-                  }
-                 ]
+                 "tag": "desk-universal-view",
+                 "class": "sample-view",
+                 "style": {
+                  "color": "rgb(242, 240, 245)"
+                 }
                 }
                ]
               }
@@ -2387,14 +2090,27 @@
                "class": "pane-body",
                "children": [
                 {
-                 "tag": "textarea",
-                 "class": "notes-body",
-                 "aria-label": "Notes",
-                 "style": {
-                  "color": "rgb(242, 240, 245)"
-                 },
-                 "text": "Keep profile names short.\nSurfaces live at the edges.",
-                 "value": "Keep profile names short.\nSurfaces live at the edges."
+                 "tag": "div",
+                 "class": "notes",
+                 "children": [
+                  {
+                   "tag": "desk-universal-view",
+                   "class": "sample-view",
+                   "style": {
+                    "color": "rgb(242, 240, 245)"
+                   }
+                  },
+                  {
+                   "tag": "textarea",
+                   "class": "notes-input",
+                   "aria-label": "Write a note; Enter adds it",
+                   "style": {
+                    "color": "rgb(242, 240, 245)",
+                    "border": "solid rgb(51, 49, 54)"
+                   },
+                   "value": ""
+                  }
+                 ]
                 }
                ]
               }
@@ -2668,94 +2384,11 @@
                "class": "pane-body",
                "children": [
                 {
-                 "tag": "ol",
-                 "class": "list-body",
-                 "children": [
-                  {
-                   "tag": "li",
-                   "class": "list-row",
-                   "children": [
-                    {
-                     "tag": "span",
-                     "class": "list-index",
-                     "style": {
-                      "color": "rgb(182, 163, 245)"
-                     },
-                     "text": "1"
-                    },
-                    {
-                     "tag": "span",
-                     "style": {
-                      "color": "rgb(242, 240, 245)"
-                     },
-                     "text": "Prepare for the 09:30 standup"
-                    }
-                   ]
-                  },
-                  {
-                   "tag": "li",
-                   "class": "list-row",
-                   "children": [
-                    {
-                     "tag": "span",
-                     "class": "list-index",
-                     "style": {
-                      "color": "rgb(182, 163, 245)"
-                     },
-                     "text": "2"
-                    },
-                    {
-                     "tag": "span",
-                     "style": {
-                      "color": "rgb(242, 240, 245)"
-                     },
-                     "text": "Send the meeting notes to Theo"
-                    }
-                   ]
-                  },
-                  {
-                   "tag": "li",
-                   "class": "list-row",
-                   "children": [
-                    {
-                     "tag": "span",
-                     "class": "list-index",
-                     "style": {
-                      "color": "rgb(182, 163, 245)"
-                     },
-                     "text": "3"
-                    },
-                    {
-                     "tag": "span",
-                     "style": {
-                      "color": "rgb(242, 240, 245)"
-                     },
-                     "text": "Pick one of the two flights"
-                    }
-                   ]
-                  },
-                  {
-                   "tag": "li",
-                   "class": "list-row",
-                   "children": [
-                    {
-                     "tag": "span",
-                     "class": "list-index",
-                     "style": {
-                      "color": "rgb(182, 163, 245)"
-                     },
-                     "text": "4"
-                    },
-                    {
-                     "tag": "span",
-                     "style": {
-                      "color": "rgb(242, 240, 245)"
-                     },
-                     "text": "Decide the 14:00 overlap"
-                    }
-                   ]
-                  }
-                 ]
+                 "tag": "desk-universal-view",
+                 "class": "sample-view",
+                 "style": {
+                  "color": "rgb(242, 240, 245)"
+                 }
                 }
                ]
               }
