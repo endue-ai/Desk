@@ -4,7 +4,7 @@
  * rects and counts, so the commands, the overlay and the tests need no DOM, and the same count in
  * the same area always gives the same places.
  */
-import { BELOW_ERIS, MIN, type Rect, SAFE } from "../surface/geometry";
+import { freeArea, freeTop, MIN, type Rect } from "../surface/geometry";
 import { CASCADE, GAP } from "../surface/tiling";
 
 /** The cell shape a grid aims for: windows on a desk read best a little wider than tall. */
@@ -15,13 +15,7 @@ export const TARGET_ASPECT = 4 / 3;
  * while she sits in her default place at the top (the area plugin windows open in, ADR 0040).
  */
 export function arrangeArea(vw: number, vh: number, belowEris = true): Rect {
-  const top = belowEris ? BELOW_ERIS : SAFE.top;
-  return {
-    x: SAFE.left,
-    y: top,
-    w: Math.max(MIN.w, vw - SAFE.left - SAFE.right),
-    h: Math.max(MIN.h, vh - top - SAFE.bottom),
-  };
+  return freeArea(vw, vh, freeTop(belowEris));
 }
 
 /** How many windows each row of a `cols` wide grid of `n` holds: full rows, then the rest. */

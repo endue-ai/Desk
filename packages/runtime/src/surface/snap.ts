@@ -1,7 +1,8 @@
 /**
- * Snapping: a window dropped at the app's left or right edge takes that half, one dropped at the
- * top fills the whole app. Pure over rects; interactions.ts asks with the pointer's place, and the
- * window keeps the fill (`SurfacePlacement.fill`) so it still fills after the app is resized.
+ * Snapping: a window dropped at the app's left or right edge takes that half of the free area
+ * (between the bars, `freeArea`), one dropped at the top fills it. Pure over rects; interactions.ts
+ * asks with the pointer's place, and the window keeps the fill (`SurfacePlacement.fill`) so it still
+ * fills after the app is resized.
  */
 import type { SurfacePlacement } from "../modes/types";
 import type { Rect } from "./geometry";

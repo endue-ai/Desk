@@ -89,12 +89,12 @@ test("a terminal window fills its pane at every size, whatever grid cell the lay
   const title = await window_(page).locator(".surface-title").boundingBox();
   if (!title) throw new Error("no title bar");
   await dragBy(page, { ...title, x: title.x + 120, y: title.y + 20 }, -(title.x + 110), 0);
-  await expect(window_(page)).toHaveCSS("left", "0px");
+  await expect(window_(page)).toHaveCSS("left", "104px");
   sizes.half = await expectFilled(page, "left half");
 
   // Maximized, and back.
   await window_(page).locator(".surface-title").dblclick();
-  await expect(window_(page)).toHaveCSS("width", "1440px");
+  await expect(window_(page)).toHaveCSS("width", "1232px");
   await staleCell(page, 2, 1);
   sizes.maximized = await expectFilled(page, "maximized");
   await window_(page).locator(".surface-name").dblclick();

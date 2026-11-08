@@ -36,3 +36,25 @@ export function primaryFills(page: Page): Promise<number> {
     }).length;
   });
 }
+
+/**
+ * What of the desk's own a window's box lies under: the side bars, the rail and the arrange strip,
+ * the profile switcher, the desktops, the bottom chrome and Eris. Empty when it keeps clear of all.
+ */
+export function barsOver(page: Page, selector: string): Promise<string[]> {
+  return page.evaluate((sel) => {
+    const el = document.querySelector(sel);
+    if (!el) throw new Error(`no ${sel}`);
+    const w = el.getBoundingClientRect();
+    const bars = document.querySelectorAll<HTMLElement>(
+      ".float-bar, .modes-row, .desktops, .bottom > *, .eris",
+    );
+    return [...bars]
+      .filter((bar) => {
+        const b = bar.getBoundingClientRect();
+        if (b.width === 0 || b.height === 0) return false;
+        return b.left < w.right && w.left < b.right && b.top < w.bottom && w.top < b.bottom;
+      })
+      .map((bar) => bar.className);
+  }, selector);
+}

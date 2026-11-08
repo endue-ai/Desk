@@ -58,13 +58,23 @@ describe("window coordinate systems", () => {
     });
   });
 
-  it("fills the whole app, or a half of it, at any app size", () => {
-    const full = { ...placement, fill: "full" as const };
-    expect(screenRect(full, { x: 0, y: 0 }, 1440, 900)).toEqual({ x: 0, y: 0, w: 1440, h: 900 });
-    expect(screenRect(full, { x: 0, y: 0 }, 2560, 1440)).toEqual({ x: 0, y: 0, w: 2560, h: 1440 });
-    const right = screenRect({ ...placement, fill: "right" }, { x: 0, y: 0 }, 2000, 1000);
-    expect(right.x + right.w).toBe(2000);
-    expect(right).toMatchObject({ y: 0, h: 1000 });
+  it("fills the free area, or a half of it, at any app size, from the top it was filled with", () => {
+    const full = { ...placement, y: 72, fill: "full" as const };
+    expect(screenRect(full, { x: 0, y: 0 }, 1440, 900)).toEqual({ x: 104, y: 72, w: 1232, h: 740 });
+    expect(screenRect(full, { x: 0, y: 0 }, 2560, 1440)).toEqual({
+      x: 104,
+      y: 72,
+      w: 2352,
+      h: 1280,
+    });
+    // Filled under Eris's place, it stays under it; one filled before the bars counted stays clear.
+    const underEris = { ...placement, y: 190, fill: "full" as const };
+    expect(screenRect(underEris, { x: 0, y: 0 }, 1280, 800)).toMatchObject({ y: 190, h: 522 });
+    const old = { ...placement, y: 0, fill: "full" as const };
+    expect(screenRect(old, { x: 0, y: 0 }, 1440, 900)).toMatchObject({ y: 72, h: 740 });
+    const right = screenRect({ ...placement, y: 72, fill: "right" }, { x: 0, y: 0 }, 2000, 1000);
+    expect(right.x + right.w).toBe(2000 - 104);
+    expect(right).toMatchObject({ y: 72, h: 840 });
     // A normal window keeps the world rect it was filled to, so it moves with the pan.
     const canvas = { ...placement, floating: false, fill: "full" as const };
     expect(screenRect(canvas, { x: 0, y: 0 }, 1440, 900)).toEqual({

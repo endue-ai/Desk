@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { screenRect } from "../surface/coordinates";
 import { zOf } from "../surface/cover";
 import { slotRect } from "../surface/tiling";
-import { layoutOf, moveSurface, openSurface, windowsOf } from "./actions";
+import { edit, layoutOf, moveSurface, openSurface, windowsOf } from "./actions";
 import { Store, sampleState } from "./state";
 import {
   closeWindow,
@@ -14,7 +14,12 @@ import {
 } from "./windows";
 
 const epoch = Date.parse("2026-10-28T09:00:00.000Z");
-const WHOLE = { x: 0, y: 0, w: 1440, h: 900 };
+/**
+ * The free area at 1440×900, what a filled window takes: between the side bars, the rail and the
+ * bottom line, and under Eris in her default place. Once she is moved it reaches up to the chips.
+ */
+const FREE = { x: 104, y: 190, w: 1232, h: 622 };
+const FREE_ERIS_MOVED = { x: 104, y: 72, w: 1232, h: 740 };
 
 function ctx() {
   const store = new Store(sampleState("en", epoch));
@@ -42,14 +47,14 @@ const rectOf = (c: ReturnType<typeof ctx>, id: string) => {
 };
 
 describe("maximize", () => {
-  it("fills the whole app and keeps the place to restore; a second call restores it", () => {
+  it("fills the app between the bars and keeps the place to restore; a second call restores it", () => {
     const c = ctx();
     openSurface(c, "calendar");
     const before = layoutOf(c.store.get()).surfaces[0];
     toggleMaximize(c, "calendar");
     const full = layoutOf(c.store.get()).surfaces[0];
     expect(full).toMatchObject({
-      ...WHOLE,
+      ...FREE,
       fill: "full",
       restore: { x: before?.x, y: before?.y, w: before?.w, h: before?.h },
     });
@@ -60,27 +65,69 @@ describe("maximize", () => {
     expect(back?.fill).toBeUndefined();
   });
 
-  it("a half snapped window fills the app, and comes back to its half", () => {
+  it("a half snapped window fills its half between the bars, and comes back to it", () => {
     const c = ctx();
     openSurface(c, "calendar");
     snapTo(c, "calendar", "left");
     const half = layoutOf(c.store.get()).surfaces[0];
-    expect(half).toMatchObject({ x: 0, y: 0, h: 900, fill: "left" });
+    expect(half).toMatchObject({ x: FREE.x, y: FREE.y, w: 610, h: FREE.h, fill: "left" });
     expect(half?.restore).toBeUndefined();
+    snapTo(c, "calendar", "right");
+    expect(layoutOf(c.store.get()).surfaces[0]).toMatchObject({
+      x: FREE.x + FREE.w - 610,
+      y: FREE.y,
+      w: 610,
+      h: FREE.h,
+      fill: "right",
+    });
+    snapTo(c, "calendar", "left");
     toggleMaximize(c, "calendar");
-    expect(layoutOf(c.store.get()).surfaces[0]).toMatchObject({ ...WHOLE, fill: "full" });
+    expect(layoutOf(c.store.get()).surfaces[0]).toMatchObject({ ...FREE, fill: "full" });
     toggleMaximize(c, "calendar");
-    expect(layoutOf(c.store.get()).surfaces[0]).toMatchObject({ x: 0, y: 0, w: half?.w, h: 900 });
+    expect(layoutOf(c.store.get()).surfaces[0]).toMatchObject({
+      x: FREE.x,
+      y: FREE.y,
+      w: 610,
+      h: FREE.h,
+    });
   });
 
-  it("dropping at the top fills the app and can be restored like a maximize", () => {
+  it("dropping at the top fills the app between the bars and can be restored like a maximize", () => {
     const c = ctx();
     openSurface(c, "calendar");
     const before = layoutOf(c.store.get()).surfaces[0];
     snapTo(c, "calendar", "full");
-    expect(layoutOf(c.store.get()).surfaces[0]).toMatchObject({ ...WHOLE, fill: "full" });
+    expect(layoutOf(c.store.get()).surfaces[0]).toMatchObject({ ...FREE, fill: "full" });
     toggleMaximize(c, "calendar");
     expect(layoutOf(c.store.get()).surfaces[0]).toMatchObject({ x: before?.x, w: before?.w });
+  });
+
+  it("fills the same place on screen at any pan, and a floating window at any app size", () => {
+    const c = ctx();
+    openSurface(c, "calendar");
+    const pan = { x: -100, y: -50 };
+    c.store.set((s) => ({ pan: { ...s.pan, [s.desktop]: pan } }));
+    toggleMaximize(c, "calendar");
+    const normal = layoutOf(c.store.get()).surfaces[0];
+    if (!normal) throw new Error("no window");
+    expect(screenRect(normal, pan, 1440, 900)).toEqual(FREE);
+    toggleMaximize(c, "calendar");
+    toggleFloating(c, "calendar", { vw: 1440, vh: 900 });
+    toggleMaximize(c, "calendar");
+    const floating = layoutOf(c.store.get()).surfaces[0];
+    if (!floating) throw new Error("no window");
+    expect(screenRect(floating, pan, 1440, 900)).toEqual(FREE);
+    expect(screenRect(floating, pan, 1280, 800)).toEqual({ x: 104, y: 190, w: 1072, h: 522 });
+  });
+
+  it("reaches up to the chips once Eris has left her default place", () => {
+    const c = ctx();
+    openSurface(c, "calendar");
+    edit(c, (l) => ({ ...l, eris: { x: 600, y: 700 } }));
+    toggleMaximize(c, "calendar");
+    expect(layoutOf(c.store.get()).surfaces[0]).toMatchObject({ ...FREE_ERIS_MOVED, fill: "full" });
+    snapTo(c, "calendar", "right");
+    expect(layoutOf(c.store.get()).surfaces[0]).toMatchObject({ x: 726, y: 72, w: 610, h: 740 });
   });
 });
 

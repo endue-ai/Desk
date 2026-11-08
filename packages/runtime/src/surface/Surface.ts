@@ -17,7 +17,6 @@ import {
   toggleFloating,
   toggleMaximize,
 } from "../shell/windows";
-import { trackTopChrome } from "./clearance";
 import { isFloating, screenRect } from "./coordinates";
 import { zOf } from "./cover";
 import { place, surfaceInteractions } from "./interactions";
@@ -289,7 +288,6 @@ export function mountSurfaces(root: HTMLElement, ctx: ShellCtx): () => void {
       for (const entry of live.values()) entry.relabel();
     }),
     listen(window, "resize", draw),
-    trackTopChrome(layer, root.closest(".shell") ?? root),
     // Tile, cascade and spread, with the strip on the right edge (ADR 0116).
     mountArrange(root, ctx, { layer, element: (id) => live.get(id)?.el, size }),
   ];

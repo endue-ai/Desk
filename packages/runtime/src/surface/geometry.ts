@@ -1,13 +1,17 @@
 /**
  * Surfaces are stored in the 1440×900 reference frame and mapped onto the app's window. Smaller
  * windows move them inwards and shrink them, each axis on its own: a shorter app takes height, a
- * narrower one width. They never shrink below the minimum size, and a surface may reach every edge
- * of the window: the bars float above it.
+ * narrower one width. They never shrink below the minimum size, and a surface may be dragged to
+ * every edge of the window: the bars float above it. A fill stays in the free area (`freeArea`).
  */
 import type { SurfacePlacement } from "../modes/types";
 
 export const REF = { width: 1440, height: 900 };
-/** Where the bars sit (left bar and rail 24 + 56 + 24, top chips, bottom line): where windows open. */
+/**
+ * Where the bars sit, the one record of it: the side bars and the rail 24 + 56 + 24 from each side,
+ * the profile switcher and the desktops 72 from the top, the drawer button, the composer and the
+ * running chips 88 from the bottom. Windows open, tile and fill inside it.
+ */
 export const SAFE = { left: 104, right: 104, top: 72, bottom: 88 };
 export const MIN = { w: 240, h: 160 };
 
@@ -23,18 +27,35 @@ export const BELOW_ERIS = 190;
 
 /**
  * The free area between the bars and under Eris's place in the reference frame: where plugin
- * windows open. A window can still be dragged, resized or filled over the bars, which stay on top.
+ * windows open. A window can still be dragged or resized over the bars, which stay on top.
  */
-export const FREE: Rect = {
-  x: SAFE.left,
-  y: BELOW_ERIS,
-  w: REF.width - SAFE.left - SAFE.right,
-  h: REF.height - BELOW_ERIS - SAFE.bottom,
-};
+export const FREE: Rect = freeArea(REF.width, REF.height, BELOW_ERIS);
 
-/** The whole app window of `vw`×`vh` pixels: how far a window can move, grow and fill. */
+/** The whole app window of `vw`×`vh` pixels: how far a window can move and grow. */
 export function screenArea(vw: number, vh: number): Rect {
   return { x: 0, y: 0, w: vw, h: vh };
+}
+
+/**
+ * Where the free area starts: under Eris while she sits in her default place, where she floats
+ * above every window as the bars do, and under the profile switcher and the desktops once she is
+ * moved.
+ */
+export function freeTop(erisAtHome: boolean): number {
+  return erisAtHome ? BELOW_ERIS : SAFE.top;
+}
+
+/**
+ * The part of a `vw`×`vh` app no bar covers, from `top` down: what a maximized or snapped window
+ * fills, so no bar lies over its contents, and what arranging tiles (ADR 0040's free area).
+ */
+export function freeArea(vw: number, vh: number, top: number = SAFE.top): Rect {
+  return {
+    x: SAFE.left,
+    y: top,
+    w: Math.max(MIN.w, vw - SAFE.left - SAFE.right),
+    h: Math.max(MIN.h, vh - top - SAFE.bottom),
+  };
 }
 
 /** Positions follow the app both ways; sizes only shrink, width with the width, height with the height. */

@@ -4,7 +4,7 @@
  */
 import type { PaneSplit, SurfacePlacement } from "../modes/types";
 import { appSize, isFloating, screenRect, storedRect } from "../surface/coordinates";
-import { clampRect, REF, screenArea } from "../surface/geometry";
+import { clampRect, freeArea, freeTop, REF } from "../surface/geometry";
 import { type Fill, fillRect } from "../surface/snap";
 import {
   close,
@@ -111,20 +111,22 @@ export function toggleFloating(ctx: Ctx, id: string, size = appSize()): void {
 }
 
 /**
- * The whole app, or a half of it, in a window's own coordinates. A floating window keeps filling it
- * after the app is resized; a normal window takes the part of the canvas in sight and stays there on
- * the canvas.
+ * The free area, or a half of it, in a window's own coordinates: between the bars, and under Eris
+ * while she sits in her default place, so nothing of the desk's own lies over a filled window (ADR
+ * 0040). A floating window keeps filling it after the app is resized; a normal window takes the part
+ * of the canvas in sight and stays there on the canvas.
  */
 function filled(ctx: Ctx, p: SurfacePlacement, fill: Fill): Partial<SurfacePlacement> {
-  if (isFloating(p)) return { ...fillRect(fill, screenArea(REF.width, REF.height)), fill };
+  const top = freeTop(layoutOf(ctx.store.get()).eris === null);
+  if (isFloating(p)) return { ...fillRect(fill, freeArea(REF.width, REF.height, top)), fill };
   const { vw, vh } = appSize();
   const pan = panOf(ctx.store.get());
-  return { ...storedRect(fillRect(fill, screenArea(vw, vh)), false, pan, vw, vh), fill };
+  return { ...storedRect(fillRect(fill, freeArea(vw, vh, top)), false, pan, vw, vh), fill };
 }
 
 const rectOf = (p: SurfacePlacement) => ({ x: p.x, y: p.y, w: p.w, h: p.h });
 
-/** Fill the whole app, keeping the place to come back to; a second call comes back. */
+/** Fill the free area, keeping the place to come back to; a second call comes back. */
 export function toggleMaximize(ctx: Ctx, id: string): void {
   update(ctx, id, (p) => {
     const { restore, fill, ...rest } = p;
@@ -135,8 +137,8 @@ export function toggleMaximize(ctx: Ctx, id: string): void {
 }
 
 /**
- * Snap a window to a half of the app or fill it. Filling keeps the place to come back to, as the
- * title bar's double-click does; a half has nothing to restore.
+ * Snap a window to a half of the free area or fill it. Filling keeps the place to come back to, as
+ * the title bar's double-click does; a half has nothing to restore.
  */
 export function snapTo(ctx: Ctx, id: string, where: Fill): void {
   update(ctx, id, (p) => {

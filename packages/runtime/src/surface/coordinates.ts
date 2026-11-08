@@ -1,5 +1,5 @@
 import type { SurfacePlacement } from "../modes/types";
-import { fromScreen, REF, type Rect, screenArea, toScreen } from "./geometry";
+import { freeArea, fromScreen, REF, type Rect, SAFE, toScreen } from "./geometry";
 import { fillRect } from "./snap";
 
 export interface Offset {
@@ -20,11 +20,12 @@ export function appSize() {
 
 /**
  * Normal placements keep world coordinates and size, moved by the pan; floating ones scale with the
- * app, and a filled one takes its part of the app whatever its size.
+ * app, and a filled one takes its part of the free area whatever its size. Its top is the one it
+ * was filled with (under Eris's place or under the chips, `freeTop`), never above the bars.
  */
 export function screenRect(p: SurfacePlacement, pan: Offset, vw: number, vh: number): Rect {
   if (!isFloating(p)) return { x: p.x + pan.x, y: p.y + pan.y, w: p.w, h: p.h };
-  return p.fill ? fillRect(p.fill, screenArea(vw, vh)) : toScreen(p, vw, vh);
+  return p.fill ? fillRect(p.fill, freeArea(vw, vh, Math.max(SAFE.top, p.y))) : toScreen(p, vw, vh);
 }
 
 export function storedRect(r: Rect, floating: boolean, pan: Offset, vw: number, vh: number): Rect {
