@@ -1,0 +1,12 @@
+{
+  "target": "PluginContributes",
+  "description": "a chord after a prefix needs a key, not modifiers alone",
+  "instance": {
+    "keys": [
+      {
+        "key": "Ctrl+X Ctrl+",
+        "command": "example.notes.find-file"
+      }
+    ]
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "target": "RecommendEnvelope",
+  "description": "a keyword recommendation",
+  "instance": {
+    "data": {
+      "matches": [
+        {
+          "slug": "support-mail",
+          "reason": "It answers mail."
+        }
+      ],
+      "source": "keyword"
+    }
+  }
+}

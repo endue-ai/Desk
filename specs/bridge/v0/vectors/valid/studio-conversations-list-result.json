@@ -1,0 +1,35 @@
+{
+  "target": "StudioConversationsListResult",
+  "description": "a conversation waiting for the person and one that failed, on the Home board",
+  "instance": {
+    "conversations": [
+      {
+        "id": "cnv_1",
+        "agentId": "ag_01JC0Q4MR00000000000000001",
+        "title": "Refund for order 42",
+        "status": "active",
+        "messageCount": 6,
+        "lastMessageAt": "2026-11-01T09:00:00Z",
+        "lastRunStatus": "completed",
+        "awaitingInput": true,
+        "lastMessagePreview": "Shall I send it?",
+        "activity": "waiting",
+        "createdAt": "2026-11-01T09:00:00Z",
+        "updatedAt": "2026-11-01T09:00:00Z"
+      },
+      {
+        "id": "cnv_2",
+        "agentId": "ag_01JC0Q4MR00000000000000001",
+        "status": "active",
+        "messageCount": 2,
+        "lastRunStatus": "failed",
+        "lastRunErrorCode": "LLM_TIMEOUT",
+        "activity": "failed",
+        "createdAt": "2026-11-01T09:00:00Z",
+        "updatedAt": "2026-11-01T09:00:00Z"
+      }
+    ],
+    "total": 2,
+    "hasMore": false
+  }
+}

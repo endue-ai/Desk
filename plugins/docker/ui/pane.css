@@ -1,0 +1,311 @@
+/* The detail pane beside the list (its bar, tabs and panels), the logs and the keys panel.
+   Tokens only, as style.css; the plugin's own colours are declared there. */
+
+/* The pane: beside the list, or over it when the surface is narrow. */
+.pane {
+  display: flex;
+  flex: 1 1 44%;
+  min-width: 320px;
+  flex-direction: column;
+  border-left: 1px solid var(--desk-border);
+  background: var(--desk-card);
+}
+
+.pane[hidden] {
+  display: none;
+}
+
+@media (max-width: 760px) {
+  .split.with-pane .list-pane {
+    display: none;
+  }
+
+  .pane {
+    min-width: 0;
+    border-left: 0;
+  }
+}
+
+.pane-bar {
+  gap: var(--desk-space-2);
+}
+
+.pane-sub {
+  overflow: hidden;
+  font-size: var(--desk-text-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pane-actions {
+  display: flex;
+  flex: none;
+  gap: var(--desk-space-1);
+}
+
+.pane-tabs {
+  flex: none;
+  padding: var(--desk-space-1) var(--desk-space-3);
+  border-bottom: 1px solid var(--desk-border);
+}
+
+.pane-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  outline: none;
+  font-size: var(--desk-text-xs);
+}
+
+.pane-body[hidden] {
+  display: none;
+}
+
+.row.field .label {
+  flex: none;
+  width: 16ch;
+}
+
+.row.field .value {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.row.masked .value {
+  letter-spacing: 0.1em;
+}
+
+.row.chart {
+  display: block;
+  padding: var(--desk-space-2) var(--desk-space-3);
+}
+
+.chart-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--desk-space-2);
+}
+
+.chart-head .value {
+  font-size: var(--desk-text-base);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.row.chart .spark {
+  width: 100%;
+  height: 64px;
+}
+
+.json {
+  font-family: var(--desk-font-mono);
+}
+
+.json.key {
+  color: var(--desk-text);
+}
+
+.json.string {
+  color: var(--docker-running);
+}
+
+.json.number,
+.json.boolean {
+  color: var(--docker-link);
+}
+
+.json.null {
+  color: var(--desk-text-muted);
+}
+
+.crumbs {
+  margin: 0;
+  padding: var(--desk-space-2) var(--desk-space-3);
+  border-bottom: 1px solid var(--desk-border);
+  font-size: var(--desk-text-xs);
+}
+
+.crumbs .path {
+  font-family: var(--desk-font-mono);
+  font-weight: 600;
+}
+
+.row.entry {
+  display: grid;
+  grid-template-columns: 2ch minmax(12ch, 1fr) 9ch 14ch 11ch;
+  font-family: var(--desk-font-mono);
+}
+
+.row.entry .target {
+  display: none;
+}
+
+.row.entry.dir .name {
+  color: var(--docker-link);
+}
+
+.row.layer {
+  display: grid;
+  grid-template-columns: 15ch minmax(0, 1fr) 17ch;
+}
+
+.row.layer .created-by {
+  font-family: var(--desk-font-mono);
+}
+
+.row.empty-layer .created-by {
+  color: var(--desk-text-muted);
+}
+
+.op-head {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: var(--desk-space-1);
+  padding: var(--desk-space-2) var(--desk-space-3);
+}
+
+.op-head .desk-progress {
+  width: 100%;
+}
+
+.op-status {
+  margin: 0;
+}
+
+.op-head.state-failed .op-status {
+  color: var(--docker-failed);
+}
+
+.op-lines,
+.log-lines {
+  margin: 0;
+  padding: var(--desk-space-2) var(--desk-space-3);
+  overflow: auto;
+  outline: none;
+  font-family: var(--desk-font-mono);
+  font-size: var(--desk-text-xs);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.op-lines:focus-visible,
+.log-lines:focus-visible {
+  box-shadow: inset 0 0 0 1px var(--desk-ring);
+}
+
+/* The logs: their bar, the lines (stderr leans danger), what the search matched. */
+.logs {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+}
+
+.logs[hidden] {
+  display: none;
+}
+
+.logs-bar {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--desk-space-1);
+  padding: var(--desk-space-1) var(--desk-space-3);
+  border-bottom: 1px solid var(--desk-border);
+}
+
+.logs-bar .desk-field {
+  flex: 1 1 160px;
+}
+
+.logs-bar [aria-pressed="true"] {
+  border-color: var(--desk-primary-border);
+  background: var(--desk-primary-soft);
+}
+
+.logs-head {
+  flex: 1 1 100%;
+  margin: 0;
+  overflow: hidden;
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.logs-head[data-state="following"]::after {
+  content: " · following";
+  color: var(--docker-running);
+}
+
+.log-lines {
+  flex: 1;
+}
+
+.log-lines.nowrap {
+  white-space: pre;
+  overflow-wrap: normal;
+}
+
+.logs-end {
+  margin: 0;
+  padding: var(--desk-space-1) var(--desk-space-3);
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-xs);
+}
+
+.line .time,
+.line .source {
+  margin-right: 1ch;
+  color: var(--desk-text-muted);
+}
+
+.line .source {
+  color: var(--docker-link);
+}
+
+.line.stderr {
+  color: var(--docker-stderr);
+}
+
+.line mark {
+  border-radius: var(--desk-radius-sm);
+  background: var(--desk-warning-soft);
+  color: inherit;
+}
+
+/* The keys panel ? opens. */
+.keys {
+  position: fixed;
+  right: var(--desk-space-3);
+  bottom: 40px;
+  z-index: 2;
+  max-width: 340px;
+  max-height: 70vh;
+  overflow: auto;
+  box-shadow: var(--desk-shadow-md);
+  font-size: var(--desk-text-xs);
+}
+
+.keys h2 {
+  margin: 0 0 var(--desk-space-2);
+  font-size: var(--desk-text-xs);
+}
+
+.keys dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--desk-space-1) var(--desk-space-3);
+  margin: 0;
+}
+
+.keys dd {
+  margin: 0;
+  color: var(--desk-text-muted);
+}
+
+kbd {
+  font-family: var(--desk-font-mono);
+}

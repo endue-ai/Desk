@@ -1,0 +1,11 @@
+{
+  "target": "BridgeEvent",
+  "description": "perm.approval.done always says whether the call succeeded",
+  "instance": {
+    "event": "perm.approval.done",
+    "data": {
+      "approvalId": "a-1",
+      "bytesWritten": 21
+    }
+  }
+}

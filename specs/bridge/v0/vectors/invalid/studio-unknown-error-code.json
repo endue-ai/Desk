@@ -1,0 +1,12 @@
+{
+  "target": "BridgeResponse",
+  "description": "error codes are the bridge's; unauthorized is not one",
+  "instance": {
+    "id": 7,
+    "ok": false,
+    "error": {
+      "code": "unauthorized",
+      "message": "401"
+    }
+  }
+}

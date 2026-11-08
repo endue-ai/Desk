@@ -1,0 +1,265 @@
+/* The card for what Eris proposes that is not a view (card.ts): a profile's ghost, a key table. It
+   floats over the desk and the shell, under nothing but the shell's popovers. */
+
+.proposal {
+  position: fixed;
+  top: 72px;
+  left: 50%;
+  z-index: var(--z-modal, 1060);
+  display: grid;
+  gap: var(--desk-space-3);
+  width: min(560px, calc(100vw - 48px));
+  max-height: calc(100vh - 144px);
+  overflow: auto;
+  padding: var(--desk-space-4);
+  transform: translateX(-50%);
+  border: 1px solid var(--desk-border);
+  border-radius: var(--desk-radius-lg);
+  background: var(--desk-popover);
+  box-shadow: var(--desk-shadow-lg);
+  color: var(--desk-text);
+  font-family: var(--desk-font-sans);
+  font-size: var(--desk-text-sm);
+  line-height: 1.5;
+}
+
+.proposal-head {
+  display: flex;
+  align-items: center;
+  gap: var(--desk-space-2);
+}
+
+.proposal-badge {
+  padding: 0 var(--desk-space-2);
+  border-radius: var(--desk-radius-full);
+  background: var(--desk-primary-soft);
+  color: var(--desk-primary-text);
+  font-size: var(--desk-text-xs);
+  font-weight: 600;
+}
+
+.proposal[data-state="applied"] .proposal-badge {
+  background: var(--desk-success-soft);
+  color: var(--desk-success-text);
+}
+
+.proposal-title {
+  margin: 0;
+  font-size: var(--desk-text-lg);
+  font-weight: 600;
+}
+
+.proposal-note,
+.ghost-description,
+.ghost-same,
+.ghost-empty {
+  margin: 0;
+  color: var(--desk-text-muted);
+}
+
+/* As @endue-ai/ui's desk-input draws its field. */
+.proposal-correction {
+  height: var(--desk-control-sm);
+  padding: 0 var(--desk-space-3);
+  border: 1px solid var(--desk-input);
+  border-radius: var(--desk-radius-md);
+  background: var(--desk-background);
+  color: var(--desk-text);
+  font: inherit;
+}
+
+.proposal-correction::placeholder {
+  color: var(--desk-text-muted);
+}
+
+.proposal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--desk-space-2);
+}
+
+.proposal-button {
+  height: var(--desk-control-sm);
+  padding: 0 var(--desk-space-3);
+  border: 1px solid var(--desk-input);
+  border-radius: var(--desk-radius-md);
+  background: transparent;
+  color: var(--desk-text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.proposal-button:hover:not(:disabled) {
+  background: var(--desk-hover);
+}
+
+.proposal-button.is-primary {
+  border-color: var(--desk-primary);
+  background: var(--desk-primary);
+  color: var(--desk-primary-foreground);
+}
+
+.proposal-button.is-primary:hover:not(:disabled) {
+  background: var(--desk-primary-hover);
+}
+
+.proposal-button:disabled,
+.proposal-correction:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.proposal-button:focus-visible,
+.proposal-correction:focus-visible {
+  outline: 2px solid var(--desk-ring);
+  outline-offset: 1px;
+}
+
+/* A profile's ghost: each desktop it lays out, small, its windows as outlines. */
+.ghost {
+  display: grid;
+  gap: var(--desk-space-3);
+}
+
+.ghost-desktops {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--desk-space-2);
+}
+
+.ghost-desktop {
+  display: grid;
+  gap: var(--desk-space-1);
+  margin: 0;
+}
+
+.ghost-frame {
+  position: relative;
+  aspect-ratio: 1440 / 900;
+  border: 1px dashed var(--desk-border);
+  border-radius: var(--desk-radius-md);
+  background: var(--desk-card);
+}
+
+.ghost-window {
+  position: absolute;
+  overflow: hidden;
+  padding: 0 var(--desk-space-1);
+  border: 1px solid var(--desk-primary-border);
+  border-radius: var(--desk-radius-sm);
+  background: var(--desk-primary-soft);
+  color: var(--desk-primary-text);
+  font-size: var(--desk-text-2xs);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.ghost-caption,
+.ghost-label {
+  margin: 0;
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-xs);
+  font-weight: 600;
+}
+
+.ghost-plugins {
+  display: grid;
+  gap: var(--desk-space-2);
+}
+
+.ghost-group {
+  display: grid;
+  gap: var(--desk-space-1);
+}
+
+.ghost-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--desk-space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ghost-chip {
+  padding: 0 var(--desk-space-2);
+  border-radius: var(--desk-radius-full);
+  background: var(--desk-success-soft);
+  color: var(--desk-success-text);
+}
+
+.ghost-group[data-change="off"] .ghost-chip {
+  background: var(--desk-danger-soft);
+  color: var(--desk-danger-text);
+  text-decoration: line-through;
+}
+
+/* The settings a profile changes, and proposed key bindings. */
+.ghost-settings,
+.proposal-keys {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.ghost-settings th,
+.ghost-settings td,
+.proposal-keys th,
+.proposal-keys td {
+  padding: var(--desk-space-1) var(--desk-space-2);
+  border-bottom: 1px solid var(--desk-border);
+  text-align: left;
+  vertical-align: top;
+}
+
+.ghost-settings th,
+.proposal-keys th {
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-xs);
+  font-weight: 600;
+}
+
+/* What a pack brings (ADR 0108): label and value per line. */
+.proposal-pack {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: var(--desk-space-1) var(--desk-space-3);
+  margin: 0;
+}
+
+.proposal-pack dt {
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-xs);
+  font-weight: 600;
+}
+
+.proposal-pack dd {
+  margin: 0;
+}
+
+.proposal-keys kbd {
+  padding: 0 var(--desk-space-1);
+  border: 1px solid var(--desk-border);
+  border-radius: var(--desk-radius-sm);
+  background: var(--desk-card);
+  font-family: var(--desk-font-mono);
+}
+
+.proposal-mark {
+  display: inline-block;
+  margin: 0 var(--desk-space-1) var(--desk-space-1) 0;
+  padding: 0 var(--desk-space-2);
+  border-radius: var(--desk-radius-full);
+  background: var(--desk-warning-soft);
+  color: var(--desk-warning-text);
+  font-size: var(--desk-text-xs);
+}
+
+.proposal-mark[data-mark="twice"] {
+  background: var(--desk-danger-soft);
+  color: var(--desk-danger-text);
+}
+
+.proposal-mark[data-mark="same"] {
+  background: var(--desk-info-soft);
+  color: var(--desk-info-text);
+}

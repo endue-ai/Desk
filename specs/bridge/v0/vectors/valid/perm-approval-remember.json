@@ -1,0 +1,21 @@
+{
+  "target": "BridgeEvent",
+  "description": "Eris wants to remember a fact: the card asks first, with the fact as its preview (ADR 0096)",
+  "instance": {
+    "event": "perm.approval",
+    "data": {
+      "approvalId": "a-7",
+      "caller": "agent:eris",
+      "action": "memory.remember",
+      "permission": {
+        "permission": "memory:write"
+      },
+      "target": "Prefers pnpm over npm",
+      "preview": {
+        "kind": "fact",
+        "text": "Prefers pnpm over npm"
+      },
+      "task": "t3"
+    }
+  }
+}

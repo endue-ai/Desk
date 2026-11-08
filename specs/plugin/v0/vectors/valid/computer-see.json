@@ -1,0 +1,7 @@
+{
+  "target": "Permission",
+  "description": "see every app's windows and interfaces",
+  "instance": {
+    "permission": "computer:see"
+  }
+}

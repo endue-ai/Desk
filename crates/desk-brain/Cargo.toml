@@ -1,0 +1,20 @@
+[package]
+name = "desk-brain"
+description = "Brain trait plus the client types generated from specs/brain."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+
+[dev-dependencies]
+desk-brain-endue.workspace = true
+jsonschema.workspace = true
+
+[lints]
+workspace = true

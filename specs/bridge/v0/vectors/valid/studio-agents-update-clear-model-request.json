@@ -1,0 +1,15 @@
+{
+  "target": "BridgeRequest",
+  "description": "an empty model clears the chat model, so endue AI's default applies",
+  "instance": {
+    "id": 1,
+    "method": "studio.agents.update",
+    "params": {
+      "agentId": "ag_01JC0Q4MR00000000000000001",
+      "model": "",
+      "scope": {
+        "permission": "studio:manage"
+      }
+    }
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "target": "Session",
+  "description": "status is active or closed",
+  "instance": {
+    "id": "s1",
+    "status": "archived",
+    "createdAt": "2026-10-27T09:00:00Z",
+    "updatedAt": "2026-10-27T09:00:00Z"
+  }
+}

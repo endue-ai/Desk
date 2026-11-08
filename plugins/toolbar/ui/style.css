@@ -1,0 +1,106 @@
+body {
+  margin: 0;
+  background: var(--desk-card);
+  color: var(--desk-text);
+  font: calc(var(--desk-text-sm) - 1px) / 1.5 var(--desk-font-sans);
+}
+
+#root {
+  padding: 8px 12px;
+}
+
+h1 {
+  margin: 0 0 4px;
+  font-size: var(--desk-text-2xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--desk-text-muted);
+}
+
+h2 {
+  margin: 0;
+  font: inherit;
+}
+
+ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.drawer {
+  border-bottom: 1px solid var(--desk-border);
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.head:focus-visible {
+  outline: 2px solid var(--desk-ring);
+  outline-offset: 2px;
+  border-radius: var(--desk-radius-sm);
+}
+
+.title {
+  flex: 1;
+  font-weight: 600;
+}
+
+.summary {
+  color: var(--desk-text-muted);
+}
+
+/* Something needs a look: a dot before the summary. */
+.head.warning .summary::before {
+  content: "";
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 6px;
+  border-radius: var(--desk-radius-full);
+  background: var(--desk-warning);
+}
+
+.chevron {
+  color: var(--desk-text-muted);
+  transition: transform var(--desk-motion-fast);
+}
+
+.head[aria-expanded="true"] .chevron {
+  transform: rotate(90deg);
+}
+
+.body {
+  padding: 0 0 8px;
+}
+
+.body p {
+  margin: 0 0 6px;
+  color: var(--desk-text-muted);
+}
+
+.rows li {
+  display: grid;
+  padding: 4px 0;
+}
+
+.detail {
+  color: var(--desk-text-muted);
+  overflow-wrap: anywhere;
+}
+
+.rows li.warning .detail {
+  color: var(--desk-warning-text);
+}

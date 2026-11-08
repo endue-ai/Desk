@@ -1,0 +1,32 @@
+{
+  "target": "AgentList",
+  "description": "the first page of a space's agents",
+  "instance": {
+    "items": [
+      {
+        "id": "ag_01JBZ8Q4MR0000000000000001",
+        "name": "Mira",
+        "slug": "mira",
+        "status": "active",
+        "ownerUserId": "u_01JBZ8Q4MR0000000000000000",
+        "personalColor": "#9683D3",
+        "createdAt": "2026-10-01T09:00:00Z",
+        "updatedAt": "2026-10-27T09:00:00Z"
+      },
+      {
+        "id": "ag_01JBZ8Q4MR0000000000000003",
+        "name": "Juno",
+        "slug": "juno",
+        "status": "inactive",
+        "createdAt": "2026-10-02T09:00:00Z",
+        "updatedAt": "2026-10-02T09:00:00Z"
+      }
+    ],
+    "pagination": {
+      "total": 2,
+      "page": 1,
+      "limit": 20,
+      "hasNextPage": false
+    }
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "target": "SavePromptRequest",
+  "description": "a prompt revision has content",
+  "instance": {
+    "content": ""
+  }
+}

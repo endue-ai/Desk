@@ -1,0 +1,148 @@
+/* The overview's cards: the engine, containers by state as tiles, the stacks with a dot per
+   service, the busiest containers, disk use with reclaimable meters, and the rest in numbers. */
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  align-items: start;
+  gap: var(--desk-space-3);
+  padding: var(--desk-space-3);
+  font-size: var(--desk-text-sm);
+}
+
+.card {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: var(--desk-space-1);
+}
+
+.card h2 {
+  display: flex;
+  align-items: baseline;
+  gap: var(--desk-space-2);
+  margin: 0 0 var(--desk-space-1);
+  font-size: var(--desk-text-xs);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.card h2 .note {
+  font-weight: 400;
+  text-transform: none;
+}
+
+.card .row {
+  margin: 0 calc(var(--desk-space-2) * -1);
+  padding: 0 var(--desk-space-2);
+  border-radius: var(--desk-radius-sm);
+  cursor: pointer;
+}
+
+.card .row:hover {
+  background: var(--desk-hover);
+}
+
+.card .row .value {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+}
+
+.card .row .label {
+  min-width: 9ch;
+}
+
+.card p {
+  margin: var(--desk-space-1) 0;
+}
+
+.card.engine .engine-line .title {
+  font-size: var(--desk-text-base);
+}
+
+.problem-card {
+  margin: var(--desk-space-2) 0 0;
+  padding: var(--desk-space-3);
+}
+
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--desk-space-2);
+}
+
+.card .row.tile {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto;
+  column-gap: var(--desk-space-2);
+  align-items: center;
+  min-height: 0;
+  margin: 0;
+  padding: var(--desk-space-2) var(--desk-space-3);
+  border: 1px solid var(--desk-border);
+  border-radius: var(--desk-radius-md);
+  white-space: normal;
+}
+
+.tile .number {
+  font-size: var(--desk-text-2xl);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.tile .label {
+  grid-column: 1 / -1;
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-xs);
+}
+
+.tile.zero .number {
+  color: var(--desk-text-muted);
+  font-weight: 400;
+}
+
+.tile.state-unhealthy:not(.zero) {
+  border-color: var(--desk-danger-border);
+  background: var(--desk-danger-soft);
+}
+
+.tile.state-unhealthy:not(.zero) .number {
+  color: var(--docker-failed);
+}
+
+.stack .services {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  margin-left: auto;
+}
+
+.stack .count {
+  font-variant-numeric: tabular-nums;
+}
+
+.busy .spark {
+  width: 80px;
+  height: 18px;
+  margin-left: auto;
+}
+
+.busy .value {
+  min-width: 7ch;
+  text-align: right;
+}
+
+.disk-line .meter {
+  width: 64px;
+}
+
+.disk-line .meter .fill {
+  background: var(--docker-paused);
+}
+
+.largest .name {
+  font-weight: 400;
+}

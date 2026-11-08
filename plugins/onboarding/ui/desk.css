@@ -1,0 +1,297 @@
+/* Scenes 6-10: the desk's frame, the cards and examples along the edge, the agents in the left bar
+   and the screens Eris builds. Every piece is placed at the edges; the centre stays Eris's and the
+   person's. */
+
+#frame {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  font-size: calc(var(--desk-text-sm) - 1px);
+  color: var(--desk-text-muted);
+}
+
+#frame .mode {
+  position: absolute;
+  left: 96px;
+  top: 20px;
+  padding: 4px 12px;
+  border-bottom: 1px solid var(--desk-border);
+  color: var(--desk-text);
+  font-weight: 500;
+  letter-spacing: 0.04em;
+}
+
+#frame .desktops {
+  position: absolute;
+  right: 24px;
+  top: 20px;
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--desk-border);
+  border-radius: var(--desk-radius-md);
+}
+
+#frame .desktops span {
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--desk-radius-md);
+}
+
+#frame .desktops .on {
+  background: var(--desk-card);
+  color: var(--desk-text);
+}
+
+#frame .toolbar {
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  width: 56px;
+  height: 280px;
+  margin-top: -140px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 0;
+  box-sizing: border-box;
+  border: 1px solid var(--desk-border);
+  border-radius: var(--desk-radius-lg);
+}
+
+#frame .chip {
+  width: 44px;
+  padding: 6px 0;
+  border-radius: var(--desk-radius-md);
+  background: var(--desk-card);
+  color: var(--desk-text);
+  font-size: calc(var(--desk-text-2xs) - 1px);
+  text-align: center;
+}
+
+#frame .dock {
+  position: absolute;
+  left: 50%;
+  bottom: 16px;
+  width: 400px;
+  height: 56px;
+  margin-left: -200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid var(--desk-border);
+  border-radius: var(--desk-radius-lg);
+}
+
+#frame .saved {
+  padding: 8px 14px;
+  border-radius: var(--desk-radius-lg);
+  background: var(--desk-card);
+  color: var(--desk-text);
+}
+
+#frame .bar {
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  width: 56px;
+  height: 320px;
+  margin-top: -160px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 0;
+  box-sizing: border-box;
+  border: 1px solid var(--desk-border);
+  border-radius: var(--desk-radius-full);
+}
+
+#frame .slot {
+  position: relative;
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--desk-radius-full);
+}
+
+#frame .eris-slot {
+  border: 1px dashed var(--desk-border);
+}
+
+#frame .eris-slot.filled {
+  border-color: var(--desk-chart-3);
+}
+
+#frame .agent {
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--agent) 22%, transparent);
+  border: 1px solid var(--agent);
+  color: var(--agent);
+  font-weight: 600;
+}
+
+#frame .agent.dim {
+  opacity: 0.35;
+}
+
+/* An agent speaks next to its own circle: 24 px soul text in its colour. */
+#frame .agent .say {
+  position: absolute;
+  left: 56px;
+  top: 6px;
+  width: 380px;
+  font-size: var(--desk-text-2xl);
+  font-weight: 400;
+  line-height: 1.2;
+}
+
+#frame .agent .say .wrap {
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+
+#frame .agent .say .line {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 0.3em;
+}
+
+#frame .agent .say .ch {
+  color: var(--agent);
+  text-shadow: 0 0 12px color-mix(in srgb, var(--agent) 40%, transparent);
+}
+
+#edge {
+  position: absolute;
+  left: 96px;
+  right: 96px;
+  bottom: 88px;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+#edge .note {
+  width: 100%;
+  margin: 0;
+  text-align: center;
+  font-size: var(--desk-text-xs);
+  color: var(--desk-text-muted);
+}
+
+.card {
+  min-width: 112px;
+  height: 56px;
+  padding: 0 16px;
+  font-size: calc(var(--desk-text-sm) + 1px);
+}
+
+.card[aria-pressed="true"] {
+  border-color: var(--desk-primary-text);
+  color: var(--desk-primary-text);
+  cursor: default;
+}
+
+.card.quiet {
+  background: transparent;
+  color: var(--desk-text-muted);
+}
+
+.ghost {
+  position: absolute;
+  z-index: 3;
+  padding: 8px 14px;
+  border-radius: var(--desk-radius-lg);
+  background: var(--desk-card);
+  color: var(--desk-text);
+  pointer-events: none;
+}
+
+#canvas {
+  position: absolute;
+  left: 50%;
+  right: 96px;
+  top: 72px;
+  bottom: 112px;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.panel {
+  padding: 16px 20px;
+  border-radius: var(--desk-radius-lg);
+  border: 1px solid var(--desk-border);
+  background: color-mix(in srgb, var(--desk-card) 92%, transparent);
+  font-size: var(--desk-text-sm);
+}
+
+.panel h2 {
+  margin: 0 0 10px;
+  font-size: var(--desk-text-base);
+  font-weight: 500;
+}
+
+.panel ol,
+.panel ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.panel li {
+  display: flex;
+  gap: 16px;
+  padding: 7px 0;
+  border-top: 1px solid var(--desk-border);
+}
+
+.panel time {
+  min-width: 96px;
+  color: var(--desk-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.panel.overlap {
+  border-color: var(--desk-chart-3);
+}
+
+.panel.overlap h2 {
+  color: var(--desk-chart-3);
+}
+
+.panel .days {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+}
+
+.panel .day h3 {
+  margin: 0 0 6px;
+  font-size: var(--desk-text-xs);
+  font-weight: 500;
+  color: var(--desk-text-muted);
+}
+
+.panel .empty {
+  height: 120px;
+  border: 1px dashed var(--desk-border);
+  border-radius: var(--desk-radius-md);
+}
+
+.panel .body {
+  margin: 0;
+  line-height: 1.5;
+}

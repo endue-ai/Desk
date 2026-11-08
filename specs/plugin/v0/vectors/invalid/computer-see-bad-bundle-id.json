@@ -1,0 +1,8 @@
+{
+  "target": "Permission",
+  "description": "a bundle id holds no spaces or slashes",
+  "instance": {
+    "permission": "computer:see",
+    "apps": ["Safari/App"]
+  }
+}

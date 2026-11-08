@@ -1,0 +1,7 @@
+{
+  "target": "ThemeShape",
+  "description": "radius is a preset: none, subtle, soft or round",
+  "instance": {
+    "radius": "huge"
+  }
+}

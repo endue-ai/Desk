@@ -1,0 +1,7 @@
+{
+  "target": "Permission",
+  "description": "read the whole log",
+  "instance": {
+    "permission": "log:read"
+  }
+}

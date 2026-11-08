@@ -1,0 +1,11 @@
+{
+  "target": "BridgeRequest",
+  "description": "update.setChannel needs update:manage",
+  "instance": {
+    "id": 62,
+    "method": "update.setChannel",
+    "params": {
+      "channel": "stable"
+    }
+  }
+}

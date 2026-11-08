@@ -1,0 +1,139 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://endue.ai/specs/init/v0/init.schema.json",
+  "title": "init.yaml v0",
+  "description": "A person's own setup, which Desk reads at every start like Emacs reads init.el. The file is YAML; this schema describes the data it holds once parsed. An empty file is the empty object.",
+  "$ref": "#/$defs/InitDocument",
+  "$defs": {
+    "InitDocument": {
+      "description": "The whole of init.yaml. Every key is optional; a missing key takes its default.",
+      "type": "object",
+      "properties": {
+        "version": {
+          "description": "The format version. Default 0. Desk refuses a file with a version newer than it reads.",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 0
+        },
+        "profile": { "$ref": "#/$defs/InitProfile" },
+        "plugins": { "$ref": "#/$defs/InitPlugins" },
+        "settings": { "$ref": "#/$defs/InitSettings" },
+        "agents": { "$ref": "#/$defs/InitAgents" },
+        "mcp": { "$ref": "#/$defs/InitMcp" },
+        "sync": { "$ref": "#/$defs/InitSync" }
+      },
+      "additionalProperties": false
+    },
+    "InitProfile": {
+      "description": "The profile to start in: a set of plugins plus their settings (ADR 0017). Default \"default\".",
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$"
+    },
+    "InitPlugins": {
+      "description": "Which plugins start how.",
+      "type": "object",
+      "properties": {
+        "disabled": {
+          "description": "Plugin ids that start disabled, built-in plugins included. Default none. The person can still turn one on while Desk runs; the list applies again at the next start.",
+          "type": "array",
+          "items": { "$ref": "../../plugin/v0/plugin.schema.json#/$defs/PluginId" },
+          "uniqueItems": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "InitSettings": {
+      "description": "Settings by key, for the core and plugins. Values are any YAML value that JSON can hold. Default none.",
+      "type": "object",
+      "propertyNames": { "$ref": "#/$defs/InitSettingKey" },
+      "additionalProperties": {}
+    },
+    "InitSettingKey": {
+      "description": "A setting key: lowercase, dotted by owner, for example eris.voice or motion.reduce.",
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9._-]{0,127}$"
+    },
+    "InitAgents": {
+      "description": "What the brain's agents may be granted on this desk, by agent id (the agentId of the brain's tool calls; the caller is agent:<id>). Default none: an agent without an entry asks the person before every first use (ADR 0072).",
+      "type": "object",
+      "propertyNames": { "$ref": "#/$defs/InitAgentId" },
+      "additionalProperties": { "$ref": "#/$defs/InitAgent" }
+    },
+    "InitAgentId": {
+      "description": "An agent id as the brain names it, for example ag_01JBZ8Q4MR0000000000000001.",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,121}$"
+    },
+    "InitAgent": {
+      "description": "One agent's setup.",
+      "type": "object",
+      "properties": {
+        "allow": {
+          "description": "The permissions and scopes the agent may be granted. Within them the person is still asked at first use; outside them the agent is refused (outside-allowlist), whatever it holds. Empty or absent: no limit, every first use asks.",
+          "type": "array",
+          "items": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/Permission" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "InitMcp": {
+      "description": "MCP servers the desk attaches as tools (ADR 0098). Each one runs as the caller mcp:<name>, starts only under a proc:spawn grant the person gave it, and offers its tools to agents as the commands mcp.<name>.<tool>.",
+      "type": "object",
+      "properties": {
+        "servers": {
+          "description": "The servers by name. Default none. Read at every start.",
+          "type": "object",
+          "propertyNames": { "$ref": "#/$defs/InitMcpServerName" },
+          "additionalProperties": { "$ref": "#/$defs/InitMcpServer" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "InitMcpServerName": {
+      "description": "A server's name: the caller mcp:<name> and the middle of its command ids. Lowercase, for example github.",
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]{0,31}$"
+    },
+    "InitMcpServer": {
+      "description": "One MCP server, started over stdio.",
+      "type": "object",
+      "properties": {
+        "command": {
+          "description": "The program: a name looked up on PATH or an absolute path, without arguments. The proc:spawn grant names it.",
+          "$ref": "../../plugin/v0/permission.schema.json#/$defs/Command"
+        },
+        "args": {
+          "description": "The program's arguments. Default none.",
+          "type": "array",
+          "items": { "type": "string", "maxLength": 4096 },
+          "maxItems": 64
+        },
+        "env": {
+          "description": "Names of environment variables to pass from the desk's own environment, never their values (this file may sync). The server gets these and the usual HOME, LOGNAME, PATH, SHELL, TERM and USER (the Windows equivalents there), nothing else. Default none.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/InitEnvName" },
+          "uniqueItems": true,
+          "maxItems": 64
+        }
+      },
+      "required": ["command"],
+      "additionalProperties": false
+    },
+    "InitEnvName": {
+      "description": "An environment variable's name, for example GITHUB_TOKEN.",
+      "type": "string",
+      "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,127}$"
+    },
+    "InitSync": {
+      "description": "Syncing init.yaml through the person's endue account.",
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "description": "Keep this file the same on every desk the person uses. Default false.",
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

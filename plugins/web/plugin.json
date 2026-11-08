@@ -1,0 +1,98 @@
+{
+  "id": "endue.web",
+  "name": "Web",
+  "version": "0.1.0",
+  "kind": "ui",
+  "entry": "ui/index.html",
+  "autoload": true,
+  "description": "Opens saved web pages, web archives, link files and feeds read-only: pages drawn sanitized in a shadow root, nothing run, nothing fetched.",
+  "permissions": [
+    {
+      "permission": "cmd:invoke",
+      "ids": ["desk.files.open", "desk.files.changed"]
+    }
+  ],
+  "surfaces": [
+    {
+      "id": "main",
+      "title": "Web",
+      "placement": "center"
+    }
+  ],
+  "contributes": {
+    "files": [
+      {
+        "pattern": "*.html",
+        "plugin": "endue.web"
+      },
+      {
+        "pattern": "*.htm",
+        "plugin": "endue.web"
+      },
+      {
+        "pattern": "*.xhtml",
+        "plugin": "endue.web"
+      },
+      {
+        "pattern": "*.xht",
+        "plugin": "endue.web"
+      },
+      {
+        "pattern": "*.shtml",
+        "plugin": "endue.web"
+      },
+      {
+        "pattern": "*.mhtml",
+        "plugin": "endue.web"
+      },
+      {
+        "pattern": "*.mht",
+        "plugin": "endue.web"
+      },
+      {
+        "pattern": "*.webarchive",
+        "plugin": "endue.web"
+      },
+      {
+        "pattern": "*.warc",
+        "plugin": "endue.web"
+      },
+      {
+        "pattern": "*.maff",
+        "plugin": "endue.web"
+      },
+      {
+        "pattern": "*.url",
+        "plugin": "endue.web"
+      },
+      {
+        "pattern": "*.webloc",
+        "plugin": "endue.web"
+      },
+      {
+        "pattern": "*.desktop",
+        "plugin": "endue.web"
+      },
+      {
+        "pattern": "*.lnk",
+        "plugin": "endue.web"
+      },
+      {
+        "pattern": "*.rss",
+        "plugin": "endue.web"
+      },
+      {
+        "pattern": "*.atom",
+        "plugin": "endue.web"
+      },
+      {
+        "pattern": "*.opml",
+        "plugin": "endue.web"
+      },
+      {
+        "pattern": "*.warc.gz",
+        "plugin": "endue.web"
+      }
+    ]
+  }
+}

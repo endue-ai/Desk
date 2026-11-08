@@ -1,0 +1,15 @@
+{
+  "target": "BridgeRequest",
+  "description": "endue AI takes names of at most 100 characters",
+  "instance": {
+    "id": 1,
+    "method": "studio.agents.create",
+    "params": {
+      "name": "MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM",
+      "role": "Mail",
+      "scope": {
+        "permission": "studio:manage"
+      }
+    }
+  }
+}

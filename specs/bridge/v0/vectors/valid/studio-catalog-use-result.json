@@ -1,0 +1,41 @@
+{
+  "target": "StudioCatalogUseResult",
+  "description": "an agent started from the catalog, with a connector to add next",
+  "instance": {
+    "agent": {
+      "id": "ag_01JC0Q4MR00000000000000003",
+      "slug": "mailie",
+      "name": "Mailie",
+      "status": "inactive",
+      "avatarUrl": "https://cdn.endue.ai/c/mailie.png",
+      "region": "KR-11",
+      "sourceCatalog": {
+        "catalogAgentId": "cat_support_mail",
+        "version": 3
+      },
+      "createdAt": "2026-11-01T09:00:00Z",
+      "updatedAt": "2026-11-01T09:00:00Z"
+    },
+    "catalog": {
+      "id": "cat_support_mail",
+      "slug": "support-mail",
+      "version": 3
+    },
+    "applied": {
+      "prompt": true,
+      "traits": ["personality"],
+      "skills": ["mail-triage"],
+      "model": true
+    },
+    "warnings": [],
+    "recommended": {
+      "connectors": [
+        {
+          "type": "gmail",
+          "required": true
+        }
+      ],
+      "channels": ["slack"]
+    }
+  }
+}

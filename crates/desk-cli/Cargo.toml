@@ -1,0 +1,34 @@
+[package]
+name = "desk-cli"
+description = "The desk CLI: plugin validate and test, doctor --trace, commands, plugins and grants of a running desk over its socket, and an MCP server for other apps. The hands AI agents use."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "desk"
+path = "src/main.rs"
+
+[dependencies]
+desk-bridge.workspace = true
+desk-core.workspace = true
+desk-crash.workspace = true
+desk-trace.workspace = true
+# Not in [workspace.dependencies] yet: a later chore moves it there.
+desk-ipc = { path = "../desk-ipc" }
+desk-mcp = { path = "../desk-mcp" }
+desk-plugin-host.workspace = true
+serde_json.workspace = true
+# Already in the tree: desk export writes stored entries, import reads stored and deflated ones.
+zip = { version = "9.2.1", default-features = false, features = ["deflate-flate2"] }
+# zip's deflate needs a flate2 backend: the default one, miniz_oxide, already in the tree.
+flate2 = "1.1.10"
+
+[dev-dependencies]
+desk-update.workspace = true
+
+[lints]
+workspace = true

@@ -1,0 +1,32 @@
+{
+  "target": "View",
+  "description": "clock is not a template format; time, date, relative and number are",
+  "instance": {
+    "id": "desk.today",
+    "version": "0.1.0",
+    "title": "Today",
+    "description": "Today's events and the open tasks, side by side.",
+    "requires": {
+      "calendar": {
+        "kinds": ["event"],
+        "title": "A calendar"
+      },
+      "tasks": {
+        "kinds": ["task"],
+        "title": "A task list"
+      }
+    },
+    "layout": {
+      "type": "list",
+      "binding": {
+        "kinds": ["event"],
+        "sources": ["$calendar"]
+      },
+      "fields": [
+        {
+          "value": "{start|clock}"
+        }
+      ]
+    }
+  }
+}

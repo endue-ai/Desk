@@ -1,0 +1,11 @@
+{
+  "target": "MemoryFact",
+  "description": "the writer is person, eris, a plugin id or agent:<id>",
+  "instance": {
+    "kind": "fact",
+    "id": "fact_01jc8x2k9m4n",
+    "text": "Reviews pull requests in the morning, before standup.",
+    "by": "Mina Park",
+    "at": "2026-11-05T09:12:00+09:00"
+  }
+}

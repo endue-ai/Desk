@@ -1,0 +1,13 @@
+{
+  "target": "PluginManifest",
+  "description": "a theme runs no code: no entry",
+  "instance": {
+    "id": "example.paper",
+    "version": "1.0.0",
+    "kind": "theme",
+    "entry": "theme.js",
+    "theme": {
+      "dark": {}
+    }
+  }
+}

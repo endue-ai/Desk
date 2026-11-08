@@ -1,0 +1,15 @@
+{
+  "target": "BridgeRequest",
+  "description": "fs.trash moves a file to the OS trash under an fs:write scope",
+  "instance": {
+    "id": 36,
+    "method": "fs.trash",
+    "params": {
+      "path": "~/Downloads/old.zip",
+      "scope": {
+        "permission": "fs:write",
+        "paths": ["~/Downloads/**"]
+      }
+    }
+  }
+}

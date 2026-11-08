@@ -1,0 +1,15 @@
+{
+  "target": "PluginManifest",
+  "description": "kind pack without its pack block",
+  "instance": {
+    "id": "acme.pack",
+    "version": "0.1.0",
+    "kind": "pack",
+    "view": {
+      "id": "acme.pack.home",
+      "version": "0.1.0",
+      "title": "Acme",
+      "layout": { "type": "list", "binding": { "kinds": ["task"] } }
+    }
+  }
+}

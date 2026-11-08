@@ -1,0 +1,16 @@
+{
+  "target": "PluginManifest",
+  "description": "a pack that brings no plugin",
+  "instance": {
+    "id": "acme.pack",
+    "version": "0.1.0",
+    "kind": "pack",
+    "pack": { "services": ["acme"], "plugins": [] },
+    "view": {
+      "id": "acme.pack.home",
+      "version": "0.1.0",
+      "title": "Acme",
+      "layout": { "type": "list", "binding": { "kinds": ["task"] } }
+    }
+  }
+}

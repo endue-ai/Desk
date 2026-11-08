@@ -1,0 +1,8 @@
+{
+  "target": "Permission",
+  "description": "setting patterns are owner/key",
+  "instance": {
+    "permission": "settings:read",
+    "keys": ["voice"]
+  }
+}

@@ -1,0 +1,28 @@
+body {
+  margin: 0;
+  padding: 8px 12px;
+  background: var(--desk-card);
+  color: var(--desk-text);
+  font: calc(var(--desk-text-sm) - 1px) / 1.6 var(--desk-font-sans);
+}
+
+ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+li {
+  padding: 4px 0;
+  border-bottom: 1px solid var(--desk-border);
+}
+
+small,
+p {
+  display: block;
+  color: var(--desk-text-muted);
+}
+
+input {
+  accent-color: var(--desk-primary);
+}

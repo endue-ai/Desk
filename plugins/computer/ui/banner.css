@@ -1,0 +1,69 @@
+/* The banner over every app (ADR 0123): one line, who and what, and Stop. Colours, type and sizes
+   are the desk's tokens, so the theme in force restyles it. */
+html,
+body {
+  margin: 0;
+  background: transparent;
+}
+
+#banner {
+  display: flex;
+  align-items: center;
+  gap: var(--desk-space-2);
+  height: 100vh;
+  box-sizing: border-box;
+  padding: 0 var(--desk-space-3);
+  background: var(--desk-surface);
+  color: var(--desk-text);
+  border: var(--desk-border-width) solid var(--desk-accent);
+  border-radius: var(--desk-radius-lg);
+  font-size: var(--desk-text-sm);
+}
+
+#banner[hidden] {
+  display: none;
+}
+
+#banner[data-stopped="true"] {
+  border-color: var(--desk-border);
+}
+
+.dot {
+  width: var(--desk-space-2);
+  height: var(--desk-space-2);
+  border-radius: var(--desk-radius-full);
+  background: var(--desk-accent);
+  animation: pulse calc(var(--desk-motion-slow) * 4) ease-in-out infinite;
+}
+
+#banner[data-stopped="true"] .dot {
+  background: var(--desk-text-muted);
+  animation: none;
+}
+
+.words {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+#banner-detail,
+#banner-key {
+  overflow: hidden;
+  color: var(--desk-text-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dot {
+    animation: none;
+  }
+}

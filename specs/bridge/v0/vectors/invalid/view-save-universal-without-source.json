@@ -1,0 +1,16 @@
+{
+  "target": "BridgeRequest",
+  "description": "view.save refuses a universal view without a source: it is neither an item view nor a universal view",
+  "instance": {
+    "id": 54,
+    "method": "view.save",
+    "params": {
+      "view": {
+        "id": "eris.issues-as-a-board",
+        "title": "Issues as a board",
+        "type": "kanban"
+      },
+      "scope": { "permission": "view:manage" }
+    }
+  }
+}

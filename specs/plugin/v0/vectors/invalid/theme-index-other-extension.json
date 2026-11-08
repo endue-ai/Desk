@@ -1,0 +1,21 @@
+{
+  "target": "ThemeIndex",
+  "description": "a relative bundle url must end in .desk-theme or .desk-design",
+  "instance": {
+    "format": "desk-theme-index/1",
+    "themes": [
+      {
+        "id": "market.blueprint",
+        "name": "Blueprint",
+        "version": "1.0.0",
+        "kind": "design-system",
+        "author": "Team endue",
+        "license": "CC0-1.0",
+        "preview": ["#1e1d21"],
+        "url": "blueprint.desk-look",
+        "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "size": 400
+      }
+    ]
+  }
+}

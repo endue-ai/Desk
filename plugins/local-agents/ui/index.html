@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Local agents</title>
+    <script type="importmap">
+      { "imports": { "@endue-ai/plugin-sdk": "/_desk/plugin-sdk.js", "@endue-ai/ui": "/_desk/ui.js" } }
+    </script>
+    <link rel="stylesheet" href="/_desk/tokens.css" />
+    <link rel="stylesheet" href="/_desk/base.css" />
+    <link rel="stylesheet" href="./style.css" />
+    <link rel="stylesheet" href="./views.css" />
+  </head>
+  <body>
+    <header>
+      <h1>Local agents</h1>
+      <p id="head">
+        <span id="found"></span>
+        <span id="access"></span>
+        <span id="busy" role="img" hidden></span>
+      </p>
+      <nav id="tabs" class="desk-tabs" role="tablist" aria-label="Local agents views"></nav>
+    </header>
+    <main>
+      <section id="view-agents" class="view" role="tabpanel" aria-labelledby="tab-agents">
+        <div id="agents-bar" class="bar"></div>
+        <div id="agents-list" role="listbox" aria-label="Agent programs" tabindex="0"></div>
+      </section>
+      <section id="view-chat" class="view" role="tabpanel" aria-labelledby="tab-chat" hidden>
+        <div id="chat-bar" class="bar"></div>
+        <div id="chat-log" role="log" aria-label="Conversation" tabindex="0"></div>
+        <form id="chat-form" class="composer">
+          <textarea id="chat-input" rows="3" aria-label="Message" placeholder="Ask, then press Enter" class="desk-field"></textarea>
+          <button type="submit" id="chat-send" class="desk-btn desk-btn-primary">Send</button>
+        </form>
+      </section>
+      <section id="view-compare" class="view" role="tabpanel" aria-labelledby="tab-compare" hidden>
+        <div id="compare-bar" class="bar" role="group" aria-label="Agents to ask"></div>
+        <form id="compare-form" class="composer">
+          <textarea id="compare-input" rows="2" aria-label="Question for every agent" placeholder="One question for every agent picked" class="desk-field"></textarea>
+          <button type="submit" id="compare-send" class="desk-btn desk-btn-primary">Ask</button>
+        </form>
+        <div id="compare-panes" aria-label="Answers side by side"></div>
+      </section>
+      <section id="view-board" class="view" role="tabpanel" aria-labelledby="tab-board" hidden>
+        <form id="card-form" class="composer">
+          <input id="card-title" type="text" aria-label="Card title" placeholder="Title (optional)" class="desk-field" />
+          <textarea id="card-prompt" rows="2" aria-label="Card prompt" placeholder="What the agent should do" class="desk-field"></textarea>
+          <select id="card-agent" aria-label="Agent for the card" class="desk-field"></select>
+          <button type="submit" id="card-add" class="desk-btn desk-btn-primary">Add</button>
+          <button type="button" id="card-add-run" class="desk-btn">Add and run</button>
+        </form>
+        <div id="board-body">
+          <div id="board-columns"></div>
+          <aside id="card-detail" aria-label="The selected card" hidden></aside>
+        </div>
+      </section>
+      <section id="view-activity" class="view" role="tabpanel" aria-labelledby="tab-activity" hidden>
+        <div id="activity-body">
+          <div id="activity-list" role="listbox" aria-label="Runs, newest first" tabindex="0"></div>
+          <aside id="run-detail" aria-label="The selected run" hidden></aside>
+        </div>
+      </section>
+    </main>
+    <footer>
+      <p id="hints"></p>
+      <p id="status" role="status"></p>
+    </footer>
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

@@ -1,0 +1,15 @@
+/* The page's own layout. Colours, type and spacing come from the desk's tokens (/_desk/tokens.css)
+   over the base sheet (/_desk/base.css), so the theme in force restyles this page too. */
+body {
+  padding: var(--desk-space-3);
+}
+
+h1 {
+  margin: 0 0 var(--desk-space-2);
+  font-size: var(--desk-text-base);
+}
+
+p {
+  margin: var(--desk-space-1) 0;
+  color: var(--desk-text-muted);
+}

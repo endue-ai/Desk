@@ -1,0 +1,11 @@
+{
+  "target": "MemoryFact",
+  "description": "a memory id starts with fact_ or ep_",
+  "instance": {
+    "kind": "fact",
+    "id": "note_01jc8x2k9m4n",
+    "text": "Reviews pull requests in the morning, before standup.",
+    "by": "person",
+    "at": "2026-11-05T09:12:00+09:00"
+  }
+}

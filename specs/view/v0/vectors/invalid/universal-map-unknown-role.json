@@ -1,0 +1,9 @@
+{
+  "target": "UniversalView",
+  "description": "a map names only the roles the views draw",
+  "instance": {
+    "type": "kanban",
+    "source": { "asset": "board.yaml" },
+    "map": { "colour": "label" }
+  }
+}

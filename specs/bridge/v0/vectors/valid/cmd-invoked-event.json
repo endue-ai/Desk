@@ -1,0 +1,15 @@
+{
+  "target": "BridgeEvent",
+  "description": "the provider learns who invoked its command",
+  "instance": {
+    "event": "cmd.invoked",
+    "data": {
+      "invocationId": "i1",
+      "id": "eris.say",
+      "args": {
+        "text": "Plan my week"
+      },
+      "caller": "endue.palette"
+    }
+  }
+}

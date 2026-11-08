@@ -1,0 +1,8 @@
+{
+  "target": "Permission",
+  "description": "operate only Safari and TextEdit",
+  "instance": {
+    "permission": "computer:control",
+    "apps": ["com.apple.Safari", "com.apple.TextEdit"]
+  }
+}

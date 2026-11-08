@@ -1,0 +1,14 @@
+{
+  "target": "BridgeRequest",
+  "description": "type Korean as it is written, then Return",
+  "instance": {
+    "id": 6,
+    "method": "computer.input.type",
+    "params": {
+      "text": "안녕하세요\n",
+      "scope": {
+        "permission": "computer:control"
+      }
+    }
+  }
+}

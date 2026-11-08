@@ -1,0 +1,12 @@
+{
+  "target": "BridgeEvent",
+  "description": "an instance that is still there reports its status",
+  "instance": {
+    "event": "connector.changed",
+    "data": {
+      "connector": "desk.fixtures",
+      "instance": "default",
+      "change": "updated"
+    }
+  }
+}

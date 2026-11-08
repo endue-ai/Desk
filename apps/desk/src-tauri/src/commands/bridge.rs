@@ -1,0 +1,44 @@
+use std::sync::Arc;
+
+use desk_bridge::{BridgeRequest, BridgeResponse};
+use desk_core::Core;
+use tauri::{AppHandle, Manager};
+
+use crate::RUNTIME_CALLER;
+
+/// Every bridge call from the web runtime, for itself or for a plugin it hosts. Plugin frames are
+/// sandboxed and cannot reach this command; the runtime names the plugin it calls for, and the
+/// palette and the floating Eris window have fixed callers. The core
+/// checks permissions; this only forwards. It runs off the main thread, since a call may wait (a
+/// perm.request, the OS calendar prompt on connector.connect) and the window must not freeze. A
+/// call that stops without an answer (the core panicked) rejects the invoke.
+#[tauri::command]
+pub async fn bridge_call(
+    app: AppHandle,
+    window: tauri::WebviewWindow,
+    request: BridgeRequest,
+    caller: Option<String>,
+) -> Result<BridgeResponse, String> {
+    let caller = if window.label() == crate::palette::LABEL {
+        crate::palette::CALLER.to_owned()
+    } else if window.label() == crate::eris_window::LABEL {
+        // One Eris (ADR 0027, ADR 0121): the floating window talks to her as the desk, so it is the
+        // desk's one conversation, and it may do nothing else as the desk.
+        crate::eris_window::check(&request)?;
+        RUNTIME_CALLER.to_owned()
+    } else {
+        caller.unwrap_or_else(|| RUNTIME_CALLER.to_owned())
+    };
+    #[cfg(debug_assertions)]
+    if caller != RUNTIME_CALLER {
+        let value = serde_json::to_value(&request).unwrap_or_default();
+        eprintln!(
+            "bridge: {caller} {}",
+            value["method"].as_str().unwrap_or("?")
+        );
+    }
+    let core = Arc::clone(&app.state::<Arc<Core>>());
+    tauri::async_runtime::spawn_blocking(move || core.handle(&caller, request))
+        .await
+        .map_err(|why| format!("the bridge call stopped: {why}"))
+}

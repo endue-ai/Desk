@@ -1,0 +1,12 @@
+{
+  "target": "BridgeEvent",
+  "description": "memory.changed after a fact was edited",
+  "instance": {
+    "event": "memory.changed",
+    "data": {
+      "change": "edited",
+      "ids": ["fact_01jc8x7p2q8r"],
+      "kind": "fact"
+    }
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "target": "PluginManifest",
+  "description": "a logic plugin without surfaces",
+  "instance": {
+    "id": "example.hello-wasm",
+    "version": "1.2.3-beta.1",
+    "kind": "logic",
+    "entry": "logic/plugin.wasm",
+    "description": "Says hello."
+  }
+}

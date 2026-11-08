@@ -1,0 +1,14 @@
+{
+  "target": "BridgeRequest",
+  "description": "one agent by id",
+  "instance": {
+    "id": 1,
+    "method": "studio.agents.get",
+    "params": {
+      "agentId": "ag_01JC0Q4MR00000000000000001",
+      "scope": {
+        "permission": "studio:manage"
+      }
+    }
+  }
+}

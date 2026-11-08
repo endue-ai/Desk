@@ -1,0 +1,14 @@
+{
+  "target": "BridgeRequest",
+  "description": "perm.request without a reason: the prompt says none was given",
+  "instance": {
+    "id": 46,
+    "method": "perm.request",
+    "params": {
+      "permission": {
+        "permission": "fs:read",
+        "paths": ["~/Documents/**"]
+      }
+    }
+  }
+}

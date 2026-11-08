@@ -1,0 +1,8 @@
+{
+  "target": "Permission",
+  "description": "log:read takes no scope fields",
+  "instance": {
+    "permission": "log:read",
+    "channels": ["core"]
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "target": "Item",
+  "description": "a record of any shape: its fields follow the schema it names, raw keeps the rest",
+  "instance": {
+    "id": "deploy-5521",
+    "source": {
+      "connector": "example.deploys",
+      "instance": "prod"
+    },
+    "kind": "record",
+    "title": "web 2026.10.30-2 to production",
+    "updatedAt": "2026-10-30T12:00:05Z",
+    "schema": "https://schemas.example.com/deploy.json",
+    "fields": {
+      "service": "web",
+      "version": "2026.10.30-2",
+      "ok": true
+    },
+    "raw": {
+      "labels": ["prod", "web"]
+    }
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "target": "Permission",
+  "description": "computer:control takes no paths",
+  "instance": {
+    "permission": "computer:control",
+    "paths": ["~/**"]
+  }
+}

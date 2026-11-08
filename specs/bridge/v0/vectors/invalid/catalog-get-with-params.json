@@ -1,0 +1,13 @@
+{
+  "target": "BridgeRequest",
+  "description": "catalog.get takes no params: not even a scope",
+  "instance": {
+    "id": 54,
+    "method": "catalog.get",
+    "params": {
+      "scope": {
+        "permission": "data:read"
+      }
+    }
+  }
+}

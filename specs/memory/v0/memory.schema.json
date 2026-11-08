@@ -1,0 +1,127 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://endue.ai/specs/memory/v0/memory.schema.json",
+  "title": "Desk memory v0",
+  "description": "Eris's memory on this computer (ADR 0095): facts and preferences a person can read and edit, and episodes (what was asked, done and answered) kept beyond a session. Working context is assembled for each turn and never stored. The memory folder holds facts.yaml (MemoryFactsFile), episodes/<YYYY-MM>.jsonl (one MemoryEpisode per line) and a search index derived from both.",
+  "$defs": {
+    "MemoryKind": {
+      "description": "A fact or preference, or an episode.",
+      "type": "string",
+      "enum": ["fact", "episode"]
+    },
+    "MemoryId": {
+      "description": "fact_ or ep_ and a time-ordered random suffix, so two desks never pick the same id.",
+      "type": "string",
+      "pattern": "^(fact|ep)_[0-9a-z]{8,40}$"
+    },
+    "MemoryWriter": {
+      "description": "Who wrote an entry: person (through the desk's own screens), eris, a plugin id, or agent:<id> for an agent of the brain (ADR 0072).",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^(person|eris|agent:[A-Za-z0-9][A-Za-z0-9_.-]{0,121}|[a-z0-9][a-z0-9._-]*)$"
+    },
+    "MemoryTag": {
+      "description": "A word to group facts by, for example work or tools.",
+      "type": "string",
+      "pattern": "^[\\p{L}\\p{N}][\\p{L}\\p{N}_.-]{0,39}$"
+    },
+    "MemoryFact": {
+      "description": "A fact or preference, in words a person reads: \"Reviews PRs in the morning\". updated is there once it was edited.",
+      "type": "object",
+      "properties": {
+        "kind": { "const": "fact" },
+        "id": { "$ref": "#/$defs/MemoryId" },
+        "text": { "type": "string", "minLength": 1, "maxLength": 2000 },
+        "by": { "$ref": "#/$defs/MemoryWriter" },
+        "at": { "description": "When it was first kept.", "type": "string", "format": "date-time" },
+        "updated": {
+          "description": "When it was last edited.",
+          "type": "string",
+          "format": "date-time"
+        },
+        "tags": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/MemoryTag" },
+          "maxItems": 16,
+          "uniqueItems": true
+        }
+      },
+      "required": ["kind", "id", "text", "by", "at"],
+      "additionalProperties": false
+    },
+    "MemoryStep": {
+      "description": "One hand-off of the turn an episode records: the command Eris ran and whether it answered (ADR 0089).",
+      "type": "object",
+      "properties": {
+        "command": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "ok": { "type": "boolean" }
+      },
+      "required": ["command", "ok"],
+      "additionalProperties": false
+    },
+    "MemoryEpisode": {
+      "description": "What was asked, what was done and what was answered in one turn, kept beyond its session.",
+      "type": "object",
+      "properties": {
+        "kind": { "const": "episode" },
+        "id": { "$ref": "#/$defs/MemoryId" },
+        "at": { "description": "When the turn ended.", "type": "string", "format": "date-time" },
+        "by": { "$ref": "#/$defs/MemoryWriter" },
+        "asked": { "type": "string", "minLength": 1, "maxLength": 8000 },
+        "answered": { "type": "string", "maxLength": 16000 },
+        "steps": { "type": "array", "items": { "$ref": "#/$defs/MemoryStep" }, "maxItems": 64 }
+      },
+      "required": ["kind", "id", "at", "by", "asked", "answered"],
+      "additionalProperties": false
+    },
+    "MemoryEntry": {
+      "description": "A fact or an episode.",
+      "oneOf": [{ "$ref": "#/$defs/MemoryFact" }, { "$ref": "#/$defs/MemoryEpisode" }]
+    },
+    "MemoryHit": {
+      "description": "An entry search found, with the words around the match.",
+      "type": "object",
+      "properties": {
+        "entry": { "$ref": "#/$defs/MemoryEntry" },
+        "snippet": { "type": "string" }
+      },
+      "required": ["entry", "snippet"],
+      "additionalProperties": false
+    },
+    "MemoryFactLine": {
+      "description": "A fact as facts.yaml holds it. Only text is needed: a fact a person adds by hand gets an id, a writer (person) and a time when the desk next reads the file, and is written back with them.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "#/$defs/MemoryId" },
+        "text": { "type": "string", "minLength": 1, "maxLength": 2000 },
+        "by": { "$ref": "#/$defs/MemoryWriter" },
+        "at": { "type": "string", "format": "date-time" },
+        "updated": { "type": "string", "format": "date-time" },
+        "tags": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/MemoryTag" },
+          "maxItems": 16,
+          "uniqueItems": true
+        }
+      },
+      "required": ["text"],
+      "additionalProperties": false
+    },
+    "MemoryFactsFile": {
+      "description": "facts.yaml in the memory folder: the format version and the facts, oldest first.",
+      "type": "object",
+      "properties": {
+        "version": {
+          "description": "The format version, 0. The desk refuses a file with a version newer than it reads.",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 0
+        },
+        "facts": { "type": "array", "items": { "$ref": "#/$defs/MemoryFactLine" } }
+      },
+      "required": ["version"],
+      "additionalProperties": false
+    }
+  }
+}

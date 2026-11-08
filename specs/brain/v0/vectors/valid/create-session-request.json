@@ -1,0 +1,11 @@
+{
+  "target": "CreateSessionRequest",
+  "description": "a client creates a session",
+  "instance": {
+    "title": "First chat",
+    "client": {
+      "name": "endue Desk",
+      "version": "0.1.0"
+    }
+  }
+}

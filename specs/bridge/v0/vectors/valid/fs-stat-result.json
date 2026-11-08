@@ -1,0 +1,10 @@
+{
+  "target": "FsStatResult",
+  "description": "fs.stat answered for a file: its kind, size, last change and read-only flag",
+  "instance": {
+    "kind": "file",
+    "size": 2048,
+    "modifiedAt": "2026-11-07T09:30:00Z",
+    "readOnly": false
+  }
+}

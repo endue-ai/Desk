@@ -1,0 +1,46 @@
+{
+  "target": "BridgeRequest",
+  "description": "a line said with what is on screen: Git focused beside Notes, Mail put away",
+  "instance": {
+    "id": 31,
+    "method": "brain.say",
+    "params": {
+      "text": "what changed in this repo?",
+      "desk": {
+        "screen": { "w": 1440, "h": 900 },
+        "windows": [
+          {
+            "id": "window-2",
+            "x": 720,
+            "y": 60,
+            "w": 680,
+            "h": 760,
+            "focused": true,
+            "panes": [
+              { "view": "plugin:endue.git", "plugin": "endue.git", "title": "Git", "focused": true }
+            ]
+          },
+          {
+            "id": "notes",
+            "x": 40,
+            "y": 60,
+            "w": 640,
+            "h": 420,
+            "floating": true,
+            "panes": [{ "view": "plugin:endue.notes", "plugin": "endue.notes", "title": "Notes" }]
+          },
+          {
+            "id": "mail",
+            "x": 200,
+            "y": 120,
+            "w": 560,
+            "h": 400,
+            "hidden": true,
+            "panes": [{ "view": "plugin:endue.mail", "plugin": "endue.mail", "title": "Mail" }]
+          }
+        ]
+      },
+      "scope": { "permission": "brain:converse" }
+    }
+  }
+}

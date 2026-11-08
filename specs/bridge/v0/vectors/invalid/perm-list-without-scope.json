@@ -1,0 +1,9 @@
+{
+  "target": "BridgeRequest",
+  "description": "perm.list needs perm:manage",
+  "instance": {
+    "id": 65,
+    "method": "perm.list",
+    "params": {}
+  }
+}

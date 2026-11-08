@@ -1,0 +1,16 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "eris",
+  "description": "The floating Eris window (ADR 0121) talks to Eris through the bridge as the desk (commands/bridge.rs lets it call brain.say and brain.status only), hears core events, and shows, folds, grows, drags and hides itself or brings the desk forward.",
+  "windows": ["eris"],
+  "permissions": [
+    "core:event:allow-listen",
+    "core:event:allow-unlisten",
+    "allow-bridge-call",
+    "eris-window:allow-state",
+    "eris-window:allow-dismiss",
+    "eris-window:allow-expand",
+    "eris-window:allow-drag",
+    "eris-window:allow-reveal-main"
+  ]
+}

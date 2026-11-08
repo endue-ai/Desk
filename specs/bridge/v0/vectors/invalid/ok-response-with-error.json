@@ -1,0 +1,12 @@
+{
+  "target": "BridgeResponse",
+  "description": "ok: true carries result, not error",
+  "instance": {
+    "id": 1,
+    "ok": true,
+    "error": {
+      "code": "internal",
+      "message": "boom"
+    }
+  }
+}

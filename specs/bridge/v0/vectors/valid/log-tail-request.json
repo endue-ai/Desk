@@ -1,0 +1,15 @@
+{
+  "target": "BridgeRequest",
+  "description": "log.tail of one channel under log:read",
+  "instance": {
+    "id": 39,
+    "method": "log.tail",
+    "params": {
+      "channel": "endue.eris",
+      "count": 50,
+      "scope": {
+        "permission": "log:read"
+      }
+    }
+  }
+}

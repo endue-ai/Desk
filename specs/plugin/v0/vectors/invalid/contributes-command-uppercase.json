@@ -1,0 +1,12 @@
+{
+  "target": "PluginContributes",
+  "description": "command ids are lowercase",
+  "instance": {
+    "commands": [
+      {
+        "id": "desk.Palette.open",
+        "title": "Palette"
+      }
+    ]
+  }
+}

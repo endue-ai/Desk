@@ -1,0 +1,13 @@
+{
+  "target": "ItemQuery",
+  "description": "like is not a condition operator",
+  "instance": {
+    "where": [
+      {
+        "field": "title",
+        "op": "like",
+        "value": "launch%"
+      }
+    ]
+  }
+}

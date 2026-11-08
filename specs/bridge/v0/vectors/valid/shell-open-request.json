@@ -1,0 +1,15 @@
+{
+  "target": "BridgeRequest",
+  "description": "shell.open hands an https link to the browser under a shell:open scope for https",
+  "instance": {
+    "id": 9,
+    "method": "shell.open",
+    "params": {
+      "target": "https://example.com/docs?page=2",
+      "scope": {
+        "permission": "shell:open",
+        "schemes": ["https"]
+      }
+    }
+  }
+}

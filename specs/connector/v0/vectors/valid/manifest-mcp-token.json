@@ -1,0 +1,44 @@
+{
+  "target": "ConnectorManifest",
+  "description": "an MCP server with a pasted token, actions on its tasks, synced both ways",
+  "instance": {
+    "binding": "mcp",
+    "auth": {
+      "kind": "token",
+      "title": "API token"
+    },
+    "resources": [
+      {
+        "kind": "task",
+        "actions": ["example.jira.done", "example.jira.comment"],
+        "live": true
+      },
+      {
+        "kind": "message"
+      }
+    ],
+    "sync": {
+      "mode": "both",
+      "intervalSeconds": 600
+    },
+    "instanceSettings": {
+      "site": {
+        "kind": "string",
+        "title": "Site",
+        "description": "Your Jira address.",
+        "default": "https://example.atlassian.net"
+      },
+      "apiToken": {
+        "kind": "string",
+        "title": "API token",
+        "secret": true,
+        "required": true
+      },
+      "pageSize": {
+        "kind": "integer",
+        "title": "Page size",
+        "default": 100
+      }
+    }
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "target": "BridgeRequest",
+  "description": "fs.rename with fromScope: one grant covers the source, another the destination",
+  "instance": {
+    "id": 34,
+    "method": "fs.rename",
+    "params": {
+      "from": "~/Downloads/report.pdf",
+      "to": "~/Documents/report.pdf",
+      "scope": {
+        "permission": "fs:write",
+        "paths": ["~/Documents/**"]
+      },
+      "fromScope": {
+        "permission": "fs:write",
+        "paths": ["~/Downloads/**"]
+      }
+    }
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "target": "Permission",
+  "description": "invoke every Eris command and one palette command",
+  "instance": {
+    "permission": "cmd:invoke",
+    "ids": ["eris.*", "endue.palette.open"]
+  }
+}

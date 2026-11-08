@@ -1,0 +1,11 @@
+{
+  "target": "BridgeRequest",
+  "description": "read one of the caller's own values",
+  "instance": {
+    "id": 12,
+    "method": "store.get",
+    "params": {
+      "key": "first-run"
+    }
+  }
+}

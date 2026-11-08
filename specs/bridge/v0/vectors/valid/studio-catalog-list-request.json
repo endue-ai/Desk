@@ -1,0 +1,15 @@
+{
+  "target": "BridgeRequest",
+  "description": "the support agents of the catalog",
+  "instance": {
+    "id": 1,
+    "method": "studio.catalog.list",
+    "params": {
+      "category": "support",
+      "limit": 24,
+      "scope": {
+        "permission": "studio:manage"
+      }
+    }
+  }
+}

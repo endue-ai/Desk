@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://endue.ai/specs/init/v0/keys.schema.json",
+  "title": "keys.yaml v0",
+  "description": "The person's own key bindings, ~/.desk/keys.yaml: the last layer of the keymap, over every plugin's. A key is one chord or a sequence of chords (Ctrl+X Ctrl+F, Ctrl+C p f). desk.keys writes it when the person rebinds a key, and the person may edit it. The file is YAML; this schema describes the data it holds once parsed. An empty file is the empty object.",
+  "$ref": "#/$defs/KeysFile",
+  "$defs": {
+    "KeysFile": {
+      "description": "The whole of keys.yaml. Every key is optional.",
+      "type": "object",
+      "properties": {
+        "version": {
+          "description": "The format version. Default 0. Desk ignores a file with a version newer than it reads.",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 0
+        },
+        "bindings": {
+          "description": "The person's bindings, in order: a later one of the same key sequence wins, and \"command\": \"\" takes a sequence away from the plugins. A binding that shadows another (one sequence a prefix of the other) wins over the plugins' and the core's, and the desk lists what it shadows with this file's line (ADR 0118). Default none.",
+          "type": "array",
+          "items": { "$ref": "../../plugin/v0/contributes.schema.json#/$defs/KeyBinding" }
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

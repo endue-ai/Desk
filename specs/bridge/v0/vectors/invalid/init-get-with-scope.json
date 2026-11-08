@@ -1,0 +1,13 @@
+{
+  "target": "BridgeRequest",
+  "description": "init.get takes no scope: callers see only their own settings",
+  "instance": {
+    "id": 3,
+    "method": "init.get",
+    "params": {
+      "scope": {
+        "permission": "plugin:manage"
+      }
+    }
+  }
+}

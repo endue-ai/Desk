@@ -1,0 +1,17 @@
+{
+  "target": "InitDocument",
+  "description": "the template Desk writes when there is no init.yaml",
+  "instance": {
+    "version": 0,
+    "profile": "default",
+    "plugins": {
+      "disabled": []
+    },
+    "settings": {},
+    "agents": {},
+    "mcp": {},
+    "sync": {
+      "enabled": false
+    }
+  }
+}

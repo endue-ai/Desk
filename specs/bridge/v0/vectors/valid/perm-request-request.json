@@ -1,0 +1,15 @@
+{
+  "target": "BridgeRequest",
+  "description": "perm.request needs no scope",
+  "instance": {
+    "id": 8,
+    "method": "perm.request",
+    "params": {
+      "permission": {
+        "permission": "net:fetch",
+        "hosts": ["*.example.com"]
+      },
+      "reason": "Sync your items."
+    }
+  }
+}

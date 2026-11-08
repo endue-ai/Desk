@@ -1,0 +1,12 @@
+{
+  "target": "BridgeEvent",
+  "description": "a watched file was modified",
+  "instance": {
+    "event": "fs.changed",
+    "data": {
+      "watchId": "w1",
+      "path": "~/Documents/notes.md",
+      "change": "modified"
+    }
+  }
+}

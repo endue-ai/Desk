@@ -1,0 +1,136 @@
+{
+  "tag": "main",
+  "data-density": "regular",
+  "children": [
+    {
+      "tag": "header",
+      "class": "bar",
+      "children": [
+        {
+          "tag": "h1",
+          "text": "Open tasks"
+        }
+      ]
+    },
+    {
+      "tag": "section",
+      "class": "component",
+      "data-component": "table",
+      "data-state": "ready",
+      "children": [
+        {
+          "tag": "desk-table",
+          "density": "regular",
+          "label": "Open tasks",
+          "shadow": [
+            {
+              "tag": "div",
+              "role": "grid",
+              "aria-label": "Open tasks",
+              "tabindex": "0",
+              "children": [
+                {
+                  "tag": "div",
+                  "role": "rowgroup",
+                  "class": "head",
+                  "children": [
+                    {
+                      "tag": "div",
+                      "role": "row",
+                      "children": [
+                        {
+                          "tag": "div",
+                          "role": "columnheader",
+                          "aria-sort": "none",
+                          "children": [
+                            {
+                              "tag": "button",
+                              "text": "Task"
+                            }
+                          ]
+                        },
+                        {
+                          "tag": "div",
+                          "role": "columnheader",
+                          "aria-sort": "ascending",
+                          "children": [
+                            {
+                              "tag": "button",
+                              "text": "Priority"
+                            }
+                          ]
+                        },
+                        {
+                          "tag": "div",
+                          "role": "columnheader",
+                          "aria-sort": "none",
+                          "children": [
+                            {
+                              "tag": "button",
+                              "text": "Updated"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "tag": "div",
+                  "role": "rowgroup",
+                  "class": "body",
+                  "children": [
+                    {
+                      "tag": "div",
+                      "role": "row",
+                      "aria-selected": "false",
+                      "children": [
+                        {
+                          "tag": "div",
+                          "role": "gridcell",
+                          "text": "Send the weekly report"
+                        },
+                        {
+                          "tag": "div",
+                          "role": "gridcell",
+                          "text": "P1"
+                        },
+                        {
+                          "tag": "div",
+                          "role": "gridcell",
+                          "text": "Fri, Oct 30"
+                        }
+                      ]
+                    },
+                    {
+                      "tag": "div",
+                      "role": "row",
+                      "aria-selected": "false",
+                      "children": [
+                        {
+                          "tag": "div",
+                          "role": "gridcell",
+                          "text": "Buy groceries"
+                        },
+                        {
+                          "tag": "div",
+                          "role": "gridcell",
+                          "text": "P3"
+                        },
+                        {
+                          "tag": "div",
+                          "role": "gridcell",
+                          "text": "Thu, Oct 29"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

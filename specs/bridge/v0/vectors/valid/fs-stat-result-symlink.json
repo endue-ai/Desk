@@ -1,0 +1,8 @@
+{
+  "target": "FsStatResult",
+  "description": "fs.stat of a symlink describes the link itself: no size, no time",
+  "instance": {
+    "kind": "symlink",
+    "readOnly": false
+  }
+}

@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Docker</title>
+    <script type="importmap">
+      { "imports": { "@endue-ai/plugin-sdk": "/_desk/plugin-sdk.js" } }
+    </script>
+    <link rel="stylesheet" href="/_desk/tokens.css" />
+    <link rel="stylesheet" href="/_desk/base.css" />
+    <link rel="stylesheet" href="./style.css" />
+    <link rel="stylesheet" href="./list.css" />
+    <link rel="stylesheet" href="./overview.css" />
+    <link rel="stylesheet" href="./pane.css" />
+  </head>
+  <body>
+    <header class="desk-bar top">
+      <h1 class="desk-bar-title">Docker</h1>
+      <p id="head" class="head">
+        <span id="engine-dot" class="dot state-created" role="img" aria-label="checking"></span>
+        <span id="engine"></span>
+        <span id="context" class="desk-badge" title="The Docker context every call uses (c switches)" hidden></span>
+        <span id="live" class="live" role="img" aria-label="Live: following the engine's events" title="Following the engine's events" hidden>live</span>
+      </p>
+      <span class="desk-bar-spacer"></span>
+      <progress id="busy" class="desk-progress" aria-label="Working" hidden></progress>
+      <button type="button" id="keys-btn" class="desk-icon-btn" aria-label="Keys (?)" aria-expanded="false" aria-controls="keys">?</button>
+    </header>
+    <nav id="tabs" class="desk-tabs lists" role="tablist" aria-label="Docker lists"></nav>
+    <div id="problem" class="desk-error problem" role="alert" hidden>
+      <p id="problem-text"></p>
+      <button type="button" class="desk-btn" data-act="refresh">Try again</button>
+    </div>
+    <main id="split" class="split">
+      <section id="list-pane" class="list-pane" aria-label="List">
+        <form id="toolbar" class="toolbar" role="search" hidden>
+          <input id="search" type="search" class="desk-field search" aria-label="Search the list (/)" spellcheck="false" autocomplete="off" />
+          <div id="chips" class="desk-tabs chips" role="group" aria-label="Show only"></div>
+          <label class="sort-label">Sort <select id="sort" class="desk-field" aria-label="Sort by (S)"></select></label>
+          <button type="button" id="sort-dir" class="desk-icon-btn" aria-label="Reverse the sort (Z)">↑</button>
+          <span id="count" class="count desk-muted" aria-live="polite"></span>
+        </form>
+        <div id="marks" class="marks" role="toolbar" aria-label="Marked" hidden>
+          <span id="marks-count" class="marks-count"></span>
+          <span id="marks-actions" class="marks-actions"></span>
+          <button type="button" class="desk-btn desk-btn-quiet" data-act="clearMarks">Clear (Esc)</button>
+        </div>
+        <div id="view" class="list" role="tree" aria-label="Docker" tabindex="0"></div>
+      </section>
+      <section id="pane" class="pane" aria-labelledby="pane-title" hidden>
+        <div class="desk-bar pane-bar">
+          <span id="pane-dot" class="pane-dot"></span>
+          <h2 id="pane-title" class="desk-bar-title"></h2>
+          <span id="pane-sub" class="pane-sub desk-muted"></span>
+          <span class="desk-bar-spacer"></span>
+          <span id="pane-actions" class="pane-actions"></span>
+          <button type="button" class="desk-icon-btn" data-act="closePane" aria-label="Close the pane (q)">×</button>
+        </div>
+        <nav id="pane-tabs" class="desk-tabs pane-tabs" role="tablist" aria-label="Detail"></nav>
+        <div id="pane-body" class="pane-body" role="tree" tabindex="0"></div>
+        <section id="logs" class="logs" aria-labelledby="logs-head" hidden>
+          <div class="logs-bar">
+            <p id="logs-head" class="logs-head"></p>
+            <input id="log-search" type="search" class="desk-field" placeholder="Search the lines (/)" aria-label="Search the log lines" spellcheck="false" autocomplete="off" />
+            <button type="button" id="log-follow" class="desk-btn desk-btn-quiet" data-act="toggleFollow" aria-pressed="false" title="Follow new lines (f)">Follow</button>
+            <button type="button" id="log-times" class="desk-btn desk-btn-quiet" data-act="toggleTimestamps" aria-pressed="false" title="Show each line's time (t)">Times</button>
+            <button type="button" class="desk-btn desk-btn-quiet" data-act="toggleWrap" title="Wrap long lines (w)">Wrap</button>
+            <button type="button" class="desk-btn desk-btn-quiet" data-act="clearLogs" title="Forget the lines on screen (c)">Clear</button>
+          </div>
+          <div id="log-lines" class="log-lines" role="log" aria-labelledby="logs-head" tabindex="0"></div>
+          <p id="logs-end" class="logs-end"></p>
+        </section>
+      </section>
+    </main>
+    <aside id="keys" class="keys desk-card" aria-label="Keys" hidden></aside>
+    <footer>
+      <p id="hints"></p>
+      <p id="status" role="status"></p>
+    </footer>
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

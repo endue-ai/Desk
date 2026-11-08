@@ -1,0 +1,229 @@
+/* Key sequences (ADR 0118): the which-key overlay after a prefix, and the pending keys in the status
+   area. Both exist only while a prefix is pending (or its outcome is said), so render trees of an
+   idle desk do not change. Sizes are fixed in CSS, not measured, for the same reason. */
+
+.desk-which-key {
+  position: fixed;
+  right: 0;
+  bottom: 40px;
+  left: 0;
+  z-index: var(--z-modal, 30);
+  display: grid;
+  gap: var(--desk-space-2);
+  width: min(560px, calc(100% - 32px));
+  max-height: min(420px, calc(100% - 96px));
+  margin: 0 auto;
+  padding: var(--desk-space-3);
+  border: 1px solid var(--desk-border);
+  border-radius: var(--desk-radius-lg);
+  background: var(--desk-popover);
+  box-shadow: var(--desk-shadow-lg);
+  color: var(--desk-text);
+  font-family: var(--desk-font-sans);
+  font-size: var(--desk-text-sm);
+  line-height: 20px;
+  pointer-events: auto;
+}
+
+.desk-which-key-title {
+  display: flex;
+  align-items: center;
+  gap: var(--desk-space-1);
+  margin: 0;
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-xs);
+}
+
+/* A chord's box is fixed, not its text's width, so render trees match across fonts (ADR 0011). */
+.desk-which-key kbd {
+  box-sizing: border-box;
+  min-width: 40px;
+  height: 22px;
+  padding: 0 var(--desk-space-1);
+  border: 1px solid var(--desk-border);
+  border-radius: var(--desk-radius-sm);
+  background: var(--desk-card);
+  color: var(--desk-text);
+  font-family: var(--desk-font-sans);
+  font-size: var(--desk-text-xs);
+  text-align: center;
+  white-space: nowrap;
+}
+
+.desk-which-key-search {
+  width: 100%;
+  height: 28px;
+  padding: 0 var(--desk-space-2);
+  border: 1px solid var(--desk-border);
+  border-radius: var(--desk-radius-md);
+  background: var(--desk-background);
+  color: var(--desk-text);
+  font-family: var(--desk-font-sans);
+  font-size: var(--desk-text-sm);
+}
+
+.desk-which-key-search:focus {
+  border-color: var(--desk-accent);
+  outline: none;
+}
+
+.desk-which-key-list {
+  display: grid;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  overflow: auto;
+  list-style: none;
+}
+
+.desk-which-key-item {
+  display: grid;
+  grid-template-columns: minmax(96px, auto) minmax(0, 1fr) minmax(80px, auto);
+  align-items: center;
+  gap: var(--desk-space-3);
+  padding: var(--desk-space-1) var(--desk-space-2);
+  border-radius: var(--desk-radius-sm);
+  cursor: pointer;
+}
+
+.desk-which-key-item[aria-selected="true"] {
+  background: var(--desk-primary-soft);
+  color: var(--desk-primary-text);
+}
+
+.desk-which-key-item.is-off .desk-which-key-command {
+  color: var(--desk-text-muted);
+}
+
+.desk-which-key-keys {
+  display: flex;
+  gap: var(--desk-space-1);
+}
+
+.desk-which-key-command,
+.desk-which-key-owner {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.desk-which-key-owner,
+.desk-which-key-empty,
+.desk-which-key-help {
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-xs);
+}
+
+.desk-which-key-empty {
+  padding: var(--desk-space-2);
+}
+
+.desk-which-key-help {
+  margin: 0;
+}
+
+/* The pending keys over the status line, as Emacs echoes "C-x-". */
+.desk-keys-pending {
+  grid-area: status;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--desk-space-1);
+  padding: 0 12px;
+  border-top: 1px solid var(--desk-border);
+  background: var(--desk-background);
+  color: var(--desk-text);
+  font-size: var(--desk-text-xs);
+  white-space: nowrap;
+}
+
+.desk-keys-pending[data-outcome] {
+  color: var(--desk-text-muted);
+}
+
+.desk-keys-pending kbd {
+  font-family: var(--desk-font-sans);
+}
+
+.layer-desk .desk-keys-pending {
+  position: absolute;
+  top: var(--space-2, 8px);
+  right: 0;
+  left: 0;
+  width: max-content;
+  max-width: 480px;
+  height: var(--control-xs, 24px);
+  margin: 0 auto;
+  padding: 0 var(--desk-space-3);
+  border: 1px solid var(--desk-border);
+  border-radius: var(--desk-radius-md);
+  background: var(--desk-popover);
+}
+
+.desk-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Settings › Keyboard: a key is its chords side by side; conflicts are listed above the commands. */
+.keys-sequence {
+  display: inline-flex;
+  gap: 3px;
+}
+
+.keys-timeout-row {
+  margin: 0 0 12px;
+  padding: 0;
+}
+
+.keys-conflicts {
+  margin-bottom: 12px;
+}
+
+.keys-conflicts h2 {
+  font-weight: 600;
+}
+
+.keys-conflicts .settings-key-list + details,
+.keys-conflicts p + details {
+  margin-top: 8px;
+}
+
+.keys-conflicts summary {
+  cursor: pointer;
+  font-size: var(--desk-text-xs);
+}
+
+.keys-conflict.is-error .settings-key-label {
+  color: var(--desk-danger);
+}
+
+.keys-conflict.is-warning .settings-key-label {
+  color: var(--desk-warning-text);
+}
+
+.keys-shadowed {
+  margin: 0 0 9px;
+  padding-left: 18px;
+}
+
+.keys-shadowed kbd {
+  margin-right: 3px;
+}
+
+.keys-several {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 12px;
+  font-size: var(--desk-text-xs);
+}
+
+.desk-which-key-owner {
+  text-align: end;
+}

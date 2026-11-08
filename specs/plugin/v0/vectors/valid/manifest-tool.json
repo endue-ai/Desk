@@ -1,0 +1,16 @@
+{
+  "target": "PluginManifest",
+  "description": "a tool plugin that runs a program",
+  "instance": {
+    "id": "example.hello-mcp",
+    "version": "0.0.1",
+    "kind": "tool",
+    "entry": "tool/server.js",
+    "permissions": [
+      {
+        "permission": "proc:spawn",
+        "commands": ["node"]
+      }
+    ]
+  }
+}

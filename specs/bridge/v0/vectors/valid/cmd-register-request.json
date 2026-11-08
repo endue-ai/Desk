@@ -1,0 +1,23 @@
+{
+  "target": "BridgeRequest",
+  "description": "cmd.register with an argument schema and a when clause",
+  "instance": {
+    "id": 30,
+    "method": "cmd.register",
+    "params": {
+      "id": "eris.say",
+      "title": "Say to Eris",
+      "description": "Send a sentence to Eris as if you typed it.",
+      "argsSchema": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string"
+          }
+        },
+        "required": ["text"]
+      },
+      "when": "brain.online"
+    }
+  }
+}

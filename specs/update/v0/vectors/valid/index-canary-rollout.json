@@ -1,0 +1,39 @@
+{
+  "target": "ReleaseIndex",
+  "description": "a canary index of pre-releases, the newest one at a quarter of desks",
+  "instance": {
+    "channel": "canary",
+    "serial": 52,
+    "generated": "2026-11-21T03:05:00Z",
+    "releases": [
+      {
+        "version": "0.2.1-pre.52",
+        "commit": "9b2e4f1",
+        "date": "2026-11-21T03:02:11Z",
+        "rollout": 25,
+        "targets": [
+          "linux-x86_64-appimage",
+          "linux-x86_64",
+          "linux-x86_64-deb",
+          "linux-x86_64-rpm"
+        ],
+        "release": "releases/0.2.1-pre.52/release.json"
+      },
+      {
+        "version": "0.2.1-pre.48",
+        "commit": "51d0aa7",
+        "date": "2026-11-20T22:40:09Z",
+        "rollout": 100,
+        "targets": [
+          "linux-x86_64-appimage",
+          "linux-x86_64",
+          "linux-x86_64-deb",
+          "linux-x86_64-rpm",
+          "darwin-aarch64",
+          "darwin-aarch64-app"
+        ],
+        "release": "releases/0.2.1-pre.48/release.json"
+      }
+    ]
+  }
+}

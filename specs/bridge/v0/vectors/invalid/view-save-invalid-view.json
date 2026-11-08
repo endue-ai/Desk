@@ -1,0 +1,18 @@
+{
+  "target": "BridgeRequest",
+  "description": "view.save refuses a view without a layout",
+  "instance": {
+    "id": 53,
+    "method": "view.save",
+    "params": {
+      "view": {
+        "id": "example.today",
+        "version": "0.1.0",
+        "title": "Today"
+      },
+      "scope": {
+        "permission": "view:manage"
+      }
+    }
+  }
+}

@@ -1,0 +1,319 @@
+/* Every colour, font, size, radius and duration comes from the theme's --desk-* tokens (index.html
+   loads their defaults; the runtime sets the theme in force). Lanes and kinds of change are
+   categories: chart-1 to chart-8. Added and deleted text leans toward the body text to read on its tint. */
+:root {
+  --git-add: color-mix(in srgb, var(--desk-chart-2) 18%, transparent);
+  --git-add-text: color-mix(in srgb, var(--desk-chart-2) 70%, var(--desk-text));
+  --git-del: color-mix(in srgb, var(--desk-chart-5) 18%, transparent);
+  --git-del-text: color-mix(in srgb, var(--desk-chart-5) 70%, var(--desk-text));
+  --git-lane-0: var(--desk-chart-1);
+  --git-lane-1: var(--desk-chart-2);
+  --git-lane-2: var(--desk-chart-3);
+  --git-lane-3: var(--desk-chart-4);
+  --git-lane-4: var(--desk-chart-5);
+  --git-lane-5: var(--desk-chart-6);
+  --git-lane-6: var(--desk-chart-7);
+  --git-lane-7: var(--desk-chart-8);
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  margin: 0;
+  background: var(--desk-card);
+  color: var(--desk-text);
+  font: calc(var(--desk-text-sm) - 1px)/1.6 var(--desk-font-sans);
+}
+
+header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  padding: 8px 12px 4px;
+  border-bottom: 1px solid var(--desk-border);
+}
+
+h1 {
+  margin: 0;
+  font-size: calc(var(--desk-text-sm) + 1px);
+}
+
+#head {
+  display: flex;
+  gap: 8px;
+  margin: 0;
+  color: var(--desk-text-muted);
+}
+
+#branch {
+  color: var(--desk-text);
+}
+
+#busy {
+  color: var(--desk-primary-text);
+}
+
+main {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+}
+
+#view {
+  flex: 1;
+  overflow: auto;
+  padding: 6px 0;
+  outline: none;
+  font-family: var(--desk-font-mono);
+  font-size: var(--desk-text-xs);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 22px;
+  padding: 0 12px;
+  white-space: pre;
+  cursor: default;
+}
+
+.row[aria-level="2"] {
+  padding-left: 28px;
+}
+
+.row[aria-level="3"] {
+  padding-left: 12px;
+}
+
+.row:focus,
+.row[aria-selected="true"] {
+  background: var(--desk-hover);
+  outline: none;
+}
+
+.row.section,
+.row.head .label {
+  color: var(--desk-text-muted);
+}
+
+.row.section .title {
+  color: var(--desk-text);
+  font-weight: 600;
+}
+
+.row .caret {
+  width: 1ch;
+  color: var(--desk-text-muted);
+}
+
+.row .change {
+  width: 1ch;
+  font-weight: 600;
+}
+
+.row.modified .change,
+.row.typechange .change {
+  color: var(--git-lane-2);
+}
+
+.row.added .change,
+.row.untracked .change {
+  color: var(--git-add-text);
+}
+
+.row.deleted .change,
+.row.unmerged .change {
+  color: var(--git-del-text);
+}
+
+.row.renamed .change,
+.row.copied .change {
+  color: var(--git-lane-3);
+}
+
+.row .detail,
+.row .meta,
+.row .counts,
+.row .heading,
+.row .no {
+  color: var(--desk-text-muted);
+}
+
+.row .sha {
+  color: var(--git-lane-2);
+}
+
+.row .refs:empty {
+  display: none;
+}
+
+.ref {
+  margin-right: 4px;
+  padding: 0 5px;
+  border: 1px solid var(--desk-border);
+  border-radius: var(--desk-radius-md);
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-2xs);
+}
+
+.ref.current,
+.ref.branch.current {
+  border-color: var(--desk-primary-text);
+  color: var(--desk-primary-text);
+}
+
+.ref.remote {
+  color: var(--git-lane-1);
+}
+
+.ref.tag {
+  color: var(--git-lane-2);
+}
+
+.row .subject {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.row.more,
+.row.empty {
+  color: var(--desk-text-muted);
+  font-style: italic;
+}
+
+.graph {
+  flex: none;
+  overflow: visible;
+}
+
+.graph .lane {
+  fill: none;
+  stroke-width: 1.5;
+}
+
+.graph .dot {
+  stroke: var(--desk-card);
+  stroke-width: 1;
+}
+
+.lane-0 { stroke: var(--git-lane-0); fill: var(--git-lane-0); }
+.lane-1 { stroke: var(--git-lane-1); fill: var(--git-lane-1); }
+.lane-2 { stroke: var(--git-lane-2); fill: var(--git-lane-2); }
+.lane-3 { stroke: var(--git-lane-3); fill: var(--git-lane-3); }
+.lane-4 { stroke: var(--git-lane-4); fill: var(--git-lane-4); }
+.lane-5 { stroke: var(--git-lane-5); fill: var(--git-lane-5); }
+.lane-6 { stroke: var(--git-lane-6); fill: var(--git-lane-6); }
+.lane-7 { stroke: var(--git-lane-7); fill: var(--git-lane-7); }
+
+.graph .lane {
+  fill: none;
+}
+
+.row.hunk {
+  color: var(--git-lane-3);
+}
+
+.row.line {
+  min-height: 18px;
+  gap: 0;
+}
+
+.row.line .no {
+  flex: none;
+  width: 5ch;
+  text-align: right;
+  padding-right: 1ch;
+  user-select: none;
+}
+
+.row.line .text {
+  flex: 1;
+  padding-left: 1ch;
+}
+
+.row.line.add {
+  background: var(--git-add);
+}
+
+.row.line.add .text {
+  color: var(--git-add-text);
+}
+
+.row.line.del {
+  background: var(--git-del);
+}
+
+.row.line.del .text {
+  color: var(--git-del-text);
+}
+
+.row.line.note .text {
+  color: var(--desk-text-muted);
+  font-style: italic;
+}
+
+#commit {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+}
+
+/* `display: flex` above outranks the browser's `[hidden]` rule; the editor shows only while a
+   commit is being written. */
+#commit[hidden] {
+  display: none;
+}
+
+#commit h2 {
+  margin: 0;
+  font-size: var(--desk-text-sm);
+}
+
+#commit-summary,
+#commit .hint {
+  margin: 0;
+  color: var(--desk-text-muted);
+}
+
+#commit-message {
+  flex: 1;
+  min-height: 120px;
+  font: calc(var(--desk-text-sm) - 1px)/1.5 var(--desk-font-mono);
+  resize: none;
+}
+
+#commit .options {
+  display: flex;
+  gap: 16px;
+  margin: 0;
+}
+
+footer {
+  padding: 4px 12px 8px;
+  border-top: 1px solid var(--desk-border);
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-xs);
+}
+
+footer p {
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#status:empty {
+  display: none;
+}

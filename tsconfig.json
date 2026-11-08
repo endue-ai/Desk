@@ -1,0 +1,19 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": false,
+    "paths": { "@endue-ai/formats/*": ["./plugins/formats/lib/*"] }
+  },
+  "include": [
+    "packages/*/src",
+    "packages/*/e2e",
+    "packages/*/dev",
+    "packages/*/*.config.ts",
+    "plugins/*/tests",
+    "examples/*/tests",
+    "apps/*/src",
+    "apps/*/*.config.ts",
+    "vitest.config.ts"
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "target": "BridgeRequest",
+  "description": "a range starts at 0 or later",
+  "instance": {
+    "id": 4,
+    "method": "fs.read",
+    "params": {
+      "path": "~/Downloads/photos.zip",
+      "encoding": "base64",
+      "offset": -22,
+      "scope": {
+        "permission": "fs:read",
+        "paths": ["~/Downloads/**"]
+      }
+    }
+  }
+}

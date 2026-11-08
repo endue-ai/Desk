@@ -1,0 +1,561 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://endue.ai/specs/bridge/v0/fs.schema.json",
+  "title": "Desk bridge v0: fs",
+  "description": "Files: read (whole or a byte range), hand a frame a URL of a file, write, list, watch, the versions the desk kept of what its writes replaced (history, restore), and what one path is, new folders, renames and moves, copies and the OS trash (stat, mkdir, rename, copy, trash). Scoped by fs:read or fs:write paths.",
+  "$defs": {
+    "FsReadRequest": {
+      "description": "Read a file, whole or a byte range of it.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "fs.read" },
+        "params": { "$ref": "#/$defs/FsReadParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "FsReadParams": {
+      "description": "Parameters of fs.read.",
+      "type": "object",
+      "properties": {
+        "path": { "$ref": "bridge.schema.json#/$defs/Path" },
+        "encoding": { "$ref": "bridge.schema.json#/$defs/Encoding" },
+        "offset": {
+          "description": "Where the range starts, in bytes from the start of the file; 0 when absent.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "length": {
+          "description": "How many bytes to read from offset at most; to the end of the file when absent. 0 reads nothing and answers only the size.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "scope": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/FsReadPermission" }
+      },
+      "required": ["path", "scope"],
+      "additionalProperties": false
+    },
+    "FsReadResult": {
+      "description": "Result of fs.read.",
+      "type": "object",
+      "properties": {
+        "content": {
+          "description": "The bytes read: the whole file, or the range.",
+          "type": "string"
+        },
+        "encoding": { "$ref": "bridge.schema.json#/$defs/Encoding" },
+        "size": {
+          "description": "The file's total size in bytes, whatever range was read. The core always sends it.",
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": ["content", "encoding"],
+      "additionalProperties": false
+    },
+    "FsUrlRequest": {
+      "description": "Get a URL the caller's frame can load one file from (a video, an image), without passing the bytes through the bridge.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "fs.url" },
+        "params": { "$ref": "#/$defs/FsUrlParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "FsUrlParams": {
+      "description": "Parameters of fs.url.",
+      "type": "object",
+      "properties": {
+        "path": { "$ref": "bridge.schema.json#/$defs/Path" },
+        "scope": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/FsReadPermission" }
+      },
+      "required": ["path", "scope"],
+      "additionalProperties": false
+    },
+    "FsUrlResult": {
+      "description": "Result of fs.url.",
+      "type": "object",
+      "properties": {
+        "url": {
+          "description": "/_desk/file/<token>/<file name>: a path the frame resolves against its own desk-plugin location. It works while the caller runs and holds an fs:read grant that covers the file.",
+          "type": "string",
+          "pattern": "^/_desk/file/[0-9a-f]{32}/[^/?#]+$"
+        },
+        "size": {
+          "description": "The file's size in bytes when the URL was made.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "type": {
+          "description": "The media type the URL is served with, from the file's extension: video/mp4, image/png, ..., application/octet-stream when the extension is not known.",
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": ["url", "size", "type"],
+      "additionalProperties": false
+    },
+    "FsWriteRequest": {
+      "description": "Create or overwrite a file.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "fs.write" },
+        "params": { "$ref": "#/$defs/FsWriteParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "FsWriteParams": {
+      "description": "Parameters of fs.write.",
+      "type": "object",
+      "properties": {
+        "path": { "$ref": "bridge.schema.json#/$defs/Path" },
+        "content": { "description": "The new file content.", "type": "string" },
+        "encoding": { "$ref": "bridge.schema.json#/$defs/Encoding" },
+        "createDirs": { "description": "Create missing parent folders.", "type": "boolean" },
+        "scope": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/FsWritePermission" }
+      },
+      "required": ["path", "content", "scope"],
+      "additionalProperties": false
+    },
+    "FsWriteResult": {
+      "description": "Result of fs.write.",
+      "type": "object",
+      "properties": {
+        "bytesWritten": {
+          "description": "Bytes written to disk.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "version": {
+          "description": "The version that keeps what this write replaced, as fs.history lists it. Absent when nothing was kept: a new file, the same bytes, or a desk that keeps no history.",
+          "$ref": "#/$defs/FsVersionId"
+        }
+      },
+      "required": ["bytesWritten"],
+      "additionalProperties": false
+    },
+    "FsHistoryRequest": {
+      "description": "List the versions the desk kept of one file: the content each of its writes replaced.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "fs.history" },
+        "params": { "$ref": "#/$defs/FsHistoryParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "FsHistoryParams": {
+      "description": "Parameters of fs.history.",
+      "type": "object",
+      "properties": {
+        "path": { "$ref": "bridge.schema.json#/$defs/Path" },
+        "limit": {
+          "description": "The newest versions to list at most; all the desk keeps when absent.",
+          "type": "integer",
+          "minimum": 1
+        },
+        "scope": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/FsReadPermission" }
+      },
+      "required": ["path", "scope"],
+      "additionalProperties": false
+    },
+    "FsHistoryResult": {
+      "description": "Result of fs.history: newest first, empty when the desk kept nothing of the path (also when the file is gone).",
+      "type": "object",
+      "properties": {
+        "versions": { "type": "array", "items": { "$ref": "#/$defs/FsVersion" } }
+      },
+      "required": ["versions"],
+      "additionalProperties": false
+    },
+    "FsVersion": {
+      "description": "One kept version of a file: the bytes a desk write replaced.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "#/$defs/FsVersionId" },
+        "at": {
+          "description": "When the write that replaced these bytes ran: the last moment the file held them. RFC 3339.",
+          "type": "string",
+          "format": "date-time"
+        },
+        "caller": {
+          "description": "The caller whose write replaced these bytes. The caller that wrote them is the next older version's.",
+          "$ref": "bridge.schema.json#/$defs/CallerId"
+        },
+        "size": { "description": "The version's size in bytes.", "type": "integer", "minimum": 0 },
+        "sha256": {
+          "description": "The SHA-256 of the version's bytes, lowercase hex.",
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      },
+      "required": ["id", "at", "caller", "size", "sha256"],
+      "additionalProperties": false
+    },
+    "FsVersionId": {
+      "description": "A version's id: the Unix time in milliseconds when it was kept, a dash and six hex digits.",
+      "type": "string",
+      "pattern": "^[0-9]{1,16}-[0-9a-f]{6}$"
+    },
+    "FsRestoreRequest": {
+      "description": "Write a kept version of a file back, as fs.write writes, so what it replaces is kept too.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "fs.restore" },
+        "params": { "$ref": "#/$defs/FsRestoreParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "FsRestoreParams": {
+      "description": "Parameters of fs.restore.",
+      "type": "object",
+      "properties": {
+        "path": { "$ref": "bridge.schema.json#/$defs/Path" },
+        "version": { "$ref": "#/$defs/FsVersionId" },
+        "scope": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/FsWritePermission" }
+      },
+      "required": ["path", "version", "scope"],
+      "additionalProperties": false
+    },
+    "FsRestoreResult": {
+      "description": "Result of fs.restore: what fs.write answers for the same write.",
+      "type": "object",
+      "properties": {
+        "bytesWritten": {
+          "description": "Bytes written to disk.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "version": {
+          "description": "The version that keeps what the restore replaced; absent when nothing was kept.",
+          "$ref": "#/$defs/FsVersionId"
+        }
+      },
+      "required": ["bytesWritten"],
+      "additionalProperties": false
+    },
+    "FsListRequest": {
+      "description": "List the entries of a folder.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "fs.list" },
+        "params": { "$ref": "#/$defs/FsListParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "FsListParams": {
+      "description": "Parameters of fs.list.",
+      "type": "object",
+      "properties": {
+        "path": { "$ref": "bridge.schema.json#/$defs/Path" },
+        "scope": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/FsReadPermission" }
+      },
+      "required": ["path", "scope"],
+      "additionalProperties": false
+    },
+    "FsListResult": {
+      "description": "Result of fs.list.",
+      "type": "object",
+      "properties": {
+        "entries": { "type": "array", "items": { "$ref": "#/$defs/DirEntry" } }
+      },
+      "required": ["entries"],
+      "additionalProperties": false
+    },
+    "DirEntry": {
+      "description": "One folder entry.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "description": "File name without the folder.",
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": { "$ref": "#/$defs/EntryKind" },
+        "size": { "description": "Size in bytes, for files.", "type": "integer", "minimum": 0 },
+        "modifiedAt": {
+          "description": "When the entry last changed; absent when the OS has none.",
+          "$ref": "../../item/v0/item.schema.json#/$defs/Timestamp"
+        }
+      },
+      "required": ["name", "kind"],
+      "additionalProperties": false
+    },
+    "EntryKind": {
+      "description": "What a folder entry is.",
+      "type": "string",
+      "enum": ["file", "dir", "symlink"]
+    },
+    "FsStatRequest": {
+      "description": "Say what one path is: its kind, size, last change and read-only flag. A symlink is described itself, never followed.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "fs.stat" },
+        "params": { "$ref": "#/$defs/FsStatParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "FsStatParams": {
+      "description": "Parameters of fs.stat.",
+      "type": "object",
+      "properties": {
+        "path": { "$ref": "bridge.schema.json#/$defs/Path" },
+        "scope": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/FsReadPermission" }
+      },
+      "required": ["path", "scope"],
+      "additionalProperties": false
+    },
+    "FsStatResult": {
+      "description": "Result of fs.stat.",
+      "type": "object",
+      "properties": {
+        "kind": { "$ref": "#/$defs/EntryKind" },
+        "size": { "description": "Size in bytes, for files.", "type": "integer", "minimum": 0 },
+        "modifiedAt": {
+          "description": "When the file or folder last changed; absent for symlinks and when the OS has none.",
+          "$ref": "../../item/v0/item.schema.json#/$defs/Timestamp"
+        },
+        "readOnly": {
+          "description": "The entry's own read-only flag (no write bit on Unix, the read-only attribute on Windows), not whether the caller's grants allow writing it.",
+          "type": "boolean"
+        }
+      },
+      "required": ["kind", "readOnly"],
+      "additionalProperties": false
+    },
+    "FsMkdirRequest": {
+      "description": "Create a folder, and with parents the missing folders above it. Undoable: cmd.undo removes the folders it created while they are still empty.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "fs.mkdir" },
+        "params": { "$ref": "#/$defs/FsMkdirParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "FsMkdirParams": {
+      "description": "Parameters of fs.mkdir.",
+      "type": "object",
+      "properties": {
+        "path": { "$ref": "bridge.schema.json#/$defs/Path" },
+        "parents": {
+          "description": "Create missing parent folders too, each inside the scope; without it a missing parent is not_found.",
+          "type": "boolean"
+        },
+        "scope": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/FsWritePermission" }
+      },
+      "required": ["path", "scope"],
+      "additionalProperties": false
+    },
+    "FsMkdirResult": {
+      "description": "Result of fs.mkdir.",
+      "type": "object",
+      "properties": {
+        "created": {
+          "description": "The folders the call created, outermost first, as bridge paths under the path it was given; the last is that path.",
+          "type": "array",
+          "items": { "$ref": "bridge.schema.json#/$defs/Path" },
+          "minItems": 1
+        }
+      },
+      "required": ["created"],
+      "additionalProperties": false
+    },
+    "FsRenameRequest": {
+      "description": "Rename a file, a folder or a link, or move it into another folder. Never overwrites. Across volumes it copies, then moves the source to the OS trash. Undoable: cmd.undo renames it back.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "fs.rename" },
+        "params": { "$ref": "#/$defs/FsRenameParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "FsRenameParams": {
+      "description": "Parameters of fs.rename.",
+      "type": "object",
+      "properties": {
+        "from": {
+          "description": "What to rename or move.",
+          "$ref": "bridge.schema.json#/$defs/Path"
+        },
+        "to": {
+          "description": "Its new path: the new name, in the same folder or another. Nothing may be there yet.",
+          "$ref": "bridge.schema.json#/$defs/Path"
+        },
+        "scope": {
+          "description": "Covers to, and from too unless fromScope is given.",
+          "$ref": "../../plugin/v0/permission.schema.json#/$defs/FsWritePermission"
+        },
+        "fromScope": {
+          "description": "Covers from, when the grant that covers it is not the one that covers to.",
+          "$ref": "../../plugin/v0/permission.schema.json#/$defs/FsWritePermission"
+        }
+      },
+      "required": ["from", "to", "scope"],
+      "additionalProperties": false
+    },
+    "FsRenameResult": {
+      "description": "Result of fs.rename.",
+      "type": "object",
+      "properties": {
+        "crossedDevices": {
+          "description": "true when to is on another volume than from: the core copied from to to, then moved from to the OS trash.",
+          "type": "boolean"
+        }
+      },
+      "required": ["crossedDevices"],
+      "additionalProperties": false
+    },
+    "FsCopyRequest": {
+      "description": "Copy a file, or a folder with everything in it; links are copied as links. Never overwrites. Undoable: cmd.undo moves the copy to the OS trash.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "fs.copy" },
+        "params": { "$ref": "#/$defs/FsCopyParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "FsCopyParams": {
+      "description": "Parameters of fs.copy.",
+      "type": "object",
+      "properties": {
+        "from": {
+          "description": "What to copy.",
+          "$ref": "bridge.schema.json#/$defs/Path"
+        },
+        "to": {
+          "description": "The copy's path. Nothing may be there yet.",
+          "$ref": "bridge.schema.json#/$defs/Path"
+        },
+        "scope": {
+          "description": "Covers to: the copy is a write.",
+          "$ref": "../../plugin/v0/permission.schema.json#/$defs/FsWritePermission"
+        },
+        "fromScope": {
+          "description": "Covers from: the copy reads it.",
+          "$ref": "../../plugin/v0/permission.schema.json#/$defs/FsReadPermission"
+        }
+      },
+      "required": ["from", "to", "scope", "fromScope"],
+      "additionalProperties": false
+    },
+    "FsCopyResult": {
+      "description": "Result of fs.copy.",
+      "type": "object",
+      "properties": {
+        "bytesCopied": {
+          "description": "The bytes of the files copied.",
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": ["bytesCopied"],
+      "additionalProperties": false
+    },
+    "FsTrashRequest": {
+      "description": "Move a file, a folder or a link to the OS trash. Never deletes for good: where there is no trash the call fails and the path stays.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "fs.trash" },
+        "params": { "$ref": "#/$defs/FsTrashParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "FsTrashParams": {
+      "description": "Parameters of fs.trash.",
+      "type": "object",
+      "properties": {
+        "path": { "$ref": "bridge.schema.json#/$defs/Path" },
+        "scope": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/FsWritePermission" }
+      },
+      "required": ["path", "scope"],
+      "additionalProperties": false
+    },
+    "FsTrashResult": {
+      "description": "Result of fs.trash.",
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "FsWatchRequest": {
+      "description": "Report changes under a path as fs.changed events until the caller unloads.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "fs.watch" },
+        "params": { "$ref": "#/$defs/FsWatchParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "FsWatchParams": {
+      "description": "Parameters of fs.watch.",
+      "type": "object",
+      "properties": {
+        "path": { "$ref": "bridge.schema.json#/$defs/Path" },
+        "recursive": { "description": "Watch sub-folders too.", "type": "boolean" },
+        "scope": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/FsReadPermission" }
+      },
+      "required": ["path", "scope"],
+      "additionalProperties": false
+    },
+    "FsWatchResult": {
+      "description": "Result of fs.watch.",
+      "type": "object",
+      "properties": {
+        "watchId": {
+          "description": "Names the watch in fs.changed events.",
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": ["watchId"],
+      "additionalProperties": false
+    },
+    "FsChangedEvent": {
+      "description": "A watched path changed.",
+      "type": "object",
+      "properties": {
+        "event": { "const": "fs.changed" },
+        "data": { "$ref": "#/$defs/FsChangedData" }
+      },
+      "required": ["event", "data"],
+      "additionalProperties": false
+    },
+    "FsChangedData": {
+      "description": "Payload of fs.changed.",
+      "type": "object",
+      "properties": {
+        "watchId": { "type": "string", "minLength": 1 },
+        "path": { "$ref": "bridge.schema.json#/$defs/Path" },
+        "change": { "$ref": "#/$defs/FsChange" }
+      },
+      "required": ["watchId", "path", "change"],
+      "additionalProperties": false
+    },
+    "FsChange": {
+      "description": "What happened to the path.",
+      "type": "string",
+      "enum": ["created", "modified", "removed"]
+    }
+  }
+}

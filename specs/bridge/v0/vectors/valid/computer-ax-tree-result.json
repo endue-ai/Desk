@@ -1,0 +1,42 @@
+{
+  "target": "ComputerAxTreeResult",
+  "description": "a window with one button, breadth first, cut by the budget",
+  "instance": {
+    "pid": 412,
+    "app": {
+      "pid": 412,
+      "name": "Safari",
+      "bundleId": "com.apple.Safari",
+      "active": true,
+      "hidden": false,
+      "regular": true
+    },
+    "nodes": [
+      {
+        "path": [0],
+        "role": "AXWindow",
+        "title": "Start Page",
+        "enabled": true,
+        "focused": true,
+        "actions": ["AXRaise"],
+        "childCount": 2
+      },
+      {
+        "path": [0, 0],
+        "role": "AXButton",
+        "title": "Back",
+        "frame": {
+          "x": 80.0,
+          "y": 52.0,
+          "width": 28.0,
+          "height": 28.0
+        },
+        "enabled": false,
+        "focused": false,
+        "actions": ["AXPress"],
+        "childCount": 0
+      }
+    ],
+    "truncated": true
+  }
+}

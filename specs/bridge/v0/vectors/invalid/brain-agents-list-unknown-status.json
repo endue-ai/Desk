@@ -1,0 +1,14 @@
+{
+  "target": "BridgeRequest",
+  "description": "paused is not an agent status",
+  "instance": {
+    "id": 21,
+    "method": "brain.agents.list",
+    "params": {
+      "status": "paused",
+      "scope": {
+        "permission": "brain:converse"
+      }
+    }
+  }
+}

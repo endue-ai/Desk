@@ -1,0 +1,11 @@
+{
+  "target": "BridgeResponse",
+  "description": "brain.status answers offline while the brain cannot be reached",
+  "instance": {
+    "id": 25,
+    "ok": true,
+    "result": {
+      "mode": "offline"
+    }
+  }
+}

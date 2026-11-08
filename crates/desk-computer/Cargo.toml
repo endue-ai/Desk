@@ -1,0 +1,89 @@
+[package]
+name = "desk-computer"
+description = "Computer use: screenshots, the accessibility tree and its actions, synthesized mouse and keyboard input, apps, and the OS permissions they need. macOS (Accessibility, CGEvent, ScreenCaptureKit, NSWorkspace), `unsupported` elsewhere, and a fake."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+# Dependencies used only here are declared here; they move to [workspace.dependencies] when a second
+# crate needs them.
+
+[dependencies]
+# The primitives' error type and the bridge's codes; no desk-sys feature is turned on.
+desk-sys.workspace = true
+# Screenshots leave as PNG, encoded in Rust from the pixels the OS hands over.
+png = "0.18"
+# Typed text is cut on grapheme boundaries, so a chunk never splits a syllable or an emoji.
+unicode-segmentation = "1.13"
+
+# Accessibility (AXUIElement, AXIsProcessTrustedWithOptions), CGEvent input, the window and display
+# lists and CGWindowListCreateImage (CoreGraphics), ScreenCaptureKit screenshots (macOS 14+), and
+# NSWorkspace for apps and System Settings.
+[target.'cfg(target_os = "macos")'.dependencies]
+block2 = "0.6"
+libc = "0.2"
+objc2 = "0.6.2"
+objc2-foundation = { version = "0.3.2", default-features = false, features = [
+  "std",
+  "NSArray",
+  "NSBundle",
+  "NSEnumerator",
+  "NSError",
+  "NSString",
+  "NSURL",
+] }
+objc2-app-kit = { version = "0.3.2", default-features = false, features = [
+  "std",
+  "block2",
+  "libc",
+  "NSRunningApplication",
+  "NSWorkspace",
+] }
+objc2-core-foundation = { version = "0.3.2", default-features = false, features = [
+  "std",
+  "CFArray",
+  "CFCGTypes",
+  "CFDictionary",
+  "CFNumber",
+  "CFString",
+] }
+objc2-core-graphics = { version = "0.3.2", default-features = false, features = [
+  "std",
+  "libc",
+  "CGBitmapContext",
+  "CGColorSpace",
+  "CGContext",
+  "CGDirectDisplay",
+  "CGDisplayConfiguration",
+  "CGError",
+  "CGEvent",
+  "CGEventSource",
+  "CGEventTypes",
+  "CGGeometry",
+  "CGImage",
+  "CGRemoteOperation",
+  "CGWindow",
+] }
+objc2-application-services = { version = "0.3.2", default-features = false, features = [
+  "std",
+  "libc",
+  "AXError",
+  "AXUIElement",
+  "AXValue",
+  "HIServices",
+] }
+objc2-screen-capture-kit = { version = "0.3.2", default-features = false, features = [
+  "std",
+  "block2",
+  "objc2-core-foundation",
+  "objc2-core-graphics",
+  "SCScreenshotManager",
+  "SCShareableContent",
+  "SCStream",
+] }
+
+[lints]
+workspace = true

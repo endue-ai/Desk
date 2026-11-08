@@ -1,0 +1,37 @@
+{
+  "target": "CatalogGetResult",
+  "description": "catalog.get: two components, the fixture connector's tasks with their fields, one command",
+  "instance": {
+    "components": ["list", "agenda"],
+    "connectors": [
+      {
+        "id": "desk.fixtures",
+        "instances": ["default"],
+        "kinds": [
+          {
+            "kind": "task",
+            "fields": [
+              "due",
+              "id",
+              "kind",
+              "priority",
+              "project",
+              "raw.labels",
+              "source",
+              "status",
+              "title",
+              "updatedAt"
+            ]
+          }
+        ]
+      }
+    ],
+    "commands": [
+      {
+        "id": "desk.fixtures.complete",
+        "title": "Complete the task",
+        "provider": "desk.fixtures"
+      }
+    ]
+  }
+}

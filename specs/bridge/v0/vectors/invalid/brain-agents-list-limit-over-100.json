@@ -1,0 +1,14 @@
+{
+  "target": "BridgeRequest",
+  "description": "a page holds 100 agents at most",
+  "instance": {
+    "id": 21,
+    "method": "brain.agents.list",
+    "params": {
+      "limit": 101,
+      "scope": {
+        "permission": "brain:converse"
+      }
+    }
+  }
+}

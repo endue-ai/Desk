@@ -1,0 +1,9 @@
+{
+  "target": "BridgeRequest",
+  "description": "catalog.get takes no params and no scope",
+  "instance": {
+    "id": 47,
+    "method": "catalog.get",
+    "params": {}
+  }
+}

@@ -1,0 +1,227 @@
+[package]
+name = "desk-sys"
+description = "Primitives: fs (notify, trash), proc (portable-pty), net (fetch, WebSocket and server-sent events through the system proxy and PAC), shell, calendar (EventKit), notification (UserNotifications, toasts, freedesktop), login (LaunchAgent, Run key, XDG autostart), clipboard (NSPasteboard, user32) and audio (cpal, wake word), each behind a cargo feature."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+# Dependencies used only here are declared here; they move to [workspace.dependencies] when a second
+# crate needs them.
+
+[features]
+## File primitives: read, list, stat, atomic write, mkdir, rename, copy, trash (the trash crate) and
+## watch.
+fs = ["dep:notify", "dep:trash"]
+## Processes: spawn without a shell, in pipes or a PTY, write, resize, signals.
+proc = ["dep:portable-pty", "dep:shared_child", "dep:libc"]
+## HTTP(S) fetch, WebSocket (tungstenite) and server-sent event streams over rustls, with a host
+## allowlist checked on every redirect, through the system proxy and PAC (boa) or the environment's.
+net = [
+  "dep:ureq",
+  "dep:url",
+  "dep:tungstenite",
+  "dep:rustls",
+  "dep:rustls-platform-verifier",
+  "dep:boa_engine",
+  "dep:system-configuration",
+  "dep:windows-registry",
+]
+## Links and files handed to the system: open http, https and mailto URLs, show files in the file manager.
+shell = ["dep:url"]
+## Calendars, events and reminders, read only: EventKit on macOS, `unsupported` elsewhere, and a fake.
+calendar = [
+  "dep:time",
+  "dep:block2",
+  "dep:objc2",
+  "dep:objc2-app-kit",
+  "dep:objc2-event-kit",
+  "dep:objc2-foundation",
+]
+## Native notifications: post, ask the OS for permission and report a click. UserNotifications on
+## macOS, toasts on Windows, freedesktop notifications over D-Bus on Linux, and a fake.
+notification = [
+  "dep:block2",
+  "dep:objc2",
+  "dep:objc2-foundation",
+  "dep:objc2-user-notifications",
+  "dep:windows",
+  "dep:zbus",
+  "dep:futures-core",
+]
+## Start at login: register or remove the desk as a login item (a LaunchAgent on macOS, the Run key
+## on Windows, an XDG autostart entry on Linux) and check it against the setting, and a fake.
+login = ["dep:windows-registry"]
+## Text on the clipboard: read, write, change detection and a watch, with the concealed and transient
+## marks password managers set. NSPasteboard on macOS, user32 on Windows, `unsupported` on Linux, and
+## a fake.
+clipboard = ["dep:objc2", "dep:objc2-app-kit", "dep:objc2-foundation"]
+## Microphone capture: list input devices and capture one as mono 16-bit frames of 20 ms at 16 kHz
+## (8 to 48 kHz) with a level meter, after the OS grants the microphone. cpal (CoreAudio, WASAPI,
+## ALSA: Linux builds need libasound2-dev), AVFoundation's grant on macOS, and a fake.
+audio = ["dep:cpal", "dep:block2", "dep:objc2", "dep:objc2-av-foundation"]
+
+[dependencies]
+desk-bridge.workspace = true
+notify = { workspace = true, optional = true }
+trash = { version = "5.3", optional = true }
+portable-pty = { version = "0.9", optional = true }
+shared_child = { version = "1.1", optional = true, default-features = false }
+ureq = { version = "3.5", optional = true, default-features = false, features = ["rustls", "platform-verifier", "socks-proxy"] }
+url = { version = "2.5", optional = true }
+tungstenite = { version = "0.30", optional = true, default-features = false, features = ["handshake"] }
+# The same ring provider and OS trust store as ureq, for wss.
+rustls = { version = "0.23", optional = true, default-features = false, features = ["ring", "std", "tls12"] }
+rustls-platform-verifier = { version = "0.7", optional = true }
+# PAC files: a pure-Rust JavaScript engine, no C.
+boa_engine = { version = "0.22", optional = true, default-features = false }
+time = { version = "0.3.47", optional = true, default-features = false, features = ["formatting", "parsing"] }
+# Default features only: CoreAudio, WASAPI and ALSA; no JACK, PulseAudio, PipeWire or ASIO.
+cpal = { version = "0.18", optional = true }
+
+[target.'cfg(unix)'.dependencies]
+libc = { version = "0.2", optional = true }
+
+# EventKit, for `calendar` on macOS; AppKit for a calendar's color and, for `clipboard`, NSPasteboard;
+# the dynamic store's proxy settings, for `net`; AVFoundation's microphone grant, for `audio`.
+[target.'cfg(target_os = "macos")'.dependencies]
+system-configuration = { version = "0.7", optional = true }
+block2 = { version = "0.6", optional = true }
+objc2 = { version = "0.6.2", optional = true }
+objc2-app-kit = { version = "0.3.2", optional = true, default-features = false, features = [
+  "std",
+  "NSColor",
+  "NSColorSpace",
+  "NSPasteboard",
+  "objc2-core-foundation",
+] }
+objc2-event-kit = { version = "0.3.2", optional = true, default-features = false, features = [
+  "std",
+  "bitflags",
+  "block2",
+  "EKCalendar",
+  "EKCalendarItem",
+  "EKEvent",
+  "EKEventStore",
+  "EKObject",
+  "EKRecurrenceDayOfWeek",
+  "EKRecurrenceEnd",
+  "EKRecurrenceRule",
+  "EKReminder",
+  "EKTypes",
+] }
+objc2-foundation = { version = "0.3.2", optional = true, default-features = false, features = [
+  "std",
+  "NSArray",
+  "NSBundle",
+  "NSCalendar",
+  "NSDate",
+  "NSEnumerator",
+  "NSError",
+  "NSString",
+  "NSTimeZone",
+  "NSValue",
+] }
+objc2-av-foundation = { version = "0.3.2", optional = true, default-features = false, features = [
+  "std",
+  "block2",
+  "AVCaptureDevice",
+  "AVMediaFormat",
+] }
+# UserNotifications, for `notification` on macOS.
+objc2-user-notifications = { version = "0.3.2", optional = true, default-features = false, features = [
+  "std",
+  "block2",
+  "UNNotification",
+  "UNNotificationContent",
+  "UNNotificationRequest",
+  "UNNotificationResponse",
+  "UNNotificationSettings",
+  "UNNotificationSound",
+  "UNNotificationTrigger",
+  "UNUserNotificationCenter",
+] }
+
+# WinRT toasts, for `notification` on Windows; the Run key, for `login`; Internet Settings, for `net`.
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.62", optional = true, features = ["Data_Xml_Dom", "Foundation", "UI_Notifications"] }
+windows-registry = { version = "0.6", optional = true }
+
+# The login test's own key, deleted after it.
+[target.'cfg(windows)'.dev-dependencies]
+windows-registry = "0.6"
+
+# D-Bus, for `notification` on Linux. One zbus with the vendored single-instance plugin's features, so
+# the app builds it once on one runtime.
+[target.'cfg(target_os = "linux")'.dependencies]
+zbus = { version = "6.2", optional = true, default-features = false, features = ["tokio", "service"] }
+futures-core = { version = "0.3", optional = true }
+
+# The tests' org.freedesktop.Notifications server: a peer-to-peer connection serving an interface.
+[target.'cfg(target_os = "linux")'.dev-dependencies]
+zbus = { version = "6.2", default-features = false, features = ["tokio", "service", "p2p"] }
+
+[[test]]
+name = "fs"
+required-features = ["fs"]
+
+[[test]]
+name = "fs_ops"
+required-features = ["fs"]
+
+[[test]]
+name = "fs_trash"
+required-features = ["fs"]
+
+[[test]]
+name = "proc"
+required-features = ["proc"]
+
+[[test]]
+name = "net"
+required-features = ["net"]
+
+[[test]]
+name = "net_ws"
+required-features = ["net"]
+
+[[test]]
+name = "net_sse"
+required-features = ["net"]
+
+[[test]]
+name = "net_proxy"
+required-features = ["net"]
+
+[[test]]
+name = "calendar"
+required-features = ["calendar"]
+
+[[test]]
+name = "notification"
+required-features = ["notification"]
+
+[[test]]
+name = "notification_freedesktop"
+required-features = ["notification"]
+
+[[test]]
+name = "login"
+required-features = ["login"]
+
+[[test]]
+name = "clipboard"
+required-features = ["clipboard"]
+
+[[test]]
+name = "audio"
+required-features = ["audio"]
+
+[[test]]
+name = "shell"
+required-features = ["shell"]
+
+[lints]
+workspace = true

@@ -1,0 +1,7 @@
+{
+  "target": "UpdateAgentStatusRequest",
+  "description": "only active and inactive can be set",
+  "instance": {
+    "status": "archived"
+  }
+}

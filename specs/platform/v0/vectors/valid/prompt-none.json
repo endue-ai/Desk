@@ -1,0 +1,7 @@
+{
+  "target": "AgentPromptResponse",
+  "description": "an agent without a prompt yet",
+  "instance": {
+    "prompt": null
+  }
+}

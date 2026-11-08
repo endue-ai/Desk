@@ -1,0 +1,7 @@
+{
+  "target": "Permission",
+  "description": "hook into other callers' commands",
+  "instance": {
+    "permission": "cmd:advise"
+  }
+}

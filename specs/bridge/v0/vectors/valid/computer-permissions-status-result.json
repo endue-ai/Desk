@@ -1,0 +1,10 @@
+{
+  "target": "ComputerPermissionsStatusResult",
+  "description": "Accessibility granted, Screen Recording not yet, in the signed app",
+  "instance": {
+    "accessibility": true,
+    "screenRecording": false,
+    "bundleId": "ai.endue.desk",
+    "stopped": false
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "target": "BridgeRequest",
+  "description": "ask the OS for Screen Recording",
+  "instance": {
+    "id": 2,
+    "method": "computer.permissions.request",
+    "params": {
+      "permission": "screen-recording",
+      "scope": {
+        "permission": "computer:see"
+      }
+    }
+  }
+}

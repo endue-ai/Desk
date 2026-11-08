@@ -1,0 +1,754 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://endue.ai/specs/bridge/v0/computer.schema.json",
+  "title": "Desk bridge v0: computer",
+  "description": "Computer use (ADR 0120, ADR 0123): see the screen and every app's interface, and operate them, through desk-computer. computer.permissions.* reports and asks for the OS permissions (Accessibility, Screen Recording); computer.screenshot, computer.windows, computer.apps.list and computer.ax.tree|find read under computer:see; computer.input.*, computer.ax.perform and computer.apps.launch|activate|quit act under computer:control, one act at a time, rate-limited, each stoppable by computer.stop. A scope's apps limit the call to those apps: the app under the pointer for the mouse, the frontmost one for the keyboard, the app named for the rest. Every act of an agent (agent:<id>, or a plugin acting on an agent's invocation) waits for the person's approval on a perm.approval card (ADR 0078) and is a run on the desk's runs board with a screenshot after it (ADR 0100). A desk without a driver, or a platform without one (anything but macOS today), answers unsupported; a missing OS permission is permission_denied naming the System Settings pane; an act the stop ended, or one asked while stopped, is cancelled. Coordinates are global points, the origin at the top left of the main display.",
+  "$defs": {
+    "ComputerPoint": {
+      "description": "A point in global display points.",
+      "type": "object",
+      "properties": {
+        "x": { "type": "number" },
+        "y": { "type": "number" }
+      },
+      "required": ["x", "y"],
+      "additionalProperties": false
+    },
+    "ComputerRect": {
+      "description": "A rectangle in global display points; x and y are its top left corner.",
+      "type": "object",
+      "properties": {
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "width": { "type": "number", "minimum": 0 },
+        "height": { "type": "number", "minimum": 0 }
+      },
+      "required": ["x", "y", "width", "height"],
+      "additionalProperties": false
+    },
+    "ComputerDisplay": {
+      "description": "One active display. scale is pixels per point (2 on a Retina display); the main display holds the menu bar and the origin.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "integer", "minimum": 0 },
+        "bounds": { "$ref": "#/$defs/ComputerRect" },
+        "scale": { "type": "number", "exclusiveMinimum": 0 },
+        "main": { "type": "boolean" },
+        "builtin": { "type": "boolean" }
+      },
+      "required": ["id", "bounds", "scale", "main", "builtin"],
+      "additionalProperties": false
+    },
+    "ComputerWindow": {
+      "description": "One window of any app, front to back as the window server lists them. title is absent without the Screen Recording permission, or when the window has none. layer is 0 for normal windows.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "integer", "minimum": 0 },
+        "pid": { "type": "integer" },
+        "app": { "type": "string" },
+        "bundleId": { "type": "string" },
+        "title": { "type": "string" },
+        "bounds": { "$ref": "#/$defs/ComputerRect" },
+        "layer": { "type": "integer" },
+        "onScreen": { "type": "boolean" }
+      },
+      "required": ["id", "pid", "app", "bounds", "layer", "onScreen"],
+      "additionalProperties": false
+    },
+    "ComputerApp": {
+      "description": "One running application. active is the frontmost one, which receives keyboard input; regular is an ordinary app with a Dock icon and a menu bar.",
+      "type": "object",
+      "properties": {
+        "pid": { "type": "integer" },
+        "name": { "type": "string" },
+        "bundleId": { "type": "string" },
+        "path": { "type": "string" },
+        "active": { "type": "boolean" },
+        "hidden": { "type": "boolean" },
+        "regular": { "type": "boolean" }
+      },
+      "required": ["pid", "name", "active", "hidden", "regular"],
+      "additionalProperties": false
+    },
+    "ComputerPath": {
+      "description": "An element's child indexes (AXChildren) from its application element; the application itself has the empty path.",
+      "type": "array",
+      "items": { "type": "integer", "minimum": 0 },
+      "maxItems": 64
+    },
+    "ComputerElement": {
+      "description": "One element of an app's interface as a walk read it. childCount is how many children it has (more than the walk returned where its budget stopped); absent where the walk never asked.",
+      "type": "object",
+      "properties": {
+        "path": { "$ref": "#/$defs/ComputerPath" },
+        "role": { "type": "string" },
+        "subrole": { "type": "string" },
+        "title": { "type": "string" },
+        "value": { "type": "string" },
+        "description": { "type": "string" },
+        "frame": { "$ref": "#/$defs/ComputerRect" },
+        "enabled": { "type": "boolean" },
+        "focused": { "type": "boolean" },
+        "actions": { "type": "array", "items": { "type": "string" } },
+        "childCount": { "type": "integer", "minimum": 0 }
+      },
+      "required": ["path", "role", "enabled", "focused", "actions"],
+      "additionalProperties": false
+    },
+    "ComputerElementRef": {
+      "description": "An element named by its app's pid and its path. role, when given, is the role it must still have: a reference to an element whose role changed is not_found instead of reaching another.",
+      "type": "object",
+      "properties": {
+        "pid": { "type": "integer" },
+        "path": { "$ref": "#/$defs/ComputerPath" },
+        "role": { "type": "string", "minLength": 1, "maxLength": 64 }
+      },
+      "required": ["pid", "path"],
+      "additionalProperties": false
+    },
+    "ComputerOsPermission": {
+      "description": "An OS permission computer use needs: accessibility (reading and operating other apps' interfaces, and synthesized input) or screen-recording (screenshots, and other apps' window titles).",
+      "type": "string",
+      "enum": ["accessibility", "screen-recording"]
+    },
+    "ComputerAxAction": {
+      "description": "An accessibility action: press (AXPress), raise, show-menu, confirm, cancel, increment, decrement, pick.",
+      "type": "string",
+      "enum": ["press", "raise", "show-menu", "confirm", "cancel", "increment", "decrement", "pick"]
+    },
+    "ComputerButton": {
+      "description": "A mouse button.",
+      "type": "string",
+      "enum": ["left", "right", "middle"]
+    },
+    "ComputerInvocationId": {
+      "description": "The cmd.invoked invocation an act serves, when the caller is the provider of a command an agent asked for: the act is that agent's (its approval, its run, its banner), on top of the caller's own grant.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "ComputerDone": {
+      "description": "What an act did. summary says it in words (clicked left at (120, 340) in Safari); events is how many input events went out (1 for an accessibility or app action). runId is the run the act was recorded on, when it was an agent's.",
+      "type": "object",
+      "properties": {
+        "summary": { "type": "string" },
+        "events": { "type": "integer", "minimum": 0 },
+        "app": { "$ref": "#/$defs/ComputerApp" },
+        "element": { "$ref": "#/$defs/ComputerElement" },
+        "runId": { "type": "string", "minLength": 1, "maxLength": 128 }
+      },
+      "required": ["summary", "events"],
+      "additionalProperties": false
+    },
+    "ComputerSeeParams": {
+      "description": "Parameters of a call that only needs computer:see.",
+      "type": "object",
+      "properties": {
+        "scope": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/ComputerSeePermission" }
+      },
+      "required": ["scope"],
+      "additionalProperties": false
+    },
+    "ComputerPermissionsStatusRequest": {
+      "description": "What the OS allows computer use now, and whether the stop is raised. Never prompts.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "computer.permissions.status" },
+        "params": { "$ref": "#/$defs/ComputerSeeParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "ComputerPermissionsStatusResult": {
+      "description": "Result of computer.permissions.status. bundleId is the app the OS asks about; absent under just dev, where it asks about the launching terminal (ADR 0120). stopped: computer.stop was raised and acts are refused until it is resumed.",
+      "type": "object",
+      "properties": {
+        "accessibility": { "type": "boolean" },
+        "screenRecording": { "type": "boolean" },
+        "bundleId": { "type": "string" },
+        "stopped": { "type": "boolean" }
+      },
+      "required": ["accessibility", "screenRecording", "stopped"],
+      "additionalProperties": false
+    },
+    "ComputerPermissionParams": {
+      "description": "Parameters of computer.permissions.request and computer.permissions.open.",
+      "type": "object",
+      "properties": {
+        "permission": { "$ref": "#/$defs/ComputerOsPermission" },
+        "scope": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/ComputerSeePermission" }
+      },
+      "required": ["permission", "scope"],
+      "additionalProperties": false
+    },
+    "ComputerPermissionsRequestRequest": {
+      "description": "Ask the OS for a permission, showing its prompt when the person was never asked. Answers at once whether it is granted now; a grant given later in System Settings shows in computer.permissions.status (Screen Recording at the desk's next start).",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "computer.permissions.request" },
+        "params": { "$ref": "#/$defs/ComputerPermissionParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "ComputerPermissionsRequestResult": {
+      "description": "Result of computer.permissions.request.",
+      "type": "object",
+      "properties": { "granted": { "type": "boolean" } },
+      "required": ["granted"],
+      "additionalProperties": false
+    },
+    "ComputerPermissionsOpenRequest": {
+      "description": "Open the System Settings pane that grants the permission.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "computer.permissions.open" },
+        "params": { "$ref": "#/$defs/ComputerPermissionParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "ComputerPermissionsOpenResult": {
+      "description": "Result of computer.permissions.open.",
+      "type": "object",
+      "additionalProperties": false
+    },
+    "ComputerDisplayTarget": {
+      "description": "A whole display by its id.",
+      "type": "object",
+      "properties": { "display": { "type": "integer", "minimum": 0 } },
+      "required": ["display"],
+      "additionalProperties": false
+    },
+    "ComputerWindowTarget": {
+      "description": "One window by its id, without what covers it.",
+      "type": "object",
+      "properties": { "window": { "type": "integer", "minimum": 0 } },
+      "required": ["window"],
+      "additionalProperties": false
+    },
+    "ComputerRegionTarget": {
+      "description": "An area in global points, from the display it overlaps most.",
+      "type": "object",
+      "properties": { "region": { "$ref": "#/$defs/ComputerRect" } },
+      "required": ["region"],
+      "additionalProperties": false
+    },
+    "ComputerTarget": {
+      "description": "What a screenshot shows. Without one, the main display.",
+      "oneOf": [
+        { "$ref": "#/$defs/ComputerDisplayTarget" },
+        { "$ref": "#/$defs/ComputerWindowTarget" },
+        { "$ref": "#/$defs/ComputerRegionTarget" }
+      ]
+    },
+    "ComputerScreenshotRequest": {
+      "description": "A screenshot as PNG. A window of an app the scope's apps name needs only that; a display or a region needs computer:see without apps.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "computer.screenshot" },
+        "params": { "$ref": "#/$defs/ComputerScreenshotParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "ComputerScreenshotParams": {
+      "description": "Parameters of computer.screenshot. maxWidth and maxHeight bound the image in pixels, keeping its aspect ratio; it is never enlarged.",
+      "type": "object",
+      "properties": {
+        "target": { "$ref": "#/$defs/ComputerTarget" },
+        "maxWidth": { "type": "integer", "minimum": 1, "maximum": 8192 },
+        "maxHeight": { "type": "integer", "minimum": 1, "maximum": 8192 },
+        "scope": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/ComputerSeePermission" }
+      },
+      "required": ["scope"],
+      "additionalProperties": false
+    },
+    "ComputerScreenshotResult": {
+      "description": "Result of computer.screenshot: the PNG as base64, its size in pixels, the area it shows in points and the scale between them. A pixel (px, py) is the point (bounds.x + px / scale, bounds.y + py / scale).",
+      "type": "object",
+      "properties": {
+        "image": { "type": "string", "contentEncoding": "base64" },
+        "mediaType": { "const": "image/png" },
+        "width": { "type": "integer", "minimum": 1 },
+        "height": { "type": "integer", "minimum": 1 },
+        "scale": { "type": "number", "exclusiveMinimum": 0 },
+        "bounds": { "$ref": "#/$defs/ComputerRect" }
+      },
+      "required": ["image", "mediaType", "width", "height", "scale", "bounds"],
+      "additionalProperties": false
+    },
+    "ComputerWindowsRequest": {
+      "description": "The displays, and the windows of every app (or of the scope's apps) front to back.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "computer.windows" },
+        "params": { "$ref": "#/$defs/ComputerWindowsParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "ComputerWindowsParams": {
+      "description": "Parameters of computer.windows. all also lists minimized windows and other Spaces' ones.",
+      "type": "object",
+      "properties": {
+        "all": { "type": "boolean" },
+        "scope": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/ComputerSeePermission" }
+      },
+      "required": ["scope"],
+      "additionalProperties": false
+    },
+    "ComputerWindowsResult": {
+      "description": "Result of computer.windows.",
+      "type": "object",
+      "properties": {
+        "displays": { "type": "array", "items": { "$ref": "#/$defs/ComputerDisplay" } },
+        "windows": { "type": "array", "items": { "$ref": "#/$defs/ComputerWindow" } }
+      },
+      "required": ["displays", "windows"],
+      "additionalProperties": false
+    },
+    "ComputerAppsListRequest": {
+      "description": "The running apps (or those the scope's apps name).",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "computer.apps.list" },
+        "params": { "$ref": "#/$defs/ComputerSeeParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "ComputerAppsListResult": {
+      "description": "Result of computer.apps.list.",
+      "type": "object",
+      "properties": {
+        "apps": { "type": "array", "items": { "$ref": "#/$defs/ComputerApp" } }
+      },
+      "required": ["apps"],
+      "additionalProperties": false
+    },
+    "ComputerAppsLaunchRequest": {
+      "description": "Launch an app by bundle id or .app path, or bring it forward when it runs. A path needs computer:control without apps, since its bundle is not known before it runs.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "computer.apps.launch" },
+        "params": { "$ref": "#/$defs/ComputerAppsLaunchParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "ComputerAppsLaunchParams": {
+      "description": "Parameters of computer.apps.launch: bundleId or path, not both.",
+      "type": "object",
+      "properties": {
+        "bundleId": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/AppBundleId" },
+        "path": { "type": "string", "minLength": 2, "maxLength": 1024, "pattern": "^/.*\\.app/?$" },
+        "invocationId": { "$ref": "#/$defs/ComputerInvocationId" },
+        "scope": {
+          "$ref": "../../plugin/v0/permission.schema.json#/$defs/ComputerControlPermission"
+        }
+      },
+      "required": ["scope"],
+      "additionalProperties": false,
+      "anyOf": [
+        { "properties": { "bundleId": true }, "required": ["bundleId"] },
+        { "properties": { "path": true }, "required": ["path"] }
+      ],
+      "not": { "properties": { "bundleId": true, "path": true }, "required": ["bundleId", "path"] }
+    },
+    "ComputerAppsLaunchResult": {
+      "description": "Result of computer.apps.launch: the app, once it runs.",
+      "$ref": "#/$defs/ComputerDone"
+    },
+    "ComputerAppParams": {
+      "description": "Parameters of computer.apps.activate and computer.apps.quit: the running app's pid.",
+      "type": "object",
+      "properties": {
+        "pid": { "type": "integer" },
+        "invocationId": { "$ref": "#/$defs/ComputerInvocationId" },
+        "scope": {
+          "$ref": "../../plugin/v0/permission.schema.json#/$defs/ComputerControlPermission"
+        }
+      },
+      "required": ["pid", "scope"],
+      "additionalProperties": false
+    },
+    "ComputerAppsActivateRequest": {
+      "description": "Unhide an app and bring it to the front with its windows.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "computer.apps.activate" },
+        "params": { "$ref": "#/$defs/ComputerAppParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "ComputerAppsActivateResult": {
+      "description": "Result of computer.apps.activate.",
+      "$ref": "#/$defs/ComputerDone"
+    },
+    "ComputerAppsQuitRequest": {
+      "description": "Ask an app to quit, as the Dock's Quit does: it may ask the person to save first, or refuse. Nothing force-quits.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "computer.apps.quit" },
+        "params": { "$ref": "#/$defs/ComputerAppParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "ComputerAppsQuitResult": {
+      "description": "Result of computer.apps.quit.",
+      "$ref": "#/$defs/ComputerDone"
+    },
+    "ComputerAxTreeRequest": {
+      "description": "An app's interface below root, breadth first within the budget. Without root, the frontmost app's focused window (its application element when it has none).",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "computer.ax.tree" },
+        "params": { "$ref": "#/$defs/ComputerAxTreeParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "ComputerAxTreeParams": {
+      "description": "Parameters of computer.ax.tree. depth is the levels below the root (10 by default, at most 64); nodes the most elements (500 by default, at most 5000).",
+      "type": "object",
+      "properties": {
+        "root": { "$ref": "#/$defs/ComputerElementRef" },
+        "depth": { "type": "integer", "minimum": 0, "maximum": 64 },
+        "nodes": { "type": "integer", "minimum": 1, "maximum": 5000 },
+        "scope": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/ComputerSeePermission" }
+      },
+      "required": ["scope"],
+      "additionalProperties": false
+    },
+    "ComputerAxTreeResult": {
+      "description": "Result of computer.ax.tree: the elements breadth first, the root first, each with its path; truncated says the budget left some out.",
+      "type": "object",
+      "properties": {
+        "pid": { "type": "integer" },
+        "app": { "$ref": "#/$defs/ComputerApp" },
+        "nodes": { "type": "array", "items": { "$ref": "#/$defs/ComputerElement" } },
+        "truncated": { "type": "boolean" }
+      },
+      "required": ["pid", "nodes", "truncated"],
+      "additionalProperties": false
+    },
+    "ComputerAxFindRequest": {
+      "description": "The elements below root (itself included) that match, nearest first.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "computer.ax.find" },
+        "params": { "$ref": "#/$defs/ComputerAxFindParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "ComputerAxFindParams": {
+      "description": "Parameters of computer.ax.find. role matches a role or subrole with or without AX, in any case (button finds AXButton); title matches the title, description or value, anywhere and in any case unless exact. limit is 20 by default.",
+      "type": "object",
+      "properties": {
+        "root": { "$ref": "#/$defs/ComputerElementRef" },
+        "role": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "title": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "exact": { "type": "boolean" },
+        "limit": { "type": "integer", "minimum": 1, "maximum": 100 },
+        "depth": { "type": "integer", "minimum": 0, "maximum": 64 },
+        "nodes": { "type": "integer", "minimum": 1, "maximum": 5000 },
+        "scope": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/ComputerSeePermission" }
+      },
+      "required": ["scope"],
+      "additionalProperties": false
+    },
+    "ComputerAxFindResult": {
+      "description": "Result of computer.ax.find.",
+      "type": "object",
+      "properties": {
+        "pid": { "type": "integer" },
+        "elements": { "type": "array", "items": { "$ref": "#/$defs/ComputerElement" } }
+      },
+      "required": ["pid", "elements"],
+      "additionalProperties": false
+    },
+    "ComputerAxPerformRequest": {
+      "description": "Perform an accessibility action on an element: invalid_params when it does not offer it.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "computer.ax.perform" },
+        "params": { "$ref": "#/$defs/ComputerAxPerformParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "ComputerAxPerformParams": {
+      "description": "Parameters of computer.ax.perform.",
+      "type": "object",
+      "properties": {
+        "element": { "$ref": "#/$defs/ComputerElementRef" },
+        "action": { "$ref": "#/$defs/ComputerAxAction" },
+        "invocationId": { "$ref": "#/$defs/ComputerInvocationId" },
+        "scope": {
+          "$ref": "../../plugin/v0/permission.schema.json#/$defs/ComputerControlPermission"
+        }
+      },
+      "required": ["element", "action", "scope"],
+      "additionalProperties": false
+    },
+    "ComputerAxPerformResult": {
+      "description": "Result of computer.ax.perform: the element as it was before.",
+      "$ref": "#/$defs/ComputerDone"
+    },
+    "ComputerInputClickRequest": {
+      "description": "Click at a point: move there, press and release, count times.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "computer.input.click" },
+        "params": { "$ref": "#/$defs/ComputerInputClickParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "ComputerInputClickParams": {
+      "description": "Parameters of computer.input.click. button is left by default; count is 1 (2 a double click, 3 a triple click).",
+      "type": "object",
+      "properties": {
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "button": { "$ref": "#/$defs/ComputerButton" },
+        "count": { "type": "integer", "minimum": 1, "maximum": 3 },
+        "invocationId": { "$ref": "#/$defs/ComputerInvocationId" },
+        "scope": {
+          "$ref": "../../plugin/v0/permission.schema.json#/$defs/ComputerControlPermission"
+        }
+      },
+      "required": ["x", "y", "scope"],
+      "additionalProperties": false
+    },
+    "ComputerInputClickResult": {
+      "description": "Result of computer.input.click.",
+      "$ref": "#/$defs/ComputerDone"
+    },
+    "ComputerInputMoveRequest": {
+      "description": "Move the pointer to a point.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "computer.input.move" },
+        "params": { "$ref": "#/$defs/ComputerInputMoveParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "ComputerInputMoveParams": {
+      "description": "Parameters of computer.input.move.",
+      "type": "object",
+      "properties": {
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "invocationId": { "$ref": "#/$defs/ComputerInvocationId" },
+        "scope": {
+          "$ref": "../../plugin/v0/permission.schema.json#/$defs/ComputerControlPermission"
+        }
+      },
+      "required": ["x", "y", "scope"],
+      "additionalProperties": false
+    },
+    "ComputerInputMoveResult": {
+      "description": "Result of computer.input.move.",
+      "$ref": "#/$defs/ComputerDone"
+    },
+    "ComputerInputDragRequest": {
+      "description": "Press the left button at from, move to to in steps, and release.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "computer.input.drag" },
+        "params": { "$ref": "#/$defs/ComputerInputDragParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "ComputerInputDragParams": {
+      "description": "Parameters of computer.input.drag.",
+      "type": "object",
+      "properties": {
+        "from": { "$ref": "#/$defs/ComputerPoint" },
+        "to": { "$ref": "#/$defs/ComputerPoint" },
+        "invocationId": { "$ref": "#/$defs/ComputerInvocationId" },
+        "scope": {
+          "$ref": "../../plugin/v0/permission.schema.json#/$defs/ComputerControlPermission"
+        }
+      },
+      "required": ["from", "to", "scope"],
+      "additionalProperties": false
+    },
+    "ComputerInputDragResult": {
+      "description": "Result of computer.input.drag.",
+      "$ref": "#/$defs/ComputerDone"
+    },
+    "ComputerInputScrollRequest": {
+      "description": "Scroll by lines at a point, or where the pointer is.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "computer.input.scroll" },
+        "params": { "$ref": "#/$defs/ComputerInputScrollParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "ComputerInputScrollParams": {
+      "description": "Parameters of computer.input.scroll: at (absent: where the pointer is), dy > 0 toward the end of the document (down), dx > 0 to the right, at most 100 lines either way and not both 0.",
+      "type": "object",
+      "properties": {
+        "at": { "$ref": "#/$defs/ComputerPoint" },
+        "dx": { "type": "integer", "minimum": -100, "maximum": 100 },
+        "dy": { "type": "integer", "minimum": -100, "maximum": 100 },
+        "invocationId": { "$ref": "#/$defs/ComputerInvocationId" },
+        "scope": {
+          "$ref": "../../plugin/v0/permission.schema.json#/$defs/ComputerControlPermission"
+        }
+      },
+      "required": ["scope"],
+      "additionalProperties": false
+    },
+    "ComputerInputScrollResult": {
+      "description": "Result of computer.input.scroll.",
+      "$ref": "#/$defs/ComputerDone"
+    },
+    "ComputerInputTypeRequest": {
+      "description": "Type text as it is written, in any script and whatever the keyboard layout, into the frontmost app; line breaks and tabs are the Return and Tab keys.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "computer.input.type" },
+        "params": { "$ref": "#/$defs/ComputerInputTypeParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "ComputerInputTypeParams": {
+      "description": "Parameters of computer.input.type.",
+      "type": "object",
+      "properties": {
+        "text": { "type": "string", "minLength": 1, "maxLength": 10000 },
+        "invocationId": { "$ref": "#/$defs/ComputerInvocationId" },
+        "scope": {
+          "$ref": "../../plugin/v0/permission.schema.json#/$defs/ComputerControlPermission"
+        }
+      },
+      "required": ["text", "scope"],
+      "additionalProperties": false
+    },
+    "ComputerInputTypeResult": {
+      "description": "Result of computer.input.type.",
+      "$ref": "#/$defs/ComputerDone"
+    },
+    "ComputerInputKeysRequest": {
+      "description": "Press key chords one after another into the frontmost app, such as cmd+t then cmd+l.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "computer.input.keys" },
+        "params": { "$ref": "#/$defs/ComputerInputKeysParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "ComputerInputKeysParams": {
+      "description": "Parameters of computer.input.keys: chords written as modifiers and a key joined by +, such as cmd+shift+t, return or escape (US key positions, as shortcuts are).",
+      "type": "object",
+      "properties": {
+        "keys": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1, "maxLength": 64 },
+          "minItems": 1,
+          "maxItems": 20
+        },
+        "invocationId": { "$ref": "#/$defs/ComputerInvocationId" },
+        "scope": {
+          "$ref": "../../plugin/v0/permission.schema.json#/$defs/ComputerControlPermission"
+        }
+      },
+      "required": ["keys", "scope"],
+      "additionalProperties": false
+    },
+    "ComputerInputKeysResult": {
+      "description": "Result of computer.input.keys.",
+      "$ref": "#/$defs/ComputerDone"
+    },
+    "ComputerStopRequest": {
+      "description": "The emergency stop: the running and queued acts end cancelled at their next event, keys and buttons they held are released, and new ones are refused cancelled until the stop is resumed. Resuming is the person's: an agent's resume is permission_denied.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "computer.stop" },
+        "params": { "$ref": "#/$defs/ComputerStopParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "ComputerStopParams": {
+      "description": "Parameters of computer.stop. resume lowers the stop instead.",
+      "type": "object",
+      "properties": {
+        "resume": { "type": "boolean" },
+        "scope": {
+          "$ref": "../../plugin/v0/permission.schema.json#/$defs/ComputerControlPermission"
+        }
+      },
+      "required": ["scope"],
+      "additionalProperties": false
+    },
+    "ComputerStopResult": {
+      "description": "Result of computer.stop: whether the stop is raised now.",
+      "type": "object",
+      "properties": { "stopped": { "type": "boolean" } },
+      "required": ["stopped"],
+      "additionalProperties": false
+    },
+    "ComputerActivityState": {
+      "description": "acting: an act is about to reach the computer. done and failed: it ended. stopped and resumed: the stop was raised or lowered.",
+      "type": "string",
+      "enum": ["acting", "done", "failed", "stopped", "resumed"]
+    },
+    "ComputerActivityData": {
+      "description": "Payload of computer.activity. caller made the call; agent is whose act it is (eris, an agent id), when it is an agent's. action says it in words, app is the app it goes to, runId the run it was recorded on.",
+      "type": "object",
+      "properties": {
+        "state": { "$ref": "#/$defs/ComputerActivityState" },
+        "caller": { "$ref": "bridge.schema.json#/$defs/CallerId" },
+        "agent": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,121}$" },
+        "action": { "type": "string" },
+        "app": { "type": "string" },
+        "runId": { "type": "string", "minLength": 1, "maxLength": 128 }
+      },
+      "required": ["state", "caller"],
+      "additionalProperties": false
+    },
+    "ComputerActivityEvent": {
+      "description": "What is being done to the computer, as it happens, so the desk shows a banner with Stop while an agent operates it. Sent to perm:manage holders and callers holding computer:see without apps.",
+      "type": "object",
+      "properties": {
+        "event": { "const": "computer.activity" },
+        "data": { "$ref": "#/$defs/ComputerActivityData" }
+      },
+      "required": ["event", "data"],
+      "additionalProperties": false
+    }
+  }
+}

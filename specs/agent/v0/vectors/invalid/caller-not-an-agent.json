@@ -1,0 +1,5 @@
+{
+  "target": "AgentRecord",
+  "description": "caller names an agent:<id> caller, never a plugin",
+  "instance": { "id": "x", "name": "X", "source": "caller", "caller": "endue.git", "state": "idle" }
+}

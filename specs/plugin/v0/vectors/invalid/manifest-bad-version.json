@@ -1,0 +1,10 @@
+{
+  "target": "PluginManifest",
+  "description": "versions are full semver",
+  "instance": {
+    "id": "example.hello-ui",
+    "version": "1.0",
+    "kind": "ui",
+    "entry": "ui/index.html"
+  }
+}

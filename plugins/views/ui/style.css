@@ -1,0 +1,215 @@
+/* desk.views: a view over the whole desk. Colours come from the desk's theme; the elements style
+   themselves from the same tokens. */
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: var(--desk-background);
+  color: var(--desk-text);
+  font: var(--desk-text-sm) / 20px var(--desk-font-sans);
+}
+
+#root {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  height: 100%;
+  padding: 20px 24px;
+  overflow: auto;
+}
+
+#root[data-density="compact"] {
+  gap: 10px;
+  padding: 10px 12px;
+}
+
+.bar h1 {
+  margin: 0;
+  font-size: var(--desk-text-xl);
+  line-height: 28px;
+}
+
+.description,
+.status,
+.empty,
+.notice,
+.detail,
+.line .label {
+  color: var(--desk-text-muted);
+}
+
+.description {
+  margin: 2px 0 0;
+}
+
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.container.split[data-direction="horizontal"],
+.container.stack[data-direction="horizontal"] {
+  flex-direction: row;
+}
+
+.container.grid {
+  display: grid;
+  grid-template-columns: repeat(var(--columns, 2), minmax(0, 1fr));
+}
+
+/* Compact: a split stacks its panes, a grid takes one column. */
+#root[data-density="compact"] .container.split,
+#root[data-density="compact"] .container.stack {
+  flex-direction: column;
+}
+
+#root[data-density="compact"] .container.grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.pane {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.pane[hidden] {
+  display: none;
+}
+
+[role="tablist"] {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--desk-border);
+}
+
+[role="tab"] {
+  padding: 6px 12px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--desk-text-muted);
+  font: inherit;
+  cursor: pointer;
+}
+
+[role="tab"][aria-selected="true"] {
+  border-bottom-color: var(--desk-primary);
+  color: var(--desk-text);
+}
+
+[role="tab"]:focus-visible {
+  outline: 2px solid var(--desk-ring);
+  outline-offset: 2px;
+}
+
+.component {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.component-title,
+.container-title {
+  margin: 0;
+  font-size: calc(var(--desk-text-sm) - 1px);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--desk-text-muted);
+  text-transform: uppercase;
+}
+
+.status,
+.empty,
+.notice {
+  margin: 0;
+}
+
+.component[data-state="error"] .status {
+  color: var(--desk-text);
+}
+
+.component desk-button {
+  align-self: flex-start;
+}
+
+desk-list .title {
+  display: block;
+}
+
+desk-list .detail {
+  display: block;
+  font-size: var(--desk-text-xs);
+}
+
+.line {
+  margin: 0;
+}
+
+/* A proposed view (desk.views.preview) floats in a card over a scrim: the desk shows through. */
+body.previewing {
+  background: transparent;
+}
+
+body.previewing::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: var(--desk-scrim);
+}
+
+body.previewing #root {
+  position: fixed;
+  top: 6vh;
+  left: 50%;
+  width: min(960px, calc(100vw - 48px));
+  height: auto;
+  max-height: 88vh;
+  transform: translateX(-50%);
+  background: var(--desk-card);
+  border: var(--desk-border-width) solid var(--desk-primary-border);
+  border-radius: var(--desk-radius-lg);
+  box-shadow: var(--desk-shadow-lg);
+}
+
+.preview-bar,
+.notice-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--desk-space-2) var(--desk-space-3);
+  padding: var(--desk-space-3);
+  border-radius: var(--desk-radius-md);
+  background: var(--desk-primary-soft);
+}
+
+.preview-bar .badge {
+  padding: 0 var(--desk-space-2);
+  border-radius: var(--desk-radius-full);
+  background: var(--desk-primary);
+  color: var(--desk-primary-foreground);
+  font-size: var(--desk-text-xs);
+  font-weight: 600;
+}
+
+.preview-bar .note,
+.notice-bar p {
+  flex: 1 1 240px;
+  margin: 0;
+}
+
+.preview-bar .correction {
+  flex: 1 1 100%;
+}
+
+.preview-bar .actions {
+  display: flex;
+  gap: var(--desk-space-2);
+}
+
+.notice-bar {
+  background: var(--desk-success-soft);
+}

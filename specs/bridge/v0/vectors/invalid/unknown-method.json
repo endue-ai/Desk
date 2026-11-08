@@ -1,0 +1,15 @@
+{
+  "target": "BridgeRequest",
+  "description": "fs.delete is not a bridge method",
+  "instance": {
+    "id": 1,
+    "method": "fs.delete",
+    "params": {
+      "path": "~/Documents/notes.md",
+      "scope": {
+        "permission": "fs:read",
+        "paths": ["~/Documents/**"]
+      }
+    }
+  }
+}

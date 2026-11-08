@@ -1,0 +1,37 @@
+{
+  "target": "PluginContributes",
+  "description": "keys as sequences of chords: a chorded prefix, Emacs's C-x C-f, plain keys after a prefix, a three-chord sequence, an unbound sequence and single chords as before",
+  "instance": {
+    "keys": [
+      {
+        "key": "Mod+K Mod+S",
+        "command": "example.notes.save-all"
+      },
+      {
+        "key": "Ctrl+X Ctrl+F",
+        "mac": "Meta+X Meta+F",
+        "command": "example.notes.find-file"
+      },
+      {
+        "key": "Ctrl+C p f",
+        "command": "example.notes.project-file"
+      },
+      {
+        "key": "Mod+K Mod+T Shift+T",
+        "command": "example.notes.theme"
+      },
+      {
+        "key": "Ctrl+X Ctrl+C",
+        "command": ""
+      },
+      {
+        "key": "Mod++",
+        "command": "example.notes.zoom-in"
+      },
+      {
+        "key": "Ctrl+C +",
+        "command": "example.notes.zoom-in"
+      }
+    ]
+  }
+}

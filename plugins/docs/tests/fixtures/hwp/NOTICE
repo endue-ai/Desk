@@ -1,0 +1,12 @@
+Real HWP 5.0 samples for the endue.docs tests
+
+table.hwp, picture.hwp, notes.hwp, header.hwp and numbering.hwp come from the sample files of
+hwplib (https://github.com/neolord0/hwplib, commit 6746c27f17ebf5277493206284aa32044a1839c4,
+folder sample_hwp/basic: 표.hwp, 그림.hwp, 각주미주.hwp, 머리글꼬리글.hwp, 문단번호 1-10 수준.hwp),
+written by Hangul and published under the Apache License, Version 2.0
+(https://www.apache.org/licenses/LICENSE-2.0; the same text as this repository's LICENSE).
+
+Changes: make.mjs in this folder re-packs each compound file keeping only the FileHeader, DocInfo,
+BodyText and BinData streams (the summary information, preview, script and option streams are left
+out) and replaces every BinData picture with the repository's own 2-by-2 test PNG. The records
+Hangul wrote are otherwise unchanged. No code from hwplib is used.

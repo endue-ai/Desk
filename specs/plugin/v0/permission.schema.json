@@ -1,0 +1,460 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://endue.ai/specs/plugin/v0/permission.schema.json",
+  "title": "Desk permission vocabulary v0",
+  "description": "Every primitive a plugin or agent can reach, and the scope each one is limited to. Everything not granted is denied.",
+  "$defs": {
+    "Permission": {
+      "description": "One permission with its scope. Plugin manifests declare these; bridge calls carry the one that covers them.",
+      "oneOf": [
+        { "$ref": "#/$defs/SearchReadPermission" },
+        { "$ref": "#/$defs/SearchSystemPermission" },
+        { "$ref": "#/$defs/FsReadPermission" },
+        { "$ref": "#/$defs/FsWritePermission" },
+        { "$ref": "#/$defs/ProcSpawnPermission" },
+        { "$ref": "#/$defs/NetFetchPermission" },
+        { "$ref": "#/$defs/AudioCapturePermission" },
+        { "$ref": "#/$defs/UiSurfacePermission" },
+        { "$ref": "#/$defs/UiNotifyPermission" },
+        { "$ref": "#/$defs/PluginManagePermission" },
+        { "$ref": "#/$defs/BrainConversePermission" },
+        { "$ref": "#/$defs/BrainAskPermission" },
+        { "$ref": "#/$defs/CmdInvokePermission" },
+        { "$ref": "#/$defs/CmdAdvisePermission" },
+        { "$ref": "#/$defs/SettingsReadPermission" },
+        { "$ref": "#/$defs/LogReadPermission" },
+        { "$ref": "#/$defs/EventsSubscribePermission" },
+        { "$ref": "#/$defs/PermManagePermission" },
+        { "$ref": "#/$defs/DataReadPermission" },
+        { "$ref": "#/$defs/ConnectorManagePermission" },
+        { "$ref": "#/$defs/ViewManagePermission" },
+        { "$ref": "#/$defs/ShellOpenPermission" },
+        { "$ref": "#/$defs/UpdateManagePermission" },
+        { "$ref": "#/$defs/ThemeManagePermission" },
+        { "$ref": "#/$defs/AccountManagePermission" },
+        { "$ref": "#/$defs/AgentsManagePermission" },
+        { "$ref": "#/$defs/MemoryReadPermission" },
+        { "$ref": "#/$defs/MemoryWritePermission" },
+        { "$ref": "#/$defs/StudioManagePermission" },
+        { "$ref": "#/$defs/ComputerSeePermission" },
+        { "$ref": "#/$defs/ComputerControlPermission" }
+      ]
+    },
+    "SearchReadPermission": {
+      "description": "Search explicitly published plugin documents and installed plugin launchers.",
+      "type": "object",
+      "properties": { "permission": { "const": "search:read" } },
+      "required": ["permission"],
+      "additionalProperties": false
+    },
+    "SearchSystemPermission": {
+      "description": "Query the OS file and application index and open a recent result with its default application.",
+      "type": "object",
+      "properties": { "permission": { "const": "search:system" } },
+      "required": ["permission"],
+      "additionalProperties": false
+    },
+    "FsReadPermission": {
+      "description": "Read files, list folders and watch for changes under the given paths.",
+      "type": "object",
+      "properties": {
+        "permission": { "const": "fs:read" },
+        "paths": {
+          "description": "Path patterns the permission covers.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/PathPattern" },
+          "minItems": 1
+        }
+      },
+      "required": ["permission", "paths"],
+      "additionalProperties": false
+    },
+    "FsWritePermission": {
+      "description": "Create, overwrite and delete files under the given paths.",
+      "type": "object",
+      "properties": {
+        "permission": { "const": "fs:write" },
+        "paths": {
+          "description": "Path patterns the permission covers.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/PathPattern" },
+          "minItems": 1
+        }
+      },
+      "required": ["permission", "paths"],
+      "additionalProperties": false
+    },
+    "ProcSpawnPermission": {
+      "description": "Start, write to and stop the listed programs, optionally in a PTY.",
+      "type": "object",
+      "properties": {
+        "permission": { "const": "proc:spawn" },
+        "commands": {
+          "description": "Program names or absolute paths, without arguments.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/Command" },
+          "minItems": 1
+        },
+        "pty": {
+          "description": "Whether the programs may run in a pseudo-terminal.",
+          "type": "boolean"
+        }
+      },
+      "required": ["permission", "commands"],
+      "additionalProperties": false
+    },
+    "NetFetchPermission": {
+      "description": "Make HTTP(S) requests to the listed hosts.",
+      "type": "object",
+      "properties": {
+        "permission": { "const": "net:fetch" },
+        "hosts": {
+          "description": "Host patterns the permission covers.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/HostPattern" },
+          "minItems": 1
+        }
+      },
+      "required": ["permission", "hosts"],
+      "additionalProperties": false
+    },
+    "AudioCapturePermission": {
+      "description": "Capture microphone audio, and optionally listen for the wake word.",
+      "type": "object",
+      "properties": {
+        "permission": { "const": "audio:capture" },
+        "wakeWord": {
+          "description": "Whether wake-word events may be delivered.",
+          "type": "boolean"
+        }
+      },
+      "required": ["permission"],
+      "additionalProperties": false
+    },
+    "UiSurfacePermission": {
+      "description": "Open and close the surfaces the plugin manifest declares.",
+      "type": "object",
+      "properties": {
+        "permission": { "const": "ui:surface" }
+      },
+      "required": ["permission"],
+      "additionalProperties": false
+    },
+    "UiNotifyPermission": {
+      "description": "Show notifications.",
+      "type": "object",
+      "properties": {
+        "permission": { "const": "ui:notify" }
+      },
+      "required": ["permission"],
+      "additionalProperties": false
+    },
+    "PluginManagePermission": {
+      "description": "List installed plugins, turn them on and off, and receive plugin.changed events.",
+      "type": "object",
+      "properties": {
+        "permission": { "const": "plugin:manage" }
+      },
+      "required": ["permission"],
+      "additionalProperties": false
+    },
+    "BrainConversePermission": {
+      "description": "Talk to the brain in the desk's session with brain.say, and receive brain.turn events.",
+      "type": "object",
+      "properties": {
+        "permission": { "const": "brain:converse" }
+      },
+      "required": ["permission"],
+      "additionalProperties": false
+    },
+    "BrainAskPermission": {
+      "description": "Ask the brain one question with brain.ask and receive the answer as structured values through a tool, as brain.turn events for the caller only. Each ask runs in a session of its own: it neither reads nor writes the desk's conversation, which stays with brain:converse.",
+      "type": "object",
+      "properties": {
+        "permission": { "const": "brain:ask" }
+      },
+      "required": ["permission"],
+      "additionalProperties": false
+    },
+    "CmdInvokePermission": {
+      "description": "Invoke and list the commands whose ids the patterns cover, whoever provides them.",
+      "type": "object",
+      "properties": {
+        "permission": { "const": "cmd:invoke" },
+        "ids": {
+          "description": "Command id patterns the permission covers.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/CommandPattern" },
+          "minItems": 1
+        }
+      },
+      "required": ["permission", "ids"],
+      "additionalProperties": false
+    },
+    "CmdAdvisePermission": {
+      "description": "Hook into or override commands other callers provide. Reserved for command hooks: no v0 method uses it yet.",
+      "type": "object",
+      "properties": {
+        "permission": { "const": "cmd:advise" }
+      },
+      "required": ["permission"],
+      "additionalProperties": false
+    },
+    "SettingsReadPermission": {
+      "description": "Read other callers' settings that the patterns cover, and receive their settings.changed events.",
+      "type": "object",
+      "properties": {
+        "permission": { "const": "settings:read" },
+        "keys": {
+          "description": "Setting patterns the permission covers.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/SettingPattern" },
+          "minItems": 1
+        }
+      },
+      "required": ["permission", "keys"],
+      "additionalProperties": false
+    },
+    "LogReadPermission": {
+      "description": "Read every log channel with log.tail, and receive log.entry events.",
+      "type": "object",
+      "properties": {
+        "permission": { "const": "log:read" }
+      },
+      "required": ["permission"],
+      "additionalProperties": false
+    },
+    "EventsSubscribePermission": {
+      "description": "Subscribe with events.subscribe to the named core events about every caller.",
+      "type": "object",
+      "properties": {
+        "permission": { "const": "events:subscribe" },
+        "names": {
+          "description": "Event names the permission covers.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/EventName" },
+          "minItems": 1
+        }
+      },
+      "required": ["permission", "names"],
+      "additionalProperties": false
+    },
+    "PermManagePermission": {
+      "description": "See and revoke every caller's grants, and act as the prompter: receive perm.prompt events and answer them with perm.answer.",
+      "type": "object",
+      "properties": {
+        "permission": { "const": "perm:manage" }
+      },
+      "required": ["permission"],
+      "additionalProperties": false
+    },
+    "DataReadPermission": {
+      "description": "Read the items of the desk's index (data.*) that the kinds and sources cover. Absent kinds or sources mean all of them. There is no data:write: changes go through the connectors' commands.",
+      "type": "object",
+      "properties": {
+        "permission": { "const": "data:read" },
+        "kinds": {
+          "description": "Item kinds the permission covers.",
+          "type": "array",
+          "items": { "$ref": "../../item/v0/item.schema.json#/$defs/ItemKind" },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "sources": {
+          "description": "Connector id patterns the permission covers.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/ConnectorPattern" },
+          "minItems": 1
+        }
+      },
+      "required": ["permission"],
+      "additionalProperties": false
+    },
+    "ConnectorManagePermission": {
+      "description": "List the connector instances with their status, connect and disconnect them, pause them and sync them (connector.*).",
+      "type": "object",
+      "properties": {
+        "permission": { "const": "connector:manage" }
+      },
+      "required": ["permission"],
+      "additionalProperties": false
+    },
+    "ViewManagePermission": {
+      "description": "List, open, save and remove the person's views (view.*).",
+      "type": "object",
+      "properties": {
+        "permission": { "const": "view:manage" }
+      },
+      "required": ["permission"],
+      "additionalProperties": false
+    },
+    "ShellOpenPermission": {
+      "description": "Hand links to the system with shell.open: open URLs whose scheme is in schemes in their default app, and show files under paths in the file manager. Only http, https and mailto are ever opened, and a path is only shown, never opened or run.",
+      "type": "object",
+      "properties": {
+        "permission": { "const": "shell:open" },
+        "schemes": {
+          "description": "URL schemes the permission opens.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/ShellScheme" },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "paths": {
+          "description": "Path patterns whose files and folders the permission shows in the file manager.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/PathPattern" },
+          "minItems": 1
+        }
+      },
+      "required": ["permission"],
+      "additionalProperties": false,
+      "anyOf": [
+        { "properties": { "schemes": true }, "required": ["schemes"] },
+        { "properties": { "paths": true }, "required": ["paths"] }
+      ]
+    },
+    "UpdateManagePermission": {
+      "description": "See and drive the desk's own updates with update.*: the status, a check, a download, and applying a staged build, which restarts the desk. Receive update.changed. The desk grants it to the runtime and the CLI only; applying stays with the person.",
+      "type": "object",
+      "properties": { "permission": { "const": "update:manage" } },
+      "required": ["permission"],
+      "additionalProperties": false
+    },
+    "ThemeManagePermission": {
+      "description": "Keep the person's own themes with theme.*: save a theme into the desk's user themes folder, import a .desk-theme bundle, export any installed theme as one, and remove a user theme. The desk grants it to the runtime and the CLI only.",
+      "type": "object",
+      "properties": { "permission": { "const": "theme:manage" } },
+      "required": ["permission"],
+      "additionalProperties": false
+    },
+    "AccountManagePermission": {
+      "description": "Sign the desk in to endue ID and out again with account.*, and see whether it is signed in. Receive account.changed. The token itself never crosses the bridge. The desk grants it to the runtime and to the built-in first run, whose manifest declares it (ADR 0089, ADR 0111).",
+      "type": "object",
+      "properties": { "permission": { "const": "account:manage" } },
+      "required": ["permission"],
+      "additionalProperties": false
+    },
+    "AgentsManagePermission": {
+      "description": "Find the agent programs on this computer (Claude Code, Codex), read their sessions from the files they keep, import sessions into the desk, and ask them for work with agents.*. Receive agents.run and agents.changed. The desk grants it to the runtime only (ADR 0110).",
+      "type": "object",
+      "properties": { "permission": { "const": "agents:manage" } },
+      "required": ["permission"],
+      "additionalProperties": false
+    },
+    "MemoryReadPermission": {
+      "description": "Read Eris's memory with memory.list, memory.get and memory.search, and receive memory.changed (ADR 0095). The desk grants it to the runtime; Eris and the memory inspector are asked like any caller.",
+      "type": "object",
+      "properties": { "permission": { "const": "memory:read" } },
+      "required": ["permission"],
+      "additionalProperties": false
+    },
+    "MemoryWritePermission": {
+      "description": "Keep and edit facts in Eris's memory with memory.remember, and forget entries with memory.forget (ADR 0095). The caller is recorded as the writer.",
+      "type": "object",
+      "properties": { "permission": { "const": "memory:write" } },
+      "required": ["permission"],
+      "additionalProperties": false
+    },
+    "StudioManagePermission": {
+      "description": "Create and manage the person's endue AI agents with studio.*, through endue AI's platform API under the desk's endue ID: list, read, create, change, turn off and on and delete them, read what Studio shows of one and change its prompt, find catalog agents and start from one, and list the conversations for the Home board. The token itself never crosses the bridge. A built-in plugin that declares it holds it; any other caller asks the person (ADR 0122).",
+      "type": "object",
+      "properties": { "permission": { "const": "studio:manage" } },
+      "required": ["permission"],
+      "additionalProperties": false
+    },
+    "ComputerSeePermission": {
+      "description": "See the screen and what is on it with computer.* (ADR 0123): screenshots, the displays, windows and running apps, the accessibility tree of any app, and the OS permissions computer use needs. apps limits it to the apps with those bundle ids: their windows, trees and window screenshots; a whole display or a region needs it without apps. The OS must grant Screen Recording and Accessibility as well.",
+      "type": "object",
+      "properties": {
+        "permission": { "const": "computer:see" },
+        "apps": {
+          "description": "Bundle ids of the apps the permission covers; absent, every app.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/AppBundleId" },
+          "minItems": 1,
+          "uniqueItems": true
+        }
+      },
+      "required": ["permission"],
+      "additionalProperties": false
+    },
+    "ComputerControlPermission": {
+      "description": "Operate the computer with computer.* (ADR 0123): mouse and keyboard input, accessibility actions, launching, activating and quitting apps, and the emergency stop. apps limits it to input that goes to those apps (the app under the pointer for the mouse, the frontmost one for the keyboard) and to acting on them. Every act of an agent waits for the person's approval (ADR 0078), and is a run on the runs board (ADR 0100).",
+      "type": "object",
+      "properties": {
+        "permission": { "const": "computer:control" },
+        "apps": {
+          "description": "Bundle ids of the apps the permission covers; absent, every app.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/AppBundleId" },
+          "minItems": 1,
+          "uniqueItems": true
+        }
+      },
+      "required": ["permission"],
+      "additionalProperties": false
+    },
+    "AppBundleId": {
+      "description": "An application's bundle identifier, such as com.apple.TextEdit: letters, digits, dots and hyphens.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9.-]*$"
+    },
+    "ShellScheme": {
+      "description": "A URL scheme shell.open hands to the system: the browser for http and https, the mail app for mailto.",
+      "type": "string",
+      "enum": ["http", "https", "mailto"]
+    },
+    "PathPattern": {
+      "description": "An absolute path, or one rooted at ~ or at ${plugin}, ${workspace} or ${home}, with forward slashes. * matches within a segment and ** across segments.",
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(/|~(/|$)|[A-Za-z]:/|\\$\\{(plugin|workspace|home)\\}(/|$))[^\\\\]*$"
+    },
+    "HostPattern": {
+      "description": "A host name, optionally with a port, or *. followed by a domain to cover its subdomains.",
+      "type": "string",
+      "pattern": "^(\\*\\.)?[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*(:[0-9]{1,5})?$"
+    },
+    "Command": {
+      "description": "A program name looked up on PATH, or an absolute path. No arguments and no whitespace.",
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[^\\s]+$"
+    },
+    "CommandPattern": {
+      "description": "A command id, or a pattern in which * matches any run of characters, dots included: * covers every command, eris.* every command under eris.",
+      "type": "string",
+      "maxLength": 128,
+      "pattern": "^[a-z0-9*-]+(\\.[a-z0-9*-]+)*$"
+    },
+    "ConnectorPattern": {
+      "description": "A connector's plugin id, or a pattern in which * matches any run of characters, dots included, like command ids: * covers every connector, endue.* every connector under endue.",
+      "type": "string",
+      "maxLength": 128,
+      "pattern": "^[a-z0-9*-]+(\\.[a-z0-9*-]+)*$"
+    },
+    "SettingPattern": {
+      "description": "owner/key: a caller id and a setting key, where * matches any run of characters within its part. endue.eris/voice is one setting; endue.eris/* covers every Eris setting.",
+      "type": "string",
+      "maxLength": 256,
+      "pattern": "^[a-z0-9*][a-z0-9.*-]*/[a-z0-9*][a-z0-9._*-]*$"
+    },
+    "EventName": {
+      "description": "A core event that events.subscribe can ask for.",
+      "type": "string",
+      "enum": [
+        "plugin.changed",
+        "perm.changed",
+        "cmd.changed",
+        "cmd.invoked",
+        "cmd.undone",
+        "settings.changed",
+        "log.entry",
+        "update.changed"
+      ]
+    }
+  }
+}

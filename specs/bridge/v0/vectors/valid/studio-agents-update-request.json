@@ -1,0 +1,17 @@
+{
+  "target": "BridgeRequest",
+  "description": "rename an agent, change its role and make it unlisted",
+  "instance": {
+    "id": 1,
+    "method": "studio.agents.update",
+    "params": {
+      "agentId": "ag_01JC0Q4MR00000000000000001",
+      "name": "Miso 2",
+      "role": "Answers customer mail",
+      "visibility": "unlisted",
+      "scope": {
+        "permission": "studio:manage"
+      }
+    }
+  }
+}

@@ -1,0 +1,43 @@
+[package]
+name = "desk-core"
+description = "Kernel of endue Desk: permission engine, event bus, storage, plugin registry and session lease client."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+base64.workspace = true
+desk-brain.workspace = true
+desk-bridge.workspace = true
+# computer.*: the app injects the OS driver; tests use its fake (ADR 0120, ADR 0123).
+desk-computer = { path = "../desk-computer" }
+desk-index.workspace = true
+desk-memory.workspace = true
+# studio.*: endue AI's platform API (ADR 0122).
+desk-platform = { path = "../desk-platform" }
+desk-plugin-host.workspace = true
+desk-sys = { workspace = true, features = ["fs", "calendar", "proc", "net", "shell"] }
+desk-update.workspace = true
+# fs.url tokens (ADR 0041); jsonschema already brings it in.
+getrandom = "0.4"
+jsonschema.workspace = true
+# Codex compresses older sessions with zstd (ADR 0110); pure Rust, decoder and a small encoder.
+ruzstd = "0.9"
+serde.workspace = true
+serde_json.workspace = true
+# The history's content addresses (ADR 0076); already in the tree through the Wasm host.
+sha2 = "0.11"
+yaml_serde.workspace = true
+
+[dev-dependencies]
+desk-brain-endue.workspace = true
+desk-brain-local.workspace = true
+desk-platform = { path = "../desk-platform", features = ["fake"] }
+# Test connectors in component WAT (tests/connectors_wasm_imports), as desk-plugin-host's tests.
+wat = "1"
+
+[lints]
+workspace = true

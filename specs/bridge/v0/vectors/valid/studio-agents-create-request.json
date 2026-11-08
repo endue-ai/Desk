@@ -1,0 +1,17 @@
+{
+  "target": "BridgeRequest",
+  "description": "build an agent from scratch with a name, a role, a language and a chat model",
+  "instance": {
+    "id": 1,
+    "method": "studio.agents.create",
+    "params": {
+      "name": "Miso",
+      "role": "Keeps my calendar and sorts my mail",
+      "languages": ["ko"],
+      "model": "anthropic/claude-sonnet-4.5",
+      "scope": {
+        "permission": "studio:manage"
+      }
+    }
+  }
+}

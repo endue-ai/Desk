@@ -1,0 +1,14 @@
+{
+  "target": "BridgeRequest",
+  "description": "running is not an A2A task status",
+  "instance": {
+    "id": 24,
+    "method": "brain.tasks.list",
+    "params": {
+      "status": "running",
+      "scope": {
+        "permission": "brain:converse"
+      }
+    }
+  }
+}

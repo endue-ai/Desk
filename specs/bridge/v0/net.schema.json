@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://endue.ai/specs/bridge/v0/net.schema.json",
+  "title": "Desk bridge v0: net",
+  "description": "Network: HTTP(S) fetch. Scoped by net:fetch hosts.",
+  "$defs": {
+    "NetFetchRequest": {
+      "description": "Make one HTTP(S) request and return the whole response.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "net.fetch" },
+        "params": { "$ref": "#/$defs/NetFetchParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "NetFetchParams": {
+      "description": "Parameters of net.fetch.",
+      "type": "object",
+      "properties": {
+        "url": {
+          "description": "An http or https URL whose host the scope covers.",
+          "type": "string",
+          "pattern": "^https?://"
+        },
+        "method": { "$ref": "#/$defs/HttpMethod" },
+        "headers": { "type": "object", "additionalProperties": { "type": "string" } },
+        "body": { "type": "string" },
+        "bodyEncoding": { "$ref": "bridge.schema.json#/$defs/Encoding" },
+        "timeoutMs": { "type": "integer", "minimum": 1, "maximum": 600000 },
+        "scope": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/NetFetchPermission" }
+      },
+      "required": ["url", "scope"],
+      "additionalProperties": false
+    },
+    "HttpMethod": {
+      "description": "HTTP method; GET by default.",
+      "type": "string",
+      "enum": ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
+    },
+    "NetFetchResult": {
+      "description": "Result of net.fetch. Non-2xx statuses are results, not errors.",
+      "type": "object",
+      "properties": {
+        "status": { "type": "integer", "minimum": 100, "maximum": 599 },
+        "headers": { "type": "object", "additionalProperties": { "type": "string" } },
+        "body": { "type": "string" },
+        "bodyEncoding": { "$ref": "bridge.schema.json#/$defs/Encoding" }
+      },
+      "required": ["status", "headers", "body", "bodyEncoding"],
+      "additionalProperties": false
+    }
+  }
+}

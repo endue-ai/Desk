@@ -1,0 +1,12 @@
+{
+  "target": "AccountStatus",
+  "description": "a sign-in under way always names the page the desk opened",
+  "instance": {
+    "state": "signing-in",
+    "signIn": {
+      "userCode": "WDJB-MJHT",
+      "verificationUri": "https://auth.endue.ai/realms/endue/device",
+      "expiresAt": "2026-11-05T09:15:00Z"
+    }
+  }
+}

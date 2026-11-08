@@ -1,0 +1,203 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://endue.ai/specs/bridge/v0/proc.schema.json",
+  "title": "Desk bridge v0: proc",
+  "description": "Processes: spawn (optionally in a PTY), write, resize, kill. Scoped by proc:spawn commands.",
+  "$defs": {
+    "ProcSpawnRequest": {
+      "description": "Start a program. Output arrives as proc.output events, the end as proc.exit.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "proc.spawn" },
+        "params": { "$ref": "#/$defs/ProcSpawnParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "ProcSpawnParams": {
+      "description": "Parameters of proc.spawn.",
+      "type": "object",
+      "properties": {
+        "command": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/Command" },
+        "args": {
+          "description": "Arguments, passed without a shell.",
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "cwd": { "$ref": "bridge.schema.json#/$defs/Path" },
+        "env": {
+          "description": "Extra environment variables.",
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        },
+        "pty": { "$ref": "#/$defs/PtySize" },
+        "scope": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/ProcSpawnPermission" }
+      },
+      "required": ["command", "scope"],
+      "additionalProperties": false
+    },
+    "PtySize": {
+      "description": "Terminal size. Present on spawn means: run in a PTY.",
+      "type": "object",
+      "properties": {
+        "cols": { "type": "integer", "minimum": 1, "maximum": 1000 },
+        "rows": { "type": "integer", "minimum": 1, "maximum": 1000 }
+      },
+      "required": ["cols", "rows"],
+      "additionalProperties": false
+    },
+    "ProcSpawnResult": {
+      "description": "Result of proc.spawn.",
+      "type": "object",
+      "properties": {
+        "procId": {
+          "description": "Names the process in later calls and events.",
+          "type": "string",
+          "minLength": 1
+        },
+        "pid": { "description": "The OS process id, when known.", "type": "integer", "minimum": 0 }
+      },
+      "required": ["procId"],
+      "additionalProperties": false
+    },
+    "ProcWriteRequest": {
+      "description": "Write to a process's stdin or PTY.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "proc.write" },
+        "params": { "$ref": "#/$defs/ProcWriteParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "ProcWriteParams": {
+      "description": "Parameters of proc.write.",
+      "type": "object",
+      "properties": {
+        "procId": { "type": "string", "minLength": 1 },
+        "data": { "type": "string" },
+        "encoding": { "$ref": "bridge.schema.json#/$defs/Encoding" },
+        "scope": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/ProcSpawnPermission" }
+      },
+      "required": ["procId", "data", "scope"],
+      "additionalProperties": false
+    },
+    "ProcWriteResult": {
+      "description": "Result of proc.write.",
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "ProcResizeRequest": {
+      "description": "Resize the PTY of a process started with pty.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "proc.resize" },
+        "params": { "$ref": "#/$defs/ProcResizeParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "ProcResizeParams": {
+      "description": "Parameters of proc.resize.",
+      "type": "object",
+      "properties": {
+        "procId": { "type": "string", "minLength": 1 },
+        "size": { "$ref": "#/$defs/PtySize" },
+        "scope": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/ProcSpawnPermission" }
+      },
+      "required": ["procId", "size", "scope"],
+      "additionalProperties": false
+    },
+    "ProcResizeResult": {
+      "description": "Result of proc.resize.",
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "ProcKillRequest": {
+      "description": "Send a signal to a process (term by default).",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "proc.kill" },
+        "params": { "$ref": "#/$defs/ProcKillParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "ProcKillParams": {
+      "description": "Parameters of proc.kill.",
+      "type": "object",
+      "properties": {
+        "procId": { "type": "string", "minLength": 1 },
+        "signal": { "$ref": "#/$defs/Signal" },
+        "scope": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/ProcSpawnPermission" }
+      },
+      "required": ["procId", "scope"],
+      "additionalProperties": false
+    },
+    "ProcKillResult": {
+      "description": "Result of proc.kill.",
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "Signal": {
+      "description": "Portable signal names; Windows maps them to process termination.",
+      "type": "string",
+      "enum": ["term", "kill", "int", "hup"]
+    },
+    "ProcOutputEvent": {
+      "description": "A process wrote output.",
+      "type": "object",
+      "properties": {
+        "event": { "const": "proc.output" },
+        "data": { "$ref": "#/$defs/ProcOutputData" }
+      },
+      "required": ["event", "data"],
+      "additionalProperties": false
+    },
+    "ProcOutputData": {
+      "description": "Payload of proc.output.",
+      "type": "object",
+      "properties": {
+        "procId": { "type": "string", "minLength": 1 },
+        "stream": { "$ref": "#/$defs/OutputStream" },
+        "data": { "type": "string" },
+        "encoding": { "$ref": "bridge.schema.json#/$defs/Encoding" }
+      },
+      "required": ["procId", "stream", "data", "encoding"],
+      "additionalProperties": false
+    },
+    "OutputStream": {
+      "description": "Where the output came from. A PTY merges stdout and stderr.",
+      "type": "string",
+      "enum": ["stdout", "stderr", "pty"]
+    },
+    "ProcExitEvent": {
+      "description": "A process ended.",
+      "type": "object",
+      "properties": {
+        "event": { "const": "proc.exit" },
+        "data": { "$ref": "#/$defs/ProcExitData" }
+      },
+      "required": ["event", "data"],
+      "additionalProperties": false
+    },
+    "ProcExitData": {
+      "description": "Payload of proc.exit: an exit code, or the signal that ended it.",
+      "type": "object",
+      "properties": {
+        "procId": { "type": "string", "minLength": 1 },
+        "code": { "type": "integer" },
+        "signal": { "$ref": "#/$defs/Signal" }
+      },
+      "required": ["procId"],
+      "additionalProperties": false
+    }
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "target": "KeysFile",
+  "description": "keys.yaml with sequences: a personal prefix, plain keys after a prefix and a sequence taken away",
+  "instance": {
+    "bindings": [
+      {
+        "key": "Ctrl+X Ctrl+F",
+        "command": "desk.files.open"
+      },
+      {
+        "key": "Ctrl+C p f",
+        "command": "desk.palette.open"
+      },
+      {
+        "key": "Mod+K Mod+S",
+        "command": ""
+      },
+      {
+        "key": "Mod+J",
+        "command": "desk.palette.open"
+      }
+    ]
+  }
+}

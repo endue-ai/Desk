@@ -1,0 +1,12 @@
+{
+  "target": "BridgeEvent",
+  "description": "a surface closed by its caller or by its caller unloading",
+  "instance": {
+    "event": "ui.surface.closed",
+    "data": {
+      "handle": "s-1",
+      "caller": "example.hello",
+      "surface": "main"
+    }
+  }
+}

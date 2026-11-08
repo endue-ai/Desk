@@ -1,0 +1,8 @@
+{
+  "target": "TurnEvent",
+  "description": "first event of a turn",
+  "instance": {
+    "type": "turn.started",
+    "turnId": "t1"
+  }
+}

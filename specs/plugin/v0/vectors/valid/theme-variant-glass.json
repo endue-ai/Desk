@@ -1,0 +1,17 @@
+{
+  "target": "ThemeVariant",
+  "description": "a translucent, blurred material over a gradient backdrop",
+  "instance": {
+    "material": {
+      "opacity": 0.7,
+      "blur": 24,
+      "noise": 0.02,
+      "border": 0,
+      "shadow": "strong"
+    },
+    "backdrop": {
+      "gradient": ["#0f2027", "#203a43", "#2c5364"],
+      "glow": "rgba(120, 200, 255, 0.25)"
+    }
+  }
+}

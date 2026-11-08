@@ -1,0 +1,14 @@
+{
+  "target": "BridgeResponse",
+  "description": "the local brain answers in place of the chosen endue AI, which cannot be reached now",
+  "instance": {
+    "id": 25,
+    "ok": true,
+    "result": {
+      "mode": "local",
+      "model": "llama3.2",
+      "brain": "endue",
+      "fallback": true
+    }
+  }
+}

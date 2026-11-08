@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE abiword PUBLIC "-//ABISOURCE//DTD AWML 1.0 Strict//EN" "http://www.abisource.com/awml.dtd">
+<abiword template="false" xmlns:ct="http://www.abisource.com/changetracking.dtd" xmlns:fo="http://www.w3.org/1999/XSL/Format" xmlns:math="http://www.w3.org/1998/Math/MathML" xid-max="65" xmlns:dc="http://purl.org/dc/elements/1.1/" fileformat="1.1" xmlns:svg="http://www.w3.org/2000/svg" xmlns:awml="http://www.abisource.com/awml.dtd" xmlns="http://www.abisource.com/awml.dtd" xmlns:xlink="http://www.w3.org/1999/xlink" version="3.0.8" xml:space="preserve" props="dom-dir:ltr; document-footnote-restart-section:0; document-endnote-type:numeric; document-endnote-place-enddoc:1; document-endnote-initial:1; lang:en-US; document-endnote-restart-section:0; document-footnote-restart-page:0; document-footnote-type:numeric; document-footnote-initial:1; document-endnote-place-endsection:0">
+<!-- ======================================================================== -->
+<!-- This file is an AbiWord document.                                        -->
+<!-- AbiWord is a free, Open Source word processor.                           -->
+<!-- More information about AbiWord is available at http://www.abisource.com/ -->
+<!-- You should not edit this file by hand.                                   -->
+<!-- ======================================================================== -->
+
+<metadata>
+<m key="abiword.generator">AbiWord</m>
+<m key="dc.format">application/x-abiword</m>
+<m key="dc.title">Field notes</m>
+</metadata>
+<rdf>
+</rdf>
+<history version="1" edit-time="0" last-saved="1793464682" uid="70c8d840-d549-11f1-8cac-af601212e8bf">
+<version id="1" started="1793464682" uid="70c969cc-d549-11f1-8cac-af601212e8bf" auto="0" top-xid="65"/>
+</history>
+<styles>
+<s type="P" name="Heading 1" basedon="Heading" followedby="Heading 1" props="font-size:18pt"/>
+<s type="P" name="Heading" basedon="Standard" followedby="Heading" props="margin-top:0.1701in; font-weight:bold; margin-bottom:0.0799in; font-family:Liberation Sans; color:#1f3864"/>
+<s type="P" name="Standard" followedby="Standard" props="margin-bottom:0.1in; margin-top:0in"/>
+<s type="P" name="Footnote" basedon="Standard" followedby="Footnote" props="font-size:9pt"/>
+<s type="P" name="Normal" props="lang:en-US; default-tab-interval:0.4925in; font-size:11pt; font-family:Liberation Serif; dom-dir:ltr"/>
+<s type="P" name="Heading 2" basedon="Heading" followedby="Heading 2" props="font-size:14pt"/>
+<s type="P" name="Caption" basedon="Standard" followedby="Caption" props="margin-top:0.0835in; font-size:12pt; margin-bottom:0.0835in; font-style:italic"/>
+<s type="P" name="Footer" basedon="Header and Footer" followedby="Footer" props="tabstops:3.4626in/C0,6.9252in/R0"/>
+<s type="P" name="Header" basedon="Header and Footer" followedby="Header" props="tabstops:3.4626in/C0,6.9252in/R0"/>
+<s type="P" name="Header and Footer" basedon="Standard" followedby="Header and Footer" props="tabstops:3.4626in/C0,6.9252in/R0"/>
+<s type="C" name="Internet link_text" followedby="Internet link_text" props="text-decoration:underline; color:#000080"/>
+<s type="P" name="Table Contents" basedon="Standard" followedby="Table Contents" props="orphans:0; widows:0"/>
+<s type="P" name="Text body" basedon="Standard" followedby="Text body" props="margin-top:0in; line-height:1.150000; margin-bottom:0.0972in"/>
+</styles>
+<pagesize pagetype="Letter" orientation="portrait" width="8.500000" height="11.000000" units="in" page-scale="1.000000"/>
+<section footer="1" header="0" xid="2" props="page-margin-right:0.7902in; page-width:8.5in; page-margin-header:0.7902in; page-margin-left:0.7902in; page-margin-footer:0.7902in; page-margin-bottom:3.785108cm; page-orientation:portrait; page-margin-top:3.785108cm; page-height:11in">
+<p style="Heading 1" xid="3">Field notes</p>
+<p style="Standard" xid="4">The survey covered <c props="font-weight:bold">three regions</c> over <c props="font-style:italic">six weeks</c>.<field footnote-id="0" text:note-citation="1" type="footnote_ref" xid="5" props="text-position:superscript"></field><foot footnote-id="0" xid="6">
+<p style="Footnote" xid="7"><field type="footnote_anchor" footnote-id="0" xid="8"></field>	Counted from the first visit.</p>
+</foot> Details are on the <a xlink:href="https://example.com/survey" xid="9">project page</a>.</p>
+<p style="Standard" xid="11">The <ann xml:id="anno0" annotation="0" name="c1" xid="12"><annotate annotation-id="0" props="annotation-author:Mina Park; annotation-date:09-20-2026">
+<p style="Normal" xid="13">Check against the raw counts.</p>
+</annotate>totals</ann> below are <c props="bgcolor:#ffff00; shading-foreground-color:#ffff00; shading-pattern:1">provisional</c>.</p>
+<p style="Heading 2" xid="15">Steps</p>
+<p level="3" listid="1012" parentid="1011" style="" xid="16" props="margin-top:0in; list-style:Numbered List; margin-bottom:0.1in; text-indent:-0.700024cm; field-font:NULL; margin-left:2.731008cm"><field type="list_label" xid="17"></field>	Plan the route</p>
+<p level="3" listid="1012" parentid="1011" style="" xid="18" props="margin-top:0in; list-style:Numbered List; margin-bottom:0.1in; text-indent:-0.700024cm; field-font:NULL; margin-left:2.731008cm"><field type="list_label" xid="19"></field>	Visit each site</p>
+<p level="4" listid="1013" parentid="1012" style="" xid="20" props="margin-top:0in; list-style:Numbered List; margin-bottom:0.1in; text-indent:-0.700024cm; field-font:NULL; margin-left:3.431032cm"><field type="list_label" xid="21"></field>	Morning count</p>
+<p level="4" listid="1013" parentid="1012" style="" xid="22" props="margin-top:0in; list-style:Numbered List; margin-bottom:0.1in; text-indent:-0.700024cm; field-font:NULL; margin-left:3.431032cm"><field type="list_label" xid="23"></field>	Evening count</p>
+<p level="3" listid="1012" parentid="1011" style="" xid="24" props="margin-top:0in; list-style:Numbered List; margin-bottom:0.1in; text-indent:-0.700024cm; field-font:NULL; margin-left:2.731008cm"><field type="list_label" xid="25"></field>	Write the report</p>
+<p level="3" listid="1012" parentid="1011" style="" xid="26" props="margin-top:0in; list-style:Numbered List; margin-bottom:0.1in; text-indent:-0.700024cm; field-font:NULL; margin-left:2.731008cm"><field type="list_label" xid="27"></field>	Bring water</p>
+<p level="3" listid="1012" parentid="1011" style="" xid="28" props="margin-top:0in; list-style:Numbered List; margin-bottom:0.1in; text-indent:-0.700024cm; field-font:NULL; margin-left:2.731008cm"><field type="list_label" xid="29"></field>	Charge the camera</p>
+<p style="Heading 2" xid="30">Results</p>
+<table xid="31" props="table-column-props:; table-row-heights://///; table-rel-column-props:21845*/21845*/21845*/">
+<cell xid="32" props="right-color:#000000; left-color:#000000; bot-style:solid; bot-thickness:0.5pt; right-attach:3; top-thickness:0.5pt; background-color:#dde4f0; right-thickness:0.5pt; top-color:#000000; bot-color:#000000; left-attach:0; top-style:solid; right-style:solid; left-style:solid; left-thickness:0.5pt; bot-attach:1; top-attach:0">
+<p style="Standard" xid="33" props="text-align:center">Counts by region</p>
+</cell>
+<cell xid="34" props="right-color:#000000; left-color:#000000; bot-style:solid; bot-thickness:0.5pt; right-attach:1; top-thickness:0.5pt; background-color:#dde4f0; right-thickness:0.5pt; top-color:#000000; bot-color:#000000; left-attach:0; top-style:solid; right-style:solid; left-style:solid; left-thickness:0.5pt; bot-attach:2; top-attach:1">
+<p style="Standard" xid="35">Region</p>
+</cell>
+<cell xid="36" props="right-color:#000000; left-color:#000000; bot-style:solid; bot-thickness:0.5pt; right-attach:2; top-thickness:0.5pt; background-color:#dde4f0; right-thickness:0.5pt; top-color:#000000; bot-color:#000000; left-attach:1; top-style:solid; right-style:solid; left-style:solid; left-thickness:0.5pt; bot-attach:2; top-attach:1">
+<p style="Standard" xid="37">Morning</p>
+</cell>
+<cell xid="38" props="right-color:#000000; left-color:#000000; bot-style:solid; bot-thickness:0.5pt; right-attach:3; top-thickness:0.5pt; background-color:#dde4f0; right-thickness:0.5pt; top-color:#000000; bot-color:#000000; left-attach:2; top-style:solid; right-style:solid; left-style:solid; left-thickness:0.5pt; bot-attach:2; top-attach:1">
+<p style="Standard" xid="39">Evening</p>
+</cell>
+<cell xid="40" props="right-color:#000000; left-color:#000000; bot-style:solid; bot-thickness:0.5pt; right-attach:1; top-thickness:0.5pt; right-thickness:0.5pt; top-color:#000000; bot-color:#000000; left-attach:0; top-style:solid; right-style:solid; left-style:solid; left-thickness:0.5pt; bot-attach:4; top-attach:2">
+<p style="Standard" xid="41">North</p>
+</cell>
+<cell xid="42" props="right-color:#000000; left-color:#000000; bot-style:solid; bot-thickness:0.5pt; right-attach:2; top-thickness:0.5pt; right-thickness:0.5pt; top-color:#000000; bot-color:#000000; left-attach:1; top-style:solid; right-style:solid; left-style:solid; left-thickness:0.5pt; bot-attach:3; top-attach:2">
+<p style="Standard" xid="43">42</p>
+</cell>
+<cell xid="44" props="right-color:#000000; left-color:#000000; bot-style:solid; bot-thickness:0.5pt; right-attach:3; top-thickness:0.5pt; right-thickness:0.5pt; top-color:#000000; bot-color:#000000; left-attach:2; top-style:solid; right-style:solid; left-style:solid; left-thickness:0.5pt; bot-attach:3; top-attach:2">
+<p style="Standard" xid="45">37</p>
+</cell>
+<cell xid="46" props="right-color:#000000; left-color:#000000; bot-style:solid; bot-thickness:0.5pt; right-attach:2; top-thickness:0.5pt; right-thickness:0.5pt; top-color:#000000; bot-color:#000000; left-attach:1; top-style:solid; right-style:solid; left-style:solid; left-thickness:0.5pt; bot-attach:4; top-attach:3">
+<p style="Standard" xid="47">40</p>
+</cell>
+<cell xid="48" props="right-color:#000000; left-color:#000000; bot-style:solid; bot-thickness:0.5pt; right-attach:3; top-thickness:0.5pt; right-thickness:0.5pt; top-color:#000000; bot-color:#000000; left-attach:2; top-style:solid; right-style:solid; left-style:solid; left-thickness:0.5pt; bot-attach:4; top-attach:3">
+<p style="Standard" xid="49">35</p>
+</cell>
+<cell xid="50" props="right-color:#000000; left-color:#000000; bot-style:solid; bot-thickness:0.5pt; right-attach:1; top-thickness:0.5pt; right-thickness:0.5pt; top-color:#000000; bot-color:#000000; left-attach:0; top-style:solid; right-style:solid; left-style:solid; left-thickness:0.5pt; bot-attach:5; top-attach:4">
+<p style="Standard" xid="51">South</p>
+</cell>
+<cell xid="52" props="right-color:#000000; left-color:#000000; bot-style:solid; bot-thickness:0.5pt; right-attach:2; top-thickness:0.5pt; right-thickness:0.5pt; top-color:#000000; bot-color:#000000; left-attach:1; top-style:solid; right-style:solid; left-style:solid; left-thickness:0.5pt; bot-attach:5; top-attach:4">
+<p style="Standard" xid="53">28</p>
+</cell>
+<cell xid="54" props="right-color:#000000; left-color:#000000; bot-style:solid; bot-thickness:0.5pt; right-attach:3; top-thickness:0.5pt; right-thickness:0.5pt; top-color:#000000; bot-color:#000000; left-attach:2; top-style:solid; right-style:solid; left-style:solid; left-thickness:0.5pt; bot-attach:5; top-attach:4">
+<p style="Standard" xid="55">31</p>
+</cell>
+</table>
+<p style="Standard" xid="56" props="text-align:center"><image dataid="0" alt="Bar chart of the counts" xid="57" props="height:1.2504in; width:2.5004in"/></p>
+<p xid="58"><pbr/></p>
+<p style="Standard" props="" xid="59">현장 기록: 북부 지역의 아침 집계가 가장 많았다.</p>
+<p style="Standard" xid="60">The last page closes the notes.</p>
+</section>
+<section id="0" type="header" xid="61">
+<p style="Standard" xid="62" props="text-align:center">Field notes · internal draft</p>
+</section>
+<section id="1" type="footer" xid="63">
+<p style="Standard" xid="64" props="text-align:center">Page <field type="page_number" xid="65"></field></p>
+</section>
+<data>
+<d name="0" mime-type="image/png" base64="yes">
+iVBORw0KGgoAAAANSUhEUgAAAPAAAAB4CAIAAABD1OhwAAABLElEQVR42u3dsQmAMBRF0Rdx
+ImdxHEvHcRZHSZEylSOYRhE5ZwEhXD4Wn6TU1gN/MTkCBA2CBkGDoBE0CBoEDYIGQSNoEDQI
+GgQNN2ZHwKB1O1/71rEvJjQIGkGDoEHQIGgEDYIGQYOgQdAIGgQNggZBg6ARNAgaBA2CBkEj
+aBA0CBriopn86HoUTGgQNIIGQYOgQdAgaAQNggZBg6BB0AgaBA2xPhpPAMaOqwmNXw4QNAga
+BA2CRtAgaBA0CBoEjaBB0CBoyJfWRy09YkKDoEHQCBoEDYIGQYOgETQIGgQNggZBI2gQNAga
+BA2CRtAgaBA0CBoEjaBB0CBoEDQIGkGDoEHQIGgEDYIGQYOgQdAIGgQNgoanlNq6U8CEBkGD
+oEHQCBoEDYIGQcOAC/7JEqtZUBRIAAAAAElFTkSuQmCC
+</d>
+</data>
+</abiword>

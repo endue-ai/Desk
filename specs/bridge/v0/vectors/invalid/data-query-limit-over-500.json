@@ -1,0 +1,17 @@
+{
+  "target": "BridgeRequest",
+  "description": "a page holds 500 items at most",
+  "instance": {
+    "id": 51,
+    "method": "data.query",
+    "params": {
+      "query": {
+        "kinds": ["event"],
+        "limit": 501
+      },
+      "scope": {
+        "permission": "data:read"
+      }
+    }
+  }
+}

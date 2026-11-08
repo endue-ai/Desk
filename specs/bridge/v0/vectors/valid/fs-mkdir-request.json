@@ -1,0 +1,16 @@
+{
+  "target": "BridgeRequest",
+  "description": "fs.mkdir creates a folder and its missing parents under an fs:write scope",
+  "instance": {
+    "id": 32,
+    "method": "fs.mkdir",
+    "params": {
+      "path": "~/Documents/Trips/2026",
+      "parents": true,
+      "scope": {
+        "permission": "fs:write",
+        "paths": ["~/Documents/**"]
+      }
+    }
+  }
+}

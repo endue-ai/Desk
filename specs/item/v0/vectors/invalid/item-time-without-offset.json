@@ -1,0 +1,29 @@
+{
+  "target": "Item",
+  "description": "times carry an offset; a local time without one is refused",
+  "instance": {
+    "id": "8F2C-1A",
+    "source": {
+      "connector": "endue.os-calendar",
+      "instance": "default"
+    },
+    "kind": "event",
+    "title": "Design review",
+    "updatedAt": "2026-10-30T08:12:00+09:00",
+    "deepLink": "x-apple-calevent://8F2C-1A",
+    "start": "2026-11-02T10:00:00",
+    "end": "2026-11-02T11:00:00+09:00",
+    "location": "Room 4",
+    "attendees": [
+      {
+        "name": "Mina",
+        "email": "mina@example.com"
+      },
+      {
+        "email": "jun@example.com"
+      }
+    ],
+    "recurrence": "FREQ=WEEKLY;BYDAY=MO",
+    "calendar": "Work"
+  }
+}

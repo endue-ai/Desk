@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>test counter</title>
+  </head>
+  <body>
+    <!-- A test-only plugin whose count lives in the DOM: a reload would reset it to 0. -->
+    <button type="button">Add</button>
+    <span data-testid="count">0</span>
+    <script>
+      const count = document.querySelector("[data-testid=count]");
+      document.querySelector("button").addEventListener("click", () => {
+        count.textContent = String(Number(count.textContent) + 1);
+      });
+    </script>
+  </body>
+</html>

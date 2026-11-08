@@ -1,0 +1,14 @@
+{
+  "target": "BridgeEvent",
+  "description": "a notification that passed its permission check",
+  "instance": {
+    "event": "ui.notified",
+    "data": {
+      "notificationId": "n-1",
+      "caller": "example.build",
+      "title": "Build finished",
+      "body": "All green.",
+      "level": "success"
+    }
+  }
+}

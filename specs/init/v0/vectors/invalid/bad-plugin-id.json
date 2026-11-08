@@ -1,0 +1,9 @@
+{
+  "target": "InitDocument",
+  "description": "plugins.disabled holds plugin ids",
+  "instance": {
+    "plugins": {
+      "disabled": ["Sidebar"]
+    }
+  }
+}

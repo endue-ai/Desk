@@ -1,0 +1,19 @@
+[package]
+name = "desk-brain-endue"
+description = "endue AI client, built only against the public specs/brain contract."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+desk-brain.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+# https brains (endue AI) over rustls with the system's roots, as desk-sys fetches.
+ureq = { version = "3.1", default-features = false, features = ["rustls", "platform-verifier"] }
+
+[lints]
+workspace = true

@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://endue.ai/specs/bridge/v0/store.schema.json",
+  "title": "Desk bridge v0: store",
+  "description": "A small key-value store per caller, kept in desk-core storage. Callers see only their own keys, so these calls need no scope.",
+  "$defs": {
+    "StoreKey": {
+      "description": "A key in the caller's own namespace.",
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$"
+    },
+    "StoreGetRequest": {
+      "description": "Read one of the caller's values.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "store.get" },
+        "params": { "$ref": "#/$defs/StoreGetParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "StoreGetParams": {
+      "description": "Parameters of store.get.",
+      "type": "object",
+      "properties": {
+        "key": { "$ref": "#/$defs/StoreKey" }
+      },
+      "required": ["key"],
+      "additionalProperties": false
+    },
+    "StoreGetResult": {
+      "description": "Result of store.get. value is absent when the key was never set.",
+      "type": "object",
+      "properties": {
+        "value": { "description": "Any JSON value." }
+      },
+      "additionalProperties": false
+    },
+    "StoreSetRequest": {
+      "description": "Write one of the caller's values (64 KiB of JSON at most).",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "store.set" },
+        "params": { "$ref": "#/$defs/StoreSetParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "StoreSetParams": {
+      "description": "Parameters of store.set.",
+      "type": "object",
+      "properties": {
+        "key": { "$ref": "#/$defs/StoreKey" },
+        "value": { "description": "Any JSON value." }
+      },
+      "required": ["key", "value"],
+      "additionalProperties": false
+    },
+    "StoreSetResult": {
+      "description": "Result of store.set.",
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    }
+  }
+}

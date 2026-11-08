@@ -1,0 +1,317 @@
+{
+  "tag": "div",
+  "class": "desk-which-key",
+  "role": "dialog",
+  "box": [
+    360,
+    580,
+    560,
+    180
+  ],
+  "style": {
+    "display": "grid",
+    "background-color": "rgb(43, 39, 49)",
+    "color": "rgb(242, 240, 245)",
+    "border-top-color": "rgb(51, 49, 54)",
+    "opacity": "1"
+  },
+  "children": [
+    {
+      "tag": "p",
+      "id": "desk-which-key-title",
+      "class": "desk-which-key-title",
+      "box": [
+        373,
+        593,
+        534,
+        22
+      ],
+      "style": {
+        "display": "flex",
+        "background-color": "rgba(0, 0, 0, 0)",
+        "color": "rgb(176, 173, 183)",
+        "border-top-color": "rgb(176, 173, 183)",
+        "opacity": "1"
+      },
+      "children": [
+        {
+          "tag": "kbd",
+          "box": [
+            373,
+            593,
+            40,
+            22
+          ],
+          "style": {
+            "display": "block",
+            "background-color": "rgb(30, 29, 33)",
+            "color": "rgb(242, 240, 245)",
+            "border-top-color": "rgb(51, 49, 54)",
+            "opacity": "1"
+          },
+          "text": "⌘K"
+        },
+        {
+          "tag": "span",
+          "box": [
+            417,
+            594,
+            40,
+            20
+          ],
+          "style": {
+            "display": "block",
+            "background-color": "rgba(0, 0, 0, 0)",
+            "color": "rgb(176, 173, 183)",
+            "border-top-color": "rgb(176, 173, 183)",
+            "opacity": "1"
+          },
+          "text": "다음 키"
+        }
+      ]
+    },
+    {
+      "tag": "input",
+      "class": "desk-field desk-which-key-search",
+      "role": "combobox",
+      "box": [
+        373,
+        623,
+        534,
+        28
+      ],
+      "style": {
+        "display": "block",
+        "background-color": "rgb(20, 20, 22)",
+        "color": "rgb(242, 240, 245)",
+        "border-top-color": "rgb(182, 163, 245)",
+        "opacity": "1"
+      }
+    },
+    {
+      "tag": "ul",
+      "id": "desk-which-key-list",
+      "class": "desk-which-key-list",
+      "role": "listbox",
+      "box": [
+        373,
+        659,
+        534,
+        60
+      ],
+      "style": {
+        "display": "grid",
+        "background-color": "rgba(0, 0, 0, 0)",
+        "color": "rgb(242, 240, 245)",
+        "border-top-color": "rgb(242, 240, 245)",
+        "opacity": "1"
+      },
+      "children": [
+        {
+          "tag": "li",
+          "id": "desk-which-key-0",
+          "class": "desk-which-key-item",
+          "role": "option",
+          "box": [
+            373,
+            659,
+            534,
+            30
+          ],
+          "style": {
+            "display": "grid",
+            "background-color": "rgba(182, 163, 245, 0.12)",
+            "color": "rgb(182, 163, 245)",
+            "border-top-color": "rgb(182, 163, 245)",
+            "opacity": "1"
+          },
+          "children": [
+            {
+              "tag": "span",
+              "class": "desk-which-key-keys",
+              "box": [
+                381,
+                663,
+                96,
+                22
+              ],
+              "style": {
+                "display": "flex",
+                "background-color": "rgba(0, 0, 0, 0)",
+                "color": "rgb(182, 163, 245)",
+                "border-top-color": "rgb(182, 163, 245)",
+                "opacity": "1"
+              },
+              "children": [
+                {
+                  "tag": "kbd",
+                  "box": [
+                    381,
+                    663,
+                    40,
+                    22
+                  ],
+                  "style": {
+                    "display": "block",
+                    "background-color": "rgb(30, 29, 33)",
+                    "color": "rgb(242, 240, 245)",
+                    "border-top-color": "rgb(51, 49, 54)",
+                    "opacity": "1"
+                  },
+                  "text": "⌘S"
+                }
+              ]
+            },
+            {
+              "tag": "span",
+              "class": "desk-which-key-command",
+              "box": [
+                489,
+                664,
+                318,
+                20
+              ],
+              "style": {
+                "display": "block",
+                "background-color": "rgba(0, 0, 0, 0)",
+                "color": "rgb(182, 163, 245)",
+                "border-top-color": "rgb(182, 163, 245)",
+                "opacity": "1"
+              },
+              "text": "설정"
+            },
+            {
+              "tag": "span",
+              "class": "desk-which-key-owner",
+              "box": [
+                819,
+                664,
+                80,
+                20
+              ],
+              "style": {
+                "display": "block",
+                "background-color": "rgba(0, 0, 0, 0)",
+                "color": "rgb(176, 173, 183)",
+                "border-top-color": "rgb(176, 173, 183)",
+                "opacity": "1"
+              },
+              "text": "나"
+            }
+          ]
+        },
+        {
+          "tag": "li",
+          "id": "desk-which-key-1",
+          "class": "desk-which-key-item",
+          "role": "option",
+          "box": [
+            373,
+            689,
+            534,
+            30
+          ],
+          "style": {
+            "display": "grid",
+            "background-color": "rgba(0, 0, 0, 0)",
+            "color": "rgb(242, 240, 245)",
+            "border-top-color": "rgb(242, 240, 245)",
+            "opacity": "1"
+          },
+          "children": [
+            {
+              "tag": "span",
+              "class": "desk-which-key-keys",
+              "box": [
+                381,
+                693,
+                96,
+                22
+              ],
+              "style": {
+                "display": "flex",
+                "background-color": "rgba(0, 0, 0, 0)",
+                "color": "rgb(242, 240, 245)",
+                "border-top-color": "rgb(242, 240, 245)",
+                "opacity": "1"
+              },
+              "children": [
+                {
+                  "tag": "kbd",
+                  "box": [
+                    381,
+                    693,
+                    40,
+                    22
+                  ],
+                  "style": {
+                    "display": "block",
+                    "background-color": "rgb(30, 29, 33)",
+                    "color": "rgb(242, 240, 245)",
+                    "border-top-color": "rgb(51, 49, 54)",
+                    "opacity": "1"
+                  },
+                  "text": "⌘T"
+                }
+              ]
+            },
+            {
+              "tag": "span",
+              "class": "desk-which-key-command",
+              "box": [
+                489,
+                694,
+                318,
+                20
+              ],
+              "style": {
+                "display": "block",
+                "background-color": "rgba(0, 0, 0, 0)",
+                "color": "rgb(242, 240, 245)",
+                "border-top-color": "rgb(242, 240, 245)",
+                "opacity": "1"
+              },
+              "text": "키보드 단축키"
+            },
+            {
+              "tag": "span",
+              "class": "desk-which-key-owner",
+              "box": [
+                819,
+                694,
+                80,
+                20
+              ],
+              "style": {
+                "display": "block",
+                "background-color": "rgba(0, 0, 0, 0)",
+                "color": "rgb(176, 173, 183)",
+                "border-top-color": "rgb(176, 173, 183)",
+                "opacity": "1"
+              },
+              "text": "나"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "p",
+      "class": "desk-which-key-help",
+      "box": [
+        373,
+        727,
+        534,
+        20
+      ],
+      "style": {
+        "display": "block",
+        "background-color": "rgba(0, 0, 0, 0)",
+        "color": "rgb(176, 173, 183)",
+        "border-top-color": "rgb(176, 173, 183)",
+        "opacity": "1"
+      },
+      "text": "↑↓ 선택 · ↩ 실행 · ⌫ 뒤로 · Esc 취소"
+    }
+  ]
+}

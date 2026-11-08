@@ -1,0 +1,147 @@
+name: release-dry-run
+
+# The release pipeline without its secrets (ADR 0054): every target built as canary would build it,
+# signed with a throwaway updater key made in the run, and the R2 tree written as canary would upload
+# it, release.json and the canary index each signed and verified. Nothing leaves the run: the
+# artifacts are labelled unsigned and the tree is the artifact release-dry-run. It never enters the
+# signing environment, so it runs on any branch (workflow_dispatch) and on pull requests that change
+# the release files, which GitHub cannot dispatch before they are on main.
+on:
+  workflow_dispatch:
+  # ci.yml runs it for a pull request into a release line that changes these files (ADR 0092).
+  workflow_call:
+  pull_request:
+    paths:
+      - ".github/workflows/release-dry-run.yml"
+      - ".github/workflows/release-build.yml"
+      - ".github/workflows/canary.yml"
+      - ".github/workflows/release.yml"
+      - ".github/workflows/release-final.yml"
+      - "scripts/release-*.mjs"
+      - "e2e/smoke/verify-signature.sh"
+      - "apps/desk/src-tauri/tauri.conf.json"
+
+permissions:
+  contents: read
+
+# Called from ci, github.workflow is "ci": the call and a run of its own never cancel each other.
+concurrency:
+  group: release-dry-run-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  key:
+    name: key
+    # A pull request into release/** runs it through ci; its own run would build everything twice.
+    if: github.workflow != 'release-dry-run' || !startsWith(github.base_ref, 'release/')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      pubkey: ${{ steps.key.outputs.pubkey }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - id: version
+        run: echo "version=$(node scripts/release-version.mjs --run "$GITHUB_RUN_NUMBER")" >> "$GITHUB_OUTPUT"
+      - id: key
+        name: Make a throwaway updater key
+        # Trusted by nothing outside this run; it lives one day as a run artifact for the builds.
+        run: |
+          mkdir -p key
+          pnpm --filter @endue-ai/desk-app exec tauri signer generate --ci -p dry-run -w "$PWD/key/updater.key"
+          echo "pubkey=$(cat key/updater.key.pub)" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: dry-run-key
+          path: key/
+          retention-days: 1
+
+  build:
+    needs: key
+    uses: ./.github/workflows/release-build.yml
+    with:
+      version: ${{ needs.key.outputs.version }}
+      dry-run: true
+
+  tree:
+    name: tree
+    needs: [key, build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      VERSION: ${{ needs.key.outputs.version }}
+      PUBKEY: ${{ needs.key.outputs.pubkey }}
+      BASE: https://releases.endue.ai/desk
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: desk-*-unsigned
+          path: dist
+          merge-multiple: true
+      - uses: actions/download-artifact@v8
+        with:
+          name: dry-run-key
+          path: key
+      - name: Write and sign release.json and the canary index, as canary does
+        env:
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: dry-run
+        run: |
+          TAURI_SIGNING_PRIVATE_KEY="$(cat key/updater.key)"
+          export TAURI_SIGNING_PRIVATE_KEY
+          node scripts/release-manifest.mjs release dist --version "$VERSION" --base "$BASE" \
+            --commit "$GITHUB_SHA" --notes "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/commit/$GITHUB_SHA" > release.json
+          mv release.json dist/release.json
+          (cd dist && sha256sum endue-desk_* > SHA256SUMS)
+          pnpm --filter @endue-ai/desk-app exec tauri signer sign "$PWD/dist/release.json"
+          node scripts/release-manifest.mjs list missing.json --channel canary --release dist/release.json > index.json
+          pnpm --filter @endue-ai/desk-app exec tauri signer sign "$PWD/index.json"
+          tree="release-dry-run/desk"
+          mkdir -p "$tree/releases/$VERSION" "$tree/channels/canary"
+          cp dist/* "$tree/releases/$VERSION/"
+          cp index.json index.json.sig "$tree/channels/canary/"
+          printf '%s\n' "$PUBKEY" > release-dry-run/updater.pub
+      - name: Verify every signature against the run's key
+        run: |
+          tree="release-dry-run/desk"
+          node scripts/release-verify.mjs "$tree/channels/canary/index.json" --pubkey "$PUBKEY"
+          node scripts/release-verify.mjs "$tree/releases/$VERSION/release.json" --pubkey "$PUBKEY"
+          for sig in "$tree/releases/$VERSION"/endue-desk_*.sig; do
+            node scripts/release-verify.mjs "${sig%.sig}" --pubkey "$PUBKEY"
+          done
+          e2e/smoke/verify-signature.sh "$tree/releases/$VERSION/endue-desk_${VERSION}_linux-x86_64.deb" "$PUBKEY"
+      - name: Say what a real publish would need
+        run: |
+          {
+            echo "## Release dry run $VERSION"
+            echo
+            echo "Built every target, signed with a throwaway key, wrote the R2 tree to the artifact"
+            echo "\`release-dry-run\`. Nothing was uploaded. A real publish (canary.yml) also needs, in"
+            echo "the \`signing\` environment: \`TAURI_SIGNING_PRIVATE_KEY\`, \`TAURI_SIGNING_PRIVATE_KEY_PASSWORD\`,"
+            echo "\`R2_ACCOUNT_ID\`, \`R2_ACCESS_KEY_ID\`, \`R2_SECRET_ACCESS_KEY\`, the Apple secrets for a signed"
+            echo "macOS build, and the repository variable \`DESK_UPDATER_PUBKEY\`."
+            echo
+            echo '```'
+            (cd release-dry-run && find . -type f | sort)
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: release-dry-run
+          path: release-dry-run/
+          if-no-files-found: error
+          retention-days: 7

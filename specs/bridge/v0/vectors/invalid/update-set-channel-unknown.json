@@ -1,0 +1,14 @@
+{
+  "target": "BridgeRequest",
+  "description": "nightly is not a channel",
+  "instance": {
+    "id": 61,
+    "method": "update.setChannel",
+    "params": {
+      "channel": "nightly",
+      "scope": {
+        "permission": "update:manage"
+      }
+    }
+  }
+}

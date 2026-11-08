@@ -1,0 +1,360 @@
+{
+  "id": "endue.git",
+  "name": "Git",
+  "version": "0.1.0",
+  "kind": "ui",
+  "entry": "ui/index.html",
+  "description": "A keyboard-first front for Git: the status of a repository, staging, commits, the log as a graph and diffs, every operation a command that runs the git program without a shell.",
+  "permissions": [
+    {
+      "permission": "proc:spawn",
+      "commands": ["git"]
+    },
+    {
+      "permission": "cmd:invoke",
+      "ids": ["desk.files.open", "desk.palette.pick", "desk.buffers.open", "desk.buffers.update"]
+    }
+  ],
+  "surfaces": [
+    {
+      "id": "main",
+      "title": "Git",
+      "placement": "center"
+    }
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "id": "endue.git.status",
+        "title": "Git: status",
+        "keywords": ["repository", "stage", "vc", "version control"]
+      },
+      {
+        "id": "endue.git.state",
+        "title": "Git: state",
+        "keywords": ["branch", "changes", "repository"],
+        "description": "The repository a path is in (else the open one) as data: root, branch, upstream, commits ahead and behind, the head commit, staged, unstaged, untracked and conflicted files, stashes and the ten latest commits.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A folder inside the repository; the open repository when absent"
+            }
+          },
+          "additionalProperties": false
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "root": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            },
+            "branch": {
+              "type": ["string", "null"]
+            },
+            "upstream": {
+              "type": ["string", "null"]
+            },
+            "ahead": {
+              "type": "integer"
+            },
+            "behind": {
+              "type": "integer"
+            },
+            "head": {
+              "type": ["string", "null"]
+            },
+            "staged": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "path": {
+                    "type": "string"
+                  },
+                  "change": {
+                    "type": "string"
+                  },
+                  "origPath": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "unstaged": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "path": {
+                    "type": "string"
+                  },
+                  "change": {
+                    "type": "string"
+                  },
+                  "origPath": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "untracked": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "conflicts": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "path": {
+                    "type": "string"
+                  },
+                  "change": {
+                    "type": "string"
+                  },
+                  "origPath": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "stashes": {
+              "type": "array"
+            },
+            "recent": {
+              "type": "array"
+            }
+          }
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.git.refresh",
+        "title": "Git: refresh",
+        "keywords": ["reload", "revert-buffer"]
+      },
+      {
+        "id": "endue.git.stage",
+        "title": "Git: stage",
+        "keywords": ["add", "index"],
+        "description": "Stage a file of the open repository, or every change with all.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A path relative to the repository's root"
+            },
+            "all": {
+              "type": "boolean"
+            }
+          }
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.git.unstage",
+        "title": "Git: unstage",
+        "keywords": ["reset", "index"],
+        "description": "Take a file of the open repository out of the index, or every staged change with all.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A path relative to the repository's root"
+            },
+            "all": {
+              "type": "boolean"
+            }
+          }
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.git.discard",
+        "title": "Git: discard changes",
+        "keywords": ["restore", "checkout", "clean"],
+        "description": "Throw away the unstaged changes of the file at path in the open repository. Asks first.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A path relative to the repository's root"
+            }
+          }
+        },
+        "agent": true,
+        "irreversible": true
+      },
+      {
+        "id": "endue.git.commit",
+        "title": "Git: commit",
+        "keywords": ["amend", "sign-off"],
+        "description": "Commit what is staged in the open repository with message (without one, the commit editor opens); amend rewrites the last commit, signOff adds a Signed-off-by line.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "message": {
+              "type": "string",
+              "minLength": 1
+            },
+            "amend": {
+              "type": "boolean"
+            },
+            "signOff": {
+              "type": "boolean"
+            }
+          }
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.git.log",
+        "title": "Git: log",
+        "keywords": ["history", "graph", "commits"]
+      },
+      {
+        "id": "endue.git.diff",
+        "title": "Git: diff",
+        "keywords": ["changes", "patch", "staged"]
+      },
+      {
+        "id": "endue.git.fetch",
+        "title": "Git: fetch",
+        "keywords": ["remote", "prune"],
+        "description": "Fetch from a remote of the open repository (every remote's default when remote is absent) and prune what is gone.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "remote": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.git.pull",
+        "title": "Git: pull",
+        "keywords": ["remote", "fast-forward"],
+        "description": "Pull the open repository's branch from its upstream.",
+        "args": {
+          "type": "object",
+          "properties": {}
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.git.push",
+        "title": "Git: push",
+        "keywords": ["remote", "upstream"],
+        "description": "Push the open repository's branch to a remote (its upstream when remote is absent); force pushes with --force-with-lease after asking.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "remote": {
+              "type": "string",
+              "minLength": 1
+            },
+            "force": {
+              "type": "boolean"
+            }
+          }
+        },
+        "agent": true,
+        "irreversible": true
+      },
+      {
+        "id": "endue.git.checkout",
+        "title": "Git: switch branch",
+        "keywords": ["branch", "switch", "create"],
+        "description": "Switch the open repository to the branch or commit ref (without one, a pick offers the branches).",
+        "args": {
+          "type": "object",
+          "properties": {
+            "ref": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.git.branches",
+        "title": "Git: find a branch",
+        "keywords": ["branch", "switch", "palette"],
+        "description": "The palette's Branches group: the open repository's local and remote branches whose names hold the typed words; picking one runs Git: switch branch with it."
+      },
+      {
+        "id": "endue.git.visit",
+        "title": "Git: open the file",
+        "keywords": ["find-file"]
+      },
+      {
+        "id": "endue.git.cancel",
+        "title": "Git: cancel the running operation",
+        "keywords": ["kill"]
+      }
+    ],
+    "keys": [
+      {
+        "key": "Mod+Shift+G",
+        "command": "endue.git.status"
+      }
+    ],
+    "paletteProviders": [
+      {
+        "command": "endue.git.branches",
+        "title": "Branches"
+      }
+    ],
+    "settings": {
+      "endue.git.log-count": {
+        "kind": "integer",
+        "default": 200,
+        "description": "How many commits the log loads at a time."
+      },
+      "endue.git.diff-context": {
+        "kind": "integer",
+        "default": 3,
+        "description": "Lines of context around each change in a diff."
+      },
+      "endue.git.sign-off": {
+        "kind": "boolean",
+        "default": false,
+        "description": "Add a Signed-off-by trailer to every commit (DCO)."
+      },
+      "endue.git.pull-rebase": {
+        "kind": "boolean",
+        "default": false,
+        "description": "Pull with --rebase instead of --ff-only."
+      },
+      "endue.git.confirm": {
+        "kind": "boolean",
+        "default": true,
+        "description": "Ask before discarding changes or pushing with --force-with-lease."
+      },
+      "endue.git.recent-max": {
+        "kind": "integer",
+        "default": 10,
+        "description": "How many repositories to remember for the repository pick."
+      }
+    }
+  }
+}

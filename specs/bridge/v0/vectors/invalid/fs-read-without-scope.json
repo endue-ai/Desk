@@ -1,0 +1,11 @@
+{
+  "target": "BridgeRequest",
+  "description": "every call but perm.* carries its scope",
+  "instance": {
+    "id": 1,
+    "method": "fs.read",
+    "params": {
+      "path": "~/Documents/notes.md"
+    }
+  }
+}

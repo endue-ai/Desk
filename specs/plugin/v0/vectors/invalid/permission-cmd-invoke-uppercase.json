@@ -1,0 +1,8 @@
+{
+  "target": "Permission",
+  "description": "command patterns are lowercase",
+  "instance": {
+    "permission": "cmd:invoke",
+    "ids": ["Eris.*"]
+  }
+}

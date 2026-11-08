@@ -1,0 +1,11 @@
+{
+  "target": "BridgeEvent",
+  "description": "view.changed: a view was saved",
+  "instance": {
+    "event": "view.changed",
+    "data": {
+      "id": "example.today",
+      "change": "saved"
+    }
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "target": "BridgeRequest",
+  "description": "store any JSON value under a key",
+  "instance": {
+    "id": 13,
+    "method": "store.set",
+    "params": {
+      "key": "profile.name",
+      "value": {
+        "name": "Ada",
+        "done": true
+      }
+    }
+  }
+}

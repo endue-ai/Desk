@@ -1,0 +1,166 @@
+{
+  "target": "ViewGetResult",
+  "description": "view.get answered: desk.today, the inline view of the plugin desk.today",
+  "instance": {
+    "view": {
+      "id": "desk.today",
+      "version": "0.1.0",
+      "title": "Today",
+      "description": "Today's events, the tasks due by tonight, unread messages and the notes touched last.",
+      "requires": {
+        "calendar": {
+          "kinds": ["event"],
+          "title": "A calendar"
+        },
+        "tasks": {
+          "kinds": ["task"],
+          "title": "A task list (optional)"
+        },
+        "messages": {
+          "kinds": ["message"],
+          "title": "Messages (optional)"
+        },
+        "notes": {
+          "kinds": ["note"],
+          "title": "Notes (optional)"
+        }
+      },
+      "layout": {
+        "type": "grid",
+        "columns": 2,
+        "children": [
+          {
+            "type": "agenda",
+            "title": "Schedule",
+            "range": "day",
+            "binding": {
+              "kinds": ["event"],
+              "sources": ["$calendar"],
+              "where": [
+                {
+                  "field": "start",
+                  "op": "lt",
+                  "value": "{tomorrow}"
+                },
+                {
+                  "field": "end",
+                  "op": "gt",
+                  "value": "{today}"
+                }
+              ],
+              "sort": [
+                {
+                  "field": "start",
+                  "dir": "asc"
+                }
+              ]
+            },
+            "fields": [
+              {
+                "value": "{start|time} {title}"
+              },
+              {
+                "value": "{location}"
+              }
+            ],
+            "empty": "Nothing on the calendar today."
+          },
+          {
+            "type": "list",
+            "title": "Due",
+            "binding": {
+              "kinds": ["task"],
+              "sources": ["$tasks"],
+              "where": [
+                {
+                  "field": "status",
+                  "op": "eq",
+                  "value": "open"
+                },
+                {
+                  "field": "due",
+                  "op": "lt",
+                  "value": "{tomorrow}"
+                }
+              ],
+              "sort": [
+                {
+                  "field": "due",
+                  "dir": "asc"
+                }
+              ],
+              "limit": 10
+            },
+            "fields": [
+              {
+                "value": "{title}"
+              },
+              {
+                "label": "Due",
+                "value": "{due|relative}"
+              }
+            ],
+            "empty": "Nothing due."
+          },
+          {
+            "type": "list",
+            "title": "Unread",
+            "binding": {
+              "kinds": ["message"],
+              "sources": ["$messages"],
+              "where": [
+                {
+                  "field": "unread",
+                  "op": "eq",
+                  "value": true
+                }
+              ],
+              "sort": [
+                {
+                  "field": "receivedAt",
+                  "dir": "desc"
+                }
+              ],
+              "limit": 10
+            },
+            "fields": [
+              {
+                "value": "{title}"
+              },
+              {
+                "value": "{from.name} · {receivedAt|relative}"
+              }
+            ],
+            "empty": "No unread messages."
+          },
+          {
+            "type": "list",
+            "title": "Last touched",
+            "binding": {
+              "kinds": ["note"],
+              "sources": ["$notes"],
+              "sort": [
+                {
+                  "field": "updatedAt",
+                  "dir": "desc"
+                }
+              ],
+              "limit": 5
+            },
+            "fields": [
+              {
+                "value": "{title}"
+              },
+              {
+                "value": "{updatedAt|relative}"
+              }
+            ],
+            "empty": "No notes yet."
+          }
+        ]
+      }
+    },
+    "source": "plugin",
+    "plugin": "desk.today"
+  }
+}

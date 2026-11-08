@@ -1,0 +1,25 @@
+{
+  "target": "PluginManifest",
+  "description": "a connector's actions are commands it declares in contributes.commands",
+  "instance": {
+    "id": "example.folder-tasks",
+    "version": "0.1.0",
+    "kind": "connector",
+    "entry": "connector.wasm",
+    "connector": {
+      "binding": "wasm",
+      "auth": {
+        "kind": "none"
+      },
+      "resources": [
+        {
+          "kind": "task",
+          "actions": ["example.folder-tasks.done"]
+        }
+      ],
+      "sync": {
+        "mode": "pull"
+      }
+    }
+  }
+}

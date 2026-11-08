@@ -1,0 +1,12 @@
+{
+  "target": "BridgeResponse",
+  "description": "endue AI could not be reached",
+  "instance": {
+    "id": 8,
+    "ok": false,
+    "error": {
+      "code": "offline",
+      "message": "endue AI did not answer within 15 s."
+    }
+  }
+}

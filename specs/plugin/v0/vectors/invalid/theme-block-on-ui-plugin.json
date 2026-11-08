@@ -1,0 +1,13 @@
+{
+  "target": "PluginManifest",
+  "description": "only theme plugins carry a theme block",
+  "instance": {
+    "id": "example.hello",
+    "version": "0.1.0",
+    "kind": "ui",
+    "entry": "index.html",
+    "theme": {
+      "dark": {}
+    }
+  }
+}

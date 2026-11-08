@@ -1,0 +1,9 @@
+{
+  "target": "FsReadResult",
+  "description": "fs.read of a range answered: the five bytes as base64 and the file's total size",
+  "instance": {
+    "content": "CgsMDQ4=",
+    "encoding": "base64",
+    "size": 100
+  }
+}

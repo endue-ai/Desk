@@ -1,0 +1,9 @@
+{
+  "target": "BridgeRequest",
+  "description": "plugin.list needs plugin:manage",
+  "instance": {
+    "id": 9,
+    "method": "plugin.list",
+    "params": {}
+  }
+}

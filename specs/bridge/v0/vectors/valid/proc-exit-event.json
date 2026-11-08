@@ -1,0 +1,11 @@
+{
+  "target": "BridgeEvent",
+  "description": "a process ended by signal",
+  "instance": {
+    "event": "proc.exit",
+    "data": {
+      "procId": "p1",
+      "signal": "term"
+    }
+  }
+}

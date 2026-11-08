@@ -1,0 +1,15 @@
+{
+  "target": "BridgeRequest",
+  "description": "put revision 2 of the prompt back in force",
+  "instance": {
+    "id": 1,
+    "method": "studio.agents.prompt.update",
+    "params": {
+      "agentId": "ag_01JC0Q4MR00000000000000001",
+      "restore": 2,
+      "scope": {
+        "permission": "studio:manage"
+      }
+    }
+  }
+}

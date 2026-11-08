@@ -1,0 +1,14 @@
+{
+  "target": "BridgeRequest",
+  "description": "brain.say needs some text",
+  "instance": {
+    "id": 14,
+    "method": "brain.say",
+    "params": {
+      "text": "",
+      "scope": {
+        "permission": "brain:converse"
+      }
+    }
+  }
+}

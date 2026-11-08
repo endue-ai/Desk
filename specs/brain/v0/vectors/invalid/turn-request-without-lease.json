@@ -1,0 +1,15 @@
+{
+  "target": "TurnRequest",
+  "description": "only the lease holder may send turns",
+  "instance": {
+    "message": {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "hello"
+        }
+      ]
+    }
+  }
+}

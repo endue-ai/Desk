@@ -1,0 +1,9 @@
+{
+  "target": "ErrorEnvelope",
+  "description": "an error names its code",
+  "instance": {
+    "error": {
+      "message": "nope"
+    }
+  }
+}

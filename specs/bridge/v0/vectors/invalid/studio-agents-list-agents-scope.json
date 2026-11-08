@@ -1,0 +1,13 @@
+{
+  "target": "BridgeRequest",
+  "description": "agents:manage (the agent programs on this computer) does not cover studio.*",
+  "instance": {
+    "id": 1,
+    "method": "studio.agents.list",
+    "params": {
+      "scope": {
+        "permission": "agents:manage"
+      }
+    }
+  }
+}

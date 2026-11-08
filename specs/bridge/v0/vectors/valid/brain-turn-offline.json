@@ -1,0 +1,12 @@
+{
+  "target": "BridgeEvent",
+  "description": "the brain is unreachable; the turn waits",
+  "instance": {
+    "event": "brain.turn",
+    "data": {
+      "turnId": "t2",
+      "kind": "offline",
+      "text": "I can't reach endue right now. Check your connection, and I'll pick up where we left off."
+    }
+  }
+}

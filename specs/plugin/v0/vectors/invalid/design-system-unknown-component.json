@@ -1,0 +1,5 @@
+{
+  "target": "DesignSystemPackage",
+  "description": "a component the catalogue does not name is refused",
+  "instance": { "components": { "carousel": { "shape": "md" } } }
+}

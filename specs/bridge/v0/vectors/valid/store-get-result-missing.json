@@ -1,0 +1,5 @@
+{
+  "target": "StoreGetResult",
+  "description": "a key that was never set has no value",
+  "instance": {}
+}

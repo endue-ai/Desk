@@ -1,0 +1,15 @@
+{
+  "target": "BridgeRequest",
+  "description": "forever is not a grant duration",
+  "instance": {
+    "id": 67,
+    "method": "perm.request",
+    "params": {
+      "permission": {
+        "permission": "ui:notify"
+      },
+      "reason": "Tell you when it is done.",
+      "duration": "forever"
+    }
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "target": "BridgeRequest",
+  "description": "fs.rename names where the path goes",
+  "instance": {
+    "id": 37,
+    "method": "fs.rename",
+    "params": {
+      "from": "~/Downloads/report.pdf",
+      "scope": {
+        "permission": "fs:write",
+        "paths": ["~/**"]
+      }
+    }
+  }
+}

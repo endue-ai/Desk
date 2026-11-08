@@ -1,0 +1,12 @@
+{
+  "target": "StudioConversation",
+  "description": "every conversation names its Home board column",
+  "instance": {
+    "id": "cnv_01",
+    "agentId": "ag_01JC0Q4MR00000000000000001",
+    "status": "active",
+    "messageCount": 3,
+    "createdAt": "2026-11-01T09:00:00Z",
+    "updatedAt": "2026-11-01T09:05:00Z"
+  }
+}

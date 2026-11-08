@@ -1,0 +1,60 @@
+/* The theme studio's Describe panel (describe.ts, TS-06): docked to the right like the editor, so the
+   desk shows the proposal beside it. Every value is a theme token. */
+
+.theme-describe {
+  display: grid;
+  grid-row: 1 / -1;
+  align-content: start;
+  gap: var(--space-3);
+  min-height: 0;
+  overflow: auto;
+}
+.theme-describe-title {
+  margin: 0;
+  font-size: var(--text-base);
+  font-weight: 600;
+}
+
+.theme-describe-input {
+  height: var(--control-md);
+  padding: 0 var(--space-3);
+  border: var(--desk-border-width) solid var(--desk-input);
+  border-radius: var(--radius-md);
+  background: var(--desk-card);
+  color: var(--desk-text);
+  font: inherit;
+}
+.theme-describe-input:focus-visible {
+  outline: 2px solid var(--desk-ring);
+  outline-offset: 1px;
+}
+
+.theme-describe-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.theme-describe-status {
+  min-height: calc(var(--text-xs) * 1.5);
+  margin: 0;
+  color: var(--desk-text-muted);
+  font-size: var(--text-xs);
+}
+
+.theme-proposal {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: var(--desk-border-width) solid var(--desk-border);
+  border-radius: var(--radius-lg);
+  background: var(--desk-card);
+}
+.theme-proposal-name {
+  margin: 0;
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+.theme-proposal .theme-swatches {
+  justify-self: start;
+}

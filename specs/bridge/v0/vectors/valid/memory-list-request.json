@@ -1,0 +1,16 @@
+{
+  "target": "BridgeRequest",
+  "description": "memory.list: facts only, the next page",
+  "instance": {
+    "id": 40,
+    "method": "memory.list",
+    "params": {
+      "kind": "fact",
+      "limit": 20,
+      "cursor": "fact_01jc8x2k9m4n",
+      "scope": {
+        "permission": "memory:read"
+      }
+    }
+  }
+}

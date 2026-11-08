@@ -1,0 +1,9 @@
+{
+  "id": "e2e.hello",
+  "name": "E2E Hello",
+  "version": "0.1.0",
+  "kind": "ui",
+  "entry": "ui/index.html",
+  "description": "The app e2e's test plugin: a copy of examples/plugin-hello-ui with one center surface.",
+  "surfaces": [{ "id": "main", "title": "E2E Hello", "placement": "center" }]
+}

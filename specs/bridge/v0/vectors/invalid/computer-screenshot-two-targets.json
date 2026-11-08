@@ -1,0 +1,17 @@
+{
+  "target": "BridgeRequest",
+  "description": "one target at a time",
+  "instance": {
+    "id": 7,
+    "method": "computer.screenshot",
+    "params": {
+      "target": {
+        "window": 1,
+        "display": 1
+      },
+      "scope": {
+        "permission": "computer:see"
+      }
+    }
+  }
+}

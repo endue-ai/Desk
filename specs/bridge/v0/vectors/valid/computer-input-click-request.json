@@ -1,0 +1,19 @@
+{
+  "target": "BridgeRequest",
+  "description": "endue.computer double-clicks for Eris's invocation, only into Safari",
+  "instance": {
+    "id": 4,
+    "method": "computer.input.click",
+    "params": {
+      "x": 120.0,
+      "y": 340.0,
+      "button": "left",
+      "count": 2,
+      "invocationId": "i-12",
+      "scope": {
+        "permission": "computer:control",
+        "apps": ["com.apple.Safari"]
+      }
+    }
+  }
+}

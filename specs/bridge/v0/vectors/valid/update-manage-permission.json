@@ -1,0 +1,7 @@
+{
+  "target": "Permission",
+  "description": "update:manage, the permission every update.* call carries",
+  "instance": {
+    "permission": "update:manage"
+  }
+}

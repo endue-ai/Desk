@@ -1,0 +1,92 @@
+{
+  "target": "View",
+  "description": "a grid whose params set the board's project and the chart's range",
+  "instance": {
+    "id": "example.sprint-board",
+    "version": "0.3.0",
+    "title": "Sprint: {params.project}",
+    "requires": {
+      "tickets": {
+        "kinds": ["task"]
+      },
+      "builds": {
+        "kinds": ["metric"],
+        "connector": "example.ci"
+      }
+    },
+    "params": {
+      "project": {
+        "kind": "string",
+        "title": "Project",
+        "default": "DESK"
+      },
+      "days": {
+        "kind": "integer",
+        "title": "Days",
+        "default": 14,
+        "minimum": 1,
+        "maximum": 90
+      },
+      "showDone": {
+        "kind": "boolean",
+        "default": false
+      },
+      "density": {
+        "kind": "enum",
+        "choices": ["compact", "regular"],
+        "default": "regular"
+      }
+    },
+    "layout": {
+      "type": "grid",
+      "columns": 3,
+      "children": [
+        {
+          "type": "kanban",
+          "title": "Board",
+          "groupBy": "status",
+          "binding": {
+            "kinds": ["task"],
+            "sources": ["$tickets"],
+            "where": [
+              {
+                "field": "project",
+                "op": "eq",
+                "value": "{params.project}"
+              }
+            ]
+          },
+          "fields": [
+            {
+              "value": "{title}"
+            }
+          ]
+        },
+        {
+          "type": "chart",
+          "title": "Build minutes",
+          "chart": "sparkline",
+          "binding": {
+            "kinds": ["metric"],
+            "sources": ["$builds"]
+          }
+        },
+        {
+          "type": "stat",
+          "title": "Open",
+          "binding": {
+            "kinds": ["task"],
+            "sources": ["$tickets"],
+            "where": [
+              {
+                "field": "status",
+                "op": "eq",
+                "value": "open"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

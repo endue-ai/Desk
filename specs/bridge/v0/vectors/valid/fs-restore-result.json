@@ -1,0 +1,8 @@
+{
+  "target": "FsRestoreResult",
+  "description": "fs.restore answers the bytes written and the version that keeps what it replaced",
+  "instance": {
+    "bytesWritten": 42,
+    "version": "1793520060000-a01b2c"
+  }
+}

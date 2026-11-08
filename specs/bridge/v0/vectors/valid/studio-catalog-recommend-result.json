@@ -1,0 +1,13 @@
+{
+  "target": "StudioCatalogRecommendResult",
+  "description": "endue AI's model found one agent that fits",
+  "instance": {
+    "matches": [
+      {
+        "slug": "support-mail",
+        "reason": "It answers customer mail."
+      }
+    ],
+    "source": "llm"
+  }
+}

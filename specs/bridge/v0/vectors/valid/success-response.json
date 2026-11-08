@@ -1,0 +1,12 @@
+{
+  "target": "BridgeResponse",
+  "description": "a successful fs.read response",
+  "instance": {
+    "id": 1,
+    "ok": true,
+    "result": {
+      "content": "# Notes",
+      "encoding": "utf8"
+    }
+  }
+}

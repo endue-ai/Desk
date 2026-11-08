@@ -1,0 +1,14 @@
+{
+  "target": "ViewListResult",
+  "description": "a plugin's view in view.list must name its plugin",
+  "instance": {
+    "views": [
+      {
+        "id": "desk.today",
+        "version": "0.1.0",
+        "title": "Today",
+        "source": "plugin"
+      }
+    ]
+  }
+}

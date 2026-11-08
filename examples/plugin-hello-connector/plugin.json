@@ -1,0 +1,23 @@
+{
+  "id": "example.hello-connector",
+  "name": "Hello connector",
+  "version": "0.1.0",
+  "kind": "connector",
+  "entry": "build/wasm32-wasip2/release/hello_connector.wasm",
+  "description": "The smallest connector: the markdown files in a folder you choose, as notes.",
+  "permissions": [{ "permission": "fs:read", "paths": ["~/**"] }],
+  "connector": {
+    "binding": "wasm",
+    "auth": { "kind": "none" },
+    "resources": [{ "kind": "note" }],
+    "sync": { "mode": "pull", "intervalSeconds": 300 },
+    "instanceSettings": {
+      "folder": {
+        "kind": "string",
+        "title": "Folder",
+        "description": "The folder whose markdown files become notes; files in its subfolders do not.",
+        "required": true
+      }
+    }
+  }
+}

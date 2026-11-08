@@ -1,0 +1,37 @@
+# area:* labels by top-level folder (actions/labeler). size:* is set by the labeler workflow.
+"area:apps":
+  - changed-files:
+      - any-glob-to-any-file: "apps/**"
+"area:crates":
+  - changed-files:
+      - any-glob-to-any-file: "crates/**"
+"area:packages":
+  - changed-files:
+      - any-glob-to-any-file: "packages/**"
+"area:plugins":
+  - changed-files:
+      - any-glob-to-any-file: "plugins/**"
+"area:examples":
+  - changed-files:
+      - any-glob-to-any-file: "examples/**"
+"area:specs":
+  - changed-files:
+      - any-glob-to-any-file: "specs/**"
+"area:e2e":
+  - changed-files:
+      - any-glob-to-any-file: "e2e/**"
+"area:docs":
+  - changed-files:
+      - any-glob-to-any-file: ["docs/**", "*.md"]
+"area:brand":
+  - changed-files:
+      - any-glob-to-any-file: "brand/**"
+"area:scripts":
+  - changed-files:
+      - any-glob-to-any-file: "scripts/**"
+"area:github":
+  - changed-files:
+      - any-glob-to-any-file: ".github/**"
+"area:harness":
+  - changed-files:
+      - any-glob-to-any-file: ".claude/**"

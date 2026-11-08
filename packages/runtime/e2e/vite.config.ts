@@ -1,0 +1,123 @@
+import { existsSync, readFileSync, statSync } from "node:fs";
+import { extname, join, normalize, sep } from "node:path";
+import { fileURLToPath } from "node:url";
+import { defineConfig, type Plugin } from "vite";
+
+const here = (path: string) => fileURLToPath(new URL(path, import.meta.url));
+const repo = here("../../../");
+
+// What the core serves over desk-plugin:// in the app, the fixture serves over plain HTTP.
+const plugins: Record<string, string> = {
+  "example.hello-ui": join(repo, "examples/plugin-hello-ui"),
+  "test.counter": here("./fixture/plugins/test-counter"),
+  "test.echo": here("./fixture/plugins/test-echo"),
+  "test.worker": here("./fixture/plugins/test-worker"),
+  // Fails to start every time (safe-mode.html, ADR 0061).
+  "test.throws": here("./fixture/plugins/test-throws"),
+  "test.theme": here("./themes/test-theme"),
+  // Another provider of role:dock on the edges page (ADR 0104) is the counter under another id.
+  "test.dock": here("./fixture/plugins/test-counter"),
+  // The autoload opener of the desk page is the echo plugin under another id.
+  "test.lazy": here("./fixture/plugins/test-echo"),
+  // The shell page's terminal (?apps=1) is the counter under the terminal's id.
+  "endue.terminal": here("./fixture/plugins/test-counter"),
+  "desk.palette": join(repo, "plugins/palette"),
+  "desk.views": join(repo, "plugins/views"),
+  "desk.universal": join(repo, "plugins/universal"),
+  "endue.eris": join(repo, "plugins/eris"),
+  "endue.onboarding": join(repo, "plugins/onboarding"),
+  "endue.sidebar": join(repo, "plugins/sidebar"),
+  "endue.toolbar": join(repo, "plugins/toolbar"),
+  "endue.notes": join(repo, "plugins/notes"),
+  "endue.images": join(repo, "plugins/images"),
+  "endue.explorer": join(repo, "plugins/explorer"),
+  "endue.dock": join(repo, "plugins/dock"),
+  "endue.agents": join(repo, "plugins/agents"),
+};
+const sdk = join(repo, "packages/plugin-sdk/src/index.ts");
+const ui = join(repo, "packages/ui/src/bundle.ts");
+/** What the app serves under /_desk/ (the SDK, elements and shared sheets), from their sources. */
+const desk: Record<string, string> = {
+  "/_desk/plugin-sdk.js": sdk,
+  "/_desk/ui.js": ui,
+  "/_desk/tokens.css": join(repo, "packages/ui/src/tokens.css"),
+  "/_desk/base.css": join(repo, "packages/ui/src/base.css"),
+};
+/** The app's plugin-frame CSP with this server's origin in place of the plugin scheme. */
+const csp = readFileSync(join(repo, "apps/desk/src-tauri/src/plugin-csp.txt"), "utf8").trim();
+export const pluginCsp = (origin: string) => csp.replaceAll("{sources}", origin);
+const types: Record<string, string> = {
+  ".html": "text/html",
+  ".js": "text/javascript",
+  ".css": "text/css",
+  ".json": "application/json",
+  ".svg": "image/svg+xml",
+  ".png": "image/png",
+  ".webp": "image/webp",
+  ".woff2": "font/woff2",
+  ".desk-theme": "application/json",
+};
+
+/**
+ * Serve plugin files, the SDK and @endue-ai/ui as the core does over desk-plugin:// (the dev page uses
+ * it too), plugin pages under the app's CSP.
+ */
+export function pluginFiles(): Plugin {
+  return {
+    name: "desk-plugin-files",
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        const url = new URL(req.url ?? "/", "http://fixture");
+        // Sandboxed frames have an opaque origin; module scripts need CORS.
+        res.setHeader("Access-Control-Allow-Origin", "*");
+        const source = desk[url.pathname];
+        if (source?.endsWith(".css")) {
+          res.setHeader("Content-Type", "text/css");
+          res.setHeader("Cache-Control", "no-store");
+          res.end(readFileSync(source));
+          return;
+        }
+        if (source) {
+          res.statusCode = 302;
+          res.setHeader("Location", `/@fs${source.split(sep).join("/")}`);
+          res.end();
+          return;
+        }
+        // The fixture theme market (?market=1 on the shell page names it https://market.test/).
+        const market = /^\/market\/(.+)$/.exec(url.pathname)?.[1];
+        const match = /^\/plugins\/([^/]+)\/(.+)$/.exec(url.pathname);
+        if (!match && market === undefined) return next();
+        const [, id = "", path = market ?? ""] = match ?? [];
+        const base = market === undefined ? plugins[id] : here("./themes/market");
+        const file = base ? normalize(join(base, path)) : "";
+        if (!base || !file.startsWith(base) || !existsSync(file) || !statSync(file).isFile()) {
+          res.statusCode = 404;
+          res.end();
+          return;
+        }
+        res.setHeader("Content-Type", types[extname(file)] ?? "application/octet-stream");
+        res.setHeader("Cache-Control", "no-store");
+        if (extname(file) === ".html") {
+          res.setHeader("Content-Security-Policy", pluginCsp(`http://${req.headers.host}`));
+        }
+        res.end(readFileSync(file));
+      });
+    },
+  };
+}
+
+export default defineConfig({
+  root: here("./fixture"),
+  plugins: [pluginFiles()],
+  server: {
+    host: "127.0.0.1",
+    // Set by the Playwright configs (e2e/port.ts); 4173 when the fixture is served by hand.
+    port: Number(process.env.DESK_E2E_PORT ?? 4173),
+    strictPort: true,
+    cors: { origin: "*" },
+    fs: { allow: [repo] },
+  },
+  // Only the fixture pages: test plugins import the SDK through their import map, not node_modules.
+  optimizeDeps: { entries: ["*.html"] },
+  logLevel: "warn",
+});

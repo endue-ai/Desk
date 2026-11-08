@@ -1,0 +1,5 @@
+{
+  "target": "AgentRecord",
+  "description": "a record holds only its own fields",
+  "instance": { "id": "eris", "name": "Eris", "source": "eris", "state": "idle", "mood": "happy" }
+}

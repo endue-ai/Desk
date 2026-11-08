@@ -1,0 +1,12 @@
+{
+  "target": "BridgeRequest",
+  "description": "theme.save takes a theme or a design system, not a ui plugin",
+  "instance": {
+    "id": 62,
+    "method": "theme.save",
+    "params": {
+      "manifest": { "id": "local.app", "version": "1.0.0", "kind": "ui", "entry": "index.html" },
+      "scope": { "permission": "theme:manage" }
+    }
+  }
+}

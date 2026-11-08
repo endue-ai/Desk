@@ -1,0 +1,22 @@
+{
+  "id": "desk.buffers",
+  "name": "Buffers",
+  "version": "0.1.0",
+  "kind": "policy",
+  "description": "The buffer list: switching, closing with a question when changes are unsaved, and what shows after a close.",
+  "contributes": {
+    "settings": {
+      "desk.buffers.confirm-unsaved": {
+        "kind": "boolean",
+        "default": true,
+        "description": "Ask before closing a buffer with unsaved changes."
+      },
+      "desk.buffers.after-close": {
+        "kind": "string",
+        "default": "previous",
+        "choices": ["previous", "none"],
+        "description": "What shows after a buffer closes: the one used before it, or nothing."
+      }
+    }
+  }
+}

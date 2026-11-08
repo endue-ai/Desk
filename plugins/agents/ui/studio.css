@@ -1,0 +1,321 @@
+/* endue.agents: Studio's card and inspector, the chat beside a local agent's card, and New agent
+   (880 wide, the catalog's cards in auto-fill columns). Tokens only. */
+/* Studio: the card in the middle, the inspector or the chat beside it; stacked when narrow. */
+.studio {
+  display: grid;
+  grid-template-columns: minmax(280px, 380px) minmax(0, 1fr);
+  align-items: start;
+  gap: var(--desk-space-4);
+}
+
+@media (max-width: 839px) {
+  .studio {
+    grid-template-columns: 1fr;
+  }
+}
+
+.studio-card {
+  --desk-card-radius: var(--desk-radius-lg);
+}
+
+.facets {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--desk-space-1);
+  margin-top: var(--desk-space-2);
+}
+
+.facet-caption {
+  grid-column: 1 / -1;
+  margin: var(--desk-space-2) 0 0;
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-2xs);
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.facet,
+.studio-foot {
+  display: grid;
+  gap: 2px;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.facet[aria-pressed="true"],
+.studio-foot[aria-pressed="true"],
+.studio-head[aria-pressed="true"],
+.catalog-open[aria-pressed="true"] {
+  background: var(--desk-primary-subtle);
+}
+
+.studio-foot {
+  margin-top: var(--desk-space-2);
+  border-top: var(--desk-border-width) solid var(--desk-border);
+}
+
+.facet-label {
+  font-size: var(--desk-text-sm);
+}
+
+.facet-hint {
+  overflow: hidden;
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.inspector,
+.chat,
+.preview {
+  display: grid;
+  gap: var(--desk-space-2);
+  align-content: start;
+  min-width: 0;
+  padding: var(--desk-space-4);
+  border: var(--desk-border-width) solid var(--desk-border);
+  border-radius: var(--desk-radius-lg);
+  background: var(--desk-card);
+}
+
+.inspector-head,
+.chat-head {
+  display: flex;
+  align-items: center;
+  gap: var(--desk-space-2);
+}
+
+.inspector-head h2,
+.chat-head h2 {
+  flex: 1;
+  margin: 0;
+  font-size: var(--desk-text-lg);
+}
+
+.inspector-form,
+.build,
+.find {
+  display: grid;
+  gap: var(--desk-space-2);
+}
+
+.inspector-form > .desk-btn,
+.build > .desk-btn {
+  justify-self: start;
+}
+
+/* The request beside its Find button, as the web lays it out. */
+.find {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+}
+
+.find label {
+  grid-column: 1 / -1;
+}
+
+.find-heading {
+  display: flex;
+  align-items: center;
+  gap: var(--desk-space-2);
+}
+
+.find-heading h3 {
+  flex: 1;
+}
+
+.field {
+  display: grid;
+  gap: var(--desk-space-1);
+}
+
+.field-label {
+  font-size: var(--desk-text-sm);
+  font-weight: 600;
+}
+
+.readonly {
+  font-family: var(--desk-font-mono);
+  font-size: var(--desk-text-xs);
+  overflow-wrap: anywhere;
+}
+
+.entries,
+.strengths-list {
+  display: grid;
+  gap: var(--desk-space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.entry {
+  display: flex;
+  align-items: center;
+  gap: var(--desk-space-2);
+  padding: var(--desk-space-2) 0;
+  border-bottom: var(--desk-border-width) solid var(--desk-border);
+}
+
+.entry-text {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+}
+
+.entry-text small {
+  overflow: hidden;
+  color: var(--desk-text-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The chat. */
+.chat-log {
+  display: grid;
+  gap: var(--desk-space-3);
+  max-height: 56vh;
+  margin: 0;
+  padding: 0;
+  overflow: auto;
+  list-style: none;
+}
+
+.turn {
+  max-width: 88%;
+  padding: var(--desk-space-2) var(--desk-space-3);
+  border-radius: var(--desk-radius-lg);
+}
+
+.turn.user {
+  justify-self: end;
+  background: var(--desk-primary-subtle);
+}
+
+.turn.assistant {
+  border: var(--desk-border-width) solid var(--desk-border);
+}
+
+.turn.tool,
+.tools {
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-xs);
+}
+
+.tools {
+  margin: var(--desk-space-1) 0 0;
+  padding-left: var(--desk-space-4);
+}
+
+.tool-name {
+  font-family: var(--desk-font-mono);
+}
+
+.turn .plain {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.turn-state {
+  margin: var(--desk-space-1) 0 0;
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-xs);
+}
+
+.composer {
+  display: grid;
+  gap: var(--desk-space-2);
+}
+
+.composer-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--desk-space-2);
+}
+
+.hint {
+  flex: 1;
+  font-size: var(--desk-text-xs);
+}
+
+/* New agent. */
+.create {
+  max-width: 880px;
+}
+
+.page-head {
+  display: grid;
+  gap: var(--desk-space-2);
+  margin-bottom: var(--desk-space-4);
+}
+
+.page-head h2,
+.page-head p {
+  margin: 0;
+}
+
+.find-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--desk-space-3);
+}
+
+.preview {
+  width: 300px;
+}
+
+.catalog-open {
+  display: grid;
+  align-content: start;
+  gap: var(--desk-space-2);
+  height: 100%;
+}
+
+.catalog-head {
+  display: flex;
+  align-items: center;
+  gap: var(--desk-space-2);
+}
+
+.catalog-head h3 {
+  margin: 0;
+}
+
+.reason {
+  color: var(--desk-primary-text);
+  font-size: var(--desk-text-sm);
+}
+
+.tagline {
+  font-size: var(--desk-text-sm);
+}
+
+.strengths,
+.catalog-foot {
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-xs);
+}
+
+.build {
+  max-width: 560px;
+}
+
+@media (max-width: 839px) {
+  .find-body {
+    grid-template-columns: 1fr;
+  }
+
+  .preview {
+    width: auto;
+  }
+}
+
+.build label {
+  font-weight: 600;
+}

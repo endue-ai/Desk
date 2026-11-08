@@ -1,0 +1,7 @@
+{
+  "target": "ConnectorStatus",
+  "description": "an instance in error says why",
+  "instance": {
+    "state": "error"
+  }
+}

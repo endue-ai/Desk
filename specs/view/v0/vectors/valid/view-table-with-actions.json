@@ -1,0 +1,72 @@
+{
+  "target": "View",
+  "description": "a table of tasks whose rows offer commands, with templated args and a key",
+  "instance": {
+    "id": "example.open-tasks",
+    "version": "1.2.0",
+    "title": "Open tasks",
+    "requires": {
+      "tasks": {
+        "kinds": ["task"],
+        "connector": "example.jira"
+      }
+    },
+    "layout": {
+      "type": "table",
+      "binding": {
+        "kinds": ["task"],
+        "sources": ["$tasks"],
+        "where": [
+          {
+            "field": "status",
+            "op": "ne",
+            "value": "done"
+          }
+        ],
+        "sort": [
+          {
+            "field": "priority",
+            "dir": "asc"
+          },
+          {
+            "field": "updatedAt",
+            "dir": "desc"
+          }
+        ]
+      },
+      "fields": [
+        {
+          "label": "Task",
+          "value": "{title}"
+        },
+        {
+          "label": "Priority",
+          "value": "P{priority|number}"
+        },
+        {
+          "label": "Updated",
+          "value": "{updatedAt|date}"
+        }
+      ],
+      "actions": [
+        {
+          "command": "example.jira.done",
+          "title": "Done",
+          "args": {
+            "id": "{id}",
+            "instance": "{source.instance}"
+          },
+          "key": "Mod+Enter"
+        },
+        {
+          "command": "example.jira.open",
+          "title": "Open in Jira",
+          "args": {
+            "url": "{deepLink}"
+          }
+        }
+      ],
+      "empty": "No open tasks."
+    }
+  }
+}

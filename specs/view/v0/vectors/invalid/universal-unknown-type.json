@@ -1,0 +1,5 @@
+{
+  "target": "UniversalView",
+  "description": "gantt is not one of the universal types",
+  "instance": { "type": "gantt", "source": { "asset": "plan.yaml" } }
+}

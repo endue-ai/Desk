@@ -1,0 +1,203 @@
+/**
+ * desk.session (desktop.el, savehist): keep the desk as it was across restarts. The layout, the
+ * files open in buffers, the surface in use, the notification history and the parts a host keeps
+ * (the shell's desktops) are kept with store.set whenever they change,
+ * and put back after the plugins have mounted. A record that cannot be put back is kept as
+ * `session.broken` and the desk starts empty (ADR 0061); in safe mode the record waits untouched.
+ */
+import { type Layout, loadLayout } from "../layout";
+import type { Notice } from "../notify";
+import { now, phase } from "../timing";
+import type { BuffersPolicy } from "./buffers";
+import { type DeskContext, disposer, type Installed } from "./context";
+
+export const SESSION_KEY = "session";
+/** Changes coalesce for this long before they are saved. */
+const SAVE_DELAY_MS = 250;
+
+export interface SavedSession {
+  version: 1;
+  layout: Layout;
+  /** File buffers, least recently used first, so reopening them in order ends on the last one. */
+  files: Array<{ path: string; plugin: string }>;
+  focused: string | null;
+  notices: Notice[];
+  /** What each part kept, by part name. */
+  parts?: Record<string, unknown>;
+}
+
+/** A piece of state kept in the session record beside the desk's own. */
+export interface SessionPart {
+  save(): unknown;
+  restore(value: unknown): void;
+  /** Hear when the part changed, so the session is saved soon. */
+  onChange(listener: () => void): () => void;
+}
+
+export interface SessionActions {
+  layout(): Layout;
+  setLayout(layout: Layout): void;
+  focus(id: string): void;
+  focused(): string | null;
+  notices(): Notice[];
+  restoreNotices(notices: Notice[]): void;
+}
+
+export interface SessionPolicy extends Installed {
+  /** Something worth keeping changed: save soon. */
+  changed(): void;
+  /** Put the saved session back (once, after the plugins mounted), if desk.session says so. */
+  restore(): Promise<void>;
+  /**
+   * The surfaces a restore would put back (#590): the grid's cells, the plugins of the saved files
+   * and the surface in use; undefined when no saved session would be put back.
+   */
+  shows(): Promise<ReadonlySet<string> | undefined>;
+  save(): Promise<void>;
+  /** Keep a part in the record; its saved value comes back on restore. Returns a function that drops it. */
+  keep(name: string, part: SessionPart): () => void;
+}
+
+export interface SessionOptions {
+  /** Safe mode: neither restore nor save, so the normal session waits for a normal start. */
+  hold?: boolean;
+  /** A store record (`session`) could not be put back and was kept as `<key>.broken`. */
+  broken?(key: string): void;
+}
+
+/** Whether a stored record is a session this desk can put back. */
+function restorable(value: Partial<SavedSession>): value is SavedSession {
+  if (value.version !== 1) return false;
+  const layout = loadLayout({ getItem: () => JSON.stringify(value.layout), setItem: () => {} });
+  return (
+    JSON.stringify(layout) === JSON.stringify(value.layout) &&
+    (value.files === undefined || Array.isArray(value.files)) &&
+    (value.notices === undefined || Array.isArray(value.notices))
+  );
+}
+
+export function installSession(
+  ctx: DeskContext,
+  buffers: BuffersPolicy,
+  actions: SessionActions,
+  options: SessionOptions = {},
+): SessionPolicy {
+  const { hub, bridge, win, surfaces } = ctx;
+  const { commands, settings } = hub;
+  const offs = disposer();
+  let timer: number | undefined;
+  // Saving waits until the saved session was read, so a fresh start never overwrites it.
+  let restored = false;
+  const parts = new Map<string, SessionPart>();
+
+  const on = () => hub.enabled("desk.session");
+  const snapshot = (): SavedSession => ({
+    version: 1,
+    layout: actions.layout(),
+    files: buffers.buffers
+      .list()
+      .filter((buffer) => buffer.path !== undefined)
+      .map((buffer) => ({ path: buffer.path as string, plugin: buffer.plugin }))
+      .reverse(),
+    focused: actions.focused(),
+    notices: settings.get("desk.session.save-history", true) ? actions.notices().reverse() : [],
+    parts: Object.fromEntries([...parts].map(([name, part]) => [name, part.save()])),
+  });
+
+  const save = async () => {
+    if (timer !== undefined) win.clearTimeout(timer);
+    timer = undefined;
+    if (!on() || !restored || !settings.get("desk.session.save", true)) return;
+    await bridge.call("store.set", { key: SESSION_KEY, value: snapshot() }).catch(() => {});
+  };
+  const changed = () => {
+    if (timer !== undefined || !restored) return;
+    timer = win.setTimeout(() => void save(), SAVE_DELAY_MS);
+  };
+
+  const read = async (): Promise<SavedSession | undefined> => {
+    const stored = await bridge.call("store.get", { key: SESSION_KEY }).catch(() => ({}));
+    const value = (stored as { value?: unknown }).value as Partial<SavedSession> | undefined;
+    if (value === undefined || value === null || restorable(value)) return value ?? undefined;
+    // Kept, not dropped: the desk starts empty and the person can still find what it held.
+    await bridge.call("store.set", { key: `${SESSION_KEY}.broken`, value }).catch(() => {});
+    await bridge.call("store.set", { key: SESSION_KEY, value: null }).catch(() => {});
+    options.broken?.(SESSION_KEY);
+    return undefined;
+  };
+
+  const restore = async () => {
+    if (options.hold) return;
+    const start = now();
+    const saved = on() && settings.get("desk.session.restore", true) ? await read() : undefined;
+    if (saved) {
+      actions.setLayout(
+        loadLayout({ getItem: () => JSON.stringify(saved.layout), setItem: () => {} }),
+      );
+      if (Array.isArray(saved.notices)) actions.restoreNotices(saved.notices);
+      // Every file opens at once without showing, as each viewer may take a while to be ready; then
+      // each shows in the saved order, once it and the files before it are open, so the last one
+      // used ends in use whichever viewer was ready first. One that fails is skipped, and one with no
+      // path never asks the person for a file.
+      const files = (saved.files ?? []).filter((file) => typeof file?.path === "string");
+      const opening = files.map((file) =>
+        commands.run("desk.files.open", { ...file, show: false }).then(
+          () => true,
+          () => false,
+        ),
+      );
+      for (const [index, file] of files.entries()) {
+        if (await opening[index]) await commands.run("desk.files.open", file).catch(() => {});
+      }
+      if (saved.focused && surfaces.get(saved.focused)) actions.focus(saved.focused);
+      for (const [name, part] of parts) {
+        if (saved.parts && name in saved.parts) part.restore(saved.parts[name]);
+      }
+    }
+    restored = true;
+    phase("session restore", start);
+  };
+
+  // Read on its own, before the plugins mount: a record that cannot be put back shows nothing.
+  const shows = async () => {
+    if (options.hold || !on() || !settings.get("desk.session.restore", true)) return undefined;
+    const stored = await bridge.call("store.get", { key: SESSION_KEY }).catch(() => ({}));
+    const saved = (stored as { value?: Partial<SavedSession> | null }).value;
+    if (!saved || !restorable(saved)) return undefined;
+    const files = (saved.files ?? []).map((file) => file?.plugin);
+    const ids = [...Object.keys(saved.layout.cells), ...files, saved.focused];
+    return new Set(ids.filter((id): id is string => typeof id === "string"));
+  };
+
+  offs.add(buffers.buffers.onChange(changed));
+  const onHide = () => void save();
+  win.addEventListener("pagehide", onHide);
+  offs.add(() => win.removeEventListener("pagehide", onHide));
+  offs.add(() => {
+    if (timer !== undefined) win.clearTimeout(timer);
+  });
+
+  const define = (id: string, title: string, run: () => unknown) =>
+    offs.add(
+      commands.define(id, { title, keywords: ["session", "desktop"], owner: "desk.session", run }),
+    );
+  define("desk.session.save", "Save the session now", async () => {
+    await save();
+    return snapshot();
+  });
+  define("desk.session.restore", "Put the saved session back", () => restore());
+  define("desk.session.forget", "Forget the saved session", async () => {
+    await bridge.call("store.set", { key: SESSION_KEY, value: null });
+  });
+
+  const keep = (name: string, part: SessionPart) => {
+    parts.set(name, part);
+    const off = part.onChange(changed);
+    return () => {
+      off();
+      if (parts.get(name) === part) parts.delete(name);
+    };
+  };
+
+  return { changed, restore, shows, save, keep, dispose: offs.dispose };
+}

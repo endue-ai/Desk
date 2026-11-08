@@ -1,0 +1,58 @@
+endue.formats Apple disk image and file system readers (lib/apple)
+
+These readers were written for endue Desk from Apple's published specifications and from Apple's
+own BSD-licensed reference decoder. No code was taken or followed from apfs-fuse, libfsapfs,
+libfshfs, the Linux hfsplus or apfs drivers, afsctool, or any other source under the GPL or the
+LGPL.
+
+Sources followed
+
+* Apple Technical Note TN1150, "HFS Plus Volume Format", Apple Developer documentation: the volume
+  header, HFS wrappers, the B-tree files (catalog, extents overflow, attributes), catalog records,
+  hard links through the private metadata folders, and symbolic links (hfs.js, hfs-btree.js,
+  hfs-fork.js, hfs-catalog.js).
+
+* Apple File System Reference, Apple Developer documentation
+  (https://developer.apple.com/support/downloads/Apple-File-System-Reference.pdf): object headers
+  and their Fletcher-64 checksums, the container superblock and checkpoints, object maps, B-tree
+  nodes, volume superblocks, inodes, directory records, extents and extended attributes (apfs.js,
+  apfs-object.js, apfs-fs.js).
+
+* The UDIF layout (the "koly" trailer, the XML property list's "blkx" block tables, "mish" chunk
+  tables and their chunk types) and the Apple Partition Map, as documented publicly, checked against
+  images made with hdiutil (udif.js, chunks.js, plist.js, apm.js). ADC follows its public
+  description (adc.js). decmpfs follows the attribute and resource-fork layouts macOS writes,
+  checked by writing files through the public xattr calls and reading them back through the kernel
+  (decmpfs.js; tests/apple/compress.py).
+
+* LZFSE and LZVN: Apple's reference implementation, https://github.com/lzfse/lzfse
+  (lzfse_decode_base.c, lzfse_fse.h, lzfse_fse.c, lzvn_decode_base.c, lzfse_internal.h), followed
+  for lzfse.js, fse.js and lzvn.js under the BSD 3-clause licence below.
+
+    Copyright (c) 2015-2016, Apple Inc. All rights reserved.
+
+    Redistribution and use in source and binary forms, with or without modification,
+    are permitted provided that the following conditions are met:
+
+    1.  Redistributions of source code must retain the above copyright notice,
+        this list of conditions and the following disclaimer.
+
+    2.  Redistributions in binary form must reproduce the above copyright notice,
+        this list of conditions and the following disclaimer in the documentation
+        and/or other materials provided with the distribution.
+
+    3.  Neither the name of the copyright holder(s) nor the names of any contributors
+        may be used to endorse or promote products derived from this software without
+        specific prior written permission.
+
+    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY
+    EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+    OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT
+    SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+    INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED
+    TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
+    BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+    CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
+    IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY
+    OF SUCH DAMAGE.
+

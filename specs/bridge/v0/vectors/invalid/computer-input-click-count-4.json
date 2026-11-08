@@ -1,0 +1,17 @@
+{
+  "target": "BridgeRequest",
+  "description": "at most a triple click",
+  "instance": {
+    "id": 3,
+    "method": "computer.input.click",
+    "params": {
+      "x": 1,
+      "y": 2,
+      "count": 4,
+      "scope": {
+        "permission": "computer:control",
+        "apps": ["com.apple.Safari"]
+      }
+    }
+  }
+}

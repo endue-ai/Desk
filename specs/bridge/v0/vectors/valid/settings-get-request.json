@@ -1,0 +1,11 @@
+{
+  "target": "BridgeRequest",
+  "description": "settings.get of the caller's own key needs no scope",
+  "instance": {
+    "id": 34,
+    "method": "settings.get",
+    "params": {
+      "key": "voice"
+    }
+  }
+}

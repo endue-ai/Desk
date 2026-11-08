@@ -1,0 +1,15 @@
+{
+  "target": "BridgeRequest",
+  "description": "a bundle id or a path, not both",
+  "instance": {
+    "id": 6,
+    "method": "computer.apps.launch",
+    "params": {
+      "bundleId": "com.apple.TextEdit",
+      "path": "/Applications/TextEdit.app",
+      "scope": {
+        "permission": "computer:control"
+      }
+    }
+  }
+}

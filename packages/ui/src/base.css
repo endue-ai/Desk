@@ -1,0 +1,392 @@
+/*
+ * @endue-ai/ui base sheet for plugin pages: what every frame used to copy. Colours and sizes come
+ * only from the --desk-* tokens (tokens.css, and the theme the runtime applies), so a theme restyles
+ * the page without a change here. Link it after tokens.css:
+ *   <link rel="stylesheet" href="/_desk/tokens.css" />
+ *   <link rel="stylesheet" href="/_desk/base.css" />
+ * Controls are the design system's components (ADR 0090): the elements in ui.js, or the kit classes
+ * below on native controls (`.desk-btn`, `.desk-field`, `.desk-tabs` …). Both read the component
+ * tokens (`--desk-<component>-*`) that the design system in force sets, so a design system restyles
+ * every control the same way. The layout classes at the end have no behaviour of their own.
+ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--desk-card);
+  color: var(--desk-text);
+  font-family: var(--desk-font-sans);
+  font-size: var(--desk-text-sm);
+  letter-spacing: var(--desk-tracking);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* The theme's grain (material.noise) over the page: invisible at the default of 0. */
+html::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 2147483647;
+  pointer-events: none;
+  opacity: var(--desk-noise);
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.5 0 0 0 0 0.5 0 0 0 0 0.5 0 0 0 1 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+a {
+  color: var(--desk-primary-text);
+}
+
+code,
+kbd,
+pre,
+samp {
+  font-family: var(--desk-font-mono);
+  font-size: var(--desk-text-xs);
+}
+
+:focus-visible {
+  outline: var(--desk-focus-width) solid var(--desk-ring);
+  outline-offset: var(--desk-focus-offset);
+}
+
+[hidden] {
+  display: none !important;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Layout patterns. A bar across the top of a page: a title, then tools; `.desk-bar-spacer` pushes
+   what follows to the right. */
+.desk-bar {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--desk-space-2);
+  min-height: var(--desk-control-md);
+  padding: 0 var(--desk-space-3);
+  border-bottom: 1px solid var(--desk-border);
+}
+
+.desk-bar-title {
+  margin: 0;
+  overflow: hidden;
+  font-size: var(--desk-text-sm);
+  font-weight: 600;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.desk-bar-spacer {
+  flex: 1;
+}
+
+/* A pane that scrolls on its own inside a flex or grid layout. */
+.desk-pane {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+}
+
+/* A details column beside the main pane. */
+.desk-details {
+  padding: var(--desk-space-3);
+  border-left: 1px solid var(--desk-border);
+  font-size: var(--desk-text-xs);
+}
+
+/* An empty state or a notice in place of content. */
+.desk-empty {
+  margin: var(--desk-space-3);
+  padding: var(--desk-space-4);
+  border-radius: var(--desk-radius-md);
+  background: var(--desk-muted);
+  color: var(--desk-text-muted);
+  text-align: center;
+}
+
+.desk-muted {
+  color: var(--desk-text-muted);
+}
+
+/* A recoverable failure. Supply role="alert" when a new error appears and a retry/recovery action. */
+.desk-error {
+  margin: var(--desk-space-3);
+  padding: var(--desk-space-4);
+  border: 1px solid var(--desk-danger-border);
+  border-radius: var(--desk-radius-md);
+  background: var(--desk-danger-soft);
+  color: var(--desk-danger-text);
+}
+
+/* Components (ADR 0090). A button: `.desk-btn` for every action, `.desk-btn-primary` for the main
+   one, `.desk-btn-danger` for a destructive one, `.desk-btn-quiet` in toolbars. */
+.desk-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--desk-space-2);
+  min-height: var(--desk-button-height);
+  padding: 0 var(--desk-button-padding-x);
+  border: 1px solid var(--desk-button-border);
+  border-radius: var(--desk-button-radius);
+  background: var(--desk-button-bg);
+  color: var(--desk-button-fg);
+  box-shadow: var(--desk-button-shadow);
+  font-size: var(--desk-text-sm);
+  font-weight: var(--desk-button-weight);
+  text-transform: var(--desk-button-case);
+  letter-spacing: var(--desk-button-tracking);
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color var(--desk-motion-fast) ease, border-color var(--desk-motion-fast) ease;
+}
+.desk-btn:hover:not(:disabled) {
+  border-color: var(--desk-button-hover-border);
+  background: var(--desk-button-hover-bg);
+  color: var(--desk-button-hover-fg);
+}
+.desk-btn-primary {
+  border-color: var(--desk-button-primary-border);
+  background: var(--desk-button-primary-bg);
+  color: var(--desk-button-primary-fg);
+}
+.desk-btn-primary:hover:not(:disabled) {
+  border-color: var(--desk-button-primary-hover-border);
+  background: var(--desk-button-primary-hover-bg);
+  color: var(--desk-button-primary-hover-fg);
+}
+.desk-btn-danger {
+  border-color: var(--desk-button-danger-border);
+  background: var(--desk-button-danger-bg);
+  color: var(--desk-button-danger-fg);
+}
+.desk-btn-danger:hover:not(:disabled) {
+  border-color: var(--desk-button-danger-hover-border);
+  background: var(--desk-button-danger-hover-bg);
+  color: var(--desk-button-danger-hover-fg);
+}
+.desk-btn-quiet {
+  border-color: var(--desk-button-quiet-border);
+  background: var(--desk-button-quiet-bg);
+  color: var(--desk-button-quiet-fg);
+}
+.desk-btn-quiet:hover:not(:disabled) {
+  background: var(--desk-button-quiet-hover-bg);
+}
+.desk-btn:disabled,
+.desk-icon-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* A button with an icon alone; give it an aria-label. */
+.desk-icon-btn {
+  display: inline-grid;
+  place-items: center;
+  width: var(--desk-icon-button-size);
+  height: var(--desk-icon-button-size);
+  padding: 0;
+  border: 1px solid var(--desk-icon-button-border);
+  border-radius: var(--desk-icon-button-radius);
+  background: var(--desk-icon-button-bg);
+  color: var(--desk-icon-button-fg);
+  cursor: pointer;
+}
+.desk-icon-btn:hover:not(:disabled) {
+  background: var(--desk-icon-button-hover-bg);
+}
+
+/* A text input, select or text area. */
+.desk-field {
+  min-height: var(--desk-field-height);
+  padding: 0 var(--desk-field-padding-x);
+  border-style: solid;
+  border-color: var(--desk-field-border-color);
+  border-width: var(--desk-field-border-width);
+  border-radius: var(--desk-field-radius);
+  background: var(--desk-field-bg);
+  color: var(--desk-text);
+}
+textarea.desk-field {
+  padding-block: var(--desk-space-2);
+}
+.desk-field::placeholder {
+  color: var(--desk-text-muted);
+}
+.desk-field:focus-visible {
+  border-color: var(--desk-field-focus-border);
+  outline: var(--desk-focus-width) solid var(--desk-field-focus-ring);
+  outline-offset: 1px;
+}
+
+/* A checkbox or radio button. */
+.desk-check {
+  width: var(--desk-check-size);
+  height: var(--desk-check-size);
+  margin: 0;
+  accent-color: var(--desk-check-accent);
+}
+
+/* Tabs or a segmented control: `.desk-tabs` around `.desk-tab` buttons, the chosen one
+   aria-selected="true" (or aria-pressed="true", or .is-selected). */
+.desk-tabs {
+  display: flex;
+  gap: var(--desk-tabs-gap);
+  border-radius: var(--desk-tabs-radius);
+  background: var(--desk-tabs-bg);
+}
+.desk-tab {
+  min-height: var(--desk-tab-height);
+  padding: 0 var(--desk-tab-padding-x);
+  border: 1px solid var(--desk-tab-border);
+  border-radius: var(--desk-tab-radius);
+  background: transparent;
+  color: var(--desk-tab-fg);
+  cursor: pointer;
+}
+.desk-tab:hover:not(:disabled) {
+  background: var(--desk-tab-hover-bg);
+}
+.desk-tab[aria-selected="true"],
+.desk-tab[aria-pressed="true"],
+.desk-tab.is-selected {
+  border-color: var(--desk-tab-selected-border);
+  background: var(--desk-tab-selected-bg);
+  color: var(--desk-tab-selected-fg);
+  box-shadow: var(--desk-tab-selected-shadow);
+}
+
+/* A card, a row of a list or menu (active: hover, .is-active or data-active; chosen:
+   aria-selected="true" or .is-selected), a menu panel, a dialog panel and its scrim. */
+.desk-card {
+  padding: var(--desk-card-padding);
+  border: 1px solid var(--desk-card-border);
+  border-radius: var(--desk-card-radius);
+  background: var(--desk-card-bg);
+  box-shadow: var(--desk-card-shadow);
+}
+.desk-row {
+  padding: var(--desk-row-padding-y) var(--desk-row-padding-x);
+  border-radius: var(--desk-row-radius);
+  cursor: pointer;
+}
+.desk-row:hover,
+.desk-row.is-active,
+.desk-row[data-active] {
+  background: var(--desk-row-active-bg);
+  color: var(--desk-row-active-fg);
+  box-shadow: var(--desk-row-active-shadow);
+}
+.desk-row[aria-selected="true"],
+.desk-row.is-selected {
+  color: var(--desk-row-selected-fg);
+  font-weight: 600;
+}
+.desk-menu {
+  padding: var(--desk-space-1);
+  border: 1px solid var(--desk-menu-border);
+  border-radius: var(--desk-menu-radius);
+  background: var(--desk-menu-bg);
+  box-shadow: var(--desk-menu-shadow);
+}
+.desk-dialog {
+  padding: var(--desk-dialog-padding);
+  border: 1px solid var(--desk-dialog-border);
+  border-radius: var(--desk-dialog-radius);
+  background: var(--desk-dialog-bg);
+  box-shadow: var(--desk-dialog-shadow);
+}
+.desk-scrim {
+  background: var(--desk-dialog-scrim);
+  backdrop-filter: var(--desk-dialog-scrim-filter);
+}
+
+/* A badge, chip or count; a tooltip. */
+.desk-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 18px;
+  padding: 0 var(--desk-space-2);
+  border: 1px solid var(--desk-badge-border);
+  border-radius: var(--desk-badge-radius);
+  background: var(--desk-badge-bg);
+  color: var(--desk-badge-fg);
+  font-size: var(--desk-text-2xs);
+  font-weight: 600;
+  text-transform: var(--desk-badge-case);
+  letter-spacing: var(--desk-badge-tracking);
+  white-space: nowrap;
+}
+.desk-tooltip {
+  padding: var(--desk-space-1) var(--desk-space-2);
+  border-radius: var(--desk-tooltip-radius);
+  background: var(--desk-tooltip);
+  color: var(--desk-tooltip-text);
+  box-shadow: var(--desk-tooltip-shadow);
+  font-size: var(--desk-text-xs);
+}
+
+/* A table (`<table class="desk-table">`) and a progress bar (`<progress class="desk-progress">`). */
+.desk-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.desk-table th,
+.desk-table td {
+  padding: var(--desk-table-cell-padding-y) var(--desk-table-cell-padding-x);
+  border-bottom: 1px solid var(--desk-table-row-border);
+  text-align: left;
+}
+.desk-table th {
+  background: var(--desk-table-header-bg);
+  color: var(--desk-text-muted);
+  font-weight: 600;
+}
+.desk-table tbody tr:nth-child(even) {
+  background: var(--desk-table-stripe-bg);
+}
+.desk-progress {
+  appearance: none;
+  height: var(--desk-progress-thickness);
+  overflow: hidden;
+  border: 0;
+  border-radius: var(--desk-progress-radius);
+  background: var(--desk-border);
+}
+.desk-progress::-webkit-progress-bar {
+  background: var(--desk-border);
+}
+.desk-progress::-webkit-progress-value {
+  border-radius: var(--desk-progress-radius);
+  background: var(--desk-primary);
+}

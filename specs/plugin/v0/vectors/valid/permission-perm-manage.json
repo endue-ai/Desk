@@ -1,0 +1,7 @@
+{
+  "target": "Permission",
+  "description": "the prompter's permission",
+  "instance": {
+    "permission": "perm:manage"
+  }
+}

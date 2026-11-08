@@ -1,0 +1,20 @@
+{
+  "target": "ViewListResult",
+  "description": "view.list answered with an item view and a universal view: the universal one has its type and no version",
+  "instance": {
+    "views": [
+      {
+        "id": "eris.issues-as-a-board",
+        "title": "Issues as a board",
+        "type": "kanban",
+        "source": "file"
+      },
+      {
+        "id": "example.notes",
+        "version": "0.1.0",
+        "title": "Notes",
+        "source": "file"
+      }
+    ]
+  }
+}

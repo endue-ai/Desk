@@ -1,0 +1,37 @@
+{
+  "target": "TurnRequest",
+  "description": "the context has no mood",
+  "instance": {
+    "leaseId": "l1",
+    "message": {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "hi"
+        }
+      ]
+    },
+    "context": {
+      "facts": [
+        {
+          "id": "fact_0abc123def456",
+          "text": "Prefers pnpm over npm"
+        }
+      ],
+      "episodes": [
+        {
+          "at": "2026-11-04T10:30:00.000Z",
+          "asked": "check my latest mail",
+          "answered": "Two new messages."
+        }
+      ],
+      "working": {
+        "now": "2026-11-05T09:00:00.000Z",
+        "surfaces": ["Notes", "Mail"],
+        "commands": ["endue.mail.latest"]
+      },
+      "mood": "happy"
+    }
+  }
+}

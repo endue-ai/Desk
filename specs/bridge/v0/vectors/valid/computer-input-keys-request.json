@@ -1,0 +1,15 @@
+{
+  "target": "BridgeRequest",
+  "description": "a new tab, then the address bar",
+  "instance": {
+    "id": 5,
+    "method": "computer.input.keys",
+    "params": {
+      "keys": ["cmd+t", "cmd+l"],
+      "scope": {
+        "permission": "computer:control",
+        "apps": ["com.apple.Safari"]
+      }
+    }
+  }
+}

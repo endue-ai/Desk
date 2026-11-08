@@ -1,0 +1,11 @@
+{
+  "target": "PluginManifest",
+  "description": "autoload is a boolean",
+  "instance": {
+    "id": "example.sheets",
+    "version": "0.1.0",
+    "kind": "ui",
+    "entry": "ui/index.html",
+    "autoload": "yes"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "target": "BridgeRequest",
+  "description": "turn a plugin off",
+  "instance": {
+    "id": 10,
+    "method": "plugin.setEnabled",
+    "params": {
+      "plugin": "example.hello-ui",
+      "enabled": false,
+      "scope": {
+        "permission": "plugin:manage"
+      }
+    }
+  }
+}

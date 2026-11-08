@@ -1,0 +1,14 @@
+{
+  "target": "BridgeRequest",
+  "description": "resume is a boolean",
+  "instance": {
+    "id": 8,
+    "method": "computer.stop",
+    "params": {
+      "resume": "yes",
+      "scope": {
+        "permission": "computer:control"
+      }
+    }
+  }
+}

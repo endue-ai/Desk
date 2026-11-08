@@ -1,0 +1,13 @@
+{
+  "target": "StudioAgentsPromptUpdateResult",
+  "description": "revision 4 restores revision 2",
+  "instance": {
+    "prompt": {
+      "rev": 4,
+      "content": "Be kind.",
+      "source": "restore",
+      "restoredFromRev": 2,
+      "createdAt": "2026-11-01T09:00:00Z"
+    }
+  }
+}

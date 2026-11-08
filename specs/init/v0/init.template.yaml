@@ -1,0 +1,37 @@
+# endue Desk init file. Desk reads it at every start, like Emacs reads init.el.
+# The format is specs/init/v0. If the file does not parse, Desk starts with the defaults and says why.
+version: 0
+
+# The profile to start in: a set of plugins plus their settings.
+profile: default
+
+plugins:
+  # Plugin ids to keep off at start, built-in plugins included. Example: [endue.sidebar]
+  disabled: []
+
+# Settings by key, for the core and plugins. Examples:
+#   eris.voice: true
+#   desk.brain.use: local      # Eris's brain: endue (default), local (Ollama), echo or claude (Claude Code)
+#   desk.brain.model: llama3.2 # the Ollama model of the local brain
+settings: {}
+
+# What each agent of the brain may be granted here, by agent id. An agent without an entry asks you
+# before every first use; one with an allow list is never granted anything outside it. Example:
+#   ag_01JBZ8Q4MR0000000000000001:
+#     allow:
+#       - { permission: fs:write, paths: ["~/Documents/Notes/**"] }
+agents: {}
+
+# MCP servers whose tools agents may call, by name. Each one starts when you allow it to run its
+# command; env names variables to pass from Desk's environment (never write their values here).
+# Example:
+#   servers:
+#     github:
+#       command: npx
+#       args: ["-y", "@modelcontextprotocol/server-github"]
+#       env: [GITHUB_PERSONAL_ACCESS_TOKEN]
+mcp: {}
+
+# Keep this file the same on every desk you use, through your endue account.
+sync:
+  enabled: false

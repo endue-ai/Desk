@@ -1,0 +1,15 @@
+{
+  "target": "BridgeRequest",
+  "description": "import every archived Codex session",
+  "instance": {
+    "id": 4,
+    "method": "agents.import",
+    "params": {
+      "agent": "codex",
+      "from": "archive",
+      "scope": {
+        "permission": "agents:manage"
+      }
+    }
+  }
+}

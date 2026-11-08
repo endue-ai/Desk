@@ -1,0 +1,19 @@
+{
+  "target": "BridgeRequest",
+  "description": "connector.connect: a second instance with a title and its settings",
+  "instance": {
+    "id": 44,
+    "method": "connector.connect",
+    "params": {
+      "connector": "desk.fixtures",
+      "instance": "work",
+      "title": "Work",
+      "settings": {
+        "folder": "~/Work"
+      },
+      "scope": {
+        "permission": "connector:manage"
+      }
+    }
+  }
+}

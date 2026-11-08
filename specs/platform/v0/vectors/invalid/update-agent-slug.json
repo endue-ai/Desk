@@ -1,0 +1,10 @@
+{
+  "target": "UpdateAgentRequest",
+  "description": "the slug never changes",
+  "instance": {
+    "profile": {
+      "name": "Miso"
+    },
+    "slug": "miso-2"
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "target": "ShellOpenResult",
+  "description": "shell.open answered: the system took the link",
+  "instance": {
+    "opened": true
+  }
+}

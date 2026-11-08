@@ -1,0 +1,12 @@
+{
+  "target": "BridgeEvent",
+  "description": "a command was registered",
+  "instance": {
+    "event": "cmd.changed",
+    "data": {
+      "id": "eris.say",
+      "change": "registered",
+      "provider": "endue.eris"
+    }
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "target": "BridgeRequest",
+  "description": "find a catalog agent for what the person wants help with",
+  "instance": {
+    "id": 1,
+    "method": "studio.catalog.recommend",
+    "params": {
+      "query": "고객 문의 메일에 답장하는 걸 도와줘",
+      "locale": "ko",
+      "scope": {
+        "permission": "studio:manage"
+      }
+    }
+  }
+}

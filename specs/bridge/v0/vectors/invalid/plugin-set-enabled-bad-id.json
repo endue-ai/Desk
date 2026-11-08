@@ -1,0 +1,15 @@
+{
+  "target": "BridgeRequest",
+  "description": "plugin ids are reverse-domain",
+  "instance": {
+    "id": 10,
+    "method": "plugin.setEnabled",
+    "params": {
+      "plugin": "Hello UI",
+      "enabled": true,
+      "scope": {
+        "permission": "plugin:manage"
+      }
+    }
+  }
+}

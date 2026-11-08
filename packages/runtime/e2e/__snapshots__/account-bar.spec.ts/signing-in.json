@@ -1,0 +1,179 @@
+{
+ "tag": "section",
+ "class": "popover account-popover",
+ "role": "dialog",
+ "aria-label": "User information",
+ "data-popover": "account",
+ "style": {
+  "background": "rgb(43, 39, 49)",
+  "border": "solid rgb(51, 49, 54)"
+ },
+ "children": [
+  {
+   "tag": "div",
+   "class": "pop-title",
+   "style": {
+    "color": "rgb(176, 173, 183)"
+   },
+   "text": "User information"
+  },
+  {
+   "tag": "div",
+   "class": "account-identity",
+   "children": [
+    {
+     "tag": "span",
+     "class": "account-avatar",
+     "style": {
+      "background": "rgb(48, 40, 62)"
+     },
+     "children": [
+      {
+       "tag": "svg",
+       "icon": "user"
+      }
+     ]
+    },
+    {
+     "tag": "div",
+     "children": [
+      {
+       "tag": "strong",
+       "style": {
+        "color": "rgb(242, 240, 245)"
+       },
+       "text": "Local user"
+      },
+      {
+       "tag": "small",
+       "style": {
+        "color": "rgb(176, 173, 183)"
+       },
+       "text": "On this device"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "tag": "div",
+   "class": "pop-row",
+   "style": {
+    "color": "rgb(242, 240, 245)"
+   },
+   "text": "endue ID",
+   "children": [
+    {
+     "tag": "span",
+     "class": "pop-muted",
+     "style": {
+      "color": "rgb(176, 173, 183)"
+     },
+     "text": "Waiting for the browser"
+    }
+   ]
+  },
+  {
+   "tag": "div",
+   "class": "account-code",
+   "style": {
+    "border": "solid rgb(51, 49, 54)"
+   },
+   "children": [
+    {
+     "tag": "p",
+     "style": {
+      "color": "rgb(242, 240, 245)"
+     },
+     "text": "Confirm this code on the endue ID page in your browser."
+    },
+    {
+     "tag": "strong",
+     "class": "account-user-code",
+     "style": {
+      "color": "rgb(242, 240, 245)"
+     },
+     "text": "WDJB-MJHT"
+    },
+    {
+     "tag": "small",
+     "class": "pop-muted",
+     "style": {
+      "color": "rgb(176, 173, 183)"
+     },
+     "text": "auth.endue.ai/realms/endue/device"
+    },
+    {
+     "tag": "p",
+     "class": "pop-muted",
+     "style": {
+      "color": "rgb(176, 173, 183)"
+     },
+     "text": "If the page asks you to sign in, choose “New to Endue? Create an account”."
+    }
+   ]
+  },
+  {
+   "tag": "div",
+   "class": "account-actions",
+   "children": [
+    {
+     "tag": "button",
+     "class": "btn btn-primary",
+     "style": {
+      "background": "rgb(182, 163, 245)",
+      "color": "rgb(30, 24, 51)",
+      "border": "solid rgb(182, 163, 245)"
+     },
+     "text": "Open browser again"
+    },
+    {
+     "tag": "button",
+     "class": "btn btn-outline",
+     "style": {
+      "background": "rgb(55, 49, 63)",
+      "color": "rgb(242, 240, 245)",
+      "border": "solid rgb(131, 121, 145)"
+     },
+     "text": "Cancel"
+    }
+   ]
+  },
+  {
+   "tag": "div",
+   "class": "pop-row",
+   "style": {
+    "color": "rgb(242, 240, 245)"
+   },
+   "text": "Profile",
+   "children": [
+    {
+     "tag": "span",
+     "class": "pop-muted",
+     "style": {
+      "color": "rgb(176, 173, 183)"
+     },
+     "text": "Morning"
+    }
+   ]
+  },
+  {
+   "tag": "div",
+   "class": "pop-row",
+   "style": {
+    "color": "rgb(242, 240, 245)"
+   },
+   "text": "Space",
+   "children": [
+    {
+     "tag": "span",
+     "class": "pop-muted",
+     "style": {
+      "color": "rgb(176, 173, 183)"
+     },
+     "text": "Home"
+    }
+   ]
+  }
+ ]
+}

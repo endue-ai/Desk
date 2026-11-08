@@ -1,0 +1,12 @@
+{
+  "target": "BridgeEvent",
+  "description": "a tool step names the command it runs",
+  "instance": {
+    "event": "brain.turn",
+    "data": {
+      "turnId": "t1",
+      "kind": "tool",
+      "tool": { "callId": "call1", "provider": "endue.mail" }
+    }
+  }
+}

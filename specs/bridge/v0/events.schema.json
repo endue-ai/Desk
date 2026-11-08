@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://endue.ai/specs/bridge/v0/events.schema.json",
+  "title": "Desk bridge v0: events",
+  "description": "The core event bus, opened to callers. Events about a caller's own work reach it without asking; events.subscribe asks for named events about every caller, scoped by events:subscribe.",
+  "$defs": {
+    "EventsSubscribeRequest": {
+      "description": "Start receiving the named events about every caller.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "events.subscribe" },
+        "params": { "$ref": "#/$defs/EventsSubscribeParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "EventsSubscribeParams": {
+      "description": "Parameters of events.subscribe. The scope must cover every name.",
+      "type": "object",
+      "properties": {
+        "names": {
+          "type": "array",
+          "items": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/EventName" },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "scope": {
+          "$ref": "../../plugin/v0/permission.schema.json#/$defs/EventsSubscribePermission"
+        }
+      },
+      "required": ["names", "scope"],
+      "additionalProperties": false
+    },
+    "EventsSubscribeResult": {
+      "description": "Result of events.subscribe.",
+      "type": "object",
+      "properties": {
+        "subscriptionId": { "type": "string", "minLength": 1 }
+      },
+      "required": ["subscriptionId"],
+      "additionalProperties": false
+    },
+    "EventsUnsubscribeRequest": {
+      "description": "Stop one of the caller's subscriptions.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "events.unsubscribe" },
+        "params": { "$ref": "#/$defs/EventsUnsubscribeParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "EventsUnsubscribeParams": {
+      "description": "Parameters of events.unsubscribe.",
+      "type": "object",
+      "properties": {
+        "subscriptionId": { "type": "string", "minLength": 1 }
+      },
+      "required": ["subscriptionId"],
+      "additionalProperties": false
+    },
+    "EventsUnsubscribeResult": {
+      "description": "Result of events.unsubscribe.",
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    }
+  }
+}

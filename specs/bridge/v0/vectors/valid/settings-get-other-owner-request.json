@@ -1,0 +1,16 @@
+{
+  "target": "BridgeRequest",
+  "description": "settings.get of another caller's key under settings:read",
+  "instance": {
+    "id": 35,
+    "method": "settings.get",
+    "params": {
+      "key": "voice",
+      "owner": "endue.eris",
+      "scope": {
+        "permission": "settings:read",
+        "keys": ["endue.eris/*"]
+      }
+    }
+  }
+}

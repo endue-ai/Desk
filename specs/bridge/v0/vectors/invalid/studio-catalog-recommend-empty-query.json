@@ -1,0 +1,14 @@
+{
+  "target": "BridgeRequest",
+  "description": "a recommendation needs something to go on",
+  "instance": {
+    "id": 1,
+    "method": "studio.catalog.recommend",
+    "params": {
+      "query": "",
+      "scope": {
+        "permission": "studio:manage"
+      }
+    }
+  }
+}

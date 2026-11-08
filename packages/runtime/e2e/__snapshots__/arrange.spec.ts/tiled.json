@@ -1,0 +1,1631 @@
+{
+ "tag": "div",
+ "class": "surfaces",
+ "children": [
+  {
+   "tag": "section",
+   "class": "surface",
+   "role": "region",
+   "aria-label": "Calendar",
+   "data-surface": "calendar",
+   "box": [
+    104,
+    190,
+    403,
+    622
+   ],
+   "style": {
+    "background": "rgb(30, 29, 33)",
+    "border": "solid rgb(51, 49, 54)"
+   },
+   "children": [
+    {
+     "tag": "header",
+     "class": "surface-title",
+     "children": [
+      {
+       "tag": "span",
+       "class": "surface-heading",
+       "children": [
+        {
+         "tag": "svg",
+         "icon": "calendar"
+        },
+        {
+         "tag": "span",
+         "class": "surface-name",
+         "style": {
+          "color": "rgb(242, 240, 245)"
+         },
+         "text": "Calendar"
+        },
+        {
+         "tag": "span",
+         "class": "surface-sub",
+         "style": {
+          "color": "rgb(176, 173, 183)"
+         },
+         "text": "This week"
+        }
+       ]
+      },
+      {
+       "tag": "span",
+       "class": "surface-tools",
+       "children": [
+        {
+         "tag": "button",
+         "class": "icon-button tool",
+         "aria-label": "Split right (⌘D)",
+         "box": [
+          344,
+          199,
+          24,
+          24
+         ],
+         "style": {
+          "border": "solid rgba(0, 0, 0, 0)"
+         },
+         "children": [
+          {
+           "tag": "svg",
+           "icon": "split-right"
+          }
+         ]
+        },
+        {
+         "tag": "button",
+         "class": "icon-button tool",
+         "aria-label": "Split down (⌥⌘D)",
+         "box": [
+          370,
+          199,
+          24,
+          24
+         ],
+         "style": {
+          "border": "solid rgba(0, 0, 0, 0)"
+         },
+         "children": [
+          {
+           "tag": "svg",
+           "icon": "split-down"
+          }
+         ]
+        },
+        {
+         "tag": "button",
+         "class": "icon-button tool",
+         "aria-label": "Floating mode",
+         "aria-pressed": "false",
+         "box": [
+          396,
+          199,
+          24,
+          24
+         ],
+         "style": {
+          "border": "solid rgba(0, 0, 0, 0)"
+         },
+         "children": [
+          {
+           "tag": "svg",
+           "icon": "floating"
+          }
+         ]
+        },
+        {
+         "tag": "button",
+         "class": "icon-button tool",
+         "aria-label": "Pin",
+         "aria-pressed": "false",
+         "box": [
+          422,
+          199,
+          24,
+          24
+         ],
+         "style": {
+          "border": "solid rgba(0, 0, 0, 0)"
+         },
+         "children": [
+          {
+           "tag": "svg",
+           "icon": "pin"
+          }
+         ]
+        },
+        {
+         "tag": "button",
+         "class": "icon-button tool",
+         "aria-label": "Put in drawer",
+         "box": [
+          448,
+          199,
+          24,
+          24
+         ],
+         "style": {
+          "border": "solid rgba(0, 0, 0, 0)"
+         },
+         "children": [
+          {
+           "tag": "svg",
+           "icon": "drawer"
+          }
+         ]
+        },
+        {
+         "tag": "button",
+         "class": "icon-button tool",
+         "aria-label": "Close",
+         "box": [
+          474,
+          199,
+          24,
+          24
+         ],
+         "style": {
+          "border": "solid rgba(0, 0, 0, 0)"
+         },
+         "children": [
+          {
+           "tag": "svg",
+           "icon": "close"
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "tag": "div",
+     "class": "surface-body",
+     "children": [
+      {
+       "tag": "div",
+       "class": "panes",
+       "children": [
+        {
+         "tag": "div",
+         "class": "pane",
+         "role": "group",
+         "aria-label": "Calendar",
+         "children": [
+          {
+           "tag": "div",
+           "class": "pane-body",
+           "children": [
+            {
+             "tag": "div",
+             "class": "cal",
+             "children": [
+              {
+               "tag": "div",
+               "class": "cal-head",
+               "children": [
+                {
+                 "tag": "span",
+                 "style": {
+                  "color": "rgb(176, 173, 183)"
+                 }
+                },
+                {
+                 "tag": "span",
+                 "class": "cal-day",
+                 "style": {
+                  "color": "rgb(176, 173, 183)"
+                 },
+                 "text": "Mon"
+                },
+                {
+                 "tag": "span",
+                 "class": "cal-day",
+                 "style": {
+                  "color": "rgb(176, 173, 183)"
+                 },
+                 "text": "Tue"
+                },
+                {
+                 "tag": "span",
+                 "class": "cal-day",
+                 "style": {
+                  "color": "rgb(176, 173, 183)"
+                 },
+                 "text": "Wed"
+                },
+                {
+                 "tag": "span",
+                 "class": "cal-day",
+                 "style": {
+                  "color": "rgb(176, 173, 183)"
+                 },
+                 "text": "Thu"
+                },
+                {
+                 "tag": "span",
+                 "class": "cal-day",
+                 "style": {
+                  "color": "rgb(176, 173, 183)"
+                 },
+                 "text": "Fri"
+                }
+               ]
+              },
+              {
+               "tag": "div",
+               "class": "cal-grid",
+               "children": [
+                {
+                 "tag": "div",
+                 "class": "cal-hours",
+                 "children": [
+                  {
+                   "tag": "span",
+                   "class": "cal-hour",
+                   "style": {
+                    "color": "rgb(176, 173, 183)"
+                   },
+                   "text": "9"
+                  },
+                  {
+                   "tag": "span",
+                   "class": "cal-hour",
+                   "style": {
+                    "color": "rgb(176, 173, 183)"
+                   },
+                   "text": "10"
+                  },
+                  {
+                   "tag": "span",
+                   "class": "cal-hour",
+                   "style": {
+                    "color": "rgb(176, 173, 183)"
+                   },
+                   "text": "11"
+                  },
+                  {
+                   "tag": "span",
+                   "class": "cal-hour",
+                   "style": {
+                    "color": "rgb(176, 173, 183)"
+                   },
+                   "text": "12"
+                  },
+                  {
+                   "tag": "span",
+                   "class": "cal-hour",
+                   "style": {
+                    "color": "rgb(176, 173, 183)"
+                   },
+                   "text": "13"
+                  },
+                  {
+                   "tag": "span",
+                   "class": "cal-hour",
+                   "style": {
+                    "color": "rgb(176, 173, 183)"
+                   },
+                   "text": "14"
+                  },
+                  {
+                   "tag": "span",
+                   "class": "cal-hour",
+                   "style": {
+                    "color": "rgb(176, 173, 183)"
+                   },
+                   "text": "15"
+                  },
+                  {
+                   "tag": "span",
+                   "class": "cal-hour",
+                   "style": {
+                    "color": "rgb(176, 173, 183)"
+                   },
+                   "text": "16"
+                  }
+                 ]
+                },
+                {
+                 "tag": "div",
+                 "class": "cal-col",
+                 "role": "list",
+                 "aria-label": "Mon",
+                 "children": [
+                  {
+                   "tag": "div",
+                   "class": "cal-event",
+                   "role": "listitem",
+                   "style": {
+                    "background": "rgb(36, 33, 39)",
+                    "border": "solid rgb(51, 49, 54)"
+                   },
+                   "children": [
+                    {
+                     "tag": "span",
+                     "class": "cal-title",
+                     "style": {
+                      "color": "rgb(242, 240, 245)"
+                     },
+                     "text": "Standup"
+                    }
+                   ]
+                  }
+                 ]
+                },
+                {
+                 "tag": "div",
+                 "class": "cal-col",
+                 "role": "list",
+                 "aria-label": "Tue",
+                 "children": [
+                  {
+                   "tag": "div",
+                   "class": "cal-event",
+                   "role": "listitem",
+                   "style": {
+                    "background": "rgb(36, 33, 39)",
+                    "border": "solid rgb(51, 49, 54)"
+                   },
+                   "children": [
+                    {
+                     "tag": "span",
+                     "class": "cal-title",
+                     "style": {
+                      "color": "rgb(242, 240, 245)"
+                     },
+                     "text": "Design review"
+                    }
+                   ]
+                  }
+                 ]
+                },
+                {
+                 "tag": "div",
+                 "class": "cal-col",
+                 "role": "list",
+                 "aria-label": "Wed",
+                 "children": [
+                  {
+                   "tag": "div",
+                   "class": "cal-event is-overlap is-lane-0",
+                   "role": "listitem",
+                   "style": {
+                    "background": "rgba(224, 115, 138, 0.14)",
+                    "border": "solid rgb(224, 115, 138)"
+                   },
+                   "children": [
+                    {
+                     "tag": "span",
+                     "class": "cal-title",
+                     "style": {
+                      "color": "rgb(242, 240, 245)"
+                     },
+                     "text": "Client call"
+                    },
+                    {
+                     "tag": "span",
+                     "class": "cal-flag",
+                     "style": {
+                      "color": "rgb(250, 138, 161)"
+                     },
+                     "text": "Overlap"
+                    }
+                   ]
+                  },
+                  {
+                   "tag": "div",
+                   "class": "cal-event is-overlap is-lane-1",
+                   "role": "listitem",
+                   "style": {
+                    "background": "rgba(224, 115, 138, 0.14)",
+                    "border": "solid rgb(224, 115, 138)"
+                   },
+                   "children": [
+                    {
+                     "tag": "span",
+                     "class": "cal-title",
+                     "style": {
+                      "color": "rgb(242, 240, 245)"
+                     },
+                     "text": "Budget sync"
+                    },
+                    {
+                     "tag": "span",
+                     "class": "cal-flag",
+                     "style": {
+                      "color": "rgb(250, 138, 161)"
+                     },
+                     "text": "Overlap"
+                    }
+                   ]
+                  }
+                 ]
+                },
+                {
+                 "tag": "div",
+                 "class": "cal-col",
+                 "role": "list",
+                 "aria-label": "Thu",
+                 "children": [
+                  {
+                   "tag": "div",
+                   "class": "cal-event",
+                   "role": "listitem",
+                   "style": {
+                    "background": "rgb(36, 33, 39)",
+                    "border": "solid rgb(51, 49, 54)"
+                   },
+                   "children": [
+                    {
+                     "tag": "span",
+                     "class": "cal-title",
+                     "style": {
+                      "color": "rgb(242, 240, 245)"
+                     },
+                     "text": "1:1 Theo"
+                    }
+                   ]
+                  }
+                 ]
+                },
+                {
+                 "tag": "div",
+                 "class": "cal-col",
+                 "role": "list",
+                 "aria-label": "Fri",
+                 "children": [
+                  {
+                   "tag": "div",
+                   "class": "cal-event",
+                   "role": "listitem",
+                   "style": {
+                    "background": "rgb(36, 33, 39)",
+                    "border": "solid rgb(51, 49, 54)"
+                   },
+                   "children": [
+                    {
+                     "tag": "span",
+                     "class": "cal-title",
+                     "style": {
+                      "color": "rgb(242, 240, 245)"
+                     },
+                     "text": "Focus"
+                    }
+                   ]
+                  }
+                 ]
+                }
+               ]
+              }
+             ]
+            }
+           ]
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "tag": "span",
+     "class": "surface-resize",
+     "style": {
+      "color": "rgb(242, 240, 245)"
+     }
+    },
+    {
+     "tag": "span",
+     "class": "surface-resize",
+     "style": {
+      "color": "rgb(242, 240, 245)"
+     }
+    },
+    {
+     "tag": "span",
+     "class": "surface-resize",
+     "style": {
+      "color": "rgb(242, 240, 245)"
+     }
+    },
+    {
+     "tag": "span",
+     "class": "surface-resize",
+     "style": {
+      "color": "rgb(242, 240, 245)"
+     }
+    },
+    {
+     "tag": "span",
+     "class": "surface-resize",
+     "style": {
+      "color": "rgb(242, 240, 245)"
+     }
+    },
+    {
+     "tag": "span",
+     "class": "surface-resize",
+     "style": {
+      "color": "rgb(242, 240, 245)"
+     }
+    },
+    {
+     "tag": "span",
+     "class": "surface-resize",
+     "style": {
+      "color": "rgb(242, 240, 245)"
+     }
+    },
+    {
+     "tag": "span",
+     "class": "surface-resize",
+     "style": {
+      "color": "rgb(242, 240, 245)"
+     }
+    }
+   ]
+  },
+  {
+   "tag": "section",
+   "class": "surface is-focused",
+   "role": "region",
+   "aria-label": "Notes",
+   "data-surface": "notes",
+   "box": [
+    519,
+    190,
+    402,
+    622
+   ],
+   "style": {
+    "background": "rgb(30, 29, 33)",
+    "border": "solid rgb(131, 121, 145)"
+   },
+   "children": [
+    {
+     "tag": "header",
+     "class": "surface-title",
+     "children": [
+      {
+       "tag": "span",
+       "class": "surface-heading",
+       "children": [
+        {
+         "tag": "svg",
+         "icon": "note"
+        },
+        {
+         "tag": "span",
+         "class": "surface-name",
+         "style": {
+          "color": "rgb(242, 240, 245)"
+         },
+         "text": "Notes"
+        },
+        {
+         "tag": "span",
+         "class": "surface-sub",
+         "style": {
+          "color": "rgb(176, 173, 183)"
+         },
+         "text": "What came up today"
+        }
+       ]
+      },
+      {
+       "tag": "span",
+       "class": "surface-tools",
+       "children": [
+        {
+         "tag": "button",
+         "class": "icon-button tool",
+         "aria-label": "Split right (⌘D)",
+         "box": [
+          758,
+          199,
+          24,
+          24
+         ],
+         "style": {
+          "border": "solid rgba(0, 0, 0, 0)"
+         },
+         "children": [
+          {
+           "tag": "svg",
+           "icon": "split-right"
+          }
+         ]
+        },
+        {
+         "tag": "button",
+         "class": "icon-button tool",
+         "aria-label": "Split down (⌥⌘D)",
+         "box": [
+          784,
+          199,
+          24,
+          24
+         ],
+         "style": {
+          "border": "solid rgba(0, 0, 0, 0)"
+         },
+         "children": [
+          {
+           "tag": "svg",
+           "icon": "split-down"
+          }
+         ]
+        },
+        {
+         "tag": "button",
+         "class": "icon-button tool",
+         "aria-label": "Floating mode",
+         "aria-pressed": "false",
+         "box": [
+          810,
+          199,
+          24,
+          24
+         ],
+         "style": {
+          "border": "solid rgba(0, 0, 0, 0)"
+         },
+         "children": [
+          {
+           "tag": "svg",
+           "icon": "floating"
+          }
+         ]
+        },
+        {
+         "tag": "button",
+         "class": "icon-button tool",
+         "aria-label": "Pin",
+         "aria-pressed": "false",
+         "box": [
+          836,
+          199,
+          24,
+          24
+         ],
+         "style": {
+          "border": "solid rgba(0, 0, 0, 0)"
+         },
+         "children": [
+          {
+           "tag": "svg",
+           "icon": "pin"
+          }
+         ]
+        },
+        {
+         "tag": "button",
+         "class": "icon-button tool",
+         "aria-label": "Put in drawer",
+         "box": [
+          862,
+          199,
+          24,
+          24
+         ],
+         "style": {
+          "border": "solid rgba(0, 0, 0, 0)"
+         },
+         "children": [
+          {
+           "tag": "svg",
+           "icon": "drawer"
+          }
+         ]
+        },
+        {
+         "tag": "button",
+         "class": "icon-button tool",
+         "aria-label": "Close",
+         "box": [
+          888,
+          199,
+          24,
+          24
+         ],
+         "style": {
+          "border": "solid rgba(0, 0, 0, 0)"
+         },
+         "children": [
+          {
+           "tag": "svg",
+           "icon": "close"
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "tag": "div",
+     "class": "surface-body",
+     "children": [
+      {
+       "tag": "div",
+       "class": "panes",
+       "children": [
+        {
+         "tag": "div",
+         "class": "pane",
+         "role": "group",
+         "aria-label": "Notes",
+         "children": [
+          {
+           "tag": "div",
+           "class": "pane-body",
+           "children": [
+            {
+             "tag": "textarea",
+             "class": "notes-body",
+             "aria-label": "Notes",
+             "style": {
+              "color": "rgb(242, 240, 245)"
+             },
+             "text": "Keep profile names short.\nSurfaces live at the edges.",
+             "value": "Keep profile names short.\nSurfaces live at the edges."
+            }
+           ]
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "tag": "span",
+     "class": "surface-resize",
+     "style": {
+      "color": "rgb(242, 240, 245)"
+     }
+    },
+    {
+     "tag": "span",
+     "class": "surface-resize",
+     "style": {
+      "color": "rgb(242, 240, 245)"
+     }
+    },
+    {
+     "tag": "span",
+     "class": "surface-resize",
+     "style": {
+      "color": "rgb(242, 240, 245)"
+     }
+    },
+    {
+     "tag": "span",
+     "class": "surface-resize",
+     "style": {
+      "color": "rgb(242, 240, 245)"
+     }
+    },
+    {
+     "tag": "span",
+     "class": "surface-resize",
+     "style": {
+      "color": "rgb(242, 240, 245)"
+     }
+    },
+    {
+     "tag": "span",
+     "class": "surface-resize",
+     "style": {
+      "color": "rgb(242, 240, 245)"
+     }
+    },
+    {
+     "tag": "span",
+     "class": "surface-resize",
+     "style": {
+      "color": "rgb(242, 240, 245)"
+     }
+    },
+    {
+     "tag": "span",
+     "class": "surface-resize",
+     "style": {
+      "color": "rgb(242, 240, 245)"
+     }
+    }
+   ]
+  },
+  {
+   "tag": "section",
+   "class": "surface is-eris",
+   "role": "region",
+   "aria-label": "Tomorrow",
+   "data-surface": "tomorrow",
+   "box": [
+    933,
+    190,
+    403,
+    622
+   ],
+   "style": {
+    "background": "rgb(30, 29, 33)",
+    "border": "solid rgba(182, 163, 245, 0.34)"
+   },
+   "children": [
+    {
+     "tag": "header",
+     "class": "surface-title",
+     "children": [
+      {
+       "tag": "span",
+       "class": "surface-heading",
+       "children": [
+        {
+         "tag": "svg",
+         "icon": "list"
+        },
+        {
+         "tag": "span",
+         "class": "surface-name",
+         "style": {
+          "color": "rgb(242, 240, 245)"
+         },
+         "text": "Tomorrow"
+        },
+        {
+         "tag": "span",
+         "class": "surface-sub",
+         "style": {
+          "color": "rgb(176, 173, 183)"
+         },
+         "text": "For tomorrow"
+        },
+        {
+         "tag": "span",
+         "class": "eris-badge",
+         "style": {
+          "background": "rgba(182, 163, 245, 0.12)",
+          "color": "rgb(182, 163, 245)"
+         },
+         "text": "Made by Eris"
+        }
+       ]
+      },
+      {
+       "tag": "span",
+       "class": "surface-tools",
+       "children": [
+        {
+         "tag": "button",
+         "class": "icon-button tool",
+         "aria-label": "Split right (⌘D)",
+         "box": [
+          1173,
+          199,
+          24,
+          24
+         ],
+         "style": {
+          "border": "solid rgba(0, 0, 0, 0)"
+         },
+         "children": [
+          {
+           "tag": "svg",
+           "icon": "split-right"
+          }
+         ]
+        },
+        {
+         "tag": "button",
+         "class": "icon-button tool",
+         "aria-label": "Split down (⌥⌘D)",
+         "box": [
+          1199,
+          199,
+          24,
+          24
+         ],
+         "style": {
+          "border": "solid rgba(0, 0, 0, 0)"
+         },
+         "children": [
+          {
+           "tag": "svg",
+           "icon": "split-down"
+          }
+         ]
+        },
+        {
+         "tag": "button",
+         "class": "icon-button tool",
+         "aria-label": "Floating mode",
+         "aria-pressed": "false",
+         "box": [
+          1225,
+          199,
+          24,
+          24
+         ],
+         "style": {
+          "border": "solid rgba(0, 0, 0, 0)"
+         },
+         "children": [
+          {
+           "tag": "svg",
+           "icon": "floating"
+          }
+         ]
+        },
+        {
+         "tag": "button",
+         "class": "icon-button tool",
+         "aria-label": "Pin",
+         "aria-pressed": "false",
+         "box": [
+          1251,
+          199,
+          24,
+          24
+         ],
+         "style": {
+          "border": "solid rgba(0, 0, 0, 0)"
+         },
+         "children": [
+          {
+           "tag": "svg",
+           "icon": "pin"
+          }
+         ]
+        },
+        {
+         "tag": "button",
+         "class": "icon-button tool",
+         "aria-label": "Put in drawer",
+         "box": [
+          1277,
+          199,
+          24,
+          24
+         ],
+         "style": {
+          "border": "solid rgba(0, 0, 0, 0)"
+         },
+         "children": [
+          {
+           "tag": "svg",
+           "icon": "drawer"
+          }
+         ]
+        },
+        {
+         "tag": "button",
+         "class": "icon-button tool",
+         "aria-label": "Close",
+         "box": [
+          1303,
+          199,
+          24,
+          24
+         ],
+         "style": {
+          "border": "solid rgba(0, 0, 0, 0)"
+         },
+         "children": [
+          {
+           "tag": "svg",
+           "icon": "close"
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "tag": "div",
+     "class": "surface-body",
+     "children": [
+      {
+       "tag": "div",
+       "class": "panes",
+       "children": [
+        {
+         "tag": "div",
+         "class": "pane is-eris",
+         "role": "group",
+         "aria-label": "Tomorrow",
+         "children": [
+          {
+           "tag": "div",
+           "class": "pane-body",
+           "children": [
+            {
+             "tag": "ol",
+             "class": "list-body",
+             "children": [
+              {
+               "tag": "li",
+               "class": "list-row",
+               "children": [
+                {
+                 "tag": "span",
+                 "class": "list-index",
+                 "style": {
+                  "color": "rgb(182, 163, 245)"
+                 },
+                 "text": "1"
+                },
+                {
+                 "tag": "span",
+                 "style": {
+                  "color": "rgb(242, 240, 245)"
+                 },
+                 "text": "Prepare for the 09:30 standup"
+                }
+               ]
+              },
+              {
+               "tag": "li",
+               "class": "list-row",
+               "children": [
+                {
+                 "tag": "span",
+                 "class": "list-index",
+                 "style": {
+                  "color": "rgb(182, 163, 245)"
+                 },
+                 "text": "2"
+                },
+                {
+                 "tag": "span",
+                 "style": {
+                  "color": "rgb(242, 240, 245)"
+                 },
+                 "text": "Send the meeting notes to Theo"
+                }
+               ]
+              },
+              {
+               "tag": "li",
+               "class": "list-row",
+               "children": [
+                {
+                 "tag": "span",
+                 "class": "list-index",
+                 "style": {
+                  "color": "rgb(182, 163, 245)"
+                 },
+                 "text": "3"
+                },
+                {
+                 "tag": "span",
+                 "style": {
+                  "color": "rgb(242, 240, 245)"
+                 },
+                 "text": "Pick one of the two flights"
+                }
+               ]
+              },
+              {
+               "tag": "li",
+               "class": "list-row",
+               "children": [
+                {
+                 "tag": "span",
+                 "class": "list-index",
+                 "style": {
+                  "color": "rgb(182, 163, 245)"
+                 },
+                 "text": "4"
+                },
+                {
+                 "tag": "span",
+                 "style": {
+                  "color": "rgb(242, 240, 245)"
+                 },
+                 "text": "Decide the 14:00 overlap"
+                }
+               ]
+              }
+             ]
+            }
+           ]
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "tag": "span",
+     "class": "surface-resize",
+     "style": {
+      "color": "rgb(242, 240, 245)"
+     }
+    },
+    {
+     "tag": "span",
+     "class": "surface-resize",
+     "style": {
+      "color": "rgb(242, 240, 245)"
+     }
+    },
+    {
+     "tag": "span",
+     "class": "surface-resize",
+     "style": {
+      "color": "rgb(242, 240, 245)"
+     }
+    },
+    {
+     "tag": "span",
+     "class": "surface-resize",
+     "style": {
+      "color": "rgb(242, 240, 245)"
+     }
+    },
+    {
+     "tag": "span",
+     "class": "surface-resize",
+     "style": {
+      "color": "rgb(242, 240, 245)"
+     }
+    },
+    {
+     "tag": "span",
+     "class": "surface-resize",
+     "style": {
+      "color": "rgb(242, 240, 245)"
+     }
+    },
+    {
+     "tag": "span",
+     "class": "surface-resize",
+     "style": {
+      "color": "rgb(242, 240, 245)"
+     }
+    },
+    {
+     "tag": "span",
+     "class": "surface-resize",
+     "style": {
+      "color": "rgb(242, 240, 245)"
+     }
+    }
+   ]
+  },
+  {
+   "tag": "section",
+   "class": "surface",
+   "role": "region",
+   "aria-label": "New surface",
+   "data-surface": "window-1",
+   "box": [
+    260,
+    420,
+    480,
+    380
+   ],
+   "style": {
+    "background": "rgb(30, 29, 33)",
+    "border": "solid rgb(51, 49, 54)"
+   },
+   "children": [
+    {
+     "tag": "header",
+     "class": "surface-title",
+     "children": [
+      {
+       "tag": "span",
+       "class": "surface-heading",
+       "children": [
+        {
+         "tag": "svg",
+         "icon": "plus"
+        },
+        {
+         "tag": "span",
+         "class": "surface-name",
+         "style": {
+          "color": "rgb(242, 240, 245)"
+         },
+         "text": "New surface"
+        },
+        {
+         "tag": "span",
+         "class": "surface-sub",
+         "style": {
+          "color": "rgb(176, 173, 183)"
+         },
+         "text": "Choose what to open"
+        }
+       ]
+      },
+      {
+       "tag": "span",
+       "class": "surface-tools",
+       "children": [
+        {
+         "tag": "button",
+         "class": "icon-button tool",
+         "aria-label": "Split right (⌘D)",
+         "box": [
+          577,
+          429,
+          24,
+          24
+         ],
+         "style": {
+          "border": "solid rgba(0, 0, 0, 0)"
+         },
+         "children": [
+          {
+           "tag": "svg",
+           "icon": "split-right"
+          }
+         ]
+        },
+        {
+         "tag": "button",
+         "class": "icon-button tool",
+         "aria-label": "Split down (⌥⌘D)",
+         "box": [
+          603,
+          429,
+          24,
+          24
+         ],
+         "style": {
+          "border": "solid rgba(0, 0, 0, 0)"
+         },
+         "children": [
+          {
+           "tag": "svg",
+           "icon": "split-down"
+          }
+         ]
+        },
+        {
+         "tag": "button",
+         "class": "icon-button tool",
+         "aria-label": "Floating mode",
+         "aria-pressed": "true",
+         "box": [
+          629,
+          429,
+          24,
+          24
+         ],
+         "style": {
+          "border": "solid rgba(0, 0, 0, 0)"
+         },
+         "children": [
+          {
+           "tag": "svg",
+           "icon": "floating"
+          }
+         ]
+        },
+        {
+         "tag": "button",
+         "class": "icon-button tool",
+         "aria-label": "Pin",
+         "aria-pressed": "false",
+         "box": [
+          655,
+          429,
+          24,
+          24
+         ],
+         "style": {
+          "border": "solid rgba(0, 0, 0, 0)"
+         },
+         "children": [
+          {
+           "tag": "svg",
+           "icon": "pin"
+          }
+         ]
+        },
+        {
+         "tag": "button",
+         "class": "icon-button tool",
+         "aria-label": "Put in drawer",
+         "box": [
+          681,
+          429,
+          24,
+          24
+         ],
+         "style": {
+          "border": "solid rgba(0, 0, 0, 0)"
+         },
+         "children": [
+          {
+           "tag": "svg",
+           "icon": "drawer"
+          }
+         ]
+        },
+        {
+         "tag": "button",
+         "class": "icon-button tool",
+         "aria-label": "Close",
+         "box": [
+          707,
+          429,
+          24,
+          24
+         ],
+         "style": {
+          "border": "solid rgba(0, 0, 0, 0)"
+         },
+         "children": [
+          {
+           "tag": "svg",
+           "icon": "close"
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "tag": "div",
+     "class": "surface-body",
+     "children": [
+      {
+       "tag": "div",
+       "class": "panes",
+       "children": [
+        {
+         "tag": "div",
+         "class": "pane",
+         "role": "group",
+         "aria-label": "New surface",
+         "children": [
+          {
+           "tag": "div",
+           "class": "pane-body",
+           "children": [
+            {
+             "tag": "div",
+             "class": "launcher",
+             "children": [
+              {
+               "tag": "p",
+               "class": "launcher-hint",
+               "style": {
+                "color": "rgb(176, 173, 183)"
+               },
+               "text": "Choose what to open"
+              },
+              {
+               "tag": "div",
+               "class": "launcher-grid",
+               "role": "list",
+               "children": [
+                {
+                 "tag": "button",
+                 "class": "launcher-item",
+                 "role": "listitem",
+                 "style": {
+                  "border": "solid rgb(51, 49, 54)"
+                 },
+                 "children": [
+                  {
+                   "tag": "svg",
+                   "icon": "calendar"
+                  },
+                  {
+                   "tag": "span",
+                   "style": {
+                    "color": "rgb(242, 240, 245)"
+                   },
+                   "text": "Calendar"
+                  }
+                 ]
+                },
+                {
+                 "tag": "button",
+                 "class": "launcher-item",
+                 "role": "listitem",
+                 "style": {
+                  "border": "solid rgb(51, 49, 54)"
+                 },
+                 "children": [
+                  {
+                   "tag": "svg",
+                   "icon": "list"
+                  },
+                  {
+                   "tag": "span",
+                   "style": {
+                    "color": "rgb(242, 240, 245)"
+                   },
+                   "text": "Tomorrow"
+                  }
+                 ]
+                },
+                {
+                 "tag": "button",
+                 "class": "launcher-item",
+                 "role": "listitem",
+                 "style": {
+                  "border": "solid rgb(51, 49, 54)"
+                 },
+                 "children": [
+                  {
+                   "tag": "svg",
+                   "icon": "note"
+                  },
+                  {
+                   "tag": "span",
+                   "style": {
+                    "color": "rgb(242, 240, 245)"
+                   },
+                   "text": "Notes"
+                  }
+                 ]
+                },
+                {
+                 "tag": "button",
+                 "class": "launcher-item",
+                 "role": "listitem",
+                 "style": {
+                  "border": "solid rgb(51, 49, 54)"
+                 },
+                 "children": [
+                  {
+                   "tag": "svg",
+                   "icon": "settings"
+                  },
+                  {
+                   "tag": "span",
+                   "style": {
+                    "color": "rgb(242, 240, 245)"
+                   },
+                   "text": "Keyboard shortcuts"
+                  }
+                 ]
+                },
+                {
+                 "tag": "button",
+                 "class": "launcher-item",
+                 "role": "listitem",
+                 "style": {
+                  "border": "solid rgb(51, 49, 54)"
+                 },
+                 "children": [
+                  {
+                   "tag": "svg",
+                   "icon": "user"
+                  },
+                  {
+                   "tag": "span",
+                   "style": {
+                    "color": "rgb(242, 240, 245)"
+                   },
+                   "text": "Mira's screen"
+                  }
+                 ]
+                },
+                {
+                 "tag": "button",
+                 "class": "launcher-item",
+                 "role": "listitem",
+                 "style": {
+                  "border": "solid rgb(51, 49, 54)"
+                 },
+                 "children": [
+                  {
+                   "tag": "svg",
+                   "icon": "user"
+                  },
+                  {
+                   "tag": "span",
+                   "style": {
+                    "color": "rgb(242, 240, 245)"
+                   },
+                   "text": "Theo's screen"
+                  }
+                 ]
+                },
+                {
+                 "tag": "button",
+                 "class": "launcher-item",
+                 "role": "listitem",
+                 "style": {
+                  "border": "solid rgb(51, 49, 54)"
+                 },
+                 "children": [
+                  {
+                   "tag": "svg",
+                   "icon": "user"
+                  },
+                  {
+                   "tag": "span",
+                   "style": {
+                    "color": "rgb(242, 240, 245)"
+                   },
+                   "text": "Juno's screen"
+                  }
+                 ]
+                }
+               ]
+              }
+             ]
+            }
+           ]
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "tag": "span",
+     "class": "surface-resize",
+     "style": {
+      "color": "rgb(242, 240, 245)"
+     }
+    },
+    {
+     "tag": "span",
+     "class": "surface-resize",
+     "style": {
+      "color": "rgb(242, 240, 245)"
+     }
+    },
+    {
+     "tag": "span",
+     "class": "surface-resize",
+     "style": {
+      "color": "rgb(242, 240, 245)"
+     }
+    },
+    {
+     "tag": "span",
+     "class": "surface-resize",
+     "style": {
+      "color": "rgb(242, 240, 245)"
+     }
+    },
+    {
+     "tag": "span",
+     "class": "surface-resize",
+     "style": {
+      "color": "rgb(242, 240, 245)"
+     }
+    },
+    {
+     "tag": "span",
+     "class": "surface-resize",
+     "style": {
+      "color": "rgb(242, 240, 245)"
+     }
+    },
+    {
+     "tag": "span",
+     "class": "surface-resize",
+     "style": {
+      "color": "rgb(242, 240, 245)"
+     }
+    },
+    {
+     "tag": "span",
+     "class": "surface-resize",
+     "style": {
+      "color": "rgb(242, 240, 245)"
+     }
+    }
+   ]
+  }
+ ]
+}

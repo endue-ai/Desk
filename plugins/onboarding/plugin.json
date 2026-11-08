@@ -1,0 +1,14 @@
+{
+  "id": "endue.onboarding",
+  "name": "Welcome",
+  "version": "0.2.0",
+  "kind": "ui",
+  "entry": "ui/index.html",
+  "description": "The first run: Eris arrives, meets you, signs you in, switches the desk on, brings in the agents and builds the first screen with you.",
+  "permissions": [
+    { "permission": "audio:capture" },
+    { "permission": "brain:converse" },
+    { "permission": "account:manage" }
+  ],
+  "surfaces": [{ "id": "main", "title": "Welcome", "placement": "overlay" }]
+}

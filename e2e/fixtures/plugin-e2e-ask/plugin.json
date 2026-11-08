@@ -1,0 +1,30 @@
+{
+  "id": "e2e.ask",
+  "name": "E2E Ask",
+  "version": "0.1.0",
+  "kind": "ui",
+  "entry": "ui/index.html",
+  "description": "A fixture for checking the core's prompt policy by hand: buttons that call perm.request and list the answers; and an irreversible command that writes a note, for approvals (ADR 0078).",
+  "surfaces": [
+    {
+      "id": "main",
+      "title": "E2E Ask",
+      "placement": "center"
+    }
+  ],
+  "permissions": [
+    {
+      "permission": "fs:write",
+      "paths": ["~/qa/**"]
+    }
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "id": "e2e.ask.note",
+        "title": "E2E Ask: write a note",
+        "irreversible": true
+      }
+    ]
+  }
+}

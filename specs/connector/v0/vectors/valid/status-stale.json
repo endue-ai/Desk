@@ -1,0 +1,8 @@
+{
+  "target": "ConnectorStatus",
+  "description": "stale: the last sync is old, the items stay readable",
+  "instance": {
+    "state": "stale",
+    "lastSyncAt": "2026-10-29T18:00:00Z"
+  }
+}

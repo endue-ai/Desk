@@ -1,0 +1,15 @@
+{
+  "target": "BridgeEvent",
+  "description": "Eris is clicking in Safari, through endue.computer",
+  "instance": {
+    "event": "computer.activity",
+    "data": {
+      "state": "acting",
+      "caller": "endue.computer",
+      "agent": "eris",
+      "action": "double-click left at (120, 340)",
+      "app": "Safari",
+      "runId": "run-3"
+    }
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "target": "ComputerInputClickResult",
+  "description": "a double click recorded on Eris's run",
+  "instance": {
+    "summary": "double-click left at (120, 340) in Safari: 5 events",
+    "events": 5,
+    "app": {
+      "pid": 412,
+      "name": "Safari",
+      "bundleId": "com.apple.Safari",
+      "active": true,
+      "hidden": false,
+      "regular": true
+    },
+    "runId": "run-3"
+  }
+}

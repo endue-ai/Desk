@@ -1,0 +1,39 @@
+{
+  "id": "endue.memory",
+  "name": "Memory",
+  "version": "0.1.0",
+  "kind": "ui",
+  "entry": "ui/index.html",
+  "autoload": true,
+  "description": "What Eris knows about you, kept on this computer (ADR 0095): the facts and preferences she remembers and the turns she keeps. Search them, edit a fact, forget one, or forget everything.",
+  "permissions": [
+    {
+      "permission": "memory:read"
+    },
+    {
+      "permission": "memory:write"
+    }
+  ],
+  "surfaces": [
+    {
+      "id": "main",
+      "title": "Memory",
+      "placement": "center"
+    }
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "id": "endue.memory.open",
+        "title": "Memory: What Eris knows",
+        "keywords": ["memory", "remember", "forget", "facts", "eris"],
+        "runs": {
+          "command": "desk.plugins.open",
+          "args": {
+            "plugin": "endue.memory"
+          }
+        }
+      }
+    ]
+  }
+}

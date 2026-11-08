@@ -1,0 +1,181 @@
+{
+  "id": "endue.computer",
+  "name": "Computer",
+  "version": "0.1.0",
+  "kind": "ui",
+  "entry": "ui/index.html",
+  "autoload": true,
+  "description": "Eris uses your computer (ADR 0123): her tools to look, find, click, type, press keys and open apps, each act waiting for your approval, with the OS permissions it takes, the apps she may operate and Stop.",
+  "permissions": [{ "permission": "computer:see" }, { "permission": "computer:control" }],
+  "surfaces": [{ "id": "main", "title": "Computer", "placement": "center" }],
+  "contributes": {
+    "commands": [
+      {
+        "id": "endue.computer.open-page",
+        "title": "Computer: Permissions and activity",
+        "keywords": ["computer", "accessibility", "screen recording", "eris", "control", "apps"],
+        "runs": { "command": "desk.plugins.open", "args": { "plugin": "endue.computer" } }
+      },
+      {
+        "id": "endue.computer.stop",
+        "title": "Computer: Stop Eris using the computer",
+        "keywords": ["stop", "computer", "eris", "emergency"]
+      },
+      {
+        "id": "endue.computer.resume",
+        "title": "Computer: Let Eris use the computer again",
+        "keywords": ["resume", "computer", "eris"]
+      },
+      {
+        "id": "endue.computer.look",
+        "title": "Computer: Look at the screen",
+        "description": "See the computer now: a screenshot of the main display and the interface of the frontmost app's focused window, as elements with their pid, path, role, title and frame. Pass app (a name or bundle id) to read that app instead, screenshot: false to skip the image. Coordinates are screen points.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "app": { "type": "string", "minLength": 1, "maxLength": 255 },
+            "screenshot": { "type": "boolean" },
+            "depth": { "type": "integer", "minimum": 1, "maximum": 20 }
+          },
+          "additionalProperties": false
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.computer.find",
+        "title": "Computer: Find on the screen",
+        "description": "Find interface elements by role (button, text field, link, menu item) and title, in the frontmost app or the app named. Answers each element's pid, path, role, title and centre point, for click.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "role": { "type": "string", "minLength": 1, "maxLength": 64 },
+            "title": { "type": "string", "minLength": 1, "maxLength": 500 },
+            "app": { "type": "string", "minLength": 1, "maxLength": 255 },
+            "limit": { "type": "integer", "minimum": 1, "maximum": 50 }
+          },
+          "additionalProperties": false
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.computer.click",
+        "title": "Computer: Click",
+        "description": "Click at a point (x, y in screen points), or press an element found with look or find (element: { pid, path, role }). button is left, right or middle; count 2 double-clicks. The person approves each click.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "x": { "type": "number" },
+            "y": { "type": "number" },
+            "element": {
+              "type": "object",
+              "properties": {
+                "pid": { "type": "integer" },
+                "path": { "type": "array", "items": { "type": "integer", "minimum": 0 } },
+                "role": { "type": "string" }
+              },
+              "required": ["pid", "path"]
+            },
+            "button": { "type": "string", "enum": ["left", "right", "middle"] },
+            "count": { "type": "integer", "minimum": 1, "maximum": 3 }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.computer.type",
+        "title": "Computer: Type",
+        "description": "Type text into the frontmost app as it is written, in any language; a line break presses Return. Click the field first. The person approves it.",
+        "args": {
+          "type": "object",
+          "properties": { "text": { "type": "string", "minLength": 1, "maxLength": 10000 } },
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.computer.keys",
+        "title": "Computer: Press keys",
+        "description": "Press key chords in the frontmost app, one after another: cmd+t, cmd+shift+n, return, tab, down. Escape is the stop key while you act: to dismiss a dialog, press its Cancel button. The person approves it.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "keys": {
+              "oneOf": [
+                { "type": "string", "minLength": 1, "maxLength": 64 },
+                {
+                  "type": "array",
+                  "items": { "type": "string", "minLength": 1, "maxLength": 64 },
+                  "minItems": 1,
+                  "maxItems": 20
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.computer.scroll",
+        "title": "Computer: Scroll",
+        "description": "Scroll by lines at a point (x, y), or where the pointer is: dy above 0 scrolls down, below 0 up; dx sideways. The person approves it.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "x": { "type": "number" },
+            "y": { "type": "number" },
+            "dx": { "type": "integer", "minimum": -100, "maximum": 100 },
+            "dy": { "type": "integer", "minimum": -100, "maximum": 100 }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.computer.open",
+        "title": "Computer: Open an app",
+        "description": "Open an app, or bring it forward when it runs: by bundle id (com.apple.Safari) or by the name of a running app. The person approves it.",
+        "args": {
+          "type": "object",
+          "properties": { "app": { "type": "string", "minLength": 1, "maxLength": 255 } },
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.computer.switch",
+        "title": "Computer: Switch to an app",
+        "description": "Bring a running app to the front, by its name, bundle id or pid, so keys and typing go to it. The person approves it.",
+        "args": {
+          "type": "object",
+          "properties": { "app": { "type": "string", "minLength": 1, "maxLength": 255 } },
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.computer.apps",
+        "title": "Computer: Running apps",
+        "description": "The apps running now, with their name, bundle id, pid and which one is in front.",
+        "args": { "type": "object", "properties": {}, "additionalProperties": false },
+        "agent": true,
+        "readOnly": true
+      }
+    ],
+    "settings": {
+      "endue.computer.apps": {
+        "kind": "array",
+        "default": [],
+        "description": "Bundle ids of the apps Eris may see and operate, such as com.apple.Safari. Empty: every app, each act still waiting for your approval."
+      },
+      "endue.computer.stop-key": {
+        "kind": "string",
+        "default": "Escape",
+        "description": "The key that stops Eris using the computer from any app while she acts: Escape held for half a second, or a chord such as Ctrl+Alt+Cmd+Period pressed once. Read when she starts acting."
+      }
+    }
+  }
+}

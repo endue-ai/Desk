@@ -1,0 +1,11 @@
+{
+  "target": "BridgeEvent",
+  "description": "activity states are a closed list",
+  "instance": {
+    "event": "computer.activity",
+    "data": {
+      "state": "thinking",
+      "caller": "endue.computer"
+    }
+  }
+}

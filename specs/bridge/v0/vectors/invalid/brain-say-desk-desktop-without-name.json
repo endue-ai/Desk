@@ -1,0 +1,13 @@
+{
+  "target": "BrainSayParams",
+  "description": "a desktop has a name",
+  "instance": {
+    "text": "go to the other desktop",
+    "desk": {
+      "screen": { "w": 1440, "h": 900 },
+      "windows": [],
+      "desktops": [{ "id": "1", "current": true }]
+    },
+    "scope": { "permission": "brain:converse" }
+  }
+}

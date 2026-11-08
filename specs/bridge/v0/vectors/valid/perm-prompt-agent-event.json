@@ -1,0 +1,17 @@
+{
+  "target": "BridgeEvent",
+  "description": "an agent of the brain asks, as agent:<id>, for a folder inside its allowlist",
+  "instance": {
+    "event": "perm.prompt",
+    "data": {
+      "promptId": "p-4",
+      "caller": "agent:ag_01JBZ8Q4MR0000000000000001",
+      "permission": {
+        "permission": "fs:write",
+        "paths": ["~/Documents/Notes/**"]
+      },
+      "reason": "Its tool call writes ~/Documents/Notes/today.md",
+      "duration": "session"
+    }
+  }
+}

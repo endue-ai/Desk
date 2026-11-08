@@ -1,0 +1,16 @@
+{
+  "target": "BridgeRequest",
+  "description": "perm.answer grants for once instead of the duration asked",
+  "instance": {
+    "id": 43,
+    "method": "perm.answer",
+    "params": {
+      "promptId": "p1",
+      "granted": true,
+      "duration": "once",
+      "scope": {
+        "permission": "perm:manage"
+      }
+    }
+  }
+}

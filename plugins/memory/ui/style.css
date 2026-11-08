@@ -1,0 +1,111 @@
+/* endue.memory: layout only. Colours, type and sizes are the desk's tokens (/_desk/tokens.css) over
+   the base sheet (/_desk/base.css), so the theme in force restyles the page. */
+body {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  margin: 0;
+  overflow: hidden;
+}
+
+#bar {
+  display: grid;
+  gap: var(--desk-space-2);
+  padding: var(--desk-space-3);
+  border-bottom: var(--desk-border-width) solid var(--desk-border);
+}
+
+h1 {
+  margin: 0;
+  font-size: var(--desk-text-lg);
+}
+
+#where,
+.meta,
+#more,
+#status {
+  margin: 0;
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-sm);
+}
+
+#kinds {
+  display: flex;
+  gap: var(--desk-space-1);
+}
+
+main {
+  flex: 1;
+  overflow: auto;
+  padding: var(--desk-space-3);
+}
+
+#remember-form {
+  display: flex;
+  gap: var(--desk-space-2);
+  margin-bottom: var(--desk-space-3);
+}
+
+#remember-form input {
+  flex: 1;
+}
+
+#entries {
+  display: grid;
+  gap: var(--desk-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.entry {
+  display: flex;
+  gap: var(--desk-space-3);
+  align-items: flex-start;
+  padding: var(--desk-space-2) var(--desk-space-3);
+  border: var(--desk-border-width) solid var(--desk-border);
+  border-radius: var(--desk-radius-md);
+  background: var(--desk-card);
+}
+
+.body,
+.editor {
+  flex: 1;
+  display: grid;
+  gap: var(--desk-space-1);
+}
+
+.text,
+.answer,
+.snippet {
+  margin: 0;
+}
+
+.answer,
+.snippet {
+  color: var(--desk-text-muted);
+}
+
+.tag {
+  margin-left: var(--desk-space-1);
+  padding: 0 var(--desk-space-1);
+  border-radius: var(--desk-radius-sm);
+  background: var(--desk-muted);
+}
+
+.actions {
+  display: flex;
+  gap: var(--desk-space-1);
+}
+
+.empty {
+  color: var(--desk-text-muted);
+}
+
+footer {
+  display: flex;
+  align-items: center;
+  gap: var(--desk-space-3);
+  padding: var(--desk-space-2) var(--desk-space-3);
+  border-top: var(--desk-border-width) solid var(--desk-border);
+}

@@ -1,0 +1,8 @@
+{
+  "target": "Permission",
+  "description": "apps, when given, names at least one app",
+  "instance": {
+    "permission": "computer:control",
+    "apps": []
+  }
+}

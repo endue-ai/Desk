@@ -1,0 +1,15 @@
+{
+  "target": "BridgeRequest",
+  "description": "setStatus turns agents on and off only; archived is endue AI's",
+  "instance": {
+    "id": 1,
+    "method": "studio.agents.setStatus",
+    "params": {
+      "agentId": "ag_01JC0Q4MR00000000000000001",
+      "status": "archived",
+      "scope": {
+        "permission": "studio:manage"
+      }
+    }
+  }
+}

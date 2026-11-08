@@ -1,0 +1,13 @@
+{
+  "target": "BridgeEvent",
+  "description": "the wake word was heard",
+  "instance": {
+    "event": "audio.wake",
+    "data": {
+      "captureId": "c1",
+      "word": "Hey Eris",
+      "confidence": 0.92,
+      "atMs": 4210
+    }
+  }
+}

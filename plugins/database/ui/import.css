@@ -1,0 +1,102 @@
+/* The import wizard and where a drag would land (#550). Every colour, size and radius is a --desk-*
+   token: /_desk/tokens.css declares the defaults and the desk applies the theme in force. */
+
+.import-into {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px 12px;
+}
+
+.import-into label,
+#import .import-options label {
+  grid-template-columns: auto 1fr;
+}
+
+.import-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+}
+
+#import h3 {
+  margin: 6px 0 0;
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-xs);
+  font-weight: 600;
+}
+
+.import-scroll {
+  max-height: 28vh;
+  overflow: auto;
+  border: 1px solid var(--desk-border);
+  border-radius: var(--desk-radius-md);
+  background: var(--desk-background);
+}
+
+.import-map,
+.import-preview {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--desk-text-xs);
+}
+
+.import-map th,
+.import-map td,
+.import-preview th,
+.import-preview td {
+  padding: 3px 8px;
+  border-bottom: 1px solid var(--desk-border);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.import-map thead th,
+.import-preview thead th {
+  position: sticky;
+  top: 0;
+  background: var(--desk-card);
+  color: var(--desk-text-muted);
+  font-weight: 600;
+}
+
+.import-map .example,
+.import-preview td {
+  max-width: 28ch;
+  overflow: hidden;
+  font-family: var(--desk-font-mono);
+  text-overflow: ellipsis;
+}
+
+.import-map select {
+  min-width: 16ch;
+}
+
+.import-preview td.null {
+  color: var(--desk-text-muted);
+  font-style: italic;
+}
+
+.import-sql pre {
+  max-height: 16vh;
+  margin: 4px 0 0;
+  padding: 6px 8px;
+  overflow: auto;
+  border: 1px solid var(--desk-border);
+  border-radius: var(--desk-radius-md);
+  background: var(--desk-background);
+  font: var(--desk-text-xs) / 1.5 var(--desk-font-mono);
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+#import .error:empty {
+  display: none;
+}
+
+/* Where a drag would land (ctx.dnd marks it with the effect it answers): a table of the explorer,
+   which a file is imported into, or the work area. */
+#tree .row[data-desk-drop],
+#work[data-desk-drop] {
+  background: var(--desk-primary-soft);
+  box-shadow: inset 0 0 0 var(--desk-border-width) var(--desk-primary);
+}

@@ -1,0 +1,14 @@
+{
+  "target": "BridgeRequest",
+  "description": "search system wrong scope",
+  "instance": {
+    "id": 1,
+    "method": "search.system",
+    "params": {
+      "query": "report",
+      "scope": {
+        "permission": "search:read"
+      }
+    }
+  }
+}

@@ -1,0 +1,273 @@
+/* The five views' own layout: the agent cards, the chat and comparison, the board's columns
+   and cards, the activity list. Theme tokens only, as in style.css. */
+
+/* Agents */
+#agents-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 8px;
+  overflow: auto;
+}
+
+.agent {
+  padding: 8px 10px;
+  border: 1px solid var(--desk-border);
+  border-radius: var(--desk-radius-md);
+  cursor: pointer;
+}
+
+.agent[aria-selected="true"] {
+  border-color: var(--desk-primary-border);
+}
+
+.agent.missing {
+  opacity: 0.75;
+}
+
+.agent-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.agent p {
+  margin: 4px 0 0;
+}
+
+.guard.flag,
+.guard.default {
+  color: var(--agents-ok);
+}
+
+.guard.none,
+.guard.agent {
+  color: var(--agents-warn);
+}
+
+/* Chat and compare */
+#chat-log {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+  gap: 10px;
+  overflow: auto;
+}
+
+.msg {
+  max-width: 88%;
+  padding: 6px 10px;
+  border: 1px solid var(--desk-border);
+  border-radius: var(--desk-radius-md);
+}
+
+.msg.user {
+  align-self: flex-end;
+  border-color: var(--desk-primary-border);
+  background: var(--desk-primary-subtle);
+}
+
+.msg.agent {
+  align-self: flex-start;
+}
+
+.msg.failed,
+.pane.failed {
+  border-color: var(--desk-danger-border);
+}
+
+.msg header,
+.pane header,
+.card header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 2px;
+}
+
+.who {
+  font-weight: 600;
+}
+
+.said {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.tools {
+  margin: 4px 0 0;
+  padding-left: 16px;
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-xs);
+}
+
+.tool-name {
+  font-family: var(--desk-font-mono);
+}
+
+.composer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.composer textarea,
+.composer input,
+.composer select {
+  font: inherit;
+}
+
+.composer textarea {
+  flex: 1;
+  min-width: 200px;
+  resize: vertical;
+}
+
+#card-title {
+  flex-basis: 100%;
+}
+
+#compare-panes {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.asked {
+  margin: 0 0 8px;
+}
+
+.panes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 8px;
+}
+
+.pane {
+  min-width: 0;
+  padding: 6px 10px;
+  border: 1px solid var(--desk-border);
+  border-radius: var(--desk-radius-md);
+}
+
+/* Board */
+#board-body,
+#activity-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  gap: 10px;
+}
+
+#board-columns {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+  grid-template-columns: repeat(4, minmax(160px, 1fr));
+  gap: 8px;
+  overflow: auto;
+}
+
+.column {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px;
+  border-radius: var(--desk-radius-md);
+  background: var(--desk-muted);
+}
+
+.column.over {
+  outline: 2px dashed var(--desk-primary-border);
+}
+
+.column h2 {
+  display: flex;
+  justify-content: space-between;
+}
+
+.count {
+  color: var(--desk-text-muted);
+}
+
+.cards {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 40px;
+  overflow: auto;
+}
+
+.card {
+  padding: 6px 8px;
+  border: 1px solid var(--desk-border);
+  border-radius: var(--desk-radius-sm);
+  background: var(--desk-card);
+  cursor: grab;
+}
+
+.card[aria-current="true"] {
+  border-color: var(--desk-primary-border);
+}
+
+.card.running {
+  border-left: 3px solid var(--agents-busy);
+}
+
+.card .actions button {
+  padding: 0 6px;
+  font-size: var(--desk-text-xs);
+}
+
+#card-detail,
+#run-detail {
+  flex: 0 0 36%;
+  min-width: 220px;
+  padding: 8px 10px;
+  border-left: 1px solid var(--desk-border);
+  overflow: auto;
+}
+
+#card-detail[hidden],
+#run-detail[hidden] {
+  display: none;
+}
+
+/* Activity */
+#activity-list {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+  overflow: auto;
+}
+
+.run {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 6px;
+  border-radius: var(--desk-radius-sm);
+  cursor: pointer;
+}
+
+.run[aria-selected="true"] {
+  background: var(--desk-hover);
+}
+
+.run .prompt {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.command {
+  color: var(--desk-text-muted);
+}

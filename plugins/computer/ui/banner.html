@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Eris is using your computer</title>
+    <link rel="stylesheet" href="/_desk/tokens.css" />
+    <link rel="stylesheet" href="/_desk/base.css" />
+    <link rel="stylesheet" href="./banner.css" />
+  </head>
+  <body>
+    <section id="banner" role="status" aria-live="polite" hidden>
+      <span class="dot" aria-hidden="true"></span>
+      <div class="words">
+        <strong id="banner-title"></strong>
+        <span id="banner-detail"></span>
+      </div>
+      <span id="banner-key">Hold Esc to stop</span>
+      <button id="banner-stop" class="desk-btn" type="button">Stop</button>
+    </section>
+    <script type="module">
+      import { firstActivity, mountBanner } from "./banner.js";
+      const banner = mountBanner(document, (to) => window.location.assign(to));
+      window.deskBanner = banner;
+      const first = firstActivity(window.location.hash);
+      if (first) banner.show(first);
+    </script>
+  </body>
+</html>

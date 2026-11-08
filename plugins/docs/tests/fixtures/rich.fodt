@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- The rich fixture's source: LibreOffice turns it into rich.docx, .doc, .odt and .rtf (make.sh).
+     Every name and number in it is made up. -->
+<office:document xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0" xmlns:style="urn:oasis:names:tc:opendocument:xmlns:style:1.0" xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0" xmlns:table="urn:oasis:names:tc:opendocument:xmlns:table:1.0" xmlns:draw="urn:oasis:names:tc:opendocument:xmlns:drawing:1.0" xmlns:fo="urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:meta="urn:oasis:names:tc:opendocument:xmlns:meta:1.0" xmlns:svg="urn:oasis:names:tc:opendocument:xmlns:svg-compatible:1.0" office:version="1.3" office:mimetype="application/vnd.oasis.opendocument.text">
+ <office:meta><dc:title>Field notes</dc:title></office:meta>
+ <office:font-face-decls>
+  <style:font-face style:name="Liberation Serif" svg:font-family="&apos;Liberation Serif&apos;"/>
+  <style:font-face style:name="Liberation Sans" svg:font-family="&apos;Liberation Sans&apos;"/>
+ </office:font-face-decls>
+ <office:styles>
+  <style:default-style style:family="paragraph"><style:text-properties style:font-name="Liberation Serif" fo:font-size="11pt"/></style:default-style>
+  <style:style style:name="Standard" style:family="paragraph"><style:paragraph-properties fo:margin-bottom="0.1in"/></style:style>
+  <style:style style:name="Heading" style:family="paragraph" style:parent-style-name="Standard"><style:paragraph-properties fo:margin-top="0.17in" fo:margin-bottom="0.08in"/><style:text-properties style:font-name="Liberation Sans" fo:font-weight="bold" fo:color="#1f3864"/></style:style>
+  <style:style style:name="Heading_20_1" style:display-name="Heading 1" style:family="paragraph" style:parent-style-name="Heading" style:default-outline-level="1"><style:text-properties fo:font-size="18pt"/></style:style>
+  <style:style style:name="Heading_20_2" style:display-name="Heading 2" style:family="paragraph" style:parent-style-name="Heading" style:default-outline-level="2"><style:text-properties fo:font-size="14pt"/></style:style>
+  <style:style style:name="Footnote" style:family="paragraph" style:parent-style-name="Standard"><style:text-properties fo:font-size="9pt"/></style:style>
+  <text:list-style style:name="Numbering_20_123" style:display-name="Numbering 123">
+   <text:list-level-style-number text:level="1" style:num-suffix="." style:num-format="1"><style:list-level-properties text:list-level-position-and-space-mode="label-alignment"><style:list-level-label-alignment text:label-followed-by="listtab" fo:text-indent="-0.25in" fo:margin-left="0.5in"/></style:list-level-properties></text:list-level-style-number>
+   <text:list-level-style-number text:level="2" style:num-suffix="." style:num-format="a"><style:list-level-properties text:list-level-position-and-space-mode="label-alignment"><style:list-level-label-alignment text:label-followed-by="listtab" fo:text-indent="-0.25in" fo:margin-left="0.75in"/></style:list-level-properties></text:list-level-style-number>
+  </text:list-style>
+  <text:list-style style:name="List_20_1" style:display-name="List 1">
+   <text:list-level-style-bullet text:level="1" text:bullet-char="•"><style:list-level-properties text:list-level-position-and-space-mode="label-alignment"><style:list-level-label-alignment text:label-followed-by="listtab" fo:text-indent="-0.25in" fo:margin-left="0.5in"/></style:list-level-properties></text:list-level-style-bullet>
+  </text:list-style>
+ </office:styles>
+ <office:automatic-styles>
+  <style:style style:name="T1" style:family="text"><style:text-properties fo:font-weight="bold"/></style:style>
+  <style:style style:name="T2" style:family="text"><style:text-properties fo:font-style="italic"/></style:style>
+  <style:style style:name="T3" style:family="text"><style:text-properties fo:background-color="#ffff00"/></style:style>
+  <style:style style:name="P1" style:family="paragraph" style:parent-style-name="Standard"><style:paragraph-properties fo:break-before="page"/></style:style>
+  <style:style style:name="P2" style:family="paragraph" style:parent-style-name="Standard"><style:paragraph-properties fo:text-align="center"/></style:style>
+  <style:style style:name="Tbl" style:family="table"><style:table-properties style:width="6in"/></style:style>
+  <style:style style:name="Tbl.A" style:family="table-column"><style:table-column-properties style:column-width="2in"/></style:style>
+  <style:style style:name="Tbl.C" style:family="table-cell"><style:table-cell-properties fo:padding="0.04in" fo:border="0.5pt solid #000000"/></style:style>
+  <style:style style:name="Tbl.H" style:family="table-cell"><style:table-cell-properties fo:padding="0.04in" fo:border="0.5pt solid #000000" fo:background-color="#dde4f0"/></style:style>
+  <style:style style:name="fr1" style:family="graphic"/>
+  <style:page-layout style:name="pm1"><style:page-layout-properties fo:page-width="8.5in" fo:page-height="11in" fo:margin-top="0.79in" fo:margin-bottom="0.79in" fo:margin-left="0.79in" fo:margin-right="0.79in"/><style:header-style><style:header-footer-properties fo:min-height="0in" fo:margin-bottom="0.2in"/></style:header-style><style:footer-style><style:header-footer-properties fo:min-height="0in" fo:margin-top="0.2in"/></style:footer-style></style:page-layout>
+ </office:automatic-styles>
+ <office:master-styles>
+  <style:master-page style:name="Standard" style:page-layout-name="pm1">
+   <style:header><text:p text:style-name="P2">Field notes · internal draft</text:p></style:header>
+   <style:footer><text:p text:style-name="P2">Page <text:page-number text:select-page="current">1</text:page-number></text:p></style:footer>
+  </style:master-page>
+ </office:master-styles>
+ <office:body>
+  <office:text>
+   <text:h text:style-name="Heading_20_1" text:outline-level="1">Field notes</text:h>
+   <text:p text:style-name="Standard">The survey covered <text:span text:style-name="T1">three regions</text:span> over <text:span text:style-name="T2">six weeks</text:span>.<text:note text:id="ftn1" text:note-class="footnote"><text:note-citation>1</text:note-citation><text:note-body><text:p text:style-name="Footnote">Counted from the first visit.</text:p></text:note-body></text:note> Details are on the <text:a xlink:type="simple" xlink:href="https://example.com/survey">project page</text:a>.</text:p>
+   <text:p text:style-name="Standard">The <office:annotation office:name="c1"><dc:creator>Mina Park</dc:creator><dc:date>2026-10-20T10:30:00</dc:date><text:p>Check against the raw counts.</text:p></office:annotation>totals<office:annotation-end office:name="c1"/> below are <text:span text:style-name="T3">provisional</text:span>.</text:p>
+   <text:h text:style-name="Heading_20_2" text:outline-level="2">Steps</text:h>
+   <text:list text:style-name="Numbering_20_123">
+    <text:list-item><text:p text:style-name="Standard">Plan the route</text:p></text:list-item>
+    <text:list-item><text:p text:style-name="Standard">Visit each site</text:p>
+     <text:list><text:list-item><text:p text:style-name="Standard">Morning count</text:p></text:list-item><text:list-item><text:p text:style-name="Standard">Evening count</text:p></text:list-item></text:list>
+    </text:list-item>
+    <text:list-item><text:p text:style-name="Standard">Write the report</text:p></text:list-item>
+   </text:list>
+   <text:list text:style-name="List_20_1">
+    <text:list-item><text:p text:style-name="Standard">Bring water</text:p></text:list-item>
+    <text:list-item><text:p text:style-name="Standard">Charge the camera</text:p></text:list-item>
+   </text:list>
+   <text:h text:style-name="Heading_20_2" text:outline-level="2">Results</text:h>
+   <table:table table:name="Results" table:style-name="Tbl">
+    <table:table-column table:style-name="Tbl.A" table:number-columns-repeated="3"/>
+    <table:table-row><table:table-cell table:style-name="Tbl.H" table:number-columns-spanned="3"><text:p text:style-name="P2">Counts by region</text:p></table:table-cell><table:covered-table-cell/><table:covered-table-cell/></table:table-row>
+    <table:table-row><table:table-cell table:style-name="Tbl.H"><text:p>Region</text:p></table:table-cell><table:table-cell table:style-name="Tbl.H"><text:p>Morning</text:p></table:table-cell><table:table-cell table:style-name="Tbl.H"><text:p>Evening</text:p></table:table-cell></table:table-row>
+    <table:table-row><table:table-cell table:style-name="Tbl.C" table:number-rows-spanned="2"><text:p>North</text:p></table:table-cell><table:table-cell table:style-name="Tbl.C"><text:p>42</text:p></table:table-cell><table:table-cell table:style-name="Tbl.C"><text:p>37</text:p></table:table-cell></table:table-row>
+    <table:table-row><table:covered-table-cell/><table:table-cell table:style-name="Tbl.C"><text:p>40</text:p></table:table-cell><table:table-cell table:style-name="Tbl.C"><text:p>35</text:p></table:table-cell></table:table-row>
+    <table:table-row><table:table-cell table:style-name="Tbl.C"><text:p>South</text:p></table:table-cell><table:table-cell table:style-name="Tbl.C"><text:p>28</text:p></table:table-cell><table:table-cell table:style-name="Tbl.C"><text:p>31</text:p></table:table-cell></table:table-row>
+   </table:table>
+   <text:p text:style-name="P2"><draw:frame draw:style-name="fr1" draw:name="Chart" text:anchor-type="as-char" svg:width="2.5in" svg:height="1.25in"><draw:image><office:binary-data>iVBORw0KGgoAAAANSUhEUgAAAPAAAAB4CAIAAABD1OhwAAABLElEQVR42u3dsQmAMBRF0RdxImdxHEvHcRZHSZEylSOYRhE5ZwEhXD4Wn6TU1gN/MTkCBA2CBkGDoBE0CBoEDYIGQSNoEDQIGgQNN2ZHwKB1O1/71rEvJjQIGkGDoEHQIGgEDYIGQYOgQdAIGgQNggZBg6ARNAgaBA2CBkEjaBA0CBriopn86HoUTGgQNIIGQYOgQdAgaAQNggZBg6BB0AgaBA2xPhpPAMaOqwmNXw4QNAgaBA2CRtAgaBA0CBoEjaBB0CBoyJfWRy09YkKDoEHQCBoEDYIGQYOgETQIGgQNggZBI2gQNAgaBA2CRtAgaBA0CBoEjaBB0CBoEDQIGkGDoEHQIGgEDYIGQYOgQdAIGgQNgoanlNq6U8CEBkGDoEHQCBoEDYIGQcOAC/7JEqtZUBRIAAAAAElFTkSuQmCC</office:binary-data></draw:image><svg:desc>Bar chart of the counts</svg:desc></draw:frame></text:p>
+   <text:p text:style-name="P1">현장 기록: 북부 지역의 아침 집계가 가장 많았다.</text:p>
+   <text:p text:style-name="Standard">The last page closes the notes.</text:p>
+  </office:text>
+ </office:body>
+</office:document>

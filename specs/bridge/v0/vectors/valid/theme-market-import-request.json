@@ -1,0 +1,16 @@
+{
+  "target": "BridgeRequest",
+  "description": "theme.import of a market theme keeps the market that listed it",
+  "instance": {
+    "id": 92,
+    "method": "theme.import",
+    "params": {
+      "url": "https://raw.githubusercontent.com/endue-ai/Desk/main/market/themes/paper-dusk.desk-theme",
+      "sha256": "5f1d8d1c6b9a2e0f8c3e7a4b9d2c1e0f6a5b4c3d2e1f0a9b8c7d6e5f4a3b2c1d",
+      "market": "https://raw.githubusercontent.com/endue-ai/Desk/main/market/themes/index.json",
+      "scope": {
+        "permission": "theme:manage"
+      }
+    }
+  }
+}

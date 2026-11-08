@@ -1,0 +1,9 @@
+{
+  "target": "AccountStatusResult",
+  "description": "endue refused to renew the session (403): the desk keeps it and says so",
+  "instance": {
+    "state": "signed-in",
+    "problem": "endue would not renew this desk's session. You stay signed in for now.",
+    "reason": "rejected"
+  }
+}

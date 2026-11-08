@@ -1,0 +1,16 @@
+{
+  "target": "TurnRequest",
+  "description": "the lease holder sends a message",
+  "instance": {
+    "leaseId": "l1",
+    "message": {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "hello"
+        }
+      ]
+    }
+  }
+}

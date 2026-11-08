@@ -1,0 +1,300 @@
+name: ci
+
+# Every pull request and the merge queue run on Linux: check and unit tests, the runtime e2e, codegen,
+# red-on-base, and the Tauri app's build when the shell or the primitives change. A pull request into
+# a release line release/vX.Y (ADR 0081, ADR 0092), a cherry-pick of main commits, also runs check and
+# unit tests on macOS and Windows and the app on all three, and the release dry run when it changes
+# the release files; merging it builds the line's next candidate (release.yml). The final `ci` job is
+# the required check. The merge queue runs it again on each PR combined with main and the PRs ahead of it
+# (ADR 0015).
+on:
+  pull_request:
+  merge_group:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  ACTIONLINT_VERSION: 1.7.12
+
+jobs:
+  changes:
+    name: changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      app: ${{ steps.filter.outputs.app }}
+      release: ${{ steps.filter.outputs.release }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - id: filter
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before }}
+        run: |
+          # Diff against the PR base, the queue base or the previous main; an unknown base builds the app.
+          if git cat-file -e "${BASE}^{commit}" 2>/dev/null; then
+            files="$(git diff --name-only "$BASE" HEAD)"
+          else
+            files="apps/desk/src-tauri/"
+          fi
+          if grep -qE '^(apps/desk/src-tauri/|crates/desk-sys/|vendor/tauri-plugin-single-instance/)' <<<"$files"; then app=true; else app=false; fi
+          # The files the release dry run proves (its own pull_request paths).
+          if grep -qE '^(\.github/workflows/(release|release-build|release-dry-run|release-final|canary)\.yml|scripts/release-[^/]*\.mjs|e2e/smoke/verify-signature\.sh|apps/desk/src-tauri/tauri\.conf\.json)$' <<<"$files"; then release=true; else release=false; fi
+          echo "app=$app" | tee -a "$GITHUB_OUTPUT"
+          echo "release=$release" | tee -a "$GITHUB_OUTPUT"
+
+  check-linux:
+    name: check (linux)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install Rust toolchain (rust-toolchain.toml)
+        run: rustup toolchain install
+      - uses: Swatinem/rust-cache@v2
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: just
+      - name: Install actionlint
+        run: |
+          base="https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}"
+          tarball="actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
+          curl -fsSLO "$base/$tarball"
+          curl -fsSL "$base/actionlint_${ACTIONLINT_VERSION}_checksums.txt" | grep " $tarball\$" | sha256sum -c -
+          tar -xzf "$tarball" actionlint
+          sudo mv actionlint /usr/local/bin/
+      - name: Configure Ubuntu package downloads
+        run: sudo "$(command -v node)" scripts/ci-apt.mjs
+      - name: Install the ALSA headers (cpal, for desk-sys audio)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libasound2-dev
+      - run: pnpm install --frozen-lockfile
+      - run: just check
+      - run: just test-unit
+
+  runtime-e2e:
+    name: runtime-e2e
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: just
+      - run: pnpm install --frozen-lockfile
+      - name: Configure Ubuntu package downloads
+        run: sudo "$(command -v node)" scripts/ci-apt.mjs
+      - name: Install WebKit
+        run: pnpm --filter @endue-ai/runtime exec playwright install --with-deps webkit
+      - run: just test-e2e
+      - if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report
+          path: packages/runtime/test-results
+          retention-days: 7
+
+  check-macos:
+    name: check (macos)
+    if: startsWith(github.base_ref, 'release/')
+    runs-on: macos-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install Rust toolchain (rust-toolchain.toml)
+        run: rustup toolchain install
+      - uses: Swatinem/rust-cache@v2
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: just
+      - run: pnpm install --frozen-lockfile
+      - run: just check
+      - run: just test-unit
+
+  check-windows:
+    name: check (windows)
+    if: startsWith(github.base_ref, 'release/')
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install Rust toolchain (rust-toolchain.toml)
+        run: rustup toolchain install
+      - uses: Swatinem/rust-cache@v2
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: just
+      - run: pnpm install --frozen-lockfile
+      - run: just check
+      - run: just test-unit
+
+  app-build:
+    name: app-build (${{ matrix.os }})
+    needs: changes
+    if: needs.changes.outputs.app == 'true' || startsWith(github.base_ref, 'release/')
+    strategy:
+      fail-fast: false
+      matrix:
+        # Linux for an app change; every OS for a release pull request.
+        os: ${{ fromJSON(startsWith(github.base_ref, 'release/') && '["ubuntu-latest","macos-latest","windows-latest"]' || '["ubuntu-latest"]') }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install Rust toolchain (rust-toolchain.toml)
+        run: rustup toolchain install
+      - uses: Swatinem/rust-cache@v2
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: just
+      - name: Configure Ubuntu package downloads
+        if: runner.os == 'Linux'
+        run: sudo "$(command -v node)" scripts/ci-apt.mjs
+      - name: Install the WebKitGTK SDK
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
+      - run: pnpm install --frozen-lockfile
+      - run: just check-app
+      - run: just build-app
+
+  codegen-check:
+    name: codegen-check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install Rust toolchain (rust-toolchain.toml, for rustfmt)
+        run: rustup toolchain install
+
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: just
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: just codegen
+
+      - name: Generated files match the specs
+        run: |
+          if ! git diff --exit-code; then
+            echo "::error::Generated files are out of date. Run 'just codegen' and commit the result."
+            exit 1
+          fi
+
+  red-on-base:
+    name: red-on-base
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          fetch-depth: 0
+
+      - name: Fetch the PR head
+        env:
+          PR: ${{ github.event.pull_request.number }}
+        run: git fetch --no-tags origin "+refs/pull/${PR}/head:refs/remotes/pr/head"
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install Rust toolchain (rust-toolchain.toml)
+        run: rustup toolchain install
+
+      - uses: Swatinem/rust-cache@v2
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Run the PR's tests on the base commit
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+          LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+        run: |
+          # The base version of the script gates the PR; a PR that adds the script uses its own.
+          script="$RUNNER_TEMP/red-on-base.sh"
+          git show "$BASE:scripts/red-on-base.sh" > "$script" 2>/dev/null || git show "$HEAD:scripts/red-on-base.sh" > "$script"
+          bash "$script" "$BASE" "$HEAD"
+
+  release-dry-run:
+    name: release-dry-run
+    needs: changes
+    # The merge builds every target anyway; the dry run is for a change to how they are built.
+    if: startsWith(github.base_ref, 'release/') && needs.changes.outputs.release == 'true'
+    uses: ./.github/workflows/release-dry-run.yml
+
+  ci:
+    name: ci
+    if: always()
+    needs:
+      - changes
+      - check-linux
+      - runtime-e2e
+      - check-macos
+      - check-windows
+      - app-build
+      - codegen-check
+      - red-on-base
+      - release-dry-run
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Every gate passed or was skipped on purpose
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: |
+          echo "$RESULTS" | jq -r 'to_entries[] | "\(.key): \(.value.result)"'
+          if echo "$RESULTS" | jq -e 'to_entries | any(.value.result == "failure" or .value.result == "cancelled")' >/dev/null; then
+            echo "::error::A gate failed or was cancelled."
+            exit 1
+          fi

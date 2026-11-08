@@ -1,0 +1,11 @@
+{
+  "target": "BridgeEvent",
+  "description": "cmd.invoked always names the caller",
+  "instance": {
+    "event": "cmd.invoked",
+    "data": {
+      "invocationId": "i1",
+      "id": "eris.say"
+    }
+  }
+}

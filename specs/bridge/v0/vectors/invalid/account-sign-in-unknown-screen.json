@@ -1,0 +1,9 @@
+{
+  "target": "BridgeRequest",
+  "description": "account.signIn starts on sign-in or sign-up only",
+  "instance": {
+    "id": 1,
+    "method": "account.signIn",
+    "params": { "scope": { "permission": "account:manage" }, "screen": "password" }
+  }
+}

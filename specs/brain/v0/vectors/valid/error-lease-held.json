@@ -1,0 +1,12 @@
+{
+  "target": "BrainError",
+  "description": "lease_held names the current holder",
+  "instance": {
+    "code": "lease_held",
+    "message": "Session s1 is open on Studio.",
+    "holder": {
+      "deskId": "desk-a",
+      "name": "Studio"
+    }
+  }
+}

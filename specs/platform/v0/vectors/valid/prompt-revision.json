@@ -1,0 +1,11 @@
+{
+  "target": "PromptRevision",
+  "description": "a revision restored from revision 2",
+  "instance": {
+    "rev": 4,
+    "content": "Be brief.",
+    "source": "restore",
+    "restored_from_rev": 2,
+    "created_at": "2026-11-01T09:00:00.000Z"
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "target": "PluginContributes",
+  "description": "the mac key follows the same grammar: no leading space",
+  "instance": {
+    "keys": [
+      {
+        "key": "Ctrl+X Ctrl+F",
+        "mac": " Meta+X Meta+F",
+        "command": "example.notes.find-file"
+      }
+    ]
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "target": "PluginManifest",
+  "description": "a policy plugin runs no code, so it has no entry",
+  "instance": {
+    "id": "desk.keys",
+    "version": "0.1.0",
+    "kind": "policy",
+    "entry": "policy.js",
+    "contributes": {
+      "keys": []
+    }
+  }
+}

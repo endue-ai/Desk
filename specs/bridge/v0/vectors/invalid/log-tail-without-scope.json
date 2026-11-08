@@ -1,0 +1,11 @@
+{
+  "target": "BridgeRequest",
+  "description": "log.tail needs log:read",
+  "instance": {
+    "id": 60,
+    "method": "log.tail",
+    "params": {
+      "count": 10
+    }
+  }
+}

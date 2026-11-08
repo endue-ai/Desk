@@ -1,0 +1,289 @@
+//! The perm side of `Core`: the one permission check every call passes, grants for every duration,
+//! perm.query, perm.request, perm.revoke and perm.list, and `perm.changed` for the holder and the
+//! callers subscribed to it. `always` grants live in the grant file (ADR 0029); asking the person
+//! goes through `perm.prompt` (`core_prompts`) or, with nobody to prompt, the `Prompter`, for
+//! perm.request and for the calls that ask by themselves (`check_or_ask`, shell.open), as the prompt
+//! policy allows (`prompt_policy`). An agent's calls take `agents`' check, capped by its allowlist;
+//! grants and refusals go to the `perm` log channel (`perm_log`, ADR 0072).
+
+use std::path::PathBuf;
+
+use desk_bridge::{
+    BridgeError, BridgeEvent, ErrorCode, EventName, Grant, GrantChange, GrantDuration,
+    PermChangedData, PermChangedEvent, PermListParams, PermListResult, PermManagePermission,
+    PermQueryParams, PermQueryResult, PermRequestParams, PermRequestResult, PermRevokeParams,
+    PermRevokeResult, Permission, RefusalReason,
+};
+
+use crate::agents::agent_of;
+use crate::core_prompts::Outcome;
+use crate::handler::{Answer, Core, denied, error, json};
+use crate::perm::{Denied, PermissionEngine, Target, covers, scope_allows};
+
+/// Asks the person whether to grant a permission when no caller holding perm:manage can be asked
+/// through `perm.prompt`. The asked duration applies.
+pub trait Prompter: Send + Sync {
+    fn ask(&self, caller: &str, permission: &Permission, reason: &str) -> bool;
+}
+
+/// The prompter used until a prompt UI exists: it refuses everything.
+#[derive(Debug, Default)]
+pub struct RefuseAll;
+
+/// What asking decided: a grant, or a refusal, with why nobody was asked when nobody was.
+pub(crate) enum Decision {
+    Granted(Grant),
+    Refused(Option<RefusalReason>),
+}
+
+impl Prompter for RefuseAll {
+    fn ask(&self, _caller: &str, _permission: &Permission, _reason: &str) -> bool {
+        false
+    }
+}
+
+impl Core {
+    /// Keep `always` grants in `path` (a JSON file in the app's data folder, next to plugins.json)
+    /// and start with the ones it holds. Call it before granting anything.
+    pub fn with_grant_file(self, path: PathBuf) -> Self {
+        self.screen_state(&path, crate::grants::readable);
+        *self.permissions() = PermissionEngine::with_file(path);
+        self
+    }
+
+    /// Grant for the session, as the person would through a prompt. The host's own grants (made
+    /// again at every start) reach the `perm` log only when they go to an agent.
+    pub fn grant(&self, caller: &str, permission: Permission) -> Grant {
+        let grant = self.record(caller, permission, GrantDuration::Session);
+        if agent_of(caller).is_some() {
+            self.log_grant(caller, &grant);
+        }
+        grant
+    }
+
+    /// A grant the person made, through a prompt or the Prompter: kept and logged.
+    pub(crate) fn grant_for(
+        &self,
+        caller: &str,
+        permission: Permission,
+        duration: GrantDuration,
+    ) -> Grant {
+        let grant = self.record(caller, permission, duration);
+        self.log_grant(caller, &grant);
+        grant
+    }
+
+    fn record(&self, caller: &str, permission: Permission, duration: GrantDuration) -> Grant {
+        let grant = self.permissions().grant_for(caller, permission, duration);
+        self.forget_refusals(caller, &grant.permission);
+        self.changed(caller, &grant.grant_id, GrantChange::Granted);
+        grant
+    }
+
+    /// The permission check every call passes: a grant of the caller's must cover the scope and the
+    /// scope the target. An agent's call is also capped by its allowlist and asks the person when no
+    /// grant covers it (`check_agent`).
+    pub(crate) fn check(
+        &self,
+        caller: &str,
+        scope: &Permission,
+        target: &Target<'_>,
+    ) -> Result<(), BridgeError> {
+        if agent_of(caller).is_some() {
+            return self.check_agent(caller, scope, target);
+        }
+        self.allow_call(caller, scope, target)
+    }
+
+    /// The engine's half of `check`. A `once` grant that allows the call is spent here, before the
+    /// call runs: its holder hears `expired`, and what only it covered ends.
+    pub(crate) fn allow_call(
+        &self,
+        caller: &str,
+        scope: &Permission,
+        target: &Target<'_>,
+    ) -> Result<(), BridgeError> {
+        let spent = self
+            .permissions()
+            .allow(caller, scope, target)
+            .map_err(denied)?;
+        if let Some(grant) = spent {
+            self.changed(caller, &grant.grant_id, GrantChange::Expired);
+            self.lost_grant(caller);
+        }
+        Ok(())
+    }
+
+    /// The callers holding a grant that covers `scope`, leaving out plugins that are not running.
+    pub(crate) fn holders(&self, scope: &Permission) -> Vec<String> {
+        let mut holders = self.permissions().holders(scope);
+        holders.retain(|caller| self.running(caller));
+        holders
+    }
+
+    pub(crate) fn perm_query(&self, caller: &str, params: PermQueryParams) -> Answer {
+        let mut grants = self.permissions().grants(caller);
+        if let Some(filter) = &params.permission {
+            grants.retain(|grant| covers(&grant.permission, filter));
+        }
+        json(PermQueryResult { grants })
+    }
+
+    /// Ask the person; the call waits for the answer. A refusal is a result, not an error. A request
+    /// one of the caller's lasting grants covers is answered with that grant, without asking; one
+    /// outside an agent's allowlist is refused at once.
+    pub(crate) fn perm_request(&self, caller: &str, params: PermRequestParams) -> Answer {
+        let lasting = || self.lasting_grant(caller, &params.permission);
+        let decided = match (self.capped(caller, &params.permission), lasting()) {
+            (Some(reason), _) => Decision::Refused(Some(reason)),
+            (None, Some(grant)) => Decision::Granted(grant),
+            (None, None) => {
+                let asked = params.duration.unwrap_or(GrantDuration::Session);
+                let reason = params.reason.as_deref().unwrap_or_default();
+                self.ask(caller, &params.permission, reason, asked)?
+            }
+        };
+        if let Decision::Refused(why) = &decided {
+            self.refused(caller, &params.permission, None, *why);
+        }
+        json(match decided {
+            Decision::Granted(grant) => PermRequestResult {
+                granted: true,
+                grant: Some(grant),
+                reason: None,
+            },
+            Decision::Refused(reason) => PermRequestResult {
+                granted: false,
+                grant: None,
+                reason,
+            },
+        })
+    }
+
+    /// `check`, but when no grant covers a scope that covers the target, ask the person for the scope
+    /// first, for the session, as perm.request asks (shell.open). A refusal is `permission_denied`.
+    pub(crate) fn check_or_ask(
+        &self,
+        caller: &str,
+        scope: &Permission,
+        target: &Target<'_>,
+        reason: &str,
+    ) -> Result<(), BridgeError> {
+        let held = self.permissions().authorize(caller, scope, target);
+        if held.is_err() && scope_allows(scope, target) {
+            let asked = self.ask(caller, scope, reason, GrantDuration::Session)?;
+            if let Decision::Refused(why) = asked {
+                self.refused(caller, scope, Some(target), why);
+                let reason = match why {
+                    Some(RefusalReason::RefusedEarlier) => {
+                        format!("the person refused {caller} this scope earlier in the session")
+                    }
+                    Some(RefusalReason::OutsideAllowlist) => {
+                        format!(
+                            "{caller} may not be granted this scope: it is outside its allowlist"
+                        )
+                    }
+                    None => format!("the person did not allow {caller} this scope"),
+                };
+                return Err(denied(Denied {
+                    permission: scope.clone(),
+                    reason,
+                }));
+            }
+        }
+        self.check(caller, scope, target)
+    }
+
+    /// Ask the person for `permission`, through perm.prompt or else the Prompter, as the prompt
+    /// policy allows: the grant they made, or a refusal. `cancelled` when the caller stopped first.
+    /// Nobody is asked to grant an agent anything outside its allowlist.
+    pub(crate) fn ask(
+        &self,
+        caller: &str,
+        permission: &Permission,
+        reason: &str,
+        duration: GrantDuration,
+    ) -> Result<Decision, BridgeError> {
+        if let Some(capped) = self.capped(caller, permission) {
+            return Ok(Decision::Refused(Some(capped)));
+        }
+        Ok(match self.prompt(caller, permission, reason, duration) {
+            Outcome::Granted(grant) => Decision::Granted(grant),
+            Outcome::Refused => Decision::Refused(None),
+            Outcome::RefusedEarlier => Decision::Refused(Some(RefusalReason::RefusedEarlier)),
+            Outcome::Withdrawn => {
+                return Err(error(
+                    ErrorCode::Cancelled,
+                    format!("{caller} stopped before the person answered"),
+                ));
+            }
+            Outcome::Unheard if self.prompter.ask(caller, permission, reason) => {
+                Decision::Granted(self.grant_for(caller, permission.clone(), duration))
+            }
+            Outcome::Unheard => Decision::Refused(None),
+        })
+    }
+
+    /// Give a grant back: one's own without a scope, anyone's with perm:manage.
+    pub(crate) fn perm_revoke(&self, caller: &str, params: PermRevokeParams) -> Answer {
+        let holder = match params.scope {
+            Some(scope) => {
+                self.check(caller, &Permission::PermManage(scope), &Target::None)?;
+                self.permissions().revoke_any(&params.grant_id)
+            }
+            None => {
+                let revoked = self.permissions().revoke(caller, &params.grant_id);
+                revoked.then(|| caller.to_owned())
+            }
+        };
+        let holder = holder
+            .ok_or_else(|| error(ErrorCode::NotFound, format!("no grant {}", params.grant_id)))?;
+        self.changed(&holder, &params.grant_id, GrantChange::Revoked);
+        self.lost_grant(&holder);
+        json(PermRevokeResult {})
+    }
+
+    /// Every caller's grants, oldest first, or one caller's.
+    pub(crate) fn perm_list(&self, caller: &str, params: PermListParams) -> Answer {
+        self.check(caller, &Permission::PermManage(params.scope), &Target::None)?;
+        let mut grants = self.permissions().list();
+        if let Some(only) = &params.caller {
+            grants.retain(|held| &held.caller == only);
+        }
+        json(PermListResult { grants })
+    }
+
+    /// A grant of `caller`'s went (revoked, spent): the watches, file URLs, subscriptions (events and
+    /// data) and processes no grant covers any more end, and prompts that nobody can answer any more
+    /// go to the Prompter.
+    pub(crate) fn lost_grant(&self, caller: &str) {
+        self.prune_watches(caller);
+        self.prune_file_urls(caller);
+        self.prune_subscriptions(caller);
+        self.prune_data(caller);
+        self.prune_processes(caller);
+        self.settle_unheard();
+    }
+
+    /// `perm.changed` for the grant's holder and the callers subscribed to it.
+    pub(crate) fn changed(&self, holder: &str, grant_id: &str, change: GrantChange) {
+        let to = self.recipients(EventName::PermChanged, vec![holder.to_owned()]);
+        self.events().publish_to(
+            to,
+            BridgeEvent::PermChanged(PermChangedEvent {
+                event: Default::default(),
+                data: PermChangedData {
+                    grant_id: grant_id.to_owned(),
+                    change,
+                },
+            }),
+        );
+    }
+}
+
+/// The perm:manage scope.
+pub(crate) fn perm_manage() -> Permission {
+    Permission::PermManage(PermManagePermission {
+        permission: Default::default(),
+    })
+}

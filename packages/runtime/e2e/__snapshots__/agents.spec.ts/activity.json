@@ -1,0 +1,701 @@
+{
+  "tag": "div",
+  "role": "tabpanel",
+  "children": [
+    {
+      "tag": "div",
+      "class": "desk-tabs chips",
+      "role": "group",
+      "aria-label": "Agents on the board",
+      "children": [
+        {
+          "tag": "button",
+          "type": "button",
+          "class": "desk-tab chip",
+          "aria-pressed": "false",
+          "data-chip": "endue:ag_sample0000000000000000001",
+          "text": "Miso",
+          "children": [
+            {
+              "tag": "span",
+              "class": "count",
+              "text": "2"
+            }
+          ]
+        },
+        {
+          "tag": "button",
+          "type": "button",
+          "class": "desk-tab chip",
+          "aria-pressed": "false",
+          "data-chip": "local:claude",
+          "text": "Claude Code",
+          "children": [
+            {
+              "tag": "span",
+              "class": "count",
+              "text": "2"
+            }
+          ]
+        },
+        {
+          "tag": "button",
+          "type": "button",
+          "class": "desk-tab chip",
+          "aria-pressed": "false",
+          "data-chip": "endue:ag_sample0000000000000000003",
+          "text": "Scout",
+          "children": [
+            {
+              "tag": "span",
+              "class": "count",
+              "text": "1"
+            }
+          ]
+        },
+        {
+          "tag": "button",
+          "type": "button",
+          "class": "desk-tab chip",
+          "aria-pressed": "false",
+          "data-chip": "endue:ag_sample0000000000000000002",
+          "text": "Mailie",
+          "children": [
+            {
+              "tag": "span",
+              "class": "count",
+              "text": "1"
+            }
+          ]
+        },
+        {
+          "tag": "button",
+          "type": "button",
+          "class": "desk-tab chip",
+          "aria-pressed": "false",
+          "data-chip": "local:codex",
+          "text": "Codex",
+          "children": [
+            {
+              "tag": "span",
+              "class": "count",
+              "text": "1"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "div",
+      "class": "board",
+      "children": [
+        {
+          "tag": "section",
+          "class": "column",
+          "data-column": "waiting",
+          "aria-label": "Waiting, 1",
+          "children": [
+            {
+              "tag": "h3",
+              "class": "column-head",
+              "children": [
+                {
+                  "tag": "span",
+                  "class": "dot waiting"
+                },
+                {
+                  "tag": "span",
+                  "text": "Waiting"
+                },
+                {
+                  "tag": "span",
+                  "class": "count",
+                  "text": "1"
+                }
+              ]
+            },
+            {
+              "tag": "ol",
+              "class": "rows",
+              "children": [
+                {
+                  "tag": "li",
+                  "class": "board-row",
+                  "data-source": "endue",
+                  "children": [
+                    {
+                      "tag": "button",
+                      "type": "button",
+                      "class": "desk-row row-open",
+                      "aria-label": "Mailie: Refund for order 42",
+                      "children": [
+                        {
+                          "tag": "span",
+                          "class": "avatar avatar-sm",
+                          "data-hue": "8",
+                          "children": [
+                            {
+                              "tag": "img"
+                            }
+                          ]
+                        },
+                        {
+                          "tag": "span",
+                          "class": "row-text",
+                          "children": [
+                            {
+                              "tag": "span",
+                              "class": "row-top",
+                              "children": [
+                                {
+                                  "tag": "span",
+                                  "class": "dot waiting"
+                                },
+                                {
+                                  "tag": "strong",
+                                  "text": "Mailie"
+                                },
+                                {
+                                  "tag": "span",
+                                  "class": "row-title",
+                                  "text": "Refund for order 42"
+                                }
+                              ]
+                            },
+                            {
+                              "tag": "span",
+                              "class": "row-preview",
+                              "text": "Shall I send it?"
+                            }
+                          ]
+                        },
+                        {
+                          "tag": "span",
+                          "class": "row-meta",
+                          "children": [
+                            {
+                              "tag": "time",
+                              "datetime": "2026-11-07T08:55:00Z",
+                              "text": "5 min ago"
+                            },
+                            {
+                              "tag": "span",
+                              "text": "4 msg"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "section",
+          "class": "column",
+          "data-column": "active",
+          "aria-label": "Active, 1",
+          "children": [
+            {
+              "tag": "h3",
+              "class": "column-head",
+              "children": [
+                {
+                  "tag": "span",
+                  "text": "Active"
+                },
+                {
+                  "tag": "span",
+                  "class": "count",
+                  "text": "1"
+                }
+              ]
+            },
+            {
+              "tag": "ol",
+              "class": "rows",
+              "children": [
+                {
+                  "tag": "li",
+                  "class": "board-row",
+                  "data-source": "endue",
+                  "children": [
+                    {
+                      "tag": "button",
+                      "type": "button",
+                      "class": "desk-row row-open",
+                      "aria-label": "Miso: Move Friday's dentist",
+                      "children": [
+                        {
+                          "tag": "span",
+                          "class": "avatar avatar-sm",
+                          "data-hue": "7",
+                          "text": "M"
+                        },
+                        {
+                          "tag": "span",
+                          "class": "row-text",
+                          "children": [
+                            {
+                              "tag": "span",
+                              "class": "row-top",
+                              "children": [
+                                {
+                                  "tag": "strong",
+                                  "text": "Miso"
+                                },
+                                {
+                                  "tag": "span",
+                                  "class": "row-title",
+                                  "text": "Move Friday's dentist"
+                                }
+                              ]
+                            },
+                            {
+                              "tag": "span",
+                              "class": "row-preview",
+                              "text": "Using calendar__update_event"
+                            }
+                          ]
+                        },
+                        {
+                          "tag": "span",
+                          "class": "row-meta",
+                          "children": [
+                            {
+                              "tag": "time",
+                              "datetime": "2026-11-07T08:58:00Z",
+                              "text": "2 min ago"
+                            },
+                            {
+                              "tag": "span",
+                              "text": "3 msg"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "section",
+          "class": "column",
+          "data-column": "failed",
+          "aria-label": "Failed, 1",
+          "children": [
+            {
+              "tag": "h3",
+              "class": "column-head",
+              "children": [
+                {
+                  "tag": "span",
+                  "text": "Failed"
+                },
+                {
+                  "tag": "span",
+                  "class": "count",
+                  "text": "1"
+                }
+              ]
+            },
+            {
+              "tag": "ol",
+              "class": "rows",
+              "children": [
+                {
+                  "tag": "li",
+                  "class": "board-row",
+                  "data-source": "endue",
+                  "children": [
+                    {
+                      "tag": "button",
+                      "type": "button",
+                      "class": "desk-row row-open",
+                      "aria-label": "Scout: Battery market, Q3",
+                      "children": [
+                        {
+                          "tag": "span",
+                          "class": "avatar avatar-sm",
+                          "data-hue": "1",
+                          "text": "S"
+                        },
+                        {
+                          "tag": "span",
+                          "class": "row-text",
+                          "children": [
+                            {
+                              "tag": "span",
+                              "class": "row-top",
+                              "children": [
+                                {
+                                  "tag": "strong",
+                                  "text": "Scout"
+                                },
+                                {
+                                  "tag": "span",
+                                  "class": "row-title",
+                                  "text": "Battery market, Q3"
+                                }
+                              ]
+                            },
+                            {
+                              "tag": "span",
+                              "class": "row-preview",
+                              "text": "Failed: LLM_TIMEOUT"
+                            }
+                          ]
+                        },
+                        {
+                          "tag": "span",
+                          "class": "row-meta",
+                          "children": [
+                            {
+                              "tag": "time",
+                              "datetime": "2026-11-07T08:20:00Z",
+                              "text": "40 min ago"
+                            },
+                            {
+                              "tag": "span",
+                              "text": "5 msg"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "section",
+          "class": "column",
+          "data-column": "done",
+          "aria-label": "Done, 4",
+          "children": [
+            {
+              "tag": "h3",
+              "class": "column-head",
+              "children": [
+                {
+                  "tag": "span",
+                  "text": "Done"
+                },
+                {
+                  "tag": "span",
+                  "class": "count",
+                  "text": "4"
+                }
+              ]
+            },
+            {
+              "tag": "div",
+              "class": "group",
+              "children": [
+                {
+                  "tag": "h4",
+                  "class": "group-label",
+                  "text": "Today"
+                },
+                {
+                  "tag": "ol",
+                  "class": "rows",
+                  "children": [
+                    {
+                      "tag": "li",
+                      "class": "board-row",
+                      "data-source": "local",
+                      "children": [
+                        {
+                          "tag": "button",
+                          "type": "button",
+                          "class": "desk-row row-open",
+                          "aria-label": "Claude Code: Fix the flaky upload test",
+                          "children": [
+                            {
+                              "tag": "span",
+                              "class": "avatar avatar-sm",
+                              "data-hue": "7",
+                              "text": "C"
+                            },
+                            {
+                              "tag": "span",
+                              "class": "row-text",
+                              "children": [
+                                {
+                                  "tag": "span",
+                                  "class": "row-top",
+                                  "children": [
+                                    {
+                                      "tag": "strong",
+                                      "text": "Claude Code"
+                                    },
+                                    {
+                                      "tag": "span",
+                                      "class": "row-title",
+                                      "text": "Fix the flaky upload test"
+                                    }
+                                  ]
+                                },
+                                {
+                                  "tag": "span",
+                                  "class": "row-preview",
+                                  "text": "/Users/mina/code/desk"
+                                }
+                              ]
+                            },
+                            {
+                              "tag": "span",
+                              "class": "row-meta",
+                              "children": [
+                                {
+                                  "tag": "time",
+                                  "datetime": "2026-11-07T08:30:00.000Z",
+                                  "text": "30 min ago"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "tag": "li",
+                      "class": "board-row",
+                      "data-source": "endue",
+                      "children": [
+                        {
+                          "tag": "button",
+                          "type": "button",
+                          "class": "desk-row row-open",
+                          "aria-label": "Miso: Sort this week's mail",
+                          "children": [
+                            {
+                              "tag": "span",
+                              "class": "avatar avatar-sm",
+                              "data-hue": "7",
+                              "text": "M"
+                            },
+                            {
+                              "tag": "span",
+                              "class": "row-text",
+                              "children": [
+                                {
+                                  "tag": "span",
+                                  "class": "row-top",
+                                  "children": [
+                                    {
+                                      "tag": "strong",
+                                      "text": "Miso"
+                                    },
+                                    {
+                                      "tag": "span",
+                                      "class": "row-title",
+                                      "text": "Sort this week's mail"
+                                    }
+                                  ]
+                                },
+                                {
+                                  "tag": "span",
+                                  "class": "row-preview",
+                                  "text": "Done: 12 archived, 3 starred."
+                                }
+                              ]
+                            },
+                            {
+                              "tag": "span",
+                              "class": "row-meta",
+                              "children": [
+                                {
+                                  "tag": "time",
+                                  "datetime": "2026-11-07T06:00:00Z",
+                                  "text": "3 h ago"
+                                },
+                                {
+                                  "tag": "span",
+                                  "text": "6 msg"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "tag": "div",
+              "class": "group",
+              "children": [
+                {
+                  "tag": "h4",
+                  "class": "group-label",
+                  "text": "Yesterday"
+                },
+                {
+                  "tag": "ol",
+                  "class": "rows",
+                  "children": [
+                    {
+                      "tag": "li",
+                      "class": "board-row",
+                      "data-source": "local",
+                      "children": [
+                        {
+                          "tag": "button",
+                          "type": "button",
+                          "class": "desk-row row-open",
+                          "aria-label": "Codex: Rename the crate",
+                          "children": [
+                            {
+                              "tag": "span",
+                              "class": "avatar avatar-sm",
+                              "data-hue": "4",
+                              "text": "C"
+                            },
+                            {
+                              "tag": "span",
+                              "class": "row-text",
+                              "children": [
+                                {
+                                  "tag": "span",
+                                  "class": "row-top",
+                                  "children": [
+                                    {
+                                      "tag": "strong",
+                                      "text": "Codex"
+                                    },
+                                    {
+                                      "tag": "span",
+                                      "class": "row-title",
+                                      "text": "Rename the crate"
+                                    }
+                                  ]
+                                },
+                                {
+                                  "tag": "span",
+                                  "class": "row-preview",
+                                  "text": "/Users/mina/code/garage"
+                                }
+                              ]
+                            },
+                            {
+                              "tag": "span",
+                              "class": "row-meta",
+                              "children": [
+                                {
+                                  "tag": "time",
+                                  "datetime": "2026-11-06T18:00:00.000Z",
+                                  "text": "15 h ago"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "tag": "div",
+              "class": "group",
+              "children": [
+                {
+                  "tag": "h4",
+                  "class": "group-label",
+                  "text": "This week"
+                },
+                {
+                  "tag": "ol",
+                  "class": "rows",
+                  "children": [
+                    {
+                      "tag": "li",
+                      "class": "board-row",
+                      "data-source": "local",
+                      "children": [
+                        {
+                          "tag": "button",
+                          "type": "button",
+                          "class": "desk-row row-open",
+                          "aria-label": "Claude Code: Explain the bridge",
+                          "children": [
+                            {
+                              "tag": "span",
+                              "class": "avatar avatar-sm",
+                              "data-hue": "7",
+                              "text": "C"
+                            },
+                            {
+                              "tag": "span",
+                              "class": "row-text",
+                              "children": [
+                                {
+                                  "tag": "span",
+                                  "class": "row-top",
+                                  "children": [
+                                    {
+                                      "tag": "strong",
+                                      "text": "Claude Code"
+                                    },
+                                    {
+                                      "tag": "span",
+                                      "class": "row-title",
+                                      "text": "Explain the bridge"
+                                    }
+                                  ]
+                                },
+                                {
+                                  "tag": "span",
+                                  "class": "row-preview",
+                                  "text": "/Users/mina/code/desk"
+                                }
+                              ]
+                            },
+                            {
+                              "tag": "span",
+                              "class": "row-meta",
+                              "children": [
+                                {
+                                  "tag": "time",
+                                  "datetime": "2026-11-05T10:00:00.000Z",
+                                  "text": "1 d ago"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "div",
+      "class": "desk-empty",
+      "hidden": "",
+      "children": [
+        {
+          "tag": "p",
+          "text": "No conversations yet. Talk to one of your agents and it shows here."
+        }
+      ]
+    }
+  ]
+}

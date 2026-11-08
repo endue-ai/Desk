@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Calendar</title>
+    <script type="importmap">
+      { "imports": { "@endue-ai/plugin-sdk": "/_desk/plugin-sdk.js" } }
+    </script>
+    <link rel="stylesheet" href="/_desk/tokens.css" />
+    <link rel="stylesheet" href="/_desk/base.css" />
+    <link rel="stylesheet" href="./style.css" />
+    <link rel="stylesheet" href="./layer.css" />
+  </head>
+  <body>
+    <main aria-labelledby="cal-title">
+      <header class="bar">
+        <div class="nav">
+          <button type="button" id="prev" aria-label="Previous" title="Previous (k)" class="desk-icon-btn">‹</button>
+          <button type="button" id="today" title="Today (t)" class="desk-btn desk-btn-quiet">Today</button>
+          <button type="button" id="next" aria-label="Next" title="Next (j)" class="desk-icon-btn">›</button>
+        </div>
+        <h1 id="cal-title" aria-live="polite">No calendar open</h1>
+        <div class="desk-tabs modes" role="radiogroup" aria-label="View">
+          <button type="button" role="radio" data-mode="month" aria-checked="true" title="Month (m)" class="desk-tab">Month</button>
+          <button type="button" role="radio" data-mode="week" aria-checked="false" title="Week (w)" class="desk-tab">Week</button>
+          <button type="button" role="radio" data-mode="day" aria-checked="false" title="Day (d)" class="desk-tab">Day</button>
+          <button type="button" role="radio" data-mode="agenda" aria-checked="false" title="Agenda (a)" class="desk-tab">Agenda</button>
+        </div>
+        <button type="button" id="new" class="desk-btn desk-btn-primary primary" title="New event (c)">New event</button>
+      </header>
+      <p id="cal-detail">
+        <span id="cal-name"></span>
+        <span id="cal-mark" hidden><span aria-hidden="true">● </span>Unsaved changes</span>
+        <span id="cal-problems" hidden></span>
+        <span id="cal-layers" role="group" aria-label="System calendars" hidden></span>
+      </p>
+      <section id="grid" aria-label="Calendar"></section>
+    </main>
+
+    <dialog id="editor" aria-labelledby="editor-title">
+      <form novalidate>
+        <h2 id="editor-title">New event</h2>
+        <label for="title">Title</label>
+        <input id="title" name="title" autocomplete="off" placeholder="(No title)" class="desk-field" />
+
+        <label class="check"><input type="checkbox" name="allDay" class="desk-check" /> All day</label>
+
+        <fieldset class="times">
+          <legend>Starts</legend>
+          <input type="date" name="startDate" aria-label="Start date" aria-describedby="startDate-error" class="desk-field" />
+          <input type="time" name="startTime" aria-label="Start time" step="300" class="desk-field" />
+          <p id="startDate-error" class="error" hidden></p>
+        </fieldset>
+        <fieldset class="times">
+          <legend>Ends</legend>
+          <input type="date" name="endDate" aria-label="End date" aria-describedby="endDate-error" class="desk-field" />
+          <input type="time" name="endTime" aria-label="End time" step="300" class="desk-field" />
+          <p id="endDate-error" class="error" hidden></p>
+        </fieldset>
+
+        <label for="zone" id="zone-label">Time zone</label>
+        <input id="zone" name="zone" list="zones" autocomplete="off" spellcheck="false" aria-describedby="zone-error" class="desk-field" />
+        <datalist id="zones"></datalist>
+        <p id="zone-error" class="error" hidden></p>
+
+        <label for="repeat">Repeat</label>
+        <select id="repeat" name="repeat" class="desk-field"></select>
+        <label for="rrule" id="rrule-label" hidden>Rule (RFC 5545 RRULE)</label>
+        <input id="rrule" name="rrule" hidden spellcheck="false" autocomplete="off" placeholder="FREQ=WEEKLY;BYDAY=MO,WE" aria-describedby="rrule-error" class="desk-field" />
+        <p id="rrule-error" class="error" hidden></p>
+
+        <label for="reminder">Reminder</label>
+        <select id="reminder" name="reminder" class="desk-field"></select>
+
+        <label for="location">Location</label>
+        <input id="location" name="location" autocomplete="off" class="desk-field" />
+
+        <label for="description">Notes</label>
+        <textarea id="description" name="description" rows="3" class="desk-field"></textarea>
+
+        <label for="free">Show as</label>
+        <select id="free" name="free" class="desk-field">
+          <option value="busy">Busy</option>
+          <option value="free">Free</option>
+        </select>
+
+        <fieldset id="editor-scope" hidden>
+          <legend>This event repeats. Change or delete</legend>
+          <label class="check"><input type="radio" name="scope" value="one" checked class="desk-check" /> This event</label>
+          <label class="check"><input type="radio" name="scope" value="following" class="desk-check" /> This and following events</label>
+          <label class="check"><input type="radio" name="scope" value="all" class="desk-check" /> All events</label>
+        </fieldset>
+
+        <div class="actions">
+          <button type="button" id="editor-delete" class="desk-btn desk-btn-danger danger">Delete</button>
+          <span class="spacer"></span>
+          <button type="button" id="editor-cancel" class="desk-btn desk-btn-quiet">Cancel</button>
+          <button type="submit" class="desk-btn desk-btn-primary primary">Save</button>
+        </div>
+      </form>
+    </dialog>
+    <p id="status" role="status"></p>
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://endue.ai/specs/bridge/v0/catalog.schema.json",
+  "title": "Desk bridge v0: catalog",
+  "description": "What a view, or the brain writing one, can use on this desk: the view components, the connected connectors with the kinds and fields of their items, and the commands the caller may invoke. It needs no scope: it shows only what the caller's data:read and cmd:invoke grants cover.",
+  "$defs": {
+    "CatalogGetRequest": {
+      "description": "Describe what the caller can bind, show and run.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "catalog.get" },
+        "params": { "$ref": "#/$defs/CatalogGetParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "CatalogGetParams": {
+      "description": "Parameters of catalog.get: none.",
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "CatalogGetResult": {
+      "description": "Result of catalog.get.",
+      "type": "object",
+      "properties": {
+        "components": {
+          "description": "The view components the desk renders.",
+          "type": "array",
+          "items": { "$ref": "../../view/v0/view.schema.json#/$defs/ComponentType" }
+        },
+        "connectors": {
+          "description": "The connectors with at least one instance, by id, with only the kinds the caller's data:read grants cover; a connector with none of them is left out.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/CatalogConnector" }
+        },
+        "commands": {
+          "description": "The registered commands the caller's cmd:invoke grants cover, in registration order.",
+          "type": "array",
+          "items": { "$ref": "cmd.schema.json#/$defs/CommandInfo" }
+        }
+      },
+      "required": ["components", "connectors", "commands"],
+      "additionalProperties": false
+    },
+    "CatalogConnector": {
+      "description": "A connected connector: its instances and the kinds of item it brings in.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "../../plugin/v0/plugin.schema.json#/$defs/PluginId" },
+        "instances": {
+          "type": "array",
+          "items": { "$ref": "../../item/v0/item.schema.json#/$defs/InstanceId" },
+          "minItems": 1
+        },
+        "kinds": { "type": "array", "items": { "$ref": "#/$defs/CatalogKind" } }
+      },
+      "required": ["id", "instances", "kinds"],
+      "additionalProperties": false
+    },
+    "CatalogKind": {
+      "description": "One kind of item a connector brings in, and the fields its items have, which bindings, sorts and templates can name.",
+      "type": "object",
+      "properties": {
+        "kind": { "$ref": "../../item/v0/item.schema.json#/$defs/ItemKind" },
+        "fields": {
+          "type": "array",
+          "items": { "$ref": "../../item/v0/query.schema.json#/$defs/FieldPath" },
+          "uniqueItems": true
+        }
+      },
+      "required": ["kind", "fields"],
+      "additionalProperties": false
+    }
+  }
+}

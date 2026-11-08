@@ -1,0 +1,39 @@
+{
+  "target": "PluginManifest",
+  "description": "a connector plugin: a Wasm entry, the connector block and its actions as commands",
+  "instance": {
+    "id": "example.folder-tasks",
+    "version": "0.1.0",
+    "kind": "connector",
+    "entry": "connector.wasm",
+    "permissions": [
+      {
+        "permission": "fs:read",
+        "paths": ["~/Tasks/**"]
+      }
+    ],
+    "contributes": {
+      "commands": [
+        {
+          "id": "example.folder-tasks.done",
+          "title": "Mark done"
+        }
+      ]
+    },
+    "connector": {
+      "binding": "wasm",
+      "auth": {
+        "kind": "none"
+      },
+      "resources": [
+        {
+          "kind": "task",
+          "actions": ["example.folder-tasks.done"]
+        }
+      ],
+      "sync": {
+        "mode": "push"
+      }
+    }
+  }
+}

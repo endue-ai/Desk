@@ -1,0 +1,166 @@
+{
+  "id": "endue.chat",
+  "name": "Chat",
+  "version": "0.1.0",
+  "kind": "ui",
+  "entry": "ui/index.html",
+  "description": "Every chat service the desk's connectors bring in (Slack, Discord, Microsoft Teams, Telegram, Matrix and others) in one interface: conversations by service and workspace, threads, reactions and replies, in four layouts (Conversation, Inbox, Timeline, Columns), acting through each connector's commands.",
+  "permissions": [
+    { "permission": "data:read", "kinds": ["message"] },
+    {
+      "permission": "cmd:invoke",
+      "ids": [
+        "*.chat.send",
+        "*.chat.react",
+        "*.chat.read",
+        "*.chat.edit",
+        "*.chat.delete",
+        "desk.palette.pick"
+      ]
+    },
+    { "permission": "ui:notify" },
+    { "permission": "shell:open", "schemes": ["http", "https", "mailto"] },
+    { "permission": "connector:manage" }
+  ],
+  "surfaces": [{ "id": "main", "title": "Chat", "placement": "center" }],
+  "contributes": {
+    "commands": [
+      {
+        "id": "endue.chat.open",
+        "title": "Show chats",
+        "keywords": ["chat", "slack", "discord", "teams", "messages", "dm"]
+      },
+      {
+        "id": "endue.chat.show",
+        "title": "Show a chat message in its conversation",
+        "keywords": ["chat", "message", "open"]
+      },
+      {
+        "id": "endue.chat.conversation",
+        "title": "Go to a chat conversation",
+        "keywords": ["chat", "channel", "dm", "conversation", "switch"]
+      },
+      {
+        "id": "endue.chat.layout",
+        "title": "Switch the chat layout",
+        "keywords": ["chat", "view", "layout", "inbox", "timeline", "columns"]
+      },
+      {
+        "id": "endue.chat.filter",
+        "title": "Filter chats",
+        "keywords": ["chat", "unread", "mentions", "direct", "saved"]
+      },
+      {
+        "id": "endue.chat.platform",
+        "title": "Show one chat service",
+        "keywords": ["chat", "slack", "discord", "teams", "service"]
+      },
+      {
+        "id": "endue.chat.search",
+        "title": "Search every chat",
+        "keywords": ["chat", "find", "search"]
+      },
+      {
+        "id": "endue.chat.refresh",
+        "title": "Refresh chats",
+        "keywords": ["chat", "reload", "sync"]
+      },
+      {
+        "id": "endue.chat.next-unread",
+        "title": "Go to the next unread conversation",
+        "keywords": ["chat", "unread", "next"]
+      },
+      {
+        "id": "endue.chat.send",
+        "title": "Send a chat message",
+        "keywords": ["chat", "send", "message", "post"],
+        "irreversible": true
+      },
+      {
+        "id": "endue.chat.reply",
+        "title": "Reply in the selected message's thread",
+        "keywords": ["chat", "reply", "thread"]
+      },
+      {
+        "id": "endue.chat.react",
+        "title": "React to the selected message",
+        "keywords": ["chat", "react", "emoji", "reaction"]
+      },
+      {
+        "id": "endue.chat.edit",
+        "title": "Edit your chat message",
+        "keywords": ["chat", "edit", "change"]
+      },
+      {
+        "id": "endue.chat.delete",
+        "title": "Delete your chat message",
+        "keywords": ["chat", "delete", "remove"],
+        "irreversible": true
+      },
+      {
+        "id": "endue.chat.mark-read",
+        "title": "Mark the conversation read",
+        "keywords": ["chat", "read", "seen"]
+      },
+      {
+        "id": "endue.chat.mark-all-read",
+        "title": "Mark every chat read",
+        "keywords": ["chat", "read", "all", "clear"]
+      },
+      {
+        "id": "endue.chat.save",
+        "title": "Save the selected message for later",
+        "keywords": ["chat", "save", "bookmark", "later", "star"]
+      },
+      {
+        "id": "endue.chat.pin",
+        "title": "Pin the conversation as a column",
+        "keywords": ["chat", "pin", "column", "deck"]
+      },
+      {
+        "id": "endue.chat.find",
+        "title": "Find chat conversations",
+        "keywords": ["chat", "find"]
+      }
+    ],
+    "keys": [{ "key": "Mod+Shift+J", "command": "endue.chat.open" }],
+    "paletteProviders": [{ "command": "endue.chat.find", "title": "Chats" }],
+    "settings": {
+      "endue.chat.page": {
+        "kind": "integer",
+        "default": 100,
+        "minimum": 1,
+        "maximum": 500,
+        "description": "How many messages a conversation and the Timeline read at a time; Load earlier reads the next page."
+      },
+      "endue.chat.notify": {
+        "kind": "string",
+        "default": "mentions",
+        "choices": ["mentions", "all", "none"],
+        "description": "Which new messages show a notification: direct messages and mentions, every message, or none."
+      },
+      "endue.chat.mark-read": {
+        "kind": "string",
+        "default": "open",
+        "choices": ["open", "never"],
+        "description": "When a conversation is marked read: when it opens, or never by itself."
+      },
+      "endue.chat.enter-sends": {
+        "kind": "boolean",
+        "default": true,
+        "description": "Enter sends and Shift+Enter starts a new line; off, Mod+Enter sends."
+      },
+      "endue.chat.density": {
+        "kind": "string",
+        "default": "comfortable",
+        "choices": ["comfortable", "compact"],
+        "description": "How much room each message takes."
+      },
+      "endue.chat.quick-reactions": {
+        "kind": "array",
+        "default": [],
+        "description": "Up to six emoji (or :names:) a message offers with one click; empty uses 👍 ❤️ 😂 🎉 👀 ✅."
+      }
+    }
+  }
+}

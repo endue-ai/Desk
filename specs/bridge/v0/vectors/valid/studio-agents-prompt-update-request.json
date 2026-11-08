@@ -1,0 +1,15 @@
+{
+  "target": "BridgeRequest",
+  "description": "save the agent's instructions as a new revision",
+  "instance": {
+    "id": 1,
+    "method": "studio.agents.prompt.update",
+    "params": {
+      "agentId": "ag_01JC0Q4MR00000000000000001",
+      "content": "# Miso\n\nAnswer briefly and in Korean.",
+      "scope": {
+        "permission": "studio:manage"
+      }
+    }
+  }
+}

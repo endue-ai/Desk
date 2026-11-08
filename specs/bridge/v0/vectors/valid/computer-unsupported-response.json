@@ -1,0 +1,12 @@
+{
+  "target": "BridgeResponse",
+  "description": "computer use on a platform without a driver",
+  "instance": {
+    "id": 11,
+    "ok": false,
+    "error": {
+      "code": "unsupported",
+      "message": "computer use is not available on linux yet"
+    }
+  }
+}

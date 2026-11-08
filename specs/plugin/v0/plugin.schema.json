@@ -1,0 +1,252 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://endue.ai/specs/plugin/v0/plugin.schema.json",
+  "title": "plugin.json v0",
+  "description": "The manifest every plugin folder carries, built-in and community plugins alike.",
+  "$ref": "#/$defs/PluginManifest",
+  "$defs": {
+    "PluginManifest": {
+      "description": "A plugin manifest (plugin.json).",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "#/$defs/PluginId" },
+        "name": { "description": "Display name.", "type": "string", "minLength": 1 },
+        "version": { "$ref": "#/$defs/Version" },
+        "kind": { "$ref": "#/$defs/PluginKind" },
+        "entry": { "$ref": "#/$defs/EntryPath" },
+        "description": {
+          "description": "One sentence about what the plugin does.",
+          "type": "string"
+        },
+        "permissions": {
+          "description": "Everything the plugin may ask for. Each one is still granted by the person at first use.",
+          "type": "array",
+          "items": { "$ref": "permission.schema.json#/$defs/Permission" }
+        },
+        "surfaces": {
+          "description": "Surfaces a UI plugin can open. Only UI plugins declare surfaces.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/Surface" }
+        },
+        "contributes": { "$ref": "contributes.schema.json#/$defs/PluginContributes" },
+        "provides": {
+          "description": "The roles this plugin can fill (BR-05, ADR 0104): role:rail, role:agents and role:dock are the desk's three edges, role:palette the command palette, role:settings-ui the settings window. The desk.roles setting chooses each role's provider among the plugins that provide it; a provider that is not chosen does not mount that role's surfaces.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/Role" },
+          "uniqueItems": true
+        },
+        "autoload": {
+          "description": "Installed but off until the desk needs it, like Emacs's autoload. With no stored enabled flag the plugin starts off, and its file openers count while it is off: desk.files turns it on to open a file and off again when its last file closes; profiles leave it as it is. Default false.",
+          "type": "boolean"
+        },
+        "view": {
+          "description": "A view plugin's one view, inline; a pack's own view too.",
+          "$ref": "../../view/v0/view.schema.json#/$defs/View"
+        },
+        "views": {
+          "description": "A view plugin's view files, one View each, relative to the plugin folder; a pack's too.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/ViewPath" },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "connector": {
+          "$ref": "../../connector/v0/connector.schema.json#/$defs/ConnectorManifest"
+        },
+        "pack": {
+          "description": "A pack's pack block: what it brings and does when applied (ADR 0108).",
+          "$ref": "pack.schema.json#/$defs/PackBlock"
+        },
+        "theme": {
+          "description": "A theme plugin's theme: its layers and the font and image files it brings, relative to the plugin folder.",
+          "$ref": "theme.schema.json#/$defs/ThemePackage"
+        },
+        "designSystem": {
+          "description": "A design-system plugin's design system: what each component of the desk is made of (ADR 0090).",
+          "$ref": "design-system.schema.json#/$defs/DesignSystemPackage"
+        }
+      },
+      "required": ["id", "version", "kind"],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": { "properties": { "kind": { "not": { "const": "ui" } } } },
+          "then": { "properties": { "surfaces": { "type": "array", "maxItems": 0 } } }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "not": { "enum": ["policy", "view", "library", "theme", "design-system", "pack"] }
+              }
+            },
+            "not": {
+              "properties": {
+                "kind": { "const": "connector" },
+                "connector": {
+                  "type": "object",
+                  "properties": { "binding": { "const": "http" } },
+                  "required": ["binding"]
+                }
+              },
+              "required": ["kind", "connector"]
+            }
+          },
+          "then": { "properties": { "entry": true }, "required": ["entry"] }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": { "const": "connector" },
+              "connector": {
+                "type": "object",
+                "properties": { "binding": { "const": "http" } },
+                "required": ["binding"]
+              }
+            },
+            "required": ["kind", "connector"]
+          },
+          "then": { "properties": { "entry": false } }
+        },
+        {
+          "if": { "properties": { "kind": { "const": "library" } } },
+          "then": {
+            "properties": {
+              "entry": false,
+              "contributes": false,
+              "permissions": false,
+              "autoload": false
+            }
+          }
+        },
+        {
+          "if": { "properties": { "kind": { "const": "policy" } } },
+          "then": {
+            "properties": { "entry": false, "contributes": true },
+            "required": ["contributes"]
+          }
+        },
+        {
+          "if": { "properties": { "kind": { "enum": ["view", "pack"] } } },
+          "then": { "properties": { "entry": false, "view": true, "views": true } },
+          "else": { "properties": { "view": false, "views": false } }
+        },
+        {
+          "if": { "properties": { "kind": { "const": "connector" } } },
+          "then": { "properties": { "connector": true }, "required": ["connector"] },
+          "else": { "properties": { "connector": false } }
+        },
+        {
+          "if": { "properties": { "kind": { "const": "theme" } } },
+          "then": {
+            "properties": {
+              "theme": true,
+              "entry": false,
+              "contributes": false,
+              "permissions": false,
+              "autoload": false
+            },
+            "required": ["theme"]
+          },
+          "else": { "properties": { "theme": false } }
+        },
+        {
+          "if": { "properties": { "kind": { "const": "design-system" } } },
+          "then": {
+            "properties": {
+              "designSystem": true,
+              "entry": false,
+              "contributes": false,
+              "permissions": false,
+              "autoload": false
+            },
+            "required": ["designSystem"]
+          },
+          "else": { "properties": { "designSystem": false } }
+        },
+        {
+          "if": { "properties": { "kind": { "const": "view" } } },
+          "then": {
+            "oneOf": [
+              { "properties": { "view": true }, "required": ["view"] },
+              { "properties": { "views": true }, "required": ["views"] }
+            ]
+          }
+        },
+        {
+          "if": { "properties": { "kind": { "const": "pack" } } },
+          "then": { "properties": { "pack": true, "entry": false }, "required": ["pack"] },
+          "else": { "properties": { "pack": false } }
+        }
+      ]
+    },
+    "PluginId": {
+      "description": "Reverse-domain style id with at least one dot, lowercase, for example endue.eris or example.hello-ui.",
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*(\\.[a-z][a-z0-9-]*)+$",
+      "maxLength": 128
+    },
+    "Role": {
+      "description": "A role a plugin fills: role: and a lowercase name.",
+      "type": "string",
+      "pattern": "^role:[a-z][a-z0-9-]*$",
+      "maxLength": 64
+    },
+    "Version": {
+      "description": "Semantic version, for example 0.1.0 or 1.2.3-beta.1.",
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?(\\+[0-9A-Za-z.-]+)?$"
+    },
+    "PluginKind": {
+      "description": "ui runs in a sandboxed iframe, logic in a Wasm instance, tool as an MCP server inside the VM. policy runs no code: it only contributes data (ADR 0017). library runs no code of its own either: it is files other plugins import, served at /<id>/... like any plugin's, never mounted and never turned off. connector brings an app's data in as items, as a Wasm component, an MCP server or an http block the core runs (no entry; ADR 0106); view runs no code either: it is one or more views (ADR 0032). theme runs no code: it is a theme block and its font and image files, chosen with desk.theme.active (ADR 0056). design-system runs no code either: it is a designSystem block of component recipes, chosen with desk.design.active (ADR 0090). pack runs no code either: a pack block naming the plugins it brings (nested in its folder or on the desk), its own views and its contributed layout (ADR 0108).",
+      "type": "string",
+      "enum": [
+        "ui",
+        "logic",
+        "tool",
+        "policy",
+        "library",
+        "connector",
+        "view",
+        "theme",
+        "design-system",
+        "pack"
+      ]
+    },
+    "EntryPath": {
+      "description": "Path to the entry file, relative to the plugin folder, without .. segments.",
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!/)(?!.*(^|/)\\.\\.(/|$))[^\\\\]+$"
+    },
+    "ViewPath": {
+      "description": "A view file relative to the plugin folder, without .. segments: YAML (.yaml, .yml) or JSON (.json).",
+      "type": "string",
+      "pattern": "^(?!/)(?!.*(^|/)\\.\\.(/|$))[^\\\\]+\\.(ya?ml|json)$"
+    },
+    "Surface": {
+      "description": "A surface a UI plugin can open on the desk.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "description": "Unique within the plugin.",
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*$"
+        },
+        "title": { "description": "Shown where the surface needs a label.", "type": "string" },
+        "placement": { "$ref": "#/$defs/SurfacePlacement" },
+        "hidden": {
+          "description": "Mounted but not shown until the plugin shows it, like a palette. Default false.",
+          "type": "boolean"
+        }
+      },
+      "required": ["id", "placement"],
+      "additionalProperties": false
+    },
+    "SurfacePlacement": {
+      "description": "Where the compositor puts the surface.",
+      "type": "string",
+      "enum": ["center", "left", "right", "bottom", "overlay", "floating"]
+    }
+  }
+}

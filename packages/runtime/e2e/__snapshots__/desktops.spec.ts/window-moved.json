@@ -1,0 +1,421 @@
+{
+ "tag": "nav",
+ "class": "desktops",
+ "aria-label": "Desktop",
+ "children": [
+  {
+   "tag": "button",
+   "class": "desktop-button is-named",
+   "aria-label": "Desktop 1 · Mail · empty (⌃1)",
+   "aria-pressed": "false",
+   "data-desktop": "1",
+   "box": [
+    864,
+    24,
+    96,
+    32
+   ],
+   "style": {
+    "background": "rgb(30, 29, 33)",
+    "border": "solid rgb(51, 49, 54)"
+   },
+   "children": [
+    {
+     "tag": "span",
+     "class": "desktop-number",
+     "style": {
+      "color": "rgb(176, 173, 183)"
+     },
+     "text": "Mail"
+    },
+    {
+     "tag": "span",
+     "class": "mini-grid",
+     "children": [
+      {
+       "tag": "span",
+       "class": "mini-dot",
+       "style": {
+        "color": "rgb(176, 173, 183)",
+        "border": "solid rgb(176, 173, 183)"
+       }
+      },
+      {
+       "tag": "span",
+       "class": "mini-dot",
+       "style": {
+        "color": "rgb(176, 173, 183)",
+        "border": "solid rgb(176, 173, 183)"
+       }
+      },
+      {
+       "tag": "span",
+       "class": "mini-dot",
+       "style": {
+        "color": "rgb(176, 173, 183)",
+        "border": "solid rgb(176, 173, 183)"
+       }
+      },
+      {
+       "tag": "span",
+       "class": "mini-dot",
+       "style": {
+        "color": "rgb(176, 173, 183)",
+        "border": "solid rgb(176, 173, 183)"
+       }
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "tag": "button",
+   "class": "desktop-button is-active is-named",
+   "aria-label": "Desktop 2 · Plan (⌃2)",
+   "aria-pressed": "true",
+   "data-desktop": "2",
+   "box": [
+    968,
+    24,
+    96,
+    32
+   ],
+   "style": {
+    "background": "rgb(30, 29, 33)",
+    "border": "solid rgb(182, 163, 245)"
+   },
+   "children": [
+    {
+     "tag": "span",
+     "class": "desktop-number",
+     "style": {
+      "color": "rgb(242, 240, 245)"
+     },
+     "text": "Plan"
+    },
+    {
+     "tag": "span",
+     "class": "mini-grid",
+     "children": [
+      {
+       "tag": "span",
+       "class": "mini-dot",
+       "style": {
+        "color": "rgb(242, 240, 245)",
+        "border": "solid rgb(242, 240, 245)"
+       }
+      },
+      {
+       "tag": "span",
+       "class": "mini-dot is-on",
+       "style": {
+        "background": "rgb(242, 240, 245)",
+        "color": "rgb(242, 240, 245)",
+        "border": "solid rgb(242, 240, 245)"
+       }
+      },
+      {
+       "tag": "span",
+       "class": "mini-dot",
+       "style": {
+        "color": "rgb(242, 240, 245)",
+        "border": "solid rgb(242, 240, 245)"
+       }
+      },
+      {
+       "tag": "span",
+       "class": "mini-dot",
+       "style": {
+        "color": "rgb(242, 240, 245)",
+        "border": "solid rgb(242, 240, 245)"
+       }
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "tag": "button",
+   "class": "desktop-button",
+   "aria-label": "Desktop 3 (⌃3)",
+   "aria-pressed": "false",
+   "data-desktop": "3",
+   "box": [
+    1072,
+    24,
+    44,
+    32
+   ],
+   "style": {
+    "background": "rgb(30, 29, 33)",
+    "border": "solid rgb(51, 49, 54)"
+   },
+   "children": [
+    {
+     "tag": "span",
+     "class": "desktop-number",
+     "style": {
+      "color": "rgb(176, 173, 183)"
+     },
+     "text": "3"
+    },
+    {
+     "tag": "span",
+     "class": "mini-grid",
+     "children": [
+      {
+       "tag": "span",
+       "class": "mini-dot is-on",
+       "style": {
+        "background": "rgb(176, 173, 183)",
+        "color": "rgb(176, 173, 183)",
+        "border": "solid rgb(176, 173, 183)"
+       }
+      },
+      {
+       "tag": "span",
+       "class": "mini-dot",
+       "style": {
+        "color": "rgb(176, 173, 183)",
+        "border": "solid rgb(176, 173, 183)"
+       }
+      },
+      {
+       "tag": "span",
+       "class": "mini-dot",
+       "style": {
+        "color": "rgb(176, 173, 183)",
+        "border": "solid rgb(176, 173, 183)"
+       }
+      },
+      {
+       "tag": "span",
+       "class": "mini-dot",
+       "style": {
+        "color": "rgb(176, 173, 183)",
+        "border": "solid rgb(176, 173, 183)"
+       }
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "tag": "button",
+   "class": "desktop-button",
+   "aria-label": "Desktop 4 · empty (⌃4)",
+   "aria-pressed": "false",
+   "data-desktop": "4",
+   "box": [
+    1124,
+    24,
+    44,
+    32
+   ],
+   "style": {
+    "background": "rgb(30, 29, 33)",
+    "border": "solid rgb(51, 49, 54)"
+   },
+   "children": [
+    {
+     "tag": "span",
+     "class": "desktop-number",
+     "style": {
+      "color": "rgb(176, 173, 183)"
+     },
+     "text": "4"
+    },
+    {
+     "tag": "span",
+     "class": "mini-grid",
+     "children": [
+      {
+       "tag": "span",
+       "class": "mini-dot",
+       "style": {
+        "color": "rgb(176, 173, 183)",
+        "border": "solid rgb(176, 173, 183)"
+       }
+      },
+      {
+       "tag": "span",
+       "class": "mini-dot",
+       "style": {
+        "color": "rgb(176, 173, 183)",
+        "border": "solid rgb(176, 173, 183)"
+       }
+      },
+      {
+       "tag": "span",
+       "class": "mini-dot",
+       "style": {
+        "color": "rgb(176, 173, 183)",
+        "border": "solid rgb(176, 173, 183)"
+       }
+      },
+      {
+       "tag": "span",
+       "class": "mini-dot",
+       "style": {
+        "color": "rgb(176, 173, 183)",
+        "border": "solid rgb(176, 173, 183)"
+       }
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "tag": "button",
+   "class": "desktop-button is-named",
+   "aria-label": "Desktop 5 · Research (⌘5)",
+   "aria-pressed": "false",
+   "data-desktop": "5",
+   "box": [
+    1176,
+    24,
+    96,
+    32
+   ],
+   "style": {
+    "background": "rgb(30, 29, 33)",
+    "border": "solid rgb(51, 49, 54)"
+   },
+   "children": [
+    {
+     "tag": "span",
+     "class": "desktop-number",
+     "style": {
+      "color": "rgb(176, 173, 183)"
+     },
+     "text": "Research"
+    },
+    {
+     "tag": "span",
+     "class": "mini-grid",
+     "children": [
+      {
+       "tag": "span",
+       "class": "mini-dot is-on",
+       "style": {
+        "background": "rgb(176, 173, 183)",
+        "color": "rgb(176, 173, 183)",
+        "border": "solid rgb(176, 173, 183)"
+       }
+      },
+      {
+       "tag": "span",
+       "class": "mini-dot",
+       "style": {
+        "color": "rgb(176, 173, 183)",
+        "border": "solid rgb(176, 173, 183)"
+       }
+      },
+      {
+       "tag": "span",
+       "class": "mini-dot",
+       "style": {
+        "color": "rgb(176, 173, 183)",
+        "border": "solid rgb(176, 173, 183)"
+       }
+      },
+      {
+       "tag": "span",
+       "class": "mini-dot",
+       "style": {
+        "color": "rgb(176, 173, 183)",
+        "border": "solid rgb(176, 173, 183)"
+       }
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "tag": "button",
+   "class": "desktop-button is-named",
+   "aria-label": "Desktop 6 · Write · empty (⌘6)",
+   "aria-pressed": "false",
+   "data-desktop": "6",
+   "box": [
+    1280,
+    24,
+    96,
+    32
+   ],
+   "style": {
+    "background": "rgb(30, 29, 33)",
+    "border": "solid rgb(51, 49, 54)"
+   },
+   "children": [
+    {
+     "tag": "span",
+     "class": "desktop-number",
+     "style": {
+      "color": "rgb(176, 173, 183)"
+     },
+     "text": "Write"
+    },
+    {
+     "tag": "span",
+     "class": "mini-grid",
+     "children": [
+      {
+       "tag": "span",
+       "class": "mini-dot",
+       "style": {
+        "color": "rgb(176, 173, 183)",
+        "border": "solid rgb(176, 173, 183)"
+       }
+      },
+      {
+       "tag": "span",
+       "class": "mini-dot",
+       "style": {
+        "color": "rgb(176, 173, 183)",
+        "border": "solid rgb(176, 173, 183)"
+       }
+      },
+      {
+       "tag": "span",
+       "class": "mini-dot",
+       "style": {
+        "color": "rgb(176, 173, 183)",
+        "border": "solid rgb(176, 173, 183)"
+       }
+      },
+      {
+       "tag": "span",
+       "class": "mini-dot",
+       "style": {
+        "color": "rgb(176, 173, 183)",
+        "border": "solid rgb(176, 173, 183)"
+       }
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "tag": "button",
+   "class": "add-button desktop-add",
+   "aria-label": "Next empty desktop",
+   "box": [
+    1384,
+    24,
+    32,
+    32
+   ],
+   "style": {
+    "background": "rgb(30, 29, 33)",
+    "border": "dashed rgb(131, 121, 145)"
+   },
+   "children": [
+    {
+     "tag": "svg",
+     "icon": "plus"
+    }
+   ]
+  }
+ ]
+}

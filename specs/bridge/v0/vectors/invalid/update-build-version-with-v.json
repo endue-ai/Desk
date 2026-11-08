@@ -1,0 +1,7 @@
+{
+  "target": "UpdateBuild",
+  "description": "a version has no leading v",
+  "instance": {
+    "version": "v0.2.0"
+  }
+}

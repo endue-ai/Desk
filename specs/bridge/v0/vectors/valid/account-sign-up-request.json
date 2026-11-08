@@ -1,0 +1,9 @@
+{
+  "target": "BridgeRequest",
+  "description": "Create account: the runtime starts a sign-in on endue ID's sign-up page",
+  "instance": {
+    "id": 1,
+    "method": "account.signIn",
+    "params": { "scope": { "permission": "account:manage" }, "screen": "sign-up" }
+  }
+}

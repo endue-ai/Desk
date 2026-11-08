@@ -1,0 +1,15 @@
+{
+  "target": "BridgeRequest",
+  "description": "a name of spaces only is no name",
+  "instance": {
+    "id": 1,
+    "method": "studio.agents.create",
+    "params": {
+      "name": "   ",
+      "role": "Mail",
+      "scope": {
+        "permission": "studio:manage"
+      }
+    }
+  }
+}

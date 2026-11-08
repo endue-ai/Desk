@@ -1,0 +1,442 @@
+{
+  "tag": "section",
+  "class": "page",
+  "children": [
+    {
+      "tag": "div",
+      "class": "studio",
+      "children": [
+        {
+          "tag": "div",
+          "class": "studio-column",
+          "children": [
+            {
+              "tag": "desk-card",
+              "class": "studio-card",
+              "data-source": "endue",
+              "children": [
+                {
+                  "tag": "button",
+                  "type": "button",
+                  "class": "desk-row studio-head",
+                  "data-facet": "identity",
+                  "aria-pressed": "false",
+                  "aria-label": "Miso: identity",
+                  "children": [
+                    {
+                      "tag": "span",
+                      "class": "avatar avatar-lg",
+                      "data-hue": "7",
+                      "text": "M"
+                    },
+                    {
+                      "tag": "span",
+                      "class": "who",
+                      "children": [
+                        {
+                          "tag": "small",
+                          "class": "eyebrow",
+                          "text": "endue agent"
+                        },
+                        {
+                          "tag": "strong",
+                          "class": "name",
+                          "text": "Miso"
+                        },
+                        {
+                          "tag": "small",
+                          "class": "handle",
+                          "text": "@miso"
+                        }
+                      ]
+                    },
+                    {
+                      "tag": "span",
+                      "class": "desk-badge source",
+                      "data-source": "endue",
+                      "text": "endue"
+                    }
+                  ]
+                },
+                {
+                  "tag": "p",
+                  "class": "description",
+                  "text": "Keeps my calendar and sorts my mail"
+                },
+                {
+                  "tag": "p",
+                  "class": "meta",
+                  "children": [
+                    {
+                      "tag": "span",
+                      "class": "presence",
+                      "data-presence": "working",
+                      "text": "Working · calendar__update_event",
+                      "children": [
+                        {
+                          "tag": "span",
+                          "class": "dot"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "tag": "div",
+                  "class": "facets",
+                  "children": [
+                    {
+                      "tag": "p",
+                      "class": "facet-caption",
+                      "text": "Identity"
+                    },
+                    {
+                      "tag": "button",
+                      "type": "button",
+                      "class": "desk-row facet",
+                      "data-facet": "prompt",
+                      "aria-pressed": "true",
+                      "children": [
+                        {
+                          "tag": "strong",
+                          "class": "facet-label",
+                          "text": "Prompt"
+                        },
+                        {
+                          "tag": "small",
+                          "class": "facet-hint",
+                          "text": "Revision 1"
+                        }
+                      ]
+                    },
+                    {
+                      "tag": "button",
+                      "type": "button",
+                      "class": "desk-row facet",
+                      "data-facet": "traits",
+                      "aria-pressed": "false",
+                      "children": [
+                        {
+                          "tag": "strong",
+                          "class": "facet-label",
+                          "text": "Traits"
+                        },
+                        {
+                          "tag": "small",
+                          "class": "facet-hint",
+                          "text": "1 trait on"
+                        }
+                      ]
+                    },
+                    {
+                      "tag": "p",
+                      "class": "facet-caption",
+                      "text": "Ability"
+                    },
+                    {
+                      "tag": "button",
+                      "type": "button",
+                      "class": "desk-row facet",
+                      "data-facet": "skills",
+                      "aria-pressed": "false",
+                      "children": [
+                        {
+                          "tag": "strong",
+                          "class": "facet-label",
+                          "text": "Skills"
+                        },
+                        {
+                          "tag": "small",
+                          "class": "facet-hint",
+                          "text": "0 skills"
+                        }
+                      ]
+                    },
+                    {
+                      "tag": "button",
+                      "type": "button",
+                      "class": "desk-row facet",
+                      "data-facet": "connectors",
+                      "aria-pressed": "false",
+                      "children": [
+                        {
+                          "tag": "strong",
+                          "class": "facet-label",
+                          "text": "Connectors"
+                        },
+                        {
+                          "tag": "small",
+                          "class": "facet-hint",
+                          "text": "0 connectors"
+                        }
+                      ]
+                    },
+                    {
+                      "tag": "p",
+                      "class": "facet-caption",
+                      "text": "Pairing"
+                    },
+                    {
+                      "tag": "button",
+                      "type": "button",
+                      "class": "desk-row facet",
+                      "data-facet": "channels",
+                      "aria-pressed": "false",
+                      "children": [
+                        {
+                          "tag": "strong",
+                          "class": "facet-label",
+                          "text": "Channels"
+                        },
+                        {
+                          "tag": "small",
+                          "class": "facet-hint",
+                          "text": "Paired on endue.ai"
+                        }
+                      ]
+                    },
+                    {
+                      "tag": "button",
+                      "type": "button",
+                      "class": "desk-row facet",
+                      "data-facet": "status",
+                      "aria-pressed": "false",
+                      "children": [
+                        {
+                          "tag": "strong",
+                          "class": "facet-label",
+                          "text": "Status"
+                        },
+                        {
+                          "tag": "small",
+                          "class": "facet-hint",
+                          "text": "Active"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "tag": "button",
+                  "type": "button",
+                  "class": "desk-row studio-foot",
+                  "data-facet": "settings",
+                  "aria-pressed": "false",
+                  "children": [
+                    {
+                      "tag": "strong",
+                      "class": "facet-label",
+                      "text": "Settings"
+                    },
+                    {
+                      "tag": "small",
+                      "class": "facet-hint",
+                      "text": "Private · claude-sonnet-4.5"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "aside",
+          "class": "inspector",
+          "children": [
+            {
+              "tag": "header",
+              "class": "inspector-head",
+              "children": [
+                {
+                  "tag": "h2",
+                  "text": "Prompt"
+                },
+                {
+                  "tag": "button",
+                  "type": "button",
+                  "class": "desk-btn desk-btn-quiet",
+                  "aria-label": "Close Prompt",
+                  "text": "Close"
+                }
+              ]
+            },
+            {
+              "tag": "p",
+              "class": "desk-muted",
+              "text": "The instructions it follows in every conversation. Each save is a new revision."
+            },
+            {
+              "tag": "div",
+              "class": "inspector-form",
+              "role": "group",
+              "children": [
+                {
+                  "tag": "div",
+                  "class": "field",
+                  "children": [
+                    {
+                      "tag": "label",
+                      "class": "field-label",
+                      "text": "Instructions"
+                    },
+                    {
+                      "tag": "textarea",
+                      "class": "desk-field",
+                      "value": "Answer briefly, in Korean."
+                    }
+                  ]
+                },
+                {
+                  "tag": "button",
+                  "type": "button",
+                  "class": "desk-btn desk-btn-primary",
+                  "text": "Save prompt"
+                }
+              ]
+            },
+            {
+              "tag": "ul",
+              "class": "entries",
+              "children": [
+                {
+                  "tag": "li",
+                  "class": "entry",
+                  "children": [
+                    {
+                      "tag": "span",
+                      "class": "entry-text",
+                      "children": [
+                        {
+                          "tag": "strong",
+                          "text": "Revision 1"
+                        },
+                        {
+                          "tag": "small",
+                          "text": "Answer briefly, in Korean."
+                        }
+                      ]
+                    },
+                    {
+                      "tag": "span",
+                      "class": "desk-badge",
+                      "text": "In force"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "section",
+          "class": "chat",
+          "hidden": "",
+          "children": [
+            {
+              "tag": "header",
+              "class": "chat-head",
+              "children": [
+                {
+                  "tag": "h2"
+                },
+                {
+                  "tag": "span",
+                  "class": "desk-muted"
+                },
+                {
+                  "tag": "span",
+                  "class": "desk-bar-spacer"
+                },
+                {
+                  "tag": "button",
+                  "class": "desk-btn desk-btn-quiet",
+                  "type": "button",
+                  "hidden": "",
+                  "text": "New session"
+                }
+              ]
+            },
+            {
+              "tag": "p",
+              "class": "desk-muted",
+              "hidden": ""
+            },
+            {
+              "tag": "ol",
+              "class": "chat-log",
+              "role": "log",
+              "aria-label": "Conversation"
+            },
+            {
+              "tag": "p",
+              "class": "desk-error",
+              "role": "alert",
+              "hidden": ""
+            },
+            {
+              "tag": "div",
+              "class": "composer",
+              "role": "group",
+              "aria-label": "New message",
+              "children": [
+                {
+                  "tag": "textarea",
+                  "class": "desk-field",
+                  "aria-label": "Message",
+                  "value": ""
+                },
+                {
+                  "tag": "div",
+                  "class": "composer-row",
+                  "children": [
+                    {
+                      "tag": "div",
+                      "class": "desk-tabs",
+                      "role": "radiogroup",
+                      "aria-label": "What it may do",
+                      "children": [
+                        {
+                          "tag": "button",
+                          "class": "desk-tab",
+                          "type": "button",
+                          "role": "radio",
+                          "data-access": "read-only",
+                          "text": "Read only"
+                        },
+                        {
+                          "tag": "button",
+                          "class": "desk-tab",
+                          "type": "button",
+                          "role": "radio",
+                          "data-access": "agent",
+                          "text": "May change files"
+                        }
+                      ]
+                    },
+                    {
+                      "tag": "span",
+                      "class": "desk-muted hint"
+                    },
+                    {
+                      "tag": "button",
+                      "class": "desk-btn desk-btn-danger",
+                      "type": "button",
+                      "hidden": "",
+                      "text": "Stop"
+                    },
+                    {
+                      "tag": "button",
+                      "class": "desk-btn desk-btn-primary",
+                      "type": "button",
+                      "text": "Send"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

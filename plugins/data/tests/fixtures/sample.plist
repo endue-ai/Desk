@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleIdentifier</key>
+	<string>ai.endue.sample</string>
+	<key>CFBundleName</key>
+	<string>Desk Sample</string>
+	<key>CFBundleVersion</key>
+	<integer>42</integer>
+	<key>Ratio</key>
+	<real>1.5</real>
+	<key>Enabled</key>
+	<true/>
+	<key>Disabled</key>
+	<false/>
+	<key>Built</key>
+	<date>2026-10-31T09:00:00Z</date>
+	<key>Icon</key>
+	<data>
+	AAECAwQFBgcICQ==
+	</data>
+	<key>Items</key>
+	<array>
+		<string>first</string>
+		<integer>-3</integer>
+		<string>caf&#233; &amp; more</string>
+	</array>
+	<key>Nested</key>
+	<dict>
+		<key>Password</key>
+		<string>hunter2</string>
+	</dict>
+</dict>
+</plist>

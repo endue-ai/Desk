@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Chat</title>
+    <script type="importmap">
+      { "imports": { "@endue-ai/plugin-sdk": "/_desk/plugin-sdk.js" } }
+    </script>
+    <link rel="stylesheet" href="/_desk/tokens.css" />
+    <link rel="stylesheet" href="/_desk/base.css" />
+    <link rel="stylesheet" href="./style.css" />
+    <link rel="stylesheet" href="./messages.css" />
+    <link rel="stylesheet" href="./layouts.css" />
+  </head>
+  <body data-layout="conversation" data-density="comfortable" data-thread="closed">
+    <header id="bar">
+      <h1 id="title">Chat</h1>
+      <div id="layouts" class="desk-tabs" role="tablist" aria-label="Layout"></div>
+      <input
+        id="search"
+        class="desk-field"
+        type="search"
+        placeholder="Search every chat (/)"
+        aria-label="Search every chat"
+        autocomplete="off"
+      />
+      <div class="bar-tools" role="toolbar" aria-label="Chat tools">
+        <button id="read-all" class="desk-btn desk-btn-quiet" type="button" title="Mark everything read">Mark all read</button>
+        <button id="refresh" class="desk-icon-btn" type="button" title="Refresh" aria-label="Refresh">
+          <span aria-hidden="true">↻</span>
+        </button>
+      </div>
+    </header>
+    <nav id="nav" aria-labelledby="title">
+      <div id="platforms" role="toolbar" aria-label="Services"></div>
+      <ul id="filters" aria-label="Filters"></ul>
+      <div id="groups" role="listbox" aria-label="Conversations" tabindex="0"></div>
+    </nav>
+    <main id="main" data-layout="conversation"></main>
+    <aside id="thread" aria-label="Thread" hidden></aside>
+    <p id="status" role="status"></p>
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

@@ -1,0 +1,12 @@
+{
+  "target": "InitGetResult",
+  "description": "the runtime sees its desk. settings, the profile to start in and where init.yaml is",
+  "instance": {
+    "profile": "default",
+    "settings": {
+      "desk.theme.scheme": "dark",
+      "desk.notify.dnd": false
+    },
+    "file": "~/.desk/init.yaml"
+  }
+}

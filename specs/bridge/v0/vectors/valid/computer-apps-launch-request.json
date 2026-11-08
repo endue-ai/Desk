@@ -1,0 +1,14 @@
+{
+  "target": "BridgeRequest",
+  "description": "open TextEdit by its bundle id",
+  "instance": {
+    "id": 7,
+    "method": "computer.apps.launch",
+    "params": {
+      "bundleId": "com.apple.TextEdit",
+      "scope": {
+        "permission": "computer:control"
+      }
+    }
+  }
+}

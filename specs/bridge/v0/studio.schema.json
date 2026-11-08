@@ -1,0 +1,1576 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://endue.ai/specs/bridge/v0/studio.schema.json",
+  "title": "Desk bridge v0: studio",
+  "description": "The person's endue AI agents, created and managed through endue AI's platform API (/api/v1, specs/platform/v0) with the desk's endue ID token, as endue.ai's Home and Studio do (ADR 0122). studio.agents.* lists, reads, creates, changes, turns off and on and deletes agents; studio.agents.facets reads what Studio shows of one; studio.catalog.* finds a published agent and starts one from it; studio.conversations.list lists conversations for the Home board. Every call needs studio:manage. The token never crosses the bridge. Signed out is signed_out, endue AI out of reach (or silent for 15 s) is offline, endue AI refusing the person is forbidden, an agent that is not there (or was deleted) is not_found, and a value endue AI refuses is invalid_params.",
+  "$defs": {
+    "StudioAgentId": {
+      "description": "An agent's id on endue AI (ag_ followed by a ULID today).",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$"
+    },
+    "StudioCatalogSlug": {
+      "description": "A published catalog agent's slug.",
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+    },
+    "StudioLocale": {
+      "description": "The language catalog text and recommendations are asked in: ko or en, optionally with a region.",
+      "type": "string",
+      "pattern": "^[a-z]{2}(-[A-Z]{2})?$"
+    },
+    "StudioLanguage": {
+      "description": "A language the agent answers in, as an IETF BCP 47 tag (ko, en, ja, zh, en-US).",
+      "type": "string",
+      "pattern": "^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$"
+    },
+    "StudioAgentStatus": {
+      "description": "active: it works. inactive: turned off by the person (Disable), kept as it is. archived: put away by endue AI. deleted: soft-deleted, purged after 30 days; studio.agents.list leaves these out.",
+      "type": "string",
+      "enum": ["active", "inactive", "archived", "deleted"]
+    },
+    "StudioSwitch": {
+      "description": "What studio.agents.setStatus can set: active (Enable) or inactive (Disable).",
+      "type": "string",
+      "enum": ["active", "inactive"]
+    },
+    "StudioVisibility": {
+      "description": "Who can find the agent: public, unlisted (by link only) or private.",
+      "type": "string",
+      "enum": ["public", "unlisted", "private"]
+    },
+    "StudioSourceCatalog": {
+      "description": "The catalog agent and version an agent was started from; it never changes.",
+      "type": "object",
+      "properties": {
+        "catalogAgentId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": ["catalogAgentId", "version"],
+      "additionalProperties": false
+    },
+    "StudioAgent": {
+      "description": "One of the person's agents as endue AI lists it. slug is the handle endue AI derived from the first name; it never changes. avatarUrl is absent when none was set: draw one from the slug. The list carries no description; studio.agents.facets has it.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/StudioAgentId"
+        },
+        "slug": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "status": {
+          "$ref": "#/$defs/StudioAgentStatus"
+        },
+        "avatarUrl": {
+          "type": "string",
+          "maxLength": 2048
+        },
+        "personalColor": {
+          "type": "string",
+          "maxLength": 32
+        },
+        "region": {
+          "description": "ISO 3166-2, where it was created (KR-11).",
+          "type": "string",
+          "maxLength": 16
+        },
+        "sourceCatalog": {
+          "$ref": "#/$defs/StudioSourceCatalog"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "slug", "name", "status", "createdAt", "updatedAt"],
+      "additionalProperties": false
+    },
+    "StudioPersonality": {
+      "description": "The agent's personality coordinates, each from 0 to 1. A new agent without one gets endue.ai's defaults (tone 0.7, agency 0.3, thinking 0.2, rigor 0.85, expression 0.7, humor 0.15, integrity 0.85, epistemicHumility 0.65).",
+      "type": "object",
+      "properties": {
+        "tone": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "agency": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "thinking": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "rigor": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "expression": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "humor": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "integrity": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "epistemicHumility": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      },
+      "required": [
+        "tone",
+        "agency",
+        "thinking",
+        "rigor",
+        "expression",
+        "humor",
+        "integrity",
+        "epistemicHumility"
+      ],
+      "additionalProperties": false
+    },
+    "StudioWarning": {
+      "description": "A step of creating an agent that did not go through while the agent was made: its prompt, traits, skills or model; code is endue AI's, target the trait or skill it was about.",
+      "type": "object",
+      "properties": {
+        "step": {
+          "$ref": "#/$defs/StudioWarningStep"
+        },
+        "code": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "target": {
+          "type": "string",
+          "maxLength": 128
+        }
+      },
+      "required": ["step", "code"],
+      "additionalProperties": false
+    },
+    "StudioWarningStep": {
+      "description": "Which step a warning is about.",
+      "type": "string",
+      "enum": ["prompt", "traits", "skills", "model"]
+    },
+    "StudioParams": {
+      "description": "Parameters of studio.agents.list: the scope alone.",
+      "type": "object",
+      "properties": {
+        "scope": {
+          "$ref": "../../plugin/v0/permission.schema.json#/$defs/StudioManagePermission"
+        }
+      },
+      "required": ["scope"],
+      "additionalProperties": false
+    },
+    "StudioAgentParams": {
+      "description": "Parameters of a call about one agent: studio.agents.get, studio.agents.remove and studio.agents.facets.",
+      "type": "object",
+      "properties": {
+        "agentId": {
+          "$ref": "#/$defs/StudioAgentId"
+        },
+        "scope": {
+          "$ref": "../../plugin/v0/permission.schema.json#/$defs/StudioManagePermission"
+        }
+      },
+      "required": ["agentId", "scope"],
+      "additionalProperties": false
+    },
+    "StudioAgentsListRequest": {
+      "description": "Every agent of the person's that is not deleted, the newest first: the core pages through endue AI's list (200 a page).",
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "bridge.schema.json#/$defs/RequestId"
+        },
+        "method": {
+          "const": "studio.agents.list"
+        },
+        "params": {
+          "$ref": "#/$defs/StudioParams"
+        }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "StudioAgentsListResult": {
+      "description": "Result of studio.agents.list. No agents is an empty list.",
+      "type": "object",
+      "properties": {
+        "agents": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/StudioAgent"
+          }
+        }
+      },
+      "required": ["agents"],
+      "additionalProperties": false
+    },
+    "StudioAgentsGetRequest": {
+      "description": "One agent by id. Another person's agent is forbidden; one that is not there is not_found.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "bridge.schema.json#/$defs/RequestId"
+        },
+        "method": {
+          "const": "studio.agents.get"
+        },
+        "params": {
+          "$ref": "#/$defs/StudioAgentParams"
+        }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "StudioAgentsGetResult": {
+      "description": "Result of studio.agents.get.",
+      "type": "object",
+      "properties": {
+        "agent": {
+          "$ref": "#/$defs/StudioAgent"
+        }
+      },
+      "required": ["agent"],
+      "additionalProperties": false
+    },
+    "StudioAgentsCreateRequest": {
+      "description": "Build an agent from scratch, as endue.ai's Create does: a name and a role, in the languages given. A model, when given, is set as its chat model after it is made; when that fails the agent stays and a warning says so.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "bridge.schema.json#/$defs/RequestId"
+        },
+        "method": {
+          "const": "studio.agents.create"
+        },
+        "params": {
+          "$ref": "#/$defs/StudioAgentsCreateParams"
+        }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "StudioAgentsCreateParams": {
+      "description": "Parameters of studio.agents.create. name is what people call it (it gives the slug), role the work it does by default. languages is en unless given.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "pattern": "\\S"
+        },
+        "role": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000,
+          "pattern": "\\S"
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 2000
+        },
+        "languages": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/StudioLanguage"
+          },
+          "minItems": 1,
+          "maxItems": 8,
+          "uniqueItems": true
+        },
+        "personality": {
+          "$ref": "#/$defs/StudioPersonality"
+        },
+        "model": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/@+-]{0,127}$"
+        },
+        "scope": {
+          "$ref": "../../plugin/v0/permission.schema.json#/$defs/StudioManagePermission"
+        }
+      },
+      "required": ["name", "role", "scope"],
+      "additionalProperties": false
+    },
+    "StudioAgentsCreateResult": {
+      "description": "Result of studio.agents.create: the new agent, and what did not go through.",
+      "type": "object",
+      "properties": {
+        "agent": {
+          "$ref": "#/$defs/StudioAgent"
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/StudioWarning"
+          }
+        }
+      },
+      "required": ["agent", "warnings"],
+      "additionalProperties": false
+    },
+    "StudioAgentsUpdateRequest": {
+      "description": "Change an agent's identity (name, description, role, languages, personality, color) and settings (chat model, visibility). Only the fields given change; at least one is given. The slug never changes.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "bridge.schema.json#/$defs/RequestId"
+        },
+        "method": {
+          "const": "studio.agents.update"
+        },
+        "params": {
+          "$ref": "#/$defs/StudioAgentsUpdateParams"
+        }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "StudioAgentsUpdateParams": {
+      "description": "Parameters of studio.agents.update. model is the chat model's id; an empty string clears it, so endue AI's default applies.",
+      "type": "object",
+      "properties": {
+        "agentId": {
+          "$ref": "#/$defs/StudioAgentId"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "pattern": "\\S"
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 2000
+        },
+        "role": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000,
+          "pattern": "\\S"
+        },
+        "languages": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/StudioLanguage"
+          },
+          "minItems": 1,
+          "maxItems": 8,
+          "uniqueItems": true
+        },
+        "personality": {
+          "$ref": "#/$defs/StudioPersonality"
+        },
+        "personalColor": {
+          "type": "string",
+          "pattern": "^#[0-9A-Fa-f]{6}$"
+        },
+        "model": {
+          "type": "string",
+          "pattern": "^([A-Za-z0-9][A-Za-z0-9._:/@+-]{0,127})?$"
+        },
+        "visibility": {
+          "$ref": "#/$defs/StudioVisibility"
+        },
+        "scope": {
+          "$ref": "../../plugin/v0/permission.schema.json#/$defs/StudioManagePermission"
+        }
+      },
+      "required": ["agentId", "scope"],
+      "additionalProperties": false,
+      "anyOf": [
+        {
+          "properties": {
+            "name": true
+          },
+          "required": ["name"]
+        },
+        {
+          "properties": {
+            "description": true
+          },
+          "required": ["description"]
+        },
+        {
+          "properties": {
+            "role": true
+          },
+          "required": ["role"]
+        },
+        {
+          "properties": {
+            "languages": true
+          },
+          "required": ["languages"]
+        },
+        {
+          "properties": {
+            "personality": true
+          },
+          "required": ["personality"]
+        },
+        {
+          "properties": {
+            "personalColor": true
+          },
+          "required": ["personalColor"]
+        },
+        {
+          "properties": {
+            "model": true
+          },
+          "required": ["model"]
+        },
+        {
+          "properties": {
+            "visibility": true
+          },
+          "required": ["visibility"]
+        }
+      ]
+    },
+    "StudioAgentsUpdateResult": {
+      "description": "Result of studio.agents.update: the agent as endue AI has it now.",
+      "type": "object",
+      "properties": {
+        "agent": {
+          "$ref": "#/$defs/StudioAgent"
+        }
+      },
+      "required": ["agent"],
+      "additionalProperties": false
+    },
+    "StudioAgentsSetStatusRequest": {
+      "description": "Turn an agent off (inactive) or on again (active). Setting the status it already has is no error.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "bridge.schema.json#/$defs/RequestId"
+        },
+        "method": {
+          "const": "studio.agents.setStatus"
+        },
+        "params": {
+          "$ref": "#/$defs/StudioAgentsSetStatusParams"
+        }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "StudioAgentsSetStatusParams": {
+      "description": "Parameters of studio.agents.setStatus.",
+      "type": "object",
+      "properties": {
+        "agentId": {
+          "$ref": "#/$defs/StudioAgentId"
+        },
+        "status": {
+          "$ref": "#/$defs/StudioSwitch"
+        },
+        "scope": {
+          "$ref": "../../plugin/v0/permission.schema.json#/$defs/StudioManagePermission"
+        }
+      },
+      "required": ["agentId", "status", "scope"],
+      "additionalProperties": false
+    },
+    "StudioAgentsSetStatusResult": {
+      "description": "Result of studio.agents.setStatus: the agent with its new status.",
+      "type": "object",
+      "properties": {
+        "agent": {
+          "$ref": "#/$defs/StudioAgent"
+        }
+      },
+      "required": ["agent"],
+      "additionalProperties": false
+    },
+    "StudioAgentsRemoveRequest": {
+      "description": "Delete an agent. endue AI deletes softly: the agent leaves every list at once and is purged after 30 days. One already deleted is not_found.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "bridge.schema.json#/$defs/RequestId"
+        },
+        "method": {
+          "const": "studio.agents.remove"
+        },
+        "params": {
+          "$ref": "#/$defs/StudioAgentParams"
+        }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "StudioAgentsRemoveResult": {
+      "description": "Result of studio.agents.remove: the agent deleted.",
+      "type": "object",
+      "properties": {
+        "agentId": {
+          "$ref": "#/$defs/StudioAgentId"
+        }
+      },
+      "required": ["agentId"],
+      "additionalProperties": false
+    },
+    "StudioIdentity": {
+      "description": "Who the agent is: its profile (name, description, avatar, color) and nature (role, languages, personality).",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 2000
+        },
+        "avatarUrl": {
+          "type": "string",
+          "maxLength": 2048
+        },
+        "personalColor": {
+          "type": "string",
+          "maxLength": 32
+        },
+        "role": {
+          "description": "The role it takes by default; empty when none is set.",
+          "type": "string",
+          "maxLength": 2000
+        },
+        "languages": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 35
+          }
+        },
+        "personality": {
+          "$ref": "#/$defs/StudioPersonality"
+        }
+      },
+      "required": ["name", "role", "languages"],
+      "additionalProperties": false
+    },
+    "StudioRouting": {
+      "description": "How endue AI picks a provider for the chat model: balanced, or throughput first.",
+      "type": "string",
+      "enum": ["balanced", "throughput"]
+    },
+    "StudioModel": {
+      "description": "The chat model: default (endue AI's own when absent), the fallback when the default fails, and the provider routing (balanced unless given).",
+      "type": "object",
+      "properties": {
+        "default": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "fallback": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "routing": {
+          "$ref": "#/$defs/StudioRouting"
+        }
+      },
+      "additionalProperties": false
+    },
+    "StudioSettings": {
+      "description": "The agent's settings Studio shows: who can find it, how long chats are kept (days), its chat model, the built-in tool groups it may not use and every group there is.",
+      "type": "object",
+      "properties": {
+        "visibility": {
+          "$ref": "#/$defs/StudioVisibility"
+        },
+        "chatHistoryRetention": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "model": {
+          "$ref": "#/$defs/StudioModel"
+        },
+        "disabledToolGroups": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 128
+          }
+        },
+        "availableToolGroups": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 128
+          }
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["visibility", "model", "disabledToolGroups"],
+      "additionalProperties": false
+    },
+    "StudioPromptSource": {
+      "description": "How a prompt revision was made: saved by hand (manual), carried over from older rules (migrated), or a restore of an earlier one (restore).",
+      "type": "string",
+      "enum": ["manual", "migrated", "restore"]
+    },
+    "StudioPrompt": {
+      "description": "The agent's instructions, one Markdown document: the revision in force, its number and how it was made.",
+      "type": "object",
+      "properties": {
+        "rev": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "content": {
+          "type": "string",
+          "maxLength": 20000
+        },
+        "source": {
+          "$ref": "#/$defs/StudioPromptSource"
+        },
+        "restoredFromRev": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["rev", "content", "source", "createdAt"],
+      "additionalProperties": false
+    },
+    "StudioPromptRevision": {
+      "description": "One earlier or current revision of the prompt: its first 120 characters, and whether it is in force.",
+      "type": "object",
+      "properties": {
+        "rev": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "source": {
+          "$ref": "#/$defs/StudioPromptSource"
+        },
+        "restoredFromRev": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "preview": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "active": {
+          "type": "boolean"
+        }
+      },
+      "required": ["rev", "source", "preview", "createdAt", "active"],
+      "additionalProperties": false
+    },
+    "StudioSkill": {
+      "description": "A skill bound to the agent: the binding's id, the skill, and whether it is on.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "skillId": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "slug": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "registrySkillId": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "enabled": {
+          "type": "boolean"
+        }
+      },
+      "required": ["id", "skillId", "enabled"],
+      "additionalProperties": false
+    },
+    "StudioConnector": {
+      "description": "A connection of the person's bound to the agent: the binding's id, whether it is on, and the connection's name, type and health as endue AI reports them.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "connectionId": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "type": {
+          "description": "The connection type's name: slack, gmail, google_calendar.",
+          "type": "string",
+          "maxLength": 128
+        },
+        "iconUrl": {
+          "type": "string",
+          "maxLength": 2048
+        },
+        "status": {
+          "type": "string",
+          "maxLength": 64
+        }
+      },
+      "required": ["id", "connectionId", "enabled"],
+      "additionalProperties": false
+    },
+    "StudioTrait": {
+      "description": "A trait set on the agent (personality, self_evolving, ...): on or off, and when it changed. A trait never set is not listed.",
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["key", "enabled"],
+      "additionalProperties": false
+    },
+    "StudioFacet": {
+      "description": "A part of what Studio shows of an agent.",
+      "type": "string",
+      "enum": ["identity", "settings", "prompt", "revisions", "skills", "connectors", "traits"]
+    },
+    "StudioFacetProblem": {
+      "description": "A facet endue AI did not answer for: the bridge error code it would have been, and a sentence for people.",
+      "type": "object",
+      "properties": {
+        "facet": {
+          "$ref": "#/$defs/StudioFacet"
+        },
+        "code": {
+          "$ref": "bridge.schema.json#/$defs/ErrorCode"
+        },
+        "message": {
+          "type": "string",
+          "maxLength": 2000
+        }
+      },
+      "required": ["facet", "code", "message"],
+      "additionalProperties": false
+    },
+    "StudioAgentsFacetsRequest": {
+      "description": "Everything Studio shows of one agent, read at once: identity, settings, the prompt in force and its revisions (the newest 50), skills, connectors and traits. The agent itself must answer; a facet that does not is left out and named in problems.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "bridge.schema.json#/$defs/RequestId"
+        },
+        "method": {
+          "const": "studio.agents.facets"
+        },
+        "params": {
+          "$ref": "#/$defs/StudioAgentParams"
+        }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "StudioAgentsFacetsResult": {
+      "description": "Result of studio.agents.facets. prompt is absent when the agent has none yet; a facet in problems is absent (identity, settings) or empty (the lists).",
+      "type": "object",
+      "properties": {
+        "agent": {
+          "$ref": "#/$defs/StudioAgent"
+        },
+        "identity": {
+          "$ref": "#/$defs/StudioIdentity"
+        },
+        "settings": {
+          "$ref": "#/$defs/StudioSettings"
+        },
+        "prompt": {
+          "$ref": "#/$defs/StudioPrompt"
+        },
+        "revisions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/StudioPromptRevision"
+          }
+        },
+        "skills": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/StudioSkill"
+          }
+        },
+        "connectors": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/StudioConnector"
+          }
+        },
+        "traits": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/StudioTrait"
+          }
+        },
+        "problems": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/StudioFacetProblem"
+          }
+        }
+      },
+      "required": ["agent", "revisions", "skills", "connectors", "traits", "problems"],
+      "additionalProperties": false
+    },
+    "StudioAgentsPromptUpdateRequest": {
+      "description": "Save the agent's instructions as a new revision in force (content), or put an earlier revision back in force as a new one (restore).",
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "bridge.schema.json#/$defs/RequestId"
+        },
+        "method": {
+          "const": "studio.agents.prompt.update"
+        },
+        "params": {
+          "$ref": "#/$defs/StudioAgentsPromptUpdateParams"
+        }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "StudioAgentsPromptUpdateParams": {
+      "description": "Parameters of studio.agents.prompt.update: content or restore, not both.",
+      "type": "object",
+      "properties": {
+        "agentId": {
+          "$ref": "#/$defs/StudioAgentId"
+        },
+        "content": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 20000
+        },
+        "restore": {
+          "description": "The revision to put back.",
+          "type": "integer",
+          "minimum": 1
+        },
+        "scope": {
+          "$ref": "../../plugin/v0/permission.schema.json#/$defs/StudioManagePermission"
+        }
+      },
+      "required": ["agentId", "scope"],
+      "additionalProperties": false,
+      "anyOf": [
+        {
+          "properties": {
+            "content": true
+          },
+          "required": ["content"]
+        },
+        {
+          "properties": {
+            "restore": true
+          },
+          "required": ["restore"]
+        }
+      ],
+      "not": {
+        "properties": { "content": true, "restore": true },
+        "required": ["content", "restore"]
+      }
+    },
+    "StudioAgentsPromptUpdateResult": {
+      "description": "Result of studio.agents.prompt.update: the revision now in force.",
+      "type": "object",
+      "properties": {
+        "prompt": {
+          "$ref": "#/$defs/StudioPrompt"
+        }
+      },
+      "required": ["prompt"],
+      "additionalProperties": false
+    },
+    "StudioText": {
+      "description": "Catalog text in both languages endue AI writes it in.",
+      "type": "object",
+      "properties": {
+        "en": {
+          "type": "string",
+          "maxLength": 4000
+        },
+        "ko": {
+          "type": "string",
+          "maxLength": 4000
+        }
+      },
+      "required": ["en", "ko"],
+      "additionalProperties": false
+    },
+    "StudioUseCase": {
+      "description": "Something the catalog agent is good for, with an example request.",
+      "type": "object",
+      "properties": {
+        "title": {
+          "$ref": "#/$defs/StudioText"
+        },
+        "example": {
+          "$ref": "#/$defs/StudioText"
+        }
+      },
+      "required": ["title", "example"],
+      "additionalProperties": false
+    },
+    "StudioConnectorRef": {
+      "description": "A connection type a catalog agent works with (connection_type.name: slack, gmail), and whether it needs it.",
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "required": {
+          "type": "boolean"
+        }
+      },
+      "required": ["type", "required"],
+      "additionalProperties": false
+    },
+    "StudioPublisherKind": {
+      "description": "official: endue publishes it. user: a person does.",
+      "type": "string",
+      "enum": ["official", "user"]
+    },
+    "StudioPublisher": {
+      "description": "Who published a catalog agent: endue (official) or a person (user).",
+      "type": "object",
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/StudioPublisherKind"
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 200
+        }
+      },
+      "required": ["kind", "name"],
+      "additionalProperties": false
+    },
+    "StudioPreset": {
+      "description": "What starting from a catalog agent sets up: traits, skills and the chat model.",
+      "type": "object",
+      "properties": {
+        "traits": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 64
+          }
+        },
+        "skills": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 128
+          }
+        },
+        "model": {
+          "type": "string",
+          "maxLength": 128
+        }
+      },
+      "required": ["traits", "skills"],
+      "additionalProperties": false
+    },
+    "StudioCatalogAgent": {
+      "description": "A published agent of endue AI's catalog, a template to start one's own agent from: its identity (name, role, avatar), tagline, description, strengths, use cases, the connectors and channels it works with, and its preset. Its instructions never leave endue AI.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "slug": {
+          "$ref": "#/$defs/StudioCatalogSlug"
+        },
+        "category": {
+          "description": "support, sales, marketing, research, engineering, operations, productivity, commerce, creative.",
+          "type": "string",
+          "maxLength": 64
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 64
+          }
+        },
+        "featured": {
+          "type": "boolean"
+        },
+        "publisher": {
+          "$ref": "#/$defs/StudioPublisher"
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "role": {
+          "$ref": "#/$defs/StudioText"
+        },
+        "avatarUrl": {
+          "type": "string",
+          "maxLength": 2048
+        },
+        "personalColor": {
+          "type": "string",
+          "maxLength": 32
+        },
+        "tagline": {
+          "$ref": "#/$defs/StudioText"
+        },
+        "description": {
+          "$ref": "#/$defs/StudioText"
+        },
+        "strengths": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/StudioText"
+          }
+        },
+        "useCases": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/StudioUseCase"
+          }
+        },
+        "connectors": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/StudioConnectorRef"
+          }
+        },
+        "channels": {
+          "description": "web, slack, kakao, navertalk, whatsapp, telegram.",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 32
+          }
+        },
+        "preset": {
+          "$ref": "#/$defs/StudioPreset"
+        },
+        "publishedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "slug",
+        "category",
+        "tags",
+        "featured",
+        "publisher",
+        "version",
+        "name",
+        "role",
+        "tagline",
+        "description",
+        "strengths",
+        "useCases",
+        "connectors",
+        "channels",
+        "preset"
+      ],
+      "additionalProperties": false
+    },
+    "StudioCatalogListRequest": {
+      "description": "The published catalog agents, featured first as endue AI orders them: those whose name, tagline or tags match query, in one category, at most limit (100 unless given).",
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "bridge.schema.json#/$defs/RequestId"
+        },
+        "method": {
+          "const": "studio.catalog.list"
+        },
+        "params": {
+          "$ref": "#/$defs/StudioCatalogListParams"
+        }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "StudioCatalogListParams": {
+      "description": "Parameters of studio.catalog.list.",
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "category": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        },
+        "scope": {
+          "$ref": "../../plugin/v0/permission.schema.json#/$defs/StudioManagePermission"
+        }
+      },
+      "required": ["scope"],
+      "additionalProperties": false
+    },
+    "StudioCatalogListResult": {
+      "description": "Result of studio.catalog.list.",
+      "type": "object",
+      "properties": {
+        "agents": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/StudioCatalogAgent"
+          }
+        }
+      },
+      "required": ["agents"],
+      "additionalProperties": false
+    },
+    "StudioCatalogRecommendRequest": {
+      "description": "Find catalog agents for what the person wants help with (Find an agent for me): endue AI answers the slugs that fit, best first, each with a reason, by its model or, when that is out, by keywords.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "bridge.schema.json#/$defs/RequestId"
+        },
+        "method": {
+          "const": "studio.catalog.recommend"
+        },
+        "params": {
+          "$ref": "#/$defs/StudioCatalogRecommendParams"
+        }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "StudioCatalogRecommendParams": {
+      "description": "Parameters of studio.catalog.recommend. locale is en unless given.",
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500,
+          "pattern": "\\S"
+        },
+        "locale": {
+          "$ref": "#/$defs/StudioLocale"
+        },
+        "scope": {
+          "$ref": "../../plugin/v0/permission.schema.json#/$defs/StudioManagePermission"
+        }
+      },
+      "required": ["query", "scope"],
+      "additionalProperties": false
+    },
+    "StudioRecommendation": {
+      "description": "A catalog agent that fits, and why in one line (model output: show it as text only).",
+      "type": "object",
+      "properties": {
+        "slug": {
+          "$ref": "#/$defs/StudioCatalogSlug"
+        },
+        "reason": {
+          "type": "string",
+          "maxLength": 1000
+        }
+      },
+      "required": ["slug", "reason"],
+      "additionalProperties": false
+    },
+    "StudioRecommendSource": {
+      "description": "Who chose the matches: endue AI's model (llm) or keyword overlap (keyword).",
+      "type": "string",
+      "enum": ["llm", "keyword"]
+    },
+    "StudioCatalogRecommendResult": {
+      "description": "Result of studio.catalog.recommend. No match is an empty list.",
+      "type": "object",
+      "properties": {
+        "matches": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/StudioRecommendation"
+          }
+        },
+        "source": {
+          "$ref": "#/$defs/StudioRecommendSource"
+        }
+      },
+      "required": ["matches", "source"],
+      "additionalProperties": false
+    },
+    "StudioCatalogUseRequest": {
+      "description": "Start an agent of the person's own from a catalog agent (Start with this agent): endue AI makes it with the catalog's identity, prompt, traits, skills and model, in locale. It may take up to 30 s.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "bridge.schema.json#/$defs/RequestId"
+        },
+        "method": {
+          "const": "studio.catalog.use"
+        },
+        "params": {
+          "$ref": "#/$defs/StudioCatalogUseParams"
+        }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "StudioCatalogUseParams": {
+      "description": "Parameters of studio.catalog.use. locale is en unless given. A slug the catalog does not publish is not_found.",
+      "type": "object",
+      "properties": {
+        "slug": {
+          "$ref": "#/$defs/StudioCatalogSlug"
+        },
+        "locale": {
+          "$ref": "#/$defs/StudioLocale"
+        },
+        "scope": {
+          "$ref": "../../plugin/v0/permission.schema.json#/$defs/StudioManagePermission"
+        }
+      },
+      "required": ["slug", "scope"],
+      "additionalProperties": false
+    },
+    "StudioApplied": {
+      "description": "What starting from the catalog set up: the prompt, the traits and skills named, and the model.",
+      "type": "object",
+      "properties": {
+        "prompt": {
+          "type": "boolean"
+        },
+        "traits": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 64
+          }
+        },
+        "skills": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 128
+          }
+        },
+        "model": {
+          "type": "boolean"
+        }
+      },
+      "required": ["prompt", "traits", "skills", "model"],
+      "additionalProperties": false
+    },
+    "StudioCatalogRef": {
+      "description": "The catalog agent and version a new agent came from.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "slug": {
+          "$ref": "#/$defs/StudioCatalogSlug"
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": ["id", "slug", "version"],
+      "additionalProperties": false
+    },
+    "StudioRecommended": {
+      "description": "What the person may connect next for the new agent: connectors and channels.",
+      "type": "object",
+      "properties": {
+        "connectors": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/StudioConnectorRef"
+          }
+        },
+        "channels": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 32
+          }
+        }
+      },
+      "required": ["connectors", "channels"],
+      "additionalProperties": false
+    },
+    "StudioCatalogUseResult": {
+      "description": "Result of studio.catalog.use: the new agent, the catalog agent it came from, what was set up, what was not (warnings), and what to connect next.",
+      "type": "object",
+      "properties": {
+        "agent": {
+          "$ref": "#/$defs/StudioAgent"
+        },
+        "catalog": {
+          "$ref": "#/$defs/StudioCatalogRef"
+        },
+        "applied": {
+          "$ref": "#/$defs/StudioApplied"
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/StudioWarning"
+          }
+        },
+        "recommended": {
+          "$ref": "#/$defs/StudioRecommended"
+        }
+      },
+      "required": ["agent", "catalog", "applied", "warnings", "recommended"],
+      "additionalProperties": false
+    },
+    "StudioConversationStatus": {
+      "description": "active, archived or deleted, as endue AI keeps the conversation.",
+      "type": "string",
+      "enum": ["active", "archived", "deleted"]
+    },
+    "StudioRunStatus": {
+      "description": "How the conversation's last run stands.",
+      "type": "string",
+      "enum": ["running", "completed", "failed"]
+    },
+    "StudioActivity": {
+      "description": "The Home board's column for a conversation, as endue.ai's Activity board sorts it: its last run is running (active), failed (failed), stopped waiting for the person (waiting), or anything else (done).",
+      "type": "string",
+      "enum": ["waiting", "active", "failed", "done"]
+    },
+    "StudioConversation": {
+      "description": "One conversation with one of the person's agents: its title (absent when untitled), how many messages it has and when the last came, how its last run stands (the tool it runs now, or why it failed), whether it waits for the person, the start of the last answer (140 characters), and its column on the Home board.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "agentId": {
+          "$ref": "#/$defs/StudioAgentId"
+        },
+        "spaceId": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "status": {
+          "$ref": "#/$defs/StudioConversationStatus"
+        },
+        "messageCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "lastMessageAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "lastReadAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "pinnedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "lastRunStatus": {
+          "$ref": "#/$defs/StudioRunStatus"
+        },
+        "awaitingInput": {
+          "type": "boolean"
+        },
+        "lastMessagePreview": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "currentTool": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "lastRunErrorCode": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "activity": {
+          "$ref": "#/$defs/StudioActivity"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "agentId", "status", "messageCount", "activity", "createdAt", "updatedAt"],
+      "additionalProperties": false
+    },
+    "StudioConversationsListRequest": {
+      "description": "One page of the person's conversations, the most recently active first: one agent's when agentId is given, only those waiting for the person (awaitingInput) or with a run going on (running) when asked.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "bridge.schema.json#/$defs/RequestId"
+        },
+        "method": {
+          "const": "studio.conversations.list"
+        },
+        "params": {
+          "$ref": "#/$defs/StudioConversationsListParams"
+        }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "StudioConversationsListParams": {
+      "description": "Parameters of studio.conversations.list. page starts at 1; limit is 20 unless given.",
+      "type": "object",
+      "properties": {
+        "agentId": {
+          "$ref": "#/$defs/StudioAgentId"
+        },
+        "awaitingInput": {
+          "type": "boolean"
+        },
+        "running": {
+          "type": "boolean"
+        },
+        "page": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        },
+        "scope": {
+          "$ref": "../../plugin/v0/permission.schema.json#/$defs/StudioManagePermission"
+        }
+      },
+      "required": ["scope"],
+      "additionalProperties": false
+    },
+    "StudioConversationsListResult": {
+      "description": "Result of studio.conversations.list: one page, how many match in all, and whether a page follows.",
+      "type": "object",
+      "properties": {
+        "conversations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/StudioConversation"
+          }
+        },
+        "total": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "hasMore": {
+          "type": "boolean"
+        }
+      },
+      "required": ["conversations", "total", "hasMore"],
+      "additionalProperties": false
+    }
+  }
+}

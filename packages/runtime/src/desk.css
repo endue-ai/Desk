@@ -1,0 +1,202 @@
+@import "./describe/describe.css";
+@import "./settings-ui/settings.css";
+
+/* The 2D desk. Every size is fixed in CSS so render snapshots do not depend on fonts. */
+
+@import "./propose/card.css";
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: var(--desk-background, #141416);
+}
+
+.desk,
+.desk * {
+  box-sizing: border-box;
+}
+
+/* Edge bars exist only while a surface sits on them; empty tracks collapse to zero. */
+.desk {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-rows: minmax(0, 1fr) auto 28px;
+  grid-template-areas:
+    "left center right"
+    "left bottom right"
+    "status status status";
+  background: var(--desk-background);
+  color: var(--desk-text);
+  font: 13px/27px -apple-system, "SUIT", "Inter", system-ui, sans-serif;
+}
+
+.desk-compositor {
+  grid-area: center;
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+  min-height: 0;
+}
+
+.desk-surface {
+  display: grid;
+  grid-template-rows: 28px minmax(0, 1fr);
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--desk-card);
+  border: 1px solid var(--desk-border);
+  border-radius: 10px;
+  outline: none;
+}
+
+.desk-surface:focus,
+.desk-surface:focus-within {
+  border-color: var(--desk-accent);
+}
+
+.desk-surface-title {
+  height: 28px;
+  padding: 0 12px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--desk-text-muted);
+  border-bottom: 1px solid var(--desk-border);
+}
+
+.desk-surface-frame {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: transparent;
+}
+
+.desk-status {
+  grid-area: status;
+  height: 28px;
+  padding: 0 12px;
+  overflow: hidden;
+  white-space: nowrap;
+  color: var(--desk-text-muted);
+  border-top: 1px solid var(--desk-border);
+}
+
+/* A notice's actions (ADR 0061): small buttons after its text, clickable over the shell's layers. */
+.desk-status.has-actions {
+  display: flex;
+  align-items: center;
+}
+
+.desk-status-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.desk-status .desk-status-action {
+  flex: none;
+  margin-left: var(--desk-space-2);
+  padding: 0 var(--desk-space-2);
+  font: inherit;
+  color: var(--desk-primary-text);
+  background: var(--desk-primary-soft);
+  border: 1px solid var(--desk-primary-border);
+  border-radius: var(--desk-radius-sm);
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+/* A surface a window host holds (the shell's windows, ADR 0040): the window has the title bar. */
+.desk-surface--windowed {
+  grid-template-rows: minmax(0, 1fr);
+  height: 100%;
+  border: 0;
+  border-radius: 0;
+}
+
+/* An overlay surface (the first run) covers the whole desk, status line included. */
+.desk-surface--overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: block;
+  border: 0;
+  border-radius: 0;
+  background: var(--desk-background);
+}
+
+.desk-surface--overlay:focus,
+.desk-surface--overlay:focus-within {
+  border-color: transparent;
+}
+
+/* Edge bars: the compositor's 12px padding is the gap between a bar and the grid. Surfaces on one
+   edge share it in mount order. */
+.desk-edge {
+  display: flex;
+  gap: 12px;
+  min-width: 0;
+  min-height: 0;
+}
+
+.desk-edge--left {
+  grid-area: left;
+  flex-direction: column;
+  width: 240px;
+  padding: 12px 0 12px 12px;
+}
+
+.desk-edge--right {
+  grid-area: right;
+  flex-direction: column;
+  width: 320px;
+  padding: 12px 12px 12px 0;
+}
+
+.desk-edge--bottom {
+  grid-area: bottom;
+  height: 72px;
+  padding: 0 12px 12px;
+}
+
+.desk-surface--edge {
+  flex: 1 1 0;
+  grid-template-rows: minmax(0, 1fr);
+}
+
+.desk-surface[hidden] {
+  display: none;
+}
+
+/* A surface that shows itself on demand (the palette) lets the desk show through around it. */
+.desk-surface--transient {
+  background: transparent;
+}
+
+/* An unloaded surface's frame (ADR 0070): its title and a line, until it shows and loads again. */
+.desk-surface-placeholder {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 4px;
+  min-width: 0;
+  min-height: 0;
+  padding: 16px;
+  overflow: hidden;
+  color: var(--desk-text-muted);
+  text-align: center;
+  background: var(--desk-card);
+}
+
+.desk-surface-placeholder p {
+  margin: 0;
+}
+
+.desk-surface-placeholder-title {
+  color: var(--desk-text);
+}

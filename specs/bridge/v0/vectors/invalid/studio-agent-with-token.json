@@ -1,0 +1,13 @@
+{
+  "target": "StudioAgent",
+  "description": "no token or other field beyond the agent's own",
+  "instance": {
+    "id": "ag_01JC0Q4MR00000000000000001",
+    "slug": "miso",
+    "name": "Miso",
+    "status": "active",
+    "createdAt": "2026-11-01T09:00:00Z",
+    "updatedAt": "2026-11-02T09:00:00Z",
+    "token": "eyJ..."
+  }
+}

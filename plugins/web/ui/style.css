@@ -1,0 +1,306 @@
+/* Colours, type and radii are the desk's tokens: /_desk/tokens.css holds their defaults and the runtime
+   redefines them for the theme in force. The source view's syntax colours are the chart roles. */
+html,
+body {
+  height: 100%;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  margin: 0;
+  overflow: auto;
+  background: var(--desk-card);
+  color: var(--desk-text);
+  font: calc(var(--desk-text-sm) - 1px)/1.5 var(--desk-font-sans);
+}
+
+/* The page's box takes what is left; the lines around it keep their height. */
+header,
+#opening,
+#bar,
+#status {
+  flex-shrink: 0;
+}
+
+#opening {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--desk-border);
+}
+
+header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 12px 4px;
+  border-bottom: 1px solid var(--desk-border);
+}
+
+#heading {
+  flex: 1;
+  min-width: 0;
+}
+
+h1,
+h2 {
+  margin: 0;
+  font-size: var(--desk-text-sm);
+}
+
+#file-detail,
+#status,
+.entry-meta,
+.note,
+.outline-url {
+  color: var(--desk-text-muted);
+}
+
+#file-detail {
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+button {
+  padding: 3px 10px;
+  border: 1px solid var(--desk-border);
+  border-radius: var(--desk-radius-md);
+  background: var(--desk-background);
+  color: var(--desk-text);
+  font: inherit;
+}
+
+button[aria-pressed="true"],
+button[aria-current="true"] {
+  border-color: var(--desk-accent);
+}
+
+:focus-visible {
+  outline: 2px solid var(--desk-ring);
+  outline-offset: 2px;
+}
+
+#bar {
+  margin: 0;
+  padding: 2px 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--desk-border);
+  background: var(--desk-background);
+  color: var(--desk-text-muted);
+}
+
+main {
+  display: flex;
+  flex: 1;
+  min-height: 80px;
+}
+
+main:focus,
+section:focus {
+  outline: none;
+}
+
+main > :not(nav) {
+  flex: 1;
+  min-width: 0;
+  overflow: auto;
+}
+
+#entries {
+  flex: 0 0 clamp(160px, 30%, 280px);
+  overflow: auto;
+  border-right: 1px solid var(--desk-border);
+}
+
+#entries ul {
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+}
+
+button.entry {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  margin: 0 0 2px;
+  border-color: transparent;
+  background: none;
+  text-align: start;
+}
+
+button.entry[aria-current="true"] {
+  border-color: var(--desk-accent);
+  background: var(--desk-background);
+}
+
+.entry-title {
+  overflow-wrap: anywhere;
+}
+
+.entry-meta {
+  font-size: var(--desk-text-xs);
+}
+
+/* The page's own box: none of the plugin's styles reach into it, and its fixed elements stay in. */
+#page {
+  all: initial;
+  display: block;
+  flex: 1;
+  min-width: 0;
+  overflow: auto;
+  contain: strict;
+  background: #fff; /* theme: content: a page with no background of its own is white */
+}
+
+#page:focus-visible {
+  outline: 2px solid var(--desk-ring);
+  outline-offset: -2px;
+}
+
+#text {
+  margin: 0;
+  padding: 8px 12px;
+  font: var(--desk-text-xs)/1.5 var(--desk-font-mono);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+#card,
+#outline,
+#details {
+  padding: 16px;
+}
+
+.card-target {
+  margin: 8px 0;
+  padding: 6px 8px;
+  border: 1px solid var(--desk-border);
+  border-radius: var(--desk-radius-md);
+  background: var(--desk-background);
+  font: calc(var(--desk-text-sm) - 1px)/1.5 var(--desk-font-mono);
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+
+.fields {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 2px 12px;
+  margin: 8px 0;
+}
+
+.fields dt {
+  color: var(--desk-text-muted);
+}
+
+.fields dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+#outline ul {
+  margin: 4px 0;
+  padding-inline-start: 18px;
+}
+
+.outline-url {
+  display: block;
+  font: var(--desk-text-xs) var(--desk-font-mono);
+  overflow-wrap: anywhere;
+}
+
+#source {
+  position: relative;
+  background: var(--desk-background);
+  font: var(--desk-text-xs)/20px var(--desk-font-mono);
+}
+
+.source-spacer {
+  position: relative;
+  min-width: max-content;
+}
+
+.source-rows {
+  position: absolute;
+  inset: 0 auto auto 0;
+  will-change: transform;
+}
+
+.source-row {
+  height: 20px;
+  white-space: pre;
+}
+
+.line-number {
+  display: inline-block;
+  box-sizing: border-box;
+  width: 6ch;
+  padding-inline-end: 1ch;
+  color: var(--desk-text-muted);
+  text-align: end;
+  user-select: none;
+}
+
+.tag {
+  color: var(--desk-chart-1);
+}
+
+.attr {
+  color: var(--desk-chart-2);
+}
+
+.value {
+  color: var(--desk-chart-3);
+}
+
+.comment {
+  color: var(--desk-text-muted);
+}
+
+#status {
+  margin: 0;
+  padding: 4px 12px;
+  border-top: 1px solid var(--desk-border);
+  min-height: 1.5em;
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+
+#status:empty {
+  min-height: 0;
+  padding: 0;
+  border-top: 0;
+}
+
+/* A narrow surface puts the entries above the page. */
+@media (max-width: 520px) {
+  main {
+    flex-direction: column;
+  }
+
+  #entries {
+    flex: 0 1 auto;
+    max-height: 40%;
+    border-right: 0;
+    border-bottom: 1px solid var(--desk-border);
+  }
+}
+
+[hidden] {
+  display: none !important;
+}
+
+/* Match the shell's action feedback inside the isolated plugin frame. */
+button:not(:disabled),
+select:not(:disabled) {
+  cursor: pointer;
+}
+
+button:disabled,
+select:disabled {
+  cursor: not-allowed;
+}

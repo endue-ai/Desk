@@ -1,0 +1,104 @@
+{
+  "big": {
+    "markers": [
+      {
+        "length": 8192,
+        "offset": 0,
+        "sha256": "d2e6ab4ada35ce7455d8849485a63c4c004261bf0baf4cbe9027463a1a883a22"
+      },
+      {
+        "length": 8192,
+        "offset": 4296016384,
+        "sha256": "df4071419176729c2eeba76d24dedcc788fc1dcb1badf56cbbd4e6c0b7495a63"
+      },
+      {
+        "length": 8192,
+        "offset": 6442442752,
+        "sha256": "2dc4b8fbb04cb37dfc9d93ed00b250fa91ddd6ee0d1b692e2be525fa78c1d6cd"
+      }
+    ],
+    "size": 6442450944
+  },
+  "disks": {
+    "gpt.img": {
+      "partitions": [
+        {
+          "number": 1,
+          "size": 4194304,
+          "start": 1048576
+        },
+        {
+          "number": 2,
+          "size": 6291456,
+          "start": 5242880
+        },
+        {
+          "number": 3,
+          "size": 1031680,
+          "start": 11534336
+        }
+      ],
+      "sha256": "0148897975bda68fd1e441093daac944dea5e53f61712d3005556d91d75c71f2",
+      "size": 12582912
+    },
+    "mbr.img": {
+      "partitions": [
+        {
+          "number": 1,
+          "size": 4194304,
+          "start": 1048576
+        },
+        {
+          "number": 5,
+          "size": 4194304,
+          "start": 6291456
+        },
+        {
+          "number": 6,
+          "size": 4194304,
+          "start": 11534336
+        }
+      ],
+      "sha256": "b6b3eee6457f8aee732c3ee0703ee5002275238560ffd551fb517941c3a1907c",
+      "size": 16777216
+    }
+  },
+  "filesystems": {
+    "exfat.img": {
+      "label": "EXFATDISK",
+      "size": 8388608,
+      "type": "exFAT"
+    },
+    "ext2.img": {
+      "label": "ext2-disk",
+      "size": 4194304,
+      "type": "ext2"
+    },
+    "ext4.img": {
+      "label": "ext4-disk",
+      "size": 12582912,
+      "type": "ext4"
+    },
+    "fat12.img": {
+      "label": "FLOPPY",
+      "size": 1474560,
+      "type": "FAT12"
+    },
+    "fat16.img": {
+      "label": "FATSIXTEEN",
+      "size": 16777216,
+      "type": "FAT16"
+    },
+    "fat32.img": {
+      "label": "FAT32DISK",
+      "size": 35651584,
+      "type": "FAT32"
+    },
+    "ntfs.img": {
+      "label": "NTFSDISK",
+      "size": 16777216,
+      "type": "NTFS"
+    }
+  },
+  "when": 1790856000
+}

@@ -1,0 +1,15 @@
+{
+  "target": "BridgeRequest",
+  "description": "fs.stat asks what one path is under an fs:read scope",
+  "instance": {
+    "id": 31,
+    "method": "fs.stat",
+    "params": {
+      "path": "~/Documents/plan.md",
+      "scope": {
+        "permission": "fs:read",
+        "paths": ["~/Documents/**"]
+      }
+    }
+  }
+}

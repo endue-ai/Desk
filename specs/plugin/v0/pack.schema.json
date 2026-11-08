@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://endue.ai/specs/plugin/v0/pack.schema.json",
+  "title": "Desk pack v0",
+  "description": "A pack (ADR 0108): a data-only plugin that brings a service's connector, views and layout as one. It runs no code: its pack block names the plugins it brings, the commands its Apply runs and the profile it lays out.",
+  "$defs": {
+    "PackBlock": {
+      "description": "What a pack brings and does when it is applied.",
+      "type": "object",
+      "properties": {
+        "plugins": {
+          "description": "The plugins it brings, by id: each nested in the pack folder under plugins/<folder>/ (installed and removed with the pack) or a plugin the desk has. Connectors first: Apply opens Settings, Connections on the first connector.",
+          "type": "array",
+          "items": { "$ref": "plugin.schema.json#/$defs/PluginId" },
+          "minItems": 1,
+          "maxItems": 32,
+          "uniqueItems": true
+        },
+        "opens": {
+          "description": "Commands Apply runs once the pack is on, in order: a board, a timeline.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/PackCommand" },
+          "maxItems": 8
+        },
+        "profile": {
+          "description": "The profile it contributes (contributes.profiles) that Apply switches to: its layout.",
+          "$ref": "contributes.schema.json#/$defs/ProfileId"
+        },
+        "services": {
+          "description": "The words a person names the service by: github, 깃허브. Make with Eris finds the pack by them.",
+          "type": "array",
+          "items": { "type": "string", "minLength": 1, "maxLength": 40 },
+          "minItems": 1,
+          "maxItems": 12
+        }
+      },
+      "required": ["plugins", "services"],
+      "additionalProperties": false
+    },
+    "PackCommand": {
+      "description": "One command Apply runs, with its arguments.",
+      "type": "object",
+      "properties": {
+        "command": { "$ref": "contributes.schema.json#/$defs/CommandId" },
+        "args": { "type": "object" }
+      },
+      "required": ["command"],
+      "additionalProperties": false
+    }
+  }
+}

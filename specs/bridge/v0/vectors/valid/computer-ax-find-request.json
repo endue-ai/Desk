@@ -1,0 +1,16 @@
+{
+  "target": "BridgeRequest",
+  "description": "the buttons titled Send in the frontmost window",
+  "instance": {
+    "id": 8,
+    "method": "computer.ax.find",
+    "params": {
+      "role": "button",
+      "title": "Send",
+      "limit": 5,
+      "scope": {
+        "permission": "computer:see"
+      }
+    }
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "target": "ErrorEnvelope",
+  "description": "an agent that is not there",
+  "instance": {
+    "error": {
+      "code": "NOT_FOUND",
+      "message": "Agent not found"
+    },
+    "meta": {
+      "request_id": "req_3",
+      "timestamp": "2026-11-01T09:00:00.000Z"
+    }
+  }
+}

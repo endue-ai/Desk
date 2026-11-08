@@ -1,0 +1,45 @@
+{
+  "target": "PaletteResults",
+  "description": "what an item provider answers: one result per item, Open in Desk first and the original app second",
+  "instance": {
+    "results": [
+      {
+        "id": "desk.fixtures/default/task-groceries",
+        "title": "Buy groceries",
+        "detail": "Task · desk.fixtures",
+        "kind": "task",
+        "actions": [
+          {
+            "command": "desk.views.open",
+            "title": "Open in Desk",
+            "args": {
+              "id": "desk.item",
+              "params": {
+                "connector": "desk.fixtures",
+                "instance": "default",
+                "id": "task-groceries"
+              }
+            }
+          },
+          {
+            "command": "desk.views.open-original",
+            "title": "Open the original",
+            "args": {
+              "url": "https://tasks.example.com/task-groceries"
+            }
+          }
+        ]
+      },
+      {
+        "id": "readme",
+        "title": "README.md",
+        "actions": [
+          {
+            "command": "example.files.open",
+            "title": "Open"
+          }
+        ]
+      }
+    ]
+  }
+}

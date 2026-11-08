@@ -1,0 +1,295 @@
+{
+ "tag": "div",
+ "class": "eris-float",
+ "children": [
+  {
+   "tag": "div",
+   "class": "eris-float-stage",
+   "children": [
+    {
+     "tag": "div",
+     "class": "eris eris-float-figure",
+     "role": "button",
+     "aria-label": "Eris: Speaking…",
+     "aria-expanded": "true",
+     "data-state": "idle",
+     "box": [
+      116,
+      8,
+      128,
+      138
+     ],
+     "children": [
+      {
+       "tag": "span",
+       "class": "eris-ring",
+       "style": {
+        "color": "rgb(242, 240, 245)",
+        "border": "dashed rgb(131, 121, 145)",
+        "transform": "matrix(1, 0, 0, 1, -74, -74)"
+       }
+      },
+      {
+       "tag": "div",
+       "class": "eris-body",
+       "style": {
+        "transform": "matrix(1, 0, 0, 1, 0, 4.46)"
+       },
+       "children": [
+        {
+         "tag": "span",
+         "class": "eris-halo",
+         "hidden": "",
+         "style": {
+          "display": "none",
+          "color": "rgb(242, 240, 245)"
+         }
+        },
+        {
+         "tag": "canvas",
+         "class": "eris-mesh",
+         "data-mesh": "faces=529 back=251 dots=182 h=55110005",
+         "data-voice": "speaking",
+         "style": {
+          "color": "rgb(242, 240, 245)"
+         }
+        },
+        {
+         "tag": "span",
+         "class": "eris-core",
+         "style": {
+          "color": "rgb(242, 240, 245)",
+          "opacity": "0.896",
+          "transform": "matrix(1.062, 0, 0, 1.062, -24, -24)"
+         }
+        },
+        {
+         "tag": "span",
+         "class": "eris-tail eris-tail-1",
+         "hidden": "",
+         "style": {
+          "display": "none",
+          "background": "rgb(167, 177, 195)",
+          "color": "rgb(242, 240, 245)",
+          "opacity": "0.5"
+         }
+        },
+        {
+         "tag": "span",
+         "class": "eris-tail eris-tail-2",
+         "hidden": "",
+         "style": {
+          "display": "none",
+          "background": "rgb(167, 177, 195)",
+          "color": "rgb(242, 240, 245)",
+          "opacity": "0.3"
+         }
+        },
+        {
+         "tag": "span",
+         "class": "eris-moon-box",
+         "style": {
+          "transform": "matrix(1, 0, 0, 1, -9, -12.6)"
+         },
+         "children": [
+          {
+           "tag": "canvas",
+           "class": "eris-moon",
+           "style": {
+            "color": "rgb(242, 240, 245)"
+           }
+          },
+          {
+           "tag": "span",
+           "class": "eris-spark",
+           "hidden": "",
+           "style": {
+            "display": "none",
+            "background": "rgb(232, 201, 138)",
+            "color": "rgb(242, 240, 245)"
+           }
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "tag": "p",
+     "class": "eris-float-status",
+     "role": "status",
+     "style": {
+      "background": "rgb(30, 29, 33)",
+      "color": "rgb(242, 240, 245)",
+      "border": "solid rgb(51, 49, 54)"
+     },
+     "text": "Speaking…"
+    }
+   ]
+  },
+  {
+   "tag": "section",
+   "class": "eris-float-panel",
+   "aria-label": "Talk to Eris",
+   "style": {
+    "background": "rgb(30, 29, 33)",
+    "border": "solid rgb(51, 49, 54)"
+   },
+   "children": [
+    {
+     "tag": "ol",
+     "class": "eris-float-lines",
+     "aria-label": "Conversation with Eris",
+     "children": [
+      {
+       "tag": "li",
+       "class": "eris-float-line",
+       "style": {
+        "background": "rgba(182, 163, 245, 0.12)"
+       },
+       "children": [
+        {
+         "tag": "span",
+         "class": "eris-float-who",
+         "style": {
+          "color": "rgb(176, 173, 183)"
+         },
+         "text": "You"
+        },
+        {
+         "tag": "span",
+         "class": "eris-float-text",
+         "style": {
+          "color": "rgb(242, 240, 245)"
+         },
+         "text": "What is next?"
+        }
+       ]
+      },
+      {
+       "tag": "li",
+       "class": "eris-float-line",
+       "style": {
+        "background": "rgb(55, 49, 63)"
+       },
+       "children": [
+        {
+         "tag": "span",
+         "class": "eris-float-who",
+         "style": {
+          "color": "rgb(176, 173, 183)"
+         },
+         "text": "Eris"
+        },
+        {
+         "tag": "span",
+         "class": "eris-float-text",
+         "style": {
+          "color": "rgb(242, 240, 245)"
+         },
+         "text": "Lunch at one."
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "tag": "p",
+     "class": "eris-float-empty",
+     "hidden": "",
+     "style": {
+      "display": "none",
+      "color": "rgb(176, 173, 183)"
+     },
+     "text": "Ask her anything. She keeps one conversation with the desk. ⌥↩ summons her anywhere"
+    },
+    {
+     "tag": "div",
+     "class": "eris-float-approval",
+     "hidden": "",
+     "style": {
+      "display": "none",
+      "background": "rgba(255, 152, 0, 0.16)",
+      "border": "solid rgba(255, 152, 0, 0.4)"
+     },
+     "children": [
+      {
+       "tag": "span",
+       "style": {
+        "color": "rgb(255, 152, 0)"
+       },
+       "text": "Eris is waiting for your approval in the desk."
+      },
+      {
+       "tag": "button",
+       "class": "btn btn-xs eris-float-reveal",
+       "style": {
+        "color": "rgb(242, 240, 245)",
+        "border": "solid rgba(0, 0, 0, 0)"
+       },
+       "text": "Open Desk"
+      }
+     ]
+    },
+    {
+     "tag": "p",
+     "class": "eris-float-error",
+     "role": "alert",
+     "hidden": "",
+     "style": {
+      "display": "none",
+      "color": "rgb(255, 132, 132)"
+     }
+    },
+    {
+     "tag": "form",
+     "class": "eris-float-composer",
+     "children": [
+      {
+       "tag": "input",
+       "class": "input eris-float-input",
+       "aria-label": "Talk to Eris",
+       "style": {
+        "background": "rgb(30, 29, 33)",
+        "color": "rgb(242, 240, 245)",
+        "border": "solid rgb(131, 121, 145)"
+       },
+       "value": ""
+      },
+      {
+       "tag": "button",
+       "class": "btn btn-primary eris-float-send",
+       "style": {
+        "background": "rgb(182, 163, 245)",
+        "color": "rgb(30, 24, 51)",
+        "border": "solid rgb(182, 163, 245)"
+       },
+       "text": "Send"
+      },
+      {
+       "tag": "button",
+       "class": "icon-button eris-float-fold",
+       "aria-label": "Fold",
+       "box": [
+        299,
+        459,
+        40,
+        40
+       ],
+       "style": {
+        "border": "solid rgba(0, 0, 0, 0)"
+       },
+       "children": [
+        {
+         "tag": "svg",
+         "icon": "close"
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

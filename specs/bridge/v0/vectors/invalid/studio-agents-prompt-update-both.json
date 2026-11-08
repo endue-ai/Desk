@@ -1,0 +1,16 @@
+{
+  "target": "BridgeRequest",
+  "description": "a prompt update is content or restore, not both",
+  "instance": {
+    "id": 1,
+    "method": "studio.agents.prompt.update",
+    "params": {
+      "agentId": "ag_01JC0Q4MR00000000000000001",
+      "content": "Be brief.",
+      "restore": 2,
+      "scope": {
+        "permission": "studio:manage"
+      }
+    }
+  }
+}

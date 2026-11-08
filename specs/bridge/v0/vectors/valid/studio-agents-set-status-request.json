@@ -1,0 +1,15 @@
+{
+  "target": "BridgeRequest",
+  "description": "turn an agent off",
+  "instance": {
+    "id": 1,
+    "method": "studio.agents.setStatus",
+    "params": {
+      "agentId": "ag_01JC0Q4MR00000000000000001",
+      "status": "inactive",
+      "scope": {
+        "permission": "studio:manage"
+      }
+    }
+  }
+}

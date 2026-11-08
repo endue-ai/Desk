@@ -1,0 +1,14 @@
+{
+  "target": "BridgeRequest",
+  "description": "pages start at 1",
+  "instance": {
+    "id": 1,
+    "method": "studio.conversations.list",
+    "params": {
+      "page": 0,
+      "scope": {
+        "permission": "studio:manage"
+      }
+    }
+  }
+}

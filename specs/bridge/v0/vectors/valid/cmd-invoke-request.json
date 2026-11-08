@@ -1,0 +1,18 @@
+{
+  "target": "BridgeRequest",
+  "description": "cmd.invoke with args under a glob scope",
+  "instance": {
+    "id": 33,
+    "method": "cmd.invoke",
+    "params": {
+      "id": "eris.say",
+      "args": {
+        "text": "Plan my week"
+      },
+      "scope": {
+        "permission": "cmd:invoke",
+        "ids": ["eris.*"]
+      }
+    }
+  }
+}

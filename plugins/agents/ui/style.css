@@ -1,0 +1,262 @@
+/* endue.agents: the page, the bar, notes, chips, avatars, presence and badges. Colours, type,
+   corners and motion are the desk's tokens (/_desk/tokens.css) over the base sheet, so the theme
+   and the design system in force restyle the page; light and dark come from them. */
+body {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  margin: 0;
+  overflow: hidden;
+}
+
+#bar {
+  gap: var(--desk-space-2);
+  padding: var(--desk-space-2) var(--desk-space-4);
+  border-bottom: var(--desk-border-width) solid var(--desk-border);
+}
+
+#title {
+  flex: none;
+}
+
+#counts {
+  min-width: 0;
+  overflow: hidden;
+  font-size: var(--desk-text-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 559px) {
+  #counts {
+    display: none;
+  }
+
+  .page {
+    padding: var(--desk-space-3);
+  }
+}
+
+main {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.page {
+  box-sizing: border-box;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--desk-space-4) var(--desk-space-6);
+}
+
+footer {
+  padding: var(--desk-space-1) var(--desk-space-4);
+  border-top: var(--desk-border-width) solid var(--desk-border);
+}
+
+#status {
+  min-height: 1.4em;
+  margin: 0;
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-sm);
+}
+
+.home-tabs {
+  margin-bottom: var(--desk-space-3);
+}
+
+.notes {
+  display: grid;
+  gap: var(--desk-space-2);
+  margin-bottom: var(--desk-space-3);
+}
+
+.note {
+  display: flex;
+  align-items: center;
+  gap: var(--desk-space-3);
+}
+
+.note p {
+  flex: 1;
+  margin: 0;
+}
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--desk-space-2);
+  margin-bottom: var(--desk-space-4);
+}
+
+#search {
+  flex: 1 1 240px;
+  min-width: 0;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--desk-space-1);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--desk-space-1);
+  border-radius: var(--desk-radius-full);
+}
+
+.chip .count,
+.column-head .count {
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+/* An avatar: its picture, or its initial on its chart colour mixed into the card. */
+.avatar {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  overflow: hidden;
+  border-radius: var(--desk-radius-full);
+  background: color-mix(in srgb, var(--desk-chart-1) 22%, var(--desk-card));
+  color: var(--desk-text);
+  font-weight: 600;
+}
+
+.avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatar-sm {
+  width: 24px;
+  height: 24px;
+  font-size: var(--desk-text-2xs);
+}
+
+.avatar-md {
+  width: 36px;
+  height: 36px;
+  font-size: var(--desk-text-sm);
+}
+
+.avatar-lg {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--desk-radius-lg);
+  font-size: var(--desk-text-base);
+}
+
+.avatar[data-hue="2"] {
+  background: color-mix(in srgb, var(--desk-chart-2) 22%, var(--desk-card));
+}
+.avatar[data-hue="3"] {
+  background: color-mix(in srgb, var(--desk-chart-3) 22%, var(--desk-card));
+}
+.avatar[data-hue="4"] {
+  background: color-mix(in srgb, var(--desk-chart-4) 22%, var(--desk-card));
+}
+.avatar[data-hue="5"] {
+  background: color-mix(in srgb, var(--desk-chart-5) 22%, var(--desk-card));
+}
+.avatar[data-hue="6"] {
+  background: color-mix(in srgb, var(--desk-chart-6) 22%, var(--desk-card));
+}
+.avatar[data-hue="7"] {
+  background: color-mix(in srgb, var(--desk-chart-7) 22%, var(--desk-card));
+}
+.avatar[data-hue="8"] {
+  background: color-mix(in srgb, var(--desk-chart-8) 22%, var(--desk-card));
+}
+
+/* Presence: a dot and its words, so the colour is never the only sign. */
+.presence {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--desk-space-1);
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-xs);
+}
+
+.dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: var(--desk-radius-full);
+  background: var(--desk-border);
+}
+
+[data-presence="working"] .dot {
+  background: var(--desk-info);
+}
+[data-presence="waiting"] .dot,
+.dot.waiting {
+  background: var(--desk-warning);
+}
+[data-presence="online"] .dot {
+  background: var(--desk-success);
+}
+[data-presence="paused"] .dot {
+  background: var(--desk-text-muted);
+}
+[data-presence="offline"] .dot {
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px var(--desk-text-muted);
+}
+
+/* A radio group drawn as tabs: the chosen one as base.css draws a selected tab. */
+.desk-tab[aria-checked="true"] {
+  border-color: var(--desk-tab-selected-border);
+  background: var(--desk-tab-selected-bg);
+  color: var(--desk-tab-selected-fg);
+  box-shadow: var(--desk-tab-selected-shadow);
+}
+
+.source[data-source="endue"] {
+  border-color: var(--desk-primary-border);
+  background: var(--desk-primary-subtle);
+  color: var(--desk-primary-text);
+}
+
+.field-error {
+  margin: 0;
+  color: var(--desk-danger-text);
+  font-size: var(--desk-text-xs);
+}
+
+.dialog-actions,
+.inspector-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--desk-space-2);
+  margin-top: var(--desk-space-3);
+}
+
+#delete-dialog h2,
+#ask-dialog h2 {
+  margin: 0 0 var(--desk-space-2);
+  font-size: var(--desk-text-lg);
+}
+
+#delete-name {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.ask-detail {
+  max-height: 160px;
+  overflow: auto;
+  padding: var(--desk-space-2);
+  border-radius: var(--desk-radius-md);
+  background: var(--desk-muted);
+  font-family: var(--desk-font-mono);
+  font-size: var(--desk-text-xs);
+  white-space: pre-wrap;
+}

@@ -1,0 +1,27 @@
+{
+  "target": "View",
+  "description": "the binding names $mail, which is not one of the view's requires",
+  "instance": {
+    "id": "desk.today",
+    "version": "0.1.0",
+    "title": "Today",
+    "description": "Today's events and the open tasks, side by side.",
+    "requires": {
+      "calendar": {
+        "kinds": ["event"],
+        "title": "A calendar"
+      },
+      "tasks": {
+        "kinds": ["task"],
+        "title": "A task list"
+      }
+    },
+    "layout": {
+      "type": "list",
+      "binding": {
+        "kinds": ["message"],
+        "sources": ["$mail"]
+      }
+    }
+  }
+}

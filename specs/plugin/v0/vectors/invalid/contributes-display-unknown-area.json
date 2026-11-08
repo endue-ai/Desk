@@ -1,0 +1,14 @@
+{
+  "target": "PluginContributes",
+  "description": "areas are surface placements",
+  "instance": {
+    "display": [
+      {
+        "match": {
+          "plugin": "endue.eris"
+        },
+        "area": "top"
+      }
+    ]
+  }
+}

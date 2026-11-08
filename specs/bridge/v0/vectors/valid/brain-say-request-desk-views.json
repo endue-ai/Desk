@@ -1,0 +1,81 @@
+{
+  "target": "BridgeRequest",
+  "description": "a line said on the second of three desktops: its window, one in the drawer, one on another desktop, a window closed recently and what the person can do",
+  "instance": {
+    "id": 32,
+    "method": "brain.say",
+    "params": {
+      "text": "what can I do here?",
+      "desk": {
+        "screen": { "w": 1440, "h": 900 },
+        "windows": [
+          {
+            "id": "endue.git",
+            "x": 720,
+            "y": 60,
+            "w": 680,
+            "h": 760,
+            "focused": true,
+            "desktop": "2",
+            "panes": [
+              { "view": "plugin:endue.git", "plugin": "endue.git", "title": "Git", "focused": true }
+            ]
+          },
+          {
+            "id": "mail",
+            "x": 200,
+            "y": 120,
+            "w": 560,
+            "h": 400,
+            "hidden": true,
+            "panes": [{ "view": "plugin:endue.mail", "plugin": "endue.mail", "title": "Mail" }]
+          },
+          {
+            "id": "endue.notes",
+            "x": 40,
+            "y": 60,
+            "w": 600,
+            "h": 400,
+            "desktop": "1",
+            "panes": [{ "view": "plugin:endue.notes", "plugin": "endue.notes", "title": "Notes" }]
+          }
+        ],
+        "desktops": [
+          { "id": "1", "name": "Writing" },
+          { "id": "2", "name": "Code", "current": true },
+          { "id": "5", "name": "3" }
+        ],
+        "closed": [
+          {
+            "id": "endue.terminal",
+            "plugin": "endue.terminal",
+            "title": "Terminal",
+            "x": 80,
+            "y": 480,
+            "w": 720,
+            "h": 360,
+            "desktop": "2",
+            "closedAt": "2026-11-08T09:12:30.000Z"
+          }
+        ],
+        "capabilities": {
+          "commands": 142,
+          "available": 118,
+          "keyed": 40,
+          "plugins": [
+            {
+              "id": "endue.git",
+              "title": "Git",
+              "commands": 12,
+              "available": 12,
+              "open": true,
+              "views": ["plugin:endue.git"]
+            },
+            { "id": "endue.terminal", "title": "Terminal", "commands": 6, "available": 0 }
+          ]
+        }
+      },
+      "scope": { "permission": "brain:converse" }
+    }
+  }
+}

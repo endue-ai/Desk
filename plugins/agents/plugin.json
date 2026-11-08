@@ -1,0 +1,47 @@
+{
+  "id": "endue.agents",
+  "name": "Agents",
+  "version": "0.1.0",
+  "kind": "ui",
+  "entry": "ui/index.html",
+  "autoload": true,
+  "description": "Every agent as a card (ADR 0112): your endue AI agents and the agent programs on this computer, in one Home, one Studio and New agent, with a chat to local agents.",
+  "permissions": [
+    {
+      "permission": "studio:manage"
+    },
+    {
+      "permission": "agents:manage"
+    },
+    {
+      "permission": "shell:open",
+      "schemes": ["https"]
+    },
+    {
+      "permission": "cmd:invoke",
+      "ids": ["desk.account.sign-in"]
+    }
+  ],
+  "surfaces": [
+    {
+      "id": "main",
+      "title": "Agents",
+      "placement": "center"
+    }
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "id": "endue.agents.open",
+        "title": "Agents: Home",
+        "keywords": ["agents", "studio", "endue", "claude", "codex", "cards"],
+        "runs": {
+          "command": "desk.plugins.open",
+          "args": {
+            "plugin": "endue.agents"
+          }
+        }
+      }
+    ]
+  }
+}

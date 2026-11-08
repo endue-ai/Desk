@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>test throws</title>
+    <script type="importmap">
+      { "imports": { "@endue-ai/plugin-sdk": "/_desk/plugin-sdk.js" } }
+    </script>
+  </head>
+  <body>
+    <!-- A test-only plugin that fails to start (ADR 0061): its script throws before it mounts. The SDK
+         loads first, sees the uncaught error and tells the desk desk:failed. -->
+    <p data-testid="state">starting</p>
+    <script type="module">
+      import "@endue-ai/plugin-sdk";
+
+      throw new Error("test.throws fails to start");
+    </script>
+  </body>
+</html>

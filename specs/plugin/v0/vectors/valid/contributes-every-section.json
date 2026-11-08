@@ -1,0 +1,99 @@
+{
+  "target": "PluginContributes",
+  "description": "every section, including an unbinding key and a profile",
+  "instance": {
+    "commands": [
+      {
+        "id": "example.notes.new",
+        "title": "New note"
+      }
+    ],
+    "keys": [
+      {
+        "key": "Mod+N",
+        "command": "example.notes.new",
+        "args": {
+          "folder": "~/notes"
+        }
+      },
+      {
+        "key": "Mod+W",
+        "command": ""
+      },
+      {
+        "key": "Mod+Shift+]",
+        "command": "desk.buffers.next"
+      }
+    ],
+    "display": [
+      {
+        "match": {
+          "plugin": "example.*",
+          "placement": "right"
+        },
+        "area": "right",
+        "size": {
+          "pixels": 360
+        },
+        "reuse": true,
+        "focus": false
+      },
+      {
+        "match": {},
+        "area": "center",
+        "size": {
+          "columns": 2,
+          "rows": 1
+        },
+        "focus": true
+      }
+    ],
+    "files": [
+      {
+        "pattern": "*.md",
+        "plugin": "example.notes"
+      },
+      {
+        "pattern": "**/Makefile",
+        "plugin": "example.notes"
+      }
+    ],
+    "themes": [
+      {
+        "id": "example.notes.paper",
+        "name": "Paper",
+        "scheme": "light",
+        "contrast": "normal",
+        "tokens": {
+          "background": "#fdfcf8",
+          "text": "#1d1b20"
+        }
+      }
+    ],
+    "settings": {
+      "example.notes.folder": {
+        "kind": "string",
+        "default": "~/notes",
+        "description": "Where new notes go."
+      },
+      "example.notes.wrap": {
+        "kind": "string",
+        "default": "word",
+        "choices": ["word", "none"]
+      }
+    },
+    "profiles": [
+      {
+        "id": "writing",
+        "name": "Writing",
+        "plugins": {
+          "enabled": ["example.notes"],
+          "disabled": ["endue.eris"]
+        },
+        "settings": {
+          "desk.notify.dnd": true
+        }
+      }
+    ]
+  }
+}

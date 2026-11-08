@@ -1,0 +1,15 @@
+{
+  "target": "BridgeRequest",
+  "description": "events.subscribe to two named events",
+  "instance": {
+    "id": 40,
+    "method": "events.subscribe",
+    "params": {
+      "names": ["cmd.changed", "plugin.changed"],
+      "scope": {
+        "permission": "events:subscribe",
+        "names": ["cmd.changed", "plugin.changed"]
+      }
+    }
+  }
+}

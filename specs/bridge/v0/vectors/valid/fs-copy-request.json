@@ -1,0 +1,20 @@
+{
+  "target": "BridgeRequest",
+  "description": "fs.copy reads the source under fs:read and writes the copy under fs:write",
+  "instance": {
+    "id": 35,
+    "method": "fs.copy",
+    "params": {
+      "from": "~/Pictures/Holiday",
+      "to": "~/Documents/Holiday",
+      "scope": {
+        "permission": "fs:write",
+        "paths": ["~/Documents/**"]
+      },
+      "fromScope": {
+        "permission": "fs:read",
+        "paths": ["~/Pictures/**"]
+      }
+    }
+  }
+}

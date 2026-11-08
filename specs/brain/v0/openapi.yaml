@@ -1,0 +1,877 @@
+openapi: 3.1.0
+info:
+  title: Desk brain API
+  version: 0.0.0
+  summary: Sessions, streamed turns, tool round trips, session leases and the agent directory.
+  description: >-
+    The contract between Desk and a brain. The local brain adapter, endue AI and examples/brain-echo
+    implement the same API. A session is written by exactly one Desk at a time: the holder of its lease.
+    Opening the session on another Desk takes the lease over, and the previous holder becomes read-only.
+  contact:
+    name: Team endue
+    email: team@endue.ai
+    url: https://endue.ai
+  license:
+    name: Apache-2.0
+    identifier: Apache-2.0
+servers:
+  - url: "http://localhost:{port}/v0"
+    description: A local brain or examples/brain-echo. Cloud brains are configured by base URL.
+    variables:
+      port:
+        default: "8787"
+security:
+  - bearerAuth: []
+tags:
+  - name: sessions
+    description: Create and read sessions.
+  - name: turns
+    description: Send messages and receive streamed answers, including tool calls.
+  - name: leases
+    description: Decide which Desk may write to a session.
+  - name: agents
+    description: The person's agents and their A2A cards.
+  - name: spaces
+    description: The spaces agents work in.
+  - name: a2a
+    description: Tasks agents hand to each other (A2A).
+paths:
+  /sessions:
+    post:
+      operationId: createSession
+      tags: [sessions]
+      summary: Create a session
+      description: Creates an empty session. The caller acquires a lease before sending turns.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSessionRequest"
+      responses:
+        "201":
+          description: The new session.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Session"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+  /sessions/{sessionId}:
+    parameters:
+      - $ref: "#/components/parameters/SessionId"
+    get:
+      operationId: getSession
+      tags: [sessions]
+      summary: Read a session
+      description: Returns the session with its current lease, if any.
+      responses:
+        "200":
+          description: The session.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Session"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /sessions/{sessionId}/turns:
+    parameters:
+      - $ref: "#/components/parameters/SessionId"
+    post:
+      operationId: createTurn
+      tags: [turns]
+      summary: Send a message
+      description: >-
+        Sends one user message and streams the answer as Server-Sent Events. Each event's data is one
+        TurnEvent as JSON. The stream ends after turn.completed or turn.error. A turn.completed with
+        stopReason tool_call waits for submitToolResult. tools offers the brain tools for this turn
+        and toolChoice says whether it must call one; a brain that does not know tools answers in
+        text.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TurnRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/TurnStream"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/LeaseConflict"
+  /sessions/{sessionId}/turns/{turnId}/tool-results:
+    parameters:
+      - $ref: "#/components/parameters/SessionId"
+      - $ref: "#/components/parameters/TurnId"
+    post:
+      operationId: submitToolResult
+      tags: [turns]
+      summary: Return a tool result
+      description: Sends the result of a tool.call event and streams the rest of the turn.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ToolResultRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/TurnStream"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/LeaseConflict"
+  /sessions/{sessionId}/lease:
+    parameters:
+      - $ref: "#/components/parameters/SessionId"
+    get:
+      operationId: getLease
+      tags: [leases]
+      summary: Read the current lease
+      description: Returns the lease that is in force, or 404 when the session has none or it expired.
+      responses:
+        "200":
+          description: The current lease.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Lease"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    post:
+      operationId: acquireLease
+      tags: [leases]
+      summary: Acquire the lease
+      description: >-
+        Acquires the session's lease for ttlSeconds. If another Desk holds it, the call fails with
+        lease_held unless takeover is true; a takeover ends the other lease at once.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LeaseAcquireRequest"
+      responses:
+        "200":
+          description: The new lease.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Lease"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/LeaseConflict"
+  /sessions/{sessionId}/lease/{leaseId}:
+    parameters:
+      - $ref: "#/components/parameters/SessionId"
+      - $ref: "#/components/parameters/LeaseId"
+    put:
+      operationId: renewLease
+      tags: [leases]
+      summary: Renew the lease
+      description: >-
+        Extends a lease the caller holds. Fails with lease_lost after a takeover and with lease_expired
+        once expiresAt has passed; the caller is then read-only until it acquires again.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LeaseRenewRequest"
+      responses:
+        "200":
+          description: The renewed lease.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Lease"
+        "409":
+          $ref: "#/components/responses/LeaseConflict"
+    delete:
+      operationId: releaseLease
+      tags: [leases]
+      summary: Release the lease
+      description: Gives the lease up so another Desk can acquire it without a takeover.
+      responses:
+        "204":
+          description: Released.
+        "409":
+          $ref: "#/components/responses/LeaseConflict"
+  /agents:
+    get:
+      operationId: listAgents
+      tags: [agents]
+      summary: List agents
+      description: >-
+        The agents the caller owns, newest first, one page at a time. spaceId keeps the agents that
+        are in that space; status keeps one status. A brain without agents answers an empty page.
+      parameters:
+        - $ref: "#/components/parameters/SpaceFilter"
+        - $ref: "#/components/parameters/AgentStatusFilter"
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: One page of agents.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgentList"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+  /agents/{agentId}/card:
+    parameters:
+      - $ref: "#/components/parameters/AgentId"
+    get:
+      operationId: getAgentCard
+      tags: [agents]
+      summary: Read an agent's A2A card
+      description: What the agent offers other agents, its skills and how many tasks it takes at once.
+      responses:
+        "200":
+          description: The card.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgentCard"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /spaces:
+    get:
+      operationId: listSpaces
+      tags: [spaces]
+      summary: List spaces
+      description: The spaces the caller can open. Switching spaces in Desk lists that space's agents.
+      responses:
+        "200":
+          description: Every space.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SpaceList"
+  /a2a/tasks:
+    get:
+      operationId: listA2ATasks
+      tags: [a2a]
+      summary: List A2A tasks
+      description: >-
+        Tasks one agent handed to another, newest first. targetAgentId keeps the tasks an agent is
+        doing; status keeps one status. An agent with a working task is shown as working.
+      parameters:
+        - $ref: "#/components/parameters/TargetAgentFilter"
+        - $ref: "#/components/parameters/TaskStatusFilter"
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: One page of tasks.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/A2ATaskList"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: An endue ID token for endue AI. Local brains may accept any token.
+  parameters:
+    SessionId:
+      name: sessionId
+      in: path
+      required: true
+      description: The session id.
+      schema:
+        type: string
+        minLength: 1
+    TurnId:
+      name: turnId
+      in: path
+      required: true
+      description: The turn id from turn.started.
+      schema:
+        type: string
+        minLength: 1
+    LeaseId:
+      name: leaseId
+      in: path
+      required: true
+      description: The lease id from acquireLease.
+      schema:
+        type: string
+        minLength: 1
+    AgentId:
+      name: agentId
+      in: path
+      required: true
+      description: The agent id (endue AI ids are ag_ followed by a ULID).
+      schema:
+        type: string
+        minLength: 1
+    SpaceFilter:
+      name: spaceId
+      in: query
+      required: false
+      description: Only agents in this space.
+      schema:
+        type: string
+        minLength: 1
+    AgentStatusFilter:
+      name: status
+      in: query
+      required: false
+      description: Only agents with this status.
+      schema:
+        $ref: "#/components/schemas/AgentStatus"
+    TargetAgentFilter:
+      name: targetAgentId
+      in: query
+      required: false
+      description: Only tasks this agent is doing.
+      schema:
+        type: string
+        minLength: 1
+    TaskStatusFilter:
+      name: status
+      in: query
+      required: false
+      description: Only tasks with this status.
+      schema:
+        $ref: "#/components/schemas/A2ATaskStatus"
+    Page:
+      name: page
+      in: query
+      required: false
+      description: The page to read, from 1.
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    Limit:
+      name: limit
+      in: query
+      required: false
+      description: Items per page.
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+  responses:
+    TurnStream:
+      description: A stream of TurnEvent objects, one per SSE data line.
+      content:
+        text/event-stream:
+          schema:
+            $ref: "#/components/schemas/TurnEvent"
+    BadRequest:
+      description: The request does not match the schema.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/BrainError"
+    NotFound:
+      description: No such session, turn, lease or agent.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/BrainError"
+    LeaseConflict:
+      description: The caller does not hold the lease (lease_held, lease_lost or lease_expired).
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/BrainError"
+  schemas:
+    Session:
+      description: A conversation and its state.
+      type: object
+      properties:
+        id: { type: string, minLength: 1 }
+        title: { type: string }
+        status: { $ref: "#/components/schemas/SessionStatus" }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        lease: { $ref: "#/components/schemas/Lease" }
+      required: [id, status, createdAt, updatedAt]
+      additionalProperties: false
+    SessionStatus:
+      description: Whether the session accepts turns.
+      type: string
+      enum: [active, closed]
+    CreateSessionRequest:
+      description: Body of createSession.
+      type: object
+      properties:
+        title: { type: string }
+        client: { $ref: "#/components/schemas/ClientInfo" }
+      required: [client]
+      additionalProperties: false
+    ClientInfo:
+      description: The Desk build that talks to the brain.
+      type: object
+      properties:
+        name: { type: string, minLength: 1 }
+        version: { type: string, minLength: 1 }
+      required: [name, version]
+      additionalProperties: false
+    TurnRequest:
+      description: Body of createTurn. Only the lease holder may send turns.
+      type: object
+      properties:
+        leaseId: { type: string, minLength: 1 }
+        message: { $ref: "#/components/schemas/UserMessage" }
+        tools:
+          description: Tools the brain may call in this turn, besides any it has of its own.
+          type: array
+          items: { $ref: "#/components/schemas/ToolDefinition" }
+          minItems: 1
+          maxItems: 32
+        toolChoice: { $ref: "#/components/schemas/ToolChoice" }
+        context: { $ref: "#/components/schemas/TurnContext" }
+      required: [leaseId, message]
+      additionalProperties: false
+    TurnContext:
+      description: >-
+        What the desk tells the brain before a turn, in the same shape for every brain (Desk ADR
+        0096): the facts it keeps that bear on the line, its newest episodes, and what is open on the
+        desk now. The brain reads it as background, not as the person's words.
+      type: object
+      properties:
+        facts:
+          type: array
+          maxItems: 32
+          items: { $ref: "#/components/schemas/ContextFact" }
+        episodes:
+          type: array
+          maxItems: 16
+          items: { $ref: "#/components/schemas/ContextEpisode" }
+        working: { $ref: "#/components/schemas/WorkingContext" }
+      additionalProperties: false
+    ContextFact:
+      description: A fact or preference the desk keeps about the person, in their words.
+      type: object
+      properties:
+        id: { type: string, minLength: 1 }
+        text: { type: string, minLength: 1, maxLength: 2000 }
+      required: [id, text]
+      additionalProperties: false
+    ContextEpisode:
+      description: An earlier turn the desk kept, newest first.
+      type: object
+      properties:
+        at: { type: string, format: date-time }
+        asked: { type: string, minLength: 1 }
+        answered: { type: string }
+      required: [at, asked, answered]
+      additionalProperties: false
+    WorkingContext:
+      description: What is open on the desk when the turn starts.
+      type: object
+      properties:
+        now: { description: The desk's time., type: string, format: date-time }
+        surfaces:
+          description: The surfaces on screen, by their titles.
+          type: array
+          maxItems: 32
+          items: { type: string, minLength: 1 }
+        commands:
+          description: The commands run last, newest first, by id.
+          type: array
+          maxItems: 16
+          items: { type: string, minLength: 1 }
+      required: [now]
+      additionalProperties: false
+    ToolDefinition:
+      description: >-
+        A tool offered for one turn. The brain calls it with tool.call and arguments that match
+        schema; Desk decides whether it runs.
+      type: object
+      properties:
+        name:
+          description: Unique among the turn's tools, for example propose_theme.
+          type: string
+          pattern: "^[A-Za-z0-9_-]{1,64}$"
+        description:
+          description: What the tool is for and when to call it.
+          type: string
+          minLength: 1
+        schema:
+          description: A JSON Schema 2020-12 of the arguments, whose type is object.
+          type: object
+      required: [name, description, schema]
+      additionalProperties: false
+    ToolChoice:
+      description: >-
+        Whether the brain must call a tool of the turn: auto (it may answer in text, the default),
+        required (one of the tools) or tool (the one named). It needs tools.
+      oneOf:
+        - $ref: "#/components/schemas/AutoToolChoice"
+        - $ref: "#/components/schemas/RequiredToolChoice"
+        - $ref: "#/components/schemas/NamedToolChoice"
+    AutoToolChoice:
+      description: The brain calls a tool or answers in text, as it sees fit.
+      type: object
+      properties:
+        type: { const: auto }
+      required: [type]
+      additionalProperties: false
+    RequiredToolChoice:
+      description: The brain answers by calling one of the turn's tools.
+      type: object
+      properties:
+        type: { const: required }
+      required: [type]
+      additionalProperties: false
+    NamedToolChoice:
+      description: The brain answers by calling the named tool, which must be one of the turn's tools.
+      type: object
+      properties:
+        type: { const: tool }
+        name:
+          type: string
+          pattern: "^[A-Za-z0-9_-]{1,64}$"
+      required: [type, name]
+      additionalProperties: false
+    UserMessage:
+      description: What the person said or typed.
+      type: object
+      properties:
+        role: { const: user }
+        content:
+          type: array
+          items: { $ref: "#/components/schemas/TextPart" }
+          minItems: 1
+      required: [role, content]
+      additionalProperties: false
+    TextPart:
+      description: A piece of text.
+      type: object
+      properties:
+        type: { const: text }
+        text: { type: string }
+      required: [type, text]
+      additionalProperties: false
+    TurnEvent:
+      description: One event in a turn stream.
+      oneOf:
+        - $ref: "#/components/schemas/TurnStartedEvent"
+        - $ref: "#/components/schemas/TextDeltaEvent"
+        - $ref: "#/components/schemas/ToolCallEvent"
+        - $ref: "#/components/schemas/TurnCompletedEvent"
+        - $ref: "#/components/schemas/TurnErrorEvent"
+    TurnStartedEvent:
+      description: The brain started answering.
+      type: object
+      properties:
+        type: { const: turn.started }
+        turnId: { type: string, minLength: 1 }
+      required: [type, turnId]
+      additionalProperties: false
+    TextDeltaEvent:
+      description: More answer text, to be appended.
+      type: object
+      properties:
+        type: { const: text.delta }
+        turnId: { type: string, minLength: 1 }
+        text: { type: string }
+      required: [type, turnId, text]
+      additionalProperties: false
+    ToolCallEvent:
+      description: The brain wants Desk to run a tool and send the result with submitToolResult.
+      type: object
+      properties:
+        type: { const: tool.call }
+        turnId: { type: string, minLength: 1 }
+        call: { $ref: "#/components/schemas/ToolCall" }
+      required: [type, turnId, call]
+      additionalProperties: false
+    ToolCall:
+      description: One tool invocation.
+      type: object
+      properties:
+        callId: { type: string, minLength: 1 }
+        name: { type: string, minLength: 1 }
+        arguments:
+          description: Tool arguments as a JSON object.
+          type: object
+        agentId:
+          description: >-
+            The agent that asks for the tool. Desk runs the call as the caller agent:<agentId>, with
+            that agent's own grants, capped by agents.<agentId>.allow in init.yaml. Without it Desk
+            runs only the echo tool.
+          type: string
+          pattern: "^[A-Za-z0-9][A-Za-z0-9_.-]{0,121}$"
+      required: [callId, name, arguments]
+      additionalProperties: false
+    TurnCompletedEvent:
+      description: The turn ended.
+      type: object
+      properties:
+        type: { const: turn.completed }
+        turnId: { type: string, minLength: 1 }
+        stopReason: { $ref: "#/components/schemas/StopReason" }
+      required: [type, turnId, stopReason]
+      additionalProperties: false
+    StopReason:
+      description: Why the turn ended. tool_call means it continues after submitToolResult.
+      type: string
+      enum: [end_turn, tool_call, max_tokens, cancelled]
+    TurnErrorEvent:
+      description: The turn failed.
+      type: object
+      properties:
+        type: { const: turn.error }
+        turnId: { type: string, minLength: 1 }
+        error: { $ref: "#/components/schemas/BrainError" }
+      required: [type, error]
+      additionalProperties: false
+    ToolResultRequest:
+      description: Body of submitToolResult.
+      type: object
+      properties:
+        leaseId: { type: string, minLength: 1 }
+        callId: { type: string, minLength: 1 }
+        output:
+          description: The tool's output as any JSON value.
+        isError: { type: boolean }
+      required: [leaseId, callId, output]
+      additionalProperties: false
+    Lease:
+      description: The right to write to a session until expiresAt.
+      type: object
+      properties:
+        leaseId: { type: string, minLength: 1 }
+        sessionId: { type: string, minLength: 1 }
+        holder: { $ref: "#/components/schemas/LeaseHolder" }
+        acquiredAt: { type: string, format: date-time }
+        expiresAt: { type: string, format: date-time }
+        ttlSeconds: { type: integer, minimum: 5, maximum: 3600 }
+      required: [leaseId, sessionId, holder, acquiredAt, expiresAt, ttlSeconds]
+      additionalProperties: false
+    LeaseHolder:
+      description: The Desk that holds a lease.
+      type: object
+      properties:
+        deskId: { type: string, minLength: 1 }
+        name: { type: string }
+      required: [deskId]
+      additionalProperties: false
+    LeaseAcquireRequest:
+      description: Body of acquireLease.
+      type: object
+      properties:
+        holder: { $ref: "#/components/schemas/LeaseHolder" }
+        ttlSeconds: { type: integer, minimum: 5, maximum: 3600 }
+        takeover: { type: boolean }
+      required: [holder, ttlSeconds]
+      additionalProperties: false
+    LeaseRenewRequest:
+      description: Body of renewLease. Without ttlSeconds the lease keeps its ttl.
+      type: object
+      properties:
+        ttlSeconds: { type: integer, minimum: 5, maximum: 3600 }
+      additionalProperties: false
+    BrainError:
+      description: Why a call failed. lease_held carries the current holder.
+      type: object
+      properties:
+        code: { $ref: "#/components/schemas/BrainErrorCode" }
+        message: { type: string }
+        holder: { $ref: "#/components/schemas/LeaseHolder" }
+      required: [code, message]
+      additionalProperties: false
+    AgentStatus:
+      description: Whether an agent takes work. Desk shows inactive agents waiting at the edge.
+      type: string
+      enum: [active, inactive, archived]
+    Agent:
+      description: >-
+        An agent the caller owns: endue AI's AgentGetResponse with camelCase names (owner_user_id is
+        ownerUserId, personal_color is personalColor, created_at is createdAt).
+      type: object
+      properties:
+        id: { type: string, minLength: 1 }
+        name: { type: string, minLength: 1 }
+        slug:
+          description: A handle made from the name when the agent was created; it never changes.
+          type: string
+          minLength: 1
+        status: { $ref: "#/components/schemas/AgentStatus" }
+        ownerUserId: { type: string, minLength: 1 }
+        region:
+          description: ISO 3166-2 region the agent runs in.
+          type: string
+        personalColor:
+          description: The agent's own colour as hex, for telling agents apart in a conversation.
+          type: string
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+      required: [id, name, slug, status, createdAt, updatedAt]
+      additionalProperties: false
+    Pagination:
+      description: Where a page sits in the whole list.
+      type: object
+      properties:
+        total: { type: integer, minimum: 0 }
+        page: { type: integer, minimum: 1 }
+        limit: { type: integer, minimum: 1 }
+        hasNextPage: { type: boolean }
+      required: [total, page, limit, hasNextPage]
+      additionalProperties: false
+    AgentList:
+      description: One page of listAgents.
+      type: object
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/Agent" }
+        pagination: { $ref: "#/components/schemas/Pagination" }
+      required: [items, pagination]
+      additionalProperties: false
+    AgentCard:
+      description: >-
+        An agent's A2A card: endue AI's A2ACardSummary plus the card's enabled flag. Other agents read
+        it to decide what to hand over.
+      type: object
+      properties:
+        agentId: { type: string, minLength: 1 }
+        name: { type: string, minLength: 1 }
+        description: { type: string }
+        enabled:
+          description: Whether the agent accepts A2A tasks.
+          type: boolean
+        skills:
+          type: array
+          items: { $ref: "#/components/schemas/AgentSkill" }
+        capabilities: { $ref: "#/components/schemas/AgentCapabilities" }
+      required: [agentId, name, enabled, skills, capabilities]
+      additionalProperties: false
+    AgentSkill:
+      description: One thing an agent can do for other agents.
+      type: object
+      properties:
+        id: { type: string, minLength: 1 }
+        name: { type: string, minLength: 1 }
+        description: { type: string }
+        inputModes:
+          description: What the skill takes, such as text or file.
+          type: array
+          items: { type: string, minLength: 1 }
+      required: [id, name, description, inputModes]
+      additionalProperties: false
+    AgentCapabilities:
+      description: How an agent takes A2A tasks.
+      type: object
+      properties:
+        streaming: { type: boolean }
+        maxConcurrentTasks: { type: integer, minimum: 1 }
+      required: [streaming, maxConcurrentTasks]
+      additionalProperties: false
+    A2ATaskStatus:
+      description: >-
+        submitted, then working, then completed; working may pause at input_required until the
+        source agent answers; any open task may end as failed or canceled.
+      type: string
+      enum: [submitted, working, input_required, completed, failed, canceled]
+    A2ATask:
+      description: >-
+        A task one agent handed to another: endue AI's A2ATask with camelCase names, plus progress.
+      type: object
+      properties:
+        id:
+          description: endue AI ids are a2a_ followed by a ULID.
+          type: string
+          minLength: 1
+        contextId:
+          description: Groups the tasks of one hand-over conversation.
+          type: string
+        sourceAgentId: { type: string, minLength: 1 }
+        targetAgentId: { type: string, minLength: 1 }
+        status: { $ref: "#/components/schemas/A2ATaskStatus" }
+        goal:
+          description: The request that started the task.
+          type: string
+        result:
+          description: The task's artifacts once completed.
+          type: object
+        error:
+          description: Why the task failed or was canceled.
+          type: string
+        sessionId:
+          description: The target agent's session for this task.
+          type: string
+        depth:
+          description: How many hand-overs led here (1 for a direct request).
+          type: integer
+          minimum: 1
+        maxDepth: { type: integer, minimum: 1 }
+        messageCount: { type: integer, minimum: 0 }
+        progress:
+          description: How far the task is, from 0 to 1, when the brain knows (a Desk addition).
+          type: number
+          minimum: 0
+          maximum: 1
+        metadata:
+          description: Anything else the brain keeps with the task.
+          type: object
+        insertedAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+      required:
+        [id, sourceAgentId, targetAgentId, status, depth, maxDepth, messageCount, insertedAt, updatedAt]
+      additionalProperties: false
+    A2ATaskList:
+      description: One page of listA2ATasks.
+      type: object
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/A2ATask" }
+        pagination: { $ref: "#/components/schemas/Pagination" }
+      required: [items, pagination]
+      additionalProperties: false
+    SpaceType:
+      description: A chat space or a workspace.
+      type: string
+      enum: [chat, workspace]
+    Space:
+      description: A space the caller can open, endue AI's UserSpaceGetResponse with camelCase names.
+      type: object
+      properties:
+        id: { type: string, minLength: 1 }
+        key:
+          description: Short unique handle.
+          type: string
+          minLength: 1
+        name: { type: string, minLength: 1 }
+        description: { type: string }
+        type: { $ref: "#/components/schemas/SpaceType" }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+      required: [id, key, name, type, createdAt, updatedAt]
+      additionalProperties: false
+    SpaceList:
+      description: The answer of listSpaces.
+      type: object
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/Space" }
+      required: [items]
+      additionalProperties: false
+    BrainErrorCode:
+      description: Machine-readable failure reason.
+      type: string
+      enum:
+        - invalid_request
+        - unauthorized
+        - not_found
+        - lease_held
+        - lease_lost
+        - lease_expired
+        - rate_limited
+        - internal

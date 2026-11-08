@@ -1,0 +1,15 @@
+{
+  "target": "BridgeRequest",
+  "description": "typing nothing",
+  "instance": {
+    "id": 4,
+    "method": "computer.input.type",
+    "params": {
+      "text": "",
+      "scope": {
+        "permission": "computer:control",
+        "apps": ["com.apple.Safari"]
+      }
+    }
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "target": "StudioAgent",
+  "description": "an agent's status is one endue AI knows",
+  "instance": {
+    "id": "ag_01JC0Q4MR00000000000000001",
+    "slug": "miso",
+    "name": "Miso",
+    "status": "paused",
+    "createdAt": "2026-11-01T09:00:00Z",
+    "updatedAt": "2026-11-02T09:00:00Z"
+  }
+}

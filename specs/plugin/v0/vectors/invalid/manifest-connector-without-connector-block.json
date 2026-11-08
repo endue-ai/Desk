@@ -1,0 +1,10 @@
+{
+  "target": "PluginManifest",
+  "description": "a connector plugin declares its connector block",
+  "instance": {
+    "id": "example.folder-tasks",
+    "version": "0.1.0",
+    "kind": "connector",
+    "entry": "connector.wasm"
+  }
+}

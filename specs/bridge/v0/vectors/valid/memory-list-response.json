@@ -1,0 +1,36 @@
+{
+  "target": "BridgeResponse",
+  "description": "memory.list answers a page and where the next one starts",
+  "instance": {
+    "id": 40,
+    "ok": true,
+    "result": {
+      "entries": [
+        {
+          "kind": "fact",
+          "id": "fact_01jc8x7p2q8r",
+          "text": "Prefers pnpm over npm in every repository.",
+          "by": "eris",
+          "at": "2026-11-04T18:02:11Z",
+          "updated": "2026-11-05T08:00:00Z",
+          "tags": ["tools", "work"]
+        },
+        {
+          "kind": "episode",
+          "id": "ep_01jc8xa1b2c3",
+          "at": "2026-11-05T09:30:05Z",
+          "by": "eris",
+          "asked": "check my latest mail",
+          "answered": "You have 2 new messages. The newest is from Mina: Lunch today?",
+          "steps": [
+            {
+              "command": "endue.mail.latest",
+              "ok": true
+            }
+          ]
+        }
+      ],
+      "next": "ep_01jc8xa1b2c3"
+    }
+  }
+}

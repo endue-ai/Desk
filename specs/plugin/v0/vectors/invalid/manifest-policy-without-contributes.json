@@ -1,0 +1,9 @@
+{
+  "target": "PluginManifest",
+  "description": "a policy plugin must contribute something",
+  "instance": {
+    "id": "desk.keys",
+    "version": "0.1.0",
+    "kind": "policy"
+  }
+}

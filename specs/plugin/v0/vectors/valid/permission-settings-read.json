@@ -1,0 +1,8 @@
+{
+  "target": "Permission",
+  "description": "read Eris's settings and the desk's theme",
+  "instance": {
+    "permission": "settings:read",
+    "keys": ["endue.eris/*", "desk/theme"]
+  }
+}

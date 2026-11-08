@@ -1,0 +1,16 @@
+{
+  "target": "BridgeRequest",
+  "description": "fs.rename moves a file into another folder; one fs:write scope covers both ends",
+  "instance": {
+    "id": 33,
+    "method": "fs.rename",
+    "params": {
+      "from": "~/Downloads/report.pdf",
+      "to": "~/Documents/report.pdf",
+      "scope": {
+        "permission": "fs:write",
+        "paths": ["~/Downloads/**", "~/Documents/**"]
+      }
+    }
+  }
+}

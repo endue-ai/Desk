@@ -1,0 +1,14 @@
+{
+  "target": "MemoryHit",
+  "description": "a search hit with the words around the match",
+  "instance": {
+    "entry": {
+      "kind": "fact",
+      "id": "fact_01jc8x2k9m4n",
+      "text": "Reviews pull requests in the morning, before standup.",
+      "by": "person",
+      "at": "2026-11-05T09:12:00+09:00"
+    },
+    "snippet": "Reviews pull requests in the [morning]"
+  }
+}

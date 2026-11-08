@@ -1,0 +1,11 @@
+{
+  "target": "ConversationListEnvelope",
+  "description": "a success envelope says success",
+  "instance": {
+    "success": false,
+    "data": {
+      "items": [],
+      "total": 0
+    }
+  }
+}

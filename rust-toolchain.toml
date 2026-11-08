@@ -1,0 +1,7 @@
+[toolchain]
+channel = "1.99.0"
+components = ["rustfmt", "clippy"]
+# Wasm plugins (logic plugins and connectors) build for wasm32-wasip2; the plugin templates' test
+# builds them in `just test-unit` (crates/desk-cli/tests/templates.rs).
+targets = ["wasm32-wasip2"]
+profile = "minimal"

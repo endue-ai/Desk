@@ -1,0 +1,11 @@
+{
+  "target": "BridgeRequest",
+  "description": "ui.surface.close needs ui:surface",
+  "instance": {
+    "id": 13,
+    "method": "ui.surface.close",
+    "params": {
+      "handle": "s-1"
+    }
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "target": "UpdateStatus",
+  "description": "a byte count is never negative",
+  "instance": {
+    "state": "downloading",
+    "current": {
+      "version": "0.1.0",
+      "commit": "fa7a4af"
+    },
+    "channel": "stable",
+    "release": {
+      "version": "0.2.0"
+    },
+    "received": -1
+  }
+}

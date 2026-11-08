@@ -1,0 +1,12 @@
+{
+  "target": "BridgeResponse",
+  "description": "a studio call while the desk is signed out of endue ID",
+  "instance": {
+    "id": 7,
+    "ok": false,
+    "error": {
+      "code": "signed_out",
+      "message": "Sign in to endue to manage your agents."
+    }
+  }
+}

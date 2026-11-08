@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Questions and ideas
+    url: https://github.com/endue-ai/Desk/discussions
+    about: Ask questions, share ideas and show plugins in GitHub Discussions.
+  - name: Security report
+    url: https://github.com/endue-ai/Desk/security/policy
+    about: Report vulnerabilities privately as described in SECURITY.md, never in a public issue.

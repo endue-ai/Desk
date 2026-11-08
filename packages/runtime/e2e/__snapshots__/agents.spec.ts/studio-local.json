@@ -1,0 +1,395 @@
+{
+  "tag": "section",
+  "class": "page",
+  "children": [
+    {
+      "tag": "div",
+      "class": "studio",
+      "children": [
+        {
+          "tag": "div",
+          "class": "studio-column",
+          "children": [
+            {
+              "tag": "desk-card",
+              "class": "studio-card",
+              "data-source": "local",
+              "children": [
+                {
+                  "tag": "button",
+                  "type": "button",
+                  "class": "desk-row studio-head",
+                  "data-facet": "identity",
+                  "aria-pressed": "false",
+                  "aria-label": "Claude Code: identity",
+                  "children": [
+                    {
+                      "tag": "span",
+                      "class": "avatar avatar-lg",
+                      "data-hue": "7",
+                      "text": "C"
+                    },
+                    {
+                      "tag": "span",
+                      "class": "who",
+                      "children": [
+                        {
+                          "tag": "small",
+                          "class": "eyebrow",
+                          "text": "Local agent"
+                        },
+                        {
+                          "tag": "strong",
+                          "class": "name",
+                          "text": "Claude Code"
+                        },
+                        {
+                          "tag": "small",
+                          "class": "handle",
+                          "text": "/opt/homebrew/bin/claude"
+                        }
+                      ]
+                    },
+                    {
+                      "tag": "span",
+                      "class": "desk-badge source",
+                      "data-source": "local",
+                      "text": "Local"
+                    }
+                  ]
+                },
+                {
+                  "tag": "p",
+                  "class": "description",
+                  "text": "Anthropic · on this computer"
+                },
+                {
+                  "tag": "p",
+                  "class": "meta",
+                  "children": [
+                    {
+                      "tag": "span",
+                      "class": "presence",
+                      "data-presence": "online",
+                      "text": "Online · 2.1.3",
+                      "children": [
+                        {
+                          "tag": "span",
+                          "class": "dot"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "tag": "div",
+                  "class": "facets",
+                  "children": [
+                    {
+                      "tag": "p",
+                      "class": "facet-caption",
+                      "text": "Program"
+                    },
+                    {
+                      "tag": "button",
+                      "type": "button",
+                      "class": "desk-row facet",
+                      "data-facet": "program",
+                      "aria-pressed": "false",
+                      "children": [
+                        {
+                          "tag": "strong",
+                          "class": "facet-label",
+                          "text": "Program"
+                        },
+                        {
+                          "tag": "small",
+                          "class": "facet-hint",
+                          "text": "Found on this computer"
+                        }
+                      ]
+                    },
+                    {
+                      "tag": "button",
+                      "type": "button",
+                      "class": "desk-row facet",
+                      "data-facet": "version",
+                      "aria-pressed": "false",
+                      "children": [
+                        {
+                          "tag": "strong",
+                          "class": "facet-label",
+                          "text": "Version"
+                        },
+                        {
+                          "tag": "small",
+                          "class": "facet-hint",
+                          "text": "2.1.3"
+                        }
+                      ]
+                    },
+                    {
+                      "tag": "p",
+                      "class": "facet-caption",
+                      "text": "Work"
+                    },
+                    {
+                      "tag": "button",
+                      "type": "button",
+                      "class": "desk-row facet",
+                      "data-facet": "model",
+                      "aria-pressed": "false",
+                      "children": [
+                        {
+                          "tag": "strong",
+                          "class": "facet-label",
+                          "text": "Model"
+                        },
+                        {
+                          "tag": "small",
+                          "class": "facet-hint",
+                          "text": "The program's default"
+                        }
+                      ]
+                    },
+                    {
+                      "tag": "button",
+                      "type": "button",
+                      "class": "desk-row facet",
+                      "data-facet": "folder",
+                      "aria-pressed": "false",
+                      "children": [
+                        {
+                          "tag": "strong",
+                          "class": "facet-label",
+                          "text": "Working folder"
+                        },
+                        {
+                          "tag": "small",
+                          "class": "facet-hint",
+                          "text": "~"
+                        }
+                      ]
+                    },
+                    {
+                      "tag": "p",
+                      "class": "facet-caption",
+                      "text": "History"
+                    },
+                    {
+                      "tag": "button",
+                      "type": "button",
+                      "class": "desk-row facet",
+                      "data-facet": "sessions",
+                      "aria-pressed": "false",
+                      "children": [
+                        {
+                          "tag": "strong",
+                          "class": "facet-label",
+                          "text": "Sessions"
+                        },
+                        {
+                          "tag": "small",
+                          "class": "facet-hint",
+                          "text": "2 sessions · 1 archived"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "tag": "button",
+                  "type": "button",
+                  "class": "desk-row studio-foot",
+                  "data-facet": "chat",
+                  "aria-pressed": "true",
+                  "children": [
+                    {
+                      "tag": "strong",
+                      "class": "facet-label",
+                      "text": "Chat"
+                    },
+                    {
+                      "tag": "small",
+                      "class": "facet-hint",
+                      "text": "Send it a message"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "aside",
+          "class": "inspector",
+          "hidden": ""
+        },
+        {
+          "tag": "section",
+          "class": "chat",
+          "children": [
+            {
+              "tag": "header",
+              "class": "chat-head",
+              "children": [
+                {
+                  "tag": "h2",
+                  "text": "How does the bridge check calls?"
+                },
+                {
+                  "tag": "span",
+                  "class": "desk-muted",
+                  "text": "Continues s-new"
+                },
+                {
+                  "tag": "span",
+                  "class": "desk-bar-spacer"
+                },
+                {
+                  "tag": "button",
+                  "class": "desk-btn desk-btn-quiet",
+                  "type": "button",
+                  "text": "New session"
+                }
+              ]
+            },
+            {
+              "tag": "p",
+              "class": "desk-muted",
+              "hidden": ""
+            },
+            {
+              "tag": "ol",
+              "class": "chat-log",
+              "role": "log",
+              "aria-label": "Conversation",
+              "children": [
+                {
+                  "tag": "li",
+                  "class": "turn user",
+                  "data-state": "",
+                  "children": [
+                    {
+                      "tag": "span",
+                      "class": "sr-only",
+                      "text": "You:"
+                    },
+                    {
+                      "tag": "p",
+                      "class": "plain",
+                      "text": "How does the bridge check calls?"
+                    }
+                  ]
+                },
+                {
+                  "tag": "li",
+                  "class": "turn assistant",
+                  "data-state": "done",
+                  "children": [
+                    {
+                      "tag": "span",
+                      "class": "sr-only",
+                      "text": "Agent:"
+                    },
+                    {
+                      "tag": "desk-markdown"
+                    },
+                    {
+                      "tag": "ul",
+                      "class": "tools",
+                      "aria-label": "What the agent used",
+                      "children": [
+                        {
+                          "tag": "li",
+                          "text": "specs/bridge/v0/agents.schema.json",
+                          "children": [
+                            {
+                              "tag": "span",
+                              "class": "tool-name",
+                              "text": "Read"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "tag": "p",
+              "class": "desk-error",
+              "role": "alert",
+              "hidden": ""
+            },
+            {
+              "tag": "div",
+              "class": "composer",
+              "role": "group",
+              "aria-label": "New message",
+              "children": [
+                {
+                  "tag": "textarea",
+                  "class": "desk-field",
+                  "aria-label": "Message",
+                  "value": ""
+                },
+                {
+                  "tag": "div",
+                  "class": "composer-row",
+                  "children": [
+                    {
+                      "tag": "div",
+                      "class": "desk-tabs",
+                      "role": "radiogroup",
+                      "aria-label": "What it may do",
+                      "children": [
+                        {
+                          "tag": "button",
+                          "class": "desk-tab",
+                          "type": "button",
+                          "role": "radio",
+                          "data-access": "read-only",
+                          "aria-checked": "true",
+                          "text": "Read only"
+                        },
+                        {
+                          "tag": "button",
+                          "class": "desk-tab",
+                          "type": "button",
+                          "role": "radio",
+                          "data-access": "agent",
+                          "aria-checked": "false",
+                          "text": "May change files"
+                        }
+                      ]
+                    },
+                    {
+                      "tag": "span",
+                      "class": "desk-muted hint",
+                      "text": "Read-only: it reads and answers, and changes nothing."
+                    },
+                    {
+                      "tag": "button",
+                      "class": "desk-btn desk-btn-danger",
+                      "type": "button",
+                      "hidden": "",
+                      "text": "Stop"
+                    },
+                    {
+                      "tag": "button",
+                      "class": "desk-btn desk-btn-primary",
+                      "type": "button",
+                      "text": "Send"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

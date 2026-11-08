@@ -1,0 +1,9 @@
+{
+  "target": "BridgeRequest",
+  "description": "update.status carries its update:manage scope",
+  "instance": {
+    "id": 40,
+    "method": "update.status",
+    "params": {}
+  }
+}

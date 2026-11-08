@@ -1,0 +1,422 @@
+{
+ "tag": "div",
+ "class": "scrim desktops-overview",
+ "box": [
+  0,
+  0,
+  1440,
+  900
+ ],
+ "style": {
+  "background": "rgba(0, 0, 0, 0.6)"
+ },
+ "children": [
+  {
+   "tag": "section",
+   "class": "dialog desktops-overview-panel",
+   "role": "dialog",
+   "aria-label": "Desktops",
+   "style": {
+    "background": "rgb(43, 39, 49)",
+    "border": "solid rgb(51, 49, 54)"
+   },
+   "children": [
+    {
+     "tag": "h2",
+     "class": "dialog-title",
+     "style": {
+      "color": "rgb(242, 240, 245)"
+     },
+     "text": "Desktops"
+    },
+    {
+     "tag": "p",
+     "class": "dialog-hint",
+     "style": {
+      "color": "rgb(176, 173, 183)"
+     },
+     "text": "Choose a desktop to go there. Drag a window onto another desktop to move it."
+    },
+    {
+     "tag": "div",
+     "class": "overview-grid",
+     "children": [
+      {
+       "tag": "button",
+       "class": "btn btn-outline overview-card",
+       "aria-label": "1 · Mail · Empty",
+       "style": {
+        "border": "solid rgb(131, 121, 145)"
+       },
+       "children": [
+        {
+         "tag": "span",
+         "class": "desk-map",
+         "style": {
+          "background": "rgb(36, 33, 39)",
+          "color": "rgb(242, 240, 245)",
+          "border": "solid rgb(51, 49, 54)"
+         }
+        },
+        {
+         "tag": "span",
+         "class": "overview-name",
+         "children": [
+          {
+           "tag": "span",
+           "class": "overview-meta",
+           "style": {
+            "color": "rgb(176, 173, 183)"
+           },
+           "text": "1"
+          },
+          {
+           "tag": "strong",
+           "style": {
+            "color": "rgb(242, 240, 245)"
+           },
+           "text": "Mail"
+          },
+          {
+           "tag": "span",
+           "class": "overview-meta",
+           "style": {
+            "color": "rgb(176, 173, 183)"
+           },
+           "text": "Empty"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "tag": "button",
+       "class": "btn btn-outline overview-card is-current",
+       "aria-label": "2 · Plan · 2 windows",
+       "style": {
+        "border": "solid rgb(182, 163, 245)"
+       },
+       "children": [
+        {
+         "tag": "span",
+         "class": "desk-map",
+         "style": {
+          "background": "rgb(36, 33, 39)",
+          "border": "solid rgb(51, 49, 54)"
+         },
+         "children": [
+          {
+           "tag": "span",
+           "class": "desk-map-window",
+           "style": {
+            "background": "rgb(30, 29, 33)",
+            "border": "solid rgb(51, 49, 54)"
+           },
+           "children": [
+            {
+             "tag": "svg",
+             "icon": "calendar"
+            },
+            {
+             "tag": "span",
+             "style": {
+              "color": "rgb(176, 173, 183)"
+             },
+             "text": "Calendar"
+            }
+           ]
+          },
+          {
+           "tag": "span",
+           "class": "desk-map-window",
+           "style": {
+            "background": "rgb(30, 29, 33)",
+            "border": "solid rgb(51, 49, 54)"
+           },
+           "children": [
+            {
+             "tag": "svg",
+             "icon": "list"
+            },
+            {
+             "tag": "span",
+             "style": {
+              "color": "rgb(176, 173, 183)"
+             },
+             "text": "Tomorrow"
+            }
+           ]
+          }
+         ]
+        },
+        {
+         "tag": "span",
+         "class": "overview-name",
+         "children": [
+          {
+           "tag": "span",
+           "class": "overview-meta",
+           "style": {
+            "color": "rgb(176, 173, 183)"
+           },
+           "text": "2"
+          },
+          {
+           "tag": "strong",
+           "style": {
+            "color": "rgb(242, 240, 245)"
+           },
+           "text": "Plan"
+          },
+          {
+           "tag": "span",
+           "class": "overview-meta",
+           "style": {
+            "color": "rgb(176, 173, 183)"
+           },
+           "text": "2 windows"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "tag": "button",
+       "class": "btn btn-outline overview-card",
+       "aria-label": "3 · 3 · 1 windows",
+       "style": {
+        "border": "solid rgb(131, 121, 145)"
+       },
+       "children": [
+        {
+         "tag": "span",
+         "class": "desk-map",
+         "style": {
+          "background": "rgb(36, 33, 39)",
+          "border": "solid rgb(51, 49, 54)"
+         },
+         "children": [
+          {
+           "tag": "span",
+           "class": "desk-map-window",
+           "style": {
+            "background": "rgb(30, 29, 33)",
+            "border": "solid rgb(51, 49, 54)"
+           },
+           "children": [
+            {
+             "tag": "svg",
+             "icon": "note"
+            },
+            {
+             "tag": "span",
+             "style": {
+              "color": "rgb(176, 173, 183)"
+             },
+             "text": "Notes"
+            }
+           ]
+          }
+         ]
+        },
+        {
+         "tag": "span",
+         "class": "overview-name",
+         "children": [
+          {
+           "tag": "span",
+           "class": "overview-meta",
+           "style": {
+            "color": "rgb(176, 173, 183)"
+           },
+           "text": "3"
+          },
+          {
+           "tag": "strong",
+           "style": {
+            "color": "rgb(242, 240, 245)"
+           },
+           "text": "3"
+          },
+          {
+           "tag": "span",
+           "class": "overview-meta",
+           "style": {
+            "color": "rgb(176, 173, 183)"
+           },
+           "text": "1 windows"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "tag": "button",
+       "class": "btn btn-outline overview-card",
+       "aria-label": "4 · 4 · Empty",
+       "style": {
+        "border": "solid rgb(131, 121, 145)"
+       },
+       "children": [
+        {
+         "tag": "span",
+         "class": "desk-map",
+         "style": {
+          "background": "rgb(36, 33, 39)",
+          "color": "rgb(242, 240, 245)",
+          "border": "solid rgb(51, 49, 54)"
+         }
+        },
+        {
+         "tag": "span",
+         "class": "overview-name",
+         "children": [
+          {
+           "tag": "span",
+           "class": "overview-meta",
+           "style": {
+            "color": "rgb(176, 173, 183)"
+           },
+           "text": "4"
+          },
+          {
+           "tag": "strong",
+           "style": {
+            "color": "rgb(242, 240, 245)"
+           },
+           "text": "4"
+          },
+          {
+           "tag": "span",
+           "class": "overview-meta",
+           "style": {
+            "color": "rgb(176, 173, 183)"
+           },
+           "text": "Empty"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "tag": "button",
+       "class": "btn btn-outline overview-card",
+       "aria-label": "5 · Research · Empty",
+       "style": {
+        "border": "solid rgb(131, 121, 145)"
+       },
+       "children": [
+        {
+         "tag": "span",
+         "class": "desk-map",
+         "style": {
+          "background": "rgb(36, 33, 39)",
+          "color": "rgb(242, 240, 245)",
+          "border": "solid rgb(51, 49, 54)"
+         }
+        },
+        {
+         "tag": "span",
+         "class": "overview-name",
+         "children": [
+          {
+           "tag": "span",
+           "class": "overview-meta",
+           "style": {
+            "color": "rgb(176, 173, 183)"
+           },
+           "text": "5"
+          },
+          {
+           "tag": "strong",
+           "style": {
+            "color": "rgb(242, 240, 245)"
+           },
+           "text": "Research"
+          },
+          {
+           "tag": "span",
+           "class": "overview-meta",
+           "style": {
+            "color": "rgb(176, 173, 183)"
+           },
+           "text": "Empty"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "tag": "button",
+       "class": "btn btn-outline overview-card",
+       "aria-label": "6 · Write · Empty",
+       "style": {
+        "border": "solid rgb(131, 121, 145)"
+       },
+       "children": [
+        {
+         "tag": "span",
+         "class": "desk-map",
+         "style": {
+          "background": "rgb(36, 33, 39)",
+          "color": "rgb(242, 240, 245)",
+          "border": "solid rgb(51, 49, 54)"
+         }
+        },
+        {
+         "tag": "span",
+         "class": "overview-name",
+         "children": [
+          {
+           "tag": "span",
+           "class": "overview-meta",
+           "style": {
+            "color": "rgb(176, 173, 183)"
+           },
+           "text": "6"
+          },
+          {
+           "tag": "strong",
+           "style": {
+            "color": "rgb(242, 240, 245)"
+           },
+           "text": "Write"
+          },
+          {
+           "tag": "span",
+           "class": "overview-meta",
+           "style": {
+            "color": "rgb(176, 173, 183)"
+           },
+           "text": "Empty"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "tag": "button",
+       "class": "add-button overview-add",
+       "aria-label": "New desktop",
+       "box": [
+        401,
+        492,
+        204,
+        162
+       ],
+       "style": {
+        "border": "dashed rgb(131, 121, 145)"
+       },
+       "children": [
+        {
+         "tag": "svg",
+         "icon": "plus"
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

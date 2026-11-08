@@ -1,0 +1,7 @@
+{
+  "target": "Permission",
+  "description": "view:manage has no scope",
+  "instance": {
+    "permission": "view:manage"
+  }
+}

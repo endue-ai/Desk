@@ -1,0 +1,6 @@
+phase,ms,category
+core init,42.5,core
+plugin registry,118.0,core
+plugin list,9.3,runtime
+session restore,210.4,runtime
+first interactive frame,33.1,runtime

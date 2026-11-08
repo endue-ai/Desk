@@ -1,0 +1,274 @@
+/* The rows of the lists: a grid per list so the columns line up, the cursor, marks, state dots,
+   resource use as sparklines with their values, and size bars. Tokens only; the plugin's own
+   colours are declared in style.css. */
+
+/* Rows: a grid per list so the columns line up; the cursor is the hover surface, a mark a bar. */
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--desk-space-3);
+  min-height: 26px;
+  padding: 0 var(--desk-space-3);
+  white-space: nowrap;
+  cursor: default;
+}
+
+.row > * {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.row[aria-level="2"] {
+  padding-left: var(--desk-space-8);
+}
+
+.row.is-cursor {
+  background: var(--desk-hover);
+}
+
+.row:focus {
+  outline: none;
+}
+
+.row:focus-visible {
+  box-shadow: inset 0 0 0 1px var(--desk-ring);
+}
+
+.row.is-marked {
+  background: var(--desk-primary-soft);
+  box-shadow: inset 3px 0 0 var(--docker-link);
+}
+
+.row.is-marked.is-cursor {
+  background: color-mix(in srgb, var(--desk-primary-soft) 60%, var(--desk-hover));
+}
+
+/* Where a drag would land (ctx.dnd marks it with the effect it answers): a container row, the Files
+   tab's folder, or a folder in it. */
+.row[data-desk-drop],
+.files[data-desk-drop] {
+  background: var(--desk-primary-soft);
+  box-shadow: inset 0 0 0 var(--desk-border-width) var(--desk-primary);
+}
+
+.row.head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  min-height: 28px;
+  border-bottom: 1px solid var(--desk-border);
+  background: var(--desk-card);
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-2xs);
+  text-transform: uppercase;
+}
+
+.row.head .sort {
+  justify-content: flex-start;
+  min-height: 22px;
+  padding: 0 var(--desk-space-1);
+  font-size: var(--desk-text-2xs);
+  text-transform: uppercase;
+}
+
+.row.head .is-sorted {
+  color: var(--desk-text);
+}
+
+.row.container,
+.row.head.containers {
+  display: grid;
+  grid-template-columns: 10px minmax(10ch, 1.3fr) minmax(8ch, 1fr) minmax(8ch, 0.9fr) 11ch 13ch 12ch minmax(9ch, 0.9fr);
+}
+
+.row.image,
+.row.head.images {
+  display: grid;
+  grid-template-columns: minmax(14ch, 2fr) 13ch minmax(12ch, 1fr) 17ch 12ch;
+}
+
+@container list (max-width: 760px) {
+  .row.container,
+  .row.head.containers {
+    grid-template-columns: 10px minmax(10ch, 1.4fr) minmax(8ch, 0.9fr) 11ch 13ch minmax(9ch, 0.8fr);
+  }
+
+  .row.container > .image,
+  .row.container > .metric.net,
+  .row.head.containers > :nth-child(3),
+  .row.head.containers > :nth-child(7) {
+    display: none;
+  }
+
+  .row.image > .created,
+  .row.head.images > :nth-child(4) {
+    display: none;
+  }
+
+  .row.image,
+  .row.head.images {
+    grid-template-columns: minmax(14ch, 2fr) 13ch minmax(10ch, 1fr) 11ch;
+  }
+}
+
+.row.section,
+.row.project {
+  min-height: 28px;
+  color: var(--desk-text-muted);
+}
+
+.row.section .title,
+.row .name {
+  color: var(--desk-text);
+  font-weight: 600;
+}
+
+.caret {
+  flex: none;
+  width: 1ch;
+  color: var(--desk-text-muted);
+  cursor: pointer;
+}
+
+.muted,
+.row .label {
+  color: var(--desk-text-muted);
+}
+
+.row.dangling .name,
+.row.builtin .name,
+.row.anonymous .name,
+.row.state-exited .name,
+.row.state-created .name,
+.row.state-dead .name {
+  color: var(--desk-text-muted);
+  font-weight: 400;
+}
+
+.ports {
+  display: flex;
+  gap: var(--desk-space-2);
+}
+
+a.port {
+  color: var(--docker-link);
+  text-decoration: none;
+}
+
+a.port:hover {
+  text-decoration: underline;
+}
+
+.status {
+  color: var(--desk-text-muted);
+}
+
+.empty {
+  justify-content: center;
+  min-height: 64px;
+  white-space: normal;
+  text-align: center;
+}
+
+.size {
+  display: flex;
+  align-items: center;
+  gap: var(--desk-space-2);
+}
+
+.bar,
+.meter {
+  flex: none;
+  width: 44px;
+  height: 6px;
+  overflow: hidden;
+  border-radius: var(--desk-radius-full);
+  background: var(--desk-muted);
+}
+
+.bar .fill,
+.meter .fill {
+  display: block;
+  height: 100%;
+  border-radius: var(--desk-radius-full);
+  background: var(--docker-mem);
+}
+
+/* State dots: a colour and, for screen readers, the state in words (dom.js). */
+.dot {
+  display: inline-block;
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: var(--desk-radius-full);
+  background: var(--docker-stopped);
+}
+
+.dot.state-running {
+  background: var(--docker-running);
+}
+
+.dot.state-paused,
+.dot.state-restarting,
+.dot.state-partial,
+.dot.health-starting {
+  background: var(--docker-paused);
+}
+
+.dot.state-dead,
+.dot.health-unhealthy {
+  background: var(--docker-failed);
+}
+
+/* Resource use: a sparkline and its value. */
+.metric {
+  display: flex;
+  align-items: center;
+  gap: var(--desk-space-1);
+  font-variant-numeric: tabular-nums;
+}
+
+.metric .value {
+  overflow: hidden;
+  color: var(--desk-text-muted);
+  text-overflow: ellipsis;
+}
+
+.spark {
+  flex: none;
+  width: 44px;
+  height: 14px;
+  overflow: visible;
+}
+
+.spark .line {
+  fill: none;
+  stroke-width: 1.25;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.spark.cpu .line {
+  stroke: var(--docker-cpu);
+}
+
+.spark.mem .line {
+  stroke: var(--docker-mem);
+}
+
+.spark.net .line {
+  stroke: var(--docker-net);
+}
+
+.spark.cpu .area {
+  fill: color-mix(in srgb, var(--docker-cpu) 16%, transparent);
+}
+
+.spark.mem .area {
+  fill: color-mix(in srgb, var(--docker-mem) 16%, transparent);
+}
+
+.spark.net .area {
+  fill: color-mix(in srgb, var(--docker-net) 16%, transparent);
+}

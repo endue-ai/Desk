@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Database</title>
+    <script type="importmap">
+      { "imports": { "@endue-ai/plugin-sdk": "/_desk/plugin-sdk.js" } }
+    </script>
+    <link rel="stylesheet" href="/_desk/tokens.css" />
+    <link rel="stylesheet" href="/_desk/base.css" />
+    <link rel="stylesheet" href="./style.css" />
+    <link rel="stylesheet" href="./work.css" />
+    <link rel="stylesheet" href="./diagram.css" />
+    <link rel="stylesheet" href="./import.css" />
+  </head>
+  <body>
+    <header>
+      <h1 id="title">Database</h1>
+      <span id="badge" class="tag" hidden></span>
+      <nav id="actions" aria-label="Run" hidden>
+        <button type="button" data-act="run" title="The statement at the caret, or the selection (Mod+Enter)" class="desk-btn desk-btn-quiet">Run</button>
+        <button type="button" data-act="runAll" title="The whole script (Mod+Shift+Enter)" class="desk-btn desk-btn-quiet">Run all</button>
+        <button type="button" data-act="runTransaction" title="The whole script in one transaction: all or nothing" class="desk-btn desk-btn-quiet">In a transaction</button>
+        <button type="button" data-act="dryRun" title="The whole script, then ROLLBACK" class="desk-btn desk-btn-quiet">Dry run</button>
+        <button type="button" data-act="explain" title="The plan of the statement at the caret" class="desk-btn desk-btn-quiet">Explain</button>
+        <button type="button" data-act="explainAnalyze" title="Run the statement and show its plan with timings (a write is rolled back)" class="desk-btn desk-btn-quiet">Analyze</button>
+        <button type="button" data-act="format" title="Format the selection or the script (Mod+Shift+F)" class="desk-btn desk-btn-quiet">Format</button>
+        <button type="button" data-act="cancel" class="desk-btn desk-btn-quiet cancel" title="Stop the run (Escape in the editor)">Cancel</button>
+        <button type="button" data-act="history" title="Earlier statements of this connection" class="desk-btn desk-btn-quiet">History</button>
+        <button type="button" data-act="star" title="Star the statement at the caret" class="desk-btn desk-btn-quiet">Star</button>
+        <button type="button" data-act="starred" title="Starred queries of this connection" class="desk-btn desk-btn-quiet">Starred</button>
+        <button type="button" data-act="copy" title="Copy the result as TSV, CSV, JSON, Markdown, SQL INSERT or SQL UPDATE" class="desk-btn desk-btn-quiet">Copy as…</button>
+        <button type="button" data-act="exportTo" title="Export the result to a file in ~/Downloads" class="desk-btn desk-btn-quiet">Export…</button>
+      </nav>
+      <span id="busy" role="img" aria-label="Running" hidden>…</span>
+    </header>
+    <main>
+      <aside id="side" aria-label="Connections">
+        <div class="side-head">
+          <h2>Connections</h2>
+          <button type="button" data-act="create" title="New connection (n)" class="desk-btn desk-btn-quiet">New</button>
+          <button type="button" data-act="importUri" title="New connection from a URI (u)" class="desk-btn desk-btn-quiet">URI</button>
+        </div>
+        <label class="filter"><span class="sr-only">Filter objects</span><input id="filter" type="search" placeholder="Filter objects (/)" spellcheck="false" class="desk-field" /></label>
+        <div id="tree" role="tree" aria-label="Connections" tabindex="0"></div>
+      </aside>
+      <section id="work" aria-label="Console">
+        <p id="empty">Pick a connection on the left, or add one with New.</p>
+        <form id="table-bar" hidden aria-label="Rows">
+          <label>Filter <input id="where" placeholder="WHERE …" spellcheck="false" class="desk-field" /></label>
+          <label>Order by <input id="order" placeholder="ORDER BY …" spellcheck="false" class="desk-field" /></label>
+          <button type="submit" class="desk-btn desk-btn-primary">Apply</button>
+          <button type="button" data-page="-1" aria-label="Previous page" class="desk-icon-btn">‹</button>
+          <span id="page"></span>
+          <button type="button" data-page="1" aria-label="Next page" class="desk-icon-btn">›</button>
+          <button type="button" id="count" class="desk-btn desk-btn-quiet">Count</button>
+        </form>
+        <div id="editor-box" hidden>
+          <pre id="highlight" aria-hidden="true"></pre>
+          <!-- ds: own (the SQL the person writes, as a code editor) -->
+          <textarea id="editor" spellcheck="false" aria-label="SQL" aria-autocomplete="list" aria-controls="complete" placeholder="SELECT … — Mod+Enter runs the statement at the caret, Ctrl+Space completes"></textarea>
+          <ul id="complete" role="listbox" aria-label="Completions" hidden></ul>
+        </div>
+        <div id="diagram-box" hidden aria-label="ER diagram"></div>
+        <div id="results" hidden>
+          <div id="tabs" role="tablist" aria-label="Results"></div>
+          <div id="grid-bar" role="toolbar" aria-label="Result" hidden>
+            <label class="quick"><span class="sr-only">Filter rows</span><input id="quick" type="search" placeholder="Filter rows (/)" spellcheck="false" class="desk-field" /></label>
+            <button type="button" id="record" aria-pressed="false" title="One row as a record (t)" class="desk-btn desk-btn-quiet">Record</button>
+            <button type="button" id="value-open" title="The whole value under the cursor (v)" class="desk-btn desk-btn-quiet">Value</button>
+            <span id="console-pages" hidden>
+              <button type="button" data-console-page="-1" aria-label="Previous page" class="desk-icon-btn">‹</button>
+              <span id="console-page"></span>
+              <button type="button" data-console-page="1" aria-label="Next page" class="desk-icon-btn">›</button>
+            </span>
+            <span class="grow"></span>
+            <button type="button" data-act="addRow" title="Add a row (+)" class="desk-btn desk-btn-quiet edit-only">Add row</button>
+            <span id="changes" role="status" hidden>
+              <span id="changes-count"></span>
+              <button type="button" data-act="previewChanges" title="The SQL a submit runs (p)" class="desk-btn desk-btn-quiet">Preview</button>
+              <button type="button" data-act="revertRows" title="Drop every pending change" class="desk-btn desk-btn-quiet">Revert</button>
+              <button type="button" data-act="submitChanges" title="Apply in one transaction (Mod+Enter in the grid)" class="desk-btn desk-btn-primary">Submit</button>
+            </span>
+          </div>
+          <p id="edit-note" class="note" role="status"></p>
+          <div id="result"></div>
+        </div>
+      </section>
+      <form id="form" class="dialog" hidden aria-labelledby="form-title">
+        <h2 id="form-title"></h2>
+        <label>Name <input id="f-name" autocomplete="off" placeholder="user@host/database when empty" class="desk-field" /></label>
+        <label>Engine
+          <select id="f-engine" class="desk-field">
+            <option value="postgresql">PostgreSQL</option>
+            <option value="mysql">MySQL / MariaDB</option>
+            <option value="sqlite">SQLite</option>
+          </select>
+        </label>
+        <label data-for="sqlite">File <input id="f-file" placeholder="~/data/app.db" spellcheck="false" class="desk-field" /></label>
+        <label data-for="server">Host <input id="f-host" placeholder="localhost" spellcheck="false" class="desk-field" /></label>
+        <label data-for="server">Port <input id="f-port" inputmode="numeric" class="desk-field" /></label>
+        <label data-for="server">Database <input id="f-database" spellcheck="false" class="desk-field" /></label>
+        <label data-for="server">User <input id="f-user" autocomplete="off" spellcheck="false" class="desk-field" /></label>
+        <label data-for="server">TLS <select id="f-ssl" class="desk-field"></select></label>
+        <label data-for="server">CA file <input id="f-sslCa" placeholder="~/certs/ca.pem" spellcheck="false" class="desk-field" /></label>
+        <label>Environment <select id="f-tag" class="desk-field"></select></label>
+        <label>Group <input id="f-group" autocomplete="off" placeholder="Shop, Analytics … (optional)" class="desk-field" /></label>
+        <label>Colour <select id="f-color" class="desk-field"></select></label>
+        <label class="check"><input type="checkbox" id="f-readOnly" class="desk-check" /> Read-only: refuse statements that change anything</label>
+        <p class="hint">No password is kept here: the client's own files (~/.pgpass, ~/.my.cnf) are used, and when the server asks, you type it once per session.</p>
+        <p id="form-error" class="error" role="alert"></p>
+        <p id="form-note" class="note" role="status"></p>
+        <p class="buttons">
+          <button type="button" id="form-test" class="desk-btn desk-btn-quiet">Test</button>
+          <button type="button" id="form-cancel" class="desk-btn desk-btn-quiet">Cancel</button>
+          <button type="submit" class="desk-btn desk-btn-primary">Save</button>
+        </p>
+      </form>
+      <form id="password" class="dialog" hidden aria-labelledby="password-title">
+        <h2 id="password-title">Password</h2>
+        <p id="password-text"></p>
+        <label>Password <input type="password" id="password-value" autocomplete="off" class="desk-field" /></label>
+        <p class="hint">Kept in memory until you disconnect or quit; never written down.</p>
+        <p class="buttons">
+          <button type="button" id="password-cancel" class="desk-btn desk-btn-quiet">Cancel</button>
+          <button type="submit" class="desk-btn desk-btn-primary">Connect</button>
+        </p>
+      </form>
+      <form id="value" class="dialog wide" hidden aria-labelledby="value-title">
+        <h2 id="value-title">Value</h2>
+        <p id="value-meta" class="hint"></p>
+        <div id="value-tabs" class="desk-tabs" role="tablist" aria-label="Show the value as"></div>
+        <textarea id="value-text" spellcheck="false" aria-labelledby="value-title" class="desk-field"></textarea>
+        <p class="buttons">
+          <button type="button" id="value-copy" class="desk-btn desk-btn-quiet">Copy</button>
+          <button type="button" id="value-null" class="desk-btn desk-btn-quiet">Set NULL</button>
+          <button type="button" id="value-close" class="desk-btn desk-btn-quiet">Close</button>
+          <button type="submit" id="value-save" class="desk-btn desk-btn-primary">Change</button>
+        </p>
+      </form>
+      <form id="preview" class="dialog wide" hidden aria-labelledby="preview-title">
+        <h2 id="preview-title">Pending changes</h2>
+        <p class="hint">These statements run in one transaction; if one fails, none is kept.</p>
+        <pre id="preview-sql" tabindex="0"></pre>
+        <p class="buttons">
+          <button type="button" id="preview-close" class="desk-btn desk-btn-quiet">Close</button>
+          <button type="submit" class="desk-btn desk-btn-primary">Submit</button>
+        </p>
+      </form>
+      <form id="import" class="dialog wide" hidden aria-labelledby="import-title">
+        <h2 id="import-title">Import</h2>
+        <p id="import-file" class="hint"></p>
+        <div class="import-into">
+          <label>Connection <select id="i-connection" class="desk-field"></select></label>
+          <label>Schema <select id="i-schema" class="desk-field"></select></label>
+          <label>Table <select id="i-table" class="desk-field"></select></label>
+        </div>
+        <p class="import-options">
+          <label class="check"><input type="checkbox" id="i-header" class="desk-check" /> The first line names the columns</label>
+          <label class="check"><input type="checkbox" id="i-empty" class="desk-check" /> Empty fields are NULL</label>
+        </p>
+        <h3>Columns</h3>
+        <div class="import-scroll"><table id="import-map" class="import-map" aria-label="Which table column each column of the file goes to"></table></div>
+        <h3>Preview</h3>
+        <div class="import-scroll" tabindex="0"><table id="import-preview" class="import-preview" aria-label="The first rows as they will be inserted"></table></div>
+        <p id="import-summary" class="hint"></p>
+        <details class="import-sql"><summary>SQL</summary><pre id="import-sql"></pre></details>
+        <p id="import-problem" class="error" role="alert"></p>
+        <p class="buttons">
+          <button type="button" id="import-cancel" class="desk-btn desk-btn-quiet">Cancel</button>
+          <button type="submit" id="import-run" class="desk-btn desk-btn-primary">Import</button>
+        </p>
+      </form>
+    </main>
+    <footer>
+      <p id="hints"></p>
+      <p id="summary" aria-live="polite"></p>
+      <p id="status" role="status"></p>
+    </footer>
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

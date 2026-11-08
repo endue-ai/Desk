@@ -1,0 +1,15 @@
+{
+  "target": "BridgeRequest",
+  "description": "fs.trash changes files, so its scope is fs:write, not fs:read",
+  "instance": {
+    "id": 39,
+    "method": "fs.trash",
+    "params": {
+      "path": "~/Downloads/old.zip",
+      "scope": {
+        "permission": "fs:read",
+        "paths": ["~/Downloads/**"]
+      }
+    }
+  }
+}

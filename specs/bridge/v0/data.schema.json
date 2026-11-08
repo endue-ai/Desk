@@ -1,0 +1,143 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://endue.ai/specs/bridge/v0/data.schema.json",
+  "title": "Desk bridge v0: data",
+  "description": "The desk's item index, which connectors fill and views, plugins, the CLI and agents read (ADR 0032). Every read carries a data:read scope and sees only the items its kinds and sources cover. There is no data:write: changes go through the connectors' commands.",
+  "$defs": {
+    "DataQueryRequest": {
+      "description": "Read one page of the items a query matches.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "data.query" },
+        "params": { "$ref": "#/$defs/DataQueryParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "DataQueryParams": {
+      "description": "Parameters of data.query. Items the scope does not cover are left out, not refused.",
+      "type": "object",
+      "properties": {
+        "query": { "$ref": "../../item/v0/query.schema.json#/$defs/ItemQuery" },
+        "scope": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/DataReadPermission" }
+      },
+      "required": ["query", "scope"],
+      "additionalProperties": false
+    },
+    "DataQueryResult": {
+      "description": "Result of data.query: one page, with the cursor of the next while there is one.",
+      "$ref": "../../item/v0/query.schema.json#/$defs/ItemPage"
+    },
+    "DataGetRequest": {
+      "description": "Read one item by its source and id.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "data.get" },
+        "params": { "$ref": "#/$defs/DataGetParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "DataGetParams": {
+      "description": "Parameters of data.get.",
+      "type": "object",
+      "properties": {
+        "source": { "$ref": "../../item/v0/item.schema.json#/$defs/ItemSource" },
+        "id": { "$ref": "../../item/v0/item.schema.json#/$defs/ItemId" },
+        "scope": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/DataReadPermission" }
+      },
+      "required": ["source", "id", "scope"],
+      "additionalProperties": false
+    },
+    "DataGetResult": {
+      "description": "Result of data.get. item is absent when the index has none, or the scope does not cover it.",
+      "type": "object",
+      "properties": {
+        "item": { "$ref": "../../item/v0/item.schema.json#/$defs/Item" }
+      },
+      "additionalProperties": false
+    },
+    "DataSubscribeRequest": {
+      "description": "Start receiving data.changed for the items a query matches.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "data.subscribe" },
+        "params": { "$ref": "#/$defs/DataSubscribeParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "DataSubscribeParams": {
+      "description": "Parameters of data.subscribe. The query's kinds, sources, text and where conditions select the items; its sort, cursor and limit do not apply.",
+      "type": "object",
+      "properties": {
+        "query": { "$ref": "../../item/v0/query.schema.json#/$defs/ItemQuery" },
+        "scope": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/DataReadPermission" }
+      },
+      "required": ["query", "scope"],
+      "additionalProperties": false
+    },
+    "DataSubscribeResult": {
+      "description": "Result of data.subscribe.",
+      "type": "object",
+      "properties": {
+        "subscriptionId": { "type": "string", "minLength": 1 }
+      },
+      "required": ["subscriptionId"],
+      "additionalProperties": false
+    },
+    "DataUnsubscribeRequest": {
+      "description": "Stop one of the caller's data subscriptions.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "data.unsubscribe" },
+        "params": { "$ref": "#/$defs/DataUnsubscribeParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "DataUnsubscribeParams": {
+      "description": "Parameters of data.unsubscribe.",
+      "type": "object",
+      "properties": {
+        "subscriptionId": { "type": "string", "minLength": 1 }
+      },
+      "required": ["subscriptionId"],
+      "additionalProperties": false
+    },
+    "DataUnsubscribeResult": {
+      "description": "Result of data.unsubscribe.",
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "DataChangedEvent": {
+      "description": "Items a data subscription matches changed. Sent to the caller that subscribed.",
+      "type": "object",
+      "properties": {
+        "event": { "const": "data.changed" },
+        "data": { "$ref": "#/$defs/DataChangedData" }
+      },
+      "required": ["event", "data"],
+      "additionalProperties": false
+    },
+    "DataChangedData": {
+      "description": "Payload of data.changed: the subscription, and what changed in order. An item that stops matching the query arrives as removed.",
+      "type": "object",
+      "properties": {
+        "subscriptionId": { "type": "string", "minLength": 1 },
+        "changes": {
+          "type": "array",
+          "items": { "$ref": "../../item/v0/query.schema.json#/$defs/ItemChange" },
+          "minItems": 1
+        }
+      },
+      "required": ["subscriptionId", "changes"],
+      "additionalProperties": false
+    }
+  }
+}

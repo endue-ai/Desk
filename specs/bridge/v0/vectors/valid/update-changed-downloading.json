@@ -1,0 +1,24 @@
+{
+  "target": "BridgeEvent",
+  "description": "update.changed while the next canary build downloads, with bytes received and the total",
+  "instance": {
+    "event": "update.changed",
+    "data": {
+      "state": "downloading",
+      "current": {
+        "version": "0.1.0",
+        "commit": "fa7a4af"
+      },
+      "channel": "canary",
+      "checkedAt": "2026-11-20T09:14:02Z",
+      "release": {
+        "version": "0.2.1-pre.48",
+        "commit": "c46d12b",
+        "date": "2026-11-20T09:12:00Z",
+        "notes": "https://github.com/endue-ai/Desk/commit/c46d12b"
+      },
+      "received": 45088768,
+      "total": 104857600
+    }
+  }
+}

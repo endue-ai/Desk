@@ -1,0 +1,10 @@
+{
+  "target": "PluginManifest",
+  "description": "ids are lowercase with a dot",
+  "instance": {
+    "id": "HelloUI",
+    "version": "0.1.0",
+    "kind": "ui",
+    "entry": "ui/index.html"
+  }
+}

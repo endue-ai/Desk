@@ -1,0 +1,13 @@
+{
+  "target": "BridgeRequest",
+  "description": "settings.set writes only the caller's own keys",
+  "instance": {
+    "id": 57,
+    "method": "settings.set",
+    "params": {
+      "key": "voice",
+      "owner": "endue.eris",
+      "value": true
+    }
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "id": "endue.formats",
+  "name": "Formats",
+  "version": "0.1.0",
+  "kind": "library",
+  "description": "The format readers and decoders other plugins import, one copy for every plugin: codecs, 7z, RAR, DjVu and disk images, in plain JavaScript over byte-range sources."
+}

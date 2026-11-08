@@ -1,0 +1,1 @@
+default-src 'none'; script-src {sources} 'unsafe-inline' 'wasm-unsafe-eval'; style-src {sources} 'unsafe-inline'; img-src {sources} data: blob:; media-src {sources} blob: data:; font-src {sources}; connect-src {sources}; worker-src blob: {sources}; frame-src 'none'; form-action 'none'

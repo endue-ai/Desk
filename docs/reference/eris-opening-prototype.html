@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Eris opening — reference prototype</title>
+<!--
+  Reference prototype for the first-launch greeting (scenes 1–4 of docs/ko/first-run-scenario.md).
+  Open this file directly in a browser. No build step, no dependencies.
+
+  What it demonstrates
+  - "Soul text": each character condenses from light as the word is spoken, then scatters upward.
+    Timings are the ones specified in the scenario (900 ms in · 35 ms per char · 1.6 s out, 0–450 ms jitter).
+  - Two styles: wisp (default) and solemn. Switch with the selector at the bottom.
+  - Eris assembles from a core of light; Dysnomia (the moon) slides in from the right.
+  - After "What should I call you?" a name form appears (in the app the user would speak).
+    The typed name rises into the sphere, a flash, then "Nice to meet you, <name>." / "Let's make this desk yours."
+  - Skip intro jumps straight to the question. prefers-reduced-motion collapses every animation to short fades.
+
+  Porting notes for plugins/onboarding
+  - Keep the data table `LINES` (word, start ms) as the single source of timing; in the app the start
+    times come from TTS word timestamps (see the scenario's "소울 텍스트" section).
+  - Drive animations from an injected clock so runtime snapshot tests can freeze them at a fixed time.
+  - Assets: ../../brand/eris/eris-balanced.svg and ../../brand/eris/dysnomia.svg (brand license, not Apache).
+-->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap">
+<style>
+:root{--bg:#141416;--card:#1e1d21;--border:#333136;--fg:#f2f0f5;--muted:#b0adb7;--primary:#b6a3f5;--eris:#e8c98a}
+html,body{margin:0;background:var(--bg);color:var(--fg)}
+body{font-family:'Inter','SUIT Variable','SUIT',-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo',sans-serif}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.ch{display:inline-block;white-space:pre;color:var(--fg);text-shadow:0 0 16px rgba(233,237,244,0.35)}
+.ch.gold{color:var(--eris);text-shadow:0 0 18px rgba(232,201,138,0.45)}
+.ch.user{color:var(--fg);text-shadow:none}
+.d0{--dx:-12px;--dy:-34px;--r:-6deg}
+.d1{--dx:8px;--dy:-24px;--r:4deg}
+.d2{--dx:-4px;--dy:-40px;--r:2deg}
+.d3{--dx:12px;--dy:-30px;--r:-3deg}
+.d4{--dx:-9px;--dy:-20px;--r:5deg}
+.d5{--dx:5px;--dy:-38px;--r:-5deg}
+@keyframes soulIn{0%{opacity:0;filter:blur(14px);transform:translateY(8px) scale(1.12)}60%{opacity:1}100%{opacity:1;filter:blur(0);transform:none}}
+@keyframes soulOut{0%{opacity:1;filter:blur(0);transform:none}100%{opacity:0;filter:blur(10px);transform:translate(var(--dx),var(--dy)) rotate(var(--r)) scale(0.96)}}
+.fx-wisp .ch{animation:soulIn 900ms cubic-bezier(.2,.7,.2,1) both,soulOut 1600ms cubic-bezier(.55,0,.85,.35) forwards}
+.fx-wisp .ch.stay{animation:soulIn 900ms cubic-bezier(.2,.7,.2,1) both}
+@keyframes solemnIn{0%{opacity:0;filter:blur(6px)}100%{opacity:1;filter:blur(0)}}
+@keyframes solemnOut{0%{opacity:1;filter:blur(0)}100%{opacity:0;filter:blur(4px)}}
+.fx-solemn .ch{animation:solemnIn 1500ms ease-out both,solemnOut 1400ms ease-in forwards}
+.fx-solemn .ch.stay{animation:solemnIn 1500ms ease-out both}
+.cap{font-size:40px;font-weight:400;line-height:1.2;letter-spacing:-0.01em}
+.fx-solemn .cap{text-transform:uppercase;font-size:34px}
+@keyframes track{0%{letter-spacing:0.01em}100%{letter-spacing:0.14em}}
+.fx-solemn .line{animation-name:track;animation-timing-function:linear;animation-fill-mode:both}
+@keyframes leave{0%{opacity:1;filter:blur(0);transform:none}100%{opacity:0;filter:blur(8px);transform:translateY(-24px)}}
+.leaving{animation:leave 1100ms ease-in forwards}
+@keyframes coreIn{0%{opacity:0;transform:scale(0.04)}35%{opacity:1;transform:scale(0.08)}100%{opacity:1;transform:scale(1)}}
+@keyframes pulse{0%,100%{opacity:0.6}50%{opacity:1}}
+.core{animation:coreIn 1600ms cubic-bezier(.2,.7,.2,1) 200ms both,pulse 5s ease-in-out 2400ms infinite}
+@keyframes assemble{0%{opacity:0;filter:blur(18px);transform:scale(1.16)}100%{opacity:1;filter:blur(0);transform:none}}
+.body-in{animation:assemble 1700ms cubic-bezier(.2,.7,.2,1) 600ms both}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+.float{animation:float 6s ease-in-out 2400ms infinite}
+@keyframes dysIn{0%{opacity:0;transform:translateX(90px)}100%{opacity:1;transform:none}}
+.dys-in{animation:dysIn 900ms cubic-bezier(.2,.7,.2,1) 2200ms both}
+.dys-float{animation:float 4.5s ease-in-out 3200ms infinite reverse}
+.core-wrap{transition:transform 600ms cubic-bezier(.2,.7,.2,1),filter 600ms}
+.core-wrap.listening{transform:scale(1.18);filter:brightness(1.35)}
+@keyframes userRise{0%{opacity:0;transform:translateY(388px)}12%{opacity:1;transform:translateY(376px)}70%{opacity:0.9;filter:blur(0);transform:translateY(40px) scale(0.7)}100%{opacity:0;filter:blur(6px);transform:translateY(0) scale(0.3)}}
+.user-rise{animation:userRise 1400ms cubic-bezier(.4,0,.2,1) both}
+@keyframes flash{0%{opacity:0;transform:scale(0.6)}40%{opacity:0.9;transform:scale(1)}100%{opacity:0;transform:scale(1.3)}}
+.flash{animation:flash 1000ms ease-out 1250ms both}
+@keyframes appear{0%{opacity:0;visibility:hidden}100%{opacity:1;visibility:visible}}
+.appear-late{animation:appear 400ms ease-out 1000ms both}
+.form-in{animation:appear 500ms ease-out both}
+
+#root{position:relative;min-height:100vh;box-sizing:border-box;padding:64px 16px 80px;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden}
+#skip{position:absolute;top:20px;right:24px}
+#stage{position:relative;width:100%;max-width:960px;display:flex;flex-direction:column;align-items:center}
+#sphere{position:relative;width:360px;height:388px;flex-shrink:0}
+#sphere .float{position:absolute;left:0;top:0;width:360px;height:388px}
+#sphere .core-wrap{position:absolute;left:116px;top:124px;width:128px;height:128px}
+#sphere .core{width:128px;height:128px;border-radius:64px;background:radial-gradient(circle,rgba(255,255,255,0.78) 0%,rgba(233,237,244,0.3) 35%,rgba(233,237,244,0) 70%)}
+#sphere .body-in{position:absolute;left:0;top:0;width:360px;height:388px}
+#sphere .dys-in{position:absolute;left:291px;top:280px;width:44px;height:44px}
+#sphere .dys-float{width:44px;height:44px}
+#sphere .flash{position:absolute;left:70px;top:78px;width:220px;height:220px;border-radius:110px;background:radial-gradient(circle,rgba(255,255,255,0.8) 0%,rgba(233,237,244,0.3) 35%,rgba(233,237,244,0) 70%)}
+#cap{position:relative;width:100%;height:128px;margin-top:12px}
+#cap .wrap{position:absolute;left:0;right:0;top:0;display:flex;justify-content:center}
+#cap .line{display:flex;flex-wrap:wrap;justify-content:center;column-gap:0.3em;max-width:100%;text-align:center}
+#cap .word{display:inline-flex;white-space:nowrap}
+.user-rise{position:absolute;left:0;right:0;top:168px;text-align:center;font-size:32px;font-weight:400;color:var(--fg);pointer-events:none}
+#formslot{height:96px;margin-top:8px;display:flex;align-items:flex-start;justify-content:center}
+.form-in{display:flex;flex-direction:column;align-items:center;gap:8px}
+.form-in form{display:flex;flex-direction:row;flex-wrap:wrap;align-items:flex-end;justify-content:center;gap:8px}
+.form-in label{font-size:12px;color:var(--muted);display:block;margin-bottom:6px}
+.form-in input{width:240px;height:40px;box-sizing:border-box;padding:0 12px;border-radius:8px;border:1px solid #837991;background:var(--card);color:var(--fg);font-family:inherit;font-size:16px}
+.form-in p{margin:0;font-size:12px;color:var(--muted)}
+.btn{height:32px;padding:0 12px;border-radius:8px;border:1px solid #837991;background:transparent;color:var(--fg);font-family:inherit;font-size:14px;cursor:pointer}
+.btn.quiet{color:var(--muted)}
+.btn.primary{height:40px;padding:0 16px;border:none;background:var(--primary);color:#1e1833;font-weight:500}
+button:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+input:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 1px var(--primary)}
+#bar{position:absolute;left:24px;bottom:20px;display:flex;flex-wrap:wrap;align-items:center;gap:12px;font-size:12px;color:var(--muted)}
+#bar select{height:32px;border-radius:8px;border:1px solid #837991;background:var(--card);color:var(--fg);font-family:inherit;font-size:14px;padding:0 8px}
+@media (max-width:640px){.cap{font-size:26px}.fx-solemn .cap{font-size:22px}}
+@media (prefers-reduced-motion:reduce){
+  .fx-wisp .ch,.fx-solemn .ch{animation-name:solemnIn,solemnOut !important;animation-duration:200ms,200ms !important}
+  .fx-wisp .ch.stay,.fx-solemn .ch.stay{animation-name:solemnIn !important;animation-duration:200ms !important}
+  .float,.dys-float,.core{animation-iteration-count:1 !important}
+  .user-rise{animation-duration:300ms !important}
+  .fx-solemn .line{animation:none !important}
+}
+</style>
+</head>
+<body>
+<div id="root" class="fx-wisp">
+  <div id="skip" class="appear-late" hidden><button type="button" class="btn quiet" id="skipBtn">Skip intro</button></div>
+  <p class="sr-only">Eris says: Hello. I'm E.R.I.S., Endue's Ridiculously Impressive Secretary. Small, I know. But I'll take care of your whole desk. What should I call you?</p>
+  <div id="stage">
+    <div id="sphere"></div>
+    <div id="cap" class="cap" aria-hidden="true"></div>
+    <div id="formslot"></div>
+  </div>
+  <div id="bar">
+    <button type="button" class="btn" id="replayBtn">Replay</button>
+    <label>Style <select id="fx"><option value="wisp">Wisp</option><option value="solemn">Solemn</option></select></label>
+    <span>Change the style, then replay.</span>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  var ASSETS = { body: '../../brand/eris/eris-balanced.svg', moon: '../../brand/eris/dysnomia.svg' };
+
+  // Timing table. Each word: { t: text, at: start ms }. `cap` = time the first (capital) letter appears,
+  // the rest of the word follows from `at`. `gold` = Eris color, `user` = the user's name (no glow).
+  var ASK = [
+    { t: 'What', at: 17000 }, { t: 'should', at: 17200 }, { t: 'I', at: 17450 },
+    { t: 'call', at: 17550 }, { t: 'you?', at: 17800 }
+  ];
+  var LINES = [
+    { i: 0, words: [{ t: 'Hello.', at: 3000 }], out: 4400 },
+    { i: 1, words: [{ t: "I'm", at: 4800 }, { t: 'E.', at: 5200, gold: true }, { t: 'R.', at: 5500, gold: true }, { t: 'I.', at: 5800, gold: true }, { t: 'S.', at: 6100, gold: true }], out: 7400 },
+    { i: 2, words: [{ t: "Endue's", cap: 7800, at: 8050 }, { t: 'Ridiculously', cap: 7800, at: 8450 }, { t: 'Impressive', cap: 7800, at: 9000 }, { t: 'Secretary.', cap: 7800, at: 9450 }], out: 11000 },
+    { i: 3, words: [{ t: 'Small,', at: 11500 }, { t: 'I', at: 11900 }, { t: 'know.', at: 12050 }], out: 13400 },
+    { i: 4, words: [{ t: 'But', at: 13800 }, { t: "I'll", at: 14000 }, { t: 'take', at: 14200 }, { t: 'care', at: 14400 }, { t: 'of', at: 14600 }, { t: 'your', at: 14700 }, { t: 'whole', at: 14900 }, { t: 'desk.', at: 15150 }], out: 16600 }
+  ];
+  var SKIP_SHIFT = -15800;      // in skipped mode the question starts at 1.2 s
+  var FORM_AT = 18600, FORM_AT_SKIPPED = 2600;
+
+  var root = document.getElementById('root');
+  var sphere = document.getElementById('sphere');
+  var cap = document.getElementById('cap');
+  var formslot = document.getElementById('formslot');
+  var skip = document.getElementById('skip');
+  var fxSel = document.getElementById('fx');
+
+  var state = { skipped: false, replied: false, showForm: false };
+  var timers = [];
+  function later(fn, ms) { timers.push(setTimeout(fn, ms)); }
+  function clearTimers() { timers.forEach(clearTimeout); timers = []; }
+  function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+  function solemn() { return fxSel.value === 'solemn'; }
+
+  // Build one line of soul text. Returns the wrapper element.
+  // li: line index (seeds the scatter jitter), words: timing table, out: ms when the line starts to scatter
+  // (null = stays), stay: never scatter.
+  function buildLine(li, words, out, stay, shift) {
+    shift = shift || 0;
+    var stagger = solemn() ? 0 : 35;
+    var n = 0;
+    var wrap = el('div', 'wrap');
+    var line = el('div', 'line');
+    words.forEach(function (w) {
+      var chars = Array.from(w.t);
+      var last = chars.length - 1;
+      var word = el('span', 'word');
+      chars.forEach(function (ch, i) {
+        var k = n; n += 1;
+        var hasCap = w.cap !== undefined;
+        var inAt = (hasCap ? (i === 0 ? w.cap : w.at + (i - 1) * stagger) : w.at + i * stagger) + shift;
+        var outAt = out === null ? 0 : out + shift + (solemn() ? 0 : (k * 73 + li * 151) % 450);
+        var cls = 'ch d' + ((k * 7 + li * 3) % 6);
+        if (w.gold || (hasCap && i === 0)) cls += ' gold';
+        if (w.user && !(w.plainLast && i === last)) cls += ' user';
+        if (stay) cls += ' stay';
+        var s = el('span', cls, ch);
+        s.style.animationDelay = inAt + 'ms, ' + outAt + 'ms';
+        word.appendChild(s);
+      });
+      line.appendChild(word);
+    });
+    var start = Math.min.apply(null, words.map(function (w) { return (w.cap !== undefined ? w.cap : w.at); })) + shift;
+    var end = out === null ? start + 6000 : out + shift + 1400;
+    line.style.animationDelay = start + 'ms';
+    line.style.animationDuration = (end - start) + 'ms';
+    wrap.appendChild(line);
+    return wrap;
+  }
+
+  function buildSphere() {
+    sphere.innerHTML = '';
+    var fl = el('div', 'float');
+    var cw = el('div', 'core-wrap'); cw.id = 'coreWrap';
+    cw.appendChild(el('div', 'core'));
+    fl.appendChild(cw);
+    var body = el('img', 'body-in'); body.src = ASSETS.body; body.alt = '';
+    fl.appendChild(body);
+    sphere.appendChild(fl);
+    var dys = el('div', 'dys-in');
+    var moon = el('img', 'dys-float'); moon.src = ASSETS.moon; moon.alt = '';
+    dys.appendChild(moon);
+    sphere.appendChild(dys);
+  }
+
+  function start(skipped) {
+    clearTimers();
+    state = { skipped: skipped, replied: false, showForm: false };
+    root.className = solemn() ? 'fx-solemn' : 'fx-wisp';
+    formslot.innerHTML = '';
+    cap.innerHTML = '';
+    skip.hidden = skipped;
+    buildSphere();
+    var shift = skipped ? SKIP_SHIFT : 0;
+    if (!skipped) {
+      LINES.forEach(function (L) { cap.appendChild(buildLine(L.i, L.words, L.out, false, 0)); });
+    }
+    var ask = buildLine(5, ASK, null, true, shift); ask.id = 'ask';
+    cap.appendChild(ask);
+    later(showForm, skipped ? FORM_AT_SKIPPED : FORM_AT);
+  }
+
+  function showForm() {
+    if (state.replied) return;
+    state.showForm = true;
+    skip.hidden = true;
+    document.getElementById('coreWrap').classList.add('listening');
+    var box = el('div', 'form-in');
+    var form = el('form');
+    var field = el('div');
+    var label = el('label', null, 'Type your name'); label.htmlFor = 'eris-name';
+    var input = el('input'); input.id = 'eris-name'; input.type = 'text'; input.placeholder = 'Your name'; input.maxLength = 24;
+    field.appendChild(label); field.appendChild(input);
+    var send = el('button', 'btn primary', 'Send'); send.type = 'submit';
+    form.appendChild(field); form.appendChild(send);
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var v = (input.value || '').trim().slice(0, 24);
+      if (v) reply(v);
+    });
+    box.appendChild(form);
+    box.appendChild(el('p', null, 'In the app you would just say it.'));
+    formslot.appendChild(box);
+    input.focus();
+  }
+
+  function reply(name) {
+    state.replied = true;
+    formslot.innerHTML = '';
+    document.getElementById('coreWrap').classList.remove('listening');
+    document.getElementById('ask').classList.add('leaving');
+    sphere.appendChild(el('div', 'flash'));
+    var rise = el('div', 'user-rise', name); rise.setAttribute('aria-hidden', 'true');
+    document.getElementById('stage').appendChild(rise);
+    cap.appendChild(buildLine(6, [{ t: 'Nice', at: 1300 }, { t: 'to', at: 1500 }, { t: 'meet', at: 1620 }, { t: 'you,', at: 1800 }, { t: name + '.', at: 2050, user: true, plainLast: true }], 4300, false, 0));
+    cap.appendChild(buildLine(7, [{ t: "Let's", at: 4700 }, { t: 'make', at: 4900 }, { t: 'this', at: 5050 }, { t: 'desk', at: 5200 }, { t: 'yours.', at: 5400 }], null, true, 0));
+    later(function () { rise.remove(); }, 1500);
+  }
+
+  document.getElementById('replayBtn').addEventListener('click', function () { start(false); });
+  document.getElementById('skipBtn').addEventListener('click', function () { start(true); });
+  fxSel.addEventListener('change', function () { start(false); });
+  start(false);
+})();
+</script>
+</body>
+</html>

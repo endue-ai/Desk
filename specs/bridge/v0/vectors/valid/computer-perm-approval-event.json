@@ -1,0 +1,22 @@
+{
+  "target": "BridgeEvent",
+  "description": "an agent's click waits for the person, with the app as its target",
+  "instance": {
+    "event": "perm.approval",
+    "data": {
+      "approvalId": "a-9",
+      "caller": "agent:eris",
+      "action": "computer.input.click",
+      "permission": {
+        "permission": "computer:control",
+        "apps": ["com.apple.Safari"]
+      },
+      "target": "Safari (com.apple.Safari)",
+      "preview": {
+        "kind": "input",
+        "text": "double-click left at (120, 340) in Safari"
+      },
+      "task": "t4"
+    }
+  }
+}

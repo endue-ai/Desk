@@ -1,0 +1,15 @@
+{
+  "target": "BridgeRequest",
+  "description": "input is control, not see",
+  "instance": {
+    "id": 2,
+    "method": "computer.input.click",
+    "params": {
+      "x": 1,
+      "y": 2,
+      "scope": {
+        "permission": "computer:see"
+      }
+    }
+  }
+}

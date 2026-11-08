@@ -1,0 +1,13 @@
+{
+  "target": "BridgeRequest",
+  "description": "settings.list takes a settings:read scope",
+  "instance": {
+    "id": 58,
+    "method": "settings.list",
+    "params": {
+      "scope": {
+        "permission": "log:read"
+      }
+    }
+  }
+}

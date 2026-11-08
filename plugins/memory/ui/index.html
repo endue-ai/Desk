@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Memory</title>
+    <link rel="stylesheet" href="/_desk/tokens.css" />
+    <link rel="stylesheet" href="/_desk/base.css" />
+    <script type="importmap">
+      { "imports": { "@endue-ai/plugin-sdk": "/_desk/plugin-sdk.js" } }
+    </script>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <header id="bar">
+      <h1>What Eris knows</h1>
+      <p id="where">Kept on this computer only. Edit a fact, or forget anything.</p>
+      <input
+        id="search"
+        class="desk-field"
+        type="search"
+        placeholder="Search her memory"
+        aria-label="Search her memory"
+      />
+      <div id="kinds" role="tablist" aria-label="What to show"></div>
+    </header>
+    <main>
+      <form id="remember-form">
+        <input
+          id="new-fact"
+          class="desk-field"
+          type="text"
+          maxlength="2000"
+          placeholder="Tell Eris something to remember"
+          aria-label="A new fact"
+        />
+        <button class="desk-btn" type="submit">Remember</button>
+      </form>
+      <ul id="entries" aria-label="What Eris remembers"></ul>
+      <p id="more" hidden>Only the newest 200 are shown. Search to find older ones.</p>
+    </main>
+    <footer>
+      <button id="forget-all" class="desk-btn" type="button">Forget everything</button>
+      <p id="status" role="status"></p>
+    </footer>
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

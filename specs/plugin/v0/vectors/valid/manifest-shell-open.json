@@ -1,0 +1,20 @@
+{
+  "target": "PluginManifest",
+  "description": "a UI plugin that opens https links and shows its downloads in the file manager",
+  "instance": {
+    "id": "example.links",
+    "name": "Links",
+    "version": "0.1.0",
+    "kind": "ui",
+    "entry": "ui/index.html",
+    "permissions": [
+      { "permission": "ui:surface" },
+      {
+        "permission": "shell:open",
+        "schemes": ["https", "mailto"],
+        "paths": ["~/Downloads/**"]
+      }
+    ],
+    "surfaces": [{ "id": "main", "title": "Links", "placement": "right" }]
+  }
+}

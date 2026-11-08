@@ -1,0 +1,38 @@
+{
+  "target": "ItemQuery",
+  "description": "kinds, a connector and one of its instances, text, conditions ANDed, sort, a cursor and a limit",
+  "instance": {
+    "kinds": ["task", "event"],
+    "sources": ["endue.os-reminders", "endue.imap/work"],
+    "text": "launch",
+    "where": [
+      {
+        "field": "status",
+        "op": "in",
+        "value": ["open"]
+      },
+      {
+        "field": "raw.labels",
+        "op": "contains",
+        "value": "urgent"
+      },
+      {
+        "field": "due",
+        "op": "exists"
+      },
+      {
+        "field": "priority",
+        "op": "lte",
+        "value": 2
+      }
+    ],
+    "sort": [
+      {
+        "field": "due",
+        "dir": "asc"
+      }
+    ],
+    "cursor": "c2:1042",
+    "limit": 100
+  }
+}

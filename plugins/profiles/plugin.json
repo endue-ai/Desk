@@ -1,0 +1,35 @@
+{
+  "id": "desk.profiles",
+  "name": "Profiles",
+  "version": "0.1.0",
+  "kind": "policy",
+  "description": "Profiles: a plugin set plus settings, switched as one, like an init file you can change while Desk runs.",
+  "contributes": {
+    "profiles": [
+      {
+        "id": "default",
+        "name": "Default",
+        "description": "Every plugin as installed, every setting as init.yaml says."
+      },
+      {
+        "id": "focus",
+        "name": "Focus",
+        "description": "Do not disturb: only errors show.",
+        "settings": {
+          "desk.notify.dnd": true
+        }
+      },
+      {
+        "id": "present",
+        "name": "Presenting",
+        "description": "Light, high contrast, and no notifications at all.",
+        "settings": {
+          "desk.theme.scheme": "light",
+          "desk.theme.contrast": "high",
+          "desk.notify.dnd": true,
+          "desk.notify.dnd-allows": []
+        }
+      }
+    ]
+  }
+}

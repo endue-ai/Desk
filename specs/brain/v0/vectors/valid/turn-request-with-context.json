@@ -1,0 +1,36 @@
+{
+  "target": "TurnRequest",
+  "description": "a turn with what the desk keeps and what is open now",
+  "instance": {
+    "leaseId": "l1",
+    "message": {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "which package manager do I use?"
+        }
+      ]
+    },
+    "context": {
+      "facts": [
+        {
+          "id": "fact_0abc123def456",
+          "text": "Prefers pnpm over npm"
+        }
+      ],
+      "episodes": [
+        {
+          "at": "2026-11-04T10:30:00.000Z",
+          "asked": "check my latest mail",
+          "answered": "Two new messages."
+        }
+      ],
+      "working": {
+        "now": "2026-11-05T09:00:00.000Z",
+        "surfaces": ["Notes", "Mail"],
+        "commands": ["endue.mail.latest"]
+      }
+    }
+  }
+}

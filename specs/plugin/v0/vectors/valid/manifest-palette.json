@@ -1,0 +1,31 @@
+{
+  "target": "PluginManifest",
+  "description": "a palette that lists and invokes every command",
+  "instance": {
+    "id": "endue.palette",
+    "name": "Palette",
+    "version": "0.1.0",
+    "kind": "ui",
+    "entry": "ui/index.html",
+    "permissions": [
+      {
+        "permission": "cmd:invoke",
+        "ids": ["*"]
+      },
+      {
+        "permission": "events:subscribe",
+        "names": ["cmd.changed"]
+      },
+      {
+        "permission": "ui:surface"
+      }
+    ],
+    "surfaces": [
+      {
+        "id": "main",
+        "title": "Palette",
+        "placement": "overlay"
+      }
+    ]
+  }
+}

@@ -1,0 +1,170 @@
+{
+ "tag": "div",
+ "class": "soul",
+ "box": [
+  480,
+  190,
+  480,
+  32
+ ],
+ "style": {
+  "transform": "matrix(1, 0, 0, 1, -240, 0)"
+ },
+ "children": [
+  {
+   "tag": "p",
+   "class": "soul-line soul-solemn",
+   "style": {
+    "color": "rgb(242, 240, 245)",
+    "opacity": "0.73",
+    "letterSpacing": "0.9px"
+   },
+   "children": [
+    {
+     "tag": "span",
+     "class": "soul-word",
+     "children": [
+      {
+       "tag": "span",
+       "class": "soul-glyph",
+       "style": {
+        "color": "rgb(242, 240, 245)"
+       },
+       "text": "T"
+      },
+      {
+       "tag": "span",
+       "class": "soul-glyph",
+       "style": {
+        "color": "rgb(242, 240, 245)"
+       },
+       "text": "h"
+      },
+      {
+       "tag": "span",
+       "class": "soul-glyph",
+       "style": {
+        "color": "rgb(242, 240, 245)"
+       },
+       "text": "e"
+      }
+     ]
+    },
+    {
+     "tag": "span",
+     "class": "soul-word",
+     "children": [
+      {
+       "tag": "span",
+       "class": "soul-glyph",
+       "style": {
+        "color": "rgb(242, 240, 245)"
+       },
+       "text": "d"
+      },
+      {
+       "tag": "span",
+       "class": "soul-glyph",
+       "style": {
+        "color": "rgb(242, 240, 245)"
+       },
+       "text": "e"
+      },
+      {
+       "tag": "span",
+       "class": "soul-glyph",
+       "style": {
+        "color": "rgb(242, 240, 245)"
+       },
+       "text": "s"
+      },
+      {
+       "tag": "span",
+       "class": "soul-glyph",
+       "style": {
+        "color": "rgb(242, 240, 245)"
+       },
+       "text": "k"
+      }
+     ]
+    },
+    {
+     "tag": "span",
+     "class": "soul-word",
+     "children": [
+      {
+       "tag": "span",
+       "class": "soul-glyph",
+       "style": {
+        "color": "rgb(242, 240, 245)"
+       },
+       "text": "i"
+      },
+      {
+       "tag": "span",
+       "class": "soul-glyph",
+       "style": {
+        "color": "rgb(242, 240, 245)"
+       },
+       "text": "s"
+      }
+     ]
+    },
+    {
+     "tag": "span",
+     "class": "soul-word",
+     "children": [
+      {
+       "tag": "span",
+       "class": "soul-glyph",
+       "style": {
+        "color": "rgb(242, 240, 245)"
+       },
+       "text": "y"
+      },
+      {
+       "tag": "span",
+       "class": "soul-glyph",
+       "style": {
+        "color": "rgb(242, 240, 245)"
+       },
+       "text": "o"
+      },
+      {
+       "tag": "span",
+       "class": "soul-glyph",
+       "style": {
+        "color": "rgb(242, 240, 245)"
+       },
+       "text": "u"
+      },
+      {
+       "tag": "span",
+       "class": "soul-glyph",
+       "style": {
+        "color": "rgb(242, 240, 245)"
+       },
+       "text": "r"
+      },
+      {
+       "tag": "span",
+       "class": "soul-glyph",
+       "style": {
+        "color": "rgb(242, 240, 245)"
+       },
+       "text": "s"
+      },
+      {
+       "tag": "span",
+       "class": "soul-glyph",
+       "style": {
+        "color": "rgb(242, 240, 245)"
+       },
+       "text": "."
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

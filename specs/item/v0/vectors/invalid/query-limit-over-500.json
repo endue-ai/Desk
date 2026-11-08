@@ -1,0 +1,8 @@
+{
+  "target": "ItemQuery",
+  "description": "a page holds 500 items at most",
+  "instance": {
+    "kinds": ["task"],
+    "limit": 501
+  }
+}

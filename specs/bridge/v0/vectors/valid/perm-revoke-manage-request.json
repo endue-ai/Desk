@@ -1,0 +1,14 @@
+{
+  "target": "BridgeRequest",
+  "description": "perm.revoke of another caller's grant under perm:manage",
+  "instance": {
+    "id": 45,
+    "method": "perm.revoke",
+    "params": {
+      "grantId": "g7",
+      "scope": {
+        "permission": "perm:manage"
+      }
+    }
+  }
+}

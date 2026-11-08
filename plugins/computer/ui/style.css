@@ -1,0 +1,114 @@
+/* endue.computer: layout only. Colours, type and sizes are the desk's tokens (/_desk/tokens.css)
+   over the base sheet (/_desk/base.css), so the theme in force restyles the page. */
+body {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  margin: 0;
+  overflow: hidden;
+}
+
+#live {
+  display: flex;
+  align-items: center;
+  gap: var(--desk-space-2);
+  padding: var(--desk-space-2) var(--desk-space-3);
+  border-bottom: var(--desk-border-width) solid var(--desk-accent);
+}
+
+#live[hidden] {
+  display: none;
+}
+
+.dot {
+  width: var(--desk-space-2);
+  height: var(--desk-space-2);
+  border-radius: var(--desk-radius-full);
+  background: var(--desk-accent);
+}
+
+#live .what,
+.permission .what {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+#bar {
+  padding: var(--desk-space-3);
+  border-bottom: var(--desk-border-width) solid var(--desk-border);
+}
+
+h1 {
+  margin: 0 0 var(--desk-space-1);
+  font-size: var(--desk-text-lg);
+}
+
+h2 {
+  margin: 0 0 var(--desk-space-2);
+  font-size: var(--desk-text-base);
+}
+
+#bar p,
+.muted,
+.permission p,
+.when,
+.empty,
+.state,
+#status {
+  margin: 0;
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-sm);
+}
+
+main {
+  display: grid;
+  flex: 1;
+  gap: var(--desk-space-4);
+  align-content: start;
+  overflow: auto;
+  padding: var(--desk-space-3);
+}
+
+ul {
+  display: grid;
+  gap: var(--desk-space-2);
+  margin: 0 0 var(--desk-space-2);
+  padding: 0;
+  list-style: none;
+}
+
+li {
+  display: flex;
+  align-items: center;
+  gap: var(--desk-space-2);
+}
+
+.permission {
+  padding: var(--desk-space-2);
+  border: var(--desk-border-width) solid var(--desk-border);
+  border-radius: var(--desk-radius-md);
+}
+
+.permission[data-granted="true"] .state {
+  color: var(--desk-success-text);
+}
+
+#recent li[data-state="failed"] .state {
+  color: var(--desk-warning-text);
+}
+
+#app-form {
+  display: flex;
+  gap: var(--desk-space-2);
+}
+
+#app-form input {
+  flex: 1;
+}
+
+footer {
+  padding: var(--desk-space-2) var(--desk-space-3);
+  border-top: var(--desk-border-width) solid var(--desk-border);
+}

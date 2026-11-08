@@ -1,0 +1,13 @@
+{
+  "target": "BridgeRequest",
+  "description": "what the OS allows computer use now",
+  "instance": {
+    "id": 1,
+    "method": "computer.permissions.status",
+    "params": {
+      "scope": {
+        "permission": "computer:see"
+      }
+    }
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "target": "StudioAgentsListResult",
+  "description": "two agents, one started from the catalog and turned off",
+  "instance": {
+    "agents": [
+      {
+        "id": "ag_01JC0Q4MR00000000000000001",
+        "slug": "miso",
+        "name": "Miso",
+        "status": "active",
+        "personalColor": "#B6A3F5",
+        "createdAt": "2026-11-01T09:00:00Z",
+        "updatedAt": "2026-11-02T09:00:00Z"
+      },
+      {
+        "id": "ag_01JC0Q4MR00000000000000003",
+        "slug": "mailie",
+        "name": "Mailie",
+        "status": "inactive",
+        "avatarUrl": "https://cdn.endue.ai/c/mailie.png",
+        "region": "KR-11",
+        "sourceCatalog": {
+          "catalogAgentId": "cat_support_mail",
+          "version": 3
+        },
+        "createdAt": "2026-11-01T09:00:00Z",
+        "updatedAt": "2026-11-01T09:00:00Z"
+      }
+    ]
+  }
+}

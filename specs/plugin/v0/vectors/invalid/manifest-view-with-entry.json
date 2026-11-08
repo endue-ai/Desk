@@ -1,0 +1,28 @@
+{
+  "target": "PluginManifest",
+  "description": "a view plugin runs no code, so it has no entry",
+  "instance": {
+    "id": "example.today",
+    "version": "0.1.0",
+    "kind": "view",
+    "entry": "index.html",
+    "view": {
+      "id": "example.today",
+      "version": "0.1.0",
+      "title": "Today",
+      "requires": {
+        "calendar": {
+          "kinds": ["event"]
+        }
+      },
+      "layout": {
+        "type": "agenda",
+        "range": "day",
+        "binding": {
+          "kinds": ["event"],
+          "sources": ["$calendar"]
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <title>desk shell fixture</title>
+    <style>
+      /* Snapshots freeze CSS transitions; every timed animation runs on the manual clock instead. */
+      *, *::before, *::after { transition: none !important; }
+      /* No web fonts in tests: a fixed local stack keeps runs offline. */
+      :root { --font-primary: -apple-system, "Helvetica Neue", Arial, sans-serif; }
+    </style>
+  </head>
+  <body>
+    <div id="desk"></div>
+    <script type="module" src="./shell.ts"></script>
+  </body>
+</html>

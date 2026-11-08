@@ -1,0 +1,237 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://endue.ai/specs/view/v0/universal.schema.json",
+  "title": "Desk universal view v0",
+  "description": "A universal view: one presentation (timeline, calendar, kanban, list, text, chat or agent) of entries from any source that serves the universal data format, written as data (ADR 0087). Every source answers the same document, so a view written for an inline list works on a file, a URL, a plugin's command or the desk's item index alike. People and plugins write both as YAML; on the wire they are JSON of the same shape.",
+  "$defs": {
+    "UniversalView": {
+      "description": "One universal view: what it shows (type), where its entries come from (source), which entry field plays which role (map), and the commands it runs.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "view.schema.json#/$defs/ViewId" },
+        "title": {
+          "description": "Shown above the view; the data's title when absent.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "description": {
+          "description": "One sentence about what the view shows.",
+          "type": "string"
+        },
+        "type": { "$ref": "#/$defs/UniversalType" },
+        "types": {
+          "description": "The presentations the person may switch between over the same entries, in the switcher's order; absent, only type.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/UniversalType" },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "source": { "$ref": "#/$defs/UniversalSource" },
+        "map": { "$ref": "#/$defs/UniversalMap" },
+        "options": { "$ref": "#/$defs/UniversalOptions" },
+        "actions": {
+          "description": "Commands offered on an entry; the first runs on Enter or a click. Strings in args are templates over the entry ({id}, {title}, {raw.owner}).",
+          "type": "array",
+          "items": { "$ref": "view.schema.json#/$defs/ViewAction" }
+        },
+        "move": {
+          "description": "kanban: the command run when the person moves an entry to another column; {move.from} and {move.to} are the columns, the rest of the args read the entry.",
+          "$ref": "view.schema.json#/$defs/ViewAction"
+        },
+        "send": {
+          "description": "chat and agent: the command run when the person sends text from the composer; {send.text} is what they wrote. Without it there is no composer.",
+          "$ref": "view.schema.json#/$defs/ViewAction"
+        },
+        "empty": {
+          "description": "Shown when the source has no entries.",
+          "type": "string",
+          "minLength": 1
+        },
+        "refresh": {
+          "description": "Load an asset, file, URL or command source again this often, in seconds; an items source is live without it.",
+          "type": "integer",
+          "minimum": 5,
+          "maximum": 86400
+        },
+        "provenance": { "$ref": "view.schema.json#/$defs/ViewProvenance" }
+      },
+      "required": ["type", "source"],
+      "additionalProperties": false
+    },
+    "UniversalType": {
+      "description": "timeline: entries in time order along a line, by day. calendar: a month (or week, or day) of dates with the entries that fall on them. kanban: a column per group. list: one row per entry. text: the entries as one document. chat: messages from authors, the person's own on the other side. agent: an agent's run, step by step with each step's status.",
+      "type": "string",
+      "enum": ["timeline", "calendar", "kanban", "list", "text", "chat", "agent"]
+    },
+    "UniversalSource": {
+      "description": "Where the entries come from. Every source but items answers a UniversalData document (YAML or JSON); items are the desk's index, turned into entries.",
+      "oneOf": [
+        { "$ref": "#/$defs/UniversalInlineSource" },
+        { "$ref": "#/$defs/UniversalAssetSource" },
+        { "$ref": "#/$defs/UniversalUrlSource" },
+        { "$ref": "#/$defs/UniversalFileSource" },
+        { "$ref": "#/$defs/UniversalCommandSource" },
+        { "$ref": "#/$defs/UniversalItemsSource" }
+      ]
+    },
+    "UniversalInlineSource": {
+      "description": "The data, written in the view itself.",
+      "type": "object",
+      "properties": { "data": { "$ref": "#/$defs/UniversalData" } },
+      "required": ["data"],
+      "additionalProperties": false
+    },
+    "UniversalAssetSource": {
+      "description": "A file in the folder of the plugin that opens the view, fetched by its own frame: no permission.",
+      "type": "object",
+      "properties": {
+        "asset": {
+          "description": "A path relative to the plugin's folder, with forward slashes and no ..: data/board.yaml.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512,
+          "pattern": "^(?![/~])(?!.*(^|/)\\.\\.(/|$))[^\\\\:]+$"
+        }
+      },
+      "required": ["asset"],
+      "additionalProperties": false
+    },
+    "UniversalUrlSource": {
+      "description": "A document served over HTTP(S), fetched with net.fetch under a net:fetch grant for its host.",
+      "type": "object",
+      "properties": {
+        "url": {
+          "description": "An http or https URL that answers a UniversalData document as YAML or JSON.",
+          "type": "string",
+          "maxLength": 2048,
+          "pattern": "^https?://[^\\s/?#]+([/?#]\\S*)?$"
+        }
+      },
+      "required": ["url"],
+      "additionalProperties": false
+    },
+    "UniversalFileSource": {
+      "description": "A file on the desk, read with fs.read under an fs:read grant for its path.",
+      "type": "object",
+      "properties": {
+        "file": {
+          "description": "An absolute path, or one rooted at ~, ${workspace} or ${home}, with forward slashes.",
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^(/|~(/|$)|[A-Za-z]:/|\\$\\{(workspace|home)\\}(/|$))[^\\\\]*$"
+        }
+      },
+      "required": ["file"],
+      "additionalProperties": false
+    },
+    "UniversalCommandSource": {
+      "description": "A command another plugin provides, run with cmd.invoke under a cmd:invoke grant: its answer is the UniversalData document, as an object or as YAML text.",
+      "type": "object",
+      "properties": {
+        "command": { "$ref": "../../plugin/v0/contributes.schema.json#/$defs/CommandId" },
+        "args": { "$ref": "../../plugin/v0/contributes.schema.json#/$defs/CommandArgs" }
+      },
+      "required": ["command"],
+      "additionalProperties": false
+    },
+    "UniversalItemsSource": {
+      "description": "The desk's item index (data.query under data:read), live: each item becomes an entry with its kind's fields in the roles they play (an event's start and end, a task's status as its group, a message's sender as its author).",
+      "type": "object",
+      "properties": {
+        "items": { "$ref": "../../item/v0/query.schema.json#/$defs/ItemQuery" }
+      },
+      "required": ["items"],
+      "additionalProperties": false
+    },
+    "UniversalMap": {
+      "description": "Which entry field plays which role, as a dotted path: map a source's own names (due, owner, column) onto the roles the views draw. A role left out reads the field of its own name.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "../../item/v0/query.schema.json#/$defs/FieldPath" },
+        "title": { "$ref": "../../item/v0/query.schema.json#/$defs/FieldPath" },
+        "text": { "$ref": "../../item/v0/query.schema.json#/$defs/FieldPath" },
+        "detail": { "$ref": "../../item/v0/query.schema.json#/$defs/FieldPath" },
+        "start": { "$ref": "../../item/v0/query.schema.json#/$defs/FieldPath" },
+        "end": { "$ref": "../../item/v0/query.schema.json#/$defs/FieldPath" },
+        "group": { "$ref": "../../item/v0/query.schema.json#/$defs/FieldPath" },
+        "author": { "$ref": "../../item/v0/query.schema.json#/$defs/FieldPath" },
+        "role": { "$ref": "../../item/v0/query.schema.json#/$defs/FieldPath" },
+        "status": { "$ref": "../../item/v0/query.schema.json#/$defs/FieldPath" },
+        "tags": { "$ref": "../../item/v0/query.schema.json#/$defs/FieldPath" },
+        "url": { "$ref": "../../item/v0/query.schema.json#/$defs/FieldPath" }
+      },
+      "additionalProperties": false
+    },
+    "UniversalOrder": {
+      "description": "Earliest first (asc) or latest first (desc).",
+      "type": "string",
+      "enum": ["asc", "desc"]
+    },
+    "UniversalOptions": {
+      "description": "How a presentation draws. Each type reads the options it knows and ignores the rest, so one set serves every type in types.",
+      "type": "object",
+      "properties": {
+        "groups": {
+          "description": "kanban: the columns in order, shown even when empty; entries of other groups follow in the order they first appear.",
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        },
+        "range": { "$ref": "view.schema.json#/$defs/CalendarRange" },
+        "order": { "$ref": "#/$defs/UniversalOrder" },
+        "zone": {
+          "description": "The IANA time zone days and times are drawn in; the desk's when absent.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "me": {
+          "description": "chat: the author or role whose messages are the person's own, drawn on the other side; me and user are when absent.",
+          "type": "string",
+          "minLength": 1
+        },
+        "placeholder": {
+          "description": "chat and agent: the composer's hint.",
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "UniversalData": {
+      "description": "The universal data format: what every source but items answers. A YAML file, an HTTP response, a command's answer and inline data are all this document.",
+      "type": "object",
+      "properties": {
+        "universal": {
+          "description": "The format's version, v0; absent means v0.",
+          "const": "v0"
+        },
+        "title": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "description": { "type": "string" },
+        "updatedAt": { "$ref": "../../item/v0/item.schema.json#/$defs/Timestamp" },
+        "map": {
+          "description": "The roles the data's own fields play, so any view on it draws without a map of its own; a view's map wins.",
+          "$ref": "#/$defs/UniversalMap"
+        },
+        "entries": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/UniversalEntry" },
+          "maxItems": 10000
+        }
+      },
+      "required": ["entries"],
+      "additionalProperties": false
+    },
+    "UniversalEntry": {
+      "description": "One entry: any fields the source has. By name (or through a map) id, title, text (Markdown), detail, start and end (RFC 3339 with an offset, or a YYYY-MM-DD date for a whole day), group, author, role, status (pending, running, done, failed, waiting, or any other word), tags (a list of strings) and url play the roles the views draw; the rest travels with the entry to its actions.",
+      "type": "object",
+      "propertyNames": {
+        "type": "string",
+        "pattern": "^[A-Za-z_][A-Za-z0-9_-]*$",
+        "maxLength": 64
+      },
+      "maxProperties": 100
+    }
+  }
+}

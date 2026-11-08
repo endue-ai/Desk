@@ -1,0 +1,7 @@
+{
+  "target": "Permission",
+  "description": "create and manage the person's endue agents",
+  "instance": {
+    "permission": "studio:manage"
+  }
+}

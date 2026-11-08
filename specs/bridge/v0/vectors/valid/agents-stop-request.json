@@ -1,0 +1,14 @@
+{
+  "target": "BridgeRequest",
+  "description": "end a run",
+  "instance": {
+    "id": 9,
+    "method": "agents.stop",
+    "params": {
+      "runId": "run-3",
+      "scope": {
+        "permission": "agents:manage"
+      }
+    }
+  }
+}

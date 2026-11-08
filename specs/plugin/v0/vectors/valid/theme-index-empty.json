@@ -1,0 +1,8 @@
+{
+  "target": "ThemeIndex",
+  "description": "a market with no themes yet",
+  "instance": {
+    "format": "desk-theme-index/1",
+    "themes": []
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "target": "Permission",
+  "description": "studio:manage takes no scope fields",
+  "instance": {
+    "permission": "studio:manage",
+    "hosts": ["platform.endue.ai"]
+  }
+}

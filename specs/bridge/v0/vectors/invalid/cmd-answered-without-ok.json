@@ -1,0 +1,12 @@
+{
+  "target": "BridgeEvent",
+  "description": "cmd.answered says whether the command succeeded",
+  "instance": {
+    "event": "cmd.answered",
+    "data": {
+      "invocationId": "i-3",
+      "id": "desk.palette.pick",
+      "caller": "desk"
+    }
+  }
+}

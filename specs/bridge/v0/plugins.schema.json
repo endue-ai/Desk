@@ -1,0 +1,194 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://endue.ai/specs/bridge/v0/plugins.schema.json",
+  "title": "Desk bridge v0: plugin",
+  "description": "Installed plugins: list them, turn them on and off, and hear when they change. Scoped by plugin:manage.",
+  "$defs": {
+    "PluginListRequest": {
+      "description": "List every installed plugin with its state.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "plugin.list" },
+        "params": { "$ref": "#/$defs/PluginListParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "PluginListParams": {
+      "description": "Parameters of plugin.list.",
+      "type": "object",
+      "properties": {
+        "scope": {
+          "$ref": "../../plugin/v0/permission.schema.json#/$defs/PluginManagePermission"
+        }
+      },
+      "required": ["scope"],
+      "additionalProperties": false
+    },
+    "PluginListResult": {
+      "description": "Result of plugin.list, in install order.",
+      "type": "object",
+      "properties": {
+        "plugins": { "type": "array", "items": { "$ref": "#/$defs/PluginInfo" } }
+      },
+      "required": ["plugins"],
+      "additionalProperties": false
+    },
+    "PluginInfo": {
+      "description": "One installed plugin. A failed plugin has no manifest it can run with and says why.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "../../plugin/v0/plugin.schema.json#/$defs/PluginId" },
+        "status": { "$ref": "#/$defs/PluginStatus" },
+        "enabled": { "type": "boolean" },
+        "builtIn": { "description": "Shipped with Desk.", "type": "boolean" },
+        "revision": {
+          "description": "Increases every time the plugin's files change.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "manifest": { "$ref": "../../plugin/v0/plugin.schema.json#/$defs/PluginManifest" },
+        "error": { "description": "Why the plugin failed, for people.", "type": "string" },
+        "folder": {
+          "description": "The folder the plugin was installed from, as an absolute path, so people can be shown its files.",
+          "$ref": "bridge.schema.json#/$defs/Path"
+        }
+      },
+      "required": ["id", "status", "enabled", "builtIn", "revision"],
+      "additionalProperties": false
+    },
+    "PluginStatus": {
+      "description": "ready: the manifest is valid and the entry exists; failed: it cannot run.",
+      "type": "string",
+      "enum": ["ready", "failed"]
+    },
+    "PluginSetEnabledRequest": {
+      "description": "Turn a plugin on or off. The choice is remembered.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "plugin.setEnabled" },
+        "params": { "$ref": "#/$defs/PluginSetEnabledParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "PluginSetEnabledParams": {
+      "description": "Parameters of plugin.setEnabled.",
+      "type": "object",
+      "properties": {
+        "plugin": { "$ref": "../../plugin/v0/plugin.schema.json#/$defs/PluginId" },
+        "enabled": { "type": "boolean" },
+        "scope": {
+          "$ref": "../../plugin/v0/permission.schema.json#/$defs/PluginManagePermission"
+        }
+      },
+      "required": ["plugin", "enabled", "scope"],
+      "additionalProperties": false
+    },
+    "PluginSetEnabledResult": {
+      "description": "Result of plugin.setEnabled: the plugin after the change.",
+      "type": "object",
+      "properties": {
+        "plugin": { "$ref": "#/$defs/PluginInfo" }
+      },
+      "required": ["plugin"],
+      "additionalProperties": false
+    },
+    "PluginStatsRequest": {
+      "description": "Count the bridge calls each caller made over the last minute, for an inspector.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "bridge.schema.json#/$defs/RequestId"
+        },
+        "method": {
+          "const": "plugin.stats"
+        },
+        "params": {
+          "$ref": "#/$defs/PluginStatsParams"
+        }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "PluginStatsParams": {
+      "description": "Parameters of plugin.stats.",
+      "type": "object",
+      "properties": {
+        "scope": {
+          "$ref": "../../plugin/v0/permission.schema.json#/$defs/PermManagePermission"
+        }
+      },
+      "required": ["scope"],
+      "additionalProperties": false
+    },
+    "PluginStatsResult": {
+      "description": "Result of plugin.stats: every caller that made a call in the window, most calls first.",
+      "type": "object",
+      "properties": {
+        "windowSeconds": {
+          "description": "How far back the counts go, in seconds.",
+          "type": "integer",
+          "minimum": 1
+        },
+        "callers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CallerStats"
+          }
+        }
+      },
+      "required": ["windowSeconds", "callers"],
+      "additionalProperties": false
+    },
+    "CallerStats": {
+      "description": "The bridge calls one caller made in the window: a plugin, the runtime (desk) or the CLI (cli).",
+      "type": "object",
+      "properties": {
+        "caller": {
+          "$ref": "bridge.schema.json#/$defs/CallerId"
+        },
+        "calls": {
+          "description": "Calls the core answered.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "failed": {
+          "description": "Calls among them that it answered with an error.",
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": ["caller", "calls", "failed"],
+      "additionalProperties": false
+    },
+    "PluginChangedEvent": {
+      "description": "A plugin was installed, updated on disk, removed, enabled or disabled.",
+      "type": "object",
+      "properties": {
+        "event": { "const": "plugin.changed" },
+        "data": { "$ref": "#/$defs/PluginChangedData" }
+      },
+      "required": ["event", "data"],
+      "additionalProperties": false
+    },
+    "PluginChangedData": {
+      "description": "Payload of plugin.changed.",
+      "type": "object",
+      "properties": {
+        "plugin": { "$ref": "../../plugin/v0/plugin.schema.json#/$defs/PluginId" },
+        "change": { "$ref": "#/$defs/PluginChange" },
+        "revision": { "type": "integer", "minimum": 0 }
+      },
+      "required": ["plugin", "change", "revision"],
+      "additionalProperties": false
+    },
+    "PluginChange": {
+      "description": "What happened to the plugin.",
+      "type": "string",
+      "enum": ["installed", "updated", "removed", "enabled", "disabled"]
+    }
+  }
+}

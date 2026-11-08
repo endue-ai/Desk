@@ -1,0 +1,249 @@
+/* desk.universal: one universal view over the desk, Eris's bar above it, and the view builder.
+   Colours, type, corners and motion come from the desk's theme; <desk-universal-view> styles itself
+   from the same tokens, and the controls are the design system's kit (base.css). */
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: var(--desk-background);
+  color: var(--desk-text);
+  font: var(--desk-text-sm) / 20px var(--desk-font-sans);
+}
+
+/* Inset past the shell's floating chrome (its top bar, rails, talk line and errands float over a
+   desk-wide overlay), so the bar's buttons and the switcher stay reachable. */
+#root {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  height: 100%;
+  padding: 88px 96px 96px;
+}
+
+desk-universal-view {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.notice {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  border: 1px solid var(--desk-warning-border);
+  border-radius: var(--desk-radius-md);
+  background: var(--desk-card);
+  color: var(--desk-warning-text);
+}
+
+.notice[hidden] {
+  display: none;
+}
+
+.notice span {
+  flex: 1 1 auto;
+}
+
+/* Eris's bar: what she is making, the preview's choices, the notice after Apply. */
+.bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 8px 12px;
+  border: 1px solid var(--desk-primary-border);
+  border-radius: var(--desk-radius-md);
+  background: var(--desk-primary-soft);
+  color: var(--desk-text);
+}
+
+.bar[hidden] {
+  display: none;
+}
+
+.bar-text {
+  flex: 1 1 240px;
+}
+
+.bar[data-mode="drafting"] .bar-text::before {
+  content: "";
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 8px;
+  border-radius: var(--desk-radius-full);
+  background: var(--desk-primary);
+  animation: pulse var(--desk-motion-slow) ease-in-out infinite alternate;
+}
+
+.bar-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.bar-change {
+  flex: 1 1 220px;
+}
+
+.bar-change[hidden] {
+  display: none;
+}
+
+/* While Eris drafts: a ghost of rows to come, or the last proposal dimmed under the bar. */
+.ghost {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 8px 0;
+}
+
+.ghost[hidden] {
+  display: none;
+}
+
+.ghost span {
+  height: 44px;
+  border-radius: var(--desk-radius-md);
+  background: var(--desk-muted);
+  animation: pulse var(--desk-motion-slow) ease-in-out infinite alternate;
+}
+
+.ghost span:nth-child(2n) {
+  width: 82%;
+}
+
+#root[data-drafting] desk-universal-view {
+  opacity: 0.45;
+  transition: opacity var(--desk-motion-base) ease;
+}
+
+@keyframes pulse {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0.45;
+  }
+}
+
+/* The view builder: the steps on the left, the live preview on the right. */
+.builder {
+  display: grid;
+  grid-template-columns: minmax(260px, 340px) 1fr;
+  gap: 20px;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.builder[hidden],
+#root[data-building] > desk-universal-view,
+#root[data-building] > .ghost {
+  display: none;
+}
+
+.build-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  overflow: auto;
+}
+
+.build-step {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.build-step legend {
+  margin-bottom: 6px;
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.build-step [hidden] {
+  display: none;
+}
+
+.build-step .desk-tabs {
+  flex-wrap: wrap;
+}
+
+.build-kinds {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+}
+
+.build-kind {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.build-status {
+  margin: 0;
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-xs);
+}
+
+.build-roles {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 8px 12px;
+}
+
+.build-role {
+  display: contents;
+}
+
+.build-role span {
+  align-self: center;
+}
+
+.build-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.build-preview {
+  display: flex;
+  min-height: 0;
+  padding: 12px;
+  border: 1px solid var(--desk-border);
+  border-radius: var(--desk-radius-lg);
+  background: var(--desk-card);
+}
+
+.build-preview desk-universal-view {
+  flex: 1 1 auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ghost span,
+  .bar[data-mode="drafting"] .bar-text::before {
+    animation: none;
+  }
+}
+
+@media (max-width: 720px) {
+  #root {
+    padding: 72px 24px 80px;
+  }
+
+  .builder {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  #root {
+    padding: 10px 12px;
+  }
+}

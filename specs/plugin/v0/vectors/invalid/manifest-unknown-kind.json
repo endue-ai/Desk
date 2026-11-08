@@ -1,0 +1,10 @@
+{
+  "target": "PluginManifest",
+  "description": "kind is one of the known kinds",
+  "instance": {
+    "id": "example.gadget",
+    "version": "0.1.0",
+    "kind": "gadget",
+    "entry": "gadget.js"
+  }
+}

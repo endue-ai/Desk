@@ -1,0 +1,15 @@
+{
+  "target": "BridgeResponse",
+  "description": "fs.list answered: a file with its size and modifiedAt, a folder with modifiedAt, a symlink without",
+  "instance": {
+    "id": 3,
+    "ok": true,
+    "result": {
+      "entries": [
+        { "name": "hello.md", "kind": "file", "size": 7, "modifiedAt": "2026-10-30T00:00:00Z" },
+        { "name": "notes", "kind": "dir", "modifiedAt": "2026-10-30T09:15:00.250+09:00" },
+        { "name": "today.md", "kind": "symlink" }
+      ]
+    }
+  }
+}

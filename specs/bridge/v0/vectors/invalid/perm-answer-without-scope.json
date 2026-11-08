@@ -1,0 +1,12 @@
+{
+  "target": "BridgeRequest",
+  "description": "perm.answer needs perm:manage",
+  "instance": {
+    "id": 66,
+    "method": "perm.answer",
+    "params": {
+      "promptId": "p1",
+      "granted": false
+    }
+  }
+}

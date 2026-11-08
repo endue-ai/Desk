@@ -1,0 +1,13 @@
+{
+  "target": "BridgeRequest",
+  "description": "the person's Stop",
+  "instance": {
+    "id": 10,
+    "method": "computer.stop",
+    "params": {
+      "scope": {
+        "permission": "computer:control"
+      }
+    }
+  }
+}

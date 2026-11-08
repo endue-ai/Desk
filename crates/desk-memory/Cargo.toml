@@ -1,0 +1,20 @@
+[package]
+name = "desk-memory"
+description = "Eris's memory on this computer (specs/memory/v0, ADR 0095): facts.yaml, episodes by month and a SQLite FTS5 index derived from them."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+desk-bridge.workspace = true
+getrandom = "0.4"
+rusqlite.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+yaml_serde.workspace = true
+
+[lints]
+workspace = true

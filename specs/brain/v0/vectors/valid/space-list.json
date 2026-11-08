@@ -1,0 +1,25 @@
+{
+  "target": "SpaceList",
+  "description": "two spaces",
+  "instance": {
+    "items": [
+      {
+        "id": "sp_home",
+        "key": "home",
+        "name": "Home",
+        "type": "workspace",
+        "createdAt": "2026-10-01T09:00:00Z",
+        "updatedAt": "2026-10-01T09:00:00Z"
+      },
+      {
+        "id": "sp_studio",
+        "key": "studio",
+        "name": "Studio",
+        "description": "Client work",
+        "type": "chat",
+        "createdAt": "2026-10-01T09:00:00Z",
+        "updatedAt": "2026-10-01T09:00:00Z"
+      }
+    ]
+  }
+}

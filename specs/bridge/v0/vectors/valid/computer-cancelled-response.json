@@ -1,0 +1,12 @@
+{
+  "target": "BridgeResponse",
+  "description": "the stop ended a typing half-way",
+  "instance": {
+    "id": 12,
+    "ok": false,
+    "error": {
+      "code": "cancelled",
+      "message": "type \"hello\": stopped after 2 of 5 events"
+    }
+  }
+}

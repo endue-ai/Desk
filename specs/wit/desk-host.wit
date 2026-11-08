@@ -1,0 +1,297 @@
+/// Host interface for Desk logic plugins (Wasm components).
+///
+/// A subset of the Desk bridge (specs/bridge/v0): every function here is one bridge method, named
+/// `<interface>.<function>` there. Calls carry no scope argument; the host attaches the plugin's
+/// granted permission from its manifest, and anything not granted fails with permission-denied.
+package desk:host@0.0.0;
+
+interface types {
+  /// Mirrors ErrorCode in specs/bridge/v0/bridge.schema.json.
+  enum error-code {
+    permission-denied,
+    invalid-params,
+    not-found,
+    already-exists,
+    io-error,
+    timeout,
+    cancelled,
+    unsupported,
+    internal,
+  }
+
+  record error {
+    code: error-code,
+    message: string,
+  }
+}
+
+interface fs {
+  use types.{error};
+
+  enum entry-kind {
+    file,
+    dir,
+    symlink,
+  }
+
+  record dir-entry {
+    name: string,
+    kind: entry-kind,
+    size: option<u64>,
+    /// When the entry last changed, RFC 3339 in UTC; none when the desk cannot tell.
+    modified-at: option<string>,
+  }
+
+  /// bridge: fs.read
+  read: func(path: string) -> result<list<u8>, error>;
+
+  /// bridge: fs.list (`list` is a WIT keyword, hence the % escape)
+  %list: func(path: string) -> result<list<dir-entry>, error>;
+
+  /// bridge: fs.write. Creates or overwrites the file and returns the bytes written; with
+  /// `create-dirs` it also creates missing parent folders.
+  write: func(path: string, contents: list<u8>, create-dirs: bool) -> result<u64, error>;
+
+  /// One version the desk kept of a file: the bytes one of its writes replaced.
+  record version {
+    /// Unix milliseconds, a dash and six hex digits.
+    id: string,
+    /// When the write that replaced these bytes ran, RFC 3339 in UTC.
+    at: string,
+    /// The caller whose write replaced them.
+    caller: string,
+    size: u64,
+    /// SHA-256 of the bytes, lowercase hex.
+    sha256: string,
+  }
+
+  /// bridge: fs.history. Newest first, `limit` at most; empty when the desk kept nothing.
+  history: func(path: string, limit: option<u32>) -> result<list<version>, error>;
+
+  /// bridge: fs.restore. Writes the version back as `write` does and returns the bytes written.
+  restore: func(path: string, version-id: string) -> result<u64, error>;
+}
+
+interface net {
+  use types.{error};
+
+  record request {
+    url: string,
+    method: string,
+    headers: list<tuple<string, string>>,
+    body: option<list<u8>>,
+    timeout-ms: option<u32>,
+  }
+
+  record response {
+    status: u16,
+    headers: list<tuple<string, string>>,
+    body: list<u8>,
+  }
+
+  /// bridge: net.fetch
+  fetch: func(req: request) -> result<response, error>;
+}
+
+interface ui {
+  use types.{error};
+
+  enum notify-level {
+    info,
+    success,
+    warning,
+    error,
+  }
+
+  /// bridge: ui.notify
+  notify: func(title: string, body: option<string>, level: notify-level) -> result<_, error>;
+}
+
+interface perm {
+  use types.{error};
+
+  /// How long a grant lasts: the next call it allows, until Desk quits, or across restarts.
+  enum duration {
+    once,
+    session,
+    always,
+  }
+
+  record grant {
+    grant-id: string,
+    /// The permission as JSON, in the vocabulary of specs/plugin/v0/permission.schema.json.
+    permission: string,
+  }
+
+  /// The person's answer. A refusal is `granted: false`, not an error.
+  record decision {
+    granted: bool,
+    grant: option<grant>,
+  }
+
+  /// bridge: perm.query
+  query: func() -> list<grant>;
+
+  /// bridge: perm.request. Asks the person, showing `reason`. `permission` is JSON text in the
+  /// permission vocabulary; `duration` none means `session`, and the person may choose another.
+  request: func(
+    permission: string,
+    reason: string,
+    duration: option<duration>,
+  ) -> result<decision, error>;
+}
+
+interface store {
+  use types.{error};
+
+  /// bridge: store.get. The value is JSON text; none when the key was never set.
+  get: func(key: string) -> result<option<string>, error>;
+
+  /// bridge: store.set. The value is JSON text, 64 KiB at most. Values outlive the instance: a
+  /// reloaded plugin reads what the one before it wrote.
+  set: func(key: string, value: string) -> result<_, error>;
+}
+
+interface cmd {
+  use types.{error};
+
+  record command {
+    id: string,
+    title: string,
+    description: option<string>,
+    /// More words the palette matches.
+    keywords: list<string>,
+    /// JSON Schema (2020-12) text for the args of `invoke`; none means the command takes none.
+    args-schema: option<string>,
+    /// A context expression the runtime evaluates to offer the command; none means always.
+    when: option<string>,
+  }
+
+  record command-info {
+    command: command,
+    /// The caller that registered the command.
+    provider: string,
+  }
+
+  enum failure-code {
+    failed,
+    cancelled,
+  }
+
+  /// Why an invocation failed.
+  record failure {
+    code: failure-code,
+    message: string,
+  }
+
+  /// bridge: cmd.register. Adds or updates one of the plugin's commands; the plugin becomes its
+  /// provider and hears each invocation through the `on-command` export.
+  register: func(command: command) -> result<_, error>;
+
+  /// bridge: cmd.unregister
+  unregister: func(id: string) -> result<_, error>;
+
+  /// bridge: cmd.list. The commands the plugin's `cmd:invoke` grant covers, with their providers.
+  %list: func() -> result<list<command-info>, error>;
+
+  /// bridge: cmd.invoke. `args-json` is JSON object text. Returns the invocation id at once; the
+  /// answer arrives as a `cmd.answered` event.
+  invoke: func(id: string, args-json: option<string>) -> result<string, error>;
+
+  /// bridge: cmd.answer. Answers one invocation of the plugin's own commands, once: `ok` carries
+  /// the result as JSON text.
+  answer: func(invocation-id: string, outcome: result<string, failure>) -> result<_, error>;
+}
+
+interface events {
+  use types.{error};
+
+  /// bridge: events.subscribe. Starts delivering the named events about every caller through the
+  /// `on-event` export. Returns the subscription id.
+  subscribe: func(names: list<string>) -> result<string, error>;
+
+  /// bridge: events.unsubscribe
+  unsubscribe: func(subscription-id: string) -> result<_, error>;
+}
+
+interface settings {
+  use types.{error};
+
+  record setting {
+    owner: string,
+    key: string,
+    /// JSON text.
+    value: string,
+  }
+
+  /// bridge: settings.get. The value is JSON text, none when the key was never set. `owner` none
+  /// is the plugin's own; another owner needs a `settings:read` grant.
+  get: func(key: string, owner: option<string>) -> result<option<string>, error>;
+
+  /// bridge: settings.set. Writes one of the plugin's own settings: JSON text, 64 KiB at most.
+  set: func(key: string, value: string) -> result<_, error>;
+
+  /// bridge: settings.list. False: the plugin's own settings. True: every setting its
+  /// `settings:read` grant covers, whoever owns it.
+  %list: func(others: bool) -> result<list<setting>, error>;
+}
+
+interface log {
+  use types.{error};
+
+  enum level {
+    debug,
+    info,
+    warn,
+    error,
+  }
+
+  record entry {
+    /// RFC 3339, stamped by the core.
+    at: string,
+    /// The caller that wrote the entry, or `core`.
+    channel: string,
+    level: level,
+    message: string,
+    /// JSON object text.
+    fields: option<string>,
+  }
+
+  /// bridge: log.write. Adds an entry to the plugin's own channel; `fields` is JSON object text.
+  write: func(level: level, message: string, fields: option<string>) -> result<_, error>;
+
+  /// bridge: log.tail. The latest entries, oldest first: of one channel, or with `channel` none of
+  /// every channel merged in time order. `count` none means 100.
+  tail: func(channel: option<string>, count: option<u32>) -> result<list<entry>, error>;
+}
+
+/// What a logic plugin may import, and what it exports.
+world plugin {
+  use types.{error};
+
+  import fs;
+  import net;
+  import ui;
+  import perm;
+  import store;
+  import cmd;
+  import events;
+  import settings;
+  import log;
+
+  /// Called after the plugin is loaded and after every reload. Not a bridge method: the host calls
+  /// it, so it is a world function rather than an interface, as are the two below.
+  export start: func() -> result<_, error>;
+
+  /// Called for each invocation of one of the plugin's own commands. The plugin answers through
+  /// `cmd.answer` with `invocation-id`; `args-json` is JSON object text, `{}` without args.
+  export on-command: func(
+    invocation-id: string,
+    command-id: string,
+    args-json: string,
+  ) -> result<_, error>;
+
+  /// Called for each event the plugin hears: those about its own work (`cmd.answered`,
+  /// `settings.changed`, `perm.changed`) and those it subscribed to. `data-json` is JSON text.
+  export on-event: func(name: string, data-json: string) -> result<_, error>;
+}

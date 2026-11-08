@@ -1,0 +1,15 @@
+{
+  "target": "BridgeRequest",
+  "description": "at least one chord",
+  "instance": {
+    "id": 5,
+    "method": "computer.input.keys",
+    "params": {
+      "keys": [],
+      "scope": {
+        "permission": "computer:control",
+        "apps": ["com.apple.Safari"]
+      }
+    }
+  }
+}

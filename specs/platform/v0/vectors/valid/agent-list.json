@@ -1,0 +1,38 @@
+{
+  "target": "AgentGetListResponse",
+  "description": "a page with an agent made from the catalog and a deleted one, unset fields null",
+  "instance": {
+    "items": [
+      {
+        "id": "ag_01JC0Q4MR00000000000000001",
+        "slug": "miso",
+        "name": "Miso",
+        "status": "active",
+        "region": "KR-11",
+        "personal_color": "#B6A3F5",
+        "avatar_url": null,
+        "source_catalog": {
+          "catalog_agent_id": "cat_support_mail",
+          "version": 3
+        },
+        "created_at": "2026-11-01T09:00:00.000Z",
+        "updated_at": "2026-11-01T09:00:00.000Z"
+      },
+      {
+        "id": "ag_01JC0Q4MR00000000000000002",
+        "slug": "old",
+        "name": "Old",
+        "status": "deleted",
+        "created_at": "2026-11-01T09:00:00.000Z",
+        "updated_at": "2026-11-01T09:00:00.000Z",
+        "extra": "ignored"
+      }
+    ],
+    "pagination": {
+      "total": 2,
+      "page": 1,
+      "limit": 200,
+      "has_next_page": false
+    }
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "target": "BridgeRequest",
+  "description": "data.query needs a data:read scope",
+  "instance": {
+    "id": 50,
+    "method": "data.query",
+    "params": {
+      "query": {
+        "kinds": ["task"]
+      }
+    }
+  }
+}

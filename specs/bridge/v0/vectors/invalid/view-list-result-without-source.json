@@ -1,0 +1,13 @@
+{
+  "target": "ViewListResult",
+  "description": "a view.list summary must say where the view comes from",
+  "instance": {
+    "views": [
+      {
+        "id": "example.notes",
+        "version": "0.1.0",
+        "title": "Notes"
+      }
+    ]
+  }
+}

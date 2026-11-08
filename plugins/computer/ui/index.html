@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Computer</title>
+    <link rel="stylesheet" href="/_desk/tokens.css" />
+    <link rel="stylesheet" href="/_desk/base.css" />
+    <script type="importmap">
+      { "imports": { "@endue-ai/plugin-sdk": "/_desk/plugin-sdk.js" } }
+    </script>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <section id="live" role="status" aria-live="polite" hidden>
+      <span class="dot" aria-hidden="true"></span>
+      <div class="what">
+        <strong id="live-title"></strong>
+        <span id="live-detail"></span>
+      </div>
+      <button id="live-stop" class="desk-btn" type="button">Stop</button>
+    </section>
+    <header id="bar">
+      <h1>Eris uses your computer</h1>
+      <p>
+        She can look at the screen, find buttons and fields, click, type, press keys and open
+        apps. Each act waits for your approval, and each one is kept on the runs board with a
+        screenshot. Hold Esc while she acts to stop her at once.
+      </p>
+    </header>
+    <main>
+      <section aria-labelledby="os-title">
+        <h2 id="os-title">What macOS lets the desk do</h2>
+        <p id="message" class="muted"></p>
+        <ul id="permissions"></ul>
+        <button id="refresh" class="desk-btn" type="button">Check again</button>
+      </section>
+      <section id="stopped" aria-labelledby="stop-title">
+        <h2 id="stop-title">Stop</h2>
+        <p id="stopped-text" class="muted"></p>
+        <button id="stop" class="desk-btn" type="button">Stop now</button>
+        <button id="resume" class="desk-btn" type="button" hidden>Resume</button>
+      </section>
+      <section aria-labelledby="apps-title">
+        <h2 id="apps-title">Apps Eris may operate</h2>
+        <ul id="apps"></ul>
+        <form id="app-form">
+          <input
+            id="new-app"
+            class="desk-field"
+            type="text"
+            maxlength="255"
+            placeholder="A bundle id, such as com.apple.Safari"
+            aria-label="An app's bundle id"
+          />
+          <button class="desk-btn" type="submit">Add</button>
+        </form>
+      </section>
+      <section aria-labelledby="recent-title">
+        <h2 id="recent-title">Lately</h2>
+        <ul id="recent"></ul>
+      </section>
+    </main>
+    <footer><p id="status" role="status"></p></footer>
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

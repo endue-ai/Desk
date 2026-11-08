@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Agents</title>
+    <script type="importmap">
+      { "imports": { "@endue-ai/plugin-sdk": "/_desk/plugin-sdk.js", "@endue-ai/ui": "/_desk/ui.js" } }
+    </script>
+    <link rel="stylesheet" href="/_desk/tokens.css" />
+    <link rel="stylesheet" href="/_desk/base.css" />
+    <link rel="stylesheet" href="./style.css" />
+    <link rel="stylesheet" href="./views.css" />
+    <link rel="stylesheet" href="./studio.css" />
+  </head>
+  <body>
+    <header class="desk-bar" id="bar">
+      <button id="back" class="desk-btn desk-btn-quiet" type="button" hidden>← Home</button>
+      <h1 class="desk-bar-title" id="title">Agents</h1>
+      <span id="counts" class="desk-muted"></span>
+      <span class="desk-bar-spacer"></span>
+      <button id="refresh" class="desk-btn desk-btn-quiet" type="button">Refresh</button>
+      <button id="new-agent" class="desk-btn desk-btn-primary" type="button">New agent</button>
+    </header>
+    <main>
+      <section id="page-home" class="page" aria-labelledby="title">
+        <div id="home-tabs" class="desk-tabs home-tabs" role="tablist" aria-label="Home">
+          <button id="tab-agents" class="desk-tab" type="button" role="tab" data-tab="agents" aria-controls="panel-agents">Agents</button>
+          <button id="tab-activity" class="desk-tab" type="button" role="tab" data-tab="activity" aria-controls="panel-activity">Activity</button>
+        </div>
+        <div id="notes" class="notes"></div>
+        <div id="panel-agents" role="tabpanel" aria-labelledby="tab-agents">
+          <div class="filters">
+            <input id="search" class="desk-field" type="search" placeholder="Search agents  /" aria-label="Search agents" autocomplete="off" />
+            <div id="source-chips" class="desk-tabs chips" role="group" aria-label="Source"></div>
+            <div id="status-chips" class="desk-tabs chips" role="group" aria-label="Status"></div>
+          </div>
+          <ul id="grid" class="grid" aria-label="Agents"></ul>
+          <div id="grid-empty" class="desk-empty" hidden><p></p></div>
+        </div>
+        <div id="panel-activity" role="tabpanel" aria-labelledby="tab-activity" hidden>
+          <div id="agent-chips" class="desk-tabs chips" role="group" aria-label="Agents on the board"></div>
+          <div id="board" class="board"></div>
+          <div id="board-empty" class="desk-empty" hidden>
+            <p>No conversations yet. Talk to one of your agents and it shows here.</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="page-studio" class="page" aria-labelledby="title" hidden>
+        <div class="studio">
+          <div id="studio-card" class="studio-column"></div>
+          <aside id="inspector" class="inspector" aria-labelledby="inspector-title" hidden></aside>
+          <section id="chat" class="chat" aria-labelledby="chat-title" hidden>
+            <header class="chat-head">
+              <h2 id="chat-title"></h2>
+              <span id="chat-session" class="desk-muted"></span>
+              <span class="desk-bar-spacer"></span>
+              <button id="chat-new" class="desk-btn desk-btn-quiet" type="button" hidden>New session</button>
+            </header>
+            <p id="chat-note" class="desk-muted" hidden></p>
+            <ol id="chat-log" class="chat-log" role="log" aria-label="Conversation" tabindex="0"></ol>
+            <p id="chat-error" class="desk-error" role="alert" hidden></p>
+            <div class="composer" role="group" aria-label="New message">
+              <textarea id="chat-input" class="desk-field" rows="3" aria-label="Message"></textarea>
+              <div class="composer-row">
+                <div id="chat-access" class="desk-tabs" role="radiogroup" aria-label="What it may do">
+                  <button class="desk-tab" type="button" role="radio" data-access="read-only">Read only</button>
+                  <button class="desk-tab" type="button" role="radio" data-access="agent">May change files</button>
+                </div>
+                <span id="chat-hint" class="desk-muted hint"></span>
+                <button id="chat-stop" class="desk-btn desk-btn-danger" type="button" hidden>Stop</button>
+                <button id="chat-send" class="desk-btn desk-btn-primary" type="button">Send</button>
+              </div>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <section id="page-create" class="page create" aria-labelledby="create-title" hidden>
+        <header class="page-head">
+          <h2 id="create-title">Create a new agent</h2>
+          <p class="desk-muted">Start from an agent in the catalog, or build one from scratch.</p>
+          <div id="create-modes" class="desk-tabs" role="tablist" aria-label="How to start">
+            <button id="mode-find" class="desk-tab" type="button" role="tab" data-mode="find" aria-controls="create-find">Find an agent for me</button>
+            <button id="mode-build" class="desk-tab" type="button" role="tab" data-mode="build" aria-controls="create-build">Build from scratch</button>
+          </div>
+        </header>
+        <div id="create-signin" class="desk-empty" hidden>
+          <p></p>
+          <button id="create-signin-btn" class="desk-btn desk-btn-primary" type="button">Sign in</button>
+        </div>
+        <div id="create-find" role="tabpanel" aria-labelledby="mode-find">
+          <div class="find" role="search">
+            <label for="find-query">What should your agent help you with?</label>
+            <textarea id="find-query" class="desk-field" rows="2" maxlength="500" placeholder="For example: help me answer customer mail"></textarea>
+            <button id="find-go" class="desk-btn desk-btn-primary" type="button">Find</button>
+          </div>
+          <div class="find-heading">
+            <h3 id="find-heading">Pick one from the catalog</h3>
+            <button id="find-clear" class="desk-btn desk-btn-quiet" type="button" hidden>Show the whole catalog</button>
+          </div>
+          <p id="find-note" class="desk-muted" hidden></p>
+          <desk-progress id="find-progress" label="Looking through the catalog" hidden></desk-progress>
+          <div id="find-error" class="desk-error" role="alert" hidden>
+            <p></p>
+            <button id="find-browse" class="desk-btn" type="button">Browse the whole catalog</button>
+            <button id="find-build" class="desk-btn" type="button">Build from scratch</button>
+          </div>
+          <div class="find-body">
+            <ul id="catalog" class="catalog" aria-label="Catalog agents"></ul>
+            <aside id="preview" class="preview desk-card" aria-label="The catalog agent" hidden></aside>
+          </div>
+        </div>
+        <div id="create-build" class="build" role="tabpanel" aria-labelledby="mode-build" hidden>
+          <label for="build-name">Name</label>
+          <small class="desk-muted">What people call it: chats, mentions and lists show it as it is.</small>
+          <input id="build-name" class="desk-field" type="text" placeholder="For example: Miso" autocomplete="off" aria-describedby="build-name-error" />
+          <p id="build-name-error" class="field-error" hidden></p>
+          <label for="build-role">Role</label>
+          <small class="desk-muted">The work it takes on by default.</small>
+          <input id="build-role" class="desk-field" type="text" placeholder="For example: keeping my calendar and sorting mail" autocomplete="off" aria-describedby="build-role-error" />
+          <p id="build-role-error" class="field-error" hidden></p>
+          <p id="build-error" class="desk-error" role="alert" hidden></p>
+          <button id="build-go" class="desk-btn desk-btn-primary" type="button" disabled>Create agent</button>
+        </div>
+      </section>
+    </main>
+    <footer>
+      <p id="status" role="status"></p>
+    </footer>
+
+    <desk-dialog id="delete-dialog" label="Delete this agent?">
+      <h2>Delete this agent?</h2>
+      <p>
+        <strong id="delete-agent"></strong> leaves every list at once and is purged after 30 days.
+        Type its name to delete it.
+      </p>
+      <input id="delete-name" class="desk-field" type="text" aria-label="The agent's name" autocomplete="off" />
+      <div class="dialog-actions">
+        <button id="delete-cancel" class="desk-btn" type="button">Cancel</button>
+        <button id="delete-confirm" class="desk-btn desk-btn-danger" type="button" disabled>Delete</button>
+      </div>
+    </desk-dialog>
+    <desk-dialog id="ask-dialog" label="Are you sure?">
+      <h2 id="ask-title"></h2>
+      <p id="ask-text"></p>
+      <pre id="ask-detail" class="ask-detail" hidden></pre>
+      <div class="dialog-actions">
+        <button id="ask-no" class="desk-btn" type="button">Cancel</button>
+        <button id="ask-yes" class="desk-btn desk-btn-primary" type="button">Allow</button>
+      </div>
+    </desk-dialog>
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

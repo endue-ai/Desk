@@ -1,0 +1,33 @@
+{
+  "target": "UniversalView",
+  "description": "a chat drawn from inline data, the person's messages on the other side, with a composer that runs a command",
+  "instance": {
+    "title": "Design channel",
+    "type": "chat",
+    "source": {
+      "data": {
+        "universal": "v0",
+        "entries": [
+          {
+            "id": "m1",
+            "author": "Mina",
+            "text": "Can we ship the board on Friday?",
+            "start": "2026-11-04T09:12:00+09:00"
+          },
+          {
+            "id": "m2",
+            "author": "me",
+            "role": "me",
+            "text": "Yes, the **kanban** is ready.",
+            "start": "2026-11-04T09:14:00+09:00"
+          }
+        ]
+      }
+    },
+    "options": { "me": "me", "placeholder": "Message Design" },
+    "send": {
+      "command": "example.chat.send",
+      "args": { "channel": "design", "text": "{send.text}" }
+    }
+  }
+}

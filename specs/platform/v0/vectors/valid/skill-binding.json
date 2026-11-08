@@ -1,0 +1,18 @@
+{
+  "target": "AgentSkillBinding",
+  "description": "a catalog skill bound to an agent",
+  "instance": {
+    "id": "asb_1",
+    "agent_id": "ag_01JC0Q4MR00000000000000001",
+    "skill_id": "sk_1",
+    "skill_slug": "mail-triage",
+    "skill_name": "Mail triage",
+    "registry_skill_id": "reg_1",
+    "connection_id": null,
+    "pin_version": null,
+    "config": {},
+    "enabled": true,
+    "created_at": "2026-11-01T09:00:00.000Z",
+    "updated_at": "2026-11-01T09:00:00.000Z"
+  }
+}

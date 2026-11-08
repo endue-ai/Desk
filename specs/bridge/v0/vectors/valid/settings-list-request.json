@@ -1,0 +1,14 @@
+{
+  "target": "BridgeRequest",
+  "description": "settings.list of every setting a scope covers",
+  "instance": {
+    "id": 37,
+    "method": "settings.list",
+    "params": {
+      "scope": {
+        "permission": "settings:read",
+        "keys": ["endue.eris/*", "desk/theme"]
+      }
+    }
+  }
+}

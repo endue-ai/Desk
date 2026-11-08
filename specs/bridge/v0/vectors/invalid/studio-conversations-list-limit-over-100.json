@@ -1,0 +1,14 @@
+{
+  "target": "BridgeRequest",
+  "description": "endue AI pages conversations 100 at most",
+  "instance": {
+    "id": 1,
+    "method": "studio.conversations.list",
+    "params": {
+      "limit": 101,
+      "scope": {
+        "permission": "studio:manage"
+      }
+    }
+  }
+}

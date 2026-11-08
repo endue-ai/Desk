@@ -1,0 +1,15 @@
+{
+  "target": "BridgeRequest",
+  "description": "memory.forget every episode",
+  "instance": {
+    "id": 42,
+    "method": "memory.forget",
+    "params": {
+      "all": true,
+      "kind": "episode",
+      "scope": {
+        "permission": "memory:write"
+      }
+    }
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "target": "BridgeRequest",
+  "description": "a provider answers an invocation with a result",
+  "instance": {
+    "id": 12,
+    "method": "cmd.answer",
+    "params": {
+      "invocationId": "i-3",
+      "result": {
+        "picked": "b"
+      }
+    }
+  }
+}

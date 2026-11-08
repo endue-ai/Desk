@@ -1,0 +1,1007 @@
+openapi: 3.1.0
+info:
+  title: endue AI platform API, the desk's subset
+  version: 0.1.0
+  description: >-
+    The part of endue AI's own platform API (/api/v1, the API endue.ai's web calls) that Desk uses to
+    create and manage the person's endue AI agents: agents and what Studio shows of them, the agent
+    catalog, and the conversation list of the Home board. endue AI serves it; Desk is a client
+    (crates/desk-platform) and writes down only what it reads and sends (ADR 0122). Bodies are
+    snake_case. Readers ignore fields this document does not name, and read null as absent.
+  contact:
+    name: endue Desk maintainers
+    url: https://github.com/endue-ai/Desk
+  license:
+    name: Apache-2.0
+servers:
+  - url: https://platform.endue.ai
+    description: endue AI
+  - url: https://platform.dev.endue.ai
+    description: endue AI's development platform
+security:
+  - endueId: []
+tags:
+  - name: agents
+    description: agent-service. Create, read, update and delete answer the bare body; settings answer an envelope.
+  - name: catalog
+    description: agent-catalog-service. Every answer is an envelope.
+  - name: conversations
+    description: ai-agent-service, under /api/v1/ai. Every answer is a success envelope.
+paths:
+  /api/v1/agents:
+    get:
+      operationId: listAgents
+      tags: [agents]
+      summary: One page of the person's agents, the newest first
+      description: Deleted agents may be listed with status deleted; Desk leaves them out.
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - name: limit
+          in: query
+          description: Agents a page, 20 unless given.
+          schema: { type: integer, minimum: 1, maximum: 200 }
+      responses:
+        "200":
+          description: The page.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AgentGetListResponse" }
+        default: { $ref: "#/components/responses/Error" }
+    post:
+      operationId: createAgent
+      tags: [agents]
+      summary: Create an agent; endue AI derives its slug from the name
+      description: >-
+        Create an agent; endue AI derives its slug from the name.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateAgentRequest" }
+      responses:
+        "201":
+          description: Created.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CreateAgentResponse" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/agents/{agent_id}:
+    parameters:
+      - $ref: "#/components/parameters/AgentId"
+    get:
+      operationId: getAgent
+      tags: [agents]
+      summary: One agent
+      description: >-
+        One agent.
+      responses:
+        "200":
+          description: The agent.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AgentGetResponse" }
+        default: { $ref: "#/components/responses/Error" }
+    patch:
+      operationId: updateAgent
+      tags: [agents]
+      summary: Change an agent's nature and profile; a slug in the body is 400, neither part is 400
+      description: >-
+        Change an agent's nature and profile; a slug in the body is 400, neither part is 400.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateAgentRequest" }
+      responses:
+        "204": { description: Changed. }
+        default: { $ref: "#/components/responses/Error" }
+    delete:
+      operationId: deleteAgent
+      tags: [agents]
+      summary: Soft-delete an agent; it is purged after 30 days
+      description: 409 when it is already deleted, 410 past the 30-day purge window.
+      responses:
+        "204": { description: Deleted. }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/agents/{agent_id}/status:
+    parameters:
+      - $ref: "#/components/parameters/AgentId"
+    put:
+      operationId: setAgentStatus
+      tags: [agents]
+      summary: Turn an agent off (inactive) or on (active); 409 when it already has the status
+      description: >-
+        Turn an agent off (inactive) or on (active); 409 when it already has the status.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateAgentStatusRequest" }
+      responses:
+        "204": { description: Set. }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/agents/{agent_id}/identity:
+    parameters:
+      - $ref: "#/components/parameters/AgentId"
+    get:
+      operationId: getAgentIdentity
+      tags: [agents]
+      summary: The agent's nature (role, personality, languages) and profile
+      description: >-
+        The agent's nature (role, personality, languages) and profile.
+      responses:
+        "200":
+          description: The identity.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/IdentityResponse" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/agents/{agent_id}/settings:
+    parameters:
+      - $ref: "#/components/parameters/AgentId"
+    get:
+      operationId: getAgentSettings
+      tags: [agents]
+      summary: The agent's settings
+      description: >-
+        The agent's settings.
+      responses:
+        "200":
+          description: The settings, in an envelope.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AgentSettingsEnvelope" }
+        default: { $ref: "#/components/responses/Error" }
+    patch:
+      operationId: updateAgentSettings
+      tags: [agents]
+      summary: Change some settings; models.chat is patched key by key, null clears a key
+      description: >-
+        Change some settings; models.chat is patched key by key, null clears a key.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AgentSettingsUpdateRequest" }
+      responses:
+        "200":
+          description: The settings now, in an envelope.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AgentSettingsEnvelope" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/agents/{agent_id}/prompt:
+    parameters:
+      - $ref: "#/components/parameters/AgentId"
+    get:
+      operationId: getAgentPrompt
+      tags: [agents]
+      summary: The prompt revision in force; prompt is null while the agent has none
+      description: >-
+        The prompt revision in force; prompt is null while the agent has none.
+      responses:
+        "200":
+          description: The prompt.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AgentPromptResponse" }
+        default: { $ref: "#/components/responses/Error" }
+    put:
+      operationId: saveAgentPrompt
+      tags: [agents]
+      summary: Save the prompt as a new revision in force
+      description: >-
+        Save the prompt as a new revision in force.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SavePromptRequest" }
+      responses:
+        "200":
+          description: The new revision.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PromptRevision" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/agents/{agent_id}/prompt/revisions:
+    parameters:
+      - $ref: "#/components/parameters/AgentId"
+    get:
+      operationId: listPromptRevisions
+      tags: [agents]
+      summary: The prompt's revisions, the newest first
+      description: >-
+        The prompt's revisions, the newest first.
+      parameters:
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100 }
+      responses:
+        "200":
+          description: The revisions.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PromptRevisionListResponse" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/agents/{agent_id}/prompt/revisions/{rev}/restore:
+    parameters:
+      - $ref: "#/components/parameters/AgentId"
+      - name: rev
+        in: path
+        required: true
+        schema: { type: integer, minimum: 1 }
+    post:
+      operationId: restorePromptRevision
+      tags: [agents]
+      summary: Put an earlier revision back in force as a new revision
+      description: >-
+        Put an earlier revision back in force as a new revision.
+      responses:
+        "200":
+          description: The new revision.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PromptRevision" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/agents/{agent_id}/skills:
+    parameters:
+      - $ref: "#/components/parameters/AgentId"
+    get:
+      operationId: listAgentSkills
+      tags: [agents]
+      summary: The skills bound to the agent
+      description: >-
+        The skills bound to the agent.
+      responses:
+        "200":
+          description: The bindings.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/AgentSkillBinding" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/agents/{agent_id}/connectors:
+    parameters:
+      - $ref: "#/components/parameters/AgentId"
+    get:
+      operationId: listAgentConnectors
+      tags: [agents]
+      summary: The person's connections bound to the agent
+      description: >-
+        The person's connections bound to the agent.
+      responses:
+        "200":
+          description: The bindings.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/AgentConnectorBinding" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/agents/{agent_id}/traits:
+    parameters:
+      - $ref: "#/components/parameters/AgentId"
+    get:
+      operationId: listAgentTraits
+      tags: [agents]
+      summary: The traits set on the agent
+      description: >-
+        The traits set on the agent.
+      responses:
+        "200":
+          description: The traits.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AgentTraitsResponse" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/agent-catalog/agents:
+    get:
+      operationId: listCatalogAgents
+      tags: [catalog]
+      summary: The published catalog agents; no sign-in needed
+      description: >-
+        The published catalog agents; no sign-in needed.
+      security: []
+      parameters:
+        - name: q
+          in: query
+          schema: { type: string, maxLength: 200 }
+        - name: category
+          in: query
+          schema: { type: string, maxLength: 64 }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100 }
+      responses:
+        "200":
+          description: The agents, in an envelope.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CatalogListEnvelope" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/agent-catalog/recommend:
+    post:
+      operationId: recommendCatalogAgents
+      tags: [catalog]
+      summary: Catalog agents that fit what the person wants help with
+      description: >-
+        Catalog agents that fit what the person wants help with.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RecommendCatalogRequest" }
+      responses:
+        "200":
+          description: The matches, in an envelope.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RecommendEnvelope" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/agent-catalog/agents/{slug}/use:
+    parameters:
+      - name: slug
+        in: path
+        required: true
+        schema: { type: string, pattern: "^[a-z0-9][a-z0-9-]{0,63}$" }
+    post:
+      operationId: useCatalogAgent
+      tags: [catalog]
+      summary: Make the person an agent of their own from a catalog agent; 404 when it is not published
+      description: >-
+        Make the person an agent of their own from a catalog agent; 404 when it is not published.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UseCatalogAgentRequest" }
+      responses:
+        "201":
+          description: Made, in an envelope.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/UseCatalogEnvelope" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/ai/conversations:
+    get:
+      operationId: listConversations
+      tags: [conversations]
+      summary: One page of the person's conversations, the most recently active first
+      description: >-
+        One page of the person's conversations, the most recently active first.
+      parameters:
+        - name: agent_id
+          in: query
+          schema: { type: string }
+        - name: awaiting_input
+          in: query
+          schema: { type: boolean }
+        - name: running
+          in: query
+          schema: { type: boolean }
+        - $ref: "#/components/parameters/Page"
+        - name: limit
+          in: query
+          description: 20 unless given.
+          schema: { type: integer, minimum: 1, maximum: 100 }
+      responses:
+        "200":
+          description: The page, in a success envelope.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ConversationListEnvelope" }
+        default: { $ref: "#/components/responses/Error" }
+components:
+  securitySchemes:
+    endueId:
+      type: http
+      scheme: bearer
+      description: >-
+        The endue ID access token of the desk's account. Desk sends no Origin header, waits 15 s at
+        most, and after a 401 refreshes the token once and tries once more.
+  parameters:
+    AgentId:
+      name: agent_id
+      in: path
+      required: true
+      schema: { type: string, pattern: "^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$" }
+    Page:
+      name: page
+      in: query
+      description: 1-based, 1 unless given.
+      schema: { type: integer, minimum: 1 }
+  responses:
+    Error:
+      description: A refusal or a failure, as an error envelope.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+  schemas:
+    ErrorEnvelope:
+      description: Every error of the platform. Desk reads the status first (401 signed out, 403 forbidden, 404 and 410 not found, 400 and 422 invalid), then the code.
+      type: object
+      properties:
+        error: { $ref: "#/components/schemas/ErrorBody" }
+        meta: { $ref: "#/components/schemas/Meta" }
+      required: [error]
+    ErrorBody:
+      description: code is machine-readable (NOT_FOUND, FORBIDDEN, ALREADY_DELETED); message is for people.
+      type: object
+      properties:
+        code: { type: string, minLength: 1 }
+        message: { type: string }
+        details: {}
+        suggest: {}
+      required: [code, message]
+    Meta:
+      description: Where an answer came from.
+      type: object
+      properties:
+        request_id: { type: string }
+        timestamp: { type: string }
+    AgentStatus:
+      description: active, inactive (turned off), archived, or deleted (soft, purged after 30 days).
+      type: string
+      enum: [active, inactive, archived, deleted]
+    AgentSourceCatalog:
+      description: The catalog agent and version an agent was made from.
+      type: object
+      properties:
+        catalog_agent_id: { type: string, minLength: 1, maxLength: 64 }
+        version: { type: integer, minimum: 1 }
+      required: [catalog_agent_id, version]
+    AgentGetResponse:
+      description: One agent. avatar_url is absent when none is set.
+      type: object
+      properties:
+        id: { type: string, minLength: 1 }
+        slug: { type: string, minLength: 1 }
+        name: { type: string }
+        status: { $ref: "#/components/schemas/AgentStatus" }
+        region: { type: [string, "null"] }
+        personal_color: { type: [string, "null"] }
+        avatar_url: { type: [string, "null"] }
+        source_catalog: { $ref: "#/components/schemas/AgentSourceCatalog" }
+        created_at: { type: string }
+        updated_at: { type: string }
+      required: [id, slug, name, status, created_at, updated_at]
+    Pagination:
+      description: Where a page is in the whole list.
+      type: object
+      properties:
+        total: { type: integer, minimum: 0 }
+        page: { type: integer, minimum: 1 }
+        limit: { type: integer, minimum: 1 }
+        has_next_page: { type: boolean }
+      required: [total, page, limit, has_next_page]
+    AgentGetListResponse:
+      description: One page of agents.
+      type: object
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/AgentGetResponse" }
+        pagination: { $ref: "#/components/schemas/Pagination" }
+      required: [items, pagination]
+    NatureRole:
+      description: The role; Desk keeps one prompt, the role in words, as endue.ai does.
+      type: object
+      properties:
+        v: { type: string }
+        prompts:
+          type: array
+          items: { type: string }
+      required: [v, prompts]
+    NaturePersonality:
+      description: Personality coordinates, each from 0 to 1.
+      type: object
+      properties:
+        v: { type: string }
+        tone: { type: number, minimum: 0, maximum: 1 }
+        agency: { type: number, minimum: 0, maximum: 1 }
+        thinking: { type: number, minimum: 0, maximum: 1 }
+        rigor: { type: number, minimum: 0, maximum: 1 }
+        expression: { type: number, minimum: 0, maximum: 1 }
+        humor: { type: number, minimum: 0, maximum: 1 }
+        integrity: { type: number, minimum: 0, maximum: 1 }
+        epistemic_humility: { type: number, minimum: 0, maximum: 1 }
+      required: [v, tone, agency, thinking, rigor, expression, humor, integrity, epistemic_humility]
+    CreateNatureRequest:
+      description: The nature of a new agent.
+      type: object
+      properties:
+        role: { $ref: "#/components/schemas/NatureRole" }
+        personality: { $ref: "#/components/schemas/NaturePersonality" }
+        languages:
+          type: array
+          items: { type: string }
+      required: [role, personality]
+    PatchNatureRequest:
+      description: The parts of the nature to change.
+      type: object
+      properties:
+        role: { $ref: "#/components/schemas/NatureRole" }
+        personality: { $ref: "#/components/schemas/NaturePersonality" }
+        languages:
+          type: array
+          items: { type: string }
+    CreateProfileRequest:
+      description: The profile of a new agent; personal_color is made up when absent.
+      type: object
+      properties:
+        name: { type: string, minLength: 1, maxLength: 100 }
+        description: { type: string }
+        avatar_url: { type: string }
+        personal_color: { type: string }
+      required: [name]
+    UpdateProfileRequest:
+      description: The parts of the profile to change.
+      type: object
+      properties:
+        name: { type: string, minLength: 1, maxLength: 100 }
+        description: { type: string }
+        avatar_url: { type: string }
+        personal_color: { type: string }
+    CreateAgentRequest:
+      description: A new agent.
+      type: object
+      properties:
+        nature: { $ref: "#/components/schemas/CreateNatureRequest" }
+        profile: { $ref: "#/components/schemas/CreateProfileRequest" }
+      required: [nature, profile]
+    CreateAgentResponse:
+      description: The new agent's id.
+      type: object
+      properties:
+        agent_id: { type: string, minLength: 1 }
+      required: [agent_id]
+    UpdateAgentRequest:
+      description: Nature, profile or both; never the slug.
+      type: object
+      properties:
+        nature: { $ref: "#/components/schemas/PatchNatureRequest" }
+        profile: { $ref: "#/components/schemas/UpdateProfileRequest" }
+      not:
+        properties: { slug: true }
+        required: [slug]
+      anyOf:
+        - properties: { nature: true }
+          required: [nature]
+        - properties: { profile: true }
+          required: [profile]
+    UpdateAgentStatusRequest:
+      description: The status to set.
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [active, inactive]
+      required: [status]
+    ProfileResponse:
+      description: The agent's profile.
+      type: object
+      properties:
+        name: { type: string }
+        description: { type: [string, "null"] }
+        avatar_url: { type: [string, "null"] }
+        personal_color: { type: [string, "null"] }
+      required: [name]
+    NatureResponse:
+      description: The agent's nature.
+      type: object
+      properties:
+        role: { $ref: "#/components/schemas/NatureRole" }
+        personality: { $ref: "#/components/schemas/NaturePersonality" }
+        languages:
+          type: array
+          items: { type: string }
+      required: [role, personality, languages]
+    IdentityResponse:
+      description: Who the agent is.
+      type: object
+      properties:
+        nature: { $ref: "#/components/schemas/NatureResponse" }
+        profile: { $ref: "#/components/schemas/ProfileResponse" }
+      required: [nature, profile]
+    ModelPreference:
+      description: The chat model; null is unset (endue AI's default, no fallback, balanced routing).
+      type: object
+      properties:
+        default: { type: [string, "null"] }
+        fallback: { type: [string, "null"] }
+        routing:
+          type: [string, "null"]
+          enum: [balanced, throughput, null]
+    AgentModelPreferences:
+      description: Model preferences by purpose; chat is the one there is.
+      type: object
+      properties:
+        chat: { $ref: "#/components/schemas/ModelPreference" }
+      required: [chat]
+    AgentSettingsResponse:
+      description: The agent's settings. models and the tool groups may be absent while endue AI rolls out.
+      type: object
+      properties:
+        agent_id: { type: string }
+        visibility:
+          type: string
+          enum: [public, unlisted, private]
+        chat_history_retention: { type: integer, minimum: 0 }
+        disabled_tool_groups:
+          type: array
+          items: { type: string }
+        available_tool_groups:
+          type: array
+          items: { type: string }
+        models: { $ref: "#/components/schemas/AgentModelPreferences" }
+        updated_at: { type: string }
+      required: [agent_id, visibility]
+    AgentSettingsEnvelope:
+      description: The settings in agent-service's envelope.
+      type: object
+      properties:
+        data: { $ref: "#/components/schemas/AgentSettingsResponse" }
+        meta: { $ref: "#/components/schemas/Meta" }
+      required: [data]
+    ModelPreferencePatch:
+      description: The chat model keys to change; null clears one.
+      type: object
+      properties:
+        default: { type: [string, "null"] }
+        fallback: { type: [string, "null"] }
+    AgentSettingsUpdateRequest:
+      description: The settings Desk changes.
+      type: object
+      properties:
+        visibility:
+          type: string
+          enum: [public, unlisted, private]
+        models:
+          type: object
+          properties:
+            chat: { $ref: "#/components/schemas/ModelPreferencePatch" }
+    PromptRevisionSource:
+      description: manual, migrated or restore.
+      type: string
+      enum: [manual, migrated, restore]
+    PromptRevision:
+      description: One revision of the prompt, whole.
+      type: object
+      properties:
+        rev: { type: integer, minimum: 1 }
+        content: { type: string, maxLength: 20000 }
+        source: { $ref: "#/components/schemas/PromptRevisionSource" }
+        restored_from_rev: { type: [integer, "null"], minimum: 1 }
+        created_at: { type: string }
+      required: [rev, content, source, created_at]
+    AgentPromptResponse:
+      description: The revision in force, or null.
+      type: object
+      properties:
+        prompt:
+          oneOf:
+            - $ref: "#/components/schemas/PromptRevision"
+            - type: "null"
+        updated_at: { type: string }
+      required: [prompt]
+    SavePromptRequest:
+      description: A new revision's Markdown.
+      type: object
+      properties:
+        content: { type: string, minLength: 1, maxLength: 20000 }
+      required: [content]
+    PromptRevisionSummary:
+      description: A revision without its content; preview is its first 120 characters.
+      type: object
+      properties:
+        rev: { type: integer, minimum: 1 }
+        source: { $ref: "#/components/schemas/PromptRevisionSource" }
+        restored_from_rev: { type: [integer, "null"], minimum: 1 }
+        preview: { type: string }
+        created_at: { type: string }
+        active: { type: boolean }
+      required: [rev, source, preview, created_at, active]
+    PromptRevisionListResponse:
+      description: The revisions.
+      type: object
+      properties:
+        revisions:
+          type: array
+          items: { $ref: "#/components/schemas/PromptRevisionSummary" }
+      required: [revisions]
+    AgentSkillBinding:
+      description: A skill bound to an agent.
+      type: object
+      properties:
+        id: { type: string, minLength: 1 }
+        agent_id: { type: string }
+        skill_id: { type: string }
+        skill_slug: { type: [string, "null"] }
+        skill_name: { type: [string, "null"] }
+        registry_skill_id: { type: [string, "null"] }
+        connection_id: { type: [string, "null"] }
+        enabled: { type: boolean }
+      required: [id, skill_id, enabled]
+    ConnectorBindingConnection:
+      description: The connection a binding uses, and its health.
+      type: object
+      properties:
+        id: { type: string }
+        display_name: { type: string }
+        connection_type_id: { type: string }
+        status: { type: string }
+    ConnectorBindingType:
+      description: The connection's type.
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        icon_url: { type: [string, "null"] }
+    AgentConnectorBinding:
+      description: A connection bound to an agent.
+      type: object
+      properties:
+        id: { type: string, minLength: 1 }
+        agent_id: { type: string }
+        connection_id: { type: string }
+        enabled: { type: boolean }
+        connection:
+          oneOf:
+            - $ref: "#/components/schemas/ConnectorBindingConnection"
+            - type: "null"
+        connection_type:
+          oneOf:
+            - $ref: "#/components/schemas/ConnectorBindingType"
+            - type: "null"
+      required: [id, connection_id, enabled]
+    AgentTrait:
+      description: A trait set on an agent.
+      type: object
+      properties:
+        trait_key: { type: string, minLength: 1 }
+        enabled: { type: boolean }
+        params: { type: object }
+        updated_at: { type: string }
+      required: [trait_key, enabled]
+    AgentTraitsResponse:
+      description: The traits; none set is an empty list.
+      type: object
+      properties:
+        traits:
+          type: array
+          items: { $ref: "#/components/schemas/AgentTrait" }
+      required: [traits]
+    CatalogL10n:
+      description: Text in English and Korean.
+      type: object
+      properties:
+        en: { type: string }
+        ko: { type: string }
+      required: [en, ko]
+    CatalogConnectorRef:
+      description: A connection type a catalog agent uses.
+      type: object
+      properties:
+        type: { type: string, minLength: 1 }
+        required: { type: boolean }
+      required: [type, required]
+    CatalogUseCase:
+      description: A use case with an example request.
+      type: object
+      properties:
+        title: { $ref: "#/components/schemas/CatalogL10n" }
+        example: { $ref: "#/components/schemas/CatalogL10n" }
+      required: [title, example]
+    CatalogIdentity:
+      description: The catalog agent's name, role and avatar.
+      type: object
+      properties:
+        name: { type: string }
+        role: { $ref: "#/components/schemas/CatalogL10n" }
+        avatar_url: { type: [string, "null"] }
+        personal_color: { type: [string, "null"] }
+      required: [name, role]
+    CatalogPreset:
+      description: What using the catalog agent sets up.
+      type: object
+      properties:
+        traits:
+          type: array
+          items: { type: string }
+        skills:
+          type: array
+          items: { type: string }
+        model: { type: [string, "null"] }
+      required: [skills]
+    PublicCatalogManifest:
+      description: The public part of a catalog agent's manifest; its instructions stay on endue AI.
+      type: object
+      properties:
+        identity: { $ref: "#/components/schemas/CatalogIdentity" }
+        tagline: { $ref: "#/components/schemas/CatalogL10n" }
+        description: { $ref: "#/components/schemas/CatalogL10n" }
+        strengths:
+          type: array
+          items: { $ref: "#/components/schemas/CatalogL10n" }
+        use_cases:
+          type: array
+          items: { $ref: "#/components/schemas/CatalogUseCase" }
+        connectors:
+          type: array
+          items: { $ref: "#/components/schemas/CatalogConnectorRef" }
+        channels:
+          type: array
+          items: { type: string }
+        preset: { $ref: "#/components/schemas/CatalogPreset" }
+      required: [identity, tagline, description, strengths, use_cases, connectors, channels, preset]
+    CatalogPublisher:
+      description: Who published it.
+      type: object
+      properties:
+        kind:
+          type: string
+          enum: [official, user]
+        name: { type: string }
+      required: [kind, name]
+    CatalogAgent:
+      description: A published catalog agent.
+      type: object
+      properties:
+        id: { type: string, minLength: 1 }
+        slug: { type: string, pattern: "^[a-z0-9][a-z0-9-]{0,63}$" }
+        category: { type: string }
+        tags:
+          type: array
+          items: { type: string }
+        featured: { type: boolean }
+        publisher: { $ref: "#/components/schemas/CatalogPublisher" }
+        version: { type: integer, minimum: 1 }
+        manifest: { $ref: "#/components/schemas/PublicCatalogManifest" }
+        published_at: { type: [string, "null"] }
+      required: [id, slug, category, tags, featured, publisher, version, manifest]
+    CatalogListEnvelope:
+      description: The catalog agents in the catalog's envelope.
+      type: object
+      properties:
+        data:
+          type: array
+          items: { $ref: "#/components/schemas/CatalogAgent" }
+        meta: { $ref: "#/components/schemas/Meta" }
+      required: [data]
+    RecommendCatalogRequest:
+      description: What the person wants help with, and their language.
+      type: object
+      properties:
+        query: { type: string, minLength: 1, maxLength: 500 }
+        locale: { type: string }
+      required: [query, locale]
+    CatalogRecommendation:
+      description: A catalog agent that fits, and why.
+      type: object
+      properties:
+        slug: { type: string }
+        reason: { type: string }
+      required: [slug, reason]
+    RecommendCatalogResponse:
+      description: The matches, best first, and who chose them.
+      type: object
+      properties:
+        matches:
+          type: array
+          items: { $ref: "#/components/schemas/CatalogRecommendation" }
+        source:
+          type: string
+          enum: [llm, keyword]
+      required: [matches, source]
+    RecommendEnvelope:
+      description: The recommendation in the catalog's envelope.
+      type: object
+      properties:
+        data: { $ref: "#/components/schemas/RecommendCatalogResponse" }
+        meta: { $ref: "#/components/schemas/Meta" }
+      required: [data]
+    UseCatalogAgentRequest:
+      description: The language the new agent's identity and prompt are written in.
+      type: object
+      properties:
+        locale: { type: string }
+      required: [locale]
+    CatalogUseWarning:
+      description: A step that did not go through.
+      type: object
+      properties:
+        step:
+          type: string
+          enum: [prompt, traits, skills, model]
+        code: { type: string }
+        target: { type: [string, "null"] }
+      required: [step, code]
+    UseCatalogAgentResponse:
+      description: The new agent and what was set up.
+      type: object
+      properties:
+        agent_id: { type: string, minLength: 1 }
+        catalog:
+          type: object
+          properties:
+            id: { type: string }
+            slug: { type: string }
+            version: { type: integer, minimum: 1 }
+          required: [id, slug, version]
+        applied:
+          type: object
+          properties:
+            prompt: { type: boolean }
+            traits:
+              type: array
+              items: { type: string }
+            skills:
+              type: array
+              items: { type: string }
+            model: { type: boolean }
+          required: [prompt, traits, skills, model]
+        warnings:
+          type: array
+          items: { $ref: "#/components/schemas/CatalogUseWarning" }
+        recommended:
+          type: object
+          properties:
+            connectors:
+              type: array
+              items: { $ref: "#/components/schemas/CatalogConnectorRef" }
+            channels:
+              type: array
+              items: { type: string }
+          required: [connectors, channels]
+      required: [agent_id, catalog, applied, warnings, recommended]
+    UseCatalogEnvelope:
+      description: The new agent in the catalog's envelope.
+      type: object
+      properties:
+        data: { $ref: "#/components/schemas/UseCatalogAgentResponse" }
+        meta: { $ref: "#/components/schemas/Meta" }
+      required: [data]
+    ConversationResponse:
+      description: One conversation. last_message_preview is at most 140 characters.
+      type: object
+      properties:
+        id: { type: string, minLength: 1 }
+        agent_id: { type: string, minLength: 1 }
+        owner_id: { type: string }
+        space_id: { type: [string, "null"] }
+        title: { type: [string, "null"] }
+        status:
+          type: string
+          enum: [active, archived, deleted]
+        message_count: { type: integer, minimum: 0 }
+        last_message_at: { type: [string, "null"] }
+        last_read_at: { type: [string, "null"] }
+        pinned_at: { type: [string, "null"] }
+        last_run_status:
+          type: [string, "null"]
+          enum: [running, completed, failed, null]
+        awaiting_input: { type: [boolean, "null"] }
+        last_message_preview: { type: [string, "null"] }
+        current_tool: { type: [string, "null"] }
+        last_run_error_code: { type: [string, "null"] }
+        created_at: { type: string }
+        updated_at: { type: string }
+      required: [id, agent_id, status, message_count, created_at, updated_at]
+    ConversationList:
+      description: One page of conversations, and how many match in all.
+      type: object
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/ConversationResponse" }
+        total: { type: integer, minimum: 0 }
+      required: [items, total]
+    ConversationListEnvelope:
+      description: The page in ai-agent-service's success envelope.
+      type: object
+      properties:
+        success: { const: true }
+        data: { $ref: "#/components/schemas/ConversationList" }
+      required: [success, data]

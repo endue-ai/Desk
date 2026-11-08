@@ -1,0 +1,292 @@
+{
+  "id": "endue.local-agents",
+  "name": "Local agents",
+  "version": "0.1.0",
+  "kind": "ui",
+  "entry": "ui/index.html",
+  "autoload": true,
+  "description": "The agent programs installed on this computer (Claude Code, Codex, Gemini CLI, Grok CLI, Qwen Code, Copilot CLI, Cursor Agent, OpenCode), found by their versions and asked through their non-interactive modes, read-only by default: a chat with one, answers compared side by side, a board of tasks they work through, and the activity. Every agent as a card: endue.agents.",
+  "permissions": [
+    {
+      "permission": "proc:spawn",
+      "commands": [
+        "claude",
+        "codex",
+        "gemini",
+        "grok",
+        "qwen",
+        "copilot",
+        "cursor-agent",
+        "opencode"
+      ]
+    },
+    {
+      "permission": "cmd:invoke",
+      "ids": ["desk.palette.pick"]
+    }
+  ],
+  "surfaces": [
+    {
+      "id": "main",
+      "title": "Local agents",
+      "placement": "center"
+    }
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "id": "endue.local-agents.open",
+        "title": "Local agents: open",
+        "keywords": ["claude", "codex", "gemini", "grok", "ai"]
+      },
+      {
+        "id": "endue.local-agents.detect",
+        "title": "Local agents: look for agent programs",
+        "keywords": ["detect", "scan", "installed"]
+      },
+      {
+        "id": "endue.local-agents.list",
+        "title": "Local agents: list the agents",
+        "keywords": ["installed", "versions"],
+        "description": "Return every known agent with its state (ready, missing, broken), version and how it is kept read-only.",
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.local-agents.ask",
+        "title": "Local agents: ask an agent",
+        "keywords": ["query", "question", "prompt"],
+        "description": "Ask one agent program on this computer (Claude Code, Codex, Gemini CLI and others) one question with no conversation, read-only whatever the access setting, in the work folder or a folder inside it, and return its answer. Asks for the prompt when absent; the chat's agent when agent is absent.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "prompt": {
+              "type": "string",
+              "minLength": 1,
+              "description": "What to ask, as text"
+            },
+            "agent": {
+              "enum": [
+                "claude",
+                "codex",
+                "gemini",
+                "grok",
+                "qwen",
+                "copilot",
+                "cursor",
+                "opencode"
+              ],
+              "description": "An agent's id"
+            },
+            "model": {
+              "type": "string",
+              "description": "A model name the program knows; empty: its default"
+            },
+            "folder": {
+              "type": "string",
+              "maxLength": 1024,
+              "description": "A folder inside the work folder (endue.local-agents.folder, else home), relative to it, for example projects/desk; absent: the work folder"
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true,
+        "readOnly": true
+      },
+      {
+        "id": "endue.local-agents.work",
+        "title": "Local agents: hand an agent a task",
+        "keywords": ["delegate", "task", "edit", "run"],
+        "description": "Hand one agent program a task it may act on: it runs with its own permission settings (agent access) in the work folder or a folder inside it, may change files there and run commands, and returns its answer. Asks for the prompt when absent; the chat's agent when agent is absent.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "prompt": {
+              "type": "string",
+              "minLength": 1,
+              "description": "What to ask, as text"
+            },
+            "agent": {
+              "enum": [
+                "claude",
+                "codex",
+                "gemini",
+                "grok",
+                "qwen",
+                "copilot",
+                "cursor",
+                "opencode"
+              ],
+              "description": "An agent's id"
+            },
+            "model": {
+              "type": "string",
+              "description": "A model name the program knows; empty: its default"
+            },
+            "folder": {
+              "type": "string",
+              "maxLength": 1024,
+              "description": "A folder inside the work folder (endue.local-agents.folder, else home), relative to it, for example projects/desk; absent: the work folder"
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true,
+        "irreversible": true
+      },
+      {
+        "id": "endue.local-agents.chat",
+        "title": "Local agents: chat",
+        "keywords": ["conversation", "talk", "message"]
+      },
+      {
+        "id": "endue.local-agents.new-chat",
+        "title": "Local agents: new conversation",
+        "keywords": ["clear", "reset", "start over"]
+      },
+      {
+        "id": "endue.local-agents.use",
+        "title": "Local agents: talk to another agent",
+        "keywords": ["switch", "pick", "agent"]
+      },
+      {
+        "id": "endue.local-agents.model",
+        "title": "Local agents: set the conversation's model",
+        "keywords": ["model", "opus", "gpt", "flash"]
+      },
+      {
+        "id": "endue.local-agents.compare",
+        "title": "Local agents: compare answers",
+        "keywords": ["side by side", "all", "fan out"]
+      },
+      {
+        "id": "endue.local-agents.board",
+        "title": "Local agents: board",
+        "keywords": ["kanban", "tasks", "cards"]
+      },
+      {
+        "id": "endue.local-agents.add-card",
+        "title": "Local agents: add a card",
+        "keywords": ["task", "new", "kanban"],
+        "description": "Add a card to the board's To do and return it: a prompt for one agent, which runs when the person moves it to Running. Asks for the prompt when absent.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "prompt": {
+              "type": "string",
+              "minLength": 1,
+              "description": "What to ask, as text"
+            },
+            "title": {
+              "type": "string"
+            },
+            "agent": {
+              "enum": [
+                "claude",
+                "codex",
+                "gemini",
+                "grok",
+                "qwen",
+                "copilot",
+                "cursor",
+                "opencode"
+              ],
+              "description": "An agent's id"
+            }
+          },
+          "additionalProperties": false
+        },
+        "agent": true
+      },
+      {
+        "id": "endue.local-agents.run-card",
+        "title": "Local agents: run the card",
+        "keywords": ["start", "task"]
+      },
+      {
+        "id": "endue.local-agents.move-card",
+        "title": "Local agents: move the card",
+        "keywords": ["column", "kanban"]
+      },
+      {
+        "id": "endue.local-agents.remove-card",
+        "title": "Local agents: remove the card",
+        "keywords": ["delete", "task"]
+      },
+      {
+        "id": "endue.local-agents.clear-done",
+        "title": "Local agents: clear Done",
+        "keywords": ["archive", "clean"]
+      },
+      {
+        "id": "endue.local-agents.activity",
+        "title": "Local agents: activity",
+        "keywords": ["runs", "history", "log"]
+      },
+      {
+        "id": "endue.local-agents.stop",
+        "title": "Local agents: stop",
+        "keywords": ["cancel", "abort", "kill"]
+      }
+    ],
+    "keys": [
+      {
+        "key": "Mod+Shift+A",
+        "command": "endue.local-agents.open"
+      }
+    ],
+    "settings": {
+      "endue.local-agents.path": {
+        "kind": "string",
+        "default": "",
+        "description": "The PATH agent programs are looked up on and run with (folders separated by :), for a desk started without the shell's PATH. Empty: the desk's PATH, then where Homebrew and the system install programs."
+      },
+      "endue.local-agents.folder": {
+        "kind": "string",
+        "default": "",
+        "description": "The folder agents work in: what they may read, and change when access is agent. Empty: your home folder."
+      },
+      "endue.local-agents.access": {
+        "kind": "string",
+        "default": "read-only",
+        "choices": ["read-only", "agent"],
+        "description": "read-only: each program runs in its read-only mode where it has one (Claude Code's plan mode, Codex's read-only sandbox), and the desk asks once before running a program nothing holds read-only. agent: each program uses its own permission settings."
+      },
+      "endue.local-agents.timeout": {
+        "kind": "integer",
+        "default": 600,
+        "minimum": 0,
+        "maximum": 86400,
+        "description": "Seconds one answer may take before the program is stopped (0: no limit)."
+      },
+      "endue.local-agents.parallel": {
+        "kind": "integer",
+        "default": 2,
+        "minimum": 1,
+        "maximum": 8,
+        "description": "How many of the board's cards run at once; the others wait in Running."
+      },
+      "endue.local-agents.agent": {
+        "kind": "string",
+        "default": "",
+        "choices": [
+          "",
+          "claude",
+          "codex",
+          "gemini",
+          "grok",
+          "qwen",
+          "copilot",
+          "cursor",
+          "opencode"
+        ],
+        "description": "The agent the chat and new cards start with, when it is installed. Empty: the first one found."
+      },
+      "endue.local-agents.confirm": {
+        "kind": "boolean",
+        "default": true,
+        "description": "With access read-only, ask once per session before running a program nothing holds read-only (Grok CLI, Cursor Agent, OpenCode)."
+      }
+    }
+  }
+}

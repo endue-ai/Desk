@@ -1,0 +1,11 @@
+{
+  "name": "@endue-ai/plugin-reader",
+  "version": "0.0.0",
+  "private": true,
+  "description": "The reader plugin's vendored PDF engine: pdf.js, copied into ui/vendor by scripts/vendor-pdfjs.mjs.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "devDependencies": {
+    "pdfjs-dist": "6.4.299"
+  }
+}

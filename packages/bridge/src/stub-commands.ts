@@ -1,0 +1,400 @@
+/**
+ * The core for the browser stub, so the runtime and plugins can be tested without it: the command
+ * registry (cmd.*, ADR 0017), grants and prompts (perm.*), settings, the log, subscriptions (events.*)
+ * and surfaces (ui.surface.*), per caller, with the core's rules (specs/bridge/v0/README.md), plus the
+ * items, connectors, views and catalog of stub-data.ts, shell.open of stub-shell.ts, cmd.recent and
+ * plugin.stats of stub-recent.ts, cmd.list and cmd.tools of stub-tools.ts and, given files, every fs.* of
+ * stub-fs.ts. A plugin caller's scoped call needs a covering grant; the runtime (`desk`) is trusted;
+ * cmd.list and cmd.invoke check none.
+ */
+import { StubError, type StubHandlers } from "./adapters";
+import { FIXTURE_NOW } from "./fixtures";
+import type {
+  BridgeEvent,
+  CallerGrant,
+  CallerId,
+  CommandFailure,
+  CommandInfo,
+  EventName,
+  Grant,
+  GrantChange,
+  GrantDuration,
+  Item,
+  ItemSource,
+  LogEntry,
+  Permission,
+  PermPromptData,
+  PermRequestParams,
+  PermRequestResult,
+  Setting,
+} from "./generated";
+import { covers, keyMatch } from "./stub-covers";
+import { type DataServed, stubData } from "./stub-data";
+import { type FsServed, type StubFiles, stubFs } from "./stub-fs";
+import { LOG, type LogServed, stubLog } from "./stub-log";
+import { type RecentServed, stubRecent } from "./stub-recent";
+import { type ShellServed, type StubOpened, stubShell } from "./stub-shell";
+import { type StubSurface, type SurfaceServed, stubSurfaces } from "./stub-surfaces";
+import { checkDescribed, stubTools, type ToolsServed } from "./stub-tools";
+import { type InvocationKind, type Invoked, stubUndo, type UndoServed } from "./stub-undo";
+
+/** The methods the stub serves; any other is `unsupported` (adapters.ts). */
+type Served =
+  | `cmd.${"register" | "unregister" | "invoke" | "answer"}`
+  | `perm.${"request" | "query" | "revoke" | "list" | "answer"}`
+  | `settings.${"get" | "set" | "list"}`
+  | LogServed
+  | `events.${"subscribe" | "unsubscribe"}`
+  | SurfaceServed
+  | UndoServed
+  | DataServed
+  | ShellServed
+  | RecentServed
+  | ToolsServed;
+
+export interface StubOptions {
+  /** Grants each caller holds from the start, as `session` grants with ids g-<n>. */
+  grants?: Record<CallerId, Permission[]>;
+  /** Settings that exist from the start. */
+  settings?: Setting[];
+  /** The person's answer to perm.request when no caller holds perm:manage; granted by default. */
+  prompt?: (data: PermPromptData) => boolean;
+  /** The core's clock: log entries and grants are stamped with it, and connector syncs, which use
+   * `FIXTURE_NOW` (the fixtures' today) when it is absent. */
+  now?: () => string;
+  /** Files by bridge path; with them the stub serves the fs.* of stub-fs.ts (reads, writes, history). */
+  files?: StubFiles;
+  /** Hears each shell.open the stub let through, after it is recorded (the dev page's window.open). */
+  open?: (opened: StubOpened) => void;
+}
+
+export type { StubSurface } from "./stub-surfaces";
+
+/** What the stub holds, for tests: grants oldest first, settings by owner and key, the whole log. */
+export interface StubState {
+  grants: CallerGrant[];
+  settings: Setting[];
+  log: LogEntry[];
+  surfaces: StubSurface[];
+  /** Every shell.open let through, oldest first. */
+  opened: StubOpened[];
+}
+
+export interface StubCommands {
+  /** The methods above, and the fs.* of stub-fs.ts when the options hold files. */
+  handlers: Required<Pick<StubHandlers, Served>> & Pick<StubHandlers, FsServed>;
+  /** The caller providing a command, or undefined. */
+  providerOf(id: string): string | undefined;
+  /** The plugin callers the core would deliver an event to (never the runtime: it hears all). */
+  audience(event: BridgeEvent): string[];
+  /** A caller stopped: its commands go, what waits on it is cancelled, its surfaces close, its
+   * subscriptions and prompts end. Its grants stay. */
+  drop(caller: string): void;
+  state(): StubState;
+  /** Put an item in the index, or replace the one with its source and id; fires data.changed. */
+  upsert(item: Item): void;
+  /** Take an item out of the index (false when it was not there); fires data.changed. */
+  remove(source: ItemSource, id: string): boolean;
+  /** Counts each call the stub answered, for plugin.stats: browserStub's observer. */
+  observe(caller: string | undefined, ok: boolean): void;
+}
+
+const MANAGE: Permission = { permission: "perm:manage" };
+const settingId = (owner: string, key: string) => `${owner}/${key}`;
+type Prompt = { data: PermPromptData; decide(granted: boolean, duration?: GrantDuration): void };
+
+/** `emit` delivers an event as the core would (the stub's `emit`); events leave after the answer. */
+export function stubCommands(
+  emit: (event: BridgeEvent) => void,
+  options: StubOptions = {},
+): StubCommands {
+  const commands = new Map<string, CommandInfo>();
+  const pending = new Map<string, Invoked & { provider: string }>();
+  const grants: CallerGrant[] = [];
+  const owners = new Map<string, string>();
+  const prompts = new Map<string, Prompt>();
+  const settings = new Map<string, Setting>();
+  const log: LogEntry[] = [];
+  const subscriptions = new Map<string, { caller: string; names: EventName[] }>();
+  const opened: StubOpened[] = [];
+  const counts = new Map<string, number>();
+  const fresh = (prefix: string) => {
+    counts.set(prefix, (counts.get(prefix) ?? 0) + 1);
+    return `${prefix}-${counts.get(prefix)}`;
+  };
+  const now = options.now ?? (() => new Date().toISOString());
+  const later = (event: BridgeEvent) => queueMicrotask(() => emit(event));
+  const me = (caller: string | undefined) => caller ?? "desk";
+  const holds = (caller: string, permission: Permission) =>
+    grants.find((g) => g.caller === caller && covers(g.grant.permission, permission));
+  /** Whether the caller holds a grant covering `permission`; the runtime holds every one. */
+  const may = (caller: string | undefined, permission: Permission) =>
+    me(caller) === "desk" || holds(me(caller), permission) !== undefined;
+  const holders = (permission: Permission) =>
+    grants.filter((g) => covers(g.grant.permission, permission)).map((g) => g.caller);
+  const subscribers = (name: EventName) =>
+    [...subscriptions.values()].filter((s) => s.names.includes(name)).map((s) => s.caller);
+  const sorted = () =>
+    [...settings.values()].sort((a, b) => (`${a.owner}/${a.key}` < `${b.owner}/${b.key}` ? -1 : 1));
+  const missing = (what: string) => new StubError("not_found", `${what} does not exist`);
+
+  const changed = (grantId: string, change: GrantChange) =>
+    later({ event: "perm.changed", data: { grantId, change } });
+  const give = (caller: string, permission: Permission, duration: GrantDuration, quiet = false) => {
+    const grant: Grant = { grantId: fresh("g"), permission, duration, grantedAt: now() };
+    grants.push({ caller, grant });
+    owners.set(grant.grantId, caller);
+    if (!quiet) changed(grant.grantId, "granted");
+    return grant;
+  };
+  const take = (grantId: string, change: GrantChange) => {
+    const index = grants.findIndex((g) => g.grant.grantId === grantId);
+    const [gone] = grants.splice(index, 1);
+    changed(grantId, change);
+    if (change !== "revoked" || !gone) return;
+    // Revoking a data:read grant ends the data subscriptions no other grant still covers.
+    data.drop(gone.caller, (scope) => may(gone.caller, scope));
+    // Revoking an events:subscribe grant ends the subscriptions no other grant still covers.
+    if (gone.grant.permission.permission !== "events:subscribe") return;
+    for (const [id, { caller, names }] of subscriptions)
+      if (caller === gone.caller && !holds(caller, { permission: "events:subscribe", names }))
+        subscriptions.delete(id);
+  };
+  /** A plugin caller's scoped call goes through when a grant covers the scope and the scope covers
+   * what the call touches (`fits`); a `once` grant is used up. */
+  const check = (caller: string | undefined, scope: Permission, fits = true) => {
+    if (me(caller) === "desk") return;
+    const held = fits ? holds(me(caller), scope) : undefined;
+    const why = `${caller} holds no grant covering this ${scope.permission} scope`;
+    if (!held) throw new StubError("permission_denied", why, scope);
+    if (held.grant.duration === "once") take(held.grant.grantId, "expired");
+  };
+  const recent = stubRecent({ now, me, check });
+  const shown = stubSurfaces({ check: (caller, scope) => check(caller, scope), fresh, me });
+  const surfaces = shown.surfaces;
+  const restore = async (path: string, version: string) => {
+    const scope = { permission: "fs:write" as const, paths: [path] };
+    return (await fs?.["fs.restore"]({ path, version, scope }, undefined))?.version;
+  };
+  const undo = stubUndo({ check, later, now, me, invoke: (...a) => invoke(...a), restore });
+  const fs = options.files && stubFs(options.files, check, now, undo.wrote);
+  const data = stubData({
+    check: (caller, scope) => check(caller, scope),
+    may,
+    holders,
+    later,
+    fresh,
+    me,
+    now: options.now ?? (() => FIXTURE_NOW),
+    commands: () => [...commands.values()],
+  });
+
+  const answered = (invocationId: string, result: unknown, error?: CommandFailure): void => {
+    const invocation = pending.get(invocationId);
+    if (!invocation || !pending.delete(invocationId)) return;
+    recent.answered(invocationId, error?.code);
+    undo.answered(invocation, result, !error);
+    const { id, caller } = invocation;
+    const outcome = error ? { error } : result === undefined ? {} : { result };
+    later({ event: "cmd.answered", data: { invocationId, id, caller, ok: !error, ...outcome } });
+  };
+  /** Invoke `id` as `caller`: `cmd.invoked` to its provider, the invocation kept until answered. */
+  const invoke = (
+    caller: string | undefined,
+    id: string,
+    args: Record<string, unknown> | undefined,
+    kind: InvocationKind = "command",
+  ) => {
+    const info = commands.get(id);
+    if (!info) throw new StubError("not_found", `no command ${id}`);
+    const invocationId = fresh("i");
+    const kept = { ...recent.invoked(invocationId, id, me(caller), info.provider), args, kind };
+    pending.set(invocationId, { ...kept, ...(info.undo ? { undo: info.undo } : {}) });
+    const data = { invocationId, id, caller: me(caller), ...(args ? { args } : {}) };
+    later({ event: "cmd.invoked", data });
+    return invocationId;
+  };
+  const remove = (id: string) => {
+    const info = commands.get(id);
+    if (!info) return;
+    commands.delete(id);
+    later({ event: "cmd.changed", data: { id, change: "unregistered", provider: info.provider } });
+  };
+
+  /** perm.request: a held grant answers at once; else perm.prompt, or `prompt` with no prompter. */
+  const request = async (
+    { permission, reason, duration = "session" }: PermRequestParams,
+    caller: string | undefined,
+  ): Promise<PermRequestResult> => {
+    const asker = me(caller);
+    const held = holds(asker, permission);
+    if (held) return { granted: true, grant: structuredClone(held.grant) };
+    const promptId = fresh("p");
+    const data: PermPromptData = { promptId, caller: asker, permission, reason, duration };
+    const decide = (granted: boolean, chosen = duration): PermRequestResult =>
+      granted ? { granted, grant: give(asker, permission, chosen) } : { granted };
+    if (holders(MANAGE).length === 0) return decide(options.prompt?.(data) ?? true);
+    later({ event: "perm.prompt", data });
+    return new Promise((resolve) => {
+      prompts.set(promptId, {
+        data,
+        decide: (granted, chosen) => {
+          prompts.delete(promptId);
+          resolve(decide(granted, chosen));
+        },
+      });
+    });
+  };
+
+  const audience = (event: BridgeEvent): string[] => {
+    const to: Array<string | undefined> = [];
+    if (event.event === "cmd.invoked")
+      to.push(commands.get(event.data.id)?.provider, ...subscribers("cmd.invoked"));
+    else if (event.event === "cmd.answered") to.push(event.data.caller);
+    else if (event.event === "cmd.changed") to.push(...subscribers("cmd.changed"));
+    else if (event.event === "cmd.undone") to.push(event.data.by, ...subscribers("cmd.undone"));
+    else if (event.event === "perm.changed")
+      to.push(owners.get(event.data.grantId), ...subscribers("perm.changed"));
+    else if (event.event === "perm.prompt") to.push(...holders(MANAGE));
+    else if (event.event === "plugin.changed")
+      to.push(...holders({ permission: "plugin:manage" }), ...subscribers("plugin.changed"));
+    else if (event.event === "settings.changed") {
+      const keys = [settingId(event.data.owner, event.data.key)];
+      const read = (c: string) => holds(c, { permission: "settings:read", keys });
+      to.push(event.data.owner, ...subscribers("settings.changed").filter(read));
+    } else if (event.event === "log.entry")
+      to.push(...subscribers("log.entry").filter((c) => holds(c, LOG)));
+    else to.push(...data.audience(event));
+    return [...new Set(to)].filter((c): c is string => c !== undefined && c !== "desk");
+  };
+
+  for (const [caller, permissions] of Object.entries(options.grants ?? {}))
+    for (const permission of permissions) give(caller, permission, "session", true);
+  for (const s of options.settings ?? []) settings.set(settingId(s.owner, s.key), { ...s });
+
+  return {
+    providerOf: (id) => commands.get(id)?.provider,
+    audience,
+    drop: (caller) => {
+      for (const info of [...commands.values()]) if (info.provider === caller) remove(info.id);
+      for (const [invocationId, invocation] of [...pending]) {
+        if (invocation.provider !== caller) continue;
+        const message = `${caller} stopped before it answered`;
+        answered(invocationId, undefined, { code: "cancelled", message });
+      }
+      for (const [handle, s] of surfaces) if (s.caller === caller) surfaces.delete(handle);
+      for (const [id, s] of subscriptions) if (s.caller === caller) subscriptions.delete(id);
+      for (const prompt of [...prompts.values()])
+        if (prompt.data.caller === caller) prompt.decide(false);
+      data.drop(caller);
+    },
+    state: () =>
+      structuredClone({
+        grants,
+        settings: sorted(),
+        log,
+        surfaces: [...surfaces.values()],
+        opened,
+      }),
+    observe: recent.observe,
+    upsert: data.upsert,
+    remove: data.remove,
+    handlers: {
+      ...data.handlers,
+      ...recent.handlers,
+      ...stubTools({ commands, may }).handlers,
+      ...fs,
+      ...undo.handlers,
+      ...shown.handlers,
+      ...stubShell({ check, may, me, request, opened, open: options.open }),
+      ...stubLog({ log, now, me, later, check }),
+      "cmd.register": (params, caller) => {
+        const provider = me(caller);
+        const existing = commands.get(params.id);
+        if (existing && existing.provider !== provider)
+          throw new StubError("already_exists", `${params.id} is provided by ${existing.provider}`);
+        checkDescribed(params);
+        commands.set(params.id, { ...params, provider });
+        const change = existing ? "updated" : "registered";
+        later({ event: "cmd.changed", data: { id: params.id, change, provider } });
+        return {};
+      },
+      "cmd.unregister": ({ id }, caller) => {
+        if (commands.get(id)?.provider !== me(caller))
+          throw new StubError("not_found", `${me(caller)} provides no command ${id}`);
+        remove(id);
+        return {};
+      },
+      "cmd.invoke": ({ id, args }, caller) => ({ invocationId: invoke(caller, id, args) }),
+      "cmd.answer": ({ invocationId, result, error }, caller) => {
+        if (pending.get(invocationId)?.provider !== me(caller))
+          throw new StubError("not_found", `${me(caller)} has no invocation ${invocationId}`);
+        answered(invocationId, result, error);
+        return {};
+      },
+      "perm.request": request,
+      "perm.answer": ({ promptId, granted, duration, scope }, caller) => {
+        check(caller, scope ?? MANAGE);
+        const prompt = prompts.get(promptId);
+        if (!prompt) throw missing(`a waiting prompt ${promptId}`);
+        prompt.decide(granted, duration);
+        return {};
+      },
+      "perm.query": ({ permission }, caller) => {
+        const mine = grants.filter((g) => g.caller === me(caller));
+        const shown = mine.filter((g) => !permission || covers(g.grant.permission, permission));
+        return { grants: structuredClone(shown.map((g) => g.grant)) };
+      },
+      "perm.list": ({ caller: whose, scope }, caller) => {
+        check(caller, scope ?? MANAGE);
+        return { grants: structuredClone(grants.filter((g) => (whose ?? g.caller) === g.caller)) };
+      },
+      "perm.revoke": ({ grantId, scope }, caller) => {
+        if (scope) check(caller, scope);
+        const held = grants.find((g) => g.grant.grantId === grantId);
+        if (!held || (!scope && held.caller !== me(caller)))
+          throw missing(`${me(caller)}'s grant ${grantId}`);
+        take(grantId, "revoked");
+        return {};
+      },
+      "settings.get": ({ key, owner, scope }, caller) => {
+        const id = settingId(owner ?? me(caller), key);
+        if ((owner ?? me(caller)) !== me(caller)) {
+          const asked = scope ?? { permission: "settings:read", keys: [id] };
+          const fits = asked.keys.some((p) => keyMatch(p, id));
+          check(caller, asked, fits);
+        }
+        const setting = settings.get(id);
+        return setting === undefined ? {} : { value: structuredClone(setting.value) };
+      },
+      "settings.set": ({ key, value }, caller) => {
+        const setting: Setting = { owner: me(caller), key, value: structuredClone(value) };
+        settings.set(settingId(setting.owner, key), setting);
+        later({ event: "settings.changed", data: structuredClone(setting) });
+        return {};
+      },
+      "settings.list": ({ scope }, caller) => {
+        if (scope) check(caller, scope);
+        const shown = (s: Setting) =>
+          scope
+            ? scope.keys.some((p) => keyMatch(p, settingId(s.owner, s.key)))
+            : s.owner === me(caller);
+        return { settings: structuredClone(sorted().filter(shown)) };
+      },
+      "events.subscribe": ({ names, scope }, caller) => {
+        const asked = scope ?? { permission: "events:subscribe", names };
+        const fits = names.every((name) => asked.names.includes(name));
+        check(caller, asked, fits);
+        const subscriptionId = fresh("sub");
+        subscriptions.set(subscriptionId, { caller: me(caller), names: [...names] });
+        return { subscriptionId };
+      },
+      "events.unsubscribe": ({ subscriptionId }, caller) => {
+        if (subscriptions.get(subscriptionId)?.caller !== me(caller))
+          throw missing(`${me(caller)}'s subscription ${subscriptionId}`);
+        subscriptions.delete(subscriptionId);
+        return {};
+      },
+    },
+  };
+}

@@ -1,0 +1,7 @@
+{
+  "target": "ProfileFile",
+  "description": "a name is not empty",
+  "instance": {
+    "name": ""
+  }
+}

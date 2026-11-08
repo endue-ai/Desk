@@ -1,0 +1,25 @@
+{
+  "target": "BridgeRequest",
+  "description": "proc.spawn in a PTY with args and env",
+  "instance": {
+    "id": 4,
+    "method": "proc.spawn",
+    "params": {
+      "command": "zsh",
+      "args": ["-l"],
+      "cwd": "~/",
+      "env": {
+        "TERM": "xterm-256color"
+      },
+      "pty": {
+        "cols": 120,
+        "rows": 32
+      },
+      "scope": {
+        "permission": "proc:spawn",
+        "commands": ["zsh"],
+        "pty": true
+      }
+    }
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "target": "UpdateStatus",
+  "description": "nightly is not a channel",
+  "instance": {
+    "state": "idle",
+    "current": {
+      "version": "0.1.0",
+      "commit": "fa7a4af"
+    },
+    "channel": "nightly"
+  }
+}

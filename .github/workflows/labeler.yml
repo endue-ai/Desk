@@ -1,0 +1,48 @@
+name: labeler
+
+# pull_request_target so labels can be written on fork PRs too. Safe because no job checks out or runs
+# PR code: actions/labeler reads .github/labeler.yml from the base branch, and size uses the API only.
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  area:
+    name: label-area
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/labeler@v7
+        with:
+          sync-labels: true
+
+  size:
+    name: label-size
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Label by changed lines
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+          ADDED: ${{ github.event.pull_request.additions }}
+          DELETED: ${{ github.event.pull_request.deletions }}
+        run: |
+          lines=$((ADDED + DELETED))
+          if   [ "$lines" -lt 10 ];  then size=xs
+          elif [ "$lines" -lt 50 ];  then size=s
+          elif [ "$lines" -lt 200 ]; then size=m
+          elif [ "$lines" -lt 400 ]; then size=l
+          else size=xl
+          fi
+          for other in xs s m l xl; do
+            [ "$other" = "$size" ] && continue
+            gh api -X DELETE "repos/$REPO/issues/$PR/labels/size:$other" >/dev/null 2>&1 || true
+          done
+          gh api "repos/$REPO/issues/$PR/labels" -f "labels[]=size:$size" >/dev/null
+          echo "$lines changed lines: size:$size"

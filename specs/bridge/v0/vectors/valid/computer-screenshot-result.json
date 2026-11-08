@@ -1,0 +1,17 @@
+{
+  "target": "ComputerScreenshotResult",
+  "description": "a 2 by 1 PNG of a region on a Retina display",
+  "instance": {
+    "image": "iVBORw0KGgoAAAANSUhEUgAAAAIAAAABCAYAAAD0In+KAAAAEUlEQVR4nGP4z8DwHwQZGBgAQd8E/G4fLSoAAAAASUVORK5CYII=",
+    "mediaType": "image/png",
+    "width": 2,
+    "height": 1,
+    "scale": 2.0,
+    "bounds": {
+      "x": 10.0,
+      "y": 20.0,
+      "width": 1.0,
+      "height": 0.5
+    }
+  }
+}

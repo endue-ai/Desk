@@ -1,0 +1,7 @@
+{
+  "target": "Permission",
+  "description": "cmd:invoke names the ids it covers",
+  "instance": {
+    "permission": "cmd:invoke"
+  }
+}

@@ -1,0 +1,222 @@
+/* endue.agents: the Home's card grid and activity board, laid out after the endue.ai web (cards in
+   auto-fill columns, the board's four columns over hairline dividers). Tokens only. */
+.grid,
+.catalog {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr));
+  gap: var(--desk-space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.agent-card,
+.catalog-card {
+  height: 100%;
+  transition: border-color var(--desk-motion-fast) var(--desk-easing);
+}
+
+.agent-card:hover,
+.agent-card:focus-within,
+.catalog-card:hover,
+.catalog-card:focus-within {
+  border-color: var(--desk-ring);
+}
+
+.card-open,
+.studio-head,
+.catalog-open {
+  display: flex;
+  align-items: center;
+  gap: var(--desk-space-3);
+  width: 100%;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+/* The card's head button keeps its row padding for the hover, but lines up with the card's text. */
+.card-open,
+.studio-head {
+  width: calc(100% + 2 * var(--desk-row-padding-x));
+  margin: calc(-1 * var(--desk-row-padding-y)) calc(-1 * var(--desk-row-padding-x)) 0;
+}
+
+.who {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+}
+
+.name {
+  overflow: hidden;
+  font-size: var(--desk-text-base);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.handle,
+.eyebrow {
+  overflow: hidden;
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.role,
+.description {
+  display: -webkit-box;
+  min-height: 2.6em;
+  margin: 0;
+  overflow: hidden;
+  color: var(--desk-text-muted);
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.meta {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--desk-space-2);
+  margin: 0;
+}
+
+.last {
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-xs);
+}
+
+.card-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* The board: four columns over hairline dividers, two below 1024 wide, one below 640. */
+#agent-chips {
+  margin-bottom: var(--desk-space-3);
+}
+
+.board {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1px;
+  overflow: hidden;
+  border: var(--desk-border-width) solid var(--desk-border);
+  border-radius: var(--desk-radius-md);
+  background: var(--desk-border);
+}
+
+@media (max-width: 1023px) {
+  .board {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 639px) {
+  .board {
+    grid-template-columns: 1fr;
+  }
+}
+
+.column {
+  min-width: 0;
+  background: var(--desk-background);
+}
+
+.column-head {
+  display: flex;
+  align-items: center;
+  gap: var(--desk-space-2);
+  margin: 0;
+  padding: var(--desk-space-2) var(--desk-space-3);
+  border-bottom: var(--desk-border-width) solid var(--desk-border);
+  font-size: var(--desk-text-sm);
+}
+
+.column[data-column="failed"] .column-head {
+  color: var(--desk-danger-text);
+}
+
+.column-empty {
+  margin: 0;
+  padding: var(--desk-space-3);
+  font-size: var(--desk-text-sm);
+}
+
+.group-label {
+  position: sticky;
+  top: 0;
+  margin: 0;
+  padding: var(--desk-space-1) var(--desk-space-3);
+  background: var(--desk-muted);
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-2xs);
+}
+
+.rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.board-row {
+  display: flex;
+  align-items: center;
+  gap: var(--desk-space-1);
+  padding-right: var(--desk-space-2);
+  border-bottom: var(--desk-border-width) solid var(--desk-border);
+}
+
+.row-open {
+  display: flex;
+  flex: 1;
+  align-items: flex-start;
+  gap: var(--desk-space-2);
+  min-width: 0;
+  min-height: 44px;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.row-text {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+  gap: 2px;
+}
+
+.row-top {
+  display: flex;
+  align-items: center;
+  gap: var(--desk-space-1);
+  overflow: hidden;
+  font-size: var(--desk-text-sm);
+  white-space: nowrap;
+}
+
+.row-title,
+.row-preview {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.row-preview,
+.row-meta {
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-xs);
+}
+
+.row-meta {
+  display: grid;
+  justify-items: end;
+  white-space: nowrap;
+}

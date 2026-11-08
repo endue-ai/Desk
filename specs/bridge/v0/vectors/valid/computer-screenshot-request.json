@@ -1,0 +1,18 @@
+{
+  "target": "BridgeRequest",
+  "description": "one Safari window, at most 1280 pixels wide, under a scope limited to Safari",
+  "instance": {
+    "id": 3,
+    "method": "computer.screenshot",
+    "params": {
+      "target": {
+        "window": 4211
+      },
+      "maxWidth": 1280,
+      "scope": {
+        "permission": "computer:see",
+        "apps": ["com.apple.Safari"]
+      }
+    }
+  }
+}

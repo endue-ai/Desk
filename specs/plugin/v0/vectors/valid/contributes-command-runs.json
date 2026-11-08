@@ -1,0 +1,32 @@
+{
+  "target": "PluginContributes",
+  "description": "an alias: a data-only plugin's command that runs another with fixed args, and a key for it",
+  "instance": {
+    "commands": [
+      {
+        "id": "example.today.open",
+        "title": "Open today",
+        "keywords": ["today", "agenda"],
+        "runs": {
+          "command": "desk.views.open",
+          "args": {
+            "id": "example.today"
+          }
+        }
+      },
+      {
+        "id": "example.today.close",
+        "title": "Close today",
+        "runs": {
+          "command": "desk.views.close"
+        }
+      }
+    ],
+    "keys": [
+      {
+        "key": "Mod+T",
+        "command": "example.today.open"
+      }
+    ]
+  }
+}

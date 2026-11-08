@@ -1,0 +1,107 @@
+{
+ "tag": "aside",
+ "class": "arrange-strip float-bar",
+ "role": "toolbar",
+ "aria-label": "Arrange windows",
+ "box": [
+  1374,
+  677,
+  42,
+  159
+ ],
+ "style": {
+  "background": "rgb(30, 29, 33)",
+  "border": "solid rgb(51, 49, 54)"
+ },
+ "children": [
+  {
+   "tag": "button",
+   "class": "icon-button arrange-button",
+   "aria-label": "Tile windows",
+   "box": [
+    1379,
+    682,
+    32,
+    32
+   ],
+   "style": {
+    "border": "solid rgba(0, 0, 0, 0)"
+   },
+   "children": [
+    {
+     "tag": "svg",
+     "icon": "arrange-tile"
+    }
+   ]
+  },
+  {
+   "tag": "button",
+   "class": "icon-button arrange-button",
+   "aria-label": "Cascade windows",
+   "box": [
+    1379,
+    718,
+    32,
+    32
+   ],
+   "style": {
+    "border": "solid rgba(0, 0, 0, 0)"
+   },
+   "children": [
+    {
+     "tag": "svg",
+     "icon": "arrange-cascade"
+    }
+   ]
+  },
+  {
+   "tag": "button",
+   "class": "icon-button arrange-button",
+   "aria-label": "Spread windows out",
+   "box": [
+    1379,
+    754,
+    32,
+    32
+   ],
+   "style": {
+    "border": "solid rgba(0, 0, 0, 0)"
+   },
+   "children": [
+    {
+     "tag": "svg",
+     "icon": "arrange-spread"
+    }
+   ]
+  },
+  {
+   "tag": "span",
+   "class": "arrange-divider",
+   "style": {
+    "background": "rgb(51, 49, 54)",
+    "color": "rgb(242, 240, 245)"
+   }
+  },
+  {
+   "tag": "button",
+   "class": "icon-button arrange-button is-restore",
+   "aria-label": "Restore previous layout",
+   "box": [
+    1379,
+    799,
+    32,
+    32
+   ],
+   "style": {
+    "border": "solid rgba(0, 0, 0, 0)",
+    "opacity": "0.5"
+   },
+   "children": [
+    {
+     "tag": "svg",
+     "icon": "arrange-restore"
+    }
+   ]
+  }
+ ]
+}

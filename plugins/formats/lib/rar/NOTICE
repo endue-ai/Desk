@@ -1,0 +1,48 @@
+endue.formats RAR reader (lib/rar)
+
+This reader was written for endue Desk from published descriptions of the RAR formats and from
+permissively licensed readers of them. No code was taken or followed from unRAR or from any other
+source under the unRAR licence restriction, the GPL or the LGPL. ADR 0051 records how it was made.
+
+Sources followed
+
+* RAR 5.0 archive format (technote), RARLAB, https://www.rarlab.com/technote.htm: the RAR 5 block
+  and header layout, vints, extra records, compression information and dictionary sizes.
+
+* libarchive, archive_read_support_format_rar5.c and archive_read_support_format_rar.c,
+  https://github.com/libarchive/libarchive, used under the BSD 2-clause licence below: the RAR 5 and
+  RAR 2.9 compressed block layouts, Huffman tables, match decoding and filters (RAR 5's delta, E8,
+  E8E9 and ARM; RAR 3's standard VM filters recognised by their code's CRC: E8, E8E9, delta, RGB,
+  audio).
+
+    Copyright (c) 2018 Grzegorz Antoniak (http://antoniak.org)
+    Copyright (c) 2003-2007 Tim Kientzle
+    Copyright (c) 2011 Andres Mejia
+    All rights reserved.
+
+    Redistribution and use in source and binary forms, with or without modification, are permitted
+    provided that the following conditions are met:
+    1. Redistributions of source code must retain the above copyright notice, this list of
+       conditions and the following disclaimer.
+    2. Redistributions in binary form must reproduce the above copyright notice, this list of
+       conditions and the following disclaimer in the documentation and/or other materials
+       provided with the distribution.
+
+    THIS SOFTWARE IS PROVIDED BY THE AUTHOR(S) ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES,
+    INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+    PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR(S) BE LIABLE FOR ANY DIRECT,
+    INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED
+    TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+    INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+    LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+    SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+* PPMd variant H (rar4/ppmd*.js): after Dmitry Shkarin's PPMd var.H (2001) and the carryless range
+  coder by Dmitry Subbotin (1999), both in the public domain, as Igor Pavlov's LZMA SDK (Ppmd7,
+  public domain) and libarchive's archive_ppmd7.c (public domain) implement them.
+
+* Behaviour that none of these describes (how a solid RAR 4 stream carries on from file to file, the
+  PPMd escape symbol of a continued model) was found by decoding archives that RARLAB's rar wrote.
+
+RAR is a registered trademark of Alexander Roshal. The test fixtures were made with RARLAB's trial
+rar for Linux (tests/rar/make-fixtures.sh); the tool itself is not part of this repository.

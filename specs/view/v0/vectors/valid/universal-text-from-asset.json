@@ -1,0 +1,8 @@
+{
+  "target": "UniversalView",
+  "description": "a document drawn from a YAML file in the plugin's own folder",
+  "instance": {
+    "type": "text",
+    "source": { "asset": "data/handbook.yaml" }
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "target": "BridgeRequest",
+  "description": "cmd.list under a cmd:invoke scope for every command",
+  "instance": {
+    "id": 32,
+    "method": "cmd.list",
+    "params": {
+      "scope": {
+        "permission": "cmd:invoke",
+        "ids": ["*"]
+      }
+    }
+  }
+}

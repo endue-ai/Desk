@@ -1,0 +1,18 @@
+{
+  "target": "BridgeRequest",
+  "description": "fs.write with base64 content and createDirs",
+  "instance": {
+    "id": 2,
+    "method": "fs.write",
+    "params": {
+      "path": "${plugin}/data/cache.bin",
+      "content": "AAEC",
+      "encoding": "base64",
+      "createDirs": true,
+      "scope": {
+        "permission": "fs:write",
+        "paths": ["${plugin}/data/**"]
+      }
+    }
+  }
+}

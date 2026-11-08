@@ -1,0 +1,194 @@
+/* Every colour, font, size, radius and duration comes from the theme's --desk-* tokens (index.html
+   loads their defaults; the runtime sets the theme in force). The plugin's own colours are names for
+   them: states are statuses (running success, paused or starting warning, dead or unhealthy danger),
+   port links the brand's text, and the sparklines three chart colours. tests/contrast.test.ts checks
+   them in light and dark (NF-05). The detail pane's rules are in pane.css. */
+:root {
+  --docker-running: var(--desk-success-text);
+  --docker-paused: var(--desk-warning-text);
+  --docker-stopped: var(--desk-text-muted);
+  --docker-failed: var(--desk-danger-text);
+  --docker-stderr: color-mix(in srgb, var(--desk-danger-text) 70%, var(--desk-text));
+  --docker-link: var(--desk-primary-text);
+  --docker-cpu: var(--desk-chart-4);
+  --docker-mem: var(--desk-chart-2);
+  --docker-net: var(--desk-chart-1);
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  margin: 0;
+  background: var(--desk-background);
+  color: var(--desk-text);
+  font: var(--desk-text-sm) / 1.5 var(--desk-font-sans);
+}
+
+.top {
+  gap: var(--desk-space-3);
+  background: var(--desk-card);
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: var(--desk-space-2);
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-xs);
+  white-space: nowrap;
+}
+
+.live {
+  color: var(--docker-running);
+  font-size: var(--desk-text-2xs);
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+#busy {
+  width: 72px;
+}
+
+.lists {
+  flex: none;
+  padding: var(--desk-space-1) var(--desk-space-3);
+  border-bottom: 1px solid var(--desk-border);
+  background: var(--desk-card);
+}
+
+.problem {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--desk-space-3);
+  margin: var(--desk-space-2) var(--desk-space-3) 0;
+  padding: var(--desk-space-2) var(--desk-space-3);
+}
+
+.problem p {
+  flex: 1;
+  margin: 0;
+}
+
+.split {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.list-pane {
+  display: flex;
+  flex: 1 1 56%;
+  min-width: 0;
+  flex-direction: column;
+  container: list / inline-size;
+  background: var(--desk-card);
+}
+
+.toolbar {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--desk-space-2);
+  padding: var(--desk-space-2) var(--desk-space-3);
+  border-bottom: 1px solid var(--desk-border);
+}
+
+.toolbar[hidden],
+.marks[hidden] {
+  display: none;
+}
+
+.search {
+  flex: 1 1 220px;
+  min-width: 140px;
+}
+
+.chips .desk-tab {
+  font-size: var(--desk-text-xs);
+}
+
+.sort-label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--desk-space-1);
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-xs);
+}
+
+.count {
+  margin-left: auto;
+  font-size: var(--desk-text-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+.marks {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--desk-space-2);
+  padding: var(--desk-space-1) var(--desk-space-3);
+  border-bottom: 1px solid var(--desk-primary-border);
+  background: var(--desk-primary-subtle);
+}
+
+.marks-count {
+  color: var(--desk-text);
+  font-weight: 600;
+}
+
+.marks-actions {
+  display: flex;
+  flex: 1;
+  gap: var(--desk-space-1);
+}
+
+.list {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  outline: none;
+  font-size: var(--desk-text-xs);
+}
+
+footer {
+  display: flex;
+  flex: none;
+  justify-content: space-between;
+  gap: var(--desk-space-3);
+  padding: var(--desk-space-1) var(--desk-space-3);
+  border-top: 1px solid var(--desk-border);
+  background: var(--desk-card);
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-xs);
+}
+
+footer p {
+  margin: 0;
+}
+
+#hints {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .row {
+    transition: background-color var(--desk-motion-fast) linear;
+  }
+}
+
+html[data-motion="reduce"] .row {
+  transition: none;
+}

@@ -1,0 +1,12 @@
+{
+  "target": "PluginContributes",
+  "description": "a sequence that ends in a space has an empty last chord",
+  "instance": {
+    "keys": [
+      {
+        "key": "Ctrl+X ",
+        "command": "example.notes.find-file"
+      }
+    ]
+  }
+}

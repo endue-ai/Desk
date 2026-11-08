@@ -1,0 +1,19 @@
+{
+  "target": "PluginContributes",
+  "description": "a command that cannot be taken back: an agent's call of it waits for the person's approval",
+  "instance": {
+    "commands": [
+      {
+        "id": "example.mail.send",
+        "title": "Send the draft",
+        "keywords": ["mail"],
+        "irreversible": true
+      },
+      {
+        "id": "example.mail.open",
+        "title": "Open the inbox",
+        "irreversible": false
+      }
+    ]
+  }
+}

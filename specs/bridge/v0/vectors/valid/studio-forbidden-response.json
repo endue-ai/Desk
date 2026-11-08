@@ -1,0 +1,12 @@
+{
+  "target": "BridgeResponse",
+  "description": "endue AI refuses another person's agent",
+  "instance": {
+    "id": 9,
+    "ok": false,
+    "error": {
+      "code": "forbidden",
+      "message": "Access denied"
+    }
+  }
+}

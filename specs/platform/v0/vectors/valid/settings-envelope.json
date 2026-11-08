@@ -1,0 +1,26 @@
+{
+  "target": "AgentSettingsEnvelope",
+  "description": "settings in agent-service's envelope, with a chat model and a tool group turned off",
+  "instance": {
+    "data": {
+      "agent_id": "ag_01JC0Q4MR00000000000000001",
+      "visibility": "private",
+      "chat_history_retention": 90,
+      "logging_conversation": true,
+      "disabled_tool_groups": ["browser"],
+      "available_tool_groups": ["browser", "workspace"],
+      "models": {
+        "chat": {
+          "default": "anthropic/claude-sonnet-4.5",
+          "fallback": null,
+          "routing": "balanced"
+        }
+      },
+      "updated_at": "2026-11-01T09:00:00.000Z"
+    },
+    "meta": {
+      "request_id": "req_1",
+      "timestamp": "2026-11-01T09:00:00.000Z"
+    }
+  }
+}

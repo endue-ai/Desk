@@ -1,0 +1,23 @@
+{
+  "target": "PluginManifest",
+  "description": "a design system plugin that changes a few components and keeps the rest",
+  "instance": {
+    "id": "example.studio-sharp",
+    "name": "Studio Sharp",
+    "version": "0.1.0",
+    "kind": "design-system",
+    "description": "Square corners, caps on buttons, underlined fields.",
+    "designSystem": {
+      "author": "Example",
+      "license": "CC0-1.0",
+      "tags": ["square", "editorial"],
+      "origin": { "prompt": "square corners and caps on buttons" },
+      "components": {
+        "button": { "shape": "none", "case": "uppercase", "weight": "semibold" },
+        "field": { "style": "underline" },
+        "tabs": { "style": "underline" },
+        "row": { "selection": "bar", "shape": "none" }
+      }
+    }
+  }
+}

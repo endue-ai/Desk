@@ -1,0 +1,15 @@
+{
+  "target": "BridgeRequest",
+  "description": "the slug never changes",
+  "instance": {
+    "id": 1,
+    "method": "studio.agents.update",
+    "params": {
+      "agentId": "ag_01JC0Q4MR00000000000000001",
+      "slug": "miso-2",
+      "scope": {
+        "permission": "studio:manage"
+      }
+    }
+  }
+}

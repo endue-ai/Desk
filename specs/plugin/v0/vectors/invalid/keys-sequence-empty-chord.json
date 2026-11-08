@@ -1,0 +1,12 @@
+{
+  "target": "PluginContributes",
+  "description": "two spaces leave an empty chord between them",
+  "instance": {
+    "keys": [
+      {
+        "key": "Mod+K  Mod+S",
+        "command": "example.notes.save-all"
+      }
+    ]
+  }
+}

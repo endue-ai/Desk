@@ -1,0 +1,22 @@
+{
+  "target": "ThemeIndex",
+  "description": "a bundle is 16 MiB at most",
+  "instance": {
+    "format": "desk-theme-index/1",
+    "themes": [
+      {
+        "id": "market.paper-dusk",
+        "name": "Paper Dusk",
+        "version": "1.0.0",
+        "description": "Warm paper by day, a lamp-lit study by night.",
+        "author": "Team endue",
+        "license": "CC0-1.0",
+        "tags": ["warm", "paper"],
+        "preview": ["#f4ecdd", "#8a4b2a", "#211a14"],
+        "url": "paper-dusk.desk-theme",
+        "sha256": "5f1d8d1c6b9a2e0f8c3e7a4b9d2c1e0f6a5b4c3d2e1f0a9b8c7d6e5f4a3b2c1d",
+        "size": 16777217
+      }
+    ]
+  }
+}

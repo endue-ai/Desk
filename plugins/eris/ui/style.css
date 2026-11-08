@@ -1,0 +1,222 @@
+body {
+  color-scheme: dark;
+  margin: 0;
+  background: var(--desk-card);
+  color: var(--desk-text-muted);
+  font: calc(var(--desk-text-sm) - 1px)/1.5 var(--desk-font-sans);
+}
+
+/* Scroll bars and controls follow the theme's scheme (the SDK sets data-scheme on the root). */
+[data-scheme="light"] body {
+  color-scheme: light;
+}
+
+#root {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
+  justify-items: center;
+  align-items: center;
+  height: 100vh;
+  padding: 0 16px 16px;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+#pose {
+  grid-row: 1;
+  margin: 0;
+  text-align: center;
+}
+
+#pose img {
+  width: 80px;
+  height: 80px;
+}
+
+/* In the light scheme her pose, frost art drawn for a dark desk, sits on her night as the orb does
+   in soul-text.css: one halo behind her body, one behind Dysnomia, solid past their lines. The
+   padding is a quarter of the image on each side and the halos are in percent of that box, so the
+   small layout below keeps them. In the state images her centre is at 50% 51.45% of the box and her
+   lines reach 28.2% from it; Dysnomia's facets reach 3.7% from her centre, which moves with the
+   pose. */
+[data-scheme="light"] #pose img {
+  box-sizing: content-box;
+  padding: 20px;
+  margin: -20px;
+  background-image:
+    radial-gradient(ellipse 11% 11% at 74.64% 71.01%, var(--eris-night) 50%, transparent 100%),
+    radial-gradient(ellipse 35% 35% at 50% 51.45%, var(--eris-night) 82%, transparent 100%);
+}
+
+/* Thinking, Dysnomia orbits to her upper left; oops, she sinks a little. */
+[data-scheme="light"] #pose[data-state="thinking"] img {
+  background-image:
+    radial-gradient(ellipse 11% 11% at 27.54% 29.71%, var(--eris-night) 50%, transparent 100%),
+    radial-gradient(ellipse 35% 35% at 50% 51.45%, var(--eris-night) 82%, transparent 100%);
+}
+
+[data-scheme="light"] #pose[data-state="oops"] img {
+  background-image:
+    radial-gradient(ellipse 11% 11% at 74.64% 73.19%, var(--eris-night) 50%, transparent 100%),
+    radial-gradient(ellipse 35% 35% at 50% 51.45%, var(--eris-night) 82%, transparent 100%);
+}
+
+#conversation {
+  grid-row: 2;
+  min-width: 0;
+  min-height: 0;
+  width: 100%;
+  height: 100%;
+  overflow-y: auto;
+  overflow-wrap: anywhere;
+  scrollbar-gutter: stable;
+}
+
+#conversation article {
+  margin: 8px 0;
+  padding: 10px 12px;
+  border-radius: var(--desk-radius-lg);
+  background: var(--desk-muted);
+}
+
+#conversation article[data-role="user"] {
+  border-left: 2px solid var(--desk-chart-3);
+}
+
+#conversation strong {
+  color: var(--desk-text);
+  font-size: var(--desk-text-2xs);
+}
+
+#conversation p {
+  margin: 4px 0 0;
+  white-space: pre-wrap;
+  user-select: text;
+  color: var(--desk-text);
+}
+
+#conversation small {
+  color: var(--desk-text-muted);
+}
+
+/* The answer under Eris: soul text at panel size. A long one scrolls; the form below never moves. */
+#answer.cap {
+  grid-row: 3;
+  height: auto;
+  min-height: 0;
+  max-height: 72px;
+  overflow-y: auto;
+  font-size: var(--desk-text-base);
+}
+
+#answer .wrap {
+  position: static;
+}
+
+.say {
+  grid-row: 4;
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  width: 100%;
+  margin-top: 12px;
+}
+
+.say input {
+  min-width: 0;
+}
+
+.say :focus-visible,
+#conversation:focus-visible {
+  outline: 2px solid var(--desk-ring);
+  outline-offset: 1px;
+}
+
+
+#attach-file,
+#remove-attachment {
+  justify-self: start;
+}
+
+#attachment,
+#attach-file,
+#context-notice {
+  grid-column: 1 / -1;
+}
+
+#attachment {
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid var(--desk-border);
+  border-radius: var(--desk-radius-md);
+}
+
+#attachment summary {
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+
+#attachment pre {
+  max-height: 90px;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: var(--desk-text-2xs)/1.5 var(--desk-font-mono);
+  margin: 6px 0;
+}
+
+#context-notice {
+  margin: 0;
+  font-size: var(--desk-text-2xs);
+}
+
+#context-notice:empty {
+  display: none;
+}
+
+/* Small docked panels keep the composer in view and scroll context independently. */
+@media (max-height: 450px) {
+  #root { padding: 0 8px 8px; }
+  #pose img { width: 32px; height: 32px; }
+  [data-scheme="light"] #pose img { padding: 8px; margin: -8px; }
+  #pose figcaption, #answer.cap { display: none; }
+  .say { max-height: 65vh; overflow-y: auto; margin-top: 4px; gap: 4px; }
+  #say-text, .send { grid-row: 1; }
+  #say-text { grid-column: 1; }
+  .send { grid-column: 2; }
+  #attach-file { grid-row: 2; }
+  #attachment { grid-row: 3; }
+  #context-notice { grid-row: 4; }
+}
+
+@media (max-height: 300px) {
+  #pose { display: none; }
+}
+
+/* The person's words on their way into Eris's centre. */
+.user-rise {
+  position: absolute;
+  left: 50%;
+  max-width: 90%;
+  color: var(--desk-text);
+  font-size: var(--desk-text-base);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+
+/* Match the shell's action feedback inside the isolated plugin frame. */
+button:not(:disabled),
+select:not(:disabled) {
+  cursor: pointer;
+}
+
+button:disabled,
+select:disabled {
+  cursor: not-allowed;
+}

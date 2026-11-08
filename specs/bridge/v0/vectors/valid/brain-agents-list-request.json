@@ -1,0 +1,17 @@
+{
+  "target": "BridgeRequest",
+  "description": "brain.agents.list with every query field: one space, one status, one page",
+  "instance": {
+    "id": 21,
+    "method": "brain.agents.list",
+    "params": {
+      "spaceId": "sp_home",
+      "status": "active",
+      "page": 2,
+      "limit": 10,
+      "scope": {
+        "permission": "brain:converse"
+      }
+    }
+  }
+}

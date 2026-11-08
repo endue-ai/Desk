@@ -1,0 +1,388 @@
+/* Every colour, font, size, radius and duration of the viewer comes from the theme's --desk-* tokens
+   (/_desk/tokens.css, then the runtime's values for the theme in force). Inside a slide the file's
+   colours and faces rule: a slide is white with black text, and in this face, where it names none. */
+:root {
+  --slides-font: -apple-system, "SUIT", "Inter", system-ui, sans-serif; /* theme: content */
+  --slides-rail: 164px;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  margin: 0;
+  background: var(--desk-card);
+  color: var(--desk-text);
+  font: calc(var(--desk-text-sm) - 1px)/1.5 var(--desk-font-sans);
+}
+
+header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 12px;
+  padding: 8px 12px 6px;
+  border-bottom: 1px solid var(--desk-border);
+}
+
+h1 {
+  margin: 0;
+  font-size: var(--desk-text-sm);
+}
+
+#deck-detail {
+  display: flex;
+  gap: 8px;
+  margin: 0;
+  color: var(--desk-text-muted);
+}
+
+#deck-badge {
+  padding: 0 6px;
+  border: 1px solid var(--desk-border);
+  border-radius: var(--desk-radius-sm);
+}
+
+button {
+  padding: 2px 10px;
+  border: 1px solid var(--desk-border);
+  border-radius: var(--desk-radius-md);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+button:hover,
+button:focus-visible {
+  border-color: var(--desk-primary-text);
+}
+
+:focus-visible {
+  outline: 2px solid var(--desk-ring);
+  outline-offset: 2px;
+}
+
+#play {
+  margin-left: auto;
+}
+
+#deck {
+  display: grid;
+  flex: 1;
+  grid-template-columns: var(--slides-rail) 1fr;
+  min-height: 0;
+}
+
+#rail-nav {
+  overflow-y: auto;
+  border-right: 1px solid var(--desk-border);
+}
+
+#rail {
+  margin: 0;
+  padding: 8px;
+  list-style: none;
+}
+
+#rail button {
+  display: flex;
+  gap: 4px;
+  align-items: flex-start;
+  width: 100%;
+  margin-bottom: 8px;
+  padding: 4px;
+  border-color: transparent;
+}
+
+#rail button[aria-current="true"] {
+  border-color: var(--desk-primary-text);
+}
+
+#rail .number {
+  min-width: 14px;
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-2xs);
+  text-align: right;
+}
+
+#rail .is-hidden .thumb {
+  opacity: 0.4;
+}
+
+#rail .is-hidden .number::after {
+  content: "\2298";
+  display: block;
+}
+
+.thumb {
+  display: block;
+  position: relative;
+  overflow: hidden;
+  background: #fff; /* theme: content: a slide that names no background */
+  pointer-events: none;
+}
+
+#viewer {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+#stage {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--desk-background);
+}
+
+#slide-frame,
+#player-stage {
+  position: relative;
+  overflow: hidden;
+  box-shadow: var(--desk-shadow-md);
+}
+
+#notes {
+  max-height: 28%;
+  overflow-y: auto;
+  padding: 6px 12px 8px;
+  border-top: 1px solid var(--desk-border);
+}
+
+h2 {
+  margin: 0 0 2px;
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-xs);
+  font-weight: 600;
+}
+
+#notes-text {
+  white-space: pre-wrap;
+}
+
+#notes-text:empty::before {
+  content: "No notes.";
+  color: var(--desk-text-muted);
+}
+
+/* A slide, drawn in points and scaled by its frame. */
+.slide {
+  position: absolute;
+  top: 0;
+  left: 0;
+  overflow: hidden;
+  transform-origin: 0 0;
+  background: #fff; /* theme: content: a slide that names no background */
+  color: #000; /* theme: content: text that names no colour */
+  font-family: var(--slides-font);
+  line-height: 1.2;
+  text-align: left;
+  user-select: text;
+}
+
+.slide .el {
+  position: absolute;
+  box-sizing: border-box;
+}
+
+.slide .fill,
+.slide .text {
+  position: absolute;
+  inset: 0;
+}
+
+.slide .stroke {
+  position: absolute;
+  top: 0;
+  left: 0;
+  overflow: visible;
+}
+
+.slide .text {
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+}
+
+.slide p {
+  margin: 0;
+}
+
+.slide .bullet {
+  display: inline-block;
+  text-indent: 0;
+}
+
+.slide .picture {
+  overflow: hidden;
+}
+
+.slide .picture img {
+  position: absolute;
+  max-width: none;
+  user-select: none;
+}
+
+.slide .missing {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed var(--desk-input);
+  background: color-mix(in srgb, var(--desk-input) 12%, transparent);
+  color: var(--desk-input);
+  font-size: var(--desk-text-sm);
+}
+
+.slide table {
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.slide td {
+  overflow: hidden;
+}
+
+#details {
+  flex: 1;
+  overflow: auto;
+  padding: 16px;
+}
+
+#details h2 {
+  color: var(--desk-text);
+  font-size: calc(var(--desk-text-sm) + 1px);
+}
+
+#details .why {
+  max-width: 60ch;
+  margin: 4px 0 12px;
+}
+
+#details dl {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 2px 12px;
+  margin: 0 0 12px;
+  color: var(--desk-text-muted);
+}
+
+#details dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+#details .label {
+  margin: 0;
+  color: var(--desk-text-muted);
+}
+
+#details .url {
+  margin: 2px 0 0;
+  padding: 6px 8px;
+  border: 1px solid var(--desk-border);
+  border-radius: var(--desk-radius-md);
+  background: var(--desk-background);
+  font-family: var(--desk-font-mono);
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+
+#details .preview {
+  display: block;
+  max-width: 100%;
+  max-height: 70vh;
+  border: 1px solid var(--desk-border);
+}
+
+#player {
+  display: flex;
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: var(--desk-background);
+}
+
+#player-stage {
+  cursor: pointer;
+}
+
+#player-bar {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  height: 36px;
+  color: var(--desk-text-muted);
+}
+
+#player-bar p {
+  margin: 0;
+}
+
+#player-leave {
+  border-color: color-mix(in srgb, var(--desk-input) 60%, transparent);
+}
+
+#status {
+  margin: 0;
+  padding: 2px 12px 4px;
+  border-top: 1px solid var(--desk-border);
+  color: var(--desk-text-muted);
+}
+
+#status:empty {
+  display: none;
+}
+
+/* A small window keeps the slide: the rail and then the notes give way. */
+@media (max-width: 560px) {
+  header {
+    flex-wrap: nowrap;
+    padding: 4px 8px;
+  }
+
+  h1 {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  #deck-format {
+    display: none;
+  }
+
+  #deck {
+    grid-template-columns: 1fr;
+  }
+
+  #rail-nav {
+    display: none;
+  }
+}
+
+@media (max-height: 360px) {
+  #notes {
+    display: none;
+  }
+}
+
+[hidden] {
+  display: none !important;
+}
+
+#opening { flex: none; padding: 8px 12px; }
+.slide .link { cursor: pointer; }

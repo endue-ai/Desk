@@ -1,0 +1,15 @@
+{
+  "target": "BridgeRequest",
+  "description": "log.write with structured fields",
+  "instance": {
+    "id": 38,
+    "method": "log.write",
+    "params": {
+      "level": "warn",
+      "message": "The brain is slow to answer.",
+      "fields": {
+        "latencyMs": 2400
+      }
+    }
+  }
+}

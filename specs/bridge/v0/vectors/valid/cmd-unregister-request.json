@@ -1,0 +1,11 @@
+{
+  "target": "BridgeRequest",
+  "description": "cmd.unregister removes one of the caller's commands",
+  "instance": {
+    "id": 31,
+    "method": "cmd.unregister",
+    "params": {
+      "id": "eris.say"
+    }
+  }
+}

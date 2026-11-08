@@ -1,0 +1,14 @@
+{
+  "target": "BridgeRequest",
+  "description": "update.setChannel: follow beta from now on",
+  "instance": {
+    "id": 60,
+    "method": "update.setChannel",
+    "params": {
+      "channel": "beta",
+      "scope": {
+        "permission": "update:manage"
+      }
+    }
+  }
+}

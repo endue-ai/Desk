@@ -1,0 +1,13 @@
+{
+  "target": "BridgeRequest",
+  "description": "the agents plugin lists the person's endue agents",
+  "instance": {
+    "id": 1,
+    "method": "studio.agents.list",
+    "params": {
+      "scope": {
+        "permission": "studio:manage"
+      }
+    }
+  }
+}

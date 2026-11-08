@@ -1,0 +1,41 @@
+/* The system calendar's layer: its events and its calendars' toggles take each calendar's own colour
+   (--source, the OS calendar's, set from its item; theme: content) and the theme's accent without
+   one. Everything else is the desk's tokens. */
+.event[data-layer],
+.layer {
+  --event: color-mix(in srgb, var(--source, var(--desk-accent)) 26%, var(--desk-card));
+  --event-border: var(--source, var(--desk-accent));
+}
+
+/* Read-only: nothing opens an editor on it. */
+.event[data-layer] {
+  cursor: default;
+}
+
+#cal-layers {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--desk-space-1);
+  margin-inline-start: var(--desk-space-2);
+  vertical-align: middle;
+}
+
+#cal-layers[hidden] {
+  display: none;
+}
+
+.layer .swatch {
+  width: 0.75em;
+  height: 0.75em;
+  border: 2px solid var(--event-border);
+  border-radius: var(--desk-radius-full);
+  background: var(--event-border);
+}
+
+.layer[aria-pressed="false"] {
+  color: var(--desk-text-muted);
+}
+
+.layer[aria-pressed="false"] .swatch {
+  background: transparent;
+}

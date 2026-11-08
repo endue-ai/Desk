@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Eris</title>
+    <script type="importmap">
+      { "imports": { "@endue-ai/plugin-sdk": "/_desk/plugin-sdk.js" } }
+    </script>
+    <link rel="stylesheet" href="/_desk/tokens.css" />
+    <link rel="stylesheet" href="/_desk/base.css" />
+    <link rel="stylesheet" href="./soul-text.css" />
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <main id="root">
+      <div id="live" class="sr-only" aria-live="polite"></div>
+      <figure id="pose" data-state="idle">
+        <img src="./assets/state-idle.svg" alt="" />
+        <figcaption id="label" role="status" aria-live="polite">Eris is idle</figcaption>
+      </figure>
+      <section id="conversation" aria-label="Conversation history" tabindex="0"></section>
+      <div id="answer" class="cap"></div>
+      <form id="say" class="say">
+        <details id="attachment" hidden open>
+          <summary id="attachment-name"></summary>
+          <pre id="attachment-excerpt"></pre>
+          <button id="remove-attachment" class="desk-btn desk-btn-quiet" type="button">Remove attachment</button>
+        </details>
+        <label for="say-text" class="sr-only">Talk to Eris</label>
+        <input id="say-text" class="desk-field" type="text" autocomplete="off" maxlength="8000" placeholder="Say something to Eris" />
+        <button type="submit" class="desk-btn desk-btn-primary send">Send</button>
+        <button id="attach-file" class="desk-btn desk-btn-quiet" type="button">Attach open text file</button>
+        <p id="context-notice" role="status" aria-live="polite"></p>
+      </form>
+    </main>
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

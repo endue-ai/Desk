@@ -1,0 +1,12 @@
+{
+  "target": "KeysFile",
+  "description": "a sequence in keys.yaml with an empty chord",
+  "instance": {
+    "bindings": [
+      {
+        "key": "Ctrl+X  Ctrl+F",
+        "command": "desk.files.open"
+      }
+    ]
+  }
+}

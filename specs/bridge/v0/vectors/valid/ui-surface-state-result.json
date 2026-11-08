@@ -1,0 +1,12 @@
+{
+  "target": "UiSurfaceStateResult",
+  "description": "a plugin keeps what is open, the note on screen, its caret and its scroll",
+  "instance": {
+    "state": {
+      "notes": [{ "buffer": "file:~/Notes/a.md", "path": "~/Notes/a.md", "modified": false }],
+      "shown": "file:~/Notes/a.md",
+      "caret": [12, 12],
+      "scroll": 340
+    }
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "target": "BridgeRequest",
+  "description": "connector.list under connector:manage",
+  "instance": {
+    "id": 43,
+    "method": "connector.list",
+    "params": {
+      "scope": {
+        "permission": "connector:manage"
+      }
+    }
+  }
+}

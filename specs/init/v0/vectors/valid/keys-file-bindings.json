@@ -1,0 +1,16 @@
+{
+  "target": "KeysFile",
+  "description": "bindings as desk.keys writes them",
+  "instance": {
+    "bindings": [
+      {
+        "key": "Mod+J",
+        "command": "desk.palette.open"
+      },
+      {
+        "key": "Mod+K",
+        "command": ""
+      }
+    ]
+  }
+}

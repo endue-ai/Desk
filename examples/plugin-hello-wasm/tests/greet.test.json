@@ -1,0 +1,16 @@
+{
+  "steps": [
+    "start",
+    { "command": { "id": "example.hello-wasm.greet", "args": { "name": "Ada" } } }
+  ],
+  "answers": [{ "method": "fs.read", "params": { "path": "${plugin}/hello.txt" }, "result": "Hi" }],
+  "expect": {
+    "calls": [
+      { "method": "cmd.register", "params": { "id": "example.hello-wasm.greet" } },
+      { "method": "store.set", "params": { "key": "runs", "value": 1 } },
+      { "method": "ui.notify", "params": { "title": "Hello from Wasm", "body": "Hi (run 1)" } },
+      { "method": "cmd.answer", "params": { "result": "Hello, Ada!" } },
+      { "method": "log.write", "params": { "level": "info", "message": "greeted Ada" } }
+    ]
+  }
+}

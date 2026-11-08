@@ -1,0 +1,9 @@
+{
+  "target": "BridgeRequest",
+  "description": "cmd.list needs cmd:invoke",
+  "instance": {
+    "id": 53,
+    "method": "cmd.list",
+    "params": {}
+  }
+}

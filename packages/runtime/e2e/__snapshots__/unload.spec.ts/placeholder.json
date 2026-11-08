@@ -1,0 +1,293 @@
+{
+ "tag": "section",
+ "class": "surface",
+ "role": "region",
+ "aria-label": "Counter",
+ "data-surface": "test.counter",
+ "box": [
+  104,
+  190,
+  402,
+  305
+ ],
+ "style": {
+  "background": "rgb(30, 29, 33)",
+  "border": "solid rgb(51, 49, 54)"
+ },
+ "children": [
+  {
+   "tag": "header",
+   "class": "surface-title",
+   "children": [
+    {
+     "tag": "span",
+     "class": "surface-heading",
+     "children": [
+      {
+       "tag": "svg",
+       "icon": "box"
+      },
+      {
+       "tag": "span",
+       "class": "surface-name",
+       "style": {
+        "color": "rgb(242, 240, 245)"
+       },
+       "text": "Counter"
+      }
+     ]
+    },
+    {
+     "tag": "span",
+     "class": "surface-tools",
+     "children": [
+      {
+       "tag": "button",
+       "class": "icon-button tool",
+       "aria-label": "Split right (⌘D)",
+       "box": [
+        343,
+        199,
+        24,
+        24
+       ],
+       "style": {
+        "border": "solid rgba(0, 0, 0, 0)"
+       },
+       "children": [
+        {
+         "tag": "svg",
+         "icon": "split-right"
+        }
+       ]
+      },
+      {
+       "tag": "button",
+       "class": "icon-button tool",
+       "aria-label": "Split down (⌥⌘D)",
+       "box": [
+        369,
+        199,
+        24,
+        24
+       ],
+       "style": {
+        "border": "solid rgba(0, 0, 0, 0)"
+       },
+       "children": [
+        {
+         "tag": "svg",
+         "icon": "split-down"
+        }
+       ]
+      },
+      {
+       "tag": "button",
+       "class": "icon-button tool",
+       "aria-label": "Floating mode",
+       "aria-pressed": "false",
+       "box": [
+        395,
+        199,
+        24,
+        24
+       ],
+       "style": {
+        "border": "solid rgba(0, 0, 0, 0)"
+       },
+       "children": [
+        {
+         "tag": "svg",
+         "icon": "floating"
+        }
+       ]
+      },
+      {
+       "tag": "button",
+       "class": "icon-button tool",
+       "aria-label": "Pin",
+       "aria-pressed": "false",
+       "box": [
+        421,
+        199,
+        24,
+        24
+       ],
+       "style": {
+        "border": "solid rgba(0, 0, 0, 0)"
+       },
+       "children": [
+        {
+         "tag": "svg",
+         "icon": "pin"
+        }
+       ]
+      },
+      {
+       "tag": "button",
+       "class": "icon-button tool",
+       "aria-label": "Put in drawer",
+       "box": [
+        447,
+        199,
+        24,
+        24
+       ],
+       "style": {
+        "border": "solid rgba(0, 0, 0, 0)"
+       },
+       "children": [
+        {
+         "tag": "svg",
+         "icon": "drawer"
+        }
+       ]
+      },
+      {
+       "tag": "button",
+       "class": "icon-button tool",
+       "aria-label": "Close",
+       "box": [
+        473,
+        199,
+        24,
+        24
+       ],
+       "style": {
+        "border": "solid rgba(0, 0, 0, 0)"
+       },
+       "children": [
+        {
+         "tag": "svg",
+         "icon": "close"
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "tag": "div",
+   "class": "surface-body",
+   "children": [
+    {
+     "tag": "div",
+     "class": "panes",
+     "children": [
+      {
+       "tag": "div",
+       "class": "pane",
+       "role": "group",
+       "aria-label": "Counter",
+       "children": [
+        {
+         "tag": "div",
+         "class": "pane-body",
+         "children": [
+          {
+           "tag": "div",
+           "class": "plugin-pane",
+           "children": [
+            {
+             "tag": "section",
+             "class": "desk-surface desk-surface--windowed",
+             "data-surface": "test.counter",
+             "style": {
+              "background": "rgb(30, 29, 33)"
+             },
+             "children": [
+              {
+               "tag": "div",
+               "class": "desk-surface-placeholder",
+               "style": {
+                "background": "rgb(30, 29, 33)"
+               },
+               "children": [
+                {
+                 "tag": "p",
+                 "class": "desk-surface-placeholder-title",
+                 "style": {
+                  "color": "rgb(242, 240, 245)"
+                 },
+                 "text": "Counter"
+                },
+                {
+                 "tag": "p",
+                 "style": {
+                  "color": "rgb(176, 173, 183)"
+                 },
+                 "text": "Unloaded while out of sight. It loads again when shown."
+                }
+               ]
+              }
+             ]
+            }
+           ]
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "tag": "span",
+   "class": "surface-resize",
+   "style": {
+    "color": "rgb(242, 240, 245)"
+   }
+  },
+  {
+   "tag": "span",
+   "class": "surface-resize",
+   "style": {
+    "color": "rgb(242, 240, 245)"
+   }
+  },
+  {
+   "tag": "span",
+   "class": "surface-resize",
+   "style": {
+    "color": "rgb(242, 240, 245)"
+   }
+  },
+  {
+   "tag": "span",
+   "class": "surface-resize",
+   "style": {
+    "color": "rgb(242, 240, 245)"
+   }
+  },
+  {
+   "tag": "span",
+   "class": "surface-resize",
+   "style": {
+    "color": "rgb(242, 240, 245)"
+   }
+  },
+  {
+   "tag": "span",
+   "class": "surface-resize",
+   "style": {
+    "color": "rgb(242, 240, 245)"
+   }
+  },
+  {
+   "tag": "span",
+   "class": "surface-resize",
+   "style": {
+    "color": "rgb(242, 240, 245)"
+   }
+  },
+  {
+   "tag": "span",
+   "class": "surface-resize",
+   "style": {
+    "color": "rgb(242, 240, 245)"
+   }
+  }
+ ]
+}

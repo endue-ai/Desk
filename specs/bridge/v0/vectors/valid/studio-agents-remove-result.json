@@ -1,0 +1,7 @@
+{
+  "target": "StudioAgentsRemoveResult",
+  "description": "the agent deleted",
+  "instance": {
+    "agentId": "ag_01JC0Q4MR00000000000000001"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "target": "BridgeRequest",
+  "description": "start an agent from a catalog agent",
+  "instance": {
+    "id": 1,
+    "method": "studio.catalog.use",
+    "params": {
+      "slug": "support-mail",
+      "locale": "en",
+      "scope": {
+        "permission": "studio:manage"
+      }
+    }
+  }
+}

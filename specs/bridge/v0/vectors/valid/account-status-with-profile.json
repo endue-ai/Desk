@@ -1,0 +1,12 @@
+{
+  "target": "AccountStatusResult",
+  "description": "signed in: the profile from /api/v1/users/me, the picture as a data: URL; no token",
+  "instance": {
+    "state": "signed-in",
+    "profile": {
+      "displayName": "Ada Lovelace",
+      "email": "ada@example.com",
+      "avatarUrl": "data:image/png;base64,iVBORw0KGgo="
+    }
+  }
+}

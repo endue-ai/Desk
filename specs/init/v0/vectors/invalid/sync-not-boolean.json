@@ -1,0 +1,9 @@
+{
+  "target": "InitDocument",
+  "description": "sync.enabled is true or false",
+  "instance": {
+    "sync": {
+      "enabled": "yes"
+    }
+  }
+}

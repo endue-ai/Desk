@@ -1,0 +1,22 @@
+[package]
+name = "desk-index"
+description = "The local item index: specs/item/v0 items in one SQLite file with FTS5, read through the caller's data:read scope."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+# Dependencies used only here are declared here; they move to [workspace.dependencies] when a second
+# crate needs them.
+
+[dependencies]
+base64.workspace = true
+desk-bridge.workspace = true
+# functions: scope.rs's matcher in SQL (the workspace's rusqlite has it).
+rusqlite.workspace = true
+serde_json.workspace = true
+
+[lints]
+workspace = true

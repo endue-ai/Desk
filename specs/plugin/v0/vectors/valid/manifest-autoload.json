@@ -1,0 +1,16 @@
+{
+  "target": "PluginManifest",
+  "description": "a file plugin that stays off until a file needs it",
+  "instance": {
+    "id": "example.sheets",
+    "name": "Sheets",
+    "version": "0.1.0",
+    "kind": "ui",
+    "entry": "ui/index.html",
+    "surfaces": [{ "id": "main", "title": "Sheets", "placement": "center" }],
+    "contributes": {
+      "files": [{ "pattern": "*.csv", "plugin": "example.sheets" }]
+    },
+    "autoload": true
+  }
+}

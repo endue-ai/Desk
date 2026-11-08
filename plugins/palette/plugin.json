@@ -1,0 +1,63 @@
+{
+  "id": "desk.palette",
+  "name": "Palette",
+  "version": "0.1.0",
+  "kind": "ui",
+  "provides": ["role:palette"],
+  "entry": "ui/index.html",
+  "description": "System search for plugin data, installed plugins, commands, OS files and applications; also the shared picker.",
+  "permissions": [
+    {
+      "permission": "cmd:invoke",
+      "ids": ["*"]
+    },
+    {
+      "permission": "search:read"
+    },
+    {
+      "permission": "search:system"
+    },
+    { "permission": "data:read" },
+    { "permission": "ui:notify" }
+  ],
+  "surfaces": [
+    {
+      "id": "main",
+      "title": "Palette",
+      "placement": "overlay",
+      "hidden": true
+    }
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "id": "desk.palette.open",
+        "title": "Search Desk and this computer",
+        "keywords": ["m-x", "commands", "palette", "search", "spotlight", "files", "plugins"]
+      },
+      {
+        "id": "desk.palette.pick",
+        "title": "Pick one of many",
+        "keywords": ["completing-read", "choose"]
+      },
+      {
+        "id": "desk.palette.cancel",
+        "title": "Close the palette",
+        "keywords": ["cancel", "quit"]
+      },
+      {
+        "id": "desk.palette.items",
+        "title": "Search items",
+        "keywords": ["search", "items", "find"]
+      }
+    ],
+    "paletteProviders": [{ "command": "desk.palette.items", "title": "Items" }],
+    "settings": {
+      "desk.palette.history": {
+        "kind": "integer",
+        "default": 50,
+        "description": "How many commands the palette remembers, most recent first."
+      }
+    }
+  }
+}

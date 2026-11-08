@@ -1,0 +1,12 @@
+{
+  "target": "BridgeResponse",
+  "description": "brain.status answers a brain on this machine with its model",
+  "instance": {
+    "id": 25,
+    "ok": true,
+    "result": {
+      "mode": "local",
+      "model": "llama-3.2-3b"
+    }
+  }
+}

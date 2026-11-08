@@ -1,0 +1,12 @@
+{
+  "target": "KeysFile",
+  "description": "chords are separated by one space, not a tab",
+  "instance": {
+    "bindings": [
+      {
+        "key": "Ctrl+X\tCtrl+F",
+        "command": "desk.files.open"
+      }
+    ]
+  }
+}

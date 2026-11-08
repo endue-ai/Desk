@@ -1,0 +1,16 @@
+{
+  "target": "BridgeRequest",
+  "description": "one agent's conversations that wait for the person, for the Home board",
+  "instance": {
+    "id": 1,
+    "method": "studio.conversations.list",
+    "params": {
+      "agentId": "ag_01JC0Q4MR00000000000000001",
+      "awaitingInput": true,
+      "limit": 50,
+      "scope": {
+        "permission": "studio:manage"
+      }
+    }
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "target": "Permission",
+  "description": "shell:open names schemes, paths or both",
+  "instance": {
+    "permission": "shell:open"
+  }
+}

@@ -1,0 +1,82 @@
+name: security
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "23 4 * * 1"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: security-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  GITLEAKS_VERSION: 8.30.1
+
+jobs:
+  cargo-deny:
+    name: cargo-deny
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: EmbarkStudios/cargo-deny-action@v2
+        with:
+          command: check
+
+  cargo-audit:
+    name: cargo-audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install Rust toolchain (rust-toolchain.toml)
+        run: rustup toolchain install
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-audit
+      - run: cargo audit
+
+  pnpm-audit:
+    name: pnpm-audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - run: pnpm audit --audit-level high
+
+  gitleaks:
+    name: gitleaks
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Install gitleaks
+        run: |
+          base="https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}"
+          tarball="gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          curl -fsSLO "$base/$tarball"
+          curl -fsSL "$base/gitleaks_${GITLEAKS_VERSION}_checksums.txt" | grep " $tarball\$" | sha256sum -c -
+          tar -xzf "$tarball" gitleaks
+          sudo mv gitleaks /usr/local/bin/
+      - name: Scan for secrets
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          if [ "$EVENT" = "pull_request" ]; then
+            gitleaks git --redact --no-banner --log-opts="${BASE}..${HEAD}" .
+          else
+            gitleaks git --redact --no-banner .
+          fi

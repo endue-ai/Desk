@@ -1,0 +1,16 @@
+{
+  "target": "BridgeRequest",
+  "description": "fs.watch, recursive",
+  "instance": {
+    "id": 3,
+    "method": "fs.watch",
+    "params": {
+      "path": "~/Documents",
+      "recursive": true,
+      "scope": {
+        "permission": "fs:read",
+        "paths": ["~/Documents/**"]
+      }
+    }
+  }
+}

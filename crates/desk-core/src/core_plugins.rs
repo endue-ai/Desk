@@ -1,0 +1,215 @@
+//! The plugin side of `Core`: install, list, enable, serve files, and report changes on the bus. A
+//! plugin turned off unloads: its commands, waiting requests, subscriptions, processes, surfaces and
+//! file URLs go with it, a connector's instances pause, and a view plugin's views leave view.list. A
+//! library is never turned off: other plugins import its files, which the scheme serves.
+
+use std::io;
+use std::path::{Path, PathBuf};
+use std::sync::{Arc, MutexGuard};
+
+use desk_bridge::{
+    BridgeEvent, ErrorCode, EventName, Permission, PluginChange, PluginChangedData,
+    PluginChangedEvent, PluginInfo, PluginKind, PluginListParams, PluginListResult,
+    PluginManagePermission, PluginSetEnabledParams, PluginSetEnabledResult, PluginStatus,
+};
+
+use crate::handler::{Answer, Core, error, json};
+use crate::perm::Target;
+use crate::plugins::PluginRegistry;
+use crate::watch::{self, PluginWatcher};
+
+impl Core {
+    /// Remember enabled flags in `store` (a JSON file in the app's data folder).
+    pub fn with_plugin_store(self, store: PathBuf) -> Self {
+        self.screen_state(&store, crate::plugins::readable);
+        *self.registry() = PluginRegistry::new(Some(store));
+        self
+    }
+
+    /// Install the plugin in `dir`. Built-in plugins get the permissions their manifest declares;
+    /// others ask with perm.request like anyone else. Plugins init.yaml disables start disabled.
+    pub fn install_plugin(&self, dir: &Path, built_in: bool) -> PluginInfo {
+        let mut info = self.registry().install(dir, built_in);
+        if self.init_disables(&info.id) {
+            info = self.registry().hold_off(&info.id).unwrap_or(info);
+        }
+        info = self.hold_for_start(info);
+        if built_in && info.status == PluginStatus::Ready {
+            let permissions = info
+                .manifest
+                .as_ref()
+                .and_then(|m| m.permissions.clone())
+                .unwrap_or_default();
+            for permission in permissions {
+                self.grant(&info.id, permission);
+            }
+        }
+        // A pack's nested plugins install with it (ADR 0108).
+        info = self.install_pack(info, dir, built_in);
+        self.plugin_changed(&info.id, PluginChange::Installed, info.revision);
+        self.plugin_views_changed(&info);
+        self.install_connector(&info);
+        info
+    }
+
+    /// Install every plugin folder under `parent`.
+    pub fn install_plugins_in(&self, parent: &Path, built_in: bool) -> Vec<PluginInfo> {
+        // plugins.lock is written once, for the whole folder.
+        let _hold = self.hold_lock();
+        let mut dirs: Vec<PathBuf> = std::fs::read_dir(parent)
+            .map(|read| read.flatten().map(|entry| entry.path()).collect())
+            .unwrap_or_default();
+        dirs.retain(|dir| dir.join("plugin.json").is_file());
+        dirs.sort();
+        dirs.iter()
+            .map(|dir| self.install_plugin(dir, built_in))
+            .collect()
+    }
+
+    pub fn plugins(&self) -> Vec<PluginInfo> {
+        self.registry().list()
+    }
+
+    /// A file of an installed plugin, for the app's plugin URL scheme.
+    pub fn plugin_file(&self, id: &str, path: &str) -> io::Result<Vec<u8>> {
+        self.registry().file(id, path)
+    }
+
+    /// Start hot reload for the plugins installed so far.
+    pub fn watch_plugins(self: &Arc<Self>) -> io::Result<PluginWatcher> {
+        watch::start(self)
+    }
+
+    pub(crate) fn plugin_folders(&self) -> Vec<(String, PathBuf)> {
+        self.registry().folders()
+    }
+
+    pub(crate) fn plugin_files_changed(&self, id: &str) {
+        let refreshed = self.registry().refresh(id);
+        if let Some(info) = refreshed {
+            self.plugin_changed(&info.id, PluginChange::Updated, info.revision);
+            self.plugin_views_changed(&info);
+            self.reload_connector(&info.id);
+        }
+    }
+
+    pub(crate) fn plugin_list(&self, caller: &str, params: PluginListParams) -> Answer {
+        self.authorize_manage(caller, params.scope)?;
+        json(PluginListResult {
+            plugins: self.plugins(),
+        })
+    }
+
+    pub(crate) fn plugin_set_enabled(
+        &self,
+        caller: &str,
+        params: PluginSetEnabledParams,
+    ) -> Answer {
+        self.authorize_manage(caller, params.scope)?;
+        let missing = || error(ErrorCode::NotFound, format!("no plugin {}", params.plugin));
+        let before = self.registry().get(&params.plugin).ok_or_else(missing)?;
+        if is_library(&before) {
+            // Plugins import a library's files at any time: it stays on, and nothing changes.
+            if !params.enabled {
+                let kind = before.manifest.as_ref().map(|manifest| manifest.kind);
+                let why = if kind == Some(PluginKind::Theme) {
+                    format!(
+                        "{} is a theme: it is never turned off; desk.theme.active picks the theme in force",
+                        before.id
+                    )
+                } else if kind == Some(PluginKind::DesignSystem) {
+                    format!(
+                        "{} is a design system: it is never turned off; desk.design.active picks the one in force",
+                        before.id
+                    )
+                } else {
+                    format!(
+                        "{} is a library other plugins import: it is never turned off",
+                        before.id
+                    )
+                };
+                return Err(error(ErrorCode::Unsupported, why));
+            }
+            return json(PluginSetEnabledResult { plugin: before });
+        }
+        let info = self
+            .registry()
+            .set_enabled(&params.plugin, params.enabled)
+            .ok_or_else(missing)?;
+        let change = if params.enabled {
+            PluginChange::Enabled
+        } else {
+            self.unloaded(&info.id);
+            PluginChange::Disabled
+        };
+        self.plugin_changed(&info.id, change, info.revision);
+        self.plugin_views_changed(&info);
+        // A connector's instances pause while its plugin is off, and resume when it is on.
+        self.connector_toggled(&info.id);
+        json(PluginSetEnabledResult { plugin: info })
+    }
+
+    /// Whether `caller` can act: callers that are not plugins always can, plugins while enabled and
+    /// ready.
+    pub(crate) fn running(&self, caller: &str) -> bool {
+        self.registry()
+            .get(caller)
+            .is_none_or(|info| info.enabled && info.status == PluginStatus::Ready)
+    }
+
+    /// A plugin that stops provides no commands, waits for no answer, hears no subscriptions, runs
+    /// no processes, shows no surfaces and serves no file URLs; if it was the last perm:manage
+    /// holder, the Prompter decides what waits.
+    pub(crate) fn unloaded(&self, id: &str) {
+        self.drop_provider(id);
+        self.withdraw_prompts(id);
+        self.drop_subscriber(id);
+        self.drop_data(id);
+        self.drop_processes(id);
+        self.drop_surfaces(id);
+        self.drop_file_urls(id);
+        self.settle_unheard();
+    }
+
+    fn authorize_manage(
+        &self,
+        caller: &str,
+        scope: PluginManagePermission,
+    ) -> Result<(), desk_bridge::BridgeError> {
+        self.check(caller, &Permission::PluginManage(scope), &Target::None)
+    }
+
+    /// `plugin.changed` for the plugin:manage holders and the callers subscribed to it.
+    pub(crate) fn plugin_changed(&self, id: &str, change: PluginChange, revision: u64) {
+        let managers = self.holders(&Permission::PluginManage(PluginManagePermission {
+            permission: Default::default(),
+        }));
+        let to = self.recipients(EventName::PluginChanged, managers);
+        self.events().publish_to(
+            to,
+            BridgeEvent::PluginChanged(PluginChangedEvent {
+                event: Default::default(),
+                data: PluginChangedData {
+                    plugin: id.to_owned(),
+                    change,
+                    revision,
+                },
+            }),
+        );
+        // Every install, removal, version change and turn on or off ends in plugins.lock.
+        self.write_lock();
+    }
+
+    pub(crate) fn registry(&self) -> MutexGuard<'_, PluginRegistry> {
+        self.plugins
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+    }
+}
+
+/// Whether the plugin is always on: a library (files other plugins import), a theme or a design system.
+fn is_library(info: &PluginInfo) -> bool {
+    info.manifest.as_ref().is_some_and(|manifest| {
+        manifest.kind == PluginKind::Library || crate::plugins::is_look(manifest.kind)
+    })
+}

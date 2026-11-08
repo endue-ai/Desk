@@ -1,0 +1,298 @@
+{
+  "tag": "section",
+  "class": "page create",
+  "children": [
+    {
+      "tag": "header",
+      "class": "page-head",
+      "children": [
+        {
+          "tag": "h2",
+          "text": "Create a new agent"
+        },
+        {
+          "tag": "p",
+          "class": "desk-muted",
+          "text": "Start from an agent in the catalog, or build one from scratch."
+        },
+        {
+          "tag": "div",
+          "class": "desk-tabs",
+          "role": "tablist",
+          "aria-label": "How to start",
+          "children": [
+            {
+              "tag": "button",
+              "class": "desk-tab",
+              "type": "button",
+              "role": "tab",
+              "data-mode": "find",
+              "aria-selected": "true",
+              "text": "Find an agent for me"
+            },
+            {
+              "tag": "button",
+              "class": "desk-tab",
+              "type": "button",
+              "role": "tab",
+              "data-mode": "build",
+              "aria-selected": "false",
+              "text": "Build from scratch"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "div",
+      "class": "desk-empty",
+      "hidden": "",
+      "children": [
+        {
+          "tag": "p",
+          "text": "This desk does not reach endue agents yet, so it cannot make one."
+        },
+        {
+          "tag": "button",
+          "class": "desk-btn desk-btn-primary",
+          "type": "button",
+          "hidden": "",
+          "text": "Sign in"
+        }
+      ]
+    },
+    {
+      "tag": "div",
+      "role": "tabpanel",
+      "children": [
+        {
+          "tag": "div",
+          "class": "find",
+          "role": "search",
+          "children": [
+            {
+              "tag": "label",
+              "text": "What should your agent help you with?"
+            },
+            {
+              "tag": "textarea",
+              "class": "desk-field",
+              "value": "answer customer mail"
+            },
+            {
+              "tag": "button",
+              "class": "desk-btn desk-btn-primary",
+              "type": "button",
+              "text": "Find"
+            }
+          ]
+        },
+        {
+          "tag": "div",
+          "class": "find-heading",
+          "children": [
+            {
+              "tag": "h3",
+              "text": "These look like a fit"
+            },
+            {
+              "tag": "button",
+              "class": "desk-btn desk-btn-quiet",
+              "type": "button",
+              "text": "Show the whole catalog"
+            }
+          ]
+        },
+        {
+          "tag": "p",
+          "class": "desk-muted",
+          "text": "Shown by how much they overlap with what you wrote."
+        },
+        {
+          "tag": "desk-progress",
+          "label": "Looking through the catalog",
+          "hidden": ""
+        },
+        {
+          "tag": "div",
+          "class": "desk-error",
+          "role": "alert",
+          "hidden": "",
+          "children": [
+            {
+              "tag": "p",
+              "text": "No catalog agent fits that yet."
+            },
+            {
+              "tag": "button",
+              "class": "desk-btn",
+              "type": "button",
+              "text": "Browse the whole catalog"
+            },
+            {
+              "tag": "button",
+              "class": "desk-btn",
+              "type": "button",
+              "text": "Build from scratch"
+            }
+          ]
+        },
+        {
+          "tag": "div",
+          "class": "find-body",
+          "children": [
+            {
+              "tag": "ul",
+              "class": "catalog",
+              "aria-label": "Catalog agents",
+              "aria-busy": "false",
+              "children": [
+                {
+                  "tag": "li",
+                  "children": [
+                    {
+                      "tag": "desk-card",
+                      "class": "catalog-card",
+                      "data-slug": "support-mail",
+                      "children": [
+                        {
+                          "tag": "button",
+                          "type": "button",
+                          "class": "desk-row catalog-open",
+                          "aria-pressed": "false",
+                          "children": [
+                            {
+                              "tag": "span",
+                              "class": "catalog-head",
+                              "children": [
+                                {
+                                  "tag": "span",
+                                  "class": "avatar avatar-lg",
+                                  "data-hue": "6",
+                                  "text": "M"
+                                },
+                                {
+                                  "tag": "span",
+                                  "class": "who",
+                                  "children": [
+                                    {
+                                      "tag": "strong",
+                                      "class": "name",
+                                      "text": "Mailie"
+                                    },
+                                    {
+                                      "tag": "small",
+                                      "text": "Support mail"
+                                    }
+                                  ]
+                                },
+                                {
+                                  "tag": "span",
+                                  "class": "desk-badge",
+                                  "text": "Featured"
+                                }
+                              ]
+                            },
+                            {
+                              "tag": "span",
+                              "class": "reason",
+                              "text": "Mailie works with mail, support."
+                            },
+                            {
+                              "tag": "span",
+                              "class": "tagline",
+                              "text": "Answers support mail"
+                            },
+                            {
+                              "tag": "span",
+                              "class": "strengths",
+                              "text": "Fast · Careful"
+                            },
+                            {
+                              "tag": "span",
+                              "class": "catalog-foot",
+                              "text": "support · gmail"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "tag": "aside",
+              "class": "preview desk-card",
+              "aria-label": "The catalog agent",
+              "hidden": ""
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "div",
+      "class": "build",
+      "role": "tabpanel",
+      "hidden": "",
+      "children": [
+        {
+          "tag": "label",
+          "text": "Name"
+        },
+        {
+          "tag": "small",
+          "class": "desk-muted",
+          "text": "What people call it: chats, mentions and lists show it as it is."
+        },
+        {
+          "tag": "input",
+          "class": "desk-field",
+          "type": "text",
+          "aria-invalid": "false",
+          "value": ""
+        },
+        {
+          "tag": "p",
+          "class": "field-error",
+          "hidden": ""
+        },
+        {
+          "tag": "label",
+          "text": "Role"
+        },
+        {
+          "tag": "small",
+          "class": "desk-muted",
+          "text": "The work it takes on by default."
+        },
+        {
+          "tag": "input",
+          "class": "desk-field",
+          "type": "text",
+          "aria-invalid": "false",
+          "value": ""
+        },
+        {
+          "tag": "p",
+          "class": "field-error",
+          "hidden": ""
+        },
+        {
+          "tag": "p",
+          "class": "desk-error",
+          "role": "alert",
+          "hidden": ""
+        },
+        {
+          "tag": "button",
+          "class": "desk-btn desk-btn-primary",
+          "type": "button",
+          "disabled": "",
+          "text": "Create agent"
+        }
+      ]
+    }
+  ]
+}

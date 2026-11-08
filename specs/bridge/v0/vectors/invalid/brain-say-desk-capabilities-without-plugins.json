@@ -1,0 +1,13 @@
+{
+  "target": "BrainSayParams",
+  "description": "the summary of what the person can do names the plugins that are on, even none",
+  "instance": {
+    "text": "what can I do?",
+    "desk": {
+      "screen": { "w": 1440, "h": 900 },
+      "windows": [],
+      "capabilities": { "commands": 12, "available": 12 }
+    },
+    "scope": { "permission": "brain:converse" }
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "target": "BridgeRequest",
+  "description": "an agent id is letters, digits, _ and -",
+  "instance": {
+    "id": 1,
+    "method": "studio.agents.get",
+    "params": {
+      "agentId": "../users",
+      "scope": {
+        "permission": "studio:manage"
+      }
+    }
+  }
+}

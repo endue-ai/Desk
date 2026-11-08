@@ -1,0 +1,14 @@
+{
+  "target": "BridgeRequest",
+  "description": "say something to the brain",
+  "instance": {
+    "id": 14,
+    "method": "brain.say",
+    "params": {
+      "text": "hello",
+      "scope": {
+        "permission": "brain:converse"
+      }
+    }
+  }
+}

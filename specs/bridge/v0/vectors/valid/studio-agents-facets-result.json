@@ -1,0 +1,89 @@
+{
+  "target": "StudioAgentsFacetsResult",
+  "description": "what Studio shows of one agent, its connectors out of reach",
+  "instance": {
+    "agent": {
+      "id": "ag_01JC0Q4MR00000000000000001",
+      "slug": "miso",
+      "name": "Miso",
+      "status": "active",
+      "personalColor": "#B6A3F5",
+      "createdAt": "2026-11-01T09:00:00Z",
+      "updatedAt": "2026-11-02T09:00:00Z"
+    },
+    "identity": {
+      "name": "Miso",
+      "role": "Keeps my calendar",
+      "languages": ["ko"],
+      "personality": {
+        "tone": 0.7,
+        "agency": 0.3,
+        "thinking": 0.2,
+        "rigor": 0.85,
+        "expression": 0.7,
+        "humor": 0.15,
+        "integrity": 0.85,
+        "epistemicHumility": 0.65
+      }
+    },
+    "settings": {
+      "visibility": "private",
+      "chatHistoryRetention": 90,
+      "model": {
+        "default": "anthropic/claude-sonnet-4.5",
+        "routing": "balanced"
+      },
+      "disabledToolGroups": ["browser"],
+      "availableToolGroups": ["browser", "workspace"],
+      "updatedAt": "2026-11-01T09:00:00Z"
+    },
+    "prompt": {
+      "rev": 3,
+      "content": "Answer briefly.",
+      "source": "manual",
+      "createdAt": "2026-11-01T09:00:00Z"
+    },
+    "revisions": [
+      {
+        "rev": 3,
+        "source": "manual",
+        "preview": "Answer briefly.",
+        "createdAt": "2026-11-01T09:00:00Z",
+        "active": true
+      },
+      {
+        "rev": 2,
+        "source": "restore",
+        "restoredFromRev": 1,
+        "preview": "Be kind.",
+        "createdAt": "2026-11-01T09:00:00Z",
+        "active": false
+      }
+    ],
+    "skills": [
+      {
+        "id": "asb_1",
+        "skillId": "sk_1",
+        "slug": "mail-triage",
+        "name": "Mail triage",
+        "registrySkillId": "reg_1",
+        "enabled": true
+      }
+    ],
+    "connectors": [],
+    "traits": [
+      {
+        "key": "personality",
+        "enabled": true,
+        "updatedAt": "2026-11-01T09:00:00Z"
+      }
+    ],
+    "problems": [
+      {
+        "facet": "connectors",
+        "code": "offline",
+        "message": "endue AI did not answer within 15 s."
+      }
+    ]
+  }
+}

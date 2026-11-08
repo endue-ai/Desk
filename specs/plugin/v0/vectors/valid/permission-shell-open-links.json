@@ -1,0 +1,8 @@
+{
+  "target": "Permission",
+  "description": "shell:open for web and mail links",
+  "instance": {
+    "permission": "shell:open",
+    "schemes": ["http", "https", "mailto"]
+  }
+}

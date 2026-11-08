@@ -1,0 +1,125 @@
+{
+ "tag": "section",
+ "class": "popover account-popover",
+ "role": "dialog",
+ "aria-label": "User information",
+ "data-popover": "account",
+ "style": {
+  "background": "rgb(43, 39, 49)",
+  "border": "solid rgb(51, 49, 54)"
+ },
+ "children": [
+  {
+   "tag": "div",
+   "class": "pop-title",
+   "style": {
+    "color": "rgb(176, 173, 183)"
+   },
+   "text": "User information"
+  },
+  {
+   "tag": "div",
+   "class": "account-identity",
+   "children": [
+    {
+     "tag": "span",
+     "class": "account-avatar",
+     "style": {
+      "background": "rgb(48, 40, 62)",
+      "color": "rgb(228, 215, 255)"
+     },
+     "text": "A"
+    },
+    {
+     "tag": "div",
+     "children": [
+      {
+       "tag": "strong",
+       "style": {
+        "color": "rgb(242, 240, 245)"
+       },
+       "text": "Ada Lovelace"
+      },
+      {
+       "tag": "small",
+       "style": {
+        "color": "rgb(176, 173, 183)"
+       },
+       "text": "ada@example.com"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "tag": "div",
+   "class": "pop-row",
+   "style": {
+    "color": "rgb(242, 240, 245)"
+   },
+   "text": "endue ID",
+   "children": [
+    {
+     "tag": "span",
+     "class": "pop-muted",
+     "style": {
+      "color": "rgb(176, 173, 183)"
+     },
+     "text": "Signed in"
+    }
+   ]
+  },
+  {
+   "tag": "div",
+   "class": "account-actions",
+   "children": [
+    {
+     "tag": "button",
+     "class": "btn btn-outline",
+     "style": {
+      "background": "rgb(55, 49, 63)",
+      "color": "rgb(242, 240, 245)",
+      "border": "solid rgb(131, 121, 145)"
+     },
+     "text": "Sign out"
+    }
+   ]
+  },
+  {
+   "tag": "div",
+   "class": "pop-row",
+   "style": {
+    "color": "rgb(242, 240, 245)"
+   },
+   "text": "Profile",
+   "children": [
+    {
+     "tag": "span",
+     "class": "pop-muted",
+     "style": {
+      "color": "rgb(176, 173, 183)"
+     },
+     "text": "Morning"
+    }
+   ]
+  },
+  {
+   "tag": "div",
+   "class": "pop-row",
+   "style": {
+    "color": "rgb(242, 240, 245)"
+   },
+   "text": "Space",
+   "children": [
+    {
+     "tag": "span",
+     "class": "pop-muted",
+     "style": {
+      "color": "rgb(176, 173, 183)"
+     },
+     "text": "Home"
+    }
+   ]
+  }
+ ]
+}

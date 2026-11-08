@@ -1,0 +1,15 @@
+{
+  "target": "UpdateAgentRequest",
+  "description": "rename an agent and change its role",
+  "instance": {
+    "nature": {
+      "role": {
+        "v": "1.0",
+        "prompts": ["Answers customer mail"]
+      }
+    },
+    "profile": {
+      "name": "Miso 2"
+    }
+  }
+}

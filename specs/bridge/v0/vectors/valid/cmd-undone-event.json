@@ -1,0 +1,23 @@
+{
+  "target": "BridgeEvent",
+  "description": "cmd.undone tells who undid a write, which the core restored",
+  "instance": {
+    "event": "cmd.undone",
+    "data": {
+      "entry": {
+        "command": "fs.write",
+        "args": {
+          "path": "~/Notes/plan.md"
+        },
+        "result": {
+          "version": "1793520000000-3fa9c1"
+        },
+        "caller": "endue.notes",
+        "at": "2026-11-03T09:01:00Z",
+        "inverse": "fs.restore"
+      },
+      "by": "desk",
+      "redo": false
+    }
+  }
+}

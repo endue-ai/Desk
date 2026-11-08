@@ -1,0 +1,13 @@
+{
+  "target": "TurnEvent",
+  "description": "tool arguments are a JSON object",
+  "instance": {
+    "type": "tool.call",
+    "turnId": "t1",
+    "call": {
+      "callId": "c1",
+      "name": "echo",
+      "arguments": "hello"
+    }
+  }
+}

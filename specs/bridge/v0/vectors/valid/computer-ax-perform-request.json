@@ -1,0 +1,20 @@
+{
+  "target": "BridgeRequest",
+  "description": "press a button by its path, expecting it to still be a button",
+  "instance": {
+    "id": 9,
+    "method": "computer.ax.perform",
+    "params": {
+      "element": {
+        "pid": 412,
+        "path": [0, 3, 1],
+        "role": "AXButton"
+      },
+      "action": "press",
+      "scope": {
+        "permission": "computer:control",
+        "apps": ["com.apple.Safari"]
+      }
+    }
+  }
+}

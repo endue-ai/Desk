@@ -1,0 +1,19 @@
+{
+  "target": "BridgeRequest",
+  "description": "data.get: one item by its source and id",
+  "instance": {
+    "id": 41,
+    "method": "data.get",
+    "params": {
+      "source": {
+        "connector": "desk.fixtures",
+        "instance": "default"
+      },
+      "id": "task-report",
+      "scope": {
+        "permission": "data:read",
+        "kinds": ["task"]
+      }
+    }
+  }
+}

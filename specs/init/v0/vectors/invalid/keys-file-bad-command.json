@@ -1,0 +1,12 @@
+{
+  "target": "KeysFile",
+  "description": "a command is a dotted id",
+  "instance": {
+    "bindings": [
+      {
+        "key": "Mod+J",
+        "command": "Open Palette"
+      }
+    ]
+  }
+}

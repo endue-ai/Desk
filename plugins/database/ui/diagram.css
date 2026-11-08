@@ -1,0 +1,121 @@
+/* The ER diagram and the connections' colours and groups. Every colour, font, size, radius and
+   duration comes from the theme's --desk-* tokens; a connection's colour is a category colour. */
+
+/* The ER diagram: boxes in the card's colours, the head tinted, links in the border colour. */
+#diagram-box {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.er {
+  display: block;
+  font: var(--desk-text-xs) var(--desk-font-mono);
+}
+
+.er-box {
+  fill: var(--desk-card);
+  stroke: var(--desk-border);
+}
+
+.er-head {
+  fill: var(--desk-muted);
+}
+
+.er-name {
+  fill: var(--desk-text);
+  font-weight: 600;
+}
+
+.er-column {
+  fill: var(--desk-text);
+}
+
+.er-key {
+  fill: var(--desk-primary-text);
+  font-weight: 600;
+}
+
+.er-type {
+  fill: var(--desk-text-muted);
+}
+
+.er-link {
+  fill: none;
+  stroke: var(--desk-text-muted);
+  stroke-width: 1.5;
+}
+
+.er-arrow {
+  fill: var(--desk-text-muted);
+}
+
+.er-table {
+  outline: none;
+  cursor: default;
+}
+
+.er-table:focus-visible .er-box,
+.er-table:hover .er-box {
+  stroke: var(--desk-ring);
+  stroke-width: 2;
+}
+
+/* A connection's colour: a dot in the explorer, a band down the header's left edge. */
+.swatch {
+  flex: none;
+  align-self: center;
+  width: 8px;
+  height: 8px;
+  border-radius: var(--desk-radius-full);
+  background: var(--swatch);
+}
+
+.swatch-chart-1,
+body[data-color="chart-1"] {
+  --swatch: var(--desk-chart-1);
+}
+
+.swatch-chart-2,
+body[data-color="chart-2"] {
+  --swatch: var(--desk-chart-2);
+}
+
+.swatch-chart-3,
+body[data-color="chart-3"] {
+  --swatch: var(--desk-chart-3);
+}
+
+.swatch-chart-4,
+body[data-color="chart-4"] {
+  --swatch: var(--desk-chart-4);
+}
+
+.swatch-chart-5,
+body[data-color="chart-5"] {
+  --swatch: var(--desk-chart-5);
+}
+
+.swatch-chart-6,
+body[data-color="chart-6"] {
+  --swatch: var(--desk-chart-6);
+}
+
+.swatch-chart-7,
+body[data-color="chart-7"] {
+  --swatch: var(--desk-chart-7);
+}
+
+.swatch-chart-8,
+body[data-color="chart-8"] {
+  --swatch: var(--desk-chart-8);
+}
+
+body[data-color^="chart-"] header {
+  box-shadow: inset 4px 0 0 var(--swatch);
+}
+
+.row.group .label {
+  color: var(--desk-text-muted);
+  font-weight: 600;
+}

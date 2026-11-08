@@ -1,0 +1,19 @@
+{
+  "target": "BridgeRequest",
+  "description": "a line said on an empty desktop, nothing closed yet, no plugin on",
+  "instance": {
+    "id": 33,
+    "method": "brain.say",
+    "params": {
+      "text": "hello",
+      "desk": {
+        "screen": { "w": 1280, "h": 800 },
+        "windows": [],
+        "desktops": [{ "id": "1", "name": "1", "current": true }],
+        "closed": [],
+        "capabilities": { "commands": 0, "available": 0, "plugins": [] }
+      },
+      "scope": { "permission": "brain:converse" }
+    }
+  }
+}

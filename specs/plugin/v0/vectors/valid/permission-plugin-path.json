@@ -1,0 +1,8 @@
+{
+  "target": "Permission",
+  "description": "a write scope inside the plugin folder",
+  "instance": {
+    "permission": "fs:write",
+    "paths": ["${plugin}/data/**"]
+  }
+}

@@ -1,0 +1,1853 @@
+{
+  "apfs": {
+    "disk": {
+      "sha256": "ed5137a56859c43503c009b2b18a2d218a958fdc434c19c4dc030db81a9c5563",
+      "size": 8388608
+    },
+    "file": "apfs.dmg",
+    "volumes": {
+      "Apple APFS": [
+        {
+          "kind": "folder",
+          "mtime": 1790856000.0,
+          "path": "compressed",
+          "size": 0
+        },
+        {
+          "compressed": true,
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "compressed/ditto.txt",
+          "sha256": "b652d370017bb6db",
+          "size": 163840
+        },
+        {
+          "compressed": true,
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "compressed/type-03.txt",
+          "sha256": "b8a4122aa90b6e58",
+          "size": 2000
+        },
+        {
+          "compressed": true,
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "compressed/type-04.txt",
+          "sha256": "d1d186a510b45de8",
+          "size": 147456
+        },
+        {
+          "compressed": true,
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "compressed/type-07.txt",
+          "sha256": "5f70bc9ac3551726",
+          "size": 2000
+        },
+        {
+          "compressed": true,
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "compressed/type-08.txt",
+          "sha256": "567d7aaccf8a6af4",
+          "size": 147456
+        },
+        {
+          "compressed": true,
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "compressed/type-11.txt",
+          "sha256": "902078145e6e8d39",
+          "size": 2000
+        },
+        {
+          "compressed": true,
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "compressed/type-12.txt",
+          "sha256": "c9d05a8defd6b291",
+          "size": 147456
+        },
+        {
+          "kind": "folder",
+          "mtime": 1790856000.0,
+          "path": "data",
+          "size": 0
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "data/noise.bin",
+          "sha256": "ab795670e44dd25d",
+          "size": 9000
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "data/pattern.bin",
+          "sha256": "26e31be9a9efd800",
+          "size": 49152
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "data/sparse.bin",
+          "sha256": "91f748823683075a",
+          "size": 1052672
+        },
+        {
+          "kind": "folder",
+          "mtime": 1790856000.0,
+          "path": "deep",
+          "size": 0
+        },
+        {
+          "kind": "folder",
+          "mtime": 1790856000.0,
+          "path": "deep/one",
+          "size": 0
+        },
+        {
+          "kind": "folder",
+          "mtime": 1790856000.0,
+          "path": "deep/one/two",
+          "size": 0
+        },
+        {
+          "kind": "folder",
+          "mtime": 1790856000.0,
+          "path": "deep/one/two/three",
+          "size": 0
+        },
+        {
+          "kind": "folder",
+          "mtime": 1790856000.0,
+          "path": "deep/one/two/three/four",
+          "size": 0
+        },
+        {
+          "kind": "folder",
+          "mtime": 1790856000.0,
+          "path": "deep/one/two/three/four/five",
+          "size": 0
+        },
+        {
+          "kind": "folder",
+          "mtime": 1790856000.0,
+          "path": "deep/one/two/three/four/five/six",
+          "size": 0
+        },
+        {
+          "kind": "folder",
+          "mtime": 1790856000.0,
+          "path": "deep/one/two/three/four/five/six/seven",
+          "size": 0
+        },
+        {
+          "kind": "folder",
+          "mtime": 1790856000.0,
+          "path": "deep/one/two/three/four/five/six/seven/eight",
+          "size": 0
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "deep/one/two/three/four/five/six/seven/eight/deep.txt",
+          "sha256": "64896f89fd111900",
+          "size": 5
+        },
+        {
+          "kind": "folder",
+          "mtime": 1790856000.0,
+          "path": "docs",
+          "size": 0
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "docs/café naïve.txt",
+          "sha256": "7b49b9e063bd91a4",
+          "size": 6
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "docs/한글 이름.txt",
+          "sha256": "8d0648e42d053f74",
+          "size": 16
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "empty.txt",
+          "sha256": "e3b0c44298fc1c14",
+          "size": 0
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "hello.txt",
+          "sha256": "ef775cb130100858",
+          "size": 27
+        },
+        {
+          "kind": "folder",
+          "mtime": 1790856000.0,
+          "path": "links",
+          "size": 0
+        },
+        {
+          "kind": "link",
+          "link": "/etc/hosts",
+          "mtime": 1790856000.0,
+          "path": "links/absolute",
+          "size": 10
+        },
+        {
+          "inode": 35,
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "links/hard-a.txt",
+          "sha256": "522dc6a6d544b17d",
+          "size": 20
+        },
+        {
+          "inode": 35,
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "links/hard-b.txt",
+          "sha256": "522dc6a6d544b17d",
+          "size": 20
+        },
+        {
+          "kind": "link",
+          "link": "../hello.txt",
+          "mtime": 1790856000.0,
+          "path": "links/to-hello",
+          "size": 12
+        },
+        {
+          "kind": "folder",
+          "mtime": 1790856000.0,
+          "path": "many",
+          "size": 0
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-000.txt",
+          "sha256": "41b3fbbe4d8d6bbd",
+          "size": 7
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-001.txt",
+          "sha256": "5f5d584c5857d85a",
+          "size": 7
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-002.txt",
+          "sha256": "0b7e1391e8073656",
+          "size": 7
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-003.txt",
+          "sha256": "b90ae9387f8c3b67",
+          "size": 7
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-004.txt",
+          "sha256": "76f61e3503f81ffc",
+          "size": 7
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-005.txt",
+          "sha256": "27c7d24edb77a005",
+          "size": 7
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-006.txt",
+          "sha256": "180fa4e69eabbd12",
+          "size": 7
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-007.txt",
+          "sha256": "cdc4f52fe4cd5569",
+          "size": 7
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-008.txt",
+          "sha256": "3e7e2b6c54af7ff6",
+          "size": 7
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-009.txt",
+          "sha256": "9ab1c487d62413af",
+          "size": 7
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-010.txt",
+          "sha256": "c2756086b5d70a1b",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-011.txt",
+          "sha256": "d71ce34c7d3a21bc",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-012.txt",
+          "sha256": "24e274bd433cafe1",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-013.txt",
+          "sha256": "daac96fe607d6c1e",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-014.txt",
+          "sha256": "2268d99d3a0f71ea",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-015.txt",
+          "sha256": "7e929ce0b4344d60",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-016.txt",
+          "sha256": "341606b8587f7d2d",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-017.txt",
+          "sha256": "2d4b67d07f5e4744",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-018.txt",
+          "sha256": "8e6210b234cfd1c1",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-019.txt",
+          "sha256": "c23c64e866d511e4",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-020.txt",
+          "sha256": "1dcc6d81aee1b540",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-021.txt",
+          "sha256": "fed050590e00099b",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-022.txt",
+          "sha256": "43ddc00b68011db1",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-023.txt",
+          "sha256": "089b58e353e009c3",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-024.txt",
+          "sha256": "261439a9268d4244",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-025.txt",
+          "sha256": "f52f4b2ac91aae4f",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-026.txt",
+          "sha256": "b3850a429f49d5bd",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-027.txt",
+          "sha256": "4f28e94a66a39cc3",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-028.txt",
+          "sha256": "6767b224456213bc",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-029.txt",
+          "sha256": "97e657de832e05c4",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-030.txt",
+          "sha256": "4f8f77b0ea1b891a",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-031.txt",
+          "sha256": "43d4e495d1a4d5d8",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-032.txt",
+          "sha256": "49a44677956305ab",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-033.txt",
+          "sha256": "111320d3ddfc2d14",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-034.txt",
+          "sha256": "320a977fa7c0e1be",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-035.txt",
+          "sha256": "9f2d3105d5198a77",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-036.txt",
+          "sha256": "d780ce84b54230a6",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-037.txt",
+          "sha256": "f72306e5abea3faa",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-038.txt",
+          "sha256": "b65a593d5747c47f",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-039.txt",
+          "sha256": "8f7e2ba9aa8bb0e3",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-040.txt",
+          "sha256": "722a043bec8601a2",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-041.txt",
+          "sha256": "392ea683b9499b24",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-042.txt",
+          "sha256": "ac31495c9d46e2e3",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-043.txt",
+          "sha256": "bc100569ce0f46b7",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-044.txt",
+          "sha256": "e6be5e995093917a",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-045.txt",
+          "sha256": "1d0ae5e29e381e72",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-046.txt",
+          "sha256": "1495341df103b464",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-047.txt",
+          "sha256": "3ea81a90631ed12b",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-048.txt",
+          "sha256": "2dc4a82b786aabee",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-049.txt",
+          "sha256": "2b37d68a1483bb3e",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-050.txt",
+          "sha256": "0dc499f654ef22a0",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-051.txt",
+          "sha256": "5130967ce959207b",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-052.txt",
+          "sha256": "1c18ad98070cfbe9",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-053.txt",
+          "sha256": "8e249e39dbae5994",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-054.txt",
+          "sha256": "4b1217dde24476d8",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-055.txt",
+          "sha256": "17221add7ec0d4c0",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-056.txt",
+          "sha256": "dfa484b53abde12a",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-057.txt",
+          "sha256": "ad262018dcc9abe3",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-058.txt",
+          "sha256": "535dbf9fb15305fa",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-059.txt",
+          "sha256": "e64758700932cc17",
+          "size": 8
+        }
+      ]
+    }
+  },
+  "apfs-locked": {
+    "file": "apfs-locked.dmg",
+    "volume": "Locked"
+  },
+  "apm": {
+    "disk": {
+      "sha256": "f6f42af72e4cd9544f72b0c5c34e643cedb712957cc1855ef7605eb16dceeaed",
+      "size": 1048576
+    },
+    "file": "apm.dmg",
+    "volumes": {
+      "Apple APM": [
+        {
+          "kind": "folder",
+          "mtime": 1790856000.0,
+          "path": "data",
+          "size": 0
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "data/pattern.bin",
+          "sha256": "93a2c44de3ce3c92",
+          "size": 12288
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "hello.txt",
+          "sha256": "fdd3ef56fac39a7b",
+          "size": 35
+        }
+      ]
+    }
+  },
+  "encrypted": {
+    "file": "encrypted.dmg"
+  },
+  "hfs": {
+    "disk": {
+      "sha256": "4bc460aef28f0004c7d1f54a30928c8bea59b7b5ecfc0ce611aaca441fce6c8d",
+      "size": 4194304
+    },
+    "formats": {
+      "UDBZ": "hfs.udbz.dmg",
+      "UDCO": "hfs.udco.dmg",
+      "UDRO": "hfs.udro.dmg",
+      "UDZO": "hfs.udzo.dmg",
+      "ULFO": "hfs.ulfo.dmg",
+      "ULMO": "hfs.ulmo.dmg"
+    },
+    "volumes": {
+      "Apple HFS": [
+        {
+          "kind": "folder",
+          "mtime": 1790856000.0,
+          "path": "compressed",
+          "size": 0
+        },
+        {
+          "compressed": true,
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "compressed/ditto.txt",
+          "sha256": "b652d370017bb6db",
+          "size": 163840
+        },
+        {
+          "compressed": true,
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "compressed/type-03.txt",
+          "sha256": "b8a4122aa90b6e58",
+          "size": 2000
+        },
+        {
+          "compressed": true,
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "compressed/type-04.txt",
+          "sha256": "d1d186a510b45de8",
+          "size": 147456
+        },
+        {
+          "compressed": true,
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "compressed/type-07.txt",
+          "sha256": "5f70bc9ac3551726",
+          "size": 2000
+        },
+        {
+          "compressed": true,
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "compressed/type-08.txt",
+          "sha256": "567d7aaccf8a6af4",
+          "size": 147456
+        },
+        {
+          "compressed": true,
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "compressed/type-11.txt",
+          "sha256": "902078145e6e8d39",
+          "size": 2000
+        },
+        {
+          "compressed": true,
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "compressed/type-12.txt",
+          "sha256": "c9d05a8defd6b291",
+          "size": 147456
+        },
+        {
+          "kind": "folder",
+          "mtime": 1790856000.0,
+          "path": "data",
+          "size": 0
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "data/fragmented.bin",
+          "sha256": "736dcbf38b081d15",
+          "size": 65536
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "data/noise.bin",
+          "sha256": "ab795670e44dd25d",
+          "size": 9000
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "data/pattern.bin",
+          "sha256": "26e31be9a9efd800",
+          "size": 49152
+        },
+        {
+          "kind": "folder",
+          "mtime": 1790856000.0,
+          "path": "deep",
+          "size": 0
+        },
+        {
+          "kind": "folder",
+          "mtime": 1790856000.0,
+          "path": "deep/one",
+          "size": 0
+        },
+        {
+          "kind": "folder",
+          "mtime": 1790856000.0,
+          "path": "deep/one/two",
+          "size": 0
+        },
+        {
+          "kind": "folder",
+          "mtime": 1790856000.0,
+          "path": "deep/one/two/three",
+          "size": 0
+        },
+        {
+          "kind": "folder",
+          "mtime": 1790856000.0,
+          "path": "deep/one/two/three/four",
+          "size": 0
+        },
+        {
+          "kind": "folder",
+          "mtime": 1790856000.0,
+          "path": "deep/one/two/three/four/five",
+          "size": 0
+        },
+        {
+          "kind": "folder",
+          "mtime": 1790856000.0,
+          "path": "deep/one/two/three/four/five/six",
+          "size": 0
+        },
+        {
+          "kind": "folder",
+          "mtime": 1790856000.0,
+          "path": "deep/one/two/three/four/five/six/seven",
+          "size": 0
+        },
+        {
+          "kind": "folder",
+          "mtime": 1790856000.0,
+          "path": "deep/one/two/three/four/five/six/seven/eight",
+          "size": 0
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "deep/one/two/three/four/five/six/seven/eight/deep.txt",
+          "sha256": "64896f89fd111900",
+          "size": 5
+        },
+        {
+          "kind": "folder",
+          "mtime": 1790856000.0,
+          "path": "docs",
+          "size": 0
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "docs/café naïve.txt",
+          "sha256": "7b49b9e063bd91a4",
+          "size": 6
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "docs/한글 이름.txt",
+          "sha256": "8d0648e42d053f74",
+          "size": 16
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "empty.txt",
+          "sha256": "e3b0c44298fc1c14",
+          "size": 0
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "hello.txt",
+          "sha256": "ef775cb130100858",
+          "size": 27
+        },
+        {
+          "kind": "folder",
+          "mtime": 1790856000.0,
+          "path": "links",
+          "size": 0
+        },
+        {
+          "kind": "link",
+          "link": "/etc/hosts",
+          "mtime": 1790856000.0,
+          "path": "links/absolute",
+          "size": 10
+        },
+        {
+          "inode": 88,
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "links/hard-a.txt",
+          "sha256": "522dc6a6d544b17d",
+          "size": 20
+        },
+        {
+          "inode": 88,
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "links/hard-b.txt",
+          "sha256": "522dc6a6d544b17d",
+          "size": 20
+        },
+        {
+          "kind": "link",
+          "link": "../hello.txt",
+          "mtime": 1790856000.0,
+          "path": "links/to-hello",
+          "size": 12
+        },
+        {
+          "kind": "folder",
+          "mtime": 1790856000.0,
+          "path": "many",
+          "size": 0
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-000.txt",
+          "sha256": "41b3fbbe4d8d6bbd",
+          "size": 7
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-001.txt",
+          "sha256": "5f5d584c5857d85a",
+          "size": 7
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-002.txt",
+          "sha256": "0b7e1391e8073656",
+          "size": 7
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-003.txt",
+          "sha256": "b90ae9387f8c3b67",
+          "size": 7
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-004.txt",
+          "sha256": "76f61e3503f81ffc",
+          "size": 7
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-005.txt",
+          "sha256": "27c7d24edb77a005",
+          "size": 7
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-006.txt",
+          "sha256": "180fa4e69eabbd12",
+          "size": 7
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-007.txt",
+          "sha256": "cdc4f52fe4cd5569",
+          "size": 7
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-008.txt",
+          "sha256": "3e7e2b6c54af7ff6",
+          "size": 7
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-009.txt",
+          "sha256": "9ab1c487d62413af",
+          "size": 7
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-010.txt",
+          "sha256": "c2756086b5d70a1b",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-011.txt",
+          "sha256": "d71ce34c7d3a21bc",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-012.txt",
+          "sha256": "24e274bd433cafe1",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-013.txt",
+          "sha256": "daac96fe607d6c1e",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-014.txt",
+          "sha256": "2268d99d3a0f71ea",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-015.txt",
+          "sha256": "7e929ce0b4344d60",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-016.txt",
+          "sha256": "341606b8587f7d2d",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-017.txt",
+          "sha256": "2d4b67d07f5e4744",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-018.txt",
+          "sha256": "8e6210b234cfd1c1",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-019.txt",
+          "sha256": "c23c64e866d511e4",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-020.txt",
+          "sha256": "1dcc6d81aee1b540",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-021.txt",
+          "sha256": "fed050590e00099b",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-022.txt",
+          "sha256": "43ddc00b68011db1",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-023.txt",
+          "sha256": "089b58e353e009c3",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-024.txt",
+          "sha256": "261439a9268d4244",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-025.txt",
+          "sha256": "f52f4b2ac91aae4f",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-026.txt",
+          "sha256": "b3850a429f49d5bd",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-027.txt",
+          "sha256": "4f28e94a66a39cc3",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-028.txt",
+          "sha256": "6767b224456213bc",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-029.txt",
+          "sha256": "97e657de832e05c4",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-030.txt",
+          "sha256": "4f8f77b0ea1b891a",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-031.txt",
+          "sha256": "43d4e495d1a4d5d8",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-032.txt",
+          "sha256": "49a44677956305ab",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-033.txt",
+          "sha256": "111320d3ddfc2d14",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-034.txt",
+          "sha256": "320a977fa7c0e1be",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-035.txt",
+          "sha256": "9f2d3105d5198a77",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-036.txt",
+          "sha256": "d780ce84b54230a6",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-037.txt",
+          "sha256": "f72306e5abea3faa",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-038.txt",
+          "sha256": "b65a593d5747c47f",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-039.txt",
+          "sha256": "8f7e2ba9aa8bb0e3",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-040.txt",
+          "sha256": "722a043bec8601a2",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-041.txt",
+          "sha256": "392ea683b9499b24",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-042.txt",
+          "sha256": "ac31495c9d46e2e3",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-043.txt",
+          "sha256": "bc100569ce0f46b7",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-044.txt",
+          "sha256": "e6be5e995093917a",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-045.txt",
+          "sha256": "1d0ae5e29e381e72",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-046.txt",
+          "sha256": "1495341df103b464",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-047.txt",
+          "sha256": "3ea81a90631ed12b",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-048.txt",
+          "sha256": "2dc4a82b786aabee",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-049.txt",
+          "sha256": "2b37d68a1483bb3e",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-050.txt",
+          "sha256": "0dc499f654ef22a0",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-051.txt",
+          "sha256": "5130967ce959207b",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-052.txt",
+          "sha256": "1c18ad98070cfbe9",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-053.txt",
+          "sha256": "8e249e39dbae5994",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-054.txt",
+          "sha256": "4b1217dde24476d8",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-055.txt",
+          "sha256": "17221add7ec0d4c0",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-056.txt",
+          "sha256": "dfa484b53abde12a",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-057.txt",
+          "sha256": "ad262018dcc9abe3",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-058.txt",
+          "sha256": "535dbf9fb15305fa",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-059.txt",
+          "sha256": "e64758700932cc17",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-060.txt",
+          "sha256": "ce331d109ca966ab",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-061.txt",
+          "sha256": "1673e98ce2c22ee1",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-062.txt",
+          "sha256": "e5dba0fb9e87d8d5",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-063.txt",
+          "sha256": "30ac3a89651412dd",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-064.txt",
+          "sha256": "dfd8e3fdf747dac7",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-065.txt",
+          "sha256": "082ff1286de3865f",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-066.txt",
+          "sha256": "ffdbf68760876eed",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-067.txt",
+          "sha256": "816bb320c2d0b980",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-068.txt",
+          "sha256": "c6eeb00cf9d05ce2",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-069.txt",
+          "sha256": "1da08d04129c8dac",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-070.txt",
+          "sha256": "39c5680e7049e9f3",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-071.txt",
+          "sha256": "477671748e245576",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-072.txt",
+          "sha256": "9845310b70e271e3",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-073.txt",
+          "sha256": "475e7e16265f77c2",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-074.txt",
+          "sha256": "f4f5187561b70a68",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-075.txt",
+          "sha256": "9c980200ba42578f",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-076.txt",
+          "sha256": "5116845702d01fba",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-077.txt",
+          "sha256": "d881d57782c4ac6e",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-078.txt",
+          "sha256": "53e5c60934a28440",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-079.txt",
+          "sha256": "062d0e188cf636e3",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-080.txt",
+          "sha256": "84dde9252c0cf1e6",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-081.txt",
+          "sha256": "28f5442c54b7a84a",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-082.txt",
+          "sha256": "0d4f5d01449ed680",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-083.txt",
+          "sha256": "54a9b045bea90a8b",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-084.txt",
+          "sha256": "cccdfdc5832f5822",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-085.txt",
+          "sha256": "176585096d98f250",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-086.txt",
+          "sha256": "a6424d87f76bbf50",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-087.txt",
+          "sha256": "93cd903bd691b426",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-088.txt",
+          "sha256": "880536a359ec38df",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-089.txt",
+          "sha256": "bccfb234d56b7bde",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-090.txt",
+          "sha256": "b35c1c8f7f30318c",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-091.txt",
+          "sha256": "815335949da3bcc2",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-092.txt",
+          "sha256": "e6761e3c8f476e36",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-093.txt",
+          "sha256": "0540661e24d3c187",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-094.txt",
+          "sha256": "cdbccb085dd56c5a",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-095.txt",
+          "sha256": "483ddb7525ace65b",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-096.txt",
+          "sha256": "5676eb8ecb8c2888",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-097.txt",
+          "sha256": "f386b44233418dcd",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-098.txt",
+          "sha256": "3e29ac43b6dee94f",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-099.txt",
+          "sha256": "15adc41271283c6b",
+          "size": 8
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-100.txt",
+          "sha256": "567dcb69efc1fded",
+          "size": 9
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-101.txt",
+          "sha256": "dd6a1f7191741a0c",
+          "size": 9
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-102.txt",
+          "sha256": "d24660dbb6ed408c",
+          "size": 9
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-103.txt",
+          "sha256": "8fb58d4b76c1dfb0",
+          "size": 9
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-104.txt",
+          "sha256": "9194d3e106bf955a",
+          "size": 9
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-105.txt",
+          "sha256": "4f3e0bb09d500f46",
+          "size": 9
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-106.txt",
+          "sha256": "49136d4375c4abe9",
+          "size": 9
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-107.txt",
+          "sha256": "adc7ce854049123a",
+          "size": 9
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-108.txt",
+          "sha256": "eefe2e79329682f1",
+          "size": 9
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-109.txt",
+          "sha256": "d8b7f3eaf76c85f1",
+          "size": 9
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-110.txt",
+          "sha256": "ba130900d50051d0",
+          "size": 9
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-111.txt",
+          "sha256": "270abf73f351ddd4",
+          "size": 9
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-112.txt",
+          "sha256": "6acf5782d82b9d7a",
+          "size": 9
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-113.txt",
+          "sha256": "7222140c148966cf",
+          "size": 9
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-114.txt",
+          "sha256": "bede41b2321bfd09",
+          "size": 9
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-115.txt",
+          "sha256": "2ba0628717b9fa05",
+          "size": 9
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-116.txt",
+          "sha256": "328fc2eaa4aeadc9",
+          "size": 9
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-117.txt",
+          "sha256": "d4c304c746709c75",
+          "size": 9
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-118.txt",
+          "sha256": "fba935f2ec5d523d",
+          "size": 9
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "many/a-file-with-a-longer-name-to-fill-the-catalog-119.txt",
+          "sha256": "c8755fc85a160da3",
+          "size": 9
+        }
+      ]
+    }
+  },
+  "hfsx": {
+    "disk": {
+      "sha256": "ad68cba71ea66e199fd755c5a5e0f2732c0fd2a6362ca9dcc90abbbbad4f4f20",
+      "size": 1048576
+    },
+    "file": "hfsx.dmg",
+    "volumes": {
+      "Apple HFSX": [
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "README.txt",
+          "sha256": "b3802c4878130fa6",
+          "size": 11
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "Readme.txt",
+          "sha256": "3695865840ad0cfc",
+          "size": 11
+        },
+        {
+          "kind": "folder",
+          "mtime": 1790856000.0,
+          "path": "folder",
+          "size": 0
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "folder/inside.txt",
+          "sha256": "7b2441693c861bf6",
+          "size": 7
+        },
+        {
+          "kind": "file",
+          "mtime": 1790856000.0,
+          "path": "readme.txt",
+          "sha256": "52ca298047e472c9",
+          "size": 11
+        }
+      ]
+    }
+  },
+  "streams": {
+    "empty.lzfse": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size": 0
+    },
+    "noise.lzfse": {
+      "sha256": "05ea7f75fe847f2b9ff0c6b5b6e8478925f59895dcb025c72c91fe306cd48efd",
+      "size": 3000
+    },
+    "small.lzfse": {
+      "sha256": "593f4a75fa2a4af569f3c5d213c6fa7c330d3271adfa53f8e0190c31a8ed63e2",
+      "size": 3000
+    },
+    "small.lzvn": {
+      "sha256": "5b332ef92faa2b5550d2a84ad7fabe440c33c136b51f4703013fb9972073f2ce",
+      "size": 200
+    },
+    "text.lzfse": {
+      "sha256": "deda9043073fda27539f83b5823c169e2ca373ee654e9faa72340a8701d4f000",
+      "size": 163840
+    },
+    "text.lzvn": {
+      "sha256": "f863e05d047236bebce566bfec2ee339258b0dee579402675622fe1c11fdb6d4",
+      "size": 65536
+    }
+  },
+  "when": 1790856000
+}

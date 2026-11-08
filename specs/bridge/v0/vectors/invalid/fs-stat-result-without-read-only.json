@@ -1,0 +1,8 @@
+{
+  "target": "FsStatResult",
+  "description": "fs.stat always says whether the entry is read-only",
+  "instance": {
+    "kind": "file",
+    "size": 2048
+  }
+}

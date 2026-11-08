@@ -1,0 +1,16 @@
+{
+  "target": "BridgeRequest",
+  "description": "reveal is a boolean",
+  "instance": {
+    "id": 10,
+    "method": "shell.open",
+    "params": {
+      "target": "~/Downloads/report.pdf",
+      "reveal": "yes",
+      "scope": {
+        "permission": "shell:open",
+        "paths": ["~/Downloads/**"]
+      }
+    }
+  }
+}

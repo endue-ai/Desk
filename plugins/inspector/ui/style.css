@@ -1,0 +1,137 @@
+/* desk.inspector: layout only. Colours, type and sizes are the desk's tokens (/_desk/tokens.css) over
+   the base sheet (/_desk/base.css), so the theme in force restyles the page. */
+body {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+#bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--desk-space-2) var(--desk-space-3);
+  padding: var(--desk-space-2) var(--desk-space-3);
+  border-bottom: var(--desk-border-width) solid var(--desk-border);
+}
+
+h1 {
+  margin: 0;
+  font-size: var(--desk-text-base);
+}
+
+h2 {
+  margin: 0 0 var(--desk-space-2);
+  font-size: var(--desk-text-sm);
+}
+
+#sections {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--desk-space-1);
+}
+
+#tools {
+  display: flex;
+  align-items: center;
+  gap: var(--desk-space-2);
+  margin-left: auto;
+}
+
+input {
+  min-width: 14em;
+}
+
+#panel {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: var(--desk-space-2) var(--desk-space-3);
+}
+
+#summary,
+#status,
+caption,
+.none {
+  color: var(--desk-text-muted);
+}
+
+#summary,
+#status {
+  margin: 0 0 var(--desk-space-2);
+}
+
+#status {
+  padding: 0 var(--desk-space-3);
+}
+
+table {
+  width: 100%;
+  margin-bottom: var(--desk-space-4);
+  border-collapse: collapse;
+  font-size: var(--desk-text-xs);
+}
+
+caption {
+  padding: var(--desk-space-1) 0;
+  text-align: left;
+  font-weight: 600;
+}
+
+th,
+td {
+  padding: var(--desk-space-1) var(--desk-space-2);
+  border-bottom: var(--desk-border-width) solid var(--desk-border);
+  text-align: left;
+  vertical-align: top;
+}
+
+th {
+  color: var(--desk-text-muted);
+  font-weight: 600;
+}
+
+td {
+  font-family: var(--desk-font-mono);
+  overflow-wrap: anywhere;
+}
+
+/* The render tree indents with spaces. */
+td:first-child {
+  white-space: pre;
+}
+
+#export-panel {
+  position: fixed;
+  inset: var(--desk-space-6);
+  display: flex;
+  flex-direction: column;
+  padding: var(--desk-space-4);
+  border: var(--desk-border-width) solid var(--desk-border);
+  border-radius: var(--desk-radius-lg);
+  background: var(--desk-popover);
+  box-shadow: var(--desk-shadow-lg);
+}
+
+#export-panel[hidden] {
+  display: none;
+}
+
+#export-text {
+  flex: 1;
+  min-height: 0;
+  padding: var(--desk-space-2);
+  border: var(--desk-border-width) solid var(--desk-input);
+  border-radius: var(--desk-radius-md);
+  background: var(--desk-background);
+  font-family: var(--desk-font-mono);
+  font-size: var(--desk-text-xs);
+  resize: none;
+}
+
+#export-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--desk-space-2);
+  margin-top: var(--desk-space-3);
+}

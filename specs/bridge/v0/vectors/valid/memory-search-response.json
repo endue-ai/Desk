@@ -1,0 +1,22 @@
+{
+  "target": "BridgeResponse",
+  "description": "memory.search answers its hits best first",
+  "instance": {
+    "id": 43,
+    "ok": true,
+    "result": {
+      "hits": [
+        {
+          "entry": {
+            "kind": "fact",
+            "id": "fact_01jc8x2k9m4n",
+            "text": "Reviews pull requests in the morning, before standup.",
+            "by": "person",
+            "at": "2026-11-05T09:12:00+09:00"
+          },
+          "snippet": "Reviews pull requests in the [morning]"
+        }
+      ]
+    }
+  }
+}

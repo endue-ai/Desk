@@ -1,0 +1,14 @@
+{
+  "target": "BridgeRequest",
+  "description": "delete an agent (soft, purged after 30 days)",
+  "instance": {
+    "id": 1,
+    "method": "studio.agents.remove",
+    "params": {
+      "agentId": "ag_01JC0Q4MR00000000000000001",
+      "scope": {
+        "permission": "studio:manage"
+      }
+    }
+  }
+}

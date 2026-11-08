@@ -1,0 +1,8 @@
+{
+  "target": "AccountStatus",
+  "description": "the profile carries no token, not even the refresh cookie",
+  "instance": {
+    "state": "signed-in",
+    "profile": { "displayName": "Ada", "refreshToken": "eyJhbGciOi" }
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "target": "BridgeRequest",
+  "description": "computer.input.click needs computer:control",
+  "instance": {
+    "id": 1,
+    "method": "computer.input.click",
+    "params": {
+      "x": 1,
+      "y": 2
+    }
+  }
+}

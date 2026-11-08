@@ -1,0 +1,241 @@
+/* Layout and controls ported from docs/reference/eris-opening-prototype.html. The centre stays empty:
+   Eris speaks below the orb, controls arrive one at a time below that. */
+
+html,
+body {
+  margin: 0;
+  background: var(--desk-background);
+  color: var(--desk-text);
+  font-family: var(--desk-font-sans);
+}
+
+#root {
+  position: relative;
+  min-height: 100vh;
+  box-sizing: border-box;
+  padding: 64px 16px 80px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+#skip {
+  position: absolute;
+  top: 20px;
+  right: 24px;
+}
+
+#stage {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  max-width: 960px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transform-origin: 50% 0;
+}
+
+/* Scene 1: starlight, the count, the floor, the beam and the polygons. */
+#space {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  perspective: 640px;
+  perspective-origin: 50% 40%;
+}
+
+.star {
+  position: absolute;
+  left: 50%;
+  top: 42%;
+  width: 120px;
+  height: 2px;
+  transform-origin: 0 50%;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--eris-frost) 90%, transparent));
+}
+
+.floor {
+  position: absolute;
+  left: -100%;
+  right: -100%;
+  top: 74%;
+  height: 160%;
+  transform-origin: 50% 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80'%3E%3Cpath d='M0 .75H80M.75 0V80' stroke='%23e9edf4' stroke-opacity='.22' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
+  background-size: 80px 80px;
+  /* A mask: only the alpha of its colours counts. */
+  mask-image: radial-gradient(ellipse 30% 40% at 50% 0%, black 10%, transparent 70%);
+}
+
+.sphere .count {
+  position: absolute;
+  inset: 0;
+  font-size: calc(var(--desk-text-2xl) * 3);
+  font-weight: 400;
+}
+
+.sphere .count .wrap {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sphere .beam {
+  position: absolute;
+  left: 178px;
+  top: -812px;
+  width: 4px;
+  height: 1000px;
+  transform-origin: 50% 0;
+  background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--eris-white) 90%, transparent));
+}
+
+.shard {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  background: color-mix(in srgb, var(--eris-frost) 36%, transparent);
+  pointer-events: none;
+}
+
+.shard.loose {
+  z-index: 3;
+  clip-path: polygon(50% 0%, 100% 100%, 0% 85%);
+}
+
+.shard.gold {
+  width: 36px;
+  height: 40px;
+  clip-path: polygon(92.5% 94.5%, 35.6% 8.3%, 8.1% 37.5%);
+  background: linear-gradient(135deg, var(--eris-gold-light), var(--eris-gold-deep));
+}
+
+.user-rise {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 168px;
+  text-align: center;
+  font-size: var(--desk-text-3xl);
+  font-weight: 400;
+  color: var(--desk-text);
+  pointer-events: none;
+}
+
+#formslot {
+  min-height: 96px;
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.ask-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 8px;
+}
+
+label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: var(--desk-text-xs);
+  color: var(--desk-text-muted);
+}
+
+input {
+  width: 240px;
+  height: 40px;
+  box-sizing: border-box;
+  font-family: inherit;
+  font-size: var(--desk-text-base);
+}
+
+#formslot p {
+  margin: 0;
+  font-size: var(--desk-text-xs);
+  color: var(--desk-text-muted);
+}
+
+/* Scene 5's entry and waiting card (account.js): the endue.ai web's entry, under Eris. */
+.entry {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  max-width: 384px;
+  text-align: center;
+}
+
+#formslot .entry-eyebrow {
+  font-size: var(--desk-text-xs);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--desk-text-muted);
+}
+
+.entry-title {
+  margin: 0;
+  font-size: var(--desk-text-2xl);
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--desk-text);
+}
+
+.entry-accent {
+  display: block;
+  color: var(--desk-primary);
+}
+
+#formslot .entry-sub {
+  font-size: var(--desk-text-sm);
+}
+
+.entry-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+#formslot .entry-code {
+  font-family: var(--desk-font-mono);
+  font-size: var(--desk-text-2xl);
+  letter-spacing: 0.12em;
+  color: var(--desk-text);
+  user-select: all;
+}
+
+#formslot .entry-notice {
+  color: var(--desk-text);
+}
+
+#formslot p.help {
+  color: var(--desk-text);
+}
+
+.btn {
+  height: 32px;
+  padding: 0 12px;
+}
+
+.btn.primary {
+  height: 40px;
+  padding: 0 16px;
+}
+
+button:focus-visible {
+  outline: 2px solid var(--desk-ring);
+  outline-offset: 2px;
+}

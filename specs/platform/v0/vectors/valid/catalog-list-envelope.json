@@ -1,0 +1,73 @@
+{
+  "target": "CatalogListEnvelope",
+  "description": "one published catalog agent in the catalog's envelope",
+  "instance": {
+    "data": [
+      {
+        "id": "cat_support_mail",
+        "slug": "support-mail",
+        "category": "support",
+        "tags": ["mail"],
+        "featured": true,
+        "publisher": {
+          "kind": "official",
+          "name": "endue"
+        },
+        "version": 3,
+        "manifest": {
+          "identity": {
+            "name": "Mailie",
+            "role": {
+              "en": "Support mail",
+              "ko": "고객 메일"
+            },
+            "avatar_url": "https://cdn.endue.ai/c/mailie.png"
+          },
+          "tagline": {
+            "en": "Answers support mail",
+            "ko": "고객 문의 메일에 답해요"
+          },
+          "description": {
+            "en": "...",
+            "ko": "..."
+          },
+          "strengths": [
+            {
+              "en": "Fast",
+              "ko": "빨라요"
+            }
+          ],
+          "use_cases": [
+            {
+              "title": {
+                "en": "Refunds",
+                "ko": "환불"
+              },
+              "example": {
+                "en": "Answer this refund mail",
+                "ko": "이 환불 메일에 답해 줘"
+              }
+            }
+          ],
+          "connectors": [
+            {
+              "type": "gmail",
+              "required": true
+            }
+          ],
+          "channels": ["web", "slack"],
+          "preset": {
+            "traits": ["personality"],
+            "skills": ["mail-triage"],
+            "model": "anthropic/claude-sonnet-4.5"
+          }
+        },
+        "published_at": "2026-11-01T09:00:00.000Z"
+      }
+    ],
+    "meta": {
+      "request_id": "req_2",
+      "timestamp": "2026-11-01T09:00:00.000Z"
+    }
+  }
+}

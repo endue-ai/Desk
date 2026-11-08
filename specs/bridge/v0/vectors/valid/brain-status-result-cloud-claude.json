@@ -1,0 +1,12 @@
+{
+  "target": "BridgeResponse",
+  "description": "the desk chose the person's Claude Code, and it answers",
+  "instance": {
+    "id": 32,
+    "ok": true,
+    "result": {
+      "mode": "cloud",
+      "brain": "claude"
+    }
+  }
+}
