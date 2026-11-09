@@ -16,6 +16,7 @@ items, views and connectors of the integration layer.
 | `connector/v0/` | What a connector plugin declares, its status and sync results, and the MCP profile of a Desk-aware server |
 | `init/v0/` | `init.yaml`, a person's setup: schema, the template Desk writes, and the sync rules |
 | `memory/v0/` | Eris's memory on this computer: facts, episodes, search hits and the `facts.yaml` file (ADR 0095) |
+| `surface/v0/` | The surface protocol between the compositor and anything that draws a surface: lifecycle, texture handles (IOSurface, D3D11, DMA-BUF), input, IME, drag and drop, frame pacing and accessibility (#32) |
 | `runtime/v0/` | Core settings UI, key-binding precedence and preference persistence (no new wire types) |
 | `wit/` | Wasm interfaces: the host interface logic plugins import (`desk:host`) and the world Wasm connectors build to (`desk:connector`) |
 
@@ -25,4 +26,5 @@ and TypeScript sides must agree on.
 
 Status: v0. Any minor release may break v0 (ADR 0004). `just check` lints the specs and
 `just codegen` regenerates `crates/desk-bridge/src/generated.rs`, `crates/desk-brain/src/generated.rs`,
-`packages/bridge/src/generated.ts` and `packages/bridge/src/brain.generated.ts`.
+`crates/desk-surface/src/generated.rs`, `packages/bridge/src/generated.ts`,
+`packages/bridge/src/brain.generated.ts` and `packages/bridge/src/surface.generated.ts`.
