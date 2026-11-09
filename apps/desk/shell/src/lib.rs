@@ -4,6 +4,7 @@
 
 pub mod app;
 pub mod client;
+pub mod crashes;
 pub mod guard;
 pub mod host;
 #[cfg(target_os = "macos")]

@@ -15,6 +15,7 @@ The plugin scheme and the shell's services (tray, palette, Eris) arrive with #42
 - `window::Shell`: the winit application with the windowed browser.
 - `renderer::ShellRenderer`: `__deskNative.send` / `onMessage` in every frame (renderer process).
 - `host::{Desk, receive, forward_events}`: the browser side; commands named as the Tauri shell's.
+- `crashes::watch`: Chromium's target discovery names a plugin frame whose renderer died (`desk://frame-crashed`).
 - `paths`: the shell's files (`DESK_SHELL_DIST`), its data folder and the start URL (`DESK_SHELL_URL`).
 
 ## Run and test

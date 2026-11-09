@@ -6,7 +6,7 @@ import "@endue-ai/runtime/desk.css";
 import "@endue-ai/runtime/shell.css";
 import { reportCrashes, showLastCrash } from "./crashes";
 import "./crashes.css";
-import { adapter, invoke, shell } from "./host";
+import { adapter, invoke, listen, shell } from "./host";
 import { installNativeFileDrops, pickNativeFile } from "./native-files";
 import { installOpenedFiles } from "./open-files";
 import { sendThemeToPalette } from "./palette-theme";
@@ -81,6 +81,12 @@ const disposeOpened = installOpenedFiles({
     }),
 });
 window.addEventListener("pagehide", disposeOpened, { once: true });
+
+// A plugin frame whose renderer died (#44): the CEF shell names it, and the window recovers by itself.
+const offCrashes = listen<{ plugin?: string }>("desk://frame-crashed", ({ payload }) => {
+  if (typeof payload?.plugin === "string") desk.runtime.frames.crashed(payload.plugin);
+});
+window.addEventListener("pagehide", () => void offCrashes.then((off) => off()), { once: true });
 
 // The desk's own updates: a row in the rail's attention list and the desk.update.* commands.
 const disposeUpdates = installUpdates({

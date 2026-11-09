@@ -14,6 +14,14 @@ const copy = {
     "Stopped because it was not responding. Reload brings back its last state.",
   ],
   reload: ["다시 불러오기", "Reload"],
+  crashedLine: [
+    "{title}의 프로세스가 멈춰 다시 불러오는 중입니다.",
+    "{title} stopped working and is loading again.",
+  ],
+  heldLine: [
+    "1분 안에 두 번 멈춰, 다시 불러올 때까지 꺼 둡니다. 다른 창에는 영향이 없습니다.",
+    "It stopped twice within a minute, so it stays off until you reload it. No other window is affected.",
+  ],
   cmdWait: ["응답 없는 창 · 기다리기", "Not responding · wait"],
   cmdStop: ["응답 없는 창 · 멈추기", "Not responding · stop"],
   cmdReload: ["멈춘 창 · 다시 불러오기", "Stopped window · reload"],

@@ -23,6 +23,8 @@ pub struct Shell {
     url: String,
     window: Option<Arc<Window>>,
     browser: Option<Browser>,
+    /// Hears the main browser's frames crash (#44), as long as it is kept.
+    crash_watch: Option<Registration>,
 }
 
 impl Shell {
@@ -34,6 +36,7 @@ impl Shell {
             url,
             window: None,
             browser: None,
+            crash_watch: None,
         }
     }
 
@@ -70,6 +73,7 @@ impl Shell {
             crate::mac::follow_parent_size(host.window_handle());
         }
         self.events.set(browser.clone());
+        self.crash_watch = browser.as_ref().and_then(crate::crashes::watch);
         self.browser = browser;
         self.window = Some(window);
     }
@@ -85,6 +89,7 @@ impl ApplicationHandler<Wake> for Shell {
     fn user_event(&mut self, event_loop: &ActiveEventLoop, wake: Wake) {
         if wake == Wake::BrowserClosed {
             self.events.set(None);
+            self.crash_watch = None;
             self.browser = None;
             event_loop.exit();
         }

@@ -226,3 +226,61 @@ describe("a plugin frame that stops answering", () => {
     expect(runtime.frames.state("a.one")).toBe("responding");
   });
 });
+
+describe("a plugin frame whose renderer died (#44)", () => {
+  it("loads again by itself with its last desk:state, and the other windows never notice", async () => {
+    const { runtime, plugins } = await desk(["a.one", "b.two"]);
+    const [a, b] = plugins as [Plugin, Plugin];
+    a.send({ type: "desk:state", state: { count: 7 } });
+    const before = b.frame();
+    expect(runtime.frames.crashed("a.one")).toBe(true);
+    await flush();
+    expect(a.frame()).not.toBeNull();
+    expect(runtime.frames.state("a.one")).toBe("responding");
+    a.messages = [];
+    a.connect();
+    await flush();
+    expect(a.messages.filter((m) => m.type === "desk:init")).toEqual([
+      { type: "desk:init", pluginId: "a.one", state: { count: 7 } },
+    ]);
+    expect(b.frame()).toBe(before);
+    expect(runtime.frames.state("b.two")).toBe("responding");
+  });
+
+  it("a second death within a minute holds it stopped with Reload; the person's Reload frees it", async () => {
+    const { runtime, plugins } = await desk(["a.one"]);
+    const [a] = plugins as [Plugin];
+    runtime.frames.crashed("a.one");
+    await flush();
+    a.connect();
+    await flush(30_000);
+    expect(runtime.frames.crashed("a.one")).toBe(true);
+    await flush();
+    expect(a.frame()).toBeNull();
+    expect(runtime.frames.state("a.one")).toBe("stopped");
+    const stand = a.section()?.querySelector(".desk-surface-placeholder--stopped");
+    expect(stand?.textContent).toContain("It stopped twice within a minute");
+    // Held: it stays down however long it is in sight.
+    await flush(120_000);
+    expect(a.frame()).toBeNull();
+    a.button("Reload")?.click();
+    await flush();
+    expect(a.frame()).not.toBeNull();
+    a.connect();
+    await flush(2000);
+    // Freed: the next death reloads by itself again.
+    expect(runtime.frames.crashed("a.one")).toBe(true);
+    await flush();
+    expect(a.frame()).not.toBeNull();
+  });
+
+  it("is refused for a surface the desk does not watch, or one already stopped", async () => {
+    const { runtime, plugins } = await desk(["a.one"]);
+    const [a] = plugins as [Plugin];
+    expect(runtime.frames.crashed("nobody.here")).toBe(false);
+    await silence(a, 5000);
+    a.button("Stop")?.click();
+    await flush();
+    expect(runtime.frames.crashed("a.one")).toBe(false);
+  });
+});

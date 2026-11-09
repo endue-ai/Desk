@@ -12,6 +12,7 @@ import { showNotResponding } from "../surface/not-responding";
 import { type FramesCopyKey, framesText } from "./copy";
 import { stoppedPlaceholder } from "./placeholder";
 import type { FrameTimers } from "./policy";
+import { CrashRecovery } from "./recovery";
 import { type Response, type Responsiveness, ResponsivenessModel } from "./responsiveness";
 
 /** Whether plugin frames answer the desk, and the person's actions on those that do not. */
@@ -24,6 +25,12 @@ export interface FrameResponses {
   stop(id: string): boolean;
   /** Load a stopped frame again, with its last desk:state. False when it is not stopped. */
   reload(id: string): boolean;
+  /**
+   * Its renderer died (#44; the CEF shell says so): the window loads again by itself with its last
+   * desk:state, or after a second death within a minute stays stopped with Reload for this run.
+   * False for a surface the desk does not watch, or one already stopped.
+   */
+  crashed(id: string): boolean;
   /**
    * Hear every change of a surface's response, with its state: late, stopped, responding again, and
    * a frame watched from its first answer (still responding). Returns a function that stops.
@@ -80,6 +87,25 @@ export function watchFrames(
   };
   const reload = (id: string) => {
     if (!model.reload(id)) return false;
+    recovery.released(id);
+    surfaces.remount(id);
+    deps.reloaded(id);
+    return true;
+  };
+  const recovery = new CrashRecovery(() => deps.timers.now());
+  const crashed = (id: string) => {
+    const section = surfaces.get(id);
+    if (!section || !model.crash(id)) return false;
+    deps.stopped(id);
+    const held = recovery.crashed(id) === "hold";
+    const line = held ? say("heldLine") : say("crashedLine", { title: deps.title(id) });
+    const text = { title: deps.title(id), line, reload: say("reload") };
+    const stand = stoppedPlaceholder(section.ownerDocument, text, () => reload(id));
+    surfaces.unload(id, stand);
+    deps.host()?.unloaded(id, undefined);
+    if (held) return true;
+    // Load it again at once, as the person's Reload would; the hold is not released by this.
+    model.reload(id);
     surfaces.remount(id);
     deps.reloaded(id);
     return true;
@@ -128,6 +154,7 @@ export function watchFrames(
       wait,
       stop,
       reload,
+      crashed,
       onChange: (listener) => {
         listeners.add(listener);
         return () => listeners.delete(listener);

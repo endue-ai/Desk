@@ -9,8 +9,11 @@ use crate::pump::Pump;
 use crate::renderer::ShellRenderer;
 use crate::scheme;
 
-/// The scheme plugin files load from (ADR 0012); its handler comes with #42.
+/// The scheme plugin files load from (ADR 0012, served by `plugin_scheme`).
 pub const PLUGIN_SCHEME: &str = "desk-plugin";
+
+/// The most renderer processes Chromium may run before it starts sharing them between sites.
+pub const RENDERER_LIMIT: usize = 128;
 
 /// Both desk schemes behave like `https`: standard URLs, a secure context, CORS and `fetch`.
 fn scheme_options() -> i32 {
@@ -64,6 +67,20 @@ wrap_app! {
             // One renderer per site: every plugin surface has a site of its own (#36), so each runs
             // in its own process (ADR 0140).
             command_line.append_switch(Some(&"site-per-process".into()));
+            // Chromium merges renderers once it counts more than its own memory-based limit; the live
+            // budget (#37, ADR 0142) is what bounds them here, so the limit only keeps Chromium from
+            // putting two plugins in one process (#44).
+            command_line.append_switch_with_value(
+                Some(&"renderer-process-limit".into()),
+                Some(&RENDERER_LIMIT.to_string().as_str().into()),
+            );
+            // WebGPU is on by default on macOS and Windows; Linux needs it asked for, on Vulkan.
+            #[cfg(target_os = "linux")]
+            {
+                command_line.append_switch(Some(&"enable-unsafe-webgpu".into()));
+                command_line
+                    .append_switch_with_value(Some(&"enable-features".into()), Some(&"Vulkan".into()));
+            }
             // Development builds open Chromium's DevTools protocol on request: screenshots for
             // pull requests and the app-level e2e (ADR 0144) drive the desk through it.
             if cfg!(debug_assertions)

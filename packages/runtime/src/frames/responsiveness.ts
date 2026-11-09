@@ -155,6 +155,19 @@ export class ResponsivenessModel {
     return true;
   }
 
+  /** Its renderer died (the shell says so): `stopped`, whatever it was, until `reload`. */
+  crash(id: string): boolean {
+    const entry = this.#entries.get(id);
+    if (!entry || entry.state === "stopped") return false;
+    this.#change(id, entry, () => {
+      this.#clear(entry);
+      entry.watched = false;
+      entry.pinged = false;
+      entry.state = "stopped";
+    });
+    return true;
+  }
+
   /** A stopped frame loads again: responding, pinged from its hello and watched once it answers. */
   reload(id: string): boolean {
     const entry = this.#entries.get(id);
