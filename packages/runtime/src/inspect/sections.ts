@@ -1,13 +1,14 @@
 /**
  * The inspector's sections only the runtime can answer, besides the render tree (`tree.ts`): the
- * surfaces with their plugin, the host's views and the buffer list; and every setting with the value
- * in force and the layer that won, by desk.describe's resolution (`describe/setting.ts`, ADR 0017).
- * Plain data out.
+ * surfaces with their plugin, the host's views, the buffer list and the live frames (ADR 0134); and
+ * every setting with the value in force and the layer that won, by desk.describe's resolution
+ * (`describe/setting.ts`, ADR 0017). Plain data out.
  */
 import type { PluginInfo } from "@endue-ai/bridge";
 import type { Buffer } from "../buffers";
 import { held, settingInForce } from "../describe/setting";
 import type { Facts } from "../describe/words";
+import type { Frames } from "../frames/install";
 import type { Layer } from "../settings";
 import type { SurfaceHost } from "../surfaces";
 import type { HostViews } from "../views";
@@ -54,6 +55,20 @@ export interface InspectedSurface {
   placement: string;
   visible: boolean;
   focused: boolean;
+  /** Its frame is unloaded, its state kept, until it shows again (ADR 0070, ADR 0134). */
+  asleep: boolean;
+}
+
+/** The live frames: how many are loaded, and of the windows how many out of sight and asleep. */
+export interface InspectedFrames {
+  /** Surfaces whose frame is loaded, edge bars and overlays included. */
+  live: number;
+  /** Windows whose frame is loaded while out of sight: what desk.surfaces.live bounds. */
+  hidden: number;
+  /** Windows asleep. */
+  asleep: number;
+  /** desk.surfaces.live in force. */
+  budget: number;
 }
 
 export interface SurfacesInput {
@@ -63,10 +78,15 @@ export interface SurfacesInput {
   plugins: readonly PluginInfo[];
   views?: Pick<HostViews, "ids" | "title" | "focused">;
   buffers: Buffer[];
+  /** The frame policy, for the windows' live frames. */
+  frames?: Pick<Frames, "counts">;
 }
 
-/** The surfaces in the order they opened, the host's views and the buffers, most recent first. */
-export function surfacesSection({ host, focused, plugins, views, buffers }: SurfacesInput) {
+/**
+ * The surfaces in the order they opened, the host's views, the buffers (most recent first) and the
+ * live frames.
+ */
+export function surfacesSection({ host, focused, plugins, views, buffers, frames }: SurfacesInput) {
   const installed = new Set(plugins.map((p) => p.id));
   const surfaces: InspectedSurface[] = host.ids().map((id) => {
     const section = host.get(id);
@@ -77,6 +97,7 @@ export function surfacesSection({ host, focused, plugins, views, buffers }: Surf
       placement: placementOf(section),
       visible: host.visible(id),
       focused: focused === id,
+      asleep: host.unloaded(id),
     };
   });
   const inUse = views?.focused() ?? null;
@@ -85,7 +106,14 @@ export function surfacesSection({ host, focused, plugins, views, buffers }: Surf
     title: views?.title(id) ?? id,
     focused: inUse === id,
   }));
-  return { surfaces, views: shown, buffers };
+  const counts = frames?.counts();
+  const live: InspectedFrames | undefined = counts && {
+    live: surfaces.filter((s) => !s.asleep).length,
+    hidden: counts.hidden,
+    asleep: counts.asleep,
+    budget: counts.budget,
+  };
+  return { surfaces, views: shown, buffers, ...(live ? { frames: live } : {}) };
 }
 
 function placementOf(section: HTMLElement | undefined): string {

@@ -10,7 +10,7 @@ import { PolicyHub } from "../hub";
 import { ShortcutRouter } from "../input";
 import type { DeskContext } from "../policies/context";
 import { SurfaceHost } from "../surfaces";
-import { installInspect } from "./install";
+import { type InspectDeps, installInspect } from "./install";
 
 const policy = (id: string, settings: NonNullable<PluginManifest["contributes"]>["settings"]) => ({
   id,
@@ -41,7 +41,7 @@ const MANAGE = { permission: "perm:manage" } as const;
 const INSPECT = "desk.inspect.open";
 
 /** The runtime's inspect command on the stub core, over a desk with surfaces, views and buffers. */
-async function desk() {
+async function desk(frames?: InspectDeps["frames"]) {
   const core = browserCore({
     manifests: MANIFESTS,
     init: { settings: { "desk.theme.scheme": "light", "desk.notify.seconds": "long" } },
@@ -92,6 +92,7 @@ async function desk() {
   installInspect(ctx, {
     buffers,
     views: { ids: () => ["calendar"], title: () => "Calendar", focused: () => null },
+    ...(frames ? { frames } : {}),
   });
   await hub.readInit(bridge);
   hub.apply((await bridge.call("plugin.list", { scope: { permission: "plugin:manage" } })).plugins);
@@ -188,6 +189,7 @@ describe("desk.inspect.open", () => {
           placement: "grid",
           visible: true,
           focused: true,
+          asleep: false,
         },
         {
           id: "endue.notes",
@@ -196,6 +198,7 @@ describe("desk.inspect.open", () => {
           placement: "left",
           visible: true,
           focused: false,
+          asleep: false,
         },
         {
           id: "desk.palette",
@@ -204,6 +207,7 @@ describe("desk.inspect.open", () => {
           placement: "overlay",
           visible: false,
           focused: false,
+          asleep: false,
         },
         {
           id: "endue.terminal",
@@ -212,8 +216,16 @@ describe("desk.inspect.open", () => {
           placement: "window",
           visible: true,
           focused: false,
+          asleep: false,
         },
-        { id: "scratch", title: "Scratch", placement: "grid", visible: true, focused: false },
+        {
+          id: "scratch",
+          title: "Scratch",
+          placement: "grid",
+          visible: true,
+          focused: false,
+          asleep: false,
+        },
       ],
       views: [{ id: "calendar", title: "Calendar", focused: false }],
       // As desk.buffers.list answers them.
@@ -252,6 +264,27 @@ describe("desk.inspect.open", () => {
     await expect(hub.commands.run(INSPECT, { section: "colours" })).rejects.toThrow(
       "tree, surfaces or settings",
     );
+  });
+
+  it("counts the live frames: loaded ones, and of the windows those out of sight and asleep", async () => {
+    const counts = { shown: 1, hidden: 1, asleep: 1, budget: 8 };
+    const { hub, surfaces } = await desk({ counts: () => counts });
+    surfaces.open({ id: "endue.notes", title: "Notes", placement: "left" });
+    surfaces.open({ id: "endue.terminal", title: "Terminal" });
+    surfaces.open({ id: "desk.inspector", title: "Inspector" });
+    // The frame policy took the terminal's frame away: a placeholder stands in.
+    surfaces.unload("endue.terminal", document.createElement("div"));
+    const answer = (await hub.commands.run(INSPECT, { section: "surfaces" })) as {
+      surfaces: Array<{ id: string; asleep: boolean }>;
+      frames: unknown;
+    };
+    expect(answer.surfaces.map((s) => [s.id, s.asleep])).toEqual([
+      ["endue.notes", false],
+      ["endue.terminal", true],
+      ["desk.inspector", false],
+    ]);
+    // The edge bar's frame counts as live; only the windows count against the budget.
+    expect(answer.frames).toEqual({ live: 2, hidden: 1, asleep: 1, budget: 8 });
   });
 
   it("only the person and perm:manage holders may inspect, and no args open the inspector", async () => {

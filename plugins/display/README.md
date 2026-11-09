@@ -21,9 +21,9 @@ Commands: `desk.display.focus-next` and `focus-previous` (`Control+Tab`, `Contro
 on. The runtime side is `packages/runtime/src/display.ts` and `src/policies/display.ts`.
 
 Settings (ADR 0070): a plugin window nothing shows for `desk.display.unload-after` seconds (300; 0 never)
-is unloaded, its state kept (`ui.surface.state`), and loads again when it shows; past
-`desk.display.live-surfaces` live frames (24; 0 no cap) the one hidden longest goes at once
-(`packages/runtime/src/frames/`).
+is unloaded, its state kept (`ui.surface.state`), and loads again when it shows. How many windows out
+of sight keep a frame at all is the core's `desk.surfaces.live` (8, the most recently focused; ADR
+0134), which replaced `desk.display.live-surfaces` (`packages/runtime/src/frames/`).
 
 ```bash
 cargo run -p desk-cli -- plugin validate plugins/display

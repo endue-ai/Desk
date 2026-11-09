@@ -1,10 +1,12 @@
 /**
  * When the runtime unloads a surface's frame (ADR 0070): once it has not been visible for
- * desk.display.unload-after, or at once for the one hidden longest while more frames are live than
- * desk.display.live-surfaces allows. A visible surface, or the one the keys go to, never is; an
- * unloaded one loads again as soon as it shows. Only decisions here: asking for the state and taking
- * the frame away are the caller's `unload`.
+ * desk.display.unload-after, or at once when it falls out of the live budget (`live-budget.ts`, ADR
+ * 0134): of the surfaces out of sight, only the desk.surfaces.live most recently focused keep a
+ * frame. A visible surface, or the one the keys go to, never is unloaded; an unloaded one loads again
+ * as soon as it shows. Only decisions here: asking for the state and taking the frame away are the
+ * caller's `unload`.
  */
+import { type Counted, FocusOrder, liveBudget } from "./live-budget";
 
 /** Time for the policy: `setTimeout` and `performance.now` by default, a manual one in tests. */
 export interface FrameTimers {
@@ -27,8 +29,8 @@ export interface PolicyDeps {
   focused(): string | null;
   /** How long a surface may stay hidden and loaded, in ms; 0 keeps it loaded. */
   afterMs(): number;
-  /** How many frames may be live; 0 sets no limit. */
-  limit(): number;
+  /** How many frames out of sight may stay live (desk.surfaces.live); 0 keeps none. */
+  budget(): number;
   /**
    * Ask for the state and take the frame away, unless `still()` says no by then; resolves true when
    * the frame is gone.
@@ -43,6 +45,13 @@ export const RETRY_MS = 1000;
 
 type Phase = "live" | "unloading" | "unloaded";
 
+/** The frames counted, for the inspector: loaded in sight, loaded out of sight, and asleep. */
+export interface FrameCounts {
+  shown: number;
+  hidden: number;
+  asleep: number;
+}
+
 interface Entry {
   phase: Phase;
   /** When it stopped being visible; undefined while it is. */
@@ -56,6 +65,7 @@ interface Entry {
 export class FramePolicy {
   readonly #deps: PolicyDeps;
   readonly #entries = new Map<string, Entry>();
+  readonly #order = new FocusOrder();
   #cancelTimer: (() => void) | undefined;
   #disposed = false;
 
@@ -63,9 +73,10 @@ export class FramePolicy {
     this.#deps = deps;
   }
 
-  /** Count a surface in; `check` looks at it next. */
+  /** Count a surface in, as the most recent: it just opened. `check` looks at it next. */
   track(id: string): void {
     if (this.#entries.has(id)) return;
+    this.#order.touch(id);
     this.#entries.set(id, {
       phase: "live",
       hiddenSince: undefined,
@@ -74,8 +85,14 @@ export class FramePolicy {
     });
   }
 
+  /** The keys went to `id`: it is the most recent. `check` wakes it if it sleeps. */
+  focused(id: string): void {
+    if (this.#entries.has(id)) this.#order.touch(id);
+  }
+
   untrack(id: string): void {
     this.#entries.delete(id);
+    this.#order.forget(id);
   }
 
   unloaded(id: string): boolean {
@@ -83,11 +100,13 @@ export class FramePolicy {
   }
 
   /**
-   * Load an unloaded frame again, visible or not (something needs its answer). True when its frame
-   * is live after: loaded now, or already. False for one being unloaded or not counted in.
+   * Load an unloaded frame again, visible or not (something needs its answer), as the most recent:
+   * it is in use. True when its frame is live after: loaded now, or already. False for one being
+   * unloaded or not counted in.
    */
   wake(id: string): boolean {
     const entry = this.#entries.get(id);
+    if (entry) this.#order.touch(id);
     if (entry?.phase === "unloading") entry.cancelled = true;
     if (entry?.phase === "unloaded") {
       this.#remount(id, entry);
@@ -96,40 +115,72 @@ export class FramePolicy {
     return entry?.phase === "live";
   }
 
-  /** Look at every surface again: what shows loads, what hid too long or too many goes. */
+  /**
+   * Look at every surface again: what shows loads, what hid too long goes, and past the budget the
+   * least recently focused out of sight go. The surface with the keys counts as focused now.
+   */
   check(): void {
     if (this.#disposed) return;
     const now = this.#deps.timers.now();
+    const focused = this.#deps.focused();
+    if (focused !== null && this.#entries.has(focused)) this.#order.touch(focused);
     for (const [id, entry] of this.#entries) {
-      if (this.#shown(id)) {
-        entry.hiddenSince = undefined;
-        if (entry.phase === "unloaded") this.#remount(id, entry);
-        if (entry.phase === "unloading") entry.cancelled = true;
-      } else if (entry.hiddenSince === undefined) entry.hiddenSince = now;
+      if (this.#shown(id)) entry.hiddenSince = undefined;
+      else entry.hiddenSince ??= now;
     }
     const after = this.#deps.afterMs();
-    const ready = (entry: Entry) =>
-      entry.phase === "live" && entry.hiddenSince !== undefined && entry.heldUntil <= now;
     if (after > 0) {
       for (const [id, entry] of this.#entries) {
-        if (ready(entry) && now - (entry.hiddenSince ?? now) >= after) this.#unload(id, entry);
+        if (this.#ready(entry, now) && now - (entry.hiddenSince ?? now) >= after)
+          this.#unload(id, entry);
       }
     }
-    const limit = this.#deps.limit();
-    if (limit > 0) {
-      const live = [...this.#entries.values()].filter((e) => e.phase === "live").length;
-      const oldest = [...this.#entries]
-        .filter(([, entry]) => ready(entry))
-        .sort(([, a], [, b]) => (a.hiddenSince ?? 0) - (b.hiddenSince ?? 0));
-      for (const [id, entry] of oldest.slice(0, Math.max(0, live - limit))) this.#unload(id, entry);
+    const { wake, sleep } = liveBudget(this.#counted(now), this.#deps.budget());
+    for (const id of wake) {
+      const entry = this.#entries.get(id);
+      if (entry?.phase === "unloaded") this.#remount(id, entry);
+      if (entry?.phase === "unloading") entry.cancelled = true;
+    }
+    for (const id of sleep) {
+      const entry = this.#entries.get(id);
+      if (entry) this.#unload(id, entry);
     }
     this.#schedule(now, after);
+  }
+
+  /** How many frames are loaded in sight and out of it, and how many asleep. */
+  counts(): FrameCounts {
+    const counts = { shown: 0, hidden: 0, asleep: 0 };
+    for (const [id, entry] of this.#entries) {
+      if (entry.phase === "unloaded") counts.asleep++;
+      else if (this.#shown(id)) counts.shown++;
+      else counts.hidden++;
+    }
+    return counts;
   }
 
   dispose(): void {
     this.#disposed = true;
     this.#cancelTimer?.();
     this.#entries.clear();
+  }
+
+  /** Live, out of sight and not held after a refused unload. */
+  #ready(entry: Entry, now: number): boolean {
+    return entry.phase === "live" && entry.hiddenSince !== undefined && entry.heldUntil <= now;
+  }
+
+  /** Every surface, most recently focused first, as the budget counts it. */
+  #counted(now: number): Counted[] {
+    return this.#order.sort(this.#entries.keys()).map((id) => {
+      const entry = this.#entries.get(id) as Entry;
+      return {
+        id,
+        shown: entry.hiddenSince === undefined,
+        live: entry.phase === "live",
+        ready: entry.heldUntil <= now,
+      };
+    });
   }
 
   #shown(id: string): boolean {

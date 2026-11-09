@@ -7,7 +7,7 @@ palette, "Inspect the desk", `desk plugin enable desk.inspector`), so no window 
 | Section | From |
 | --- | --- |
 | Render tree | `desk.inspect.open` `tree`: ADR 0011's serialized tree of `#desk`, the e2e snapshots' |
-| Surfaces and buffers | `desk.inspect.open` `surfaces`: surfaces with their plugin and placement, views, buffers |
+| Surfaces and buffers | `desk.inspect.open` `surfaces`: surfaces with their plugin, placement and whether asleep, views, buffers, live frames (ADR 0134) |
 | Commands | `cmd.recent`: the last 200 invocations with caller, provider, milliseconds, outcome |
 | Grants | `perm.list`, by caller |
 | Settings | `desk.inspect.open` `settings`: each value with the layer that won and the values skipped |

@@ -247,7 +247,11 @@ describe("Settings, Plugins", () => {
 describe("Settings, General", () => {
   it("General shows core settings no panel draws", async () => {
     const { hub, preferences } = await setup();
-    expect(coreSettings({ hub, preferences, language: "en" })).toBeNull();
+    // The live budget is the one the panels leave to these rows.
+    const own = shown(coreSettings({ hub, preferences, language: "en" }));
+    if (!own) throw new Error("no generated rows");
+    expect(rows(own)).toEqual(["desk.surfaces.live"]);
+    own.remove();
     const startAtLogin: SettingContribution = {
       kind: "boolean",
       default: false,
@@ -256,12 +260,36 @@ describe("Settings, General", () => {
     const declared = { ...CORE_SETTINGS, "desk.start-at-login": startAtLogin };
     const el = shown(coreSettings({ hub, preferences, language: "en" }, declared));
     if (!el) throw new Error("no generated rows");
-    expect(rows(el)).toEqual(["desk.start-at-login"]);
-    expect(el.querySelector(".settings-row-label > span")?.textContent).toBe("Start at login");
+    expect(rows(el)).toEqual(["desk.surfaces.live", "desk.start-at-login"]);
+    const login = el.querySelector('[data-setting="desk.start-at-login"]');
+    expect(login?.querySelector(".settings-row-label > span")?.textContent).toBe("Start at login");
     control<HTMLInputElement>(el, "desk.start-at-login").click();
     expect(hub.settings.get("desk.start-at-login")).toBe(true);
     expect(findSections("tray when you log in", declaredSearch(hub, declared))).toContain(
       "general",
     );
+  });
+
+  it("General sets desk.surfaces.live, the live budget: in force at once and kept across a restart", async () => {
+    const { hub, preferences, data } = await setup();
+    const el = shown(coreSettings({ hub, preferences, language: "en" }));
+    if (!el) throw new Error("no generated rows");
+    const field = control<HTMLInputElement>(el, "desk.surfaces.live");
+    expect([field.type, field.min, field.step, field.value]).toEqual(["number", "0", "1", "8"]);
+    expect(el.querySelector('[data-setting="desk.surfaces.live"] p')?.textContent).toContain(
+      "out of sight keep a live frame",
+    );
+    // Fewer than none is refused.
+    change(field, "-1");
+    expect(field.getAttribute("aria-invalid")).toBe("true");
+    expect(hub.settings.get("desk.surfaces.live")).toBe(8);
+    change(field, "3");
+    expect(hub.settings.get("desk.surfaces.live")).toBe(3);
+    await preferences.settled();
+    expect(data.preferences).toEqual({ version: 1, values: { "desk.surfaces.live": 3 } });
+
+    const reopened = await setup(data);
+    expect(reopened.hub.settings.get("desk.surfaces.live")).toBe(3);
+    expect(findSections("live frame", declaredSearch(reopened.hub))).toContain("general");
   });
 });

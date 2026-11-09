@@ -76,15 +76,27 @@ function tree(root) {
   };
 }
 
-/** @param {{ surfaces: any[], views: any[], buffers: any[] }} data */
-function surfaces({ surfaces = [], views = [], buffers = [] }) {
-  const state = (/** @type {boolean} */ visible, /** @type {boolean} */ focused) =>
-    [visible ? "visible" : "hidden", focused ? "focused" : ""].filter(Boolean).join(" · ");
+/**
+ * The live frames (ADR 0134): loaded ones, and of the windows those out of sight against the budget
+ * and those asleep.
+ * @typedef {{ live: number, hidden: number, asleep: number, budget: number }} Frames
+ */
+
+/** @param {Frames} frames */
+const liveFrames = (frames) =>
+  `${plural(frames.live, "live frame")} (${frames.hidden} of ${frames.budget} out of sight, ${frames.asleep} asleep)`;
+
+/** @param {{ surfaces: any[], views: any[], buffers: any[], frames?: Frames }} data */
+function surfaces({ surfaces = [], views = [], buffers = [], frames }) {
+  const state = (/** @type {any} */ s) =>
+    [s.visible ? "visible" : "hidden", s.focused ? "focused" : "", s.asleep ? "asleep" : ""]
+      .filter(Boolean)
+      .join(" · ");
   const groups = [
     {
       title: "Surfaces",
       columns: ["Surface", "Plugin", "Placement", "State"],
-      rows: surfaces.map((s) => [s.id, s.plugin ?? "", s.placement, state(s.visible, s.focused)]),
+      rows: surfaces.map((s) => [s.id, s.plugin ?? "", s.placement, state(s)]),
     },
     {
       title: "Views",
@@ -99,6 +111,7 @@ function surfaces({ surfaces = [], views = [], buffers = [] }) {
   ];
   const parts = [
     plural(surfaces.length, "surface"),
+    ...(frames ? [liveFrames(frames)] : []),
     plural(views.length, "view"),
     plural(buffers.length, "buffer"),
   ];

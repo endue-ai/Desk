@@ -1,12 +1,13 @@
 /**
  * desk.inspect.open, the runtime's side of the inspector (#334): what only the runtime knows, for
  * the desk.inspector plugin and `desk inspect`. `{ section: "tree" }` answers the render tree of
- * `#desk` (ADR 0011's serializer), `surfaces` the surfaces with their plugin, the host's views and
- * the buffer list, `settings` every setting with the layer that won. It answers the person and the
+ * `#desk` (ADR 0011's serializer), `surfaces` the surfaces with their plugin, the host's views, the
+ * buffer list and the live frames (ADR 0134), `settings` every setting with the layer that won. It answers the person and the
  * callers that hold perm:manage themselves, as desk.describe shows grants (ADR 0075). Without args
  * it opens the inspector (the palette's "Inspect the desk").
  */
 import type { Buffers } from "../buffers";
+import type { Frames } from "../frames/install";
 import { type DeskContext, disposer, type Installed } from "../policies/context";
 import type { HostViews } from "../views";
 import { settingsSection, surfacesSection } from "./sections";
@@ -17,6 +18,8 @@ export interface InspectDeps {
   buffers: Pick<Buffers, "list">;
   /** The views a host draws (the shell's panes). */
   views?: Pick<HostViews, "ids" | "title" | "focused">;
+  /** The frame policy: the windows' frames live and asleep, and the budget. */
+  frames?: Pick<Frames, "counts">;
 }
 
 const ID = "desk.inspect.open";
@@ -53,6 +56,7 @@ export function installInspect(ctx: DeskContext, deps: InspectDeps): Installed {
           plugins: hub.plugins,
           views: deps.views,
           buffers: deps.buffers.list(),
+          frames: deps.frames,
         });
       case "settings":
         return settingsSection({

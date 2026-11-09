@@ -97,10 +97,13 @@ export function createRuntime(options: RuntimeOptions): Runtime {
   const shortcuts = new ShortcutRouter({ platform: options.platform ?? "other" });
   // Set once desk.buffers is installed: the surface in use decides the buffer in use.
   let onSurfaceFocus: (id: string) => void = () => {};
+  // Set once the frames are installed: the focus order decides which frames stay live (ADR 0134).
+  let focusMoved: (id: string | null) => void = () => {};
   const surfaces = new SurfaceHost(
     compositor,
     (id) => {
       shortcuts.focus(id);
+      focusMoved(id);
       onSurfaceFocus(id);
     },
     new Edges(compositor),
@@ -161,6 +164,7 @@ export function createRuntime(options: RuntimeOptions): Runtime {
   const palette = installPalette(ctx);
   const focusSurface = (id: string | null) => {
     shortcuts.focus(id);
+    focusMoved(id);
     if (id) {
       options.windows?.show?.(id);
       surfaces.get(id)?.focus();
@@ -185,6 +189,7 @@ export function createRuntime(options: RuntimeOptions): Runtime {
   });
   // Centre and floating surfaces out of sight are unloaded, their state kept (ADR 0070).
   const frames = installFrames(ctx, { windows: options.windows, host: () => pluginHost });
+  focusMoved = (id) => frames.focused(id);
   const buffers = installBuffers(ctx, { focus: focusAny });
   routing = connectViews(views, buffers);
   const broken = (key: string) => notify.notify(brokenRecordNotice(key, options.start?.dataDir));
@@ -205,7 +210,7 @@ export function createRuntime(options: RuntimeOptions): Runtime {
   const profiles = installProfiles(ctx, (input) => notify.notify(input), folder);
   const keysFile = installKeysFile(ctx, (input) => notify.notify(input), folder);
   const about = installDescribe(ctx, { keys, profile: profiles.active, notify: notify.notify });
-  const inspect = installInspect(ctx, { buffers: buffers.buffers, views });
+  const inspect = installInspect(ctx, { buffers: buffers.buffers, views, frames });
   notify.notifications.onPush(() => session.changed());
   onLayout = () => session.changed();
   onSurfaceFocus = (id) => {

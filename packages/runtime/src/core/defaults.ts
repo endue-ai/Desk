@@ -5,6 +5,8 @@ import { isSequence } from "../sequences/parse";
 export const PERSONAL_KEYS = "desk.keys.bindings";
 /** How long a pending prefix waits for the next key (ADR 0118). */
 export const SEQUENCE_TIMEOUT = "desk.keys.sequence-timeout";
+/** How many plugin windows out of sight keep a live frame: the live budget (ADR 0134). */
+export const LIVE_SURFACES = "desk.surfaces.live";
 export const CORE_SETTINGS: Record<string, SettingContribution> = {
   [PERSONAL_KEYS]: {
     kind: "array",
@@ -41,6 +43,13 @@ export const CORE_SETTINGS: Record<string, SettingContribution> = {
     default: "theme",
     choices: ["theme", "grid", "pond", "aurora"],
     description: "The desk's wallpaper: theme, grid, a live pond or a live aurora.",
+  },
+  [LIVE_SURFACES]: {
+    kind: "integer",
+    default: 8,
+    minimum: 0,
+    description:
+      "How many plugin windows out of sight keep a live frame: the ones focused most recently. The others sleep with their state kept and load again when shown or focused. Windows in sight, edge bars and overlays always keep theirs; 0 keeps only the windows in sight.",
   },
 };
 

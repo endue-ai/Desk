@@ -1,6 +1,6 @@
 // When hidden frames are unloaded (ADR 0070), the decisions alone: after desk.display.unload-after,
-// at once past desk.display.live-surfaces (the one hidden longest first), never a visible or focused
-// one, and loaded again when shown.
+// at once past the live budget, desk.surfaces.live (the least recently focused out of sight first,
+// ADR 0134), never a visible or focused one, and loaded again when shown.
 import { describe, expect, it } from "vitest";
 import { FramePolicy, type FrameTimers } from "./policy";
 
@@ -42,18 +42,18 @@ const settle = async () => {
 
 const MINUTE = 60_000;
 
-function frames(ids: string[], { after = 5 * MINUTE, limit = 0 } = {}) {
+function frames(ids: string[], { after = 5 * MINUTE, budget = Number.POSITIVE_INFINITY } = {}) {
   const timers = new ManualTimers();
   const shown = new Set(ids);
   const unloaded = new Set<string>();
   const refused = new Set<string>();
   const log: string[] = [];
-  const settings = { after, limit, focused: null as string | null };
+  const settings = { after, budget, focused: null as string | null };
   const policy = new FramePolicy({
     visible: (id) => shown.has(id),
     focused: () => settings.focused,
     afterMs: () => settings.after,
-    limit: () => settings.limit,
+    budget: () => settings.budget,
     unload: async (id, still) => {
       log.push(`ask ${id}`);
       await Promise.resolve();
@@ -79,7 +79,13 @@ function frames(ids: string[], { after = 5 * MINUTE, limit = 0 } = {}) {
     policy.check();
     await settle();
   };
-  return { policy, timers, unloaded, refused, log, settings, hide, show };
+  /** The keys go to `id` (null: to none of these), and the policy looks again. */
+  const focus = async (id: string | null) => {
+    settings.focused = id;
+    policy.check();
+    await settle();
+  };
+  return { policy, timers, unloaded, refused, log, settings, hide, show, focus };
 }
 
 describe("FramePolicy", () => {
@@ -124,39 +130,66 @@ describe("FramePolicy", () => {
     expect(f.unloaded).toEqual(new Set(["b"]));
   });
 
-  it("past live-surfaces unloads the surface hidden longest at once, and never a visible one", async () => {
-    const f = frames(["a", "b", "c", "d"], { limit: 3 });
+  it("past the budget puts the least recently focused out of sight to sleep at once, and never a visible one", async () => {
+    const f = frames(["a", "b", "c", "d"], { budget: 2 });
+    // Opened a to d, then a and b focused: most recent first, b a d c.
+    await f.focus("a");
+    await f.focus("b");
+    await f.focus(null);
     await f.hide("c");
-    expect(f.unloaded).toEqual(new Set(["c"]));
-    await f.timers.advance(10_000);
+    await f.hide("d");
+    // Two out of sight is the budget: nothing goes until unload-after.
+    expect(f.unloaded).toEqual(new Set());
     await f.hide("a");
-    await f.timers.advance(10_000);
-    await f.hide("b");
-    // Three live (a, b, d) is the limit: nothing more goes until unload-after.
+    // a, d and c out of sight: c, focused least recently, goes; d, hidden after it, stays.
     expect(f.unloaded).toEqual(new Set(["c"]));
     await f.show("c");
-    // Four live again: a, hidden longest, goes; b, hidden later, stays.
-    expect(f.unloaded).toEqual(new Set(["a"]));
-    await f.timers.advance(10_000);
-    await f.hide("d");
+    expect(f.unloaded).toEqual(new Set());
+    await f.hide("b");
+    // b a d out of sight: d goes; c, in sight, stays whatever its place.
+    expect(f.unloaded).toEqual(new Set(["d"]));
     await f.hide("c");
-    expect(f.unloaded).toEqual(new Set(["a"]));
-    // A lower limit takes effect at once: b has been hidden longer than d and c.
-    f.settings.limit = 2;
+    // b a c out of sight and live: c, shown a moment ago but focused least recently, goes.
+    expect(f.unloaded).toEqual(new Set(["c", "d"]));
+    // A lower budget takes effect at once.
+    f.settings.budget = 1;
     f.policy.check();
     await settle();
+    expect(f.unloaded).toEqual(new Set(["a", "c", "d"]));
+  });
+
+  it("counts a surface woken for an answer as the most recent", async () => {
+    const f = frames(["a", "b", "c"], { budget: 1 });
+    await f.hide("a");
+    await f.hide("b");
+    await f.hide("c");
     expect(f.unloaded).toEqual(new Set(["a", "b"]));
+    expect(f.policy.wake("a")).toBe(true);
+    await settle();
+    // a is in use now: c, focused less recently, goes in its place.
+    expect(f.unloaded).toEqual(new Set(["b", "c"]));
+    expect(f.policy.counts()).toEqual({ shown: 0, hidden: 1, asleep: 2 });
+  });
+
+  it("counts the frames loaded in sight and out of it, and those asleep", async () => {
+    const f = frames(["a", "b", "c", "d"], { budget: 1 });
+    expect(f.policy.counts()).toEqual({ shown: 4, hidden: 0, asleep: 0 });
+    await f.hide("a");
+    await f.hide("b");
+    expect(f.policy.counts()).toEqual({ shown: 2, hidden: 1, asleep: 1 });
+    // The surface the keys go to counts as in sight, and wakes.
+    await f.focus("a");
+    expect(f.policy.counts()).toEqual({ shown: 3, hidden: 1, asleep: 0 });
   });
 
   it("never unloads the surface in focus", async () => {
-    const f = frames(["a"], { limit: 1 });
+    const f = frames(["a"], { budget: 0 });
     f.settings.focused = "a";
     await f.hide("a");
     await f.timers.advance(10 * MINUTE);
     expect(f.unloaded).toEqual(new Set());
-    f.settings.focused = null;
-    f.policy.check();
-    await f.timers.advance(5 * MINUTE);
+    // Out of sight without the keys, past a budget of none: it goes at once.
+    await f.focus(null);
     expect(f.unloaded).toEqual(new Set(["a"]));
   });
 
@@ -172,7 +205,7 @@ describe("FramePolicy", () => {
   });
 
   it("tries a refused unload again a second later", async () => {
-    const f = frames(["a", "b"], { limit: 1 });
+    const f = frames(["a", "b"], { budget: 0 });
     f.refused.add("a");
     await f.hide("a");
     expect(f.log.filter((line) => line === "ask a")).toHaveLength(1);
@@ -183,8 +216,8 @@ describe("FramePolicy", () => {
     expect(f.unloaded).toEqual(new Set(["a"]));
   });
 
-  it("with 0 keeps hidden surfaces loaded and sets no cap", async () => {
-    const f = frames(["a", "b", "c"], { after: 0, limit: 0 });
+  it("with unload-after 0 and no budget keeps hidden surfaces loaded", async () => {
+    const f = frames(["a", "b", "c"], { after: 0 });
     await f.hide("a");
     await f.hide("b");
     await f.timers.advance(24 * 60 * MINUTE);
@@ -192,7 +225,7 @@ describe("FramePolicy", () => {
   });
 
   it("forgets a surface that closes", async () => {
-    const f = frames(["a"], { limit: 1 });
+    const f = frames(["a"], { budget: 0 });
     await f.hide("a");
     f.policy.untrack("a");
     expect(f.policy.unloaded("a")).toBe(false);

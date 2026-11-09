@@ -1,19 +1,26 @@
 /**
- * Hidden surfaces are unloaded and their state kept (desk.display, ADR 0070), over the runtime's
- * surfaces and plugin host: which surfaces count (centre and floating ones, the windows), when one
- * is visible (on the page, shown, and not hidden by a window host's windows), the two settings,
- * asking the plugin for its state and the placeholder that stands in for the frame.
+ * Hidden surfaces are unloaded and their state kept (ADR 0070), over the runtime's surfaces and
+ * plugin host: which surfaces count (centre and floating ones, the windows), when one is visible (on
+ * the page, shown, and not hidden by a window host's windows), the order they were focused in (the
+ * live budget's, ADR 0134), the two settings, asking the plugin for its state and the placeholder
+ * that stands in for the frame.
  */
+import { LIVE_SURFACES } from "../core/defaults";
 import type { DeskContext } from "../policies/context";
 import type { SurfaceSpec } from "../surfaces";
 import { placeholder } from "./placeholder";
-import { FramePolicy, type FrameTimers, realTimers } from "./policy";
+import { type FrameCounts, FramePolicy, type FrameTimers, realTimers } from "./policy";
 import { askState, SURFACE_STATE } from "./state";
 
+export { LIVE_SURFACES };
 export const UNLOAD_AFTER = "desk.display.unload-after";
-export const LIVE_SURFACES = "desk.display.live-surfaces";
-/** desk.display's defaults, in case its manifest is not installed: five minutes, 24 frames. */
-const DEFAULTS = { [UNLOAD_AFTER]: 300, [LIVE_SURFACES]: 24 };
+/** The defaults, in case desk.display's manifest is not installed: five minutes, 8 frames. */
+const DEFAULTS = { [UNLOAD_AFTER]: 300, [LIVE_SURFACES]: 8 };
+/**
+ * How long a frame loading again for a plugin that still sleeps (no hello yet) is not put back to
+ * sleep: what waits for its hello, and the state it is to be handed, would go with it.
+ */
+export const LOADING_MS = 10_000;
 
 /** What a window host tells the runtime about the surfaces it holds (the shell's windows). */
 export interface WindowVisibility {
@@ -29,6 +36,8 @@ export interface FrameHost {
   busy(id: string, except?: string): boolean;
   request(id: string, name: string, args?: unknown): Promise<unknown>;
   unloaded(id: string, state: unknown): void;
+  /** Whether the plugin has no live frame until its next hello: unloaded, or loading again. */
+  asleep?(id: string): boolean;
 }
 
 export interface FramesDeps {
@@ -43,8 +52,12 @@ export interface Frames {
   closed(id: string): void;
   /** Something that may show or hide surfaces happened: look again once it has settled. */
   changed(): void;
+  /** The keys went to surface `id` (null: to none): it is the most recent now, and may wake. */
+  focused(id: string | null): void;
   /** Load an unloaded frame again (the plugin host's `wake`); true when its frame is live after. */
   wake(id: string): boolean;
+  /** The windows' frames loaded in sight and out of it and asleep, and the budget in force. */
+  counts(): FrameCounts & { budget: number };
   dispose(): void;
 }
 
@@ -57,6 +70,8 @@ export function installFrames(
   const { windows } = deps;
   const timers = deps.timers ?? realTimers;
   const specs = new Map<string, SurfaceSpec>();
+  /** When each frame loaded again, for LOADING_MS. */
+  const loaded = new Map<string, number>();
   /** A setting's value when it is a number of 0 or more, else desk.display's default. */
   const setting = (key: keyof typeof DEFAULTS) => {
     const value = settings.get<unknown>(key, DEFAULTS[key]);
@@ -66,6 +81,10 @@ export function installFrames(
   };
   const unload = async (id: string, still: () => boolean) => {
     const host = deps.host();
+    // Loading again for what waits on it (a request, a command): it sleeps again once it answered.
+    const since = loaded.get(id);
+    if (since !== undefined && timers.now() - since < LOADING_MS && host?.asleep?.(id))
+      return false;
     const spec = specs.get(id);
     const params = { surface: spec?.surface ?? "main" };
     const ask = (p: typeof params) => host?.request(id, SURFACE_STATE, p) ?? Promise.resolve();
@@ -88,9 +107,12 @@ export function installFrames(
     // The surface the keys go to is never unloaded.
     focused: () => shortcuts.focused,
     afterMs: () => setting(UNLOAD_AFTER) * 1000,
-    limit: () => Math.floor(setting(LIVE_SURFACES)),
+    budget: () => Math.floor(setting(LIVE_SURFACES)),
     unload,
-    remount: (id) => void surfaces.remount(id),
+    remount: (id) => {
+      loaded.set(id, timers.now());
+      surfaces.remount(id);
+    },
     timers,
   });
   // Changes come in bursts (a window drawn, then focused): one look once they have settled.
@@ -120,11 +142,17 @@ export function installFrames(
     },
     closed(id) {
       specs.delete(id);
+      loaded.delete(id);
       policy.untrack(id);
       changed();
     },
     changed,
+    focused(id) {
+      if (id !== null) policy.focused(id);
+      changed();
+    },
     wake: (id) => policy.wake(id),
+    counts: () => ({ ...policy.counts(), budget: Math.floor(setting(LIVE_SURFACES)) }),
     dispose() {
       for (const off of offs) off?.();
       win.removeEventListener("resize", changed);
