@@ -139,6 +139,18 @@ quelle, enregistrez ce qu'il faut garder : `surface.onUnload(() => ({ open, care
 `ui.surface.state` du bureau avec un JSON d'au plus 64 Kio, et la page rechargée le retrouve dans
 `surface.restored`. Sans fournisseur, elle revient à froid ; `state` ci-dessus revient toujours.
 
+### L'origine de votre surface
+
+Chaque surface se charge sur une origine qui lui est propre, pour qu'un moteur qui isole les sites puisse
+donner à chaque fenêtre son propre processus : `desk-plugin://<surface>.<label>/<id>/<path>` sous macOS et
+Linux, `http://desk-plugin.<surface>.<label>.localhost/<id>/<path>` sous Windows. `<surface>` est l'`id`
+de la surface (`main` si vous n'en déclarez aucune) ; `<label>` est l'id de votre plugin où chaque `-` est
+doublé, puis chaque `.` écrit comme un seul `-` : `example.my-plugin` devient `example-my--plugin`. Le
+chemin garde `/<id>/`, si bien que les URL relatives, `import.meta.url`, les chemins `/_desk/` de l'import
+map et les URL de `fs.url` se résolvent comme avant. Sur votre origine, un chemin sous l'id d'un autre
+plugin répond 403, sauf celui d'une bibliothèque (ADR 0049). Construisez les URL à partir de chemins
+relatifs, jamais à partir de l'origine.
+
 ## Permissions
 
 Votre cadre s'exécute dans une sandbox qui n'autorise que les scripts : aucun accès à la page de Desk, aucune

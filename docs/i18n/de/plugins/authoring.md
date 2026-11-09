@@ -139,6 +139,18 @@ zurückzukommen, wie sie war, registrieren Sie, was bleiben soll: `surface.onUnl
 scroll }))` beantwortet das `ui.surface.state` des Desks mit JSON bis 64 KiB, und die neu geladene Seite
 findet es in `surface.restored`. Ohne Anbieter kommt sie kalt zurück; `state` oben kommt weiterhin zurück.
 
+### Der Origin Ihrer Oberfläche
+
+Jede Oberfläche lädt auf einem eigenen Origin, damit eine Engine, die Sites isoliert, jedem Fenster einen
+eigenen Prozess geben kann: `desk-plugin://<surface>.<label>/<id>/<path>` unter macOS und Linux,
+`http://desk-plugin.<surface>.<label>.localhost/<id>/<path>` unter Windows. `<surface>` ist die `id` der
+Oberfläche (`main`, wenn Sie keine deklarieren); `<label>` ist Ihre Plugin-ID, in der jedes `-` verdoppelt
+und danach jeder `.` als ein `-` geschrieben wird, aus `example.my-plugin` wird also `example-my--plugin`.
+Der Pfad behält `/<id>/`, daher lösen sich relative URLs, `import.meta.url`, die `/_desk/`-Pfade der
+Import-Map und die URLs von `fs.url` wie bisher auf. Auf Ihrem Origin antwortet ein Pfad unter der ID
+eines anderen Plugins mit 403, außer dem einer Bibliothek (ADR 0049). Bauen Sie URLs aus relativen Pfaden,
+nie aus dem Origin.
+
 ## Berechtigungen
 
 Der Frame des Plugins läuft in einer Sandbox, die nur Skripte erlaubt: kein Zugriff auf die Seite von Desk,

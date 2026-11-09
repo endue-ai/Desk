@@ -137,6 +137,17 @@ memory, and it loads again when it shows (ADR 0070). To come back as it was, reg
 to 64 KiB, and the reloaded page finds it in `surface.restored`. Without a provider it comes back cold;
 `state` above still comes back.
 
+### Your surface's origin
+
+Each surface loads on an origin of its own, so an engine that isolates sites can give each window its
+own process: `desk-plugin://<surface>.<label>/<id>/<path>` on macOS and Linux and
+`http://desk-plugin.<surface>.<label>.localhost/<id>/<path>` on Windows. `<surface>` is the surface's
+`id` (`main` when you declare none); `<label>` is your plugin id with every `-` doubled and then every
+`.` written as one `-`, so `example.my-plugin` is `example-my--plugin`. The path keeps `/<id>/`, so
+relative URLs, `import.meta.url`, the import map's `/_desk/` paths and `fs.url` URLs resolve as before.
+On your origin a path under another plugin's id answers 403, except a library's (ADR 0049). Build
+URLs from relative paths, never from the origin.
+
 ## Permissions
 
 Your frame runs sandboxed with scripts only: no access to the desk's page, no top-level navigation, no

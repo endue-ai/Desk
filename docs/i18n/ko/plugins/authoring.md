@@ -132,6 +132,17 @@ defineUiPlugin({
 답하고, 다시 로드된 페이지는 `surface.restored`에서 그것을 받습니다. 제공자가 없으면 처음 상태로
 돌아오며, 위의 `state`는 그대로 돌아옵니다.
 
+### 서피스의 오리진
+
+사이트를 격리하는 엔진이 창마다 프로세스를 따로 줄 수 있도록, 서피스는 저마다 자기 오리진에서
+로드됩니다. macOS와 Linux에서는 `desk-plugin://<surface>.<label>/<id>/<path>`, Windows에서는
+`http://desk-plugin.<surface>.<label>.localhost/<id>/<path>`입니다. `<surface>`는 서피스의 `id`(선언이
+없으면 `main`)이고, `<label>`은 플러그인 id의 `-`를 모두 두 번 쓴 뒤 `.`를 하나의 `-`로 바꾼 것이라
+`example.my-plugin`은 `example-my--plugin`이 됩니다. 경로는 `/<id>/`를 그대로 두므로 상대 URL,
+`import.meta.url`, 임포트 맵의 `/_desk/` 경로, `fs.url`의 URL은 전과 같이 풀립니다. 자기 오리진에서 다른
+플러그인 id 아래의 경로를 요청하면 403이 돌아옵니다(라이브러리는 예외, ADR 0049). URL은 오리진이
+아니라 상대 경로로 만드세요.
+
 ## 권한
 
 플러그인 프레임은 스크립트만 허용된 샌드박스에서 실행됩니다. Desk 페이지에 접근할 수 없고, 최상위 내비게이션도,

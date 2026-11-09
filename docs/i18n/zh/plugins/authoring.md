@@ -108,6 +108,10 @@ defineUiPlugin({
 
 一段时间内没有人看到的表面（被其他窗口挡住或在屏幕之外）可能会被卸载以节省内存，再次显示时会重新加载（ADR 0070）。要恢复原样，请登记需要保留的内容：`surface.onUnload(() => ({ open, caret, scroll }))` 会以不超过 64 KiB 的 JSON 回应 Desk 的 `ui.surface.state`，重新加载的页面可以在 `surface.restored` 中取回它。没有提供者时会以初始状态恢复；上面的 `state` 仍会恢复。
 
+### 表面的源
+
+每个表面都在自己的源上加载，这样按站点隔离的引擎就能让每个窗口各占一个进程：macOS 和 Linux 上是 `desk-plugin://<surface>.<label>/<id>/<path>`，Windows 上是 `http://desk-plugin.<surface>.<label>.localhost/<id>/<path>`。`<surface>` 是表面的 `id`（未声明时为 `main`）；`<label>` 是把插件 id 中的每个 `-` 写成两个、再把每个 `.` 写成一个 `-` 得到的结果，因此 `example.my-plugin` 变为 `example-my--plugin`。路径仍保留 `/<id>/`，所以相对 URL、`import.meta.url`、导入映射中的 `/_desk/` 路径和 `fs.url` 的 URL 都照旧解析。在你的源上请求其他插件 id 下的路径会得到 403，库除外（ADR 0049）。请用相对路径构造 URL，不要从源拼接。
+
 ## 权限
 
 你的框架运行在只允许脚本的沙箱中：不能访问 Desk 的页面，不能进行顶层导航，不能使用表单或弹出窗口，也不能自行建立网络连接。每项能力都要经过桥接层，除 `perm.*` 之外的每次桥接调用都携带它所需的权限范围（`params.scope`）。只有当用户授予了覆盖该范围的权限时，核心才会响应。
