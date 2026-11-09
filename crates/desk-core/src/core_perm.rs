@@ -1,5 +1,5 @@
 //! The perm side of `Core`: the one permission check every call passes, grants for every duration,
-//! perm.query, perm.request, perm.revoke and perm.list, and `perm.changed` for the holder and the
+//! perm.query, perm.request, perm.revoke, perm.grant and perm.list, and `perm.changed` for the holder and the
 //! callers subscribed to it. `always` grants live in the grant file (ADR 0029); asking the person
 //! goes through `perm.prompt` (`core_prompts`) or, with nobody to prompt, the `Prompter`, for
 //! perm.request and for the calls that ask by themselves (`check_or_ask`, shell.open), as the prompt
@@ -10,9 +10,9 @@ use std::path::PathBuf;
 
 use desk_bridge::{
     BridgeError, BridgeEvent, ErrorCode, EventName, Grant, GrantChange, GrantDuration,
-    PermChangedData, PermChangedEvent, PermListParams, PermListResult, PermManagePermission,
-    PermQueryParams, PermQueryResult, PermRequestParams, PermRequestResult, PermRevokeParams,
-    PermRevokeResult, Permission, RefusalReason,
+    PermChangedData, PermChangedEvent, PermGrantParams, PermGrantResult, PermListParams,
+    PermListResult, PermManagePermission, PermQueryParams, PermQueryResult, PermRequestParams,
+    PermRequestResult, PermRevokeParams, PermRevokeResult, Permission, RefusalReason,
 };
 
 use crate::agents::agent_of;
@@ -241,6 +241,31 @@ impl Core {
         self.changed(&holder, &params.grant_id, GrantChange::Revoked);
         self.lost_grant(&holder);
         json(PermRevokeResult {})
+    }
+
+    /// Grant another caller a permission for the person, without a prompt, when an act of theirs
+    /// answers it (ADR 0131): the runtime gives the plugin that opens a file the person chose read
+    /// access to its folder. Needs perm:manage. A lasting grant that already covers it is answered
+    /// as it is; an agent gets nothing outside its allowlist.
+    pub(crate) fn perm_grant(&self, caller: &str, params: PermGrantParams) -> Answer {
+        self.check(caller, &Permission::PermManage(params.scope), &Target::None)?;
+        let holder = params.caller.as_str();
+        if self.capped(holder, &params.permission).is_some() {
+            return Err(denied(Denied {
+                permission: params.permission,
+                reason: format!(
+                    "{holder} may not be granted this scope: it is outside its allowlist"
+                ),
+            }));
+        }
+        let grant = match self.lasting_grant(holder, &params.permission) {
+            Some(grant) => grant,
+            None => {
+                let duration = params.duration.unwrap_or(GrantDuration::Session);
+                self.grant_for(holder, params.permission, duration)
+            }
+        };
+        json(PermGrantResult { grant })
     }
 
     /// Every caller's grants, oldest first, or one caller's.

@@ -320,6 +320,14 @@ the brain on every call; a desk without a brain is `offline`.
 `perm.changed`. With a `perm:manage` scope it revokes another caller's grant, for the person's
 permissions view.
 
+**perm.grant** gives another caller (`caller`) a permission for the person, without a prompt, when an
+act of theirs already answers it (ADR 0131): the runtime, opening a file the person chose, gives the
+plugin that opens it read access to the file's folder, the scope that plugin would ask for. It needs
+`perm:manage`. The grant lasts for `duration` (`session` by default), is logged like any grant, and the
+holder hears `perm.changed`; a lasting grant of the caller's that already covers the permission is the
+answer, and no new one is made. An agent is never granted anything outside its allowlist
+(`permission_denied`).
+
 **cmd.register** adds one of the caller's commands to the registry, or updates it: an id, a title, an
 optional description, keywords the palette matches, a JSON Schema for its arguments and a `when` context
 expression that the runtime evaluates to offer it (palette, keys). The caller becomes the provider. Ids

@@ -1,0 +1,15 @@
+{
+  "target": "BridgeRequest",
+  "description": "perm.grant of read access to a file's folder, for the plugin that opens the file the person chose",
+  "instance": {
+    "id": 46,
+    "method": "perm.grant",
+    "params": {
+      "caller": "endue.images",
+      "permission": { "permission": "fs:read", "paths": ["~/Pictures/trip/**"] },
+      "duration": "session",
+      "reason": "The person opened ~/Pictures/trip/beach.png",
+      "scope": { "permission": "perm:manage" }
+    }
+  }
+}

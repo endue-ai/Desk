@@ -36,6 +36,7 @@ impl Core {
             R::PermQuery(r) => (r.id, self.perm_query(caller, r.params)),
             R::PermRequest(r) => (r.id, self.perm_request(caller, r.params)),
             R::PermRevoke(r) => (r.id, self.perm_revoke(caller, r.params)),
+            R::PermGrant(r) => (r.id, self.perm_grant(caller, r.params)),
             R::PermList(r) => (r.id, self.perm_list(caller, r.params)),
             R::PermAnswer(r) => (r.id, self.perm_answer(caller, r.params)),
             R::PermApprove(r) => (r.id, self.perm_approve(caller, r.params)),

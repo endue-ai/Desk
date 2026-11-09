@@ -2,11 +2,13 @@
  * desk.files (files.el, auto-mode-alist): which plugin opens a file, the recent files, saving, and
  * what happens when a file changes on disk. The desk never reads or writes files itself: the plugin
  * that opens a file does, under its own permissions, and the desk asks it to (desk.files.visit,
- * desk.files.save, desk.files.revert). An autoload opener that is off comes on for a file and, when
- * the desk turned it on, goes off again with its last buffer (ADR 0046).
+ * desk.files.save, desk.files.revert). Opening a file the person chose never asks: the desk gives its
+ * opener read access to the file's folder first (perm.grant, ADR 0131). An autoload opener that is
+ * off comes on for a file and, when the desk turned it on, goes off again with its last buffer (ADR
+ * 0046).
  */
 import { baseName } from "../buffers";
-import { type AgentSpec, CommandError } from "../commands";
+import { type AgentSpec, type CommandCaller, CommandError, type CommandHandler } from "../commands";
 import type { NoticeInput } from "../notify";
 import { autoloads, globMatch, type PolicySet } from "../policy";
 import type { BufferEvents, BuffersPolicy } from "./buffers";
@@ -33,6 +35,24 @@ const AUTOLOADED_KEY = "files.autoloaded";
 const MANAGE = { permission: "plugin:manage" } as const;
 /** How long after desk.files.save a change on disk at that path counts as the save itself. */
 const OWN_SAVE_MS = 3000;
+
+/**
+ * Whether an open is the person's own choice, which answers the opener's ask for the file: the desk's
+ * own (keys, the palette, the file picker, a restored session), or a plugin's on the person's click
+ * (Explorer) with the opener the desk's rules name. Never an agent's, and never a plugin naming the
+ * plugin to open with, which could name itself.
+ */
+export function personChose(from: CommandCaller, named: string | undefined): boolean {
+  const { caller } = from;
+  if (caller === undefined) return true;
+  return !caller.startsWith("agent:") && named === undefined;
+}
+
+/** The read scope an opener carries for a file: its whole folder, as the openers ask. */
+export const folderRead = (path: string) => ({
+  permission: "fs:read" as const,
+  paths: [`${path.slice(0, path.lastIndexOf("/"))}/**`],
+});
 
 /** The message of a failed request, without the error's class name in front. */
 const reason = (error: unknown) => (error instanceof Error ? error.message : String(error));
@@ -144,25 +164,38 @@ export function installFiles(
    * it. A second open while the first visit is still on its way joins that one: the plugin cannot
    * show a buffer it does not hold yet ("No note file:…").
    */
-  const open = (path: string, by?: string, show = true): Promise<string> => {
+  const open = (path: string, by?: string, show = true, chosen = true): Promise<string> => {
     const going = visiting.get(path);
     if (going) return show && !going.show ? going.opening.then(reveal) : going.opening;
     const existing = list.byPath(path);
     if (existing) return show ? reveal(existing.id) : Promise.resolve(existing.id);
-    const opening = visit(path, by, show).finally(() => {
+    const opening = visit(path, by, show, chosen).finally(() => {
       if (visiting.get(path)?.opening === opening) visiting.delete(path);
     });
     visiting.set(path, { opening, show });
     return opening;
   };
 
-  const visit = async (path: string, by: string | undefined, show: boolean) => {
+  /** The person chose the file: its opener may read the folder without asking (ADR 0131). */
+  const allowRead = (plugin: string, path: string) =>
+    bridge
+      .call("perm.grant", {
+        caller: plugin,
+        permission: folderRead(path),
+        reason: `The person opened ${path}`,
+        scope: { permission: "perm:manage" },
+      })
+      // Without it the opener asks as before.
+      .catch(() => undefined);
+
+  const visit = async (path: string, by: string | undefined, show: boolean, chosen: boolean) => {
     const plugin = by ?? opener(hub.policy.files, path);
     if (!plugin) {
       notify({ caller: "desk", title: `No plugin opens ${baseName(path)}`, level: "warning" });
       throw new CommandError("failed", `no plugin opens ${path}`);
     }
     await ready(plugin);
+    if (chosen) await allowRead(plugin, path);
     const id = `file:${path}`;
     list.add({ id, name: baseName(path), plugin, path, modified: false, surface: false });
     try {
@@ -200,7 +233,7 @@ export function installFiles(
   const define = (
     id: string,
     title: string,
-    run: (args: unknown) => unknown,
+    run: CommandHandler,
     keywords: string[],
     agent?: AgentSpec,
   ) =>
@@ -217,7 +250,7 @@ export function installFiles(
   define(
     "desk.files.open",
     "Open a file",
-    async (args) => {
+    async (args, from) => {
       const { path, plugin, show } = (args ?? {}) as {
         path?: string;
         plugin?: string;
@@ -232,7 +265,7 @@ export function installFiles(
               recent.map((r) => ({ id: r.path, label: baseName(r.path), detail: r.path })),
               true,
             ));
-      return chosen ? open(chosen, plugin, show !== false) : null;
+      return chosen ? open(chosen, plugin, show !== false, personChose(from, plugin)) : null;
     },
     ["find-file"],
     {

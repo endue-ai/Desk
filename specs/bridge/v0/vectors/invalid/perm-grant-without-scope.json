@@ -1,0 +1,12 @@
+{
+  "target": "BridgeRequest",
+  "description": "perm.grant needs the perm:manage scope",
+  "instance": {
+    "id": 47,
+    "method": "perm.grant",
+    "params": {
+      "caller": "endue.images",
+      "permission": { "permission": "fs:read", "paths": ["~/Pictures/**"] }
+    }
+  }
+}

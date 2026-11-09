@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://endue.ai/specs/bridge/v0/perm.schema.json",
   "title": "Desk bridge v0: perm",
-  "description": "Permissions: request, query and revoke grants, the prompter's side of a request, and the approval an agent's irreversible call waits for. Asking and looking at one's own grants need no scope; the person decides. Seeing other callers' grants and answering prompts and approvals need perm:manage.",
+  "description": "Permissions: request, query and revoke grants, the prompter's side of a request, and the approval an agent's irreversible call waits for. Asking and looking at one's own grants need no scope; the person decides. Seeing other callers' grants, granting them for the person (perm.grant) and answering prompts and approvals need perm:manage.",
   "$defs": {
     "PermRequestRequest": {
       "description": "Ask the person for a permission. Resolves when they answer.",
@@ -106,6 +106,47 @@
       "description": "Result of perm.revoke.",
       "type": "object",
       "properties": {},
+      "additionalProperties": false
+    },
+    "PermGrantRequest": {
+      "description": "Grant another caller a permission for the person, without a prompt, when an act of theirs already answers it: opening a file they chose gives the plugin that opens it read access to the file's folder (ADR 0131).",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "perm.grant" },
+        "params": { "$ref": "#/$defs/PermGrantParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "PermGrantParams": {
+      "description": "Parameters of perm.grant. Needs perm:manage. A lasting grant of the caller's (session or always) that already covers the permission is answered as it is, without a new one. An agent (agent:<id>) is never granted anything outside its allowlist: that is permission_denied.",
+      "type": "object",
+      "properties": {
+        "caller": {
+          "description": "Who gets the grant: a plugin id, or agent:<id>.",
+          "type": "string",
+          "minLength": 1
+        },
+        "permission": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/Permission" },
+        "duration": { "$ref": "#/$defs/GrantDuration" },
+        "reason": {
+          "description": "What the person did that answers it, such as the file they opened.",
+          "type": "string",
+          "minLength": 1
+        },
+        "scope": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/PermManagePermission" }
+      },
+      "required": ["caller", "permission", "scope"],
+      "additionalProperties": false
+    },
+    "PermGrantResult": {
+      "description": "Result of perm.grant: the grant the caller now holds, new or one it held already.",
+      "type": "object",
+      "properties": {
+        "grant": { "$ref": "#/$defs/Grant" }
+      },
+      "required": ["grant"],
       "additionalProperties": false
     },
     "Grant": {

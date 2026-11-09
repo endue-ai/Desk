@@ -1,8 +1,8 @@
 # plugins/explorer
 
 `endue.explorer`, the folder view on the public SDK, uses one `left` surface for allowed folders:
-first in natural order, dotfiles on request, 500 entries a page. A file opens through `desk.files.open`,
-so the plugin the desk's rules name reads it under its own grants. Space shows a bounded quick preview. Each row's icon says what it is (folder, code, image, archive, ...) in the theme's colours.
+first in natural order, dotfiles on request, 500 entries a page. A file opens through `desk.files.open`: the plugin the desk's rules name reads it, given its folder first, so opening never asks (ADR 0131).
+Space shows a bounded quick preview. Each row's icon says what it is (folder, code, image, archive, ...) in the theme's colours.
 
 Keyboard: the WAI-ARIA tree pattern. Arrows move, `→` expands or steps in, `←` collapses or steps out,
 Home/End jump, Space previews, Enter opens, Escape closes the preview; letters jump by name; F2 renames, Delete or Cmd+Backspace trashes.

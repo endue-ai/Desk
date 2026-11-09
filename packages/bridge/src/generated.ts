@@ -2882,6 +2882,7 @@ export type BridgeRequest =
   | PermRequestRequest
   | PermQueryRequest
   | PermRevokeRequest
+  | PermGrantRequest
   | PermListRequest
   | PermAnswerRequest
   | PermApproveRequest
@@ -4803,6 +4804,29 @@ export interface PermRevokeParams {
 /** Result of perm.revoke. */
 export type PermRevokeResult = Record<string, never>;
 
+/** Grant another caller a permission for the person, without a prompt, when an act of theirs already answers it: opening a file they chose gives the plugin that opens it read access to the file's folder (ADR 0131). */
+export interface PermGrantRequest {
+  id: RequestId;
+  method: "perm.grant";
+  params: PermGrantParams;
+}
+
+/** Parameters of perm.grant. Needs perm:manage. A lasting grant of the caller's (session or always) that already covers the permission is answered as it is, without a new one. An agent (agent:<id>) is never granted anything outside its allowlist: that is permission_denied. */
+export interface PermGrantParams {
+  /** Who gets the grant: a plugin id, or agent:<id>. */
+  caller: string;
+  permission: Permission;
+  duration?: GrantDuration;
+  /** What the person did that answers it, such as the file they opened. */
+  reason?: string;
+  scope: PermManagePermission;
+}
+
+/** Result of perm.grant: the grant the caller now holds, new or one it held already. */
+export interface PermGrantResult {
+  grant: Grant;
+}
+
 /** A permission the person granted to the caller. */
 export interface Grant {
   grantId: string;
@@ -6494,6 +6518,7 @@ export interface BridgeMethodMap {
   "perm.request": { params: PermRequestParams; result: PermRequestResult };
   "perm.query": { params: PermQueryParams; result: PermQueryResult };
   "perm.revoke": { params: PermRevokeParams; result: PermRevokeResult };
+  "perm.grant": { params: PermGrantParams; result: PermGrantResult };
   "perm.list": { params: PermListParams; result: PermListResult };
   "perm.answer": { params: PermAnswerParams; result: PermAnswerResult };
   "perm.approve": { params: PermApproveParams; result: PermApproveResult };
@@ -6660,6 +6685,7 @@ export const BRIDGE_METHODS = [
   "perm.request",
   "perm.query",
   "perm.revoke",
+  "perm.grant",
   "perm.list",
   "perm.answer",
   "perm.approve",

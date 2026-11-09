@@ -4614,6 +4614,7 @@ pub enum BridgeRequest {
     PermRequest(PermRequestRequest),
     PermQuery(PermQueryRequest),
     PermRevoke(PermRevokeRequest),
+    PermGrant(PermGrantRequest),
     PermList(PermListRequest),
     PermAnswer(PermAnswerRequest),
     PermApprove(PermApproveRequest),
@@ -7425,6 +7426,37 @@ pub struct PermRevokeParams {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct PermRevokeResult {}
+
+/// Grant another caller a permission for the person, without a prompt, when an act of theirs already answers it: opening a file they chose gives the plugin that opens it read access to the file's folder (ADR 0131).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PermGrantRequest {
+    pub id: RequestId,
+    pub method: PermGrantRequestMethod,
+    pub params: PermGrantParams,
+}
+
+/// Parameters of perm.grant. Needs perm:manage. A lasting grant of the caller's (session or always) that already covers the permission is answered as it is, without a new one. An agent (agent:<id>) is never granted anything outside its allowlist: that is permission_denied.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PermGrantParams {
+    /// Who gets the grant: a plugin id, or agent:<id>.
+    pub caller: String,
+    pub permission: Permission,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub duration: Option<GrantDuration>,
+    /// What the person did that answers it, such as the file they opened.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reason: Option<String>,
+    pub scope: PermManagePermission,
+}
+
+/// Result of perm.grant: the grant the caller now holds, new or one it held already.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PermGrantResult {
+    pub grant: Grant,
+}
 
 /// A permission the person granted to the caller.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -11311,6 +11343,14 @@ pub enum PermRevokeRequestMethod {
     #[default]
     #[serde(rename = "perm.revoke")]
     PermRevoke,
+}
+
+/// The `method` of [`PermGrantRequest`]: always `"perm.grant"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum PermGrantRequestMethod {
+    #[default]
+    #[serde(rename = "perm.grant")]
+    PermGrant,
 }
 
 /// The `method` of [`PermListRequest`]: always `"perm.list"`.

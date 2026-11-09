@@ -174,6 +174,32 @@ describe("the stub's grants", () => {
     expect((await client.call("perm.query", {}, B)).grants).toEqual([]);
   });
 
+  it("perm.grant gives another caller a permission under perm:manage, without a prompt (ADR 0131)", async () => {
+    const { client, events, settle } = setup({ grants: { "endue.permissions": [MANAGE] } });
+    const folder: Permission = { permission: "fs:read", paths: ["~/Pictures/**"] };
+    const params = { caller: "example.a", permission: folder, scope: MANAGE };
+    await expect(client.call("perm.grant", params, B)).rejects.toMatchObject({
+      code: "permission_denied",
+    });
+    const { grant } = await client.call("perm.grant", params, PERMS);
+    expect(grant).toMatchObject({ permission: folder, duration: "session" });
+    await settle();
+    expect(last(events, "perm.changed").data).toEqual({
+      grantId: grant.grantId,
+      change: "granted",
+    });
+    expect(events.some((e) => e.event === "perm.prompt")).toBe(false);
+    // Covered already: the same grant, no new one.
+    const narrower = {
+      ...params,
+      permission: { permission: "fs:read", paths: ["~/Pictures/a/**"] },
+    };
+    expect((await client.call("perm.grant", narrower as never, PERMS)).grant.grantId).toBe(
+      grant.grantId,
+    );
+    expect((await client.call("perm.query", {}, A)).grants).toHaveLength(1);
+  });
+
   it("perm.query filters by a covering permission", async () => {
     const { client } = setup({
       grants: {

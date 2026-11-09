@@ -31,6 +31,7 @@ import type {
 import { covers, keyMatch } from "./stub-covers";
 import { type DataServed, stubData } from "./stub-data";
 import { type FsServed, type StubFiles, stubFs } from "./stub-fs";
+import { type GrantsServed, stubGrants } from "./stub-grants";
 import { LOG, type LogServed, stubLog } from "./stub-log";
 import { type RecentServed, stubRecent } from "./stub-recent";
 import { type ShellServed, type StubOpened, stubShell } from "./stub-shell";
@@ -41,7 +42,8 @@ import { type InvocationKind, type Invoked, stubUndo, type UndoServed } from "./
 /** The methods the stub serves; any other is `unsupported` (adapters.ts). */
 type Served =
   | `cmd.${"register" | "unregister" | "invoke" | "answer"}`
-  | `perm.${"request" | "query" | "revoke" | "list" | "answer"}`
+  | `perm.${"request" | "query" | "list" | "answer"}`
+  | GrantsServed
   | `settings.${"get" | "set" | "list"}`
   | LogServed
   | `events.${"subscribe" | "unsubscribe"}`
@@ -349,14 +351,7 @@ export function stubCommands(
         check(caller, scope ?? MANAGE);
         return { grants: structuredClone(grants.filter((g) => (whose ?? g.caller) === g.caller)) };
       },
-      "perm.revoke": ({ grantId, scope }, caller) => {
-        if (scope) check(caller, scope);
-        const held = grants.find((g) => g.grant.grantId === grantId);
-        if (!held || (!scope && held.caller !== me(caller)))
-          throw missing(`${me(caller)}'s grant ${grantId}`);
-        take(grantId, "revoked");
-        return {};
-      },
+      ...stubGrants({ grants, check, holds, give, take, me }),
       "settings.get": ({ key, owner, scope }, caller) => {
         const id = settingId(owner ?? me(caller), key);
         if ((owner ?? me(caller)) !== me(caller)) {
