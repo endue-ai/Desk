@@ -12,6 +12,7 @@ import type { Runtime } from "../runtime";
 import { desktopId, desktopsOf, modeOf, movedOf, switched } from "./actions";
 import type { ShellCtx } from "./context";
 import type { DeskState } from "./state";
+import { PLACE, placeOf, type TalkPlace } from "./talk-place";
 
 const DENSITY = "desk.shell.density";
 const SOUL = "desk.shell.soul";
@@ -90,6 +91,8 @@ interface SavedShell {
   spaceId: string;
   density?: string;
   soul?: string;
+  /** Where the person moved the talk line (desk.shell.talk-place). */
+  talkPlace?: TalkPlace;
 }
 
 /** Keep the shell in the session record; `done` resolves once a restore has finished. */
@@ -110,6 +113,7 @@ export function keepShell(ctx: ShellCtx): { off(): void; done(): Promise<void> }
         spaceId: s.spaceId,
         ...(typeof layer[DENSITY] === "string" ? { density: layer[DENSITY] } : {}),
         ...(typeof layer[SOUL] === "string" ? { soul: layer[SOUL] } : {}),
+        ...(placeOf(layer[PLACE]) ? { talkPlace: placeOf(layer[PLACE]) as TalkPlace } : {}),
       };
     },
     restore: (value) => {
@@ -121,7 +125,9 @@ export function keepShell(ctx: ShellCtx): { off(): void; done(): Promise<void> }
           (s) => [s.modeId, s.session, s.desktops, s.desktop, s.drawer, s.spaceId, s.pan],
           listener,
         ),
-        settings.onChange((keys) => (keys.includes(DENSITY) || keys.includes(SOUL)) && listener()),
+        settings.onChange(
+          (keys) => [DENSITY, SOUL, PLACE].some((key) => keys.includes(key)) && listener(),
+        ),
       ];
       return () => {
         for (const undo of offs) undo();
@@ -148,6 +154,8 @@ async function restore(ctx: ShellCtx, saved: Partial<SavedShell> | null): Promis
   }
   if (typeof saved.density === "string") runtime.settings.set(DENSITY, saved.density);
   if (typeof saved.soul === "string") runtime.settings.set(SOUL, saved.soul);
+  const talkPlace = placeOf(saved.talkPlace);
+  if (talkPlace) runtime.settings.set(PLACE, talkPlace);
   store.set((s) => {
     const list = desktopsOf(s);
     const pan = readPan(saved.pan);

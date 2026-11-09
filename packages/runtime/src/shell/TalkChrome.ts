@@ -4,6 +4,7 @@ import { selectAgent, spaceAgents } from "../system/agents";
 import type { ShellCtx } from "./context";
 import { h, listen, render } from "./dom";
 import { icon } from "./icons";
+import { mountTalkPlace } from "./talk-place";
 
 const TALK = "desk.shell.talk";
 
@@ -59,7 +60,11 @@ export function mountTalkChrome(root: HTMLElement, ctx: ShellCtx): () => void {
   );
   const preview = h("span", { class: "talk-preview" });
   const shortcut = h("kbd", { class: "talk-shortcut", "aria-hidden": "true" });
-  const grip = h("span", { class: "talk-grip", "aria-hidden": "true" }, "⠿");
+  const grip = h(
+    "span",
+    { class: "talk-grip", "aria-hidden": "true", title: ctx.tr("talkGrip") },
+    "⠿",
+  );
   const agents = h("div", {
     class: "popover talk-agent-list",
     id: "talk-agent-list",
@@ -81,6 +86,7 @@ export function mountTalkChrome(root: HTMLElement, ctx: ShellCtx): () => void {
     icon("plus", 16),
   );
   el.append(launch, grip, agentButton, preview, shortcut, agents);
+  const place = mountTalkPlace(el, ctx);
   const draw = () => {
     const s = ctx.store.get();
     const open = s.composer.open;
@@ -133,6 +139,8 @@ export function mountTalkChrome(root: HTMLElement, ctx: ShellCtx): () => void {
           )
         : [h("p", { class: "pop-row" }, ctx.tr("empty"))],
     );
+    // Its state decides its size, and so how far from the edges a moved pill has to stay.
+    place.draw();
   };
   const offs = [
     ctx.runtime.commands.define(TALK, {
@@ -191,6 +199,7 @@ export function mountTalkChrome(root: HTMLElement, ctx: ShellCtx): () => void {
   draw();
   return () => {
     for (const off of offs) off();
+    place.dispose();
     for (const part of [launch, grip, agentButton, preview, shortcut, agents]) part.remove();
     el.classList.remove("talk-pill");
     delete el.dataset.state;

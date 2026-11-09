@@ -178,10 +178,21 @@
 .talk-pill[data-state="hover"] .talk-shortcut,
 .talk-pill.is-open .talk-shortcut { opacity: 1; }
 .talk-pill.is-open .talk-shortcut { top: 25px; }
-.talk-grip { display: none; position: absolute; left: 14px; top: 24px; color: var(--desk-text-muted); }
+.talk-grip { display: none; position: absolute; left: 14px; top: 24px; color: var(--desk-text-muted); cursor: grab; }
 .talk-pill.is-open .talk-grip { display: block; }
 .talk-agent-button { position: absolute; left: 32px; top: 18px; }
 .talk-agent-list { position: absolute; bottom: calc(100% + 12px); left: 0; width: 252px; max-height: 280px; overflow: auto; padding: var(--space-1); }
+/* Moved by the person (talk-place.ts): drawn at its own left and bottom, gliding there when it grows
+   near an edge, but never while dragged. High up, its lists open below it. */
+.talk-pill.is-placed {
+  z-index: var(--z-float-top);
+  transform: none;
+  transition: width var(--motion-base) ease, height var(--motion-base) ease, border-radius var(--motion-base) ease,
+    left var(--motion-base) ease, bottom var(--motion-base) ease;
+}
+.talk-pill.is-moving { transition: width var(--motion-base) ease, height var(--motion-base) ease, border-radius var(--motion-base) ease; }
+.talk-pill.is-high .composer-list { top: calc(100% + var(--space-2)); bottom: auto; }
+.talk-pill.is-high .talk-agent-list { top: calc(100% + 12px); bottom: auto; }
 
 .running {
   position: absolute;
@@ -198,7 +209,7 @@
   list-style: none;
 }
 .running > li { display: flex; min-width: 0; }
-.bottom:has(.composer.is-open) .running { max-width: calc(50% - 360px); }
+.bottom:has(.composer.is-open:not(.is-placed)) .running { max-width: calc(50% - 360px); }
 .run-chip {
   position: relative;
   min-width: 0;

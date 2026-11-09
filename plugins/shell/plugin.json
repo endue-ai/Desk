@@ -75,6 +75,11 @@
         "default": "wisp",
         "choices": ["wisp", "solemn"],
         "description": "How Eris's soul text moves."
+      },
+      "desk.shell.talk-place": {
+        "kind": "object",
+        "default": {},
+        "description": "Where the talk line sits once the person moved it: its bottom centre as shares of the app's width and height ({ x, y }, 0 to 1). Empty: centred on the bottom edge."
       }
     },
     "themes": [
