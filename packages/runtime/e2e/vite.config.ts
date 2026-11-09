@@ -46,9 +46,33 @@ const desk: Record<string, string> = {
   "/_desk/tokens.css": join(repo, "packages/ui/src/tokens.css"),
   "/_desk/base.css": join(repo, "packages/ui/src/base.css"),
 };
-/** The app's plugin-frame CSP with this server's origin in place of the plugin scheme. */
+/**
+ * The app's plugin-frame CSP with this server's origins in place of the plugin scheme: the shared host
+ * and every surface's, as `desk-plugin:` covers them all in the app.
+ */
 const csp = readFileSync(join(repo, "apps/desk/src-tauri/src/plugin-csp.txt"), "utf8").trim();
-export const pluginCsp = (origin: string) => csp.replaceAll("{sources}", origin);
+export const pluginCsp = (port: string) =>
+  csp.replaceAll(
+    "{sources}",
+    `http://127.0.0.1:${port} http://localhost:${port} http://*.localhost:${port}`,
+  );
+
+/**
+ * What a request's Host names, as the app's scheme reads it (#36): the shared host (127.0.0.1 or
+ * localhost, where the fixture pages are), or one surface of a plugin, `<surface>.<plugin
+ * label>.localhost`, with its plugin label. Undefined for any other host.
+ */
+function hostOf(header = ""): { label?: string; port: string } | undefined {
+  const [name = "", port = ""] = header.split(":");
+  if (name === "127.0.0.1" || name === "localhost") return { port };
+  const label = /^[a-z][a-z0-9-]*\.([a-z][a-z0-9-]*)\.localhost$/.exec(name)?.[1];
+  return label === undefined ? undefined : { label, port };
+}
+/**
+ * A plugin id as one host label, as `pluginLabel` in src/plugin-origins.ts makes it. A copy, not an
+ * import, so the config loads without the runtime's sources; frames.spec.ts fails if the two differ.
+ */
+const pluginLabel = (id: string) => id.replaceAll("-", "--").replaceAll(".", "-");
 const types: Record<string, string> = {
   ".html": "text/html",
   ".js": "text/javascript",
@@ -74,6 +98,20 @@ export function pluginFiles(): Plugin {
         // Sandboxed frames have an opaque origin; module scripts need CORS.
         res.setHeader("Access-Control-Allow-Origin", "*");
         const source = desk[url.pathname];
+        // The fixture theme market (?market=1 on the shell page names it https://market.test/).
+        const market = /^\/market\/(.+)$/.exec(url.pathname)?.[1];
+        const match = /^\/plugins\/([^/]+)\/(.+)$/.exec(url.pathname);
+        if (!source && !match && market === undefined) return next();
+        // As the app's scheme does: a host that names no surface is refused, and so is another
+        // plugin's path on a surface's host.
+        const host = hostOf(req.headers.host);
+        const other =
+          match && host?.label !== undefined && host.label !== pluginLabel(match[1] ?? "");
+        if (!host || other) {
+          res.statusCode = 403;
+          res.end();
+          return;
+        }
         if (source?.endsWith(".css")) {
           res.setHeader("Content-Type", "text/css");
           res.setHeader("Cache-Control", "no-store");
@@ -86,10 +124,6 @@ export function pluginFiles(): Plugin {
           res.end();
           return;
         }
-        // The fixture theme market (?market=1 on the shell page names it https://market.test/).
-        const market = /^\/market\/(.+)$/.exec(url.pathname)?.[1];
-        const match = /^\/plugins\/([^/]+)\/(.+)$/.exec(url.pathname);
-        if (!match && market === undefined) return next();
         const [, id = "", path = market ?? ""] = match ?? [];
         const base = market === undefined ? (plugins[id] ?? many(id)) : here("./themes/market");
         const file = base ? normalize(join(base, path)) : "";
@@ -101,7 +135,7 @@ export function pluginFiles(): Plugin {
         res.setHeader("Content-Type", types[extname(file)] ?? "application/octet-stream");
         res.setHeader("Cache-Control", "no-store");
         if (extname(file) === ".html") {
-          res.setHeader("Content-Security-Policy", pluginCsp(`http://${req.headers.host}`));
+          res.setHeader("Content-Security-Policy", pluginCsp(host.port));
         }
         res.end(readFileSync(file));
       });

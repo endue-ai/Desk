@@ -10,16 +10,23 @@
   <body>
     <!-- A test-only plugin for the frames' CSP (ADR 0048): a worker started with startWorker that
          imports a neighbour, compiles WebAssembly and fetches a file of the plugin; fetch from the
-         frame; and eval, which stays blocked. -->
+         frame; eval, which stays blocked; and a fetch to an origin outside the desk's, which the CSP
+         blocks from every surface's own origin (#36). -->
     <p data-testid="worker">waiting</p>
     <p data-testid="wasm">waiting</p>
     <p data-testid="worker-fetch">waiting</p>
     <p data-testid="fetch">waiting</p>
     <p data-testid="eval">waiting</p>
+    <p data-testid="elsewhere">waiting</p>
     <script type="module">
       import { defineUiPlugin, startWorker } from "@endue-ai/plugin-sdk";
 
       const $ = (id) => document.querySelector(`[data-testid=${id}]`);
+      document.addEventListener("securitypolicyviolation", (event) => {
+        if (event.blockedURI.startsWith("https://elsewhere.test"))
+          $("elsewhere").textContent = `blocked by ${event.effectiveDirective}`;
+      });
+      fetch("https://elsewhere.test/data.txt").then(() => ($("elsewhere").textContent = "reached"), () => {});
       defineUiPlugin({
         async mount() {
           try {
