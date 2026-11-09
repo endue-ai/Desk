@@ -195,8 +195,8 @@ its `ui.surface.closed`; losing `ui:surface` leaves them open.
 
 **ui.surface.state** is the one request that goes the other way: the runtime sends it to a plugin's
 frame, as it sends `desk.files.visit`, never to the core, and it is not a `BridgeRequest`. Before the
-runtime unloads a surface that has not been visible for `desk.display.unload-after`, or the one hidden
-longest once more than `desk.display.live-surfaces` frames are live (ADR 0070), it asks with the
+runtime unloads a surface that has not been visible for `desk.display.unload-after`, or one out of
+sight past the live budget, `desk.surfaces.live` (ADR 0070, ADR 0134), it asks with the
 manifest's `surface` id. A plugin may answer with `state`, any JSON up to 64 KiB as UTF-8; the runtime
 keeps it in memory for the session and hands it back as `restored` in the frame's next `desk:init`,
 when the surface shows again. An answer without `state`, an error, a bigger state, no answer within

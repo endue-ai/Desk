@@ -43,7 +43,8 @@ iframe frees its page, and asking at that moment costs a plugin nothing while it
   the background does not count.
 * When: after `desk.display.unload-after` seconds out of sight (300; 0 never), or at once for the one
   hidden longest while more than `desk.display.live-surfaces` frames are live (24; 0 no cap). Timers
-  are `setTimeout`, which a hidden page keeps, not animation frames.
+  are `setTimeout`, which a hidden page keeps, not animation frames. ADR 0134 replaced the cap with
+  the live budget: past `desk.surfaces.live` windows out of sight, the least recently focused go.
 * How: the runtime sends the frame `ui.surface.state { surface }` (specs/bridge/v0, a request to the
   frame, not a `BridgeRequest`) and waits two seconds. A `state` of JSON up to 64 KiB is kept in the
   runtime's memory for the session; no answer, an error or more than that keeps nothing. The iframe
