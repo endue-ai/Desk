@@ -17,7 +17,8 @@ export function setPan(ctx: ShellCtx, pan: Offset): void {
  * The canvas under the normal windows: Shift + drag on the empty background or on a window's title
  * bar moves it, and the normal windows with it; floating windows stay where they are. A wheel over
  * the empty background moves it too. Windows' contents, inputs and plugin scroll areas keep their
- * input, and a plain drag never pans.
+ * input, and a plain drag never pans. Over the empty canvas the pointer shows how (the root's title,
+ * only there).
  */
 export function mountPan(root: HTMLElement, ctx: ShellCtx): () => void {
   let start = ORIGIN;
@@ -45,7 +46,6 @@ export function mountPan(root: HTMLElement, ctx: ShellCtx): () => void {
     root.classList.add("has-canvas");
     root.style.setProperty("--pan-x", `${pan.x}px`);
     root.style.setProperty("--pan-y", `${pan.y}px`);
-    root.title = ctx.tr("panHint");
     reset.title = ctx.tr("resetPan");
     reset.setAttribute("aria-label", ctx.tr("resetPan"));
     if (pan.x || pan.y) {
@@ -85,6 +85,11 @@ export function mountPan(root: HTMLElement, ctx: ShellCtx): () => void {
       },
       { passive: false },
     ),
+    // The hint is the empty canvas's alone: as the root's title it was every control's tooltip.
+    listen(root, "pointerover", (e) => {
+      if (background(e.target)) root.title = ctx.tr("panHint");
+      else root.removeAttribute("title");
+    }),
     ctx.store.watch((s) => [s.pan, s.desktop, s.lang], draw),
     listen(window, "keydown", shift),
     listen(window, "keyup", shift),

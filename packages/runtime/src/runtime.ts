@@ -343,6 +343,7 @@ export function createRuntime(options: RuntimeOptions): Runtime {
     profiles: {
       active: () => profiles.active(),
       list: () => profiles.list(),
+      saved: () => profiles.saved(),
       onChange: (listener) => profiles.onChange(listener),
     },
     onQuit: (handler) => keys.onQuit(handler),

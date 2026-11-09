@@ -71,4 +71,24 @@ describe("desk.profiles.remove", () => {
     await expect(m.run("desk.profiles.remove", { id: "mine" })).rejects.toThrow(/mine is in force/);
     expect(m.profiles.list().map((p) => p.id)).toContain("mine");
   });
+
+  it("lists the saved profiles by id, a file over a contributed profile among them", async () => {
+    const m = await desk();
+    expect(m.profiles.saved()).toEqual([]);
+    await m.run("desk.profiles.save", { id: "mine", name: "Mine", plugins: {}, settings: {} });
+    await m.run("desk.profiles.save", { id: "loud", name: "Louder", plugins: {}, settings: {} });
+    expect(m.profiles.saved()).toEqual(["mine", "loud"]);
+  });
+
+  it("removing a file over the contributed profile in force brings that profile back, in force", async () => {
+    const m = await desk();
+    await m.run("desk.profiles.save", { id: "plain", name: "Mine now", plugins: {}, settings: {} });
+    expect(m.profiles.list().find((p) => p.id === "plain")?.name).toBe("Mine now");
+    expect(m.profiles.active()).toBe("plain");
+
+    expect(await m.run("desk.profiles.remove", { id: "plain" })).toEqual({ id: "plain" });
+    expect(m.profiles.active()).toBe("plain");
+    expect(m.profiles.list().find((p) => p.id === "plain")?.name).toBe("Plain");
+    expect(m.profiles.saved()).toEqual([]);
+  });
 });

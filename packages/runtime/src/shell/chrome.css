@@ -11,7 +11,33 @@
 }
 .modes-row { display: flex; align-items: center; gap: var(--space-2); }
 .modes-current { display: flex; }
-.modes-more { display: flex; gap: var(--space-2); overflow: hidden; }
+/* The other profiles: as wide as their chips up to the desktops (Modes.ts), then sideways by wheel or
+   trackpad, the hidden end faded. The padding keeps the focus ring of a chip inside the clip. */
+.modes-more {
+  display: flex;
+  gap: var(--space-2);
+  margin: calc(var(--space-1) * -1);
+  padding: var(--space-1);
+  overflow: auto hidden;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+.modes-more::-webkit-scrollbar { display: none; }
+.modes-more[data-more="end"] {
+  mask-image: linear-gradient(to right, black calc(100% - var(--space-8)), transparent);
+}
+.modes-more[data-more="start"] {
+  mask-image: linear-gradient(to left, black calc(100% - var(--space-8)), transparent);
+}
+.modes-more[data-more="both"] {
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    black var(--space-8),
+    black calc(100% - var(--space-8)),
+    transparent
+  );
+}
 
 .mode-chip {
   position: relative;
@@ -31,6 +57,8 @@
 }
 .mode-chip:hover { background: var(--desk-hover); }
 .mode-chip.is-current { border-color: var(--desk-accent); background: var(--desk-primary-soft); }
+/* A long name is cut short; the chip's title says it in full. */
+.mode-name { max-width: 16em; overflow: hidden; text-overflow: ellipsis; }
 .mode-copied {
   display: inline-flex;
   align-items: center;
@@ -41,6 +69,7 @@
 }
 .mode-dirty { position: absolute; top: -3px; right: -3px; width: 6px; height: 6px; }
 .mode-menu { position: absolute; top: 40px; left: 0; width: 200px; padding: var(--space-1); }
+.mode-menu-rule { height: 1px; margin: var(--space-1) 0; background: var(--desk-border); }
 
 .desktops {
   position: absolute;

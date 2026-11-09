@@ -20,6 +20,8 @@ export interface RuntimeProfiles {
   /** The profile in force, once one is. */
   active(): string | undefined;
   list(): ProfileContribution[];
+  /** The ids of the profiles the person saved, a file over a contributed profile among them. */
+  saved(): string[];
   /** Hear every switch and save. */
   onChange(listener: () => void): () => void;
 }

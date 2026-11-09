@@ -198,7 +198,8 @@
   color: var(--desk-text-muted);
   font-size: var(--text-xs);
 }
-.btn-danger {
+/* The editor's own danger buttons; unscoped, this turned every shell dialog's red button red on red. */
+.theme-editor .btn-danger {
   border-color: var(--desk-danger-border);
   color: var(--desk-danger-text);
 }

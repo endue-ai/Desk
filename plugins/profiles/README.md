@@ -17,7 +17,8 @@ in force. `init.yaml`'s `profile` applies at start; `default` when it names none
 Commands: `desk.profiles.switch` (`Mod+Shift+M`, through the palette), `.list`, `.save`, which keeps
 the plugins on and off now and this session's settings (not the key bindings: `keys.yaml` holds those)
 as `~/.desk/profiles/<id>.yaml` (ADR 0079; `specs/init/v0/profile.schema.json`), and `.remove`, which
-drops a saved one (never the one in force). The file name is the id and a file shadows a contributed
+drops a saved one (never the one in force, unless a plugin contributes one of its id: that one comes back,
+in force). The shell's profile switcher renames, deletes and restores profiles from a chip's menu. The file name is the id and a file shadows a contributed
 profile of its id. Edit a file and the change applies at once; a file that does not check is ignored
 with a notice naming its line. Profiles an older desk kept in the store move to files once. Profiles
 never turn off `desk.profiles`, `desk.palette` or `desk.keys`, so there is always a way back. Other

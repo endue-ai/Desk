@@ -26,6 +26,11 @@
 .layer-system .account-bar {
   z-index: var(--z-system);
 }
+/* A profile's menu lies inside the switcher: while it is open, the switcher rises to the popovers'
+   level, so the agent bar below never covers it. */
+.layer-system .modes.has-menu {
+  z-index: var(--z-popover);
+}
 
 /* The person's controls stay below the agent bar, including on shorter displays. */
 .layer-system .sidebar {

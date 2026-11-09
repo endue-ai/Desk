@@ -3,7 +3,8 @@
  * one init.yaml names applies at start; switching applies another: its settings layer over
  * init.yaml's and its plugins turn on and off. People save their own with desk.profiles.save, as
  * files in the desk folder that they may edit (`profile-files.ts`), and remove them with
- * desk.profiles.remove (Undo of a profile Eris made, ADR 0073). Autoload plugins are desk.files' to turn on and off (ADR 0046): profiles leave them as they are.
+ * desk.profiles.remove (Undo of a profile Eris made, ADR 0073; a file over a plugin's profile gives
+ * the plugin's back, also in force). Autoload plugins are desk.files' to turn on and off (ADR 0046): profiles leave them as they are.
  */
 import type { ProfileContribution } from "@endue-ai/bridge";
 import { CommandError } from "../commands";
@@ -25,6 +26,8 @@ export interface ProfilesPolicy extends Installed {
   active(): string | undefined;
   /** Contributed profiles, then saved ones; a saved profile replaces a contributed one of its id. */
   list(): ProfileContribution[];
+  /** The ids of the profiles the person saved (files in the desk folder), contributed ids among them. */
+  saved(): string[];
   /** Hear every switch and save (the shell's profile switcher listens). */
   onChange(listener: () => void): () => void;
   /** Read the saved profiles and apply init.yaml's (once, after the plugins are listed). */
@@ -175,9 +178,12 @@ export function installProfiles(
       const id = idOf(args);
       if (!id || !files.saved().some((p) => p.id === id))
         throw new CommandError("failed", `${id} is not a saved profile`);
-      if (id === active)
+      // A file over a plugin's profile may go while in force: the plugin's profile takes its place.
+      const contributed = hub.policy.profiles.some((p) => p.id === id);
+      if (id === active && !contributed)
         throw new CommandError("failed", `${id} is in force: switch to another profile first`);
       await files.remove(id);
+      if (id === active) await apply(id, true);
       changed();
       return { id };
     },
@@ -187,6 +193,7 @@ export function installProfiles(
   return {
     active: () => active,
     list: all,
+    saved: () => files.saved().map((p) => p.id),
     onChange: (listener) => {
       listeners.add(listener);
       return () => listeners.delete(listener);

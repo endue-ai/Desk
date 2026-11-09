@@ -34,7 +34,10 @@ test.describe("the desk shell", () => {
     await step(page, 400);
     // Deep work, Review, Studio, Night and Default, the way home.
     await expect(page.locator(".modes-more .mode-chip")).toHaveCount(5);
-    await expect(page.locator(".modes-more")).toHaveCSS("max-width", "720px");
+    // As wide as its chips: every one in sight, none cut off.
+    expect(
+      await page.locator(".modes-more").evaluate((el) => el.scrollWidth - el.clientWidth),
+    ).toBe(0);
     await expect(page.locator('[data-mode="studio"] .mode-copied')).toHaveText("jin");
     expect(await shellTree(page, ".modes")).toMatchSnapshot("modes-open.json");
     await page.mouse.move(700, 600);
@@ -77,8 +80,9 @@ test.describe("the desk shell", () => {
       "이 프로필에 저장",
       "새 프로필로",
       "되돌리기",
+      "이름 바꾸기…",
     ]);
-    await page.getByRole("menuitem", { name: "되돌리기" }).click();
+    await page.getByRole("menuitem", { name: "되돌리기", exact: true }).click();
     await expect(dot).toHaveCount(0);
     await expect(page.locator('[data-surface="calendar"]')).toHaveCSS("left", "120px");
     await dragBy(100);

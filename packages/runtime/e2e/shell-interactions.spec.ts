@@ -87,8 +87,12 @@ test("profile dialogs contain focus, block background shortcuts and return to th
   await page.locator(".mode-add").click();
   const dialog = page.getByRole("dialog");
   await expect(dialog.locator("input")).toBeFocused();
+  const save = dialog.getByRole("button", { name: "Save", exact: true });
+  // Save waits for a name.
+  await expect(save).toBeDisabled();
+  await page.keyboard.type("Quiet");
   await page.keyboard.press("Shift+Tab");
-  await expect(dialog.getByRole("button", { name: "Save", exact: true })).toBeFocused();
+  await expect(save).toBeFocused();
   await page.keyboard.press("Tab");
   await expect(dialog.locator("input")).toBeFocused();
   await page.keyboard.press("Meta+n");
