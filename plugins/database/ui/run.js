@@ -192,14 +192,17 @@ export function createRunner(bridge, options = {}) {
           if (!jobs.delete(procId)) return;
           for (const timer of timers) clearTimer(timer);
           onBusy(jobs.size);
-          resolve({
-            code: data.code ?? null,
-            signal: data.signal ?? null,
-            stdout: text(job.out),
-            stderr: text(job.err),
-            ...flags,
-            ms: now() - started,
-          });
+          resolve(
+            outcomeOf(
+              {
+                code: data.code ?? null,
+                signal: data.signal ?? null,
+                ...flags,
+                ms: now() - started,
+              },
+              job,
+            ),
+          );
         },
       };
       jobs.set(procId, job);
@@ -230,13 +233,44 @@ function decode(data, encoding) {
   return bytes;
 }
 
-/** Decode once, at the end, so a character split across two chunks still reads right. */
-function text(/** @type {Sink} */ sink) {
+/** One stream's chunks as one array, decoded once so a character split across two still reads. */
+function joined(/** @type {Sink} */ sink) {
   const all = new Uint8Array(sink.size);
   let at = 0;
   for (const chunk of sink.chunks) {
     all.set(chunk, at);
     at += chunk.length;
   }
-  return new TextDecoder("utf-8").decode(all);
+  return all;
 }
+
+/** @type {WeakMap<object, { stdout: Uint8Array, stderr: Uint8Array }>} */
+const BYTES = new WeakMap();
+
+/**
+ * An outcome whose `stdout` and `stderr` are decoded when first read. The result reader sends the
+ * bytes to its worker instead (outputBytes), so a run's output is never decoded on the frame's
+ * thread (#38); the version check reads its few bytes as text.
+ * @param {Omit<Outcome, "stdout" | "stderr">} fields
+ * @param {Job} job
+ * @returns {Outcome}
+ */
+function outcomeOf(fields, job) {
+  const bytes = { stdout: joined(job.out), stderr: joined(job.err) };
+  /** @type {{ stdout?: string, stderr?: string }} */
+  const texts = {};
+  const outcome = { ...fields };
+  for (const stream of /** @type {const} */ (["stdout", "stderr"]))
+    Object.defineProperty(outcome, stream, {
+      enumerable: true,
+      get: () => {
+        texts[stream] ??= new TextDecoder("utf-8").decode(bytes[stream]);
+        return texts[stream];
+      },
+    });
+  BYTES.set(outcome, bytes);
+  return /** @type {Outcome} */ (outcome);
+}
+
+/** The bytes a runner's outcome was read from; none for an outcome made anywhere else. */
+export const outputBytes = (/** @type {object} */ outcome) => BYTES.get(outcome);

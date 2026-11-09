@@ -100,6 +100,8 @@ export function createView(doc, act) {
     button.addEventListener("click", () =>
       act(/** @type {HTMLElement} */ (button).dataset.act ?? ""),
     );
+  // Reading a large output in the result worker shows a bar after 300 ms, with Cancel (#38).
+  byId("reading")?.addEventListener("desk-cancel", () => act("cancel"));
   for (const button of doc.querySelectorAll("[data-page]"))
     button.addEventListener("click", () =>
       act("page", { delta: Number(/** @type {HTMLElement} */ (button).dataset.page) }),
@@ -294,6 +296,10 @@ export function createView(doc, act) {
     say,
     busy(running) {
       byId("busy").hidden = running === 0;
+    },
+    reading(reads) {
+      const bar = byId("reading");
+      if (bar) bar.hidden = reads === 0;
     },
     editor: () => ({
       text: editorEl.value,

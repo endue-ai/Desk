@@ -12,6 +12,7 @@ import { createExecutor, Refusal } from "../ui/execute.js";
 import { createRunner } from "../ui/run.js";
 import { fromValues } from "../ui/settings.js";
 import { clientVersion, nodeBridge } from "./node-bridge";
+import { inProcessOutput } from "./output";
 
 const sqliteLine = process.platform === "win32" ? undefined : clientVersion("sqlite3");
 const sqliteOk =
@@ -26,6 +27,7 @@ function harness(conn: Connection, password?: string, overrides: Record<string, 
   const clients = createClients(runner, () => settings);
   const executor = createExecutor({
     runner,
+    output: inProcessOutput(),
     clients,
     settings: () => settings,
     confirm: async () => true,

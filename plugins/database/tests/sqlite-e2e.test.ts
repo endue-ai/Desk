@@ -18,6 +18,7 @@ import { createRunner } from "../ui/run.js";
 import { fromValues } from "../ui/settings.js";
 import { mount } from "./harness";
 import { clientVersion, nodeBridge } from "./node-bridge";
+import { inProcessOutput } from "./output";
 import { realProcs } from "./scripted";
 
 const line = process.platform === "win32" ? undefined : clientVersion("sqlite3");
@@ -36,6 +37,7 @@ function plugin(file: string) {
   const settings = fromValues({});
   const executor = createExecutor({
     runner,
+    output: inProcessOutput(),
     clients: createClients(runner, () => settings),
     settings: () => settings,
     confirm: async () => true,

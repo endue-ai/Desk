@@ -31,6 +31,7 @@ import { createTools } from "./tools.js";
  * @typedef {import("./consoles.js").ConsoleView & import("./manage.js").Deps["view"] & {
  *   explorer(rows: Node[]): void,
  *   busy(running: number): void,
+ *   reading?(reads: number): void,
  *   insert(text: string): void,
  *   copy(text: string): boolean,
  *   preview(sql: string): void,
@@ -50,19 +51,37 @@ const COMPLETE_READS = 4;
  *   cancelled?(message: string): Error,
  *   platform?: import("./clients.js").Platform,
  *   runner?: ReturnType<typeof createRunner>,
+ *   output(onBusy: (reads: number) => void): import("./output-client.js").OutputReader,
  *   random?(): number,
- * }} [options] `cancelled` makes the error a cancelled command answers with (the SDK's CommandFailed).
+ * }} options `cancelled` makes the error a cancelled command answers with (the SDK's CommandFailed);
+ *   `output` makes the result reader, which reads each run's output in a worker (main.js, #38).
  */
-export function createDatabase({ bridge, commands, state }, view, options = {}) {
+export function createDatabase({ bridge, commands, state }, view, options) {
   let settings = DEFAULTS;
   const cancelled =
     options.cancelled ?? ((message) => Object.assign(new Error(message), { code: "cancelled" }));
+  // A run is busy from the client's start until its output is read.
+  let running = 0;
+  let reading = 0;
+  const busy = () => view.busy(running + reading);
   const runner =
     options.runner ??
     createRunner(bridge, {
-      onBusy: (running) => view.busy(running),
+      onBusy: (count) => {
+        running = count;
+        busy();
+      },
       searchPath: () => searchPath(options.platform ?? "mac", settings.path),
     });
+  const output = options.output((reads) => {
+    reading = reads;
+    busy();
+    view.reading?.(reads);
+  });
+  const cancel = () => {
+    runner.cancel();
+    output.cancel();
+  };
   const clients = createClients(runner, () => settings);
 
   /** @param {string} title @param {{ id: string, label: string, detail?: string }[]} items */
@@ -107,6 +126,7 @@ export function createDatabase({ bridge, commands, state }, view, options = {}) 
   });
   const executor = createExecutor({
     runner,
+    output,
     clients,
     settings: () => settings,
     confirm,
@@ -205,7 +225,7 @@ export function createDatabase({ bridge, commands, state }, view, options = {}) 
     explorer,
     tools,
     execute: executor.execute,
-    cancel: () => runner.cancel(),
+    cancel,
     openConsole,
     visit,
     pick,
@@ -296,7 +316,7 @@ export function createDatabase({ bridge, commands, state }, view, options = {}) 
     complete: (/** @type {string} */ text, /** @type {number} */ caret) =>
       completions(text, caret).catch(() => undefined),
     more: guard(() => consoles.more()),
-    cancel: () => runner.cancel(),
+    cancel,
     page: guard((/** @type {Parameters<typeof consoles.page>[0]} */ change) =>
       consoles.page(change),
     ),

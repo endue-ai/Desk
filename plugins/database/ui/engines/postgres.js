@@ -4,34 +4,18 @@
 // the row count on standard output and error, so output and notices belong to their statement.
 // `--csv` with a random NULL text keeps NULL apart from ''. ON_ERROR_STOP ends the run at the first
 // error, whose words are what psql printed after the last marker. Connection values go through PG*
-// environment variables, never as options, so no value can become one.
+// environment variables, never as options, so no value can become one. Reading what psql printed is
+// the result worker's (ui/output/postgres.js, #38).
 
 import { quoteText } from "../sql/quote.js";
-import {
-  authFailed,
-  endedBy,
-  env,
-  failedRun,
-  linesOf,
-  notRun,
-  offsetIn,
-  resultSet,
-} from "./common.js";
-import { escapeRegExp, lineCounter, readCsv, segments } from "./text.js";
+import { env } from "./common.js";
+import { lineCounter, markOf, nullOf } from "./text.js";
 
 /**
  * @typedef {import("./common.js").Connection} Connection
  * @typedef {import("./common.js").PlanOptions} PlanOptions
  * @typedef {import("./common.js").Invocation} Invocation
- * @typedef {import("./common.js").Outcome} Outcome
- * @typedef {import("./common.js").RunResult} RunResult
- * @typedef {import("./common.js").StatementOutcome} StatementOutcome
- * @typedef {import("./common.js").DbError} DbError
- * @typedef {import("./common.js").ResultSet} ResultSet
  */
-
-const markOf = (/** @type {string} */ nonce) => `@@endue:${nonce}:`;
-const nullOf = (/** @type {string} */ nonce) => `@@null:${nonce}`;
 
 /**
  * @param {Connection} conn
@@ -90,113 +74,6 @@ function plan(conn, options) {
   };
 }
 
-/**
- * @param {Outcome} outcome
- * @param {Invocation} invocation
- * @param {number} timeoutMs
- * @returns {RunResult}
- */
-function parse(outcome, invocation, timeoutMs) {
-  const { statements, nonce, maxRows } = invocation;
-  const mark = escapeRegExp(markOf(nonce));
-  const out = segments(outcome.stdout, new RegExp(`^${mark}(\\d+) ?(\\d*)$`, "gmu"));
-  const err = segments(outcome.stderr, new RegExp(`^${mark}(\\d+)$`, "gmu"));
-  const nothing = out.before.size === 0 && err.before.size === 0;
-  if (nothing && !outcome.stopped && /^psql: error:/mu.test(outcome.stderr)) {
-    return failedRun(statements, connectError(outcome.stderr), outcome.ms);
-  }
-  const ended = endedBy(outcome, timeoutMs);
-  const missing = statements.findIndex((_, index) => !out.before.has(index));
-  /** @type {StatementOutcome[]} */
-  const results = statements.map((statement, index) => {
-    const done = out.before.get(index);
-    const notices = linesOf(err.before.get(index)?.text ?? "");
-    if (done) {
-      const sets = csvSets(done.text, nonce, maxRows, false);
-      const count = done.fields[0] ? Number(done.fields[0]) : null;
-      return { index, ran: true, sets, affected: sets.length ? null : count, warnings: 0, notices };
-    }
-    if (index !== missing) return notRun(index);
-    const sets = csvSets(out.rest, nonce, maxRows, true, outcome.stopped);
-    const tail = linesOf(err.rest);
-    if (outcome.stopped)
-      return { index, ran: true, sets, affected: null, warnings: 0, notices: tail };
-    const error = ended ?? sqlError(err.rest, statement.text);
-    return { index, ran: true, sets, affected: null, warnings: 0, notices: [], error };
-  });
-  return { statements: results, notices: [], ms: outcome.ms };
-}
-
-/** The result set in psql's CSV for one statement: a header line, then rows. */
-function csvSets(
-  /** @type {string} */ text,
-  /** @type {string} */ nonce,
-  /** @type {number} */ maxRows,
-  /** @type {boolean} */ partial,
-  stopped = false,
-) {
-  if (text === "") return [];
-  const [header, ...rows] = readCsv(text, partial);
-  if (!header) return [];
-  const none = nullOf(nonce);
-  const values = rows.map((row) => row.map((value) => (value === none ? null : value)));
-  return [resultSet(header, values, maxRows, stopped)];
-}
-
-/** psql could not connect: its message without `psql: error:`, auth failures marked. */
-function connectError(/** @type {string} */ stderr) {
-  const lines = linesOf(stderr).map((line) => line.replace(/^psql: error: /u, ""));
-  const message = lines.join(" ").replace(/\s+/gu, " ").trim();
-  return /** @type {DbError} */ ({ kind: authFailed(stderr) ? "auth" : "connect", message });
-}
-
-/**
- * The error psql printed for a statement: the severity line's message, the lines after it (DETAIL,
- * HINT, CONTEXT) as detail, and LINE n with its caret as a position in the statement.
- * @param {string} stderr
- * @param {string} text
- * @returns {DbError}
- */
-export function sqlError(stderr, text) {
-  const lines = linesOf(stderr).filter((line) => !/^(NOTICE|WARNING|INFO|LOG|DEBUG):/u.test(line));
-  const at = lines.findIndex((line) => /^[A-Z]+:\s\s/u.test(line));
-  const head = at >= 0 ? (lines[at] ?? "") : (lines[0] ?? "psql ended without saying why.");
-  const message = head.replace(/^[A-Z]+:\s+/u, "");
-  const rest = lines.slice(at + 1);
-  const lineAt = rest.findIndex((line) => /^LINE \d+: /u.test(line));
-  const position =
-    lineAt >= 0 ? caretOffset(rest[lineAt] ?? "", rest[lineAt + 1] ?? "", text) : undefined;
-  const detail = rest.filter((_line, i) => i !== lineAt && i !== lineAt + 1).join("\n");
-  return {
-    kind: authFailed(head) ? "auth" : "sql",
-    message,
-    ...(detail ? { detail } : {}),
-    ...(position !== undefined ? { position } : {}),
-  };
-}
-
-/** Where libpq's caret points, as an offset in the statement (`...` marks a cut line). */
-function caretOffset(
-  /** @type {string} */ context,
-  /** @type {string} */ caret,
-  /** @type {string} */ text,
-) {
-  const match = /^LINE (\d+): (.*)$/u.exec(context);
-  if (!match || !caret.includes("^")) return undefined;
-  const line = Number(match[1]);
-  const prefix = context.length - (match[2] ?? "").length;
-  let shown = match[2] ?? "";
-  let column = caret.indexOf("^") - prefix;
-  if (shown.startsWith("...")) {
-    shown = shown.slice(3).replace(/\.\.\.$/u, "");
-    const source = text.split("\n")[line - 1] ?? "";
-    const found = source.indexOf(shown);
-    if (found < 0) return undefined;
-    column = found + column - 3;
-  }
-  return offsetIn(text, line, column + 1);
-}
-
 export const postgres = {
   id: /** @type {const} */ ("postgresql"),
   title: "PostgreSQL",
@@ -204,7 +81,6 @@ export const postgres = {
   port: 5432,
   client: "psql",
   plan,
-  parse,
   versionSql: "SELECT version()",
   explain: (/** @type {string} */ text) => `EXPLAIN ${text}`,
   catalog: {

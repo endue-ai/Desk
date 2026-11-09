@@ -3,10 +3,13 @@
 import { describe, expect, it } from "vitest";
 import type { Connection, Invocation, Outcome } from "../ui/engines/common.js";
 import { mysql, sslArgs } from "../ui/engines/mysql.js";
-import { postgres, sqlError } from "../ui/engines/postgres.js";
-import { readMysqlXml, readQuoted } from "../ui/engines/readers.js";
-import { sqlite, sqliteError } from "../ui/engines/sqlite.js";
-import { readCsv } from "../ui/engines/text.js";
+import { postgres } from "../ui/engines/postgres.js";
+import { sqlite } from "../ui/engines/sqlite.js";
+import { readCsv } from "../ui/output/csv.js";
+import { readMysql } from "../ui/output/mysql.js";
+import { readPostgres, sqlError } from "../ui/output/postgres.js";
+import { readMysqlXml, readQuoted } from "../ui/output/readers.js";
+import { readSqlite, sqliteError } from "../ui/output/sqlite.js";
 import { split } from "../ui/sql/split.js";
 
 const conn = (fields: Partial<Connection>): Connection => ({
@@ -97,7 +100,7 @@ describe("postgres", () => {
       conn({}),
       "select 1 as a, null as b, '' as c, 'x,\"y\"' as d;\nupdate t set a = 1;\nselec 1;\nselect 4",
     );
-    const read = postgres.parse(
+    const read = readPostgres(
       outcome({
         code: 1,
         stdout: 'a,b,c,d\n1,@@null:n0nce,,"x,""y"""\n@@endue:n0nce:0 1\n@@endue:n0nce:1 7\n',
@@ -137,7 +140,7 @@ describe("postgres", () => {
 
   it("says a connection that never stood up, and an authentication failure as such", () => {
     const run = plan(postgres, conn({}), "select 1");
-    const read = postgres.parse(
+    const read = readPostgres(
       outcome({
         code: 2,
         stderr:
@@ -153,7 +156,7 @@ describe("postgres", () => {
   it("keeps the rows of a single read it stopped, marked as more", () => {
     const run = plan(postgres, conn({}), "select g from big", true);
     expect(run.stopAfter).toBe(4);
-    const read = postgres.parse(
+    const read = readPostgres(
       outcome({ code: null, signal: "int", stopped: true, stdout: "g\n1\n2\n3\n4" }),
       run,
       0,
@@ -205,7 +208,7 @@ describe("mysql", () => {
       conn({ engine: "mysql" }),
       "select 1 as a, null as b;\nupdate t set a = 1",
     );
-    const read = mysql.parse(outcome({ stdout: xml }), run, 0);
+    const read = readMysql(outcome({ stdout: xml }), run, 0);
     expect(read.statements[0]?.sets[0]?.columns).toEqual(["a", "b", "c", "d", "e"]);
     expect(read.statements[1]).toMatchObject({ affected: 3, warnings: 1, sets: [] });
   });
@@ -214,7 +217,7 @@ describe("mysql", () => {
     const run = plan(mysql, conn({ engine: "mysql" }), "select 1;\nselec 2");
     const head = xml.split("\n<?xml")[0] ?? "";
     const marker = `${head.replace(/<resultset[\s\S]*/u, "")}<resultset statement="x">\n  <row>\n\t<field name="@@endue:n0nce:0">-1</field>\n\t<field name="w">0</field>\n  </row>\n</resultset>`;
-    const failed = mysql.parse(
+    const failed = readMysql(
       outcome({
         code: 1,
         stdout: marker,
@@ -229,7 +232,7 @@ describe("mysql", () => {
       code: "1064 (42000)",
       position: 0,
     });
-    const denied = mysql.parse(
+    const denied = readMysql(
       outcome({
         code: 1,
         stderr: "ERROR 1045 (28000): Access denied for user 'me'@'10.0.0.2' (using password: NO)\n",
@@ -295,7 +298,7 @@ describe("sqlite", () => {
       conn({ engine: "sqlite", file: "/a.db" }),
       "update t set a = 1;\nselec 2;\nselect 3",
     );
-    const read = sqlite.parse(
+    const read = readSqlite(
       outcome({
         code: 1,
         stdout: "'@@endue:n0nce:0'\n4\n",

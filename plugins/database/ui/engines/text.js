@@ -1,55 +1,7 @@
-// Readers for what the clients print, and counters that see rows arrive before the client ends: CSV
-// as psql writes it (RFC 4180, a quoted field may hold newlines), and the newline counter that knows
-// when a newline sits inside a quote. Pure functions, so each is tested on captured output.
-
-/**
- * The records of CSV text. A record cut off at the end (an open quote, no final newline after a
- * stop) is dropped when `partial`.
- * @param {string} text
- * @param {boolean} [partial]
- * @returns {string[][]}
- */
-export function readCsv(text, partial = false) {
-  /** @type {string[][]} */
-  const records = [];
-  /** @type {string[]} */
-  let record = [];
-  let field = "";
-  let quoted = false;
-  let i = 0;
-  while (i < text.length) {
-    const c = text[i];
-    if (quoted) {
-      if (c === '"' && text[i + 1] === '"') {
-        field += '"';
-        i += 2;
-        continue;
-      }
-      if (c === '"') quoted = false;
-      else field += c;
-      i++;
-      continue;
-    }
-    if (c === '"') quoted = true;
-    else if (c === ",") {
-      record.push(field);
-      field = "";
-    } else if (c === "\n" || (c === "\r" && text[i + 1] === "\n")) {
-      record.push(field);
-      records.push(record);
-      record = [];
-      field = "";
-      if (c === "\r") i++;
-    } else field += c;
-    i++;
-  }
-  const open = quoted || field !== "" || record.length > 0;
-  if (open && !partial) {
-    record.push(field);
-    records.push(record);
-  }
-  return records;
-}
+// What a run's plan and its reading share, and the counters that see rows arrive before the client
+// ends: the newline counter that knows when a newline sits inside a quote, the mysql client's row
+// counter, the random marker. Reading the output itself is the result worker's (ui/output/, #38).
+// Pure functions, so each is tested on captured output.
 
 /**
  * Counts the lines a stream has ended so far, skipping newlines inside the quote character's runs.
@@ -85,32 +37,17 @@ export function rowCounter() {
   };
 }
 
-/**
- * The text between marker lines: `markers` are the lines' regular expression with one capture for
- * the statement index (and more for what follows it). Returns the text before each marker, keyed by
- * index, its captures, and what came after the last one.
- * @param {string} text
- * @param {RegExp} marker A global, multiline expression matching a whole marker line.
- */
-export function segments(text, marker) {
-  /** @type {Map<number, { text: string, fields: string[] }>} */
-  const before = new Map();
-  let from = 0;
-  for (const match of text.matchAll(marker)) {
-    const index = Number(match[1]);
-    before.set(index, { text: text.slice(from, match.index), fields: match.slice(2) });
-    from = (match.index ?? 0) + match[0].length;
-    if (text[from] === "\n") from++;
-  }
-  return { before, rest: text.slice(from) };
-}
-
 /** A random marker no data can hold by chance: twelve characters from a-z0-9. */
 export function nonce(/** @type {() => number} */ random = Math.random) {
   let out = "";
   while (out.length < 12) out += Math.floor(random() * 36).toString(36);
   return out;
 }
+
+/** The marker that ends each statement's output, in every engine's plan and its reading. */
+export const markOf = (/** @type {string} */ nonce) => `@@endue:${nonce}:`;
+/** psql's text for NULL, so NULL stays apart from ''. */
+export const nullOf = (/** @type {string} */ nonce) => `@@null:${nonce}`;
 
 /** Escape a string for use inside a regular expression. */
 export const escapeRegExp = (/** @type {string} */ text) =>

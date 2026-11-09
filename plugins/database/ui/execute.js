@@ -1,7 +1,7 @@
 // Running SQL on a connection: cut it into statements, check them (what no client may run here,
 // writes on a read-only connection, a dry run that could not roll back), ask the person before what
-// is hard to undo, run the engine's client, read what it printed, and when the client says a
-// password is missing or wrong, ask for one once and run again. No DOM.
+// is hard to undo, run the engine's client, read what it printed (in the result worker, #38), and
+// when the client says a password is missing or wrong, ask for one once and run again. No DOM.
 
 import { failedRun } from "./engines/common.js";
 import { engineOf } from "./engines/index.js";
@@ -24,6 +24,7 @@ import { split } from "./sql/split.js";
  *   plugin's own reading and asks nothing.
  * @typedef {{
  *   runner: { run(invocation: import("./engines/common.js").Invocation, options?: { timeoutMs?: number }): Promise<import("./engines/common.js").Outcome> },
+ *   output: Pick<import("./output-client.js").OutputReader, "read">,
  *   clients: { get(engine: import("./engines/common.js").EngineId): Promise<import("./clients.js").Client> },
  *   settings(): Settings,
  *   confirm(title: string, reasons: string[]): Promise<boolean>,
@@ -85,13 +86,16 @@ export function createExecutor(deps) {
         // the backstop. The other two have only the client's.
         const limit = timeoutMs > 0 ? timeoutMs + (engine.id === "postgresql" ? 5000 : 0) : 0;
         const outcome = await deps.runner.run(invocation, { timeoutMs: limit });
-        const result = engine.parse(outcome, invocation, timeoutMs);
+        // Read in the result worker: what the client printed is never parsed on this thread (#38).
+        const result = await deps.output.read(engine.id, outcome, invocation, timeoutMs);
         if (outcome.cancelled && !result.statements.some((s) => s.error?.kind === "cancelled"))
           result.notices.push(
             "Cancelled: the statements shown had finished before the cancel reached them.",
           );
         return result;
       } catch (error) {
+        if (/** @type {{ name?: string }} */ (error)?.name === "AbortError")
+          return failedRun(statements, { kind: "cancelled", message: "Cancelled." });
         const kind =
           /** @type {{ kind?: string }} */ (error)?.kind === "missing" ? "missing" : "client";
         const message = error instanceof Error ? error.message : String(error);

@@ -6,17 +6,17 @@ views, materialized views, sequences, routines, events; a table's columns, keys,
 triggers) with a filter, row counts and each object's DDL. A console has highlighting, autocomplete from the
 schema, Format SQL and parameters; results sort, filter, page, transpose to a record, open a value viewer,
 copy and export. Grid edits are pending changes applied in one transaction (ADR 0115). A schema's ER
-diagram is drawn from its foreign keys; connections take a group and a colour. `Mod+Shift+B` opens
-it; every operation is a command (`endue.database.*`); `.connections`, `.schema` and `.query` serve agents.
+diagram is drawn from its foreign keys; connections take a group and a colour. `Mod+Shift+B` opens it; every operation is a command (`endue.database.*`); `.connections`, `.schema` and `.query` serve agents.
 Drag and drop (ADR 0119): a `.sql` file opens in a console; a `.csv`, `.tsv` or `.json` file opens an import (the table it landed
 on or one named like it, a column mapping, a preview, every INSERT in one transaction, 512 KiB of SQL at most), read with `fs.read`
 asked for once. Rows drag `db/rows` `{ connection, engine, schema?, table?, columns, rows }`, INSERT (`desk/text`) and TSV (`text/plain`); a table drags its qualified name.
 
 It runs each engine's own client through `proc.spawn`, never a shell, each in a mode that cannot reach past
 the database (ADR 0038): `psql -X -w`, a `-c` per statement; `mysql --binary-mode --local-infile=0`;
-`sqlite3 -safe`. Markers split the output per statement and keep NULL, `''` and `'NULL'` apart. Passwords
-are never kept: `~/.pgpass` and `~/.my.cnf` work, else the person types one per session. Read-only
-connections refuse writes and edits before the client starts; production writes and agents' writes ask.
+`sqlite3 -safe`. Markers split the output per statement and keep NULL, `''` and `'NULL'` apart; a worker
+decodes and reads it, never the frame's thread, with a bar and Cancel after 300 ms (#38). Passwords are never
+kept: `~/.pgpass` and `~/.my.cnf` work, else the person types one per session. Read-only connections refuse
+writes and edits before the client starts; production writes and agents' writes ask.
 
 | Permission | Why |
 | --- | --- |
@@ -26,9 +26,9 @@ connections refuse writes and edits before the client starts; production writes 
 
 | Files | Purpose |
 | --- | --- |
-| `ui/sql/`, `ui/editor/`, `ui/engines/`, `ui/schema/` | Lexer, statements, quoting; highlighting, completion, format, parameters; per engine: client arguments and output, objects, parts and DDL |
+| `ui/sql/`, `ui/editor/`, `ui/engines/`, `ui/output/`, `ui/schema/` | Lexer, statements, quoting; highlighting, completion, format, parameters; per engine: client arguments, its output (the worker's), objects, parts and DDL |
 | `ui/edit/`, `ui/edits.js` | Pending changes, their SQL and the one transaction they run in |
-| `ui/explain/`, `export.js`, `results.js`, `run.js`, `clients.js`, `execute.js`, `catalog.js` | Plan trees; copy and export formats; processes, clients, checks before a run, the catalog |
+| `ui/explain/`, `export.js`, `results.js`, `run.js`, `output-*.js`, `clients.js`, `execute.js`, `catalog.js` | Plan trees; copy and export formats; processes and the result worker, clients, checks before a run, the catalog |
 | `ui/consoles.js`, `console-run.js`, `pages.js`, `tools.js` | Consoles, runs, paging, history and stars, DDL |
 | `ui/database.js`, `commands.js`, `view*.js`, `keys.js`, `*.css` | Controller, commands, DOM, keys, the look |
 | `ui/drops.js`, `dropped.js`, `dnd.js`, `import*.js` | What a drop does and carries out, what rows and tables drag, the import |

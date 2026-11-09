@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <title>Database</title>
     <script type="importmap">
-      { "imports": { "@endue-ai/plugin-sdk": "/_desk/plugin-sdk.js" } }
+      { "imports": { "@endue-ai/plugin-sdk": "/_desk/plugin-sdk.js", "@endue-ai/ui": "/_desk/ui.js" } }
     </script>
     <link rel="stylesheet" href="/_desk/tokens.css" />
     <link rel="stylesheet" href="/_desk/base.css" />
@@ -33,6 +33,7 @@
         <button type="button" data-act="exportTo" title="Export the result to a file in ~/Downloads" class="desk-btn desk-btn-quiet">Export…</button>
       </nav>
       <span id="busy" role="img" aria-label="Running" hidden>…</span>
+      <desk-progress id="reading" label="Reading the results" cancelable hidden></desk-progress>
     </header>
     <main>
       <aside id="side" aria-label="Connections">

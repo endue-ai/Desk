@@ -11,6 +11,7 @@ import { createDatabaseDrops } from "../ui/dnd.js";
 import type { Connection } from "../ui/engines/common.js";
 import type { Node } from "../ui/explorer.js";
 import type { FormModel, PasswordModel } from "../ui/manage.js";
+import { inProcessOutput } from "./output";
 
 type Options = Parameters<typeof createTestHost>[0];
 export type Handlers = NonNullable<Options["handlers"]>;
@@ -262,7 +263,10 @@ export async function mount(
   await defineUiPlugin(
     {
       mount(ctx) {
-        app = createDatabase(ctx, view, { random: () => ((ids++ * 7) % 36) / 36 });
+        app = createDatabase(ctx, view, {
+          random: () => ((ids++ * 7) % 36) / 36,
+          output: inProcessOutput,
+        });
         createDatabaseDrops(ctx, app, view);
       },
     },

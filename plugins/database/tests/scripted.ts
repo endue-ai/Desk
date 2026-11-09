@@ -6,6 +6,7 @@ import { createExecutor } from "../ui/execute.js";
 import { fromValues } from "../ui/settings.js";
 import { type Handlers, psqlRun, type Script, sqliteRun } from "./harness";
 import { nodeBridge } from "./node-bridge";
+import { inProcessOutput } from "./output";
 
 export interface Ran {
   command: string;
@@ -46,6 +47,7 @@ export function scriptedExecutor(
   const settings = fromValues({});
   const executor = createExecutor({
     runner: runner as never,
+    output: inProcessOutput(),
     clients,
     settings: () => settings,
     confirm: async (title: string) => {
