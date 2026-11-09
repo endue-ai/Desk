@@ -35,6 +35,24 @@ const plugins: Record<string, string> = {
   "endue.agents": join(repo, "plugins/agents"),
 };
 /** The shell page's ?many=<n> windows (#37): the hello-ui page under test.many-1, test.many-2 … */
+/** Each fixture plugin's manifest `imports` by its plugin label: whose files its surfaces may load. */
+let importsByLabel: Map<string, string[]> | undefined;
+function importsOf(label: string): string[] {
+  importsByLabel ??= new Map(
+    Object.entries(plugins).map(([id, dir]) => [pluginLabel(id), manifestImports(dir)]),
+  );
+  return importsByLabel.get(label) ?? [];
+}
+
+function manifestImports(dir: string): string[] {
+  try {
+    const manifest = JSON.parse(readFileSync(join(dir, "plugin.json"), "utf8"));
+    return Array.isArray(manifest.imports) ? manifest.imports : [];
+  } catch {
+    return [];
+  }
+}
+
 const many = (id: string) =>
   /^test\.many-\d+$/.test(id) ? join(repo, "examples/plugin-hello-ui") : undefined;
 const sdk = join(repo, "packages/plugin-sdk/src/index.ts");
@@ -50,7 +68,7 @@ const desk: Record<string, string> = {
  * The app's plugin-frame CSP with this server's origins in place of the plugin scheme: the shared host
  * and every surface's, as `desk-plugin:` covers them all in the app.
  */
-const csp = readFileSync(join(repo, "apps/desk/src-tauri/src/plugin-csp.txt"), "utf8").trim();
+const csp = readFileSync(join(repo, "crates/desk-web/src/plugin-csp.txt"), "utf8").trim();
 export const pluginCsp = (port: string) =>
   csp.replaceAll(
     "{sources}",
@@ -105,8 +123,12 @@ export function pluginFiles(): Plugin {
         // As the app's scheme does: a host that names no surface is refused, and so is another
         // plugin's path on a surface's host.
         const host = hostOf(req.headers.host);
+        const asked = match?.[1] ?? "";
         const other =
-          match && host?.label !== undefined && host.label !== pluginLabel(match[1] ?? "");
+          match &&
+          host?.label !== undefined &&
+          host.label !== pluginLabel(asked) &&
+          !importsOf(host.label).includes(asked);
         if (!host || other) {
           res.statusCode = 403;
           res.end();

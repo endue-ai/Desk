@@ -2,7 +2,7 @@
 //! surface host of `desk-plugin` (#36), or nobody the desk knows. The CEF shell takes a bridge
 //! call's caller from this, never from the call (#43).
 
-use crate::plugin_host::PluginHost;
+use crate::plugin_scheme::hosts::Host;
 
 /// The runtime's caller id (desk-boot's `RUNTIME_CALLER`).
 pub const RUNTIME: &str = "desk";
@@ -33,8 +33,8 @@ impl Sender {
             .strip_prefix("desk-plugin://")
             .or_else(|| url.strip_prefix("http://desk-plugin."))
             .map(|rest| rest.split(['/', '?', '#', ':']).next().unwrap_or_default());
-        match host.and_then(PluginHost::parse) {
-            Some(PluginHost::Surface { plugin, .. }) => Self::Plugin(plugin),
+        match Host::parse(host) {
+            Some(Host::Surface { plugin, .. }) => Self::Plugin(plugin),
             _ => Self::Unknown,
         }
     }

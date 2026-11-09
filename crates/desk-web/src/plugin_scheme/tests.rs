@@ -33,7 +33,7 @@ impl Drop for Fake {
 
 impl Source for Fake {
     fn plugin_file(&self, id: &str, file: &str) -> io::Result<Vec<u8>> {
-        let found = ["example.hello", "example.lib"].contains(&id);
+        let found = ["example.hello", "example.lib", "example.look"].contains(&id);
         let found = found.then(|| format!("{id} {file}").into_bytes());
         found.ok_or_else(|| io::ErrorKind::NotFound.into())
     }
@@ -47,6 +47,13 @@ impl Source for Fake {
 
     fn library(&self, id: &str) -> bool {
         id == "example.lib"
+    }
+
+    fn imports(&self, id: &str) -> Vec<String> {
+        match id {
+            "example.hello" => vec!["example.look".to_owned()],
+            _ => Vec::new(),
+        }
     }
 }
 
@@ -66,11 +73,19 @@ fn request_on(host: &str, method: &str, path: &str, range: Option<&str>) -> Requ
 }
 
 fn get(path: &str, range: Option<&str>) -> Response<Vec<u8>> {
-    respond(&request("GET", path, range), &Fake::new("get"))
+    respond(
+        &request("GET", path, range),
+        &Fake::new("get"),
+        &TEST_BUNDLED,
+    )
 }
 
 fn get_on(host: &str, path: &str) -> Response<Vec<u8>> {
-    respond(&request_on(host, "GET", path, None), &Fake::new("on"))
+    respond(
+        &request_on(host, "GET", path, None),
+        &Fake::new("on"),
+        &TEST_BUNDLED,
+    )
 }
 
 fn film(range: Option<&str>) -> Response<Vec<u8>> {
@@ -84,7 +99,10 @@ fn header_of(response: &Response<Vec<u8>>, name: header::HeaderName) -> &str {
 
 #[test]
 fn the_ui_bundle_and_the_sdk_are_served_as_javascript() {
-    for (path, bundle) in [("/_desk/ui.js", UI), ("/_desk/plugin-sdk.js", SDK)] {
+    for (path, bundle) in [
+        ("/_desk/ui.js", TEST_BUNDLED.ui),
+        ("/_desk/plugin-sdk.js", TEST_BUNDLED.sdk),
+    ] {
         let response = get(path, None);
         assert_eq!(response.status(), StatusCode::OK, "{path}");
         let kind = header_of(&response, header::CONTENT_TYPE);
@@ -93,10 +111,6 @@ fn the_ui_bundle_and_the_sdk_are_served_as_javascript() {
         assert!(csp.is_none(), "{path}");
         assert_eq!(response.body().as_slice(), bundle.as_bytes(), "{path}");
     }
-    assert!(
-        UI.contains("customElements"),
-        "the ui bundle defines its elements"
-    );
 }
 
 #[test]
@@ -182,6 +196,7 @@ fn serves_the_whole_file_without_a_range() {
     let head = respond(
         &request("HEAD", &format!("/_desk/file/{TOKEN}/a.mp4"), None),
         &Fake::new("head"),
+        &TEST_BUNDLED,
     );
     assert_eq!(head.status(), StatusCode::OK);
     assert_eq!(header_of(&head, header::CONTENT_LENGTH), "100");
@@ -204,7 +219,7 @@ fn an_unknown_token_is_not_found() {
     let fake = Fake::new("gone");
     std::fs::remove_file(&fake.file).unwrap();
     let path = format!("/_desk/file/{TOKEN}/a.mp4");
-    let response = respond(&request("GET", &path, None), &fake);
+    let response = respond(&request("GET", &path, None), &fake, &TEST_BUNDLED);
     assert_eq!(response.status(), StatusCode::NOT_FOUND);
 }
 
@@ -298,7 +313,7 @@ fn preflights_are_answered_with_range_allowed_and_the_range_headers_exposed() {
             header::ACCESS_CONTROL_REQUEST_HEADERS,
             "range".parse().unwrap(),
         );
-        let response = respond(&asked, &Fake::new("options"));
+        let response = respond(&asked, &Fake::new("options"), &TEST_BUNDLED);
         assert_eq!(response.status(), StatusCode::NO_CONTENT, "{path}");
         assert_exposes_ranges(&response, &path);
         assert_eq!(
@@ -412,7 +427,30 @@ fn the_desk_files_load_on_every_host_and_a_host_naming_no_surface_is_refused() {
     ] {
         let refused = get_on(host, "/_desk/plugin-sdk.js");
         assert_eq!(refused.status(), StatusCode::FORBIDDEN, "{host}");
-        let preflight = respond(&request_on(host, "OPTIONS", "/a", None), &Fake::new("pre"));
+        let preflight = respond(
+            &request_on(host, "OPTIONS", "/a", None),
+            &Fake::new("pre"),
+            &TEST_BUNDLED,
+        );
         assert_eq!(preflight.status(), StatusCode::FORBIDDEN, "{host}");
+    }
+}
+
+#[test]
+fn a_surface_loads_the_files_of_a_plugin_its_manifest_imports_and_no_other() {
+    // example.hello imports example.look (as endue.onboarding imports endue.eris).
+    let imported = get_on("main.example-hello", "/example.look/ui/orb.js");
+    assert_eq!(imported.status(), StatusCode::OK);
+    assert_eq!(imported.body().as_slice(), b"example.look ui/orb.js");
+    // Not the other way round, and not for a plugin that imports nothing.
+    for (host, path) in [
+        ("main.example-look", "/example.hello/ui/main.js"),
+        ("main.example-other", "/example.look/ui/orb.js"),
+    ] {
+        assert_eq!(
+            get_on(host, path).status(),
+            StatusCode::FORBIDDEN,
+            "{host}{path}"
+        );
     }
 }

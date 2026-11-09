@@ -1267,6 +1267,9 @@ pub struct PluginManifest {
     /// Everything the plugin may ask for. Each one is still granted by the person at first use.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub permissions: Option<Vec<Permission>>,
+    /// Other plugins whose files this plugin's pages load (`../../<id>/…`). Each surface has an origin of its own, so another plugin's files load on it only when named here; their code runs in this plugin's frames, as this plugin and under its grants. Libraries load everywhere without an entry (ADR 0049).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub imports: Option<Vec<PluginId>>,
     /// Surfaces a UI plugin can open. Only UI plugins declare surfaces.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub surfaces: Option<Vec<Surface>>,

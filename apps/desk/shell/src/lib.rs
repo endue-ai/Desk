@@ -4,10 +4,12 @@
 
 pub mod app;
 pub mod client;
+pub mod guard;
 pub mod host;
 #[cfg(target_os = "macos")]
 pub mod mac;
 pub mod paths;
+pub mod plugin_scheme;
 pub mod pump;
 pub mod renderer;
 pub mod scheme;

@@ -110,7 +110,7 @@ defineUiPlugin({
 
 ### サーフェスのオリジン
 
-サイトを分離するエンジンがウィンドウごとにプロセスを分けられるよう、サーフェスはそれぞれ専用のオリジンで読み込まれます。macOS と Linux では `desk-plugin://<surface>.<label>/<id>/<path>`、Windows では `http://desk-plugin.<surface>.<label>.localhost/<id>/<path>` です。`<surface>` はサーフェスの `id`（宣言がなければ `main`）、`<label>` はプラグイン ID の `-` をすべて二重にしてから `.` をひとつの `-` にしたもので、`example.my-plugin` は `example-my--plugin` になります。パスは `/<id>/` を保つので、相対 URL、`import.meta.url`、インポートマップの `/_desk/` パス、`fs.url` の URL はこれまでどおり解決されます。自分のオリジンで別のプラグインの ID の下のパスを求めると 403 が返ります（ライブラリは除く、ADR 0049）。URL はオリジンからではなく、相対パスから組み立ててください。
+サイトを分離するエンジンがウィンドウごとにプロセスを分けられるよう、サーフェスはそれぞれ専用のオリジンで読み込まれます。macOS と Linux では `desk-plugin://<surface>.<label>/<id>/<path>`、Windows では `http://desk-plugin.<surface>.<label>.localhost/<id>/<path>` です。`<surface>` はサーフェスの `id`（宣言がなければ `main`）、`<label>` はプラグイン ID の `-` をすべて二重にしてから `.` をひとつの `-` にしたもので、`example.my-plugin` は `example-my--plugin` になります。パスは `/<id>/` を保つので、相対 URL、`import.meta.url`、インポートマップの `/_desk/` パス、`fs.url` の URL はこれまでどおり解決されます。自分のオリジンで別のプラグインの ID の下のパスを求めると 403 が返ります（ライブラリ〔ADR 0049〕と、マニフェストの `imports` に挙げたプラグイン〔`"imports": ["endue.eris"]`〕は除く。その場合、そのコードはあなたのプラグインとして動きます）。URL はオリジンからではなく、相対パスから組み立ててください。
 
 ## 権限
 

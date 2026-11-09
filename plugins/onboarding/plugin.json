@@ -4,6 +4,7 @@
   "version": "0.2.0",
   "kind": "ui",
   "entry": "ui/index.html",
+  "imports": ["endue.eris"],
   "description": "The first run: Eris arrives, meets you, signs you in, switches the desk on, brings in the agents and builds the first screen with you.",
   "permissions": [
     { "permission": "audio:capture" },

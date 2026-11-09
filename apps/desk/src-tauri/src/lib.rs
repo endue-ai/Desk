@@ -4,7 +4,6 @@ mod commands;
 mod computer;
 mod crash;
 mod eris_window;
-mod file_urls;
 mod open_files;
 mod palette;
 mod palette_assets;

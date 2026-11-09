@@ -1,8 +1,10 @@
 //! What the desk's URL schemes answer, apart from any browser engine (ADR 0143).
 
 pub mod assets;
+pub mod file_urls;
+pub mod guard;
 pub mod mime;
-pub mod plugin_host;
+pub mod plugin_scheme;
 pub mod sender;
 pub mod wire;
 

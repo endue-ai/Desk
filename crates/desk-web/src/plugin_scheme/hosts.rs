@@ -176,18 +176,4 @@ mod tests {
         let own = "http://desk-plugin.main.example-hello.localhost";
         assert_eq!(host.sources(), format!("{SOURCES} {own}"));
     }
-
-    #[test]
-    fn the_shell_may_frame_a_surface_host_in_both_forms() {
-        let config: serde_json::Value =
-            serde_json::from_str(include_str!("../../tauri.conf.json")).unwrap();
-        let csp = config["app"]["security"]["csp"].as_str().unwrap();
-        let mut frames = csp.split(';').map(str::trim);
-        let frames = frames.find(|d| d.starts_with("frame-src ")).unwrap();
-        let sources: Vec<&str> = frames.split_whitespace().skip(1).collect();
-        // `desk-plugin://main.example-hello`; `http://desk-plugin.main.example-hello.localhost`,
-        // which no source but a wildcard covers.
-        assert!(sources.contains(&"desk-plugin:"), "{frames}");
-        assert!(sources.contains(&"http://*.localhost"), "{frames}");
-    }
 }

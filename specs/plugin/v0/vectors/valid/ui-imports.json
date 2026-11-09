@@ -1,0 +1,11 @@
+{
+  "target": "PluginManifest",
+  "description": "a UI plugin whose pages load another plugin's files",
+  "instance": {
+    "id": "endue.onboarding",
+    "version": "0.2.0",
+    "kind": "ui",
+    "entry": "ui/index.html",
+    "imports": ["endue.eris"]
+  }
+}

@@ -148,7 +148,8 @@ de la surface (`main` si vous n'en déclarez aucune) ; `<label>` est l'id de vot
 doublé, puis chaque `.` écrit comme un seul `-` : `example.my-plugin` devient `example-my--plugin`. Le
 chemin garde `/<id>/`, si bien que les URL relatives, `import.meta.url`, les chemins `/_desk/` de l'import
 map et les URL de `fs.url` se résolvent comme avant. Sur votre origine, un chemin sous l'id d'un autre
-plugin répond 403, sauf celui d'une bibliothèque (ADR 0049). Construisez les URL à partir de chemins
+plugin répond 403, sauf celui d'une bibliothèque (ADR 0049) et ceux des plugins que votre manifeste nomme
+dans `imports` (`"imports": ["endue.eris"]`), dont le code s'exécute alors comme le vôtre. Construisez les URL à partir de chemins
 relatifs, jamais à partir de l'origine.
 
 ## Permissions

@@ -26,6 +26,7 @@ desk-core.workspace = true
 desk-computer = { path = "../../../crates/desk-computer" }
 desk-trace.workspace = true
 desk-update = { workspace = true, features = ["https"] }
+desk-web.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 # macos-private-api: the floating Eris window is transparent around her (ADR 0121).

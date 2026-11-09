@@ -81,6 +81,7 @@ fn main() -> ExitCode {
     }
     let desk = boot(origin);
     let (desk, events) = desk;
+    desk_shell::plugin_scheme::register(std::sync::Arc::clone(&desk.core));
     let target = EventTarget::default();
     host::forward_events(events, target.clone());
     let mut shell = Shell::new(pump, desk, target, paths::start_url());

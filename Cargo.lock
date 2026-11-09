@@ -1564,6 +1564,7 @@ dependencies = [
  "desk-core",
  "desk-trace",
  "desk-update",
+ "desk-web",
  "objc2-app-kit 0.3.2",
  "serde",
  "serde_json",
@@ -1790,6 +1791,7 @@ dependencies = [
  "desk-core",
  "desk-trace",
  "desk-web",
+ "http",
  "objc2 0.6.5",
  "objc2-app-kit 0.3.2",
  "objc2-foundation 0.3.2",
@@ -1864,6 +1866,9 @@ version = "0.0.0"
 name = "desk-web"
 version = "0.0.0"
 dependencies = [
+ "desk-bridge",
+ "desk-core",
+ "http",
  "serde",
  "serde_json",
  "tempfile",

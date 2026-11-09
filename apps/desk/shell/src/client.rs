@@ -49,10 +49,15 @@ wrap_client! {
     pub struct MainClient {
         life_span: LifeSpanHandler,
         display: DisplayHandler,
+        requests: RequestHandler,
         desk: Arc<Desk>,
     }
 
     impl Client {
+        fn request_handler(&self) -> Option<RequestHandler> {
+            Some(self.requests.clone())
+        }
+
         fn on_process_message_received(
             &self,
             _browser: Option<&mut Browser>,
@@ -84,5 +89,10 @@ wrap_client! {
 
 /// The client of the main window's browser.
 pub fn main_client(pump: Pump, desk: Arc<Desk>) -> Client {
-    MainClient::new(MainLifeSpan::new(pump), MainDisplay::new(), desk)
+    MainClient::new(
+        MainLifeSpan::new(pump),
+        MainDisplay::new(),
+        crate::guard::Requests::new(),
+        desk,
+    )
 }

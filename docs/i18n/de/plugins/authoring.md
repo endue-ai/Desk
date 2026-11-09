@@ -148,7 +148,8 @@ Oberfläche (`main`, wenn Sie keine deklarieren); `<label>` ist Ihre Plugin-ID, 
 und danach jeder `.` als ein `-` geschrieben wird, aus `example.my-plugin` wird also `example-my--plugin`.
 Der Pfad behält `/<id>/`, daher lösen sich relative URLs, `import.meta.url`, die `/_desk/`-Pfade der
 Import-Map und die URLs von `fs.url` wie bisher auf. Auf Ihrem Origin antwortet ein Pfad unter der ID
-eines anderen Plugins mit 403, außer dem einer Bibliothek (ADR 0049). Bauen Sie URLs aus relativen Pfaden,
+eines anderen Plugins mit 403, außer dem einer Bibliothek (ADR 0049) und denen der Plugins, die Ihr Manifest
+unter `imports` nennt (`"imports": ["endue.eris"]`); deren Code läuft dann als Ihrer. Bauen Sie URLs aus relativen Pfaden,
 nie aus dem Origin.
 
 ## Berechtigungen

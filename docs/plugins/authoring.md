@@ -145,7 +145,8 @@ own process: `desk-plugin://<surface>.<label>/<id>/<path>` on macOS and Linux an
 `id` (`main` when you declare none); `<label>` is your plugin id with every `-` doubled and then every
 `.` written as one `-`, so `example.my-plugin` is `example-my--plugin`. The path keeps `/<id>/`, so
 relative URLs, `import.meta.url`, the import map's `/_desk/` paths and `fs.url` URLs resolve as before.
-On your origin a path under another plugin's id answers 403, except a library's (ADR 0049). Build
+On your origin a path under another plugin's id answers 403, except a library's (ADR 0049) and those of the
+plugins your manifest names in `imports` (`"imports": ["endue.eris"]`), whose code then runs as yours. Build
 URLs from relative paths, never from the origin.
 
 ## Permissions

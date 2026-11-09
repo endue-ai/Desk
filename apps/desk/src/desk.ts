@@ -26,9 +26,9 @@ phase("webview load", 0, booted);
 const root = document.getElementById("desk");
 if (!root) throw new Error("index.html has no #desk element");
 
-// Custom URL schemes look different on Windows (WebView2) than on macOS and Linux. Each plugin
-// surface loads on a host of its own (#36).
-const pluginUrl = deskPluginUrl(navigator.userAgent.includes("Windows"));
+// Custom URL schemes look different on Windows' WebView2 than on macOS and Linux; the CEF shell
+// serves `desk-plugin://` on every OS. Each plugin surface loads on a host of its own (#36).
+const pluginUrl = deskPluginUrl(shell === "tauri" && navigator.userAgent.includes("Windows"));
 
 const core = new BridgeClient(adapter());
 // Safe mode and the state files kept broken (ADR 0061), known before the shell mounts.

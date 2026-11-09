@@ -87,6 +87,18 @@ fn status_json() -> String {
     )
 }
 
+/// A `Content-Type` value as the MIME type and its charset, if it names one.
+pub fn split_mime(value: &str) -> (&str, Option<&str>) {
+    let mut parts = value.split(';').map(str::trim);
+    let mime = parts.next().unwrap_or_default();
+    let charset = parts.find_map(|p| {
+        p.split_once('=')
+            .filter(|(k, _)| k.trim().eq_ignore_ascii_case("charset"))
+            .map(|(_, v)| v.trim().trim_matches('"'))
+    });
+    (mime, charset)
+}
+
 wrap_scheme_handler_factory! {
     struct AppSchemeFactory {
         dist: Arc<PathBuf>,
@@ -142,7 +154,13 @@ wrap_resource_handler! {
             if let Some(response) = response {
                 response.set_status(reply.status as _);
                 response.set_status_text(Some(&reply.status_text().into()));
-                response.set_mime_type(Some(&reply.mime.as_str().into()));
+                // CEF takes the type and its charset apart: `text/html; charset=utf-8` as one
+                // MIME type would show the page as text.
+                let (mime, charset) = split_mime(&reply.mime);
+                response.set_mime_type(Some(&mime.into()));
+                if let Some(charset) = charset {
+                    response.set_charset(Some(&charset.into()));
+                }
                 for (name, value) in &reply.headers {
                     response.set_header_by_name(Some(&name.as_str().into()), Some(&value.as_str().into()), 1);
                 }
@@ -187,6 +205,20 @@ wrap_resource_handler! {
 #[cfg(test)]
 mod tests {
     use super::{answer, path_of};
+
+    #[test]
+    fn a_content_type_splits_into_its_mime_type_and_charset() {
+        use super::split_mime;
+        assert_eq!(
+            split_mime("text/html; charset=utf-8"),
+            ("text/html", Some("utf-8"))
+        );
+        assert_eq!(
+            split_mime("text/css;Charset=\"UTF-8\""),
+            ("text/css", Some("UTF-8"))
+        );
+        assert_eq!(split_mime("video/mp4"), ("video/mp4", None));
+    }
 
     #[test]
     fn paths_come_only_from_the_app_host() {

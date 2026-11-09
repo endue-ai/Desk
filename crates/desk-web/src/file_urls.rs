@@ -8,7 +8,7 @@ use std::fs::File;
 use std::io::{self, Read, Seek, SeekFrom};
 
 use desk_core::FileUrl;
-use tauri::http::{Response, StatusCode, header};
+use http::{Response, StatusCode, header};
 
 /// The longest part one response carries.
 pub const MAX_PART: u64 = 2 * 1024 * 1024;

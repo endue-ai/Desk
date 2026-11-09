@@ -1,0 +1,11 @@
+{
+  "target": "PluginManifest",
+  "description": "imports names plugins by id",
+  "instance": {
+    "id": "endue.onboarding",
+    "version": "0.2.0",
+    "kind": "ui",
+    "entry": "ui/index.html",
+    "imports": ["../endue.eris"]
+  }
+}

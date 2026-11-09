@@ -110,7 +110,7 @@ defineUiPlugin({
 
 ### 表面的源
 
-每个表面都在自己的源上加载，这样按站点隔离的引擎就能让每个窗口各占一个进程：macOS 和 Linux 上是 `desk-plugin://<surface>.<label>/<id>/<path>`，Windows 上是 `http://desk-plugin.<surface>.<label>.localhost/<id>/<path>`。`<surface>` 是表面的 `id`（未声明时为 `main`）；`<label>` 是把插件 id 中的每个 `-` 写成两个、再把每个 `.` 写成一个 `-` 得到的结果，因此 `example.my-plugin` 变为 `example-my--plugin`。路径仍保留 `/<id>/`，所以相对 URL、`import.meta.url`、导入映射中的 `/_desk/` 路径和 `fs.url` 的 URL 都照旧解析。在你的源上请求其他插件 id 下的路径会得到 403，库除外（ADR 0049）。请用相对路径构造 URL，不要从源拼接。
+每个表面都在自己的源上加载，这样按站点隔离的引擎就能让每个窗口各占一个进程：macOS 和 Linux 上是 `desk-plugin://<surface>.<label>/<id>/<path>`，Windows 上是 `http://desk-plugin.<surface>.<label>.localhost/<id>/<path>`。`<surface>` 是表面的 `id`（未声明时为 `main`）；`<label>` 是把插件 id 中的每个 `-` 写成两个、再把每个 `.` 写成一个 `-` 得到的结果，因此 `example.my-plugin` 变为 `example-my--plugin`。路径仍保留 `/<id>/`，所以相对 URL、`import.meta.url`、导入映射中的 `/_desk/` 路径和 `fs.url` 的 URL 都照旧解析。在你的源上请求其他插件 id 下的路径会得到 403，库（ADR 0049）和清单 `imports` 中列出的插件（`"imports": ["endue.eris"]`）除外，这些代码随后以你的插件身份运行。请用相对路径构造 URL，不要从源拼接。
 
 ## 权限
 
