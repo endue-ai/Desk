@@ -39,6 +39,12 @@ wit-parser = { version = "0.263", default-features = false, features = ["std"] }
 yaml_serde = "0.10"
 # bundled: SQLite is compiled in, with FTS5 and the JSON functions (desk-index, desk-memory).
 rusqlite = { version = "0.41", default-features = false, features = ["bundled", "functions"] }
+# desk-compositor. wgpu stays on 30: the `cef` crate's accelerated_osr imports textures as wgpu 30 types.
+wgpu = "30"
+glam = "0.30"
+bytemuck = { version = "1", features = ["derive"] }
+pollster = "0.4"
+png = "0.18"
 
 [workspace.lints.rust]
 unsafe_code = "deny"

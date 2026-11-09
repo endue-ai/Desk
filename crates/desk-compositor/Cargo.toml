@@ -1,0 +1,25 @@
+[package]
+name = "desk-compositor"
+description = "The desk's compositor: a retained wgpu scene of wallpaper, chrome rectangles and surface quads, drawn on damage, with hit testing; renders into any texture view, headless in tests."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+wgpu.workspace = true
+glam.workspace = true
+bytemuck.workspace = true
+pollster.workspace = true
+
+[dev-dependencies]
+png.workspace = true
+
+[[bench]]
+name = "compose"
+harness = false
+
+[lints]
+workspace = true
