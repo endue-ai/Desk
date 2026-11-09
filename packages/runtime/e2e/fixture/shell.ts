@@ -17,7 +17,10 @@
 // signed in with the sample account (ADR 0130); ?account=signedout starts signed out. ?many=<n>
 // (with ?plugins=1) adds n more centre windows, test.many-1 to test.many-<n>, each the hello-ui page
 // whose count lives in desk:state, for the live budget (#37). With ?files=1 and ?apps=1, ?heavy=1
-// adds a long note and a large image (heavy-files.ts, #38). Never shipped.
+// adds a long note and a large image (heavy-files.ts, #38). ?hang=1 adds test.hang, a window whose
+// frame stops answering the desk on command and whose net.fetch the core never answers (#39);
+// ?hang=late wedges it once mounted and ?hang=stopped stops it once late (for screenshots). Never
+// shipped.
 import type { PluginManifest } from "@endue-ai/bridge";
 import "../../src/desk.css";
 import "../../src/shell/styles";
@@ -98,6 +101,13 @@ const terminal: PluginManifest = {
 };
 const apps = Object.values(manifests).filter((m) => m.id === "endue.notes");
 const files = params.has("heavy") ? await heavyHandlers(fileHandlers) : fileHandlers;
+const hang: PluginManifest = {
+  id: "test.hang",
+  version: "0.1.0",
+  kind: "ui",
+  entry: "ui/index.html",
+  surfaces: [{ id: "main", title: "Hang", placement: "center" }],
+};
 // The account's events go out on the core stub, as the core's account.changed does.
 const account = params.has("account")
   ? accountStub((event) => core.stub.emit(event), {
@@ -124,6 +134,7 @@ const core = browserCore({
       ? Object.values(manifests).filter((m) => m.kind === "design-system")
       : []),
     ...(params.has("apps") ? [...apps, terminal] : []),
+    ...(params.has("hang") ? [hang] : []),
     ...(params.has("files")
       ? Object.values(manifests).filter((m) => ["endue.images", "endue.explorer"].includes(m.id))
       : []),
@@ -131,6 +142,8 @@ const core = browserCore({
   handlers: {
     ...(params.has("files") ? files : {}),
     ...(account ? account.handlers : {}),
+    // A slow call: the network that never answers.
+    ...(params.has("hang") ? { "net.fetch": () => new Promise<never>(() => {}) } : {}),
   },
   store: params.has("persist") ? localStore("desk.core.") : memoryStore(),
   // The desk folder (~/.desk: keys.yaml, saved profiles) survives a reload with ?persist=1 too.
@@ -254,5 +267,16 @@ if (params.has("say")) {
       input.dispatchEvent(new KeyboardEvent("keydown", { key }));
     // Once her answer is in, run her clock until she says it.
     setTimeout(() => step(2500), 100);
+  });
+}
+
+// ?hang=late: test.hang stops answering once the desk watches it; ?hang=stopped: and is stopped
+// once its window says it is not responding (#39).
+const hangMode = params.get("hang");
+if (hangMode === "late" || hangMode === "stopped") {
+  desk.runtime.frames.onChange((id, state) => {
+    if (id !== "test.hang") return;
+    if (state === "responding") desk.runtime.plugins?.command(id, "wedge");
+    if (state === "late" && hangMode === "stopped") desk.runtime.frames.stop(id);
   });
 }

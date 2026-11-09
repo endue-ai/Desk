@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>test hang</title>
+    <script type="importmap">
+      { "imports": { "@endue-ai/plugin-sdk": "/_desk/plugin-sdk.js" } }
+    </script>
+    <script>
+      // Before the SDK loads: once wedged, this frame no longer takes the desk's pings, as a page
+      // whose message loop is stuck would, while the desk's page stays free (#39). A busy loop
+      // would stall the desk too on the current engine; Stage 1 (#44) reads the renderer instead.
+      window.wedged = false;
+      window.addEventListener(
+        "message",
+        (event) => {
+          if (window.wedged && event.data?.type === "desk:ping") event.stopImmediatePropagation();
+        },
+        true,
+      );
+    </script>
+    <style>
+      body { margin: 0; padding: 12px; background: var(--desk-card); color: var(--desk-text); }
+      p { margin: 0 0 8px; }
+    </style>
+  </head>
+  <body>
+    <!-- A test-only plugin (#39): a count it keeps with ctx.state, a button (or the desk command
+         "wedge") that makes it stop answering the desk, and one that waits on a bridge call the
+         core never answers. -->
+    <p>Count: <span data-testid="count">0</span></p>
+    <p>
+      <button type="button" data-testid="add">Add</button>
+      <button type="button" data-testid="wedge">Stop answering</button>
+      <button type="button" data-testid="slow">Slow call</button>
+    </p>
+    <p data-testid="call">loading</p>
+    <script type="module">
+      import { defineUiPlugin } from "@endue-ai/plugin-sdk";
+
+      defineUiPlugin({
+        mount(ctx) {
+          const $ = (id) => document.querySelector(`[data-testid=${id}]`);
+          let count = ctx.state.get()?.count ?? 0;
+          $("count").textContent = String(count);
+          $("add").addEventListener("click", () => {
+            count += 1;
+            $("count").textContent = String(count);
+            ctx.state.set({ count });
+          });
+          const wedge = () => {
+            window.wedged = true;
+          };
+          $("wedge").addEventListener("click", wedge);
+          ctx.commands.on("wedge", wedge);
+          $("slow").addEventListener("click", async () => {
+            $("call").textContent = "waiting";
+            const scope = { permission: "net:fetch", hosts: ["slow.test"] };
+            const answer = await ctx.bridge
+              .call("net.fetch", { url: "https://slow.test/", scope })
+              .then(() => "answered", () => "failed");
+            $("call").textContent = answer;
+          });
+          $("call").textContent = "idle";
+        },
+      });
+    </script>
+  </body>
+</html>

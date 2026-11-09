@@ -15,6 +15,8 @@ const plugins: Record<string, string> = {
   "test.worker": here("./fixture/plugins/test-worker"),
   // Fails to start every time (safe-mode.html, ADR 0061).
   "test.throws": here("./fixture/plugins/test-throws"),
+  // Stops answering the desk on command (shell.html?hang=1, #39).
+  "test.hang": here("./fixture/plugins/test-hang"),
   "test.theme": here("./themes/test-theme"),
   // Another provider of role:dock on the edges page (ADR 0104) is the counter under another id.
   "test.dock": here("./fixture/plugins/test-counter"),

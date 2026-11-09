@@ -3,14 +3,18 @@
  * plugin host: which surfaces count (centre and floating ones, the windows), when one is visible (on
  * the page, shown, and not hidden by a window host's windows), the order they were focused in (the
  * live budget's, ADR 0134), the two settings, asking the plugin for its state and the placeholder
- * that stands in for the frame.
+ * that stands in for the frame. Every surface's frame is also watched for answers (#39,
+ * `watch.ts`); one the person stopped stays unloaded, in sight or not, until they reload it.
  */
 import { LIVE_SURFACES } from "../core/defaults";
 import type { DeskContext } from "../policies/context";
+import type { Lang } from "../shell/copy";
 import type { SurfaceSpec } from "../surfaces";
+import { defineFrameCommands } from "./commands";
 import { placeholder } from "./placeholder";
 import { type FrameCounts, FramePolicy, type FrameTimers, realTimers } from "./policy";
 import { askState, SURFACE_STATE } from "./state";
+import { type FrameResponses, watchFrames } from "./watch";
 
 export { LIVE_SURFACES };
 export const UNLOAD_AFTER = "desk.display.unload-after";
@@ -44,6 +48,8 @@ export interface FramesDeps {
   windows?: WindowVisibility;
   host(): FrameHost | undefined;
   timers?: FrameTimers;
+  /** The language of the Not responding window and its commands (#39); Korean by default. */
+  lang?: Lang;
 }
 
 export interface Frames {
@@ -58,6 +64,8 @@ export interface Frames {
   wake(id: string): boolean;
   /** The windows' frames loaded in sight and out of it and asleep, and the budget in force. */
   counts(): FrameCounts & { budget: number };
+  /** Whether each frame answers the desk, with Wait, Stop and Reload (#39). */
+  readonly responses: FrameResponses;
   dispose(): void;
 }
 
@@ -72,6 +80,8 @@ export function installFrames(
   const specs = new Map<string, SurfaceSpec>();
   /** When each frame loaded again, for LOADING_MS. */
   const loaded = new Map<string, number>();
+  /** The surfaces the unload policy counts: the windows. */
+  const windowed = new Set<string>();
   /** A setting's value when it is a number of 0 or more, else desk.display's default. */
   const setting = (key: keyof typeof DEFAULTS) => {
     const value = settings.get<unknown>(key, DEFAULTS[key]);
@@ -133,16 +143,33 @@ export function installFrames(
     windows?.onChange?.(changed),
   ];
   win.addEventListener("resize", changed);
+  const watch = watchFrames(ctx, {
+    host: deps.host,
+    timers,
+    lang: deps.lang ?? "ko",
+    title: (id) => specs.get(id)?.title ?? id,
+    // A stopped frame is the person's to load again: the policy neither counts nor loads it.
+    stopped: (id) => policy.untrack(id),
+    reloaded: (id) => {
+      if (windowed.has(id)) policy.track(id);
+      changed();
+    },
+  });
+  offs.push(defineFrameCommands(ctx.hub.commands, watch.responses, deps.lang ?? "ko"));
   const frames: Frames = {
-    opened(spec, windowed) {
-      if (!windowed && spec.placement !== "center" && spec.placement !== "floating") return;
+    opened(spec, inWindow) {
       specs.set(spec.id, spec);
+      watch.track(spec.id);
+      if (!inWindow && spec.placement !== "center" && spec.placement !== "floating") return;
+      windowed.add(spec.id);
       policy.track(spec.id);
       changed();
     },
     closed(id) {
       specs.delete(id);
       loaded.delete(id);
+      windowed.delete(id);
+      watch.untrack(id);
       policy.untrack(id);
       changed();
     },
@@ -151,11 +178,14 @@ export function installFrames(
       if (id !== null) policy.focused(id);
       changed();
     },
-    wake: (id) => policy.wake(id),
+    // A stopped frame loads only from its Reload: what waits on it waits for that.
+    wake: (id) => watch.responses.state(id) !== "stopped" && policy.wake(id),
     counts: () => ({ ...policy.counts(), budget: Math.floor(setting(LIVE_SURFACES)) }),
+    responses: watch.responses,
     dispose() {
       for (const off of offs) off?.();
       win.removeEventListener("resize", changed);
+      watch.dispose();
       policy.dispose();
     },
   };

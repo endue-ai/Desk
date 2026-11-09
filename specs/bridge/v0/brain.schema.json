@@ -105,16 +105,22 @@
       "additionalProperties": false
     },
     "BrainDeskPane": {
-      "description": "A pane of a window: the view it shows (plugin:<id>, launcher, an item view), the plugin that draws it, its title for people, and whether it is the pane in use.",
+      "description": "A pane of a window: the view it shows (plugin:<id>, launcher, an item view), the plugin that draws it, its title for people, whether it is the pane in use, and whether that plugin's frame stopped answering the desk.",
       "type": "object",
       "properties": {
         "view": { "type": "string", "minLength": 1, "maxLength": 256 },
         "plugin": { "$ref": "../../plugin/v0/plugin.schema.json#/$defs/PluginId" },
         "title": { "type": "string", "maxLength": 200 },
-        "focused": { "type": "boolean" }
+        "focused": { "type": "boolean" },
+        "responsiveness": { "$ref": "#/$defs/BrainDeskResponsiveness" }
       },
       "required": ["view"],
       "additionalProperties": false
+    },
+    "BrainDeskResponsiveness": {
+      "description": "How a pane's plugin frame answers the desk (#39), absent while it answers: late, it has not answered for 5 seconds and its window shows Not responding with Wait and Stop (desk.frames.wait, desk.frames.stop); stopped, it was stopped and its window offers Reload (desk.frames.reload).",
+      "type": "string",
+      "enum": ["late", "stopped"]
     },
     "BrainDeskClosed": {
       "description": "A window closed recently (ADR 0124): its id, the plugin and title of what it showed, where it was in CSS pixels as for a window on its desktop, whether it floated, the desktop it was on (absent: it was in the drawer, or that desktop is gone) and when it closed.",

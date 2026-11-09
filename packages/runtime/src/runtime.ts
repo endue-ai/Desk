@@ -170,7 +170,7 @@ export function createRuntime(options: RuntimeOptions): Runtime {
       surfaces.get(id)?.focus();
     }
   };
-  const { views } = options;
+  const { views, windows, language } = options;
   // Set once desk.buffers is installed: which ids are the host's views.
   let routing: ViewRouting = { owns: () => false, dispose: () => {} };
   const focusAny = (id: string | null) => {
@@ -187,8 +187,8 @@ export function createRuntime(options: RuntimeOptions): Runtime {
     ],
     focused: () => shortcuts.focused ?? views?.focused() ?? null,
   });
-  // Centre and floating surfaces out of sight are unloaded, their state kept (ADR 0070).
-  const frames = installFrames(ctx, { windows: options.windows, host: () => pluginHost });
+  // Windows out of sight are unloaded, their state kept (ADR 0070); every frame is watched (#39).
+  const frames = installFrames(ctx, { windows, host: () => pluginHost, lang: language });
   focusMoved = (id) => frames.focused(id);
   const buffers = installBuffers(ctx, { focus: focusAny });
   routing = connectViews(views, buffers);
@@ -345,6 +345,7 @@ export function createRuntime(options: RuntimeOptions): Runtime {
     settingsWindow,
     keymap: keys.keymap,
     buffers: buffers.buffers,
+    frames: frames.responses,
     profiles: {
       active: () => profiles.active(),
       list: () => profiles.list(),

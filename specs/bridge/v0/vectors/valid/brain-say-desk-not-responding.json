@@ -1,0 +1,48 @@
+{
+  "target": "BridgeRequest",
+  "description": "a line said while Notes does not answer the desk and Git was stopped (#39)",
+  "instance": {
+    "id": 32,
+    "method": "brain.say",
+    "params": {
+      "text": "why is notes frozen?",
+      "desk": {
+        "screen": { "w": 1440, "h": 900 },
+        "windows": [
+          {
+            "id": "notes",
+            "x": 40,
+            "y": 60,
+            "w": 640,
+            "h": 420,
+            "focused": true,
+            "panes": [
+              {
+                "view": "plugin:endue.notes",
+                "plugin": "endue.notes",
+                "title": "Notes",
+                "responsiveness": "late"
+              }
+            ]
+          },
+          {
+            "id": "window-2",
+            "x": 720,
+            "y": 60,
+            "w": 680,
+            "h": 760,
+            "panes": [
+              {
+                "view": "plugin:endue.git",
+                "plugin": "endue.git",
+                "title": "Git",
+                "responsiveness": "stopped"
+              }
+            ]
+          }
+        ]
+      },
+      "scope": { "permission": "brain:converse" }
+    }
+  }
+}

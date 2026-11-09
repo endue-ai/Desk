@@ -8,7 +8,9 @@
 //! gives the same words (desk_context_parts.rs). The person's line follows as its own part.
 
 use desk_brain::{TextPart, UserMessage};
-use desk_bridge::{BrainDesk, BrainDeskDesktop, BrainDeskPane, BrainDeskWindow};
+use desk_bridge::{
+    BrainDesk, BrainDeskDesktop, BrainDeskPane, BrainDeskResponsiveness, BrainDeskWindow,
+};
 
 #[path = "desk_context_parts.rs"]
 mod parts;
@@ -175,18 +177,27 @@ fn line(window: &BrainDeskWindow, place: Option<&str>) -> String {
     text
 }
 
-/// A pane: its title and plugin, or the view it shows.
+/// A pane: its title and plugin, or the view it shows; whether it is in use, and whether its
+/// plugin's frame stopped answering (#39), with the command that acts on it.
 fn pane(pane: &BrainDeskPane) -> String {
-    let what = match (pane.title.as_deref(), pane.plugin.as_deref()) {
+    let mut text = match (pane.title.as_deref(), pane.plugin.as_deref()) {
         (title, Some(plugin)) => what(title, Some(plugin)).unwrap_or_default(),
         (Some(title), None) if !title.is_empty() => format!("{title} [{}]", pane.view),
         _ => pane.view.clone(),
     };
     if pane.focused == Some(true) {
-        format!("{what} [in use]")
-    } else {
-        what
+        text.push_str(" [in use]");
     }
+    match pane.responsiveness {
+        Some(BrainDeskResponsiveness::Late) => {
+            text.push_str(" [not responding: desk.frames.wait or desk.frames.stop]");
+        }
+        Some(BrainDeskResponsiveness::Stopped) => {
+            text.push_str(" [stopped: desk.frames.reload]");
+        }
+        None => {}
+    }
+    text
 }
 
 /// Where on the screen a window's middle is, in words: left, centre or right, and top, middle or
@@ -238,6 +249,7 @@ mod tests {
                 plugin: plugin.map(str::to_owned),
                 title: plugin.map(|p| p.trim_start_matches("endue.").to_owned()),
                 focused: None,
+                responsiveness: None,
             }],
         }
     }
@@ -306,6 +318,19 @@ mod tests {
         assert!(text.contains(
             "x.y tools: t0, t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11 and 3 more (desk-tools)\n"
         ));
+    }
+
+    #[test]
+    fn a_pane_whose_frame_stopped_answering_says_so_and_names_what_acts_on_it() {
+        let mut notes = window("notes", (40, 60, 600, 400), Some("endue.notes"));
+        notes.panes[0].responsiveness = Some(BrainDeskResponsiveness::Late);
+        let mut git = window("git", (720, 60, 680, 760), Some("endue.git"));
+        git.panes[0].responsiveness = Some(BrainDeskResponsiveness::Stopped);
+        let text = render(&desk(vec![notes, git]), &|_| Vec::new());
+        assert!(text.contains(
+            "- notes: notes (endue.notes) [not responding: desk.frames.wait or desk.frames.stop], "
+        ));
+        assert!(text.contains("- git: git (endue.git) [stopped: desk.frames.reload], "));
     }
 
     #[test]

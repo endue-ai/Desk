@@ -3,14 +3,15 @@
  * of the desktop in front first (front to back), then the drawer's, then the other desktops' in
  * their order, each where it is on screen (when its desktop is in front), whether it floats, has
  * the focus or waits in the drawer, the desktop it is on and the panes it shows with the plugin that
- * draws each; the desktops, the current one marked; the windows closed recently; and what the person
- * can do, in short. The composer sends it with every line (brain.say's `desk`), and
+ * draws each, and whether that plugin's frame stopped answering (#39); the desktops, the current one
+ * marked; the windows closed recently; and what the person can do, in short. The composer sends it with every line (brain.say's `desk`), and
  * desk.windows.list answers it to an agent in the middle of a turn.
  */
 import type { BrainDesk, BrainDeskPane, BrainDeskWindow } from "@endue-ai/bridge";
 import { closedForBrain, int, LIMITS, PLUGIN_ID, type Size } from "../eris-context/brain";
 import { mountErisContext } from "../eris-context/mount";
 import { contextOf } from "../eris-context/registry";
+import type { FrameResponses } from "../frames/watch";
 import type { DesktopId, SurfacePlacement } from "../modes/types";
 import { appSize, screenRect } from "../surface/coordinates";
 import { zOf } from "../surface/cover";
@@ -34,8 +35,11 @@ function stack(s: DeskState, desktop: DesktopId, focused: string | null): Surfac
     .map(({ p }) => p);
 }
 
+/** What the snapshot reads: the shell's state and copy, and the runtime's frames when it has one. */
+type Seen = Titled & { runtime?: { frames?: Pick<FrameResponses, "state"> } };
+
 /** The desk now: every desktop's windows, the drawer's, the desktops, the closed and what can be done. */
-export function deskSnapshot(ctx: Titled, size: Size = appSize()): BrainDesk {
+export function deskSnapshot(ctx: Seen, size: Size = appSize()): BrainDesk {
   const s = ctx.store.get();
   const here = desktopId(s);
   const list = desktopsOf(s);
@@ -70,7 +74,7 @@ export function deskSnapshot(ctx: Titled, size: Size = appSize()): BrainDesk {
 }
 
 function windowOf(
-  ctx: Titled,
+  ctx: Seen,
   s: DeskState,
   p: SurfacePlacement,
   size: Size,
@@ -88,11 +92,14 @@ function windowOf(
     const title = plugin
       ? (s.adopted.find((a) => a.id === plugin)?.title ?? plugin)
       : surfaceTitle(ctx, leaf.view);
+    // A plugin frame that stopped answering says so, for Eris to act on (#39).
+    const answers = plugin ? ctx.runtime?.frames?.state(plugin) : undefined;
     return {
       view: view.slice(0, 256),
       ...(plugin ? { plugin } : {}),
       ...(title ? { title: title.slice(0, LIMITS.title) } : {}),
       ...(leaf.id === inUse ? { focused: true } : {}),
+      ...(answers === "late" || answers === "stopped" ? { responsiveness: answers } : {}),
     };
   });
   return {
@@ -122,7 +129,7 @@ export function defineDeskView(ctx: ShellCtx): () => void {
       run: () => deskSnapshot(ctx),
       agent: {
         description:
-          "What the person sees on the desk now: the screen size and every window, those of the desktop in front first (the focused one first), then those put away in the drawer, then those of the other desktops with the desktop each is on; each with where it is in CSS pixels, whether it floats, and the panes it shows with the plugin that draws each. Also the desktops (the current one marked), the windows closed recently and a summary of what the person can do. Look again after opening or moving something.",
+          "What the person sees on the desk now: the screen size and every window, those of the desktop in front first (the focused one first), then those put away in the drawer, then those of the other desktops with the desktop each is on; each with where it is in CSS pixels, whether it floats, and the panes it shows with the plugin that draws each and whether that plugin stopped answering (responsiveness: late or stopped, which desk.frames.wait, stop and reload act on). Also the desktops (the current one marked), the windows closed recently and a summary of what the person can do. Look again after opening or moving something.",
         readOnly: true,
       },
     }),

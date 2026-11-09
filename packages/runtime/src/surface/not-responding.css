@@ -1,0 +1,72 @@
+/* A frame that stopped answering (#39): the question sits over that surface's frame only, in the
+   frame's own grid cell (the bare desk's title row stays clear), and a stopped frame's placeholder
+   offers Reload. Both exist only while a frame is late or stopped, so render trees of a desk whose
+   frames answer do not change. */
+
+.desk-surface:has(> .desk-not-responding) > .desk-surface-frame,
+.desk-not-responding {
+  grid-row: -2 / -1;
+  grid-column: 1 / -1;
+}
+
+.desk-not-responding {
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  min-height: 0;
+  padding: var(--desk-space-4);
+  overflow: hidden;
+  background: var(--desk-dialog-scrim);
+}
+
+/* An overlay surface is not a grid: the question covers it whole. */
+.desk-surface--overlay > .desk-not-responding {
+  position: absolute;
+  inset: 0;
+}
+
+.desk-not-responding-card {
+  display: grid;
+  gap: var(--desk-space-2);
+  justify-items: center;
+  max-width: 360px;
+  padding: var(--desk-space-4) var(--desk-space-5);
+  color: var(--desk-text);
+  font-family: var(--desk-font-sans);
+  font-size: var(--desk-text-sm);
+  line-height: 20px;
+  text-align: center;
+  background: var(--desk-dialog-bg);
+  border: 1px solid var(--desk-dialog-border);
+  border-radius: var(--desk-dialog-radius);
+  box-shadow: var(--desk-dialog-shadow);
+}
+
+.desk-not-responding-card p {
+  margin: 0;
+}
+
+.desk-not-responding-title {
+  font-size: var(--desk-text-base);
+  font-weight: 600;
+}
+
+.desk-not-responding-line {
+  color: var(--desk-text-muted);
+}
+
+.desk-not-responding-actions {
+  display: flex;
+  gap: var(--desk-space-2);
+  margin-top: var(--desk-space-1);
+}
+
+.desk-surface-placeholder--stopped {
+  gap: var(--desk-space-2);
+  line-height: 20px;
+}
+
+.desk-surface-placeholder--stopped .desk-surface-reload {
+  margin-top: var(--desk-space-1);
+}

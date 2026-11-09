@@ -4425,7 +4425,7 @@ pub struct BrainDeskWindow {
     pub panes: Vec<BrainDeskPane>,
 }
 
-/// A pane of a window: the view it shows (plugin:<id>, launcher, an item view), the plugin that draws it, its title for people, and whether it is the pane in use.
+/// A pane of a window: the view it shows (plugin:<id>, launcher, an item view), the plugin that draws it, its title for people, whether it is the pane in use, and whether that plugin's frame stopped answering the desk.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct BrainDeskPane {
@@ -4436,6 +4436,17 @@ pub struct BrainDeskPane {
     pub title: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub focused: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub responsiveness: Option<BrainDeskResponsiveness>,
+}
+
+/// How a pane's plugin frame answers the desk (#39), absent while it answers: late, it has not answered for 5 seconds and its window shows Not responding with Wait and Stop (desk.frames.wait, desk.frames.stop); stopped, it was stopped and its window offers Reload (desk.frames.reload).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum BrainDeskResponsiveness {
+    #[serde(rename = "late")]
+    Late,
+    #[serde(rename = "stopped")]
+    Stopped,
 }
 
 /// A window closed recently (ADR 0124): its id, the plugin and title of what it showed, where it was in CSS pixels as for a window on its desktop, whether it floated, the desktop it was on (absent: it was in the drawer, or that desktop is gone) and when it closed.

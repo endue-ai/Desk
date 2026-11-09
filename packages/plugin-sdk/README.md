@@ -28,7 +28,7 @@ What a plugin imports. Layer: Plugins (`docs/architecture.md`). Guide: `docs/plu
   { path, scope }, { onProgress?, signal? })`: 2 MiB `Range` requests to `fs.url` (else `fs.read`);
   `byteSource(ctx, file)` (cached `read(offset, length)`), `startWorker(url)`, `fileHistory`, `restoreFile`.
 - `connect(transport?)`, `windowTransport()`, protocol and bridge types, `BridgeCallError`; one tick's calls leave
-  in one message; `desk:ready` or `desk:failed` (ADR 0061). Served at `/_desk/plugin-sdk.js`.
+  in one message; `desk:ready`/`desk:failed` (ADR 0061); `desk:ping` answered at import (#39); at `/_desk/plugin-sdk.js`.
 - `@endue-ai/plugin-sdk/testing`: `createTestHost({ pluginId, state?, restored?, handlers?, commands?,
   settings?, grants?, callers?, prompt?, now?, refuse?, files? })` runs a plugin on the stub core:
   `transport`, `calls`, `batches`, `state`, `closed`, `visible`, `ran`, `keys`, `settings`, `grants`, `logged`,

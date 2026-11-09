@@ -137,6 +137,10 @@ memory, and it loads again when it shows (ADR 0070). To come back as it was, reg
 to 64 KiB, and the reloaded page finds it in `surface.restored`. Without a provider it comes back cold;
 `state` above still comes back.
 
+The SDK answers the desk's pings (`desk:ping`) by itself from the moment it loads, so awaiting a slow
+call never looks like a hang; a frame that stops answering for 5 seconds gets "Not responding" with
+Wait and Stop on its window, and Reload brings it back with its last `state` (#39).
+
 ### Your surface's origin
 
 Each surface loads on an origin of its own, so an engine that isolates sites can give each window its

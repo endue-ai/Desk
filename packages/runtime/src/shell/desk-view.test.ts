@@ -59,6 +59,24 @@ describe("the desk Eris sees", () => {
     expect(notes).not.toHaveProperty("focused");
   });
 
+  it("says which plugin's frame stopped answering, late or stopped, and nothing of one that answers", () => {
+    const c = ctx();
+    const states: Record<string, string> = { "endue.git": "late", "endue.mail": "stopped" };
+    const frames = { state: (id: string) => states[id] ?? "responding" };
+    const seen = { ...c, runtime: { frames } as never };
+    adopt(c, [
+      ["endue.git", "Git"],
+      ["endue.notes", "Notes"],
+      ["endue.mail", "Mail"],
+    ]);
+    const panes = Object.fromEntries(
+      deskSnapshot(seen, SIZE).windows.map((w) => [w.id, w.panes[0]]),
+    );
+    expect(panes["endue.git"]).toMatchObject({ plugin: "endue.git", responsiveness: "late" });
+    expect(panes["endue.mail"]).toMatchObject({ plugin: "endue.mail", responsiveness: "stopped" });
+    expect(panes["endue.notes"]).not.toHaveProperty("responsiveness");
+  });
+
   it("puts floating windows in front and says they float", () => {
     const c = ctx();
     adopt(c, [

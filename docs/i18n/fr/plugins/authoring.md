@@ -139,6 +139,10 @@ quelle, enregistrez ce qu'il faut garder : `surface.onUnload(() => ({ open, care
 `ui.surface.state` du bureau avec un JSON d'au plus 64 Kio, et la page rechargée le retrouve dans
 `surface.restored`. Sans fournisseur, elle revient à froid ; `state` ci-dessus revient toujours.
 
+Le SDK répond de lui-même aux pings du bureau (`desk:ping`) dès son chargement : attendre un appel lent
+ne ressemble donc jamais à un blocage. Une frame qui ne répond plus pendant 5 secondes voit sa fenêtre
+afficher « Ne répond pas » avec Attendre et Arrêter, et Recharger la ramène avec son dernier `state` (#39).
+
 ### L'origine de votre surface
 
 Chaque surface se charge sur une origine qui lui est propre, pour qu'un moteur qui isole les sites puisse

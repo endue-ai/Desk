@@ -3,6 +3,7 @@ import type { ProfileContribution } from "@endue-ai/bridge";
 import type { Buffers } from "./buffers";
 import type { Commands } from "./commands";
 import type { Preferences } from "./core/preferences";
+import type { FrameResponses } from "./frames/watch";
 import type { ShortcutRouter } from "./input";
 import type { Keymap } from "./keymap";
 import type { Cell, Layout } from "./layout";
@@ -53,6 +54,8 @@ export interface Runtime {
   readonly keymap: Keymap;
   /** The buffer list (desk.buffers): plugin surfaces, their buffers and a host's views. */
   readonly buffers: Buffers;
+  /** Whether each plugin frame answers the desk, and Wait, Stop and Reload for one that does not (#39). */
+  readonly frames: FrameResponses;
   readonly profiles: RuntimeProfiles;
   /** Run when the person quits what is in progress (desk.keys.quit, Escape by default). */
   onQuit(handler: () => void): () => void;

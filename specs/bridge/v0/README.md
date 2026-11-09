@@ -291,9 +291,11 @@ and up to 64 windows, those of the desktop in front first (front to back), then 
 (`hidden`), then the other desktops' with the desktop each is on (`desktop`); the desktops in order,
 `current` marking the one in front; up to 20 windows closed recently, the last first (`closed`, which
 `desk.windows.reopen` brings back); and `capabilities`, how many commands the desk knows and can run
-now and the plugins that are on (`desk.capabilities` lists every command). The core words it before
-the line, each plugin on screen with its tools, within 8,192 characters: each part has its share and,
-cut short, ends with a line that names the command listing the rest.
+now and the plugins that are on (`desk.capabilities` lists every command). A pane whose plugin's frame
+stopped answering the desk says so (`responsiveness`, #39): `late` while its window shows Not
+responding (`desk.frames.wait`, `desk.frames.stop`), `stopped` once stopped (`desk.frames.reload`).
+The core words it before the line, each plugin on screen with its tools, within 8,192 characters:
+each part has its share and, cut short, ends with a line that names the command listing the rest.
 
 **brain.ask** asks the brain one question and returns a local `turnId` at once; the answer is the
 arguments the brain calls the caller's `tool` with (ADR 0059). `prompt` is everything the brain gets: the

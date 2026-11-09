@@ -18,6 +18,8 @@ export type PluginMessage =
   | { type: "desk:key"; key: KeyLike }
   | { type: "desk:ready" }
   | { type: "desk:failed"; message?: string }
+  /** The SDK's answer to `desk:ping`, which frames/watch.ts hears (#39). */
+  | { type: "desk:pong"; n: number }
   /** Drag and drop between frames, which dnd/ handles (ADR 0119). */
   | DndPluginMessage;
 

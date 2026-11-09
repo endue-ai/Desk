@@ -40,6 +40,8 @@ export type PluginMessage =
   | { type: "desk:ready" }
   /** The plugin failed to start: mount threw, or the frame did before ready. */
   | { type: "desk:failed"; message: string }
+  /** The answer to the desk's ping `n`, which the SDK sends by itself (`ping.ts`, #39). */
+  | { type: "desk:pong"; n: number }
   /** Drag and drop between frames (ADR 0119). */
   | DndPluginMessage;
 
@@ -56,6 +58,8 @@ export type HostMessage =
   | { type: "desk:event"; event: BridgeEvent }
   | { type: "desk:command"; name: string; args?: unknown; call?: number }
   | { type: "desk:theme"; theme: ThemeState }
+  /** Whether the frame still takes messages: the SDK answers it by itself (`ping.ts`), never the plugin. */
+  | { type: "desk:ping"; n: number }
   | DndHostMessage;
 
 /** The theme in force: its tokens as CSS custom properties, its fonts, and what the person asked for. */

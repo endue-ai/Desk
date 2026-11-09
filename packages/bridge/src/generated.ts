@@ -2737,13 +2737,17 @@ export interface BrainDeskWindow {
   panes: BrainDeskPane[];
 }
 
-/** A pane of a window: the view it shows (plugin:<id>, launcher, an item view), the plugin that draws it, its title for people, and whether it is the pane in use. */
+/** A pane of a window: the view it shows (plugin:<id>, launcher, an item view), the plugin that draws it, its title for people, whether it is the pane in use, and whether that plugin's frame stopped answering the desk. */
 export interface BrainDeskPane {
   view: string;
   plugin?: PluginId;
   title?: string;
   focused?: boolean;
+  responsiveness?: BrainDeskResponsiveness;
 }
+
+/** How a pane's plugin frame answers the desk (#39), absent while it answers: late, it has not answered for 5 seconds and its window shows Not responding with Wait and Stop (desk.frames.wait, desk.frames.stop); stopped, it was stopped and its window offers Reload (desk.frames.reload). */
+export type BrainDeskResponsiveness = "late" | "stopped";
 
 /** A window closed recently (ADR 0124): its id, the plugin and title of what it showed, where it was in CSS pixels as for a window on its desktop, whether it floated, the desktop it was on (absent: it was in the drawer, or that desktop is gone) and when it closed. */
 export interface BrainDeskClosed {

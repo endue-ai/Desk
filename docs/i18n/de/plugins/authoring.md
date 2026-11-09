@@ -139,6 +139,11 @@ zurückzukommen, wie sie war, registrieren Sie, was bleiben soll: `surface.onUnl
 scroll }))` beantwortet das `ui.surface.state` des Desks mit JSON bis 64 KiB, und die neu geladene Seite
 findet es in `surface.restored`. Ohne Anbieter kommt sie kalt zurück; `state` oben kommt weiterhin zurück.
 
+Das SDK beantwortet die Pings des Desks (`desk:ping`) von selbst, sobald es geladen ist, sodass das Warten
+auf einen langsamen Aufruf nie wie ein Hänger aussieht. Ein Frame, der 5 Sekunden lang nicht antwortet,
+bekommt auf seinem Fenster „Reagiert nicht“ mit Warten und Beenden, und Neu laden holt ihn mit seinem
+letzten `state` zurück (#39).
+
 ### Der Origin Ihrer Oberfläche
 
 Jede Oberfläche lädt auf einem eigenen Origin, damit eine Engine, die Sites isoliert, jedem Fenster einen
