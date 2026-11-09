@@ -12,6 +12,7 @@ use crate::account::Account;
 pub(crate) mod map;
 pub(crate) mod map_catalog;
 mod serve;
+mod spaces;
 
 /// The account's token as the platform client takes it.
 struct AccountTokens(Arc<Account>);

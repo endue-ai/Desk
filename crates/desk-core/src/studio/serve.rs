@@ -44,7 +44,7 @@ fn keep<T>(
 }
 
 /// A facet thread's answer; one that panicked is a failure like any other.
-fn joined<T>(handle: thread::ScopedJoinHandle<'_, Platform<T>>) -> Platform<T> {
+pub(super) fn joined<T>(handle: thread::ScopedJoinHandle<'_, Platform<T>>) -> Platform<T> {
     handle.join().unwrap_or_else(|_| {
         let why = "the desk could not wait for endue AI";
         Err(desk_platform::PlatformError::new(

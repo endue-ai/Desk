@@ -1,0 +1,13 @@
+{
+  "target": "StudioSpace",
+  "description": "a space's colour is #rrggbb only, never another CSS value",
+  "instance": {
+    "id": "sp_01JC0Q4MR00000000000000001",
+    "key": "launch",
+    "name": "Launch",
+    "status": "active",
+    "avatarColor": "red; background: url(https://example.com/x.png)",
+    "createdAt": "2026-11-01T09:00:00Z",
+    "updatedAt": "2026-11-02T09:00:00Z"
+  }
+}

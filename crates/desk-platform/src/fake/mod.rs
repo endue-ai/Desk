@@ -13,8 +13,10 @@ use std::time::Duration;
 use serde_json::Value;
 
 mod routes;
+mod spaces;
 mod state;
 
+pub use spaces::FakeSpace;
 pub use state::State;
 
 /// A request the fake received.

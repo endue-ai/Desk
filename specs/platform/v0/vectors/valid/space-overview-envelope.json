@@ -1,0 +1,50 @@
+{
+  "target": "SpaceOverviewEnvelope",
+  "description": "a space's counts, its two agents (one removed), the work going on and the newest result; lists Desk does not name are ignored",
+  "instance": {
+    "data": {
+      "counts": { "active_work_items": 1, "open_attention_items": 1, "results": 3 },
+      "agents": [
+        {
+          "id": "sa_01JC0Q4MR00000000000000001",
+          "space_id": "sp_01JC0Q4MR00000000000000001",
+          "agent_id": "ag_01JC0Q4MR00000000000000001",
+          "role_key": "generalist",
+          "is_front": true,
+          "permission": "admin",
+          "status": "active",
+          "created_at": "2026-11-01T09:00:00.000Z",
+          "updated_at": "2026-11-01T09:00:00.000Z"
+        },
+        {
+          "id": "sa_01JC0Q4MR00000000000000002",
+          "agent_id": "ag_01JC0Q4MR00000000000000002",
+          "role_key": "writer",
+          "is_front": false,
+          "permission": "participant",
+          "status": "removed"
+        }
+      ],
+      "active_work_items": [
+        {
+          "id": "wi_01JC0Q4MR00000000000000001",
+          "title": "Write the first mail",
+          "display_status": "in_progress",
+          "result_count": 0,
+          "updated_at": "2026-11-02T09:00:00.000Z"
+        }
+      ],
+      "recent_work_items": [],
+      "recent_results": [
+        {
+          "id": "res_01JC0Q4MR00000000000000001",
+          "title": "Launch page draft",
+          "kind": "document",
+          "updated_at": "2026-11-02T09:00:00.000Z"
+        }
+      ],
+      "attention_items": [{ "id": "att_01JC0Q4MR00000000000000001" }]
+    },
+    "meta": { "request_id": "req_1", "timestamp": "2026-11-02T09:00:00.000Z" }
+  }
+}

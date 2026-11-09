@@ -1,0 +1,30 @@
+{
+  "target": "SpaceRoomListEnvelope",
+  "description": "two rooms: one discussing with unread messages and threads, one quiet with nulls",
+  "instance": {
+    "data": [
+      {
+        "id": "room_01JC0Q4MR00000000000000001",
+        "space_id": "sp_01JC0Q4MR00000000000000001",
+        "name": "Copy",
+        "topic": "The launch mail",
+        "status": "active",
+        "position": 0,
+        "unread_count": 3,
+        "last_message_at": "2026-11-02T09:00:00.000Z",
+        "active_discussion": { "id": "disc_1" },
+        "threads": { "active": 1, "needs_you": 1, "unread": 2 }
+      },
+      {
+        "id": "room_01JC0Q4MR00000000000000002",
+        "name": "Design",
+        "topic": null,
+        "status": "active",
+        "unread_count": 0,
+        "last_message_at": null,
+        "active_discussion": null
+      }
+    ],
+    "meta": { "request_id": "req_2" }
+  }
+}

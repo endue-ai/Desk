@@ -11,15 +11,18 @@
 // ?views=1 installs desk.views and desk.universal, and brain.ask answers propose_universal_view,
 // propose_view, propose_profile and propose_key_bindings for desk.propose as
 // src/propose/fixtures.ts scripts them. ?apps=1 installs
-// endue.notes and a terminal stand-in, for the profile and key bindings Eris proposes. Never shipped.
+// endue.notes and a terminal stand-in, for the profile and key bindings Eris proposes. ?endue=1 gives
+// the shell the studio stub's sample endue agents and spaces (ADR 0129), shown once it signs in;
+// ?endue=signed-in starts signed in. Never shipped.
 import type { PluginManifest } from "@endue-ai/bridge";
 import "../../src/desk.css";
 import "../../src/shell/styles";
 import { proposeTheme } from "../../../../examples/brain-echo/theme.mjs";
-import { browserBridge, type Envelope } from "../../src/bridge/browser";
+import { browserBridge, type Envelope, SAMPLE_PROFILE } from "../../src/bridge/browser";
 import { browserCore, localStore, memoryStore } from "../../src/bridge/core";
 import erisReply from "../../src/bridge/envelopes/eris-reply.json";
 import userHello from "../../src/bridge/envelopes/user-hello.json";
+import { studioHandlers } from "../../src/bridge/studio";
 import { ManualClock } from "../../src/clock";
 import { proposalFor } from "../../src/propose/fixtures";
 import { mountDesk } from "../../src/shell/Desk";
@@ -132,7 +135,14 @@ const core = browserCore({
 if (params.has("files")) await grantFilePlugins(core);
 // A fixed wall clock and platform, so "4:12 ago" and "⌘N" read the same on every machine.
 const epoch = Date.parse("2026-10-28T09:00:00.000Z");
-const bridge = browserBridge({ now: () => clock.now(), epoch });
+const endue = params.has("endue") ? studioHandlers({ epoch }) : undefined;
+const bridge = browserBridge({
+  now: () => clock.now(),
+  epoch,
+  ...(endue ? { studio: endue } : {}),
+});
+if (params.get("endue") === "signed-in")
+  bridge.fake.setAccount({ state: "signed-in", profile: { ...SAMPLE_PROFILE } });
 const lang = params.get("lang") === "en" ? "en" : "ko";
 const desk = mountDesk({
   root,

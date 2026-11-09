@@ -12,6 +12,7 @@ import "../eris/errand.css";
 import "../surface/surface.css";
 import "../surface/panes.css";
 import "../surface/local-agent/local-agent.css";
+import "../surface/endue/endue.css";
 import "../arrange/arrange.css";
 import "../theme-studio/studio.css";
 import "../theme-studio/editor.css";

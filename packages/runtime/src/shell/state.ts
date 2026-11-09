@@ -11,6 +11,7 @@ import type { ErisState } from "../eris/states";
 import type { Session } from "../modes/model";
 import { baseMode } from "../modes/profiles";
 import type { Desktop, DesktopId, DesktopRef, Mode, SurfacePlacement } from "../modes/types";
+import { type EndueState, emptyEndue } from "../system/endue-ids";
 import { keepAway } from "./away";
 import type { Lang } from "./copy";
 
@@ -72,6 +73,8 @@ export interface DeskState {
   /** A2A tasks: working ones run in the bottom right and light the agent's dot. */
   tasks: A2ATask[];
   directory: "loading" | "ready" | "offline";
+  /** The person's endue AI agents and spaces once signed in (ADR 0129): they replace the directory. */
+  endue: EndueState;
   /** The agent programs on this computer (ADR 0110), from agents.list: the agent bar lists them. */
   localAgents: LocalAgent[];
   /** Their runs, newest first, as agents.runs and agents.run events tell them. */
@@ -162,6 +165,7 @@ export function emptyState(lang: Lang): DeskState {
     cards: {},
     tasks: [],
     directory: "loading",
+    endue: emptyEndue(),
     localAgents: [],
     localRuns: [],
     erisRuns: [],

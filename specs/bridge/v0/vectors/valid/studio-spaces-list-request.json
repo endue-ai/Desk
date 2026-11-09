@@ -1,0 +1,13 @@
+{
+  "target": "BridgeRequest",
+  "description": "the person's active spaces, for the agent bar",
+  "instance": {
+    "id": 1,
+    "method": "studio.spaces.list",
+    "params": {
+      "scope": {
+        "permission": "studio:manage"
+      }
+    }
+  }
+}

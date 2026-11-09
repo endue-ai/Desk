@@ -1,0 +1,149 @@
+/* The person's endue agents and spaces in their windows (ADR 0129): a card that Studio turns over. */
+.endue-view {
+  box-sizing: border-box;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  padding: var(--space-3);
+}
+
+/* The card is the window's size; a face longer than it scrolls inside, its head and foot in place. */
+.endue-flip { height: 100%; perspective: 1400px; }
+.endue-flip-inner {
+  display: grid;
+  grid-template: minmax(0, 1fr) / minmax(0, 1fr);
+  height: 100%;
+  transform-style: preserve-3d;
+  transition: transform var(--motion-slow) var(--ease-out-expo);
+}
+.endue-flip.is-flipped .endue-flip-inner { transform: rotateY(180deg); }
+
+/* Both faces share one cell: the card's two sides. */
+.endue-face {
+  grid-area: 1 / 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  box-sizing: border-box;
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  padding: var(--space-4);
+  border: var(--desk-border-width, 1px) solid var(--desk-border);
+  border-top: 3px solid var(--endue-accent, var(--desk-accent));
+  border-radius: var(--radius-lg);
+  background: var(--desk-card);
+  box-shadow: var(--desk-shadow-sm);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+.endue-back { transform: rotateY(180deg); }
+/* A face scrolls; its parts keep their height instead of squeezing. */
+.endue-face > * { flex-shrink: 0; }
+
+.endue-head { display: flex; align-items: flex-start; gap: var(--space-3); }
+.endue-who { display: grid; gap: 2px; min-width: 0; flex: 1; }
+.endue-name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  font-size: var(--text-base);
+  font-weight: 600;
+}
+.endue-handle { margin: 0; color: var(--desk-text-muted); font-size: var(--text-xs); }
+/* The turn sits in the head of each face, in sight however long the face is. */
+.endue-turn { flex: none; }
+.endue-badge {
+  flex: none;
+  font-weight: 400;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--desk-border);
+  border-radius: var(--radius-full);
+  color: var(--desk-text-muted);
+  font-size: var(--text-2xs);
+  line-height: 18px;
+}
+
+.endue-avatar {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: var(--control-sm);
+  height: var(--control-sm);
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--endue-accent, var(--desk-accent)) 24%, var(--desk-card));
+  color: var(--desk-text);
+  font-size: var(--text-xs);
+  font-weight: 600;
+}
+.endue-avatar.is-big { width: var(--control-lg); height: var(--control-lg); font-size: var(--text-base); }
+
+.endue-presence { display: flex; align-items: center; gap: 6px; margin: 0; font-size: var(--text-sm); }
+.endue-desc { margin: 0; font-size: var(--text-sm); line-height: 1.5; }
+.endue-desc.is-empty,
+.endue-latest { color: var(--desk-text-muted); }
+.endue-latest { margin: 0; font-size: var(--text-xs); }
+.endue-read { margin: 0; color: var(--desk-text-muted); font-size: var(--text-xs); }
+.endue-read.is-failed { color: var(--desk-danger-text); }
+
+.endue-chips { display: flex; flex-wrap: wrap; gap: var(--space-1); margin: 0; padding: 0; list-style: none; }
+.endue-chips .tag[data-tone="attention"] {
+  border-color: var(--desk-status-attention);
+  background: var(--desk-status-attention-soft);
+  color: var(--desk-status-attention-text);
+}
+
+.endue-members { display: flex; align-items: center; gap: var(--space-1); }
+.endue-members.is-list { display: grid; gap: 2px; }
+.endue-member {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+}
+.endue-members.is-list .endue-member { padding: 2px var(--space-1); border-radius: var(--radius-sm); }
+.endue-member.is-own { cursor: pointer; }
+.endue-member.is-own:hover { background: var(--desk-hover); }
+.endue-member-name { font-size: var(--text-sm); }
+.endue-more { color: var(--desk-text-muted); font-size: var(--text-xs); }
+
+.endue-facts { display: grid; gap: 0; margin: 0; }
+.endue-fact {
+  display: grid;
+  grid-template-columns: minmax(96px, 38%) minmax(0, 1fr);
+  gap: var(--space-2);
+  padding: 6px 0;
+  border-bottom: 1px solid var(--desk-border);
+  font-size: var(--text-sm);
+}
+.endue-fact dt { color: var(--desk-text-muted); }
+.endue-fact dd { margin: 0; overflow-wrap: anywhere; }
+.endue-fact[data-tone="good"] dd { color: var(--desk-success-text); }
+.endue-fact[data-tone="attention"] dd { color: var(--desk-status-attention-text); }
+.endue-fact[data-tone="muted"] dd { color: var(--desk-text-muted); }
+
+.endue-section { margin: var(--space-2) 0 0; color: var(--desk-text-muted); font-size: var(--text-xs); font-weight: 600; }
+.endue-lines { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; }
+.endue-line { display: flex; justify-content: space-between; gap: var(--space-2); font-size: var(--text-sm); }
+.endue-line-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.endue-line-meta { flex: none; color: var(--desk-text-muted); font-size: var(--text-xs); }
+.endue-line[data-tone="attention"] .endue-line-meta { color: var(--desk-status-attention-text); }
+.endue-line[data-tone="good"] .endue-line-meta { color: var(--desk-success-text); }
+
+.endue-actions { display: flex; align-items: center; gap: var(--space-2); margin-top: auto; padding-top: var(--space-2); }
+.endue-spacer { flex: 1; }
+
+.endue-notice { display: grid; justify-items: start; gap: var(--space-2); padding: var(--space-4); color: var(--desk-text-muted); }
+.endue-notice p { margin: 0; font-size: var(--text-sm); }
+
+/* The agent bar: an endue space shows its glyph on its colour. */
+.space[data-endue-space] { background: color-mix(in srgb, var(--endue-accent, transparent) 18%, transparent); }
+.avatar[data-endue-agent].is-paused { border: 2px dashed var(--desk-input); opacity: 0.5; }

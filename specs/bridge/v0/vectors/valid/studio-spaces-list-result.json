@@ -1,0 +1,39 @@
+{
+  "target": "StudioSpacesListResult",
+  "description": "a space the person owns with its look and summary, and a shared one with neither",
+  "instance": {
+    "spaces": [
+      {
+        "id": "sp_01JC0Q4MR00000000000000001",
+        "key": "launch",
+        "name": "Launch",
+        "description": "Everything for the autumn launch",
+        "goal": "Ship the launch page and the first mail",
+        "status": "active",
+        "frontAgentId": "ag_01JC0Q4MR00000000000000001",
+        "avatarColor": "#B6A3F5",
+        "avatarGlyph": "🚀",
+        "summary": {
+          "activeWorkItems": 2,
+          "openAttentionItems": 1,
+          "latestResult": {
+            "id": "res_01JC0Q4MR00000000000000001",
+            "title": "Launch page draft",
+            "updatedAt": "2026-11-02T09:00:00Z"
+          },
+          "lastActivityAt": "2026-11-02T09:00:00Z"
+        },
+        "createdAt": "2026-11-01T09:00:00Z",
+        "updatedAt": "2026-11-02T09:00:00Z"
+      },
+      {
+        "id": "sp_01JC0Q4MR00000000000000002",
+        "key": "reading",
+        "name": "Reading club",
+        "status": "active",
+        "createdAt": "2026-11-01T09:00:00Z",
+        "updatedAt": "2026-11-01T09:00:00Z"
+      }
+    ]
+  }
+}

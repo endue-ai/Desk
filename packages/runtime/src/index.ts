@@ -17,6 +17,7 @@ export type {
   LocalAsk,
   LocalSessionQuery,
   ShellBridge,
+  StudioShellBridge,
 } from "./bridge/types";
 export { type Clock, ManualClock, realClock, type Tween, tween } from "./clock";
 // The floating Eris over the OS (ADR 0121): its view, and the link that hands her state between it

@@ -40,7 +40,9 @@ export const slugOf = (name: string, n: number) =>
 
 const iso = (epoch: number, minutesAgo: number) =>
   new Date(epoch - minutesAgo * 60_000).toISOString().replace(/\.\d{3}Z$/, "Z");
-const AG = (n: number) => `ag_sample${String(n).padStart(19, "0")}`;
+/** The id of sample agent `n`: 1 Miso, 2 Mailie, 3 Scout. */
+export const sampleAgentId = (n: number) => `ag_sample${String(n).padStart(19, "0")}`;
+const AG = sampleAgentId;
 const both = (en: string, ko: string) => ({ en, ko });
 
 /** Three agents: Miso (active, with a prompt), Mailie (from the catalog, turned off), Scout. */

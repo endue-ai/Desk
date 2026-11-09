@@ -5,9 +5,10 @@ info:
   description: >-
     The part of endue AI's own platform API (/api/v1, the API endue.ai's web calls) that Desk uses to
     create and manage the person's endue AI agents: agents and what Studio shows of them, the agent
-    catalog, and the conversation list of the Home board. endue AI serves it; Desk is a client
-    (crates/desk-platform) and writes down only what it reads and sends (ADR 0122). Bodies are
-    snake_case. Readers ignore fields this document does not name, and read null as absent.
+    catalog, the conversation list of the Home board, and the spaces the person can open (ADR 0129).
+    endue AI serves it; Desk is a client (crates/desk-platform) and writes down only what it reads
+    and sends (ADR 0122). Bodies are snake_case. Readers ignore fields this document does not name,
+    and read null as absent.
   contact:
     name: endue Desk maintainers
     url: https://github.com/endue-ai/Desk
@@ -27,6 +28,10 @@ tags:
     description: agent-catalog-service. Every answer is an envelope.
   - name: conversations
     description: ai-agent-service, under /api/v1/ai. Every answer is a success envelope.
+  - name: spaces
+    description: >-
+      Under /api/v1/spaces, read only. The list and one space answer the bare body; the overview and
+      the rooms answer an envelope.
 paths:
   /api/v1/agents:
     get:
@@ -393,6 +398,78 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/ConversationListEnvelope" }
         default: { $ref: "#/components/responses/Error" }
+  /api/v1/spaces:
+    get:
+      operationId: listSpaces
+      tags: [spaces]
+      summary: Every space the person can open, not paged
+      description: >-
+        The spaces the person owns or may read, active ones unless status asks for the archived. With
+        include=summary a space the person owns carries how much work and attention is open, its
+        latest result and when it was last active; the others carry none.
+      parameters:
+        - name: include
+          in: query
+          schema: { type: string, enum: [summary] }
+        - name: status
+          in: query
+          schema: { type: string, enum: [active, archived] }
+      responses:
+        "200":
+          description: The spaces, the bare body.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SpaceListResponse" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/spaces/{space_id}:
+    parameters:
+      - $ref: "#/components/parameters/SpaceId"
+    get:
+      operationId: getSpace
+      tags: [spaces]
+      summary: One space; 404 when the person may not open it or it is gone
+      description: One space; 404 when the person may not open it or it is gone.
+      responses:
+        "200":
+          description: The space, the bare body.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SpaceGetResponse" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/spaces/{space_id}/overview:
+    parameters:
+      - $ref: "#/components/parameters/SpaceId"
+    get:
+      operationId: getSpaceOverview
+      tags: [spaces]
+      summary: What a space is doing, in one call
+      description: >-
+        The space's counts, the agents taking part, the work going on and the latest results, as
+        endue.ai's space page opens with. Desk names only these; the answer carries more.
+      responses:
+        "200":
+          description: The overview, in an envelope.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SpaceOverviewEnvelope" }
+        default: { $ref: "#/components/responses/Error" }
+  /api/v1/spaces/{space_id}/rooms:
+    parameters:
+      - $ref: "#/components/parameters/SpaceId"
+    get:
+      operationId: listSpaceRooms
+      tags: [spaces]
+      summary: The space's rooms that are not archived
+      description: >-
+        Each room with how many messages the person has not read, when the last came, whether a
+        discussion is going on and its threads. Desk does not read who is in a room.
+      responses:
+        "200":
+          description: The rooms, in an envelope.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SpaceRoomListEnvelope" }
+        default: { $ref: "#/components/responses/Error" }
 components:
   securitySchemes:
     endueId:
@@ -404,6 +481,11 @@ components:
   parameters:
     AgentId:
       name: agent_id
+      in: path
+      required: true
+      schema: { type: string, pattern: "^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$" }
+    SpaceId:
+      name: space_id
       in: path
       required: true
       schema: { type: string, pattern: "^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$" }
@@ -1005,3 +1087,153 @@ components:
         success: { const: true }
         data: { $ref: "#/components/schemas/ConversationList" }
       required: [success, data]
+    SpaceStatus:
+      description: active, archived (put away by the person, kept as it is) or deleted.
+      type: string
+      enum: [active, archived, deleted]
+    SpaceLatestResult:
+      description: The space's newest result.
+      type: object
+      properties:
+        id: { type: string, minLength: 1 }
+        title: { type: string }
+        updated_at: { type: string }
+      required: [id, title, updated_at]
+    SpaceSummary:
+      description: How much is open in a space the person owns, its newest result and when it was last active.
+      type: object
+      properties:
+        active_work_items: { type: integer, minimum: 0 }
+        open_attention_items: { type: integer, minimum: 0 }
+        latest_result: { $ref: "#/components/schemas/SpaceLatestResult" }
+        last_activity_at: { type: [string, "null"] }
+      required: [active_work_items, open_attention_items]
+    SpaceGetResponse:
+      description: >-
+        One space: its name and goal, how it looks (a colour as #rrggbb and a glyph of one or two
+        characters, an emoji perhaps), its front agent (the one that answers the person) and, with
+        include=summary, its summary. avatar_url, a picture on endue AI, is not loaded by the desk.
+      type: object
+      properties:
+        id: { type: string, minLength: 1 }
+        key: { type: string }
+        name: { type: string }
+        description: { type: [string, "null"] }
+        type: { type: string }
+        goal: { type: [string, "null"] }
+        status: { $ref: "#/components/schemas/SpaceStatus" }
+        front_agent_id: { type: [string, "null"] }
+        avatar_color: { type: [string, "null"] }
+        avatar_glyph: { type: [string, "null"] }
+        summary: { $ref: "#/components/schemas/SpaceSummary" }
+        created_at: { type: string }
+        updated_at: { type: string }
+      required: [id, key, name, created_at, updated_at]
+    SpaceListResponse:
+      description: Every space the person can open.
+      type: array
+      items: { $ref: "#/components/schemas/SpaceGetResponse" }
+    SpaceCounts:
+      description: Work going on, attention items open and results, in the whole space.
+      type: object
+      properties:
+        active_work_items: { type: integer, minimum: 0 }
+        open_attention_items: { type: integer, minimum: 0 }
+        results: { type: integer, minimum: 0 }
+      required: [active_work_items, open_attention_items, results]
+    SpaceAgentView:
+      description: >-
+        An agent taking part in a space: its role there, whether it is the front agent, and whether it
+        may run the space (admin) or only take part (participant). A removed one has left.
+      type: object
+      properties:
+        id: { type: string, minLength: 1 }
+        agent_id: { type: string, minLength: 1 }
+        role_key: { type: string }
+        is_front: { type: boolean }
+        permission:
+          type: string
+          enum: [admin, participant]
+        status:
+          type: string
+          enum: [active, removed]
+      required: [id, agent_id, role_key, is_front, status]
+    WorkDisplayStatus:
+      description: How a piece of work stands, as endue.ai's space page words it.
+      type: string
+      enum:
+        [queued, preparing, in_progress, needs_you, stopping, pausing, paused, done, partly_done, failed, stopped]
+    WorkItemSummary:
+      description: A piece of work in a space.
+      type: object
+      properties:
+        id: { type: string, minLength: 1 }
+        title: { type: string }
+        display_status: { $ref: "#/components/schemas/WorkDisplayStatus" }
+        updated_at: { type: string }
+      required: [id, title, display_status, updated_at]
+    WorkResultSummary:
+      description: A result the space's work made (a document, a table, a page).
+      type: object
+      properties:
+        id: { type: string, minLength: 1 }
+        title: { type: string }
+        kind: { type: string }
+        updated_at: { type: string }
+      required: [id, title, updated_at]
+    SpaceOverview:
+      description: What a space is doing. The lists Desk does not name, attention items among them, are ignored.
+      type: object
+      properties:
+        counts: { $ref: "#/components/schemas/SpaceCounts" }
+        agents:
+          type: array
+          items: { $ref: "#/components/schemas/SpaceAgentView" }
+        active_work_items:
+          type: array
+          items: { $ref: "#/components/schemas/WorkItemSummary" }
+        recent_results:
+          type: array
+          items: { $ref: "#/components/schemas/WorkResultSummary" }
+      required: [counts]
+    SpaceOverviewEnvelope:
+      description: The overview in an envelope.
+      type: object
+      properties:
+        data: { $ref: "#/components/schemas/SpaceOverview" }
+        meta: { $ref: "#/components/schemas/Meta" }
+      required: [data]
+    SpaceRoomThreads:
+      description: The room's threads with a discussion going on, waiting for the person, and unread.
+      type: object
+      properties:
+        active: { type: integer, minimum: 0 }
+        needs_you: { type: integer, minimum: 0 }
+        unread: { type: integer, minimum: 0 }
+      required: [active, needs_you, unread]
+    SpaceRoomView:
+      description: >-
+        A room of a space, where its agents discuss: its name and topic, the messages the person has
+        not read, when the last came, the discussion going on (present while one is) and its threads.
+      type: object
+      properties:
+        id: { type: string, minLength: 1 }
+        name: { type: string }
+        topic: { type: [string, "null"] }
+        status:
+          type: string
+          enum: [active, archived, deleted]
+        unread_count: { type: integer, minimum: 0 }
+        last_message_at: { type: [string, "null"] }
+        active_discussion: { type: [object, "null"] }
+        threads: { $ref: "#/components/schemas/SpaceRoomThreads" }
+      required: [id, name, status, unread_count]
+    SpaceRoomListEnvelope:
+      description: The rooms in an envelope.
+      type: object
+      properties:
+        data:
+          type: array
+          items: { $ref: "#/components/schemas/SpaceRoomView" }
+        meta: { $ref: "#/components/schemas/Meta" }
+      required: [data]

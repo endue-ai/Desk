@@ -26,7 +26,8 @@ use desk_bridge::{
     AccountManagePermission, AgentsManagePermission, BrainConversePermission, CmdInvokePermission,
     ConnectorManagePermission, FsReadPermission, FsWritePermission, MemoryReadPermission,
     MemoryWritePermission, PermManagePermission, Permission, PluginManagePermission,
-    ShellOpenPermission, ThemeManagePermission, UpdateManagePermission, ViewManagePermission,
+    ShellOpenPermission, ShellScheme, StudioManagePermission, ThemeManagePermission,
+    UpdateManagePermission, ViewManagePermission,
 };
 use desk_core::account::{Account, AccountOptions, NetIdClient};
 use desk_core::{
@@ -248,6 +249,23 @@ pub fn run() {
                 RUNTIME_CALLER,
                 Permission::AgentsManage(AgentsManagePermission {
                     permission: Default::default(),
+                }),
+            );
+            // Signed in, the agent bar lists the person's endue agents and spaces, and their
+            // windows read what Studio shows of each (ADR 0129). The token stays in the core.
+            // "Open in endue.ai" opens https links; the shell builds them only on endue.ai.
+            core.grant(
+                RUNTIME_CALLER,
+                Permission::StudioManage(StudioManagePermission {
+                    permission: Default::default(),
+                }),
+            );
+            core.grant(
+                RUNTIME_CALLER,
+                Permission::ShellOpen(ShellOpenPermission {
+                    permission: Default::default(),
+                    schemes: Some(vec![ShellScheme::Https]),
+                    paths: None,
                 }),
             );
             // The person's themes (ADR 0058): the theme studio saves, imports, exports and removes

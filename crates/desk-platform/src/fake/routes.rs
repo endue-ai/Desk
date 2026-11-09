@@ -6,19 +6,19 @@ use serde_json::{Value, json};
 use super::Seen;
 use super::state::{FakeAgent, State, slug_of};
 
-type Answer = (u16, Option<Value>);
+pub(super) type Answer = (u16, Option<Value>);
 
-fn error(status: u16, code: &str, message: &str) -> Answer {
+pub(super) fn error(status: u16, code: &str, message: &str) -> Answer {
     let meta = json!({ "request_id": "req_fake", "timestamp": "2026-11-01T09:00:00Z" });
     let body = json!({ "error": { "code": code, "message": message }, "meta": meta });
     (status, Some(body))
 }
 
-fn ok(body: Value) -> Answer {
+pub(super) fn ok(body: Value) -> Answer {
     (200, Some(body))
 }
 
-fn data(body: Value) -> Answer {
+pub(super) fn data(body: Value) -> Answer {
     ok(json!({ "data": body, "meta": { "request_id": "req_fake" } }))
 }
 
@@ -46,6 +46,7 @@ pub(super) fn answer(state: &mut State, seen: &Seen) -> Answer {
         ("POST", ["api", "v1", "agent-catalog", "recommend"]) => recommend(state, &seen.body),
         ("POST", ["api", "v1", "agent-catalog", "agents", slug, "use"]) => use_catalog(state, slug),
         ("GET", ["api", "v1", "ai", "conversations"]) => conversations(state, seen),
+        (_, ["api", "v1", "spaces", rest @ ..]) => super::spaces::answer(state, seen, rest),
         _ => error(404, "NOT_FOUND", "No such route"),
     }
 }

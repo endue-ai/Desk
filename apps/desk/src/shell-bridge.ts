@@ -1,7 +1,8 @@
 // The shell's host over the core: what mountDesk asks of its ShellBridge, answered with bridge calls
 // as the runtime (`desk`). Audio levels are silent until the core captures audio. A turn's tool steps
-// (Eris's errands, ADR 0089) reach the shell as they happen; account.* is the desk's endue ID, and
-// agents.* the agent programs on this computer (ADR 0110).
+// (Eris's errands, ADR 0089) reach the shell as they happen; account.* is the desk's endue ID,
+// agents.* the agent programs on this computer (ADR 0110), and studio.* the person's endue agents
+// and spaces once signed in (ADR 0129, shell-studio.ts).
 import type {
   A2ATaskList,
   AgentCard,
@@ -21,6 +22,7 @@ import type {
   LocalAgentsBridge,
   ShellBridge,
 } from "@endue-ai/runtime";
+import { studioShell } from "./shell-studio";
 
 type BrainReply = Awaited<ReturnType<ShellBridge["brain"]["say"]>>;
 
@@ -226,6 +228,7 @@ export function shellBridge(core: BridgeClient): ShellBridge {
         }),
     },
     localAgents: localAgents(core),
+    studio: studioShell(core),
     agents: {
       list: async (query) =>
         passed<AgentList>(await core.call("brain.agents.list", { ...query, scope: SCOPE })),

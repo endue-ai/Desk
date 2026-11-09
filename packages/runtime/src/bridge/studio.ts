@@ -2,8 +2,8 @@
  * studio.* on the browser stub (the fixtures and the dev page; never shipped): the person's endue
  * AI agents kept in memory as desk-core keeps them on endue AI's platform (ADR 0122), so runtime e2e
  * can draw the agent cards. Agents are created, changed, turned off and on and deleted; facets,
- * prompt revisions, the catalog and the Home board's conversations answer in the bridge's shapes.
- * Signed out every call is `signed_out`; a caller without studio:manage is `permission_denied`.
+ * prompt revisions, the catalog, the Home board's conversations and the spaces (studio-spaces.ts,
+ * ADR 0129) answer in the bridge's shapes. Signed out every call is `signed_out`; a caller without studio:manage is `permission_denied`.
  * Mount it with `browserCore({ handlers: { ...studioHandlers().handlers } })`.
  */
 import {
@@ -23,6 +23,7 @@ import {
   sampleStudio,
   slugOf,
 } from "./studio-fixtures";
+import { type StudioSpaceRecord, sampleSpaces, spaceHandlers } from "./studio-spaces";
 
 export { DEFAULT_PERSONALITY, type StudioRecord } from "./studio-fixtures";
 
@@ -43,6 +44,8 @@ export interface StudioStub {
   records: StudioRecord[];
   conversations: StudioConversation[];
   catalog: StudioCatalogAgent[];
+  /** The spaces studio.spaces.* answers (ADR 0129); tests edit them in place. */
+  spaces: StudioSpaceRecord[];
   /** Sign the stub in or out, as account.signIn and account.signOut would. */
   setSignedIn(signedIn: boolean): void;
 }
@@ -59,6 +62,7 @@ export function studioHandlers(options: StudioStubOptions = {}): StudioStub {
   const records: StudioRecord[] = options.agents === false ? [] : sampleStudio(epoch);
   const conversations = options.agents === false ? [] : sampleConversations(epoch);
   const catalog = sampleCatalog(epoch);
+  const spaces = options.agents === false ? [] : sampleSpaces(epoch);
 
   /** The checks every call passes, as the core makes them. */
   const gate = (caller: string | undefined) => {
@@ -285,6 +289,7 @@ export function studioHandlers(options: StudioStubOptions = {}): StudioStub {
         hasMore: at + size < matching.length,
       };
     },
+    ...spaceHandlers(spaces, gate),
   };
 
   return {
@@ -292,6 +297,7 @@ export function studioHandlers(options: StudioStubOptions = {}): StudioStub {
     records,
     conversations,
     catalog,
+    spaces,
     setSignedIn: (next) => {
       signedIn = next;
     },

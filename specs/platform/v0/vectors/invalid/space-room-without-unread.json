@@ -1,0 +1,13 @@
+{
+  "target": "SpaceRoomListEnvelope",
+  "description": "a room that does not say how many messages are unread",
+  "instance": {
+    "data": [
+      {
+        "id": "room_01JC0Q4MR00000000000000001",
+        "name": "Copy",
+        "status": "active"
+      }
+    ]
+  }
+}

@@ -1,0 +1,46 @@
+{
+  "target": "SpaceListResponse",
+  "description": "two spaces: one the person owns with its summary and look, one shared with nulls and fields Desk ignores",
+  "instance": [
+    {
+      "id": "sp_01JC0Q4MR00000000000000001",
+      "key": "launch",
+      "name": "Launch",
+      "description": "Everything for the autumn launch",
+      "type": "workspace",
+      "goal": "Ship the launch page and the first mail",
+      "status": "active",
+      "front_agent_id": "ag_01JC0Q4MR00000000000000001",
+      "avatar_color": "#B6A3F5",
+      "avatar_glyph": "🚀",
+      "avatar_url": null,
+      "summary": {
+        "active_work_items": 2,
+        "open_attention_items": 1,
+        "latest_result": {
+          "id": "res_01JC0Q4MR00000000000000001",
+          "title": "Launch page draft",
+          "updated_at": "2026-11-02T09:00:00.000Z"
+        },
+        "last_activity_at": "2026-11-02T09:00:00.000Z"
+      },
+      "created_at": "2026-11-01T09:00:00.000Z",
+      "updated_at": "2026-11-02T09:00:00.000Z"
+    },
+    {
+      "id": "sp_01JC0Q4MR00000000000000002",
+      "key": "reading",
+      "name": "Reading club",
+      "description": null,
+      "type": "workspace",
+      "goal": null,
+      "front_agent_id": null,
+      "avatar_color": null,
+      "avatar_glyph": null,
+      "unnamed": { "kept": "on endue AI" },
+      "revision": 4,
+      "created_at": "2026-11-01T09:00:00.000Z",
+      "updated_at": "2026-11-01T09:00:00.000Z"
+    }
+  ]
+}

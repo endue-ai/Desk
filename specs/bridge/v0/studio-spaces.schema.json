@@ -1,0 +1,242 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://endue.ai/specs/bridge/v0/studio-spaces.schema.json",
+  "title": "Desk bridge v0: studio spaces",
+  "description": "The endue AI spaces the person can open, read through endue AI's platform API (/api/v1/spaces, specs/platform/v0) with the desk's endue ID token, as endue.ai's Spaces page does (ADR 0129). studio.spaces.list lists them with their summary; studio.spaces.get reads what one space is doing: its counts, the agents taking part, the work going on, its newest results and its rooms. Read only. Every call needs studio:manage, and fails as studio.* does (signed_out, offline, forbidden, not_found). The bridge carries no person's id, no room member and no billing: the core leaves them on endue AI.",
+  "$defs": {
+    "StudioSpaceId": {
+      "description": "A space's id on endue AI.",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$"
+    },
+    "StudioSpaceStatus": {
+      "description": "active, or archived: put away by the person and kept as it is.",
+      "type": "string",
+      "enum": ["active", "archived"]
+    },
+    "StudioSpaceLatestResult": {
+      "description": "A space's newest result: its title and when it last changed.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "title": { "type": "string", "maxLength": 500 },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "title", "updatedAt"],
+      "additionalProperties": false
+    },
+    "StudioSpaceSummary": {
+      "description": "How much is open in a space the person owns: work going on, items waiting for the person, its newest result and when it was last active. endue AI summarises only the spaces the person owns.",
+      "type": "object",
+      "properties": {
+        "activeWorkItems": { "type": "integer", "minimum": 0 },
+        "openAttentionItems": { "type": "integer", "minimum": 0 },
+        "latestResult": { "$ref": "#/$defs/StudioSpaceLatestResult" },
+        "lastActivityAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["activeWorkItems", "openAttentionItems"],
+      "additionalProperties": false
+    },
+    "StudioSpace": {
+      "description": "One space as endue AI lists it: its key, name, description and goal, its front agent (the one that answers the person), how it looks (avatarColor as #rrggbb, avatarGlyph of a character or two, an emoji perhaps; absent when none was set: draw one from the name) and its summary when endue AI gave one. The core passes only a colour of the form #rrggbb. Its picture is not carried: the desk loads no remote images.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "#/$defs/StudioSpaceId" },
+        "key": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 200 },
+        "description": { "type": "string", "maxLength": 2000 },
+        "goal": { "type": "string", "maxLength": 2000 },
+        "status": { "$ref": "#/$defs/StudioSpaceStatus" },
+        "frontAgentId": { "$ref": "studio.schema.json#/$defs/StudioAgentId" },
+        "avatarColor": { "type": "string", "pattern": "^#[0-9A-Fa-f]{6}$" },
+        "avatarGlyph": { "type": "string", "minLength": 1, "maxLength": 16 },
+        "summary": { "$ref": "#/$defs/StudioSpaceSummary" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "key", "name", "status", "createdAt", "updatedAt"],
+      "additionalProperties": false
+    },
+    "StudioSpacesListRequest": {
+      "description": "Every space the person can open, the most recently active first: the active ones, or the archived ones when asked.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "studio.spaces.list" },
+        "params": { "$ref": "#/$defs/StudioSpacesListParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "StudioSpacesListParams": {
+      "description": "Parameters of studio.spaces.list: archived lists the archived spaces instead of the active ones.",
+      "type": "object",
+      "properties": {
+        "archived": { "type": "boolean" },
+        "scope": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/StudioManagePermission" }
+      },
+      "required": ["scope"],
+      "additionalProperties": false
+    },
+    "StudioSpacesListResult": {
+      "description": "Result of studio.spaces.list.",
+      "type": "object",
+      "properties": {
+        "spaces": { "type": "array", "items": { "$ref": "#/$defs/StudioSpace" } }
+      },
+      "required": ["spaces"],
+      "additionalProperties": false
+    },
+    "StudioSpaceCounts": {
+      "description": "Work going on, items waiting for the person and results, in the whole space.",
+      "type": "object",
+      "properties": {
+        "activeWorkItems": { "type": "integer", "minimum": 0 },
+        "openAttentionItems": { "type": "integer", "minimum": 0 },
+        "results": { "type": "integer", "minimum": 0 }
+      },
+      "required": ["activeWorkItems", "openAttentionItems", "results"],
+      "additionalProperties": false
+    },
+    "StudioSpaceAgent": {
+      "description": "An agent taking part in the space: its role there (generalist, writer, or the person's own), whether it is the front agent, and whether it may run the space (admin) or only take part (participant). An agent of someone else's may take part: its name is not carried, so the desk names it from the person's own agents when it can.",
+      "type": "object",
+      "properties": {
+        "agentId": { "$ref": "studio.schema.json#/$defs/StudioAgentId" },
+        "roleKey": { "type": "string", "maxLength": 64 },
+        "front": { "type": "boolean" },
+        "permission": { "$ref": "#/$defs/StudioSpaceAgentPermission" }
+      },
+      "required": ["agentId", "roleKey", "front", "permission"],
+      "additionalProperties": false
+    },
+    "StudioSpaceAgentPermission": {
+      "description": "What an agent may do in a space: run it (admin) or only take part (participant).",
+      "type": "string",
+      "enum": ["admin", "participant"]
+    },
+    "StudioSpaceWorkStatus": {
+      "description": "How a piece of work stands, as endue.ai's space page words it.",
+      "type": "string",
+      "enum": [
+        "queued",
+        "preparing",
+        "in_progress",
+        "needs_you",
+        "stopping",
+        "pausing",
+        "paused",
+        "done",
+        "partly_done",
+        "failed",
+        "stopped"
+      ]
+    },
+    "StudioSpaceWork": {
+      "description": "A piece of work going on in the space.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "title": { "type": "string", "maxLength": 500 },
+        "status": { "$ref": "#/$defs/StudioSpaceWorkStatus" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "title", "status", "updatedAt"],
+      "additionalProperties": false
+    },
+    "StudioSpaceResult": {
+      "description": "One of the space's newest results: its title, its kind (document, table, page) and when it last changed.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "title": { "type": "string", "maxLength": 500 },
+        "kind": { "type": "string", "maxLength": 64 },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "title", "updatedAt"],
+      "additionalProperties": false
+    },
+    "StudioSpaceRoomThreads": {
+      "description": "A room's threads: with a discussion going on, waiting for the person, and unread.",
+      "type": "object",
+      "properties": {
+        "active": { "type": "integer", "minimum": 0 },
+        "needsYou": { "type": "integer", "minimum": 0 },
+        "unread": { "type": "integer", "minimum": 0 }
+      },
+      "required": ["active", "needsYou", "unread"],
+      "additionalProperties": false
+    },
+    "StudioSpaceRoom": {
+      "description": "A room of the space, where its agents discuss: its name and topic, the messages the person has not read, when the last came, whether a discussion is going on, and its threads. Who is in the room is not carried.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 200 },
+        "topic": { "type": "string", "maxLength": 2000 },
+        "unreadCount": { "type": "integer", "minimum": 0 },
+        "lastMessageAt": { "type": "string", "format": "date-time" },
+        "discussing": { "type": "boolean" },
+        "threads": { "$ref": "#/$defs/StudioSpaceRoomThreads" }
+      },
+      "required": ["id", "name", "unreadCount", "discussing"],
+      "additionalProperties": false
+    },
+    "StudioSpacePart": {
+      "description": "A part of what studio.spaces.get reads: the overview (counts, agents, work, results) or the rooms.",
+      "type": "string",
+      "enum": ["overview", "rooms"]
+    },
+    "StudioSpaceProblem": {
+      "description": "A part endue AI did not answer for: the bridge error code it would have been, and a sentence for people.",
+      "type": "object",
+      "properties": {
+        "part": { "$ref": "#/$defs/StudioSpacePart" },
+        "code": { "$ref": "bridge.schema.json#/$defs/ErrorCode" },
+        "message": { "type": "string", "maxLength": 2000 }
+      },
+      "required": ["part", "code", "message"],
+      "additionalProperties": false
+    },
+    "StudioSpacesGetRequest": {
+      "description": "What one space is doing, read at once: the space, its overview and its rooms that are not archived. The space itself must answer; a part that does not is left out and named in problems.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "studio.spaces.get" },
+        "params": { "$ref": "#/$defs/StudioSpaceParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "StudioSpaceParams": {
+      "description": "Parameters of studio.spaces.get.",
+      "type": "object",
+      "properties": {
+        "spaceId": { "$ref": "#/$defs/StudioSpaceId" },
+        "scope": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/StudioManagePermission" }
+      },
+      "required": ["spaceId", "scope"],
+      "additionalProperties": false
+    },
+    "StudioSpacesGetResult": {
+      "description": "Result of studio.spaces.get: the space, its counts (absent when the overview is in problems), the agents taking part (the front agent first), the work going on and the newest results (at most 5 each), and its rooms. A part in problems is absent (counts) or empty (the lists).",
+      "type": "object",
+      "properties": {
+        "space": { "$ref": "#/$defs/StudioSpace" },
+        "counts": { "$ref": "#/$defs/StudioSpaceCounts" },
+        "agents": { "type": "array", "items": { "$ref": "#/$defs/StudioSpaceAgent" } },
+        "work": { "type": "array", "maxItems": 5, "items": { "$ref": "#/$defs/StudioSpaceWork" } },
+        "results": {
+          "type": "array",
+          "maxItems": 5,
+          "items": { "$ref": "#/$defs/StudioSpaceResult" }
+        },
+        "rooms": { "type": "array", "items": { "$ref": "#/$defs/StudioSpaceRoom" } },
+        "problems": { "type": "array", "items": { "$ref": "#/$defs/StudioSpaceProblem" } }
+      },
+      "required": ["space", "agents", "work", "results", "rooms", "problems"],
+      "additionalProperties": false
+    }
+  }
+}

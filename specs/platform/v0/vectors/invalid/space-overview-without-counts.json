@@ -1,0 +1,11 @@
+{
+  "target": "SpaceOverviewEnvelope",
+  "description": "an overview without its counts",
+  "instance": {
+    "data": {
+      "agents": [],
+      "active_work_items": [],
+      "recent_results": []
+    }
+  }
+}

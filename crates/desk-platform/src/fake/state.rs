@@ -7,6 +7,7 @@ use std::time::Duration;
 use serde_json::{Value, json};
 
 use super::Seen;
+use super::spaces::FakeSpace;
 
 /// One agent and its facets.
 #[derive(Debug, Clone, PartialEq)]
@@ -42,6 +43,8 @@ pub struct State {
     pub agents: Vec<FakeAgent>,
     pub catalog: Vec<Value>,
     pub conversations: Vec<Value>,
+    /// The spaces, in the order the list answers them.
+    pub spaces: Vec<FakeSpace>,
     /// The next answer, whatever is asked: status, code and message of an error envelope.
     pub fail_next: Option<(u16, String, String)>,
     /// Paths (without query) answered with an error envelope every time: status, code, message.
@@ -59,6 +62,7 @@ impl State {
             agents: Vec::new(),
             catalog: vec![catalog_agent()],
             conversations: Vec::new(),
+            spaces: Vec::new(),
             fail_next: None,
             fail_at: BTreeMap::new(),
             delay: None,

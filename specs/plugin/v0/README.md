@@ -115,7 +115,7 @@ eight `actions` (`{ command, title, args? }`): Enter runs the first, Mod+Enter t
 | `connector:manage` | none | Connector instances through `connector.*`: list, connect, disconnect, pause, sync (from #103 on) |
 | `view:manage` | none | The person's views through `view.*`: list, open, save, remove (from #103 on) |
 | `shell:open` | `schemes`, `paths` | `shell.open` of URLs whose scheme is in `schemes` (`http`, `https`, `mailto`), and of reveals of files under `paths`; at least one of the two |
-| `studio:manage` | none | The person's endue AI agents through `studio.*` (`studio.agents.*`, `studio.catalog.*`, `studio.conversations.list`), under the desk's endue ID (ADR 0122) |
+| `studio:manage` | none | The person's endue AI agents and spaces through `studio.*` (`studio.agents.*`, `studio.catalog.*`, `studio.conversations.list`, `studio.spaces.*`), under the desk's endue ID (ADR 0122, ADR 0129) |
 | `computer:see` | `apps` (optional) | Screenshots, displays, windows, running apps, accessibility trees and the OS permissions through `computer.*` (ADR 0123); `apps` limits it to those bundle ids' windows and trees |
 | `computer:control` | `apps` (optional) | Mouse and keyboard input, accessibility actions, launching, activating and quitting apps and the stop through `computer.*`; `apps` limits it to input to those apps. An agent's every act waits for approval (ADR 0078) |
 

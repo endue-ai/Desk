@@ -1169,7 +1169,7 @@ pub struct MemoryWritePermission {
     pub permission: MemoryWritePermissionPermission,
 }
 
-/// Create and manage the person's endue AI agents with studio.*, through endue AI's platform API under the desk's endue ID: list, read, create, change, turn off and on and delete them, read what Studio shows of one and change its prompt, find catalog agents and start from one, and list the conversations for the Home board. The token itself never crosses the bridge. A built-in plugin that declares it holds it; any other caller asks the person (ADR 0122).
+/// Create and manage the person's endue AI agents with studio.*, through endue AI's platform API under the desk's endue ID: list, read, create, change, turn off and on and delete them, read what Studio shows of one and change its prompt, find catalog agents and start from one, list the conversations for the Home board, and read the spaces the person can open (studio.spaces.*, ADR 0129). The token itself never crosses the bridge. A built-in plugin that declares it holds it; any other caller asks the person (ADR 0122).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct StudioManagePermission {
@@ -4718,6 +4718,8 @@ pub enum BridgeRequest {
     StudioCatalogRecommend(StudioCatalogRecommendRequest),
     StudioCatalogUse(StudioCatalogUseRequest),
     StudioConversationsList(StudioConversationsListRequest),
+    StudioSpacesList(StudioSpacesListRequest),
+    StudioSpacesGet(StudioSpacesGetRequest),
     ComputerPermissionsStatus(ComputerPermissionsStatusRequest),
     ComputerPermissionsRequest(ComputerPermissionsRequestRequest),
     ComputerPermissionsOpen(ComputerPermissionsOpenRequest),
@@ -8548,6 +8550,276 @@ pub struct StoreSetParams {
 #[serde(deny_unknown_fields)]
 pub struct StoreSetResult {}
 
+/// A space's id on endue AI.
+pub type StudioSpaceId = String;
+
+/// active, or archived: put away by the person and kept as it is.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum StudioSpaceStatus {
+    #[serde(rename = "active")]
+    Active,
+    #[serde(rename = "archived")]
+    Archived,
+}
+
+/// A space's newest result: its title and when it last changed.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct StudioSpaceLatestResult {
+    pub id: String,
+    pub title: String,
+    #[serde(rename = "updatedAt")]
+    pub updated_at: String,
+}
+
+/// How much is open in a space the person owns: work going on, items waiting for the person, its newest result and when it was last active. endue AI summarises only the spaces the person owns.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct StudioSpaceSummary {
+    #[serde(rename = "activeWorkItems")]
+    pub active_work_items: u64,
+    #[serde(rename = "openAttentionItems")]
+    pub open_attention_items: u64,
+    #[serde(
+        rename = "latestResult",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub latest_result: Option<StudioSpaceLatestResult>,
+    #[serde(
+        rename = "lastActivityAt",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub last_activity_at: Option<String>,
+}
+
+/// One space as endue AI lists it: its key, name, description and goal, its front agent (the one that answers the person), how it looks (avatarColor as #rrggbb, avatarGlyph of a character or two, an emoji perhaps; absent when none was set: draw one from the name) and its summary when endue AI gave one. The core passes only a colour of the form #rrggbb. Its picture is not carried: the desk loads no remote images.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct StudioSpace {
+    pub id: StudioSpaceId,
+    pub key: String,
+    pub name: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub goal: Option<String>,
+    pub status: StudioSpaceStatus,
+    #[serde(
+        rename = "frontAgentId",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub front_agent_id: Option<StudioAgentId>,
+    #[serde(
+        rename = "avatarColor",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub avatar_color: Option<String>,
+    #[serde(
+        rename = "avatarGlyph",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub avatar_glyph: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub summary: Option<StudioSpaceSummary>,
+    #[serde(rename = "createdAt")]
+    pub created_at: String,
+    #[serde(rename = "updatedAt")]
+    pub updated_at: String,
+}
+
+/// Every space the person can open, the most recently active first: the active ones, or the archived ones when asked.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct StudioSpacesListRequest {
+    pub id: RequestId,
+    pub method: StudioSpacesListRequestMethod,
+    pub params: StudioSpacesListParams,
+}
+
+/// Parameters of studio.spaces.list: archived lists the archived spaces instead of the active ones.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct StudioSpacesListParams {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub archived: Option<bool>,
+    pub scope: StudioManagePermission,
+}
+
+/// Result of studio.spaces.list.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct StudioSpacesListResult {
+    pub spaces: Vec<StudioSpace>,
+}
+
+/// Work going on, items waiting for the person and results, in the whole space.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct StudioSpaceCounts {
+    #[serde(rename = "activeWorkItems")]
+    pub active_work_items: u64,
+    #[serde(rename = "openAttentionItems")]
+    pub open_attention_items: u64,
+    pub results: u64,
+}
+
+/// An agent taking part in the space: its role there (generalist, writer, or the person's own), whether it is the front agent, and whether it may run the space (admin) or only take part (participant). An agent of someone else's may take part: its name is not carried, so the desk names it from the person's own agents when it can.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct StudioSpaceAgent {
+    #[serde(rename = "agentId")]
+    pub agent_id: StudioAgentId,
+    #[serde(rename = "roleKey")]
+    pub role_key: String,
+    pub front: bool,
+    pub permission: StudioSpaceAgentPermission,
+}
+
+/// What an agent may do in a space: run it (admin) or only take part (participant).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum StudioSpaceAgentPermission {
+    #[serde(rename = "admin")]
+    Admin,
+    #[serde(rename = "participant")]
+    Participant,
+}
+
+/// How a piece of work stands, as endue.ai's space page words it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum StudioSpaceWorkStatus {
+    #[serde(rename = "queued")]
+    Queued,
+    #[serde(rename = "preparing")]
+    Preparing,
+    #[serde(rename = "in_progress")]
+    InProgress,
+    #[serde(rename = "needs_you")]
+    NeedsYou,
+    #[serde(rename = "stopping")]
+    Stopping,
+    #[serde(rename = "pausing")]
+    Pausing,
+    #[serde(rename = "paused")]
+    Paused,
+    #[serde(rename = "done")]
+    Done,
+    #[serde(rename = "partly_done")]
+    PartlyDone,
+    #[serde(rename = "failed")]
+    Failed,
+    #[serde(rename = "stopped")]
+    Stopped,
+}
+
+/// A piece of work going on in the space.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct StudioSpaceWork {
+    pub id: String,
+    pub title: String,
+    pub status: StudioSpaceWorkStatus,
+    #[serde(rename = "updatedAt")]
+    pub updated_at: String,
+}
+
+/// One of the space's newest results: its title, its kind (document, table, page) and when it last changed.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct StudioSpaceResult {
+    pub id: String,
+    pub title: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub kind: Option<String>,
+    #[serde(rename = "updatedAt")]
+    pub updated_at: String,
+}
+
+/// A room's threads: with a discussion going on, waiting for the person, and unread.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct StudioSpaceRoomThreads {
+    pub active: u64,
+    #[serde(rename = "needsYou")]
+    pub needs_you: u64,
+    pub unread: u64,
+}
+
+/// A room of the space, where its agents discuss: its name and topic, the messages the person has not read, when the last came, whether a discussion is going on, and its threads. Who is in the room is not carried.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct StudioSpaceRoom {
+    pub id: String,
+    pub name: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub topic: Option<String>,
+    #[serde(rename = "unreadCount")]
+    pub unread_count: u64,
+    #[serde(
+        rename = "lastMessageAt",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub last_message_at: Option<String>,
+    pub discussing: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub threads: Option<StudioSpaceRoomThreads>,
+}
+
+/// A part of what studio.spaces.get reads: the overview (counts, agents, work, results) or the rooms.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum StudioSpacePart {
+    #[serde(rename = "overview")]
+    Overview,
+    #[serde(rename = "rooms")]
+    Rooms,
+}
+
+/// A part endue AI did not answer for: the bridge error code it would have been, and a sentence for people.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct StudioSpaceProblem {
+    pub part: StudioSpacePart,
+    pub code: ErrorCode,
+    pub message: String,
+}
+
+/// What one space is doing, read at once: the space, its overview and its rooms that are not archived. The space itself must answer; a part that does not is left out and named in problems.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct StudioSpacesGetRequest {
+    pub id: RequestId,
+    pub method: StudioSpacesGetRequestMethod,
+    pub params: StudioSpaceParams,
+}
+
+/// Parameters of studio.spaces.get.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct StudioSpaceParams {
+    #[serde(rename = "spaceId")]
+    pub space_id: StudioSpaceId,
+    pub scope: StudioManagePermission,
+}
+
+/// Result of studio.spaces.get: the space, its counts (absent when the overview is in problems), the agents taking part (the front agent first), the work going on and the newest results (at most 5 each), and its rooms. A part in problems is absent (counts) or empty (the lists).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct StudioSpacesGetResult {
+    pub space: StudioSpace,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub counts: Option<StudioSpaceCounts>,
+    pub agents: Vec<StudioSpaceAgent>,
+    pub work: Vec<StudioSpaceWork>,
+    pub results: Vec<StudioSpaceResult>,
+    pub rooms: Vec<StudioSpaceRoom>,
+    pub problems: Vec<StudioSpaceProblem>,
+}
+
 /// An agent's id on endue AI (ag_ followed by a ULID today).
 pub type StudioAgentId = String;
 
@@ -11762,6 +12034,22 @@ pub enum StoreSetRequestMethod {
     StoreSet,
 }
 
+/// The `method` of [`StudioSpacesListRequest`]: always `"studio.spaces.list"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum StudioSpacesListRequestMethod {
+    #[default]
+    #[serde(rename = "studio.spaces.list")]
+    StudioSpacesList,
+}
+
+/// The `method` of [`StudioSpacesGetRequest`]: always `"studio.spaces.get"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum StudioSpacesGetRequestMethod {
+    #[default]
+    #[serde(rename = "studio.spaces.get")]
+    StudioSpacesGet,
+}
+
 /// The `method` of [`StudioAgentsListRequest`]: always `"studio.agents.list"`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub enum StudioAgentsListRequestMethod {
@@ -12268,6 +12556,10 @@ pub const SCHEMAS: &[(&str, &str)] = &[
     (
         "https://endue.ai/specs/bridge/v0/store.schema.json",
         include_str!("../../../specs/bridge/v0/store.schema.json"),
+    ),
+    (
+        "https://endue.ai/specs/bridge/v0/studio-spaces.schema.json",
+        include_str!("../../../specs/bridge/v0/studio-spaces.schema.json"),
     ),
     (
         "https://endue.ai/specs/bridge/v0/studio.schema.json",

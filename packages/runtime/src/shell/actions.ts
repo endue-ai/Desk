@@ -204,6 +204,11 @@ export function defaultPlacement(id: string): SurfacePlacement {
     return { ...base, plugin: "endue.agent", x: 520, y: 260, w: 400, h: 340 };
   if (id.startsWith("local:"))
     return { ...base, plugin: "desk.agents", x: 360, y: 120, w: 820, h: 600 };
+  // An endue agent's or space's card, tall enough for its Studio side and clear of Eris (ADR 0129).
+  if (id.startsWith("endue-agent:"))
+    return { ...base, plugin: "endue.agent", x: 200, y: 110, w: 440, h: 600 };
+  if (id.startsWith("endue-space:"))
+    return { ...base, plugin: "endue.space", x: 180, y: 100, w: 480, h: 640 };
   if (id === "keys") return { ...base, plugin: "endue.keys", x: 480, y: 200, w: 480, h: 440 };
   if (id.startsWith("recent:"))
     return { ...base, plugin: "endue.eris", x: 980, y: 300, w: 320, h: 240 };

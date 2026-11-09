@@ -26,7 +26,8 @@ animations use an injected clock (ADR 0013). Shell decisions not in the brief: `
   A click on Eris (or `eris.talk()`) is a spoken turn: listen, think, speak (`eris/talk.ts`). Its `desk.propose` (ADR 0073, 0102)
   turns a sentence into a universal view, a profile or key bindings by `brain.ask` (ADR 0059), then previews it.
 - `ShellBridge` (audio, brain voice, agent directory, `localAgents`: Claude Code and Codex on this
-  computer, their sessions and runs in the agent bar and `desk.agents.*`, ADR 0110; ADR 0024); `browserBridge`, `browserCore` (cmd.*,
+  computer, their sessions and runs in the agent bar and `desk.agents.*`, ADR 0110; `studio`: signed in,
+  the person's endue agents and spaces as windows whose card turns to Studio, ADR 0129; ADR 0024); `browserBridge`, `browserCore` (cmd.*,
   plugins, grants, store, init, the desk folder, fixture items, `upsert`, `remove`, `brain.ask`) for
   pages and tests. `ShortcutRouter`, `comboOf`, `canonical`, `formatCombo`; layout `place`, `move`,
   `remove`; clock `realClock`, `ManualClock`, `tween`; `SurfaceHost`; `applyTheme`; `desk.css`.

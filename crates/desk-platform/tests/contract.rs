@@ -10,6 +10,7 @@ use desk_platform::wire::{
     Profile, PromptRevision, Settings, SettingsPatch, SkillBinding,
 };
 use desk_platform::wire_catalog::{CatalogAgent, ConversationPage, Recommended, Used};
+use desk_platform::wire_spaces::{Room, Space, SpaceOverview};
 use desk_platform::{ErrorKind, PlatformError};
 use serde::Deserialize;
 use serde::de::DeserializeOwned;
@@ -120,6 +121,9 @@ fn valid_answers_read_into_the_client_types() {
             "RecommendEnvelope" => reads::<Envelope<Recommended>>(vector),
             "UseCatalogEnvelope" => reads::<Envelope<Used>>(vector),
             "ConversationListEnvelope" => reads::<Envelope<ConversationPage>>(vector),
+            "SpaceListResponse" => reads::<Vec<Space>>(vector),
+            "SpaceOverviewEnvelope" => reads::<Envelope<SpaceOverview>>(vector),
+            "SpaceRoomListEnvelope" => reads::<Envelope<Vec<Room>>>(vector),
             "ErrorEnvelope" => {
                 let bytes = serde_json::to_vec(&vector.instance).unwrap();
                 let error = PlatformError::from_response(404, &bytes);

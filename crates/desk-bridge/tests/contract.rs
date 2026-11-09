@@ -21,10 +21,11 @@ use desk_bridge::{
     ShellOpenResult, StoreGetResult, StudioAgentsCreateResult, StudioAgentsFacetsResult,
     StudioAgentsListResult, StudioAgentsPromptUpdateResult, StudioAgentsRemoveResult,
     StudioCatalogListResult, StudioCatalogRecommendResult, StudioCatalogUseResult,
-    StudioConversationsListResult, ThemeBundle, ThemeExportResult, ThemeIndex,
-    ThemeMarketFetchResult, ThemeMarketListResult, ThemePackage, ThemeType, ThemeVariant,
-    UiSurfaceStateRequest, UiSurfaceStateResult, UniversalData, UniversalSource, UniversalView,
-    View, ViewGetResult, ViewListResult, ViewSource, ViewSummary, manifest_problems, view_problems,
+    StudioConversationsListResult, StudioSpacesGetResult, StudioSpacesListResult, ThemeBundle,
+    ThemeExportResult, ThemeIndex, ThemeMarketFetchResult, ThemeMarketListResult, ThemePackage,
+    ThemeType, ThemeVariant, UiSurfaceStateRequest, UiSurfaceStateResult, UniversalData,
+    UniversalSource, UniversalView, View, ViewGetResult, ViewListResult, ViewSource, ViewSummary,
+    manifest_problems, view_problems,
 };
 use serde::Serialize;
 use serde::de::DeserializeOwned;
@@ -387,6 +388,8 @@ fn valid_vectors_roundtrip_through_generated_types() {
                 "StudioConversationsListResult" => {
                     roundtrip::<StudioConversationsListResult>(vector)
                 }
+                "StudioSpacesListResult" => roundtrip::<StudioSpacesListResult>(vector),
+                "StudioSpacesGetResult" => roundtrip::<StudioSpacesGetResult>(vector),
                 "ComputerPermissionsStatusResult" => {
                     roundtrip::<ComputerPermissionsStatusResult>(vector)
                 }

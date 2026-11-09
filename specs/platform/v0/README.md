@@ -1,9 +1,10 @@
 # endue AI platform API v0: the desk's subset
 
 `openapi.yaml` (OpenAPI 3.1) writes down the part of endue AI's own platform API (`/api/v1`, what
-endue.ai's web calls) that Desk uses to create and manage the person's endue AI agents (ADR 0122).
-endue AI serves it; `crates/desk-platform` is Desk's client, and the core serves it on the bridge as
-`studio.*` (`specs/bridge/v0/studio.schema.json`) under `studio:manage`.
+endue.ai's web calls) that Desk uses to create and manage the person's endue AI agents (ADR 0122)
+and to read the spaces they can open (ADR 0129). endue AI serves it; `crates/desk-platform` is Desk's
+client, and the core serves it on the bridge as `studio.*` (`specs/bridge/v0/studio.schema.json`,
+`studio-spaces.schema.json`) under `studio:manage`.
 
 | Area | Operations |
 | --- | --- |
@@ -11,6 +12,7 @@ endue AI serves it; `crates/desk-platform` is Desk's client, and the core serves
 | Studio facets | `getAgentIdentity`, `getAgentSettings`, `updateAgentSettings`, `getAgentPrompt`, `saveAgentPrompt`, `listPromptRevisions`, `restorePromptRevision`, `listAgentSkills`, `listAgentConnectors`, `listAgentTraits` |
 | Catalog | `listCatalogAgents`, `recommendCatalogAgents`, `useCatalogAgent` |
 | Conversations | `listConversations` (the Home board) |
+| Spaces (read only) | `listSpaces` (with summaries), `getSpace`, `getSpaceOverview`, `listSpaceRooms` |
 
 ## Base, token and envelopes
 
@@ -22,8 +24,12 @@ endue AI serves it; `crates/desk-platform` is Desk's client, and the core serves
 - agent-service answers the bare body for agents, identity, prompt, skills, connectors and traits, and
   `{ data, meta }` for settings. The catalog answers `{ data, meta }`; ai-agent-service (`/api/v1/ai`)
   answers `{ success: true, data }`. Errors are `{ error: { code, message, details?, suggest? }, meta }`.
+  The space list and one space answer the bare body; a space's overview and rooms `{ data, meta }`.
 - Bodies are snake_case. Readers ignore fields this document does not name and read `null` as absent,
   so endue AI can add fields without breaking Desk.
+- Only what a card shows is named. People's ids, room members, a viewer's capabilities, attention
+  items' reasons and anything about billing stay unnamed and unread, and nothing here names a host or
+  a route other than the public gateway's.
 
 ## Errors on the bridge
 

@@ -1,7 +1,8 @@
 /**
  * The agent bar (system layer, left): the agent programs on this computer first (Claude Code, Codex:
  * every one the core found registers itself, ADR 0110), then the current space's agents from the
- * agent directory, the spaces below. An agent with a working A2A task, or a local agent with a run
+ * agent directory, the spaces below. Signed in to endue, the person's endue agents and spaces take
+ * the directory's place and open as windows (SideBarEndue.ts, ADR 0129). An agent with a working A2A task, or a local agent with a run
  * going on, carries the working dot; an inactive one waits at the edge, dashed and dimmed. Past six
  * agents, the last place opens the rest in a popover.
  */
@@ -10,9 +11,10 @@ import { localText } from "../surface/local-agent/copy";
 import { presenceOf, selectAgent, selectSpace, spaceAgents } from "../system/agents";
 import { badgeOf, LOCAL_VIEW, localPresence, selectLocalAgent } from "../system/local-agents";
 import type { ShellCtx } from "./context";
-import { h, render } from "./dom";
+import { type Child, h, render } from "./dom";
 import { icon } from "./icons";
-import { initial } from "./state";
+import { type BarGroups, endueGroups } from "./SideBarEndue";
+import { type DeskState, initial } from "./state";
 
 const VISIBLE = 6;
 
@@ -77,29 +79,13 @@ export function mountSideBar(root: HTMLElement, ctx: ShellCtx): () => void {
     );
   };
 
-  const draw = () => {
-    const s = ctx.store.get();
+  /** The agent directory's agents and spaces (specs/brain/v0): what the bar shows signed out. */
+  const directoryGroups = (s: DeskState): BarGroups => {
     const agents = spaceAgents(s);
     const shown = agents.length > VISIBLE ? agents.slice(0, VISIBLE - 1) : agents;
     const hidden = agents.slice(shown.length);
     const moreLabel = ctx.tr("moreAgents", { n: hidden.length });
-    render(el, () => [
-      s.localAgents.length
-        ? [
-            h("div", { class: "rail-label", "aria-hidden": "true" }, localText(s.lang, "group")),
-            h(
-              "div",
-              {
-                class: "bar-group",
-                role: "group",
-                "aria-label": localText(s.lang, "groupLabel"),
-                "data-local-agents": "",
-              },
-              s.localAgents.map(local),
-            ),
-            h("div", { class: "bar-divider", role: "separator" }),
-          ]
-        : null,
+    const bar: Child[] = [
       h("div", { class: "rail-label", "aria-hidden": "true" }, ctx.tr("agents")),
       h(
         "div",
@@ -161,37 +147,65 @@ export function mountSideBar(root: HTMLElement, ctx: ShellCtx): () => void {
           ),
         ),
       ),
+    ];
+    const more =
+      s.popover === "agents-more" && hidden.length
+        ? hidden.map((a) =>
+            h(
+              "button",
+              {
+                class: "menu-item agents-popover-item",
+                type: "button",
+                "data-agent": a.id,
+                onClick: () => {
+                  ctx.store.set({ popover: null });
+                  selectAgent(ctx, a.id);
+                },
+              },
+              h("span", { class: "run-avatar", "aria-hidden": "true" }, initial(a.name)),
+              a.name,
+              presenceOf(a, s.tasks) === "working" ? h("span", { class: "dot dot-active" }) : null,
+            ),
+          )
+        : null;
+    return { bar, more, moreLabel };
+  };
+
+  const draw = () => {
+    const s = ctx.store.get();
+    // Signed in, the person's endue agents and spaces take the directory's place (ADR 0129).
+    const groups = s.endue.state === "off" ? directoryGroups(s) : endueGroups(ctx, s);
+    render(el, () => [
+      s.localAgents.length
+        ? [
+            h("div", { class: "rail-label", "aria-hidden": "true" }, localText(s.lang, "group")),
+            h(
+              "div",
+              {
+                class: "bar-group",
+                role: "group",
+                "aria-label": localText(s.lang, "groupLabel"),
+                "data-local-agents": "",
+              },
+              s.localAgents.map(local),
+            ),
+            h("div", { class: "bar-divider", role: "separator" }),
+          ]
+        : null,
+      ...groups.bar,
     ]);
     render(more, () =>
-      s.popover === "agents-more" && hidden.length
+      groups.more
         ? [
             h(
               "div",
               {
                 class: "popover agents-popover",
                 role: "dialog",
-                "aria-label": moreLabel,
+                "aria-label": groups.moreLabel,
                 style: { top: `${el.offsetTop - el.offsetHeight / 2}px` },
               },
-              hidden.map((a) =>
-                h(
-                  "button",
-                  {
-                    class: "menu-item agents-popover-item",
-                    type: "button",
-                    "data-agent": a.id,
-                    onClick: () => {
-                      ctx.store.set({ popover: null });
-                      selectAgent(ctx, a.id);
-                    },
-                  },
-                  h("span", { class: "run-avatar", "aria-hidden": "true" }, initial(a.name)),
-                  a.name,
-                  presenceOf(a, s.tasks) === "working"
-                    ? h("span", { class: "dot dot-active" })
-                    : null,
-                ),
-              ),
+              groups.more,
             ),
           ]
         : [],
@@ -211,7 +225,13 @@ export function mountSideBar(root: HTMLElement, ctx: ShellCtx): () => void {
       s.lang,
       s.localAgents,
       s.localRuns.filter((r) => r.state === "running").map((r) => r.agent),
-      s.focused?.startsWith(LOCAL_VIEW) ? s.focused : null,
+      s.focused?.startsWith(LOCAL_VIEW) || s.focused?.startsWith("endue-") ? s.focused : null,
+      s.endue.state,
+      s.endue.agents,
+      s.endue.spaces,
+      s.endue.conversations.map((c) => [c.agentId, c.activity]),
+      s.endue.agent,
+      s.endue.space,
     ],
     draw,
   );

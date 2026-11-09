@@ -19,6 +19,7 @@ import { pluginWindows } from "../surface/host";
 import { wakePlaced } from "../surface/placed";
 import { mountSurfaces } from "../surface/Surface";
 import { loadDirectory } from "../system/agents";
+import { loadEndue, watchEndue } from "../system/endue";
 import { mountSystemLayer } from "../system/layer";
 import { defineLocalAgentCommands } from "../system/local-agent-commands";
 import { loadLocalAgents, watchLocalAgents } from "../system/local-agents";
@@ -158,6 +159,8 @@ export function mountDesk(options: DeskOptions): Desk {
     // desk.agents.* commands are Eris's tools.
     defineLocalAgentCommands(ctx),
     watchLocalAgents(ctx),
+    // Signing in or out swaps the agent bar between endue's agents and the directory (ADR 0129).
+    watchEndue(ctx),
     // desk.propose: Eris makes views, profiles and key bindings from a sentence and says what she
     // made (ADR 0073). Its provenance takes the wall clock (Date.now), not the frame loop's time;
     // the card for profiles and keys sits over the whole shell.
@@ -183,10 +186,12 @@ export function mountDesk(options: DeskOptions): Desk {
 
   // The local agents come in at once and on their own: reading their sessions never holds the
   // desk's start, and the start never holds them (a saved file whose plugin waits on a permission
-  // prompt holds the session's restore). refresh reads them again with the agent directory.
+  // prompt holds the session's restore). refresh reads them again with the agent directory. The
+  // person's endue agents and spaces never hold the start either: endue AI may be slow to answer.
   void loadLocalAgents(ctx);
   const refresh = () => {
     void loadLocalAgents(ctx);
+    void loadEndue(ctx);
     return loadDirectory(ctx);
   };
   // The rail shows the brain the core has; a host without one leaves it offline.

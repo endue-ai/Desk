@@ -7,6 +7,8 @@ mod support;
 
 #[path = "studio/board.rs"]
 mod board;
+#[path = "studio/spaces.rs"]
+mod spaces;
 
 use std::fs;
 use std::sync::Arc;
@@ -80,6 +82,8 @@ fn every_call(agent: &str) -> Vec<(&'static str, Value)> {
         ),
         ("studio.catalog.use", json!({ "slug": "support-mail" })),
         ("studio.conversations.list", json!({ "agentId": agent })),
+        ("studio.spaces.list", json!({})),
+        ("studio.spaces.get", json!({ "spaceId": "sp_launch" })),
     ]
 }
 

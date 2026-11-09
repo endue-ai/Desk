@@ -1,0 +1,55 @@
+{
+  "target": "StudioSpacesGetResult",
+  "description": "a space with its counts, two agents, a piece of work and a result; its rooms out of reach",
+  "instance": {
+    "space": {
+      "id": "sp_01JC0Q4MR00000000000000001",
+      "key": "launch",
+      "name": "Launch",
+      "goal": "Ship the launch page and the first mail",
+      "status": "active",
+      "frontAgentId": "ag_01JC0Q4MR00000000000000001",
+      "createdAt": "2026-11-01T09:00:00Z",
+      "updatedAt": "2026-11-02T09:00:00Z"
+    },
+    "counts": { "activeWorkItems": 1, "openAttentionItems": 1, "results": 3 },
+    "agents": [
+      {
+        "agentId": "ag_01JC0Q4MR00000000000000001",
+        "roleKey": "generalist",
+        "front": true,
+        "permission": "admin"
+      },
+      {
+        "agentId": "ag_01JC0Q4MR00000000000000002",
+        "roleKey": "writer",
+        "front": false,
+        "permission": "participant"
+      }
+    ],
+    "work": [
+      {
+        "id": "wi_01JC0Q4MR00000000000000001",
+        "title": "Write the first mail",
+        "status": "in_progress",
+        "updatedAt": "2026-11-02T09:00:00Z"
+      }
+    ],
+    "results": [
+      {
+        "id": "res_01JC0Q4MR00000000000000001",
+        "title": "Launch page draft",
+        "kind": "document",
+        "updatedAt": "2026-11-02T09:00:00Z"
+      }
+    ],
+    "rooms": [],
+    "problems": [
+      {
+        "part": "rooms",
+        "code": "offline",
+        "message": "endue AI did not answer within 15 s."
+      }
+    ]
+  }
+}

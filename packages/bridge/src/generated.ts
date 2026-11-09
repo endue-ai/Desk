@@ -697,7 +697,7 @@ export interface MemoryWritePermission {
   permission: "memory:write";
 }
 
-/** Create and manage the person's endue AI agents with studio.*, through endue AI's platform API under the desk's endue ID: list, read, create, change, turn off and on and delete them, read what Studio shows of one and change its prompt, find catalog agents and start from one, and list the conversations for the Home board. The token itself never crosses the bridge. A built-in plugin that declares it holds it; any other caller asks the person (ADR 0122). */
+/** Create and manage the person's endue AI agents with studio.*, through endue AI's platform API under the desk's endue ID: list, read, create, change, turn off and on and delete them, read what Studio shows of one and change its prompt, find catalog agents and start from one, list the conversations for the Home board, and read the spaces the person can open (studio.spaces.*, ADR 0129). The token itself never crosses the bridge. A built-in plugin that declares it holds it; any other caller asks the person (ADR 0122). */
 export interface StudioManagePermission {
   permission: "studio:manage";
 }
@@ -2984,6 +2984,8 @@ export type BridgeRequest =
   | StudioCatalogRecommendRequest
   | StudioCatalogUseRequest
   | StudioConversationsListRequest
+  | StudioSpacesListRequest
+  | StudioSpacesGetRequest
   | ComputerPermissionsStatusRequest
   | ComputerPermissionsRequestRequest
   | ComputerPermissionsOpenRequest
@@ -5545,6 +5547,161 @@ export interface StoreSetParams {
 /** Result of store.set. */
 export type StoreSetResult = Record<string, never>;
 
+/** A space's id on endue AI. */
+export type StudioSpaceId = string;
+
+/** active, or archived: put away by the person and kept as it is. */
+export type StudioSpaceStatus = "active" | "archived";
+
+/** A space's newest result: its title and when it last changed. */
+export interface StudioSpaceLatestResult {
+  id: string;
+  title: string;
+  updatedAt: string;
+}
+
+/** How much is open in a space the person owns: work going on, items waiting for the person, its newest result and when it was last active. endue AI summarises only the spaces the person owns. */
+export interface StudioSpaceSummary {
+  activeWorkItems: number;
+  openAttentionItems: number;
+  latestResult?: StudioSpaceLatestResult;
+  lastActivityAt?: string;
+}
+
+/** One space as endue AI lists it: its key, name, description and goal, its front agent (the one that answers the person), how it looks (avatarColor as #rrggbb, avatarGlyph of a character or two, an emoji perhaps; absent when none was set: draw one from the name) and its summary when endue AI gave one. The core passes only a colour of the form #rrggbb. Its picture is not carried: the desk loads no remote images. */
+export interface StudioSpace {
+  id: StudioSpaceId;
+  key: string;
+  name: string;
+  description?: string;
+  goal?: string;
+  status: StudioSpaceStatus;
+  frontAgentId?: StudioAgentId;
+  avatarColor?: string;
+  avatarGlyph?: string;
+  summary?: StudioSpaceSummary;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Every space the person can open, the most recently active first: the active ones, or the archived ones when asked. */
+export interface StudioSpacesListRequest {
+  id: RequestId;
+  method: "studio.spaces.list";
+  params: StudioSpacesListParams;
+}
+
+/** Parameters of studio.spaces.list: archived lists the archived spaces instead of the active ones. */
+export interface StudioSpacesListParams {
+  archived?: boolean;
+  scope: StudioManagePermission;
+}
+
+/** Result of studio.spaces.list. */
+export interface StudioSpacesListResult {
+  spaces: StudioSpace[];
+}
+
+/** Work going on, items waiting for the person and results, in the whole space. */
+export interface StudioSpaceCounts {
+  activeWorkItems: number;
+  openAttentionItems: number;
+  results: number;
+}
+
+/** An agent taking part in the space: its role there (generalist, writer, or the person's own), whether it is the front agent, and whether it may run the space (admin) or only take part (participant). An agent of someone else's may take part: its name is not carried, so the desk names it from the person's own agents when it can. */
+export interface StudioSpaceAgent {
+  agentId: StudioAgentId;
+  roleKey: string;
+  front: boolean;
+  permission: StudioSpaceAgentPermission;
+}
+
+/** What an agent may do in a space: run it (admin) or only take part (participant). */
+export type StudioSpaceAgentPermission = "admin" | "participant";
+
+/** How a piece of work stands, as endue.ai's space page words it. */
+export type StudioSpaceWorkStatus =
+  | "queued"
+  | "preparing"
+  | "in_progress"
+  | "needs_you"
+  | "stopping"
+  | "pausing"
+  | "paused"
+  | "done"
+  | "partly_done"
+  | "failed"
+  | "stopped";
+
+/** A piece of work going on in the space. */
+export interface StudioSpaceWork {
+  id: string;
+  title: string;
+  status: StudioSpaceWorkStatus;
+  updatedAt: string;
+}
+
+/** One of the space's newest results: its title, its kind (document, table, page) and when it last changed. */
+export interface StudioSpaceResult {
+  id: string;
+  title: string;
+  kind?: string;
+  updatedAt: string;
+}
+
+/** A room's threads: with a discussion going on, waiting for the person, and unread. */
+export interface StudioSpaceRoomThreads {
+  active: number;
+  needsYou: number;
+  unread: number;
+}
+
+/** A room of the space, where its agents discuss: its name and topic, the messages the person has not read, when the last came, whether a discussion is going on, and its threads. Who is in the room is not carried. */
+export interface StudioSpaceRoom {
+  id: string;
+  name: string;
+  topic?: string;
+  unreadCount: number;
+  lastMessageAt?: string;
+  discussing: boolean;
+  threads?: StudioSpaceRoomThreads;
+}
+
+/** A part of what studio.spaces.get reads: the overview (counts, agents, work, results) or the rooms. */
+export type StudioSpacePart = "overview" | "rooms";
+
+/** A part endue AI did not answer for: the bridge error code it would have been, and a sentence for people. */
+export interface StudioSpaceProblem {
+  part: StudioSpacePart;
+  code: ErrorCode;
+  message: string;
+}
+
+/** What one space is doing, read at once: the space, its overview and its rooms that are not archived. The space itself must answer; a part that does not is left out and named in problems. */
+export interface StudioSpacesGetRequest {
+  id: RequestId;
+  method: "studio.spaces.get";
+  params: StudioSpaceParams;
+}
+
+/** Parameters of studio.spaces.get. */
+export interface StudioSpaceParams {
+  spaceId: StudioSpaceId;
+  scope: StudioManagePermission;
+}
+
+/** Result of studio.spaces.get: the space, its counts (absent when the overview is in problems), the agents taking part (the front agent first), the work going on and the newest results (at most 5 each), and its rooms. A part in problems is absent (counts) or empty (the lists). */
+export interface StudioSpacesGetResult {
+  space: StudioSpace;
+  counts?: StudioSpaceCounts;
+  agents: StudioSpaceAgent[];
+  work: StudioSpaceWork[];
+  results: StudioSpaceResult[];
+  rooms: StudioSpaceRoom[];
+  problems: StudioSpaceProblem[];
+}
+
 /** An agent's id on endue AI (ag_ followed by a ULID today). */
 export type StudioAgentId = string;
 
@@ -6718,6 +6875,8 @@ export interface BridgeMethodMap {
     params: StudioConversationsListParams;
     result: StudioConversationsListResult;
   };
+  "studio.spaces.list": { params: StudioSpacesListParams; result: StudioSpacesListResult };
+  "studio.spaces.get": { params: StudioSpaceParams; result: StudioSpacesGetResult };
   "computer.permissions.status": {
     params: ComputerSeeParams;
     result: ComputerPermissionsStatusResult;
@@ -6876,6 +7035,8 @@ export const BRIDGE_METHODS = [
   "studio.catalog.recommend",
   "studio.catalog.use",
   "studio.conversations.list",
+  "studio.spaces.list",
+  "studio.spaces.get",
   "computer.permissions.status",
   "computer.permissions.request",
   "computer.permissions.open",

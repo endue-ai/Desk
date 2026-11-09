@@ -3,7 +3,7 @@
 The calls the web runtime (and every plugin through it) makes into the Rust core. JSON Schema 2020-12,
 one file per namespace: `bridge.schema.json` (envelope, errors, shared types), `fs`, `proc`, `net`, `plugins`,
 `store`, `search`, `init`, `brain`, `audio`, `ui`, `perm`, `cmd`, `settings`, `log`, `events`, `data`, `connector`,
-`view`, `catalog`, `shell`, `update`, `theme`, `account`, `agent`, `agents`, `studio` and `computer`. Items, views and connectors are the types of `specs/item`,
+`view`, `catalog`, `shell`, `update`, `theme`, `account`, `agent`, `agents`, `studio` (with `studio-spaces`) and `computer`. Items, views and connectors are the types of `specs/item`,
 `specs/view` and `specs/connector` (ADR 0032). v0 may break on any minor release (ADR 0004).
 
 ## Envelope
@@ -578,6 +578,15 @@ Without the desk's endue ID the answer is `signed_out` (also after a 401 that on
 endue AI out of reach or silent past 15 s is `offline`; its 403 is `forbidden`; an agent or catalog slug
 it does not have (404, 410, or an agent already deleted) is `not_found`; a value it refuses (400, 422) is
 `invalid_params`; anything else is `io_error`.
+
+**studio.spaces.list** and **studio.spaces.get** (`studio-spaces.schema.json`, ADR 0129) read the endue AI
+spaces the person can open, under `studio:manage` and with the same errors. `list` answers the active
+spaces (or the archived ones with `archived`), the most recently active first, each with its look (a
+`#rrggbb` colour and a glyph) and, for a space the person owns, its summary. `get` reads one space, its
+overview and its open rooms at once: the space must answer, and a part that does not is named in
+`problems`. It answers the counts, the agents taking part (the front agent first), at most five pieces of
+work going on and five newest results, and the rooms with their unread messages. Read only. The bridge
+carries no room member, no person's id, no attention reason and no remote picture.
 
 **computer.permissions.status**, **.request** and **.open**, **computer.screenshot**,
 **computer.windows**, **computer.apps.list**, **computer.ax.tree** and **computer.ax.find** see the

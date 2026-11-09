@@ -15,6 +15,11 @@ import type {
   LocalAgentRunData,
   LocalAgentSource,
   SpaceList,
+  StudioAgent,
+  StudioAgentsFacetsResult,
+  StudioConversation,
+  StudioSpace,
+  StudioSpacesGetResult,
 } from "@endue-ai/bridge";
 
 /**
@@ -163,6 +168,25 @@ export interface LocalAgentsBridge {
   onEvent(listener: (event: LocalAgentEvent) => void): () => void;
 }
 
+/**
+ * The person's endue AI agents and spaces as the agent bar and their windows read them, once the
+ * desk is signed in (studio.*, ADR 0122 and ADR 0129). The token stays in the core.
+ */
+export interface StudioShellBridge {
+  /** Every agent of the person's that is not deleted, the newest first. */
+  agents(): Promise<StudioAgent[]>;
+  /** The most recently active conversations: which agents work, and which wait for the person. */
+  conversations(): Promise<StudioConversation[]>;
+  /** What Studio shows of one agent. */
+  facets(agentId: string): Promise<StudioAgentsFacetsResult>;
+  /** The spaces the person can open, the most recently active first. */
+  spaces(): Promise<StudioSpace[]>;
+  /** What one space is doing. */
+  space(spaceId: string): Promise<StudioSpacesGetResult>;
+  /** Open one of endue.ai's pages (an https URL) in the system browser. */
+  open(url: string): Promise<void>;
+}
+
 export interface ShellBridge {
   /** The local name collected during first run; hosts without user information may omit this. */
   user?: { info(): Promise<{ name?: string }> };
@@ -199,6 +223,8 @@ export interface ShellBridge {
   };
   /** The agent programs on this computer (ADR 0110); hosts without a core leave it out. */
   localAgents?: LocalAgentsBridge;
+  /** The person's endue AI agents and spaces (ADR 0129); hosts without a core leave it out. */
+  studio?: StudioShellBridge;
   /** The agent directory of specs/brain/v0, which endue AI serves from its agent and A2A APIs. */
   agents: {
     list(query?: AgentQuery): Promise<AgentList>;

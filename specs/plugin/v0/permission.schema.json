@@ -373,7 +373,7 @@
       "additionalProperties": false
     },
     "StudioManagePermission": {
-      "description": "Create and manage the person's endue AI agents with studio.*, through endue AI's platform API under the desk's endue ID: list, read, create, change, turn off and on and delete them, read what Studio shows of one and change its prompt, find catalog agents and start from one, and list the conversations for the Home board. The token itself never crosses the bridge. A built-in plugin that declares it holds it; any other caller asks the person (ADR 0122).",
+      "description": "Create and manage the person's endue AI agents with studio.*, through endue AI's platform API under the desk's endue ID: list, read, create, change, turn off and on and delete them, read what Studio shows of one and change its prompt, find catalog agents and start from one, list the conversations for the Home board, and read the spaces the person can open (studio.spaces.*, ADR 0129). The token itself never crosses the bridge. A built-in plugin that declares it holds it; any other caller asks the person (ADR 0122).",
       "type": "object",
       "properties": { "permission": { "const": "studio:manage" } },
       "required": ["permission"],

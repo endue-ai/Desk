@@ -1,0 +1,13 @@
+{
+  "target": "BridgeRequest",
+  "description": "studio.spaces.get names the space",
+  "instance": {
+    "id": 3,
+    "method": "studio.spaces.get",
+    "params": {
+      "scope": {
+        "permission": "studio:manage"
+      }
+    }
+  }
+}

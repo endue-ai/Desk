@@ -6,7 +6,12 @@ import type { SurfacePlacement } from "../modes/types";
 import type { ShellCtx } from "../shell/context";
 import { h } from "../shell/dom";
 import type { DeskState } from "../shell/state";
+import { ENDUE_AGENT_VIEW, ENDUE_SPACE_VIEW, enduePresence } from "../system/endue-ids";
 import { isLocalAgent, LOCAL_VIEW, localName } from "../system/local-ids";
+import { endueAgentBody } from "./endue/agent";
+import { endueText } from "./endue/copy";
+import { presenceText } from "./endue/model";
+import { endueSpaceBody } from "./endue/space";
 import { localAgentBody } from "./local-agent/screen";
 import { agentBody } from "./samples/agent";
 import { calendarBody } from "./samples/calendar";
@@ -119,6 +124,28 @@ export function viewOf(ctx: ShellCtx, view: string): View {
       sub: running?.prompt ?? "",
       byEris: running ? s.erisRuns.includes(running.runId) : false,
       mount: () => localAgentBody(ctx, id),
+    };
+  }
+  if (view.startsWith(ENDUE_AGENT_VIEW)) {
+    const id = view.slice(ENDUE_AGENT_VIEW.length);
+    const agent = s.endue.agents.find((a) => a.id === id);
+    return {
+      icon: "user",
+      title: agent?.name || endueText(s.lang, "badge"),
+      sub: agent ? presenceText(s.lang, enduePresence(agent, s.endue.conversations)) : "",
+      byEris: false,
+      mount: () => endueAgentBody(ctx, id),
+    };
+  }
+  if (view.startsWith(ENDUE_SPACE_VIEW)) {
+    const id = view.slice(ENDUE_SPACE_VIEW.length);
+    const space = s.endue.spaces.find((sp) => sp.id === id);
+    return {
+      icon: "target",
+      title: space?.name || endueText(s.lang, "spaceBadge"),
+      sub: space?.goal ?? "",
+      byEris: false,
+      mount: () => endueSpaceBody(ctx, id),
     };
   }
   if (view.startsWith("agent:")) {

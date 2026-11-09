@@ -1,5 +1,6 @@
 import { agentCard, type Directory, listAgents, listTasks, sampleDirectory } from "./directory";
 import { type LocalStub, type LocalStubOptions, localAgentsStub } from "./local-agents";
+import type { StudioStub } from "./studio";
 import type {
   AccountStatus,
   AudioLevels,
@@ -8,6 +9,7 @@ import type {
   BrainStatus,
   BrainStep,
   ShellBridge,
+  StudioShellBridge,
   WordTime,
 } from "./types";
 
@@ -37,6 +39,12 @@ export interface BrowserBridgeOptions {
    * otherwise, so the shell fixtures keep their agent bar.
    */
   localAgents?: Partial<Omit<LocalStubOptions, "epoch">>;
+  /**
+   * The person's endue agents and spaces (ADR 0129): the studio stub the plugins' core uses too,
+   * answering the shell once its account signs in; none otherwise, so the agent bar keeps the
+   * agent directory.
+   */
+  studio?: StudioStub;
 }
 
 /** The stub plus the knobs tests and the dev page turn. */
@@ -44,6 +52,8 @@ export interface BrowserBridge extends ShellBridge {
   account: NonNullable<ShellBridge["account"]>;
   localAgents?: LocalStub;
   fake: {
+    /** The endue.ai pages the shell opened (studio.open), oldest first. */
+    opened: string[];
     /** Replay `envelope` as the user's microphone (or Eris's voice) from `at` (default now). */
     play(source: keyof AudioLevels, envelope: Envelope, at?: number): void;
     stop(source?: keyof AudioLevels): void;
@@ -122,6 +132,27 @@ export function wordTimes(text: string, msPerChar = 55): WordTime[] {
   return out;
 }
 
+/** studio.* as the shell calls it, answered by the studio stub as the runtime (`desk`). */
+function studioShell(stub: StudioStub, opened: string[]): StudioShellBridge {
+  const scope = { permission: "studio:manage" } as const;
+  const on = <M extends keyof StudioStub["handlers"]>(method: M) => {
+    const handler = stub.handlers[method];
+    if (!handler) throw new Error(`the studio stub has no ${method}`);
+    return handler;
+  };
+  return {
+    agents: async () => (await on("studio.agents.list")({ scope }, "desk")).agents,
+    conversations: async () =>
+      (await on("studio.conversations.list")({ limit: 50, scope }, "desk")).conversations,
+    facets: async (agentId) => on("studio.agents.facets")({ agentId, scope }, "desk"),
+    spaces: async () => (await on("studio.spaces.list")({ scope }, "desk")).spaces,
+    space: async (spaceId) => on("studio.spaces.get")({ spaceId, scope }, "desk"),
+    async open(url) {
+      opened.push(url);
+    },
+  };
+}
+
 export function browserBridge(options: BrowserBridgeOptions): BrowserBridge {
   const store =
     options.storage ?? (typeof localStorage === "undefined" ? memoryStorage() : localStorage);
@@ -131,8 +162,11 @@ export function browserBridge(options: BrowserBridgeOptions): BrowserBridge {
   const directory = sampleDirectory(options.epoch ?? Date.now());
   let account: AccountStatus = { state: "signed-out" };
   const accountListeners = new Set<(status: AccountStatus) => void>();
+  const opened: string[] = [];
   const changed = (next: AccountStatus) => {
     account = next;
+    // The core answers studio.* only while the account is signed in.
+    options.studio?.setSignedIn(next.state === "signed-in");
     for (const listener of [...accountListeners]) listener(structuredClone(next));
   };
   // Answers are copies, as if they came over the wire.
@@ -149,6 +183,7 @@ export function browserBridge(options: BrowserBridgeOptions): BrowserBridge {
 
   return {
     ...(local ? { localAgents: local } : {}),
+    ...(options.studio ? { studio: studioShell(options.studio, opened) } : {}),
     storage: {
       async get<T>(key: string) {
         const raw = store.getItem(PREFIX + key);
@@ -218,6 +253,7 @@ export function browserBridge(options: BrowserBridgeOptions): BrowserBridge {
     },
     fake: {
       directory,
+      opened,
       approveSignIn() {
         if (account.state === "signing-in")
           changed({ state: "signed-in", profile: { ...SAMPLE_PROFILE } });

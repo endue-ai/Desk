@@ -1,0 +1,11 @@
+{
+  "target": "StudioSpaceRoom",
+  "description": "a room carries no members: who is in it stays on endue AI",
+  "instance": {
+    "id": "room_01JC0Q4MR00000000000000001",
+    "name": "Copy",
+    "unreadCount": 0,
+    "discussing": false,
+    "members": [{ "subjectId": "u_01JC0Q4MR00000000000000001" }]
+  }
+}
