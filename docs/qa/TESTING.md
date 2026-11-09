@@ -172,7 +172,7 @@ Notes opens a 4 MiB note and types in it and while Explorer previews a 7.1 MiB i
 | `chat-digest` | None: a data-only view plugin | — | — | — |
 | `computer` | Accessibility tree ≤ 300 nodes; screenshots passed on as base64, never decoded | Frame | Stays: bounded | Read, not run |
 | `data` | JSON, YAML, TOML, XML and nine more parsed; tree, raw, search | Worker over 1 MiB, frame below | Unchanged (confirmed; out of scope) | 50 MiB JSON (PR #229) |
-| `database` | Client output (psql CSV, mysql XML, sqlite3 quote mode) decoded and parsed, up to 64 MiB | Frame | `ui/output-worker.js`: the runner's bytes go there, sets come back cut to the row limit; bar after 300 ms with Cancel; Cancel stops the worker | 50 MiB psql output: frame 0.1 ms, worker 0.9 s (Node) |
+| `database` | Client output (psql CSV, mysql XML, sqlite3 quote mode) decoded and parsed, up to 64 MiB; a dropped CSV or JSON parsed for an import (≤ 16 MiB); sort and filter over up to 100k kept rows | Frame | Output: `ui/output-worker.js`, the runner's bytes go there and sets come back cut to the row limit; bar after 300 ms with Cancel, which stops the worker. The import's parse and the grid's sort and filter stay (follow-up) | 50 MiB psql output: frame 0.1 ms, worker 0.9 s (Node) |
 | `design` | None: a policy, no frame | — | — | — |
 | `design-blueprint` | None: a design system, data only | — | — | — |
 | `design-compact` | None: a design system, data only | — | — | — |
@@ -182,7 +182,7 @@ Notes opens a 4 MiB note and types in it and while Explorer previews a 7.1 MiB i
 | `docker` | Lists (NDJSON ≤ 8 MiB), log lines per chunk, inspect tree ≤ 4000 rows | Frame | Stays: bounded; the log pane's full redraw per search key is DOM (follow-up) | Read, not run |
 | `docs` | DOCX, ODT, RTF, HWP, DOC and more parsed | Worker over 8 MiB, frame below | Unchanged (confirmed; out of scope; follow-up: a lower threshold) | PR #253 fixtures |
 | `eris` | Attachments ≤ 16 KiB decoded in < 1 ms; each character of an answer animated | Frame | Stays: bounded; long answers' animations are DOM (follow-up) | Read, not run |
-| `explorer` | Image preview read as base64 (≤ 8 MiB) and decoded with `atob` in the frame (0.3 s in Node) | Frame | The frame loads it from its `fs.url` URL; the engine decodes it (`img.decode()` before it shows); text previews stay (≤ 64 KiB, < 2 ms) | 7.1 MiB PNG (e2e, warm: longest 57–139 ms now, 13–24 ms after) |
+| `explorer` | Image preview read as base64 (≤ 8 MiB) and decoded with `atob` in the frame (0.3 s in Node); every expanded folder sorted again on each render | Frame | The frame loads the image from its `fs.url` URL; the engine decodes it (`img.decode()` before it shows); text previews stay (≤ 64 KiB, < 2 ms). The sort stays: fine at hundreds of entries, an estimated 0.5–2 s a render at 100k, not measured (follow-up: sort once per listing) | 7.1 MiB PNG (e2e, warm: longest 57–139 ms now, 13–24 ms after) |
 | `files` | None: a policy, no frame | — | — | — |
 | `fleet` | None: a policy, no frame | — | — | — |
 | `formats` | Decoders of `endue.formats` (RAR, 7z, DjVu, disk images) | In the library workers of `archives` and `reader` | Unchanged: a library, no frame of its own | PR #201, #257, #261 |
