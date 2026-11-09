@@ -4,14 +4,21 @@
 
 /**
  * @typedef {import("./notes.js").NoteModel} NoteModel
+ * @typedef {import("./counter.js").Counter} Counter
  * @typedef {{ edit(text: string): unknown }} Actions
  */
+
+/** How long a new note's count may take before the label says it is counting. */
+const COUNTING_AFTER_MS = 300;
+/** Typing counts once the keys pause, so a key in a long note waits for nothing but the text area. */
+const TYPING_PAUSE_MS = 200;
 
 /**
  * @param {Document} doc
  * @param {Actions} actions
+ * @param {Counter} counter counts in a worker (counter.js), never on this thread
  */
-export function createView(doc, actions) {
+export function createView(doc, actions, counter) {
   const byId = (/** @type {string} */ id) => /** @type {HTMLElement} */ (doc.getElementById(id));
   const name = byId("note-name");
   const path = byId("note-path");
@@ -19,26 +26,56 @@ export function createView(doc, actions) {
   const count = byId("note-count");
   const text = /** @type {HTMLTextAreaElement} */ (byId("note-text"));
   const status = byId("status");
-  const words = new Intl.Segmenter(undefined, { granularity: "word" });
-  const characters = new Intl.Segmenter(undefined, { granularity: "grapheme" });
-  /** @type {string | undefined} */
+  /** The text the label counts, and the text being counted. @type {string | undefined} */
   let counted;
+  /** @type {string | undefined} */
+  let asked;
+  /** @type {ReturnType<typeof setTimeout> | undefined} */
+  let slow;
+  /** @type {ReturnType<typeof setTimeout> | undefined} */
+  let typed;
 
-  /** @param {string} value */
-  function updateCount(value) {
-    if (counted === value) return;
-    counted = value;
-    let wordCount = 0;
-    let characterCount = 0;
-    for (const segment of words.segment(value)) if (segment.isWordLike) wordCount++;
-    for (const _ of characters.segment(value)) characterCount++;
-    count.textContent = `${wordCount} words · ${characterCount} characters`;
+  /**
+   * Count a text in the worker. While typing, the label keeps the last counts until the new ones
+   * come; a note just shown says "Counting…" when its count takes a while.
+   * @param {string} value
+   * @param {boolean} fresh the text came from a file, not from typing
+   */
+  function updateCount(value, fresh) {
+    if (value === counted || value === asked) return;
+    asked = value;
+    clearTimeout(slow);
+    if (fresh) {
+      count.textContent = "";
+      slow = setTimeout(() => {
+        if (asked === value) count.textContent = "Counting…";
+      }, COUNTING_AFTER_MS);
+    }
+    counter.count(value).then(
+      ({ words, characters }) => {
+        if (asked !== value) return;
+        clearTimeout(slow);
+        asked = undefined;
+        counted = value;
+        count.textContent = `${words} words · ${characters} characters`;
+      },
+      () => {
+        // Cancelled for a newer text, which shows its own counts; or the worker stopped.
+        if (asked !== value) return;
+        clearTimeout(slow);
+        asked = counted = undefined;
+        count.textContent = "";
+      },
+    );
   }
 
-  text.addEventListener("input", () => {
-    updateCount(text.value);
-    actions.edit(text.value);
-  });
+  /** A typed text, counted once the keys pause. Reading a long text area's value costs, so once. */
+  const typing = (/** @type {string} */ value) => {
+    clearTimeout(typed);
+    typed = setTimeout(() => updateCount(value, false), TYPING_PAUSE_MS);
+    actions.edit(value);
+  };
+  text.addEventListener("input", () => typing(text.value));
   const main = /** @type {HTMLElement} */ (doc.querySelector("main"));
 
   return {
@@ -50,10 +87,14 @@ export function createView(doc, actions) {
       text.hidden = !model;
       // Typing already put this text there: setting it again would move the caret to the end.
       const value = model ? model.text : "";
-      if (text.value !== value) text.value = value;
-      if (model) updateCount(value);
+      const fresh = text.value !== value;
+      if (fresh) text.value = value;
+      clearTimeout(typed);
+      if (model) updateCount(value, fresh);
       else {
-        counted = undefined;
+        counter.cancel();
+        clearTimeout(slow);
+        asked = counted = undefined;
         count.textContent = "";
       }
     },
@@ -81,8 +122,7 @@ export function createView(doc, actions) {
       if (text.hidden) return;
       text.focus();
       text.setRangeText(value, text.selectionStart, text.selectionEnd, "end");
-      updateCount(text.value);
-      actions.edit(text.value);
+      typing(text.value);
     },
 
     /** Put the caret and the scroll back, without taking the focus. */
