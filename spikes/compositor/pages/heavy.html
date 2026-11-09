@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>heavy</title>
+<style>
+  body { margin: 0; font: 12px/1.4 system-ui, sans-serif; background: #fff; color: #222; }
+  table { border-collapse: collapse; } td { border: 1px solid #ddd; padding: 2px 6px; }
+</style>
+<body>
+<script>
+  // Stands in for a data-heavy plugin (sheets with a workbook open): a 10,000 x 8 table in the DOM,
+  // 200,000 row objects and a 32 MiB typed array kept alive.
+  const started = performance.now();
+  window.rows = Array.from({ length: 200000 }, (_, i) => ({ id: i, name: `row ${i}`, value: Math.random() }));
+  window.blob = new Float64Array(4 * 1024 * 1024).map((_, i) => i * 0.5);
+  const table = document.createElement("table");
+  const body = document.createElement("tbody");
+  for (let r = 0; r < 10000; r++) {
+    const tr = document.createElement("tr");
+    for (let c = 0; c < 8; c++) {
+      const td = document.createElement("td");
+      td.textContent = `${r}:${c} ${window.rows[r].value.toFixed(4)}`;
+      tr.append(td);
+    }
+    body.append(tr);
+  }
+  table.append(body);
+  document.body.append(table);
+  console.log(`SPIKE ready heavy ${location.host} built in ${Math.round(performance.now() - started)} ms`);
+</script>
+</body>
+</html>

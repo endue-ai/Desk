@@ -1,0 +1,35 @@
+[package]
+name = "desk-compositor-spike"
+version = "0.0.0"
+edition = "2024"
+publish = false
+license = "Apache-2.0"
+description = "Throwaway spike for #33, #34 and #35: CEF off-screen surfaces composited by wgpu"
+
+# Its own workspace, so the repository's cargo commands and gates never build it.
+[workspace]
+
+[[bin]]
+name = "desk-spike"
+path = "src/main.rs"
+
+[[bin]]
+name = "desk-spike-helper"
+path = "src/helper.rs"
+
+[[bin]]
+name = "desk-spike-bundle"
+path = "src/bundle.rs"
+
+[package.metadata.cef.bundle]
+helper_name = "desk-spike-helper"
+
+[dependencies]
+cef = { version = "=156.4.0", default-features = false, features = ["accelerated_osr", "build-util"] }
+wgpu = "30"
+winit = "0.30"
+pollster = "0.4"
+glam = "0.30"
+png = "0.18"
+bytemuck = { version = "1", features = ["derive"] }
+semver = "1"

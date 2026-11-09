@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="ko">
+<meta charset="utf-8">
+<title>ime</title>
+<style>
+  body { margin: 0; font: 32px system-ui, sans-serif; background: #f4f1de; }
+  input { position: absolute; left: 40px; top: 40px; width: 600px; height: 64px; font: inherit; }
+</style>
+<input id="f" autofocus placeholder="한글 입력">
+<script>
+  const field = document.getElementById("f");
+  field.addEventListener("compositionstart", () => console.log("SPIKE ime compositionstart"));
+  field.addEventListener("compositionupdate", (e) => console.log(`SPIKE ime compositionupdate data=${e.data}`));
+  field.addEventListener("compositionend", (e) => console.log(`SPIKE ime compositionend data=${e.data}`));
+  field.addEventListener("input", (e) => console.log(`SPIKE ime input value=${field.value} composing=${e.isComposing}`));
+  field.focus();
+  console.log(`SPIKE ready ime ${location.host}`);
+</script>
+</html>
