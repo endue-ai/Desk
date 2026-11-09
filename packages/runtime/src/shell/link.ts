@@ -93,6 +93,8 @@ interface SavedShell {
   soul?: string;
   /** Where the person moved the talk line (desk.shell.talk-place). */
   talkPlace?: TalkPlace;
+  /** The canvas map is folded to its button; absent while it is open (shell/Minimap.ts). */
+  mapFolded?: true;
 }
 
 /** Keep the shell in the session record; `done` resolves once a restore has finished. */
@@ -114,6 +116,7 @@ export function keepShell(ctx: ShellCtx): { off(): void; done(): Promise<void> }
         ...(typeof layer[DENSITY] === "string" ? { density: layer[DENSITY] } : {}),
         ...(typeof layer[SOUL] === "string" ? { soul: layer[SOUL] } : {}),
         ...(placeOf(layer[PLACE]) ? { talkPlace: placeOf(layer[PLACE]) as TalkPlace } : {}),
+        ...(s.mapFolded ? { mapFolded: true as const } : {}),
       };
     },
     restore: (value) => {
@@ -122,7 +125,16 @@ export function keepShell(ctx: ShellCtx): { off(): void; done(): Promise<void> }
     onChange: (listener) => {
       const offs = [
         store.watch(
-          (s) => [s.modeId, s.session, s.desktops, s.desktop, s.drawer, s.spaceId, s.pan],
+          (s) => [
+            s.modeId,
+            s.session,
+            s.desktops,
+            s.desktop,
+            s.drawer,
+            s.spaceId,
+            s.pan,
+            s.mapFolded,
+          ],
           listener,
         ),
         settings.onChange(
@@ -167,6 +179,7 @@ async function restore(ctx: ShellCtx, saved: Partial<SavedShell> | null): Promis
         ? saved.drawer.map((d) => (d.at < 1e12 ? { ...d, at: ctx.wall() } : d))
         : s.drawer,
       spaceId: typeof saved.spaceId === "string" ? saved.spaceId : s.spaceId,
+      mapFolded: saved.mapFolded === true,
     };
   });
 }

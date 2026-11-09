@@ -13,6 +13,13 @@ export function setPan(ctx: ShellCtx, pan: Offset): void {
   ctx.store.set((s) => ({ pan: { ...s.pan, [desktopId(s)]: pan } }));
 }
 
+/** The wheel moves the canvas as it would scroll a page `page` pixels high: lines are 16 pixels. */
+export function wheelPan(ctx: ShellCtx, e: WheelEvent, page: number): void {
+  const scale = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? page : 1;
+  const pan = panOf(ctx.store.get());
+  setPan(ctx, { x: pan.x - e.deltaX * scale, y: pan.y - e.deltaY * scale });
+}
+
 /**
  * The canvas under the normal windows: Shift + drag on the empty background or on a window's title
  * bar moves it, and the normal windows with it; floating windows stay where they are. A wheel over
@@ -79,9 +86,7 @@ export function mountPan(root: HTMLElement, ctx: ShellCtx): () => void {
         )
           return;
         e.preventDefault();
-        const scale = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? root.clientHeight : 1;
-        const pan = panOf(ctx.store.get());
-        setPan(ctx, { x: pan.x - e.deltaX * scale, y: pan.y - e.deltaY * scale });
+        wheelPan(ctx, e, root.clientHeight);
       },
       { passive: false },
     ),

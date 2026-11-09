@@ -32,6 +32,8 @@ const PATHS: Record<string, string> = {
   sparkle: "M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z",
   "split-right": "M4 5h16v14H4zM12 5v14",
   "split-down": "M4 5h16v14H4zM4 12h16",
+  map: "M3 6l6-3 6 3 6-3v15l-6 3-6-3-6 3zM9 3v15M15 6v15",
+  minus: "M5 12h14",
 };
 
 export type IconName = keyof typeof PATHS;

@@ -2,11 +2,12 @@ import { expect, type Page, test } from "@playwright/test";
 import { DESK, openShell, step } from "./shell-helpers";
 
 test.use({ viewport: DESK });
+/** Shift + drag from the empty background, left of the canvas map in the bottom right. */
 const pan = async (page: Page, dx: number, dy: number) => {
   await page.keyboard.down("Shift");
-  await page.mouse.move(1200, 720);
+  await page.mouse.move(1100, 720);
   await page.mouse.down();
-  await page.mouse.move(1200 + dx, 720 + dy, { steps: 6 });
+  await page.mouse.move(1100 + dx, 720 + dy, { steps: 6 });
   await page.mouse.up();
   await page.keyboard.up("Shift");
 };

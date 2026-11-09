@@ -3374,6 +3374,84 @@
      }
     },
     {
+     "tag": "aside",
+     "class": "minimap",
+     "style": {
+      "background": "rgb(30, 29, 33)",
+      "border": "solid rgb(51, 49, 54)"
+     },
+     "children": [
+      {
+       "tag": "div",
+       "class": "minimap-map",
+       "role": "group",
+       "aria-label": "Canvas map",
+       "style": {
+        "background": "rgb(36, 33, 39)"
+       },
+       "children": [
+        {
+         "tag": "span",
+         "class": "minimap-window",
+         "style": {
+          "background": "color(srgb 0.690196 0.678431 0.717647 / 0.22)",
+          "color": "rgb(242, 240, 245)",
+          "border": "solid color(srgb 0.690196 0.678431 0.717647 / 0.45)"
+         }
+        },
+        {
+         "tag": "span",
+         "class": "minimap-window is-focused",
+         "style": {
+          "background": "color(srgb 0.713726 0.639216 0.960784 / 0.35)",
+          "color": "rgb(242, 240, 245)",
+          "border": "solid rgb(182, 163, 245)"
+         }
+        },
+        {
+         "tag": "span",
+         "class": "minimap-window",
+         "style": {
+          "background": "color(srgb 0.690196 0.678431 0.717647 / 0.22)",
+          "color": "rgb(242, 240, 245)",
+          "border": "solid color(srgb 0.690196 0.678431 0.717647 / 0.45)"
+         }
+        },
+        {
+         "tag": "span",
+         "class": "minimap-view",
+         "style": {
+          "background": "rgba(182, 163, 245, 0.12)",
+          "color": "rgb(242, 240, 245)",
+          "border": "solid rgb(182, 163, 245)"
+         }
+        }
+       ]
+      },
+      {
+       "tag": "button",
+       "class": "icon-button minimap-fold",
+       "aria-label": "Fold the canvas map",
+       "aria-expanded": "true",
+       "box": [
+        1341,
+        715,
+        20,
+        20
+       ],
+       "style": {
+        "border": "solid rgba(0, 0, 0, 0)"
+       },
+       "children": [
+        {
+         "tag": "svg",
+         "icon": "minus"
+        }
+       ]
+      }
+     ]
+    },
+    {
      "tag": "div",
      "class": "arrange-scrim",
      "style": {

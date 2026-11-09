@@ -2657,6 +2657,75 @@
       "background": "rgb(30, 24, 51)",
       "color": "rgb(242, 240, 245)"
      }
+    },
+    {
+     "tag": "aside",
+     "class": "minimap",
+     "style": {
+      "background": "rgb(255, 255, 255)",
+      "border": "solid rgb(221, 214, 229)"
+     },
+     "children": [
+      {
+       "tag": "div",
+       "class": "minimap-map",
+       "role": "group",
+       "aria-label": "캔버스 지도",
+       "style": {
+        "background": "rgb(242, 239, 246)"
+       },
+       "children": [
+        {
+         "tag": "span",
+         "class": "minimap-window",
+         "style": {
+          "background": "color(srgb 0.403922 0.372549 0.439216 / 0.22)",
+          "color": "rgb(30, 24, 51)",
+          "border": "solid color(srgb 0.403922 0.372549 0.439216 / 0.45)"
+         }
+        },
+        {
+         "tag": "span",
+         "class": "minimap-window",
+         "style": {
+          "background": "color(srgb 0.403922 0.372549 0.439216 / 0.22)",
+          "color": "rgb(30, 24, 51)",
+          "border": "solid color(srgb 0.403922 0.372549 0.439216 / 0.45)"
+         }
+        },
+        {
+         "tag": "span",
+         "class": "minimap-view",
+         "style": {
+          "background": "rgba(182, 163, 245, 0.12)",
+          "color": "rgb(30, 24, 51)",
+          "border": "solid rgb(107, 79, 158)"
+         }
+        }
+       ]
+      },
+      {
+       "tag": "button",
+       "class": "icon-button minimap-fold",
+       "aria-label": "캔버스 지도 접기",
+       "aria-expanded": "true",
+       "box": [
+        1341,
+        715,
+        20,
+        20
+       ],
+       "style": {
+        "border": "solid rgba(0, 0, 0, 0)"
+       },
+       "children": [
+        {
+         "tag": "svg",
+         "icon": "minus"
+        }
+       ]
+      }
+     ]
     }
    ]
   }

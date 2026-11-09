@@ -59,6 +59,8 @@ export interface DeskState {
   desktops: Desktop[] | null;
   /** Canvas offset per desktop, by id; navigation does not dirty the saved window layout. */
   pan: Partial<Record<DesktopId, { x: number; y: number }>>;
+  /** The canvas map in the bottom right is folded to its button (shell/Minimap.ts). */
+  mapFolded: boolean;
   /** The window (and pane) each desktop had in use when the person left it, by id. */
   focusBy: Partial<Record<DesktopId, { window: string; pane: string | null }>>;
   modesOpen: boolean;
@@ -155,6 +157,7 @@ export function emptyState(lang: Lang): DeskState {
     session: {},
     desktops: null,
     pan: {},
+    mapFolded: false,
     focusBy: {},
     modesOpen: false,
     spaces: [],
