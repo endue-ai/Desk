@@ -1,7 +1,7 @@
 # Lifecycle
 
 `lifecycle.schema.json`. A surface is made, shown and hidden, put to sleep and woken, and destroyed by
-the compositor, which decides from the window manager and the live budget (#32 §8). The surface says
+the compositor, which decides from the window manager and the live budget (ADR 0142). The surface says
 when it is ready, when it died, and its title.
 
 ```

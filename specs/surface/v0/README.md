@@ -1,9 +1,10 @@
 # Desk surface protocol v0
 
 Everything on screen is a **surface**: a texture a process rendered, placed by the compositor
-(#32). This is the one contract between the compositor and anything that draws a surface: the web
-host, which runs one off-screen CEF browser per surface (#52), and in Stage 3 a native plugin's own
-process (#59). Nothing in it is specific to an engine: a message means the same whoever draws.
+(ADR 0140). This is the one contract between the compositor and anything that draws a surface
+(ADR 0141): the web host, which runs one off-screen CEF browser per surface (#52), and in Stage 3 a
+native plugin's own process (#59). Nothing in it is specific to an engine: a message means the same
+whoever draws.
 v0 may break on any minor release (ADR 0004).
 
 ## Messages

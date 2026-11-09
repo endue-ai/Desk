@@ -1,6 +1,6 @@
 # desk-surface
 
-The surface protocol (`specs/surface/v0`, #32 §2) as Rust types: the one contract between the
+The surface protocol (`specs/surface/v0`, ADR 0141) as Rust types: the one contract between the
 compositor and anything that draws a surface. A web surface's host (CEF off-screen, #52) speaks it
 today; a native plugin's process will in Stage 3 (#59). Engine-neutral, `serde` only: no GPU, engine
 or OS dependency, so the compositor, `desk-web` and a native plugin all depend on it.

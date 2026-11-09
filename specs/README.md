@@ -16,7 +16,7 @@ items, views and connectors of the integration layer.
 | `connector/v0/` | What a connector plugin declares, its status and sync results, and the MCP profile of a Desk-aware server |
 | `init/v0/` | `init.yaml`, a person's setup: schema, the template Desk writes, and the sync rules |
 | `memory/v0/` | Eris's memory on this computer: facts, episodes, search hits and the `facts.yaml` file (ADR 0095) |
-| `surface/v0/` | The surface protocol between the compositor and anything that draws a surface: lifecycle, texture handles (IOSurface, D3D11, DMA-BUF), input, IME, drag and drop, frame pacing and accessibility (#32) |
+| `surface/v0/` | The surface protocol between the compositor and anything that draws a surface: lifecycle, texture handles (IOSurface, D3D11, DMA-BUF), input, IME, drag and drop, frame pacing and accessibility (ADR 0141) |
 | `runtime/v0/` | Core settings UI, key-binding precedence and preference persistence (no new wire types) |
 | `wit/` | Wasm interfaces: the host interface logic plugins import (`desk:host`) and the world Wasm connectors build to (`desk:connector`) |
 

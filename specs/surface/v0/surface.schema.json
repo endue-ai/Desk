@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://endue.ai/specs/surface/v0/surface.schema.json",
   "title": "Desk surface protocol v0",
-  "description": "The one contract between the compositor and anything that draws a surface (#32 §2): a web surface's host (CEF off-screen) today, a native plugin's process in Stage 3. Engine-neutral. Each message is one JSON object with a type and the surface it is about; CompositorMessage is what the compositor sends, SurfaceMessage what a surface sends. File descriptors and Mach ports travel out of band, beside the message that names them by index.",
+  "description": "The one contract between the compositor and anything that draws a surface (ADR 0141): a web surface's host (CEF off-screen) today, a native plugin's process in Stage 3. Engine-neutral. Each message is one JSON object with a type and the surface it is about; CompositorMessage is what the compositor sends, SurfaceMessage what a surface sends. File descriptors and Mach ports travel out of band, beside the message that names them by index.",
   "$defs": {
     "CompositorMessage": {
       "description": "A message the compositor sends to a surface: its lifecycle, the release of its textures, its frame pace, input, IME, drag and drop, and accessibility requests.",
