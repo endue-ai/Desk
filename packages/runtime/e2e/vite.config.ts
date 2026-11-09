@@ -2,6 +2,7 @@ import { existsSync, readFileSync, statSync } from "node:fs";
 import { extname, join, normalize, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { defineConfig, type Plugin } from "vite";
+import { largePng } from "./perf/large-png.mjs";
 
 const here = (path: string) => fileURLToPath(new URL(path, import.meta.url));
 const repo = here("../../../");
@@ -108,6 +109,7 @@ const types: Record<string, string> = {
  * it too), plugin pages under the app's CSP.
  */
 export function pluginFiles(): Plugin {
+  let largeImage: Buffer | undefined;
   return {
     name: "desk-plugin-files",
     configureServer(server) {
@@ -116,6 +118,15 @@ export function pluginFiles(): Plugin {
         // Sandboxed frames have an opaque origin; module scripts need CORS.
         res.setHeader("Access-Control-Allow-Origin", "*");
         const source = desk[url.pathname];
+        // The large image of the frame-time checks (perf/heavy-open.spec.ts, #38), as fs.url serves it.
+        if (url.pathname === "/perf/large.png") {
+          largeImage ??= largePng();
+          res.setHeader("Content-Type", "image/png");
+          res.setHeader("Content-Length", String(largeImage.length));
+          res.setHeader("Cache-Control", "no-store");
+          res.end(largeImage);
+          return;
+        }
         // The fixture theme market (?market=1 on the shell page names it https://market.test/).
         const market = /^\/market\/(.+)$/.exec(url.pathname)?.[1];
         const match = /^\/plugins\/([^/]+)\/(.+)$/.exec(url.pathname);

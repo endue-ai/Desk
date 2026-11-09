@@ -16,7 +16,8 @@
 // ?endue=signed-in starts signed in. ?account=1 serves account.* from src/bridge/account-stub.ts,
 // signed in with the sample account (ADR 0130); ?account=signedout starts signed out. ?many=<n>
 // (with ?plugins=1) adds n more centre windows, test.many-1 to test.many-<n>, each the hello-ui page
-// whose count lives in desk:state, for the live budget (#37). Never shipped.
+// whose count lives in desk:state, for the live budget (#37). With ?files=1 and ?apps=1, ?heavy=1
+// adds a long note and a large image (heavy-files.ts, #38). Never shipped.
 import type { PluginManifest } from "@endue-ai/bridge";
 import "../../src/desk.css";
 import "../../src/shell/styles";
@@ -33,6 +34,7 @@ import { mountDesk } from "../../src/shell/Desk";
 import { sampleState } from "../../src/shell/state";
 import testTheme from "../themes/test-theme/plugin.json";
 import { fileHandlers, grantFilePlugins } from "./file-viewers";
+import { heavyHandlers } from "./heavy-files";
 
 const root = document.getElementById("desk");
 if (!root) throw new Error("no #desk element");
@@ -95,6 +97,7 @@ const terminal: PluginManifest = {
   },
 };
 const apps = Object.values(manifests).filter((m) => m.id === "endue.notes");
+const files = params.has("heavy") ? await heavyHandlers(fileHandlers) : fileHandlers;
 // The account's events go out on the core stub, as the core's account.changed does.
 const account = params.has("account")
   ? accountStub((event) => core.stub.emit(event), {
@@ -126,7 +129,7 @@ const core = browserCore({
       : []),
   ],
   handlers: {
-    ...(params.has("files") ? fileHandlers : {}),
+    ...(params.has("files") ? files : {}),
     ...(account ? account.handlers : {}),
   },
   store: params.has("persist") ? localStore("desk.core.") : memoryStore(),
@@ -156,7 +159,7 @@ const core = browserCore({
     },
   },
 });
-if (params.has("files")) await grantFilePlugins(core);
+if (params.has("files")) await grantFilePlugins(core, params.has("heavy") ? ["endue.notes"] : []);
 // A fixed wall clock and platform, so "4:12 ago" and "⌘N" read the same on every machine.
 const epoch = Date.parse("2026-10-28T09:00:00.000Z");
 const endue = params.has("endue") ? studioHandlers({ epoch }) : undefined;

@@ -36,7 +36,8 @@ export const fileHandlers: StubHandlers = {
   "fs.watch": ({ path }) => ({ watchId: `watch:${path}` }),
 };
 
-export async function grantFilePlugins(core: BrowserCore): Promise<void> {
+/** Grant the file plugins what their manifests ask for; `more` names other plugins to grant too. */
+export async function grantFilePlugins(core: BrowserCore, more: string[] = []): Promise<void> {
   const off = core.client.onEvent((event) => {
     if (event.event === "perm.prompt")
       void core.client.call("perm.answer", {
@@ -46,7 +47,7 @@ export async function grantFilePlugins(core: BrowserCore): Promise<void> {
       });
   });
   for (const plugin of core.plugins.filter((p) =>
-    ["endue.explorer", "endue.images"].includes(p.id),
+    ["endue.explorer", "endue.images", ...more].includes(p.id),
   ))
     for (const permission of plugin.manifest?.permissions ?? [])
       await core.client.forward(
