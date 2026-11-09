@@ -1,0 +1,9 @@
+{
+  "target": "SurfaceDragItem",
+  "description": "a JSON kind is lowercase segments",
+  "instance": {
+    "type": "desk/json",
+    "kind": "DB/Rows",
+    "value": []
+  }
+}

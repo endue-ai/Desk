@@ -1,0 +1,9 @@
+{
+  "target": "SurfaceMessage",
+  "description": "a text field got the focus",
+  "instance": {
+    "type": "ime.enabled",
+    "surface": "s-7",
+    "enabled": true
+  }
+}

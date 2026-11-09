@@ -1,0 +1,13 @@
+{
+  "target": "CompositorMessage",
+  "description": "a scale is above zero",
+  "instance": {
+    "type": "resize",
+    "surface": "s-7",
+    "size": {
+      "width": 800,
+      "height": 600
+    },
+    "scale": 0
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "target": "SurfaceMessage",
+  "description": "a WebGPU scene animating at 60 frames a second",
+  "instance": {
+    "type": "rate",
+    "surface": "s-7",
+    "fps": 60
+  }
+}

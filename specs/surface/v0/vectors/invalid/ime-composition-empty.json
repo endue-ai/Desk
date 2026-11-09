@@ -1,0 +1,14 @@
+{
+  "target": "CompositorMessage",
+  "description": "an empty composition is a cancel",
+  "instance": {
+    "type": "ime.composition",
+    "surface": "s-7",
+    "text": "",
+    "underlines": [],
+    "selection": {
+      "start": 0,
+      "end": 0
+    }
+  }
+}

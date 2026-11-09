@@ -1,0 +1,8 @@
+{
+  "target": "SurfaceMessage",
+  "description": "the notes page loaded and takes input",
+  "instance": {
+    "type": "ready",
+    "surface": "s-7"
+  }
+}

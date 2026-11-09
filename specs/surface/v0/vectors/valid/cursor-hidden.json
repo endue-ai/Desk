@@ -1,0 +1,8 @@
+{
+  "target": "SurfaceCursor",
+  "description": "a game hides the cursor",
+  "instance": {
+    "kind": "named",
+    "name": "none"
+  }
+}

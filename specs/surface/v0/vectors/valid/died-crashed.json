@@ -1,0 +1,10 @@
+{
+  "target": "SurfaceMessage",
+  "description": "the renderer crashed with a segmentation fault",
+  "instance": {
+    "type": "died",
+    "surface": "s-7",
+    "reason": "crashed",
+    "exitCode": 139
+  }
+}

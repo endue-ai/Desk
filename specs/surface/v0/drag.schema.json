@@ -1,0 +1,280 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://endue.ai/specs/surface/v0/drag.schema.json",
+  "title": "Desk surface protocol v0: drag and drop",
+  "description": "ADR 0119's drag broker, run by the compositor: a surface starts a drag of desk data while a press on it is held; the compositor draws it and offers its types to the surface under the pointer, which answers with an effect; only the surface it lands on receives the items. A drop hands over paths and data, never access. See input.md.",
+  "$defs": {
+    "SurfaceDropEffect": {
+      "description": "What a drop does with the data: the source keeps it (copy), gives it up (move), or the target refers to it (link).",
+      "type": "string",
+      "enum": ["copy", "move", "link"]
+    },
+    "SurfaceDropAnswer": {
+      "description": "An effect, or none: the target refuses, or the drag was cancelled.",
+      "type": "string",
+      "enum": ["copy", "move", "link", "none"]
+    },
+    "SurfaceDropEffects": {
+      "description": "The effects a source allows, each at most once.",
+      "type": "array",
+      "items": { "$ref": "#/$defs/SurfaceDropEffect" },
+      "minItems": 1,
+      "maxItems": 3,
+      "uniqueItems": true
+    },
+    "SurfaceDragType": {
+      "description": "A type of desk data: desk/paths, desk/text, desk/uri, desk/json:<kind> (db/rows), text/plain. In a list of accepted types, desk/json alone takes every kind.",
+      "type": "string",
+      "pattern": "^(desk/paths|desk/text|desk/uri|desk/json(:[a-z0-9][a-z0-9._-]*(/[a-z0-9][a-z0-9._-]*)*)?|text/plain)$"
+    },
+    "SurfacePathKind": {
+      "description": "What a dragged path names, when the source knows.",
+      "type": "string",
+      "enum": ["file", "folder"]
+    },
+    "SurfaceDragPath": {
+      "description": "An absolute bridge path (/…, ~/…, C:/…) with no .. segment.",
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096,
+          "pattern": "^(/|~(/|$)|[A-Za-z]:/)(?!(.*/)?\\.\\.(/|$))[^\\x00]*$"
+        },
+        "kind": { "$ref": "#/$defs/SurfacePathKind" }
+      },
+      "required": ["path"],
+      "additionalProperties": false
+    },
+    "SurfaceDragPaths": {
+      "description": "desk/paths: files and folders.",
+      "type": "object",
+      "properties": {
+        "type": { "const": "desk/paths" },
+        "paths": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/SurfaceDragPath" },
+          "minItems": 1,
+          "maxItems": 10000
+        }
+      },
+      "required": ["type", "paths"],
+      "additionalProperties": false
+    },
+    "SurfaceDragText": {
+      "description": "desk/text: text the source means as text.",
+      "type": "object",
+      "properties": {
+        "type": { "const": "desk/text" },
+        "text": { "type": "string" }
+      },
+      "required": ["type", "text"],
+      "additionalProperties": false
+    },
+    "SurfaceDragUri": {
+      "description": "desk/uri: a URI, never javascript: or vbscript:, and its title.",
+      "type": "object",
+      "properties": {
+        "type": { "const": "desk/uri" },
+        "uri": {
+          "type": "string",
+          "maxLength": 8192,
+          "pattern": "^(?![Jj][Aa][Vv][Aa][Ss][Cc][Rr][Ii][Pp][Tt]:|[Vv][Bb][Ss][Cc][Rr][Ii][Pp][Tt]:)[A-Za-z][A-Za-z0-9+.-]*:\\S+$"
+        },
+        "title": { "type": "string", "maxLength": 1024 }
+      },
+      "required": ["type", "uri"],
+      "additionalProperties": false
+    },
+    "SurfaceDragJson": {
+      "description": "desk/json: typed JSON whose kind (lowercase segments: db/rows, docker/container) names its shape; offered as desk/json:<kind>.",
+      "type": "object",
+      "properties": {
+        "type": { "const": "desk/json" },
+        "kind": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-z0-9][a-z0-9._-]*(/[a-z0-9][a-z0-9._-]*)*$"
+        },
+        "value": {}
+      },
+      "required": ["type", "kind", "value"],
+      "additionalProperties": false
+    },
+    "SurfaceDragPlainText": {
+      "description": "text/plain: the fallback every drag offers; the compositor makes it from the other items when the source gives none.",
+      "type": "object",
+      "properties": {
+        "type": { "const": "text/plain" },
+        "text": { "type": "string" }
+      },
+      "required": ["type", "text"],
+      "additionalProperties": false
+    },
+    "SurfaceDragItem": {
+      "description": "One representation of what is dragged. A drag offers each type at most once, and all its items together are 4 MiB at most.",
+      "oneOf": [
+        { "$ref": "#/$defs/SurfaceDragPaths" },
+        { "$ref": "#/$defs/SurfaceDragText" },
+        { "$ref": "#/$defs/SurfaceDragUri" },
+        { "$ref": "#/$defs/SurfaceDragJson" },
+        { "$ref": "#/$defs/SurfaceDragPlainText" }
+      ]
+    },
+    "SurfaceDragImage": {
+      "description": "What the compositor draws under the pointer; without it the compositor names the items itself (a file's name, 3 items). src is a data:image/(png|jpeg|gif|webp);base64 URL of 512 KiB at most.",
+      "type": "object",
+      "properties": {
+        "label": { "type": "string", "maxLength": 256 },
+        "detail": { "type": "string", "maxLength": 256 },
+        "src": {
+          "type": "string",
+          "maxLength": 699072,
+          "pattern": "^data:image/(png|jpeg|gif|webp);base64,[A-Za-z0-9+/=]+$"
+        }
+      },
+      "additionalProperties": false
+    },
+    "SurfaceDragAccept": {
+      "description": "The types this surface's drop targets take, all together; an empty list takes none. A surface that takes none of a drag's types hears nothing of it.",
+      "type": "object",
+      "properties": {
+        "type": { "const": "drag.accept" },
+        "surface": { "$ref": "surface.schema.json#/$defs/SurfaceId" },
+        "types": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/SurfaceDragType" },
+          "maxItems": 32,
+          "uniqueItems": true
+        }
+      },
+      "required": ["type", "surface", "types"],
+      "additionalProperties": false
+    },
+    "SurfaceDragStart": {
+      "description": "Start a drag from this surface. The compositor takes it only while a press on this surface is held, so a surface cannot drag on its own; it then owns the pointer until the release, and the surface hears drag.ended.",
+      "type": "object",
+      "properties": {
+        "type": { "const": "drag.start" },
+        "surface": { "$ref": "surface.schema.json#/$defs/SurfaceId" },
+        "items": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/SurfaceDragItem" },
+          "minItems": 1,
+          "maxItems": 5
+        },
+        "effectAllowed": { "$ref": "#/$defs/SurfaceDropEffects" },
+        "image": { "$ref": "#/$defs/SurfaceDragImage" }
+      },
+      "required": ["type", "surface", "items", "effectAllowed"],
+      "additionalProperties": false
+    },
+    "SurfaceDragEnter": {
+      "description": "A drag came over the surface. types is the offered types it accepts, never empty; from is the plugin the drag started in, os for a drag from the operating system, desk for the desk's own. The surface answers drag.status.",
+      "type": "object",
+      "properties": {
+        "type": { "const": "drag.enter" },
+        "surface": { "$ref": "surface.schema.json#/$defs/SurfaceId" },
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "types": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/SurfaceDragType" },
+          "minItems": 1,
+          "maxItems": 5,
+          "uniqueItems": true
+        },
+        "effectAllowed": { "$ref": "#/$defs/SurfaceDropEffects" },
+        "modifiers": { "$ref": "surface.schema.json#/$defs/SurfaceModifiers" },
+        "from": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^(os|desk|[a-z][a-z0-9-]*(\\.[a-z][a-z0-9-]*)+)$"
+        }
+      },
+      "required": ["type", "surface", "x", "y", "types", "effectAllowed", "modifiers", "from"],
+      "additionalProperties": false
+    },
+    "SurfaceDragOver": {
+      "description": "The drag moved over the surface, or its modifier keys changed. The surface answers drag.status.",
+      "type": "object",
+      "properties": {
+        "type": { "const": "drag.over" },
+        "surface": { "$ref": "surface.schema.json#/$defs/SurfaceId" },
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "modifiers": { "$ref": "surface.schema.json#/$defs/SurfaceModifiers" }
+      },
+      "required": ["type", "surface", "x", "y", "modifiers"],
+      "additionalProperties": false
+    },
+    "SurfaceDragLeave": {
+      "description": "The drag left the surface, or was cancelled over it.",
+      "type": "object",
+      "properties": {
+        "type": { "const": "drag.leave" },
+        "surface": { "$ref": "surface.schema.json#/$defs/SurfaceId" }
+      },
+      "required": ["type", "surface"],
+      "additionalProperties": false
+    },
+    "SurfaceDragStatus": {
+      "description": "The surface's answer to the last drag.enter or drag.over: the effect a drop there would perform, or none. By default Alt copies, Mod moves and both link, as Finder does.",
+      "type": "object",
+      "properties": {
+        "type": { "const": "drag.status" },
+        "surface": { "$ref": "surface.schema.json#/$defs/SurfaceId" },
+        "effect": { "$ref": "#/$defs/SurfaceDropAnswer" }
+      },
+      "required": ["type", "surface", "effect"],
+      "additionalProperties": false
+    },
+    "SurfaceDragDrop": {
+      "description": "The drag landed on the surface with the effect it last answered, never none: here are the items of the types it accepts. The surface answers drag.done.",
+      "type": "object",
+      "properties": {
+        "type": { "const": "drag.drop" },
+        "surface": { "$ref": "surface.schema.json#/$defs/SurfaceId" },
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "effect": { "$ref": "#/$defs/SurfaceDropEffect" },
+        "items": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/SurfaceDragItem" },
+          "minItems": 1,
+          "maxItems": 5
+        }
+      },
+      "required": ["type", "surface", "x", "y", "effect", "items"],
+      "additionalProperties": false
+    },
+    "SurfaceDragDone": {
+      "description": "The effect the target performed with a drop: the one agreed, or none when it failed or changed its mind.",
+      "type": "object",
+      "properties": {
+        "type": { "const": "drag.done" },
+        "surface": { "$ref": "surface.schema.json#/$defs/SurfaceId" },
+        "effect": { "$ref": "#/$defs/SurfaceDropAnswer" }
+      },
+      "required": ["type", "surface", "effect"],
+      "additionalProperties": false
+    },
+    "SurfaceDragEnded": {
+      "description": "To the source: how its drag ended, the effect performed (none: refused or cancelled) and the plugin the items went to.",
+      "type": "object",
+      "properties": {
+        "type": { "const": "drag.ended" },
+        "surface": { "$ref": "surface.schema.json#/$defs/SurfaceId" },
+        "effect": { "$ref": "#/$defs/SurfaceDropAnswer" },
+        "to": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^(desk|[a-z][a-z0-9-]*(\\.[a-z][a-z0-9-]*)+)$"
+        }
+      },
+      "required": ["type", "surface", "effect"],
+      "additionalProperties": false
+    }
+  }
+}

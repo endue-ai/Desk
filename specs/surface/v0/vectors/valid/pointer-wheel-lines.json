@@ -1,0 +1,14 @@
+{
+  "target": "CompositorMessage",
+  "description": "a notched wheel scrolls three lines up with Shift held",
+  "instance": {
+    "type": "pointer.wheel",
+    "surface": "s-7",
+    "x": 10,
+    "y": 10,
+    "deltaX": 0,
+    "deltaY": -3,
+    "unit": "line",
+    "modifiers": ["shift"]
+  }
+}

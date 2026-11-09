@@ -1,0 +1,9 @@
+{
+  "target": "CompositorMessage",
+  "description": "VoiceOver started: export the tree",
+  "instance": {
+    "type": "a11y.enable",
+    "surface": "s-7",
+    "enabled": true
+  }
+}

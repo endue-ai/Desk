@@ -1,0 +1,16 @@
+{
+  "target": "CompositorMessage",
+  "description": "textures are bgra8 or rgba8",
+  "instance": {
+    "type": "create",
+    "surface": "s-7",
+    "plugin": "endue.notes",
+    "view": "main",
+    "size": {
+      "width": 800,
+      "height": 600
+    },
+    "scale": 2,
+    "format": "rgb565"
+  }
+}

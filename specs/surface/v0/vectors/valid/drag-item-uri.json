@@ -1,0 +1,9 @@
+{
+  "target": "SurfaceDragItem",
+  "description": "a link with its title",
+  "instance": {
+    "type": "desk/uri",
+    "uri": "https://endue.ai/docs",
+    "title": "endue docs"
+  }
+}

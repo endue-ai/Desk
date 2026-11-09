@@ -1,0 +1,17 @@
+{
+  "target": "CompositorMessage",
+  "description": "a drop happens only with an effect; none never lands",
+  "instance": {
+    "type": "drag.drop",
+    "surface": "s-7",
+    "x": 1,
+    "y": 1,
+    "effect": "none",
+    "items": [
+      {
+        "type": "text/plain",
+        "text": "x"
+      }
+    ]
+  }
+}

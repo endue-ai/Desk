@@ -1,0 +1,16 @@
+{
+  "target": "SurfaceTextureHandle",
+  "description": "a fourcc is its four characters",
+  "instance": {
+    "kind": "dmabuf",
+    "fourcc": "875713089",
+    "modifier": "0x0",
+    "planes": [
+      {
+        "fdIndex": 0,
+        "stride": 6400,
+        "offset": 0
+      }
+    ]
+  }
+}

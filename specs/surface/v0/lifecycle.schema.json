@@ -1,0 +1,144 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://endue.ai/specs/surface/v0/lifecycle.schema.json",
+  "title": "Desk surface protocol v0: lifecycle",
+  "description": "A surface's life: create, resize, show and hide, sleep and wake, destroy, from the compositor; ready, died and its title, from the surface. See lifecycle.md.",
+  "$defs": {
+    "SurfaceOwner": {
+      "description": "Whose content the surface draws: a plugin id, or desk for the desk's own system surfaces (palette, Eris, bars, settings).",
+      "type": "string",
+      "maxLength": 128,
+      "pattern": "^(desk|[a-z][a-z0-9-]*(\\.[a-z][a-z0-9-]*)+)$"
+    },
+    "SurfaceView": {
+      "description": "Which of the owner's surfaces to draw: the id of a surfaces entry of its plugin.json.",
+      "type": "string",
+      "maxLength": 64,
+      "pattern": "^[a-z][a-z0-9-]*$"
+    },
+    "SurfaceCreate": {
+      "description": "Make a surface and start drawing it. It starts shown unless hidden is true; it answers ready once it takes input, and attaches its first frame when it has one.",
+      "type": "object",
+      "properties": {
+        "type": { "const": "create" },
+        "surface": { "$ref": "surface.schema.json#/$defs/SurfaceId" },
+        "plugin": { "$ref": "#/$defs/SurfaceOwner" },
+        "view": { "$ref": "#/$defs/SurfaceView" },
+        "size": { "$ref": "surface.schema.json#/$defs/SurfaceSize" },
+        "scale": { "$ref": "surface.schema.json#/$defs/SurfaceScale" },
+        "format": { "$ref": "surface.schema.json#/$defs/SurfaceFormat" },
+        "hidden": {
+          "description": "Start hidden: load, but paint nothing until show. Default false.",
+          "type": "boolean"
+        }
+      },
+      "required": ["type", "surface", "plugin", "view", "size", "scale", "format"],
+      "additionalProperties": false
+    },
+    "SurfaceResize": {
+      "description": "Lay out at a new logical size or scale (a window resized, or moved to another display). The surface's next frames come at the new pixel size; until one does, the compositor draws the last frame anchored at the top left.",
+      "type": "object",
+      "properties": {
+        "type": { "const": "resize" },
+        "surface": { "$ref": "surface.schema.json#/$defs/SurfaceId" },
+        "size": { "$ref": "surface.schema.json#/$defs/SurfaceSize" },
+        "scale": { "$ref": "surface.schema.json#/$defs/SurfaceScale" }
+      },
+      "required": ["type", "surface", "size", "scale"],
+      "additionalProperties": false
+    },
+    "SurfaceShow": {
+      "description": "The surface is on screen again: paint at the pace the compositor last set.",
+      "type": "object",
+      "properties": {
+        "type": { "const": "show" },
+        "surface": { "$ref": "surface.schema.json#/$defs/SurfaceId" }
+      },
+      "required": ["type", "surface"],
+      "additionalProperties": false
+    },
+    "SurfaceHide": {
+      "description": "The surface is off screen (WasHidden): stop painting, keep running and keep its state. The compositor keeps its last frame.",
+      "type": "object",
+      "properties": {
+        "type": { "const": "hide" },
+        "surface": { "$ref": "surface.schema.json#/$defs/SurfaceId" }
+      },
+      "required": ["type", "surface"],
+      "additionalProperties": false
+    },
+    "SurfaceSleep": {
+      "description": "The surface left the live budget: save its state, stop painting, and let its process exit. That exit is not a death. The compositor shows its last frame, greyed.",
+      "type": "object",
+      "properties": {
+        "type": { "const": "sleep" },
+        "surface": { "$ref": "surface.schema.json#/$defs/SurfaceId" }
+      },
+      "required": ["type", "surface"],
+      "additionalProperties": false
+    },
+    "SurfaceWake": {
+      "description": "Start a sleeping or dead surface again at this size: a new process if it had none, its saved state restored, then ready and a frame.",
+      "type": "object",
+      "properties": {
+        "type": { "const": "wake" },
+        "surface": { "$ref": "surface.schema.json#/$defs/SurfaceId" },
+        "size": { "$ref": "surface.schema.json#/$defs/SurfaceSize" },
+        "scale": { "$ref": "surface.schema.json#/$defs/SurfaceScale" }
+      },
+      "required": ["type", "surface", "size", "scale"],
+      "additionalProperties": false
+    },
+    "SurfaceDestroy": {
+      "description": "The surface is closed for good: free everything. No message about it follows from either side.",
+      "type": "object",
+      "properties": {
+        "type": { "const": "destroy" },
+        "surface": { "$ref": "surface.schema.json#/$defs/SurfaceId" }
+      },
+      "required": ["type", "surface"],
+      "additionalProperties": false
+    },
+    "SurfaceReady": {
+      "description": "The surface is loaded and takes input. Once after create and once after each wake; frames may come before it.",
+      "type": "object",
+      "properties": {
+        "type": { "const": "ready" },
+        "surface": { "$ref": "surface.schema.json#/$defs/SurfaceId" }
+      },
+      "required": ["type", "surface"],
+      "additionalProperties": false
+    },
+    "SurfaceDeathReason": {
+      "description": "Why a surface's process ended without being asked to: it crashed, something killed it, it ran out of memory, it could not start, or it exited by itself.",
+      "type": "string",
+      "enum": ["crashed", "killed", "out-of-memory", "launch-failed", "exited"]
+    },
+    "SurfaceDied": {
+      "description": "The surface's process ended while it was not asleep. Its host sends this (the dead process cannot): the web host from the engine's signal, the native host when the process exits. The compositor shows a placeholder; wake starts it again.",
+      "type": "object",
+      "properties": {
+        "type": { "const": "died" },
+        "surface": { "$ref": "surface.schema.json#/$defs/SurfaceId" },
+        "reason": { "$ref": "#/$defs/SurfaceDeathReason" },
+        "exitCode": {
+          "description": "The process's exit code or signal number, when the host knows it.",
+          "type": "integer"
+        }
+      },
+      "required": ["type", "surface", "reason"],
+      "additionalProperties": false
+    },
+    "SurfaceTitle": {
+      "description": "The surface's title changed (a page's document.title): the compositor shows it in the window's chrome and its switchers.",
+      "type": "object",
+      "properties": {
+        "type": { "const": "title" },
+        "surface": { "$ref": "surface.schema.json#/$defs/SurfaceId" },
+        "title": { "type": "string", "maxLength": 1024 }
+      },
+      "required": ["type", "surface", "title"],
+      "additionalProperties": false
+    }
+  }
+}

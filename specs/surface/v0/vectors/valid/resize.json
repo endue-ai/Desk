@@ -1,0 +1,13 @@
+{
+  "target": "CompositorMessage",
+  "description": "the window moved to a 1x display and was made wider",
+  "instance": {
+    "type": "resize",
+    "surface": "s-7",
+    "size": {
+      "width": 1200,
+      "height": 600
+    },
+    "scale": 1
+  }
+}

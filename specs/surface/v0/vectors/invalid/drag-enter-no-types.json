@@ -1,0 +1,14 @@
+{
+  "target": "CompositorMessage",
+  "description": "a surface that takes none of a drag's types hears nothing of it",
+  "instance": {
+    "type": "drag.enter",
+    "surface": "s-7",
+    "x": 1,
+    "y": 1,
+    "types": [],
+    "effectAllowed": ["copy"],
+    "modifiers": [],
+    "from": "os"
+  }
+}

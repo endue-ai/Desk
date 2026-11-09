@@ -1,0 +1,30 @@
+{
+  "target": "SurfaceMessage",
+  "description": "a frame on Windows in a shared texture with a keyed mutex",
+  "instance": {
+    "type": "attach",
+    "surface": "s-7",
+    "frame": 41,
+    "texture": {
+      "id": 1,
+      "generation": 3,
+      "width": 1600,
+      "height": 1200,
+      "format": "bgra8",
+      "handle": {
+        "kind": "d3d11",
+        "handle": 2148,
+        "keyedMutex": true
+      }
+    },
+    "damage": [
+      {
+        "x": 200,
+        "y": 300,
+        "width": 400,
+        "height": 32
+      }
+    ],
+    "release": "after-copy"
+  }
+}

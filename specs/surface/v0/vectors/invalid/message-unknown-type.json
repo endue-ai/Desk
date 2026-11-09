@@ -1,0 +1,8 @@
+{
+  "target": "CompositorMessage",
+  "description": "paint is no message of the protocol",
+  "instance": {
+    "type": "paint",
+    "surface": "s-7"
+  }
+}

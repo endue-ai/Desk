@@ -1,0 +1,132 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://endue.ai/specs/surface/v0/surface.schema.json",
+  "title": "Desk surface protocol v0",
+  "description": "The one contract between the compositor and anything that draws a surface (#32 §2): a web surface's host (CEF off-screen) today, a native plugin's process in Stage 3. Engine-neutral. Each message is one JSON object with a type and the surface it is about; CompositorMessage is what the compositor sends, SurfaceMessage what a surface sends. File descriptors and Mach ports travel out of band, beside the message that names them by index.",
+  "$defs": {
+    "CompositorMessage": {
+      "description": "A message the compositor sends to a surface: its lifecycle, the release of its textures, its frame pace, input, IME, drag and drop, and accessibility requests.",
+      "oneOf": [
+        { "$ref": "lifecycle.schema.json#/$defs/SurfaceCreate" },
+        { "$ref": "lifecycle.schema.json#/$defs/SurfaceResize" },
+        { "$ref": "lifecycle.schema.json#/$defs/SurfaceShow" },
+        { "$ref": "lifecycle.schema.json#/$defs/SurfaceHide" },
+        { "$ref": "lifecycle.schema.json#/$defs/SurfaceSleep" },
+        { "$ref": "lifecycle.schema.json#/$defs/SurfaceWake" },
+        { "$ref": "lifecycle.schema.json#/$defs/SurfaceDestroy" },
+        { "$ref": "texture.schema.json#/$defs/SurfaceRelease" },
+        { "$ref": "texture.schema.json#/$defs/SurfacePace" },
+        { "$ref": "input.schema.json#/$defs/SurfacePointerMove" },
+        { "$ref": "input.schema.json#/$defs/SurfacePointerDown" },
+        { "$ref": "input.schema.json#/$defs/SurfacePointerUp" },
+        { "$ref": "input.schema.json#/$defs/SurfacePointerWheel" },
+        { "$ref": "input.schema.json#/$defs/SurfacePointerLeave" },
+        { "$ref": "input.schema.json#/$defs/SurfaceKeyDown" },
+        { "$ref": "input.schema.json#/$defs/SurfaceKeyUp" },
+        { "$ref": "input.schema.json#/$defs/SurfaceKeyChar" },
+        { "$ref": "input.schema.json#/$defs/SurfaceFocusIn" },
+        { "$ref": "input.schema.json#/$defs/SurfaceFocusOut" },
+        { "$ref": "ime.schema.json#/$defs/SurfaceImeComposition" },
+        { "$ref": "ime.schema.json#/$defs/SurfaceImeCommit" },
+        { "$ref": "ime.schema.json#/$defs/SurfaceImeCancel" },
+        { "$ref": "drag.schema.json#/$defs/SurfaceDragEnter" },
+        { "$ref": "drag.schema.json#/$defs/SurfaceDragOver" },
+        { "$ref": "drag.schema.json#/$defs/SurfaceDragLeave" },
+        { "$ref": "drag.schema.json#/$defs/SurfaceDragDrop" },
+        { "$ref": "drag.schema.json#/$defs/SurfaceDragEnded" },
+        { "$ref": "accessibility.schema.json#/$defs/SurfaceA11yEnable" },
+        { "$ref": "accessibility.schema.json#/$defs/SurfaceA11yAction" }
+      ]
+    },
+    "SurfaceMessage": {
+      "description": "A message a surface sends to the compositor: that it is ready or died, its title, its frames and frame rate, its cursor, its IME state, its drags and its accessibility tree.",
+      "oneOf": [
+        { "$ref": "lifecycle.schema.json#/$defs/SurfaceReady" },
+        { "$ref": "lifecycle.schema.json#/$defs/SurfaceDied" },
+        { "$ref": "lifecycle.schema.json#/$defs/SurfaceTitle" },
+        { "$ref": "texture.schema.json#/$defs/SurfaceAttach" },
+        { "$ref": "texture.schema.json#/$defs/SurfaceRate" },
+        { "$ref": "input.schema.json#/$defs/SurfaceCursorChange" },
+        { "$ref": "ime.schema.json#/$defs/SurfaceImeEnabled" },
+        { "$ref": "ime.schema.json#/$defs/SurfaceImeCaret" },
+        { "$ref": "drag.schema.json#/$defs/SurfaceDragAccept" },
+        { "$ref": "drag.schema.json#/$defs/SurfaceDragStart" },
+        { "$ref": "drag.schema.json#/$defs/SurfaceDragStatus" },
+        { "$ref": "drag.schema.json#/$defs/SurfaceDragDone" },
+        { "$ref": "accessibility.schema.json#/$defs/SurfaceA11yUpdate" }
+      ]
+    },
+    "SurfaceId": {
+      "description": "The compositor's name for one surface, unique while the desk runs. The compositor picks it in create; every later message about the surface carries it, so one connection can carry many surfaces.",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+    },
+    "SurfaceSize": {
+      "description": "A size in logical pixels (CSS pixels, points): what layout sees. The texture is this times the scale, rounded.",
+      "type": "object",
+      "properties": {
+        "width": { "type": "integer", "minimum": 1, "maximum": 16384 },
+        "height": { "type": "integer", "minimum": 1, "maximum": 16384 }
+      },
+      "required": ["width", "height"],
+      "additionalProperties": false
+    },
+    "SurfaceScale": {
+      "description": "Physical pixels per logical pixel on the display the surface is on: 1, 1.25, 2.",
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "maximum": 8
+    },
+    "SurfaceFormat": {
+      "description": "A texture's pixel format: 8 bits per channel, sRGB, alpha premultiplied. bgra8 is what every engine and OS composites natively; rgba8 is for producers that cannot give it.",
+      "type": "string",
+      "enum": ["bgra8", "rgba8"]
+    },
+    "SurfaceRect": {
+      "description": "A rectangle in the surface's logical pixels, from its top left: carets, accessibility bounds.",
+      "type": "object",
+      "properties": {
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "width": { "type": "number", "minimum": 0 },
+        "height": { "type": "number", "minimum": 0 }
+      },
+      "required": ["x", "y", "width", "height"],
+      "additionalProperties": false
+    },
+    "SurfacePixelRect": {
+      "description": "A rectangle in a texture's pixels, from its top left, inside the texture: damage.",
+      "type": "object",
+      "properties": {
+        "x": { "type": "integer", "minimum": 0, "maximum": 16383 },
+        "y": { "type": "integer", "minimum": 0, "maximum": 16383 },
+        "width": { "type": "integer", "minimum": 1, "maximum": 16384 },
+        "height": { "type": "integer", "minimum": 1, "maximum": 16384 }
+      },
+      "required": ["x", "y", "width", "height"],
+      "additionalProperties": false
+    },
+    "SurfaceModifier": {
+      "description": "A modifier key held during an input event. meta is Command on macOS and the Windows or Super key elsewhere; caps-lock is the lock being on.",
+      "type": "string",
+      "enum": ["shift", "ctrl", "alt", "meta", "caps-lock"]
+    },
+    "SurfaceModifiers": {
+      "description": "The modifier keys held, each at most once; empty when none.",
+      "type": "array",
+      "items": { "$ref": "#/$defs/SurfaceModifier" },
+      "maxItems": 5,
+      "uniqueItems": true
+    },
+    "SurfaceTextRange": {
+      "description": "A range of text in UTF-16 code units, as the DOM counts: start at or before end; start = end is a caret.",
+      "type": "object",
+      "properties": {
+        "start": { "type": "integer", "minimum": 0 },
+        "end": { "type": "integer", "minimum": 0 }
+      },
+      "required": ["start", "end"],
+      "additionalProperties": false
+    }
+  }
+}

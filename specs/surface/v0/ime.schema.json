@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://endue.ai/specs/surface/v0/ime.schema.json",
+  "title": "Desk surface protocol v0: input methods",
+  "description": "The OS input method (IME) belongs to the compositor's window; the focused surface holds the text. The compositor relays the composition and the commit; the surface says when it takes text and where its caret is, for the candidate window. Ranges count UTF-16 code units. See ime.md.",
+  "$defs": {
+    "SurfaceUnderlineStyle": {
+      "description": "How an underline of the composition is drawn.",
+      "type": "string",
+      "enum": ["solid", "dotted", "dashed", "none"]
+    },
+    "SurfaceImeUnderline": {
+      "description": "A part of the composition and its underline; thick marks the clause being converted. The surface picks the colours from its own theme.",
+      "type": "object",
+      "properties": {
+        "range": { "$ref": "surface.schema.json#/$defs/SurfaceTextRange" },
+        "style": { "$ref": "#/$defs/SurfaceUnderlineStyle" },
+        "thick": { "type": "boolean" }
+      },
+      "required": ["range", "style", "thick"],
+      "additionalProperties": false
+    },
+    "SurfaceImeComposition": {
+      "description": "The text being composed, shown in place of the selection (or of replacement) until a commit or cancel: ㅎ, 하, 한. Each composition replaces the previous one whole. selection is the caret or selection inside text.",
+      "type": "object",
+      "properties": {
+        "type": { "const": "ime.composition" },
+        "surface": { "$ref": "surface.schema.json#/$defs/SurfaceId" },
+        "text": { "type": "string", "minLength": 1, "maxLength": 4096 },
+        "underlines": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/SurfaceImeUnderline" },
+          "maxItems": 64
+        },
+        "selection": { "$ref": "surface.schema.json#/$defs/SurfaceTextRange" },
+        "replacement": {
+          "description": "The range of the field's text the composition replaces, when the IME reconverts text already there; the selection when absent.",
+          "$ref": "surface.schema.json#/$defs/SurfaceTextRange"
+        }
+      },
+      "required": ["type", "surface", "text", "underlines", "selection"],
+      "additionalProperties": false
+    },
+    "SurfaceImeCommit": {
+      "description": "The composition (if any) ends and text is inserted for good, in place of replacement when given, else of the composition or selection: 한, then 글.",
+      "type": "object",
+      "properties": {
+        "type": { "const": "ime.commit" },
+        "surface": { "$ref": "surface.schema.json#/$defs/SurfaceId" },
+        "text": { "type": "string", "minLength": 1, "maxLength": 4096 },
+        "replacement": { "$ref": "surface.schema.json#/$defs/SurfaceTextRange" }
+      },
+      "required": ["type", "surface", "text"],
+      "additionalProperties": false
+    },
+    "SurfaceImeCancel": {
+      "description": "The composition is dropped: the field shows what it had before it (Escape, or the IME cleared it).",
+      "type": "object",
+      "properties": {
+        "type": { "const": "ime.cancel" },
+        "surface": { "$ref": "surface.schema.json#/$defs/SurfaceId" }
+      },
+      "required": ["type", "surface"],
+      "additionalProperties": false
+    },
+    "SurfaceImeEnabled": {
+      "description": "Whether the surface takes text now: true when an editable element got the focus, false when none has it. The compositor turns the OS input method on or off for the focused surface by it.",
+      "type": "object",
+      "properties": {
+        "type": { "const": "ime.enabled" },
+        "surface": { "$ref": "surface.schema.json#/$defs/SurfaceId" },
+        "enabled": { "type": "boolean" }
+      },
+      "required": ["type", "surface", "enabled"],
+      "additionalProperties": false
+    },
+    "SurfaceImeCaret": {
+      "description": "Where the caret is, and the bounds of each composed character while composing, in the surface's logical pixels. The compositor maps them to the screen and places the OS candidate window under them.",
+      "type": "object",
+      "properties": {
+        "type": { "const": "ime.caret" },
+        "surface": { "$ref": "surface.schema.json#/$defs/SurfaceId" },
+        "caret": { "$ref": "surface.schema.json#/$defs/SurfaceRect" },
+        "characters": {
+          "description": "One rectangle per UTF-16 code unit of the composition, while one is under way.",
+          "type": "array",
+          "items": { "$ref": "surface.schema.json#/$defs/SurfaceRect" },
+          "maxItems": 4096
+        }
+      },
+      "required": ["type", "surface", "caret"],
+      "additionalProperties": false
+    }
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "target": "CompositorMessage",
+  "description": "Command-A on macOS",
+  "instance": {
+    "type": "key.down",
+    "surface": "s-7",
+    "key": "a",
+    "code": "KeyA",
+    "modifiers": ["meta"],
+    "repeat": false
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "target": "CompositorMessage",
+  "description": "a right button is released after a context-menu press",
+  "instance": {
+    "type": "pointer.up",
+    "surface": "s-7",
+    "x": 40,
+    "y": 60.5,
+    "button": "right",
+    "buttons": [],
+    "clicks": 1,
+    "modifiers": ["ctrl"]
+  }
+}

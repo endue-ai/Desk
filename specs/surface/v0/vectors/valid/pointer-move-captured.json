@@ -1,0 +1,12 @@
+{
+  "target": "CompositorMessage",
+  "description": "a selection drag continues left of the surface while the button is held",
+  "instance": {
+    "type": "pointer.move",
+    "surface": "s-7",
+    "x": -14.5,
+    "y": 220.25,
+    "buttons": ["left"],
+    "modifiers": ["shift"]
+  }
+}

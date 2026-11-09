@@ -1,0 +1,10 @@
+{
+  "target": "CompositorMessage",
+  "description": "a dead acute and e type é",
+  "instance": {
+    "type": "key.char",
+    "surface": "s-7",
+    "text": "é",
+    "modifiers": []
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "target": "SurfaceMessage",
+  "description": "a D3D11 handle says whether it has a keyed mutex",
+  "instance": {
+    "type": "attach",
+    "surface": "s-7",
+    "frame": 0,
+    "texture": {
+      "id": 0,
+      "generation": 0,
+      "width": 1600,
+      "height": 1200,
+      "format": "bgra8",
+      "handle": {
+        "kind": "d3d11",
+        "handle": 2148
+      }
+    },
+    "damage": [
+      {
+        "x": 0,
+        "y": 0,
+        "width": 1600,
+        "height": 1200
+      }
+    ],
+    "release": "after-copy"
+  }
+}

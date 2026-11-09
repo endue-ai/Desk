@@ -1,0 +1,8 @@
+{
+  "target": "CompositorMessage",
+  "description": "the drag left the window",
+  "instance": {
+    "type": "drag.leave",
+    "surface": "s-7"
+  }
+}

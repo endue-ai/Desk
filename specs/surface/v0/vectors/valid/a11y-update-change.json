@@ -1,0 +1,18 @@
+{
+  "target": "SurfaceMessage",
+  "description": "the text field's value changed; every other node stays as it was",
+  "instance": {
+    "type": "a11y.update",
+    "surface": "s-7",
+    "nodes": [
+      {
+        "id": 3,
+        "role": "text-input",
+        "name": "New item",
+        "value": "Buy milk",
+        "actions": ["focus", "set-value"]
+      }
+    ],
+    "focus": 3
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "target": "CompositorMessage",
+  "description": "the A key goes up",
+  "instance": {
+    "type": "key.up",
+    "surface": "s-7",
+    "key": "a",
+    "code": "KeyA",
+    "modifiers": ["meta"]
+  }
+}

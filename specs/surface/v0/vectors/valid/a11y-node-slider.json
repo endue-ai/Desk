@@ -1,0 +1,13 @@
+{
+  "target": "SurfaceA11yNode",
+  "description": "a volume slider with its range",
+  "instance": {
+    "id": 9,
+    "role": "slider",
+    "name": "Volume",
+    "numericValue": 0.4,
+    "minNumericValue": 0,
+    "maxNumericValue": 1,
+    "actions": ["increment", "decrement", "focus"]
+  }
+}

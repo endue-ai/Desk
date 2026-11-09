@@ -1,0 +1,13 @@
+{
+  "target": "CompositorMessage",
+  "description": "a sleeping surface is brought back at its window's size now",
+  "instance": {
+    "type": "wake",
+    "surface": "s-7",
+    "size": {
+      "width": 1200,
+      "height": 600
+    },
+    "scale": 2
+  }
+}

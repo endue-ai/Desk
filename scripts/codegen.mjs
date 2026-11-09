@@ -4,6 +4,7 @@
 //                           packages/bridge/src/generated.ts
 //   brain openapi.yaml      → crates/desk-brain/src/generated.rs,  packages/bridge/src/brain.generated.ts
 //   update schemas          → crates/desk-update/src/generated.rs (the release origin's documents)
+//   surface schemas         → crates/desk-surface/src/generated.rs, packages/bridge/src/surface.generated.ts
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -19,6 +20,8 @@ export const OUTPUTS = [
   "crates/desk-brain/src/generated.rs",
   "packages/bridge/src/brain.generated.ts",
   "crates/desk-update/src/generated.rs",
+  "crates/desk-surface/src/generated.rs",
+  "packages/bridge/src/surface.generated.ts",
 ];
 
 const header = (from) => [
@@ -65,12 +68,14 @@ export function generate(root = ROOT) {
   const bridge = buildModel(specs.bridge);
   const brain = buildModel(specs.brain);
   const update = buildModel(specs.update);
+  const surface = buildModel(specs.surface);
   const bundle = specs.brain[0];
   const bundleJson = JSON.stringify(bundle, null, 2);
   const fromBridge = header(
     "specs/bridge/v0, specs/plugin/v0, specs/item/v0, specs/view/v0, specs/connector/v0, specs/agent/v0 and specs/init/v0",
   );
   const fromBrain = header("specs/brain/v0/openapi.yaml");
+  const fromSurface = header("specs/surface/v0");
   return {
     "crates/desk-bridge/src/generated.rs": rustfmt(
       emitRust(bridge, { header: fromBridge, extra: schemaIncludes(specs.bridge) }),
@@ -102,6 +107,11 @@ export function generate(root = ROOT) {
     ),
     "crates/desk-update/src/generated.rs": rustfmt(
       emitRust(update, { header: header("specs/update/v0") }),
+    ),
+    "crates/desk-surface/src/generated.rs": rustfmt(emitRust(surface, { header: fromSurface })),
+    "packages/bridge/src/surface.generated.ts": biome(
+      emitTs(surface, { header: fromSurface }),
+      "packages/bridge/src/surface.generated.ts",
     ),
   };
 }

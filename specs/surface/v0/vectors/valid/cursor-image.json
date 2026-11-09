@@ -1,0 +1,15 @@
+{
+  "target": "SurfaceMessage",
+  "description": "a drawing plugin's own brush cursor, drawn for a 2x display",
+  "instance": {
+    "type": "cursor",
+    "surface": "s-7",
+    "cursor": {
+      "kind": "image",
+      "png": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+      "hotspotX": 0,
+      "hotspotY": 0,
+      "scale": 2
+    }
+  }
+}

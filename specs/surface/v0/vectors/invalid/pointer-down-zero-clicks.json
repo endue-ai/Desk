@@ -1,0 +1,14 @@
+{
+  "target": "CompositorMessage",
+  "description": "a press is at least the first click",
+  "instance": {
+    "type": "pointer.down",
+    "surface": "s-7",
+    "x": 1,
+    "y": 1,
+    "button": "left",
+    "buttons": ["left"],
+    "clicks": 0,
+    "modifiers": []
+  }
+}

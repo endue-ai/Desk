@@ -1,0 +1,252 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://endue.ai/specs/surface/v0/input.schema.json",
+  "title": "Desk surface protocol v0: pointer, keyboard, focus and cursor",
+  "description": "Input the compositor routes to a surface after its own hit test, in the surface's logical pixels; and the cursor the surface asks for back. See input.md.",
+  "$defs": {
+    "SurfacePointerButton": {
+      "description": "A pointer button: the primary (left), the wheel (middle), the secondary (right), and the side buttons back and forward.",
+      "type": "string",
+      "enum": ["left", "middle", "right", "back", "forward"]
+    },
+    "SurfacePointerButtons": {
+      "description": "The buttons held, each at most once; empty when none.",
+      "type": "array",
+      "items": { "$ref": "#/$defs/SurfacePointerButton" },
+      "maxItems": 5,
+      "uniqueItems": true
+    },
+    "SurfacePointerMove": {
+      "description": "The pointer moved over the surface, or anywhere while a button pressed on it is held (then x and y may fall outside it).",
+      "type": "object",
+      "properties": {
+        "type": { "const": "pointer.move" },
+        "surface": { "$ref": "surface.schema.json#/$defs/SurfaceId" },
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "buttons": { "$ref": "#/$defs/SurfacePointerButtons" },
+        "modifiers": { "$ref": "surface.schema.json#/$defs/SurfaceModifiers" }
+      },
+      "required": ["type", "surface", "x", "y", "buttons", "modifiers"],
+      "additionalProperties": false
+    },
+    "SurfacePointerDown": {
+      "description": "A button was pressed. clicks counts quick presses in one place by the OS's double-click time: 1, then 2 for a double click.",
+      "type": "object",
+      "properties": {
+        "type": { "const": "pointer.down" },
+        "surface": { "$ref": "surface.schema.json#/$defs/SurfaceId" },
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "button": { "$ref": "#/$defs/SurfacePointerButton" },
+        "buttons": { "$ref": "#/$defs/SurfacePointerButtons" },
+        "clicks": { "type": "integer", "minimum": 1, "maximum": 255 },
+        "modifiers": { "$ref": "surface.schema.json#/$defs/SurfaceModifiers" }
+      },
+      "required": ["type", "surface", "x", "y", "button", "buttons", "clicks", "modifiers"],
+      "additionalProperties": false
+    },
+    "SurfacePointerUp": {
+      "description": "A button was released; the surface that took its press hears it, wherever the pointer is. clicks is the press's.",
+      "type": "object",
+      "properties": {
+        "type": { "const": "pointer.up" },
+        "surface": { "$ref": "surface.schema.json#/$defs/SurfaceId" },
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "button": { "$ref": "#/$defs/SurfacePointerButton" },
+        "buttons": { "$ref": "#/$defs/SurfacePointerButtons" },
+        "clicks": { "type": "integer", "minimum": 1, "maximum": 255 },
+        "modifiers": { "$ref": "surface.schema.json#/$defs/SurfaceModifiers" }
+      },
+      "required": ["type", "surface", "x", "y", "button", "buttons", "clicks", "modifiers"],
+      "additionalProperties": false
+    },
+    "SurfaceWheelUnit": {
+      "description": "What a wheel delta counts: logical pixels (trackpads, precise wheels), lines or pages (notched wheels).",
+      "type": "string",
+      "enum": ["pixel", "line", "page"]
+    },
+    "SurfacePointerWheel": {
+      "description": "A wheel or trackpad scroll over the surface, signed as the DOM's WheelEvent: positive deltaY scrolls the content toward its end (down), positive deltaX toward the right.",
+      "type": "object",
+      "properties": {
+        "type": { "const": "pointer.wheel" },
+        "surface": { "$ref": "surface.schema.json#/$defs/SurfaceId" },
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "deltaX": { "type": "number" },
+        "deltaY": { "type": "number" },
+        "unit": { "$ref": "#/$defs/SurfaceWheelUnit" },
+        "modifiers": { "$ref": "surface.schema.json#/$defs/SurfaceModifiers" }
+      },
+      "required": ["type", "surface", "x", "y", "deltaX", "deltaY", "unit", "modifiers"],
+      "additionalProperties": false
+    },
+    "SurfacePointerLeave": {
+      "description": "The pointer left the surface, or something the compositor draws above it (chrome, an overlay) took it.",
+      "type": "object",
+      "properties": {
+        "type": { "const": "pointer.leave" },
+        "surface": { "$ref": "surface.schema.json#/$defs/SurfaceId" }
+      },
+      "required": ["type", "surface"],
+      "additionalProperties": false
+    },
+    "SurfaceKey": {
+      "description": "The key's meaning under the keyboard layout, as the DOM's KeyboardEvent.key: a, A, Enter, ArrowLeft, Dead, Unidentified.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "SurfaceKeyCode": {
+      "description": "The physical key, whatever the layout, as the DOM's KeyboardEvent.code: KeyA, Digit1, Enter, ShiftLeft, Unidentified.",
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9]{0,63}$"
+    },
+    "SurfaceKeyDown": {
+      "description": "A key went down on the focused surface. repeat is true for the OS's auto-repeat while it is held. A key the compositor keeps for itself (its own shortcuts) never arrives.",
+      "type": "object",
+      "properties": {
+        "type": { "const": "key.down" },
+        "surface": { "$ref": "surface.schema.json#/$defs/SurfaceId" },
+        "key": { "$ref": "#/$defs/SurfaceKey" },
+        "code": { "$ref": "#/$defs/SurfaceKeyCode" },
+        "modifiers": { "$ref": "surface.schema.json#/$defs/SurfaceModifiers" },
+        "repeat": { "type": "boolean" }
+      },
+      "required": ["type", "surface", "key", "code", "modifiers", "repeat"],
+      "additionalProperties": false
+    },
+    "SurfaceKeyUp": {
+      "description": "A key went up on the surface that heard it go down.",
+      "type": "object",
+      "properties": {
+        "type": { "const": "key.up" },
+        "surface": { "$ref": "surface.schema.json#/$defs/SurfaceId" },
+        "key": { "$ref": "#/$defs/SurfaceKey" },
+        "code": { "$ref": "#/$defs/SurfaceKeyCode" },
+        "modifiers": { "$ref": "surface.schema.json#/$defs/SurfaceModifiers" }
+      },
+      "required": ["type", "surface", "key", "code", "modifiers"],
+      "additionalProperties": false
+    },
+    "SurfaceKeyChar": {
+      "description": "The text a key press types, after the keyboard layout and dead keys, outside an IME composition. It follows the key.down that typed it; a composition's text comes as ime.commit instead.",
+      "type": "object",
+      "properties": {
+        "type": { "const": "key.char" },
+        "surface": { "$ref": "surface.schema.json#/$defs/SurfaceId" },
+        "text": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "modifiers": { "$ref": "surface.schema.json#/$defs/SurfaceModifiers" }
+      },
+      "required": ["type", "surface", "text", "modifiers"],
+      "additionalProperties": false
+    },
+    "SurfaceFocusIn": {
+      "description": "The surface has the keyboard focus: keys and IME go to it. One surface at most has it.",
+      "type": "object",
+      "properties": {
+        "type": { "const": "focus.in" },
+        "surface": { "$ref": "surface.schema.json#/$defs/SurfaceId" }
+      },
+      "required": ["type", "surface"],
+      "additionalProperties": false
+    },
+    "SurfaceFocusOut": {
+      "description": "The surface lost the keyboard focus: to another surface, to the compositor's chrome, or to another app.",
+      "type": "object",
+      "properties": {
+        "type": { "const": "focus.out" },
+        "surface": { "$ref": "surface.schema.json#/$defs/SurfaceId" }
+      },
+      "required": ["type", "surface"],
+      "additionalProperties": false
+    },
+    "SurfaceCursorName": {
+      "description": "A cursor by its CSS cursor keyword; none hides it.",
+      "type": "string",
+      "enum": [
+        "default",
+        "none",
+        "context-menu",
+        "help",
+        "pointer",
+        "progress",
+        "wait",
+        "cell",
+        "crosshair",
+        "text",
+        "vertical-text",
+        "alias",
+        "copy",
+        "move",
+        "no-drop",
+        "not-allowed",
+        "grab",
+        "grabbing",
+        "all-scroll",
+        "col-resize",
+        "row-resize",
+        "n-resize",
+        "e-resize",
+        "s-resize",
+        "w-resize",
+        "ne-resize",
+        "nw-resize",
+        "se-resize",
+        "sw-resize",
+        "ew-resize",
+        "ns-resize",
+        "nesw-resize",
+        "nwse-resize",
+        "zoom-in",
+        "zoom-out"
+      ]
+    },
+    "SurfaceNamedCursor": {
+      "description": "One of the OS's cursors.",
+      "type": "object",
+      "properties": {
+        "kind": { "const": "named" },
+        "name": { "$ref": "#/$defs/SurfaceCursorName" }
+      },
+      "required": ["kind", "name"],
+      "additionalProperties": false
+    },
+    "SurfaceImageCursor": {
+      "description": "A cursor the surface draws (CSS cursor: url(...)): a PNG of 256 by 256 pixels at most, its hotspot in the image's pixels, and the scale it was drawn for.",
+      "type": "object",
+      "properties": {
+        "kind": { "const": "image" },
+        "png": {
+          "description": "The PNG file, base64.",
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 524288,
+          "pattern": "^[A-Za-z0-9+/]+={0,2}$"
+        },
+        "hotspotX": { "type": "integer", "minimum": 0, "maximum": 255 },
+        "hotspotY": { "type": "integer", "minimum": 0, "maximum": 255 },
+        "scale": { "$ref": "surface.schema.json#/$defs/SurfaceScale" }
+      },
+      "required": ["kind", "png", "hotspotX", "hotspotY", "scale"],
+      "additionalProperties": false
+    },
+    "SurfaceCursor": {
+      "description": "A cursor: named, or an image.",
+      "oneOf": [{ "$ref": "#/$defs/SurfaceNamedCursor" }, { "$ref": "#/$defs/SurfaceImageCursor" }]
+    },
+    "SurfaceCursorChange": {
+      "description": "The cursor the surface wants while the pointer is over it. The compositor sets it while no chrome or overlay of its own has the pointer.",
+      "type": "object",
+      "properties": {
+        "type": { "const": "cursor" },
+        "surface": { "$ref": "surface.schema.json#/$defs/SurfaceId" },
+        "cursor": { "$ref": "#/$defs/SurfaceCursor" }
+      },
+      "required": ["type", "surface", "cursor"],
+      "additionalProperties": false
+    }
+  }
+}

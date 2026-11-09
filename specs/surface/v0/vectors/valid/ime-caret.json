@@ -1,0 +1,22 @@
+{
+  "target": "SurfaceMessage",
+  "description": "the caret and the composed syllable's box, for the candidate window",
+  "instance": {
+    "type": "ime.caret",
+    "surface": "s-7",
+    "caret": {
+      "x": 212,
+      "y": 140,
+      "width": 1,
+      "height": 18
+    },
+    "characters": [
+      {
+        "x": 196,
+        "y": 140,
+        "width": 16,
+        "height": 18
+      }
+    ]
+  }
+}

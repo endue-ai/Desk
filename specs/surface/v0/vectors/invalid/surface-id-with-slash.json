@@ -1,0 +1,8 @@
+{
+  "target": "CompositorMessage",
+  "description": "a surface id has no slash",
+  "instance": {
+    "type": "show",
+    "surface": "a/b"
+  }
+}

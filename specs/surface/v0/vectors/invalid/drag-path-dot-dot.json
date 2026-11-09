@@ -1,0 +1,12 @@
+{
+  "target": "SurfaceDragItem",
+  "description": "a dragged path holds no .. segment",
+  "instance": {
+    "type": "desk/paths",
+    "paths": [
+      {
+        "path": "/Users/me/../../etc/passwd"
+      }
+    ]
+  }
+}

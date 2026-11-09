@@ -1,0 +1,191 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://endue.ai/specs/surface/v0/texture.schema.json",
+  "title": "Desk surface protocol v0: textures and frames",
+  "description": "How a surface hands the compositor a frame: a shared GPU texture per OS (IOSurface, D3D11 shared handle, DMA-BUF), attached with its damage and released when the compositor is done reading it; and the pace of frames each way. See texture.md.",
+  "$defs": {
+    "SurfaceIoSurfaceHandle": {
+      "description": "macOS: an IOSurface. The compositor wraps it as a Metal texture. In the same process it finds the surface by id among those the host holds; across processes the surface's Mach send right travels out of band and id checks it.",
+      "type": "object",
+      "properties": {
+        "kind": { "const": "iosurface" },
+        "id": {
+          "description": "The IOSurfaceID (IOSurfaceGetID).",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4294967295
+        },
+        "portIndex": {
+          "description": "Across processes: the index of the surface's Mach send right (IOSurfaceCreateMachPort) among the message's out-of-band rights.",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 15
+        }
+      },
+      "required": ["kind", "id"],
+      "additionalProperties": false
+    },
+    "SurfaceD3d11Handle": {
+      "description": "Windows: an NT shared handle to a D3D11 texture (IDXGIResource1::CreateSharedHandle), opened on the compositor's device. The value is valid in the sending process; the compositor duplicates it from a process it started.",
+      "type": "object",
+      "properties": {
+        "kind": { "const": "d3d11" },
+        "handle": {
+          "description": "The handle's value in the sending process.",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "keyedMutex": {
+          "description": "The texture has an IDXGIKeyedMutex: the producer releases it with key 1 when the frame is written, the compositor acquires key 1 to read and releases with key 0. Without one, the producer flushes and waits for its GPU before it attaches.",
+          "type": "boolean"
+        }
+      },
+      "required": ["kind", "handle", "keyedMutex"],
+      "additionalProperties": false
+    },
+    "SurfaceDmaBufPlane": {
+      "description": "One plane of a DMA-BUF: its fd (by index among the message's out-of-band fds), the bytes per row and where the plane starts in that fd.",
+      "type": "object",
+      "properties": {
+        "fdIndex": { "type": "integer", "minimum": 0, "maximum": 15 },
+        "stride": { "type": "integer", "minimum": 1, "maximum": 4294967295 },
+        "offset": { "type": "integer", "minimum": 0, "maximum": 4294967295 }
+      },
+      "required": ["fdIndex", "stride", "offset"],
+      "additionalProperties": false
+    },
+    "SurfaceDmaBufHandle": {
+      "description": "Linux: a DMA-BUF, imported as a Vulkan image (Wayland and X11 alike). bgra8 is the fourcc AR24 (or XR24 when opaque), rgba8 AB24 (or XB24). One plane for a linear or plain tiled layout; a modifier with auxiliary planes (compression) brings up to four.",
+      "type": "object",
+      "properties": {
+        "kind": { "const": "dmabuf" },
+        "fourcc": {
+          "description": "The DRM fourcc code as its four characters: AR24, XR24, AB24, XB24.",
+          "type": "string",
+          "pattern": "^[ -~]{4}$"
+        },
+        "modifier": {
+          "description": "The DRM format modifier in hexadecimal, as a string because it needs 64 bits: 0x0 is linear, 0xffffffffffffff (DRM_FORMAT_MOD_INVALID) leaves the layout to the driver.",
+          "type": "string",
+          "pattern": "^0x[0-9a-f]{1,16}$"
+        },
+        "planes": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/SurfaceDmaBufPlane" },
+          "minItems": 1,
+          "maxItems": 4
+        }
+      },
+      "required": ["kind", "fourcc", "modifier", "planes"],
+      "additionalProperties": false
+    },
+    "SurfaceTextureHandle": {
+      "description": "Where a texture's memory is: one shape per OS. File descriptors and Mach rights it names travel out of band beside the message.",
+      "oneOf": [
+        { "$ref": "#/$defs/SurfaceIoSurfaceHandle" },
+        { "$ref": "#/$defs/SurfaceD3d11Handle" },
+        { "$ref": "#/$defs/SurfaceDmaBufHandle" }
+      ]
+    },
+    "SurfaceTexture": {
+      "description": "A shared texture a surface draws into. id names one of the producer's textures (it may rotate several); generation counts the allocations behind that id, so the compositor imports a texture once per id and generation and samples its import for every later frame.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "integer", "minimum": 0, "maximum": 4294967295 },
+        "generation": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+        "width": {
+          "description": "In pixels.",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 16384
+        },
+        "height": {
+          "description": "In pixels.",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 16384
+        },
+        "format": { "$ref": "surface.schema.json#/$defs/SurfaceFormat" },
+        "handle": { "$ref": "#/$defs/SurfaceTextureHandle" }
+      },
+      "required": ["id", "generation", "width", "height", "format", "handle"],
+      "additionalProperties": false
+    },
+    "SurfaceReleaseWhen": {
+      "description": "When the compositor gives an attached texture back. after-copy: it copies the damage into a texture of its own and releases at once, before composing (a producer whose texture is valid only briefly, such as an engine's paint callback). when-replaced: it samples the texture itself and releases it when a later frame replaces it on screen.",
+      "type": "string",
+      "enum": ["after-copy", "when-replaced"]
+    },
+    "SurfaceAttach": {
+      "description": "A new frame: the texture it is in, what changed, and when the compositor gives the texture back. The producer has finished writing it (GPU work flushed and done, the keyed mutex released, or a fence given) and does not write it again until its release.",
+      "type": "object",
+      "properties": {
+        "type": { "const": "attach" },
+        "surface": { "$ref": "surface.schema.json#/$defs/SurfaceId" },
+        "frame": {
+          "description": "Counts up with every attach of this surface; the release names it.",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "texture": { "$ref": "#/$defs/SurfaceTexture" },
+        "damage": {
+          "description": "What changed since the surface's previous frame, in the texture's pixels; a whole-texture change is one rectangle that covers it. A texture the compositor has not imported, or a new size, counts as wholly damaged.",
+          "type": "array",
+          "items": { "$ref": "surface.schema.json#/$defs/SurfacePixelRect" },
+          "minItems": 1,
+          "maxItems": 32
+        },
+        "release": { "$ref": "#/$defs/SurfaceReleaseWhen" },
+        "fenceFdIndex": {
+          "description": "DMA-BUF only: a sync_file fd, by index among the out-of-band fds, that signals when the producer's writes are done. Without it, the kernel's implicit sync on the DMA-BUF applies.",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 15
+        }
+      },
+      "required": ["type", "surface", "frame", "texture", "damage", "release"],
+      "additionalProperties": false
+    },
+    "SurfaceRelease": {
+      "description": "The compositor is done reading the texture of this frame: the producer may write it again. Every attach gets exactly one release, in frame order, unless the surface sleeps, dies or is destroyed first.",
+      "type": "object",
+      "properties": {
+        "type": { "const": "release" },
+        "surface": { "$ref": "surface.schema.json#/$defs/SurfaceId" },
+        "frame": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+        "fenceFdIndex": {
+          "description": "DMA-BUF only: a sync_file fd, by index among the out-of-band fds, that signals when the compositor's reads are done; the producer waits on it before writing. Without it, the reads are done.",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 15
+        }
+      },
+      "required": ["type", "surface", "frame"],
+      "additionalProperties": false
+    },
+    "SurfacePace": {
+      "description": "The most frames per second the surface may attach: the display's rate while it is in front, lower while it is in the background. A surface that paints only on change paints less. A hidden surface paints nothing whatever its pace.",
+      "type": "object",
+      "properties": {
+        "type": { "const": "pace" },
+        "surface": { "$ref": "surface.schema.json#/$defs/SurfaceId" },
+        "fps": { "type": "integer", "minimum": 1, "maximum": 240 }
+      },
+      "required": ["type", "surface", "fps"],
+      "additionalProperties": false
+    },
+    "SurfaceRate": {
+      "description": "How often the surface means to paint from now on: 0 when it paints only on change (a document), 60 while it animates. The compositor plans its frames and its live budget by it.",
+      "type": "object",
+      "properties": {
+        "type": { "const": "rate" },
+        "surface": { "$ref": "surface.schema.json#/$defs/SurfaceId" },
+        "fps": { "type": "integer", "minimum": 0, "maximum": 240 }
+      },
+      "required": ["type", "surface", "fps"],
+      "additionalProperties": false
+    }
+  }
+}

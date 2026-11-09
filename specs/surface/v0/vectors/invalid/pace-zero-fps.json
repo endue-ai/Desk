@@ -1,0 +1,9 @@
+{
+  "target": "CompositorMessage",
+  "description": "a pace of zero would stop a shown surface: hide does that",
+  "instance": {
+    "type": "pace",
+    "surface": "s-7",
+    "fps": 0
+  }
+}

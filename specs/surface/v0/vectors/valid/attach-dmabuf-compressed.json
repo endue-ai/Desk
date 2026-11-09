@@ -1,0 +1,43 @@
+{
+  "target": "SurfaceMessage",
+  "description": "a frame on Linux in a compressed tiled layout: a main plane, an auxiliary plane and a fence",
+  "instance": {
+    "type": "attach",
+    "surface": "s-7",
+    "frame": 7,
+    "texture": {
+      "id": 0,
+      "generation": 2,
+      "width": 2400,
+      "height": 1000,
+      "format": "bgra8",
+      "handle": {
+        "kind": "dmabuf",
+        "fourcc": "AR24",
+        "modifier": "0x100000000000006",
+        "planes": [
+          {
+            "fdIndex": 0,
+            "stride": 9728,
+            "offset": 0
+          },
+          {
+            "fdIndex": 0,
+            "stride": 512,
+            "offset": 9961472
+          }
+        ]
+      }
+    },
+    "damage": [
+      {
+        "x": 0,
+        "y": 0,
+        "width": 2400,
+        "height": 1000
+      }
+    ],
+    "release": "when-replaced",
+    "fenceFdIndex": 1
+  }
+}

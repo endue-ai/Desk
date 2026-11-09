@@ -1,0 +1,27 @@
+{
+  "target": "SurfaceMessage",
+  "description": "the Explorer starts dragging two files under a held press",
+  "instance": {
+    "type": "drag.start",
+    "surface": "s-7",
+    "items": [
+      {
+        "type": "desk/paths",
+        "paths": [
+          {
+            "path": "~/notes/plan.md",
+            "kind": "file"
+          },
+          {
+            "path": "C:/Users/me/specs"
+          }
+        ]
+      }
+    ],
+    "effectAllowed": ["copy", "move", "link"],
+    "image": {
+      "label": "2 items",
+      "detail": "plan.md, specs"
+    }
+  }
+}

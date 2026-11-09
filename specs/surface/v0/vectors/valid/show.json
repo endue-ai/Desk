@@ -1,0 +1,8 @@
+{
+  "target": "CompositorMessage",
+  "description": "the window came back on screen",
+  "instance": {
+    "type": "show",
+    "surface": "s-7"
+  }
+}

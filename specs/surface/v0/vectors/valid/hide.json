@@ -1,0 +1,8 @@
+{
+  "target": "CompositorMessage",
+  "description": "the window was minimised: stop painting",
+  "instance": {
+    "type": "hide",
+    "surface": "s-7"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "target": "CompositorMessage",
+  "description": "a screen reader presses a button",
+  "instance": {
+    "type": "a11y.action",
+    "surface": "s-7",
+    "node": 5,
+    "action": "click"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "target": "CompositorMessage",
+  "description": "the syllable is committed",
+  "instance": {
+    "type": "ime.commit",
+    "surface": "s-7",
+    "text": "한"
+  }
+}

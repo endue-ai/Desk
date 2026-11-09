@@ -1,0 +1,12 @@
+{
+  "target": "SurfaceDragItem",
+  "description": "dragged paths are absolute",
+  "instance": {
+    "type": "desk/paths",
+    "paths": [
+      {
+        "path": "notes/plan.md"
+      }
+    ]
+  }
+}

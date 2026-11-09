@@ -1,0 +1,14 @@
+{
+  "target": "CompositorMessage",
+  "description": "buttons are left, middle, right, back and forward",
+  "instance": {
+    "type": "pointer.down",
+    "surface": "s-7",
+    "x": 1,
+    "y": 1,
+    "button": "button4",
+    "buttons": [],
+    "clicks": 1,
+    "modifiers": []
+  }
+}

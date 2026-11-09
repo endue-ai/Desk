@@ -1,0 +1,8 @@
+{
+  "target": "SurfaceA11yNode",
+  "description": "roles are AccessKit's in kebab-case",
+  "instance": {
+    "id": 1,
+    "role": "TextInput"
+  }
+}

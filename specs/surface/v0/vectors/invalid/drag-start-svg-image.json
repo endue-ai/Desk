@@ -1,0 +1,18 @@
+{
+  "target": "SurfaceMessage",
+  "description": "a drag image is PNG, JPEG, GIF or WebP, never SVG",
+  "instance": {
+    "type": "drag.start",
+    "surface": "s-7",
+    "items": [
+      {
+        "type": "text/plain",
+        "text": "x"
+      }
+    ],
+    "effectAllowed": ["copy"],
+    "image": {
+      "src": "data:image/svg+xml;base64,PHN2Zy8+"
+    }
+  }
+}

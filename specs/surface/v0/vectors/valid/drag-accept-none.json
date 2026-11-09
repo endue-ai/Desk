@@ -1,0 +1,9 @@
+{
+  "target": "SurfaceMessage",
+  "description": "a surface without drop targets takes nothing",
+  "instance": {
+    "type": "drag.accept",
+    "surface": "s-7",
+    "types": []
+  }
+}

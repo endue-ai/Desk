@@ -1,0 +1,14 @@
+{
+  "target": "SurfaceMessage",
+  "description": "every tree update says which node has the focus",
+  "instance": {
+    "type": "a11y.update",
+    "surface": "s-7",
+    "nodes": [
+      {
+        "id": 1,
+        "role": "button"
+      }
+    ]
+  }
+}

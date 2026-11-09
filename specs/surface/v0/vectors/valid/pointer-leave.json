@@ -1,0 +1,8 @@
+{
+  "target": "CompositorMessage",
+  "description": "the pointer went onto the window's title bar",
+  "instance": {
+    "type": "pointer.leave",
+    "surface": "s-7"
+  }
+}

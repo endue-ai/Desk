@@ -1,0 +1,17 @@
+{
+  "target": "CompositorMessage",
+  "description": "the desk's palette, a system surface, loads hidden until it is asked for",
+  "instance": {
+    "type": "create",
+    "surface": "desk.palette:1",
+    "plugin": "desk",
+    "view": "palette",
+    "size": {
+      "width": 640,
+      "height": 420
+    },
+    "scale": 1.25,
+    "format": "rgba8",
+    "hidden": true
+  }
+}

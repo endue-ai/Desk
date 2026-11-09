@@ -1,0 +1,30 @@
+{
+  "target": "CompositorMessage",
+  "description": "two files land on the notes window as a copy",
+  "instance": {
+    "type": "drag.drop",
+    "surface": "s-7",
+    "x": 140,
+    "y": 80,
+    "effect": "copy",
+    "items": [
+      {
+        "type": "desk/paths",
+        "paths": [
+          {
+            "path": "~/notes/plan.md",
+            "kind": "file"
+          },
+          {
+            "path": "/Volumes/Work/specs",
+            "kind": "folder"
+          }
+        ]
+      },
+      {
+        "type": "text/plain",
+        "text": "plan.md\nspecs"
+      }
+    ]
+  }
+}
