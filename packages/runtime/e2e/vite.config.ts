@@ -34,6 +34,9 @@ const plugins: Record<string, string> = {
   "endue.dock": join(repo, "plugins/dock"),
   "endue.agents": join(repo, "plugins/agents"),
 };
+/** The shell page's ?many=<n> windows (#37): the hello-ui page under test.many-1, test.many-2 … */
+const many = (id: string) =>
+  /^test\.many-\d+$/.test(id) ? join(repo, "examples/plugin-hello-ui") : undefined;
 const sdk = join(repo, "packages/plugin-sdk/src/index.ts");
 const ui = join(repo, "packages/ui/src/bundle.ts");
 /** What the app serves under /_desk/ (the SDK, elements and shared sheets), from their sources. */
@@ -88,7 +91,7 @@ export function pluginFiles(): Plugin {
         const match = /^\/plugins\/([^/]+)\/(.+)$/.exec(url.pathname);
         if (!match && market === undefined) return next();
         const [, id = "", path = market ?? ""] = match ?? [];
-        const base = market === undefined ? plugins[id] : here("./themes/market");
+        const base = market === undefined ? (plugins[id] ?? many(id)) : here("./themes/market");
         const file = base ? normalize(join(base, path)) : "";
         if (!base || !file.startsWith(base) || !existsSync(file) || !statSync(file).isFile()) {
           res.statusCode = 404;

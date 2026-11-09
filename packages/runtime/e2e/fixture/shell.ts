@@ -14,7 +14,9 @@
 // endue.notes and a terminal stand-in, for the profile and key bindings Eris proposes. ?endue=1 gives
 // the shell the studio stub's sample endue agents and spaces (ADR 0129), shown once it signs in;
 // ?endue=signed-in starts signed in. ?account=1 serves account.* from src/bridge/account-stub.ts,
-// signed in with the sample account (ADR 0130); ?account=signedout starts signed out. Never shipped.
+// signed in with the sample account (ADR 0130); ?account=signedout starts signed out. ?many=<n>
+// (with ?plugins=1) adds n more centre windows, test.many-1 to test.many-<n>, each the hello-ui page
+// whose count lives in desk:state, for the live budget (#37). Never shipped.
 import type { PluginManifest } from "@endue-ai/bridge";
 import "../../src/desk.css";
 import "../../src/shell/styles";
@@ -60,6 +62,17 @@ const testPlugins: PluginManifest[] = [
     surfaces: [{ id: "main", title: "Hello", placement: "center" }],
   },
 ];
+// ?many=<n>: the hello-ui page under n more ids (e2e/vite.config.ts serves test.many-* from it).
+const many: PluginManifest[] = Array.from(
+  { length: Math.min(Number(params.get("many")) || 0, 50) },
+  (_, i) => ({
+    id: `test.many-${i + 1}`,
+    version: "0.1.0",
+    kind: "ui",
+    entry: "ui/index.html",
+    surfaces: [{ id: "main", title: `Hello ${i + 1}`, placement: "center" }],
+  }),
+);
 const MARKET = "https://market.test/";
 /** Where ?persist=1 keeps the desk folder's files. */
 const FOLDER = "desk.folder";
@@ -98,7 +111,7 @@ const core = browserCore({
         m.kind !== "view" &&
         m.kind !== "pack",
     ),
-    ...(params.has("plugins") ? testPlugins : []),
+    ...(params.has("plugins") ? [...testPlugins, ...many] : []),
     ...(params.has("edges")
       ? Object.values(manifests).filter((m) => ["endue.sidebar", "endue.toolbar"].includes(m.id))
       : []),

@@ -1,6 +1,7 @@
 // Plugin surfaces as shell windows: the shell fixture with ?plugins=1 installs two UI test plugins,
 // whose centre surfaces open inside the shell's windows (ADR 0040). One window manager: slots,
-// drag, resize, snap, maximize, the drawer and the plugin's on/off all go through it.
+// drag, resize, snap, maximize, the drawer and the plugin's on/off all go through it. With ?many=18
+// there are twenty, and past the live budget the windows out of sight sleep (ADR 0134).
 import { expect, type Page, test } from "@playwright/test";
 import { chipsOverTitle, DESK, openShell, step } from "./shell-helpers";
 
@@ -182,5 +183,61 @@ test.describe("plugin surfaces as shell windows", () => {
     await expect(page.locator('[data-surface="window-1"]')).not.toHaveClass(/is-focused/);
     await page.keyboard.press("Control+Tab");
     await expect(window_(page, HELLO)).toHaveClass(/is-focused/);
+  });
+});
+
+test.describe("the live budget (#37)", () => {
+  // Counter, Hello and eighteen more Hello pages (test.many-1 … 18): twenty plugin windows.
+  const MANY = 18;
+  const many = Array.from({ length: MANY }, (_, i) => `test.many-${i + 1}`);
+  const init = encodeURIComponent(JSON.stringify({ "desk.surfaces.live": 8 }));
+  /** The plugin windows whose frame is on the page, sorted: an asleep one has a placeholder. */
+  const live = (page: Page) =>
+    page.evaluate(() =>
+      [...document.querySelectorAll<HTMLElement>(".desk-surface--windowed")]
+        .filter((section) => section.querySelector("iframe[src]"))
+        .map((section) => section.dataset.surface ?? "")
+        .sort(),
+    );
+  const focus = (page: Page, id: string) =>
+    page.evaluate((surface) => window.__shell.desk.runtime.focusSurface(surface), id);
+  const asleep = (page: Page, id: string) => inner(page, id).locator(".desk-surface-placeholder");
+
+  test.beforeEach(async ({ page }) => {
+    await openShell(page, `?plugins=1&many=${MANY}&lang=en&init=${init}`);
+    await page.evaluate(() => window.__shell.desk.runtime.plugins?.ready);
+  });
+
+  test("with 20 windows and N = 8 only the visible ones and the 8 most recent hidden ones keep a frame; one woken gets its count back", async ({
+    page,
+  }) => {
+    await expect(page.locator(".desk-surface--windowed")).toHaveCount(20);
+    // Hello counts to three; the count lives in what it gave through desk:state.
+    await focus(page, HELLO);
+    const hello = frame(page, HELLO);
+    for (let i = 0; i < 3; i++) await hello.getByRole("button", { name: "Count" }).click();
+    await expect(hello.getByTestId("count")).toHaveText("3");
+    // Nine windows are focused after it and the ninth fills the app: the other nineteen are out of
+    // sight, Hello the ninth most recent of them.
+    const recent = many.slice(0, 9);
+    for (const id of recent) await focus(page, id);
+    const top = recent[8] ?? "";
+    await window_(page, top).locator(".surface-name").dblclick();
+    await expect(window_(page, top)).toHaveCSS("width", "1440px");
+    // The one in sight and the eight most recent out of sight keep a frame; the rest sleep.
+    await expect.poll(() => live(page)).toEqual([...recent].sort());
+    await expect(asleep(page, HELLO)).toHaveCount(1);
+    await expect(asleep(page, COUNTER)).toHaveCount(1);
+    await expect(asleep(page, "test.many-18")).toHaveCount(1);
+
+    // Focusing Hello wakes it, under the window that fills the app, and hands its count back.
+    await focus(page, HELLO);
+    await expect(asleep(page, HELLO)).toHaveCount(0);
+    await expect(hello.getByTestId("count")).toHaveText("3");
+    // Hello gives the keys to another sleeping window: nine out of sight would be live, so the least
+    // recent of them sleeps.
+    await focus(page, "test.many-10");
+    await expect.poll(() => live(page)).toEqual([HELLO, "test.many-10", ...recent.slice(1)].sort());
+    await expect(asleep(page, "test.many-1")).toHaveCount(1);
   });
 });
