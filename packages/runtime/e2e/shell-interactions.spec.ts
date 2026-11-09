@@ -37,7 +37,11 @@ test("resize keeps its diagonal cursor and losing app focus cancels it", async (
   await page.mouse.down();
   await page.mouse.move(grip.x + 48, grip.y + 48, { steps: 3 });
   await expect(surface).toHaveCSS("cursor", "nwse-resize");
-  await page.evaluate(() => window.dispatchEvent(new Event("blur")));
+  // Another app comes to the front: the desk's window blurs and its page no longer has the focus.
+  await page.evaluate(() => {
+    document.hasFocus = () => false;
+    window.dispatchEvent(new Event("blur"));
+  });
   await expect(page.locator("html")).not.toHaveClass(/is-grabbing/);
   expect(await surface.boundingBox()).toEqual(before);
   await page.mouse.up();

@@ -108,6 +108,34 @@ test.describe("plugin surfaces as shell windows", () => {
     await expect(window_(page, HELLO)).toHaveCSS("left", "104px");
   });
 
+  test("a Shift + drag pan lasts until the button is let go: over a floating frame, or while a frame takes the focus", async ({
+    page,
+  }) => {
+    await window_(page, HELLO).getByRole("button", { name: "Floating mode" }).click();
+    await expect(window_(page, HELLO)).toHaveAttribute("data-floating", "true");
+    const floating = await box(page, HELLO);
+    const pan = () => page.evaluate(() => window.__shell.desk.store.get().pan[1]);
+    await page.keyboard.down("Shift");
+    await page.mouse.move(1200, 700);
+    await page.mouse.down();
+    await page.mouse.move(1100, 650, { steps: 4 });
+    // A plugin focusing itself as it redraws: the desk's window blurs, the desk keeps the focus.
+    await frame(page)
+      .getByRole("button")
+      .evaluate((button) => (button as HTMLElement).focus());
+    expect(await page.evaluate(() => document.activeElement?.tagName)).toBe("IFRAME");
+    await page.mouse.move(floating.x + floating.width / 2, floating.y + floating.height / 2, {
+      steps: 6,
+    });
+    await page.mouse.move(300, 700, { steps: 6 });
+    await page.mouse.up();
+    await page.keyboard.up("Shift");
+    expect(await pan()).toEqual({ x: -900, y: 0 });
+    await expect(page.locator("html")).not.toHaveClass(/is-grabbing/);
+    // The floating window stayed where it was.
+    expect(await box(page, HELLO)).toEqual(floating);
+  });
+
   test("putting it in the drawer takes the frame away and raising it brings the plugin back", async ({
     page,
   }) => {

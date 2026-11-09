@@ -14,6 +14,8 @@ describe("pointer drags", () => {
       pointerId: id,
       isPrimary: true,
       button: 0,
+      // The primary button stays down from the press until it is let go.
+      buttons: type === "pointerup" ? 0 : 1,
       clientX: x,
       clientY: 20,
     });
@@ -86,16 +88,56 @@ describe("pointer drags", () => {
     expect(handlers.end).toHaveBeenCalledWith(30, 0, expect.any(PointerEvent));
   });
 
+  it("keeps dragging when one of the desk's frames takes the focus, and the desk keeps it", async () => {
+    pointer(handle, "pointerdown", 10);
+    pointer(window, "pointermove", 30);
+    const focus = vi.spyOn(document, "hasFocus").mockReturnValue(true);
+    window.dispatchEvent(new Event("blur"));
+    await new Promise((done) => setTimeout(done, 0));
+    pointer(window, "pointermove", 50);
+    pointer(window, "pointerup", 60);
+    focus.mockRestore();
+    expect(handlers.cancel).not.toHaveBeenCalled();
+    expect(handlers.move).toHaveBeenLastCalledWith(40, 0, expect.any(PointerEvent));
+    expect(handlers.end).toHaveBeenCalledWith(50, 0, expect.any(PointerEvent));
+  });
+
+  it("ends where the pointer last was when a move comes with the button already up", () => {
+    pointer(handle, "pointerdown", 10);
+    pointer(window, "pointermove", 30);
+    pointer(window, "pointermove", 45);
+    const released = new PointerEvent("pointermove", {
+      bubbles: true,
+      pointerId: 1,
+      isPrimary: true,
+      buttons: 0,
+      clientX: 300,
+      clientY: 20,
+    });
+    window.dispatchEvent(released);
+    expect(handlers.move).toHaveBeenCalledTimes(2);
+    expect(handlers.end).toHaveBeenCalledWith(35, 0, expect.any(PointerEvent));
+    expect(handlers.cancel).not.toHaveBeenCalled();
+    expect(document.documentElement.classList.contains("is-grabbing")).toBe(false);
+    pointer(window, "pointermove", 100);
+    expect(handlers.move).toHaveBeenCalledTimes(2);
+  });
+
   for (const reason of ["pointercancel", "lostpointercapture", "blur", "Escape", "dispose"]) {
-    it(`cancels on ${reason}, removes global state and never commits stale coordinates`, () => {
+    it(`cancels on ${reason}, removes global state and never commits stale coordinates`, async () => {
       pointer(handle, "pointerdown", 10);
       pointer(window, "pointermove", 30);
       expect(document.documentElement.classList.contains("is-grabbing")).toBe(true);
       if (reason === "dispose") dispose();
       else if (reason === "Escape")
         window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", cancelable: true }));
-      else if (reason === "blur") window.dispatchEvent(new Event("blur"));
-      else pointer(reason === "lostpointercapture" ? handle : window, reason, 0);
+      else if (reason === "blur") {
+        // The desk itself lost the focus (another app came to the front), not one of its frames.
+        const focus = vi.spyOn(document, "hasFocus").mockReturnValue(false);
+        window.dispatchEvent(new Event("blur"));
+        await new Promise((done) => setTimeout(done, 0));
+        focus.mockRestore();
+      } else pointer(reason === "lostpointercapture" ? handle : window, reason, 0);
       expect(handlers.cancel).toHaveBeenCalledOnce();
       expect(handlers.end).not.toHaveBeenCalled();
       expect(document.documentElement.classList.contains("is-grabbing")).toBe(false);

@@ -1,4 +1,8 @@
-/** Pointer capture starts at once so crossing a plugin frame cannot lose the drag. */
+/**
+ * Pointer capture starts at once so crossing a plugin frame cannot lose the drag. Once it moves, a
+ * drag lasts until the button is let go: a frame taking the focus as it redraws (the desk keeps it,
+ * in that frame) does not end it; the desk losing the focus, Escape or a cancelled pointer do.
+ */
 export const DRAG_THRESHOLD = 8;
 
 export interface DragHandlers {
@@ -35,6 +39,8 @@ export function draggable(handle: HTMLElement, handlers: DragHandlers): () => vo
     const x0 = e.clientX;
     const y0 = e.clientY;
     let dragging = false;
+    /** The pointer's last place in the drag. */
+    let last: PointerEvent | undefined;
     const previousCursor = root.style.getPropertyValue("--desk-drag-cursor");
     const previousPriority = root.style.getPropertyPriority("--desk-drag-cursor");
     try {
@@ -47,7 +53,7 @@ export function draggable(handle: HTMLElement, handlers: DragHandlers): () => vo
       win.removeEventListener("pointermove", move);
       win.removeEventListener("pointerup", up);
       win.removeEventListener("pointercancel", interrupted);
-      win.removeEventListener("blur", abort);
+      win.removeEventListener("blur", blurred);
       win.removeEventListener("keydown", key, true);
       handle.removeEventListener("lostpointercapture", interrupted);
       if (dragging) {
@@ -66,6 +72,13 @@ export function draggable(handle: HTMLElement, handlers: DragHandlers): () => vo
       cleanup();
       if (dragging) handlers.cancel?.();
     };
+    // The page's window blurs when the focus moves into one of its frames, too: a plugin focusing
+    // itself as it redraws. Only the desk losing the focus (another app in front) ends the drag.
+    const blurred = () => {
+      win.setTimeout(() => {
+        if (cancel === abort && !doc.hasFocus()) abort();
+      }, 0);
+    };
     const interrupted = (event: PointerEvent) => {
       if (event.pointerId === e.pointerId) abort();
     };
@@ -77,6 +90,12 @@ export function draggable(handle: HTMLElement, handlers: DragHandlers): () => vo
     };
     const move = (m: PointerEvent) => {
       if (m.pointerId !== e.pointerId) return;
+      // The button is up: it was let go where the desk could not hear it (over another app, once a
+      // frame had the focus). The drag ends where the pointer last was in it.
+      if ((m.buttons & 1) === 0) {
+        finish(last ?? m);
+        return;
+      }
       const dx = m.clientX - x0;
       const dy = m.clientY - y0;
       if (!dragging && Math.hypot(dx, dy) <= DRAG_THRESHOLD) return;
@@ -88,10 +107,13 @@ export function draggable(handle: HTMLElement, handlers: DragHandlers): () => vo
         handlers.start?.();
       }
       m.preventDefault();
+      last = m;
       handlers.move(dx, dy, m);
     };
     const up = (u: PointerEvent) => {
-      if (u.pointerId !== e.pointerId) return;
+      if (u.pointerId === e.pointerId) finish(u);
+    };
+    const finish = (u: PointerEvent) => {
       cleanup();
       if (!dragging) return;
       // The click that follows a drag must not activate anything under the drop.
@@ -112,7 +134,7 @@ export function draggable(handle: HTMLElement, handlers: DragHandlers): () => vo
     win.addEventListener("pointermove", move);
     win.addEventListener("pointerup", up);
     win.addEventListener("pointercancel", interrupted);
-    win.addEventListener("blur", abort);
+    win.addEventListener("blur", blurred);
     win.addEventListener("keydown", key, true);
     handle.addEventListener("lostpointercapture", interrupted);
   };
