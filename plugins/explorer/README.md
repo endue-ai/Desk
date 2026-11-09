@@ -33,7 +33,7 @@ when they change; expanded folders and the selection live in the store, the rest
 | `ui/tree.js` · `ui/file-icons.js` · `ui/glyphs.js` | Paths, the order of entries, the rows on screen, where a key moves the selection; each row's icon (glyph and theme tone by kind, name and extension) as inline SVG |
 | `ui/disk.js` · `ui/desk.js` · `ui/drops.js` · `ui/edits.js` · `ui/explorer.js` · `ui/command-registry.js` | Scoped disk and desk calls, drops on folders, edits on disk, tree state, commands, store and settings |
 | `ui/view.js` · `ui/main.js` · `ui/context-*.js` · `ui/size.js` · `ui/style.css` | Tree DOM, keyboard menu, selection actions and mount; the look, from the theme's `--desk-*` tokens only |
-| `ui/preview.js` · `ui/preview-view.js` | Bounded preview reads, stale-result protection, URL cleanup and safe DOM |
+| `ui/preview.js` · `ui/preview-view.js` | Bounded text reads; images from their `fs.url` URL, never decoded in the frame (#38); stale results; safe DOM |
 ```bash
 pnpm exec vitest run plugins/explorer
 cargo run -p desk-cli -- plugin validate plugins/explorer

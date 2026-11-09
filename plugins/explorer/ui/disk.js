@@ -93,6 +93,16 @@ export function createDisk(bridge, { rootOf, changed }) {
         (scope) => bridge.call("fs.read", { path, offset: 0, length, encoding: "base64", scope }),
       ),
 
+    /**
+     * A URL the frame loads an image preview from, under the same folder grant: the bytes never pass
+     * through the bridge or this thread, and the engine decodes them (ADR 0041, #38).
+     */
+    url: (/** @type {string} */ path) =>
+      withGrant(
+        { permission: "fs:read", verb: "read", path, reason: `To preview ${path} in ${NAME}` },
+        (scope) => bridge.call("fs.url", { path, scope }),
+      ),
+
     /** Create an empty file. The caller makes sure nothing is there first. */
     create: (/** @type {string} */ path) =>
       withGrant(

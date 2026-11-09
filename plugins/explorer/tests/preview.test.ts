@@ -148,40 +148,63 @@ describe("quick preview follows the Explorer selection", () => {
     );
   });
 
-  it("oversized images remain details and image URLs are released on replacement and close", async () => {
-    const create = vi
-      .spyOn(URL, "createObjectURL")
-      .mockReturnValueOnce("blob:first")
-      .mockReturnValueOnce("blob:second");
-    const revoke = vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {});
+  it("an image previews from its fs.url URL: its bytes are never read or decoded in the frame", async () => {
+    const atob = vi.spyOn(globalThis, "atob");
+    const create = vi.spyOn(URL, "createObjectURL");
+    const sizes: Record<string, number> = { "one.png": 3, "two.jpg": 7_000_000 };
     const d = await mount({
       handlers: {
-        ...disk({
-          [DOCS]: [file("large.png", 9 * 1024 * 1024), file("one.png", 3), file("two.jpg", 3)],
-        }),
+        ...disk({ [DOCS]: [file("large.png", 9 * 1024 * 1024), file("one.png"), file("two.jpg")] }),
         "fs.read": () => text("img"),
+        "fs.url": ({ path }) => {
+          const name = path.slice(path.lastIndexOf("/") + 1);
+          return {
+            url: `/_desk/file/t-${name}/${name}`,
+            type: "image/png",
+            size: sizes[name] ?? 0,
+          };
+        },
       },
     });
     const shown = watch(d.view);
     d.app.select(`${DOCS}/large.png`);
     await d.app.key(" ");
-    expect(d.params("fs.read")).toEqual([]);
+    expect(d.params("fs.url")).toEqual([]);
     expect(shown).toHaveBeenLastCalledWith(
       expect.objectContaining({ kind: "details", reason: expect.stringMatching(/8 MiB/) }),
     );
     d.app.select(`${DOCS}/one.png`);
     await d.settle();
     expect(shown).toHaveBeenLastCalledWith(
-      expect.objectContaining({ kind: "image", url: "blob:first" }),
+      expect.objectContaining({ kind: "image", url: "/_desk/file/t-one.png/one.png", size: 3 }),
     );
     d.app.select(`${DOCS}/two.jpg`);
     await d.settle();
-    expect(revoke).toHaveBeenCalledWith("blob:first");
-    await d.app.key("Escape");
-    expect(revoke).toHaveBeenCalledWith("blob:second");
-    expect(create).toHaveBeenCalledTimes(2);
-    expect(d.params("fs.read")).toEqual(
-      expect.arrayContaining([expect.objectContaining({ length: 8 * 1024 * 1024 })]),
+    expect(shown).toHaveBeenLastCalledWith(
+      expect.objectContaining({ kind: "image", url: "/_desk/file/t-two.jpg/two.jpg", size: 7e6 }),
+    );
+    expect(d.params("fs.url")).toEqual([
+      { path: `${DOCS}/one.png`, scope: READ },
+      { path: `${DOCS}/two.jpg`, scope: READ },
+    ]);
+    expect(d.params("fs.read")).toEqual([]);
+    expect(atob).not.toHaveBeenCalled();
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it("an image the listing did not size is still refused over 8 MiB, by the size fs.url gives", async () => {
+    const d = await mount({
+      handlers: {
+        ...disk({ [DOCS]: [file("huge.webp")] }),
+        "fs.url": () => ({ url: "/_desk/file/t/huge.webp", type: "image/webp", size: 9e6 }),
+      },
+    });
+    const shown = watch(d.view);
+    d.app.select(`${DOCS}/huge.webp`);
+    await d.app.key(" ");
+    await d.settle();
+    expect(shown).toHaveBeenLastCalledWith(
+      expect.objectContaining({ kind: "details", reason: expect.stringMatching(/8 MiB/) }),
     );
   });
 });

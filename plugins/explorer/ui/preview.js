@@ -1,5 +1,6 @@
 // A temporary, bounded preview. The sequence prevents a late read from replacing a newer file.
-// URLs belong to this controller and are released when its selection changes or it closes.
+// Text is read (at most 64 KiB) and checked here; an image is not: the frame loads it from its
+// fs.url URL and the engine decodes it, so no image bytes are decoded on this thread (#38).
 
 /** @typedef {import("./tree.js").Row} Row
  * @typedef {{ path: string, name: string, size?: number, kind: "loading" | "text" | "image" | "details" | "error",
@@ -26,22 +27,14 @@ const IMAGES = {
 export function createPreview(disk, show) {
   let active = false;
   let sequence = 0;
-  /** @type {string | undefined} */
-  let url;
-  const release = () => {
-    if (url) URL.revokeObjectURL(url);
-    url = undefined;
-  };
   const close = () => {
     active = false;
     sequence++;
-    release();
     show(null);
   };
   const select = async (/** @type {Row | undefined} */ row) => {
     if (!active) return;
     const current = ++sequence;
-    release();
     if (!row) {
       close();
       return;
@@ -69,19 +62,21 @@ export function createPreview(disk, show) {
     }
     show({ ...base, kind: "loading" });
     try {
-      const result = await disk.read(row.path, mime ? IMAGE_LIMIT : TEXT_LIMIT);
-      if (current !== sequence || !active) return;
-      const bytes = Uint8Array.from(atob(result.content), (char) => char.charCodeAt(0));
-      const size = result.size ?? row.size ?? bytes.length;
-      base.size = size;
       if (mime) {
-        if (size > IMAGE_LIMIT) {
+        const file = await disk.url(row.path);
+        if (current !== sequence || !active) return;
+        base.size = file.size;
+        if (file.size > IMAGE_LIMIT) {
           details("Images over 8 MiB open in the image viewer.");
           return;
         }
-        url = URL.createObjectURL(new Blob([bytes], { type: mime }));
-        show({ ...base, kind: "image", url });
+        show({ ...base, kind: "image", url: file.url });
       } else {
+        const result = await disk.read(row.path, TEXT_LIMIT);
+        if (current !== sequence || !active) return;
+        const bytes = Uint8Array.from(atob(result.content), (char) => char.charCodeAt(0));
+        const size = result.size ?? row.size ?? bytes.length;
+        base.size = size;
         if (bytes.some((byte) => byte === 0 || byte < 9 || (byte > 13 && byte < 32))) {
           details("This file contains binary data. Open it in its viewer.");
           return;
