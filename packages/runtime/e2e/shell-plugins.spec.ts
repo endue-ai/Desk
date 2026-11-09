@@ -145,6 +145,34 @@ test.describe("plugin surfaces as shell windows", () => {
     await expect(frame(page).getByRole("button")).toBeVisible();
   });
 
+  test("a plugin that opens one of its surfaces comes in front with the focus, from the drawer too", async ({
+    page,
+  }) => {
+    // What the core sends the runtime when the permissions plugin raises its prompt (#17).
+    const opened = (caller: string) =>
+      page.evaluate(
+        (id) =>
+          window.__shell.stub.emit({
+            event: "ui.surface.opened",
+            data: { handle: "s-1", caller: id, surface: "main", placement: "center" },
+          }),
+        caller,
+      );
+    const z = (id: string) =>
+      window_(page, id).evaluate((el) => Number(getComputedStyle(el).zIndex));
+    await window_(page, HELLO).locator(".surface-name").click();
+    await expect(window_(page, HELLO)).toHaveClass(/is-focused/);
+    await opened(COUNTER);
+    await expect(window_(page)).toHaveClass(/is-focused/);
+    await expect(window_(page, HELLO)).not.toHaveClass(/is-focused/);
+    expect(await z(COUNTER)).toBeGreaterThan(await z(HELLO));
+    await window_(page).locator('.tool[aria-label="Put in drawer"]').click();
+    await expect(window_(page)).toHaveCount(0);
+    await opened(COUNTER);
+    await expect(window_(page)).toHaveClass(/is-focused/);
+    await expect(frame(page).getByRole("button")).toBeVisible();
+  });
+
   test("Control+Tab reaches it and its window shows as focused", async ({ page }) => {
     await page.keyboard.press("Meta+n");
     await expect(page.locator('[data-surface="window-1"]')).toHaveClass(/is-focused/);

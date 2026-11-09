@@ -1,6 +1,7 @@
 /**
  * desk.display: where a new surface goes (its area, grid span or edge size, and whether it takes the
- * focus), and the commands that move the focus between surfaces and bring one back.
+ * focus), the commands that move the focus between surfaces and bring one back, and bringing back
+ * the surface of a plugin that opens one (ui.surface.opened).
  */
 import type { SurfacePlacement } from "@endue-ai/bridge";
 import { type DisplayDecision, decide } from "../display";
@@ -36,6 +37,23 @@ export function installDisplay(ctx: DeskContext, actions: DisplayActions): Displ
   };
   const define = (id: string, title: string, run: (args: unknown) => unknown, keywords: string[]) =>
     offs.add(commands.define(id, { title, keywords, owner: "desk.display", run }));
+  /** Show a running plugin's surface and give it the focus, which raises its window; false: none. */
+  const bring = (plugin: string) => {
+    if (!surfaces.get(plugin)) return false;
+    surfaces.show(plugin, true);
+    actions.focus(plugin);
+    return true;
+  };
+
+  // A plugin opened one of its manifest's surfaces (ui.surface.opened). Its one frame draws every
+  // surface it has, so that frame comes into view, from behind other windows, the drawer or another
+  // desktop. The permissions plugin's prompt is a dialog in its frame: unseen, it kept the plugin
+  // that asked waiting (#17).
+  offs.add(
+    bridge.onEvent((event) => {
+      if (event.event === "ui.surface.opened") bring(event.data.caller);
+    }),
+  );
 
   define("desk.display.focus-next", "Focus the next surface", () => cycle(1), ["other-window"]);
   define("desk.display.focus-previous", "Focus the previous surface", () => cycle(-1), ["window"]);
@@ -45,11 +63,7 @@ export function installDisplay(ctx: DeskContext, actions: DisplayActions): Displ
     async (args) => {
       const plugin = (args as { plugin?: string } | undefined)?.plugin;
       if (!plugin) throw new Error("say which plugin: { plugin }");
-      if (surfaces.get(plugin)) {
-        surfaces.show(plugin, true);
-        actions.focus(plugin);
-        return "shown";
-      }
+      if (bring(plugin)) return "shown";
       // Not running: turning it on mounts it where the rules say.
       await bridge.call("plugin.setEnabled", {
         plugin,
