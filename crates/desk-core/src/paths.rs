@@ -139,9 +139,78 @@ pub fn host_covers(grant: &str, scope: &str) -> bool {
     }
 }
 
+/// `*` in `pattern` matches any run of characters, dots included; everything else is literal. A `*`
+/// in `text` is literal too, so a grant of `desk.*` covers a scope of `desk.theme.*`.
+pub fn star_match(pattern: &str, text: &str) -> bool {
+    let parts: Vec<&str> = pattern.split('*').collect();
+    let (first, last) = (parts[0], parts[parts.len() - 1]);
+    if parts.len() == 1 {
+        return pattern == text;
+    }
+    if !text.starts_with(first) || text.len() < first.len() + last.len() || !text.ends_with(last) {
+        return false;
+    }
+    let mut rest = &text[first.len()..text.len() - last.len()];
+    for part in &parts[1..parts.len() - 1] {
+        match rest.find(part) {
+            Some(at) => rest = &rest[at + part.len()..],
+            None => return false,
+        }
+    }
+    true
+}
+
+/// `owner/key` against a setting pattern: `*` matches within its own side of the `/`, as in
+/// `star_match`, so `endue.eris/*` covers every Eris setting and `*/*` every setting.
+pub fn setting_match(pattern: &str, setting: &str) -> bool {
+    match (pattern.split_once('/'), setting.split_once('/')) {
+        (Some((owner, key)), Some((asked_owner, asked_key))) => {
+            star_match(owner, asked_owner) && star_match(key, asked_key)
+        }
+        _ => false,
+    }
+}
+
+/// A `net:connect` host pattern against a host and port: the host as `host_match` judges it, and
+/// the port when the pattern names one (`studio.local:5900`); a pattern without one covers every port.
+pub fn endpoint_match(pattern: &str, host: &str, port: u16) -> bool {
+    let (name, wanted) = split_port(pattern);
+    wanted.is_none_or(|wanted| wanted == port) && host_match(name, host)
+}
+
+/// Whether every host and port `scope` matches is matched by `grant` too.
+pub fn endpoint_covers(grant: &str, scope: &str) -> bool {
+    let ((granted, granted_port), (asked, asked_port)) = (split_port(grant), split_port(scope));
+    (granted_port.is_none() || granted_port == asked_port) && host_covers(granted, asked)
+}
+
+/// A host pattern's name and its port, when it ends in one.
+fn split_port(pattern: &str) -> (&str, Option<u16>) {
+    match pattern.rsplit_once(':') {
+        Some((name, port)) => port
+            .parse()
+            .map_or((pattern, None), |port| (name, Some(port))),
+        None => (pattern, None),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn endpoints_match_a_port_when_the_pattern_names_one() {
+        assert!(endpoint_match("studio.local:5900", "studio.local", 5900));
+        assert!(!endpoint_match("studio.local:5900", "studio.local", 5901));
+        assert!(endpoint_match("studio.local", "Studio.Local", 22));
+        assert!(endpoint_match("*.example.com", "a.example.com", 5900));
+        assert!(!endpoint_match("192.0.2.10", "192.0.2.11", 5900));
+        assert!(endpoint_covers("studio.local", "studio.local:5900"));
+        assert!(endpoint_covers("studio.local:5900", "studio.local:5900"));
+        assert!(!endpoint_covers("studio.local:5900", "studio.local"));
+        assert!(!endpoint_covers("studio.local:5900", "studio.local:22"));
+        assert!(endpoint_covers("*.example.com", "*.a.example.com:5900"));
+    }
 
     #[test]
     fn normalizes_roots_and_dots() {

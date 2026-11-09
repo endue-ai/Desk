@@ -1,0 +1,8 @@
+{
+  "target": "Permission",
+  "description": "TCP connections to one port of a host and to every port of an address",
+  "instance": {
+    "permission": "net:connect",
+    "hosts": ["studio.local:5900", "192.0.2.10"]
+  }
+}

@@ -13,6 +13,7 @@
         { "$ref": "#/$defs/FsWritePermission" },
         { "$ref": "#/$defs/ProcSpawnPermission" },
         { "$ref": "#/$defs/NetFetchPermission" },
+        { "$ref": "#/$defs/NetConnectPermission" },
         { "$ref": "#/$defs/AudioCapturePermission" },
         { "$ref": "#/$defs/UiSurfacePermission" },
         { "$ref": "#/$defs/UiNotifyPermission" },
@@ -110,6 +111,21 @@
         "permission": { "const": "net:fetch" },
         "hosts": {
           "description": "Host patterns the permission covers.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/HostPattern" },
+          "minItems": 1
+        }
+      },
+      "required": ["permission", "hosts"],
+      "additionalProperties": false
+    },
+    "NetConnectPermission": {
+      "description": "Open TCP connections (net.connect) to the listed hosts: a pattern with a port covers that port only, one without a port covers every port of the host.",
+      "type": "object",
+      "properties": {
+        "permission": { "const": "net:connect" },
+        "hosts": {
+          "description": "Host patterns the permission covers, each optionally with a port.",
           "type": "array",
           "items": { "$ref": "#/$defs/HostPattern" },
           "minItems": 1

@@ -279,7 +279,7 @@ impl Core {
     }
 
     /// A grant of `caller`'s went (revoked, spent): the watches, file URLs, subscriptions (events and
-    /// data) and processes no grant covers any more end, and prompts that nobody can answer any more
+    /// data), processes and sockets no grant covers any more end, and prompts that nobody can answer any more
     /// go to the Prompter.
     pub(crate) fn lost_grant(&self, caller: &str) {
         self.prune_watches(caller);
@@ -287,6 +287,7 @@ impl Core {
         self.prune_subscriptions(caller);
         self.prune_data(caller);
         self.prune_processes(caller);
+        self.prune_sockets(caller);
         self.settle_unheard();
     }
 

@@ -50,6 +50,9 @@
         { "$ref": "proc.schema.json#/$defs/ProcResizeRequest" },
         { "$ref": "proc.schema.json#/$defs/ProcKillRequest" },
         { "$ref": "net.schema.json#/$defs/NetFetchRequest" },
+        { "$ref": "net.schema.json#/$defs/NetConnectRequest" },
+        { "$ref": "net.schema.json#/$defs/NetSendRequest" },
+        { "$ref": "net.schema.json#/$defs/NetCloseRequest" },
         { "$ref": "audio.schema.json#/$defs/AudioCaptureStartRequest" },
         { "$ref": "audio.schema.json#/$defs/AudioCaptureStopRequest" },
         { "$ref": "ui.schema.json#/$defs/UiSurfaceOpenRequest" },
@@ -227,11 +230,13 @@
       ]
     },
     "BridgeEvent": {
-      "description": "Something the core reports without being asked: file changes, process output, wake words, permission changes, prompts and approvals, notifications, surfaces, commands, settings, log entries, changes to items, connectors and views, the desk's update status, its endue ID account, runs to stop, the runs of the agent programs on this computer, and what is being done to the computer.",
+      "description": "Something the core reports without being asked: file changes, process output, socket data, wake words, permission changes, prompts and approvals, notifications, surfaces, commands, settings, log entries, changes to items, connectors and views, the desk's update status, its endue ID account, runs to stop, the runs of the agent programs on this computer, and what is being done to the computer.",
       "oneOf": [
         { "$ref": "fs.schema.json#/$defs/FsChangedEvent" },
         { "$ref": "proc.schema.json#/$defs/ProcOutputEvent" },
         { "$ref": "proc.schema.json#/$defs/ProcExitEvent" },
+        { "$ref": "net.schema.json#/$defs/NetDataEvent" },
+        { "$ref": "net.schema.json#/$defs/NetClosedEvent" },
         { "$ref": "audio.schema.json#/$defs/AudioWakeEvent" },
         { "$ref": "perm.schema.json#/$defs/PermChangedEvent" },
         { "$ref": "perm.schema.json#/$defs/PermPromptEvent" },

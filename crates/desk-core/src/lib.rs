@@ -61,6 +61,7 @@ mod core_recent;
 mod core_search;
 mod core_settings;
 mod core_shell;
+mod core_sockets;
 mod core_state;
 mod core_store;
 mod core_studio;

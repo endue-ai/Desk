@@ -904,6 +904,7 @@ pub enum Permission {
     FsWrite(FsWritePermission),
     ProcSpawn(ProcSpawnPermission),
     NetFetch(NetFetchPermission),
+    NetConnect(NetConnectPermission),
     AudioCapture(AudioCapturePermission),
     UiSurface(UiSurfacePermission),
     UiNotify(UiNotifyPermission),
@@ -981,6 +982,15 @@ pub struct ProcSpawnPermission {
 pub struct NetFetchPermission {
     pub permission: NetFetchPermissionPermission,
     /// Host patterns the permission covers.
+    pub hosts: Vec<HostPattern>,
+}
+
+/// Open TCP connections (net.connect) to the listed hosts: a pattern with a port covers that port only, one without a port covers every port of the host.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct NetConnectPermission {
+    pub permission: NetConnectPermissionPermission,
+    /// Host patterns the permission covers, each optionally with a port.
     pub hosts: Vec<HostPattern>,
 }
 
@@ -4606,6 +4616,9 @@ pub enum BridgeRequest {
     ProcResize(ProcResizeRequest),
     ProcKill(ProcKillRequest),
     NetFetch(NetFetchRequest),
+    NetConnect(NetConnectRequest),
+    NetSend(NetSendRequest),
+    NetClose(NetCloseRequest),
     AudioCaptureStart(AudioCaptureStartRequest),
     AudioCaptureStop(AudioCaptureStopRequest),
     UiSurfaceOpen(UiSurfaceOpenRequest),
@@ -4795,13 +4808,15 @@ pub enum ErrorCode {
     Forbidden,
 }
 
-/// Something the core reports without being asked: file changes, process output, wake words, permission changes, prompts and approvals, notifications, surfaces, commands, settings, log entries, changes to items, connectors and views, the desk's update status, its endue ID account, runs to stop, the runs of the agent programs on this computer, and what is being done to the computer.
+/// Something the core reports without being asked: file changes, process output, socket data, wake words, permission changes, prompts and approvals, notifications, surfaces, commands, settings, log entries, changes to items, connectors and views, the desk's update status, its endue ID account, runs to stop, the runs of the agent programs on this computer, and what is being done to the computer.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum BridgeEvent {
     FsChanged(FsChangedEvent),
     ProcOutput(ProcOutputEvent),
     ProcExit(ProcExitEvent),
+    NetData(NetDataEvent),
+    NetClosed(NetClosedEvent),
     AudioWake(AudioWakeEvent),
     PermChanged(PermChangedEvent),
     PermPrompt(PermPromptEvent),
@@ -7314,6 +7329,120 @@ pub enum HttpMethod {
     DELETE,
     #[serde(rename = "OPTIONS")]
     OPTIONS,
+}
+
+/// Open a TCP connection to a host and port the scope covers. Bytes the other end sends arrive as net.data events, the end as net.closed.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct NetConnectRequest {
+    pub id: RequestId,
+    pub method: NetConnectRequestMethod,
+    pub params: NetConnectParams,
+}
+
+/// Parameters of net.connect.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct NetConnectParams {
+    /// A host name or an IPv4 address, as a HostPattern without a port.
+    pub host: String,
+    pub port: u64,
+    /// How long to wait for the connection; 10000 by default.
+    #[serde(rename = "timeoutMs", default, skip_serializing_if = "Option::is_none")]
+    pub timeout_ms: Option<u64>,
+    pub scope: NetConnectPermission,
+}
+
+/// Result of net.connect: the socket, connected.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct NetConnectResult {
+    #[serde(rename = "socketId")]
+    pub socket_id: SocketId,
+}
+
+/// A socket net.connect opened, unique for the core's life.
+pub type SocketId = String;
+
+/// Send bytes on one of the caller's sockets; resolves once they are all written.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct NetSendRequest {
+    pub id: RequestId,
+    pub method: NetSendRequestMethod,
+    pub params: NetSendParams,
+}
+
+/// Parameters of net.send.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct NetSendParams {
+    #[serde(rename = "socketId")]
+    pub socket_id: SocketId,
+    /// The bytes, base64.
+    pub data: String,
+}
+
+/// Result of net.send.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct NetSendResult {}
+
+/// Close one of the caller's sockets. Closing one that already ended is not an error.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct NetCloseRequest {
+    pub id: RequestId,
+    pub method: NetCloseRequestMethod,
+    pub params: NetCloseParams,
+}
+
+/// Parameters of net.close.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct NetCloseParams {
+    #[serde(rename = "socketId")]
+    pub socket_id: SocketId,
+}
+
+/// Result of net.close.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct NetCloseResult {}
+
+/// Bytes arrived on a socket.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct NetDataEvent {
+    pub event: NetDataEventEvent,
+    pub data: NetDataData,
+}
+
+/// Payload of net.data: up to 64 KiB of the bytes, base64, in the order they arrived.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct NetDataData {
+    #[serde(rename = "socketId")]
+    pub socket_id: SocketId,
+    pub data: String,
+}
+
+/// A socket ended: the other end closed it, it failed, or the caller or the core closed it. The last event of the socket.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct NetClosedEvent {
+    pub event: NetClosedEventEvent,
+    pub data: NetClosedData,
+}
+
+/// Payload of net.closed; reason is absent when the other end closed the connection.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct NetClosedData {
+    #[serde(rename = "socketId")]
+    pub socket_id: SocketId,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reason: Option<String>,
 }
 
 /// Result of net.fetch. Non-2xx statuses are results, not errors.
@@ -10097,6 +10226,14 @@ pub enum NetFetchPermissionPermission {
     NetFetch,
 }
 
+/// The `permission` of [`NetConnectPermission`]: always `"net:connect"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum NetConnectPermissionPermission {
+    #[default]
+    #[serde(rename = "net:connect")]
+    NetConnect,
+}
+
 /// The `permission` of [`AudioCapturePermission`]: always `"audio:capture"`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub enum AudioCapturePermissionPermission {
@@ -11319,6 +11456,46 @@ pub enum NetFetchRequestMethod {
     #[default]
     #[serde(rename = "net.fetch")]
     NetFetch,
+}
+
+/// The `method` of [`NetConnectRequest`]: always `"net.connect"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum NetConnectRequestMethod {
+    #[default]
+    #[serde(rename = "net.connect")]
+    NetConnect,
+}
+
+/// The `method` of [`NetSendRequest`]: always `"net.send"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum NetSendRequestMethod {
+    #[default]
+    #[serde(rename = "net.send")]
+    NetSend,
+}
+
+/// The `method` of [`NetCloseRequest`]: always `"net.close"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum NetCloseRequestMethod {
+    #[default]
+    #[serde(rename = "net.close")]
+    NetClose,
+}
+
+/// The `event` of [`NetDataEvent`]: always `"net.data"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum NetDataEventEvent {
+    #[default]
+    #[serde(rename = "net.data")]
+    NetData,
+}
+
+/// The `event` of [`NetClosedEvent`]: always `"net.closed"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum NetClosedEventEvent {
+    #[default]
+    #[serde(rename = "net.closed")]
+    NetClosed,
 }
 
 /// The `method` of [`PermRequestRequest`]: always `"perm.request"`.

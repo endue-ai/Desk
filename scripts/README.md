@@ -15,7 +15,8 @@ direct Playwright commands. Their tests run in `just test-unit`.
 
 `vendor-xterm.mjs` (`just vendor-terminal`) copies the terminal plugin's emulator, xterm.js and its
 addons, from the pinned npm packages into `plugins/terminal/ui/vendor/` (ADR 0037); its test fails
-`just test-unit` when the committed copy differs.
+`just test-unit` when the committed copy differs. `vendor-novnc.mjs` (`just vendor-novnc`) does the same
+for the Screen Sharing plugin's VNC client, noVNC, into `plugins/screens/ui/vendor/novnc/` (ADR 0133).
 
 `lanes.mjs` decides which Task issues may run in parallel (`just lanes`, `just task-start`), and
 `worktree.sh` gives each task its own worktree (ADR 0015). `sync-rulesets.sh` applies

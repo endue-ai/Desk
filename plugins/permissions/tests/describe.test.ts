@@ -122,6 +122,22 @@ describe("broad requests", () => {
     );
   });
 
+  it("net:connect: one port of one computer is narrow; every port, or a whole domain, is not", () => {
+    expect(describePermission({ permission: "net:connect", hosts: ["studio.local:5900"] })).toEqual(
+      {
+        label: "Connect to other computers",
+        scope: "studio.local:5900",
+      },
+    );
+    expect(broadWarning({ permission: "net:connect", hosts: ["studio.local:5900"] })).toBeNull();
+    expect(broadWarning({ permission: "net:connect", hosts: ["192.0.2.10"] })).toBe(
+      "It can connect to every port of 192.0.2.10.",
+    );
+    expect(broadWarning({ permission: "net:connect", hosts: ["*.example.com:5900"] })).toBe(
+      "It can connect to every computer under .example.com.",
+    );
+  });
+
   it("keeps narrow scopes calm", () => {
     const narrow: Permission[] = [
       { permission: "fs:read", paths: ["~/Notes/**"] },

@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://endue.ai/specs/bridge/v0/net.schema.json",
   "title": "Desk bridge v0: net",
-  "description": "Network: HTTP(S) fetch. Scoped by net:fetch hosts.",
+  "description": "Network: HTTP(S) fetch, scoped by net:fetch hosts, and TCP sockets, scoped by net:connect hosts. A socket belongs to the caller that opened it: its bytes arrive as net.data events and its end as net.closed, to that caller alone.",
   "$defs": {
     "NetFetchRequest": {
       "description": "Make one HTTP(S) request and return the whole response.",
@@ -38,6 +38,147 @@
       "description": "HTTP method; GET by default.",
       "type": "string",
       "enum": ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
+    },
+    "NetConnectRequest": {
+      "description": "Open a TCP connection to a host and port the scope covers. Bytes the other end sends arrive as net.data events, the end as net.closed.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "net.connect" },
+        "params": { "$ref": "#/$defs/NetConnectParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "NetConnectParams": {
+      "description": "Parameters of net.connect.",
+      "type": "object",
+      "properties": {
+        "host": {
+          "description": "A host name or an IPv4 address, as a HostPattern without a port.",
+          "type": "string",
+          "pattern": "^[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?(\\.[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?)*$",
+          "maxLength": 253
+        },
+        "port": { "type": "integer", "minimum": 1, "maximum": 65535 },
+        "timeoutMs": {
+          "description": "How long to wait for the connection; 10000 by default.",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 120000
+        },
+        "scope": { "$ref": "../../plugin/v0/permission.schema.json#/$defs/NetConnectPermission" }
+      },
+      "required": ["host", "port", "scope"],
+      "additionalProperties": false
+    },
+    "NetConnectResult": {
+      "description": "Result of net.connect: the socket, connected.",
+      "type": "object",
+      "properties": {
+        "socketId": { "$ref": "#/$defs/SocketId" }
+      },
+      "required": ["socketId"],
+      "additionalProperties": false
+    },
+    "SocketId": {
+      "description": "A socket net.connect opened, unique for the core's life.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "NetSendRequest": {
+      "description": "Send bytes on one of the caller's sockets; resolves once they are all written.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "net.send" },
+        "params": { "$ref": "#/$defs/NetSendParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "NetSendParams": {
+      "description": "Parameters of net.send.",
+      "type": "object",
+      "properties": {
+        "socketId": { "$ref": "#/$defs/SocketId" },
+        "data": { "description": "The bytes, base64.", "type": "string" }
+      },
+      "required": ["socketId", "data"],
+      "additionalProperties": false
+    },
+    "NetSendResult": {
+      "description": "Result of net.send.",
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "NetCloseRequest": {
+      "description": "Close one of the caller's sockets. Closing one that already ended is not an error.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "bridge.schema.json#/$defs/RequestId" },
+        "method": { "const": "net.close" },
+        "params": { "$ref": "#/$defs/NetCloseParams" }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    "NetCloseParams": {
+      "description": "Parameters of net.close.",
+      "type": "object",
+      "properties": {
+        "socketId": { "$ref": "#/$defs/SocketId" }
+      },
+      "required": ["socketId"],
+      "additionalProperties": false
+    },
+    "NetCloseResult": {
+      "description": "Result of net.close.",
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "NetDataEvent": {
+      "description": "Bytes arrived on a socket.",
+      "type": "object",
+      "properties": {
+        "event": { "const": "net.data" },
+        "data": { "$ref": "#/$defs/NetDataData" }
+      },
+      "required": ["event", "data"],
+      "additionalProperties": false
+    },
+    "NetDataData": {
+      "description": "Payload of net.data: up to 64 KiB of the bytes, base64, in the order they arrived.",
+      "type": "object",
+      "properties": {
+        "socketId": { "$ref": "#/$defs/SocketId" },
+        "data": { "type": "string" }
+      },
+      "required": ["socketId", "data"],
+      "additionalProperties": false
+    },
+    "NetClosedEvent": {
+      "description": "A socket ended: the other end closed it, it failed, or the caller or the core closed it. The last event of the socket.",
+      "type": "object",
+      "properties": {
+        "event": { "const": "net.closed" },
+        "data": { "$ref": "#/$defs/NetClosedData" }
+      },
+      "required": ["event", "data"],
+      "additionalProperties": false
+    },
+    "NetClosedData": {
+      "description": "Payload of net.closed; reason is absent when the other end closed the connection.",
+      "type": "object",
+      "properties": {
+        "socketId": { "$ref": "#/$defs/SocketId" },
+        "reason": { "type": "string" }
+      },
+      "required": ["socketId"],
+      "additionalProperties": false
     },
     "NetFetchResult": {
       "description": "Result of net.fetch. Non-2xx statuses are results, not errors.",

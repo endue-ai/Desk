@@ -30,6 +30,10 @@ const LISTS: Partial<Record<Permission["permission"], [string, Match]>> = {
   "fs:read": ["paths", within],
   "fs:write": ["paths", within],
   "net:fetch": ["hosts", within],
+  "net:connect": [
+    "hosts",
+    (g, a) => within(g, a) || (!g.includes(":") && within(g, a.replace(/:\d+$/, ""))),
+  ],
   "proc:spawn": ["commands", within],
 };
 

@@ -1,0 +1,16 @@
+{
+  "target": "BridgeRequest",
+  "description": "net.connect carries a net:connect scope, not net:fetch",
+  "instance": {
+    "id": 7,
+    "method": "net.connect",
+    "params": {
+      "host": "studio.local",
+      "port": 5900,
+      "scope": {
+        "permission": "net:fetch",
+        "hosts": ["studio.local"]
+      }
+    }
+  }
+}

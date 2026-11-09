@@ -67,6 +67,7 @@ const KINDS = [
   ["fs:write", "Write files", (p) => p.paths],
   ["search:system", "Search system files and apps", () => []],
   ["net:fetch", "Network", (p) => p.hosts],
+  ["net:connect", "Connect to computers", (p) => p.hosts],
   ["audio:capture", "Microphone", (p) => (p.wakeWord ? ["wake word"] : [])],
   [
     "data:read",

@@ -1,0 +1,167 @@
+/* Every colour, font, size and radius is a --desk-* token: /_desk/tokens.css declares the defaults and
+   the desk applies the theme in force over them. The remote screen is noVNC's canvas, drawn as the
+   other computer sends it. */
+html,
+body {
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  background: var(--desk-background);
+  color: var(--desk-text);
+  font: var(--desk-text-sm) / 1.5 var(--desk-font-sans);
+}
+
+.state {
+  overflow: hidden;
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-xs);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.desk-bar [aria-pressed="true"] {
+  background: var(--desk-primary-soft);
+  color: var(--desk-primary-text);
+}
+
+.home {
+  display: grid;
+  flex: 1;
+  grid-template-columns: minmax(220px, 1fr) minmax(260px, 360px);
+  align-content: start;
+  gap: var(--desk-space-4);
+  min-height: 0;
+  padding: var(--desk-space-4);
+  overflow: auto;
+}
+
+.home h2 {
+  margin: 0 0 var(--desk-space-2);
+  font-size: var(--desk-text-sm);
+  font-weight: 600;
+}
+
+.computers {
+  display: grid;
+  gap: var(--desk-space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.computer {
+  display: flex;
+  align-items: center;
+  gap: var(--desk-space-2);
+}
+
+.computer-open {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+
+.computer-name,
+.computer-address {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.computer-address {
+  font-size: var(--desk-text-xs);
+}
+
+.add,
+.question {
+  display: grid;
+  gap: var(--desk-space-3);
+}
+
+.add label,
+.question label {
+  display: grid;
+  gap: var(--desk-space-1);
+  font-size: var(--desk-text-xs);
+}
+
+.pair {
+  display: grid;
+  grid-template-columns: 1fr 9ch;
+  gap: var(--desk-space-2);
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--desk-space-2);
+}
+
+.hint {
+  margin: 0;
+  font-size: var(--desk-text-xs);
+}
+
+/* noVNC puts its own element in here and sizes the canvas to fit it (or scrolls at 1:1). */
+.screen {
+  flex: 1;
+  min-height: 0;
+  background: var(--desk-background);
+}
+
+.question {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  z-index: 10;
+  width: min(360px, calc(100vw - 32px));
+  box-sizing: border-box;
+  transform: translate(-50%, -50%);
+}
+
+.question h2 {
+  margin: 0;
+  font-size: var(--desk-text-base);
+}
+
+.question p {
+  margin: 0;
+}
+
+.fingerprint {
+  font-family: var(--desk-font-mono);
+  font-size: var(--desk-text-xs);
+  word-break: break-all;
+}
+
+.status {
+  flex: none;
+  margin: 0;
+  padding: 2px var(--desk-space-2);
+  color: var(--desk-text-muted);
+  font-size: var(--desk-text-xs);
+}
+
+.status:empty {
+  display: none;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+@media (max-width: 560px) {
+  .home {
+    grid-template-columns: 1fr;
+  }
+}

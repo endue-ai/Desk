@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Screen Sharing</title>
+    <script type="importmap">
+      { "imports": { "@endue-ai/plugin-sdk": "/_desk/plugin-sdk.js" } }
+    </script>
+    <link rel="stylesheet" href="/_desk/tokens.css" />
+    <link rel="stylesheet" href="/_desk/base.css" />
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <header class="desk-bar" aria-label="Screen Sharing">
+      <span class="desk-bar-title" id="title">Screen Sharing</span>
+      <span class="state" id="state"></span>
+      <span class="desk-bar-spacer"></span>
+      <button class="desk-btn desk-btn-quiet" id="view-only" type="button" aria-pressed="false" hidden>
+        View only
+      </button>
+      <button class="desk-btn desk-btn-quiet" id="fit" type="button" aria-pressed="true" hidden>
+        Fit to window
+      </button>
+      <button class="desk-btn" id="disconnect" type="button" hidden>Disconnect</button>
+    </header>
+
+    <main class="home" id="home">
+      <section class="list" aria-labelledby="computers-title">
+        <h2 id="computers-title">Computers</h2>
+        <ul class="computers" id="computers"></ul>
+        <p class="desk-empty" id="empty">No computers yet. Add one to see its screen here.</p>
+      </section>
+      <form class="desk-card add" id="add" autocomplete="off">
+        <h2>Connect to a computer</h2>
+        <label>
+          Address
+          <input class="desk-field" name="host" placeholder="studio.local or vnc://192.0.2.10" required />
+        </label>
+        <div class="pair">
+          <label>
+            Name
+            <input class="desk-field" name="name" placeholder="Studio" />
+          </label>
+          <label class="port">
+            Port
+            <input class="desk-field" name="port" inputmode="numeric" placeholder="5900" />
+          </label>
+        </div>
+        <label>
+          User name
+          <input class="desk-field" name="username" placeholder="Asked when the Mac wants one" />
+        </label>
+        <div class="actions">
+          <button class="desk-btn desk-btn-primary" type="submit">Connect</button>
+        </div>
+        <p class="desk-muted hint">
+          On the other Mac, turn on System Settings › General › Sharing › Screen Sharing. The
+          password is asked for every time and never kept.
+        </p>
+      </form>
+    </main>
+
+    <div class="screen" id="screen" hidden></div>
+
+    <form class="desk-dialog question" id="signin" role="dialog" aria-modal="true" aria-labelledby="signin-title" hidden>
+      <h2 id="signin-title">Sign in to the other computer</h2>
+      <label>
+        User name
+        <input class="desk-field" name="username" autocomplete="username" />
+      </label>
+      <label>
+        Password
+        <input class="desk-field" name="password" type="password" autocomplete="current-password" />
+      </label>
+      <div class="actions">
+        <button class="desk-btn" type="reset">Cancel</button>
+        <button class="desk-btn desk-btn-primary" type="submit">Sign in</button>
+      </div>
+    </form>
+
+    <form class="desk-dialog question" id="trust" role="dialog" aria-modal="true" aria-labelledby="trust-title" hidden>
+      <h2 id="trust-title">Trust this computer's key?</h2>
+      <p>The computer showed a key with this fingerprint. Trust it only if it is the one you expect.</p>
+      <p><code class="fingerprint"></code></p>
+      <div class="actions">
+        <button class="desk-btn" type="reset">Cancel</button>
+        <button class="desk-btn desk-btn-primary" type="submit">Trust and connect</button>
+      </div>
+    </form>
+
+    <p class="status" id="status" role="status"></p>
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

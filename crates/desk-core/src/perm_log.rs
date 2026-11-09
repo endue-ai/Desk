@@ -141,7 +141,7 @@ fn permission_name(permission: &Permission) -> String {
         .to_owned()
 }
 
-/// What a call touches, in words: the path, command, command id, host, URL, setting, event names
+/// What a call touches, in words: the path, command, command id, host, host and port, URL, setting, event names
 /// or link scheme. None when the permission has no target of its own.
 pub(crate) fn target_text(target: &Target<'_>) -> Option<String> {
     match target {
@@ -161,5 +161,6 @@ pub(crate) fn target_text(target: &Target<'_>) -> Option<String> {
         ),
         Target::Scheme(scheme) => json!(scheme).as_str().map(str::to_owned),
         Target::App(app) => app.map(str::to_owned),
+        Target::Endpoint { host, port } => Some(format!("{host}:{port}")),
     }
 }

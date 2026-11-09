@@ -1,0 +1,10 @@
+{
+  "target": "BridgeEvent",
+  "description": "the other end closed a socket",
+  "instance": {
+    "event": "net.closed",
+    "data": {
+      "socketId": "s-1"
+    }
+  }
+}

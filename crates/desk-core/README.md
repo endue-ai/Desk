@@ -10,6 +10,7 @@ its sync, the brain conversation, the integration layer and the bridge handler. 
 - `proc.spawn` passes the permission engine for its command (a PTY only where scope and grant allow
   `pty`); `proc.output` and `proc.exit` reach the caller only; later calls need owner and scope.
 - `net.fetch` checks the URL against the `net:fetch` scope (`Target::Url`), desk-sys every redirect;
+  `net.connect` the host and port against `net:connect` (`Target::Endpoint`), its bytes to the caller;
   `ui.surface.open` needs `ui:surface` and a declared surface, and `ui.surface.*` events go to `desk`.
 - Files: `fs.read` ranges, `fs.url` tokens for `file_url(token)` (ADR 0041); `with_history_dir(dir)`:
   each `fs.write` keeps what it replaces (ADR 0076), undone like an ok answer of a command naming an

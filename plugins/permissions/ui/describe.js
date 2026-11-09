@@ -17,6 +17,7 @@ const WORDS = {
   "fs:write": ["Write files", (p) => list(p.paths)],
   "proc:spawn": ["Run programs", (p) => list([...p.commands, ...(p.pty ? ["in a terminal"] : [])])],
   "net:fetch": ["Use the network", (p) => list(p.hosts)],
+  "net:connect": ["Connect to other computers", (p) => list(p.hosts)],
   "audio:capture": ["Use the microphone", (p) => (p.wakeWord ? "with the wake word" : "")],
   "ui:surface": ["Open its surfaces", () => ""],
   "ui:notify": ["Show notifications", () => ""],
@@ -115,6 +116,13 @@ export function broadWarning(permission) {
     case "net:fetch": {
       const host = permission.hosts.find((h) => /^\*\.[a-z0-9-]+(:[0-9]+)?$/.test(h));
       return host ? `It can reach every site under ${host.slice(1)}.` : null;
+    }
+    case "net:connect": {
+      const host = permission.hosts.find((h) => h.startsWith("*.") || !h.includes(":"));
+      if (!host) return null;
+      return host.startsWith("*.")
+        ? `It can connect to every computer under ${host.slice(1).replace(/:\d+$/, "")}.`
+        : `It can connect to every port of ${host}.`;
     }
     case "fs:read":
     case "fs:write": {

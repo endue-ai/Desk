@@ -15,9 +15,9 @@ use desk_bridge::{
     DesignSystemPackage, FsHistoryResult, FsReadResult, FsRestoreResult, FsStatResult, FsUrlResult,
     FsWriteResult, InitDocument, InitGetResult, InitSettingKey, Item, ItemChange, ItemPage,
     ItemQuery, KeysFile, MarketEntry, MarketIndex, MarketListResult, MemoryEntry, MemoryEpisode,
-    MemoryFact, MemoryFactsFile, MemoryHit, PaletteResults, PermQueryResult, PermRequestResult,
-    Permission, PluginBundle, PluginContributes, PluginListResult, PluginManifest,
-    PluginStatsResult, PluginsLock, ProfileFile, RefusalReason, SettingsListResult,
+    MemoryFact, MemoryFactsFile, MemoryHit, NetConnectResult, PaletteResults, PermQueryResult,
+    PermRequestResult, Permission, PluginBundle, PluginContributes, PluginListResult,
+    PluginManifest, PluginStatsResult, PluginsLock, ProfileFile, RefusalReason, SettingsListResult,
     ShellOpenResult, StoreGetResult, StudioAgentsCreateResult, StudioAgentsFacetsResult,
     StudioAgentsListResult, StudioAgentsPromptUpdateResult, StudioAgentsRemoveResult,
     StudioCatalogListResult, StudioCatalogRecommendResult, StudioCatalogUseResult,
@@ -393,6 +393,7 @@ fn valid_vectors_roundtrip_through_generated_types() {
                 "ComputerScreenshotResult" => roundtrip::<ComputerScreenshotResult>(vector),
                 "ComputerAxTreeResult" => roundtrip::<ComputerAxTreeResult>(vector),
                 "ComputerInputClickResult" => roundtrip::<ComputerInputClickResult>(vector),
+                "NetConnectResult" => roundtrip::<NetConnectResult>(vector),
                 other => panic!("{}: no Rust type mapped for {other}", vector.file),
             }
         }

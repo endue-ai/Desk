@@ -32,6 +32,7 @@ use crate::core_plugin_views::ProvidedViews;
 use crate::core_proc::Processes;
 use crate::core_prompts::Prompts;
 use crate::core_recent::Recent;
+use crate::core_sockets::Sockets;
 use crate::core_ui::Surfaces;
 use crate::core_views::ViewsSeen;
 use crate::events::EventBus;
@@ -96,6 +97,7 @@ pub struct Core {
     pub(crate) connectors: Connectors,
     pub(crate) views: Mutex<ViewsSeen>,
     pub(crate) processes: Arc<Mutex<Processes>>,
+    pub(crate) sockets: Arc<Mutex<Sockets>>,
     pub(crate) provided_views: Mutex<ProvidedViews>,
     pub(crate) surfaces: Mutex<Surfaces>,
     pub(crate) opener: Box<dyn Opener>,
@@ -150,6 +152,7 @@ impl Core {
             connectors: Connectors::default(),
             views: Mutex::new(ViewsSeen::default()),
             processes: Arc::new(Mutex::new(Processes::default())),
+            sockets: Arc::new(Mutex::new(Sockets::default())),
             provided_views: Mutex::new(ProvidedViews::default()),
             surfaces: Mutex::new(Surfaces::default()),
             opener: Box::new(SystemOpener),

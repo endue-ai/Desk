@@ -1,0 +1,7 @@
+{
+  "target": "NetConnectResult",
+  "description": "the socket net.connect opened",
+  "instance": {
+    "socketId": "s-1"
+  }
+}

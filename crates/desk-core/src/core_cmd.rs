@@ -23,7 +23,8 @@ use serde_json::{Map, Value};
 use crate::approvals::Action;
 use crate::handler::{Answer, Core, error, json};
 use crate::manifest::schema_registry;
-use crate::perm::{Target, star_match};
+use crate::paths::star_match;
+use crate::perm::Target;
 
 /// Why an invocation runs: asked for, or the undo stack's inverse or redo (`core_undo`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

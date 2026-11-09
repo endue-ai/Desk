@@ -1,0 +1,16 @@
+{
+  "target": "BridgeRequest",
+  "description": "a port is 1 to 65535",
+  "instance": {
+    "id": 7,
+    "method": "net.connect",
+    "params": {
+      "host": "studio.local",
+      "port": 0,
+      "scope": {
+        "permission": "net:connect",
+        "hosts": ["studio.local:5900"]
+      }
+    }
+  }
+}

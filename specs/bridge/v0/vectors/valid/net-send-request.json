@@ -1,0 +1,12 @@
+{
+  "target": "BridgeRequest",
+  "description": "net.send of base64 bytes",
+  "instance": {
+    "id": 8,
+    "method": "net.send",
+    "params": {
+      "socketId": "s-1",
+      "data": "UkZCIDAwMy4wMDgK"
+    }
+  }
+}

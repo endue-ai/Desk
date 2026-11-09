@@ -1,0 +1,11 @@
+{
+  "name": "@endue-ai/plugin-screens",
+  "version": "0.0.0",
+  "private": true,
+  "description": "The Screen Sharing plugin's vendored VNC client: noVNC, copied into ui/vendor/novnc by `just vendor-novnc`.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "devDependencies": {
+    "@novnc/novnc": "1.7.0"
+  }
+}

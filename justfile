@@ -107,6 +107,11 @@ build-ui:
 vendor-terminal:
     node scripts/vendor-xterm.mjs
 
+# Copy the Screen Sharing plugin's VNC client (noVNC's core and the pako files it imports) from the
+# pinned npm package into plugins/screens/ui/vendor/novnc; scripts/vendor-novnc.test.mjs checks it (ADR 0133)
+vendor-novnc:
+    node scripts/vendor-novnc.mjs
+
 # Measure the opening frame time (pass "record" to make it the new baseline in e2e/perf/budgets.json).
 # Native WebKit with the machine to itself; on macOS for people only (ADR 0018)
 perf-opening mode="check":

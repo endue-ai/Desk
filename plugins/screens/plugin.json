@@ -1,0 +1,47 @@
+{
+  "id": "endue.screens",
+  "name": "Screen Sharing",
+  "version": "0.1.0",
+  "kind": "ui",
+  "entry": "ui/index.html",
+  "autoload": true,
+  "description": "Another computer's screen in a desk window over VNC, the protocol macOS Screen Sharing speaks: see it, use its keyboard and pointer, or only watch. The connection is the core's (net.connect), asked for once per computer; passwords are asked each time and never kept.",
+  "surfaces": [
+    {
+      "id": "main",
+      "title": "Screen Sharing",
+      "placement": "center"
+    }
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "id": "endue.screens.open",
+        "title": "Screen Sharing: Show the computers",
+        "keywords": ["screen sharing", "vnc", "remote", "mac", "화면 공유"],
+        "runs": { "command": "desk.plugins.open", "args": { "plugin": "endue.screens" } }
+      },
+      {
+        "id": "endue.screens.connect",
+        "title": "Screen Sharing: Connect to a computer",
+        "keywords": ["screen sharing", "vnc", "remote", "connect", "화면 공유"],
+        "description": "Show another computer's screen: host (a name or an IPv4 address, or vnc://host:port), port (5900 by default), an optional name and user name. Without a host, the form opens for the person.",
+        "args": {
+          "type": "object",
+          "properties": {
+            "host": { "type": "string", "minLength": 1, "maxLength": 260 },
+            "port": { "type": "integer", "minimum": 1, "maximum": 65535 },
+            "name": { "type": "string", "minLength": 1, "maxLength": 80 },
+            "username": { "type": "string", "minLength": 1, "maxLength": 120 }
+          },
+          "additionalProperties": false
+        }
+      },
+      {
+        "id": "endue.screens.disconnect",
+        "title": "Screen Sharing: Disconnect",
+        "keywords": ["screen sharing", "vnc", "disconnect"]
+      }
+    ]
+  }
+}

@@ -18,7 +18,8 @@ use desk_bridge::{
 use serde_json::Value;
 
 use crate::handler::{Answer, Core, denied, error, json};
-use crate::perm::{Denied, Target, setting_match};
+use crate::paths::setting_match;
+use crate::perm::{Denied, Target};
 use crate::settings_check::{Layers, Schemas, is_key, problem};
 use crate::store::Store;
 

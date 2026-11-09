@@ -7,7 +7,10 @@ use std::path::PathBuf;
 use desk_bridge::{CallerGrant, EventName, Grant, GrantDuration, Permission, ShellScheme};
 
 use crate::grants;
-use crate::paths::{glob_match, host_covers, host_match, normalize, pattern_covers};
+use crate::paths::{
+    endpoint_covers, endpoint_match, glob_match, host_covers, host_match, normalize,
+    pattern_covers, setting_match, star_match,
+};
 use crate::time::rfc3339_now;
 
 /// What a call touches, checked against its scope.
@@ -21,6 +24,11 @@ pub enum Target<'a> {
     /// An http or https URL (net.fetch): its host, and its port where the scope names one, as
     /// desk-sys matches every URL of the call.
     Url(&'a str),
+    /// A host and port a TCP connection goes to (net.connect).
+    Endpoint {
+        host: &'a str,
+        port: u16,
+    },
     /// A command id in the command registry (cmd.invoke).
     CommandId(&'a str),
     /// Event names (events.subscribe).
@@ -219,6 +227,10 @@ pub fn covers(grant: &Permission, scope: &Permission) -> bool {
             .hosts
             .iter()
             .all(|a| g.hosts.iter().any(|h| host_covers(h, a))),
+        (Permission::NetConnect(g), Permission::NetConnect(s)) => s
+            .hosts
+            .iter()
+            .all(|a| g.hosts.iter().any(|h| endpoint_covers(h, a))),
         (Permission::AudioCapture(g), Permission::AudioCapture(s)) => {
             s.wake_word != Some(true) || g.wake_word == Some(true)
         }
@@ -289,38 +301,6 @@ fn narrows<T>(
     }
 }
 
-/// `*` in `pattern` matches any run of characters, dots included; everything else is literal. A `*`
-/// in `text` is literal too, so a grant of `desk.*` covers a scope of `desk.theme.*`.
-pub fn star_match(pattern: &str, text: &str) -> bool {
-    let parts: Vec<&str> = pattern.split('*').collect();
-    let (first, last) = (parts[0], parts[parts.len() - 1]);
-    if parts.len() == 1 {
-        return pattern == text;
-    }
-    if !text.starts_with(first) || text.len() < first.len() + last.len() || !text.ends_with(last) {
-        return false;
-    }
-    let mut rest = &text[first.len()..text.len() - last.len()];
-    for part in &parts[1..parts.len() - 1] {
-        match rest.find(part) {
-            Some(at) => rest = &rest[at + part.len()..],
-            None => return false,
-        }
-    }
-    true
-}
-
-/// `owner/key` against a setting pattern: `*` matches within its own side of the `/`, as in
-/// `star_match`, so `endue.eris/*` covers every Eris setting and `*/*` every setting.
-pub(crate) fn setting_match(pattern: &str, setting: &str) -> bool {
-    match (pattern.split_once('/'), setting.split_once('/')) {
-        (Some((owner, key)), Some((asked_owner, asked_key))) => {
-            star_match(owner, asked_owner) && star_match(key, asked_key)
-        }
-        _ => false,
-    }
-}
-
 /// Whether `scope` covers `target`, whatever the grants.
 pub(crate) fn scope_allows(scope: &Permission, target: &Target<'_>) -> bool {
     match (scope, target) {
@@ -333,6 +313,9 @@ pub(crate) fn scope_allows(scope: &Permission, target: &Target<'_>) -> bool {
             s.hosts.iter().any(|h| host_match(h, host))
         }
         (Permission::NetFetch(s), Target::Url(url)) => desk_sys::net::host_allowed(&s.hosts, url),
+        (Permission::NetConnect(s), Target::Endpoint { host, port }) => {
+            s.hosts.iter().any(|h| endpoint_match(h, host, *port))
+        }
         (Permission::CmdInvoke(s), Target::CommandId(id)) => {
             s.ids.iter().any(|p| star_match(p, id))
         }

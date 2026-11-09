@@ -497,6 +497,7 @@ export type Permission =
   | FsWritePermission
   | ProcSpawnPermission
   | NetFetchPermission
+  | NetConnectPermission
   | AudioCapturePermission
   | UiSurfacePermission
   | UiNotifyPermission
@@ -560,6 +561,13 @@ export interface ProcSpawnPermission {
 export interface NetFetchPermission {
   permission: "net:fetch";
   /** Host patterns the permission covers. */
+  hosts: HostPattern[];
+}
+
+/** Open TCP connections (net.connect) to the listed hosts: a pattern with a port covers that port only, one without a port covers every port of the host. */
+export interface NetConnectPermission {
+  permission: "net:connect";
+  /** Host patterns the permission covers, each optionally with a port. */
   hosts: HostPattern[];
 }
 
@@ -2874,6 +2882,9 @@ export type BridgeRequest =
   | ProcResizeRequest
   | ProcKillRequest
   | NetFetchRequest
+  | NetConnectRequest
+  | NetSendRequest
+  | NetCloseRequest
   | AudioCaptureStartRequest
   | AudioCaptureStopRequest
   | UiSurfaceOpenRequest
@@ -3035,11 +3046,13 @@ export type ErrorCode =
   | "offline"
   | "forbidden";
 
-/** Something the core reports without being asked: file changes, process output, wake words, permission changes, prompts and approvals, notifications, surfaces, commands, settings, log entries, changes to items, connectors and views, the desk's update status, its endue ID account, runs to stop, the runs of the agent programs on this computer, and what is being done to the computer. */
+/** Something the core reports without being asked: file changes, process output, socket data, wake words, permission changes, prompts and approvals, notifications, surfaces, commands, settings, log entries, changes to items, connectors and views, the desk's update status, its endue ID account, runs to stop, the runs of the agent programs on this computer, and what is being done to the computer. */
 export type BridgeEvent =
   | FsChangedEvent
   | ProcOutputEvent
   | ProcExitEvent
+  | NetDataEvent
+  | NetClosedEvent
   | AudioWakeEvent
   | PermChangedEvent
   | PermPromptEvent
@@ -4734,6 +4747,87 @@ export interface NetFetchParams {
 
 /** HTTP method; GET by default. */
 export type HttpMethod = "GET" | "HEAD" | "POST" | "PUT" | "PATCH" | "DELETE" | "OPTIONS";
+
+/** Open a TCP connection to a host and port the scope covers. Bytes the other end sends arrive as net.data events, the end as net.closed. */
+export interface NetConnectRequest {
+  id: RequestId;
+  method: "net.connect";
+  params: NetConnectParams;
+}
+
+/** Parameters of net.connect. */
+export interface NetConnectParams {
+  /** A host name or an IPv4 address, as a HostPattern without a port. */
+  host: string;
+  port: number;
+  /** How long to wait for the connection; 10000 by default. */
+  timeoutMs?: number;
+  scope: NetConnectPermission;
+}
+
+/** Result of net.connect: the socket, connected. */
+export interface NetConnectResult {
+  socketId: SocketId;
+}
+
+/** A socket net.connect opened, unique for the core's life. */
+export type SocketId = string;
+
+/** Send bytes on one of the caller's sockets; resolves once they are all written. */
+export interface NetSendRequest {
+  id: RequestId;
+  method: "net.send";
+  params: NetSendParams;
+}
+
+/** Parameters of net.send. */
+export interface NetSendParams {
+  socketId: SocketId;
+  /** The bytes, base64. */
+  data: string;
+}
+
+/** Result of net.send. */
+export type NetSendResult = Record<string, never>;
+
+/** Close one of the caller's sockets. Closing one that already ended is not an error. */
+export interface NetCloseRequest {
+  id: RequestId;
+  method: "net.close";
+  params: NetCloseParams;
+}
+
+/** Parameters of net.close. */
+export interface NetCloseParams {
+  socketId: SocketId;
+}
+
+/** Result of net.close. */
+export type NetCloseResult = Record<string, never>;
+
+/** Bytes arrived on a socket. */
+export interface NetDataEvent {
+  event: "net.data";
+  data: NetDataData;
+}
+
+/** Payload of net.data: up to 64 KiB of the bytes, base64, in the order they arrived. */
+export interface NetDataData {
+  socketId: SocketId;
+  data: string;
+}
+
+/** A socket ended: the other end closed it, it failed, or the caller or the core closed it. The last event of the socket. */
+export interface NetClosedEvent {
+  event: "net.closed";
+  data: NetClosedData;
+}
+
+/** Payload of net.closed; reason is absent when the other end closed the connection. */
+export interface NetClosedData {
+  socketId: SocketId;
+  reason?: string;
+}
 
 /** Result of net.fetch. Non-2xx statuses are results, not errors. */
 export interface NetFetchResult {
@@ -6510,6 +6604,9 @@ export interface BridgeMethodMap {
   "proc.resize": { params: ProcResizeParams; result: ProcResizeResult };
   "proc.kill": { params: ProcKillParams; result: ProcKillResult };
   "net.fetch": { params: NetFetchParams; result: NetFetchResult };
+  "net.connect": { params: NetConnectParams; result: NetConnectResult };
+  "net.send": { params: NetSendParams; result: NetSendResult };
+  "net.close": { params: NetCloseParams; result: NetCloseResult };
   "audio.capture.start": { params: AudioCaptureStartParams; result: AudioCaptureStartResult };
   "audio.capture.stop": { params: AudioCaptureStopParams; result: AudioCaptureStopResult };
   "ui.surface.open": { params: UiSurfaceOpenParams; result: UiSurfaceOpenResult };
@@ -6677,6 +6774,9 @@ export const BRIDGE_METHODS = [
   "proc.resize",
   "proc.kill",
   "net.fetch",
+  "net.connect",
+  "net.send",
+  "net.close",
   "audio.capture.start",
   "audio.capture.stop",
   "ui.surface.open",

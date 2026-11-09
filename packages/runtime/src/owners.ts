@@ -1,5 +1,5 @@
 /**
- * Routes owned events (brain turns, fs watches, data subscriptions, processes) to the plugin whose
+ * Routes owned events (brain turns, fs watches, data subscriptions, processes, sockets) to the plugin whose
  * call started them: a plugin hears about its own work and nothing of other plugins'. Events that arrive before the
  * call's answer names their key wait for the claim, in order, so a process that writes at once is
  * not missed.
@@ -11,6 +11,7 @@ import type {
   BridgeResponse,
   DataSubscribeResult,
   FsWatchResult,
+  NetConnectResult,
   ProcSpawnResult,
 } from "@endue-ai/bridge";
 
@@ -29,6 +30,9 @@ export function eventKey(event: BridgeEvent): string | undefined {
     case "proc.output":
     case "proc.exit":
       return `proc:${event.data.procId}`;
+    case "net.data":
+    case "net.closed":
+      return `net:${event.data.socketId}`;
     default:
       return undefined;
   }
@@ -46,6 +50,8 @@ export function claimKey(request: BridgeRequest, response: BridgeResponse): stri
       return `sub:${(response.result as DataSubscribeResult).subscriptionId}`;
     case "proc.spawn":
       return `proc:${(response.result as ProcSpawnResult).procId}`;
+    case "net.connect":
+      return `net:${(response.result as NetConnectResult).socketId}`;
     default:
       return undefined;
   }
@@ -56,7 +62,7 @@ function ends(event: BridgeEvent): boolean {
   if (event.event === "brain.turn") {
     return event.data.kind === "completed" || event.data.kind === "error";
   }
-  return event.event === "proc.exit";
+  return event.event === "proc.exit" || event.event === "net.closed";
 }
 
 export class Owners {

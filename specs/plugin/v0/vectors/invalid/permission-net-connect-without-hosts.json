@@ -1,0 +1,8 @@
+{
+  "target": "Permission",
+  "description": "net:connect names at least one host",
+  "instance": {
+    "permission": "net:connect",
+    "hosts": []
+  }
+}

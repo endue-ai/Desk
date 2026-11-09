@@ -1,0 +1,11 @@
+{
+  "target": "BridgeEvent",
+  "description": "bytes arrived on a socket",
+  "instance": {
+    "event": "net.data",
+    "data": {
+      "socketId": "s-1",
+      "data": "UkZCIDAwMy4wMDgK"
+    }
+  }
+}

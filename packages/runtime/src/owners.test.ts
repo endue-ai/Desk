@@ -138,4 +138,26 @@ describe("Owners", () => {
       output("p32", "x"),
     ]);
   });
+
+  it("routes a socket's bytes to the plugin that connected it, and forgets it once it closes", () => {
+    const connect: BridgeRequest = {
+      id: 5,
+      method: "net.connect",
+      params: {
+        host: "studio.local",
+        port: 5900,
+        scope: { permission: "net:connect", hosts: ["studio.local:5900"] },
+      },
+    };
+    const bytes: BridgeEvent = { event: "net.data", data: { socketId: "s-1", data: "UkZC" } };
+    const closed: BridgeEvent = { event: "net.closed", data: { socketId: "s-1" } };
+    expect(eventKey(bytes)).toBe("net:s-1");
+    expect(claimKey(connect, ok(5, { socketId: "s-1" }))).toBe("net:s-1");
+    const owners = new Owners();
+    // The server speaks first: its greeting can come before net.connect's answer.
+    expect(route(owners, bytes)).toBeUndefined();
+    expect(owners.claim(connect, ok(5, { socketId: "s-1" }), "endue.screens")).toEqual([bytes]);
+    expect(route(owners, closed)).toBe("endue.screens");
+    expect(route(owners, bytes)).toBeUndefined();
+  });
 });

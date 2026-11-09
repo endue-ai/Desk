@@ -55,7 +55,7 @@ holds the call after the cap and the permission check and sends `perm.approval` 
 A caller that is not an agent is never held.
 
 An event about the caller's own work reaches it without asking: `fs.changed` for its watches, `proc.*` for
-its processes, `audio.wake` for its captures, `brain.turn` for its turns, `perm.changed` for its grants,
+its processes, `net.data` and `net.closed` for its sockets, `audio.wake` for its captures, `brain.turn` for its turns, `perm.changed` for its grants,
 `cmd.invoked` for the commands it provides, `cmd.answered` for the commands it invoked, `cmd.undone` for
 the undos and redos it ran, and
 `settings.changed` for its own keys and `data.changed` for its data subscriptions. `plugin.changed` goes to
@@ -162,6 +162,19 @@ to hosts outside it, and returns status, headers and the whole body. Non-2xx sta
 errors; a missed `timeoutMs` is `timeout`. A redirect outside the scope is `permission_denied` before it
 is connected to. Header names come back lowercase; `bodyEncoding` is `utf8` for a body that is UTF-8 text
 and `base64` otherwise. More than 10 redirects or a body over 64 MiB is `io_error`.
+
+**net.connect** opens a TCP connection to a `host` (a name or an IPv4 address) and `port` inside a
+`net:connect` scope and returns a `socketId` once it is connected; `timeoutMs` (10 s by default) missed is
+`timeout`, a refused or unreachable host `io_error`. The bytes the other end sends arrive as `net.data`
+events (base64, up to 64 KiB each, in order) and the end as `net.closed`, the socket's last event, with a
+`reason` unless the other end closed it. A caller holds at most 8 sockets; another is `invalid_value`. A
+caller that unloads, or loses the grant that covers the host and port, has its sockets closed; their
+`net.closed` still arrives. The bytes cross the bridge so that plugin frames keep `connect-src` to the
+desk (ADR 0133).
+
+**net.send** writes base64 bytes to one of the caller's sockets and answers once all are written.
+**net.close** closes one; closing one that already ended is not an error. Another caller's socket is
+`not_found`.
 
 **audio.capture.start** opens the microphone under an `audio:capture` scope and returns a `captureId`.
 With `wakeWord` (allowed by the scope) the core listens for the wake word and sends `audio.wake` events;
